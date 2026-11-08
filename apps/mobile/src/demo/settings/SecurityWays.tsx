@@ -1,354 +1,170 @@
-import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import type { Ref } from 'react';
+import { View, type ViewInstance } from 'react-native';
 
-import { Notice } from '../../components/Notice.tsx';
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
-import { SAMPLE } from '../samples.ts';
-import { ConfirmItsYou } from './AccountConfirm.tsx';
-import {
-  ItemRow,
-  Lead,
-  Note,
-  RowPill,
-  StateMark,
-  Step,
-  StepPill,
-  SubHead,
-  WhiteRows,
-} from './AccountParts.tsx';
-import { Card, CardHead, Pair } from './parts.tsx';
-import { YOU, type SettingsLayout } from './sample.ts';
+import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
 import {
   keptByRule,
-  linkedProviders,
-  onlyWayIn,
-  PROOF_MINUTES,
-  type Provider,
-  PROVIDER_ADDRESS,
-  PROVIDERS,
-  type Ways,
-} from './SecuritySample.ts';
-import { ChangePassword, SetPassword } from './SecurityPassword.tsx';
+  keptNote,
+  lastWayIn,
+  linkNote,
+  passwordLine,
+  providerLine,
+  type Rules,
+  unlinkNote,
+  waysFoot,
+  WORDS,
+} from './SecurityModel.ts';
+import { type Provider, PROVIDERS, type Ways } from './SecuritySample.ts';
+import { OpenRow, Row, RowList, Section, TextAction } from '../../components/Summary.tsx';
 
-export type WaysStage =
-  | { kind: 'rest' }
-  | { kind: 'changing' }
-  | { kind: 'setting' }
-  | { kind: 'proving'; provider: Provider; then: 'link' | 'unlink' }
-  | { kind: 'unlinking'; provider: Provider };
-
-type Said = { tone: 'done' | 'broken'; title: string | null; body: string } | null;
-
-export function WaysCard({
-  layout,
+/** Password, Google and Apple: the password opens its screen, a provider opens in place, and the last way in does not open. */
+export function WaysSection({
   ways,
-  onWays,
-  rule,
-  twoFactorOn,
-  startStage,
-  onForgot,
-  onSignedOutOthers,
+  rules,
+  opened,
+  passwordRef,
+  linkRef,
+  unlinkRef,
+  onPassword,
+  onBlock,
+  onToggle,
+  onLink,
+  onUnlink,
 }: {
-  layout: SettingsLayout;
   ways: Ways;
-  onWays: (ways: Ways) => void;
-  rule: boolean;
-  twoFactorOn: boolean;
-  startStage: WaysStage;
-  onForgot: () => void;
-  /** Saving a new password signs out every other device; this says how many went. */
-  onSignedOutOthers: () => number;
+  rules: Rules;
+  opened: string | null;
+  passwordRef: Ref<ViewInstance>;
+  linkRef: Ref<ViewInstance>;
+  unlinkRef: Ref<ViewInstance>;
+  onPassword: () => void;
+  onBlock: (id: string, block: ViewInstance | null) => void;
+  onToggle: (id: string) => void;
+  onLink: (provider: Provider) => void;
+  onUnlink: (provider: Provider) => void;
 }) {
-  const [stage, setStage] = useState<WaysStage>(startStage);
-  const [proved, setProved] = useState(startStage.kind === 'unlinking');
-  const [said, setSaid] = useState<Said>(
-    rule
-      ? {
-          tone: 'broken',
-          title: `A rule set by ${YOU.organisation}: everyone in it signs in with Google or Apple, so your last one cannot be removed.`,
-          body: 'Link Apple first if you want to unlink Google.',
-        }
-      : null,
-  );
-  const wide = layout === 'portrait';
-  const first = linkedProviders(ways)[0] ?? 'Google';
-
-  function rest(next: Said): void {
-    setSaid(next);
-    setStage({ kind: 'rest' });
-  }
-
-  function link(provider: Provider): void {
-    onWays({ ...ways, [provider]: true });
-    rest({
-      tone: 'done',
-      title: `${provider} is linked.`,
-      body: `Next time, sign in with ${provider}, or as before. We emailed your verified addresses to say so.`,
-    });
-  }
-
-  function ask(provider: Provider, then: 'link' | 'unlink'): void {
-    setSaid(null);
-    if (then === 'unlink' && keptByRule(ways, provider, rule)) {
-      const other = PROVIDERS.find((each) => each !== provider) ?? 'Apple';
-      setSaid({
-        tone: 'broken',
-        title: `A rule set by ${YOU.organisation}: everyone in it signs in with Google or Apple, so your last one cannot be removed.`,
-        body: `Link ${other} first if you want to unlink ${provider}.`,
-      });
-      return;
-    }
-    if (!proved) setStage({ kind: 'proving', provider, then });
-    else if (then === 'link') link(provider);
-    else setStage({ kind: 'unlinking', provider });
-  }
-
-  if (stage.kind === 'changing')
-    return (
-      <ChangePassword
-        layout={layout}
-        onForgot={onForgot}
-        onCancel={() => rest(null)}
-        onSaved={() => {
-          const gone = onSignedOutOthers();
-          rest({
-            tone: 'done',
-            title: null,
-            body:
-              gone === 0
-                ? 'Password changed. No other device was signed in.'
-                : gone === 1
-                  ? 'Password changed. Your other device is signed out.'
-                  : `Password changed. Your ${gone} other devices are signed out.`,
-          });
-        }}
-      />
-    );
-
-  if (stage.kind === 'setting')
-    return (
-      <SetPassword
-        layout={layout}
-        onCancel={() => rest(null)}
-        onSaved={() => {
-          onWays({ ...ways, password: true });
-          rest({
-            tone: 'done',
-            title: null,
-            body: `Password added. You can sign in with it or with ${first}.`,
-          });
-        }}
-      />
-    );
-
-  if (stage.kind === 'proving') {
-    const { provider, then } = stage;
-    const intro = `To ${then} ${provider}, confirm it's you. You won't be asked again for ${PROOF_MINUTES} minutes.`;
-    const onProved = (): void => {
-      setProved(true);
-      if (then === 'link') link(provider);
-      else setStage({ kind: 'unlinking', provider });
-    };
-
-    return (
-      <Card>
-        {ways.password ? (
-          <ConfirmItsYou
-            layout={layout}
-            intro={intro}
-            note={
-              then === 'link'
-                ? `Next, ${provider} opens so you can choose the account to link. Its address doesn't have to match ${SAMPLE.email}.`
-                : undefined
-            }
-            twoFactorOn={twoFactorOn}
-            onProved={onProved}
-            onCancel={() => rest(null)}
-            testID={`demo.security.${provider}.prove`}
-          />
-        ) : (
-          <>
-            <SubHead text="Confirm it's you" />
-            <Lead text={intro} />
-            <Lead text={`You sign in with ${first}, so confirm with ${first} instead.`} />
-            <Pair
-              layout={layout}
-              dismiss={
-                <StepPill
-                  layout={layout}
-                  label="Cancel"
-                  kind="secondary"
-                  onPress={() => rest(null)}
-                />
-              }
-              confirm={
-                <StepPill layout={layout} label={`Continue with ${first}`} onPress={onProved} />
-              }
-            />
-          </>
-        )}
-      </Card>
-    );
-  }
-
-  if (stage.kind === 'unlinking') {
-    const { provider } = stage;
-    const address = PROVIDER_ADDRESS[provider];
-    const still = ways.password
-      ? 'You can still sign in with your password.'
-      : `You can still sign in with ${linkedProviders(ways).find((each) => each !== provider) ?? ''}.`;
-
-    return (
-      <Card>
-        <CardHead
-          title={`Unlink ${provider}?`}
-          line={`${
-            address == null
-              ? `You'll no longer be able to sign in with ${provider}.`
-              : `You'll no longer be able to sign in with ${provider} as ${address}.`
-          } ${still}`}
-        />
-        <Notice
-          tone="attention"
-          mark="!"
-          title={`Devices signed in with ${provider} are signed out`}
-          body={`We email every verified address on your account to say ${provider} was unlinked.`}
-        />
-        <Pair
-          layout={layout}
-          dismiss={
-            <StepPill
-              layout={layout}
-              label="Keep it linked"
-              kind="quiet"
-              onPress={() => rest(null)}
-            />
-          }
-          confirm={
-            <StepPill
-              layout={layout}
-              label={`Unlink ${provider}`}
-              kind="danger"
-              onPress={() => {
-                onWays({ ...ways, [provider]: false });
-                rest({
-                  tone: 'done',
-                  title: `${provider} is unlinked. Devices signed in with it are signed out.`,
-                  body: 'You can link it again here at any time. We emailed your verified addresses to say so.',
-                });
-              }}
-            />
-          }
-        />
-      </Card>
-    );
-  }
+  const last = lastWayIn(ways);
+  const password = passwordLine(ways);
 
   return (
-    <Card>
-      <CardHead
-        title="Ways to sign in"
-        line={`Any one of these signs you in to ${SAMPLE.email}. Linking or unlinking asks you to confirm it's you, and we email your verified addresses each time.`}
-      />
-      {said != null && (
-        <Notice
-          tone={said.tone}
-          mark={said.tone === 'done' ? tokens.marks.done.glyph : tokens.marks.broken.glyph}
-          body={said.body}
-          {...(said.title == null ? {} : { title: said.title })}
-          announce
-        />
-      )}
-      <WhiteRows>
-        {[
-          <ItemRow
-            key="password"
-            wide={wide}
-            who={
-              <>
-                <Text size={15.5} weight="semibold">
-                  Password
-                </Text>
-                <StateMark on={ways.password} word={ways.password ? 'Set up' : 'Not set up'} />
-                <Note
-                  text={
-                    ways.password
-                      ? 'Used with your email to sign in. Changing it signs out your other devices; this one stays signed in.'
-                      : `You sign in with ${first}. Add a password so you can also sign in with your email if you ever lose that ${first} account.`
-                  }
-                />
-              </>
-            }
-            actions={
-              <RowPill
-                label={ways.password ? 'Change password' : 'Set a password'}
-                onPress={() => {
-                  setSaid(null);
-                  setStage({ kind: ways.password ? 'changing' : 'setting' });
-                }}
+    <Section title={WORDS.ways} foot={waysFoot(ways)}>
+      <RowList
+        items={[
+          {
+            key: 'password',
+            inset: LEAD_INSET,
+            row: (
+              <Row
+                ref={passwordRef}
+                title={WORDS.password}
+                line={password}
+                lead={<LineIcon name="key" />}
+                opens
+                onPress={onPassword}
+                accessibilityLabel={`${WORDS.password}. ${password}`}
+                testID="security.password"
               />
-            }
-          />,
+            ),
+          },
           ...PROVIDERS.map((provider) => {
-            const linked = ways[provider];
-            const only = onlyWayIn(ways, provider);
-            const address = PROVIDER_ADDRESS[provider];
+            const line = providerLine(ways, provider);
+            const label = `${provider}. ${line}`;
+            const lead = <LineIcon name="link" />;
+            const open = opened === provider;
 
-            return (
-              <ItemRow
-                key={provider}
-                wide={wide}
-                who={
-                  <>
-                    <Text size={15.5} weight="semibold">
-                      {provider}
-                    </Text>
-                    <StateMark
-                      on={linked}
-                      word={linked ? 'Linked' : 'Not linked'}
-                      after={linked && address != null ? address : undefined}
-                    />
-                  </>
-                }
-                actions={
-                  only ? null : linked ? (
-                    <RowPill
-                      label="Unlink…"
-                      kind="dangerQuiet"
-                      onPress={() => ask(provider, 'unlink')}
-                      accessibilityLabel={`Unlink ${provider}`}
-                    />
-                  ) : (
-                    <RowPill label={`Link ${provider}`} onPress={() => ask(provider, 'link')} />
-                  )
-                }
-              >
-                {only && (
-                  <Step gap={tokens.spaceLg}>
-                    <Text size={14.5} weight="medium">
-                      {`${provider} is your only way to sign in, so it can't be removed. Set a password or link another account before removing this one.`}
-                    </Text>
-                    <View style={styles.start}>
-                      <RowPill
-                        label="Set a password"
-                        onPress={() => {
-                          setSaid(null);
-                          setStage({ kind: 'setting' });
-                        }}
+            return {
+              key: provider,
+              inset: LEAD_INSET,
+              selected: open,
+              row:
+                last === provider ? (
+                  <Row
+                    title={provider}
+                    line={line}
+                    lead={lead}
+                    accessibilityLabel={label}
+                    testID={`security.${provider}`}
+                  />
+                ) : (
+                  <View ref={(block) => onBlock(provider, block)} collapsable={false}>
+                    <OpenRow
+                      title={provider}
+                      line={line}
+                      lead={lead}
+                      weight="semibold"
+                      lit
+                      open={open}
+                      onToggle={() => onToggle(provider)}
+                      accessibilityLabel={label}
+                      testID={`security.${provider}`}
+                    >
+                      <ProviderOffer
+                        provider={provider}
+                        ways={ways}
+                        rules={rules}
+                        linkRef={linkRef}
+                        unlinkRef={unlinkRef}
+                        onLink={onLink}
+                        onUnlink={onUnlink}
                       />
-                    </View>
-                  </Step>
-                )}
-              </ItemRow>
-            );
+                    </OpenRow>
+                  </View>
+                ),
+            };
           }),
         ]}
-      </WhiteRows>
-    </Card>
+      />
+    </Section>
   );
 }
 
-const styles = StyleSheet.create({
-  start: { alignItems: 'flex-start' },
-});
+function ProviderOffer({
+  provider,
+  ways,
+  rules,
+  linkRef,
+  unlinkRef,
+  onLink,
+  onUnlink,
+}: {
+  provider: Provider;
+  ways: Ways;
+  rules: Rules;
+  linkRef: Ref<ViewInstance>;
+  unlinkRef: Ref<ViewInstance>;
+  onLink: (provider: Provider) => void;
+  onUnlink: (provider: Provider) => void;
+}) {
+  if (!ways[provider])
+    return (
+      <TextAction
+        ref={linkRef}
+        label={`Link ${provider}`}
+        onPress={() => onLink(provider)}
+        consequence={linkNote(provider)}
+        testID={`security.${provider}.link`}
+      />
+    );
+  if (keptByRule(ways, provider, rules))
+    return (
+      <TextAction
+        label={WORDS.unlinkKept}
+        off
+        onPress={() => undefined}
+        consequence={keptNote(provider)}
+        testID={`security.${provider}.unlink`}
+      />
+    );
+
+  return (
+    <TextAction
+      ref={unlinkRef}
+      label={WORDS.unlink}
+      removes
+      onPress={() => onUnlink(provider)}
+      consequence={unlinkNote(ways, provider)}
+      accessibilityLabel={WORDS.unlinkKept}
+      testID={`security.${provider}.unlink`}
+    />
+  );
+}

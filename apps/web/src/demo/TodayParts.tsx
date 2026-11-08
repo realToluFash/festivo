@@ -1,4 +1,5 @@
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import {
   type AgendaDay,
   EVENTS,
@@ -8,8 +9,6 @@ import {
   type Need,
   type StripBar,
 } from './today.ts';
-
-export type Tell = (words: string) => void;
 
 /** An event's cover, in its own colours from the option tokens. */
 export function EventCover({ event, className }: { event: EventKey; className: string }) {
@@ -328,7 +327,7 @@ export function FirstRun({ tell }: { tell: Tell }) {
         onClick={() => tell('Create an event has its own design.')}
       >
         <Glyph name="plus" size={18} />
-        Create an event
+        Start your first event
       </button>
     </section>
   );

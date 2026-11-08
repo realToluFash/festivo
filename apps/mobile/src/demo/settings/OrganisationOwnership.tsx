@@ -1,7 +1,7 @@
 import { typedNameMatches } from '@soirely/domain';
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, type TextInputInstance, View } from 'react-native';
+import { type RefObject, useEffect, useRef, useState } from 'react';
+import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 
 import {
   Field,
@@ -11,37 +11,47 @@ import {
   keysStayDown,
   TextField,
 } from '../../components/Field.tsx';
-import { Notice } from '../../components/Notice.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
-import { RadioMark } from '../../components/RadioMark.tsx';
+import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { SAMPLE } from '../samples.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { ledEvents } from './MembersHandover.ts';
+import { HandoverAsk } from './MembersHandover.tsx';
+import { offeredFor, SAMPLE_LEADS, samplePeople } from './MembersSample.ts';
 import {
   CANDIDATES,
   deleteBody,
-  type OrganisationState,
+  type OrganisationStart,
+  type OwnershipStep,
+  ownershipSteps,
   passwordRefused,
   SEND_MS,
   type TransferField,
   transferProblems,
 } from './OrganisationModel.ts';
 import { OWNERSHIP_WORDS as W } from './OrganisationWords.ts';
-import { Card, CardHead, Pair, Pill, type PillKind, TYPE } from './parts.tsx';
-import type { SettingsLayout } from './sample.ts';
-
-type Step = 'transfer' | 'leave' | 'delete' | null;
+import {
+  Ask,
+  type AskProps,
+  ChoiceRow,
+  FocusedScreen,
+  Line,
+  RowList,
+  SectionHead,
+  ShapeMark,
+  TextAction,
+} from '../../components/Summary.tsx';
 
 /** The board's mismatch: Delete pressed with a lowercase e. */
 const MISTYPED = 'Ire events';
 
-function firstStep(start: OrganisationState | null, owner: boolean): Step {
-  if (start === 'onlyOwner') return 'leave';
-  if (!owner) return null;
-  if (start === 'delete') return 'delete';
-
-  return start === 'transfer' ? 'transfer' : null;
-}
+const STEPS: Record<OwnershipStep, { label: string; note: string; removes: boolean }> = {
+  transfer: { label: W.transfer, note: W.transferNote, removes: false },
+  leave: { label: W.leaveOpener, note: W.leaveNote, removes: true },
+  delete: { label: W.deleteOpener, note: W.deleteNote, removes: true },
+};
 
 function useSend() {
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -54,156 +64,161 @@ function useSend() {
   };
 }
 
-/** Each step opens inside the card, in place of the rows that opened it; leaving or deleting lands on Today. */
-export function OwnershipCard({
+/** Transfer, leave and delete as text actions; transfer and delete on screens of their own, leaving as an Ask. */
+export function OwnershipSection({
   start,
-  layout,
-  owner,
+  role,
   locale,
+  onTransferred,
 }: {
-  start: OrganisationState | null;
-  layout: SettingsLayout;
-  owner: boolean;
+  start: OrganisationStart;
+  role: string;
   locale: string;
+  onTransferred: (name: string) => void;
 }) {
-  const [role, setRole] = useState(owner ? 'Owner' : 'Planner');
-  const [step, setStep] = useState<Step>(() => firstStep(start, owner));
-  const [back, setBack] = useState<Step>(null);
-  const [flash, setFlash] = useState<{ words: string; tap: object } | null>(null);
-  const isOwner = role === 'Owner';
+  const send = useSend();
+  const { looking } = useShell();
+  const [screen, setScreen] = useState<'transfer' | 'delete' | null>(
+    start.screen === 'transfer' || start.screen === 'delete' ? start.screen : null,
+  );
+  const [visit, setVisit] = useState(0);
+  const [leaveVisit, setLeaveVisit] = useState(0);
+  // Whoever is looking leaves: Ana in Leave's states, Priya on a member's page at rest (sc-614).
+  const events = start.leadsAny ? ledEvents(SAMPLE_LEADS[looking.email] ?? []) : [];
+  const handsOver = role !== 'Owner' && events.length > 0;
+  const [ask, setAsk] = useState<'leave' | 'onlyOwner' | null>(
+    start.ask === 'leave' || start.ask === 'onlyOwner' ? start.ask : null,
+  );
+  const transferRef = useRef<ViewInstance>(null);
+  const leaveRef = useRef<ViewInstance>(null);
+  const deleteRef = useRef<ViewInstance>(null);
+  const refs = { transfer: transferRef, leave: leaveRef, delete: deleteRef };
   const toToday = () => router.replace('/demo/today');
 
-  function open(next: Step, from: Step = null): void {
-    setFlash(null);
-    setBack(from);
-    setStep(next);
+  function open(step: OwnershipStep): void {
+    if (step === 'leave') {
+      setLeaveVisit((count) => count + 1);
+      setAsk(role === 'Owner' ? 'onlyOwner' : 'leave');
+      return;
+    }
+    setVisit((count) => count + 1);
+    setScreen(step);
   }
 
-  const rows: { title: string; note: string; action: string; kind: PillKind; to: Step }[] = [
-    ...(isOwner
-      ? [
-          {
-            title: W.transfer,
-            note: W.transferNote,
-            action: W.transfer,
-            kind: 'secondary' as const,
-            to: 'transfer' as const,
+  const asked: AskProps =
+    ask === 'onlyOwner'
+      ? {
+          title: W.onlyOwnerTitle,
+          line: W.onlyOwnerBody,
+          keep: { label: W.stay, testID: 'organisation.leave.stay' },
+          confirm: { label: W.transfer, testID: 'organisation.leave.transfer' },
+          onKeep: () => setAsk(null),
+          onConfirm: () => {
+            setAsk(null);
+            open('transfer');
           },
-        ]
-      : []),
-    {
-      title: W.leave,
-      note: W.leaveNote,
-      action: W.leaveOpener,
-      kind: 'dangerQuiet',
-      to: 'leave',
-    },
-    ...(isOwner
-      ? [
-          {
-            title: W.delete,
-            note: W.deleteNote,
-            action: W.deleteOpener,
-            kind: 'dangerQuiet' as const,
-            to: 'delete' as const,
+        }
+      : {
+          title: W.leaveTitle,
+          line: W.leaveBody,
+          keep: { label: W.stay, testID: 'organisation.leave.stay' },
+          confirm: { label: W.leave, testID: 'organisation.leave.confirm', removes: true },
+          onKeep: () => setAsk(null),
+          onConfirm: () => {
+            setAsk(null);
+            send(toToday);
           },
-        ]
-      : []),
-  ];
+        };
 
   return (
-    <Card>
-      <CardHead title={W.title} />
-      {flash != null && (
-        <Notice tone="done" mark={tokens.marks.done.glyph} body={flash.words} answer={flash.tap} />
-      )}
-      {step === null &&
-        rows.map((row, index) => (
-          <View
-            key={row.title}
-            style={[
-              layout === 'phone' ? styles.rowPhone : styles.rowTablet,
-              index > 0 && styles.divided,
-            ]}
-          >
-            <View style={styles.words}>
-              <Text size={TYPE.row} weight="semibold">
-                {row.title}
-              </Text>
-              <Text size={TYPE.small} weight="medium" muted>
-                {row.note}
-              </Text>
-            </View>
-            <Pill
-              label={row.action}
-              kind={row.kind}
-              height={tokens.sizeHit}
-              full={false}
-              onPress={() => open(row.to)}
-              testID={`demo.organisation.ownership.${row.to ?? 'none'}`}
-            />
-          </View>
-        ))}
-      {step === 'transfer' && (
-        <TransferStep
-          layout={layout}
-          picked={start === 'transfer'}
-          onKeep={() => setStep(back)}
-          onDone={(name) => {
-            setRole('Administrator');
-            setStep(null);
-            setFlash({ words: W.transferred(name), tap: {} });
+    <>
+      <View>
+        <SectionHead title={W.title} />
+        <RowList
+          items={ownershipSteps(role).map((step) => ({
+            key: step,
+            row: (
+              <View style={styles.step}>
+                <TextAction
+                  ref={refs[step]}
+                  label={STEPS[step].label}
+                  removes={STEPS[step].removes}
+                  onPress={() => open(step)}
+                  consequence={STEPS[step].note}
+                  testID={`organisation.ownership.${step}`}
+                />
+              </View>
+            ),
+          }))}
+        />
+      </View>
+      <Ask open={ask != null && !handsOver} opener={leaveRef} {...asked} />
+      {handsOver && (
+        <HandoverAsk
+          key={`leave.${leaveVisit}`}
+          open={ask === 'leave'}
+          opener={leaveRef}
+          kind="leave"
+          departing={null}
+          events={events}
+          offered={offeredFor(samplePeople(), looking.email)}
+          you={looking.email}
+          words={{
+            title: W.leaveTitle,
+            tail: W.leaveBody,
+            keep: { label: W.stay, testID: 'organisation.leave.stay' },
+            verb: { label: W.leave, testID: 'organisation.leave.confirm', removes: true },
           }}
+          start={leaveVisit === 0 ? start.leaving : null}
+          onKeep={() => setAsk(null)}
+          onDone={toToday}
+          testID="organisation.leave"
         />
       )}
-      {step === 'leave' && (
-        <LeaveStep
-          layout={layout}
-          onlyOwner={isOwner}
-          onStay={() => setStep(null)}
-          onTransfer={() => open('transfer', 'leave')}
-          onLeave={toToday}
-        />
-      )}
-      {step === 'delete' && (
-        <DeleteStep
-          layout={layout}
-          locale={locale}
-          mistyped={start === 'delete'}
-          onKeep={() => setStep(null)}
-          onDeleted={toToday}
-        />
-      )}
-    </Card>
+      <TransferScreen
+        key={`transfer.${visit}`}
+        open={screen === 'transfer'}
+        picked={visit === 0 && start.transferPicked}
+        opener={transferRef}
+        onClose={() => setScreen(null)}
+        onDone={(name) => {
+          setScreen(null);
+          onTransferred(name);
+        }}
+      />
+      <DeleteScreen
+        key={`delete.${visit}`}
+        open={screen === 'delete'}
+        locale={locale}
+        mistyped={visit === 0 && start.deleteMistyped}
+        opener={deleteRef}
+        onClose={() => setScreen(null)}
+        onDeleted={toToday}
+      />
+    </>
   );
 }
 
-function StepHead({ words }: { words: string }) {
-  return (
-    <Text size={TYPE.row} weight="semibold" accessibilityRole="header">
-      {words}
-    </Text>
-  );
-}
-
-function TransferStep({
-  layout,
+function TransferScreen({
+  open,
   picked,
-  onKeep,
+  opener,
+  onClose,
   onDone,
 }: {
-  layout: SettingsLayout;
+  open: boolean;
   picked: boolean;
-  onKeep: () => void;
+  opener: RefObject<ScreenReaderTarget | null>;
+  onClose: () => void;
   onDone: (name: string) => void;
 }) {
-  const phone = layout === 'phone';
   const send = useSend();
   const [startPassword] = useState(picked ? SAMPLE.password : '');
   const [chosen, setChosen] = useState<string | null>(
     picked ? (CANDIDATES[0]?.name ?? null) : null,
   );
   const [errors, setErrors] = useState<Partial<Record<TransferField, string>>>({});
+  const [ownerAnswer, setOwnerAnswer] = useState<object | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const typed = useRef(startPassword);
   const input = useRef<TextInputInstance>(null);
@@ -221,7 +236,8 @@ function TransferStep({
     if (busy) return;
     const problems = transferProblems(chosen, typed.current);
     setErrors(problems);
-    if (problems.owner == null && problems.password != null) focusChecked(input);
+    if (problems.owner != null) setOwnerAnswer({});
+    else if (problems.password != null) focusChecked(input);
     if (chosen == null || problems.password != null) return;
 
     keysStayDown();
@@ -239,59 +255,43 @@ function TransferStep({
   }
 
   return (
-    <View style={styles.step}>
-      <StepHead words={W.transfer} />
-      <Text size={TYPE.small} weight="medium" muted>
-        {W.transferBody}
-      </Text>
-      <View accessibilityRole="radiogroup" style={styles.choices}>
-        <Text size={14} weight="semibold">
-          {W.newOwner}
-        </Text>
-        {CANDIDATES.map((member) => {
-          const on = member.name === chosen;
-
-          return (
-            <Pressable
-              key={member.name}
-              onPress={() => {
-                setChosen(member.name);
-                drop('owner');
-              }}
-              style={({ pressed }) => [
-                styles.choice,
-                on && styles.choiceOn,
-                pressed && styles.pressed,
-              ]}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: on }}
-              accessibilityLabel={`${member.name}, ${member.role}`}
-              testID={`demo.organisation.transfer.${member.name}`}
-            >
-              <View
-                style={styles.mark}
-                accessibilityElementsHidden
-                importantForAccessibility="no-hide-descendants"
-              >
-                <RadioMark on={on} />
-              </View>
-              <View style={styles.words}>
-                <Text
-                  size={15.5}
-                  weight="semibold"
-                  accessible={false}
-                  style={on ? styles.accent : undefined}
-                >
-                  {member.name}
-                </Text>
-                <Text size={TYPE.small} weight="medium" muted accessible={false}>
-                  {member.role}
-                </Text>
-              </View>
-            </Pressable>
-          );
-        })}
-        {errors.owner != null && <FieldError message={errors.owner} />}
+    <FocusedScreen
+      open={open}
+      title={W.transfer}
+      verb={{
+        label: W.transferVerb,
+        on: !busy,
+        onPress: transfer,
+        testID: 'organisation.transfer.send',
+      }}
+      onCancel={onClose}
+      cancelTestID="organisation.transfer.cancel"
+      opener={opener}
+      testID="organisation.transfer"
+    >
+      <Line text={W.transferBody} />
+      <View>
+        <SectionHead title={W.newOwner} />
+        {errors.owner != null && <FieldError message={errors.owner} answer={ownerAnswer} />}
+        <View accessibilityRole="radiogroup">
+          <RowList
+            items={CANDIDATES.map((member) => ({
+              key: member.name,
+              row: (
+                <ChoiceRow
+                  title={member.name}
+                  line={member.role}
+                  on={member.name === chosen}
+                  onPress={() => {
+                    setChosen(member.name);
+                    drop('owner');
+                  }}
+                  testID={`organisation.transfer.${member.initials}`}
+                />
+              ),
+            }))}
+          />
+        </View>
       </View>
       <Field label={W.password} error={errors.password} help={W.passwordWhy}>
         <PasswordField
@@ -309,129 +309,29 @@ function TransferStep({
           onSubmitEditing={transfer}
           submitBehavior="submit"
           accessibilityLabel={W.password}
-          testID="demo.organisation.transfer.password"
+          testID="organisation.transfer.password"
         />
       </Field>
-      <Text size={TYPE.line} weight="medium" muted>
-        {W.bothEmailed(chosen ?? W.theNewOwner)}
-      </Text>
-      <Pair
-        layout={layout}
-        dismiss={
-          <Pill
-            label={W.keep}
-            kind="secondary"
-            full={phone}
-            onPress={onKeep}
-            testID="demo.organisation.transfer.keep"
-          />
-        }
-        confirm={
-          <Pill
-            label={chosen == null ? W.transfer : W.makeOwner(chosen)}
-            full={phone}
-            onPress={transfer}
-            testID="demo.organisation.transfer.send"
-          />
-        }
-      />
-    </View>
+      <Line text={W.bothEmailed(chosen ?? W.theNewOwner)} />
+    </FocusedScreen>
   );
 }
 
-function LeaveStep({
-  layout,
-  onlyOwner,
-  onStay,
-  onTransfer,
-  onLeave,
-}: {
-  layout: SettingsLayout;
-  onlyOwner: boolean;
-  onStay: () => void;
-  onTransfer: () => void;
-  onLeave: () => void;
-}) {
-  const phone = layout === 'phone';
-  const send = useSend();
-  const [busy, setBusy] = useState(false);
-  const stay = (
-    <Pill
-      label={W.stay}
-      kind="secondary"
-      full={phone}
-      onPress={onStay}
-      testID="demo.organisation.leave.stay"
-    />
-  );
-
-  return (
-    <View style={styles.step}>
-      <StepHead words={W.leaveTitle} />
-      {onlyOwner ? (
-        <>
-          <Notice
-            tone="attention"
-            mark="!"
-            title={W.onlyOwnerTitle}
-            body={W.onlyOwnerBody}
-            announce
-          />
-          <Pair
-            layout={layout}
-            dismiss={stay}
-            confirm={
-              <Pill
-                label={W.transfer}
-                full={phone}
-                onPress={onTransfer}
-                testID="demo.organisation.leave.transfer"
-              />
-            }
-          />
-        </>
-      ) : (
-        <>
-          <Text size={TYPE.body} weight="medium">
-            {W.leaveBody}
-          </Text>
-          <Pair
-            layout={layout}
-            dismiss={stay}
-            confirm={
-              <Pill
-                label={W.leave}
-                kind="danger"
-                full={phone}
-                onPress={() => {
-                  if (busy) return;
-                  setBusy(true);
-                  send(onLeave);
-                }}
-                testID="demo.organisation.leave.send"
-              />
-            }
-          />
-        </>
-      )}
-    </View>
-  );
-}
-
-function DeleteStep({
-  layout,
+function DeleteScreen({
+  open,
   locale,
   mistyped,
-  onKeep,
+  opener,
+  onClose,
   onDeleted,
 }: {
-  layout: SettingsLayout;
+  open: boolean;
   locale: string;
   mistyped: boolean;
-  onKeep: () => void;
+  opener: RefObject<ScreenReaderTarget | null>;
+  onClose: () => void;
   onDeleted: () => void;
 }) {
-  const phone = layout === 'phone';
   const send = useSend();
   const [now] = useState(() => new Date());
   const [startTyped] = useState(mistyped ? MISTYPED : '');
@@ -455,86 +355,71 @@ function DeleteStep({
   }
 
   return (
-    <View style={styles.step}>
-      <StepHead words={W.deleteTitle} />
-      <Notice
-        tone="attention"
-        mark="!"
-        title={W.deleteWarningTitle}
-        body={deleteBody(now, locale)}
-      />
-      <Field
-        label={W.deleteType}
-        error={mismatch}
-        help={matches ? W.deleteMatches : W.deleteExactly}
-      >
-        <TextField
-          ref={input}
-          defaultValue={startTyped}
-          onChangeText={(text) => {
-            typed.current = text;
-            const same = typedNameMatches(text, SAMPLE.organisation);
-            setMatches(same);
-            if (same) setMismatch(null);
-          }}
-          wrong={mismatch != null}
-          submitting={busy}
-          autoCapitalize="words"
-          returnKeyType="done"
-          accessibilityLabel={W.deleteType}
-          testID="demo.organisation.delete.name"
-        />
-      </Field>
-      <Pair
-        layout={layout}
-        dismiss={
-          <Pill
-            label={W.deleteKeep}
-            kind="secondary"
-            full={phone}
-            onPress={onKeep}
-            testID="demo.organisation.delete.keep"
+    <FocusedScreen
+      open={open}
+      title={W.deleteTitle}
+      verb={{
+        label: W.deleteVerb,
+        on: !busy,
+        removes: true,
+        onPress: remove,
+        testID: 'organisation.delete.send',
+      }}
+      onCancel={onClose}
+      cancelTestID="organisation.delete.cancel"
+      opener={opener}
+      testID="organisation.delete"
+    >
+      <View style={styles.warning}>
+        <Text size={18} weight="bold" accessibilityRole="header">
+          {W.deleteWarningTitle}
+        </Text>
+        <Line text={deleteBody(now, locale)} />
+      </View>
+      <View>
+        <Field label={W.deleteType} error={mismatch} help={matches ? undefined : W.deleteExactly}>
+          <TextField
+            ref={input}
+            defaultValue={startTyped}
+            onChangeText={(text) => {
+              typed.current = text;
+              const same = typedNameMatches(text, SAMPLE.organisation);
+              setMatches(same);
+              if (same) setMismatch(null);
+            }}
+            wrong={mismatch != null}
+            submitting={busy}
+            autoCapitalize="words"
+            autoCorrect={false}
+            spellCheck={false}
+            returnKeyType="done"
+            onSubmitEditing={remove}
+            submitBehavior="submit"
+            accessibilityLabel={W.deleteType}
+            testID="organisation.delete.name"
           />
-        }
-        confirm={
-          <Pill
-            label={W.deleteButton}
-            kind="danger"
-            full={phone}
-            onPress={remove}
-            testID="demo.organisation.delete.send"
-          />
-        }
-      />
-    </View>
+        </Field>
+        {matches && (
+          <View style={styles.matches} testID="organisation.delete.matches">
+            <ShapeMark kind="yes" side={16} ink={tokens.marks.done.ink} />
+            <Text size={tokens.typeSmall.size} weight="medium" style={styles.secondary}>
+              {W.deleteMatches}
+            </Text>
+          </View>
+        )}
+      </View>
+    </FocusedScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  rowPhone: { gap: tokens.spaceMd },
-  rowTablet: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxl },
-  divided: { paddingTop: 14, borderTopWidth: 1, borderTopColor: tokens.colorBorder },
-  words: { flex: 1, minWidth: 0, gap: 3 },
-  step: { gap: 14 },
-  choices: { gap: tokens.spaceSm },
-  choice: {
-    minHeight: 56,
+  secondary: { color: tokens.colorInkSecondary },
+  step: { paddingVertical: tokens.spaceXs },
+  warning: { gap: tokens.spaceXs },
+  matches: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: tokens.spaceLg,
-    paddingVertical: tokens.spaceLg,
-    paddingHorizontal: 14,
-    borderRadius: tokens.spaceXl,
-    borderWidth: 1.5,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
+    alignItems: 'center',
+    gap: tokens.spaceXs,
+    paddingTop: tokens.spaceXs,
   },
-  choiceOn: {
-    borderWidth: 2,
-    borderColor: tokens.colorAccent,
-    backgroundColor: tokens.colorAccentTint,
-  },
-  mark: { marginTop: 1 },
-  accent: { color: tokens.colorAccentText },
-  pressed: { opacity: 0.8 },
 });

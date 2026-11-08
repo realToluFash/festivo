@@ -331,7 +331,7 @@ describe('a few details', () => {
     );
   });
 
-  it('says the account is still signed in when it cannot reach Soirely', () => {
+  it('leaves out still signed in when the account itself could not be read (sc-29065)', () => {
     __setSessionState({ status: 'unreachable', retrying: false });
 
     render(
@@ -340,7 +340,8 @@ describe('a few details', () => {
       />,
     );
 
-    expect(screen.getByRole('status').textContent).toMatch(/You are still signed in\./);
+    expect(screen.getByText('Cannot reach Soirely')).toBeDefined();
+    expect(screen.queryByText(/You are still signed in/)).toBeNull();
   });
 
   it('keeps an incomplete account out of the product', async () => {
@@ -519,7 +520,7 @@ function preview(id: string, organisation: { id: string; name: string }, inviter
     id,
     organisation,
     email: 'folake@ire.events',
-    role: { id: 'role_3', seededAs: 'event_manager', name: null },
+    role: { id: 'role_3', seededAs: 'administrator', name: null },
     invitedBy: inviter == null ? null : { name: inviter },
     expiresAt: '2026-10-23T09:00:00+00:00',
     refusal: null,
@@ -530,7 +531,7 @@ function preview(id: string, organisation: { id: string; name: string }, inviter
 
 const ADUNNI = { id: 'org_7', name: 'Adunni Weddings' };
 const KOLA = { id: 'org_9', name: 'Kola Bello Catering' };
-const ROLE = { id: 'role_3', seededAs: 'event_manager', name: null };
+const ROLE = { id: 'role_3', seededAs: 'administrator', name: null };
 
 function invited(...invitations: unknown[]) {
   return { 'GET /api/invitations': () => json({ invitations }) };
@@ -542,7 +543,7 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     at('/complete-profile');
 
     const group = await screen.findByRole('group', { name: 'Adunni Weddings' });
-    expect(within(group).getByText('Invitation from Bisi Adeyemi · Event manager')).toBeDefined();
+    expect(within(group).getByText('Invitation from Bisi Adeyemi · Admin')).toBeDefined();
     expect(
       within(group).getByRole('button', { name: 'Accept and join Adunni Weddings' }),
     ).toBeDefined();
@@ -554,7 +555,9 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
         'You have an invitation waiting. Accept it to join that organisation, or start your own below.',
       ),
     ).toBeDefined();
-    expect(screen.getByText('Or start your own organisation')).toBeDefined();
+    expect(screen.getByText('Or start your own organisation').parentElement?.className).toBe(
+      'auth-or',
+    );
 
     const name = screen.getByLabelText('Full name');
     const organisation = screen.getByLabelText('Organisation name');
@@ -607,7 +610,7 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Accept and join Adunni Weddings' }));
 
-    expect(await screen.findByText('You joined Adunni Weddings as Event manager.')).toBeDefined();
+    expect(await screen.findByText('You joined Adunni Weddings as Admin.')).toBeDefined();
     expect(screen.getByText('Save and continue takes you there.')).toBeDefined();
     expect(screen.getByText('You do not need to start an organisation now.')).toBeDefined();
     expect(screen.queryByLabelText('Organisation name')).toBeNull();
@@ -655,7 +658,7 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     expect(sent.filter((request) => request.method === 'PATCH')).toEqual([]);
 
     accepted(json({ organisation: membership({ ...ADUNNI, role: ROLE }) }));
-    expect(await screen.findByText('You joined Adunni Weddings as Event manager.')).toBeDefined();
+    expect(await screen.findByText('You joined Adunni Weddings as Admin.')).toBeDefined();
     expect(save).toHaveProperty('disabled', false);
 
     fireEvent.click(save);
@@ -689,9 +692,9 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: 'Accept and join Kola Bello Catering' }),
     );
-    await screen.findByText('You joined Kola Bello Catering as Event manager.');
+    await screen.findByText('You joined Kola Bello Catering as Admin.');
     fireEvent.click(screen.getByRole('button', { name: 'Accept and join Adunni Weddings' }));
-    await screen.findByText('You joined Adunni Weddings as Event manager.');
+    await screen.findByText('You joined Adunni Weddings as Admin.');
 
     const kola = screen.getByRole('group', { name: 'Kola Bello Catering' });
     const adunni = screen.getByRole('group', { name: 'Adunni Weddings' });
@@ -779,7 +782,7 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
 
     const torn: string[] = [];
     const observer = new MutationObserver(() => {
-      if (screen.queryByText('You joined Adunni Weddings as Event manager.') == null) return;
+      if (screen.queryByText('You joined Adunni Weddings as Admin.') == null) return;
       if (screen.queryByLabelText('Organisation name') != null) torn.push('Organisation name');
       if (screen.queryByText('Or start your own organisation') != null) torn.push('Or start');
       if (screen.queryByText('You do not need to start an organisation now.') == null) {
@@ -793,7 +796,7 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Accept and join Adunni Weddings' }));
 
-    expect(await screen.findByText('You joined Adunni Weddings as Event manager.')).toBeDefined();
+    expect(await screen.findByText('You joined Adunni Weddings as Admin.')).toBeDefined();
     observer.disconnect();
     expect(torn).toEqual([]);
   });
@@ -818,7 +821,7 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     expect(await screen.findByRole('button', { name: 'Ask to join Ìrè Events' })).toBeDefined();
     fireEvent.click(await screen.findByRole('button', { name: 'Accept and join Adunni Weddings' }));
 
-    expect(await screen.findByText('You joined Adunni Weddings as Event manager.')).toBeDefined();
+    expect(await screen.findByText('You joined Adunni Weddings as Admin.')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Ask to join Ìrè Events' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Start my own organisation' })).toBeNull();
 
@@ -899,7 +902,7 @@ describe('where focus goes on a few details (sc-11369)', () => {
       'Accept and join',
       'POST /api/invitations/inv_1/accept',
       () => json({ organisation: membership({ ...ADUNNI, role: ROLE }) }),
-      'You joined Adunni Weddings as Event manager.',
+      'You joined Adunni Weddings as Admin.',
     ],
     [
       'Accept and join',

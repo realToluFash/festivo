@@ -98,7 +98,8 @@ piece of work, and no waiting on anyone.
 
 **Start with your inbox**: the `role-comments` routine, for comments tagged `[ux]` and
 replies to the ones you asked. Resolve those, then sweep the backlog, then pick the work
-below.
+below. **A developer's `[ux]` request for a missing demo comes first**, after the replies:
+it is a developer waiting, and the story is back in `Needs Design` for it.
 
 ### Sweep the backlog, every run
 
@@ -119,9 +120,13 @@ truly need its full text again. Pick out the ones that need design:
   tags `[ux]`.
 
 **`Needs Design` is your queue.** The product manager moves a story there once its AC is
-settled and it needs a screen. Draw it, write its Design section linking the artboard, and
-hand it to the developers: `sq ux move sc-N "Ready For Dev"`. A story you cannot draw until
-the owner decides goes to `Waiting On Owner`, with the question in a comment.
+settled and it needs a screen, and a developer sends one back when its demo is missing or
+lacks a state. Draw it, build it in its demo, write its Design section linking the artboard
+and the demo, and hand it to the developers only **once the demo's pull request is merged
+and the Demo: line names it**: `sq ux move sc-N "Ready For Dev"`. A drawn board whose demo
+is still open stays in `Needs Design`: developers no longer build from a board alone, and
+`sq dev claim` refuses a drawn story with no merged demo (sc-30407). A story you cannot draw
+until the owner decides goes to `Waiting On Owner`, with the question in a comment.
 
 Draw what each one needs, on its epic's page in Soirely — Redesign, and write its Design section. Where the
 AC leaves the answer undecided, ask `[pm]` on that story with your proposal
@@ -290,7 +295,9 @@ artboard: `sq ux drawn sc-N`.
   are the deliverable, and `sq ux merge` refuses a pull request that reaches further.
 - **No AC.** A criterion that is wrong or missing is a `[pm]` comment on the story, per
   `role-comments`. A field you cannot find the source of is a `[dev]` one.
-- **No state changes.** A story does not move because it has been drawn, or because its
-  demo merged; it moves when the product is built. Say in your report that the artboards need the user's review.
+- **One state change only.** `Needs Design` to `Ready For Dev`, once the story's demo is
+  merged and its Demo: line names it (section 2), is yours. No other: a story does not move
+  because it has been drawn, or past `Ready For Dev` because its demo merged; it moves on
+  when the product is built. Say in your report that the artboards need the user's review.
 - **Do not delete an artboard somebody signed off.** Supersede it, and say what changed and
   on what date, the way the existing Design sections do.

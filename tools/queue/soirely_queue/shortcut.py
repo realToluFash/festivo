@@ -1,5 +1,6 @@
 """Shortcut's REST API, with the token from SHORTCUT_API_TOKEN."""
 
+import http.client
 import json
 import mimetypes
 import os
@@ -20,16 +21,32 @@ class ShortcutError(RuntimeError):
     pass
 
 
+class OutOfTime(ShortcutError):
+    """The deadline passed before Shortcut answered."""
+
+
 class Shortcut:
-    def __init__(self, token=None):
+    def __init__(self, token=None, deadline=None, clock=time.monotonic):
         self.token = token or os.environ.get("SHORTCUT_API_TOKEN")
         if not self.token:
             raise ShortcutError("SHORTCUT_API_TOKEN is not set")
+        self.deadline, self.clock = deadline, clock
 
-    def call(self, method, path, body=None, attempts=3, raw=None, content_type=None):
-        """Retries what Shortcut fails now and then: a 5xx, a dropped connection, and on a
-        PUT the 409 a concurrent edit of the same story returns. Only GET and PUT, which
-        are safe to repeat."""
+    def time_left(self, failure, wanted=60):
+        if self.deadline is None:
+            return wanted
+        left = self.deadline - self.clock()
+        if left <= 0:
+            raise OutOfTime(f"out of time: {failure}")
+        return min(wanted, left)
+
+    def call(self, method, path, body=None, attempts=3, raw=None, content_type=None,
+             safe=None):
+        """Retries what Shortcut fails now and then: a 5xx, a dropped connection, a read
+        that times out, and on a PUT the 409 a concurrent edit of the same story returns.
+        Only GET and PUT, which are safe to repeat (RFC 9110 section 9.2.2), and a `safe`
+        POST that only reads."""
+        safe = method in ("GET", "PUT") if safe is None else safe
         url = path if path.startswith("http") else API + path
         data = raw if raw is not None else (json.dumps(body).encode() if body is not None
                                             else None)
@@ -37,21 +54,33 @@ class Shortcut:
             "Shortcut-Token": self.token,
             "Content-Type": content_type or "application/json"})
         failure = "Shortcut call failed"
+        where = f"{method} {path.split('?')[0]}"
         for attempt in range(attempts):
+            timeout = self.time_left(failure)
             try:
-                with urllib.request.urlopen(request, timeout=60) as response:
+                with urllib.request.urlopen(request, timeout=timeout) as response:
                     return json.loads(response.read() or b"null")
             except urllib.error.HTTPError as error:
                 detail = error.read().decode(errors="replace")[:200]
-                failure = f"Shortcut {error.code} on {method} {path.split('?')[0]}: {detail}"
+                failure = f"Shortcut {error.code} on {where}: {detail}"
                 transient = error.code >= 500 or (error.code == 409 and method == "PUT")
-                if not transient or method not in ("GET", "PUT"):
+                if not transient or not safe:
                     break
             except urllib.error.URLError as error:
-                failure = f"Shortcut unreachable: {error.reason}"
-                if method not in ("GET", "PUT"):
+                failure = f"Shortcut unreachable on {where}: {error.reason}"
+                if not safe:
                     break
-            time.sleep(2 ** attempt)
+            except TimeoutError:
+                failure = f"Shortcut timed out on {where}"
+                if not safe:
+                    break
+            except (ConnectionError, http.client.HTTPException) as error:
+                failure = f"Shortcut dropped the connection on {where}: {error!r}"
+                if not safe:
+                    break
+            if attempt + 1 < attempts:
+                time.sleep(self.time_left(failure, 2 ** attempt))
+        self.time_left(failure)
         raise ShortcutError(failure)
 
     def search(self, query, pages=20):
@@ -65,6 +94,12 @@ class Shortcut:
                 break
             path = body["next"]
         return found
+
+    def find(self, **filters):
+        """Unarchived stories matching `filters`, in one call however many: unlike `search`,
+        it is not paged 25 at a time, and `updated_at_start` takes a time, not only a day."""
+        return self.call("POST", "/api/v3/stories/search", {"archived": False, **filters},
+                         safe=True)
 
     def story(self, story_id):
         return self.call("GET", f"/api/v3/stories/{story_id}")

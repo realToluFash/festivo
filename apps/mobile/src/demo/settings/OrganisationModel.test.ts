@@ -2,17 +2,24 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CANDIDATES,
+  cardWords,
   countsLine,
   deleteBody,
   detailProblem,
   domainProblem,
   domainRefusal,
+  domainsFoot,
   MALFORMED_CONTACT,
+  ORGANISATION_STATES,
+  organisationStart,
   organisationStateOf,
+  ownershipSteps,
   passwordRefused,
   requestLink,
   restoreDeadline,
+  SAMPLE_DETAILS,
   savedWords,
+  TRANSFERRED_TO,
   transferProblems,
 } from './OrganisationModel.ts';
 
@@ -24,6 +31,89 @@ describe('a state link', () => {
     expect(organisationStateOf('delete')).toBe('delete');
     expect(organisationStateOf('planner')).toBeNull();
     expect(organisationStateOf(undefined)).toBeNull();
+    expect(ORGANISATION_STATES).toEqual(
+      expect.arrayContaining(['edit', 'addDomain', 'replaceLink', 'linkOff', 'transferred']),
+    );
+  });
+
+  it('opens each screen, list and Ask the owner’s states name', () => {
+    expect(organisationStart('edit', 'Owner')).toMatchObject({ screen: 'details', picking: null });
+    expect(organisationStart('contactError', 'Owner')).toMatchObject({
+      screen: 'details',
+      contactWrong: true,
+    });
+    expect(organisationStart('currency', 'Owner').picking).toBe('currency');
+    expect(organisationStart('currencyBlank', 'Owner')).toMatchObject({
+      screen: 'details',
+      currencyBlank: true,
+      contactWrong: false,
+    });
+    expect(organisationStart('currencyBlank', 'Member').screen).toBeNull();
+    expect(detailProblem('currency', '')).toBe('Choose a currency.');
+    expect(organisationStart('language', 'Owner').picking).toBe('locale');
+    expect(organisationStart('addDomain', 'Owner').screen).toBe('addDomain');
+    expect(organisationStart('removeDomain', 'Owner').ask).toBe('removeDomain');
+    expect(organisationStart('replaceLink', 'Owner').ask).toBe('replaceLink');
+    expect(organisationStart('linkOff', 'Owner').link).toBe('turnedOff');
+    expect(organisationStart('cardsLoading', 'Owner')).toMatchObject({
+      domainsLoading: true,
+      link: 'failed',
+    });
+    expect(organisationStart('transfer', 'Owner')).toMatchObject({
+      screen: 'transfer',
+      transferPicked: true,
+    });
+    expect(organisationStart('delete', 'Owner')).toMatchObject({
+      screen: 'delete',
+      deleteMistyped: true,
+    });
+  });
+
+  it('opens transferred with the viewer an Admin and the card saying who owns it', () => {
+    const start = organisationStart('transferred', 'Owner');
+
+    expect(start.role).toBe('Admin');
+    expect(start.said).toEqual({ kind: 'transferred', to: 'Priya Shah' });
+    expect(TRANSFERRED_TO).toBe('Priya Shah');
+  });
+
+  it('asks the only owner to hand over first, and lets a member leave', () => {
+    expect(organisationStart('leave', 'Owner').ask).toBe('onlyOwner');
+    expect(organisationStart('onlyOwner', 'Owner').ask).toBe('onlyOwner');
+    expect(organisationStart('leave', 'Member').ask).toBe('leave');
+  });
+
+  it('opens an owner’s state on the page at rest for a member', () => {
+    const rest = organisationStart(null, 'Member');
+
+    expect(organisationStart('edit', 'Member')).toEqual(rest);
+    expect(organisationStart('delete', 'Member')).toEqual(rest);
+    expect(rest).toMatchObject({ role: 'Member', screen: null, ask: null, link: 'on' });
+  });
+});
+
+describe('the card', () => {
+  it('names the organisation and its contact at rest', () => {
+    expect(cardWords(SAMPLE_DETAILS, null)).toEqual({
+      says: 'Ire Events',
+      line: 'hello@ire.events',
+      said: false,
+    });
+  });
+
+  it('says what was saved, or who owns it now, until the page is left', () => {
+    const saved = organisationStart('saved', 'Owner').said;
+
+    expect(cardWords(SAMPLE_DETAILS, saved)).toEqual({
+      says: 'Saved',
+      line: 'Saved. Everyone in Ire Events sees the new details on their next screen.',
+      said: true,
+    });
+    expect(cardWords(SAMPLE_DETAILS, { kind: 'transferred', to: TRANSFERRED_TO })).toEqual({
+      says: 'Priya Shah is now the owner',
+      line: 'You are an Admin. You both have an email saying so.',
+      said: true,
+    });
   });
 });
 
@@ -65,14 +155,31 @@ describe('adding a company domain', () => {
   });
 });
 
+describe('company domain joining', () => {
+  it('says the list is full under it once it holds 5', () => {
+    expect(domainsFoot(1)).toBe(
+      'People whose main email address is at a domain on this list can ask to join Ire Events when they sign up. Somebody who can manage members answers each one.',
+    );
+    expect(domainsFoot(5)).toMatch(/answers each one\. That is 5 domains, the most/u);
+  });
+});
+
+describe('ownership and leaving', () => {
+  it('offers an owner all three, and anybody else only leaving', () => {
+    expect(ownershipSteps('Owner')).toEqual(['transfer', 'leave', 'delete']);
+    expect(ownershipSteps('Admin')).toEqual(['leave']);
+    expect(ownershipSteps('Member')).toEqual(['leave']);
+  });
+});
+
 describe('transferring ownership', () => {
-  it('offers the active members other than the owner', () => {
-    expect(CANDIDATES.map((member) => member.name)).toEqual([
-      'Julien Moreau',
-      'Priya Shah',
-      'Ana Souza',
-      'Tom Becker',
-      'Kofi Mensah',
+  it('offers the active members other than the owner, each with one of the three roles', () => {
+    expect(CANDIDATES.map((member) => [member.name, member.role])).toEqual([
+      ['Julien Moreau', 'Admin'],
+      ['Priya Shah', 'Member'],
+      ['Ana Souza', 'Member'],
+      ['Tom Becker', 'Member'],
+      ['Kofi Mensah', 'Member'],
     ]);
   });
 
@@ -95,12 +202,20 @@ describe('deleting the organisation', () => {
     );
   });
 
-  it('writes the restore deadline in Lagos’s zone and the reader’s clock', () => {
-    expect(spaced(restoreDeadline(NOV_4, 'en-US'))).toBe('Friday, Dec 4 at 10:15 AM WAT');
+  it('writes the restore deadline in Lagos’s zone, the day in the locale’s order and the time on the 24-hour clock', () => {
+    expect(spaced(restoreDeadline(NOV_4, 'en-US'))).toBe('Friday, Dec 4 at 10:15 WAT');
     expect(spaced(restoreDeadline(NOV_4, 'en-GB'))).toBe('Friday 4 Dec at 10:15 WAT');
     expect(spaced(deleteBody(NOV_4, 'en-US'))).toBe(
-      '4 events, 512 guests and 8 members are deleted with it. This deletes it for everybody now. Soirely support can restore it until Friday, Dec 4 at 10:15 AM WAT; after that it is gone for good.',
+      '4 events, 512 guests and 8 members are deleted with it. This deletes it for everybody now. Soirely support can restore it until Friday, Dec 4 at 10:15 WAT; after that it is gone for good.',
     );
+  });
+
+  it('writes the time as the API’s H:i, with no AM or PM, whatever the hour or the locale', () => {
+    const evening = new Date('2026-11-04T20:05:00Z');
+
+    expect(spaced(restoreDeadline(evening, 'en-US'))).toBe('Friday, Dec 4 at 21:05 WAT');
+    expect(spaced(restoreDeadline(evening, 'en'))).toBe('Friday, Dec 4 at 21:05 WAT');
+    expect(restoreDeadline(NOV_4, 'en-US')).not.toMatch(/AM|PM/u);
   });
 });
 

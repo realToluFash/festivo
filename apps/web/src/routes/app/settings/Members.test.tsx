@@ -14,7 +14,7 @@ const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 const FOLAKE = { id: 'u_folake', name: 'Folake Adeyemi' };
 const BISI = { id: 'u_bisi', name: 'Bisi Adeyemi' };
 const OWNER = { id: 'role_1', seededAs: 'owner', name: null };
-const COORDINATOR = { id: 'role_4', seededAs: 'coordinator', name: null };
+const ADMIN = { id: 'role_4', seededAs: 'administrator', name: null };
 
 function role(id: string, seededAs: string, permissions: string[]) {
   return {
@@ -32,8 +32,8 @@ function role(id: string, seededAs: string, permissions: string[]) {
 const ROLES = {
   roles: [
     role('role_1', 'owner', OWNER_PERMISSIONS),
-    role('role_4', 'coordinator', ['events.read', 'events.manage', 'budget.read']),
-    role('role_5', 'read_only', ['events.read', 'budget.read']),
+    role('role_4', 'administrator', ['events.read', 'events.manage', 'budget.read']),
+    role('role_5', 'member', []),
   ],
   areas: [],
 };
@@ -72,7 +72,7 @@ const LIST = {
     member({
       id: 'm_bisi',
       user: { ...BISI, email: 'bisi@ire.events' },
-      role: COORDINATOR,
+      role: ADMIN,
       status: 'suspended',
       channel: 'invitation',
       since: '2026-06-10T09:00:00+00:00',
@@ -99,7 +99,7 @@ const LIST = {
     member({
       id: 'm_chidi',
       user: { id: 'u_chidi', name: 'Chidi Okoro', email: 'chidi@ire.events' },
-      role: { id: 'role_5', seededAs: 'read_only', name: null },
+      role: { id: 'role_5', seededAs: 'member', name: null },
       status: 'left_or_removed',
       former: 'removed',
       channel: 'invitation',
@@ -120,7 +120,7 @@ const LIST = {
     {
       id: 'inv_1',
       email: 'amaka@ire.events',
-      role: COORDINATOR,
+      role: ADMIN,
       invitedBy: FOLAKE,
       status: 'pending',
       sentAt: '2026-10-10T09:00:00+00:00',
@@ -132,7 +132,7 @@ const LIST = {
     {
       id: 'inv_2',
       email: 'yusuf.b@gmail.com',
-      role: COORDINATOR,
+      role: ADMIN,
       invitedBy: BISI,
       status: 'declined',
       sentAt: '2026-10-05T09:00:00+00:00',
@@ -260,9 +260,7 @@ describe('Settings > Members', () => {
       screen.getByText('Owner · you · Created Ìrè Events · since Thursday, May 28'),
     ).toBeDefined();
     expect(
-      screen.getByText(
-        'Coordinator · Invitation from Folake Adeyemi · suspended Wednesday, Jun 10',
-      ),
+      screen.getByText('Admin · Invitation from Folake Adeyemi · suspended Wednesday, Jun 10'),
     ).toBeDefined();
     expect(screen.queryByText('Chidi Okoro')).toBeNull();
   });
@@ -280,7 +278,7 @@ describe('Settings > Members', () => {
     expect(await screen.findByRole('heading', { name: 'Chidi Okoro' })).toBeDefined();
     expect(screen.getByText(/^Turned down by /)).toBeDefined();
     expect(screen.getByText('No role yet · Removed')).toBeDefined();
-    expect(screen.queryByText(/Read-only/)).toBeNull();
+    expect(screen.queryByText(/^Member$/)).toBeNull();
     expect(screen.queryByRole('radio')).toBeNull();
     expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
   });
@@ -313,7 +311,7 @@ describe('Settings > Members', () => {
     expect(
       await screen.findByText('Sent Saturday, Oct 10 · expires Saturday, Oct 17'),
     ).toBeDefined();
-    expect(screen.getByText('Coordinator · invited by you')).toBeDefined();
+    expect(screen.getByText('Admin · invited by you')).toBeDefined();
     expect(screen.getByText('Sent Monday, Oct 5 · declined Friday, Oct 9')).toBeDefined();
     expect(screen.getAllByRole('button', { name: 'Revoke' })).toHaveLength(1);
 
@@ -333,9 +331,9 @@ describe('Settings > Members', () => {
     try {
       const yours = (await screen.findByText('amaka@ire.events')).parentElement!;
       const bisis = screen.getByText('yusuf.b@gmail.com').parentElement!;
-      expect(within(yours).getByText('Coordinator · invited by you')).toBeDefined();
+      expect(within(yours).getByText('Admin · invited by you')).toBeDefined();
       expect(within(yours).queryByText(/SENTINEL/)).toBeNull();
-      expect(within(bisis).getByText('Coordinator · invited by Bisi Adeyemi')).toBeDefined();
+      expect(within(bisis).getByText('Admin · invited by Bisi Adeyemi')).toBeDefined();
     } finally {
       i18next.addResource('en', 'translation', 'membersScreen.you', you);
     }
@@ -367,7 +365,7 @@ describe('Settings > Members', () => {
             member({
               id: 'm_kemi',
               user: { ...kemi, email: 'kemi@ire.events' },
-              role: COORDINATOR,
+              role: ADMIN,
               channel: 'invitation',
               since: '2026-06-03T09:00:00+00:00',
               invitedBy: FOLAKE,
@@ -421,7 +419,7 @@ describe('Settings > Members', () => {
 const ADA = member({
   id: 'm_ada',
   user: { id: 'u_ada', name: 'Ada Okeke', email: 'ada@okeke.ng' },
-  role: { id: 'role_5', seededAs: 'read_only', name: null },
+  role: { id: 'role_5', seededAs: 'member', name: null },
   status: 'pending_approval',
   channel: 'request',
   since: '2026-10-12T08:40:00+00:00',
@@ -478,7 +476,7 @@ describe('somebody awaiting approval (sc-392)', () => {
     );
   });
 
-  it('approves as Read-only unless another role is picked, and says what happened', async () => {
+  it('approves as Member unless another role is picked, and says what happened', async () => {
     signedIn();
     const sent = answering({
       ...WAITING_READS,
@@ -488,18 +486,16 @@ describe('somebody awaiting approval (sc-392)', () => {
 
     const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
     fireEvent.click(section.getByRole('button', { name: 'Approve' }));
-    expect(document.activeElement).toBe(section.getByRole('radio', { name: /Read-only/ }));
+    expect(document.activeElement).toBe(section.getByRole('radio', { name: /Member/ }));
     fireEvent.click(section.getByRole('button', { name: 'Cancel' }));
     expect(document.activeElement).toBe(section.getByRole('button', { name: 'Approve' }));
     fireEvent.click(section.getByRole('button', { name: 'Approve' }));
     expect(section.queryByRole('radio', { name: /Owner/ })).toBeNull();
-    expect((section.getByRole('radio', { name: /Read-only/ }) as HTMLInputElement).checked).toBe(
-      true,
-    );
-    fireEvent.click(section.getByRole('radio', { name: /Coordinator/ }));
-    fireEvent.click(section.getByRole('button', { name: 'Approve as Coordinator' }));
+    expect((section.getByRole('radio', { name: /Member/ }) as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(section.getByRole('radio', { name: /Admin/ }));
+    fireEvent.click(section.getByRole('button', { name: 'Approve as Admin' }));
 
-    const done = (await screen.findByText('Ada Okeke is now a member, as Coordinator.')).closest(
+    const done = (await screen.findByText('Ada Okeke is now a member, as Admin.')).closest(
       '.notice',
     );
     expect(done).not.toBeNull();
@@ -533,7 +529,7 @@ describe('somebody awaiting approval (sc-392)', () => {
 
     const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
     fireEvent.click(section.getByRole('button', { name: 'Approve' }));
-    fireEvent.click(section.getByRole('button', { name: 'Approve as Read-only' }));
+    fireEvent.click(section.getByRole('button', { name: 'Approve as Member' }));
 
     expect(
       await screen.findByText('Approve them first, then make them an owner from Members.'),
@@ -669,7 +665,7 @@ describe('inviting somebody', () => {
     expect(sent.some((one) => one.line.startsWith('POST'))).toBe(false);
   });
 
-  it('starts on Coordinator, offers Owner only to an owner, and sends the choice', async () => {
+  it('starts on Member, offers Owner only to an owner, and sends the choice', async () => {
     signedIn();
     const sent = answering({
       ...READS,
@@ -680,7 +676,7 @@ describe('inviting somebody', () => {
               ...LIST.invitations[0],
               id: 'inv_3',
               email: 'amara.o@gmail.com',
-              role: { id: 'role_5', seededAs: 'read_only', name: null },
+              role: { id: 'role_4', seededAs: 'administrator', name: null },
             },
           },
           201,
@@ -690,26 +686,55 @@ describe('inviting somebody', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Invite somebody' }));
 
-    expect((screen.getByRole('radio', { name: /Coordinator/ }) as HTMLInputElement).checked).toBe(
-      true,
-    );
+    expect((screen.getByRole('radio', { name: /^Member/ }) as HTMLInputElement).checked).toBe(true);
     expect(screen.getByRole('radio', { name: /Owner/ })).toBeDefined();
 
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: ' amara.o@gmail.com ' } });
-    fireEvent.click(screen.getByRole('radio', { name: /Read-only/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Admin/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
 
     expect(await screen.findByText('Invitation sent to amara.o@gmail.com.')).toBeDefined();
     expect(sent.find((one) => one.line === 'POST /api/orgs/org_1/members/invite')?.body).toEqual({
       email: 'amara.o@gmail.com',
-      roleId: 'role_5',
+      roleId: 'role_4',
     });
+  });
+
+  it('says what each of the three seeded roles means in the invite picker', async () => {
+    signedIn();
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/roles': () =>
+        json({
+          roles: [
+            role('role_1', 'owner', OWNER_PERMISSIONS),
+            role('role_2', 'administrator', OWNER_PERMISSIONS),
+            role('role_3', 'member', ['events.read']),
+          ],
+          areas: [],
+        }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Invite somebody' }));
+    const dialog = screen.getByRole('dialog', { name: 'Invite somebody' });
+
+    expect(
+      within(dialog).getByText('Everything, including billing and deleting the organisation.'),
+    ).toBeDefined();
+    expect(
+      within(dialog).getByText('Everything except billing. Sees every event and manages members.'),
+    ).toBeDefined();
+    expect(
+      within(dialog).getByText('Works on the events they’re added to, and sees no others.'),
+    ).toBeDefined();
+    expect(within(dialog).queryByText(/membersScreen\.roleMeans/)).toBeNull();
   });
 
   it('keeps Owner and anything beyond the inviter off the list for a non-owner', async () => {
     signedIn(
       membership({
-        role: COORDINATOR,
+        role: ADMIN,
         permissions: [
           'members.read',
           'members.manage',
@@ -765,12 +790,12 @@ describe('inviting somebody', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
     const save = screen.getByRole('button', { name: 'Pick a different role' });
     expect(save.getAttribute('aria-disabled')).toBe('true');
-    fireEvent.click(screen.getByRole('radio', { name: /Read-only/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Change their role to Read-only' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Member/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change their role to Member' }));
 
     expect(
       await screen.findByText(
-        'Bisi Adeyemi is now Read-only. Takes effect on their next request; nobody is signed out.',
+        'Bisi Adeyemi is now Member. Takes effect on their next request; nobody is signed out.',
       ),
     ).toBeDefined();
     expect(sent.find((one) => one.line === 'PATCH /api/orgs/org_1/members/m_bisi')?.body).toEqual({
@@ -1612,7 +1637,7 @@ describe('suspending and restoring a member', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Restore access' }));
 
-    expect(await screen.findByText('Bisi Adeyemi has access again, as Coordinator.')).toBeDefined();
+    expect(await screen.findByText('Bisi Adeyemi has access again, as Admin.')).toBeDefined();
     expect(await screen.findByRole('button', { name: 'Suspend…' })).toBeDefined();
   });
 
@@ -1760,8 +1785,8 @@ describe('suspending and restoring a member', () => {
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
-    fireEvent.click(screen.getByRole('radio', { name: /Read-only/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Change their role to Read-only' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Member/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change their role to Member' }));
 
     expect(
       await screen.findByText(

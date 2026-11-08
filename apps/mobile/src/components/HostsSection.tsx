@@ -173,7 +173,6 @@ export function HostsSection({
                   style={styles.name}
                   accessibilityLabel={label}
                   accessibilityHint={describedBy(
-                    error,
                     keepLast ? t('eventHosts.lastHost') : undefined,
                     index === 0 ? t('eventHosts.explainer') : undefined,
                   )}

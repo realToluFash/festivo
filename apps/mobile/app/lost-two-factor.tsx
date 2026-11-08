@@ -23,7 +23,12 @@ import { api } from '../src/api.ts';
 import { heldChallenge } from '../src/challenge.ts';
 import { timedOutSignIn } from '../src/kit/signInRules.ts';
 import { type AuthBack, AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
-import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
+import {
+  PrimaryButton,
+  QuietButton,
+  SecondaryButton,
+  useAtFoot,
+} from '../src/components/Buttons.tsx';
 import {
   CodeField,
   Field,
@@ -44,6 +49,7 @@ import { currentLocale } from '../src/i18n/index.ts';
 import { retryAfter } from '../src/kit/code.ts';
 import {
   type RecoveryField,
+  cancelRecovery,
   loadRecovery,
   type RecoveryShown,
   recoveryCodeLabel,
@@ -300,11 +306,12 @@ function Start({
   const markSide = useMarkSide(tokens.sizeMark);
   const { t } = useTranslation();
   const back = useBackToCode();
+  const emailOnly = opening.phone == null;
   const steps = [
     opening.phone == null
       ? t('lostTwoFactor.step1EmailOnly', { email: opening.email })
       : t('lostTwoFactor.step1', { email: opening.email, phone: formatPhone(opening.phone) }),
-    t('lostTwoFactor.step2'),
+    emailOnly ? t('lostTwoFactor.step2EmailOnly') : t('lostTwoFactor.step2'),
     t('lostTwoFactor.step3', {
       organisations: listed(opening.organisations, 'disjunction'),
     }),
@@ -357,7 +364,11 @@ function Start({
         {t('lostTwoFactor.startNote')}
       </Text>
       <PrimaryButton
-        label={sending ? t('lostTwoFactor.sending') : t('lostTwoFactor.send')}
+        label={
+          emailOnly
+            ? t(sending ? 'lostTwoFactor.sendingEmailOnly' : 'lostTwoFactor.sendEmailOnly')
+            : t(sending ? 'lostTwoFactor.sending' : 'lostTwoFactor.send')
+        }
         onPress={onSend}
         busy={sending}
         off={limitedUntil != null}
@@ -494,16 +505,13 @@ function Request({
             testID="lostTwoFactor.support"
           />
         )}
-        <Text size={tokens.typeBodyPhone.size} weight="semibold">
-          {t('lostTwoFactor.notYou')}
-        </Text>
+        <BackToSignIn />
         <CancelRequest
           recovery={recovery}
           onTap={onTap}
           onState={onState}
           onReplaced={onReplaced}
         />
-        <BackToSignIn />
       </AuthFrame>
     );
   }
@@ -602,7 +610,7 @@ function Request({
   );
 }
 
-/** Cancel the request asks first in the app's own sheet (sc-29961); an answer arriving meanwhile replaces the waiting step, sheet and all. */
+/** An answer arriving while the sheet asks replaces the waiting step, sheet and all (sc-29961). */
 function CancelRequest({
   recovery,
   onTap,
@@ -616,36 +624,51 @@ function CancelRequest({
 }) {
   const { t } = useTranslation();
   const phone = useLayout().kind === 'phone';
+  const atFoot = useAtFoot();
   const opener = useRef<ViewInstance>(null);
   // New with each opening, so the sheet's title takes screen reader focus as it opens.
   const [asked, setAsked] = useState<object | null>(null);
   const [cancelling, setCancelling] = useState(false);
-  const keep = () => !cancelling && setAsked(null);
+  const [notCancelled, setNotCancelled] = useState(false);
+  const keep = () => {
+    if (cancelling) return;
+    setAsked(null);
+    setNotCancelled(false);
+  };
 
-  const cancel = () => {
+  const cancel = async (): Promise<void> => {
+    setNotCancelled(false);
     setCancelling(true);
-    api
-      .cancelRecovery(recovery)
-      .then((cancelled) => {
-        onTap();
-        onState(cancelled);
-      })
-      .catch((refusal: unknown) => {
-        setCancelling(false);
-        if (!replacedElsewhere(refusal)) return;
-        onTap();
-        onReplaced();
-      });
+
+    const outcome = await cancelRecovery({
+      cancel: () => api.cancelRecovery(recovery),
+      state: () => api.recoveryState(recovery),
+    });
+
+    if (outcome.kind === 'notCancelled') {
+      setCancelling(false);
+      setNotCancelled(true);
+      return;
+    }
+
+    onTap();
+    if (outcome.kind === 'replaced') onReplaced();
+    else onState(outcome.state);
   };
 
   return (
     <>
-      <SecondaryButton
-        ref={opener}
-        label={t('lostTwoFactor.cancel')}
-        onPress={() => setAsked({})}
-        testID="lostTwoFactor.cancel"
-      />
+      <View style={[styles.foot, atFoot && styles.atFoot]}>
+        <Text size={tokens.typeBodyPhone.size} weight="semibold">
+          {t('lostTwoFactor.notYou')}
+        </Text>
+        <QuietButton
+          ref={opener}
+          label={t('lostTwoFactor.cancel')}
+          onPress={() => setAsked({})}
+          testID="lostTwoFactor.cancel"
+        />
+      </View>
       <LifecycleSheet
         phone={phone}
         open={asked != null}
@@ -658,12 +681,21 @@ function CancelRequest({
           keep: t('lostTwoFactor.keepWaiting'),
           pending: cancelling,
           ends: true,
-          onGo: cancel,
+          onGo: () => void cancel(),
         }}
         retold={asked ?? undefined}
         scrimLabel={t('lostTwoFactor.keepWaiting')}
         onClose={keep}
-      />
+      >
+        {notCancelled && (
+          <Notice
+            tone="broken"
+            mark={tokens.marks.broken.glyph}
+            body={t('lostTwoFactor.notCancelled')}
+            announce
+          />
+        )}
+      </LifecycleSheet>
     </>
   );
 }
@@ -900,13 +932,17 @@ function Codes({
           tone="attention"
           mark="!"
           title={
-            codes?.state === 'expired'
-              ? t('lostTwoFactor.expiredTitle')
-              : t('lostTwoFactor.exhaustedTitle')
+            codes?.state === 'exhausted'
+              ? t('lostTwoFactor.exhaustedTitle')
+              : hasPhone
+                ? t('lostTwoFactor.expiredTitle')
+                : t('verifyEmail.expiredTitle')
           }
           body={
             codes?.state === 'exhausted'
-              ? t('lostTwoFactor.exhaustedBody')
+              ? hasPhone
+                ? t('lostTwoFactor.exhaustedBody')
+                : t('verifyEmail.exhaustedBody')
               : hasPhone
                 ? t('lostTwoFactor.expiredBody', {
                     message: wording.fromWhatsApp
@@ -1013,6 +1049,8 @@ const styles = StyleSheet.create({
   },
   grow: { flex: 1 },
   secondary: { color: tokens.colorInkSecondary },
+  foot: { alignItems: 'center', gap: tokens.spaceXs },
+  atFoot: { marginTop: 'auto' },
 });
 
 function listed(names: string[], type: 'conjunction' | 'disjunction'): string {

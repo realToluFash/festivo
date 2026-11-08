@@ -105,7 +105,8 @@
     "failedTitle": "Creating your account did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "nameBlank": "Enter your full name.",
-    "passwordBlank": "Enter a password."
+    "passwordBlank": "Enter a password.",
+    "timedOut": "Your sign-up timed out, so we did not keep the password. Enter it again to get a new code."
   },
   "verifyEmail": {
     "title": "Check your email",
@@ -150,7 +151,7 @@
     "wrongNumber": "Wrong number?",
     "changeIt": "Change it",
     "doneTitle": "Number verified",
-    "doneBody": "Soirely can reach you on {{number}} if something goes wrong on the night.",
+    "doneBody": "Soirely can reach you on {{number}} if something goes wrong on the day.",
     "doneBodyAlternative": "{{number}} is verified. It stays an alternative number until you make it primary in Account.",
     "continue": "Continue to Soirely",
     "changeTitle": "Change your mobile number",
@@ -192,12 +193,6 @@
     "organisation": "Organisation name",
     "organisationHelp": "Your events belong to it. You can rename it later.",
     "organisationBlank": "Add your organisation's name to carry on.",
-    "organisationOrInvitation": "Name your organisation, or accept an invitation above.",
-    "invitationsWaiting_one": "You have an invitation waiting. Accept it to join that organisation, or start your own below.",
-    "invitationsWaiting_other": "You have {{count, number}} invitations waiting. Accept one to join that organisation, or start your own below.",
-    "invitationsJoined": "You do not need to start an organisation now.",
-    "invitationsNone": "Nothing is waiting. Name your organisation below.",
-    "orStartOwn": "Or start your own organisation",
     "joinedGoesThere": "Save and continue takes you there.",
     "joinedSwitchLater": "It is in your organisations. You can switch to it later.",
     "country": "Country",
@@ -210,7 +205,8 @@
   "forms": {
     "emailBlank": "Enter your email address.",
     "emailShape": "That does not look like an email address. Check it has an @ and a domain.",
-    "countryBlank": "Choose a country."
+    "countryBlank": "Choose a country.",
+    "invalid": "Invalid"
   },
   "oauth": {
     "linked": "{{provider}} is now linked to your account. You can sign in with either.",
@@ -484,6 +480,9 @@
     "step1": "We send a code to {{email}}, and one to {{phone}} if your number is verified.",
     "step1EmailOnly": "We send a code to {{email}}.",
     "step2": "You enter the codes here.",
+    "step2EmailOnly": "You enter the code here.",
+    "sendEmailOnly": "Send the code",
+    "sendingEmailOnly": "Sending the code…",
     "step3": "An owner or admin of {{organisations}} confirms it’s you. You stay signed out until they do.",
     "startNote": "When they confirm, two-factor is turned off, every session ends, and you sign in again. Every step is emailed to you.",
     "send": "Send the codes",
@@ -538,6 +537,7 @@
     "cancelTitle": "Cancel your request?",
     "cancelBody": "You’ll need to start again to get back in.",
     "keepWaiting": "Keep waiting",
+    "notCancelled": "Not cancelled. Your request is still waiting. Try again.",
     "cancelledMark": "Cancelled",
     "replacedMark": "Replaced",
     "replacedTitle": "A newer request replaced this one",
@@ -648,7 +648,12 @@
     "events": "Events",
     "calendar": "Calendar",
     "settings": "Settings",
-    "organisation": "Organisation"
+    "organisation": "Organisation",
+    "backTo": "Back to {{place}}",
+    "cancel": "Cancel",
+    "back": "Back",
+    "closeMenu": "Close the menu",
+    "tryAgain": "Try again"
   },
   "eventNav": {
     "overview": "Overview",
@@ -726,11 +731,8 @@
   },
   "roles": {
     "owner": "Owner",
-    "administrator": "Administrator",
-    "member": "Member",
-    "event_manager": "Event manager",
-    "coordinator": "Coordinator",
-    "read_only": "Read-only"
+    "administrator": "Admin",
+    "member": "Member"
   },
   "rolesScreen": {
     "title": "Roles",
@@ -779,14 +781,15 @@
       "vendors": "Vendors",
       "members": "Members and roles",
       "billing": "Billing",
-      "organisation": "Organisation"
+      "organisation": "Organisation",
+      "people": "People on events"
     },
     "means": {
       "events": "Create, publish, pause and conclude events.",
       "guests": "Names, contact details, replies and imports. Read still shows phone numbers.",
       "seating": "Rooms, tables and who sits where.",
       "menu": "Courses, dishes, variants and picks.",
-      "run_of_show": "The schedule, and marking items done on the night.",
+      "run_of_show": "The schedule, and marking items done on the day.",
       "staff": "Who works an event and what they do there.",
       "messages": "Compose and send. Read includes the delivery record.",
       "reports": "Change means exporting.",
@@ -794,7 +797,8 @@
       "vendors": "Suppliers on each event and what was agreed with them.",
       "members": "Invite, approve, suspend, change roles.",
       "billing": "Plan, cards and invoices.",
-      "organisation": "The name, country, contact address and the defaults new events start with."
+      "organisation": "The name, country, contact address and the defaults new events start with.",
+      "people": "Who is on each event, and the role each person has there."
     },
     "margin": "Margin",
     "marginMeans": "What {{name}} adds on top of costs. Hidden means the budget opens with costs only.",
@@ -1047,7 +1051,7 @@
     "transfer": "Transfer ownership",
     "transferNote": "Hand {{organisation}} to another member. Asks for your password first.",
     "transferNoteProvider": "Hand {{organisation}} to another member. Asks you to confirm with {{provider}} first.",
-    "transferBody": "The new owner can change billing, members, roles and these settings, and can delete {{organisation}}. You become an Administrator.",
+    "transferBody": "The new owner can change billing, members and these settings, and can delete {{organisation}}. You become an admin.",
     "newOwner": "New owner",
     "ownerBlank": "Choose who becomes the owner.",
     "password": "Your password",
@@ -1060,7 +1064,7 @@
     "theNewOwner": "the new owner",
     "makeOwner": "Make {{name}} the owner",
     "keep": "Keep ownership",
-    "transferred": "{{name}} is now the owner of {{organisation}}. You are an Administrator. You both have an email saying so.",
+    "transferred": "{{name}} is now the owner of {{organisation}}. You are an admin. You both have an email saying so.",
     "leave": "Leave {{organisation}}",
     "leaveOpener": "Leave {{organisation}}…",
     "leaveNote": "You lose access to its events. Everything you made stays with {{organisation}}.",
@@ -1094,13 +1098,11 @@
     "failed": "That did not go through, so nothing was changed. Try again."
   },
   "domainJoining": {
-    "heading": "Your organisation",
     "intro": "Your address is at {{domain}}. Ask to join your company’s organisation, or start your own.",
     "usesSoirely": "{{organisation}} uses Soirely",
     "approvesFirst": "Somebody there approves you before you see anything.",
     "ask": "Ask to join",
     "askLabel": "Ask to join {{organisation}}",
-    "startOwn": "Start my own organisation",
     "askInstead": "Ask to join an organisation at {{domain}} instead",
     "unavailable": "You cannot ask to join that organisation. Start your own, or ask somebody there to invite you.",
     "waitingTitle": "Waiting for {{organisation}} to approve you",
@@ -1319,12 +1321,6 @@
   },
   "requestToJoin": {
     "title": "Ask to join {{organisation}}",
-    "requestLink": "Request link",
-    "signedOut": "Sign in or create an account to ask to join {{organisation}}. You will come back here.",
-    "signIn": "Sign in",
-    "register": "Create an account",
-    "message": "Message",
-    "optional": "Optional",
     "messageHelp": "{{length, number}} of {{count, number}} characters.",
     "messageLong": "Keep your message to {{count, number}} characters or fewer.",
     "ask": "Ask to join",
@@ -1344,7 +1340,9 @@
     "deadBody": "This link does not work any more. Ask the organisation for a new one.",
     "goHome": "Go to Soirely",
     "failedTitle": "Asking did not work",
-    "failedBody": "Something went wrong on the way. Try again in a moment."
+    "failedBody": "Something went wrong on the way. Try again in a moment.",
+    "messageOptional": "Message · optional",
+    "signedOutLine": "Sign in or create an account to ask. You will come back here."
   },
   "ownerClaim": {
     "loading": "Loading",
@@ -1390,7 +1388,7 @@
     "pausedStopped": "You stopped {{claimant}}'s claim. Ownership of {{organisation}} now has to be restored by Soirely support.",
     "withdraw": "Withdraw my claim",
     "withdrawTitle": "Withdraw your claim?",
-    "withdrawBody": "You won't become the owner of {{organisation}}. Any Administrator, you included, can start a new claim.",
+    "withdrawBody": "You won't become the owner of {{organisation}}. Any admin, you included, can start a new claim.",
     "withdrawYes": "Withdraw",
     "withdrawNo": "Keep my claim",
     "withdrawing": "Withdrawing",
@@ -1912,10 +1910,15 @@
     "emailIntro": "We sent a code to {{address}}.",
     "organisationTitle": "Your organisation",
     "mobileTitle": "Your mobile number",
-    "mobileIntro": "So your team can reach you on the night if something goes wrong.",
+    "mobileIntro": "So your team can reach you on the day if something goes wrong.",
     "mobileLine": "We send it a code on WhatsApp, or by text if WhatsApp cannot reach you.",
     "sendCode": "Send code",
-    "whatsAppTitle": "Check WhatsApp"
+    "whatsAppTitle": "Check WhatsApp",
+    "invitedTitle": "You’re invited",
+    "invitedIntro": "Join your team, or start your own organisation.",
+    "invitationFor": "An invitation for {{email}}",
+    "join": "Join {{organisation}}",
+    "startOwnInstead": "Start my own instead"
   },
   "todayScreen": {
     "today": "Today",
@@ -1997,7 +2000,7 @@
       "liveTitle": "Make it live",
       "liveBody": "It stays a draft until you do."
     },
-    "createEvent": "Create an event",
+    "startFirst": "Start your first event",
     "stepNumber": "{{n, number}}"
   }
 }

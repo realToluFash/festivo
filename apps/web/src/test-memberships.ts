@@ -56,4 +56,6 @@ export const OWNER_PERMISSIONS = [
   'billing.read',
   'billing.manage',
   'organisation.manage',
+  'people.read',
+  'people.manage',
 ];

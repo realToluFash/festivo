@@ -13,7 +13,7 @@ const PREVIEW = {
   id: 'inv_1',
   organisation: { id: 'org_1', name: 'Ìrè Events' },
   email: 'kemi.l@gmail.com',
-  role: { id: 'role_3', seededAs: 'event_manager', name: null },
+  role: { id: 'role_3', seededAs: 'administrator', name: null },
   invitedBy: { name: 'Bisi Adeyemi' },
   expiresAt: '2026-10-23T09:00:00+00:00',
   refusal: null,
@@ -107,7 +107,7 @@ describe('an invitation, signed out', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Join Ìrè Events' })).toBeDefined();
     expect(
-      screen.getByText('Bisi Adeyemi invited kemi.l@gmail.com to join as Event manager.'),
+      screen.getByText('Bisi Adeyemi invited kemi.l@gmail.com to join as Admin.'),
     ).toBeDefined();
     expect(screen.getByText('This invitation works until Friday, Oct 23.')).toBeDefined();
 
@@ -175,7 +175,7 @@ describe('an invitation, signed out', () => {
       'GET /api/orgs': () =>
         json({
           organisations: [
-            membership({ role: { id: 'role_3', seededAs: 'event_manager', name: null } }),
+            membership({ role: { id: 'role_3', seededAs: 'administrator', name: null } }),
           ],
         }),
       'PUT /api/auth/locale': () => json({}),
@@ -192,7 +192,7 @@ describe('an invitation, signed out', () => {
 
     const joined = await screen.findByRole('heading', { level: 1, name: 'You are in' });
     await waitFor(() => expect(document.activeElement).toBe(joined));
-    expect(screen.getByText('You joined Ìrè Events as Event manager.')).toBeDefined();
+    expect(screen.getByText('You joined Ìrè Events as Admin.')).toBeDefined();
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.getByRole('link', { name: 'Open Ìrè Events' }).getAttribute('href')).toBe('/app');
     expect(sent.find((one) => one.line === 'POST /api/auth/register')?.body).toMatchObject({
@@ -356,12 +356,12 @@ describe('an invitation, signed in', () => {
 
   it('names the role the API joined with, which a newer invitation may have changed', async () => {
     signedIn();
-    const joinedAs = membership({ role: { id: 'role_3', seededAs: 'event_manager', name: null } });
+    const joinedAs = membership({ role: { id: 'role_3', seededAs: 'administrator', name: null } });
     answering({
       [LINK]: () =>
         json({
           ...PREVIEW,
-          role: { id: 'role_5', seededAs: 'coordinator', name: null },
+          role: { id: 'role_5', seededAs: 'member', name: null },
           forYou: true,
           signedInAs: 'kemi.l@gmail.com',
         }),
@@ -375,8 +375,8 @@ describe('an invitation, signed in', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Accept and join' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'You are in' })).toBeDefined();
-    expect(screen.getByText('Invitation from Bisi Adeyemi · Event manager')).toBeDefined();
-    expect(screen.getByText('You joined Ìrè Events as Event manager.')).toBeDefined();
+    expect(screen.getByText('Invitation from Bisi Adeyemi · Admin')).toBeDefined();
+    expect(screen.getByText('You joined Ìrè Events as Admin.')).toBeDefined();
   });
 
   it('takes focus to the refusal’s heading when the invitation changed in the meantime', async () => {
@@ -415,6 +415,8 @@ describe('an invitation, signed in', () => {
         screen.getByRole('heading', { level: 1, name: 'Invitation declined' }),
       ),
     );
+    expect(screen.getByRole('link', { name: 'Go to Soirely' }).getAttribute('href')).toBe('/app');
+    expect(screen.queryByText('Go to your events')).toBeNull();
     expect(screen.queryByRole('status')).toBeNull();
     expect(sent.map((one) => one.line)).not.toContain('POST /api/invitations/inv_1/accept');
   });

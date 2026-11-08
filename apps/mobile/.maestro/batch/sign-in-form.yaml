@@ -14,6 +14,12 @@ appId: host.exp.Exponent
 - eraseText: 120
 - inputText: ${EMAIL}
 # Scrolled to: the You were signed out notice pushes Password under the keyboard. sc-20997.
+# On Android the keys are put away first: with them up the scroll stopped short of Password (sc-28596).
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - scrollUntilVisible:
     element:
       id: 'signIn.password'
@@ -48,9 +54,19 @@ appId: host.exp.Exponent
       visible:
         id: 'twoFactor.code'
     file: ../sign-in-two-factor.yaml
+# Signing in lands on Today, which names no account: Settings does. sc-30091.
+- extendedWaitUntil:
+    visible: '{{t:any:todayScreen.tab.today}}|{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}|{{t:any:signInRules.overdueTitle}}'
+    timeout: 30000
+    optional: true
+- runFlow:
+    when:
+      visible: '{{t:any:todayScreen.tab.today}}'
+    file: to-settings.yaml
 # The two-factor overdue screen names no account, and counts as signed in. sc-28435.
+# An account in no organisation with an invitation lands on You're invited, named on its invitation. sc-32120.
 - scrollUntilVisible:
     element:
-      text: '{{t:any:settings.signedInAs|email}}|{{t:any:noOrganisation.signedInAs|email}}|{{t:any:signInRules.overdueTitle}}'
+      text: '{{t:any:settings.signedInAs|email}}|{{t:any:noOrganisation.signedInAs|email}}|{{t:any:steps.invitationFor|email}}|{{t:any:signInRules.overdueTitle}}'
     direction: DOWN
     timeout: 30000

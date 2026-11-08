@@ -67,7 +67,7 @@ demo** on the signed-out first screen or in Settings, in a development or QA bui
 4 Nov 2026 (sc-29077) every desktop web board works the same way in the web's design demo,
 `apps/web/src/demo/`, at `/demo/<page>` with its states at `?state=`, in the development,
 dev and QA environments. The story's Design section names the page or flow on its **Demo:**
-line. A screen with a demo is built from it:
+line. **No screen is built without one**, and a screen is built from it:
 
 1. **Run the flow first**, on a phone and a tablet, or for the web at 1280 × 800, before
    reading its code: it shows the states, the checks and the motion the board can only
@@ -82,15 +82,26 @@ line. A screen with a demo is built from it:
 5. **Keep the demo flow working** on sample data: its tests stay green, and you run it once
    more after the move.
 
-The board stays the specification. Where the demo and the board disagree, say so on the
-story tagged `[ux]` and build neither silently. A screen with no demo, such as a board drawn
-before its client's demo rule, is built from the board as the rest of this file says. The
-desktop web demos filed for developers before sc-29077 (sc-29061 to sc-29064) stay theirs.
+The board stays the specification, and the demo is how it is built. Where the demo and the
+board disagree, say so on the story tagged `[ux]` and build neither silently.
+
+**No demo, no screen.** The owner, 7 Nov 2026: "dev must no longer invent designs". A screen,
+state or control that no merged demo has is not built from the board, boards drawn before
+the demo rule included. Before the claim, send the story back for its demo
+(`soirely-developer`, section 2); found while building, ask `[ux]` and leave that part
+unbuilt. A size, a colour, a word, a state or a motion that neither the demo nor the board
+gives is a `[ux]` question, never your own pick.
 
 **A demo page takes its fields from `parts.tsx`.** The password field, its Show/Hide, its
 line and its rule are `PasswordField`, and the breach line is `BREACHED` in `rules.ts`. A
 page that writes them out again is the third copy the next copy change misses, so grep
 `parts.tsx` before writing any field a demo page already has.
+
+**A demo never shows a success the browser did not report.** Await the browser API (as
+`copyText` in `apps/web/src/demo/settings.ts` and `TwoFactorCard.tsx` do) and take the
+failure path when it rejects or is missing. A "Copied" with nothing on the clipboard turned
+up twice in the demos (Security's Copy all and General's Copy link), and a fake success in
+a demo is built into the product as a real one.
 
 ## 2. Four layouts, and the codebase that owns each
 
@@ -430,8 +441,8 @@ missing list is ambiguous.
 - Every layout its codebase owns is written deliberately, and you can say what changes at
   each.
 - No hex, no untranslated literal, no fixture import left behind.
-- Where the screen had a demo, its components are the product's one copy and the demo flow
-  still works.
+- The screen's components are the product's one copy, the demo flow still works, and
+  nothing on the screen is missing from its demo.
 - Commits scoped per **making-commits**; never `git add -A`.
 - Say which layouts you checked and how, and name anything still unverified.
 - **Noticed while building** is in the pull request, or explicitly empty.

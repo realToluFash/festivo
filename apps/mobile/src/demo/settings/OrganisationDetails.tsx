@@ -1,88 +1,249 @@
 import {
-  countryChoices,
-  currencyChoices,
-  currencyLabel,
-  languageChoices,
   ORGANISATION_FIELDS,
+  ORGANISATION_NAME_MAXIMUM,
+  type OrganisationDetails,
   type OrganisationField,
-  timezoneLabel,
-  withCurrent,
+  organisationChanges,
 } from '@soirely/domain';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, type TextInputInstance, View } from 'react-native';
+import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
+import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 
-import { Field, focusChecked, keysStayDown, TextField } from '../../components/Field.tsx';
-import { Notice } from '../../components/Notice.tsx';
+import { focusPicker } from '../../components/CountryPicker.tsx';
+import {
+  Field,
+  FieldError,
+  focusChecked,
+  keysStayDown,
+  TextField,
+} from '../../components/Field.tsx';
+import { useReadOut } from '../../components/ReadOut.tsx';
+import { SETTLED_MS } from '../../components/Screen.tsx';
+import {
+  type ScreenReaderTarget,
+  moveScreenReaderFocus,
+} from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { checkAll, type FieldErrors } from '../../kit/formChecks.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
+import { PickerEdge } from '../PickerEdge.tsx';
 import {
+  type CardSaid,
+  cardWords,
   detailProblem,
   MALFORMED_CONTACT,
-  type OrganisationState,
-  SAMPLE_DETAILS,
+  type Picked,
   savedWords,
   SEND_MS,
 } from './OrganisationModel.ts';
-import { OrganisationPicker } from './OrganisationPicker.tsx';
-import { DETAILS_WORDS as W, LANGUAGE_NAMES } from './OrganisationWords.ts';
-import { Card, Pill, TYPE } from './parts.tsx';
+import { choiceName, PICKERS, PickerList } from './OrganisationPicker.tsx';
+import { DETAILS_WORDS as W } from './OrganisationWords.ts';
+import { discardTitle } from './RolesSample.ts';
+import {
+  type AskProps,
+  CardSays,
+  FocusedScreen,
+  Line,
+  OnCard,
+  Row,
+  RowList,
+  Section,
+  SectionHead,
+  SummaryCard,
+} from '../../components/Summary.tsx';
 
-const SHOWN_IN = 'en';
+const hidden = {
+  accessibilityElementsHidden: true,
+  importantForAccessibility: 'no-hide-descendants',
+} as const;
 
-type Typed = 'name' | 'contactAddress';
-type Picked = Exclude<OrganisationField, Typed>;
+/** The organisation's card: its tile, name and contact, or what was just done in their place; Edit details for those who may. */
+export function OrganisationCard({
+  details,
+  said,
+  role,
+  manages,
+  pane,
+  stepRef,
+  onEdit,
+}: {
+  details: OrganisationDetails;
+  said: CardSaid | null;
+  role: string;
+  manages: boolean;
+  pane: boolean;
+  stepRef: Ref<ViewInstance>;
+  onEdit: () => void;
+}) {
+  const words = cardWords(details, said);
 
-function useChoices() {
-  return useMemo(
-    () => ({
-      countries: countryChoices(SHOWN_IN),
-      currencies: currencyChoices(SAMPLE_DETAILS.currency, SHOWN_IN, W.currencyRetired),
-      zones: withCurrent(Intl.supportedValuesOf('timeZone'), SAMPLE_DETAILS.timezone).map(
-        (zone) => ({ code: zone, name: timezoneLabel(zone) }),
-      ),
-      languages: languageChoices((key) => LANGUAGE_NAMES[key] ?? key),
-    }),
-    [],
+  useReadOut(words.said ? `${words.says}. ${words.line}` : null, { quietAtMount: true });
+
+  return (
+    <SummaryCard
+      height={196}
+      step={
+        manages
+          ? { label: W.edit, onPress: onEdit, testID: 'organisation.edit', ref: stepRef }
+          : null
+      }
+      testID="organisation.card"
+    >
+      {words.said ? (
+        <>
+          <CardSays text={words.says} size={pane ? 26 : 24} heading />
+          <OnCard text={words.line} />
+        </>
+      ) : (
+        <View style={styles.who}>
+          <CardTile side={pane ? 64 : 56} />
+          <View style={styles.words}>
+            <CardSays text={words.says} size={pane ? 26 : 22} heading />
+            <OnCard text={words.line} />
+          </View>
+        </View>
+      )}
+      {!manages && (
+        <View style={styles.readOnly}>
+          <View style={styles.lock} {...hidden}>
+            <Glyph name="lock" size={16} ink={tokens.colorInkOnDark} weight={2.2} />
+          </View>
+          <View style={styles.grow}>
+            <OnCard text={W.readOnly(role)} />
+          </View>
+        </View>
+      )}
+    </SummaryCard>
   );
 }
 
-/** The details card keeps no title, as built: the page's title already names it. */
-export function DetailsCard({
-  start,
-  tablet,
+/** The organisation's tile as the Settings list draws it, white on Confetti: a rounded square, not a face. */
+function CardTile({ side }: { side: number }) {
+  return (
+    <View
+      style={[styles.tile, { width: side, height: side, borderRadius: Math.round(side * 0.286) }]}
+      {...hidden}
+    >
+      <Text size={Math.round(side * 0.36)} weight="bold" accessible={false} style={styles.accent}>
+        IE
+      </Text>
+    </View>
+  );
+}
+
+export function DetailRows({ details }: { details: OrganisationDetails }) {
+  const rows: [Picked, string][] = [
+    ['countryCode', W.country],
+    ['currency', W.currency],
+    ['timezone', W.timezone],
+    ['locale', W.language],
+  ];
+
+  return (
+    <Section title={W.details} foot={W.defaultsNote}>
+      <RowList
+        items={rows.map(([field, label]) => ({
+          key: field,
+          row: (
+            <Row
+              title={choiceName(field, details[field])}
+              line={label}
+              weight="medium"
+              testID={`organisation.detail.${field}`}
+            />
+          ),
+        }))}
+      />
+    </Section>
+  );
+}
+
+type Typed = 'name' | 'contactAddress';
+
+export interface DetailsOpening {
+  picking: Picked | null;
+  contactWrong: boolean;
+  currencyBlank: boolean;
+}
+
+export const FRESH_DETAILS: DetailsOpening = {
+  picking: null,
+  contactWrong: false,
+  currencyBlank: false,
+};
+
+/** Editing the details on a screen of their own; a picker's list opens in the same surface and comes back on a pick. */
+export function DetailsScreen({
+  saved,
+  open,
+  opening,
+  opener,
+  onClose,
+  onSaved,
 }: {
-  start: OrganisationState | null;
-  tablet: boolean;
+  saved: OrganisationDetails;
+  open: boolean;
+  opening: DetailsOpening;
+  opener: RefObject<ScreenReaderTarget | null>;
+  onClose: () => void;
+  onSaved: (details: OrganisationDetails, words: string) => void;
 }) {
-  const choices = useChoices();
-  const startsWrong = start === 'contactError';
-  const [startContact] = useState(startsWrong ? MALFORMED_CONTACT : SAMPLE_DETAILS.contactAddress);
-  const typed = useRef<Record<Typed, string>>({
-    name: SAMPLE_DETAILS.name,
-    contactAddress: startContact,
-  });
+  const [given, setGiven] = useState<Record<Typed, string>>(() => ({
+    name: saved.name,
+    contactAddress: opening.contactWrong ? MALFORMED_CONTACT : saved.contactAddress,
+  }));
+  const typed = useRef({ ...given });
   const [picked, setPicked] = useState<Record<Picked, string>>({
-    countryCode: SAMPLE_DETAILS.countryCode,
-    currency: SAMPLE_DETAILS.currency,
-    timezone: SAMPLE_DETAILS.timezone,
-    locale: SAMPLE_DETAILS.locale,
+    countryCode: saved.countryCode,
+    currency: saved.currency,
+    timezone: saved.timezone,
+    locale: saved.locale,
   });
-  const [errors, setErrors] = useState<FieldErrors<OrganisationField>>(() =>
-    startsWrong ? { contactAddress: W.contactInvalid } : {},
-  );
-  const [pressed, setPressed] = useState(startsWrong);
+  const [picking, setPicking] = useState<Picked | null>(opening.picking);
+  const [errors, setErrors] = useState<FieldErrors<OrganisationField>>(() => ({
+    ...(opening.contactWrong && { contactAddress: W.contactInvalid }),
+    ...(opening.currencyBlank && { currency: W.currencyBlank }),
+  }));
+  const [pressed, setPressed] = useState(opening.contactWrong || opening.currencyBlank);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState<{ words: string; tap: object } | null>(() =>
-    start === 'saved' ? { words: W.saved, tap: {} } : null,
-  );
-  const [savedLocale, setSavedLocale] = useState(SAMPLE_DETAILS.locale);
+  const [discarding, setDiscarding] = useState(false);
+  const [changes, setChanges] = useState(() => changeCount(saved, picked, given));
   const nameRef = useRef<TextInputInstance>(null);
   const contactRef = useRef<TextInputInstance>(null);
+  const rowRefs = useRef<Partial<Record<Picked, ViewInstance | null>>>({});
+  const cameBack = useRef<Picked | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => () => clearTimeout(timer.current), []);
+
+  useEffect(() => {
+    if (!open || !opening.contactWrong) return;
+    const focus = setTimeout(() => focusChecked(contactRef), SETTLED_MS);
+
+    return () => clearTimeout(focus);
+  }, [open, opening.contactWrong]);
+
+  useEffect(() => {
+    if (!open || !opening.currencyBlank) return;
+    const focus = setTimeout(
+      () => moveScreenReaderFocus(rowRefs.current.currency ?? null),
+      SETTLED_MS,
+    );
+
+    return () => clearTimeout(focus);
+  }, [open, opening.currencyBlank]);
+
+  useEffect(() => {
+    const field = cameBack.current;
+    if (picking != null || field == null) return;
+    cameBack.current = null;
+    const focus = setTimeout(
+      () => moveScreenReaderFocus(rowRefs.current[field] ?? null),
+      SETTLED_MS,
+    );
+
+    return () => clearTimeout(focus);
+  }, [picking]);
 
   function setError(field: OrganisationField, message: string | null): void {
     setErrors((previous) => {
@@ -96,6 +257,7 @@ export function DetailsCard({
 
   function edited(field: Typed, text: string): void {
     typed.current[field] = text;
+    setChanges(changeCount(saved, picked, typed.current));
     if (errors[field] != null && detailProblem(field, text) == null) setError(field, null);
   }
 
@@ -103,67 +265,138 @@ export function DetailsCard({
     if (pressed) setError(field, detailProblem(field, typed.current[field]));
   }
 
-  function pick(field: Picked, code: string): void {
-    setPicked((previous) => ({ ...previous, [field]: code }));
+  function backFrom(field: Picked, code?: string): void {
+    cameBack.current = field;
+    setPicking(null);
+    if (code == null) return;
+    const next = { ...picked, [field]: code };
+    setPicked(next);
+    setChanges(changeCount(saved, next, typed.current));
     setError(field, null);
   }
 
   function save(): void {
     if (saving) return;
-    const found = checkAll(ORGANISATION_FIELDS, detailProblem, { ...picked, ...typed.current });
+    const values = { ...picked, ...typed.current };
+    const found = checkAll(ORGANISATION_FIELDS, detailProblem, values);
     setPressed(true);
     setErrors(found.errors);
-    setSaved(null);
     if (found.first === 'name') focusChecked(nameRef);
     if (found.first === 'contactAddress') focusChecked(contactRef);
+    if (found.first === 'currency') focusPicker({ current: rowRefs.current.currency ?? null });
     if (found.first != null) return;
 
     keysStayDown();
     setSaving(true);
-    const locale = picked.locale;
     timer.current = setTimeout(() => {
       setSaving(false);
-      setSaved({ words: savedWords(locale, savedLocale), tap: {} });
-      setSavedLocale(locale);
+      onSaved(
+        { ...saved, ...organisationChanges(saved, values) },
+        savedWords(values.locale, saved.locale),
+      );
     }, SEND_MS);
   }
 
+  const ask: AskProps | null = discarding
+    ? {
+        title: discardTitle(changes),
+        line: W.discardLine,
+        keep: { label: W.keepEditing, testID: 'organisation.details.keep' },
+        confirm: { label: W.discard, testID: 'organisation.details.discard', removes: true },
+        onKeep: () => setDiscarding(false),
+        onConfirm: onClose,
+      }
+    : null;
+
+  if (picking != null)
+    return (
+      <FocusedScreen
+        open={open}
+        title={PICKERS[picking].label}
+        back={W.editTitle}
+        verb={null}
+        onCancel={() => backFrom(picking)}
+        cancelTestID={`${PICKERS[picking].testID}.back`}
+        opener={opener}
+        fills
+      >
+        <PickerList
+          field={picking}
+          value={picked[picking]}
+          onChoose={(code) => backFrom(picking, code)}
+        />
+      </FocusedScreen>
+    );
+
+  const pickerRow = (field: Picked) => {
+    const { label, testID } = PICKERS[field];
+    const chosen = choiceName(field, picked[field]);
+    const error = errors[field];
+
+    return (
+      <View>
+        <PickerEdge wrong={error != null} flat>
+          <Row
+            ref={(row) => {
+              rowRefs.current[field] = row;
+            }}
+            title={chosen}
+            line={label}
+            opens
+            invalid={error != null}
+            onPress={() => {
+              setGiven({ ...typed.current });
+              setPicking(field);
+            }}
+            accessibilityLabel={`${label}, ${chosen}`}
+            testID={testID}
+          />
+        </PickerEdge>
+        {error != null && <FieldError message={error} />}
+      </View>
+    );
+  };
+
   return (
-    <Card>
-      {saved != null && (
-        <Notice tone="done" mark={tokens.marks.done.glyph} body={saved.words} answer={saved.tap} />
-      )}
+    <FocusedScreen
+      open={open}
+      title={W.editTitle}
+      verb={{
+        label: saving ? W.saving : W.save,
+        on: changes > 0 && !saving,
+        onPress: save,
+        testID: 'organisation.details.save',
+      }}
+      onCancel={() => (changes > 0 ? setDiscarding(true) : onClose())}
+      cancelTestID="organisation.details.cancel"
+      opener={opener}
+      ask={ask}
+      testID="organisation.details"
+    >
       <Field label={W.name} error={errors.name}>
         <TextField
           ref={nameRef}
-          defaultValue={SAMPLE_DETAILS.name}
+          defaultValue={given.name}
           onChangeText={(text) => edited('name', text)}
           onBlur={() => left('name')}
           wrong={errors.name != null}
           submitting={saving}
           autoCapitalize="words"
+          autoCorrect={false}
+          spellCheck={false}
+          maxLength={ORGANISATION_NAME_MAXIMUM}
           returnKeyType="next"
           onSubmitEditing={() => contactRef.current?.focus()}
           submitBehavior="submit"
           accessibilityLabel={W.name}
-          testID="demo.organisation.name"
+          testID="organisation.name"
         />
       </Field>
-      <Field label={W.country}>
-        <OrganisationPicker
-          label={W.country}
-          searchLabel={W.searchCountry}
-          choices={choices.countries}
-          value={picked.countryCode}
-          onChange={(code) => pick('countryCode', code)}
-          tablet={tablet}
-          testID="demo.organisation.country"
-        />
-      </Field>
+      {pickerRow('countryCode')}
       <Field label={W.contact} error={errors.contactAddress}>
         <TextField
           ref={contactRef}
-          defaultValue={startContact}
+          defaultValue={given.contactAddress}
           onChangeText={(text) => edited('contactAddress', text)}
           onBlur={() => left('contactAddress')}
           wrong={errors.contactAddress != null}
@@ -172,115 +405,52 @@ export function DetailsCard({
           autoCapitalize="none"
           autoComplete="email"
           textContentType="emailAddress"
+          autoCorrect={false}
+          spellCheck={false}
           returnKeyType="done"
           accessibilityLabel={W.contact}
-          testID="demo.organisation.contact"
+          testID="organisation.contact"
         />
       </Field>
-      <Field label={W.currency} error={errors.currency}>
-        <OrganisationPicker
-          label={W.currency}
-          searchLabel={W.searchCurrency}
-          choices={choices.currencies}
-          value={picked.currency}
-          onChange={(code) => pick('currency', code)}
-          startsOpen={start === 'currency'}
-          tablet={tablet}
-          testID="demo.organisation.currency"
+      <View style={styles.group}>
+        <SectionHead title={W.defaults} />
+        <RowList
+          items={(['currency', 'timezone'] as const).map((field) => ({
+            key: field,
+            row: pickerRow(field),
+          }))}
         />
-      </Field>
-      <Field label={W.timezone}>
-        <OrganisationPicker
-          label={W.timezone}
-          searchLabel={W.searchTimezone}
-          choices={choices.zones}
-          value={picked.timezone}
-          onChange={(code) => pick('timezone', code)}
-          tablet={tablet}
-          testID="demo.organisation.timezone"
-        />
-      </Field>
-      <Notice tone="quiet" mark={tokens.marks.info.glyph} body={W.defaultsNote} />
-      <Field label={W.language} help={W.languageHint}>
-        <OrganisationPicker
-          label={W.language}
-          searchLabel={W.searchLanguage}
-          choices={choices.languages}
-          value={picked.locale}
-          onChange={(code) => pick('locale', code)}
-          startsOpen={start === 'language'}
-          tablet={tablet}
-          testID="demo.organisation.language"
-        />
-      </Field>
-      <Pill
-        label={saving ? W.saving : W.save}
-        onPress={save}
-        full={!tablet}
-        testID="demo.organisation.save"
-      />
-    </Card>
+        <Line size={14} text={W.defaultsNote} />
+      </View>
+      <View style={styles.group}>
+        <SectionHead title={W.invitations} />
+        {pickerRow('locale')}
+        <Line size={14} text={W.languageHint} />
+      </View>
+    </FocusedScreen>
   );
 }
 
-/** Without the right to manage the organisation the controls are absent, not greyed: label over value, then why. */
-export function DetailsReadOnly({ role }: { role: string }) {
-  const choices = useChoices();
-  const name = (list: readonly { code: string; name: string }[], code: string) =>
-    list.find((choice) => choice.code === code)?.name ?? code;
-  const rows: [string, string][] = [
-    [W.name, SAMPLE_DETAILS.name],
-    [W.country, name(choices.countries, SAMPLE_DETAILS.countryCode)],
-    [W.contact, SAMPLE_DETAILS.contactAddress],
-    [W.currency, currencyLabel(SAMPLE_DETAILS.currency, SHOWN_IN)],
-    [W.timezone, timezoneLabel(SAMPLE_DETAILS.timezone)],
-  ];
-
-  return (
-    <Card>
-      <View style={styles.rows}>
-        {rows.map(([label, value], index) => (
-          <ReadOnlyRow key={label} label={label} value={value} first={index === 0} />
-        ))}
-      </View>
-      <Notice tone="quiet" mark={tokens.marks.info.glyph} body={W.defaultsNote} />
-      <View style={styles.rows}>
-        <ReadOnlyRow
-          label={W.language}
-          value={name(choices.languages, SAMPLE_DETAILS.locale)}
-          first
-        />
-      </View>
-      <View style={styles.why}>
-        <View style={styles.lock}>
-          <Glyph name="lock" size={16} ink={tokens.colorInkSecondary} weight={2.2} />
-        </View>
-        <Text size={TYPE.line} weight="medium" muted style={styles.grow}>
-          {W.readOnly(role)}
-        </Text>
-      </View>
-    </Card>
-  );
-}
-
-function ReadOnlyRow({ label, value, first }: { label: string; value: string; first: boolean }) {
-  return (
-    <View accessible style={[styles.row, !first && styles.divided]}>
-      <Text size={TYPE.small} weight="semibold" muted>
-        {label}
-      </Text>
-      <Text size={TYPE.row} weight="medium">
-        {value}
-      </Text>
-    </View>
-  );
+function changeCount(
+  saved: OrganisationDetails,
+  picked: Record<Picked, string>,
+  typed: Record<Typed, string>,
+): number {
+  return Object.keys(organisationChanges(saved, { ...picked, ...typed })).length;
 }
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
-  rows: { marginTop: -11, marginBottom: -tokens.spaceXxs },
-  row: { paddingVertical: 11, gap: tokens.spaceHair },
-  divided: { borderTopWidth: 1, borderTopColor: tokens.colorBorder },
-  why: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
-  lock: { marginTop: tokens.spaceHair },
+  words: { flex: 1, minWidth: 0, gap: 2 },
+  who: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  tile: { alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.colorCard },
+  accent: { color: tokens.colorAccentText },
+  readOnly: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: tokens.spaceSm,
+    marginTop: 'auto',
+  },
+  lock: { marginTop: 1 },
+  group: { gap: tokens.spaceHair, paddingTop: tokens.spaceXs },
 });

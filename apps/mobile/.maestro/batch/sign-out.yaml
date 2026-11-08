@@ -4,20 +4,22 @@
 # line, so that line counts as signed in as well as the card's heading. sc-18454.
 # An account left on onboarding's A few details cannot reach Settings, and signs out there
 # first: that screen's Signed in as line matches the Settings branch too. sc-21193.
+# You're invited is the same step, with the same Sign out. sc-32120.
 # The two-factor overdue screen has no Settings either, and signs out there. sc-28435.
+# welcome-signed-out.yaml is its counterpart outside a batch: a screen added to one is added to the other.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/
 - runFlow:
     file: developer-menu.yaml
     env:
-      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:steps.organisationTitle}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}'
+      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}'
 - extendedWaitUntil:
-    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:steps.organisationTitle}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}'
+    visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}'
     timeout: 60000
 - runFlow:
     when:
-      visible: '{{t:any:steps.organisationTitle}}'
+      visible: '{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
     file: ../sign-out-from-complete-profile.yaml
 - runFlow:
     when:
@@ -25,7 +27,7 @@ appId: host.exp.Exponent
     file: ../overdue-sign-out.yaml
 - runFlow:
     when:
-      visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}'
+      visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}'
     commands:
       - openLink: ${METRO_URL}/--/settings
       - runFlow: ../settings-sign-out-tap.yaml

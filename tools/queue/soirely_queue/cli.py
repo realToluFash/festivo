@@ -681,7 +681,10 @@ def status(db, platform, now):
         say(" · ".join([view["machine"],
                         f"manager {'running' if view['manager'] else 'stopped'}"]
                        + ([f"paused since {view['paused']}"] if view["paused"] else [])
-                       + [f"{view['free_gb']} GB free", synced]))
+                       + [f"{view['free_gb']} GB free"]
+                       + ([f"worktrees {view['litter']['worktrees']:.1f} GB",
+                           f".qa {view['litter']['qa']:.1f} GB"] if view.get("litter") else [])
+                       + [synced]))
     else:
         say(synced)
     for error in view["errors"]:
@@ -898,7 +901,7 @@ def admin(argv):
             return None
         sys.exit(agents.down(db, home(), platform, now=a.now))
     elif a.command == "sync":
-        errors = sync.sync(db, force=True, full=a.full)
+        errors = sync.sync(db, force=True, full=a.full, budget=None)
         refresh_work(db, time.time())
         print("error: " + "; ".join(errors) if errors else "synced")
     else:
@@ -907,11 +910,21 @@ def admin(argv):
                               capture_output=True, text=True).stdout.strip() or "local"
         update.copy(HERE.parent, home(), tree)
         if not store.get_meta(db, "baselined_at"):
-            errors = sync.sync(db, force=True, full=True)
+            errors = first_sync(db)
             if errors:
                 return print(f"error: {'; '.join(errors)}")
-            baseline(db)
         print(f"installed: {target / 'sq'}")
+
+
+def first_sync(db):
+    """Baselines only after a whole sync, since baseline runs once: a story fetched later
+    would wake every role on its long-answered threads."""
+    errors = sync.sync(db, force=True, full=True, budget=None)
+    cut = (store.get_meta(db, "sync_report") or {}).get("cut")
+    if errors or cut:
+        return errors or [f"the first sync stopped in {', '.join(cut)}; run sq install again"]
+    baseline(db)
+    return []
 
 
 def main(argv=None):

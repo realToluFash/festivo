@@ -46,6 +46,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Try again (button)        | Réessayer                              | Settled 1 Nov, sc-26974          |
 | Owner / Admin / Member    | Propriétaire / Administrateur / Membre | Settled 5 Nov, sc-29914          |
 
+- **7 nov. 2026. Les Personnes d’un événement, et « Admin » partout** (`web:eventPeople.*`, `eventNav.people`, `membersScreen.eventsFromPeople`, `ownerMakesOwner`, sc-30138 pour sc-29915). La page est « Personnes ». Les rôles sur l’événement sont « Responsable », « Peut modifier », « Peut consulter » et « Peut accueillir les invités » (« l’accueil des invités », comme `eventPause`). Les annonces disent « désormais » : « {{name}} est désormais responsable de cet événement. », sans accord, « responsable » étant épicène. La ligne de celles et ceux qui voient déjà tout donne le rôle en étiquette après deux-points, « voit tous les événements grâce à son rôle dans {{organisation}} : Propriétaire et Administrateur » ; `managerRole.*` est donc le nom du rôle à toutes les formes, et rien ne s’accorde avec un genre. Un rôle cité dans une phrase d’erreur est entre guillemets, « reste « Peut consulter » ». "Owners and admins" est « les personnes ayant le rôle Propriétaire ou Administrateur », et dans un titre « les rôles Propriétaire et Administrateur » ; "an admin of" reste « une personne qui administre ». La personne retirée est « Cette personne … Elle », qui s’accorde avec le nom.
+- **7 nov. 2026. Ce que fait chaque rôle, dans Membres** (`web:membersScreen.roleMeans.*`, sc-30138). Les phrases n’ont pas de sujet, comme `owner`. Les événements d’un Membre sont « les événements qui lui sont confiés » : « lui » n’accorde avec personne, alors que « auxquels il est ajouté » imposerait un genre. Même tournure dans l’app.
+- **7 nov. 2026. Les autres façons d’entrer dans l’app** (`mobile:steps.invited*`, `join`,
+  `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119). "You’re
+  invited" est « Vous avez une invitation », pour que rien ne s’accorde avec le lecteur ;
+  l’adresse est « Invitation adressée à {{email}} ». `startOwnInstead` reprend
+  `domainJoining.startOwnInstead`, « Créer plutôt ma propre organisation ». « Optional » dans un
+  libellé est « facultatif », comme `web:requestToJoin.optional`.
+
 - **« e-mail » keeps a plain hyphen (U+002D)**, never U+2011, even where it wraps as « e- » /
   « mail » (sc-20577, #20957). A break at a hyphen is ordinary French typography; U+2011 is
   missing from some fonts and email clients, breaks search, and outside GSM-7 sends an SMS as
@@ -61,6 +70,49 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 nov. 2026. Une connexion à deux facteurs qui a expiré** (sc-29979,
+  `signIn.codeTimedOutTitle`, web et app). « La connexion a expiré », puis `endedBody`
+  « Reconnectez-vous pour continuer. ». « La connexion », la tentative en cours, et non
+  « Votre session », que la personne n'a jamais ouverte. L'app joint les deux sur une ligne
+  avec un point : le titre n'en prend pas.
+- **8 nov. 2026. Une inscription qui a expiré** (sc-32449 pour sc-29923, `register.timedOut`,
+  web et app). « Votre inscription a expiré, nous n’avons donc pas conservé le mot de passe.
+  Ressaisissez-le pour recevoir un nouveau code. ». "Sign-up" est « inscription », comme
+  `limitedTitle` ; « expirer », comme la connexion ; « Ressaisissez-le » plutôt que « Saisissez-le
+  de nouveau », qui heurte « nouveau code », lui-même repris de `resend`.
+- **8 nov. 2026. Invités A : la réponse, les deux décomptes et le 412** (sc-3773, #32403).
+  "Not sure yet" est « À confirmer », sur la page de l’invité comme sur celle de l’hôte : rien
+  ne s’accorde, quand « pas encore sûr » ou « indécis » imposeraient un genre. « À confirmer ·
+  réponse attendue d’ici le {{date}} », « À confirmer · a répondu le {{date}} ». "Haven't
+  replied" est « n’ont pas répondu » (« {{count}} personnes n’ont pas répondu ») ; "No reply"
+  est « Sans réponse » ; on ne les échange jamais. "Companions" est « accompagnants ».
+  « {{coming}} des {{invited}} invités viennent ». "Write to them" est « Leur écrire » ; "Open
+  check-in", « Ouvrir l’accueil ». "Show all {{count}}" est « Afficher les {{count}} ». "Their
+  conversation" est « Conversation ». Le 412 : « La sienne · La vôtre », « Prendre la sienne »
+  et « Garder la mienne » ; « sienne » s’accorde avec la version, pas avec la personne.
+  La clôture (#32762) : « Fin des réponses aujourd’hui. », « Fin des réponses demain, le
+  {{date}}. », « Fin des réponses le {{date}}. », et, une fois passée, « Les réponses sont
+  closes depuis le {{date}}. », car « Fin des réponses le … » ne distingue pas le passé du
+  futur. Plus personne à attendre : « Tout le monde a répondu. ».
+
+- **7 nov. 2026. L’écran Aujourd’hui de l’app** (`mobile:todayScreen.*`, sc-31788 pour
+  sc-29090). "Live now" et "Live · …" sont « En cours », comme `eventsScreen.happeningNow`,
+  jamais « Publié », qui est l’état. L’agenda met une étiquette et deux-points,
+  « Début : {{name}} », « Fin : {{name}} », « Suite : {{name}} », pour que le nom de
+  l’événement se passe d’article. Le matin et l’après-midi disent « Bonjour », le soir
+  « Bonsoir » dès 18 h (`greetingAt`) ; « Bon après-midi » se dit en partant, pas en
+  arrivant. "Welcome" est « Bienvenue », invariable. "Next up" est « Prochain événement »,
+  car il nomme un événement ; le "Next" du bloc Maintenant est « Ensuite ». "Needs you" reprend
+  `eventPage.needsYou`, « À traiter ». Run of show reste « déroulé ».
+
+- **7 nov. 2026. « Le jour de l’événement », jamais « le soir »** (sc-29384). Un événement a lieu
+  à toute heure : `verifyPhone.doneBody`, `steps.mobileIntro` et `completeProfile.mobileHelp`
+  disent « le jour de l’événement », `rolesScreen.means.run_of_show` « pendant l’événement ». Le
+  slogan du web reprend celui de l’app, « Préparez l’événement. Pilotez le jour J. » : « jour J »
+  convient à un slogan, pas à une liste de réglages. `public.body` dit « menus et programme »,
+  plus « déroulé de la soirée ». `eventForm.clocksSkip` garde « la nuit du passage à l’heure
+  d’été », qui décrit le changement d’heure.
+
 - **5 Nov 2026. An event's People refusals** (`messages:people.*`, sc-30009). Who can act is
   « une personne ayant le rôle Propriétaire ou Administrateur, ou la personne responsable de
   l’événement », so nothing agrees with a gender. The event role Lead in a sentence is « la
@@ -74,8 +126,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **4 nov. 2026. Les étapes d’un nouveau compte dans l’app** (`mobile:steps.*`, sc-29126 pour
   sc-29069). La barre dit « Étape {{step}} sur {{steps}} » ; Skip est « Passer », jamais
   « Ignorer » ; Check WhatsApp est « Consultez WhatsApp », comme « Consultez votre boîte mail ».
-  "On the night" est « le soir de l’événement » quand rien avant ne nomme le soir, « le soir
-  même » seulement après.
+  "On the day" est « le jour de l’événement » (sc-29384) ; jamais « le soir », « le soir même »
+  ni « la soirée ».
 - **1 nov. 2026. Les événements et la navigation propre à un événement** (sc-26732 pour
   sc-22103, `web:events.*`, `mobile:eventsScreen.*`, `eventNav.*`, web et app). Les espaces :
   « Aperçu », « Invités », « Menu », « Plan de table », « Messages », « Programme », « Équipe »,
@@ -701,3 +753,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   compte ? », avant « Créer un compte » ; « Nouveau sur Soirely ? » s’accorde avec un genre.
   « © {{year}} Soirely » reste identique à l’anglais. Le bouton de langue se lit « Langue : {{language}} ».
 - **Annuler une demande pour revenir** (sc-29979) : « Annuler votre demande ? » ; la sortie est « Continuer d’attendre », jamais « Annuler », et la confirmation reprend « Annuler la demande ».
+- **L’état d’un champ refusé, seulement pour le lecteur d’écran** (`mobile:forms.invalid`, sc-31909) : « Données non valides », après le nom du champ (« Adresse e-mail, Données non valides »). C’est ce que dit VoiceOver sur le web ; rien ne s’accorde avec le nom, masculin ou féminin.

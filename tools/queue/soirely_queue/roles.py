@@ -213,7 +213,8 @@ MAY = {
     "new-story": DEVS + LINGUISTS + ("pm", "cd", "ops"),
     # Whoever files a story makes the epic it needs; a new epic waits for the owner.
     "new-epic": DEVS + LINGUISTS + ("pm", "cd", "ops"),
-    "task": LINGUISTS + ("pm",),
+    # A developer, or ops, ticks the tasks a story is built in: a merge with one left keeps it.
+    "task": DEVS + LINGUISTS + ("pm", "ops"),
     "relate": LINGUISTS + ("pm", "cd"),
     "archive": ("pm",),
     "to-draw": ("ux",),
@@ -241,6 +242,7 @@ FOLLOWING_UP = ("Ready For QA", "In QA", "Failed QA", "Passsed QA")
 MOVES = {
     "dev": {"In Progress": ("Ready For Dev", "Failed QA", "Failed Code Review", "In Review"),
             "In Review": ("In Progress", "Failed Code Review", "Passed Code Review"),
+            "Needs Design": ("Ready For Dev", "In Progress"),
             "Ready For QA": ("In Review", "Passed Code Review"),
             WAITING: ("Ready For Dev", "In Progress", "Failed QA", "Failed Code Review")},
     # In Progress: a story handed over with no pull request or red checks is not ready.
@@ -327,6 +329,8 @@ def claimant(claim):
 
 
 MANUAL_QA = "manual qa"
+# Set by the product manager on a story whose every AC bullet is in a design demo.
+DEMO_ONLY = "demo only"
 
 
 def is_person(name):

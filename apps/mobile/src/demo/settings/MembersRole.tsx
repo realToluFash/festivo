@@ -15,8 +15,9 @@ import {
   type Person,
   PROOF_MINUTES,
   proofProblem,
+  underRoles,
 } from './MembersSample.ts';
-import { type AskProps, FocusedScreen, Line } from './Summary.tsx';
+import { type AskProps, FocusedScreen, Line } from '../../components/Summary.tsx';
 
 export const TAKES_EFFECT = 'Takes effect on their next request. Nobody is signed out.';
 const OWNER_ASKS = 'Asks for your password and a code.';
@@ -184,6 +185,7 @@ export function RoleScreen({
               testID="members.role"
             />
           </View>
+          <Line text={underRoles(viewer)} size={14} />
         </>
       )}
     </FocusedScreen>

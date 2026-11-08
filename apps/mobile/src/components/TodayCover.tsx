@@ -14,7 +14,7 @@ import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
 import { EventMesh } from './EventMesh.tsx';
-import { Glyph } from './Glyph.tsx';
+import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { Moment, Now } from '../kit/today.ts';
 import { Initials } from './Initials.tsx';
 import { useTodayShell } from './todayShell.ts';
@@ -138,7 +138,9 @@ function OrgTileWhite({ side = 28 }: { side?: number }) {
 
 export function OrgButton({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation();
-  const { organisation, open } = useTodayShell();
+  const { organisation, open, OrgOpener } = useTodayShell();
+
+  if (OrgOpener != null) return <OrgOpener at={compact ? 'band' : 'cover'} />;
 
   return (
     <Pressable
@@ -704,6 +706,56 @@ export function Band({
   );
 }
 
+export function TabBar<T extends string>({
+  tabs,
+  bottom,
+  onTab,
+  at,
+  say = (tab) => tab,
+  ids,
+}: {
+  tabs: readonly (readonly [T, GlyphName])[];
+  bottom: number;
+  onTab: (tab: T) => void;
+  at: T;
+  say?: (tab: T, glyph: GlyphName) => string;
+  ids?: Partial<Record<T, string>>;
+}) {
+  return (
+    <View style={[styles.tabBar, { bottom }]} accessibilityRole="tablist">
+      {tabs.map(([label, glyph]) => {
+        const on = label === at;
+        const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
+
+        return (
+          <Pressable
+            key={label}
+            onPress={() => onTab(label)}
+            style={[styles.tab, on && styles.tabOn]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            accessibilityLabel={say(label, glyph)}
+            testID={ids?.[label] ?? `tab-${label.toLowerCase()}`}
+          >
+            <Glyph name={glyph} size={22} ink={ink} />
+            <Text
+              size={12}
+              weight={on ? 'semibold' : 'medium'}
+              accessible={false}
+              style={{ color: ink }}
+            >
+              {say(label, glyph)}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** The phone's tab bar is this tall, so a page clears it. */
+export const PHONE_TAB_BAR = 64;
+
 export function PhoneTabBar({
   bottom,
   onTab,
@@ -716,34 +768,14 @@ export function PhoneTabBar({
   const { t } = useTranslation();
 
   return (
-    <View style={[styles.tabBar, { bottom }]} accessibilityRole="tablist">
-      {TABS.map(([label, glyph]) => {
-        const on = label === at;
-        const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
-
-        return (
-          <Pressable
-            key={label}
-            onPress={() => onTab(label)}
-            style={[styles.tab, on && styles.tabOn]}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: on }}
-            accessibilityLabel={t(`todayScreen.tab.${glyph}`)}
-            testID={SETTINGS_ID[label]}
-          >
-            <Glyph name={glyph} size={22} ink={ink} />
-            <Text
-              size={12}
-              weight={on ? 'semibold' : 'medium'}
-              accessible={false}
-              style={{ color: ink }}
-            >
-              {t(`todayScreen.tab.${glyph}`)}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+    <TabBar
+      tabs={TABS}
+      bottom={bottom}
+      onTab={onTab}
+      at={at}
+      say={(_, glyph) => t(`todayScreen.tab.${glyph}`)}
+      ids={SETTINGS_ID}
+    />
   );
 }
 
@@ -933,7 +965,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 18,
     right: 18,
-    height: 64,
+    height: PHONE_TAB_BAR,
     padding: 5,
     borderRadius: tokens.space5xl,
     backgroundColor: tokens.colorCard,

@@ -65,5 +65,9 @@ export function useFormChecks<F extends string>(
     edited(field: F, value: string): void {
       if (errors[field] != null && check(field, value) == null) set(field, null);
     },
+    /** Another control the line is about changed, as a phone's code does: the line goes with it. */
+    cleared(field: F): void {
+      set(field, null);
+    },
   };
 }

@@ -1,15 +1,28 @@
+import { type SettingsGroup, settingsGroups } from '../../kit/appNav.ts';
+import type { Looking, ShellSection, Viewer } from '../../components/settingsShell.ts';
 import { SAMPLE } from '../samples.ts';
 
-/** Settings' three arrangements, from the app's layout kinds. */
-export type SettingsLayout = 'phone' | 'portrait' | 'landscape';
+export const VIEWERS: readonly Viewer[] = ['owner', 'member', 'noOrg'];
 
-/** Who is looking: an owner sees every section, a planner only what the role holds, and somebody with no organisation only their own. */
-export type Viewer = 'owner' | 'planner' | 'noOrg';
+/** `as=planner` is the link the demo gave a member before sc-29859 left three roles. */
+export function viewerOf(name: string | undefined): Viewer {
+  if (name === 'planner') return 'member';
 
-export const VIEWERS: readonly Viewer[] = ['owner', 'planner', 'noOrg'];
+  return VIEWERS.find((viewer) => viewer === name) ?? 'owner';
+}
 
-export function isViewer(name: string | undefined): name is Viewer {
-  return VIEWERS.some((viewer) => viewer === name);
+export const SECTIONS: readonly ShellSection[] = [
+  'account',
+  'security',
+  'notifications',
+  'personalisation',
+  'organisation',
+  'members',
+  'signInRules',
+];
+
+export function isSection(name: string | undefined): name is ShellSection {
+  return SECTIONS.some((section) => section === name);
 }
 
 export const YOU = {
@@ -22,9 +35,46 @@ export const YOU = {
 /** What each viewer's role holds, for settingsGroups to decide the sections as the app does. */
 export const VIEWER_ORGANISATION: Record<Viewer, { role: string; permissions: string[] } | null> = {
   owner: { role: 'Owner', permissions: ['members.read', 'members.manage', 'organisation.manage'] },
-  planner: { role: 'Planner', permissions: [] },
+  member: { role: 'Member', permissions: [] },
   noOrg: null,
 };
+
+/** settingsGroups, ahead of the app as sc-29859 and sc-30441 have it: no Roles, Personalisation after Notifications for everyone. A member keeps Organisation, read only, to leave (sc-29915). */
+export function demoGroups(
+  viewer: Viewer,
+): { heading: SettingsGroup['heading']; sections: ShellSection[] }[] {
+  return settingsGroups(VIEWER_ORGANISATION[viewer]).map(({ heading, sections }) => ({
+    heading,
+    sections: sections
+      .filter((section): section is Exclude<ShellSection, 'personalisation'> => section !== 'roles')
+      .flatMap((section): ShellSection[] =>
+        section === 'notifications' ? [section, 'personalisation'] : [section],
+      ),
+  }));
+}
+
+/** Who may change the organisation's details, joining and ownership, by the role's permission as the app decides it. */
+export function managesOrganisation(viewer: Viewer): boolean {
+  return VIEWER_ORGANISATION[viewer]?.permissions.includes('organisation.manage') === true;
+}
+
+/** Who the card at the top of Settings is: the member is Priya, as the board draws her. */
+export const VIEWER_PERSON: Record<Viewer, { name: string; initials: string; email: string }> = {
+  owner: YOU,
+  member: { name: 'Priya Shah', initials: 'PS', email: 'priya@ire.events' },
+  noOrg: YOU,
+};
+
+export function lookingAs(viewer: Viewer): Looking {
+  return { ...VIEWER_PERSON[viewer], role: VIEWER_ORGANISATION[viewer]?.role ?? null };
+}
+
+/** The sections follow the role: an admin manages as an owner does. */
+export function viewerOfRole(role: string | null): Viewer {
+  if (role == null) return 'noOrg';
+
+  return role === 'Member' ? 'member' : 'owner';
+}
 
 export type MemberStatus =
   'active' | 'pendingApproval' | 'suspended' | 'domainSuspended' | 'former';
@@ -54,7 +104,7 @@ export const MEMBERS: readonly SampleMember[] = [
     name: 'Julien Moreau',
     initials: 'JM',
     email: 'julien@ire.events',
-    role: 'Administrator',
+    role: 'Admin',
     status: 'active',
     how: 'Invitation from Folake Adeyemi',
     when: '2025-04-14',
@@ -63,7 +113,7 @@ export const MEMBERS: readonly SampleMember[] = [
     name: 'Priya Shah',
     initials: 'PS',
     email: 'priya@ire.events',
-    role: 'Event manager',
+    role: 'Member',
     status: 'active',
     how: 'Company email address',
     when: '2025-06-03',
@@ -72,7 +122,7 @@ export const MEMBERS: readonly SampleMember[] = [
     name: 'Ana Souza',
     initials: 'AS',
     email: 'ana.souza@ire.events',
-    role: 'Coordinator',
+    role: 'Member',
     status: 'active',
     how: 'Join code',
     when: '2025-08-21',
@@ -81,7 +131,7 @@ export const MEMBERS: readonly SampleMember[] = [
     name: 'Tom Becker',
     initials: 'TB',
     email: 'tom.becker@gmail.com',
-    role: 'Door staff',
+    role: 'Member',
     status: 'active',
     how: 'Asked to join',
     when: '2026-02-09',
@@ -90,7 +140,7 @@ export const MEMBERS: readonly SampleMember[] = [
     name: 'Kofi Mensah',
     initials: 'KM',
     email: 'kofi@ire.events',
-    role: 'Read-only',
+    role: 'Member',
     status: 'active',
     how: 'Company directory',
     when: '2026-09-15',
@@ -99,7 +149,7 @@ export const MEMBERS: readonly SampleMember[] = [
     name: 'Marta Silva',
     initials: 'MS',
     email: 'marta.silva@ire.events',
-    role: 'Coordinator',
+    role: 'Member',
     status: 'domainSuspended',
     how: 'Company email address',
     when: '2026-10-28',
@@ -117,12 +167,20 @@ export const MEMBERS: readonly SampleMember[] = [
     name: 'Daniel Kim',
     initials: 'DK',
     email: 'daniel.kim@ire.events',
-    role: 'Coordinator',
+    role: 'Member',
     status: 'former',
     how: 'Invitation',
     when: '2026-09-30',
   },
 ];
+
+/** A member of Ire Events as the one looking, for a page whose sample someone else sees. */
+export function memberLooking(email: string): Looking {
+  const member = MEMBERS.find((one) => one.email === email);
+  if (member == null) throw new Error(`${email} is not one of the sample’s members.`);
+
+  return { name: member.name, initials: member.initials, email: member.email, role: member.role };
+}
 
 export interface SampleRole {
   name: string;

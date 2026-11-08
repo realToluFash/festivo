@@ -1,0 +1,28 @@
+# sc-28178: working in Alpha, the member's access is paused through the domain with the app open;
+# the next move, a tap on Settings, shows Access paused for Alpha, with Switch organisation
+# because they also belong to QA Organisation.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../checks/sc28178/joined.yaml
+    env:
+      ORG: Alpha
+# A notice from the change before can still show: gone first, or it passes the wait below.
+- extendedWaitUntil:
+    notVisible: '{{t:switcher.switched}}'
+    timeout: 20000
+- runFlow:
+    file: ../checks/sc28178/changed.yaml
+    env:
+      ORG: Alpha
+      FROM: tab-events
+      CHANGE: pause
+      MOVE: frame.settings
+- extendedWaitUntil:
+    visible: '{{t:accessPaused.since}}'
+    timeout: 20000
+- assertVisible: '.*Alpha.*'
+- assertVisible: '{{t:accessPaused.nextTitle}}'
+- assertVisible:
+    id: 'accessPaused.switch'
+- takeScreenshot: paused

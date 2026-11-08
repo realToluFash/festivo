@@ -1,249 +1,400 @@
-import { meetsPasswordLength, PASSWORD_MINIMUM_LENGTH } from '@soirely/domain';
-import { useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { formatCountdown, meetsPasswordLength } from '@soirely/domain';
+import { type RefObject, useRef, useState } from 'react';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 
-import { CodeField, Field } from '../../components/Field.tsx';
+import {
+  CodeField,
+  Field,
+  focusChecked,
+  focusRefused,
+  TextField,
+} from '../../components/Field.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
+import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { SAMPLE } from '../samples.ts';
-import { Note, Resend, StateMark, StepPill, useCountdown, WhiteBox } from './AccountParts.tsx';
+import { COUNTDOWN_SECONDS, WORDS as ACCOUNT } from './AccountModel.ts';
+import { discardAsk } from './AccountName.tsx';
+import { CodeExpired, useCountdown } from './AccountParts.tsx';
 import { sentCodeProblem } from './AccountSample.ts';
-import { Card, CardHead, Pair } from './parts.tsx';
-import type { SettingsLayout } from './sample.ts';
+import { SentBody } from './SecurityForgot.tsx';
+import {
+  changeSays,
+  chooseSays,
+  emailedCodeSays,
+  type FieldSays,
+  resetSays,
+  WORDS,
+} from './SecurityModel.ts';
+import { FocusedScreen, Line, ShapeMark, TextAction } from '../../components/Summary.tsx';
 
-const CURRENT_LABEL = 'Current password';
-const NEW_LABEL = 'New password';
-const CHOSEN_LABEL = 'Password';
-const CODE_LABEL = 'Code from the email';
+type Opener = RefObject<ScreenReaderTarget | null>;
+type Input = RefObject<TextInputInstance | null>;
 
-function RuleInset({ met }: { met: boolean }) {
+/** The one rule, with its mark and its word, so it is never colour alone. */
+function PasswordRule({ met }: { met: boolean }) {
   return (
-    <WhiteBox gap={tokens.spaceSm}>
-      <Text size={14} weight="semibold">
-        Your password
-      </Text>
-      <View style={styles.rule}>
-        <Text size={15} weight="medium" style={styles.grow}>
-          {`At least ${PASSWORD_MINIMUM_LENGTH} characters`}
+    <View style={styles.rule}>
+      <View
+        style={styles.ruleLine}
+        accessible
+        accessibilityLabel={`${WORDS.rule}: ${met ? WORDS.met : WORDS.notYet}`}
+      >
+        <ShapeMark kind={met ? 'yes' : 'notyet'} side={18} ink={tokens.colorFieldBorder} />
+        <Text size={15} weight="medium" accessible={false} style={styles.grow}>
+          {WORDS.rule}
         </Text>
-        <StateMark on={met} word={met ? 'Met' : 'Not yet'} />
+        <Text size={14} weight="semibold" accessible={false} style={styles.secondary}>
+          {met ? WORDS.met : WORDS.notYet}
+        </Text>
       </View>
-      <Note text="That is the only rule. When you submit, we also check the password has not appeared in a known data breach." />
-    </WhiteBox>
+      <Line size={14} text={WORDS.ruleNote} />
+    </View>
   );
 }
 
-export function ChangePassword({
-  layout,
-  onForgot,
-  onCancel,
+/** The first field with something to say takes the focus: a client check keeps the keys down, a refusal brings them up. */
+function focusFirst<K extends string>(next: FieldSays<K>, fields: readonly [K, Input][]): boolean {
+  const field = fields.find(([key]) => next.says[key] != null)?.[1];
+  if (field == null) return false;
+  if (next.checked) focusChecked(field);
+  else focusRefused(field);
+
+  return true;
+}
+
+export type ChangeStage = 'change' | 'forgot' | 'sent';
+
+/** Change password, then Forgot it? turns the same sheet into Reset your password and Check your email. */
+export function ChangePasswordScreen({
+  open,
+  start,
+  opener,
+  onClose,
   onSaved,
 }: {
-  layout: SettingsLayout;
-  onForgot: () => void;
-  onCancel: () => void;
+  open: boolean;
+  start: ChangeStage;
+  opener: Opener;
+  onClose: () => void;
   onSaved: () => void;
 }) {
+  const [stage, setStage] = useState(start);
   const current = useRef('');
   const next = useRef('');
+  const email = useRef<string>(SAMPLE.email);
+  const currentField = useRef<TextInputInstance>(null);
+  const nextField = useRef<TextInputInstance>(null);
+  const emailField = useRef<TextInputInstance>(null);
   const [met, setMet] = useState(false);
-  const [errors, setErrors] = useState<{ current: string | null; next: string | null }>({
+  const [changed, setChanged] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
+  const [says, setSays] = useState<Record<'current' | 'next', string | null>>({
     current: null,
     next: null,
   });
+  const [emailSays, setEmailSays] = useState<string | null>(null);
+  const [sentTo, setSentTo] = useState<string>(SAMPLE.email);
 
   function save(): void {
-    const blank = {
-      current: current.current === '' ? 'Enter your current password.' : null,
-      next: next.current === '' ? 'Enter a new password.' : null,
-    };
-    if (blank.current != null || blank.next != null) {
-      setErrors(blank);
-      return;
-    }
-    if (current.current !== SAMPLE.password) {
-      setErrors({
-        current: 'That is not your current password. Try again, or reset it by email.',
-        next: null,
-      });
-      return;
-    }
-    if (next.current === current.current) {
-      setErrors({ current: null, next: 'That is already your password. Choose a different one.' });
-      return;
-    }
-    if (meetsPasswordLength(next.current)) onSaved();
+    const said = changeSays(current.current, next.current);
+    setSays(said.says);
+    if (
+      !focusFirst(said, [
+        ['current', currentField],
+        ['next', nextField],
+      ])
+    )
+      onSaved();
   }
 
+  function send(): void {
+    const said = resetSays(email.current);
+    setEmailSays(said);
+    if (said != null) {
+      focusChecked(emailField);
+      return;
+    }
+    setSentTo(email.current);
+    setStage('sent');
+  }
+
+  if (stage === 'sent')
+    return (
+      <FocusedScreen
+        open={open}
+        title={WORDS.sentTitle}
+        verb={{ label: WORDS.done, on: true, onPress: onClose, testID: 'security.reset.done' }}
+        cancels={false}
+        onCancel={onClose}
+        opener={opener}
+        testID="security.reset.screen"
+      >
+        <SentBody
+          onAgain={() => {
+            email.current = sentTo;
+            setStage('forgot');
+          }}
+        />
+      </FocusedScreen>
+    );
+
+  if (stage === 'forgot')
+    return (
+      <FocusedScreen
+        open={open}
+        title={WORDS.resetTitle}
+        verb={{ label: WORDS.send, on: true, onPress: send, testID: 'security.reset.send' }}
+        onCancel={onClose}
+        cancelTestID="security.reset.cancel"
+        opener={opener}
+        testID="security.reset.screen"
+      >
+        <Line text={WORDS.resetLead} />
+        <Field label={WORDS.emailLabel} error={emailSays}>
+          <TextField
+            ref={emailField}
+            defaultValue={sentTo}
+            wrong={emailSays != null}
+            autoFocus
+            autoCapitalize="none"
+            autoComplete="email"
+            autoCorrect={false}
+            keyboardType="email-address"
+            textContentType="emailAddress"
+            returnKeyType="send"
+            onChangeText={(text) => {
+              email.current = text;
+              if (emailSays != null) setEmailSays(null);
+            }}
+            onSubmitEditing={send}
+            submitBehavior="submit"
+            accessibilityLabel={WORDS.emailLabel}
+            testID="security.reset.email"
+          />
+        </Field>
+      </FocusedScreen>
+    );
+
   return (
-    <Card>
-      <CardHead title="Change your password" />
+    <FocusedScreen
+      open={open}
+      title={WORDS.changeTitle}
+      verb={{ label: ACCOUNT.save, on: true, onPress: save, testID: 'security.change.save' }}
+      onCancel={() => (changed ? setDiscarding(true) : onClose())}
+      cancelTestID="security.change.cancel"
+      opener={opener}
+      ask={discardAsk(
+        discarding,
+        WORDS.changeStays,
+        { keep: () => setDiscarding(false), discard: onClose },
+        'security.change.discard',
+      )}
+      testID="security.change.screen"
+    >
       <Field
-        label={CURRENT_LABEL}
-        labelAction={{ label: 'Forgot it?', onPress: onForgot, testID: 'demo.security.forgot' }}
-        error={errors.current}
+        label={WORDS.currentLabel}
+        labelAction={{
+          label: WORDS.forgot,
+          onPress: () => setStage('forgot'),
+          testID: 'security.change.forgot',
+        }}
+        error={says.current}
       >
         <PasswordField
-          wrong={errors.current != null}
+          ref={currentField}
+          wrong={says.current != null}
           autoFocus
           autoComplete="current-password"
           textContentType="password"
           onChangeText={(text) => {
             current.current = text;
-            if (errors.current != null) setErrors({ ...errors, current: null });
+            setChanged(text !== '' || next.current !== '');
+            if (says.current != null) setSays({ ...says, current: null });
           }}
           returnKeyType="next"
-          submitBehavior="blurAndSubmit"
-          accessibilityLabel={CURRENT_LABEL}
-          testID="demo.security.currentPassword"
+          onSubmitEditing={() => nextField.current?.focus()}
+          submitBehavior="submit"
+          accessibilityLabel={WORDS.currentLabel}
+          testID="security.change.current"
         />
       </Field>
-      <Field label={NEW_LABEL} error={errors.next}>
+      <Field label={WORDS.newLabel} error={says.next}>
         <PasswordField
-          wrong={errors.next != null}
+          ref={nextField}
+          wrong={says.next != null}
           autoComplete="new-password"
           textContentType="newPassword"
           onChangeText={(text) => {
             next.current = text;
             setMet(meetsPasswordLength(text));
-            if (errors.next != null) setErrors({ ...errors, next: null });
+            setChanged(text !== '' || current.current !== '');
+            if (says.next != null) setSays({ ...says, next: null });
           }}
           returnKeyType="done"
           onSubmitEditing={save}
           submitBehavior="submit"
-          accessibilityLabel={NEW_LABEL}
-          testID="demo.security.newPassword"
+          accessibilityLabel={WORDS.newLabel}
+          testID="security.change.new"
         />
       </Field>
-      <RuleInset met={met} />
-      <View style={styles.notes}>
-        <Note text="Saving signs out your other devices; this one stays signed in." />
-        <Note text={`We will email ${SAMPLE.email} to say it was changed.`} />
-      </View>
-      <Pair
-        layout={layout}
-        dismiss={<StepPill layout={layout} label="Cancel" kind="secondary" onPress={onCancel} />}
-        confirm={<StepPill layout={layout} label="Save new password" onPress={save} />}
-      />
-    </Card>
+      <PasswordRule met={met} />
+      <Line size={14} text={WORDS.changeSignsOut} />
+      <Line size={14} text={WORDS.changeEmail} />
+    </FocusedScreen>
   );
 }
 
-/** Set a password, for somebody who signs in with Google or Apple: a code by email, then the password. */
-export function SetPassword({
-  layout,
-  onCancel,
+/** For somebody with no password: a code by email first, then Choose a password in the same screen. */
+export function SetPasswordScreen({
+  open,
+  start,
+  opener,
+  onClose,
   onSaved,
 }: {
-  layout: SettingsLayout;
-  onCancel: () => void;
+  open: boolean;
+  start: 'entering' | 'expired';
+  opener: Opener;
+  onClose: () => void;
   onSaved: () => void;
 }) {
-  const [step, setStep] = useState<'code' | 'choose'>('code');
+  const [stage, setStage] = useState<'code' | 'choose'>('code');
   const code = useRef('');
   const chosen = useRef('');
+  const codeField = useRef<TextInputInstance>(null);
+  const chosenField = useRef<TextInputInstance>(null);
+  const [codeSays, setCodeSays] = useState<string | null>(null);
+  const [chosenSays, setChosenSays] = useState<string | null>(null);
+  const [sent, setSent] = useState(0);
   const [met, setMet] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const countdown = useCountdown(42);
+  const [typed, setTyped] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
+  const [expired, setExpired] = useState(start === 'expired');
+  const countdown = useCountdown(COUNTDOWN_SECONDS, start !== 'expired');
 
-  function checkCode(): void {
-    const problem = sentCodeProblem(code.current);
-    if (problem == null) {
-      setError(null);
-      setStep('choose');
-      return;
-    }
-    setError(
-      {
-        blank: 'Enter the 6-digit code from the email.',
-        short: 'The code is 6 digits.',
-        wrong: 'That code did not match. Check the newest email from Soirely and try again.',
-      }[problem],
-    );
+  function proceed(): void {
+    const said = emailedCodeSays(code.current);
+    setCodeSays(said);
+    if (said == null) setStage('choose');
+    else if (sentCodeProblem(code.current) === 'wrong') focusRefused(codeField);
+    else focusChecked(codeField);
   }
 
   function save(): void {
-    if (chosen.current === '') {
-      setError('Enter a password.');
-      return;
-    }
-    if (meetsPasswordLength(chosen.current)) onSaved();
+    const said = chooseSays(chosen.current);
+    setChosenSays(said.says.password);
+    if (!focusFirst(said, [['password', chosenField]])) onSaved();
   }
 
-  if (step === 'code')
+  if (stage === 'choose')
     return (
-      <Card>
-        <CardHead
-          title="Check your email"
-          line={`We sent a 6-digit code to ${SAMPLE.email} to make sure it's you.`}
-        />
-        <Field label={CODE_LABEL} error={error}>
-          <CodeField
-            wrong={error != null}
+      <FocusedScreen
+        open={open}
+        title={WORDS.chooseTitle}
+        verb={{ label: ACCOUNT.save, on: true, onPress: save, testID: 'security.choose.save' }}
+        onCancel={() => (typed ? setDiscarding(true) : onClose())}
+        cancelTestID="security.choose.cancel"
+        opener={opener}
+        ask={discardAsk(
+          discarding,
+          WORDS.nothingAdded,
+          { keep: () => setDiscarding(false), discard: onClose },
+          'security.choose.discard',
+        )}
+        testID="security.choose.screen"
+      >
+        <Field label={WORDS.chosenLabel} error={chosenSays}>
+          <PasswordField
+            ref={chosenField}
+            wrong={chosenSays != null}
             autoFocus
+            autoComplete="new-password"
+            textContentType="newPassword"
+            onChangeText={(text) => {
+              chosen.current = text;
+              setMet(meetsPasswordLength(text));
+              setTyped(text !== '');
+              if (chosenSays != null) setChosenSays(null);
+            }}
+            returnKeyType="done"
+            onSubmitEditing={save}
+            submitBehavior="submit"
+            accessibilityLabel={WORDS.chosenLabel}
+            testID="security.choose.password"
+          />
+        </Field>
+        <PasswordRule met={met} />
+        <Line size={14} text={WORDS.chooseEmail} />
+      </FocusedScreen>
+    );
+
+  return (
+    <FocusedScreen
+      open={open}
+      title={WORDS.codeTitle}
+      verb={{
+        label: ACCOUNT.continue,
+        on: !expired,
+        onPress: proceed,
+        testID: 'security.code.continue',
+      }}
+      onCancel={onClose}
+      cancelTestID="security.code.cancel"
+      opener={opener}
+      testID="security.code.screen"
+    >
+      <Line text={WORDS.codeLead} />
+      {expired ? (
+        <CodeExpired channel="email" />
+      ) : (
+        <Field label={WORDS.codeLabel} error={codeSays}>
+          <CodeField
+            key={sent}
+            ref={codeField}
+            wrong={codeSays != null}
+            autoFocus={start === 'entering' || sent > 0}
             autoComplete="one-time-code"
             textContentType="oneTimeCode"
             returnKeyType="done"
             onChangeText={(text) => {
               code.current = text;
-              if (error != null) setError(null);
+              if (codeSays != null) setCodeSays(null);
             }}
-            onSubmitEditing={checkCode}
+            onSubmitEditing={proceed}
             submitBehavior="submit"
-            accessibilityLabel={CODE_LABEL}
-            testID="demo.security.setCode"
+            accessibilityLabel={WORDS.codeLabel}
+            testID="security.code.field"
           />
         </Field>
-        <Note text="Adding a password needs this, so someone using this device without you can't add one." />
-        <View style={styles.stack}>
-          <StepPill layout={layout} label="Continue" onPress={checkCode} />
-          <Resend
-            layout={layout}
-            left={countdown.left}
-            onSend={countdown.restart}
-            testID="demo.security.setResend"
-          />
-          <StepPill layout={layout} label="Cancel" kind="quiet" onPress={onCancel} />
-        </View>
-      </Card>
-    );
-
-  return (
-    <Card>
-      <CardHead title="Choose a password" />
-      <Field label={CHOSEN_LABEL} error={error}>
-        <PasswordField
-          wrong={error != null}
-          autoFocus
-          autoComplete="new-password"
-          textContentType="newPassword"
-          onChangeText={(text) => {
-            chosen.current = text;
-            setMet(meetsPasswordLength(text));
-            if (error != null) setError(null);
-          }}
-          returnKeyType="done"
-          onSubmitEditing={save}
-          submitBehavior="submit"
-          accessibilityLabel={CHOSEN_LABEL}
-          testID="demo.security.choosePassword"
-        />
-      </Field>
-      <RuleInset met={met} />
-      <Note text={`We will email ${SAMPLE.email} to say a password was added.`} />
-      <Pair
-        layout={layout}
-        dismiss={<StepPill layout={layout} label="Cancel" kind="secondary" onPress={onCancel} />}
-        confirm={<StepPill layout={layout} label="Save password" onPress={save} />}
+      )}
+      <TextAction
+        label={
+          countdown.left > 0
+            ? `${ACCOUNT.resend} in ${formatCountdown(countdown.left)}`
+            : ACCOUNT.resend
+        }
+        off={countdown.left > 0}
+        figures
+        onPress={() => {
+          code.current = '';
+          setCodeSays(null);
+          setExpired(false);
+          setSent((count) => count + 1);
+          countdown.restart();
+        }}
+        consequence={ACCOUNT.resendNote}
+        testID="security.code.resend"
       />
-    </Card>
+      <Line size={14} text={WORDS.codeWhy} />
+    </FocusedScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  rule: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
+  rule: { gap: tokens.spaceXxs },
+  ruleLine: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 24 },
   grow: { flex: 1, minWidth: 0 },
-  notes: { gap: tokens.spaceXs },
-  stack: { gap: tokens.spaceMd },
+  secondary: { color: tokens.colorInkSecondary },
 });

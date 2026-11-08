@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { currentLocale } from '../i18n/index.ts';
 import { offField } from '../offField.ts';
+import { codeChoice } from '../phoneProblem.ts';
 import { FieldError } from './FieldError.tsx';
 
 /** The code and the number side by side, as Verify phone draws them; only countries that can be dialled. */
@@ -38,7 +39,7 @@ export function PhoneEntry({
   );
 
   return (
-    <>
+    <div className="field">
       <div className="phone-entry">
         <div className="field phone-country">
           <label htmlFor="phone-country">{t('verifyPhone.countryLabel')}</label>
@@ -53,7 +54,7 @@ export function PhoneEntry({
             <option value="" disabled hidden />
             {countries.map(({ code, name }) => (
               <option key={code} value={code}>
-                {`${callingCode(code) ?? ''} ${name}`}
+                {codeChoice(code, name)}
               </option>
             ))}
           </select>
@@ -81,6 +82,6 @@ export function PhoneEntry({
       <p className="field-help" id="phone-help">
         {help}
       </p>
-    </>
+    </div>
   );
 }

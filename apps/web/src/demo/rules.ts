@@ -8,6 +8,9 @@ import {
   meetsPasswordLength,
   phoneLengthProblem,
 } from '@soirely/domain';
+import i18next from 'i18next';
+
+import { codeChoice as productCodeChoice, phoneProblemMessage } from '../phoneProblem.ts';
 
 /** What the demo is filled with and answers to. Nothing here reaches the API. */
 export const SAMPLE = {
@@ -26,7 +29,7 @@ export const SAMPLE = {
   /** Refused as a known breach, as the API refuses one. */
   breachedPassword: 'passwordpassword',
   inviter: 'Ade Bankole',
-  role: 'Coordinator',
+  role: 'Member',
   invitedUntil: 'Tuesday, Nov 17',
   askedOn: 'Tuesday, Nov 3 at 14:05',
   askAgainFrom: 'Tuesday, Dec 1',
@@ -111,10 +114,7 @@ export function passwordLine(password: string, blank: string): string | null {
     : `Use at least ${PASSWORD_MINIMUM_LENGTH} characters.`;
 }
 
-/** Only the digits of what was typed or pasted, at most a code's length. */
-export function codeDigits(typed: string): string {
-  return typed.replace(/\D/g, '').slice(0, CODE_LENGTH);
-}
+export { codeDigits } from '@soirely/domain';
 
 export function codeLine(code: string, from: string): string | null {
   if (code === '') return `Enter the ${CODE_LENGTH}-digit code from ${from}.`;
@@ -129,22 +129,17 @@ export function countryName(code: string): string {
   return COUNTRIES.find((each) => each.code === code)?.name ?? code;
 }
 
-/** "+44 United Kingdom", the compact code beside the number. */
 export function codeChoice(code: string): string {
-  return `${callingCode(code) ?? ''} ${countryName(code)}`.trim();
+  return productCodeChoice(code, countryName(code));
 }
+
+const ENGLISH = i18next.getFixedT('en');
 
 /** The number's refusal, or null; a blank number is refused only where it is not optional. */
 export function numberLine(typed: string, country: string, optional: boolean): string | null {
   const problem = phoneLengthProblem(typed, country);
 
-  if (problem == null || (problem === 'blank' && optional)) return null;
-  if (problem === 'blank') return 'Enter your mobile number.';
-  if (problem === 'noCountry') return 'Choose a country.';
-
-  const length = problem === 'tooShort' ? 'short' : 'long';
-
-  return `That number looks too ${length} for ${countryName(country)}. Check it and try again.`;
+  return problem === 'blank' && optional ? null : phoneProblemMessage(problem, country, ENGLISH);
 }
 
 export function fullNumber(typed: string, country: string): string {
@@ -165,6 +160,8 @@ export const NEW_ACCOUNT_PAGES: { name: string; states: { name: string; to: stri
       { name: 'Too short', to: at('register', 'short') },
       { name: 'A breached password', to: at('register', 'breached') },
       { name: 'Too many sign-ups', to: at('register', 'limited') },
+      { name: 'The sign-up timed out', to: at('register', 'timed-out') },
+      { name: 'The sign-up timed out, in a new tab', to: at('register', 'timed-out-new-tab') },
     ],
   },
   {
@@ -174,6 +171,7 @@ export const NEW_ACCOUNT_PAGES: { name: string; states: { name: string; to: stri
       { name: 'A wrong code', to: at('email', 'wrong') },
       { name: 'The code has expired', to: at('email', 'expired') },
       { name: 'Too many wrong tries', to: at('email', 'exhausted') },
+      { name: 'The sign-up has run out', to: at('email', 'run-out') },
       { name: 'Email verified', to: at('email', 'verified') },
     ],
   },
@@ -264,15 +262,26 @@ export const TWO_FACTOR_PAGES: { name: string; states: { name: string; to: strin
     name: 'Lost authenticator',
     states: [
       { name: 'Start', to: twoFactorAt('start') },
+      { name: 'Start, no verified phone', to: twoFactorAt('start', 'email-only') },
+      { name: 'Sending the code', to: twoFactorAt('start', 'email-only-sending') },
       { name: 'Too many requests', to: twoFactorAt('start', 'limited') },
       { name: 'Both codes', to: twoFactorAt('codes') },
       { name: 'Only the email’s code', to: twoFactorAt('codes', 'email-only') },
+      { name: 'The email’s code expired', to: twoFactorAt('codes', 'email-only-expired') },
+      {
+        name: 'The email’s code, five wrong tries',
+        to: twoFactorAt('codes', 'email-only-exhausted'),
+      },
+      { name: 'Both codes expired', to: twoFactorAt('codes', 'expired') },
+      { name: 'Both codes, five wrong tries', to: twoFactorAt('codes', 'exhausted') },
     ],
   },
   {
     name: 'Once asked',
     states: [
       { name: 'Waiting for your organisation', to: twoFactorAt('waiting') },
+      { name: 'Cancel your request?', to: twoFactorAt('waiting', 'confirm') },
+      { name: 'Not cancelled', to: twoFactorAt('waiting', 'not-cancelled') },
       { name: 'Two-factor is off', to: twoFactorAt('off') },
       { name: 'Turned down', to: twoFactorAt('turned-down') },
       { name: 'Ended', to: twoFactorAt('ended') },

@@ -1,5 +1,10 @@
 # sc-22741: a save that cannot reach the server keeps the field open with what was typed and says so.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - openLink: ${METRO_URL}/--/settings/account
 - extendedWaitUntil:

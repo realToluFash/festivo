@@ -28,6 +28,9 @@ MILESTONES = ("At each milestone (a branch pushed, a part built, a result found)
               "run stopped part way loses minutes, not the thread.")
 
 
+SLOW_SECONDS = 30
+
+
 def due(role, minute, every=3):
     """A role wakes once every `every` minutes; the testers' offsets keep them apart."""
     return minute % every == roles.ROLES[role].get("offset", 0) % every
@@ -142,8 +145,42 @@ def agree(db, config, platform, now, say, remote, ready):
     return agreed
 
 
+class Phases:
+    """How long each part of a tick took, said when the tick ran long or its sync stopped."""
+
+    def __init__(self, clock):
+        self.clock, self.began = clock, clock()
+        self.at, self.took = self.began, {}
+
+    def mark(self, name):
+        at = self.clock()
+        self.took[name] = self.took.get(name, 0) + at - self.at
+        self.at = at
+
+    def slow(self, db, now):
+        self.mark("roles")
+        total = self.at - self.began
+        report = store.get_meta(db, "sync_report") or {}
+        mine = report.get("at") == now
+        if total <= SLOW_SECONDS and not (mine and report.get("cut")):
+            return None
+        parts = []
+        for name, took in self.took.items():
+            if name == "sync" and mine:
+                inside = ", ".join(f"{part} {seconds:.1f}s"
+                                   for part, seconds in report["took"].items())
+                parts.append(f"sync {took:.1f}s ({inside})")
+            else:
+                parts.append(f"{name} {took:.1f}s")
+        line = f"tick took {total:.1f}s: {'; '.join(parts)}"
+        if mine and report.get("cut"):
+            line += (f". Sync stopped at its {sync.BUDGET_SECONDS}s budget in "
+                     f"{', '.join(report['cut'])}, so roles ticked from the last whole sync")
+        return line
+
+
 def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
-        load=machine.load, probe=installed_claude, remote=None):
+        load=machine.load, probe=installed_claude, remote=None, clock=time.monotonic):
     now = now or time.time()
     try:
         config = load()
@@ -169,14 +206,29 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
     for role, why in refused.items():
         # A started role that cannot run is an error, for whatever alerts on the journal.
         say(f"{'error' if role in running else 'refused'}: {role}: {why}")
+    phases = Phases(clock)
+    try:
+        return tick(db, home, platform, sq, python, now, dry_run, say, remote, config, ready,
+                    phases)
+    finally:
+        slow = phases.slow(db, now)
+        if slow:
+            say(slow)
+
+
+def tick(db, home, platform, sq, python, now, dry_run, say, remote, config, ready,
+         phases):
     errors = sync.sync(db, now)
+    phases.mark("sync")
     if errors and not store.get_meta(db, "synced_ok_at"):
         return say(f"error: {'; '.join(errors)}")
     from .cli import refresh_work
     local.checks(db, config, now, dry_run=dry_run)
     if not dry_run:
-        local.sweep_scratch(db, config, now, say)
+        if local.sweep_scratch(db, config, now, say):
+            local.measure_litter(config, True)
         stop_leftovers(db, home, platform, say)
+    phases.mark("local checks")
     refresh_work(db, now)
     if not dry_run:
         void_passes(db, now, say)
@@ -199,6 +251,7 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
         skip = view.taken_elsewhere()
     else:
         view, mine, elsewhere, skip = None, set(), {}, set()
+    phases.mark("update and lease")
     minute = int(now // 60)
     # A dry run previews every ready role, started or not, whatever the minute.
     for role in sorted(set(ready) if dry_run else set(ready) & started(db)):
@@ -499,8 +552,13 @@ def prompt_outcome(db, role, entry, told=None):
                          "wanted": entry.get("wanted"), "told": told})
 
 
+def unnamed(entry):
+    gap = entry.get("unnamed")
+    return "a command it did not name" + (f" ({gap})" if gap else "")
+
+
 def prompt_text(name, entry):
-    wanted = f"`{entry['wanted']}`" if entry.get("wanted") else "a command it did not name"
+    wanted = f"`{entry['wanted']}`" if entry.get("wanted") else unnamed(entry)
     story = f"sc-{entry['story']}" if entry.get("story") else "no story"
     return (f"{name}'s worker for item {entry['item']} ({story}) was stopped: its "
             f"`claude --bg` session {entry.get('bg') or ''} under "
@@ -517,7 +575,7 @@ def stopped_on_prompt(db, name, entry, ids, tell):
     role = entry["role"]
     told = set((store.get_meta(db, f"prompt:{role}") or {}).get("told") or ())
     entry["report"] = (f"stopped on a permission prompt, wanting "
-                       f"{entry.get('wanted') or 'a command it did not name'}"
+                       f"{entry.get('wanted') or unnamed(entry)}"
                        + (f"; it had said: {entry['report']}" if entry.get("report") else ""))
     if entry.get("story") and entry["story"] not in told:
         try:
@@ -579,7 +637,10 @@ def in_background(db, platform, name, entry, values, folder, text, cwd, ids, all
         entry["stopped"] = why
     if why == "prompt":
         entry["wanted"] = result.get("wanted")
+        if result.get("unnamed"):
+            entry["unnamed"] = result["unnamed"]
     result.pop("wanted", None)
+    result.pop("unnamed", None)
     refused = result.pop("artifact_refused", None)
     read = result.pop("artifact_read", False)
     if read:

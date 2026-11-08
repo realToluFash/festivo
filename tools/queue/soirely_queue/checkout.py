@@ -27,9 +27,9 @@ def decide(role, branch, dirty, story=None):
     return "fetch-only"
 
 
-def git(path, *args, check=True):
+def git(path, *args, check=True, timeout=None):
     return subprocess.run(["git", "-C", str(path), *args], capture_output=True, text=True,
-                          check=check)
+                          check=check, timeout=timeout)
 
 
 class Unprepared(RuntimeError):

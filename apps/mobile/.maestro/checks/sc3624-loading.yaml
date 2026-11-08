@@ -1,5 +1,10 @@
 # sc-3624: ${EV} opened from Events with the API paused: Coming up says it is loading, with All dates still linked. Needs the batch helper's /api (sc-17894); /started brings the API back up.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - openLink: ${METRO_URL}/--/events
 - tapOn:

@@ -36,7 +36,7 @@ developer 1, `sq devN` for developer N; the examples below say `sq dev`. `sq dev
 what you may run. Never call the Shortcut tools or `gh` yourself. Git, npm, `just` and
 docker in your own checkout stay as they are.
 
-## 1. The three things this mode must not do
+## 1. The four things this mode must not do
 
 - **Do not merge before the lead has passed it, and never mark anything Done.** Merging is
   section 9, and it has exactly one trigger: the lead's pass line for the head you would
@@ -48,6 +48,14 @@ docker in your own checkout stay as they are.
   question, not an edit — raise it as a `[pm]` comment (`role-comments`) and carry on with
   the rest. AC belongs to `/soirely-product-manager`, artboards to `/soirely-designer`
   (`[ux]`).
+- **Do not design.** The owner, 7 Nov 2026: "in every ticket that involves display, there
+  must already be a demo for the functionality, if there isn't the dev, needs to call ux to
+  draw it up and implement in the demo, dev must no longer invent designs". Anything a person
+  sees on the app or the web is built as its story's demo has it: the screen, its states,
+  fields, controls, messages, layout, words and motion. A screen, state or control that no
+  demo has is not built, and nothing is filled in from the board alone, from another
+  screen or from taste. A value neither the demo nor the board gives is a `[ux]` question.
+  Changing only the words on a layout that stays as it is is not design.
 
 ## 2. Pick the work
 
@@ -77,7 +85,9 @@ top:
    built, reviewed, merged or nearly, and wrong — and somebody has already spent a pass
    proving it. The one that has been there longest comes first, in both rework states.
 3. **`In Progress`** **with your label** — work already started, finished first. Developer
-   1 also takes unlabelled ones here and in Failed QA, and the claim adds `dev1`.
+   1 also takes unlabelled ones here and in Failed QA, and the claim adds `dev1`. One
+   waiting on a `[ux]` answer, with every part its demo covers built, is not taken: pass
+   it by until the answer comes (section 3).
 4. **`Ready For Dev`** **with no developer label**, top of the list: the AC is settled and
    any screens are linked. The list runs **epic by epic**, in the order of Shortcut's epic
    list, and by the story list within each epic: a story in a later epic waits until the
@@ -88,7 +98,13 @@ top:
    already started in such an epic carries on. **By your number**, so developers reaching the queue
    together pick different stories: developer N takes the Nth if there are at least N,
    and the first otherwise. Never build from `To Do` or `Needs Design`: the product
-   manager and the designer have not finished with it.
+   manager and the designer have not finished with it. **A story that shows something
+   needs its demo first**: its Design section's **Demo:** line names a merged `ux/` pull
+   request whose demo has every screen and state the AC asks for. `sq dev claim` refuses a
+   Design section whose Demo line is missing, says the demo is not built, or names a pull
+   request still open. Where the demo is missing or short, claim nothing: send the story
+   back with `sq dev move sc-N "Needs Design"`, then `sq dev comment sc-N --to ux` naming
+   each screen and state the demo lacks, and take the next story.
 5. Failing those four, ask. Do not pick from the diff: a diff says what somebody was
    doing, not what the product needs next.
 
@@ -128,6 +144,14 @@ request. What it leaves as a one-line reference you can open with `sq dev story 
 - **The AC is the contract** — build every bullet and nothing it does not ask for. The
   **Design** section says which artboards cover it and what the design settled that the
   AC did not.
+- **The demo is the screen.** The Design section's **Demo:** line names it. Run it and read
+  its code before writing a screen (**screen-from-design**). A screen or state the demo
+  lacks, found while building, is a blocker (`role-routine`): `sq dev comment sc-N --to ux`
+  naming it, then build what the demo covers and leave that part unbuilt until the demo
+  has it. If the rest blocks you, start other work: leave the story In Progress with a
+  `sq dev note` naming what it waits for, and take the next story in the queue. At most
+  three of your stories wait In Progress on an answer at once; with three waiting, take
+  no new story and say so in your report.
 - **The comments** are where the QA report lives, and on a Failed QA story it is the whole
   brief. The dated amendment sections in the description ("Done, 15 Oct", "Reversed, Oct
   14") are the decision log — read them before re-litigating anything.
@@ -171,7 +195,7 @@ Load the ones the story touches. They carry the conventions; this file does not 
 | `services/api` PHP                  | **writing-php**, **code-structure**, **symfony-api**             |
 | A Doctrine entity or a migration    | **writing-migrations**, and the API suite after it               |
 | API tests                           | **writing-tests**                                                |
-| A screen on either client           | **screen-from-design**, and the story's artboards                |
+| A screen on either client           | **screen-from-design**: the story's demo, then its artboards     |
 | `apps/mobile`                       | **react-native-best-practices**                                  |
 | Any user-facing string              | **locale-parity** — English in all four, the linguist translates |
 | Naming anything                     | **name-things**                                                  |
@@ -221,12 +245,19 @@ on this repository was read as an eslint failure, declared fixed, and reached CI
 The API checks need the container (`just up`). If a check cannot run, say that it did not
 run rather than that it passed.
 
+A check that fails with `Cannot find module` for a package that `package.json` lists has
+not run. The `node_modules` it read is older than the lockfile. In a routine run, never
+install to fix that: `npm install` and `npm ci` stop on a permission prompt nobody answers,
+and the worker is killed (sc-32041). Say that the check did not run, push, and let CI's
+result on the pushed head prove it.
+
 **The stack in your checkout is yours, and nobody else's is.** Developer N's checkout is
 `~/Projects/soirely-devN`: if it is not there, `just dev-env setup --developer N` from the
 main checkout makes it, with its own containers and databases on its own ports (the table above).
 Its `.env` names its compose project, so every check above runs there as it does in the
-main checkout. If your session started elsewhere, every shell command starts with
-`cd ~/Projects/soirely-devN &&`. After `.env.example` changes on `main`, `just dev-env env`
+main checkout. If your session started outside its checkout, every shell command starts
+with `cd ~/Projects/soirely-devN &&`. A session started in a worktree never does
+(`role-routine`, section 3). After `.env.example` changes on `main`, `just dev-env env`
 rewrites the `.env`, and `docker compose up -d` picks it up.
 
 The testers work in `~/Projects/soirely-qa`, `-qa2` and `-qa3` (compose projects of the same
@@ -315,3 +346,9 @@ makes this move: a passed story you merge and leave in `Passed Code Review` is a
 nobody tests. A story labelled **translation** is the exception: it stays where the
 linguist put it, and sq refuses `to-qa` on it as it refuses the move.
 Never move it before the merge, and never mark it Done.
+
+**A story built in steps** (its tasks) goes to QA with its last task, not its first. Tick
+the task a pull request finishes before you merge it: `sq dev task sc-N --done <id>`. A
+merge with a task still open moves the story to `In Progress` and tells no tester; if that
+task was in fact done, tick it and run `sq dev to-qa sc-N`. That works only while the
+story is still where the merge left it: once it has moved again, it goes through review.

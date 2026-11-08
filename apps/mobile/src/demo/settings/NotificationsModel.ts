@@ -1,27 +1,51 @@
 import type { NotificationCategory, NotificationSetting } from '@soirely/api-client';
 import {
   NOTIFICATION_CATEGORY_ORDER,
-  QUIET_HOURS,
+  quietHoursIn,
   settingFlipped,
   usageThresholdsIn,
 } from '@soirely/domain';
 
-import type {
-  Channel,
-  SettingsGrid,
-  SwitchesNotifications,
+import {
+  type Channel,
+  type SettingsGrid,
+  type SettingSwitch,
+  settingSaving,
+  type SwitchesNotifications,
 } from '../../kit/notificationSettings.ts';
 
 export const NOTIFICATIONS_TITLE = 'Notification settings';
 
 /** The starting states a link can open: /demo/settings/notifications?state=saveFailed. */
-export const NOTIFICATIONS_STATES = ['pushBlocked', 'saveFailed', 'loading', 'failed'] as const;
+export const NOTIFICATIONS_STATES = [
+  'pushBlocked',
+  'saveFailed',
+  'saving',
+  'saved',
+  'loading',
+  'failed',
+] as const;
 
 export type NotificationsState = (typeof NOTIFICATIONS_STATES)[number];
 
 export function notificationsStateOf(name: string | undefined): NotificationsState | null {
   return NOTIFICATIONS_STATES.find((state) => state === name) ?? null;
 }
+
+export const WORDS = {
+  kinds: 'What you hear about',
+  pushBlocked: "Push is off on this device, so pushes won't reach you here.",
+  openSettings: 'Open device settings',
+  blockedHere: 'Blocked on this device',
+  notLoaded: 'Your notification settings did not load.',
+  notLoadedLine: 'Check your connection and try again.',
+  loading: 'Loading…',
+  saving: 'Saving…',
+  saved: 'Saved',
+  savedOut: 'Saved.',
+  on: 'On',
+  off: 'Off',
+} as const;
 
 export const CHANNELS: readonly Channel[] = ['push', 'email'];
 
@@ -52,32 +76,50 @@ export function categoryNote(category: NotificationCategory, locale: string): st
     event_changes:
       'When someone else changes whether, when or where an event you are on takes place.',
     money: `Payments due, usage at ${low} and ${high}, failed payments and invoices.`,
-    account_security:
-      'Sign-ins, your password, two-factor, ownership and access. Email cannot be switched off.',
+    account_security: 'Sign-ins, your password, two-factor, ownership and access.',
   }[category];
+}
+
+/** Under a switch the API holds on: the sentence the build ended Account & security's note with. */
+export function lockedLine(channel: Channel): string {
+  return `${CHANNEL_NAMES[channel]} cannot be switched off.`;
+}
+
+export function cardSays(settings: readonly NotificationSetting[]): string {
+  const push = settings.some((setting) => setting.push.on);
+  const email = settings.some((setting) => setting.email.on);
+  if (push && email) return 'You hear by push and email';
+
+  return push ? 'You hear by push only' : 'You hear by email only';
+}
+
+export function cardCounts(settings: readonly NotificationSetting[]): string {
+  const by = (channel: Channel) =>
+    `${settings.filter((setting) => setting[channel].on).length} of ${settings.length} by ${channel}`;
+
+  return `${by('push')} · ${by('email')}`;
+}
+
+function heardBy({ push, email }: NotificationSetting): string {
+  if (push.on && email.on) return 'Push and email';
+  if (push.on) return 'Push only';
+
+  return email.on ? 'Email only' : 'Off';
+}
+
+export function rowValue(setting: NotificationSetting): string {
+  return setting.email.switchable ? heardBy(setting) : `${heardBy(setting)} · email always on`;
 }
 
 export function switchName(category: NotificationCategory, channel: Channel): string {
   return `${CATEGORY_NAMES[category]} ${CHANNEL_NAMES[channel]}`;
 }
 
-/** A time in the reader's own clock, two-digit hours where it runs to 24: 8:00 AM in the US, 08:00 in the UK. */
-export function clockTime(locale: string, options: Intl.DateTimeFormatOptions = {}) {
-  const { hourCycle, hour12 } = new Intl.DateTimeFormat(locale, {
-    hour: 'numeric',
-  }).resolvedOptions();
-  const day = hourCycle === 'h23' || hourCycle === 'h24' || hour12 === false;
-  const hour = day ? '2-digit' : 'numeric';
-
-  return new Intl.DateTimeFormat(locale, { hour, minute: '2-digit', ...options });
-}
-
-/** The app's grid forces 24-hour time here; the demo follows the reader's clock, as the board drew it. */
+/** Quiet hours as the app's grid writes them, from the product's one home: 21:00 and 08:00 in every language (sc-30243). */
 export function quietHoursLine(locale: string): string {
-  const time = clockTime(locale);
-  const at = (hour: number) => time.format(new Date(2000, 0, 1, hour));
+  const { start, end } = quietHoursIn(locale);
 
-  return `Between ${at(QUIET_HOURS.start)} and ${at(QUIET_HOURS.end)} your time, only Event day pushes come through.`;
+  return `Between ${start} and ${end} your time, only Event day pushes come through.`;
 }
 
 /** Epic 36's defaults for a member who changed nothing: push on but for Account & security, email on but for Event day. */
@@ -89,12 +131,20 @@ export const SAMPLE_SETTINGS: readonly NotificationSetting[] = NOTIFICATION_CATE
   }),
 );
 
-/** The one switch whose save never goes through in the saveFailed state, so the failure can be seen again. */
-export const NEVER_SAVED = { category: 'messages', channel: 'email' } as const;
+/** Messages Email: switched off as saving and saved open, and never saved in the saveFailed state, so the failure can be seen again. */
+export const SAMPLE_SWITCH = { category: 'messages', channel: 'email' } as const;
 
 export const SAVE_MS = 500;
 export const LOADING_MS = 8000;
 export const RETRY_MS = 1500;
+
+function firstSettings(state: NotificationsState | null): NotificationSetting[] {
+  const { category, channel } = SAMPLE_SWITCH;
+
+  return state === 'saving' || state === 'saved'
+    ? settingFlipped(SAMPLE_SETTINGS, category, channel, false)
+    : [...SAMPLE_SETTINGS];
+}
 
 export function firstGrid(state: NotificationsState | null): SettingsGrid {
   if (state === 'loading') return { status: 'loading' };
@@ -102,11 +152,78 @@ export function firstGrid(state: NotificationsState | null): SettingsGrid {
 
   return {
     status: 'loaded',
-    settings: [...SAMPLE_SETTINGS],
-    saving: [],
-    saved: false,
-    unsaved: state === 'saveFailed' ? NEVER_SAVED : null,
+    settings: firstSettings(state),
+    saving: state === 'saving' ? [SAMPLE_SWITCH] : [],
+    saved: state === 'saved',
+    unsaved: state === 'saveFailed' ? SAMPLE_SWITCH : null,
   };
+}
+
+export interface NotificationsPage {
+  grid: SettingsGrid;
+  opened: NotificationCategory | null;
+  savedRow: NotificationCategory | null;
+  answers: number;
+}
+
+export function firstPage(state: NotificationsState | null): NotificationsPage {
+  const opens = state === 'saving' || state === 'saved' || state === 'saveFailed';
+
+  return {
+    grid: firstGrid(state),
+    opened: opens ? SAMPLE_SWITCH.category : null,
+    savedRow: state === 'saved' ? SAMPLE_SWITCH.category : null,
+    answers: 0,
+  };
+}
+
+/** One row open at a time; opening another takes Saved off the last, closing the same row keeps it. */
+export function rowToggled(
+  page: NotificationsPage,
+  category: NotificationCategory,
+): NotificationsPage {
+  if (page.opened === category) return { ...page, opened: null };
+
+  return {
+    ...page,
+    opened: category,
+    savedRow: page.savedRow === category ? category : null,
+  };
+}
+
+export function switchSaving(
+  page: NotificationsPage,
+  { category, channel }: SettingSwitch,
+  on: boolean,
+): NotificationsPage {
+  return { ...page, grid: settingSaving(page.grid, category, channel, on) };
+}
+
+/** A save's answer on the page as it is by then: Saved on its row, or its row's Saved gone with the switch put back. */
+export function saveAnswered(
+  page: NotificationsPage,
+  apply: (grid: SettingsGrid) => SettingsGrid,
+  own: SettingSwitch,
+): NotificationsPage {
+  const grid = apply(page.grid);
+  const refused =
+    grid.status === 'loaded' &&
+    grid.unsaved?.category === own.category &&
+    grid.unsaved.channel === own.channel;
+  const kept = page.savedRow === own.category ? null : page.savedRow;
+
+  return { ...page, grid, savedRow: refused ? kept : own.category, answers: page.answers + 1 };
+}
+
+export function rowSays(
+  page: NotificationsPage,
+  category: NotificationCategory,
+): 'saving' | 'saved' | null {
+  const { grid } = page;
+  if (grid.status === 'loaded' && grid.saving.some((one) => one.category === category))
+    return 'saving';
+
+  return page.savedRow === category ? 'saved' : null;
 }
 
 function pause(ms: number): Promise<void> {
@@ -118,7 +235,7 @@ export function sampleClient(
   state: NotificationsState | null,
   wait: (ms: number) => Promise<void> = pause,
 ): SwitchesNotifications {
-  let held: NotificationSetting[] = [...SAMPLE_SETTINGS];
+  let held = firstSettings(state);
   let reads = 0;
 
   return {
@@ -132,8 +249,8 @@ export function sampleClient(
       await wait(SAVE_MS);
       if (
         state === 'saveFailed' &&
-        category === NEVER_SAVED.category &&
-        channel === NEVER_SAVED.channel
+        category === SAMPLE_SWITCH.category &&
+        channel === SAMPLE_SWITCH.channel
       )
         throw new Error('The sample refuses this save.');
       held = settingFlipped(held, category, channel, on);

@@ -24,6 +24,7 @@ import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/
 import { useFormChecks } from '../src/kit/formChecks.ts';
 import { type Landing } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
+import { timedOutRoute } from '../src/resumeSignUp.ts';
 import { rereadAccount, signOutHere } from '../src/signedIn.ts';
 import { CodeStep, type CodeStepStatus, NEXT_STEP_MS } from '../src/steps/CodeStep.tsx';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
@@ -99,6 +100,12 @@ function SignUpCode() {
     else router.replace({ pathname: '/register', params: { email: address } });
   }
 
+  /** The hold ran out: Create your account says so, keeping what it can (sc-29923). */
+  async function timedOut(): Promise<void> {
+    await dropRegistration();
+    router.dismissTo(timedOutRoute(address));
+  }
+
   async function verify(code: string): Promise<void> {
     keysStayDown();
     setStatus({ kind: 'verifying' });
@@ -116,7 +123,7 @@ function SignUpCode() {
       setTimeout(() => router.replace(next), NEXT_STEP_MS);
     } catch (error) {
       if (error instanceof ApiError && error.is('registration_expired')) {
-        await fixAddress();
+        await timedOut();
         return;
       }
 
@@ -134,7 +141,7 @@ function SignUpCode() {
       setStatus({ kind: 'entering' });
     } catch (error) {
       if (error instanceof ApiError && error.is('registration_expired')) {
-        await fixAddress();
+        await timedOut();
         return;
       }
 

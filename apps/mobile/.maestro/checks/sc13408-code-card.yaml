@@ -1,5 +1,10 @@
 # Check your email: a wrong code, keys hidden (card), Continue tapped with the API held, then refused. Keys stay down throughout. sc-13408.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - openLink: ${METRO_URL}/--/settings/security
 - scrollUntilVisible:

@@ -50,6 +50,56 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. Un inicio de sesión con doble factor que ha caducado** (sc-29979,
+  `signIn.codeTimedOutTitle`, web y app). «El inicio de sesión ha caducado», y después
+  `endedBody` «Inicie sesión de nuevo para continuar.». «Caducar», como las solicitudes; no
+  «se ha agotado el tiempo», que alarga el título sin decir más. No «su sesión»: la persona
+  aún no había entrado. La app une los dos en una línea con punto, así que el título no lo lleva.
+- **8 Nov 2026. Un registro que ha caducado** (sc-32449 para sc-29923, `register.timedOut`,
+  web y app). «Su registro ha caducado, así que no hemos guardado la contraseña. Vuelva a
+  introducirla para recibir un código nuevo.». "Sign-up" es «registro», como `limitedTitle`;
+  «caducar», como el inicio de sesión; «un código nuevo», como `resend`.
+- **8 Nov 2026. Invitados A: la respuesta, los dos recuentos y el 412** (sc-3773, #32403).
+  "Not sure yet" es «Por confirmar», en la página del invitado y en la del anfitrión: no
+  marca género, como sí harían «indeciso» o «no está seguro». «Por confirmar · plazo hasta el
+  {{date}}», «Por confirmar · respondió el {{date}}». "Haven't replied" es «por responder»
+  («Faltan {{count}} por responder»); "No reply" es «Sin respuesta»; nunca se cruzan.
+  "Companions" es «acompañantes». «{{coming}} de {{invited}} invitados vienen». "Write to them"
+  es «Escribirles»; "Open check-in", «Abrir registro de llegada». "Show all {{count}}" es
+  «Mostrar los {{count}}». "Their conversation" es «Conversación», sin posesivo: «su» se lee
+  como usted. Por lo mismo, en el 412 "Theirs · Yours" es «Versión guardada · Su versión», y los
+  botones «Usar la guardada» y «Mantener la mía».
+  El cierre (#32762): «El plazo para responder termina hoy.», «… termina mañana, {{date}}.»,
+  «… termina el {{date}}.», «El plazo para responder terminó el {{date}}.». Sin nadie por
+  responder: «Ya han respondido todos.».
+
+- **7 Nov 2026. La pantalla Hoy de la app** (`mobile:todayScreen.*`, sc-31788 para sc-29090).
+  "Live now" y "Live · …" son «En curso», como `eventsScreen.happeningNow`, nunca «Publicado»,
+  que es el estado. La agenda pone una etiqueta y dos puntos, «Inicio: {{name}}», «Fin:
+  {{name}}», «Continúa: {{name}}», para que el nombre del evento no necesite artículo. Una hora
+  va tras «·», sin «a las», que falla a la 1:00: «Termina hoy · {{time}}», «Termina mañana,
+  {{date}} · {{time}}». "Welcome" es «Hola», que no concuerda con el género de quien lee y cabe
+  en la portada a 44 pt; «Le damos la bienvenida, {{name}}» ocupaba tres líneas. "Good evening"
+  es «Buenas noches» desde las 18:00 (`greetingAt`). "Next up" es «Próximo evento», porque
+  nombra un evento; el "Next" del bloque Ahora es «A continuación». "Needs you" sigue a
+  `eventPage.needsYou`, «Pendiente de usted», y su vacío es «Nada pendiente». Run of show sigue
+  siendo «programa», como `rolesScreen.area.run_of_show`, aunque coincide con Schedule; si se
+  separan, «escaleta» es el término del oficio.
+
+- **7 Nov 2026. Las Personas de un evento, y «Admin» en cada mensaje** (`web:eventPeople.*`, `eventNav.people`, `membersScreen.eventsFromPeople`, `ownerMakesOwner`, sc-30138 para sc-29915). La página es «Personas». Los roles del evento son «Responsable», «Puede editar», «Puede ver» y «Puede registrar llegadas» («el registro de llegada», como `eventPause`). Lo que se anuncia empieza por «Ahora», «Ahora {{name}} es responsable de este evento.», con «responsable», que no marca género. La línea de quienes ya ven todo nombra el rol como etiqueta tras dos puntos, «ve todos los eventos por el rol que tiene en {{organisation}}: Propietario y Administrador», así que `managerRole.*` es el nombre del rol en todas las formas y nada concuerda con un género. Un rol dentro de una frase de error va entre comillas, «sigue siendo «Puede ver»». El inglés "owners and admins" es «quienes tienen el rol Propietario o Administrador», y en un título «los roles Propietario y Administrador»; "an admin of" sigue siendo «quien administre». Quien sale del evento es «Esta persona», nunca un «Perderá» que se lee como usted.
+- **7 Nov 2026. Lo que puede hacer cada rol, en Miembros** (`web:membersScreen.roleMeans.*`, sc-30138). Las frases no tienen sujeto, como `owner`. Los eventos de un Miembro son «los eventos que se le asignan», con «le», que no marca género; nunca «a los que se le añade» ni «invitado». El mismo giro sirve para la app.
+- **7 Nov 2026. Las otras formas de entrar en la app** (`mobile:steps.invited*`, `join`,
+  `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119). "You’re
+  invited" es «Tiene una invitación», para que nada concuerde con el género de quien lee.
+  `startOwnInstead` repite `domainJoining.startOwnInstead`, «Prefiero crear mi propia
+  organización», porque también aparece bajo una oferta de dominio. El botón es «Unirse a
+  {{organisation}}», como `invitations.acceptLabel`.
+
+- **7 Nov 2026. «El día del evento», nunca «la noche»** (sc-29384). Un evento puede ser a
+  cualquier hora: `verifyPhone.doneBody`, `steps.mobileIntro` y `completeProfile.mobileHelp`
+  dicen «el día del evento». El eslogan de la web es el de la app, «Organice el evento. Dirija el
+  día.», y `public.body` cierra con «menús y el programa», no «el orden de la velada».
+  `eventForm.clocksSkip` conserva «esa noche se adelantan los relojes»: habla del cambio de hora.
 - **5 Nov 2026. An event's People refusals** (`messages:people.*`, sc-30009). Who can act is
   «alguien con el rol Propietario o Administrador, o la persona responsable del evento», never
   «un administrador», which assumes a man. The event role Lead in a sentence is «la persona
@@ -62,8 +112,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `requestToJoin.member`; quien la envió es «quien le invitó», como en sc-2922.
 - **4 Nov 2026. Los pasos de una cuenta nueva en la app** (`mobile:steps.*`, sc-29126 para
   sc-29069). La barra dice «Paso {{step}} de {{steps}}»; Skip es «Omitir», nunca «Saltar»; Check
-  WhatsApp es «Revise WhatsApp», como «Revise su correo». "On the night" es «la noche del
-  evento» cuando nada antes nombra la noche, y «esa noche» solo detrás de ella.
+  WhatsApp es «Revise WhatsApp», como «Revise su correo». "On the day" es «el día del
+  evento» (sc-29384); nunca «la noche», ni «esa noche», ni «la velada».
 - **1 Nov 2026. Eventos y la navegación propia de un evento** (sc-26732 para sc-22103,
   `web:events.*`, `mobile:eventsScreen.*`, `eventNav.*` web y app). Las áreas: «Resumen»,
   «Invitados», «Menú», «Mesas», «Mensajes», «Programa», «Personal», «Presupuesto» e «Informes».
@@ -633,3 +683,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   antes de «Crear una cuenta»; «¿Es nuevo…?» concuerda con un género. «© {{year}} Soirely» queda
   igual que en inglés. El botón de idioma se lee «Idioma: {{language}}».
 - **Cancelar una solicitud para volver a entrar** (sc-29979): «¿Cancelar su solicitud?»; la salida es «Seguir esperando», nunca «Cancelar», y la confirmación reutiliza «Cancelar la solicitud».
+- **El estado de un control rechazado, solo para el lector de pantalla** (`mobile:forms.invalid`, sc-31909): «Datos no válidos», tras el nombre del control («País, Datos no válidos»). Es lo que VoiceOver dice en la web; no concuerda con el género del nombre, que puede ser masculino o femenino.

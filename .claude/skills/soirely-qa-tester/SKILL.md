@@ -124,7 +124,8 @@ use `--again` only if you truly need its full text again.
   author already doubts, and every one of them is a test.
 - **The artboards**, when the story names them — `.claude/skills/screen-from-design`
   explains where the design lives. A screen that does not match the design fails, even
-  when it satisfies the AC.
+  when it satisfies the AC, and so does one that differs from its story's demo (the
+  Design section's **Demo:** line), as one that differs from its board does.
   An [fd] story's "as the board draws them" bullets are tested against the board it names
   in Soirely — Redesign (`https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx`), read with the
   `Artifact` tool (`canvas.json`, then the board), never the Claude Docs tools or
@@ -347,7 +348,8 @@ turn TalkBack on again after `android` starts, or a missing announcement is the 
 `release` needs no bundler and takes an hour the first time on a machine. The next `android`
 removes it. The emulator has no window, so `release` records the launch's first 15 seconds and
 prints where: judge a splash bullet on that video, frame by frame, never on a screenshot taken
-afterwards. With `--offline` it launches only once the emulator reports no network, and stops
+afterwards. Pull its frames into `"${SQ_RUN_DIR:?export SQ_RUN_DIR=\$(mktemp -d) first}"`, never into `.qa/`: they go when the run
+ends, and the video stays until the story passes. With `--offline` it launches only once the emulator reports no network, and stops
 with an error otherwise. If your worktree says `unknown command` for any command this skill
 names (`release`, `hierarchy`, …), its `.qa/bin` copy predates it, and the start said why it
 kept it: name the missing command in your report. An old `android` neither removes a release
@@ -610,6 +612,25 @@ new story, and never by stopping a pass you are in.
      plan that failed in those minutes is re-run, not reported as a FAIL.
    - **Where to open it**: the web address, the Expo Go link `serve` printed and its QR code
      attached with `--files`, and Mailpit's address for emails.
+   - **The certificate, once per person.** The stack serves https from a CA made on this
+     machine, which `--tester lan status` names (`~/.soirely/qa-lan-ca/ca.crt`). In your
+     first plan to them, or when `checkout` printed "a new CA", attach that `ca.crt` (never
+     `ca.key`) with `--files` and give the steps:
+     - **Mac**: open `ca.crt`, so Keychain Access adds it to the login keychain; double-click
+       "Soirely QA LAN CA (<host>)", open Trust, set "When using this certificate" to Always Trust,
+       close the window and enter the Mac password.
+     - **iPhone or iPad**: AirDrop or email `ca.crt` to it and open it; Settings › Profile
+       Downloaded › Install; then Settings › General › About › Certificate Trust Settings,
+       turn on "Soirely QA LAN CA (<host>)".
+     - Write `<host>` out as this machine's name, from `hostname`, so they match the exact
+       words they see.
+     - Then the web address opens in Safari with no warning. A warning means the
+       certificate is not trusted yet: they stop and say so, and report no FAIL.
+     - **The app half needs an iPhone or iPad.** Android apps do not trust a CA the user
+       installed, so Expo Go on Android fails every API call on this stack even when
+       Chrome opens the web without a warning. Give a tester with only an Android phone
+       the web steps alone, and say the app steps wait for an iPhone or iPad. An Android
+       API failure is a setup limit, never a FAIL.
    - **The accounts**, one line each, ready to copy: what it is for (which steps, on which
      device), the email, the password, and, for a two-factor account, its `TOTP_SECRET` as
      the setup key to add to an authenticator app by "enter a setup key". Say where any

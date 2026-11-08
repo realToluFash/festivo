@@ -1,16 +1,50 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react';
-import { Link, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router';
+import {
+  Link,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router';
 
 import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
+import { Calendar } from './Calendar.tsx';
+import { CALENDAR_PAGES } from './calendar.ts';
+import { CREATE_PAGES } from './createOrg.ts';
+import { EventPage } from './EventPage.tsx';
+import { Events } from './Events.tsx';
+import { EVENTS_PAGES } from './events.ts';
+import { ACCOUNT_PAGES } from './account.ts';
+import { GENERAL_PAGES } from './general.ts';
+import { MESSAGES_PAGES } from './messages.ts';
+import { SeatingPage } from './Seating.tsx';
+import { SEATING_PAGES } from './seating.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
+import { GuestPage } from './Guest.tsx';
+import { GUEST_PAGES } from './guest.ts';
+import { Guests } from './Guests.tsx';
+import { GUESTS_PAGES } from './guests.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
+import { NOTIFICATIONS_PAGES } from './notifications.ts';
+import { leave } from './chosenScheme.ts';
+import { PERSONALISATION_PAGES } from './personalisation.ts';
+import { SECURITY_PAGES } from './security.ts';
+import { Notice } from './parts.tsx';
+import { People } from './People.tsx';
+import { PEOPLE_PAGES } from './people.ts';
 import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
+import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
+import { SWITCHER_PAGES } from './switcher.ts';
 import { Today } from './Today.tsx';
 import { TwoFactorBoard } from './TwoFactor.tsx';
+import { VendorsMoved } from './Vendors.tsx';
+import { VENDORS_PAGES } from './vendors.ts';
 import { WaysInBoard } from './WaysIn.tsx';
 import {
   type FieldLines,
@@ -31,11 +65,12 @@ import './demo.css';
 
 const BUSY_MS = 900;
 
-type Notice = { title: string; body: string };
+type SignInNotice = { title: string; body: string };
 
 /** The states the board draws, each opened from the demo's home. */
 const TODAY_MOMENTS: { key: string; name: string }[] = [
   { key: 'plan', name: 'A planning day' },
+  { key: 'plan&invites=none', name: 'A planning day, invitations not sent' },
   { key: 'planNow', name: 'A planning day, built now' },
   { key: 'day', name: 'The event day' },
   { key: 'dayNow', name: 'The event day, built now' },
@@ -43,12 +78,19 @@ const TODAY_MOMENTS: { key: string; name: string }[] = [
   { key: 'first', name: 'A first run' },
 ];
 
-const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
+/** `fillsEmail`: the sign-in knew whose it was, so Email arrives filled. */
+const SIGN_IN_STATES: { key: string; name: string; notice?: SignInNotice; fillsEmail?: true }[] = [
   { key: 'first-visit', name: 'Signed out, first visit' },
   {
     key: 'signed-out',
     name: 'You were signed out',
     notice: { title: 'You were signed out', body: 'Sign in again to carry on.' },
+  },
+  {
+    key: 'code-timed-out',
+    name: 'That sign-in timed out',
+    notice: { title: 'That sign-in timed out', body: 'Sign in again to carry on.' },
+    fillsEmail: true,
   },
   {
     key: 'rule',
@@ -57,6 +99,7 @@ const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
       title: 'Signed out by Ire Events’ rule',
       body: 'Ire Events signs people out after 30 days without use. Sign in again to carry on.',
     },
+    fillsEmail: true,
   },
   {
     key: 'google-failed',
@@ -82,12 +125,15 @@ const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
       title: 'Ire Events signs in with Google or Apple only',
       body: 'Password sign-in is off in Ire Events. Use Google or Apple instead.',
     },
+    fillsEmail: true,
   },
 ];
 
 export default function Demo() {
   const { state } = useLocation() as { state: { from?: string } | null };
   const [from] = useState(() => state?.from ?? '/sign-in');
+
+  useEffect(() => leave, []);
 
   return (
     <Routes>
@@ -97,10 +143,28 @@ export default function Demo() {
       <Route path="get-back-in" element={<GetBackInBoard />} />
       <Route path="two-factor" element={<TwoFactorBoard />} />
       <Route path="ways-in" element={<WaysInBoard />} />
-      <Route path="signed-in" element={<SignedIn />} />
+      {/* Kept so a link to /demo/signed-in opens Today rather than the not-found page. */}
+      <Route path="signed-in" element={<Navigate to="/demo/today" replace />} />
       <Route path="today" element={<Today />} />
+      <Route path="events" element={<Events />} />
+      <Route path="events/:id" element={<EventPage />} />
+      <Route path="events/:id/dates" element={<EventPage dates />} />
+      <Route path="events/:id/messages" element={<EventPage messages />} />
+      <Route path="events/:id/seating" element={<SeatingPage />} />
+      <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
+      <Route path="settings/account" element={<Settings open="account" />} />
+      <Route path="settings/security" element={<Settings open="security" />} />
+      <Route path="settings/notifications" element={<Settings open="notifications" />} />
+      <Route path="settings/personalisation" element={<Settings open="personalisation" />} />
+      <Route path="settings/general" element={<Settings open="general" />} />
+      <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
+      <Route path="settings/vendors" element={<Settings open="vendors" />} />
+      <Route path="people" element={<People />} />
+      <Route path="vendors" element={<VendorsMoved />} />
+      <Route path="guest" element={<GuestPage />} />
+      <Route path="guests" element={<Guests />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -139,12 +203,60 @@ function DemoHome({ from }: { from: string }) {
             </li>
           ))}
         </ul>
+        <h3>Events in A · Summary first · desktop</h3>
+        <BoardPages pages={EVENTS_PAGES} />
+        <h3>The organisation switcher in B · Places · desktop</h3>
+        <BoardPages pages={SWITCHER_PAGES} />
+        <h3>The Calendar in B · A · Weeks as lanes · desktop</h3>
+        <BoardPages pages={CALENDAR_PAGES} />
+        <h3>Create an organisation in B · A short walk · desktop</h3>
+        <BoardPages pages={CREATE_PAGES} />
+        <h3>Guest’s page in A · The cover card · phone, tablet and desk</h3>
+        <BoardPages pages={GUEST_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-30">
+        <h2 id="demo-page-30">30 · Guests · the planner’s side</h2>
+        <h3>Guests in A · Summary first · desktop</h3>
+        <BoardPages pages={GUESTS_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-81">
+        <h2 id="demo-page-81">81 · Budget and costs</h2>
+        <h3>Vendors in A · Summary first · Settings › Vendors · desktop</h3>
+        <BoardPages pages={VENDORS_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-36">
+        <h2 id="demo-page-36">36 · Messaging · Messages on an event</h2>
+        <h3>Messaging in B · Conversations · desktop</h3>
+        <BoardPages pages={MESSAGES_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-31">
+        <h2 id="demo-page-31">31 · Venue and seating · Seating on an event</h2>
+        <h3>Seating in A · The room · desktop</h3>
+        <BoardPages pages={SEATING_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-28">
         <h2 id="demo-page-28">28 · Organisations and access · Settings at a desk</h2>
         <h3>Settings in B · Summary first · desktop</h3>
         <BoardPages pages={SETTINGS_PAGES} />
+        <h3>Your account in B · Summary first · desktop</h3>
+        <BoardPages pages={ACCOUNT_PAGES} />
+        <h3>Security in B · Summary first · desktop</h3>
+        <BoardPages pages={SECURITY_PAGES} />
+        <h3>Notification settings in B · Summary first · desktop</h3>
+        <BoardPages pages={NOTIFICATIONS_PAGES} />
+        <h3>Personalisation in A · Swatches · desktop</h3>
+        <BoardPages pages={PERSONALISATION_PAGES} />
+        <h3>General in B · Summary first · desktop</h3>
+        <BoardPages pages={GENERAL_PAGES} />
+        <h3>Sign-in rules in B · Where you stand · desktop</h3>
+        <BoardPages pages={SIGN_IN_RULES_PAGES} />
+        <h3>People on an event · desktop</h3>
+        <BoardPages pages={PEOPLE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">
@@ -221,7 +333,7 @@ function SignInForm({ state }: { state: string }) {
   const arrival = (useLocation().state as Arrival | null) ?? {};
   const [twoFactor, setTwoFactor] = useState(false);
   const drawn = SIGN_IN_STATES.find((each) => each.key === state);
-  const [notice, setNotice] = useState<Notice | null>(drawn?.notice ?? null);
+  const [notice, setNotice] = useState<SignInNotice | null>(drawn?.notice ?? null);
   const [providerOnly, setProviderOnly] = useState(state === 'provider-only');
   const [liftsAt, setLiftsAt] = useState<number | null>(() =>
     state === 'locked' ? Date.now() + LOCK_MS : null,
@@ -234,7 +346,7 @@ function SignInForm({ state }: { state: string }) {
   const email = useRef<HTMLInputElement>(null);
   const password = useRef<HTMLInputElement>(null);
   const pending = useRef<number | undefined>(undefined);
-  const knownEmail = state === 'rule' || state === 'provider-only' ? SAMPLE.email : arrival.email;
+  const knownEmail = drawn?.fillsEmail ? SAMPLE.email : arrival.email;
   const locked = liftsAt != null;
 
   useEffect(() => () => window.clearTimeout(pending.current), []);
@@ -311,7 +423,7 @@ function SignInForm({ state }: { state: string }) {
   }
 
   const until = liftsAt == null ? null : timeOfDay(liftsAt);
-  const shown: Notice | null =
+  const shown: SignInNotice | null =
     until == null ? notice : { title: 'Too many tries', body: `Try again at ${until}.` };
 
   return (
@@ -331,13 +443,11 @@ function SignInForm({ state }: { state: string }) {
       <div className="demo-heading">
         <h1>Sign in</h1>
         {shown != null && (
-          <div
-            className="demo-notice"
-            role={locked || state.endsWith('failed') ? 'alert' : 'status'}
-          >
-            <p className="demo-notice-title">{shown.title}</p>
-            <p>{shown.body}</p>
-          </div>
+          <Notice
+            title={shown.title}
+            body={shown.body}
+            alert={locked || state.endsWith('failed')}
+          />
         )}
       </div>
 
@@ -461,44 +571,28 @@ function SignInForm({ state }: { state: string }) {
   );
 }
 
-function SignedIn() {
-  const { state } = useLocation() as { state: { provider?: string } | null };
-
-  return (
-    <BoardPage>
-      <div className="demo-heading">
-        <h1>Signed in</h1>
-        <p className="demo-muted">
-          {state?.provider != null
-            ? `A stand-in: ${state.provider} is not wired in the demo, so this is where it would land.`
-            : `A stand-in for your events, signed in as ${SAMPLE.email}.`}
-        </p>
-      </div>
-      <Link className="button demo-wide" to="/demo/sign-in?state=signed-out">
-        Sign out
-      </Link>
-    </BoardPage>
-  );
-}
-
 const LATER: Record<string, string> = {
   terms: 'Terms',
   privacy: 'Privacy',
   security: 'Your account › Security',
+  kitchen: 'Update what the kitchen should know',
+  calendar: 'Add to calendar',
 };
 
 function Later() {
   const [params] = useSearchParams();
   const screen = LATER[params.get('screen') ?? ''] ?? 'Terms';
+  const guest = params.get('screen') === 'kitchen' || params.get('screen') === 'calendar';
 
+  // Opened from any footer, signed in or not, so its header offers neither way (sc-29561).
   return (
-    <BoardPage>
+    <BoardPage end={null}>
       <div className="demo-heading">
         <h1>{screen}</h1>
         <p className="demo-muted">A stand-in: this page comes to the demo at its own step.</p>
       </div>
-      <Link className="button demo-wide" to="/demo/sign-in">
-        Back to sign in
+      <Link className="button demo-wide" to={guest ? '/demo/guest?state=coming' : '/demo/sign-in'}>
+        {guest ? 'Back to the guest’s page' : 'Back to sign in'}
       </Link>
     </BoardPage>
   );

@@ -43,6 +43,56 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. Um início de sessão com dois fatores que expirou** (sc-29979,
+  `signIn.codeTimedOutTitle`, web e app). "O início de sessão expirou", seguido de
+  `endedBody` "Inicie sessão novamente para continuar.". "Expirou", como um prazo que passa;
+  "caducar" fica para os pedidos. Não "a sua sessão": a pessoa ainda não tinha entrado. A app
+  junta os dois numa linha com ponto final, por isso o título não o leva.
+- **8 Nov 2026. Um registo que expirou** (sc-32449 para sc-29923, `register.timedOut`, web e
+  app). "O seu registo expirou, por isso não guardámos a palavra-passe. Introduza-a novamente
+  para receber um novo código.". "Sign-up" é "registo", como `limitedTitle`, nunca "registro";
+  "expirou", como o início de sessão; "um novo código", como `resend`.
+- **8 Nov 2026. Convidados A: a resposta, as duas contagens e o 412** (sc-3773, #32403).
+  "Not sure yet" é "Por confirmar", na página do convidado e na do anfitrião: não concorda
+  com género, como "indeciso" ou "não tem a certeza" obrigariam. "Por confirmar · resposta
+  até ao dia {{date}}", "Por confirmar · respondeu no dia {{date}}". "Haven't replied" é "por
+  responder" ("Faltam {{count}} por responder"); "No reply" é "Sem resposta"; nunca se trocam.
+  "Companions" é "acompanhantes". "{{coming}} dos {{invited}} convidados vêm". "Write to them" é
+  "Escrever-lhes"; "Open check-in", "Abrir registo de entradas". "Show all {{count}}" é
+  "Mostrar os {{count}}". "Their conversation" é "Conversa", sem possessivo: "a sua" lê-se como
+  do anfitrião. Pelo mesmo motivo, no 412 "Theirs · Yours" é "Versão guardada · A sua versão",
+  e os botões "Usar a guardada" e "Manter a minha".
+  O fim do prazo (#32762): "O prazo de resposta termina hoje.", "… termina amanhã, dia
+  {{date}}.", "… termina no dia {{date}}.", "O prazo de resposta terminou no dia {{date}}.".
+  Sem ninguém por responder: "Já todos responderam.".
+
+- **7 Nov 2026. O ecrã Hoje da app** (`mobile:todayScreen.*`, sc-31788 para sc-29090). "Live
+  now" e "Live · …" são "A decorrer", como `eventsScreen.happeningNow`, nunca "Publicado", que é
+  o estado. A agenda usa uma etiqueta e dois pontos, "Início: {{name}}", "Fim: {{name}}",
+  "Continua: {{name}}", para que o nome do evento dispense artigo. Uma hora vai depois de "·",
+  sem "às", que falha à 01:00: "Termina hoje · {{time}}". Um dia da semana ou uma data
+  ("terça, 3/11") vão sem preposição, "começa {{weekday}}", porque "na"/"no" dependem do dia.
+  "Welcome" é "Olá", que não concorda com o género de quem lê; "Bem-vindo" obrigaria a escolher
+  um. "Good evening" é "Boa noite" a partir das 18:00 (`greetingAt`). "Next up" é "Próximo
+  evento", porque nomeia um evento; o "Next" do bloco Agora é "A seguir". "Needs you" segue
+  `eventPage.needsYou`, "Precisa de si", e o seu vazio é "Nada pendente". Run of show continua
+  "programa", como `rolesScreen.area.run_of_show`, embora coincida com Schedule.
+
+- **7 Nov 2026. As Pessoas de um evento, e "Admin" em todo o lado** (`web:eventPeople.*`, `eventNav.people`, `membersScreen.eventsFromPeople`, `ownerMakesOwner`, sc-30138 para sc-29915). A página é "Pessoas". As funções no evento são "Responsável", "Pode editar", "Pode ver" e "Pode registar entradas" ("o registo de entradas", como `eventPause`). Os anúncios dizem "agora": "{{name}} é agora responsável por este evento.", e "responsável" não concorda com género. A linha de quem já vê tudo dá a função como etiqueta depois de dois pontos, "vê todos os eventos pela função que tem em {{organisation}}: Proprietário e Administrador", por isso `managerRole.*` é o nome da função em todas as formas e nada concorda com um género. Uma função citada numa frase de erro vai entre aspas: continua a ser "Pode ver". "Owners and admins" é "quem tem a função Proprietário ou Administrador", e num título "as funções Proprietário e Administrador"; "an admin of" continua a ser "alguém que administre". O marcador da própria linha, `eventPeople.you`, é "A sua conta", como `membersScreen.you`. Quem sai do evento é "Esta pessoa".
+- **7 Nov 2026. O que cada função faz, em Membros** (`web:membersScreen.roleMeans.*`, sc-30138). As frases não têm sujeito, como `owner`. Os eventos de um Membro são "os eventos que lhe são atribuídos": "lhe" não concorda com ninguém, ao passo que "a que é adicionado" imporia um género. A mesma forma serve para a app.
+- **7 Nov 2026. As outras formas de entrar na app** (`mobile:steps.invited*`, `join`,
+  `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119). "You’re
+  invited" é "Tem um convite", nunca "Foi convidado", que concorda com um género. O botão é
+  "Aderir a {{organisation}}", como `invitations.acceptLabel`; `startOwnInstead` repete
+  `domainJoining.startOwnInstead`, "Prefiro criar a minha própria organização".
+
+- **7 Nov 2026. "No dia do evento", nunca "na noite"** (sc-29384). Um evento pode ser a qualquer
+  hora: `verifyPhone.doneBody`, `steps.mobileIntro` e `completeProfile.mobileHelp` dizem "no dia
+  do evento". `mobileHelp` passa a "É por este número que falamos consigo…", como "falar consigo"
+  em `mobileIntro`, porque "o contactamos" supõe um homem. O slogan da web é o da app, "Planeie o
+  evento. Conduza o dia.", e `public.body` diz "ementas e programa", já não "alinhamento da
+  noite". `eventForm.clocksSkip` mantém "nessa noite, os relógios são adiantados": fala da
+  mudança de hora.
 - **5 Nov 2026. An event's People refusals** (`errors:own_event_role`, `messages:people.*`,
   sc-30009). dev2's draft said "Você", "em um evento" and "Essa pessoa"; it now reads "Não
   pode", "num evento", "Esta pessoa". Who can act is "alguém com a função Proprietário ou
@@ -477,7 +527,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   changed gender between the new-device email and Devices. Before a noun it stays a bare label
   with no article: "conta Soirely", "código Soirely", "Aplicação Soirely". A number is
   contacted as "contactar o {{number}}" (`verifyPhone.doneBody`), not "contactá-lo", whose
-  clitic assumes a man; "on the night" is "na noite do evento".
+  clitic assumes a man; "on the day" is "no dia do evento" (sc-29384), never "na noite".
 - **19 Oct 2026. A weekday date is never preceded by "a"** (`signInRules.changedBody`, web and
   app, sc-3030). `{{day}}` is "segunda-feira, 19 de out.": before a weekday PT-PT says "na" or
   "no" (sábado, domingo), which the copy cannot agree with, and the abbreviated month brings
@@ -661,3 +711,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   antes de "Criar uma conta"; "É novo…?" concorda com um género. "© {{year}} Soirely" fica igual
   ao inglês. O botão de idioma lê-se "Idioma: {{language}}".
 - **Cancelar um pedido para voltar a entrar** (sc-29979): "Cancelar o seu pedido?"; a saída é "Continuar à espera", nunca "Cancelar", e a confirmação reutiliza "Cancelar o pedido".
+- **O estado de um campo recusado, só para o leitor de ecrã** (`mobile:forms.invalid`, sc-31909): "Dados inválidos", depois do nome do campo ("Palavra-passe, Dados inválidos"). É o que o VoiceOver diz na web; não concorda com o género do nome, masculino ou feminino.

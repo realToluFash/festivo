@@ -1,37 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  dayAtTime,
-  dayOf,
-  DEVICES,
-  keptByRule,
-  onlyWayIn,
-  qrPath,
-  RECOVERY_CODES,
-} from './SecuritySample.ts';
+import { dayAtTime, dayOf, DEVICES, qrPath, RECOVERY_CODES } from './SecuritySample.ts';
 
 const spaced = (text: string): string => text.replace(/\s/gu, ' ');
 
 describe('dates on Signed in on', () => {
-  it('follow the region: month first in the US, day first in Britain', () => {
+  it('follow the region, month first in the US and day first in Britain, on a 24-hour clock', () => {
     const iphone = DEVICES[0]!;
 
-    expect(spaced(dayAtTime(iphone.signedIn, 'en-US'))).toBe('Oct 12 at 9:14 AM');
-    expect(spaced(dayAtTime(iphone.signedIn, 'en-GB'))).toBe('12 Oct at 9:14');
+    expect(spaced(dayAtTime(iphone.signedIn, 'en-US'))).toBe('Oct 12 at 09:14');
+    expect(spaced(dayAtTime(iphone.signedIn, 'en-GB'))).toBe('12 Oct at 09:14');
     expect(dayOf(iphone.expires, 'en-US')).toBe('Dec 4');
-  });
-});
-
-describe('ways to sign in', () => {
-  it('keep the only way in, and a rule keeps the last provider', () => {
-    const googleOnly = { password: false, Google: true, Apple: false };
-    const withPassword = { password: true, Google: true, Apple: false };
-
-    expect(onlyWayIn(googleOnly, 'Google')).toBe(true);
-    expect(onlyWayIn(withPassword, 'Google')).toBe(false);
-    expect(keptByRule(withPassword, 'Google', true)).toBe(true);
-    expect(keptByRule({ ...withPassword, Apple: true }, 'Google', true)).toBe(false);
-    expect(keptByRule(withPassword, 'Google', false)).toBe(false);
   });
 });
 

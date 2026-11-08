@@ -5,7 +5,7 @@ import {
   type PendingRegistration,
   awaiting,
 } from '@soirely/api-client';
-import { cleanCode, codeProblem } from '@soirely/domain';
+import { cleanCode, codeDigits, codeProblem } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router';
@@ -102,6 +102,14 @@ function ForRegistration({ pending }: { pending: PendingRegistration }) {
   const [account, setAccount] = useState<Account | null>(null);
   const carried = useLocation().state as Carried | null;
 
+  function timedOut(): void {
+    dropRegistration();
+    navigate('/register', {
+      replace: true,
+      state: { name: carried?.name, email: pending.email, timedOut: true } satisfies Carried,
+    });
+  }
+
   return (
     <CodeScreen
       address={pending.email}
@@ -114,15 +122,16 @@ function ForRegistration({ pending }: { pending: PendingRegistration }) {
         setAccount(signedIn.account);
       }}
       resend={() => api.resendRegistrationCode(pending.registration)}
-      onExpired={() => {
-        dropRegistration();
-        navigate('/register', { replace: true });
-      }}
+      onExpired={timedOut}
       onGone={() => {
-        dropRegistration();
         // A session that ended under the held sign-up says so once the sign-up is gone too (sc-927).
-        const ended = session.status === 'signedOut' && session.ended;
-        navigate(ended ? '/sign-in?signed-out' : '/sign-in', { replace: true });
+        if (session.status === 'signedOut' && session.ended) {
+          dropRegistration();
+          navigate('/sign-in?signed-out', { replace: true });
+          return;
+        }
+
+        timedOut();
       }}
       carryOn={() => {
         if (account == null) return;
@@ -153,7 +162,7 @@ function ForSession() {
   }, []);
 
   if (state.status === 'signedOut') return <Navigate to="/sign-in" replace />;
-  if (state.status === 'unreachable') return <Unreachable signedIn bare />;
+  if (state.status === 'unreachable') return <Unreachable signedIn={false} bare />;
   if (state.status !== 'signedIn') return <PendingPage />;
 
   return (
@@ -197,7 +206,7 @@ function CodeScreen({
   verify: (code: string) => Promise<void>;
   resend: () => Promise<number>;
   onExpired: () => void;
-  /** The sign-up had already run out when the screen opened: nothing to resume, so signed out. */
+  /** The sign-up had already run out when the screen opened. */
   onGone?: () => void;
   carryOn?: () => void | Promise<void>;
   /** A sign-up's way back to Register, with what was typed there. */
@@ -434,7 +443,10 @@ function CodeScreen({
                     aria-invalid={codeError != null}
                     aria-describedby={codeError == null ? undefined : 'code-error'}
                     onBlur={(event) => checks.left('code', event.target.value)}
-                    onChange={(event) => checks.edited('code', event.target.value)}
+                    onChange={(event) => {
+                      event.target.value = codeDigits(event.target.value);
+                      checks.edited('code', event.target.value);
+                    }}
                   />
                   {codeError != null && <FieldError id="code-error" message={codeError} />}
                 </div>
@@ -456,6 +468,15 @@ function CodeScreen({
                 onResend={() => void resend()}
               />
             </>
+          )}
+
+          {back != null && (
+            <p className="auth-aside">
+              <span>{t('verifyEmail.wrongAddress')}</span>
+              <button className="link-button" type="button" onClick={back}>
+                {t('verifyEmail.registerAgain')}
+              </button>
+            </p>
           )}
 
           {!onboarding && <RemoveInAccount kind="email" />}

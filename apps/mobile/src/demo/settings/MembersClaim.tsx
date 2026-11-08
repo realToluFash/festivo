@@ -12,7 +12,14 @@ import {
   type MembersSay,
   ORGANISATION,
 } from './MembersSample.ts';
-import { FocusedScreen, Line, Row, RowList, Section, TextAction } from './Summary.tsx';
+import {
+  FocusedScreen,
+  Line,
+  Row,
+  RowList,
+  Section,
+  TextAction,
+} from '../../components/Summary.tsx';
 
 const CHECK_MS = 900;
 
@@ -109,7 +116,7 @@ export function ClaimScreen({
         owner.asking
           ? {
               title: 'Withdraw your claim?',
-              line: `You won't become the owner of ${ORGANISATION}. Any Administrator, you included, can start a new claim.`,
+              line: `You won't become the owner of ${ORGANISATION}. Any admin, you included, can start a new claim.`,
               keep: { label: 'Keep my claim', testID: 'ownerClaim.withdrawNo' },
               confirm: { label: 'Withdraw', testID: 'ownerClaim.withdrawYes', removes: true },
               onKeep: () => owner.ask(false),

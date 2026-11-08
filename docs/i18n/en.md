@@ -42,7 +42,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Phone number, mobile number          | Settled 18 Oct 2026: "phone number" for any number on the account (card, list, add button, cap), which may be a landline; "mobile number" only for the field we text a code to (`contacts.phoneLabel`, `verifyPhone.numberLabel`).                           |
 | Alternative (address, number)        | Settled 18 Oct 2026: any address or number on the account that is not primary, verified or not. The card's plural is "Other addresses" / "Other numbers"; one of them is "an alternative address" or "an alternative number". Never "secondary" or "backup". |
 | Schedule                             | Settled 19 Oct 2026 (epic 33, sc-3895 #4106): the list the organiser builds, and its page. Never "agenda", "itinerary" or "running order".                                                                                                                   |
-| Run of show                          | Settled 19 Oct 2026: the night's screen, app and web, the web switch included. Never a bare "Run".                                                                                                                                                           |
+| Run of show                          | Settled 19 Oct 2026: the screen for running the event on the day, app and web, the web switch included. Never a bare "Run".                                                                                                                                  |
 | Now, Next, Later                     | Settled 19 Oct 2026: Run of show's cards and list, and the cue screen's "Later". "Later" replaced the drawn "Then". Own keys, never a stepper's "Next".                                                                                                      |
 | Done, Skip, Start now                | Settled 19 Oct 2026: finishing, skipping and starting an item. States in a list: "Done", "Skipped", "Not started". "Done" is its own key, not the app's `close`. Screen readers: "Done: {{title}}".                                                          |
 | Move, Move after this                | Settled 19 Oct 2026: moving an item (sc-3894). "Move after this" replaced "Place after", because "Place" is the noun on the same page.                                                                                                                       |
@@ -66,6 +66,157 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. A two-factor sign-in that ran out** (sc-29979, `signIn.codeTimedOutTitle`,
+  web and app). "That sign-in timed out", then `endedBody` "Sign in again to carry on." The
+  app joins the two as one line with a full stop, so the title takes none. "That" names the
+  attempt the person just made, not their session: they were never signed in.
+- **8 Nov 2026. A sign-up that ran out** (sc-32449 for sc-29923, `register.timedOut`, web
+  and app). "Your sign-up timed out, so we did not keep the password. Enter it again to get a
+  new code." Kept as built: "timed out", as the sign-in; "the password", the one just typed;
+  "a new code", as Send a new code. The demos and tests pin this sentence, so a reword waits
+  on [dev].
+- **8 Nov 2026. Guests A: a guest's reply, the two counts, and the 412** (sc-3773, pm's #31841,
+  settled in #32403). The reply state is "Not sure yet" everywhere, the guest's own words,
+  never "Maybe": "Not sure yet · asked to decide by {{date}}", "Not sure yet · replied
+  {{date}}". Two measures: "haven't replied" (everyone without an answer of their own,
+  companions included) and "No reply" (guests only); never swap them. "Companions" is the
+  field and the count's noun, never "plus-ones". The card: "{{coming}} coming of {{invited}}
+  invited", "{{count}} haven't replied ({{guests}} guests and {{companions}} companions).",
+  "Replies close tomorrow, {{date}}.", "Write to them", "Open check-in", "Check-in opened at
+  {{time}}. Anyone on the list can be marked as arrived, whatever their reply." A group's
+  overflow is "Show all {{count}}", with no state slot, because the heading names it. "Their
+  conversation", "Their own page, where they reply." Replacing a link reuses
+  `requestLink.replaceBody`'s "stops working as soon as you replace it". The 412: "Theirs" and
+  "Yours", **Use theirs** and **Keep mine**: "Use theirs fills the form with their version and
+  drops your changes. Keep mine saves your changes over theirs." Each count is its own plural
+  key, and "Replies close" has a whole sentence per case (today, tomorrow, on a date, closed).
+  When replies close (#32762): "Replies close today." with no date, "Replies close tomorrow,
+  {{date}}.", "Replies close on {{date}}.", "Replies closed on {{date}}.", the day reckoned in
+  the event's zone. Nobody left to reply is "Everyone has replied.", companions included.
+
+- **8 Nov 2026. A payment schedule's shape fields, its sums and its failed save** (sc-1332,
+  pm's #32327 from ux's demo, sc-31779 #1485). Field labels: "Percentage of the quote" (won
+  over the earlier boards' "Share of the quote": "share" reads as a part of something, not a
+  number to type, and es, fr and pt say percentage anyway), "Days before the event", "Days
+  after the event", labels with no full stop. Help: "From 0 to 100, with up to two decimal
+  places." and "A whole number from 0 to 730." Refusals: "Enter a percentage from 0 to 100,
+  with up to two decimal places." and "Enter a whole number of days from 0 to 730." "Decimal
+  places", the house term since sc-83, not the demo's bare "decimals". A row with no
+  description yet, in its amount line: "No description yet", a label with no full stop.
+  Before saving, when the percentages do not come to 100, one key each: "The percentages come
+  to {{total}}, so {{gap}} of the quote is not scheduled. You can still add these payments,
+  and the vendor's page will show the difference."; "The percentages come to {{total}}, so
+  the schedule is {{gap}} over the quote. You can still add these payments, and the vendor's
+  page will show the difference." They mirror the vendor page's "{{amount}} of the quote is
+  not scheduled yet." and "The schedule is {{amount}} over the quote.", and name the
+  button's verb. Won over the demo's "it saves, and the vendor’s page says so", where "it"
+  had no clear subject. `{{total}}` from `Intl.NumberFormat` with `style: 'percent'`, never a
+  "%" typed into the string; `{{gap}}` an amount in the event's currency. The failed save,
+  all or nothing: "None of these payments were saved, because they could not be sent. Your
+  rows are kept as you filled them in; select Add to send them again." "Select", not
+  "press", which is a key's verb and wrong for a tap or a screen reader; "send them again",
+  not "all of them", because nothing was saved, so there is no part to leave out. The row's
+  timing, a plural family on `{{count}}` with its own wording for 0 (a `_zero` key, as two
+  catalogues already have, so French, which counts 0 as one, still reads it): before,
+  "On the event's start date" (0), "1 day before the event" (one), "{{count}} days before
+  the event" (other); after, "On the event's end date" (0), "1 day after the event",
+  "{{count}} days after the event". For 0, "start date" and "end date", not "on the day of
+  the event", because a multi-day event has two days that 0 can mean, and before counts from
+  its start, after from its end. Capitalised, as every segment after a "·" in a row line is
+  ("Set to the date quoted", "Marked by"). A description over 100 characters reuses sc-87's
+  "Shorten what the payment is for to {{count}} characters or fewer."
+
+- **7 Nov 2026. The app's Today screen** (`mobile:todayScreen.*`, sc-31788 for sc-29090). Kept
+  as sc-29090 wrote it. A lower-case key (`tomorrow`, `dayOf`, `inDays`) sits after a date or
+  inside a line; its capitalised twin (`tomorrowCapital`, `dayOfCapital`, `inDaysCapital`) opens
+  a card's chip, so the two are never merged. "Live now" and "Live · …" mean happening now, the
+  Events list's "Happening now", not the Live state, so es, fr and pt write them as
+  "Happening now" and never as published. The agenda's "{{name}} starts / ends / continues" may
+  become a label and a colon in other languages, which need no article before an event's name.
+  "Good evening" runs from 18:00 (`greetingAt`). "Next up" names the next event; the Now
+  block's "Next" is the next item on the run of show.
+
+- **7 Nov 2026. The app's other ways in** (`mobile:steps.invited*`, `invitationFor`, `join`,
+  `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119 for
+  sc-29070). Kept as sc-29070 wrote them, except `signedOutLine`, now "Sign in or create an
+  account to ask. You will come back here.", the web's `requestToJoin.signedOut` without its
+  organisation, which the title above already names (rejected: "You come back here after.").
+  "You’re invited" keeps its contraction: a warm title, not an error. es, fr and pt say the
+  reader has an invitation rather than "is invited", so nothing agrees with the reader's gender.
+
+- **7 Nov 2026. What sc-87's demo adds: payments saved and removed, Revise, read-only and the
+  archive refusal** (pm's #31444 from ux's #31427, settled before the board is drawn). Saved
+  lines take the quote's shape, one string with slots: "Payment added: {{description}},
+  {{amount}}, due on {{date}}."; "Payment changed: {{description}}, {{amount}}, due on
+  {{date}}."; "Payment removed: {{description}}, {{amount}}." No vendor slot: payments are
+  only ever saved on that vendor's page, whose title names it. "Changed", the button's verb,
+  not "amended". "Due on", as "quoted on", because es, fr and pt need the preposition. Live
+  announcements: "Payment added.", "Payment changed.", "Payment removed." Removing asks in the
+  row: "Remove this payment?" with **Keep** and **Remove**, as the AC has them. Revise form
+  intro, the Correct intro's mirror: "Revising saves this quote with a new amount or date
+  quoted. The current quote is kept as an earlier quote, under Show the earlier quote. To
+  change only what it covers, its quote number or its budget lines, correct the quote
+  instead." Won over ux's "Revising keeps the current quote as an earlier quote, under Show
+  the earlier quote.", which did not say what Revise is for, on which the 17 Oct refusal of an
+  unchanged Revise rests. Read-only, on the Budget page and the vendor's page: "Quotes and
+  payment schedules are read-only because this organisation's plan no longer includes them.
+  Nothing has been removed." It ends a sentence, so it reads whole with **See plans** after it
+  or without it (only `billing.manage` sees the link). "This organisation's plan", as the 17 Oct
+  refusal, not "Your plan": a Lead or an Admin does not hold the plan. Rejected: "kept to
+  read", which no other string says. A title, if the card keeps one, is "Read-only", hyphenated
+  as an adjective. The archive refusal, in Edit vendor: "{{vendor}} was not archived, because
+  the events below still have payments to it that are not paid or cancelled. Once each one is
+  paid or cancelled, you can archive the vendor." Each link under it reads "Payments to
+  {{vendor}} on {{event}}", which says where it goes when read alone in a screen reader's list
+  of links (rejected: "<event>, its payments to <vendor>"). "The events below", not a count, so
+  one event and many read the same without plural keys. The API's 409 detail cannot say
+  "below", so it has its own key: "{{vendor}} was not archived, because one or more events
+  still have payments to it that are not paid or cancelled."
+
+- **7 Nov 2026. A payment schedule's shapes, and someone else adding payments first**
+  (sc-1332, pm's #30379, settled before the board is drawn). The 409 when another person adds
+  a scheduled payment while a shape is being chosen, on the form and as the API's detail
+  under one key: "Payments were added to this vendor's schedule while you were filling this
+  in, so none of yours were saved. Check the payments it has now before adding more." Won
+  over the story's "Payments were added to this vendor while you were choosing. Nothing was
+  saved.": payments belong to the vendor's schedule on this event, not to the vendor;
+  "choosing" missed the person who had already edited the rows; and the house refusal says
+  what was not saved and what to do, as sc-87's second quote does. "None of yours", not
+  "nothing", because the other person's payments were saved. No name slot: the API need not
+  say who. Kept as the story has them: the radio options **Deposit and balance**, **Three
+  instalments**, **In full before the event**, **In full after the event**, **Enter rows
+  yourself**; the prefilled descriptions Deposit, Second instalment, Balance, Payment in full
+  (Three instalments reads Deposit, Second instalment, Balance); "Set to the date quoted", a
+  label with no full stop. "Needs the event's date" was dropped on 7 Nov (pm): every event has
+  a start date, so its state cannot happen. A blank description reuses sc-87's "Enter what the
+  payment is for." rather than a near-copy reading "this payment".
+
+- **7 Nov 2026. Choosing a quote's vendor, and the vendor page's empty states** (sc-87, pm's
+  #30377, settled before the board is drawn). In the Vendor field: an option already quoted
+  reads "Already quoted on this event", a label with no full stop. Typed text that matches
+  nothing reads "No vendor matches “{{typed}}”.", the time zone picker's shape, and with
+  nothing to offer at all "There are no vendors to choose from.", which stays true when every
+  vendor is archived (rejected: "No vendors yet.", which is not). The second line, for an owner
+  or admin, is "Add the vendor on the Vendors page first.", linking to the directory, and reads
+  under either first line; for an event's Lead it is "Ask an owner or admin to add the
+  vendor.", which says what to do rather than only what the Lead cannot (rejected: "Only an
+  Owner or Admin can add a vendor."). Roles in running text are lower case, per the glossary.
+  The second quote from one vendor, on the form and as the API's 409 detail under one key:
+  "That vendor already has a quote on this event, so this quote was not saved. To give a new
+  price, revise that quote." No name slot, as with "That vendor is no longer one of this
+  organisation's vendors". The vendor page's difference: "The schedule matches the quote.";
+  "{{amount}} of the quote is not scheduled yet."; "The schedule is {{amount}} over the
+  quote.", `{{amount}}` from `Intl.NumberFormat` in the event's currency, never a sign or a
+  colour alone. Empty states: "No quotes on this event yet." beside **Add a quote**, and "No
+  payments scheduled yet." "Nothing is due." stays sc-93's.
+- **7 Nov 2026. "On the day", never "on the night"** (sc-29384, from the owner's 3 Nov decision).
+  Events happen at any hour, so the copy says "on the day" and carries no night, dusk or sunset
+  imagery: `verifyPhone.doneBody`, `steps.mobileIntro`, `completeProfile.mobileHelp`,
+  `rolesScreen.means.run_of_show`, and the web tagline, now the app's "Plan the event. Run the
+  day." in every locale. es, fr and pt say "el día del evento", "le jour de l’événement" and "no
+  dia do evento". Kept: `eventForm.clocksSkip` and `clocksSkipNextDay` say "the clocks go forward
+  that night", which describes the clock change, not the event. "Good evening" is a greeting by
+  the hour and stays.
 - **5 Nov 2026. An event's People refusals** (`errors:own_event_role`, `messages:people.*`,
   sc-30009 for sc-29912). Kept as dev2 wrote them. The event role Lead is "the event's lead" in
   running text, lower case, as "an owner, an admin".
@@ -154,7 +305,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   the confirmation "Keep it live", never "Cancel". A refusal starts "Not paused." or "Not
   resumed.", as "Not ended." does. The explanation "Guests can't reply …" keeps its contraction,
   as `scheduleLocked` does: it explains, it does not refuse. "Check-in" is guests arriving at
-  the door, "service" the food and drink on the night; es, fr and pt name the door, never a
+  the door, "service" the food and drink on the day; es, fr and pt name the door, never a
   hotel or airport check-in.
 - **27 Oct 2026. An event's hosts** (sc-15427 for sc-6713, `web:eventHosts.*`,
   `eventLive.needsHost*|addHosts` web and app, `messages:validation.event_host*`,
@@ -540,6 +691,14 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   rule that the example shows the rule and the words never name a decimal count; and over
   "Settled would be", which is not a sentence. "Close" is a state word, not the dialog's
   close button: its own key.
+- **7 Nov 2026. The ceiling line in what a decision costs (sc-90 in sc-86's answer).** The
+  not-yet-made form of the rate-edit warning: "This would take the event over its ceiling."
+  or "This would take {{category}} over its ceiling.", then "Settled, it would be {{total}}
+  against {{ceiling}}." or "If everyone comes, it would be {{total}} against {{ceiling}}."
+  Won over the change as a slot ("Adding 4 guests takes …"), because the caller already names
+  the change above the answer and a slot holding each caller's noun phrase leaves es, fr and
+  pt no way to agree with it; and over keeping "You can still save it", because nothing is
+  being saved yet. Which of event or category it names follows the rate-edit rule.
 - **17 Oct 2026. "A device that has not signed in to your Soirely account before has just
   signed in."** (`emails:newDevice.body`). Won over "Your Soirely account was signed in to on
   a device it hasn't seen before": "signed in to on" stacks two prepositions, and an account
@@ -721,3 +880,6 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
   `confirmBody` keeps "you'll": it explains, it does not refuse. The feed's status words are the
   Events list's (Draft, Live, Paused, Finished) plus "Called off" and "Deleted", each a word
   about the event.
+- **A refused control's screen-reader word** (`mobile:forms.invalid`, sc-31909): "Invalid", heard
+  after the control's name ("Email, Invalid") and before its refusal line as the hint. One word,
+  capitalised as a state the platform announces; never seen, so it has no layout to fit.

@@ -53,7 +53,6 @@ export const AREAS: readonly Area[] = [
   {
     area: 'run_of_show',
     name: 'Run of show',
-    // The owner's words (3 Nov): en.json still says "on the night" until the linguist's change lands.
     means: 'The schedule, and marking items done on the day.',
     permissions: READ_AND_CHANGE('run_of_show'),
   },
@@ -140,12 +139,43 @@ export const LEVEL_WORDS: Record<Level, string> = {
   change: 'Change',
 };
 
+export const LEVEL_FILLED: Record<Level, 0 | 1 | 2> = { nothing: 0, read: 1, change: 2 };
+
+export function levelLine(level: Level, area: Pick<Area, 'name'>): string {
+  if (level === 'nothing') return 'Not in their menus at all.';
+  if (level === 'read') return 'Open, with no buttons.';
+
+  return `Everything in ${area.name}.`;
+}
+
+export function levelCounts(grant: readonly string[]): Record<Level, number> {
+  const counts: Record<Level, number> = { change: 0, read: 0, nothing: 0 };
+  for (const { area } of AREAS) counts[levelOf(grant, area)] += 1;
+
+  return counts;
+}
+
 export function extrasFor(area: Area): Extra[] {
   return extrasOf(area.area, area.permissions).flatMap((permission) => {
     const extra = EXTRAS[permission];
 
     return extra == null ? [] : [extra];
   });
+}
+
+export function extrasLine(grant: readonly string[], area: Area): string | undefined {
+  if (levelOf(grant, area.area) === 'nothing') return undefined;
+  const words = extrasFor(area).map(
+    (extra) => `${extra.name} · ${grant.includes(extra.permission) ? extra.on : extra.off}`,
+  );
+
+  return words.length === 0 ? undefined : words.join(', ');
+}
+
+export function changedAreas(saved: readonly string[], grant: readonly string[]): number {
+  return AREAS.filter(({ permissions }) =>
+    permissions.some((permission) => saved.includes(permission) !== grant.includes(permission)),
+  ).length;
 }
 
 export function grantOf(
@@ -197,6 +227,18 @@ export function idOf(name: string): string {
   return name.toLowerCase().replace(/[^a-z]+/gu, '-');
 }
 
+/** Who held which built-in role before sc-29859 left three; nothing on screen reads it. */
+const HELD_BEFORE: Record<string, string> = {
+  'Folake Adeyemi': 'Owner',
+  'Julien Moreau': 'Administrator',
+  'Priya Shah': 'Event manager',
+  'Ana Souza': 'Coordinator',
+  'Tom Becker': 'Door staff',
+  'Kofi Mensah': 'Read-only',
+  'Marta Silva': 'Coordinator',
+  'Daniel Kim': 'Coordinator',
+};
+
 export function sampleRoles(): DemoRole[] {
   return ROLES.map((role) => ({
     id: idOf(role.name),
@@ -205,7 +247,7 @@ export function sampleRoles(): DemoRole[] {
     owner: role.name === 'Owner',
     grant: GRANTS[role.name] ?? [],
     holders: MEMBERS.filter(
-      (member) => member.role === role.name && member.status !== 'former',
+      (member) => HELD_BEFORE[member.name] === role.name && member.status !== 'former',
     ).map(({ name }) => name),
   }));
 }
@@ -245,6 +287,75 @@ const AREA_NAMES = new Map(AREAS.map(({ area, name }) => [area, name]));
 
 export function areaName(area: string): string {
   return AREA_NAMES.get(area) ?? EXTRAS[area]?.name ?? area;
+}
+
+export function kindOf(role: Pick<DemoRole, 'owner' | 'builtIn'>): string {
+  if (role.owner) return 'everything';
+
+  return role.builtIn ? 'built in' : `made by ${ORGANISATION}`;
+}
+
+export function roleLine(role: DemoRole): string {
+  return `${people(role.holders.length)} · ${kindOf(role)}`;
+}
+
+export function heldLine(role: DemoRole): string {
+  if (role.owner) return describeRole(role);
+  const held = role.holders.length === 0 ? 'nobody' : people(role.holders.length);
+
+  return `${role.builtIn ? 'Built in' : `Made by ${ORGANISATION}`} · held by ${held}`;
+}
+
+export function rolesCount(roles: readonly DemoRole[]): { says: string; line: string } {
+  const built = roles.filter((role) => role.builtIn).length;
+  const made = roles.length - built;
+
+  return {
+    says: roles.length === 1 ? '1 role' : `${roles.length} roles`,
+    line: [`${built} built in`, ...(made > 0 ? [`${made} made by ${ORGANISATION}`] : [])].join(
+      ' · ',
+    ),
+  };
+}
+
+export interface Removed {
+  name: string;
+  holders: number;
+  movedTo: string | null;
+}
+
+export function removedCard({ name, holders, movedTo }: Removed): {
+  says: string;
+  line: string | null;
+} {
+  const line =
+    holders === 0 || movedTo == null
+      ? null
+      : holders === 1
+        ? `Its 1 person is now ${movedTo}.`
+        : `Its ${holders} people are now ${movedTo}.`;
+
+  return { says: `${name} was removed`, line };
+}
+
+export const APPLIES = "Changes apply on each person's next request. Nobody is signed out.";
+export const SAVED_LINE = "Applies on each person's next request.";
+
+export function changesLine(
+  changes: number,
+  holders: readonly string[],
+): { count: string; rest: string } {
+  const count = changes === 1 ? '1 change.' : `${changes} changes.`;
+  const it = changes === 1 ? 'it' : 'them';
+  if (holders.length === 0) return { count, rest: 'Nobody holds this role yet.' };
+  const who =
+    holders.length === 1 ? `${holders[0] ?? ''} gets ${it}` : `${people(holders.length)} get ${it}`;
+
+  return { count, rest: `${who} on their next request. Nobody is signed out.` };
+}
+
+export function discardTitle(changes: number): string {
+  return changes === 1 ? 'Discard your change?' : 'Discard your changes?';
 }
 
 export function unsavedLine(creating: boolean, role: string, holders: number): string {
@@ -389,6 +500,8 @@ export interface RolesStart {
   /** A role's id, `new`, or null for the list (on its side, the first role you can change). */
   open: string | null;
   grant: string[] | null;
+  editing: boolean;
+  area: string | null;
   saved: boolean;
   removing: boolean;
   nameRefused: boolean;
@@ -402,6 +515,8 @@ export function rolesStart(state: RolesState): RolesStart {
     roles,
     open: null,
     grant: null,
+    editing: false,
+    area: null,
     saved: false,
     removing: false,
     nameRefused: false,
@@ -419,7 +534,13 @@ export function rolesStart(state: RolesState): RolesStart {
     case 'saved':
       return { ...base, open: eventManager, saved: true };
     case 'unsaved':
-      return { ...base, open: eventManager, grant: [...grantFor('Event manager'), MARGIN] };
+      return {
+        ...base,
+        open: eventManager,
+        grant: [...grantFor('Event manager'), MARGIN],
+        editing: true,
+        area: 'budget',
+      };
     case 'owner':
       return { ...base, open: idOf('Owner') };
     case 'newRole':
@@ -427,7 +548,7 @@ export function rolesStart(state: RolesState): RolesStart {
     case 'newBlank':
       return { ...base, open: 'new', nameRefused: true };
     case 'locked':
-      return { ...base, viewer: JULIEN, open: idOf('Coordinator') };
+      return { ...base, viewer: JULIEN, open: idOf('Coordinator'), editing: true };
     case 'doorStaff':
       return { ...base, open: idOf('Door staff') };
     case 'removing':

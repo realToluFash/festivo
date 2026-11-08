@@ -20,7 +20,7 @@ import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { useWideWidth } from '../../../phoneWidth.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
-import { can, useSession } from '../../../session.ts';
+import { canOn, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { type EditOutcome } from './EditEvent.tsx';
 import { DeleteEvent } from './DeleteEvent.tsx';
@@ -31,6 +31,7 @@ import { DraftRow, StatusPill } from './MakeLive.tsx';
 import { MuteEvent } from './MuteEvent.tsx';
 import { PauseButton, PausedRow } from './PauseEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
+import { EventPeople } from './EventPeople.tsx';
 import { Placeholder } from './Placeholder.tsx';
 import { typeLabel } from './eventTypes.ts';
 import { ComingUp, AllDates } from './Timeline.tsx';
@@ -44,7 +45,7 @@ type Load =
   | { kind: 'notFound' }
   | { kind: 'loaded'; event: OrganisationEvent; tag: string };
 
-type Page = 'event' | 'guests' | 'dates' | PlaceholderEventArea;
+type Page = 'event' | 'guests' | 'dates' | 'people' | PlaceholderEventArea;
 
 export function EventView() {
   return <ForEvent page="event" />;
@@ -56,6 +57,10 @@ export function EventGuests() {
 
 export function EventDates() {
   return <ForEvent page="dates" />;
+}
+
+export function EventPeoplePage() {
+  return <ForEvent page="people" />;
 }
 
 /** One of the areas not built yet: its panel says it is coming (sc-22103). */
@@ -205,6 +210,7 @@ function EventOf({
           )}
           {page === 'guests' && <GuestsComing event={load.event} />}
           {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
+          {page === 'people' && <PeoplePage event={load.event} />}
           {isPlaceholderEventArea(page) && <AreaComing event={load.event} area={page} />}
         </Arrived>
       )}
@@ -225,13 +231,12 @@ function EventTop({
   onChange: (event: OrganisationEvent, tag: string) => void;
 }) {
   const { t } = useTranslation();
-  const session = useSession();
   const [madeLive, setMadeLive] = useState(false);
   const [resumed, setResumed] = useState(false);
   const now = useServerNow();
   const loadedAt = useLoadedAt(event);
   const phase = shownPhase(event, loadedAt, now);
-  const manages = can(session, 'events.manage');
+  const manages = canOn(event, 'events.manage');
 
   useEffect(() => rememberTabHolding(event.organisationId, phase), [event.organisationId, phase]);
 
@@ -245,7 +250,7 @@ function EventTop({
           <StatusPill phase={phase} />
           <PhaseChange key={loadedAt.getTime()} phase={phase} />
         </div>
-        {phase === 'finished' && can(session, 'events.create') && (
+        {phase === 'finished' && canOn(event, 'events.create') && (
           <div className="event-top-primary">
             <DuplicateEvent event={event} primary />
           </div>
@@ -345,7 +350,6 @@ function Overview({
   onChange: (event: OrganisationEvent, tag: string) => void;
 }) {
   const { t } = useTranslation();
-  const session = useSession();
   const location = useLocation();
   const navigate = useNavigate();
   const [outcome] = useState(() => editOutcome(location.state));
@@ -356,8 +360,8 @@ function Overview({
   const now = useServerNow();
   const loadedAt = useLoadedAt(event);
   const phase = shownPhase(event, loadedAt, now);
-  const manages = can(session, 'events.manage');
-  const creates = can(session, 'events.create');
+  const manages = canOn(event, 'events.manage');
+  const creates = canOn(event, 'events.create');
   const wide = useWideWidth();
 
   useEffect(() => {
@@ -602,6 +606,14 @@ function GuestsComing({ event }: { event: OrganisationEvent }) {
       <p>{t('eventPage.guestsComing')}</p>
     </section>
   );
+}
+
+function PeoplePage({ event }: { event: OrganisationEvent }) {
+  const { t } = useTranslation();
+
+  usePageTitle(pageTitle(t, [t('eventPeople.title'), event.name]));
+
+  return <EventPeople event={event} />;
 }
 
 function AreaComing({ event, area }: { event: OrganisationEvent; area: PlaceholderEventArea }) {

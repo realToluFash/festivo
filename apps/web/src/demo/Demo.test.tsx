@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -78,7 +81,7 @@ describe('the demo', () => {
     const router = at('/register');
 
     fireEvent.click(screen.getByRole('link', { name: 'Design demo' }));
-    await screen.findByRole('heading', { name: 'Design demo' });
+    await screen.findByRole('heading', { name: 'Design demo' }, { timeout: 8000 });
 
     expect(screen.getByRole('heading', { name: '27 · Sign in · desktop polish' })).toBeDefined();
     expect(
@@ -215,6 +218,14 @@ describe('the demo', () => {
     expect(await screen.findByRole('heading', { name: 'This page does not exist' })).toBeDefined();
   });
 
+  it('says a two-factor sign-in that ran out timed out, the email kept (sc-29956)', async () => {
+    await signInBoard('code-timed-out');
+
+    expect(screen.getByText('That sign-in timed out')).toBeDefined();
+    expect(screen.getByText('Sign in again to carry on.')).toBeDefined();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
+  });
+
   it('gives the form way to the providers when password sign-in is off', async () => {
     await signInBoard('provider-only');
 
@@ -326,6 +337,55 @@ describe('the demo creates an account (sc-29061)', () => {
     expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('');
   });
 
+  it('takes a run-out sign-up back to Create your account, name and email kept, and says why (sc-29923)', async () => {
+    const line =
+      'Your sign-up timed out, so we did not keep the password. Enter it again to get a new code.';
+    await page('?page=email&state=run-out', 'Check your email');
+    type('Code from the email', SAMPLE.code);
+    fireEvent.click(screen.getByRole('button', { name: 'Verify email' }));
+    await wait();
+
+    await screen.findByRole('heading', { name: 'Create your account' });
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe(line));
+    expect(screen.getByText(line).className).toBe('demo-notice-title');
+    expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe(SAMPLE.name);
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
+    expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('');
+    expect(document.activeElement).toBe(screen.getByLabelText('Password'));
+
+    type('Password', SAMPLE.password);
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    expect(screen.queryByText(line)).toBeNull();
+    await wait();
+    expect(await screen.findByRole('heading', { name: 'Check your email' })).toBeDefined();
+    expect(screen.getByText('Step 1 of 2')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back' }));
+    await screen.findByRole('heading', { name: 'Create your account' });
+    expect(screen.queryByText(line)).toBeNull();
+  });
+
+  it('ends a run-out sign-up the same way from Send a new code (sc-29923)', async () => {
+    await page('?page=email&state=run-out', 'Check your email');
+    for (let second = 0; second < 61; second++) {
+      await act(() => vi.advanceTimersByTimeAsync(1000));
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
+    await wait();
+
+    await screen.findByRole('heading', { name: 'Create your account' });
+    expect(await screen.findByText(/Your sign-up timed out/)).toBeDefined();
+  });
+
+  it('keeps only the email when the tab no longer has the name (sc-29923)', async () => {
+    await page('?page=register&state=timed-out-new-tab', 'Create your account');
+
+    expect(await screen.findByText(/Your sign-up timed out/)).toBeDefined();
+    expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
+    expect(document.activeElement).toBe(screen.getByLabelText('Password'));
+  });
+
   it('takes six digits only when sent, keeps a wrong code selected, and verifies the right one', async () => {
     await page('?page=email', 'Check your email');
     const code = screen.getByLabelText('Code from the email') as HTMLInputElement;
@@ -400,7 +460,7 @@ describe('the demo creates an account (sc-29061)', () => {
     expect(screen.getByText('Add your organisation’s name to carry on.')).toBeDefined();
     expect(screen.getByText(/too short for United Kingdom/)).toBeDefined();
     expect(screen.queryByText(/Your events belong to it/)).toBeNull();
-    expect(screen.queryByText(/How you are reached on the night/)).toBeNull();
+    expect(screen.queryByText(/How you are reached on the day/)).toBeNull();
     expect(document.activeElement).toBe(screen.getByLabelText('Organisation name'));
   });
 
@@ -423,7 +483,9 @@ describe('the demo creates an account (sc-29061)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
     await wait();
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Soirely' }));
-    expect(await screen.findByRole('heading', { name: 'Signed in' })).toBeDefined();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Good morning, Folake' }),
+    ).toBeDefined();
   });
 
   it('changes the number from the code, and Back returns to a code that still works', async () => {
@@ -685,6 +747,53 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     expect(screen.getByRole('button', { name: 'Verify and sign in' })).toBeDefined();
   });
 
+  async function timedOut(): Promise<void> {
+    await screen.findByRole('heading', { level: 1, name: 'Sign in' });
+    expect(screen.getByText('That sign-in timed out')).toBeDefined();
+    expect(screen.getByText('Sign in again to carry on.')).toBeDefined();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
+  }
+
+  it('lands the right code after the pause lifts on sign-in, timed out, the email kept (sc-29956)', async () => {
+    await page('?page=code', 'Enter your code');
+    for (let tries = 0; tries < TRIES; tries++) {
+      type('Code', '111111');
+      fireEvent.submit(screen.getByLabelText('Code'));
+      await wait();
+    }
+    await wait(61_000);
+
+    type('Code', SAMPLE.authenticator);
+    fireEvent.click(screen.getByRole('button', { name: 'Verify and sign in' }));
+    await wait();
+    await timedOut();
+  });
+
+  it('lands a right recovery code after the pause lifts on sign-in, timed out (sc-29956)', async () => {
+    await page('?page=code&state=paused', 'Enter your code');
+    await wait(61_000);
+    fireEvent.click(screen.getByRole('link', { name: 'Use a recovery code instead' }));
+    await screen.findByRole('heading', { name: 'Enter a recovery code' });
+
+    type('Recovery code', SAMPLE.recovery);
+    fireEvent.click(screen.getByRole('button', { name: 'Use this code' }));
+    await wait();
+    await timedOut();
+  });
+
+  it('lands lost authenticator, opened after the pause lifts, on sign-in, timed out (sc-29956)', async () => {
+    await page('?page=code&state=paused', 'Enter your code');
+    await wait(61_000);
+    fireEvent.click(
+      screen.getByRole('link', { name: 'Lost your authenticator and your recovery codes?' }),
+    );
+
+    await timedOut();
+    expect(
+      screen.queryByRole('heading', { name: 'Get back in without your authenticator' }),
+    ).toBeNull();
+  });
+
   it('takes a recovery code in any case with the dash put in, and says a used one is used', async () => {
     await page('?page=code', 'Enter your code');
     fireEvent.click(screen.getByRole('link', { name: 'Use a recovery code instead' }));
@@ -788,9 +897,45 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     expect(screen.getByRole('heading', { name: 'Your request was turned down' })).toBeDefined();
   });
 
-  it('cancels the request from the waiting page and says nothing changed', async () => {
+  it('asks before cancelling, Keep waiting first, and keeps the request waiting (sc-29957)', async () => {
     await page('?page=waiting', 'Waiting for your organisation');
     fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    const dialog = screen.getByRole('alertdialog', { name: 'Cancel your request?' });
+    expect(within(dialog).getByText('You’ll need to start again to get back in.')).toBeDefined();
+    expect(document.activeElement).toBe(
+      within(dialog).getByRole('button', { name: 'Keep waiting' }),
+    );
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Keep waiting' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Waiting for your organisation' })).toBeDefined();
+  });
+
+  it('keeps waiting on Escape, as Keep waiting does (sc-29957)', async () => {
+    await page('?page=waiting', 'Waiting for your organisation');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    expect(screen.getByRole('alertdialog', { name: 'Cancel your request?' })).toBeDefined();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Waiting for your organisation' })).toBeDefined();
+  });
+
+  it('closes the dialog and shows an answer found while it is open (sc-29957)', async () => {
+    await page('?page=waiting', 'Waiting for your organisation');
+    fireEvent.click(screen.getByRole('button', { name: 'Demo: Confirm' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    expect(screen.getByRole('alertdialog', { name: 'Cancel your request?' })).toBeDefined();
+    await wait(20_000);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Two-factor is off' })).toBeDefined();
+  });
+
+  it('cancels the request once confirmed and says nothing changed', async () => {
+    await page('?page=waiting', 'Waiting for your organisation');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    const dialog = screen.getByRole('alertdialog', { name: 'Cancel your request?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel the request' }));
     await wait();
     expect(screen.getByRole('heading', { name: 'Request cancelled' })).toBeDefined();
     expect(screen.getByText(/^Nothing changed/)).toBeDefined();
@@ -825,6 +970,175 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel and sign out everywhere' }));
     await wait();
     expect(screen.getByRole('heading', { name: 'Cancelled and signed out' })).toBeDefined();
+  });
+});
+
+describe('the demo’s lost authenticator counts one code, and says when a cancel fails (sc-30737)', () => {
+  beforeEach(() => {
+    inEnvironment('development');
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+
+  async function wait(ms = 1000): Promise<void> {
+    await act(() => vi.advanceTimersByTimeAsync(ms));
+  }
+
+  async function page(query: string, title: string) {
+    at(`/demo/two-factor${query}`);
+    await screen.findByRole('heading', { level: 1, name: title });
+  }
+
+  const NOT_CANCELLED = 'Not cancelled. Your request is still waiting. Try again.';
+
+  it('lists every new state on the demo home', async () => {
+    at('/demo');
+    await screen.findByRole('heading', { name: 'Design demo' });
+
+    for (const name of [
+      'Start, no verified phone',
+      'Sending the code',
+      'The email’s code expired',
+      'The email’s code, five wrong tries',
+      'Both codes expired',
+      'Both codes, five wrong tries',
+      'Not cancelled',
+    ]) {
+      expect(screen.getByRole('link', { name })).toBeDefined();
+    }
+  });
+
+  it('says one code on the start page with no verified phone, and sends the code', async () => {
+    await page('?page=start&state=email-only', 'Get back in without your authenticator');
+    expect(screen.getByText(`We send a code to ${SAMPLE.email}.`)).toBeDefined();
+    expect(screen.getByText('You enter the code here.')).toBeDefined();
+    expect(screen.queryByText('You enter the codes here.')).toBeNull();
+
+    const send = screen.getByRole('button', { name: 'Send the code' });
+    fireEvent.click(send);
+    expect(send.textContent).toBe('Sending the code…');
+    expect(send.getAttribute('aria-busy')).toBe('true');
+    await wait();
+    expect(await screen.findByRole('heading', { name: 'Enter the code' })).toBeDefined();
+  });
+
+  it('keeps two codes on the start page with a verified phone', async () => {
+    await page('?page=start&state=email-only', 'Get back in without your authenticator');
+    fireEvent.click(screen.getByRole('switch', { name: /no verified phone/ }));
+
+    expect(screen.getByText(/if your number is verified\.$/)).toBeDefined();
+    expect(screen.getByText('You enter the codes here.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    expect(screen.getByRole('button', { name: 'Sending the codes…' })).toBeDefined();
+  });
+
+  it('holds the button sending at its own link', async () => {
+    await page('?page=start&state=email-only-sending', 'Get back in without your authenticator');
+    const send = screen.getByRole('button', { name: 'Sending the code…' });
+    expect(send.getAttribute('aria-busy')).toBe('true');
+
+    fireEvent.click(send);
+    await wait();
+    expect(
+      screen.getByRole('heading', { name: 'Get back in without your authenticator' }),
+    ).toBeDefined();
+  });
+
+  it('says the one code has expired, and Send a new code brings the field back', async () => {
+    await page('?page=codes&state=email-only-expired', 'Enter the code');
+    expect(screen.getByText('That code has expired')).toBeDefined();
+    expect(
+      screen.getByText(
+        'Codes only work for a while. Send a new one and use the code in the newest email.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByLabelText('Code from the email')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
+    await wait();
+    expect(screen.queryByText('That code has expired')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByLabelText('Code from the email'));
+  });
+
+  it('says the one code no longer works at the fifth wrong try', async () => {
+    await page('?page=codes&state=email-only', 'Enter the code');
+    for (let tries = 0; tries < TRIES; tries++) {
+      expect(screen.queryByText('Too many wrong tries')).toBeNull();
+      type('Code from the email', '000000');
+      fireEvent.click(screen.getByRole('button', { name: 'Ask to get back in' }));
+      await wait();
+    }
+
+    expect(screen.getByText('Too many wrong tries')).toBeDefined();
+    expect(
+      screen.getByText('That code no longer works. Send a new one to carry on.'),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Send a new code' })).toBeDefined();
+  });
+
+  it.each([
+    [
+      'expired',
+      'Those codes have expired',
+      'Codes only work for a while. Send new ones and use the codes in the newest email and WhatsApp message.',
+    ],
+    ['exhausted', 'Too many wrong tries', 'Those codes no longer work. Send new ones to carry on.'],
+  ])('keeps both codes’ words when %s with a verified phone', async (state, title, body) => {
+    await page(`?page=codes&state=${state}`, 'Enter both codes');
+    expect(screen.getByText(title)).toBeDefined();
+    expect(screen.getByText(body)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Send new codes' })).toBeDefined();
+  });
+
+  it('keeps the dialog open with the line when Soirely cannot be reached', async () => {
+    await page('?page=waiting', 'Waiting for your organisation');
+    fireEvent.click(screen.getByRole('switch', { name: /can’t be reached/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    const dialog = screen.getByRole('alertdialog', { name: 'Cancel your request?' });
+    const focused = document.activeElement;
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel the request' }));
+    await wait();
+    expect(within(dialog).getByRole('alert').textContent).toContain(NOT_CANCELLED);
+    expect(document.activeElement).toBe(focused);
+    expect(screen.getByRole('heading', { name: 'Waiting for your organisation' })).toBeDefined();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel the request' }));
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+    await wait();
+    expect(within(dialog).getByRole('alert').textContent).toContain(NOT_CANCELLED);
+  });
+
+  it('hides the line on the next press, and cancels once Soirely answers', async () => {
+    await page('?page=waiting&state=not-cancelled', 'Waiting for your organisation');
+    const dialog = screen.getByRole('alertdialog', { name: 'Cancel your request?' });
+    expect(within(dialog).getByRole('alert').textContent).toContain(NOT_CANCELLED);
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel the request' }));
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+    await wait();
+    expect(screen.getByRole('heading', { name: 'Request cancelled' })).toBeDefined();
+  });
+
+  it('closes on Escape after a cancel that failed, with the request still waiting', async () => {
+    await page('?page=waiting&state=not-cancelled', 'Waiting for your organisation');
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.queryByText(NOT_CANCELLED)).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Waiting for your organisation' })).toBeDefined();
+  });
+
+  it('shows the answer at once when the request was answered before the cancel arrived', async () => {
+    await page('?page=waiting', 'Waiting for your organisation');
+    fireEvent.click(screen.getByRole('button', { name: 'Demo: Turn down' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    const dialog = screen.getByRole('alertdialog', { name: 'Cancel your request?' });
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel the request' }));
+    await wait();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.queryByText(NOT_CANCELLED)).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Your request was turned down' })).toBeDefined();
   });
 });
 
@@ -976,6 +1290,17 @@ describe('the demo’s other ways in (sc-29062)', () => {
     expect(await screen.findByRole('heading', { name: 'You are in' })).toBeDefined();
   });
 
+  it('draws the waiting invitation as the built row: a dashed tile, and Works until on its own line', async () => {
+    await page('?page=details&state=invitation', 'A few details');
+
+    const until = screen.getByText(`Works until ${SAMPLE.invitedUntil}`);
+    const row = until.closest('.demo-organisation') as HTMLElement;
+    expect(
+      within(row).getByText(`Invitation from ${SAMPLE.inviter} · ${SAMPLE.role}`),
+    ).toBeDefined();
+    expect(row.querySelector('.org-tile')?.classList.contains('org-tile-invited')).toBe(true);
+  });
+
   it('holds the invitation’s answers while Save and continue is saving', async () => {
     await page('?page=details&state=invitation', 'A few details');
     type('Organisation name', SAMPLE.organisation);
@@ -1009,6 +1334,133 @@ describe('the demo’s other ways in (sc-29062)', () => {
   });
 });
 
+describe('the signed-out frame’s foot and ways out (sc-29561)', () => {
+  beforeEach(() => {
+    inEnvironment('development');
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+
+  const TODAY = { level: 1, name: 'Good morning, Folake' } as const;
+
+  async function open(path: string, title: string): Promise<void> {
+    at(path);
+    await screen.findByRole('heading', { level: 1, name: title });
+  }
+
+  async function wait(): Promise<void> {
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+  }
+
+  it('keeps the column’s own 24 px under its last part, on every page of the frame', () => {
+    const css = readFileSync(join(import.meta.dirname, 'demo.css'), 'utf8');
+    const rules = [...css.matchAll(/\n(\.demo-page-main[^{]*)\{([^}]*)\}/gu)];
+
+    expect(rules.find(([, selector]) => selector?.trim() === '.demo-page-main')?.[2]).toMatch(
+      /padding: 88px var\(--spaceXl\) var\(--space3xl\);/u,
+    );
+    for (const [, selector, body] of rules.filter(([, s]) => s?.trim() !== '.demo-page-main')) {
+      expect(body, selector).not.toMatch(/padding(-bottom|-block)?:/u);
+    }
+    expect(readFileSync(join(import.meta.dirname, '../tokens.css'), 'utf8')).toMatch(
+      /--space3xl: 24px;/u,
+    );
+  });
+
+  it.each([
+    [
+      '/demo/create-account?page=phone&state=verified',
+      'Number verified',
+      'button',
+      'Continue to Soirely',
+    ],
+    ['/demo/create-account?page=phone', 'Check your messages', 'link', 'Carry on without it'],
+    ['/demo/ways-in?page=invitation&state=joined', 'You are in', 'link', 'Open Ire Events'],
+    ['/demo/ways-in?page=ask&state=member', 'Ask to join Ire Events', 'link', 'Open Ire Events'],
+    [
+      '/demo/ways-in?page=invitation&state=answered',
+      'Invitation declined',
+      'link',
+      'Go to Soirely',
+    ],
+    [
+      '/demo/ways-in?page=invitation&state=expired',
+      'This invitation has expired',
+      'link',
+      'Go to Soirely',
+    ],
+    [
+      '/demo/ways-in?page=invitation&state=withdrawn',
+      'This invitation was withdrawn',
+      'link',
+      'Go to Soirely',
+    ],
+    ['/demo/ways-in?page=invitation&state=declined', 'Already declined', 'link', 'Go to Soirely'],
+    [
+      '/demo/ways-in?page=invitation&state=deleted',
+      'This organisation is gone',
+      'link',
+      'Go to Soirely',
+    ],
+  ] as const)('lands %s on Today, signed in', async (path, title, role, name) => {
+    await open(path, title);
+
+    fireEvent.click(screen.getByRole(role, { name }));
+    expect(await screen.findByRole('heading', TODAY)).toBeDefined();
+    expect(screen.queryByText('New to Soirely?')).toBeNull();
+  });
+
+  it('lands A few details saved with no number on Today', async () => {
+    await open('/demo/create-account?page=details', 'A few details');
+    type('Organisation name', SAMPLE.organisation);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    await wait();
+    expect(await screen.findByRole('heading', TODAY)).toBeDefined();
+  });
+
+  it.each(['sent', 'asked', 'cooling'])(
+    'lands Continue on %s on Waiting, as the asker is not a member yet',
+    async (state) => {
+      await open(`/demo/ways-in?page=ask&state=${state}`, 'Ask to join Ire Events');
+
+      fireEvent.click(screen.getByRole('link', { name: 'Continue' }));
+      expect(
+        await screen.findByRole('heading', { name: 'Waiting for Ire Events to approve you' }),
+      ).toBeDefined();
+      expect(screen.getByRole('link', { name: 'Sign out' })).toBeDefined();
+    },
+  );
+
+  it('lands Google and Apple on Create your account on their first sign-in pages', async () => {
+    await open('/demo/create-account', 'Create your account');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    await wait();
+    expect(await screen.findByText('Signed in with Google')).toBeDefined();
+    expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe(SAMPLE.name);
+  });
+
+  it('lands Apple with no name on its first sign-in page, Full name empty', async () => {
+    await open('/demo/create-account', 'Create your account');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue with Apple' }));
+    await wait();
+    expect(await screen.findByText('Signed in with Apple')).toBeDefined();
+    expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe('');
+  });
+
+  it('opens Today for the old stand-in’s address, typed by hand', async () => {
+    at('/demo/signed-in');
+
+    expect(await screen.findByRole('heading', TODAY)).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Signed in' })).toBeNull();
+  });
+
+  it('offers neither way in the Terms and Privacy stand-ins’ header, as any page opens them', async () => {
+    await open('/demo/later?screen=terms', 'Terms');
+    expect(screen.queryByText('New to Soirely?')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Back to sign in' })).toBeDefined();
+  });
+});
+
 describe('Today at a desk (sc-29092)', () => {
   beforeEach(() => inEnvironment('development'));
 
@@ -1027,9 +1479,25 @@ describe('Today at a desk (sc-29092)', () => {
     expect(rows).toHaveLength(4);
     expect(within(rows[0] as HTMLElement).getByText('3 days late')).toBeDefined();
     expect(needs.querySelectorAll('.today-act.is-primary')).toHaveLength(1);
-    expect(screen.getByRole('button', { name: 'Send, Send the invitations' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Chase, Chase 19 replies' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'New event' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Today' }).getAttribute('aria-current')).toBe('page');
+  });
+
+  it('opens the planning day with the party’s invitations not sent, from the demo home', async () => {
+    at('/demo');
+    await screen.findByRole('heading', { name: 'Design demo' });
+    expect(
+      screen
+        .getByRole('link', { name: /A planning day, invitations not sent/ })
+        .getAttribute('href'),
+    ).toBe('/demo/today?moment=plan&invites=none');
+
+    await today('plan&invites=none');
+
+    expect(screen.getByText('Invitations not sent')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Send, Send the invitations' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Chase, Chase 19 replies' })).toBeNull();
   });
 
   it('says what a press opens, and ⌘K opens search', async () => {
@@ -1048,7 +1516,7 @@ describe('Today at a desk (sc-29092)', () => {
     await today('planNow');
 
     expect(screen.queryByRole('region', { name: 'Needs you' })).toBeNull();
-    expect(screen.getByText('The wedding starts on Friday.')).toBeDefined();
+    expect(screen.getByText('The wedding starts on Thursday.')).toBeDefined();
     expect(screen.queryByText(/replied/)).toBeNull();
   });
 
@@ -1057,8 +1525,8 @@ describe('Today at a desk (sc-29092)', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Drinks reception' })).toBeDefined();
     expect(screen.getByText('Live now')).toBeDefined();
-    expect(screen.getByRole('img', { name: '141 of 152 arrived' })).toBeDefined();
-    expect(screen.getByRole('img', { name: /^2 PM Ceremony, 3 PM Photos/ })).toBeDefined();
+    expect(screen.getByRole('img', { name: '87 of 99 arrived' })).toBeDefined();
+    expect(screen.getByRole('img', { name: /^14:00 Ceremony, 15:00 Photos/ })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Open run of show' })).toBeDefined();
   });
 
@@ -1068,7 +1536,7 @@ describe('Today at a desk (sc-29092)', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: 'Adaeze & Tunde’s wedding' }),
     ).toBeDefined();
-    expect(screen.getByText('Ends tomorrow, Sun, Nov 8 at 2:00 PM')).toBeDefined();
+    expect(screen.getByText('Ends tomorrow, Sat, Nov 7 at 15:00')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Open the event' })).toBeDefined();
   });
 
@@ -1087,7 +1555,7 @@ describe('Today at a desk (sc-29092)', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Welcome, Folake' })).toBeDefined();
     expect(screen.getByRole('heading', { name: 'Set up your first event' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Create an event' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Start your first event' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'New event' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Your events' })).toBeNull();
   });
@@ -1122,28 +1590,27 @@ describe('Settings at a desk (sc-29708)', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Members' })).toBeDefined();
   });
 
-  it('says a section the boards do not draw has its own design, and opens nothing', async () => {
+  it('draws every section as a link, and has no Roles', async () => {
     await settings('/demo/settings');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Security' }));
-    expect(screen.getByText('Security has its own design.')).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: 'Roles' }));
-    expect(screen.getByText('Roles has its own design.')).toBeDefined();
+    const list = screen.getByRole('navigation', { name: 'Settings' });
+    expect(within(list).queryAllByRole('button')).toHaveLength(0);
+    expect(within(list).queryByText('Roles')).toBeNull();
     expect(screen.getByRole('heading', { level: 1, name: 'Members' })).toBeDefined();
   });
 
   it('names who is looking at the sidebar’s foot', async () => {
-    await settings('/demo/settings?as=tom');
-    expect(screen.getByRole('button', { name: 'Tom Becker, Door staff' })).toBeDefined();
+    await settings('/demo/settings?as=julien');
+    expect(screen.getByRole('button', { name: 'Julien Moreau, Admin' })).toBeDefined();
   });
 
-  it('leaves Members and Roles out of the list for a role that does not read them', async () => {
+  it('lists no Members and no Roles for a member', async () => {
     await settings('/demo/settings?as=ana');
 
     const list = screen.getByRole('navigation', { name: 'Settings' });
     expect(within(list).queryByRole('link', { name: 'Members' })).toBeNull();
     expect(within(list).queryByRole('link', { name: 'Roles' })).toBeNull();
-    expect(within(list).getByRole('button', { name: 'General' })).toBeDefined();
+    expect(within(list).getByRole('link', { name: 'General' })).toBeDefined();
   });
 
   it('counts the people and answers the first request from the card', async () => {
@@ -1164,7 +1631,7 @@ describe('Settings at a desk (sc-29708)', () => {
     await settings('/demo/settings/members?state=request');
 
     fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
-    expect(screen.getByText('Lucía Gómez joined as Read-only')).toBeDefined();
+    expect(screen.getByText('Lucía Gómez joined as Member')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'See Lucía Gómez' }));
     expect(screen.getByRole('heading', { level: 1, name: 'Lucía Gómez' })).toBeDefined();
   });
@@ -1188,10 +1655,10 @@ describe('Settings at a desk (sc-29708)', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Priya Shah/u }));
     expect(screen.getByRole('heading', { level: 1, name: 'Priya Shah' })).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Change role' }));
-    fireEvent.click(screen.getByRole('radio', { name: /^Coordinator/u }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Admin/u }));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    expect(screen.getByText('Priya Shah is now Coordinator.')).toBeDefined();
+    expect(screen.getByText('Priya Shah is now Admin.')).toBeDefined();
   });
 
   it('steps back from the proof to the role, where Cancel asks before it drops Owner', async () => {
@@ -1210,12 +1677,21 @@ describe('Settings at a desk (sc-29708)', () => {
     expect(screen.getByRole('alertdialog', { name: 'Discard your change?' })).toBeDefined();
   });
 
-  it('shows somebody who manages nothing the people but no requests or invite', async () => {
-    await settings('/demo/settings/members?as=tom');
+  it('opens no Members page for a member, even from its link', async () => {
+    await settings('/demo/settings/members?as=ana');
 
-    expect(screen.getByText('7 people')).toBeDefined();
-    expect(screen.queryByRole('heading', { name: 'Waiting' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Invite somebody' })).toBeNull();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Members' })).toBeNull();
+    expect(screen.queryByText('7 people')).toBeNull();
+  });
+
+  it('offers an admin Admin and Member, and says only an owner makes an owner', async () => {
+    await settings('/demo/settings/members?as=julien&state=role');
+
+    const dialog = within(screen.getByRole('dialog', { name: 'Priya’s role' }));
+    expect(
+      dialog.getAllByRole('radio').map((radio) => radio.closest('label')?.textContent),
+    ).toEqual([expect.stringMatching(/^Admin/u), expect.stringMatching(/^Member/u)]);
+    expect(dialog.getByText(/^Only an owner makes someone an owner\./u)).toBeDefined();
   });
 
   it('asks for an address before it sends an invitation', async () => {
@@ -1239,7 +1715,7 @@ describe('Settings at a desk (sc-29708)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('answers a section it does not draw with the not-found page', async () => {
+  it('answers Roles, retired, with the not-found page', async () => {
     at('/demo/settings/roles');
 
     expect(await screen.findByRole('heading', { name: 'This page does not exist' })).toBeDefined();
@@ -1250,6 +1726,15 @@ describe('Settings at a desk (sc-29708)', () => {
     await settings('/demo/settings/members?as=julien&state=claim');
 
     const claim = within(screen.getByRole('dialog', { name: 'Become the owner' }));
+    fireEvent.click(
+      within(claim.getByText('TXT').closest('li') as HTMLElement).getByRole('button', {
+        name: 'Copy',
+      }),
+    );
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(claim.getAllByRole('button', { name: 'Copy' })).toHaveLength(3);
+    expect(screen.queryByText('Type copied.')).toBeNull();
+
     const check = () => fireEvent.click(claim.getByRole('button', { name: 'Check record' }));
     check();
     expect(screen.getByText('Checking the record')).toBeDefined();
@@ -1259,5 +1744,170 @@ describe('Settings at a desk (sc-29708)', () => {
     await act(() => vi.advanceTimersByTimeAsync(1200));
 
     expect(screen.getByText('Record found')).toBeDefined();
+  });
+});
+
+describe('People on an event at a desk (sc-29915)', () => {
+  beforeEach(() => inEnvironment('development'));
+
+  async function people(state?: string) {
+    at(state == null ? '/demo/people' : `/demo/people?state=${state}`);
+    await screen.findByRole('heading', { level: 1, name: 'People' });
+  }
+
+  function role(name: RegExp): HTMLInputElement {
+    return within(screen.getByRole('dialog', { name: 'Role on this event' })).getByRole('radio', {
+      name,
+    });
+  }
+
+  it('saves a role as it is picked, and says so', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await people();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Kemi Okafor/u }));
+    fireEvent.click(role(/^Can edit/u));
+    const told = within(screen.getByRole('dialog', { name: 'Role on this event' })).getByRole(
+      'status',
+    );
+    expect(told.textContent).toBe('Saving…');
+    await act(() => vi.advanceTimersByTimeAsync(600));
+
+    expect(screen.getByText('Saved. Kemi Okafor can edit now.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.getByRole('button', { name: /Can edit · Bar and drinks/u })).toBeDefined();
+  });
+
+  it('waits for the arrow keys to rest, and sends nothing back on the saved role', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await people();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Ana Souza/u }));
+    fireEvent.keyDown(role(/^Can edit/u), { key: 'ArrowDown' });
+    fireEvent.click(role(/^Can view/u));
+    await act(() => vi.advanceTimersByTimeAsync(500));
+    fireEvent.keyDown(role(/^Can view/u), { key: 'ArrowDown' });
+    fireEvent.click(role(/^Can check guests in/u));
+    await act(() => vi.advanceTimersByTimeAsync(500));
+    expect(screen.queryByText(/^Saved\./u)).toBeNull();
+    await act(() => vi.advanceTimersByTimeAsync(700));
+    expect(screen.getByText('Saved. Ana Souza can check guests in now.')).toBeDefined();
+
+    fireEvent.keyDown(role(/^Can check guests in/u), { key: 'ArrowUp' });
+    fireEvent.click(role(/^Can view/u));
+    fireEvent.keyDown(role(/^Can view/u), { key: 'ArrowDown' });
+    fireEvent.click(role(/^Can check guests in/u));
+    expect(screen.queryByText('Saving…')).toBeNull();
+    expect(role(/^Can check guests in/u).disabled).toBe(false);
+  });
+
+  it('keeps Lead for members, and tells someone from outside when their access ends', async () => {
+    await people();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Sade Bello/u }));
+    expect(role(/^Lead/u).disabled).toBe(true);
+    expect(screen.getByText('For members of Ire Events only.')).toBeDefined();
+    expect(screen.getByText('Their access ends when the event does.')).toBeDefined();
+  });
+
+  it('puts the radio back and says why when a role does not save', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await people('roleFails');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Ana Souza/u }));
+    fireEvent.click(role(/^Can view/u));
+    await act(() => vi.advanceTimersByTimeAsync(600));
+
+    expect(screen.getByRole('alert').textContent).toBe(
+      'We couldn’t change Ana’s role, so it’s still Can edit. Check your connection and pick again.',
+    );
+    expect(role(/^Can edit/u).checked).toBe(true);
+  });
+
+  it('asks before it removes somebody, then hands focus to Add', async () => {
+    await people();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Tom Becker/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from this event…' }));
+    const ask = within(
+      screen.getByRole('alertdialog', { name: 'Remove Tom Becker from this event?' }),
+    );
+    fireEvent.click(ask.getByRole('button', { name: 'Remove' }));
+
+    expect(screen.getByText('Tom Becker is off this event.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Tom Becker/u })).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Add by name' })),
+    );
+  });
+
+  it('adds members by name, with the role picked, and never offers you', async () => {
+    await people();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add by name' }));
+    const add = within(screen.getByRole('dialog', { name: 'Add people' }));
+    expect(add.getByRole('button', { name: 'Add' }).getAttribute('aria-disabled')).toBe('true');
+    expect(add.queryByRole('checkbox', { name: /Julien Moreau/u })).toBeNull();
+    fireEvent.change(add.getByLabelText('Name'), { target: { value: 'ko' } });
+    fireEvent.click(add.getByRole('checkbox', { name: /Kofi Mensah/u }));
+    fireEvent.click(add.getByRole('radio', { name: /^Can edit/u }));
+    fireEvent.click(add.getByRole('button', { name: 'Add' }));
+
+    expect(screen.getByText('Kofi Mensah can edit now.')).toBeDefined();
+    expect(screen.getByRole('button', { name: /^Kofi Mensah/u })).toBeDefined();
+  });
+
+  it('says nobody matches, and asks before it drops a tick', async () => {
+    await people();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add by name' }));
+    const add = within(screen.getByRole('dialog', { name: 'Add people' }));
+    fireEvent.change(add.getByLabelText('Name'), { target: { value: 'zzz' } });
+    expect(add.getByText('Nobody in Ire Events matches “zzz”.')).toBeDefined();
+    fireEvent.change(add.getByLabelText('Name'), { target: { value: '' } });
+    fireEvent.click(add.getByRole('checkbox', { name: /Folake Adeyemi/u }));
+    fireEvent.click(add.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByRole('alertdialog', { name: 'Discard your changes?' })).toBeDefined();
+  });
+
+  it('shows a member who can edit the list, read only, with who sees every event', async () => {
+    await people('readOnly');
+
+    expect(screen.queryByRole('button', { name: 'Add by name' })).toBeNull();
+    expect(within(screen.getByRole('main')).queryByRole('button', { name: /^Priya/u })).toBeNull();
+    expect(
+      screen.getByText('Only owners, admins and the lead change who’s on this event.'),
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        'Folake Adeyemi and Julien Moreau see every event, as owner and admin of Ire Events.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('lets the lead change everybody but themselves', async () => {
+    await people('lead');
+
+    expect(screen.getByRole('button', { name: 'Add by name' })).toBeDefined();
+    expect(within(screen.getByRole('main')).queryByRole('button', { name: /^Priya/u })).toBeNull();
+    expect(screen.getByRole('button', { name: /^Ana Souza/u })).toBeDefined();
+  });
+
+  it('says when nobody is on it yet', async () => {
+    await people('nobody');
+
+    expect(screen.getByText('Nobody is on this event yet.')).toBeDefined();
+  });
+
+  it('loads the people again from Try again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await people('failed');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(screen.getByRole('status', { name: 'Loading the people on this event…' })).toBeDefined();
+    await act(() => vi.advanceTimersByTimeAsync(1200));
+
+    expect(screen.getByRole('heading', { name: 'On this event' })).toBeDefined();
   });
 });

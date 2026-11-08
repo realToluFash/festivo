@@ -1261,8 +1261,7 @@ span {
   flex: 1;
   align-items: baseline;
   gap: var(--spaceSm);
-  font: var(--typeBody);
-  font-weight: 500;
+  font: var(--typeBodyStrong);
   color: var(--colorInk);
 }
 
@@ -2280,24 +2279,6 @@ span {
 .profile-invitations-intro {
   font: var(--typeSmall);
   color: var(--colorInkSecondary);
-}
-
-.or-rule {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceLg);
-  min-width: 0;
-  margin: 0;
-  font: var(--typeButton);
-  color: var(--markInfoInk);
-}
-
-.or-rule::before,
-.or-rule::after {
-  flex: 1;
-  height: 1px;
-  background: var(--colorInsetBorder);
-  content: '';
 }
 
 .no-organisation-invitations {
@@ -4554,8 +4535,7 @@ button.members-row {
 
 .events-tab-count {
   color: var(--colorInkSecondary);
-  font: var(--typeSmall);
-  font-weight: 500;
+  font: var(--typeSmallStrong);
   font-variant-numeric: tabular-nums;
 }
 
@@ -4637,8 +4617,7 @@ button.members-row {
 }
 
 .events-row .placeholder-soon {
-  font: var(--typeBody);
-  font-weight: 500;
+  font: var(--typeBodyStrong);
 }
 
 .events-row-next {
@@ -7629,8 +7608,7 @@ button.members-row {
 }
 
 .auth-column .field label {
-  font: var(--typeBody);
-  font-weight: 500;
+  font: var(--typeBodyStrong);
 }
 
 .auth-column .field-wrong label {
@@ -7734,11 +7712,11 @@ button.members-row {
 }
 
 .auth-column .auth-step {
-  font: 500 13px/18px var(--fontFamily);
+  font: var(--typeSmallStrong);
   color: var(--colorInkSecondary);
 }
 
-/* Back is 20 high with the column's 24 under it, so the title stays 88 under the header. */
+/* Back takes 20 in the flow with the column's 24 under it, so the title stays 88 under the header. */
 .auth-bare .auth-main:has(.auth-column-back) {
   padding-top: 44px;
 }
@@ -7748,10 +7726,10 @@ button.members-row {
   align-self: flex-start;
   align-items: center;
   gap: var(--spaceXxs);
-  height: 20px;
-  min-height: 20px;
+  min-height: var(--sizeHit);
+  margin-block: -12px;
   margin-left: calc(-1 * var(--spaceHair));
-  font: 500 14px/20px var(--fontFamily);
+  font: var(--typeBodyStrong);
   color: var(--colorInk);
   text-decoration: none;
 }
@@ -7798,8 +7776,7 @@ button.members-row {
   display: flex;
   align-items: center;
   gap: var(--spaceXs);
-  font: var(--typeSmall);
-  font-weight: 500;
+  font: var(--typeSmallStrong);
   color: var(--colorInkSecondary);
 }
 
@@ -7824,9 +7801,9 @@ button.members-row {
 /* One field the width of its answer, six digits (GOV.UK). */
 .auth-column .input.code-field {
   width: 200px;
-  font: 500 18px/1 var(--fontFamily);
+  font: var(--typeCodeField);
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.32em;
+  letter-spacing: var(--typeCodeFieldTracking);
 }
 
 .auth-resend {

@@ -1,17 +1,11 @@
-# Welcome first, then email sign-in as its own step: blank, wrong pair, forgot, back, success. Needs EMAIL, PASSWORD, ${METRO_URL}. sc-29076.
+# Signed out first, so English stays on the device and no account saves it. Then welcome, then email sign-in as its own step: blank, wrong pair, forgot, back, success. Needs EMAIL, PASSWORD, ${METRO_URL}. sc-29076.
 #
 #   node .qa/bin/qa-env.mjs maestro sc29076-qa-welcome --android EMAIL=… PASSWORD=…
 appId: host.exp.Exponent
 ---
+- runFlow: welcome-signed-out.yaml
 - runFlow: sign-in-screen-english.yaml
-- launchApp:
-    appId: host.exp.Exponent
-    stopApp: true
-- openLink: ${METRO_URL}/--/
-- extendedWaitUntil:
-    visible:
-      id: 'welcome.brand'
-    timeout: 90000
+- runFlow: welcome-signed-out.yaml
 - assertVisible: 'Plan the event. Run the day.'
 - assertVisible:
     id: 'welcome.email'
@@ -64,7 +58,7 @@ appId: host.exp.Exponent
     id: 'signIn.submit'
 - extendedWaitUntil:
     visible:
-      id: 'home\.openSettings|completeProfile|noOrganisation'
+      id: 'home\.openSettings|completeProfile\..*|noOrganisation'
     timeout: 30000
 - takeScreenshot: qa-signed-in
 - runFlow: sign-out.yaml

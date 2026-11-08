@@ -7,10 +7,11 @@ import {
   type TextInputInstance,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { FocusEdge, useHeld } from '../components/Field.tsx';
 import { Text } from '../components/Text.tsx';
-import { codeProps, fieldName } from '../kit/fields.ts';
+import { codeProps, fieldName, refusedHint, refusedName } from '../kit/fields.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { tap } from './haptics.ts';
@@ -32,6 +33,7 @@ export function CodeBoxes({
   onChange,
   onFull,
   done = false,
+  line,
   autoFocus = true,
   ref,
   testID,
@@ -41,10 +43,14 @@ export function CodeBoxes({
   onChange: (code: string) => void;
   onFull?: (code: string) => void;
   done?: boolean;
+  /** The line under the boxes about the code: while it shows, a screen reader hears "Invalid" with the name and the line as the hint (sc-31323). */
+  line?: string | null | undefined;
   autoFocus?: boolean;
   ref?: Ref<CodeBoxesHandle> | undefined;
   testID: string;
 }) {
+  const { t } = useTranslation();
+  const refused = line == null ? null : { word: t('forms.invalid'), line };
   const input = useRef<TextInputInstance>(null);
   const [focused, setFocused] = useState(false);
   const [wrong, setWrong] = useState(false);
@@ -97,7 +103,8 @@ export function CodeBoxes({
       <TextInput
         {...codeProps(false)}
         autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
-        {...fieldName(Platform.OS, label, {})}
+        {...refusedName(Platform.OS, fieldName(Platform.OS, label, {}), refused, label)}
+        accessibilityHint={refusedHint(refused, undefined)}
         {...holding}
         ref={input}
         autoFocus={autoFocus}

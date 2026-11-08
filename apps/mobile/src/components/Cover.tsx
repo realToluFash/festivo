@@ -32,11 +32,21 @@ const PIECES: readonly Piece[] = [
   [0.93, 0.44, 'bar', 40, -40, 'sun'],
   [0.05, 0.47, 'bar', 34, 62, 'rose'],
   [0.07, 0.68, 'bar', 26, -30, 'white'],
-  [0.95, 0.61, 'half', 24, -70, 'sky'],
+  [0.99, 0.61, 'half', 24, -70, 'sky'],
   [0.14, 0.8, 'half', 36, 150, 'white'],
   [0.35, 0.89, 'bar', 50, -12, 'sun'],
   [0.64, 0.86, 'half', 40, 12, 'rose'],
   [0.87, 0.77, 'bar', 44, 48, 'white'],
+];
+
+/** The Settings card's pieces, by share of a Confetti card: they keep to its right side, clear of the words. */
+export const CARD_PIECES: readonly Piece[] = [
+  [0.67, 0.05, 'half', 22, -18, 'sun'],
+  [0.83, 0.11, 'bar', 26, 24, 'white'],
+  [0.96, 0.2, 'half', 14, 200, 'rose'],
+  [0.81, 0.73, 'half', 20, 32, 'rose'],
+  [0.92, 0.84, 'bar', 24, -40, 'sun'],
+  [0.58, 0.9, 'bar', 16, 62, 'white'],
 ];
 
 export interface Glow {

@@ -1,5 +1,10 @@
 # Android only. sc-25667: Create organisation with the API stopped answers Creating the organisation did not work., and then Cancel is live and closes the sheet with nothing named Held Failed created.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - runFlow: ../open-create-organisation.yaml
 - tapOn:
