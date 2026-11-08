@@ -1,7 +1,7 @@
 import type { Ref } from 'react';
 import { View, type ViewInstance } from 'react-native';
 
-import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
+import { LEAD_INSET, LineIcon } from '../../components/AccountCard.tsx';
 import {
   keptByRule,
   keptNote,

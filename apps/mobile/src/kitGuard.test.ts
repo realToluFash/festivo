@@ -731,14 +731,16 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
     'src/components/CreateOrganisation.tsx',
     'src/components/DevicesCard.tsx',
     'src/components/PasswordCard.tsx',
-    'src/components/TimeZoneCard.tsx',
-    'src/components/NameCard.tsx',
+    'src/components/AccountName.tsx',
+    'src/components/AccountZone.tsx',
     'src/components/TwoFactorCard.tsx',
     'src/components/SecondFactorStep.tsx',
     'src/components/OrganisationDetails.tsx',
     'src/components/CompanyDomainsCard.tsx',
     'src/components/OwnershipCard.tsx',
-    'src/components/ContactsCard.tsx',
+    'src/components/AccountAdd.tsx',
+    'src/components/AccountConfirm.tsx',
+    'src/components/AccountVerify.tsx',
     'src/components/CodeForm.tsx',
     'src/components/PhoneEntry.tsx',
     'app/phone.tsx',
@@ -969,7 +971,10 @@ describe('a refused code focuses its field through focusChecked (sc-20209)', () 
 
 describe('a second return key while the request runs sends nothing (sc-20209)', () => {
   it.each([
-    ['src/components/ContactsCard.tsx', /^\s*setSending\(true\);/u, 'sending', 2],
+    ['src/components/AccountAdd.tsx', /^\s*setSending\(true\);/u, 'sending', 1],
+    ['src/components/AccountName.tsx', /^\s*setSaving\(true\);/u, 'saving', 1],
+    ['src/components/AccountZone.tsx', /^\s*setSaving\(true\);/u, 'saving', 1],
+    ['src/components/AccountVerify.tsx', /^\s*setVerifying\(true\);/u, 'verifying', 1],
     ['app/phone.tsx', /^\s*setSending\(true\);/u, 'sending', 1],
     ['app/complete-profile.tsx', /^\s*setSaving\(true\);/u, 'saving', 2],
   ] satisfies [string, RegExp, string, number][])(
@@ -1035,8 +1040,10 @@ describe('a Password submit with the keys down keeps them down (sc-13408)', () =
 
 describe('a submit with the keys down keeps them down (sc-20209)', () => {
   it.each([
-    // Adding's, and not the row actions above it, which have no field.
-    ['src/components/ContactsCard.tsx', /^\s*setSending\(true\);/u, 1, 'function Adding('],
+    ['src/components/AccountAdd.tsx', /^\s*setSending\(true\);/u, 1],
+    ['src/components/AccountName.tsx', /^\s*setSaving\(true\);/u, 1],
+    ['src/components/AccountZone.tsx', /^\s*setSaving\(true\);/u, 1],
+    ['src/components/AccountVerify.tsx', /^\s*setVerifying\(true\);/u, 1],
     ['app/verify-email.tsx', /^\s*setStatus\(\{ kind: 'verifying' \}\);/u, 2],
     ['app/verify-phone.tsx', /^\s*setStatus\(\{ kind: 'verifying' \}\);/u, 1],
     ['app/phone.tsx', /^\s*setSending\(true\);/u, 1],
@@ -1065,14 +1072,6 @@ describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
       ...offWhile('PasswordCard.tsx', 'saving'),
       ...offWhile('PasswordCard.tsx', 'busy'),
     ]).toEqual(['"password.cancel"', '"password.setCancel"']);
-  });
-
-  it('in Time zone, beside Save time zone', () => {
-    expect(offWhile('TimeZoneCard.tsx', 'saving')).toEqual(['"timeZone.cancel"']);
-  });
-
-  it('in Name, beside Save name', () => {
-    expect(offWhile('NameCard.tsx', 'saving')).toEqual(['"nameCard.cancel"']);
   });
 
   it("in Confirm it's you, beside Continue", () => {
@@ -1127,58 +1126,19 @@ describe("a lapsed proof at Unlink goes back to Confirm it's you (sc-12545)", ()
   });
 });
 
-describe('a contact confirmation shows its request running, its way back off (sc-12546)', () => {
-  const text = readFileSync(join('src', 'components', 'ContactsCard.tsx'), 'utf8');
-
-  it('on Make it primary and Remove it, busy while they send', () => {
-    const busy = ['DestructiveButton', 'PrimaryButton'].flatMap((button) =>
-      selfClosing(button, text)
-        .filter(({ markup }) => /\bbusy=\{sending\}/u.test(markup))
-        .map(({ markup }) => propValue(markup, 'testID')),
-    );
-
-    expect(busy).toEqual([
-      '{`contacts.${row.id}.confirm`}',
-      '{`contacts.${row.id}.confirm`}',
-      '{`contacts.${kind}.send`}',
-    ]);
-  });
-
-  it('on Keep and on Cancel under an add form, off until the answer', () => {
-    const off = ['SecondaryButton', 'QuietButton'].flatMap((button) =>
-      selfClosing(button, text)
-        .filter(({ markup }) => /\boff=\{sending\}/u.test(markup))
-        .map(({ markup }) => propValue(markup, 'testID')),
-    );
-
-    expect(off).toEqual([
-      '{`contacts.${row.id}.keep`}',
-      '{`contacts.${row.id}.keep`}',
-      '{`contacts.${kind}.cancel`}',
-    ]);
-  });
-
-  it('back on Make this your primary address? when a change fails past the check', () => {
-    expect(text).toMatch(
-      /else if \(proof != null\) setAsking\(\{ id: row\.id, what: 'promote' \}\);/u,
-    );
-  });
-});
-
 describe('a contact row ends Remove with an ellipsis only where it asks first (sc-23283)', () => {
-  const text = readFileSync(join('src', 'components', 'ContactsCard.tsx'), 'utf8');
-  const removeId = '{`contacts.${row.id}.remove`}';
-  const holding = (button: string) =>
-    selfClosing(button, text).filter(({ markup }) => propValue(markup, 'testID') === removeId);
+  const text = readFileSync(join('src', 'components', 'AccountContacts.tsx'), 'utf8');
+  const remove = selfClosing('TextAction', text).filter(
+    ({ markup }) => propValue(markup, 'testID') === '{`account.${row.id}.remove`}',
+  );
 
-  it('as the destructive button, never the secondary', () => {
-    expect(holding('DestructiveButton')).toHaveLength(1);
-    expect(holding('SecondaryButton')).toHaveLength(0);
+  it('as the one red Remove on the opened row', () => {
+    expect(remove).toHaveLength(1);
+    expect(remove[0]?.markup).toMatch(/\bremoves\b/u);
   });
 
   it('labelled Remove… on a row that asks, Remove on one that does not', () => {
-    const [remove] = holding('DestructiveButton');
-    expect((propValue(remove?.markup ?? '', 'label') ?? '').replace(/[\s,]+/gu, '')).toBe(
+    expect((propValue(remove[0]?.markup ?? '', 'label') ?? '').replace(/[\s,]+/gu, '')).toBe(
       "{t(offers.askBeforeRemoving?'contacts.removeAsks':'contacts.remove')}",
     );
 

@@ -5,7 +5,7 @@ import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { AlertLine } from '../events/EventEdits.tsx';
-import { LineIcon } from '../settings/AccountCard.tsx';
+import { LineIcon } from '../../components/AccountCard.tsx';
 import { Row, RowList, TextAction } from '../../components/Summary.tsx';
 import { type FilterKey, type OverviewState, countsOf, filterWord } from './GuestsModel.ts';
 import { BlockHead } from './GuestsParts.tsx';

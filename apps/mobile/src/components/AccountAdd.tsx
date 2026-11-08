@@ -1,42 +1,43 @@
+import { phoneLengthProblem, refusedPhoneField } from '@soirely/domain';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import type { TextInputInstance, ViewInstance } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { focusPicker } from '../../components/CountryPicker.tsx';
-import { Field, focusChecked, focusRefused, TextField } from '../../components/Field.tsx';
-import { SETTLED_MS } from '../../components/Screen.tsx';
-import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
-import {
-  addCheck,
-  addRefusal,
-  type ContactKind,
-  KIND_WORDS,
-  phoneLineOn,
-  WORDS,
-} from './AccountModel.ts';
+import { type ContactKind, KIND_KEYS } from '../kit/accountPage.ts';
+import { emailMessage } from '../kit/formChecks.ts';
+import { phoneProblemMessage } from '../phoneProblem.ts';
 import { discardAsk } from './AccountName.tsx';
-import { AccountPhoneEntry } from './AccountPhone.tsx';
-import { type Contact, phoneShown } from './AccountSample.ts';
-import { FocusedScreen } from '../../components/Summary.tsx';
+import { focusPicker } from './CountryPicker.tsx';
+import { Field, focusChecked, focusRefused, keysStayDown, TextField } from './Field.tsx';
+import { PhoneEntry } from './PhoneEntry.tsx';
+import { SETTLED_MS } from './Screen.tsx';
+import type { ScreenReaderTarget } from './screenReaderFocus.ts';
+import { FocusedScreen } from './Summary.tsx';
 
-/** Adding an address or a number; it joins unverified, and only the account's own rows are known to be linked. */
+/** What is added: the address, or the country and the number as typed. */
+export interface Adding {
+  typed: string;
+  country: string;
+}
+
+/** Adding an address or a number; it joins unverified. `onAdd` resolves to why it was refused, or null once added. */
 export function AddScreen({
   kind,
   open,
-  rows,
   startCountry,
   opener,
   onClose,
-  onAdded,
+  onAdd,
 }: {
   kind: ContactKind;
   open: boolean;
-  rows: readonly Contact[];
   startCountry: string;
   opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
-  onAdded: (row: Contact) => void;
+  onAdd: (adding: Adding) => Promise<string | null>;
 }) {
-  const words = KIND_WORDS[kind];
+  const { t } = useTranslation();
+  const keys = KIND_KEYS[kind];
   const email = kind === 'email';
   const typed = useRef('');
   const field = useRef<TextInputInstance>(null);
@@ -46,10 +47,11 @@ export function AddScreen({
   const [error, setError] = useState<string | null>(null);
   const [errorOn, setErrorOn] = useState<'country' | 'number'>('number');
   const [discarding, setDiscarding] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!open || email) return;
-    const focus = setTimeout(() => field.current?.focus(), SETTLED_MS);
+    const focus = setTimeout(() => focusChecked(field), SETTLED_MS);
 
     return () => clearTimeout(focus);
   }, [open, email]);
@@ -60,48 +62,65 @@ export function AddScreen({
     if (error != null) setError(null);
   }
 
-  function add(): void {
-    const checked = addCheck(kind, typed.current, country);
+  function check(): string | null {
+    if (email) return emailMessage(typed.current, t);
+
+    return phoneProblemMessage(phoneLengthProblem(typed.current, country), country, t);
+  }
+
+  async function add(): Promise<void> {
+    if (sending) return;
+    const checked = check();
     if (checked != null) {
-      const on = email ? 'number' : phoneLineOn(typed.current, country);
+      const on = email
+        ? 'number'
+        : (refusedPhoneField(phoneLengthProblem(typed.current, country)) ?? 'number');
       setError(checked);
       setErrorOn(on);
       if (on === 'country') focusPicker(picker);
       else focusChecked(field);
       return;
     }
-    const shown = email ? typed.current.trim() : phoneShown(country, typed.current);
-    const refused = addRefusal(kind, shown, rows);
-    if (refused != null) {
-      setError(refused);
-      setErrorOn('number');
-      focusRefused(field);
-      return;
-    }
-    onAdded({ id: `${kind}-${shown}`, shown, verified: false, primary: false });
+    keysStayDown();
+    setSending(true);
+    const refused = await onAdd({ typed: typed.current.trim(), country });
+    setSending(false);
+    if (refused == null) return;
+    setError(refused);
+    setErrorOn('number');
+    focusRefused(field);
   }
 
   return (
     <FocusedScreen
       open={open}
-      title={words.addTitle}
-      verb={{ label: WORDS.add, on: true, onPress: add, testID: `account.${kind}.add.submit` }}
+      title={t(keys.add)}
+      verb={{
+        label: t('account.add'),
+        on: true,
+        busy: sending,
+        onPress: () => void add(),
+        testID: `account.${kind}.add.submit`,
+      }}
+      waits={sending}
       onCancel={() => (changed ? setDiscarding(true) : onClose())}
       cancelTestID={`account.${kind}.add.cancel`}
       opener={opener}
       ask={discardAsk(
         discarding,
-        WORDS.nothingAdded,
+        t('account.nothingAdded'),
         { keep: () => setDiscarding(false), discard: onClose },
         `account.${kind}.add`,
+        t,
       )}
       testID={`account.${kind}.add.screen`}
     >
       {email ? (
-        <Field label={words.label} error={error} help={words.help}>
+        <Field label={t(keys.label)} error={error} help={t(keys.help)}>
           <TextField
             ref={field}
             wrong={error != null}
+            submitting={sending}
             autoFocus
             keyboardType="email-address"
             autoCapitalize="none"
@@ -111,27 +130,28 @@ export function AddScreen({
             spellCheck={false}
             returnKeyType="done"
             onChangeText={typing}
-            onSubmitEditing={add}
+            onSubmitEditing={() => void add()}
             submitBehavior="submit"
-            accessibilityLabel={words.label}
+            accessibilityLabel={t(keys.label)}
             testID="account.email.add.field"
           />
         </Field>
       ) : (
-        <AccountPhoneEntry
+        <PhoneEntry
           ref={field}
-          label={words.label}
-          help={words.help}
+          label={t(keys.label)}
+          help={t(keys.help)}
           country={country}
           error={error}
           errorOn={errorOn}
+          submitting={sending}
           pickerRef={picker}
           onCountry={(code) => {
             setCountry(code);
             setError(null);
           }}
           onNumber={typing}
-          onSubmit={add}
+          onSubmit={() => void add()}
           testID="account.phone.add"
         />
       )}

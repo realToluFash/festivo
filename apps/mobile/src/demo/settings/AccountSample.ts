@@ -7,14 +7,8 @@ import {
   type ZoneRow,
 } from '@soirely/domain';
 
+import type { Contact } from '../../kit/accountPage.ts';
 import { SAMPLE } from '../samples.ts';
-
-export interface Contact {
-  id: string;
-  shown: string;
-  verified: boolean;
-  primary: boolean;
-}
 
 export const SECOND_EMAIL = 'folake.adeyemi@gmail.com';
 

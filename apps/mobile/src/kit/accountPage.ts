@@ -1,0 +1,167 @@
+import { CONTACTS_MOST, contactsLeft } from '@soirely/domain';
+import type { TFunction } from 'i18next';
+
+export type ContactKind = 'email' | 'phone';
+
+/** An address or a number as Your account lists it. */
+export interface Contact {
+  id: string;
+  shown: string;
+  verified: boolean;
+  primary: boolean;
+}
+
+export type CardLine = { kind: 'done' | 'todo'; text: string } | null;
+
+export function primaryFirst(rows: readonly Contact[]): Contact[] {
+  return [...rows].sort((a, b) => Number(b.primary) - Number(a.primary));
+}
+
+export function primaryOf(rows: readonly Contact[]): Contact | null {
+  return rows.find((row) => row.primary) ?? null;
+}
+
+/** The card's one step: the first address not verified yet, the primary first, else the first number. */
+export function firstUnverified(
+  emails: readonly Contact[],
+  phones: readonly Contact[],
+): { kind: ContactKind; row: Contact } | null {
+  const email = primaryFirst(emails).find((row) => !row.verified);
+  if (email != null) return { kind: 'email', row: email };
+  const phone = primaryFirst(phones).find((row) => !row.verified);
+
+  return phone == null ? null : { kind: 'phone', row: phone };
+}
+
+/** The one line under you: what just happened until the page is left, else what is not verified yet. */
+export function cardLine(
+  emails: readonly Contact[],
+  phones: readonly Contact[],
+  said: string | null,
+  t: TFunction,
+): CardLine {
+  if (said != null) return { kind: 'done', text: said };
+  const waiting = firstUnverified(emails, phones);
+
+  return waiting == null
+    ? null
+    : { kind: 'todo', text: t('account.notVerifiedYet', { shown: waiting.row.shown }) };
+}
+
+export const KIND_KEYS: Record<
+  ContactKind,
+  {
+    section: string;
+    add: string;
+    label: string;
+    help: string;
+    removeTitle: string;
+    primaryLine: string;
+    otherLine: string;
+  }
+> = {
+  email: {
+    section: 'contacts.emailsTitle',
+    add: 'contacts.addEmail',
+    label: 'contacts.emailLabel',
+    help: 'contacts.emailHelp',
+    removeTitle: 'contacts.removeTitle',
+    primaryLine: 'account.emailPrimaryLine',
+    otherLine: 'account.emailOtherLine',
+  },
+  phone: {
+    section: 'contacts.phonesTitle',
+    add: 'contacts.addPhone',
+    label: 'contacts.phoneLabel',
+    help: 'contacts.phoneHelp',
+    removeTitle: 'contacts.removeTitlePhone',
+    primaryLine: 'account.phonePrimaryLine',
+    otherLine: 'account.phoneOtherLine',
+  },
+};
+
+export function contactLine(kind: ContactKind, row: Contact, t: TFunction): string {
+  return t(row.primary ? KIND_KEYS[kind].primaryLine : KIND_KEYS[kind].otherLine);
+}
+
+export function contactsFoot(kind: ContactKind, rows: readonly Contact[], t: TFunction): string {
+  const left = contactsLeft(rows);
+  const email = kind === 'email';
+  if (left === 0)
+    return t(email ? 'contacts.capFullEmails' : 'contacts.capFullPhones', { most: CONTACTS_MOST });
+
+  return t(email ? 'contacts.capEmails' : 'contacts.capPhones', {
+    count: left,
+    most: CONTACTS_MOST,
+  });
+}
+
+/** What the card says once a code is in: a primary was the one awaited, any other stays an alternative. */
+export function verifiedWords(row: Contact, kind: ContactKind, t: TFunction): string {
+  if (kind === 'email')
+    return row.primary
+      ? t('contacts.verifiedDone', { address: row.shown })
+      : t('account.verifiedAlternative', { address: row.shown });
+
+  return row.primary
+    ? t('contacts.verifiedPrimaryPhone', { number: row.shown })
+    : t('account.verifiedAlternativePhone', { number: row.shown });
+}
+
+export function promotedWords(kind: ContactKind, shown: string, t: TFunction): string {
+  return kind === 'email'
+    ? t('contacts.promoted', { address: shown })
+    : t('contacts.promotedPhone', { number: shown });
+}
+
+/** How a code reached the person: by email, or a phone's route as `codeWording` names it. */
+export type CodeLine = 'email' | 'whatsapp' | 'fallback' | 'chosen' | 'texted';
+
+export interface VerifyWords {
+  title: string;
+  lead: string;
+  codeLabel: string;
+  blank: string;
+  short: string;
+  wrong: string;
+  expired: { title: string; line: string };
+  exhausted: { title: string; line: string };
+}
+
+/** Check your email or your messages, in the words of the way the code went. */
+export function verifyWords(line: CodeLine, shown: string, t: TFunction): VerifyWords {
+  if (line === 'email')
+    return {
+      title: t('verifyEmail.title'),
+      lead: t('verifyEmail.intro', { address: shown }),
+      codeLabel: t('verifyEmail.codeLabel'),
+      blank: t('verifyEmail.codeBlank'),
+      short: t('verifyEmail.codeShort'),
+      wrong: t('verifyEmail.wrong'),
+      expired: { title: t('verifyEmail.expiredTitle'), line: t('verifyEmail.expiredBody') },
+      exhausted: { title: t('verifyEmail.exhaustedTitle'), line: t('verifyEmail.exhaustedBody') },
+    };
+  const whatsApp = line === 'whatsapp';
+  const lead = {
+    whatsapp: 'verifyPhone.introWhatsApp',
+    fallback: 'verifyPhone.introFallback',
+    chosen: 'verifyPhone.introChosen',
+    texted: 'verifyPhone.intro',
+  }[line];
+
+  return {
+    title: t('verifyPhone.title'),
+    lead: t(lead, { number: shown }),
+    codeLabel: t(whatsApp ? 'verifyPhone.codeLabelWhatsApp' : 'verifyPhone.codeLabel'),
+    blank: t(whatsApp ? 'verifyPhone.codeBlankWhatsApp' : 'verifyPhone.codeBlank'),
+    short: t('verifyPhone.codeShort'),
+    wrong: t(whatsApp ? 'verifyPhone.wrongWhatsApp' : 'verifyPhone.wrong'),
+    expired: { title: t('verifyPhone.expiredTitle'), line: t('verifyPhone.expiredBody') },
+    exhausted: { title: t('verifyPhone.exhaustedTitle'), line: t('verifyPhone.exhaustedBody') },
+  };
+}
+
+/** The About you row's second line for a zone: its IANA id, read as words. */
+export function zoneLine(id: string | null, t: TFunction): string {
+  return id == null ? t('timeZone.title') : t('account.zoneLine', { id: id.replace(/_/gu, ' ') });
+}

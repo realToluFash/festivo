@@ -26,7 +26,7 @@ import {
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { AREA_GLYPH } from '../../components/areaGlyph.ts';
 import { demoShell } from '../demoShell.ts';
-import { LineIcon } from '../settings/AccountCard.tsx';
+import { LineIcon } from '../../components/AccountCard.tsx';
 import { Bell, Landscape } from '../settings/Frame.tsx';
 import { EventThumb } from '../../components/EventCard.tsx';
 import { type Shown, cardTags, rowLine } from './EventsModel.ts';

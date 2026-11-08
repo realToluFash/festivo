@@ -8,7 +8,8 @@ import {
   moveScreenReaderFocus,
 } from '../../components/screenReaderFocus.ts';
 import type { TextHandle } from '../../components/Text.tsx';
-import { ConfirmScreen } from './AccountConfirm.tsx';
+import { ConfirmScreen } from '../../components/AccountConfirm.tsx';
+import { sampleContinue } from './AccountModel.ts';
 import { SecurityCard } from './SecurityCard.tsx';
 import { DevicesSection, Everywhere } from './SecurityDevices.tsx';
 import {
@@ -258,6 +259,8 @@ function SecurityPage({ start }: { start: SecurityStart }) {
     }
   }
 
+  const asks = proofAsks(proof ?? 'link', provider, ways, twoFactor);
+
   return (
     <>
       <SummaryPage title={WORDS.title} scrollRef={scroll}>
@@ -364,13 +367,13 @@ function SecurityPage({ start }: { start: SecurityStart }) {
       <ConfirmScreen
         key={`confirm.${visit}`}
         open={screen === 'confirm' && proof != null}
-        asks={proofAsks(proof ?? 'link', provider, ways, twoFactor)}
+        asks={asks}
         opener={opener}
         onClose={() => {
           setScreen(null);
           setProof(null);
         }}
-        onProved={proven}
+        onContinue={(password, code) => sampleContinue(asks, proven)(password, code)}
         testID="security.confirm"
       />
       <TwoFactorScreen
