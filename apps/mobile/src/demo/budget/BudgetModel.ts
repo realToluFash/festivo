@@ -540,6 +540,8 @@ export function linkWords(link: LinkState, locale: string, passphrase = false): 
 export type View = { page: 'home' } | { page: 'payers' } | { page: 'payer'; key: PayerKey };
 export type Refusal = 'paid' | 'cancelled' | 'currency' | 'plan';
 export type CeilingLive = 'set' | 'changed' | 'cleared';
+/** What a live change moved, so only its figures wash Tint (sc-85, sc-93: a changed figure washes, nothing else). */
+export type Washing = 'rate' | 'ceiling' | 'payers';
 export type ReminderKind = keyof typeof REMINDERS;
 
 export interface MarkForm {
@@ -565,7 +567,7 @@ export interface DueNowSheet {
 export interface BudgetModel {
   figures: 'loading' | 'shown' | 'never';
   link: 'live' | 'offline' | 'reconnecting';
-  wash: boolean;
+  wash: Washing | null;
   showLive: boolean;
   lines: readonly Line[];
   liveLine: boolean;
@@ -639,6 +641,13 @@ export function roomShared(): { payers: Payer[]; vendorPayers: VendorPayers } {
   };
 }
 
+/** Whether a part of the Budget tab washes: only what the arriving change moved (a rate moves the totals and the ceiling's sentence). */
+export function washes(m: BudgetModel, part: 'totals' | 'ceiling' | 'payer'): boolean {
+  if (part === 'totals') return m.wash === 'rate';
+  if (part === 'ceiling') return m.wash === 'ceiling' || m.wash === 'rate';
+  return m.wash === 'payers';
+}
+
 export function ceilingsAfter(live: CeilingLive): Ceilings {
   if (live === 'set') return { ...CEILINGS, whole: CEILING_CHANGE.set };
   if (live === 'changed') return { ...CEILINGS, whole: CEILING_CHANGE.changed };
@@ -665,7 +674,7 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
   const base: BudgetModel = {
     figures: 'shown',
     link: 'live',
-    wash: false,
+    wash: null,
     showLive: false,
     lines: LINES,
     liveLine: false,
@@ -1002,12 +1011,12 @@ export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
     case 'reconnected':
       return { ...m, link: 'live', showLive: true };
     case 'washed':
-      return { ...m, wash: false, washed: [] };
+      return { ...m, wash: null, washed: [] };
     case 'liveChange':
       return {
         ...m,
         lines: withRate(m.lines, LIVE_CHANGE.line, LIVE_CHANGE.to),
-        wash: true,
+        wash: 'rate',
         liveLine: true,
         told: told(action.words),
       };
@@ -1036,7 +1045,7 @@ export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
             ...m,
             ceilings: ceilingsAfter(m.ceilingLive),
             ceilingLive: null,
-            wash: true,
+            wash: 'ceiling',
             showLive: true,
             news: action.words,
             told: told(action.words),
@@ -1047,7 +1056,7 @@ export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
         ...m,
         payerList: shared.payers,
         vendorPayers: shared.vendorPayers,
-        wash: true,
+        wash: 'payers',
         washed: ['obi', 'bakare'],
         news: action.words,
         told: told(action.words),

@@ -42,6 +42,7 @@ import {
   startOf,
   stillToCome,
   totalsOf,
+  washes,
   whole,
   wholeState,
   LIVE_CHANGE,
@@ -123,8 +124,13 @@ describe('a live change: Dinner from £68.00 to £70.00 a head (sc-93, 7 Nov)', 
   it('arrives after the page opens, and washes what it moved', () => {
     expect(startOf('live_update', REMOVED_PAYER).lines).toBe(LINES);
     expect(changed.lines.find((line) => line.key === LIVE_CHANGE.line)?.rate).toBe(7000);
-    expect(changed).toMatchObject({ wash: true, liveLine: true, showLive: true });
-    expect(reduce(changed, { type: 'washed' }).wash).toBe(false);
+    expect(changed).toMatchObject({ wash: 'rate', liveLine: true, showLive: true });
+    expect([
+      washes(changed, 'totals'),
+      washes(changed, 'ceiling'),
+      washes(changed, 'payer'),
+    ]).toEqual([true, true, false]);
+    expect(reduce(changed, { type: 'washed' }).wash).toBeNull();
   });
 
   it('moves the range, per head and the rows, which still add up exactly', () => {
@@ -485,7 +491,18 @@ describe('the gaps of 8 Nov: refusals, ceilings and the reminder on the Budget t
 
     expect(set.ceilings.whole).toBeNull();
     expect(wholeState(ceilingsAfter('set'), totals)).toBe('overIf');
-    expect(changed).toMatchObject({ wash: true, news: words, ceilingLive: null, showLive: true });
+    expect(changed).toMatchObject({
+      wash: 'ceiling',
+      news: words,
+      ceilingLive: null,
+      showLive: true,
+    });
+    // only the Ceiling row washes: per head, Planned, Dinner and the category heads did not move
+    expect([
+      washes(changed, 'totals'),
+      washes(changed, 'ceiling'),
+      washes(changed, 'payer'),
+    ]).toEqual([false, true, false]);
     expect(wholeState(changed.ceilings, totals)).toBe('close');
     expect(words).toBe(
       'Julien Moreau changed the whole event’s ceiling to £24,000, so it is now Close.',
@@ -523,6 +540,11 @@ describe('the gaps of 8 Nov on Who is paying (sc-30200, sc-1300)', () => {
       shareOf(payerOf(key, live.payerList), live.lines, live.payerList);
 
     expect(live.washed).toEqual(['obi', 'bakare']);
+    expect([washes(live, 'totals'), washes(live, 'ceiling'), washes(live, 'payer')]).toEqual([
+      false,
+      false,
+      true,
+    ]);
     expect(live.news).toBe('Julien Moreau changed who pays for Room hire.');
     expect(share('obi')).toEqual({ settled: 747000, ifAll: 913500 });
     expect(share('bakare')).toEqual({ settled: 747000, ifAll: 913500 });

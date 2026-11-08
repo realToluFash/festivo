@@ -20,6 +20,7 @@ import {
   shareOf,
   stillToCome,
   totalsOf,
+  washes,
   whole,
 } from './BudgetModel.ts';
 import { type Cover, LINES, LONG_NAME, type LinkState, type PayerKey } from './BudgetSample.ts';
@@ -116,13 +117,19 @@ export function PayersList({ m, event, locale, onPayer, onWashed }: PayersProps)
       <RowList
         items={list.map((payer) => {
           const link = linkWords(m.links[payer.key], locale, m.passphrase.includes(payer.key));
+          const unpriced = notPricedFor(payer, m.lines);
+          const parts = [
+            payer.note,
+            ...(unpriced > 0 ? [say.notPriced(unpriced)] : []),
+            ...(link == null ? [] : [link]),
+          ];
           return {
             key: payer.key,
             row: (
-              <Wash on={m.wash && m.washed.includes(payer.key)} onDone={onWashed}>
+              <Wash on={washes(m, 'payer') && m.washed.includes(payer.key)} onDone={onWashed}>
                 <MoneyRow
                   title={payer.name}
-                  line={link == null ? payer.note : `${payer.note} · ${link}`}
+                  line={parts.join(' · ')}
                   value={rangeOf(shareOf(payer, m.lines, list), (pence) => money(pence, locale))}
                   quiet
                   opens
@@ -434,7 +441,7 @@ function PadCard({
           {
             key: 'share',
             row: (
-              <Wash on={m.wash && m.washed.includes(keyOf)} onDone={onWashed}>
+              <Wash on={washes(m, 'payer') && m.washed.includes(keyOf)} onDone={onWashed}>
                 <MoneyRow
                   title={W.theirShare}
                   line={unpriced > 0 ? say.notPriced(unpriced) : undefined}

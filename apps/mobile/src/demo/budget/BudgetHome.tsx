@@ -44,6 +44,7 @@ import {
   perHeadOf,
   planOf,
   totalsOf,
+  washes,
   whole,
   wholeState,
 } from './BudgetModel.ts';
@@ -186,10 +187,8 @@ function PerHead({
   onWashed: () => void;
 }) {
   const head = perHeadOf(totalsOf(m.lines));
-  const wash = m.wash;
-
   return (
-    <Wash on={wash} onDone={onWashed}>
+    <Wash on={washes(m, 'totals')} onDone={onWashed}>
       <RowList
         items={[
           {
@@ -335,7 +334,7 @@ function Ceiling({
   return (
     <View onLayout={onLayout}>
       <Section title={W.ceiling}>
-        <Wash on={m.wash} onDone={onWashed}>
+        <Wash on={washes(m, 'ceiling')} onDone={onWashed}>
           <MoneyRow
             title={say.ceilingRow(money(limit, locale))}
             line={sentence}
@@ -384,7 +383,7 @@ function AgainstPlan({
         items={rows.map(([title, value, line]) => ({
           key: title,
           row: (
-            <Wash on={m.wash && title === W.planned} onDone={onWashed}>
+            <Wash on={washes(m, 'totals') && title === W.planned} onDone={onWashed}>
               <MoneyRow
                 title={title}
                 line={line}
@@ -459,12 +458,10 @@ function Costs({
         const state = categoryState(category, m.lines, m.ceilings);
         return (
           <View key={category}>
-            <Wash on={m.wash && m.news != null && state != null} onDone={onWashed}>
-              <CapsHead
-                title={category}
-                right={state == null ? undefined : <StateTag state={state} />}
-              />
-            </Wash>
+            <CapsHead
+              title={category}
+              right={state == null ? undefined : <StateTag state={state} />}
+            />
             <RowList
               items={m.lines
                 .filter((line) => line.category === category)
@@ -493,7 +490,10 @@ function Costs({
                   return {
                     key: line.key,
                     row: (
-                      <Wash on={m.wash && line.key === LIVE_CHANGE.line} onDone={onWashed}>
+                      <Wash
+                        on={washes(m, 'totals') && line.key === LIVE_CHANGE.line}
+                        onDone={onWashed}
+                      >
                         <MoneyRow
                           title={line.name}
                           line={costLine(line, locale)}
