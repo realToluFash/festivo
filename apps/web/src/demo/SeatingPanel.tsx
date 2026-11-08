@@ -517,7 +517,7 @@ function StartForm() {
       <Two>
         <StartField
           label={SW.width}
-          unit={ui.units === 'us' ? 'ft' : 'm'}
+          unit={ui.units === 'us' ? undefined : 'm'}
           value={start.width}
           error={start.errors.width}
           onChange={(text) => typed('width', text)}
@@ -525,13 +525,14 @@ function StartForm() {
         />
         <StartField
           label={SW.length}
-          unit={ui.units === 'us' ? 'ft' : 'm'}
+          unit={ui.units === 'us' ? undefined : 'm'}
           value={start.length}
           error={start.errors.length}
           onChange={(text) => typed('length', text)}
           fieldKey="startLength"
         />
       </Two>
+      {ui.units === 'us' && <Line>{SW.usHint}</Line>}
       <button type="submit" className="button button-primary st-wide">
         {SW.startPlan}
       </button>
@@ -550,7 +551,7 @@ function StartField({
 }: {
   label: string;
   value: string;
-  unit?: string;
+  unit?: string | undefined;
   optional?: boolean;
   error?: string | undefined;
   fieldKey: string;
@@ -656,6 +657,7 @@ function RoomSettings() {
           onCommit={(text) => resize('l', text)}
         />
       </Two>
+      {ui.units === 'us' && <Line>{SW.usHint}</Line>}
       <div className="st-red">
         <TextAction label={SW.deletePlan} red onClick={() => ask({ kind: 'deletePlan' })} />
         <Line>{SW.deletePlanLine}</Line>

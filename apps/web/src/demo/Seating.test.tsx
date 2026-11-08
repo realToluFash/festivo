@@ -334,6 +334,7 @@ describe('Room settings and sections (sc-3998)', () => {
     press(item(/^Table 4,/u));
     key(item(/^Table 4,/u), 'Escape');
     fireEvent.click(within(panel()).getByRole('button', { name: 'Room settings' }));
+    expect(within(panel()).getByText('Type 12′ 4″, 12 ft 4 in, 12.5 ft or 148 in.')).toBeDefined();
     typeIn('Width', '5');
     expect(await within(panel()).findByText('Use 7 to 1,640 ft.')).toBeDefined();
     fireEvent.click(within(panel()).getByRole('button', { name: 'Delete the plan' }));
@@ -346,6 +347,11 @@ describe('Room settings and sections (sc-3998)', () => {
         'At The Landmark, London. Sizes are in feet, as used in Ire Events’s country.',
       ),
     ).toBeDefined();
+    expect(within(panel()).getByText('Type 12′ 4″, 12 ft 4 in, 12.5 ft or 148 in.')).toBeDefined();
+    fireEvent.change(within(panel()).getByLabelText('Width'), { target: { value: '80' } });
+    fireEvent.change(within(panel()).getByLabelText('Length'), { target: { value: '59′ 1″' } });
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Start the plan' }));
+    expect(await within(panel()).findByText('Main hall · 80 ft × 59 ft 1 in')).toBeDefined();
   });
 
   it('says a colleague’s change came first', SLOW, async () => {
