@@ -812,6 +812,7 @@
     "dismiss": "Fermer"
   },
   "recovery": {
+    "lostBothIntro": "Your organisation can confirm it’s you only once you’ve signed in with your password. If you’ve lost your password too, contact Soirely support.",
     "forgot": "Mot de passe oublié ?",
     "title": "Réinitialisez votre mot de passe",
     "intro": "Saisissez l’adresse e-mail avec laquelle vous vous connectez. Si elle a un compte, nous lui envoyons un lien pour choisir un nouveau mot de passe.",
@@ -822,9 +823,8 @@
     "signIn": "Se connecter",
     "sentTitle": "Consultez vos e-mails",
     "sentBody": "Si cette adresse a un compte, nous lui avons envoyé un lien pour choisir un nouveau mot de passe. Le lien fonctionne une fois.",
-    "nothingTitle": "Rien reçu ?",
-    "nothingBody": "Vérifiez d’abord vos courriers indésirables, puis renvoyez-le.",
-    "sendAgain": "Le renvoyer",
+    "nothingThere": "Nothing there? Check your spam folder first, then <send>send it again</send>.",
+    "sentAgain": "Sent again.",
     "providerNote": "Inscrit avec Google ou Apple ? Il n’y a alors pas de mot de passe à réinitialiser, et l’e-mail explique comment vous vous connectez.",
     "gotIt": "Vous avez le lien ? Ouvrez-le sur n’importe quel appareil.",
     "backToSignIn": "Retour à la connexion",

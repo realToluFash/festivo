@@ -96,6 +96,25 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertSame([], $this->mailsTo(self::ADDRESS, 'Folake Adeyemi asked to get back into their account'), 'never to the person');
     }
 
+    /** A reset link proves only the inbox, so it opens no recovery: that asks for the first factor (sc-29067, Decided, 8 Nov). */
+    #[Test]
+    public function aResetLinkOpensNoRecovery(): void
+    {
+        $this->call('POST', '/api/auth/password/forgot', ['email' => self::ADDRESS]);
+        $link = (string) Type\instance_of(Email::class)->coerce(Iter\last(self::getMailerMessages()))->getTextBody();
+        $token = Regex\first_match($link, '/reset-password\?token=([0-9a-f]+)/')[1] ?? '';
+        self::assertTrue($this->call('POST', '/api/auth/password/reset/check', ['token' => $token])['twoFactor'], 'a live link, to a code step');
+
+        foreach (['/api/auth/two-factor/recovery/opening', '/api/auth/two-factor/recovery'] as $path) {
+            foreach ([['resetToken' => $token], ['challenge' => $token]] as $body) {
+                $this->call('POST', $path, $body);
+                self::assertGreaterThanOrEqual(400, $this->statusCode(), $path . ' ' . Json\encode($body));
+            }
+        }
+
+        self::assertSame(0, self::service(TwoFactorRecoveryRepository::class)->count([]), 'no request is opened, so no code is sent');
+    }
+
     /** An organisation named with its own full stop is not given a second one (sc-2573). */
     #[Test]
     public function theApproversFooterTakesNoSecondStopAfterTheOrganisationsOwn(): void
