@@ -22,6 +22,7 @@ import { NewEvent } from './app/events/NewEvent.tsx';
 import { General } from './app/settings/General.tsx';
 import { Members } from './app/settings/Members.tsx';
 import { SignInRules } from './app/settings/SignInRules.tsx';
+import { SettingsDesk } from './app/SettingsDesk.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
 import { ChangePhone } from './public/ChangePhone.tsx';
@@ -94,12 +95,17 @@ export const routes = [
           { path: 'events/:eventId/:area', element: <EventAreaPage /> },
           { path: 'calendar', element: <Calendar /> },
           { path: 'guests', element: <Dashboard /> },
-          { path: 'account', element: <Account /> },
-          { path: 'account/security', element: <Security /> },
-          { path: 'account/notifications', element: <NotificationSettings /> },
-          { path: 'settings', element: <General /> },
-          { path: 'settings/members', element: <Members /> },
-          { path: 'settings/sign-in-rules', element: <SignInRules /> },
+          {
+            element: <SettingsDesk />,
+            children: [
+              { path: 'account', element: <Account /> },
+              { path: 'account/security', element: <Security /> },
+              { path: 'account/notifications', element: <NotificationSettings /> },
+              { path: 'settings', element: <General /> },
+              { path: 'settings/members', element: <Members /> },
+              { path: 'settings/sign-in-rules', element: <SignInRules /> },
+            ],
+          },
         ],
       },
       {
