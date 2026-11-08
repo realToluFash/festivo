@@ -69,8 +69,6 @@ export const DOMAINS_WORDS = {
     type: 'Type',
     name: 'Name',
     value: 'Value',
-    copy: 'Copy',
-    copyLabel: (label: string) => `Copy ${label}`,
     copied: (label: string) => `${label} copied.`,
     notFound: 'We could not find the record yet. DNS changes can take up to 48 hours.',
   },
