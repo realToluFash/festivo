@@ -8,6 +8,10 @@ import { SAMPLE_GUESTS } from '../events/GuestCounts.ts';
 import {
   DOOR_STATES,
   GROUPS,
+  GUESTS_ON,
+  countsAt,
+  guestsAt,
+  startStateOf,
   FILTERS,
   GUESTS_STATES,
   areaStart,
@@ -35,6 +39,7 @@ import {
   sameNameAs,
 } from './GuestsModel.ts';
 import {
+  DRAFT_GUESTS,
   GUESTS,
   PAUSED_GUESTS,
   PLAN_SAMPLES,
@@ -310,43 +315,92 @@ describe('a split family (sc-3773, ux, 8 Nov): each group shows the people it co
   });
 });
 
+describe('Events, then an event, then Guests, with no ?state= (the lead on #1463)', () => {
+  const open = (event: string) => {
+    const state = startStateOf(null, event);
+    const guests = guestsAt(state);
+    const counts = countsAt(state, event, guests, 0);
+    return { state, guests, card: cardWords(state, 'owner', counts, false, EN, replyByOf(event)) };
+  };
+
+  it('opens each event the sample names on its own guests, card and step', () => {
+    expect(GUESTS_ON).toEqual(['evt-wed-4', 'evt-draft-4', 'evt-party-2']);
+    const wedding = open('evt-wed-4');
+    expect(wedding.guests).toEqual(GUESTS);
+    expect(wedding.card).toMatchObject({
+      tags: [],
+      says: '96 coming of 142 invited',
+      step: 'write',
+    });
+    expect(wedding.card.line).toContain('Replies close tomorrow, Wed, Nov 4.');
+
+    const party = open('evt-party-2');
+    expect(party.state).toBe('paused');
+    expect(party.guests).toEqual(PAUSED_GUESTS);
+    expect(party.card).toMatchObject({
+      tags: [{ word: 'Paused', mark: 'paused' }],
+      says: '20 coming of 45 invited',
+      line: 'Guests can’t be invited while this event is paused.',
+      step: null,
+    });
+
+    const draft = open('evt-draft-4');
+    expect(draft.state).toBe('draft');
+    expect(draft.guests).toEqual(DRAFT_GUESTS);
+    expect(draft.card).toMatchObject({
+      tags: [{ word: 'Draft', mark: 'draft' }],
+      says: '12 on the list',
+      line: 'Guests can’t be invited until this event is live.',
+      step: 'makeLive',
+    });
+    for (const one of [party, draft]) expect(one.card.line).not.toContain('Replies close');
+  });
+
+  it('leaves the Reply by sentence out when the event has none', () => {
+    const counts = countsOf(GUESTS);
+    expect(cardWords('inUse', 'owner', counts, false, EN, null).line).toBe(
+      '25 haven’t replied (21 guests and 4 of their companions).',
+    );
+  });
+});
+
 describe('the card, per state (spec §4)', () => {
   const counts = countsOf(GUESTS);
 
   it('says how the room stands, and who hasn’t replied in words', () => {
-    expect(cardWords('inUse', 'owner', counts, false, EN)).toMatchObject({
+    expect(cardWords('inUse', 'owner', counts, false, EN, REPLY_BY)).toMatchObject({
       says: '96 coming of 142 invited',
       line: '25 haven’t replied (21 guests and 4 of their companions). Replies close tomorrow, Wed, Nov 4.',
       step: 'write',
     });
-    expect(cardWords('inUse', 'owner', counts, false, 'en-GB').line).toContain(
+    expect(cardWords('inUse', 'owner', counts, false, 'en-GB', REPLY_BY).line).toContain(
       'Replies close tomorrow, Wed 4 Nov.',
     );
-    expect(cardWords('viewer', 'viewer', counts, false, EN).step).toBeNull();
-    expect(cardWords('first', 'owner', counts, true, EN)).toMatchObject({
+    expect(cardWords('viewer', 'viewer', counts, false, EN, REPLY_BY).step).toBeNull();
+    expect(cardWords('first', 'owner', counts, true, EN, REPLY_BY)).toMatchObject({
       says: 'No guests yet',
       step: 'addGuest',
     });
   });
 
   it('counts arrivals on the day, with Open check-in all day', () => {
-    expect(cardWords('onTheDay', 'owner', counts, false, EN)).toMatchObject({
+    expect(cardWords('onTheDay', 'owner', counts, false, EN, REPLY_BY)).toMatchObject({
       count: { arrived: 41, expected: 98 },
       step: 'openCheckIn',
     });
-    expect(cardWords('secondDay', 'owner', counts, false, EN)).toMatchObject({
+    expect(cardWords('secondDay', 'owner', counts, false, EN, REPLY_BY)).toMatchObject({
       line: '96 coming of 142 invited. Check-in is open all day.',
       step: 'openCheckIn',
     });
-    expect(cardWords('staffDayBefore', 'staff', counts, false, EN)).toMatchObject({
+    expect(cardWords('staffDayBefore', 'staff', counts, false, EN, REPLY_BY)).toMatchObject({
       says: 'Check-in opens at 16:00',
       step: 'openCheckIn',
     });
-    expect(cardWords('staffDoorOpen', 'staff', counts, false, EN).count).toEqual({
+    expect(cardWords('staffDoorOpen', 'staff', counts, false, EN, REPLY_BY).count).toEqual({
       arrived: 3,
       expected: 98,
     });
-    expect(cardWords('staffBefore', 'staff', counts, false, EN).step).toBeNull();
+    expect(cardWords('staffBefore', 'staff', counts, false, EN, REPLY_BY).step).toBeNull();
   });
 });
 

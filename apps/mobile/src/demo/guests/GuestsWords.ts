@@ -185,8 +185,9 @@ export const HOW_INVITED = ['WhatsApp', 'Text message', 'Email', 'In person', 'O
 export const say = {
   shown: (shown: number, total: number) => `${shown} of ${total} shown`,
   says: (coming: number, invited: number) => `${coming} coming of ${invited} invited`,
-  havent: (all: number, guests: number, companions: number, closes: string) =>
-    `${all} haven’t replied (${guests} guests and ${companions} of their companions). Replies close tomorrow, ${closes}.`,
+  havent: (all: number, guests: number, companions: number) =>
+    `${all} haven’t replied (${guests} guests and ${companions} of their companions).`,
+  closesTomorrow: (date: string) => `Replies close tomorrow, ${date}.`,
   onList: (count: number) => `${count} on the list`,
   arrivedOf: (arrived: number, expected: number) => `${arrived} of ${expected}`,
   arrivedSaid: (arrived: number, expected: number) => `${arrived} of ${expected} arrived`,

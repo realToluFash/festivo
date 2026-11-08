@@ -53,6 +53,7 @@ import { W as MW, say as sayMessages } from '../messages/MessagesWords.ts';
 import { GuestNumbers } from '../guests/GuestNumbers.tsx';
 import {
   type FilterKey,
+  GUESTS_ON,
   type GuestsState,
   OVERVIEW_STATES,
   clockOf as guestsClock,
@@ -64,9 +65,6 @@ import type { BudgetState } from '../budget/BudgetModel.ts';
 import { BudgetScreen } from '../budget/BudgetScreen.tsx';
 
 type Mute = 'ok' | 'notLoaded' | 'notSaved';
-
-/** The events whose guests the sample names: the wedding, a Draft and a Paused event. */
-const GUESTS_ON = ['evt-wed-4', 'evt-draft-4', 'evt-party-2'];
 
 /** Tell guests opens once the edit's own screen has gone, since iOS shows one window at a time. */
 const TELL_AFTER_MS = 800;

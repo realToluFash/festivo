@@ -7,12 +7,16 @@ import {
   COLLEAGUE,
   COUNTS,
   DRAFT_COUNTS,
+  DRAFT_GUESTS,
   FIRST_ROWS,
+  FROM_CONTACTS_ADDED,
   GUESTS,
   PAUSED_COUNTS,
+  PAUSED_GUESTS,
   PLAN,
   READER,
-  REPLY_BY,
+  TODAY,
+  WALK_IN,
   type Companion,
   type SampleGuest,
   WEDDING,
@@ -512,14 +516,15 @@ export function cardWords(
   counts: Counts,
   empty: boolean,
   locale: string,
+  replyBy: string | null,
 ): GuestsCardWords {
   const says = say.says(counts.coming, counts.invited);
-  const havent = say.havent(
-    counts.havent,
-    counts.noreply,
-    counts.havent - counts.noreply,
-    dayWords(REPLY_BY, locale, true),
-  );
+  const havent = [
+    say.havent(counts.havent, counts.noreply, counts.havent - counts.noreply),
+    replyBy == null ? null : say.closesTomorrow(dayWords(replyBy, locale, true)),
+  ]
+    .filter((part) => part != null)
+    .join(' ');
   const owner = role === 'owner';
 
   if (empty) return { tags: [], says: W.firstTitle, count: null, line: null, step: 'addGuest' };
@@ -685,7 +690,6 @@ export interface DoorPerson {
   failed: boolean;
 }
 
-/** Everyone on the list, A to Z, each companion under their host; on the day Dr Emeka Nwosu has said Coming. */
 export function doorPeople(): DoorPerson[] {
   const out: DoorPerson[] = [];
   for (const g of GUESTS) {
@@ -734,6 +738,75 @@ export function doorShown(people: readonly DoorPerson[], typed: string): DoorPer
 
 export function counted(kind: DoorPerson['kind']): boolean {
   return kind === 'coming';
+}
+
+export const GUESTS_ON: readonly string[] = [WEDDING, 'evt-draft-4', 'evt-party-2'];
+
+/** With no ?state=, the event decides: a Draft opens as `draft`, the Paused party as `paused`. */
+export function startStateOf(state: GuestsState | null, event: string): GuestsState | null {
+  if (state != null) return state;
+  if (event === 'evt-draft-4') return 'draft';
+  return event === 'evt-party-2' ? 'paused' : null;
+}
+
+/** The paused party's split is the demo's: the boards give only 20 coming of 45 invited, 48 on the list. */
+export const PAUSED: Counts = {
+  ...PAUSED_COUNTS,
+  notyet: 3,
+  maybe: 3,
+  notcoming: 3,
+  noreply: 15,
+  held: 4,
+  havent: 19,
+  walkin: 0,
+};
+export const DRAFT: Counts = {
+  ...DRAFT_COUNTS,
+  invited: 0,
+  coming: 0,
+  maybe: 0,
+  notcoming: 0,
+  noreply: 0,
+  held: 0,
+  havent: 0,
+  walkin: 0,
+};
+
+export function guestsAt(state: GuestsState | null): SampleGuest[] {
+  const swap = (key: string, change: (g: SampleGuest) => SampleGuest) =>
+    GUESTS.map((g) => (g.key === key ? change(g) : g));
+  switch (state) {
+    case 'first':
+      return [];
+    case 'draft':
+      return [...DRAFT_GUESTS];
+    case 'paused':
+      return [...PAUSED_GUESTS];
+    case 'contactsAdded':
+      return [...GUESTS, ...FROM_CONTACTS_ADDED].sort((a, b) => a.name.localeCompare(b.name));
+    case 'recorded':
+      return swap('emeka', (g) => recorded(g, 'coming', 'By phone', [true], TODAY));
+    case 'marked':
+      return swap('bisi', (g) => markedInvited(g, 'WhatsApp', TODAY));
+    case 'saved':
+      return swap('kwame', (g) => ({ ...g, email: 'kwame@mensah.co.uk' }));
+    case 'onTheDay':
+    case 'secondDay':
+      return [...GUESTS, WALK_IN].sort((a, b) => a.name.localeCompare(b.name));
+    default:
+      return [...GUESTS];
+  }
+}
+
+export function countsAt(
+  state: GuestsState | null,
+  event: string,
+  guests: readonly SampleGuest[],
+  added: number,
+): Counts {
+  if (event === 'evt-draft-4') return DRAFT;
+  if (event === 'evt-party-2') return PAUSED;
+  return state === 'first' ? countsFrom(guests) : countsOf(guests, added);
 }
 
 export type Overlay =

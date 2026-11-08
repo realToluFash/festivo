@@ -42,27 +42,21 @@ import {
   REVIEW_STATES,
   areaStart,
   cardWords,
-  countsFrom,
-  countsOf,
+  countsAt,
+  guestsAt,
+  startStateOf,
   groupRows,
   isIn,
   markedInvited,
-  recorded,
   roleOf,
   rowsOf,
 } from './GuestsModel.ts';
 import { GuestsFailed, GuestsLoading, GuestsRows } from './GuestsList.tsx';
 import { GuestToast, GuestsCard, GuestsTitle, type Layout } from './GuestsParts.tsx';
 import {
-  DRAFT_COUNTS,
-  DRAFT_GUESTS,
   FROM_CONTACTS_ADDED,
-  GUESTS,
-  PAUSED_COUNTS,
-  PAUSED_GUESTS,
   type SampleGuest,
   TODAY,
-  WALK_IN,
   WEDDING,
   replyByOf,
 } from './GuestsSample.ts';
@@ -71,55 +65,6 @@ import { W, say } from './GuestsWords.ts';
 const SEARCH_PAUSE_MS = 300;
 const FOCUS_AFTER_MS = 450;
 
-/** The paused party's split is the demo's: the boards give only 20 coming of 45 invited, 48 on the list. */
-const PAUSED: Counts = {
-  ...PAUSED_COUNTS,
-  notyet: 3,
-  maybe: 3,
-  notcoming: 3,
-  noreply: 15,
-  held: 4,
-  havent: 19,
-  walkin: 0,
-};
-const DRAFT: Counts = {
-  ...DRAFT_COUNTS,
-  invited: 0,
-  coming: 0,
-  maybe: 0,
-  notcoming: 0,
-  noreply: 0,
-  held: 0,
-  havent: 0,
-  walkin: 0,
-};
-
-function startGuests(state: GuestsState | null): SampleGuest[] {
-  const swap = (key: string, change: (g: SampleGuest) => SampleGuest) =>
-    GUESTS.map((g) => (g.key === key ? change(g) : g));
-  switch (state) {
-    case 'first':
-      return [];
-    case 'draft':
-      return [...DRAFT_GUESTS];
-    case 'paused':
-      return [...PAUSED_GUESTS];
-    case 'contactsAdded':
-      return [...GUESTS, ...FROM_CONTACTS_ADDED].sort((a, b) => a.name.localeCompare(b.name));
-    case 'recorded':
-      return swap('emeka', (g) => recorded(g, 'coming', 'By phone', [true], TODAY));
-    case 'marked':
-      return swap('bisi', (g) => markedInvited(g, 'WhatsApp', TODAY));
-    case 'saved':
-      return swap('kwame', (g) => ({ ...g, email: 'kwame@mensah.co.uk' }));
-    case 'onTheDay':
-    case 'secondDay':
-      return [...GUESTS, WALK_IN].sort((a, b) => a.name.localeCompare(b.name));
-    default:
-      return [...GUESTS];
-  }
-}
-
 /** Where the door opens from each day state: before 16:00 it says when it opens; from then it checks in. */
 function doorFrom(state: GuestsState | null): string {
   return state === 'staffDayBefore' ? 'beforeOpen' : 'door';
@@ -127,7 +72,7 @@ function doorFrom(state: GuestsState | null): string {
 
 /** The event's Guests in A: the card and its one step, Find a guest and the filter, the groups; a guest's page pushed in its place. */
 export function GuestsScreen({
-  state,
+  state: given,
   event,
   now,
   more,
@@ -156,9 +101,10 @@ export function GuestsScreen({
   const layout: Layout = shell.layout;
   const insets = useSafeAreaInsets();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
+  const state = startStateOf(given, event.id);
   const start = useMemo(() => areaStart(state), [state]);
   const role = roleOf(state);
-  const [guests, setGuests] = useState(() => startGuests(state));
+  const [guests, setGuests] = useState(() => guestsAt(state));
   const [added, setAdded] = useState(
     start.added > 0 ? start.added - FROM_CONTACTS_ADDED.length : 0,
   );
@@ -200,14 +146,7 @@ export function GuestsScreen({
     [],
   );
   const first = round === 0 ? state : null;
-  const counts: Counts =
-    event.id === 'evt-draft-4'
-      ? DRAFT
-      : event.id === 'evt-party-2'
-        ? PAUSED
-        : state === 'first'
-          ? countsFrom(guests)
-          : countsOf(guests, added);
+  const counts: Counts = countsAt(state, event.id, guests, added);
   const total = counts.list;
   const contacts = role === 'owner';
   const replyBy = replyByOf(event.id);
@@ -250,7 +189,7 @@ export function GuestsScreen({
   };
   const close = () => setOverlay(null);
   const onStep = () => {
-    const words = cardWords(state, role, counts, empty, locale);
+    const words = cardWords(state, role, counts, empty, locale, replyBy);
     if (words.step === 'addGuest') show('add', 'card');
     else if (words.step === 'write') onWrite();
     else if (words.step === 'makeLive') onMakeLive();
@@ -264,7 +203,7 @@ export function GuestsScreen({
   const replace = (g: SampleGuest) =>
     setGuests((all) => all.map((one) => (one.key === g.key ? g : one)));
 
-  const words = cardWords(state, role, counts, empty, locale);
+  const words = cardWords(state, role, counts, empty, locale, replyBy);
   const stepLabel: Record<NonNullable<typeof words.step>, string> = {
     addGuest: W.addGuest,
     write: W.writeToThem,
