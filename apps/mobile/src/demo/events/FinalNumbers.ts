@@ -10,11 +10,22 @@ export const FINAL_NUMBERS_STATES = [
 ] as const;
 export type FinalNumbersState = (typeof FINAL_NUMBERS_STATES)[number];
 
+/** sc-30692: a change since the latest copy brings back "Give the changes to the kitchen", due at the date if it came back by then, else at the start. */
+export const CHANGES_STATES = ['changes_due', 'changes_overdue', 'changes_late'] as const;
+export type ChangesState = (typeof CHANGES_STATES)[number];
+
 export const FINAL_WORDS = {
   milestone: 'Give final numbers to the kitchen',
+  changes: 'Give the changes to the kitchen',
   you: 'You',
   overdue: 'Overdue',
 } as const;
+
+const CHANGES_DUE: Record<ChangesState, string | null> = {
+  changes_due: '2026-11-03',
+  changes_overdue: '2026-11-02',
+  changes_late: null,
+};
 
 const DUE: Record<FinalNumbersState, string | null> = {
   finalNumbers: '2026-11-03',
@@ -53,6 +64,8 @@ const NEEDS_YOU_OTHERS: Partial<Record<string, readonly Milestone[]>> = {
 
 let due: string | null = null;
 let others: readonly Milestone[] = [];
+let changes = false;
+let atStart = false;
 
 export function isFinalNumbersState(value: string | null): value is FinalNumbersState {
   return FINAL_NUMBERS_STATES.some((state) => state === value);
@@ -60,12 +73,28 @@ export function isFinalNumbersState(value: string | null): value is FinalNumbers
 
 /** A state link sets the wedding's date as the server would return it: a copy recorded means no milestone. */
 export function seedFinalNumbers(state: string | null): void {
-  due = isFinalNumbersState(state) ? DUE[state] : ((state && NEEDS_YOU_DUE[state]) ?? null);
+  changes = isChangesState(state);
+  atStart = state === 'changes_late';
+  due = isChangesState(state)
+    ? CHANGES_DUE[state]
+    : isFinalNumbersState(state)
+      ? DUE[state]
+      : ((state && NEEDS_YOU_DUE[state]) ?? null);
   others = (state == null ? undefined : NEEDS_YOU_OTHERS[state]) ?? [];
 }
 
-export function finalNumbersDue(eventId: string): string | null {
-  return eventId === FINAL_NUMBERS_EVENT ? due : null;
+export function isChangesState(value: string | null): value is ChangesState {
+  return CHANGES_STATES.some((state) => state === value);
+}
+
+/** The kitchen's milestone as the server returns it: its title, and when it falls due (null at the event's start). */
+export function kitchenOwed(eventId: string): { title: string; due: string | null } | null {
+  if (eventId !== FINAL_NUMBERS_EVENT || (due == null && !atStart)) return null;
+
+  return {
+    title: changes ? FINAL_WORDS.changes : FINAL_WORDS.milestone,
+    due: atStart ? null : due,
+  };
 }
 
 export function othersOwed(eventId: string): readonly Milestone[] {
