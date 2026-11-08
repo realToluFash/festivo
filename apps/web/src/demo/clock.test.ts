@@ -23,6 +23,18 @@ function twelveHourIn(text: string): string[] {
   return [...asked, ...written];
 }
 
+/** A time asked of Intl in the reader's locale, which only writtenTime may do; en-GB is a form or comparison value, never read. */
+function timeByHand(text: string): string[] {
+  return [...text.matchAll(/\bhour: ['"]/gu)]
+    .filter(
+      (m) =>
+        !/DateTimeFormat\('en-GB', \{[^}]*$/u.test(
+          text.slice(Math.max(0, (m.index ?? 0) - 120), m.index ?? 0),
+        ),
+    )
+    .map((m) => m[0]);
+}
+
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
@@ -65,14 +77,27 @@ describe('every time in the web’s demo, on the 24-hour clock (sc-31722)', () =
     expect(twelveHourIn('Ends at 18:00. PMs and AMs are words.')).toEqual([]);
   });
 
-  it('is the one home: no screen asks Intl for a 12-hour clock or writes AM or PM itself', () => {
+  it('catches a reader’s time formatted outside writtenTime, even on the 24-hour cycle', () => {
+    expect(
+      timeByHand(
+        "new Intl.DateTimeFormat(locale, { timeZone: ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })",
+      ),
+    ).not.toEqual([]);
+    expect(
+      timeByHand(
+        "new Intl.DateTimeFormat('en-GB', {\n    timeZone,\n    hour: '2-digit',\n    minute: '2-digit',\n    hourCycle: 'h23',\n  })",
+      ),
+    ).toEqual([]);
+  });
+
+  it('is the one home: no screen asks Intl for a reader’s time or writes AM or PM itself', () => {
     const files = [join('src', 'demo')]
       .flatMap(sources)
       .filter((path) => !path.endsWith('clock.ts'));
     const offenders = files.filter((path) => {
       const text = readFileSync(path, 'utf8');
 
-      return twelveHourIn(text).length > 0;
+      return twelveHourIn(text).length > 0 || timeByHand(text).length > 0;
     });
 
     expect(files.length).toBeGreaterThan(20);
