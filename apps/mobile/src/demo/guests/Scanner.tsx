@@ -37,6 +37,9 @@ import {
   readOf,
   resultOf,
   scannedOf,
+  searchHref,
+  tell,
+  type Told,
 } from './ScanModel.ts';
 
 const SIDE_PANEL = 420;
@@ -49,9 +52,9 @@ function leave(): void {
   else router.replace('/demo/guests/check-in?state=door' as Href);
 }
 
-/** Search by name: back on Check-in, in its search, as sc-1301's not-on-list answer says. */
+/** Search by name: back on Check-in, in its search, as sc-1301's not-on-list answer says; each tap a new ask. */
 function toSearch(): void {
-  router.dismissTo('/demo/guests/check-in?state=door&focus=search' as Href);
+  router.dismissTo(searchHref(Date.now()) as Href);
 }
 
 function lineOf(p: Scanned, locale: string, twice: boolean): string {
@@ -402,12 +405,14 @@ export function ScannerScreen({ state, waiting }: { state: ScanState | null; wai
     state === 'arrivedFromScan' ? { arrived: 42, expected: 98 } : ARRIVALS.onTheDay,
   );
   const [kept, setKept] = useState(waiting);
-  const [told, setTold] = useState<string | null>(() => {
+  const [told, setTold] = useState<Told | null>(() => {
     const first = resultOf(state);
-    if (state === 'arrivedFromScan') return say.arrivedName('Inês Duarte');
-    return first == null ? null : saidOf(first, locale);
+    if (first == null) return null;
+    const host = first.kind === 'guest' ? first.people[0] : undefined;
+    if (state === 'arrivedFromScan' && host != null) return tell(null, say.arrivedName(host.name));
+    return tell(null, saidOf(first, locale));
   });
-  useReadOut(told);
+  useReadOut(told?.words ?? null, { answer: told?.tap });
   const camera = state !== 'offlineNoList' && state !== 'cameraOff';
   const big = layout === 'phone';
 
@@ -424,7 +429,7 @@ export function ScannerScreen({ state, waiting }: { state: ScanState | null; wai
       ),
     });
     setCount(countAfter(count, p.kind, by));
-    setTold(by === 1 ? say.arrivedName(p.name) : W.arrivalUndone);
+    setTold(tell(told, by === 1 ? say.arrivedName(p.name) : W.arrivalUndone));
     if (offline) setKept(Math.max(0, kept + by));
   };
   const onRead = () => {
@@ -432,7 +437,7 @@ export function ScannerScreen({ state, waiting }: { state: ScanState | null; wai
     const read = readOf(key);
     setLast(key);
     setResult(read);
-    setTold(saidOf(read, locale));
+    setTold(tell(told, saidOf(read, locale)));
   };
   const onNext = () => setResult(null);
 

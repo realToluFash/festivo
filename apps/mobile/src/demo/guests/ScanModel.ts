@@ -37,7 +37,6 @@ export interface Scanned {
   key: string;
   name: string;
   kind: ReplyKind;
-  /** The day of the reply, for its line; none for a companion. */
   when: string | null;
   companion: boolean;
   arrivedAt: string | null;
@@ -93,7 +92,6 @@ const READ_IN: Partial<Record<ScanState, string | null>> = {
   offlineNotOnList: null,
 };
 
-/** The code the state shows read, so Scan the next code moves on from it; undefined while nothing is read yet. */
 export function scannedOf(state: ScanState | null): string | null | undefined {
   return state != null && Object.hasOwn(READ_IN, state) ? READ_IN[state] : undefined;
 }
@@ -118,4 +116,23 @@ export function isOffline(state: ScanState | null): boolean {
 export function nextRead(last: string | null | undefined): string | null {
   const at = last === undefined ? -1 : READS.indexOf(last as (typeof READS)[number]);
   return READS[(at + 1) % READS.length] ?? null;
+}
+
+/** Words to read out and the tap they answer: a new tap says them again, even in the same words (useReadOut's answer). */
+export interface Told {
+  words: string;
+  tap: number;
+}
+
+export function tell(before: Told | null, words: string): Told {
+  return { words, tap: (before?.tap ?? 0) + 1 };
+}
+
+/** Search by name's way back to Check-in: each tap its own ask, so a second tap focuses the search again. */
+export function searchHref(tap: number): string {
+  return `/demo/guests/check-in?state=door&focus=search&tap=${tap}`;
+}
+
+export function searchAskOf(params: { focus?: string; tap?: string }): string | null {
+  return params.focus === 'search' ? (params.tap ?? '0') : null;
 }

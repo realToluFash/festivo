@@ -5,7 +5,7 @@ import { EventsShell } from '../events/Route.tsx';
 import { CheckInScreen } from './CheckIn.tsx';
 import { doorStateOf, eventOf, guestsStateOf } from './GuestsModel.ts';
 import { ScannerScreen } from './Scanner.tsx';
-import { scanStateOf, waitingOf } from './ScanModel.ts';
+import { scanStateOf, searchAskOf, waitingOf } from './ScanModel.ts';
 
 /** /demo/guests: the event's Guests by guests-a-spec §15's ?state=, inside the event it opens on. */
 export function GuestsRoute() {
@@ -27,12 +27,12 @@ export function GuestsRoute() {
 
 /** /demo/guests/check-in: the door on the day, by its ?state=. */
 export function CheckInRoute() {
-  const params = useLocalSearchParams<{ state?: string; focus?: string }>();
+  const params = useLocalSearchParams<{ state?: string; focus?: string; tap?: string }>();
   const state = doorStateOf(params.state);
 
   return (
     <EventsShell>
-      <CheckInScreen key={state ?? ''} state={state} focusSearch={params.focus === 'search'} />
+      <CheckInScreen key={state ?? ''} state={state} searchAsk={searchAskOf(params)} />
     </EventsShell>
   );
 }

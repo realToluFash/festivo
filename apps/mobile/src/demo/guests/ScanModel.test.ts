@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { say } from './GuestsWords.ts';
+import { howToReadOut, shownBeforeAnswer } from '../../kit/readOut.ts';
+import { W, say } from './GuestsWords.ts';
 import {
   SCAN_STATES,
   isOffline,
@@ -9,6 +10,9 @@ import {
   resultOf,
   scanStateOf,
   scannedOf,
+  searchAskOf,
+  searchHref,
+  tell,
   waitingOf,
 } from './ScanModel.ts';
 
@@ -80,5 +84,29 @@ describe('the scanner’s states, as guests-a-spec §19 names them', () => {
     expect(say.offlineSince('18:31', 12)).toBe('Offline since 18:31 · 12 arrivals waiting to sync');
     expect(say.offlineSince('18:31', 1)).toBe('Offline since 18:31 · 1 arrival waiting to sync');
     expect(say.offlineSince('18:31', 0)).toBe('Offline since 18:31');
+  });
+
+  it('says a second “Arrival undone” again, as a new tap’s answer', () => {
+    const reading = { os: 'ios', interrupts: false, afterTyping: false };
+    const first = tell(null, W.arrivalUndone);
+    const second = tell(tell(first, say.arrivedName('Inês Duarte')), W.arrivalUndone);
+    const twice = tell(first, W.arrivalUndone);
+    expect(second.words).toBe(first.words);
+    expect(twice.tap).not.toBe(first.tap);
+    const before = shownBeforeAnswer(first.words, first.tap, twice.tap);
+    expect(howToReadOut(before, twice.words, reading).handOver?.words).toBe(W.arrivalUndone);
+    expect(tell(tell(null, W.notOnList), W.notOnList).tap).toBe(2);
+  });
+
+  it('asks Check-in to focus its search on every Search by name tap', () => {
+    const askOf = (href: string) =>
+      searchAskOf(Object.fromEntries(new URL(href, 'https://demo.soirely').searchParams));
+    const one = askOf(searchHref(1));
+    const two = askOf(searchHref(2));
+    expect(one).not.toBeNull();
+    expect(two).not.toBeNull();
+    expect(two).not.toBe(one);
+    expect(searchAskOf({})).toBeNull();
+    expect(searchAskOf({ focus: 'other', tap: '3' })).toBeNull();
   });
 });

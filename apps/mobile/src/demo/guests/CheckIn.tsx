@@ -165,10 +165,10 @@ export function ArrivedButton({
 /** Check-in (sc-1454), opened from Guests on the day: its card, Search by name, everyone A to Z with Arrived. */
 export function CheckInScreen({
   state,
-  focusSearch = false,
+  searchAsk = null,
 }: {
   state: DoorState | null;
-  focusSearch?: boolean;
+  searchAsk?: string | null;
 }) {
   const shell = useShell();
   const layout: Layout = shell.layout;
@@ -207,10 +207,10 @@ export function CheckInScreen({
   const search = useRef<TextInputInstance>(null);
 
   useEffect(() => {
-    if (!focusSearch) return;
+    if (searchAsk == null) return;
     const wait = setTimeout(() => focusChecked(search), tokens.motionBase);
     return () => clearTimeout(wait);
-  }, [focusSearch]);
+  }, [searchAsk]);
 
   useEffect(() => {
     if (typed === searched) return;
