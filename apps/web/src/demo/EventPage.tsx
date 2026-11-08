@@ -40,6 +40,14 @@ import {
   TypePart,
   VenuePart,
 } from './EventEdits.tsx';
+import { ReplyByPart } from './EventReplyBy.tsx';
+import {
+  REPLY_BY_WORDS,
+  datesSaveSays,
+  replyByAfterStart,
+  replyBySays,
+  rowDay,
+} from './replyBy.ts';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
 import { type NeedsState, readerOf } from './needsYou.ts';
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
@@ -57,7 +65,7 @@ import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { LayersContext } from '../layers.ts';
 import { BUDGET_EVENT } from './budget.ts';
 import { BudgetEntry } from './BudgetRoutes.tsx';
-import { type NumbersState, guestsAt, hasGuests, numbersStateOf } from './guests.ts';
+import { type NumbersState, guestsAt, hasGuests, numbersStateOf, replyByOf } from './guests.ts';
 import { GuestNumbers } from './GuestsParts.tsx';
 import {
   type Told,
@@ -92,7 +100,7 @@ interface Arrival {
 
 type Asking = 'pause' | 'callOff' | 'endNow' | 'deleteDraft' | 'delete' | 'duplicate';
 
-const PARTS: Record<Part, ComponentType<PartProps>> = {
+const PARTS: Record<Exclude<Part, 'replyBy'>, ComponentType<PartProps>> = {
   dates: DatesPart,
   venue: VenuePart,
   hosts: HostsPart,
@@ -101,6 +109,14 @@ const PARTS: Record<Part, ComponentType<PartProps>> = {
   name: NamePart,
   cover: CoverPart,
 };
+
+/** Reply by as each state opens it: the sample's, or what was just saved (sc-3780). */
+function replyByStart(state: EventStateName | null, id: string): string | null {
+  if (state === 'replyBySaved') return '2026-11-03';
+  if (state === 'replyByRemoved') return null;
+
+  return replyByOf(id);
+}
 
 function needsStateOf(state: EventStateName | null): NeedsState | null {
   return state != null && state.startsWith('needsYou') ? (state as NeedsState) : null;
@@ -233,6 +249,8 @@ function EventView({
   const area = fixedArea ?? areaOf(params.get('area'));
   const [telling, setTelling] = useState<readonly Told[] | null>(tellingFirst);
   const [event, setEvent] = useState(initial);
+  const [replyBy, setReplyBy] = useState(() => replyByStart(state, initial.id));
+  const [tellMoved, setTellMoved] = useState<string | null>(null);
   const [part, setPart] = useState<Part | null>(partOf(state) ?? arrival.open ?? null);
   const [dirty, setDirty] = useState(false);
   const [leaving, setLeaving] = useState<{ to: Part | null } | null>(null);
@@ -267,7 +285,12 @@ function EventView({
 
   return (
     <EventsShell
-      told={arrival.told ?? null}
+      told={
+        arrival.told ??
+        (state === 'replyBySaved' || state === 'replyByRemoved'
+          ? replyBySays(replyBy, now, event.timeZone).toast
+          : null)
+      }
       renderSide={(tell, covered) => (
         <EventSidebar
           event={event}
@@ -334,13 +357,30 @@ function EventView({
                             ? toldOf(event, next)
                             : [];
 
+                        const moved = replyByAfterStart(replyBy, next.startsAt, next.timeZone);
+
+                        const says = datesSaveSays(moved, changes.length > 0);
+                        const said = replyBySays(moved, now, next.timeZone);
+
                         kept(next);
                         setPart(null);
                         setDirty(false);
-                        if (changes.length > 0) setTelling(changes);
-                        else tell(W.saved);
+                        if (moved != null) setReplyBy(moved);
+                        if (changes.length > 0) {
+                          setTellMoved(says.inTell ? said.line : null);
+                          setTelling(changes);
+                        }
+                        if (says.toast === 'moved') tell(said.toast);
+                        if (says.toast === 'saved') tell(W.saved);
                       }}
                       onLatest={kept}
+                      replyBy={replyBy}
+                      onReplyBy={(next) => {
+                        setReplyBy(next);
+                        setPart(null);
+                        setDirty(false);
+                        tell(replyBySays(next, now, event.timeZone).toast);
+                      }}
                       needs={
                         <EventNeedsYou
                           timeline={timelineOf(event, now)}
@@ -445,6 +485,7 @@ function EventView({
             <TellDialog
               tell={tell}
               changes={telling}
+              before={tellMoved}
               onNotNow={() => {
                 const was = keptInbox();
 
@@ -650,6 +691,8 @@ function Details({
   onClose,
   onSave,
   onLatest,
+  replyBy,
+  onReplyBy,
   needs,
 }: {
   event: SampleEvent;
@@ -661,6 +704,8 @@ function Details({
   onClose: () => void;
   onSave: (next: SampleEvent) => void;
   onLatest: (latest: SampleEvent) => void;
+  replyBy: string | null;
+  onReplyBy: (next: string | null) => void;
   needs: ReactNode;
 }) {
   const locked = eventPhase(event, now) === 'finished';
@@ -668,6 +713,18 @@ function Details({
   const maps = mapsLink(event);
   const editing = (one: Part) => {
     if (part !== one) return null;
+    if (one === 'replyBy')
+      return (
+        <ReplyByPart
+          event={event}
+          state={partOf(state) === one ? (state as PartProps['state']) : null}
+          replyBy={replyBy}
+          now={now}
+          onDirty={onDirty}
+          onClose={onClose}
+          onSave={onReplyBy}
+        />
+      );
 
     const Editor = PARTS[one];
 
@@ -679,6 +736,7 @@ function Details({
         onClose={onClose}
         onSave={onSave}
         onLatest={onLatest}
+        replyBy={replyBy}
       />
     );
   };
@@ -689,7 +747,7 @@ function Details({
       title={title}
       line={line}
       open={part === one}
-      locked={one === 'dates' && locked}
+      locked={(one === 'dates' || one === 'replyBy') && locked}
       after={after}
       onOpen={() => onOpen(one)}
     >
@@ -709,6 +767,14 @@ function Details({
             locked
               ? `${W.dates} · ${W.scheduleLocked}`
               : [W.dates, ...(days > 1 ? [W.dayCount(days)] : []), event.timeZone].join(' · '),
+          )}
+          {row(
+            'replyBy',
+            <Lead name="clock" />,
+            replyBy == null ? REPLY_BY_WORDS.rowNone : rowDay(replyBy),
+            replyBy == null
+              ? REPLY_BY_WORDS.replyBy
+              : `${REPLY_BY_WORDS.replyBy} · ${REPLY_BY_WORDS.rowCloses(event.timeZone)}`,
           )}
           {row(
             'venue',

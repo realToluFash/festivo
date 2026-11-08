@@ -23,7 +23,7 @@ import { Text } from '../../components/Text.tsx';
 import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { EventThumb } from '../events/EventCard.tsx';
+import { EventThumb } from '../../components/EventCard.tsx';
 import { Search } from '../OrgSwitcher.tsx';
 import { startsAWord } from '../OrgSwitcherModel.ts';
 import { useShell } from '../../components/settingsShell.ts';
@@ -504,7 +504,7 @@ function WillMove({ events }: { events: readonly LedEvent[] }) {
             index === 0 ? `${W.willMove(events.length)}, ${event.name}` : event.name
           }
         >
-          <EventThumb event={{ ...event, photo: false }} side={28} radius={8} />
+          <EventThumb event={{ ...event, photo: null }} side={28} radius={8} />
           <Text
             size={15}
             weight="semibold"
@@ -583,7 +583,7 @@ export function LeadsBlock({
           row: (
             <Row
               title={event.name}
-              lead={<EventThumb event={{ ...event, photo: false }} side={LEAD_TILE} radius={12} />}
+              lead={<EventThumb event={{ ...event, photo: null }} side={LEAD_TILE} radius={12} />}
               testID={`members.leads.${event.id}`}
             />
           ),

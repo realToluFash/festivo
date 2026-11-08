@@ -20,10 +20,12 @@ import {
   type View,
   type Visit,
   type Words,
+  answersClosedByDate,
   characters,
   dayOf,
   forTheDay,
   layoutOf,
+  sameAnswer,
   shows,
   showsMessages,
   startOf,
@@ -122,8 +124,8 @@ function Visitor({ state }: { state: string | null }) {
     (answer: Answer) =>
       go(
         (was) => ({
-          recorded: was.recorded?.answer === answer ? was.recorded : { answer, on: TODAY },
-          view: { kind: 'recorded', same: was.recorded?.answer === answer },
+          recorded: sameAnswer(was.recorded, answer) ? was.recorded : { answer, on: TODAY },
+          view: { kind: 'recorded', same: sameAnswer(was.recorded, answer) },
         }),
         'greeting',
       ),
@@ -488,7 +490,7 @@ function Shown({
           <h2 id="gp-answer-h" className="gp-h2">
             {words.yourAnswer}
           </h2>
-          {visit.replyBy != null && (
+          {visit.replyBy != null && !answersClosedByDate(visit) && (
             <p className="gp-sub">{words.replyBy(dayOf(REPLY_BY, lang))}</p>
           )}
           {view.note === 'unsent' && <Notice kind="attention">{words.unsent}</Notice>}
@@ -534,17 +536,24 @@ function Shown({
       );
     case 'recorded': {
       if (recorded == null) return null;
+      const day = dayOf(recorded.on, lang);
 
       return (
         <section className="gp-recorded" aria-labelledby="gp-greeting">
           <div className="gp-greet">
             <Mark answer={recorded.answer} />
             <h2 id="gp-greeting" className="gp-h2" tabIndex={-1} data-focus="greeting">
-              {words.greeting(recorded.answer)}
+              {recorded.by == null
+                ? words.greeting(recorded.answer)
+                : words.answerIs(recorded.answer)}
             </h2>
           </div>
           <div className="gp-indent">
-            <p className="gp-sub">{words.answered(recorded.answer, dayOf(recorded.on, lang))}</p>
+            {recorded.by == null ? (
+              <p className="gp-sub">{words.answered(recorded.answer, day)}</p>
+            ) : (
+              <p className="gp-sub is-recorded">{words.recordedFor(recorded.by, day)}</p>
+            )}
             {view.same && <p className="gp-sub is-ink">{words.same(recorded.answer)}</p>}
             {recorded.answer === 'notSure' && COMPANIONS > 0 && (
               <p className="gp-sub">{words.companions}</p>
@@ -560,7 +569,11 @@ function Shown({
       return (
         <section className="gp-changing" aria-labelledby="gp-new-h">
           {recorded != null && (
-            <p className="gp-sub">{words.answered(recorded.answer, dayOf(recorded.on, lang))}</p>
+            <p className="gp-sub">
+              {recorded.by == null
+                ? words.answered(recorded.answer, dayOf(recorded.on, lang))
+                : words.answerIs(recorded.answer)}
+            </p>
           )}
           <h2 id="gp-new-h" className="gp-h2" tabIndex={-1} data-focus="newHead">
             {words.newAnswer}
@@ -625,7 +638,9 @@ function Closed({
   const said =
     recorded == null
       ? words.didNotAnswer
-      : words.answered(recorded.answer, dayOf(recorded.on, lang));
+      : recorded.by != null
+        ? words.answerIs(recorded.answer)
+        : words.answered(recorded.answer, dayOf(recorded.on, lang));
 
   if (phase === 'calledOff') return null;
   if (phase === 'over' || phase === 'finished') {
@@ -659,17 +674,23 @@ function Closed({
 
   const by = dayOf(visit.replyBy ?? '', lang);
   const saved = visit.kitchen?.saved === true;
-  const line = visit.started
-    ? words.closed
-    : recorded?.answer === 'notSure'
-      ? words.closedByNotSure(by)
-      : words.closedBy(by);
+  const line =
+    visit.started || !answersClosedByDate(visit)
+      ? words.closed
+      : recorded == null || recorded.answer === 'notSure'
+        ? words.closedByNotSure(by)
+        : words.closedBy(by);
 
   return (
     <section className="gp-closed is-live" aria-labelledby="gp-closed-h">
       <h2 id="gp-closed-h" className="gp-h2 is-19">
         {said}
       </h2>
+      {recorded?.by != null && (
+        <p className="gp-sub is-recorded">
+          {words.recordedOn(recorded.by, dayOf(recorded.on, lang))}
+        </p>
+      )}
       {saved && <GuestKitchenSaved lang={lang} />}
       <p className="gp-sub">{line}</p>
       {!visit.started && recorded?.answer === 'coming' && (

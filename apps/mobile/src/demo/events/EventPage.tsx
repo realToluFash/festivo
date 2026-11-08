@@ -9,7 +9,7 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { LineIcon } from '../settings/AccountCard.tsx';
 import { SwitchTrack } from '../settings/NotificationsSwitch.tsx';
-import { EventCard, EventThumb } from './EventCard.tsx';
+import { EventCard, EventThumb } from '../../components/EventCard.tsx';
 import { AcPill, AlertLine, CHANGED, EditScreen } from './EventEdits.tsx';
 import { AreaPage, EventFrame } from './EventFrame.tsx';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
@@ -274,6 +274,7 @@ export function EventScreen({
       now={now}
       locale={locale}
       wide={shell.layout !== 'phone'}
+      takes={() => true}
       onStep={onStep}
       testID="event.card"
     />

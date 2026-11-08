@@ -1,13 +1,7 @@
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import {
-  EVENT_CARD_GAP,
-  eventCardWidth,
-  eventDatesWords,
-  nextStepWords,
-  summaryWords,
-} from './eventsHome.ts';
+import { EVENT_CARD_GAP, eventCardWidth, eventDatesWords, summaryWords } from './eventsHome.ts';
 
 const t = ((key: string, values: Record<string, unknown> = {}) =>
   `${key} ${JSON.stringify(values)}`) as unknown as TFunction;
@@ -92,14 +86,5 @@ describe('eventDatesWords', () => {
         t,
       ),
     ).toEqual({ days: 'eventsScreen.calledOffOn {"date":"Nov 10"}', time: null });
-  });
-});
-
-describe('nextStepWords', () => {
-  it('says what each phase asks for next', () => {
-    expect(nextStepWords({ kind: 'makeLive' }, t)).toBe('eventsScreen.nextMakeLive {}');
-    expect(nextStepWords({ kind: 'changeDates' }, t)).toBe('eventsScreen.nextChangeDates {}');
-    expect(nextStepWords({ kind: 'resume' }, t)).toBe('eventsScreen.nextResume {}');
-    expect(nextStepWords(null, t)).toBeNull();
   });
 });
