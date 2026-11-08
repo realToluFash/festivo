@@ -46,7 +46,7 @@ export const EVENTS = [
 
 const FOLAKE = VIEWERS.folake.name;
 const JULIEN = VIEWERS.julien.name;
-const LAGOS_ADDRESS = '102.89.34.17';
+const ADDRESS = '203.0.113.17';
 
 /** Newest first, as the boards list them; the seconds, codes and references the spec leaves out are the sample's. */
 export const ENTRIES: readonly Entry[] = [
@@ -118,7 +118,7 @@ export const ENTRIES: readonly Entry[] = [
     reference: '0c9f2b18-4e6a-4d73-b25e-8a1f7d3c6e09',
     on: { name: `${ORG}’ sign-in rules` },
     changes: 'Everyone needs two-factor: Off → On',
-    address: LAGOS_ADDRESS,
+    address: ADDRESS,
     device: 'Safari on macOS',
   },
   {
@@ -129,7 +129,7 @@ export const ENTRIES: readonly Entry[] = [
     type: 'Sign-in and security',
     action: 'email_domain.added',
     reference: 'e83a7f25-6b9d-4c10-a4e8-3f5b2d0c9a61',
-    address: LAGOS_ADDRESS,
+    address: ADDRESS,
   },
   {
     id: 'held',

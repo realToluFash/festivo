@@ -149,7 +149,7 @@ describe('Data and control › Audit log (sc-611)', () => {
   it.each([
     ['detail_gone', 'Bisi & Kola’s engagement · no longer exists', 'Device'],
     ['detail_signin', 'Safari on macOS', 'Never'],
-    ['detail_old', '102.89.34.17', 'Device'],
+    ['detail_old', '203.0.113.17', 'Device'],
     ['detail_system', 'System', 'Network address'],
   ])('opens %s from its own link', async (state, shown, absent) => {
     await log(`?state=${state}`);

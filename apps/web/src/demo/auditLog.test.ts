@@ -91,10 +91,10 @@ describe('Audit log (sc-611)', () => {
       On: 'Ire Events’ sign-in rules',
       Changes: 'Everyone needs two-factor: Off → On',
       'Type and action': 'Sign-in and security · sign_in_rules.changed',
-      'Network address': '102.89.34.17',
+      'Network address': '203.0.113.17',
       Device: 'Safari on macOS',
     });
-    expect(facts('domainAdded')['Network address']).toBe('102.89.34.17');
+    expect(facts('domainAdded')['Network address']).toBe('203.0.113.17');
     expect(facts('domainAdded').Device).toBeUndefined();
     expect(facts('proved').Who).toBe('System');
     expect(facts('proved')['Network address']).toBeUndefined();
