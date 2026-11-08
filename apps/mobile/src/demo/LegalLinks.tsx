@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { Pressable, type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { Text } from '../components/Text.tsx';
+import { WEIGHTS, type WeightName } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { type LegalDoc, LEGAL_WORDS } from './legalLinks.ts';
 
@@ -11,7 +12,8 @@ export function LegalLinks({ style }: { style?: StyleProp<ViewStyle> }) {
     <View style={[styles.line, style]}>
       <LegalLink doc="terms" />
       <Text
-        size={LINK_SIZE}
+        size={LINK.size}
+        weight={LINK_WEIGHT}
         accessible={false}
         importantForAccessibility="no"
         style={styles.secondary}
@@ -23,7 +25,10 @@ export function LegalLinks({ style }: { style?: StyleProp<ViewStyle> }) {
   );
 }
 
-const LINK_SIZE = 13;
+const LINK = tokens.typeSmallStrong;
+const LINK_WEIGHT =
+  (Object.keys(WEIGHTS) as WeightName[]).find((name) => WEIGHTS[name] === String(LINK.weight)) ??
+  'medium';
 
 function LegalLink({ doc }: { doc: LegalDoc }) {
   return (
@@ -33,7 +38,7 @@ function LegalLink({ doc }: { doc: LegalDoc }) {
       accessibilityRole="link"
       testID={`demo.legal.${doc}`}
     >
-      <Text size={LINK_SIZE} weight="medium" style={styles.secondary}>
+      <Text size={LINK.size} weight={LINK_WEIGHT} style={styles.secondary}>
         {LEGAL_WORDS[doc]}
       </Text>
     </Pressable>

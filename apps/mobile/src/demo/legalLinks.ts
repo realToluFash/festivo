@@ -3,7 +3,7 @@ import { LOCALES } from '@soirely/domain';
 /** The web's Terms and Privacy pages (sc-28982), which the app links from Welcome, Create account and Settings (sc-29938). */
 export type LegalDoc = 'terms' | 'privacy';
 
-/** The words the web's footer uses; the linguist sets the other three languages. */
+/** The words the web's footer uses (sc-28982). */
 export const LEGAL_WORDS: Record<LegalDoc, string> = { terms: 'Terms', privacy: 'Privacy' };
 
 export function legalDoc(asked: string | undefined): LegalDoc {
