@@ -901,3 +901,15 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
 - **A refused control's screen-reader word** (`mobile:forms.invalid`, sc-31909): "Invalid", heard
   after the control's name ("Email, Invalid") and before its refusal line as the hint. One word,
   capitalised as a state the platform announces; never seen, so it has no layout to fit.
+- **8 Nov 2026. Starting a seating plan** (sc-33304 for sc-3998, `web:seating.*`,
+  `messages:seating.*`, `messages:validation.seating_*`, settled with pm on sc-3998 #32429 and
+  #32766). A refused save ends "Your change was not saved." everywhere. A failed load is "Could
+  not load the seating plan." then "Check your connection and try again. …". Delete the plan
+  reads "This also deletes {{counts}}." ({{counts}} a list of plural phrases for what goes:
+  sections, tables, rows, single seats), then "{{count}} seated guests move to Without a seat;
+  the guest list does not change.", or only "The guest list does not change." with nobody
+  seated. Its row line is "Asks first, and lists what it deletes." ("names what goes" did not
+  translate). The units line says "the units used where {{organisation}} is based", with no
+  possessive on a name. The API's section limit names "a seating plan" in full, since "the
+  plan" is the subscription in the same catalogues; on the Seating screen "A plan" is enough.
+  The 8 colour names are words a host reads beside a swatch, never the swatch alone.
