@@ -26,6 +26,7 @@ import {
   percentProblem,
   nextNoPayer,
   noPayer,
+  notPricedFor,
   paidOf,
   partsOf,
   percentOf,
@@ -326,6 +327,9 @@ describe('the demo’s states (budget-a-spec.md §9)', () => {
     'link_copied',
     'copy_refused',
     'send_failed',
+    'payer_not_priced',
+    'payer_paid_past',
+    'payer_share_alone',
     'payers_loading',
     'payers_neither',
     'note_too_long',
@@ -347,6 +351,31 @@ describe('the demo’s states (budget-a-spec.md §9)', () => {
     'choose_fixed_decimals',
     'choose_fixed_over',
   ];
+
+  it('counts a Not priced cost on the share and adds nothing for it', () => {
+    const { book, open } = startOf('payer_not_priced');
+
+    expect(open).toBe('couple');
+    expect(notPricedFor(book, 'couple')).toBe(1);
+    expect(notPricedFor(book, 'obi')).toBe(0);
+    expect(notPricedFor(SAMPLE_BOOK, 'couple')).toBe(0);
+    expect(shareOf(book, 'couple')).toEqual(shareOf(SAMPLE_BOOK, 'couple'));
+  });
+
+  it('takes Mr and Mrs Obi past their upper end, and Still to come stops at 0', () => {
+    const { book, payments } = startOf('payer_paid_past');
+    const paid = paidOf(book, payments).get('obi') ?? 0;
+
+    expect(paid).toBe(1230000);
+    expect(paid).toBeGreaterThan(shareOf(book, 'obi')[1]);
+    expect(stillToCome(shareOf(book, 'obi'), paid)).toEqual([0, 0]);
+  });
+
+  it('leaves out Paid and Still to come only on the share alone', () => {
+    expect(startOf('payer_share_alone').paidShown).toBe(false);
+    expect(startOf('payers').paidShown).toBe(true);
+    expect(startOf('payer_paid_past').paidShown).toBe(true);
+  });
 
   it('has every name the spec gives, each linked from the demo’s home', () => {
     const linked = PAYERS_PAGES.flatMap((page) => page.states.map((state) => state.to));

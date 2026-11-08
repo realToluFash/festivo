@@ -3,6 +3,7 @@ import { getLocales } from 'expo-localization';
 import { useLocalSearchParams } from 'expo-router';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import type { ScrollViewInstance, ViewInstance } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SETTLED_MS } from '../../components/Screen.tsx';
@@ -84,6 +85,7 @@ export function MembersSection() {
 type Targets = Partial<Record<string, Partial<Record<RecoveryPart, ViewInstance | null>>>>;
 
 function MembersScreen({ start }: { start: MembersStart }) {
+  const { t } = useTranslation();
   const shell = useShell();
   const landscape = shell.layout === 'landscape';
   const viewer = start.viewer;
@@ -388,14 +390,16 @@ function MembersScreen({ start }: { start: MembersStart }) {
       );
 
     return landscape ? (
-      <Landscape column={<SummaryColumn title="Members">{block}</SummaryColumn>}>{null}</Landscape>
+      <Landscape column={<SummaryColumn title={t('settings.members')}>{block}</SummaryColumn>}>
+        {null}
+      </Landscape>
     ) : (
-      <SummaryPage title="Members">{block}</SummaryPage>
+      <SummaryPage title={t('settings.members')}>{block}</SummaryPage>
     );
   }
 
   const column = landscape ? (
-    <SummaryColumn title="Members" scrollRef={listScroll}>
+    <SummaryColumn title={t('settings.members')} scrollRef={listScroll}>
       {list}
     </SummaryColumn>
   ) : undefined;
@@ -412,7 +416,9 @@ function MembersScreen({ start }: { start: MembersStart }) {
           opening={opening}
           say={say}
           column={column}
-          back={landscape ? null : { label: 'Members', onPress: () => openPerson(null) }}
+          back={
+            landscape ? null : { label: t('settings.members'), onPress: () => openPerson(null) }
+          }
           proved={provedAt != null}
           onProved={() => setProvedAt(Date.now())}
           onPeople={setPeople}
@@ -443,7 +449,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
           <NobodyPicked />
         </Landscape>
       ) : (
-        <SummaryPage title="Members" scrollRef={listScroll}>
+        <SummaryPage title={t('settings.members')} scrollRef={listScroll}>
           {list}
         </SummaryPage>
       )}

@@ -1035,4 +1035,11 @@ describe('a field named on Android by words it never shows (sc-31323)', () => {
 
     expect(code).toMatch(/<Text[^>]*\spointerEvents="none"/u);
   });
+
+  it('stays in the accessibility tree, as a view left out of it names nothing', () => {
+    const code = readFileSync(join(src, 'components/UnseenName.tsx'), 'utf8');
+
+    expect(code).not.toMatch(/importantForAccessibility/u);
+    expect(code).toMatch(/width: 0, height: 0, overflow: 'hidden'/u);
+  });
 });

@@ -63,6 +63,7 @@ import {
   localise,
   parseBatch,
   readyReport,
+  accountKind,
   REBUILD,
   rerunHints,
   runId,
@@ -3352,6 +3353,38 @@ describe('the account --ready reports', () => {
     expect(report).toContain('two-factor on');
     expect(report).toContain('TOTP_SECRET  S3CR3T');
     expect(report).toContain('EMAIL=a@qa.test PASSWORD=pw TOTP_SECRET=S3CR3T');
+  });
+
+  it('names no organisation for an account in none', () => {
+    const report = readyReport({ ...made, secret: null, organisation: false });
+
+    expect(report).toContain('profile complete, in no organisation');
+    expect(report).not.toContain('QA Organisation');
+    expect(report).toContain('EMAIL=a@qa.test PASSWORD=pw\n');
+  });
+});
+
+describe('the account flags', () => {
+  it('takes --no-organisation alone, passing the rest on', () => {
+    expect(accountKind(['--no-organisation', '--lang', 'fr'])).toEqual({
+      kind: 'no-organisation',
+      passed: ['--lang', 'fr'],
+    });
+  });
+
+  it.each([
+    [['--no-organisation', '--ready'], '--ready'],
+    [['--two-factor', '--no-organisation'], '--two-factor'],
+    [['--no-organisation', '--ready', '--two-factor'], '--ready or --two-factor'],
+  ])('refuses %j before anything is made', (args, named) => {
+    expect(() => accountKind(args)).toThrow(`--no-organisation cannot go with ${named}`);
+  });
+
+  it('keeps what account, --ready and --two-factor already make', () => {
+    expect(accountKind([]).kind).toBe('plain');
+    expect(accountKind(['--ready']).kind).toBe('ready');
+    expect(accountKind(['--two-factor']).kind).toBe('two-factor');
+    expect(accountKind(['--ready', '--two-factor'])).toEqual({ kind: 'two-factor', passed: [] });
   });
 });
 

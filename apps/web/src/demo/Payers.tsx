@@ -70,6 +70,7 @@ import {
   nextNoPayer,
   noPayer,
   noteProblem,
+  notPricedFor,
   openFirst,
   percentProblem,
   paidOf,
@@ -372,7 +373,7 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
                   <PayerPane
                     book={book}
                     payer={open}
-                    paid={paidOf(book).get(open.id) ?? 0}
+                    paid={start.paidShown ? (paidOf(book, start.payments).get(open.id) ?? 0) : null}
                     send={send?.payerId === open.id ? send : null}
                     link={link}
                     washed={washed}
@@ -474,7 +475,7 @@ function PayerPane({
 }: {
   book: Book;
   payer: PayerEntry;
-  paid: number;
+  paid: number | null;
   send: Sending | null;
   link: string;
   washed: boolean;
@@ -486,8 +487,9 @@ function PayerPane({
 }) {
   const head = useId();
   const share = shareOf(book, payer.id);
-  const still = stillToCome(share, paid);
+  const still = paid == null ? null : stillToCome(share, paid);
   const covers = coversOf(book, payer.id);
+  const notPriced = notPricedFor(book, payer.id);
   const kind = send?.kind ?? null;
   const busy = kind === 'busy';
   const first = unsent(payer);
@@ -501,24 +503,31 @@ function PayerPane({
         <li>
           <BudgetRow
             title={W.theirShare}
-            lines={[share[0] === share[1] ? W.fixedShare : B.rangeLine]}
+            lines={[
+              share[0] === share[1] ? W.fixedShare : B.rangeLine,
+              ...(notPriced > 0 ? [B.notPricedCount(notPriced)] : []),
+            ]}
             end={<Amount value={moneyRange(...share)} />}
             washed={moved}
           />
         </li>
-        <li>
-          <BudgetRow title={W.paid} end={<Amount value={money(paid)} />} />
-        </li>
-        <li>
-          <BudgetRow
-            title={W.stillToCome}
-            end={
-              <Amount
-                value={still[1] === 0 ? W.nothingStillToCome : moneyRange(still[0], still[1])}
+        {paid != null && still != null && (
+          <>
+            <li>
+              <BudgetRow title={W.paid} end={<Amount value={money(paid)} />} />
+            </li>
+            <li>
+              <BudgetRow
+                title={W.stillToCome}
+                end={
+                  <Amount
+                    value={still[1] === 0 ? W.nothingStillToCome : moneyRange(still[0], still[1])}
+                  />
+                }
               />
-            }
-          />
-        </li>
+            </li>
+          </>
+        )}
       </Rows>
       {covers.length > 0 && (
         <section className="desk-block" aria-labelledby={head}>
@@ -529,7 +538,7 @@ function PayerPane({
                 <BudgetRow
                   title={one.name}
                   lines={[one.how]}
-                  end={<Amount value={moneyRange(...one.part)} />}
+                  end={<Amount value={one.notPriced ? B.notPriced : moneyRange(...one.part)} />}
                 />
               </li>
             ))}

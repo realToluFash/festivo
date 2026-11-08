@@ -23,11 +23,11 @@ import {
   partyTitle,
   peopleIn,
   readCount,
+  readItemSize,
   shownParties,
   unsureLeft,
   readPlace,
   readRoom,
-  readSize,
   reshaped,
   sameName,
   say,
@@ -131,7 +131,7 @@ export function Field({
   readOnly?: boolean;
   onCommit: (text: string) => string | null;
 }) {
-  const { ui } = useSeating();
+  const { ui, hold } = useSeating();
   const id = useId();
   const seed = ui.seed?.key === fieldKey ? ui.seed : null;
   const [draft, setDraft] = useState(seed?.value ?? value);
@@ -150,7 +150,7 @@ export function Field({
     }
   }, [value]);
 
-  function commit(): void {
+  function commit(leaving = false): void {
     editing.current = false;
     if (draft === value && error == null) return;
     if (draft === value) {
@@ -159,6 +159,7 @@ export function Field({
     }
     const refused = onCommit(draft);
 
+    if (leaving && refused != null && error == null) hold(fieldKey);
     setError(refused);
   }
 
@@ -204,7 +205,7 @@ export function Field({
             editing.current = true;
             setDraft(event.target.value);
           }}
-          onBlur={commit}
+          onBlur={() => commit(true)}
           onKeyDown={keys}
         />
         {unit != null && (
@@ -503,7 +504,7 @@ function StartForm() {
         line={say(ui.units === 'us' ? SW.startLineFeet : SW.startLine, {
           venue: 'The Landmark',
           city: 'London',
-          whose: 'Ire Events’',
+          organisation: 'Ire Events',
         })}
       />
       <StartField
@@ -516,7 +517,7 @@ function StartForm() {
       <Two>
         <StartField
           label={SW.width}
-          unit={ui.units === 'us' ? 'ft' : 'm'}
+          unit={ui.units === 'us' ? undefined : 'm'}
           value={start.width}
           error={start.errors.width}
           onChange={(text) => typed('width', text)}
@@ -524,13 +525,14 @@ function StartForm() {
         />
         <StartField
           label={SW.length}
-          unit={ui.units === 'us' ? 'ft' : 'm'}
+          unit={ui.units === 'us' ? undefined : 'm'}
           value={start.length}
           error={start.errors.length}
           onChange={(text) => typed('length', text)}
           fieldKey="startLength"
         />
       </Two>
+      {ui.units === 'us' && <Line>{SW.usHint}</Line>}
       <button type="submit" className="button button-primary st-wide">
         {SW.startPlan}
       </button>
@@ -549,7 +551,7 @@ function StartField({
 }: {
   label: string;
   value: string;
-  unit?: string;
+  unit?: string | undefined;
   optional?: boolean;
   error?: string | undefined;
   fieldKey: string;
@@ -655,6 +657,7 @@ function RoomSettings() {
           onCommit={(text) => resize('l', text)}
         />
       </Two>
+      {ui.units === 'us' && <Line>{SW.usHint}</Line>}
       <div className="st-red">
         <TextAction label={SW.deletePlan} red onClick={() => ask({ kind: 'deletePlan' })} />
         <Line>{SW.deletePlanLine}</Line>
@@ -869,10 +872,10 @@ function TableFields({ item }: { item: Item }) {
   }
 
   function size(key: 'd' | 'w' | 'l', text: string): string | null {
-    const cm = readSize(text, units);
+    const read = readItemSize(text, units);
 
-    if (cm == null || cm < 40) return null;
-    edit(item.id, { [key]: Math.round(cm) });
+    if ('refused' in read) return read.refused;
+    edit(item.id, { [key]: Math.round(read.cm) });
     return null;
   }
 
@@ -1086,9 +1089,10 @@ function RowFields({ item }: { item: Item }) {
           unit={units === 'us' ? undefined : 'cm'}
           value={sizeOf(item.spacing ?? 50, units)}
           onCommit={(text) => {
-            const cm = readSize(text, units);
+            const read = readItemSize(text, units);
 
-            if (cm != null && cm >= 44) edit(item.id, { spacing: Math.round(cm) });
+            if ('refused' in read) return read.refused;
+            edit(item.id, { spacing: Math.round(read.cm) });
             return null;
           }}
         />

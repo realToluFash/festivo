@@ -24,7 +24,7 @@ export interface Area {
 
 const READ_AND_CHANGE = (area: string) => [`${area}.read`, `${area}.manage`];
 
-/** The app's thirteen areas in its order, with en.json's words. */
+/** The app's fourteen areas in its order, with en.json's words. */
 export const AREAS: readonly Area[] = [
   {
     area: 'events',
@@ -103,6 +103,12 @@ export const AREAS: readonly Area[] = [
     name: 'Organisation',
     means: 'The name, country, contact address and the defaults new events start with.',
     permissions: ['organisation.manage'],
+  },
+  {
+    area: 'people',
+    name: 'People on events',
+    means: 'Who is on each event, and the role each person has there.',
+    permissions: READ_AND_CHANGE('people'),
   },
 ];
 
@@ -217,10 +223,10 @@ const GRANTS: Record<string, string[]> = {
     [],
     ['events.create', MARGIN],
   ),
-  'Event manager': grantOf(UP_TO_BUDGET, [], ['events.create']),
-  Coordinator: grantOf(RUNNING, ['staff', 'reports', 'budget']),
-  'Read-only': grantOf([], UP_TO_BUDGET),
-  'Door staff': grantOf(['guests'], ['events', 'seating', 'run_of_show', 'members']),
+  'Event manager': grantOf([...UP_TO_BUDGET, 'people'], [], ['events.create']),
+  Coordinator: grantOf(RUNNING, ['staff', 'reports', 'budget', 'people']),
+  'Read-only': grantOf([], [...UP_TO_BUDGET, 'people']),
+  'Door staff': grantOf(['guests'], ['events', 'seating', 'run_of_show', 'members', 'people']),
 };
 
 export function idOf(name: string): string {
