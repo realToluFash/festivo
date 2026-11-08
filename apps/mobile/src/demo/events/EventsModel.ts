@@ -23,7 +23,7 @@ import {
 import { CLOCKS, READER_ZONE, type SampleEvent, TYPE_WORDS } from './EventsSample.ts';
 import { meshFor, type MeshKey } from '../../kit/today.ts';
 import { W, say } from './EventsWords.ts';
-import { FINAL_NUMBERS_STATES, FINAL_WORDS, finalNumbersDue } from './FinalNumbers.ts';
+import { FINAL_NUMBERS_STATES, FINAL_WORDS, finalNumbersDue, othersOwed } from './FinalNumbers.ts';
 import type { RowTag } from '../../components/SummaryRows.tsx';
 
 export type ListTab = 'upcoming' | 'drafts' | 'past';
@@ -243,6 +243,17 @@ export function finalNumbersOf(event: Shown, now: Date): Milestone[] {
   ];
 }
 
+/** The event's dates as the server returns them, which Next up and the Overview's Needs you both read (sc-32801). */
+export function datesOf(event: Shown, now: Date): Milestone[] {
+  const before = event.status !== 'ended' && now.getTime() < Date.parse(event.startsAt);
+
+  return [
+    ...milestonesOf(event),
+    ...finalNumbersOf(event, now),
+    ...(before ? othersOwed(event.id) : []),
+  ];
+}
+
 export type StepAction = 'makeLive' | 'changeDates' | 'resume' | 'duplicate';
 
 export type CardStep =
@@ -251,8 +262,7 @@ export type CardStep =
 
 /** The card's one step, by main's nextStep: what the phase asks for, else the next thing that happens; Duplicate once it is over. */
 export function cardStep(event: Shown, now: Date, locale: string): CardStep {
-  const milestones = [...milestonesOf(event), ...finalNumbersOf(event, now)];
-  const step = nextStep({ ...event, milestones }, event.phase, now);
+  const step = nextStep({ ...event, milestones: datesOf(event, now) }, event.phase, now);
 
   switch (step?.kind) {
     case 'makeLive':
@@ -626,6 +636,13 @@ export const EVENT_STATES = [
   'muteNotLoaded',
   'muteNotSaved',
   'more',
+  'needsYou',
+  'needsYouOne',
+  'needsYouOverdue',
+  'needsYouGiven',
+  'needsYouReadOnly',
+  'needsYouLoading',
+  'needsYouFailed',
   ...FINAL_NUMBERS_STATES,
 ] as const;
 export type EventDemoState = (typeof EVENT_STATES)[number];

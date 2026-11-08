@@ -12,6 +12,8 @@ import { SwitchTrack } from '../settings/NotificationsSwitch.tsx';
 import { EventCard, EventThumb } from './EventCard.tsx';
 import { AcPill, AlertLine, CHANGED, EditScreen } from './EventEdits.tsx';
 import { AreaPage, EventFrame } from './EventFrame.tsx';
+import { EventNeedsYou } from './EventNeedsYou.tsx';
+import { needsStateOf, readerOf } from './NeedsYouModel.ts';
 import {
   type DeleteStart,
   DeleteScreen,
@@ -27,6 +29,7 @@ import {
   type Shown,
   clockOf,
   datesRow,
+  datesOf,
   editOf,
   hostsRow,
   instantOf,
@@ -284,6 +287,16 @@ export function EventScreen({
       onMaps={() => shell.tell(W.mapsHandOff)}
     />
   );
+  const needsYou = (
+    <EventNeedsYou
+      timeline={datesOf(shown, now)}
+      permissions={readerOf(needsStateOf(state))}
+      state={needsStateOf(state)}
+      now={now}
+      timeZone={event.timeZone}
+      locale={locale}
+    />
+  );
   const nameCover = <NameAndCover shown={shown} refFor={refFor} onEdit={openEdit} />;
   const openGuests = (filter: FilterKey) => {
     setGuestsFrom(filter);
@@ -419,6 +432,7 @@ export function EventScreen({
         <View style={styles.columns}>
           <View style={styles.left}>
             {details}
+            {needsYou}
             {nameCover}
           </View>
           <View style={styles.right}>
@@ -436,6 +450,7 @@ export function EventScreen({
         {card}
         {numbers}
         {details}
+        {needsYou}
         {nameCover}
         {guestsPage}
         {forYou}
