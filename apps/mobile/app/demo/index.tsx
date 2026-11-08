@@ -27,8 +27,28 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       { title: 'A planning day', what: 'Four things need you', href: '/demo/today' },
       {
         title: 'A planning day · invitations not sent',
-        what: 'The party with nobody invited, Send late',
+        what: 'The party with nobody invited',
         href: '/demo/today?moment=plan&invites=none',
+      },
+      {
+        title: 'Needs you · every overdue form',
+        what: 'Overdue, 1 day overdue, 2 days overdue, at 23:59',
+        href: '/demo/today?needs=overdue',
+      },
+      {
+        title: 'Needs you · one thing',
+        what: 'One row, due today',
+        href: '/demo/today?needs=one',
+      },
+      {
+        title: 'Needs you · nothing',
+        what: 'The tick, and no line on the cover',
+        href: '/demo/today?needs=none',
+      },
+      {
+        title: 'Needs you · a long title',
+        what: 'It wraps, and the date never shortens',
+        href: '/demo/today?needs=long',
       },
       {
         title: 'A planning day · built now',
