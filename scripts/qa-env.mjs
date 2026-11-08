@@ -2502,14 +2502,14 @@ export function batchFlow({ checks, languages, cold, runs = batchRuns(checks, la
 }
 
 // A flow run alone has no batch language, so every `{{t:…}}` in it matches any language.
-export function aloneFlows(source, target, { catalogues, email, onAndroid }) {
+export function aloneFlows(source, target, { catalogues, email, onAndroid, skipChecks = false }) {
   if (onAndroid) androidFlows(source, target);
   else {
     rmSync(target, { recursive: true, force: true });
     cpSync(source, target, { recursive: true });
   }
   for (const entry of readdirSync(target, { recursive: true })) {
-    if (!/\.ya?ml$/.test(entry)) continue;
+    if (!/\.ya?ml$/.test(entry) || (skipChecks && entry.startsWith('checks'))) continue;
     const path = join(target, entry);
     writeFileSync(path, localise(readFileSync(path, 'utf8'), catalogues, 'any', { email }));
   }
@@ -2521,16 +2521,7 @@ export function composeBatch(
   { checks, languages, cold, catalogues, email, onAndroid },
 ) {
   const finish = (flow) => (onAndroid ? forAndroid(flow) : flow);
-  if (onAndroid) androidFlows(source, target);
-  else {
-    rmSync(target, { recursive: true, force: true });
-    cpSync(source, target, { recursive: true });
-  }
-  for (const entry of readdirSync(target, { recursive: true })) {
-    if (!/\.ya?ml$/.test(entry) || entry.startsWith('checks')) continue;
-    const path = join(target, entry);
-    writeFileSync(path, localise(readFileSync(path, 'utf8'), catalogues, 'any', { email }));
-  }
+  aloneFlows(source, target, { catalogues, email, onAndroid, skipChecks: true });
   mkdirSync(join(target, '_checks'));
   const subFlows = (flow, language, caller, chain) =>
     flow.replace(
