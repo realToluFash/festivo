@@ -33,13 +33,15 @@ import {
   paymentOf,
   reduce,
   startOf,
+  totalsOf,
   withRate,
 } from './BudgetModel.ts';
-import { LINES, REMOVED_PAYER, TODAY, VENDORS, type PayerKey } from './BudgetSample.ts';
-import { BudgetHome, liveWords } from './BudgetHome.tsx';
+import { COLLEAGUE, LINES, REMOVED_PAYER, TODAY, VENDORS, type PayerKey } from './BudgetSample.ts';
+import { BudgetHome, ceilingNews, liveWords } from './BudgetHome.tsx';
 import { DueNow } from './DueNow.tsx';
 import { MarkPaid } from './MarkPaid.tsx';
 import { PayerPage, PayersList, PayersPad, SendAction } from './Payers.tsx';
+import { ReminderBanner } from './Reminder.tsx';
 import { W, say } from './BudgetWords.ts';
 
 const READER = 'Folake Adeyemi';
@@ -102,6 +104,24 @@ export function BudgetScreen({
     return () => clearTimeout(timer);
   }, [live, locale]);
 
+  const ceilingLive = m.ceilingLive;
+  const startLines = m.lines;
+  useEffect(() => {
+    if (ceilingLive == null) return undefined;
+    const words = ceilingNews(ceilingLive, locale, totalsOf(startLines));
+    const timer = setTimeout(() => go({ type: 'ceilingChanged', words }), LIVE_MS);
+    return () => clearTimeout(timer);
+  }, [ceilingLive, startLines, locale]);
+
+  const payersLive = state === 'payers_live';
+  useEffect(() => {
+    if (!payersLive) return undefined;
+    const room = LINES.find((line) => line.key === 'room')?.name ?? '';
+    const words = say.whoPaysChanged(COLLEAGUE, room);
+    const timer = setTimeout(() => go({ type: 'payersChanged', words }), LIVE_MS);
+    return () => clearTimeout(timer);
+  }, [payersLive]);
+
   useEffect(() => {
     if (m.link !== 'reconnecting') return undefined;
     const timer = setTimeout(() => go({ type: 'reconnected' }), RECONNECT_MS);
@@ -144,7 +164,7 @@ export function BudgetScreen({
     else onArea(next);
   };
   const view = m.view;
-  const props = { m, event, locale, offline: m.link === 'offline', onPayer, onSend };
+  const props = { m, event, locale, offline: m.link === 'offline', onPayer, onSend, onWashed };
 
   let page;
   if (view.page === 'payers') page = phone ? <PayersList {...props} /> : <PayersPad {...props} />;
@@ -213,6 +233,16 @@ export function BudgetScreen({
       overlay={
         <>
           {pinned}
+          {view.page === 'home' && (
+            <ReminderBanner
+              kind={m.reminder}
+              locale={locale}
+              onOpen={() => {
+                from.current = 'card';
+                go({ type: 'openReminder' });
+              }}
+            />
+          )}
           <MarkPaid
             form={m.form}
             locale={locale}
