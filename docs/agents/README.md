@@ -208,8 +208,10 @@ through `notify-send`), not once a minute.
   - **A worktree** under a role checkout's `.claude/worktrees` goes once its story (the
     `sc-N` in its name or branch) is Ready For QA, In QA, Passed QA or Done, no process has
     its working folder in it, `git status` shows nothing but `node_modules` and
-    `pnpm-workspace.yaml`, and `git log HEAD --not --remotes` is empty. Its branch stays.
-    One with work left on a merged story is kept and named to `ops@<machine>`.
+    `pnpm-workspace.yaml`, `git log HEAD --not --remotes` is empty, and nothing in it (its
+    top folder, HEAD, index or logs/HEAD) changed in the last hour. Its branch stays. One
+    with work left on a merged story is kept and named to `ops@<machine>`, and so is one
+    whose story the store hasn't seen in 14 days, such as any story on a fresh store.
   - **A tester's `.qa/sc<N>*`** goes once sc-N is Passed QA or Done, whatever its age;
     the evidence is on Shortcut by then. Older entries go by age (`machines.md`).
   - **Frames pulled from a video** are written under the run's `$SQ_RUN_DIR`, so they go

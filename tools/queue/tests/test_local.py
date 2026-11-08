@@ -378,6 +378,18 @@ class Worktrees(unittest.TestCase):
         self.sweep(cwds=[other / path.relative_to(self.root) / "apps"])
         self.assertTrue(path.exists())
 
+    def test_a_folder_with_the_worktrees_inode_under_another_path_holds_it(self):
+        path, _ = self.tree("box", 10118, "Done")
+
+        class Elsewhere:
+            parents = ()
+
+            def stat(self):
+                return path.stat()
+
+        held = local.held_folders([Elsewhere()])
+        self.assertEqual(local.worktree_keeps(path, [], held, time.time() + DAY), "in use")
+
     def test_a_worktree_used_in_the_last_hour_keeps_it(self):
         path, _ = self.tree("box", 10118, "Done")
         self.sweep(later=10 * 60)
