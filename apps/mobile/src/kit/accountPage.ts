@@ -55,7 +55,10 @@ export const KIND_KEYS: Record<
     add: string;
     label: string;
     help: string;
+    makePrimary: string;
     removeTitle: string;
+    removeConfirm: string;
+    removeKeep: string;
     primaryLine: string;
     otherLine: string;
   }
@@ -65,7 +68,10 @@ export const KIND_KEYS: Record<
     add: 'contacts.addEmail',
     label: 'contacts.emailLabel',
     help: 'contacts.emailHelp',
+    makePrimary: 'contacts.makePrimary',
     removeTitle: 'contacts.removeTitle',
+    removeConfirm: 'contacts.removeConfirm',
+    removeKeep: 'contacts.removeKeep',
     primaryLine: 'account.emailPrimaryLine',
     otherLine: 'account.emailOtherLine',
   },
@@ -74,7 +80,10 @@ export const KIND_KEYS: Record<
     add: 'contacts.addPhone',
     label: 'contacts.phoneLabel',
     help: 'contacts.phoneHelp',
+    makePrimary: 'contacts.makePrimaryPhone',
     removeTitle: 'contacts.removeTitlePhone',
+    removeConfirm: 'contacts.removeConfirmPhone',
+    removeKeep: 'contacts.removeKeepPhone',
     primaryLine: 'account.phonePrimaryLine',
     otherLine: 'account.phoneOtherLine',
   },

@@ -1074,6 +1074,18 @@ describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
     ]).toEqual(['"password.cancel"', '"password.setCancel"']);
   });
 
+  it.each([
+    ['AccountName.tsx', 'saving'],
+    ['AccountZone.tsx', 'saving'],
+    ['AccountAdd.tsx', 'sending'],
+  ])('in %s, where the focused screen waits on Cancel while %s', (file, busy) => {
+    const source = readFileSync(join('src', 'components', file), 'utf8');
+    const start = source.indexOf('<FocusedScreen');
+    const screen = source.slice(start, tagEnd(source, start));
+
+    expect(propValue(screen, 'waits')).toBe(`{${busy}}`);
+  });
+
   it("in Confirm it's you, beside Continue", () => {
     expect(offWhile('ConfirmItsYou.tsx', 'checking')).toEqual(['{`${idPrefix}.cancel`}']);
   });
@@ -1122,6 +1134,29 @@ describe("a lapsed proof at Unlink goes back to Confirm it's you (sc-12545)", ()
 
     expect(text).toMatch(
       /if \(unlinkProofLapsed\(error\)\) \{\s*setStage\(\{ kind: 'proving', act: \{ action: 'unlink', provider \} \}\);/,
+    );
+  });
+});
+
+describe('a contact confirmation shows its request running, its way back off (sc-12546)', () => {
+  const text = readFileSync(join('src', 'components', 'AccountPage.tsx'), 'utf8');
+  const ask = (testID: string) => {
+    const start = text.indexOf(`testID="${testID}"`);
+    return text.slice(text.lastIndexOf('<Ask', start), start);
+  };
+
+  it.each([
+    ['account.promote', 'contacts.promoting'],
+    ['account.remove', 'contacts.removing'],
+  ])('on %s, busy while it sends and Keep off until the answer', (testID, busy) => {
+    expect(ask(testID)).toContain(`busy: acting ? t('${busy}') : undefined`);
+    expect(ask(testID)).toContain('off: acting');
+    expect(ask(testID)).toMatch(/onKeep=\{\(\) => \{\s*if \(!acting\) setAsk\(null\);/u);
+  });
+
+  it('with Make primary left open until its request answers, unless a proof is still to come', () => {
+    expect(text).toMatch(
+      /if \(proof == null\) \{\s*setAsk\(null\);\s*show\('confirm', 'promote'\);/u,
     );
   });
 });

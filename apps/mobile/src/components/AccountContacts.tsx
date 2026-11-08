@@ -106,6 +106,7 @@ export function ContactsSection({
                   testID={`account.${row.id}`}
                 >
                   <Offers
+                    kind={kind}
                     row={row}
                     error={open ? (error ?? null) : null}
                     sendRef={sendRef}
@@ -126,6 +127,7 @@ export function ContactsSection({
 }
 
 function Offers({
+  kind,
   row,
   error,
   sendRef,
@@ -135,6 +137,7 @@ function Offers({
   onMakePrimary,
   onRemove,
 }: {
+  kind: ContactKind;
   row: Contact;
   error: string | null;
   onVerify: (row: Contact) => void;
@@ -158,7 +161,7 @@ function Offers({
         {offers.makePrimary && (
           <TextAction
             ref={promoteRef}
-            label={t('contacts.makePrimary')}
+            label={t(KIND_KEYS[kind].makePrimary)}
             onPress={() => onMakePrimary(row)}
             testID={`account.${row.id}.primary`}
           />

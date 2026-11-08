@@ -1,14 +1,8 @@
-import {
-  type Account,
-  ApiError,
-  type PhoneCodeRoute,
-  type TimeZoneOption,
-} from '@soirely/api-client';
+import { type Account, ApiError, type TimeZoneOption } from '@soirely/api-client';
 import {
   CONTACTS_MOST,
   cleanCode,
   codeProblem,
-  codeWording,
   confirmWith,
   formatPhone,
   formatTimeOfDay,
@@ -39,12 +33,11 @@ import {
   verifyWords,
   zoneLine,
 } from '../kit/accountPage.ts';
-import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../kit/code.ts';
 import { codeHelp } from '../kit/waysProof.ts';
 import { PROVIDER_NAMES } from '../providerSignIn.ts';
 import { heldProof } from '../recentProof.ts';
 import { rereadAccount } from '../signedIn.ts';
-import { useCountdown } from '../steps/useCountdown.ts';
+import { useCodeCheck } from '../steps/useCodeCheck.ts';
 import { AddScreen } from './AccountAdd.tsx';
 import { AboutSection, YouCard } from './AccountCard.tsx';
 import { ConfirmScreen, type ConfirmSays } from './AccountConfirm.tsx';
@@ -215,10 +208,12 @@ export function AccountPage({
       else done(words);
     } catch (refusal) {
       const changed = await rereadAfterRefusal(codeOf(refusal), rereadAccount);
+      const message = rowRefusal(refusal, kind, t);
       setAsk(null);
       setScreen(null);
-      if (changed) setOpened(null);
-      else setRowError({ id: row.id, message: rowRefusal(refusal, kind, t) });
+      // The row may be gone, so the reason goes on the card's line, where it can be read out.
+      if (changed) doneAtOnce(message);
+      else setRowError({ id: row.id, message });
     } finally {
       setActing(false);
     }
@@ -227,8 +222,10 @@ export function AccountPage({
   function promoteEmail(row: Contact): void {
     const proof = heldProof();
     // An address signs the account in, so it is proved first; a proof still standing is enough.
-    if (proof == null) show('confirm', 'promote');
-    else void act('email', row, 'promote', proof, false);
+    if (proof == null) {
+      setAsk(null);
+      show('confirm', 'promote');
+    } else void act('email', row, 'promote', proof, false);
   }
 
   const contacts = (kind: ContactKind) => {
@@ -309,11 +306,17 @@ export function AccountPage({
         keep={{
           label: t('contacts.promoteKeep', { old: primaryEmail }),
           testID: 'account.promote.keep',
+          off: acting,
         }}
-        confirm={{ label: t('contacts.promoteConfirm'), testID: 'account.promote.confirm' }}
-        onKeep={() => setAsk(null)}
+        confirm={{
+          label: t('contacts.promoteConfirm'),
+          testID: 'account.promote.confirm',
+          busy: acting ? t('contacts.promoting') : undefined,
+        }}
+        onKeep={() => {
+          if (!acting) setAsk(null);
+        }}
         onConfirm={() => {
-          setAsk(null);
           if (openedRow != null) promoteEmail(openedRow);
         }}
         testID="account.promote"
@@ -323,13 +326,20 @@ export function AccountPage({
         opener={opener}
         title={t(KIND_KEYS[openedKind].removeTitle)}
         line={t('contacts.removeBody')}
-        keep={{ label: t('contacts.removeKeep'), testID: 'account.remove.keep' }}
+        keep={{
+          label: t(KIND_KEYS[openedKind].removeKeep),
+          testID: 'account.remove.keep',
+          off: acting,
+        }}
         confirm={{
-          label: t('contacts.removeConfirm'),
+          label: t(KIND_KEYS[openedKind].removeConfirm),
           testID: 'account.remove.confirm',
           removes: true,
+          busy: acting ? t('contacts.removing') : undefined,
         }}
-        onKeep={() => setAsk(null)}
+        onKeep={() => {
+          if (!acting) setAsk(null);
+        }}
         onConfirm={() => {
           if (openedRow != null) void act(openedKind, openedRow, 'remove', null, false);
         }}
@@ -514,47 +524,11 @@ function VerifyStep({
 }) {
   const { t } = useTranslation();
   const email = kind === 'email';
-  const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
-  const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
-  const [textFailed, setTextFailed] = useState(false);
-  const { left: wait, restart } = useCountdown(0);
-  const wording = codeWording(route);
+  const check = useCodeCheck(kind, row.id);
+  const { status, setStatus, cooldown, wording } = check;
+  const [resendFailed, setResendFailed] = useState(false);
   const line: CodeLine = email ? 'email' : wording.line;
   const words = verifyWords(line, row.shown, t);
-
-  useEffect(() => {
-    let live = true;
-    const opening = email
-      ? api.verificationOpening(row.id).then((answer) => ({ ...answer, route: null }))
-      : api.phoneOpening(row.id);
-
-    opening
-      .then((answer) => {
-        if (!live) return;
-        restart(answer.cooldownSeconds);
-        setRoute(answer.route);
-        setStatus((now) => openingStatus(now, answer.codeState));
-      })
-      .catch(() => {});
-
-    return () => {
-      live = false;
-    };
-  }, [email, row.id, restart]);
-
-  // While the code is on WhatsApp, the server may hand it to SMS: the line follows within a few seconds.
-  useEffect(() => {
-    if (email || !wording.watch) return;
-    const watching = setInterval(() => {
-      api
-        .phoneOpening(row.id)
-        .then((opening) => setRoute(opening.route))
-        .catch(() => {});
-    }, 5000);
-
-    return () => clearInterval(watching);
-  }, [email, wording.watch, row.id]);
-
   const spent =
     status.kind === 'expired'
       ? words.expired
@@ -569,7 +543,7 @@ function VerifyStep({
       lead={words.lead}
       codeLabel={words.codeLabel}
       spent={spent}
-      wait={wait}
+      wait={cooldown}
       startError={null}
       opener={opener}
       onClose={onClose}
@@ -577,49 +551,30 @@ function VerifyStep({
         const problem = codeProblem(typed);
         if (problem != null)
           return { error: problem === 'blank' ? words.blank : words.short, checked: true };
+        setResendFailed(false);
         setStatus({ kind: 'verifying' });
-        try {
-          const code = cleanCode(typed);
-          const verified = await (email
-            ? api.verifyEmail(code, row.id)
-            : api.verifyPhone(code, row.id));
-          await onVerified(verified.primary);
-
-          return null;
-        } catch (error) {
-          const next = codeRefusal(error);
-          setStatus(next);
-          if (next.kind === 'wrong') return { error: words.wrong, checked: false };
-          if (next.kind === 'failed') return { error: t('verifyEmail.failedBody'), checked: false };
-
+        const checked = await check.verify(cleanCode(typed));
+        if (checked.verified) {
+          await onVerified(checked.primary);
           return null;
         }
+        if (checked.refusal.kind === 'wrong') return { error: words.wrong, checked: false };
+        if (checked.refusal.kind === 'failed')
+          return { error: t('verifyEmail.failedBody'), checked: false };
+
+        return null;
       }}
       onResend={async () => {
-        try {
-          restart(await (email ? api.resendVerification(row.id) : api.resendPhoneCode(row.id)));
-          setStatus({ kind: 'entering' });
-          if (!email) setRoute((await api.phoneOpening(row.id)).route);
-        } catch (error) {
-          const seconds = retryAfter(error);
-          if (seconds != null) restart(seconds);
-          setStatus(seconds == null ? { kind: 'failed' } : { kind: 'entering' });
-        }
+        setResendFailed((await check.resend()) === 'failed');
       }}
-      onTextInstead={
-        !email && wording.offerText
-          ? async () => {
-              setTextFailed(false);
-              try {
-                await api.textPhoneCodeInstead(row.id);
-                setRoute('sms_chosen');
-              } catch {
-                setTextFailed(true);
-              }
-            }
-          : null
+      onTextInstead={!email && wording.offerText ? check.textInstead : null}
+      note={
+        check.textingFailed != null
+          ? t('verifyPhone.textInsteadFailed')
+          : resendFailed
+            ? t('verifyEmail.failedBody')
+            : null
       }
-      note={textFailed ? t('verifyPhone.textInsteadFailed') : null}
     />
   );
 }
