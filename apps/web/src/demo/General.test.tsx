@@ -6,7 +6,6 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 
 const tested = config();
-const SLOW = { timeout: 20000 };
 const WAIT = { timeout: 3000 };
 
 async function general(path: string) {
@@ -300,7 +299,7 @@ describe('General at a desk (sc-30063)', () => {
       await within(dialog).findByText(
         'That code did not work. Check your app and try again.',
         {},
-        SLOW,
+        WAIT,
       ),
     ).toBeDefined();
 

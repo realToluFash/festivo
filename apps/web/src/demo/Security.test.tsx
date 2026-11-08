@@ -8,7 +8,6 @@ import { SAMPLE } from './rules.ts';
 import { NEW_PASSWORD, SECURITY_STATES, WEB_MOMENTS } from './security.ts';
 
 const tested = config();
-const SLOW = { timeout: 20000 };
 const WAIT = { timeout: 3000 };
 
 async function security(path: string) {
@@ -127,7 +126,7 @@ describe('Security at a desk (sc-30223)', () => {
       await screen.findByText(
         'Password changed. Your 2 other devices are signed out.',
         undefined,
-        SLOW,
+        WAIT,
       ),
     ).toBeDefined();
     expect(within(block('Signed in on')).getAllByRole('button')).toHaveLength(1);
@@ -171,7 +170,7 @@ describe('Security at a desk (sc-30223)', () => {
       await screen.findByText(
         'Google is unlinked. Devices signed in with it are signed out.',
         undefined,
-        SLOW,
+        WAIT,
       ),
     ).toBeDefined();
     const apple = open('Ways to sign in', /Apple/);
@@ -247,7 +246,7 @@ describe('Security at a desk (sc-30223)', () => {
       await screen.findByText(
         'Google is linked. We emailed your verified addresses to say so.',
         undefined,
-        SLOW,
+        WAIT,
       ),
     ).toBeDefined();
 
@@ -328,7 +327,7 @@ describe('Security at a desk (sc-30223)', () => {
       await screen.findByText(
         `Two-factor is off. We emailed ${SAMPLE.email} to say so.`,
         undefined,
-        SLOW,
+        WAIT,
       ),
     ).toBeDefined();
     expect(screen.getByText('Two-factor is off')).toBeDefined();

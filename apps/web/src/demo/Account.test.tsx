@@ -6,7 +6,6 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 
 const tested = config();
-const SLOW = { timeout: 20000 };
 const WAIT = { timeout: 3000 };
 
 async function account(path: string) {
@@ -107,7 +106,7 @@ describe('Your account at a desk (sc-30209)', () => {
       await screen.findByText(
         'folake.adeyemi@gmail.com is now your primary address. Sign in with it from now on.',
         undefined,
-        SLOW,
+        WAIT,
       ),
     ).toBeDefined();
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -225,7 +224,7 @@ describe('Your account at a desk (sc-30209)', () => {
       await screen.findByText(
         'Time zone changed to San Marino (UTC+01:00). Times in your emails now use it.',
         undefined,
-        SLOW,
+        WAIT,
       ),
     ).toBeDefined();
     expect(screen.getByText('Time zone · Europe/San Marino')).toBeDefined();
@@ -257,7 +256,7 @@ describe('Your account at a desk (sc-30209)', () => {
       await screen.findByText(
         'Added. It is unverified until you enter the code we sent.',
         undefined,
-        SLOW,
+        WAIT,
       ),
     ).toBeDefined();
     expect(within(block('Email addresses')).getByText('folake@lumen.studio')).toBeDefined();
@@ -297,7 +296,7 @@ describe('Your account at a desk (sc-30209)', () => {
       await screen.findByText(
         'folake.adeyemi@gmail.com is verified. It stays an alternative address until you make it primary.',
         undefined,
-        SLOW,
+        WAIT,
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Send a code' })).toBeNull();
