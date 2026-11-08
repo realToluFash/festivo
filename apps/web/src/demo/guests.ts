@@ -91,6 +91,7 @@ export interface Guest {
   arrived: string | null;
   language: GuestLanguage | null;
   chose: GuestLanguage | null;
+  greetAs: string | null;
 }
 
 const ADDED: Said = { by: COLLEAGUE, how: null, on: '2026-09-14' };
@@ -113,6 +114,7 @@ function guest(id: string, name: string, reply: Reply, extra: Partial<Guest> = {
     arrived: null,
     language: null,
     chose: null,
+    greetAs: null,
     ...extra,
   };
 }
@@ -280,7 +282,10 @@ function wedding(): Guest[] {
       replied: '2026-10-13',
       phone: { country: 'NG', number: '803 555 0142' },
     }),
-    guest('bisi', 'Bisi Adewale', 'notYet', { email: 'bisi.adewale@yahoo.com' }),
+    guest('bisi', 'Bisi Adewale', 'notYet', {
+      email: 'bisi.adewale@yahoo.com',
+      greetAs: 'Auntie Bisi',
+    }),
     guest('camille', 'Camille Dubois', 'notComing', {
       replied: '2026-10-20',
       email: 'camille.dubois@free.fr',
@@ -773,6 +778,7 @@ export interface Values {
   country: string;
   number: string;
   language: GuestLanguage | null;
+  greetAs: string;
   companions: readonly { id: string | null; name: string }[];
 }
 
@@ -783,6 +789,7 @@ export function valuesOf(one: Guest | null): Values {
     country: one?.phone?.country ?? 'GB',
     number: one?.phone?.number ?? '',
     language: one?.language ?? null,
+    greetAs: one?.greetAs ?? '',
     companions:
       one?.companions.map((companion) => ({ id: companion.id, name: companion.name ?? '' })) ?? [],
   };
@@ -790,8 +797,16 @@ export function valuesOf(one: Guest | null): Values {
 
 export interface Lines {
   name?: string;
+  greetAs?: string;
   email?: string;
   number?: string;
+}
+
+/** sc-3960: Greet as is counted in code points after trimming, as the API counts it. */
+export const GREET_AS_MOST = 60;
+
+export function greetAsLength(value: string): number {
+  return [...value.trim()].length;
 }
 
 export function linesOf(values: Values): Lines {
@@ -800,6 +815,8 @@ export function linesOf(values: Values): Lines {
 
   if (name === '') lines.name = GW.blankName;
   else if (name.length > NAME_MOST) lines.name = GW.nameTooLong(NAME_MOST);
+  if (greetAsLength(values.greetAs) > GREET_AS_MOST)
+    lines.greetAs = GW.greetAsTooLong(GREET_AS_MOST);
   if (values.email.trim() !== '' && emailProblem(values.email) === 'shape')
     lines.email = GW.emailShape;
   const number = numberLine(values.number, values.country, true);
@@ -846,6 +863,7 @@ export function saveGuest(list: readonly Guest[], id: string, values: Values): G
           ? null
           : { country: values.country, number: values.number.trim() },
       language: values.language,
+      greetAs: values.greetAs.trim() === '' ? null : values.greetAs.trim(),
       companions: kept,
     };
   });
@@ -1059,6 +1077,7 @@ export interface EditStart {
   notSaved?: boolean;
   discard?: boolean;
   removed?: string;
+  at?: string;
 }
 
 export interface RecordStart {
@@ -1114,6 +1133,9 @@ const LUCAS: Partial<Values> = {
   email: 'lucas.moreau@orange.fr',
   language: 'fr',
 };
+
+/** sc-3960's Greet as one over the limit: 61 code points. */
+const GREET_AS_LONG = 'Auntie Bisi, who taught every one of us to dance at weddings!';
 
 const BIMPE: Partial<Values> = {
   name: 'Bimpe Adeyemi',
@@ -1180,6 +1202,12 @@ export const GUESTS_STATES = [
   { key: 'languageNotSet', name: 'Details, Language Not set' },
   { key: 'languageSet', name: 'Details, Language Français' },
   { key: 'languageGuestChose', name: 'Details, the guest chose Português' },
+  { key: 'greetAs', name: 'Details, Bisi Adewale with a Greet as' },
+  { key: 'greetAsEmpty', name: 'Edit guest, Greet as empty' },
+  { key: 'greetAsEdit', name: 'Edit guest, Greet as “Auntie Bisi”' },
+  { key: 'greetAsLong', name: 'Greet as over 60, Save refused' },
+  { key: 'greetAsSpaces', name: 'Only spaces saved: their full name' },
+  { key: 'greetAsViewer', name: 'Can view: Greet as, no Edit' },
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number]['key'];
@@ -1379,6 +1407,28 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return column(guestPane('sophie'), { choice: 'coming' });
     case 'languageGuestChose':
       return column(guestPane('ines'), { choice: 'coming' });
+    case 'greetAs':
+      return column(guestPane('bisi'), { choice: 'notYet' });
+    case 'greetAsEmpty':
+      return { ...edit('kwame', { at: 'greet-as' }), choice: 'coming' };
+    case 'greetAsEdit':
+      return { ...edit('bisi', { at: 'greet-as' }), choice: 'notYet' };
+    case 'greetAsLong':
+      return {
+        ...edit('bisi', { values: { greetAs: GREET_AS_LONG }, tried: true, at: 'greet-as' }),
+        choice: 'notYet',
+      };
+    case 'greetAsSpaces':
+      return column(guestPane('bisi'), {
+        choice: 'notYet',
+        list: saveGuest(start.list, 'bisi', {
+          ...valuesOf(start.list.find((one) => one.id === 'bisi') ?? null),
+          greetAs: '   ',
+        }),
+        told: GW.saved,
+      });
+    case 'greetAsViewer':
+      return column(guestPane('bisi'), { choice: 'notYet', role: 'viewer' });
   }
 }
 
@@ -1473,6 +1523,14 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'languageNotSet',
     'languageSet',
     'languageGuestChose',
+  ]),
+  group('Greet as (sc-3960)', [
+    'greetAs',
+    'greetAsEmpty',
+    'greetAsEdit',
+    'greetAsLong',
+    'greetAsSpaces',
+    'greetAsViewer',
   ]),
   group('The link and Mark as invited', [
     'linkCopied',
