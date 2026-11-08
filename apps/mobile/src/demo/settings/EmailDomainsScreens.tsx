@@ -1,6 +1,5 @@
-import { setStringAsync } from 'expo-clipboard';
 import { type RefObject, useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInputInstance, View } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 
 import {
   Field,
@@ -11,12 +10,11 @@ import {
 } from '../../components/Field.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
-import { FocusedScreen, Line, RowList, TextAction } from '../../components/Summary.tsx';
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
+import { FocusedScreen, Line, TextAction } from '../../components/Summary.tsx';
 import { type Check, domainFieldProblem, domainRefusal, type ProveOpen } from './DataModel.ts';
-import { Code, StatusLine } from './DataParts.tsx';
-import { type DataSay, type Domain, IRE, RECORD_VALUE, recordName } from './DataSample.ts';
+import { StatusLine } from './DataParts.tsx';
+import { type DataSay, DERIVED, type Domain, IRE, RECORD_VALUE, recordName } from './DataSample.ts';
+import { RecordRows, useCopied } from './RecordRows.tsx';
 import { DOMAINS_WORDS as D } from './DataWords.ts';
 
 const SEND_MS = 600;
@@ -44,16 +42,16 @@ export function RecordScreen({
   onVerify: () => void;
   onRemove: (domain: Domain, asked: boolean) => void;
 }) {
-  const [copied, setCopied] = useState(false);
+  const { copied, copy, clear } = useCopied();
   const [asking, setAsking] = useState(false);
   const checking = check === 'checking';
   const name = domain?.name ?? '';
   const values = [
-    { label: R.type, value: 'TXT' },
-    { label: R.name, value: recordName(name) },
-    { label: R.value, value: RECORD_VALUE },
+    { label: R.type, value: 'TXT', copied: R.copied(R.type) },
+    { label: R.name, value: recordName(name), copied: R.copied(R.name) },
+    { label: R.value, value: RECORD_VALUE, copied: R.copied(R.value) },
   ];
-  const deadline = say.at(domain?.deadline ?? '2026-10-23T15:45:00Z');
+  const deadline = say.at(domain?.deadline ?? DERIVED.checksUntil);
   const foot =
     domain?.status === 'failed'
       ? D.stopped(deadline)
@@ -92,34 +90,11 @@ export function RecordScreen({
             }
           : null
       }
-      toast={copied ? { words: R.copied, onClose: () => setCopied(false) } : null}
+      toast={copied == null ? null : { words: copied.copied, onClose: clear }}
       testID="domains.record"
     >
       <Line quiet={false} text={R.lead(name)} />
-      <RowList
-        items={values.map(({ label, value }) => ({
-          key: label,
-          row: (
-            <View style={styles.value}>
-              <View style={styles.words} accessible accessibilityLabel={`${label}, ${value}`}>
-                <Text size={14} weight="medium" accessible={false} style={styles.secondary}>
-                  {label}
-                </Text>
-                <Code text={value} />
-              </View>
-              <TextAction
-                label={R.copy}
-                glyph="copy"
-                onPress={() => {
-                  void setStringAsync(value).then(() => setCopied(true));
-                }}
-                accessibilityLabel={R.copyLabel(label)}
-                testID={`domains.record.copy.${label.toLowerCase()}`}
-              />
-            </View>
-          ),
-        }))}
-      />
+      <RecordRows rows={values} copied={copied} onCopy={copy} testID="domains.record.copy" />
       {check === 'notFound' && <NotFound />}
       <Line text={foot} />
       {listed && domain != null && (
@@ -227,15 +202,3 @@ export function ProveScreen({
     </FocusedScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  secondary: { color: tokens.colorInkSecondary },
-  value: {
-    minHeight: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceLg,
-    paddingVertical: 11,
-  },
-  words: { flex: 1, minWidth: 0, gap: 3 },
-});

@@ -14,7 +14,7 @@ export const DATA_WORDS = {
   contacting: 'Contacting Soirely has its own design.',
   enterprise: 'Enterprise',
   nothing: 'Nothing needs you',
-  nothingLine: 'ire.events is proved. Deleting guest data is off.',
+  nothingLine: 'ire.events is proved.',
   nothingSet: 'Nothing is set up yet',
   nothingSetLine: `Start by proving ${ORG}’ email domain.`,
   locked: 'These come with Enterprise',
@@ -71,7 +71,7 @@ export const DOMAINS_WORDS = {
     value: 'Value',
     copy: 'Copy',
     copyLabel: (label: string) => `Copy ${label}`,
-    copied: 'Copied.',
+    copied: (label: string) => `${label} copied.`,
     notFound: 'We could not find the record yet. DNS changes can take up to 48 hours.',
   },
   add: {
