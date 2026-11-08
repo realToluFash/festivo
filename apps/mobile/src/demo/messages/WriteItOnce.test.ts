@@ -245,7 +245,7 @@ describe('the preview’s lines, in sc-3960’s order', () => {
       PW.braces,
     ]);
     expect(PW.braces).toBe(
-      '[Braces you type stay as typed. To fill something in for each guest, use Insert.]',
+      'Anything you type in braces shows exactly as typed. To fill something in for each guest, use Insert.',
     );
   });
 

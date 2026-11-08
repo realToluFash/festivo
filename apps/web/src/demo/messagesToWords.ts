@@ -52,7 +52,7 @@ export const TW = {
     'Messages that used it keep their own conditions. No sent, scheduled or automatic message changes.',
   deleteAudience: 'Delete saved audience',
   deletedSaid: '{{name}} deleted.',
-  noManage: '[Sending messages is for members who manage messages.]',
+  noManage: 'Not sent. Only someone who can change Messages can send.',
   notMatchedYet: '[Not matched to a guest yet.]',
   workedOut: 'Worked out at {{time}}, when it went: {{guests}}.',
   nobodyDueRow: 'Nobody matched when it was due, {{time}}',
