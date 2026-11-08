@@ -212,7 +212,7 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
     ).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     fireEvent.click(
-      within(section('From other events')).getByRole('button', { name: /Save as template/ }),
+      within(section('Other events')).getByRole('button', { name: /Save as template/ }),
     );
     expect(await screen.findByRole('dialog', {}, SLOW)).toBeTruthy();
   });
@@ -279,12 +279,16 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
       const field = screen.getByLabelText('Charged at');
       fireEvent.change(field, { target: { value: '8OO' } });
       fireEvent.click(within(section('Costs')).getByRole('button', { name: 'Save' }));
-      expect(screen.getByText('Enter a rate of 0 or more, in numbers only.')).toBeTruthy();
+      expect(screen.getByText('Enter a price of 0 or more, in numbers only.')).toBeTruthy();
       expect(field.getAttribute('aria-invalid')).toBe('true');
       expect(document.activeElement).toBe(field);
-      fireEvent.change(field, { target: { value: '' } });
+      fireEvent.change(field, { target: { value: '950.505' } });
       fireEvent.click(within(section('Costs')).getByRole('button', { name: 'Save' }));
-      expect(screen.getByText('Enter the amount.')).toBeTruthy();
+      expect(
+        screen.getByText(
+          'That has too many decimal places for this event’s currency. Enter the price like 12.50.',
+        ),
+      ).toBeTruthy();
       expect(document.activeElement).toBe(field);
       cleanup();
 

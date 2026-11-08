@@ -141,9 +141,15 @@ export function BudgetCard({
   );
 }
 
-export function GlassTags({ tags }: { tags: readonly { mark?: ReactNode; word: string }[] }) {
+export function GlassTags({
+  tags,
+  washed = false,
+}: {
+  tags: readonly { mark?: ReactNode; word: string }[];
+  washed?: boolean;
+}) {
   return tags.length === 0 ? null : (
-    <ul className="desk-glass-tags">
+    <ul className={washed ? 'desk-glass-tags is-washed' : 'desk-glass-tags'}>
       {tags.map((tag) => (
         <li key={tag.word} className="desk-glass">
           {tag.mark}
@@ -160,11 +166,13 @@ export function Figure({ children, flash = false }: { children: ReactNode; flash
 
 export function CardPairs({
   pairs,
+  flash = false,
 }: {
   pairs: readonly { label: string; figure: string; sub: string }[];
+  flash?: boolean;
 }) {
   return (
-    <dl className="bud-pairs">
+    <dl className={flash ? 'bud-pairs is-washed' : 'bud-pairs'}>
       {pairs.map((pair) => (
         <div key={pair.label} className="bud-pair">
           <dt>{pair.label}</dt>
@@ -271,6 +279,7 @@ export function BudgetRow({
   to,
   label,
   open,
+  washed = false,
 }: {
   title: ReactNode;
   lines?: readonly ReactNode[];
@@ -282,6 +291,7 @@ export function BudgetRow({
   to?: string;
   label?: string;
   open?: boolean;
+  washed?: boolean;
 }) {
   const inner = (
     <>
@@ -291,7 +301,9 @@ export function BudgetRow({
       {(onOpen != null || to != null) && <Chevron />}
     </>
   );
-  const className = ['desk-row', 'bud-row', lit && 'is-on'].filter(Boolean).join(' ');
+  const className = ['desk-row', 'bud-row', lit && 'is-on', washed && 'is-washed']
+    .filter(Boolean)
+    .join(' ');
 
   if (to != null)
     return (
@@ -578,10 +590,16 @@ export function MoneyField({
   );
 }
 
-export function BudgetLoading({ words = W.loading }: { words?: string }) {
+export function BudgetLoading({
+  words = W.loading,
+  card = true,
+}: {
+  words?: string;
+  card?: boolean;
+}) {
   return (
     <div className="bud-loading" aria-busy="true">
-      <div className="bud-bone is-card" aria-hidden="true" />
+      {card && <div className="bud-bone is-card" aria-hidden="true" />}
       <p className="desk-line" role="status">
         {words}
       </p>

@@ -49,7 +49,7 @@ import { useShell } from '../../components/settingsShell.ts';
 import { Row, RowList, Section, TextAction } from '../../components/Summary.tsx';
 import { type MessagesState, reduce, startOf } from '../messages/MessagesModel.ts';
 import { TellGuests } from '../messages/MessagesOverlays.tsx';
-import { PLACE, SAMPLE_EVENT_ID, TELL } from '../messages/MessagesSample.ts';
+import { LONG_FINISHED, PLACE, SAMPLE_EVENT_ID, TELL } from '../messages/MessagesSample.ts';
 import { tellChange } from '../messages/TellChange.ts';
 import { MessagesScreen, badgeFor } from '../messages/MessagesScreen.tsx';
 import { W as MW, say as sayMessages } from '../messages/MessagesWords.ts';
@@ -90,6 +90,8 @@ function startEvent(
   if (event == null) throw new Error('The sample has the wedding.');
   if (messages === 'tell' || messages === 'untold') return { ...event, startsAt: TELL.startsAt };
   if (messages === 'tellPlace') return { ...event, venue: PLACE };
+  if (messages === 'closedDraft') return { ...event, status: 'draft' };
+  if (messages === 'closedEnded') return { ...event, ...LONG_FINISHED, status: 'ended' };
   if (state === 'datesReplyBySaved')
     return {
       ...event,

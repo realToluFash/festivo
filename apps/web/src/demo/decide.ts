@@ -8,7 +8,9 @@ import {
   totals,
   whole,
 } from './budget.ts';
-import { CEILINGS, type DemoGroup, budgetAt } from './budgetSample.ts';
+import { CEILINGS, type CeilingKey, type DemoGroup, budgetAt } from './budgetSample.ts';
+import { type Category } from './vendors.ts';
+import { CATEGORY_WORDS } from './vendorsWords.ts';
 
 export const DECIDE_STATES: readonly string[] = [
   'decide_rise',
@@ -16,6 +18,7 @@ export const DECIDE_STATES: readonly string[] = [
   'decide_nochange',
   'decide_updating',
   'decide_none',
+  'decide_category',
 ];
 
 export const DECIDE_PAGES: readonly DemoGroup[] = [
@@ -36,6 +39,10 @@ export const DECIDE_PAGES: readonly DemoGroup[] = [
       },
       { to: budgetAt('decide_updating'), name: 'A companion added: updating (decide_updating)' },
       { to: budgetAt('decide_none'), name: 'No answer (decide_none)' },
+      {
+        to: budgetAt('decide_category'),
+        name: 'It takes Catering over its ceiling (decide_category)',
+      },
       { to: budgetAt('decide_rise', { as: 'kemi' }), name: 'No answer, as Can edit (&as=kemi)' },
       {
         to: budgetAt('decide_rise', { fetch: 'failed' }),
@@ -45,15 +52,16 @@ export const DECIDE_PAGES: readonly DemoGroup[] = [
   },
 ];
 
-export type DecideKind = 'rise' | 'unknown' | 'nochange' | 'updating' | 'none';
+export type DecideKind = 'rise' | 'unknown' | 'nochange' | 'updating' | 'none' | 'category';
 
 export function decideKindOf(state: string, as: string | null, fetch: string | null): DecideKind {
   if (as === 'kemi' || fetch === 'failed') return 'none';
   const kind = state.replace(/^decide_/u, '');
 
   return (
-    (['rise', 'unknown', 'nochange', 'updating', 'none'] as const).find((one) => one === kind) ??
-    'rise'
+    (['rise', 'unknown', 'nochange', 'updating', 'none', 'category'] as const).find(
+      (one) => one === kind,
+    ) ?? 'rise'
   );
 }
 
@@ -77,8 +85,22 @@ export function linesFor(kind: DecideKind): readonly CostLine[] {
   return COST_LINES;
 }
 
+/** Each state's ceilings: the sample's, or the whole event at £26,000 with Catering at £12,000 (sc-90's line). */
+export function ceilingsFor(kind: DecideKind): Partial<Record<CeilingKey, number>> {
+  return kind === 'category'
+    ? { whole: 2600000, catering: 1200000, flowers: 150000 }
+    : { ...CEILINGS };
+}
+
+export interface CategoryOver {
+  name: string;
+  ifAll: number;
+  ceiling: number;
+}
+
 export interface Moved {
   name: string;
+  category: Category;
   from: number;
   to: number;
   delta: number;
@@ -94,14 +116,16 @@ export interface Answer {
   unknown: readonly string[];
   overCeiling: boolean;
   ceiling: number | null;
+  categoriesOver: readonly CategoryOver[];
 }
 
 /** sc-86: new guests have not replied, so only the upper figure moves, by each per-head cost's rate. */
 export function whatIf(
   added: number,
   lines: readonly CostLine[] = COST_LINES,
-  ceiling: number | null = CEILINGS.whole ?? null,
+  ceilings: Partial<Record<CeilingKey, number>> = CEILINGS,
 ): Answer {
+  const ceiling = ceilings.whole ?? null;
   const perHead = lines.filter((line) => line.basis === 'perHead');
   const moved = perHead
     .filter((line) => lineState(line) === 'priced' && added > 0)
@@ -109,7 +133,7 @@ export function whatIf(
       const from = amounts(line).ifAll;
       const delta = (line.rate ?? 0) * added;
 
-      return { name: line.name, from, to: from + delta, delta };
+      return { name: line.name, category: line.category, from, to: from + delta, delta };
     });
   const delta = moved.reduce((sum, one) => sum + one.delta, 0);
   const sum = totals(lines);
@@ -128,6 +152,18 @@ export function whatIf(
         : [],
     overCeiling: ceiling != null && ifAll > ceiling,
     ceiling,
+    categoriesOver: (Object.keys(CATEGORY_WORDS) as Category[]).flatMap((category) => {
+      const limit = ceilings[category];
+      const rise = moved.filter((one) => one.category === category);
+      if (limit == null || rise.length === 0) return [];
+      const after =
+        totals(lines.filter((line) => line.category === category)).ifAll +
+        rise.reduce((sum, one) => sum + one.delta, 0);
+
+      return after > limit
+        ? [{ name: CATEGORY_WORDS[category], ifAll: after, ceiling: limit }]
+        : [];
+    }),
   };
 }
 
