@@ -71,6 +71,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. L’écran du lien envoyé dans l’app, et son toast** (sc-33809 pour sc-29071,
+  `mobile:recovery.*`). Le bouton est « Ouvrir la boîte mail », comme « Consultez votre boîte
+  mail », et non « Ouvrir Mail » : sous Android, il ouvre l’application d’e-mail de la personne.
+  `spam` reprend la phrase du web, « Vérifiez vos courriers indésirables, puis renvoyez-le. »,
+  comme le bouton « Le renvoyer ». `sentAgain` est « Nous l’avons renvoyé. Utilisez le dernier
+  e-mail. ». Le toast `changed` : « Mot de passe modifié. Vos autres appareils sont
+  déconnectés. », l’appareil étant ce qu’on déconnecte, comme `devices.everywhere`.
 - **8 nov. 2026. Une connexion à deux facteurs qui a expiré** (sc-29979,
   `signIn.codeTimedOutTitle`, web et app). « La connexion a expiré », puis `endedBody`
   « Reconnectez-vous pour continuer. ». « La connexion », la tentative en cours, et non
