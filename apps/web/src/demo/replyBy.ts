@@ -83,7 +83,6 @@ function noon(date: string): Date {
   return new Date(`${date}T12:00:00Z`);
 }
 
-/** "Wed, Nov 4, 2026", the row's title. */
 export function rowDay(date: string): string {
   return new Intl.DateTimeFormat(LOCALE, {
     weekday: 'short',
