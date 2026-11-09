@@ -7,6 +7,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
+import { LinkRetryPage } from '../../components/LinkRetryPage.tsx';
 import { SignedInAs, Tick } from '../../components/Onboarding.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
 import { PasswordRuleLine } from '../../components/PasswordRule.tsx';
@@ -16,7 +17,7 @@ import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { config } from '../../config.ts';
 import { useFormChecks } from '../../formChecks.ts';
-import { type LinkRetry, useLinkRetry } from '../../linkRetry.ts';
+import { useLinkRetry } from '../../linkRetry.ts';
 import { focusWhereSent } from '../../offField.ts';
 import { adoptAccount, landingFor, providerOnlyBy } from '../../session.ts';
 import { useSignOut } from '../../signOut.ts';
@@ -133,7 +134,14 @@ export function ResetPassword() {
 
   if (status.kind === 'checking') return <PendingPage />;
   if (status.kind === 'unreachable') return <Unreachable signedIn={false} retry={retry} bare />;
-  if (status.kind === 'unread') return <Unread retry={retry} />;
+  if (status.kind === 'unread')
+    return (
+      <LinkRetryPage
+        title={t('recovery.failedTitle')}
+        body={t('recovery.failedBody')}
+        retry={retry}
+      />
+    );
 
   if (status.kind === 'used' || status.kind === 'expired' || status.kind === 'invalid') {
     return (
@@ -280,36 +288,6 @@ export function ResetPassword() {
           {saving ? t('recovery.saving') : t('recovery.save')}
         </button>
       </form>
-    </AuthPage>
-  );
-}
-
-/** The API answered, but with none of the three refusals, so the link is not called dead. */
-function Unread({ retry }: { retry: LinkRetry }) {
-  const { t } = useTranslation();
-  const heading = useRef<HTMLDivElement>(null);
-  const wasRetrying = useRef(false);
-
-  useEffect(() => {
-    if (wasRetrying.current && !retry.retrying) heading.current?.focus();
-    wasRetrying.current = retry.retrying;
-  }, [retry.retrying]);
-
-  return (
-    <AuthPage bare end={null}>
-      <div className="auth-heading" ref={heading} tabIndex={-1}>
-        <h1>{t('recovery.failedTitle')}</h1>
-        <p>{t('recovery.failedBody')}</p>
-      </div>
-      <button
-        className="button button-primary"
-        type="button"
-        disabled={retry.retrying}
-        aria-busy={retry.retrying}
-        onClick={retry.again}
-      >
-        {retry.retrying ? t('session.retrying') : t('error.retry')}
-      </button>
     </AuthPage>
   );
 }
