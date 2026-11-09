@@ -1,0 +1,14 @@
+# Relaunches the app cold and screenshots what it opens on. Needs ${METRO_URL}, SHOT. sc-29076.
+appId: host.exp.Exponent
+---
+- stopApp: host.exp.Exponent
+- launchApp:
+    appId: host.exp.Exponent
+- openLink: ${METRO_URL}
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 90000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: ${SHOT}
