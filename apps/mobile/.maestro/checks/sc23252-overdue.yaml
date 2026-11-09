@@ -1,0 +1,11 @@
+# sc-23252: past the two-factor deadline, the overdue screen takes the frame's screens, with Turn on two-factor and Sign out.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'twoFactorOverdue.turnOn'
+    timeout: 30000
+- assertVisible:
+    id: 'twoFactorOverdue.signOut'
+- takeScreenshot: overdue

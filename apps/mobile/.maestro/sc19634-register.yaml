@@ -1,0 +1,27 @@
+# Starts a sign-up for A_EMAIL on Register and stops on Check your email, without relaunching,
+# so it runs signed out or signed in (sc-927's order). sc-19634.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/register
+- extendedWaitUntil:
+    visible:
+      id: 'register.name'
+    timeout: 60000
+- tapOn:
+    id: 'register.name'
+- eraseText: 120
+- inputText: ${A_NAME}
+- tapOn:
+    id: 'register.email'
+- eraseText: 120
+- inputText: ${A_EMAIL}
+- pressKey: Enter
+- eraseText: 120
+- inputText: ${A_PASSWORD}
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.code'
+    timeout: 30000
+- assertVisible: 'We sent a code to .*'
+- takeScreenshot: ${SHOT}-check-email

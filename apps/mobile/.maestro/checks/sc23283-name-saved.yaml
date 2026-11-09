@@ -1,0 +1,21 @@
+# sc-23283: a Name change saved shows its done line, with Change back at the value row's end.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.change'
+    timeout: 30000
+- tapOn:
+    id: 'nameCard.change'
+- tapOn:
+    id: 'nameCard.field'
+- eraseText: 80
+- inputText: 'Adébáyọ̀ Tester'
+- tapOn:
+    id: 'nameCard.save'
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.change'
+    timeout: 10000
+- takeScreenshot: name-saved

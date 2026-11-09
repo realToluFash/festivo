@@ -1,0 +1,719 @@
+/* Seating at a desk in A · The room (Seating-A-Desk-1, seating-a-spec.md): the demo's rules for what sc-3998 builds. Measurements are the boards'; colours are tokens, mixed where the boards name a colour no token holds. */
+
+.st {
+  --stSurface: var(--colorInset);
+  --stSunk: var(--colorNeutralFill);
+  --stEdge: var(--colorFieldBorder);
+  --stTaken: color-mix(in srgb, var(--colorInk) 85%, var(--colorCard));
+  --stEmpty: var(--colorInkTertiary);
+  --stOff: var(--colorTrack);
+  --stOffEdge: var(--colorInkSecondary);
+  --stGrid: color-mix(in srgb, var(--colorBorder) 55%, var(--colorCard));
+  --stGridFive: var(--colorBorder);
+  --stShadow:
+    0 8px 24px color-mix(in srgb, var(--colorInk) 12%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--colorInk) 6%, transparent);
+  --stLift:
+    0 16px 40px color-mix(in srgb, var(--colorInk) 18%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--colorInk) 6%, transparent);
+
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* sc-3998's eight colours, each beside its name; four are tokens, four are mixed from them. */
+.st .is-blue {
+  --sec: var(--optionBlue);
+}
+
+.st .is-purple {
+  --sec: var(--optionPurple);
+}
+
+.st .is-plum {
+  --sec: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--optionRose) 70%, var(--colorBroken)) 65%,
+    var(--colorAccent)
+  );
+}
+
+.st .is-wine {
+  --sec: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--optionPurple) 65%, var(--colorInk)) 55%,
+    var(--colorBroken)
+  );
+}
+
+.st .is-rose {
+  --sec: var(--optionRose);
+}
+
+.st .is-brown {
+  --sec: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--optionRose) 45%, var(--optionAmber)) 60%,
+    var(--colorInk)
+  );
+}
+
+.st .is-olive {
+  --sec: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--optionGreen) 65%, var(--colorAttention)) 85%,
+    var(--colorInk)
+  );
+}
+
+.st .is-teal {
+  --sec: var(--optionTeal);
+}
+
+.st .is-none {
+  --sec: var(--colorInkTertiary);
+}
+
+.st-top {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spaceMd);
+  box-sizing: border-box;
+  height: 60px;
+  padding: var(--spaceMd) var(--spaceLg) var(--spaceMd) 24px;
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+.st-crumb {
+  flex: 1;
+  min-width: 0;
+}
+
+.st-crumb ol {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  color: var(--colorInkSecondary);
+  font: 500 15px/1.3 var(--fontFamily);
+  white-space: nowrap;
+  list-style: none;
+}
+
+.st-crumb li {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  min-width: 0;
+}
+
+.st-crumb a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+  color: var(--colorAccentText);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.st-crumb a:hover {
+  text-decoration: underline;
+}
+
+.st-crumb h1 {
+  margin: 0;
+  outline: none;
+  color: var(--colorInk);
+  font: 600 15px/1.3 var(--fontFamily);
+}
+
+/* The demo's room is 719 tall at a desk; the product's shell lets a page grow but not stretch. */
+.st-main {
+  display: flex;
+  flex: 1;
+  min-height: 719px;
+}
+
+.st-main.is-none {
+  align-items: center;
+  justify-content: center;
+  background: var(--stSurface);
+}
+
+.st-no-plan {
+  width: 420px;
+}
+
+.st-plan-card {
+  min-height: 200px;
+}
+
+.st-canvas {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--stSurface);
+  touch-action: none;
+  user-select: none;
+}
+
+.st-room {
+  display: block;
+}
+
+.st-float {
+  position: absolute;
+  z-index: 3;
+}
+
+/* The room's drawing (sc-4007): white floor, a 1 m grid, walls in Ink. */
+.st-floor {
+  fill: var(--colorCard);
+}
+
+.st-grid {
+  stroke: var(--stGrid);
+  stroke-width: 1;
+}
+
+.st-grid.is-five {
+  stroke: var(--stGridFive);
+}
+
+.st-walls {
+  fill: none;
+  stroke: var(--colorInk);
+  stroke-width: 2.5;
+}
+
+.st-walls.is-thin {
+  stroke-width: 1.5;
+}
+
+.st-room-line {
+  fill: var(--colorInkSecondary);
+  font: 600 12.5px var(--fontFamily);
+}
+
+.st-new-wall {
+  stroke: var(--colorBroken);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+.st-skeleton-room {
+  fill: var(--colorCard);
+  stroke: var(--stSunk);
+  stroke-width: 3;
+}
+
+.st-skeleton-block {
+  fill: var(--stSunk);
+}
+
+.st-round-button,
+.st-icon-button {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--colorInk);
+  cursor: pointer;
+}
+
+.st-icon-button {
+  background: var(--stSurface);
+}
+
+.st-round-button:hover {
+  background: var(--stSurface);
+}
+
+.st-bar {
+  top: 72px;
+  left: var(--spaceLg);
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 10px;
+  width: 470px;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 2px var(--spaceLg) 2px 14px;
+  border-radius: var(--spaceLg);
+}
+
+.st-bar.is-inline {
+  position: static;
+  width: auto;
+}
+
+.st-bar p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: var(--spaceLg) 0;
+  color: var(--colorInk);
+  font: 600 14.5px/1.4 var(--fontFamily);
+}
+
+.st-bar.is-tint {
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+}
+
+.st-bar.is-amber {
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+}
+
+.st-bar.is-undo {
+  background: var(--colorCard);
+  box-shadow: var(--stShadow);
+  color: var(--colorInkSecondary);
+}
+
+.st-bar-acts {
+  display: flex;
+  gap: 18px;
+}
+
+.st-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.st-start-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.st-start-hint p {
+  width: 300px;
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 500 15px/1.45 var(--fontFamily);
+  text-align: center;
+}
+
+.st-failed {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: auto;
+  width: 360px;
+  color: var(--colorInkSecondary);
+  text-align: center;
+}
+
+.st-failed h2 {
+  margin: 0;
+  color: var(--colorInk);
+  font: 700 20px/1.3 var(--fontFamily);
+}
+
+.st-failed p {
+  margin: 0;
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
+.st-colour {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--sizeHit);
+  color: var(--colorInk);
+  font: 500 15px/1.3 var(--fontFamily);
+  cursor: pointer;
+}
+
+.st-colour input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--colorAccent);
+}
+
+.st-panel {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 300px;
+  min-height: 0;
+  border-left: 1px solid var(--colorBorder);
+  background: var(--colorCard);
+}
+
+.st-panel.is-skeleton {
+  gap: var(--spaceLg);
+  box-sizing: border-box;
+  padding: var(--spaceLg);
+}
+
+.st-sunk {
+  display: block;
+  border-radius: 10px;
+  background: var(--stSunk);
+}
+
+.st-sunk.is-44 {
+  height: 44px;
+}
+
+.st-sunk.is-24 {
+  height: 24px;
+}
+
+.st-sunk.is-18 {
+  height: 18px;
+}
+
+.st-sunk.is-52 {
+  height: 52px;
+}
+
+.st-sunk.n1 {
+  width: 40%;
+}
+
+.st-sunk.n2 {
+  width: 70%;
+}
+
+.st-sunk.n4 {
+  width: 45%;
+}
+
+.st-panel-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  padding: var(--spaceLg);
+  overflow-y: auto;
+}
+
+.st-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.st-stack.is-tight {
+  gap: 10px;
+}
+
+.st-title h2,
+.st-back-row h2 {
+  margin: 0;
+  outline: none;
+  font: 700 20px/1.2 var(--fontFamily);
+  letter-spacing: -0.015em;
+}
+
+.st-title p {
+  margin: 2px 0 0;
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.4 var(--fontFamily);
+}
+
+.st-back-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.st-back-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
+.st-back-row h2 {
+  flex: 1;
+}
+
+.st-line {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.st-line.is-ink {
+  color: var(--colorInk);
+}
+
+.st-line.is-big {
+  font-size: 15px;
+}
+
+.st-line.is-strong {
+  font: 600 13.5px/1.4 var(--fontFamily);
+}
+
+.st-strong {
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.st-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.st-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceMd);
+  min-height: var(--sizeHit);
+}
+
+.st-head h2,
+.st-tray-head h2 {
+  margin: 0;
+  font: 700 19px/1.25 var(--fontFamily);
+  letter-spacing: -0.01em;
+}
+
+.st-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.st-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  min-height: 52px;
+  padding: 11px 0;
+}
+
+.st-row + .st-row {
+  border-top: 1px solid var(--colorBorder);
+}
+
+.st-row.is-dense {
+  gap: 10px;
+  min-height: var(--sizeHit);
+  padding: 2px 0;
+}
+
+.st-row-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  text-align: left;
+}
+
+.st-row-name {
+  color: var(--colorInk);
+  font: 600 16px/1.35 var(--fontFamily);
+}
+
+.st-on-plan .st-row-name {
+  flex: 1;
+}
+
+.st-row-line {
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.4 var(--fontFamily);
+}
+
+.st-swatch {
+  display: inline-block;
+  flex: none;
+  border-radius: 50%;
+  background: var(--sec);
+}
+
+.st-swatch.is-12 {
+  width: 12px;
+  height: 12px;
+}
+
+.st-swatch.is-16 {
+  width: 16px;
+  height: 16px;
+}
+
+.st-swatch.is-20 {
+  width: 20px;
+  height: 20px;
+}
+
+.st-swatch.is-none {
+  box-sizing: border-box;
+  border: 2px dashed var(--stEdge);
+  background: none;
+}
+
+/* A field applies on Enter or on leaving it; its refusal is said under it. */
+.st-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.st-label {
+  padding: 0;
+  color: var(--colorInk);
+  font: 600 13.5px/1.3 var(--fontFamily);
+}
+
+.st-optional {
+  margin-left: 6px;
+  color: var(--colorInkSecondary);
+  font: 500 12.5px/1.3 var(--fontFamily);
+}
+
+.st-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  box-sizing: border-box;
+  height: var(--sizeHit);
+  padding: 0 12px;
+  border-radius: 12px;
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1.5px var(--stEdge);
+}
+
+.st-box:focus-within {
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}
+
+.st-box.is-wrong {
+  box-shadow: inset 0 0 0 2px var(--colorBroken);
+}
+
+.st-box input,
+.st-box select {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--colorInk);
+  font: 500 15px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  appearance: none;
+}
+
+.desk .st-box :is(input, select):focus-visible {
+  box-shadow: none;
+}
+
+.st-unit {
+  flex: none;
+  color: var(--colorInkSecondary);
+  font: 500 15px/1 var(--fontFamily);
+}
+
+.st-field-error,
+.st-field-warn,
+.st-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.st-field-error svg,
+.st-field-warn svg,
+.st-alert svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.st-box.is-select svg {
+  position: absolute;
+  right: 12px;
+  color: var(--colorInkSecondary);
+  pointer-events: none;
+}
+
+.st-field-error,
+.st-alert.is-red {
+  color: var(--colorBrokenText);
+}
+
+.st-field-warn,
+.st-alert.is-amber {
+  color: var(--colorAttentionText);
+}
+
+.st-field-hint {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.4 var(--fontFamily);
+}
+
+.st-two {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.st-two > * {
+  flex: 1;
+}
+
+.st-acts {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 20px;
+}
+
+.st-red {
+  display: flex;
+  flex-direction: column;
+}
+
+.st-colours {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.st-colours legend {
+  padding: 0 0 4px;
+}
+
+.st-wide {
+  width: 100%;
+}
