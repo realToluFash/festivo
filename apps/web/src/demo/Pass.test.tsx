@@ -19,15 +19,18 @@ async function open(state: string): Promise<void> {
 const panel = () => screen.getByRole('dialog');
 
 describe('/demo/pass (sc-4018)', () => {
-  it('prints one ticket through the stand-in dialogue, and Cancel records nothing', async () => {
+  it('records Printed when the stand-in dialogue closes, Cancel included, as a browser cannot tell them apart', async () => {
     await open('ticket');
     fireEvent.click(screen.getByRole('button', { name: 'Print table 9’s ticket' }));
     fireEvent.click(within(panel()).getByRole('button', { name: 'Cancel' }));
-    expect(screen.queryByText('Printed 20:12')).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Print table 9’s ticket' }));
-    fireEvent.click(within(panel()).getByRole('button', { name: 'Print' }));
     expect(screen.getByText('Printed 20:12')).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('records nothing when Print tickets is cancelled from its own panel', async () => {
+    await open('print-tickets');
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText('Printed 20:12')).toBeNull();
   });
 
   it('prints what is not printed yet from Print tickets, then offers None left to print', async () => {

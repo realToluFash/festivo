@@ -267,11 +267,7 @@ function Pass({ state }: { state: PassState }) {
         <PrintDialogue
           what={dialogue.what}
           paper={laidOut(ROLLS[roll], stale)}
-          onCancel={() => {
-            setDialogue(null);
-            opener.current?.focus();
-          }}
-          onPrint={() => {
+          onClose={() => {
             setPrinted((was) => sentToPrint(was, dialogue.tables, NOW));
             setDialogue(null);
             opener.current?.focus();
@@ -446,16 +442,14 @@ function SidePanel({
 function PrintDialogue({
   what,
   paper,
-  onCancel,
-  onPrint,
+  onClose,
 }: {
   what: string;
   paper: string;
-  onCancel: () => void;
-  onPrint: () => void;
+  onClose: () => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
-  useDialogKeys(box, onCancel, false);
+  useDialogKeys(box, onClose, false);
   useEffect(() => box.current?.focus(), []);
 
   return (
@@ -475,10 +469,10 @@ function PrintDialogue({
           <span className="pass-meta">{paper}</span>
         </div>
         <div className="pass-stand-in-actions">
-          <button className="button" type="button" onClick={onCancel}>
+          <button className="button" type="button" onClick={onClose}>
             {PW.cancel}
           </button>
-          <button className="button" type="button" onClick={onPrint}>
+          <button className="button" type="button" onClick={onClose}>
             {PW.print}
           </button>
         </div>
