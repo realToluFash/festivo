@@ -26,6 +26,7 @@ import { PaymentReminders } from './Payments.tsx';
 import { AccessPaused } from './OrgSwitcher.tsx';
 import { Personalisation } from './Personalisation.tsx';
 import { PersonalTile } from './SchemeArt.tsx';
+import { underSavedName, useSavedNames } from './savedName.ts';
 import { Security } from './Security.tsx';
 import { SignInRules } from './SignInRules.tsx';
 import { StorefrontGlyph, Vendors } from './Vendors.tsx';
@@ -68,6 +69,8 @@ export function Settings({
         ? dataControlViewerKey(page, as, state)
         : as,
   );
+  const names = useSavedNames();
+  const seen = useMemo(() => underSavedName(viewer, names), [viewer, names]);
   useSwitcherStart();
   const paused = usePaused();
   const [told, setTold] = useState<string | null>(null);
@@ -98,13 +101,7 @@ export function Settings({
   return (
     <LayersContext value={layers}>
       <div className="today desk">
-        <TodaySidebar
-          events={SIDEBAR_EVENTS}
-          tell={tell}
-          settings
-          person={viewer}
-          inert={covered}
-        />
+        <TodaySidebar events={SIDEBAR_EVENTS} tell={tell} settings person={seen} inert={covered} />
         <main id="content" className="desk-main" inert={covered}>
           {paused && open !== 'account' ? (
             <div className="desk-page">
@@ -118,7 +115,7 @@ export function Settings({
                     ? open
                     : null
                 }
-                viewer={viewer}
+                viewer={seen}
                 tell={tell}
               />
               {open === 'account' ? (

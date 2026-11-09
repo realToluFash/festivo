@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { forgetNames } from './savedName.ts';
 
 const tested = config();
 const WAIT = { timeout: 3000 };
@@ -26,7 +27,10 @@ function dialog(): HTMLElement {
 
 describe('Your account at a desk (sc-30209)', () => {
   beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    forgetNames();
+  });
 
   it('opens from the Settings list beside it, the row no longer a design of its own', async () => {
     const router = createMemoryRouter(routes, { initialEntries: ['/demo/settings'] });
@@ -200,7 +204,7 @@ describe('Your account at a desk (sc-30209)', () => {
     expect(
       await screen.findByText('Name changed to Oluwafolakemi Bello.', undefined, WAIT),
     ).toBeDefined();
-    expect(screen.getByText('OB')).toBeDefined();
+    expect(screen.getAllByText('OB')).toHaveLength(3);
   });
 
   it('refuses a blank name on the field', async () => {
