@@ -474,7 +474,7 @@ export function SecurityDesk() {
             <SectionFailed
               title={t('twoFactorCard.failedTitle')}
               line={t('twoFactorCard.failedBody')}
-              announce={factorTry === 0 && said == null && !opensOnLine}
+              announce={factorTry === 0 && !opensOnLine}
               onRetry={() => {
                 setTwoFactor(null);
                 rereadFactor();

@@ -872,6 +872,26 @@ describe('the devices at a desk', () => {
     ]);
   });
 
+  it('reads the first two-factor failure after the others were signed out while it loaded', async () => {
+    holdingProof();
+    let failed: (answer: Response) => void = () => {};
+    answering({
+      'GET /api/auth/two-factor': () =>
+        new Promise<Response>((resolve) => {
+          failed = resolve;
+        }),
+      'POST /api/auth/sessions/others': () => json({ signedOut: 1, thisDevice: false }),
+    });
+    openSecurity();
+
+    await everywhere();
+    expect(await screen.findByText('Your other device is signed out.')).toBeDefined();
+
+    failed(json({ title: 'Down' }, 500));
+    expect(await screen.findByText('Two-factor did not load')).toBeDefined();
+    expect(section('Two-factor authentication').getByRole('alert')).toBeDefined();
+  });
+
   it('says nothing was signed out when it fails', async () => {
     holdingProof();
     answering({ 'POST /api/auth/sessions/others': () => json({ title: 'Down' }, 500) });
