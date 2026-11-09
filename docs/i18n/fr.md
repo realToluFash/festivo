@@ -803,3 +803,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   refus de l’API dit « jeux de couleurs ». Les huit noms : Violet, Cobalt, Jardin, Agrumes,
   Fruits rouges, Tenue de soirée (Black tie, la tenue exigée), Sorbet et Terre cuite ; Violet,
   Cobalt et Sorbet sont les mots français (`same-as-english.json`).
+- **9 Nov 2026. Les titres des feuilles Ajouter et Vérifier dans l’app** (sc-35661,
+  `mobile:contacts.addEmail`, `addPhone`, `verifyEmail.title`, `verifyPhone.title`). La même clé
+  sert de lien à droite du titre de section et de titre de feuille : « Nouvelle adresse »,
+  « Nouveau numéro », que la section situe. Les feuilles de vérification disent « Ouvrez vos
+  e-mails » et « Ouvrez vos messages », comme le bouton « Ouvrir la boîte mail » ; « Consultez
+  votre boîte mail » était tronqué sur un téléphone Android et reste celui de l’écran du lien.

@@ -111,7 +111,7 @@
     "timedOut": "Votre inscription a expiré, nous n’avons donc pas conservé le mot de passe. Ressaisissez-le pour recevoir un nouveau code."
   },
   "verifyEmail": {
-    "title": "Consultez votre boîte mail",
+    "title": "Ouvrez vos e-mails",
     "intro": "Nous avons envoyé un code à {{address}}. Saisissez-le ici pour prouver que l’adresse est la vôtre.",
     "codeLabel": "Code reçu par e-mail",
     "submit": "Vérifier l’adresse",
@@ -133,7 +133,7 @@
     "codeShort": "Le code compte 6 chiffres."
   },
   "verifyPhone": {
-    "title": "Consultez vos messages",
+    "title": "Ouvrez vos messages",
     "intro": "Nous avons envoyé un code par SMS au {{number}}.",
     "codeLabel": "Code reçu par SMS",
     "submit": "Vérifier le numéro",
@@ -945,8 +945,8 @@
     "removeKeep": "La garder",
     "removeKeepPhone": "Le garder",
     "removing": "Retrait en cours…",
-    "addEmail": "Ajouter une adresse e-mail",
-    "addPhone": "Ajouter un numéro de téléphone",
+    "addEmail": "Nouvelle adresse",
+    "addPhone": "Nouveau numéro",
     "emailLabel": "Adresse e-mail à ajouter",
     "emailHelp": "Nous vous envoyons un code par e-mail pour confirmer que l’adresse est la vôtre. D’ici là, elle reste à vérifier.",
     "phoneLabel": "Numéro de portable à ajouter",
