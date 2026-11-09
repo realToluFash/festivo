@@ -29,6 +29,7 @@ export function MatchPicker({
     <Dialog
       title={MW.whoIsThis}
       verb={filled(MW.thisIs, { name: picked })}
+      dismiss={MW.cancel}
       first={search}
       on={found.some((one) => one.name === picked)}
       onDismiss={onCancel}
@@ -108,6 +109,7 @@ export function LaterDialog({
     <Dialog
       title={MW.whenItGoes}
       verb={MW.schedule}
+      dismiss={MW.cancel}
       first={later}
       onDismiss={onCancel}
       onConfirm={schedule}
