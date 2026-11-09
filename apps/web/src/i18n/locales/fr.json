@@ -496,7 +496,28 @@
     "sectionAccount": "Compte",
     "sectionSecurity": "Sécurité",
     "sectionNotifications": "Notifications",
-    "sectionPersonalisation": "Personnalisation"
+    "sectionPersonalisation": "Personnalisation",
+    "aboutYou": "À propos de vous",
+    "yourName": "Votre nom",
+    "fullName": "Nom complet",
+    "zoneLine": "Fuseau horaire · {{id}}",
+    "emailPrimaryLine": "Principale · pour vous connecter",
+    "emailOtherLine": "Pour vous joindre, pas pour vous connecter",
+    "phonePrimaryLine": "Principal · sur votre profil",
+    "phoneOtherLine": "Pour vous joindre",
+    "notVerifiedYet": "{{shown}} reste à vérifier.",
+    "verifiedAlternative": "{{address}} est vérifiée. Elle ne deviendra votre adresse principale que si vous la définissez comme telle.",
+    "verifiedAlternativePhone": "{{number}} est vérifié. Il ne deviendra votre numéro principal que si vous le définissez comme tel.",
+    "save": "Enregistrer",
+    "add": "Ajouter",
+    "verify": "Vérifier",
+    "discardTitle": "Abandonner votre modification ?",
+    "keepEditing": "Continuer à modifier",
+    "discard": "Abandonner",
+    "nameStays": "Votre nom reste {{name}}.",
+    "zoneStays": "Votre fuseau horaire reste {{zone}}.",
+    "zoneStaysUnset": "Votre fuseau horaire reste non défini.",
+    "nothingAdded": "Rien ne sera ajouté."
   },
   "devices": {
     "title": "Appareils connectés",
@@ -1504,7 +1525,9 @@
     "proveIntro": "Confirmez que c’est bien vous avant de changer l’adresse avec laquelle vous vous connectez.",
     "backToAccount": "Retour à Compte",
     "removeInAccount": "La retirer dans Compte",
-    "removeInAccountPhone": "Le retirer dans Compte"
+    "removeInAccountPhone": "Le retirer dans Compte",
+    "promoting": "Changement en cours…",
+    "removing": "Retrait en cours…"
   },
   "join": {
     "registerTitle": "Rejoindre {{organisation}}",

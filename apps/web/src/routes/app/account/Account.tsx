@@ -4,13 +4,20 @@ import { useTranslation } from 'react-i18next';
 import { AccountHeader } from '../../../components/AccountHeader.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { useOffline } from '../../../offline.ts';
+import { usePhoneWidth } from '../../../phoneWidth.ts';
 import { followAccountRead, refreshAccount, useSession } from '../../../session.ts';
+import { AccountDesk } from './AccountDesk.tsx';
 import { ContactsCards } from './ContactsCard.tsx';
 import { NameCard } from './NameCard.tsx';
 import { TimeZoneCard } from './TimeZoneCard.tsx';
 
-/** Your account > Account: the name (sc-22741), the address and phone cards (sc-113), then the time zone (sc-868). */
+/** At a desk, the desk page (sc-30411); in a phone's browser, the cards as they were. */
 export function Account() {
+  return usePhoneWidth() ? <PhoneAccount /> : <AccountDesk />;
+}
+
+/** Your account > Account: the name (sc-22741), the address and phone cards (sc-113), then the time zone (sc-868). */
+function PhoneAccount() {
   const { t } = useTranslation();
   const session = useSession();
   const title = useRef<HTMLHeadingElement>(null);

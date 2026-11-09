@@ -61,7 +61,7 @@ import {
 } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { useLater } from '../useLater.ts';
-import './account.css';
+import '../components/AccountParts.css';
 import './security.css';
 
 /** Security at a desk in B · Summary first (Web-Security-*.dc.html): the app's page, the same for every role. */

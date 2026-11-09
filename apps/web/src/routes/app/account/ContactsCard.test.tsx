@@ -7,6 +7,7 @@ import { holdProof } from '../../../recentProof.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
 import { renderInterrupted } from '../../../test-interrupted.tsx';
+import { atPhoneWidth } from '../../../test-widths.ts';
 import { tokens } from '../../../tokens.ts';
 import { routes } from '../../index.tsx';
 
@@ -81,6 +82,7 @@ function open(session: Partial<Session> = {}, at = '/app/account') {
 
 beforeEach(() => {
   tokens.save({ accessToken: 'live', refreshExpiresAt: '', sessionId: 's' });
+  atPhoneWidth();
 });
 
 afterEach(() => {
@@ -450,19 +452,10 @@ describe('email addresses and phone numbers', () => {
     expect(atOnce.className).toBe('button button-danger');
   });
 
-  it('leads a confirm with Keep in a row, and puts the confirming button on top when stacked', async () => {
+  it('puts the confirming button on top, as a phone stacks a confirm', async () => {
     answering({ 'GET /api/auth/me': () => json(ME) });
     open();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Remove folake.adeyemi@gmail.com' }));
-    const row = screen.getByRole('button', { name: 'Remove it' }).parentElement!;
-    expect([...row.children].map((button) => button.textContent)).toEqual(['Keep it', 'Remove it']);
-
-    vi.spyOn(window, 'matchMedia').mockImplementation(
-      (query) =>
-        ({ matches: true, media: query, addEventListener() {}, removeEventListener() {} }) as never,
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Remove folake.adeyemi@gmail.com' }));
     const stack = screen.getByRole('button', { name: 'Remove it' }).parentElement!;
     expect([...stack.children].map((button) => button.textContent)).toEqual([

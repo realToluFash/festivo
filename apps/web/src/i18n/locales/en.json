@@ -486,7 +486,28 @@
     "sectionAccount": "Account",
     "sectionSecurity": "Security",
     "sectionNotifications": "Notifications",
-    "sectionPersonalisation": "Personalisation"
+    "sectionPersonalisation": "Personalisation",
+    "aboutYou": "About you",
+    "yourName": "Your name",
+    "fullName": "Full name",
+    "zoneLine": "Time zone · {{id}}",
+    "emailPrimaryLine": "Primary · signs you in",
+    "emailOtherLine": "Can reach you, cannot sign you in",
+    "phonePrimaryLine": "Primary · on your profile",
+    "phoneOtherLine": "Can reach you",
+    "notVerifiedYet": "{{shown}} is not verified yet.",
+    "verifiedAlternative": "{{address}} is verified. It stays an alternative address until you make it primary.",
+    "verifiedAlternativePhone": "{{number}} is verified. It stays an alternative number until you make it primary.",
+    "save": "Save",
+    "add": "Add",
+    "verify": "Verify",
+    "discardTitle": "Discard your change?",
+    "keepEditing": "Keep editing",
+    "discard": "Discard",
+    "nameStays": "Your name stays {{name}}.",
+    "zoneStays": "Your time zone stays {{zone}}.",
+    "zoneStaysUnset": "Your time zone stays unset.",
+    "nothingAdded": "Nothing is added."
   },
   "devices": {
     "title": "Signed in on",
@@ -1472,7 +1493,9 @@
     "proveIntro": "Confirm it's you before changing the address you sign in with.",
     "backToAccount": "Back to Account",
     "removeInAccount": "Remove it in Account",
-    "removeInAccountPhone": "Remove it in Account"
+    "removeInAccountPhone": "Remove it in Account",
+    "promoting": "Making it primary…",
+    "removing": "Removing…"
   },
   "join": {
     "registerTitle": "Join {{organisation}}",
