@@ -72,6 +72,9 @@ onFlowComplete:
       - assertVisible:
           id: 'security.change.current'
           focused: true
+# Only Current password's typing clears the refusal, so this proves its focus on both phones.
+- inputText: 'x'
+- assertNotVisible: '{{t:passwordCard.wrongCurrent}}'
 - runScript:
     file: ../batch/helper.js
     env:
