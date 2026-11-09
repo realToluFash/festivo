@@ -1453,6 +1453,16 @@ class Merging(Base):
             self.assertEqual(self.fake.comments[-1][1], "(from dev2)\nPR #9 merged as "
                              f"{'m' * 40}. Tasks left: 31 step 1, 32 step 2")
 
+    def test_a_merge_with_tasks_left_wakes_its_builder_for_the_next_task(self):
+        self.fake.add(1, "Passed Code Review", ["dev2"])
+        self.tasks(1, True, False)
+        store.put_pr(self.db, pr("pass"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge"), \
+                mock.patch("soirely_queue.sync.sync_github"):
+            actions.merge(self.as_("dev2"), args(pr=9, text=None))
+        self.assertEqual(self.queue_wakes("dev2"), ["sc-1 moved to In Progress"])
+
     def test_the_next_task_goes_to_review_after_a_merge_with_tasks_left(self):
         self.fake.add(1, "In Review", ["dev2"])
         self.tasks(1, True, False)
