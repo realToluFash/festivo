@@ -98,7 +98,7 @@ describe('signing out everywhere else', () => {
   });
 });
 
-describe('signing out everywhere else', () => {
+describe('signing out everywhere else, when it is sent', () => {
   it('says how many went, or that this device went too', async () => {
     expect(await signOutOthers(async () => ({ signedOut: 2, thisDevice: false }), t)).toEqual({
       kind: 'done',
