@@ -2,7 +2,10 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { subscribeWebPush } from '../../../webPush.ts';
 import { NotificationSettings } from './NotificationSettings.tsx';
+
+vi.mock('../../../webPush.ts', () => ({ subscribeWebPush: vi.fn(async () => undefined) }));
 
 const CATEGORIES = [
   'guest_replies',
@@ -73,6 +76,8 @@ const BLOCKED = "Push is off in this browser, so pushes won't reach you here.";
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.mocked(subscribeWebPush).mockClear();
+  Reflect.deleteProperty(document, 'visibilityState');
 });
 
 describe('Notification settings at a desk (sc-30411)', () => {
@@ -202,6 +207,38 @@ describe('Notification settings at a desk (sc-30411)', () => {
 
     expect(screen.queryByText(BLOCKED)).toBeNull();
     expect(screen.queryByRole('button', { name: 'How to allow push' })).toBeNull();
+  });
+
+  it('checks push again when the reader switches back to the tab', async () => {
+    const browser = permission('denied');
+    opened();
+    expect(await screen.findByText(BLOCKED)).toBeTruthy();
+
+    browser.permission = 'granted';
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(screen.queryByText(BLOCKED)).toBeNull();
+  });
+
+  it('registers this browser for push once when push is allowed again', async () => {
+    const browser = permission('denied');
+    opened();
+    expect(await screen.findByText(BLOCKED)).toBeTruthy();
+    expect(subscribeWebPush).not.toHaveBeenCalled();
+
+    browser.permission = 'granted';
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+    expect(subscribeWebPush).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+    expect(subscribeWebPush).toHaveBeenCalledTimes(1);
   });
 
   it('says nothing about push when the browser has not blocked it', async () => {
