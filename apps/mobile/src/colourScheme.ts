@@ -3,7 +3,13 @@ import { useSyncExternalStore } from 'react';
 
 import { type Choice, inUse } from './kit/personalisation.ts';
 import { schemeOf } from './kit/schemes.ts';
-import { deviceScheme, holdLanding, keepDeviceScheme, takeLanding } from './theme/deviceScheme.ts';
+import {
+  deviceScheme,
+  forgetDeviceScheme,
+  holdLanding,
+  keepDeviceScheme,
+  takeLanding,
+} from './theme/deviceScheme.ts';
 import { type Scheme, schemeAtLaunch } from './theme/tokens.ts';
 
 export const PERSONALISATION_LANDING = '/settings/personalisation?saved=1' satisfies Href;
@@ -70,6 +76,17 @@ export async function restartIn(
 
     return false;
   }
+}
+
+/** On an install's first launch, the colours kept from before an uninstall are forgotten, and the JS starts again in the default where it opened in them. */
+export async function forgetOnNewInstall(
+  newInstall: boolean,
+  openedIn: string | null | undefined = globalThis.soirelyDeviceScheme,
+  reload: Reload = reloadAppAsync,
+): Promise<void> {
+  if (!newInstall || openedIn == null || !forgetDeviceScheme()) return;
+
+  await reload('new install').catch(() => {});
 }
 
 /** Where a restart into new colours asked to come back to, once; only a landing this module holds. */

@@ -12,7 +12,7 @@ vi.mock('expo-secure-store', () => ({
 }));
 vi.mock('expo', () => ({ reloadAppAsync: async () => {} }));
 
-const { hearChoice, heardChoice, readsMe, restartIn, schemeToFollow } =
+const { forgetOnNewInstall, hearChoice, heardChoice, readsMe, restartIn, schemeToFollow } =
   await import('./colourScheme.ts');
 const { deviceScheme, takeLanding } = await import('./theme/deviceScheme.ts');
 
@@ -63,6 +63,39 @@ describe("the app follows the account's colours (sc-30441)", () => {
     hearChoice('teal', 'cobalt', async () => {});
 
     expect(heardChoice()).toBe('cobalt');
+  });
+
+  it('forgets the colours kept from before an uninstall, and starts again in the default', async () => {
+    kept.set('soirely.colourScheme', 'berry');
+    kept.set('soirely.landingAfterRestart', '/settings/personalisation?saved=1');
+    const reload = vi.fn(async () => {});
+
+    await forgetOnNewInstall(true, 'berry', reload);
+
+    expect(deviceScheme()).toBeNull();
+    expect(takeLanding()).toBeNull();
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the colours on a launch that is not the install's first", async () => {
+    kept.set('soirely.colourScheme', 'berry');
+    const reload = vi.fn(async () => {});
+
+    await forgetOnNewInstall(false, 'berry', reload);
+
+    expect(deviceScheme()).toBe('berry');
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('restarts nothing on a new install that opened in the default, or that cannot forget', async () => {
+    const reload = vi.fn(async () => {});
+    await forgetOnNewInstall(true, null, reload);
+
+    kept.set('soirely.colourScheme', 'berry');
+    keeps = false;
+    await forgetOnNewInstall(true, 'berry', reload);
+
+    expect(reload).not.toHaveBeenCalled();
   });
 
   it('reads the person from GET /api/auth/me only', () => {

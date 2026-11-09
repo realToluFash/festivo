@@ -27,6 +27,16 @@ function write(key: string, value: string): boolean {
   }
 }
 
+function clear(key: string): boolean {
+  try {
+    SecureStore.setItem(key, '', KEPT);
+  } catch {
+    return false;
+  }
+
+  return read(key) == null;
+}
+
 /** The scheme this device last showed the person; synchronous, as the tokens are laid before the first render. */
 export function deviceScheme(): string | null {
   return read(SCHEME_KEY);
@@ -35,6 +45,13 @@ export function deviceScheme(): string | null {
 /** True only when the device reads it back, so a restart never runs on a scheme it cannot keep. */
 export function keepDeviceScheme(scheme: Scheme): boolean {
   return write(SCHEME_KEY, scheme);
+}
+
+/** A new install starts in the default: the Keychain outlives an uninstall, and the last person's colours with it. True once nothing is kept. */
+export function forgetDeviceScheme(): boolean {
+  clear(LANDING_KEY);
+
+  return clear(SCHEME_KEY);
 }
 
 export function holdLanding(path: string): boolean {
