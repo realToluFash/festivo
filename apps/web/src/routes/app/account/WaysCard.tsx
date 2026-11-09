@@ -25,6 +25,7 @@ import {
   heldProviderReturn,
 } from '../../../providerSignIn.ts';
 import { heldProof, holdProof } from '../../../recentProof.ts';
+import { type WayRefusal, wayRefusal, wayRefusalWords } from '../../../securityRefusals.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { ActionPair } from '../../../components/ActionPair.tsx';
 import { Changing, Setting } from './PasswordCard.tsx';
@@ -32,15 +33,11 @@ import { Changing, Setting } from './PasswordCard.tsx';
 type Act = { action: 'link' | 'unlink'; provider: Provider };
 
 type Notice =
+  | WayRefusal
   | { kind: 'linked'; provider: Provider; email: string | null }
-  | {
-      kind: 'unlinked' | 'taken' | 'last' | 'providerFailed' | 'providerRefused';
-      provider: Provider;
-    }
-  | { kind: 'keptByRule'; provider: Provider; organisation: string }
+  | { kind: 'unlinked' | 'providerFailed' | 'providerRefused'; provider: Provider }
   | { kind: 'passwordChanged'; signedOut: number }
-  | { kind: 'passwordAdded'; provider: string }
-  | { kind: 'failed' };
+  | { kind: 'passwordAdded'; provider: string };
 
 type Stage =
   | { kind: 'list'; notice: Notice | null; answers?: boolean }
@@ -169,7 +166,7 @@ export function WaysCard({
       await onChanged();
       setStage({ kind: 'list', notice: { kind: 'linked', provider, email: linked.email } });
     } catch (error) {
-      setStage({ kind: 'list', notice: refused(error, provider) });
+      setStage({ kind: 'list', notice: wayRefusal(error, provider) });
     }
   }
 
@@ -196,7 +193,7 @@ export function WaysCard({
       setStage({ kind: 'list', notice: { kind: 'unlinked', provider }, answers: true });
     } catch (error) {
       if (error instanceof ApiError) await onRefused().catch(() => {});
-      setStage({ kind: 'list', notice: refused(error, provider), answers: true });
+      setStage({ kind: 'list', notice: wayRefusal(error, provider), answers: true });
     }
     land(() => said.current);
   }
@@ -473,35 +470,18 @@ function Said({
     );
   }
 
-  if (notice.kind === 'keptByRule') {
-    const provider = PROVIDER_NAMES[notice.provider];
-    const other = PROVIDER_NAMES[notice.provider === 'google' ? 'apple' : 'google'];
-
-    return (
-      <div className="notice notice-broken" role={answers == null ? 'alert' : undefined}>
-        <span className="mark mark-broken" aria-hidden="true">
-          ✕
-        </span>
-        <div className="notice-body" {...focusable}>
-          <p className="notice-title">
-            {t('waysCard.keptByRule', { organisation: notice.organisation })}
-          </p>
-          <p>{t('waysCard.keptByRuleNext', { provider, other })}</p>
-        </div>
-      </div>
-    );
-  }
-
-  const title =
-    notice.kind === 'taken'
-      ? t('waysCard.taken', { provider: PROVIDER_NAMES[notice.provider] })
-      : notice.kind === 'last'
-        ? t('waysCard.lastRefused')
-        : notice.kind === 'providerFailed'
-          ? t('waysCard.providerFailed', { provider: PROVIDER_NAMES[notice.provider] })
-          : notice.kind === 'providerRefused'
-            ? t('waysCard.providerRefused', { provider: PROVIDER_NAMES[notice.provider] })
-            : t('waysCard.failedTitle');
+  const { title, next } =
+    notice.kind === 'providerFailed'
+      ? {
+          title: t('waysCard.providerFailed', { provider: PROVIDER_NAMES[notice.provider] }),
+          next: null,
+        }
+      : notice.kind === 'providerRefused'
+        ? {
+            title: t('waysCard.providerRefused', { provider: PROVIDER_NAMES[notice.provider] }),
+            next: null,
+          }
+        : wayRefusalWords(notice, t);
 
   return (
     <div className="notice notice-broken" role={answers == null ? 'alert' : undefined}>
@@ -510,10 +490,7 @@ function Said({
       </span>
       <div className="notice-body" {...focusable}>
         <p className="notice-title">{title}</p>
-        {notice.kind === 'taken' && (
-          <p>{t('waysCard.takenNext', { provider: PROVIDER_NAMES[notice.provider] })}</p>
-        )}
-        {notice.kind === 'failed' && <p>{t('waysCard.failedBody')}</p>}
+        {next != null && <p>{next}</p>}
       </div>
     </div>
   );
@@ -636,16 +613,6 @@ function Confirming({
       />
     </>
   );
-}
-
-function refused(error: unknown, provider: Provider): Notice {
-  if (error instanceof ApiError && error.is('provider_taken')) return { kind: 'taken', provider };
-  if (error instanceof ApiError && error.is('last_sign_in_method'))
-    return { kind: 'last', provider };
-  if (error instanceof ApiError && error.is('provider_kept_by_rule'))
-    return { kind: 'keptByRule', provider, organisation: error.problem.organisation ?? '' };
-
-  return { kind: 'failed' };
 }
 
 function LockMark() {

@@ -1,8 +1,9 @@
-import { ApiError } from '@soirely/api-client';
+import { ApiError, type Provider } from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
 import { dateLocale } from './i18n/index.ts';
+import { PROVIDER_NAMES } from './providerSignIn.ts';
 
 export type ChangeRefusal =
   | { field: 'currentPassword'; message: string }
@@ -116,4 +117,50 @@ export function setupRefusal(error: unknown, t: TFunction): string {
     return t('twoFactorCard.setupWrong');
 
   return t('twoFactorCard.failedBody');
+}
+
+export type WayRefusal =
+  | { kind: 'taken' | 'last'; provider: Provider }
+  | { kind: 'keptByRule'; provider: Provider; organisation: string }
+  | { kind: 'failed' };
+
+/** Linking or unlinking a way in, refused. */
+export function wayRefusal(error: unknown, provider: Provider): WayRefusal {
+  if (error instanceof ApiError && error.is('provider_taken')) return { kind: 'taken', provider };
+  if (error instanceof ApiError && error.is('last_sign_in_method'))
+    return { kind: 'last', provider };
+  if (error instanceof ApiError && error.is('provider_kept_by_rule'))
+    return { kind: 'keptByRule', provider, organisation: error.problem.organisation ?? '' };
+
+  return { kind: 'failed' };
+}
+
+/** A way in's refusal as its notice reads it: what happened, then what to do next. */
+export function wayRefusalWords(
+  refusal: WayRefusal,
+  t: TFunction,
+): { title: string; next: string | null } {
+  if (refusal.kind === 'failed')
+    return { title: t('waysCard.failedTitle'), next: t('waysCard.failedBody') };
+  const provider = PROVIDER_NAMES[refusal.provider];
+  if (refusal.kind === 'taken')
+    return {
+      title: t('waysCard.taken', { provider }),
+      next: t('waysCard.takenNext', { provider }),
+    };
+  if (refusal.kind === 'last') return { title: t('waysCard.lastRefused'), next: null };
+  const other = PROVIDER_NAMES[refusal.provider === 'google' ? 'apple' : 'google'];
+
+  return {
+    title: t('waysCard.keptByRule', { organisation: refusal.organisation }),
+    next: t('waysCard.keptByRuleNext', { provider, other }),
+  };
+}
+
+/** The same refusal as one line under its row; a failure says only that it did not go through. */
+export function wayRefusalLine(refusal: WayRefusal, t: TFunction): string {
+  const { title, next } = wayRefusalWords(refusal, t);
+  if (next == null) return title;
+
+  return refusal.kind === 'failed' ? next : `${title} ${next}`;
 }

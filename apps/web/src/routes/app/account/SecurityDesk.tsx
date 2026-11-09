@@ -67,6 +67,7 @@ import {
   unlinkNote,
   waysOf,
 } from '../../../securityPage.ts';
+import { wayRefusal, wayRefusalLine } from '../../../securityRefusals.ts';
 import { forgetSession, refreshAccount, rereadCredentials, useSession } from '../../../session.ts';
 import { useSignOut } from '../../../signOut.ts';
 import { currentSessionId } from '../../../tokens.ts';
@@ -238,7 +239,7 @@ export function SecurityDesk() {
       rereadDevices();
     } catch (refusal) {
       if (refusal instanceof ApiError) await rereadCredentials().catch(() => {});
-      refuseOn(provider, wayRefusal(refusal, provider, t));
+      refuseOn(provider, wayRefusalLine(wayRefusal(refusal, provider), t));
     } finally {
       setActing(false);
     }
@@ -289,7 +290,7 @@ export function SecurityDesk() {
       .then(() => refreshAccount())
       .then(
         () => done(t('security.linkedDone', { provider: PROVIDER_NAMES[provider] })),
-        (refusal: unknown) => refuseOn(provider, wayRefusal(refusal, provider, t)),
+        (refusal: unknown) => refuseOn(provider, wayRefusalLine(wayRefusal(refusal, provider), t)),
       );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -814,16 +815,4 @@ function returnedProof(back: ProviderReturn | null): Opened | null {
   return back.purpose.kind === 'signOutOthers'
     ? { kind: 'prove', act: 'everywhere', returned: back.signIn }
     : null;
-}
-
-function wayRefusal(refusal: unknown, provider: Provider, t: TFunction): string {
-  const name = PROVIDER_NAMES[provider];
-  if (refusal instanceof ApiError && refusal.is('provider_taken'))
-    return `${t('waysCard.taken', { provider: name })} ${t('waysCard.takenNext', { provider: name })}`;
-  if (refusal instanceof ApiError && refusal.is('last_sign_in_method'))
-    return t('waysCard.lastRefused');
-  if (refusal instanceof ApiError && refusal.is('provider_kept_by_rule'))
-    return t('waysCard.keptByRule', { organisation: refusal.problem.organisation ?? '' });
-
-  return t('waysCard.failedBody');
 }

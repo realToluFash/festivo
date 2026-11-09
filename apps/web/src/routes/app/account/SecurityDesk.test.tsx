@@ -684,7 +684,7 @@ describe('linking and unlinking at a desk', () => {
     [
       'provider_kept_by_rule',
       { organisation: 'Ire Events' },
-      'A rule set by Ire Events: everyone in it signs in with Google or Apple, so your last one cannot be removed.',
+      'A rule set by Ire Events: everyone in it signs in with Google or Apple, so your last one cannot be removed. Link Apple first if you want to unlink Google.',
     ],
   ])('says the server refused it as %s, under the row', async (code, members, words) => {
     signedInAs(BOTH);
