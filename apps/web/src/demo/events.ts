@@ -1,3 +1,4 @@
+import type { NeedsState } from './needsYou.ts';
 import {
   EVENT_TYPES,
   type EventPhase,
@@ -17,20 +18,10 @@ import {
   savedWallClock,
 } from '@soirely/domain';
 
-import type { MarkKind } from './members.ts';
+import type { MarkKind } from '../components/SettingsParts.tsx';
 import type { DemoLink } from './settings.ts';
 import type { EventKey } from './today.ts';
-
-export type Mesh = 'wed' | 'ireti' | 'party' | 'draft';
-
-const MESHES: readonly Mesh[] = ['wed', 'ireti', 'party', 'draft'];
-
-/** main's meshFor (apps/mobile kit/today.ts): an event's colour until it has a photo, the same one every time. */
-export function meshFor(id: string): Mesh {
-  const sum = [...id].reduce((total, char) => (total * 31 + char.charCodeAt(0)) >>> 0, 7);
-
-  return MESHES[sum % MESHES.length] ?? 'party';
-}
+import { type Mesh, meshFor } from '../mesh.ts';
 
 export interface Venue {
   name: string;
@@ -435,6 +426,22 @@ export const EVENT_WORDS = {
   today: 'today',
   firstRunTitle: 'Set up your first event',
   firstRunCreate: 'Create an event',
+  firstRunAsk:
+    'Events your organisation creates will show here. Ask an owner if you need to create one.',
+  emptyTab: {
+    upcoming: {
+      title: 'Nothing coming up',
+      line: 'Events you make live show here, with the next thing each one needs.',
+    },
+    drafts: {
+      title: 'No drafts',
+      line: 'New events stay drafts, visible only to your team, until you make them live.',
+    },
+    past: {
+      title: 'Nothing finished yet',
+      line: 'Finished events stay here, so you can look back or start the next one from them.',
+    },
+  },
   firstRunSteps: [
     'Name it and choose when it starts and ends.',
     'Check its time zone and currency.',
@@ -926,6 +933,14 @@ export interface Listed {
   happeningNow: SampleEvent[];
 }
 
+/** The organisation's events with none on one tab, so the other tabs, the counts and the summary stay true. */
+export function withoutTab(events: readonly SampleEvent[], tab: Tab, now: Date): SampleEvent[] {
+  const lists = listed(events, now);
+  const gone = tab === 'upcoming' ? [...lists.happeningNow, ...lists.upcoming] : lists[tab];
+
+  return events.filter((event) => !gone.includes(event));
+}
+
 export function listed(events: readonly SampleEvent[], now: Date): Listed {
   const home = eventsHome(
     {
@@ -1140,6 +1155,10 @@ export function noMatchLine(filters: Filters, now: Date): string {
 
 export type ListState =
   | 'first'
+  | 'firstAsk'
+  | 'emptyUpcoming'
+  | 'emptyDrafts'
+  | 'emptyPast'
   | 'drafts'
   | 'past'
   | 'pastMore'
@@ -1147,10 +1166,15 @@ export type ListState =
   | 'search'
   | 'filtered'
   | 'filterOpen'
-  | 'noMatch';
+  | 'noMatch'
+  | 'noGuests';
 
 const LIST_STATES: readonly ListState[] = [
   'first',
+  'firstAsk',
+  'emptyUpcoming',
+  'emptyDrafts',
+  'emptyPast',
   'drafts',
   'past',
   'pastMore',
@@ -1159,29 +1183,39 @@ const LIST_STATES: readonly ListState[] = [
   'filtered',
   'filterOpen',
   'noMatch',
+  'noGuests',
 ];
 
+/** guests-a-spec §15 names Events' first run and its 0 for both demos; `first` and `noGuests` are this page's own. */
 export function listStateOf(value: string | null): ListState | null {
-  return LIST_STATES.find((state) => state === value) ?? null;
+  const named = value === 'eventsFirst' ? 'first' : value === 'eventsZero' ? 'noGuests' : value;
+
+  return LIST_STATES.find((state) => state === named) ?? null;
 }
 
 export interface ListStart {
   tab: Tab | null;
   first: boolean;
+  asks: boolean;
+  emptied: Tab | null;
   offline: boolean;
   pastPages: number;
   menu: 'top' | 'type' | null;
   filters: Filters | null;
+  noGuests: boolean;
 }
 
 export function listStart(state: ListState | null): ListStart {
   const rest: ListStart = {
     tab: null,
     first: false,
+    asks: false,
+    emptied: null,
     offline: false,
     pastPages: 1,
     menu: null,
     filters: null,
+    noGuests: false,
   };
 
   switch (state) {
@@ -1189,6 +1223,14 @@ export function listStart(state: ListState | null): ListStart {
       return rest;
     case 'first':
       return { ...rest, first: true };
+    case 'firstAsk':
+      return { ...rest, first: true, asks: true };
+    case 'emptyUpcoming':
+      return { ...rest, tab: 'upcoming', emptied: 'upcoming' };
+    case 'emptyDrafts':
+      return { ...rest, tab: 'drafts', emptied: 'drafts' };
+    case 'emptyPast':
+      return { ...rest, tab: 'past', emptied: 'past' };
     case 'drafts':
       return { ...rest, tab: 'drafts' };
     case 'past':
@@ -1205,6 +1247,8 @@ export function listStart(state: ListState | null): ListStart {
       return { ...rest, tab: 'upcoming', menu: 'type' };
     case 'noMatch':
       return { ...rest, filters: { ...NO_FILTERS, q: 'garden party', types: ['wedding'] } };
+    case 'noGuests':
+      return { ...rest, noGuests: true };
   }
 }
 
@@ -1215,6 +1259,8 @@ export type EditState =
   | 'dates'
   | 'datesChanged'
   | 'datesError'
+  | 'datesReplyBy'
+  | 'datesReplyByAsk'
   | 'discard'
   | 'changedElsewhere'
   | 'showLatest'
@@ -1233,7 +1279,14 @@ export type EditState =
   | 'nameBlank'
   | 'cover'
   | 'coverRefused'
-  | 'coverPhoto';
+  | 'coverPhoto'
+  | 'replyBy'
+  | 'replyByEmpty'
+  | 'replyByError'
+  | 'replyBySooner'
+  | 'replyByNow'
+  | 'replyBySaved'
+  | 'replyByRemoved';
 
 export type LifeState =
   | 'pause'
@@ -1248,7 +1301,7 @@ export type LifeState =
   | 'muteNotLoaded'
   | 'muteNotSaved';
 
-export type EventStateName = PhaseState | EditState | LifeState;
+export type EventStateName = PhaseState | EditState | LifeState | NeedsState;
 
 export const EVENT_STATES: Record<EventStateName, string> = {
   draft: 'evt-draft-4',
@@ -1262,6 +1315,8 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   dates: 'evt-wed-4',
   datesChanged: 'evt-wed-4',
   datesError: 'evt-wed-4',
+  datesReplyBy: 'evt-wed-4',
+  datesReplyByAsk: 'evt-wed-4',
   discard: 'evt-wed-4',
   changedElsewhere: 'evt-wed-4',
   showLatest: 'evt-wed-4',
@@ -1281,6 +1336,13 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   cover: 'evt-wed-4',
   coverRefused: 'evt-wed-4',
   coverPhoto: 'evt-wed-4',
+  replyBy: 'evt-wed-4',
+  replyByEmpty: 'evt-draft-4',
+  replyByError: 'evt-wed-4',
+  replyBySooner: 'evt-wed-4',
+  replyByNow: 'evt-wed-4',
+  replyBySaved: 'evt-wed-4',
+  replyByRemoved: 'evt-wed-4',
   pause: 'evt-wed-4',
   callOff: 'evt-party-2',
   endNow: 'evt-wed-4',
@@ -1292,6 +1354,13 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   muted: 'evt-wed-4',
   muteNotLoaded: 'evt-wed-4',
   muteNotSaved: 'evt-wed-4',
+  needsYou: 'evt-wed-4',
+  needsYouOne: 'evt-wed-4',
+  needsYouOverdue: 'evt-wed-4',
+  needsYouGiven: 'evt-wed-4',
+  needsYouReadOnly: 'evt-wed-4',
+  needsYouLoading: 'evt-wed-4',
+  needsYouFailed: 'evt-wed-4',
 };
 
 export function eventStateOf(value: string | null): EventStateName | null {
@@ -1305,13 +1374,15 @@ export function clockOf(state: EventStateName | null): Date {
   return CLOCKS.rest;
 }
 
-export type Part = 'dates' | 'venue' | 'hosts' | 'type' | 'currency' | 'name' | 'cover';
+export type Part = 'dates' | 'replyBy' | 'venue' | 'hosts' | 'type' | 'currency' | 'name' | 'cover';
 
 export function partOf(state: EventStateName | null): Part | null {
   switch (state) {
     case 'dates':
     case 'datesChanged':
     case 'datesError':
+    case 'datesReplyBy':
+    case 'datesReplyByAsk':
     case 'discard':
     case 'changedElsewhere':
     case 'showLatest':
@@ -1338,6 +1409,12 @@ export function partOf(state: EventStateName | null): Part | null {
     case 'coverRefused':
     case 'coverPhoto':
       return 'cover';
+    case 'replyBy':
+    case 'replyByEmpty':
+    case 'replyByError':
+    case 'replyBySooner':
+    case 'replyByNow':
+      return 'replyBy';
     default:
       return null;
   }
@@ -1354,7 +1431,8 @@ export function stateFits(state: EventStateName, event: SampleEvent): boolean {
   if (state === 'pause') return manage.includes('pause');
   if (state === 'callOff') return manage.includes('callOff');
   if (state === 'endNow') return manage.includes('endNow');
-  if (partOf(state) === 'dates') return !locked;
+  const part = partOf(state);
+  if (part === 'dates' || part === 'replyBy') return !locked;
 
   return true;
 }
@@ -1428,7 +1506,12 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       list('past', 'Past, a page of ten'),
       list('pastMore', 'Past, after Show more'),
       list('first', 'A first run'),
+      list('firstAsk', 'A first run, without Create events'),
+      list('emptyUpcoming', 'Nothing on Upcoming'),
+      list('emptyDrafts', 'No drafts'),
+      list('emptyPast', 'Nothing on Past'),
       list('offline', 'Offline'),
+      list('noGuests', 'Nobody invited yet, the guest counts at 0'),
     ],
   },
   {
@@ -1454,11 +1537,27 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     ],
   },
   {
+    name: 'Needs you, on the Overview',
+    states: [
+      on('needsYou', 'Rows, an overdue one first, with and without its button'),
+      on('needsYouOne', 'One row'),
+      on('needsYouOverdue', 'Overdue on the day, 1 day and 2 days, and a tie by title'),
+      on('needsYouGiven', 'A copy recorded, its row gone'),
+      on('live', 'Nothing needs you'),
+      on('now', 'Nothing needs you, the event started'),
+      on('needsYouReadOnly', 'Nothing needs you, a member who only reads the menu'),
+      on('needsYouLoading', 'Not loaded yet'),
+      on('needsYouFailed', 'The read failed'),
+    ],
+  },
+  {
     name: 'Dates and venue, in place',
     states: [
       on('dates', 'Dates, opened'),
       on('datesChanged', 'Dates, the start moved'),
       on('datesError', 'Dates, the end before the start'),
+      on('datesReplyBy', 'Dates, the start on the Reply by day (sc-3780)'),
+      on('datesReplyByAsk', 'Dates asks before closing replies sooner (sc-3780)'),
       on('discard', 'Cancel with a change'),
       on('changedElsewhere', 'Changed elsewhere'),
       on('showLatest', 'Show the latest'),
@@ -1486,6 +1585,18 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     ],
   },
   {
+    name: 'Reply by, in place (sc-3780)',
+    states: [
+      on('replyBy', 'Reply by, opened'),
+      on('replyByEmpty', 'Reply by, no date yet'),
+      on('replyByError', 'Reply by, on the day it starts'),
+      on('replyBySooner', 'Reply by, moved sooner'),
+      on('replyByNow', 'Reply by, moved into the past'),
+      on('replyBySaved', 'Reply by, saved'),
+      on('replyByRemoved', 'Reply by, removed'),
+    ],
+  },
+  {
     name: 'Pause, end, delete, duplicate and mute',
     states: [
       on('pause', 'Pause'),
@@ -1504,7 +1615,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
   {
     name: 'The event’s areas',
     states: [
-      { to: '/demo/events/evt-wed-4?area=guests', name: 'Guests, coming' },
+      { to: '/demo/events/evt-wed-4?area=menu', name: 'Menu, coming' },
       { to: '/demo/events/evt-wed-4?area=messages', name: 'Messages, coming' },
       { to: '/demo/events/evt-wed-4?area=budget', name: 'Budget, coming' },
     ],

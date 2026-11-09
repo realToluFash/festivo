@@ -16,7 +16,8 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
 import { SAMPLE } from '../samples.ts';
-import { ConfettiSwitch } from './NotificationsSwitch.tsx';
+import { DOMAINS_WORDS } from './DataWords.ts';
+import { ConfettiSwitch } from '../../components/ConfettiSwitch.tsx';
 import {
   DOMAINS_MOST,
   domainProblem,
@@ -45,7 +46,9 @@ import {
   RowShapes,
   Section,
   TextAction,
-} from './Summary.tsx';
+} from '../../components/Summary.tsx';
+
+const PROVED = DOMAINS_WORDS.proved;
 
 const hidden = {
   accessibilityElementsHidden: true,
@@ -126,6 +129,7 @@ export function DomainsSection({
               row: (
                 <Row
                   title={domain}
+                  tag={start.proved.includes(domain) ? { kind: 'yes', word: PROVED } : null}
                   line={domain === added ? D.added : D.working}
                   lead={
                     <View style={styles.globe} {...hidden}>

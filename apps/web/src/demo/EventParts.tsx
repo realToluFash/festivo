@@ -16,13 +16,16 @@ import {
   soonOf,
   tagKind,
 } from './events.ts';
-import { Glyph } from './Glyph.tsx';
-import { LayersContext } from './layers.ts';
-import { Chevron, CardStep, RowWords, Tag } from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+import { Glyph } from '../components/Glyph.tsx';
+import { type CardMilestone, KW } from './kitchen.ts';
+import { LayersContext } from '../layers.ts';
+import { Chevron, CardStep, RowWords, Tag } from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import './today.css';
+import '../components/SettingsParts.css';
 import './settings.css';
 import './events.css';
+import './kitchen.css';
 
 /** The desk Events sits in: a sidebar, the main card, the layers dialogs open on, and a toast. */
 export function EventsShell({
@@ -109,11 +112,17 @@ export function EventCard({
   event,
   now,
   level,
+  guests = null,
+  milestone = null,
   onStep,
 }: {
   event: SampleEvent;
   now: Date;
   level: 1 | 2;
+  /** Its guests in the tiles' measure, on Events (sc-3786). */
+  guests?: string | null;
+  /** Next up when it is a You milestone with an action, which becomes the card's one step (sc-30812). */
+  milestone?: CardMilestone | null;
   onStep: (does: Extract<Card['step'], { kind: 'button' }>['does']) => void;
 }) {
   const card = cardOf(event, now);
@@ -154,6 +163,7 @@ export function EventCard({
           )}
         </Name>
         <p className="desk-on-card">{lineOf(event, shown === 'calledOff')}</p>
+        {guests != null && <p className="desk-on-card">{guests}</p>}
         {card.tiles.length > 0 && (
           <ul className="ev-tiles" aria-label="Its days">
             {card.tiles.map((tile) => (
@@ -165,7 +175,30 @@ export function EventCard({
           </ul>
         )}
         <div className="ev-card-foot">
-          {card.step.kind === 'next' ? (
+          {milestone != null && card.step.kind === 'next' ? (
+            <>
+              <ul className="kitchen-glass">
+                <li className="desk-glass">
+                  <Glyph name="user" size={14} weight={2.4} />
+                  {KW.you}
+                </li>
+                {milestone.overdue && (
+                  <li className="desk-glass">
+                    <Glyph name="alert" size={14} weight={2.4} />
+                    {KW.overdue}
+                  </li>
+                )}
+              </ul>
+              <p className="ev-card-next">{milestone.title}</p>
+              <p className="desk-on-card">{milestone.line}</p>
+              {milestone.link != null && (
+                <Link className="desk-step" to={milestone.link}>
+                  {milestone.label}
+                  <Glyph name="arrow" size={16} weight={2.4} />
+                </Link>
+              )}
+            </>
+          ) : card.step.kind === 'next' ? (
             <>
               <p className="ev-card-next">{card.step.title}</p>
               <p className="desk-on-card">{card.step.line}</p>
@@ -192,7 +225,17 @@ export function PhaseTag({ shown }: { shown: Shown }) {
 }
 
 /** An event in the list: its cover or colour, its name, its days and place, how soon, and a tag where it is off its tab's rule. */
-export function EventRow({ event, now, tab }: { event: SampleEvent; now: Date; tab: Tab | 'all' }) {
+export function EventRow({
+  event,
+  now,
+  tab,
+  guests = null,
+}: {
+  event: SampleEvent;
+  now: Date;
+  tab: Tab | 'all';
+  guests?: string | null;
+}) {
   const shown = shownOf(event, now);
   const soon = soonOf(event, now);
   const tagged = tab === 'all' || offRule(shown, tab);
@@ -204,7 +247,7 @@ export function EventRow({ event, now, tab }: { event: SampleEvent; now: Date; t
         <RowWords
           title={event.name}
           tag={tagged && <PhaseTag shown={shown} />}
-          lines={[lineOf(event)]}
+          lines={guests == null ? [lineOf(event)] : [lineOf(event), guests]}
         />
         {soon != null && <span className="ev-soon">{soon}</span>}
         <Chevron />

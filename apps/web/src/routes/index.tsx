@@ -6,6 +6,7 @@ import { DemoRoute } from '../demo/DemoEntry.tsx';
 import { Account } from './app/account/Account.tsx';
 import { Security } from './app/account/Security.tsx';
 import { NotificationSettings } from './app/account/NotificationSettings.tsx';
+import { Personalisation } from './app/account/Personalisation.tsx';
 import { AppLayout } from './app/AppLayout.tsx';
 import { Calendar } from './app/calendar/Calendar.tsx';
 import { Dashboard } from './app/Dashboard.tsx';
@@ -22,6 +23,7 @@ import { NewEvent } from './app/events/NewEvent.tsx';
 import { General } from './app/settings/General.tsx';
 import { Members } from './app/settings/Members.tsx';
 import { SignInRules } from './app/settings/SignInRules.tsx';
+import { SettingsDesk } from './app/SettingsDesk.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
 import { ChangePhone } from './public/ChangePhone.tsx';
@@ -94,12 +96,18 @@ export const routes = [
           { path: 'events/:eventId/:area', element: <EventAreaPage /> },
           { path: 'calendar', element: <Calendar /> },
           { path: 'guests', element: <Dashboard /> },
-          { path: 'account', element: <Account /> },
-          { path: 'account/security', element: <Security /> },
-          { path: 'account/notifications', element: <NotificationSettings /> },
-          { path: 'settings', element: <General /> },
-          { path: 'settings/members', element: <Members /> },
-          { path: 'settings/sign-in-rules', element: <SignInRules /> },
+          {
+            element: <SettingsDesk />,
+            children: [
+              { path: 'account', element: <Account /> },
+              { path: 'account/security', element: <Security /> },
+              { path: 'account/notifications', element: <NotificationSettings /> },
+              { path: 'account/personalisation', element: <Personalisation /> },
+              { path: 'settings', element: <General /> },
+              { path: 'settings/members', element: <Members /> },
+              { path: 'settings/sign-in-rules', element: <SignInRules /> },
+            ],
+          },
         ],
       },
       {

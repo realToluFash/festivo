@@ -1,5 +1,9 @@
 """Which Shortcut searches a sync makes: no network here."""
 
+import datetime
+import sqlite3
+import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -14,7 +18,8 @@ class FakeShortcut:
         self.epic_reads = 0
 
     def workflows(self):
-        return [{"states": [{"id": 1, "name": "Ready For Dev"}]}]
+        return [{"states": [{"id": i, "name": name}
+                            for i, name in enumerate(roles.QUEUE_STATES, 1)]}]
 
     def epics(self):
         self.epic_reads += 1
@@ -23,8 +28,12 @@ class FakeShortcut:
     def epic_states(self):
         return [{"id": 9, "name": "Waiting for Owner Approval"}]
 
-    def search(self, query):
-        self.searches.append(query)
+    def find(self, **filters):
+        if "workflow_state_id" in filters:
+            self.searches.append(f'state:"{roles.QUEUE_STATES[filters["workflow_state_id"] - 1]}"')
+        else:
+            archived = "archived " if filters.get("archived") else ""
+            self.searches.append(f"{archived}updated:{filters['updated_at_start']}")
         return []
 
     def story(self, story_id):
@@ -54,6 +63,63 @@ class States(unittest.TestCase):
         self.states(NOW)
         self.states(NOW + 5 * 60)
         self.assertEqual(len(self.states(NOW + 15 * 60)), len(roles.QUEUE_STATES))
+
+
+class Since(unittest.TestCase):
+    """A sync asks only for what changed since the last whole one, to the second."""
+
+    def since(self, db, now):
+        shortcut = FakeShortcut()
+        sync.sync_shortcut(db, shortcut, now)
+        return [q for q in shortcut.searches if q.startswith("updated:")]
+
+    def at(self, seconds):
+        return "updated:" + datetime.datetime.fromtimestamp(seconds, datetime.UTC).isoformat()
+
+    def test_a_full_sync_reads_fourteen_days_and_the_next_from_the_last_less_overlap(self):
+        db = store.connect(":memory:")
+        self.assertEqual(self.since(db, NOW), [self.at(NOW - sync.INBOX_DAYS * 86400)])
+        self.assertEqual(self.since(db, NOW + 60),
+                         [self.at(NOW - sync.OVERLAP_SECONDS)])
+
+    def test_a_cut_sync_leaves_the_next_reading_from_the_last_whole_one(self):
+        db = store.connect(":memory:")
+        self.since(db, NOW)
+
+        class Late(FakeShortcut):
+            def story(self, story_id):
+                raise sync.OutOfTime("out of time")
+
+            def find(self, **filters):
+                super().find(**filters)
+                return [{"id": 5, "updated_at": "t1"}]
+        with self.assertRaises(sync.OutOfTime):
+            sync.sync_shortcut(db, Late(), NOW + 60)
+        self.assertEqual(self.since(db, NOW + 120), [self.at(NOW - sync.OVERLAP_SECONDS)])
+
+    def test_a_story_archived_since_is_asked_for_and_stored_archived(self):
+        db = store.connect(":memory:")
+        store.put_story(db, {"id": 7, "state": "Done", "done": True, "labels": [],
+                             "links": [], "updated_at": "t0", "archived": False})
+
+        class Archived(FakeShortcut):
+            def find(self, **filters):
+                super().find(**filters)
+                return [{"id": 7, "updated_at": "t1"}] if filters.get("archived") else []
+
+            def story(self, story_id):
+                return {"id": story_id, "name": "old", "workflow_state_id": 1,
+                        "updated_at": "t1", "archived": True}
+        shortcut = Archived()
+        sync.sync_shortcut(db, shortcut, NOW)
+        self.assertIn("archived " + self.at(NOW - sync.INBOX_DAYS * 86400), shortcut.searches)
+        self.assertTrue(store.story(db, 7)["archived"])
+
+    def test_never_further_back_than_a_day_between_full_syncs(self):
+        db = store.connect(":memory:")
+        store.set_meta(db, "full_at", NOW)
+        store.set_meta(db, "slim_version", sync.SLIM_VERSION)
+        self.assertEqual(self.since(db, NOW + 60), [self.at(NOW + 60 - 86400)])
 
 
 class Epics(unittest.TestCase):
@@ -92,39 +158,32 @@ class PullRequestStories(unittest.TestCase):
         self.assertTrue(store.story(db, 11)["archived"])
         self.assertEqual(store.get_meta(db, "missing_stories"), [404])
 
-    def test_the_story_of_an_open_pr_is_fetched_again_to_see_it_archived(self):
-        db, asked, archived = store.connect(":memory:"), [], []
+    def test_a_stored_pr_story_is_not_fetched_again(self):
+        db, asked = store.connect(":memory:"), []
 
         class Shortcut(FakeShortcut):
             def story(self, story_id):
                 asked.append(story_id)
-                return {"id": story_id, "name": "old", "workflow_state_id": 1,
-                        "completed": False, "archived": bool(archived)}
+                return {"id": story_id, "name": "old", "workflow_state_id": 1}
 
         store.put_prs(db, [{"number": 1, "story_id": 10, "state": "open", "head_sha": "a"}])
         sync.pr_stories(db, Shortcut(), NOW)
-        archived.append(True)
-        sync.pr_stories(db, Shortcut(), NOW + 60)
-        self.assertFalse(store.story(db, 10)["archived"])
         sync.pr_stories(db, Shortcut(), NOW + sync.FULL_EVERY_SECONDS)
-        self.assertTrue(store.story(db, 10)["archived"])
-        sync.pr_stories(db, Shortcut(), NOW + 2 * sync.FULL_EVERY_SECONDS)
-        self.assertEqual(asked, [10, 10])
+        self.assertEqual(asked, [10])
 
 
 class Blockers(unittest.TestCase):
     """A story's blockers are fetched whatever state they are in, so each is judged by it."""
 
-    def test_a_blocker_no_search_found_is_fetched_and_one_still_holding_again_in_full(self):
-        db, asked, archived = store.connect(":memory:"), [], []
+    def test_a_blocker_no_search_found_is_fetched_once(self):
+        db, asked = store.connect(":memory:"), []
 
         class Shortcut(FakeShortcut):
             def story(self, story_id):
                 asked.append(story_id)
                 if story_id == 404:
                     raise sync.ShortcutError("Shortcut 404 on GET /api/v3/stories/404: gone")
-                return {"id": story_id, "name": "blocker", "workflow_state_id": 1,
-                        "archived": bool(archived)}
+                return {"id": story_id, "name": "blocker", "workflow_state_id": 1}
 
         links = [{"verb": "blocks", "subject": b, "object": 1} for b in (7, 404)]
         store.put_story(db, {"id": 1, "state": "Ready For Dev", "done": False, "labels": [],
@@ -133,12 +192,6 @@ class Blockers(unittest.TestCase):
         sync.sync_blockers(db, Shortcut(), {"1": "In Review"}, {})
         self.assertEqual(asked, [7, 404])
         self.assertEqual(store.story(db, 7)["state"], "In Review")
-        archived.append(True)
-        sync.sync_blockers(db, Shortcut(), {"1": "In Review"}, {}, full=True)
-        self.assertEqual(asked, [7, 404, 7])
-        self.assertTrue(store.story(db, 7)["archived"])
-        sync.sync_blockers(db, Shortcut(), {"1": "In Review"}, {}, full=True)
-        self.assertEqual(asked, [7, 404, 7])
 
 
 class OutOfTimeInAPart(unittest.TestCase):
@@ -160,16 +213,33 @@ class OutOfTimeInAPart(unittest.TestCase):
         self.assertIsNone(store.get_meta(db, "full_at"))
         self.assertIsNone(store.get_meta(db, "missing_stories"))
 
-    def test_a_pr_story_fetch_out_of_time_leaves_pr_stories_at_unset(self):
+    def test_a_pr_story_fetch_out_of_time_remembers_nothing_missing(self):
         db = store.connect(":memory:")
         store.put_prs(db, [{"number": 1, "story_id": 10, "state": "open", "head_sha": "a"}])
         with self.assertRaises(sync.OutOfTime):
             sync.pr_stories(db, self.Late(), NOW)
-        self.assertIsNone(store.get_meta(db, "pr_stories_at"))
+        self.assertIsNone(store.get_meta(db, "missing_stories"))
+
+    def test_github_out_of_time_stops_without_waiting_on_another_writer(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = f"{folder}/queue.db"
+            db = store.connect(path)
+            store.set_meta(db, "repository", ["o", "n"])
+            other = sqlite3.connect(path, isolation_level=None)
+            other.execute("begin immediate")
+            begun = time.monotonic()
+            try:
+                with github.deadline(begun - 1), self.assertRaises(github.OutOfTime):
+                    sync.sync_github(db)
+            finally:
+                other.execute("rollback")
+                other.close()
+                db.close()
+            self.assertLess(time.monotonic() - begun, 1)
 
     def test_a_new_slim_version_cut_after_the_delete_leaves_the_next_sync_full(self):
         class LateSearch(FakeShortcut):
-            def search(self, query):
+            def find(self, **filters):
                 raise sync.OutOfTime("out of time: Shortcut timed out")
 
         db = store.connect(":memory:")
@@ -200,7 +270,7 @@ class Budget(unittest.TestCase):
                 self.deadline = deadline
                 test.made.append(self)
 
-            def search(self, query):
+            def find(self, **filters):
                 if slow:
                     test.clock = self.deadline
                     raise sync.OutOfTime("out of time: Shortcut timed out")

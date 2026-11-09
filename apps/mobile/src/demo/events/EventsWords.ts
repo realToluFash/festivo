@@ -109,8 +109,6 @@ export const W = {
   showLatest: 'Show the latest',
   showLatestTitle: 'Show the latest version?',
   showLatestBody: 'What you typed will be replaced by the version somebody else saved.',
-  tellGuests: 'Once it is saved',
-  tellGuestsPill: 'Telling guests what changed: AC, not yet built · sc-4330',
   starts: 'Starts',
   ends: 'Ends',
   date: 'Date',
@@ -118,6 +116,18 @@ export const W = {
   done: 'Done',
   endsHint: 'An event can run past midnight. Choose the day it ends.',
   endBeforeStart: 'The end is before the start. Choose a later end.',
+  replyBy: 'Reply by',
+  replyByNone: 'Replies stay open until the event starts.',
+  replyByNotBefore: 'Choose a date before the event starts.',
+  removeTheDate: 'Remove the date',
+  closeSooner: 'Close replies sooner',
+  closeSoonerLine: 'After that day they can’t reply, unless you let them change their reply.',
+  closeNow: 'Close replies now',
+  closeNowLine: 'From now on they can’t reply, unless you let them change their reply.',
+  closeNowTitle: 'Close replies now?',
+  replyByRemoved: 'Saved. Replies stay open until the event starts.',
+  savedClosedNow: 'Saved. Replies are now closed.',
+  repliesClosedNow: 'Replies are now closed.',
   timeZone: 'Time zone',
   venueName: 'Venue name',
   address: 'Address',
@@ -263,6 +273,20 @@ export const say = {
   deleted: (name: string) => `${name} was deleted.`,
   duplicateTitle: (name: string) => `Duplicate ${name}`,
   ownDesign: (what: string) => `${what} has its own design.`,
+  repliesCloseAt: (time: string, zone: string) => `Replies close at ${time}, ${zone} time.`,
+  replyByHint: (time: string, zone: string) =>
+    `Replies close at the end of this day, ${time} ${zone} time. Leave it empty and replies stay open until the event starts.`,
+  onGuestsPage: (sentence: string) => `On the guests’ page: “${sentence}”`,
+  pleaseAnswerBy: (date: string) =>
+    `Please answer by ${date}. You can change your answer any time before then.`,
+  closeSoonerTitle: (date: string) => `Close replies sooner, on ${date}?`,
+  keepDate: (date: string) => `Keep ${date}`,
+  replyByMoves: (old: string, next: string) =>
+    `Replies close on ${old}, which isn’t before the new start. Saving moves Reply by to ${next}.`,
+  repliesCloseOn: (date: string, time: string, zone: string) =>
+    `Replies close on ${date} at ${time}, ${zone} time.`,
+  replyBySaved: (date: string, time: string, zone: string) =>
+    `Saved. Replies close on ${date} at ${time}, ${zone} time.`,
 };
 
 const KEYED: Record<string, (values: Record<string, string | number>) => string> = {

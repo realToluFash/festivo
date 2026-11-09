@@ -50,6 +50,84 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 Nov 2026. La página Configuración de notificaciones de la app** (sc-34901 para
+  sc-30411, `mobile:notificationSettings.*`). La cabecera lleva verbo, «Recibe notificaciones
+  push y por correo», «Solo recibe notificaciones push»; las filas no: «Push y correo», «Solo
+  push», «Desactivado», como `off`. «Por correo», como en el resto de la app, para que quepa la
+  línea de cuentas, «3 de 6 por push · 6 de 6 por correo». El dispositivo tiene «ajustes», la
+  palabra del iPhone y de Android en España: «Abrir los ajustes del dispositivo». «Bloqueadas
+  en este dispositivo» concuerda con las notificaciones push del interruptor. La nota de Cuenta
+  y seguridad pierde «El correo electrónico no se puede desactivar.», que ahora es
+  `locked.email`, bajo el interruptor.
+- **9 Nov 2026. La página Seguridad de la app** (sc-34792 para sc-30411, `mobile:security.*`). Sigue los términos de la web: «Vinculada · {{address}}», «Cerrar las demás sesiones», «Listo» para Done, como `countryPicker.close`. `expires` es «Caduca el {{day}}», que vale para todos los días de la semana. `_many` lleva «de», como el 25 Oct.
+- **9 Nov 2026. La página de enlace enviado en la web y la línea de quien lo ha perdido todo** (sc-33788 para sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). `nothingThere` sigue a la app, «¿No le ha llegado nada?…», y el enlace es «envíelo de nuevo». `sentAgain` es «Se lo hemos enviado de nuevo.», sin la segunda frase de la app: la página ya la explica. En `lostBothIntro`, «después de que inicie sesión», sin concordar con la persona, y «el servicio de asistencia de Soirely», del glosario.
+- **8 Nov 2026. Su cuenta en la app** (sc-34175 para sc-30411, `mobile:account.*`,
+  `contacts.promoting`, `removing`). La sección es «Sobre usted». Las líneas de cada fila no
+  tienen sujeto, así que nada concuerda con dirección (f.) ni número (m.): «Principal · para
+  iniciar sesión», «Para contactar con usted, no para iniciar sesión», nunca «contactarle».
+  Lo que falta verificar abre con el verbo, «Falta verificar {{shown}}.», porque {{shown}}
+  puede ser una dirección o un número. La pregunta al salir es «¿Descartar el cambio?», con
+  «Seguir editando» / «Descartar», como `eventEdit` y `web:eventPeople`; debajo, «Su nombre
+  sigue siendo {{name}}.», «Su zona horaria sigue sin definir.», «No se añadirá nada.». Los
+  confirmes en curso son «Haciendo principal…», sin pronombre que concuerde, y «Quitando…».
+- **8 Nov 2026. El doble factor al iniciar sesión en la app** (sc-33828 para sc-29072,
+  `mobile:twoFactor.signedIn`, `recoveryShape`, `lost`, `lostTwoFactor.waitingFor`,
+  `stayOut`, `emailSoirely`). «Sesión iniciada», un estado, como `waysCard.signedInWith`. La
+  forma del código: «En mayúsculas o minúsculas; el guion se añade solo.». El título de espera
+  es «A la espera de {{organisations}}». `stayOut` dice «No podrá iniciar sesión hasta que…»,
+  nunca «su sesión sigue cerrada»: la persona aún no ha entrado. El botón es «Escribir al
+  servicio de asistencia», sin «de Soirely», que no cabe en un botón de teléfono en una línea;
+  el título y la introducción de la pantalla ya nombran a Soirely.
+- **8 Nov 2026. La pantalla de enlace enviado en la app y su aviso** (sc-33809 para sc-29071,
+  `mobile:recovery.*`). El botón es «Abrir el correo», no «Abrir Mail»: en Android abre la
+  aplicación de correo que tenga la persona. `spam` termina en «envíelo de nuevo», como el botón
+  «Enviarlo de nuevo» que tiene debajo, y `sentAgain` es «Se lo hemos enviado de nuevo. Use el
+  correo más reciente.», como `expiredBody`. El aviso `changed` dice «Contraseña cambiada. Se ha
+  cerrado la sesión en sus otros dispositivos.», con «cerrar sesión» del glosario.
+- **8 Nov 2026. La pantalla Hoy, a 360 de ancho** (sc-31788, tras #32963). La pestaña
+  Settings del teléfono es «Ajustes», la palabra del iPhone y de Android en España, porque
+  «Configuración» no cabe en un cuarto de 360; el título de la pantalla y `frame.settings`
+  siguen siendo «Configuración». La etiqueta de cuenta atrás de las tarjetas es «En 2 días»
+  (`todayScreen.inDaysCapital`), para que quepa junto a «Última semana»; dentro de una frase
+  sigue «dentro de 2 días». «Todo el día» no cabe en la columna de la hora: pedidas al dev dos
+  líneas, nunca «Todo el d…».
+
+- **8 Nov 2026. Un inicio de sesión con doble factor que ha caducado** (sc-29979,
+  `signIn.codeTimedOutTitle`, web y app). «El inicio de sesión ha caducado», y después
+  `endedBody` «Inicie sesión de nuevo para continuar.». «Caducar», como las solicitudes; no
+  «se ha agotado el tiempo», que alarga el título sin decir más. No «su sesión»: la persona
+  aún no había entrado. La app une los dos en una línea con punto, así que el título no lo lleva.
+- **8 Nov 2026. Un registro que ha caducado** (sc-32449 para sc-29923, `register.timedOut`,
+  web y app). «Su registro ha caducado, así que no hemos guardado la contraseña. Vuelva a
+  introducirla para recibir un código nuevo.». "Sign-up" es «registro», como `limitedTitle`;
+  «caducar», como el inicio de sesión; «un código nuevo», como `resend`.
+- **8 Nov 2026. Invitados A: la respuesta, los dos recuentos y el 412** (sc-3773, #32403).
+  "Not sure yet" es «Por confirmar», en la página del invitado y en la del anfitrión: no
+  marca género, como sí harían «indeciso» o «no está seguro». «Por confirmar · plazo hasta el
+  {{date}}», «Por confirmar · respondió el {{date}}». "Haven't replied" es «por responder»
+  («Faltan {{count}} por responder»); "No reply" es «Sin respuesta»; nunca se cruzan.
+  "Companions" es «acompañantes». «{{coming}} de {{invited}} invitados vienen». "Write to them"
+  es «Escribirles»; "Open check-in", «Abrir registro de llegada». "Show all {{count}}" es
+  «Mostrar los {{count}}». "Their conversation" es «Conversación», sin posesivo: «su» se lee
+  como usted. Por lo mismo, en el 412 "Theirs · Yours" es «Versión guardada · Su versión», y los
+  botones «Usar la guardada» y «Mantener la mía».
+  El cierre (#32762): «El plazo para responder termina hoy.», «… termina mañana, {{date}}.»,
+  «… termina el {{date}}.», «El plazo para responder terminó el {{date}}.». Sin nadie por
+  responder: «Ya han respondido todos.».
+
+- **7 Nov 2026. La pantalla Hoy de la app** (`mobile:todayScreen.*`, sc-31788 para sc-29090).
+  "Live now" y "Live · …" son «En curso», como `eventsScreen.happeningNow`, nunca «Publicado»,
+  que es el estado. La agenda pone una etiqueta y dos puntos, «Inicio: {{name}}», «Fin:
+  {{name}}», «Continúa: {{name}}», para que el nombre del evento no necesite artículo. Una hora
+  va tras «·», sin «a las», que falla a la 1:00: «Termina hoy · {{time}}», «Termina mañana,
+  {{date}} · {{time}}». "Welcome" es «Hola», que no concuerda con el género de quien lee y cabe
+  en la portada a 44 pt; «Le damos la bienvenida, {{name}}» ocupaba tres líneas. "Good evening"
+  es «Buenas noches» desde las 18:00 (`greetingAt`). "Next up" es «Próximo evento», porque
+  nombra un evento; el "Next" del bloque Ahora es «A continuación». "Needs you" sigue a
+  `eventPage.needsYou`, «Pendiente de usted», y su vacío es «Nada pendiente». Run of show sigue
+  siendo «programa», como `rolesScreen.area.run_of_show`, aunque coincide con Schedule; si se
+  separan, «escaleta» es el término del oficio.
+
 - **7 Nov 2026. Las Personas de un evento, y «Admin» en cada mensaje** (`web:eventPeople.*`, `eventNav.people`, `membersScreen.eventsFromPeople`, `ownerMakesOwner`, sc-30138 para sc-29915). La página es «Personas». Los roles del evento son «Responsable», «Puede editar», «Puede ver» y «Puede registrar llegadas» («el registro de llegada», como `eventPause`). Lo que se anuncia empieza por «Ahora», «Ahora {{name}} es responsable de este evento.», con «responsable», que no marca género. La línea de quienes ya ven todo nombra el rol como etiqueta tras dos puntos, «ve todos los eventos por el rol que tiene en {{organisation}}: Propietario y Administrador», así que `managerRole.*` es el nombre del rol en todas las formas y nada concuerda con un género. Un rol dentro de una frase de error va entre comillas, «sigue siendo «Puede ver»». El inglés "owners and admins" es «quienes tienen el rol Propietario o Administrador», y en un título «los roles Propietario y Administrador»; "an admin of" sigue siendo «quien administre». Quien sale del evento es «Esta persona», nunca un «Perderá» que se lee como usted.
 - **7 Nov 2026. Lo que puede hacer cada rol, en Miembros** (`web:membersScreen.roleMeans.*`, sc-30138). Las frases no tienen sujeto, como `owner`. Los eventos de un Miembro son «los eventos que se le asignan», con «le», que no marca género; nunca «a los que se le añade» ni «invitado». El mismo giro sirve para la app.
 - **7 Nov 2026. Las otras formas de entrar en la app** (`mobile:steps.invited*`, `join`,
@@ -647,3 +725,13 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   antes de «Crear una cuenta»; «¿Es nuevo…?» concuerda con un género. «© {{year}} Soirely» queda
   igual que en inglés. El botón de idioma se lee «Idioma: {{language}}».
 - **Cancelar una solicitud para volver a entrar** (sc-29979): «¿Cancelar su solicitud?»; la salida es «Seguir esperando», nunca «Cancelar», y la confirmación reutiliza «Cancelar la solicitud».
+- **El estado de un control rechazado, solo para el lector de pantalla** (`mobile:forms.invalid`, sc-31909): «Datos no válidos», tras el nombre del control («País, Datos no válidos»). Es lo que VoiceOver dice en la web; no concuerda con el género del nombre, que puede ser masculino o femenino.
+- **El plano de mesas** (sc-33304 para sc-3998, `seating.*`, `messages:seating.*`): el área es «Mesas» y lo que se dibuja, «el plano de mesas» («el plano» dentro del área); "Floor plan" es «Plano». Una "section" es una **zona**, nunca «sección», que en Soirely es una parte de la configuración: «Añadir una zona», «Sin zona», «Conservarla». Ancho y largo de la sala, como sustantivos. El lugar abre la línea de unidades como etiqueta, «Lugar: {{venue}}.», para que ninguna preposición tenga que concordar con el nombre. "Seated" no concuerda con el género del invitado: «invitados con asiento pasan a Sin asiento». «Esto también elimina {{counts}}.» no concuerda en número con la lista. Los colores: Azul, Morado, Ciruela, Vino, Rosa, Marrón, Verde oliva, Verde petróleo. La pista de pies usa la coma decimal y las abreviaturas de CLDR: «12 ft 4 in, 12,5 ft».
+- **9 nov. 2026. Personalización** (sc-34920 para sc-30441, `web:personalisation.*`,
+  `mobile:personalisation.*`, `mobile:settings.personalisation*`,
+  `messages:validation.colour_scheme_unknown`). La elección es «sus colores», en plural, para
+  que nada concuerde con el nombre de la combinación: «Los ha elegido usted. Los de Soirely son
+  {{own}}.», «No se ha guardado {{picked}}. Sus colores siguen siendo {{kept}}.». Solo la
+  negativa de la API dice «combinaciones de colores». Los ocho nombres: Violeta, Cobalto, Jardín,
+  Cítricos, Frutos rojos, Gala (Black tie, el código de vestimenta; «Etiqueta» se leería como
+  rótulo), Sorbete y Terracota. Sin conexión es «porque no tiene conexión», como la banda.

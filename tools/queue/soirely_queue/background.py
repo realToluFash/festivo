@@ -134,7 +134,7 @@ def on_prompt(seen):
 def needs_text(needs):
     """The command or tool a prompt asks for, out of whatever shape `needs` takes."""
     if isinstance(needs, str):
-        return needs
+        return needs.removeprefix("approve ")
     if isinstance(needs, list):
         return "; ".join(filter(None, map(needs_text, needs)))
     if isinstance(needs, dict):
@@ -163,17 +163,27 @@ def masked(text):
     return text if len(text) <= WANTED_CHARS else text[:WANTED_CHARS - 1] + "…"
 
 
-def wanted(short, seen, folder):
-    """What the session held on its prompt wanted to run, from its listing or else its job's
-    `state.json`, masked; None when neither says."""
-    needs = seen.get("needs")
+def asked(short, seen, folder):
+    """`(wanted, gap)`: what the session held on its prompt wanted to run, masked, from its
+    listing or else its job's `state.json`, which must be read before the session is
+    stopped; when neither says, `wanted` is None and `gap` names each source and how it
+    was empty. The transcript is no source: a held call is
+    not written to it until it is answered."""
+    waiting = masked(str(seen.get("waitingFor") or ""))
+    gaps = ["the listing had no `needs`" + (f" (waiting for: {waiting})" if waiting else "")]
+    needs = needs_text(seen.get("needs"))
     if not needs:
         path = pathlib.Path(folder).expanduser() / "jobs" / short / "state.json"
         try:
-            needs = json.loads(path.read_text()).get("needs")
-        except (OSError, ValueError, AttributeError):
-            needs = None
-    return masked(needs_text(needs)) or None
+            needs = needs_text(json.loads(path.read_text()).get("needs"))
+            if not needs:
+                gaps.append("the job's state.json had no `needs`")
+        except OSError:
+            gaps.append("the job's state.json was gone")
+        except (ValueError, AttributeError):
+            gaps.append("the job's state.json could not be read")
+    said = masked(needs) if needs else ""
+    return (said, None) if said else (None, "; ".join(gaps))
 
 
 def stop(short, env, run=subprocess.run):
@@ -359,13 +369,15 @@ def run(values, folder, name, prompt, cwd, finished, allowed=(), denied=(), extr
     on_session = (lambda session: on_start(short, session)) if on_start and not first \
         else None
     why, seen = watch(short, env, folder, finished, values, on_session=on_session, **watching)
+    # `claude stop` clears the job's `needs`, the one place a held call is named.
+    held = asked(short, seen, folder) if why == "prompt" else None
     if why != "ended":
         stop(short, env, run_command)
     session = seen.get("sessionId")
     lines = lines_of(session) if session else []
     result = summary(lines, values["model"])
     result["artifact_read"], result["artifact_refused"] = board_read(lines)
-    if why == "prompt":
-        result["wanted"] = wanted(short, seen, folder)
+    if held:
+        result["wanted"], result["unnamed"] = held
     code = 0 if why in ("ended", "settled") and not result["is_error"] else 1
     return result, code, why, session

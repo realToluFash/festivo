@@ -1,4 +1,4 @@
-import { type RefObject, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ReadOut, readOut } from '../../components/ReadOut.tsx';
@@ -7,26 +7,22 @@ import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
-import { useShell } from '../settings/Frame.tsx';
 import { RoleChoices } from '../settings/MembersRequest.tsx';
-import { Avatar } from '../settings/parts.tsx';
-import {
-  Ask,
-  type AskProps,
-  FocusedScreen,
-  Line,
-  type RowTag,
-  TextAction,
-} from '../settings/Summary.tsx';
 import {
   EVENT_ROLES,
   type EventRole,
   firstName,
+  HELD_MS,
+  joinedWithLine,
   LEAD_OFF,
+  leadOff,
   notChangedLine,
   type OnEvent,
+  ORGANISATION,
   OUTSIDE_ENDS,
+  REMOVING,
   removeLine,
+  type Removing,
   removeTitle,
   ROLE_LINES,
   rolesOff,
@@ -35,6 +31,16 @@ import {
   SAVING,
   sheetLine,
 } from './PeopleSample.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { Avatar } from '../../components/SettingsParts.tsx';
+import {
+  Ask,
+  type AskProps,
+  FocusedScreen,
+  Line,
+  type RowTag,
+  TextAction,
+} from '../../components/Summary.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 type Sending = 'idle' | 'saving' | 'saved';
@@ -60,12 +66,14 @@ export function Face({ person, side }: { person: OnEvent; side: number }) {
 export function EventRoles({
   picked,
   off,
+  offLine = LEAD_OFF,
   sending = 'idle',
   onPick,
   testID,
 }: {
   picked: EventRole;
   off: readonly EventRole[];
+  offLine?: string;
   sending?: Sending;
   onPick: (role: EventRole) => void;
   testID: string;
@@ -76,7 +84,7 @@ export function EventRoles({
         roles={EVENT_ROLES}
         picked={picked}
         lines={ROLE_LINES}
-        off={{ roles: off, line: LEAD_OFF }}
+        off={{ roles: off, line: offLine }}
         pickedTag={PICKED_TAG[sending]}
         onPick={onPick}
         testID={testID}
@@ -108,6 +116,10 @@ export function RoleSheet({
   open,
   roleFails,
   opener,
+  organisation = ORGANISATION,
+  removingAtStart = null,
+  locale = 'en',
+  today,
   onSaved,
   onClose,
   onRemove,
@@ -116,6 +128,10 @@ export function RoleSheet({
   open: boolean;
   roleFails: boolean;
   opener: Opener;
+  organisation?: string;
+  removingAtStart?: Removing;
+  locale?: string;
+  today?: string | undefined;
   onSaved: (role: EventRole) => void;
   onClose: () => void;
   onRemove: () => void;
@@ -125,8 +141,22 @@ export function RoleSheet({
   const [picked, setPicked] = useState<EventRole>(person.role);
   const [sending, setSending] = useState<Sending>('idle');
   const [failed, setFailed] = useState<{ line: string; times: number } | null>(null);
-  const [removing, setRemoving] = useState(false);
+  const [removing, setRemoving] = useState<Removing>(removingAtStart);
+  const held = useRef(removingAtStart === 'sending');
+  const removeNow = useRef(onRemove);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    removeNow.current = onRemove;
+  }, [onRemove]);
+
+  useEffect(() => {
+    if (removing !== 'sending') return;
+    const gone = setTimeout(() => removeNow.current(), held.current ? HELD_MS : SAVE_MS);
+    held.current = false;
+
+    return () => clearTimeout(gone);
+  }, [removing]);
 
   // Nothing is sent in the demo: the timer stands in for the request, and roleFails for its failing.
   function pick(role: EventRole): void {
@@ -153,10 +183,19 @@ export function RoleSheet({
   const ask: AskProps = {
     title: removeTitle(person),
     line: removeLine(person),
-    keep: { label: `Keep ${firstName(person)}`, testID: 'people.remove.keep' },
-    confirm: { label: 'Remove', removes: true, testID: 'people.remove.confirm' },
-    onKeep: () => setRemoving(false),
-    onConfirm: onRemove,
+    keep: {
+      label: `Keep ${firstName(person)}`,
+      off: removing === 'sending',
+      testID: 'people.remove.keep',
+    },
+    confirm: {
+      label: 'Remove',
+      removes: true,
+      busy: removing === 'sending' ? REMOVING : undefined,
+      testID: 'people.remove.confirm',
+    },
+    onKeep: () => setRemoving((now) => (now === 'sending' ? now : null)),
+    onConfirm: () => setRemoving('sending'),
   };
   const parts = (
     <>
@@ -167,12 +206,19 @@ export function RoleSheet({
             {person.name}
           </Text>
           <Text size={14} weight="medium" style={styles.secondary}>
-            {sheetLine(person)}
+            {sheetLine(person, organisation)}
           </Text>
         </View>
         {phone && <DoneAction onPress={onClose} testID="people.role.done" />}
       </View>
-      {person.outside && <Line text={OUTSIDE_ENDS} size={14} />}
+      {person.outside && (
+        <View style={styles.outside}>
+          {person.byCode != null && (
+            <Line text={joinedWithLine(person.byCode, locale, today)} size={14} />
+          )}
+          <Line text={OUTSIDE_ENDS} size={14} />
+        </View>
+      )}
       {failed != null && (
         <ReadOut
           words={failed.line}
@@ -190,6 +236,7 @@ export function RoleSheet({
       <EventRoles
         picked={picked}
         off={rolesOff(person)}
+        offLine={leadOff(organisation)}
         sending={sending}
         onPick={pick}
         testID="people.role"
@@ -198,7 +245,7 @@ export function RoleSheet({
         <TextAction
           label="Remove from this event…"
           removes
-          onPress={() => setRemoving(true)}
+          onPress={() => setRemoving('ask')}
           testID="people.remove"
         />
       </View>
@@ -214,7 +261,7 @@ export function RoleSheet({
         verb={{ label: 'Done', on: true, onPress: onClose, testID: 'people.role.done' }}
         onCancel={onClose}
         opener={opener}
-        ask={removing ? ask : null}
+        ask={removing != null ? ask : null}
         testID="people.roleSheet"
       >
         {parts}
@@ -225,7 +272,7 @@ export function RoleSheet({
   return (
     <>
       <Sheet
-        open={open && !removing}
+        open={open && removing == null}
         onClose={onClose}
         scrimLabel="Close"
         opener={opener}
@@ -234,7 +281,7 @@ export function RoleSheet({
       >
         <View style={styles.sheetBody}>{parts}</View>
       </Sheet>
-      <Ask open={open && removing} opener={opener} {...ask} />
+      <Ask open={open && removing != null} opener={opener} {...ask} />
     </>
   );
 }
@@ -260,6 +307,7 @@ const styles = StyleSheet.create({
     paddingRight: tokens.spaceXxs,
   },
   failed: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },
+  outside: { gap: tokens.spaceHair },
   remove: { borderTopWidth: 1, borderTopColor: tokens.colorBorder, paddingTop: tokens.spaceXxs },
   sheetBody: {
     gap: tokens.spaceLg,

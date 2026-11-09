@@ -7,10 +7,12 @@ import {
   type TextInputInstance,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { FocusEdge, useHeld } from '../components/Field.tsx';
+import { FocusEdge, focusChecked, focusRefused, useHeld } from '../components/Field.tsx';
 import { Text } from '../components/Text.tsx';
-import { codeProps, fieldName } from '../kit/fields.ts';
+import { codeProps, fieldName, refusedHint, refusedName } from '../kit/fields.ts';
+import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { tap } from './haptics.ts';
@@ -23,6 +25,10 @@ export interface CodeBoxesHandle {
   /** Shakes the boxes once with a warning tap, then clears them for the next try. */
   refuse: () => void;
   focus: () => void;
+  /** To the boxes a client check names, the keys up on them. */
+  focusChecked: () => void;
+  /** To the boxes a server refusal names, never raising the keys. */
+  focusRefused: () => void;
 }
 
 /** One field drawn as six boxes, so a paste or the code offered above the keys fills all six; the sixth digit sends it. */
@@ -32,6 +38,7 @@ export function CodeBoxes({
   onChange,
   onFull,
   done = false,
+  line,
   autoFocus = true,
   ref,
   testID,
@@ -41,13 +48,18 @@ export function CodeBoxes({
   onChange: (code: string) => void;
   onFull?: (code: string) => void;
   done?: boolean;
+  /** The line under the boxes about the code: while it shows, a screen reader hears "Invalid" with the name and the line as the hint (sc-31323). */
+  line?: string | null | undefined;
   autoFocus?: boolean;
   ref?: Ref<CodeBoxesHandle> | undefined;
   testID: string;
 }) {
+  const { t } = useTranslation();
+  const refused = line == null ? null : { word: t('forms.invalid'), line };
   const input = useRef<TextInputInstance>(null);
   const [focused, setFocused] = useState(false);
   const [wrong, setWrong] = useState(false);
+  const bold = useBoldText();
   const { shaken, shake } = useShake();
   const holding = useHeld(done, value, undefined, (text) => {
     const digits = codeDigits(text);
@@ -63,6 +75,8 @@ export function CodeBoxes({
       shake(() => onChange(''));
     },
     focus: () => input.current?.focus(),
+    focusChecked: () => focusChecked(input),
+    focusRefused: () => focusRefused(input),
   }));
 
   useEffect(() => {
@@ -97,7 +111,8 @@ export function CodeBoxes({
       <TextInput
         {...codeProps(false)}
         autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
-        {...fieldName(Platform.OS, label, {})}
+        {...refusedName(Platform.OS, fieldName(Platform.OS, label, {}), refused, label)}
+        accessibilityHint={refusedHint(refused, undefined)}
         {...holding}
         ref={input}
         autoFocus={autoFocus}
@@ -107,7 +122,7 @@ export function CodeBoxes({
         selectionColor="transparent"
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        style={inputFaced(styles.input)}
+        style={inputFaced(styles.input, 'sans', bold)}
         aria-invalid={wrong}
         testID={testID}
       />

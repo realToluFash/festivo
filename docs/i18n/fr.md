@@ -46,6 +46,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Try again (button)        | Réessayer                              | Settled 1 Nov, sc-26974          |
 | Owner / Admin / Member    | Propriétaire / Administrateur / Membre | Settled 5 Nov, sc-29914          |
 
+- **8 nov. 2026. L’écran Aujourd’hui à 360 de large** (sc-31788, après #32963). Le compte à rebours des cartes est « J-2 », « J-30 » (`todayScreen.inDaysCapital`), le repère des événements en France, pour tenir à côté de « Dernière semaine » ; dans une phrase, on garde « dans 2 jours ». Le lien de « Vos événements » est « Tout voir » (`todayScreen.allEvents`), car « Tous les événements » coupait le titre sur iPad en portrait. « Aujourd’hui » ne tient pas dans une colonne de la semaine, ni « Toute la journée » dans la colonne des heures : la semaine lit `todayScreen.todayShort` « Auj. » (affiché « AUJ. »), et « Toute la journée » passe sur deux lignes (#1520), jamais « Toute la j… ».
 - **7 nov. 2026. Les Personnes d’un événement, et « Admin » partout** (`web:eventPeople.*`, `eventNav.people`, `membersScreen.eventsFromPeople`, `ownerMakesOwner`, sc-30138 pour sc-29915). La page est « Personnes ». Les rôles sur l’événement sont « Responsable », « Peut modifier », « Peut consulter » et « Peut accueillir les invités » (« l’accueil des invités », comme `eventPause`). Les annonces disent « désormais » : « {{name}} est désormais responsable de cet événement. », sans accord, « responsable » étant épicène. La ligne de celles et ceux qui voient déjà tout donne le rôle en étiquette après deux-points, « voit tous les événements grâce à son rôle dans {{organisation}} : Propriétaire et Administrateur » ; `managerRole.*` est donc le nom du rôle à toutes les formes, et rien ne s’accorde avec un genre. Un rôle cité dans une phrase d’erreur est entre guillemets, « reste « Peut consulter » ». "Owners and admins" est « les personnes ayant le rôle Propriétaire ou Administrateur », et dans un titre « les rôles Propriétaire et Administrateur » ; "an admin of" reste « une personne qui administre ». La personne retirée est « Cette personne … Elle », qui s’accorde avec le nom.
 - **7 nov. 2026. Ce que fait chaque rôle, dans Membres** (`web:membersScreen.roleMeans.*`, sc-30138). Les phrases n’ont pas de sujet, comme `owner`. Les événements d’un Membre sont « les événements qui lui sont confiés » : « lui » n’accorde avec personne, alors que « auxquels il est ajouté » imposerait un genre. Même tournure dans l’app.
 - **7 nov. 2026. Les autres façons d’entrer dans l’app** (`mobile:steps.invited*`, `join`,
@@ -69,6 +70,77 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 ## Decided phrasings
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
+
+- **9 nov. 2026. La page Paramètres de notification de l’app** (sc-34901 pour sc-30411,
+  `mobile:notificationSettings.*`). L’en-tête a un verbe, « Vous recevez uniquement des
+  notifications push » ; les lignes n’en ont pas : « Push et e-mail », « Push uniquement »,
+  « Désactivé », comme `off`. Le titre de section est « Ce qui vous est notifié », sans accord
+  avec la personne. Le décompte dit « en push » et « par e-mail » : « 3 sur 6 en push · 6 sur 6
+  par e-mail ». L’appareil a des « réglages », comme dans `pushBlocked`. « Bloquées sur cet
+  appareil » s’accorde avec les notifications push. La note de Compte et sécurité perd « Les
+  e-mails ne peuvent pas être désactivés. », désormais `locked.email`, sous l’interrupteur.
+- **9 nov. 2026. La page Sécurité de l’app** (sc-34792 pour sc-30411, `mobile:security.*`). Reprend les termes du web : « Associé · {{address}} », « Déconnecter les autres appareils », « Terminé » pour Done. Rien ne s’accorde avec la personne : `signOutLine` dit « cet appareil-ci reste connecté », jamais « vous restez connecté », et `signedUpWith` commence par « Inscription avec Google ou Apple ? », au lieu du « Inscrit » du web (`web:recovery.providerNote`, à aligner au prochain ticket web). `expires` est « Expire le {{day}} sans nouvelle utilisation ».
+- **9 nov. 2026. La page du lien envoyé sur le web et la ligne de qui a tout perdu** (sc-33788 pour sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). `nothingThere` reprend l’app, « Rien reçu ? », et le lien est « renvoyez-le ». `sentAgain` est « Nous l’avons renvoyé. », sans la deuxième phrase de l’app. `lostBothIntro` dit « ne peut confirmer votre identité qu’après une connexion avec votre mot de passe », jamais « une fois connecté », qui s’accorde au masculin ; « l’assistance Soirely », du guide.
+- **8 nov. 2026. Votre compte dans l’app** (sc-34175 pour sc-30411, `mobile:account.*`,
+  `contacts.promoting`, `removing`). La section est « À propos de vous ». La ligne de l’adresse
+  principale s’accorde avec l’adresse, « Principale · pour vous connecter », celle du numéro avec
+  le numéro, « Principal · sur votre profil » ; les autres disent « Pour vous joindre, pas pour
+  vous connecter ». Ce qui attend un code est « {{shown}} reste à vérifier. », comme le
+  glossaire, car {{shown}} est une adresse ou un numéro. La question en quittant est
+  « Abandonner votre modification ? », avec « Continuer à modifier » / « Abandonner », comme
+  `eventEdit` et `web:eventPeople` ; dessous, « Votre nom reste {{name}}. », « Rien ne sera
+  ajouté. ». Les confirmations en cours sont « Changement en cours… », qui ne s’accorde avec
+  rien (« Définition comme principale… » s’accorderait et ne tient pas), et « Retrait en cours… »,
+  comme le web.
+- **8 nov. 2026. La double authentification à la connexion dans l’app** (sc-33828 pour
+  sc-29072, `mobile:twoFactor.signedIn`, `recoveryShape`, `lost`, `lostTwoFactor.waitingFor`,
+  `stayOut`, `emailSoirely`). « Connexion réussie », groupe nominal, car « Connecté » s’accorde
+  avec la personne. Le titre d’attente est une étiquette, « En attente : {{organisations}} » :
+  « En attente de » obligerait à élider devant un nom à voyelle (« d’Ire Events »), ce que le
+  code ne sait pas faire. `stayOut` dit « Vous ne pourrez pas vous connecter tant que personne
+  n’aura répondu », jamais « Vous restez déconnecté », qui s’accorde au masculin. Le bouton est
+  « Écrire à l’assistance Soirely ».
+- **8 Nov 2026. L’écran du lien envoyé dans l’app, et son toast** (sc-33809 pour sc-29071,
+  `mobile:recovery.*`). Le bouton est « Ouvrir la boîte mail », comme « Consultez votre boîte
+  mail », et non « Ouvrir Mail » : sous Android, il ouvre l’application d’e-mail de la personne.
+  `spam` reprend la phrase du web, « Vérifiez vos courriers indésirables, puis renvoyez-le. »,
+  comme le bouton « Le renvoyer ». `sentAgain` est « Nous l’avons renvoyé. Utilisez le dernier
+  e-mail. ». Le toast `changed` : « Mot de passe modifié. Vos autres appareils sont
+  déconnectés. », l’appareil étant ce qu’on déconnecte, comme `devices.everywhere`.
+- **8 nov. 2026. Une connexion à deux facteurs qui a expiré** (sc-29979,
+  `signIn.codeTimedOutTitle`, web et app). « La connexion a expiré », puis `endedBody`
+  « Reconnectez-vous pour continuer. ». « La connexion », la tentative en cours, et non
+  « Votre session », que la personne n'a jamais ouverte. L'app joint les deux sur une ligne
+  avec un point : le titre n'en prend pas.
+- **8 nov. 2026. Une inscription qui a expiré** (sc-32449 pour sc-29923, `register.timedOut`,
+  web et app). « Votre inscription a expiré, nous n’avons donc pas conservé le mot de passe.
+  Ressaisissez-le pour recevoir un nouveau code. ». "Sign-up" est « inscription », comme
+  `limitedTitle` ; « expirer », comme la connexion ; « Ressaisissez-le » plutôt que « Saisissez-le
+  de nouveau », qui heurte « nouveau code », lui-même repris de `resend`.
+- **8 nov. 2026. Invités A : la réponse, les deux décomptes et le 412** (sc-3773, #32403).
+  "Not sure yet" est « À confirmer », sur la page de l’invité comme sur celle de l’hôte : rien
+  ne s’accorde, quand « pas encore sûr » ou « indécis » imposeraient un genre. « À confirmer ·
+  réponse attendue d’ici le {{date}} », « À confirmer · a répondu le {{date}} ». "Haven't
+  replied" est « n’ont pas répondu » (« {{count}} personnes n’ont pas répondu ») ; "No reply"
+  est « Sans réponse » ; on ne les échange jamais. "Companions" est « accompagnants ».
+  « {{coming}} des {{invited}} invités viennent ». "Write to them" est « Leur écrire » ; "Open
+  check-in", « Ouvrir l’accueil ». "Show all {{count}}" est « Afficher les {{count}} ». "Their
+  conversation" est « Conversation ». Le 412 : « La sienne · La vôtre », « Prendre la sienne »
+  et « Garder la mienne » ; « sienne » s’accorde avec la version, pas avec la personne.
+  La clôture (#32762) : « Fin des réponses aujourd’hui. », « Fin des réponses demain, le
+  {{date}}. », « Fin des réponses le {{date}}. », et, une fois passée, « Les réponses sont
+  closes depuis le {{date}}. », car « Fin des réponses le … » ne distingue pas le passé du
+  futur. Plus personne à attendre : « Tout le monde a répondu. ».
+
+- **7 nov. 2026. L’écran Aujourd’hui de l’app** (`mobile:todayScreen.*`, sc-31788 pour
+  sc-29090). "Live now" et "Live · …" sont « En cours », comme `eventsScreen.happeningNow`,
+  jamais « Publié », qui est l’état. L’agenda met une étiquette et deux-points,
+  « Début : {{name}} », « Fin : {{name}} », « Suite : {{name}} », pour que le nom de
+  l’événement se passe d’article. Le matin et l’après-midi disent « Bonjour », le soir
+  « Bonsoir » dès 18 h (`greetingAt`) ; « Bon après-midi » se dit en partant, pas en
+  arrivant. "Welcome" est « Bienvenue », invariable. "Next up" est « Prochain événement »,
+  car il nomme un événement ; le "Next" du bloc Maintenant est « Ensuite ». "Needs you" reprend
+  `eventPage.needsYou`, « À traiter ». Run of show reste « déroulé ».
 
 - **7 nov. 2026. « Le jour de l’événement », jamais « le soir »** (sc-29384). Un événement a lieu
   à toute heure : `verifyPhone.doneBody`, `steps.mobileIntro` et `completeProfile.mobileHelp`
@@ -718,3 +790,14 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   compte ? », avant « Créer un compte » ; « Nouveau sur Soirely ? » s’accorde avec un genre.
   « © {{year}} Soirely » reste identique à l’anglais. Le bouton de langue se lit « Langue : {{language}} ».
 - **Annuler une demande pour revenir** (sc-29979) : « Annuler votre demande ? » ; la sortie est « Continuer d’attendre », jamais « Annuler », et la confirmation reprend « Annuler la demande ».
+- **L’état d’un champ refusé, seulement pour le lecteur d’écran** (`mobile:forms.invalid`, sc-31909) : « Données non valides », après le nom du champ (« Adresse e-mail, Données non valides »). C’est ce que dit VoiceOver sur le web ; rien ne s’accorde avec le nom, masculin ou féminin.
+- **Le plan de table** (sc-33304 pour sc-3998, `seating.*`, `messages:seating.*`) : l’espace est « Plan de table », et le dessin « le plan de la salle ». Une "section" est une **zone**, jamais « section », réservée aux parties des paramètres : « Ajouter une zone », « Aucune zone », « La conserver ». Le lieu ouvre la ligne des unités comme une étiquette, « Lieu : {{venue}}. », pour ne jamais écrire « à Le Grand Hôtel » ; « là où se trouve {{organisation}} » évite tout accord avec l’organisation. "Seated" se dit « ayant une place », sans accord : « invités ayant une place passent dans Sans place ». Les couleurs : Bleu, Violet, Prune, Bordeaux, Rose, Marron, Vert olive, Bleu canard. L’aide en pieds reprend les abréviations CLDR françaises que le champ lit : « 12 pi 4 po, 12,5 pi ou 148 po ».
+- **9 nov. 2026. Personnalisation** (sc-34920 pour sc-30441, `web:personalisation.*`,
+  `mobile:personalisation.*`, `mobile:settings.personalisation*`,
+  `messages:validation.colour_scheme_unknown`). Le choix, ce sont « vos couleurs », et rien ne
+  s’accorde avec le nom d’un jeu : « Votre choix, {{picked}}, n’a pas été enregistré. Vous gardez
+  {{kept}}. ». "Current" est « Choix actuel », jamais « Actuel·le », que « Fruits rouges » ou
+  « Tenue de soirée » ne pourraient porter. « Toutes les pages sont désormais à vos couleurs ». Seul le
+  refus de l’API dit « jeux de couleurs ». Les huit noms : Violet, Cobalt, Jardin, Agrumes,
+  Fruits rouges, Tenue de soirée (Black tie, la tenue exigée), Sorbet et Terre cuite ; Violet,
+  Cobalt et Sorbet sont les mots français (`same-as-english.json`).

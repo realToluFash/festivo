@@ -245,12 +245,26 @@ on this repository was read as an eslint failure, declared fixed, and reached CI
 The API checks need the container (`just up`). If a check cannot run, say that it did not
 run rather than that it passed.
 
+Nothing a check leaves behind needs removing afterwards: its log is in `$SQ_RUN_DIR`, and
+a worktree without `node_modules` is not given one by linking another checkout's in. A
+linked `node_modules` is not ignored, because `.gitignore`'s `node_modules/` matches only a
+directory, so the next `git add -A` commits it. The `rm` that tidies such a link or a log at
+the repository root stops on a permission prompt nobody answers, and the worker is stopped
+(sc-31788). Say the check did not run instead.
+
+A check that fails with `Cannot find module` for a package that `package.json` lists has
+not run. The `node_modules` it read is older than the lockfile. In a routine run, never
+install to fix that: `npm install` and `npm ci` stop on a permission prompt nobody answers,
+and the worker is killed (sc-32041). Say that the check did not run, push, and let CI's
+result on the pushed head prove it.
+
 **The stack in your checkout is yours, and nobody else's is.** Developer N's checkout is
 `~/Projects/soirely-devN`: if it is not there, `just dev-env setup --developer N` from the
 main checkout makes it, with its own containers and databases on its own ports (the table above).
 Its `.env` names its compose project, so every check above runs there as it does in the
-main checkout. If your session started elsewhere, every shell command starts with
-`cd ~/Projects/soirely-devN &&`. After `.env.example` changes on `main`, `just dev-env env`
+main checkout. If your session started outside its checkout, every shell command starts
+with `cd ~/Projects/soirely-devN &&`. A session started in a worktree never does
+(`role-routine`, section 3). After `.env.example` changes on `main`, `just dev-env env`
 rewrites the `.env`, and `docker compose up -d` picks it up.
 
 The testers work in `~/Projects/soirely-qa`, `-qa2` and `-qa3` (compose projects of the same

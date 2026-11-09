@@ -20,6 +20,13 @@ import {
 } from '@soirely/domain';
 
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
+import {
+  asSeating,
+  type Seating,
+  type SeatingRoom,
+  type SectionColour,
+  versionTag,
+} from './seating.ts';
 
 /** See docs/architecture/sessions.md. */
 export type RefreshTokenDelivery = 'body' | 'cookie';
@@ -1875,6 +1882,91 @@ export class ApiClient {
   }
 
   /** The event as an edit form opens it, with the tag the save sends back. */
+  /** `plan` is null with none yet; refused 403 without seating.read (sc-3998). */
+  async seating(eventId: string): Promise<Seating> {
+    return this.seatingOf(await this.get<{ seating?: unknown }>(this.seatingPath(eventId)));
+  }
+
+  /** Refused `validation_failed` on `widthCm`, `lengthCm` or `roomName`, and 409 `seating_plan_exists`. */
+  async startSeatingPlan(eventId: string, room: SeatingRoom): Promise<Seating> {
+    return this.seatingOf(await this.post<{ seating?: unknown }>(this.seatingPath(eventId), room));
+  }
+
+  /** Refused 412 with `changedBy` when a colleague changed the room since `version`. */
+  async changeSeatingRoom(eventId: string, room: SeatingRoom, version: number): Promise<Seating> {
+    return this.seatingOf(
+      await this.patch<{ seating?: unknown }>(this.seatingPath(eventId), room, {
+        headers: { 'If-Match': versionTag(version) },
+      }),
+    );
+  }
+
+  async deleteSeatingPlan(eventId: string): Promise<Seating> {
+    return this.seatingOf(await this.delete<{ seating?: unknown }>(this.seatingPath(eventId)));
+  }
+
+  /** With no colour, the least used. Refused `validation_failed` on `name`, and 409 `seating_section_limit`. */
+  async addSeatingSection(
+    eventId: string,
+    section: { name: string; colour?: SectionColour },
+  ): Promise<Seating> {
+    return this.seatingOf(
+      await this.post<{ seating?: unknown }>(`${this.seatingPath(eventId)}/sections`, section),
+    );
+  }
+
+  /** Refused 412 with `changedBy` when a colleague changed it since `version`. */
+  async changeSeatingSection(
+    eventId: string,
+    sectionId: string,
+    changes: { name?: string; colour?: SectionColour },
+    version: number,
+  ): Promise<Seating> {
+    return this.seatingOf(
+      await this.patch<{ seating?: unknown }>(
+        `${this.seatingPath(eventId)}/sections/${encodeURIComponent(sectionId)}`,
+        changes,
+        { headers: { 'If-Match': versionTag(version) } },
+      ),
+    );
+  }
+
+  async deleteSeatingSection(eventId: string, sectionId: string): Promise<Seating> {
+    return this.seatingOf(
+      await this.delete<{ seating?: unknown }>(
+        `${this.seatingPath(eventId)}/sections/${encodeURIComponent(sectionId)}`,
+      ),
+    );
+  }
+
+  /** A hub token for this event's seating topic alone. */
+  async seatingSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.seatingPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private seatingPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/seating-plan`;
+  }
+
+  private seatingOf(body: { seating?: unknown } | null | undefined): Seating {
+    const seating = asSeating(body?.seating);
+
+    if (seating == null) {
+      throw new Error(
+        'The API answered the seating plan in a shape this client does not know. Check SeatingSerialiser in services/api.',
+      );
+    }
+
+    return seating;
+  }
+
   async taggedEvent(eventId: string): Promise<TaggedEvent> {
     return this.tagged(
       await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}`, {
@@ -2592,6 +2684,11 @@ export class ApiClient {
       this.session += 1;
       this.signingOut -= 1;
     }
+  }
+
+  /** Ends a session this client no longer holds, as a reinstall's first launch does (sc-34831); unanswered, it lapses. */
+  async signOutKept(refreshToken: string): Promise<void> {
+    await this.sendTokenRequest('/api/auth/logout', { refreshToken }).catch(() => null);
   }
 
   /** A 503 is an answer here — it names the dependency that is down — so it is not thrown. */

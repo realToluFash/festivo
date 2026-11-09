@@ -97,6 +97,12 @@ line and its rule are `PasswordField`, and the breach line is `BREACHED` in `rul
 page that writes them out again is the third copy the next copy change misses, so grep
 `parts.tsx` before writing any field a demo page already has.
 
+**A demo never shows a success the browser did not report.** Await the browser API (as
+`copyText` in `apps/web/src/demo/settings.ts` and `TwoFactorCard.tsx` do) and take the
+failure path when it rejects or is missing. A "Copied" with nothing on the clipboard turned
+up twice in the demos (Security's Copy all and General's Copy link), and a fake success in
+a demo is built into the product as a real one.
+
 ## 2. Four layouts, and the codebase that owns each
 
 This is the part most often got wrong, because "build all four layouts" is true of the
@@ -347,6 +353,13 @@ a TalkBack or VoiceOver pass:
   `View` with `accessible`. VoiceOver never reads a label on a plain `View`, and TalkBack
   makes it a stop of its own, read before the words inside (sc-11419).
 
+**A testID is the harness's contract with the screen.** A change that removes or renames a
+`testID`, or removes the control carrying it, greps `apps/mobile/.maestro` for each one and
+fixes every flow and `.maestro/README.md` line that names it, in the same pull request.
+Maestro's `tapOn` fails the flow when the id is not on screen, so a stale flow costs QA a
+pass on the harness before it reaches the product (sc-29072, twice). A screen that drops a
+state drops that state's screenshot from the flows too.
+
 **Never verify in a browser unless asked.** Use `tsc --noEmit`, the affected suites, and a
 reading of the branch you did not change. Put the judgement in a **pure function with
 tests** — the layout classifier is the model: that is the check that survives the session,
@@ -437,6 +450,7 @@ missing list is ambiguous.
 - No hex, no untranslated literal, no fixture import left behind.
 - The screen's components are the product's one copy, the demo flow still works, and
   nothing on the screen is missing from its demo.
+- Every `testID` the change removed or renamed is gone from `apps/mobile/.maestro`.
 - Commits scoped per **making-commits**; never `git add -A`.
 - Say which layouts you checked and how, and name anything still unverified.
 - **Noticed while building** is in the pull request, or explicitly empty.

@@ -13,7 +13,6 @@ import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
-import type { ForgotFrom } from '../../../forgotFrom.ts';
 import { PasswordField } from '../../../components/PasswordField.tsx';
 import { PasswordRule } from '../../../components/PasswordRule.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
@@ -457,11 +456,7 @@ export function Changing({
         <div className="field">
           <div className="field-heading">
             <label htmlFor="current-password">{t('passwordCard.current')}</label>
-            <Link
-              className="link-button"
-              to="/forgot-password"
-              state={{ back: 'account' } satisfies ForgotFrom}
-            >
+            <Link className="link-button" to="/forgot-password">
               {t('passwordCard.forgot')}
             </Link>
           </div>

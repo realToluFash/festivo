@@ -14,7 +14,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
 import { type Picked, SAMPLE_DETAILS } from './OrganisationModel.ts';
 import { DETAILS_WORDS as W, LANGUAGE_NAMES } from './OrganisationWords.ts';
-import { Row } from './Summary.tsx';
+import { Row } from '../../components/Summary.tsx';
 
 export interface Choice {
   code: string;
@@ -40,6 +40,8 @@ export function organisationChoices(): Record<Picked, readonly Choice[]> {
 }
 
 export function choiceName(field: Picked, code: string): string {
+  if (field === 'currency' && code === '') return W.currencyPlaceholder;
+
   return organisationChoices()[field].find((choice) => choice.code === code)?.name ?? code;
 }
 

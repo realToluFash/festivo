@@ -6,7 +6,7 @@ appId: host.exp.Exponent
     id: '${FROM}'
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: before
+- takeScreenshot: ${CHANGE}-before
 - runScript:
     file: ../../batch/helper.js
     env:
@@ -16,6 +16,6 @@ appId: host.exp.Exponent
       id: 'never.there'
     timeout: 3000
     optional: true
-- takeScreenshot: no-move-yet
+- takeScreenshot: ${CHANGE}-no-move-yet
 - tapOn:
     id: '${MOVE}'

@@ -7,6 +7,7 @@ import {
   CAL_WORDS,
   TODAY,
   agendaOf,
+  agendaStop,
   barLabel,
   barWords,
   calendarStart,
@@ -26,7 +27,8 @@ import {
   weekStart,
   weeksOf,
 } from './calendar.ts';
-import { CLOCKS, REUNION, meshFor, sampleEvent, sampleEvents } from './events.ts';
+import { CLOCKS, REUNION, sampleEvent, sampleEvents } from './events.ts';
+import { meshFor } from '../mesh.ts';
 
 const EN = 'en-US';
 const NOVEMBER = { year: 2026, month: 11 };
@@ -247,6 +249,29 @@ describe('the Calendar in B · A · Weeks as lanes (sc-30329)', () => {
     expect(february).toEqual([
       { day: '2027-02-01', items: [], turn: { year: 2027, month: 2 }, empty: true },
     ]);
+  });
+
+  it('enters Agenda on the first day with a row from the day Month enters at', () => {
+    const entries = agendaOf(NOVEMBER, { year: 2027, month: 2 }, all, TODAY);
+    const listed = entries.filter((entry) => entry.items.length > 0);
+
+    expect(agendaStop(entries, TODAY)).toEqual({
+      entry: listed.find((one) => one.day >= TODAY),
+      row: 0,
+    });
+    expect(agendaStop(entries, '2026-11-06')?.entry.day).toBe('2026-11-06');
+    expect(agendaStop([], TODAY)).toBeUndefined();
+  });
+
+  it('enters Agenda past its last row on that last row, not its day’s first', () => {
+    const entries = agendaOf(NOVEMBER, { year: 2027, month: 2 }, all, TODAY);
+    const last = entries.filter((entry) => entry.items.length > 0).at(-1);
+
+    expect(last?.items.length).toBeGreaterThan(1);
+    expect(agendaStop(entries, '2027-02-01')).toEqual({
+      entry: last,
+      row: (last?.items.length ?? 0) - 1,
+    });
   });
 
   it('opens each state by name, and where main kept the Calendar without one', () => {

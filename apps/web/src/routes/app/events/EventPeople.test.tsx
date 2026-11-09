@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -98,7 +101,7 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-type Answer = (body: unknown) => Response;
+type Answer = (body: unknown) => Response | Promise<Response>;
 
 async function onPeople(
   people: ReturnType<typeof person>[],
@@ -149,6 +152,22 @@ afterEach(() => {
 });
 
 describe('People on an event, at a desk (sc-29915)', () => {
+  it('draws its buttons and lists as the demo does, with none of the browser’s own look', () => {
+    const parts = readFileSync(
+      join(import.meta.dirname, '../../../components/SettingsParts.css'),
+      'utf8',
+    );
+    const rule = (selector: string) => parts.split(`\n${selector} {`)[1]?.split('}')[0] ?? '';
+
+    expect(rule(':where(.desk) button')).toMatch(
+      /border: 0;[\s\S]*background: none;[\s\S]*text-align: start;/u,
+    );
+    expect(rule(':where(.desk) :is(h1, h2, h3, p, ul, ol)')).toMatch(
+      /margin: 0;[\s\S]*padding: 0;/u,
+    );
+    expect(rule(':where(.desk) :is(ul, ol)')).toMatch(/list-style: none;/u);
+  });
+
   it('lists everyone by role, then by name, each with their role and job label', async () => {
     signedIn();
     await onPeople([TOM, ANA, PRIYA]);
@@ -162,7 +181,10 @@ describe('People on an event, at a desk (sc-29915)', () => {
       expect.stringContaining('Ana SouzaCan edit'),
       expect.stringContaining('Tom BeckerCan check guests in · Bar and drinks'),
     ]);
-    expect(within(people()).getByText('3 people')).toBeDefined();
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'People' }).closest('.desk'),
+    ).not.toBeNull();
+    expect(within(people()).getByText('3')).toBeDefined();
     expect(
       await within(people()).findByText(
         'Folake Adeyemi and Julien Moreau see every event, as owner and admin of Ìrè Events.',
@@ -180,7 +202,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
     await onPeople([]);
 
     expect(within(people()).getByText('Nobody is on this event yet.')).toBeDefined();
-    expect(await within(people()).findByRole('button', { name: 'Add people' })).toBeDefined();
+    expect(await within(people()).findByRole('button', { name: 'Add by name' })).toBeDefined();
   });
 
   it('gives somebody who only reads it no Add, nothing that opens, and who changes it', async () => {
@@ -209,7 +231,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
     expect(within(people()).getByRole('button', { name: /Ana Souza/ })).toBeDefined();
     expect(within(people()).queryByRole('button', { name: /Priya Shah/ })).toBeNull();
 
-    fireEvent.click(await within(people()).findByRole('button', { name: 'Add people' }));
+    fireEvent.click(await within(people()).findByRole('button', { name: 'Add by name' }));
     const dialog = screen.getByRole('dialog', { name: 'Add people' });
 
     expect(within(dialog).getByRole('checkbox', { name: 'Folake Adeyemi' })).toBeDefined();
@@ -225,7 +247,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
     const row = within(people()).getByRole('button', { name: /Tom Becker/ });
 
     fireEvent.click(row);
-    const dialog = screen.getByRole('dialog', { name: 'Tom Becker' });
+    const dialog = screen.getByRole('dialog', { name: 'Role on this event' });
     const group = within(dialog).getByRole('group', { name: 'Tom Becker’s role on this event' });
 
     expect(document.activeElement).toBe(
@@ -238,13 +260,18 @@ describe('People on an event, at a desk (sc-29915)', () => {
     expect(sent.find((one) => one.line === 'PATCH /api/events/ev_1/people/p_tom')?.body).toEqual({
       role: 'can_view',
     });
-    expect(screen.getByRole('dialog', { name: 'Tom Becker' })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: 'Role on this event' })).toBeDefined();
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Done' }));
 
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(document.activeElement).toBe(
-      within(people()).getByRole('button', { name: /Tom Becker/ }),
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(people()).getByRole('button', { name: /Tom Becker/ }),
+      ),
+    );
+    expect(within(people()).getByRole('button', { name: /Tom Becker/ }).className).toContain(
+      'is-on',
     );
     expect(within(people()).getByText('Can view · Bar and drinks')).toBeDefined();
   });
@@ -258,7 +285,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
     });
 
     fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
-    const dialog = screen.getByRole('dialog', { name: 'Tom Becker' });
+    const dialog = screen.getByRole('dialog', { name: 'Role on this event' });
     fireEvent.click(within(dialog).getByRole('radio', { name: /Can edit/ }));
 
     expect(
@@ -272,10 +299,14 @@ describe('People on an event, at a desk (sc-29915)', () => {
     ).toBe(true);
   });
 
-  it('asks before removing, then says the person is off this event', async () => {
+  it('asks before removing, shows it removing, then says the person is off this event', async () => {
     signedIn();
+    let answer: (done: Response) => void = () => {};
     const sent = await onPeople([PRIYA, TOM], {
-      'DELETE /api/events/ev_1/people/p_tom': () => new Response(null, { status: 204 }),
+      'DELETE /api/events/ev_1/people/p_tom': () =>
+        new Promise<Response>((resolve) => {
+          answer = resolve;
+        }),
     });
 
     fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
@@ -290,13 +321,20 @@ describe('People on an event, at a desk (sc-29915)', () => {
     );
 
     fireEvent.click(within(ask).getByRole('button', { name: 'Remove' }));
+    const removing = await within(ask).findByRole('button', { name: 'Removing…' });
+
+    expect(removing.getAttribute('aria-busy')).toBe('true');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.getByRole('alertdialog', { name: /Remove Tom Becker/ })).toBe(ask);
+
+    answer(new Response(null, { status: 204 }));
 
     expect(await screen.findByText('Tom Becker is off this event.')).toBeDefined();
     expect(sent.some((one) => one.line === 'DELETE /api/events/ev_1/people/p_tom')).toBe(true);
     expect(within(people()).queryByText('Tom Becker')).toBeNull();
     await waitFor(() =>
       expect(document.activeElement).toBe(
-        within(people()).getByRole('button', { name: 'Add people' }),
+        within(people()).getByRole('button', { name: 'Add by name' }),
       ),
     );
   });
@@ -310,7 +348,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
     const patches = () => sent.filter((one) => one.line === 'PATCH /api/events/ev_1/people/p_tom');
 
     fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
-    const dialog = screen.getByRole('dialog', { name: 'Tom Becker' });
+    const dialog = screen.getByRole('dialog', { name: 'Role on this event' });
     const radio = (name: RegExp) => within(dialog).getByRole('radio', { name }) as HTMLInputElement;
     const arrowTo = (name: RegExp) => {
       fireEvent.keyDown(document.activeElement ?? document.body, { key: 'ArrowUp' });
@@ -331,6 +369,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
     expect(patches().map((one) => one.body)).toEqual([{ role: 'can_edit' }]);
     expect(document.activeElement).toBe(radio(/Can edit/));
 
+    radio(/Can view/).focus();
     fireEvent.click(radio(/Can view/));
     await within(dialog).findByText('Saved. Tom Becker can view now.');
     expect(patches().map((one) => one.body)).toEqual([{ role: 'can_edit' }, { role: 'can_view' }]);
@@ -342,7 +381,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
     const sent = await onPeople([TOM]);
 
     fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
-    const dialog = screen.getByRole('dialog', { name: 'Tom Becker' });
+    const dialog = screen.getByRole('dialog', { name: 'Role on this event' });
     const radio = (name: RegExp) => within(dialog).getByRole('radio', { name }) as HTMLInputElement;
     fireEvent.keyDown(radio(/Can check guests in/), { key: 'ArrowUp' });
     fireEvent.click(radio(/Can view/));
@@ -403,11 +442,11 @@ describe('People on an event, at a desk (sc-29915)', () => {
       },
     });
 
-    const add = await within(people()).findByRole('button', { name: 'Add people' });
+    const add = await within(people()).findByRole('button', { name: 'Add by name' });
     add.focus();
     fireEvent.click(add);
     const dialog = screen.getByRole('dialog', { name: 'Add people' });
-    const find = within(dialog).getByRole('searchbox', { name: 'Name' });
+    const find = within(dialog).getByRole('textbox', { name: 'Name' });
 
     expect(document.activeElement).toBe(find);
     expect(within(dialog).queryByRole('checkbox', { name: /Tom Becker/ })).toBeNull();
@@ -455,7 +494,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
       },
     });
 
-    fireEvent.click(await within(people()).findByRole('button', { name: 'Add people' }));
+    fireEvent.click(await within(people()).findByRole('button', { name: 'Add by name' }));
     const dialog = screen.getByRole('dialog', { name: 'Add people' });
     fireEvent.click(within(dialog).getByRole('checkbox', { name: /Kofi Mensah/ }));
     fireEvent.click(within(dialog).getByRole('checkbox', { name: /Sade Bello/ }));
@@ -494,7 +533,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
         ),
     });
 
-    fireEvent.click(await within(people()).findByRole('button', { name: 'Add people' }));
+    fireEvent.click(await within(people()).findByRole('button', { name: 'Add by name' }));
     const dialog = screen.getByRole('dialog', { name: 'Add people' });
     fireEvent.click(within(dialog).getByRole('checkbox', { name: /Kofi Mensah/ }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
@@ -506,18 +545,88 @@ describe('People on an event, at a desk (sc-29915)', () => {
     signedIn();
     await onPeople([TOM]);
 
-    fireEvent.click(await within(people()).findByRole('button', { name: 'Add people' }));
+    fireEvent.click(await within(people()).findByRole('button', { name: 'Add by name' }));
     const dialog = screen.getByRole('dialog', { name: 'Add people' });
-    const add = within(dialog).getByRole('button', { name: 'Add' });
-    add.focus();
+    const cancel = within(dialog).getByRole('button', { name: 'Cancel' });
+    const last = within(dialog).getByRole('checkbox', { name: /Sade Bello/ });
+    last.focus();
     fireEvent.keyDown(document, { key: 'Tab' });
 
-    expect(dialog.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).toBe(cancel);
+
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+
+    expect(document.activeElement).toBe(last);
 
     fireEvent.click(within(dialog).getByRole('checkbox', { name: /Kofi Mensah/ }));
     fireEvent.keyDown(document, { key: 'Escape' });
 
+    const ask = screen.getByRole('alertdialog', { name: 'Discard your changes?' });
+    const keep = within(ask).getByRole('button', { name: 'Keep adding' });
+    const discard = within(ask).getByRole('button', { name: 'Discard' });
+    discard.focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+
+    expect(document.activeElement).toBe(keep);
+
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+
+    expect(document.activeElement).toBe(discard);
+  });
+
+  it('asks before discarding a role picked and nothing else', async () => {
+    signedIn();
+    await onPeople([TOM]);
+
+    fireEvent.click(await within(people()).findByRole('button', { name: 'Add by name' }));
+    const dialog = screen.getByRole('dialog', { name: 'Add people' });
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Can edit/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
     expect(screen.getByRole('alertdialog', { name: 'Discard your changes?' })).toBeDefined();
+  });
+
+  it('closes on Cancel without asking when only a name was typed', async () => {
+    signedIn();
+    await onPeople([TOM]);
+
+    const add = await within(people()).findByRole('button', { name: 'Add by name' });
+    add.focus();
+    fireEvent.click(add);
+    const dialog = screen.getByRole('dialog', { name: 'Add people' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Name' }), {
+      target: { value: 'Kofi' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(add));
+  });
+
+  it('keeps Tab inside the ask before removing, never in the dialog behind it', async () => {
+    signedIn();
+    await onPeople([PRIYA, TOM]);
+
+    fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from this event…' }));
+    const ask = screen.getByRole('alertdialog', { name: 'Remove Tom Becker from this event?' });
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(ask).getByRole('button', { name: 'Keep Tom Becker' }),
+      ),
+    );
+    const keep = within(ask).getByRole('button', { name: 'Keep Tom Becker' });
+    const remove = within(ask).getByRole('button', { name: 'Remove' });
+    remove.focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+
+    expect(document.activeElement).toBe(keep);
+
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+
+    expect(document.activeElement).toBe(remove);
   });
 
   it('says it could not load, and loads again on Try again', async () => {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { Toast } from '../components/Toast.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import {
   type Drawn,
   type Section,
@@ -15,20 +15,33 @@ import {
   viewerOf,
 } from './settings.ts';
 import { Account } from './Account.tsx';
+import { DataControl } from './DataControl.tsx';
+import { type DataControlPage, dataControlViewerKey } from './dataControl.ts';
+import { DrawnGlyph } from './DataControlParts.tsx';
 import { General } from './General.tsx';
-import { LayersContext } from './layers.ts';
+import { LayersContext } from '../layers.ts';
 import { Members } from './Members.tsx';
 import { Notifications } from './Notifications.tsx';
+import { PaymentReminders } from './Payments.tsx';
 import { AccessPaused } from './OrgSwitcher.tsx';
+import { Personalisation } from './Personalisation.tsx';
+import { PersonalTile } from './SchemeArt.tsx';
 import { Security } from './Security.tsx';
 import { SignInRules } from './SignInRules.tsx';
-import type { Tell } from './TodayParts.tsx';
+import { StorefrontGlyph, Vendors } from './Vendors.tsx';
+import { vendorsViewerKey } from './vendors.ts';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { usePaused, useSwitcherStart } from './switcher.ts';
 import './today.css';
+import '../components/SettingsParts.css';
+import '../components/SettingsList.css';
 import './settings.css';
 
-const TILES: Record<Exclude<Section, 'account' | 'general'>, GlyphName> = {
+const TILES: Record<
+  Exclude<Section, 'account' | 'general' | 'personalisation' | 'vendors' | 'data'>,
+  GlyphName
+> = {
   security: 'shield',
   notifications: 'bell',
   members: 'users',
@@ -36,10 +49,25 @@ const TILES: Record<Exclude<Section, 'account' | 'general'>, GlyphName> = {
 };
 
 /** Settings at a desk in B · Summary first (Web-Settings.dc.html, page 29), on sample data. */
-export function Settings({ open = 'members' }: { open?: Drawn }) {
+export function Settings({
+  open = 'members',
+  reminders = false,
+  page = 'hub',
+}: {
+  open?: Drawn;
+  reminders?: boolean;
+  page?: DataControlPage;
+}) {
   const [params] = useSearchParams();
-  const viewer = viewerOf(params.get('as'));
   const state = params.get('state') ?? '';
+  const as = params.get('as');
+  const viewer = viewerOf(
+    open === 'vendors'
+      ? vendorsViewerKey(as, state)
+      : open === 'data'
+        ? dataControlViewerKey(page, as, state)
+        : as,
+  );
   useSwitcherStart();
   const paused = usePaused();
   const [told, setTold] = useState<string | null>(null);
@@ -85,7 +113,11 @@ export function Settings({ open = 'members' }: { open?: Drawn }) {
           ) : (
             <>
               <SettingsList
-                open={open !== 'members' || viewer.manages ? open : null}
+                open={
+                  (open !== 'members' && open !== 'vendors' && open !== 'data') || viewer.manages
+                    ? open
+                    : null
+                }
                 viewer={viewer}
                 tell={tell}
               />
@@ -100,11 +132,30 @@ export function Settings({ open = 'members' }: { open?: Drawn }) {
                 />
               ) : open === 'notifications' ? (
                 <Notifications key={`${viewer.key}:${state}`} state={state} tell={tell} />
+              ) : open === 'personalisation' ? (
+                <Personalisation key={`${viewer.key}:${state}`} state={state} tell={tell} />
               ) : open === 'general' ? (
                 <General key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
               ) : open === 'signInRules' ? (
                 <SignInRules
                   key={`${viewer.key}:${state}`}
+                  viewer={viewer}
+                  state={state}
+                  tell={tell}
+                />
+              ) : open === 'data' && viewer.manages ? (
+                <DataControl
+                  key={`${page}:${viewer.key}:${state}`}
+                  page={page}
+                  viewer={viewer}
+                  state={state}
+                  tell={tell}
+                />
+              ) : open === 'vendors' && reminders ? (
+                <PaymentReminders key={`${viewer.key}:${state}`} viewer={viewer} state={state} />
+              ) : open === 'vendors' ? (
+                <Vendors
+                  key={`${viewer.key}:${state}:${params.get('vendor') ?? ''}`}
                   viewer={viewer}
                   state={state}
                   tell={tell}
@@ -174,10 +225,23 @@ function Tile({ section, viewer }: { section: Section; viewer: Viewer }) {
         {viewer.initials}
       </span>
     );
+  if (section === 'personalisation') return <PersonalTile />;
   if (section === 'general')
     return (
       <span className="desk-tile is-general" aria-hidden="true">
         IE
+      </span>
+    );
+  if (section === 'vendors')
+    return (
+      <span className="desk-tile is-vendors" aria-hidden="true">
+        <StorefrontGlyph size={17} />
+      </span>
+    );
+  if (section === 'data')
+    return (
+      <span className="desk-tile is-data" aria-hidden="true">
+        <DrawnGlyph name="data" size={17} />
       </span>
     );
 

@@ -2,7 +2,7 @@ import { useWindowDimensions } from 'react-native';
 import { useSafeAreaFrame } from 'react-native-safe-area-context';
 
 import { classifyLayout, type LayoutKind, type ScreenWindow } from './classify.ts';
-import { atAccessibilitySizes, nameLines, railWidth, sideListWidth } from './textSize.ts';
+import { SIDEBAR_WIDTH, atAccessibilitySizes, nameLines, sideListWidth } from './textSize.ts';
 
 /**
  * The current layout, recomputed when the window changes.
@@ -42,7 +42,7 @@ export function useSideListWidth(width: number): number {
   const { width: window, height, fontScale } = useWindowFrame();
   const landscape = classifyLayout({ width: window, height }) === 'tabletLandscape';
 
-  return sideListWidth(width, window - (landscape ? railWidth(fontScale) : 0), fontScale);
+  return sideListWidth(width, window - (landscape ? SIDEBAR_WIDTH : 0), fontScale);
 }
 
 export {

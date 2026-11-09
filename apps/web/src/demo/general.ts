@@ -15,8 +15,11 @@ import {
   withCurrent,
 } from '@soirely/domain';
 
-import { DOMAIN, ORGANISATION as ORG, samplePeople } from './members.ts';
+import { writtenTime } from './clock.ts';
+import { type AskWords, HANDOVER_WORDS as H, type HandStart, handStart } from './handover.ts';
+import { DOMAIN, ORGANISATION as ORG, sampleLeads, samplePeople } from './members.ts';
 import { SAMPLE } from './rules.ts';
+import { HELD_STEPS, type HeldStep } from './security.ts';
 import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
 import { type Role, roleOf } from './signInRules.ts';
 
@@ -82,6 +85,7 @@ export const DOMAIN_WORDS = {
   notYours: 'Add a domain your own address is at.',
   added: 'Added. People whose main email address is at it can now ask to join.',
   removed: (domain: string) => `${domain} removed.`,
+  proved: 'Proved',
 } as const;
 
 export const LINK_WORDS = {
@@ -146,20 +150,36 @@ export const OWNERSHIP_WORDS = {
   deleteExactly: 'Exactly as it is written, accents included.',
 } as const;
 
+/** Leave's confirm with the events the leaver leads in it (sc-614): today's words around the handover's. */
+export function leaveAsk(count: number): AskWords {
+  return {
+    title: OWNERSHIP_WORDS.leaveTitle,
+    lead: H.youLead(count),
+    last: OWNERSHIP_WORDS.leaveBody,
+    keep: OWNERSHIP_WORDS.stay,
+    go: OWNERSHIP_WORDS.leave,
+    red: true,
+    busy: H.busy.leave,
+    failed: H.failed.leave,
+    checking: H.checking(null),
+    notLoaded: H.notLoaded(null),
+  };
+}
+
 export const TRY_AGAIN = 'Try again';
 export const LOADING = 'Loading…';
 
 export type Hold = 'twoFactor' | 'linking';
 
 /** What keeps an admin's changes back, as the product's readOnlyUntil lines say it, and the one step that ends it. */
-export const HOLDS: Record<Hold, { line: string; step: string }> = {
+export const HOLDS: Record<Hold, { line: string; step: HeldStep }> = {
   twoFactor: {
     line: `${ORG} asks owners and admins to use two-factor. Until you turn it on, you can see these but not change them.`,
-    step: 'Turn on two-factor',
+    step: HELD_STEPS.turnOn,
   },
   linking: {
     line: `${ORG} signs in with Google or Apple only. Until you link one, you can see these but not change them.`,
-    step: 'Link Google or Apple',
+    step: HELD_STEPS.link,
   },
 };
 
@@ -178,14 +198,61 @@ export const GENERAL_STATES = [
   'transferred',
   'onlyOwner',
   'leave',
+  'leaveMenu',
+  'leavePicked',
+  'leaveSending',
+  'leaveFailed',
+  'leaveNoWork',
+  'leaveOne',
+  'leaveLoading',
+  'leaveLoadFailed',
   'delete',
   'heldTwoFactor',
   'heldLinked',
   'domainStopped',
   'deleteUncounted',
+  'domainBoth',
 ] as const;
 
 export type GeneralState = (typeof GENERAL_STATES)[number];
+
+const LEAVES = [
+  'leave',
+  'leaveMenu',
+  'leavePicked',
+  'leaveSending',
+  'leaveFailed',
+  'leaveNoWork',
+  'leaveOne',
+  'leaveLoading',
+  'leaveLoadFailed',
+] as const;
+
+type Leave = (typeof LEAVES)[number];
+
+function isLeave(name: GeneralState | null): name is Leave {
+  return LEAVES.some((leave) => leave === name);
+}
+
+/** Leave's handover (sc-614): it starts on Nobody, and Julien is the one picked. */
+function leaveStart(name: Leave): HandStart {
+  switch (name) {
+    case 'leaveMenu':
+      return handStart(null, { menu: true });
+    case 'leavePicked':
+      return handStart(VIEWERS.julien.id);
+    case 'leaveSending':
+      return handStart(null, { phase: 'held' });
+    case 'leaveFailed':
+      return handStart(null, { phase: 'failed' });
+    case 'leaveLoading':
+      return handStart(null, { phase: 'checking' });
+    case 'leaveLoadFailed':
+      return handStart(null, { phase: 'notLoaded' });
+    default:
+      return handStart(null);
+  }
+}
 
 export function generalStateOf(name: string): GeneralState | null {
   return GENERAL_STATES.find((state) => state === name) ?? null;
@@ -198,6 +265,8 @@ export type CardSaid = { kind: 'saved'; words: string } | { kind: 'transferred';
 export interface Domain {
   name: string;
   stopped: boolean;
+  /** Also proved in Data and control › Email domains (sc-560): the row carries the Proved tag. */
+  proved?: boolean;
 }
 
 export interface GeneralStart {
@@ -214,12 +283,14 @@ export interface GeneralStart {
   transferPicked: boolean;
   deleteMistyped: boolean;
   counted: boolean;
+  hand: HandStart;
+  leads: readonly string[];
 }
 
 export const TRANSFERRED_TO = 'Priya Shah';
 export const YOUR_DOMAIN = domainOf(SAMPLE.email) ?? DOMAIN;
 
-const AT_REST: Omit<GeneralStart, 'role'> = {
+const AT_REST: Omit<GeneralStart, 'role' | 'hand' | 'leads'> = {
   hold: null,
   said: null,
   dialog: null,
@@ -237,15 +308,20 @@ const AT_REST: Omit<GeneralStart, 'role'> = {
 /** What a state link opens on: one the viewer has no way to opens the page at rest, as the app's Organisation does. */
 export function generalStart(
   state: string,
-  viewer: Pick<Viewer, 'owns' | 'manages'>,
+  viewer: Pick<Viewer, 'id' | 'owns' | 'manages'>,
 ): GeneralStart {
   const role = roleOf(viewer);
-  const page: GeneralStart = { ...AT_REST, role };
   const name = generalStateOf(state);
+  const led = sampleLeads()[viewer.id] ?? [];
+  const leads = name === 'leaveNoWork' ? [] : name === 'leaveOne' ? led.slice(0, 1) : led;
+  const page: GeneralStart = { ...AT_REST, role, hand: handStart(null), leads };
   const owner = role === 'Owner';
 
   if (name === 'onlyOwner') return owner ? { ...page, ask: 'onlyOwner' } : page;
-  if (name === 'leave') return { ...page, ask: owner ? 'onlyOwner' : 'leave' };
+  if (isLeave(name))
+    return owner
+      ? { ...page, ask: 'onlyOwner' }
+      : { ...page, ask: 'leave', hand: leaveStart(name) };
   if (name === 'heldTwoFactor' || name === 'heldLinked')
     return role === 'Admin'
       ? { ...page, hold: name === 'heldTwoFactor' ? 'twoFactor' : 'linking' }
@@ -276,6 +352,8 @@ export function generalStart(
       return { ...page, link: 'turnedOff' };
     case 'domainStopped':
       return { ...page, domains: [{ name: YOUR_DOMAIN, stopped: true }] };
+    case 'domainBoth':
+      return { ...page, domains: [{ name: YOUR_DOMAIN, stopped: false, proved: true }] };
     case 'transfer':
       return owner ? { ...page, dialog: 'transfer', transferPicked: true } : page;
     case 'transferred':
@@ -311,7 +389,8 @@ export function cardWords(
 ): CardWords {
   const lock =
     hold != null ? HOLDS[hold].line : role === 'Member' ? DETAILS_WORDS.readOnly(role) : null;
-  const step = hold != null ? HOLDS[hold].step : role === 'Member' ? null : DETAILS_WORDS.edit;
+  const step =
+    hold != null ? HOLDS[hold].step.label : role === 'Member' ? null : DETAILS_WORDS.edit;
   const words =
     said == null
       ? { says: details.name, line: details.contactAddress }
@@ -347,7 +426,7 @@ export const SAMPLE_DETAILS: OrganisationDetails = {
 
 export const MALFORMED_CONTACT = 'hello@ireevents';
 
-const SHOWN_IN = 'en';
+export const SHOWN_IN = 'en';
 
 export const LANGUAGE_NAMES: Record<string, string> = {
   'languageNames.en': 'English',
@@ -393,14 +472,6 @@ export const PICKERS: Record<Picked, { search: string }> = {
   timezone: { search: 'Search time zones' },
   locale: { search: 'Search languages' },
 };
-
-export function shownChoices(field: Picked, needle: string): readonly Choice[] {
-  const wanted = needle.trim().toLocaleLowerCase(SHOWN_IN);
-
-  return wanted === ''
-    ? choicesOf(field)
-    : choicesOf(field).filter((choice) => choice.name.toLocaleLowerCase(SHOWN_IN).includes(wanted));
-}
 
 export function detailProblem(field: OrganisationField, value: string): string | null {
   const problem = organisationProblem(field, value);
@@ -465,6 +536,10 @@ const PUBLIC_DOMAINS = new Set([
   'yandex.com',
   'zoho.com',
 ]);
+
+export function isPublicDomain(domain: string): boolean {
+  return PUBLIC_DOMAINS.has(domain);
+}
 
 export function domainProblem(typed: string): string | null {
   const problem = companyDomainProblem(typed);
@@ -558,7 +633,7 @@ export function countsLine(locale: string): string {
   return `${each('events')}, ${each('guests')} and ${each('members')} are deleted with it.`;
 }
 
-/** Thirty days on, on the clock in Lagos, named WAT as the server names a zone: Friday, Dec 4 at 10:15 AM WAT. */
+/** Thirty days on in Lagos, named WAT as the server names a zone, the time as the API writes it: Friday, Dec 4 at 10:15 WAT. */
 export function restoreDeadline(now: Date, locale: string): string {
   const timeZone = SAMPLE_DETAILS.timezone;
   const at = new Date(now.getTime() + RESTORE_DAYS * 24 * 60 * 60 * 1000);
@@ -568,9 +643,7 @@ export function restoreDeadline(now: Date, locale: string): string {
     day: 'numeric',
     timeZone,
   });
-  const time = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone });
-
-  return `${day.format(at)} at ${time.format(at)} WAT`;
+  return `${day.format(at)} at ${writtenTime(at, locale, timeZone)} WAT`;
 }
 
 export function deleteBody(now: Date, locale: string): string {
@@ -616,6 +689,7 @@ export const GENERAL_PAGES: readonly { name: string; states: readonly DemoLink[]
       general('addDomain', 'Add a domain'),
       general('removeDomain', 'Remove ire.events'),
       general('domainStopped', 'A domain stopped'),
+      general('domainBoth', 'ire.events on both lists: Proved'),
       general('cardsLoading', 'Domains loading, the link not loaded'),
       general('replaceLink', 'Replace the link'),
       general('linkOff', 'The link turned off'),
@@ -627,8 +701,16 @@ export const GENERAL_PAGES: readonly { name: string; states: readonly DemoLink[]
       general('transfer', 'Transfer ownership'),
       general('transferred', 'Transferred'),
       general('onlyOwner', 'Leave, the only owner'),
-      general('leave', 'Leave, a member', VIEWERS.ana),
-      general('leave', 'Leave, an admin', VIEWERS.julien),
+      general('leave', 'Leave, a member who leads 2 events: Nobody first', VIEWERS.ana),
+      general('leaveMenu', 'Leave, the menu open', VIEWERS.ana),
+      general('leavePicked', 'Leave, Julien Moreau picked', VIEWERS.ana),
+      general('leaveSending', 'Leave, Leaving…', VIEWERS.ana),
+      general('leaveFailed', 'Leave, Leaving did not work', VIEWERS.ana),
+      general('leaveNoWork', 'Leave, a member who leads nothing', VIEWERS.ana),
+      general('leaveOne', 'Leave, a member who leads 1 event', VIEWERS.ana),
+      general('leaveLoading', 'Leave, the work list loading', VIEWERS.ana),
+      general('leaveLoadFailed', 'Leave, the work list failed', VIEWERS.ana),
+      general('leave', 'Leave, an admin who leads nothing', VIEWERS.julien),
       general('delete', 'Delete, the name mistyped'),
       general('deleteUncounted', 'Delete, not counted'),
     ],

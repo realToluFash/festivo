@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { defaultScheme, schemes, tokens } from '../docs/design/tokens.mjs';
+import { confetti, defaultScheme, schemes, tokens } from '../docs/design/tokens.mjs';
 import { NATIVE_OUT, WEB_OUT, WEB_SCHEME_OUT, onDisk, outputs } from './build-tokens.mjs';
 
 describe('generated tokens', () => {
@@ -401,6 +401,39 @@ describe("B Confetti's schemes are held to the base's contrast", () => {
       }
     });
   }
+});
+
+describe("each scheme's Confetti carries its words at 4.5:1 (sc-30441)", () => {
+  const mix = (hex, band, share) =>
+    '#' +
+    [1, 3, 5]
+      .map((i) =>
+        Math.round(
+          parseInt(hex.slice(i, i + 2), 16) * (1 - share) +
+            parseInt(band.slice(i, i + 2), 16) * share,
+        )
+          .toString(16)
+          .padStart(2, '0'),
+      )
+      .join('');
+
+  it('has one for every scheme', () => {
+    expect(Object.keys(confetti)).toEqual(Object.keys(schemes));
+  });
+
+  for (const [name, { ground, on, wash }] of Object.entries(confetti)) {
+    it(`${name} reads its card's words on its ground${wash ? ', through its wash' : ''}`, () => {
+      const behind = wash
+        ? mix(ground.base, wash.band, Math.min(1, 0.3 * wash.strength))
+        : ground.base;
+      expect(contrast(on, behind)).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+
+  it('needs the wash only where the ground alone falls short, as Citrus does', () => {
+    expect(contrast(confetti.citrus.on, confetti.citrus.ground.base)).toBeLessThan(4.5);
+    expect(confetti.citrus.wash.strength).toBeGreaterThan(1);
+  });
 });
 
 describe("the CSS lays each scheme over the base, for the web's look switch", () => {

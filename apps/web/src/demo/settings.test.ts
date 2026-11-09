@@ -3,18 +3,22 @@ import { describe, expect, it } from 'vitest';
 import { VIEWERS, groupsFor, settingsPath, settingsSayIn, viewerOf } from './settings.ts';
 
 describe('the Settings list at a desk (sc-29708)', () => {
-  it('lists your account’s three sections, then the organisation’s three, with no Roles', () => {
+  it('lists your account’s four sections, then the organisation’s five, with no Roles', () => {
     expect(groupsFor(VIEWERS.folake)).toEqual([
-      { name: 'Your account', sections: ['account', 'security', 'notifications'] },
+      {
+        name: 'Your account',
+        sections: ['account', 'security', 'notifications', 'personalisation'],
+      },
       {
         name: 'Organisation settings',
-        sections: ['general', 'members', 'signInRules'],
+        sections: ['general', 'members', 'signInRules', 'vendors', 'data'],
       },
     ]);
   });
 
-  it('lists Members for an owner or an admin, and not for a member', () => {
+  it('lists Members and Data for an owner or an admin, and not for a member', () => {
     expect(groupsFor(VIEWERS.julien)[1]?.sections).toContain('members');
+    expect(groupsFor(VIEWERS.julien)[1]?.sections).toContain('data');
     expect(groupsFor(VIEWERS.ana)[1]?.sections).toEqual(['general', 'signInRules']);
   });
 
@@ -37,7 +41,7 @@ describe('the Settings list at a desk (sc-29708)', () => {
 
     expect(say.date('2026-11-02')).toBe('Nov 2, 2026');
     expect(say.day('2026-11-02')).toBe('Nov 2');
-    expect(say.deadline('2026-11-16T09:12')).toBe('Monday, Nov 16 at 9:12 AM WAT');
+    expect(say.deadline('2026-11-16T09:12')).toBe('Monday, Nov 16 at 09:12 WAT');
     expect(settingsSayIn('en-GB').date('2026-11-02')).toBe('2 Nov 2026');
   });
 });

@@ -37,10 +37,12 @@ export const DETAILS_WORDS = {
   discard: 'Discard',
   nameBlank: "Enter the organisation's name.",
   currencyBlank: 'Choose a currency.',
+  currencyPlaceholder: 'Choose a currency',
   contactBlank: 'Enter a contact email address.',
   contactInvalid: 'That does not look like an email address. Check it has an @ and a domain.',
   currencyRetired: (code: string) => `${code} (no longer in use)`,
-  readOnly: (role: string) => `Your role, ${role}, can see these but not change them. Owners can.`,
+  readOnly: (role: string) =>
+    `Your role, ${role}, can see these but not change them. Owners and admins can.`,
 } as const;
 
 export const LANGUAGE_NAMES: Record<string, string> = {
@@ -48,6 +50,26 @@ export const LANGUAGE_NAMES: Record<string, string> = {
   'languageNames.es': 'Spanish',
   'languageNames.fr': 'French',
   'languageNames.pt': 'Portuguese',
+};
+
+/** The app's `languageNamesInSentence.*` (en.json): a language named inside a sentence. */
+export const LANGUAGE_NAMES_IN_SENTENCE: Record<string, string> = {
+  'languageNamesInSentence.en': 'English',
+  'languageNamesInSentence.es': 'Spanish',
+  'languageNamesInSentence.fr': 'French',
+  'languageNamesInSentence.pt': 'Portuguese',
+};
+
+/** Both keys as the app's fr.json has them, for a French reader: on its own capitalised, in a sentence not. */
+export const LANGUAGE_NAMES_FR: Record<string, string> = {
+  'languageNames.en': 'Anglais',
+  'languageNames.es': 'Espagnol',
+  'languageNames.fr': 'Français',
+  'languageNames.pt': 'Portugais',
+  'languageNamesInSentence.en': 'anglais',
+  'languageNamesInSentence.es': 'espagnol',
+  'languageNamesInSentence.fr': 'français',
+  'languageNamesInSentence.pt': 'portugais',
 };
 
 const ADDED_NEXT = 'People whose main email address is at it can now ask to join.';

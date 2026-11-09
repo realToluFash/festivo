@@ -8,7 +8,6 @@ import {
   providerNames,
   refusalFromParams,
   ruleRefusal,
-  ruleValue,
   rulesNotices,
   saidOnWelcome,
   signInRoute,
@@ -174,28 +173,6 @@ describe('what the rules ask of a member, on the home screen', () => {
 
     expect(rulesNotices(held, null, false, 'due')).toEqual(['due', 'twoFactor']);
     expect(rulesNotices(held, null, false, 'overdue')).toEqual([]);
-  });
-
-  it('words each rule’s value, a count with its plural', () => {
-    const said: unknown[] = [];
-    const t = ((key: string, options?: unknown) => {
-      said.push(options == null ? key : [key, options]);
-      return key;
-    }) as unknown as Parameters<typeof ruleValue>[0];
-
-    ruleValue(t, 'providerOnly', true);
-    ruleValue(t, 'inactivityTimeoutDays', 7);
-    ruleValue(t, 'inactivityTimeoutDays', null);
-    ruleValue(t, 'administratorsNeedTwoFactor', false);
-    ruleValue(t, 'everyoneNeedsTwoFactor', true);
-
-    expect(said).toEqual([
-      'signInRules.valueProviderOnly',
-      ['signInRules.valueIdle', { count: 7 }],
-      'signInRules.valueNoLimit',
-      'signInRules.valueNoTwoFactor',
-      'signInRules.valueEveryone',
-    ]);
   });
 
   it('names another organisation’s shorter limit, and not this one’s own', () => {

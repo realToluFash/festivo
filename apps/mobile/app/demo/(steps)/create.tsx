@@ -3,7 +3,10 @@ import { useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
+import { useReadOut } from '../../../src/components/ReadOut.tsx';
 import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
+import { LegalLinks } from '../../../src/demo/LegalLinks.tsx';
+import { createOpening } from '../../../src/demo/signUp.ts';
 import { FieldLine, InsideField } from '../../../src/steps/InsideField.tsx';
 import { Heading, Says } from '../../../src/steps/Lines.tsx';
 import { emailLooksRight, passwordLongEnough } from '../../../src/steps/rules.ts';
@@ -12,11 +15,19 @@ import { tokens } from '../../../src/theme/tokens.ts';
 type Blank = { field: 'name' | 'email' | 'password'; words: string } | null;
 
 export default function CreateAccount() {
-  const { after } = useLocalSearchParams<{ after?: string }>();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const { after, ...params } = useLocalSearchParams<{
+    after?: string;
+    state?: string;
+    name?: string;
+    email?: string;
+  }>();
+  const [opening] = useState(() => createOpening(params));
+  const [name, setName] = useState(opening.name);
+  const [email, setEmail] = useState(opening.email);
   const [password, setPassword] = useState('');
   const [blank, setBlank] = useState<Blank>(null);
+  // Said without moving focus from Password; it goes once Create account is pressed (sc-29923).
+  const [line, setLine] = useState(opening.line);
   const nameField = useRef<TextInputInstance>(null);
   const emailField = useRef<TextInputInstance>(null);
   const passwordField = useRef<TextInputInstance>(null);
@@ -28,7 +39,10 @@ export default function CreateAccount() {
     field.current?.focus();
   }
 
+  useReadOut(line);
+
   function create(): void {
+    setLine(null);
     if (name.trim() === '') return refuse({ field: 'name', words: 'Enter your name.' });
     if (email.trim() === '') return refuse({ field: 'email', words: 'Enter your email address.' });
     if (!emailLooksRight(email))
@@ -49,9 +63,14 @@ export default function CreateAccount() {
   return (
     <DemoScreen
       nav={<NavBar step={[1, 4]} />}
-      foot={<PrimaryButton label="Create account" onPress={create} testID="demo.createAccount" />}
+      foot={
+        <View>
+          <PrimaryButton label="Create account" onPress={create} testID="demo.createAccount" />
+          <LegalLinks style={styles.legal} />
+        </View>
+      }
     >
-      <Heading title="Create your account" />
+      <Heading title="Create your account" {...(line != null && { intro: line })} />
       <View style={styles.first}>
         <InsideField
           ref={nameField}
@@ -65,7 +84,7 @@ export default function CreateAccount() {
           returnKeyType="next"
           submitBehavior="submit"
           onSubmitEditing={() => emailField.current?.focus()}
-          autoFocus
+          autoFocus={opening.focus === 'name'}
           testID="demo.name"
         />
         {blank?.field === 'name' && <Says words={blank.words} />}
@@ -101,6 +120,7 @@ export default function CreateAccount() {
           returnKeyType="go"
           submitBehavior="submit"
           onSubmitEditing={create}
+          autoFocus={opening.focus === 'password'}
           testID="demo.password"
         />
         <FieldLine
@@ -115,4 +135,5 @@ export default function CreateAccount() {
 const styles = StyleSheet.create({
   first: { marginTop: tokens.space3xl },
   next: { marginTop: tokens.spaceXl },
+  legal: { marginTop: tokens.spaceXxs },
 });

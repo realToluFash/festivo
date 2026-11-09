@@ -5,7 +5,7 @@ appId: host.exp.Exponent
 - setOrientation: LANDSCAPE_LEFT
 - openLink: ${METRO_URL}/--/settings/sign-in-rules
 - extendedWaitUntil:
-    visible: '{{t:signInRules.readTitle}}'
+    visible: '{{t:settings.signInRules}}'
     timeout: 30000
 - takeScreenshot: sign-in-rules-landscape
 - setOrientation: PORTRAIT

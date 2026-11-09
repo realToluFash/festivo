@@ -8,6 +8,9 @@ import {
   meetsPasswordLength,
   phoneLengthProblem,
 } from '@soirely/domain';
+import i18next from 'i18next';
+
+import { codeChoice as productCodeChoice, phoneProblemMessage } from '../phoneProblem.ts';
 
 /** What the demo is filled with and answers to. Nothing here reaches the API. */
 export const SAMPLE = {
@@ -126,22 +129,17 @@ export function countryName(code: string): string {
   return COUNTRIES.find((each) => each.code === code)?.name ?? code;
 }
 
-/** "+44 United Kingdom", the compact code beside the number. */
 export function codeChoice(code: string): string {
-  return `${callingCode(code) ?? ''} ${countryName(code)}`.trim();
+  return productCodeChoice(code, countryName(code));
 }
+
+const ENGLISH = i18next.getFixedT('en');
 
 /** The number's refusal, or null; a blank number is refused only where it is not optional. */
 export function numberLine(typed: string, country: string, optional: boolean): string | null {
   const problem = phoneLengthProblem(typed, country);
 
-  if (problem == null || (problem === 'blank' && optional)) return null;
-  if (problem === 'blank') return 'Enter your mobile number.';
-  if (problem === 'noCountry') return 'Choose a country.';
-
-  const length = problem === 'tooShort' ? 'short' : 'long';
-
-  return `That number looks too ${length} for ${countryName(country)}. Check it and try again.`;
+  return problem === 'blank' && optional ? null : phoneProblemMessage(problem, country, ENGLISH);
 }
 
 export function fullNumber(typed: string, country: string): string {
@@ -162,6 +160,8 @@ export const NEW_ACCOUNT_PAGES: { name: string; states: { name: string; to: stri
       { name: 'Too short', to: at('register', 'short') },
       { name: 'A breached password', to: at('register', 'breached') },
       { name: 'Too many sign-ups', to: at('register', 'limited') },
+      { name: 'The sign-up timed out', to: at('register', 'timed-out') },
+      { name: 'The sign-up timed out, in a new tab', to: at('register', 'timed-out-new-tab') },
     ],
   },
   {
@@ -171,6 +171,7 @@ export const NEW_ACCOUNT_PAGES: { name: string; states: { name: string; to: stri
       { name: 'A wrong code', to: at('email', 'wrong') },
       { name: 'The code has expired', to: at('email', 'expired') },
       { name: 'Too many wrong tries', to: at('email', 'exhausted') },
+      { name: 'The sign-up has run out', to: at('email', 'run-out') },
       { name: 'Email verified', to: at('email', 'verified') },
     ],
   },
@@ -261,9 +262,18 @@ export const TWO_FACTOR_PAGES: { name: string; states: { name: string; to: strin
     name: 'Lost authenticator',
     states: [
       { name: 'Start', to: twoFactorAt('start') },
+      { name: 'Start, no verified phone', to: twoFactorAt('start', 'email-only') },
+      { name: 'Sending the code', to: twoFactorAt('start', 'email-only-sending') },
       { name: 'Too many requests', to: twoFactorAt('start', 'limited') },
       { name: 'Both codes', to: twoFactorAt('codes') },
       { name: 'Only the email’s code', to: twoFactorAt('codes', 'email-only') },
+      { name: 'The email’s code expired', to: twoFactorAt('codes', 'email-only-expired') },
+      {
+        name: 'The email’s code, five wrong tries',
+        to: twoFactorAt('codes', 'email-only-exhausted'),
+      },
+      { name: 'Both codes expired', to: twoFactorAt('codes', 'expired') },
+      { name: 'Both codes, five wrong tries', to: twoFactorAt('codes', 'exhausted') },
     ],
   },
   {
@@ -271,6 +281,7 @@ export const TWO_FACTOR_PAGES: { name: string; states: { name: string; to: strin
     states: [
       { name: 'Waiting for your organisation', to: twoFactorAt('waiting') },
       { name: 'Cancel your request?', to: twoFactorAt('waiting', 'confirm') },
+      { name: 'Not cancelled', to: twoFactorAt('waiting', 'not-cancelled') },
       { name: 'Two-factor is off', to: twoFactorAt('off') },
       { name: 'Turned down', to: twoFactorAt('turned-down') },
       { name: 'Ended', to: twoFactorAt('ended') },
@@ -304,6 +315,7 @@ export const WAYS_IN_PAGES: { name: string; states: { name: string; to: string }
       { name: 'Already a member', to: way('ask', 'member') },
       { name: 'Cooling off', to: way('ask', 'cooling') },
       { name: 'The link does not work', to: way('ask', 'dead') },
+      { name: 'Managed by Ire Events: refused', to: way('ask', 'managed') },
     ],
   },
   {
@@ -325,6 +337,7 @@ export const WAYS_IN_PAGES: { name: string; states: { name: string; to: string }
       { name: 'Your company is here', to: way('details', 'company') },
       { name: 'An invitation waiting', to: way('details', 'invitation') },
       { name: 'Waiting for Ire Events', to: way('waiting') },
+      { name: 'Managed by Ire Events: no Start my own', to: way('details', 'managed') },
     ],
   },
   {

@@ -1,29 +1,52 @@
+import { writtenTime } from './clock.ts';
 import { SAMPLE } from './rules.ts';
 import type { EventKey } from './today.ts';
 
 export type Section =
-  'account' | 'security' | 'notifications' | 'general' | 'members' | 'signInRules';
+  | 'account'
+  | 'security'
+  | 'notifications'
+  | 'personalisation'
+  | 'general'
+  | 'members'
+  | 'signInRules'
+  | 'vendors'
+  | 'data';
 
 /** The sections the boards draw; the others each have their own design. */
 export type Drawn =
-  'account' | 'security' | 'notifications' | 'general' | 'members' | 'signInRules';
+  | 'account'
+  | 'security'
+  | 'notifications'
+  | 'personalisation'
+  | 'general'
+  | 'members'
+  | 'signInRules'
+  | 'vendors'
+  | 'data';
 
 const PATHS: Record<Drawn, string> = {
   account: 'account',
   security: 'security',
   notifications: 'notifications',
+  personalisation: 'personalisation',
   general: 'general',
   members: 'members',
   signInRules: 'sign-in-rules',
+  vendors: 'vendors',
+  data: 'data-and-control',
 };
 
 export const SECTION_NAMES: Record<Section, string> = {
   account: 'Account',
   security: 'Security',
   notifications: 'Notifications',
+  personalisation: 'Personalisation',
   general: 'General',
   members: 'Members',
   signInRules: 'Sign-in rules',
+  vendors: 'Vendors',
+  data: 'Data and control',
 };
 
 export interface SectionGroup {
@@ -32,8 +55,11 @@ export interface SectionGroup {
 }
 
 const GROUPS: readonly SectionGroup[] = [
-  { name: 'Your account', sections: ['account', 'security', 'notifications'] },
-  { name: 'Organisation settings', sections: ['general', 'members', 'signInRules'] },
+  { name: 'Your account', sections: ['account', 'security', 'notifications', 'personalisation'] },
+  {
+    name: 'Organisation settings',
+    sections: ['general', 'members', 'signInRules', 'vendors', 'data'],
+  },
 ];
 
 export type ViewerKey = 'folake' | 'julien' | 'ana';
@@ -83,11 +109,14 @@ export function viewerOf(name: string | null): Viewer {
   return Object.values(VIEWERS).find((viewer) => viewer.key === name) ?? VIEWERS.folake;
 }
 
-/** Members only for an owner or an admin: a member sees General and Sign-in rules, read only. */
+/** Members, Vendors and Data and control only for an owner or an admin: a member sees General and Sign-in rules, read only. */
 export function groupsFor(viewer: Pick<Viewer, 'manages'>): SectionGroup[] {
   return GROUPS.map((group) => ({
     ...group,
-    sections: group.sections.filter((section) => viewer.manages || section !== 'members'),
+    sections: group.sections.filter(
+      (section) =>
+        viewer.manages || (section !== 'members' && section !== 'vendors' && section !== 'data'),
+    ),
   }));
 }
 
@@ -96,9 +125,12 @@ export function isDrawn(section: Section): section is Drawn {
     section === 'account' ||
     section === 'security' ||
     section === 'notifications' ||
+    section === 'personalisation' ||
     section === 'general' ||
     section === 'members' ||
-    section === 'signInRules'
+    section === 'signInRules' ||
+    section === 'vendors' ||
+    section === 'data'
   );
 }
 
@@ -126,14 +158,12 @@ export function settingsSayIn(locale: string): SettingsSay {
   const date = format({ month: 'short', day: 'numeric', year: 'numeric' });
   const dayOnly = format({ month: 'short', day: 'numeric' });
   const weekday = format({ weekday: 'long', month: 'short', day: 'numeric' });
-  const clock = format({ hour: 'numeric', minute: '2-digit' });
 
   return {
     date: (day) => date.format(new Date(`${day}T00:00Z`)),
     day: (day) => dayOnly.format(new Date(`${day}T00:00Z`)),
     // The sample's deadlines are wall clock in Lagos, so they are read in UTC and named WAT.
-    deadline: (at) =>
-      `${weekday.format(new Date(`${at}Z`))} at ${clock.format(new Date(`${at}Z`))} WAT`,
+    deadline: (at) => `${weekday.format(new Date(`${at}Z`))} at ${writtenTime(at, locale)} WAT`,
   };
 }
 
@@ -181,6 +211,22 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
     ],
   },
   {
+    name: 'Requests to get back in',
+    states: [
+      members('recovery', 'Kofi’s and Priya’s requests'),
+      members('recovery', 'Kofi’s and Priya’s requests, an admin looking', VIEWERS.julien),
+      members('recoveryApprove', 'Approving Kofi'),
+      members('recoveryTurnDown', 'Turning Kofi down'),
+      members('recoveryApproved', 'Kofi’s two-factor is off'),
+      members('recoveryTurnedDown', 'Kofi’s request turned down'),
+      members('recoveryClosed', 'Kofi’s request answered elsewhere'),
+      members('recoverySending', 'Kofi’s answer on its way'),
+      members('recoveryFailed', 'Kofi’s answer failed'),
+      members('recoveryDone', 'None left'),
+      members('recoveryOwn', 'Your own request, an admin', VIEWERS.julien),
+    ],
+  },
+  {
     name: 'A person',
     states: [
       members('priya', 'Priya Shah (from 1536 wide, beside the list)'),
@@ -200,11 +246,39 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
       members('makeOwner', 'Make Ana an owner'),
       members('makeOwnerBlank', 'Make owner, nothing typed'),
       members('makeOwnerWrong', 'Make owner, a wrong code'),
-      members('marta', 'Marta Silva, suspended by the domain'),
+      members('marta', 'Marta Silva, suspended by the domain: Leads 2 events'),
       members('suspending', 'Suspending Priya'),
       members('justSuspended', 'Priya, just suspended'),
-      members('suspended', 'Priya, suspended by hand'),
+      members('suspended', 'Priya, suspended by hand: Leads 3 events'),
       members('restored', 'Priya, restored'),
+    ],
+  },
+  {
+    name: 'Handing over a departing member’s work',
+    states: [
+      members('handover', 'Remove Priya: her 3 events, starting on you'),
+      members('handoverMenu', 'The menu of people open'),
+      members('handoverPicked', 'Ana Souza picked'),
+      members('handoverLong', 'Julien leads 8: the first 5, then “and 3 more”'),
+      members('handoverOne', 'Priya leads 1 event: Hand it to'),
+      members('handoverLongNames', 'A long name, cut; Team offsite, called off, looks the same'),
+      members('handoverLoading', 'The work list loading: no verb yet'),
+      members('handoverLoadFailed', 'The work list failed: Try again, no Remove'),
+      members('handoverRefused', 'Refused: Tom began leading while it stood open'),
+      members('handoverSearch', '18 members: “jo” in the search'),
+      members('handoverSearchNobody', 'Nobody matches “kemi”'),
+      members('removingNoWork', 'Tom leads nothing: today’s confirm'),
+      members('handoverSending', 'Removing…'),
+      members('handoverFailed', 'Removing did not work'),
+      members('handoverDone', 'Removed, the card after'),
+      members('martaOne', 'Marta leads 1 event'),
+      members('martaLoading', 'Marta’s work list loading: no Hand over now yet'),
+      members('martaLoadFailed', 'Marta’s work list failed: Try again'),
+      members('handoverNow', 'Hand over now, on Marta’s page'),
+      members('handoverNowSending', 'Handing over…'),
+      members('handoverNowFailed', 'Handing over did not work'),
+      members('handoverNowDone', 'Handed over, the list gone'),
+      members('handoverReadOnly', 'Julien reads Marta, an owner: no Hand over now', VIEWERS.julien),
     ],
   },
   {
@@ -227,4 +301,9 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
 
 function members(state: string, name: string, viewer: Viewer = VIEWERS.folake): DemoLink {
   return { to: settingsPath('members', viewer, state), name };
+}
+
+/** Rejects where the browser has no clipboard, as over plain http, so nothing says it copied what it did not. */
+export async function copyText(text: string): Promise<void> {
+  await navigator.clipboard.writeText(text);
 }

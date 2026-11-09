@@ -7,31 +7,37 @@ import { Toast } from '../../components/Toast.tsx';
 import { SECTION_HREF } from '../../kit/appNav.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { useBoldTextSwitch } from '../boldText/boldTextStore.ts';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
 import { switcherStateOf } from '../OrgSwitcherModel.ts';
-import type { Tab } from '../../components/TodayCover.tsx';
+import { PHONE_TAB_BAR, type Tab } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { useCoverStatusBar } from '../Welcome.tsx';
 import { AccountSection } from './Account.tsx';
-import { PHONE_TAB_BAR, type Shell, ShellContext } from './Frame.tsx';
+import { AuditLogSection } from './AuditLog.tsx';
+import { DataHubSection } from './DataHub.tsx';
+import { type DataPage, dataViewerOf } from './DataModel.ts';
+import { DataOpenContext } from './DataParts.tsx';
+import { EmailDomainsSection } from './EmailDomains.tsx';
+import { SeenBy } from './Frame.tsx';
 import { MembersSection } from './Members.tsx';
 import { NotificationsSection } from './Notifications.tsx';
 import { OrganisationSection } from './Organisation.tsx';
 import { PersonalisationSection } from './Personalisation.tsx';
 import { holdChoice, schemeOf } from './PersonalisationModel.ts';
-import {
-  type DemoSection,
-  lookingAs,
-  SECTIONS,
-  type SettingsLayout,
-  type Viewer,
-  viewerOf,
-} from './sample.ts';
+import { lookingAs, managesOrganisation, memberLooking, SECTIONS, viewerOf } from './sample.ts';
 import { SecuritySection } from './Security.tsx';
 import { SettingsColumn, SettingsHome, sectionsFor } from './SettingsHome.tsx';
 import { SignInRulesSection } from './SignInRules.tsx';
+import {
+  layoutOf,
+  type Shell,
+  ShellContext,
+  type ShellSection,
+  type Viewer,
+} from '../../components/settingsShell.ts';
 
-const PAGES: Record<DemoSection, ComponentType> = {
+const PAGES: Record<ShellSection, ComponentType> = {
   account: AccountSection,
   security: SecuritySection,
   notifications: NotificationsSection,
@@ -41,18 +47,26 @@ const PAGES: Record<DemoSection, ComponentType> = {
   signInRules: SignInRulesSection,
 };
 
+const DATA_PAGES: Record<DataPage, ComponentType> = {
+  hub: DataHubSection,
+  emailDomains: EmailDomainsSection,
+  auditLog: AuditLogSection,
+};
+
+const ANA = 'ana.souza@ire.events';
+
 /** The demo's paths are the app's own under /demo: /demo/settings/sign-in-rules; Personalisation's is ahead of the app's. */
-export function slugOf(section: DemoSection): string {
+export function slugOf(section: ShellSection): string {
   if (section === 'personalisation') return 'personalisation';
 
   return SECTION_HREF[section].slice('/settings/'.length);
 }
 
-export function sectionOfSlug(slug: string | undefined): DemoSection | null {
+export function sectionOfSlug(slug: string | undefined): ShellSection | null {
   return SECTIONS.find((section) => slugOf(section) === slug) ?? null;
 }
 
-export function settingsHref(viewer: Viewer, section: DemoSection | null, state?: string): Href {
+export function settingsHref(viewer: Viewer, section: ShellSection | null, state?: string): Href {
   const query = [state == null ? '' : `state=${state}`, viewer === 'owner' ? '' : `as=${viewer}`]
     .filter((part) => part !== '')
     .join('&');
@@ -61,19 +75,24 @@ export function settingsHref(viewer: Viewer, section: DemoSection | null, state?
   return `${path}${query === '' ? '' : `?${query}`}` as Href;
 }
 
-export function layoutOf(kind: ReturnType<typeof useLayout>['kind']): SettingsLayout {
-  return kind === 'phone' ? 'phone' : kind === 'tabletPortrait' ? 'portrait' : 'landscape';
-}
-
-/** Settings in B, on sample data: the list, and each section's page under it. */
-export function SettingsRoute({ section }: { section: DemoSection | null }) {
+/** Settings in B, on sample data: the list, and each section's page under it; Data and control's pages are the demo's own (sc-560). */
+export function SettingsRoute({
+  section,
+  data = null,
+}: {
+  section: ShellSection | null;
+  data?: DataPage | null;
+}) {
   const params = useLocalSearchParams<{ as?: string; switcher?: string; scheme?: string }>();
   const layout = layoutOf(useLayout().kind);
   const [told, setTold] = useState<string>();
   const tell = useCallback<Tell>((words) => setTold(words), []);
-  const viewer = viewerOf(params.as);
+  const member = data != null && dataViewerOf(params.as) === 'ana';
+  const viewer = member ? 'member' : viewerOf(params.as);
   const shown = section != null && sectionsFor(viewer).includes(section) ? section : null;
+  const dataShown = data != null && managesOrganisation(viewer) ? data : null;
   const seed = schemeOf(params.scheme);
+  const bold = useBoldTextSwitch();
 
   useCoverStatusBar('dark', false);
 
@@ -82,7 +101,7 @@ export function SettingsRoute({ section }: { section: DemoSection | null }) {
   }, [seed]);
 
   const openSection = useCallback(
-    (next: DemoSection, state?: string) => {
+    (next: ShellSection, state?: string) => {
       if (next === shown && state == null) return;
       // On its side the list stays put, so a row changes the page beside it rather than stacking one.
       if (layout === 'landscape') router.replace(settingsHref(viewer, next, state));
@@ -123,15 +142,26 @@ export function SettingsRoute({ section }: { section: DemoSection | null }) {
       onTab,
       listColumn: <SettingsColumn {...handlers} />,
     }),
-    [layout, viewer, shown, openSection, toSettings, tell, onTab, handlers],
+    // Bold text: the list column is an element held here, so the switch has to make it again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [layout, viewer, shown, openSection, toSettings, tell, onTab, handlers, bold],
   );
-  const Page = shown == null ? null : PAGES[shown];
+  const Page = dataShown != null ? DATA_PAGES[dataShown] : shown == null ? null : PAGES[shown];
+  const home = <SettingsHome {...handlers} />;
 
   return (
     <ShellContext.Provider value={shell}>
       <OrgSwitcherProvider state={switcherStateOf(params.switcher)} tell={tell}>
         <View style={styles.fill}>
-          {Page == null ? <SettingsHome {...handlers} /> : <Page />}
+          <DataOpenContext.Provider value={dataShown}>
+            {Page != null ? (
+              <Page />
+            ) : member ? (
+              <SeenBy looking={memberLooking(ANA)}>{home}</SeenBy>
+            ) : (
+              home
+            )}
+          </DataOpenContext.Provider>
           {told != null && (
             <Told words={told} phone={layout === 'phone'} onClose={() => setTold(undefined)} />
           )}

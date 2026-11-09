@@ -3,19 +3,20 @@ import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { Tab } from '../../components/TodayCover.tsx';
+import { PHONE_TAB_BAR, type Tab } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
 import { switcherStateOf } from '../OrgSwitcherModel.ts';
 import { useCoverStatusBar } from '../Welcome.tsx';
-import { PHONE_TAB_BAR, type Shell, ShellContext } from '../settings/Frame.tsx';
-import { layoutOf, settingsHref } from '../settings/Route.tsx';
-import { type DemoSection, lookingAs } from '../settings/sample.ts';
-import { PageToast } from '../settings/Summary.tsx';
+import { layoutOf } from '../../components/settingsShell.ts';
+import { settingsHref } from '../settings/Route.tsx';
+import { lookingAs } from '../settings/sample.ts';
 import { calendarStateOf } from './CalendarModel.ts';
 import { CalendarPage } from './CalendarPage.tsx';
+import { type Shell, ShellContext, type ShellSection } from '../../components/settingsShell.ts';
+import { PageToast } from '../../components/Summary.tsx';
 
 /** The Calendar on sample data, in the tabs' shell: Today, Events and Settings a tab away. */
 function CalendarShell({
@@ -33,7 +34,7 @@ function CalendarShell({
   useCoverStatusBar('dark', false);
 
   const openSection = useCallback(
-    (section: DemoSection) => router.push(settingsHref('owner', section)),
+    (section: ShellSection) => router.push(settingsHref('owner', section)),
     [],
   );
   const toSettings = useCallback(() => router.push(settingsHref('owner', null)), []);

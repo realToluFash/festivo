@@ -81,7 +81,6 @@ export const CAL_WORDS = {
   barLabel: (name: string, status: string, time: string, days: string) =>
     `${name}, ${status}, ${time}, ${days}`,
   markLabel: (title: string, time: string) => `${title}, ${time}`,
-  allDatesComing: 'All dates for this event are coming.',
 } as const;
 
 const W = CAL_WORDS;
@@ -373,6 +372,20 @@ export function agendaOf(
   }
 
   return entries;
+}
+
+/** Where Tab enters Agenda (sc-31222): the first row on or after the day the list was sent to; sent past the last row, that last row. */
+export function agendaStop(
+  entries: readonly AgendaEntry[],
+  from: string,
+): { entry: AgendaEntry; row: number } | undefined {
+  const listed = entries.filter((entry) => entry.items.length > 0);
+  const next = listed.find((entry) => entry.day >= from);
+  const last = listed.at(-1);
+
+  if (next != null) return { entry: next, row: 0 };
+
+  return last == null ? undefined : { entry: last, row: last.items.length - 1 };
 }
 
 export function monthHasItems(month: CalendarMonth, days: ReadonlyMap<string, Item[]>): boolean {

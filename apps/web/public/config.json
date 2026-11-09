@@ -10,5 +10,6 @@
   "apple": {
     "authorizeUrl": "http://localhost:8089/apple/authorize",
     "clientId": "soirely-web"
-  }
+  },
+  "supportAddress": "support@soirely.com"
 }

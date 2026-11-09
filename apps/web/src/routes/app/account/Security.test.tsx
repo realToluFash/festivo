@@ -93,9 +93,13 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-/** The Password row alone: the last way in offers Set a password too. */
+/** The Password row alone: the last way in offers Set a password too. The Settings list's rows are not the page's. */
 function passwordRow() {
-  return within(screen.getAllByRole('listitem')[0]!);
+  return within(
+    within(screen.getByRole('main'))
+      .getAllByRole('listitem')
+      .filter((item) => item.closest('nav') == null)[0]!,
+  );
 }
 
 function openSecurity() {
@@ -1116,7 +1120,10 @@ describe('changing the password', () => {
 
     openSecurity();
 
-    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    const headings = screen
+      .getAllByRole('heading', { level: 2 })
+      .filter((h) => h.closest('nav') == null)
+      .map((h) => h.textContent);
     expect(headings[0]).toBe('Ways to sign in');
     expect(passwordRow().getByText('Password')).toBeDefined();
     expect(
@@ -1127,7 +1134,7 @@ describe('changing the password', () => {
     expect(passwordRow().getByRole('button', { name: 'Change password' })).toBeDefined();
   });
 
-  it('names Your account in the back control of Reset your password, and goes back to it (sc-23279)', async () => {
+  it('goes back to Your account from ‹ Back on Reset your password', async () => {
     answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
     openSecurity();
 
@@ -1135,12 +1142,21 @@ describe('changing the password', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Forgot it?' }));
     await screen.findByRole('heading', { level: 1, name: 'Reset your password' });
 
-    expect(screen.queryByRole('button', { name: 'Back to sign in' })).toBeNull();
-    const back = screen.getByRole('button', { name: 'Your account' });
-    expect(back.textContent).toBe('‹Your account');
-    fireEvent.click(back);
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Your account' })).toBeDefined();
+  });
+
+  it('offers no Sign in on Reset your password to somebody already signed in', async () => {
+    answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+    openSecurity();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Forgot it?' }));
+    await screen.findByRole('heading', { level: 1, name: 'Reset your password' });
+
+    expect(document.querySelector('.auth-header')?.textContent).not.toMatch(/Remembered it\?/);
+    expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull();
   });
 
   it('takes focus to Change your password when it opens', () => {

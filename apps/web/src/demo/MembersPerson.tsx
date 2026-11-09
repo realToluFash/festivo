@@ -1,6 +1,11 @@
 import { type RefObject, useEffect, useRef, useState } from 'react';
 
+import type { SampleEvent } from './events.ts';
+import type { Handed } from './handover.ts';
+import { LeadsBlock, LeadsNotIn } from './Handover.tsx';
+import { focusWhenFree } from '../layers.ts';
 import {
+  alsoMemberLine,
   firstName,
   grantable,
   historyRows,
@@ -14,6 +19,7 @@ import {
   ROLE_KEPT,
   roleMeans,
   SUSPEND_LINE,
+  suspended,
   TAKES_EFFECT,
   tagOf,
   underRoles,
@@ -35,8 +41,8 @@ import {
   RedAction,
   RowWords,
   TextAction,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 
 /** A person in the list's place: their card, how they got here, and what the viewer may do, by their standing. */
 export function PersonPage({
@@ -44,6 +50,8 @@ export function PersonPage({
   people,
   viewer,
   event,
+  handed,
+  events,
   say,
   level,
   tell,
@@ -51,11 +59,17 @@ export function PersonPage({
   onRestore,
   onSuspend,
   onRemove,
+  onHandOver,
+  leadsLoad,
+  onLoadLeads,
+  alsoMember = null,
 }: {
   person: Person;
   people: readonly Person[];
   viewer: Viewer;
   event: PersonEvent | null;
+  handed: Handed | null;
+  events: readonly SampleEvent[];
   say: SettingsSay;
   level: 1 | 2;
   tell: Tell;
@@ -63,10 +77,23 @@ export function PersonPage({
   onRestore: () => void;
   onSuspend: () => void;
   onRemove: () => void;
+  onHandOver: () => void;
+  leadsLoad: 'loaded' | 'loading' | 'failed' | 'retrying';
+  onLoadLeads: () => void;
+  /** How many other organisations they are also in, when the state shows it. */
+  alsoMember?: number | null;
 }) {
-  const view = personView({ person, people, viewer, event, say });
+  const view = personView({ person, people, viewer, event, handed, say });
   const tag = tagOf(person);
   const Name = level === 1 ? 'h1' : 'h2';
+  const said = useRef<HTMLDivElement>(null);
+  const lines = view.lines.map((line) => <OnCard key={line}>{line}</OnCard>);
+  const seesLeads = suspended(person.status) && viewer.manages;
+  const leads = seesLeads && leadsLoad === 'loaded' && events.length > 0;
+
+  useEffect(() => {
+    if (event === 'handedOver') focusWhenFree(() => said.current);
+  }, [event]);
 
   return (
     <>
@@ -89,9 +116,13 @@ export function PersonPage({
             {tag.word}
           </li>
         </ul>
-        {view.lines.map((line) => (
-          <OnCard key={line}>{line}</OnCard>
-        ))}
+        {event === 'handedOver' ? (
+          <div ref={said} className="desk-said-lines" tabIndex={-1}>
+            {lines}
+          </div>
+        ) : (
+          lines
+        )}
         {view.step != null && (
           <CardStep
             label={view.step.label}
@@ -99,6 +130,11 @@ export function PersonPage({
           />
         )}
       </Card>
+      {alsoMember != null && <Note>{alsoMemberLine(alsoMember)}</Note>}
+      {seesLeads && leadsLoad !== 'loaded' && (
+        <LeadsNotIn name={person.name} failed={leadsLoad === 'failed'} onRetry={onLoadLeads} />
+      )}
+      {leads && <LeadsBlock events={events} onHandOver={view.handOver ? onHandOver : null} />}
       {view.kept && <Note>{ROLE_KEPT}</Note>}
       <section className="desk-block">
         <Head title="How they got here" />

@@ -1,6 +1,6 @@
 import { type InvitationOutcome, isWaiting, waitingInvitations } from '@soirely/domain';
 
-import { meshFor, type MeshKey } from './events/EventsSample.ts';
+import { meshFor, type MeshKey } from '../kit/today.ts';
 
 export interface Place {
   id: string;
@@ -37,6 +37,8 @@ export interface Session {
   expanded: string | null;
   query: string;
   large: boolean;
+  /** sc-563: the invitation whose Join is refused, the address being managed by Ire Events. */
+  managed?: string;
 }
 
 export const VIEWER = { name: 'Folake Adeyemi', email: 'folake@ire.events' } as const;
@@ -157,6 +159,7 @@ export const SWITCHER_STATES = [
   'declined',
   'failed',
   'large',
+  'managed',
 ] as const;
 
 export type SwitcherState = (typeof SWITCHER_STATES)[number];
@@ -215,6 +218,8 @@ export function sessionFor(state: SwitcherState): Session {
       return { ...populated, outcomes: { [BLUEBIRD]: { kind: 'failed' } }, expanded: BLUEBIRD };
     case 'large':
       return { ...populated, large: true };
+    case 'managed':
+      return { ...populated, expanded: CELEBRACIONES, managed: CELEBRACIONES };
     case 'populated':
       return populated;
   }
@@ -228,8 +233,11 @@ export function currentPlace(session: Session): Place {
   return session.places.find((place) => place.id === session.current) ?? IRE_EVENTS;
 }
 
+/** The switcher searches above this many organisations, and Members' person menu above this many people (sc-614). */
+export const SEARCH_ABOVE = 15;
+
 export function searchable(session: Session): boolean {
-  return session.places.length > 15;
+  return session.places.length > SEARCH_ABOVE;
 }
 
 export function fold(words: string): string {
@@ -238,6 +246,18 @@ export function fold(words: string): string {
 
 export function matches(name: string, query: string): boolean {
   return fold(name).includes(fold(query.trim()));
+}
+
+/** People's rule (handover-a-spec.md §2.2): a name matches at the start of any of its words, so "jo" finds Joana and João. */
+export function startsAWord(name: string, query: string): boolean {
+  const typed = fold(query.trim());
+
+  return (
+    typed === '' ||
+    fold(name)
+      .split(/\s+/u)
+      .some((word) => word.startsWith(typed))
+  );
 }
 
 export type Tile =

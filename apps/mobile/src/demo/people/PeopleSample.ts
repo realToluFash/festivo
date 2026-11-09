@@ -1,3 +1,6 @@
+import { formatWallDay } from '@soirely/domain';
+
+import { writtenTime } from '../clock.ts';
 import { ORGANISATION } from '../settings/MembersSample.ts';
 import type { Load } from '../settings/RolesSample.ts';
 import { MEMBERS } from '../settings/sample.ts';
@@ -29,11 +32,16 @@ export const ON_EVENT = 'On this event';
 export const EMPTY_TITLE = 'Nobody is on this event yet.';
 export const EMPTY_LINE = 'Add the people working on it. Owners and admins see it already.';
 export const READ_ONLY = 'Only owners, admins and the lead change who’s on this event.';
-export const OUTSIDE_TAG = `Outside ${ORGANISATION}`;
+export const outsideTag = (organisation: string) => `Outside ${organisation}`;
+export const leadOff = (organisation: string) => `For members of ${organisation} only.`;
+export const inOrganisation = (organisation: string) => `In ${organisation}`;
+export const fromOutside = (organisation: string) => `From outside ${organisation}`;
+export const OUTSIDE_TAG = outsideTag(ORGANISATION);
 export const OUTSIDE_ENDS = 'Their access ends when the event does.';
-export const LEAD_OFF = `For members of ${ORGANISATION} only.`;
-export const IN_ORGANISATION = `In ${ORGANISATION}`;
-export const FROM_OUTSIDE = `From outside ${ORGANISATION}`;
+export const LEAD_OFF = leadOff(ORGANISATION);
+export const IN_ORGANISATION = inOrganisation(ORGANISATION);
+export const FROM_OUTSIDE = fromOutside(ORGANISATION);
+export const BY_CODE = 'Door code';
 /** People adds members only, found by name, until sc-71 adds someone from outside by their address (pm, 5 Nov 2026). */
 export const NAME_LABEL = 'Name';
 export const LOADING_WORDS = 'Loading the people on this event…';
@@ -60,6 +68,8 @@ export interface OnEvent {
   role: EventRole;
   outside: boolean;
   label: string | null;
+  /** Came in by a door code (sc-31774): which, and the day and time. */
+  byCode?: { code: string; date: string; time: string } | undefined;
 }
 
 export interface PeopleViewer {
@@ -146,11 +156,19 @@ function joined(parts: readonly (string | null)[]): string {
 }
 
 export function rowLine(person: OnEvent, viewer: PeopleViewer): string {
-  return joined([person.role, person.label, person.id === viewer.id ? 'You' : null]);
+  return joined([
+    person.role,
+    person.label,
+    person.byCode == null ? null : BY_CODE,
+    person.id === viewer.id ? 'You' : null,
+  ]);
 }
 
-export function sheetLine(person: OnEvent): string {
-  return joined([person.outside ? FROM_OUTSIDE : `Member of ${ORGANISATION}`, person.label]);
+export function sheetLine(person: OnEvent, organisation: string = ORGANISATION): string {
+  return joined([
+    person.outside ? fromOutside(organisation) : `Member of ${organisation}`,
+    person.label,
+  ]);
 }
 
 function andList(words: readonly string[]): string {
@@ -159,7 +177,10 @@ function andList(words: readonly string[]): string {
   return `${words.slice(0, -1).join(', ')} and ${words.at(-1) ?? ''}`;
 }
 
-export function seesEveryEvent(members: readonly OrgMember[]): string {
+export function seesEveryEvent(
+  members: readonly OrgMember[],
+  organisation: string = ORGANISATION,
+): string {
   const above = (['Owner', 'Admin'] as const).map((role) =>
     members.filter((one) => one.active && one.role === role),
   );
@@ -170,7 +191,7 @@ export function seesEveryEvent(members: readonly OrgMember[]): string {
     )
     .filter((role) => role != null);
 
-  return `${andList(names)} ${names.length === 1 ? 'sees' : 'see'} every event, as ${andList(roles)} of ${ORGANISATION}.`;
+  return `${andList(names)} ${names.length === 1 ? 'sees' : 'see'} every event, as ${andList(roles)} of ${organisation}.`;
 }
 
 export function firstName(person: Pick<OnEvent, 'name'>): string {
@@ -192,7 +213,31 @@ export function removeLine(person: Pick<OnEvent, 'outside'>): string {
 }
 
 export const SAVING = 'Saving…';
+export const REMOVING = 'Removing…';
 export const SAVE_MS = 600;
+/** A link to a sending state holds it this long, then lands. */
+export const HELD_MS = 8000;
+
+export interface Moment {
+  date: string;
+  time: string;
+}
+
+/** "23:30" today, "Sat, Nov 14, 23:30" on another day (pm, 8 Nov): the day and the time from Intl, on the 24-hour clock. */
+export function atWords(at: Moment, locale: string, today: string): string {
+  const time = writtenTime(at.time, locale);
+
+  return at.date === today ? time : `${formatWallDay(at.date, locale)}, ${time}`;
+}
+
+/** l10n's line (#32341), its time in the card's own form. */
+export function joinedWithLine(
+  byCode: { code: string } & Moment,
+  locale: string,
+  today: string = byCode.date,
+): string {
+  return `Joined with the door code ${byCode.code} at ${atWords(byCode, locale, today)}.`;
+}
 
 export function savedWords(person: OnEvent, role: EventRole): string {
   return `Saved. ${person.name} ${NOW_CAN[role].one}`;
@@ -212,8 +257,8 @@ export function addedToast(names: readonly string[], role: EventRole): string {
     : `${names.length} people ${NOW_CAN[role].several}`;
 }
 
-export function noMatchLine(typed: string): string {
-  return `Nobody in ${ORGANISATION} matches “${typed}”.`;
+export function noMatchLine(typed: string, organisation: string = ORGANISATION): string {
+  return `Nobody in ${organisation} matches “${typed}”.`;
 }
 
 export function offerLine(member: OrgMember, viewer: PeopleViewer): string {
@@ -309,11 +354,28 @@ export const PEOPLE_VIEWERS = {
   priya: { id: PRIYA, role: 'Member' },
 } as const satisfies Record<string, PeopleViewer>;
 
+/** Whose People it is: Ire Events' wedding, or the door code's Lumen Feiras (sc-31774). */
+export interface PeopleWorld {
+  organisation: string;
+  event: string;
+  members: OrgMember[];
+}
+
+export function ireWorld(): PeopleWorld {
+  return { organisation: ORGANISATION, event: EVENT, members: sampleMembers() };
+}
+
+export type Removing = 'ask' | 'sending' | null;
+
 export interface PeopleStart {
   viewer: PeopleViewer;
   load: Load;
   onEvent: OnEvent[];
   roleFails: boolean;
+  world?: PeopleWorld;
+  /** Someone's sheet open on arrival, or its Remove asking or sending. */
+  opened?: { id: string; removing: Removing };
+  toast?: string;
 }
 
 export function peopleStart(state: PeopleState): PeopleStart {

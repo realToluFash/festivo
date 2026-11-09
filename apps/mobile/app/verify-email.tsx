@@ -20,13 +20,15 @@ import {
 } from '../src/components/BackToAccount.tsx';
 import { CodeForm } from '../src/components/CodeForm.tsx';
 import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
-import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/kit/code.ts';
+import { codeRefusal, openingStatus, retryAfter } from '../src/kit/code.ts';
 import { useFormChecks } from '../src/kit/formChecks.ts';
 import { type Landing } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
+import { timedOutRoute } from '../src/resumeSignUp.ts';
 import { rereadAccount, signOutHere } from '../src/signedIn.ts';
 import { CodeStep, type CodeStepStatus, NEXT_STEP_MS } from '../src/steps/CodeStep.tsx';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
+import { useCodeCheck } from '../src/steps/useCodeCheck.ts';
 import { useCountdown } from '../src/steps/useCountdown.ts';
 
 /** "Check your email": a new account's step, or an address added from Settings > Account (sc-113), by its id. */
@@ -99,6 +101,12 @@ function SignUpCode() {
     else router.replace({ pathname: '/register', params: { email: address } });
   }
 
+  /** The hold ran out: Create your account says so, keeping what it can (sc-29923). */
+  async function timedOut(): Promise<void> {
+    await dropRegistration();
+    router.dismissTo(timedOutRoute(address));
+  }
+
   async function verify(code: string): Promise<void> {
     keysStayDown();
     setStatus({ kind: 'verifying' });
@@ -116,7 +124,7 @@ function SignUpCode() {
       setTimeout(() => router.replace(next), NEXT_STEP_MS);
     } catch (error) {
       if (error instanceof ApiError && error.is('registration_expired')) {
-        await fixAddress();
+        await timedOut();
         return;
       }
 
@@ -134,7 +142,7 @@ function SignUpCode() {
       setStatus({ kind: 'entering' });
     } catch (error) {
       if (error instanceof ApiError && error.is('registration_expired')) {
-        await fixAddress();
+        await timedOut();
         return;
       }
 
@@ -179,13 +187,11 @@ function SignUpCode() {
   );
 }
 
-type Status = CodeStatus | { kind: 'verified'; tapped?: boolean };
-
 /** Verified here, then back to Account. */
 function AddedAddress({ alternative }: { alternative: string }) {
   const { t } = useTranslation();
-  const [status, setStatus] = useState<Status>({ kind: 'entering' });
-  const { left: cooldown, restart: setCooldown } = useCountdown(0);
+  const check = useCodeCheck('email', alternative);
+  const { status, setStatus, cooldown } = check;
   const [address, setAddress] = useState('');
   const codeInput = useRef<TextInputInstance>(null);
   const checks = useFormChecks(
@@ -214,17 +220,12 @@ function AddedAddress({ alternative }: { alternative: string }) {
 
       setAddress(added.address);
       if (added.verified) setStatus({ kind: 'verified' });
-      const opening = await api.verificationOpening(alternative).catch(() => null);
-      if (!live || opening == null) return;
-      // A spent code opens on its banner, so the screen never invites a try it knows is refused.
-      setCooldown(opening.cooldownSeconds);
-      setStatus((now) => (now.kind === 'verified' ? now : openingStatus(now, opening.codeState)));
     })();
 
     return () => {
       live = false;
     };
-  }, [alternative, setCooldown]);
+  }, [alternative, setStatus]);
 
   async function verify(typed: string): Promise<void> {
     // Neither an empty code nor a short one is sent, so neither costs an attempt.
@@ -233,32 +234,9 @@ function AddedAddress({ alternative }: { alternative: string }) {
     keysStayDown();
     setStatus({ kind: 'verifying' });
 
-    try {
-      await api.verifyEmail(cleanCode(typed), alternative);
-      // Account, under this screen, shows the row verified however it is reached.
-      void rereadAccount().catch(() => {});
-      setStatus({ kind: 'verified', tapped: true });
-    } catch (error) {
-      setStatus(codeRefusal(error));
-    }
-  }
-
-  async function resend(): Promise<void> {
-    try {
-      setCooldown(await api.resendVerification(alternative));
-      setStatus({ kind: 'entering' });
-    } catch (error) {
-      const seconds = retryAfter(error);
-
-      if (seconds == null) {
-        setStatus({ kind: 'failed' });
-
-        return;
-      }
-
-      setCooldown(seconds);
-      setStatus({ kind: 'entering' });
-    }
+    const checked = await check.verify(cleanCode(typed));
+    // Account, under this screen, shows the row verified however it is reached.
+    if (checked.verified) void rereadAccount().catch(() => {});
   }
 
   const done = status.kind === 'verified';
@@ -294,7 +272,7 @@ function AddedAddress({ alternative }: { alternative: string }) {
           onLeft={(code) => checks.left('code', code)}
           inputRef={codeInput}
           onVerify={(code) => void verify(code)}
-          onResend={() => void resend()}
+          onResend={() => void check.resend()}
         >
           <RemoveInAccount kind="email" />
         </CodeForm>

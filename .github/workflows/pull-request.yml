@@ -255,8 +255,10 @@ jobs:
         # PHP's SAPI adds X-Powered-By below Symfony, so no test in the suite
         # can see it. A route that does not exist is a 404 whatever the
         # database is doing, so this cannot flake on anything but the header.
+        # A container still starting can reset the connection (exit 56), which
+        # --retry-connrefused alone does not retry.
         run: |
-          curl -sS --retry 10 --retry-connrefused --retry-delay 1 \
+          curl -sS --retry 10 --retry-all-errors --retry-delay 1 \
             -D "$RUNNER_TEMP/api-headers" -o /dev/null http://localhost:8080/api/no-such-thing
           if grep -i '^x-powered-by:' "$RUNNER_TEMP/api-headers"; then
             echo "::error::The API sends X-Powered-By; expose_php is on again (services/api/Dockerfile)"
@@ -343,6 +345,16 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # expo-router's typed routes live in .expo/types, which only the dev
+      # server writes. Without them tsc sees untyped routes and passes errors
+      # a developer's machine reports.
+      - name: Generate typed routes
+        working-directory: apps/mobile
+        # customize swallows a failed TypeScript bootstrap and exits 0, so
+        # check the types were written or the typecheck passes untyped routes.
+        run: |
+          npx expo customize tsconfig.json
+          test -f .expo/types/router.d.ts || { echo "::error::typed routes were not generated"; exit 1; }
       - run: npm run typecheck --workspace @soirely/mobile
       - run: npm run test --workspace @soirely/mobile
       # The web target, because it is the one a runner can build without a

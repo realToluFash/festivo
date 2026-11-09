@@ -1,3 +1,4 @@
+import { DemoBell } from './DemoBell.tsx';
 import { formattingLocale, normaliseDomain } from '@soirely/domain';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -28,13 +29,19 @@ import {
   domainLine,
   domainsFoot,
   generalStart,
+  leaveAsk,
   ownershipSteps,
   requestLink,
 } from './general.ts';
 import { AddDomainDialog, DeleteDialog, DetailsDialog, TransferDialog } from './GeneralDialogs.tsx';
-import { Glyph } from './Glyph.tsx';
+import { Bones, Switch } from '../components/GeneralParts.tsx';
+import { Glyph } from '../components/Glyph.tsx';
+import { HandoverAsk } from './Handover.tsx';
+import { handStart, ledBy, offeredFor } from './handover.ts';
+import { focusWhenFree } from '../layers.ts';
+import { samplePeople } from './members.ts';
 import { heldStepPath } from './security.ts';
-import type { Viewer } from './settings.ts';
+import { type Viewer, copyText } from './settings.ts';
 import {
   Ask,
   Card,
@@ -46,10 +53,11 @@ import {
   Tag,
   TextAction,
   TitleRow,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
-import { useLater } from './useLater.ts';
-import './general.css';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
+import { useLater } from '../useLater.ts';
+
+const SWITCH_WORDS = { on: 'On', off: 'Off' };
 
 const DETAIL_ROWS: readonly Picked[] = ['countryCode', 'currency', 'timezone', 'locale'];
 
@@ -69,7 +77,7 @@ export function General({ viewer, state, tell }: { viewer: Viewer; state: string
   return (
     <div className="desk-page">
       <div className="desk-column">
-        <TitleRow title="General" tell={tell} />
+        <TitleRow title="General" bell={<DemoBell tell={tell} />} />
         <OrganisationCard
           words={words}
           onStep={() => {
@@ -97,6 +105,7 @@ export function General({ viewer, state, tell }: { viewer: Viewer; state: string
         {changes && <RequestLink start={start} tell={tell} />}
         <Ownership
           start={start}
+          viewer={viewer}
           role={role}
           locale={locale}
           onTransferred={(to) => {
@@ -177,7 +186,7 @@ function Domains({ start, tell }: { start: GeneralStart; tell: Tell }) {
         {!loading && !full && <TextAction label={D.add} onClick={() => setAdding(true)} />}
       </Head>
       {loading ? (
-        <Bones count={3} />
+        <Bones count={3} label={LOADING} />
       ) : domains.length === 0 ? (
         <div className="desk-empty">
           <p className="desk-empty-title">{D.off}</p>
@@ -192,7 +201,13 @@ function Domains({ start, tell }: { start: GeneralStart; tell: Tell }) {
               </span>
               <RowWords
                 title={domain.name}
-                tag={domain.stopped && <Tag kind="waiting" word={D.stopped} />}
+                tag={
+                  domain.stopped ? (
+                    <Tag kind="waiting" word={D.stopped} />
+                  ) : (
+                    domain.proved === true && <Tag kind="yes" word={D.proved} />
+                  )
+                }
                 lines={[domainLine(domain, added)]}
               />
               <button
@@ -239,25 +254,6 @@ function Domains({ start, tell }: { start: GeneralStart; tell: Tell }) {
   );
 }
 
-function Bones({ count }: { count: number }) {
-  return (
-    <div className="desk-loading" role="status" aria-label={LOADING}>
-      <span className="desk-unseen">{LOADING}</span>
-      <ul className="desk-rows general-domains" aria-hidden="true">
-        {Array.from({ length: count }, (_, bar) => (
-          <li key={bar} className="desk-row is-bones">
-            <span className="desk-sunk general-globe-bone" />
-            <span className="desk-row-words">
-              <span className={`desk-sunk is-title b${bar + 1}`} />
-              <span className={`desk-sunk is-line b${bar + 1}`} />
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 function RequestLink({ start, tell }: { start: GeneralStart; tell: Tell }) {
   const later = useLater();
   const [status, setStatus] = useState<'loaded' | 'loading' | 'failed'>(
@@ -287,7 +283,7 @@ function RequestLink({ start, tell }: { start: GeneralStart; tell: Tell }) {
       <section className="desk-block">
         <Head title={L.title} />
         {status === 'loading' ? (
-          <Bones count={1} />
+          <Bones count={1} label={LOADING} />
         ) : (
           <div className="desk-failed" role="alert">
             <p className="desk-empty-title">{L.unreadable}</p>
@@ -312,7 +308,7 @@ function RequestLink({ start, tell }: { start: GeneralStart; tell: Tell }) {
             title={L.linkLabel}
             lines={[on ? <span className="general-link">{link}</span> : L.off]}
           />
-          <Switch on={on} label={L.title} busy={busy} onChange={turn} />
+          <Switch on={on} label={L.title} words={SWITCH_WORDS} busy={busy} onChange={turn} />
         </li>
       </ul>
       {on && (
@@ -322,7 +318,7 @@ function RequestLink({ start, tell }: { start: GeneralStart; tell: Tell }) {
               label={L.copy}
               before="copy"
               onClick={() =>
-                void Promise.resolve(navigator.clipboard?.writeText(link)).then(
+                void copyText(link).then(
                   () => tell(L.copied),
                   () => {},
                 )
@@ -354,40 +350,6 @@ function RequestLink({ start, tell }: { start: GeneralStart; tell: Tell }) {
   );
 }
 
-/** B's switch with its On or Off word beside it, so the state is never colour alone. */
-function Switch({
-  on,
-  label,
-  busy,
-  onChange,
-}: {
-  on: boolean;
-  label: string;
-  busy: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      className="general-switch"
-      aria-checked={on}
-      aria-label={label}
-      aria-busy={busy}
-      onClick={() => {
-        if (!busy) onChange(!on);
-      }}
-    >
-      <span className="general-track" aria-hidden="true">
-        <span className="general-knob" />
-      </span>
-      <span className="general-word" aria-hidden="true">
-        {on ? 'On' : 'Off'}
-      </span>
-    </button>
-  );
-}
-
 const STEPS: Record<OwnershipStep, { label: string; note: string; red: boolean }> = {
   transfer: { label: O.transfer, note: O.transferNote, red: false },
   leave: { label: O.leaveOpener, note: O.leaveNote, red: true },
@@ -396,11 +358,13 @@ const STEPS: Record<OwnershipStep, { label: string; note: string; red: boolean }
 
 function Ownership({
   start,
+  viewer,
   role,
   locale,
   onTransferred,
 }: {
   start: GeneralStart;
+  viewer: Viewer;
   role: GeneralStart['role'];
   locale: string;
   onTransferred: (name: string) => void;
@@ -414,10 +378,13 @@ function Ownership({
   const [ask, setAsk] = useState<'leave' | 'onlyOwner' | null>(
     start.ask === 'leave' || start.ask === 'onlyOwner' ? start.ask : null,
   );
+  const [hand, setHand] = useState(start.hand);
   const toToday = () => later(SEND_MS, () => void navigate('/demo/today'));
+  const events = ledBy({ [viewer.id]: start.leads }, viewer.id);
 
   function open(step: OwnershipStep): void {
     if (step === 'leave') {
+      setHand(handStart(null));
       setAsk(role === 'Owner' ? 'onlyOwner' : 'leave');
       return;
     }
@@ -454,7 +421,27 @@ function Ownership({
           }}
         />
       )}
-      {ask === 'leave' && (
+      {ask === 'leave' && events.length > 0 && (
+        <HandoverAsk
+          words={leaveAsk(events.length)}
+          nobody
+          events={events}
+          offered={offeredFor(samplePeople(), viewer.id)}
+          viewer={viewer.id}
+          start={hand}
+          onKeep={() => {
+            setAsk(null);
+            focusWhenFree(
+              () =>
+                [...document.querySelectorAll<HTMLElement>('.desk-main button')].find(
+                  (one) => one.textContent === O.leaveOpener,
+                ) ?? null,
+            );
+          }}
+          onDone={() => void navigate('/demo/today')}
+        />
+      )}
+      {ask === 'leave' && events.length === 0 && (
         <Ask
           title={O.leaveTitle}
           line={O.leaveBody}

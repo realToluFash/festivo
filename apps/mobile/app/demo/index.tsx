@@ -4,8 +4,15 @@ import Svg, { Path } from 'react-native-svg';
 
 import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
+import { BOLD_TEXT_BOARDS } from '../../src/demo/boldText/BoldTextBoards.ts';
+import { BUDGET_BOARDS } from '../../src/demo/budget/BudgetBoards.ts';
+import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
+import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
+import { GUESTS_BOARDS } from '../../src/demo/guests/GuestsBoards.ts';
+import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
+import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 interface Board {
@@ -17,9 +24,38 @@ interface Board {
 /** Every board in the design artifact, by its page, working on sample data. */
 const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
+    page: 'Bold text · the weight map',
+    boards: BOLD_TEXT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
     page: 'Today · where signing in lands',
     boards: [
       { title: 'A planning day', what: 'Four things need you', href: '/demo/today' },
+      {
+        title: 'A planning day · invitations not sent',
+        what: 'The party with nobody invited',
+        href: '/demo/today?moment=plan&invites=none',
+      },
+      {
+        title: 'Needs you · every overdue form',
+        what: 'Overdue, 1 day overdue, 2 days overdue, at 23:59',
+        href: '/demo/today?needs=overdue',
+      },
+      {
+        title: 'Needs you · one thing',
+        what: 'One row, due today',
+        href: '/demo/today?needs=one',
+      },
+      {
+        title: 'Needs you · nothing',
+        what: 'The tick, and no line on the cover',
+        href: '/demo/today?needs=none',
+      },
+      {
+        title: 'Needs you · a long title',
+        what: 'It wraps, and the date never shortens',
+        href: '/demo/today?needs=long',
+      },
       {
         title: 'A planning day · built now',
         what: 'Only what the events’ dates can say',
@@ -30,6 +66,91 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'The event day · built now',
         what: 'The dates, and Open the event',
         href: '/demo/today?moment=dayNow',
+      },
+      {
+        title: 'The event day · guests arriving',
+        what: '87/99 arrived, beside Open the event',
+        href: '/demo/today?moment=dayNow&arrived=some',
+      },
+      {
+        title: 'The event day · nobody Coming',
+        what: '37 arrived, no ring and no bar',
+        href: '/demo/today?moment=dayNow&arrived=nobodyComing',
+      },
+      {
+        title: 'The event day · four-digit figures',
+        what: '1,204 of 1,250, in the phone’s own numbers',
+        href: '/demo/today?moment=dayNow&arrived=thousands',
+      },
+      {
+        title: 'The event day · four digits in French',
+        what: '1 204 of 1 250; try the iPhone SE',
+        href: '/demo/today?moment=dayNow&arrived=thousands&numbers=fr-FR',
+      },
+      {
+        title: 'The event day · nobody arrived yet',
+        what: 'Day 1 at 15:20: the replies line, no figure',
+        href: '/demo/today?moment=dayNow&arrived=none',
+      },
+      {
+        title: 'The event day · arrivals coming in',
+        what: 'Day 1 from 16:05: to 3 of 98 and back, every 4 seconds',
+        href: '/demo/today?moment=dayNow&arrived=live',
+      },
+      {
+        title: 'Now · from the run of show',
+        what: 'Drinks, until 17:30, 10 min behind',
+        href: '/demo/today?moment=day&now=on',
+      },
+      {
+        title: 'Now · over its length',
+        what: '12 min over, 22 min behind',
+        href: '/demo/today?moment=day&now=over',
+      },
+      {
+        title: 'Now · no length',
+        what: 'Speeches, no until line, On time',
+        href: '/demo/today?moment=day&now=open',
+      },
+      {
+        title: 'Now · the last item',
+        what: 'Last item under way, no Next',
+        href: '/demo/today?moment=day&now=last',
+      },
+      {
+        title: 'Now · nothing is on',
+        what: 'Between two items, with Next',
+        href: '/demo/today?moment=day&now=between',
+      },
+      {
+        title: 'Now · before the first',
+        what: 'Nothing is on, On time',
+        href: '/demo/today?moment=day&now=before',
+      },
+      {
+        title: 'Now · that’s everything',
+        what: 'No Next and no figure',
+        href: '/demo/today?moment=day&now=done',
+      },
+      {
+        title: 'Now · a 120-character title',
+        what: 'It wraps; try the iPhone SE',
+        href: '/demo/today?moment=day&now=long',
+      },
+      {
+        title: 'Now · nobody arrived yet',
+        what: 'Next alone on its row, no figure',
+        href: '/demo/today?moment=day&now=on&arrived=none',
+      },
+      {
+        title: 'Now · nobody Coming',
+        what: '37 arrived beside Next, no ring',
+        href: '/demo/today?moment=day&now=on&arrived=nobodyComing',
+      },
+      {
+        title: 'Now · four-digit figures',
+        what: '1,204/1,250 beside Next; try the iPhone SE',
+        href: '/demo/today?moment=day&now=on&arrived=thousands',
       },
       { title: 'A quiet week', what: 'Nothing due, nothing on', href: '/demo/today?moment=quiet' },
       { title: 'A first run', what: 'No events yet', href: '/demo/today?moment=first' },
@@ -202,6 +323,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Your account · add a phone number',
         what: 'The country, then the number',
         href: '/demo/settings/account?state=addPhone',
+      },
+      {
+        title: 'Your account · add a phone number · no country',
+        what: 'The Code starts blank: Choose a country.',
+        href: '/demo/settings/account?state=addPhoneNoCountry',
       },
       {
         title: 'Your account · time zone',
@@ -425,6 +551,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/organisation?state=cardsLoading',
       },
       {
+        title: 'Organisation · no currency',
+        what: 'Never chosen: Choose a currency.',
+        href: '/demo/settings/organisation?state=currencyBlank',
+      },
+      {
         title: 'Organisation · the only owner',
         what: 'Leave asks you to transfer first',
         href: '/demo/settings/organisation?state=onlyOwner',
@@ -459,6 +590,61 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Members · failed',
         what: 'Could not load, Try again',
         href: '/demo/settings/members?state=failed',
+      },
+      {
+        title: 'Members · requests to get back in',
+        what: 'Kofi and Priya lost their two-factor',
+        href: '/demo/settings/members?state=recovery',
+      },
+      {
+        title: 'Members · requests to get back in as Julien',
+        what: 'The same, as Julien, an admin',
+        href: '/demo/settings/members?state=recovery&as=julien',
+      },
+      {
+        title: 'Members · approve a request to get back in',
+        what: 'Turn off Kofi Mensah’s two-factor?',
+        href: '/demo/settings/members?state=recoveryApprove',
+      },
+      {
+        title: 'Members · turn down a request to get back in',
+        what: 'Turn down Kofi Mensah’s request?',
+        href: '/demo/settings/members?state=recoveryTurnDown',
+      },
+      {
+        title: 'Members · a request to get back in approved',
+        what: 'Kofi’s two-factor is off, Answer Priya Shah',
+        href: '/demo/settings/members?state=recoveryApproved',
+      },
+      {
+        title: 'Members · a request to get back in turned down',
+        what: 'Kofi’s request is turned down, Answer Priya Shah',
+        href: '/demo/settings/members?state=recoveryTurnedDown',
+      },
+      {
+        title: 'Members · a request answered elsewhere',
+        what: 'Kofi’s confirm offers Close alone',
+        href: '/demo/settings/members?state=recoveryClosed',
+      },
+      {
+        title: 'Members · an answer on its way',
+        what: 'Sending your answer…, the way back waits',
+        href: '/demo/settings/members?state=recoverySending',
+      },
+      {
+        title: 'Members · an answer that failed',
+        what: 'That did not work, the verb tries again',
+        href: '/demo/settings/members?state=recoveryFailed',
+      },
+      {
+        title: 'Members · no request to get back in left',
+        what: 'Both answered, Answer Lucía Gómez',
+        href: '/demo/settings/members?state=recoveryDone',
+      },
+      {
+        title: 'Members · your own request to get back in',
+        what: 'Julien’s, which somebody else answers',
+        href: '/demo/settings/members?state=recoveryOwn&as=julien',
       },
       {
         title: 'Sign-in rules',
@@ -508,6 +694,180 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     ],
   },
   {
+    page: 'Data and control · B · One place',
+    boards: DATA_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Members · handing over · A One person',
+    boards: [
+      {
+        title: 'Removing · the Ask',
+        what: 'Priya leads 3 events, starting on you',
+        href: '/demo/settings/members?state=handover',
+      },
+      {
+        title: 'Removing · the menu',
+        what: 'Active members, never Priya or Marta',
+        href: '/demo/settings/members?state=handoverMenu',
+      },
+      {
+        title: 'Removing · someone picked',
+        what: 'Ana Souza takes them',
+        href: '/demo/settings/members?state=handoverPicked',
+      },
+      {
+        title: 'Removing · a long list',
+        what: 'Julien leads 8: five, then and 3 more',
+        href: '/demo/settings/members?state=handoverLong',
+      },
+      {
+        title: 'Removing · one event',
+        what: 'Priya leads 1 event: Hand it to',
+        href: '/demo/settings/members?state=handoverOne',
+      },
+      {
+        title: 'Removing · a long name',
+        what: 'Cut to one line; Team offsite, called off, looks the same',
+        href: '/demo/settings/members?state=handoverLongNames',
+      },
+      {
+        title: 'Removing · the work list loading',
+        what: 'Keep Priya only: nothing to confirm yet',
+        href: '/demo/settings/members?state=handoverLoading',
+      },
+      {
+        title: 'Removing · the work list failed',
+        what: 'Try again, no Remove',
+        href: '/demo/settings/members?state=handoverLoadFailed',
+      },
+      {
+        title: 'Removing · refused',
+        what: 'Tom began leading while it stood open',
+        href: '/demo/settings/members?state=handoverRefused',
+      },
+      {
+        title: 'Removing · the menu’s search',
+        what: '18 members, “jo” finds 3',
+        href: '/demo/settings/members?state=handoverSearch',
+      },
+      {
+        title: 'Removing · nobody matches',
+        what: '“kemi”, Clear search',
+        href: '/demo/settings/members?state=handoverSearchNobody',
+      },
+      {
+        title: 'Removing · no events',
+        what: 'Tom leads nothing: today’s Ask',
+        href: '/demo/settings/members?state=removingNoWork',
+      },
+      {
+        title: 'Removing · sending',
+        what: 'Removing…, off',
+        href: '/demo/settings/members?state=handoverSending',
+      },
+      {
+        title: 'Removing · failed',
+        what: 'Removing did not work',
+        href: '/demo/settings/members?state=handoverFailed',
+      },
+      {
+        title: 'Removing · done',
+        what: 'The card says who leads them now',
+        href: '/demo/settings/members?state=handoverDone',
+      },
+      {
+        title: 'Leaving · the Ask',
+        what: 'Ana leads 2 events, Nobody first',
+        href: '/demo/settings/organisation?state=leave&as=member',
+      },
+      {
+        title: 'Leaving · the menu',
+        what: 'Nobody, then every active member',
+        href: '/demo/settings/organisation?state=leaveMenu&as=member',
+      },
+      {
+        title: 'Leaving · someone picked',
+        what: 'Julien Moreau takes them',
+        href: '/demo/settings/organisation?state=leavePicked&as=member',
+      },
+      {
+        title: 'Leaving · sending',
+        what: 'Leaving…, then Today',
+        href: '/demo/settings/organisation?state=leaveSending&as=member',
+      },
+      {
+        title: 'Leaving · failed',
+        what: 'Leaving did not work',
+        href: '/demo/settings/organisation?state=leaveFailed&as=member',
+      },
+      {
+        title: 'Leaving · no events',
+        what: 'Today’s Ask',
+        href: '/demo/settings/organisation?state=leaveNoWork&as=member',
+      },
+      {
+        title: 'Leaving · one event',
+        what: 'Nobody: the owners take it',
+        href: '/demo/settings/organisation?state=leaveOne&as=member',
+      },
+      {
+        title: 'Leaving · the work list loading',
+        what: 'Stay only: nothing to confirm yet',
+        href: '/demo/settings/organisation?state=leaveLoading&as=member',
+      },
+      {
+        title: 'Leaving · the work list failed',
+        what: 'Try again, no Leave',
+        href: '/demo/settings/organisation?state=leaveLoadFailed&as=member',
+      },
+      {
+        title: 'A suspended member',
+        what: 'Marta leads 2 events, Hand over now',
+        href: '/demo/settings/members?state=marta',
+      },
+      {
+        title: 'A suspended member · one event',
+        what: 'Marta leads 1 event',
+        href: '/demo/settings/members?state=martaOne',
+      },
+      {
+        title: 'A suspended member · the work list loading',
+        what: 'No Hand over now yet',
+        href: '/demo/settings/members?state=martaLoading',
+      },
+      {
+        title: 'A suspended member · the work list failed',
+        what: 'Try again on her page',
+        href: '/demo/settings/members?state=martaLoadFailed',
+      },
+      {
+        title: 'Hand over now · the Ask',
+        what: 'Cancel, Hand over in Violet',
+        href: '/demo/settings/members?state=handoverNow',
+      },
+      {
+        title: 'Hand over now · sending',
+        what: 'Handing over…, off',
+        href: '/demo/settings/members?state=handoverNowSending',
+      },
+      {
+        title: 'Hand over now · failed',
+        what: 'Handing over did not work',
+        href: '/demo/settings/members?state=handoverNowFailed',
+      },
+      {
+        title: 'Hand over now · done',
+        what: 'Marta’s card, the list gone',
+        href: '/demo/settings/members?state=handoverNowDone',
+      },
+      {
+        title: 'Hand over now · read only',
+        what: 'Julien reads Marta, an owner',
+        href: '/demo/settings/members?state=handoverReadOnly',
+      },
+    ],
+  },
+  {
     page: 'Events · A Summary first',
     boards: [
       { title: 'Events', what: 'Upcoming, the soonest as the card', href: '/demo/events' },
@@ -545,6 +905,31 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       { title: 'Events · a first run', what: 'No events yet', href: '/demo/events?state=first' },
       {
+        title: 'Events · a first run, without Create events',
+        what: 'The ask-an-owner notice, no Create an event',
+        href: '/demo/events?state=firstAsk',
+      },
+      {
+        title: 'Events · nothing on Upcoming',
+        what: 'Events elsewhere, this tab empty',
+        href: '/demo/events?state=emptyUpcoming',
+      },
+      {
+        title: 'Events · no drafts',
+        what: 'Events elsewhere, this tab empty',
+        href: '/demo/events?state=emptyDrafts',
+      },
+      {
+        title: 'Events · nothing on Past',
+        what: 'Events elsewhere, this tab empty',
+        href: '/demo/events?state=emptyPast',
+      },
+      {
+        title: 'Events · nobody invited yet',
+        what: 'The guest counts at 0',
+        href: '/demo/events?state=noGuests',
+      },
+      {
         title: 'An event · draft',
         what: 'Make live is the step',
         href: '/demo/events/evt-draft-4?state=draft',
@@ -553,6 +938,41 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'An event · draft, dates gone',
         what: 'Change the dates',
         href: '/demo/events/evt-shower-2?state=draftPast',
+      },
+      {
+        title: 'Needs you · rows',
+        what: 'An overdue one first, no button on any row',
+        href: '/demo/events/evt-wed-4?state=needsYou',
+      },
+      {
+        title: 'Needs you · one row',
+        what: 'Its count at 1',
+        href: '/demo/events/evt-wed-4?state=needsYouOne',
+      },
+      {
+        title: 'Needs you · overdue',
+        what: 'On the day, 1 day and 2 days, a tie by title',
+        href: '/demo/events/evt-wed-4?state=needsYouOverdue',
+      },
+      {
+        title: 'Needs you · a copy recorded',
+        what: 'Its row gone',
+        href: '/demo/events/evt-wed-4?state=needsYouGiven',
+      },
+      {
+        title: 'Needs you · reads only',
+        what: 'A member who only reads the menu',
+        href: '/demo/events/evt-wed-4?state=needsYouReadOnly',
+      },
+      {
+        title: 'Needs you · not loaded yet',
+        what: 'No row, no count, no tick',
+        href: '/demo/events/evt-wed-4?state=needsYouLoading',
+      },
+      {
+        title: 'Needs you · the read failed',
+        what: 'No row, no count, no tick',
+        href: '/demo/events/evt-wed-4?state=needsYouFailed',
       },
       { title: 'An event · live', what: 'The wedding, in 2 days', href: '/demo/events/evt-wed-4' },
       {
@@ -611,6 +1031,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=datesError',
       },
       {
+        title: 'Dates · onto the reply-by date',
+        what: 'Saving moves Reply by too',
+        href: '/demo/events/evt-wed-4?state=datesReplyBy',
+      },
+      {
+        title: 'Dates · asks before closing replies',
+        what: 'Close replies sooner?',
+        href: '/demo/events/evt-wed-4?state=datesReplyByAsk',
+      },
+      {
+        title: 'Dates · Reply by moved',
+        what: 'The page again, with the new date',
+        href: '/demo/events/evt-wed-4?state=datesReplyBySaved',
+      },
+      {
         title: 'Dates · discard?',
         what: 'Discard your change?',
         href: '/demo/events/evt-wed-4?state=discard',
@@ -629,6 +1064,41 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Saved',
         what: 'The page again, with Saved',
         href: '/demo/events/evt-wed-4?state=saved',
+      },
+      {
+        title: 'Reply by',
+        what: 'The date replies close (sc-3780)',
+        href: '/demo/events/evt-wed-4?state=replyBy',
+      },
+      {
+        title: 'Reply by · none yet',
+        what: 'Replies stay open until the start',
+        href: '/demo/events/evt-draft-4?state=replyByEmpty',
+      },
+      {
+        title: 'Reply by · on the day it starts',
+        what: 'Choose a date before the event starts',
+        href: '/demo/events/evt-wed-4?state=replyByError',
+      },
+      {
+        title: 'Reply by · sooner',
+        what: 'Close replies sooner?',
+        href: '/demo/events/evt-wed-4?state=replyBySooner',
+      },
+      {
+        title: 'Reply by · already past',
+        what: 'Close replies now?',
+        href: '/demo/events/evt-wed-4?state=replyByNow',
+      },
+      {
+        title: 'Reply by · saved',
+        what: 'The page again, with the new date',
+        href: '/demo/events/evt-wed-4?state=replyBySaved',
+      },
+      {
+        title: 'Reply by · removed',
+        what: 'Replies stay open until the start',
+        href: '/demo/events/evt-wed-4?state=replyByRemoved',
       },
       { title: 'Venue', what: 'Name and address', href: '/demo/events/evt-wed-4?state=venue' },
       {
@@ -749,6 +1219,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'The switch holds',
         href: '/demo/events/evt-wed-4?state=muteNotSaved',
       },
+      {
+        title: 'Final numbers due · Next up',
+        what: 'Marked You, no action in the app',
+        href: '/demo/events/evt-wed-4?state=finalNumbers',
+      },
+      {
+        title: 'Final numbers due · overdue',
+        what: 'Still Next up, Overdue',
+        href: '/demo/events/evt-wed-4?state=finalNumbersOverdue',
+      },
+      {
+        title: 'Final numbers due · given',
+        what: 'A copy recorded: gone',
+        href: '/demo/events/evt-wed-4?state=finalNumbersGiven',
+      },
+      {
+        title: 'Give the changes · Next up',
+        what: 'Back after a copy, due at the date, no action',
+        href: '/demo/events/evt-wed-4?state=changes_due',
+      },
+      {
+        title: 'Give the changes · overdue',
+        what: 'The date passed, still not in a copy',
+        href: '/demo/events/evt-wed-4?state=changes_overdue',
+      },
+      {
+        title: 'Give the changes · at the start',
+        what: 'Back after the date: due at the start',
+        href: '/demo/events/evt-wed-4?state=changes_late',
+      },
     ],
   },
   {
@@ -782,6 +1282,26 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/people?state=failed',
       },
     ],
+  },
+  {
+    page: 'Door code',
+    boards: DOOR_CODE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Budget · A Summary first',
+    boards: BUDGET_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Messages · B Conversations',
+    boards: MESSAGES_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Seating · A The room',
+    boards: SEATING_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Guests · A Summary first',
+    boards: GUESTS_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Calendar · A Weeks as lanes',
@@ -873,9 +1393,19 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/welcome?notice=byRule',
       },
       {
+        title: 'Welcome · Terms pressed',
+        what: 'Under the last button; names what the in-app browser opens',
+        href: '/demo/legal-link?doc=terms',
+      },
+      {
         title: 'Sign in with email',
         what: 'The checks, and the refused shake',
         href: '/demo/sign-in',
+      },
+      {
+        title: 'Sign in · that sign-in timed out',
+        what: 'A two-factor sign-in ran out, email kept',
+        href: `/demo/sign-in?timedOut=1&email=${SAMPLE.email}`,
       },
     ],
   },
@@ -892,11 +1422,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'An invitation is waiting',
         href: '/demo/create?after=invited',
       },
+      {
+        title: 'The sign-up runs out',
+        what: 'The code, or Send a new code, goes back',
+        href: '/demo/email-code?state=runOut',
+      },
+      {
+        title: 'Create an account · timed out',
+        what: 'Name and email kept, not the password',
+        href: '/demo/create?state=timedOut',
+      },
+      {
+        title: 'Create an account · timed out, opened again',
+        what: 'Only the email kept',
+        href: '/demo/create?state=timedOutReopened',
+      },
       { title: 'Apple, the first time', what: 'Apple didn’t share the name', href: '/demo/apple' },
       {
         title: 'Google, the first time',
         what: 'Two steps',
         href: '/demo/organisation?via=google',
+      },
+      {
+        title: 'Your organisation · no country',
+        what: 'The device names none: Choose a country.',
+        href: '/demo/organisation?region=none',
+      },
+      {
+        title: 'Your mobile number · no code',
+        what: 'The device names none: Choose a country.',
+        href: '/demo/mobile?region=none',
       },
       { title: 'Join link · signed out', what: 'The same choices as welcome', href: '/demo/join' },
       {
@@ -922,9 +1477,44 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/lost?emailOnly=1',
       },
       {
+        title: 'Lost the authenticator · sending the code',
+        what: 'Email only, held sending',
+        href: '/demo/lost?emailOnly=1&state=sending',
+      },
+      {
+        title: 'Enter the code · expired',
+        what: 'Email only, one code',
+        href: '/demo/lost-codes?emailOnly=1&state=expired',
+      },
+      {
+        title: 'Enter the code · too many wrong tries',
+        what: 'Email only, one code',
+        href: '/demo/lost-codes?emailOnly=1&state=exhausted',
+      },
+      {
+        title: 'Enter both codes · expired',
+        what: 'With a verified mobile, as today',
+        href: '/demo/lost-codes?state=expired',
+      },
+      {
+        title: 'Enter both codes · too many wrong tries',
+        what: 'With a verified mobile, as today',
+        href: '/demo/lost-codes?state=exhausted',
+      },
+      {
         title: 'Waiting for Ire Events',
         what: 'Answer it from the demo',
         href: '/demo/waiting',
+      },
+      {
+        title: 'Waiting · cancel your request?',
+        what: 'Cancel the request asks first',
+        href: '/demo/waiting?state=cancel',
+      },
+      {
+        title: 'Waiting · not cancelled',
+        what: 'Soirely could not be reached',
+        href: '/demo/waiting?state=notCancelled',
       },
       { title: 'Two-factor is off', what: 'Confirmed', href: '/demo/ending?kind=approved' },
       { title: 'Turned down', what: 'An ending', href: '/demo/ending?kind=turnedDown' },

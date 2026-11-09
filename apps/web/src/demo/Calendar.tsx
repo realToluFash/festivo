@@ -45,11 +45,11 @@ import { AgendaList, BrokenLine, DayPanel, MonthWeeks } from './CalendarWeeks.ts
 import { EventsShell } from './EventParts.tsx';
 import { CLOCKS, REUNION, TODAY_IDS, resetSample, sampleEvent, sampleEvents } from './events.ts';
 import { FirstRun } from './Events.tsx';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import { AccessPaused, Switched } from './OrgSwitcher.tsx';
 import { SIDEBAR_EVENTS } from './settings.ts';
 import { usePaused, useSwitcherStart } from './switcher.ts';
-import type { Tell } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import './calendar.css';
 
@@ -169,6 +169,7 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
   const [open, setOpen] = useState(start.open);
   const [feed, setFeed] = useState<Feed | null>(start.feed);
   const [focusDay, setFocusDay] = useState(start.open ?? start.at);
+  const [agendaDay, setAgendaDay] = useState(start.at);
   const [inGrid, setInGrid] = useState(false);
   const [range, setRange] = useState(() => {
     const month = monthOfDay(start.at);
@@ -200,6 +201,7 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
   const aim = useRef<Aim | null>({ day: start.at, glide: false, turn: false, pin: null });
   const focusTo = useRef<string | null>(null);
   const toPanel = useRef(false);
+  const toTodayHeading = useRef(false);
   const growing = useRef<number | 'after' | null>(null);
   const gliding = useRef(0);
 
@@ -224,8 +226,9 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
     setRedraw((times) => times + 1);
   }
 
-  function goTo(next: Aim): void {
+  function goTo(next: Aim, anchor = next.day): void {
     aim.current = next;
+    setAgendaDay(anchor);
     reach(next.day);
   }
 
@@ -298,6 +301,15 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
       toPanel.current = false;
       heading.current.focus();
     }
+
+    const todayHeading = toTodayHeading.current
+      ? box?.querySelector<HTMLElement>('.cal-agenda-day.is-today .cal-date')
+      : null;
+
+    if (todayHeading != null) {
+      toTodayHeading.current = false;
+      todayHeading.focus({ preventScroll: true });
+    }
   });
 
   useEffect(() => {
@@ -340,18 +352,22 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
 
   function step(by: number): void {
     const month = shiftMonth(pinned, by);
+    const day = placeOf(month);
 
-    goTo({ day: firstOf(month), glide: true, turn: true, pin: month });
+    setFocusDay(day);
+    goTo({ day: firstOf(month), glide: true, turn: true, pin: month }, day);
   }
 
   function toToday(): void {
     setFocusDay(TODAY);
+    toTodayHeading.current = view === 'agenda' && load !== 'failed';
     goTo({ day: TODAY, glide: true, turn: false, pin: pinFor(TODAY) });
   }
 
   function pickView(next: CalendarView): void {
     if (next === view) return;
 
+    toTodayHeading.current = false;
     setView(next);
     setOpen(null);
     goTo({ day: placeOf(pinned), glide: false, turn: false, pin: pinned });
@@ -519,7 +535,7 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
                         onFocusOut={() => setInGrid(false)}
                       />
                     ) : (
-                      <AgendaList entries={entries} locale={locale} />
+                      <AgendaList entries={entries} from={agendaDay} locale={locale} />
                     )}
                   </div>
                 </div>

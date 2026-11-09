@@ -16,6 +16,10 @@ import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { SAMPLE } from '../samples.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { ledEvents } from './MembersHandover.ts';
+import { HandoverAsk } from './MembersHandover.tsx';
+import { offeredFor, SAMPLE_LEADS, samplePeople } from './MembersSample.ts';
 import {
   CANDIDATES,
   deleteBody,
@@ -36,9 +40,9 @@ import {
   Line,
   RowList,
   SectionHead,
-  StatusMark,
+  ShapeMark,
   TextAction,
-} from './Summary.tsx';
+} from '../../components/Summary.tsx';
 
 /** The board's mismatch: Delete pressed with a lowercase e. */
 const MISTYPED = 'Ire events';
@@ -73,10 +77,16 @@ export function OwnershipSection({
   onTransferred: (name: string) => void;
 }) {
   const send = useSend();
+  const { looking } = useShell();
   const [screen, setScreen] = useState<'transfer' | 'delete' | null>(
     start.screen === 'transfer' || start.screen === 'delete' ? start.screen : null,
   );
   const [visit, setVisit] = useState(0);
+  const [leaveVisit, setLeaveVisit] = useState(0);
+  // Whoever is looking leaves: Ana in Leave's states, Priya on a member's page at rest (sc-614).
+  const led = ledEvents(SAMPLE_LEADS[looking.email] ?? []);
+  const events = start.leadsAny ? (start.leadsOne ? led.slice(0, 1) : led) : [];
+  const handsOver = role !== 'Owner' && events.length > 0;
   const [ask, setAsk] = useState<'leave' | 'onlyOwner' | null>(
     start.ask === 'leave' || start.ask === 'onlyOwner' ? start.ask : null,
   );
@@ -88,6 +98,7 @@ export function OwnershipSection({
 
   function open(step: OwnershipStep): void {
     if (step === 'leave') {
+      setLeaveVisit((count) => count + 1);
       setAsk(role === 'Owner' ? 'onlyOwner' : 'leave');
       return;
     }
@@ -142,7 +153,29 @@ export function OwnershipSection({
           }))}
         />
       </View>
-      <Ask open={ask != null} opener={leaveRef} {...asked} />
+      <Ask open={ask != null && !handsOver} opener={leaveRef} {...asked} />
+      {handsOver && (
+        <HandoverAsk
+          key={`leave.${leaveVisit}`}
+          open={ask === 'leave'}
+          opener={leaveRef}
+          kind="leave"
+          departing={null}
+          events={events}
+          offered={offeredFor(samplePeople(), looking.email)}
+          you={looking.email}
+          words={{
+            title: W.leaveTitle,
+            tail: W.leaveBody,
+            keep: { label: W.stay, testID: 'organisation.leave.stay' },
+            verb: { label: W.leave, testID: 'organisation.leave.confirm', removes: true },
+          }}
+          start={leaveVisit === 0 ? start.leaving : null}
+          onKeep={() => setAsk(null)}
+          onDone={toToday}
+          testID="organisation.leave"
+        />
+      )}
       <TransferScreen
         key={`transfer.${visit}`}
         open={screen === 'transfer'}
@@ -369,7 +402,7 @@ function DeleteScreen({
         </Field>
         {matches && (
           <View style={styles.matches} testID="organisation.delete.matches">
-            <StatusMark kind="yes" side={16} ink={tokens.marks.done.ink} />
+            <ShapeMark kind="yes" side={16} ink={tokens.marks.done.ink} />
             <Text size={tokens.typeSmall.size} weight="medium" style={styles.secondary}>
               {W.deleteMatches}
             </Text>

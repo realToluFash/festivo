@@ -1,4 +1,6 @@
 import { type Account } from '@soirely/api-client';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -9,7 +11,7 @@ import { setLanguage } from '../i18n/index.ts';
 import { __setSessionState, type Session } from '../session.ts';
 import { routes } from './index.tsx';
 import { membership } from '../test-memberships.ts';
-import { STYLES } from '../test-styles.ts';
+import { STYLES, cssRule } from '../test-styles.ts';
 
 const MEMBERSHIP = membership({ id: 'org_1', name: 'Okonkwo Events' });
 
@@ -48,6 +50,48 @@ const ADA: Session = {
   timezone: null,
   waitingFor: null,
 };
+
+function overdueSession(): Session {
+  const overdue = {
+    ...MEMBERSHIP,
+    twoFactorDue: {
+      at: '2020-01-01T00:00:00+00:00',
+      written: 'Wednesday, Jan 1 at 00:00 UTC',
+      overdue: true,
+    },
+  };
+
+  return { ...ADA, organisation: overdue, organisations: [overdue] };
+}
+
+function pausedSession(): Session {
+  const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
+    id: 'org_3',
+    name: 'Lagos Weddings',
+  });
+
+  return {
+    ...ADA,
+    organisation: null,
+    pausedIn: {
+      id,
+      name,
+      countryCode,
+      currency,
+      timezone,
+      contactAddress,
+      locale,
+      suspension: {
+        reason: 'address_gone',
+        domain: 'lagosweddings.ng',
+        since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
+        removesAt: null,
+        onlyOwner: false,
+      },
+      ownerClaim: null,
+    },
+  };
+}
 
 /**
  * The shell, through the router, at the addresses people actually open.
@@ -239,7 +283,7 @@ describe('the application tree', () => {
     sessionStorage.clear();
   });
 
-  it('clears a sign-up that has run out, and opens on sign in', async () => {
+  it('clears a sign-up that has run out, and opens on Create your account saying so (sc-29923)', async () => {
     __setSessionState({ status: 'signedOut', ended: false });
     sessionStorage.setItem(
       'soirely.registration',
@@ -259,7 +303,11 @@ describe('the application tree', () => {
     at('/app');
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined(),
+      expect(screen.getByRole('heading', { level: 1, name: 'Create your account' })).toBeDefined(),
+    );
+    expect(screen.getByLabelText('Email', { exact: false })).toHaveProperty(
+      'value',
+      'ada@example.com',
     );
     expect(sessionStorage.getItem('soirely.registration')).toBeNull();
   });
@@ -402,19 +450,14 @@ describe('the application tree', () => {
       expect(crumb()).toBe('Okonkwo Events / Events');
     });
 
+    it("names Today at the sidebar's Today", () => {
+      at('/app');
+
+      expect(crumb()).toBe('Okonkwo Events / Today');
+    });
+
     it('holds only the organisation while the overdue screen stands in', () => {
-      const overdue = {
-        ...MEMBERSHIP,
-        twoFactorDue: {
-          at: '2020-01-01T00:00:00+00:00',
-          written: 'Wednesday, Jan 1 at 00:00 UTC',
-          overdue: true,
-        },
-      };
-      __setSessionState({
-        status: 'signedIn',
-        session: { ...ADA, organisation: overdue, organisations: [overdue] },
-      });
+      __setSessionState({ status: 'signedIn', session: overdueSession() });
 
       at('/app/events');
 
@@ -422,38 +465,15 @@ describe('the application tree', () => {
     });
 
     it('holds only the organisation while a paused one stands in', () => {
-      const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
-        id: 'org_3',
-        name: 'Lagos Weddings',
-      });
-      __setSessionState({
-        status: 'signedIn',
-        session: {
-          ...ADA,
-          organisation: null,
-          pausedIn: {
-            id,
-            name,
-            countryCode,
-            currency,
-            timezone,
-            contactAddress,
-            locale,
-            suspension: {
-              reason: 'address_gone',
-              domain: 'lagosweddings.ng',
-              since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
-              removesAt: null,
-              onlyOwner: false,
-            },
-            ownerClaim: null,
-          },
-        },
-      });
+      __setSessionState({ status: 'signedIn', session: pausedSession() });
 
       at('/app/events');
 
       expect(crumb()).toBe('Lagos Weddings');
+      const person = document.querySelector<HTMLAnchorElement>('a.today-person');
+      expect(person?.getAttribute('aria-label')).toBe('Ada Okonkwo');
+      expect(person?.querySelector('.today-avatar')?.textContent).toBe('AO');
+      expect(person?.querySelector('.today-person-role')).toBeNull();
     });
   });
 
@@ -476,20 +496,26 @@ describe('the application tree', () => {
       const dialog = openMenu();
       const links = [...dialog.querySelectorAll('a')];
 
-      expect(links.map((link) => link.textContent)).toEqual([
-        'Dashboard',
+      expect(links.map((link) => link.getAttribute('aria-label') ?? link.textContent)).toEqual([
+        'Today',
         'Events',
         'Calendar',
-        'Guests',
         'Settings',
-        'Your account',
+        'Ada Okonkwo, Owner',
       ]);
-      expect(links[4]!.getAttribute('aria-current')).toBe('page');
-      expect(dialog.textContent).toContain('ada@example.com');
+      expect(links[3]!.getAttribute('aria-current')).toBe('page');
+      expect(dialog.textContent).not.toContain('ada@example.com');
       expect(dialog.querySelector('select[aria-label="Language"]')).not.toBeNull();
       expect(document.activeElement).toBe(
         within(dialog).getByRole('button', { name: 'Close menu' }),
       );
+    });
+
+    it('draws the person at the foot as the demo draws its button, with no underline', () => {
+      const desk = readFileSync(join(import.meta.dirname, '../components/desk.css'), 'utf8');
+      const rules = [...desk.matchAll(/\n\.today-person \{([^}]*)\}/gu)].map((rule) => rule[1]);
+
+      expect(rules.some((rule) => /text-decoration: none;/u.test(rule ?? ''))).toBe(true);
     });
 
     it('closes on a link to another page, focus where that page puts it', async () => {
@@ -539,7 +565,7 @@ describe('the application tree', () => {
 
       expect(screen.queryByRole('dialog', { name: 'Menu' })).toBeNull();
       expect(document.activeElement).toBe(
-        document.querySelector('.shell-sidebar .shell-nav [aria-current="page"]'),
+        document.querySelector('.shell-sidebar [aria-current="page"]'),
       );
       expect(document.activeElement?.textContent).toBe('Settings');
     });
@@ -578,7 +604,7 @@ describe('the application tree', () => {
       fireEvent.change(select, { target: { value: 'fr' } });
 
       await waitFor(() =>
-        expect(within(dialog).getByRole('link', { name: 'Tableau de bord' })).toBeDefined(),
+        expect(within(dialog).getByRole('link', { name: 'Événements' })).toBeDefined(),
       );
       expect(screen.getByRole('dialog')).toBe(dialog);
       expect(document.activeElement).toBe(select);
@@ -623,6 +649,87 @@ describe('the application tree', () => {
     });
   });
 
+  describe('settings at a desk (sc-30190)', () => {
+    beforeEach(() => {
+      vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
+    });
+
+    function selectedTile(): string[] {
+      const list = screen.getByRole('navigation', { name: 'Settings' });
+
+      return within(list)
+        .getAllByRole('link')
+        .filter((link) => link.getAttribute('aria-current') === 'page')
+        .map((link) => link.textContent ?? '');
+    }
+
+    it.each([
+      ['/app/account', 'Account'],
+      ['/app/account/security', 'Security'],
+      ['/app/account/notifications', 'Notifications'],
+      ['/app/settings', 'General'],
+      ['/app/settings/members', 'Members'],
+      ['/app/settings/sign-in-rules', 'Sign-in rules'],
+    ])('opens %s with the list beside it and %s selected', (path, name) => {
+      at(path);
+
+      expect(selectedTile()).toEqual([expect.stringMatching(`${name}$`)]);
+    });
+
+    it.each([
+      ['paused', pausedSession, '.access-paused'],
+      ['two-factor overdue', overdueSession, '.two-factor-overdue'],
+    ])(
+      'shows an organisation section as its %s stand-in beside the list',
+      (_, session, standIn) => {
+        __setSessionState({ status: 'signedIn', session: session() });
+
+        for (const path of [
+          '/app/settings',
+          '/app/settings/members',
+          '/app/settings/sign-in-rules',
+        ]) {
+          const { unmount } = at(path);
+
+          const page = document.querySelector('.settings-desk > .settings-desk-page');
+          expect(page?.querySelector(standIn)).not.toBeNull();
+          expect(
+            within(screen.getByRole('navigation', { name: 'Settings' })).getByRole('link', {
+              name: /Security$/u,
+            }),
+          ).toBeDefined();
+          unmount();
+        }
+      },
+    );
+
+    it.each([
+      ['paused', pausedSession, '.access-paused'],
+      ['two-factor overdue', overdueSession, '.two-factor-overdue'],
+    ])('keeps the %s stand-in alone outside Settings', (_, session, standIn) => {
+      __setSessionState({ status: 'signedIn', session: session() });
+
+      at('/app/events');
+
+      expect(document.querySelector(standIn)).not.toBeNull();
+      expect(document.querySelector('.settings-desk')).toBeNull();
+    });
+
+    it('opens the account of somebody in no organisation with the list beside it, the page as wide as it was alone', () => {
+      __setSessionState({
+        status: 'signedIn',
+        session: { ...ADA, organisation: null, organisations: [] },
+      });
+
+      at('/app/account/notifications');
+
+      expect(selectedTile()).toEqual(['Notifications']);
+      expect(cssRule('.no-organisation-account:has(> .settings-desk)')).toMatch(
+        /max-width: calc\(47\.5rem \+ 2 \* var\(--space5xl\) \+ 17rem\);/u,
+      );
+    });
+  });
+
   it('keeps the shell usable when a screen throws', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -643,7 +750,7 @@ describe('the application tree', () => {
     render(<RouterProvider router={router} />);
 
     expect(screen.getByRole('alert')).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Guests' })).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Calendar' })).toBeDefined();
   });
 });
 

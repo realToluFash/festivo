@@ -5,11 +5,14 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
+import { X509Certificate } from 'node:crypto';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import { inflateSync } from 'node:zlib';
 
@@ -17,6 +20,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   allowCleartext,
+  aloneFlows,
+  answers,
   emulatorJournalArgs,
   emulatorUnitGone,
   waitForBoot,
@@ -24,6 +29,7 @@ import {
   withoutReverse,
   apiMoves,
   apiStateOf,
+  startServices,
   batchCheck,
   batchFlow,
   batchRuns,
@@ -35,12 +41,18 @@ import {
   physicalSize,
   portraitRotation,
   ANDROID_START,
+  startParts,
+  iosExpoGoStops,
   batchReset,
+  androidToolsReset,
+  expoGoMenuScroll,
+  toolsSwitch,
   expoGoPrefs,
   TOOLS_BUTTON,
   SCREEN_READER_OFF,
   driverBuilds,
   driverPids,
+  bundlerArgs,
   bundlerEnv,
   commitTarget,
   checkId,
@@ -51,6 +63,7 @@ import {
   localise,
   parseBatch,
   readyReport,
+  accountKind,
   REBUILD,
   rerunHints,
   runId,
@@ -58,6 +71,7 @@ import {
   runBudgetMs,
   startHelper,
   membershipChanges,
+  keptOwner,
   domainPause,
   STEP_MS,
   totp,
@@ -65,6 +79,7 @@ import {
   androidPackage,
   androidSdk,
   branchForStory,
+  CACHE_CLEARER,
   clearApiCache,
   defaultNetwork,
   COMPOSE_PROJECT,
@@ -94,6 +109,12 @@ import {
   QA_OVERRIDES,
   QA_PORTS,
   LAN,
+  LAN_PROXY_COMPOSE,
+  PROXIED,
+  certCovers,
+  ensureLanCertificate,
+  lanCaDir,
+  lanProxy,
   lanAddress,
   qaConfig,
   qrPng,
@@ -288,15 +309,110 @@ describe('the stack a person tests on', () => {
     const { project, urls, app, ports } = qaConfig(LAN, '192.168.1.40');
 
     expect(project).toBe('soirely-qa-lan');
-    expect(urls.web).toBe(`http://192.168.1.40:${ports.WEB_PORT}`);
+    expect(urls.web).toBe(`https://192.168.1.40:${ports.WEB_PORT}`);
     expect(urls.metro).toBe(`exp://192.168.1.40:${ports.METRO_PORT}`);
-    expect(app.EXPO_PUBLIC_API_URL).toBe(`http://192.168.1.40:${ports.API_PORT}`);
+    expect(app.EXPO_PUBLIC_API_URL).toBe(`https://192.168.1.40:${ports.API_PORT}`);
     expect(app.REACT_NATIVE_PACKAGER_HOSTNAME).toBe('192.168.1.40');
     const taken = new Set(TESTERS.flatMap((tester) => Object.values(qaConfig(tester).ports)));
     for (const port of Object.values(ports)) {
       expect(taken.has(port)).toBe(false);
       expect(port).toBeLessThan(65536);
     }
+  });
+
+  it('builds every proxied address over https, and leaves the bundler on http', () => {
+    const { urls, app, overrides, ports } = qaConfig(LAN, '192.168.1.40');
+    const host = 'https://192.168.1.40';
+
+    expect(urls.api).toBe(`${host}:${ports.API_PORT}`);
+    expect(urls.mercure).toBe(`${host}:${ports.MERCURE_PORT}/.well-known/mercure`);
+    expect(urls.mailpit).toBe(`${host}:${ports.MAILPIT_UI_PORT}`);
+    expect(overrides.STORAGE_PUBLIC_ENDPOINT).toBe(`${host}:${ports.STORAGE_PORT}`);
+    expect(overrides.SOIRELY_GOOGLE_AUTHORIZE_URL).toBe(
+      `${host}:${ports.OIDC_PORT}/google/authorize`,
+    );
+    expect(overrides.CORS_EXPO_WEB_ORIGIN).toBe(`http://192.168.1.40:${ports.METRO_PORT}`);
+    for (const [key, value] of Object.entries(app)) {
+      if (key.endsWith('_URL')) expect(value, key).toMatch(/^https:\/\//);
+    }
+    expect(overrides.COMPOSE_FILE).toBe(`compose.yaml:${LAN_PROXY_COMPOSE}`);
+  });
+
+  it('leaves the agent stacks on plain http at 127.0.0.1, with no proxy', () => {
+    for (const tester of TESTERS) {
+      const { urls, overrides, app } = qaConfig(tester);
+      expect(urls.api).toMatch(/^http:\/\/127\.0\.0\.1:/);
+      expect(app.EXPO_PUBLIC_API_URL).toMatch(/^http:\/\/127\.0\.0\.1:/);
+      expect(overrides.COMPOSE_FILE).toBeUndefined();
+    }
+  });
+
+  it('puts the proxy on every proxied port and takes those ports off the services', () => {
+    const { ports } = qaConfig(LAN, '192.168.1.40');
+    const { caddyfile, compose } = lanProxy(ports, '192.168.1.40', '/ca', 'AB:CD');
+
+    for (const [key, upstream] of Object.entries(PROXIED)) {
+      expect(caddyfile).toContain(`https://:${ports[key]} {`);
+      expect(caddyfile).toContain(`reverse_proxy ${upstream}`);
+      expect(compose).toContain(`- '${ports[key]}:${ports[key]}'`);
+    }
+    for (const name of ['api', 'web', 'mercure', 'oidc', 'storage']) {
+      expect(compose).toContain(`  ${name}:\n    ports: !reset []`);
+    }
+    expect(compose).toContain(
+      `mailpit:\n    ports: !override\n      - '${ports.MAILPIT_SMTP_PORT}:1025'`,
+    );
+    expect(compose).toContain('- ./.qa/lan/Caddyfile:/etc/caddy/Caddyfile:ro');
+    expect(compose).toContain('- /ca/server.key:/certs/server.key:ro');
+    expect(compose).not.toContain('ca.key');
+    expect(compose).toContain("soirely.certificate: 'AB:CD'");
+  });
+
+  it('issues a certificate for the LAN address from a CA of its own, and re-issues it when the address moves', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'qa-lan-ca-'));
+    try {
+      const first = ensureLanCertificate(dir, '192.168.1.40');
+      expect(first).toMatchObject({ made: true, issued: true });
+      const ca = readFileSync(join(dir, 'ca.crt'), 'utf8');
+      const server = new X509Certificate(readFileSync(join(dir, 'server.crt')));
+      expect(server.subjectAltName).toBe('IP Address:192.168.1.40');
+      expect(server.checkIssued(new X509Certificate(ca))).toBe(true);
+      expect(new X509Certificate(ca).ca).toBe(true);
+      expect(statSync(join(dir, 'ca.key')).mode & 0o077).toBe(0);
+      expect(statSync(join(dir, 'server.key')).mode & 0o077).toBe(0);
+
+      expect(ensureLanCertificate(dir, '192.168.1.40')).toMatchObject({
+        made: false,
+        issued: false,
+      });
+
+      expect(ensureLanCertificate(dir, '10.0.0.9')).toMatchObject({ made: false, issued: true });
+      const moved = new X509Certificate(readFileSync(join(dir, 'server.crt')));
+      expect(moved.subjectAltName).toBe('IP Address:10.0.0.9');
+      expect(readFileSync(join(dir, 'ca.crt'), 'utf8')).toBe(ca);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('counts a certificate near its expiry as not covering the address', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'qa-lan-ca-'));
+    try {
+      ensureLanCertificate(dir, '192.168.1.40');
+      const server = readFileSync(join(dir, 'server.crt'), 'utf8');
+      const ca = readFileSync(join(dir, 'ca.crt'), 'utf8');
+      const expiry = Date.parse(new X509Certificate(server).validTo);
+      expect(certCovers(server, ca, '192.168.1.40', expiry - 60 * 24 * 3600 * 1000)).toBe(true);
+      expect(certCovers(server, ca, '192.168.1.40', expiry - 24 * 3600 * 1000)).toBe(false);
+      expect(certCovers(null, ca, '192.168.1.40')).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps the CA in the home directory unless SOIRELY_QA_LAN_CA names another', () => {
+    expect(lanCaDir({}, '/home/me')).toBe('/home/me/.soirely/qa-lan-ca');
+    expect(lanCaDir({ SOIRELY_QA_LAN_CA: '/elsewhere' }, '/home/me')).toBe('/elsewhere');
   });
 
   it('makes no simulators or emulators: the person brings the phone', () => {
@@ -338,6 +454,53 @@ describe('the stack a person tests on', () => {
   it('is the tester of its own worktree', () => {
     expect(testerOf('/home/me/soirely-qa-lan')).toBe(LAN);
     expect(testerOf('/home/me/soirely-qa2')).toBe(2);
+  });
+});
+
+describe('the bundler command', () => {
+  it("clears Metro's cache only when --clear asks", () => {
+    expect(bundlerArgs(18081, ['--tablet'])).toEqual(['expo', 'start', '--port', '18081']);
+    expect(bundlerArgs(18081, ['--clear'])).toEqual([
+      'expo',
+      'start',
+      '--port',
+      '18081',
+      '--clear',
+    ]);
+  });
+});
+
+describe('Expo Go on android --clear', () => {
+  const at = (name) => ANDROID_START.findIndex((part) => part.name === name);
+  const stopped = ANDROID_START[at('Expo Go stopped')];
+
+  it('is force-stopped, and only on --clear', () => {
+    expect(stopped.when).toBe('--clear');
+    expect(stopped.adb).toEqual([['shell', 'am', 'force-stop', 'host.exp.exponent']]);
+  });
+
+  it('is stopped before the bundler starts', () => {
+    expect(at('Expo Go stopped')).toBeGreaterThanOrEqual(0);
+    expect(at('Expo Go stopped')).toBeLessThan(at('bundler started'));
+  });
+
+  it('runs on android --clear, and a plain start runs every other part as before', () => {
+    const names = (args) => startParts(args).map((part) => part.name);
+    expect(names(['--clear'])).toContain('Expo Go stopped');
+    expect(names([])).not.toContain('Expo Go stopped');
+    expect(names([])).toEqual(
+      ANDROID_START.filter((part) => part.name !== 'Expo Go stopped').map((part) => part.name),
+    );
+  });
+});
+
+describe('Expo Go on ios --clear', () => {
+  it('is terminated on every opened simulator, and only on --clear', () => {
+    expect(iosExpoGoStops(['--clear'], ['A', 'B'])).toEqual([
+      ['simctl', 'terminate', 'A', 'host.exp.Exponent'],
+      ['simctl', 'terminate', 'B', 'host.exp.Exponent'],
+    ]);
+    expect(iosExpoGoStops([], ['A', 'B'])).toEqual([]);
   });
 });
 
@@ -512,6 +675,88 @@ describe('what a batch resets before it signs in', () => {
   it("reads Expo Go's preferences from its data container", () => {
     expect(expoGoPrefs('/c')).toBe('/c/Library/Preferences/host.exp.Exponent');
     expect(expoGoPrefs(null)).toBeNull();
+  });
+});
+
+describe("Expo Go's Tools button on Android", () => {
+  // From Expo Go 58's menu on an API 35 Play image: label, track, thumb.
+  const menu = (thumb) =>
+    [
+      '<hierarchy>',
+      '<node index="1" text="Fast Refresh" class="android.widget.TextView" bounds="[179,1220][382,1265]" />',
+      '<node index="0" text="" class="android.view.View" content-desc="Toggle Dev Menu" bounds="[105,1385][158,1438]" />',
+      '<node index="1" text="Tools button" class="android.widget.TextView" bounds="[179,1389][380,1434]" />',
+      '<node index="2" text="" class="android.view.View" bounds="[838,1348][975,1474]">',
+      `<node index="0" text="" class="android.view.View" bounds="${thumb}" />`,
+      '</hierarchy>',
+    ].join('\n');
+  const on = toolsSwitch(menu('[870,1348][996,1474]'));
+  const off = toolsSwitch(menu('[817,1348][943,1474]'));
+
+  it("reads the switch's state from where its thumb sits", () => {
+    expect(on.on).toBe(true);
+    expect(off.on).toBe(false);
+  });
+
+  it("taps the switch's thumb", () => {
+    expect(on.tap).toEqual(['shell', 'input', 'tap', '933', '1411']);
+  });
+
+  it('finds no switch when the menu is not on screen', () => {
+    expect(toolsSwitch('<hierarchy><node text="Sign in with email" /></hierarchy>')).toBeNull();
+    expect(toolsSwitch(null)).toBeNull();
+  });
+
+  it('turns the Tools button off when it was left on, and says so', () => {
+    expect(androidToolsReset(on, off)).toEqual({
+      tap: on.tap,
+      say: "  Expo Go's Tools button turned off for the batch.",
+    });
+  });
+
+  it('leaves the Tools button alone when it is already off, and says so', () => {
+    expect(androidToolsReset(off, off)).toEqual({ say: "  Expo Go's Tools button is off." });
+  });
+
+  it("points the tester to Expo Go's menu when the switch cannot be read or stays on", () => {
+    const failed = "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.";
+    expect(androidToolsReset(null, null).say).toBe(failed);
+    expect(androidToolsReset(on, on).say).toBe(failed);
+    expect(androidToolsReset(on, null).say).toBe(failed);
+  });
+
+  it("scrolls Expo Go's menu up the middle of the screen as it is drawn", () => {
+    expect(expoGoMenuScroll('Physical size: 1080x2400\n')).toEqual([
+      'shell',
+      'input',
+      'swipe',
+      '540',
+      '1800',
+      '540',
+      '600',
+      '400',
+    ]);
+    expect(expoGoMenuScroll('Physical size: 2560x1600\n', 0)).toEqual([
+      'shell',
+      'input',
+      'swipe',
+      '1280',
+      '1200',
+      '1280',
+      '400',
+      '400',
+    ]);
+    expect(expoGoMenuScroll('Physical size: 2560x1600\n', 1)).toEqual([
+      'shell',
+      'input',
+      'swipe',
+      '800',
+      '1920',
+      '800',
+      '640',
+      '400',
+    ]);
+    expect(expoGoMenuScroll('error: no devices')).toBeNull();
   });
 });
 
@@ -1002,6 +1247,7 @@ describe("a flow's URLs", () => {
     expect(flowUrls(urls)).toEqual({
       METRO_URL: `exp://127.0.0.1:${ports.METRO_PORT}`,
       MAILPIT_URL: `http://127.0.0.1:${ports.MAILPIT_UI_PORT}`,
+      SMOCKER_URL: `http://127.0.0.1:${ports.SMOCKER_UI_PORT}`,
       API_URL: `http://127.0.0.1:${ports.API_PORT}`,
       WEB_URL: `http://127.0.0.1:${ports.WEB_PORT}`,
     });
@@ -1313,20 +1559,54 @@ describe('handing a provider redirect to Expo Go', () => {
 });
 
 describe('the API cache a checkout leaves behind', () => {
-  it('is gone, and the rest of var stays', () => {
+  const withCache = () => {
     const root = mkdtempSync(join(tmpdir(), 'qa-cache-'));
     mkdirSync(join(root, 'services/api/var/cache/dev'), { recursive: true });
     writeFileSync(join(root, 'services/api/var/cache/dev/App_KernelDevDebugContainer.php'), '');
-    mkdirSync(join(root, 'services/api/var/log'), { recursive: true });
+    return root;
+  };
+  const calls = () => {
+    const seen = [];
+    return { seen, exec: (command, args) => seen.push([command, ...args]) };
+  };
 
-    clearApiCache(root);
+  it('is emptied through a container that mounts only the cache', () => {
+    const root = withCache();
+    const { seen, exec } = calls();
 
-    expect(existsSync(join(root, 'services/api/var/cache'))).toBe(false);
-    expect(existsSync(join(root, 'services/api/var/log'))).toBe(true);
+    clearApiCache(root, exec);
+
+    expect(seen).toHaveLength(1);
+    const [command, ...args] = seen[0];
+    expect(command).toBe('docker');
+    expect(args.slice(0, 5)).toEqual([
+      'run',
+      '--rm',
+      '--volume',
+      `${join(root, 'services/api/var/cache')}:/cache`,
+      CACHE_CLEARER,
+    ]);
+    expect(args.slice(5).join(' ')).toBe('find /cache -mindepth 1 -maxdepth 1 -exec rm -rf {} +');
   });
 
-  it('is no error when there is none', () => {
-    expect(() => clearApiCache(mkdtempSync(join(tmpdir(), 'qa-cache-')))).not.toThrow();
+  it('deletes nothing from the host itself', () => {
+    const root = withCache();
+
+    clearApiCache(root, calls().exec);
+
+    expect(readdirSync(join(root, 'services/api/var/cache'))).toEqual(['dev']);
+  });
+
+  it('runs nothing when there is no cache', () => {
+    const { seen, exec } = calls();
+
+    clearApiCache(mkdtempSync(join(tmpdir(), 'qa-cache-')), exec);
+
+    expect(seen).toEqual([]);
+  });
+
+  it('pins the image it clears with', () => {
+    expect(CACHE_CLEARER).toMatch(/^busybox:\d+\.\d+$/);
   });
 });
 
@@ -1384,9 +1664,17 @@ describe('a flow in a language', () => {
   it('puts the address in, escaped, only where asked', () => {
     const values = { email: 'qa-1@soirely.test' };
     expect(localise('{{t:settings.signedInAs|email}}', catalogues, 'en', values)).toBe(
-      'Signed in as qa-1@soirely\\.test',
+      'Signed in as qa-1@\\u200B?soirely\\.test',
     );
     expect(localise('{{t:settings.signedInAs}}', catalogues, 'en', values)).toBe('Signed in as .*');
+  });
+
+  it('matches the address as the app draws it, broken after its @ or not', () => {
+    const pattern = localise('{{t:settings.signedInAs|email}}', catalogues, 'en', {
+      email: 'qa-1@soirely.test',
+    });
+    expect(new RegExp(`^${pattern}$`).test('Signed in as qa-1@\u200Bsoirely.test')).toBe(true);
+    expect(new RegExp(`^${pattern}$`).test('Signed in as qa-1@soirely.test')).toBe(true);
   });
 
   it('names a key no catalogue holds', () => {
@@ -1446,11 +1734,11 @@ describe('the API a check holds', () => {
     expect(apiMoves('stopped', 'up')).toEqual([['up', '-d', '--wait', '--no-recreate', 'api']]);
   });
 
-  it('goes through up between paused and stopped, since a paused container is not stopped', () => {
-    expect(apiMoves('paused', 'stopped')).toEqual([
-      ['unpause', 'api'],
-      ['stop', 'api'],
-    ]);
+  it('kills a paused API, since stop thaws it and Caddy answers the held request on SIGTERM', () => {
+    expect(apiMoves('paused', 'stopped')).toEqual([['kill', 'api']]);
+  });
+
+  it('goes through up from stopped to paused, since only a running container pauses', () => {
     expect(apiMoves('stopped', 'paused')).toEqual([
       ['up', '-d', '--wait', '--no-recreate', 'api'],
       ['pause', 'api'],
@@ -1469,10 +1757,11 @@ describe('the API a check holds', () => {
   });
 });
 
-function dockerDouble(container, { failing = [] } = {}) {
+function dockerDouble(container, { failing = [], healthy } = {}) {
   const ran = [];
   const control = apiControl({
     read: async () => container,
+    ...(healthy && { healthy }),
     run: async (args) => {
       ran.push(args.join(' '));
       return !failing.includes(args[0]);
@@ -1500,14 +1789,7 @@ describe('the API a batch holds', () => {
   it('tracks the state across queued moves', async () => {
     const { control, ran } = dockerDouble('running');
     await Promise.all([control.move('paused'), control.move('stopped'), control.move('up')]);
-    expect(ran).toEqual([
-      'pause api',
-      'unreached',
-      'unpause api',
-      'stop api',
-      'reached',
-      'up -d --wait --no-recreate api',
-    ]);
+    expect(ran).toEqual(['pause api', 'kill api', 'up -d --wait --no-recreate api']);
     expect(control.state()).toBe('up');
   });
 
@@ -1552,6 +1834,115 @@ describe('the API a batch holds', () => {
     await control.move('paused');
     expect(ran).toEqual(['stop api', 'pause api']);
     expect(control.state()).toBe('paused');
+  });
+});
+
+describe('the API brought back up', () => {
+  it('returns only once the API answers, from paused as from stopped', async () => {
+    for (const container of ['paused', 'exited']) {
+      const asked = [];
+      const { control, ran } = dockerDouble(container, {
+        healthy: async () => {
+          asked.push(ran.length);
+          return true;
+        },
+      });
+      await control.move('up');
+      expect(asked).toEqual([1]);
+      expect(control.state()).toBe('up');
+    }
+  });
+
+  it('fails the move, and reads Docker again, when the API never answers', async () => {
+    const { control } = dockerDouble('paused', { healthy: async () => false });
+    await expect(control.move('up')).rejects.toThrow('never answered /api/health');
+    expect(control.state()).toBeUndefined();
+  });
+
+  it('asks nothing when the API was already up, or is being held', async () => {
+    let asked = 0;
+    const healthy = async () => (asked++, true);
+    const { control } = dockerDouble('running', { healthy });
+    await control.move('up');
+    await control.move('paused');
+    await control.move('stopped');
+    expect(asked).toBe(0);
+  });
+
+  it('polls the health endpoint until it answers, and gives up at the deadline', async () => {
+    const replies = [false, false, true];
+    const get = async () => ({ ok: replies.shift() });
+    expect(await answers('http://api/health', { every: 1, get })).toBe(true);
+    expect(replies).toEqual([]);
+    const refused = async () => {
+      throw new Error('ECONNREFUSED');
+    };
+    expect(await answers('http://api/health', { ms: 5, every: 1, get: refused })).toBe(false);
+  });
+
+  it('gives up on a health request that hangs, so the deadline still holds', async () => {
+    const hangs = (_url, { signal }) =>
+      new Promise((_resolve, reject) =>
+        signal.addEventListener('abort', () => reject(signal.reason)),
+      );
+    const started = Date.now();
+    expect(await answers('http://api/health', { ms: 20, every: 5, get: hangs })).toBe(false);
+    expect(Date.now() - started).toBeLessThan(1_000);
+  });
+});
+
+describe('the app services started', () => {
+  const started = (ps) => {
+    const ran = [];
+    startServices(['api', 'web'], {
+      capture: () => ps,
+      run: (args) => ran.push(args.join(' ')),
+    });
+    return ran;
+  };
+
+  it('unpauses what a killed batch left paused before up, which refuses a paused container', () => {
+    expect(started('api\nmercure\n')).toEqual([
+      'unpause api mercure',
+      'up -d --wait --no-recreate api web',
+    ]);
+  });
+
+  it('goes straight to up when nothing is paused', () => {
+    expect(started('')).toEqual(['up -d --wait --no-recreate api web']);
+    expect(started(null)).toEqual(['up -d --wait --no-recreate api web']);
+  });
+});
+
+describe('a check that holds the API', () => {
+  const dir = join(dirname(fileURLToPath(import.meta.url)), '../apps/mobile/.maestro/checks');
+  const checks = readdirSync(dir)
+    .filter((name) => name.endsWith('.yaml'))
+    .map((name) => [name, readFileSync(join(dir, name), 'utf8')]);
+
+  const holds = (flow) => /ASK: '?\/api\?to=(paused|stopped)/.test(flow);
+  const subflows = (flow) =>
+    [...flow.matchAll(/^\s*(?:-\s*runFlow:|file:)\s*(\S+\/\S+\.yaml)\s*$/gm)]
+      .map(([, path]) => join(dir, path))
+      .filter((path) => path.startsWith(`${dir}/`) && existsSync(path));
+
+  it('brings it back up in onFlowComplete, so a failed wait leaves the next check a live API', () => {
+    const holding = checks.filter(
+      ([, flow]) => holds(flow) || subflows(flow).some((path) => holds(readFileSync(path, 'utf8'))),
+    );
+    expect(holding.map(([name]) => name)).toContain('sc11786-members-states.yaml');
+    const unguarded = holding
+      .filter(([, flow]) => {
+        const header = flow.slice(0, flow.indexOf('\n---\n'));
+        return !/onFlowComplete:[\s\S]*ASK: \/api\?to=up/.test(header);
+      })
+      .map(([name]) => name);
+    expect(unguarded).toEqual([]);
+  });
+
+  it('reaches the harness through batch/helper.js, never a literal port', () => {
+    const literal = checks.filter(([, flow]) => /127\.0\.0\.1:\d+/.test(flow)).map(([n]) => n);
+    expect(literal).toEqual([]);
   });
 });
 
@@ -1611,6 +2002,27 @@ describe('the batch helper', () => {
       expect(await ask('/api?to=paused')).toEqual({ api: 'paused' });
       expect(await ask('/language?to=es')).toEqual({ language: 'es' });
       expect(ran).toEqual(['pause api', 'unpause api', 'locale es']);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('pictures the device under the running check and language, and only by a plain name', async () => {
+    const shots = [];
+    const shoot = async (file) => shots.push(file);
+    const { server, ask } = await helperFor('running', undefined, { shoot, out: '/out' });
+    try {
+      expect(await ask('/shot?name=held-1')).toEqual({
+        error: 'a shot is taken inside a check, and none has started',
+      });
+      await ask('/started?check=sc27096-ipad-side-refreshing.en');
+      expect(await ask('/shot?name=held-1')).toEqual({
+        shot: 'sc27096-ipad-side-refreshing.en-held-1.png',
+      });
+      expect(await ask('/shot?name=..%2Fheld')).toEqual({
+        error: 'shot what? /shot?name=<letters, digits, -> gave ../held',
+      });
+      expect(shots).toEqual(['/out/sc27096-ipad-side-refreshing.en-held-1.png']);
     } finally {
       server.close();
     }
@@ -2259,7 +2671,120 @@ describe('the time a Maestro run is given', () => {
   });
 });
 
+describe('a flow run alone', () => {
+  const catalogues = {
+    en: { home: { signedInTo: 'Signed in to {{name}}' }, settings: { signedInAs: 'As {{email}}' } },
+    es: {
+      home: { signedInTo: 'Conectado a {{name}}' },
+      settings: { signedInAs: 'Como {{email}}' },
+    },
+  };
+  const reset =
+    "- assertVisible: '{{t:any:home.signedInTo}}'\n- assertVisible: '{{t:settings.signedInAs|email}}'\n";
+
+  const source = () => {
+    const dir = join(mkdtempSync(join(tmpdir(), 'qa-alone-')), 'source');
+    mkdirSync(join(dir, 'batch'), { recursive: true });
+    mkdirSync(join(dir, 'checks'));
+    writeFileSync(join(dir, 'batch/reset.yaml'), reset);
+    writeFileSync(
+      join(dir, 'checks/alone.yaml'),
+      'appId: host.exp.exponent\n---\n- runFlow: ../batch/reset.yaml\n',
+    );
+    return dir;
+  };
+
+  it("fills its subflow's lines in any language, and leaves the source as it was", () => {
+    const dir = source();
+    try {
+      for (const onAndroid of [false, true]) {
+        const target = join(dir, onAndroid ? '../out-android' : '../out');
+        aloneFlows(dir, target, { catalogues, email: 'qa@soirely.test', onAndroid });
+        expect(readFileSync(join(target, 'batch/reset.yaml'), 'utf8')).toBe(
+          "- assertVisible: '(?:Signed in to .*|Conectado a .*)'\n" +
+            "- assertVisible: '(?:As qa@\\u200B?soirely\\.test|Como qa@\\u200B?soirely\\.test)'\n",
+        );
+      }
+      expect(readFileSync(join(dir, 'batch/reset.yaml'), 'utf8')).toBe(reset);
+    } finally {
+      rmSync(dirname(dir), { recursive: true, force: true });
+    }
+  });
+
+  it('matches any address when none is given', () => {
+    const dir = source();
+    try {
+      aloneFlows(dir, join(dir, '../out'), { catalogues, onAndroid: false });
+      expect(readFileSync(join(dir, '../out/batch/reset.yaml'), 'utf8')).toContain(
+        "'(?:As .*|Como .*)'",
+      );
+    } finally {
+      rmSync(dirname(dir), { recursive: true, force: true });
+    }
+  });
+
+  it('stops on a key one catalogue lacks', () => {
+    const dir = source();
+    try {
+      const { signedInTo, ...rest } = catalogues.es.home;
+      expect(signedInTo).toBeDefined();
+      expect(() =>
+        aloneFlows(dir, join(dir, '../out'), {
+          catalogues: { ...catalogues, es: { ...catalogues.es, home: rest } },
+          onAndroid: false,
+        }),
+      ).toThrow('no home.signedInTo in the es catalogue');
+    } finally {
+      rmSync(dirname(dir), { recursive: true, force: true });
+    }
+  });
+});
+
 describe('the flows a batch runs', () => {
+  it('reaches a file from every path a composed check names, on iOS and Android', () => {
+    const root = join(import.meta.dirname, '..');
+    const source = join(root, 'apps/mobile/.maestro');
+    const checks = readdirSync(join(source, 'checks'))
+      .filter((file) => file.endsWith('.yaml'))
+      .map((file) => file.slice(0, -'.yaml'.length));
+    const named =
+      /^[ \t]*(?:-[ \t]*runFlow|-[ \t]*runScript|file):[ \t]*(['"]?)([^'"\s]+)\1[ \t]*$/gm;
+    for (const onAndroid of [false, true]) {
+      const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+      try {
+        composeBatch(source, target, {
+          checks,
+          languages: ['en'],
+          cold: false,
+          catalogues: {
+            en: JSON.parse(
+              readFileSync(join(root, 'apps/mobile/src/i18n/locales/en.json'), 'utf8'),
+            ),
+          },
+          email: 'qa@soirely.test',
+          onAndroid,
+        });
+        const unreached = [];
+        const seen = new Set();
+        const follow = (file) => {
+          if (seen.has(file)) return;
+          seen.add(file);
+          for (const [, , path] of readFileSync(file, 'utf8').matchAll(named)) {
+            if (path.includes('${')) continue;
+            const reached = join(dirname(file), path);
+            if (!existsSync(reached)) unreached.push(`${file.slice(target.length + 1)} → ${path}`);
+            else if (/\.ya?ml$/.test(path)) follow(reached);
+          }
+        };
+        for (const file of readdirSync(join(target, '_checks')))
+          follow(join(target, '_checks', file));
+        expect(unreached).toEqual([]);
+      } finally {
+        rmSync(target, { recursive: true, force: true });
+      }
+    }
+  });
+
   it("composes the repository's checks in all four languages", () => {
     const root = join(import.meta.dirname, '..');
     const dir = join(root, 'apps/mobile/src/i18n/locales');
@@ -2290,10 +2815,24 @@ describe('the flows a batch runs', () => {
         "'Seguridad'",
       );
       expect(readFileSync(join(target, '_checks/sign-in-rules.fr.yaml'), 'utf8')).toContain(
-        "'Règles de connexion|Règles de connexion de .*'",
+        "'Règles de connexion'",
       );
+      expect(readFileSync(join(target, '_checks/sc23267-start-cold.fr.yaml'), 'utf8')).toContain(
+        'file: sc23267-start-cold.fr.sc23267-start-cold-once.flow.yaml',
+      );
+      expect(
+        existsSync(join(target, '_checks/sc23267-start-cold.fr.sc23267-start-cold-once.flow.yaml')),
+      ).toBe(true);
       const session = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
       expect(session).not.toContain('{{t:');
+      expect(session).toMatch(/when:\s+visible:\s+id: 'settings\\\.\.\*'\s+commands:/);
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        for (const [, condition] of session.matchAll(/when:\s+visible: '(.*)'/g)) {
+          expect(catalogues[code].settings.title).not.toMatch(
+            new RegExp(`^(?:${condition.replaceAll("''", "'")})$`),
+          );
+        }
+      }
       const signedIn = new RegExp(
         `^(?:${[...session.matchAll(/notVisible: '(.*)'/g)].at(-1)[1].replaceAll("''", "'")})$`,
       );
@@ -2329,6 +2868,22 @@ describe('the flows a batch runs', () => {
       for (const code of ['en', 'es', 'fr', 'pt']) {
         expect(catalogues[code].steps.organisationTitle).toMatch(onDetails);
         expect(catalogues[code].steps.organisationTitle).not.toMatch(someoneSignedIn);
+        expect(catalogues[code].steps.invitedTitle).toMatch(homeSettled);
+        expect(catalogues[code].steps.invitedTitle).toMatch(onDetails);
+        expect(catalogues[code].steps.invitedTitle).not.toMatch(someoneSignedIn);
+      }
+      const signInForm = readFileSync(join(target, 'batch/sign-in-form.yaml'), 'utf8');
+      const landed = new RegExp(
+        `^(?:${signInForm.match(/extendedWaitUntil:\s+visible: '(.*)'\s+timeout: 30000\s+optional: true/)[1].replaceAll("''", "'")})$`,
+      );
+      const namesAccount = new RegExp(
+        `^(?:${signInForm.match(/scrollUntilVisible:\s+element:\s+text: '(.*)'/)[1].replaceAll("''", "'")})$`,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        const invitation = catalogues[code].steps.invitationFor;
+        expect(catalogues[code].steps.invitedTitle).toMatch(landed);
+        expect(invitation.replace('{{email}}', 'qa@\u200Bsoirely.test')).toMatch(namesAccount);
+        expect(invitation.replace('{{email}}', 'other@soirely.test')).not.toMatch(namesAccount);
       }
       const detailsAt = signOut.indexOf('file: ../sign-out-from-complete-profile.yaml');
       expect(detailsAt).toBeGreaterThan(-1);
@@ -2374,20 +2929,205 @@ describe('the flows a batch runs', () => {
           expect(catalogues[code].signIn.title).toMatch(settled(flow));
         }
       }
+      for (const flow of ['session', 'sign-out', 'reopen', 'reset']) {
+        for (const code of ['en', 'es', 'fr', 'pt']) {
+          expect(catalogues[code].todayScreen.tab.today).toMatch(settled(flow));
+        }
+      }
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        expect(catalogues[code].todayScreen.tab.today).toMatch(someoneSignedIn);
+      }
+      for (const flow of ['session', 'sign-in-form']) {
+        const toSettings = new RegExp(
+          `^(?:${readFileSync(join(target, `batch/${flow}.yaml`), 'utf8')
+            .match(/when:\s+visible: '(.*)'\s+file: to-settings\.yaml/)[1]
+            .replaceAll("''", "'")})$`,
+        );
+        for (const code of ['en', 'es', 'fr', 'pt']) {
+          expect(catalogues[code].todayScreen.tab.today).toMatch(toSettings);
+        }
+      }
+      const upright = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
+      expect(upright.indexOf('setOrientation: PORTRAIT')).toBeGreaterThan(-1);
+      expect(upright.indexOf('ASK: /portrait')).toBeGreaterThan(
+        upright.indexOf('setOrientation: PORTRAIT'),
+      );
+      expect(upright.indexOf('ASK: /portrait')).toBeLessThan(
+        upright.indexOf('file: to-settings.yaml'),
+      );
       const reset = readFileSync(join(target, 'batch/reset.yaml'), 'utf8');
       expect(reset.match(/file: developer-menu\.yaml\s+env:\s+SETTLED: '(.*)'/)[1]).toBe(
         reset.match(/notVisible: '(.*)'/)[1],
       );
+      const resetSettled = new RegExp(
+        `^(?:${reset.match(/extendedWaitUntil:\s+visible: '(.*)'/)[1].replaceAll("''", "'")})$`,
+      );
+      expect(reset.match(/extendedWaitUntil:\s+visible: '(.*)'/)[1]).toBe(
+        reset.match(/notVisible: '(.*)'/)[1],
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        expect(catalogues[code].steps.invitedTitle).toMatch(resetSettled);
+        expect(catalogues[code].steps.organisationTitle).toMatch(resetSettled);
+      }
       expect(reset).toContain('ASK: /running');
       expect(reset).toMatch(
         /ASK: \/reload(?:\s|#.*)+- runFlow:\s+when:\s+true: \$\{!output\.helper\.reloaded\}\s+file: reopen\.yaml[\s\S]*openLink: \$\{METRO_URL\}\/--\//,
       );
       expect(reset).not.toMatch(/when:\s+(not)?[vV]isible/);
+      expect(reset.trimEnd().endsWith('- runFlow: signed-out.yaml')).toBe(true);
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        expect(catalogues[code].welcome.withEmail).toMatch(resetSettled);
+        expect(catalogues[code].signIn.title).toMatch(resetSettled);
+      }
+      const signedOut = readFileSync(join(target, 'batch/signed-out.yaml'), 'utf8');
+      expect(signedOut).not.toMatch(/when:\s+visible/);
+      expect(signedOut).toMatch(
+        /when:\s+true: \$\{output\.signedOut\}\s+commands:\s+- runFlow: sign-in-form\.yaml/,
+      );
       expect(readdirSync(join(target, 'batch')).filter((f) => f.includes('save-password'))).toEqual(
         [],
       );
       expect(readFileSync(join(target, 'sign-in.yaml'), 'utf8')).toContain('stopApp: true');
     } finally {
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('a check that runs a sibling check', () => {
+  it('carries the sibling into _checks, so its runFlow resolves without naming it', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks'));
+    writeFileSync(
+      join(source, 'checks', 'outer.yaml'),
+      "appId: x\n---\n- runFlow:\n    file: once.yaml\n    env:\n      RUN: '1'\n- runFlow: once.yaml\n",
+    );
+    writeFileSync(
+      join(source, 'checks', 'once.yaml'),
+      "appId: x\n---\n- tapOn: '{{t:hello}}'\n- takeScreenshot: shot-${RUN}\n- runFlow: inner.yaml\n",
+    );
+    writeFileSync(join(source, 'checks', 'inner.yaml'), "appId: x\n---\n- tapOn: '{{t:hello}}'\n");
+    try {
+      composeBatch(source, target, {
+        checks: ['outer'],
+        languages: ['en', 'es'],
+        cold: false,
+        catalogues: { en: { hello: 'Hello' }, es: { hello: 'Hola' } },
+        email: 'qa@soirely.test',
+        onAndroid: false,
+      });
+      const checks = join(target, '_checks');
+      expect(readdirSync(checks).sort()).toEqual([
+        'outer.en.once.flow.yaml',
+        'outer.en.once.inner.flow.yaml',
+        'outer.en.yaml',
+        'outer.es.once.flow.yaml',
+        'outer.es.once.inner.flow.yaml',
+        'outer.es.yaml',
+      ]);
+      const outer = readFileSync(join(checks, 'outer.es.yaml'), 'utf8');
+      expect(outer).toContain('    file: outer.es.once.flow.yaml\n');
+      expect(outer).toContain('- runFlow: outer.es.once.flow.yaml\n');
+      expect(outer).not.toMatch(/once\.yaml/);
+      const once = readFileSync(join(checks, 'outer.es.once.flow.yaml'), 'utf8');
+      expect(once).toContain("'Hola'");
+      expect(once).toContain('- runFlow: outer.es.once.inner.flow.yaml');
+      expect(once).not.toContain('ASK:');
+      expect(once).toContain('- takeScreenshot: outer.es.once-shot-${RUN}\n');
+      expect(readFileSync(join(checks, 'outer.en.once.flow.yaml'), 'utf8')).toContain(
+        '- takeScreenshot: outer.en.once-shot-${RUN}\n',
+      );
+      expect(readFileSync(join(checks, 'outer.en.once.inner.flow.yaml'), 'utf8')).toContain(
+        "'Hello'",
+      );
+    } finally {
+      rmSync(source, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps a sibling that is also named as a check apart from its run', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks'));
+    writeFileSync(join(source, 'checks', 'outer.yaml'), 'appId: x\n---\n- runFlow: once.yaml\n');
+    writeFileSync(join(source, 'checks', 'once.yaml'), 'appId: x\n---\n- takeScreenshot: shot\n');
+    try {
+      composeBatch(source, target, {
+        checks: ['outer', 'once'],
+        languages: ['es'],
+        cold: false,
+        catalogues: { es: {} },
+        email: 'qa@soirely.test',
+        onAndroid: false,
+      });
+      const checks = join(target, '_checks');
+      expect(readdirSync(checks).sort()).toEqual([
+        'once.es.yaml',
+        'outer.es.once.flow.yaml',
+        'outer.es.yaml',
+      ]);
+      expect(readFileSync(join(checks, 'once.es.yaml'), 'utf8')).toContain('ASK:');
+      expect(readFileSync(join(checks, 'outer.es.once.flow.yaml'), 'utf8')).not.toContain('ASK:');
+    } finally {
+      rmSync(source, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+  it('gives each run of a repeated check its own copy of the sibling', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks'));
+    writeFileSync(join(source, 'checks', 'outer.yaml'), 'appId: x\n---\n- runFlow: once.yaml\n');
+    writeFileSync(join(source, 'checks', 'once.yaml'), 'appId: x\n---\n- takeScreenshot: shot\n');
+    try {
+      composeBatch(source, target, {
+        checks: ['outer', 'outer'],
+        languages: ['es'],
+        cold: false,
+        catalogues: { es: {} },
+        email: 'qa@soirely.test',
+        onAndroid: false,
+      });
+      const checks = join(target, '_checks');
+      expect(readFileSync(join(checks, 'outer.es.yaml'), 'utf8')).toContain(
+        '- runFlow: outer.es.once.flow.yaml\n',
+      );
+      expect(readFileSync(join(checks, 'outer.es.run2.yaml'), 'utf8')).toContain(
+        '- runFlow: outer.es.run2.once.flow.yaml\n',
+      );
+      expect(readFileSync(join(checks, 'outer.es.once.flow.yaml'), 'utf8')).toContain(
+        '- takeScreenshot: outer.es.once-shot',
+      );
+      expect(readFileSync(join(checks, 'outer.es.run2.once.flow.yaml'), 'utf8')).toContain(
+        '- takeScreenshot: outer.es.run2.once-shot',
+      );
+    } finally {
+      rmSync(source, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+
+  it('names the cycle when two checks run each other', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks'));
+    writeFileSync(join(source, 'checks', 'a.yaml'), 'appId: x\n---\n- runFlow: b.yaml\n');
+    writeFileSync(join(source, 'checks', 'b.yaml'), 'appId: x\n---\n- runFlow: a.yaml\n');
+    try {
+      expect(() =>
+        composeBatch(source, target, {
+          checks: ['a'],
+          languages: ['es'],
+          cold: false,
+          catalogues: { es: {} },
+          email: 'qa@soirely.test',
+          onAndroid: false,
+        }),
+      ).toThrow('a → b → a: a check runs itself');
+    } finally {
+      rmSync(source, { recursive: true, force: true });
       rmSync(target, { recursive: true, force: true });
     }
   });
@@ -2624,6 +3364,38 @@ describe('the account --ready reports', () => {
     expect(report).toContain('TOTP_SECRET  S3CR3T');
     expect(report).toContain('EMAIL=a@qa.test PASSWORD=pw TOTP_SECRET=S3CR3T');
   });
+
+  it('names no organisation for an account in none', () => {
+    const report = readyReport({ ...made, secret: null, organisation: false });
+
+    expect(report).toContain('profile complete, in no organisation');
+    expect(report).not.toContain('QA Organisation');
+    expect(report).toContain('EMAIL=a@qa.test PASSWORD=pw\n');
+  });
+});
+
+describe('the account flags', () => {
+  it('takes --no-organisation alone, passing the rest on', () => {
+    expect(accountKind(['--no-organisation', '--lang', 'fr'])).toEqual({
+      kind: 'no-organisation',
+      passed: ['--lang', 'fr'],
+    });
+  });
+
+  it.each([
+    [['--no-organisation', '--ready'], '--ready'],
+    [['--two-factor', '--no-organisation'], '--two-factor'],
+    [['--no-organisation', '--ready', '--two-factor'], '--ready or --two-factor'],
+  ])('refuses %j before anything is made', (args, named) => {
+    expect(() => accountKind(args)).toThrow(`--no-organisation cannot go with ${named}`);
+  });
+
+  it('keeps what account, --ready and --two-factor already make', () => {
+    expect(accountKind([]).kind).toBe('plain');
+    expect(accountKind(['--ready']).kind).toBe('ready');
+    expect(accountKind(['--two-factor']).kind).toBe('two-factor');
+    expect(accountKind(['--ready', '--two-factor'])).toEqual({ kind: 'two-factor', passed: [] });
+  });
 });
 
 function mp4Header(size, type) {
@@ -2660,6 +3432,7 @@ describe('a membership change a check asks for', () => {
     const statements = [];
     let made = 0;
     let owners = 0;
+    const asked = [];
     let refusing = false;
     const invited = [];
     const ownerNumbered =
@@ -2699,7 +3472,8 @@ describe('a membership change a check asks for', () => {
     const change = membershipChanges({
       email: 'qa@soirely.test',
       member: async (path) => calls.push(`member ${path}`),
-      ownerOf: async () => {
+      ownerOf: async ({ fresh }) => {
+        asked.push(fresh);
         owners += 1;
         return ownerNumbered(owners);
       },
@@ -2708,7 +3482,7 @@ describe('a membership change a check asks for', () => {
     const refuseNextCreate = () => {
       refusing = true;
     };
-    return { change, calls, statements, invited, owners: () => owners, refuseNextCreate };
+    return { change, calls, statements, invited, owners: () => owners, refuseNextCreate, asked };
   };
 
   it('makes the organisation and the batch account an administrator in it', async () => {
@@ -2769,11 +3543,12 @@ describe('a membership change a check asks for', () => {
   });
 
   it('hands over to a new owner once one may make no more organisations', async () => {
-    const { change, calls, owners, refuseNextCreate } = changesFor();
+    const { change, calls, owners, refuseNextCreate, asked } = changesFor();
     await change('join', 'Alpha Hall');
     refuseNextCreate();
     await change('join', 'Bravo');
     expect(owners()).toBe(2);
+    expect(asked).toEqual([false, true]);
     calls.length = 0;
     await change('suspend', 'Alpha Hall');
     await change('suspend', 'Bravo');
@@ -2808,6 +3583,73 @@ describe('a membership change a check asks for', () => {
       'not a membership id',
     );
     expect(() => domainPause(MEMBERSHIP, "qa@x'; --")).toThrow('no domain');
+  });
+});
+
+describe('the owner a batch makes organisations as', () => {
+  const ownerWith = ({ kept, signIn = async () => {} }) => {
+    const registered = [];
+    const keptNow = [];
+    const asOwner = (fresh) =>
+      keptOwner({
+        fresh,
+        kept,
+        signIn,
+        register: async () => {
+          registered.push(true);
+          return { email: `owner-${registered.length}@soirely.test`, password: 'p' };
+        },
+        keep: (owner) => keptNow.push(owner.email),
+      });
+    return { asOwner, registered, keptNow };
+  };
+  const kept = { email: 'kept@soirely.test', password: 'p' };
+
+  it('is the one an earlier batch registered, while it still signs in', async () => {
+    const { asOwner, registered } = ownerWith({ kept });
+    expect(await asOwner(false)).toBe(kept);
+    expect(registered).toEqual([]);
+  });
+
+  it('is registered and kept when none was, or the kept one no longer signs in', async () => {
+    const first = ownerWith({ kept: null });
+    expect((await first.asOwner(false)).email).toBe('owner-1@soirely.test');
+    expect(first.keptNow).toEqual(['owner-1@soirely.test']);
+    const refused = Object.assign(new Error('refused'), { status: 401 });
+    const gone = ownerWith({
+      kept,
+      signIn: async () => {
+        throw refused;
+      },
+    });
+    expect((await gone.asOwner(false)).email).toBe('owner-1@soirely.test');
+  });
+
+  it('is a new one when the batch asks for fresh, and an unreachable API is no reason to register', async () => {
+    const fresh = ownerWith({ kept });
+    expect((await fresh.asOwner(true)).email).toBe('owner-1@soirely.test');
+    const down = ownerWith({
+      kept,
+      signIn: async () => {
+        throw new Error('fetch failed');
+      },
+    });
+    await expect(down.asOwner(false)).rejects.toThrow('fetch failed');
+    expect(down.registered).toEqual([]);
+  });
+
+  it('is no reason to register when the API refuses for any reason but a bad sign-in', async () => {
+    for (const status of [429, 503]) {
+      const refused = ownerWith({
+        kept,
+        signIn: async () => {
+          throw Object.assign(new Error(`answered ${status}`), { status });
+        },
+      });
+      await expect(refused.asOwner(false)).rejects.toThrow(`answered ${status}`);
+      expect(refused.registered).toEqual([]);
+      expect(refused.keptNow).toEqual([]);
+    }
   });
 });
 

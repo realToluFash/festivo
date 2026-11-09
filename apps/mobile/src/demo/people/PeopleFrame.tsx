@@ -5,18 +5,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Bell, PortraitTop, useShell } from '../settings/Frame.tsx';
-import { Back } from '../settings/parts.tsx';
-import { PageToast, type PageToastProps } from '../settings/Summary.tsx';
+import { Bell, PortraitTop } from '../settings/Frame.tsx';
 import { EVENT, LOADING_WORDS } from './PeopleSample.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { Back } from '../../components/SettingsParts.tsx';
+import { PageToast, type PageToastProps } from '../../components/Summary.tsx';
 
 /** A page inside an event, drawn with no event around it in the demo: back, the title over the event's name, then the blocks 18 apart. */
 export function PeoplePage({
   back,
+  event = EVENT,
   toast,
   children,
 }: {
   back: { label: string; onPress: () => void };
+  event?: string;
   toast?: PageToastProps | null | undefined;
   children: ReactNode;
 }) {
@@ -35,7 +38,7 @@ export function PeoplePage({
           People
         </Text>
         <Text size={15} weight="medium" style={styles.secondary}>
-          {EVENT}
+          {event}
         </Text>
       </View>
       <View style={styles.blocks}>{children}</View>

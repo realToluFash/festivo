@@ -14,7 +14,6 @@ export const WALK = {
   discardTitle: 'Discard this organisation?',
   discardBody: 'Nothing is created, and what you entered is not kept.',
   discard: 'Discard',
-  startFirst: 'Start your first event',
   noneYet: 'None yet',
 } as const;
 
@@ -37,6 +36,7 @@ export const CREATE_STATES = [
   'back-name',
   'back-country',
   'discard',
+  'managed',
 ] as const;
 
 export type CreateState = (typeof CREATE_STATES)[number];
@@ -72,6 +72,8 @@ export interface Walk {
   asking: boolean;
   cameBack: boolean;
   device: Device;
+  /** sc-563: the address is managed by its home organisation, so the first step is the refusal. */
+  managed: boolean;
 }
 
 export function freshWalk(device: Device): Walk {
@@ -85,6 +87,7 @@ export function freshWalk(device: Device): Walk {
     asking: false,
     cameBack: false,
     device,
+    managed: false,
   };
 }
 
@@ -130,6 +133,8 @@ export function walkFor(state: CreateState, t: TFunction, phone: boolean): Walk 
       return at(2, { country: 'BR', cameBack: true });
     case 'discard':
       return at(phone ? 2 : 1, { asking: true });
+    case 'managed':
+      return { ...freshWalk(SAMPLE_DEVICE), managed: true };
     case 'created':
       return null;
   }

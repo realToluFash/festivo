@@ -46,12 +46,26 @@ const role = (name: string) => {
 };
 
 describe('Roles in the demo', () => {
-  it('lists the thirteen areas in the app’s order, Run of show on the day', () => {
-    expect(AREAS).toHaveLength(13);
-    expect(AREAS.at(-1)?.area).toBe('organisation');
+  it('lists the fourteen areas in the app’s order, Run of show on the day', () => {
+    expect(AREAS).toHaveLength(14);
+    expect(AREAS.at(-2)?.area).toBe('organisation');
     expect(AREAS.find(({ area }) => area === 'run_of_show')?.means).toBe(
       'The schedule, and marking items done on the day.',
     );
+  });
+
+  it('ends on People on events, in the app’s words, at the level each role’s event role gives', () => {
+    expect(area('people')).toEqual({
+      area: 'people',
+      name: 'People on events',
+      means: 'Who is on each event, and the role each person has there.',
+      permissions: ['people.read', 'people.manage'],
+    });
+    expect(AREAS.at(-1)?.area).toBe('people');
+    expect(levelOf(grantFor('Event manager'), 'people')).toBe('change');
+    expect(levelOf(grantFor('Coordinator'), 'people')).toBe('read');
+    expect(levelOf(grantFor('Read-only'), 'people')).toBe('read');
+    expect(levelOf(grantFor('Door staff'), 'people')).toBe('read');
   });
 
   it('holds the sample’s grants', () => {
@@ -172,8 +186,8 @@ describe('Roles in the demo', () => {
 
   it('counts the areas at each level, and names the extras a level keeps', () => {
     const manager = grantFor('Event manager');
-    expect(levelCounts(manager)).toEqual({ change: 9, read: 0, nothing: 4 });
-    expect(levelCounts(grantFor('Owner'))).toEqual({ change: 13, read: 0, nothing: 0 });
+    expect(levelCounts(manager)).toEqual({ change: 10, read: 0, nothing: 4 });
+    expect(levelCounts(grantFor('Owner'))).toEqual({ change: 14, read: 0, nothing: 0 });
     expect(extrasLine(manager, area('budget'))).toBe('Margin · Hidden');
     expect(extrasLine(manager, area('events'))).toBe('Create events · Allowed');
     expect(extrasLine(manager, area('vendors'))).toBeUndefined();

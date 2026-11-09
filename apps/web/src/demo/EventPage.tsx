@@ -1,8 +1,10 @@
+import { DemoBell } from './DemoBell.tsx';
 import { eventPhase, formatEventRange, hostsLine } from '@soirely/domain';
 import { type ComponentType, type ReactNode, useContext, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 
 import {
+  type Area,
   type CardDoes,
   type EventStateName,
   type Manage,
@@ -38,14 +40,56 @@ import {
   TypePart,
   VenuePart,
 } from './EventEdits.tsx';
+import { ReplyByPart } from './EventReplyBy.tsx';
+import {
+  REPLY_BY_WORDS,
+  datesSaveSays,
+  replyByAfterStart,
+  replyBySays,
+  rowDay,
+} from './replyBy.ts';
+import { EventNeedsYou } from './EventNeedsYou.tsx';
+import { type NeedsState, readerOf } from './needsYou.ts';
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
-import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
-import { LayersContext } from './layers.ts';
-import { Ask, Bell, Chevron, Head, RowWords, TextAction } from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+import { AllDates } from './EventDates.tsx';
+import {
+  KITCHEN_EVENT,
+  KW,
+  cardMilestone,
+  kitchenAt,
+  seedFromEvent,
+  timelineOf,
+} from './kitchen.ts';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
+import { LayersContext } from '../layers.ts';
+import { BUDGET_EVENT } from './budget.ts';
+import { BudgetEntry } from './BudgetRoutes.tsx';
+import { type NumbersState, guestsAt, hasGuests, numbersStateOf, replyByOf } from './guests.ts';
+import { GuestNumbers } from './GuestsParts.tsx';
+import {
+  type Told,
+  NEW_PLACE,
+  ROSEWOOD,
+  SAMPLE_EVENT,
+  STARTS_LATER,
+  TELL,
+  keepInbox,
+  keptInbox,
+  messagesStateOf,
+  resetInbox,
+  toldOf,
+  waitingLine,
+} from './messages.ts';
+import { MessagesPage } from './Messages.tsx';
+import { DOOR_EVENT_ID } from './doorCode.ts';
+import { noOrgStateOf } from './noOrg.ts';
+import { NoOrgEvent } from './NoOrgEvent.tsx';
+import { TellDialog } from './MessagesTell.tsx';
+import { Ask, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 const LOCALE = 'en-US';
 
@@ -56,7 +100,7 @@ interface Arrival {
 
 type Asking = 'pause' | 'callOff' | 'endNow' | 'deleteDraft' | 'delete' | 'duplicate';
 
-const PARTS: Record<Part, ComponentType<PartProps>> = {
+const PARTS: Record<Exclude<Part, 'replyBy'>, ComponentType<PartProps>> = {
   dates: DatesPart,
   venue: VenuePart,
   hosts: HostsPart,
@@ -65,6 +109,18 @@ const PARTS: Record<Part, ComponentType<PartProps>> = {
   name: NamePart,
   cover: CoverPart,
 };
+
+/** Reply by as each state opens it: the sample's, or what was just saved (sc-3780). */
+function replyByStart(state: EventStateName | null, id: string): string | null {
+  if (state === 'replyBySaved') return '2026-11-03';
+  if (state === 'replyByRemoved') return null;
+
+  return replyByOf(id);
+}
+
+function needsStateOf(state: EventStateName | null): NeedsState | null {
+  return state != null && state.startsWith('needsYou') ? (state as NeedsState) : null;
+}
 
 function askingOf(state: EventStateName | null): Asking | null {
   switch (state) {
@@ -84,32 +140,53 @@ function askingOf(state: EventStateName | null): Asking | null {
 }
 
 /** An event at a desk in A · Summary first (Events-A-Desk, page 29): its own sidebar, the card, Details and the rest in two columns, each part edited in place. */
-export function EventPage({ dates = false }: { dates?: boolean }) {
+export function EventPage({
+  dates = false,
+  messages = false,
+}: {
+  dates?: boolean;
+  messages?: boolean;
+}) {
   const { id } = useParams();
   const [params] = useSearchParams();
   const raw = params.get('state');
   useSwitcherStart();
+  const noOrg = noOrgStateOf(raw);
 
-  return <EventAt key={`${id ?? ''}|${raw ?? ''}`} id={id} raw={raw} dates={dates} />;
+  if (noOrg != null && id === DOOR_EVENT_ID) return <NoOrgEvent key={noOrg} state={noOrg} />;
+
+  return (
+    <EventAt
+      key={`${id ?? ''}|${raw ?? ''}|${messages}`}
+      id={id}
+      raw={raw}
+      dates={dates}
+      messages={messages}
+    />
+  );
 }
 
 function EventAt({
   id,
   raw,
   dates,
+  messages,
 }: {
   id: string | undefined;
   raw: string | null;
   dates: boolean;
+  messages: boolean;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [arrival] = useState<Arrival>(() => (location.state as Arrival | null) ?? {});
   const [first] = useState(() => {
     if (raw != null) resetSample();
+    if (raw != null && messages) resetInbox();
+    seedFromEvent(raw);
 
     const event = sampleEvent(id);
-    const named = eventStateOf(raw);
+    const named = messages ? null : eventStateOf(raw);
     const state = event != null && named != null && stateFits(named, event) ? named : null;
 
     return { event: event != null && state === 'photo' ? { ...event, photo: true } : event, state };
@@ -123,25 +200,57 @@ function EventAt({
 
   if (first.event == null) return <Navigate to="/demo/events" replace />;
 
-  return <EventView initial={first.event} state={first.state} arrival={arrival} dates={dates} />;
+  const said = messages ? messagesStateOf(raw) : null;
+
+  const telling = said === 'tell' || said === 'tellPlace';
+
+  if (messages && first.event.id === SAMPLE_EVENT && !telling)
+    return <MessagesPage event={first.event} state={said} now={clockOf(null)} />;
+
+  return (
+    <EventView
+      initial={
+        said === 'tell'
+          ? { ...first.event, startsAt: TELL.movedTo }
+          : said === 'tellPlace'
+            ? { ...first.event, venue: ROSEWOOD }
+            : first.event
+      }
+      state={first.state}
+      numbers={messages ? null : numbersStateOf(raw)}
+      arrival={arrival}
+      dates={dates}
+      fixedArea={messages && !telling ? 'messages' : null}
+      telling={said === 'tell' ? [STARTS_LATER] : said === 'tellPlace' ? [NEW_PLACE] : null}
+    />
+  );
 }
 
 function EventView({
   initial,
   state,
+  numbers,
   arrival,
   dates,
+  fixedArea = null,
+  telling: tellingFirst = null,
 }: {
   initial: SampleEvent;
   state: EventStateName | null;
+  numbers: NumbersState | null;
   arrival: Arrival;
   dates: boolean;
+  fixedArea?: Area | null;
+  telling?: readonly Told[] | null;
 }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const now = clockOf(state);
-  const area = areaOf(params.get('area'));
+  const area = fixedArea ?? areaOf(params.get('area'));
+  const [telling, setTelling] = useState<readonly Told[] | null>(tellingFirst);
   const [event, setEvent] = useState(initial);
+  const [replyBy, setReplyBy] = useState(() => replyByStart(state, initial.id));
+  const [tellMoved, setTellMoved] = useState<string | null>(null);
   const [part, setPart] = useState<Part | null>(partOf(state) ?? arrival.open ?? null);
   const [dirty, setDirty] = useState(false);
   const [leaving, setLeaving] = useState<{ to: Part | null } | null>(null);
@@ -149,8 +258,15 @@ function EventView({
   const [muted, setMuted] = useState(state === 'muted');
   const [muteLoaded, setMuteLoaded] = useState(state !== 'muteNotLoaded');
   const [muteFailed, setMuteFailed] = useState(state === 'muteNotSaved');
+  const away = useLeaveAsk(dirty);
 
   if (area === 'people') return <Navigate to="/demo/people" replace />;
+  if (area === 'budget' && initial.id === BUDGET_EVENT) return <BudgetEntry event={initial} />;
+  if (area === 'guests' && hasGuests(initial.id))
+    return <Navigate to={guestsAt(initial.id)} replace />;
+  if (area === 'messages' && fixedArea == null)
+    return <Navigate to={`/demo/events/${initial.id}/messages`} replace />;
+  if (area === 'seating') return <Navigate to={`/demo/events/${initial.id}/seating`} replace />;
 
   function kept(next: SampleEvent): void {
     keepChange(next);
@@ -169,9 +285,21 @@ function EventView({
 
   return (
     <EventsShell
-      told={arrival.told ?? null}
+      told={
+        arrival.told ??
+        (state === 'replyBySaved' || state === 'replyByRemoved'
+          ? replyBySays(replyBy, now, event.timeZone).toast
+          : null)
+      }
       renderSide={(tell, covered) => (
-        <EventSidebar event={event} area={area} now={now} tell={tell} inert={covered} />
+        <EventSidebar
+          event={event}
+          area={area}
+          now={now}
+          tell={tell}
+          inert={covered}
+          waiting={event.id === SAMPLE_EVENT ? waitingLine(keptInbox()) : null}
+        />
       )}
     >
       {(tell) => (
@@ -189,16 +317,17 @@ function EventView({
                   </li>
                 </ol>
               </nav>
-              <Bell tell={tell} />
+              <DemoBell tell={tell} />
             </div>
             {dates ? (
-              <AreaPage event={event} name={CAL_WORDS.allDates} line={CAL_WORDS.allDatesComing} />
+              <AllDates event={event} now={now} />
             ) : area === 'overview' ? (
               <>
                 <EventCard
                   event={event}
                   now={now}
                   level={1}
+                  milestone={cardMilestone(event, now)}
                   onStep={(does: CardDoes) => {
                     if (does === 'makeLive') tell('Make live has its own design.');
                     else if (does === 'changeDates') {
@@ -223,15 +352,48 @@ function EventView({
                         setDirty(false);
                       }}
                       onSave={(next) => {
+                        const changes =
+                          event.id === SAMPLE_EVENT && event.status === 'live'
+                            ? toldOf(event, next)
+                            : [];
+
+                        const moved = replyByAfterStart(replyBy, next.startsAt, next.timeZone);
+
+                        const says = datesSaveSays(moved, changes.length > 0);
+                        const said = replyBySays(moved, now, next.timeZone);
+
                         kept(next);
                         setPart(null);
                         setDirty(false);
-                        tell(W.saved);
+                        if (moved != null) setReplyBy(moved);
+                        if (changes.length > 0) {
+                          setTellMoved(says.inTell ? said.line : null);
+                          setTelling(changes);
+                        }
+                        if (says.toast === 'moved') tell(said.toast);
+                        if (says.toast === 'saved') tell(W.saved);
                       }}
                       onLatest={kept}
+                      replyBy={replyBy}
+                      onReplyBy={(next) => {
+                        setReplyBy(next);
+                        setPart(null);
+                        setDirty(false);
+                        tell(replyBySays(next, now, event.timeZone).toast);
+                      }}
+                      needs={
+                        <EventNeedsYou
+                          timeline={timelineOf(event, now)}
+                          permissions={readerOf(needsStateOf(state))}
+                          state={needsStateOf(state)}
+                          now={now}
+                          timeZone={event.timeZone}
+                        />
+                      }
                     />
                   </div>
                   <div className="ev-right">
+                    {hasGuests(event.id) && <GuestNumbers eventId={event.id} state={numbers} />}
                     <GuestsPage />
                     <JustForYou
                       muted={muted}
@@ -255,11 +417,19 @@ function EventView({
                 </div>
               </>
             ) : (
-              <AreaPage
-                event={event}
-                name={AREAS.find((one) => one.area === area)?.name ?? ''}
-                line={COMING[area]}
-              />
+              <>
+                <AreaPage
+                  event={event}
+                  name={AREAS.find((one) => one.area === area)?.name ?? ''}
+                  line={COMING[area]}
+                />
+                {area === 'menu' && event.id === KITCHEN_EVENT && (
+                  <Link className="desk-text" to={kitchenAt(event.id)}>
+                    {KW.title}
+                    <Glyph name="chevron" size={16} weight={2.4} />
+                  </Link>
+                )}
+              </>
             )}
           </div>
           {leaving != null && (
@@ -276,6 +446,20 @@ function EventView({
               }}
             />
           )}
+          {away.blocked && (
+            <Ask
+              title={W.discardTitle}
+              line={W.discardLine}
+              keep={W.keepEditing}
+              go={W.discard}
+              onKeep={away.stay}
+              onGo={() => {
+                setPart(null);
+                setDirty(false);
+                away.go();
+              }}
+            />
+          )}
           <Asks
             asking={asking}
             event={event}
@@ -288,11 +472,35 @@ function EventView({
               if (words != null) tell(words);
             }}
             onDeleted={() => {
+              away.release();
               forget(event.id);
               void navigate('/demo/events', { state: { told: W.deleted(event.name) } });
             }}
-            onCreated={tell}
+            onCreated={(words) => {
+              away.release();
+              tell(words);
+            }}
           />
+          {telling != null && (
+            <TellDialog
+              tell={tell}
+              changes={telling}
+              before={tellMoved}
+              onNotNow={() => {
+                const was = keptInbox();
+
+                setTelling(null);
+                keepInbox({
+                  ...was,
+                  untold: [
+                    ...was.untold.filter((one) => !telling.some((now) => now.item === one.item)),
+                    ...telling,
+                  ],
+                });
+              }}
+              onSent={() => setTelling(null)}
+            />
+          )}
         </div>
       )}
     </EventsShell>
@@ -483,6 +691,9 @@ function Details({
   onClose,
   onSave,
   onLatest,
+  replyBy,
+  onReplyBy,
+  needs,
 }: {
   event: SampleEvent;
   now: Date;
@@ -493,12 +704,27 @@ function Details({
   onClose: () => void;
   onSave: (next: SampleEvent) => void;
   onLatest: (latest: SampleEvent) => void;
+  replyBy: string | null;
+  onReplyBy: (next: string | null) => void;
+  needs: ReactNode;
 }) {
   const locked = eventPhase(event, now) === 'finished';
   const days = dayCount(event);
   const maps = mapsLink(event);
   const editing = (one: Part) => {
     if (part !== one) return null;
+    if (one === 'replyBy')
+      return (
+        <ReplyByPart
+          event={event}
+          state={partOf(state) === one ? (state as PartProps['state']) : null}
+          replyBy={replyBy}
+          now={now}
+          onDirty={onDirty}
+          onClose={onClose}
+          onSave={onReplyBy}
+        />
+      );
 
     const Editor = PARTS[one];
 
@@ -510,6 +736,7 @@ function Details({
         onClose={onClose}
         onSave={onSave}
         onLatest={onLatest}
+        replyBy={replyBy}
       />
     );
   };
@@ -520,7 +747,7 @@ function Details({
       title={title}
       line={line}
       open={part === one}
-      locked={one === 'dates' && locked}
+      locked={(one === 'dates' || one === 'replyBy') && locked}
       after={after}
       onOpen={() => onOpen(one)}
     >
@@ -540,6 +767,14 @@ function Details({
             locked
               ? `${W.dates} · ${W.scheduleLocked}`
               : [W.dates, ...(days > 1 ? [W.dayCount(days)] : []), event.timeZone].join(' · '),
+          )}
+          {row(
+            'replyBy',
+            <Lead name="clock" />,
+            replyBy == null ? REPLY_BY_WORDS.rowNone : rowDay(replyBy),
+            replyBy == null
+              ? REPLY_BY_WORDS.replyBy
+              : `${REPLY_BY_WORDS.replyBy} · ${REPLY_BY_WORDS.rowCloses(event.timeZone)}`,
           )}
           {row(
             'venue',
@@ -573,6 +808,7 @@ function Details({
           )}
         </ul>
       </section>
+      {needs}
       <section className="desk-block" aria-labelledby="ev-name-cover">
         <Head title={<span id="ev-name-cover">{W.nameAndCover}</span>} />
         <ul className="desk-rows ev-details">

@@ -230,7 +230,7 @@ describe('an invitation, signed out', () => {
     expect(sessionStorage.getItem('soirely.invitation')).toBe(TOKEN);
   });
 
-  it('heads back from Reset your password with the invitation’s title, the step Back reopens', async () => {
+  it('heads back from Reset your password with ‹ Back to the invitation it was opened from', async () => {
     __setSessionState({ status: 'signedOut', ended: false });
     answering({
       [LINK]: () => json(PREVIEW),
@@ -246,9 +246,7 @@ describe('an invitation, signed out', () => {
     fireEvent.click(await screen.findByRole('link', { name: 'Forgot your password?' }));
 
     await screen.findByRole('heading', { level: 1, name: 'Reset your password' });
-    const back = screen.getByRole('button', { name: 'Join Ìrè Events' });
-    expect(back.textContent).toBe('‹Join Ìrè Events');
-    fireEvent.click(back);
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Join Ìrè Events' })).toBeDefined();
   });

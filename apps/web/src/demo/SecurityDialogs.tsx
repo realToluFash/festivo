@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { offButton } from '../offButton.ts';
 import { DISCARD, VERIFY_WORDS as V } from './account.ts';
 import { ExpiredCode } from './AccountDialogs.tsx';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import {
   ASK_WORDS,
   AUTHENTICATOR_KEY,
@@ -27,8 +27,9 @@ import {
   ruleMet,
   setupRefusal,
 } from './security.ts';
-import { Ask, Dialog, Field, Note } from './SettingsParts.tsx';
-import { useLater } from './useLater.ts';
+import { copyText } from './settings.ts';
+import { Ask, Dialog, Field, Note } from '../components/SettingsParts.tsx';
+import { useLater } from '../useLater.ts';
 
 const QR = qrPath();
 
@@ -550,7 +551,7 @@ export function RecoveryDialog({
           type="button"
           className="desk-text"
           onClick={() =>
-            void Promise.resolve(navigator.clipboard?.writeText(codes.join('\n'))).then(
+            void copyText(codes.join('\n')).then(
               () => setCopied(true),
               () => setCopied(false),
             )

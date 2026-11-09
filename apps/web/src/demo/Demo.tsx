@@ -1,5 +1,13 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react';
-import { Link, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router';
+import {
+  Link,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router';
 
 import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
@@ -8,23 +16,56 @@ import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { Calendar } from './Calendar.tsx';
 import { CALENDAR_PAGES } from './calendar.ts';
 import { CREATE_PAGES } from './createOrg.ts';
+import { DOOR_PAGES } from './doorCode.ts';
+import { NO_ORG_PAGE } from './noOrg.ts';
 import { EventPage } from './EventPage.tsx';
 import { Events } from './Events.tsx';
 import { EVENTS_PAGES } from './events.ts';
 import { ACCOUNT_PAGES } from './account.ts';
+import { DATA_CONTROL_PAGES } from './dataControlPages.ts';
 import { GENERAL_PAGES } from './general.ts';
+import { MESSAGES_PAGES } from './messages.ts';
+import { SeatingPage } from './Seating.tsx';
+import { SEATING_PAGES } from './seating.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
+import { GuestPage } from './Guest.tsx';
+import { GUEST_PAGES } from './guest.ts';
+import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
+import { Guests } from './Guests.tsx';
+import { GUESTS_PAGES } from './guests.ts';
+import { KitchenPage } from './Kitchen.tsx';
+import { CHANGES_PAGES, KITCHEN_PAGES } from './kitchen.ts';
+import { LegalPage } from './Legal.tsx';
+import { LEGAL_PAGES } from './legal.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { NOTIFICATIONS_PAGES } from './notifications.ts';
+import { leave } from './chosenScheme.ts';
+import { PERSONALISATION_PAGES } from './personalisation.ts';
 import { SECURITY_PAGES } from './security.ts';
+import { Notice } from './parts.tsx';
 import { People } from './People.tsx';
 import { PEOPLE_PAGES } from './people.ts';
+import { Redeem } from './Redeem.tsx';
+import { REDEEM_PAGES } from './redeem.ts';
 import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
 import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
 import { SWITCHER_PAGES } from './switcher.ts';
+import { QUOTES_PAGES, forgetBudget } from './quotes.ts';
+import { BUDGET_PAGES } from './budgetPages.ts';
+import { DECIDE_PAGES } from './decide.ts';
+import { PAYERS_PAGES } from './payers.ts';
+import { PAYMENTS_PAGES } from './payments.ts';
+import { PLAN_PAGES } from './plan.ts';
+import { SHARE_PAGES } from './share.ts';
+import { ShareRecipient } from './ShareRecipient.tsx';
+import { TEMPLATES_PAGES } from './templates.ts';
 import { Today } from './Today.tsx';
 import { TwoFactorBoard } from './TwoFactor.tsx';
+import { Unsubscribe } from './Unsubscribe.tsx';
+import { UNSUBSCRIBE_PAGES } from './unsubscribe.ts';
+import { VendorsMoved } from './Vendors.tsx';
+import { VENDORS_PAGES } from './vendors.ts';
 import { WaysInBoard } from './WaysIn.tsx';
 import {
   type FieldLines,
@@ -45,11 +86,12 @@ import './demo.css';
 
 const BUSY_MS = 900;
 
-type Notice = { title: string; body: string };
+type SignInNotice = { title: string; body: string };
 
 /** The states the board draws, each opened from the demo's home. */
 const TODAY_MOMENTS: { key: string; name: string }[] = [
   { key: 'plan', name: 'A planning day' },
+  { key: 'plan&invites=none', name: 'A planning day, invitations not sent' },
   { key: 'planNow', name: 'A planning day, built now' },
   { key: 'day', name: 'The event day' },
   { key: 'dayNow', name: 'The event day, built now' },
@@ -57,12 +99,19 @@ const TODAY_MOMENTS: { key: string; name: string }[] = [
   { key: 'first', name: 'A first run' },
 ];
 
-const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
+/** `fillsEmail`: the sign-in knew whose it was, so Email arrives filled. */
+const SIGN_IN_STATES: { key: string; name: string; notice?: SignInNotice; fillsEmail?: true }[] = [
   { key: 'first-visit', name: 'Signed out, first visit' },
   {
     key: 'signed-out',
     name: 'You were signed out',
     notice: { title: 'You were signed out', body: 'Sign in again to carry on.' },
+  },
+  {
+    key: 'code-timed-out',
+    name: 'That sign-in timed out',
+    notice: { title: 'That sign-in timed out', body: 'Sign in again to carry on.' },
+    fillsEmail: true,
   },
   {
     key: 'rule',
@@ -71,6 +120,7 @@ const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
       title: 'Signed out by Ire Events’ rule',
       body: 'Ire Events signs people out after 30 days without use. Sign in again to carry on.',
     },
+    fillsEmail: true,
   },
   {
     key: 'google-failed',
@@ -96,12 +146,15 @@ const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
       title: 'Ire Events signs in with Google or Apple only',
       body: 'Password sign-in is off in Ire Events. Use Google or Apple instead.',
     },
+    fillsEmail: true,
   },
 ];
 
 export default function Demo() {
   const { state } = useLocation() as { state: { from?: string } | null };
   const [from] = useState(() => state?.from ?? '/sign-in');
+
+  useEffect(() => leave, []);
 
   return (
     <Routes>
@@ -111,20 +164,60 @@ export default function Demo() {
       <Route path="get-back-in" element={<GetBackInBoard />} />
       <Route path="two-factor" element={<TwoFactorBoard />} />
       <Route path="ways-in" element={<WaysInBoard />} />
-      <Route path="signed-in" element={<SignedIn />} />
+      <Route path="terms" element={<LegalPage doc="terms" />} />
+      <Route path="privacy" element={<LegalPage doc="privacy" />} />
+      {/* Kept so a link to /demo/signed-in opens Today rather than the not-found page. */}
+      <Route path="signed-in" element={<Navigate to="/demo/today" replace />} />
       <Route path="today" element={<Today />} />
       <Route path="events" element={<Events />} />
       <Route path="events/:id" element={<EventPage />} />
       <Route path="events/:id/dates" element={<EventPage dates />} />
+      <Route path="events/:id/messages" element={<EventPage messages />} />
+      <Route path="events/:id/seating" element={<SeatingPage />} />
+      <Route path="events/:id/kitchen" element={<KitchenPage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
       <Route path="settings/account" element={<Settings open="account" />} />
       <Route path="settings/security" element={<Settings open="security" />} />
       <Route path="settings/notifications" element={<Settings open="notifications" />} />
+      <Route path="settings/personalisation" element={<Settings open="personalisation" />} />
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
+      <Route
+        path="settings/data"
+        element={<KeepQuery to="settings/data-and-control/delete-guest-data" />}
+      />
+      <Route path="settings/data-and-control" element={<Settings open="data" />} />
+      <Route
+        path="settings/data-and-control/email-domains"
+        element={<Settings open="data" page="emailDomains" />}
+      />
+      <Route
+        path="settings/data-and-control/audit-log"
+        element={<Settings open="data" page="auditLog" />}
+      />
+      <Route
+        path="settings/data-and-control/export"
+        element={<Settings open="data" page="export" />}
+      />
+      <Route
+        path="settings/data-and-control/delete-guest-data"
+        element={<Settings open="data" page="deleteGuestData" />}
+      />
+      <Route
+        path="settings/data-and-control/guest-request"
+        element={<Settings open="data" page="guestRequest" />}
+      />
+      <Route path="settings/vendors" element={<Settings open="vendors" />} />
+      <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
+      <Route path="redeem" element={<Redeem />} />
+      <Route path="vendors" element={<VendorsMoved />} />
+      <Route path="share/:scope" element={<ShareRecipient />} />
+      <Route path="unsubscribe" element={<Unsubscribe />} />
+      <Route path="guest" element={<GuestPage />} />
+      <Route path="guests" element={<Guests />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -133,6 +226,8 @@ export default function Demo() {
 
 function DemoHome({ from }: { from: string }) {
   const navigate = useNavigate();
+
+  useEffect(() => forgetBudget(), []);
 
   return (
     <main id="content" className="demo-home">
@@ -171,6 +266,64 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={CALENDAR_PAGES} />
         <h3>Create an organisation in B · A short walk · desktop</h3>
         <BoardPages pages={CREATE_PAGES} />
+        <h3>Guest’s page in A · The cover card · phone, tablet and desk</h3>
+        <BoardPages pages={GUEST_PAGES} />
+        <h3>The kitchen step on the guest’s page · sc-3778 · phone, tablet and desk</h3>
+        <BoardPages pages={GUEST_KITCHEN_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-30">
+        <h2 id="demo-page-30">30 · Guests · the planner’s side</h2>
+        <h3>Guests in A · Summary first · desktop</h3>
+        <BoardPages pages={GUESTS_PAGES} />
+        <h3>Final numbers due and the kitchen’s copies, in Guests A · desktop</h3>
+        <BoardPages pages={KITCHEN_PAGES} />
+        <h3>Changes since the kitchen’s last copy, in Guests A · desktop</h3>
+        <BoardPages pages={CHANGES_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-81">
+        <h2 id="demo-page-81">81 · Budget and costs</h2>
+        <h3>Vendors in A · Summary first · Settings › Vendors · desktop</h3>
+        <BoardPages pages={VENDORS_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-81-quotes">
+        <h2 id="demo-page-81-quotes">81 · Budget and costs · quotes and what is due</h2>
+        <h3>Quotes in A · Summary first · desktop</h3>
+        <BoardPages pages={QUOTES_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-81-budget">
+        <h2 id="demo-page-81-budget">81 · Budget and costs · Budget in A · Summary first</h2>
+        <h3>The Budget page, the ceiling, payments and margin · desktop</h3>
+        <BoardPages pages={BUDGET_PAGES} />
+        <h3>Payments on a vendor’s page, the reminder setting and the shapes · desktop</h3>
+        <BoardPages pages={PAYMENTS_PAGES} />
+        <h3>Who is paying · desktop</h3>
+        <BoardPages pages={PAYERS_PAGES} />
+        <h3>Against plan · desktop and A4</h3>
+        <BoardPages pages={PLAN_PAGES} />
+        <h3>Templates and calibration · desktop</h3>
+        <BoardPages pages={TEMPLATES_PAGES} />
+        <h3>What a decision costs, in Add guest · desktop</h3>
+        <BoardPages pages={DECIDE_PAGES} />
+        <h3>Share links, and the signed-out share · desktop, phone and tablet</h3>
+        <BoardPages pages={SHARE_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-36">
+        <h2 id="demo-page-36">36 · Messaging · Messages on an event</h2>
+        <h3>Messaging in B · Conversations · desktop</h3>
+        <BoardPages pages={MESSAGES_PAGES} />
+        <h3>The unsubscribe page, signed out · phone, tablet and desk</h3>
+        <BoardPages pages={UNSUBSCRIBE_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-31">
+        <h2 id="demo-page-31">31 · Venue and seating · Seating on an event</h2>
+        <h3>Seating in A · The room · desktop</h3>
+        <BoardPages pages={SEATING_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-28">
@@ -183,12 +336,20 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={SECURITY_PAGES} />
         <h3>Notification settings in B · Summary first · desktop</h3>
         <BoardPages pages={NOTIFICATIONS_PAGES} />
+        <h3>Personalisation in A · Swatches · desktop</h3>
+        <BoardPages pages={PERSONALISATION_PAGES} />
         <h3>General in B · Summary first · desktop</h3>
         <BoardPages pages={GENERAL_PAGES} />
         <h3>Sign-in rules in B · Where you stand · desktop</h3>
         <BoardPages pages={SIGN_IN_RULES_PAGES} />
+        <h3>Data and control in B · One place · desktop</h3>
+        <BoardPages pages={DATA_CONTROL_PAGES} />
         <h3>People on an event · desktop</h3>
         <BoardPages pages={PEOPLE_PAGES} />
+        <h3>Working an event without joining in A · The door code · desktop</h3>
+        <BoardPages pages={[...DOOR_PAGES, NO_ORG_PAGE]} />
+        <h3>The door code’s redeem pages, signed out · phone, tablet and desk</h3>
+        <BoardPages pages={REDEEM_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">
@@ -214,6 +375,9 @@ function DemoHome({ from }: { from: string }) {
         <h3>Two-factor · desktop</h3>
         <BoardPages pages={TWO_FACTOR_PAGES} />
 
+        <h3>Terms and Privacy · desktop and a phone’s width · sample text</h3>
+        <BoardPages pages={LEGAL_PAGES} />
+
         <h3>Other ways in · desktop</h3>
         <p className="demo-home-line">
           The organisation is <strong>{SAMPLE.organisation}</strong>, and the invitation is from{' '}
@@ -226,6 +390,13 @@ function DemoHome({ from }: { from: string }) {
       </section>
     </main>
   );
+}
+
+/** An old address keeps working, its query and all: Data is Data and control's page now (sc-560). */
+function KeepQuery({ to }: { to: string }) {
+  const { search } = useLocation();
+
+  return <Navigate to={`/demo/${to}${search}`} replace />;
 }
 
 function BoardPages({
@@ -265,7 +436,7 @@ function SignInForm({ state }: { state: string }) {
   const arrival = (useLocation().state as Arrival | null) ?? {};
   const [twoFactor, setTwoFactor] = useState(false);
   const drawn = SIGN_IN_STATES.find((each) => each.key === state);
-  const [notice, setNotice] = useState<Notice | null>(drawn?.notice ?? null);
+  const [notice, setNotice] = useState<SignInNotice | null>(drawn?.notice ?? null);
   const [providerOnly, setProviderOnly] = useState(state === 'provider-only');
   const [liftsAt, setLiftsAt] = useState<number | null>(() =>
     state === 'locked' ? Date.now() + LOCK_MS : null,
@@ -278,7 +449,7 @@ function SignInForm({ state }: { state: string }) {
   const email = useRef<HTMLInputElement>(null);
   const password = useRef<HTMLInputElement>(null);
   const pending = useRef<number | undefined>(undefined);
-  const knownEmail = state === 'rule' || state === 'provider-only' ? SAMPLE.email : arrival.email;
+  const knownEmail = drawn?.fillsEmail ? SAMPLE.email : arrival.email;
   const locked = liftsAt != null;
 
   useEffect(() => () => window.clearTimeout(pending.current), []);
@@ -355,7 +526,7 @@ function SignInForm({ state }: { state: string }) {
   }
 
   const until = liftsAt == null ? null : timeOfDay(liftsAt);
-  const shown: Notice | null =
+  const shown: SignInNotice | null =
     until == null ? notice : { title: 'Too many tries', body: `Try again at ${until}.` };
 
   return (
@@ -375,13 +546,11 @@ function SignInForm({ state }: { state: string }) {
       <div className="demo-heading">
         <h1>Sign in</h1>
         {shown != null && (
-          <div
-            className="demo-notice"
-            role={locked || state.endsWith('failed') ? 'alert' : 'status'}
-          >
-            <p className="demo-notice-title">{shown.title}</p>
-            <p>{shown.body}</p>
-          </div>
+          <Notice
+            title={shown.title}
+            body={shown.body}
+            alert={locked || state.endsWith('failed')}
+          />
         )}
       </div>
 
@@ -505,44 +674,37 @@ function SignInForm({ state }: { state: string }) {
   );
 }
 
-function SignedIn() {
-  const { state } = useLocation() as { state: { provider?: string } | null };
-
-  return (
-    <BoardPage>
-      <div className="demo-heading">
-        <h1>Signed in</h1>
-        <p className="demo-muted">
-          {state?.provider != null
-            ? `A stand-in: ${state.provider} is not wired in the demo, so this is where it would land.`
-            : `A stand-in for your events, signed in as ${SAMPLE.email}.`}
-        </p>
-      </div>
-      <Link className="button demo-wide" to="/demo/sign-in?state=signed-out">
-        Sign out
-      </Link>
-    </BoardPage>
-  );
-}
-
 const LATER: Record<string, string> = {
-  terms: 'Terms',
-  privacy: 'Privacy',
   security: 'Your account › Security',
+  calendar: 'Add to calendar',
+  meals: 'Your meals · sc-3907',
+};
+
+/** The guest's page a stand-in goes back to: the meals to the kitchen step's refusal, the calendar to Coming. */
+const GUEST_BACK: Record<string, string> = {
+  calendar: '/demo/guest?state=coming',
+  meals: '/demo/guest?state=meal_ruled_out',
 };
 
 function Later() {
   const [params] = useSearchParams();
-  const screen = LATER[params.get('screen') ?? ''] ?? 'Terms';
+  const asked = params.get('screen') ?? '';
 
+  // The stand-ins' old addresses open the pages themselves (sc-28982).
+  if (asked === 'terms' || asked === 'privacy') return <Navigate to={`/demo/${asked}`} replace />;
+
+  const screen = LATER[asked] ?? 'Your account › Security';
+  const guest = GUEST_BACK[asked];
+
+  // Opened from any footer, signed in or not, so its header offers neither way (sc-29561).
   return (
-    <BoardPage>
+    <BoardPage end={null}>
       <div className="demo-heading">
         <h1>{screen}</h1>
         <p className="demo-muted">A stand-in: this page comes to the demo at its own step.</p>
       </div>
-      <Link className="button demo-wide" to="/demo/sign-in">
-        Back to sign in
+      <Link className="button demo-wide" to={guest ?? '/demo/sign-in'}>
+        {guest != null ? 'Back to the guest’s page' : 'Back to sign in'}
       </Link>
     </BoardPage>
   );

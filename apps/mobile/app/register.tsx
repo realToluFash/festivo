@@ -3,7 +3,8 @@ import {
   PASSWORD_MINIMUM_LENGTH,
   meetsPasswordLength,
 } from '@soirely/domain';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
+import type { NativeStackNavigationProp } from 'expo-router/native-stack';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +16,7 @@ import { AboveKeyboardView } from '../src/components/Screen.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { dateLocale } from '../src/i18n/index.ts';
 import { emailMessage } from '../src/kit/formChecks.ts';
+import { useReadOut } from '../src/components/ReadOut.tsx';
 import { holdRegistration } from '../src/pendingRegistration.ts';
 import {
   type RegistrationFieldError,
@@ -31,11 +33,14 @@ type Which = 'name' | 'email' | 'password';
 /** The first of four steps: name, email and password. Back from the email code returns here, the address kept to fix. */
 export default function Register() {
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ email?: string }>();
+  const params = useLocalSearchParams<{ email?: string; timedOut?: string }>();
+  const navigation = useNavigation<NativeStackNavigationProp<Record<string, object | undefined>>>();
   const [status, setStatus] = useState<RegistrationStatus>({ kind: 'ready' });
   const [name, setName] = useState('');
   const [email, setEmail] = useState(params.email ?? '');
   const [password, setPassword] = useState('');
+  // Said without moving focus from Password; it goes once Create account is pressed (sc-29923).
+  const [line, setLine] = useState<string | null>(null);
   // Checked before sending; a refusal from the server shows the same way.
   const [checked, setChecked] = useState<Partial<Record<Which, string>>>({});
   const nameField = useRef<TextInputInstance>(null);
@@ -46,6 +51,39 @@ export default function Register() {
   const locked = status.kind === 'rateLimited';
   const liftsAt = locked ? status.liftsAt : null;
   const refused = status.kind === 'refused' ? status.fields : {};
+
+  useReadOut(line);
+
+  // Back over the email code, this screen is still mounted with the password in it.
+  const [timedOutAt, setTimedOutAt] = useState<string | undefined>(undefined);
+  if (params.timedOut !== timedOutAt) {
+    setTimedOutAt(params.timedOut);
+    if (params.timedOut != null) {
+      setPassword('');
+      if (params.email != null) setEmail(params.email);
+      setChecked({});
+      setStatus({ kind: 'ready' });
+      setLine(t('register.timedOut'));
+    }
+  }
+
+  useEffect(() => {
+    if (params.timedOut == null) return;
+
+    focusChecked(passwordField);
+    // Android ignores a focus on this screen while the email code is still sliding off it (sc-29923).
+    const listeners = [
+      navigation.addListener('transitionEnd', (event) => {
+        if (event.data.closing) return;
+        unlisten();
+        focusChecked(passwordField);
+      }),
+      navigation.addListener('blur', () => unlisten()),
+    ];
+    const unlisten = () => listeners.forEach((remove) => remove());
+
+    return unlisten;
+  }, [navigation, params.timedOut]);
 
   useEffect(() => {
     if (liftsAt == null) return;
@@ -62,6 +100,7 @@ export default function Register() {
   async function submit(): Promise<void> {
     if (busy || locked) return;
 
+    setLine(null);
     const found: Partial<Record<Which, string>> = {};
     if (name.trim() === '') found.name = t('register.nameBlank');
     const emailProblem = emailMessage(email, t);
@@ -119,7 +158,7 @@ export default function Register() {
         />
       }
     >
-      <Heading title={t('register.title')} />
+      <Heading title={t('register.title')} {...(line != null && { intro: line })} />
       {status.kind === 'rateLimited' && (
         <View style={styles.notice}>
           <Notice
@@ -149,6 +188,7 @@ export default function Register() {
           value={name}
           onChangeText={typed('name', setName)}
           state={said.name != null ? 'blank' : 'plain'}
+          line={said.name}
           submitting={busy}
           maxLength={ACCOUNT_NAME_MAXIMUM}
           autoCapitalize="words"
@@ -169,6 +209,7 @@ export default function Register() {
           value={email}
           onChangeText={typed('email', setEmail)}
           state={said.email != null ? 'blank' : 'plain'}
+          line={said.email}
           submitting={busy}
           keyboardType="email-address"
           autoCapitalize="none"
@@ -177,7 +218,7 @@ export default function Register() {
           returnKeyType="next"
           submitBehavior="submit"
           onSubmitEditing={() => passwordField.current?.focus()}
-          autoFocus={params.email != null}
+          autoFocus={params.email != null && params.timedOut == null}
           testID="register.email"
         />
         {said.email != null && <Says words={said.email} />}
@@ -190,12 +231,18 @@ export default function Register() {
           onChangeText={typed('password', setPassword)}
           password
           state={said.password != null ? 'blank' : 'plain'}
+          line={
+            said.password === ''
+              ? t('register.ruleLength', { count: PASSWORD_MINIMUM_LENGTH })
+              : said.password
+          }
           submitting={busy}
           autoComplete="new-password"
           textContentType="newPassword"
           returnKeyType="go"
           submitBehavior="submit"
           onSubmitEditing={() => void submit()}
+          autoFocus={params.timedOut != null}
           testID="register.password"
         />
         {said.password != null && said.password !== '' ? (

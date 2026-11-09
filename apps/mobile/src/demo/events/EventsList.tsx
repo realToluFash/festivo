@@ -16,43 +16,35 @@ import { TextField } from '../../components/Field.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Cover } from '../../components/Cover.tsx';
+import {
+  type GuestCounts,
+  GUEST_WORDS as G,
+  SAMPLE_GUESTS,
+  figureOf,
+  guestCountsOf,
+  rowGuests,
+} from './GuestCounts.ts';
 import { Glyph } from '../../components/Glyph.tsx';
-import { SwitchedNotice } from '../OrgSwitcher.tsx';
-import { PhoneTabBar } from '../../components/TodayCover.tsx';
+import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
+import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
+import { EventCard, EventThumb } from '../../components/EventCard.tsx';
 import {
-  Bell,
-  Fade,
-  Landscape,
-  OrgPill,
-  PHONE_TAB_BAR,
-  PortraitTop,
-  useShell,
-} from '../settings/Frame.tsx';
-import { Pill } from '../settings/parts.tsx';
-import {
-  type Anchor,
-  CardSays,
-  HeadCount,
-  Row,
-  RowList,
-  SectionHead,
-  StepButton,
-  SummaryCard,
-  TextAction,
-  anchorUnder,
-} from '../settings/Summary.tsx';
-import { CardPieces, EventCard, EventThumb } from './EventCard.tsx';
+  EventsEmptyTab,
+  EventsFirstRun,
+  EventsTabs,
+  Said,
+  SaidLine,
+} from '../../components/EventsList.tsx';
 import { EventsFilterMenu, FilterButton } from './EventsFilter.tsx';
 import {
   type CardStep,
   type Filters,
   type ListState,
-  type ListTab,
   NO_FILTERS,
   PAST_PAGE,
   type Shown,
-  TAB_WORDS,
+  tabWord,
+  emptyTabOf,
   eventHref,
   filterWord,
   filtered,
@@ -66,17 +58,25 @@ import {
   rowTag,
   searching,
   summaryLine,
-  tabWidths,
+  withoutTab,
 } from './EventsModel.ts';
 import { CLOCKS, EVENTS, EVENT_OF_KEY, OFFLINE_AS_OF } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { Pill } from '../../components/SettingsParts.tsx';
+import {
+  type Anchor,
+  anchorUnder,
+  HeadCount,
+  Row,
+  RowList,
+  SectionHead,
+  TextAction,
+} from '../../components/Summary.tsx';
+import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 
 const SEARCH_PAUSE_MS = 300;
 const MENU_AFTER_MS = 700;
-const TABS: readonly ListTab[] = ['upcoming', 'drafts', 'past'];
-const CELL_PAD = 12;
-const TRACK_PAD = 3;
-const TAB_GAP = 2;
 
 export function openEvent(id: string, query?: Readonly<Record<string, string>>): void {
   router.push(eventHref(id, query) as Href);
@@ -111,18 +111,28 @@ export function EventsList({
   const [searched, setSearched] = useState(start.typed);
   const [filters, setFilters] = useState<Filters>(start.filters);
   const [pastShown, setPastShown] = useState(start.pastShown);
-  const [offline, setOffline] = useState(state === 'offline');
+  const [offline, setOffline] = useState(state === 'offline' || state === 'eventsOffline');
   const [menuAt, setMenuAt] = useState<Anchor | null>(null);
   const filterRef = useRef<ViewInstance>(null);
   const field = useRef<TextInputInstance>(null);
-  const first = state === 'first';
+  const asks = state === 'firstAsk';
+  const first = state === 'first' || state === 'eventsFirst' || asks;
   const wide = shell.layout !== 'phone';
-  const events = useMemo(
-    () => (first ? [] : EVENTS.filter((event) => event.id !== deleted)),
-    [first, deleted],
-  );
+  const events = useMemo(() => {
+    if (first) return [];
+    const all = EVENTS.filter(
+      (event) => event.id !== deleted && (state !== 'eventsZero' || event.status === 'draft'),
+    );
+    const emptied = emptyTabOf(state);
+
+    return emptied == null ? all : withoutTab(all, emptied, now, locale);
+  }, [first, deleted, state, now, locale]);
   const home = useMemo(() => homeOf(events, now, locale), [events, now, locale]);
   const looking = searching(searched) || filtered(filters);
+  const guests = useMemo(
+    () => guestCountsOf(events, state === 'noGuests' ? {} : SAMPLE_GUESTS, now),
+    [events, state, now],
+  );
   const results = useMemo(
     () => (looking ? resultsOf(events, searched, filters, now, locale) : null),
     [looking, events, searched, filters, now, locale],
@@ -150,13 +160,19 @@ export function EventsList({
     setTyped('');
     setSearched('');
   };
+  const guestLine = (event: Shown) => {
+    const one = state === 'noGuests' ? null : rowGuests(event, SAMPLE_GUESTS, now);
+    return one == null
+      ? null
+      : `${G.coming(one.coming, locale)} · ${G.notReplied(one.notReplied, locale)}`;
+  };
   const row = (event: Shown, everyPhase: boolean) => ({
     key: event.id,
     inset: 60,
     row: (
       <Row
         title={event.name}
-        line={rowLine(event, locale)}
+        line={[rowLine(event, locale), guestLine(event)].filter(Boolean).join('\n')}
         lead={<EventThumb event={event} />}
         tag={rowTag(event, everyPhase)}
         value={wide ? (howSoon(event, now) ?? undefined) : undefined}
@@ -174,9 +190,10 @@ export function EventsList({
         wide={wide}
         bell={shell.layout !== 'portrait'}
         org={shell.layout === 'phone'}
-        onNew={() => shell.tell(say.ownDesign(W.newEvent))}
+        onNew={asks ? null : () => shell.tell(say.ownDesign(W.newEvent))}
         onBell={shell.tell}
       />
+      {!first && <GuestTiles counts={guests} locale={locale} />}
       <SwitchedNotice />
     </>
   );
@@ -185,32 +202,9 @@ export function EventsList({
     return (
       <ListFrame offline={null}>
         {top}
-        <SummaryCard
-          size={wide ? 'wide' : 'page'}
-          height={200}
-          backdrop={
-            <>
-              <Cover shade="side" pieces={[]} />
-              <CardPieces />
-            </>
-          }
-          testID="events.first"
-        >
-          <CardSays text={W.firstRunTitle} size={wide ? 28 : 24} heading />
-          <View style={styles.cardFoot}>
-            <StepButton
-              label={W.firstRunCreate}
-              onPress={() => shell.tell(say.ownDesign(W.firstRunCreate))}
-              testID="events.first.create"
-            />
-          </View>
-        </SummaryCard>
-        <RowList
-          items={W.firstRunSteps.map((step, index) => ({
-            key: step,
-            inset: 52,
-            row: <Row title={step} lead={<StepTile n={index + 1} />} />,
-          }))}
+        <EventsFirstRun
+          wide={wide}
+          onCreate={asks ? undefined : () => shell.tell(say.ownDesign(W.firstRunCreate))}
         />
       </ListFrame>
     );
@@ -265,7 +259,7 @@ export function EventsList({
       </View>
       {results == null ? (
         <>
-          <Segment
+          <EventsTabs
             tab={tab}
             counts={{
               upcoming: home.upcoming.length,
@@ -274,13 +268,16 @@ export function EventsList({
             }}
             onTab={setTab}
           />
+          {tabEvents.length === 0 && <EventsEmptyTab tab={tab} />}
           {card != null && (
             <EventCard
+              guests={guestLine(card)}
               event={card}
               now={now}
               locale={locale}
               wide={wide}
               onOpen={() => openEvent(card.id)}
+              takes={() => true}
               onStep={(step) => stepFrom(card, step, shell.tell)}
               testID="events.card"
             />
@@ -294,9 +291,7 @@ export function EventsList({
             />
           )}
           {shownMore > 0 && <Said words={say.moreShown(shownMore)} />}
-          <Text size={14} weight="medium" style={[styles.secondary, styles.figures, styles.said]}>
-            {say.footer(tabEvents.length)}
-          </Text>
+          {tabEvents.length > 0 && <SaidLine words={say.footer(tabEvents.length)} />}
         </>
       ) : (
         <Results
@@ -333,7 +328,7 @@ export function EventsList({
               {results.groups.map((group) => (
                 <View key={group.tab}>
                   <SectionHead
-                    title={TAB_WORDS[group.tab]}
+                    title={tabWord(group.tab)}
                     right={<HeadCount text={String(group.events.length)} />}
                   />
                   <RowList items={group.events.map((event) => row(event, true))} />
@@ -411,7 +406,7 @@ function ListFrame({
       </ScrollView>
       {phone && (
         <>
-          <Fade />
+          <TabBarFade />
           <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Events" />
         </>
       )}
@@ -432,7 +427,8 @@ function ListTop({
   wide: boolean;
   bell: boolean;
   org: boolean;
-  onNew: () => void;
+  /** Absent for a role without Create events. */
+  onNew: (() => void) | null;
   onBell: (words: string) => void;
 }) {
   return (
@@ -453,7 +449,7 @@ function ListTop({
         >
           {W.events}
         </Text>
-        {wide ? (
+        {onNew == null ? null : wide ? (
           <Pill
             label={W.newEvent}
             glyph="plus"
@@ -480,6 +476,56 @@ function ListTop({
           {summary}
         </Text>
       )}
+    </View>
+  );
+}
+
+function GuestTiles({ counts, locale }: { counts: GuestCounts; locale: string }) {
+  return (
+    <View style={styles.guests} testID="events.guests">
+      <GuestTile
+        id="invited"
+        name={G.invited}
+        figure={figureOf(counts.invited, locale)}
+        line={G.coming(counts.coming, locale)}
+      />
+      <GuestTile
+        id="replied"
+        name={G.replied}
+        figure={figureOf(counts.replied, locale)}
+        line={G.notReplied(counts.notReplied, locale)}
+      />
+    </View>
+  );
+}
+
+function GuestTile({
+  id,
+  name,
+  figure,
+  line,
+}: {
+  id: 'invited' | 'replied';
+  name: string;
+  figure: string;
+  line: string;
+}) {
+  return (
+    <View
+      style={styles.guest}
+      accessible
+      accessibilityLabel={`${name}, ${figure}, ${line}`}
+      testID={`events.guests.${id}`}
+    >
+      <Text size={14} weight="semibold" style={styles.secondary}>
+        {name}
+      </Text>
+      <Text size={28} weight="bold" style={[styles.figures, styles.guestFigure]}>
+        {figure}
+      </Text>
+      <Text size={14} weight="medium" style={[styles.secondary, styles.figures, styles.said]}>
+        {line}
+      </Text>
     </View>
   );
 }
@@ -562,111 +608,6 @@ export function SearchField({
   );
 }
 
-/** B's segment: the lit tab white with a tick, each with its count. */
-function Segment({
-  tab,
-  counts,
-  onTab,
-}: {
-  tab: ListTab;
-  counts: Record<ListTab, number>;
-  onTab: (tab: ListTab) => void;
-}) {
-  // Yoga neither keeps a tab's min-content width nor shares the rest as CSS does, so the tabs are sized here,
-  // from copies no tab squeezes.
-  const [words, setWords] = useState<Partial<Record<ListTab, number>>>({});
-  const [track, setTrack] = useState<number>();
-  const mins = TABS.map((each) => words[each]);
-  const sized =
-    track != null && mins.every((w) => w != null)
-      ? tabWidths(
-          track - 2 * TRACK_PAD - (TABS.length - 1) * TAB_GAP,
-          mins.map((w) => (w ?? 0) + 2 * CELL_PAD),
-        )
-      : undefined;
-
-  return (
-    <View
-      style={styles.segment}
-      accessibilityRole="tablist"
-      onLayout={(event) => setTrack(event.nativeEvent.layout.width)}
-    >
-      {TABS.map((each, i) => {
-        const on = each === tab;
-        const width = sized?.[i];
-
-        return (
-          <Pressable
-            key={each}
-            onPress={() => onTab(each)}
-            style={[
-              styles.cell,
-              width != null && {
-                flexBasis: width,
-                minWidth: width,
-                maxWidth: width,
-                flexGrow: 0,
-                flexShrink: 0,
-              },
-              on && styles.cellOn,
-            ]}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: on }}
-            accessibilityLabel={`${TAB_WORDS[each]}, ${counts[each]}`}
-            testID={`events.tab.${each}`}
-          >
-            <TabWords tab={each} on={on} count={counts[each]} />
-          </Pressable>
-        );
-      })}
-      <View
-        style={styles.tabMeasures}
-        pointerEvents="none"
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
-        {TABS.map((each) => (
-          <View
-            key={each}
-            style={styles.tabMeasure}
-            onLayout={(event) => {
-              const width = Math.ceil(event.nativeEvent.layout.width);
-              setWords((was) => (was[each] === width ? was : { ...was, [each]: width }));
-            }}
-          >
-            <TabWords tab={each} on={each === tab} count={counts[each]} />
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function TabWords({ tab, on, count }: { tab: ListTab; on: boolean; count: number }) {
-  const ink = on ? tokens.colorAccentText : tokens.colorInkSecondary;
-  const weight = on ? 'semibold' : 'medium';
-
-  return (
-    <View style={styles.tabContent}>
-      {on && <Glyph name="tick" size={14} ink={tokens.colorAccent} weight={2.6} />}
-      <View style={styles.tabWords}>
-        <Text
-          size={14.5}
-          weight={weight}
-          numberOfLines={1}
-          accessible={false}
-          style={{ color: ink }}
-        >
-          {TAB_WORDS[tab]}
-        </Text>
-        <Text size={14.5} weight={weight} accessible={false} style={[{ color: ink }, styles.count]}>
-          {String(count)}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
 function Results({
   count,
   onClearFilters,
@@ -700,40 +641,22 @@ function Results({
   );
 }
 
-function Said({ words }: { words: string }) {
-  useReadOut(words);
-
-  return (
-    <Text size={14} weight="medium" style={[styles.secondary, styles.said]}>
-      {words}
-    </Text>
-  );
-}
-
-function OfflineBand({ onRetry }: { onRetry: () => void }) {
+export function OfflineBand({
+  onRetry,
+  testID = 'events.offline',
+}: {
+  onRetry: () => void;
+  testID?: string;
+}) {
   useReadOut(say.offline(OFFLINE_AS_OF));
 
   return (
-    <View style={styles.band} testID="events.offline">
+    <View style={styles.band} testID={testID}>
       <View style={styles.diamond} />
       <Text size={14.5} weight="semibold" style={[styles.grow, styles.figures]}>
         {say.offline(OFFLINE_AS_OF)}
       </Text>
-      <TextAction label={W.tryAgain} onPress={onRetry} testID="events.offline.retry" />
-    </View>
-  );
-}
-
-function StepTile({ n }: { n: number }) {
-  return (
-    <View
-      style={styles.stepTile}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      <Text size={16} weight="bold" accessible={false} style={[styles.accent, styles.figures]}>
-        {String(n)}
-      </Text>
+      <TextAction label={W.tryAgain} onPress={onRetry} testID={`${testID}.retry`} />
     </View>
   );
 }
@@ -750,6 +673,19 @@ const styles = StyleSheet.create({
   orgRow: { flexDirection: 'row', alignItems: 'center', marginBottom: tokens.spaceSm },
   titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   summary: { marginTop: tokens.spaceHair, lineHeight: 15 * 1.45 },
+  guests: { flexDirection: 'row', gap: tokens.spaceMd },
+  guest: {
+    flex: 1,
+    minWidth: 0,
+    gap: tokens.spaceHair,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: tokens.colorInsetBorder,
+    borderRadius: tokens.radiusInset,
+    backgroundColor: tokens.colorInset,
+  },
+  guestFigure: { lineHeight: 28 * 1.15 },
   said: { lineHeight: 14 * 1.45 },
   newRound: {
     width: tokens.sizeHit,
@@ -806,39 +742,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: tokens.colorInkTertiary,
   },
-  segment: {
-    height: tokens.sizeHit,
-    flexDirection: 'row',
-    gap: TAB_GAP,
-    padding: TRACK_PAD,
-    borderRadius: 22,
-    backgroundColor: tokens.colorInsetBorder,
-  },
-  cell: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 0,
-    height: 38,
-    paddingHorizontal: CELL_PAD,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 19,
-  },
-  cellOn: {
-    backgroundColor: tokens.colorCard,
-    shadowColor: tokens.colorInk,
-    shadowOpacity: 0.12,
-    shadowRadius: 1.5,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 2,
-  },
-  tabContent: { flexShrink: 0, flexDirection: 'row', alignItems: 'center', gap: 5 },
-  tabMeasures: { position: 'absolute', top: 0, left: 0, right: 0, opacity: 0 },
-  tabMeasure: { position: 'absolute', top: 0, left: 0 },
-  count: { opacity: 0.8, fontVariant: ['tabular-nums'] },
-  tabWords: { flexDirection: 'row', alignItems: 'baseline', gap: tokens.spaceXxs },
-  cardFoot: { marginTop: 'auto' },
   results: { gap: 18 },
   countRow: {
     minHeight: tokens.sizeHit,
@@ -865,13 +768,5 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: tokens.colorInkSecondary,
     transform: [{ rotate: '45deg' }],
-  },
-  stepTile: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorAccentTint,
   },
 });

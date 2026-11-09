@@ -17,8 +17,17 @@ import { useTranslation } from 'react-i18next';
 import { FocusEdge, useHeld } from '../components/Field.tsx';
 import { fieldFocused, fieldLeft } from '../components/focusedField.ts';
 import { Text } from '../components/Text.tsx';
-import { FIELD_DEFAULTS, fieldName, passwordProps } from '../kit/fields.ts';
+import { UnseenName } from '../components/UnseenName.tsx';
+import {
+  FIELD_DEFAULTS,
+  fieldName,
+  passwordProps,
+  refusedHint,
+  refusedName,
+  withInvalid,
+} from '../kit/fields.ts';
 import { glide } from '../motion.ts';
+import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 
@@ -36,6 +45,7 @@ export function InsideField({
   onChangeText,
   password = false,
   state = 'plain',
+  line,
   submitting = false,
   multiline = false,
   ref,
@@ -50,6 +60,8 @@ export function InsideField({
   password?: boolean;
   /** Blank or malformed: a thin red edge and a red label. A refusal shakes the field and leaves its edge. */
   state?: FieldState;
+  /** The line about it under it: while it shows, a screen reader hears "Invalid" with the name and the line as the hint (sc-31323). */
+  line?: string | null | undefined;
   /** A request runs: what was typed is held, and the focus and the keys stay. */
   submitting?: boolean;
   multiline?: boolean;
@@ -58,8 +70,11 @@ export function InsideField({
 }) {
   const { t } = useTranslation();
   const labelID = useId();
+  const invalidNameID = useId();
+  const refused = line == null ? null : { word: t('forms.invalid'), line, nameID: invalidNameID };
   const { fontScale } = useWindowDimensions();
   const [focused, setFocused] = useState(false);
+  const bold = useBoldText();
   const [revealed, setRevealed] = useState(false);
   const [typed, setTyped] = useState(value ?? defaultValue ?? '');
   const raised = focused || (value ?? typed) !== '' || multiline;
@@ -104,7 +119,8 @@ export function InsideField({
         {...FIELD_DEFAULTS}
         {...(password && passwordProps(revealed))}
         {...rest}
-        {...fieldName(Platform.OS, label, { labelID })}
+        {...refusedName(Platform.OS, fieldName(Platform.OS, label, { labelID }), refused, label)}
+        accessibilityHint={refusedHint(refused, rest.accessibilityHint)}
         {...holding}
         ref={ref}
         multiline={multiline}
@@ -116,15 +132,22 @@ export function InsideField({
           setFocused(false);
           rest.onBlur?.(event);
         }}
-        style={inputFaced([
-          styles.input,
-          { paddingTop: tokens.spaceSm + labelLine },
-          multiline && styles.inputTall,
-          password && styles.inputBeside,
-        ])}
+        style={inputFaced(
+          [
+            styles.input,
+            { paddingTop: tokens.spaceSm + labelLine },
+            multiline && styles.inputTall,
+            password && styles.inputBeside,
+          ],
+          'sans',
+          bold,
+        )}
         aria-invalid={state !== 'plain'}
         testID={testID}
       />
+      <UnseenName nativeID={invalidNameID}>
+        {refused == null ? label : withInvalid(label, refused.word)}
+      </UnseenName>
       <Animated.View
         pointerEvents="none"
         style={[styles.label, { transform: [{ translateY }, { scale }] }]}

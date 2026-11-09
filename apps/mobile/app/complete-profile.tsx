@@ -328,9 +328,14 @@ function FoundOrganisation() {
             value={countryCode}
             onChange={(code) => {
               setCountryCode(code);
-              setErrors((previous) => ({ ...previous, countryCode: undefined }));
+              setErrors((previous) => ({
+                ...previous,
+                countryCode: undefined,
+                timezone: undefined,
+              }));
             }}
             disabled={saving}
+            wrong={(errors.countryCode ?? errors.timezone) != null}
             pickerRef={countryPicker}
             testID="completeProfile.country"
           />
@@ -608,6 +613,7 @@ function Details({
                 setErrors((previous) => ({ ...previous, name: undefined }));
               }}
               state={errors.name != null ? 'blank' : 'plain'}
+              line={errors.name}
               submitting={saving}
               autoComplete="name"
               textContentType="name"
@@ -717,6 +723,7 @@ function Details({
                   setErrors((previous) => ({ ...previous, organisationName: undefined }));
                 }}
                 state={errors.organisationName != null ? 'blank' : 'plain'}
+                line={errors.organisationName}
                 submitting={saving}
                 maxLength={ORGANISATION_NAME_MAXIMUM}
                 autoComplete="organization"
@@ -739,9 +746,14 @@ function Details({
                 value={countryCode}
                 onChange={(code) => {
                   setCountryCode(code);
-                  setErrors((previous) => ({ ...previous, countryCode: undefined }));
+                  setErrors((previous) => ({
+                    ...previous,
+                    countryCode: undefined,
+                    timezone: undefined,
+                  }));
                 }}
                 disabled={saving}
+                wrong={(errors.countryCode ?? errors.timezone) != null}
                 pickerRef={countryPicker}
                 testID="completeProfile.country"
               />

@@ -1,4 +1,4 @@
-import { atAccessibilitySizes, railWidth, sideListWidth } from './textSize.ts';
+import { SIDEBAR_WIDTH, atAccessibilitySizes, sideListWidth } from './textSize.ts';
 
 /**
  * Which of the three layouts a window is.
@@ -64,18 +64,18 @@ export function settingsListBeside(kind: LayoutKind): boolean {
 /** The room a page keeps beside its list: about what the phone frame gives one. */
 export const PAGE_BESIDE_MIN_WIDTH = 360;
 
-export const SETTINGS_LIST_WIDTH = 320;
+export const SETTINGS_LIST_WIDTH = 360;
 
 export interface ScreenWindow extends WindowSize {
   fontScale: number;
 }
 
-/** What sits beside a section on a tablet, after the rail. */
+/** What sits beside a section on a tablet, after the sidebar. */
 export type SectionBeside = 'nothing' | 'settingsList';
 
 export function sectionWidth(window: ScreenWindow, beside: SectionBeside): number {
   const kind = classifyLayout(window);
-  const content = window.width - (kind === 'tabletLandscape' ? railWidth(window.fontScale) : 0);
+  const content = window.width - (kind === 'tabletLandscape' ? SIDEBAR_WIDTH : 0);
   const columns =
     beside === 'settingsList' && settingsListBeside(kind)
       ? sideListWidth(SETTINGS_LIST_WIDTH, content, window.fontScale)
@@ -95,7 +95,7 @@ export function listFitsBeside(section: number, { margins, list, between }: List
 }
 
 function fitsBeside(window: ScreenWindow, beside: SectionBeside, list: ListBeside): boolean {
-  const content = window.width - railWidth(window.fontScale);
+  const content = window.width - SIDEBAR_WIDTH;
 
   return listFitsBeside(sectionWidth(window, beside), {
     ...list,

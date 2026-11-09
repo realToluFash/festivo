@@ -357,7 +357,9 @@ function Start({
           <span className="step-mark" aria-hidden="true">
             2
           </span>
-          <span>{t('lostTwoFactor.step2')}</span>
+          <span>
+            {opening.phone == null ? t('lostTwoFactor.step2EmailOnly') : t('lostTwoFactor.step2')}
+          </span>
         </li>
         <li>
           <span className="step-mark" aria-hidden="true">
@@ -375,19 +377,34 @@ function Start({
         {...offButton(limitedUntil != null)}
         onClick={onSend}
       >
-        {sending ? t('lostTwoFactor.sending') : t('lostTwoFactor.send')}
+        {opening.phone == null
+          ? t(sending ? 'lostTwoFactor.sendingEmailOnly' : 'lostTwoFactor.sendEmailOnly')
+          : t(sending ? 'lostTwoFactor.sending' : 'lostTwoFactor.send')}
       </button>
       <BackToSignIn />
     </>
   );
 }
 
-function Nobody({ supportAddress }: { supportAddress: string }) {
+/** Soirely support, where nobody can confirm it is you: from this page, or from a reset link's code step (sc-29067). */
+export function Nobody({
+  supportAddress,
+  intro,
+  onBack,
+}: {
+  supportAddress: string;
+  intro?: string;
+  onBack?: () => void;
+}) {
   const { t } = useTranslation();
 
   return (
     <>
-      <Heading title={t('lostTwoFactor.nobodyTitle')} intro={t('lostTwoFactor.nobodyIntro')} />
+      {onBack != null && <ColumnBack onClick={onBack} />}
+      <Heading
+        title={t('lostTwoFactor.nobodyTitle')}
+        intro={intro ?? t('lostTwoFactor.nobodyIntro')}
+      />
       <a className="button button-primary" href={`mailto:${supportAddress}`}>
         {t('lostTwoFactor.emailSupport', { address: supportAddress })}
       </a>
@@ -435,6 +452,37 @@ function Request({
   const waiting = state.status === 'waiting';
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [notCancelled, setNotCancelled] = useState(false);
+
+  async function cancel(): Promise<void> {
+    setNotCancelled(false);
+    setCancelling(true);
+
+    try {
+      onState(await api.cancelRecovery(recovery));
+      setConfirming(false);
+    } catch (refusal) {
+      if (replacedElsewhere(refusal)) {
+        onReplaced();
+        return;
+      }
+
+      // Answered before the cancel arrived: the page shows that answer, not a failure.
+      if (refusal instanceof ApiError && refusal.is('recovery_request_closed')) {
+        const answered = await api.recoveryState(recovery).catch(() => null);
+
+        if (answered != null) {
+          onState(answered);
+          setConfirming(false);
+          return;
+        }
+      }
+
+      setNotCancelled(true);
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   // Waiting, the answer arrives on its own; the page follows it within half a minute.
   useEffect(() => {
@@ -496,20 +544,23 @@ function Request({
             keep={t('lostTwoFactor.keepWaiting')}
             go={t('lostTwoFactor.cancel')}
             pending={cancelling}
-            onKeep={() => setConfirming(false)}
-            onGo={() => {
-              setCancelling(true);
-              api
-                .cancelRecovery(recovery)
-                .then(onState)
-                .catch((refusal: unknown) => {
-                  if (replacedElsewhere(refusal)) onReplaced();
-                })
-                .finally(() => {
-                  setCancelling(false);
-                  setConfirming(false);
-                });
+            refusal={
+              notCancelled ? (
+                <div className="notice notice-broken" role="alert">
+                  <span className="mark mark-broken" aria-hidden="true">
+                    ✕
+                  </span>
+                  <div className="notice-body">
+                    <p>{t('lostTwoFactor.notCancelled')}</p>
+                  </div>
+                </div>
+              ) : undefined
+            }
+            onKeep={() => {
+              setConfirming(false);
+              setNotCancelled(false);
             }}
+            onGo={() => void cancel()}
           >
             <p>{t('lostTwoFactor.cancelBody')}</p>
           </ConfirmDialog>
@@ -798,13 +849,17 @@ function Codes({
         {spent && (
           <Notice
             title={
-              codes?.state === 'expired'
-                ? t('lostTwoFactor.expiredTitle')
-                : t('lostTwoFactor.exhaustedTitle')
+              codes?.state === 'exhausted'
+                ? t('lostTwoFactor.exhaustedTitle')
+                : hasPhone
+                  ? t('lostTwoFactor.expiredTitle')
+                  : t('verifyEmail.expiredTitle')
             }
             body={
               codes?.state === 'exhausted'
-                ? t('lostTwoFactor.exhaustedBody')
+                ? hasPhone
+                  ? t('lostTwoFactor.exhaustedBody')
+                  : t('verifyEmail.exhaustedBody')
                 : hasPhone
                   ? t('lostTwoFactor.expiredBody', {
                       message: wording.fromWhatsApp

@@ -90,6 +90,45 @@ describe("a field's style reaches the platform with its face", () => {
   });
 });
 
+describe("with the phone's Bold text on, a weight draws one step heavier (sc-19877)", () => {
+  it('draws 400 and 500 in SemiBold, and 600 and 700 in Bold', () => {
+    expect(['400', '500', '600', '700'].map((weight) => faceFor(weight, 'sans', true))).toEqual([
+      'InstrumentSans-SemiBold',
+      'InstrumentSans-SemiBold',
+      'InstrumentSans-Bold',
+      'InstrumentSans-Bold',
+    ]);
+    expect(faceFor(undefined, 'sans', true)).toBe('InstrumentSans-SemiBold');
+  });
+
+  it("keeps Google's button in Google Sans Medium", () => {
+    expect(faceFor('500', 'googleSans', true)).toBe('GoogleSans-Medium');
+  });
+
+  it('gives a field the same face as a text, every time it is drawn', () => {
+    facesLoaded();
+
+    expect(faceStyle({ fontSize: 16 }, 'sans', true)).toEqual({
+      fontFamily: 'InstrumentSans-SemiBold',
+      fontSize: 16,
+    });
+    expect(inputFaceStyle({ fontSize: 16 }, 'sans', 'android', true)).toEqual({
+      fontFamily: 'InstrumentSans-SemiBold',
+      fontSize: 16,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+    });
+    expect(inputFaceStyle({ fontSize: 16 }, 'sans', 'ios', true)).toEqual({
+      fontFamily: 'InstrumentSans-SemiBold',
+      fontSize: 16,
+    });
+  });
+
+  it("leaves the system font's weight to the platform", () => {
+    expect(faceStyle({ fontWeight: '500' }, 'system', true)).toEqual({ fontWeight: '500' });
+  });
+});
+
 describe('the faces ship inside the app', () => {
   const fonts = join(import.meta.dirname, '../../assets/fonts');
   const fontsSource = readFileSync(join(import.meta.dirname, 'fonts.ts'), 'utf8');

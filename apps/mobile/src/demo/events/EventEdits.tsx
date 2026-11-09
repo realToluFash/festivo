@@ -4,6 +4,7 @@ import {
   HOSTS_MAXIMUM,
   endMovedLine,
   eventProblems,
+  formatWallDay,
   hostProblems,
   keepsLastHost,
   startMoved,
@@ -14,18 +15,32 @@ import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import { fieldFocused, fieldLeft } from '../../components/focusedField.ts';
 import { RadioMark } from '../../components/RadioMark.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
-import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
+import {
+  type ScreenReaderTarget,
+  moveScreenReaderFocus,
+} from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { EventMesh } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { LineIcon } from '../settings/AccountCard.tsx';
-import { useShell } from '../settings/Frame.tsx';
-import { Pill } from '../settings/parts.tsx';
-import { type AskProps, FocusedScreen, Row, RowList, TextAction } from '../settings/Summary.tsx';
-import { PhotoFill } from './EventCard.tsx';
+import { LineIcon } from '../../components/AccountCard.tsx';
+import { PhotoFill } from '../../components/EventCard.tsx';
 import { EventNotice } from './EventNotice.tsx';
 import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from './EventsModel.ts';
+import {
+  CLOSES_AT,
+  datesAsk,
+  noReplyOf,
+  replyByAskCount,
+  previewsReplyBy,
+  replyByAfterStart,
+  replyByAsk,
+  replyByHint,
+  replyByMoves,
+  replyByPreview,
+  replyByWrong,
+  todayIn,
+} from './ReplyBy.ts';
 import { SearchField } from './EventsList.tsx';
 import { BoxField, MomentBox, type Picking, PickerLayer, pick } from './EventsPick.tsx';
 import {
@@ -37,9 +52,18 @@ import {
   type Suggestion,
   TYPE_WORDS,
   ZONES,
-  meshFor,
 } from './EventsSample.ts';
+import { meshFor } from '../../kit/today.ts';
 import { W, say, t } from './EventsWords.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { Pill } from '../../components/SettingsParts.tsx';
+import {
+  type AskProps,
+  FocusedScreen,
+  Row,
+  RowList,
+  TextAction,
+} from '../../components/Summary.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
@@ -50,11 +74,16 @@ export interface EditProps {
   locale: string;
   opener: Opener;
   onClose: () => void;
-  onSaved: (event: SampleEvent) => void;
+  onSaved: (event: SampleEvent, movedReplyBy?: string) => void;
+  /** sc-3780: the Reply by part edits the date beside the event, not the event itself. */
+  replyBy?: string | null;
+  now?: Date;
+  onReplyBy?: (date: string | null) => void;
 }
 
 const TITLES: Record<EditPart, string> = {
   dates: W.dates,
+  replyBy: W.replyBy,
   venue: W.venue,
   hosts: W.hostedBy,
   type: W.type,
@@ -68,6 +97,8 @@ export function EditScreen({ part, ...edit }: EditProps & { part: EditPart }) {
   switch (part) {
     case 'dates':
       return <DatesEdit {...edit} />;
+    case 'replyBy':
+      return <ReplyByEdit {...edit} />;
     case 'venue':
       return <VenueEdit {...edit} />;
     case 'hosts':
@@ -218,18 +249,6 @@ export function EventField({
   );
 }
 
-/** sc-4330, under each part guests see: what saving tells them is not built yet. */
-function TellGuests() {
-  return (
-    <View style={styles.tell}>
-      <Text size={13.5} weight="semibold" style={[styles.secondary, styles.hint]}>
-        {W.tellGuests}
-      </Text>
-      <AcPill words={W.tellGuestsPill} />
-    </View>
-  );
-}
-
 export function AcPill({ words }: { words: string }) {
   return (
     <View style={styles.acPill}>
@@ -285,7 +304,7 @@ function Labelled({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-const CHANGED = {
+export const CHANGED = {
   start: { date: '2026-11-04', time: '18:00' },
   end: { date: '2026-11-06', time: '15:00' },
 };
@@ -298,6 +317,8 @@ function DatesEdit(edit: EditProps) {
   };
   const sample =
     start === 'datesChanged' ||
+    start === 'datesReplyBy' ||
+    start === 'datesReplyByAsk' ||
     start === 'discard' ||
     start === 'changedElsewhere' ||
     start === 'showLatest'
@@ -322,12 +343,19 @@ function DatesEdit(edit: EditProps) {
   const [picking, setPicking] = useState<Picking | null>(null);
   const draft = draftOf(event, { start: from, end: to });
   const wrong = eventProblems(draft, zone).some((problem) => problem.problem === 'endBeforeStart');
+  const replyBy = edit.replyBy ?? null;
+  const replyByTo = replyByAfterStart(replyBy, from.date);
+  const replyByLine =
+    replyBy == null || replyByTo == null ? null : replyByMoves(replyBy, replyByTo, locale);
+  const closes = datesAsk(replyBy, replyByTo, edit.now ?? new Date(), zone, event.id);
+  const [asking, setAsking] = useState(start === 'datesReplyByAsk');
   const changed =
     zone !== event.timeZone ||
     [from.date, from.time, to.date, to.time].join() !==
       [saved.start.date, saved.start.time, saved.end.date, saved.end.time].join();
 
   useReadOut(moved);
+  useReadOut(replyByLine);
 
   const pickStart = (mode: 'date' | 'time') =>
     pick(
@@ -365,13 +393,38 @@ function DatesEdit(edit: EditProps) {
     );
   const save = () => {
     if (wrong) return;
-    edit.onSaved({
-      ...event,
-      timeZone: zone,
-      startsAt: instantOf(from.date, from.time, zone),
-      endsAt: instantOf(to.date, to.time, zone),
-    });
+    if (closes != null) setAsking(true);
+    else commit();
   };
+  const commit = () => {
+    setAsking(false);
+    edit.onSaved(
+      {
+        ...event,
+        timeZone: zone,
+        startsAt: instantOf(from.date, from.time, zone),
+        endsAt: instantOf(to.date, to.time, zone),
+      },
+      replyByTo ?? undefined,
+    );
+  };
+  const closeAsk: AskProps | null =
+    asking && closes != null && replyByTo != null
+      ? {
+          title:
+            closes === 'now'
+              ? W.closeNowTitle
+              : say.closeSoonerTitle(formatWallDay(replyByTo, locale)),
+          line: `${replyByAskCount(noReplyOf(event.id))} ${closes === 'now' ? W.closeNowLine : W.closeSoonerLine}`,
+          keep: { label: W.keepEditing, testID: 'event.edit.dates.replyBy.keep' },
+          confirm: {
+            label: closes === 'now' ? W.closeNow : W.closeSooner,
+            testID: 'event.edit.dates.replyBy.close',
+          },
+          onKeep: () => setAsking(false),
+          onConfirm: commit,
+        }
+      : null;
 
   return (
     <EditShell
@@ -400,7 +453,7 @@ function DatesEdit(edit: EditProps) {
                 setShowing(false);
               },
             }
-          : null
+          : closeAsk
       }
       over={
         picking == null
@@ -446,6 +499,11 @@ function DatesEdit(edit: EditProps) {
             testID="event.edit.dates.startTime"
           />
         </View>
+        {replyByLine != null && (
+          <Text size={13.5} weight="semibold" style={styles.hint} testID="event.edit.dates.replyBy">
+            {replyByLine}
+          </Text>
+        )}
       </Labelled>
       <Labelled label={W.ends}>
         <View style={styles.pair}>
@@ -510,7 +568,147 @@ function DatesEdit(edit: EditProps) {
           testID="event.edit.dates.zone"
         />
       )}
-      <TellGuests />
+    </EditShell>
+  );
+}
+
+const REPLY_BY_TYPED: Partial<Record<EventDemoState, string>> = {
+  replyByError: '2026-11-05',
+  replyBySooner: '2026-11-03',
+  replyByNow: '2026-11-02',
+};
+
+/** Reply by (sc-3780): an optional day; a day on or after the start is refused, and closing replies sooner asks first. */
+function ReplyByEdit(edit: EditProps) {
+  const { event, start, locale } = edit;
+  const saved = edit.replyBy ?? null;
+  const now = edit.now ?? new Date();
+  const [value, setValue] = useState<string>(
+    (start == null ? undefined : REPLY_BY_TYPED[start]) ?? saved ?? '',
+  );
+  const [tried, setTried] = useState(start === 'replyByError');
+  const [asking, setAsking] = useState(
+    start === 'replyBySooner' || start === 'replyByNow'
+      ? replyByAsk(saved, value, todayIn(now, event.timeZone), noReplyOf(event.id))
+      : null,
+  );
+  const [picking, setPicking] = useState<Picking | null>(null);
+  const box = useRef<ViewInstance>(null);
+  const [aim, setAim] = useState(0);
+  const next = value === '' ? null : value;
+  const wrong = replyByWrong(next, event.startsAt, event.timeZone);
+  const keep = saved == null ? W.keepEditing : say.keepDate(formatWallDay(saved, locale));
+  const done = () => {
+    setAsking(null);
+    edit.onReplyBy?.(next);
+  };
+  const save = () => {
+    if (wrong) {
+      setTried(true);
+      setAim((count) => count + 1);
+      return;
+    }
+    const ask = replyByAsk(saved, next, todayIn(now, event.timeZone), noReplyOf(event.id));
+    if (ask == null) done();
+    else setAsking(ask);
+  };
+  const choose = () =>
+    pick(
+      {
+        title: W.replyBy,
+        mode: 'date',
+        field: { date: value, time: CLOSES_AT },
+        take: (picked) => {
+          setValue(picked.date);
+          setTried(false);
+        },
+      },
+      setPicking,
+    );
+  const remove = () => {
+    setValue('');
+    setTried(false);
+    setAim((count) => count + 1);
+  };
+
+  useEffect(() => {
+    if (aim > 0) moveScreenReaderFocus(box.current);
+  }, [aim]);
+
+  const ask: AskProps | null =
+    asking == null || next == null
+      ? null
+      : {
+          title:
+            asking === 'now' ? W.closeNowTitle : say.closeSoonerTitle(formatWallDay(next, locale)),
+          line: `${replyByAskCount(noReplyOf(event.id))} ${asking === 'now' ? W.closeNowLine : W.closeSoonerLine}`,
+          keep: { label: keep, testID: 'event.edit.replyBy.keep' },
+          confirm: {
+            label: asking === 'now' ? W.closeNow : W.closeSooner,
+            testID: 'event.edit.replyBy.close',
+          },
+          onKeep: () => setAsking(null),
+          onConfirm: done,
+        };
+
+  return (
+    <EditShell
+      part="replyBy"
+      changed={next !== saved}
+      onSave={save}
+      edit={edit}
+      latest={ask}
+      over={
+        picking == null
+          ? null
+          : {
+              layer: (
+                <PickerLayer picking={picking} locale={locale} onClose={() => setPicking(null)} />
+              ),
+              onClose: () => setPicking(null),
+            }
+      }
+    >
+      <EventField
+        label={W.replyBy}
+        optional
+        error={tried && wrong ? W.replyByNotBefore : null}
+        help={replyByHint(event.timeZone, locale)}
+      >
+        {next == null ? (
+          <Pressable
+            ref={box}
+            onPress={choose}
+            style={({ pressed }) => [styles.select, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={W.replyBy}
+            testID="event.edit.replyBy.date"
+          />
+        ) : (
+          <MomentBox
+            ref={box}
+            label={W.replyBy}
+            mode="date"
+            value={next}
+            locale={locale}
+            wrong={tried && wrong}
+            onPress={choose}
+            testID="event.edit.replyBy.date"
+          />
+        )}
+      </EventField>
+      {next != null && (
+        <View style={styles.start}>
+          <TextAction label={W.removeTheDate} onPress={remove} testID="event.edit.replyBy.remove" />
+        </View>
+      )}
+      {next != null && !wrong && previewsReplyBy(next, todayIn(now, event.timeZone)) && (
+        <View style={styles.inset}>
+          <Text size={15} weight="medium" style={styles.lines}>
+            {replyByPreview(next, locale)}
+          </Text>
+        </View>
+      )}
     </EditShell>
   );
 }
@@ -658,7 +856,6 @@ function VenueEdit(edit: EditProps) {
           }
         />
       )}
-      {words == null && !offer && !down && <TellGuests />}
     </EditShell>
   );
 }
@@ -795,9 +992,6 @@ function HostsEdit(edit: EditProps) {
           testID="event.edit.hosts.add"
         />
       )}
-      {!kept && hosts.length < HOSTS_MAXIMUM && problems.every((problem) => problem == null) && (
-        <TellGuests />
-      )}
     </EditShell>
   );
 }
@@ -915,7 +1109,6 @@ function NameEdit(edit: EditProps) {
           testID="event.edit.name.field"
         />
       </EventField>
-      <TellGuests />
     </EditShell>
   );
 }
@@ -1103,7 +1296,6 @@ const styles = StyleSheet.create({
   alertMarkSmall: { paddingTop: 1 },
   fieldHead: { flexDirection: 'row', flexWrap: 'wrap' },
   figures: { fontVariant: ['tabular-nums'] },
-  tell: { gap: tokens.spaceXs, alignItems: 'flex-start' },
   acPill: {
     minHeight: 26,
     justifyContent: 'center',
@@ -1119,6 +1311,15 @@ const styles = StyleSheet.create({
   hint: { lineHeight: 13.5 * 1.4 },
   said: { lineHeight: 14 * 1.45 },
   lines: { lineHeight: 15 * 1.45 },
+  start: { alignItems: 'flex-start' },
+  inset: {
+    paddingVertical: tokens.spaceMd,
+    paddingHorizontal: tokens.spaceLg,
+    borderRadius: tokens.radiusInset,
+    borderWidth: 1,
+    borderColor: tokens.colorInsetBorder,
+    backgroundColor: tokens.colorInset,
+  },
   pair: { flexDirection: 'row', gap: tokens.spaceSm },
   select: {
     minHeight: 52,

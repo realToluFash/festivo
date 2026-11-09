@@ -30,36 +30,17 @@ import { ReadOut } from '../../components/ReadOut.tsx';
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
-import { PhoneTabBar } from '../../components/TodayCover.tsx';
+import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { motionEase } from '../../motion.ts';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { SwitchedNotice } from '../OrgSwitcher.tsx';
 import { SAMPLE } from '../samples.ts';
-import { CardPieces } from '../events/EventCard.tsx';
+import { CardPieces } from '../../components/EventCard.tsx';
 import { openEvent } from '../events/EventsList.tsx';
 import { CLOCKS, EVENT_OF_KEY, READER_ZONE } from '../events/EventsSample.ts';
 import { W } from '../events/EventsWords.ts';
-import {
-  Bell,
-  Fade,
-  Landscape,
-  OrgPill,
-  PHONE_TAB_BAR,
-  PortraitTop,
-  useShell,
-} from '../settings/Frame.tsx';
-import { Pill } from '../settings/parts.tsx';
-import {
-  type Anchor,
-  anchorUnder,
-  CardSays,
-  Row,
-  RowList,
-  StepButton,
-  SummaryCard,
-} from '../settings/Summary.tsx';
+import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
 import { Agenda } from './CalendarAgenda.tsx';
 import {
   MonthName,
@@ -104,6 +85,18 @@ import {
   offsetsOf,
 } from './CalendarWeeks.tsx';
 import { CW, say } from './CalendarWords.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { Pill } from '../../components/SettingsParts.tsx';
+import {
+  type Anchor,
+  anchorUnder,
+  CardSays,
+  Row,
+  RowList,
+  StepButton,
+  SummaryCard,
+} from '../../components/Summary.tsx';
+import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 
 /** The demo keeps its own place, so it never moves the real Calendar's. */
 const KEPT = 'soirely.demo.calendar';
@@ -683,7 +676,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
         </View>
         {content}
       </View>
-      <Fade />
+      <TabBarFade />
       <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Calendar" />
       {overlays}
     </View>

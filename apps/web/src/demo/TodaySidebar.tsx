@@ -1,12 +1,12 @@
 import { Link } from 'react-router';
 
-import { Brand } from '../components/Brand.tsx';
+import { DeskPersonFace, type DeskPerson, DeskSidebar } from '../components/DeskSidebar.tsx';
 import { TODAY_IDS } from './events.ts';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
 import { EVENTS, type EventKey } from './today.ts';
-import type { Tell } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 
 const PLACES: readonly (readonly [string, GlyphName])[] = [
   ['Today', 'today'],
@@ -14,13 +14,7 @@ const PLACES: readonly (readonly [string, GlyphName])[] = [
   ['Calendar', 'calendar'],
 ];
 
-const FOLAKE: SidebarPerson = { name: SAMPLE.name, initials: 'FA', role: 'Owner' };
-
-export interface SidebarPerson {
-  name: string;
-  initials: string;
-  role: string;
-}
+const FOLAKE: DeskPerson = { name: SAMPLE.name, initials: 'FA', role: 'Owner' };
 
 /** The iPad's sidebar at a desk: the places, your events by colour, and the person at its foot. Events, Calendar or Settings selects its place; Settings names who is looking. */
 export function TodaySidebar({
@@ -39,15 +33,35 @@ export function TodaySidebar({
   settings?: boolean;
   listing?: boolean;
   calendar?: boolean;
-  person?: SidebarPerson;
+  person?: DeskPerson;
   inert?: boolean;
 }) {
   return (
-    <nav className="today-side" aria-label="Soirely" inert={inert}>
-      <div className="today-logo">
-        <Brand lockup />
-      </div>
-      <OrgSwitcher tell={tell} toast={settings} />
+    <DeskSidebar
+      label="Soirely"
+      inert={inert}
+      pill={<OrgSwitcher tell={tell} toast={settings} />}
+      foot={
+        <>
+          <Link
+            className={settings ? 'today-place is-on' : 'today-place'}
+            to={settings ? '/demo/settings' : '/demo'}
+            aria-current={settings ? 'page' : undefined}
+          >
+            <Glyph name="settings" />
+            Settings
+          </Link>
+          <button
+            type="button"
+            className="today-person"
+            aria-label={person.role == null ? person.name : `${person.name}, ${person.role}`}
+            onClick={() => tell('Your account has its own design.')}
+          >
+            <DeskPersonFace person={person} />
+          </button>
+        </>
+      }
+    >
       <button
         type="button"
         className="today-search"
@@ -115,32 +129,6 @@ export function TodaySidebar({
           </ul>
         </div>
       )}
-      <div className="today-grow" />
-      <div className="today-places">
-        <Link
-          className={settings ? 'today-place is-on' : 'today-place'}
-          to={settings ? '/demo/settings' : '/demo'}
-          aria-current={settings ? 'page' : undefined}
-        >
-          <Glyph name="settings" />
-          Settings
-        </Link>
-        <button
-          type="button"
-          className="today-person"
-          aria-label={`${person.name}, ${person.role}`}
-          onClick={() => tell('Your account has its own design.')}
-        >
-          <span className="today-avatar today-cover is-draft" aria-hidden="true">
-            {person.initials}
-          </span>
-          <span className="today-grow today-person-words" aria-hidden="true">
-            <span className="today-person-name">{person.name}</span>
-            <span className="today-person-role">{person.role}</span>
-          </span>
-          <Glyph name="updown" size={15} />
-        </button>
-      </div>
-    </nav>
+    </DeskSidebar>
   );
 }

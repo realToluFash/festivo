@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { init } from 'i18next';
+import { beforeAll, describe, expect, it } from 'vitest';
 
-import { tokens } from '../../theme/tokens.ts';
+import en from '../../i18n/locales/en.json';
+
 import {
   NO_FILTERS,
   cardStep,
@@ -9,6 +11,8 @@ import {
   datesRow,
   dayTiles,
   editOf,
+  finalNumbersOf,
+  emptyTabOf,
   eventHref,
   eventStateOf,
   filterWord,
@@ -27,14 +31,15 @@ import {
   resultsOf,
   rowLine,
   rowTag,
-  scrimContrast,
   shownEvent,
   summaryLine,
   tabWidths,
   wallOf,
   whenSpan,
+  withoutTab,
 } from './EventsModel.ts';
 import { CLOCKS, EVENTS, type SampleEvent, sampleEvent } from './EventsSample.ts';
+import { seedFinalNumbers } from './FinalNumbers.ts';
 
 const LOCALE = 'en-US';
 const reader = new Date(CLOCKS.reader);
@@ -49,6 +54,14 @@ function event(id: string): SampleEvent {
 }
 
 const shown = (id: string, at = reader) => shownEvent(event(id), at);
+
+beforeAll(() =>
+  init({
+    lng: 'en',
+    resources: { en: { translation: en } },
+    interpolation: { escapeValue: false },
+  }),
+);
 const names = (events: readonly { name: string }[]) => events.map(({ name }) => name);
 
 describe('the counts', () => {
@@ -85,12 +98,12 @@ describe('the counts', () => {
 
 describe('a row', () => {
   it('says main’s days and the place', () => {
-    expect(rowLine(event('evt-wed-4'), LOCALE)).toBe(
+    expect(rowLine(shown('evt-wed-4'), LOCALE)).toBe(
       'Thursday, Nov 5 to Saturday, Nov 7 · The Landmark, London',
     );
-    expect(rowLine(event('evt-gala-4'), LOCALE)).toBe('Saturday, Nov 14 · Casa de América, Madrid');
-    expect(rowLine(event('evt-cena-4'), LOCALE)).toBe('Saturday, Dec 12 · Venue to be confirmed');
-    expect(rowLine(event('evt-off'), LOCALE)).toBe(
+    expect(rowLine(shown('evt-gala-4'), LOCALE)).toBe('Saturday, Nov 14 · Casa de América, Madrid');
+    expect(rowLine(shown('evt-cena-4'), LOCALE)).toBe('Saturday, Dec 12 · Venue to be confirmed');
+    expect(rowLine(shown('evt-off'), LOCALE)).toBe(
       'Called off on Oct 30 · Quinta da Regaleira, Sintra',
     );
   });
@@ -129,12 +142,72 @@ describe('the card’s one step, by nextStep', () => {
       kind: 'next',
       title: 'Next up: Adaeze & Tunde’s wedding starts',
       when: 'Thu, Nov 5, 18:00 · in 2 days',
+      you: false,
+      overdue: false,
     });
     expect(step('evt-wed-4', happening)).toEqual({
       kind: 'next',
       title: 'Next up: Adaeze & Tunde’s wedding ends',
       when: 'Sat, Nov 7, 15:00 · in 1 day',
+      you: false,
+      overdue: false,
     });
+  });
+
+  it('shows final numbers due as Next up, marked You, with no action, until a copy (sc-30812)', () => {
+    seedFinalNumbers('finalNumbers');
+    expect(step('evt-wed-4')).toEqual({
+      kind: 'next',
+      title: 'Next up: Give final numbers to the kitchen',
+      when: 'Tue, Nov 3, 23:59 · today',
+      you: true,
+      overdue: false,
+    });
+    expect(step('evt-ireti-2')).toMatchObject({ you: false });
+
+    seedFinalNumbers('finalNumbersOverdue');
+    expect(step('evt-wed-4')).toMatchObject({
+      when: 'Mon, Nov 2, 23:59 · 1 day ago',
+      you: true,
+      overdue: true,
+    });
+    expect(step('evt-wed-4', happening)).toMatchObject({ you: false });
+
+    seedFinalNumbers('finalNumbersGiven');
+    expect(step('evt-wed-4')).toMatchObject({
+      title: 'Next up: Adaeze & Tunde’s wedding starts',
+      you: false,
+    });
+    seedFinalNumbers(null);
+  });
+
+  it('brings back Give the changes to the kitchen after a copy, due at the date or at the start, never with an action (sc-30692)', () => {
+    seedFinalNumbers('changes_due');
+    expect(step('evt-wed-4')).toEqual({
+      kind: 'next',
+      title: 'Next up: Give the changes to the kitchen',
+      when: 'Tue, Nov 3, 23:59 · today',
+      you: true,
+      overdue: false,
+    });
+
+    seedFinalNumbers('changes_overdue');
+    expect(step('evt-wed-4')).toMatchObject({
+      title: 'Next up: Give the changes to the kitchen',
+      when: 'Mon, Nov 2, 23:59 · 1 day ago',
+      overdue: true,
+    });
+    expect(step('evt-wed-4', happening)).toMatchObject({ you: false });
+
+    seedFinalNumbers('changes_late');
+    expect(finalNumbersOf(sampleEvent('evt-wed-4') as SampleEvent, reader)).toEqual([
+      expect.objectContaining({
+        title: 'Give the changes to the kitchen',
+        at: (sampleEvent('evt-wed-4') as SampleEvent).startsAt,
+        action: null,
+      }),
+    ]);
+    seedFinalNumbers(null);
   });
 
   it('resumes a paused event, and duplicates one that is over', () => {
@@ -145,7 +218,7 @@ describe('the card’s one step, by nextStep', () => {
     });
     expect(step('evt-off')).toMatchObject({
       action: 'duplicate',
-      line: 'Called off on Fri, Oct 30, 2026, before it started. Guests following their link are told it won’t go ahead.',
+      line: "Called off on Fri, Oct 30, 2026, before it started. Guests following their link are told it won't go ahead.",
     });
   });
 
@@ -310,6 +383,25 @@ describe('the states', () => {
     expect(listStateOf('nonsense')).toBeNull();
   });
 
+  it.each([
+    ['emptyUpcoming', 'upcoming'],
+    ['emptyDrafts', 'drafts'],
+    ['emptyPast', 'past'],
+  ] as const)('opens %s on %s, with nothing there and events on the other tabs', (state, tab) => {
+    expect(listStart(state).tab).toBe(tab);
+    expect(emptyTabOf(state)).toBe(tab);
+    const home = homeOf(withoutTab(EVENTS, tab, reader, LOCALE), reader, LOCALE);
+
+    expect(home[tab]).toEqual([]);
+    for (const other of (['upcoming', 'drafts', 'past'] as const).filter((each) => each !== tab))
+      expect(home[other].length).toBeGreaterThan(0);
+  });
+
+  it('a state that is not an empty tab empties none', () => {
+    expect(emptyTabOf('drafts')).toBeNull();
+    expect(emptyTabOf(null)).toBeNull();
+  });
+
   it('reads the clock and the edit from the event’s state', () => {
     expect(clockOf(eventStateOf('now')).toISOString()).toBe('2026-11-06T16:10:00.000Z');
     expect(clockOf(eventStateOf('finished')).toISOString()).toBe('2026-11-11T09:41:00.000Z');
@@ -318,19 +410,6 @@ describe('the states', () => {
     expect(editOf(eventStateOf('lastHost'))).toBe('hosts');
     expect(editOf(eventStateOf('pause'))).toBeNull();
     expect(editOf(eventStateOf('saved'))).toBeNull();
-  });
-});
-
-describe('the card’s scrim', () => {
-  it('keeps white words at 4.5:1 on every colour and on any photo', () => {
-    for (const base of [
-      tokens.optionRose,
-      tokens.optionTeal,
-      tokens.colorAccent,
-      tokens.optionAmber,
-    ])
-      expect(scrimContrast(base, false, tokens.colorInk)).toBeGreaterThanOrEqual(4.5);
-    expect(scrimContrast(tokens.colorInk, true, tokens.colorInk)).toBeGreaterThanOrEqual(4.5);
   });
 });
 

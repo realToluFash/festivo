@@ -2,46 +2,38 @@ import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { tokens } from '../../theme/tokens.ts';
-import { SeenBy, useShell } from './Frame.tsx';
+import { SeenBy } from './Frame.tsx';
 import { useLoad } from './MembersLoading.tsx';
 import { memberLooking } from './sample.ts';
 import {
-  ASK_OWNER,
-  type ChangeRow,
-  changeRows,
-  type Mark,
-  type RuleRow,
-  ruleLabel,
-  rulesCard,
+  NOW,
+  ORG,
   type SignInRulesStart,
   signInRulesStart,
   signInRulesStateOf,
-  standFoot,
-  TITLE,
-  whereYouStand,
+  standRules,
+  standViewer,
 } from './SignInRulesSample.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { SummaryPage } from './SummaryPage.tsx';
+import { StandChanges, StandRules } from '../../components/SignInRulesStand.tsx';
 import {
   CardSays,
   FailedBlock,
   LoadingBlock,
   OnCard,
-  Row,
-  RowList,
   Section,
-  StatusMark,
   SummaryCard,
-  SummaryPage,
-} from './Summary.tsx';
-
-const MARK = 22;
-
-const hidden = {
-  accessibilityElementsHidden: true,
-  importantForAccessibility: 'no-hide-descendants',
-} as const;
+} from '../../components/Summary.tsx';
+import {
+  changeRows,
+  ruleLabel,
+  rulesCard,
+  standFoot,
+  whereYouStand,
+} from '../../kit/whereYouStand.ts';
 
 /** Sign-in rules in B, where you stand: read only for everyone, each rule with a mark and a line about you, then what changed. */
 export function SignInRulesSection() {
@@ -58,34 +50,36 @@ export function SignInRulesSection() {
 }
 
 function SignInRulesPage({ start }: { start: SignInRulesStart }) {
+  const { t } = useTranslation();
   const shell = useShell();
   const { load, retry } = useLoad(start.load);
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
+  const title = t('settings.signInRules');
 
   if (load !== 'loaded')
     return (
-      <SummaryPage title={TITLE}>
+      <SummaryPage title={title}>
         {load === 'failed' ? (
           <FailedBlock
-            title="We could not load the sign-in rules."
-            line="Check your connection and try again."
+            title={t('signInRules.stand.loadFailedTitle')}
+            line={t('signInRules.stand.loadFailedLine')}
             onRetry={retry}
             testID="signInRules.retry"
           />
         ) : (
-          <LoadingBlock words="Loading the sign-in rules…" />
+          <LoadingBlock words={t('signInRules.loading')} />
         )}
       </SummaryPage>
     );
 
-  const { page, viewer } = start;
-  const rules = whereYouStand(page, viewer, locale);
-  const card = rulesCard(rules, viewer);
-  const asking = rules.find((rule) => rule.ask != null)?.key;
+  const rules = standRules(start.page);
+  const viewer = standViewer(start.viewer);
+  const rows = whereYouStand(t, rules, viewer, locale, NOW);
+  const card = rulesCard(t, rows, viewer);
   const pane = shell.layout === 'landscape';
 
   return (
-    <SummaryPage title={TITLE}>
+    <SummaryPage title={title}>
       <SummaryCard
         size={shell.layout === 'portrait' ? 'wide' : 'page'}
         height={card.step == null ? 170 : 210}
@@ -93,9 +87,9 @@ function SignInRulesPage({ start }: { start: SignInRulesStart }) {
           card.step == null
             ? null
             : {
-                label: card.step,
+                label: card.step.label,
                 onPress: () =>
-                  shell.openSection('security', asking === 'method' ? 'linkPick' : 'setup'),
+                  shell.openSection('security', card.step?.opens === 'link' ? 'linkPick' : 'setup'),
                 testID: 'signInRules.step',
               }
         }
@@ -104,84 +98,22 @@ function SignInRulesPage({ start }: { start: SignInRulesStart }) {
         <CardSays text={card.says} size={pane ? 26 : 24} heading />
         <OnCard text={card.line} />
       </SummaryCard>
-      <Section title="Where you stand" foot={standFoot(page)}>
-        <RowList
-          items={rules.map((rule) => ({
-            key: rule.key,
-            inset: MARK + tokens.spaceLg,
-            row: <RuleLine rule={rule} />,
-          }))}
-        />
+      <Section title={t('signInRules.stand.whereTitle')} foot={standFoot(t, rules)}>
+        <StandRules rules={rows.map((rule) => ({ ...rule, label: ruleLabel(t, rule) }))} />
       </Section>
-      <Section title="What changed" foot={viewer.setsRules ? undefined : ASK_OWNER}>
-        <Changes changes={changeRows(page.changes, viewer.seen, locale)} />
+      <Section
+        title={t('signInRules.stand.changedTitle')}
+        foot={viewer.setsRules ? undefined : t('signInRules.askOwner', { organisation: ORG })}
+      >
+        <StandChanges
+          changes={changeRows(t, start.page.changes, start.viewer.seen, locale, NOW)}
+          none={{
+            title: t('signInRules.stand.noChangesTitle'),
+            line: t('signInRules.stand.noChangesLine'),
+          }}
+          newWord={t('signInRules.stand.new')}
+        />
       </Section>
     </SummaryPage>
   );
 }
-
-function RuleLine({ rule }: { rule: RuleRow }) {
-  return (
-    <Row
-      lead={<RuleMark mark={rule.mark} />}
-      title={rule.title}
-      line={rule.line}
-      accessibilityLabel={ruleLabel(rule)}
-      testID={`signInRules.rule.${rule.key}`}
-    />
-  );
-}
-
-/** Met is the green tick, needs you the amber half disc, and doesn't apply a Sunk disc with a bar. */
-function RuleMark({ mark }: { mark: Mark }) {
-  if (mark === 'met') return <StatusMark kind="yes" side={MARK} ink={tokens.marks.done.ink} />;
-  if (mark === 'needs')
-    return <StatusMark kind="waiting" side={MARK} ink={tokens.colorAttentionText} />;
-
-  return (
-    <View style={styles.notApplicable} {...hidden}>
-      <View style={styles.bar} />
-    </View>
-  );
-}
-
-function Changes({ changes }: { changes: readonly ChangeRow[] }) {
-  if (changes.length === 0)
-    return (
-      <Row title="No changes yet" line="These are the rules every organisation starts with." />
-    );
-
-  return (
-    <RowList
-      items={changes.map((change) => ({
-        key: change.at,
-        row: (
-          <Row
-            title={change.title}
-            tag={change.isNew ? { kind: 'now', word: 'New' } : null}
-            line={change.line}
-            accessibilityLabel={change.label}
-            testID={`signInRules.change.${change.at}`}
-          />
-        ),
-      }))}
-    />
-  );
-}
-
-const styles = StyleSheet.create({
-  notApplicable: {
-    width: MARK,
-    height: MARK,
-    borderRadius: MARK / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorNeutralFill,
-  },
-  bar: {
-    width: Math.round(MARK * 0.45),
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: tokens.colorInkSecondary,
-  },
-});

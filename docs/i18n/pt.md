@@ -43,6 +43,74 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 Nov 2026. A página Definições de notificações da app** (sc-34901 para sc-30411,
+  `mobile:notificationSettings.*`). O cabeçalho tem verbo, "Só recebe notificações push"; as
+  linhas não: "Push e e-mail", "Só push", "Desativado", como `off`. A secção é "Notificações
+  que recebe". `notLoadedLine` diz "a ligação à Internet", porque "a ligação" sozinha é o link
+  neste guia. O dispositivo tem "definições", como em `pushBlocked`. "Bloqueadas neste
+  dispositivo" concorda com as notificações push. A nota de Conta e segurança perde "O e-mail
+  não pode ser desativado.", agora `locked.email`, por baixo do interruptor.
+- **9 Nov 2026. A página Segurança da app** (sc-34792 para sc-30411, `mobile:security.*`). Segue os termos da web: "Associada · {{address}}", "Encerrar as outras sessões", "Concluído" para Done. `expires` é "Sessão válida até {{day}} se não voltar a ser usada": "Expira na/no" concordaria com o dia da semana ("no sábado", "na segunda-feira"), e "até" não leva artigo. O estado no topo é "ativa"/"inativa", como `twoFactorCard.on`/`off`.
+- **9 Nov 2026. A página da ligação enviada na web e a linha de quem perdeu tudo** (sc-33788 para sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). `nothingThere` segue a app, e a ligação é "envie de novo". `sentAgain` é "Voltámos a enviar a ligação.", sem a segunda frase da app. `lostBothIntro` diz "confirmar a sua identidade", nunca "que é você", e "depois de iniciar sessão", sem concordância com a pessoa, e "o apoio ao cliente da Soirely", do guia.
+- **8 Nov 2026. A sua conta na app** (sc-34175 para sc-30411, `mobile:account.*`,
+  `contacts.promoting`, `removing`). A secção é "Sobre si". As linhas de cada linha da lista
+  não têm sujeito: "Principal · para iniciar sessão", "Para falar consigo, não para iniciar
+  sessão", como `completeProfile.mobileHelp`, nunca "para o contactar", que concorda com um
+  género. O que espera um código é "{{shown}} ainda está por verificar.", como "fica por
+  verificar", e não concorda com endereço nem número. A pergunta ao sair é "Descartar a
+  alteração?", com "Continuar a editar" / "Descartar", como `eventEdit` e `web:eventPeople`;
+  por baixo, "O seu nome continua a ser {{name}}.", "O seu fuso horário continua por definir.",
+  "Nada será adicionado.". As confirmações em curso são "A tornar principal…" e "A remover…",
+  o progressivo de PT-PT.
+- **8 Nov 2026. Os dois fatores ao iniciar sessão na app** (sc-33828 para sc-29072,
+  `mobile:twoFactor.signedIn`, `recoveryShape`, `lost`, `lostTwoFactor.waitingFor`, `stayOut`,
+  `emailSoirely`). "Sessão iniciada", um estado, como `waysCard.signedInWith`. A forma do
+  código: "Maiúsculas ou minúsculas; o hífen aparece sozinho.". O título de espera é "À espera
+  de {{organisations}}". `stayOut` diz "Não pode iniciar sessão até alguém responder", nunca "a
+  sua sessão continua encerrada": a pessoa ainda não tinha entrado. O botão é "Escrever ao apoio
+  ao cliente da Soirely", com o nome do guia.
+- **8 Nov 2026. O ecrã da ligação enviada na app, e o seu aviso** (sc-33809 para sc-29071,
+  `mobile:recovery.*`). O botão é "Abrir o e-mail", não "Abrir o Mail": no Android abre a
+  aplicação de e-mail da pessoa. `spam` segue a web, "Veja a pasta de spam e depois envie de
+  novo.", como o botão "Enviar de novo". `sentAgain` diz "Voltámos a enviar a ligação. Use o
+  e-mail mais recente.", com o objeto dito, porque "enviámo-la" soa forçado. O aviso `changed`:
+  "Palavra-passe alterada. A sessão foi encerrada nos seus outros dispositivos.", com "encerrar"
+  do glossário.
+- **8 Nov 2026. Um início de sessão com dois fatores que expirou** (sc-29979,
+  `signIn.codeTimedOutTitle`, web e app). "O início de sessão expirou", seguido de
+  `endedBody` "Inicie sessão novamente para continuar.". "Expirou", como um prazo que passa;
+  "caducar" fica para os pedidos. Não "a sua sessão": a pessoa ainda não tinha entrado. A app
+  junta os dois numa linha com ponto final, por isso o título não o leva.
+- **8 Nov 2026. Um registo que expirou** (sc-32449 para sc-29923, `register.timedOut`, web e
+  app). "O seu registo expirou, por isso não guardámos a palavra-passe. Introduza-a novamente
+  para receber um novo código.". "Sign-up" é "registo", como `limitedTitle`, nunca "registro";
+  "expirou", como o início de sessão; "um novo código", como `resend`.
+- **8 Nov 2026. Convidados A: a resposta, as duas contagens e o 412** (sc-3773, #32403).
+  "Not sure yet" é "Por confirmar", na página do convidado e na do anfitrião: não concorda
+  com género, como "indeciso" ou "não tem a certeza" obrigariam. "Por confirmar · resposta
+  até ao dia {{date}}", "Por confirmar · respondeu no dia {{date}}". "Haven't replied" é "por
+  responder" ("Faltam {{count}} por responder"); "No reply" é "Sem resposta"; nunca se trocam.
+  "Companions" é "acompanhantes". "{{coming}} dos {{invited}} convidados vêm". "Write to them" é
+  "Escrever-lhes"; "Open check-in", "Abrir registo de entradas". "Show all {{count}}" é
+  "Mostrar os {{count}}". "Their conversation" é "Conversa", sem possessivo: "a sua" lê-se como
+  do anfitrião. Pelo mesmo motivo, no 412 "Theirs · Yours" é "Versão guardada · A sua versão",
+  e os botões "Usar a guardada" e "Manter a minha".
+  O fim do prazo (#32762): "O prazo de resposta termina hoje.", "… termina amanhã, dia
+  {{date}}.", "… termina no dia {{date}}.", "O prazo de resposta terminou no dia {{date}}.".
+  Sem ninguém por responder: "Já todos responderam.".
+
+- **7 Nov 2026. O ecrã Hoje da app** (`mobile:todayScreen.*`, sc-31788 para sc-29090). "Live
+  now" e "Live · …" são "A decorrer", como `eventsScreen.happeningNow`, nunca "Publicado", que é
+  o estado. A agenda usa uma etiqueta e dois pontos, "Início: {{name}}", "Fim: {{name}}",
+  "Continua: {{name}}", para que o nome do evento dispense artigo. Uma hora vai depois de "·",
+  sem "às", que falha à 01:00: "Termina hoje · {{time}}". Um dia da semana ou uma data
+  ("terça, 3/11") vão sem preposição, "começa {{weekday}}", porque "na"/"no" dependem do dia.
+  "Welcome" é "Olá", que não concorda com o género de quem lê; "Bem-vindo" obrigaria a escolher
+  um. "Good evening" é "Boa noite" a partir das 18:00 (`greetingAt`). "Next up" é "Próximo
+  evento", porque nomeia um evento; o "Next" do bloco Agora é "A seguir". "Needs you" segue
+  `eventPage.needsYou`, "Precisa de si", e o seu vazio é "Nada pendente". Run of show continua
+  "programa", como `rolesScreen.area.run_of_show`, embora coincida com Schedule.
+
 - **7 Nov 2026. As Pessoas de um evento, e "Admin" em todo o lado** (`web:eventPeople.*`, `eventNav.people`, `membersScreen.eventsFromPeople`, `ownerMakesOwner`, sc-30138 para sc-29915). A página é "Pessoas". As funções no evento são "Responsável", "Pode editar", "Pode ver" e "Pode registar entradas" ("o registo de entradas", como `eventPause`). Os anúncios dizem "agora": "{{name}} é agora responsável por este evento.", e "responsável" não concorda com género. A linha de quem já vê tudo dá a função como etiqueta depois de dois pontos, "vê todos os eventos pela função que tem em {{organisation}}: Proprietário e Administrador", por isso `managerRole.*` é o nome da função em todas as formas e nada concorda com um género. Uma função citada numa frase de erro vai entre aspas: continua a ser "Pode ver". "Owners and admins" é "quem tem a função Proprietário ou Administrador", e num título "as funções Proprietário e Administrador"; "an admin of" continua a ser "alguém que administre". O marcador da própria linha, `eventPeople.you`, é "A sua conta", como `membersScreen.you`. Quem sai do evento é "Esta pessoa".
 - **7 Nov 2026. O que cada função faz, em Membros** (`web:membersScreen.roleMeans.*`, sc-30138). As frases não têm sujeito, como `owner`. Os eventos de um Membro são "os eventos que lhe são atribuídos": "lhe" não concorda com ninguém, ao passo que "a que é adicionado" imporia um género. A mesma forma serve para a app.
 - **7 Nov 2026. As outras formas de entrar na app** (`mobile:steps.invited*`, `join`,
@@ -676,3 +744,13 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   antes de "Criar uma conta"; "É novo…?" concorda com um género. "© {{year}} Soirely" fica igual
   ao inglês. O botão de idioma lê-se "Idioma: {{language}}".
 - **Cancelar um pedido para voltar a entrar** (sc-29979): "Cancelar o seu pedido?"; a saída é "Continuar à espera", nunca "Cancelar", e a confirmação reutiliza "Cancelar o pedido".
+- **O estado de um campo recusado, só para o leitor de ecrã** (`mobile:forms.invalid`, sc-31909): "Dados inválidos", depois do nome do campo ("Palavra-passe, Dados inválidos"). É o que o VoiceOver diz na web; não concorda com o género do nome, masculino ou feminino.
+- **O plano de mesas** (sc-33304 para sc-3998, `seating.*`, `messages:seating.*`): a área é "Mesas" e o que se desenha, "o plano de mesas" ("o plano" dentro da área); "Floor plan" é "Planta da sala". Uma "section" é uma **zona**, nunca "secção", que na Soirely é uma parte das definições: "Adicionar uma zona", "Sem zona", "Manter a zona". O local abre a linha das unidades como etiqueta, "Local: {{venue}}.", para que nenhuma preposição tenha de concordar com o nome ("no/na"). "Seated" não concorda com o género: "convidados com lugar passam para Sem lugar". As cores: Azul, Roxo, Ameixa, Vinho, Rosa, Castanho, Verde-azeitona, Verde-petróleo. A ajuda em pés usa a vírgula decimal e as abreviaturas CLDR que o campo lê: "12 ft 4 pol., 12,5 ft ou 148 pol.".
+- **9 Nov 2026. Personalização** (sc-34920 para sc-30441, `web:personalisation.*`,
+  `mobile:personalisation.*`, `mobile:settings.personalisation*`,
+  `messages:validation.colour_scheme_unknown`). A escolha são "as suas cores", e nada concorda
+  com o nome de um esquema: "A escolha de {{picked}} não foi guardada. As suas cores continuam
+  a ser {{kept}}."; "Current" é "Atual", invariável. Sem "acompanhá-lo" nem "trazê-lo": "Só são
+  visíveis para si", "regressa a este ecrã". Só a recusa da API diz "esquemas de cores". Os oito
+  nomes: Violeta, Cobalto, Jardim, Citrinos, Frutos vermelhos, Traje de rigor (Black tie, o
+  traje exigido em Portugal), Sorvete (o sorbet, não o gelado) e Terracota.

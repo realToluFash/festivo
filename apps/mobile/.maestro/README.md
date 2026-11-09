@@ -67,28 +67,36 @@ a run in another language left signed out: `sign-in`'s first wait is on the Engl
 `text-size-signed-out` starts with it too, so a change to the chip row lands in one flow.
 It picks the language on welcome, then taps Sign in with email (sc-29076).
 
+`welcome-signed-out` relaunches the app on welcome, signing out first whoever an earlier flow
+left on Home, No organisation, Complete your profile or two-factor overdue. A flow that waits on `welcome.brand`
+starts with it, since `/--/welcome` draws welcome over a session and `/--/` does not (sc-30157).
+
 Two flows tap one control by `testID`, passed as `ID`: `scroll-tap` scrolls to it from above
 or below, for a step inside another flow; `ownership-tap` takes a screenshot of what follows
 and turns off the retry, for a button whose request is held.
 
 Signing in, each on its own outcome:
 
-| Flow                   | Needs                                         | Leaves the app on                             |
-| ---------------------- | --------------------------------------------- | --------------------------------------------- |
-| `register-check-email` | `NAME`, `EMAIL` (a fresh address), `PASSWORD` | Check your email, after a sign-up on Register |
-| `register-back`        | nothing                                       | welcome pushed, sign-in linked                |
-| `verify-email`         | the same                                      | A few details, verified with the newest code  |
-| `verify-email-refused` | the same                                      | Check your email, a new code counting down    |
-| `sign-in-locked`       | `EMAIL`, a fresh address                      | sign-in, past the limit                       |
-| `signed-out-elsewhere` | a session ended from another client           | sign-in, with "You were signed out"           |
+| Flow                          | Needs                                                              | Leaves the app on                                        |
+| ----------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------- |
+| `register-check-email`        | `NAME`, `EMAIL` (a fresh address), `PASSWORD`, optional `LANGUAGE` | Check your email, after a sign-up on Register            |
+| `sign-up-held-any-language`   | `LANGUAGE`, `NAME`, `EMAIL` (fresh), `PASSWORD`                    | Check your email, through `register-check-email`         |
+| `sign-up-timed-out-at-launch` | `SHOT`, after a held sign-up whose hold has run out                | Create your account, relaunched, with the timed-out line |
+| `register-back`               | nothing                                                            | welcome pushed, sign-in linked                           |
+| `verify-email`                | the same                                                           | A few details, verified with the newest code             |
+| `verify-email-refused`        | the same                                                           | Check your email, a new code counting down               |
+| `sign-in-locked`              | `EMAIL`, a fresh address                                           | sign-in, past the limit                                  |
+| `signed-out-elsewhere`        | a session ended from another client                                | sign-in, with "You were signed out"                      |
 
 Every new account starts from a sign-up (sc-512), so the verify-email flows register `EMAIL`
-themselves through `register-check-email`, which switches the app to English first. The address
+themselves through `register-check-email`, which switches the app to English first, or to
+`LANGUAGE` when one is passed. The address
 must be fresh: one an account already holds is sent no code, and `verify-email` fails.
 `sign-in-locked` and `signed-out-elsewhere` match English text, so the phone must be in English
 first (`sign-in-screen-english`).
 
-`verify-email` reads the code from Mailpit with `scripts/latest-code.js`.
+`verify-email` reads the code from Mailpit with `scripts/latest-code.js`, and a phone check
+reads the newest SMS or WhatsApp code from Smocker with `scripts/latest-sms-code.js`.
 
 A flow a tester writes is posted to `[ops]` on the story they were testing, and ops commits
 it here.
@@ -98,7 +106,9 @@ it here.
 `checks/` holds checks: each opens one screen, asserts what it shows and takes its
 screenshots. `qa-env.mjs batch` runs a list of them in one Maestro run on one signed-in
 session (`batch/session.yaml`), reloading the bundle before each (`batch/reset.yaml`), so a
-check never relaunches Expo Go and never signs in. `--cold` runs each alone from a relaunch.
+check never relaunches Expo Go and never signs in. A check that signed out leaves the next one signed back in:
+reset signs `${EMAIL}` in again from Welcome or Sign in, so a check that wants a signed-out start
+signs out itself rather than counting on running after one that did. `--cold` runs each alone from a relaunch.
 
 A check is written like a flow, and also:
 
@@ -115,6 +125,9 @@ A check is written like a flow, and also:
 - **Subflows may sit in `checks/<story>/`, and are not localised.** Only the check itself
   has its `{{t:}}` filled in, so a subflow there matches by id, and any `{{t:}}` text goes in
   the check that calls it.
+  A flow run alone with `qa-env.mjs maestro` has no batch language: every file in it, subflows
+  in `checks/<story>/` included, matches `{{t:key}}` in any language and fills `|email` from
+  `EMAIL=` (any address without it). So a subflow's `{{t:}}` passing alone still fails in a batch.
 - **`takeScreenshot: <name>`, on one line.** The harness prefixes the check and language, so
   `settings` in a Spanish batch lands in `.qa/<batch>/settings.es-settings.png`.
 
@@ -122,10 +135,32 @@ A check that needs the API held asks the harness through `batch/helper.js` with
 `ASK: /api?to=paused`, `/api?to=stopped` or `/api?to=up`. It answers once the QA stack's `api`
 service is there, and `up` once it is healthy again. Hold it after the screen before has
 loaded: Events keeps its rows, so a row tapped with the API paused holds only Event View's
-reads. Every check starts with the API up, whatever the one before it left. A move between
-`stopped` and `paused` passes through up, and Soirely answers anything asked in those
-seconds, so on Android the harness takes the API's `adb reverse` away for that move and puts it
-back once the API is held: the app is refused throughout, with no network change announced.
+reads. Every check starts with the API up, whatever the one before it left, and every check that holds
+it also brings it back in its header, so a wait that times out leaves the rest of the batch a live
+API and reports its own step:
+
+```yaml
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+```
+
+`up` answers once `/api/health` does, from paused as from stopped. `paused` to `stopped` kills
+the paused container: `docker stop` would thaw it to deliver SIGTERM, and the API answers the
+held request while it drains. `stopped` to `paused` passes through
+up, and Soirely answers anything asked in those seconds, so on Android the harness takes the
+API's `adb reverse` away for that move and puts it back once the API is held: the app is refused
+throughout, with no network change announced. `qa-env.mjs ios`, `android` and `release` unpause
+a paused API before starting the stack, so a batch killed mid-hold does not block the next run.
+A picture at a held moment, which `takeScreenshot` would take only once the screen settles, is
+`ASK: /shot?name=<name>`: the harness screenshots the device at once and saves it with the
+batch's screenshots under the same check-and-language prefix, so `held-1` in an English batch
+lands in `.qa/<batch>/<check>.en-held-1.png`. sc27096-ipad-side-refreshing is the example.
+The harness is reached only through `batch/helper.js`, never a literal port.
 
 A check that changes the account's membership from outside the phone asks
 `ASK: /membership?change=join&org=<name>` first. The harness makes an organisation of that name
@@ -138,7 +173,9 @@ Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each co
 (`batch/helper.js`), so it runs inside a batch, which holds the account's `TOTP_SECRET`.
 
 To test the code step itself, outside a batch, three flows stop on it and send a code you pass
-(sc-22740). Each opening flow starts with `sign-in-screen-language`:
+(sc-22740). Each opening flow starts with `sign-in-screen-language`. The sign-in step has no
+send button for an authenticator code, whose sixth digit sends it (sc-29072); a recovery code and
+the reset link's step still send with the button:
 
 | Flow                     | Needs                                     | Leaves the app on                       |
 | ------------------------ | ----------------------------------------- | --------------------------------------- |
@@ -201,7 +238,7 @@ link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a
   failure for two features.
 - **Reach the bundler through `${METRO_URL}`**, never a literal port: the QA stack's
   bundler is on 18081, and both `just qa-mobile` and `qa-env.mjs maestro` pass it in.
-  Mailpit, the same, through `${MAILPIT_URL}`.
+  Mailpit, the same, through `${MAILPIT_URL}`, and Smocker through `${SMOCKER_URL}`.
 - **Pass data in**, with `-e`: an account comes from `node scripts/qa-account.mjs`, so no
   flow holds credentials. A new check's first line names each `${…}` it needs; older ones
   may not, so `grep -o '\${[A-Z_]*}'` the file before passing `-e`. The names differ

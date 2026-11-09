@@ -512,12 +512,50 @@ describe('every text field is named through fieldName (sc-17333)', () => {
         '<TextInput\n  {...rest}\n  {...fieldName(Platform.OS, rest.accessibilityLabel, { labelID })}\n/>',
       ),
     ).toEqual([]);
+    expect(
+      inputsNamedAnotherWay(
+        '<TextInput\n  {...rest}\n  {...refusedField(refused, rest, labelID)}\n/>',
+      ),
+    ).toEqual([]);
     expect(inputsNamedAnotherWay("<TextInput\n  accessibilityLabel={t('a')}\n/>")).toEqual([1]);
     expect(
       inputsNamedAnotherWay(
         '<TextInput\n  {...fieldName(Platform.OS, a, {})}\n  accessibilityValue={{ text: v }}\n/>',
       ),
     ).toEqual([1]);
+  });
+});
+
+describe('a refused control says why, wherever it takes the red edge (sc-31323)', () => {
+  // A control is read as invalid by its line, so one given the red edge without the line is refused in silence. The design demos say it beside the field instead.
+  it('in every InsideField and picker in the app', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ path }) => !path.includes('/demo/'))
+      .flatMap(({ path, text }) => refusedInSilence(text).map((line) => `${path}:${line}`));
+
+    expect(
+      offenders,
+      'Pass line= beside state= or wrong=, or set the picker inside a <Field error={…}>.',
+    ).toEqual([]);
+  });
+
+  it('notices a red edge given without its line', () => {
+    expect(refusedInSilence("<InsideField\n  label={t('a')}\n  state={s}\n/>")).toEqual([1]);
+    expect(refusedInSilence('<InsideField state={s} line={error} />')).toEqual([]);
+    expect(refusedInSilence('<InsideField label={a} />')).toEqual([]);
+    expect(refusedInSilence('<CountryPicker\n  wrong={bad}\n/>')).toEqual([1]);
+    expect(refusedInSilence('<ListPicker wrong={bad} line={error} />')).toEqual([]);
+    expect(
+      refusedInSilence('<Field label={a} error={e}>\n  <ListPicker wrong={bad} />\n</Field>'),
+    ).toEqual([]);
+    expect(refusedInSilence('<Field label={a}>\n  <ListPicker wrong={bad} />\n</Field>')).toEqual([
+      2,
+    ]);
+    expect(
+      refusedInSilence(
+        '<Field label={a} error={e}>\n  <View />\n</Field>\n<CountryPicker wrong={bad} />',
+      ),
+    ).toEqual([4]);
   });
 });
 
@@ -538,6 +576,11 @@ describe('a field hands its children the id its label shows under (sc-17333)', (
     expect(labelLinkBroken(`${shown}\n<FieldLabel value={otherID}>{children}</FieldLabel>`)).toBe(
       true,
     );
+    expect(
+      labelLinkBroken(
+        `${shown}\n<FieldLabel value={{ labelID, line: error, invalidNameID }}>{children}</FieldLabel>`,
+      ),
+    ).toBe(false);
     expect(labelLinkBroken(`<Text>\n  {label}\n</Text>\n{children}`)).toBe(true);
   });
 });
@@ -570,8 +613,9 @@ describe('the app runs on Hermes', () => {
 
 describe('a field that takes a recovery code gets the full keyboard', () => {
   // sc-124 QA #1616: these fields fell back to the number pad, and a recovery code has letters and a hyphen.
-  // The proof step's field is ConfirmItsYou's, named by the card that opens it (ways, contacts).
-  const RECOVERY_CODE_FIELDS = ['devices.everywhere.code', '${idPrefix}.code'];
+  // The proof step's field is ConfirmItsYou's, named by the card that opens it (ways, contacts);
+  // Security's proofs, Sign out everywhere else among them, take ConfirmScreen's.
+  const RECOVERY_CODE_FIELDS = ['${testID}.code', '${idPrefix}.code'];
 
   it.each(RECOVERY_CODE_FIELDS)('%s', (testID) => {
     const fields = sources(['src', 'app']).flatMap(({ text }) =>
@@ -596,24 +640,24 @@ describe('a field that takes a recovery code gets the full keyboard', () => {
 });
 
 describe('a way back in Two-factor authentication is off while its request runs (sc-12537)', () => {
-  it('on Cancel, Keep it on and Keep current codes', () => {
-    const text = readFileSync(join('src', 'components', 'TwoFactorCard.tsx'), 'utf8');
-    const off = selfClosing('QuietButton', text)
-      .filter(({ markup }) => /\boff=\{checking\}/u.test(markup))
-      .map(({ markup }) => propValue(markup, 'testID'));
+  it('on Cancel in Set up two-factor, which waits while the code is checked', () => {
+    const text = readFileSync(join('src', 'components', 'SecurityTwoFactor.tsx'), 'utf8');
+    const start = text.lastIndexOf('<FocusedScreen');
+    const screen = text.slice(start, tagEnd(text, start));
 
-    expect(off).toEqual(['"twoFactor.cancel"', '"twoFactor.keepItOn"', '"twoFactor.keepCodes"']);
+    expect(propValue(screen, 'waits')).toBe('{checking}');
   });
 });
 
-describe('the ten recovery codes show in the sheet, a dialog on an iPad (sc-23282)', () => {
+describe('the ten recovery codes show in their own screen (sc-23282)', () => {
   it('with the codes and Finish inside it', () => {
-    const text = readFileSync(join('src', 'components', 'TwoFactorCard.tsx'), 'utf8');
-    const sheet = /<Sheet\b[\s\S]*?<\/Sheet>/u.exec(text)?.[0] ?? '';
+    const text = readFileSync(join('src', 'components', 'SecurityTwoFactor.tsx'), 'utf8');
+    const start = text.indexOf('<FocusedScreen');
+    const screen = text.slice(start, text.indexOf('</FocusedScreen>', start));
 
-    expect(sheet).toContain('testID="twoFactor.codesSheet"');
-    expect(sheet).toContain('<SavingCodes');
-    expect(text.match(/<SavingCodes\b/gu)).toHaveLength(1);
+    expect(screen).toContain("testID: 'security.codes.finish'");
+    expect(screen).toContain('<CodesBody');
+    expect(text.match(/<CodesBody\b/gu)).toHaveLength(1);
   });
 });
 
@@ -686,16 +730,18 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
   const HELD_FORMS = [
     'src/components/ConfirmItsYou.tsx',
     'src/components/CreateOrganisation.tsx',
-    'src/components/DevicesCard.tsx',
-    'src/components/PasswordCard.tsx',
-    'src/components/TimeZoneCard.tsx',
-    'src/components/NameCard.tsx',
-    'src/components/TwoFactorCard.tsx',
+    'src/components/SecurityPassword.tsx',
+    'src/components/AccountName.tsx',
+    'src/components/AccountZone.tsx',
+    'src/components/SecurityTwoFactor.tsx',
     'src/components/SecondFactorStep.tsx',
+    'src/steps/TwoFactorStep.tsx',
     'src/components/OrganisationDetails.tsx',
     'src/components/CompanyDomainsCard.tsx',
     'src/components/OwnershipCard.tsx',
-    'src/components/ContactsCard.tsx',
+    'src/components/AccountAdd.tsx',
+    'src/components/AccountConfirm.tsx',
+    'src/components/AccountVerify.tsx',
     'src/components/CodeForm.tsx',
     'src/components/PhoneEntry.tsx',
     'app/phone.tsx',
@@ -926,7 +972,10 @@ describe('a refused code focuses its field through focusChecked (sc-20209)', () 
 
 describe('a second return key while the request runs sends nothing (sc-20209)', () => {
   it.each([
-    ['src/components/ContactsCard.tsx', /^\s*setSending\(true\);/u, 'sending', 2],
+    ['src/components/AccountAdd.tsx', /^\s*setSending\(true\);/u, 'sending', 1],
+    ['src/components/AccountName.tsx', /^\s*setSaving\(true\);/u, 'saving', 1],
+    ['src/components/AccountZone.tsx', /^\s*setSaving\(true\);/u, 'saving', 1],
+    ['src/components/AccountVerify.tsx', /^\s*setVerifying\(true\);/u, 'verifying', 1],
     ['app/phone.tsx', /^\s*setSending\(true\);/u, 'sending', 1],
     ['app/complete-profile.tsx', /^\s*setSaving\(true\);/u, 'saving', 2],
   ] satisfies [string, RegExp, string, number][])(
@@ -965,8 +1014,7 @@ describe('a second return key while the request runs sends nothing (sc-20209)', 
 describe('a submit with the keys down keeps them down (sc-20208)', () => {
   it.each([
     ['ConfirmItsYou.tsx', 1],
-    ['DevicesCard.tsx', 1],
-    ['TwoFactorCard.tsx', 3],
+    ['SecurityTwoFactor.tsx', 1],
   ])('%s lets go of a focused field before each request starts', (file, requests) => {
     const lines = readFileSync(join('src', 'components', file), 'utf8').split('\n');
     const starts = lines.flatMap((line, index) =>
@@ -980,20 +1028,24 @@ describe('a submit with the keys down keeps them down (sc-20208)', () => {
 
 describe('a Password submit with the keys down keeps them down (sc-13408)', () => {
   it('lets go of a focused field before each request starts', () => {
-    const lines = readFileSync(join('src', 'components', 'PasswordCard.tsx'), 'utf8').split('\n');
+    const lines = readFileSync(join('src', 'components', 'SecurityPassword.tsx'), 'utf8').split(
+      '\n',
+    );
     const starts = lines.flatMap((line, index) =>
       /^\s*set(Saving|Busy)\(true\);/u.test(line) ? [index] : [],
     );
 
-    expect(starts).toHaveLength(3);
+    expect(starts).toHaveLength(4);
     expect(starts.filter((index) => lines[index - 1]?.trim() !== 'keysStayDown();')).toEqual([]);
   });
 });
 
 describe('a submit with the keys down keeps them down (sc-20209)', () => {
   it.each([
-    // Adding's, and not the row actions above it, which have no field.
-    ['src/components/ContactsCard.tsx', /^\s*setSending\(true\);/u, 1, 'function Adding('],
+    ['src/components/AccountAdd.tsx', /^\s*setSending\(true\);/u, 1],
+    ['src/components/AccountName.tsx', /^\s*setSaving\(true\);/u, 1],
+    ['src/components/AccountZone.tsx', /^\s*setSaving\(true\);/u, 1],
+    ['src/components/AccountVerify.tsx', /^\s*setVerifying\(true\);/u, 1],
     ['app/verify-email.tsx', /^\s*setStatus\(\{ kind: 'verifying' \}\);/u, 2],
     ['app/verify-phone.tsx', /^\s*setStatus\(\{ kind: 'verifying' \}\);/u, 1],
     ['app/phone.tsx', /^\s*setSending\(true\);/u, 1],
@@ -1017,19 +1069,31 @@ describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
       .filter(({ markup }) => markup.includes(`off={${busy}}`))
       .map(({ markup }) => propValue(markup, 'testID'));
 
-  it('in Password, beside Save new password and Save password, not beside the code check', () => {
-    expect([
-      ...offWhile('PasswordCard.tsx', 'saving'),
-      ...offWhile('PasswordCard.tsx', 'busy'),
-    ]).toEqual(['"password.cancel"', '"password.setCancel"']);
+  it('in Password, where each screen that sends waits on Cancel while it is busy', () => {
+    const source = readFileSync(join('src', 'components', 'SecurityPassword.tsx'), 'utf8');
+    const screens = [...source.matchAll(/<FocusedScreen\b/gu)].map(({ index }) =>
+      source.slice(index, tagEnd(source, index)),
+    );
+
+    expect(screens.map((screen) => propValue(screen, 'waits'))).toEqual([
+      null,
+      '{busy}',
+      '{busy}',
+      '{busy}',
+      '{busy}',
+    ]);
   });
 
-  it('in Time zone, beside Save time zone', () => {
-    expect(offWhile('TimeZoneCard.tsx', 'saving')).toEqual(['"timeZone.cancel"']);
-  });
+  it.each([
+    ['AccountName.tsx', 'saving'],
+    ['AccountZone.tsx', 'saving'],
+    ['AccountAdd.tsx', 'sending'],
+  ])('in %s, where the focused screen waits on Cancel while %s', (file, busy) => {
+    const source = readFileSync(join('src', 'components', file), 'utf8');
+    const start = source.indexOf('<FocusedScreen');
+    const screen = source.slice(start, tagEnd(source, start));
 
-  it('in Name, beside Save name', () => {
-    expect(offWhile('NameCard.tsx', 'saving')).toEqual(['"nameCard.cancel"']);
+    expect(propValue(screen, 'waits')).toBe(`{${busy}}`);
   });
 
   it("in Confirm it's you, beside Continue", () => {
@@ -1075,67 +1139,51 @@ describe('Create an organisation cannot be closed while it sends (sc-25667)', ()
 });
 
 describe("a lapsed proof at Unlink goes back to Confirm it's you (sc-12545)", () => {
-  it('in the ways card, before the refusal reaches the list', () => {
-    const text = readFileSync(join('src', 'components', 'WaysCard.tsx'), 'utf8');
+  it('on Security, before the refusal reaches the row', () => {
+    const text = readFileSync(join('src', 'components', 'SecurityPage.tsx'), 'utf8');
 
     expect(text).toMatch(
-      /if \(unlinkProofLapsed\(error\)\) \{\s*setStage\(\{ kind: 'proving', act: \{ action: 'unlink', provider \} \}\);/,
+      /if \(unlinkProofLapsed\(refusal\)\) \{\s*prove\('unlink', 'unlink'\);\s*return;/,
     );
   });
 });
 
 describe('a contact confirmation shows its request running, its way back off (sc-12546)', () => {
-  const text = readFileSync(join('src', 'components', 'ContactsCard.tsx'), 'utf8');
+  const text = readFileSync(join('src', 'components', 'AccountPage.tsx'), 'utf8');
+  const ask = (testID: string) => {
+    const start = text.indexOf(`testID="${testID}"`);
+    return text.slice(text.lastIndexOf('<Ask', start), start);
+  };
 
-  it('on Make it primary and Remove it, busy while they send', () => {
-    const busy = ['DestructiveButton', 'PrimaryButton'].flatMap((button) =>
-      selfClosing(button, text)
-        .filter(({ markup }) => /\bbusy=\{sending\}/u.test(markup))
-        .map(({ markup }) => propValue(markup, 'testID')),
-    );
-
-    expect(busy).toEqual([
-      '{`contacts.${row.id}.confirm`}',
-      '{`contacts.${row.id}.confirm`}',
-      '{`contacts.${kind}.send`}',
-    ]);
+  it.each([
+    ['account.promote', 'contacts.promoting'],
+    ['account.remove', 'contacts.removing'],
+  ])('on %s, busy while it sends and Keep off until the answer', (testID, busy) => {
+    expect(ask(testID)).toContain(`busy: acting ? t('${busy}') : undefined`);
+    expect(ask(testID)).toContain('off: acting');
+    expect(ask(testID)).toMatch(/onKeep=\{\(\) => \{\s*if \(!acting\) setAsk\(null\);/u);
   });
 
-  it('on Keep and on Cancel under an add form, off until the answer', () => {
-    const off = ['SecondaryButton', 'QuietButton'].flatMap((button) =>
-      selfClosing(button, text)
-        .filter(({ markup }) => /\boff=\{sending\}/u.test(markup))
-        .map(({ markup }) => propValue(markup, 'testID')),
-    );
-
-    expect(off).toEqual([
-      '{`contacts.${row.id}.keep`}',
-      '{`contacts.${row.id}.keep`}',
-      '{`contacts.${kind}.cancel`}',
-    ]);
-  });
-
-  it('back on Make this your primary address? when a change fails past the check', () => {
+  it('with Make primary left open until its request answers, unless a proof is still to come', () => {
     expect(text).toMatch(
-      /else if \(proof != null\) setAsking\(\{ id: row\.id, what: 'promote' \}\);/u,
+      /if \(proof == null\) \{\s*setAsk\(null\);\s*show\('confirm', 'promote'\);/u,
     );
   });
 });
 
 describe('a contact row ends Remove with an ellipsis only where it asks first (sc-23283)', () => {
-  const text = readFileSync(join('src', 'components', 'ContactsCard.tsx'), 'utf8');
-  const removeId = '{`contacts.${row.id}.remove`}';
-  const holding = (button: string) =>
-    selfClosing(button, text).filter(({ markup }) => propValue(markup, 'testID') === removeId);
+  const text = readFileSync(join('src', 'components', 'AccountContacts.tsx'), 'utf8');
+  const remove = selfClosing('TextAction', text).filter(
+    ({ markup }) => propValue(markup, 'testID') === '{`account.${row.id}.remove`}',
+  );
 
-  it('as the destructive button, never the secondary', () => {
-    expect(holding('DestructiveButton')).toHaveLength(1);
-    expect(holding('SecondaryButton')).toHaveLength(0);
+  it('as the one red Remove on the opened row', () => {
+    expect(remove).toHaveLength(1);
+    expect(remove[0]?.markup).toMatch(/\bremoves\b/u);
   });
 
   it('labelled Remove… on a row that asks, Remove on one that does not', () => {
-    const [remove] = holding('DestructiveButton');
-    expect((propValue(remove?.markup ?? '', 'label') ?? '').replace(/[\s,]+/gu, '')).toBe(
+    expect((propValue(remove[0]?.markup ?? '', 'label') ?? '').replace(/[\s,]+/gu, '')).toBe(
       "{t(offers.askBeforeRemoving?'contacts.removeAsks':'contacts.remove')}",
     );
 
@@ -1550,7 +1598,7 @@ function fieldsReadByAnotherName(text: string): number[] {
 function inputsNamedAnotherWay(text: string): number[] {
   return [...text.matchAll(/(?<![\w.])<TextInput\b/gu)].flatMap((match) => {
     const tag = text.slice(match.index, tagEnd(text, match.index));
-    const named = tag.search(/\{\.\.\.fieldName\(/u);
+    const named = tag.search(/\{\.\.\.(fieldName|refusedName|refusedField)\(/u);
     const after = named < 0 ? '' : tag.slice(named);
     const quiet =
       named >= 0 &&
@@ -1558,6 +1606,28 @@ function inputsNamedAnotherWay(text: string): number[] {
 
     return quiet ? [] : [text.slice(0, match.index).split('\n').length];
   });
+}
+
+/** The lines of each InsideField given state= or picker given wrong= with no line to say why. */
+function refusedInSilence(text: string): number[] {
+  return [...text.matchAll(/(?<![\w.])<(InsideField|CountryPicker|ListPicker)\b/gu)].flatMap(
+    (match) => {
+      const tag = text.slice(match.index, tagEnd(text, match.index));
+      const edged = match[1] === 'InsideField' ? /\bstate=/u : /\bwrong=/u;
+      const said =
+        /\bline=/u.test(tag) || (match[1] !== 'InsideField' && insideFieldError(text, match.index));
+
+      return edged.test(tag) && !said ? [text.slice(0, match.index).split('\n').length] : [];
+    },
+  );
+}
+
+/** Whether the markup at `at` sits inside a Field that carries the error line. */
+function insideFieldError(text: string, at: number): boolean {
+  const open = [...text.slice(0, at).matchAll(/(?<![\w.])<Field\b/gu)].at(-1);
+  if (open == null || text.slice(open.index, at).includes('</Field>')) return false;
+
+  return /\berror=/u.test(text.slice(open.index, tagEnd(text, open.index)));
 }
 
 /** A prop's value as written, its braces balanced, or null when the markup does not set it. */
@@ -1571,8 +1641,8 @@ function labelLinkBroken(text: string): boolean {
         .trimStart()
         .startsWith('{label}'),
     );
-  const shown = label == null ? null : propValue(label, 'nativeID');
-  const handed = /<FieldLabel\s+value=(\{[^}]+\})/u.exec(text)?.[1] ?? null;
+  const shown = label == null ? null : propValue(label, 'nativeID')?.replace(/[{}]/gu, '');
+  const handed = /<FieldLabel\s+value=\{\{?\s*(?:labelID:\s*)?(\w+)/u.exec(text)?.[1] ?? null;
 
   return shown == null || handed == null || shown !== handed;
 }
@@ -1680,7 +1750,7 @@ function unreportable(markup: string, when = ''): boolean {
 
 describe('the code step fails in the words of the flow it is in (sc-22740)', () => {
   it.each([
-    ['app/sign-in-code.tsx', 'signIn'],
+    ['src/steps/SignInSecondFactor.tsx', 'signIn'],
     ['app/reset-password.tsx', 'recovery'],
   ])('%s passes %s failure words', (file, flow) => {
     const text = readFileSync(join(...file.split('/')), 'utf8');

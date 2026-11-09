@@ -7,14 +7,17 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
 import { showPushInForeground } from '../src/appPush.ts';
+import { LandingToast } from '../src/components/LandingToast.tsx';
 import { WindowOrigin } from '../src/components/Screen.tsx';
 import { useStepsInSheet } from '../src/steps/StepScreen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { UpdateGate } from '../src/components/UpdateRequired.tsx';
 import { initI18n } from '../src/i18n/index.ts';
 import { loadInstallId } from '../src/installId.ts';
+import { startAfresh } from '../src/newInstall.ts';
 import { useReducedMotion } from '../src/reducedMotion.ts';
 import { useRereadOnMoves } from '../src/rereadOnMoves.ts';
+import { loadBoldText } from '../src/theme/boldText.ts';
 import { FONT_FACES, facesLoaded } from '../src/theme/fonts.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
@@ -22,7 +25,7 @@ void SplashScreen.preventAutoHideAsync();
 showPushInForeground();
 
 /**
- * The root. Localisation, the bundled faces, and the install identifier every sign-in carries, are awaited before anything renders, behind the splash.
+ * The root. Localisation, the bundled faces, the phone's Bold text, and the install identifier every sign-in carries, are awaited before anything renders, behind the splash.
  *
  * Rendering first and translating afterwards shows a French reader a flash of
  * English, which is brief and reads as a broken product rather than as loading.
@@ -39,7 +42,12 @@ export default function RootLayout() {
   useEffect(() => {
     let live = true;
 
-    Promise.all([initI18n(), loadInstallId(), loadAsync(FONT_FACES).then(facesLoaded, () => {})])
+    Promise.all([
+      initI18n(),
+      loadInstallId().then((newInstall) => startAfresh(newInstall)),
+      loadAsync(FONT_FACES).then(facesLoaded, () => {}),
+      loadBoldText().catch(() => {}),
+    ])
       .then(() => {
         if (live) setState('ready');
       })
@@ -101,6 +109,7 @@ export default function RootLayout() {
                 })}
               />
             </Stack>
+            <LandingToast />
           </UpdateGate>
         </WindowOrigin>
       </ThemeProvider>

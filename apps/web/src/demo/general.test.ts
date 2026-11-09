@@ -17,7 +17,6 @@ import {
   ownershipSteps,
   restoreDeadline,
   savedWords,
-  shownChoices,
   transferProblems,
   transferRefusal,
 } from './general.ts';
@@ -141,15 +140,10 @@ describe('General’s sample (sc-30063)', () => {
   it('counts what deleting takes, and dates the restore in Lagos time', () => {
     expect(countsLine('en-US')).toBe('4 events, 512 guests and 8 members are deleted with it.');
     expect(restoreDeadline(new Date('2026-11-05T10:33:00Z'), 'en-US')).toBe(
-      'Saturday, Dec 5 at 11:33 AM WAT',
+      'Saturday, Dec 5 at 11:33 WAT',
     );
     expect(nameMatches('Ire Events')).toBe(true);
     expect(nameMatches('Ire events')).toBe(false);
-  });
-
-  it('finds a choice by any part of its name', () => {
-    expect(shownChoices('currency', 'naira').map((one) => one.code)).toEqual(['NGN']);
-    expect(shownChoices('locale', '').length).toBeGreaterThan(1);
   });
 
   it('links every state from the demo home', () => {

@@ -35,11 +35,12 @@ import {
   stepRefused,
   zoneWords,
 } from './createOrg.ts';
-import { Glyph } from './Glyph.tsx';
-import { LayersContext, useLayer } from './layers.ts';
-import { Notice } from './Notice.tsx';
+import { Glyph } from '../components/Glyph.tsx';
+import { LayersContext, useLayer } from '../layers.ts';
+import { ManagedBanner } from './managed.tsx';
+import { Notice } from '../components/Notice.tsx';
 import { SAMPLE } from './rules.ts';
-import { Ask } from './SettingsParts.tsx';
+import { Ask } from '../components/SettingsParts.tsx';
 import './createOrg.css';
 
 const CREATING_MS = 1200;
@@ -235,6 +236,42 @@ function Panel({ start, onClose, onCreated }: WalkProps) {
 
     height.current = node.getBoundingClientRect().height;
   });
+
+  if (walk.managed)
+    return (
+      <>
+        <button
+          type="button"
+          className="dialog-scrim"
+          tabIndex={-1}
+          aria-label={W.close}
+          onClick={onClose}
+        />
+        <div
+          ref={panel}
+          className="cw-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-label={W.title}
+          aria-describedby={`${id}-managed`}
+          tabIndex={-1}
+        >
+          <div className="cw-side">
+            <div className="cw-body">
+              <h1 className="cw-question">{W.title}</h1>
+              <div id={`${id}-managed`}>
+                <ManagedBanner />
+              </div>
+            </div>
+            <div className="cw-foot">
+              <button type="button" className="cw-button" onClick={onClose}>
+                {W.close}
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
 
   const refusalId = `${id}-refusal`;
   const name = walk.name.trim();

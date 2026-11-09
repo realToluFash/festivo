@@ -15,6 +15,8 @@ import {
   fieldClass,
   useBusy,
 } from './parts.tsx';
+import { NEW_ORG } from './createOrg.ts';
+import { ManagedBanner } from './managed.tsx';
 import { type AccountLines, BREACHED, SAMPLE, accountLines, way } from './rules.ts';
 
 const FLOW: Flow = { name: SAMPLE.name, email: SAMPLE.email, phone: '' };
@@ -70,6 +72,16 @@ function AskToJoin({ state }: { state: string }) {
   const field = useRef<HTMLTextAreaElement>(null);
   const title = `Ask to join ${SAMPLE.organisation}`;
 
+  if (state === 'managed') {
+    return (
+      <BoardPage end={<SignedInAs />}>
+        <Heading title={`Ask to join ${NEW_ORG.name}`} />
+        <Organisation name={NEW_ORG.name} line="Request link" />
+        <ManagedBanner alert />
+      </BoardPage>
+    );
+  }
+
   if (state === 'dead') {
     return (
       <BoardPage end={null}>
@@ -124,7 +136,10 @@ function AskToJoin({ state }: { state: string }) {
       {asked != null ? (
         <>
           <Notice title={asked.title} body={asked.body} />
-          <Link className="button button-primary demo-wide" to="/demo/signed-in">
+          <Link
+            className="button button-primary demo-wide"
+            to={asked.open === true ? '/demo/today' : way('waiting')}
+          >
             {asked.open === true ? `Open ${SAMPLE.organisation}` : 'Continue'}
           </Link>
         </>
@@ -215,7 +230,7 @@ function Invitation({ state }: { state: string }) {
           </p>
         </Heading>
         <Organisation line={INVITED_BY} />
-        <Link className="button button-primary demo-wide" to="/demo/signed-in">
+        <Link className="button button-primary demo-wide" to="/demo/today">
           Open {SAMPLE.organisation}
         </Link>
       </BoardPage>
@@ -229,7 +244,7 @@ function Invitation({ state }: { state: string }) {
           <p className="demo-muted">You declined. {SAMPLE.inviter} will see that you said no.</p>
         </Heading>
         <Organisation line={INVITED_BY} />
-        <Link className="button demo-wide" to="/demo/signed-in">
+        <Link className="button demo-wide" to="/demo/today">
           Go to Soirely
         </Link>
       </BoardPage>
@@ -250,7 +265,7 @@ function Invitation({ state }: { state: string }) {
             Sign out and use {SAMPLE.email}
           </Link>
         ) : (
-          <Link className="button demo-wide" to="/demo/signed-in">
+          <Link className="button demo-wide" to="/demo/today">
             Go to Soirely
           </Link>
         )}
@@ -413,6 +428,8 @@ function YourDetails({ state }: { state: string }) {
       return <Details state="" flow={FLOW} offer="invitation" />;
     case 'own':
       return <Details state="" flow={FLOW} />;
+    case 'managed':
+      return <Details state="" flow={FLOW} offer="company" managed />;
     default:
       return <Details state="" flow={FLOW} offer="company" />;
   }

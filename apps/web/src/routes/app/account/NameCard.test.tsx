@@ -84,7 +84,7 @@ function me(name: string): Response {
 
 /** The account block at the foot of the sidebar. */
 function sidebarName(): string | null | undefined {
-  return document.querySelector('.shell-account span')?.textContent;
+  return document.querySelector('.today-person-name')?.textContent;
 }
 
 function open() {

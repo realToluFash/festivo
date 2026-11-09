@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { Animated, StyleSheet, type TextInputInstance, View } from 'react-native';
 
 import { PrimaryButton, QuietButton } from '../../../src/components/Buttons.tsx';
+import { withBoldText } from '../../../src/demo/boldText/BoldTextSwitch.tsx';
 import { DemoScreen, NavBar, goBack, useInSheet } from '../../../src/demo/DemoScreen.tsx';
 import { tap } from '../../../src/steps/haptics.ts';
 import { type FieldState, InsideField } from '../../../src/steps/InsideField.tsx';
@@ -14,11 +15,16 @@ import { tokens } from '../../../src/theme/tokens.ts';
 
 type Wrong = { field: 'email' | 'password'; state: FieldState | 'refused'; words: string } | null;
 
-export default function SignIn() {
-  const params = useLocalSearchParams<{ email?: string; after?: string }>();
+function SignIn() {
+  const params = useLocalSearchParams<{
+    email?: string;
+    password?: string;
+    after?: string;
+    timedOut?: string;
+  }>();
   const inSheet = useInSheet();
   const [email, setEmail] = useState(params.email ?? '');
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState(params.password ?? '');
   const [wrong, setWrong] = useState<Wrong>(null);
   const [busy, setBusy] = useState(false);
   const emailField = useRef<TextInputInstance>(null);
@@ -77,6 +83,9 @@ export default function SignIn() {
       }
     >
       <Heading title="Sign in" />
+      {params.timedOut != null && (
+        <Says words="That sign-in timed out. Sign in again to carry on." quiet />
+      )}
       <Animated.View style={[styles.first, shaken]}>
         <InsideField
           ref={emailField}
@@ -130,6 +139,8 @@ export default function SignIn() {
     </DemoScreen>
   );
 }
+
+export default withBoldText(SignIn);
 
 const styles = StyleSheet.create({
   first: { marginTop: tokens.space3xl },

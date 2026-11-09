@@ -231,6 +231,7 @@ export default function SignIn() {
                 }}
                 onBlur={() => checks.left('email', typed.current.email)}
                 state={checks.errors.email == null ? 'plain' : 'blank'}
+                line={checks.errors.email}
                 submitting={busy}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -259,6 +260,7 @@ export default function SignIn() {
                   onBlur={() => checks.left('password', typed.current.password)}
                   password
                   state={checks.errors.password == null ? 'plain' : 'blank'}
+                  line={checks.errors.password}
                   submitting={busy}
                   autoComplete="current-password"
                   textContentType="password"

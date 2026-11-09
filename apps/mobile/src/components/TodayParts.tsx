@@ -297,6 +297,7 @@ function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
   const { t } = useTranslation();
   const circle = wide ? 38 : 34;
   const today = t('todayScreen.today');
+  const todayShort = t('todayScreen.todayShort');
 
   return (
     <Panel style={[styles.strip, moment.bars.length > 0 && styles.stripWithBars]}>
@@ -316,7 +317,7 @@ function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
               accessible={false}
               style={[styles.weekday, day.today ? styles.accent : styles.secondary]}
             >
-              {(day.today ? today : day.weekday).toLocaleUpperCase()}
+              {(day.today ? todayShort : day.weekday).toLocaleUpperCase()}
             </Text>
             <View
               style={[
@@ -400,7 +401,7 @@ function AgendaDays({
                     <Text
                       size={14}
                       weight="bold"
-                      numberOfLines={1}
+                      numberOfLines={item.allDay ? 2 : 1}
                       style={[styles.figures, styles.time, { width: wide ? 76 : 70 }]}
                     >
                       {item.time}
@@ -703,11 +704,11 @@ export function FirstRun({ wide }: { wide: boolean }) {
           pressed && styles.pressed,
         ]}
         accessibilityRole="button"
-        accessibilityLabel={t('todayScreen.createEvent')}
+        accessibilityLabel={t('todayScreen.startFirst')}
       >
         <Glyph name="plus" ink={tokens.colorInkOnDark} />
         <Text size={TYPE.row} weight="semibold" accessible={false} style={styles.onAccent}>
-          {t('todayScreen.createEvent')}
+          {t('todayScreen.startFirst')}
         </Text>
       </Pressable>
     </View>

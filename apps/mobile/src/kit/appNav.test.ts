@@ -26,7 +26,7 @@ describe('sign-in lands on the signed-in home', () => {
     const launch = source(join(APP, 'index.tsx'));
 
     expect(launch).toMatch(/if \(launching === 'signedIn'\) return <SignedInHome \/>;/u);
-    expect(launch).toMatch(/if \(live && loaded\) setLaunching\('signedIn'\);/u);
+    expect(launch).toMatch(/else setLaunching\('signedIn'\);/u);
     expect(launch).not.toMatch(/href="\/security"|href="\/account"/u);
   });
 });
@@ -69,9 +69,15 @@ describe('the frame shows only what is built', () => {
   });
 });
 
-describe('Settings > Security holds every card', () => {
-  it.each(['WaysCard', 'TwoFactorCard', 'DevicesCard'])('%s', (card) => {
-    expect(source(join(APP, 'settings', 'security.tsx'))).toMatch(new RegExp(`<${card}\\b`, 'u'));
+describe('Settings > Security holds every section', () => {
+  it('through the page its demo draws', () => {
+    expect(source(join(APP, 'settings', 'security.tsx'))).toMatch(/<SecurityPage\b/u);
+  });
+
+  it.each(['WaysSection', 'TwoFactorSection', 'DevicesSection'])('%s', (section) => {
+    expect(source(join(SRC, 'components', 'SecurityPage.tsx'))).toMatch(
+      new RegExp(`<${section}\\b`, 'u'),
+    );
   });
 });
 
@@ -86,7 +92,9 @@ describe('the interim screens open their Settings page', () => {
 
 describe('"Sign out" on the Settings list', () => {
   it('is wired to the same sign-out as the "This device" row, whose outcome signedIn.test.ts checks', () => {
-    expect(source(join(SRC, 'components', 'SettingsList.tsx'))).toContain('onPress={signOutHere}');
+    expect(source(join(SRC, 'components', 'SettingsList.tsx'))).toContain(
+      'onSignOut={signOutHere}',
+    );
     expect(source(join(APP, 'settings', 'security.tsx'))).toContain('onSignOutHere={signOutHere}');
   });
 });
@@ -94,7 +102,10 @@ describe('"Sign out" on the Settings list', () => {
 describe('the Settings list', () => {
   it('has Organisation, Members and Sign-in rules rows below Security, under their own heading', () => {
     expect(settingsGroups({ permissions: ['members.read'] })).toEqual([
-      { heading: 'yourAccount', sections: ['account', 'security', 'notifications'] },
+      {
+        heading: 'yourAccount',
+        sections: ['account', 'security', 'notifications', 'personalisation'],
+      },
       { heading: 'organisationHeading', sections: ['organisation', 'members', 'signInRules'] },
     ]);
   });
@@ -115,7 +126,10 @@ describe('the Settings list', () => {
 
   it('leaves the Organisation rows out while the account is in no organisation', () => {
     expect(settingsGroups(null)).toEqual([
-      { heading: 'yourAccount', sections: ['account', 'security', 'notifications'] },
+      {
+        heading: 'yourAccount',
+        sections: ['account', 'security', 'notifications', 'personalisation'],
+      },
     ]);
   });
 
@@ -311,16 +325,12 @@ describe('The bell in [fd] (sc-23233)', () => {
     );
   });
 
-  it('builds the badge to the frame, at the size and place the web has', () => {
+  it('draws the bell as the demos do: a dot while anything is unread, the count in its name', () => {
     const button = source(join(SRC, 'components', 'BellButton.tsx'));
 
-    expect(button).toMatch(/const BADGE_SIDE = 18;/u);
-    expect(button).toMatch(
-      /badge: \{\s*position: 'absolute',\s*top: tokens\.spaceXxs,\s*right: tokens\.spaceXxs,\s*minWidth: BADGE_SIDE,\s*minHeight: BADGE_SIDE,\s*paddingHorizontal: tokens\.spaceXxs,[\s\S]*?justifyContent: 'center',/u,
-    );
-    expect(button).toMatch(
-      /<Text\s+size=\{tokens\.typePill\.size\}\s+weight="semibold"\s+numberOfLines=\{1\}\s+maxFontSizeMultiplier=\{BADGE_TEXT_SCALE\}/u,
-    );
+    expect(button).toMatch(/<RoundButton\s+glyph="bell"/u);
+    expect(button).toMatch(/t\('notifications\.bellUnread', \{ count: unread \}\)/u);
+    expect(button).toMatch(/dot=\{unread > 0\}/u);
   });
 
   it('insets the skeleton once, its rules running to the card edge and its words with its rows', () => {

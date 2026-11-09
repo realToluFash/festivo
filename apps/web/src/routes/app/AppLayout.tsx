@@ -1,3 +1,4 @@
+import { initials, roleName } from '@soirely/domain';
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router';
@@ -5,7 +6,9 @@ import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react
 import { followSavedLanguage } from '../../accountLanguage.ts';
 import { Brand } from '../../components/Brand.tsx';
 import { CreateOrganisation } from '../../components/CreateOrganisation.tsx';
+import { DeskPersonFace, DeskSidebar } from '../../components/DeskSidebar.tsx';
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
+import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { LanguagePicker } from '../../components/LanguagePicker.tsx';
 import { OrganisationSwitcher } from '../../components/OrganisationSwitcher.tsx';
 import { Pending } from '../../components/Pending.tsx';
@@ -15,6 +18,7 @@ import { NotificationsBell } from '../../components/NotificationsBell.tsx';
 import { OfflineBand, OfflineProvider } from '../../components/OfflineBand.tsx';
 import { SignInRulesNotices } from '../../components/SignInRulesNotices.tsx';
 import { AccessPaused } from '../../components/AccessPaused.tsx';
+import { Switched } from '../../components/Switched.tsx';
 import { TwoFactorOverdue } from '../../components/TwoFactorOverdue.tsx';
 import { SkipLink } from '../../components/SkipLink.tsx';
 import {
@@ -28,7 +32,6 @@ import {
   useSessionState,
 } from '../../session.ts';
 import { useWaitingInvitations } from '../../invitations.ts';
-import { useStepFocus } from '../../stepFocus.ts';
 import { UNASKED } from '../../pageArrival.ts';
 import { useDomainOffer } from '../../joinOffers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
@@ -99,16 +102,15 @@ function Shell() {
     at: string;
     takesFocus?: boolean;
   } | null>(null);
-  const [switchedNotice, arriveAtSwitched] = useStepFocus<HTMLDivElement>();
   const [creating, setCreating] = useState(false);
   const [choosing, setChoosing] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
-  const sidebarLinks = useRef<HTMLDivElement>(null);
+  const sidebar = useRef<HTMLElement>(null);
   const widenedOpen = useRef(false);
   const returnFromMenu = useCallback((opener: HTMLElement | null) => {
     const current = widenedOpen.current
-      ? sidebarLinks.current?.querySelector('[aria-current="page"]')
+      ? sidebar.current?.querySelector('[aria-current="page"]')
       : null;
 
     widenedOpen.current = false;
@@ -186,7 +188,23 @@ function Shell() {
   );
 
   const atAccount = pathname.startsWith('/app/account');
-  const standingIn = !atAccount && (session.pausedIn != null || (organisation != null && overdue));
+
+  const atSettings = pathname === '/app/settings' || pathname.startsWith('/app/settings/');
+  // At an organisation's Settings section the stand-in takes the page beside the Settings list, so the account stays a row away.
+  const standIn =
+    session.pausedIn != null && !atAccount ? (
+      <AccessPaused
+        paused={session.pausedIn}
+        others={session.organisations}
+        onSwitch={(next) => {
+          switchOrganisation(next.id);
+          setSwitched({ id: next.id, name: next.name, at: pathname, takesFocus: true });
+        }}
+        onChoose={() => setChoosing((times) => times + 1)}
+      />
+    ) : organisation != null && overdue && !atAccount ? (
+      <TwoFactorOverdue organisation={organisation} />
+    ) : null;
 
   // Every product page would open this page again, so it stands alone: only what works without an organisation, the account pages under the same header.
   if (organisation == null && session.pausedIn == null) {
@@ -220,7 +238,6 @@ function Shell() {
                   switchOrganisation(id);
                   if (joined == null) return;
                   setSwitched({ id, name: joined.name, at: pathname, takesFocus: true });
-                  arriveAtSwitched();
                 }}
                 onStarted={(started) => {
                   switchOrganisation(started.id);
@@ -230,7 +247,6 @@ function Shell() {
                     at: pathname,
                     takesFocus: true,
                   });
-                  arriveAtSwitched();
                 }}
               />
             </ErrorBoundary>
@@ -245,53 +261,57 @@ function Shell() {
       <div className="shell">
         <SkipLink inert={menuOpen} />
 
-        <aside className="shell-sidebar" inert={menuOpen}>
-          <Brand lockup />
-
-          {organisation != null && (
-            <OrganisationSwitcher
-              current={organisation}
-              organisations={session.organisations}
-              waiting={waiting}
-              offer={offer}
-              email={session.email}
-              paused={session.pausedIn != null}
-              opened={choosing}
-              onSwitch={switchInto}
-              onCreate={() => setCreating(true)}
-            />
-          )}
-
-          <button
-            type="button"
-            className="shell-menu-button"
-            aria-haspopup="dialog"
-            aria-expanded={menuOpen}
-            aria-controls={menuOpen ? menuId : undefined}
-            onClick={() => setMenuOpen(true)}
+        <aside ref={sidebar} className="shell-sidebar" inert={menuOpen}>
+          <DeskSidebar
+            label={t('app.name')}
+            pill={
+              organisation != null && (
+                <OrganisationSwitcher
+                  current={organisation}
+                  organisations={session.organisations}
+                  waiting={waiting}
+                  offer={offer}
+                  email={session.email}
+                  paused={session.pausedIn != null}
+                  opened={choosing}
+                  onSwitch={switchInto}
+                  onCreate={() => setCreating(true)}
+                />
+              )
+            }
+            foot={<ShellFoot />}
           >
-            <svg
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              aria-hidden="true"
+            <button
+              type="button"
+              className="shell-menu-button"
+              aria-haspopup="dialog"
+              aria-expanded={menuOpen}
+              aria-controls={menuOpen ? menuId : undefined}
+              onClick={() => setMenuOpen(true)}
             >
-              <path d="M2 4h12M2 8h12M2 12h12" strokeLinecap="round" />
-            </svg>
-            {t('nav.menu')}
-          </button>
+              <svg
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                aria-hidden="true"
+              >
+                <path d="M2 4h12M2 8h12M2 12h12" strokeLinecap="round" />
+              </svg>
+              {t('nav.menu')}
+            </button>
 
-          <div ref={sidebarLinks} className="shell-links">
-            <ShellLinks />
-          </div>
+            <div className="shell-links">
+              <ShellLinks />
+            </div>
+          </DeskSidebar>
         </aside>
 
         <header className="shell-band" inert={menuOpen}>
           <p className="shell-crumb">
             {organisation?.name ?? session.pausedIn?.name}
             {/* A screen standing in for the page leaves only the organisation (pm, 2 Nov). */}
-            {!standingIn && (
+            {standIn == null && (
               <>
                 <span aria-hidden="true"> / </span>
                 <b>
@@ -312,38 +332,11 @@ function Shell() {
           )}
           {/* Said on the page it happened on, and gone once the person moves on. */}
           {switched != null && switched.at === pathname && switched.id === organisation?.id && (
-            <div
-              className="notice notice-done"
-              role={switched.takesFocus === true ? undefined : 'status'}
-              ref={switchedNotice}
-              tabIndex={switched.takesFocus === true ? -1 : undefined}
-            >
-              <span className="mark mark-done" aria-hidden="true">
-                ✓
-              </span>
-              <p className="notice-title" data-notice-lead tabIndex={-1}>
-                {t('switcher.switched', { name: switched.name })}
-              </p>
-            </div>
+            <Switched name={switched.name} takesFocus={switched.takesFocus === true} />
           )}
 
           <ErrorBoundary>
-            {session.pausedIn != null && !atAccount ? (
-              <AccessPaused
-                paused={session.pausedIn}
-                others={session.organisations}
-                onSwitch={(next) => {
-                  switchOrganisation(next.id);
-                  setSwitched({ id: next.id, name: next.name, at: pathname, takesFocus: true });
-                  arriveAtSwitched();
-                }}
-                onChoose={() => setChoosing((times) => times + 1)}
-              />
-            ) : organisation != null && standingIn ? (
-              <TwoFactorOverdue organisation={organisation} />
-            ) : (
-              <Outlet />
-            )}
+            {standIn != null && !atSettings ? standIn : <Outlet context={standIn} />}
           </ErrorBoundary>
         </main>
 
@@ -365,46 +358,59 @@ function Shell() {
   );
 }
 
-/** The sidebar's links, the account and its language: in the sidebar on a desk, in the menu on a phone. */
+const PLACES: readonly (readonly [string, 'today' | 'events' | 'calendar', GlyphName])[] = [
+  ['/app', 'today', 'today'],
+  ['/app/events', 'events', 'events'],
+  ['/app/calendar', 'calendar', 'calendar'],
+];
+
+function placeLook({ isActive }: { isActive: boolean }): string {
+  return isActive ? 'today-place is-on' : 'today-place';
+}
+
+/** The sidebar's places, or inside an event its own: in the sidebar on a desk, in the menu on a phone. */
 function ShellLinks({ onFollow }: { onFollow?: () => void }) {
   const { t } = useTranslation();
-  const session = useSession();
   const inside = useInsideEvent();
+
+  if (inside != null) return <EventNav inside={inside} onFollow={onFollow} />;
+
+  return (
+    <ul className="today-places">
+      {PLACES.map(([to, word, glyph]) => (
+        <li key={to}>
+          <NavLink className={placeLook} to={to} end={to === '/app'} onClick={onFollow}>
+            <Glyph name={glyph} />
+            {t(`nav.${word}`)}
+          </NavLink>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Settings, and the person at the sidebar's foot, who opens their account. */
+function ShellFoot({ onFollow }: { onFollow?: () => void }) {
+  const { t } = useTranslation();
+  const session = useSession();
+  const organisation = session.organisation;
+  const role = organisation == null ? null : roleName(t, organisation.role);
+  const person = { name: session.name, initials: initials(session.name), role };
 
   return (
     <>
-      {inside != null && <EventNav inside={inside} onFollow={onFollow} />}
-      <nav className="shell-nav">
-        {inside == null && (
-          <>
-            <NavLink to="/app" end onClick={onFollow}>
-              {t('nav.dashboard')}
-            </NavLink>
-            <NavLink to="/app/events" onClick={onFollow}>
-              {t('nav.events')}
-            </NavLink>
-            <NavLink to="/app/calendar" onClick={onFollow}>
-              {t('nav.calendar')}
-            </NavLink>
-            <NavLink to="/app/guests" onClick={onFollow}>
-              {t('nav.guests')}
-            </NavLink>
-          </>
-        )}
-        <NavLink to="/app/settings" onClick={onFollow}>
-          {t('nav.settings')}
-        </NavLink>
-        <NavLink to="/app/account" onClick={onFollow}>
-          {t('nav.account')}
-        </NavLink>
-      </nav>
-
-      <div className="shell-account">
-        <span>{session.name}</span>
-        <span className="muted">{session.email}</span>
-        {/* Wider than a phone the picker is in the header band. */}
-        {onFollow != null && <LanguagePicker automatic={false} />}
-      </div>
+      <NavLink className={placeLook} to="/app/settings" onClick={onFollow}>
+        <Glyph name="settings" />
+        {t('nav.settings')}
+      </NavLink>
+      <NavLink
+        className="today-person"
+        to="/app/account"
+        aria-label={role == null ? session.name : t('nav.person', { name: session.name, role })}
+        onClick={onFollow}
+      >
+        <DeskPersonFace person={person} />
+      </NavLink>
     </>
   );
 }
@@ -419,11 +425,11 @@ function Destination() {
   if (inside != null) return eventName ?? t(`eventNav.${inside.area}`);
   if (pathname.startsWith('/app/account')) return t('nav.account');
 
-  const section = ['events', 'calendar', 'guests', 'settings'].find((name) =>
+  const section = ['events', 'calendar', 'settings'].find((name) =>
     pathname.startsWith(`/app/${name}`),
   );
 
-  return t(`nav.${section ?? 'dashboard'}`);
+  return t(`nav.${section ?? 'today'}`);
 }
 
 /** `AppShell-Phone`'s sheet: a modal dialog, so focus goes back to Menu when it closes. */
@@ -479,6 +485,10 @@ function ShellMenu({
         </button>
         <Brand />
         <ShellLinks onFollow={onClose} />
+        <div className="today-places">
+          <ShellFoot onFollow={onClose} />
+        </div>
+        <LanguagePicker automatic={false} />
       </div>
     </>
   );

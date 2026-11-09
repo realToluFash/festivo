@@ -24,17 +24,20 @@ import {
   Pressable,
   ScrollView,
   type ScrollViewInstance,
-  type StyleProp,
   StyleSheet,
   type TextInputInstance,
   useWindowDimensions,
   View,
   type ViewInstance,
-  type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { EventMesh, eventColour } from '../components/EventMesh.tsx';
+import { OrgMark as ProductOrgMark } from '../components/OrgMark.tsx';
+import {
+  OPENER,
+  OpenerWords as ProductOpenerWords,
+  OrgPill as ProductOrgPill,
+} from '../components/OrgPill.tsx';
 import { TextField } from '../components/Field.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Initials } from '../components/Initials.tsx';
@@ -47,7 +50,6 @@ import { Text, type TextHandle } from '../components/Text.tsx';
 import { Glass } from '../components/TodayCover.tsx';
 import type { Tell } from '../components/TodayParts.tsx';
 import type { OpenerAt } from '../components/todayShell.ts';
-import type { MeshKey } from '../kit/today.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useAccessibilitySizes, useLayout } from '../layout/useLayout.ts';
 import { glide } from '../motion.ts';
@@ -64,7 +66,7 @@ import {
 } from './createOrg/CreateWalk.ts';
 import { CreateWalkWindow, type WalkOpening, deviceNow } from './createOrg/CreateWalkWindow.tsx';
 import { DraftTile } from './createOrg/WalkParts.tsx';
-import { scrimFor } from './events/EventsModel.ts';
+import { ManagedBanner } from './Managed.tsx';
 import {
   CELL_GAP,
   type DropFrame,
@@ -87,7 +89,6 @@ import {
   noneMatch,
   notNow,
   openerLabel,
-  orgMesh,
   pick,
   placeOf,
   rowsOf,
@@ -101,7 +102,8 @@ import {
   waitingOf,
   withoutPlaces,
 } from './OrgSwitcherModel.ts';
-import { Pill } from './settings/parts.tsx';
+import { Pill } from '../components/SettingsParts.tsx';
+import { type Switched, SwitchedProvider } from '../components/SwitchedNotice.tsx';
 
 const store = {
   session: sessionFor('populated'),
@@ -127,18 +129,10 @@ function useSession(): Session {
 
 export type OpenerRef = RefObject<ViewInstance | null>;
 
-interface Switched {
-  words: string;
-  /** Said after Create, which has moved to another screen: the notice takes focus. */
-  focus?: boolean;
-}
-
 interface Switcher {
   register: (opener: OpenerRef, primary: boolean) => () => void;
   show: (opener: OpenerRef) => void;
   openedBy: OpenerRef | null;
-  slot: () => () => void;
-  switched: Switched | null;
   startWalk: (opener: OpenerRef) => void;
   registerStart: (opener: OpenerRef) => () => void;
 }
@@ -343,13 +337,15 @@ export function OrgSwitcherProvider({
   }, [create, none]);
 
   const switcher = useMemo<Switcher>(
-    () => ({ register, show, openedBy, slot, switched, startWalk, registerStart }),
-    [register, show, openedBy, slot, switched, startWalk, registerStart],
+    () => ({ register, show, openedBy, startWalk, registerStart }),
+    [register, show, openedBy, startWalk, registerStart],
   );
 
   return (
     <SwitcherContext.Provider value={switcher}>
-      {children}
+      <SwitchedProvider slot={slot} switched={switched}>
+        {children}
+      </SwitchedProvider>
       {frame != null && (
         <DropDown
           key={visit}
@@ -416,82 +412,18 @@ export function useCurrentPlace(): Place | null {
   return placeOf(useSession());
 }
 
-/** "Now working in ‹name›." in the page, under its head; a page without one says it in its toast. */
-export function SwitchedNotice({ style }: { style?: StyleProp<ViewStyle> }) {
-  const { slot, switched } = useSwitcher();
-
-  useLayoutEffect(() => slot(), [slot]);
-
-  if (switched == null) return null;
-
+/** The product's tile, with the walk's crossfade over it while a new organisation arrives. */
+export function OrgMark(props: { id: string; name: string; side: number; glass?: boolean }) {
   return (
-    <View style={style}>
-      <Notice
-        tone="done"
-        mark={tokens.marks.done.glyph}
-        body={switched.words}
-        answer={switched}
-        takesFocus={switched.focus ?? false}
-        {...(switched.focus === true ? { readMs: SETTLED_MS * 2 } : {})}
+    <ProductOrgMark {...props}>
+      <Arrival
+        key={props.id}
+        id={props.id}
+        name={props.name}
+        side={props.side}
+        big={props.side >= 40}
       />
-    </View>
-  );
-}
-
-interface Wash {
-  cover: MeshKey;
-  ink: string;
-  strength: number;
-}
-
-const washes = new Map<string, Wash>();
-
-function washOf(id: string): Wash {
-  const known = washes.get(id);
-  if (known != null) return known;
-
-  const cover = orgMesh(id);
-  const scrim = scrimFor(eventColour({ mesh: cover }), false, tokens.colorInk);
-  const wash = { cover, ink: scrim.ink, strength: scrim.middle };
-  washes.set(id, wash);
-
-  return wash;
-}
-
-/** An organisation's tile in its own colour: its B cover under a wash that keeps white initials at 4.5:1. */
-export function OrgMark({
-  id,
-  name,
-  side,
-  glass = false,
-}: {
-  id: string;
-  name: string;
-  side: number;
-  glass?: boolean;
-}) {
-  const wash = washOf(id);
-  const big = side >= 40;
-
-  return (
-    <View
-      style={[
-        styles.mark,
-        { width: side, height: side, borderRadius: Math.round(side / 3) },
-        glass && styles.markGlass,
-      ]}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      {!glass && <Washed wash={wash} />}
-      <Initials
-        name={name}
-        size={big ? Math.floor(side * 0.42) : 12}
-        weight="bold"
-        style={{ color: glass ? wash.ink : tokens.colorInkOnDark }}
-      />
-      <Arrival key={id} id={id} name={name} side={side} big={big} />
-    </View>
+    </ProductOrgMark>
   );
 }
 
@@ -540,60 +472,24 @@ function Arrival({
   );
 }
 
-function Washed({ wash }: { wash: Wash }) {
-  return (
-    <>
-      <EventMesh event={{ mesh: wash.cover, photo: null }} />
-      <View
-        style={[StyleSheet.absoluteFill, { backgroundColor: wash.ink, opacity: wash.strength }]}
-      />
-    </>
-  );
-}
-
-/** The opener's words: the name, and under it a ring and how many invitations wait. */
+/** The product's opener words, for the demo's session. */
 export function OpenerWords({
   opener,
-  onDark = false,
-  grow = false,
-  wrap = false,
+  ...rest
 }: {
   opener: OrgOpener;
   onDark?: boolean;
   grow?: boolean;
   wrap?: boolean;
 }) {
-  const ink = { color: onDark ? tokens.colorInkOnDark : tokens.colorInk };
-
   return (
-    <View style={[styles.openerWords, grow && styles.grow]}>
-      <Text
-        size={15}
-        weight="semibold"
-        numberOfLines={wrap ? undefined : 1}
-        accessible={false}
-        style={[styles.openerName, ink]}
-      >
-        {opener.place.name}
-      </Text>
-      {opener.waiting > 0 && (
-        <View style={styles.waitingLine}>
-          <View
-            style={[
-              styles.waitingRing,
-              { borderColor: onDark ? tokens.colorInkOnDark : tokens.colorInk },
-            ]}
-          />
-          <Text size={12.5} weight="semibold" accessible={false} style={[styles.waitingWords, ink]}>
-            {SW.count(opener.waiting)}
-          </Text>
-        </View>
-      )}
-    </View>
+    <ProductOpenerWords
+      name={opener.place.name}
+      waiting={opener.waiting > 0 ? SW.count(opener.waiting) : null}
+      {...rest}
+    />
   );
 }
-
-export const OPENER = { rest: tokens.sizeHit, waiting: 56 } as const;
 
 /** Today's openers: glass on the cover and the band, and the sidebar's head. */
 export function DemoOrgOpener({ at }: { at: OpenerAt }) {
@@ -610,19 +506,18 @@ export function DemoOrgOpener({ at }: { at: OpenerAt }) {
 
   if (at === 'sidebar')
     return (
-      <Pressable
-        {...shared}
-        style={({ pressed }) => [
-          styles.sideOrg,
-          org.waiting > 0 && styles.sideOrgWaiting,
-          (org.expanded || pressed) && styles.sideOrgOpen,
-        ]}
+      <ProductOrgPill
+        ref={ref}
+        sidebar
+        id={org.place.id}
+        name={org.place.name}
+        mark={<OrgMark id={org.place.id} name={org.place.name} side={28} />}
+        waiting={org.waiting > 0 ? SW.count(org.waiting) : null}
+        label={org.label}
+        expanded={org.expanded}
+        onPress={org.onPress}
         testID="org.switch"
-      >
-        <OrgMark id={org.place.id} name={org.place.name} side={28} />
-        <OpenerWords opener={org} grow />
-        <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
-      </Pressable>
+      />
     );
 
   if (at === 'band')
@@ -969,6 +864,11 @@ function DropDown({
                           <InvitationPanel
                             invite={opened.invite}
                             joined={opened.kind === 'joined'}
+                            managed={session.managed === opened.invite.id}
+                            onChange={() => {
+                              onClose();
+                              setTimeout(() => router.push('/demo/settings/account'), SETTLED_MS);
+                            }}
                             outcome={
                               opened.kind === 'invitation' ? opened.outcome?.kind : undefined
                             }
@@ -1000,18 +900,23 @@ function DropDown({
   );
 }
 
-function Search({
+/** The switcher's search field; Members' person menu takes it too, in its own words (sc-31310). */
+export function Search({
   start,
   typed,
   field,
   onTyped,
   onClear,
+  words = { search: SW.search, clear: SW.clearSearch },
+  testID = 'switcher.search',
 }: {
   start: string;
   typed: string;
   field: RefObject<TextInputInstance | null>;
   onTyped: (typed: string) => void;
   onClear: () => void;
+  words?: { search: string; clear: string };
+  testID?: string;
 }) {
   const [focused, setFocused] = useState(false);
 
@@ -1021,7 +926,7 @@ function Search({
       <TextField
         ref={field}
         defaultValue={start}
-        placeholder={SW.search}
+        placeholder={words.search}
         placeholderTextColor={tokens.colorInkSecondary}
         onChangeText={onTyped}
         onFocus={() => setFocused(true)}
@@ -1030,17 +935,17 @@ function Search({
         autoCorrect={false}
         spellCheck={false}
         autoCapitalize="none"
-        accessibilityLabel={SW.search}
+        accessibilityLabel={words.search}
         style={styles.searchInput}
-        testID="switcher.search"
+        testID={testID}
       />
       {typed !== '' && (
         <Pressable
           onPress={onClear}
           style={styles.clear}
           accessibilityRole="button"
-          accessibilityLabel={SW.clearSearch}
-          testID="switcher.search.clear"
+          accessibilityLabel={words.clear}
+          testID={`${testID}.clear`}
         >
           <View style={styles.clearDot}>
             <Glyph name="x" size={11} ink={tokens.colorInkOnDark} weight={3} />
@@ -1288,6 +1193,8 @@ function PanelButtons({ children }: { children: ReactNode }) {
 function InvitationPanel({
   invite,
   joined,
+  managed,
+  onChange,
   outcome,
   sizes,
   locale,
@@ -1297,6 +1204,8 @@ function InvitationPanel({
 }: {
   invite: Invite;
   joined: boolean;
+  managed: boolean;
+  onChange: () => void;
   outcome: 'failed' | 'declined' | 'busy' | 'accepted' | 'refused' | undefined;
   sizes: Sizes;
   locale: string;
@@ -1356,7 +1265,11 @@ function InvitationPanel({
           {SW.until(untilIn(locale, invite.until))}
         </Text>
       </View>
-      {outcome === 'declined' ? (
+      {managed ? (
+        <View style={styles.answerUnder}>
+          <ManagedBanner onChange={onChange} testID={`switcher.invitation.${invite.id}.managed`} />
+        </View>
+      ) : outcome === 'declined' ? (
         <View style={styles.answerUnder}>
           <Notice
             tone="quiet"
@@ -1514,9 +1427,6 @@ function OfferPanel({
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
-  mark: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  markGlass: { backgroundColor: tokens.colorInkOnDark },
-  openerWords: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
   coverOrg: { flexShrink: 1 },
   coverGlass: {
     flexShrink: 1,
@@ -1526,25 +1436,6 @@ const styles = StyleSheet.create({
     paddingRight: tokens.spacePillEnd,
   },
   bandOrg: { paddingHorizontal: 5 },
-  sideOrg: {
-    minHeight: OPENER.rest,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceMd,
-    paddingLeft: tokens.spaceSm,
-    paddingRight: tokens.spaceMd,
-    borderRadius: tokens.radiusRow,
-  },
-  sideOrgWaiting: { minHeight: OPENER.waiting },
-  sideOrgOpen: {
-    backgroundColor: tokens.colorCard,
-    ...tokens.elevationNative.card.ios,
-    elevation: tokens.elevationNative.card.android.elevation,
-  },
-  openerName: { lineHeight: 15 * 1.25 },
-  waitingLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
-  waitingRing: { width: 11, height: 11, borderRadius: 5.5, borderWidth: 2 },
-  waitingWords: { lineHeight: 12.5 * 1.3 },
   drop: {
     position: 'absolute',
     borderWidth: 1,

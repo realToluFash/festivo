@@ -323,6 +323,8 @@ services:
       SOIRELY_APPLE_CLIENT_ID: ${SOIRELY_APPLE_CLIENT_ID:-soirely-web}
       # Unset draws violet, docs/design/tokens.mjs's defaultScheme; the rest are B Confetti's schemes.
       SOIRELY_SCHEME: ${SOIRELY_SCHEME:-}
+      # The API's SUPPORT_EMAIL, so a page that asks the API nothing names the same address.
+      SOIRELY_SUPPORT_EMAIL: ${SUPPORT_EMAIL:-support@soirely.com}
     ports:
       - '${WEB_PORT:-5173}:80'
     healthcheck:

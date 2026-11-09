@@ -2,7 +2,6 @@ import { useFocusEffect } from 'expo-router';
 import { type Ref, useCallback, useEffect, useState } from 'react';
 import {
   AppState,
-  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -12,10 +11,19 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { fieldName, passwordProps } from '../kit/fields.ts';
+import { passwordProps } from '../kit/fields.ts';
+import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
-import { fieldStyles, focusEdge, useFieldLabel, useFocusEdge, useHeld } from './Field.tsx';
+import {
+  fieldStyles,
+  focusEdge,
+  refusedField,
+  useFieldLabel,
+  useFocusEdge,
+  useHeld,
+  useRefused,
+} from './Field.tsx';
 import { Text } from './Text.tsx';
 
 /** Room for "Show" or "Hide", so typed text never runs under the control. */
@@ -38,6 +46,7 @@ export function PasswordField({
   ref?: Ref<TextInputInstance> | undefined;
 }) {
   const { t } = useTranslation();
+  const refused = useRefused(wrong);
   const [revealed, setRevealed] = useState(false);
   const [wasSubmitting, setWasSubmitting] = useState(submitting);
 
@@ -55,29 +64,31 @@ export function PasswordField({
     return () => listener.remove();
   }, []);
 
-  useFocusEffect(useCallback(() => () => setRevealed(false), []));
+  useFocusEffect(useCallback(() => () => setRevealed(false), [setRevealed]));
   const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
   const labelID = useFieldLabel();
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
+  const bold = useBoldText();
 
   return (
     <View>
       <TextInput
         {...rest}
-        {...fieldName(Platform.OS, rest.accessibilityLabel, {
-          labelID,
-          placeholder: rest.placeholder,
-        })}
+        {...refusedField(refused, rest, labelID)}
         {...passwordProps(revealed)}
         {...holding}
         ref={ref}
         {...edging}
-        style={inputFaced([
-          fieldStyles.input,
-          focusEdge(focused, wrong),
-          styles.withReveal,
-          focused && styles.withRevealEdge,
-        ])}
+        style={inputFaced(
+          [
+            fieldStyles.input,
+            focusEdge(focused, wrong),
+            styles.withReveal,
+            focused && styles.withRevealEdge,
+          ],
+          'sans',
+          bold,
+        )}
         aria-invalid={wrong}
         testID={testID}
         onSubmitEditing={(event) => {

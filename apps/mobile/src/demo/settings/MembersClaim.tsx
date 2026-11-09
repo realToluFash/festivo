@@ -1,4 +1,3 @@
-import { setStringAsync } from 'expo-clipboard';
 import { type RefObject, useEffect, useState } from 'react';
 
 import { useReadOut } from '../../components/ReadOut.tsx';
@@ -12,7 +11,8 @@ import {
   type MembersSay,
   ORGANISATION,
 } from './MembersSample.ts';
-import { FocusedScreen, Line, Row, RowList, Section, TextAction } from './Summary.tsx';
+import { RecordRows, useCopied } from './RecordRows.tsx';
+import { FocusedScreen, Line, Section, TextAction } from '../../components/Summary.tsx';
 
 const CHECK_MS = 900;
 
@@ -82,15 +82,8 @@ export function ClaimScreen({
   say: MembersSay;
   opener: RefObject<ScreenReaderTarget | null>;
 }) {
-  const [copied, setCopied] = useState<(typeof CLAIM_RECORD)[number] | null>(null);
+  const { copied, copy, clear } = useCopied();
   const checking = owner.check === 'checking';
-
-  function copy(row: (typeof CLAIM_RECORD)[number]): void {
-    setStringAsync(row.value).then(
-      () => setCopied(row),
-      () => setCopied(null),
-    );
-  }
 
   return (
     <FocusedScreen
@@ -118,7 +111,7 @@ export function ClaimScreen({
             }
           : null
       }
-      toast={copied == null ? null : { words: copied.copied, onClose: () => setCopied(null) }}
+      toast={copied == null ? null : { words: copied.copied, onClose: clear }}
     >
       <Line
         quiet={false}
@@ -131,29 +124,7 @@ export function ClaimScreen({
         <Line
           text={`Add this TXT record to the DNS for ${DOMAIN}. The value is new for this claim.`}
         />
-        <RowList
-          items={CLAIM_RECORD.map((row) => ({
-            key: row.label,
-            row: (
-              <Row
-                title={row.value}
-                line={row.label}
-                selectable
-                trail={
-                  <TextAction
-                    label={copied?.label === row.label ? 'Copied' : 'Copy'}
-                    glyph={copied?.label === row.label ? 'tick' : 'copy'}
-                    onPress={() => copy(row)}
-                    accessibilityLabel={
-                      copied?.label === row.label ? `${row.label}, copied` : `Copy ${row.label}`
-                    }
-                    testID={`ownerClaim.copy.${row.label.toLowerCase()}`}
-                  />
-                }
-              />
-            ),
-          }))}
-        />
+        <RecordRows rows={CLAIM_RECORD} copied={copied} onCopy={copy} testID="ownerClaim.copy" />
       </Section>
       {checking && <Said text="Checking the record" />}
       {owner.check === 'notFound' && (

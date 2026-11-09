@@ -1,5 +1,5 @@
-import { type Account, type PhoneCodeRoute, phoneAwaitingCode } from '@soirely/api-client';
-import { cleanCode, codeProblem, codeWording, formatPhone } from '@soirely/domain';
+import { type Account, phoneAwaitingCode } from '@soirely/api-client';
+import { cleanCode, codeProblem, formatPhone } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import type { TextInputInstance } from 'react-native';
@@ -22,33 +22,25 @@ import {
 import { CodeForm } from '../src/components/CodeForm.tsx';
 import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
-import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/kit/code.ts';
 import { rereadAccount } from '../src/signedIn.ts';
 import { CodeStep, NEXT_STEP_MS } from '../src/steps/CodeStep.tsx';
 import { Says } from '../src/steps/Lines.tsx';
 import { skipPhone } from '../src/steps/skipPhone.ts';
-import { useCountdown } from '../src/steps/useCountdown.ts';
+import { useCodeCheck } from '../src/steps/useCodeCheck.ts';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { tokens } from '../src/theme/tokens.ts';
-
-type Status = CodeStatus | { kind: 'verified'; tapped?: boolean };
 
 export default function VerifyPhone() {
   const { t } = useTranslation();
   const { from, phone: alternative } = useLocalSearchParams<{ from?: string; phone?: string }>();
   const onboarding = from === 'onboarding' && alternative == null;
   const [account, setAccount] = useState<Account | 'none' | null>(null);
-  const [status, setStatus] = useState<Status>({ kind: 'entering' });
-  const { left: cooldown, restart: setCooldown } = useCountdown(0);
+  const check = useCodeCheck('phone', alternative);
+  const { status, setStatus, cooldown, wording, textingFailed, textedByTap } = check;
   const [codeError, setCodeError] = useState<string | null>(null);
   const codeInput = useRef<TextInputInstance>(null);
-  const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
-  // A new one with each failed tap, so the same words are read out again.
-  const [textingFailed, setTextingFailed] = useState<object | null>(null);
-  const [textedByTap, setTextedByTap] = useState<object | undefined>(undefined);
   // From the verify answer, never the list read before it: the server decides (sc-2244).
   const [madePrimary, setMadePrimary] = useState<boolean | null>(null);
-  const wording = codeWording(route);
 
   useEffect(() => {
     let live = true;
@@ -62,34 +54,10 @@ export default function VerifyPhone() {
         if (live) setAccount('none');
       });
 
-    api
-      .phoneOpening(alternative)
-      .then(({ cooldownSeconds, codeState, route: sent }) => {
-        if (!live) return;
-        setCooldown(cooldownSeconds);
-        setRoute(sent);
-        setStatus((now) => (now.kind === 'verified' ? now : openingStatus(now, codeState)));
-      })
-      .catch(() => {});
-
     return () => {
       live = false;
     };
-  }, [alternative, setCooldown]);
-
-  // While the code is on WhatsApp, the server may hand it to SMS: the line follows within a few seconds.
-  useEffect(() => {
-    if (!wording.watch) return;
-
-    const watching = setInterval(() => {
-      api
-        .phoneOpening(alternative)
-        .then((opening) => setRoute(opening.route))
-        .catch(() => {});
-    }, 5000);
-
-    return () => clearInterval(watching);
-  }, [wording.watch, alternative]);
+  }, []);
 
   if (account === 'none') return <Redirect href="/sign-in" />;
   if (account == null) return null;
@@ -128,47 +96,13 @@ export default function VerifyPhone() {
     keysStayDown();
     setStatus({ kind: 'verifying' });
 
-    try {
-      setMadePrimary((await api.verifyPhone(code, alternative)).primary);
-      setStatus({ kind: 'verified', tapped: true });
-      if (onboarding) setTimeout(() => router.replace('/'), NEXT_STEP_MS);
-      // Account, under this screen, shows the row verified however it is reached.
-      if (alternative != null) void rereadAccount().catch(() => {});
-    } catch (error) {
-      setStatus(codeRefusal(error));
-    }
-  }
+    const checked = await check.verify(code);
+    if (!checked.verified) return;
 
-  async function resend(): Promise<void> {
-    try {
-      setCooldown(await api.resendPhoneCode(alternative));
-      setStatus({ kind: 'entering' });
-      setRoute((await api.phoneOpening(alternative)).route);
-    } catch (error) {
-      const seconds = retryAfter(error);
-
-      if (seconds == null) {
-        setStatus({ kind: 'failed' });
-
-        return;
-      }
-
-      setCooldown(seconds);
-      setStatus({ kind: 'entering' });
-    }
-  }
-
-  async function textInstead(): Promise<void> {
-    setTextingFailed(null);
-    setTextedByTap({});
-
-    try {
-      await api.textPhoneCodeInstead(alternative);
-      setRoute('sms_chosen');
-    } catch {
-      setTextedByTap(undefined);
-      setTextingFailed({});
-    }
+    setMadePrimary(checked.primary);
+    if (onboarding) setTimeout(() => router.replace('/'), NEXT_STEP_MS);
+    // Account, under this screen, shows the row verified however it is reached.
+    if (alternative != null) void rereadAccount().catch(() => {});
   }
 
   const wrong = wording.fromWhatsApp ? t('verifyPhone.wrongWhatsApp') : t('verifyPhone.wrong');
@@ -210,13 +144,13 @@ export default function VerifyPhone() {
           status={status}
           cooldown={cooldown}
           onCode={(code) => void verify(code)}
-          onResend={() => void resend()}
+          onResend={() => void check.resend()}
           testID="verifyPhone"
         >
           {wording.offerText && (
             <QuietButton
               label={t('verifyPhone.textInstead')}
-              onPress={() => void textInstead()}
+              onPress={() => void check.textInstead()}
               testID="verifyPhone.textInstead"
             />
           )}
@@ -268,14 +202,14 @@ export default function VerifyPhone() {
           onTyped={() => setCodeError(null)}
           onLeft={() => {}}
           onVerify={(code) => void verify(code)}
-          onResend={() => void resend()}
+          onResend={() => void check.resend()}
           inputRef={codeInput}
           codeLabel={wording.fromWhatsApp ? t('verifyPhone.codeLabelWhatsApp') : undefined}
         >
           {wording.offerText && (
             <SecondaryButton
               label={t('verifyPhone.textInstead')}
-              onPress={() => void textInstead()}
+              onPress={() => void check.textInstead()}
               testID="verifyPhone.textInstead"
             />
           )}

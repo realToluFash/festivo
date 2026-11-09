@@ -14,6 +14,7 @@ import {
   WRONG_CODE,
   WRONG_FACTOR,
 } from './account.ts';
+import { writtenTime } from './clock.ts';
 import { SAMPLE } from './rules.ts';
 import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
 
@@ -392,9 +393,7 @@ export function dayOf(when: Date, locale: string): string {
 }
 
 export function dayAtTime(when: Date, locale: string): string {
-  const time = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(when);
-
-  return `${dayOf(when, locale)} at ${time}`;
+  return `${dayOf(when, locale)} at ${writtenTime(when, locale)}`;
 }
 
 export function deviceLine(device: Device, locale: string): string {
@@ -513,8 +512,8 @@ export function proveProblems(
   return problems;
 }
 
-/** A drawn QR: 21 modules with its three finder squares and a fixed scatter between them. */
-export function qrPath(modules = 21, seed = 4): string {
+/** A drawn QR, not an encoding: its three finder squares and a scatter from `seed`, `quiet` modules of white around it. */
+export function qrPath(modules = 21, seed = 4, quiet = 0): string {
   let state = seed;
   const next = (): number => {
     state = (state * 1103515245 + 12345) % 2147483648;
@@ -526,16 +525,23 @@ export function qrPath(modules = 21, seed = 4): string {
 
   for (let y = 0; y < modules; y += 1)
     for (let x = 0; x < modules; x += 1)
-      if (!finder(x, y) && next() < 0.48) path += `M${x} ${y}h1v1h-1z`;
+      if (!finder(x, y) && next() < 0.48) path += `M${x + quiet} ${y + quiet}h1v1h-1z`;
 
   for (const [fx, fy] of [
     [0, 0],
     [modules - 7, 0],
     [0, modules - 7],
-  ] as const)
-    path += `M${fx} ${fy}h7v7h-7zM${fx + 1} ${fy + 1}v5h5v-5zM${fx + 2} ${fy + 2}h3v3h-3z`;
+  ] as const) {
+    const [x, y] = [fx + quiet, fy + quiet];
+    path += `M${x} ${y}h7v7h-7zM${x + 1} ${y + 1}v5h5v-5zM${x + 2} ${y + 2}h3v3h-3z`;
+  }
 
   return path;
+}
+
+/** A seed for `qrPath` from a code, so each code draws its own and always the same. */
+export function qrSeed(code: string): number {
+  return [...code].reduce((seed, char) => (seed * 31 + char.charCodeAt(0)) % 2147483647, 7);
 }
 
 export type DialogKind =
@@ -806,11 +812,19 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
   }
 }
 
-/** A held step elsewhere in Settings opens Security on the moment that ends the hold. */
-export function heldStepPath(step: string, viewer: Pick<Viewer, 'key'>): string {
-  const to = step === W.turnOn ? 'setup' : step === 'Link Google or Apple' ? 'linkPick' : undefined;
+export interface HeldStep {
+  label: string;
+  opens: 'setup' | 'linkPick';
+}
 
-  return settingsPath('security', viewer, to);
+export const HELD_STEPS = {
+  turnOn: { label: W.turnOn, opens: 'setup' },
+  link: { label: 'Link Google or Apple', opens: 'linkPick' },
+} as const satisfies Record<string, HeldStep>;
+
+/** A held step elsewhere in Settings opens Security on the moment that ends the hold. */
+export function heldStepPath(step: HeldStep, viewer: Pick<Viewer, 'key'>): string {
+  return settingsPath('security', viewer, step.opens);
 }
 
 function security(state: string | undefined, name: string): DemoLink {

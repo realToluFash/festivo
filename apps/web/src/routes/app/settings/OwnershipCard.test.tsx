@@ -1,6 +1,6 @@
 import { type Membership } from '@soirely/api-client';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -10,6 +10,7 @@ import { __setSessionState, switchOrganisation, type Session } from '../../../se
 import { membership } from '../../../test-memberships.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
+import { atPhoneWidth } from '../../../test-widths.ts';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 const OWNER = { id: 'role_1', seededAs: 'owner', name: null };
@@ -125,12 +126,32 @@ function problem(code: string, status: number, members: Record<string, string> =
   );
 }
 
+// sc-13348's phone page; the desk page is GeneralDesk.test.tsx's.
+beforeEach(() => atPhoneWidth());
+
 afterEach(() => {
   vi.restoreAllMocks();
   sessionStorage.clear();
 });
 
 describe('Settings > General, ownership and leaving', () => {
+  it('offers a held owner only Leave, as the server refuses the other two (sc-30191)', async () => {
+    signedIn(
+      membership({
+        id: 'org_1',
+        name: 'Ìrè Events',
+        permissions: ['events.read'],
+        withheldUntilTwoFactor: ['organisation.manage', 'members.manage'],
+      }),
+    );
+    answering({});
+    settings();
+
+    expect(await screen.findByRole('button', { name: 'Leave Ìrè Events…' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Transfer ownership' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete organisation…' })).toBeNull();
+  });
+
   it('asks who and the password before a transfer sends anything', async () => {
     signedIn();
     const sent = answering({ 'GET /api/orgs/org_1/members': () => json(MEMBERS) });
@@ -289,7 +310,7 @@ describe('Settings > General, ownership and leaving', () => {
     expect(body?.textContent).toContain('Make somebody else an owner, then you can leave.');
     expect(screen.queryByRole('alert')).toBeNull();
     expect(
-      body?.closest('.settings-form')?.querySelector('.actions button:last-child')?.textContent,
+      body?.closest('.settings-form')?.querySelector('.actions button:first-child')?.textContent,
     ).toBe('Transfer ownership');
   });
 

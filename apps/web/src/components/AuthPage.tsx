@@ -6,25 +6,21 @@ import { chooseLanguage } from '../accountLanguage.ts';
 import { DemoLink } from '../demo/DemoEntry.tsx';
 import { currentLocale } from '../i18n/index.ts';
 import { useSessionState } from '../session.ts';
-import { type AuthBackTo, useAuthBack } from './AuthBack.tsx';
 import { Brand } from './Brand.tsx';
 import { LanguageMenu } from './LanguageMenu.tsx';
 import { HaveAccount } from './Onboarding.tsx';
 
 /** Every signed-out page's frame; `bare` drops the card, as sign-in does; `end` replaces the header's right end. */
 export function AuthPage({
-  back,
   bare = false,
   end,
   children,
 }: {
-  back?: AuthBackTo;
   bare?: boolean;
   end?: ReactNode;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
-  const control = useAuthBack(back);
   const { pathname } = useLocation();
   const status = useSessionState().status;
   const signedIn = status === 'signedIn';
@@ -32,7 +28,7 @@ export function AuthPage({
   return (
     <div className={bare ? 'auth auth-bare' : 'auth'}>
       <header className="auth-header">
-        {control ?? <Brand lockup />}
+        <Brand lockup />
         {end !== undefined
           ? end
           : !signedIn &&

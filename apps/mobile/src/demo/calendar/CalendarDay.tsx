@@ -6,12 +6,12 @@ import { eventColour } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { EventThumb } from '../events/EventCard.tsx';
+import { EventThumb } from '../../components/EventCard.tsx';
 import { rowTag } from '../events/EventsModel.ts';
-import { Tag } from '../settings/SummaryRows.tsx';
 import { type Item, dayHeading, itemHref, itemKey, rowTitle, rowWhen } from './CalendarModel.ts';
 import { CW } from './CalendarWords.ts';
 import { EventSquare } from './CalendarWeeks.tsx';
+import { Tag } from '../../components/SummaryRows.tsx';
 
 const hidden = {
   accessibilityElementsHidden: true,

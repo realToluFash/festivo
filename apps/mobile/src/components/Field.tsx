@@ -21,6 +21,7 @@ import {
   View,
   type ViewInstance,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import {
   codeProps,
@@ -32,9 +33,14 @@ import {
   nextGiven,
   nextPin,
   nextStrayed,
+  type Refused,
+  refusedHint,
+  refusedName,
   type Typing,
   valueHanded,
+  withInvalid,
 } from '../kit/fields.ts';
+import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { fieldChecked, fieldFocused, fieldLeft } from './focusedField.ts';
@@ -43,16 +49,53 @@ import { useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { capUnderTitle } from '../layout/textSize.ts';
 import { Text, type TextHandle, TitleCap } from './Text.tsx';
+import { UnseenName } from './UnseenName.tsx';
 import { useMarkSide } from './markSide.ts';
 
 /** 16 is the smallest size iOS Safari will not zoom into on focus. */
 export const CONTROL_TEXT_SIZE = 16;
 
-const FieldLabel = createContext<string | undefined>(undefined);
+interface FieldNamed {
+  labelID: string;
+  /** The line under the Field, and the unseen copy of its label with "Invalid" that names a refused control on Android. */
+  line: string | null | undefined;
+  invalidNameID: string;
+}
+
+const FieldLabel = createContext<FieldNamed | undefined>(undefined);
 
 /** The nativeID of the label of the Field a control sits in, which names the control on Android. */
 export function useFieldLabel(): string | undefined {
-  return useContext(FieldLabel);
+  return useContext(FieldLabel)?.labelID;
+}
+
+/** While a control is refused, what a screen reader says of it: "Invalid" with its name, and its line as its hint, the Field's line unless it is given its own (sc-31323). */
+export function useRefused(wrong: boolean, line?: string | null | undefined): Refused | null {
+  const { t } = useTranslation();
+  const field = useContext(FieldLabel);
+  if (!wrong) return null;
+
+  return { word: t('forms.invalid'), line: line ?? field?.line, nameID: field?.invalidNameID };
+}
+
+/** A refused text field's name and hint, from what it would say unrefused. */
+export function refusedField(
+  refused: Refused | null,
+  rest: Pick<TextInputProps, 'accessibilityLabel' | 'accessibilityHint' | 'placeholder'>,
+  labelID: string | undefined,
+) {
+  return {
+    ...refusedName(
+      Platform.OS,
+      fieldName(Platform.OS, rest.accessibilityLabel, {
+        labelID,
+        placeholder: rest.placeholder,
+      }),
+      refused,
+      rest.placeholder,
+    ),
+    accessibilityHint: refusedHint(refused, rest.accessibilityHint),
+  };
 }
 
 /** A label, the control, its error under it, then any help: the order every form uses. */
@@ -88,6 +131,8 @@ export function Field({
   const own = useRef<ViewInstance>(null);
   const field = ref ?? own;
   const labelID = useId();
+  const invalidNameID = useId();
+  const { t } = useTranslation();
   const { read: helpRead } = useFocusOnAnswer<TextHandle>(helpAnswer);
   useEffect(() => {
     const mounted = field.current;
@@ -127,7 +172,10 @@ export function Field({
           </Pressable>
         )}
       </View>
-      <FieldLabel value={labelID}>{children}</FieldLabel>
+      <UnseenName nativeID={invalidNameID}>
+        {error == null ? label : withInvalid(label, t('forms.invalid'))}
+      </UnseenName>
+      <FieldLabel value={{ labelID, line: error, invalidNameID }}>{children}</FieldLabel>
       {error != null && <FieldError message={error} actions={errorActions} answer={errorAnswer} />}
       {(typeof help === 'string' ? [help] : (help ?? [])).map((line, index) => (
         <Text
@@ -332,20 +380,19 @@ export function TextField({
 }: TextFieldProps) {
   const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
   const labelID = useFieldLabel();
+  const refused = useRefused(wrong);
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
+  const bold = useBoldText();
 
   return (
     <TextInput
       {...FIELD_DEFAULTS}
       {...rest}
-      {...fieldName(Platform.OS, rest.accessibilityLabel, {
-        labelID,
-        placeholder: rest.placeholder,
-      })}
+      {...refusedField(refused, rest, labelID)}
       {...holding}
       ref={ref}
       {...edging}
-      style={inputFaced([styles.input, focusEdge(focused, wrong), style])}
+      style={inputFaced([styles.input, focusEdge(focused, wrong), style], 'sans', bold)}
       maxFontSizeMultiplier={useUnderTitle(
         StyleSheet.flatten(style)?.fontSize ?? CONTROL_TEXT_SIZE,
         rest.maxFontSizeMultiplier,
@@ -371,21 +418,20 @@ export function CodeField({
 }: CodeFieldProps) {
   const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
   const labelID = useFieldLabel();
+  const refused = useRefused(wrong);
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
+  const bold = useBoldText();
 
   return (
     <TextInput
       {...codeProps(takesRecoveryCode)}
       autoComplete="sms-otp"
       {...rest}
-      {...fieldName(Platform.OS, rest.accessibilityLabel, {
-        labelID,
-        placeholder: rest.placeholder,
-      })}
+      {...refusedField(refused, rest, labelID)}
       {...holding}
       ref={ref}
       {...edging}
-      style={inputFaced([styles.code, focusEdge(focused, wrong), style])}
+      style={inputFaced([styles.code, focusEdge(focused, wrong), style], 'sans', bold)}
       maxFontSizeMultiplier={useUnderTitle(
         StyleSheet.flatten(style)?.fontSize ?? tokens.typeTitleDialog.size,
         rest.maxFontSizeMultiplier,

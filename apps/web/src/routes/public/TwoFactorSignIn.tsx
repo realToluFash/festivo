@@ -30,7 +30,7 @@ export function TwoFactorSignIn() {
             navigate,
           )
         }
-        onLostBoth={() => navigate('/two-factor/recovery', { state: challenge })}
+        lostBoth={{ to: '/two-factor/recovery', state: challenge }}
         onExpired={() =>
           navigate('/sign-in', {
             replace: true,

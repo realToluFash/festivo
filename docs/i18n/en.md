@@ -66,6 +66,103 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 Nov 2026. The app's Notification settings page** (sc-34901 for sc-30411,
+  `mobile:notificationSettings.*`). Kept as dev1 wrote it. The header says how you hear ("You
+  hear by push only"), the rows say it without a verb ("Push only", "Off"), and "Saving…" and
+  "Saved" sit beside a row as tags, so "Saved" takes no full stop. `pushBlocked` drops "Turn
+  them on in your device's settings" because the card now carries the "Open device settings"
+  step, and keeps "won't", as 29 Oct. `locked.email` takes the "cannot" that Account &
+  security's note carried, so the note now lists only what you hear about.
+- **9 Nov 2026. The app's Security page** (sc-34792 for sc-30411, `mobile:security.*`). Kept as dev1 wrote it, except `setupTitle`, now "Turn on two-factor", as the 19 Oct phrasing and the web's `twoFactorCard.setupTitle`; "Set up two-factor" stays only after account recovery. Row lines after " · " keep their lower case, as every row line.
+- **9 Nov 2026. The web's reset sent page and the lost-both support line** (sc-33788 for
+  sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). Kept as dev2 wrote
+  them; `RecoverPassword.test.tsx` pins all three. `nothingThere` ends on its own link, "send it
+  again", so the link is the verb; `sentAgain` is a short status beside it, shorter than the
+  app's toast because the page still shows the sent body. `lostBothIntro` keeps its contractions:
+  it explains, it is not an error. Its meaning in every locale: confirming starts only after the
+  password; without the password, it is Soirely support.
+- **8 Nov 2026. The app's reset sent screen and its toast** (sc-33809 for sc-29071,
+  `mobile:recovery.intro`, `sentFor`, `spam`, `sentAgain`, `openMail`, `signsOut`, `changed`).
+  Kept as dev2 wrote them, from the board. "Open Mail" names iOS's Mail; on Android the same
+  button opens the default email app, so es, fr and pt say "open your email" rather than an
+  app's name. `spam` ends on "send it again" to match the Send it again button under it, and
+  `sentAgain` replaces it once that button is used. `changed` is a toast: two short sentences,
+  the result first.
+- **8 Nov 2026. A two-factor sign-in that ran out** (sc-29979, `signIn.codeTimedOutTitle`,
+  web and app). "That sign-in timed out", then `endedBody` "Sign in again to carry on." The
+  app joins the two as one line with a full stop, so the title takes none. "That" names the
+  attempt the person just made, not their session: they were never signed in.
+- **8 Nov 2026. A sign-up that ran out** (sc-32449 for sc-29923, `register.timedOut`, web
+  and app). "Your sign-up timed out, so we did not keep the password. Enter it again to get a
+  new code." Kept as built: "timed out", as the sign-in; "the password", the one just typed;
+  "a new code", as Send a new code. The demos and tests pin this sentence, so a reword waits
+  on [dev].
+- **8 Nov 2026. Guests A: a guest's reply, the two counts, and the 412** (sc-3773, pm's #31841,
+  settled in #32403). The reply state is "Not sure yet" everywhere, the guest's own words,
+  never "Maybe": "Not sure yet · asked to decide by {{date}}", "Not sure yet · replied
+  {{date}}". Two measures: "haven't replied" (everyone without an answer of their own,
+  companions included) and "No reply" (guests only); never swap them. "Companions" is the
+  field and the count's noun, never "plus-ones". The card: "{{coming}} coming of {{invited}}
+  invited", "{{count}} haven't replied ({{guests}} guests and {{companions}} companions).",
+  "Replies close tomorrow, {{date}}.", "Write to them", "Open check-in", "Check-in opened at
+  {{time}}. Anyone on the list can be marked as arrived, whatever their reply." A group's
+  overflow is "Show all {{count}}", with no state slot, because the heading names it. "Their
+  conversation", "Their own page, where they reply." Replacing a link reuses
+  `requestLink.replaceBody`'s "stops working as soon as you replace it". The 412: "Theirs" and
+  "Yours", **Use theirs** and **Keep mine**: "Use theirs fills the form with their version and
+  drops your changes. Keep mine saves your changes over theirs." Each count is its own plural
+  key, and "Replies close" has a whole sentence per case (today, tomorrow, on a date, closed).
+  When replies close (#32762): "Replies close today." with no date, "Replies close tomorrow,
+  {{date}}.", "Replies close on {{date}}.", "Replies closed on {{date}}.", the day reckoned in
+  the event's zone. Nobody left to reply is "Everyone has replied.", companions included.
+
+- **8 Nov 2026. A payment schedule's shape fields, its sums and its failed save** (sc-1332,
+  pm's #32327 from ux's demo, sc-31779 #1485). Field labels: "Percentage of the quote" (won
+  over the earlier boards' "Share of the quote": "share" reads as a part of something, not a
+  number to type, and es, fr and pt say percentage anyway), "Days before the event", "Days
+  after the event", labels with no full stop. Help: "From 0 to 100, with up to two decimal
+  places." and "A whole number from 0 to 730." Refusals: "Enter a percentage from 0 to 100,
+  with up to two decimal places." and "Enter a whole number of days from 0 to 730." "Decimal
+  places", the house term since sc-83, not the demo's bare "decimals". A row with no
+  description yet, in its amount line: "No description yet", a label with no full stop.
+  Before saving, when the percentages do not come to 100, one key each: "The percentages come
+  to {{total}}, so {{gap}} of the quote is not scheduled. You can still save these payments,
+  and the vendor's page will show the difference."; "The percentages come to {{total}}, so
+  the schedule is {{gap}} over the quote. You can still save these payments, and the vendor's
+  page will show the difference." They mirror the vendor page's "{{amount}} of the quote is
+  not scheduled yet." and "The schedule is {{amount}} over the quote.", and name the
+  button's verb. Won over the demo's "it saves, and the vendor’s page says so", where "it"
+  had no clear subject. `{{total}}` from `Intl.NumberFormat` with `style: 'percent'`, never a
+  "%" typed into the string; `{{gap}}` an amount in the event's currency. The failed save,
+  all or nothing, a plural family on `{{count}}`, the rows on the form: "None of these
+  payments were saved, because they could not be sent. Your rows are kept as you filled them
+  in; select Save {{count}} payments to send them again." (other) and "This payment was not
+  saved, because it could not be sent. Your row is kept as you filled it in; select Save 1
+  payment to send it again." (one). The button reads "Save {{count}} payments" / "Save 1
+  payment" (pm, 8 Nov, ux's #33189), so both lines name it as it reads and say "save", not
+  the earlier "Add". "Select", not
+  "press", which is a key's verb and wrong for a tap or a screen reader; "send them again",
+  not "all of them", because nothing was saved, so there is no part to leave out. The row's
+  timing, a plural family on `{{count}}` with its own wording for 0 (a `_zero` key, as two
+  catalogues already have, so French, which counts 0 as one, still reads it): before,
+  "On the event's start date" (0), "1 day before the event" (one), "{{count}} days before
+  the event" (other); after, "On the event's end date" (0), "1 day after the event",
+  "{{count}} days after the event". For 0, "start date" and "end date", not "on the day of
+  the event", because a multi-day event has two days that 0 can mean, and before counts from
+  its start, after from its end. Capitalised, as every segment after a "·" in a row line is
+  ("Set to the date quoted", "Marked by"). A description over 100 characters reuses sc-87's
+  "Shorten what the payment is for to {{count}} characters or fewer."
+
+- **7 Nov 2026. The app's Today screen** (`mobile:todayScreen.*`, sc-31788 for sc-29090). Kept
+  as sc-29090 wrote it. A lower-case key (`tomorrow`, `dayOf`, `inDays`) sits after a date or
+  inside a line; its capitalised twin (`tomorrowCapital`, `dayOfCapital`, `inDaysCapital`) opens
+  a card's chip, so the two are never merged. "Live now" and "Live · …" mean happening now, the
+  Events list's "Happening now", not the Live state, so es, fr and pt write them as
+  "Happening now" and never as published. The agenda's "{{name}} starts / ends / continues" may
+  become a label and a colon in other languages, which need no article before an event's name.
+  "Good evening" runs from 18:00 (`greetingAt`). "Next up" names the next event; the Now
+  block's "Next" is the next item on the run of show.
+
 - **7 Nov 2026. The app's other ways in** (`mobile:steps.invited*`, `invitationFor`, `join`,
   `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119 for
   sc-29070). Kept as sc-29070 wrote them, except `signedOutLine`, now "Sign in or create an
@@ -778,6 +875,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   host connects the two. Won over "… from this organisation …", which every reason the host
   sees already implies and which overruns a phone row. Other skip reasons read as short
   phrases in the same row: "No email address", "Address is bouncing".
+- **8 Nov 2026. Messages' empty pane on an event that cannot send** (sc-3942, sc-32077, on
+  pm's #33225; web and app). A Draft, or an event finished more than 30 days ago, reads "Pick a
+  conversation." It keeps the verb of the live line, "Pick a conversation, or write to your
+  guests below.", so the two states of one pane differ only in what is off. It carries no
+  reason: the reason already shows once, under **New** on the web and above the composer in
+  the app. es, fr and pt write both lines with one verb, as English does.
 - **27 Oct 2026. Events Home's tabs and empty states** (sc-15981 for sc-3594, `events.tab*|empty*|
 startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the same plus
   `nextUp|showingMore`). Kept as sc-3594 wrote it. The tabs are **Upcoming**, **Drafts** and
@@ -810,3 +913,27 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
   `confirmBody` keeps "you'll": it explains, it does not refuse. The feed's status words are the
   Events list's (Draft, Live, Paused, Finished) plus "Called off" and "Deleted", each a word
   about the event.
+- **A refused control's screen-reader word** (`mobile:forms.invalid`, sc-31909): "Invalid", heard
+  after the control's name ("Email, Invalid") and before its refusal line as the hint. One word,
+  capitalised as a state the platform announces; never seen, so it has no layout to fit.
+- **8 Nov 2026. Starting a seating plan** (sc-33304 for sc-3998, `web:seating.*`,
+  `messages:seating.*`, `messages:validation.seating_*`, settled with pm on sc-3998 #32429 and
+  #32766). A refused save ends "Your change was not saved." everywhere. A failed load is "Could
+  not load the seating plan." then "Check your connection and try again. …". Delete the plan
+  reads "This also deletes {{counts}}." ({{counts}} a list of plural phrases for what goes:
+  sections, tables, rows, single seats), then "{{count}} seated guests move to Without a seat;
+  the guest list does not change.", or only "The guest list does not change." with nobody
+  seated. Its row line is "Asks first, and lists what it deletes." ("names what goes" did not
+  translate). The units line says "the units used where {{organisation}} is based", with no
+  possessive on a name. The API's section limit names "a seating plan" in full, since "the
+  plan" is the subscription in the same catalogues; on the Seating screen "A plan" is enough.
+  The 8 colour names are words a host reads beside a swatch, never the swatch alone.
+- **9 Nov 2026. Personalisation** (sc-34920 for sc-30441, `web:personalisation.*`,
+  `mobile:personalisation.*`, `mobile:settings.personalisation*`,
+  `messages:validation.colour_scheme_unknown`). Kept as dev2 wrote it. A person's choice is
+  "your colours", never "theme" or "palette"; the eight are "colour schemes" only in the API's
+  refusal. The web says "every page", the app "every screen". "Black tie" is the scheme's name,
+  for the formal dress code, and each locale names it from its own dress code rather than
+  keeping the English. The refusal keeps "isn't" for now because
+  `AccountColourSchemeTest` pins the English; it should read "That is not one of …", which
+  waits on [dev2].

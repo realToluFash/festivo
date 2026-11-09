@@ -1,7 +1,21 @@
+import type { MarkKind } from '../components/SettingsParts.tsx';
 import { emailProblem, type MemberStanding, memberStanding } from '@soirely/domain';
 
+import {
+  type AskWords,
+  type Handed,
+  handedOver,
+  HANDOVER_WORDS as H,
+  type HandStart,
+  handStart,
+  type Leads,
+  ledByLine,
+  LONG_NAMED,
+} from './handover.ts';
+import en from '../i18n/locales/en.json';
 import { SAMPLE } from './rules.ts';
 import { type SettingsSay, type Viewer, VIEWERS } from './settings.ts';
+import { fold } from './switcher.ts';
 
 export const ORGANISATION = SAMPLE.organisation;
 export const DOMAIN = 'ire.events';
@@ -33,7 +47,8 @@ export const ANA = VIEWERS.ana.id;
 export const MARTA = 'marta.silva@ire.events';
 export const LUCIA = 'lucia.gomez@outlook.com';
 const DANIEL = 'daniel.kim@ire.events';
-const TOM = 'tom.becker@gmail.com';
+export const TOM = 'tom.becker@gmail.com';
+export const KOFI = 'kofi@ire.events';
 
 function person(
   id: string,
@@ -71,7 +86,7 @@ export function samplePeople(): Person[] {
       { what: 'Asked to join', when: '2026-02-06' },
       { what: 'Approved by', by: FOLAKE, when: '2026-02-09' },
     ]),
-    person('kofi@ire.events', 'Kofi Mensah', 'Member', [
+    person(KOFI, 'Kofi Mensah', 'Member', [
       { what: 'Joined from the company directory', when: '2026-09-15' },
     ]),
     person(
@@ -99,6 +114,50 @@ export function samplePeople(): Person[] {
       'former',
     ),
   ].map((one, tone) => ({ ...one, tone }));
+}
+
+const MORE = [
+  'Joana Ferreira',
+  'Jonas Weber',
+  'João Pereira',
+  'Amara Okafor',
+  'Chen Wei',
+  'Sofía Herrera',
+  'Lars Nilsson',
+  'Aisha Bello',
+  'Mateo Rossi',
+  'Hana Sato',
+  'Pierre Lambert',
+] as const;
+
+/** Eleven more members, for the person menu's search above 15 (sc-614). */
+export function morePeople(): Person[] {
+  return MORE.map((name, index) => ({
+    ...person(`${fold(name.split(' ')[0] ?? name)}@ire.events`, name, 'Member', [
+      { what: 'Joined with a join code', when: '2026-10-05' },
+    ]),
+    tone: index + 9,
+  }));
+}
+
+const EVENT = {
+  wed: 'evt-wed-4',
+  ireti: 'evt-ireti-2',
+  gala: 'evt-gala-4',
+  party: 'evt-party-2',
+  cena: 'evt-cena-4',
+  draft: 'evt-draft-4',
+  off: 'evt-off',
+  mtl: 'evt-mtl-3',
+} as const;
+
+/** Lead on an event, the one kind of work a member has (sc-614): Priya leads 3, Ana 2, Marta 2. */
+export function sampleLeads(): Leads {
+  return {
+    [PRIYA]: [EVENT.wed, EVENT.ireti, EVENT.off],
+    [ANA]: [EVENT.gala, EVENT.mtl],
+    [MARTA]: [EVENT.party, EVENT.cena],
+  };
 }
 
 export interface Invitation {
@@ -214,8 +273,6 @@ export const EMPTY: Record<Exclude<Filter, 'all'>, { title: string; line: string
     line: 'People who leave or are removed are listed here, with what they did kept.',
   },
 };
-
-export type MarkKind = 'yes' | 'waiting' | 'paused' | 'ended';
 
 export function tagOf(person: Pick<Person, 'status' | 'gone'>): { kind: MarkKind; word: string } {
   switch (person.status) {
@@ -374,12 +431,95 @@ export type Notice =
   | { kind: 'sent'; email: string }
   | { kind: 'approved'; id: string; role: string }
   | { kind: 'turnedDown'; id: string }
-  | { kind: 'removed'; id: string };
+  | { kind: 'removed'; id: string; handed?: Handed }
+  | { kind: 'recovered'; id: string; answer: RecoveryAnswer };
+
+/** The product's words for a request to get back in (sc-509), read from the web's catalogue so the two cannot drift. */
+export const RECOVERY_WORDS = en.recoveryRequests;
+const RR = RECOVERY_WORDS;
+
+/** i18next's slots, filled in English: `{{name}}` and `{{count, number}}`. */
+export function filled(words: string, slots: Readonly<Record<string, string | number>>): string {
+  return words.replaceAll(/\{\{(\w+)(?:, number)?\}\}/gu, (whole, slot: string) =>
+    String(slots[slot] ?? whole),
+  );
+}
+
+export type RecoveryAnswer = 'approve' | 'turnDown';
+
+export type RecoveryPhase = 'asking' | 'sending' | 'held' | 'failed' | 'closed';
+
+export interface Recovery {
+  id: string;
+  asked: string;
+  provedPhone: boolean;
+  /** Answered by somebody else, or ended, since the page loaded. */
+  ended: boolean;
+}
+
+/** A request lapses 7 × 24 hours after it was proved (sc-509). */
+export const RECOVERY_HOURS = 7 * 24;
+
+export function recoveryEnds(asked: string): string {
+  return new Date(Date.parse(`${asked}Z`) + RECOVERY_HOURS * 3_600_000).toISOString().slice(0, 16);
+}
+
+/** Kofi's and Priya's, oldest first, as wall clock in Lagos like the sample's other deadlines. */
+export function sampleRecoveries(): Recovery[] {
+  return [
+    { id: KOFI, asked: '2026-11-03T18:05', provedPhone: true, ended: false },
+    { id: PRIYA, asked: '2026-11-04T08:40', provedPhone: false, ended: false },
+  ];
+}
+
+const OWN_RECOVERY: Recovery = {
+  id: JULIEN,
+  asked: '2026-11-04T07:52',
+  provedPhone: true,
+  ended: false,
+};
+
+export function answerable(
+  recoveries: readonly Recovery[],
+  viewer: Pick<Viewer, 'id' | 'manages'>,
+): Recovery[] {
+  return viewer.manages ? recoveries.filter((one) => one.id !== viewer.id) : [];
+}
+
+export function recoveryRow(
+  recovery: Recovery,
+  people: readonly Person[],
+  viewer: Pick<Viewer, 'id'>,
+  say: SettingsSay,
+): { name: string; lines: string[]; own: string | null } {
+  const own = recovery.id === viewer.id;
+  const name = nameOf(people, recovery.id);
+  const proved = recovery.provedPhone
+    ? own
+      ? RR.provedBothOwn
+      : RR.provedBoth
+    : own
+      ? RR.provedEmailOwn
+      : RR.provedEmail;
+
+  return {
+    name: own ? filled(RR.you, { name }) : name,
+    lines: [
+      recovery.id,
+      `${RR.title} · ${proved}`,
+      filled(RR.when, {
+        asked: say.deadline(recovery.asked),
+        expires: say.deadline(recoveryEnds(recovery.asked)),
+      }),
+    ],
+    own: own ? filled(RR.own, { organisations: ORGANISATION }) : null,
+  };
+}
 
 export type Claim = 'unclaimed' | 'open' | 'found' | 'withdrawn' | 'lapsed' | 'stopped';
 
 export type CardStep =
-  | { label: string; does: 'answer' | 'see'; id: string }
+  | { label: string; does: 'answer' | 'see' | 'recover'; id: string }
   | { label: string; does: 'former' | 'become' | 'check' };
 
 export interface MembersCard {
@@ -391,18 +531,40 @@ export interface MembersCard {
 }
 
 export const INVITATIONS_NOTE = 'Nobody has an account here until they accept.';
+const FORMER_KEPT = 'They are listed under Former, with everything they did kept.';
+export const toGetBackIn = (count: number) => `${count} to get back in`;
+export const toJoin = (count: number) => `${count} to join`;
+export const RECOVERY_CLOSE = 'Close';
+export const RECOVERY_SENDING = 'Sending your answer…';
 export const KEEPS_WORKING =
   'Events, guests and your permissions keep working. Only Owner actions, such as billing, wait for an owner.';
 
+/** The oldest request to get back in first, ahead of a request to join: the asker is locked out until somebody answers. */
+function firstStep(
+  people: readonly Person[],
+  recoveries: readonly Recovery[],
+  viewer: Pick<Viewer, 'id' | 'manages'>,
+): CardStep | null {
+  const recovery = answerable(recoveries, viewer)[0];
+  const asking = viewer.manages ? people.find((one) => one.status === 'pendingApproval') : null;
+
+  if (recovery != null)
+    return { label: `Answer ${nameOf(people, recovery.id)}`, does: 'recover', id: recovery.id };
+
+  return asking == null ? null : { label: `Answer ${asking.name}`, does: 'answer', id: asking.id };
+}
+
 export function membersCard({
   people,
+  recoveries,
   viewer,
   notice,
   claim,
   say,
 }: {
   people: readonly Person[];
-  viewer: Pick<Viewer, 'manages'>;
+  recoveries: readonly Recovery[];
+  viewer: Pick<Viewer, 'id' | 'manages'>;
   notice: Notice | null;
   claim: Claim | null;
   say: SettingsSay;
@@ -431,15 +593,30 @@ export function membersCard({
         lines: ['They are listed under Former.'],
         step: seeFormer,
       };
-    case 'removed':
+    case 'removed': {
+      const handed = notice.handed;
+      const stays = `Their events stay with ${ORGANISATION}.`;
+
       return {
         ...quiet,
         says: `${nameOf(people, notice.id)} was removed`,
         lines: [
-          `Their events stay with ${ORGANISATION}. They are listed under Former, with everything they did kept.`,
+          `${handed == null ? stays : ledByLine(handed, nameOf(people, handed.to), viewer.id)} ${FORMER_KEPT}`,
         ],
-        step: seeFormer,
+        // Anyone still waiting comes before See Former, after any removal (pm, 7 Nov).
+        step: firstStep(people, recoveries, viewer) ?? seeFormer,
       };
+    }
+    case 'recovered': {
+      const approve = notice.answer === 'approve';
+
+      return {
+        ...quiet,
+        says: filled(approve ? RR.approved : RR.turnedDown, { name: nameOf(people, notice.id) }),
+        lines: [approve ? RR.approvedNext : RR.turnedDownNext],
+        step: firstStep(people, recoveries, viewer),
+      };
+    }
     case undefined:
       break;
   }
@@ -492,21 +669,21 @@ export function membersCard({
 
   const all = people.filter((one) => isShown(one.status, 'all'));
   const asking = viewer.manages ? people.filter((one) => one.status === 'pendingApproval') : [];
-  const first = asking[0];
+  const back = answerable(recoveries, viewer).length;
+  const waiting = back + asking.length;
+  const kinds = [toGetBackIn(back), toJoin(asking.length)];
   const faces = all.slice(0, 5);
 
   return {
-    says: [headcount(all.length), ...(asking.length > 0 ? [`${asking.length} waiting`] : [])].join(
-      ' · ',
-    ),
-    lines: [],
-    step: first == null ? null : { label: `Answer ${first.name}`, does: 'answer', id: first.id },
+    says: [headcount(all.length), ...(waiting > 0 ? [`${waiting} waiting`] : [])].join(' · '),
+    lines: back > 0 && asking.length > 0 ? [kinds.join(' · ')] : [],
+    step: firstStep(people, recoveries, viewer),
     faces,
     more: all.length - faces.length,
   };
 }
 
-export type PersonEvent = 'justSuspended' | 'restored' | 'roleChanged';
+export type PersonEvent = 'justSuspended' | 'restored' | 'roleChanged' | 'handedOver';
 
 export interface PersonView {
   lines: string[];
@@ -516,9 +693,49 @@ export interface PersonView {
   goGeneral: boolean;
   suspend: boolean;
   remove: string | null;
+  handOver: boolean;
 }
 
 export const LOSES = `They lose access on their next request. Their events stay with ${ORGANISATION}.`;
+const OWNER_ONLY = 'Only an owner can change an owner’s role or remove them.';
+
+/** Remove's title, way back and verb: one source for today's confirm and the handover's. */
+export function removeWords(name: string): Pick<AskWords, 'title' | 'keep' | 'go'> {
+  return {
+    title: `Remove ${name} from ${ORGANISATION}?`,
+    keep: `Keep ${firstName(name)}`,
+    go: 'Remove',
+  };
+}
+
+/** Remove's and Hand over now's confirm, with the events the person leads in it. */
+export function handoverAsk(kind: 'remove' | 'hand', name: string, count: number): AskWords {
+  const lead = H.leads(name, count);
+
+  return kind === 'remove'
+    ? {
+        ...removeWords(name),
+        lead,
+        last: H.removeTail,
+        red: true,
+        busy: H.busy.remove,
+        failed: H.failed.remove,
+        checking: H.checking(name),
+        notLoaded: H.notLoaded(name),
+      }
+    : {
+        title: H.handTitle(name, count),
+        lead,
+        last: H.handTail(name, count),
+        keep: H.cancel,
+        go: H.handOver,
+        red: false,
+        busy: H.busy.hand,
+        failed: H.failed.hand,
+        checking: H.checking(name),
+        notLoaded: H.notLoaded(name),
+      };
+}
 export const TAKES_EFFECT = 'Takes effect on their next request. Nobody is signed out.';
 export const ROLE_KEPT =
   'Their role is kept while they’re suspended. You can change it once their access is restored.';
@@ -556,22 +773,31 @@ export function personView({
   people,
   viewer,
   event,
+  handed = null,
   say,
 }: {
   person: Person;
   people: readonly Person[];
   viewer: Viewer;
   event: PersonEvent | null;
+  handed?: Handed | null;
   say: SettingsSay;
 }): PersonView {
   const view: PersonView = {
-    lines: eventLines(person, event, say),
+    lines:
+      event === 'handedOver' && handed != null
+        ? [
+            ledByLine(handed, nameOf(people, handed.to), viewer.id),
+            H.handTail(person.name, handed.count),
+          ]
+        : eventLines(person, event, say),
     step: null,
     kept: false,
     after: [],
     goGeneral: false,
     suspend: false,
     remove: null,
+    handOver: false,
   };
 
   switch (standingOf(person, people, viewer)) {
@@ -602,7 +828,9 @@ export function personView({
         ],
       };
     case 'ownerOnly':
-      return { ...view, after: ['Only an owner can change an owner’s role or remove them.'] };
+      return suspended(person.status)
+        ? { ...view, lines: [...view.lines, OWNER_ONLY] }
+        : { ...view, after: [OWNER_ONLY] };
     case 'beyondGrant':
     case 'readOnly':
       return view;
@@ -614,6 +842,7 @@ export function personView({
   if (suspended(person.status))
     return {
       ...view,
+      handOver: true,
       step: {
         label: person.status === 'domainSuspended' ? 'Restore' : 'Restore access',
         does: 'restore',
@@ -766,13 +995,16 @@ export type MembersDialog =
   | { kind: 'invite'; email: string; role: string; problem: string | null }
   | { kind: 'request'; id: string; picked: string; ask: 'turnDown' | 'discard' | null }
   | { kind: 'role'; id: string; picked: string; ask: boolean; proving: Proving | null }
-  | { kind: 'remove' | 'suspend'; id: string }
+  | { kind: 'remove' | 'handOver'; id: string; hand?: HandStart }
+  | { kind: 'suspend'; id: string }
   | { kind: 'claim'; check: Check; copied: string | null; ask: boolean }
-  | { kind: 'withdraw' };
+  | { kind: 'withdraw' }
+  | { kind: 'recovery'; id: string; answer: RecoveryAnswer; phase: RecoveryPhase };
 
 export interface MembersStart {
   load: Load;
   people: Person[];
+  recoveries: Recovery[];
   invitations: Invitation[];
   filter: Filter;
   menu: boolean;
@@ -781,6 +1013,10 @@ export interface MembersStart {
   notice: Notice | null;
   claim: Claim | null;
   dialog: MembersDialog | null;
+  leads: Leads;
+  /** The work list a suspended member's page waits on. */
+  leadsLoad: Load;
+  handed: Handed | null;
 }
 
 export const MEMBERS_STATES = [
@@ -803,6 +1039,7 @@ export const MEMBERS_STATES = [
   'removed',
   'former',
   'priya',
+  'alsoMember',
   'role',
   'roleAdmin',
   'roleDiscard',
@@ -828,9 +1065,92 @@ export const MEMBERS_STATES = [
   'found',
   'lapsed',
   'stopped',
+  'handover',
+  'handoverMenu',
+  'handoverPicked',
+  'handoverLong',
+  'handoverOne',
+  'handoverLongNames',
+  'handoverLoading',
+  'handoverLoadFailed',
+  'handoverRefused',
+  'handoverSearch',
+  'handoverSearchNobody',
+  'removingNoWork',
+  'handoverSending',
+  'handoverFailed',
+  'handoverDone',
+  'martaOne',
+  'martaLoading',
+  'martaLoadFailed',
+  'handoverNow',
+  'handoverNowSending',
+  'handoverNowFailed',
+  'handoverNowDone',
+  'handoverReadOnly',
+  'recovery',
+  'recoveryApprove',
+  'recoveryTurnDown',
+  'recoveryApproved',
+  'recoveryTurnedDown',
+  'recoveryClosed',
+  'recoverySending',
+  'recoveryFailed',
+  'recoveryDone',
+  'recoveryOwn',
 ] as const;
 
 export type MembersState = (typeof MEMBERS_STATES)[number];
+
+type RecoveryState = Extract<MembersState, `recovery${string}`>;
+
+function isRecovery(state: MembersState): state is RecoveryState {
+  return state.startsWith('recovery');
+}
+
+/** Each recovery state as its board draws it; null where the viewer cannot reach it. */
+function recoveryStart(
+  state: RecoveryState,
+  viewer: Pick<Viewer, 'id' | 'manages'>,
+): Pick<MembersStart, 'recoveries' | 'notice' | 'dialog'> | null {
+  const both = sampleRecoveries();
+  const priya = both.filter((one) => one.id !== KOFI);
+  const asks = (answer: RecoveryAnswer, phase: RecoveryPhase = 'asking') =>
+    ({ kind: 'recovery', id: KOFI, answer, phase }) as const;
+  const answered = (id: string, answer: RecoveryAnswer) =>
+    ({ kind: 'recovered', id, answer }) as const;
+
+  if (!viewer.manages) return null;
+
+  switch (state) {
+    case 'recovery':
+      return { recoveries: both, notice: null, dialog: null };
+    case 'recoveryApprove':
+      return { recoveries: both, notice: null, dialog: asks('approve') };
+    case 'recoveryTurnDown':
+      return { recoveries: both, notice: null, dialog: asks('turnDown') };
+    case 'recoveryApproved':
+      return { recoveries: priya, notice: answered(KOFI, 'approve'), dialog: null };
+    case 'recoveryTurnedDown':
+      return { recoveries: priya, notice: answered(KOFI, 'turnDown'), dialog: null };
+    case 'recoveryClosed':
+      return {
+        recoveries: both.map((one) => (one.id === KOFI ? { ...one, ended: true } : one)),
+        notice: null,
+        dialog: asks('approve', 'closed'),
+      };
+    case 'recoverySending':
+      return { recoveries: both, notice: null, dialog: asks('approve', 'held') };
+    case 'recoveryFailed':
+      return { recoveries: both, notice: null, dialog: asks('approve', 'failed') };
+    case 'recoveryDone':
+      return { recoveries: [], notice: answered(PRIYA, 'approve'), dialog: null };
+    case 'recoveryOwn':
+      return viewer.id === JULIEN
+        ? { recoveries: [OWN_RECOVERY], notice: null, dialog: null }
+        : null;
+  }
+}
 
 const CLAIMS: Partial<Record<MembersState, Claim>> = {
   noOwner: 'unclaimed',
@@ -846,7 +1166,7 @@ const CLAIMS: Partial<Record<MembersState, Claim>> = {
   stopped: 'stopped',
 };
 
-function dialogOf(state: MembersState): MembersDialog | null {
+function dialogOf(state: MembersState, viewer: Pick<Viewer, 'id'>): MembersDialog | null {
   const request = { kind: 'request', id: LUCIA, picked: 'Member', ask: null } as const;
   const role = {
     kind: 'role',
@@ -857,6 +1177,10 @@ function dialogOf(state: MembersState): MembersDialog | null {
   } as const;
   const proving = { password: '', code: '', problem: null };
   const claim = { kind: 'claim', check: 'resting', copied: null, ask: false } as const;
+  const remove = (hand?: Partial<HandStart>) =>
+    ({ kind: 'remove', id: PRIYA, hand: handStart(viewer.id, hand) }) as const;
+  const handOver = (hand?: Partial<HandStart>) =>
+    ({ kind: 'handOver', id: MARTA, hand: handStart(viewer.id, hand) }) as const;
 
   switch (state) {
     case 'invite':
@@ -883,7 +1207,39 @@ function dialogOf(state: MembersState): MembersDialog | null {
     case 'roleDiscard':
       return { ...role, picked: 'Admin', ask: true };
     case 'removing':
-      return { kind: 'remove', id: PRIYA };
+    case 'handover':
+      return remove();
+    case 'handoverMenu':
+      return remove({ menu: true });
+    case 'handoverPicked':
+      return { ...remove(), hand: handStart(ANA) };
+    case 'handoverLong':
+      return { ...remove(), id: JULIEN };
+    case 'handoverSearch':
+      return remove({ menu: true, query: 'jo' });
+    case 'handoverSearchNobody':
+      return remove({ menu: true, query: 'kemi' });
+    case 'removingNoWork':
+      return { ...remove(), id: TOM };
+    case 'handoverSending':
+      return remove({ phase: 'held' });
+    case 'handoverFailed':
+      return remove({ phase: 'failed' });
+    case 'handoverOne':
+    case 'handoverLongNames':
+      return remove();
+    case 'handoverLoading':
+      return remove({ phase: 'checking' });
+    case 'handoverLoadFailed':
+      return remove({ phase: 'notLoaded' });
+    case 'handoverRefused':
+      return { ...remove({ phase: 'refused' }), id: TOM };
+    case 'handoverNow':
+      return handOver();
+    case 'handoverNowSending':
+      return handOver({ phase: 'held' });
+    case 'handoverNowFailed':
+      return handOver({ phase: 'failed' });
     case 'suspending':
       return { kind: 'suspend', id: PRIYA };
     case 'makeOwner':
@@ -924,6 +1280,7 @@ function dialogOf(state: MembersState): MembersDialog | null {
 function openOf(state: MembersState, viewer: Pick<Viewer, 'id'>): string | null {
   switch (state) {
     case 'priya':
+    case 'alsoMember':
     case 'role':
     case 'roleAdmin':
     case 'roleDiscard':
@@ -932,12 +1289,36 @@ function openOf(state: MembersState, viewer: Pick<Viewer, 'id'>): string | null 
     case 'justSuspended':
     case 'suspended':
     case 'restored':
+    case 'handover':
+    case 'handoverMenu':
+    case 'handoverPicked':
+    case 'handoverSearch':
+    case 'handoverSearchNobody':
+    case 'handoverSending':
+    case 'handoverFailed':
+    case 'handoverOne':
+    case 'handoverLongNames':
+    case 'handoverLoading':
+    case 'handoverLoadFailed':
       return PRIYA;
+    case 'handoverLong':
+      return JULIEN;
+    case 'removingNoWork':
+    case 'handoverRefused':
+      return TOM;
     case 'makeOwner':
     case 'makeOwnerBlank':
     case 'makeOwnerWrong':
       return ANA;
     case 'marta':
+    case 'martaOne':
+    case 'martaLoading':
+    case 'martaLoadFailed':
+    case 'handoverNow':
+    case 'handoverNowSending':
+    case 'handoverNowFailed':
+    case 'handoverNowDone':
+    case 'handoverReadOnly':
       return MARTA;
     case 'self':
       return viewer.id;
@@ -967,7 +1348,13 @@ function peopleOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Person[] {
       return removed(people, LUCIA);
     case 'removed':
     case 'former':
+    case 'handoverDone':
       return removed(people, PRIYA);
+    case 'handoverSearch':
+    case 'handoverSearchNobody':
+      return [...people, ...morePeople()];
+    case 'handoverReadOnly':
+      return withRole(people, MARTA, 'Owner');
     case 'justSuspended':
     case 'suspended':
       return byHand(people);
@@ -980,6 +1367,42 @@ function peopleOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Person[] {
   }
 }
 
+function handedOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Handed | null {
+  switch (state) {
+    case 'removed':
+    case 'handoverDone':
+      return { to: ANA, count: 3 };
+    case 'handoverNowDone':
+      return { to: viewer.id, count: 2 };
+    default:
+      return null;
+  }
+}
+
+function leadsOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Leads {
+  const leads = sampleLeads();
+
+  switch (state) {
+    case 'handoverLong':
+      return { ...leads, [JULIEN]: Object.values(EVENT) };
+    case 'handoverOne':
+      return { ...leads, [PRIYA]: [EVENT.ireti] };
+    case 'handoverLongNames':
+      return { ...leads, [PRIYA]: [EVENT.wed, LONG_NAMED, EVENT.off] };
+    case 'handoverRefused':
+      return { ...leads, [TOM]: [EVENT.gala, EVENT.draft] };
+    case 'martaOne':
+      return { ...leads, [MARTA]: [EVENT.party] };
+    case 'removed':
+    case 'handoverDone':
+      return handedOver(leads, PRIYA, ANA);
+    case 'handoverNowDone':
+      return handedOver(leads, MARTA, viewer.id);
+    default:
+      return leads;
+  }
+}
+
 function noticeOf(state: MembersState): Notice | null {
   switch (state) {
     case 'sent':
@@ -989,7 +1412,8 @@ function noticeOf(state: MembersState): Notice | null {
     case 'turnedDown':
       return { kind: 'turnedDown', id: LUCIA };
     case 'removed':
-      return { kind: 'removed', id: PRIYA };
+    case 'handoverDone':
+      return { kind: 'removed', id: PRIYA, handed: { to: ANA, count: 3 } };
     default:
       return null;
   }
@@ -1006,15 +1430,17 @@ const FILTERS: Partial<Record<MembersState, Filter>> = {
 const EVENTS: Partial<Record<MembersState, PersonEvent>> = {
   justSuspended: 'justSuspended',
   restored: 'restored',
+  handoverNowDone: 'handedOver',
 };
 
-/** Where each state the boards draw starts; any other name is the whole page. */
-export function membersStart(name: string, viewer: Pick<Viewer, 'id'>): MembersStart {
+/** Where each state the boards draw starts; any other name, or one the viewer cannot reach, is the whole page. */
+export function membersStart(name: string, viewer: Pick<Viewer, 'id' | 'manages'>): MembersStart {
   const state = MEMBERS_STATES.find((one) => one === name);
   const invitations = sampleInvitations();
   const start: MembersStart = {
     load: 'loaded',
     people: samplePeople(),
+    recoveries: [],
     invitations,
     filter: 'all',
     menu: false,
@@ -1023,13 +1449,21 @@ export function membersStart(name: string, viewer: Pick<Viewer, 'id'>): MembersS
     notice: null,
     claim: null,
     dialog: null,
+    leads: sampleLeads(),
+    leadsLoad: 'loaded',
+    handed: null,
   };
 
   if (state == null) return start;
+  if (isRecovery(state)) return { ...start, ...recoveryStart(state, viewer) };
+
+  const dialog = dialogOf(state, viewer);
 
   return {
     ...start,
     load: state === 'loading' || state === 'failed' ? state : 'loaded',
+    leadsLoad:
+      state === 'martaLoading' ? 'loading' : state === 'martaLoadFailed' ? 'failed' : 'loaded',
     people: peopleOf(state, viewer),
     invitations:
       state === 'revoked'
@@ -1043,6 +1477,17 @@ export function membersStart(name: string, viewer: Pick<Viewer, 'id'>): MembersS
     event: EVENTS[state] ?? null,
     notice: noticeOf(state),
     claim: CLAIMS[state] ?? null,
-    dialog: dialogOf(state),
+    dialog: dialog != null && 'id' in dialog && dialog.id === viewer.id ? null : dialog,
+    leads: leadsOf(state, viewer),
+    handed: handedOf(state, viewer),
   };
 }
+
+/** How many other organisations a person is in, said under their card with no names (sc-563); the sample has Priya in 2. */
+export function alsoMemberLine(count: number): string {
+  return count === 1
+    ? 'Also a member of 1 other organisation'
+    : `Also a member of ${count} other organisations`;
+}
+
+export const ALSO_MEMBER: Readonly<Record<string, number>> = { [PRIYA]: 2 };

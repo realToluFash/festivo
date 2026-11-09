@@ -39,6 +39,7 @@ export interface Need {
 
 export interface AgendaItem {
   time: string;
+  allDay: boolean;
   title: string;
   event: ShownEvent;
   note: string;

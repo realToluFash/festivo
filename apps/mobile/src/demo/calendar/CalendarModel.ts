@@ -18,11 +18,11 @@ import {
   wallDay,
 } from '@soirely/domain';
 
-import type { RowTag } from '../settings/SummaryRows.tsx';
 import { type Shown, dayCount, eventHref, shownEvent } from '../events/EventsModel.ts';
 import { EVENTS, READER_ZONE, REUNION, type SampleEvent } from '../events/EventsSample.ts';
 import { W, say as eventSay } from '../events/EventsWords.ts';
 import { say } from './CalendarWords.ts';
+import type { RowTag } from '../../components/SummaryRows.tsx';
 
 export interface CalEvent extends Shown {
   dayCount: number;

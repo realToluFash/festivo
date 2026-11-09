@@ -1,24 +1,34 @@
 import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
-import { I18nextProvider, useTranslation } from 'react-i18next';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Toast } from '../../src/components/Toast.tsx';
 import { useSystemBack } from '../../src/components/useSystemBack.ts';
 import { useLayout } from '../../src/layout/useLayout.ts';
+import { withBoldText } from '../../src/demo/boldText/BoldTextSwitch.tsx';
 import { createStateOf } from '../../src/demo/createOrg/CreateWalk.ts';
 import { NoOrganisation } from '../../src/demo/createOrg/NoOrganisation.tsx';
-import { startFirstWords } from '../../src/demo/createOrg/startFirst.ts';
-import {
-  OrgSwitcherProvider,
-  SwitchedNotice,
-  useCurrentPlace,
-} from '../../src/demo/OrgSwitcher.tsx';
+import { OrgSwitcherProvider, useCurrentPlace } from '../../src/demo/OrgSwitcher.tsx';
 import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
-import { MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
+import { INVITES_NOT_SENT, isNeedsState, MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
+import { ArrivedTodayScreen } from '../../src/demo/today/ArrivedToday.tsx';
+import {
+  ARRIVED_AT,
+  type ArrivedState,
+  type Counts,
+  COUNTS,
+  figureOf,
+  isArrivedState,
+  LIVE,
+  withArrived,
+} from '../../src/demo/today/arrived.ts';
+import { NeedsTodayScreen } from '../../src/demo/today/NeedsToday.tsx';
+import { RunTodayScreen } from '../../src/demo/today/RunToday.tsx';
+import { isRunState, withRun } from '../../src/demo/today/runOfShow.ts';
 import type { MomentName } from '../../src/kit/today.ts';
 import type { Tab } from '../../src/components/TodayCover.tsx';
 import type { Tell } from '../../src/components/TodayParts.tsx';
@@ -29,6 +39,7 @@ import { openEvent } from '../../src/demo/events/EventsList.tsx';
 import { EVENT_OF_KEY } from '../../src/demo/events/EventsSample.ts';
 import { useCoverStatusBar } from '../../src/demo/Welcome.tsx';
 import { tokens } from '../../src/theme/tokens.ts';
+import { SwitchedNotice } from '../../src/components/SwitchedNotice.tsx';
 
 function toEvents() {
   router.replace('/demo/events');
@@ -38,31 +49,83 @@ function toCalendar() {
   router.replace('/demo/calendar');
 }
 
+/** The demo's numbers, in the phone's own region as its dates are, or in a locale asked for by name. */
+function numbersIn(asked: string | undefined): Intl.NumberFormat {
+  const tag = asked == null ? [] : Intl.NumberFormat.supportedLocalesOf([asked]);
+
+  return new Intl.NumberFormat(tag[0] ?? formattingLocale('en', getLocales()[0]?.languageTag));
+}
+
+/** Check-in records an arrival or an undo every few seconds, and Today changes in place. */
+function useLive(on: boolean): Counts {
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    if (!on) return undefined;
+    const timer = setInterval(() => setStep((at) => (at + 1) % LIVE.length), 4000);
+
+    return () => clearInterval(timer);
+  }, [on]);
+
+  return LIVE[step] ?? COUNTS.none;
+}
+
+function countsOf(state: ArrivedState, live: Counts) {
+  return state === 'live' ? live : COUNTS[state];
+}
+
 function isMoment(name: string | undefined): name is MomentName {
   return MOMENTS.some((moment) => moment === name);
 }
 
-export default function DemoTodayScreen() {
+function DemoTodayScreen() {
   const params = useLocalSearchParams<{
     moment?: string;
     toast?: string;
     switcher?: string;
     create?: string;
     orgs?: string;
+    now?: string;
+    arrived?: string;
+    numbers?: string;
+    invites?: string;
+    needs?: string;
   }>();
   const place = useCurrentPlace();
   // An organisation made in the walk has no events yet.
   const name = place?.fresh === true ? 'first' : isMoment(params.moment) ? params.moment : 'plan';
   const { i18n } = useTranslation();
   // The demo's words are English, so its dates are too, in the phone's own region.
+  const say = useMemo(() => sayIn(formattingLocale('en', getLocales()[0]?.languageTag)), []);
+  const arrivedState = isArrivedState(params.arrived) ? params.arrived : null;
+  // Nobody arrived and arrivals coming in are day 1, at Guests A's door; the rest are day 2.
+  const at = name === 'dayNow' && arrivedState != null ? ARRIVED_AT[arrivedState] : undefined;
+  const guests = name === 'plan' && params.invites === 'none' ? INVITES_NOT_SENT : undefined;
+  const needing = name === 'plan' && isNeedsState(params.needs) ? params.needs : undefined;
   const moment = useMemo(
+    () => momentOf(name, say, i18n.getFixedT('en'), { at, guests, needing }),
+    [name, say, i18n, at, guests, needing],
+  );
+  const numbers = useMemo(() => numbersIn(params.numbers), [params.numbers]);
+  const live = useLive(arrivedState === 'live');
+  const run = useMemo(
     () =>
-      momentOf(
-        name,
-        sayIn(formattingLocale('en', getLocales()[0]?.languageTag)),
-        i18n.getFixedT('en'),
-      ),
-    [name, i18n],
+      isRunState(params.now)
+        ? withRun(
+            moment,
+            params.now,
+            figureOf(countsOf(arrivedState ?? 'some', live), numbers),
+            say,
+          )
+        : null,
+    [moment, params.now, arrivedState, live, numbers, say],
+  );
+  const arrived = useMemo(
+    () =>
+      name !== 'dayNow' || arrivedState == null
+        ? null
+        : withArrived(moment, countsOf(arrivedState, live), numbers),
+    [name, arrivedState, moment, live, numbers],
   );
   const { kind } = useLayout();
   const [told, setTold] = useState(params.toast);
@@ -93,6 +156,10 @@ export default function DemoTodayScreen() {
   const bar = kind === 'tabletLandscape' || place == null ? 'dark' : 'light';
   useCoverStatusBar(bar, false);
 
+  const notices = (
+    <SwitchedNotice style={kind === 'tabletLandscape' ? undefined : styles.switched} />
+  );
+
   const onTab = useCallback((tab: Tab) => {
     if (tab === 'Settings') router.replace('/demo/settings');
     else if (tab === 'Events') toEvents();
@@ -113,18 +180,14 @@ export default function DemoTodayScreen() {
         <View style={styles.fill}>
           {place == null ? (
             <NoOrganisation tell={tell} />
+          ) : run != null ? (
+            <RunTodayScreen moment={run} onTab={onTab} notices={notices} />
+          ) : arrived != null ? (
+            <ArrivedTodayScreen moment={arrived} onTab={onTab} notices={notices} />
+          ) : moment.needs != null ? (
+            <NeedsTodayScreen moment={moment} onTab={onTab} notices={notices} />
           ) : (
-            <I18nextProvider i18n={moment.kind === 'first' ? startFirstWords(i18n.language) : i18n}>
-              <TodayScreen
-                moment={moment}
-                onTab={onTab}
-                notices={
-                  <SwitchedNotice
-                    style={kind === 'tabletLandscape' ? undefined : styles.switched}
-                  />
-                }
-              />
-            </I18nextProvider>
+            <TodayScreen moment={moment} onTab={onTab} notices={notices} />
           )}
           {told != null && (
             <Told
@@ -149,6 +212,8 @@ function Told({ words, phone, onClose }: { words: string; phone: boolean; onClos
     </View>
   );
 }
+
+export default withBoldText(DemoTodayScreen);
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
