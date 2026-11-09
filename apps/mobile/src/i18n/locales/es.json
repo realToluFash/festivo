@@ -1893,7 +1893,10 @@
     "heardEmail": "Email only",
     "heardNone": "Off",
     "emailAlwaysOn": "{{heard}} · email always on",
-    "locked": "{{channel}} cannot be switched off.",
+    "locked": {
+      "email": "Email cannot be switched off.",
+      "push": "Push cannot be switched off."
+    },
     "category": {
       "guest_replies": "Respuestas de los invitados",
       "messages": "Mensajes",

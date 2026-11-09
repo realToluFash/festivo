@@ -1892,7 +1892,10 @@
     "heardEmail": "Email only",
     "heardNone": "Off",
     "emailAlwaysOn": "{{heard}} · email always on",
-    "locked": "{{channel}} cannot be switched off.",
+    "locked": {
+      "email": "Email cannot be switched off.",
+      "push": "Push cannot be switched off."
+    },
     "quietHours": "De {{start}}à {{end}} (votre heure locale), seules les notifications push « Jour de l’événement » vous parviennent.",
     "category": {
       "guest_replies": "Réponses des invités",

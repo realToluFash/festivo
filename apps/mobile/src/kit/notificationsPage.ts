@@ -70,7 +70,7 @@ export function switchName(category: NotificationCategory, channel: Channel, t: 
 
 /** Under a switch the API holds on. */
 export function lockedLine(channel: Channel, t: TFunction): string {
-  return t('notificationSettings.locked', { channel: channelName(channel, t) });
+  return t(`notificationSettings.locked.${channel}`);
 }
 
 export function notSaved(channel: Channel, t: TFunction): string {
