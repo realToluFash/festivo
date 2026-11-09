@@ -538,6 +538,11 @@ describe('sections', () => {
     expect(m.sections.map((s) => s.key)).toEqual(['garden', 'bar']);
     expect(item(m, 't1').sec).toBeNull();
   });
+
+  it('asks with its tables counted, and with no line when it has none (pm, 9 Nov)', () => {
+    expect(say.sectionDeleteBody(5)).toBe('Its 5 tables stay where they are, with no section.');
+    expect(say.sectionDeleteBody(0)).toBe('');
+  });
 });
 
 describe('the room and the plan', () => {

@@ -1153,6 +1153,11 @@ export const SEATING_STATES = [
   { key: 'sectionLimit', name: 'A 31st section', group: 'The room and its sections' },
   { key: 'sectionEdit', name: 'Edit a section', group: 'The room and its sections' },
   { key: 'sectionDelete', name: 'Delete a section', group: 'The room and its sections' },
+  {
+    key: 'sectionDeleteEmpty',
+    name: 'Delete a section with no tables',
+    group: 'The room and its sections',
+  },
   { key: 'addMenu', name: 'Add table, the four shapes', group: 'Tables, rows and seats' },
   { key: 'placing', name: 'Placing a round table', group: 'Tables, rows and seats' },
   { key: 'placed', name: 'Placed, its fields open', group: 'Tables, rows and seats' },

@@ -2058,7 +2058,7 @@ function Asking() {
     return (
       <Ask
         title={say(SW.deleteNamed, { name: section.name })}
-        line={say(SW.sectionDeleteBody, { n })}
+        line={n === 0 ? '' : say(SW.sectionDeleteBody, { n })}
         keep={SW.keepIt}
         go={SW.deleteSection}
         onKeep={keep}

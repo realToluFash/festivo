@@ -2369,3 +2369,7 @@
     box-shadow: none;
   }
 }
+
+.desk-ask p:empty {
+  display: none;
+}
