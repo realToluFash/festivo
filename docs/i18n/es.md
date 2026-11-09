@@ -727,3 +727,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **Cancelar una solicitud para volver a entrar** (sc-29979): «¿Cancelar su solicitud?»; la salida es «Seguir esperando», nunca «Cancelar», y la confirmación reutiliza «Cancelar la solicitud».
 - **El estado de un control rechazado, solo para el lector de pantalla** (`mobile:forms.invalid`, sc-31909): «Datos no válidos», tras el nombre del control («País, Datos no válidos»). Es lo que VoiceOver dice en la web; no concuerda con el género del nombre, que puede ser masculino o femenino.
 - **El plano de mesas** (sc-33304 para sc-3998, `seating.*`, `messages:seating.*`): el área es «Mesas» y lo que se dibuja, «el plano de mesas» («el plano» dentro del área); "Floor plan" es «Plano». Una "section" es una **zona**, nunca «sección», que en Soirely es una parte de la configuración: «Añadir una zona», «Sin zona», «Conservarla». Ancho y largo de la sala, como sustantivos. El lugar abre la línea de unidades como etiqueta, «Lugar: {{venue}}.», para que ninguna preposición tenga que concordar con el nombre. "Seated" no concuerda con el género del invitado: «invitados con asiento pasan a Sin asiento». «Esto también elimina {{counts}}.» no concuerda en número con la lista. Los colores: Azul, Morado, Ciruela, Vino, Rosa, Marrón, Verde oliva, Verde petróleo. La pista de pies usa la coma decimal y las abreviaturas de CLDR: «12 ft 4 in, 12,5 ft».
+- **9 nov. 2026. Personalización** (sc-34920 para sc-30441, `web:personalisation.*`,
+  `mobile:personalisation.*`, `mobile:settings.personalisation*`,
+  `messages:validation.colour_scheme_unknown`). La elección es «sus colores», en plural, para
+  que nada concuerde con el nombre de la combinación: «Los ha elegido usted. Los de Soirely son
+  {{own}}.», «No se ha guardado {{picked}}. Sus colores siguen siendo {{kept}}.». Solo la
+  negativa de la API dice «combinaciones de colores». Los ocho nombres: Violeta, Cobalto, Jardín,
+  Cítricos, Frutos rojos, Gala (Black tie, el código de vestimenta; «Etiqueta» se leería como
+  rótulo), Sorbete y Terracota. Sin conexión es «porque no tiene conexión», como la banda.

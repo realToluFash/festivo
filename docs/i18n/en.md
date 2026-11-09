@@ -928,3 +928,12 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
   possessive on a name. The API's section limit names "a seating plan" in full, since "the
   plan" is the subscription in the same catalogues; on the Seating screen "A plan" is enough.
   The 8 colour names are words a host reads beside a swatch, never the swatch alone.
+- **9 Nov 2026. Personalisation** (sc-34920 for sc-30441, `web:personalisation.*`,
+  `mobile:personalisation.*`, `mobile:settings.personalisation*`,
+  `messages:validation.colour_scheme_unknown`). Kept as dev2 wrote it. A person's choice is
+  "your colours", never "theme" or "palette"; the eight are "colour schemes" only in the API's
+  refusal. The web says "every page", the app "every screen". "Black tie" is the scheme's name,
+  for the formal dress code, and each locale names it from its own dress code rather than
+  keeping the English. The refusal keeps "isn't" for now because
+  `AccountColourSchemeTest` pins the English; it should read "That is not one of …", which
+  waits on [dev2].
