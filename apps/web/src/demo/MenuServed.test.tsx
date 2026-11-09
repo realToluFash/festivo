@@ -107,7 +107,7 @@ describe('a dish’s Parts', () => {
         .getAllByRole('button')
         .map((one) => one.textContent),
     ).toEqual(['And a sauce?']);
-    expect(within(panel()).getByText('Choice 3 · no question yet')).toBeTruthy();
+    expect(within(panel()).getByText('Choice 3, no question yet')).toBeTruthy();
   });
 
   it('refuses a 7th part beside Add a part', SLOW, async () => {

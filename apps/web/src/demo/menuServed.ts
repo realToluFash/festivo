@@ -85,7 +85,7 @@ export const MW = {
   addPart: 'Add a part',
   addChoice: 'Or add one of its choices',
   choiceTag: 'Choice',
-  choiceDraft: 'Choice {{k}} · no question yet',
+  choiceDraft: 'Choice {{k}}, no question yet',
   draft: 'Draft',
   own: 'Served with this course',
   ownHelp: 'Parts that come from no dish, like a drink, served to every guest who has this course.',
@@ -484,7 +484,7 @@ const STATES = {
   choiceDraft: () =>
     start({
       name: 'A choice part with no question yet',
-      note: 'Proposal, [pm] #35353: a choice that loses its question stays a part, shown as Choice 3 · no question yet in the Draft shape; one with no question isn’t offered.',
+      note: 'Decided, 9 Nov (pm): a choice that loses its question stays a part, shown by sc-3904’s Choice 3, no question yet beside its Draft tag; one with no question isn’t offered.',
       courses: courses({
         ...IN_PARTS,
         dishes: [

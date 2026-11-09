@@ -60,7 +60,7 @@ describe('a dish’s parts (sc-34230)', () => {
 
   it('shows a choice by its question, and one with none as a draft', () => {
     expect(partName(choice('a', 'ch1'), DISH)).toBe('And a side?');
-    expect(partName(choice('a', 'ch3'), DISH)).toBe('Choice 3 · no question yet');
+    expect(partName(choice('a', 'ch3'), DISH)).toBe('Choice 3, no question yet');
   });
 
   it('offers a choice once it has a question, and not again once it is a part', () => {
