@@ -1062,8 +1062,6 @@
         "billing": "billing",
         "security": "security"
       },
-      "and": "{{rest}} and {{last}}",
-      "listComma": ", ",
       "mark": {
         "met": "Met.",
         "needs": "Needs you.",

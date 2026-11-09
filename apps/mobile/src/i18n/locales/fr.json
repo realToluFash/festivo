@@ -1094,8 +1094,6 @@
         "billing": "de la facturation",
         "security": "de la sécurité"
       },
-      "and": "{{rest}} et {{last}}",
-      "listComma": ", ",
       "mark": {
         "met": "Respectée.",
         "needs": "Action requise.",
