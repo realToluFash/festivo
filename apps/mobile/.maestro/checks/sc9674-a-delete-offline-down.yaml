@@ -9,24 +9,24 @@ onFlowComplete:
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
     visible:
-      id: organisation.name
+      id: organisation.card
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: ownership.delete
+      id: organisation.ownership.delete
     centerElement: true
 - tapOn:
-    id: ownership.delete
+    id: organisation.ownership.delete
 - extendedWaitUntil:
     visible:
-      id: ownership.delete.name
+      id: organisation.delete.name
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: ownership.delete.name
+      id: organisation.delete.name
     centerElement: true
 - tapOn:
-    id: ownership.delete.name
+    id: organisation.delete.name
 - inputText: ${ORG_NAME}
 - pressKey: back
 - waitForAnimationToEnd
@@ -38,10 +38,10 @@ onFlowComplete:
       ASK: /api?to=stopped
 - scrollUntilVisible:
     element:
-      id: ownership.delete.send
+      id: organisation.delete.send
     centerElement: true
 - tapOn:
-    id: ownership.delete.send
+    id: organisation.delete.send
 - extendedWaitUntil:
     visible: '.*{{t:ownership.failed}}.*'
     timeout: 45000

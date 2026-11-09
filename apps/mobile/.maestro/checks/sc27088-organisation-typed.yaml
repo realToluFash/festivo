@@ -6,7 +6,7 @@ onFlowComplete:
       env:
         ASK: /api?to=up
 ---
-# organisation.name is drawn before the read answers, so only the band proves the screen had
+# organisation.card is drawn before the read answers, so only the band proves the screen had
 # loaded. A try that went offline too early leaves no band and nothing reads again, so each
 # try reloads the bundle to remount the screen.
 - retry:
@@ -16,13 +16,19 @@ onFlowComplete:
       - openLink: ${METRO_URL}/--/settings/organisation
       - extendedWaitUntil:
           visible:
-            id: 'organisation.name'
+            id: 'organisation.card'
           timeout: 30000
       - assertNotVisible: 'Offline Org Name'
       - extendedWaitUntil:
           notVisible:
             id: 'organisation.refreshing'
           timeout: 20000
+      - tapOn:
+          id: 'organisation.edit'
+      - extendedWaitUntil:
+          visible:
+            id: 'organisation.name'
+          timeout: 10000
       - tapOn:
           id: 'organisation.name'
       - eraseText: 120
@@ -39,14 +45,14 @@ onFlowComplete:
       ASK: /api?to=stopped
 - scrollUntilVisible:
     element:
-      id: 'organisation.save'
+      id: 'organisation.details.save'
     direction: DOWN
     timeout: 15000
 - assertVisible:
-    id: 'organisation.save'
+    id: 'organisation.details.save'
     enabled: true
 - tapOn:
-    id: 'organisation.save'
+    id: 'organisation.details.save'
 - extendedWaitUntil:
     visible: '{{t:orgGeneral.failed}}'
     timeout: 60000

@@ -260,6 +260,9 @@ def epic_order(epics):
     return key
 
 
+HELD_AT_MERGE = "In Progress, tasks left at its merge"
+
+
 def queue_items(stories, moves=None, now=None, epics=None, ios=None, released=None,
                 unlinked=None, testers=None, prs=None):
     """A story entering a role's queue is work once, unless the role moved it there itself.
@@ -272,7 +275,9 @@ def queue_items(stories, moves=None, now=None, epics=None, ios=None, released=No
     build_order = {s["id"]: i for i, s in enumerate(sorted(stories, key=epic_order(epics)))}
     for role, config in R.ROLES.items():
         for story in queued(role, stories, epics, ios, testers, prs):
-            if moves.get((story["id"], story["state"], story["moved_at"])) == role:
+            # A merge with tasks left is the builder's own move, and still its next work.
+            if moves.get((story["id"], story["state"], story["moved_at"])) == role \
+                    and (story["id"], HELD_AT_MERGE, story["moved_at"]) not in moves:
                 continue
             pool = R.pool(role, story["state"], story["labels"])
             fingerprint = f"{pool}:story:sc-{story['id']}:{story['state']}:{story['moved_at']}"

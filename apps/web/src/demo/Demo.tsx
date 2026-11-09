@@ -43,6 +43,8 @@ import { NewAccountBoard } from './NewAccount.tsx';
 import { NOTIFICATIONS_PAGES } from './notifications.ts';
 import { PassPage } from './Pass.tsx';
 import { PASS_PAGES } from './pass.ts';
+import { QueuePage } from './Queue.tsx';
+import { QUEUE_STATES, type QueueStateName } from './queue.ts';
 import { leave } from './chosenScheme.ts';
 import { PERSONALISATION_PAGES } from './personalisation.ts';
 import { SECURITY_PAGES } from './security.ts';
@@ -224,6 +226,7 @@ export default function Demo() {
       <Route path="guest" element={<GuestPage />} />
       <Route path="guests" element={<Guests />} />
       <Route path="pass" element={<PassPage />} />
+      <Route path="queue" element={<QueuePage />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -303,6 +306,8 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-35">35 · Service · the pass</h2>
         <h3>The pass’s print controls, in page 35’s language · desktop, Printing in version B</h3>
         <BoardPages pages={PASS_PAGES} />
+        <h3>Service · the section’s queue (sc-36033) · desktop</h3>
+        <BoardPages pages={QUEUE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-81">
@@ -421,6 +426,35 @@ function KeepQuery({ to }: { to: string }) {
 
   return <Navigate to={`/demo/${to}${search}`} replace />;
 }
+
+const QUEUE_WHAT: Record<QueueStateName, string> = {
+  populated: 'Section A: Table 10’s owed plate first, Table 5 up next',
+  beforeStart: 'Before Start service: the queue can be set now',
+  moved: 'After Bring forward on Table 4',
+  oneTable: 'Section C has one table: no controls, no Build the queue',
+  noTables: 'Section E has no tables',
+  noManage: 'Viewed without service.manage: no Queue',
+  buildEmpty: 'Building Section D’s queue, nothing placed',
+  buildPartial: 'Building Section D’s queue, four of five placed',
+  buildAll: 'Building Section D’s queue, all five placed',
+  offline: 'Offline, after a press',
+  conflict: 'Saved after Tobi Adeyemi changed Section D: refused with 412',
+  rivalMove: 'Another lead changes the queue before the next press',
+  waiterNotice: 'Table 5 brought forward: Kunle’s next table changed',
+  waiterSame: 'Row C moved up: Kunle’s next table is still Table 5',
+  asWell: 'Kunle is on Section B as well, Table 6 owed since 20:28',
+  asWellTie: 'Kunle is on Section B as well, a tie for first',
+};
+
+const QUEUE_PAGES = [
+  {
+    name: 'The floor lead’s section queue, beside the sections',
+    states: QUEUE_STATES.map((state) => ({
+      to: `/demo/queue?state=${state}`,
+      name: QUEUE_WHAT[state],
+    })),
+  },
+];
 
 function BoardPages({
   pages,

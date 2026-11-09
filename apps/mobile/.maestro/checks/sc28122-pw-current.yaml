@@ -1,10 +1,10 @@
-# sc-28122: Change password, tap current password, keys up: Save new password and Cancel above the keys; Cancel with keys up closes to Change password, five in five. Show tapped on both first, as iOS hides a secure field's keys from screenshots. Needs ${METRO_URL}.
+# sc-28122: Change password, tap current password, keys up: Save new password and Cancel above the keys; Cancel with keys up closes to Security with Password showing, past the ask that discards what was typed, five in five. Show tapped on both first, as iOS hides a secure field's keys from screenshots. Needs ${METRO_URL}.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/security
 - scrollUntilVisible:
     element:
-      id: 'password.change'
+      id: 'security.password'
     timeout: 30000
     centerElement: true
 - waitForAnimationToEnd:
@@ -13,34 +13,41 @@ appId: host.exp.Exponent
     times: 5
     commands:
       - tapOn:
-          id: 'password.change'
+          id: 'security.password'
       - waitForAnimationToEnd:
           timeout: 3000
       - scrollUntilVisible:
           element:
-            id: 'password.current'
+            id: 'security.change.current'
           direction: UP
           timeout: 10000
       - tapOn:
-          id: 'password.current.reveal'
+          id: 'security.change.current.reveal'
       - tapOn:
-          id: 'password.new.reveal'
+          id: 'security.change.new.reveal'
       - waitForAnimationToEnd:
           timeout: 1000
       - tapOn:
-          id: 'password.current'
+          id: 'security.change.current'
       - inputText: 'shown'
       - waitForAnimationToEnd:
           timeout: 3000
       - takeScreenshot: pw-current-keys-up
       - tapOn:
-          id: 'password.cancel'
+          id: 'security.change.cancel'
           waitToSettleTimeoutMs: 0
           retryTapIfNoChange: false
+      # Typed text makes Cancel ask before it discards it; the ask showing is the tap landing.
+      - extendedWaitUntil:
+          visible:
+            id: 'security.change.discard.discard'
+          timeout: 5000
+      - tapOn:
+          id: 'security.change.discard.discard'
       - waitForAnimationToEnd:
           timeout: 3000
       - takeScreenshot: pw-current-after-cancel
       - assertNotVisible:
-          id: 'password.cancel'
+          id: 'security.change.cancel'
       - assertVisible:
-          id: 'password.change'
+          id: 'security.password'

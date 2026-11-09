@@ -754,8 +754,14 @@
     "rolesBack": "‹ Roles"
   },
   "switcher": {
+    "asks": "Where are you working?",
+    "canAsk": "You can ask to join",
+    "search": "Search organisations",
+    "clearSearch": "Clear search",
+    "noMatch": "No organisation matches “{{text}}”.",
+    "matches_one": "{{count, number}} organisation matches",
+    "matches_other": "{{count, number}} organisations match",
     "yourRole": "Your role · {{role}}",
-    "heading": "Your organisations",
     "current": "Current",
     "remembered": "Soirely remembers your choice on this device.",
     "switched": "Now working in {{name}}.",
@@ -949,7 +955,6 @@
     "removeInAccountPhone": "Remove it in Account"
   },
   "orgGeneral": {
-    "intro": "The name your team and guests see, and the defaults every new event starts with.",
     "name": "Name",
     "country": "Country",
     "contact": "Contact address",
@@ -976,7 +981,20 @@
     "savedLanguage": "Saved. Invitation emails to people without a Soirely account go out in {{language}} from now on. Invitations already sent are not sent again.",
     "refused": "Nothing was saved. Your role does not include the permission this needs.",
     "refusedByRule": "Nothing was saved.",
-    "searchLanguage": "Search languages"
+    "searchLanguage": "Search languages",
+    "edit": "Edit details",
+    "editTitle": "Organisation details",
+    "details": "Details",
+    "defaults": "Defaults for new events",
+    "invitations": "Invitations",
+    "searchCountry": "Search countries",
+    "saveVerb": "Save",
+    "savedSays": "Saved",
+    "discardTitle_one": "Discard your change?",
+    "discardTitle_other": "Discard your changes?",
+    "discardLine": "{{organisation}} stays as it was.",
+    "keepEditing": "Keep editing",
+    "discard": "Discard"
   },
   "invitations": {
     "heading": "Invitations",
@@ -990,6 +1008,8 @@
     "acceptLabel": "Accept and join {{organisation}}",
     "decline": "Decline",
     "declineLabel": "Decline the invitation to {{organisation}}",
+    "joining": "Joining…",
+    "declining": "Declining…",
     "declineNote": "Declining tells {{inviter}} you said no. Nothing else changes.",
     "declineNoteNobody": "Declining changes nothing else.",
     "joined": "You joined {{organisation}} as {{role}}.",
@@ -1150,9 +1170,6 @@
     "codeBlank": "Enter the code from your authenticator app, or a recovery code.",
     "bothEmailed": "You and {{name}} each get an email saying it happened.",
     "theNewOwner": "the new owner",
-    "makeOwner": "Make {{name}} the owner",
-    "keep": "Keep ownership",
-    "transferred": "{{name}} is now the owner of {{organisation}}. You are an admin. You both have an email saying so.",
     "leave": "Leave {{organisation}}",
     "leaveOpener": "Leave {{organisation}}…",
     "leaveNote": "You lose access to its events. Everything you made stays with {{organisation}}.",
@@ -1161,10 +1178,8 @@
     "stay": "Stay",
     "onlyOwnerTitle": "You are the only owner",
     "onlyOwnerBody": "Make somebody else an owner, then you can leave.",
-    "delete": "Delete organisation",
     "deleteOpener": "Delete organisation…",
     "deleteNote": "Deletes every event, guest and member record in it.",
-    "deleteTitle": "Delete {{organisation}}?",
     "deleteWarningTitle": "Everything in it goes",
     "deleteLoading": "Counting what it holds…",
     "deleteUncounted": "We could not count what it holds. Deleting it still deletes every event, guest and member in it, for everybody, now. Soirely support can restore it for 30 days.",
@@ -1181,9 +1196,12 @@
     "deleteMismatch": "Type {{organisation}} exactly as shown to delete it.",
     "deleteMatches": "That matches.",
     "deleteExactly": "Exactly as it is written, accents included.",
-    "deleteButton": "Delete {{organisation}}",
-    "deleteKeep": "Keep {{organisation}}",
-    "failed": "That did not go through, so nothing was changed. Try again."
+    "failed": "That did not go through, so nothing was changed. Try again.",
+    "transferVerb": "Transfer",
+    "transferredSays": "{{name}} is now the owner",
+    "transferredLine": "You are an Admin. You both have an email saying so.",
+    "deleteScreenTitle": "Delete {{organisation}}",
+    "deleteVerb": "Delete"
   },
   "domainJoining": {
     "intro": "Your address is at {{domain}}. Ask to join your company’s organisation, or start your own.",
@@ -1205,9 +1223,7 @@
   },
   "companyDomains": {
     "title": "Company domain joining",
-    "on": "On",
     "off": "Off",
-    "intro": "People whose main email address is at a domain on this list can ask to join {{organisation}} when they sign up. Somebody who can manage members answers each one. It is off until you add a domain.",
     "listLabel": "Domains on the list",
     "working": "People at it can ask to join",
     "stopped": "Stopped",
@@ -1216,7 +1232,6 @@
     "removeLabel": "Remove {{domain}}",
     "removeTitle": "Remove {{domain}}?",
     "removeBody": "People at {{domain}} can no longer ask to join this way.",
-    "removeConfirm": "Remove {{domain}}",
     "keep": "Keep it",
     "addLabel": "Add a domain",
     "add": "Add domain",
@@ -1228,12 +1243,16 @@
     "full_other": "That is {{count, number}} domains, the most the list can hold. Remove one to add another.",
     "blank": "Enter a domain, like {{example}}.",
     "shape": "Enter a domain with a dot and no spaces, like {{example}}.",
-    "added": "{{domain}} added.",
-    "addedNext": "People whose main email address is at it can now ask to join.",
     "removed": "{{domain}} removed.",
-    "removedNext": "People at it can no longer ask to join this way.",
     "failed": "That did not work. Try again in a moment.",
-    "unreadable": "The list could not be loaded."
+    "unreadable": "The list could not be loaded.",
+    "lead": "People whose main email address is at a domain on this list can ask to join {{organisation}} when they sign up. Somebody who can manage members answers each one.",
+    "offUntil": "It is off until you add a domain.",
+    "addVerb": "Add",
+    "field": "Domain",
+    "confirmRemove": "Remove",
+    "addedLine": "Added. People whose main email address is at it can now ask to join.",
+    "proved": "Proved"
   },
   "membersScreen": {
     "proveOwner_one": "To make somebody an owner of {{organisation}}, confirm it's you. You won't be asked again for a minute.",
@@ -1386,10 +1405,7 @@
   },
   "requestLink": {
     "title": "Requests to join",
-    "on": "On",
-    "off": "Off",
     "switchLabel": "Requests to join",
-    "intro": "Anybody with this link can ask to join {{organisation}}. Somebody who can manage members answers each request. It is off until you turn it on.",
     "linkLabel": "Request link",
     "copy": "Copy link",
     "help": "Share it with the people you want to hear from. There is no list of organisations to find you in.",
@@ -1405,7 +1421,8 @@
       "copied": "Link copied."
     },
     "failed": "That did not work. Try again in a moment.",
-    "unreadable": "The request link could not be loaded."
+    "unreadable": "The request link could not be loaded.",
+    "lead": "Anybody with this link can ask to join {{organisation}}. Somebody who can manage members answers each request."
   },
   "requestToJoin": {
     "title": "Ask to join {{organisation}}",

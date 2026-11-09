@@ -95,7 +95,8 @@
     "mobile:personalisation.scheme.violet",
     "mobile:personalisation.scheme.cobalt",
     "mobile:personalisation.scheme.sorbet",
-    "web:generalDesk.invitations"
+    "web:generalDesk.invitations",
+    "mobile:orgGeneral.invitations"
   ],
   "pt": [
     "web:nav.menu",

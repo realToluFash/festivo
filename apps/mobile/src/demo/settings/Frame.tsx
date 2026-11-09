@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { useOrgOpener } from '../OrgSwitcher.tsx';
-import { SW } from '../OrgSwitcherModel.ts';
 import { OrgPill as ProductOrgPill } from '../../components/OrgPill.tsx';
 import { type EventKey, sample } from '../today.ts';
 import { type Tab, TABS, WhiteCapsule } from '../../components/TodayCover.tsx';
@@ -169,9 +168,9 @@ export function OrgPill() {
   return (
     <ProductOrgPill
       ref={ref}
-      id={org.place.id}
-      name={org.place.name}
-      waiting={org.waiting > 0 ? SW.count(org.waiting) : null}
+      id={org.id}
+      name={org.name}
+      waiting={org.waiting}
       label={org.label}
       expanded={org.expanded}
       onPress={org.onPress}

@@ -2,55 +2,85 @@ import {
   countryChoices,
   currencyChoices,
   languageChoices,
+  type OrganisationDetails,
+  type OrganisationField,
   timezoneLabel,
   withCurrent,
 } from '@soirely/domain';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { TextField } from '../../components/Field.tsx';
-import { LIFT } from '../../components/keyboardWatch.ts';
-import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../../components/Glyph.tsx';
-import { type Picked, SAMPLE_DETAILS } from './OrganisationModel.ts';
-import { DETAILS_WORDS as W, LANGUAGE_NAMES } from './OrganisationWords.ts';
-import { Row } from '../../components/Summary.tsx';
+import { currentLocale } from '../i18n/index.ts';
+import { tokens } from '../theme/tokens.ts';
+import { TextField } from './Field.tsx';
+import { Glyph } from './Glyph.tsx';
+import { LIFT } from './keyboardWatch.ts';
+import { Row } from './Summary.tsx';
+
+export type Picked = Exclude<OrganisationField, 'name' | 'contactAddress'>;
 
 export interface Choice {
   code: string;
   name: string;
 }
 
-const SHOWN_IN = 'en';
+export type Choices = Record<Picked, readonly Choice[]>;
 
-let made: Record<Picked, readonly Choice[]> | null = null;
+/** Every list the details pick from, in the reader's language, made once a page: naming every country, currency and zone is slow on a phone. */
+export function useOrganisationChoices(held: OrganisationDetails): Choices {
+  const { t } = useTranslation();
+  const locale = currentLocale();
 
-/** Every list the details pick from, made once: naming every country, currency and zone is slow on a phone. */
-export function organisationChoices(): Record<Picked, readonly Choice[]> {
-  made ??= {
-    countryCode: countryChoices(SHOWN_IN),
-    currency: currencyChoices(SAMPLE_DETAILS.currency, SHOWN_IN, W.currencyRetired),
-    timezone: withCurrent(Intl.supportedValuesOf('timeZone'), SAMPLE_DETAILS.timezone).map(
-      (zone) => ({ code: zone, name: timezoneLabel(zone) }),
-    ),
-    locale: languageChoices((key) => LANGUAGE_NAMES[key] ?? key),
+  return useMemo(
+    () => ({
+      countryCode: countryChoices(locale),
+      currency: currencyChoices(held.currency, locale, (code) =>
+        t('orgGeneral.currencyRetired', { code }),
+      ),
+      timezone: withCurrent(Intl.supportedValuesOf('timeZone'), held.timezone).map((zone) => ({
+        code: zone,
+        name: timezoneLabel(zone),
+      })),
+      locale: languageChoices(t),
+    }),
+    [held.currency, held.timezone, locale, t],
+  );
+}
+
+export function choiceName(choices: Choices, field: Picked, code: string, blank: string): string {
+  if (field === 'currency' && code === '') return blank;
+
+  return choices[field].find((choice) => choice.code === code)?.name ?? code;
+}
+
+/** Each picker's label, search words and testID, as `orgGeneral.*` names them. */
+export function usePickers(): Record<Picked, { label: string; search: string; testID: string }> {
+  const { t } = useTranslation();
+
+  return {
+    countryCode: {
+      label: t('orgGeneral.country'),
+      search: t('orgGeneral.searchCountry'),
+      testID: 'organisation.country',
+    },
+    currency: {
+      label: t('orgGeneral.currency'),
+      search: t('orgGeneral.searchCurrency'),
+      testID: 'organisation.currency',
+    },
+    timezone: {
+      label: t('orgGeneral.timezone'),
+      search: t('orgGeneral.searchTimezone'),
+      testID: 'organisation.timezone',
+    },
+    locale: {
+      label: t('orgGeneral.language'),
+      search: t('orgGeneral.searchLanguage'),
+      testID: 'organisation.language',
+    },
   };
-
-  return made;
 }
-
-export function choiceName(field: Picked, code: string): string {
-  if (field === 'currency' && code === '') return W.currencyPlaceholder;
-
-  return organisationChoices()[field].find((choice) => choice.code === code)?.name ?? code;
-}
-
-export const PICKERS: Record<Picked, { label: string; search: string; testID: string }> = {
-  countryCode: { label: W.country, search: W.searchCountry, testID: 'organisation.country' },
-  currency: { label: W.currency, search: W.searchCurrency, testID: 'organisation.currency' },
-  timezone: { label: W.timezone, search: W.searchTimezone, testID: 'organisation.timezone' },
-  locale: { label: W.language, search: W.searchLanguage, testID: 'organisation.language' },
-};
 
 /** A row of 52 and the hairline under it, so the list can open on the current choice. */
 const ROW = 53;
@@ -62,22 +92,25 @@ const hidden = {
 
 /** A field's list in the details screen's own surface: search, then rows of 52, the current one ticked. */
 export function PickerList({
-  field,
+  choices,
+  search,
+  testID,
   value,
   onChoose,
 }: {
-  field: Picked;
+  choices: readonly Choice[];
+  search: string;
+  testID: string;
   value: string;
   onChoose: (code: string) => void;
 }) {
-  const { search, testID } = PICKERS[field];
-  const choices = organisationChoices()[field];
+  const locale = currentLocale();
   const [needle, setNeedle] = useState('');
-  const wanted = needle.trim().toLocaleLowerCase(SHOWN_IN);
+  const wanted = needle.trim().toLocaleLowerCase(locale);
   const shown =
     wanted === ''
       ? choices
-      : choices.filter((choice) => choice.name.toLocaleLowerCase(SHOWN_IN).includes(wanted));
+      : choices.filter((choice) => choice.name.toLocaleLowerCase(locale).includes(wanted));
   const [current] = useState(() => choices.findIndex((choice) => choice.code === value));
 
   return (

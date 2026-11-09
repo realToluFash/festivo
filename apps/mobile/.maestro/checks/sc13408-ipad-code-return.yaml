@@ -9,17 +9,17 @@ onFlowComplete:
 - openLink: ${METRO_URL}/--/settings/security
 - scrollUntilVisible:
     element:
-      id: 'password.set'
+      id: 'security.password'
     timeout: 60000
     centerElement: true
 - tapOn:
-    id: 'password.set'
+    id: 'security.password'
 - extendedWaitUntil:
     visible:
-      id: 'password.setCode'
+      id: 'security.code.field'
     timeout: 15000
 - tapOn:
-    id: 'password.setCode'
+    id: 'security.code.field'
 - inputText: '000000'
 - waitForAnimationToEnd
 - takeScreenshot: typed
@@ -44,5 +44,5 @@ onFlowComplete:
 - waitForAnimationToEnd
 - takeScreenshot: typed-after
 - assertVisible:
-    id: 'password.setCode'
+    id: 'security.code.field'
     text: '000012'

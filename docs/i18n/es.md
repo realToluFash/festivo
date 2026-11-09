@@ -50,6 +50,8 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **10 Nov 2026. El selector de organizaciones de la app** (sc-36382 para sc-30412, `mobile:switcher.asks|canAsk|search|clearSearch|noMatch|matches_*`, `invitations.joining|declining`). La pregunta es «¿Dónde trabaja?», corta para el título del teléfono. Pedir unirse es «Puede solicitar unirse», el «solicitar unirse» de domain joining. La búsqueda sigue la regla «Buscar» y el plural, «Buscar organizaciones»; sin resultados, «Ninguna organización coincide con «{{text}}».», como `timeZone.noneMatch`. Mientras se envía la respuesta, «Uniéndose…», como `web:join.joining`, y «Rechazando…».
+- **9 Nov 2026. La página Organización de la app** (sc-36126 para sc-30412, `mobile:orgGeneral.*`, `ownership.*`, `companyDomains.*`, `requestLink.lead`). La tarjeta es «Datos», su enlace «Editar datos» y la hoja «Datos de la organización», que también es la etiqueta de volver de sus selectores. «Defaults for new events» es «Valores para eventos nuevos». Lo que se anuncia tras transferir no concuerda con nadie: «{{name}} tiene ahora el rol Propietario» y «Ahora usted tiene el rol Administrador», «a las dos cuentas», nunca «a ambos». El dominio también verificado por sc-560 lleva «Verificado».
 - **9 Nov 2026. Las normas de inicio de sesión en la app: su situación y qué ha cambiado** (`mobile:signInRules.stand.*`, `readIntro`, `settings.personLabel*`, sc-34925 para sc-30412). La app repite `web:signInRules.*` palabra por palabra; si cambia una, cambia la otra. Las áreas en espera (`stand.area.*`) van sin artículo, «miembros», «facturación», «seguridad», tras «Los cambios en {{areas}}», como en la web, y se unen con «y». La tarjeta de Ajustes, para el lector de pantalla, es «Su cuenta. {{name}}, {{email}}, {{role}} en {{organisation}}».
 - **9 Nov 2026. Las notificaciones en la web de escritorio** (sc-35791 para sc-30411, `web:notificationSettings.*`). Las claves compartidas dicen lo mismo que `mobile:notificationSettings.*`; donde la app dice «dispositivo», la web dice «navegador»: «Bloqueadas en este navegador». La hoja `allow.*` cita las etiquetas de Chrome en España entre «»: «Notificaciones», «Permitir»; la pestaña es «pestaña» y Done, «Listo».
 - **9 Nov 2026. La página Configuración de notificaciones de la app** (sc-34901 para
@@ -749,3 +751,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `addPhone`). La misma clave es el enlace junto al título de la sección y el título de la hoja:
   «Añadir correo» y «Añadir número», sin artículo, como en los ajustes de Android; la sección ya
   dice de qué. Rechazado «Añadir una dirección de correo electrónico», que se cortaba en un móvil.
+- **9 Nov 2026. El título de la hoja de activar la verificación en dos pasos en la app** (sc-34792,
+  `mobile:security.setupTitle`). «Verificación en 2 pasos», con la cifra, como el título que da
+  Google a la misma función; el botón de la derecha ya dice «Activar». Rechazado «Activar la
+  verificación en dos pasos», cortado en la cabecera de un móvil. `web:security.setupTitle` sigue
+  completo, porque el escritorio tiene sitio.

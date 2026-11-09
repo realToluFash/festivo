@@ -6,11 +6,11 @@ appId: host.exp.Exponent
     id: 'home.switchOrganisation'
 - scrollUntilVisible:
     element:
-      id: 'switcher.create'
+      id: 'switcher.tile.create'
     direction: DOWN
     timeout: 30000
 - tapOn:
-    id: 'switcher.create'
+    id: 'switcher.tile.create'
 - extendedWaitUntil:
     visible:
       id: 'createOrganisation'

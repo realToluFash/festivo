@@ -372,7 +372,7 @@
     "nothingThereLine": "Revise primero la carpeta de spam y luego envíelo de nuevo.",
     "signedUpWith": "¿Se registró con Google o Apple? Entonces no hay contraseña que restablecer, y el correo explica cómo inicia sesión.",
     "gotTheLink": "¿Tiene el enlace? Ábralo en cualquier dispositivo.",
-    "setupTitle": "Activar la verificación en dos pasos",
+    "setupTitle": "Verificación en 2 pasos",
     "setupVerb": "Activar"
   },
   "passwordCard": {
@@ -773,8 +773,15 @@
     "rolesBack": "‹ Roles"
   },
   "switcher": {
+    "asks": "¿Dónde trabaja?",
+    "canAsk": "Puede solicitar unirse",
+    "search": "Buscar organizaciones",
+    "clearSearch": "Borrar la búsqueda",
+    "noMatch": "Ninguna organización coincide con «{{text}}».",
+    "matches_one": "{{count, number}} organización coincide",
+    "matches_other": "{{count, number}} organizaciones coinciden",
+    "matches_many": "{{count, number}} de organizaciones coinciden",
     "yourRole": "Su función · {{role}}",
-    "heading": "Sus organizaciones",
     "current": "Actual",
     "remembered": "Soirely recuerda su elección en este dispositivo.",
     "switched": "Ahora trabaja en {{name}}.",
@@ -976,7 +983,6 @@
     "removeInAccountPhone": "Quitarlo en Cuenta"
   },
   "orgGeneral": {
-    "intro": "El nombre que ven su equipo y sus invitados, y los valores con los que empieza cada evento nuevo.",
     "name": "Nombre",
     "country": "País",
     "contact": "Dirección de contacto",
@@ -1003,7 +1009,21 @@
     "savedLanguage": "Guardado. A partir de ahora, los correos de invitación para quienes no tienen cuenta de Soirely se envían en {{language}}. Las invitaciones ya enviadas no se vuelven a enviar.",
     "refused": "No se ha guardado nada. Su función no incluye el permiso que esto necesita.",
     "refusedByRule": "No se ha guardado nada.",
-    "searchLanguage": "Buscar idiomas"
+    "searchLanguage": "Buscar idiomas",
+    "edit": "Editar datos",
+    "editTitle": "Datos de la organización",
+    "details": "Datos",
+    "defaults": "Valores para eventos nuevos",
+    "invitations": "Invitaciones",
+    "searchCountry": "Buscar países",
+    "saveVerb": "Guardar",
+    "savedSays": "Guardado",
+    "discardTitle_one": "¿Descartar el cambio?",
+    "discardTitle_other": "¿Descartar los cambios?",
+    "discardLine": "{{organisation}} sigue como estaba.",
+    "keepEditing": "Seguir editando",
+    "discard": "Descartar",
+    "discardTitle_many": "¿Descartar los cambios?"
   },
   "invitations": {
     "heading": "Invitaciones",
@@ -1018,6 +1038,8 @@
     "acceptLabel": "Aceptar y unirse a {{organisation}}",
     "decline": "Rechazar",
     "declineLabel": "Rechazar la invitación a {{organisation}}",
+    "joining": "Uniéndose…",
+    "declining": "Rechazando…",
     "declineNote": "Si la rechaza, {{inviter}} sabrá que ha dicho que no. No cambia nada más.",
     "declineNoteNobody": "Si la rechaza, no cambia nada más.",
     "joined": "Se ha unido a {{organisation}} con el rol {{role}}.",
@@ -1185,9 +1207,6 @@
     "codeBlank": "Introduzca el código de su aplicación de autenticación o un código de recuperación.",
     "bothEmailed": "Usted y {{name}} recibirán un correo electrónico que lo confirma.",
     "theNewOwner": "la persona elegida",
-    "makeOwner": "Transferir a {{name}}",
-    "keep": "Conservar la propiedad",
-    "transferred": "Ahora {{name}} tiene el rol Propietario en {{organisation}} y usted, el rol Administrador. Se ha enviado un correo electrónico de confirmación a las dos cuentas.",
     "leave": "Salir de {{organisation}}",
     "leaveOpener": "Salir de {{organisation}}…",
     "leaveNote": "Perderá el acceso a los eventos de la organización. Todo lo que haya creado se queda en {{organisation}}.",
@@ -1196,10 +1215,8 @@
     "stay": "No salir",
     "onlyOwnerTitle": "Es la única persona con el rol Propietario",
     "onlyOwnerBody": "Dé el rol Propietario a otra persona y después podrá salir.",
-    "delete": "Eliminar organización",
     "deleteOpener": "Eliminar organización…",
     "deleteNote": "Elimina todos los eventos, invitados y miembros que contiene.",
-    "deleteTitle": "¿Eliminar {{organisation}}?",
     "deleteWarningTitle": "Se elimina todo lo que contiene",
     "deleteLoading": "Calculando lo que contiene…",
     "deleteUncounted": "No se ha podido calcular lo que contiene. Si la elimina, se eliminan igualmente todos sus eventos, invitados y miembros, para todos y desde este momento. El servicio de asistencia de Soirely puede restaurarla durante 30 días.",
@@ -1219,9 +1236,12 @@
     "deleteMismatch": "Escriba {{organisation}} exactamente como aparece para eliminarla.",
     "deleteMatches": "Coincide.",
     "deleteExactly": "Tal como está escrito, con los acentos.",
-    "deleteButton": "Eliminar {{organisation}}",
-    "deleteKeep": "Conservar {{organisation}}",
-    "failed": "No se ha podido completar, así que no se ha cambiado nada. Inténtelo de nuevo."
+    "failed": "No se ha podido completar, así que no se ha cambiado nada. Inténtelo de nuevo.",
+    "transferVerb": "Transferir",
+    "transferredSays": "{{name}} tiene ahora el rol Propietario",
+    "transferredLine": "Ahora usted tiene el rol Administrador. Hemos enviado un correo electrónico a las dos cuentas.",
+    "deleteScreenTitle": "Eliminar {{organisation}}",
+    "deleteVerb": "Eliminar"
   },
   "domainJoining": {
     "intro": "Su dirección es del dominio {{domain}}. Solicite unirse a la organización de su empresa o cree la suya.",
@@ -1243,9 +1263,7 @@
   },
   "companyDomains": {
     "title": "Unirse por dominio de empresa",
-    "on": "Activado",
     "off": "Desactivado",
-    "intro": "Quienes tengan su dirección de correo electrónico principal en un dominio de esta lista pueden solicitar unirse a {{organisation}} al registrarse. Cada solicitud la responde alguien que pueda gestionar miembros. Está desactivado hasta que añada un dominio.",
     "listLabel": "Dominios de la lista",
     "working": "Admite solicitudes",
     "stopped": "Sin efecto",
@@ -1254,7 +1272,6 @@
     "removeLabel": "Quitar {{domain}}",
     "removeTitle": "¿Quitar {{domain}}?",
     "removeBody": "Quienes usen {{domain}} ya no podrán solicitar unirse de esta forma.",
-    "removeConfirm": "Quitar {{domain}}",
     "keep": "Conservarlo",
     "addLabel": "Añadir un dominio",
     "add": "Añadir dominio",
@@ -1269,12 +1286,16 @@
     "full_many": "Ya hay {{count, number}} de dominios, el máximo que admite la lista. Quite uno para añadir otro.",
     "blank": "Introduzca un dominio, como {{example}}.",
     "shape": "Introduzca un dominio con un punto y sin espacios, como {{example}}.",
-    "added": "Se ha añadido {{domain}}.",
-    "addedNext": "Quienes tengan su dirección de correo electrónico principal en este dominio ya pueden solicitar unirse.",
     "removed": "Se ha quitado {{domain}}.",
-    "removedNext": "Quienes usen este dominio ya no pueden solicitar unirse de esta forma.",
     "failed": "No ha funcionado. Vuelva a intentarlo en un momento.",
-    "unreadable": "No se ha podido cargar la lista."
+    "unreadable": "No se ha podido cargar la lista.",
+    "lead": "Quienes tengan su dirección de correo electrónico principal en un dominio de esta lista pueden solicitar unirse a {{organisation}} al registrarse. Cada solicitud la responde alguien que pueda gestionar miembros.",
+    "offUntil": "Está desactivado hasta que añada un dominio.",
+    "addVerb": "Añadir",
+    "field": "Dominio",
+    "confirmRemove": "Quitar",
+    "addedLine": "Añadido. Quienes tengan su dirección de correo electrónico principal en este dominio ya pueden solicitar unirse.",
+    "proved": "Verificado"
   },
   "membersScreen": {
     "proveOwner_one": "Para dar a alguien el rol de Propietario de {{organisation}}, confirme que es usted. No se lo volveremos a pedir en un minuto.",
@@ -1430,10 +1451,7 @@
   },
   "requestLink": {
     "title": "Solicitudes para unirse",
-    "on": "Activadas",
-    "off": "Desactivadas",
     "switchLabel": "Solicitudes para unirse",
-    "intro": "Cualquier persona con este enlace puede solicitar unirse a {{organisation}}. Alguien que pueda gestionar los miembros responde a cada solicitud. El enlace está desactivado hasta que lo active.",
     "linkLabel": "Enlace de solicitud",
     "copy": "Copiar enlace",
     "help": "Compártalo con las personas de las que quiera recibir solicitudes. No hay ningún directorio de organizaciones donde puedan encontrarle.",
@@ -1449,7 +1467,8 @@
       "copied": "Enlace copiado."
     },
     "failed": "No ha funcionado. Vuelva a intentarlo en un momento.",
-    "unreadable": "No se ha podido cargar el enlace de solicitud."
+    "unreadable": "No se ha podido cargar el enlace de solicitud.",
+    "lead": "Cualquier persona con este enlace puede solicitar unirse a {{organisation}}. Alguien que pueda gestionar los miembros responde a cada solicitud."
   },
   "requestToJoin": {
     "title": "Solicitar unirse a {{organisation}}",

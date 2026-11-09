@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import i18next from 'i18next';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -514,6 +515,24 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     ).toBeDefined();
     expect(screen.getByRole('heading', { level: 3, name: 'Everyone · 96' })).toBeDefined();
   });
+
+  it.each(['Write a follow-up', 'Write to your guests'])(
+    'keeps typing in order when the first letter in %s opens the composer',
+    SLOW,
+    async (name) => {
+      await messages(name === 'Write a follow-up' ? 'sent' : 'inUse');
+
+      fireEvent.change(screen.getByRole('textbox', { name }), { target: { value: 'H' } });
+      const field = await screen.findByRole('textbox', { name: 'Message' });
+
+      await vi.waitFor(() => expect(document.activeElement).toBe(field));
+      const caret = window.getSelection()!.getRangeAt(0);
+
+      expect(caret.collapsed).toBe(true);
+      caret.insertNode(document.createTextNode('ello there'));
+      expect(field.textContent).toBe('Hello there');
+    },
+  );
 
   it('keeps the sent message and adds a follow-up after it', SLOW, async () => {
     await messages('sent');
@@ -1128,6 +1147,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     const search = within(picker).getByRole('searchbox', { name: 'Search guests' });
 
     await vi.waitFor(() => expect(document.activeElement).toBe(search));
+    expect(search.closest('label')?.className).toBe('mg-search');
     fireEvent.change(search, { target: { value: 'claude' } });
     expect(within(picker).getAllByRole('radio')).toHaveLength(1);
     fireEvent.change(search, { target: { value: 'Dubois' } });
@@ -1138,6 +1158,24 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     expect(await screen.findByText('Matched to Camille Dubois.', {}, WAIT)).toBeDefined();
     expect(screen.getByRole('textbox', { name: 'Your answer' })).toBeDefined();
     expect(screen.getByRole('link', { name: 'Messages, 4 waiting' })).toBeDefined();
+  });
+
+  it('keeps the dialogs’ Cancel in the demo’s English in a French browser', SLOW, async () => {
+    await i18next.changeLanguage('fr');
+    try {
+      await messages('later');
+      const when = await screen.findByRole('dialog', { name: 'When it goes' });
+      expect(within(when).getByRole('button', { name: 'Cancel' })).toBeDefined();
+      fireEvent.click(within(when).getByRole('button', { name: 'Cancel' }));
+      cleanup();
+
+      await messages('notMatched');
+      fireEvent.click(screen.getByRole('button', { name: 'Choose the guest' }));
+      const picker = await screen.findByRole('dialog', { name: 'Who is this?' });
+      expect(within(picker).getByRole('button', { name: 'Cancel' })).toBeDefined();
+    } finally {
+      await i18next.changeLanguage('en');
+    }
   });
 
   it('opens Tell guests when Overview’s start time is saved', SLOW, async () => {

@@ -1,411 +1,553 @@
-import { type Membership } from '@soirely/api-client';
 import {
   ORGANISATION_FIELDS,
   ORGANISATION_NAME_MAXIMUM,
-  type OrganisationDetails as Details,
+  type OrganisationDetails,
   type OrganisationField,
-  countryChoices,
-  currencyChoices,
-  heldCurrencyLabel,
-  keptBackBy,
-  languageChoices,
+  organisationChanges,
   organisationProblem,
-  roleName,
-  timezoneLabel,
-  withCurrent,
 } from '@soirely/domain';
-import { router } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  type TextInputInstance,
-  View,
-  type ViewInstance,
-} from 'react-native';
+import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
+import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { type TFunction } from 'i18next';
 
-import { api } from '../api.ts';
-import { currentLocale } from '../i18n/index.ts';
-import { SECTION_HREF } from '../kit/appNav.ts';
-import { useFormChecks } from '../kit/formChecks.ts';
-import {
-  NO_REFUSAL,
-  afterEdit,
-  detailsOf,
-  refusalOf,
-  saveOrganisation,
-} from '../kit/organisationSave.ts';
-import { type LayoutKind } from '../layout/useLayout.ts';
-import { replaceOrganisation } from '../signedIn.ts';
+import { checkAll, type FieldErrors } from '../kit/formChecks.ts';
+import { type CardSaid, cardWords, type SaveOutcome, savedWords } from '../kit/organisationSave.ts';
 import { tokens } from '../theme/tokens.ts';
-import { PrimaryButton } from './Buttons.tsx';
-import { cardFrame } from './cardFrame.ts';
-import { CountryPicker, focusPicker } from './CountryPicker.tsx';
-import { Field, focusChecked, focusRefused, keysStayDown, TextField } from './Field.tsx';
-import { ListPicker } from './ListPicker.tsx';
-import { Notice } from './Notice.tsx';
-import { ReadOut } from './ReadOut.tsx';
-import { AnswerInView } from './Screen.tsx';
-import { Text } from './Text.tsx';
+import { focusPicker } from './CountryPicker.tsx';
+import { FailureLine } from './FailureLine.tsx';
+import {
+  Field,
+  FieldError,
+  focusChecked,
+  focusRefused,
+  keysStayDown,
+  TextField,
+} from './Field.tsx';
+import { Glyph } from './Glyph.tsx';
+import {
+  type Choices,
+  choiceName,
+  type Picked,
+  PickerList,
+  usePickers,
+} from './OrganisationPicker.tsx';
+import { Initials } from './Initials.tsx';
+import { PickerEdge } from './PickerEdge.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import { SETTLED_MS } from './Screen.tsx';
+import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
+import {
+  type AskProps,
+  CardSays,
+  FocusedScreen,
+  Line,
+  OnCard,
+  Row,
+  RowList,
+  Section,
+  SectionHead,
+  SummaryCard,
+  TextAction,
+} from './Summary.tsx';
 
-type Status = 'editing' | 'saving' | 'saved' | 'failed';
+const hidden = {
+  accessibilityElementsHidden: true,
+  importantForAccessibility: 'no-hide-descendants',
+} as const;
 
-export function EditableDetails({
-  organisation,
-  kind,
-  onForbidden,
+export type DetailsOutcome =
+  Exclude<SaveOutcome, { kind: 'saved' }> | { kind: 'saved'; details: OrganisationDetails };
+
+/** What keeps a reader from changing the details: their role, or each sign-in rule that holds it back (sc-16265). */
+export type HeldBack = { by: 'role'; role: string } | { by: 'rules'; rules: readonly string[] };
+
+/** The organisation's card: its tile, name and contact, or what was just done in their place; Edit details for those who may. */
+export function OrganisationCard({
+  details,
+  said,
+  held,
+  pane,
+  stepRef,
+  onEdit,
+  onSecurity,
 }: {
-  organisation: Membership;
-  kind: LayoutKind;
-  /** The role lost `organisation.manage`, or a sign-in rule took it, while the page was open: nothing was saved. */
-  onForbidden: (byRule: boolean) => void;
+  details: OrganisationDetails;
+  said: CardSaid | null;
+  /** Null for a reader who may edit. */
+  held: HeldBack | null;
+  pane: boolean;
+  stepRef: Ref<ViewInstance>;
+  onEdit: () => void;
+  onSecurity: () => void;
 }) {
   const { t } = useTranslation();
-  const locale = currentLocale();
-  const [values, setValues] = useState<Details>(() => detailsOf(organisation));
-  const [refusal, setRefusal] = useState(NO_REFUSAL);
-  const [status, setStatus] = useState<Status>('editing');
-  const [newLanguage, setNewLanguage] = useState<string | null>(null);
-  const nameInput = useRef<TextInputInstance>(null);
-  const contactInput = useRef<TextInputInstance>(null);
-  const countryPicker = useRef<ViewInstance>(null);
-  const currencyPicker = useRef<ViewInstance>(null);
-  const timezonePicker = useRef<ViewInstance>(null);
-  const languagePicker = useRef<ViewInstance>(null);
-  const countryField = useRef<ViewInstance>(null);
-  const currencyField = useRef<ViewInstance>(null);
-  const timezoneField = useRef<ViewInstance>(null);
-  const languageField = useRef<ViewInstance>(null);
-  const focus = (field: OrganisationField) => {
-    if (field === 'name') focusChecked(nameInput);
-    else if (field === 'contactAddress') focusChecked(contactInput);
-    else
-      focusPicker(
-        {
-          countryCode: countryPicker,
-          currency: currencyPicker,
-          timezone: timezonePicker,
-          locale: languagePicker,
-        }[field],
-        {
-          countryCode: countryField,
-          currency: currencyField,
-          timezone: timezoneField,
-          locale: languageField,
-        }[field],
-      );
-  };
-  const checks = useFormChecks(
-    ORGANISATION_FIELDS,
-    (field, value) => {
-      const problem = organisationProblem(field, value);
+  const words = cardWords(t, details, said);
 
-      return problem == null ? null : t(`orgGeneral.${problem}`);
-    },
-    focus,
+  useReadOut(words.said ? `${words.says}. ${words.line}` : null, { quietAtMount: true });
+
+  return (
+    <SummaryCard
+      height={196}
+      step={
+        held == null
+          ? {
+              label: t('orgGeneral.edit'),
+              onPress: onEdit,
+              testID: 'organisation.edit',
+              ref: stepRef,
+            }
+          : null
+      }
+      testID="organisation.card"
+    >
+      {words.said ? (
+        <>
+          <CardSays text={words.says} size={pane ? 26 : 24} heading />
+          <OnCard text={words.line} />
+        </>
+      ) : (
+        <View style={styles.who}>
+          <CardTile name={details.name} side={pane ? 64 : 56} />
+          <View style={styles.words}>
+            <CardSays text={words.says} size={pane ? 26 : 22} heading />
+            <OnCard text={words.line} />
+          </View>
+        </View>
+      )}
+      {held?.by === 'role' && (
+        <LockRow
+          words={t('orgGeneral.readOnly', { role: held.role })}
+          testID="organisation.readOnly"
+        />
+      )}
+      {held?.by === 'rules' &&
+        held.rules.map((rule) => (
+          <LockRow
+            key={rule}
+            words={t(
+              rule === 'linking'
+                ? 'orgGeneral.readOnlyUntilLinked'
+                : 'orgGeneral.readOnlyUntilTwoFactor',
+              { organisation: details.name },
+            )}
+            action={{
+              label: t(rule === 'linking' ? 'signInRules.unlinkedLink' : 'signInRules.gateTurnOn'),
+              onPress: onSecurity,
+              testID: rule === 'linking' ? 'organisation.link' : 'organisation.turnOn',
+            }}
+            testID={`organisation.readOnly.${rule}`}
+          />
+        ))}
+    </SummaryCard>
   );
+}
+
+function LockRow({
+  words,
+  action,
+  testID,
+}: {
+  words: string;
+  action?: { label: string; onPress: () => void; testID: string };
+  testID: string;
+}) {
+  return (
+    <View style={styles.readOnly} testID={testID}>
+      <View style={styles.lock} {...hidden}>
+        <Glyph name="lock" size={16} ink={tokens.colorInkOnDark} weight={2.2} />
+      </View>
+      <View style={styles.grow}>
+        <OnCard text={words} />
+        {action != null && (
+          <TextAction label={action.label} onPress={action.onPress} onFill testID={action.testID} />
+        )}
+      </View>
+    </View>
+  );
+}
+
+/** The organisation's tile as the Settings list draws it, white on Confetti: a rounded square, not a face. */
+function CardTile({ name, side }: { name: string; side: number }) {
+  return (
+    <View
+      style={[styles.tile, { width: side, height: side, borderRadius: Math.round(side * 0.286) }]}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <Initials name={name} size={Math.round(side * 0.36)} weight="bold" style={styles.accent} />
+    </View>
+  );
+}
+
+export function DetailRows({
+  details,
+  choices,
+}: {
+  details: OrganisationDetails;
+  choices: Choices;
+}) {
+  const { t } = useTranslation();
+  const rows: [Picked, string][] = [
+    ['countryCode', t('orgGeneral.country')],
+    ['currency', t('orgGeneral.currency')],
+    ['timezone', t('orgGeneral.timezone')],
+    ['locale', t('orgGeneral.language')],
+  ];
+
+  return (
+    <Section title={t('orgGeneral.details')} foot={t('orgGeneral.defaultsNote')}>
+      <RowList
+        items={rows.map(([field, label]) => ({
+          key: field,
+          row: (
+            <Row
+              title={choiceName(
+                choices,
+                field,
+                details[field],
+                t('orgGeneral.currencyPlaceholder'),
+              )}
+              line={label}
+              weight="medium"
+              testID={`organisation.detail.${field}`}
+            />
+          ),
+        }))}
+      />
+    </Section>
+  );
+}
+
+type Typed = 'name' | 'contactAddress';
+
+/** Where a demo state opens the screen; the product always opens it fresh. */
+export interface DetailsOpening {
+  picking: Picked | null;
+  contactWrong: string | null;
+  currencyBlank: boolean;
+}
+
+export const FRESH_DETAILS: DetailsOpening = {
+  picking: null,
+  contactWrong: null,
+  currencyBlank: false,
+};
+
+/** Editing the details on a screen of their own; a picker's list opens in the same surface and comes back on a pick. */
+export function DetailsScreen({
+  saved,
+  choices,
+  open,
+  opening = FRESH_DETAILS,
+  opener,
+  onSave,
+  onClose,
+  onSaved,
+}: {
+  saved: OrganisationDetails;
+  choices: Choices;
+  open: boolean;
+  opening?: DetailsOpening;
+  opener: RefObject<ScreenReaderTarget | null>;
+  onSave: (values: OrganisationDetails) => Promise<DetailsOutcome>;
+  onClose: () => void;
+  onSaved: (details: OrganisationDetails, words: string) => void;
+}) {
+  const { t } = useTranslation();
+  const pickers = usePickers();
+  const [given, setGiven] = useState<Record<Typed, string>>(() => ({
+    name: saved.name,
+    contactAddress: opening.contactWrong ?? saved.contactAddress,
+  }));
+  const typed = useRef({ ...given });
+  const [picked, setPicked] = useState<Record<Picked, string>>({
+    countryCode: saved.countryCode,
+    currency: saved.currency,
+    timezone: saved.timezone,
+    locale: saved.locale,
+  });
+  const [picking, setPicking] = useState<Picked | null>(opening.picking);
+  const [errors, setErrors] = useState<FieldErrors<OrganisationField>>(() => ({
+    ...(opening.contactWrong != null && { contactAddress: t('orgGeneral.contactInvalid') }),
+    ...(opening.currencyBlank && { currency: t('orgGeneral.currencyBlank') }),
+  }));
+  const [pressed, setPressed] = useState(opening.contactWrong != null || opening.currencyBlank);
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const [discarding, setDiscarding] = useState(false);
+  const [changes, setChanges] = useState(() => changeCount(saved, picked, given));
+  const [refused, setRefused] = useState<{ field: Typed } | null>(null);
+  const nameRef = useRef<TextInputInstance>(null);
+  const contactRef = useRef<TextInputInstance>(null);
+  const rowRefs = useRef<Partial<Record<Picked, ViewInstance | null>>>({});
+  const cameBack = useRef<Picked | null>(null);
 
   useEffect(() => {
-    if (refusal.focus != null)
-      focusRefused(refusal.focus.field === 'name' ? nameInput : contactInput);
-  }, [refusal.focus]);
+    if (!open || opening.contactWrong == null) return;
+    const focus = setTimeout(() => focusChecked(contactRef), SETTLED_MS);
 
-  const currencies = useMemo(
-    () =>
-      currencyChoices(organisation.currency, locale, (code) =>
-        t('orgGeneral.currencyRetired', { code }),
-      ),
-    [organisation.currency, locale, t],
-  );
-  const timezones = useMemo(
-    () =>
-      withCurrent(Intl.supportedValuesOf('timeZone'), organisation.timezone).map((zone) => ({
-        code: zone,
-        name: timezoneLabel(zone),
-      })),
-    [organisation.timezone],
-  );
+    return () => clearTimeout(focus);
+  }, [open, opening.contactWrong]);
 
-  const languages = useMemo(() => languageChoices(t), [t]);
+  useEffect(() => {
+    if (!open || !opening.currencyBlank) return;
+    const focus = setTimeout(
+      () => moveScreenReaderFocus(rowRefs.current.currency ?? null),
+      SETTLED_MS,
+    );
 
-  const busy = status === 'saving';
-  const errors = { ...refusal.errors, ...checks.errors };
+    return () => clearTimeout(focus);
+  }, [open, opening.currencyBlank]);
 
-  function change(field: OrganisationField, value: string): void {
-    setValues((previous) => ({ ...previous, [field]: value }));
-    setRefusal((previous) => afterEdit(previous, field));
-    checks.edited(field, value);
-    if (status === 'saved' || status === 'failed') setStatus('editing');
+  useEffect(() => {
+    const field = cameBack.current;
+    if (picking != null || field == null) return;
+    cameBack.current = null;
+    const focus = setTimeout(
+      () => moveScreenReaderFocus(rowRefs.current[field] ?? null),
+      SETTLED_MS,
+    );
+
+    return () => clearTimeout(focus);
+  }, [picking]);
+
+  useEffect(() => {
+    if (refused != null) focusRefused(refused.field === 'name' ? nameRef : contactRef);
+  }, [refused]);
+
+  function problem(field: OrganisationField, value: string): string | null {
+    const found = organisationProblem(field, value);
+
+    return found == null ? null : t(`orgGeneral.${found}`);
+  }
+
+  function setError(field: OrganisationField, message: string | null): void {
+    setErrors((previous) => {
+      const next = { ...previous };
+      if (message == null) delete next[field];
+      else next[field] = message;
+
+      return next;
+    });
+  }
+
+  function edited(field: Typed, text: string): void {
+    typed.current[field] = text;
+    setChanges(changeCount(saved, picked, typed.current));
+    if (errors[field] != null && problem(field, text) == null) setError(field, null);
+  }
+
+  function left(field: Typed): void {
+    if (pressed) setError(field, problem(field, typed.current[field]));
+  }
+
+  function backFrom(field: Picked, code?: string): void {
+    cameBack.current = field;
+    setPicking(null);
+    if (code == null) return;
+    const next = { ...picked, [field]: code };
+    setPicked(next);
+    setChanges(changeCount(saved, next, typed.current));
+    setError(field, null);
   }
 
   async function save(): Promise<void> {
-    if (busy || !checks.passes(values)) return;
+    if (saving) return;
+    const values = { ...picked, ...typed.current };
+    const found = checkAll(ORGANISATION_FIELDS, problem, values);
+    setPressed(true);
+    setErrors(found.errors);
+    if (found.first === 'name') focusChecked(nameRef);
+    if (found.first === 'contactAddress') focusChecked(contactRef);
+    if (found.first === 'currency') focusPicker({ current: rowRefs.current.currency ?? null });
+    if (found.first != null) return;
 
     keysStayDown();
-    setStatus('saving');
+    setSaving(true);
+    setFailed(null);
 
-    const outcome = await saveOrganisation(
-      (id, changes) => api.updateOrganisation(id, changes),
-      organisation,
-      values,
-    );
+    const outcome = await onSave(values);
 
-    if (outcome.kind === 'forbidden') {
-      onForbidden(outcome.byRule);
+    setSaving(false);
+    if (outcome.kind === 'saved') {
+      onSaved(outcome.details, savedWords(t, outcome.details, saved));
       return;
     }
-
-    if (outcome.kind === 'saved') {
-      replaceOrganisation(outcome.organisation);
-      setValues(detailsOf(outcome.organisation));
-      setNewLanguage(
-        outcome.organisation.locale === organisation.locale ? null : outcome.organisation.locale,
-      );
+    if (outcome.kind === 'refused') {
+      setErrors(outcome.errors);
+      const first = ORGANISATION_FIELDS.find((field) => outcome.errors[field] != null);
+      if (first === 'name' || first === 'contactAddress') setRefused({ field: first });
+      return;
     }
-    if (outcome.kind === 'refused') setRefusal(refusalOf(outcome.errors));
-    setStatus(outcome.kind === 'refused' ? 'editing' : outcome.kind);
+    setFailed(
+      outcome.kind === 'forbidden'
+        ? t(outcome.byRule ? 'orgGeneral.refusedByRule' : 'orgGeneral.refused')
+        : t('orgGeneral.failed'),
+    );
   }
 
-  const saved =
-    newLanguage == null
-      ? t('orgGeneral.saved', { name: organisation.name })
-      : t('orgGeneral.savedLanguage', { language: languageNameInSentence(t, newLanguage) });
-  const failed = t('orgGeneral.failed');
+  const ask: AskProps | null = discarding
+    ? {
+        title: t('orgGeneral.discardTitle', { count: changes }),
+        line: t('orgGeneral.discardLine', { organisation: saved.name }),
+        keep: { label: t('orgGeneral.keepEditing'), testID: 'organisation.details.keep' },
+        confirm: {
+          label: t('orgGeneral.discard'),
+          testID: 'organisation.details.discard',
+          removes: true,
+        },
+        onKeep: () => setDiscarding(false),
+        onConfirm: onClose,
+      }
+    : null;
+
+  if (picking != null)
+    return (
+      <FocusedScreen
+        open={open}
+        title={pickers[picking].label}
+        back={t('orgGeneral.editTitle')}
+        verb={null}
+        onCancel={() => backFrom(picking)}
+        cancelTestID={`${pickers[picking].testID}.back`}
+        opener={opener}
+        fills
+      >
+        <PickerList
+          choices={choices[picking]}
+          search={pickers[picking].search}
+          testID={pickers[picking].testID}
+          value={picked[picking]}
+          onChoose={(code) => backFrom(picking, code)}
+        />
+      </FocusedScreen>
+    );
+
+  const pickerRow = (field: Picked) => {
+    const { label, testID } = pickers[field];
+    const chosen = choiceName(choices, field, picked[field], t('orgGeneral.currencyPlaceholder'));
+    const error = errors[field];
+
+    return (
+      <View>
+        <PickerEdge wrong={error != null} flat>
+          <Row
+            ref={(row) => {
+              rowRefs.current[field] = row;
+            }}
+            title={chosen}
+            line={label}
+            opens
+            invalid={error != null}
+            onPress={() => {
+              setGiven({ ...typed.current });
+              setPicking(field);
+            }}
+            accessibilityLabel={`${label}, ${chosen}`}
+            testID={testID}
+          />
+        </PickerEdge>
+        {error != null && <FieldError message={error} />}
+      </View>
+    );
+  };
 
   return (
-    <View style={cardFrame(kind)}>
-      {status === 'saved' && (
-        <AnswerInView>
-          <ReadOut words={saved}>
-            <Notice tone="done" mark={tokens.marks.done.glyph} body={saved} />
-          </ReadOut>
-        </AnswerInView>
-      )}
-      {status === 'failed' && (
-        <AnswerInView>
-          <ReadOut words={failed} interrupts accessibilityRole="alert">
-            <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
-          </ReadOut>
-        </AnswerInView>
-      )}
-
+    <FocusedScreen
+      open={open}
+      title={t('orgGeneral.editTitle')}
+      verb={{
+        label: saving ? t('orgGeneral.saving') : t('orgGeneral.saveVerb'),
+        on: changes > 0 && !saving,
+        onPress: () => void save(),
+        testID: 'organisation.details.save',
+      }}
+      onCancel={() => (changes > 0 ? setDiscarding(true) : onClose())}
+      waits={saving}
+      cancelTestID="organisation.details.cancel"
+      opener={opener}
+      ask={ask}
+      testID="organisation.details"
+    >
+      {failed != null && <FailureLine words={failed} testID="organisation.details.failed" />}
       <Field label={t('orgGeneral.name')} error={errors.name}>
         <TextField
-          ref={nameInput}
-          value={values.name}
-          onChangeText={(value) => change('name', value)}
-          onBlur={() => checks.left('name', values.name)}
-          onSubmitEditing={() => contactInput.current?.focus()}
+          ref={nameRef}
+          defaultValue={given.name}
+          onChangeText={(text) => edited('name', text)}
+          onBlur={() => left('name')}
           wrong={errors.name != null}
-          submitting={busy}
-          maxLength={ORGANISATION_NAME_MAXIMUM}
-          autoComplete="organization"
-          textContentType="organizationName"
+          submitting={saving}
+          autoCapitalize="words"
           autoCorrect={false}
+          spellCheck={false}
+          maxLength={ORGANISATION_NAME_MAXIMUM}
           returnKeyType="next"
+          onSubmitEditing={() => contactRef.current?.focus()}
+          submitBehavior="submit"
           accessibilityLabel={t('orgGeneral.name')}
           testID="organisation.name"
         />
       </Field>
-      <Field ref={countryField} label={t('orgGeneral.country')} error={errors.countryCode}>
-        <CountryPicker
-          label={t('orgGeneral.country')}
-          value={values.countryCode}
-          onChange={(code) => change('countryCode', code)}
-          disabled={busy}
-          wrong={errors.countryCode != null}
-          pickerRef={countryPicker}
-          testID="organisation.country"
-        />
-      </Field>
+      {pickerRow('countryCode')}
       <Field label={t('orgGeneral.contact')} error={errors.contactAddress}>
         <TextField
-          ref={contactInput}
-          value={values.contactAddress}
-          onChangeText={(value) => change('contactAddress', value)}
-          onBlur={() => checks.left('contactAddress', values.contactAddress)}
+          ref={contactRef}
+          defaultValue={given.contactAddress}
+          onChangeText={(text) => edited('contactAddress', text)}
+          onBlur={() => left('contactAddress')}
           wrong={errors.contactAddress != null}
-          submitting={busy}
+          submitting={saving}
           keyboardType="email-address"
+          autoCapitalize="none"
           autoComplete="email"
           textContentType="emailAddress"
-          autoCapitalize="none"
           autoCorrect={false}
           spellCheck={false}
+          returnKeyType="done"
           accessibilityLabel={t('orgGeneral.contact')}
           testID="organisation.contact"
         />
       </Field>
-      <Field ref={currencyField} label={t('orgGeneral.currency')} error={errors.currency}>
-        <ListPicker
-          label={t('orgGeneral.currency')}
-          placeholder={t('orgGeneral.currencyPlaceholder')}
-          searchLabel={t('orgGeneral.searchCurrency')}
-          choices={currencies}
-          value={values.currency}
-          onChange={(code) => change('currency', code)}
-          disabled={busy}
-          wrong={errors.currency != null}
-          pickerRef={currencyPicker}
-          testID="organisation.currency"
+      <View style={styles.group}>
+        <SectionHead title={t('orgGeneral.defaults')} />
+        <RowList
+          items={(['currency', 'timezone'] as const).map((field) => ({
+            key: field,
+            row: pickerRow(field),
+          }))}
         />
-      </Field>
-      <Field ref={timezoneField} label={t('orgGeneral.timezone')} error={errors.timezone}>
-        <ListPicker
-          label={t('orgGeneral.timezone')}
-          searchLabel={t('orgGeneral.searchTimezone')}
-          choices={timezones}
-          value={values.timezone}
-          onChange={(zone) => change('timezone', zone)}
-          disabled={busy}
-          wrong={errors.timezone != null}
-          pickerRef={timezonePicker}
-          testID="organisation.timezone"
-        />
-      </Field>
-
-      <Notice tone="quiet" mark={tokens.marks.info.glyph} body={t('orgGeneral.defaultsNote')} />
-
-      <Field
-        ref={languageField}
-        label={t('orgGeneral.language')}
-        error={errors.locale}
-        help={t('orgGeneral.languageHint')}
-      >
-        <ListPicker
-          label={t('orgGeneral.language')}
-          searchLabel={t('orgGeneral.searchLanguage')}
-          choices={languages}
-          value={values.locale}
-          onChange={(code) => change('locale', code)}
-          disabled={busy}
-          wrong={errors.locale != null}
-          pickerRef={languagePicker}
-          testID="organisation.language"
-        />
-      </Field>
-
-      <View style={kind === 'phone' ? undefined : styles.leading}>
-        <PrimaryButton
-          label={busy ? t('orgGeneral.saving') : t('orgGeneral.save')}
-          onPress={() => void save()}
-          busy={busy}
-          testID="organisation.save"
-        />
+        <Line size={14} text={t('orgGeneral.defaultsNote')} />
       </View>
-    </View>
+      <View style={styles.group}>
+        <SectionHead title={t('orgGeneral.invitations')} />
+        {pickerRow('locale')}
+        <Line size={14} text={t('orgGeneral.languageHint')} />
+      </View>
+    </FocusedScreen>
   );
 }
 
-/** The controls are absent, not disabled: a control that refuses reads as broken (sc-66). */
-export function ReadOnlyDetails({
-  organisation,
-  kind,
-}: {
-  organisation: Membership;
-  kind: LayoutKind;
-}) {
-  const { t } = useTranslation();
-  const locale = currentLocale();
-  const country =
-    countryChoices(locale).find(({ code }) => code === organisation.countryCode)?.name ??
-    organisation.countryCode;
-  const rows: readonly [string, string][] = [
-    [t('orgGeneral.name'), organisation.name],
-    [t('orgGeneral.country'), country],
-    [t('orgGeneral.contact'), organisation.contactAddress],
-    [
-      t('orgGeneral.currency'),
-      heldCurrencyLabel(organisation.currency, locale, (code) =>
-        t('orgGeneral.currencyRetired', { code }),
-      ),
-    ],
-    [t('orgGeneral.timezone'), timezoneLabel(organisation.timezone)],
-  ];
-
-  return (
-    <View style={cardFrame(kind)}>
-      <View>
-        {rows.map(([label, value]) => (
-          <View key={label} style={styles.row}>
-            <Text size={tokens.typeButton.size} weight="semibold" style={styles.secondary}>
-              {label}
-            </Text>
-            <Text size={tokens.typeBodyPhone.size}>{value}</Text>
-          </View>
-        ))}
-      </View>
-      <Notice tone="quiet" mark={tokens.marks.info.glyph} body={t('orgGeneral.defaultsNote')} />
-      <View style={styles.row}>
-        <Text size={tokens.typeButton.size} weight="semibold" style={styles.secondary}>
-          {t('orgGeneral.language')}
-        </Text>
-        <Text size={tokens.typeBodyPhone.size} testID="organisation.language.readOnly">
-          {languageName(t, organisation.locale)}
-        </Text>
-      </View>
-      <WhyReadOnly organisation={organisation} />
-    </View>
-  );
-}
-
-/** The role when it is what stops the change, otherwise each sign-in rule that does (sc-16265). */
-function WhyReadOnly({ organisation }: { organisation: Membership }) {
-  const { t } = useTranslation();
-  const rules = keptBackBy(organisation, 'organisation.manage');
-
-  if (rules.length === 0)
-    return (
-      <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-        {t('orgGeneral.readOnly', { role: roleName(t, organisation.role) })}
-      </Text>
-    );
-
-  return rules.map((rule) => (
-    <View key={rule}>
-      <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-        {t(
-          rule === 'linking'
-            ? 'orgGeneral.readOnlyUntilLinked'
-            : 'orgGeneral.readOnlyUntilTwoFactor',
-          { organisation: organisation.name },
-        )}
-      </Text>
-      <Pressable
-        style={styles.action}
-        onPress={() => router.navigate(SECTION_HREF.security)}
-        accessibilityRole="link"
-        testID={rule === 'linking' ? 'organisation.link' : 'organisation.turnOn'}
-      >
-        <Text size={tokens.typeBodyPhone.size} weight="semibold" style={styles.accent}>
-          {t(rule === 'linking' ? 'signInRules.unlinkedLink' : 'signInRules.gateTurnOn')}
-        </Text>
-      </Pressable>
-    </View>
-  ));
-}
-
-/** In the reader's language alone, as a row names it. */
-function languageName(t: TFunction, code: string): string {
-  return t(`languageNames.${code}`, { defaultValue: code });
-}
-
-/** Mid-sentence, where es, fr and pt write a language's name in lowercase. */
-function languageNameInSentence(t: TFunction, code: string): string {
-  return t(`languageNamesInSentence.${code}`, { defaultValue: code });
+function changeCount(
+  saved: OrganisationDetails,
+  picked: Record<Picked, string>,
+  typed: Record<Typed, string>,
+): number {
+  return Object.keys(organisationChanges(saved, { ...picked, ...typed })).length;
 }
 
 const styles = StyleSheet.create({
-  leading: { alignSelf: 'flex-start' },
-  row: {
-    gap: tokens.spaceHair,
-    paddingVertical: tokens.spaceLg,
-    borderTopWidth: 1,
-    borderTopColor: tokens.colorInsetBorder,
-  },
-  secondary: { color: tokens.colorInkSecondary },
-  action: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
+  grow: { flex: 1, minWidth: 0 },
+  words: { flex: 1, minWidth: 0, gap: 2 },
+  who: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  tile: { alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.colorCard },
   accent: { color: tokens.colorAccentText },
+  readOnly: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: tokens.spaceSm,
+    marginTop: 'auto',
+  },
+  lock: { marginTop: 1 },
+  group: { gap: tokens.spaceHair, paddingTop: tokens.spaceXs },
 });

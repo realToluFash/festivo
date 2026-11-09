@@ -25,7 +25,7 @@ appId: host.exp.Exponent
 - assertVisible:
     id: 'settings.account'
 - assertVisible:
-    id: 'password.change|password.set'
+    id: 'security.password'
 - takeScreenshot: security-beside
 - scrollUntilVisible:
     element:
@@ -36,7 +36,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - assertVisible:
     id: 'settings.account'
-- assertVisible: '{{t:orgGeneral.intro}}'
+- assertVisible: '{{t:orgGeneral.details}}'
 - takeScreenshot: organisation-beside
 - scrollUntilVisible:
     element:

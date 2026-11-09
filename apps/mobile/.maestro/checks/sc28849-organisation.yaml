@@ -5,6 +5,12 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
     visible:
+      id: organisation.edit
+    timeout: 30000
+- tapOn:
+    id: organisation.edit
+- extendedWaitUntil:
+    visible:
       id: 'organisation.name'
     timeout: 30000
 - takeScreenshot: organisation-rest

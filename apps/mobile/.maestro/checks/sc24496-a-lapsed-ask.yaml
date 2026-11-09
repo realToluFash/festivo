@@ -4,26 +4,26 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
     visible:
-      id: organisation.name
+      id: organisation.card
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: ownership.transfer
+      id: organisation.ownership.transfer
     timeout: 60000
 - tapOn:
-    id: ownership.transfer
+    id: organisation.ownership.transfer
 - scrollUntilVisible:
     element:
-      id: ownership.owner.${MEMBER}
+      id: organisation.transfer.${MEMBER}
     centerElement: true
 - tapOn:
-    id: ownership.owner.${MEMBER}
+    id: organisation.transfer.${MEMBER}
 - scrollUntilVisible:
     element:
-      id: ownership.password
+      id: organisation.transfer.password
     centerElement: true
 - tapOn:
-    id: ownership.password
+    id: organisation.transfer.password
 - inputText: ${PASSWORD}
 - waitForAnimationToEnd
 - swipe:
@@ -36,10 +36,10 @@ appId: host.exp.Exponent
     duration: 600
 - waitForAnimationToEnd
 - tapOn:
-    id: ownership.transfer.send
+    id: organisation.transfer.send
 - extendedWaitUntil:
     visible:
-      id: ownership.code
+      id: organisation.transfer.code
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: code-asked
