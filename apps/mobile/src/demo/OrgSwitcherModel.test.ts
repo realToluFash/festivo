@@ -20,6 +20,7 @@ import {
   rowsOf,
   scrollToShow,
   searchable,
+  sending,
   sessionFor,
   settled,
   switcherStateOf,
@@ -220,6 +221,30 @@ describe('the answers', () => {
     expect(waitingOf(failed)).toBe(2);
     expect(tilesOf(settled(failed), '').map(tileKey)).toContain(BLUEBIRD);
     expect(waitingOf(answer(failed, BLUEBIRD, true))).toBe(1);
+  });
+
+  it('holds a press in flight as still waiting, saying what the pressed answer is doing (#36160)', () => {
+    const busy = sending(sessionFor('invitation'), BLUEBIRD, false);
+
+    expect(busy.outcomes[BLUEBIRD]).toEqual({ kind: 'busy', answer: 'decline' });
+    expect(busy.expanded).toBe(BLUEBIRD);
+    expect(waitingOf(busy)).toBe(2);
+    expect(sessionFor('busy').outcomes[BLUEBIRD]).toEqual({ kind: 'busy', answer: 'accept' });
+    expect([SW.joining, SW.declining]).toEqual(['Joining…', 'Declining…']);
+  });
+
+  it('draws a refused answer in the panel and takes the invitation off the next opening (#36160)', () => {
+    const expired = sessionFor('refused');
+    const withdrawn = sessionFor('withdrawn');
+
+    expect(expired.outcomes[BLUEBIRD]).toEqual({ kind: 'refused', refusal: 'invitation_expired' });
+    expect(withdrawn.outcomes[BLUEBIRD]).toEqual({
+      kind: 'refused',
+      refusal: 'invitation_revoked',
+    });
+    expect(waitingOf(expired)).toBe(1);
+    expect(tilesOf(expired, '').map(tileKey)).toContain(BLUEBIRD);
+    expect(tilesOf(settled(expired), '').map(tileKey)).not.toContain(BLUEBIRD);
   });
 
   it('asks to join, keeps a refusal, and puts the offer away for Not now', () => {

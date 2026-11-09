@@ -954,6 +954,7 @@
   display: flex;
   flex-direction: column;
   width: var(--deskDialog);
+  max-width: calc(100vw - 2 * var(--spaceXl));
   max-height: calc(100vh - 2 * var(--space6xl));
   overflow: hidden;
   border: 1px solid var(--colorBorder);
@@ -965,7 +966,7 @@
   flex-wrap: nowrap;
   gap: var(--spaceLg);
   box-sizing: border-box;
-  height: 52px;
+  min-height: 52px;
   padding: 0 var(--spaceSm);
   border-bottom: 1px solid var(--colorBorder);
 }
@@ -1000,11 +1001,10 @@
 .desk-nav-title {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
+  padding: var(--spaceSm) 0;
   font: 700 17px/1.2 var(--fontFamily);
   text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
 }
 
 .desk-dialog-body {
@@ -1027,6 +1027,9 @@
   flex-direction: column;
   gap: var(--spaceSm);
   width: var(--deskAsk);
+  max-width: calc(100vw - 2 * var(--spaceXl));
+  max-height: calc(100vh - 2 * var(--space6xl));
+  overflow-y: auto;
   padding: var(--space3xl) var(--space3xl) var(--spaceLg);
   border-radius: var(--space3xl);
 }

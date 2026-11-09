@@ -66,6 +66,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 Nov 2026. The app's Organisation page** (sc-36126 for sc-30412, `mobile:orgGeneral.*`, `ownership.*`, `companyDomains.*`, `requestLink.lead`). Kept as dev1 wrote it. `ownership.transferredLine` should read "You are an admin.", lower case in running text per the glossary, but `organisationSave.test.ts` pins "Admin"; [dev] is asked on sc-30412 to change both. `orgGeneral.editTitle` is also the back label of the sheet's pickers, so every locale keeps it short. "Proved" tags a domain also proved under Email domains (sc-560).
 - **9 Nov 2026. The service floor's words** (sc-4005, epic 35 §4, §6, §7; settled in #36036,
   #36039 and #36042). An order's stages are **To serve** → **Dishing** → **Checked** → **On
   its way** → **Served**, each its own key, and each count by stage a plural key ("3 checked",

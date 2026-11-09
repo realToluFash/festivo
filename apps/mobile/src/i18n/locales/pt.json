@@ -1010,20 +1010,20 @@
     "refused": "Nada foi guardado. A sua função não inclui a permissão necessária para isto.",
     "refusedByRule": "Nada foi guardado.",
     "searchLanguage": "Pesquisar idiomas",
-    "edit": "Edit details",
-    "editTitle": "Organisation details",
-    "details": "Details",
-    "defaults": "Defaults for new events",
-    "invitations": "Invitations",
-    "searchCountry": "Search countries",
-    "saveVerb": "Save",
-    "savedSays": "Saved",
-    "discardTitle_one": "Discard your change?",
-    "discardTitle_other": "Discard your changes?",
-    "discardLine": "{{organisation}} stays as it was.",
-    "keepEditing": "Keep editing",
-    "discard": "Discard",
-    "discardTitle_many": "Discard your changes?"
+    "edit": "Editar dados",
+    "editTitle": "Dados da organização",
+    "details": "Dados",
+    "defaults": "Predefinições dos novos eventos",
+    "invitations": "Convites",
+    "searchCountry": "Pesquisar países",
+    "saveVerb": "Guardar",
+    "savedSays": "Guardado",
+    "discardTitle_one": "Descartar a alteração?",
+    "discardTitle_other": "Descartar as alterações?",
+    "discardLine": "{{organisation}} fica como estava.",
+    "keepEditing": "Continuar a editar",
+    "discard": "Descartar",
+    "discardTitle_many": "Descartar as alterações?"
   },
   "invitations": {
     "heading": "Convites",
@@ -1235,11 +1235,11 @@
     "deleteMatches": "Corresponde.",
     "deleteExactly": "Tal como está escrito, incluindo os acentos.",
     "failed": "Não foi possível concluir, por isso nada foi alterado. Tente novamente.",
-    "transferVerb": "Transfer",
-    "transferredSays": "{{name}} is now the owner",
-    "transferredLine": "You are an Admin. You both have an email saying so.",
-    "deleteScreenTitle": "Delete {{organisation}}",
-    "deleteVerb": "Delete"
+    "transferVerb": "Transferir",
+    "transferredSays": "{{name}} tem agora a função Proprietário",
+    "transferredLine": "A sua função passou a ser Administrador. Foi enviado um e-mail de confirmação às duas contas.",
+    "deleteScreenTitle": "Eliminar {{organisation}}",
+    "deleteVerb": "Eliminar"
   },
   "domainJoining": {
     "intro": "O seu endereço é do domínio {{domain}}. Peça para aderir à organização da sua empresa ou crie a sua.",
@@ -1287,13 +1287,13 @@
     "removed": "{{domain}} foi removido.",
     "failed": "Não foi possível. Tente novamente daqui a pouco.",
     "unreadable": "Não foi possível carregar a lista.",
-    "lead": "People whose main email address is at a domain on this list can ask to join {{organisation}} when they sign up. Somebody who can manage members answers each one.",
-    "offUntil": "It is off until you add a domain.",
-    "addVerb": "Add",
-    "field": "Domain",
-    "confirmRemove": "Remove",
-    "addedLine": "Added. People whose main email address is at it can now ask to join.",
-    "proved": "Proved"
+    "lead": "Quem tiver o endereço de e-mail principal num domínio desta lista pode pedir para aderir a {{organisation}} ao registar-se. Cada pedido é respondido por alguém que possa gerir membros.",
+    "offUntil": "A adesão fica desativada até adicionar um domínio.",
+    "addVerb": "Adicionar",
+    "field": "Domínio",
+    "confirmRemove": "Remover",
+    "addedLine": "Adicionado. Quem tiver o endereço de e-mail principal neste domínio já pode pedir para aderir.",
+    "proved": "Verificado"
   },
   "membersScreen": {
     "proveOwner_one": "Para dar a alguém a função de Proprietário de {{organisation}}, confirme que é você. Não voltamos a pedir durante um minuto.",
@@ -1466,7 +1466,7 @@
     },
     "failed": "Não funcionou. Tente de novo dentro de momentos.",
     "unreadable": "Não foi possível carregar a ligação de adesão.",
-    "lead": "Anybody with this link can ask to join {{organisation}}. Somebody who can manage members answers each request."
+    "lead": "Qualquer pessoa com esta ligação pode pedir para aderir a {{organisation}}. Alguém que possa gerir os membros responde a cada pedido."
   },
   "requestToJoin": {
     "title": "Pedir para aderir a {{organisation}}",

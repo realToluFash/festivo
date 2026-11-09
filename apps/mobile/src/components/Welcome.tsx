@@ -1,19 +1,11 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
-import {
-  type LayoutChangeEvent,
-  type LayoutRectangle,
-  ScrollView,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Cover, OnCover } from './Cover.tsx';
-import type { Box } from '../kit/confettiClearance.ts';
+import { Cover, OnCover, useWordsBox } from './Cover.tsx';
 import { saidOnWelcome } from '../kit/signInRules.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -197,22 +189,6 @@ export function WelcomeFrame({
       </View>
     </ScrollView>
   );
-}
-
-/** The box the brand's words take on the cover, from the area that centres them and their own place in it. */
-function useWordsBox() {
-  const [area, setArea] = useState<LayoutRectangle | null>(null);
-  const [own, setOwn] = useState<LayoutRectangle | null>(null);
-  const box: Box | null =
-    area == null || own == null
-      ? null
-      : { x: area.x + own.x, y: area.y + own.y, width: own.width, height: own.height };
-
-  return {
-    box,
-    onArea: (event: LayoutChangeEvent) => setArea(event.nativeEvent.layout),
-    onWords: (event: LayoutChangeEvent) => setOwn(event.nativeEvent.layout),
-  };
 }
 
 /** React Native keeps the status bar of the screen mounted last, so the cover sets its own on focus; a tablet's steps open over the cover and keep it. */

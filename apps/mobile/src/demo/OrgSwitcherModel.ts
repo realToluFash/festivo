@@ -1,4 +1,4 @@
-import { type InvitationOutcome, isWaiting } from '@soirely/domain';
+import { type InvitationOutcome, type InvitationRefusalCode, isWaiting } from '@soirely/domain';
 
 import { meshFor, type MeshKey } from '../kit/today.ts';
 import type { Invite, Offer, OfferStatus, Place, Session } from '../kit/orgSwitcher.ts';
@@ -44,6 +44,8 @@ export const SW = {
   acceptLabel: (organisation: string) => `Accept and join ${organisation}`,
   declineLabel: (organisation: string) => `Decline the invitation to ${organisation}`,
   failed: 'Your answer did not reach us. Check your connection and try again.',
+  joining: 'Joining…',
+  declining: 'Declining…',
   ask: 'Ask to join',
   notNow: 'Not now',
   waiting: 'Waiting for approval',
@@ -68,6 +70,9 @@ export const SW = {
   matches: (count: number) =>
     count === 1 ? '1 organisation matches' : `${count} organisations match`,
 } as const;
+
+/** The switcher lists only the signed-in account's own invitations, so `invitation_not_yours` cannot reach it. */
+export type SwitcherRefusal = Exclude<InvitationRefusalCode, 'invitation_not_yours'>;
 
 export function openerLabel(place: Place, waiting: number): string {
   const label = `Organisation: ${place.name}, your role ${place.role}. Switch organisation`;
@@ -149,6 +154,9 @@ export const SWITCHER_STATES = [
   'joined',
   'declined',
   'failed',
+  'busy',
+  'refused',
+  'withdrawn',
   'large',
   'managed',
 ] as const;
@@ -180,6 +188,12 @@ export function sessionFor(state: SwitcherState): Session {
     expanded: OFFER.id,
   });
 
+  const refused = (refusal: SwitcherRefusal): Session => ({
+    ...populated,
+    outcomes: { [BLUEBIRD]: { kind: 'refused', refusal } },
+    expanded: BLUEBIRD,
+  });
+
   switch (state) {
     case 'one':
       return { ...populated, places: [IRE_EVENTS], invitations: [] };
@@ -207,6 +221,16 @@ export function sessionFor(state: SwitcherState): Session {
       return { ...populated, outcomes: { [BLUEBIRD]: { kind: 'declined' } }, expanded: BLUEBIRD };
     case 'failed':
       return { ...populated, outcomes: { [BLUEBIRD]: { kind: 'failed' } }, expanded: BLUEBIRD };
+    case 'busy':
+      return {
+        ...populated,
+        outcomes: { [BLUEBIRD]: { kind: 'busy', answer: 'accept' } },
+        expanded: BLUEBIRD,
+      };
+    case 'refused':
+      return refused('invitation_expired');
+    case 'withdrawn':
+      return refused('invitation_revoked');
     case 'large':
       return { ...populated, large: true };
     case 'managed':
@@ -222,6 +246,15 @@ export function currentPlace(session: Session): Place {
 
 export function expand(session: Session, id: string): Session {
   return { ...session, expanded: session.expanded === id ? null : id };
+}
+
+/** The press in flight: both buttons off, the pressed one saying what it is doing. */
+export function sending(session: Session, id: string, yes: boolean): Session {
+  return {
+    ...session,
+    outcomes: { ...session.outcomes, [id]: { kind: 'busy', answer: yes ? 'accept' : 'decline' } },
+    expanded: id,
+  };
 }
 
 export function answer(session: Session, id: string, yes: boolean): Session {

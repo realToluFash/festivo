@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { clearOfWords, pieceBounds, piecePlacement, pieceSize } from './confettiClearance.ts';
+import {
+  CARD_PIECES,
+  clearOfWords,
+  pieceBounds,
+  piecePlacement,
+  piecesClearOf,
+  pieceSize,
+} from './confettiClearance.ts';
 
 const COVER = { width: 377, height: 500 };
 const WORDS = { x: 16, y: 200, width: 345, height: 120 };
@@ -53,5 +60,31 @@ describe('confetti keeps clear of the words (sc-29078, 8 Nov)', () => {
 
   it('keeps a piece beside the words that is clear above them', () => {
     expect(clearOfWords({ x: 0, y: 0, width: 30, height: 30 }, WORDS)).toBe(true);
+  });
+});
+
+describe('the Account, Security and Notifications card keeps its pieces off its words (sc-30411)', () => {
+  const card = { width: 328, height: 200 };
+  const words = { x: 90, y: 18, width: 218, height: 72 };
+
+  it('leaves out the pieces on a two-line pt title at 360 pt, and keeps those under it', () => {
+    const kept = piecesClearOf(CARD_PIECES, card, 1, words);
+
+    expect(kept.map(([x, y]) => [x, y])).toEqual([
+      [0.81, 0.73],
+      [0.92, 0.84],
+      [0.58, 0.9],
+    ]);
+  });
+
+  it('keeps every piece it draws spaceSm clear of the words', () => {
+    for (const [x, y, shape, size, turn] of piecesClearOf(CARD_PIECES, card, 1, words))
+      expect(clearOfWords(pieceBounds({ x, y, shape, size, turn }, card, 1), words)).toBe(true);
+  });
+
+  it('keeps the pieces beside a one-line title that ends short of them', () => {
+    const short = { x: 90, y: 34, width: 120, height: 47 };
+
+    expect(piecesClearOf(CARD_PIECES, card, 1, short)).toHaveLength(CARD_PIECES.length);
   });
 });

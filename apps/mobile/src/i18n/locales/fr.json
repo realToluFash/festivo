@@ -1010,20 +1010,20 @@
     "refused": "Rien n’a été enregistré. Votre rôle n’inclut pas l’autorisation nécessaire.",
     "refusedByRule": "Rien n’a été enregistré.",
     "searchLanguage": "Rechercher une langue",
-    "edit": "Edit details",
-    "editTitle": "Organisation details",
-    "details": "Details",
-    "defaults": "Defaults for new events",
+    "edit": "Modifier",
+    "editTitle": "Informations",
+    "details": "Informations",
+    "defaults": "Réglages des nouveaux événements",
     "invitations": "Invitations",
-    "searchCountry": "Search countries",
-    "saveVerb": "Save",
-    "savedSays": "Saved",
-    "discardTitle_one": "Discard your change?",
-    "discardTitle_other": "Discard your changes?",
-    "discardLine": "{{organisation}} stays as it was.",
-    "keepEditing": "Keep editing",
-    "discard": "Discard",
-    "discardTitle_many": "Discard your changes?"
+    "searchCountry": "Rechercher un pays",
+    "saveVerb": "Enregistrer",
+    "savedSays": "Enregistré",
+    "discardTitle_one": "Abandonner votre modification ?",
+    "discardTitle_other": "Abandonner vos modifications ?",
+    "discardLine": "Aucune modification ne sera apportée à {{organisation}}.",
+    "keepEditing": "Continuer à modifier",
+    "discard": "Abandonner",
+    "discardTitle_many": "Abandonner vos modifications ?"
   },
   "invitations": {
     "heading": "Invitations",
@@ -1235,11 +1235,11 @@
     "deleteMatches": "Le nom correspond.",
     "deleteExactly": "Tel qu’il est écrit, accents compris.",
     "failed": "La demande n’a pas abouti, donc rien n’a été modifié. Réessayez.",
-    "transferVerb": "Transfer",
-    "transferredSays": "{{name}} is now the owner",
-    "transferredLine": "You are an Admin. You both have an email saying so.",
-    "deleteScreenTitle": "Delete {{organisation}}",
-    "deleteVerb": "Delete"
+    "transferVerb": "Transférer",
+    "transferredSays": "{{name}} est désormais propriétaire",
+    "transferredLine": "Vous avez désormais le rôle Administrateur. Un e-mail de confirmation a été envoyé aux deux comptes.",
+    "deleteScreenTitle": "Supprimer {{organisation}}",
+    "deleteVerb": "Supprimer"
   },
   "domainJoining": {
     "intro": "Votre adresse utilise le domaine {{domain}}. Demandez à rejoindre l’organisation de votre entreprise, ou créez la vôtre.",
@@ -1287,13 +1287,13 @@
     "removed": "{{domain}} a été retiré.",
     "failed": "Cela n’a pas fonctionné. Réessayez dans un instant.",
     "unreadable": "Impossible de charger la liste.",
-    "lead": "People whose main email address is at a domain on this list can ask to join {{organisation}} when they sign up. Somebody who can manage members answers each one.",
-    "offUntil": "It is off until you add a domain.",
-    "addVerb": "Add",
-    "field": "Domain",
-    "confirmRemove": "Remove",
-    "addedLine": "Added. People whose main email address is at it can now ask to join.",
-    "proved": "Proved"
+    "lead": "Les personnes dont l’adresse e-mail principale appartient à un domaine de cette liste peuvent demander à rejoindre {{organisation}} lors de leur inscription. Chaque demande est traitée par une personne qui peut gérer les membres.",
+    "offUntil": "L’adhésion reste désactivée tant que vous n’avez ajouté aucun domaine.",
+    "addVerb": "Ajouter",
+    "field": "Domaine",
+    "confirmRemove": "Retirer",
+    "addedLine": "Ajouté. Les personnes dont l’adresse e-mail principale appartient à ce domaine peuvent désormais demander à rejoindre l’organisation.",
+    "proved": "Vérifié"
   },
   "membersScreen": {
     "proveOwner_one": "Pour donner à quelqu’un le rôle de Propriétaire de {{organisation}}, confirmez que c’est bien vous. Cela ne vous sera pas redemandé pendant une minute.",
@@ -1466,7 +1466,7 @@
     },
     "failed": "Cela n’a pas fonctionné. Réessayez dans un instant.",
     "unreadable": "Impossible de charger le lien d’adhésion.",
-    "lead": "Anybody with this link can ask to join {{organisation}}. Somebody who can manage members answers each request."
+    "lead": "Toute personne disposant de ce lien peut demander à rejoindre {{organisation}}. Une personne habilitée à gérer les membres répond à chaque demande."
   },
   "requestToJoin": {
     "title": "Demander à rejoindre {{organisation}}",
