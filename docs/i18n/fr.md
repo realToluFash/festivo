@@ -792,3 +792,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **Annuler une demande pour revenir** (sc-29979) : « Annuler votre demande ? » ; la sortie est « Continuer d’attendre », jamais « Annuler », et la confirmation reprend « Annuler la demande ».
 - **L’état d’un champ refusé, seulement pour le lecteur d’écran** (`mobile:forms.invalid`, sc-31909) : « Données non valides », après le nom du champ (« Adresse e-mail, Données non valides »). C’est ce que dit VoiceOver sur le web ; rien ne s’accorde avec le nom, masculin ou féminin.
 - **Le plan de table** (sc-33304 pour sc-3998, `seating.*`, `messages:seating.*`) : l’espace est « Plan de table », et le dessin « le plan de la salle ». Une "section" est une **zone**, jamais « section », réservée aux parties des paramètres : « Ajouter une zone », « Aucune zone », « La conserver ». Le lieu ouvre la ligne des unités comme une étiquette, « Lieu : {{venue}}. », pour ne jamais écrire « à Le Grand Hôtel » ; « là où se trouve {{organisation}} » évite tout accord avec l’organisation. "Seated" se dit « ayant une place », sans accord : « invités ayant une place passent dans Sans place ». Les couleurs : Bleu, Violet, Prune, Bordeaux, Rose, Marron, Vert olive, Bleu canard. L’aide en pieds reprend les abréviations CLDR françaises que le champ lit : « 12 pi 4 po, 12,5 pi ou 148 po ».
+- **9 nov. 2026. Personnalisation** (sc-34920 pour sc-30441, `web:personalisation.*`,
+  `mobile:personalisation.*`, `mobile:settings.personalisation*`,
+  `messages:validation.colour_scheme_unknown`). Le choix, ce sont « vos couleurs », et rien ne
+  s’accorde avec le nom d’un jeu : « Votre choix, {{picked}}, n’a pas été enregistré. Vous gardez
+  {{kept}}. ». "Current" est « Choix actuel », jamais « Actuel·le », que « Fruits rouges » ou
+  « Tenue de soirée » ne pourraient porter. « Toutes les pages sont désormais à vos couleurs ». Seul le
+  refus de l’API dit « jeux de couleurs ». Les huit noms : Violet, Cobalt, Jardin, Agrumes,
+  Fruits rouges, Tenue de soirée (Black tie, la tenue exigée), Sorbet et Terre cuite ; Violet,
+  Cobalt et Sorbet sont les mots français (`same-as-english.json`).
