@@ -103,14 +103,24 @@ export const SETTINGS_ID: Partial<Record<Tab, string>> = { Settings: 'home.openS
 export function Glass({
   children,
   height = 40,
+  grows = false,
   style,
 }: {
   children: ReactNode;
   height?: number;
+  /** Taller than `height` when its words wrap, rather than clipped to it. */
+  grows?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <View style={[styles.glass, { height, borderRadius: height / 2 }, style]}>
+    <View
+      style={[
+        styles.glass,
+        grows ? { minHeight: height } : { height },
+        { borderRadius: height / 2 },
+        style,
+      ]}
+    >
       <View style={[StyleSheet.absoluteFill, styles.glassFill]} />
       {children}
     </View>

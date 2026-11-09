@@ -34,7 +34,9 @@ export const ONE_STEP_HEAVIER = {
 
 /** Drops the weight once it has chosen the file: Android would look a 700 up in a BOLD slot that is empty, and draw Roboto. */
 export function faceStyle(flat: TextStyle, family: Family = 'sans', bold = false): TextStyle {
-  if (!loaded || family === 'system') return flat;
+  // React Native caches iOS's system font by family, size and weight, made once with Bold text as it was then; a family of its own under Bold text is a font made with it on (sc-19877).
+  if (family === 'system') return bold ? { ...flat, fontFamily: 'system-ui' } : flat;
+  if (!loaded) return flat;
 
   const { fontWeight, ...rest } = flat;
 

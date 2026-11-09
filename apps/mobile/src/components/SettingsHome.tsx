@@ -135,7 +135,7 @@ export function PersonCard({
             {person.email}
           </Text>
           {role != null && (
-            <Glass height={28} style={styles.roleChip}>
+            <Glass height={28} grows style={styles.roleChip}>
               <Text size={13} weight="semibold" accessible={false} style={styles.white}>
                 {t('settings.personRole', role)}
               </Text>
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInkOnDark,
   },
   personWords: { flex: 1, minWidth: 0, gap: 3, alignItems: 'flex-start' },
-  roleChip: { marginTop: tokens.spaceXs, paddingHorizontal: 11 },
+  roleChip: { marginTop: tokens.spaceXs, paddingHorizontal: 11, paddingVertical: 5 },
   personChevron: { width: 36, justifyContent: 'center' },
   group: {
     borderRadius: tokens.space3xl,
