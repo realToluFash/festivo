@@ -746,3 +746,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **Cancelar um pedido para voltar a entrar** (sc-29979): "Cancelar o seu pedido?"; a saída é "Continuar à espera", nunca "Cancelar", e a confirmação reutiliza "Cancelar o pedido".
 - **O estado de um campo recusado, só para o leitor de ecrã** (`mobile:forms.invalid`, sc-31909): "Dados inválidos", depois do nome do campo ("Palavra-passe, Dados inválidos"). É o que o VoiceOver diz na web; não concorda com o género do nome, masculino ou feminino.
 - **O plano de mesas** (sc-33304 para sc-3998, `seating.*`, `messages:seating.*`): a área é "Mesas" e o que se desenha, "o plano de mesas" ("o plano" dentro da área); "Floor plan" é "Planta da sala". Uma "section" é uma **zona**, nunca "secção", que na Soirely é uma parte das definições: "Adicionar uma zona", "Sem zona", "Manter a zona". O local abre a linha das unidades como etiqueta, "Local: {{venue}}.", para que nenhuma preposição tenha de concordar com o nome ("no/na"). "Seated" não concorda com o género: "convidados com lugar passam para Sem lugar". As cores: Azul, Roxo, Ameixa, Vinho, Rosa, Castanho, Verde-azeitona, Verde-petróleo. A ajuda em pés usa a vírgula decimal e as abreviaturas CLDR que o campo lê: "12 ft 4 pol., 12,5 ft ou 148 pol.".
+- **9 Nov 2026. Personalização** (sc-34920 para sc-30441, `web:personalisation.*`,
+  `mobile:personalisation.*`, `mobile:settings.personalisation*`,
+  `messages:validation.colour_scheme_unknown`). A escolha são "as suas cores", e nada concorda
+  com o nome de um esquema: "A escolha de {{picked}} não foi guardada. As suas cores continuam
+  a ser {{kept}}."; "Current" é "Atual", invariável. Sem "acompanhá-lo" nem "trazê-lo": "Só são
+  visíveis para si", "regressa a este ecrã". Só a recusa da API diz "esquemas de cores". Os oito
+  nomes: Violeta, Cobalto, Jardim, Citrinos, Frutos vermelhos, Traje de rigor (Black tie, o
+  traje exigido em Portugal), Sorvete (o sorbet, não o gelado) e Terracota.

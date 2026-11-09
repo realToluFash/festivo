@@ -54,7 +54,7 @@
     "validation.phone_too_short": "Esse número parece demasiado curto para {country}. Verifique-o e tente novamente.",
     "validation.recovery_code_required": "Introduza um dos seus códigos de recuperação.",
     "validation.timezone_invalid": "Escolha um fuso horário.",
-    "validation.colour_scheme_unknown": "That isn't one of Soirely's colour schemes, so nothing was saved. Choose one of the eight.",
+    "validation.colour_scheme_unknown": "Esse não é um dos esquemas de cores da Soirely, por isso nada foi guardado. Escolha um dos oito.",
     "validation.timezone_unknown": "Não conhecemos esse fuso horário, por isso nada foi guardado. Escolha um da lista.",
     "members.already_a_member": "Essa pessoa já é membro desta organização.",
     "members.already_a_member_named": "{email} já é membro de {organisation}. Para alterar a função desta pessoa, use a respetiva linha em Membros.",
