@@ -1,13 +1,6 @@
 import { invitationWording, refusalBody } from '@soirely/domain';
 import { useIsFocused } from 'expo-router';
-import {
-  Fragment,
-  type ReactNode,
-  type RefObject,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
