@@ -1,0 +1,232 @@
+import { wallDay } from './calendar.ts';
+import { shownPhase } from './eventStates.ts';
+import { type Greeting, type TodayEvent, today } from './today.ts';
+import type { Milestone } from './timeline.ts';
+
+export type TodayKind = 'first' | 'day' | 'quiet' | 'plan';
+
+export interface TodayStripDay<E extends TodayEvent> {
+  day: string;
+  today: boolean;
+  /** What falls on the day and has no bar across it. */
+  dots: E[];
+}
+
+export interface TodayBar<E extends TodayEvent> {
+  event: E;
+  /** Its first day in the week shown, 0 for the reader's today. */
+  start: number;
+  span: number;
+  /** Started before the week shown, so it runs in from the left edge and says which day it is on. */
+  openLeft: boolean;
+  /** Which of its days the reader's today is. */
+  dayToday: number;
+}
+
+export type TodayAgendaItem<E extends TodayEvent> =
+  | { kind: 'milestone'; event: E; milestone: Milestone }
+  | {
+      kind: 'starts' | 'continues' | 'ends';
+      event: E;
+      multiDay: boolean;
+      /** Which of its days this is. */
+      day: number;
+    };
+
+export interface TodayAgendaDay<E extends TodayEvent> {
+  day: string;
+  today: boolean;
+  daysAway: number;
+  items: TodayAgendaItem<E>[];
+}
+
+export type TodayCount =
+  | { kind: 'draft' }
+  | { kind: 'dayOf'; day: number; total: number }
+  | { kind: 'inDays'; days: number };
+
+export interface TodayCard<E extends TodayEvent> {
+  event: E;
+  count: TodayCount;
+  draft: boolean;
+  /** Its dates have reached the reader's today: a day that has started counts by its date, as the demo counts it. */
+  live: boolean;
+  finalWeek: boolean;
+}
+
+export interface TodayNow<E extends TodayEvent> {
+  event: E;
+  dayToday: number;
+  lastDay: string;
+  /** 0 when it ends today, 1 tomorrow. */
+  endsIn: number;
+}
+
+/** The line under the greeting: the first event yet to reach its first day, or none. */
+export type TodaySub<E extends TodayEvent> =
+  | { kind: 'first' }
+  | { kind: 'nothingThisWeek' }
+  /** Every event still to come is already on today's dates, and the demo gives no words for one that starts later today. */
+  | { kind: 'none' }
+  | { kind: 'startsOn'; event: E; day: string; withinWeek: boolean };
+
+export interface TodayView<E extends TodayEvent> {
+  kind: TodayKind;
+  greeting: Greeting | 'welcome';
+  /** The reader's today, `2026-11-03`. */
+  on: string;
+  days: TodayStripDay<E>[];
+  bars: TodayBar<E>[];
+  agenda: TodayAgendaDay<E>[];
+  sub: TodaySub<E>;
+  nextUp: { event: E; day: string; daysAway: number } | null;
+  cards: TodayCard<E>[];
+  now: TodayNow<E> | null;
+}
+
+export function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00Z`) - Date.parse(`${from}T00:00Z`)) / 86_400_000);
+}
+
+const FINAL_WEEK = 7;
+
+function hourIn(now: Date, timeZone: string): number {
+  return Number(
+    new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone }).format(now),
+  );
+}
+
+function firstDay(event: TodayEvent): string {
+  return wallDay(event.startsAt, event.timeZone);
+}
+
+function lastDay(event: TodayEvent): string {
+  return wallDay(event.endsAt, event.timeZone);
+}
+
+/** Today on both clients (sc-29090, sc-30413): which days, bars, cards and lines it shows, for each client to put into its own words. */
+export function todayView<E extends TodayEvent>(
+  loaded: { events: readonly E[]; at: Date },
+  now: Date,
+  reader: { timeZone: string; locale: string },
+): TodayView<E> {
+  const shown = today(loaded, now, { ...reader, hour: hourIn(now, reader.timeZone) });
+  const on = wallDay(now, reader.timeZone);
+  const first = loaded.events.length === 0;
+  const empty = shown.week.every(({ items }) => items.length === 0);
+  const kind: TodayKind = first ? 'first' : shown.now != null ? 'day' : empty ? 'quiet' : 'plan';
+  const dayOf = (event: E, day: string) => daysBetween(firstDay(event), day) + 1;
+
+  const bars: TodayBar<E>[] = [];
+  for (const { items } of shown.week)
+    for (const item of items) {
+      if (item.kind !== 'event' || !item.multiDay) continue;
+      if (bars.some((bar) => bar.event.id === item.event.id)) continue;
+
+      const start = Math.max(0, daysBetween(on, firstDay(item.event)));
+      const end = Math.min(shown.week.length - 1, daysBetween(on, lastDay(item.event)));
+
+      bars.push({
+        event: item.event,
+        start,
+        span: end - start + 1,
+        openLeft: start === 0 && !item.first,
+        dayToday: dayOf(item.event, on),
+      });
+    }
+
+  const covered = (id: string, index: number) =>
+    bars.some((bar) => bar.event.id === id && index >= bar.start && index < bar.start + bar.span);
+  const days = shown.week.map(({ day, today: isToday, items }, index) => ({
+    day,
+    today: isToday,
+    dots: [...new Map(items.map((item) => [item.event.id, item.event])).values()].filter(
+      (event) => !covered(event.id, index),
+    ),
+  }));
+
+  const agenda = shown.week
+    .filter(({ today: isToday, items }) => isToday || items.length > 0)
+    .map(({ day, today: isToday, items }) => ({
+      day,
+      today: isToday,
+      daysAway: daysBetween(on, day),
+      items: items.map((item): TodayAgendaItem<E> =>
+        item.kind === 'milestone'
+          ? { kind: 'milestone', event: item.event, milestone: item.milestone }
+          : {
+              kind: item.first ? 'starts' : item.last ? 'ends' : 'continues',
+              event: item.event,
+              multiDay: item.multiDay,
+              day: dayOf(item.event, item.day),
+            },
+      ),
+    }));
+
+  const reachedToday = (event: E) => daysBetween(on, firstDay(event)) <= 0;
+  const soonest = shown.events.find(
+    (event) => event.status !== 'draft' && event !== shown.now && !reachedToday(event),
+  );
+  const startsToday = shown.events.some(
+    (event) => event.status !== 'draft' && event !== shown.now && reachedToday(event),
+  );
+  const sub: TodaySub<E> =
+    kind === 'first'
+      ? { kind: 'first' }
+      : soonest != null
+        ? {
+            kind: 'startsOn',
+            event: soonest,
+            day: firstDay(soonest),
+            withinWeek: daysBetween(on, firstDay(soonest)) < shown.week.length,
+          }
+        : startsToday
+          ? { kind: 'none' }
+          : { kind: 'nothingThisWeek' };
+
+  const cards = shown.events.map((event): TodayCard<E> => {
+    const until = daysBetween(on, firstDay(event));
+    const draft = event.status === 'draft';
+    const live =
+      shownPhase(event, loaded.at, now) === 'happening_now' ||
+      (until <= 0 && daysBetween(on, lastDay(event)) >= 0);
+
+    return {
+      event,
+      count: draft
+        ? { kind: 'draft' }
+        : live
+          ? { kind: 'dayOf', day: 1 - until, total: event.dayCount }
+          : { kind: 'inDays', days: until },
+      draft,
+      live,
+      finalWeek: !draft && !live && until <= FINAL_WEEK,
+    };
+  });
+
+  const nextUpDay = shown.nextUp == null ? null : firstDay(shown.nextUp);
+
+  return {
+    kind,
+    greeting: kind === 'first' ? 'welcome' : shown.greeting,
+    on,
+    days,
+    bars,
+    agenda,
+    sub,
+    nextUp:
+      shown.nextUp == null || nextUpDay == null
+        ? null
+        : { event: shown.nextUp, day: nextUpDay, daysAway: daysBetween(on, nextUpDay) },
+    cards,
+    now:
+      shown.now == null
+        ? null
+        : {
+            event: shown.now,
+            dayToday: dayOf(shown.now, on),
+            lastDay: lastDay(shown.now),
+            endsIn: daysBetween(on, lastDay(shown.now)),
+          },
+  };
+}

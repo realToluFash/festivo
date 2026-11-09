@@ -158,4 +158,16 @@ describe('todayMoment', () => {
       events: [],
     });
   });
+  it('an event later today counts its day by its date: Day 1 of 1, and the line under the greeting never calls it another day', () => {
+    const tonight = event('Tonight', {
+      startsAt: '2026-11-03T19:00:00Z',
+      endsAt: '2026-11-03T23:00:00Z',
+      dayCount: 1,
+    });
+    const plan = moment([tonight]);
+
+    expect(plan.events[0]).toMatchObject({ count: 'Day 1 of 1', live: true, stage: null });
+    expect(plan.sub).toBe('');
+    expect(moment([tonight, event('Wedding')]).sub).toBe('Wedding starts on Friday.');
+  });
 });
