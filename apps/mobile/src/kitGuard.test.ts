@@ -56,6 +56,23 @@ describe('every field carries the caret colour', () => {
   });
 });
 
+describe('no field gives way to the full-screen keyboard', () => {
+  it('in every TextInput outside the design demos', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ path }) => !path.includes('/demo/'))
+      .flatMap(({ path, text }) =>
+        selfClosing('TextInput', text)
+          .filter((tag) => !keptInSight(tag.markup))
+          .map((tag) => `${path}:${tag.line}`),
+      );
+
+    expect(
+      offenders,
+      'Spread FIELD_DEFAULTS, codeProps() or passwordProps() from src/kit/fields.ts.',
+    ).toEqual([]);
+  });
+});
+
 describe('the account cards share one frame', () => {
   it('draws the card frame only in cardFrame.ts', () => {
     const offenders = sources(['src', 'app'])
@@ -1494,6 +1511,13 @@ function caretSet(markup: string): boolean {
   return (
     /\{\.\.\.(FIELD_DEFAULTS|codeProps\(|passwordProps\()/u.test(markup) ||
     /\bcursorColor=/u.test(markup)
+  );
+}
+
+function keptInSight(markup: string): boolean {
+  return (
+    /\{\.\.\.(FIELD_DEFAULTS|codeProps\(|passwordProps\()/u.test(markup) ||
+    /\bdisableFullscreenUI\b/u.test(markup)
   );
 }
 
