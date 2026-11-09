@@ -15,15 +15,21 @@ import { TodaySidebar } from '../../components/TodaySidebar.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { demoShell } from '../demoShell.ts';
 import { viewerOfRole } from './sample.ts';
+import { underSavedName, useSavedName } from './savedName.ts';
 import { type Looking, ShellContext, useShell } from '../../components/settingsShell.ts';
 import { Back, RoundButton } from '../../components/SettingsParts.tsx';
 
 /** A page whose sample someone else sees: the Settings card, its rows and the sidebar's foot follow them. */
 export function SeenBy({ looking, children }: { looking: Looking; children: ReactNode }) {
   const shell = useShell();
+  const saved = useSavedName();
   const seen = useMemo(
-    () => ({ ...shell, looking, viewer: viewerOfRole(looking.role) }),
-    [shell, looking],
+    () => ({
+      ...shell,
+      looking: underSavedName(looking, saved),
+      viewer: viewerOfRole(looking.role),
+    }),
+    [shell, looking, saved],
   );
 
   return <ShellContext.Provider value={seen}>{children}</ShellContext.Provider>;
