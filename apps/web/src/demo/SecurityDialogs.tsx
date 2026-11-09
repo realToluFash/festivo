@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { offButton } from '../offButton.ts';
 import { DISCARD, VERIFY_WORDS as V } from './account.ts';
-import { ExpiredCode } from './AccountDialogs.tsx';
+import { ExpiredCode } from '../components/AccountParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import {
   ASK_WORDS,
@@ -272,7 +272,7 @@ export function SetCodeDialog({
     >
       <Note>{P.codeIntro(email)}</Note>
       {expired ? (
-        <ExpiredCode newest={P.codeNewest} />
+        <ExpiredCode title={V.expired} line={V.expiredLine(P.codeNewest)} />
       ) : (
         <div className="desk-fields security-fields">
           <Field

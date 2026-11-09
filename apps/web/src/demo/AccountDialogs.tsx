@@ -25,6 +25,7 @@ import {
   zoneMatches,
   zoneRefusal,
 } from './account.ts';
+import { ExpiredCode } from '../components/AccountParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { COUNTRIES, SAMPLE, codeChoice } from './rules.ts';
 import { Ask, Dialog, Field, Note, RowWords } from '../components/SettingsParts.tsx';
@@ -436,16 +437,6 @@ export function ProveDialog({
   );
 }
 
-/** An expired code, in the field's place: what happened, and to use the newest code. */
-export function ExpiredCode({ newest }: { newest: string }) {
-  return (
-    <div className="account-expired" role="alert">
-      <p className="account-expired-title">{V.expired}</p>
-      <p className="desk-line">{V.expiredLine(newest)}</p>
-    </div>
-  );
-}
-
 /** Check your email or messages: the code, then Send a new code once its count ends; an expired code takes the field's place. */
 export function VerifyDialog({
   start,
@@ -508,7 +499,7 @@ export function VerifyDialog({
     >
       <Note>{words.intro(row.shown)}</Note>
       {expired ? (
-        <ExpiredCode newest={words.newest} />
+        <ExpiredCode title={V.expired} line={V.expiredLine(words.newest)} />
       ) : (
         <div className="desk-fields">
           <Field

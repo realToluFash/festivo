@@ -64,7 +64,7 @@ import {
   vendorsStart,
 } from './vendors.ts';
 import { CATEGORY_WORDS, VW } from './vendorsWords.ts';
-import './account.css';
+import '../components/AccountParts.css';
 import './vendors.css';
 
 const BUSY_MS = 900;

@@ -14,6 +14,7 @@ import {
   zoneLabel,
 } from '@soirely/domain';
 
+import { primaryFirst } from '../components/AccountParts.tsx';
 import { SAMPLE, numberLine } from './rules.ts';
 import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
 
@@ -274,10 +275,6 @@ export function yourAccount(viewer: Pick<Viewer, 'key' | 'name' | 'id'>) {
     phone: contact('phone-1', 'phone', FIRST_PHONE, true, true),
     otherPhone: contact('phone-2', 'phone', SECOND_PHONE, false),
   };
-}
-
-export function primaryFirst(rows: readonly Contact[]): Contact[] {
-  return [...rows].sort((one, other) => Number(other.primary) - Number(one.primary));
 }
 
 export function primaryOf(rows: readonly Contact[]): Contact | null {

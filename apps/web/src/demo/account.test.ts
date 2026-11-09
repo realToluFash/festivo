@@ -12,13 +12,13 @@ import {
   emailRefusal,
   madePrimary,
   phoneRefusal,
-  primaryFirst,
   proveProblems,
   verifiedWords,
   zoneChosen,
   zoneMatches,
   zoneRefusal,
 } from './account.ts';
+import { primaryFirst } from '../components/AccountParts.tsx';
 import { SAMPLE } from './rules.ts';
 import { VIEWERS } from './settings.ts';
 
