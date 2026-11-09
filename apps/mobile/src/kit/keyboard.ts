@@ -260,6 +260,11 @@ export function notesGiveWay({ room, step, notes, away }: NotesGiveWay): boolean
   return room != null && step + (away ? notes : 0) > room;
 }
 
+/** Whether a field focused as its screen opens waits for the screen to arrive. Android raises keys asked for mid-slide, and the form lifted then is measured where it is passing, a title too high (sc-35488). */
+export function focusWaitsForArrival(os: string): boolean {
+  return os === 'android';
+}
+
 export interface Turned {
   os: string;
   phone: boolean;
