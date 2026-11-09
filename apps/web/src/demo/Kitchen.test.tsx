@@ -341,8 +341,8 @@ describe('Changes since on the kitchen sheet (sc-30692)', () => {
 
       expect(within(changes()).getByRole('heading', { level: 2 }).textContent).toBe(SINCE);
       expect(lines()).toEqual([
-        'New allergy: sesame (Yusuf Ibrahim)',
-        '[New diet: halal (Ngozi Eze)]',
+        'New allergy: Sesame (Yusuf Ibrahim)',
+        'New diet: Halal (Ngozi Eze)',
         '2 more coming',
         'Pepper soup 50 to 52',
         'Jollof rice with chicken 45 to 48',
@@ -372,7 +372,10 @@ describe('Changes since on the kitchen sheet (sc-30692)', () => {
   it('gives counts and no name without guests.manage', SLOW, async () => {
     await kitchen('changes_counts');
 
-    expect(lines().slice(0, 2)).toEqual(['1 more sesame allergy', '[1 more halal diet]']);
+    expect(lines().slice(0, 2)).toEqual([
+      'New allergy: Sesame (1 guest)',
+      'New diet: Halal (1 guest)',
+    ]);
     expect(changes().textContent).not.toContain('Yusuf');
   });
 
@@ -386,10 +389,21 @@ describe('Changes since on the kitchen sheet (sc-30692)', () => {
     );
   });
 
+  it('never nets a count without guests.manage', SLOW, async () => {
+    await kitchen('changes_swap');
+
+    expect(lines()).toEqual([
+      'New allergy: Peanuts (1 guest)',
+      'Allergy removed: Peanuts (1 guest)',
+    ]);
+    expect(changes().textContent).not.toContain('Amaka');
+    expect(within(changes()).getByRole('heading', { level: 2 }).textContent).toBe(SINCE);
+  });
+
   it('counts an erased guest for every reader', SLOW, async () => {
     await kitchen('changes_erased');
 
-    expect(lines()).toContain('[1 fewer shellfish allergy]');
+    expect(lines()).toContain('Allergy removed: Shellfish (1 guest)');
     expect(changes().textContent).not.toContain('Kwame');
   });
 

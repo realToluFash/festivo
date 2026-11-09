@@ -230,6 +230,10 @@ const STATES = {
     name: 'One guest stops coming, one starts',
     starts: { kitchen: changed('person') },
   },
+  changes_swap: {
+    name: 'Without guests.manage: one guest’s Peanuts removed, another’s recorded, never netted',
+    starts: { kitchen: changed('swap'), names: false },
+  },
   changes_erased: {
     name: 'A guest erased since the copy: counts only',
     starts: { kitchen: changed('erased') },
@@ -705,6 +709,7 @@ export const CHANGES_PAGES: readonly { name: string; states: readonly DemoLink[]
         'changes_menu',
         'changes_variant_side',
         'changes_person',
+        'changes_swap',
         'changes_erased',
         'changes_long',
       ] as const
