@@ -1,10 +1,7 @@
 import {
   type CalendarMonth,
-  type CalendarShow,
   type CalendarView,
-  CALENDAR_SHOWS,
   addDays,
-  calendarDays,
   firstDayOfWeek,
   formattingLocale,
   inMonth,
@@ -19,9 +16,12 @@ import { useSearchParams } from 'react-router';
 import {
   type CalendarStart,
   type Feed,
+  type Item,
+  type Show,
   CAL_WORDS as W,
   FEED_WORDS,
   KEPT,
+  SHOWS,
   TODAY,
   agendaOf,
   calendarStart,
@@ -36,10 +36,12 @@ import {
   movedDay,
   pinnedOf,
   sameMonth,
+  showWord,
   topsOf,
   weekStart,
   weeksOf,
 } from './calendar.ts';
+import { daysFor, needsLanding, seeded } from './calendarNeeds.ts';
 import { CalendarSubscribe } from './CalendarSubscribe.tsx';
 import { AgendaList, BrokenLine, DayPanel, MonthWeeks } from './CalendarWeeks.tsx';
 import { EventsShell } from './EventParts.tsx';
@@ -164,7 +166,7 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
   const firstDay = firstDayOfWeek(locale);
   const [load, setLoad] = useState(start.load);
   const [view, setView] = useState<CalendarView>(start.view);
-  const [show, setShow] = useState<CalendarShow>(start.show);
+  const [show, setShow] = useState<Show>(start.show);
   const [menu, setMenu] = useState(start.menu);
   const [open, setOpen] = useState(start.open);
   const [feed, setFeed] = useState<Feed | null>(start.feed);
@@ -180,28 +182,39 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
     monthOfDay(start.view === 'month' ? addDays(weekStart(start.at, firstDay), 6) : start.at),
   );
   const [, setRedraw] = useState(0);
-  const events = useMemo(
-    () =>
-      start.none
-        ? []
-        : listedOf(start.reunion ? [...sampleEvents(), REUNION] : sampleEvents(), CLOCKS.rest),
-    [start],
-  );
-  const days = useMemo(() => calendarDays(events, show), [events, show]);
+  const events = useMemo(() => {
+    if (start.none) return [];
+
+    const listed = listedOf(
+      start.reunion ? [...sampleEvents(), REUNION] : sampleEvents(),
+      CLOCKS.rest,
+    );
+
+    return start.needs == null ? listed : seeded(listed, start.needs);
+  }, [start]);
+  const days = useMemo(() => daysFor(events, show, locale), [events, show, locale]);
   const weeks = useMemo(
     () => weeksOf(range.from, range.to, firstDay, days),
     [range, firstDay, days],
   );
   const tops = useMemo(() => topsOf(weeks), [weeks]);
-  const entries = useMemo(() => agendaOf(range.from, range.to, days, TODAY), [range, days]);
+  const entries = useMemo(
+    () => agendaOf(range.from, range.to, days, TODAY, show !== 'needs'),
+    [range, days, show],
+  );
   const scroller = useRef<HTMLDivElement>(null);
   const showButton = useRef<HTMLButtonElement>(null);
   const subscribe = useRef<HTMLButtonElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
-  const aim = useRef<Aim | null>({ day: start.at, glide: false, turn: false, pin: null });
+  const aim = useRef<Aim | null>({
+    day: landed(start.view, start.show, days, start.at),
+    glide: false,
+    turn: false,
+    pin: null,
+  });
   const focusTo = useRef<string | null>(null);
   const toPanel = useRef(false);
-  const toTodayHeading = useRef(false);
+  const headingTo = useRef<string | null>(null);
   const growing = useRef<number | 'after' | null>(null);
   const gliding = useRef(0);
 
@@ -302,13 +315,17 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
       heading.current.focus();
     }
 
-    const todayHeading = toTodayHeading.current
-      ? box?.querySelector<HTMLElement>('.cal-agenda-day.is-today .cal-date')
-      : null;
+    const landing = headingTo.current;
+    const landingHeading =
+      landing == null
+        ? null
+        : [...(box?.querySelectorAll<HTMLElement>('[data-entry]') ?? [])]
+            .find((one) => one.dataset.entry === landing)
+            ?.querySelector<HTMLElement>('h2.cal-date, .cal-nothing[tabindex]');
 
-    if (todayHeading != null) {
-      toTodayHeading.current = false;
-      todayHeading.focus({ preventScroll: true });
+    if (landingHeading != null) {
+      headingTo.current = null;
+      landingHeading.focus({ preventScroll: true });
     }
   });
 
@@ -359,25 +376,37 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
   }
 
   function toToday(): void {
+    const day = landed(view, show, days, TODAY);
+
     setFocusDay(TODAY);
-    toTodayHeading.current = view === 'agenda' && load !== 'failed';
-    goTo({ day: TODAY, glide: true, turn: false, pin: pinFor(TODAY) });
+    headingTo.current = view === 'agenda' && load !== 'failed' ? day : null;
+    goTo({ day, glide: true, turn: false, pin: pinFor(TODAY) });
   }
 
   function pickView(next: CalendarView): void {
     if (next === view) return;
 
-    toTodayHeading.current = false;
+    headingTo.current = null;
     setView(next);
     setOpen(null);
-    goTo({ day: placeOf(pinned), glide: false, turn: false, pin: pinned });
+    goTo({
+      day: landed(next, show, days, placeOf(pinned)),
+      glide: false,
+      turn: false,
+      pin: pinned,
+    });
   }
 
-  function pickShow(next: CalendarShow): void {
+  function pickShow(next: Show): void {
     setShow(next);
     setMenu(false);
     showButton.current?.focus();
-    goTo({ day: placeOf(pinned), glide: false, turn: false, pin: pinned });
+    goTo({
+      day: landed(view, next, daysFor(events, next, locale), placeOf(pinned)),
+      glide: false,
+      turn: false,
+      pin: pinned,
+    });
   }
 
   function openDay(day: string): void {
@@ -408,7 +437,7 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
     window.setTimeout(() => setLoad('loaded'), 700);
   }
 
-  const showWord = show === 'events' ? W.showEvents : W.showAll;
+  const needs = show === 'needs';
   const quietMonth = view === 'month' && load === 'loaded' && !monthHasItems(pinned, days);
   const lit = open ?? (inGrid ? focusDay : null);
 
@@ -468,14 +497,14 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
                 <button
                   ref={showButton}
                   type="button"
-                  className={show === 'events' ? 'cal-pill cal-show is-on' : 'cal-pill cal-show'}
+                  className={show === 'all' ? 'cal-pill cal-show' : 'cal-pill cal-show is-on'}
                   aria-haspopup="menu"
                   aria-expanded={menu}
-                  aria-label={W.chosen(W.show, showWord)}
+                  aria-label={W.chosen(W.show, showWord(show))}
                   onClick={() => setMenu((now) => !now)}
                 >
                   <Glyph name="filter" size={17} weight={2.2} />
-                  {show === 'events' ? W.showEvents : W.show}
+                  {show === 'all' ? W.show : showWord(show)}
                 </button>
                 {menu && (
                   <ShowMenu
@@ -506,7 +535,11 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
                   {W.loading}
                 </p>
               )}
-              {quietMonth && <p className="cal-quiet">{W.emptyMonth(monthName(pinned, locale))}</p>}
+              {quietMonth && (
+                <p className="cal-quiet">
+                  {(needs ? W.emptyNeedsMonth : W.emptyMonth)(monthName(pinned, locale))}
+                </p>
+              )}
               <div className={open == null ? 'cal-body' : 'cal-body is-open'}>
                 <div className="cal-weeks">
                   <div ref={scroller} className="cal-scroll" onScroll={scrolled}>
@@ -526,6 +559,7 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
                         lit={lit}
                         open={open}
                         loading={load === 'loading'}
+                        needs={needs}
                         onOpen={openDay}
                         onMove={move}
                         onFocusIn={(at) => {
@@ -535,7 +569,13 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
                         onFocusOut={() => setInGrid(false)}
                       />
                     ) : (
-                      <AgendaList entries={entries} from={agendaDay} locale={locale} />
+                      <AgendaList
+                        entries={entries}
+                        from={agendaDay}
+                        landing={landed('agenda', show, days, TODAY)}
+                        needs={needs}
+                        locale={locale}
+                      />
                     )}
                   </div>
                 </div>
@@ -544,6 +584,7 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
                     day={open}
                     items={days.get(open) ?? []}
                     locale={locale}
+                    needs={needs}
                     headingRef={heading}
                     onClose={closeDay}
                   />
@@ -567,6 +608,15 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
 }
 
 const VIEWS: readonly CalendarView[] = ['month', 'agenda'];
+
+function landed(
+  view: CalendarView,
+  show: Show,
+  days: ReadonlyMap<string, Item[]>,
+  day: string,
+): string {
+  return view === 'agenda' && show === 'needs' ? needsLanding(days, day) : day;
+}
 
 function ViewSwitch({
   view,
@@ -618,9 +668,9 @@ function ShowMenu({
   onPick,
   onClose,
 }: {
-  show: CalendarShow;
+  show: Show;
   button: RefObject<HTMLButtonElement | null>;
-  onPick: (next: CalendarShow) => void;
+  onPick: (next: Show) => void;
   onClose: (back: boolean) => void;
 }) {
   const menu = useRef<HTMLDivElement>(null);
@@ -674,7 +724,7 @@ function ShowMenu({
 
   return (
     <div ref={menu} className="cal-menu" role="menu" aria-label={W.show}>
-      {CALENDAR_SHOWS.map((one) => (
+      {SHOWS.map((one) => (
         <button
           key={one}
           type="button"
@@ -684,7 +734,7 @@ function ShowMenu({
           tabIndex={-1}
           onClick={() => onPick(one)}
         >
-          <span className="today-grow">{one === 'events' ? W.showEvents : W.showAll}</span>
+          <span className="today-grow">{showWord(one)}</span>
           <span className="cal-menu-tick">
             {show === one && <Glyph name="tick" size={18} weight={2.6} />}
           </span>

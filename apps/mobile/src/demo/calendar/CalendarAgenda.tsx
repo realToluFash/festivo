@@ -14,11 +14,13 @@ import { tokens } from '../../theme/tokens.ts';
 import { DayRows } from './CalendarDay.tsx';
 import {
   type AgendaEntry,
+  type Show,
   dayHeading,
   dayNumber,
   monthName,
   weekdayShort,
 } from './CalendarModel.ts';
+import { say } from './CalendarWords.ts';
 
 function open(href: string) {
   router.push(href as Href);
@@ -31,6 +33,7 @@ const AgendaRow = memo(function AgendaRow({
   entry,
   first,
   today,
+  show,
   locale,
   big,
   lead,
@@ -39,6 +42,7 @@ const AgendaRow = memo(function AgendaRow({
   entry: AgendaEntry;
   first: boolean;
   today: string;
+  show: Show;
   locale: string;
   big: boolean;
   lead: number;
@@ -60,6 +64,19 @@ const AgendaRow = memo(function AgendaRow({
           {monthName(entry.month, locale)}
         </Text>
       </View>
+    );
+
+  if (entry.kind === 'empty')
+    return (
+      <Text
+        size={15}
+        weight="medium"
+        onLayout={(event) => onY(entry.key, event.nativeEvent.layout.y)}
+        style={[styles.secondary, styles.said]}
+        testID={`calendar.agenda.${entry.key}`}
+      >
+        {say.emptyNeedsMonth(monthName(entry.month, locale))}
+      </Text>
     );
 
   const on = entry.day === today;
@@ -95,7 +112,7 @@ const AgendaRow = memo(function AgendaRow({
           </Text>
         </View>
         <View style={[styles.grow, entry.items.length === 0 && styles.emptyAt]}>
-          <DayRows items={entry.items} locale={locale} big={big} onOpen={open} />
+          <DayRows items={entry.items} show={show} locale={locale} big={big} onOpen={open} />
         </View>
       </View>
     </View>
@@ -107,6 +124,7 @@ export function Agenda({
   entries,
   land,
   today,
+  show,
   locale,
   big,
   lead,
@@ -121,6 +139,7 @@ export function Agenda({
   /** The entry it lands on as it opens: today, or the month asked for. */
   land: string;
   today: string;
+  show: Show;
   locale: string;
   big: boolean;
   lead: number;
@@ -161,6 +180,7 @@ export function Agenda({
           entry={entry}
           first={index === 0}
           today={today}
+          show={show}
           locale={locale}
           big={big}
           lead={lead}
@@ -184,4 +204,5 @@ const styles = StyleSheet.create({
   weekday: { lineHeight: 16 },
   number: { lineHeight: 26 },
   emptyAt: { paddingTop: tokens.spaceLg },
+  said: { lineHeight: 15 * 1.45, paddingVertical: tokens.spaceSm },
 });

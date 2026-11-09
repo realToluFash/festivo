@@ -85,7 +85,7 @@ const buttonNamed = (label: string) =>
 const requestOf = (id: string) => document.getElementById(`request-${id}`);
 const answerOf = (id: string, answer: RecoveryAnswer) =>
   requestOf(id)?.querySelectorAll<HTMLElement>('.desk-text')[answer === 'approve' ? 0 : 1] ?? null;
-const saysOf = () => document.querySelector<HTMLElement>('.desk-main .desk-says');
+const cardWords = () => document.querySelector<HTMLElement>('.desk-main .desk-said-lines');
 
 /** Members at a desk in B (Web-Members-*.dc.html): the list, a person in its place, and every dialog, on sample data. */
 export function Members({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
@@ -108,7 +108,10 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
   const [leads, setLeads] = useState(start.leads);
   const [handed, setHanded] = useState(start.handed);
   const split = useDeskSplit();
-  const landsOnCard = start.notice?.kind === 'removed' && start.notice.handed != null;
+  const landsOnCard =
+    start.dialog == null &&
+    (start.notice?.kind === 'recovered' ||
+      (start.notice?.kind === 'removed' && start.notice.handed != null));
   const toSays = useRef(landsOnCard);
   const moved = useRef(landsOnCard);
 
@@ -136,8 +139,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
   useEffect(() => {
     if (!moved.current) return;
     moved.current = false;
-    if (toSays.current)
-      focusWhenFree(() => document.querySelector<HTMLElement>('.desk-main .desk-said-lines'));
+    if (toSays.current) focusWhenFree(cardWords);
     else if (!split || open == null) document.querySelector<HTMLElement>('.desk-main h1')?.focus();
     toSays.current = false;
   }, [open, split]);
@@ -246,15 +248,15 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         setNotice({ kind: 'recovered', id, answer });
         setLit(null);
         close();
-        focusWhenFree(saysOf);
+        focusWhenFree(cardWords);
       }}
       onRecoveryGone={(id) => {
         const next = recoveries.find((one) => one.id !== id);
         setRecoveries((now) => now.filter((one) => one.id !== id));
-        setNotice(null);
+        setNotice((was) => (was?.kind === 'recovered' ? was : null));
         setLit(null);
         close();
-        focusWhenFree(() => (next == null ? saysOf() : requestOf(next.id)));
+        focusWhenFree(() => (next == null ? cardWords() : requestOf(next.id)));
       }}
     />
   );

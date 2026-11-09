@@ -1,10 +1,13 @@
-import { calendarDays, firstDayOfWeek, keptCalendarPlace } from '@soirely/domain';
+import { calendarDays, firstDayOfWeek, keptCalendarPlace, wallDay } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
 import {
   type Bar,
+  type Item,
+  type Listed,
   type Week,
   CAL_WORDS,
+  SHOWS,
   TODAY,
   agendaOf,
   agendaStop,
@@ -27,6 +30,14 @@ import {
   weekStart,
   weeksOf,
 } from './calendar.ts';
+import {
+  daysFor,
+  isOverdue,
+  needsDays,
+  needsLabel,
+  needsLanding,
+  seeded,
+} from './calendarNeeds.ts';
 import { CLOCKS, REUNION, sampleEvent, sampleEvents } from './events.ts';
 import { meshFor } from '../mesh.ts';
 
@@ -294,5 +305,212 @@ describe('the Calendar in B · A · Weeks as lanes (sc-30329)', () => {
     expect(eased(1)).toBeCloseTo(1);
     expect(eased(0.5)).toBeGreaterThan(0.8);
     expect(eased(0.25)).toBeLessThan(eased(0.5));
+  });
+});
+
+function titlesOn(days: ReadonlyMap<string, Item[]>, day: string): string[] {
+  return (days.get(day) ?? []).map((item) =>
+    item.kind === 'milestone' ? item.milestone.title : item.event.name,
+  );
+}
+
+describe('Only what needs you, the Calendar’s third Show (sc-32803)', () => {
+  const owner = seeded(listed, 'owner');
+  const needs = needsDays(owner, 'en');
+
+  it('offers it last, and every visit starts on Events and milestones', () => {
+    expect(SHOWS).toEqual(['all', 'events', 'needs']);
+    expect(calendarStart(null, null).show).toBe('all');
+    expect(calendarStart('needsMonth', null).show).toBe('needs');
+
+    const kept = keptCalendarPlace({ view: 'agenda', month: NOVEMBER });
+
+    expect(calendarStart(null, kept).show).toBe('all');
+  });
+
+  it('lists the You milestones the reader can change, by time then title', () => {
+    expect([...needs.keys()].sort()).toEqual([
+      '2026-11-02',
+      '2026-11-03',
+      '2026-11-04',
+      '2026-11-09',
+      '2026-11-11',
+    ]);
+    expect(titlesOn(needs, '2026-11-04')).toEqual([
+      'Confirm the florist',
+      'Send the seating plan to the venue',
+      'Give final numbers to the kitchen',
+      'Seat the last 12 guests',
+    ]);
+    expect(titlesOn(needs, '2026-11-10')).toEqual([]);
+  });
+
+  it('breaks a same-minute tie across events by the event’s start, then its name, as the app does', () => {
+    const [first, second] = listed;
+
+    if (first == null || second == null) throw new Error('No sample');
+
+    const owed = (title: string): Listed['milestones'][number] => ({
+      at: '2026-11-20T09:00:00Z',
+      title,
+      note: null,
+      owner: 'you',
+      area: 'menu',
+      action: null,
+    });
+    const early: Listed = {
+      ...first,
+      name: 'Wedding',
+      startsAt: '2026-11-25T12:00:00Z',
+      timeZone: 'UTC',
+      permissions: ['menu.manage'],
+      milestones: [owed('Order the cake')],
+    };
+    const late: Listed = {
+      ...second,
+      name: 'Reunion',
+      startsAt: '2026-12-05T12:00:00Z',
+      timeZone: 'UTC',
+      permissions: ['menu.manage'],
+      milestones: [owed('Book the band')],
+    };
+
+    expect(titlesOn(needsDays([late, early], 'en'), '2026-11-20')).toEqual([
+      'Order the cake',
+      'Book the band',
+    ]);
+    expect(
+      titlesOn(needsDays([{ ...late, startsAt: early.startsAt }, early], 'en'), '2026-11-20'),
+    ).toEqual(['Book the band', 'Order the cake']);
+  });
+
+  it('shows a reader who can only view nothing at all', () => {
+    expect(needsDays(seeded(listed, 'readOnly'), 'en').size).toBe(0);
+  });
+
+  it('leaves out events, Automatic and Event milestones', () => {
+    const [wedding] = owner.filter((event) => event.id === 'evt-wed-4');
+
+    if (wedding == null) throw new Error('No wedding');
+
+    const automatic: Listed = {
+      ...wedding,
+      milestones: [
+        ...wedding.milestones,
+        {
+          at: '2026-11-05T09:00:00Z',
+          title: 'Reminders go out',
+          note: null,
+          owner: 'automatic',
+          area: 'menu',
+          action: null,
+        },
+      ],
+    };
+    const items = [...needsDays([automatic], 'en').values()].flat();
+
+    expect(items).not.toHaveLength(0);
+    expect(items.every((item) => item.kind === 'milestone' && item.milestone.owner === 'you')).toBe(
+      true,
+    );
+    expect(titlesOn(needsDays([automatic], 'en'), '2026-11-05')).toEqual([]);
+    expect(titlesOn(daysFor(owner, 'all', 'en'), '2026-11-05')).toContain(
+      'Adaeze & Tunde’s wedding starts',
+    );
+  });
+
+  it('puts a Lagos row read from Los Angeles across midnight on Lagos’s day', () => {
+    const [first] = listed;
+
+    if (first == null) throw new Error('No sample');
+
+    const lagos: Listed = {
+      ...first,
+      timeZone: 'Africa/Lagos',
+      permissions: ['menu.manage'],
+      milestones: [
+        {
+          at: '2026-11-10T23:30:00Z',
+          title: 'Give final numbers to the kitchen',
+          note: null,
+          owner: 'you',
+          area: 'menu',
+          action: null,
+        },
+      ],
+    };
+
+    expect(wallDay('2026-11-10T23:30:00Z', 'America/Los_Angeles')).toBe('2026-11-10');
+    expect([...needsDays([lagos], 'en').keys()]).toEqual(['2026-11-11']);
+  });
+
+  it('keeps an overdue row on its own past day, and names it overdue', () => {
+    const [toasts] = needs.get('2026-11-02') ?? [];
+    const [cake, band] = needs.get(TODAY) ?? [];
+
+    if (toasts?.kind !== 'milestone' || cake?.kind !== 'milestone' || band?.kind !== 'milestone')
+      throw new Error('Rows missing');
+
+    expect(isOverdue(toasts.milestone, CLOCKS.rest)).toBe(true);
+    expect(isOverdue(cake.milestone, CLOCKS.rest)).toBe(true);
+    expect(isOverdue(band.milestone, CLOCKS.rest)).toBe(false);
+    expect(needsLabel(cake, EN, CLOCKS.rest)).toBe(
+      CAL_WORDS.needsRowLabelOverdue(
+        'Confirm the cake',
+        'Adaeze & Tunde’s wedding',
+        rowLine(cake, EN),
+      ),
+    );
+    expect(needsLabel(band, EN, CLOCKS.rest)).toBe(
+      CAL_WORDS.needsRowLabel(
+        'Pay the band’s balance',
+        'Adaeze & Tunde’s wedding',
+        rowLine(band, EN),
+      ),
+    );
+  });
+
+  it('names the zone of a row away from the reader’s', () => {
+    const [deposit] = needs.get('2026-11-09') ?? [];
+
+    expect(deposit?.kind === 'milestone' && rowLine(deposit, EN)).toMatch(/Europe\/Madrid$/);
+  });
+
+  it('drops today’s rows when their areas stop returning them', () => {
+    const later = needsDays(seeded(listed, 'todayEmpty'), 'en');
+
+    expect(later.has(TODAY)).toBe(false);
+    expect(later.has('2026-11-02')).toBe(true);
+  });
+
+  it('lists only the days that hold a row in Agenda, and a month with none as one line', () => {
+    const entries = agendaOf(NOVEMBER, { year: 2026, month: 12 }, needs, TODAY, false);
+
+    expect(entries.map((entry) => entry.day)).toEqual([
+      '2026-11-02',
+      TODAY,
+      '2026-11-04',
+      '2026-11-09',
+      '2026-11-11',
+      '2026-12-01',
+    ]);
+    expect(entries.at(-1)?.empty).toBe(true);
+
+    const later = needsDays(seeded(listed, 'todayEmpty'), 'en');
+
+    expect(
+      agendaOf(NOVEMBER, NOVEMBER, later, TODAY, false).some((entry) => entry.day === TODAY),
+    ).toBe(false);
+  });
+
+  it('lands Today on today, else the month’s next day with a row, else its last, else its line', () => {
+    const later = needsDays(seeded(listed, 'todayEmpty'), 'en');
+    const before = new Map([...later].filter(([day]) => day < TODAY));
+
+    expect(needsLanding(needs, TODAY)).toBe(TODAY);
+    expect(needsLanding(later, TODAY)).toBe('2026-11-04');
+    expect(needsLanding(before, TODAY)).toBe('2026-11-02');
+    expect(needsLanding(new Map(), TODAY)).toBe('2026-11-01');
+    expect(needsLanding(needs, '2026-12-01')).toBe('2026-12-01');
   });
 });

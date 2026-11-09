@@ -11,10 +11,15 @@ import {
 } from 'react-native';
 
 import { eventColour } from '../../components/EventMesh.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import {
+  type Item,
   type Piece,
+  type Show,
+  isYou,
+  overdueIn,
   type Week,
   type WeekLook,
   barLook,
@@ -72,6 +77,22 @@ export function EventSquare({
         }}
       />
     </View>
+  );
+}
+
+/** Main's You shape, ●, drawn as a filled circle. */
+export function YouDot({
+  side = 8,
+  ink = tokens.colorAttentionText,
+}: {
+  side?: number;
+  ink?: string;
+}) {
+  return (
+    <View
+      {...hidden}
+      style={{ width: side, height: side, borderRadius: side / 2, backgroundColor: ink }}
+    />
   );
 }
 
@@ -241,18 +262,27 @@ function Bar({
   );
 }
 
+function MarkShape({ item, late }: { item: Item; late: boolean }) {
+  if (late) return <Glyph name="clock" size={11} ink={tokens.colorBroken} weight={2.4} />;
+
+  return isYou(item) ? <YouDot side={8} /> : <EventSquare />;
+}
+
 function Mark({
   piece,
   width,
   look,
   locale,
+  show,
 }: {
   piece: Extract<Piece, { kind: 'mark' }>;
   width: number;
   look: GridLook;
   locale: string;
+  show: Show;
 }) {
   const { rowH, gap } = look.week;
+  const late = overdueIn(piece.item, show);
 
   return (
     <View
@@ -266,15 +296,20 @@ function Mark({
         },
       ]}
     >
-      <EventSquare />
+      <MarkShape item={piece.item} late={late} />
       {!look.big && (
         <Text
           size={look.wide ? 12.5 : 12}
-          weight="medium"
+          weight={late ? 'semibold' : 'medium'}
           numberOfLines={1}
           maxFontSizeMultiplier={FIXED}
           accessible={false}
-          style={[styles.grow, styles.secondary, styles.figures, { lineHeight: rowH }]}
+          style={[
+            styles.grow,
+            late ? styles.late : styles.secondary,
+            styles.figures,
+            { lineHeight: rowH },
+          ]}
         >
           {markWords(piece.item, look.wide, locale)}
         </Text>
@@ -338,6 +373,7 @@ export const WeekRow = memo(function WeekRow({
   today,
   lit,
   locale,
+  show,
   walked,
   onDay,
 }: {
@@ -347,6 +383,7 @@ export const WeekRow = memo(function WeekRow({
   today: string;
   lit: string | null;
   locale: string;
+  show: Show;
   /** Out of the pinned month, a week is left to scrolling, so a screen reader walks that month's weeks. */
   walked: boolean;
   onDay: (day: string, opener: ViewInstance | null) => void;
@@ -389,6 +426,7 @@ export const WeekRow = memo(function WeekRow({
               width={cw}
               look={look}
               locale={locale}
+              show={show}
             />
           ),
         )}
@@ -501,6 +539,7 @@ export function WeekList({
   lit,
   pinned,
   locale,
+  show,
   start,
   bottom,
   onDay,
@@ -514,6 +553,7 @@ export function WeekList({
   lit: string | null;
   pinned: CalendarMonth;
   locale: string;
+  show: Show;
   start: number;
   bottom: number;
   onDay: (day: string, opener: ViewInstance | null) => void;
@@ -551,6 +591,7 @@ export function WeekList({
           today={today}
           lit={lit}
           locale={locale}
+          show={show}
           walked={item.cells.some((cell) => cell.day.startsWith(key))}
           onDay={onDay}
         />
@@ -647,6 +688,7 @@ const styles = StyleSheet.create({
   tint: { opacity: 0.16 },
   stripe: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3 },
   mark: { position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
+  late: { color: tokens.colorBroken },
   square: { borderRadius: 2, alignItems: 'center', justifyContent: 'center' },
   more: { position: 'absolute' },
   skeleton: { position: 'absolute', borderRadius: 6, backgroundColor: tokens.colorInsetBorder },

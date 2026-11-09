@@ -191,6 +191,7 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
     'recoveryApproved',
     'recoveryTurnedDown',
     'recoveryClosed',
+    'recoveryClosedLast',
     'recoverySending',
     'recoveryFailed',
     'recoveryDone',
@@ -269,6 +270,11 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
     const closed = membersStart('recoveryClosed', VIEWERS.folake);
     expect(closed.dialog).toMatchObject({ answer: 'approve', phase: 'closed' });
     expect(closed.recoveries.map((one) => one.ended)).toEqual([true, false]);
+
+    const last = membersStart('recoveryClosedLast', VIEWERS.folake);
+    expect(last.dialog).toMatchObject({ id: KOFI, answer: 'approve', phase: 'closed' });
+    expect(last.recoveries.map((one) => [one.id, one.ended])).toEqual([[KOFI, true]]);
+    expect(card('recoveryClosedLast').says).toBe('Priya Shah’s two-factor is off.');
   });
 
   it('holds Kofi’s Approve on its way for the link, and opens it failed with the list as it was', () => {
@@ -351,6 +357,7 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
       '/demo/settings/members?state=recoveryApproved',
       '/demo/settings/members?state=recoveryTurnedDown',
       '/demo/settings/members?state=recoveryClosed',
+      '/demo/settings/members?state=recoveryClosedLast',
       '/demo/settings/members?state=recoverySending',
       '/demo/settings/members?state=recoveryFailed',
       '/demo/settings/members?state=recoveryDone',
