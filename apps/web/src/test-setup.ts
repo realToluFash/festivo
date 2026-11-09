@@ -26,6 +26,7 @@ __setConfig({
     clientId: 'soirely-web.test',
   },
   scheme: 'violet',
+  supportAddress: 'support@soirely.test',
 });
 
 await initI18n();

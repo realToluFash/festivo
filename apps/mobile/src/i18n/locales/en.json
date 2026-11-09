@@ -225,6 +225,7 @@
     "sentAgain": "We sent it again. Use the newest email.",
     "openMail": "Open Mail",
     "sendAgain": "Send it again",
+    "sendAgainIn": "Send it again in {{time}}",
     "limitedLine": "Too many requests. Try again at {{time}}. Any link already sent still works.",
     "failedTitle": "That did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
@@ -326,7 +327,48 @@
     "keptByRule": "{{organisation}} requires two-factor, so you cannot turn it off."
   },
   "security": {
-    "title": "Security"
+    "title": "Security",
+    "on": "Two-factor is on",
+    "off": "Two-factor is off",
+    "ways_one": "{{count, number}} way to sign in",
+    "ways_other": "{{count, number}} ways to sign in",
+    "why": "Your account holds your clients’ guest lists; two-factor keeps a stolen password from being enough.",
+    "passwordSet": "Set up · used with your email to sign in",
+    "linkedAs": "Linked · {{address}}",
+    "unlinkKept": "Unlink",
+    "unlinkNote": "Devices signed in with {{provider}} are signed out.",
+    "authenticator": "Authenticator app",
+    "authenticatorOn": "On · every sign-in asks for a code",
+    "twoFactorFoot": "Asks for a code from an authenticator app every time you sign in, whether with your password, Google or Apple.",
+    "turnOffTitle": "Turn off two-factor?",
+    "turnOffNote": "Sign-ins stop asking for a code. We will email {{email}} to say it was turned off.",
+    "thisDevice": "This device · in use now",
+    "expires": "Expires {{day}} if not used again",
+    "signOutHereNote": "You leave Soirely on this device. Your other devices stay signed in.",
+    "signOutLine": "Whoever has it is signed out, and you stay signed in here.",
+    "everywhereLine_one": "This signs out your other device, whoever has it. It has to sign in again before it can carry on. This device stays signed in.",
+    "everywhereLine_other": "This signs out your {{count, number}} other devices, whoever has them. They have to sign in again before they can carry on. This device stays signed in.",
+    "everywhereLabel": "Sign out everywhere else",
+    "linkedDone": "{{provider}} is linked. We emailed your verified addresses to say so.",
+    "twoFactorOn": "Two-factor is on. Every sign-in now asks for a code from your app.",
+    "twoFactorOff": "Two-factor is off. We emailed {{email}} to say so.",
+    "newCodesDone": "New recovery codes made. Your old ones no longer work.",
+    "unlinking": "Unlinking…",
+    "signingOut": "Signing out…",
+    "passwordShort_one": "Use at least {{count, number}} character.",
+    "passwordShort_other": "Use at least {{count, number}} characters.",
+    "changeStays": "Your password stays as it was.",
+    "nothingAdded": "Nothing is added.",
+    "done": "Done",
+    "send": "Send",
+    "resetLead": "Enter the email you sign in with. If it has an account, we send it a link to set a new password.",
+    "sentLead": "If that address has an account, we have sent it a link to set a new password. The link works once.",
+    "nothingThere": "Nothing there?",
+    "nothingThereLine": "Check your spam folder first, then send it again.",
+    "signedUpWith": "Signed up with Google or Apple? Then there is no password to reset, and the email says how you sign in instead.",
+    "gotTheLink": "Got the link? Open it on any device.",
+    "setupTitle": "Turn on two-factor",
+    "setupVerb": "Turn on"
   },
   "passwordCard": {
     "title": "Password",
@@ -692,6 +734,8 @@
     "securityLine": "Password, ways to sign in, two-factor, signed-in devices",
     "notifications": "Notifications",
     "notificationsLine": "Push and email, for each kind of notification",
+    "personalisation": "Personalisation",
+    "personalisationLine": "Your colours, for every screen",
     "organisationHeading": "Organisation",
     "organisation": "Organisation",
     "organisationLine": "Name, contact address, currency, time zone",
@@ -1018,8 +1062,6 @@
         "billing": "billing",
         "security": "security"
       },
-      "and": "{{rest}} and {{last}}",
-      "listComma": ", ",
       "mark": {
         "met": "Met.",
         "needs": "Needs you.",
@@ -1780,8 +1822,27 @@
     "emailNotSaved": "The email switch was not saved. Try again.",
     "couldNotLoad": "Your notification settings did not load.",
     "tryAgain": "Try again",
-    "pushBlocked": "Push is off on this device, so pushes won't reach you here. Turn it on in your device's settings.",
+    "pushBlocked": "Push is off on this device, so pushes won't reach you here.",
     "quietHours": "Between {{start}} and {{end}} your time, only Event day pushes come through.",
+    "kinds": "What you hear about",
+    "openSettings": "Open device settings",
+    "blockedHere": "Blocked on this device",
+    "notLoadedLine": "Check your connection and try again.",
+    "saving": "Saving…",
+    "savedTag": "Saved",
+    "saysBoth": "You hear by push and email",
+    "saysPush": "You hear by push only",
+    "saysEmail": "You hear by email only",
+    "counts": "{{push, number}} of {{total, number}} by push · {{email, number}} of {{total, number}} by email",
+    "heardBoth": "Push and email",
+    "heardPush": "Push only",
+    "heardEmail": "Email only",
+    "heardNone": "Off",
+    "emailAlwaysOn": "{{heard}} · email always on",
+    "locked": {
+      "email": "Email cannot be switched off.",
+      "push": "Push cannot be switched off."
+    },
     "category": {
       "guest_replies": "Guest replies",
       "messages": "Messages",
@@ -1796,7 +1857,7 @@
       "event_day": "Your shift or call time changed, or the event changed in its last 24 hours.",
       "event_changes": "When someone else changes whether, when or where an event you are on takes place.",
       "money": "Payments due, usage at {{low}} and {{high}}, failed payments and invoices.",
-      "account_security": "Sign-ins, your password, two-factor, ownership and access. Email cannot be switched off."
+      "account_security": "Sign-ins, your password, two-factor, ownership and access."
     }
   },
   "timeline": {
@@ -2039,5 +2100,48 @@
     },
     "startFirst": "Start your first event",
     "stepNumber": "{{n, number}}"
+  },
+  "personalisation": {
+    "title": "Personalisation",
+    "cardSays": "You see Soirely in {{scheme}}",
+    "never": "Soirely’s own colours, until you choose others.",
+    "chosen": "Your choice. {{own}} is Soirely’s own.",
+    "saved": "Saved. Every screen is in your colours now.",
+    "choose": "Choose colours",
+    "follows": "Your colours follow you on every device you sign in on. Only you see them.",
+    "keeps": "Event covers, emails, messages and guests’ pages keep their own colours.",
+    "colours": "Colours",
+    "lead": "Pick the colours Soirely shows you.",
+    "inUse": "In use now. Pick another to see it here.",
+    "notSavedYet": "Not saved yet. Save puts {{scheme}} on every screen.",
+    "restart": "Saving restarts Soirely’s screens to put your colours on, then brings you back here.",
+    "current": "Current",
+    "currentName": "{{scheme}}, current",
+    "preview": "Preview: {{scheme}}",
+    "save": "Save",
+    "saving": "Saving…",
+    "notSaved": "{{picked}} was not saved. Your colours stay {{kept}}.",
+    "notSavedOffline": "{{picked}} was not saved because you are offline. Your colours stay {{kept}}.",
+    "notLoaded": "Your colours did not load.",
+    "notLoadedLine": "Check your connection and try again.",
+    "loading": "Loading…",
+    "scheme": {
+      "violet": "Violet",
+      "cobalt": "Cobalt",
+      "garden": "Garden",
+      "citrus": "Citrus",
+      "berry": "Berry",
+      "blacktie": "Black tie",
+      "sorbet": "Sorbet",
+      "terracotta": "Terracotta"
+    },
+    "tryAgain": "Try again"
+  },
+  "focusedScreen": {
+    "cancel": "Cancel",
+    "back": "Back"
+  },
+  "failedBlock": {
+    "tryAgain": "Try again"
   }
 }

@@ -66,6 +66,21 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 Nov 2026. The app's Notification settings page** (sc-34901 for sc-30411,
+  `mobile:notificationSettings.*`). Kept as dev1 wrote it. The header says how you hear ("You
+  hear by push only"), the rows say it without a verb ("Push only", "Off"), and "Saving…" and
+  "Saved" sit beside a row as tags, so "Saved" takes no full stop. `pushBlocked` drops "Turn
+  them on in your device's settings" because the card now carries the "Open device settings"
+  step, and keeps "won't", as 29 Oct. `locked.email` takes the "cannot" that Account &
+  security's note carried, so the note now lists only what you hear about.
+- **9 Nov 2026. The app's Security page** (sc-34792 for sc-30411, `mobile:security.*`). Kept as dev1 wrote it, except `setupTitle`, now "Turn on two-factor", as the 19 Oct phrasing and the web's `twoFactorCard.setupTitle`; "Set up two-factor" stays only after account recovery. Row lines after " · " keep their lower case, as every row line.
+- **9 Nov 2026. The web's reset sent page and the lost-both support line** (sc-33788 for
+  sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). Kept as dev2 wrote
+  them; `RecoverPassword.test.tsx` pins all three. `nothingThere` ends on its own link, "send it
+  again", so the link is the verb; `sentAgain` is a short status beside it, shorter than the
+  app's toast because the page still shows the sent body. `lostBothIntro` keeps its contractions:
+  it explains, it is not an error. Its meaning in every locale: confirming starts only after the
+  password; without the password, it is Soirely support.
 - **8 Nov 2026. The app's reset sent screen and its toast** (sc-33809 for sc-29071,
   `mobile:recovery.intro`, `sentFor`, `spam`, `sentAgain`, `openMail`, `signsOut`, `changed`).
   Kept as dev2 wrote them, from the board. "Open Mail" names iOS's Mail; on Android the same
@@ -913,3 +928,12 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
   possessive on a name. The API's section limit names "a seating plan" in full, since "the
   plan" is the subscription in the same catalogues; on the Seating screen "A plan" is enough.
   The 8 colour names are words a host reads beside a swatch, never the swatch alone.
+- **9 Nov 2026. Personalisation** (sc-34920 for sc-30441, `web:personalisation.*`,
+  `mobile:personalisation.*`, `mobile:settings.personalisation*`,
+  `messages:validation.colour_scheme_unknown`). Kept as dev2 wrote it. A person's choice is
+  "your colours", never "theme" or "palette"; the eight are "colour schemes" only in the API's
+  refusal. The web says "every page", the app "every screen". "Black tie" is the scheme's name,
+  for the formal dress code, and each locale names it from its own dress code rather than
+  keeping the English. The refusal keeps "isn't" for now because
+  `AccountColourSchemeTest` pins the English; it should read "That is not one of …", which
+  waits on [dev2].

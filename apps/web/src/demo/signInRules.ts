@@ -1,4 +1,5 @@
 import type { Load } from './members.ts';
+import type { Mark } from '../components/SignInRulesParts.tsx';
 import type { Choice } from '../components/SettingsParts.tsx';
 import { HELD_STEPS, type HeldStep } from './security.ts';
 import { type DemoLink, type Viewer, VIEWERS, settingsPath } from './settings.ts';
@@ -54,7 +55,6 @@ export interface RulesPage extends Rules {
   changes: readonly Change[];
 }
 
-export type Mark = 'met' | 'needs' | 'notApplicable';
 export type RuleKey = 'method' | 'limit' | 'twoFactor';
 
 export const MARK_WORD: Record<Mark, string> = {

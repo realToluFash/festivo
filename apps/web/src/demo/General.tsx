@@ -34,6 +34,7 @@ import {
   requestLink,
 } from './general.ts';
 import { AddDomainDialog, DeleteDialog, DetailsDialog, TransferDialog } from './GeneralDialogs.tsx';
+import { Bones, Switch } from '../components/GeneralParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { HandoverAsk } from './Handover.tsx';
 import { handStart, ledBy, offeredFor } from './handover.ts';
@@ -55,7 +56,8 @@ import {
 } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { useLater } from '../useLater.ts';
-import './general.css';
+
+const SWITCH_WORDS = { on: 'On', off: 'Off' };
 
 const DETAIL_ROWS: readonly Picked[] = ['countryCode', 'currency', 'timezone', 'locale'];
 
@@ -184,7 +186,7 @@ function Domains({ start, tell }: { start: GeneralStart; tell: Tell }) {
         {!loading && !full && <TextAction label={D.add} onClick={() => setAdding(true)} />}
       </Head>
       {loading ? (
-        <Bones count={3} />
+        <Bones count={3} label={LOADING} />
       ) : domains.length === 0 ? (
         <div className="desk-empty">
           <p className="desk-empty-title">{D.off}</p>
@@ -252,25 +254,6 @@ function Domains({ start, tell }: { start: GeneralStart; tell: Tell }) {
   );
 }
 
-function Bones({ count }: { count: number }) {
-  return (
-    <div className="desk-loading" role="status" aria-label={LOADING}>
-      <span className="desk-unseen">{LOADING}</span>
-      <ul className="desk-rows general-domains" aria-hidden="true">
-        {Array.from({ length: count }, (_, bar) => (
-          <li key={bar} className="desk-row is-bones">
-            <span className="desk-sunk general-globe-bone" />
-            <span className="desk-row-words">
-              <span className={`desk-sunk is-title b${bar + 1}`} />
-              <span className={`desk-sunk is-line b${bar + 1}`} />
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 function RequestLink({ start, tell }: { start: GeneralStart; tell: Tell }) {
   const later = useLater();
   const [status, setStatus] = useState<'loaded' | 'loading' | 'failed'>(
@@ -300,7 +283,7 @@ function RequestLink({ start, tell }: { start: GeneralStart; tell: Tell }) {
       <section className="desk-block">
         <Head title={L.title} />
         {status === 'loading' ? (
-          <Bones count={1} />
+          <Bones count={1} label={LOADING} />
         ) : (
           <div className="desk-failed" role="alert">
             <p className="desk-empty-title">{L.unreadable}</p>
@@ -325,7 +308,7 @@ function RequestLink({ start, tell }: { start: GeneralStart; tell: Tell }) {
             title={L.linkLabel}
             lines={[on ? <span className="general-link">{link}</span> : L.off]}
           />
-          <Switch on={on} label={L.title} busy={busy} onChange={turn} />
+          <Switch on={on} label={L.title} words={SWITCH_WORDS} busy={busy} onChange={turn} />
         </li>
       </ul>
       {on && (
@@ -364,40 +347,6 @@ function RequestLink({ start, tell }: { start: GeneralStart; tell: Tell }) {
         />
       )}
     </section>
-  );
-}
-
-/** B's switch with its On or Off word beside it, so the state is never colour alone. */
-function Switch({
-  on,
-  label,
-  busy,
-  onChange,
-}: {
-  on: boolean;
-  label: string;
-  busy: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      className="general-switch"
-      aria-checked={on}
-      aria-label={label}
-      aria-busy={busy}
-      onClick={() => {
-        if (!busy) onChange(!on);
-      }}
-    >
-      <span className="general-track" aria-hidden="true">
-        <span className="general-knob" />
-      </span>
-      <span className="general-word" aria-hidden="true">
-        {on ? 'On' : 'Off'}
-      </span>
-    </button>
   );
 }
 

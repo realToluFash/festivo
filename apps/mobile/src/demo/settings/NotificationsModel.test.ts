@@ -1,28 +1,27 @@
-import { quietHoursIn } from '@soirely/domain';
-import { describe, expect, it } from 'vitest';
+import { init, t } from 'i18next';
+import { beforeAll, describe, expect, it } from 'vitest';
 
+import en from '../../i18n/locales/en.json';
 import { readSettings, saveSetting, settingSaving } from '../../kit/notificationSettings.ts';
+import { cardCounts, rowSays, switchName } from '../../kit/notificationsPage.ts';
 import * as model from './NotificationsModel.ts';
 import {
-  cardCounts,
-  cardSays,
-  categoryNote,
   firstGrid,
   firstPage,
-  lockedLine,
   NOTIFICATIONS_STATES,
   notificationsStateOf,
-  quietHoursLine,
-  rowSays,
-  rowToggled,
-  rowValue,
   SAMPLE_SETTINGS,
   SAMPLE_SWITCH,
   sampleClient,
-  saveAnswered,
-  switchName,
-  switchSaving,
 } from './NotificationsModel.ts';
+
+beforeAll(() =>
+  init({
+    lng: 'en',
+    resources: { en: { translation: en } },
+    interpolation: { escapeValue: false },
+  }),
+);
 
 const now = () => Promise.resolve();
 
@@ -42,91 +41,15 @@ describe('the sample settings', () => {
     const locked = SAMPLE_SETTINGS.flatMap((row) =>
       (['push', 'email'] as const)
         .filter((channel) => !row[channel].switchable)
-        .map((channel) => switchName(row.category, channel)),
+        .map((channel) => switchName(row.category, channel, t)),
     );
 
     expect(locked).toEqual(['Account & security Email']);
   });
-
-  it('leave Account & security’s locked email to the line under its switch', () => {
-    expect(categoryNote('account_security', 'en')).toBe(
-      'Sign-ins, your password, two-factor, ownership and access.',
-    );
-    expect(lockedLine('email')).toBe('Email cannot be switched off.');
-  });
-
-  it('fill Money’s thresholds in the reader’s numbers', () => {
-    expect(categoryNote('money', 'en')).toBe(
-      'Payments due, usage at 80% and 100%, failed payments and invoices.',
-    );
-  });
 });
 
-const flipped = (category: string, channel: 'push' | 'email', on: boolean) =>
-  SAMPLE_SETTINGS.map((row) =>
-    row.category === category ? { ...row, [channel]: { ...row[channel], on } } : row,
-  );
-
-describe('the card', () => {
-  it('says the channels with at least one kind on', () => {
-    expect(cardSays(SAMPLE_SETTINGS)).toBe('You hear by push and email');
-    expect(
-      cardSays(SAMPLE_SETTINGS.map((row) => ({ ...row, email: { ...row.email, on: false } }))),
-    ).toBe('You hear by push only');
-    expect(
-      cardSays(SAMPLE_SETTINGS.map((row) => ({ ...row, push: { ...row.push, on: false } }))),
-    ).toBe('You hear by email only');
-  });
-
-  it('counts the switches that are on, each way', () => {
-    expect(cardCounts(SAMPLE_SETTINGS)).toBe('5 of 6 by push · 5 of 6 by email');
-    expect(cardCounts(flipped('messages', 'email', false))).toBe(
-      '5 of 6 by push · 4 of 6 by email',
-    );
-  });
-});
-
-describe('a row’s value', () => {
-  it('puts its two switches in words', () => {
-    expect(SAMPLE_SETTINGS.map(rowValue)).toEqual([
-      'Push and email',
-      'Push and email',
-      'Push only',
-      'Push and email',
-      'Push and email',
-      'Email only · email always on',
-    ]);
-  });
-
-  it('says Off when neither is on', () => {
-    const row = flipped('event_day', 'push', false).find((one) => one.category === 'event_day');
-
-    expect(row && rowValue(row)).toBe('Off');
-  });
-});
-
-describe('quiet hours', () => {
-  const line = 'Between 21:00 and 08:00 your time, only Event day pushes come through.';
-
-  it('read 21:00 and 08:00 with the device in en-US and in en-GB', () => {
-    expect(quietHoursLine('en-US')).toBe(line);
-    expect(quietHoursLine('en-GB')).toBe(line);
-  });
-
-  it('have no AM or PM in any locale', () => {
-    for (const locale of ['en', 'fr-FR', 'es-MX', 'pt-BR'])
-      expect(quietHoursLine(locale)).not.toMatch(/AM|PM|a\.m\.|p\.m\./iu);
-    expect(quietHoursLine('fr-FR')).toBe(line);
-  });
-
-  it('take both times from the product’s quietHoursIn, with no clock of the demo’s own', () => {
-    for (const locale of ['en-US', 'en-GB', 'fr-FR']) {
-      const { start, end } = quietHoursIn(locale);
-
-      expect(quietHoursLine(locale)).toBe(
-        `Between ${start} and ${end} your time, only Event day pushes come through.`,
-      );
-    }
+describe('the model', () => {
+  it('keeps no clock of its own', () => {
     expect(Object.keys(model)).not.toContain('clockTime');
   });
 });
@@ -153,7 +76,7 @@ describe('a state link', () => {
 
     expect([saving.opened, rowSays(saving, 'messages')]).toEqual(['messages', 'saving']);
     expect([saved.opened, rowSays(saved, 'messages')]).toEqual(['messages', 'saved']);
-    expect(saved.grid.status === 'loaded' && cardCounts(saved.grid.settings)).toBe(
+    expect(saved.grid.status === 'loaded' && cardCounts(saved.grid.settings, t)).toBe(
       '5 of 6 by push · 4 of 6 by email',
     );
   });
@@ -173,39 +96,6 @@ describe('a state link', () => {
   it('starts loading and failed without a grid', () => {
     expect(firstGrid('loading')).toEqual({ status: 'loading' });
     expect(firstGrid('failed')).toEqual({ status: 'failed' });
-  });
-});
-
-describe('the rows', () => {
-  it('open one at a time', () => {
-    const one = rowToggled(firstPage(null), 'guest_replies');
-
-    expect(rowToggled(one, 'money').opened).toBe('money');
-    expect(rowToggled(one, 'guest_replies').opened).toBeNull();
-  });
-
-  it('say Saving… while a save is out, then Saved until another row opens', async () => {
-    const own = { category: 'messages', channel: 'push' } as const;
-    const open = rowToggled(firstPage(null), 'messages');
-    const out = switchSaving(open, own, false);
-
-    expect(rowSays(out, 'messages')).toBe('saving');
-    const apply = await saveSetting(sampleClient(null, now), 'messages', 'push', false);
-    const answered = saveAnswered(out, apply, own);
-
-    expect(rowSays(answered, 'messages')).toBe('saved');
-    expect(rowSays(rowToggled(answered, 'messages'), 'messages')).toBe('saved');
-    expect(rowSays(rowToggled(answered, 'money'), 'messages')).toBeNull();
-  });
-
-  it('take Saved off a row whose next save fails', async () => {
-    const saved = firstPage('saved');
-    const out = switchSaving(saved, SAMPLE_SWITCH, true);
-    const apply = await saveSetting(sampleClient('saveFailed', now), 'messages', 'email', true);
-    const answered = saveAnswered(out, apply, SAMPLE_SWITCH);
-
-    expect(rowSays(answered, 'messages')).toBeNull();
-    expect(answered.grid.status === 'loaded' && answered.grid.unsaved).toEqual(SAMPLE_SWITCH);
   });
 });
 

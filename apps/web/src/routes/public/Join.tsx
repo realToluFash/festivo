@@ -15,7 +15,6 @@ import { PendingPage } from '../../components/Pending.tsx';
 import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { RequestToJoin } from './RequestToJoin.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
-import type { ForgotFrom } from '../../forgotFrom.ts';
 import { useFormChecks } from '../../formChecks.ts';
 import { dropHeldInvitation, holdInvitation } from '../../heldInvitation.ts';
 import { dateLocale } from '../../i18n/index.ts';
@@ -246,7 +245,7 @@ function JoinPage({
       {view.kind === 'open' && preview.forYou === true && (
         <Answer preview={preview} onChange={onChange} />
       )}
-      {view.kind === 'emailTaken' && <EmailTaken token={token} organisation={words.organisation} />}
+      {view.kind === 'emailTaken' && <EmailTaken token={token} />}
       {view.kind === 'accepted' && <Accepted preview={preview} />}
       {view.kind === 'declined' && <Declined />}
       {view.kind === 'refused' && (
@@ -495,7 +494,7 @@ function Register({
   );
 }
 
-function EmailTaken({ token, organisation }: { token: string; organisation: string }) {
+function EmailTaken({ token }: { token: string }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -511,11 +510,7 @@ function EmailTaken({ token, organisation }: { token: string; organisation: stri
       >
         {t('join.signInToAccept')}
       </button>
-      <Link
-        className="link-button"
-        to="/forgot-password"
-        state={{ back: 'join', organisation } satisfies ForgotFrom}
-      >
+      <Link className="link-button" to="/forgot-password">
         {t('join.forgotPassword')}
       </Link>
     </>

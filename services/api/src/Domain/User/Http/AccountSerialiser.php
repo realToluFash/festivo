@@ -41,6 +41,7 @@ final readonly class AccountSerialiser
             'organisationCountry' => ($memberships[0] ?? null)?->getOrganisation()->getCountryCode(),
             'locale' => $user->storedLanguage(),
             'timezone' => $user->getTimezone(),
+            'colourScheme' => $user->getColourScheme()?->value,
             'twoFactorSetupPrompt' => $user->hasTwoFactorSetupPrompt(),
             'verified' => $user->isVerified(),
             'complete' => $this->accountCompleteness->isComplete($user),

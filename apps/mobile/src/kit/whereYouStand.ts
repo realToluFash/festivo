@@ -73,15 +73,6 @@ export function dayIn(
   }).format(day);
 }
 
-function andList(t: TFunction, words: readonly string[]): string {
-  if (words.length < 2) return words.join('');
-
-  return t('signInRules.stand.and', {
-    rest: words.slice(0, -1).join(t('signInRules.stand.listComma')),
-    last: words.at(-1),
-  });
-}
-
 function method(t: TFunction, rules: StandRules, viewer: StandViewer): RuleRow {
   if (!rules.providerOnly)
     return {
@@ -178,8 +169,7 @@ function twoFactor(
       'needs',
       title,
       t('signInRules.stand.managersNotOn', {
-        areas: andList(
-          t,
+        areas: new Intl.ListFormat(locale, { type: 'conjunction' }).format(
           viewer.manages.map((area) => t(`signInRules.stand.area.${area}`)),
         ),
       }),

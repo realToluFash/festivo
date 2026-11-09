@@ -52,11 +52,12 @@ function groupOf(list: HTMLElement, name: string): string[] {
 }
 
 describe('the Settings list (sc-30190)', () => {
-  it('lists your account first: Account, Security and Notifications', () => {
+  it('lists your account first: Account, Security, Notifications and Personalisation (sc-30441)', () => {
     expect(groupOf(listFor('member'), 'Your account')).toEqual([
       'FAAccount',
       'Security',
       'Notifications',
+      'Personalisation',
     ]);
   });
 
@@ -82,6 +83,7 @@ describe('the Settings list (sc-30190)', () => {
     ['/app/account', 'Account', 'Account – Your account – Soirely'],
     ['/app/account/security', 'Security', 'Security – Your account – Soirely'],
     ['/app/account/notifications', 'Notifications', 'Notifications – Your account – Soirely'],
+    ['/app/account/personalisation', 'Personalisation', 'Personalisation – Your account – Soirely'],
     ['/app/settings', 'General', 'General – Settings – Soirely'],
     ['/app/settings/members', 'Members', 'Members – Settings – Soirely'],
     ['/app/settings/sign-in-rules', 'Sign-in rules', 'Sign-in rules – Settings – Soirely'],
