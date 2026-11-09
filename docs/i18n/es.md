@@ -50,6 +50,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 Nov 2026. Las normas de inicio de sesión en la app: su situación y qué ha cambiado** (`mobile:signInRules.stand.*`, `readIntro`, `settings.personLabel*`, sc-34925 para sc-30412). La app repite `web:signInRules.*` palabra por palabra; si cambia una, cambia la otra. Las áreas en espera (`stand.area.*`) van sin artículo, «miembros», «facturación», «seguridad», tras «Los cambios en {{areas}}», como en la web, y se unen con «y». La tarjeta de Ajustes, para el lector de pantalla, es «Su cuenta. {{name}}, {{email}}, {{role}} en {{organisation}}».
 - **9 Nov 2026. La página Configuración de notificaciones de la app** (sc-34901 para
   sc-30411, `mobile:notificationSettings.*`). La cabecera lleva verbo, «Recibe notificaciones
   push y por correo», «Solo recibe notificaciones push»; las filas no: «Push y correo», «Solo
