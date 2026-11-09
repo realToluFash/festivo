@@ -33,11 +33,18 @@ import { Skeleton } from '../../../components/Skeleton.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import { ActionPair } from '../../../components/ActionPair.tsx';
+import { usePhoneWidth } from '../../../phoneWidth.ts';
+import { SecurityDesk } from './SecurityDesk.tsx';
 
 type Devices =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'ready'; sessions: DeviceSession[] };
 
+/** At a desk, the desk page (sc-30411); in a phone's browser, the cards as they were. */
 export function Security() {
+  return usePhoneWidth() ? <PhoneSecurity /> : <SecurityDesk />;
+}
+
+function PhoneSecurity() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const session = useSession();
