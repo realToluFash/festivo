@@ -54,9 +54,8 @@ import {
   useFocusOnAnswer,
 } from './Screen.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { Pill, TYPE } from './SettingsParts.tsx';
+import { Pill } from './SettingsParts.tsx';
 import { useFocusBack, useWindowTurn } from './Sheet.tsx';
-import { TurningMark } from './SummaryRows.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 
 const GROW_FROM = 0.92;
@@ -886,42 +885,34 @@ function InvitationPanel({
             </View>
           )}
           <View style={styles.buttons}>
-            {busy === 'accept' ? (
-              <SendingPill
-                words={t('invitations.joining')}
-                full={full}
-                height={height}
-                testID={`switcher.invitation.${invite.id}.accept`}
-              />
-            ) : (
-              <Pill
-                label={t('invitations.accept')}
-                accessibilityLabel={t('invitations.acceptLabel', { organisation })}
-                kind={busy == null ? 'primary' : 'off'}
-                full={full}
-                height={height}
-                onPress={() => onAnswer(true)}
-                testID={`switcher.invitation.${invite.id}.accept`}
-              />
-            )}
-            {busy === 'decline' ? (
-              <SendingPill
-                words={t('invitations.declining')}
-                full={full}
-                height={height}
-                testID={`switcher.invitation.${invite.id}.decline`}
-              />
-            ) : (
-              <Pill
-                label={t('invitations.decline')}
-                accessibilityLabel={t('invitations.declineLabel', { organisation })}
-                kind={busy == null ? 'secondary' : 'off'}
-                full={full}
-                height={height}
-                onPress={() => onAnswer(false)}
-                testID={`switcher.invitation.${invite.id}.decline`}
-              />
-            )}
+            <Pill
+              label={busy === 'accept' ? t('invitations.joining') : t('invitations.accept')}
+              accessibilityLabel={
+                busy === 'accept'
+                  ? t('invitations.joining')
+                  : t('invitations.acceptLabel', { organisation })
+              }
+              kind={busy == null ? 'primary' : 'off'}
+              busy={busy === 'accept'}
+              full={full}
+              height={height}
+              onPress={() => onAnswer(true)}
+              testID={`switcher.invitation.${invite.id}.accept`}
+            />
+            <Pill
+              label={busy === 'decline' ? t('invitations.declining') : t('invitations.decline')}
+              accessibilityLabel={
+                busy === 'decline'
+                  ? t('invitations.declining')
+                  : t('invitations.declineLabel', { organisation })
+              }
+              kind={busy == null ? 'secondary' : 'off'}
+              busy={busy === 'decline'}
+              full={full}
+              height={height}
+              onPress={() => onAnswer(false)}
+              testID={`switcher.invitation.${invite.id}.decline`}
+            />
           </View>
           <Text
             size={sizes.line}
@@ -934,44 +925,6 @@ function InvitationPanel({
         </View>
       )}
     </View>
-  );
-}
-
-function SendingPill({
-  words,
-  full,
-  height,
-  testID,
-}: {
-  words: string;
-  full: boolean;
-  height: number;
-  testID: string;
-}) {
-  return (
-    <Pressable
-      disabled
-      style={[
-        styles.sending,
-        full ? styles.sendingFull : styles.sendingFit,
-        { height, borderRadius: height / 2 },
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={words}
-      accessibilityState={{ disabled: true, busy: true }}
-      testID={testID}
-    >
-      <TurningMark side={16} />
-      <Text
-        size={height >= tokens.sizeHitPhonePrimary ? 16 : TYPE.body}
-        weight="semibold"
-        numberOfLines={1}
-        accessible={false}
-        style={styles.secondary}
-      >
-        {words}
-      </Text>
-    </Pressable>
   );
 }
 
@@ -1229,15 +1182,6 @@ const styles = StyleSheet.create({
   answerUnder: { marginTop: tokens.spaceMd },
   failed: { marginBottom: tokens.spaceSm },
   buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceMd },
-  sending: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: tokens.spaceSm,
-    backgroundColor: tokens.colorNeutralFill,
-  },
-  sendingFull: { alignSelf: 'stretch', paddingHorizontal: tokens.spaceXxl },
-  sendingFit: { alignSelf: 'flex-start', paddingHorizontal: 22 },
   buttonsUnder: { marginTop: tokens.spaceMd, alignItems: 'flex-start' },
   declineNote: { marginTop: tokens.spaceSm },
   offerBody: { marginTop: tokens.spaceMd },
