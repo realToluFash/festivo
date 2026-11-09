@@ -32,7 +32,7 @@ appId: host.exp.Exponent
 - runFlow:
     file: ../scroll-tap.yaml
     env:
-      ID: switcher.${OTHER}
+      ID: switcher.tile.${OTHER}
 - extendedWaitUntil:
     notVisible:
       id: 'switcher\..+'
@@ -46,7 +46,7 @@ appId: host.exp.Exponent
 - runFlow:
     file: ../scroll-tap.yaml
     env:
-      ID: switcher.${ORG}
+      ID: switcher.tile.${ORG}
 - extendedWaitUntil:
     notVisible:
       id: 'switcher\..+'

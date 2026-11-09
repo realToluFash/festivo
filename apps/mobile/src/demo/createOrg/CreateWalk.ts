@@ -2,7 +2,7 @@ import { countryChoices, currencyLabel, timezoneLabel } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import { limitNotice, newOrganisationMessage } from '../../kit/organisationCreate.ts';
-import { type Place, SW } from '../OrgSwitcherModel.ts';
+import type { Place } from '../OrgSwitcherModel.ts';
 
 /** The new words, for the linguist; the rest are main's, from en.json. */
 export const WALK = {
@@ -296,7 +296,7 @@ export function factsOf(walk: Walk, email: string, t: TFunction, contact: boolea
 export function cardWords(walk: Walk, email: string, t: TFunction): string {
   const facts = factsOf(walk, email, t, true).map((fact) => `${fact.label}, ${fact.value}.`);
 
-  return [`${walk.name.trim()}.`, `${SW.yourRole(ROLE)}.`, ...facts].join(' ');
+  return [`${walk.name.trim()}.`, `${t('switcher.yourRole', { role: ROLE })}.`, ...facts].join(' ');
 }
 
 export function boxWords(walk: Walk, t: TFunction): string {

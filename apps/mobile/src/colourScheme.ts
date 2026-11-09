@@ -17,11 +17,12 @@ export const PERSONALISATION_LANDING = '/settings/personalisation?saved=1' satis
 export type Reload = (reason: string) => Promise<void>;
 
 // Loaded when it is needed: the API client imports this module, and expo's entry needs the app's runtime.
+// Never the react-native namespace itself: copying it reads every getter, and PushNotificationIOS's throws in Expo Go.
 // Expo's reload does nothing outside a ReactActivity, as in Expo Go on Android; a development bundle reloads through DevSettings everywhere.
 export const reloadAppAsync: Reload = async (reason) => {
   if (__DEV__) {
-    const { DevSettings } = await import('react-native');
-    DevSettings.reload(reason);
+    const { devReload } = await import('./devReload.ts');
+    devReload(reason);
     return;
   }
 

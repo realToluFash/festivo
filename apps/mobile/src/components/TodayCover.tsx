@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
@@ -6,6 +6,7 @@ import {
   type StyleProp,
   StyleSheet,
   View,
+  type ViewInstance,
   type ViewStyle,
 } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
@@ -16,7 +17,9 @@ import { Confetti, Cover, type Piece } from './Cover.tsx';
 import { EventMesh } from './EventMesh.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { Moment, Now } from '../kit/today.ts';
-import { Initials } from './Initials.tsx';
+import { useLayout } from '../layout/useLayout.ts';
+import { OrgMark } from './OrgMark.tsx';
+import { OPENER, OpenerWords } from './OrgPill.tsx';
 import { useTodayShell } from './todayShell.ts';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
@@ -127,52 +130,41 @@ export function Glass({
   );
 }
 
-function OrgTileWhite({ side = 28 }: { side?: number }) {
-  const { organisation } = useTodayShell();
-
-  return (
-    <View
-      style={[styles.orgTile, { width: side, height: side, borderRadius: Math.round(side * 0.32) }]}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      <Initials
-        name={organisation}
-        size={Math.round(side * 0.4)}
-        weight="bold"
-        style={styles.accent}
-      />
-    </View>
-  );
-}
-
+/** The switcher's opener in glass: the tile alone on the band, the tile, the name and what waits on the cover. */
 export function OrgButton({ compact = false }: { compact?: boolean }) {
-  const { t } = useTranslation();
-  const { organisation, open, OrgOpener } = useTodayShell();
+  const ref = useRef<ViewInstance>(null);
+  const org = useTodayShell().useOrgOpener(ref, !compact);
+  const phone = useLayout().kind === 'phone';
+  const shared = {
+    ref,
+    onPress: org.onPress,
+    accessibilityRole: 'button',
+    accessibilityLabel: org.label,
+    accessibilityState: { expanded: org.expanded },
+    hitSlop: tokens.spaceXxs,
+    testID: 'home.switchOrganisation',
+  } as const;
 
-  if (OrgOpener != null) return <OrgOpener at={compact ? 'band' : 'cover'} />;
+  if (compact)
+    return (
+      <Pressable {...shared}>
+        <Glass style={styles.orgCompact}>
+          <OrgMark id={org.id} name={org.name} side={30} glass />
+        </Glass>
+      </Pressable>
+    );
+
+  const tall = org.waiting != null ? OPENER.waiting : 40;
+  // Clear of the bell by the cover's side margin; the phone's row already sets a gap either side of its spacer.
+  const clear = phone ? tokens.spaceXl - 2 * tokens.spaceSm : tokens.space3xl;
 
   return (
-    <Pressable
-      onPress={() => open({ to: 'organisation' })}
-      accessibilityRole="button"
-      accessibilityLabel={t('todayScreen.switchOrganisation', { name: organisation })}
-      hitSlop={tokens.spaceXxs}
-      testID="home.switchOrganisation"
-    >
-      {compact ? (
-        <Glass style={styles.orgCompact}>
-          <OrgTileWhite side={30} />
-        </Glass>
-      ) : (
-        <Glass style={styles.orgWide}>
-          <OrgTileWhite />
-          <Text size={15} weight="semibold" accessible={false} style={styles.white}>
-            {organisation}
-          </Text>
-          <Glyph name="updown" size={14} ink={tokens.colorInkOnDark} />
-        </Glass>
-      )}
+    <Pressable {...shared} style={[styles.orgWide, { marginRight: clear }]}>
+      <Glass height={tall} style={[styles.orgGlass, { height: undefined, minHeight: tall }]}>
+        <OrgMark id={org.id} name={org.name} side={28} glass />
+        <OpenerWords name={org.name} waiting={org.waiting} onDark wrap />
+        <Glyph name="updown" size={14} ink={tokens.colorInkOnDark} />
+      </Glass>
     </Pressable>
   );
 }
@@ -888,13 +880,15 @@ const styles = StyleSheet.create({
   gapXl: { gap: 22 },
   glass: { flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
   glassFill: { backgroundColor: tokens.colorInkOnDark, opacity: 0.22 },
-  orgWide: { gap: tokens.spaceSm, paddingLeft: tokens.spaceXs, paddingRight: tokens.spaceLg },
-  orgCompact: { paddingHorizontal: 5 },
-  orgTile: {
-    backgroundColor: tokens.colorInkOnDark,
-    alignItems: 'center',
-    justifyContent: 'center',
+  orgWide: { flexShrink: 1 },
+  orgGlass: {
+    flexShrink: 1,
+    gap: tokens.spaceSm,
+    paddingVertical: tokens.spaceXs,
+    paddingLeft: tokens.spaceSm,
+    paddingRight: tokens.spacePillEnd,
   },
+  orgCompact: { paddingHorizontal: 5 },
   bell: { width: 40, justifyContent: 'center' },
   unread: {
     position: 'absolute',

@@ -1,4 +1,4 @@
-import type { ReactNode, Ref } from 'react';
+import type { Ref } from 'react';
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
@@ -69,7 +69,6 @@ export function OrgPill({
   sidebar = false,
   tileAlone = false,
   lines,
-  mark,
   testID,
   ref,
 }: {
@@ -86,8 +85,6 @@ export function OrgPill({
   /** Where the room runs out the pill is its tile, its name kept for the screen reader and the switcher. */
   tileAlone?: boolean;
   lines?: number | undefined;
-  /** The demo's own tile, which plays its arrival. */
-  mark?: ReactNode;
   testID?: string;
   ref?: Ref<ViewInstance> | undefined;
 }) {
@@ -117,7 +114,7 @@ export function OrgPill({
     >
       {tileAlone ? (
         <View>
-          {mark ?? <OrgMark id={id} name={name} side={28} />}
+          <OrgMark id={id} name={name} side={28} />
           {waiting != null && (
             <View style={styles.tileRingHalo}>
               <View style={[styles.waitingRing, { borderColor: tokens.colorInk }]} />
@@ -125,7 +122,7 @@ export function OrgPill({
           )}
         </View>
       ) : (
-        !bare && (mark ?? <OrgMark id={id} name={name} side={28} />)
+        !bare && <OrgMark id={id} name={name} side={28} />
       )}
       {!tileAlone && (
         <OpenerWords name={name} waiting={waiting} wrap={wrap} lines={lines} grow={sidebar} />
