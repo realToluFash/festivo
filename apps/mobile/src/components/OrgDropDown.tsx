@@ -5,7 +5,6 @@ import {
   type ReactNode,
   type RefObject,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -162,26 +161,15 @@ export function OrgDropDown({
   const [under, setUnder] = useState(false);
   const [answered, setAnswered] = useState<object | undefined>(undefined);
   const [asking, setAsking] = useState(false);
-  const tileRefs = useRef(new Map<string, ViewInstance>());
   const remembered = useRef<TextHandle>(null);
-  const [afterOffer, setAfterOffer] = useState<{ closed: StepClosed; next: string | null }>();
+  const [afterOffer, setAfterOffer] = useState<StepClosed>();
   const locale = dateLocale();
   const sizes = session.large ? DRAWN_LARGE : accessibilitySizes ? ROWS : GRID;
   const large = sizes !== GRID;
   const typingAtOpen = searchable(session) && session.query !== '';
 
   useFocusBack(open, back);
-  const afterOfferTarget = useMemo<RefObject<ScreenReaderTarget | null>>(
-    () => ({
-      get current() {
-        const next = afterOffer?.next;
-
-        return (next == null ? undefined : tileRefs.current.get(next)) ?? remembered.current;
-      },
-    }),
-    [afterOffer],
-  );
-  useFocusBackToOpener(afterOffer?.closed, afterOfferTarget);
+  const tileOpener = useFocusBackToOpener(afterOffer, remembered);
 
   useEffect(() => {
     if (open && !here) onClose();
@@ -257,10 +245,7 @@ export function OrgDropDown({
   };
   const notNow = (offerKey: string) => {
     const after = tiles[tiles.findIndex((tile) => tileKey(tile) === offerKey) + 1];
-    setAfterOffer({
-      closed: stepClosed('afterOffer'),
-      next: after == null ? null : tileKey(after),
-    });
+    setAfterOffer(stepClosed(after == null ? 'remembered' : tileKey(after)));
     onNotNow();
   };
 
@@ -392,10 +377,7 @@ export function OrgDropDown({
                           width={large ? null : cell}
                           sizes={sizes}
                           open={tileKey(tile) === session.expanded}
-                          ref={(view) => {
-                            if (view == null) tileRefs.current.delete(tileKey(tile));
-                            else tileRefs.current.set(tileKey(tile), view);
-                          }}
+                          ref={tileOpener(tileKey(tile))}
                           onPress={() => {
                             if (tile.kind === 'create') onCreate();
                             else if (tile.kind === 'place' && tile.current) onClose();
