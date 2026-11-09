@@ -1,9 +1,4 @@
-import {
-  ApiError,
-  type ApiClient,
-  type CompanyDomains,
-  type RequestLink,
-} from '@soirely/api-client';
+import { ApiError, type ApiClient, type CompanyDomains } from '@soirely/api-client';
 import { companyDomainProblem, domainOf, normaliseDomain } from '@soirely/domain';
 import { setStringAsync } from 'expo-clipboard';
 import { type RefObject, useEffect, useRef, useState } from 'react';
@@ -54,16 +49,18 @@ const hidden = {
 
 type Loaded<T> = { kind: 'loading' } | { kind: 'loaded'; value: T } | { kind: 'failed' };
 
-/** One read, again on Try again; dropped when the organisation changes under it. */
-function useLoad<T>(load: () => Promise<T>, key: string): [Loaded<T>, (value: T) => void, () => void] {
+/** One read, again on Try again; read again when the organisation changes under it. */
+function useLoad<T>(
+  calls: OrganisationCalls,
+  id: string,
+  read: (calls: OrganisationCalls, id: string) => Promise<T>,
+): [Loaded<T>, (value: T) => void, () => void] {
   const [state, setState] = useState<Loaded<T>>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const latest = useRef(load);
-  latest.current = load;
 
   useEffect(() => {
     let current = true;
-    latest.current().then(
+    read(calls, id).then(
       (value) => current && setState({ kind: 'loaded', value }),
       () => current && setState({ kind: 'failed' }),
     );
@@ -71,7 +68,7 @@ function useLoad<T>(load: () => Promise<T>, key: string): [Loaded<T>, (value: T)
     return () => {
       current = false;
     };
-  }, [key, attempt]);
+  }, [calls, id, read, attempt]);
 
   return [
     state,
@@ -82,6 +79,9 @@ function useLoad<T>(load: () => Promise<T>, key: string): [Loaded<T>, (value: T)
     },
   ];
 }
+
+const readDomains = (calls: OrganisationCalls, id: string) => calls.companyDomains(id);
+const readLink = (calls: OrganisationCalls, id: string) => calls.requestLink(id);
 
 /** The domains people may ask to join from (sc-561): a row each with Remove…, and Add domain on a screen of its own. */
 export function DomainsSection({
@@ -100,10 +100,7 @@ export function DomainsSection({
   onToast: (words: string) => void;
 }) {
   const { t } = useTranslation();
-  const [load, setList, retry] = useLoad(
-    () => calls.companyDomains(organisation.id),
-    organisation.id,
-  );
+  const [load, setList, retry] = useLoad(calls, organisation.id, readDomains);
   const [added, setAdded] = useState<string | null>(null);
   const [adding, setAdding] = useState(opening === 'addDomain');
   const [addVisit, setAddVisit] = useState(0);
@@ -366,6 +363,7 @@ function AddDomainScreen({
         testID: 'organisation.domain.send',
       }}
       onCancel={onClose}
+      waits={busy}
       cancelTestID="organisation.domain.cancel"
       opener={opener}
       testID="organisation.addDomain"
@@ -423,10 +421,7 @@ export function RequestsSection({
   onToast: (words: string) => void;
 }) {
   const { t } = useTranslation();
-  const [load, setLink, retry] = useLoad(
-    () => calls.requestLink(organisation.id),
-    organisation.id,
-  );
+  const [load, setLink, retry] = useLoad(calls, organisation.id, readLink);
   const [turnedOff, setTurnedOff] = useState(opening === 'linkOff');
   const [replaced, setReplaced] = useState(false);
   const [replacing, setReplacing] = useState(opening === 'replaceLink');

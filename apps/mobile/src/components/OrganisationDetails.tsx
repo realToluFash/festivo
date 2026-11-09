@@ -1,5 +1,4 @@
 import {
-  initials,
   ORGANISATION_FIELDS,
   ORGANISATION_NAME_MAXIMUM,
   type OrganisationDetails,
@@ -33,6 +32,7 @@ import {
   PickerList,
   usePickers,
 } from './OrganisationPicker.tsx';
+import { Initials } from './Initials.tsx';
 import { PickerEdge } from './PickerEdge.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { SETTLED_MS } from './Screen.tsx';
@@ -59,8 +59,7 @@ const hidden = {
 
 /** What a save came to; the product's API answers it, and the demo's sample. */
 export type DetailsOutcome =
-  | Exclude<SaveOutcome, { kind: 'saved' }>
-  | { kind: 'saved'; details: OrganisationDetails };
+  Exclude<SaveOutcome, { kind: 'saved' }> | { kind: 'saved'; details: OrganisationDetails };
 
 /** What the card says in place of the organisation, until the page is left. */
 export type CardSaid = { kind: 'saved'; words: string } | { kind: 'transferred'; to: string };
@@ -122,7 +121,10 @@ export function OrganisationCard({
         </View>
       )}
       {held?.by === 'role' && (
-        <LockRow words={t('orgGeneral.readOnly', { role: held.role })} testID="organisation.readOnly" />
+        <LockRow
+          words={t('orgGeneral.readOnly', { role: held.role })}
+          testID="organisation.readOnly"
+        />
       )}
       {held?.by === 'rules' &&
         held.rules.map((rule) => (
@@ -163,11 +165,7 @@ function LockRow({
       <View style={styles.grow}>
         <OnCard text={words} />
         {action != null && (
-          <TextAction
-            label={action.label}
-            onPress={action.onPress}
-            testID={action.testID}
-          />
+          <TextAction label={action.label} onPress={action.onPress} testID={action.testID} />
         )}
       </View>
     </View>
@@ -179,11 +177,10 @@ function CardTile({ name, side }: { name: string; side: number }) {
   return (
     <View
       style={[styles.tile, { width: side, height: side, borderRadius: Math.round(side * 0.286) }]}
-      {...hidden}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
     >
-      <Text size={Math.round(side * 0.36)} weight="bold" accessible={false} style={styles.accent}>
-        {initials(name)}
-      </Text>
+      <Initials name={name} size={Math.round(side * 0.36)} weight="bold" style={styles.accent} />
     </View>
   );
 }
@@ -227,7 +224,12 @@ export function DetailRows({
           key: field,
           row: (
             <Row
-              title={choiceName(choices, field, details[field], t('orgGeneral.currencyPlaceholder'))}
+              title={choiceName(
+                choices,
+                field,
+                details[field],
+                t('orgGeneral.currencyPlaceholder'),
+              )}
               line={label}
               weight="medium"
               testID={`organisation.detail.${field}`}
@@ -484,6 +486,7 @@ export function DetailsScreen({
         testID: 'organisation.details.save',
       }}
       onCancel={() => (changes > 0 ? setDiscarding(true) : onClose())}
+      waits={saving}
       cancelTestID="organisation.details.cancel"
       opener={opener}
       ask={ask}

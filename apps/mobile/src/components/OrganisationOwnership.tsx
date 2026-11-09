@@ -1,6 +1,6 @@
 import { ApiError, type OrganisationDeletion, type Provider } from '@soirely/api-client';
 import { PROOF_MINUTES, typedNameMatches } from '@soirely/domain';
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -68,14 +68,6 @@ export const AT_REST: OwnershipOpening = {
   mistyped: null,
 };
 
-/** The demo's own Leave in place of the plain Ask: the handover (sc-614), which the product does not do yet. */
-export type LeaveInstead = (leave: {
-  open: boolean;
-  opener: RefObject<ViewInstance | null>;
-  onKeep: () => void;
-  onDone: () => void;
-}) => ReactNode;
-
 const hidden = {
   accessibilityElementsHidden: true,
   importantForAccessibility: 'no-hide-descendants',
@@ -90,7 +82,8 @@ export function OwnershipSection({
   candidates,
   via,
   opening = AT_REST,
-  leaveInstead,
+  leaveRef: givenLeaveRef,
+  onLeave,
   onTransferred,
   onGone,
 }: {
@@ -102,7 +95,9 @@ export function OwnershipSection({
   /** How the owner proves it is them: a password, or the provider they sign in with. */
   via: 'password' | Provider;
   opening?: OwnershipOpening;
-  leaveInstead?: LeaveInstead | undefined;
+  /** The demo's own Leave in place of the plain Ask: the handover (sc-614), which the product does not do yet. */
+  onLeave?: (() => void) | undefined;
+  leaveRef?: RefObject<ViewInstance | null>;
   onTransferred: (name: string) => void;
   /** Left or deleted: the organisation is gone from this account. */
   onGone: () => void;
@@ -115,7 +110,8 @@ export function OwnershipSection({
   const [leaving, setLeaving] = useState(false);
   const [notLeft, setNotLeft] = useState<string | null>(null);
   const transferRef = useRef<ViewInstance>(null);
-  const leaveRef = useRef<ViewInstance>(null);
+  const ownLeaveRef = useRef<ViewInstance>(null);
+  const leaveRef = givenLeaveRef ?? ownLeaveRef;
   const deleteRef = useRef<ViewInstance>(null);
   const refs = { transfer: transferRef, leave: leaveRef, delete: deleteRef };
   const steps: OwnershipStep[] = owner ? ['transfer', 'leave', 'delete'] : ['leave'];
@@ -146,7 +142,9 @@ export function OwnershipSection({
   function open(step: OwnershipStep): void {
     if (step === 'leave') {
       setNotLeft(null);
-      setAsk(owner && onlyOwner ? 'onlyOwner' : 'leave');
+      if (owner && onlyOwner) setAsk('onlyOwner');
+      else if (onLeave != null) onLeave();
+      else setAsk('leave');
       return;
     }
     setVisit((count) => count + 1);
@@ -201,14 +199,6 @@ export function OwnershipSection({
           },
           onConfirm: () => void leave(),
         };
-  const instead =
-    leaveInstead?.({
-      open: ask === 'leave',
-      opener: leaveRef,
-      onKeep: () => setAsk(null),
-      onDone: onGone,
-    }) ?? null;
-
   return (
     <>
       <View>
@@ -231,12 +221,7 @@ export function OwnershipSection({
           }))}
         />
       </View>
-      <Ask
-        open={ask != null && (instead == null || ask === 'onlyOwner')}
-        opener={leaveRef}
-        {...asked}
-      />
-      {instead}
+      <Ask open={ask != null} opener={leaveRef} {...asked} />
       {owner && (
         <TransferScreen
           key={`transfer.${visit}`}
@@ -445,6 +430,7 @@ function TransferScreen({
         testID: 'organisation.transfer.send',
       }}
       onCancel={onClose}
+      waits={busy}
       cancelTestID="organisation.transfer.cancel"
       opener={opener}
       testID="organisation.transfer"
@@ -551,15 +537,15 @@ function TransferScreen({
           />
         </Field>
       )}
-      <Line text={t('ownership.bothEmailed', { name: chosen?.name ?? t('ownership.theNewOwner') })} />
+      <Line
+        text={t('ownership.bothEmailed', { name: chosen?.name ?? t('ownership.theNewOwner') })}
+      />
     </FocusedScreen>
   );
 }
 
 type Counted =
-  | { kind: 'counting' }
-  | { kind: 'counted'; counted: OrganisationDeletion }
-  | { kind: 'failed' };
+  { kind: 'counting' } | { kind: 'counted'; counted: OrganisationDeletion } | { kind: 'failed' };
 
 function DeleteScreen({
   open,
@@ -648,6 +634,7 @@ function DeleteScreen({
         testID: 'organisation.delete.send',
       }}
       onCancel={onClose}
+      waits={busy}
       cancelTestID="organisation.delete.cancel"
       opener={opener}
       testID="organisation.delete"
@@ -656,9 +643,7 @@ function DeleteScreen({
         <Text size={18} weight="bold" accessibilityRole="header">
           {t('ownership.deleteWarningTitle')}
         </Text>
-        {counted.kind === 'counting' && (
-          <Line text={t('ownership.deleteLoading')} />
-        )}
+        {counted.kind === 'counting' && <Line text={t('ownership.deleteLoading')} />}
         {counted.kind === 'counted' && (
           <Line
             text={`${t('ownership.deleteCounts', {

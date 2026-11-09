@@ -225,7 +225,11 @@ export function Row({
   const grouped = pressed || accessibilityLabel != null;
   const box = [
     styles.row,
-    { minHeight: line == null && below == null ? 52 : 64, paddingVertical: pad, paddingHorizontal: gutter },
+    {
+      minHeight: line == null && below == null ? 52 : 64,
+      paddingVertical: pad,
+      paddingHorizontal: gutter,
+    },
     selected && styles.rowSelected,
   ];
   const words = (

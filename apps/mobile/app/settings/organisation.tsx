@@ -29,11 +29,7 @@ import { SECTION_HREF } from '../../src/kit/appNav.ts';
 import { detailsOf, saveOrganisation } from '../../src/kit/organisationSave.ts';
 import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { useOffline } from '../../src/offline.ts';
-import {
-  reloadSignedIn,
-  replaceOrganisation,
-  useSignedIn,
-} from '../../src/signedIn.ts';
+import { reloadSignedIn, replaceOrganisation, useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 /** Settings > Organisation as its demo draws it (sc-30412): the card, the details, joining, then ownership and leaving. */
@@ -102,7 +98,8 @@ export default function Organisation() {
     owner &&
     listed != null &&
     !listed.some((one) => !one.self && one.status === 'active' && one.role.seededAs === 'owner');
-  const via = (account == null ? null : confirmWith(account.hasPassword, account.providers)) ?? 'password';
+  const via =
+    (account == null ? null : confirmWith(account.hasPassword, account.providers)) ?? 'password';
 
   const body = (() => {
     if (organisation == null) return null;
