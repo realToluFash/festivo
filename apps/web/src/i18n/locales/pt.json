@@ -812,7 +812,7 @@
     "dismiss": "Fechar"
   },
   "recovery": {
-    "lostBothIntro": "Your organisation can confirm it’s you only once you’ve signed in with your password. If you’ve lost your password too, contact Soirely support.",
+    "lostBothIntro": "A sua organização só pode confirmar que é você depois de iniciar sessão com a sua palavra-passe. Se também perdeu a palavra-passe, contacte o apoio ao cliente da Soirely.",
     "forgot": "Esqueceu-se da palavra-passe?",
     "title": "Reponha a sua palavra-passe",
     "intro": "Introduza o e-mail com que inicia sessão. Se tiver uma conta, enviamos-lhe uma ligação para definir uma nova palavra-passe.",
@@ -823,8 +823,8 @@
     "signIn": "Iniciar sessão",
     "sentTitle": "Veja o seu e-mail",
     "sentBody": "Se esse endereço tiver uma conta, enviámos-lhe uma ligação para definir uma nova palavra-passe. A ligação funciona uma vez.",
-    "nothingThere": "Nothing there? Check your spam folder first, then <send>send it again</send>.",
-    "sentAgain": "Sent again.",
+    "nothingThere": "Não recebeu nada? Veja primeiro a pasta de spam e depois <send>envie de novo</send>.",
+    "sentAgain": "Voltámos a enviar a ligação.",
     "providerNote": "Registou-se com a Google ou a Apple? Então não há palavra-passe a repor, e o e-mail explica como inicia sessão.",
     "gotIt": "Tem a ligação? Abra-a em qualquer dispositivo.",
     "backToSignIn": "Voltar ao início de sessão",
