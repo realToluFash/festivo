@@ -591,8 +591,6 @@ export function iosBundle(appConfig) {
   return id;
 }
 
-// Signed ad hoc, never unsigned: an unsigned .app has no application-identifier, so the Keychain
-// refuses the refresh token and a cold start signs the user out. Re-signing afterwards will not launch.
 // CocoaPods fails on ASCII-8BIT strings when the calling shell has no UTF-8 locale.
 export function iosBuildEnv(appConfig) {
   return {
@@ -604,6 +602,8 @@ export function iosBuildEnv(appConfig) {
   };
 }
 
+// Signed ad hoc, never unsigned: an unsigned .app has no application-identifier, so the Keychain
+// refuses the refresh token and a cold start signs the user out. Re-signing afterwards will not launch.
 export function iosReleaseBuildArgs(workspace, scheme, derived, arch = process.arch) {
   return [
     '-workspace',
