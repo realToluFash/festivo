@@ -1,7 +1,6 @@
 import type { Provider } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 
-/** A provider as Security lists it: its name, and the address it signs in as when it gave one. */
 export interface WayIn {
   provider: Provider;
   name: string;
@@ -26,7 +25,6 @@ export type SecurityLine = { kind: 'done' | 'todo'; text: string } | null;
 
 export type DeviceKind = 'device' | 'laptop' | 'tablet';
 
-/** A signed-in device as its row draws it, every line already written. */
 export interface DeviceView {
   id: string;
   kind: DeviceKind;

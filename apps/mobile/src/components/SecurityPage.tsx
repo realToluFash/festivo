@@ -98,7 +98,6 @@ type Loaded<T> = { kind: 'loading' } | { kind: 'failed' } | { kind: 'ready'; val
 
 const EVERYWHERE = 'everywhere';
 
-/** Settings › Security in the app, summary first, as its demo draws it (sc-30411). */
 export function SecurityPage({
   account,
   organisations,
@@ -808,7 +807,6 @@ function deviceView(session: DeviceSession, locale: string, t: TFunction): Devic
   };
 }
 
-/** What linking or unlinking was refused for, as the row says it. */
 function waysRefusal(refusal: unknown, provider: Provider, t: TFunction, linking: boolean): string {
   const name = PROVIDER_NAMES[provider];
 
@@ -847,7 +845,6 @@ function codeRefusal(
   return refusal.is('two_factor_code_invalid') ? t(wrong) : t('twoFactorCard.failedBody');
 }
 
-/** Adding a password: the code by email, then the password with the step-up the code gave. */
 function settingPassword(t: TFunction, locale: string, stepUp: { token: string }): Setting {
   return {
     send: async () => {

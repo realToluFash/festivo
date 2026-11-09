@@ -30,7 +30,6 @@ import { Text } from './Text.tsx';
 type Opener = RefObject<ScreenReaderTarget | null>;
 type Input = RefObject<TextInputInstance | null>;
 
-/** Why a step did not go through: on a field it names, or with `other` on none. */
 export interface Refused<K extends string> {
   field: K | 'other';
   message: string;
@@ -70,7 +69,6 @@ function focusFirst(fields: readonly [string | null, Input][], checked: boolean)
 
 export type ChangeStage = 'change' | 'forgot' | 'sent';
 
-/** Change password, then Forgot it? turns the same sheet into Reset your password and Check your email. */
 export function ChangePasswordScreen({
   open,
   start = 'change',
@@ -85,9 +83,7 @@ export function ChangePasswordScreen({
   email: string;
   opener: Opener;
   onClose: () => void;
-  /** Resolves to why the password was not changed, or null once it is. */
   onSave: (current: string, next: string) => Promise<Refused<'current' | 'next'> | null>;
-  /** Sends the reset link; resolves to why it was not sent, or null once it is. */
   onSend: (email: string) => Promise<string | null>;
 }) {
   const { t } = useTranslation();
@@ -328,7 +324,6 @@ export interface Setting {
   save: (password: string) => Promise<Refused<'password'> | 'expired' | null>;
 }
 
-/** For somebody with no password: a code by email first, then Choose a password in the same screen. */
 export function SetPasswordScreen({
   open,
   email,
@@ -499,7 +494,7 @@ export function SetPasswordScreen({
       open={open}
       title={t('passwordCard.setCodeTitle')}
       verb={{
-        label: t('account.continue'),
+        label: t('waysCard.continue'),
         on: !expired,
         busy,
         onPress: () => void proceed(),
