@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import i18next from 'i18next';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -1138,6 +1139,24 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     expect(await screen.findByText('Matched to Camille Dubois.', {}, WAIT)).toBeDefined();
     expect(screen.getByRole('textbox', { name: 'Your answer' })).toBeDefined();
     expect(screen.getByRole('link', { name: 'Messages, 4 waiting' })).toBeDefined();
+  });
+
+  it('keeps the dialogs’ Cancel in the demo’s English in a French browser', SLOW, async () => {
+    await i18next.changeLanguage('fr');
+    try {
+      await messages('later');
+      const when = await screen.findByRole('dialog', { name: 'When it goes' });
+      expect(within(when).getByRole('button', { name: 'Cancel' })).toBeDefined();
+      fireEvent.click(within(when).getByRole('button', { name: 'Cancel' }));
+      cleanup();
+
+      await messages('notMatched');
+      fireEvent.click(screen.getByRole('button', { name: 'Choose the guest' }));
+      const picker = await screen.findByRole('dialog', { name: 'Who is this?' });
+      expect(within(picker).getByRole('button', { name: 'Cancel' })).toBeDefined();
+    } finally {
+      await i18next.changeLanguage('en');
+    }
   });
 
   it('opens Tell guests when Overview’s start time is saved', SLOW, async () => {
