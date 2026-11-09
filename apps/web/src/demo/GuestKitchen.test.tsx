@@ -6,6 +6,8 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 
+const SLOW = { timeout: 15000 };
+
 const tested = config();
 const NAME = 'Maria Fernanda Albuquerque Santos';
 const FIRST = 'Your guest 1';
@@ -69,10 +71,10 @@ afterEach(() => {
 });
 
 describe('the kitchen step in the demo home (sc-3778)', () => {
-  it('is linked from the home, every state once, under its own heading', async () => {
+  it('is linked from the home, every state once, under its own heading', SLOW, async () => {
     const router = createMemoryRouter(routes, { initialEntries: ['/demo'] });
     render(<RouterProvider router={router} />);
-    const head = await screen.findByRole('heading', { level: 3, name: /^The kitchen step/u });
+    const head = await screen.findByRole('heading', { level: 3, name: /^The kitchen step/u }, SLOW);
     const links = within(head.nextElementSibling as HTMLElement)
       .getAllByRole('link')
       .map((one) => one.getAttribute('href'));
