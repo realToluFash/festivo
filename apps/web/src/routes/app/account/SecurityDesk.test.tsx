@@ -373,7 +373,7 @@ describe('two-factor at a desk', () => {
     fireEvent.change(await screen.findByLabelText('Enter the 6-digit code the app shows'), {
       target: { value: '123456' },
     });
-    fireEvent.click(dialog('Set up two-factor').getByRole('button', { name: 'Turn on' }));
+    fireEvent.click(dialog('Turn on two-factor').getByRole('button', { name: 'Turn on' }));
 
     const codes = await screen.findByRole('list', { name: 'Recovery codes' });
     expect(within(codes).getAllByRole('listitem')).toHaveLength(10);
@@ -401,7 +401,7 @@ describe('two-factor at a desk', () => {
     fireEvent.change(await screen.findByLabelText('Enter the 6-digit code the app shows'), {
       target: { value: '123456' },
     });
-    fireEvent.click(dialog('Set up two-factor').getByRole('button', { name: 'Turn on' }));
+    fireEvent.click(dialog('Turn on two-factor').getByRole('button', { name: 'Turn on' }));
 
     expect(await screen.findByText(/That code does not match/)).toBeDefined();
     expect(screen.queryByRole('dialog', { name: 'Save your recovery codes' })).toBeNull();

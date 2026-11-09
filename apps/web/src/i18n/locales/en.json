@@ -676,7 +676,7 @@
     "send": "Send",
     "sendAgain": "Send it again",
     "setupKey": "Setup key",
-    "setupTitle": "Set up two-factor",
+    "setupTitle": "Turn on two-factor",
     "setupVerb": "Turn on",
     "signingOut": "Signing out…",
     "signOutHereNote": "You leave Soirely on this device. Your other devices stay signed in.",
