@@ -5,6 +5,7 @@ import type { AreaKey } from './EventsSample.ts';
 /** Main's English for Events, with the curly apostrophes the boards draw, and the words pm accepted on 6 Nov 2026. */
 export const W = {
   events: 'Events',
+  loading: 'Loading events…',
   newEvent: 'New event',
   search: 'Search events',
   clearSearch: 'Clear search',
@@ -118,6 +119,7 @@ export const W = {
   endBeforeStart: 'The end is before the start. Choose a later end.',
   replyBy: 'Reply by',
   replyByNone: 'Replies stay open until the event starts.',
+  repliesClosed: 'Replies closed.',
   replyByNotBefore: 'Choose a date before the event starts.',
   removeTheDate: 'Remove the date',
   closeSooner: 'Close replies sooner',

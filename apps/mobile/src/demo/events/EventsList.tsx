@@ -68,6 +68,7 @@ import {
   type Anchor,
   anchorUnder,
   HeadCount,
+  LoadingBlock,
   Row,
   RowList,
   SectionHead,
@@ -116,6 +117,7 @@ export function EventsList({
   const filterRef = useRef<ViewInstance>(null);
   const field = useRef<TextInputInstance>(null);
   const asks = state === 'firstAsk';
+  const loading = state === 'loading';
   const first = state === 'first' || state === 'eventsFirst' || asks;
   const wide = shell.layout !== 'phone';
   const events = useMemo(() => {
@@ -186,17 +188,38 @@ export function EventsList({
   const top = (
     <>
       <ListTop
-        summary={first ? null : summaryLine(home)}
+        summary={first || loading ? null : summaryLine(home)}
         wide={wide}
         bell={shell.layout !== 'portrait'}
         org={shell.layout === 'phone'}
         onNew={asks ? null : () => shell.tell(say.ownDesign(W.newEvent))}
         onBell={shell.tell}
       />
-      {!first && <GuestTiles counts={guests} locale={locale} />}
+      {!first && !loading && <GuestTiles counts={guests} locale={locale} />}
       <SwitchedNotice />
     </>
   );
+
+  if (loading)
+    return (
+      <ListFrame offline={null}>
+        {top}
+        <View style={styles.searchRow}>
+          <SearchField
+            typed=""
+            off
+            width={shell.layout === 'portrait' ? 420 : shell.layout === 'landscape' ? 440 : null}
+            onTyped={setTyped}
+            onSearch={() => undefined}
+            onClear={clearSearch}
+            ref={field}
+          />
+          <FilterButton ref={filterRef} word={word} off open={false} onPress={() => undefined} />
+        </View>
+        <View style={styles.sunkTabs} />
+        <LoadingBlock words={W.loading} />
+      </ListFrame>
+    );
 
   if (first)
     return (
@@ -696,6 +719,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorAccent,
   },
   searchBlock: { gap: tokens.spaceXs },
+  sunkTabs: { height: tokens.sizeHit, borderRadius: 22, backgroundColor: tokens.colorNeutralFill },
   searchRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

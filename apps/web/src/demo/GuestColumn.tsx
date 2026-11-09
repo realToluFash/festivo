@@ -85,7 +85,7 @@ export function GuestView({
 
   if (erase === 'erased' && erasedLine != null) line = erasedLine;
   else if (closed && replyBy != null) {
-    line = GW.repliesClosed(weekdayOf(replyBy));
+    line = manages ? GW.repliesClosed(weekdayOf(replyBy)) : GW.closedOn(weekdayOf(replyBy));
     step = { label: GW.letThemChange, does: actions.onReopen };
   } else if (guest.reopened != null) {
     line = GW.reopened(guest.reopened.by ?? '', dayOf(guest.reopened.on));

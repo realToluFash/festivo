@@ -619,13 +619,19 @@ describe('the demo gets a password back (sc-29064)', () => {
     ['expired', 'This link has expired'],
     ['used', 'This link has already been used'],
     ['broken', 'This link doesn’t work'],
-  ])('gives a %s link its own title and one button for a new link', async (state, title) => {
-    await page(`?page=link&state=${state}`, title);
+  ])(
+    'gives a %s link its own title, and its new link starts from the form',
+    async (state, title) => {
+      await page(`?page=link&state=${state}`, title);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Send a new link' }));
-    await wait();
-    expect(await screen.findByRole('heading', { name: 'Check your email' })).toBeDefined();
-  });
+      fireEvent.click(screen.getByRole('link', { name: 'Send a new link' }));
+      await screen.findByRole('heading', { name: 'Reset your password' });
+      expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('');
+
+      fireEvent.click(screen.getByRole('link', { name: 'Back' }));
+      expect(await screen.findByRole('heading', { name: title })).toBeDefined();
+    },
+  );
 
   it('shows Cannot reach Soirely while the link is read, until the switch brings it back', async () => {
     await page('?page=link&state=offline', 'Cannot reach Soirely');
@@ -656,13 +662,38 @@ describe('the demo gets a password back (sc-29064)', () => {
     expect(await screen.findByRole('heading', { name: 'Set a new password' })).toBeDefined();
   });
 
-  it.each([
-    ['Use a recovery code instead', 'Enter a recovery code'],
-    ['Lost your authenticator and your recovery codes?', 'Get back in without your authenticator'],
-  ])('follows “%s” to the two-factor board’s page', async (link, heading) => {
+  it('follows “Use a recovery code instead” to the two-factor board’s page', async () => {
     await page('?page=code', 'Enter your code');
-    fireEvent.click(screen.getByRole('link', { name: link }));
-    expect(await screen.findByRole('heading', { name: heading })).toBeDefined();
+    fireEvent.click(screen.getByRole('link', { name: 'Use a recovery code instead' }));
+    expect(await screen.findByRole('heading', { name: 'Enter a recovery code' })).toBeDefined();
+  });
+
+  it('sends a lost authenticator to support, starts no recovery, and Back returns to the code', async () => {
+    await page('?page=code', 'Enter your code');
+    fireEvent.click(
+      screen.getByRole('link', { name: 'Lost your authenticator and your recovery codes?' }),
+    );
+
+    await screen.findByRole('heading', { name: 'Contact Soirely support' });
+    expect(
+      screen.getByText(
+        'Your organisation can confirm it’s you only once you’ve signed in with your password. If you’ve lost your password too, contact Soirely support.',
+      ),
+    ).toBeDefined();
+    expect(
+      screen.getByRole('link', { name: 'Email support@soirely.com' }).getAttribute('href'),
+    ).toBe('mailto:support@soirely.com');
+    expect(screen.queryByRole('button', { name: /Send/ })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Back to sign in' }).getAttribute('href')).toBe(
+      '/demo/sign-in',
+    );
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back' }));
+    await screen.findByRole('heading', { name: 'Enter your code' });
+    type('Code', SAMPLE.code);
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to a new password' }));
+    await wait();
+    expect(await screen.findByRole('heading', { name: 'Set a new password' })).toBeDefined();
   });
 });
 

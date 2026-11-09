@@ -1206,6 +1206,7 @@ export const GUESTS_STATES = [
   { key: 'guestLoading', name: 'A guest loading' },
   { key: 'notFound', name: 'No longer on the list' },
   { key: 'repliesClosed', name: 'Replies closed' },
+  { key: 'repliesClosedViewer', name: 'Can view: replies closed' },
   { key: 'reopened', name: 'One reply reopened' },
   { key: 'edit', name: 'Edit guest, in place' },
   { key: 'editErrors', name: 'Save refused before sending' },
@@ -1352,6 +1353,8 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return column({ kind: 'notFound' });
     case 'repliesClosed':
       return column(guestPane('emeka'), closed);
+    case 'repliesClosedViewer':
+      return column(guestPane('emeka'), { ...closed, role: 'viewer' });
     case 'reopened':
       return column(guestPane('emeka'), {
         ...closed,
@@ -1539,6 +1542,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'guestLoading',
     'notFound',
     'repliesClosed',
+    'repliesClosedViewer',
     'reopened',
   ]),
   group('Edit, in place', [

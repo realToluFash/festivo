@@ -83,6 +83,7 @@ import {
 } from './messages.ts';
 import { MessagesPage } from './Messages.tsx';
 import { DOOR_EVENT_ID } from './doorCode.ts';
+import { repliesOpen } from './replyClose.ts';
 import { noOrgStateOf } from './noOrg.ts';
 import { NoOrgEvent } from './NoOrgEvent.tsx';
 import { TellDialog } from './MessagesTell.tsx';
@@ -774,7 +775,11 @@ function Details({
             replyBy == null ? REPLY_BY_WORDS.rowNone : rowDay(replyBy),
             replyBy == null
               ? REPLY_BY_WORDS.replyBy
-              : `${REPLY_BY_WORDS.replyBy} · ${REPLY_BY_WORDS.rowCloses(event.timeZone)}`,
+              : `${REPLY_BY_WORDS.replyBy} · ${
+                  repliesOpen(now, replyBy, event.timeZone)
+                    ? REPLY_BY_WORDS.rowCloses(event.timeZone)
+                    : REPLY_BY_WORDS.rowClosed
+                }`,
           )}
           {row(
             'venue',

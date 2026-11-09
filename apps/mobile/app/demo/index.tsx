@@ -903,6 +903,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'As of 09:32, Try again',
         href: '/demo/events?state=offline',
       },
+      {
+        title: 'Events · loading',
+        what: 'The card and rows as shapes, search and Filter off',
+        href: '/demo/events?state=loading',
+      },
       { title: 'Events · a first run', what: 'No events yet', href: '/demo/events?state=first' },
       {
         title: 'Events · a first run, without Create events',
@@ -1515,6 +1520,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Waiting · not cancelled',
         what: 'Soirely could not be reached',
         href: '/demo/waiting?state=notCancelled',
+      },
+      {
+        title: 'Waiting · nobody left to confirm',
+        what: 'The approvers left; Email Soirely support',
+        href: '/demo/waiting?state=nobody',
       },
       { title: 'Two-factor is off', what: 'Confirmed', href: '/demo/ending?kind=approved' },
       { title: 'Turned down', what: 'An ending', href: '/demo/ending?kind=turnedDown' },

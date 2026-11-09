@@ -1442,3 +1442,24 @@
   color: var(--colorBroken);
   font-weight: 600;
 }
+
+/* Events' own sizes on the shared loading shapes (.desk-loading, .desk-sunk in SettingsParts.css). */
+.desk-sunk.ev-bone-tabs {
+  height: var(--sizeHit);
+  border-radius: var(--radiusPill);
+}
+
+.desk-sunk.ev-bone-card {
+  height: 220px;
+}
+
+.desk-row.ev-bone-row {
+  min-height: 76px;
+}
+
+.desk-sunk.ev-bone-thumb {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radiusInset);
+}

@@ -27,8 +27,8 @@ function withItems(items: readonly Item[]): Figures {
 describe('Changes since: each sample in the sheet’s order (sc-30692)', () => {
   it('names the person with guests.manage, allergies first, then diets, coming and each course', () => {
     expect(linesFor('named', false, true).map((line) => line.text)).toEqual([
-      'New allergy: sesame (Yusuf Ibrahim)',
-      '[New diet: halal (Ngozi Eze)]',
+      'New allergy: Sesame (Yusuf Ibrahim)',
+      'New diet: Halal (Ngozi Eze)',
       '2 more coming',
       'Pepper soup 50 to 52',
       'Jollof rice with chicken 45 to 48',
@@ -39,8 +39,8 @@ describe('Changes since: each sample in the sheet’s order (sc-30692)', () => {
 
   it('gives a count per code and no name without guests.manage', () => {
     expect(linesFor('named', false, false).map((line) => line.text)).toEqual([
-      '1 more sesame allergy',
-      '[1 more halal diet]',
+      'New allergy: Sesame (1 guest)',
+      'New diet: Halal (1 guest)',
       '2 more coming',
       'Pepper soup 50 to 52',
       'Jollof rice with chicken 45 to 48',
@@ -71,10 +71,10 @@ describe('Changes since: each sample in the sheet’s order (sc-30692)', () => {
 
   it('takes a leaver’s allergy and diet and brings a newcomer’s, under the names rule', () => {
     expect(linesFor('person', false, true).map((line) => line.text)).toEqual([
-      'New allergy: sesame (Ngozi Eze)',
-      '[Allergy removed: peanut (Inês Duarte)]',
-      '[New diet: vegetarian (Ngozi Eze)]',
-      '[Diet removed: halal (Inês Duarte)]',
+      'New allergy: Sesame (Ngozi Eze)',
+      'Allergy removed: Peanuts (Inês Duarte)',
+      'New diet: Vegetarian (Ngozi Eze)',
+      'Diet removed: Halal (Inês Duarte)',
       'Jollof rice with chicken 47 to 48',
       'Grilled sea bass 31 to 30',
       'Chocolate tart 54 to 53',
@@ -85,18 +85,62 @@ describe('Changes since: each sample in the sheet’s order (sc-30692)', () => {
         .slice(0, 4)
         .map((line) => line.text),
     ).toEqual([
-      '1 more sesame allergy',
-      '[1 fewer peanut allergy]',
-      '[1 more vegetarian diet]',
-      '[1 fewer halal diet]',
+      'New allergy: Sesame (1 guest)',
+      'Allergy removed: Peanuts (1 guest)',
+      'New diet: Vegetarian (1 guest)',
+      'Diet removed: Halal (1 guest)',
+    ]);
+  });
+
+  it('never nets a count: one guest’s Peanuts removed and another’s recorded is two lines', () => {
+    expect(linesFor('swap', false, false).map((line) => line.text)).toEqual([
+      'New allergy: Peanuts (1 guest)',
+      'Allergy removed: Peanuts (1 guest)',
+    ]);
+    expect(linesFor('swap', false, true).map((line) => line.text)).toEqual([
+      'Allergy removed: Peanuts (Amaka Eze)',
+      'New allergy: Peanuts (Sophie Laurent)',
+    ]);
+  });
+
+  it('says an allergy changed from one code to another as two lines', () => {
+    const now = {
+      ...BASE,
+      needs: BASE.needs.map((one) =>
+        one.guest === 'g-amaka' ? { ...one, allergies: ['sesame'] } : one,
+      ),
+    };
+
+    expect(texts(BASE, now)).toEqual([
+      'New allergy: Sesame (Amaka Eze)',
+      'Allergy removed: Peanuts (Amaka Eze)',
+    ]);
+    expect(texts(BASE, now, COUNTS)).toEqual([
+      'New allergy: Sesame (1 guest)',
+      'Allergy removed: Peanuts (1 guest)',
+    ]);
+  });
+
+  it('puts a count of more than 1 in the plural, on guest only', () => {
+    const now = {
+      ...BASE,
+      needs: BASE.needs.map((one) =>
+        one.allergies.includes('peanut') ? { ...one, allergies: [] } : one,
+      ),
+      otherDiets: { ...BASE.otherDiets, halal: 20 },
+    };
+
+    expect(texts(BASE, now, COUNTS)).toEqual([
+      'Allergy removed: Peanuts (3 guests)',
+      'New diet: Halal (2 guests)',
     ]);
   });
 
   it('counts an erased guest for every reader, beside a named change', () => {
     expect(linesFor('erased', false, true).map((line) => line.text)).toEqual([
-      'New allergy: sesame (Yusuf Ibrahim)',
-      '[1 fewer shellfish allergy]',
-      '[1 fewer coming]',
+      'New allergy: Sesame (Yusuf Ibrahim)',
+      'Allergy removed: Shellfish (1 guest)',
+      '1 fewer coming',
       'Burrata with peaches 42 to 41',
       'Mushroom risotto 16 to 15',
       'Chocolate tart 54 to 53',
@@ -119,7 +163,7 @@ describe('Changes since: what counts as a change', () => {
 
   it('says a count of 1 and of more than 1, up and down', () => {
     expect(texts({ ...BASE, coming: 95 }, BASE, COUNTS)).toEqual(['1 more coming']);
-    expect(texts({ ...BASE, coming: 99 }, BASE, COUNTS)).toEqual(['[3 fewer coming]']);
+    expect(texts({ ...BASE, coming: 99 }, BASE, COUNTS)).toEqual(['3 fewer coming']);
   });
 
   it('reads a dish added then renamed since the copy as Added, with its name now', () => {
@@ -163,8 +207,14 @@ describe('Changes since: what counts as a change', () => {
   it('counts a diet among the guests with no allergy, who are never named', () => {
     const copy = { ...BASE, otherDiets: { ...BASE.otherDiets, halal: 17, vegan: 5 } };
 
-    expect(texts(copy, BASE)).toEqual(['[1 more halal diet]', '[1 fewer vegan diet]']);
-    expect(texts(copy, BASE, COUNTS)).toEqual(['[1 more halal diet]', '[1 fewer vegan diet]']);
+    expect(texts(copy, BASE)).toEqual([
+      'New diet: Halal (1 guest)',
+      'Diet removed: Vegan (1 guest)',
+    ]);
+    expect(texts(copy, BASE, COUNTS)).toEqual([
+      'New diet: Halal (1 guest)',
+      'Diet removed: Vegan (1 guest)',
+    ]);
   });
 
   it('keeps a 120-character dish and a 60-character variant whole when renamed', () => {

@@ -146,6 +146,25 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
     };
   }
 
+  if (start.loading)
+    return (
+      <div className="desk-page">
+        <div className="ev-column">
+          <ListTop tell={tell} />
+          <Switched />
+          <SearchRow
+            filters={filters}
+            offline={false}
+            waiting
+            menuStart={null}
+            now={now}
+            onFilters={apply}
+          />
+          <ListLoading />
+        </div>
+      </div>
+    );
+
   if (events.length === 0)
     return (
       <div className="desk-page">
@@ -342,26 +361,52 @@ export function FirstRun({ tell, asks = false }: { tell: Tell; asks?: boolean })
   );
 }
 
+/** Where the tabs, the card and the rows go while the list loads, as the shared shapes, heard and not seen. */
+function ListLoading() {
+  return (
+    <div className="desk-loading" role="status" aria-busy="true">
+      <span className="desk-unseen">{W.loading}</span>
+      <span className="desk-sunk ev-bone-tabs" aria-hidden="true" />
+      <span className="desk-sunk is-card ev-bone-card" aria-hidden="true" />
+      <ul className="desk-rows" aria-hidden="true">
+        {[1, 2, 3].map((bone) => (
+          <li key={bone} className="desk-row is-bones ev-bone-row">
+            <span className="desk-sunk ev-bone-thumb" />
+            <span className="desk-row-words">
+              <span className={`desk-sunk is-title b${bone}`} />
+              <span className={`desk-sunk is-line b${bone}`} />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function SearchRow({
   filters,
   offline,
+  waiting = false,
   menuStart,
   now,
   onFilters,
 }: {
   filters: Filters;
   offline: boolean;
+  /** Off while the list loads, with no word about a connection. */
+  waiting?: boolean;
   menuStart: 'top' | 'type' | null;
   now: Date;
   onFilters: (next: Filters, replace?: boolean) => void;
 }) {
   const id = useId();
   const field = useRef<HTMLInputElement>(null);
+  const off = offline || waiting;
 
   return (
     <div className="ev-search-row">
       <div className="ev-search" role="search">
-        <div className={offline ? 'ev-field is-off' : 'ev-field'}>
+        <div className={off ? 'ev-field is-off' : 'ev-field'}>
           <Glyph name="search" size={18} weight={2.2} />
           <input
             ref={field}
@@ -369,8 +414,8 @@ function SearchRow({
             aria-label={W.searchEvents}
             placeholder={W.searchEvents}
             value={filters.q}
-            readOnly={offline}
-            aria-disabled={offline}
+            readOnly={off}
+            aria-disabled={off}
             aria-describedby={offline ? `${id}-off` : undefined}
             spellCheck={false}
             onChange={(event) => onFilters({ ...filters, q: event.target.value }, true)}
@@ -381,7 +426,7 @@ function SearchRow({
               }
             }}
           />
-          {filters.q !== '' && !offline && (
+          {filters.q !== '' && !off && (
             <button
               type="button"
               className="ev-clear"
@@ -403,13 +448,7 @@ function SearchRow({
           </p>
         )}
       </div>
-      <FilterMenu
-        filters={filters}
-        off={offline}
-        start={menuStart}
-        now={now}
-        onFilters={onFilters}
-      />
+      <FilterMenu filters={filters} off={off} start={menuStart} now={now} onFilters={onFilters} />
     </div>
   );
 }
