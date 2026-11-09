@@ -7,7 +7,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
 import { showPushInForeground } from '../src/appPush.ts';
-import { forgetOnNewInstall } from '../src/colourScheme.ts';
 import { LandingToast } from '../src/components/LandingToast.tsx';
 import { WindowOrigin } from '../src/components/Screen.tsx';
 import { useStepsInSheet } from '../src/steps/StepScreen.tsx';
@@ -15,6 +14,7 @@ import { Text } from '../src/components/Text.tsx';
 import { UpdateGate } from '../src/components/UpdateRequired.tsx';
 import { initI18n } from '../src/i18n/index.ts';
 import { loadInstallId } from '../src/installId.ts';
+import { startAfresh } from '../src/newInstall.ts';
 import { useReducedMotion } from '../src/reducedMotion.ts';
 import { useRereadOnMoves } from '../src/rereadOnMoves.ts';
 import { loadBoldText } from '../src/theme/boldText.ts';
@@ -44,7 +44,7 @@ export default function RootLayout() {
 
     Promise.all([
       initI18n(),
-      loadInstallId().then(forgetOnNewInstall),
+      loadInstallId().then((newInstall) => startAfresh(newInstall)),
       loadAsync(FONT_FACES).then(facesLoaded, () => {}),
       loadBoldText().catch(() => {}),
     ])
