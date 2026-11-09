@@ -222,6 +222,7 @@ describe('Security at a desk (sc-30411)', () => {
     openSecurity();
 
     expect(await screen.findByText('Two-factor did not load')).toBeDefined();
+    expect(section('Two-factor authentication').getByRole('alert')).toBeDefined();
     expect(screen.queryByText('Two-factor is off')).toBeNull();
     expect(screen.queryByText('Two-factor is on')).toBeNull();
 
@@ -627,6 +628,7 @@ describe('linking and unlinking at a desk', () => {
     const words = 'Google is linked. We emailed your verified addresses to say so.';
     const line = await screen.findByText(words);
     expect(await screen.findByText('Two-factor did not load')).toBeDefined();
+    expect(section('Two-factor authentication').queryByRole('alert')).toBeNull();
     expect(screen.queryByText('Two-factor is on')).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(line));
 
@@ -637,6 +639,36 @@ describe('linking and unlinking at a desk', () => {
 
     expect(await screen.findByText('Two-factor is on')).toBeDefined();
     expect(screen.getAllByText(words)).toHaveLength(1);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByText(words)));
+  });
+
+  it('leaves focus where the user moved it when the card arrives', async () => {
+    holdingProof();
+    returnedFrom({ kind: 'link' });
+    let fails = true;
+    answering({
+      'GET /api/auth/two-factor': () =>
+        fails ? json({ title: 'Down' }, 500) : json({ on: true, recoveryCodesLeft: 8 }),
+      'POST /api/auth/providers/google': () => json({ provider: 'google', email: GMAIL }, 201),
+      'GET /api/auth/me': () => json({ ...ME, providers: [{ provider: 'google', email: GMAIL }] }),
+    });
+    openSecurity();
+
+    const line = await screen.findByText(
+      'Google is linked. We emailed your verified addresses to say so.',
+    );
+    await screen.findByText('Two-factor did not load');
+    await waitFor(() => expect(document.activeElement).toBe(line));
+    const title = screen.getByRole('heading', { level: 1, name: 'Security' });
+    title.focus();
+
+    fails = false;
+    fireEvent.click(
+      section('Two-factor authentication').getByRole('button', { name: 'Try again' }),
+    );
+
+    expect(await screen.findByText('Two-factor is on')).toBeDefined();
+    expect(document.activeElement).toBe(title);
   });
 
   it("refuses a Google account that is another Soirely account's, under its row", async () => {

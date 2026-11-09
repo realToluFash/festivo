@@ -97,6 +97,7 @@ export function SecurityDesk() {
   const locale = dateLocale();
   const title = useRef<HTMLHeadingElement>(null);
   const saidLine = useRef<HTMLParagraphElement | null>(null);
+  const lineHeld = useRef(false);
   const { layers, covered, setHost } = useDeskLayers();
   const [twoFactor, setTwoFactor] = useState<Load<TwoFactorStatus>>(null);
   const [devices, setDevices] = useState<Load<DeviceSession[]>>(null);
@@ -120,6 +121,7 @@ export function SecurityDesk() {
   const sessions = devices != null && devices !== 'failed' ? thisDeviceFirst(devices) : null;
   const others = sessions == null ? { count: 0, sessionId: null } : othersOf(sessions);
   const status = twoFactor != null && twoFactor !== 'failed' ? twoFactor : null;
+  const opensOnLine = returned != null && 'signIn' in returned && returned.purpose.kind === 'link';
   const { watch, refreshing } = useOffline({
     loaded: status != null && sessions != null,
     reload: () => setRefresh((n) => n + 1),
@@ -134,7 +136,11 @@ export function SecurityDesk() {
   useEffect(() => {
     let live = true;
     watch(api.twoFactorStatus()).then(
-      (now) => live && setTwoFactor(now),
+      (now) => {
+        if (!live) return;
+        lineHeld.current = saidLine.current != null && document.activeElement === saidLine.current;
+        setTwoFactor(now);
+      },
       (error: unknown) =>
         live && setTwoFactor((was) => (was != null && keepsWhatLoaded(error) ? was : 'failed')),
     );
@@ -160,6 +166,13 @@ export function SecurityDesk() {
   useEffect(() => {
     if (said != null) saidLine.current?.focus();
   }, [said]);
+
+  // The alone line unmounts as the card arrives, so its copy in the card takes focus it held.
+  useEffect(() => {
+    if (status == null || !lineHeld.current) return;
+    lineHeld.current = false;
+    saidLine.current?.focus();
+  }, [status]);
 
   // From an effect, so it lands after the closing Ask has handed focus back to its opener.
   useEffect(() => {
@@ -461,7 +474,7 @@ export function SecurityDesk() {
             <SectionFailed
               title={t('twoFactorCard.failedTitle')}
               line={t('twoFactorCard.failedBody')}
-              announce={factorTry === 0}
+              announce={factorTry === 0 && said == null && !opensOnLine}
               onRetry={() => {
                 setTwoFactor(null);
                 rereadFactor();
