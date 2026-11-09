@@ -2,6 +2,9 @@ import type { EventCover } from '@soirely/api-client';
 import type { EventType } from '@soirely/domain';
 import { useLayoutEffect, useRef, useState } from 'react';
 
+import { config } from '../../../config.ts';
+import { keepScheme } from '../../../schemeTokens.ts';
+
 /** A photo to show: a saved cover, or one just chosen, shown from the file before it is saved. */
 export type CoverPhoto = Pick<EventCover, 'position' | 'description' | 'sizes'>;
 
@@ -20,6 +23,7 @@ export function EventCoverImage({
   onFail?: () => void;
 }) {
   const image = useRef<HTMLImageElement>(null);
+  const pattern = useRef<HTMLSpanElement>(null);
   const position = photo?.position;
   const first = photo?.sizes[0];
   const [failed, setFailed] = useState<string | null>(null);
@@ -30,9 +34,16 @@ export function EventCoverImage({
       image.current.style.objectPosition = `50% ${position}%`;
   }, [position]);
 
-  if (photo == null || (first != null && failed === first.url)) {
+  const patterned = photo == null || (first != null && failed === first.url);
+
+  useLayoutEffect(() => {
+    if (patterned && pattern.current != null) keepScheme(pattern.current, config().scheme);
+  }, [patterned]);
+
+  if (patterned) {
     return (
       <span
+        ref={pattern}
         className={`cover cover-default cover-default-${(type === '' ? 'other' : type).replace('_', '-')} ${className}`}
         data-testid="cover-default"
       />

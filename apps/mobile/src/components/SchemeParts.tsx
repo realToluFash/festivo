@@ -10,13 +10,9 @@ import Svg, {
   Stop,
 } from 'react-native-svg';
 
-import { Hidden } from '../../components/Cover.tsx';
-import { Glyph } from '../../components/Glyph.tsx';
-import { useReadOut } from '../../components/ReadOut.tsx';
-import { Text } from '../../components/Text.tsx';
-import type { Scheme } from '../../theme/tokens.ts';
-import { tokens } from '../../theme/tokens.ts';
-import { cardSays, type Choice, inUse, useHeldChoice, WORDS } from './PersonalisationModel.ts';
+import { useTranslation } from 'react-i18next';
+
+import { cardSays, nameOf } from '../kit/personalisation.ts';
 import {
   dotsOf,
   lineOf,
@@ -25,8 +21,14 @@ import {
   type SchemeLook,
   stepOf,
   washStops,
-} from './PersonalisationSchemes.ts';
-import { ShapeMark } from '../../components/StatusMark.tsx';
+} from '../kit/schemes.ts';
+import type { Scheme } from '../theme/tokens.ts';
+import { tokens } from '../theme/tokens.ts';
+import { Hidden } from './Cover.tsx';
+import { Glyph } from './Glyph.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import { ShapeMark } from './StatusMark.tsx';
+import { Text } from './Text.tsx';
 
 /** A piece of Confetti: where its middle sits, its shape, size and turn, and which of the scheme's four colours it takes. */
 export type Spot = readonly [
@@ -195,6 +197,7 @@ export function SchemeCard({
   stepRef: Ref<ViewInstance>;
   onChoose: () => void;
 }) {
+  const { t } = useTranslation();
   const look = lookOf(scheme);
   const step = stepOf(look);
 
@@ -213,7 +216,7 @@ export function SchemeCard({
         style={[styles.says, { color: look.on }]}
         testID="personalisation.says"
       >
-        {cardSays(scheme)}
+        {cardSays(t, scheme)}
       </Text>
       {line.done ? (
         <View style={styles.done}>
@@ -239,11 +242,11 @@ export function SchemeCard({
           pressed && styles.pressed,
         ]}
         accessibilityRole="button"
-        accessibilityLabel={WORDS.choose}
+        accessibilityLabel={t('personalisation.choose')}
         testID="personalisation.choose"
       >
         <Text size={15} weight="semibold" accessible={false} style={{ color: step.ink }}>
-          {WORDS.choose}
+          {t('personalisation.choose')}
         </Text>
         <Glyph name="arrow" size={16} ink={step.ink} weight={2.4} />
       </Pressable>
@@ -253,13 +256,15 @@ export function SchemeCard({
 
 /** Colours' card in the pick: its name on its own Confetti and its colours, 96 tall; what the pick means is said under it. */
 export function PreviewCard({ scheme }: { scheme: Scheme }) {
+  const { t } = useTranslation();
   const look = lookOf(scheme);
+  const name = nameOf(t, scheme);
 
   return (
     <View
       style={[styles.preview, { backgroundColor: look.ground.base }]}
       accessible
-      accessibilityLabel={`Preview: ${look.name}`}
+      accessibilityLabel={t('personalisation.preview', { scheme: name })}
       testID="personalisation.preview"
     >
       <SchemeGround look={look} washed spots={PREVIEW_SPOTS} from="right" />
@@ -270,7 +275,7 @@ export function PreviewCard({ scheme }: { scheme: Scheme }) {
         numberOfLines={1}
         style={[styles.previewName, { color: look.on }]}
       >
-        {look.name}
+        {name}
       </Text>
       <SchemeDots look={look} side={20} />
     </View>
@@ -278,9 +283,8 @@ export function PreviewCard({ scheme }: { scheme: Scheme }) {
 }
 
 /** Personalisation's tile in the Settings list: a swatch of the person's own colours with the palette on it. */
-export function SchemeTile({ side, choice }: { side: number; choice?: Choice }) {
-  const held = useHeldChoice();
-  const look = lookOf(inUse(choice === undefined ? held : choice));
+export function SchemeTile({ side, scheme }: { side: number; scheme: Scheme }) {
+  const look = lookOf(scheme);
   const piece: Spot = [
     side * 0.3,
     side * 0.18,

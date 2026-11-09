@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
 
+import { startColourScheme } from './colourScheme.ts';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { config, load } from './config.ts';
 import { initI18n } from './i18n/index.ts';
@@ -24,10 +25,11 @@ async function start(): Promise<void> {
     throw new Error('No #root element. index.html and main.tsx disagree.');
   }
 
+  startColourScheme();
+
   try {
     await load();
     requireSameSiteApi(window.location.origin, config().apiBaseUrl);
-    document.documentElement.dataset.scheme = config().scheme;
     await initI18n();
   } catch (error) {
     // Rendered as plain text, in English, deliberately: this is the one failure

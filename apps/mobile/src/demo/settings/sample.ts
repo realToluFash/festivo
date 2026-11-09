@@ -39,17 +39,13 @@ export const VIEWER_ORGANISATION: Record<Viewer, { role: string; permissions: st
   noOrg: null,
 };
 
-/** settingsGroups, ahead of the app as sc-29859 and sc-30441 have it: no Roles, Personalisation after Notifications for everyone. A member keeps Organisation, read only, to leave (sc-29915). */
+/** settingsGroups, ahead of the app as sc-29859 has it: no Roles. A member keeps Organisation, read only, to leave (sc-29915). */
 export function demoGroups(
   viewer: Viewer,
 ): { heading: SettingsGroup['heading']; sections: ShellSection[] }[] {
   return settingsGroups(VIEWER_ORGANISATION[viewer]).map(({ heading, sections }) => ({
     heading,
-    sections: sections
-      .filter((section): section is Exclude<ShellSection, 'personalisation'> => section !== 'roles')
-      .flatMap((section): ShellSection[] =>
-        section === 'notifications' ? [section, 'personalisation'] : [section],
-      ),
+    sections: sections.filter((section): section is ShellSection => section !== 'roles'),
   }));
 }
 

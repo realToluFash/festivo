@@ -18,5 +18,7 @@ export default defineConfig({
     // At least three times asyncUtilTimeout in test-setup.ts, so a test with
     // two waits on a loaded runner is not killed before its waits run out.
     testTimeout: 10000,
+    // schemeTokens.ts reads tokens.css?raw, which vitest otherwise hands over empty.
+    css: { include: [/tokens\.css/] },
   },
 });

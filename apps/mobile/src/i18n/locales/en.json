@@ -734,6 +734,8 @@
     "securityLine": "Password, ways to sign in, two-factor, signed-in devices",
     "notifications": "Notifications",
     "notificationsLine": "Push and email, for each kind of notification",
+    "personalisation": "Personalisation",
+    "personalisationLine": "Your colours, for every screen",
     "organisationHeading": "Organisation",
     "organisation": "Organisation",
     "organisationLine": "Name, contact address, currency, time zone",
@@ -2081,5 +2083,48 @@
     },
     "startFirst": "Start your first event",
     "stepNumber": "{{n, number}}"
+  },
+  "personalisation": {
+    "title": "Personalisation",
+    "cardSays": "You see Soirely in {{scheme}}",
+    "never": "Soirely’s own colours, until you choose others.",
+    "chosen": "Your choice. {{own}} is Soirely’s own.",
+    "saved": "Saved. Every screen is in your colours now.",
+    "choose": "Choose colours",
+    "follows": "Your colours follow you on every device you sign in on. Only you see them.",
+    "keeps": "Event covers, emails, messages and guests’ pages keep their own colours.",
+    "colours": "Colours",
+    "lead": "Pick the colours Soirely shows you.",
+    "inUse": "In use now. Pick another to see it here.",
+    "notSavedYet": "Not saved yet. Save puts {{scheme}} on every screen.",
+    "restart": "Saving restarts Soirely’s screens to put your colours on, then brings you back here.",
+    "current": "Current",
+    "currentName": "{{scheme}}, current",
+    "preview": "Preview: {{scheme}}",
+    "save": "Save",
+    "saving": "Saving…",
+    "notSaved": "{{picked}} was not saved. Your colours stay {{kept}}.",
+    "notSavedOffline": "{{picked}} was not saved because you are offline. Your colours stay {{kept}}.",
+    "notLoaded": "Your colours did not load.",
+    "notLoadedLine": "Check your connection and try again.",
+    "loading": "Loading…",
+    "scheme": {
+      "violet": "Violet",
+      "cobalt": "Cobalt",
+      "garden": "Garden",
+      "citrus": "Citrus",
+      "berry": "Berry",
+      "blacktie": "Black tie",
+      "sorbet": "Sorbet",
+      "terracotta": "Terracotta"
+    },
+    "tryAgain": "Try again"
+  },
+  "focusedScreen": {
+    "cancel": "Cancel",
+    "back": "Back"
+  },
+  "failedBlock": {
+    "tryAgain": "Try again"
   }
 }
