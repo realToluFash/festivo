@@ -39,10 +39,9 @@ appId: host.exp.Exponent
 - takeScreenshot: tf-lost-start
 - tapOn: { id: 'lostTwoFactor.send' }
 - extendedWaitUntil: { visible: { id: 'lostTwoFactor.emailCode' }, timeout: 60000 }
-- evalScript: "${output.mails = json(http.get(MAILPIT_URL + '/api/v1/search?limit=1&query=' + encodeURIComponent('to:' + EMAIL)).body)}"
-- evalScript: "${output.ecode = json(http.get(MAILPIT_URL + '/api/v1/message/' + output.mails.messages[0].ID).body).Text.match(/\\b\\d{6}\\b/)[0]}"
+- runScript: ../scripts/latest-code.js
 - tapOn: { id: 'lostTwoFactor.emailCode' }
-- inputText: ${output.ecode}
+- inputText: ${output.code}
 - runFlow:
     when: { visible: { id: 'lostTwoFactor.phoneCode' } }
     commands:
