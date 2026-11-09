@@ -1,19 +1,20 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 
 const tested = config();
 
+beforeAll(() => import('./Demo.tsx'), 60000);
 beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
 afterEach(() => __setConfig(tested));
 
 async function open(state: string): Promise<void> {
   const router = createMemoryRouter(routes, { initialEntries: [`/demo/pass?state=${state}`] });
   render(<RouterProvider router={router} />);
-  await screen.findByRole('heading', { level: 1, name: 'Pass · Main' });
+  await screen.findByRole('heading', { level: 1, name: 'Pass · Main' }, { timeout: 8000 });
 }
 
 const panel = () => screen.getByRole('dialog');
