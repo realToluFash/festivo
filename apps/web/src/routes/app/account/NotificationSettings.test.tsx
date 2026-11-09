@@ -47,7 +47,7 @@ afterEach(() => {
 });
 
 const PUSH_BLOCKED =
-  'Push is off in this browser, so pushes will not reach you here. Turn it on in your browser settings.';
+  "Push is off in this browser, so pushes won't reach you here. Turn it on in your browser settings.";
 
 function permission(state: NotificationPermission): void {
   vi.stubGlobal('Notification', { permission: state });

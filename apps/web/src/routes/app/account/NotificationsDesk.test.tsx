@@ -71,7 +71,7 @@ async function openRow(name: string) {
   return within(screen.getByRole('group', { name }));
 }
 
-const BLOCKED = 'Push is off in this browser, so pushes will not reach you here.';
+const BLOCKED = "Push is off in this browser, so pushes won't reach you here.";
 
 afterEach(() => {
   vi.restoreAllMocks();
