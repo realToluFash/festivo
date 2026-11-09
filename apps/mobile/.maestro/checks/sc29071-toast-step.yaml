@@ -1,0 +1,15 @@
+# Setting a new password lands with the Password changed toast. sc-29071.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_STEP}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: 'a-brand-new-password-29071'
+- takeScreenshot: toast-step-01-typed
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: '{{t:recovery.changed}}', timeout: 30000 }
+- takeScreenshot: toast-step-02-landed
+- extendedWaitUntil: { visible: '{{t:any:steps.organisationTitle}}', timeout: 20000 }
+- takeScreenshot: toast-step-03-settled
+- runFlow: ../sign-out-from-complete-profile.yaml

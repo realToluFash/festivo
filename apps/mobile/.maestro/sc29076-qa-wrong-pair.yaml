@@ -1,0 +1,29 @@
+# A wrong pair on the email step, keys up: the line sits between the field and Forgot your password?. Needs EMAIL, SHOT, ${METRO_URL}. sc-29076.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 90000
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- inputText: ${EMAIL}
+- pressKey: Enter
+- inputText: 'wrong-password-123'
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: 'That email and password do not match.*'
+    timeout: 10000
+- takeScreenshot: ${SHOT}
+- tapOn:
+    id: 'signIn.password'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-keys-up

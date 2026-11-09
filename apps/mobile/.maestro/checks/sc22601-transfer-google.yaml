@@ -1,0 +1,27 @@
+# sc-22601: Transfer ownership, on an account with no password and Google linked, shows Google's button, faded while busy. Needs ${METRO_URL} and a second member in the organisation.
+appId: host.exp.Exponent
+---
+- runFlow:
+    when:
+      visible: 'Cancel'
+    commands:
+      - tapOn: 'Cancel'
+- openLink: ${METRO_URL}/--/settings/organisation
+- scrollUntilVisible:
+    element:
+      id: 'ownership.transfer'
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'ownership.transfer'
+- scrollUntilVisible:
+    element:
+      id: 'ownership.transfer.provider'
+    direction: DOWN
+    timeout: 15000
+    centerElement: true
+- takeScreenshot: transfer-google
+- tapOn:
+    id: 'ownership.transfer.provider'
+- takeScreenshot: transfer-nobody-chosen
