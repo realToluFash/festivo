@@ -2840,13 +2840,13 @@ describe('the flows a batch runs', () => {
         onAndroid: false,
       });
       expect(readFileSync(join(target, '_checks/settings.es.yaml'), 'utf8')).toContain(
-        "'Configuración'",
+        `'${catalogues.es.settings.title}'`,
       );
       expect(readFileSync(join(target, '_checks/security.es.yaml'), 'utf8')).toContain(
-        "'Seguridad'",
+        `'${catalogues.es.security.title}'`,
       );
       expect(readFileSync(join(target, '_checks/sign-in-rules.fr.yaml'), 'utf8')).toContain(
-        "'Règles de connexion'",
+        `'${catalogues.fr.settings.signInRules}'`,
       );
       expect(readFileSync(join(target, '_checks/sc23267-start-cold.fr.yaml'), 'utf8')).toContain(
         'file: sc23267-start-cold.fr.sc23267-start-cold-once.flow.yaml',
