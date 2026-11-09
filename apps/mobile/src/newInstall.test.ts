@@ -93,10 +93,34 @@ describe('a reinstall is a new device (sc-34831)', () => {
 
     await app.startAfresh(
       true,
-      async () => void order.push('ended'),
+      async () => {
+        await new Promise((done) => setTimeout(done, 10));
+        order.push('ended');
+      },
       async () => void order.push('restarted'),
     );
 
     expect(order).toEqual(['ended', 'restarted']);
+  });
+
+  it('restarts after three seconds when the old session never finishes ending', async () => {
+    kept.set('soirely.colourScheme', 'berry');
+    globalThis.soirelyDeviceScheme = 'berry';
+    const app = await launch();
+    const restart = vi.fn(async () => {});
+    vi.useFakeTimers();
+
+    try {
+      const starting = app.startAfresh(true, () => new Promise<void>(() => {}), restart);
+
+      await vi.advanceTimersByTimeAsync(2999);
+      expect(restart).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      await starting;
+      expect(restart).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

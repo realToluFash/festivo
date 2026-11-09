@@ -304,6 +304,47 @@ describe('the session refreshes without signing anybody out', () => {
   });
 });
 
+describe('ending a session this client no longer holds (sc-34831)', () => {
+  function kept(answer: () => Promise<Response>): {
+    client: ApiClient;
+    asked: () => { url: string; body: unknown } | null;
+  } {
+    let asked: { url: string; body: unknown } | null = null;
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store(null, null),
+      fetch: async (input, init) => {
+        asked = { url: String(input), body: JSON.parse(String(init?.body)) };
+        return answer();
+      },
+    });
+
+    return { client, asked: () => asked };
+  }
+
+  test('presents the kept refresh token to the logout endpoint', async () => {
+    const { client, asked } = kept(async () => new Response(null, { status: 204 }));
+
+    await client.signOutKept('ada-refresh');
+
+    expect(asked()).toEqual({
+      url: 'http://api.test/api/auth/logout',
+      body: expect.objectContaining({ refreshToken: 'ada-refresh' }),
+    });
+  });
+
+  test('does not throw when Soirely refuses or cannot be reached', async () => {
+    await expect(
+      kept(async () => problem(401, 'invalid_refresh_token')).client.signOutKept('ada-refresh'),
+    ).resolves.toBeUndefined();
+    await expect(
+      kept(async () => {
+        throw new TypeError('Network request failed');
+      }).client.signOutKept('ada-refresh'),
+    ).resolves.toBeUndefined();
+  });
+});
+
 describe('a refresh answered after the session changed hands (sc-16226)', () => {
   function held(): {
     client: ApiClient;
