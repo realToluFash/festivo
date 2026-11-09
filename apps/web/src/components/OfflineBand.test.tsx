@@ -479,55 +479,55 @@ describe('the offline band on the planning screens (sc-27086)', () => {
     expect(band()).toBeNull();
   });
 
-  it('shows on the Dashboard, keeps the count, and says Refreshing… by its title while it loads again', async () => {
+  it('shows on Today, keeps its events, and says Refreshing… under its banner while it loads again', async () => {
     signedIn();
     const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
     const fetched = servingEvents(state);
     open('/app');
-    await screen.findByText(/1 event/);
+    await screen.findByText('Adaeze and Tunde');
 
     state.soirely = 'unreachable';
     goOffline();
     await waitFor(() => expect(band()?.textContent).toMatch(/^Offline · as of /));
-    expect(screen.getByText(/1 event/)).toBeDefined();
+    expect(screen.getByText('Adaeze and Tunde')).toBeDefined();
 
     fetched.mockImplementation(() => new Promise<Response>(() => {}));
     act(() => screen.getByRole('button', { name: 'Try again' }).click());
 
     await screen.findByText('Refreshing…');
-    expect(screen.getByText(/1 event/)).toBeDefined();
+    expect(screen.getByText('Adaeze and Tunde')).toBeDefined();
   });
 
-  it('shows the new count once Try again on the Dashboard is answered, and lands on Dashboard', async () => {
+  it('shows the new events once Try again on Today is answered, and lands on its greeting', async () => {
     signedIn();
-    const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde', finished: 0 };
+    const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
     servingEvents(state);
     open('/app');
-    await screen.findByText(/1 event/);
+    await screen.findByText('Adaeze and Tunde');
 
     state.soirely = 'unreachable';
     goOffline();
     await waitFor(() => expect(band()?.textContent).toMatch(/^Offline · as of /));
 
     state.soirely = 'answers';
-    state.finished = 2;
+    state.name = 'Adaeze and Tunde, renamed';
     act(() => screen.getByRole('button', { name: 'Try again' }).click());
 
-    await screen.findByText(/3 events/);
+    await screen.findByText('Adaeze and Tunde, renamed');
     expect(band()).toBeNull();
     await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Dashboard' })),
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 })),
     );
   });
 
-  it('keeps the count and the band, its time unchanged, when Try again on the Dashboard does not reach Soirely', async () => {
+  it('keeps the events and the band, its time unchanged, when Try again on Today does not reach Soirely', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 10, 10, 9, 41, 5));
     signedIn();
     const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
     const fetched = servingEvents(state);
     open('/app');
-    await screen.findByText(/1 event/);
+    await screen.findByText('Adaeze and Tunde');
 
     vi.setSystemTime(new Date(2026, 10, 10, 9, 47, 0));
     state.soirely = 'unreachable';
@@ -538,7 +538,7 @@ describe('the offline band on the planning screens (sc-27086)', () => {
     await tryAgainUnanswered(fetched);
 
     expect(band()?.textContent).toContain('Offline · as of 09:41');
-    expect(screen.getByText(/1 event/)).toBeDefined();
+    expect(screen.getByText('Adaeze and Tunde')).toBeDefined();
   });
 
   describe('Edit details', () => {
