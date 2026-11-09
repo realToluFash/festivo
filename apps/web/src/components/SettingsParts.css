@@ -40,6 +40,10 @@
   list-style: none;
 }
 
+:where(.desk) .notice > p {
+  margin-block: 1em;
+}
+
 .desk :is(button, a, input, [tabindex='0']):focus-visible {
   outline: none;
   box-shadow: var(--deskRing);
