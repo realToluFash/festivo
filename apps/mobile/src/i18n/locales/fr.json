@@ -1896,7 +1896,7 @@
       "email": "Email cannot be switched off.",
       "push": "Push cannot be switched off."
     },
-    "quietHours": "De {{start}}à {{end}} (votre heure locale), seules les notifications push « Jour de l’événement » vous parviennent.",
+    "quietHours": "De {{start}} à {{end}} (votre heure locale), seules les notifications push « Jour de l’événement » vous parviennent.",
     "category": {
       "guest_replies": "Réponses des invités",
       "messages": "Messages",
