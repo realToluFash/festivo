@@ -111,10 +111,15 @@
 
 .bud-card-foot {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--spaceSm) 22px;
   margin-top: auto;
+}
+
+.bud-card-foot-stack {
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .bud-card-foot .desk-step {

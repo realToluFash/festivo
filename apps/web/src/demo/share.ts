@@ -324,7 +324,7 @@ export interface Reading {
 export function readingOf(lang: Lang = 'en', device?: string): Reading {
   return {
     w: READER_WORDS[lang],
-    locale: device === undefined ? readerTag(lang) : readerTag(lang, device),
+    locale: readerTag(lang, device),
   };
 }
 
@@ -338,11 +338,9 @@ const wholeRange = (low: number, high: number, r: Reading): string =>
   low === high ? whole(low, r) : r.w.range(whole(low, r), whole(high, r));
 
 export function dayOf(day: string, r: Reading = ENGLISH): string {
-  return r.w === READER_WORDS.en
-    ? shortDay(day, r.locale)
-    : new Intl.DateTimeFormat(r.locale, { ...r.w.day, timeZone: 'UTC' }).format(
-        new Date(`${day}T00:00:00Z`),
-      );
+  return new Intl.DateTimeFormat(r.locale, { ...r.w.day, timeZone: 'UTC' }).format(
+    new Date(`${day}T00:00:00Z`),
+  );
 }
 
 export function everyday(line: CostLine, r: Reading = ENGLISH): Row {

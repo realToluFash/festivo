@@ -29,6 +29,7 @@ import {
   updatedLine,
   visitOf,
 } from './share.ts';
+import { READER_WORDS } from './shareLanguages.ts';
 
 const parse = (shown: string): number => Math.round(Number(shown.replace(/[£,]/gu, '')) * 100);
 const words = (view: ReturnType<typeof sharedView>): string =>
@@ -286,5 +287,22 @@ describe('the page a link opens, signed out (sc-94, sc-1300)', () => {
     expect(signedOut?.states.find((one) => one.to.endsWith('=passphrase'))?.name).toContain(
       PASSPHRASE,
     );
+  });
+});
+
+describe('the share’s counts in its reader’s language (sc-31779, #34553)', () => {
+  it('says one present at one in every language, and at zero only where the language does', () => {
+    expect(READER_WORDS.es.coming(1)).toBe('1 asistente');
+    expect(READER_WORDS.fr.coming(1)).toBe('1 présent');
+    expect(READER_WORDS.fr.coming(0)).toBe('0 présent');
+    expect(READER_WORDS.pt.coming(1)).toBe('1 presente');
+    expect(READER_WORDS.pt.coming(0)).toBe('0 presentes');
+    expect(READER_WORDS.es.coming(2)).toBe('2 asistentes');
+  });
+
+  it('keeps French’s unpriced cost singular below two', () => {
+    expect(READER_WORDS.fr.notPricedYet(0)).toBe('0 coût pas encore chiffré.');
+    expect(READER_WORDS.fr.notPricedYet(2)).toBe('2 coûts pas encore chiffrés.');
+    expect(READER_WORDS.es.notPricedYet(0)).toBe('0 costes aún sin precio.');
   });
 });

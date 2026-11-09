@@ -5,7 +5,7 @@ import { CATEGORY_WORDS } from './vendorsWords.ts';
 
 export type Covers = 'all of it' | 'half';
 
-/** What the signed-out share says, in the language its reader chose; es, fr and pt are ux's proposals for l10n to settle, pt's from Budget-A-Share 26. */
+/** What the signed-out share says, in the language its reader chose; es, fr and pt settled by l10n on sc-31779 (#34553), pt's board lines from Budget-A-Share 26. */
 export interface ReaderWords {
   yourShareOf: (event: string) => string;
   budgetFor: (event: string) => string;
@@ -52,6 +52,8 @@ export interface ReaderWords {
   /** A day as the reader's language writes it: English keeps the board's weekday, the others the board's «3 de novembro». */
   day: Intl.DateTimeFormatOptions;
 }
+
+const isOne = (tag: string, n: number): boolean => new Intl.PluralRules(tag).select(n) === 'one';
 
 const ENGLISH: ReaderWords = {
   yourShareOf: W.yourShareOf,
@@ -114,7 +116,7 @@ const SPANISH: ReaderWords = {
   notPricedYet: (n) => (n === 1 ? '1 coste aún sin precio.' : `${n} costes aún sin precio.`),
   perHeadSettled: 'Por persona, confirmados',
   perHeadIfAll: 'Por persona, si vienen todos',
-  coming: (n) => `${n} asistentes`,
+  coming: (n) => (isOne('es', n) ? `${n} asistente` : `${n} asistentes`),
   paid: 'Pagado',
   stillToCome: 'Pendiente',
   stillToPay: 'Por pagar',
@@ -170,10 +172,11 @@ const FRENCH: ReaderWords = {
     `Entre ${low} et ${high}, selon le nombre de personnes qui diront oui parmi les ${still} qui n’ont pas encore répondu.`,
   range: (low, high) => `${low} à ${high}`,
   repliesDoNot: 'Les réponses ne changent pas ce montant.',
-  notPricedYet: (n) => (n === 1 ? '1 coût pas encore chiffré.' : `${n} coûts pas encore chiffrés.`),
+  notPricedYet: (n) =>
+    n < 2 ? `${n} coût pas encore chiffré.` : `${n} coûts pas encore chiffrés.`,
   perHeadSettled: 'Par personne, confirmés',
-  perHeadIfAll: 'Par personne, si tous viennent',
-  coming: (n) => `${n} présents`,
+  perHeadIfAll: 'Par personne, si tout le monde vient',
+  coming: (n) => (isOne('fr', n) ? `${n} présent` : `${n} présents`),
   paid: 'Payé',
   stillToCome: 'Reste à payer',
   stillToPay: 'À payer',
@@ -181,7 +184,7 @@ const FRENCH: ReaderWords = {
   nextTo: (amount, vendor, day) => `Prochain\u00a0: ${amount} à ${vendor}, dû le ${day}`,
   next: (amount, day) => `Prochain\u00a0: ${amount}, dû le ${day}`,
   whatItCovers: 'Ce que cela couvre',
-  whatItIsMadeOf: 'De quoi il se compose',
+  whatItIsMadeOf: 'Ce qui le compose',
   forEachGuest: 'par invité qui dit oui',
   forEachDay: (days) => `pour chacun des ${days} jours`,
   noSeatingPlan: 'pas encore de plan de table',
@@ -195,9 +198,9 @@ const FRENCH: ReaderWords = {
   open: 'Ouvrir',
   wrongPassphrase: 'Cette phrase secrète n’est pas la bonne. Vérifiez-la et réessayez.',
   tooMany: (time) =>
-    `Trop de phrases secrètes erronées ont été essayées sur ce lien. Réessayez à ${time}.`,
+    `Trop de tentatives avec une phrase secrète erronée sur ce lien. Réessayez à ${time}.`,
   tooManySoon:
-    'Trop de phrases secrètes erronées ont été essayées sur ce lien. Patientez un instant, puis réessayez.',
+    'Trop de tentatives avec une phrase secrète erronée sur ce lien. Patientez un instant, puis réessayez.',
   goneTitle: 'Ce lien n’ouvre rien',
   goneLine:
     'Il a peut-être été révoqué ou a expiré. Demandez-en un nouveau à la personne qui vous l’a envoyé.',
@@ -233,7 +236,7 @@ const PORTUGUESE: ReaderWords = {
   notPricedYet: (n) => (n === 1 ? '1 custo ainda sem preço.' : `${n} custos ainda sem preço.`),
   perHeadSettled: 'Por pessoa, confirmados',
   perHeadIfAll: 'Por pessoa, se todos vierem',
-  coming: (n) => `${n} presentes`,
+  coming: (n) => (isOne('pt-PT', n) ? `${n} presente` : `${n} presentes`),
   paid: 'Pago',
   stillToCome: 'Ainda por pagar',
   stillToPay: 'Falta pagar',
@@ -249,19 +252,19 @@ const PORTUGUESE: ReaderWords = {
   notPriced: 'Ainda sem preço',
   planningFee: 'Taxa de planeamento',
   print: 'Imprimir',
-  asksTitle: 'Este link pede uma frase-passe',
-  asksLine: 'Quem o partilhou envia-lhe a frase-passe por outro meio.',
+  asksTitle: 'Esta ligação pede uma frase-passe',
+  asksLine: 'Quem a partilhou envia-lhe a frase-passe por outro meio.',
   passphrase: 'Frase-passe',
   open: 'Abrir',
-  wrongPassphrase: 'Essa frase-passe não está certa. Verifique-a e tente de novo.',
+  wrongPassphrase: 'Esta frase-passe não está correta. Verifique-a e tente novamente.',
   tooMany: (time) =>
-    `Foram tentadas demasiadas frases-passe erradas neste link. Tente de novo às ${time}.`,
+    `Foram tentadas demasiadas frases-passe erradas nesta ligação. Tente novamente às ${time}.`,
   tooManySoon:
-    'Foram tentadas demasiadas frases-passe erradas neste link. Aguarde um momento e tente de novo.',
-  goneTitle: 'Este link não abre nada',
-  goneLine: 'Pode ter sido revogado ou ter terminado. Peça um novo a quem o enviou.',
-  endedTitle: 'Este link terminou.',
-  endedLine: (name) => `Peça um novo a ${name}.`,
+    'Foram tentadas demasiadas frases-passe erradas nesta ligação. Aguarde um momento e tente novamente.',
+  goneTitle: 'Esta ligação não abre nada',
+  goneLine: 'Pode ter sido revogada ou ter expirado. Peça uma nova a quem a enviou.',
+  endedTitle: 'Esta ligação expirou.',
+  endedLine: (name) => `Peça uma nova a ${name}.`,
   covers: { 'all of it': 'tudo', half: 'metade' },
   categories: {
     catering: 'Catering',
@@ -270,7 +273,7 @@ const PORTUGUESE: ReaderWords = {
     photography: 'Fotografia',
     music: 'Música',
     transport: 'Transporte',
-    staffing: 'Pessoal',
+    staffing: 'Equipa',
     hire: 'Aluguer',
     other: 'Outros',
   },
