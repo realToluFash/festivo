@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -6,6 +6,8 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 
 const tested = config();
+const OFF = 'They’re emailed now, and every session they had has ended.';
+const DOWN = 'Two-factor stays on for them, and they’re emailed.';
 const INTRO =
   'They lost their authenticator and their recovery codes, and stay signed out until somebody answers. One answer from an owner or admin is enough. Approve only if you’re sure it’s them, for example by calling them on a number you already have.';
 
@@ -22,6 +24,26 @@ async function landed(text: string): Promise<void> {
   await waitFor(() => expect(document.activeElement?.textContent).toBe(text));
 }
 
+async function onCard(says: string, line: string): Promise<void> {
+  await waitFor(() => {
+    const words = document.activeElement;
+    expect(words?.classList.contains('desk-said-lines')).toBe(true);
+    expect([...(words?.children ?? [])].map((one) => one.textContent)).toEqual([says, line]);
+  });
+}
+
+function atDesk(): void {
+  vi.spyOn(window, 'matchMedia').mockImplementation(
+    (query) =>
+      ({
+        matches: query === '(width >= 96rem)',
+        media: query,
+        addEventListener() {},
+        removeEventListener() {},
+      }) as never,
+  );
+}
+
 function verb(name: string): HTMLElement {
   return within(screen.getByRole('alertdialog')).getByRole('button', { name });
 }
@@ -32,7 +54,10 @@ function headings(): string[] {
 
 describe('Requests to get back in on Members at a desk (sc-30183)', () => {
   beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
 
   it('lists them under the card, above Waiting, each read with the paragraph said once', async () => {
     await members('/demo/settings/members?state=recovery');
@@ -125,14 +150,14 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.getByRole('alertdialog')).toBeDefined();
 
-    await landed('Kofi Mensah’s two-factor is off.');
+    await onCard('Kofi Mensah’s two-factor is off.', OFF);
   });
 
   it('turns off two-factor, says so on the card with the focus, and offers Priya’s', async () => {
     await members('/demo/settings/members?state=recoveryApprove');
 
     fireEvent.click(screen.getByRole('button', { name: 'Turn off two-factor' }));
-    await landed('Kofi Mensah’s two-factor is off.');
+    await onCard('Kofi Mensah’s two-factor is off.', OFF);
 
     expect(screen.queryByRole('article', { name: 'Kofi Mensah' })).toBeNull();
     expect(
@@ -171,7 +196,7 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
 
     expect(within(ask).queryByRole('alert')).toBeNull();
     expect(again.textContent).toBe('Sending your answer…');
-    await landed('Kofi Mensah’s two-factor is off.');
+    await onCard('Kofi Mensah’s two-factor is off.', OFF);
   });
 
   it('closes a failed answer with nothing changed, the focus back on Approve', async () => {
@@ -213,7 +238,7 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Turn down the request' }));
     expect(verb('Sending your answer…').getAttribute('aria-busy')).toBe('true');
     expect(verb('Keep the request').getAttribute('aria-disabled')).toBe('true');
-    await landed('Kofi Mensah’s request is turned down.');
+    await onCard('Kofi Mensah’s request is turned down.', DOWN);
 
     expect(screen.getByText('Two-factor stays on for them, and they’re emailed.')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Answer Priya Shah' })).toBeDefined();
@@ -248,7 +273,7 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
     for (const name of ['Kofi Mensah', 'Priya Shah']) {
       fireEvent.click(within(request(name)).getByRole('button', { name: 'Approve' }));
       fireEvent.click(screen.getByRole('button', { name: 'Turn off two-factor' }));
-      await landed(`${name}’s two-factor is off.`);
+      await onCard(`${name}’s two-factor is off.`, OFF);
     }
 
     expect(screen.queryByRole('heading', { name: 'Requests to get back in' })).toBeNull();
@@ -262,6 +287,30 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
     expect(screen.queryByRole('heading', { name: 'Requests to get back in' })).toBeNull();
     expect(screen.getByText('Priya Shah’s two-factor is off.')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Answer Lucía Gómez' })).toBeDefined();
+    await onCard('Priya Shah’s two-factor is off.', OFF);
+  });
+
+  it('opens recoveryApproved and recoveryTurnedDown with the focus on the card’s words (sc-33322)', async () => {
+    await members('/demo/settings/members?state=recoveryApproved');
+    await onCard('Kofi Mensah’s two-factor is off.', OFF);
+    cleanup();
+
+    await members('/demo/settings/members?state=recoveryTurnedDown');
+    await onCard('Kofi Mensah’s request is turned down.', DOWN);
+  });
+
+  it('lands both answers on the card’s words from 1536 wide, beside an open person (sc-33322)', async () => {
+    atDesk();
+    await members('/demo/settings/members?state=recovery');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Ana Souza/u }));
+    fireEvent.click(within(request('Kofi Mensah')).getByRole('button', { name: 'Approve' }));
+    fireEvent.click(verb('Turn off two-factor'));
+    await onCard('Kofi Mensah’s two-factor is off.', OFF);
+
+    fireEvent.click(within(request('Priya Shah')).getByRole('button', { name: 'Turn down' }));
+    fireEvent.click(verb('Turn down the request'));
+    await onCard('Priya Shah’s request is turned down.', DOWN);
   });
 
   it('shows Julien his own request with the line in place of the answers', async () => {
