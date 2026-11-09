@@ -1847,6 +1847,7 @@ const ACCOUNT = {
   needsOrganisation: false,
   hasPassword: true,
   twoFactorSetupPrompt: false,
+  colourScheme: null,
   waitingFor: null,
   providers: [],
   emailAddresses: [

@@ -88,17 +88,6 @@ export function schemeIn(answer: unknown): Scheme | null {
   return isScheme(scheme) ? scheme : null;
 }
 
-/** Every answer from /me carries the account's pick, whichever screen asked. */
-export function followMeAnswers(input: RequestInfo | URL, answer: Promise<Response>): void {
-  const url = input instanceof Request ? input.url : String(input);
-  if (!url.endsWith('/api/auth/me')) return;
-
-  answer
-    .then((response) => (response.ok ? response.clone().json() : Promise.reject(response)))
-    .then((body: unknown) => followAccountScheme(schemeIn(body)))
-    .catch(() => undefined);
-}
-
 /** A save: this tab and every other open one take it at once. */
 export function savedScheme(chosen: Scheme): void {
   followAccountScheme(chosen);

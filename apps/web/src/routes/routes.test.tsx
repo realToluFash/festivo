@@ -28,6 +28,7 @@ const ADA_ACCOUNT: Account = {
   needsOrganisation: false,
   hasPassword: true,
   twoFactorSetupPrompt: false,
+  colourScheme: null,
   waitingFor: null,
   providers: [],
   emailAddresses: [],

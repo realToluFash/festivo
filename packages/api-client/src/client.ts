@@ -275,6 +275,8 @@ export interface Account {
   providers: LinkedProvider[];
   /** Two-factor was turned off by an approved recovery: asked to set it up again (sc-509). */
   twoFactorSetupPrompt: boolean;
+  /** The colours the person picked for Soirely; null for the default (sc-30441). */
+  colourScheme: string | null;
   emailAddresses: LinkedAddress[];
   phoneNumbers: LinkedPhone[];
   /** An account in no organisation that asked to join one at its domain (sc-561), until somebody answers. */
@@ -3122,6 +3124,7 @@ function asAccount(raw: unknown): Account | null {
     needsOrganisation: candidate.needsOrganisation === true,
     hasPassword: candidate.hasPassword === true,
     twoFactorSetupPrompt: candidate.twoFactorSetupPrompt === true,
+    colourScheme: typeof candidate.colourScheme === 'string' ? candidate.colourScheme : null,
     providers: Array.isArray(candidate.providers)
       ? candidate.providers.flatMap(asLinkedProvider)
       : [],
