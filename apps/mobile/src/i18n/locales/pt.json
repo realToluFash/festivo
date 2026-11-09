@@ -1876,26 +1876,26 @@
     "emailNotSaved": "A alteração do e-mail não foi guardada. Tente novamente.",
     "couldNotLoad": "Não foi possível carregar as suas definições de notificações.",
     "tryAgain": "Tentar novamente",
-    "pushBlocked": "As notificações push estão desativadas neste dispositivo, por isso não as vai receber aqui. Ative-as nas definições do dispositivo.",
+    "pushBlocked": "As notificações push estão desativadas neste dispositivo, por isso não as vai receber aqui.",
     "quietHours": "Entre {{start}} e {{end}} (hora local), só chegam as notificações push de «Dia do evento».",
-    "kinds": "What you hear about",
-    "openSettings": "Open device settings",
-    "blockedHere": "Blocked on this device",
-    "notLoadedLine": "Check your connection and try again.",
-    "saving": "Saving…",
-    "savedTag": "Saved",
-    "saysBoth": "You hear by push and email",
-    "saysPush": "You hear by push only",
-    "saysEmail": "You hear by email only",
-    "counts": "{{push, number}} of {{total, number}} by push · {{email, number}} of {{total, number}} by email",
-    "heardBoth": "Push and email",
-    "heardPush": "Push only",
-    "heardEmail": "Email only",
-    "heardNone": "Off",
-    "emailAlwaysOn": "{{heard}} · email always on",
+    "kinds": "Notificações que recebe",
+    "openSettings": "Abrir as definições do dispositivo",
+    "blockedHere": "Bloqueadas neste dispositivo",
+    "notLoadedLine": "Verifique a ligação à Internet e tente novamente.",
+    "saving": "A guardar…",
+    "savedTag": "Guardado",
+    "saysBoth": "Recebe notificações push e por e-mail",
+    "saysPush": "Só recebe notificações push",
+    "saysEmail": "Só recebe notificações por e-mail",
+    "counts": "{{push, number}} de {{total, number}} por push · {{email, number}} de {{total, number}} por e-mail",
+    "heardBoth": "Push e e-mail",
+    "heardPush": "Só push",
+    "heardEmail": "Só e-mail",
+    "heardNone": "Desativado",
+    "emailAlwaysOn": "{{heard}} · e-mail sempre ativado",
     "locked": {
-      "email": "Email cannot be switched off.",
-      "push": "Push cannot be switched off."
+      "email": "O e-mail não pode ser desativado.",
+      "push": "As notificações push não podem ser desativadas."
     },
     "category": {
       "guest_replies": "Respostas dos convidados",
@@ -1911,7 +1911,7 @@
       "event_day": "Alterações ao seu turno ou à sua hora de convocatória, ou ao evento nas 24 horas que o antecedem.",
       "event_changes": "Quando outra pessoa altera se, quando ou onde se realiza um evento em que participa.",
       "money": "Pagamentos pendentes, utilização a {{low}} e a {{high}}, pagamentos falhados e faturas.",
-      "account_security": "Inícios de sessão, a sua palavra-passe, dois fatores, a propriedade e os acessos. O e-mail não pode ser desativado."
+      "account_security": "Inícios de sessão, a sua palavra-passe, dois fatores, a propriedade e os acessos."
     }
   },
   "timeline": {
