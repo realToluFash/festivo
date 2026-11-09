@@ -1,5 +1,11 @@
 import { type DeviceSession, type LinkedProvider, type Provider } from '@soirely/api-client';
-import { appDevice, formatDay, formatTimeOfDay, readableAgent } from '@soirely/domain';
+import {
+  type AppDevice,
+  appDevice,
+  formatDay,
+  formatTimeOfDay,
+  readableAgent,
+} from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
 import { type GlyphName } from './components/Glyph.tsx';
@@ -199,7 +205,7 @@ const APP_NAMES = {
   iPad: 'devices.appIPad',
   phone: 'devices.appAndroidPhone',
   tablet: 'devices.appAndroidTablet',
-} as const;
+} as const satisfies Record<AppDevice, string>;
 
 /** A device as it described itself when it signed in. */
 export function deviceName(device: DeviceSession, t: TFunction): string {

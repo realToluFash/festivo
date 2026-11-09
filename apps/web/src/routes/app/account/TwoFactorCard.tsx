@@ -1,15 +1,14 @@
 import { ApiError, type TwoFactorEnrolment, type TwoFactorStatus } from '@soirely/api-client';
-import { cleanCode, codeProblem, formatTimeOfDay, keyInGroups, lockLiftsAt } from '@soirely/domain';
-import { type TFunction } from 'i18next';
+import { cleanCode, codeProblem, keyInGroups } from '@soirely/domain';
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
-import { dateLocale } from '../../../i18n/index.ts';
 import { offButton } from '../../../offButton.ts';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
+import { factorRefusal, setupRefusal } from '../../../securityRefusals.ts';
 import { refreshAccount, useSessionState } from '../../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
@@ -353,13 +352,7 @@ function SettingUp({
       onActivated(await api.activateTwoFactor(cleanCode(typed)));
     } catch (refusal) {
       setChecking(false);
-      setError(
-        refusal instanceof ApiError && refusal.is('too_many_attempts')
-          ? pausedMessage(refusal, t)
-          : refusal instanceof ApiError && refusal.is('two_factor_code_invalid')
-            ? t('twoFactorCard.setupWrong')
-            : t('twoFactorCard.failedBody'),
-      );
+      setError(setupRefusal(refusal, t));
       land('setup-code');
     }
   }
@@ -562,15 +555,7 @@ function TurningOff({
       }
 
       setChecking(false);
-      setError(
-        refusal instanceof ApiError && refusal.is('too_many_attempts')
-          ? pausedMessage(refusal, t)
-          : refusal instanceof ApiError && refusal.is('recovery_code_used')
-            ? t('twoFactor.recoveryUsed')
-            : refusal instanceof ApiError && refusal.is('two_factor_code_invalid')
-              ? t('twoFactorCard.offWrong')
-              : t('twoFactorCard.failedBody'),
-      );
+      setError(factorRefusal(refusal, t));
       land('off-code');
     }
   }
@@ -656,15 +641,7 @@ function ConfirmNewCodes({
       onMade(await api.newRecoveryCodes(typed.trim()));
     } catch (refusal) {
       setChecking(false);
-      setError(
-        refusal instanceof ApiError && refusal.is('too_many_attempts')
-          ? pausedMessage(refusal, t)
-          : refusal instanceof ApiError && refusal.is('recovery_code_used')
-            ? t('twoFactor.recoveryUsed')
-            : refusal instanceof ApiError && refusal.is('two_factor_code_invalid')
-              ? t('twoFactorCard.offWrong')
-              : t('twoFactorCard.failedBody'),
-      );
+      setError(factorRefusal(refusal, t));
       land('new-codes-code');
     }
   }
@@ -724,13 +701,4 @@ function ConfirmNewCodes({
       </form>
     </>
   );
-}
-
-/** The lockout, in the reader's own clock and words: the time comes from Retry-After. */
-function pausedMessage(refusal: ApiError, t: TFunction): string {
-  const liftsAt = lockLiftsAt(Number(refusal.response?.headers.get('Retry-After')));
-
-  return liftsAt == null
-    ? t('twoFactorCard.failedBody')
-    : t('twoFactor.pausedBody', { time: formatTimeOfDay(liftsAt, dateLocale()) });
 }

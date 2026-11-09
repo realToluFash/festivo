@@ -1,13 +1,5 @@
 import { type DeviceSession } from '@soirely/api-client';
-import {
-  type AppDevice,
-  appDevice,
-  formatDay,
-  formatTimeOfDay,
-  othersOf,
-  readableAgent,
-  thisDeviceFirst,
-} from '@soirely/domain';
+import { formatDay, othersOf, thisDeviceFirst } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +18,7 @@ import {
   dropProviderReturn,
   heldProviderReturn,
 } from '../../../providerSignIn.ts';
+import { dayAtTime, deviceName } from '../../../securityPage.ts';
 import { forgetSession, refreshAccount, rereadCredentials, useSession } from '../../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { useSignOut } from '../../../signOut.ts';
@@ -127,7 +120,7 @@ function PhoneSecurity() {
     }
 
     setChecking(null);
-    setEnded(nameOf(device, t));
+    setEnded(deviceName(device, t));
     land(() => said.current);
     setDevices((current) =>
       current.kind === 'ready'
@@ -407,7 +400,7 @@ function Row({
     <li className="device">
       <div className="device-detail">
         <div className="device-name">
-          <span>{nameOf(device, t)}</span>
+          <span>{deviceName(device, t)}</span>
           {/* A dot and the words, never the dot alone. */}
           {here && (
             <span className="pill-here">
@@ -418,7 +411,7 @@ function Row({
         </div>
         <p className="device-meta">
           {t('devices.signedInFrom', {
-            started: moment(device.startedAt, locale, t),
+            started: dayAtTime(device.startedAt, locale, t),
             ip: device.ipAddress ?? t('devices.unknownAddress'),
           })}
         </p>
@@ -426,7 +419,7 @@ function Row({
           {t('devices.expiry', {
             usage: here
               ? t('devices.inUseNow')
-              : t('devices.lastUsed', { used: moment(device.renewedAt, locale, t) }),
+              : t('devices.lastUsed', { used: dayAtTime(device.renewedAt, locale, t) }),
             expires: formatDay(device.expiresAt, locale),
           })}
         </p>
@@ -463,13 +456,13 @@ function Check({
   return (
     <>
       <h2 id="devices-title" ref={heading} tabIndex={-1}>
-        {t('devices.checkTitle', { name: nameOf(device, t) })}
+        {t('devices.checkTitle', { name: deviceName(device, t) })}
       </h2>
       <p>
         {t('devices.checkBody', {
-          started: moment(device.startedAt, locale, t),
+          started: dayAtTime(device.startedAt, locale, t),
           ip: device.ipAddress ?? t('devices.unknownAddress'),
-          used: moment(device.renewedAt, locale, t),
+          used: dayAtTime(device.renewedAt, locale, t),
         })}
       </p>
 
@@ -499,32 +492,4 @@ function Check({
       />
     </>
   );
-}
-
-const APP_NAMES = {
-  iPhone: 'devices.appIPhone',
-  iPad: 'devices.appIPad',
-  phone: 'devices.appAndroidPhone',
-  tablet: 'devices.appAndroidTablet',
-} as const satisfies Record<AppDevice, string>;
-
-function nameOf(device: DeviceSession, t: TFunction): string {
-  const app = appDevice(device.userAgent);
-
-  if (app != null) return t(APP_NAMES[app]);
-
-  const parts = readableAgent(device.userAgent);
-
-  if (parts != null) {
-    return t('devices.agent', { browser: parts.browser, platform: parts.platform });
-  }
-
-  return device.userAgent ?? t('devices.unknownDevice');
-}
-
-function moment(iso: string, locale: string, t: TFunction): string {
-  return t('devices.dayAtTime', {
-    day: formatDay(iso, locale),
-    time: formatTimeOfDay(iso, locale),
-  });
 }
