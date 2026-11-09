@@ -1,6 +1,7 @@
 import type { Ref } from 'react';
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
+import { ReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../queue/QueueParts.tsx';
@@ -158,9 +159,10 @@ export function TabBar({
 }
 
 export function Strip({ online, refused }: { online: boolean; refused: string }) {
+  const status = online ? 'Connected · up to date 20:24' : 'No connection · as of 20:22';
   return (
     <View style={styles.stripWrap}>
-      <View style={styles.strip} accessibilityRole="text" accessibilityLiveRegion="polite">
+      <ReadOut words={status} style={styles.strip} accessibilityRole="text">
         {online ? (
           <View style={styles.dot} />
         ) : (
@@ -171,9 +173,9 @@ export function Strip({ online, refused }: { online: boolean; refused: string })
           weight={online ? 'medium' : 'semibold'}
           style={online ? styles.secondary : styles.ink}
         >
-          {online ? 'Connected · up to date 20:24' : 'No connection · as of 20:22'}
+          {status}
         </Text>
-      </View>
+      </ReadOut>
       {refused !== '' && (
         <View accessibilityRole="alert" style={styles.notice}>
           <Glyph paths={PATHS.offline} ink={tokens.colorInk} side={18} />

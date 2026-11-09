@@ -372,7 +372,9 @@ function SectionRow({
         const kind = lineKind(w);
         return (
           <View key={w.name} style={styles.waiter}>
-            <Initials name={w.name} />
+            <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <Initials name={w.name} />
+            </View>
             <View style={[shared.grow, styles.waiterText]}>
               <Text size={14} weight="medium">
                 {waiterLine(w)}
@@ -567,7 +569,9 @@ function GiveSheet({
                 ]}
                 testID={`service.give.to.${c.name}`}
               >
-                <Initials name={c.name} />
+                <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                  <Initials name={c.name} />
+                </View>
                 <View style={[shared.grow, styles.waiterText]}>
                   <View style={shared.wrap}>
                     <Text size={16} weight="semibold">
