@@ -73,6 +73,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   them on in your device's settings" because the card now carries the "Open device settings"
   step, and keeps "won't", as 29 Oct. `locked.email` takes the "cannot" that Account &
   security's note carried, so the note now lists only what you hear about.
+- **9 Nov 2026. Security on the desktop web** (sc-35456 for sc-30411, `web:security.*`). Kept as dev1 wrote it; the shared keys read as `mobile:security.*`. `setupTitle` stays "Set up two-factor" for now because `SecurityDesk.test.tsx` pins it, though the 19 Oct phrasing and the app say "Turn on two-factor"; es, fr and pt already say turn on, and [dev] is asked to change the English with its test. `setupKey` names the key for a screen reader only. `sendAgain` is the link under "Nothing there?", as on the app's sent page.
 - **9 Nov 2026. The app's Security page** (sc-34792 for sc-30411, `mobile:security.*`). Kept as dev1 wrote it, except `setupTitle`, now "Turn on two-factor", as the 19 Oct phrasing and the web's `twoFactorCard.setupTitle`; "Set up two-factor" stays only after account recovery. Row lines after " · " keep their lower case, as every row line.
 - **9 Nov 2026. The web's reset sent page and the lost-both support line** (sc-33788 for
   sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). Kept as dev2 wrote
