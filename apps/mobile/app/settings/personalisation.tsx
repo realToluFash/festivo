@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../src/api.ts';
 import {
   hearChoice,
+  keepBeforeSaving,
+  keepLaunchScheme,
   PERSONALISATION_LANDING,
   restartIn,
   schemeToFollow,
@@ -89,6 +91,11 @@ export default function Personalisation() {
     const { picked } = colours;
     setColours({ picked, phase: 'saving' });
 
+    if (!keepBeforeSaving(picked)) {
+      setColours({ picked, phase: 'failed' });
+      return;
+    }
+
     let chosen: Choice;
     try {
       const answer = await api.request<unknown>('/api/auth/colour-scheme', {
@@ -97,6 +104,7 @@ export default function Personalisation() {
       });
       chosen = choiceIn(answer) ?? picked;
     } catch (error) {
+      keepLaunchScheme();
       setColours({ picked, phase: refusalOf(error) });
       return;
     }

@@ -53,6 +53,19 @@ export function schemeToFollow(choice: Choice, launchedIn: string): Scheme | nul
   return wanted === launchedIn ? null : wanted;
 }
 
+/** Kept on the device before the account is told, so the account never holds a scheme this device cannot show; false where the device cannot keep it. */
+export function keepBeforeSaving(choice: Choice, launchedIn: string = schemeAtLaunch): boolean {
+  const follow = schemeToFollow(choice, launchedIn);
+
+  return follow == null || keepDeviceScheme(follow);
+}
+
+/** A save the account did not take leaves the device in the colours it opened in. */
+export function keepLaunchScheme(launchedIn: string = schemeAtLaunch): void {
+  const scheme = schemeOf(launchedIn);
+  if (scheme != null) keepDeviceScheme(scheme);
+}
+
 let restarting = false;
 
 /** Keeps the scheme on the device and starts the JS again in it; false, and nothing restarted, where the device cannot keep it. */

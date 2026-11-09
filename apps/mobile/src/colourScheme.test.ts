@@ -12,8 +12,16 @@ vi.mock('expo-secure-store', () => ({
 }));
 vi.mock('expo', () => ({ reloadAppAsync: async () => {} }));
 
-const { forgetOnNewInstall, hearChoice, heardChoice, readsMe, restartIn, schemeToFollow } =
-  await import('./colourScheme.ts');
+const {
+  forgetOnNewInstall,
+  hearChoice,
+  keepBeforeSaving,
+  keepLaunchScheme,
+  heardChoice,
+  readsMe,
+  restartIn,
+  schemeToFollow,
+} = await import('./colourScheme.ts');
 const { deviceScheme, takeLanding } = await import('./theme/deviceScheme.ts');
 
 beforeEach(() => {
@@ -96,6 +104,18 @@ describe("the app follows the account's colours (sc-30441)", () => {
     await forgetOnNewInstall(true, 'berry', reload);
 
     expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('keeps a new pick on the device before the account hears it, and refuses one the device cannot keep', () => {
+    expect(keepBeforeSaving('garden', 'violet')).toBe(true);
+    expect(deviceScheme()).toBe('garden');
+
+    keepLaunchScheme('violet');
+    expect(deviceScheme()).toBe('violet');
+
+    keeps = false;
+    expect(keepBeforeSaving('sorbet', 'violet')).toBe(false);
+    expect(keepBeforeSaving('violet', 'violet')).toBe(true);
   });
 
   it('reads the person from GET /api/auth/me only', () => {
