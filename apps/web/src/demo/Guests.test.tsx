@@ -229,6 +229,16 @@ describe('Guests, a guest beside the list (sc-3773)', () => {
     ).toBeDefined();
   });
 
+  it('shows Can view only that replies closed, with no step', SLOW, async () => {
+    await guests('repliesClosedViewer');
+
+    expect(within(column()).getByText('Replies closed on Wed, Nov 4.')).toBeDefined();
+    expect(within(column()).queryByText(/Record a reply opens again/u)).toBeNull();
+    expect(
+      within(column()).queryByRole('button', { name: 'Let them change their reply' }),
+    ).toBeNull();
+  });
+
   it('lets them change their reply once replies have closed', SLOW, async () => {
     await guests('repliesClosed');
 

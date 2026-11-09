@@ -126,6 +126,7 @@ export function replyByAfterStart(
 export const REPLY_BY_WORDS = {
   replyBy: 'Reply by',
   rowCloses: (zone: string) => `Replies close at ${CLOSES_AT}, ${zone} time.`,
+  rowClosed: 'Replies closed.',
   rowNone: 'Replies stay open until the event starts.',
   hint: (zone: string) =>
     `Replies close at the end of this day, ${CLOSES_AT} ${zone} time. Leave it empty and replies stay open until the event starts.`,
