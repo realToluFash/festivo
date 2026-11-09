@@ -813,7 +813,7 @@
     "dismiss": "Cerrar"
   },
   "recovery": {
-    "lostBothIntro": "Your organisation can confirm it’s you only once you’ve signed in with your password. If you’ve lost your password too, contact Soirely support.",
+    "lostBothIntro": "Su organización solo puede confirmar que es usted después de que inicie sesión con su contraseña. Si también ha perdido la contraseña, póngase en contacto con el servicio de asistencia de Soirely.",
     "forgot": "¿Ha olvidado su contraseña?",
     "title": "Restablezca su contraseña",
     "intro": "Introduzca el correo con el que inicia sesión. Si tiene una cuenta, le enviamos un enlace para establecer una nueva contraseña.",
@@ -824,8 +824,8 @@
     "signIn": "Iniciar sesión",
     "sentTitle": "Revise su correo",
     "sentBody": "Si esa dirección tiene una cuenta, le hemos enviado un enlace para establecer una nueva contraseña. El enlace funciona una vez.",
-    "nothingThere": "Nothing there? Check your spam folder first, then <send>send it again</send>.",
-    "sentAgain": "Sent again.",
+    "nothingThere": "¿No le ha llegado nada? Revise primero la carpeta de spam y luego <send>envíelo de nuevo</send>.",
+    "sentAgain": "Se lo hemos enviado de nuevo.",
     "providerNote": "¿Se registró con Google o Apple? Entonces no hay contraseña que restablecer, y el correo explica cómo inicia sesión.",
     "gotIt": "¿Tiene el enlace? Ábralo en cualquier dispositivo.",
     "backToSignIn": "Volver a iniciar sesión",
