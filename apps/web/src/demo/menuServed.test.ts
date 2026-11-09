@@ -14,6 +14,7 @@ import {
   partName,
   platedTables,
   removeChoiceLine,
+  removedLine,
   withoutChoice,
 } from './menuServed.ts';
 
@@ -32,7 +33,6 @@ const DISH: Dish = {
     { id: 'ch3', question: '', options: ['Mild', 'Hot'] },
   ],
   parts: [],
-  fromLibrary: false,
 };
 
 describe('a dish’s parts (sc-34230)', () => {
@@ -90,6 +90,11 @@ describe('removing a choice that is a part', () => {
     expect(removeChoiceLine(parted, DISH.choices[1]!, 1)).toBe(
       'Remove “And a sauce?” from Jollof rice?',
     );
+  });
+
+  it('names a choice with no question as The choice once it is removed', () => {
+    expect(removedLine(DISH, DISH.choices[0]!)).toBe('And a side? removed from Jollof rice.');
+    expect(removedLine(DISH, DISH.choices[2]!)).toBe('The choice removed from Jollof rice.');
   });
 
   it('takes the part with it, leaving 2', () => {

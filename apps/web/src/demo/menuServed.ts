@@ -34,7 +34,6 @@ export interface Dish {
   variants: readonly string[];
   choices: readonly Choice[];
   parts: readonly Part[];
-  fromLibrary: boolean;
 }
 
 export interface Table {
@@ -260,6 +259,10 @@ export function removeChoiceLine(dish: Dish, choice: Choice, index: number): str
   return isPart ? `${ask} ${asked} is also one of ${dish.name}’s parts.` : ask;
 }
 
+export function removedLine(dish: Dish, choice: Choice): string {
+  return `${choice.question.trim() === '' ? 'The choice' : choice.question} removed from ${dish.name}.`;
+}
+
 export function tableLabel(table: Table): string {
   return table.section == null ? table.name : `${table.name} · ${table.section}`;
 }
@@ -305,7 +308,6 @@ function jollof(parts: readonly Part[], choices: readonly Choice[] = [SIDE, SAUC
     variants: [],
     choices,
     parts,
-    fromLibrary: true,
   };
 }
 
@@ -323,7 +325,6 @@ const EGUSI: Dish = {
   variants: [],
   choices: [],
   parts: [],
-  fromLibrary: false,
 };
 
 const FISH: Dish = {
@@ -334,7 +335,6 @@ const FISH: Dish = {
   variants: ['Croaker', 'Tilapia'],
   choices: [],
   parts: [fixed('p4', 'Fish'), fixed('p5', 'Pepper sauce'), fixed('p6', 'Yam chips')],
-  fromLibrary: true,
 };
 
 const MOI_MOI: Dish = {
@@ -345,7 +345,6 @@ const MOI_MOI: Dish = {
   variants: [],
   choices: [],
   parts: [],
-  fromLibrary: true,
 };
 
 function courses(main: Partial<Course>): Course[] {
@@ -364,7 +363,6 @@ function courses(main: Partial<Course>): Course[] {
           variants: [],
           choices: [],
           parts: [],
-          fromLibrary: true,
         },
       ],
       ownParts: [],
@@ -394,7 +392,6 @@ function courses(main: Partial<Course>): Course[] {
           variants: [],
           choices: [],
           parts: [],
-          fromLibrary: false,
         },
       ],
       ownParts: [],

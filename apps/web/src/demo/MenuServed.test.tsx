@@ -168,6 +168,24 @@ describe('removing a choice that is a part, and read only', () => {
     expect(screen.queryByText('And a side?')).toBeNull();
   });
 
+  it(
+    'takes the part out of an open Edit dish too, and names a choice with no question',
+    SLOW,
+    async () => {
+      await menu('choiceDraft');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove “And a side?”…' }));
+      fireEvent.click(screen.getByRole('button', { name: MW.removeChoice }));
+      expect(within(panel()).queryByText('And a side?')).toBeNull();
+      expect(within(panel()).getAllByRole('listitem')).toHaveLength(2);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove “Choice 2, no question yet”…' }));
+      fireEvent.click(screen.getByRole('button', { name: MW.removeChoice }));
+      expect(screen.getByText('The choice removed from Jollof rice.')).toBeTruthy();
+      expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
+    },
+  );
+
   it('shows everything as text without menu.manage', SLOW, async () => {
     await menu('readOnly');
 

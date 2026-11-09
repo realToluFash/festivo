@@ -39,6 +39,7 @@ import {
   partName,
   platedTables,
   removeChoiceLine,
+  removedLine,
   shownName,
   tableLabel,
   usesParts,
@@ -330,8 +331,21 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
             },
       ),
     );
+    if (panel?.kind === 'dish' && panel.dishId === dishId) {
+      setForm((now) =>
+        now?.dish == null
+          ? now
+          : {
+              ...now,
+              dish: {
+                ...now.dish,
+                parts: withoutChoice({ ...target, parts: now.dish.parts }, choiceId).parts.slice(),
+              },
+            },
+      );
+    }
     setAsking(null);
-    setSaid(`${choice.question} removed from ${target.name}.`);
+    setSaid(removedLine(target, choice));
   }
 
   return (
