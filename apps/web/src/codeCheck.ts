@@ -1,15 +1,45 @@
-import { ApiError, type PhoneCodeRoute } from '@soirely/api-client';
+import { ApiError, type CodeState, type PhoneCodeRoute } from '@soirely/api-client';
 import { codeWording } from '@soirely/domain';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { api } from './api.ts';
 import { type CodeStatus, codeRefusal, openingStatus } from './codeScreen.ts';
+import { useResendCountdown } from './resendCountdown.ts';
 
 export type Checked =
   { verified: true; primary: boolean } | { verified: false; refusal: CodeStatus };
 
 /** What a resend leaves: a new code on its way, a wait the server named, or nothing sent. */
 export type Resent = 'sent' | 'wait' | 'failed';
+
+/** Where a code goes and how it is checked: the API's for an address or a number of your own, the demo's sample. */
+export interface CodeSource {
+  opening: () => Promise<{
+    cooldownSeconds: number;
+    codeState: CodeState;
+    route: PhoneCodeRoute | null;
+  }>;
+  verify: (code: string) => Promise<{ primary: boolean }>;
+  resend: () => Promise<number>;
+  textInstead: () => Promise<void>;
+}
+
+/** The API's code check on one of your own addresses or numbers. */
+export function apiCodeSource(kind: 'email' | 'phone', id: string): CodeSource {
+  return kind === 'email'
+    ? {
+        opening: () => api.verificationOpening(id).then((answer) => ({ ...answer, route: null })),
+        verify: (code) => api.verifyEmail(code, id),
+        resend: () => api.resendVerification(id),
+        textInstead: () => Promise.resolve(),
+      }
+    : {
+        opening: () => api.phoneOpening(id),
+        verify: (code) => api.verifyPhone(code, id),
+        resend: () => api.resendPhoneCode(id),
+        textInstead: () => api.textPhoneCodeInstead(id),
+      };
+}
 
 /** A refused resend that says how long to wait, in seconds; null when it says nothing usable. */
 export function retryAfter(error: unknown): number | null {
@@ -20,38 +50,27 @@ export function retryAfter(error: unknown): number | null {
   return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
 }
 
-function useCountdown(): { left: number; restart: (seconds: number) => void } {
-  const [left, setLeft] = useState(0);
-
-  useEffect(() => {
-    if (left <= 0) return;
-    const tick = setTimeout(() => setLeft((now) => now - 1), 1000);
-
-    return () => clearTimeout(tick);
-  }, [left]);
-
-  return { left, restart: setLeft };
-}
-
-/** One code check on an address or a number of your own: its opening, the WhatsApp watch, verify, resend and Text it to me instead. */
-export function useCodeCheck(kind: 'email' | 'phone', id: string) {
+/** One code check: its opening, the WhatsApp watch, verify, Send a new code one at a time, and Text it to me instead. */
+export function useCodeCheck(kind: 'email' | 'phone', source: CodeSource) {
   const email = kind === 'email';
   const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
   const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
-  const { left: cooldown, restart } = useCountdown();
   const [textingFailed, setTextingFailed] = useState(false);
+  const resending = useResendCountdown({
+    resend: 'verifyEmail.resend',
+    resendIn: 'verifyEmail.resendIn',
+  });
+  const { begin } = resending;
   const wording = codeWording(route);
 
   useEffect(() => {
     let live = true;
-    const opening = email
-      ? api.verificationOpening(id).then((answer) => ({ ...answer, route: null }))
-      : api.phoneOpening(id);
 
-    opening
+    source
+      .opening()
       .then(({ cooldownSeconds, codeState, route: sent }) => {
         if (!live) return;
-        restart(cooldownSeconds);
+        begin(cooldownSeconds);
         setRoute(sent);
         setStatus((now) => openingStatus(now, codeState));
       })
@@ -60,69 +79,76 @@ export function useCodeCheck(kind: 'email' | 'phone', id: string) {
     return () => {
       live = false;
     };
-  }, [email, id, restart]);
+  }, [source, begin]);
 
   // While the code is on WhatsApp, the server may hand it to SMS: the line follows within a few seconds.
   useEffect(() => {
     if (email || !wording.watch) return;
 
     const watching = setInterval(() => {
-      api
-        .phoneOpening(id)
+      source
+        .opening()
         .then((opening) => setRoute(opening.route))
         .catch(() => {});
     }, 5000);
 
     return () => clearInterval(watching);
-  }, [email, wording.watch, id]);
+  }, [email, wording.watch, source]);
 
-  const verify = useCallback(
-    async (code: string): Promise<Checked> => {
-      setStatus({ kind: 'verifying' });
-      try {
-        const { primary } = await (email ? api.verifyEmail(code, id) : api.verifyPhone(code, id));
-        setStatus({ kind: 'verified' });
-
-        return { verified: true, primary };
-      } catch (error) {
-        const refusal = codeRefusal(error);
-        setStatus(refusal);
-
-        return { verified: false, refusal };
-      }
-    },
-    [email, id],
-  );
-
-  const resend = useCallback(async (): Promise<Resent> => {
+  async function verify(code: string): Promise<Checked> {
+    setStatus({ kind: 'verifying' });
     try {
-      restart(await (email ? api.resendVerification(id) : api.resendPhoneCode(id)));
-      setStatus({ kind: 'entering' });
-      if (!email) setRoute((await api.phoneOpening(id)).route);
+      const { primary } = await source.verify(code);
+      setStatus({ kind: 'verified' });
 
-      return 'sent';
+      return { verified: true, primary };
     } catch (error) {
-      const seconds = retryAfter(error);
+      const refusal = codeRefusal(error);
+      setStatus(refusal);
 
-      if (seconds == null) return 'failed';
-
-      restart(seconds);
-      setStatus({ kind: 'entering' });
-
-      return 'wait';
+      return { verified: false, refusal };
     }
-  }, [email, id, restart]);
+  }
 
-  const textInstead = useCallback(async (): Promise<void> => {
+  /** Null while one is already on its way: a second press sends nothing. */
+  async function resend(): Promise<Resent | null> {
+    let resent = null as Resent | null;
+
+    await resending.once(async () => {
+      try {
+        resending.countDown(await source.resend());
+        setStatus({ kind: 'entering' });
+        resent = 'sent';
+      } catch (error) {
+        const seconds = retryAfter(error);
+        resent = seconds == null ? 'failed' : 'wait';
+        if (seconds == null) return;
+        resending.countDown(seconds);
+        setStatus({ kind: 'entering' });
+      }
+    });
+
+    if (resent === 'sent' && !email)
+      void source
+        .opening()
+        .then((opening) => setRoute(opening.route))
+        .catch(() => {});
+
+    return resent;
+  }
+
+  async function textInstead(): Promise<void> {
     setTextingFailed(false);
 
     try {
-      await api.textPhoneCodeInstead(id);
+      await source.textInstead();
       setRoute('sms_chosen');
     } catch {
       setTextingFailed(true);
     }
-  }, [id]);
+  }
 
-  return { status, cooldown, wording, textingFailed, verify, resend, textInstead };
+  return { status, resending, wording, textingFailed, verify, resend, textInstead };
 }
+
+export type CodeCheck = ReturnType<typeof useCodeCheck>;

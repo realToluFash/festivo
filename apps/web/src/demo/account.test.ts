@@ -7,16 +7,12 @@ import {
   WEB_MOMENTS,
   accountStart,
   cardLine,
-  codeRefusal,
   contactsFoot,
-  emailRefusal,
   madePrimary,
-  phoneRefusal,
-  proveProblems,
+  opening,
+  sampleCodeSource,
+  sampleProof,
   verifiedWords,
-  zoneChosen,
-  zoneMatches,
-  zoneRefusal,
 } from './account.ts';
 import { primaryFirst } from '@soirely/domain';
 import { SAMPLE } from './rules.ts';
@@ -107,57 +103,34 @@ describe('Your account’s sample (sc-30209)', () => {
     );
   });
 
-  it('refuses an address or a number as the build does', () => {
-    const one = accountStart('addEmail').emails;
-
-    expect(emailRefusal('', one)).toBe('Enter your email address.');
-    expect(emailRefusal('folake.adeyemi@gmail', one)).toBe(
-      'That does not look like an email address. Check it has an @ and a domain.',
-    );
-    expect(emailRefusal(' Folake@ire.events ', one)).toBe(
-      'That address is already linked to an account.',
-    );
-    expect(emailRefusal('folake@lumen.studio', one)).toBeNull();
-    expect(phoneRefusal('7400 12', 'GB', rest.phones)).toBe(
-      'That number looks too short for United Kingdom. Check it and try again.',
-    );
-    expect(phoneRefusal('7400 123456', 'GB', rest.phones)).toBe(
-      'That number is already linked to an account.',
-    );
-    expect(phoneRefusal('7700 900461', 'GB', rest.phones)).toBeNull();
+  it('proves with the sample’s password and its authenticator or a recovery code', async () => {
+    await expect(sampleProof({ password: 'wrong' }, SAMPLE.authenticator)).rejects.toMatchObject({
+      code: 'invalid_credentials',
+    });
+    await expect(sampleProof({ password: SAMPLE.password }, '714 320')).rejects.toMatchObject({
+      code: 'two_factor_code_invalid',
+    });
+    await expect(
+      sampleProof({ password: SAMPLE.password }, SAMPLE.recovery.toUpperCase()),
+    ).resolves.toBe('sample-proof');
   });
 
-  it('finds time zones and asks for one from the list', () => {
-    expect(zoneMatches('San').map((match) => match.label)).toEqual([
-      'San Marino (UTC+01:00)',
-      'San Salvador (UTC-06:00)',
-      'Santarém (UTC-03:00)',
-      'Santiago (UTC-03:00)',
-      'Santo Domingo (UTC-04:00)',
-    ]);
-    expect(zoneMatches('Calcutta')[0]?.line).toBe('India · was Calcutta');
-    expect(zoneChosen('San', null)).toBeNull();
-    expect(zoneChosen('lagos', null)?.id).toBe('Africa/Lagos');
-    expect(zoneRefusal('San')).toBe('Choose a time zone from the list.');
-    expect(zoneRefusal('Atlantis')).toBe(
-      'Choose a time zone from the list. Nothing matches “Atlantis”.',
-    );
-  });
+  it('sends the code where the opening says, and verifies only the sample’s', async () => {
+    const texted = sampleCodeSource(opening('verify', { channel: 'text' }));
+    await expect(texted.opening()).resolves.toMatchObject({
+      route: 'sms_chosen',
+      codeState: 'live',
+    });
+    await expect(
+      sampleCodeSource(opening('verify', { expired: true })).opening(),
+    ).resolves.toMatchObject({ route: null, codeState: 'expired', cooldownSeconds: 0 });
+    await expect(texted.verify('482170')).rejects.toMatchObject({
+      code: 'verification_code_invalid',
+    });
+    await expect(texted.verify(SAMPLE.code)).resolves.toEqual({ primary: false });
 
-  it('checks codes and the proof', () => {
-    expect(codeRefusal('', 'whatsApp')).toBe('Enter the 6-digit code from WhatsApp.');
-    expect(codeRefusal('4829', 'email')).toBe('The code is 6 digits.');
-    expect(codeRefusal('482170', 'text')).toBe(
-      'That code does not match. Check the newest text from Soirely and try again.',
-    );
-    expect(codeRefusal('482 913', 'email')).toBeNull();
-    expect(proveProblems('', '')).toEqual({
-      password: 'Enter your password.',
-      code: 'Enter a code from your app, or a recovery code.',
-    });
-    expect(proveProblems(SAMPLE.password, '714 320')).toEqual({
-      code: 'That code did not work. Check your app and try again.',
-    });
-    expect(proveProblems(SAMPLE.password, SAMPLE.recovery.toUpperCase())).toEqual({});
+    const whatsApp = sampleCodeSource(opening('verify', { channel: 'whatsApp' }));
+    await whatsApp.textInstead();
+    await expect(whatsApp.opening()).resolves.toMatchObject({ route: 'sms_chosen' });
   });
 });

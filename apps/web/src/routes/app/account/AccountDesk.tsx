@@ -31,6 +31,7 @@ import {
   zoneLine,
 } from '../../../accountPage.ts';
 import { api } from '../../../api.ts';
+import { apiCodeSource } from '../../../codeCheck.ts';
 import {
   AboutRow,
   ContactsBlock,
@@ -45,7 +46,7 @@ import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, useDeskLayers } from '../../../layers.ts';
 import { useOffline } from '../../../offline.ts';
 import { dropProviderReturn, heldProviderReturn } from '../../../providerSignIn.ts';
-import { heldProof } from '../../../recentProof.ts';
+import { dropProof, heldProof, holdProof } from '../../../recentProof.ts';
 import { followAccountRead, refreshAccount, useSession } from '../../../session.ts';
 import {
   AddEmailDialog,
@@ -54,7 +55,7 @@ import {
   ProveDialog,
   VerifyDialog,
   ZoneDialog,
-} from './AccountDeskDialogs.tsx';
+} from '../../../components/AccountDialogs.tsx';
 import '../../../components/SettingsParts.css';
 
 type Opened =
@@ -478,6 +479,19 @@ export function AccountDesk() {
           twoFactorOn={twoFactorOn}
           returned={back?.address === confirmRow.id ? back.signIn : null}
           purpose={{ kind: 'makePrimary', address: confirmRow.id }}
+          prove={(first, code) =>
+            api.prove(first, code).then(
+              (proof) => {
+                holdProof(proof);
+
+                return proof.proof;
+              },
+              (refusal: unknown) => {
+                dropProof();
+                throw refusal;
+              },
+            )
+          }
           onClose={() => setDialog(null)}
           onProved={(proof) => void act('email', confirmRow, 'promote', proof)}
         />
@@ -487,6 +501,7 @@ export function AccountDesk() {
           key={verifyRow.id}
           kind={dialog.contact}
           row={verifyRow}
+          source={apiCodeSource(dialog.contact, verifyRow.id)}
           onClose={() => setDialog(null)}
           onVerified={async (primary) => {
             const kind = dialog.contact;

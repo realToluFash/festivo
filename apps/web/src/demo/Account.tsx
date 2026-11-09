@@ -8,13 +8,19 @@ import {
   type DialogStart,
   KIND_WORDS,
   type Kind,
+  PHONE_COUNTRY,
+  ZONES,
   accountStart,
   canAdd,
   cardLine,
   contactsFoot,
   madePrimary,
   opening,
+  phoneShown,
   rowLine,
+  sampleCodeSource,
+  sampleProof,
+  sampleSave,
   verifiedWords,
 } from './account.ts';
 import {
@@ -24,7 +30,8 @@ import {
   ProveDialog,
   VerifyDialog,
   ZoneDialog,
-} from './AccountDialogs.tsx';
+} from '../components/AccountDialogs.tsx';
+import { SAMPLE } from './rules.ts';
 import type { Viewer } from './settings.ts';
 import { AboutRow, ContactsBlock, PersonCard, RowOffers } from '../components/AccountParts.tsx';
 import { Ask, Head, TitleRow } from '../components/SettingsParts.tsx';
@@ -155,58 +162,79 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
           start={dialog}
           saved={name}
           onClose={() => setDialog(null)}
-          onSaved={(next) => {
-            setName(next);
-            finish(W.nameSaved(next));
-          }}
+          onSave={(next) =>
+            sampleSave(null, () => {
+              setName(next);
+              finish(W.nameSaved(next));
+            })
+          }
         />
       )}
       {dialog?.kind === 'zone' && (
         <ZoneDialog
+          zones={ZONES}
+          now={zoneLabel(zone)}
           start={dialog}
-          now={zone}
           onClose={() => setDialog(null)}
-          onSaved={(next) => {
-            setZone(next);
-            finish(W.zoneSaved(zoneLabel(next)));
-          }}
+          onSave={(next) =>
+            sampleSave(null, () => {
+              setZone(next);
+              finish(W.zoneSaved(zoneLabel(next)));
+            })
+          }
         />
       )}
       {dialog?.kind === 'addEmail' && (
         <AddEmailDialog
           start={dialog}
-          rows={emails}
           onClose={() => setDialog(null)}
-          onAdded={(shown) => {
-            setEmails((rows) => [...rows, added('email', shown)]);
-            finish(W.added);
-          }}
+          onAdd={(address) =>
+            sampleSave(linked(emails, address) ? KIND_WORDS.email.linked : null, () => {
+              setEmails((rows) => [...rows, added('email', address)]);
+              finish(W.added);
+            })
+          }
         />
       )}
       {dialog?.kind === 'addPhone' && (
         <AddPhoneDialog
+          startCountry={PHONE_COUNTRY}
           start={dialog}
-          rows={phones}
           onClose={() => setDialog(null)}
-          onAdded={(shown) => {
-            setPhones((rows) => [...rows, added('phone', shown)]);
-            finish(W.added);
+          onAdd={(country, number) => {
+            const shown = phoneShown(country, number);
+
+            return sampleSave(linked(phones, shown) ? KIND_WORDS.phone.linked : null, () => {
+              setPhones((rows) => [...rows, added('phone', shown)]);
+              finish(W.added);
+            });
           }}
         />
       )}
       {dialog?.kind === 'confirm' && target != null && (
         <ProveDialog
-          start={dialog}
+          via="password"
+          twoFactorOn
+          returned={null}
+          purpose={{ kind: 'makePrimary', address: target.id }}
+          start={{
+            password: dialog.tried ? SAMPLE.password : '',
+            typed: dialog.typed,
+            tried: dialog.tried,
+          }}
+          prove={sampleProof}
           onClose={() => setDialog(null)}
           onProved={() => promote(target)}
         />
       )}
       {dialog?.kind === 'verify' && target != null && (
         <VerifyDialog
+          kind={target.kind}
+          source={sampleCodeSource(dialog)}
           start={dialog}
           row={target}
           onClose={() => setDialog(null)}
-          onVerified={() => {
+          onVerified={async () => {
             setRows(target.kind)((rows) =>
               rows.map((row) => (row.id === target.id ? { ...row, verified: true } : row)),
             );
@@ -220,6 +248,10 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
 
 function added(kind: Kind, shown: string): Contact {
   return { id: `${kind}-${shown}`, kind, shown, verified: false, primary: false };
+}
+
+function linked(rows: readonly Contact[], shown: string): boolean {
+  return rows.some((row) => row.shown.toLowerCase() === shown.trim().toLowerCase());
 }
 
 /** A section of addresses or numbers, with the offers its opened row makes. */

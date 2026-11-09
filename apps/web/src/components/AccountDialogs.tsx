@@ -2,17 +2,16 @@ import {
   ApiError,
   type Provider,
   type ProviderSignInAttempt,
-  type TimeZoneOption,
   proofRefusal,
 } from '@soirely/api-client';
 import {
   PROOF_MINUTES,
+  type ZoneRow,
   callingCode,
   cleanCode,
   codeProblem,
   countryChoices,
   exactZone,
-  formatCountdown,
   formatTimeOfDay,
   formerName,
   matchingZones,
@@ -24,33 +23,52 @@ import { type TFunction } from 'i18next';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { api } from '../../../api.ts';
 import {
   type ContactKind,
   type ContactRow,
   type VerifyWords,
   verifyWords,
-} from '../../../accountPage.ts';
-import { useCodeCheck } from '../../../codeCheck.ts';
-import { ExpiredCode } from '../../../components/AccountParts.tsx';
-import { FieldError } from '../../../components/FieldError.tsx';
-import { Glyph } from '../../../components/Glyph.tsx';
-import { Ask, Dialog, Field, Note, RowWords } from '../../../components/SettingsParts.tsx';
-import { emailMessage } from '../../../formChecks.ts';
-import { currentLocale, dateLocale } from '../../../i18n/index.ts';
-import { offButton } from '../../../offButton.ts';
-import { codeChoice, phoneProblemMessage } from '../../../phoneProblem.ts';
-import {
-  PROVIDER_NAMES,
-  type ReturnPurpose,
-  startProviderSignIn,
-} from '../../../providerSignIn.ts';
-import { dropProof, holdProof } from '../../../recentProof.ts';
+} from '../accountPage.ts';
+import { type CodeSource, useCodeCheck } from '../codeCheck.ts';
+import { emailMessage } from '../formChecks.ts';
+import { currentLocale, dateLocale } from '../i18n/index.ts';
+import { offButton } from '../offButton.ts';
+import { codeChoice, phoneProblemMessage } from '../phoneProblem.ts';
+import { PROVIDER_NAMES, type ReturnPurpose, startProviderSignIn } from '../providerSignIn.ts';
+import { ExpiredCode } from './AccountParts.tsx';
+import { FieldError } from './FieldError.tsx';
+import { Glyph } from './Glyph.tsx';
+import { Ask, Dialog, Field, Note, RowWords } from './SettingsParts.tsx';
 
 /** What a save answers: null once it has gone, else the words for the field. */
 type Saving = Promise<string | null>;
 
+/** Where a dialog opens: what is already typed, Save already pressed, or the Discard ask up. The demo's state links open on these. */
+export interface Opening {
+  typed?: string;
+  tried?: boolean;
+  discarding?: boolean;
+}
+
+export type ProveWith =
+  | { password: string }
+  | { provider: Provider; signIn: ProviderSignInAttempt }
+  | { pendingProof: string };
+
 const ZONES_SHOWN = 8;
+
+/** Presses the dialog's own button once, on arrival, when it opens with Save already pressed. */
+function useTriedOnArrival(tried: boolean | undefined, press: () => void): void {
+  const pressed = useRef(false);
+
+  useEffect(() => {
+    if (tried !== true || pressed.current) return;
+    pressed.current = true;
+    press();
+    // Once, on arrival: the press is the opening's, never a later render's.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
 
 function Discard({ line, onKeep, onGo }: { line: string; onKeep: () => void; onGo: () => void }) {
   const { t } = useTranslation();
@@ -69,19 +87,21 @@ function Discard({ line, onKeep, onGo }: { line: string; onKeep: () => void; onG
 
 export function NameDialog({
   saved,
+  start,
   onClose,
   onSave,
 }: {
   saved: string;
+  start?: Opening;
   onClose: () => void;
   onSave: (name: string) => Saving;
 }) {
   const { t } = useTranslation();
   const input = useRef<HTMLInputElement>(null);
-  const [typed, setTyped] = useState(saved);
+  const [typed, setTyped] = useState(start?.typed ?? saved);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [asking, setAsking] = useState(false);
+  const [asking, setAsking] = useState(start?.discarding ?? false);
   const changed = typed.trim() !== saved;
 
   async function save(): Promise<void> {
@@ -97,6 +117,8 @@ export function NameDialog({
     setError(refused);
     input.current?.focus();
   }
+
+  useTriedOnArrival(start?.tried, () => void save());
 
   return (
     <>
@@ -134,7 +156,7 @@ export function NameDialog({
   );
 }
 
-function zoneRowLine(zone: TimeZoneOption, typed: string, t: TFunction): string {
+function zoneRowLine(zone: ZoneRow, typed: string, t: TFunction): string {
   const was = formerName(zone, typed);
 
   return was == null
@@ -142,24 +164,26 @@ function zoneRowLine(zone: TimeZoneOption, typed: string, t: TFunction): string 
     : t('timeZone.countryWas', { country: zone.country, name: was });
 }
 
-export function ZoneDialog({
+export function ZoneDialog<Zone extends ZoneRow>({
   zones,
   now,
+  start,
   onClose,
   onSave,
 }: {
-  zones: readonly TimeZoneOption[];
+  zones: readonly Zone[];
   now: string | null;
+  start?: Opening & { picked?: Zone | null };
   onClose: () => void;
-  onSave: (zone: TimeZoneOption) => Saving;
+  onSave: (zone: Zone) => Saving;
 }) {
   const { t } = useTranslation();
   const input = useRef<HTMLInputElement>(null);
-  const [typed, setTyped] = useState('');
-  const [picked, setPicked] = useState<TimeZoneOption | null>(null);
+  const [typed, setTyped] = useState(start?.typed ?? '');
+  const [picked, setPicked] = useState<Zone | null>(start?.picked ?? null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [asking, setAsking] = useState(false);
+  const [asking, setAsking] = useState(start?.discarding ?? false);
   const showingPicked = picked != null && typed === zoneLabel(picked);
   const matches = showingPicked ? [] : matchingZones(zones, typed).slice(0, ZONES_SHOWN);
   const wanted = typed.trim();
@@ -182,6 +206,8 @@ export function ZoneDialog({
     setError(refused);
     input.current?.focus();
   }
+
+  useTriedOnArrival(start?.tried, () => void save());
 
   return (
     <>
@@ -249,17 +275,19 @@ export function ZoneDialog({
 
 export function AddEmailDialog({
   onClose,
+  start,
   onAdd,
 }: {
+  start?: Opening;
   onClose: () => void;
   onAdd: (address: string) => Saving;
 }) {
   const { t } = useTranslation();
   const input = useRef<HTMLInputElement>(null);
-  const [typed, setTyped] = useState('');
+  const [typed, setTyped] = useState(start?.typed ?? '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [asking, setAsking] = useState(false);
+  const [asking, setAsking] = useState(start?.discarding ?? false);
 
   async function add(): Promise<void> {
     if (busy) return;
@@ -275,6 +303,8 @@ export function AddEmailDialog({
     setError(refused);
     input.current?.focus();
   }
+
+  useTriedOnArrival(start?.tried, () => void add());
 
   return (
     <>
@@ -312,10 +342,12 @@ export function AddEmailDialog({
 
 export function AddPhoneDialog({
   startCountry,
+  start,
   onClose,
   onAdd,
 }: {
   startCountry: string;
+  start?: Opening;
   onClose: () => void;
   onAdd: (country: string, number: string) => Saving;
 }) {
@@ -329,10 +361,10 @@ export function AddPhoneDialog({
     [locale],
   );
   const [country, setCountry] = useState(startCountry);
-  const [typed, setTyped] = useState('');
+  const [typed, setTyped] = useState(start?.typed ?? '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [asking, setAsking] = useState(false);
+  const [asking, setAsking] = useState(start?.discarding ?? false);
   const changed = typed.trim() !== '' || country !== startCountry;
   const told = [`${id}-help`, error == null ? null : `${id}-error`].filter(Boolean).join(' ');
 
@@ -351,6 +383,8 @@ export function AddPhoneDialog({
     setError(refused);
     input.current?.focus();
   }
+
+  useTriedOnArrival(start?.tried, () => void add());
 
   return (
     <>
@@ -456,6 +490,8 @@ export function ProveDialog({
   twoFactorOn,
   returned,
   purpose,
+  start,
+  prove,
   onClose,
   onProved,
 }: {
@@ -463,6 +499,9 @@ export function ProveDialog({
   twoFactorOn: boolean;
   returned: ProviderSignInAttempt | null;
   purpose: ReturnPurpose;
+  start?: Opening & { password?: string };
+  /** The proof's token once it is given; refused as the API refuses it. */
+  prove: (first: ProveWith, code?: string) => Promise<string>;
   onClose: () => void;
   onProved: (proof: string) => void;
 }) {
@@ -471,8 +510,8 @@ export function ProveDialog({
   const codeRef = useRef<HTMLInputElement>(null);
   const [signIn, setSignIn] = useState(returned);
   const [expired, setExpired] = useState(false);
-  const [password, setPassword] = useState('');
-  const [code, setCode] = useState('');
+  const [password, setPassword] = useState(start?.password ?? '');
+  const [code, setCode] = useState(start?.typed ?? '');
   const [refusal, setRefusal] = useState<Refusal | null>(null);
   const [checking, setChecking] = useState(false);
   const [codeAsked, setCodeAsked] = useState(twoFactorOn);
@@ -489,7 +528,7 @@ export function ProveDialog({
     setChecking(true);
 
     try {
-      const proof = await api.prove(
+      const proof = await prove(
         kept.current != null
           ? { pendingProof: kept.current }
           : signIn != null && provider != null
@@ -497,11 +536,9 @@ export function ProveDialog({
             : { password },
         second,
       );
-      holdProof(proof);
-      onProved(proof.proof);
+      onProved(proof);
     } catch (error) {
       setChecking(false);
-      dropProof();
 
       if (error instanceof ApiError && error.is('two_factor_required')) {
         if (signIn != null) {
@@ -572,6 +609,8 @@ export function ProveDialog({
     }
     void send(showsCode ? code.trim() : undefined);
   }
+
+  useTriedOnArrival(start?.tried, () => go());
 
   const stepTwo = vouched != null && signIn != null ? providerName : null;
 
@@ -650,11 +689,16 @@ export function ProveDialog({
 export function VerifyDialog({
   kind,
   row,
+  source,
+  start,
   onClose,
   onVerified,
 }: {
   kind: ContactKind;
   row: ContactRow;
+  /** Read once, when the dialog opens: where the code went and how it is checked. */
+  source: CodeSource;
+  start?: Opening;
   onClose: () => void;
   onVerified: (primary: boolean) => Promise<void>;
 }) {
@@ -662,9 +706,11 @@ export function VerifyDialog({
   const input = useRef<HTMLInputElement>(null);
   const resendButton = useRef<HTMLButtonElement>(null);
   const email = kind === 'email';
-  const check = useCodeCheck(kind, row.id);
-  const { status, cooldown, wording } = check;
-  const [typed, setTyped] = useState('');
+  const [held] = useState(source);
+  const check = useCodeCheck(kind, held);
+  const { status, resending, wording } = check;
+  const cooldown = resending.cooldown;
+  const [typed, setTyped] = useState(start?.typed ?? '');
   const [error, setError] = useState<string | null>(null);
   const [resendFailed, setResendFailed] = useState(false);
   const words: VerifyWords = verifyWords(email ? 'email' : wording.line, row.shown, t);
@@ -694,9 +740,12 @@ export function VerifyDialog({
     } else resendButton.current?.focus();
   }
 
+  useTriedOnArrival(start?.tried, () => void verify());
+
   async function resend(): Promise<void> {
     if (cooldown > 0) return;
     const resent = await check.resend();
+    if (resent == null) return;
     setResendFailed(resent === 'failed');
     if (resent === 'failed') return;
     setTyped('');
@@ -747,11 +796,12 @@ export function VerifyDialog({
           {...offButton(cooldown > 0, { dim: false })}
           onClick={() => void resend()}
         >
-          {cooldown > 0
-            ? t('verifyEmail.resendIn', { time: formatCountdown(cooldown) })
-            : t('verifyEmail.resend')}
+          {resending.label}
         </button>
         <p className="desk-note">{t('verifyEmail.resendNote')}</p>
+        <span className="visually-hidden" role="status">
+          {resending.status}
+        </span>
         {!email && wording.offerText && spent == null && (
           <button type="button" className="desk-text" onClick={() => void check.textInstead()}>
             {t('verifyPhone.textInstead')}

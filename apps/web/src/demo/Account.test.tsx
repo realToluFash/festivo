@@ -92,7 +92,7 @@ describe('Your account at a desk (sc-30209)', () => {
     expect(within(ask).getByRole('button', { name: 'Keep folake@ire.events' })).toBeDefined();
     fireEvent.click(within(ask).getByRole('button', { name: 'Make it primary' }));
 
-    expect(within(dialog()).getByRole('heading', { name: 'Confirm it’s you' })).toBeDefined();
+    expect(within(dialog()).getByRole('heading', { name: "Confirm it's you" })).toBeDefined();
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Continue' }));
     expect(within(dialog()).getByText('Enter your password.')).toBeDefined();
 
@@ -273,7 +273,7 @@ describe('Your account at a desk (sc-30209)', () => {
     fireEvent.change(within(dialog()).getByLabelText('Mobile number to add'), {
       target: { value: '7700 900461' },
     });
-    expect((within(dialog()).getByLabelText('Country') as HTMLSelectElement).value).toBe('GB');
+    expect((within(dialog()).getByLabelText('Code') as HTMLSelectElement).value).toBe('GB');
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Add' }));
 
     expect(await screen.findByText('+44 7700 900461', undefined, WAIT)).toBeDefined();
@@ -283,8 +283,10 @@ describe('Your account at a desk (sc-30209)', () => {
     await account('/demo/settings/account?state=verifyEmailWrong');
 
     expect(
-      within(dialog()).getByText(
+      await within(dialog()).findByText(
         'That code does not match. Check the newest email from Soirely and try again.',
+        undefined,
+        WAIT,
       ),
     ).toBeDefined();
     fireEvent.change(within(dialog()).getByLabelText('Code from the email'), {
@@ -311,8 +313,10 @@ describe('Your account at a desk (sc-30209)', () => {
     ).toBe('true');
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Send a new code' }));
 
-    expect(within(dialog()).getByLabelText('Code from the email')).toHaveProperty('value', '');
-    expect(within(dialog()).getByText('Send a new code in 0:42')).toBeDefined();
+    expect(
+      await within(dialog()).findByLabelText('Code from the email', undefined, WAIT),
+    ).toHaveProperty('value', '');
+    expect(within(dialog()).getAllByText('Send a new code in 0:42')).toHaveLength(2);
   });
 
   it('counts down to a new code, and texts the code instead of WhatsApp', async () => {
@@ -320,12 +324,14 @@ describe('Your account at a desk (sc-30209)', () => {
     await account('/demo/settings/account?state=verifyPhone');
 
     expect(
-      within(dialog()).getByText('We sent a code to your WhatsApp on +44 7700 900461.'),
+      await within(dialog()).findByText('We sent a code to your WhatsApp on +44 7700 900461.'),
     ).toBeDefined();
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Text it to me instead' }));
     expect(
-      within(dialog()).getByText(
+      await within(dialog()).findByText(
         'We texted the same code to +44 7700 900461. The one on WhatsApp works too.',
+        undefined,
+        WAIT,
       ),
     ).toBeDefined();
     expect(within(dialog()).getByLabelText('Code from the text')).toBeDefined();
