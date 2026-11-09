@@ -1,60 +1,43 @@
 import { type ListedEvent } from '@soirely/api-client';
 import {
-  EVENTS_TABS,
-  type EventPhase,
   type EventsTab,
-  eventDays,
   eventsHome,
-  formatEventClock,
-  formatEventShortDay,
-  formatEventWeekday,
-  howSoonPhrase,
-  nextStep,
   rememberEventsTab,
   rememberedEventsTab,
   serverClock,
   shownPhase,
+  takesCardStep,
   withPastPage,
 } from '@soirely/domain';
-import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, NavigationType, useLocation, useNavigate, useNavigationType } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { type ButtonStep, EventCard } from '../../../components/EventCard.tsx';
+import {
+  EventRow,
+  EventsEmptyTab,
+  EventsFirstRun,
+  EventsFooter,
+  EventsLoading,
+  EventsTabs,
+  EventsTop,
+  NewEventWords,
+} from '../../../components/EventsList.tsx';
+import { Glyph } from '../../../components/Glyph.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
-import { Skeleton } from '../../../components/Skeleton.tsx';
-import { dateLocale, useShownLanguage } from '../../../i18n/index.ts';
+import { TextAction } from '../../../components/SettingsParts.tsx';
+import { type Shown, listEventOf, shownEvent, summaryWords } from '../../../eventsList.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import { useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
-import { typeLabel } from './eventTypes.ts';
-import { FirstRun } from './FirstRun.tsx';
-import { StatusPill } from './MakeLive.tsx';
+import { DuplicateDialog } from './DuplicateEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
-import { Placeholder } from './Placeholder.tsx';
 
 const PAST_PAGE = 10;
-
-const TAB_WORD: Record<EventsTab, string> = {
-  upcoming: 'events.tabUpcoming',
-  drafts: 'events.tabDrafts',
-  past: 'events.tabPast',
-};
-
-const EMPTY: Record<EventsTab, { title: string; line: string }> = {
-  upcoming: { title: 'events.emptyUpcomingTitle', line: 'events.emptyUpcoming' },
-  drafts: { title: 'events.emptyDraftsTitle', line: 'events.emptyDrafts' },
-  past: { title: 'events.emptyPastTitle', line: 'events.emptyPast' },
-};
-
-const PLACEHOLDER_TILES = [
-  'events.tileGuestsInvited',
-  'events.tileRepliesIn',
-  'events.tileNeedAttention',
-];
-
-const NOW_FIGURES = ['events.arrived', 'events.course', 'events.nextCue'];
 
 type Load =
   | { kind: 'loading' }
@@ -107,6 +90,11 @@ export function Events() {
   );
 }
 
+function eventLink(event: { id: string }): string {
+  return `/app/events/${encodeURIComponent(event.id)}`;
+}
+
+/** Events as its demo draws it (sc-30413): the tabs, the soonest event as the card, then its rows; Past ten at a time. */
 function EventsOf({
   organisationId,
   creates,
@@ -117,18 +105,23 @@ function EventsOf({
   deleted: string | null;
 }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [refresh, setRefresh] = useState(0);
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
-  const [shown, setShown] = useState('');
+  const [shown, setShown] = useState<string | null>(null);
   const [tab, setTab] = useState<EventsTab>(() => rememberedEventsTab(organisationId));
+  const [copying, setCopying] = useState<ListedEvent | null>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const failedLine = useRef<HTMLParagraphElement>(null);
   const firstRunTitle = useRef<HTMLHeadingElement>(null);
   const home = useRef<HTMLDivElement>(null);
+  const rows = useRef<HTMLUListElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
   const land = useFocusOnceShown();
   const now = useServerNow();
+  const locale = dateLocale();
   const { watch, refreshing } = useOffline({
     loaded: load.kind === 'loaded',
     reload: () => setRefresh((n) => n + 1),
@@ -167,34 +160,34 @@ function EventsOf({
   }, [organisationId, attempt, refresh, watch]);
 
   const page = (summary: string | null, body: ReactNode) => (
-    <div className="events">
-      <div className="events-head">
-        <div className="events-title">
-          <h1 ref={title} tabIndex={-1}>
-            {t('events.title')}
-          </h1>
+    <div className="desk ev">
+      <div className="ev-column">
+        <div>
+          <EventsTop
+            title={title}
+            newEvent={
+              creates && (
+                <Link className="ev-new" to="/app/events/new">
+                  <NewEventWords />
+                </Link>
+              )
+            }
+          />
           {refreshing ? (
-            <p className="events-summary">
+            <p className="desk-line">
               <Refreshing />
             </p>
           ) : (
-            summary != null && <p className="events-summary">{summary}</p>
+            summary != null && <p className="desk-line">{summary}</p>
           )}
         </div>
-        {creates && (
-          <Link className="button button-primary" to="/app/events/new">
-            {t('events.newEvent')}
-          </Link>
-        )}
+        {deleted != null && <OutcomeLine words={t('eventDelete.deleted', { event: deleted })} />}
+        {body}
       </div>
-      {deleted != null && <OutcomeLine words={t('eventDelete.deleted', { event: deleted })} />}
-      {body}
     </div>
   );
 
-  if (load.kind === 'loading') {
-    return page(null, <Skeleton words={t('events.loading')} shape="rows" rowHeight={76} />);
-  }
+  if (load.kind === 'loading') return page(null, <EventsLoading />);
 
   if (load.kind === 'failed') {
     return page(
@@ -229,30 +222,48 @@ function EventsOf({
   }
 
   if (load.unfinished.length === 0 && load.pastTotal === 0) {
-    return page(null, <FirstRun creates={creates} title={firstRunTitle} />);
+    return page(
+      null,
+      <EventsFirstRun
+        create={creates ? '/app/events/new' : undefined}
+        title={firstRunTitle}
+      />,
+    );
   }
 
-  const grouped = eventsHome(load, now, dateLocale());
   const loaded = load;
+  const grouped = eventsHome(loaded, now, locale);
+  const shownOf = (events: readonly ListedEvent[]) =>
+    events.map((event) => shownEvent(listEventOf(event), shownPhase(event, loaded.at, now)));
+  const tabs: Record<EventsTab, Shown[]> = {
+    upcoming: shownOf([...grouped.happeningNow, ...grouped.upcoming]),
+    drafts: shownOf(grouped.drafts),
+    past: shownOf(grouped.past),
+  };
   const counts: Record<EventsTab, number> = {
-    upcoming: grouped.upcoming.length,
-    drafts: grouped.drafts.length,
+    upcoming: tabs.upcoming.length,
+    drafts: tabs.drafts.length,
     past: grouped.pastCount,
   };
-  const events =
-    tab === 'upcoming' ? grouped.upcoming : tab === 'drafts' ? grouped.drafts : grouped.past;
-  const parts = [
-    grouped.happeningNow.length > 0 &&
-      t('events.summaryHappeningNow', { count: grouped.happeningNow.length }),
-    counts.upcoming > 0 && t('events.summaryUpcoming', { count: counts.upcoming }),
-    counts.drafts > 0 && t('events.summaryDrafts', { count: counts.drafts }),
-  ].filter((part) => part !== false);
-  const summary =
-    parts.length === 0
-      ? null
-      : parts.reduceRight((rest, first) => t('events.summaryJoin', { first, rest }));
+  const events = tabs[tab];
+  const card = tab === 'past' ? null : (events[0] ?? null);
+  const listed = tab === 'past' ? events : events.slice(1);
+  const summary = summaryWords(
+    {
+      happeningNow: grouped.happeningNow.length,
+      upcoming: grouped.upcoming.length,
+      drafts: grouped.drafts.length,
+    },
+    t,
+  );
+  const loadedEvent = (id: string) =>
+    [...loaded.unfinished, ...loaded.past].find((event) => event.id === id) ?? null;
 
   const showMore = () => {
+    if (more === 'loading') return;
+
+    const before = loaded.past.length;
+
     setMore('loading');
     api
       .events(organisationId, {
@@ -267,337 +278,96 @@ function EventsOf({
           setLoad(read.load);
           setShown(t('events.moreShown', { count: read.added }));
           setMore('idle');
+          window.requestAnimationFrame(() =>
+            rows.current?.querySelectorAll<HTMLElement>('a')[before]?.focus(),
+          );
         },
         () => setMore('failed'),
       );
   };
 
+  const onStep = (event: Shown, step: ButtonStep) => {
+    if (step.action === 'duplicate') {
+      opener.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setCopying(loadedEvent(event.id));
+    } else if (step.action === 'changeDates') {
+      void navigate(`${eventLink(event)}/edit#starts`);
+    } else {
+      void navigate(eventLink(event));
+    }
+  };
+
   return page(
     summary,
-    <div className="events-home arrives" ref={home}>
-      <ul className="events-tiles">
-        <li className="events-tile">
-          <span className="events-tile-label">{t('events.tileUpcoming')}</span>
-          <span className="events-tile-number">{counts.upcoming}</span>
-        </li>
-        {PLACEHOLDER_TILES.map((label) => (
-          <li key={label} className="events-tile">
-            <Placeholder label={t(label)} labelClass="events-tile-label" />
-          </li>
-        ))}
-      </ul>
-      {grouped.happeningNow.length > 0 && (
-        <section className="events-now" aria-labelledby="events-now-title">
-          <h2 id="events-now-title" className="visually-hidden">
-            {t('events.happeningNow')}
-          </h2>
-          <ul className="events-now-list">
-            {grouped.happeningNow.map((event) => (
-              <li key={event.id}>
-                <HappeningNow event={event} now={now} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-      <Tabs
-        tab={tab}
-        counts={counts}
-        onChoose={(next) => {
-          rememberEventsTab(organisationId, next);
-          setTab(next);
-        }}
-      >
-        <div className="events-table">
-          <div className="events-table-head" aria-hidden="true">
-            <span>{t('events.columnEvent')}</span>
-            <span>{t('events.columnDates')}</span>
-            <span>{t('events.columnStatus')}</span>
-            <span>{t('events.columnGuests')}</span>
-            <span>{t('events.columnReplies')}</span>
-            <span>{t('events.columnNextStep')}</span>
-          </div>
+    <>
+      <div className="ev-column arrives" ref={home}>
+        <EventsTabs
+          tab={tab}
+          counts={counts}
+          onPick={(next) => {
+            rememberEventsTab(organisationId, next);
+            setTab(next);
+          }}
+        >
+          {card != null && (
+            <EventCard
+              event={card}
+              now={now}
+              locale={locale}
+              level={2}
+              to={eventLink(card)}
+              takes={(action) => {
+                const event = loadedEvent(card.id);
+
+                return event != null && takesCardStep(event, action);
+              }}
+              onStep={(step) => onStep(card, step)}
+            />
+          )}
           {events.length === 0 ? (
-            <EmptyTab tab={tab} />
+            <EventsEmptyTab tab={tab} />
           ) : (
-            <ul className="events-list">
-              {events.map((event) => (
-                <li key={event.id}>
-                  <EventRow event={event} phase={shownPhase(event, loaded.at, now)} now={now} />
-                </li>
+            <ul className="desk-rows ev-rows" ref={rows}>
+              {listed.map((event) => (
+                <EventRow
+                  key={event.id}
+                  event={event}
+                  now={now}
+                  locale={locale}
+                  to={eventLink(event)}
+                />
               ))}
             </ul>
           )}
           {tab === 'past' && grouped.past.length < grouped.pastCount && (
-            <div className="events-more">
-              <button
-                type="button"
-                className="button"
-                disabled={more === 'loading'}
-                onClick={showMore}
-              >
-                {t('events.showMore')}
-              </button>
-              {more === 'failed' && <p role="alert">{t('events.moreFailed')}</p>}
-            </div>
+            <TextAction label={t('events.showMore')} onClick={showMore} />
           )}
-          {tab === 'past' && (
-            <p className="visually-hidden" aria-live="polite">
+          {tab === 'past' && more === 'failed' && (
+            <p className="desk-error" role="alert">
+              <Glyph name="alert" size={15} weight={2.2} />
+              {t('events.moreFailed')}
+            </p>
+          )}
+          {tab === 'past' && shown != null && (
+            <p className="desk-note" role="status">
               {shown}
             </p>
           )}
-          {counts[tab] > 0 && (
-            <p className="events-footer">{t('events.footer', { count: counts[tab] })}</p>
-          )}
-        </div>
-      </Tabs>
-    </div>,
-  );
-}
-
-/** A WAI-ARIA tab list: arrow keys, Home and End move between the three and choose as they go. */
-function Tabs({
-  tab,
-  counts,
-  onChoose,
-  children,
-}: {
-  tab: EventsTab;
-  counts: Record<EventsTab, number>;
-  onChoose: (tab: EventsTab) => void;
-  children: ReactNode;
-}) {
-  const { t } = useTranslation();
-  const buttons = useRef<Partial<Record<EventsTab, HTMLButtonElement | null>>>({});
-
-  const choose = (next: EventsTab, focus = false) => {
-    onChoose(next);
-    if (focus) buttons.current[next]?.focus();
-  };
-
-  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    const at = EVENTS_TABS.indexOf(tab);
-    const to = {
-      ArrowRight: EVENTS_TABS[(at + 1) % EVENTS_TABS.length],
-      ArrowLeft: EVENTS_TABS[(at + EVENTS_TABS.length - 1) % EVENTS_TABS.length],
-      Home: EVENTS_TABS[0],
-      End: EVENTS_TABS[EVENTS_TABS.length - 1],
-    }[event.key];
-
-    if (to == null) return;
-
-    event.preventDefault();
-    choose(to, true);
-  };
-
-  return (
-    <div className="events-tabs">
-      <div role="tablist" className="events-tab-list" aria-label={t('events.title')}>
-        {EVENTS_TABS.map((one) => (
-          <button
-            key={one}
-            ref={(button) => {
-              buttons.current[one] = button;
-            }}
-            type="button"
-            role="tab"
-            id={`events-tab-${one}`}
-            aria-controls={`events-panel-${one}`}
-            aria-selected={one === tab}
-            tabIndex={one === tab ? 0 : -1}
-            className="events-tab"
-            onClick={() => choose(one)}
-            onKeyDown={onKeyDown}
-          >
-            {t(TAB_WORD[one])} <span className="events-tab-count">{counts[one]}</span>
-          </button>
-        ))}
+          {counts[tab] > 0 && <EventsFooter count={counts[tab]} />}
+        </EventsTabs>
       </div>
-      <div
-        role="tabpanel"
-        id={`events-panel-${tab}`}
-        aria-labelledby={`events-tab-${tab}`}
-        className="events-panel"
-      >
-        <h2 className="visually-hidden">{t(TAB_WORD[tab])}</h2>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function EmptyTab({ tab }: { tab: EventsTab }) {
-  const { t } = useTranslation();
-
-  return (
-    <div className="events-empty">
-      <h3>{t(EMPTY[tab].title)}</h3>
-      <p className="muted">{t(EMPTY[tab].line)}</p>
-    </div>
-  );
-}
-
-function eventLink(event: ListedEvent): string {
-  return `/app/events/${encodeURIComponent(event.id)}`;
-}
-
-/** One link for the whole event, with nothing to press inside it (sc-22103). */
-function EventRow({ event, phase, now }: { event: ListedEvent; phase: EventPhase; now: Date }) {
-  const { t } = useTranslation();
-  const soon = useHowSoon(event, phase, now);
-
-  return (
-    <Link className="events-row" to={eventLink(event)}>
-      <span className="events-row-event">
-        <span className="events-row-name">{event.name}</span>
-        <TypeAndPlace event={event} />
-      </span>
-      <span className="events-row-dates">
-        <EventDates event={event} soon={soon} />
-      </span>
-      <span className="events-row-status">
-        <StatusPill phase={phase} />
-      </span>
-      <Placeholder label={t('events.columnGuests')} labelHidden />
-      <Placeholder label={t('events.columnReplies')} labelHidden />
-      <span className="events-row-next">
-        <NextStep event={event} phase={phase} now={now} />
-      </span>
-    </Link>
-  );
-}
-
-function HappeningNow({ event, now }: { event: ListedEvent; now: Date }) {
-  const { t } = useTranslation();
-  const step = nextStep(event, 'happening_now', now);
-  const soon = useHowSoon(event, 'happening_now', now);
-
-  return (
-    <Link className="events-now-card" to={eventLink(event)}>
-      <span className="events-now-body">
-        <span className="events-now-main">
-          <span className="events-now-when">
-            <span className="events-now-dates">
-              <EventDates event={event} part="days" />
-            </span>
-            <StatusPill phase="happening_now" />
-          </span>
-          <span className="events-now-name">
-            <span className="events-now-title">{event.name}</span>
-            <TypeAndPlace event={event} />
-          </span>
-          <span className="muted">
-            <EventDates event={event} part="time" soon={soon} />
-          </span>
-        </span>
-        <span className="events-now-figures">
-          {NOW_FIGURES.map((label) => (
-            <Placeholder key={label} label={t(label)} />
-          ))}
-        </span>
-      </span>
-      {step?.kind === 'nextUp' && (
-        <span className="events-now-next">
-          <span className="events-now-next-word">{t('timeline.nextUp')}</span>{' '}
-          <span>{step.milestone.title}</span>
-        </span>
+      {copying != null && (
+        <DuplicateDialog
+          event={copying}
+          onClose={() => {
+            setCopying(null);
+            window.setTimeout(() => opener.current?.focus(), 0);
+          }}
+        />
       )}
-    </Link>
+    </>,
   );
-}
-
-function TypeAndPlace({ event }: { event: ListedEvent }) {
-  const { t } = useTranslation();
-  const place = event.venue?.name ?? event.venue?.address?.formatted ?? null;
-  const type = typeLabel(event.type, t);
-
-  return (
-    <span className="events-type-place">
-      {place == null ? type : t('events.typeAndPlace', { type, place })}
-    </span>
-  );
-}
-
-/** Its day or its first and last day, then its start and zone, all in the event's own zone, and how soon it is. */
-function EventDates({
-  event,
-  part = 'both',
-  soon = null,
-}: {
-  event: ListedEvent;
-  part?: 'days' | 'time' | 'both';
-  soon?: string | null;
-}) {
-  const { t } = useTranslation();
-  const locale = dateLocale();
-  const days = eventDays(event);
-
-  if (days.kind === 'calledOffOn') {
-    return part === 'time'
-      ? null
-      : t('events.calledOffOn', {
-          date: formatEventShortDay(days.concludedAt, event.timeZone, locale),
-        });
-  }
-
-  const first = formatEventWeekday(days.startsAt, event.timeZone, locale);
-  const dates =
-    days.kind === 'oneDay'
-      ? first
-      : t('events.days', { first, last: formatEventWeekday(days.endsAt, event.timeZone, locale) });
-  const time = t('events.timeAndZone', {
-    time: formatEventClock(event.startsAt, event.timeZone, locale),
-    timeZone: event.timeZone,
-  });
-  const timeAndSoon =
-    soon == null ? (
-      time
-    ) : (
-      <>
-        {t('events.thenSoon', { when: time })} <span className="events-soon">{soon}</span>
-      </>
-    );
-
-  if (part === 'days') return dates;
-  if (part === 'time') return timeAndSoon;
-
-  return (
-    <>
-      <span>{dates}</span>
-      <span className="muted events-row-time">{timeAndSoon}</span>
-    </>
-  );
-}
-
-/** "in 32 days", or "Ends tomorrow" once under way; null where the event has no phrase (sc-25008). */
-function useHowSoon(event: ListedEvent, phase: EventPhase, now: Date): string | null {
-  const { t } = useTranslation();
-  const language = useShownLanguage();
-
-  return howSoonPhrase(event, phase, now, language, (time) => t('events.endsIn', { time }));
-}
-
-function NextStep({ event, phase, now }: { event: ListedEvent; phase: EventPhase; now: Date }) {
-  const { t } = useTranslation();
-  const step = nextStep(event, phase, now);
-
-  switch (step?.kind) {
-    case undefined:
-      return null;
-    case 'makeLive':
-      return t('events.nextMakeLive');
-    case 'changeDates':
-      return t('events.nextChangeDates');
-    case 'resume':
-      return t('events.nextResume');
-    case 'nextUp':
-      return (
-        <>
-          <span className="events-row-next-word">{t('timeline.nextUp')}</span>{' '}
-          {step.milestone.title}
-        </>
-      );
-  }
 }
 
 /** The deleted notice belongs to the entry Delete event lands on, which Events replaces once to drop its state, and to no other: Back, Forward or a reload can reach an entry whose replace never landed (sc-22103). */
