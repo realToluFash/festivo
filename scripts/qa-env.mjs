@@ -441,6 +441,12 @@ export function reversedPorts(ports) {
   return reached.map((key) => ports[key]);
 }
 
+// `adb reverse --list` prints `<serial> tcp:<device> tcp:<host>`, or `(reverse) …` on older adb.
+export function unreversed(list, ports) {
+  const held = new Set([...(list ?? '').matchAll(/tcp:(\d+)\s+tcp:/g)].map((m) => Number(m[1])));
+  return ports.filter((port) => !held.has(Number(port)));
+}
+
 export function androidSdk(env = process.env, platform = process.platform, home = homedir()) {
   return (
     env.ANDROID_HOME ??
@@ -1689,6 +1695,21 @@ function unitState(unit) {
   return spawnSync('systemctl', ['--user', 'is-active', unit], { encoding: 'utf8' }).stdout.trim();
 }
 
+// adbd can still be settling once boot completes, and a reverse made then is dropped without an error (sc-35453).
+async function reversePorts(tools) {
+  let missing = reversedPorts(CONFIG.ports);
+  for (let i = 0; i < 10 && missing.length; i++) {
+    if (i) await pause(1000);
+    for (const port of missing) adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
+    missing = unreversed(adbOut(tools, ['reverse', '--list']), reversedPorts(CONFIG.ports));
+  }
+  if (missing.length) {
+    throw new Error(
+      `${emulatorSerial()} still has ${missing.join(', ')} unreversed after ten seconds`,
+    );
+  }
+}
+
 async function stopEmulator(tools) {
   const unit = `${CONFIG.project}-emulator`;
   adbOut(tools, ['emu', 'kill']);
@@ -1875,11 +1896,7 @@ export const ANDROID_START = [
   },
   {
     name: 'ports reversed',
-    run: ({ tools }) => {
-      for (const port of reversedPorts(CONFIG.ports)) {
-        adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
-      }
-    },
+    run: ({ tools }) => reversePorts(tools),
   },
   {
     name: 'Expo Go stopped',
@@ -2234,9 +2251,7 @@ async function releaseAndroid(args) {
     adbOut(tools, ['reverse', '--remove-all']);
     await waitOffline(tools);
   } else {
-    for (const port of reversedPorts(CONFIG.ports)) {
-      adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
-    }
+    await reversePorts(tools);
   }
 
   const video = launchVideo(root, sha, 'android', open);

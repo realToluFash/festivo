@@ -142,6 +142,7 @@ import {
   xcodeWorkspace,
   renderQaEnv,
   reversedPorts,
+  unreversed,
   simulatorFor,
   TESTERS,
   testerOf,
@@ -792,6 +793,21 @@ describe('the ports an emulator is given', () => {
     const ports = reversedPorts(QA_PORTS);
     expect(ports).not.toContain(QA_PORTS.POSTGRES_PORT);
     expect(ports).not.toContain(QA_PORTS.REDIS_PORT);
+  });
+});
+
+describe('the reversed ports read back', () => {
+  it('names the ports adb does not list', () => {
+    const list = 'emulator-5574 tcp:18081 tcp:18081\nemulator-5574 tcp:18000 tcp:18000';
+    expect(unreversed(list, [18081, 18000, 19000])).toEqual([19000]);
+  });
+
+  it('reads the older (reverse) form', () => {
+    expect(unreversed('(reverse) tcp:18081 tcp:18081', [18081])).toEqual([]);
+  });
+
+  it('counts every port missing when adb answers nothing', () => {
+    expect(unreversed(null, [18081, 18000])).toEqual([18081, 18000]);
   });
 });
 
