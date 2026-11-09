@@ -136,12 +136,7 @@ export function PersonCard({
           </Text>
           {role != null && (
             <Glass height={28} grows style={styles.roleChip}>
-              <Text
-                size={13}
-                weight="semibold"
-                accessible={false}
-                style={[styles.white, styles.roleWords]}
-              >
+              <Text size={13} weight="semibold" accessible={false} style={styles.white}>
                 {t('settings.personRole', role)}
               </Text>
             </Glass>
@@ -383,7 +378,6 @@ const styles = StyleSheet.create({
   },
   personWords: { flex: 1, minWidth: 0, gap: 3, alignItems: 'flex-start' },
   roleChip: { marginTop: tokens.spaceXs, paddingHorizontal: 11, paddingVertical: 5 },
-  roleWords: { flexShrink: 1 },
   personChevron: { width: 36, justifyContent: 'center' },
   group: {
     borderRadius: tokens.space3xl,
