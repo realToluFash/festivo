@@ -1,4 +1,4 @@
-import { formattingLocale } from '@soirely/domain';
+import { formattingLocale, type InvitationOutcome } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { router, useIsFocused, usePathname } from 'expo-router';
 import {
@@ -42,7 +42,7 @@ import { TextField } from '../components/Field.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Initials } from '../components/Initials.tsx';
 import { Notice } from '../components/Notice.tsx';
-import { useReadOut } from '../components/ReadOut.tsx';
+import { useReadOut, useSendingWords } from '../components/ReadOut.tsx';
 import { SETTLED_MS } from '../components/Screen.tsx';
 import { moveScreenReaderFocus } from '../components/screenReaderFocus.ts';
 import { useFocusBack, useWindowTurn } from '../components/Sheet.tsx';
@@ -73,6 +73,7 @@ import {
   type Invite,
   type Offer,
   type Place,
+  REFUSED,
   SW,
   type Session,
   type SwitcherState,
@@ -94,6 +95,7 @@ import {
   rowsOf,
   scrollToShow,
   searchable,
+  sending,
   sessionFor,
   settled,
   tileKey,
@@ -102,7 +104,8 @@ import {
   waitingOf,
   withoutPlaces,
 } from './OrgSwitcherModel.ts';
-import { Pill } from '../components/SettingsParts.tsx';
+import { Pill, TYPE } from '../components/SettingsParts.tsx';
+import { TurningMark } from '../components/SummaryRows.tsx';
 import { type Switched, SwitchedProvider } from '../components/SwitchedNotice.tsx';
 
 const store = {
@@ -686,8 +689,12 @@ function DropDown({
   };
   const onExpand = (id: string) => setSession(expand(store.session, id));
   const onAnswer = (id: string, yes: boolean) => {
-    setAnswered({});
-    setSession(answer(store.session, id, yes));
+    setSession(sending(store.session, id, yes));
+    setTimeout(() => {
+      if (store.session.outcomes[id]?.kind !== 'busy') return;
+      setAnswered({});
+      setSession(answer(store.session, id, yes));
+    }, SENDING_MS);
   };
   const onAsk = () => {
     setAnswered({});
@@ -869,9 +876,7 @@ function DropDown({
                               onClose();
                               setTimeout(() => router.push('/demo/settings/account'), SETTLED_MS);
                             }}
-                            outcome={
-                              opened.kind === 'invitation' ? opened.outcome?.kind : undefined
-                            }
+                            outcome={opened.kind === 'invitation' ? opened.outcome : undefined}
                             sizes={sizes}
                             locale={locale}
                             answered={answered}
@@ -971,6 +976,9 @@ function cellLabel(tile: Tile): string {
   }
 }
 
+/** A tile's name stops at two lines with an ellipsis, in the grid and beside its mark alike; the label, the search and the opened panel keep it whole (sc-486, sc-13496). */
+const NAME_LINES = 2;
+
 function Cell({
   tile,
   width,
@@ -1015,6 +1023,7 @@ function Cell({
             <Text
               size={sizes.name}
               weight="semibold"
+              numberOfLines={NAME_LINES}
               accessible={false}
               maxFontSizeMultiplier={cap}
               style={[
@@ -1186,6 +1195,47 @@ function TileFace({
   );
 }
 
+const SENDING_MS = 900;
+
+/** The pressed answer while it is out: the Pill's `off` ground, the turning mark and what it is doing in Ink 2, as the Ask's busy confirm says it. */
+function SendingPill({
+  words,
+  full,
+  height,
+  testID,
+}: {
+  words: string;
+  full: boolean;
+  height: number;
+  testID: string;
+}) {
+  return (
+    <Pressable
+      disabled
+      style={[
+        styles.sending,
+        full ? styles.sendingFull : styles.sendingFit,
+        { height, borderRadius: height / 2 },
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={words}
+      accessibilityState={{ disabled: true, busy: true }}
+      testID={testID}
+    >
+      <TurningMark side={16} />
+      <Text
+        size={height >= tokens.sizeHitPhonePrimary ? 16 : TYPE.body}
+        weight="semibold"
+        numberOfLines={1}
+        accessible={false}
+        style={styles.secondary}
+      >
+        {words}
+      </Text>
+    </Pressable>
+  );
+}
+
 function PanelButtons({ children }: { children: ReactNode }) {
   return <View style={styles.buttons}>{children}</View>;
 }
@@ -1206,7 +1256,7 @@ function InvitationPanel({
   joined: boolean;
   managed: boolean;
   onChange: () => void;
-  outcome: 'failed' | 'declined' | 'busy' | 'accepted' | 'refused' | undefined;
+  outcome: InvitationOutcome | undefined;
   sizes: Sizes;
   locale: string;
   answered: object | undefined;
@@ -1215,6 +1265,14 @@ function InvitationPanel({
 }) {
   const cap = sizes.fixed ? 1 : undefined;
   const full = sizes !== GRID;
+  const height = full ? tokens.sizeHitPhoneHero : tokens.sizeHit;
+  const busy = outcome?.kind === 'busy' ? outcome.answer : null;
+  const refused =
+    outcome?.kind === 'refused' && outcome.refusal !== 'invitation_not_yours'
+      ? REFUSED[outcome.refusal]
+      : null;
+
+  useSendingWords(busy == null ? undefined : busy === 'accept' ? SW.joining : SW.declining);
 
   if (joined)
     return (
@@ -1269,7 +1327,18 @@ function InvitationPanel({
         <View style={styles.answerUnder}>
           <ManagedBanner onChange={onChange} testID={`switcher.invitation.${invite.id}.managed`} />
         </View>
-      ) : outcome === 'declined' ? (
+      ) : refused != null ? (
+        <View style={styles.answerUnder}>
+          <Notice
+            tone={refused.attention ? 'attention' : 'quiet'}
+            mark={refused.attention ? '!' : 'i'}
+            title={refused.word}
+            body={refused.body(invite)}
+            answer={answered}
+            takesFocus
+          />
+        </View>
+      ) : outcome?.kind === 'declined' ? (
         <View style={styles.answerUnder}>
           <Notice
             tone="quiet"
@@ -1281,7 +1350,7 @@ function InvitationPanel({
         </View>
       ) : (
         <View style={styles.answerUnder}>
-          {outcome === 'failed' && (
+          {outcome?.kind === 'failed' && (
             <View style={styles.failed}>
               <Notice
                 tone="broken"
@@ -1292,23 +1361,42 @@ function InvitationPanel({
             </View>
           )}
           <PanelButtons>
-            <Pill
-              label={SW.accept}
-              accessibilityLabel={SW.acceptLabel(invite.name)}
-              full={full}
-              height={full ? tokens.sizeHitPhoneHero : tokens.sizeHit}
-              onPress={() => onAnswer(true)}
-              testID={`switcher.invitation.${invite.id}.accept`}
-            />
-            <Pill
-              label={SW.decline}
-              accessibilityLabel={SW.declineLabel(invite.name)}
-              kind="secondary"
-              full={full}
-              height={full ? tokens.sizeHitPhoneHero : tokens.sizeHit}
-              onPress={() => onAnswer(false)}
-              testID={`switcher.invitation.${invite.id}.decline`}
-            />
+            {busy === 'accept' ? (
+              <SendingPill
+                words={SW.joining}
+                full={full}
+                height={height}
+                testID={`switcher.invitation.${invite.id}.accept`}
+              />
+            ) : (
+              <Pill
+                label={SW.accept}
+                accessibilityLabel={SW.acceptLabel(invite.name)}
+                kind={busy == null ? 'primary' : 'off'}
+                full={full}
+                height={height}
+                onPress={() => onAnswer(true)}
+                testID={`switcher.invitation.${invite.id}.accept`}
+              />
+            )}
+            {busy === 'decline' ? (
+              <SendingPill
+                words={SW.declining}
+                full={full}
+                height={height}
+                testID={`switcher.invitation.${invite.id}.decline`}
+              />
+            ) : (
+              <Pill
+                label={SW.decline}
+                accessibilityLabel={SW.declineLabel(invite.name)}
+                kind={busy == null ? 'secondary' : 'off'}
+                full={full}
+                height={height}
+                onPress={() => onAnswer(false)}
+                testID={`switcher.invitation.${invite.id}.decline`}
+              />
+            )}
           </PanelButtons>
           <Text
             size={sizes.line}
@@ -1583,6 +1671,15 @@ const styles = StyleSheet.create({
   answerUnder: { marginTop: tokens.spaceMd },
   failed: { marginBottom: tokens.spaceSm },
   buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceMd },
+  sending: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: tokens.spaceSm,
+    backgroundColor: tokens.colorNeutralFill,
+  },
+  sendingFull: { alignSelf: 'stretch', paddingHorizontal: tokens.spaceXxl },
+  sendingFit: { alignSelf: 'flex-start', paddingHorizontal: 22 },
   buttonsUnder: { marginTop: tokens.spaceMd, alignItems: 'flex-start' },
   declineNote: { marginTop: tokens.spaceSm },
   offerBody: { marginTop: tokens.spaceMd },

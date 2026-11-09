@@ -1,4 +1,9 @@
-import { type InvitationOutcome, isWaiting, waitingInvitations } from '@soirely/domain';
+import {
+  type InvitationOutcome,
+  type InvitationRefusalCode,
+  isWaiting,
+  waitingInvitations,
+} from '@soirely/domain';
 
 import { meshFor, type MeshKey } from '../kit/today.ts';
 
@@ -57,6 +62,8 @@ export const SW = {
   acceptLabel: (organisation: string) => `Accept and join ${organisation}`,
   declineLabel: (organisation: string) => `Decline the invitation to ${organisation}`,
   failed: 'Your answer did not reach us. Check your connection and try again.',
+  joining: 'Joining…',
+  declining: 'Declining…',
   ask: 'Ask to join',
   notNow: 'Not now',
   waiting: 'Waiting for approval',
@@ -81,6 +88,38 @@ export const SW = {
   matches: (count: number) =>
     count === 1 ? '1 organisation matches' : `${count} organisations match`,
 } as const;
+
+/** The switcher lists only the signed-in account's own invitations, so `invitation_not_yours` cannot reach it. */
+export type SwitcherRefusal = Exclude<InvitationRefusalCode, 'invitation_not_yours'>;
+
+export const REFUSED: Record<
+  SwitcherRefusal,
+  { word: string; body: (invite: Invite) => string; attention?: true }
+> = {
+  invitation_expired: {
+    word: 'Expired',
+    body: (invite) => `This invitation has expired. Ask ${invite.inviter} to send a new one.`,
+    attention: true,
+  },
+  invitation_revoked: {
+    word: 'Withdrawn',
+    body: (invite) =>
+      `This invitation was withdrawn by ${invite.name}. If you think this is a mistake, ask the person who invited you.`,
+  },
+  invitation_accepted: {
+    word: 'Already accepted',
+    body: () => 'You already accepted this invitation.',
+  },
+  invitation_declined: {
+    word: 'Already declined',
+    body: (invite) =>
+      `You declined this invitation. If you have changed your mind, ask ${invite.inviter} to invite you again.`,
+  },
+  organisation_deleted: {
+    word: 'Organisation deleted',
+    body: (invite) => `${invite.name} no longer exists, so this invitation cannot be accepted.`,
+  },
+};
 
 export function openerLabel(place: Place, waiting: number): string {
   const label = `Organisation: ${place.name}, your role ${place.role}. Switch organisation`;
@@ -158,6 +197,9 @@ export const SWITCHER_STATES = [
   'joined',
   'declined',
   'failed',
+  'busy',
+  'refused',
+  'withdrawn',
   'large',
   'managed',
 ] as const;
@@ -189,6 +231,12 @@ export function sessionFor(state: SwitcherState): Session {
     expanded: OFFER.id,
   });
 
+  const refused = (refusal: SwitcherRefusal): Session => ({
+    ...populated,
+    outcomes: { [BLUEBIRD]: { kind: 'refused', refusal } },
+    expanded: BLUEBIRD,
+  });
+
   switch (state) {
     case 'one':
       return { ...populated, places: [IRE_EVENTS], invitations: [] };
@@ -216,6 +264,16 @@ export function sessionFor(state: SwitcherState): Session {
       return { ...populated, outcomes: { [BLUEBIRD]: { kind: 'declined' } }, expanded: BLUEBIRD };
     case 'failed':
       return { ...populated, outcomes: { [BLUEBIRD]: { kind: 'failed' } }, expanded: BLUEBIRD };
+    case 'busy':
+      return {
+        ...populated,
+        outcomes: { [BLUEBIRD]: { kind: 'busy', answer: 'accept' } },
+        expanded: BLUEBIRD,
+      };
+    case 'refused':
+      return refused('invitation_expired');
+    case 'withdrawn':
+      return refused('invitation_revoked');
     case 'large':
       return { ...populated, large: true };
     case 'managed':
@@ -310,6 +368,15 @@ export function noneMatch(session: Session, query: string): boolean {
 
 export function expand(session: Session, id: string): Session {
   return { ...session, expanded: session.expanded === id ? null : id };
+}
+
+/** The press in flight: both buttons off, the pressed one saying what it is doing. */
+export function sending(session: Session, id: string, yes: boolean): Session {
+  return {
+    ...session,
+    outcomes: { ...session.outcomes, [id]: { kind: 'busy', answer: yes ? 'accept' : 'decline' } },
+    expanded: id,
+  };
 }
 
 export function answer(session: Session, id: string, yes: boolean): Session {
