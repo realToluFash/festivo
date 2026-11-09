@@ -8,5 +8,5 @@ appId: host.exp.Exponent
     timeout: 30000
 - assertVisible:
     id: 'settings.account'
-    text: '(Your account|Su cuenta|Votre compte|A sua conta)\. QA Tester, qa-[0-9]+@soirely\.test${TAIL}'
+    text: '(?:{{t:settings.personLabel|email}}|{{t:settings.personLabelWithRole|email}})'
 - takeScreenshot: account-label

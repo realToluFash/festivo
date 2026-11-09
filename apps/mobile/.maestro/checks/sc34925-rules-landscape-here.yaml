@@ -1,7 +1,7 @@
-# sc-34925: Sign-in rules in landscape on a tablet, for a member, on the organisation already open, read top to bottom: the card, Where you stand, What changed.
+# sc-34925: Sign-in rules in landscape on a tablet, for a member, on the organisation already open, read top to bottom: the card, Where you stand, What changed. Pass ORIENT=LANDSCAPE_LEFT (PORTRAIT on a landscape-natural tablet); the next check's reset turns it back.
 appId: host.exp.Exponent
 ---
-- setOrientation: LANDSCAPE_LEFT
+- setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/settings/sign-in-rules
 - extendedWaitUntil:
     visible:
@@ -12,4 +12,3 @@ appId: host.exp.Exponent
 - takeScreenshot: rules-2
 - scroll
 - takeScreenshot: rules-3
-- setOrientation: PORTRAIT
