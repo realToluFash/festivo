@@ -2081,7 +2081,36 @@
       "event_day": "Your shift or call time changed, or the event changed in its last 24 hours.",
       "event_changes": "When someone else changes whether, when or where an event you are on takes place.",
       "money": "Payments due, usage at {{low}} and {{high}}, failed payments and invoices.",
-      "account_security": "Sign-ins, your password, two-factor, ownership and access. Email cannot be switched off."
+      "account_security": "Sign-ins, your password, two-factor, ownership and access."
+    },
+    "kinds": "What you hear about",
+    "blockedLine": "Push is off in this browser, so pushes won't reach you here.",
+    "blockedHere": "Blocked in this browser",
+    "notLoadedLine": "Check your connection and try again.",
+    "saving": "Saving…",
+    "savedTag": "Saved",
+    "saysBoth": "You hear by push and email",
+    "saysPush": "You hear by push only",
+    "saysEmail": "You hear by email only",
+    "counts": "{{push, number}} of {{total, number}} by push · {{email, number}} of {{total, number}} by email",
+    "heardBoth": "Push and email",
+    "heardPush": "Push only",
+    "heardEmail": "Email only",
+    "heardNone": "Off",
+    "emailAlwaysOn": "{{heard}} · email always on",
+    "allow": {
+      "step": "How to allow push",
+      "title": "Allow push in this browser",
+      "done": "Done",
+      "intro": "This browser is blocking Soirely’s pushes. Only you can allow them again, in the browser.",
+      "step1": "Click the icon at the left end of the address bar.",
+      "step2": "Find Notifications and set it to Allow.",
+      "step3": "Come back to this tab. Soirely checks again when you do.",
+      "elsewhere": "Not there? Open your browser’s settings, find the permissions for each site, and allow notifications for Soirely."
+    },
+    "locked": {
+      "email": "Email cannot be switched off.",
+      "push": "Push cannot be switched off."
     }
   },
   "personalisation": {
