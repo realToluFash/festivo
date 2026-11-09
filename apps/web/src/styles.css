@@ -1316,7 +1316,7 @@ span {
 }
 
 /* The reading column stops at 680, so a wider window leaves the room at the right. */
-.settings-desk .settings-desk-page > * > :not(.account-header) {
+.settings-desk .settings-desk-page > * > :not(.account-header, .toast) {
   max-width: 42.5rem;
 }
 

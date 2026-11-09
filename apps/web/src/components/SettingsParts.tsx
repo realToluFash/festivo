@@ -13,9 +13,24 @@ import { useTranslation } from 'react-i18next';
 import { ActionPair } from './ActionPair.tsx';
 import { offButton } from '../offButton.ts';
 import { Glyph } from './Glyph.tsx';
-import { LayersContext, useDeskDialog } from '../layers.ts';
+import { LayersContext, useDeskDialog, type useDeskLayers } from '../layers.ts';
 
 export type Tell = (words: string) => void;
+
+/** A product page beside the Settings list, in B: inside the desk's look, with the layers its dialogs take turns on. */
+export function DeskPage({
+  layers,
+  children,
+}: {
+  layers: ReturnType<typeof useDeskLayers>['layers'];
+  children: ReactNode;
+}) {
+  return (
+    <LayersContext value={layers}>
+      <div className="desk">{children}</div>
+    </LayersContext>
+  );
+}
 
 export type MarkKind = 'yes' | 'waiting' | 'paused' | 'ended';
 
