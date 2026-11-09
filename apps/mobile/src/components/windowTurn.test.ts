@@ -54,7 +54,7 @@ describe('a sheet’s entry, on a cold first open', () => {
 
 describe('a sheet whose heading takes focus as it opens (sc-11032)', () => {
   const sheet = readFileSync(join(import.meta.dirname, 'Sheet.tsx'), 'utf8');
-  const twoFactor = readFileSync(join(import.meta.dirname, 'TwoFactorCard.tsx'), 'utf8');
+  const language = readFileSync(join(import.meta.dirname, 'LanguageChoice.tsx'), 'utf8');
 
   it('opens on Android with nothing in it for TalkBack to name the window by', () => {
     expect(sheet).toMatch(
@@ -74,11 +74,7 @@ describe('a sheet whose heading takes focus as it opens (sc-11032)', () => {
     expect(delay).toMatch(/^SETTLED_MS( \/ [1-9]\d*)?$/);
   });
 
-  it('takes focus to its heading only once the content is revealed', () => {
-    expect(twoFactor).toContain('answer={revealed ? answer : undefined}');
-  });
-
-  it('is how Save your recovery codes opens', () => {
-    expect(twoFactor).toMatch(/headingTakesFocus\s+testID="twoFactor\.codesSheet"/);
+  it('is how the language choice opens', () => {
+    expect(language).toMatch(/headingTakesFocus\s+testID="language\.sheet"/);
   });
 });

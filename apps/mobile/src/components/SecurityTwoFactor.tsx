@@ -1,6 +1,6 @@
 import { keyInGroups } from '@soirely/domain';
 import { setStringAsync } from 'expo-clipboard';
-import { type ReactNode, type Ref, type RefObject, useMemo, useRef, useState } from 'react';
+import { type ReactNode, type Ref, type RefObject, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -8,31 +8,28 @@ import {
   View,
   type ViewInstance,
 } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 
-import { CodeField, Field, focusChecked, focusRefused } from '../../components/Field.tsx';
-import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../../components/Glyph.tsx';
-import { LEAD_INSET, LineIcon } from '../../components/AccountCard.tsx';
-import { CODE_FIGURES } from '../../components/AccountVerify.tsx';
-import { authenticatorProblem } from './AccountSample.ts';
-import { codesLine, type Rules, setupSays, WORDS } from './SecurityModel.ts';
-import { AUTHENTICATOR_KEY, qrPath, RECOVERY_CODES } from './SecuritySample.ts';
+import { codesLine, type SecurityRules } from '../kit/securityPage.ts';
+import { typedCodeProblem } from '../kit/twoFactor.ts';
+import { tokens } from '../theme/tokens.ts';
+import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
+import { CODE_FIGURES } from './AccountVerify.tsx';
 import {
-  FocusedScreen,
-  Line,
-  OpenRow,
-  Row,
-  RowList,
-  Section,
-  TextAction,
-} from '../../components/Summary.tsx';
+  CodeField,
+  Field,
+  FieldError,
+  focusChecked,
+  focusRefused,
+  keysStayDown,
+} from './Field.tsx';
+import { Glyph } from './Glyph.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import type { ScreenReaderTarget } from './screenReaderFocus.ts';
+import { FocusedScreen, Line, OpenRow, Row, RowList, Section, TextAction } from './Summary.tsx';
+import { Text } from './Text.tsx';
 
-const QR_MODULES = 21;
-
-/** The app's checkbox, as TwoFactorCard draws it; its state is read by the control it sits in. */
+/** The app's checkbox; its state is read by the control it sits in. */
 export function CheckMark({ on }: { on: boolean }) {
   return (
     <View
@@ -49,8 +46,10 @@ export function CheckMark({ on }: { on: boolean }) {
 export function TwoFactorSection({
   on,
   codesLeft,
+  email,
   rules,
   opened,
+  error,
   setupRef,
   turnOffRef,
   newCodesRef,
@@ -62,8 +61,11 @@ export function TwoFactorSection({
 }: {
   on: boolean;
   codesLeft: number;
-  rules: Rules;
+  email: string;
+  rules: SecurityRules;
   opened: string | null;
+  /** What the server said to the opened row's offer. */
+  error: string | null;
   setupRef: Ref<ViewInstance>;
   turnOffRef: Ref<ViewInstance>;
   newCodesRef: Ref<ViewInstance>;
@@ -73,25 +75,26 @@ export function TwoFactorSection({
   onTurnOff: () => void;
   onNewCodes: () => void;
 }) {
+  const { t } = useTranslation();
   const shield = <LineIcon name="shield" />;
+  const authenticator = t('security.authenticator');
 
   if (!on)
     return (
-      <Section title={WORDS.twoFactor} foot={WORDS.twoFactorFoot}>
+      <Section title={t('twoFactorCard.title')} foot={t('security.twoFactorFoot')}>
         <Row
           ref={setupRef}
-          title={WORDS.authenticator}
-          line={WORDS.off}
+          title={authenticator}
+          line={t('twoFactorCard.off')}
           lead={shield}
           opens
           onPress={onSetup}
-          accessibilityLabel={`${WORDS.authenticator}. ${WORDS.off}`}
+          accessibilityLabel={`${authenticator}. ${t('twoFactorCard.off')}`}
           testID="security.authenticator"
         />
       </Section>
     );
 
-  const codes = codesLine(codesLeft);
   const opening = (id: string, title: string, line: string, icon: ReactNode, offer: ReactNode) => ({
     key: id,
     inset: LEAD_INSET,
@@ -110,50 +113,51 @@ export function TwoFactorSection({
           testID={`security.${id}`}
         >
           {offer}
+          {opened === id && error != null && <FieldError message={error} />}
         </OpenRow>
       </View>
     ),
   });
 
   return (
-    <Section title={WORDS.twoFactor}>
+    <Section title={t('twoFactorCard.title')}>
       <RowList
         items={[
           opening(
             'authenticator',
-            WORDS.authenticator,
-            WORDS.authenticatorOn,
+            authenticator,
+            t('security.authenticatorOn'),
             shield,
-            rules.twoFactor ? (
+            rules.twoFactor != null ? (
               <TextAction
-                label={WORDS.turnOffKept}
+                label={t('twoFactorCard.turnOff')}
                 off
                 onPress={() => undefined}
-                consequence={WORDS.turnOffKeptNote}
+                consequence={t('twoFactorCard.keptByRule', { organisation: rules.twoFactor })}
                 testID="security.turnOff"
               />
             ) : (
               <TextAction
                 ref={turnOffRef}
-                label={WORDS.turnOff}
+                label={t('twoFactorCard.turnOffAsks')}
                 removes
                 onPress={onTurnOff}
-                consequence={WORDS.turnOffNote}
-                accessibilityLabel={WORDS.turnOffKept}
+                consequence={t('security.turnOffNote', { email })}
+                accessibilityLabel={t('twoFactorCard.turnOff')}
                 testID="security.turnOff"
               />
             ),
           ),
           opening(
             'codes',
-            WORDS.recoveryCodes,
-            codes,
+            t('twoFactorCard.recoveryCodes'),
+            codesLine(codesLeft, t),
             <LineIcon name="lock" />,
             <TextAction
               ref={newCodesRef}
-              label={WORDS.newCodes}
+              label={t('twoFactorCard.makeNewCodes')}
               onPress={onNewCodes}
-              consequence={WORDS.newCodesNote}
+              consequence={t('twoFactorCard.newWarningBody')}
               testID="security.newCodes"
             />,
           ),
@@ -163,50 +167,72 @@ export function TwoFactorSection({
   );
 }
 
-export type TwoFactorStage = 'setup' | 'codes';
+/** What the authenticator was given to scan, drawn in the screen's frame, and its key to type instead. */
+export interface Enrolment {
+  qr: ReactNode;
+  secret: string;
+}
+
+/** Turning on resolves to the codes, or to why the code was not taken. */
+export type TurningOn = (code: string) => Promise<{ codes: readonly string[] } | { error: string }>;
 
 /** Set up two-factor, then Save your recovery codes in the same screen; new codes start at the codes. */
 export function TwoFactorScreen({
   open,
-  start,
+  enrolment,
+  startCodes,
   phone,
   opener,
   onClose,
-  onTurnedOn,
+  onTurnOn,
   onFinished,
 }: {
   open: boolean;
-  start: TwoFactorStage;
+  /** Null while it is fetched, or once it could not be: `failed` says why in the field's place. */
+  enrolment: Enrolment | { failed: string } | null;
+  /** New codes already made: the screen starts at them. */
+  startCodes: readonly string[] | null;
   phone: boolean;
   opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
-  onTurnedOn: () => void;
+  onTurnOn: TurningOn;
   onFinished: () => void;
 }) {
-  const [stage, setStage] = useState(start);
+  const { t } = useTranslation();
+  const [codes, setCodes] = useState<readonly string[] | null>(startCodes);
   const [saved, setSaved] = useState(false);
   const code = useRef('');
   const field = useRef<TextInputInstance>(null);
   const [error, setError] = useState<string | null>(null);
-  const qr = useMemo(() => qrPath(QR_MODULES), []);
+  const [checking, setChecking] = useState(false);
 
-  function turnOn(): void {
-    const said = setupSays(code.current);
-    setError(said);
-    if (said == null) {
-      onTurnedOn();
-      setStage('codes');
-    } else if (authenticatorProblem(code.current) === 'wrong') focusRefused(field);
-    else focusChecked(field);
+  async function turnOn(): Promise<void> {
+    if (checking) return;
+    const problem = typedCodeProblem('app', code.current);
+    if (problem != null) {
+      setError(t(problem));
+      focusChecked(field);
+      return;
+    }
+    keysStayDown();
+    setChecking(true);
+    const answer = await onTurnOn(code.current);
+    setChecking(false);
+    if ('codes' in answer) {
+      setCodes(answer.codes);
+      return;
+    }
+    setError(answer.error);
+    focusRefused(field);
   }
 
-  if (stage === 'codes')
+  if (codes != null)
     return (
       <FocusedScreen
         open={open}
-        title={WORDS.codesTitle}
+        title={t('twoFactorCard.saveTitle')}
         verb={{
-          label: WORDS.finish,
+          label: t('twoFactorCard.finish'),
           on: saved,
           onPress: onFinished,
           testID: 'security.codes.finish',
@@ -216,34 +242,42 @@ export function TwoFactorScreen({
         opener={opener}
         testID="security.codes.screen"
       >
-        <CodesBody phone={phone} saved={saved} onSaved={setSaved} />
+        <CodesBody codes={codes} phone={phone} saved={saved} onSaved={setSaved} />
       </FocusedScreen>
     );
+
+  const ready = enrolment != null && !('failed' in enrolment) ? enrolment : null;
 
   return (
     <FocusedScreen
       open={open}
-      title={WORDS.setupTitle}
-      verb={{ label: WORDS.setupVerb, on: true, onPress: turnOn, testID: 'security.setup.turnOn' }}
+      title={t('security.setupTitle')}
+      verb={{
+        label: t('security.setupVerb'),
+        on: ready != null,
+        busy: checking,
+        onPress: () => void turnOn(),
+        testID: 'security.setup.turnOn',
+      }}
+      waits={checking}
       onCancel={onClose}
       cancelTestID="security.setup.cancel"
       opener={opener}
       testID="security.setup.screen"
     >
       <Text size={15} weight="semibold">
-        {WORDS.scan}
+        {t('twoFactorCard.scan')}
       </Text>
+      {enrolment != null && 'failed' in enrolment && <FieldError message={enrolment.failed} />}
       <View
         style={styles.qr}
         accessible
         accessibilityRole="image"
-        accessibilityLabel={WORDS.qrLabel}
+        accessibilityLabel={t('twoFactorCard.qrAlt')}
       >
-        <Svg width={168} height={168} viewBox={`0 0 ${QR_MODULES} ${QR_MODULES}`}>
-          <Path d={qr} fill={tokens.colorInk} fillRule="evenodd" />
-        </Svg>
+        <View style={styles.qrSide}>{ready?.qr}</View>
       </View>
-      <Line text={phone ? WORDS.scanPhone : WORDS.scanTablet} />
+      <Line text={phone ? t('twoFactorCard.phoneCantScan') : t('twoFactorCard.cantScan')} />
       <View style={styles.key}>
         <Text
           size={18}
@@ -252,13 +286,14 @@ export function TwoFactorScreen({
           style={styles.keyText}
           testID="security.setup.key"
         >
-          {keyInGroups(AUTHENTICATOR_KEY)}
+          {ready == null ? ' ' : keyInGroups(ready.secret)}
         </Text>
       </View>
-      <Field label={WORDS.setupLabel} error={error} help={WORDS.setupHelp}>
+      <Field label={t('twoFactorCard.enterCode')} error={error} help={t('twoFactorCard.staysOff')}>
         <CodeField
           ref={field}
           wrong={error != null}
+          submitting={checking}
           autoComplete="one-time-code"
           textContentType="oneTimeCode"
           returnKeyType="done"
@@ -266,9 +301,9 @@ export function TwoFactorScreen({
             code.current = text;
             if (error != null) setError(null);
           }}
-          onSubmitEditing={turnOn}
+          onSubmitEditing={() => void turnOn()}
           submitBehavior="submit"
-          accessibilityLabel={WORDS.setupLabel}
+          accessibilityLabel={t('twoFactorCard.enterCode')}
           testID="security.setup.code"
         />
       </Field>
@@ -276,22 +311,36 @@ export function TwoFactorScreen({
   );
 }
 
+/** The QR's drawn side inside its frame. */
+export const QR_SIDE = 168;
+
 function CodesBody({
+  codes,
   phone,
   saved,
   onSaved,
 }: {
+  codes: readonly string[];
   phone: boolean;
   saved: boolean;
   onSaved: (saved: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
+  const copiedAll = t('twoFactorCard.copiedAll', { count: codes.length });
+  useReadOut(copied ? copiedAll : null);
 
   return (
     <>
-      <Line text={phone ? `${WORDS.codesLead} ${WORDS.codesPhone}` : WORDS.codesLead} />
+      <Line
+        text={
+          phone
+            ? `${t('twoFactorCard.saveIntro')} ${t('twoFactorCard.phoneKeepElsewhere')}`
+            : t('twoFactorCard.saveIntro')
+        }
+      />
       <View style={styles.grid}>
-        {RECOVERY_CODES.map((each) => (
+        {codes.map((each) => (
           <View key={each} style={styles.cell}>
             <Text size={17} weight="semibold" selectable style={styles.code}>
               {each}
@@ -301,12 +350,12 @@ function CodesBody({
       </View>
       <View style={styles.start}>
         <TextAction
-          label={copied ? WORDS.copied : WORDS.copyAll}
+          label={copied ? t('twoFactorCard.copied') : t('twoFactorCard.copyAll')}
           glyph={copied ? 'tick' : 'copy'}
           onPress={() => {
-            void setStringAsync(RECOVERY_CODES.join('\n')).then(() => setCopied(true));
+            void setStringAsync(codes.join('\n')).then(() => setCopied(true));
           }}
-          {...(copied ? { consequence: WORDS.copiedLine } : {})}
+          {...(copied ? { consequence: copiedAll } : {})}
           testID="security.codes.copy"
         />
       </View>
@@ -315,15 +364,18 @@ function CodesBody({
         onPress={() => onSaved(!saved)}
         accessibilityRole="checkbox"
         accessibilityState={{ checked: saved }}
-        accessibilityLabel={WORDS.savedBox}
+        accessibilityLabel={t('twoFactorCard.savedThem')}
         testID="security.codes.saved"
       >
         <CheckMark on={saved} />
         <Text size={15.5} weight="medium" accessible={false} style={styles.grow}>
-          {WORDS.savedBox}
+          {t('twoFactorCard.savedThem')}
         </Text>
       </Pressable>
-      <Line size={14} text={saved ? WORDS.savedYes : WORDS.savedNot} />
+      <Line
+        size={14}
+        text={saved ? t('twoFactorCard.finishReady') : t('twoFactorCard.finishLocked')}
+      />
     </>
   );
 }
@@ -339,6 +391,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.colorBorder,
   },
+  qrSide: { width: QR_SIDE, height: QR_SIDE },
   key: {
     alignItems: 'center',
     paddingVertical: tokens.spaceLg,

@@ -1,27 +1,31 @@
+import type { Provider } from '@soirely/api-client';
 import type { Ref } from 'react';
 import { View, type ViewInstance } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { LEAD_INSET, LineIcon } from '../../components/AccountCard.tsx';
 import {
   keptByRule,
   keptNote,
   lastWayIn,
-  linkNote,
   passwordLine,
   providerLine,
-  type Rules,
+  type SecurityRules,
   unlinkNote,
+  type WayIn,
+  type Ways,
   waysFoot,
-  WORDS,
-} from './SecurityModel.ts';
-import { type Provider, PROVIDERS, type Ways } from './SecuritySample.ts';
-import { OpenRow, Row, RowList, Section, TextAction } from '../../components/Summary.tsx';
+} from '../kit/securityPage.ts';
+import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
+import { FieldError } from './Field.tsx';
+import { OpenRow, Row, RowList, Section, TextAction } from './Summary.tsx';
 
 /** Password, Google and Apple: the password opens its screen, a provider opens in place, and the last way in does not open. */
 export function WaysSection({
   ways,
   rules,
   opened,
+  error,
+  busy = false,
   passwordRef,
   linkRef,
   unlinkRef,
@@ -32,8 +36,11 @@ export function WaysSection({
   onUnlink,
 }: {
   ways: Ways;
-  rules: Rules;
+  rules: SecurityRules;
   opened: string | null;
+  /** What the server said to the opened row's offer. */
+  error: string | null;
+  busy?: boolean;
   passwordRef: Ref<ViewInstance>;
   linkRef: Ref<ViewInstance>;
   unlinkRef: Ref<ViewInstance>;
@@ -43,11 +50,12 @@ export function WaysSection({
   onLink: (provider: Provider) => void;
   onUnlink: (provider: Provider) => void;
 }) {
+  const { t } = useTranslation();
   const last = lastWayIn(ways);
-  const password = passwordLine(ways);
+  const password = passwordLine(ways, t);
 
   return (
-    <Section title={WORDS.ways} foot={waysFoot(ways)}>
+    <Section title={t('waysCard.title')} foot={waysFoot(ways, t)}>
       <RowList
         items={[
           {
@@ -56,57 +64,59 @@ export function WaysSection({
             row: (
               <Row
                 ref={passwordRef}
-                title={WORDS.password}
+                title={t('waysCard.password')}
                 line={password}
                 lead={<LineIcon name="key" />}
                 opens
                 onPress={onPassword}
-                accessibilityLabel={`${WORDS.password}. ${password}`}
+                accessibilityLabel={`${t('waysCard.password')}. ${password}`}
                 testID="security.password"
               />
             ),
           },
-          ...PROVIDERS.map((provider) => {
-            const line = providerLine(ways, provider);
-            const label = `${provider}. ${line}`;
+          ...ways.providers.map((way) => {
+            const line = providerLine(way, t);
+            const label = `${way.name}. ${line}`;
             const lead = <LineIcon name="link" />;
-            const open = opened === provider;
+            const open = opened === way.provider;
 
             return {
-              key: provider,
+              key: way.provider,
               inset: LEAD_INSET,
               selected: open,
               row:
-                last === provider ? (
+                last?.provider === way.provider ? (
                   <Row
-                    title={provider}
+                    title={way.name}
                     line={line}
                     lead={lead}
                     accessibilityLabel={label}
-                    testID={`security.${provider}`}
+                    testID={`security.${way.provider}`}
                   />
                 ) : (
-                  <View ref={(block) => onBlock(provider, block)} collapsable={false}>
+                  <View ref={(block) => onBlock(way.provider, block)} collapsable={false}>
                     <OpenRow
-                      title={provider}
+                      title={way.name}
                       line={line}
                       lead={lead}
                       weight="semibold"
                       lit
                       open={open}
-                      onToggle={() => onToggle(provider)}
+                      onToggle={() => onToggle(way.provider)}
                       accessibilityLabel={label}
-                      testID={`security.${provider}`}
+                      testID={`security.${way.provider}`}
                     >
                       <ProviderOffer
-                        provider={provider}
+                        way={way}
                         ways={ways}
                         rules={rules}
+                        busy={busy}
                         linkRef={linkRef}
                         unlinkRef={unlinkRef}
                         onLink={onLink}
                         onUnlink={onUnlink}
                       />
+                      {open && error != null && <FieldError message={error} />}
                     </OpenRow>
                   </View>
                 ),
@@ -119,52 +129,61 @@ export function WaysSection({
 }
 
 function ProviderOffer({
-  provider,
+  way,
   ways,
   rules,
+  busy,
   linkRef,
   unlinkRef,
   onLink,
   onUnlink,
 }: {
-  provider: Provider;
+  way: WayIn;
   ways: Ways;
-  rules: Rules;
+  rules: SecurityRules;
+  busy: boolean;
   linkRef: Ref<ViewInstance>;
   unlinkRef: Ref<ViewInstance>;
   onLink: (provider: Provider) => void;
   onUnlink: (provider: Provider) => void;
 }) {
-  if (!ways[provider])
+  const { t } = useTranslation();
+
+  if (!way.linked)
     return (
       <TextAction
         ref={linkRef}
-        label={`Link ${provider}`}
-        onPress={() => onLink(provider)}
-        consequence={linkNote(provider)}
-        testID={`security.${provider}.link`}
+        label={t('waysCard.link', { provider: way.name })}
+        off={busy}
+        onPress={() => onLink(way.provider)}
+        consequence={t('waysCard.linkNote', {
+          provider: way.name,
+          email: ways.email,
+        })}
+        testID={`security.${way.provider}.link`}
       />
     );
-  if (keptByRule(ways, provider, rules))
+  if (rules.providerOnly != null && keptByRule(ways, way, rules))
     return (
       <TextAction
-        label={WORDS.unlinkKept}
+        label={t('security.unlinkKept')}
         off
         onPress={() => undefined}
-        consequence={keptNote(provider)}
-        testID={`security.${provider}.unlink`}
+        consequence={keptNote(ways, way, rules.providerOnly, t)}
+        testID={`security.${way.provider}.unlink`}
       />
     );
 
   return (
     <TextAction
       ref={unlinkRef}
-      label={WORDS.unlink}
+      label={t('waysCard.unlink')}
       removes
-      onPress={() => onUnlink(provider)}
-      consequence={unlinkNote(ways, provider)}
-      accessibilityLabel={WORDS.unlinkKept}
-      testID={`security.${provider}.unlink`}
+      off={busy}
+      onPress={() => onUnlink(way.provider)}
+      consequence={unlinkNote(ways, way, t)}
+      accessibilityLabel={t('waysCard.unlinkLabel', { provider: way.name })}
+      testID={`security.${way.provider}.unlink`}
     />
   );
 }
