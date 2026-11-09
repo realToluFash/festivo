@@ -5,15 +5,23 @@ export function FieldError({
   id,
   message,
   quiet = false,
+  focusable = false,
   children,
 }: {
   id: string;
   message: string;
   quiet?: boolean;
+  /** Takes focus when its refusal leaves nothing nearer to land on: a row whose Ask has closed. */
+  focusable?: boolean;
   children?: ReactNode;
 }) {
   return (
-    <div className="field-error" id={id} role={quiet ? undefined : 'alert'}>
+    <div
+      className="field-error"
+      id={id}
+      role={quiet ? undefined : 'alert'}
+      tabIndex={focusable ? -1 : undefined}
+    >
       <span className="mark mark-broken" aria-hidden="true">
         ✕
       </span>

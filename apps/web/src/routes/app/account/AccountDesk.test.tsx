@@ -252,8 +252,27 @@ describe('Your account at a desk, summary first (sc-30411)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
 
     const offers = screen.getByRole('group', { name: 'folake.adeyemi@gmail.com' });
-    expect(await within(offers).findByRole('alert')).toBeDefined();
+    const refusal = await within(offers).findByRole('alert');
     expect(within(offers).getByText('That did not work. Try again.')).toBeDefined();
+    await waitFor(() => expect(document.activeElement).toBe(refusal));
+  });
+
+  it('takes focus to the refusal once a confirmed Remove it does not go and its Ask has closed', async () => {
+    answering({
+      'GET /api/auth/me': () => json({ ...ME, emailAddresses: [PRIMARY, OTHER] }),
+      'DELETE /api/auth/emails/e2': () => problem('server_error', 500),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /folake\.adeyemi@gmail\.com/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove…' }));
+    const ask = screen.getByRole('alertdialog', { name: 'Remove this address?' });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Remove it' }));
+
+    const offers = await screen.findByRole('group', { name: 'folake.adeyemi@gmail.com' });
+    const refusal = await within(offers).findByRole('alert');
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(refusal));
   });
 
   it('changes the name in its dialog, refusing a blank one, and says so on the card', async () => {
