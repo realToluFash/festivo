@@ -2,6 +2,7 @@ import { usePathname } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 
+import { noteWhere } from './colourScheme.ts';
 import { rereadAccount, rereadOrganisations } from './signedIn.ts';
 import { cameToForeground } from './updateRequired.ts';
 
@@ -11,6 +12,7 @@ export function useRereadOnMoves(): void {
   const arrivedAt = useRef(pathname);
 
   useEffect(() => {
+    noteWhere(pathname);
     if (arrivedAt.current === pathname) return;
 
     arrivedAt.current = pathname;

@@ -102,9 +102,18 @@ export async function forgetOnNewInstall(
   await reload('new install').catch(() => {});
 }
 
-/** Where a restart into new colours asked to come back to, once; only a landing this module holds. */
+let here: string | null = null;
+
+/** The screen the person is on, so a change heard back in the foreground restarts onto it rather than onto Today. */
+export function noteWhere(path: string): void {
+  here = path === '/' ? null : path;
+}
+
+/** Where a restart into new colours asked to come back to, once: a screen path, never the launch screen. */
 export function landingAfterRestart(): Href | null {
-  return takeLanding() === PERSONALISATION_LANDING ? PERSONALISATION_LANDING : null;
+  const path = takeLanding();
+
+  return path != null && path.startsWith('/') && path !== '/' ? (path as Href) : null;
 }
 
 /** What the account answered, at launch or back in the foreground: kept on the device, and followed where the screens are in other colours. */
@@ -118,7 +127,7 @@ export function hearChoice(
 
   holdChoice(choice);
   const follow = schemeToFollow(choice, launchedIn);
-  if (follow != null) void restartIn(follow, null, reload);
+  if (follow != null) void restartIn(follow, here, reload);
   else if (deviceScheme() !== launchedIn) keepDeviceScheme(inUse(choice));
 }
 

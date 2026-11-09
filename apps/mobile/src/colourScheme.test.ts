@@ -15,14 +15,15 @@ vi.mock('expo', () => ({ reloadAppAsync: async () => {} }));
 const {
   forgetOnNewInstall,
   hearChoice,
+  heardChoice,
   keepBeforeSaving,
   keepLaunchScheme,
-  heardChoice,
+  landingAfterRestart,
   readsMe,
   restartIn,
   schemeToFollow,
 } = await import('./colourScheme.ts');
-const { deviceScheme, takeLanding } = await import('./theme/deviceScheme.ts');
+const { deviceScheme, holdLanding, takeLanding } = await import('./theme/deviceScheme.ts');
 
 beforeEach(() => {
   kept.clear();
@@ -116,6 +117,17 @@ describe("the app follows the account's colours (sc-30441)", () => {
     keeps = false;
     expect(keepBeforeSaving('sorbet', 'violet')).toBe(false);
     expect(keepBeforeSaving('violet', 'violet')).toBe(true);
+  });
+
+  it('lands nowhere but a screen path after a restart', () => {
+    holdLanding('/events/42');
+    expect(landingAfterRestart()).toBe('/events/42');
+    expect(landingAfterRestart()).toBeNull();
+
+    holdLanding('/');
+    expect(landingAfterRestart()).toBeNull();
+    holdLanding('https://elsewhere.test');
+    expect(landingAfterRestart()).toBeNull();
   });
 
   it('reads the person from GET /api/auth/me only', () => {
