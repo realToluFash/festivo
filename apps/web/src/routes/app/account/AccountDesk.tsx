@@ -1,21 +1,17 @@
 import { type Account, ApiError, type TimeZoneOption } from '@soirely/api-client';
 import {
-  CONTACTS_MOST,
   confirmWith,
   contactActions,
   contactsLeft,
   formatPhone,
-  formatTimeOfDay,
   initials,
   listedContacts,
-  lockLiftsAt,
   rereadAfterRefusal,
   zoneLabel,
   zoneValue,
   firstUnverified,
   primaryOf,
 } from '@soirely/domain';
-import { type TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -23,10 +19,13 @@ import {
   type ContactKind,
   type ContactRow,
   KIND_KEYS,
+  addRefusal,
   cardLine,
+  codeOf,
   contactLine,
   contactsFoot,
   promotedWords,
+  rowRefusal,
   verifiedWords,
   zoneLine,
 } from '../../../accountPage.ts';
@@ -42,8 +41,8 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { Bones } from '../../../components/GeneralParts.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { Ask, Head, TextAction } from '../../../components/SettingsParts.tsx';
-import { currentLocale, dateLocale } from '../../../i18n/index.ts';
-import { LayersContext, useDeskLayers } from '../../../layers.ts';
+import { currentLocale } from '../../../i18n/index.ts';
+import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { useOffline } from '../../../offline.ts';
 import { dropProviderReturn, heldProviderReturn } from '../../../providerSignIn.ts';
 import { dropProof, heldProof, holdProof } from '../../../recentProof.ts';
@@ -217,7 +216,10 @@ export function AccountDesk() {
       setDialog(null);
       // The row may be gone, so the reason goes on the card's line, where it can be read out.
       if (changed) done(message);
-      else setRowError({ id: row.id, message });
+      else {
+        setRowError({ id: row.id, message });
+        focusWhenFree(() => document.getElementById(`${kind}-${row.id}-error`));
+      }
     } finally {
       setActing(false);
     }
@@ -287,7 +289,7 @@ export function AccountDesk() {
                 )}
               </RowOffers>
               {rowError?.id === row.id && (
-                <FieldError id={`${kind}-${row.id}-error`} message={rowError.message} />
+                <FieldError id={`${kind}-${row.id}-error`} message={rowError.message} focusable />
               )}
             </>
           );
@@ -512,42 +514,4 @@ export function AccountDesk() {
       )}
     </LayersContext>
   );
-}
-
-function codeOf(refusal: unknown): string | null {
-  return refusal instanceof ApiError ? refusal.code : null;
-}
-
-/** The server's answer to a race the page did not invite: each is a reason with the next step. */
-function rowRefusal(refusal: unknown, kind: ContactKind, t: TFunction): string {
-  const email = kind === 'email';
-
-  if (refusal instanceof ApiError && refusal.is('address_not_verified'))
-    return email ? t('contacts.refusedNotVerified') : t('contacts.refusedNotVerifiedPhone');
-  if (refusal instanceof ApiError && refusal.is('primary_address'))
-    return email ? t('contacts.refusedPrimary') : t('contacts.refusedPrimaryPhone');
-  if (refusal instanceof ApiError && refusal.is('last_verified_address'))
-    return email ? t('contacts.refusedLastVerified') : t('contacts.refusedLastVerifiedPhone');
-
-  return t('contacts.failed');
-}
-
-function addRefusal(refusal: unknown, kind: ContactKind, t: TFunction): string {
-  const email = kind === 'email';
-
-  if (refusal instanceof ApiError && refusal.is('already_linked'))
-    return email ? t('contacts.alreadyLinked') : t('contacts.alreadyLinkedPhone');
-  if (refusal instanceof ApiError && refusal.is('address_limit_reached'))
-    return t(email ? 'contacts.limitEmails' : 'contacts.limitPhones', { most: CONTACTS_MOST });
-  if (refusal instanceof ApiError && refusal.is('too_many_attempts')) {
-    const lifts = lockLiftsAt(Number(refusal.response?.headers.get('Retry-After')));
-
-    return lifts == null
-      ? t('contacts.limitedSoon')
-      : t('contacts.limitedBody', { time: formatTimeOfDay(lifts, dateLocale()) });
-  }
-  if (refusal instanceof ApiError && refusal.is('validation_failed'))
-    return Object.values(refusal.fieldErrors())[0] ?? t('contacts.failed');
-
-  return t('contacts.failed');
 }

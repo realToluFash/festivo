@@ -1,5 +1,14 @@
-import { CONTACTS_MOST, contactsLeft, firstUnverified } from '@soirely/domain';
+import { ApiError } from '@soirely/api-client';
+import {
+  CONTACTS_MOST,
+  contactsLeft,
+  firstUnverified,
+  formatTimeOfDay,
+  lockLiftsAt,
+} from '@soirely/domain';
 import type { TFunction } from 'i18next';
+
+import { dateLocale } from './i18n/index.ts';
 
 export type ContactKind = 'email' | 'phone';
 
@@ -137,4 +146,42 @@ export function verifyWords(line: CodeLine, shown: string, t: TFunction): Verify
 /** The About you row's second line for a zone: its IANA id, read as words. */
 export function zoneLine(id: string | null, t: TFunction): string {
   return id == null ? t('timeZone.title') : t('account.zoneLine', { id: id.replace(/_/gu, ' ') });
+}
+
+export function codeOf(refusal: unknown): string | null {
+  return refusal instanceof ApiError ? refusal.code : null;
+}
+
+/** The server's answer to a race the page or the card did not invite: each is a reason with the next step. */
+export function rowRefusal(refusal: unknown, kind: ContactKind, t: TFunction): string {
+  const email = kind === 'email';
+
+  if (refusal instanceof ApiError && refusal.is('address_not_verified'))
+    return email ? t('contacts.refusedNotVerified') : t('contacts.refusedNotVerifiedPhone');
+  if (refusal instanceof ApiError && refusal.is('primary_address'))
+    return email ? t('contacts.refusedPrimary') : t('contacts.refusedPrimaryPhone');
+  if (refusal instanceof ApiError && refusal.is('last_verified_address'))
+    return email ? t('contacts.refusedLastVerified') : t('contacts.refusedLastVerifiedPhone');
+
+  return t('contacts.failed');
+}
+
+export function addRefusal(refusal: unknown, kind: ContactKind, t: TFunction): string {
+  const email = kind === 'email';
+
+  if (refusal instanceof ApiError && refusal.is('already_linked'))
+    return email ? t('contacts.alreadyLinked') : t('contacts.alreadyLinkedPhone');
+  if (refusal instanceof ApiError && refusal.is('address_limit_reached'))
+    return t(email ? 'contacts.limitEmails' : 'contacts.limitPhones', { most: CONTACTS_MOST });
+  if (refusal instanceof ApiError && refusal.is('too_many_attempts')) {
+    const lifts = lockLiftsAt(Number(refusal.response?.headers.get('Retry-After')));
+
+    return lifts == null
+      ? t('contacts.limitedSoon')
+      : t('contacts.limitedBody', { time: formatTimeOfDay(lifts, dateLocale()) });
+  }
+  if (refusal instanceof ApiError && refusal.is('validation_failed'))
+    return Object.values(refusal.fieldErrors())[0] ?? t('contacts.failed');
+
+  return t('contacts.failed');
 }
