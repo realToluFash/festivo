@@ -25,7 +25,6 @@ import { glide } from '../../motion.ts';
 import { weight } from '../../theme/fonts.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { EventNotice } from '../events/EventNotice.tsx';
-import { SW } from '../OrgSwitcherModel.ts';
 import {
   type Country,
   ROLE,
@@ -116,6 +115,8 @@ function StepWords({ look, words }: { look: Look; words: string }) {
 }
 
 function Preview({ name }: { name: string }) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.preview} {...hidden}>
       <DraftTile name={name} side={88} radius={28} initials={36} />
@@ -138,7 +139,7 @@ function Preview({ name }: { name: string }) {
         accessible={false}
         style={styles.previewRole}
       >
-        {SW.yourRole(ROLE)}
+        {t('switcher.yourRole', { role: ROLE })}
       </Text>
     </View>
   );
@@ -409,7 +410,7 @@ function CountrySearch({
           }}
           style={styles.clear}
           accessibilityRole="button"
-          accessibilityLabel={SW.clearSearch}
+          accessibilityLabel={t('switcher.clearSearch')}
           testID="createWalk.search.clear"
         >
           <View style={styles.clearDot}>
@@ -669,7 +670,7 @@ export function ReadyStep({
             accessible={false}
             style={styles.cardRole}
           >
-            {SW.yourRole(ROLE)}
+            {t('switcher.yourRole', { role: ROLE })}
           </Text>
           <View style={styles.facts}>
             {factsOf(walk, email, t, true).map((fact) => (
@@ -740,7 +741,7 @@ export function WideCard({ walk, email }: { walk: Walk; email: string }) {
           accessible={false}
           style={styles.wideRole}
         >
-          {SW.yourRole(ROLE)}
+          {t('switcher.yourRole', { role: ROLE })}
         </Text>
       </View>
       {facts.length > 0 && (

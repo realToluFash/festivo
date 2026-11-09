@@ -30,47 +30,6 @@ export {
 
 export const VIEWER = { name: 'Folake Adeyemi', email: 'folake@ire.events' } as const;
 
-export const SW = {
-  asks: 'Where are you working?',
-  heading: 'Your organisations',
-  current: 'Current',
-  remembered: 'Soirely remembers your choice on this device.',
-  close: 'Close',
-  canAsk: 'You can ask to join',
-  search: 'Search organisations',
-  clearSearch: 'Clear search',
-  accept: 'Accept and join',
-  decline: 'Decline',
-  acceptLabel: (organisation: string) => `Accept and join ${organisation}`,
-  declineLabel: (organisation: string) => `Decline the invitation to ${organisation}`,
-  failed: 'Your answer did not reach us. Check your connection and try again.',
-  joining: 'Joining…',
-  declining: 'Declining…',
-  ask: 'Ask to join',
-  notNow: 'Not now',
-  waiting: 'Waiting for approval',
-  unavailable:
-    'You cannot ask to join that organisation. Start your own, or ask somebody there to invite you.',
-  create: 'Create an organisation',
-  switched: (name: string) => `Now working in ${name}.`,
-  yourRole: (role: string) => `Your role · ${role}`,
-  count: (count: number) => (count === 1 ? '1 invitation' : `${count} invitations`),
-  fromNobody: (role: string) => `Invitation · ${role}`,
-  from: (inviter: string, role: string) => `Invitation from ${inviter} · ${role}`,
-  until: (date: string) => `Works until ${date}`,
-  declineNote: (inviter: string) => `Declining tells ${inviter} you said no. Nothing else changes.`,
-  joined: (organisation: string, role: string) => `You joined ${organisation} as ${role}.`,
-  open: (organisation: string) => `Open ${organisation}`,
-  declined: (inviter: string) => `You declined. ${inviter} will see that you said no.`,
-  usesSoirely: (organisation: string) => `${organisation} uses Soirely`,
-  switcherBody: (domain: string) =>
-    `Your address is at ${domain}, so you can ask to join. Somebody there approves you before you see anything.`,
-  switcherAsked: (email: string) => `we’ll email ${email} when they answer.`,
-  noMatch: (text: string) => `No organisation matches “${text}”.`,
-  matches: (count: number) =>
-    count === 1 ? '1 organisation matches' : `${count} organisations match`,
-} as const;
-
 /** The switcher lists only the signed-in account's own invitations, so `invitation_not_yours` cannot reach it. */
 export type SwitcherRefusal = Exclude<InvitationRefusalCode, 'invitation_not_yours'>;
 

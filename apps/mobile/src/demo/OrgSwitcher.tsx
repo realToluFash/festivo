@@ -36,7 +36,6 @@ import { ManagedBanner } from './Managed.tsx';
 import {
   type DropFrame,
   type Place,
-  SW,
   type Session,
   type SwitcherState,
   VIEWER,
@@ -135,7 +134,8 @@ export function OrgSwitcherProvider({
   const [visit, setVisit] = useState(0);
   const [switched, setSwitched] = useState<Switched | null>(() => {
     if (landing.words != null) return { words: landing.words, focus: true };
-    if (create === 'created') return { words: SW.switched(SAMPLE_FOUNDED.name), focus: true };
+    if (create === 'created')
+      return { words: t('switcher.switched', { name: SAMPLE_FOUNDED.name }), focus: true };
 
     return null;
   });
@@ -230,11 +230,11 @@ export function OrgSwitcherProvider({
       setSession(next);
       close();
 
-      const words = SW.switched(currentPlace(next).name);
+      const words = t('switcher.switched', { name: currentPlace(next).name });
       if (slots.current > 0) setSwitched({ words });
       else tell(words);
     },
-    [tell, close],
+    [t, tell, close],
   );
   const openWalk = useCallback((opener: OpenerRef | null, walk: Walk, from: CreateState | null) => {
     setWalking((last) => ({ visit: (last?.visit ?? 0) + 1, walk, state: from, opener }));
@@ -265,14 +265,14 @@ export function OrgSwitcherProvider({
       arrive(place.id);
       setWalkOpen(false);
 
-      const words = SW.switched(place.name);
+      const words = t('switcher.switched', { name: place.name });
       if (pathname !== TODAY) {
         landing.words = words;
         setTimeout(() => router.replace(TODAY), SETTLED_MS);
       } else if (slots.current > 0 || fromNoOrganisation) setSwitched({ words, focus: true });
       else tell(words);
     },
-    [pathname, tell],
+    [pathname, t, tell],
   );
 
   useEffect(() => {
@@ -347,6 +347,7 @@ export function OrgSwitcherProvider({
 
 /** What an opener draws and does; the one drawn first and in view is what ?switcher= opens from. */
 export function useOrgOpener(ref: OpenerRef, primary = true): OrgOpening {
+  const { t } = useTranslation();
   const { register, show, openedBy } = useSwitcher();
   const session = useSession();
   const place = currentPlace(session);
@@ -357,7 +358,7 @@ export function useOrgOpener(ref: OpenerRef, primary = true): OrgOpening {
   return {
     id: place.id,
     name: place.name,
-    waiting: waiting > 0 ? SW.count(waiting) : null,
+    waiting: waiting > 0 ? t('invitations.count', { count: waiting }) : null,
     expanded: openedBy === ref,
     label: openerLabel(place, waiting),
     onPress: () => show(ref),
