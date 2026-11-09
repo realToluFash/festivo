@@ -66,6 +66,24 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 Nov 2026. The service floor's words** (sc-4005, epic 35 §4, §6, §7; settled in #36036,
+  #36039 and #36042). An order's stages are **To serve** → **Dishing** → **Checked** → **On
+  its way** → **Served**, each its own key, and each count by stage a plural key ("3 checked",
+  "12 to serve"); no client joins a count to a word or changes its case. **Preparing** and
+  **Ready** are an item's at a station only, the kitchen's own words, never the order's, so
+  one word never means two things on one screen. **Dishing** is the tray started along the
+  stations; **Checked** is the tray check passed, never read as checked in, because the door
+  says "Check-in" and a guest not yet arrived reads **Not here yet**. **To serve** replaces
+  Asked for and sits beside **To follow** (an owed item on the next tray) without clashing.
+  The boards' sort reads **Owed plates first**, not "Late plates first", because "late" has
+  left the product's words; its key goes in with the board that draws it. The working words
+  stay as written: "Ready in about {n} min", **Waiting on the kitchen** (a held guest),
+  **What's ready, now**, **Wait for all**, **On**, **Not on**, **Bring after**, **To
+  follow**, **Sent back** with **Wrong dish**, **Not right**, **Dropped** and **Allergy
+  concern**, **Nothing for this course** and **Left**. Rejected: **Dished** (two letters from
+  Dishing on a chip read mid-service), **Tray ready** and **Ready to go** (Ready back in the
+  order's words). Gone: **Asked for**, **Carried**, **Called up** and **Cleared**;
+  **Unavailable** moves to sc-4015.
 - **9 Nov 2026. The app's Notification settings page** (sc-34901 for sc-30411,
   `mobile:notificationSettings.*`). Kept as dev1 wrote it. The header says how you hear ("You
   hear by push only"), the rows say it without a verb ("Push only", "Off"), and "Saving…" and
