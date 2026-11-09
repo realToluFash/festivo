@@ -1,5 +1,5 @@
-# sc-27213 regression: a wrong current password sent by the return key is refused with the keys up and New password still focused (sc-13408); then a key typed there and sent again with the API paused leaves Cancel off, and a tap on it closes nothing (sc-12545). Needs ${METRO_URL}.
-# The return key is Enter on iOS and a tap on the keyboard's action key on Android, where Enter can type into the field instead (sc-18648).
+# sc-27213 regression: a wrong current password sent by the return key is refused with the keys up and Current password focused, the field the refusal names (sc-13408); then a key typed into New password and sent again with the API paused leaves Cancel off, and a tap on it closes nothing (sc-12545). Needs ${METRO_URL}.
+# The return key is Enter on iOS and the keyboard's action key on Android, where Enter can type into the field instead (sc-18648): tapped by its name, Done, where the keyboard names it, else at its place. The choice is made before anything is sent, so a fast refusal cannot draw a second tap.
 appId: host.exp.Exponent
 onFlowComplete:
   - runScript:
@@ -10,24 +10,32 @@ onFlowComplete:
 - openLink: ${METRO_URL}/--/settings/security
 - scrollUntilVisible:
     element:
-      id: 'password.change'
+      id: 'security.password'
     timeout: 30000
     centerElement: true
 - tapOn:
-    id: 'password.change'
-- waitForAnimationToEnd:
-    timeout: 3000
-- scrollUntilVisible:
-    element:
-      id: 'password.current'
-    direction: UP
+    id: 'security.password'
+- extendedWaitUntil:
+    visible:
+      id: 'security.change.current'
     timeout: 10000
 - tapOn:
-    id: 'password.current'
+    id: 'security.change.current'
 - inputText: 'wrong-current-password-1'
 - takeScreenshot: current-typed-in-view
+# In Spanish the Forgot link wraps and New password sits under the keys, so Android brings it into view first.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+      - scrollUntilVisible:
+          element:
+            id: 'security.change.new'
+          timeout: 10000
+          centerElement: true
 - tapOn:
-    id: 'password.new'
+    id: 'security.change.new'
 - inputText: 'brand-new-password-123'
 - takeScreenshot: new-typed-in-view
 - runFlow:
@@ -39,8 +47,17 @@ onFlowComplete:
     when:
       platform: Android
     commands:
-      - tapOn:
-          point: '92%,88%'
+      - runFlow:
+          when:
+            notVisible: '(?i)^(done|listo|hecho|ok)$'
+          commands:
+            - tapOn:
+                point: '92%,88%'
+      - runFlow:
+          when:
+            visible: '(?i)^(done|listo|hecho|ok)$'
+          commands:
+            - tapOn: '(?i)^(done|listo|hecho|ok)$'
 - extendedWaitUntil:
     visible: '{{t:passwordCard.wrongCurrent}}'
     timeout: 15000
@@ -53,13 +70,28 @@ onFlowComplete:
       platform: Android
     commands:
       - assertVisible:
-          id: 'password.new'
+          id: 'security.change.current'
           focused: true
+# Only Current password's typing clears the refusal, so this proves its focus on both phones.
+- inputText: 'x'
+- assertNotVisible: '{{t:passwordCard.wrongCurrent}}'
 - runScript:
     file: ../batch/helper.js
     env:
       ASK: /api?to=paused
-# Focus, proved as sc13408-change-return-up.yaml does: the key and the send reach the form only if New password still holds it.
+# Back to New password, whose return key sends; Current password's moves on to New password instead.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+      - scrollUntilVisible:
+          element:
+            id: 'security.change.new'
+          timeout: 10000
+          centerElement: true
+- tapOn:
+    id: 'security.change.new'
 - inputText: 'x'
 - runFlow:
     when:
@@ -70,22 +102,31 @@ onFlowComplete:
     when:
       platform: Android
     commands:
-      - tapOn:
-          point: '92%,88%'
+      - runFlow:
+          when:
+            notVisible: '(?i)^(done|listo|hecho|ok)$'
+          commands:
+            - tapOn:
+                point: '92%,88%'
+      - runFlow:
+          when:
+            visible: '(?i)^(done|listo|hecho|ok)$'
+          commands:
+            - tapOn: '(?i)^(done|listo|hecho|ok)$'
 - extendedWaitUntil:
     visible:
-      id: 'password.cancel'
+      id: 'security.change.cancel'
       enabled: false
     timeout: 5000
 - takeScreenshot: held-cancel-off
 - tapOn:
-    id: 'password.cancel'
+    id: 'security.change.cancel'
     retryTapIfNoChange: false
 - assertVisible:
-    id: 'password.cancel'
+    id: 'security.change.cancel'
     enabled: false
 - assertVisible:
-    id: 'password.save'
+    id: 'security.change.save'
 - takeScreenshot: held-cancel-tapped-still-open
 - runScript:
     file: ../batch/helper.js
