@@ -115,13 +115,13 @@ export function SecurityDesk() {
   const [ask, setAsk] = useState<AskKind | null>(null);
   const [acting, setActing] = useState(false);
   const [dialog, setDialog] = useState<Opened | null>(() => returnedProof(returned));
+  const [opensOnLine] = useState(() => linksOnArrival(returned));
   const here = useSignOut(() => navigate('/sign-in'));
   const ways = waysOf(session.hasPassword, session.providers);
   const rules = rulesOf(session.organisations);
   const sessions = devices != null && devices !== 'failed' ? thisDeviceFirst(devices) : null;
   const others = sessions == null ? { count: 0, sessionId: null } : othersOf(sessions);
   const status = twoFactor != null && twoFactor !== 'failed' ? twoFactor : null;
-  const opensOnLine = returned != null && 'signIn' in returned && returned.purpose.kind === 'link';
   const { watch, refreshing } = useOffline({
     loaded: status != null && sessions != null,
     reload: () => setRefresh((n) => n + 1),
@@ -820,6 +820,11 @@ function returnRefusal(
   return back.purpose.kind === 'signOutOthers'
     ? { row: 'everywhere', message: t('devices.everywhereProviderFailed', { provider }) }
     : { row: back.provider, message: t('waysCard.providerFailed', { provider }) };
+}
+
+/** A link back from the provider with the proof still held: the page opens on its done line. */
+function linksOnArrival(back: ProviderReturn | null): boolean {
+  return back != null && !('failed' in back) && back.purpose.kind === 'link' && heldProof() != null;
 }
 
 /** Confirm it's you, opened again on the provider's answer it went to fetch, or when a link came back after the proof ran out. */

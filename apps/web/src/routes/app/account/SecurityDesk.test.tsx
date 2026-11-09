@@ -642,6 +642,45 @@ describe('linking and unlinking at a desk', () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByText(words)));
   });
 
+  it('reads no two-factor failure while the link is still on its way', async () => {
+    holdingProof();
+    returnedFrom({ kind: 'link' });
+    let linked: (answer: Response) => void = () => {};
+    answering({
+      'GET /api/auth/two-factor': () => json({ title: 'Down' }, 500),
+      'POST /api/auth/providers/google': () =>
+        new Promise<Response>((resolve) => {
+          linked = resolve;
+        }),
+      'GET /api/auth/me': () => json({ ...ME, providers: [{ provider: 'google', email: GMAIL }] }),
+    });
+    openSecurity();
+
+    expect(await screen.findByText('Two-factor did not load')).toBeDefined();
+    expect(section('Two-factor authentication').queryByRole('alert')).toBeNull();
+
+    linked(json({ provider: 'google', email: GMAIL }, 201));
+    expect(
+      await screen.findByText('Google is linked. We emailed your verified addresses to say so.'),
+    ).toBeDefined();
+    expect(section('Two-factor authentication').queryByRole('alert')).toBeNull();
+  });
+
+  it("reads the two-factor failure when the proof ran out and Confirm it's you is cancelled", async () => {
+    returnedFrom({ kind: 'link' });
+    answering({ 'GET /api/auth/two-factor': () => json({ title: 'Down' }, 500) });
+    openSecurity();
+
+    await screen.findByRole('dialog', { name: "Confirm it's you" });
+    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: "Confirm it's you" })).toBeNull(),
+    );
+
+    expect(await screen.findByText('Two-factor did not load')).toBeDefined();
+    expect(section('Two-factor authentication').getByRole('alert')).toBeDefined();
+  });
+
   it('leaves focus where the user moved it when the card arrives', async () => {
     holdingProof();
     returnedFrom({ kind: 'link' });
