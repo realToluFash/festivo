@@ -812,7 +812,7 @@
     "dismiss": "Fermer"
   },
   "recovery": {
-    "lostBothIntro": "Votre organisation ne peut confirmer que c’est bien vous qu’après une connexion avec votre mot de passe. Si vous l’avez perdu aussi, contactez l’assistance Soirely.",
+    "lostBothIntro": "Votre organisation ne peut confirmer votre identité qu’après une connexion avec votre mot de passe. Si vous l’avez perdu aussi, contactez l’assistance Soirely.",
     "forgot": "Mot de passe oublié ?",
     "title": "Réinitialisez votre mot de passe",
     "intro": "Saisissez l’adresse e-mail avec laquelle vous vous connectez. Si elle a un compte, nous lui envoyons un lien pour choisir un nouveau mot de passe.",

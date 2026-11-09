@@ -71,7 +71,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
-- **9 nov. 2026. La page du lien envoyé sur le web et la ligne de qui a tout perdu** (sc-33788 pour sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). `nothingThere` reprend l’app, « Rien reçu ? », et le lien est « renvoyez-le ». `sentAgain` est « Nous l’avons renvoyé. », sans la deuxième phrase de l’app. `lostBothIntro` dit « qu’après une connexion avec votre mot de passe », jamais « une fois connecté », qui s’accorde au masculin ; « l’assistance Soirely », du guide.
+- **9 nov. 2026. La page du lien envoyé sur le web et la ligne de qui a tout perdu** (sc-33788 pour sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). `nothingThere` reprend l’app, « Rien reçu ? », et le lien est « renvoyez-le ». `sentAgain` est « Nous l’avons renvoyé. », sans la deuxième phrase de l’app. `lostBothIntro` dit « ne peut confirmer votre identité qu’après une connexion avec votre mot de passe », jamais « une fois connecté », qui s’accorde au masculin ; « l’assistance Soirely », du guide.
 - **8 nov. 2026. Votre compte dans l’app** (sc-34175 pour sc-30411, `mobile:account.*`,
   `contacts.promoting`, `removing`). La section est « À propos de vous ». La ligne de l’adresse
   principale s’accorde avec l’adresse, « Principale · pour vous connecter », celle du numéro avec
