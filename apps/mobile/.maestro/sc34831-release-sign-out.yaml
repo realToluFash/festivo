@@ -1,0 +1,16 @@
+# Release build: from Home, signs out through Settings and waits for the welcome screen. sc-34831.
+appId: com.soirely.app
+---
+- launchApp:
+    appId: com.soirely.app
+- extendedWaitUntil:
+    visible:
+      id: 'home\.open(SignIn|Settings)'
+    timeout: 60000
+- tapOn:
+    id: 'home.openSettings'
+- runFlow: settings-sign-out-tap.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 30000

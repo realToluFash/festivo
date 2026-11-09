@@ -1,0 +1,32 @@
+# Release build: from the welcome screen, signs in as EMAIL with PASSWORD and waits for Home. sc-34831.
+appId: com.soirely.app
+---
+- launchApp:
+    appId: com.soirely.app
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 60000
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- scrollUntilVisible:
+    element:
+      id: 'signIn.password'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'signIn.password'
+- inputText: ${PASSWORD}
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 60000
