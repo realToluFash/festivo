@@ -2225,7 +2225,7 @@
     "enterWidth": "Enter the room’s width.",
     "enterLength": "Enter the room’s length.",
     "roomRange": "The room must be between {{min}} and {{max}}.",
-    "usHint": "Type 12′ 4″, 12 ft 4 in, 12.5 ft or 148 in.",
+    "usHint": "Type 12′ 4″, 12 ft 4 in, 12.5 ft or 148 in.",
     "feetInches": "{{feet}} {{inches}}",
     "room": "Room",
     "roomSettings": "Room settings",
