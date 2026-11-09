@@ -744,3 +744,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   negativa de la API dice «combinaciones de colores». Los ocho nombres: Violeta, Cobalto, Jardín,
   Cítricos, Frutos rojos, Gala (Black tie, el código de vestimenta; «Etiqueta» se leería como
   rótulo), Sorbete y Terracota. Sin conexión es «porque no tiene conexión», como la banda.
+- **9 Nov 2026. Los títulos de las hojas de añadir en la app** (sc-35661, `mobile:contacts.addEmail`,
+  `addPhone`). La misma clave es el enlace junto al título de la sección y el título de la hoja:
+  «Añadir correo» y «Añadir número», sin artículo, como en los ajustes de Android; la sección ya
+  dice de qué. Rechazado «Añadir una dirección de correo electrónico», que se cortaba en un móvil.
