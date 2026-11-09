@@ -1,30 +1,22 @@
 import { createContext, type ReactNode, useId, useState } from 'react';
-import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
+import { type LayoutChangeEvent, type LayoutRectangle, StyleSheet, View } from 'react-native';
 import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import {
   type Box,
-  clearOfWords,
-  pieceBounds,
+  type Piece,
   piecePlacement,
+  piecesClearOf,
   pieceSize,
-  type Shape,
   type Size,
+  type Tone,
 } from '../kit/confettiClearance.ts';
 import { tokens } from '../theme/tokens.ts';
 
 /** True for what sits on the cover, which draws in white. */
 export const OnCover = createContext(false);
 
-export type Piece = readonly [
-  x: number,
-  y: number,
-  shape: Shape,
-  size: number,
-  turn: number,
-  tone: Tone,
-];
-type Tone = 'sun' | 'white' | 'rose' | 'sky';
+export { CARD_PIECES, type Piece } from '../kit/confettiClearance.ts';
 
 const TONES: Record<Tone, string> = {
   sun: tokens.optionAmber,
@@ -46,16 +38,6 @@ const PIECES: readonly Piece[] = [
   [0.35, 0.89, 'bar', 50, -12, 'sun'],
   [0.64, 0.86, 'half', 40, 12, 'rose'],
   [0.87, 0.77, 'bar', 44, 48, 'white'],
-];
-
-/** The Settings card's pieces, by share of a Confetti card: they keep to its right side, clear of the words. */
-export const CARD_PIECES: readonly Piece[] = [
-  [0.67, 0.05, 'half', 22, -18, 'sun'],
-  [0.83, 0.11, 'bar', 26, 24, 'white'],
-  [0.96, 0.2, 'half', 14, 200, 'rose'],
-  [0.81, 0.73, 'half', 20, 32, 'rose'],
-  [0.92, 0.84, 'bar', 24, -40, 'sun'],
-  [0.58, 0.9, 'bar', 16, 62, 'white'],
 ];
 
 export interface Glow {
@@ -222,9 +204,7 @@ export function Confetti({
       ? pieces
       : words == null || cover == null
         ? []
-        : pieces.filter(([x, y, shape, size, turn]) =>
-            clearOfWords(pieceBounds({ x, y, shape, size, turn }, cover, scale), words),
-          );
+        : piecesClearOf(pieces, cover, scale, words);
 
   return (
     <Hidden
@@ -261,6 +241,22 @@ export function Confetti({
       })}
     </Hidden>
   );
+}
+
+/** The box words take on a cover, from the area they sit in on it and their own place in that area. */
+export function useWordsBox() {
+  const [area, setArea] = useState<LayoutRectangle | null>(null);
+  const [own, setOwn] = useState<LayoutRectangle | null>(null);
+  const box: Box | null =
+    area == null || own == null
+      ? null
+      : { x: area.x + own.x, y: area.y + own.y, width: own.width, height: own.height };
+
+  return {
+    box,
+    onArea: (event: LayoutChangeEvent) => setArea(event.nativeEvent.layout),
+    onWords: (event: LayoutChangeEvent) => setOwn(event.nativeEvent.layout),
+  };
 }
 
 const styles = StyleSheet.create({
