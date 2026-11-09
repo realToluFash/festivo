@@ -2,7 +2,14 @@ import { type RefObject, useRef, useState } from 'react';
 import type { TextInputInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { CodeField, Field, FieldError, focusChecked, focusRefused, keysStayDown } from './Field.tsx';
+import {
+  CodeField,
+  Field,
+  FieldError,
+  focusChecked,
+  focusRefused,
+  keysStayDown,
+} from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
