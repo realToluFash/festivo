@@ -51,12 +51,36 @@ describe("the app follows the account's colours (sc-30441)", () => {
     vi.useFakeTimers();
     const reload = vi.fn(async () => {});
 
-    const restarted = restartIn('berry', '/settings/personalisation?saved=1', reload);
-    await vi.advanceTimersByTimeAsync(RESTART_GRACE_MS);
+    let settled = false;
+    const restarted = restartIn('berry', '/settings/personalisation?saved=1', reload).finally(
+      () => {
+        settled = true;
+      },
+    );
+    await vi.advanceTimersByTimeAsync(RESTART_GRACE_MS - 1);
 
+    expect(settled).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(settled).toBe(true);
     expect(await restarted).toBe(false);
     expect(reload).toHaveBeenCalledOnce();
     expect(takeLanding()).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('answers a restart asked for during another with that one, once the reload never came', async () => {
+    vi.useFakeTimers();
+    const reload = vi.fn(async () => {});
+
+    const first = restartIn('berry', null, reload);
+    const second = restartIn('garden', '/settings/personalisation?saved=1', reload);
+    await vi.advanceTimersByTimeAsync(RESTART_GRACE_MS);
+
+    expect(await second).toBe(false);
+    expect(await first).toBe(false);
+    expect(reload).toHaveBeenCalledOnce();
     vi.useRealTimers();
   });
 

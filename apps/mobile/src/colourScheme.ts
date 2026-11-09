@@ -76,30 +76,33 @@ export function keepLaunchScheme(launchedIn: string = schemeAtLaunch): void {
   if (scheme != null) keepDeviceScheme(scheme);
 }
 
-let restarting = false;
+let restart: Promise<boolean> | null = null;
 
-/** Keeps the scheme on the device and starts the JS again in it, which never answers; false, and nothing restarted, where the device cannot keep it or the reload never came. */
-export async function restartIn(
+/** Keeps the scheme on the device and starts the JS again in it, which never answers; false, and nothing restarted, where the device cannot keep it or the reload never came. A restart asked for during another answers with that one. */
+export function restartIn(
   scheme: Scheme,
   landing: string | null,
   reload: Reload = reloadAppAsync,
 ): Promise<boolean> {
-  if (restarting) return new Promise<boolean>(() => {});
-  if (!keepDeviceScheme(scheme)) return false;
+  if (restart != null) return restart;
+  if (!keepDeviceScheme(scheme)) return Promise.resolve(false);
   if (landing != null) holdLanding(landing);
-  restarting = true;
 
-  try {
-    await reload(`colour scheme ${scheme}`);
-    await new Promise((resolve) => setTimeout(resolve, RESTART_GRACE_MS));
-  } catch {
-    // Not restarted: below, as when the grace runs out.
-  }
+  restart = (async () => {
+    try {
+      await reload(`colour scheme ${scheme}`);
+      await new Promise((resolve) => setTimeout(resolve, RESTART_GRACE_MS));
+    } catch {
+      // Not restarted: below, as when the grace runs out.
+    }
 
-  restarting = false;
-  takeLanding();
+    restart = null;
+    takeLanding();
 
-  return false;
+    return false;
+  })();
+
+  return restart;
 }
 
 /** On an install's first launch, the colours kept from before an uninstall are forgotten, and the JS starts again in the default where it opened in them. */
@@ -151,7 +154,7 @@ export function readsMe(input: RequestInfo | URL, init?: RequestInit): boolean {
   return method.toUpperCase() === 'GET' && ME.test(url);
 }
 
-/** Every read of the person carries their colours, which the client's Account leaves out; cloned before the client reads the body. */
+/** Every read of the person carries their colours, from whichever screen made it, so each is heard here rather than at every caller; cloned before the client reads the body. */
 export function heardFrom(response: Response): Response {
   if (!response.ok) return response;
 
