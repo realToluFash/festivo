@@ -253,7 +253,26 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
       patch({ addRefused: true });
       return;
     }
-    setParts([...form.dish.parts, { key: newKey(), kind: 'choice', choiceId }]);
+    const key = newKey();
+    setParts([...form.dish.parts, { key, kind: 'choice', choiceId }]);
+    focusAfter.current = form.dish.parts.length === 0 ? `mn-x-${key}` : `mn-up-${key}`;
+  }
+
+  function removePart(key: string) {
+    if (form?.dish == null) return;
+    const parts = form.dish.parts;
+    const next = parts[parts.findIndex((one) => one.key === key) + 1];
+    setParts(parts.filter((one) => one.key !== key));
+    focusAfter.current = next == null ? 'mn-add-part' : `mn-x-${next.key}`;
+  }
+
+  function removeOwn(key: string) {
+    if (form == null) return;
+    const own = form.course.own;
+    const next = own[own.findIndex((one) => one.key === key) + 1];
+    patch({ addRefused: false });
+    patchCourse({ own: own.filter((one) => one.key !== key) });
+    focusAfter.current = next == null ? 'mn-add-own' : `mn-x-${next.key}`;
   }
 
   function addOwn() {
@@ -452,6 +471,7 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
                     onCourse={patchCourse}
                     onAddOwn={addOwn}
                     onMoveOwn={moveOwn}
+                    onRemoveOwn={removeOwn}
                   />
                 ) : (
                   dish != null &&
@@ -472,6 +492,7 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
                       onAdd={addPart}
                       onAddChoice={addChoice}
                       onMove={movePart}
+                      onRemove={removePart}
                     />
                   )
                 )}
@@ -892,6 +913,7 @@ function CourseFields({
   onCourse,
   onAddOwn,
   onMoveOwn,
+  onRemoveOwn,
 }: {
   form: Form;
   course: Course;
@@ -902,6 +924,7 @@ function CourseFields({
   onCourse: (next: Partial<CourseForm>) => void;
   onAddOwn: () => void;
   onMoveOwn: (at: number, by: -1 | 1) => void;
+  onRemoveOwn: (key: string) => void;
 }) {
   const radios = useId();
   const how = form.course.how;
@@ -1005,9 +1028,7 @@ function CourseFields({
                       name={shownName(part.name)}
                       idKey={part.key}
                       onMove={onMoveOwn}
-                      onRemove={() =>
-                        onCourse({ own: form.course.own.filter((one) => one.key !== part.key) })
-                      }
+                      onRemove={() => onRemoveOwn(part.key)}
                     />
                   </li>
                 );
@@ -1095,7 +1116,7 @@ function RowMoves({
         id={`mn-up-${idKey}`}
         glyph="chevup"
         label={mw(MW.moveUp, { name })}
-        hint="Move up"
+        hint={MW.upHint}
         disabled={at === 0}
         onClick={() => onMove(at, -1)}
       />
@@ -1103,7 +1124,7 @@ function RowMoves({
         id={`mn-down-${idKey}`}
         glyph="chevdown"
         label={mw(MW.moveDown, { name })}
-        hint="Move down"
+        hint={MW.downHint}
         disabled={at === of - 1}
         onClick={() => onMove(at, 1)}
       />
@@ -1111,7 +1132,7 @@ function RowMoves({
         id={`mn-x-${idKey}`}
         glyph="clear"
         label={mw(MW.removePart, { name })}
-        hint="Remove"
+        hint={MW.removeHint}
         onClick={onRemove}
       />
     </div>
@@ -1130,6 +1151,7 @@ function DishFields({
   onAdd,
   onAddChoice,
   onMove,
+  onRemove,
 }: {
   dishForm: DishForm;
   dish: Dish;
@@ -1142,6 +1164,7 @@ function DishFields({
   onAdd: () => void;
   onAddChoice: (choiceId: string) => void;
   onMove: (at: number, by: -1 | 1) => void;
+  onRemove: (key: string) => void;
 }) {
   const offered = offeredChoices(dish, dishForm.parts);
   const told = ['mn-parts-help', errors.list == null ? null : 'mn-parts-error']
@@ -1256,9 +1279,7 @@ function DishFields({
                       name={shownName(name)}
                       idKey={part.key}
                       onMove={onMove}
-                      onRemove={() =>
-                        onDish({ parts: dishForm.parts.filter((one) => one.key !== part.key) })
-                      }
+                      onRemove={() => onRemove(part.key)}
                     />
                   </li>
                 );

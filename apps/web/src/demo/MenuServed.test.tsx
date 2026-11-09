@@ -153,6 +153,44 @@ describe('a dish’s Parts', () => {
     fireEvent.click(within(panel()).getByRole('button', { name: MW.save }));
     expect(within(panel()).getByRole('alert').textContent).toContain(MW.forbidden);
   });
+  it('clears the refusal on a remove, and keeps focus on the next Remove', SLOW, async () => {
+    await menu('tooMany');
+
+    const removes = within(panel()).getAllByRole('button', { name: /^Remove / });
+    fireEvent.click(removes[0] as HTMLElement);
+    expect(within(panel()).queryByText(MW.tooMany)).toBeNull();
+    expect(document.activeElement).toBe(
+      within(panel()).getAllByRole('button', { name: /^Remove / })[0],
+    );
+  });
+
+  it('lands on Add a part after removing the last part', SLOW, async () => {
+    await menu('dishParts');
+
+    const removes = within(panel()).getAllByRole('button', { name: /^Remove / });
+    fireEvent.click(removes.at(-1) as HTMLElement);
+    expect(document.activeElement).toBe(within(panel()).getByRole('button', { name: MW.addPart }));
+  });
+
+  it('lands on the new row after adding a choice', SLOW, async () => {
+    await menu('choiceDraft');
+
+    const offer = within(panel()).getByRole('group', { name: MW.addChoice });
+    fireEvent.click(within(offer).getByRole('button', { name: 'And a sauce?' }));
+    expect(document.activeElement).toBe(
+      within(panel()).getByRole('button', { name: 'Move And a sauce? up' }),
+    );
+  });
+
+  it('clears a course’s refusal on a remove, and keeps focus in the list', SLOW, async () => {
+    await menu('ownTooMany');
+
+    expect(within(panel()).getByText(MW.ownTooMany)).toBeTruthy();
+    const removes = within(panel()).getAllByRole('button', { name: /^Remove / });
+    fireEvent.click(removes.at(-1) as HTMLElement);
+    expect(within(panel()).queryByText(MW.ownTooMany)).toBeNull();
+    expect(document.activeElement).toBe(within(panel()).getByRole('button', { name: MW.addOwn }));
+  });
 });
 
 describe('removing a choice that is a part, and read only', () => {
