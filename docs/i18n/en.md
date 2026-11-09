@@ -66,6 +66,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 Nov 2026. The web's reset sent page and the lost-both support line** (sc-33788 for
+  sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). Kept as dev2 wrote
+  them; `RecoverPassword.test.tsx` pins all three. `nothingThere` ends on its own link, "send it
+  again", so the link is the verb; `sentAgain` is a short status beside it, shorter than the
+  app's toast because the page still shows the sent body. `lostBothIntro` keeps its contractions:
+  it explains, it is not an error. Its meaning in every locale: confirming starts only after the
+  password; without the password, it is Soirely support.
 - **8 Nov 2026. The app's reset sent screen and its toast** (sc-33809 for sc-29071,
   `mobile:recovery.intro`, `sentFor`, `spam`, `sentAgain`, `openMail`, `signsOut`, `changed`).
   Kept as dev2 wrote them, from the board. "Open Mail" names iOS's Mail; on Android the same
