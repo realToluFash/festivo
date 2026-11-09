@@ -1,38 +1,64 @@
-import { Glyph } from '../components/Glyph.tsx';
-import type { Moment, Now } from './today.ts';
-import type { Tell } from '../components/SettingsParts.tsx';
+import type { Ref } from 'react';
+import { useTranslation } from 'react-i18next';
+
+import { Glyph } from './Glyph.tsx';
+import type { Moment, Now, Open } from './today.ts';
+import './today.css';
 
 /** Confetti cut from the mark's half disc and bar, placed from the banner's right edge in today.css. */
 const PIECES = ['half', 'bar', 'half', 'bar', 'half', 'bar'] as const;
 
-function Actions({ create, tell }: { create: boolean; tell: Tell }) {
+/** What the banner offers: New event for a role that can create one, and the bell where the page has no other. */
+export interface BannerActions {
+  create: boolean;
+  /** Unread notifications for the banner's own bell; null leaves the bell to the page's frame. */
+  unread: number | null;
+}
+
+function Actions({ actions, open }: { actions: BannerActions; open: Open }) {
+  const { t } = useTranslation();
+
+  if (!actions.create && actions.unread == null) return null;
+
   return (
     <div className="today-actions">
-      {create && (
-        <button
-          type="button"
-          className="today-glass"
-          onClick={() => tell('Create an event has its own design.')}
-        >
+      {actions.create && (
+        <button type="button" className="today-glass" onClick={() => open({ to: 'create' })}>
           <Glyph name="plus" size={18} />
-          New event
+          {t('events.newEvent')}
         </button>
       )}
-      <button
-        type="button"
-        className="today-glass today-bell"
-        aria-label="Notifications, 3 unread"
-        onClick={() => tell('Notifications have their own design.')}
-      >
-        <Glyph name="bell" size={19} />
-        <span className="today-unread" aria-hidden="true" />
-      </button>
+      {actions.unread != null && (
+        <button
+          type="button"
+          className="today-glass today-bell"
+          aria-label={
+            actions.unread > 0
+              ? t('today.notificationsUnread', { count: actions.unread })
+              : t('today.notifications')
+          }
+          onClick={() => open({ to: 'notifications' })}
+        >
+          <Glyph name="bell" size={19} />
+          {actions.unread > 0 && <span className="today-unread" aria-hidden="true" />}
+        </button>
+      )}
     </div>
   );
 }
 
 /** Soirely's Confetti as a 112 px banner: the date, the greeting and one line, with New event and the bell. */
-export function Banner({ moment, tell }: { moment: Moment; tell: Tell }) {
+export function Banner({
+  moment,
+  actions,
+  open,
+  titleRef,
+}: {
+  moment: Moment;
+  actions: BannerActions;
+  open: Open;
+  titleRef?: Ref<HTMLHeadingElement>;
+}) {
   return (
     <header className="today-banner">
       {PIECES.map((shape, index) => (
@@ -41,13 +67,18 @@ export function Banner({ moment, tell }: { moment: Moment; tell: Tell }) {
       <div className="today-banner-inner">
         <div className="today-greeting">
           <p className="today-eyebrow">{moment.eyebrow}</p>
-          <h1>{moment.hello}</h1>
+          <h1 ref={titleRef} tabIndex={titleRef == null ? undefined : -1}>
+            {moment.hello}
+          </h1>
           <p className="today-sub">
             {moment.lead != null && <strong>{`${moment.lead} `}</strong>}
             {moment.sub}
           </p>
         </div>
-        <Actions create={moment.kind !== 'first'} tell={tell} />
+        <Actions
+          actions={{ ...actions, create: actions.create && moment.kind !== 'first' }}
+          open={open}
+        />
       </div>
     </header>
   );
@@ -120,36 +151,52 @@ function Ring({ share }: { share: number }) {
 }
 
 /** On the day, the banner is Now in the event's colours; built now, it shows the dates and opens the event. */
-export function NowBanner({ now, full, tell }: { now: Now; full: boolean; tell: Tell }) {
+export function NowBanner({
+  now,
+  full,
+  actions,
+  open,
+  titleRef,
+}: {
+  now: Now;
+  full: boolean;
+  actions: BannerActions;
+  open: Open;
+  titleRef?: Ref<HTMLHeadingElement>;
+}) {
+  const { t } = useTranslation();
+  const focusable = titleRef == null ? undefined : -1;
   const top = (
     <div className="today-now-top">
       <div className="today-now-chips">
         <span className="today-chip is-light">
           <span className="today-live-dot is-ringed" aria-hidden="true" />
-          Live now
+          {t('today.liveNow')}
         </span>
         <span className="today-chip is-dark">{now.live}</span>
       </div>
-      <Actions create tell={tell} />
+      <Actions actions={actions} open={open} />
     </div>
   );
 
   if (!full)
     return (
-      <header className={`today-now today-cover is-${now.event} is-built`}>
+      <header className={`today-now today-cover is-${now.event.mesh} is-built`}>
         <span className="today-now-shade" aria-hidden="true" />
         {top}
         <div className="today-now-mid">
           <div className="today-now-words">
-            <h1 className="today-now-name">{now.name}</h1>
+            <h1 ref={titleRef} tabIndex={focusable} className="today-now-name">
+              {now.name}
+            </h1>
             <p className="today-now-until">{now.ends}</p>
           </div>
           <button
             type="button"
             className="today-white"
-            onClick={() => tell(`${now.name} has its own design.`)}
+            onClick={() => open({ to: 'event', id: now.event.id, name: now.name })}
           >
-            Open the event
+            {t('today.openEvent')}
             <Glyph name="arrow" size={18} />
           </button>
         </div>
@@ -157,13 +204,15 @@ export function NowBanner({ now, full, tell }: { now: Now; full: boolean; tell: 
     );
 
   return (
-    <header className={`today-now today-cover is-${now.event}`}>
+    <header className={`today-now today-cover is-${now.event.mesh}`}>
       <span className="today-now-shade" aria-hidden="true" />
       {top}
       <div className="today-now-mid">
         <div className="today-now-words">
           <p className="today-now-event">{now.name}</p>
-          <h1 className="today-now-title">{now.happening}</h1>
+          <h1 ref={titleRef} tabIndex={focusable} className="today-now-title">
+            {now.happening}
+          </h1>
           <div className="today-now-line">
             <span className="today-now-until">{now.until}</span>
             <span className="today-chip is-glass">{now.behind}</span>
@@ -172,7 +221,7 @@ export function NowBanner({ now, full, tell }: { now: Now; full: boolean; tell: 
         <div className="today-now-side">
           <div className="today-now-next">
             <div className="today-next-up">
-              <span className="today-next-label">Next</span>
+              <span className="today-next-label">{t('today.next')}</span>
               <span className="today-next-what">
                 <span className="today-figures">{now.next.time}</span> {now.next.title}
               </span>
@@ -180,7 +229,7 @@ export function NowBanner({ now, full, tell }: { now: Now; full: boolean; tell: 
             <div
               className="today-arrived"
               role="img"
-              aria-label={`${now.arrived} of ${now.expected} arrived`}
+              aria-label={t('today.arrivedOf', { arrived: now.arrived, expected: now.expected })}
             >
               <Ring share={now.arrived / now.expected} />
               <span className="today-arrived-words" aria-hidden="true">
@@ -188,16 +237,12 @@ export function NowBanner({ now, full, tell }: { now: Now; full: boolean; tell: 
                   {now.arrived}
                   <span className="today-arrived-of">{`/${now.expected}`}</span>
                 </span>
-                <span className="today-arrived-label">arrived</span>
+                <span className="today-arrived-label">{t('today.arrived')}</span>
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            className="today-white"
-            onClick={() => tell('The run of show has its own design.')}
-          >
-            Open run of show
+          <button type="button" className="today-white" onClick={() => open({ to: 'runOfShow' })}>
+            {t('today.openRunOfShow')}
             <Glyph name="arrow" size={18} />
           </button>
         </div>

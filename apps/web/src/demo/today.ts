@@ -1,3 +1,11 @@
+import type {
+  EventCard,
+  Moment as Shown,
+  Now,
+  ShownEvent,
+  StripBar,
+  StripDay,
+} from '../components/today.ts';
 import { writtenTime } from './clock.ts';
 import { TODAY_IDS as IDS } from './events.ts';
 import { type Guests, SAMPLE_GUESTS } from './guestCounts.ts';
@@ -118,89 +126,22 @@ export interface Need {
   action: string;
 }
 
-export interface AgendaItem {
-  time: string;
-  title: string;
-  event: EventKey;
-  note: string;
-}
-
-export interface AgendaDay {
-  date: string;
-  day: string;
-  when: string;
-  today: boolean;
-  items: AgendaItem[];
-}
-
-export interface StripDay {
-  weekday: string;
-  number: string;
-  today: boolean;
-  dots: EventKey[];
-}
-
-export interface StripBar {
-  event: EventKey;
-  start: number;
-  span: number;
-  label: string;
-  /** Started before the week shown, so it runs in from the left edge. */
-  openLeft: boolean;
-}
-
-export interface EventCard {
-  event: EventKey;
-  name: string;
-  dates: string;
-  count: string;
-  live: boolean;
-  draft: boolean;
-  stage: string | null;
-  ready: { words: string; percent: number } | null;
-}
-
-export interface RailStop {
-  time: string;
-  name: string;
-  state: 'done' | 'now' | 'next' | 'later';
-}
-
-export interface Now {
-  event: EventKey;
-  name: string;
-  live: string;
-  happening: string;
-  until: string;
-  behind: string;
-  next: { time: string; title: string };
-  arrived: number;
-  expected: number;
-  rail: RailStop[];
-  /** Where the moment sits along the rail, from 0 at its first stop to 1 at its last. */
-  at: number;
-  ends: string;
-}
-
-export interface Moment {
+/** The product's Today, and what only the demo draws: Needs you (sc-29884). */
+export interface Moment extends Shown {
   name: MomentName;
-  kind: 'plan' | 'day' | 'quiet' | 'first';
-  /** False draws only what the product can show today, from the events' own dates. */
-  full: boolean;
   time: string;
-  eyebrow: string;
-  hello: string;
-  lead: string | null;
-  sub: string;
   /** Null when the product has nothing to say yet; empty when nothing needs you. */
   needs: Need[] | null;
-  days: StripDay[];
-  bars: StripBar[];
-  agenda: AgendaDay[];
-  nothing: string;
-  nextUp: { event: EventKey; name: string; when: string } | null;
-  events: EventCard[];
-  now: Now | null;
+}
+
+/** A sample event as the product's parts draw it: its colour is its key. */
+export function shown(key: EventKey): ShownEvent {
+  return { id: IDS[key], name: EVENTS[key].name, mesh: key };
+}
+
+/** The sample event an id names, for the parts that still take a key. */
+export function keyOf(id: string): EventKey {
+  return (Object.keys(IDS) as EventKey[]).find((key) => IDS[key] === id) ?? 'draft';
 }
 
 type Item = readonly [time: string, title: string, event: EventKey, note: string];
@@ -354,7 +295,7 @@ function card(
         : `In ${until} days`;
 
   return {
-    event: key,
+    event: shown(key),
     name: event.name,
     dates: eventDates(event, say),
     count,
@@ -405,7 +346,7 @@ function week(
       const openLeft = event.first < today;
 
       return {
-        event: key,
+        event: shown(key),
         start,
         span: end - start + 1,
         label: openLeft ? `day ${1 - daysFrom(today, event.first)} of ${length}` : `${length} days`,
@@ -413,7 +354,9 @@ function week(
       };
     });
   const covered = (key: EventKey, index: number) =>
-    bars.some((bar) => bar.event === key && index >= bar.start && index < bar.start + bar.span);
+    bars.some(
+      (bar) => bar.event.id === IDS[key] && index >= bar.start && index < bar.start + bar.span,
+    );
   const days = Array.from({ length: 7 }, (_, index) => {
     const date = addDays(today, index);
     const items = agenda.find(([day]) => day === date)?.[1] ?? [];
@@ -421,7 +364,12 @@ function week(
       (event) => !covered(event, index),
     );
 
-    return { weekday: say.weekday(date), number: say.number(date), today: index === 0, dots };
+    return {
+      weekday: say.weekday(date),
+      number: say.number(date),
+      today: index === 0,
+      dots: dots.map(shown),
+    };
   });
 
   return { days, bars };
@@ -483,7 +431,7 @@ function now(today: string, time: string, say: Say): Now {
   const tomorrow = addDays(today, 1);
 
   return {
-    event: 'wed',
+    event: shown('wed'),
     name: event.name,
     live: `Day ${daysFrom(event.first, today) + 1} of ${daysFrom(event.first, event.last) + 1} · ${event.place}`,
     happening: 'Drinks reception',
@@ -548,7 +496,7 @@ export function momentOf(
       items: items.map(([at, title, event, note]) => ({
         time: at === '' ? 'All day' : say.clock(at),
         title,
-        event,
+        event: shown(event),
         note,
       })),
     })),
@@ -556,7 +504,7 @@ export function momentOf(
     nextUp:
       name === 'quiet'
         ? {
-            event: 'party',
+            event: shown('party'),
             name: party.name,
             when: `${say.day(party.first)} · ${howFar(today, party.first)}`,
           }
