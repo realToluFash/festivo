@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { Notice } from './Notice.tsx';
 import { Glyph } from './Glyph.tsx';
 import type { AgendaDay, EventCard, Moment, Open, ShownEvent, StripBar } from './today.ts';
 import './today.css';
@@ -236,7 +237,7 @@ const STEPS = [
   ['today.firstStep.liveTitle', 'today.firstStep.liveBody'],
 ] as const;
 
-/** A first run, before the organisation has an event: three steps and, for a role that can create one, the way in. */
+/** A first run, before the organisation has an event: three steps and, for a role that can create one, the way in; for one that cannot, Events' `firstAsk` Notice. */
 export function FirstRun({ open, create }: { open: Open; create: boolean }) {
   const { t } = useTranslation();
 
@@ -248,6 +249,11 @@ export function FirstRun({ open, create }: { open: Open; create: boolean }) {
         </h2>
       </div>
       <p className="today-first-line">{t('today.firstIntro')}</p>
+      {!create && (
+        <Notice kind="quiet" standing>
+          {t('events.firstRunAskOwner')}
+        </Notice>
+      )}
       <ol className="today-panel today-steps">
         {STEPS.map(([title, line], index) => (
           <li key={title} className="today-step">

@@ -103,7 +103,7 @@ describe('Today at a desk (sc-30413)', () => {
     expect(router.state.location.pathname).toBe('/app/events/new');
   });
 
-  it('offers no way to create an event to a role without Create events', async () => {
+  it('a first run tells a role without Create events to ask an owner, in place of the way in', async () => {
     signedIn(
       membership({
         id: 'org_1',
@@ -116,6 +116,12 @@ describe('Today at a desk (sc-30413)', () => {
     await screen.findByRole('heading', { level: 2, name: 'Set up your first event' });
 
     expect(screen.queryByRole('button', { name: 'Start your first event' })).toBeNull();
+    expect(within(content()).queryByRole('button', { name: 'New event' })).toBeNull();
+    expect(
+      screen.getByText(
+        'Events your organisation creates will show here. Ask an owner if you need to create one.',
+      ),
+    ).toBeDefined();
   });
 
   it('draws This week and Your events, with no Needs you, and a row opens its event', async () => {

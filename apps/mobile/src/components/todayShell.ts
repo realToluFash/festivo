@@ -13,6 +13,8 @@ export interface TodayShell {
   organisation: string;
   person: { name: string; role: string | null };
   unread: number;
+  /** The role holds Create events: the first run offers Start your first event, or tells it to ask an owner. */
+  creates: boolean;
   /** The sidebar's Search, which the app does not have yet. */
   search: boolean;
   open: (opens: Opens) => void;

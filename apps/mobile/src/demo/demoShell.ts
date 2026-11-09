@@ -30,6 +30,7 @@ export function demoShell(tell: (words: string) => void, drawn: DemoOpens = {}):
     organisation: SAMPLE.organisation,
     person: { name: SAMPLE.name, role: 'Owner' },
     unread: 3,
+    creates: true,
     search: true,
     OrgOpener: DemoOrgOpener,
     open: (opens) => {
