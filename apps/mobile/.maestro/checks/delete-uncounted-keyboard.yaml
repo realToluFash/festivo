@@ -8,7 +8,7 @@ onFlowComplete:
 ---
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
-    visible: '{{t:orgGeneral.intro}}'
+    visible: '{{t:orgGeneral.details}}'
     timeout: 30000
 - scrollUntilVisible:
     element:

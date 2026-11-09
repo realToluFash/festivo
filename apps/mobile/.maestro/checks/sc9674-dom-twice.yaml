@@ -47,7 +47,7 @@ onFlowComplete:
     env:
       ASK: /api?to=up
 - extendedWaitUntil:
-    visible: '{{t:companyDomains.added}}'
+    visible: '{{t:companyDomains.addedLine}}'
     timeout: 45000
 - waitForAnimationToEnd
 - takeScreenshot: added
