@@ -1,4 +1,4 @@
-# sc-34920: Save restarts the screens and lands on Personalisation saying Saved, then puts Soirely's own colours back.
+# sc-34920: Save restarts the screens and lands on Personalisation saying Saved, then puts Soirely's own colours back. Fails in Expo Go at the restart (the PushNotificationIOS throw QA reported in #36199): a red wait for personalisation.card after Save there is that, not a regression in sc-34920.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/personalisation
