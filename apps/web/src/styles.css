@@ -1316,7 +1316,7 @@ span {
 }
 
 /* The reading column stops at 680, so a wider window leaves the room at the right. */
-.settings-desk .settings-desk-page > * > :not(.account-header, .toast) {
+.settings-desk .settings-desk-page > * > :not(.account-header, .toast, .dialog, .dialog-scrim) {
   max-width: 42.5rem;
 }
 
@@ -1341,7 +1341,7 @@ span {
   gap: var(--spaceXxl);
 }
 
-.account > :not(.account-header) {
+.account > :not(.account-header, .dialog, .dialog-scrim) {
   max-width: 47.5rem;
 }
 
@@ -8015,7 +8015,7 @@ button.members-row {
   --personalisationGreen: color-mix(in srgb, var(--optionTeal) 70%, var(--colorInk));
 }
 
-.account.personalisation > :not(.account-header) {
+.account.personalisation > :not(.account-header, .dialog, .dialog-scrim) {
   max-width: 680px;
 }
 
