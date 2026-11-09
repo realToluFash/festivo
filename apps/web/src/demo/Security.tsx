@@ -1,10 +1,11 @@
 import { DemoBell } from './DemoBell.tsx';
 import { formattingLocale } from '@soirely/domain';
-import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { offButton } from '../offButton.ts';
-import { Glyph, type GlyphName } from '../components/Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
+import { Lead } from '../components/AccountParts.tsx';
+import { KeptAction, Openable, ShieldCard } from '../components/SecurityParts.tsx';
 import {
   ASK_WORDS as A,
   type AskKind,
@@ -47,22 +48,9 @@ import {
   SetupDialog,
 } from './SecurityDialogs.tsx';
 import type { Viewer } from './settings.ts';
-import {
-  Ask,
-  Card,
-  CardStep,
-  Chevron,
-  Head,
-  OnCard,
-  RedAction,
-  RowWords,
-  Says,
-  TitleRow,
-} from '../components/SettingsParts.tsx';
+import { Ask, Chevron, Head, RedAction, RowWords, TitleRow } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { useLater } from '../useLater.ts';
-import '../components/AccountParts.css';
-import './security.css';
 
 /** Security at a desk in B · Summary first (Web-Security-*.dc.html): the app's page, the same for every role. */
 export function Security({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
@@ -132,34 +120,16 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
     <div className="desk-page">
       <div ref={column} className="desk-column">
         <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
-        <Card size="person">
-          <div>
-            <div className="desk-who">
-              <span className="desk-disc security-shield" aria-hidden="true">
-                <Glyph name="shield" size={29} weight={2.2} />
-              </span>
-              <div className="desk-who-words">
-                <Says>{card.says}</Says>
-                <OnCard>{card.summary}</OnCard>
-              </div>
-            </div>
-            <div aria-live="polite">
-              {card.line != null && (
-                <p className={card.done ? 'account-said is-done' : 'account-said'}>
-                  {card.done && (
-                    <span className="desk-mark is-yes account-done" aria-hidden="true">
-                      <Glyph name="tick" size={11} weight={3.4} />
-                    </span>
-                  )}
-                  {card.line}
-                </p>
-              )}
-            </div>
-          </div>
-          {card.step != null && (
-            <CardStep label={card.step} onClick={() => setDialog(opening('setup'))} />
-          )}
-        </Card>
+        <ShieldCard
+          says={card.says}
+          summary={card.summary}
+          said={card.line == null ? null : { text: card.line, done: card.done }}
+          step={
+            card.step == null
+              ? null
+              : { label: card.step, onClick: () => setDialog(opening('setup')) }
+          }
+        />
         <section className="desk-block">
           <Head title={W.ways} />
           <ul className="desk-rows account-rows">
@@ -227,7 +197,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
               >
                 <div className="account-acts">
                   {page.twoFactorRule ? (
-                    <Off label={W.turnOffKept} />
+                    <KeptAction label={W.turnOffKept} />
                   ) : (
                     <button
                       type="button"
@@ -457,62 +427,6 @@ function here(page: SecurityPage): string[] {
     .map((device) => device.id);
 }
 
-function Lead({ name }: { name: GlyphName }) {
-  return (
-    <span className="account-lead" aria-hidden="true">
-      <Glyph name={name} size={22} />
-    </span>
-  );
-}
-
-function Off({ label }: { label: string }) {
-  return (
-    <button type="button" className="desk-text security-off" {...offButton(true, { dim: false })}>
-      {label}
-    </button>
-  );
-}
-
-/** A row that opens in place, lit with no ring, what it holds under a Violet rule. */
-function Openable({
-  title,
-  line,
-  lead,
-  on,
-  onToggle,
-  children,
-}: {
-  title: string;
-  line: string;
-  lead: GlyphName;
-  on: boolean;
-  onToggle: () => void;
-  children: ReactNode;
-}) {
-  const id = useId();
-
-  return (
-    <li>
-      <button
-        type="button"
-        className={on ? 'desk-row account-row is-open' : 'desk-row account-row'}
-        aria-expanded={on}
-        aria-controls={on ? id : undefined}
-        onClick={onToggle}
-      >
-        <Lead name={lead} />
-        <RowWords title={title} lines={[line]} />
-        <Glyph name={on ? 'chevup' : 'chevdown'} size={18} weight={2.4} className="desk-chevron" />
-      </button>
-      {on && (
-        <div id={id} className="account-open" role="group" aria-label={title}>
-          {children}
-        </div>
-      )}
-    </li>
-  );
-}
-
 function WayInside({
   page,
   provider,
@@ -542,7 +456,7 @@ function WayInside({
     return (
       <>
         <div className="account-acts">
-          <Off label={W.unlinkKept} />
+          <KeptAction label={W.unlinkKept} />
         </div>
         <p className="desk-note">{W.keptWay(provider, otherProvider(provider))}</p>
       </>
