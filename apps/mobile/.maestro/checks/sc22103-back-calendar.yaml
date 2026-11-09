@@ -8,6 +8,12 @@ appId: host.exp.Exponent
     timeout: 30000
 - tapOn:
     id: 'frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.view.agenda'
+    timeout: 15000
+- tapOn:
+    id: 'calendar.view.agenda'
 - scrollUntilVisible:
     element:
       id: 'calendar.row.event-${LIVE}'

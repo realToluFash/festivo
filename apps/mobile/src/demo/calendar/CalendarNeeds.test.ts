@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { init } from 'i18next';
+import { beforeAll, describe, expect, it } from 'vitest';
 
+import en from '../../i18n/locales/en.json';
 import { CLOCKS } from '../events/EventsSample.ts';
 import {
   type Item,
@@ -17,6 +19,14 @@ import {
   sampleOf,
   startOf,
 } from './CalendarModel.ts';
+
+beforeAll(() =>
+  init({
+    resources: { en: { translation: en } },
+    lng: 'en',
+    interpolation: { escapeValue: false },
+  }),
+);
 
 const NOVEMBER = { year: 2026, month: 11 };
 const DECEMBER = { year: 2026, month: 12 };

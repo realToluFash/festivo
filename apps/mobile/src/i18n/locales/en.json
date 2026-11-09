@@ -1903,13 +1903,20 @@
     "showEvents": "Events only",
     "more_one": "+{{count, number}}",
     "more_other": "+{{count, number}}",
+    "moreItems_one": "+{{count, number}} more",
+    "moreItems_other": "+{{count, number}} more",
     "close": "Close",
     "timeInZone": "{{time}} {{timeZone}}",
     "range": "{{from}} to {{to}}",
     "loading": "Loading the calendar…",
     "failed": "The calendar did not load. Check your connection, then try again. Nothing has changed.",
     "emptyMonth": "Nothing on the calendar in {{month}}.",
-    "emptyDay": "Nothing on this day."
+    "emptyDay": "Nothing on this day.",
+    "barStatus": "{{name}} · {{status}}",
+    "barStatusFirst": "{{status}} · {{name}}",
+    "timeAndRange": "{{time}} · {{range}}",
+    "rowLabel": "{{title}}, {{tag}}, {{when}}",
+    "retry": "Try again"
   },
   "calendarFeed": {
     "open": "Subscribe in your calendar app",
