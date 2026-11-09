@@ -2084,7 +2084,7 @@
       "account_security": "Sign-ins, your password, two-factor, ownership and access."
     },
     "kinds": "What you hear about",
-    "blockedLine": "Push is off in this browser, so pushes will not reach you here.",
+    "blockedLine": "Push is off in this browser, so pushes won't reach you here.",
     "blockedHere": "Blocked in this browser",
     "notLoadedLine": "Check your connection and try again.",
     "saving": "Saving…",
