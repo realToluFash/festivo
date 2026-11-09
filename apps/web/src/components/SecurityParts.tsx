@@ -33,25 +33,38 @@ export function ShieldCard({
             <OnCard>{summary}</OnCard>
           </div>
         </div>
-        <div aria-live="polite">
-          {said != null && (
-            <p
-              ref={saidRef}
-              tabIndex={saidRef == null ? undefined : -1}
-              className={said.done ? 'account-said is-done' : 'account-said'}
-            >
-              {said.done && (
-                <span className="desk-mark is-yes account-done" aria-hidden="true">
-                  <Glyph name="tick" size={11} weight={3.4} />
-                </span>
-              )}
-              {said.text}
-            </p>
-          )}
-        </div>
+        <SaidLine said={said} saidRef={saidRef} />
       </div>
       {step != null && <CardStep label={step.label} onClick={step.onClick} />}
     </Card>
+  );
+}
+
+/** The card's result line, also drawn alone in the card's place while two-factor has not loaded. */
+export function SaidLine({
+  said,
+  saidRef,
+}: {
+  said: { text: string; done: boolean } | null;
+  saidRef?: (line: HTMLParagraphElement | null) => void;
+}) {
+  return (
+    <div aria-live="polite">
+      {said != null && (
+        <p
+          ref={saidRef}
+          tabIndex={saidRef == null ? undefined : -1}
+          className={said.done ? 'account-said is-done' : 'account-said'}
+        >
+          {said.done && (
+            <span className="desk-mark is-yes account-done" aria-hidden="true">
+              <Glyph name="tick" size={11} weight={3.4} />
+            </span>
+          )}
+          {said.text}
+        </p>
+      )}
+    </div>
   );
 }
 

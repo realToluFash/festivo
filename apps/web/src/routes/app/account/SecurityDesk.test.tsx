@@ -612,6 +612,33 @@ describe('linking and unlinking at a desk', () => {
     ]);
   });
 
+  it("says it is linked in the card's place while two-factor has failed, then inside the card once it loads", async () => {
+    holdingProof();
+    returnedFrom({ kind: 'link' });
+    let fails = true;
+    answering({
+      'GET /api/auth/two-factor': () =>
+        fails ? json({ title: 'Down' }, 500) : json({ on: true, recoveryCodesLeft: 8 }),
+      'POST /api/auth/providers/google': () => json({ provider: 'google', email: GMAIL }, 201),
+      'GET /api/auth/me': () => json({ ...ME, providers: [{ provider: 'google', email: GMAIL }] }),
+    });
+    openSecurity();
+
+    const words = 'Google is linked. We emailed your verified addresses to say so.';
+    const line = await screen.findByText(words);
+    expect(await screen.findByText('Two-factor did not load')).toBeDefined();
+    expect(screen.queryByText('Two-factor is on')).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(line));
+
+    fails = false;
+    fireEvent.click(
+      section('Two-factor authentication').getByRole('button', { name: 'Try again' }),
+    );
+
+    expect(await screen.findByText('Two-factor is on')).toBeDefined();
+    expect(screen.getAllByText(words)).toHaveLength(1);
+  });
+
   it("refuses a Google account that is another Soirely account's, under its row", async () => {
     holdingProof();
     returnedFrom({ kind: 'link' });
