@@ -15,10 +15,19 @@ appId: host.exp.Exponent
     timeout: 15000
 - waitForAnimationToEnd
 - takeScreenshot: verify-sheet
-- runScript:
-    file: ../scripts/sc34175-code.js
-    env:
-      ALT: ${ALT}
+- runFlow:
+    when:
+      true: ${ALT.includes('@')}
+    commands:
+      - runScript:
+          file: ../scripts/latest-code.js
+          env:
+            EMAIL: ${ALT}
+- runFlow:
+    when:
+      true: ${!ALT.includes('@')}
+    commands:
+      - runScript: ../scripts/latest-sms-code.js
 - tapOn:
     id: 'account.verify.code'
 - inputText: ${output.code}
