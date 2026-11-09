@@ -1,6 +1,6 @@
 import { type PluralBase, demoWords } from './demoWords.ts';
 
-/** The kitchen sheet's Changes since (sc-30692): the sheet now against the latest copy, matched by record, in the sheet's order. Words in [brackets] are not settled yet; they are [en]'s. */
+/** The kitchen sheet's Changes since (sc-30692): the sheet now against the latest copy, matched by record, in the sheet's order. */
 export const CW = {
   since: 'Since {{date}} at {{time}}',
   none: 'No changes since {{date}} at {{time}}.',
@@ -8,21 +8,21 @@ export const CW = {
   give: 'Give the changes…',
   milestone: 'Give the changes to the kitchen',
   allergyNew: 'New allergy: {{allergy}} ({{name}})',
-  allergyGone: '[Allergy removed: {{allergy}} ({{name}})]',
-  allergyMore_one: '{{count}} more {{allergy}} allergy',
-  allergyMore_other: '{{count}} more {{allergy}} allergies',
-  allergyFewer_one: '[{{count}} fewer {{allergy}} allergy]',
-  allergyFewer_other: '[{{count}} fewer {{allergy}} allergies]',
-  dietNew: '[New diet: {{diet}} ({{name}})]',
-  dietGone: '[Diet removed: {{diet}} ({{name}})]',
-  dietMore_one: '[{{count}} more {{diet}} diet]',
-  dietMore_other: '[{{count}} more {{diet}} diets]',
-  dietFewer_one: '[{{count}} fewer {{diet}} diet]',
-  dietFewer_other: '[{{count}} fewer {{diet}} diets]',
+  allergyGone: 'Allergy removed: {{allergy}} ({{name}})',
+  dietNew: 'New diet: {{diet}} ({{name}})',
+  dietGone: 'Diet removed: {{diet}} ({{name}})',
+  allergyNewCount_one: 'New allergy: {{allergy}} ({{count}} guest)',
+  allergyNewCount_other: 'New allergy: {{allergy}} ({{count}} guests)',
+  allergyGoneCount_one: 'Allergy removed: {{allergy}} ({{count}} guest)',
+  allergyGoneCount_other: 'Allergy removed: {{allergy}} ({{count}} guests)',
+  dietNewCount_one: 'New diet: {{diet}} ({{count}} guest)',
+  dietNewCount_other: 'New diet: {{diet}} ({{count}} guests)',
+  dietGoneCount_one: 'Diet removed: {{diet}} ({{count}} guest)',
+  dietGoneCount_other: 'Diet removed: {{diet}} ({{count}} guests)',
   comingMore_one: '{{count}} more coming',
   comingMore_other: '{{count}} more coming',
-  comingFewer_one: '[{{count}} fewer coming]',
-  comingFewer_other: '[{{count}} fewer coming]',
+  comingFewer_one: '{{count}} fewer coming',
+  comingFewer_other: '{{count}} fewer coming',
   count: '{{dish}} {{old}} to {{new}}',
   added: 'Added: {{dish}}, {{count}}',
   removed: 'Removed: {{dish}}, was {{count}}',
@@ -34,14 +34,15 @@ const { filled, many } = demoWords(CW);
 
 export { filled as cw };
 
-export const CODES: Record<string, { title: string; word: string }> = {
-  peanut: { title: 'Peanuts', word: 'peanut' },
-  shellfish: { title: 'Shellfish', word: 'shellfish' },
-  gluten: { title: 'Gluten', word: 'gluten' },
-  sesame: { title: 'Sesame', word: 'sesame' },
-  halal: { title: 'Halal', word: 'halal' },
-  vegetarian: { title: 'Vegetarian', word: 'vegetarian' },
-  vegan: { title: 'Vegan', word: 'vegan' },
+/** Each code's name as the guest form lists it, capital included; a change line's slot takes it whole. */
+export const CODES: Record<string, string> = {
+  peanut: 'Peanuts',
+  shellfish: 'Shellfish',
+  gluten: 'Gluten',
+  sesame: 'Sesame',
+  halal: 'Halal',
+  vegetarian: 'Vegetarian',
+  vegan: 'Vegan',
 };
 
 export interface Need {
@@ -91,18 +92,17 @@ export interface Reading {
   erased: ReadonlySet<string>;
 }
 
-function word(code: string): string {
-  return CODES[code]?.word ?? code;
-}
-
 export function codeTitle(code: string): string {
-  return CODES[code]?.title ?? code;
+  return CODES[code] ?? code;
 }
 
 function minus(a: readonly string[], b: readonly string[]): string[] {
   return a.filter((one) => !b.includes(one));
 }
 
+type Way = 'New' | 'Gone';
+
+/** A person's allergy or diet lines under the names rule; a count per code and per direction, never netted, for the rest. */
 function needLines(
   copy: Figures,
   now: Figures,
@@ -115,9 +115,16 @@ function needLines(
     ...now.needs.map((need) => need.guest),
     ...copy.needs.filter((need) => !after.has(need.guest)).map((need) => need.guest),
   ];
+  const base = kind === 'allergies' ? 'allergy' : 'diet';
+  const lineKind: LineKind = base;
   const named: Line[] = [];
-  const net = new Map<string, number>();
-  const lineKind: LineKind = kind === 'allergies' ? 'allergy' : 'diet';
+  const counts = new Map<string, Record<Way, number>>();
+
+  function count(code: string, way: Way, by: number): void {
+    const held = counts.get(code) ?? { New: 0, Gone: 0 };
+
+    counts.set(code, { ...held, [way]: held[way] + by });
+  }
 
   for (const guest of guests) {
     const was = before.get(guest);
@@ -126,59 +133,43 @@ function needLines(
     const has = is?.[kind] ?? [];
     const name = is?.name ?? was?.name ?? '';
     const counted = !reading.names || reading.erased.has(guest);
+    const moves: [Way, string[]][] = [
+      ['New', minus(has, had)],
+      ['Gone', minus(had, has)],
+    ];
 
-    for (const code of minus(has, had)) {
-      if (counted) net.set(code, (net.get(code) ?? 0) + 1);
-      else
-        named.push({
-          key: `${kind}-new-${guest}-${code}`,
-          kind: lineKind,
-          text: filled(kind === 'allergies' ? CW.allergyNew : CW.dietNew, {
-            [kind === 'allergies' ? 'allergy' : 'diet']: word(code),
-            name,
-          }),
-        });
-    }
-
-    for (const code of minus(had, has)) {
-      if (counted) net.set(code, (net.get(code) ?? 0) - 1);
-      else
-        named.push({
-          key: `${kind}-gone-${guest}-${code}`,
-          kind: lineKind,
-          text: filled(kind === 'allergies' ? CW.allergyGone : CW.dietGone, {
-            [kind === 'allergies' ? 'allergy' : 'diet']: word(code),
-            name,
-          }),
-        });
-    }
+    for (const [way, codes] of moves)
+      for (const code of codes)
+        if (counted) count(code, way, 1);
+        else
+          named.push({
+            key: `${kind}-${way}-${guest}-${code}`,
+            kind: lineKind,
+            text: filled(CW[`${base}${way}`], { [base]: codeTitle(code), name }),
+          });
   }
 
   if (kind === 'diets')
-    for (const code of new Set([...Object.keys(copy.otherDiets), ...Object.keys(now.otherDiets)]))
-      net.set(
-        code,
-        (net.get(code) ?? 0) + (now.otherDiets[code] ?? 0) - (copy.otherDiets[code] ?? 0),
-      );
+    for (const code of new Set([...Object.keys(copy.otherDiets), ...Object.keys(now.otherDiets)])) {
+      const change = (now.otherDiets[code] ?? 0) - (copy.otherDiets[code] ?? 0);
 
-  const counts: Line[] = [];
+      if (change !== 0) count(code, change > 0 ? 'New' : 'Gone', Math.abs(change));
+    }
 
-  for (const [code, change] of net) {
-    if (change === 0) continue;
-    const slot = kind === 'allergies' ? 'allergy' : 'diet';
-    const base = kind === 'allergies' ? 'allergy' : 'diet';
-    const way = change > 0 ? 'More' : 'Fewer';
-
-    counts.push({
-      key: `${kind}-count-${code}`,
-      kind: lineKind,
-      text: many(`${base}${way}` as PluralBase<typeof CW>, Math.abs(change), {
-        [slot]: word(code),
-      }),
-    });
-  }
-
-  return [...named, ...counts];
+  return [
+    ...named,
+    ...[...counts].flatMap(([code, ways]) =>
+      (['New', 'Gone'] as const)
+        .filter((way) => ways[way] > 0)
+        .map((way) => ({
+          key: `${kind}-${way}-count-${code}`,
+          kind: lineKind,
+          text: many(`${base}${way}Count` as PluralBase<typeof CW>, ways[way], {
+            [base]: codeTitle(code),
+          }),
+        })),
+    ),
+  ];
 }
 
 function shownName(item: Item, items: readonly Item[]): string {
@@ -508,6 +499,20 @@ const ERASED_COPY: Figures = counted(
   { 's-burrata': 42, 'm-risotto': 16, 'd-tart': 54 },
 );
 
+/** Amaka's peanut allergy is removed and Sophie's recorded: one line each way, never netted. */
+const SWAP_COPY: Figures = BASE;
+
+const SWAP_NOW: Figures = {
+  ...BASE,
+  needs: BASE_NEEDS.map((one) =>
+    one.guest === 'g-amaka'
+      ? { ...one, allergies: [] }
+      : one.guest === 'g-sophie'
+        ? { ...one, allergies: ['gluten', 'peanut'] }
+        : one,
+  ),
+};
+
 export const LONG_NAMES = {
   dishWas:
     'Slow-braised goat in Scotch bonnet pepper sauce with smoked plantain, roasted yam purée, ugu leaf oil and crisp shallots',
@@ -538,6 +543,7 @@ export const SAMPLES = {
     erased: [],
   },
   person: { copy: PERSON_COPY, now: PERSON_NOW, erased: [] },
+  swap: { copy: SWAP_COPY, now: SWAP_NOW, erased: [] },
   erased: { copy: ERASED_COPY, now: ERASED_NOW, erased: ['g-kwame'] },
   long: {
     copy: { ...BASE, items: LONG_ITEMS(LONG_NAMES.dishWas, LONG_NAMES.sideWas) },
