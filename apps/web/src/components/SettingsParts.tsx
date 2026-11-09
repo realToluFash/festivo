@@ -474,6 +474,7 @@ function DialogBox({
       >
         <ActionPair
           className="desk-nav"
+          stacks={false}
           dismiss={
             cancel ? (
               <button type="button" className="desk-nav-cancel" onClick={onDismiss}>
@@ -578,6 +579,7 @@ function AskBox(props: AskProps) {
         )}
         <ActionPair
           className="desk-ask-pair"
+          stacks={false}
           dismiss={
             <button
               ref={keepButton}
