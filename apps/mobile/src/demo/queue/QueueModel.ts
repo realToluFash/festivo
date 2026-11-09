@@ -183,7 +183,6 @@ function placeOf(s: QueueState, name: string): Place {
   return s.places[name] ?? place(name, 'table', 0, 0);
 }
 
-/** The queue's next table: the first with a guest to serve. */
 export function upNext(s: QueueState, id: SectionId): string | null {
   return s.queues[id].find((n) => placeOf(s, n).toServe > 0) ?? null;
 }
@@ -291,7 +290,6 @@ export function pick(s0: QueueState, name: string): QueueState {
   return s;
 }
 
-/** The order Save sends: the placed tables, then the rest in their present order. */
 export function builtOrder(queue: readonly string[], picked: readonly string[]): string[] {
   return [...picked, ...queue.filter((n) => !picked.includes(n))];
 }
@@ -330,7 +328,6 @@ export function conflictLine(by: string): string {
   return `${by} changed this queue while you were building it.`;
 }
 
-/** The waiter starts their next tray: "Moved up by" goes once its tray starts. */
 export function startTray(s0: QueueState): QueueState {
   const next = waiterNext(s0);
   if (next == null) return s0;
@@ -397,7 +394,6 @@ export function andList(xs: readonly string[]): string {
   return `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
 }
 
-/** Build the queue's line and its Save. */
 export function buildWords(queue: readonly string[], picked: readonly string[]) {
   const rest = queue.filter((n) => !picked.includes(n));
   const line =
