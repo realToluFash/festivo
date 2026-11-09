@@ -10,28 +10,28 @@ onFlowComplete:
 - openLink: ${METRO_URL}/--/settings/security
 - scrollUntilVisible:
     element:
-      id: 'password.set'
+      id: 'security.password'
     timeout: 60000
     centerElement: true
 - tapOn:
-    id: 'password.set'
+    id: 'security.password'
 - extendedWaitUntil:
     visible:
-      id: 'password.setCode'
+      id: 'security.code.field'
     timeout: 15000
 - runScript:
     file: ../scripts/latest-code.js
 - tapOn:
-    id: 'password.setCode'
+    id: 'security.code.field'
 - inputText: ${output.code}
 - tapOn:
-    id: 'password.setContinue'
+    id: 'security.code.continue'
 - extendedWaitUntil:
     visible:
-      id: 'password.setNew'
+      id: 'security.choose.password'
     timeout: 15000
 - tapOn:
-    id: 'password.setNew'
+    id: 'security.choose.password'
 - inputText: 'a-long-new-password-2026'
 - waitForAnimationToEnd
 - takeScreenshot: keys-up
@@ -45,11 +45,13 @@ onFlowComplete:
     env:
       ASK: /api?to=paused
 - tapOn:
-    id: 'password.setSave'
+    id: 'security.choose.save'
 - waitForAnimationToEnd
 - takeScreenshot: at-tap
 - assertNotVisible: '(?i)(shift|delete)'
-- assertVisible: '{{t:passwordCard.saving}}'
+- assertVisible:
+    id: 'security.choose.cancel'
+    enabled: false
 - waitForAnimationToEnd:
     timeout: 3000
 - waitForAnimationToEnd
@@ -61,7 +63,7 @@ onFlowComplete:
       ASK: /api?to=up
 - extendedWaitUntil:
     visible:
-      id: 'password.change'
+      id: 'security.password'
     timeout: 15000
 - waitForAnimationToEnd
 - takeScreenshot: answered
