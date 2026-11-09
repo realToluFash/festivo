@@ -193,6 +193,7 @@ describe('switching organisation', () => {
       needsOrganisation: false,
       hasPassword: true,
       twoFactorSetupPrompt: false,
+      colourScheme: null,
       waitingFor: null,
       providers: [],
       emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],

@@ -17,6 +17,7 @@ import { useSyncExternalStore } from 'react';
 
 import { followAccount } from './accountLanguage.ts';
 import { GATED, SIGNED_OUT, api } from './api.ts';
+import { followAccountScheme, schemeIn } from './colourScheme.ts';
 import { currentLocale } from './i18n/index.ts';
 
 export interface Session {
@@ -141,6 +142,8 @@ export async function adoptAccount(account: Account, asked = generation): Promis
   await followAccount(account);
   if (generation !== asked) return;
 
+  // A sign-in's answer carries the colours as /me does, so a new browser opens in them without a reload.
+  followAccountScheme(schemeIn(account));
   set({ status: 'signedIn', session: sessionFrom(account, organisations, paused) });
   // The account's language, followed after this read and before the session was set (sc-9267).
   if (currentLocale() !== askedIn) void rereadOrganisations();
@@ -165,6 +168,7 @@ export function followAccountRead(account: Account): void {
   if (state.status !== 'signedIn') return;
 
   const { session } = state;
+  followAccountScheme(schemeIn(account));
   set({
     status: 'signedIn',
     session: {

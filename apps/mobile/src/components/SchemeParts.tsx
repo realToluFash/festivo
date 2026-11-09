@@ -272,7 +272,6 @@ export function PreviewCard({ scheme }: { scheme: Scheme }) {
         size={22}
         weight="bold"
         accessible={false}
-        numberOfLines={1}
         style={[styles.previewName, { color: look.on }]}
       >
         {name}
