@@ -45,8 +45,12 @@
   column-gap: var(--space3xl);
 }
 
-.dc-acts .desk-text {
+.dc-acts .desk-text,
+.dc-preview-bar .desk-text {
   min-width: var(--sizeHit);
+}
+
+.dc-acts .desk-text {
   margin-inline: 0;
   padding-inline: 0;
 }
