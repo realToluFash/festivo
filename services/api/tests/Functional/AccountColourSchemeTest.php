@@ -87,7 +87,7 @@ final class AccountColourSchemeTest extends ApiTestCase
 
         $body = $this->call('PUT', '/api/auth/colour-scheme', ['colourScheme' => 'green'], $user);
         $violations = Type\vec(Type\shape(['message' => Type\string()], true))->coerce($body['violations']);
-        self::assertSame("That isn't one of Soirely's colour schemes, so nothing was saved. Choose one of the eight.", $violations[0]['message']);
+        self::assertSame("That is not one of Soirely's colour schemes, so nothing was saved. Choose one of the eight.", $violations[0]['message']);
         self::assertSame(ColourScheme::Sorbet, $this->fresh($user)->getColourScheme());
     }
 

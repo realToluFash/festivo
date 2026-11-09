@@ -54,7 +54,7 @@
     "validation.phone_too_short": "That number looks too short for {country}. Check it and try again.",
     "validation.recovery_code_required": "Enter one of your recovery codes.",
     "validation.timezone_invalid": "Choose a time zone.",
-    "validation.colour_scheme_unknown": "That isn't one of Soirely's colour schemes, so nothing was saved. Choose one of the eight.",
+    "validation.colour_scheme_unknown": "That is not one of Soirely's colour schemes, so nothing was saved. Choose one of the eight.",
     "validation.timezone_unknown": "That time zone isn't one we know, so nothing was saved. Choose one from the list.",
     "members.already_a_member": "That person is already a member of this organisation.",
     "members.already_a_member_named": "{email} is already a member of {organisation}. Change their role from their row in Members instead.",
