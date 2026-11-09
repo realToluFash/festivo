@@ -85,6 +85,7 @@ export const DOMAIN_WORDS = {
   notYours: 'Add a domain your own address is at.',
   added: 'Added. People whose main email address is at it can now ask to join.',
   removed: (domain: string) => `${domain} removed.`,
+  proved: 'Proved',
 } as const;
 
 export const LINK_WORDS = {
@@ -210,6 +211,7 @@ export const GENERAL_STATES = [
   'heldLinked',
   'domainStopped',
   'deleteUncounted',
+  'domainBoth',
 ] as const;
 
 export type GeneralState = (typeof GENERAL_STATES)[number];
@@ -263,6 +265,8 @@ export type CardSaid = { kind: 'saved'; words: string } | { kind: 'transferred';
 export interface Domain {
   name: string;
   stopped: boolean;
+  /** Also proved in Data and control › Email domains (sc-560): the row carries the Proved tag. */
+  proved?: boolean;
 }
 
 export interface GeneralStart {
@@ -348,6 +352,8 @@ export function generalStart(
       return { ...page, link: 'turnedOff' };
     case 'domainStopped':
       return { ...page, domains: [{ name: YOUR_DOMAIN, stopped: true }] };
+    case 'domainBoth':
+      return { ...page, domains: [{ name: YOUR_DOMAIN, stopped: false, proved: true }] };
     case 'transfer':
       return owner ? { ...page, dialog: 'transfer', transferPicked: true } : page;
     case 'transferred':
@@ -420,7 +426,7 @@ export const SAMPLE_DETAILS: OrganisationDetails = {
 
 export const MALFORMED_CONTACT = 'hello@ireevents';
 
-const SHOWN_IN = 'en';
+export const SHOWN_IN = 'en';
 
 export const LANGUAGE_NAMES: Record<string, string> = {
   'languageNames.en': 'English',
@@ -466,14 +472,6 @@ export const PICKERS: Record<Picked, { search: string }> = {
   timezone: { search: 'Search time zones' },
   locale: { search: 'Search languages' },
 };
-
-export function shownChoices(field: Picked, needle: string): readonly Choice[] {
-  const wanted = needle.trim().toLocaleLowerCase(SHOWN_IN);
-
-  return wanted === ''
-    ? choicesOf(field)
-    : choicesOf(field).filter((choice) => choice.name.toLocaleLowerCase(SHOWN_IN).includes(wanted));
-}
 
 export function detailProblem(field: OrganisationField, value: string): string | null {
   const problem = organisationProblem(field, value);
@@ -538,6 +536,10 @@ const PUBLIC_DOMAINS = new Set([
   'yandex.com',
   'zoho.com',
 ]);
+
+export function isPublicDomain(domain: string): boolean {
+  return PUBLIC_DOMAINS.has(domain);
+}
 
 export function domainProblem(typed: string): string | null {
   const problem = companyDomainProblem(typed);
@@ -687,6 +689,7 @@ export const GENERAL_PAGES: readonly { name: string; states: readonly DemoLink[]
       general('addDomain', 'Add a domain'),
       general('removeDomain', 'Remove ire.events'),
       general('domainStopped', 'A domain stopped'),
+      general('domainBoth', 'ire.events on both lists: Proved'),
       general('cardsLoading', 'Domains loading, the link not loaded'),
       general('replaceLink', 'Replace the link'),
       general('linkOff', 'The link turned off'),

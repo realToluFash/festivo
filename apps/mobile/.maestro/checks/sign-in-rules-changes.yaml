@@ -3,10 +3,10 @@ appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/sign-in-rules
 - extendedWaitUntil:
-    visible: '{{t:settings.signInRules}}|{{t:signInRules.readTitle}}'
+    visible: '{{t:settings.signInRules}}'
     timeout: 30000
 - scrollUntilVisible:
-    element: '{{t:signInRules.changesTitle}}'
+    element: '{{t:signInRules.stand.changedTitle}}'
     direction: DOWN
 - takeScreenshot: sign-in-rules-changes-top
 - scroll

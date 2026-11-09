@@ -52,6 +52,9 @@ export function SignIn() {
     return params.has('signed-out') ? { kind: 'sessionEnded' } : { kind: 'ready' };
   });
   const form = useRef<HTMLFormElement>(null);
+  const [typedEmail, setTypedEmail] = useState(
+    status.kind === 'timedOut' ? status.rule.email : (carried?.email ?? ''),
+  );
   const checks = useFormChecks(
     ['email', 'password'] as const,
     (field, value) =>
@@ -121,7 +124,11 @@ export function SignIn() {
             <p className="auth-notice-title">{notice.title}</p>
             <p>{notice.body}</p>
             {status.kind === 'rateLimited' && (
-              <Link className="link-button" to="/forgot-password">
+              <Link
+                className="link-button"
+                to="/forgot-password"
+                state={{ email: typedEmail.trim() }}
+              >
                 {t('signIn.lockedReset')}
               </Link>
             )}
@@ -178,7 +185,10 @@ export function SignIn() {
                   aria-invalid={checks.errors.email != null}
                   aria-describedby={checks.errors.email == null ? undefined : 'email-error'}
                   onBlur={(event) => checks.left('email', event.target.value)}
-                  onChange={(event) => checks.edited('email', event.target.value)}
+                  onChange={(event) => {
+                    setTypedEmail(event.target.value);
+                    checks.edited('email', event.target.value);
+                  }}
                 />
                 {checks.errors.email != null && (
                   <FieldError id="email-error" message={checks.errors.email} />
@@ -188,7 +198,11 @@ export function SignIn() {
               <div className={checks.errors.password == null ? 'field' : 'field field-wrong'}>
                 <div className="field-heading">
                   <label htmlFor="password">{t('signIn.password')}</label>
-                  <Link className="link-button" to="/forgot-password">
+                  <Link
+                    className="link-button"
+                    to="/forgot-password"
+                    state={{ email: typedEmail.trim() }}
+                  >
                     {t('recovery.forgot')}
                   </Link>
                 </div>

@@ -106,4 +106,14 @@ describe('runtime configuration', () => {
       expect(config().scheme, String(scheme)).toBe(defaultScheme);
     }
   });
+
+  it("keeps support's address, and names Soirely's own when there is none", async () => {
+    await load(respond({ apiBaseUrl: 'http://a', supportAddress: 'help@example.test' }));
+    expect(config().supportAddress).toBe('help@example.test');
+
+    for (const supportAddress of [undefined, '', 7]) {
+      await load(respond({ apiBaseUrl: 'http://a', supportAddress }));
+      expect(config().supportAddress, String(supportAddress)).toBe('support@soirely.com');
+    }
+  });
 });

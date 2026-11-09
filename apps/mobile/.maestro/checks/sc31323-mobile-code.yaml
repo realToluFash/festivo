@@ -1,0 +1,21 @@
+# Your mobile number (onboarding), Code blank and a number typed, sent: "Choose a country." is about Code. Leaves it on screen for a screen-reader pass. Needs a device region that is no listed country. sc-31323.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/phone?from=onboarding
+- extendedWaitUntil:
+    visible:
+      id: 'phone.number'
+    timeout: 30000
+- tapOn:
+    id: 'phone.number'
+- inputText: '241234567'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- tapOn:
+    id: 'phone.send'
+- waitForAnimationToEnd
+- assertVisible: '{{t:forms.countryBlank}}'
+- takeScreenshot: mobile-code-refused

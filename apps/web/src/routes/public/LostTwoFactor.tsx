@@ -386,12 +386,25 @@ function Start({
   );
 }
 
-function Nobody({ supportAddress }: { supportAddress: string }) {
+/** Soirely support, where nobody can confirm it is you: from this page, or from a reset link's code step (sc-29067). */
+export function Nobody({
+  supportAddress,
+  intro,
+  onBack,
+}: {
+  supportAddress: string;
+  intro?: string;
+  onBack?: () => void;
+}) {
   const { t } = useTranslation();
 
   return (
     <>
-      <Heading title={t('lostTwoFactor.nobodyTitle')} intro={t('lostTwoFactor.nobodyIntro')} />
+      {onBack != null && <ColumnBack onClick={onBack} />}
+      <Heading
+        title={t('lostTwoFactor.nobodyTitle')}
+        intro={intro ?? t('lostTwoFactor.nobodyIntro')}
+      />
       <a className="button button-primary" href={`mailto:${supportAddress}`}>
         {t('lostTwoFactor.emailSupport', { address: supportAddress })}
       </a>

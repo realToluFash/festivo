@@ -86,7 +86,9 @@ describe('the interim screens open their Settings page', () => {
 
 describe('"Sign out" on the Settings list', () => {
   it('is wired to the same sign-out as the "This device" row, whose outcome signedIn.test.ts checks', () => {
-    expect(source(join(SRC, 'components', 'SettingsList.tsx'))).toContain('onPress={signOutHere}');
+    expect(source(join(SRC, 'components', 'SettingsList.tsx'))).toContain(
+      'onSignOut={signOutHere}',
+    );
     expect(source(join(APP, 'settings', 'security.tsx'))).toContain('onSignOutHere={signOutHere}');
   });
 });

@@ -6,7 +6,7 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { EventField } from '../events/EventEdits.tsx';
 import { BoxField } from '../events/EventsPick.tsx';
-import { LineIcon } from '../settings/AccountCard.tsx';
+import { LineIcon } from '../../components/AccountCard.tsx';
 import { GREET_AS_MAX, greetAsCount } from './GuestsModel.ts';
 import type { SampleGuest } from './GuestsSample.ts';
 import { W, say } from './GuestsWords.ts';

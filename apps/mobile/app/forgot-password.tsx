@@ -1,5 +1,5 @@
 import { ApiError } from '@soirely/api-client';
-import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
+import { formatCountdown, formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
@@ -14,7 +14,9 @@ import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
 import { mailAppOpens, openMailApp } from '../src/mailApp.ts';
 import { InsideField } from '../src/steps/InsideField.tsx';
 import { Heading, Plain, Says } from '../src/steps/Lines.tsx';
+import { RESEND_SECONDS } from '../src/steps/rules.ts';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
+import { useCountdown } from '../src/steps/useCountdown.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
 /** The step that pushed this one, when it is not Sign in; `link`, a dead reset link, replaced itself with it. */
@@ -33,6 +35,7 @@ export default function ForgotPassword() {
   const { from, email: carried } = useLocalSearchParams<{ from?: ForgotFrom; email?: string }>();
   const [status, setStatus] = useState<Status>({ kind: 'asking' });
   const [mail, setMail] = useState(false);
+  const { left: cooldown, restart: setCooldown } = useCountdown(0);
   // Uncontrolled: a `value` prop re-renders between keystrokes and drops characters.
   const typed = useRef(carried ?? '');
   // What the field remounts with after Check your email, as it was typed; at first, the address sign-in carried.
@@ -61,6 +64,7 @@ export default function ForgotPassword() {
     try {
       await api.forgotPassword(email);
       setStatus({ kind: 'sent', email, again });
+      if (again) setCooldown(RESEND_SECONDS);
     } catch (error) {
       setStatus(refusalFrom(error));
     }
@@ -86,6 +90,10 @@ export default function ForgotPassword() {
 
   if (status.kind === 'sent') {
     const sendAgain = () => void send(status.email, true);
+    const againLabel =
+      cooldown > 0
+        ? t('recovery.sendAgainIn', { time: formatCountdown(cooldown) })
+        : t('recovery.sendAgain');
 
     return (
       <StepScreen
@@ -99,15 +107,17 @@ export default function ForgotPassword() {
                 testID="recovery.openMail"
               />
               <QuietButton
-                label={t('recovery.sendAgain')}
+                label={againLabel}
                 onPress={sendAgain}
+                off={cooldown > 0}
                 testID="recovery.sendAgain"
               />
             </>
           ) : (
             <PrimaryButton
-              label={t('recovery.sendAgain')}
+              label={againLabel}
               onPress={sendAgain}
+              off={cooldown > 0}
               testID="recovery.sendAgain"
             />
           )

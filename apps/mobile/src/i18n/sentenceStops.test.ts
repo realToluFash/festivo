@@ -34,18 +34,24 @@ it.each(['en', 'es', 'fr', 'pt'])(
 );
 
 it.each(['Party Time!', "Who's Next?", 'Galas…', 'Galas Ltd..'])(
-  'ends the tablet settings line on %j as typed',
+  'ends a line on %j as typed',
   (name) => {
-    expect(i18n.t('settings.chooseLineWithOrganisation', { name })).toMatch(
-      new RegExp(`the settings for ${name.replace(/[.?]/g, '\\$&')}$`),
-    );
+    expect(
+      i18n.t('test.unused', {
+        defaultValue: 'Organisation holds the settings for {{name}}.',
+        name,
+      }),
+    ).toMatch(new RegExp(`the settings for ${name.replace(/[.?]/g, '\\$&')}$`));
   },
 );
 
 it('gives a name ending in a letter the string’s full stop', () => {
-  expect(i18n.t('settings.chooseLineWithOrganisation', { name: 'Galas Ltd' })).toMatch(
-    /the settings for Galas Ltd\.$/,
-  );
+  expect(
+    i18n.t('test.unused', {
+      defaultValue: 'Organisation holds the settings for {{name}}.',
+      name: 'Galas Ltd',
+    }),
+  ).toMatch(/the settings for Galas Ltd\.$/);
 });
 
 it('drops only a full stop, never a question mark or a space after the value', () => {

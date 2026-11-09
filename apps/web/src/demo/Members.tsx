@@ -17,6 +17,7 @@ import { ClaimDialog, InviteDialog, RecoveryAsk, RequestDialog } from './Members
 import { PersonPage, RoleDialog } from './MembersPerson.tsx';
 import {
   approvalRoles,
+  ALSO_MEMBER,
   approved,
   type CardStep,
   counts,
@@ -277,6 +278,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         events={ledBy(leads, person.id)}
         leadsLoad={leadsLoad}
         onLoadLeads={() => setLeadsLoad('retrying')}
+        alsoMember={state === 'alsoMember' ? (ALSO_MEMBER[person.id] ?? null) : null}
         say={say}
         level={split ? 2 : 1}
         tell={tell}

@@ -54,7 +54,7 @@ export const SEND_MS = 500;
 
 const sum = (values: readonly number[]): number => values.reduce((all, one) => all + one, 0);
 
-/** Each part rounded down, the cents left over to the largest part (between equal parts, the first added): the parts add up exactly. */
+/** Each part rounded down, the cents left over one each to the parts that lost most in rounding (between equal remainders, the first added): the parts add up exactly. */
 export function apportion(
   amount: number,
   weights: readonly number[],
@@ -64,11 +64,11 @@ export function apportion(
   const parts = weights.map((weight) => Math.floor((amount * weight) / whole));
   const left = amount - sum(parts);
   if (left === 0 || whole !== sum(weights)) return parts;
-  const largest = weights.reduce(
-    (at, weight, index) => (weight > (weights[at] ?? 0) ? index : at),
-    0,
-  );
-  parts[largest] = (parts[largest] ?? 0) + left;
+  const remainders = weights.map((weight) => (amount * weight) % whole);
+  const byRemainder = weights
+    .map((_, index) => index)
+    .sort((a, b) => (remainders[b] ?? 0) - (remainders[a] ?? 0) || a - b);
+  for (const index of byRemainder.slice(0, left)) parts[index] = (parts[index] ?? 0) + 1;
 
   return parts;
 }

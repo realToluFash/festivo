@@ -47,9 +47,7 @@ import {
   ceilingOf,
   ceilingProblem,
   ceilingsOf,
-  categoryGone,
   fieldsWrong,
-  GONE_CATEGORY,
   headsOf,
   lineAmounts,
   linesOf,
@@ -680,12 +678,12 @@ function SummaryCard({
         ]}
       />
       {step && next != null ? (
-        <div className="bud-card-foot">
+        <div className="bud-card-foot bud-card-foot-stack">
           <CardStrong>{needsYou(next)}</CardStrong>
           <CardStep label={W.markPaid} onClick={() => onMark(next)} />
         </div>
       ) : step && early ? (
-        <div className="bud-card-foot">
+        <div className="bud-card-foot bud-card-foot-stack">
           <CardStrong>{`${W.notPricedCount(sum.notPriced)}.`}</CardStrong>
           <CardStep label="Add a price" onClick={onPrice} />
         </div>
@@ -1685,7 +1683,7 @@ function startCeilings(first: string): Record<CeilingKey, string> {
     ceiling_decimals: '640.505',
   }[first as 'ceiling_nan'];
   if (bad != null) values.transport = bad;
-  if (first === 'ceiling_refused') values[GONE_CATEGORY] = '';
+  if (first === 'ceiling_refused') values.catering = '13,000.005';
 
   return values;
 }
@@ -1712,10 +1710,10 @@ function CeilingSheet({
   ].includes(first);
   const [tried, setTried] = useState(refused);
   const [busy, setBusy] = useState(first === 'ceiling_saving');
-  const gone = first === 'ceiling_refused' ? GONE_CATEGORY : null;
-  const keys = CEILING_KEYS.filter((key) => key !== gone);
-  const [server, setServer] = useState<string | null>(() =>
-    gone == null ? null : categoryGone(ceilingName(gone)),
+  const [server, setServer] = useState<{ key: CeilingKey; words: string } | null>(() =>
+    first === 'ceiling_refused'
+      ? { key: 'catering', words: ceilingProblem('13,000.005', currency) ?? '' }
+      : null,
   );
   const [fields] = useState(() =>
     Object.fromEntries(CEILING_KEYS.map((key) => [key, createRef<HTMLInputElement>()])),
@@ -1724,13 +1722,18 @@ function CeilingSheet({
   const problems = Object.fromEntries(
     CEILING_KEYS.map((key) => [key, ceilingProblem(values[key], currency)]),
   ) as Record<CeilingKey, string | null>;
-  const shown = (key: CeilingKey) => (tried ? problems[key] : null);
-  const change = (key: CeilingKey, value: string) => setValues((now) => ({ ...now, [key]: value }));
-  const count = tried ? keys.filter((key) => problems[key] != null).length : 0;
+  const shown = (key: CeilingKey) =>
+    tried ? problems[key] : server?.key === key ? server.words : null;
+  const change = (key: CeilingKey, value: string) => {
+    setValues((now) => ({ ...now, [key]: value }));
+    if (server?.key === key) setServer(null);
+  };
+  const count = tried ? CEILING_KEYS.filter((key) => problems[key] != null).length : 0;
   const typed = Object.fromEntries(
-    keys
-      .filter((key) => values[key].trim() !== '' && problems[key] == null)
-      .map((key) => [key, minorOf(values[key], currency)]),
+    CEILING_KEYS.filter((key) => values[key].trim() !== '' && problems[key] == null).map((key) => [
+      key,
+      minorOf(values[key], currency),
+    ]),
   ) as Partial<Record<CeilingKey, number>>;
   const said = categoryCeilingsLine(typed);
 
@@ -1738,7 +1741,7 @@ function CeilingSheet({
     if (busy) return;
     setTried(true);
     setServer(null);
-    const wrong = keys.find((key) => problems[key] != null);
+    const wrong = CEILING_KEYS.find((key) => problems[key] != null);
     if (wrong != null) {
       fields[wrong]?.current?.focus();
       return;
@@ -1753,6 +1756,7 @@ function CeilingSheet({
       title={Object.keys(ceilings).length === 0 ? 'Set a ceiling' : 'Change the ceiling'}
       verb={busy ? W.saving : 'Save the ceiling'}
       locked={busy}
+      {...(server == null || fields[server.key] == null ? {} : { first: fields[server.key] })}
       onDismiss={onDismiss}
       onConfirm={save}
     >
@@ -1762,7 +1766,12 @@ function CeilingSheet({
           {fieldsWrong(count)}
         </p>
       )}
-      {server != null && <AlertInset>{server}</AlertInset>}
+      {server != null && !tried && (
+        <p className="desk-error" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          One field needs fixing, so nothing was saved.
+        </p>
+      )}
       <div className="bud-ceiling-whole">
         <MoneyField
           label="Whole event"
@@ -1776,19 +1785,17 @@ function CeilingSheet({
       </div>
       <p className="bud-caps">Each category, optional</p>
       <div className="bud-ceiling-grid">
-        {keys
-          .filter((key) => key !== 'whole')
-          .map((key) => (
-            <MoneyField
-              key={key}
-              label={ceilingName(key)}
-              symbol={symbol}
-              value={values[key]}
-              error={shown(key)}
-              {...(fields[key] == null ? {} : { inputRef: fields[key] })}
-              onChange={(value) => change(key, value)}
-            />
-          ))}
+        {CEILING_KEYS.filter((key) => key !== 'whole').map((key) => (
+          <MoneyField
+            key={key}
+            label={ceilingName(key)}
+            symbol={symbol}
+            value={values[key]}
+            error={shown(key)}
+            {...(fields[key] == null ? {} : { inputRef: fields[key] })}
+            onChange={(value) => change(key, value)}
+          />
+        ))}
       </div>
       {said != null && <p className="desk-note">{said}</p>}
     </BudgetDialog>

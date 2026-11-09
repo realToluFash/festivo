@@ -17,7 +17,6 @@ import {
   ownershipSteps,
   restoreDeadline,
   savedWords,
-  shownChoices,
   transferProblems,
   transferRefusal,
 } from './general.ts';
@@ -145,11 +144,6 @@ describe('General’s sample (sc-30063)', () => {
     );
     expect(nameMatches('Ire Events')).toBe(true);
     expect(nameMatches('Ire events')).toBe(false);
-  });
-
-  it('finds a choice by any part of its name', () => {
-    expect(shownChoices('currency', 'naira').map((one) => one.code)).toEqual(['NGN']);
-    expect(shownChoices('locale', '').length).toBeGreaterThan(1);
   });
 
   it('links every state from the demo home', () => {

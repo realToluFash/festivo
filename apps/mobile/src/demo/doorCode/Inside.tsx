@@ -21,7 +21,7 @@ import {
   rowLine,
   seesEveryEvent,
 } from '../people/PeopleSample.ts';
-import { LineIcon } from '../settings/AccountCard.tsx';
+import { LineIcon } from '../../components/AccountCard.tsx';
 import { Brand } from '../../components/Brand.tsx';
 import { Initials } from '../../components/Initials.tsx';
 import { Back } from '../../components/SettingsParts.tsx';

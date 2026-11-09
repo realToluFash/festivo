@@ -1,4 +1,3 @@
-import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -6,26 +5,22 @@ import { useTranslation } from 'react-i18next';
 import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
-import { ContactsCards } from '../../src/components/ContactsCard.tsx';
-import { NameCard } from '../../src/components/NameCard.tsx';
+import { AccountPage } from '../../src/components/AccountPage.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { Text, type TextHandle } from '../../src/components/Text.tsx';
 import { moveScreenReaderFocus } from '../../src/components/screenReaderFocus.ts';
 import { useOffline } from '../../src/offline.ts';
-import { TimeZoneCard } from '../../src/components/TimeZoneCard.tsx';
 import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { reloadSignedIn, rereadAccount, useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
-/** Settings > Account in the app: the name (sc-22741), the address and phone cards (sc-113), then the time zone (sc-868). */
+/** Settings > Your account in the app, summary first: you, About you, then the addresses and numbers (sc-30411). */
 export default function Account() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();
   const { kind } = useLayout();
   const { account } = useSignedIn();
-  // Set by a verify screen popping back here; a new value starts the cards afresh, to say so.
-  const { verified } = useLocalSearchParams<{ verified?: string }>();
   const alone = !settingsListBeside(kind);
   const title = useRef<TextHandle>(null);
   const [loaded, setLoaded] = useState(false);
@@ -80,16 +75,8 @@ export default function Account() {
             </View>
           )}
           {account != null && (
-            <View style={styles.cards}>
-              <NameCard name={account.name} kind={kind} onSaved={reloadSignedIn} />
-              <ContactsCards
-                key={verified ?? ''}
-                account={account}
-                kind={kind}
-                verified={verified ?? null}
-                onChanged={reloadSignedIn}
-              />
-              <TimeZoneCard timezone={account.timezone} kind={kind} onSaved={reloadSignedIn} />
+            <View style={styles.blocks}>
+              <AccountPage account={account} onChanged={reloadSignedIn} />
             </View>
           )}
         </Screen>
@@ -113,7 +100,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space5xl,
     paddingBottom: tokens.space6xl,
   },
-  cards: { gap: tokens.spaceLg },
+  blocks: { gap: 18 },
 });
 
 const CONTENT: Record<LayoutKind, object> = {
