@@ -8,6 +8,7 @@ export type AlertButton = 'Team' | 'Go to table' | 'Give to…';
 
 export interface Tray {
   table: string;
+  section: SectionId;
   plates: number;
   stage: TrayStage;
   pausedBy: string | null;
@@ -73,6 +74,7 @@ export interface GiveSheet {
   waiter: string;
   table: string;
   section: SectionId;
+  pausedBy: string;
 }
 
 export interface Summary {
@@ -160,32 +162,38 @@ const WAITERS: readonly Waiter[] = [
     name: 'Kunle Ajayi',
     home: 'A',
     asWell: null,
-    tray: { table: 'Table 4', plates: 3, stage: 'Dishing', pausedBy: null },
+    tray: { table: 'Table 4', section: 'A', plates: 3, stage: 'Dishing', pausedBy: null },
   },
   {
     name: 'Chidi Okafor',
     home: 'D',
     asWell: null,
-    tray: { table: 'Table 16', plates: 3, stage: 'On its way', pausedBy: null },
+    tray: { table: 'Table 16', section: 'D', plates: 3, stage: 'On its way', pausedBy: null },
   },
   {
     name: 'Bisi Lawal',
     home: 'B',
     asWell: null,
-    tray: { table: 'Table 6', plates: 2, stage: 'Checked', pausedBy: null },
+    tray: { table: 'Table 6', section: 'B', plates: 2, stage: 'Checked', pausedBy: null },
   },
   {
     name: 'Funmi Bakare',
     home: 'B',
     asWell: null,
-    tray: { table: 'Table 9', plates: 3, stage: 'On its way', pausedBy: 'Funmi Bakare' },
+    tray: {
+      table: 'Table 9',
+      section: 'B',
+      plates: 3,
+      stage: 'On its way',
+      pausedBy: 'Funmi Bakare',
+    },
   },
   { name: 'Grace Udo', home: 'D', asWell: 'B', tray: null },
   {
     name: 'Yinka Hassan',
     home: 'E',
     asWell: null,
-    tray: { table: 'Table 22', plates: 4, stage: 'Checked', pausedBy: null },
+    tray: { table: 'Table 22', section: 'E', plates: 4, stage: 'Checked', pausedBy: null },
   },
 ];
 
@@ -438,6 +446,10 @@ export function nobodyElse(section: string): string {
   return `Nobody else is on ${section}.`;
 }
 
+export function giveLine(s: Summary, give: GiveSheet): string {
+  return `${give.waiter} · ${sectionName(s, give.section)} · paused by ${give.pausedBy}`;
+}
+
 export function sectionName(s: Summary, id: SectionId): string {
   return s.sections.find((x) => x.id === id)?.name ?? `Section ${id}`;
 }
@@ -447,8 +459,13 @@ export function openGive(s0: ServiceState, alertId: string): ServiceState {
   const s = copy(s0);
   const a = s.summary.alerts.find((x) => x.id === alertId);
   const w = a == null ? undefined : waiterOf(s.summary, a.waiter);
-  if (a == null || w?.tray == null) return s;
-  s.give = { waiter: w.name, table: w.tray.table, section: w.home };
+  if (a == null || w?.tray?.pausedBy == null) return s;
+  s.give = {
+    waiter: w.name,
+    table: w.tray.table,
+    section: w.tray.section,
+    pausedBy: w.tray.pausedBy,
+  };
   s.refused = '';
   return s;
 }

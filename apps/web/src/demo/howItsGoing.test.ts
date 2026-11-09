@@ -9,6 +9,7 @@ import {
   candidates,
   carryOn,
   fresh,
+  giveLine,
   giveTo,
   kitchenRows,
   lineKind,
@@ -123,6 +124,31 @@ describe('Give to…', () => {
       { name: 'Bisi Lawal', asWell: false, inHand: 'Tray in hand · Table 6' },
       { name: 'Grace Udo', asWell: true, inHand: 'No tray in hand' },
     ]);
+  });
+
+  it('takes the section from the tray’s table, not its waiter’s home', () => {
+    const s0 = fresh();
+    const grace = waiterOf(s0.summary, 'Grace Udo');
+    if (grace) {
+      grace.tray = { table: 'Table 10', section: 'B', plates: 2, stage: 'Dishing', pausedBy: null };
+    }
+    const s = openGive(pause(s0, 'Grace Udo'), 'paused:Table 10');
+    expect(s.give?.section).toBe('B');
+    expect(s.give && candidates(s.summary, s.give).map((c) => c.name)).toEqual([
+      'Bisi Lawal',
+      'Funmi Bakare',
+    ]);
+  });
+
+  it('names who paused the tray, whoever that was', () => {
+    const lead = seed('giveNobody');
+    expect(lead.give && giveLine(lead.summary, lead.give)).toBe(
+      `Kunle Ajayi · Section A · paused by ${LEAD}`,
+    );
+    const own = openGive(fresh(), 'paused:Table 9');
+    expect(own.give && giveLine(own.summary, own.give)).toBe(
+      'Funmi Bakare · Section B · paused by Funmi Bakare',
+    );
   });
 
   it('lists nobody on a section with one waiter', () => {

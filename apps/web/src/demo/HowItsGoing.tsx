@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
+import { useDialogKeys } from '../dialogFocus.ts';
+
 import {
   AS_OF,
   type Alert,
@@ -15,6 +17,7 @@ import {
   buttonOf,
   candidates,
   closeGive,
+  giveLine,
   giveTo,
   kitchenRows,
   lineKind,
@@ -27,7 +30,6 @@ import {
   seed,
   serviceStateOf,
   waiterLine,
-  waiterOf,
   waitersOn,
 } from './howItsGoing.ts';
 import './howItsGoing.css';
@@ -55,7 +57,7 @@ const NOBODY_GLYPH = [
   'm17 8 5 5',
   'm22 8-5 5',
 ];
-const BEHIND_GLYPH = ['M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z', 'M12 7v5', 'M12 16h.01'];
+const BEHIND_GLYPH = ['M12 6v6l4 2', 'M20 12v5', 'M20 21h.01', 'M21.25 8.2A10 10 0 1 0 16 21.16'];
 const CLOCK_GLYPH = ['M22 12a10 10 0 1 1-20 0 10 10 0 1 1 20 0', 'M12 6v6l4 2'];
 const PAUSE_GLYPH = ['M9 5v14', 'M15 5v14'];
 const DIAMOND_GLYPH = ['M12 3 21 12 12 21 3 12z'];
@@ -89,6 +91,17 @@ function HowItsGoing({ name }: { name: ServiceStateName }) {
   const [state, setState] = useState(() => seed(name));
   const [view, setView] = useState<View>(() => (seed(name).manage ? 'going' : 'plan'));
   const [note, setNote] = useState('');
+  const focusTo = useRef('');
+
+  useEffect(() => {
+    if (focusTo.current === '') return;
+    document.querySelector<HTMLElement>(focusTo.current)?.focus();
+    focusTo.current = '';
+  });
+
+  function setFocusTo(selector: string): void {
+    focusTo.current = selector;
+  }
 
   const views: View[] = state.manage ? ['going', 'plan', 'list'] : ['plan', 'list'];
   const showing = views.includes(view) ? view : 'plan';
@@ -176,7 +189,9 @@ function HowItsGoing({ name }: { name: ServiceStateName }) {
           </div>
         </main>
       </div>
-      {state.give != null && <GiveDialog state={state} act={act} setNote={setNote} />}
+      {state.give != null && (
+        <GiveDialog state={state} act={act} setNote={setNote} setFocusTo={setFocusTo} />
+      )}
       <div className="visually-hidden" aria-live="polite">
         {state.say}
       </div>
@@ -285,7 +300,7 @@ function Going({
           <h2 id="hig-course-line" className="hig-course-line">
             {c.served} of {c.due} guests have had {c.name}
           </h2>
-          <Bar parts={[...counts].reverse()} due={c.due} />
+          <Bar parts={[...counts].reverse()} />
           <div className="hig-counts">
             <ul className="hig-count-list">
               {counts.map((x) => (
@@ -442,7 +457,7 @@ function WaiterRow({
   const kind = lineKind(w);
 
   return (
-    <li className="hig-waiter">
+    <li className="hig-waiter" data-line={`${sec.id}:${w.name}`} tabIndex={-1}>
       <span className="hig-initials" aria-hidden="true">
         {initials(w.name)}
       </span>
@@ -543,6 +558,7 @@ function AlertRow({
         <button
           className="button button-primary hig-alert-button"
           type="button"
+          data-give={a.id}
           onClick={() => act(openGive(state, a.id))}
         >
           Give to…
@@ -574,46 +590,43 @@ function GiveDialog({
   state,
   act,
   setNote,
+  setFocusTo,
 }: {
   state: ServiceState;
   act: (next: ServiceState) => void;
   setNote: (n: string) => void;
+  setFocusTo: (selector: string) => void;
 }) {
   const give = state.give;
-  const first = useRef<HTMLHeadingElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const opener = give == null ? '' : `[data-give="paused:${give.table}"]`;
+  const close = () => {
+    act(closeGive(state));
+    setFocusTo(opener);
+  };
 
-  const onEscape = useRef<() => void>(() => undefined);
-
-  useEffect(() => first.current?.focus(), []);
-  useEffect(() => {
-    onEscape.current = () => act(closeGive(state));
-  });
-  useEffect(() => {
-    const keys = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onEscape.current();
-    };
-    document.addEventListener('keydown', keys);
-
-    return () => document.removeEventListener('keydown', keys);
-  }, []);
+  useDialogKeys(box, close, false);
+  useEffect(() => box.current?.focus(), []);
 
   if (give == null) return null;
   const list = candidates(state.summary, give);
   const section = sectionName(state.summary, give.section);
-  const pausedBy = waiterOf(state.summary, give.waiter)?.tray?.pausedBy ?? give.waiter;
-  const close = () => act(closeGive(state));
 
   return (
-    <div className="hig-scrim">
-      <div className="hig-dialog" role="dialog" aria-modal="true" aria-labelledby="hig-give-title">
-        <h2 id="hig-give-title" ref={first} tabIndex={-1} className="hig-dialog-title">
+    <>
+      <div className="dialog-scrim" aria-hidden="true" />
+      <div
+        ref={box}
+        className="dialog hig-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="hig-give-title"
+        tabIndex={-1}
+      >
+        <h2 id="hig-give-title" className="hig-dialog-title">
           Give {give.table}’s tray to…
         </h2>
-        <p className="hig-meta">
-          {pausedBy === give.waiter
-            ? `${give.waiter} paused it · ${section}`
-            : `${give.waiter}’s tray · ${pausedBy} paused it · ${section}`}
-        </p>
+        <p className="hig-meta">{giveLine(state.summary, give)}</p>
         {state.refused !== '' && (
           <div className="hig-refused" role="status">
             <Glyph paths={state.online ? INFO_GLYPH : OFFLINE_GLYPH} size={18} />
@@ -627,8 +640,8 @@ function GiveDialog({
               className="button hig-alert-button"
               type="button"
               onClick={() => {
-                setNote(`Opens Team on ${section} (sc-36034). Nobody is moved from here.`);
                 close();
+                setNote(`Opens Team on ${section} (sc-36034). Nobody is moved from here.`);
               }}
             >
               Team
@@ -641,7 +654,11 @@ function GiveDialog({
                 <button
                   className="hig-candidate"
                   type="button"
-                  onClick={() => act(giveTo(state, c.name))}
+                  onClick={() => {
+                    const next = giveTo(state, c.name);
+                    act(next);
+                    if (next.give == null) setFocusTo(`[data-line="${give.section}:${c.name}"]`);
+                  }}
                 >
                   <span className="hig-initials" aria-hidden="true">
                     {initials(c.name)}
@@ -662,32 +679,24 @@ function GiveDialog({
           Cancel
         </button>
       </div>
-    </div>
+    </>
   );
 }
 
-function Bar({ parts, due }: { parts: readonly { key: string; n: number }[]; due: number }) {
-  const starts = parts.map((_, i) => parts.slice(0, i).reduce((sum, p) => sum + p.n, 0));
-
+function Bar({ parts }: { parts: readonly { key: string; n: number }[] }) {
   return (
-    <svg
-      className="hig-bar"
-      aria-hidden="true"
-      viewBox={`0 0 ${Math.max(due, 1)} 10`}
-      preserveAspectRatio="none"
-    >
-      {parts.map((part, i) => (
-        <rect
-          key={part.key}
-          className="hig-bar-part"
-          data-kind={part.key}
-          x={starts[i] ?? 0}
-          y={0}
-          width={part.n}
-          height={10}
-        />
-      ))}
-    </svg>
+    <div className="hig-bar" aria-hidden="true">
+      {parts
+        .filter((part) => part.n > 0)
+        .map((part) => (
+          <span
+            key={part.key}
+            className="hig-bar-part"
+            data-kind={part.key}
+            ref={(node) => node?.style.setProperty('flex-grow', String(part.n))}
+          />
+        ))}
+    </div>
   );
 }
 

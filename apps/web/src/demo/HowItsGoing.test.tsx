@@ -56,6 +56,30 @@ describe('/demo/how-its-going (sc-34107)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(within(alerts()).queryByText('Funmi Bakare’s tray is paused')).toBeNull();
     expect(screen.getByText('Table 9’s tray is Bisi Lawal’s now.')).toBeTruthy();
+    expect(document.activeElement?.getAttribute('data-line')).toBe('B:Bisi Lawal');
+  });
+
+  it('names who paused the tray, not its waiter', async () => {
+    await open('giveNobody');
+    const dialog = screen.getByRole('dialog');
+    expect(
+      within(dialog).getByText('Kunle Ajayi · Section A · paused by Ifeoma Nduka'),
+    ).toBeTruthy();
+  });
+
+  it('keeps Tab inside Give to…, and Cancel returns to its Give to…', async () => {
+    await open('populated');
+    const opener = within(alerts()).getByRole('button', { name: 'Give to…' });
+    opener.focus();
+    fireEvent.click(opener);
+    const dialog = screen.getByRole('dialog');
+    const cancel = within(dialog).getByRole('button', { name: 'Cancel' });
+    cancel.focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    fireEvent.click(cancel);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(within(alerts()).getByRole('button', { name: 'Give to…' }));
   });
 
   it('says nobody else is on the section, with Team one press away', async () => {

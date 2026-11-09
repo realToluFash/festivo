@@ -268,34 +268,39 @@
 }
 
 .hig-bar {
-  display: block;
+  display: flex;
   width: 100%;
   height: 10px;
   border-radius: var(--radiusPill);
   overflow: hidden;
 }
 
+.hig-bar-part {
+  flex: 0 1 0;
+  min-width: 0;
+}
+
 .hig-bar-part[data-kind='served'],
 .hig-swatch[data-kind='served'] {
-  fill: var(--colorAccent);
   background: var(--colorAccent);
 }
 
 .hig-bar-part[data-kind='tray'],
 .hig-swatch[data-kind='tray'] {
-  fill: var(--colorAccentTintBorder);
   background: var(--colorAccentTintBorder);
 }
 
 .hig-bar-part[data-kind='kitchen'],
 .hig-swatch[data-kind='kitchen'] {
-  fill: var(--colorInkTertiary);
-  background: var(--colorInkTertiary);
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--colorInkTertiary) 0 2px,
+    var(--colorTrack) 2px 4px
+  );
 }
 
 .hig-bar-part[data-kind='serve'],
 .hig-swatch[data-kind='serve'] {
-  fill: var(--colorTrack);
   background: var(--colorTrack);
 }
 
@@ -338,15 +343,17 @@
 }
 
 .hig-swatch[data-kind='served'] {
-  border-radius: var(--radiusPill);
-}
-
-.hig-swatch[data-kind='tray'] {
   border-radius: 3px;
 }
 
+.hig-swatch[data-kind='tray'] {
+  border-radius: var(--radiusPill);
+}
+
 .hig-swatch[data-kind='kitchen'] {
-  transform: rotate(45deg) scale(0.8);
+  box-sizing: border-box;
+  border: 1.5px solid var(--colorInkTertiary);
+  border-radius: 3px;
 }
 
 .hig-swatch[data-kind='serve'] {
@@ -480,7 +487,8 @@
 }
 
 .hig-held-up {
-  box-shadow: inset 0 0 0 1.5px var(--colorInk);
+  border: var(--borderControl);
+  background: var(--colorCard);
 }
 
 .hig-waiter {
@@ -596,36 +604,14 @@
   align-items: flex-start;
 }
 
-.hig-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--scrimDialog);
-}
-
 .hig-dialog {
-  display: flex;
-  flex-direction: column;
   gap: var(--spaceMd);
-  box-sizing: border-box;
-  width: min(480px, calc(100vw - 32px));
-  padding: var(--spaceXxl);
-  border-radius: var(--radiusCardLarge);
-  background: var(--colorCard);
-  box-shadow: var(--shadowDialog);
 }
 
 .hig-dialog-title {
   margin: 0;
   font: var(--typeTitleDialog);
   letter-spacing: var(--typeTitleDialogTracking);
-}
-
-.hig-dialog-title:focus {
-  outline: none;
 }
 
 .hig-candidates {
