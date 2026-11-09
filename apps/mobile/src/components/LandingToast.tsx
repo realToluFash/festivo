@@ -1,5 +1,5 @@
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useSyncExternalStore } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -34,23 +34,38 @@ export function LandingToast() {
   const { t } = useTranslation();
   const key = useSyncExternalStore(subscribe, () => said);
   const insets = useSafeAreaInsets();
-  const { height } = useWindowDimensions();
+  // The frame the toast is laid out in, which the keys' top is read against: Android's window height leaves out the system bars, and measured from it the toast sat a bar lower, over Continue (sc-29071).
+  const [height, setHeight] = useState<number | null>(null);
   const keyboardTop = useKeyboardTop();
   const { kind } = useLayout();
 
   if (key == null) return null;
 
-  // A step that lands with its field focused raises the keys, so the toast rides above the foot docked on them.
-  const bottom = landingToastBottom(
-    insets.bottom,
-    kind === 'phone' ? TAB_BAR : 0,
-    height,
-    keyboardTop,
-  );
-
   return (
-    <View style={[styles.toast, { bottom }]} pointerEvents="box-none">
-      <Toast key={key} words={t(key)} onClose={() => set(null)} />
+    <View
+      style={StyleSheet.absoluteFill}
+      pointerEvents="box-none"
+      onLayout={(event) => setHeight(event.nativeEvent.layout.height)}
+    >
+      {height != null && (
+        <View
+          style={[
+            styles.toast,
+            // A step that lands with its field focused raises the keys, so the toast rides above the foot docked on them.
+            {
+              bottom: landingToastBottom(
+                insets.bottom,
+                kind === 'phone' ? TAB_BAR : 0,
+                height,
+                keyboardTop,
+              ),
+            },
+          ]}
+          pointerEvents="box-none"
+        >
+          <Toast key={key} words={t(key)} onClose={() => set(null)} />
+        </View>
+      )}
     </View>
   );
 }

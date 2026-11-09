@@ -8,10 +8,10 @@ export const FOOT_OVER_KEYS = tokens.spaceXl + tokens.sizeHitPhoneHero;
 export function landingToastBottom(
   inset: number,
   tabBar: number,
-  windowHeight: number,
+  frameHeight: number,
   keyboardTop: number | null,
 ): number {
   const rest = Math.max(inset, tokens.spaceLg) + (tabBar > 0 ? tabBar + tokens.spaceLg : 0);
 
-  return bottomOverKeys(rest, windowHeight, keyboardTop, FOOT_OVER_KEYS + tokens.spaceLg);
+  return bottomOverKeys(rest, frameHeight, keyboardTop, FOOT_OVER_KEYS + tokens.spaceLg);
 }
