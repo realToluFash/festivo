@@ -593,6 +593,17 @@ export function iosBundle(appConfig) {
 
 // Signed ad hoc, never unsigned: an unsigned .app has no application-identifier, so the Keychain
 // refuses the refresh token and a cold start signs the user out. Re-signing afterwards will not launch.
+// CocoaPods fails on ASCII-8BIT strings when the calling shell has no UTF-8 locale.
+export function iosBuildEnv(appConfig) {
+  return {
+    ...appConfig,
+    EXPO_PUBLIC_ENVIRONMENT: 'qa',
+    CI: '1',
+    LANG: 'en_US.UTF-8',
+    LC_ALL: 'en_US.UTF-8',
+  };
+}
+
 export function iosReleaseBuildArgs(workspace, scheme, derived, arch = process.arch) {
   return [
     '-workspace',
@@ -2281,7 +2292,7 @@ function buildIosRelease(root, app) {
     throw new Error('no CocoaPods on this Mac: brew install cocoapods');
   }
   const mobile = join(root, 'apps/mobile');
-  const env = { ...CONFIG.app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
+  const env = iosBuildEnv(CONFIG.app);
 
   const pkg = join(mobile, 'package.json');
   const scripts = readFileSync(pkg, 'utf8');
