@@ -49,7 +49,6 @@ export const RIVAL = 'Tobi Adeyemi';
 export const WAITER = 'Kunle Ajayi';
 export const CONTROLS: readonly Control[] = ['front', 'up', 'down'];
 
-/** The order another lead saved first, so a refused save never looks like the lead's own. */
 export const RIVAL_QUEUES: Partial<Record<SectionId, readonly string[]>> = {
   D: ['Table 17', 'Table 15', 'Table 16', 'Table 18', 'Table 19'],
 };
