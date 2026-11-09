@@ -115,7 +115,7 @@
     "event.changed_since": "Outra pessoa alterou este evento desde que o abriu.",
     "seating.plan_exists": "Este evento já tem um plano de mesas.",
     "seating.no_plan": "Este evento ainda não tem plano de mesas.",
-    "seating.section_limit": "Um plano de mesas pode ter até 30 zonas. Elimine uma para adicionar outra.",
+    "seating.section_limit": "Um plano pode ter até 30 zonas. Elimine uma para adicionar outra.",
     "seating.version_required": "Envie a versão que está a alterar, no cabeçalho If-Match.",
     "seating.changed_since": "Outra pessoa alterou isto desde que o abriu. A sua alteração não foi guardada.",
     "validation.seating_width_required": "Indique a largura da sala.",

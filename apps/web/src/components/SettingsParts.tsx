@@ -494,7 +494,8 @@ function DialogBox({
 
 interface AskProps {
   title: string;
-  line: string;
+  /** None when the title says it all, as "Delete {name}?" does for a section with no tables (pm, 9 Nov 2026). */
+  line?: string | undefined;
   keep: string;
   /** None once nothing is left to decide: the line is an alert, and keep is the one action. */
   go?: string;
@@ -527,7 +528,11 @@ function AskBox(props: AskProps) {
   const [onVerb] = useState(busy != null || failed != null);
   const waits = busy != null;
   const said =
-    go == null ? <AskAlert id={`${id}-line`}>{line}</AskAlert> : <p id={`${id}-line`}>{line}</p>;
+    line == null ? null : go == null ? (
+      <AskAlert id={`${id}-line`}>{line}</AskAlert>
+    ) : (
+      <p id={`${id}-line`}>{line}</p>
+    );
   const alert = failed != null && <AskAlert>{failed}</AskAlert>;
 
   useDeskDialog(box, first ?? (onVerb ? goButton : keepButton), onKeep, waits);
@@ -541,7 +546,7 @@ function AskBox(props: AskProps) {
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={`${id}-title`}
-        aria-describedby={`${id}-line`}
+        aria-describedby={line == null ? undefined : `${id}-line`}
       >
         <h2 id={`${id}-title`}>{title}</h2>
         {children == null ? (

@@ -115,7 +115,7 @@
     "event.changed_since": "Somebody else changed this event since you opened it.",
     "seating.plan_exists": "This event already has a seating plan.",
     "seating.no_plan": "This event has no seating plan yet.",
-    "seating.section_limit": "A seating plan can have up to 30 sections. Delete one to add another.",
+    "seating.section_limit": "A plan can have up to 30 sections. Delete one to add another.",
     "seating.version_required": "Send the version you are changing, as If-Match.",
     "seating.changed_since": "Somebody else changed this since you opened it. Your change was not saved.",
     "validation.seating_width_required": "Enter the room's width.",

@@ -115,7 +115,7 @@
     "event.changed_since": "Quelqu’un d’autre a modifié cet événement depuis que vous l’avez ouvert.",
     "seating.plan_exists": "Cet événement a déjà un plan de table.",
     "seating.no_plan": "Cet événement n’a pas encore de plan de table.",
-    "seating.section_limit": "Un plan de table peut comporter jusqu’à 30 zones. Supprimez-en une pour en ajouter une autre.",
+    "seating.section_limit": "Un plan peut comporter jusqu’à 30 zones. Supprimez-en une pour en ajouter une autre.",
     "seating.version_required": "Envoyez la version que vous modifiez, dans l’en-tête If-Match.",
     "seating.changed_since": "Quelqu’un d’autre a modifié cet élément depuis que vous l’avez ouvert. Votre modification n’a pas été enregistrée.",
     "validation.seating_width_required": "Indiquez la largeur de la salle.",
