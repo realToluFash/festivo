@@ -35,7 +35,9 @@ type Act = { action: 'link' | 'unlink'; provider: Provider };
 type Notice =
   | WayRefusal
   | { kind: 'linked'; provider: Provider; email: string | null }
-  | { kind: 'unlinked' | 'providerFailed' | 'providerRefused'; provider: Provider }
+  | { kind: 'unlinked'; provider: Provider }
+  | { kind: 'providerFailed'; provider: Provider }
+  | { kind: 'providerRefused'; provider: Provider }
   | { kind: 'passwordChanged'; signedOut: number }
   | { kind: 'passwordAdded'; provider: string };
 

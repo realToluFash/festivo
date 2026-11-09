@@ -46,7 +46,7 @@ export function SaidLine({
   saidRef,
 }: {
   said: { text: string; done: boolean } | null;
-  saidRef?: (line: HTMLParagraphElement | null) => void;
+  saidRef?: ((line: HTMLParagraphElement | null) => void) | undefined;
 }) {
   return (
     <div aria-live="polite">

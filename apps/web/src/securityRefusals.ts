@@ -120,11 +120,11 @@ export function setupRefusal(error: unknown, t: TFunction): string {
 }
 
 export type WayRefusal =
-  | { kind: 'taken' | 'last'; provider: Provider }
+  | { kind: 'taken'; provider: Provider }
+  | { kind: 'last'; provider: Provider }
   | { kind: 'keptByRule'; provider: Provider; organisation: string }
   | { kind: 'failed' };
 
-/** Linking or unlinking a way in, refused. */
 export function wayRefusal(error: unknown, provider: Provider): WayRefusal {
   if (error instanceof ApiError && error.is('provider_taken')) return { kind: 'taken', provider };
   if (error instanceof ApiError && error.is('last_sign_in_method'))
@@ -135,7 +135,6 @@ export function wayRefusal(error: unknown, provider: Provider): WayRefusal {
   return { kind: 'failed' };
 }
 
-/** A way in's refusal as its notice reads it: what happened, then what to do next. */
 export function wayRefusalWords(
   refusal: WayRefusal,
   t: TFunction,
@@ -157,7 +156,6 @@ export function wayRefusalWords(
   };
 }
 
-/** The same refusal as one line under its row; a failure says only that it did not go through. */
 export function wayRefusalLine(refusal: WayRefusal, t: TFunction): string {
   const { title, next } = wayRefusalWords(refusal, t);
   if (next == null) return title;
