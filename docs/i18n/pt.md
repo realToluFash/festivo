@@ -43,6 +43,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 Nov 2026. A página Segurança da app** (sc-34792 para sc-30411, `mobile:security.*`). Segue os termos da web: "Associada · {{address}}", "Encerrar as outras sessões", "Concluído" para Done. `expires` é "Sessão válida até {{day}} se não voltar a ser usada": "Expira na/no" concordaria com o dia da semana ("no sábado", "na segunda-feira"), e "até" não leva artigo. O estado no topo é "ativa"/"inativa", como `twoFactorCard.on`/`off`.
 - **9 Nov 2026. A página da ligação enviada na web e a linha de quem perdeu tudo** (sc-33788 para sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). `nothingThere` segue a app, e a ligação é "envie de novo". `sentAgain` é "Voltámos a enviar a ligação.", sem a segunda frase da app. `lostBothIntro` diz "confirmar a sua identidade", nunca "que é você", e "depois de iniciar sessão", sem concordância com a pessoa, e "o apoio ao cliente da Soirely", do guia.
 - **8 Nov 2026. A sua conta na app** (sc-34175 para sc-30411, `mobile:account.*`,
   `contacts.promoting`, `removing`). A secção é "Sobre si". As linhas de cada linha da lista

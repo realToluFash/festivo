@@ -50,6 +50,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 Nov 2026. La página Seguridad de la app** (sc-34792 para sc-30411, `mobile:security.*`). Sigue los términos de la web: «Vinculada · {{address}}», «Cerrar las demás sesiones», «Listo» para Done, como `countryPicker.close`. `expires` es «Caduca el {{day}}», que vale para todos los días de la semana. `_many` lleva «de», como el 25 Oct.
 - **9 Nov 2026. La página de enlace enviado en la web y la línea de quien lo ha perdido todo** (sc-33788 para sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). `nothingThere` sigue a la app, «¿No le ha llegado nada?…», y el enlace es «envíelo de nuevo». `sentAgain` es «Se lo hemos enviado de nuevo.», sin la segunda frase de la app: la página ya la explica. En `lostBothIntro`, «después de que inicie sesión», sin concordar con la persona, y «el servicio de asistencia de Soirely», del glosario.
 - **8 Nov 2026. Su cuenta en la app** (sc-34175 para sc-30411, `mobile:account.*`,
   `contacts.promoting`, `removing`). La sección es «Sobre usted». Las líneas de cada fila no
