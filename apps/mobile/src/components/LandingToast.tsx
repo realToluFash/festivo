@@ -1,12 +1,12 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { bottomOverKeys } from '../kit/keyboard.ts';
-import { keyboardTopNow, watchKeyboardTop } from './keyboardWatch.ts';
+import { useKeyboardTop } from './keyboardWatch.ts';
+import { landingToastBottom } from './landingToastBottom.ts';
 import { TAB_BAR } from './TodayScreen.tsx';
 import { Toast } from './Toast.tsx';
 
@@ -29,14 +29,6 @@ export function sayOnLanding(key: string): void {
   set(key);
 }
 
-function useKeyboardTop(): number | null {
-  const [top, setTop] = useState(() => keyboardTopNow(0));
-
-  useEffect(() => watchKeyboardTop(() => 0, setTop), []);
-
-  return top;
-}
-
 /** Over the whole stack; on a phone it clears the tab bar, and on a step the button docked at its foot. */
 export function LandingToast() {
   const { t } = useTranslation();
@@ -48,10 +40,13 @@ export function LandingToast() {
 
   if (key == null) return null;
 
-  // A step that lands with its field focused raises the keys over the toast, so it rides above them.
-  const rest =
-    Math.max(insets.bottom, tokens.spaceLg) + (kind === 'phone' ? TAB_BAR + tokens.spaceLg : 0);
-  const bottom = bottomOverKeys(rest, height, keyboardTop, tokens.spaceLg);
+  // A step that lands with its field focused raises the keys, so the toast rides above the foot docked on them.
+  const bottom = landingToastBottom(
+    insets.bottom,
+    kind === 'phone' ? TAB_BAR : 0,
+    height,
+    keyboardTop,
+  );
 
   return (
     <View style={[styles.toast, { bottom }]} pointerEvents="box-none">

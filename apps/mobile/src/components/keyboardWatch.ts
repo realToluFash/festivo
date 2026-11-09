@@ -32,6 +32,15 @@ export function watchKeyboardTop(
   };
 }
 
+/** The keyboard's top edge in the window, or null while the keys are down. */
+export function useKeyboardTop(): number | null {
+  const [top, setTop] = useState(() => keyboardTopNow(0));
+
+  useEffect(() => watchKeyboardTop(() => 0, setTop), []);
+
+  return top;
+}
+
 /** Whether the keyboard is up, changing when the avoiding view starts to move. Android also says the keys showed when Gboard swaps them while up, and that changes nothing here: only false to true is the keys coming up (sc-18587). */
 export function useKeysUp(): boolean {
   const [up, setUp] = useState(() => keyboardTopNow(0) != null);
