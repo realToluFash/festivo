@@ -2135,7 +2135,36 @@
       "event_day": "Un changement de votre service ou de votre heure de convocation, ou de l’événement dans les 24 heures qui le précèdent.",
       "event_changes": "Quand quelqu’un d’autre modifie la tenue, la date ou le lieu d’un événement auquel vous participez.",
       "money": "Paiements à venir, utilisation à {{low}} et à {{high}}, paiements refusés et factures.",
-      "account_security": "Connexions, votre mot de passe, la double authentification, la propriété et les accès. Les e-mails ne peuvent pas être désactivés."
+      "account_security": "Connexions, votre mot de passe, la double authentification, la propriété et les accès."
+    },
+    "kinds": "What you hear about",
+    "blockedLine": "Push is off in this browser, so pushes won't reach you here.",
+    "blockedHere": "Blocked in this browser",
+    "notLoadedLine": "Check your connection and try again.",
+    "saving": "Saving…",
+    "savedTag": "Saved",
+    "saysBoth": "You hear by push and email",
+    "saysPush": "You hear by push only",
+    "saysEmail": "You hear by email only",
+    "counts": "{{push, number}} of {{total, number}} by push · {{email, number}} of {{total, number}} by email",
+    "heardBoth": "Push and email",
+    "heardPush": "Push only",
+    "heardEmail": "Email only",
+    "heardNone": "Off",
+    "emailAlwaysOn": "{{heard}} · email always on",
+    "allow": {
+      "step": "How to allow push",
+      "title": "Allow push in this browser",
+      "done": "Done",
+      "intro": "This browser is blocking Soirely’s pushes. Only you can allow them again, in the browser.",
+      "step1": "Click the icon at the left end of the address bar.",
+      "step2": "Find Notifications and set it to Allow.",
+      "step3": "Come back to this tab. Soirely checks again when you do.",
+      "elsewhere": "Not there? Open your browser’s settings, find the permissions for each site, and allow notifications for Soirely."
+    },
+    "locked": {
+      "email": "Les e-mails ne peuvent pas être désactivés.",
+      "push": "Push cannot be switched off."
     }
   },
   "personalisation": {
