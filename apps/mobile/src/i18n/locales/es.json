@@ -1876,26 +1876,26 @@
     "emailNotSaved": "No se ha guardado el cambio del correo electrónico. Vuelva a intentarlo.",
     "couldNotLoad": "No se ha podido cargar su configuración de notificaciones.",
     "tryAgain": "Reintentar",
-    "pushBlocked": "Las notificaciones push están desactivadas en este dispositivo, así que aquí no le llegarán. Actívelas en la configuración del dispositivo.",
+    "pushBlocked": "Las notificaciones push están desactivadas en este dispositivo, así que aquí no le llegarán.",
     "quietHours": "De {{start}} a {{end}} (su hora local), solo llegan las notificaciones push de «Día del evento».",
-    "kinds": "What you hear about",
-    "openSettings": "Open device settings",
-    "blockedHere": "Blocked on this device",
-    "notLoadedLine": "Check your connection and try again.",
-    "saving": "Saving…",
-    "savedTag": "Saved",
-    "saysBoth": "You hear by push and email",
-    "saysPush": "You hear by push only",
-    "saysEmail": "You hear by email only",
-    "counts": "{{push, number}} of {{total, number}} by push · {{email, number}} of {{total, number}} by email",
-    "heardBoth": "Push and email",
-    "heardPush": "Push only",
-    "heardEmail": "Email only",
-    "heardNone": "Off",
-    "emailAlwaysOn": "{{heard}} · email always on",
+    "kinds": "Qué notificaciones recibe",
+    "openSettings": "Abrir los ajustes del dispositivo",
+    "blockedHere": "Bloqueadas en este dispositivo",
+    "notLoadedLine": "Compruebe su conexión y vuelva a intentarlo.",
+    "saving": "Guardando…",
+    "savedTag": "Guardado",
+    "saysBoth": "Recibe notificaciones push y por correo",
+    "saysPush": "Solo recibe notificaciones push",
+    "saysEmail": "Solo recibe notificaciones por correo",
+    "counts": "{{push, number}} de {{total, number}} por push · {{email, number}} de {{total, number}} por correo",
+    "heardBoth": "Push y correo",
+    "heardPush": "Solo push",
+    "heardEmail": "Solo correo",
+    "heardNone": "Desactivado",
+    "emailAlwaysOn": "{{heard}} · correo siempre activado",
     "locked": {
-      "email": "Email cannot be switched off.",
-      "push": "Push cannot be switched off."
+      "email": "El correo electrónico no se puede desactivar.",
+      "push": "Las notificaciones push no se pueden desactivar."
     },
     "category": {
       "guest_replies": "Respuestas de los invitados",
@@ -1911,7 +1911,7 @@
       "event_day": "Cambios en su turno o en su hora de convocatoria, o en el evento durante las 24 horas previas.",
       "event_changes": "Cuando otra persona cambia si se celebra, cuándo o dónde un evento en el que usted participa.",
       "money": "Pagos pendientes, uso al {{low}} y al {{high}}, pagos fallidos y facturas.",
-      "account_security": "Inicios de sesión, su contraseña, la verificación en dos pasos, la propiedad y los accesos. El correo electrónico no se puede desactivar."
+      "account_security": "Inicios de sesión, su contraseña, la verificación en dos pasos, la propiedad y los accesos."
     }
   },
   "timeline": {

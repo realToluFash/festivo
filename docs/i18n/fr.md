@@ -71,6 +71,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 nov. 2026. La page Paramètres de notification de l’app** (sc-34901 pour sc-30411,
+  `mobile:notificationSettings.*`). L’en-tête a un verbe, « Vous recevez uniquement des
+  notifications push » ; les lignes n’en ont pas : « Push et e-mail », « Push uniquement »,
+  « Désactivé », comme `off`. Le titre de section est « Ce qui vous est notifié », sans accord
+  avec la personne. Le décompte dit « en push » et « par e-mail » : « 3 sur 6 en push · 6 sur 6
+  par e-mail ». L’appareil a des « réglages », comme dans `pushBlocked`. « Bloquées sur cet
+  appareil » s’accorde avec les notifications push. La note de Compte et sécurité perd « Les
+  e-mails ne peuvent pas être désactivés. », désormais `locked.email`, sous l’interrupteur.
 - **9 nov. 2026. La page Sécurité de l’app** (sc-34792 pour sc-30411, `mobile:security.*`). Reprend les termes du web : « Associé · {{address}} », « Déconnecter les autres appareils », « Terminé » pour Done. Rien ne s’accorde avec la personne : `signOutLine` dit « cet appareil-ci reste connecté », jamais « vous restez connecté », et `signedUpWith` commence par « Inscription avec Google ou Apple ? », au lieu du « Inscrit » du web (`web:recovery.providerNote`, à aligner au prochain ticket web). `expires` est « Expire le {{day}} sans nouvelle utilisation ».
 - **9 nov. 2026. La page du lien envoyé sur le web et la ligne de qui a tout perdu** (sc-33788 pour sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). `nothingThere` reprend l’app, « Rien reçu ? », et le lien est « renvoyez-le ». `sentAgain` est « Nous l’avons renvoyé. », sans la deuxième phrase de l’app. `lostBothIntro` dit « ne peut confirmer votre identité qu’après une connexion avec votre mot de passe », jamais « une fois connecté », qui s’accorde au masculin ; « l’assistance Soirely », du guide.
 - **8 nov. 2026. Votre compte dans l’app** (sc-34175 pour sc-30411, `mobile:account.*`,
