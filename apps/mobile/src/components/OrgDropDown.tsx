@@ -45,7 +45,7 @@ import { Glyph } from './Glyph.tsx';
 import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
 import { OrgMark } from './OrgMark.tsx';
-import { useReadOut } from './ReadOut.tsx';
+import { useReadOut, useSendingWords } from './ReadOut.tsx';
 import {
   SETTLED_MS,
   type StepClosed,
@@ -54,13 +54,16 @@ import {
   useFocusOnAnswer,
 } from './Screen.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { Pill } from './SettingsParts.tsx';
+import { Pill, TYPE } from './SettingsParts.tsx';
 import { useFocusBack, useWindowTurn } from './Sheet.tsx';
+import { TurningMark } from './SummaryRows.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 
 const GROW_FROM = 0.92;
 const LEAVE = Easing.bezier(0.4, 0, 1, 1);
 const CARET = 16;
+/** A tile's name stops at two lines with an ellipsis, in the grid and beside its mark alike; the label, the search and the opened panel keep it whole (sc-486, sc-13496). */
+const NAME_LINES = 2;
 
 interface Sizes {
   fixed: boolean;
@@ -598,6 +601,7 @@ function Cell({
             <Text
               size={sizes.name}
               weight="semibold"
+              numberOfLines={NAME_LINES}
               accessible={false}
               maxFontSizeMultiplier={cap}
               style={[
@@ -784,7 +788,14 @@ function InvitationPanel({
   const keys = invitationWording(invite);
   const organisation = invite.name;
   const inviter = invite.invitedBy?.name ?? '';
-  const busy = outcome?.kind === 'busy';
+  const busy = outcome?.kind === 'busy' ? outcome.answer : null;
+  const height = full ? tokens.sizeHitPhoneHero : tokens.sizeHit;
+
+  useSendingWords(
+    busy == null
+      ? undefined
+      : t(busy === 'accept' ? 'invitations.joining' : 'invitations.declining'),
+  );
 
   if (joined)
     return (
@@ -876,24 +887,42 @@ function InvitationPanel({
             </View>
           )}
           <View style={styles.buttons}>
-            <Pill
-              label={t('invitations.accept')}
-              accessibilityLabel={t('invitations.acceptLabel', { organisation })}
-              kind={busy ? 'off' : 'primary'}
-              full={full}
-              height={full ? tokens.sizeHitPhoneHero : tokens.sizeHit}
-              onPress={() => onAnswer(true)}
-              testID={`switcher.invitation.${invite.id}.accept`}
-            />
-            <Pill
-              label={t('invitations.decline')}
-              accessibilityLabel={t('invitations.declineLabel', { organisation })}
-              kind={busy ? 'off' : 'secondary'}
-              full={full}
-              height={full ? tokens.sizeHitPhoneHero : tokens.sizeHit}
-              onPress={() => onAnswer(false)}
-              testID={`switcher.invitation.${invite.id}.decline`}
-            />
+            {busy === 'accept' ? (
+              <SendingPill
+                words={t('invitations.joining')}
+                full={full}
+                height={height}
+                testID={`switcher.invitation.${invite.id}.accept`}
+              />
+            ) : (
+              <Pill
+                label={t('invitations.accept')}
+                accessibilityLabel={t('invitations.acceptLabel', { organisation })}
+                kind={busy == null ? 'primary' : 'off'}
+                full={full}
+                height={height}
+                onPress={() => onAnswer(true)}
+                testID={`switcher.invitation.${invite.id}.accept`}
+              />
+            )}
+            {busy === 'decline' ? (
+              <SendingPill
+                words={t('invitations.declining')}
+                full={full}
+                height={height}
+                testID={`switcher.invitation.${invite.id}.decline`}
+              />
+            ) : (
+              <Pill
+                label={t('invitations.decline')}
+                accessibilityLabel={t('invitations.declineLabel', { organisation })}
+                kind={busy == null ? 'secondary' : 'off'}
+                full={full}
+                height={height}
+                onPress={() => onAnswer(false)}
+                testID={`switcher.invitation.${invite.id}.decline`}
+              />
+            )}
           </View>
           <Text
             size={sizes.line}
@@ -906,6 +935,45 @@ function InvitationPanel({
         </View>
       )}
     </View>
+  );
+}
+
+/** The pressed answer while it is out: the Pill's `off` ground, the turning mark and what it is doing in Ink 2, as the Ask's busy confirm says it. */
+function SendingPill({
+  words,
+  full,
+  height,
+  testID,
+}: {
+  words: string;
+  full: boolean;
+  height: number;
+  testID: string;
+}) {
+  return (
+    <Pressable
+      disabled
+      style={[
+        styles.sending,
+        full ? styles.sendingFull : styles.sendingFit,
+        { height, borderRadius: height / 2 },
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={words}
+      accessibilityState={{ disabled: true, busy: true }}
+      testID={testID}
+    >
+      <TurningMark side={16} />
+      <Text
+        size={height >= tokens.sizeHitPhonePrimary ? 16 : TYPE.body}
+        weight="semibold"
+        numberOfLines={1}
+        accessible={false}
+        style={styles.secondary}
+      >
+        {words}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -1163,6 +1231,15 @@ const styles = StyleSheet.create({
   answerUnder: { marginTop: tokens.spaceMd },
   failed: { marginBottom: tokens.spaceSm },
   buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceMd },
+  sending: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: tokens.spaceSm,
+    backgroundColor: tokens.colorNeutralFill,
+  },
+  sendingFull: { alignSelf: 'stretch', paddingHorizontal: tokens.spaceXxl },
+  sendingFit: { alignSelf: 'flex-start', paddingHorizontal: 22 },
   buttonsUnder: { marginTop: tokens.spaceMd, alignItems: 'flex-start' },
   declineNote: { marginTop: tokens.spaceSm },
   offerBody: { marginTop: tokens.spaceMd },

@@ -50,11 +50,14 @@ import {
   openerLabel,
   pick,
   placeOf,
+  sending,
   sessionFor,
   settled,
   waitingOf,
   withoutPlaces,
 } from './OrgSwitcherModel.ts';
+
+const SENDING_MS = 900;
 
 const store = {
   session: sessionFor('populated'),
@@ -316,7 +319,13 @@ export function OrgSwitcherProvider({
           onPick={onPick}
           onCreate={onCreate}
           onExpand={(id) => setSession(expand(store.session, id))}
-          onAnswer={(invite, yes) => setSession(answer(store.session, invite.id, yes))}
+          onAnswer={(invite, yes) => {
+            setSession(sending(store.session, invite.id, yes));
+            setTimeout(() => {
+              if (store.session.outcomes[invite.id]?.kind !== 'busy') return;
+              setSession(answer(store.session, invite.id, yes));
+            }, SENDING_MS);
+          }}
           onAsk={() => setSession(ask(store.session))}
           onNotNow={() => setSession(notNow(store.session))}
         />

@@ -1038,6 +1038,8 @@
     "acceptLabel": "Aceitar e aderir a {{organisation}}",
     "decline": "Recusar",
     "declineLabel": "Recusar o convite de {{organisation}}",
+    "joining": "Joining…",
+    "declining": "Declining…",
     "declineNote": "Se recusar, {{inviter}} fica a saber. Nada mais muda.",
     "declineNoteNobody": "Se recusar, nada mais muda.",
     "joined": "Aderiu a {{organisation}} com a função {{role}}.",

@@ -1008,6 +1008,8 @@
     "acceptLabel": "Accept and join {{organisation}}",
     "decline": "Decline",
     "declineLabel": "Decline the invitation to {{organisation}}",
+    "joining": "Joining…",
+    "declining": "Declining…",
     "declineNote": "Declining tells {{inviter}} you said no. Nothing else changes.",
     "declineNoteNobody": "Declining changes nothing else.",
     "joined": "You joined {{organisation}} as {{role}}.",
