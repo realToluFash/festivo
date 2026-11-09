@@ -1003,20 +1003,20 @@
     "refused": "No se ha guardado nada. Su función no incluye el permiso que esto necesita.",
     "refusedByRule": "No se ha guardado nada.",
     "searchLanguage": "Buscar idiomas",
-    "edit": "Edit details",
-    "editTitle": "Organisation details",
-    "details": "Details",
-    "defaults": "Defaults for new events",
-    "invitations": "Invitations",
-    "searchCountry": "Search countries",
-    "saveVerb": "Save",
-    "savedSays": "Saved",
-    "discardTitle_one": "Discard your change?",
-    "discardTitle_other": "Discard your changes?",
-    "discardLine": "{{organisation}} stays as it was.",
-    "keepEditing": "Keep editing",
-    "discard": "Discard",
-    "discardTitle_many": "Discard your changes?"
+    "edit": "Editar datos",
+    "editTitle": "Datos de la organización",
+    "details": "Datos",
+    "defaults": "Valores para eventos nuevos",
+    "invitations": "Invitaciones",
+    "searchCountry": "Buscar países",
+    "saveVerb": "Guardar",
+    "savedSays": "Guardado",
+    "discardTitle_one": "¿Descartar el cambio?",
+    "discardTitle_other": "¿Descartar los cambios?",
+    "discardLine": "{{organisation}} sigue como estaba.",
+    "keepEditing": "Seguir editando",
+    "discard": "Descartar",
+    "discardTitle_many": "¿Descartar los cambios?"
   },
   "invitations": {
     "heading": "Invitaciones",
@@ -1228,11 +1228,11 @@
     "deleteMatches": "Coincide.",
     "deleteExactly": "Tal como está escrito, con los acentos.",
     "failed": "No se ha podido completar, así que no se ha cambiado nada. Inténtelo de nuevo.",
-    "transferVerb": "Transfer",
-    "transferredSays": "{{name}} is now the owner",
-    "transferredLine": "You are an Admin. You both have an email saying so.",
-    "deleteScreenTitle": "Delete {{organisation}}",
-    "deleteVerb": "Delete"
+    "transferVerb": "Transferir",
+    "transferredSays": "{{name}} tiene ahora el rol Propietario",
+    "transferredLine": "Ahora usted tiene el rol Administrador. Hemos enviado un correo electrónico a las dos cuentas.",
+    "deleteScreenTitle": "Eliminar {{organisation}}",
+    "deleteVerb": "Eliminar"
   },
   "domainJoining": {
     "intro": "Su dirección es del dominio {{domain}}. Solicite unirse a la organización de su empresa o cree la suya.",
@@ -1280,13 +1280,13 @@
     "removed": "Se ha quitado {{domain}}.",
     "failed": "No ha funcionado. Vuelva a intentarlo en un momento.",
     "unreadable": "No se ha podido cargar la lista.",
-    "lead": "People whose main email address is at a domain on this list can ask to join {{organisation}} when they sign up. Somebody who can manage members answers each one.",
-    "offUntil": "It is off until you add a domain.",
-    "addVerb": "Add",
-    "field": "Domain",
-    "confirmRemove": "Remove",
-    "addedLine": "Added. People whose main email address is at it can now ask to join.",
-    "proved": "Proved"
+    "lead": "Quienes tengan su dirección de correo electrónico principal en un dominio de esta lista pueden solicitar unirse a {{organisation}} al registrarse. Cada solicitud la responde alguien que pueda gestionar miembros.",
+    "offUntil": "Está desactivado hasta que añada un dominio.",
+    "addVerb": "Añadir",
+    "field": "Dominio",
+    "confirmRemove": "Quitar",
+    "addedLine": "Añadido. Quienes tengan su dirección de correo electrónico principal en este dominio ya pueden solicitar unirse.",
+    "proved": "Verificado"
   },
   "membersScreen": {
     "proveOwner_one": "Para dar a alguien el rol de Propietario de {{organisation}}, confirme que es usted. No se lo volveremos a pedir en un minuto.",
@@ -1459,7 +1459,7 @@
     },
     "failed": "No ha funcionado. Vuelva a intentarlo en un momento.",
     "unreadable": "No se ha podido cargar el enlace de solicitud.",
-    "lead": "Anybody with this link can ask to join {{organisation}}. Somebody who can manage members answers each request."
+    "lead": "Cualquier persona con este enlace puede solicitar unirse a {{organisation}}. Alguien que pueda gestionar los miembros responde a cada solicitud."
   },
   "requestToJoin": {
     "title": "Solicitar unirse a {{organisation}}",
