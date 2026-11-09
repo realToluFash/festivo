@@ -642,6 +642,46 @@ describe('the demo gets a password back (sc-29064)', () => {
     expect(await screen.findByRole('heading', { name: 'Set a new password' })).toBeDefined();
   });
 
+  it('says That did not work with only Try again, and stays there while the read fails', async () => {
+    await page('?page=link&state=failed', 'That did not work');
+    expect(
+      screen.getByText('Something went wrong on the way. Try again in a moment.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Send a new link' })).toBeNull();
+    expect(screen.queryByText(SAMPLE.email)).toBeNull();
+
+    const button = screen.getByRole('button', { name: 'Try again' });
+    fireEvent.click(button);
+    expect(button.textContent).toBe('Trying again…');
+    await act(() => vi.advanceTimersByTimeAsync(500));
+    fireEvent.click(button);
+    await act(() => vi.advanceTimersByTimeAsync(450));
+
+    const heading = screen.getByRole('heading', { name: 'That did not work' });
+    expect(document.activeElement).toBe(heading.parentElement);
+    expect(heading.parentElement?.textContent).toContain('Something went wrong on the way.');
+
+    button.focus();
+    await wait();
+    expect(document.activeElement).toBe(button);
+  });
+
+  it.each([
+    ['a live link', 'Set a new password'],
+    ['a live link, two-factor on', 'Enter your code'],
+    ['an expired link', 'This link has expired'],
+    ['no answer', 'Cannot reach Soirely'],
+  ])('reads the link again on Try again: %s opens %s', async (answer, title) => {
+    await page('?page=link&state=failed', 'That did not work');
+    fireEvent.change(screen.getByLabelText('Demo: the next read answers'), {
+      target: { value: (screen.getByRole('option', { name: answer }) as HTMLOptionElement).value },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await wait();
+
+    expect(await screen.findByRole('heading', { level: 1, name: title })).toBeDefined();
+  });
+
   it('asks for the code first, and changes nothing until it passes', async () => {
     await page('?page=code', 'Enter your code');
     expect(screen.queryByText(/No code\?/)).toBeNull();
