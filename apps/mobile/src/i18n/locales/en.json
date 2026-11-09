@@ -1822,7 +1822,7 @@
     "emailNotSaved": "The email switch was not saved. Try again.",
     "couldNotLoad": "Your notification settings did not load.",
     "tryAgain": "Try again",
-    "pushBlocked": "Push is off on this device, so pushes won't reach you here.",
+    "pushBlocked": "Push is off on this device, so pushes will not reach you here.",
     "quietHours": "Between {{start}} and {{end}} your time, only Event day pushes come through.",
     "kinds": "What you hear about",
     "openSettings": "Open device settings",
