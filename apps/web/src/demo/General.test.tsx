@@ -103,7 +103,7 @@ describe('General at a desk (sc-30063)', () => {
 
     fireEvent.click(ways.getByRole('button', { name: /Google/ }));
     fireEvent.click(ways.getByRole('button', { name: 'Link Google' }));
-    expect(screen.getByRole('dialog', { name: 'Confirm it’s you' })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: "Confirm it's you" })).toBeDefined();
   });
 
   it('opens a state it does not know as the page with no state', async () => {

@@ -27,7 +27,6 @@ import { Glyph } from './Glyph.tsx';
 import { Ask, Dialog, Field, Note, TextAction } from './SettingsParts.tsx';
 import './SecurityParts.css';
 
-/** Where a dialog with two fields opens: what is typed in each. */
 export interface TwoOpening extends Opening {
   second?: string;
 }
@@ -69,7 +68,6 @@ function Rule({ password }: { password: string }) {
   );
 }
 
-/** A section's own failure, at its scale: what went wrong, then Try again. */
 export function SectionFailed({
   line,
   title,
@@ -301,7 +299,6 @@ export function SentDialog({ onDone, onAgain }: { onDone: () => void; onAgain: (
   );
 }
 
-/** Set a password, step one: the code emailed to your primary address, sent as it opens. */
 export function SetCodeDialog({
   email,
   start,
@@ -441,7 +438,6 @@ export function SetCodeDialog({
   );
 }
 
-/** Set a password, step two; a step-up that ran out sends you back to the code. */
 export function ChoosePasswordDialog({
   email,
   start,
@@ -524,7 +520,6 @@ export function ChoosePasswordDialog({
   );
 }
 
-/** Confirm it's you by a code alone: turning two-factor off, or making new recovery codes. */
 export function FactorDialog({
   purpose,
   email,
@@ -540,7 +535,6 @@ export function FactorDialog({
   submit: (code: string) => Promise<void>;
   onClose: () => void;
   onDone: () => void;
-  /** Turning off, refused because an organisation's rule requires two-factor. */
   onKept: (organisation: string) => void;
 }) {
   const { t } = useTranslation();
@@ -601,7 +595,6 @@ export function FactorDialog({
   );
 }
 
-/** Set up two-factor: the key, fetched as it opens, then the first code the app makes. */
 export function SetupDialog({
   start,
   enrol,
