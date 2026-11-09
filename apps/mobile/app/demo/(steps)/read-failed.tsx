@@ -58,7 +58,7 @@ export default function ReadFailed() {
         />
         <SecondaryButton
           label="No answer"
-          onPress={() => read('/demo/unreachable')}
+          onPress={() => read('/demo/unreachable?back=/demo/read-failed')}
           testID="demo.readNoAnswer"
         />
       </DemoOnly>
