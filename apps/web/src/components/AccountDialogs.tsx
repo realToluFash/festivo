@@ -640,6 +640,7 @@ export function VerifyDialog({
     }
     setResendFailed(false);
     const checked = await check.verify(cleanCode(typed));
+    if (checked == null) return;
     if (checked.verified) return onVerified(checked.primary);
     if (checked.refusal.kind === 'wrong') setError(words.wrong);
     if (checked.refusal.kind === 'failed') setError(t('verifyEmail.failedBody'));
