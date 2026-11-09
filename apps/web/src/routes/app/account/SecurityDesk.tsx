@@ -734,14 +734,14 @@ export function SecurityDesk() {
           }
         />
       )}
-      {proving != null && status != null && (
+      {proving != null && (
         <ProveDialog
           via={
             provingAct == null
               ? confirmWith(ways.password, session.providers)
               : proveWith(ways.password, session.providers, provingAct.provider)
           }
-          twoFactorOn={status.on}
+          twoFactorOn={status?.on ?? false}
           returned={proving.returned}
           purpose={
             provingAct == null ? { kind: 'signOutOthers' } : { kind: 'prove', then: provingAct }
