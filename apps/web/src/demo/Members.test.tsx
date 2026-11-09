@@ -267,6 +267,24 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
     await waitFor(() => expect(document.activeElement).toBe(request('Priya Shah')));
   });
 
+  it('closes the last request, answered elsewhere, onto the card’s words (sc-33322)', async () => {
+    await members('/demo/settings/members?state=recoveryClosedLast');
+
+    expect(screen.getByText('Priya Shah’s two-factor is off.')).toBeDefined();
+    const ask = screen.getByRole('alertdialog', {
+      name: 'Approve, and turn off Kofi Mensah’s two-factor?',
+    });
+    expect(within(ask).getByRole('alert').textContent).toBe(
+      'This request has already been answered, or it has ended.',
+    );
+    await landed('Close');
+    fireEvent.click(within(ask).getByRole('button', { name: 'Close' }));
+
+    await onCard('Priya Shah’s two-factor is off.', OFF);
+    expect(screen.queryByRole('article', { name: 'Kofi Mensah' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Requests to get back in' })).toBeNull();
+  });
+
   it('leaves nothing about requests to get back in once none waits', async () => {
     await members('/demo/settings/members?state=recovery');
 
