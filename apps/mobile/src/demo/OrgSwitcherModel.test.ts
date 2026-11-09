@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  REFUSED,
   SW,
   answer,
   ask,
@@ -20,6 +21,7 @@ import {
   rowsOf,
   scrollToShow,
   searchable,
+  sending,
   sessionFor,
   settled,
   switcherStateOf,
@@ -220,6 +222,39 @@ describe('the answers', () => {
     expect(waitingOf(failed)).toBe(2);
     expect(tilesOf(settled(failed), '').map(tileKey)).toContain(BLUEBIRD);
     expect(waitingOf(answer(failed, BLUEBIRD, true))).toBe(1);
+  });
+
+  it('holds a press in flight as still waiting, saying what the pressed answer is doing (#36160)', () => {
+    const busy = sending(sessionFor('invitation'), BLUEBIRD, false);
+
+    expect(busy.outcomes[BLUEBIRD]).toEqual({ kind: 'busy', answer: 'decline' });
+    expect(busy.expanded).toBe(BLUEBIRD);
+    expect(waitingOf(busy)).toBe(2);
+    expect(sessionFor('busy').outcomes[BLUEBIRD]).toEqual({ kind: 'busy', answer: 'accept' });
+    expect([SW.joining, SW.declining]).toEqual(['Joining…', 'Declining…']);
+  });
+
+  it('draws a refused answer in the panel and takes the invitation off the next opening (#36160)', () => {
+    const expired = sessionFor('refused');
+    const withdrawn = sessionFor('withdrawn');
+    const bluebird = expired.invitations.find((invite) => invite.id === BLUEBIRD)!;
+
+    expect(expired.outcomes[BLUEBIRD]).toEqual({ kind: 'refused', refusal: 'invitation_expired' });
+    expect(withdrawn.outcomes[BLUEBIRD]).toEqual({
+      kind: 'refused',
+      refusal: 'invitation_revoked',
+    });
+    expect(waitingOf(expired)).toBe(1);
+    expect(tilesOf(expired, '').map(tileKey)).toContain(BLUEBIRD);
+    expect(tilesOf(settled(expired), '').map(tileKey)).not.toContain(BLUEBIRD);
+    expect(REFUSED.invitation_expired.attention).toBe(true);
+    expect(REFUSED.invitation_expired.body(bluebird)).toBe(
+      'This invitation has expired. Ask Beatriz Lima to send a new one.',
+    );
+    expect(REFUSED.invitation_revoked.word).toBe('Withdrawn');
+    expect(REFUSED.invitation_revoked.body(bluebird)).toBe(
+      'This invitation was withdrawn by Bluebird Gatherings. If you think this is a mistake, ask the person who invited you.',
+    );
   });
 
   it('asks to join, keeps a refusal, and puts the offer away for Not now', () => {
