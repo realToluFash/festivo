@@ -1,41 +1,42 @@
-import { formattingLocale } from '@soirely/domain';
-import { getLocales } from 'expo-localization';
-import { type Ref, useMemo } from 'react';
+import type { Ref } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
-import { LEAD_INSET, LineIcon } from '../../components/AccountCard.tsx';
-import { deviceExpires, deviceLine, deviceSignedIn, WORDS } from './SecurityModel.ts';
-import type { Device } from './SecuritySample.ts';
-import { OpenRow, RowList, Section, TextAction } from '../../components/Summary.tsx';
+import type { DeviceView } from '../kit/securityPage.ts';
+import { tokens } from '../theme/tokens.ts';
+import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
+import { FieldError } from './Field.tsx';
+import { OpenRow, RowList, Section, TextAction } from './Summary.tsx';
+import { Text } from './Text.tsx';
 
 /** One row per sign-in, this device first, each opening in place with when and where it signed in and Sign out. */
 export function DevicesSection({
   devices,
   opened,
+  error,
   signOutRef,
   onBlock,
   onToggle,
   onSignOut,
   onSignOutHere,
 }: {
-  devices: readonly Device[];
+  devices: readonly DeviceView[];
   opened: string | null;
+  /** What the server said to the opened row's Sign out. */
+  error: string | null;
   signOutRef: Ref<ViewInstance>;
   onBlock: (id: string, block: ViewInstance | null) => void;
   onToggle: (id: string) => void;
-  onSignOut: (device: Device) => void;
+  onSignOut: (device: DeviceView) => void;
   onSignOutHere: () => void;
 }) {
-  const locale = useMemo(() => formattingLocale('en', getLocales()[0]?.languageTag), []);
+  const { t } = useTranslation();
   const ordered = [...devices].sort((a, b) => Number(b.here) - Number(a.here));
 
   return (
-    <Section title={WORDS.signedInOn} foot={WORDS.devicesFoot}>
+    <Section title={t('devices.title')} foot={t('devices.intro')}>
       <RowList
         items={ordered.map((device) => {
-          const line = deviceLine(device, locale);
           const open = opened === device.id;
 
           return {
@@ -46,42 +47,43 @@ export function DevicesSection({
               <View ref={(block) => onBlock(device.id, block)} collapsable={false}>
                 <OpenRow
                   title={device.name}
-                  line={line}
+                  line={device.line}
                   lead={<LineIcon name={device.kind} />}
                   weight="semibold"
                   lit
                   open={open}
                   onToggle={() => onToggle(device.id)}
-                  accessibilityLabel={`${device.name}. ${line}`}
+                  accessibilityLabel={`${device.name}. ${device.line}`}
                   testID={`security.device.${device.id}`}
                 >
                   <View>
                     <Text size={14} weight="medium" style={styles.when}>
-                      {deviceSignedIn(device, locale)}
+                      {device.signedIn}
                     </Text>
                     <Text size={14} weight="medium" style={styles.when}>
-                      {deviceExpires(device, locale)}
+                      {device.expires}
                     </Text>
                   </View>
                   {device.here ? (
                     <TextAction
-                      label={WORDS.signOut}
+                      label={t('devices.signOut')}
                       glyph="signOut"
                       onPress={onSignOutHere}
-                      consequence={WORDS.signOutHereNote}
+                      consequence={t('security.signOutHereNote')}
                       testID="security.device.here.signOut"
                     />
                   ) : (
                     <TextAction
                       ref={signOutRef}
-                      label={WORDS.signOutAsking}
+                      label={t('devices.signOutAsks')}
                       removes
                       onPress={() => onSignOut(device)}
-                      consequence={WORDS.signOutNote}
-                      accessibilityLabel={`${WORDS.signOut} ${device.name}`}
+                      consequence={t('devices.signInAgain')}
+                      accessibilityLabel={`${t('devices.signOut')} ${device.name}`}
                       testID={`security.device.${device.id}.signOut`}
                     />
                   )}
+                  {open && error != null && <FieldError message={error} />}
                 </OpenRow>
               </View>
             ),
@@ -102,15 +104,17 @@ export function Everywhere({
   blockRef: Ref<ViewInstance>;
   onPress: () => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <View ref={blockRef} collapsable={false}>
       <TextAction
         ref={everywhereRef}
-        label={WORDS.everywhere}
+        label={t('devices.everywhere')}
         removes
         onPress={onPress}
-        consequence={WORDS.everywhereNote}
-        accessibilityLabel="Sign out everywhere else"
+        consequence={t('devices.everywhereHint')}
+        accessibilityLabel={t('security.everywhereLabel')}
         testID="security.everywhere"
       />
     </View>
