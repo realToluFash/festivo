@@ -1,28 +1,28 @@
 import type { NotificationCategory, NotificationSetting } from '@soirely/api-client';
 import { settingRows } from '@soirely/domain';
+import type { TFunction } from 'i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { Text } from '../../components/Text.tsx';
-import { type Channel, isSaving } from '../../kit/notificationSettings.ts';
-import { tokens } from '../../theme/tokens.ts';
-import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
-import { LEAD_INSET, LineIcon } from '../../components/AccountCard.tsx';
+import { type Channel, isSaving } from '../kit/notificationSettings.ts';
 import {
-  CATEGORY_NAMES,
-  CHANNEL_NAMES,
-  CHANNELS,
   categoryNote,
+  channelName,
+  CHANNELS,
   lockedLine,
-  NOT_SAVED,
+  notSaved,
   type NotificationsPage,
   quietHoursLine,
   rowSays,
   rowValue,
   switchName,
-  WORDS,
-} from './NotificationsModel.ts';
-import { SwitchTrack } from './NotificationsSwitch.tsx';
-import { OpenRow, RowList, type RowTag, Section } from '../../components/Summary.tsx';
+} from '../kit/notificationsPage.ts';
+import { tokens } from '../theme/tokens.ts';
+import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
+import { SwitchTrack } from './ConfettiSwitch.tsx';
+import { Glyph, type GlyphName } from './Glyph.tsx';
+import { OpenRow, RowList, type RowTag, Section } from './Summary.tsx';
+import { Text } from './Text.tsx';
 
 const LEADS: Record<NotificationCategory, GlyphName> = {
   guest_replies: 'users',
@@ -33,10 +33,11 @@ const LEADS: Record<NotificationCategory, GlyphName> = {
   account_security: 'shield',
 };
 
-const TAGS: Record<'saving' | 'saved', RowTag> = {
-  saving: { kind: 'now', word: WORDS.saving, turning: true },
-  saved: { kind: 'yes', word: WORDS.saved },
-};
+function tagOf(says: 'saving' | 'saved', t: TFunction): RowTag {
+  return says === 'saving'
+    ? { kind: 'now', word: t('notificationSettings.saving'), turning: true }
+    : { kind: 'yes', word: t('notificationSettings.savedTag') };
+}
 
 /** The six kinds in the product's order, each opening in place to its Push and Email switches, quiet hours at the foot. */
 export function KindsSection({
@@ -54,18 +55,20 @@ export function KindsSection({
   onToggle: (category: NotificationCategory) => void;
   onSwitch: (category: NotificationCategory, channel: Channel, on: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const { grid } = page;
   const unsaved = grid.status === 'loaded' ? grid.unsaved : null;
 
   return (
-    <Section title={WORDS.kinds} foot={quietHoursLine(locale)}>
+    <Section title={t('notificationSettings.kinds')} foot={quietHoursLine(locale, t)}>
       <RowList
         items={settingRows(settings).map((setting) => {
           const { category } = setting;
           const open = page.opened === category;
           const says = rowSays(page, category);
-          const tag = says == null ? null : TAGS[says];
-          const value = rowValue(setting);
+          const tag = says == null ? null : tagOf(says, t);
+          const value = rowValue(setting, t);
+          const name = t(`notificationSettings.category.${category}`);
           const failed = unsaved?.category === category ? unsaved.channel : null;
 
           return {
@@ -75,7 +78,7 @@ export function KindsSection({
             row: (
               <View>
                 <OpenRow
-                  title={CATEGORY_NAMES[category]}
+                  title={name}
                   line={value}
                   lead={<LineIcon name={LEADS[category]} />}
                   tag={tag}
@@ -83,13 +86,11 @@ export function KindsSection({
                   lit
                   open={open}
                   onToggle={() => onToggle(category)}
-                  accessibilityLabel={[CATEGORY_NAMES[category], tag?.word, value]
-                    .filter(Boolean)
-                    .join('. ')}
+                  accessibilityLabel={[name, tag?.word, value].filter(Boolean).join('. ')}
                   testID={`notifications.${category}`}
                 >
                   <Text size={14} weight="medium" style={[styles.secondary, styles.note]}>
-                    {categoryNote(category, locale)}
+                    {categoryNote(category, locale, t)}
                   </Text>
                   {CHANNELS.map((channel, index) => {
                     const locked = !setting[channel].switchable;
@@ -98,12 +99,12 @@ export function KindsSection({
                       <View key={channel}>
                         {index > 0 && <View style={styles.hairline} />}
                         <SwitchRow
-                          title={CHANNEL_NAMES[channel]}
-                          line={switchLine(channel, locked, blocked)}
+                          title={channelName(channel, t)}
+                          line={switchLine(channel, locked, blocked, t)}
                           on={setting[channel].on}
                           locked={locked}
                           busy={isSaving(grid, { category, channel })}
-                          label={switchName(category, channel)}
+                          label={switchName(category, channel, t)}
                           onChange={(on) => onSwitch(category, channel, on)}
                           testID={`notifications.${category}.${channel}`}
                         />
@@ -126,10 +127,15 @@ export function KindsSection({
   );
 }
 
-function switchLine(channel: Channel, locked: boolean, blocked: boolean): string | undefined {
-  if (locked) return lockedLine(channel);
+function switchLine(
+  channel: Channel,
+  locked: boolean,
+  blocked: boolean,
+  t: TFunction,
+): string | undefined {
+  if (locked) return lockedLine(channel, t);
 
-  return channel === 'push' && blocked ? WORDS.blockedHere : undefined;
+  return channel === 'push' && blocked ? t('notificationSettings.blockedHere') : undefined;
 }
 
 /** A whole row is the switch, named as the build names it; the lock and On or Off sit before the track. */
@@ -152,6 +158,8 @@ function SwitchRow({
   onChange: (on: boolean) => void;
   testID: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <Pressable
       accessibilityRole="switch"
@@ -181,7 +189,7 @@ function SwitchRow({
           accessible={false}
           style={[styles.word, !on && styles.secondary]}
         >
-          {on ? WORDS.on : WORDS.off}
+          {on ? t('notificationSettings.on') : t('notificationSettings.off')}
         </Text>
         <SwitchTrack on={on} />
       </View>
@@ -190,6 +198,8 @@ function SwitchRow({
 }
 
 function NotSaved({ channel, category }: { channel: Channel; category: NotificationCategory }) {
+  const { t } = useTranslation();
+
   return (
     <View
       accessible
@@ -201,7 +211,7 @@ function NotSaved({ channel, category }: { channel: Channel; category: Notificat
         <Glyph name="alert" size={15} ink={tokens.colorBroken} weight={2.2} />
       </View>
       <Text size={13.5} weight="medium" accessible={false} style={[styles.broken, styles.words]}>
-        {NOT_SAVED[channel]}
+        {notSaved(channel, t)}
       </Text>
     </View>
   );
