@@ -90,6 +90,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   code ne sait pas faire. `stayOut` dit « Vous ne pourrez pas vous connecter tant que personne
   n’aura répondu », jamais « Vous restez déconnecté », qui s’accorde au masculin. Le bouton est
   « Écrire à l’assistance Soirely ».
+- **9 nov. 2026. La page du lien envoyé sur le web et la ligne de qui a tout perdu** (sc-33788 pour sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). `nothingThere` reprend l’app, « Rien reçu ? », et le lien est « renvoyez-le ». `sentAgain` est « Nous l’avons renvoyé. », sans la deuxième phrase de l’app. `lostBothIntro` dit « qu’après une connexion avec votre mot de passe », jamais « une fois connecté », qui s’accorde au masculin ; « l’assistance Soirely », du guide.
 - **8 Nov 2026. L’écran du lien envoyé dans l’app, et son toast** (sc-33809 pour sc-29071,
   `mobile:recovery.*`). Le bouton est « Ouvrir la boîte mail », comme « Consultez votre boîte
   mail », et non « Ouvrir Mail » : sous Android, il ouvre l’application d’e-mail de la personne.
