@@ -9,13 +9,13 @@ import { Pending } from '../src/components/Pending.tsx';
 import { DevTools } from '../src/components/DevTools.tsx';
 import { Welcome } from '../src/components/Welcome.tsx';
 import { followAccount } from '../src/accountLanguage.ts';
+import { landingAfterRestart } from '../src/colourScheme.ts';
 import { landingFor } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
 import { launchRoute } from '../src/resumeSignUp.ts';
 import { ruleRefusal, signInRoute } from '../src/kit/signInRules.ts';
 import { SKELETON_AFTER_MS } from '../src/kit/skeleton.ts';
 import { launchSignedIn, resumesSession } from '../src/signedIn.ts';
-import { takeLanding } from '../src/theme/deviceScheme.ts';
 import { tokens } from '../src/theme/tokens.ts';
 import { unreachableFrom } from '../src/unreachable.ts';
 
@@ -59,7 +59,7 @@ export default function Home() {
           void launchSignedIn().then((loaded) => {
             if (!live || !loaded) return;
             // A restart into new colours comes back where it was asked from (sc-30441).
-            const back = takeLanding();
+            const back = landingAfterRestart();
             if (back != null) router.replace(back);
             else setLaunching('signedIn');
           });

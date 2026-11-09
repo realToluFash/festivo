@@ -1,3 +1,4 @@
+import type { Href } from 'expo-router';
 import { useSyncExternalStore } from 'react';
 
 import { type Choice, inUse } from './kit/personalisation.ts';
@@ -5,7 +6,7 @@ import { schemeOf } from './kit/schemes.ts';
 import { deviceScheme, holdLanding, keepDeviceScheme, takeLanding } from './theme/deviceScheme.ts';
 import { type Scheme, schemeAtLaunch } from './theme/tokens.ts';
 
-export const PERSONALISATION_LANDING = '/settings/personalisation?saved=1';
+export const PERSONALISATION_LANDING = '/settings/personalisation?saved=1' satisfies Href;
 
 type Reload = (reason: string) => Promise<void>;
 
@@ -69,6 +70,11 @@ export async function restartIn(
 
     return false;
   }
+}
+
+/** Where a restart into new colours asked to come back to, once; only a landing this module holds. */
+export function landingAfterRestart(): Href | null {
+  return takeLanding() === PERSONALISATION_LANDING ? PERSONALISATION_LANDING : null;
 }
 
 /** What the account answered, at launch or back in the foreground: kept on the device, and followed where the screens are in other colours. */
