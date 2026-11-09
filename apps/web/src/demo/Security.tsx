@@ -86,6 +86,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
   const [loadMs, setLoadMs] = useState(FACTOR_LOADING_MS);
   const column = useRef<HTMLDivElement>(null);
   const saidLine = useRef<HTMLParagraphElement | null>(null);
+  const lineHeld = useRef(false);
   const card = cardOf(page, said);
   const devices = devicesOf(page);
   const others = othersOf(page);
@@ -134,9 +135,18 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
 
   useEffect(() => {
     if (page.factor !== 'loading') return;
-    const timer = setTimeout(() => setPage((now) => ({ ...now, factor: 'loaded' })), loadMs);
+    const timer = setTimeout(() => {
+      lineHeld.current = saidLine.current != null && document.activeElement === saidLine.current;
+      setPage((now) => ({ ...now, factor: 'loaded' }));
+    }, loadMs);
     return () => clearTimeout(timer);
   }, [page.factor, loadMs]);
+
+  useEffect(() => {
+    if (page.factor !== 'loaded' || !lineHeld.current) return;
+    lineHeld.current = false;
+    saidLine.current?.focus();
+  }, [page.factor]);
 
   function retryFactor(): void {
     setLoadMs(SEND_MS);
@@ -237,7 +247,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
             <SectionFailed
               title={W.factorFailed}
               line={W.factorFailedLine}
-              announce={false}
+              announce={said == null}
               onRetry={retryFactor}
             />
           ) : page.factor === 'loading' ? (
