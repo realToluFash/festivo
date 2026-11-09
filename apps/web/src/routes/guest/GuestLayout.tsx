@@ -1,7 +1,10 @@
+import { useLayoutEffect } from 'react';
 import { Outlet, useParams } from 'react-router';
 
+import { holdScheme } from '../../colourScheme.ts';
 import { Brand } from '../../components/Brand.tsx';
 import { LanguagePicker } from '../../components/LanguagePicker.tsx';
+import { config } from '../../config.ts';
 import { InvalidInvitation } from './InvalidInvitation.tsx';
 
 /**
@@ -21,6 +24,8 @@ const TOKEN_SHAPE = /^[A-Za-z0-9_-]{16,128}$/;
 
 export function GuestLayout() {
   const { token } = useParams<{ token: string }>();
+
+  useLayoutEffect(() => holdScheme(config().scheme), []);
 
   return (
     <div className="guest">
