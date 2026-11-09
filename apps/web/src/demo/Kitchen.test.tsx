@@ -578,9 +578,10 @@ describe('Each part of a course, and each table’s platters (sc-34244)', () => 
     expect(
       screen.getByRole('heading', { level: 2, name: /^Main · 96 · Family style/u }),
     ).toBeDefined();
-    expect(screen.getByRole('heading', { level: 3, name: PW.byTable })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 2, name: 'Main · By table' })).toBeDefined();
     expect(screen.getByRole('heading', { level: 3, name: PW.servedWith })).toBeDefined();
     expect(screen.getByText('Plated at the pass · 51')).toBeDefined();
-    expect(screen.getAllByText(PW.health)).toHaveLength(3);
+    expect(screen.getAllByText(PW.health)).toHaveLength(4);
+    expect(screen.getByRole('article', { name: 'Page 3 of 4' })).toBeDefined();
   });
 });

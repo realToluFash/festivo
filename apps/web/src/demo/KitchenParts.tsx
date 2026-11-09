@@ -102,8 +102,6 @@ function PartsAfter({ made, id }: { made: CourseSheet; id: string }) {
   );
 }
 
-const PAGES = 3;
-
 /** The printout and the PDF on A4 (sc-3911's black ink, 1 px rules, real headings and tables, the health footer), the parts in the page's lines and order. */
 export function KitchenPaper({
   event,
@@ -121,6 +119,9 @@ export function KitchenPaper({
   const people = allergic(figures);
   const line = `${kw(KW.coming, { count: figures.coming })} · ${sheetLine(event, now, people.length)}`;
   const [starter, main, dessert] = figures.courses;
+  const made = courseSheet(sheet.course, sheet.room);
+  const tables = made.byTable.length > 0;
+  const pages = tables ? 4 : 3;
 
   return (
     <main id="content" className="kp-paper-page">
@@ -128,7 +129,7 @@ export function KitchenPaper({
         <Glyph name="back" size={17} weight={2.4} />
         {KW.title}
       </Link>
-      <Sheet n={1}>
+      <Sheet n={1} m={pages}>
         <header className="kp-paper-head">
           <h1>{KW.title}</h1>
           <p>{event.name}</p>
@@ -180,21 +181,28 @@ export function KitchenPaper({
         </table>
         {starter != null && <PlainCourse figures={figures} id={starter.id} name={starter.name} />}
       </Sheet>
-      <Sheet n={2}>{main != null && <PaperParts sheet={sheet} coming={figures.coming} />}</Sheet>
-      <Sheet n={3}>
+      <Sheet n={2} m={pages}>
+        {main != null && <PaperParts sheet={sheet} made={made} coming={figures.coming} />}
+      </Sheet>
+      {tables && (
+        <Sheet n={3} m={pages}>
+          <PaperTables sheet={sheet} made={made} />
+        </Sheet>
+      )}
+      <Sheet n={pages} m={pages}>
         {dessert != null && <PlainCourse figures={figures} id={dessert.id} name={dessert.name} />}
       </Sheet>
     </main>
   );
 }
 
-function Sheet({ n, children }: { n: number; children: ReactNode }) {
+function Sheet({ n, m, children }: { n: number; m: number; children: ReactNode }) {
   return (
-    <article className="kp-sheet" aria-label={pw(PW.page, { n, m: PAGES })}>
+    <article className="kp-sheet" aria-label={pw(PW.page, { n, m })}>
       <div className="kp-sheet-body">{children}</div>
       <footer className="kp-foot">
         <span>{PW.health}</span>
-        <span>{pw(PW.page, { n, m: PAGES })}</span>
+        <span>{pw(PW.page, { n, m })}</span>
       </footer>
     </article>
   );
@@ -226,8 +234,15 @@ function PlainCourse({ figures, id, name }: { figures: Figures; id: string; name
   );
 }
 
-function PaperParts({ sheet, coming }: { sheet: PartsSheet; coming: number }) {
-  const made = courseSheet(sheet.course, sheet.room);
+function PaperParts({
+  sheet,
+  made,
+  coming,
+}: {
+  sheet: PartsSheet;
+  made: CourseSheet;
+  coming: number;
+}) {
   const way = wayWord(sheet.course);
 
   return (
@@ -273,33 +288,36 @@ function PaperParts({ sheet, coming }: { sheet: PartsSheet; coming: number }) {
         </>
       )}
       {made.plated != null && <p className="kp-paper-plated">{made.plated}</p>}
-      {made.byTable.length > 0 && (
-        <>
-          <h3>{PW.byTable}</h3>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">{PW.tableHead}</th>
-                <th scope="col">{PW.plattersHead}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {made.byTable.map((table) => (
-                <tr key={table.id}>
-                  <th scope="row">{table.name}</th>
-                  <td>
-                    {table.lines.map((line) => (
-                      <span key={line} className="kp-line">
-                        {line}
-                      </span>
-                    ))}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
+    </>
+  );
+}
+
+function PaperTables({ sheet, made }: { sheet: PartsSheet; made: CourseSheet }) {
+  return (
+    <>
+      <h2>{pw(PW.joined, { a: sheet.course.name, b: PW.byTable })}</h2>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">{PW.tableHead}</th>
+            <th scope="col">{PW.plattersHead}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {made.byTable.map((table) => (
+            <tr key={table.id}>
+              <th scope="row">{table.name}</th>
+              <td>
+                {table.lines.map((line) => (
+                  <span key={line} className="kp-line">
+                    {line}
+                  </span>
+                ))}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </>
   );
 }

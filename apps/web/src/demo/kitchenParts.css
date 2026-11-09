@@ -237,4 +237,8 @@
     box-shadow: none;
     break-after: page;
   }
+
+  .kp-sheet tr {
+    break-inside: avoid;
+  }
 }
