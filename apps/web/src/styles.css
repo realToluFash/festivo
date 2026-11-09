@@ -341,6 +341,9 @@ span {
 
 .shell-sidebar .today-side {
   width: auto;
+
+  /* A scrolling sidebar clips the switcher's menu, which is wider than it (sc-30410). */
+  overflow: visible;
 }
 
 .shell-nav {
