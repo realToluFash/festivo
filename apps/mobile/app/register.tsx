@@ -10,7 +10,7 @@ import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
-import { FOCUS_WAITS, useFocusOnArrival } from '../src/components/arrivalFocus.ts';
+import { FOCUS_WAITS, onArrival, useFocusOnArrival } from '../src/components/arrivalFocus.ts';
 import { PrimaryButton } from '../src/components/Buttons.tsx';
 import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
 import { AboveKeyboardView } from '../src/components/Screen.tsx';
@@ -77,17 +77,7 @@ export default function Register() {
 
     focusChecked(passwordField);
     // Android ignores a focus on this screen while the email code is still sliding off it (sc-29923).
-    const listeners = [
-      navigation.addListener('transitionEnd', (event) => {
-        if (event.data.closing) return;
-        unlisten();
-        focusChecked(passwordField);
-      }),
-      navigation.addListener('blur', () => unlisten()),
-    ];
-    const unlisten = () => listeners.forEach((remove) => remove());
-
-    return unlisten;
+    return onArrival(navigation, () => focusChecked(passwordField));
   }, [navigation, params.timedOut]);
 
   useEffect(() => {
