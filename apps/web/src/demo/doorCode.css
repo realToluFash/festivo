@@ -46,6 +46,7 @@
 }
 
 .dc-acts .desk-text {
+  min-width: var(--sizeHit);
   margin-inline: 0;
   padding-inline: 0;
 }
@@ -53,6 +54,10 @@
 .dc-acts.is-held {
   justify-content: center;
   column-gap: var(--space5xl);
+}
+
+.dc-acts.is-held .desk-text {
+  justify-content: center;
 }
 
 .dc-door-lines {
