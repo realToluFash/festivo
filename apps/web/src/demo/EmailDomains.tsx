@@ -50,7 +50,7 @@ import type { Viewer } from './settings.ts';
 
 const CHECK_MS = 1200;
 
-/** Data and control › Email domains (sc-560, sc-563): prove a domain, then keep its accounts to Ire Events. */
+/** Data and control › Email domains (sc-560, sc-563): prove a domain, then limit its accounts to Ire Events. */
 export function EmailDomains({
   viewer,
   state,
@@ -93,7 +93,7 @@ export function EmailDomains({
         ? W.prove
         : step.does === 'record'
           ? W.seeRecord
-          : W.keepAccounts;
+          : W.keepAccounts(step.domain);
   const onStep = (step: Step) => {
     if (step.does === 'contact') tell(S.contactTold);
     else if (step.does === 'prove') setAdding({ typed: '', pressed: false });
@@ -415,7 +415,7 @@ function RecordDialog({
     >
       <Note
         strong
-      >{`Add this record where ${domain.name}’s DNS is managed, then press Verify.`}</Note>
+      >{`Add this record where the DNS for ${domain.name} is managed, then press Verify.`}</Note>
       <RecordRows parts={parts} tell={tell} />
       {check === 'notFound' && <StatusLine kind="waiting">{W.notFound}</StatusLine>}
       <Note>{recordFoot(domain, locale, zone)}</Note>

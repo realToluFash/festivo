@@ -68,7 +68,7 @@ describe('Audit log (sc-611)', () => {
     expect(exportOutcome(10_001)).toBe('prepare');
     expect(exportOutcome(1_000_000)).toBe('prepare');
     expect(exportOutcome(1_000_001)).toBe('tooMany');
-    expect(downloading('JSON Lines')).toBe('Downloading Ire Events’ audit log as JSON Lines.');
+    expect(downloading('JSON Lines')).toBe('Downloading the audit log as JSON Lines.');
   });
 
   it('shows an entry with what it records, and only that', () => {
@@ -105,7 +105,7 @@ describe('Audit log (sc-611)', () => {
     expect(auditStart('filtered').filters.type).toBe('Sign-in and security');
     expect(auditStart('date_invalid').dates).toEqual({ from: '2026-10-19', to: '2026-10-01' });
     expect(auditStart('detail_gone').detail).toBe('deleted');
-    expect(auditStart('export_small').told).toBe('Downloading Ire Events’ audit log as CSV.');
+    expect(auditStart('export_small').told).toBe('Downloading the audit log as CSV.');
     expect(auditStart('export_too_many').exporting).toBe('tooMany');
     expect(auditStart('nope')).toMatchObject({ detail: null, menu: null, locked: false });
   });

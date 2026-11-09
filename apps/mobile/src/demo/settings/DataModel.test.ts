@@ -171,7 +171,7 @@ describe('the hub in the app: Control only, its card the soonest instant that as
 
   it('says nothing needs you once ire.events is proved alone', () => {
     expect(hubCard(hubStart('quiet'), say)).toEqual({
-      says: 'Nothing needs you',
+      says: 'Nothing needs your attention',
       line: 'ire.events is proved.',
       step: null,
     });
@@ -181,7 +181,7 @@ describe('the hub in the app: Control only, its card the soonest instant that as
   it('starts a new organisation on Prove a domain', () => {
     expect(hubCard(hubStart('new'), say)).toMatchObject({
       says: 'Nothing is set up yet',
-      line: 'Start by proving Ire Events’ email domain.',
+      line: 'Start by proving the email domain of Ire Events.',
       step: { label: 'Prove a domain' },
     });
     expect(hubStepOpens('new')).toBe('ed_add');
@@ -196,7 +196,7 @@ describe('the hub in the app: Control only, its card the soonest instant that as
     });
     expect(hubRows(hubStart('locked'), 'locked')).toMatchObject([
       {
-        line: 'Prove your domain and keep its accounts to Ire Events',
+        line: 'Prove your domain and limit its accounts to Ire Events',
         locked: true,
         opens: 'ed_locked',
       },
@@ -271,8 +271,8 @@ describe('Email domains: each state’s card and rows (sc-560, sc-563)', () => {
 
   it('asks to prove the domain when there is none, and opens Prove a domain empty', () => {
     expect(card('ed_empty')).toEqual({
-      says: 'Prove Ire Events’ email domain',
-      line: 'Add a DNS record where your domain is managed. Once it is proved, you can keep the accounts at it to Ire Events.',
+      says: 'Prove the email domain of Ire Events',
+      line: 'Add a DNS record where your domain is managed. Once it is proved, you can limit the accounts at it to Ire Events.',
       step: { label: 'Prove a domain', go: { kind: 'prove' } },
     });
     expect(domainsStart('ed_add', true).prove).toEqual({ typed: '', problem: null });
@@ -325,7 +325,10 @@ describe('Email domains: each state’s card and rows (sc-560, sc-563)', () => {
     expect(card('ed_proved')).toEqual({
       says: 'ireevents.com is proved',
       line: 'Proved Monday, Oct 19 at 10:12 WAT.',
-      step: { label: 'Keep its accounts to Ire Events', go: { kind: 'only', domain: IRE_EVENTS } },
+      step: {
+        label: 'Limit ireevents.com accounts to Ire Events',
+        go: { kind: 'only', domain: IRE_EVENTS },
+      },
     });
     expect(card('ed_proved', false).step).toBeNull();
     expect(rows('ed_proved').map(({ tag, only }) => [tag.word, only?.control])).toEqual([
@@ -397,7 +400,7 @@ describe('Email domains: each state’s card and rows (sc-560, sc-563)', () => {
     expect(card('oo_off')).toMatchObject({
       says: 'ire.events is proved',
       line: 'People at ire.events can still be members of other organisations.',
-      step: { label: 'Keep its accounts to Ire Events' },
+      step: { label: 'Limit ire.events accounts to Ire Events' },
     });
     expect(domainsStart('oo_confirm', true).ask).toEqual({ kind: 'only', domain: 'ire.events' });
     expect(card('oo_scheduled')).toEqual({

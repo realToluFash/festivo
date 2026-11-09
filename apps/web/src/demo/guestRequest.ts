@@ -39,7 +39,7 @@ const record = (
   ...more,
 });
 
-/** Every record of Dr Emeka Nwosu's in Ire Events: 4 records on 3 events, one on a deleted event. */
+/** Every record of Dr Emeka Nwosu's in Ire Events: 4 records, on 3 events, one on a deleted event. */
 export const COVERED: readonly Covered[] = [
   record('wed', EMEKA.name, 'Adaeze & Tunde’s wedding', 'evt-wed-4', '2026-11-05'),
   record('wed-c1', 'Adanna Nwosu', 'Adaeze & Tunde’s wedding', 'evt-wed-4', '2026-11-05', {
@@ -75,7 +75,7 @@ export const THEIR_WORDS = {
   keep: 'Keep their data',
   preparing: 'Preparing their export…',
   download: 'Download',
-  failed: 'Their export didn’t finish.',
+  failed: 'Their export did not finish.',
   tryAgain: 'Try again',
   linkUsed: 'This download has been used or has expired.',
   changed: 'The records this covers have changed. Check them, then ask again.',
@@ -94,7 +94,7 @@ export function companionOf(name: string): string {
 export function coversLine(records: readonly Covered[]): string {
   const events = new Set(records.map((one) => one.eventId)).size;
 
-  return `A request covers every record of theirs in ${ORG}: ${records.length} records on ${events} events.`;
+  return `A request covers every record of theirs in ${ORG}: ${records.length} records, on ${events} events.`;
 }
 
 export function readyLine(locale: string, zone: ReaderZone): string {
@@ -102,7 +102,7 @@ export function readyLine(locale: string, zone: ReaderZone): string {
 }
 
 export function erasedLine(locale: string, zone: ReaderZone): string {
-  return `Erased ${when(CLOCK.now, locale, zone)}. Their reply, seat and place in the counts stay.`;
+  return `Erased on ${when(CLOCK.now, locale, zone)}. Their reply, seat and place in the counts stay.`;
 }
 
 export function eraseTitle(name: string): string {
