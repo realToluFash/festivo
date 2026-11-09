@@ -111,7 +111,6 @@ final class AccountController
         return new JsonResponse(['timezone' => $zone]);
     }
 
-    /** Every IANA zone, named in the request's language, with its offset now: the list Settings > Account searches. */
     /** Settings > Personalisation: the scheme this person sees Soirely in on every device; null goes back to the default. */
     #[Route('/api/auth/colour-scheme', name: 'auth_colour_scheme', methods: ['PUT'])]
     public function setColourScheme(Request $request): JsonResponse
@@ -134,6 +133,7 @@ final class AccountController
         return new JsonResponse(['colourScheme' => $scheme?->value]);
     }
 
+    /** Every IANA zone, named in the request's language, with its offset now: the list Settings > Account searches. */
     #[Route('/api/auth/timezones', name: 'auth_timezones', methods: ['GET'])]
     public function timezones(Request $request): JsonResponse
     {
