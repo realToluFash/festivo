@@ -8,24 +8,24 @@ appId: host.exp.Exponent
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'ownership.delete'
+      id: 'organisation.ownership.delete'
     timeout: 60000
 - tapOn:
-    id: 'ownership.delete'
+    id: 'organisation.ownership.delete'
 - extendedWaitUntil:
     visible:
-      id: 'ownership.delete.name'
+      id: 'organisation.delete.name'
     timeout: 15000
 - tapOn:
-    id: 'ownership.delete.name'
+    id: 'organisation.delete.name'
 - inputText: 'QA Organisation'
 - hideKeyboard
 - tapOn:
-    id: 'ownership.delete.send'
+    id: 'organisation.delete.send'
 - extendedWaitUntil:
     visible:
-      id: 'ownership.delete.refused'
+      id: 'organisation.delete.failed'
     timeout: 15000
 - assertVisible:
-    id: 'ownership.delete.name'
+    id: 'organisation.delete.name'
 - takeScreenshot: oauth-unlinked-refusal

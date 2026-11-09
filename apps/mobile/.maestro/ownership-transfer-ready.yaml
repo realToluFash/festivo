@@ -9,18 +9,18 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/settings/organisation
 - scrollUntilVisible:
     element:
-      id: 'ownership.transfer'
+      id: 'organisation.ownership.transfer'
     timeout: 60000
 - tapOn:
-    id: 'ownership.transfer'
+    id: 'organisation.ownership.transfer'
 - scrollUntilVisible:
     element:
-      id: 'ownership.transfer.keep'
+      id: 'organisation.transfer.cancel'
     timeout: 30000
 - tapOn:
-    id: 'ownership.owner.${MEMBERSHIP}'
+    id: 'organisation.transfer.${MEMBERSHIP}'
 - tapOn:
-    id: 'ownership.password'
+    id: 'organisation.transfer.password'
 - eraseText: 120
 - inputText: ${TYPED}
 # On iOS Return, which sends nothing from this field and puts the keyboard away:
@@ -38,6 +38,6 @@ appId: host.exp.Exponent
       - hideKeyboard
 - scrollUntilVisible:
     element:
-      id: 'ownership.transfer.keep'
+      id: 'organisation.transfer.cancel'
     timeout: 30000
 - takeScreenshot: ownership-transfer-ready

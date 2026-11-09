@@ -9,6 +9,12 @@ onFlowComplete:
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
     visible:
+      id: organisation.edit
+    timeout: 30000
+- tapOn:
+    id: organisation.edit
+- extendedWaitUntil:
+    visible:
       id: organisation.name
     timeout: 30000
 - repeat:
@@ -29,10 +35,10 @@ onFlowComplete:
       ASK: /api?to=paused
 - scrollUntilVisible:
     element:
-      id: organisation.save
+      id: organisation.details.save
     centerElement: true
 - tapOn:
-    id: organisation.save
+    id: organisation.details.save
 - waitForAnimationToEnd
 - takeScreenshot: at-tap
 - assertVisible: '(?i)(shift|delete)'
@@ -40,10 +46,10 @@ onFlowComplete:
 - inputText: Q
 - scrollUntilVisible:
     element:
-      id: organisation.save
+      id: organisation.details.save
     centerElement: true
 - tapOn:
-    id: organisation.save
+    id: organisation.details.save
 - waitForAnimationToEnd
 - takeScreenshot: while-held
 - assertVisible: '(?i)(shift|delete)'

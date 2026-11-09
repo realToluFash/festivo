@@ -7,7 +7,7 @@ appId: host.exp.Exponent
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'organisation.language.readOnly'
+      id: 'organisation.readOnly'
     timeout: 20000
 - scrollUntilVisible:
     element: '{{t:orgGeneral.readOnly}}'

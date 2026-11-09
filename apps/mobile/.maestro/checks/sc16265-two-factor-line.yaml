@@ -13,5 +13,5 @@ appId: host.exp.Exponent
 - assertNotVisible:
     id: 'organisation.link'
 - assertNotVisible:
-    id: 'organisation.save'
+    id: 'organisation.edit'
 - assertNotVisible: '{{t:orgGeneral.readOnly}}'

@@ -5,79 +5,79 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
     visible:
-      id: organisation.name
+      id: organisation.card
     timeout: 30000
 - takeScreenshot: details
 - scrollUntilVisible:
     element:
-      id: companyDomains.domain
+      id: organisation.domain.add
     centerElement: true
 - takeScreenshot: domains
 - runFlow:
     file: ../scroll-tap.yaml
     env:
-      ID: companyDomains.remove.soirely.test
+      ID: organisation.domain.soirely.test.remove
 - takeScreenshot: domain-confirm
 - runFlow:
     file: ../scroll-tap.yaml
     env:
-      ID: companyDomains.keep.soirely.test
+      ID: organisation.domain.keep
 - runFlow:
     file: ../scroll-tap.yaml
     env:
-      ID: requestLink.replace
+      ID: organisation.link.replace
 - takeScreenshot: link-confirm
 - runFlow:
     file: ../scroll-tap.yaml
     env:
-      ID: requestLink.keep
+      ID: organisation.link.keep
 - scrollUntilVisible:
     element:
-      id: ownership.delete
+      id: organisation.ownership.delete
     centerElement: true
 - takeScreenshot: ownership
 - runFlow:
     file: ../scroll-tap.yaml
     env:
-      ID: ownership.transfer
+      ID: organisation.ownership.transfer
 - takeScreenshot: transfer-open
 - tapOn:
-    id: ownership\.owner\..*
+    id: organisation\.transfer\.[0-9a-f-]{8,}.*
 - takeScreenshot: transfer-picked
 - runFlow:
     file: ../scroll-tap.yaml
     env:
-      ID: ownership.transfer.send
+      ID: organisation.transfer.send
 - takeScreenshot: transfer-checked
 - runFlow:
     file: ../scroll-tap.yaml
     env:
-      ID: ownership.transfer.keep
+      ID: organisation.transfer.cancel
 - runFlow:
     file: ../scroll-tap.yaml
     env:
-      ID: ownership.leave
+      ID: organisation.ownership.leave
 - takeScreenshot: leave-confirm
 - runFlow:
     file: ../scroll-tap.yaml
     env:
-      ID: ownership.leave.stay
+      ID: organisation.leave.stay
 - runFlow:
     file: ../scroll-tap.yaml
     env:
-      ID: ownership.delete
+      ID: organisation.ownership.delete
 - extendedWaitUntil:
     visible:
-      id: ownership.delete.name
+      id: organisation.delete.name
     timeout: 15000
 - takeScreenshot: delete-confirm
 - runFlow:
     file: ../scroll-tap.yaml
     env:
-      ID: ownership.delete.send
+      ID: organisation.delete.send
 - takeScreenshot: delete-checked
 - runFlow:
     file: ../scroll-tap.yaml
     env:
-      ID: ownership.delete.keep
+      ID: organisation.delete.cancel
 - takeScreenshot: closed

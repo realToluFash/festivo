@@ -15,5 +15,5 @@ appId: host.exp.Exponent
       id: 'organisation.link'
 - takeScreenshot: sc16265-both-lines
 - assertNotVisible:
-    id: 'organisation.save'
+    id: 'organisation.edit'
 - assertNotVisible: '{{t:orgGeneral.readOnly}}'

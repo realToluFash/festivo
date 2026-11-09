@@ -9,21 +9,27 @@ onFlowComplete:
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
     visible:
-      id: organisation.name
+      id: organisation.card
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: companyDomains.add
+      id: organisation.domain.add
     centerElement: true
 - swipe:
     start: '50%,40%'
     end: '50%,60%'
 - waitForAnimationToEnd
+- tapOn:
+    id: organisation.domain.add
+- extendedWaitUntil:
+    visible:
+      id: organisation.domain.field
+    timeout: 10000
 - repeat:
     times: 3
     commands:
       - tapOn:
-          id: companyDomains.domain
+          id: organisation.domain.field
       - eraseText: 80
 - inputText: 'soirely.test'
 - waitForAnimationToEnd
@@ -35,12 +41,12 @@ onFlowComplete:
       ASK: /api?to=paused
 - scrollUntilVisible:
     element:
-      id: companyDomains.add
+      id: organisation.domain.send
     centerElement: true
 - tapOn:
-    id: companyDomains.add
+    id: organisation.domain.send
 - tapOn:
-    id: companyDomains.add
+    id: organisation.domain.send
 - pressKey: Enter
 - runScript:
     file: ../batch/helper.js
@@ -54,17 +60,17 @@ onFlowComplete:
 - assertNotVisible: '.*{{t:companyDomains.failed}}.*'
 - assertNotVisible: '.*(?:is already on the list|ya está en la lista|figure déjà dans la liste|já está na lista).*'
 - assertNotVisible:
-    id: companyDomains.domain
+    id: organisation.domain.field
     text: 'soirely.test'
 - scrollUntilVisible:
     element:
-      id: companyDomains.remove.soirely.test
+      id: organisation.domain.soirely.test.remove
     direction: UP
     centerElement: true
 - tapOn:
-    id: companyDomains.remove.soirely.test
+    id: organisation.domain.soirely.test.remove
 - tapOn:
-    id: companyDomains.confirm.soirely.test
+    id: organisation.domain.confirm
 - extendedWaitUntil:
     visible: '{{t:companyDomains.removed}}'
     timeout: 30000
