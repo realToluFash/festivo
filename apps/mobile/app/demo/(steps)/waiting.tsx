@@ -26,7 +26,6 @@ const ANSWERS = [
   ['Turn it down', 'turnedDown'],
   ['Let it end', 'ended'],
   ['Ask from another device', 'replaced'],
-  ['Nobody can confirm', 'nobody'],
 ] as const;
 
 /** The answers sc-29961 says close the sheet: approved, turned down, replaced from another device. */
