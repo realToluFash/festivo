@@ -1379,6 +1379,51 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     ],
   },
   {
+    page: 'Calendar · Only what needs you',
+    boards: [
+      {
+        title: 'Calendar · the Show menu',
+        what: 'Only what needs you, chosen',
+        href: '/demo/calendar?state=needsMenu',
+      },
+      {
+        title: 'Calendar · only what needs you',
+        what: 'Overdue on Nov 2 and 3, +1 more on Nov 4',
+        href: '/demo/calendar?state=needsMonth',
+      },
+      {
+        title: 'Calendar · today open',
+        what: 'Confirm the cake overdue, then the band',
+        href: '/demo/calendar?state=needsDay',
+      },
+      {
+        title: 'Calendar · Agenda',
+        what: 'Landing on today, Nov 2 overdue above',
+        href: '/demo/calendar?state=needsAgenda',
+      },
+      {
+        title: 'Calendar · a month with nothing for you',
+        what: 'December 2026',
+        href: '/demo/calendar?state=needsEmptyMonth',
+      },
+      {
+        title: 'Calendar · a day with nothing for you',
+        what: 'Sat, Nov 14 open, two events',
+        href: '/demo/calendar?state=needsEmptyDay',
+      },
+      {
+        title: 'Calendar · a reader who can only view',
+        what: 'Nothing needs you in November',
+        href: '/demo/calendar?state=needsReadOnly',
+      },
+      {
+        title: 'Calendar · Agenda, nothing today',
+        what: 'Today lands on Wed, Nov 4',
+        href: '/demo/calendar?state=needsTodayEmpty',
+      },
+    ],
+  },
+  {
     page: 'Sign-in',
     boards: [
       { title: 'Welcome', what: 'The app opens here signed out', href: '/demo/welcome' },

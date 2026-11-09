@@ -1,4 +1,4 @@
-import type { CalendarShow, CalendarView } from '@soirely/domain';
+import type { CalendarView } from '@soirely/domain';
 import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -9,6 +9,7 @@ import { Text } from '../../components/Text.tsx';
 import { motionEase } from '../../motion.ts';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { type Show, SHOWS } from './CalendarModel.ts';
 import { CW, say } from './CalendarWords.ts';
 import { type Anchor, AnchoredMenu } from '../../components/Summary.tsx';
 
@@ -68,19 +69,25 @@ export function ViewSwitch({
   );
 }
 
-/** Show, a 44 pill in Surf that reads "Events only" in Tint while that is on. */
+const SHOW_WORDS: Record<Show, string> = {
+  all: CW.showAll,
+  events: CW.showEvents,
+  needs: CW.showNeedsYou,
+};
+
+/** Show, a 44 pill in Surf that reads its choice in Tint while one is on; a long choice wraps inside it, never cut. */
 export function ShowButton({
   show,
   big,
   onPress,
   ref,
 }: {
-  show: CalendarShow;
+  show: Show;
   big: boolean;
   onPress: () => void;
   ref: Ref<ViewInstance>;
 }) {
-  const only = show === 'events';
+  const only = show !== 'all';
   const ink = only ? tokens.colorAccentText : tokens.colorInk;
 
   return (
@@ -95,25 +102,24 @@ export function ShowButton({
         pressed && styles.pressed,
       ]}
       accessibilityRole="button"
-      accessibilityLabel={say.choiceIn(CW.show, only ? CW.showEvents : CW.showAll)}
+      accessibilityLabel={say.choiceIn(CW.show, SHOW_WORDS[show])}
       testID="calendar.show"
     >
       <Glyph name="filter" size={17} ink={ink} weight={2.2} />
       <Text
         size={15}
         weight="semibold"
-        numberOfLines={1}
         maxFontSizeMultiplier={DOUBLED}
         accessible={false}
-        style={{ color: ink }}
+        style={[styles.showWords, { color: ink }]}
       >
-        {only ? CW.showEvents : CW.show}
+        {only ? SHOW_WORDS[show] : CW.show}
       </Text>
     </Pressable>
   );
 }
 
-/** Show's two choices, under the button with its right edge on Show's. */
+/** Show's choices, under the button with its right edge on Show's. */
 export function ShowMenu({
   at,
   show,
@@ -122,16 +128,11 @@ export function ShowMenu({
   onClose,
 }: {
   at: Anchor | null;
-  show: CalendarShow;
+  show: Show;
   opener: RefObject<ViewInstance | null>;
-  onShow: (show: CalendarShow) => void;
+  onShow: (show: Show) => void;
   onClose: () => void;
 }) {
-  const choices: readonly [CalendarShow, string][] = [
-    ['all', CW.showAll],
-    ['events', CW.showEvents],
-  ];
-
   return (
     <AnchoredMenu
       at={at == null ? null : { ...at, y: at.y + tokens.spaceXxs }}
@@ -141,8 +142,9 @@ export function ShowMenu({
       testID="calendar.showMenu"
     >
       <View style={styles.menu}>
-        {choices.map(([each, word]) => {
+        {SHOWS.map((each) => {
           const on = each === show;
+          const word = SHOW_WORDS[each];
 
           return (
             <Pressable
@@ -407,7 +409,14 @@ const styles = StyleSheet.create({
     borderRadius: tokens.sizeHit / 2,
     backgroundColor: tokens.colorInset,
   },
-  showPill: { paddingLeft: tokens.spacePillEnd },
+  showPill: {
+    height: undefined,
+    minHeight: tokens.sizeHit,
+    flexShrink: 1,
+    paddingLeft: tokens.spacePillEnd,
+    paddingVertical: tokens.spaceXxs,
+  },
+  showWords: { flexShrink: 1 },
   pillBig: { minHeight: 60, height: undefined, borderRadius: 30, alignSelf: 'stretch' },
   pillOn: { backgroundColor: tokens.colorAccentTint },
   round: {

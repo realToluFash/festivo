@@ -11,6 +11,7 @@ import {
   dayDate,
   formatEventClock,
   formatWallDay,
+  levelOf,
   monthGrid,
   monthOfDay,
   namesZone,
@@ -19,15 +20,22 @@ import {
 } from '@soirely/domain';
 
 import { type Shown, dayCount, eventHref, shownEvent } from '../events/EventsModel.ts';
-import { EVENTS, READER_ZONE, REUNION, type SampleEvent } from '../events/EventsSample.ts';
+import { CLOCKS, EVENTS, READER_ZONE, REUNION, type SampleEvent } from '../events/EventsSample.ts';
 import { W, say as eventSay } from '../events/EventsWords.ts';
-import { say } from './CalendarWords.ts';
+import { CW, say } from './CalendarWords.ts';
 import type { RowTag } from '../../components/SummaryRows.tsx';
 
 export interface CalEvent extends Shown {
   dayCount: number;
   milestones: readonly Milestone[];
+  permissions: readonly string[];
 }
+
+export type Show = CalendarShow | 'needs';
+
+export const SHOWS: readonly Show[] = ['all', 'events', 'needs'];
+
+export const NOW = new Date(CLOCKS.reader);
 
 export type Item = CalendarItem<CalEvent>;
 export type Cell = CalendarCell<CalEvent>;
@@ -53,6 +61,14 @@ export const CALENDAR_STATES = [
   'subscribe',
   'subscribeRefused',
   'resetLink',
+  'needsMenu',
+  'needsMonth',
+  'needsDay',
+  'needsAgenda',
+  'needsEmptyMonth',
+  'needsEmptyDay',
+  'needsReadOnly',
+  'needsTodayEmpty',
 ] as const;
 
 export type CalendarState = (typeof CALENDAR_STATES)[number];
@@ -63,15 +79,17 @@ export function calendarStateOf(value: string | undefined): CalendarState | null
 
 export type Load = 'loading' | 'failed' | 'loaded';
 export type Feed = 'panel' | 'refused' | 'reset';
+export type NeedsSeed = 'owner' | 'readOnly' | 'todayEmpty';
 
 export interface Start {
   view: CalendarView | null;
   at: string | null;
-  show: CalendarShow;
+  show: Show;
   open: string | null;
   menu: boolean;
   feed: Feed | null;
   load: Load;
+  needs: NeedsSeed | null;
 }
 
 export function startOf(state: CalendarState | null, today: string): Start {
@@ -83,7 +101,9 @@ export function startOf(state: CalendarState | null, today: string): Start {
     menu: false,
     feed: null,
     load: 'loaded',
+    needs: null,
   };
+  const needs: Start = { ...start, view: 'month', at: today, show: 'needs', needs: 'owner' };
 
   switch (state) {
     case 'populated':
@@ -111,6 +131,22 @@ export function startOf(state: CalendarState | null, today: string): Start {
       return { ...start, feed: 'refused' };
     case 'resetLink':
       return { ...start, feed: 'reset' };
+    case 'needsMenu':
+      return { ...needs, menu: true };
+    case 'needsMonth':
+      return needs;
+    case 'needsDay':
+      return { ...needs, open: today };
+    case 'needsAgenda':
+      return { ...needs, view: 'agenda' };
+    case 'needsEmptyMonth':
+      return { ...needs, at: '2026-12-01' };
+    case 'needsEmptyDay':
+      return { ...needs, open: '2026-11-14' };
+    case 'needsReadOnly':
+      return { ...needs, needs: 'readOnly', open: '2026-11-04' };
+    case 'needsTodayEmpty':
+      return { ...needs, view: 'agenda', needs: 'todayEmpty' };
     default:
       return start;
   }
@@ -138,16 +174,173 @@ export function datesOf(event: Shown): Milestone[] {
   ];
 }
 
-export function calendarEvents(events: readonly SampleEvent[], now: Date): CalEvent[] {
+const AREAS = ['events', 'seating', 'vendors', 'budget', 'menu'] as const;
+
+interface Owed {
+  event: string;
+  at: string;
+  title: string;
+  area: (typeof AREAS)[number];
+}
+
+const OWED: readonly Owed[] = [
+  { event: 'evt-wed-4', at: '2026-11-02T23:59:00Z', title: 'Agree the toasts', area: 'seating' },
+  { event: 'evt-wed-4', at: '2026-11-03T09:00:00Z', title: 'Confirm the cake', area: 'vendors' },
+  {
+    event: 'evt-wed-4',
+    at: '2026-11-03T23:59:00Z',
+    title: 'Pay the band’s balance',
+    area: 'budget',
+  },
+  { event: 'evt-wed-4', at: '2026-11-04T12:00:00Z', title: 'Confirm the florist', area: 'vendors' },
+  {
+    event: 'evt-wed-4',
+    at: '2026-11-04T18:00:00Z',
+    title: 'Send the seating plan to the venue',
+    area: 'seating',
+  },
+  {
+    event: 'evt-wed-4',
+    at: '2026-11-04T23:59:00Z',
+    title: 'Give final numbers to the kitchen',
+    area: 'menu',
+  },
+  {
+    event: 'evt-wed-4',
+    at: '2026-11-04T23:59:00Z',
+    title: 'Seat the last 12 guests',
+    area: 'seating',
+  },
+  {
+    event: 'evt-gala-4',
+    at: '2026-11-09T17:00:00Z',
+    title: 'Pay the venue’s deposit',
+    area: 'budget',
+  },
+  {
+    event: 'evt-gala-4',
+    at: '2026-11-10T11:00:00Z',
+    title: 'Seat the patrons’ tables',
+    area: 'seating',
+  },
+  {
+    event: 'evt-ireti-2',
+    at: '2026-11-11T23:59:00Z',
+    title: 'Give final numbers to the kitchen',
+    area: 'menu',
+  },
+];
+
+/** The Owner changes every area but only reads the gala's seating; the read-only reader reads everything. */
+export function heldOn(eventId: string, seed: NeedsSeed | null): string[] {
+  if (seed === 'readOnly') return AREAS.map((area) => `${area}.read`);
+
+  return AREAS.map((area) =>
+    eventId === 'evt-gala-4' && area === 'seating' ? `${area}.read` : `${area}.manage`,
+  );
+}
+
+/** The kitchen sheet is the web's (sc-3914), so the app's kitchen milestones carry no action. */
+function owedOn(id: string, timeZone: string, seed: NeedsSeed, today: string): Milestone[] {
+  return OWED.filter(
+    (one) => one.event === id && !(seed === 'todayEmpty' && wallDay(one.at, timeZone) === today),
+  ).map(({ at, title, area }) => ({ at, title, note: null, owner: 'you', area, action: null }));
+}
+
+/** The You milestones come only with the needs* states, as Today's are seeded, so every other state keeps its sample. */
+export function calendarEvents(
+  events: readonly SampleEvent[],
+  now: Date,
+  seed: NeedsSeed | null = null,
+): CalEvent[] {
+  const today = wallDay(now, READER_ZONE);
+
   return events.map((event) => {
     const shown = shownEvent(event, now);
+    const owed = seed == null ? [] : owedOn(event.id, event.timeZone, seed, today);
 
-    return { ...shown, dayCount: dayCount(event), milestones: datesOf(shown) };
+    return {
+      ...shown,
+      dayCount: dayCount(event),
+      milestones: [...datesOf(shown), ...owed],
+      permissions: heldOn(event.id, seed),
+    };
   });
 }
 
-export function daysOf(events: readonly CalEvent[], show: CalendarShow): Days {
-  return calendarDays(events, show);
+const titles = new Intl.Collator('en');
+
+function atOf(item: Item): number {
+  return Date.parse(item.kind === 'milestone' ? item.milestone.at : item.event.startsAt);
+}
+
+/** Only what needs you: the You milestones whose area the reader changes, each on its event's own day, by time then title as Today's rows. */
+export function needsDays(events: readonly CalEvent[]): Days {
+  const days = new Map<string, Item[]>();
+
+  for (const event of events)
+    for (const milestone of event.milestones) {
+      if (milestone.owner !== 'you' || levelOf(event.permissions, milestone.area) !== 'change')
+        continue;
+      const day = wallDay(milestone.at, event.timeZone);
+      days.set(day, [...(days.get(day) ?? []), { kind: 'milestone', event, milestone, day }]);
+    }
+
+  for (const items of days.values())
+    items.sort((a, b) => atOf(a) - atOf(b) || titles.compare(rowTitle(a), rowTitle(b)));
+
+  return days;
+}
+
+export function daysOf(events: readonly CalEvent[], show: Show): Days {
+  return show === 'needs' ? needsDays(events) : calendarDays(events, show);
+}
+
+export function isYou(item: Item): boolean {
+  return item.kind === 'milestone' && item.milestone.owner === 'you';
+}
+
+/** Overdue is said only under Only what needs you, on the row's own day. */
+export function overdueIn(item: Item, show: Show, now: Date = NOW): boolean {
+  return show === 'needs' && item.kind === 'milestone' && atOf(item) <= now.getTime();
+}
+
+/** Where Today and Agenda land under needs: the day asked for when it holds a row, else the month's next that does, else its last, else its empty line. */
+export function needsLanding(days: Days, from: string): string {
+  const month = monthOfDay(from);
+  const held = agendaDays(month, days).map(({ day }) => day);
+
+  return held.find((day) => day >= from) ?? held.at(-1) ?? `month-${monthKey(month)}`;
+}
+
+export function needsWhen(item: Item, locale: string, now: Date = NOW): string {
+  const when = rowWhen(item, locale);
+
+  return overdueIn(item, 'needs', now) ? say.timeThen(when, CW.overdue) : when;
+}
+
+export function needsLabel(item: Item, locale: string, now: Date = NOW): string {
+  const words = overdueIn(item, 'needs', now) ? say.needsRowLabelOverdue : say.needsRowLabel;
+
+  return words(rowTitle(item), item.event.name, rowWhen(item, locale));
+}
+
+export function monthLine(
+  load: Load,
+  show: Show,
+  month: CalendarMonth,
+  days: Days,
+  name: string,
+): string | null {
+  if (load !== 'loaded' || !emptyMonth(month, days)) return null;
+
+  return show === 'needs' ? say.emptyNeedsMonth(name) : say.emptyMonth(name);
+}
+
+export function dayLine(load: Load, show: Show, items: readonly Item[]): string | null {
+  if (load !== 'loaded' || items.length > 0) return null;
+
+  return show === 'needs' ? CW.emptyNeedsDay : CW.emptyDay;
 }
 
 export const REACH_MONTHS = 24;
@@ -446,25 +639,31 @@ export function weekdayShort(day: string, locale: string): string {
 
 export type AgendaEntry =
   | { kind: 'month'; key: string; month: CalendarMonth }
+  | { kind: 'empty'; key: string; month: CalendarMonth }
   | { kind: 'day'; key: string; day: string; items: Item[] };
 
+/** Under needs, an empty today has no heading and a month with no rows says so. */
 export function agendaOf(
   month: CalendarMonth,
   days: Days,
   today: string,
+  show: Show = 'all',
   reach = REACH_MONTHS,
 ): AgendaEntry[] {
   const entries: AgendaEntry[] = [];
+  const needs = show === 'needs';
 
   for (let shift = -reach; shift <= reach; shift++) {
     const each = shiftMonth(month, shift);
     const listed = agendaDays(each, days);
 
-    if (monthKey(each) === today.slice(0, 7) && !listed.some(({ day }) => day === today))
+    if (!needs && monthKey(each) === today.slice(0, 7) && !listed.some(({ day }) => day === today))
       listed.push({ day: today, items: [] });
-    if (listed.length === 0) continue;
+    if (listed.length === 0 && !needs) continue;
 
     entries.push({ kind: 'month', key: `month-${monthKey(each)}`, month: each });
+    if (listed.length === 0)
+      entries.push({ kind: 'empty', key: `empty-${monthKey(each)}`, month: each });
     for (const { day, items } of listed.sort((a, b) => a.day.localeCompare(b.day)))
       entries.push({ kind: 'day', key: day, day, items });
   }
