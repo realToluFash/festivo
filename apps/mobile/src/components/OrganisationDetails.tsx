@@ -57,11 +57,9 @@ const hidden = {
   importantForAccessibility: 'no-hide-descendants',
 } as const;
 
-/** What a save came to; the product's API answers it, and the demo's sample. */
 export type DetailsOutcome =
   Exclude<SaveOutcome, { kind: 'saved' }> | { kind: 'saved'; details: OrganisationDetails };
 
-/** What the card says in place of the organisation, until the page is left. */
 export type CardSaid = { kind: 'saved'; words: string } | { kind: 'transferred'; to: string };
 
 /** What keeps a reader from changing the details: their role, or each sign-in rule that holds it back (sc-16265). */
@@ -185,7 +183,6 @@ function CardTile({ name, side }: { name: string; side: number }) {
   );
 }
 
-/** The card's sentence and its line: the organisation at rest, or what just happened until the page is left. */
 export function cardWords(
   t: TFunction,
   details: OrganisationDetails,

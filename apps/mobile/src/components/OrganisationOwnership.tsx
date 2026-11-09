@@ -42,7 +42,6 @@ import {
 } from './Summary.tsx';
 import { Text } from './Text.tsx';
 
-/** A member who could become the owner: active, and not the one transferring. */
 export interface Candidate {
   id: string;
   name: string;
@@ -51,13 +50,10 @@ export interface Candidate {
 
 type OwnershipStep = 'transfer' | 'leave' | 'delete';
 
-/** Where a demo state opens the section; the product always opens it at rest. */
 export interface OwnershipOpening {
   screen: 'transfer' | 'delete' | null;
   ask: 'leave' | 'onlyOwner' | null;
-  /** The transfer screen with its first candidate chosen and this password typed. */
   transfer: { password: string } | null;
-  /** The delete screen with this typed, refused. */
   mistyped: string | null;
 }
 
@@ -95,11 +91,10 @@ export function OwnershipSection({
   /** How the owner proves it is them: a password, or the provider they sign in with. */
   via: 'password' | Provider;
   opening?: OwnershipOpening;
-  /** The demo's own Leave in place of the plain Ask: the handover (sc-614), which the product does not do yet. */
+  /** Leave without the plain Ask, as the demo hands over first (sc-614); the product has no handover yet. */
   onLeave?: (() => void) | undefined;
   leaveRef?: RefObject<ViewInstance | null>;
   onTransferred: (name: string) => void;
-  /** Left or deleted: the organisation is gone from this account. */
   onGone: () => void;
 }) {
   const { t } = useTranslation();
@@ -316,7 +311,6 @@ function TransferScreen({
     });
   }
 
-  /** The client's checks, in screen order; true when the transfer may be sent. */
   function checked(): boolean {
     const found: Partial<Record<TransferField, string>> = {
       ...(chosen == null && { owner: t('ownership.ownerBlank') }),
