@@ -66,6 +66,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 Nov 2026. The app's Security page** (sc-34792 for sc-30411, `mobile:security.*`). Kept as dev1 wrote it, except `setupTitle`, now "Turn on two-factor", as the 19 Oct phrasing and the web's `twoFactorCard.setupTitle`; "Set up two-factor" stays only after account recovery. Row lines after " · " keep their lower case, as every row line.
 - **9 Nov 2026. The web's reset sent page and the lost-both support line** (sc-33788 for
   sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). Kept as dev2 wrote
   them; `RecoverPassword.test.tsx` pins all three. `nothingThere` ends on its own link, "send it
