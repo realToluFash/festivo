@@ -43,6 +43,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 Nov 2026. As regras de início de sessão na app: a sua situação e o que mudou** (`mobile:signInRules.stand.*`, `readIntro`, `settings.personLabel*`, sc-34925 para sc-30412). A app repete `web:signInRules.*` palavra por palavra; se uma muda, muda a outra. As áreas em espera (`stand.area.*`) vão sem artigo, "membros", "faturação", "segurança", depois de "As alterações a {{areas}}", como na web, e unem-se com "e". "Sem usar a Soirely", no feminino, também na web, que dizia "o Soirely". O cartão das Definições, para o leitor de ecrã, é "A sua conta. {{name}}, {{email}}, {{role}} em {{organisation}}".
 - **9 Nov 2026. A página Definições de notificações da app** (sc-34901 para sc-30411,
   `mobile:notificationSettings.*`). O cabeçalho tem verbo, "Só recebe notificações push"; as
   linhas não: "Push e e-mail", "Só push", "Desativado", como `off`. A secção é "Notificações

@@ -71,6 +71,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 nov. 2026. Les règles de connexion dans l’app : votre situation, ce qui a changé** (`mobile:signInRules.stand.*`, `readIntro`, `settings.personLabel*`, sc-34925 pour sc-30412). L’app reprend mot pour mot `web:signInRules.*` ; une phrase qui change sur l’un change sur l’autre. Les domaines bloqués (`stand.area.*`) portent leur article et leur préposition, « des membres », « de la facturation », « de la sécurité », pour que `managersNotOn`, « Les modifications {{areas}} attendent qu’elle le soit. », s’accorde quelle que soit la liste. Le délai de la double authentification pour tous est « Pas encore activée. Date limite : {{day}} », sans point final, car `{{day}}` finit sur « nov. ». « Pas de limite » est « Votre session reste ouverte jusqu’à ce que vous vous déconnectiez. », jamais « Vous restez connecté », qui s’accorde au masculin. La carte de Paramètres, pour le lecteur d’écran, est « Votre compte. {{name}}, {{email}}, {{role}} dans {{organisation}} ». U+00A0 avant chaque deux-points de ces règles, web compris.
 - **9 nov. 2026. La page Paramètres de notification de l’app** (sc-34901 pour sc-30411,
   `mobile:notificationSettings.*`). L’en-tête a un verbe, « Vous recevez uniquement des
   notifications push » ; les lignes n’en ont pas : « Push et e-mail », « Push uniquement »,
