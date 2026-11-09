@@ -4,39 +4,33 @@ import { type TFunction } from 'i18next';
 
 type Display = 'short' | 'long';
 
-function unit(
-  locale: string,
-  name: 'meter' | 'foot' | 'inch',
-  value: number,
-  display: Display,
-  grouping: boolean,
-) {
+function unit(locale: string, name: 'meter' | 'foot' | 'inch', value: number, display: Display) {
   return new Intl.NumberFormat(locale, {
     style: 'unit',
     unit: name,
     unitDisplay: display,
     maximumFractionDigits: 2,
-    useGrouping: grouping,
+    useGrouping: false,
   }).format(value);
 }
 
-/** "24 m" or "12 ft 6 in"; readRoomSide reads "," as a decimal point, so a field's value has no grouping. */
+/** "24 m" or "12 ft 6 in", never grouped: readRoomSide reads "," as a decimal point, so a size the page shows is one its fields read back. */
 export function lengthWords(
   t: TFunction,
   locale: string,
   cm: number,
   system: MeasurementSystem,
-  { display = 'short', grouping = true }: { display?: Display; grouping?: boolean } = {},
+  { display = 'short' }: { display?: Display } = {},
 ): string {
-  if (system === 'metric') return unit(locale, 'meter', cm / 100, display, grouping);
+  if (system === 'metric') return unit(locale, 'meter', cm / 100, display);
   const { feet, inches } = feetAndInchesOf(cm);
-  const shownFeet = unit(locale, 'foot', feet, display, grouping);
+  const shownFeet = unit(locale, 'foot', feet, display);
 
   return inches === 0
     ? shownFeet
     : t('seating.feetInches', {
         feet: shownFeet,
-        inches: unit(locale, 'inch', inches, display, grouping),
+        inches: unit(locale, 'inch', inches, display),
       });
 }
 
@@ -51,5 +45,5 @@ export function lengthField(
     ? new Intl.NumberFormat(locale, { maximumFractionDigits: 2, useGrouping: false }).format(
         cm / 100,
       )
-    : lengthWords(t, locale, cm, system, { grouping: false });
+    : lengthWords(t, locale, cm, system);
 }

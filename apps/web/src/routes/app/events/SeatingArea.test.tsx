@@ -333,6 +333,23 @@ describe('Seating at a desk (sc-3998)', () => {
 
   it('asks before deleting a section, naming its tables', async () => {
     signedIn();
+    const terrace = { ...plan([{ id: 's1', name: 'Terrace', colour: 'teal' }]) };
+    terrace.sections = terrace.sections.map((one) => ({ ...one, tables: 3, seats: 24 }));
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'metric', plan: terrace } }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Terrace' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete section…' }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Delete Terrace?' });
+    expect(
+      within(ask).getByText('Its 3 tables stay where they are, with no section.'),
+    ).toBeDefined();
+  });
+
+  it('asks only "Delete {name}?" for a section with no tables, and deletes it', async () => {
+    signedIn();
     const sent = await onSeating({
       'GET /api/events/ev_1/seating-plan': () =>
         json({
@@ -348,9 +365,9 @@ describe('Seating at a desk (sc-3998)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Edit Terrace' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete section…' }));
     const ask = await screen.findByRole('alertdialog', { name: 'Delete Terrace?' });
-    expect(
-      within(ask).getByText('Its 0 tables stay where they are, with no section.'),
-    ).toBeDefined();
+    expect(within(ask).queryByText(/tables? stays?/u)).toBeNull();
+    expect(ask.getAttribute('aria-describedby')).toBeNull();
+    expect(ask.closest('.desk')).not.toBeNull();
     fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));
 
     await waitFor(() => expect(screen.queryByText('Terrace')).toBeNull());
@@ -380,6 +397,24 @@ describe('Seating at a desk (sc-3998)', () => {
     expect(await screen.findByText('This change was not saved.')).toBeDefined();
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(screen.getByLabelText('Name')).toHaveProperty('value', 'Terrace');
+  });
+
+  it('takes focus to a panel form’s title as it opens, and back to its opener as it closes', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'metric', plan: plan() } }),
+    });
+
+    const settings = await screen.findByRole('button', { name: 'Room settings' });
+    settings.focus();
+    fireEvent.click(settings);
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-focus')).toBe('title'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Room settings' })),
+    );
   });
 
   it('is not shown without seating.read', async () => {
@@ -466,7 +501,11 @@ describe.each([
         json({ seating: { measurementSystem: 'us', plan: { ...hall, widthCm: 35_006 } } }),
     });
 
-    fireEvent.click(await screen.findByRole('button', { name: t('seating.roomSettings') }));
+    expect(
+      await screen.findAllByText((text) => spaced(text).includes(`Main hall · ${shown} ×`)),
+    ).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', { name: t('seating.roomSettings') }));
     const width = screen.getByLabelText<HTMLInputElement>(t('seating.width'));
     expect(spaced(width.value)).toBe(shown);
     fireEvent.change(width, { target: { value: typed } });
