@@ -684,6 +684,9 @@ describe('the demo gets a password back (sc-29064)', () => {
       screen.getByRole('link', { name: 'Email support@soirely.com' }).getAttribute('href'),
     ).toBe('mailto:support@soirely.com');
     expect(screen.queryByRole('button', { name: /Send/ })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Back to sign in' }).getAttribute('href')).toBe(
+      '/demo/sign-in',
+    );
 
     fireEvent.click(screen.getByRole('link', { name: 'Back' }));
     await screen.findByRole('heading', { name: 'Enter your code' });

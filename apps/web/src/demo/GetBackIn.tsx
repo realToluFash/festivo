@@ -388,6 +388,9 @@ function Support() {
       <a className="button button-primary demo-wide" href="mailto:support@soirely.com">
         Email support@soirely.com
       </a>
+      <Link className="link-button demo-link" to="/demo/sign-in" state={location.state}>
+        Back to sign in
+      </Link>
     </BoardPage>
   );
 }
