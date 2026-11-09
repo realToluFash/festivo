@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { useReadOut } from './ReadOut.tsx';
 import { type TextHandle, Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
+import { useWordsBox } from './Cover.tsx';
 import type { SecurityLine } from '../kit/securityPage.ts';
 import { CardGlyph, OnCard, ShapeMark, type StepProps, SummaryCard } from './Summary.tsx';
 
@@ -25,14 +26,21 @@ export function SecurityCard({
 }) {
   const face = wide ? 64 : 56;
   const size = wide ? 24 : 22;
+  const words = useWordsBox();
 
   useReadOut(line?.kind === 'done' ? line.text : null, { quietAtMount: true });
 
   return (
-    <SummaryCard size={wide ? 'wide' : 'page'} height={200} step={step} testID="security.card">
-      <View style={styles.face}>
+    <SummaryCard
+      size={wide ? 'wide' : 'page'}
+      height={200}
+      step={step}
+      words={words.box}
+      testID="security.card"
+    >
+      <View style={styles.face} onLayout={words.onArea}>
         <CardGlyph name="shield" side={face} />
-        <View style={styles.words}>
+        <View style={styles.words} onLayout={words.onWords}>
           <Text
             ref={saysRef}
             size={size}
@@ -66,7 +74,7 @@ export function SecurityCard({
 
 const styles = StyleSheet.create({
   face: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  words: { flex: 1, minWidth: 0, gap: tokens.spaceHair },
+  words: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
   white: { color: tokens.colorInkOnDark },
   done: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
   mark: { marginTop: tokens.spaceHair },
