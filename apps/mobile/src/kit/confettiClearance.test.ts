@@ -68,7 +68,7 @@ describe('the Account, Security and Notifications card keeps its pieces off its 
   const words = { x: 90, y: 18, width: 218, height: 72 };
 
   it('leaves out the pieces on a two-line pt title at 360 pt, and keeps those under it', () => {
-    const kept = piecesClearOf(CARD_PIECES, card, 1, words);
+    const kept = piecesClearOf(CARD_PIECES, card, 1, [words]);
 
     expect(kept.map(([x, y]) => [x, y])).toEqual([
       [0.81, 0.73],
@@ -78,13 +78,32 @@ describe('the Account, Security and Notifications card keeps its pieces off its 
   });
 
   it('keeps every piece it draws spaceSm clear of the words', () => {
-    for (const [x, y, shape, size, turn] of piecesClearOf(CARD_PIECES, card, 1, words))
+    for (const [x, y, shape, size, turn] of piecesClearOf(CARD_PIECES, card, 1, [words]))
       expect(clearOfWords(pieceBounds({ x, y, shape, size, turn }, card, 1), words)).toBe(true);
   });
 
   it('keeps the pieces beside a one-line title that ends short of them', () => {
     const short = { x: 90, y: 34, width: 120, height: 47 };
 
-    expect(piecesClearOf(CARD_PIECES, card, 1, short)).toHaveLength(CARD_PIECES.length);
+    expect(piecesClearOf(CARD_PIECES, card, 1, [short])).toHaveLength(CARD_PIECES.length);
+  });
+
+  it('leaves out the (0.81, 0.73) half disc on a two-line pt todo line under a two-line title at 360 pt', () => {
+    const todo = { x: 20, y: 102, width: 288, height: 41 };
+    const kept = piecesClearOf(CARD_PIECES, card, 1, [words, todo]);
+
+    expect(kept.map(([x, y]) => [x, y])).toEqual([
+      [0.92, 0.84],
+      [0.58, 0.9],
+    ]);
+  });
+
+  it('keeps every piece it draws spaceSm clear of each box', () => {
+    const todo = { x: 20, y: 102, width: 288, height: 41 };
+    const kept = piecesClearOf(CARD_PIECES, card, 1, [words, todo]);
+
+    for (const [x, y, shape, size, turn] of kept)
+      for (const box of [words, todo])
+        expect(clearOfWords(pieceBounds({ x, y, shape, size, turn }, card, 1), box)).toBe(true);
   });
 });

@@ -89,14 +89,16 @@ export function clearOfWords(piece: Box, words: Box): boolean {
   );
 }
 
-/** The pieces a cover of a size keeps at a scale: those clear of the words. */
+/** The pieces a cover of a size keeps at a scale: those clear of every box of words. */
 export function piecesClearOf(
   pieces: readonly Piece[],
   cover: Size,
   scale: number,
-  words: Box,
+  words: readonly Box[],
 ): readonly Piece[] {
-  return pieces.filter(([x, y, shape, size, turn]) =>
-    clearOfWords(pieceBounds({ x, y, shape, size, turn }, cover, scale), words),
-  );
+  return pieces.filter(([x, y, shape, size, turn]) => {
+    const bounds = pieceBounds({ x, y, shape, size, turn }, cover, scale);
+
+    return words.every((box) => clearOfWords(bounds, box));
+  });
 }
