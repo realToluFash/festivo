@@ -1908,6 +1908,32 @@ describe('the app services started', () => {
     ]);
   });
 
+  it('waits out the unhealthy status a pause left before up, which gives up on it at once', () => {
+    const ran = [];
+    let probes = 0;
+    startServices(['api', 'web'], {
+      capture: (args) => {
+        if (args.includes('paused')) return 'api\n';
+        probes += 1;
+        return probes < 3 ? 'api unhealthy\n' : 'api healthy\n';
+      },
+      run: (args) => ran.push(args.join(' ')),
+      sleep: () => ran.push('sleep'),
+    });
+    expect(ran).toEqual(['unpause api', 'sleep', 'sleep', 'up -d --wait --no-recreate api web']);
+  });
+
+  it('still runs up, which names what stays unhealthy, once the wait runs out', () => {
+    const ran = [];
+    startServices(['api'], {
+      capture: (args) => (args.includes('paused') ? 'api\n' : 'api unhealthy\n'),
+      run: (args) => ran.push(args.join(' ')),
+      sleep: () => {},
+      ms: 3000,
+    });
+    expect(ran).toEqual(['unpause api', 'up -d --wait --no-recreate api']);
+  });
+
   it('goes straight to up when nothing is paused', () => {
     expect(started('')).toEqual(['up -d --wait --no-recreate api web']);
     expect(started(null)).toEqual(['up -d --wait --no-recreate api web']);

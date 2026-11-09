@@ -2312,14 +2312,25 @@ function stopAppServices(root) {
   run('docker', ['compose', 'stop', ...APP_SERVICES], { cwd: root });
 }
 
-// Makes what a `down` removed, where `start` fails on a stack with no containers. `up` refuses a
-// paused container, and a batch killed while a check held the API leaves it paused.
-export function startServices(services, { run, capture }) {
-  const paused = (capture(['ps', '--status', 'paused', '--format', '{{.Service}}']) ?? '')
+const lines = (out) =>
+  (out ?? '')
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean);
-  if (paused.length) run(['unpause', ...paused]);
+
+const sleepSync = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+// Makes what a `down` removed, where `start` fails on a stack with no containers. `up` refuses a
+// paused container, and a batch killed while a check held the API leaves it paused, unhealthy
+// until its next probe: `up --wait` gives up on that at once.
+export function startServices(services, { run, capture, sleep = sleepSync, ms = 90_000 }) {
+  const paused = lines(capture(['ps', '--status', 'paused', '--format', '{{.Service}}']));
+  if (paused.length) {
+    run(['unpause', ...paused]);
+    const health = ['ps', '--format', '{{.Service}} {{.Health}}', ...paused];
+    const unhealthy = () => lines(capture(health)).some((line) => line.endsWith(' unhealthy'));
+    for (let waited = 0; waited < ms && unhealthy(); waited += 1000) sleep(1000);
+  }
   run(['up', '-d', '--wait', '--no-recreate', ...services]);
 }
 
