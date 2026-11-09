@@ -149,7 +149,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
   if (start.loading)
     return (
       <div className="desk-page">
-        <div className="ev-column" aria-busy="true">
+        <div className="ev-column">
           <ListTop tell={tell} />
           <Switched />
           <SearchRow
@@ -361,26 +361,24 @@ export function FirstRun({ tell, asks = false }: { tell: Tell; asks?: boolean })
   );
 }
 
-/** Where the tabs, the card and the rows go while the list loads, as shapes. */
+/** Where the tabs, the card and the rows go while the list loads, as the shared shapes, heard and not seen. */
 function ListLoading() {
   return (
-    <div className="ev-loading">
-      <div className="ev-bone is-tabs" aria-hidden="true" />
-      <div className="ev-bone is-card" aria-hidden="true" />
-      <p className="desk-line" role="status">
-        {W.loading}
-      </p>
-      <div aria-hidden="true">
-        {[0, 1, 2].map((one) => (
-          <div key={one} className="ev-bone-row">
-            <span className="ev-bone is-thumb" />
-            <span className="ev-bone-lines">
-              <span className={`ev-bone is-line is-${one}`} />
-              <span className="ev-bone is-line is-short" />
+    <div className="desk-loading" role="status" aria-busy="true">
+      <span className="desk-unseen">{W.loading}</span>
+      <span className="desk-sunk ev-bone-tabs" aria-hidden="true" />
+      <span className="desk-sunk is-card ev-bone-card" aria-hidden="true" />
+      <ul className="desk-rows" aria-hidden="true">
+        {[1, 2, 3].map((bone) => (
+          <li key={bone} className="desk-row is-bones ev-bone-row">
+            <span className="desk-sunk ev-bone-thumb" />
+            <span className="desk-row-words">
+              <span className={`desk-sunk is-title b${bone}`} />
+              <span className={`desk-sunk is-line b${bone}`} />
             </span>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }

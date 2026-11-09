@@ -1443,64 +1443,23 @@
   font-weight: 600;
 }
 
-.ev-loading {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.ev-bone {
-  display: block;
-  border-radius: 7px;
-  background: var(--colorNeutralFill);
-}
-
-.ev-bone.is-tabs {
+/* Events' own sizes on the shared loading shapes (.desk-loading, .desk-sunk in SettingsParts.css). */
+.desk-sunk.ev-bone-tabs {
   height: var(--sizeHit);
   border-radius: var(--radiusPill);
 }
 
-.ev-bone.is-card {
+.desk-sunk.ev-bone-card {
   height: 220px;
-  border-radius: var(--deskCard);
 }
 
-.ev-bone-row {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceLg);
+.desk-row.ev-bone-row {
   min-height: 76px;
-  border-bottom: 1px solid var(--colorBorder);
 }
 
-.ev-bone.is-thumb {
+.desk-sunk.ev-bone-thumb {
   flex: none;
   width: 48px;
   height: 48px;
   border-radius: var(--radiusInset);
-}
-
-.ev-bone-lines {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--spaceSm);
-}
-
-.ev-bone.is-line {
-  width: 44%;
-  height: 14px;
-}
-
-.ev-bone.is-line.is-1 {
-  width: 52%;
-}
-
-.ev-bone.is-line.is-2 {
-  width: 36%;
-}
-
-.ev-bone.is-line.is-short {
-  width: 28%;
-  height: 12px;
 }

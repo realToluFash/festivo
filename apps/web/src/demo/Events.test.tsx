@@ -320,7 +320,10 @@ describe('the guest counts on Events (sc-23284)', () => {
   it('draws the list loading as shapes, with search and Filter off', SLOW, async () => {
     await list('/demo/events?state=loading');
 
-    expect(within(main()).getByRole('status').textContent).toBe('Loading events…');
+    const status = within(main()).getByRole('status');
+    expect(status.textContent).toBe('Loading events…');
+    expect(status.querySelector('.desk-unseen')?.textContent).toBe('Loading events…');
+    expect(status.querySelectorAll('.desk-row.is-bones')).toHaveLength(3);
     expect(
       within(main())
         .getByRole('searchbox', { name: 'Search events' })
