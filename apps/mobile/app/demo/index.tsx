@@ -458,6 +458,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/security?state=forgotSent',
       },
       {
+        title: 'Security · two-factor did not load',
+        what: 'No card; Try again in its section',
+        href: '/demo/settings/security?state=factorFailed',
+      },
+      {
+        title: 'Security · Apple linked, no card',
+        what: 'The done line alone, then the failure',
+        href: '/demo/settings/security?state=factorFailedLinked',
+      },
+      {
+        title: 'Security · signed out, still loading',
+        what: 'The line alone, then back in the card',
+        href: '/demo/settings/security?state=factorLoadingSignedOut',
+      },
+      {
         title: 'Notifications',
         what: 'How you hear, a row per kind',
         href: '/demo/settings/notifications',
