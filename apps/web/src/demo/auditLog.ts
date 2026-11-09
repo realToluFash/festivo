@@ -176,7 +176,7 @@ export const NO_FILTERS: Filters = { person: null, type: null, event: null, from
 export const AUDIT_WORDS = {
   title: 'Audit log',
   says: `Who did what in ${ORG}`,
-  line: 'Kept for 365 days. An entry can’t be changed or deleted, by anybody.',
+  line: 'Kept for 365 days. Nobody can change or delete an entry.',
   exportStep: 'Export these entries',
   anyone: 'Anyone',
   allTypes: 'All types',
@@ -203,7 +203,7 @@ export const AUDIT_WORDS = {
   address: 'Network address',
   device: 'Device',
   reference: 'Reference',
-  fixed: 'An entry can’t be changed or deleted, by anybody.',
+  fixed: 'Nobody can change or delete an entry.',
   gone: 'no longer exists',
   left: 'left',
   format: 'Format',
@@ -232,7 +232,7 @@ export function exportOutcome(count: number): 'download' | 'prepare' | 'tooMany'
 }
 
 export function downloading(format: Format): string {
-  return `Downloading ${ORG}’ audit log as ${format}.`;
+  return `Downloading the audit log as ${format}.`;
 }
 
 /** The day an instant falls on in the reader's zone, as YYYY-MM-DD. */

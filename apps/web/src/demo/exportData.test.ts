@@ -48,7 +48,7 @@ describe('Export all data (sc-612)', () => {
       step: 'export',
     });
     expect(exportCard('ex_failed', LOCALE, LAGOS)).toMatchObject({
-      says: 'Your export didn’t finish',
+      says: 'Your export did not finish',
       step: 'retry',
     });
     expect(exportCard('not_owner', LOCALE, LAGOS)).toEqual({

@@ -63,7 +63,7 @@ describe('Data and control › A guest’s request (sc-30193)', () => {
 
     expect(
       within(block).getByText(
-        'A request covers every record of theirs in Ire Events: 4 records on 3 events.',
+        'A request covers every record of theirs in Ire Events: 4 records, on 3 events.',
       ),
     ).toBeDefined();
     expect(within(block).getByText('Companion of Dr Emeka Nwosu')).toBeDefined();
@@ -89,7 +89,7 @@ describe('Data and control › A guest’s request (sc-30193)', () => {
       () =>
         expect(
           screen.getByText(
-            'Erased Monday, Oct 19 at 10:12 WAT. Their reply, seat and place in the counts stay.',
+            'Erased on Monday, Oct 19 at 10:12 WAT. Their reply, seat and place in the counts stay.',
           ),
         ).toBeDefined(),
       { timeout: 3000 },
@@ -144,11 +144,11 @@ describe('Their data on Dr Emeka Nwosu’s details in Guests (sc-30193)', () => 
   });
 
   it.each([
-    ['failed', 'Their export didn’t finish.', 'Try again'],
+    ['failed', 'Their export did not finish.', 'Try again'],
     ['link_used', 'This download has been used or has expired.', 'Export their data'],
     [
       'other_admin',
-      'A request covers every record of theirs in Ire Events: 4 records on 3 events.',
+      'A request covers every record of theirs in Ire Events: 4 records, on 3 events.',
       'Export their data',
     ],
   ])('opens %s with its words and its way on', async (state, words, verb) => {
@@ -202,7 +202,7 @@ describe('Their data on Dr Emeka Nwosu’s details in Guests (sc-30193)', () => 
     expect(within(column).getByRole('heading', { level: 2, name: 'Erased guest' })).toBeDefined();
     expect(
       within(column).getByText(
-        'Erased Monday, Oct 19 at 10:12 WAT. Their reply, seat and place in the counts stay.',
+        'Erased on Monday, Oct 19 at 10:12 WAT. Their reply, seat and place in the counts stay.',
       ),
     ).toBeDefined();
     expect(within(column).queryByText('emeka.nwosu@nhs.net')).toBeNull();
