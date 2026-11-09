@@ -7,12 +7,11 @@ import {
   barWidths,
   fillingRows,
 } from '../kit/skeleton.ts';
-import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
+import { useLayout } from '../layout/useLayout.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
 import { calendarGrid } from './calendarGrid.ts';
 import { cardFrame } from './cardFrame.ts';
-import { EventCardGrid } from './EventCardGrid.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 import { useShownAfter } from './useShownAfter.ts';
@@ -22,8 +21,7 @@ export type CardShape = { lines?: number; fields?: number; options?: number; cov
 type Shape =
   | { shape: 'rows'; rowHeight: SkeletonRowHeight; picture?: boolean; rows?: number }
   | { shape: 'cards'; cards: readonly CardShape[]; titled?: boolean }
-  | { shape: 'month'; weeks: number }
-  | { shape: 'eventCards'; kind: LayoutKind };
+  | { shape: 'month'; weeks: number };
 
 /** Nothing for a second, then the content's shape under its loading words; `inCard` draws inside a card already there, `edgeToEdge` inside one with no side padding, so the words take the rows' inset. */
 export function Skeleton({
@@ -64,8 +62,6 @@ export function Skeleton({
       </View>
     ) : shape.shape === 'month' ? (
       <Month weeks={shape.weeks} phone={kind === 'phone'} />
-    ) : shape.shape === 'eventCards' ? (
-      <EventCards kind={shape.kind} />
     ) : (
       shape.cards.map((card, index) => (
         <Card
@@ -144,28 +140,6 @@ function Month({ weeks, phone }: { weeks: number; phone: boolean }) {
         </View>
       ))}
     </View>
-  );
-}
-
-/** Events' cards while they load, each a column wide as the loaded ones are: three on the tablets, four on the phones (sc-22103). */
-function EventCards({ kind }: { kind: LayoutKind }) {
-  const phone = kind === 'phone';
-
-  return (
-    <EventCardGrid kind={kind}>
-      {(width) =>
-        Array.from({ length: phone ? 4 : 3 }, (_, index) => (
-          <View key={index} style={[styles.eventCard, phone && styles.eventCardPhone, { width }]}>
-            <View style={styles.eventCardTop}>
-              <View style={[styles.block, styles.eventChip, { width: phone ? 64 : 70 }]} />
-              {!phone && <View style={[styles.block, styles.eventDate]} />}
-            </View>
-            <View style={[styles.block, styles.eventName, { width: phone ? '85%' : '80%' }]} />
-            <View style={[styles.block, styles.eventLine, { width: phone ? '60%' : '90%' }]} />
-          </View>
-        ))
-      }
-    </EventCardGrid>
   );
 }
 
@@ -259,18 +233,4 @@ const styles = StyleSheet.create({
   },
   monthBar: { height: 12 },
   dayBar: { width: 16 },
-  eventCard: {
-    gap: tokens.spaceLg,
-    padding: tokens.spaceXl,
-    borderRadius: tokens.radiusCardPhone,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
-  },
-  eventCardPhone: { padding: 14 },
-  eventCardTop: { flexDirection: 'row', justifyContent: 'space-between' },
-  eventChip: { height: 22, borderRadius: tokens.radiusPill },
-  eventDate: { width: 60, height: 12 },
-  eventName: { height: 15 },
-  eventLine: { height: 13 },
 });

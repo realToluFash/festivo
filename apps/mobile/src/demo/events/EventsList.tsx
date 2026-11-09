@@ -72,6 +72,7 @@ import {
   Row,
   RowList,
   SectionHead,
+  SunkTabs,
   TextAction,
 } from '../../components/Summary.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
@@ -216,7 +217,7 @@ export function EventsList({
           />
           <FilterButton ref={filterRef} word={word} off open={false} onPress={() => undefined} />
         </View>
-        <View style={styles.sunkTabs} />
+        <SunkTabs />
         <LoadingBlock words={W.loading} />
       </ListFrame>
     );
@@ -719,7 +720,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorAccent,
   },
   searchBlock: { gap: tokens.spaceXs },
-  sunkTabs: { height: tokens.sizeHit, borderRadius: 22, backgroundColor: tokens.colorNeutralFill },
   searchRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

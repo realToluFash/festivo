@@ -9,7 +9,7 @@ import {
 } from '@soirely/domain';
 import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, RefreshControl, StyleSheet } from 'react-native';
+import { AppState, RefreshControl, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -31,7 +31,8 @@ import { ReadOut } from './ReadOut.tsx';
 import { AnswerInView } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
-import { Arrived, Skeleton } from './Skeleton.tsx';
+import { Arrived } from './Skeleton.tsx';
+import { LoadingBlock, SunkTabs } from './Summary.tsx';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | ({ kind: 'loaded'; refreshing: boolean } & HomeLoad);
@@ -183,7 +184,10 @@ export function EventsScreen() {
   };
 
   const list = !reads ? null : load.kind === 'loading' ? (
-    <Skeleton words={t('eventsScreen.loading')} shape="eventCards" kind={kind} />
+    <View style={styles.loading}>
+      <SunkTabs />
+      <LoadingBlock words={t('eventsScreen.loading')} />
+    </View>
   ) : load.kind === 'failed' ? (
     <EventsFailed onRetry={reload} testID="events.retry" />
   ) : (
@@ -281,6 +285,7 @@ export function EventsScreen() {
 
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
+  loading: { gap: 18 },
   phone: {
     gap: 18,
     paddingTop: tokens.spaceXl,

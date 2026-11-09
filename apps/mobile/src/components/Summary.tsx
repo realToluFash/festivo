@@ -381,6 +381,11 @@ export function LoadingBlock({
   );
 }
 
+/** One sunk segment where a list's tabs go while it loads. */
+export function SunkTabs() {
+  return <View style={styles.sunkTabs} />;
+}
+
 /** Rows' shapes where a section's rows go while they load; with `words`, a screen reader stops on them and hears those. */
 export function RowShapes({
   count,
@@ -512,6 +517,7 @@ const styles = StyleSheet.create({
   ringFill: { backgroundColor: tokens.colorInkOnDark, opacity: 0.28 },
   glassTag: { alignSelf: 'flex-start', gap: tokens.spaceXs, paddingLeft: 9, paddingRight: 11 },
   sunkCard: { borderRadius: 26, backgroundColor: tokens.colorNeutralFill },
+  sunkTabs: { height: tokens.sizeHit, borderRadius: 22, backgroundColor: tokens.colorNeutralFill },
   loadingRule: { height: 1, marginLeft: 52, backgroundColor: tokens.colorBorder },
   loadingRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   disc: { width: 40, height: 40, borderRadius: 20, backgroundColor: tokens.colorNeutralFill },

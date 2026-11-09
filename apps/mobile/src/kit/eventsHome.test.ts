@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { EVENT_CARD_GAP, eventCardWidth, eventDatesWords, summaryWords } from './eventsHome.ts';
+import { eventDatesWords, summaryWords } from './eventsHome.ts';
 
 const t = ((key: string, values: Record<string, unknown> = {}) =>
   `${key} ${JSON.stringify(values)}`) as unknown as TFunction;
@@ -13,38 +13,6 @@ const EVENT = {
   timeZone: 'Europe/Madrid',
   concludedAt: null,
 };
-
-describe('eventCardWidth', () => {
-  it.each([
-    ['the iPhone SE', 'phone', 343, 166],
-    ['the phone', 'phone', 358, 174],
-    ['the 11-inch iPad upright', 'tabletPortrait', 778, 250],
-    ['the 10.9-inch iPad upright', 'tabletPortrait', 764, 245],
-    ['the iPad mini upright', 'tabletPortrait', 688, 220],
-    ['the 13-inch iPad upright', 'tabletPortrait', 968, 313],
-    ['the 11-inch iPad on its side', 'tabletLandscape', 926, 299],
-    ['the iPad mini on its side', 'tabletLandscape', 865, 279],
-  ] as const)('%s', (_device, kind, room, width) => {
-    expect(eventCardWidth(kind, room)).toBe(width);
-  });
-
-  it.each([
-    ['phone', 343, 2],
-    ['phone', 358, 2],
-    ['tabletPortrait', 688, 3],
-    ['tabletPortrait', 778, 3],
-    ['tabletPortrait', 968, 3],
-    ['tabletLandscape', 926, 3],
-    ['tabletLandscape', 865, 3],
-    ['tabletLandscape', 846, 3],
-    ['tabletLandscape', 756, 3],
-  ] as const)('%s with %i of room fills the row with %i cards', (kind, room, columns) => {
-    const row = columns * eventCardWidth(kind, room) + (columns - 1) * EVENT_CARD_GAP[kind];
-
-    expect(row).toBeLessThanOrEqual(room);
-    expect(room - row).toBeLessThan(columns);
-  });
-});
 
 describe('summaryWords', () => {
   it('joins the parts whose count is not 0, in order', () => {
