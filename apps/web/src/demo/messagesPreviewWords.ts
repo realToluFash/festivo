@@ -1,4 +1,4 @@
-/** sc-3960's own words ('English copy (l10n)', settled 27 Oct, reworded 7 Nov): Insert's lines and the preview's; [bracketed] ones have no string yet. */
+/** sc-3960's own words ('English copy (l10n)', settled 27 Oct, reworded 7 Nov, the braces line settled 8 Nov): Insert's lines and the preview's. */
 export const PW = {
   insertGreeting: 'Their Greet as, or their full name if they have none',
   insertEvent: 'The event’s name',
@@ -10,7 +10,8 @@ export const PW = {
   choseLanguage: 'In {{language}}, the language they chose on their page.',
   organisationLanguage:
     'In {{language}}, your organisation’s language, as no language is set for them.',
-  typedBraces: '[Braces you type stay as typed. To fill something in for each guest, use Insert.]',
+  typedBraces:
+    'Anything you type in braces shows exactly as typed. To fill something in for each guest, use Insert.',
   nothingToFill: 'Nothing to fill in, so every guest gets exactly these words.',
   nobodyToPreview: 'No guests chosen yet, so there is nobody to preview it as.',
   filling: 'Filling it in for {{name}}…',
