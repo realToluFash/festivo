@@ -176,6 +176,11 @@ Say in the report which assertion you broke and what it printed.
 - **An API test sends an empty body as `{}`, never `Json\encode([])`.** That writes `[]`, a
   list, which `Input::body` refuses whole (sc-9412), so the request never reaches the
   behaviour under test. Encode `[] === $fields ? new stdClass() : $fields`.
+- **A refusal is asserted by its key or its 422 shape, never by its English sentence.**
+  Compare the message with the key's translation (`worded($refusal)`, or the translator's
+  `trans('validation.…', [], null, 'en')`), plus the status and `propertyPath`. A literal
+  sentence breaks the suite whenever the linguist rewords the copy, as two contractions
+  did in sc-30441, and proves nothing the key does not.
 
 ## Four locales, every time
 
