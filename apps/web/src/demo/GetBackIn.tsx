@@ -70,11 +70,9 @@ export function GetBackInBoard() {
     case 'support':
       return <Support key={key} />;
     case 'link':
-      return state === 'offline' ? (
-        <Unreachable key={key} to={backIn('new')} signedIn={false} />
-      ) : (
-        <DeadLink key={key} state={state} />
-      );
+      if (state === 'offline') return <Unreachable key={key} to={backIn('new')} signedIn={false} />;
+      if (state === 'failed') return <ReadFailed key={key} />;
+      return <DeadLink key={key} state={state} />;
     default:
       return <ResetPassword key={key} state={state} reset={reset} />;
   }
@@ -336,6 +334,74 @@ function DeadLink({ state }: { state: string }) {
           Sign in
         </Link>
       </p>
+    </BoardPage>
+  );
+}
+
+const NEXT_READS = [
+  { name: 'fails again', to: null },
+  { name: 'a live link', to: backIn('new') },
+  { name: 'a live link, two-factor on', to: backIn('code') },
+  { name: 'an expired link', to: backIn('link', 'expired') },
+  { name: 'a used link', to: backIn('link', 'used') },
+  { name: 'a link that doesn’t work', to: backIn('link', 'broken') },
+  { name: 'no answer', to: backIn('link', 'offline') },
+];
+
+/** The server answered, but with none of the three refusals, so the link is not called dead. */
+function ReadFailed() {
+  const navigate = useNavigate();
+  const [next, setNext] = useState(0);
+  const [busy, after] = useBusy();
+  const line = useRef<HTMLParagraphElement>(null);
+
+  function tryAgain(): void {
+    if (busy) return;
+
+    after(() => {
+      const to = NEXT_READS[next]?.to;
+      if (to == null) {
+        line.current?.focus();
+        return;
+      }
+
+      void navigate(to, { replace: true, state: { email: SAMPLE.email } });
+    });
+  }
+
+  return (
+    <BoardPage
+      end={null}
+      controls={
+        <label className="demo-switch">
+          Demo: the next read answers
+          <select
+            className="demo-input demo-select"
+            value={next}
+            onChange={(event) => setNext(Number(event.target.value))}
+          >
+            {NEXT_READS.map((read, index) => (
+              <option key={read.name} value={index}>
+                {read.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      }
+    >
+      <Heading title="That did not work">
+        <p className="demo-muted" ref={line} tabIndex={-1}>
+          Something went wrong on the way. Try again in a moment.
+        </p>
+      </Heading>
+      <button
+        className="button button-primary demo-wide"
+        type="button"
+        aria-busy={busy}
+        onClick={tryAgain}
+      >
+        {busy ? 'Trying again…' : 'Try again'}
+      </button>
     </BoardPage>
   );
 }
