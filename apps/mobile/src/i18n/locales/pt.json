@@ -1094,8 +1094,6 @@
         "billing": "faturação",
         "security": "segurança"
       },
-      "and": "{{rest}} e {{last}}",
-      "listComma": ", ",
       "mark": {
         "met": "Cumprida.",
         "needs": "Requer a sua ação.",
