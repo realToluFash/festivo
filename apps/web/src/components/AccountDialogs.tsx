@@ -40,7 +40,6 @@ import { FieldError } from './FieldError.tsx';
 import { Glyph } from './Glyph.tsx';
 import { Ask, Dialog, Field, Note, RowWords } from './SettingsParts.tsx';
 
-/** What a save answers: null once it has gone, else the words for the field. */
 type Saving = Promise<string | null>;
 
 /** Where a dialog opens: what is already typed, Save already pressed, or the Discard ask up. The demo's state links open on these. */
@@ -500,7 +499,6 @@ export function ProveDialog({
   returned: ProviderSignInAttempt | null;
   purpose: ReturnPurpose;
   start?: Opening & { password?: string };
-  /** The proof's token once it is given; refused as the API refuses it. */
   prove: (first: ProveWith, code?: string) => Promise<string>;
   onClose: () => void;
   onProved: (proof: string) => void;
@@ -696,7 +694,6 @@ export function VerifyDialog({
 }: {
   kind: ContactKind;
   row: ContactRow;
-  /** Read once, when the dialog opens: where the code went and how it is checked. */
   source: CodeSource;
   start?: Opening;
   onClose: () => void;
