@@ -13,7 +13,7 @@ import {
 import { lookOf, SCHEME_ORDER } from '../kit/schemes.ts';
 import type { Scheme } from '../theme/tokens.ts';
 import { tokens } from '../theme/tokens.ts';
-import { usePhone } from './settingsShell.ts';
+import { useShellLayout } from './settingsShell.ts';
 import { FocusedScreen } from './SummaryOverlays.tsx';
 import { Glyph } from './Glyph.tsx';
 import { RadioMark } from './RadioMark.tsx';
@@ -43,7 +43,7 @@ export function ColoursScreen({
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const phone = usePhone();
+  const phone = useShellLayout() === 'phone';
   const checked = useRef<ViewInstance>(null);
   const saving = colours.phase === 'saving';
   const refusal = colours.phase === 'failed' || colours.phase === 'offline' ? colours.phase : null;
