@@ -261,7 +261,12 @@ export function SecurityDesk() {
 
   async function everywhere(proof: string): Promise<void> {
     try {
-      const result = await api.signOutEverywhereElse(proof, others.sessionId);
+      // Back from a provider the proof can come before the list; without this device's id every session ends.
+      const keep =
+        sessions == null
+          ? othersOf(thisDeviceFirst(await api.sessions())).sessionId
+          : others.sessionId;
+      const result = await api.signOutEverywhereElse(proof, keep);
       if (result.thisDevice) return leaveHere();
       done(everywhereDone(result.signedOut, t));
       rereadDevices();
