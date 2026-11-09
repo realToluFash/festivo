@@ -249,6 +249,16 @@ export function TickChip({
   );
 }
 
+function caretToEnd(node: HTMLElement): void {
+  const range = document.createRange();
+  const selection = window.getSelection();
+
+  range.selectNodeContents(node);
+  range.collapse(false);
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
 function nodeOf(part: Segment): Node {
   if (part.kind === 'text') return document.createTextNode(part.text);
 
@@ -305,9 +315,11 @@ function MessageField({
 }) {
   const box = useRef<HTMLDivElement>(null);
   const first = useRef(body);
+  const toEnd = useRef(false);
 
   useLayoutEffect(() => {
     box.current?.replaceChildren(...first.current.map(nodeOf));
+    toEnd.current = (box.current?.childNodes.length ?? 0) > 0;
   }, [seed]);
 
   useEffect(() => {
@@ -327,6 +339,13 @@ function MessageField({
       data-placeholder={MW.writeToGuests}
       data-focus="body"
       tabIndex={0}
+      onFocus={() => {
+        const field = box.current;
+
+        if (!toEnd.current || field == null) return;
+        toEnd.current = false;
+        queueMicrotask(() => caretToEnd(field));
+      }}
       onInput={() => {
         const now = box.current == null ? [] : read(box.current);
 
