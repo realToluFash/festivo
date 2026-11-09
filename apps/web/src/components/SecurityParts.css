@@ -128,7 +128,14 @@
   padding-top: var(--spaceXs);
 }
 
-.security-there-title {
+.security-there-title,
+.security-failed-title {
   color: var(--colorInk);
   font: 600 16px/1.3 var(--fontFamily);
+}
+
+.security-qr > img {
+  display: block;
+  width: 100%;
+  height: 100%;
 }

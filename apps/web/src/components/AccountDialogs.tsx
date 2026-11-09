@@ -47,7 +47,7 @@ export interface Opening {
 const ZONES_SHOWN = 8;
 
 /** Presses the dialog's own button once, on arrival, when it opens with Save already pressed. */
-function useTriedOnArrival(tried: boolean | undefined, press: () => void): void {
+export function useTriedOnArrival(tried: boolean | undefined, press: () => void): void {
   const pressed = useRef(false);
 
   useEffect(() => {
@@ -456,7 +456,11 @@ export function ProveDialog({
   returned,
   purpose,
   start,
+  lead,
+  note,
+  codeHelp,
   prove,
+  leave = startProviderSignIn,
   onClose,
   onProved,
 }: {
@@ -465,7 +469,13 @@ export function ProveDialog({
   returned: ProviderSignInAttempt | null;
   purpose: ReturnPurpose;
   start?: Opening & { password?: string };
+  /** What the proof is for, over the way it is given: Security says it, Your account does not. */
+  lead?: string | undefined;
+  note?: string | undefined;
+  codeHelp?: string | undefined;
   prove: (first: ProveWith, code?: string) => Promise<string>;
+  /** Off to the provider for the proof; the demo comes back at once instead. */
+  leave?: (provider: Provider, purpose: ReturnPurpose) => Promise<void>;
   onClose: () => void;
   onProved: (proof: string) => void;
 }) {
@@ -496,7 +506,7 @@ export function ProveDialog({
   function go(): void {
     if (checking) return;
     if (leaves && provider != null) {
-      void startProviderSignIn(provider, purpose).catch(() =>
+      void leave(provider, purpose).catch(() =>
         setRefusal({
           field: 'failed',
           message: t('waysCard.providerFailed', { provider: providerName }),
@@ -538,11 +548,21 @@ export function ProveDialog({
       onDismiss={onClose}
       onConfirm={go}
     >
-      <Note>
-        {leaves && providerName != null
-          ? t('waysCard.proveWithProvider', { provider: providerName })
-          : t('contacts.proveIntro')}
-      </Note>
+      {lead == null ? (
+        <Note>
+          {leaves && providerName != null
+            ? t('waysCard.proveWithProvider', { provider: providerName })
+            : t('contacts.proveIntro')}
+        </Note>
+      ) : (
+        <>
+          <Note>{lead}</Note>
+          {note != null && <p className="desk-note">{note}</p>}
+          {leaves && providerName != null && (
+            <Note strong>{t('waysCard.proveWithProvider', { provider: providerName })}</Note>
+          )}
+        </>
+      )}
       {expired && providerName != null && (
         <div className="notice notice-attention" role="status">
           <span className="mark mark-attention" aria-hidden="true">
@@ -574,8 +594,8 @@ export function ProveDialog({
               value={code}
               help={
                 stepTwo == null
-                  ? t('waysCard.codeHelp')
-                  : `${t('waysCard.codeHelp')} ${t('waysCard.codeKeepsSignIn', { provider: stepTwo, count: PROOF_MINUTES })}`
+                  ? (codeHelp ?? t('waysCard.codeHelp'))
+                  : `${codeHelp ?? t('waysCard.codeHelp')} ${t('waysCard.codeKeepsSignIn', { provider: stepTwo, count: PROOF_MINUTES })}`
               }
               autoComplete="one-time-code"
               inputRef={codeRef}

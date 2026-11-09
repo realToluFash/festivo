@@ -1,10 +1,12 @@
 import { DemoBell } from './DemoBell.tsx';
+import { type Provider as ApiProvider } from '@soirely/api-client';
 import { formattingLocale } from '@soirely/domain';
-import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { offButton } from '../offButton.ts';
-import { Glyph, type GlyphName } from '../components/Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
+import { Lead } from '../components/AccountParts.tsx';
+import { KeptAction, Openable, ShieldCard } from '../components/SecurityParts.tsx';
 import {
   ASK_WORDS as A,
   type AskKind,
@@ -36,33 +38,33 @@ import {
   stillLine,
   yourSecurity,
 } from './security.ts';
+import { ProveDialog } from '../components/AccountDialogs.tsx';
 import {
-  ChangeDialog,
-  ChooseDialog,
+  ChangePasswordDialog,
+  ChoosePasswordDialog,
+  FactorDialog,
   ForgotDialog,
-  ProveDialog,
   RecoveryDialog,
   SentDialog,
   SetCodeDialog,
   SetupDialog,
-} from './SecurityDialogs.tsx';
-import type { Viewer } from './settings.ts';
+} from '../components/SecurityDialogs.tsx';
+import { afterSending } from './account.ts';
 import {
-  Ask,
-  Card,
-  CardStep,
-  Chevron,
-  Head,
-  OnCard,
-  RedAction,
-  RowWords,
-  Says,
-  TitleRow,
-} from '../components/SettingsParts.tsx';
+  sampleActivate,
+  sampleBegin,
+  sampleChange,
+  sampleEnrol,
+  sampleFactor,
+  samplePass,
+  sampleSavePassword,
+  sampleSecurityProof,
+  sampleSend,
+} from './securitySamples.ts';
+import type { Viewer } from './settings.ts';
+import { Ask, Chevron, Head, RedAction, RowWords, TitleRow } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { useLater } from '../useLater.ts';
-import '../components/AccountParts.css';
-import './security.css';
 
 /** Security at a desk in B · Summary first (Web-Security-*.dc.html): the app's page, the same for every role. */
 export function Security({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
@@ -132,34 +134,16 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
     <div className="desk-page">
       <div ref={column} className="desk-column">
         <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
-        <Card size="person">
-          <div>
-            <div className="desk-who">
-              <span className="desk-disc security-shield" aria-hidden="true">
-                <Glyph name="shield" size={29} weight={2.2} />
-              </span>
-              <div className="desk-who-words">
-                <Says>{card.says}</Says>
-                <OnCard>{card.summary}</OnCard>
-              </div>
-            </div>
-            <div aria-live="polite">
-              {card.line != null && (
-                <p className={card.done ? 'account-said is-done' : 'account-said'}>
-                  {card.done && (
-                    <span className="desk-mark is-yes account-done" aria-hidden="true">
-                      <Glyph name="tick" size={11} weight={3.4} />
-                    </span>
-                  )}
-                  {card.line}
-                </p>
-              )}
-            </div>
-          </div>
-          {card.step != null && (
-            <CardStep label={card.step} onClick={() => setDialog(opening('setup'))} />
-          )}
-        </Card>
+        <ShieldCard
+          says={card.says}
+          summary={card.summary}
+          said={card.line == null ? null : { text: card.line, done: card.done }}
+          step={
+            card.step == null
+              ? null
+              : { label: card.step, onClick: () => setDialog(opening('setup')) }
+          }
+        />
         <section className="desk-block">
           <Head title={W.ways} />
           <ul className="desk-rows account-rows">
@@ -227,7 +211,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
               >
                 <div className="account-acts">
                   {page.twoFactorRule ? (
-                    <Off label={W.turnOffKept} />
+                    <KeptAction label={W.turnOffKept} />
                   ) : (
                     <button
                       type="button"
@@ -378,9 +362,10 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
         />
       )}
       {dialog?.kind === 'change' && (
-        <ChangeDialog
+        <ChangePasswordDialog
           start={dialog}
           email={you.email}
+          change={(current, next) => sampleChange(current, next, others)}
           onClose={() => setDialog(null)}
           onForgot={() => setDialog(opening('forgot', { typed: you.email }))}
           onChanged={() => done(R.changed(others), { devices: here(page) })}
@@ -389,6 +374,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
       {dialog?.kind === 'forgot' && (
         <ForgotDialog
           start={dialog}
+          send={sampleSend}
           onClose={() => setDialog(null)}
           onSent={() => setDialog(opening('sent'))}
         />
@@ -403,15 +389,19 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
         <SetCodeDialog
           start={dialog}
           email={you.email}
+          begin={sampleBegin}
+          pass={samplePass}
           onClose={() => setDialog(null)}
-          onMatched={() => setDialog(opening('choose'))}
+          onPassed={() => setDialog(opening('choose'))}
         />
       )}
       {dialog?.kind === 'choose' && (
-        <ChooseDialog
+        <ChoosePasswordDialog
           start={dialog}
           email={you.email}
+          save={sampleSavePassword}
           onClose={() => setDialog(null)}
+          onExpired={() => setDialog(opening('setCode', { expired: true }))}
           onAdded={() =>
             done(R.added(linkedProviders(page.ways)[0] ?? 'Google'), {
               ways: { ...page.ways, password: true },
@@ -419,18 +409,36 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
           }
         />
       )}
-      {dialog?.kind === 'prove' && dialog.purpose != null && (
-        <ProveDialog
-          start={dialog}
-          purpose={dialog.purpose}
-          asks={proveAsks(dialog.purpose, dialog.provider, page, you.email)}
-          onClose={() => setDialog(null)}
-          onProved={() => dialog.purpose != null && provedFor(dialog.purpose, dialog.provider)}
-        />
-      )}
+      {dialog?.kind === 'prove' &&
+        (dialog.purpose === 'turnOff' || dialog.purpose === 'newCodes') && (
+          <FactorDialog
+            purpose={dialog.purpose}
+            email={you.email}
+            start={{ typed: dialog.second, tried: dialog.tried }}
+            submit={sampleFactor}
+            onClose={() => setDialog(null)}
+            onDone={() => dialog.purpose != null && provedFor(dialog.purpose, null)}
+            onKept={() => setDialog(null)}
+          />
+        )}
+      {dialog?.kind === 'prove' &&
+        (dialog.purpose === 'link' ||
+          dialog.purpose === 'unlink' ||
+          dialog.purpose === 'everywhere') && (
+          <ProveSample
+            dialog={dialog}
+            purpose={dialog.purpose}
+            page={page}
+            email={you.email}
+            onClose={() => setDialog(null)}
+            onProved={(purpose, provider) => provedFor(purpose, provider)}
+          />
+        )}
       {dialog?.kind === 'setup' && (
         <SetupDialog
           start={dialog}
+          enrol={sampleEnrol}
+          activate={sampleActivate}
           onClose={() => setDialog(null)}
           onOn={() => {
             setPage((now) => ({ ...now, on: true, unused: CODES_MADE }));
@@ -451,66 +459,53 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
   );
 }
 
+const ID: Record<Provider, ApiProvider> = { Google: 'google', Apple: 'apple' };
+
+/** Confirm it's you for a link, an unlink or signing out everywhere else; with no password, the provider comes back at once. */
+function ProveSample({
+  dialog,
+  purpose,
+  page,
+  email,
+  onClose,
+  onProved,
+}: {
+  dialog: DialogStart;
+  purpose: 'link' | 'unlink' | 'everywhere';
+  page: SecurityPage;
+  email: string;
+  onClose: () => void;
+  onProved: (purpose: Purpose, provider: Provider | null) => void;
+}) {
+  const asks = proveAsks(purpose, dialog.provider, page, email);
+  const by = asks.provider == null ? null : ID[asks.provider];
+
+  return (
+    <ProveDialog
+      via={asks.password ? 'password' : by}
+      twoFactorOn={page.on}
+      returned={null}
+      purpose={
+        purpose === 'everywhere' || dialog.provider == null
+          ? { kind: 'signOutOthers' }
+          : { kind: 'prove', then: { action: purpose, provider: ID[dialog.provider] } }
+      }
+      start={{ password: dialog.typed, typed: dialog.second, tried: dialog.tried }}
+      lead={asks.lead}
+      note={asks.note ?? undefined}
+      codeHelp={asks.codeHelp}
+      prove={sampleSecurityProof}
+      leave={() => afterSending(() => onProved(purpose, dialog.provider))}
+      onClose={onClose}
+      onProved={() => onProved(purpose, dialog.provider)}
+    />
+  );
+}
+
 function here(page: SecurityPage): string[] {
   return devicesOf(page)
     .filter((device) => device.here)
     .map((device) => device.id);
-}
-
-function Lead({ name }: { name: GlyphName }) {
-  return (
-    <span className="account-lead" aria-hidden="true">
-      <Glyph name={name} size={22} />
-    </span>
-  );
-}
-
-function Off({ label }: { label: string }) {
-  return (
-    <button type="button" className="desk-text security-off" {...offButton(true, { dim: false })}>
-      {label}
-    </button>
-  );
-}
-
-/** A row that opens in place, lit with no ring, what it holds under a Violet rule. */
-function Openable({
-  title,
-  line,
-  lead,
-  on,
-  onToggle,
-  children,
-}: {
-  title: string;
-  line: string;
-  lead: GlyphName;
-  on: boolean;
-  onToggle: () => void;
-  children: ReactNode;
-}) {
-  const id = useId();
-
-  return (
-    <li>
-      <button
-        type="button"
-        className={on ? 'desk-row account-row is-open' : 'desk-row account-row'}
-        aria-expanded={on}
-        aria-controls={on ? id : undefined}
-        onClick={onToggle}
-      >
-        <Lead name={lead} />
-        <RowWords title={title} lines={[line]} />
-        <Glyph name={on ? 'chevup' : 'chevdown'} size={18} weight={2.4} className="desk-chevron" />
-      </button>
-      {on && (
-        <div id={id} className="account-open" role="group" aria-label={title}>
-          {children}
-        </div>
-      )}
-    </li>
-  );
 }
 
 function WayInside({
@@ -542,7 +537,7 @@ function WayInside({
     return (
       <>
         <div className="account-acts">
-          <Off label={W.unlinkKept} />
+          <KeptAction label={W.unlinkKept} />
         </div>
         <p className="desk-note">{W.keptWay(provider, otherProvider(provider))}</p>
       </>

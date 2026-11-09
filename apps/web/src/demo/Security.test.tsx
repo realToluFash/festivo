@@ -159,7 +159,7 @@ describe('Security at a desk (sc-30223)', () => {
     expect(buttonsOf(unlink)).toEqual(['Keep it linked', 'Unlink Google']);
     fireEvent.click(within(unlink).getByRole('button', { name: 'Unlink Google' }));
 
-    expect(within(dialog()).getByRole('heading', { name: 'Confirm it’s you' })).toBeDefined();
+    expect(within(dialog()).getByRole('heading', { name: "Confirm it's you" })).toBeDefined();
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Continue' }));
     expect(within(dialog()).getByText('Enter your password.')).toBeDefined();
     type('Your password', SAMPLE.password);
@@ -195,8 +195,11 @@ describe('Security at a desk (sc-30223)', () => {
     ).toBe('true');
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Send a new code' }));
 
-    expect(within(dialog()).getByLabelText('Code from the email')).toHaveProperty('value', '');
-    expect(within(dialog()).getByText('Send a new code in 0:42')).toBeDefined();
+    expect(await within(dialog()).findByLabelText('Code from the email')).toHaveProperty(
+      'value',
+      '',
+    );
+    expect(within(dialog()).getByRole('button', { name: 'Send a new code in 0:42' })).toBeDefined();
     expect(within(dialog()).queryByRole('alert')).toBeNull();
   });
 
@@ -269,11 +272,11 @@ describe('Security at a desk (sc-30223)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Turn on two-factor' }));
 
     expect(
-      within(dialog()).getByRole('img', { name: 'QR code for your authenticator app' }),
+      await within(dialog()).findByRole('img', { name: 'QR code for your authenticator app' }),
     ).toBeDefined();
     type('Enter the 6-digit code the app shows', '714 320');
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Turn on' }));
-    expect(within(dialog()).getByText(/That code does not match/)).toBeDefined();
+    expect(await within(dialog()).findByText(/That code does not match/, {}, WAIT)).toBeDefined();
     type('Enter the 6-digit code the app shows', SAMPLE.authenticator);
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Turn on' }));
 

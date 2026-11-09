@@ -87,7 +87,7 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     fireEvent.click(within(block('Ways to sign in')).getByRole('button', { name: /Apple/ }));
     fireEvent.click(within(block('Ways to sign in')).getByRole('button', { name: 'Link Apple' }));
-    expect(screen.getByRole('dialog', { name: 'Confirm it’s you' })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: "Confirm it's you" })).toBeDefined();
   });
 
   it('holds an admin’s changes until their own two-factor is on', async () => {

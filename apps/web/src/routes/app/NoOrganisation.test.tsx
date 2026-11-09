@@ -126,7 +126,7 @@ describe('the page an account in no organisation stands on (sc-13339)', () => {
     answering({ 'GET /api/invitations': () => json({ invitations: [] }) });
     app('/app/account/security');
 
-    await screen.findByRole('heading', { level: 1, name: 'Your account' });
+    await screen.findByRole('heading', { level: 1, name: 'Security' });
     expect(screen.getByRole('link', { name: 'Join or start an organisation' })).toBeDefined();
     for (const name of PRODUCT_LINKS) expect(screen.queryByRole('link', { name })).toBeNull();
     expect(screen.getByLabelText('Language')).toBeDefined();
@@ -161,7 +161,10 @@ describe('the page an account in no organisation stands on (sc-13339)', () => {
       });
       app(path);
 
-      await screen.findByRole('heading', { level: 1, name: 'Your account' });
+      await screen.findByRole('heading', {
+        level: 1,
+        name: path.endsWith('security') ? 'Security' : 'Your account',
+      });
       for (const name of PRODUCT_LINKS) expect(screen.getByRole('link', { name })).toBeDefined();
       expect(screen.getByRole('button', { name: /Organisation: Ìrè Events/ })).toBeDefined();
       expect(screen.queryByRole('link', { name: 'Join or start an organisation' })).toBeNull();
