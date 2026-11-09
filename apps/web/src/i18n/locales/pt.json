@@ -812,7 +812,7 @@
     "dismiss": "Fechar"
   },
   "recovery": {
-    "lostBothIntro": "A sua organização só pode confirmar que é você depois de iniciar sessão com a sua palavra-passe. Se também perdeu a palavra-passe, contacte o apoio ao cliente da Soirely.",
+    "lostBothIntro": "A sua organização só pode confirmar a sua identidade depois de iniciar sessão com a sua palavra-passe. Se também perdeu a palavra-passe, contacte o apoio ao cliente da Soirely.",
     "forgot": "Esqueceu-se da palavra-passe?",
     "title": "Reponha a sua palavra-passe",
     "intro": "Introduza o e-mail com que inicia sessão. Se tiver uma conta, enviamos-lhe uma ligação para definir uma nova palavra-passe.",
