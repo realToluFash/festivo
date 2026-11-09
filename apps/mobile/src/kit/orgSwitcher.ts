@@ -4,7 +4,6 @@ import { type InvitationOutcome, isWaiting, waitingInvitations } from '@soirely/
 import type { WaitingInvitations } from '../invitations.ts';
 import type { DomainOffer } from '../joinOffers.ts';
 
-/** An organisation you work in; `role` is in the reader's words. */
 export interface Place {
   id: string;
   name: string;
@@ -13,7 +12,6 @@ export interface Place {
   fresh?: boolean;
 }
 
-/** An invitation waiting for you; `role` is in the reader's words, `until` the day it ends. */
 export interface Invite {
   id: string;
   name: string;
@@ -33,7 +31,6 @@ export interface Offer {
   status: OfferStatus;
 }
 
-/** What the switcher shows: your organisations, what waits for you, and what is open in it. */
 export interface Session {
   places: readonly Place[];
   current: string;
@@ -101,7 +98,6 @@ export function tileKey(tile: Tile): string {
   }
 }
 
-/** Your places in main's order, then the offer and the invitations, and Create an organisation always last, under a search too. */
 export function tilesOf(session: Session, query: string): Tile[] {
   const shown = (name: string) => !searchable(session) || matches(name, query);
   const places: Tile[] = session.places
@@ -212,7 +208,6 @@ export function frameFor({
   };
 }
 
-/** The least scroll that shows all of a part with some to spare; none when it already shows. */
 export function scrollToShow({
   top,
   bottom,
@@ -232,6 +227,7 @@ export function scrollToShow({
 
   return null;
 }
+
 /** What the switcher shows of the account: an invitation answered before it opened has left it, and one joined while it is open is still its invitation. */
 export function switcherSession({
   organisations,

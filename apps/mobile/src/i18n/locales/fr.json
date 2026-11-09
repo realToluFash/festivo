@@ -780,6 +780,7 @@
     "noMatch": "No organisation matches “{{text}}”.",
     "matches_one": "{{count, number}} organisation matches",
     "matches_other": "{{count, number}} organisations match",
+    "matches_many": "{{count, number}} organisations match",
     "yourRole": "Votre rôle · {{role}}",
     "heading": "Vos organisations",
     "current": "Actuelle",
