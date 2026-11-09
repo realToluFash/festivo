@@ -46,7 +46,6 @@ export function holdChoice(choice: Choice): void {
   for (const listener of listeners) listener();
 }
 
-/** The scheme to restart into, or null when the screens are already in the account's colours. */
 export function schemeToFollow(choice: Choice, launchedIn: string): Scheme | null {
   const wanted = inUse(choice);
 
@@ -60,7 +59,6 @@ export function keepBeforeSaving(choice: Choice, launchedIn: string = schemeAtLa
   return follow == null || keepDeviceScheme(follow);
 }
 
-/** A save the account did not take leaves the device in the colours it opened in. */
 export function keepLaunchScheme(launchedIn: string = schemeAtLaunch): void {
   const scheme = schemeOf(launchedIn);
   if (scheme != null) keepDeviceScheme(scheme);
@@ -109,7 +107,6 @@ export function noteWhere(path: string): void {
   here = path === '/' ? null : path;
 }
 
-/** Where a restart into new colours asked to come back to, once: a screen path, never the launch screen. */
 export function landingAfterRestart(): Href | null {
   const path = takeLanding();
 
