@@ -956,6 +956,17 @@ describe('a signed-out submit sends one request, and none with the keys down ope
   });
 });
 
+describe('Create your account opens on Android with its title whole (sc-35488)', () => {
+  it('focuses its opening field once the screen has arrived, never with autoFocus there', () => {
+    const text = readFileSync(join('app', 'register.tsx'), 'utf8');
+
+    expect(text).toContain('useFocusOnArrival(nameField, opensOnName);');
+    expect(text).toContain('useFocusOnArrival(emailField, opensOnEmail);');
+    expect(text).toContain('autoFocus={!FOCUS_WAITS && opensOnName}');
+    expect(text).toContain('autoFocus={!FOCUS_WAITS && opensOnEmail}');
+  });
+});
+
 describe('a refused code focuses its field through focusChecked (sc-20209)', () => {
   it('on Check your email, from its checks', () => {
     expect(readFileSync(join('app', 'verify-email.tsx'), 'utf8')).toMatch(
