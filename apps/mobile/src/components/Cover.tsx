@@ -178,7 +178,7 @@ export function Cover({
   scale?: number;
   pieces?: readonly Piece[];
   shade?: Shade;
-  words?: Box | null | undefined;
+  words?: readonly Box[] | null | undefined;
 }) {
   return (
     <Hidden>
@@ -188,7 +188,7 @@ export function Cover({
   );
 }
 
-/** The pieces alone, placed by share of the box they are given; with `words`, only those clear of them, and none until the words are measured. */
+/** The pieces alone, placed by share of the box they are given; with `words`, only those clear of every box, and none until the words are measured. */
 export function Confetti({
   pieces,
   scale = 1,
@@ -196,7 +196,7 @@ export function Confetti({
 }: {
   pieces: readonly Piece[];
   scale?: number;
-  words?: Box | null | undefined;
+  words?: readonly Box[] | null | undefined;
 }) {
   const [cover, setCover] = useState<Size | null>(null);
   const shown =
@@ -262,3 +262,24 @@ export function useWordsBox() {
 const styles = StyleSheet.create({
   piece: { position: 'absolute' },
 });
+
+/** A card's words as boxes in its own coordinates: the title and counts beside the face, and the line under the face row as a box of its own; null until each is measured. */
+export function useCardWords(line: string | null) {
+  const words = useWordsBox();
+  const [measured, setMeasured] = useState<{ line: string; box: LayoutRectangle } | null>(null);
+  const lineBox = line == null ? undefined : measured?.line === line ? measured.box : null;
+  const boxes: readonly Box[] | null =
+    words.box == null || lineBox === null
+      ? null
+      : lineBox === undefined
+        ? [words.box]
+        : [words.box, lineBox];
+
+  return {
+    boxes,
+    onArea: words.onArea,
+    onWords: words.onWords,
+    onLine: (event: LayoutChangeEvent) =>
+      line != null && setMeasured({ line, box: event.nativeEvent.layout }),
+  };
+}
