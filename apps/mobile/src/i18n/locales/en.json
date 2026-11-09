@@ -367,7 +367,7 @@
     "nothingThereLine": "Check your spam folder first, then send it again.",
     "signedUpWith": "Signed up with Google or Apple? Then there is no password to reset, and the email says how you sign in instead.",
     "gotTheLink": "Got the link? Open it on any device.",
-    "setupTitle": "Set up two-factor",
+    "setupTitle": "Turn on two-factor",
     "setupVerb": "Turn on"
   },
   "passwordCard": {
