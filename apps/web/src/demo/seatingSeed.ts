@@ -41,6 +41,7 @@ export interface Bar {
   kind: 'tint' | 'amber' | 'undo';
   words: string;
   does?: 'placing' | 'pick' | 'undo';
+  at?: 'floor';
 }
 
 export interface FieldSeed {
@@ -285,7 +286,7 @@ export function seedOf(state: SeatingState | null): Ui {
         ...ui,
         plan: { ...plan, items: [], sections: [] },
         people: [],
-        bar: { kind: 'tint', words: SW.firstItem },
+        bar: { kind: 'tint', words: SW.firstItem, at: 'floor' },
       };
     case 'loading':
       return { ...ui, load: 'loading', people: [] };

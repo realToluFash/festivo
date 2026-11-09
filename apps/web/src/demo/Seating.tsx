@@ -1755,7 +1755,7 @@ function MessageBar({
 
   return (
     <div
-      className={`${inline ? 'st-bar is-inline' : 'st-float st-bar'} is-${bar.kind}`}
+      className={`${inline ? 'st-bar is-inline' : 'st-float st-bar'} is-${bar.kind}${!inline && bar.at === 'floor' ? ' is-floor' : ''}`}
       role="status"
       aria-live="polite"
     >
