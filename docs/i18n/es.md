@@ -749,3 +749,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `addPhone`). La misma clave es el enlace junto al título de la sección y el título de la hoja:
   «Añadir correo» y «Añadir número», sin artículo, como en los ajustes de Android; la sección ya
   dice de qué. Rechazado «Añadir una dirección de correo electrónico», que se cortaba en un móvil.
+- **9 Nov 2026. El título de la hoja de activar la verificación en dos pasos en la app** (sc-34792,
+  `mobile:security.setupTitle`). «Verificación en 2 pasos», con la cifra, como el título que da
+  Google a la misma función; el botón de la derecha ya dice «Activar». Rechazado «Activar la
+  verificación en dos pasos», cortado en la cabecera de un móvil. `web:security.setupTitle` sigue
+  completo, porque el escritorio tiene sitio.

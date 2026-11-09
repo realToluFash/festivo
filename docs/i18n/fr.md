@@ -810,3 +810,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   « Nouveau numéro », que la section situe. Les feuilles de vérification disent « Ouvrez vos
   e-mails » et « Ouvrez vos messages », comme le bouton « Ouvrir la boîte mail » ; « Consultez
   votre boîte mail » était tronqué sur un téléphone Android et reste celui de l’écran du lien.
+- **9 nov. 2026. Le titre de la feuille d’activation de la double authentification dans l’app**
+  (sc-34792, `mobile:security.setupTitle`). « Double authentification », sans verbe : le bouton à
+  droite dit déjà « Activer ». Rejeté « Activer la double authentification », tronqué dans
+  l’en-tête d’un téléphone. Le nom tient tout juste à 390 points ; s’il faut plus court, c’est une
+  question de place pour [ux], pas une abréviation. `web:security.setupTitle` reste complet.
