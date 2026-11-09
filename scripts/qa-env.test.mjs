@@ -1923,15 +1923,20 @@ describe('the app services started', () => {
     expect(ran).toEqual(['unpause api', 'sleep', 'sleep', 'up -d --wait --no-recreate api web']);
   });
 
-  it('still runs up, which names what stays unhealthy, once the wait runs out', () => {
+  it('still runs up, which names what stays unhealthy, once the time runs out', () => {
     const ran = [];
+    let clock = 0;
     startServices(['api'], {
       capture: (args) => (args.includes('paused') ? 'api\n' : 'api unhealthy\n'),
       run: (args) => ran.push(args.join(' ')),
-      sleep: () => {},
+      sleep: (ms) => {
+        clock += ms + 500;
+        ran.push('sleep');
+      },
+      now: () => clock,
       ms: 3000,
     });
-    expect(ran).toEqual(['unpause api', 'up -d --wait --no-recreate api']);
+    expect(ran).toEqual(['unpause api', 'sleep', 'sleep', 'up -d --wait --no-recreate api']);
   });
 
   it('goes straight to up when nothing is paused', () => {
