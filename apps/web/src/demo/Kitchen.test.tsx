@@ -584,4 +584,14 @@ describe('Each part of a course, and each table’s platters (sc-34244)', () => 
     expect(screen.getAllByText(PW.health)).toHaveLength(4);
     expect(screen.getByRole('article', { name: 'Page 3 of 4' })).toBeDefined();
   });
+
+  it('counts three pages on every footer when there is no By table', SLOW, async () => {
+    open(`${AT}?state=printInParts`);
+    await screen.findByRole('heading', { level: 1, name: KW.title }, WAIT);
+
+    expect(screen.queryByRole('heading', { level: 2, name: 'Main · By table' })).toBeNull();
+    expect(screen.getAllByText(PW.health)).toHaveLength(3);
+    expect(screen.getByRole('article', { name: 'Page 3 of 3' })).toBeDefined();
+    expect(screen.queryByRole('article', { name: /of 4$/u })).toBeNull();
+  });
 });
