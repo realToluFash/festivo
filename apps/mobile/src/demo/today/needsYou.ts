@@ -56,7 +56,7 @@ export interface NeedKey {
   name: string;
 }
 
-/** Earliest first; a tie goes by the event's start, then its name, then the milestone's title, in the reader's language. Today's Needs you and the Calendar's Only what needs me both order by it. */
+/** Earliest first; a tie goes by the event's start, then its name, then the milestone's title, in the reader's language. Today's Needs you and the Calendar's Only what needs you both order by it. */
 export function needOrder(a: NeedKey, b: NeedKey): number {
   return (
     Date.parse(a.at) - Date.parse(b.at) ||

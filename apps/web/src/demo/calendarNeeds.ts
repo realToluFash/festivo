@@ -106,7 +106,7 @@ export function seeded(events: readonly Listed[], seed: NeedsSeed): Listed[] {
   });
 }
 
-/** Only what needs you: Today's needsMe rows, each on its event's own day, in Today's dueOrder. */
+/** Only what needs you: Today's needsMe rows, each on its event's own day, in Today's dueOrder; across events a tie goes by the event's start, then its name, as the app's needOrder. */
 export function needsDays(events: readonly Listed[], locale: string): Map<string, Item[]> {
   const days = new Map<string, MarkItem[]>();
 
@@ -121,10 +121,14 @@ export function needsDays(events: readonly Listed[], locale: string): Map<string
   }
 
   const order = dueOrder(locale);
+  const byName = new Intl.Collator(locale);
+  const tie = (a: MarkItem, b: MarkItem) =>
+    Date.parse(a.milestone.at) - Date.parse(b.milestone.at) ||
+    Date.parse(a.event.startsAt) - Date.parse(b.event.startsAt) ||
+    byName.compare(a.event.name, b.event.name) ||
+    order(a.milestone, b.milestone);
 
-  return new Map(
-    [...days].map(([day, items]) => [day, items.sort((a, b) => order(a.milestone, b.milestone))]),
-  );
+  return new Map([...days].map(([day, items]) => [day, items.sort(tie)]));
 }
 
 export function daysFor(

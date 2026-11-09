@@ -345,6 +345,45 @@ describe('Only what needs you, the Calendar’s third Show (sc-32803)', () => {
     expect(titlesOn(needs, '2026-11-10')).toEqual([]);
   });
 
+  it('breaks a same-minute tie across events by the event’s start, then its name, as the app does', () => {
+    const [first, second] = listed;
+
+    if (first == null || second == null) throw new Error('No sample');
+
+    const owed = (title: string): Listed['milestones'][number] => ({
+      at: '2026-11-20T09:00:00Z',
+      title,
+      note: null,
+      owner: 'you',
+      area: 'menu',
+      action: null,
+    });
+    const early: Listed = {
+      ...first,
+      name: 'Wedding',
+      startsAt: '2026-11-25T12:00:00Z',
+      timeZone: 'UTC',
+      permissions: ['menu.manage'],
+      milestones: [owed('Order the cake')],
+    };
+    const late: Listed = {
+      ...second,
+      name: 'Reunion',
+      startsAt: '2026-12-05T12:00:00Z',
+      timeZone: 'UTC',
+      permissions: ['menu.manage'],
+      milestones: [owed('Book the band')],
+    };
+
+    expect(titlesOn(needsDays([late, early], 'en'), '2026-11-20')).toEqual([
+      'Order the cake',
+      'Book the band',
+    ]);
+    expect(
+      titlesOn(needsDays([{ ...late, startsAt: early.startsAt }, early], 'en'), '2026-11-20'),
+    ).toEqual(['Book the band', 'Order the cake']);
+  });
+
   it('shows a reader who can only view nothing at all', () => {
     expect(needsDays(seeded(listed, 'readOnly'), 'en').size).toBe(0);
   });

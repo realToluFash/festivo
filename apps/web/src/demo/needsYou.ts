@@ -66,7 +66,7 @@ export function dueWords(
   return { words: `Due ${dateWords(at, now, timeZone, locale)}`, late: false };
 }
 
-/** A You milestone the reader's role changes: the rule both Today's Needs you and the Calendar's Only what needs me take. */
+/** A You milestone the reader's role changes: the rule both Today's Needs you and the Calendar's Only what needs you take. */
 export function needsMe(milestone: Milestone, permissions: readonly string[]): boolean {
   return milestone.owner === 'you' && levelOf(permissions, milestone.area) === 'change';
 }
