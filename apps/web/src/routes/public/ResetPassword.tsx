@@ -7,6 +7,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
+import { LinkRetryPage } from '../../components/LinkRetryPage.tsx';
 import { SignedInAs, Tick } from '../../components/Onboarding.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
 import { PasswordRuleLine } from '../../components/PasswordRule.tsx';
@@ -28,6 +29,7 @@ type Dead = 'used' | 'expired' | 'invalid';
 type Status =
   | { kind: 'checking' }
   | { kind: 'unreachable' }
+  | { kind: 'unread' }
   | { kind: 'ready'; email: string }
   | { kind: 'saving'; email: string }
   | { kind: 'failed'; email: string }
@@ -70,11 +72,11 @@ export function ResetPassword() {
       })
       .catch((error: unknown) => {
         if (!live) return;
-        // A link that could not be read is not a dead one: reading it again may work.
+        // Only the API's refusal makes a dead link: any other failure may read on a second try.
         setStatus(
           error instanceof ApiUnreachableError
             ? { kind: 'unreachable' }
-            : { kind: deadFrom(error) ?? 'invalid' },
+            : { kind: deadFrom(error) ?? 'unread' },
         );
       });
 
@@ -132,6 +134,14 @@ export function ResetPassword() {
 
   if (status.kind === 'checking') return <PendingPage />;
   if (status.kind === 'unreachable') return <Unreachable signedIn={false} retry={retry} bare />;
+  if (status.kind === 'unread')
+    return (
+      <LinkRetryPage
+        title={t('recovery.failedTitle')}
+        body={t('recovery.failedBody')}
+        retry={retry}
+      />
+    );
 
   if (status.kind === 'used' || status.kind === 'expired' || status.kind === 'invalid') {
     return (
