@@ -17,8 +17,20 @@ export const PERSONALISATION_LANDING = '/settings/personalisation?saved=1' satis
 export type Reload = (reason: string) => Promise<void>;
 
 // Loaded when it is needed: the API client imports this module, and expo's entry needs the app's runtime.
-export const reloadAppAsync: Reload = (reason) =>
-  import('expo').then((expo) => expo.reloadAppAsync(reason));
+// Expo's reload does nothing outside a ReactActivity, as in Expo Go on Android; a development bundle reloads through DevSettings everywhere.
+export const reloadAppAsync: Reload = async (reason) => {
+  if (__DEV__) {
+    const { DevSettings } = await import('react-native');
+    DevSettings.reload(reason);
+    return;
+  }
+
+  const expo = await import('expo');
+  await expo.reloadAppAsync(reason);
+};
+
+/** A reload that took has ended this JS by now; one still running after it never restarted. */
+export const RESTART_GRACE_MS = 2000;
 
 /** Undefined until the account has been read on this launch. */
 let heard: Choice | undefined;
@@ -66,27 +78,28 @@ export function keepLaunchScheme(launchedIn: string = schemeAtLaunch): void {
 
 let restarting = false;
 
-/** Keeps the scheme on the device and starts the JS again in it; false, and nothing restarted, where the device cannot keep it. */
+/** Keeps the scheme on the device and starts the JS again in it, which never answers; false, and nothing restarted, where the device cannot keep it or the reload never came. */
 export async function restartIn(
   scheme: Scheme,
   landing: string | null,
   reload: Reload = reloadAppAsync,
 ): Promise<boolean> {
-  if (restarting) return true;
+  if (restarting) return new Promise<boolean>(() => {});
   if (!keepDeviceScheme(scheme)) return false;
   if (landing != null) holdLanding(landing);
   restarting = true;
 
   try {
     await reload(`colour scheme ${scheme}`);
-
-    return true;
+    await new Promise((resolve) => setTimeout(resolve, RESTART_GRACE_MS));
   } catch {
-    restarting = false;
-    takeLanding();
-
-    return false;
+    // Not restarted: below, as when the grace runs out.
   }
+
+  restarting = false;
+  takeLanding();
+
+  return false;
 }
 
 /** On an install's first launch, the colours kept from before an uninstall are forgotten, and the JS starts again in the default where it opened in them. */

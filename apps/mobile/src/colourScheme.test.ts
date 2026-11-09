@@ -20,6 +20,7 @@ const {
   keepLaunchScheme,
   landingAfterRestart,
   readsMe,
+  RESTART_GRACE_MS,
   restartIn,
   schemeToFollow,
 } = await import('./colourScheme.ts');
@@ -46,11 +47,34 @@ describe("the app follows the account's colours (sc-30441)", () => {
     expect(reload).not.toHaveBeenCalled();
   });
 
-  // Last of the restarts: once one is under way, the JS is starting again and nothing restarts twice.
-  it('keeps the scheme on the device and comes back to the landing it was given', async () => {
+  it('answers false, with no landing held, when the reload never came (Expo Go on Android)', async () => {
+    vi.useFakeTimers();
     const reload = vi.fn(async () => {});
 
-    expect(await restartIn('citrus', '/settings/personalisation?saved=1', reload)).toBe(true);
+    const restarted = restartIn('berry', '/settings/personalisation?saved=1', reload);
+    await vi.advanceTimersByTimeAsync(RESTART_GRACE_MS);
+
+    expect(await restarted).toBe(false);
+    expect(reload).toHaveBeenCalledOnce();
+    expect(takeLanding()).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('answers false when the reload is refused', async () => {
+    const reload = vi.fn(async () => {
+      throw new Error('no activity');
+    });
+
+    expect(await restartIn('berry', null, reload)).toBe(false);
+  });
+
+  // Last of the restarts: once one is under way, the JS is starting again and nothing restarts twice.
+  it('keeps the scheme on the device and comes back to the landing it was given', () => {
+    const reload = vi.fn(() => new Promise<void>(() => {}));
+
+    void restartIn('citrus', '/settings/personalisation?saved=1', reload);
+    void restartIn('garden', null, reload);
+
     expect(reload).toHaveBeenCalledOnce();
     expect(deviceScheme()).toBe('citrus');
     expect(takeLanding()).toBe('/settings/personalisation?saved=1');
