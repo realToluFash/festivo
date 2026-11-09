@@ -49,9 +49,10 @@ describe('a managed account, wherever a membership path ends (sc-563, enterprise
     expect(session.expanded).toBe('org-celebraciones-alameda');
     expect(session.managed).toBe('org-celebraciones-alameda');
     expect(waitingOf(session)).toBe(2);
-    expect(read('src', 'demo', 'OrgSwitcher.tsx')).toMatch(
-      /managed=\{session\.managed === opened\.invite\.id\}/u,
+    expect(read('src', 'components', 'OrgDropDown.tsx')).toMatch(
+      /managed=\{session\.managed === opened\.invite\.id \? managed : undefined\}/u,
     );
+    expect(read('src', 'demo', 'OrgSwitcher.tsx')).toMatch(/managed=\{\s*<ManagedBanner/u);
   });
 
   it('refuses Ask to join on the request link', () => {

@@ -3,17 +3,14 @@ import {
   Animated,
   Easing,
   Pressable,
-  type StyleProp,
   StyleSheet,
   View,
   type ViewInstance,
-  type ViewStyle,
   useWindowDimensions,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { Glyph } from '../../components/Glyph.tsx';
-import { Initials } from '../../components/Initials.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text, type TextHandle } from '../../components/Text.tsx';
 import { glide } from '../../motion.ts';
@@ -26,40 +23,6 @@ const hidden = {
   accessibilityElementsHidden: true,
   importantForAccessibility: 'no-hide-descendants',
 } as const;
-
-/** The tile before the organisation exists: Tint with a dashed Violet rim, a plus until the first letter. */
-export function DraftTile({
-  name,
-  side,
-  radius,
-  initials,
-  style,
-}: {
-  name: string;
-  side: number;
-  radius: number;
-  initials: number;
-  style?: StyleProp<ViewStyle>;
-}) {
-  return (
-    <View
-      style={[styles.tile, { width: side, height: side, borderRadius: radius }, style]}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      {name.trim() === '' ? (
-        <Glyph
-          name="plus"
-          size={Math.round(side * 0.4)}
-          ink={tokens.colorAccentText}
-          weight={2.4}
-        />
-      ) : (
-        <Initials name={name} size={initials} weight="bold" style={styles.tileInk} />
-      )}
-    </View>
-  );
-}
 
 /** Three bars, Violet as far as the step, and "Step n of 3" under them: one element. */
 export function Progress({
@@ -402,15 +365,6 @@ export function useChanged<T>(value: T): object | undefined {
 }
 
 const styles = StyleSheet.create({
-  tile: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: tokens.colorAccent,
-    backgroundColor: tokens.colorAccentTint,
-  },
-  tileInk: { color: tokens.colorAccentText },
   progress: { gap: tokens.spaceXs },
   bars: { flexDirection: 'row', gap: tokens.spaceXxs },
   bar: {

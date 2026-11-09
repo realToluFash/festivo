@@ -61,7 +61,6 @@ import {
 } from './WalkSteps.tsx';
 import { AskLayer } from '../../components/AskLayer.tsx';
 import { ManagedBanner } from '../Managed.tsx';
-import { SW } from '../OrgSwitcherModel.ts';
 
 const SEND_MS = 1200;
 /** A deep-linked Creating… holds long enough to be looked at, then lands. */
@@ -365,7 +364,9 @@ export function CreateWalkWindow({
       />
     </View>
   );
-  const closeAction = <NavAction label={SW.close} onPress={onCancel} testID="createWalk.close" />;
+  const closeAction = (
+    <NavAction label={t('switcher.close')} onPress={onCancel} testID="createWalk.close" />
+  );
   const cancelAction = (
     <NavAction label={t('createOrganisation.cancel')} onPress={cancel} testID="createWalk.cancel" />
   );

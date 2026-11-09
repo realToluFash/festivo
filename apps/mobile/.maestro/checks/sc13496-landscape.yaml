@@ -49,7 +49,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'frame.organisation'
 - extendedWaitUntil:
-    visible: '{{t:switcher.heading}}'
+    visible: '{{t:switcher.asks}}'
     timeout: 15000
 - waitForAnimationToEnd:
     timeout: 5000
