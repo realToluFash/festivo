@@ -1,5 +1,5 @@
-import { monthOfDay } from '@soirely/domain';
-import { type KeyboardEvent, type Ref, useEffect, useId, useRef } from 'react';
+import { formatEventClock, monthOfDay } from '@soirely/domain';
+import { type KeyboardEvent, type ReactNode, type Ref, useEffect, useId, useRef } from 'react';
 import { Link } from 'react-router';
 
 import {
@@ -7,6 +7,7 @@ import {
   type Bar,
   type Item,
   type Mark,
+  type MarkItem,
   type Week,
   type WeekDay,
   CAL_WORDS as W,
@@ -27,10 +28,12 @@ import {
   monthKey,
   monthName,
   rowLine,
+  timeOf,
   weekdayShort,
 } from './calendar.ts';
+import { isOverdue, needsLabel } from './calendarNeeds.ts';
 import { PhaseTag, Thumb } from './EventParts.tsx';
-import type { Shown } from './events.ts';
+import { CLOCKS, type Shown } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { Chevron, RowWords } from '../components/SettingsParts.tsx';
 
@@ -93,6 +96,7 @@ export function MonthWeeks({
   lit,
   open,
   loading,
+  needs,
   onOpen,
   onMove,
   onFocusIn,
@@ -105,6 +109,7 @@ export function MonthWeeks({
   lit: string | null;
   open: string | null;
   loading: boolean;
+  needs: boolean;
   onOpen: (day: string) => void;
   onMove: Move;
   onFocusIn: (day: string | undefined) => void;
@@ -186,6 +191,7 @@ export function MonthWeeks({
                         key={piece.key}
                         mark={piece}
                         locale={locale}
+                        needs={needs}
                         onKeyDown={(event) => keys(event, here)}
                       />
                     ),
@@ -261,39 +267,89 @@ function BarLink({
   );
 }
 
+function YouDot() {
+  return <span className="cal-you" aria-hidden="true" />;
+}
+
+function lateIn(item: MarkItem, needs: boolean): boolean {
+  return needs && item.milestone.owner === 'you' && isOverdue(item.milestone, CLOCKS.rest);
+}
+
 function MarkLink({
   mark,
   locale,
+  needs,
   onKeyDown,
 }: {
   mark: Mark;
   locale: string;
+  needs: boolean;
   onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
 }) {
+  const { item } = mark;
+  const late = lateIn(item, needs);
+
   return (
     <Link
-      to={itemLink(mark.item)}
+      to={itemLink(item)}
       className={`cal-piece cal-mark is-from-${mark.from} is-row-${mark.row}`}
       data-piece={mark.key}
-      aria-label={markLabel(mark.item, locale)}
+      aria-label={needs ? needsLabel(item, locale, CLOCKS.rest) : markLabel(item, locale)}
       tabIndex={-1}
       onKeyDown={onKeyDown}
     >
-      <span className="cal-square" aria-hidden="true" />
-      <span className="cal-mark-words">{markWords(mark.item, locale)}</span>
+      {late ? (
+        <Glyph name="clock" size={12} weight={2.6} className="cal-late-mark" />
+      ) : item.milestone.owner === 'you' ? (
+        <YouDot />
+      ) : (
+        <span className="cal-square" aria-hidden="true" />
+      )}
+      {late ? (
+        <span className="cal-mark-words">
+          <span className="cal-late">
+            {formatEventClock(item.milestone.at, item.event.timeZone, locale)}
+          </span>{' '}
+          {item.milestone.title}
+        </span>
+      ) : (
+        <span className="cal-mark-words">{markWords(item, locale)}</span>
+      )}
     </Link>
   );
+}
+
+function needsLines(item: MarkItem, locale: string): ReactNode[] {
+  const time = timeOf(item.event, item.milestone.at, locale);
+
+  return [
+    isOverdue(item.milestone, CLOCKS.rest) ? (
+      <span key="time" className="cal-late cal-late-line">
+        <Glyph name="clock" size={14} weight={2.4} />
+        {time} · {W.overdue}
+      </span>
+    ) : (
+      time
+    ),
+    <span key="event" className="cal-row-event">
+      {item.event.name}
+    </span>,
+  ];
 }
 
 function ItemRow({
   item,
   locale,
+  needs,
   tabIndex,
 }: {
   item: Item;
   locale: string;
+  needs: boolean;
   tabIndex?: number | undefined;
 }) {
+  const you = item.kind === 'milestone' && item.milestone.owner === 'you';
+
   return (
     <li>
       {item.kind === 'event' ? (
@@ -315,21 +371,28 @@ function ItemRow({
         <Link
           className="desk-row cal-row"
           to={itemLink(item)}
-          aria-label={markLabel(item, locale)}
+          aria-label={needs ? needsLabel(item, locale, CLOCKS.rest) : markLabel(item, locale)}
           tabIndex={tabIndex}
         >
           <span className={`cal-tile is-${item.event.mesh}`} aria-hidden="true">
-            <span className="cal-square" />
+            {you ? <YouDot /> : <span className="cal-square" />}
           </span>
           <RowWords
             title={item.milestone.title}
             tag={
-              <span className="desk-tag cal-event-tag">
-                <span className="cal-square" aria-hidden="true" />
-                {W.event}
-              </span>
+              you ? (
+                <span className="desk-tag cal-you-tag">
+                  <YouDot />
+                  {W.you}
+                </span>
+              ) : (
+                <span className="desk-tag cal-event-tag">
+                  <span className="cal-square" aria-hidden="true" />
+                  {W.event}
+                </span>
+              )
             }
-            lines={[rowLine(item, locale)]}
+            lines={needs ? needsLines(item, locale) : [rowLine(item, locale)]}
           />
           <Chevron />
         </Link>
@@ -341,10 +404,12 @@ function ItemRow({
 function Rows({
   items,
   locale,
+  needs,
   stop,
 }: {
   items: readonly Item[];
   locale: string;
+  needs: boolean;
   /** Agenda's one Tab stop: the row that takes it, or false on a day without it. */
   stop?: number | false;
 }) {
@@ -355,6 +420,7 @@ function Rows({
           key={itemKey(item)}
           item={item}
           locale={locale}
+          needs={needs}
           tabIndex={stop == null ? undefined : stop === at ? 0 : -1}
         />
       ))}
@@ -391,12 +457,14 @@ export function DayPanel({
   day,
   items,
   locale,
+  needs,
   headingRef,
   onClose,
 }: {
   day: string;
   items: readonly Item[];
   locale: string;
+  needs: boolean;
   headingRef: Ref<HTMLHeadingElement>;
   onClose: () => void;
 }) {
@@ -413,9 +481,9 @@ export function DayPanel({
         </button>
       </div>
       {items.length === 0 ? (
-        <p className="cal-nothing">{W.emptyDay}</p>
+        <p className="cal-nothing">{needs ? W.emptyNeedsDay : W.emptyDay}</p>
       ) : (
-        <Rows items={items} locale={locale} />
+        <Rows items={items} locale={locale} needs={needs} />
       )}
     </aside>
   );
@@ -424,10 +492,14 @@ export function DayPanel({
 export function AgendaList({
   entries,
   from,
+  landing,
+  needs,
   locale,
 }: {
   entries: readonly AgendaEntry[];
   from: string;
+  landing: string;
+  needs: boolean;
   locale: string;
 }) {
   const stop = agendaStop(entries, from);
@@ -462,14 +534,16 @@ export function AgendaList({
               {entry.empty ? (
                 <>
                   <span className="cal-date" aria-hidden="true" />
-                  <p className="cal-nothing">{W.emptyMonth(monthName(month, locale))}</p>
+                  <p className="cal-nothing">
+                    {(needs ? W.emptyNeedsMonth : W.emptyMonth)(monthName(month, locale))}
+                  </p>
                 </>
               ) : (
                 <>
                   <h2
                     className="cal-date"
                     aria-label={agendaLabel(entry.day, locale)}
-                    tabIndex={entry.day === TODAY ? -1 : undefined}
+                    tabIndex={entry.day === TODAY || entry.day === landing ? -1 : undefined}
                   >
                     <span className="cal-weekday">{weekdayShort(entry.day, locale)}</span>
                     <span className="cal-date-number">{dayNumber(entry.day, locale)}</span>
@@ -480,6 +554,7 @@ export function AgendaList({
                     <Rows
                       items={entry.items}
                       locale={locale}
+                      needs={needs}
                       stop={entry === stop?.entry && stop.row}
                     />
                   )}

@@ -77,6 +77,22 @@ const SEEN: Record<string, () => unknown> = {
   subscribe: () => screen.getByRole('dialog', { name: FEED_WORDS.open }),
   subscribeRefused: () => screen.getByText(FEED_WORDS.copyRefused),
   resetLink: () => screen.getByRole('dialog', { name: FEED_WORDS.confirmTitle }),
+  needsMenu: () =>
+    screen.getByRole('menuitemradio', { name: CAL_WORDS.showNeedsYou, checked: true }),
+  needsMonth: () => screen.getByRole('link', { name: /^Agree the toasts, .*, overdue$/ }),
+  needsDay: () =>
+    within(screen.getByRole('complementary', { name: 'Tuesday, Nov 3' })).getAllByRole('link'),
+  needsAgenda: () =>
+    screen.getByRole('heading', { level: 2, name: 'Today, Tuesday, Nov 3' }) &&
+    screen.getByText(CAL_WORDS.emptyNeedsMonth('December 2026')),
+  needsEmptyMonth: () => screen.getByText(CAL_WORDS.emptyNeedsMonth('December 2026')),
+  needsEmptyDay: () => screen.getByText(CAL_WORDS.emptyNeedsDay),
+  needsReadOnly: () =>
+    screen.getByText(CAL_WORDS.emptyNeedsMonth('November 2026')) &&
+    screen.getByText(CAL_WORDS.emptyNeedsDay),
+  needsTodayEmpty: () =>
+    screen.queryByRole('heading', { level: 2, name: 'Today, Tuesday, Nov 3' }) == null &&
+    screen.getByRole('heading', { level: 2, name: 'Wednesday, Nov 4' }),
 };
 
 describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
@@ -436,5 +452,129 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
       await screen.findByRole('heading', { level: 1, name: CAL_WORDS.allDates }, WAIT),
     ).toBeDefined();
     expect(screen.getByText('Ireti at 40 starts')).toBeDefined();
+  });
+
+  it(
+    'offers Only what needs you last on the Show menu, and reads it on the pill',
+    SLOW,
+    async () => {
+      await calendar();
+      fireEvent.click(screen.getByRole('button', { name: `Show: ${CAL_WORDS.showAll}` }));
+
+      const choices = within(screen.getByRole('menu')).getAllByRole('menuitemradio');
+
+      expect(choices.map((one) => one.textContent)).toEqual([
+        CAL_WORDS.showAll,
+        CAL_WORDS.showEvents,
+        CAL_WORDS.showNeedsYou,
+      ]);
+      fireEvent.click(choices[2] as HTMLElement);
+
+      const show = screen.getByRole('button', { name: `Show: ${CAL_WORDS.showNeedsYou}` });
+
+      expect(show.textContent).toBe(CAL_WORDS.showNeedsYou);
+      expect(show.className).toContain('is-on');
+      expect(document.activeElement).toBe(show);
+      expect(screen.getByText(CAL_WORDS.emptyNeedsMonth('November 2026'))).toBeDefined();
+    },
+  );
+
+  it('leaves the month cell without the event’s name, and names it in the day', SLOW, async () => {
+    await calendar('needsDay');
+
+    const day = screen.getByRole('complementary', { name: 'Tuesday, Nov 3' });
+    const rows = within(day).getAllByRole('link');
+    const cake = document.querySelector<HTMLElement>(
+      '.cal-grid [data-piece^="mark|evt-wed-4|2026-11-03T09:00"]',
+    );
+
+    expect(rows.map((row) => row.getAttribute('aria-label'))).toEqual([
+      expect.stringMatching(/^Confirm the cake, Adaeze & Tunde’s wedding, .+, overdue$/),
+      expect.stringMatching(/^Pay the band’s balance, Adaeze & Tunde’s wedding, [^,]+$/),
+    ]);
+    expect(rows[0]?.textContent).toContain('Adaeze & Tunde’s wedding');
+    expect(rows[0]?.textContent).toContain(CAL_WORDS.overdue);
+    expect(rows[0]?.textContent).toContain(CAL_WORDS.you);
+    expect(rows[1]?.textContent).not.toContain(CAL_WORDS.overdue);
+    expect(cake?.textContent).toContain('Confirm the cake');
+    expect(cake?.textContent).not.toContain('wedding');
+    expect(cake?.querySelector('.cal-late')).not.toBeNull();
+  });
+
+  it(
+    'marks nothing overdue under Events and milestones, and lists no You row under Events only',
+    SLOW,
+    async () => {
+      await calendar('needsMonth');
+
+      expect(document.querySelectorAll('.cal-grid .cal-late')).not.toHaveLength(0);
+
+      fireEvent.click(screen.getByRole('button', { name: `Show: ${CAL_WORDS.showNeedsYou}` }));
+      fireEvent.click(screen.getByRole('menuitemradio', { name: CAL_WORDS.showAll }));
+
+      const toasts = screen.getByRole('link', { name: /^Agree the toasts, / });
+
+      expect(toasts.getAttribute('aria-label')).not.toMatch(/overdue/);
+      expect(toasts.querySelector('.cal-you')).not.toBeNull();
+      expect(document.querySelectorAll('.cal-grid .cal-late')).toHaveLength(0);
+
+      fireEvent.click(screen.getByRole('button', { name: `Show: ${CAL_WORDS.showAll}` }));
+      fireEvent.click(screen.getByRole('menuitemradio', { name: CAL_WORDS.showEvents }));
+
+      expect(screen.queryByRole('link', { name: /^Agree the toasts, / })).toBeNull();
+    },
+  );
+
+  it('says neither empty line while loading or failed', SLOW, async () => {
+    await calendar('failed');
+    fireEvent.click(screen.getByRole('button', { name: `Show: ${CAL_WORDS.showAll}` }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: CAL_WORDS.showNeedsYou }));
+
+    const quiet = CAL_WORDS.emptyNeedsMonth('November 2026');
+
+    expect(screen.queryByText(quiet)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.retry }));
+    expect(screen.getByText(CAL_WORDS.loading)).toBeDefined();
+    expect(screen.queryByText(quiet)).toBeNull();
+    expect(await screen.findByText(quiet, {}, WAIT)).toBeDefined();
+  });
+
+  it(
+    'puts Today in Agenda on the next day that needs you when today holds none',
+    SLOW,
+    async () => {
+      await calendar('needsTodayEmpty');
+      fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.next }));
+      fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.today }));
+
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Wednesday, Nov 4' }),
+      );
+      expect(screen.getByRole('heading', { level: 2, name: 'Monday, Nov 2' })).toBeDefined();
+    },
+  );
+
+  it('starts on Events and milestones again after a reload', SLOW, async () => {
+    await calendar('needsMonth');
+    expect(screen.getByRole('button', { name: `Show: ${CAL_WORDS.showNeedsYou}` })).toBeDefined();
+
+    cleanup();
+    open('/demo/calendar');
+    await screen.findByRole('heading', { level: 1, name: 'Calendar' }, WAIT);
+
+    expect(screen.getByRole('button', { name: `Show: ${CAL_WORDS.showAll}` })).toBeDefined();
+  });
+
+  it('carries a row to its action, else its event’s All dates', SLOW, async () => {
+    await calendar('needsAgenda');
+
+    const kitchen = screen.getAllByRole('link', {
+      name: /^Give final numbers to the kitchen, Adaeze & Tunde’s wedding, /,
+    });
+    const cake = screen.getByRole('link', { name: /^Confirm the cake, / });
+
+    expect(kitchen[0]?.getAttribute('href')).toBe('/demo/events/evt-wed-4/kitchen');
+    expect(cake.getAttribute('href')).toBe('/demo/events/evt-wed-4/dates');
+    expect(screen.queryByRole('button', { name: /kitchen sheet/ })).toBeNull();
   });
 });
