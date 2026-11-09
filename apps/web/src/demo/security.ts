@@ -30,6 +30,7 @@ export interface SecurityPage {
   devices: readonly string[];
   providerRule: boolean;
   twoFactorRule: boolean;
+  factor: 'loaded' | 'loading' | 'failed';
 }
 
 export const PROVIDERS: readonly Provider[] = ['Google', 'Apple'];
@@ -37,6 +38,7 @@ export const ORG = SAMPLE.organisation;
 export const PROOF_MINUTES = 5;
 export const CODES_MADE = 10;
 export const SEND_MS = 500;
+export const FACTOR_LOADING_MS = 8000;
 export const RESEND_FROM = 42;
 export const NEW_PASSWORD = 'violet confetti hall';
 export const SHORT_PASSWORD = 'short pwd';
@@ -140,6 +142,9 @@ export const SECURITY_WORDS = {
   keptWay: (provider: Provider, other: Provider) =>
     `A rule set by ${ORG}: everyone in it signs in with Google or Apple, so your last one cannot be removed. Link ${other} first if you want to unlink ${provider}.`,
   twoFactor: 'Two-factor authentication',
+  factorFailed: 'Two-factor did not load',
+  factorFailedLine: 'Something went wrong on our side. Try again in a moment.',
+  loading: 'Loading…',
   authenticator: 'Authenticator app',
   onLine: 'On · every sign-in asks for a code',
   offRow: 'Off',
@@ -463,6 +468,9 @@ export const WEB_MOMENTS = [
   'everywhereProve',
   'everywhereBlank',
   'everywhereDone',
+  'factorFailed',
+  'factorFailedLinked',
+  'factorLoadingSignedOut',
 ] as const;
 
 type SecurityState = (typeof SECURITY_STATES)[number] | (typeof WEB_MOMENTS)[number];
@@ -478,6 +486,7 @@ export const REST_PAGE: SecurityPage = {
   devices: ALL_DEVICES,
   providerRule: false,
   twoFactorRule: false,
+  factor: 'loaded',
 };
 
 /** What a state link opens on; one the page does not know opens it at rest. */
@@ -637,6 +646,23 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
         page: page({ devices: here }),
         said: RESULT_WORDS.everywhere(ALL_DEVICES.length - here.length),
       };
+    case 'factorFailed':
+      return { ...REST, page: page({ factor: 'failed' }) };
+    case 'factorFailedLinked':
+      return {
+        ...REST,
+        page: page({ ways: { password: true, Google: true, Apple: true }, factor: 'failed' }),
+        said: RESULT_WORDS.linked('Apple'),
+      };
+    case 'factorLoadingSignedOut':
+      return {
+        ...REST,
+        page: page({
+          devices: ALL_DEVICES.filter((id) => id !== OTHER_DEVICE.id),
+          factor: 'loading',
+        }),
+        said: RESULT_WORDS.device(OTHER_DEVICE.name),
+      };
   }
 }
 
@@ -719,6 +745,9 @@ export const SECURITY_PAGES: readonly { name: string; states: readonly DemoLink[
       security('turnOff', 'Turn off two-factor?'),
       security('turnOffProve', 'Turn off, Confirm it’s you'),
       security('turnedOff', 'Two-factor off'),
+      security('factorFailed', 'Two-factor did not load, no card'),
+      security('factorFailedLinked', 'Did not load, Apple linked: the line alone'),
+      security('factorLoadingSignedOut', 'Still loading, a device signed out: the line alone'),
     ],
   },
   {

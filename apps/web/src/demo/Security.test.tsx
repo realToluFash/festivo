@@ -369,4 +369,53 @@ describe('Security at a desk (sc-30223)', () => {
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Sign out everywhere else…' })).toBeNull();
   });
+
+  it("says what it did in the card's place while two-factor has not loaded, then inside the card", async () => {
+    await security('/demo/settings/security?state=factorFailed');
+    expect(
+      within(block('Two-factor authentication')).getByText('Two-factor did not load'),
+    ).toBeDefined();
+    expect(screen.queryByText('Two-factor is on')).toBeNull();
+
+    const phone = open('Signed in on', /Soirely app on iPhone/);
+    fireEvent.click(within(phone).getByRole('button', { name: 'Sign out…' }));
+    fireEvent.click(
+      within(ask('Sign out Soirely app on iPhone?')).getByRole('button', { name: 'Sign it out' }),
+    );
+
+    const line = screen.getByText('Soirely app on iPhone is signed out.');
+    expect(document.activeElement).toBe(line);
+    expect(screen.queryByText('Two-factor is on')).toBeNull();
+
+    fireEvent.click(
+      within(block('Two-factor authentication')).getByRole('button', { name: 'Try again' }),
+    );
+    expect(await screen.findByText('Two-factor is on', undefined, WAIT)).toBeDefined();
+    expect(screen.getAllByText('Soirely app on iPhone is signed out.')).toHaveLength(1);
+    expect(document.activeElement).toBe(screen.getByText('Soirely app on iPhone is signed out.'));
+  });
+
+  it('reads out the first failure as an alert unless a done line opens the page', async () => {
+    const failed = await security('/demo/settings/security?state=factorFailed');
+    expect(within(block('Two-factor authentication')).getByRole('alert')).toBeDefined();
+    failed.view.unmount();
+
+    await security('/demo/settings/security?state=factorFailedLinked');
+    expect(within(block('Two-factor authentication')).queryByRole('alert')).toBeNull();
+  });
+
+  it('leaves focus where the user moved it when the card arrives', async () => {
+    await security('/demo/settings/security?state=factorLoadingSignedOut');
+    const line = screen.getByText('Soirely app on iPhone is signed out.');
+    expect(document.activeElement).toBe(line);
+
+    const title = screen.getByRole('heading', { level: 1, name: 'Security' });
+    title.setAttribute('tabindex', '-1');
+    title.focus();
+
+    expect(
+      await screen.findByText('Two-factor is on', undefined, { timeout: 10_000 }),
+    ).toBeDefined();
+    expect(document.activeElement).toBe(title);
+  }, 15_000);
 });
