@@ -19,6 +19,7 @@ import {
   Ask,
   Card,
   CardStep,
+  DeskPage,
   Head,
   OnCard,
   RowWords,
@@ -28,7 +29,7 @@ import {
 } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
-import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
+import { focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { useOffline } from '../../../offline.ts';
 import { can, useSession } from '../../../session.ts';
 import { AddDomainDialog, DetailsDialog } from './GeneralDeskDialogs.tsx';
@@ -82,7 +83,7 @@ export function GeneralDesk() {
   const shown = said?.id === organisation.id ? said.said : null;
 
   return (
-    <LayersContext value={layers}>
+    <DeskPage layers={layers}>
       <div className="desk-column general-desk" inert={covered}>
         {refreshing && <Refreshing />}
         <header className="desk-top">
@@ -128,7 +129,7 @@ export function GeneralDesk() {
         />
       )}
       {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
-    </LayersContext>
+    </DeskPage>
   );
 }
 

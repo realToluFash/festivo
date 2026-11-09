@@ -172,6 +172,19 @@ describe('Settings > General at a desk (sc-30191)', () => {
     expect(steps()).toEqual(['Transfer ownership', 'Leave Ìrè Events…', 'Delete organisation…']);
   });
 
+  it('draws the page and its dialogs in the desk’s look, beside the Settings list', async () => {
+    signedIn();
+    answering();
+    settings();
+
+    const title = await screen.findByRole('heading', { level: 1, name: 'General' });
+    expect(title.closest('.settings-desk-page .desk')).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit details' }));
+    const details = await screen.findByRole('dialog', { name: 'Organisation details' });
+    expect(details.closest('.settings-desk-page .desk')).not.toBeNull();
+  });
+
   it('keeps today’s page in a phone’s browser', async () => {
     atPhoneWidth();
     signedIn();

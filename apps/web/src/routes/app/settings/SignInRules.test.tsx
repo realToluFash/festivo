@@ -149,6 +149,15 @@ describe('Sign-in rules at a desk, summary first (sc-30192)', () => {
     expect(screen.queryByText('What they will see')).toBeNull();
   });
 
+  it('draws the page in the desk’s look, beside the Settings list', async () => {
+    signedIn(membership());
+    answering();
+    open();
+
+    const card = await screen.findByText('You meet Ìrè Events’s rules');
+    expect(card.closest('.settings-desk-page .desk')).not.toBeNull();
+  });
+
   it('an admin is told they can change them', async () => {
     signedIn(membership({ role: ADMIN }));
     answering();

@@ -157,6 +157,14 @@ describe('Your account at a desk, summary first (sc-30411)', () => {
     ).toBeDefined();
   });
 
+  it('draws the page in the desk’s look, beside the Settings list', async () => {
+    answering();
+    open();
+
+    expect(await screen.findByText('folake.adeyemi@gmail.com')).toBeDefined();
+    expect(card().closest('.settings-desk-page .desk')).not.toBeNull();
+  });
+
   it('says what is not verified yet on the card, with Send a code as its one step', async () => {
     answering({
       'GET /api/auth/me': () =>
