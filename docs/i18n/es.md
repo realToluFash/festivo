@@ -17,7 +17,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 | English                                | Spanish                               | Notes                                                                                                     |
 | -------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Settings                               | Configuración                         |                                                                                                           |
+| Settings                               | Configuración                         | Web only. The app says «Ajustes»: tab, title, ‹ control (sc-34869)                                        |
 | Organisation                           | Organización                          |                                                                                                           |
 | Sign in                                | Iniciar sesión                        |                                                                                                           |
 | Sign out                               | Cerrar sesión                         |                                                                                                           |
@@ -63,6 +63,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **9 Nov 2026. La página Seguridad de la app** (sc-34792 para sc-30411, `mobile:security.*`). Sigue los términos de la web: «Vinculada · {{address}}», «Cerrar las demás sesiones», «Listo» para Done, como `countryPicker.close`. `expires` es «Caduca el {{day}}», que vale para todos los días de la semana. `_many` lleva «de», como el 25 Oct.
 - **9 Nov 2026. «Support» es siempre «el servicio de asistencia de Soirely», nunca «el soporte»** (sc-33828, de qa2; `lostTwoFactor.nobodyTitle`, `nobodyIntro`, `twoFactor.turnedDownIntro`, `recovery.nobody_to_approve`, en la app, la web y la API). El título y la introducción decían «el soporte de Soirely» y el botón `emailSoirely`, «servicio de asistencia»: ahora la pantalla nombra el servicio con una sola palabra, y el botón sigue sin «de Soirely» porque el título ya lo nombra.
 - **9 Nov 2026. La página de enlace enviado en la web y la línea de quien lo ha perdido todo** (sc-33788 para sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). `nothingThere` sigue a la app, «¿No le ha llegado nada?…», y el enlace es «envíelo de nuevo». `sentAgain` es «Se lo hemos enviado de nuevo.», sin la segunda frase de la app: la página ya la explica. En `lostBothIntro`, «después de que inicie sesión», sin concordar con la persona, y «el servicio de asistencia de Soirely», del glosario.
+- **9 Nov 2026. The app names Settings one way** (sc-34869, from qa2 on #34621). In the app,
+  the Settings section is «Ajustes» everywhere: the tab, the hub title (`settings.title`, also
+  the ‹ control's label on every settings page), «Abrir Ajustes» on Home and the path «Ajustes >
+  General». A settings page that said «‹ Configuración» above a tab bar saying «Ajustes» named
+  one place two ways. The web keeps «Configuración», where the sidebar has room, and named
+  sub-screens stay «Configuración de la cuenta», «Configuración de notificaciones».
 - **8 Nov 2026. Su cuenta en la app** (sc-34175 para sc-30411, `mobile:account.*`,
   `contacts.promoting`, `removing`). La sección es «Sobre usted». Las líneas de cada fila no
   tienen sujeto, así que nada concuerda con dirección (f.) ni número (m.): «Principal · para
@@ -88,8 +94,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   cerrado la sesión en sus otros dispositivos.», con «cerrar sesión» del glosario.
 - **8 Nov 2026. La pantalla Hoy, a 360 de ancho** (sc-31788, tras #32963). La pestaña
   Settings del teléfono es «Ajustes», la palabra del iPhone y de Android en España, porque
-  «Configuración» no cabe en un cuarto de 360; el título de la pantalla y `frame.settings`
-  siguen siendo «Configuración». La etiqueta de cuenta atrás de las tarjetas es «En 2 días»
+  «Configuración» no cabe en un cuarto de 360. Desde el 9 Nov (sc-34869) el título y el control ‹
+  también son «Ajustes». La etiqueta de cuenta atrás de las tarjetas es «En 2 días»
   (`todayScreen.inDaysCapital`), para que quepa junto a «Última semana»; dentro de una frase
   sigue «dentro de 2 días». «Todo el día» no cabe en la columna de la hora: pedidas al dev dos
   líneas, nunca «Todo el d…».
@@ -505,7 +511,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   "You will be its owner" is «Usted tendrá la función Propietario», the role and not
   «su propietario», which assumes a man. The rate limit says what happened, «Por ahora no se
   pueden crear más organizaciones», not «Demasiadas organizaciones nuevas», which reads as a
-  fragment. A path in Settings is «Configuración > General»; «cambiarlas» agrees with moneda,
+  fragment. A path in Settings is «Configuración > General» on the web and «Ajustes > General» in the app (sc-34869); «cambiarlas» agrees with moneda,
   zona horaria and dirección, all feminine.
 
 - **21 Oct 2026. The organisation's language (sc-3311, `orgGeneral.language*`, web and app).**
@@ -629,7 +635,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (`home.signedIn`, `home.signedInTo`: «Ha iniciado sesión en {{name}}»). The English
   contraction is warmth; Spanish carries it in the plain perfect, still _usted_, and «en»
   needs no agreement with the organisation's name. "Open Settings" is «Abrir
-  Configuración», with the capital because it names the tab (sc-1420).
+  Ajustes» (sc-34869; was «Abrir Configuración», sc-1420), with the capital because it names the tab.
 
 - **17 Oct 2026. A device's state, not its timing.** Signed-out devices are described as
   done: «Se cerró la sesión en sus otros dispositivos.» with no delay or "hasta 15 minutos",
