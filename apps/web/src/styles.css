@@ -330,17 +330,22 @@ span {
   color: var(--colorInk);
 }
 
-/* Today's desk frame (sc-30410): the sidebar stays in view on the fill while the page scrolls in its card. */
+/* Today's desk frame (sc-30410): the sidebar stays in view on the fill while the page scrolls in its card,
+   on a layer above the page's cards and Seating's bar so the switcher's menu paints over them. */
 .shell-sidebar {
   position: sticky;
   top: 0;
   grid-row: 1 / span 2;
   align-self: start;
+  z-index: 9;
   height: 100vh;
 }
 
 .shell-sidebar .today-side {
   width: auto;
+
+  /* A scrolling sidebar clips the switcher's menu, which is wider than it (sc-30410). */
+  overflow: visible;
 }
 
 .shell-nav {
