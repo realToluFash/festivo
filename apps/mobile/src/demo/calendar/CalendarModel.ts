@@ -11,7 +11,6 @@ import {
   dayDate,
   formatEventClock,
   formatWallDay,
-  levelOf,
   monthGrid,
   monthOfDay,
   namesZone,
@@ -23,6 +22,7 @@ import { type Shown, dayCount, eventHref, shownEvent } from '../events/EventsMod
 import { CLOCKS, EVENTS, READER_ZONE, REUNION, type SampleEvent } from '../events/EventsSample.ts';
 import { W, say as eventSay } from '../events/EventsWords.ts';
 import { CW, say } from './CalendarWords.ts';
+import { needOrder, isYours } from '../today/needsYou.ts';
 import type { RowTag } from '../../components/SummaryRows.tsx';
 
 export interface CalEvent extends Shown {
@@ -268,26 +268,28 @@ export function calendarEvents(
   });
 }
 
-const titles = new Intl.Collator('en');
-
 function atOf(item: Item): number {
   return Date.parse(item.kind === 'milestone' ? item.milestone.at : item.event.startsAt);
 }
 
-/** Only what needs you: the You milestones whose area the reader changes, each on its event's own day, by time then title as Today's rows. */
+type NeedItem = Extract<Item, { kind: 'milestone' }>;
+
+function keyOf({ event, milestone }: NeedItem) {
+  return { at: milestone.at, title: milestone.title, startsAt: event.startsAt, name: event.name };
+}
+
+/** Only what needs you: Today's isYours milestones, each on its event's own day, in Today's needOrder. */
 export function needsDays(events: readonly CalEvent[]): Days {
-  const days = new Map<string, Item[]>();
+  const days = new Map<string, NeedItem[]>();
 
   for (const event of events)
     for (const milestone of event.milestones) {
-      if (milestone.owner !== 'you' || levelOf(event.permissions, milestone.area) !== 'change')
-        continue;
+      if (!isYours(milestone, event.permissions)) continue;
       const day = wallDay(milestone.at, event.timeZone);
       days.set(day, [...(days.get(day) ?? []), { kind: 'milestone', event, milestone, day }]);
     }
 
-  for (const items of days.values())
-    items.sort((a, b) => atOf(a) - atOf(b) || titles.compare(rowTitle(a), rowTitle(b)));
+  for (const items of days.values()) items.sort((a, b) => needOrder(keyOf(a), keyOf(b)));
 
   return days;
 }

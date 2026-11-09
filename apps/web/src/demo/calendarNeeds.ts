@@ -1,11 +1,4 @@
-import {
-  type Milestone,
-  agendaDays,
-  calendarDays,
-  levelOf,
-  monthOfDay,
-  wallDay,
-} from '@soirely/domain';
+import { type Milestone, agendaDays, calendarDays, monthOfDay, wallDay } from '@soirely/domain';
 
 import {
   type Item,
@@ -19,6 +12,7 @@ import {
   timeOf,
 } from './calendar.ts';
 import { KW, kitchenAt } from './kitchen.ts';
+import { dueOrder, needsMe } from './needsYou.ts';
 
 const AREAS = ['events', 'seating', 'vendors', 'budget', 'menu'] as const;
 
@@ -112,16 +106,13 @@ export function seeded(events: readonly Listed[], seed: NeedsSeed): Listed[] {
   });
 }
 
-const titles = new Intl.Collator('en');
-
-/** Only what needs you: the You milestones whose area the reader can change, each on its event's own day, by time then title as Today's needRows. */
-export function needsDays(events: readonly Listed[]): Map<string, Item[]> {
+/** Only what needs you: Today's needsMe rows, each on its event's own day, in Today's dueOrder. */
+export function needsDays(events: readonly Listed[], locale: string): Map<string, Item[]> {
   const days = new Map<string, MarkItem[]>();
 
   for (const event of events) {
     for (const milestone of event.milestones) {
-      if (milestone.owner !== 'you') continue;
-      if (levelOf(event.permissions ?? [], milestone.area) !== 'change') continue;
+      if (!needsMe(milestone, event.permissions ?? [])) continue;
 
       const day = wallDay(milestone.at, event.timeZone);
 
@@ -129,20 +120,19 @@ export function needsDays(events: readonly Listed[]): Map<string, Item[]> {
     }
   }
 
+  const order = dueOrder(locale);
+
   return new Map(
-    [...days].map(([day, items]) => [
-      day,
-      items.sort(
-        (a, b) =>
-          Date.parse(a.milestone.at) - Date.parse(b.milestone.at) ||
-          titles.compare(a.milestone.title, b.milestone.title),
-      ),
-    ]),
+    [...days].map(([day, items]) => [day, items.sort((a, b) => order(a.milestone, b.milestone))]),
   );
 }
 
-export function daysFor(events: readonly Listed[], show: Show): Map<string, Item[]> {
-  return show === 'needs' ? needsDays(events) : calendarDays(events, show);
+export function daysFor(
+  events: readonly Listed[],
+  show: Show,
+  locale: string,
+): Map<string, Item[]> {
+  return show === 'needs' ? needsDays(events, locale) : calendarDays(events, show);
 }
 
 export function isOverdue(milestone: Milestone, now: Date): boolean {

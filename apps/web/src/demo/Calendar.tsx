@@ -192,7 +192,7 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
 
     return start.needs == null ? listed : seeded(listed, start.needs);
   }, [start]);
-  const days = useMemo(() => daysFor(events, show), [events, show]);
+  const days = useMemo(() => daysFor(events, show, locale), [events, show, locale]);
   const weeks = useMemo(
     () => weeksOf(range.from, range.to, firstDay, days),
     [range, firstDay, days],
@@ -403,7 +403,7 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
     setMenu(false);
     showButton.current?.focus();
     goTo({
-      day: landed(view, next, daysFor(events, next), placeOf(pinned)),
+      day: landed(view, next, daysFor(events, next, locale), placeOf(pinned)),
       glide: false,
       turn: false,
       pin: pinned,

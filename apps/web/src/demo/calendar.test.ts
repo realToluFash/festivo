@@ -316,7 +316,7 @@ function titlesOn(days: ReadonlyMap<string, Item[]>, day: string): string[] {
 
 describe('Only what needs you, the Calendar’s third Show (sc-32803)', () => {
   const owner = seeded(listed, 'owner');
-  const needs = needsDays(owner);
+  const needs = needsDays(owner, 'en');
 
   it('offers it last, and every visit starts on Events and milestones', () => {
     expect(SHOWS).toEqual(['all', 'events', 'needs']);
@@ -346,7 +346,7 @@ describe('Only what needs you, the Calendar’s third Show (sc-32803)', () => {
   });
 
   it('shows a reader who can only view nothing at all', () => {
-    expect(needsDays(seeded(listed, 'readOnly')).size).toBe(0);
+    expect(needsDays(seeded(listed, 'readOnly'), 'en').size).toBe(0);
   });
 
   it('leaves out events, Automatic and Event milestones', () => {
@@ -368,14 +368,14 @@ describe('Only what needs you, the Calendar’s third Show (sc-32803)', () => {
         },
       ],
     };
-    const items = [...needsDays([automatic]).values()].flat();
+    const items = [...needsDays([automatic], 'en').values()].flat();
 
     expect(items).not.toHaveLength(0);
     expect(items.every((item) => item.kind === 'milestone' && item.milestone.owner === 'you')).toBe(
       true,
     );
-    expect(titlesOn(needsDays([automatic]), '2026-11-05')).toEqual([]);
-    expect(titlesOn(daysFor(owner, 'all'), '2026-11-05')).toContain(
+    expect(titlesOn(needsDays([automatic], 'en'), '2026-11-05')).toEqual([]);
+    expect(titlesOn(daysFor(owner, 'all', 'en'), '2026-11-05')).toContain(
       'Adaeze & Tunde’s wedding starts',
     );
   });
@@ -402,7 +402,7 @@ describe('Only what needs you, the Calendar’s third Show (sc-32803)', () => {
     };
 
     expect(wallDay('2026-11-10T23:30:00Z', 'America/Los_Angeles')).toBe('2026-11-10');
-    expect([...needsDays([lagos]).keys()]).toEqual(['2026-11-11']);
+    expect([...needsDays([lagos], 'en').keys()]).toEqual(['2026-11-11']);
   });
 
   it('keeps an overdue row on its own past day, and names it overdue', () => {
@@ -438,7 +438,7 @@ describe('Only what needs you, the Calendar’s third Show (sc-32803)', () => {
   });
 
   it('drops today’s rows when their areas stop returning them', () => {
-    const later = needsDays(seeded(listed, 'todayEmpty'));
+    const later = needsDays(seeded(listed, 'todayEmpty'), 'en');
 
     expect(later.has(TODAY)).toBe(false);
     expect(later.has('2026-11-02')).toBe(true);
@@ -457,7 +457,7 @@ describe('Only what needs you, the Calendar’s third Show (sc-32803)', () => {
     ]);
     expect(entries.at(-1)?.empty).toBe(true);
 
-    const later = needsDays(seeded(listed, 'todayEmpty'));
+    const later = needsDays(seeded(listed, 'todayEmpty'), 'en');
 
     expect(
       agendaOf(NOVEMBER, NOVEMBER, later, TODAY, false).some((entry) => entry.day === TODAY),
@@ -465,7 +465,7 @@ describe('Only what needs you, the Calendar’s third Show (sc-32803)', () => {
   });
 
   it('lands Today on today, else the month’s next day with a row, else its last, else its line', () => {
-    const later = needsDays(seeded(listed, 'todayEmpty'));
+    const later = needsDays(seeded(listed, 'todayEmpty'), 'en');
     const before = new Map([...later].filter(([day]) => day < TODAY));
 
     expect(needsLanding(needs, TODAY)).toBe(TODAY);
