@@ -14,10 +14,10 @@ import { type Scheme, schemeAtLaunch } from './theme/tokens.ts';
 
 export const PERSONALISATION_LANDING = '/settings/personalisation?saved=1' satisfies Href;
 
-type Reload = (reason: string) => Promise<void>;
+export type Reload = (reason: string) => Promise<void>;
 
 // Loaded when it is needed: the API client imports this module, and expo's entry needs the app's runtime.
-const reloadAppAsync: Reload = (reason) =>
+export const reloadAppAsync: Reload = (reason) =>
   import('expo').then((expo) => expo.reloadAppAsync(reason));
 
 /** Undefined until the account has been read on this launch. */
