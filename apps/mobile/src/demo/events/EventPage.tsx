@@ -8,7 +8,7 @@ import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { LineIcon } from '../../components/AccountCard.tsx';
-import { SwitchTrack } from '../settings/NotificationsSwitch.tsx';
+import { SwitchTrack } from '../../components/ConfettiSwitch.tsx';
 import { EventCard, EventThumb } from '../../components/EventCard.tsx';
 import { AcPill, AlertLine, CHANGED, EditScreen } from './EventEdits.tsx';
 import { AreaPage, EventFrame } from './EventFrame.tsx';

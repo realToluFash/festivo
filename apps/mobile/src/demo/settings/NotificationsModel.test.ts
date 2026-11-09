@@ -1,28 +1,41 @@
 import { quietHoursIn } from '@soirely/domain';
-import { describe, expect, it } from 'vitest';
+import { init, t } from 'i18next';
+import { beforeAll, describe, expect, it } from 'vitest';
 
+import en from '../../i18n/locales/en.json';
 import { readSettings, saveSetting, settingSaving } from '../../kit/notificationSettings.ts';
-import * as model from './NotificationsModel.ts';
+import * as page from '../../kit/notificationsPage.ts';
 import {
   cardCounts,
   cardSays,
   categoryNote,
-  firstGrid,
-  firstPage,
   lockedLine,
-  NOTIFICATIONS_STATES,
-  notificationsStateOf,
   quietHoursLine,
   rowSays,
   rowToggled,
   rowValue,
-  SAMPLE_SETTINGS,
-  SAMPLE_SWITCH,
-  sampleClient,
   saveAnswered,
   switchName,
   switchSaving,
+} from '../../kit/notificationsPage.ts';
+import * as model from './NotificationsModel.ts';
+import {
+  firstGrid,
+  firstPage,
+  NOTIFICATIONS_STATES,
+  notificationsStateOf,
+  SAMPLE_SETTINGS,
+  SAMPLE_SWITCH,
+  sampleClient,
 } from './NotificationsModel.ts';
+
+beforeAll(() =>
+  init({
+    lng: 'en',
+    resources: { en: { translation: en } },
+    interpolation: { escapeValue: false },
+  }),
+);
 
 const now = () => Promise.resolve();
 
@@ -42,21 +55,21 @@ describe('the sample settings', () => {
     const locked = SAMPLE_SETTINGS.flatMap((row) =>
       (['push', 'email'] as const)
         .filter((channel) => !row[channel].switchable)
-        .map((channel) => switchName(row.category, channel)),
+        .map((channel) => switchName(row.category, channel, t)),
     );
 
     expect(locked).toEqual(['Account & security Email']);
   });
 
   it('leave Account & security’s locked email to the line under its switch', () => {
-    expect(categoryNote('account_security', 'en')).toBe(
+    expect(categoryNote('account_security', 'en', t)).toBe(
       'Sign-ins, your password, two-factor, ownership and access.',
     );
-    expect(lockedLine('email')).toBe('Email cannot be switched off.');
+    expect(lockedLine('email', t)).toBe('Email cannot be switched off.');
   });
 
   it('fill Money’s thresholds in the reader’s numbers', () => {
-    expect(categoryNote('money', 'en')).toBe(
+    expect(categoryNote('money', 'en', t)).toBe(
       'Payments due, usage at 80% and 100%, failed payments and invoices.',
     );
   });
@@ -69,18 +82,24 @@ const flipped = (category: string, channel: 'push' | 'email', on: boolean) =>
 
 describe('the card', () => {
   it('says the channels with at least one kind on', () => {
-    expect(cardSays(SAMPLE_SETTINGS)).toBe('You hear by push and email');
+    expect(cardSays(SAMPLE_SETTINGS, t)).toBe('You hear by push and email');
     expect(
-      cardSays(SAMPLE_SETTINGS.map((row) => ({ ...row, email: { ...row.email, on: false } }))),
+      cardSays(
+        SAMPLE_SETTINGS.map((row) => ({ ...row, email: { ...row.email, on: false } })),
+        t,
+      ),
     ).toBe('You hear by push only');
     expect(
-      cardSays(SAMPLE_SETTINGS.map((row) => ({ ...row, push: { ...row.push, on: false } }))),
+      cardSays(
+        SAMPLE_SETTINGS.map((row) => ({ ...row, push: { ...row.push, on: false } })),
+        t,
+      ),
     ).toBe('You hear by email only');
   });
 
   it('counts the switches that are on, each way', () => {
-    expect(cardCounts(SAMPLE_SETTINGS)).toBe('5 of 6 by push · 5 of 6 by email');
-    expect(cardCounts(flipped('messages', 'email', false))).toBe(
+    expect(cardCounts(SAMPLE_SETTINGS, t)).toBe('5 of 6 by push · 5 of 6 by email');
+    expect(cardCounts(flipped('messages', 'email', false), t)).toBe(
       '5 of 6 by push · 4 of 6 by email',
     );
   });
@@ -88,7 +107,7 @@ describe('the card', () => {
 
 describe('a row’s value', () => {
   it('puts its two switches in words', () => {
-    expect(SAMPLE_SETTINGS.map(rowValue)).toEqual([
+    expect(SAMPLE_SETTINGS.map((row) => rowValue(row, t))).toEqual([
       'Push and email',
       'Push and email',
       'Push only',
@@ -101,7 +120,7 @@ describe('a row’s value', () => {
   it('says Off when neither is on', () => {
     const row = flipped('event_day', 'push', false).find((one) => one.category === 'event_day');
 
-    expect(row && rowValue(row)).toBe('Off');
+    expect(row && rowValue(row, t)).toBe('Off');
   });
 });
 
@@ -109,25 +128,26 @@ describe('quiet hours', () => {
   const line = 'Between 21:00 and 08:00 your time, only Event day pushes come through.';
 
   it('read 21:00 and 08:00 with the device in en-US and in en-GB', () => {
-    expect(quietHoursLine('en-US')).toBe(line);
-    expect(quietHoursLine('en-GB')).toBe(line);
+    expect(quietHoursLine('en-US', t)).toBe(line);
+    expect(quietHoursLine('en-GB', t)).toBe(line);
   });
 
   it('have no AM or PM in any locale', () => {
     for (const locale of ['en', 'fr-FR', 'es-MX', 'pt-BR'])
-      expect(quietHoursLine(locale)).not.toMatch(/AM|PM|a\.m\.|p\.m\./iu);
-    expect(quietHoursLine('fr-FR')).toBe(line);
+      expect(quietHoursLine(locale, t)).not.toMatch(/AM|PM|a\.m\.|p\.m\./iu);
+    expect(quietHoursLine('fr-FR', t)).toBe(line);
   });
 
   it('take both times from the product’s quietHoursIn, with no clock of the demo’s own', () => {
     for (const locale of ['en-US', 'en-GB', 'fr-FR']) {
       const { start, end } = quietHoursIn(locale);
 
-      expect(quietHoursLine(locale)).toBe(
+      expect(quietHoursLine(locale, t)).toBe(
         `Between ${start} and ${end} your time, only Event day pushes come through.`,
       );
     }
     expect(Object.keys(model)).not.toContain('clockTime');
+    expect(Object.keys(page)).not.toContain('clockTime');
   });
 });
 
@@ -153,7 +173,7 @@ describe('a state link', () => {
 
     expect([saving.opened, rowSays(saving, 'messages')]).toEqual(['messages', 'saving']);
     expect([saved.opened, rowSays(saved, 'messages')]).toEqual(['messages', 'saved']);
-    expect(saved.grid.status === 'loaded' && cardCounts(saved.grid.settings)).toBe(
+    expect(saved.grid.status === 'loaded' && cardCounts(saved.grid.settings, t)).toBe(
       '5 of 6 by push · 4 of 6 by email',
     );
   });
