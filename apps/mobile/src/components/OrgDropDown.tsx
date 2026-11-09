@@ -113,7 +113,6 @@ export interface DropDownAnswers {
   /** Opens the invitation or offer under its tile, or closes it again. */
   onExpand: (id: string) => void;
   onAnswer: (invite: Invite, yes: boolean) => void;
-  /** Settles once the request is answered; Ask stays off until then. */
   onAsk: () => void | Promise<void>;
   onNotNow: () => void;
 }
@@ -172,7 +171,6 @@ export function OrgDropDown({
   const typingAtOpen = searchable(session) && session.query !== '';
 
   useFocusBack(open, back);
-  // Not now takes the offer's tile away, and the focused button with it (sc-11173).
   const afterOfferTarget = useMemo<RefObject<ScreenReaderTarget | null>>(
     () => ({
       get current() {
@@ -964,7 +962,6 @@ function OfferPanel({
   useReadOut(refused && answered != null ? t('domainJoining.unavailable') : null, {
     answer: answered,
   });
-  // Ask's answer takes its buttons' place, so it takes focus in place of being read out (sc-11173).
   const { read: waitingWords } = useFocusOnAnswer<ViewInstance>(asked ? answered : undefined);
 
   return (
