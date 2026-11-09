@@ -100,6 +100,21 @@
   background: var(--optionBlue);
 }
 
+.desk-tile.scheme-tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--spaceMd);
+  color: var(--colorInkOnDark);
+}
+
+.desk-tile.scheme-tile.is-light {
+  color: var(--colorInk);
+}
+
+.scheme-tile > svg:last-child {
+  position: relative;
+}
+
 .desk-tile.is-sign-in-rules {
   background: color-mix(in srgb, var(--optionRose) 55%, var(--optionAmber));
 }

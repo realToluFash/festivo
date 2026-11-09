@@ -5,6 +5,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
+import { atPhoneWidth } from '../../../test-widths.ts';
 import { STYLES } from '../../../test-styles.ts';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -79,6 +80,9 @@ async function removing(domain: string) {
   const confirm = screen.getAllByRole('button', { name: `Remove ${domain}` }).at(-1);
   if (confirm != null) fireEvent.click(confirm);
 }
+
+// sc-13348's phone page; the desk page is GeneralDesk.test.tsx's.
+beforeEach(() => atPhoneWidth());
 
 afterEach(() => {
   vi.restoreAllMocks();

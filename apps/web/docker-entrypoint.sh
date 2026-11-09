@@ -31,6 +31,7 @@ GOOGLE_CLIENT_ID="$(json_string SOIRELY_GOOGLE_CLIENT_ID "${SOIRELY_GOOGLE_CLIEN
 APPLE_AUTHORIZE_URL="$(json_string SOIRELY_APPLE_AUTHORIZE_URL "${SOIRELY_APPLE_AUTHORIZE_URL:-}")"
 APPLE_CLIENT_ID="$(json_string SOIRELY_APPLE_CLIENT_ID "${SOIRELY_APPLE_CLIENT_ID:-}")"
 SCHEME="$(json_string SOIRELY_SCHEME "${SOIRELY_SCHEME:-}")"
+SUPPORT_ADDRESS="$(json_string SOIRELY_SUPPORT_EMAIL "${SOIRELY_SUPPORT_EMAIL:-support@soirely.com}")"
 
 ROOT="${SOIRELY_WEB_ROOT:-/usr/share/nginx/html}"
 TARGET="$ROOT/config.json"
@@ -48,7 +49,8 @@ cat > "$TARGET" <<JSON
     "authorizeUrl": ${APPLE_AUTHORIZE_URL},
     "clientId": ${APPLE_CLIENT_ID}
   },
-  "scheme": ${SCHEME}
+  "scheme": ${SCHEME},
+  "supportAddress": ${SUPPORT_ADDRESS}
 }
 JSON
 

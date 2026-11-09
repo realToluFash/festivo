@@ -7,6 +7,7 @@ namespace App\Entity;
 use App\Doctrine\Traits\SoftDeletable;
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\AccountOrigin;
+use App\Enum\ColourScheme;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -48,6 +49,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     /** An IANA zone, from the device at sign-up or chosen in Settings > Account (sc-868); null means UTC. */
     #[ORM\Column(type: Types::STRING, length: 64, nullable: true)]
     private ?string $timezone = null;
+
+    /** Null until the person picks one: they then see Soirely in it on every device, and nobody else does (sc-30441). */
+    #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: ColourScheme::class)]
+    private ?ColourScheme $colourScheme = null;
 
     /** Set once, at creation: it is what tells an account that founds an organisation from one that joins. */
     #[ORM\Column(type: Types::STRING, length: 20, enumType: AccountOrigin::class)]
@@ -140,6 +145,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setTimezone(?string $timezone): void
     {
         $this->timezone = $timezone;
+    }
+
+    public function getColourScheme(): ?ColourScheme
+    {
+        return $this->colourScheme;
+    }
+
+    public function setColourScheme(?ColourScheme $colourScheme): void
+    {
+        $this->colourScheme = $colourScheme;
     }
 
     public function hasTwoFactorSetupPrompt(): bool

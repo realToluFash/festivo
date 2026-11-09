@@ -5,7 +5,6 @@ import {
   type CostLine,
   DAYS,
   HEADS,
-  LOCALE,
   NOW,
   PAYMENTS,
   type Payment,
@@ -13,16 +12,17 @@ import {
   READER,
   TODAY,
   amounts,
+  CURRENCY,
   lineState,
-  money,
-  moneyRange,
   owed,
   perHead,
   shortDay,
   totals,
-  whole,
-  wholeRange,
+  money as moneyIn,
+  whole as wholeIn,
 } from './budget.ts';
+import { type Lang, readerTag } from './guest.ts';
+import { READER_WORDS, type ReaderWords } from './shareLanguages.ts';
 import {
   type DemoGroup,
   MARGIN,
@@ -63,6 +63,11 @@ export const RECIPIENT_STATES = [
   'too_many_soon',
   'ended',
   'gone',
+  'payer_no_payments',
+  'whole_no_payments',
+  'category_no_payments',
+  'loading',
+  'failed',
 ] as const;
 export type RecipientState = (typeof RECIPIENT_STATES)[number];
 
@@ -310,27 +315,55 @@ const VENDOR_NAMES: Record<string, string> = {
 
 const vendorName = (id: string): string => VENDOR_NAMES[id] ?? '';
 
-export function everyday(line: CostLine): Row {
+/** Who reads the share: the words of the language they chose, and money and dates in their locale (CLDR). */
+export interface Reading {
+  w: ReaderWords;
+  locale: string;
+}
+
+export function readingOf(lang: Lang = 'en', device?: string): Reading {
+  return {
+    w: READER_WORDS[lang],
+    locale: readerTag(lang, device),
+  };
+}
+
+const ENGLISH = readingOf('en');
+
+const money = (minor: number, r: Reading): string => moneyIn(minor, CURRENCY, r.locale);
+const whole = (minor: number, r: Reading): string => wholeIn(minor, CURRENCY, r.locale);
+const moneyRange = (low: number, high: number, r: Reading): string =>
+  low === high ? money(low, r) : r.w.range(money(low, r), money(high, r));
+const wholeRange = (low: number, high: number, r: Reading): string =>
+  low === high ? whole(low, r) : r.w.range(whole(low, r), whole(high, r));
+
+export function dayOf(day: string, r: Reading = ENGLISH): string {
+  return new Intl.DateTimeFormat(r.locale, { ...r.w.day, timeZone: 'UTC' }).format(
+    new Date(`${day}T00:00:00Z`),
+  );
+}
+
+export function everyday(line: CostLine, r: Reading = ENGLISH): Row {
   const state = lineState(line);
   const how =
     state === 'nothingYet'
-      ? W.noSeatingPlan
+      ? r.w.noSeatingPlan
       : line.basis === 'perHead'
-        ? W.forEachGuest
+        ? r.w.forEachGuest
         : line.basis === 'perDay'
-          ? W.forEachDay(DAYS)
+          ? r.w.forEachDay(DAYS)
           : null;
   const each = amounts(line);
 
   return {
     title: line.name,
-    line: [CATEGORY_WORDS[line.category], how].filter(Boolean).join(' · '),
+    line: [r.w.categories[line.category], how].filter(Boolean).join(' · '),
     value:
       state === 'notPriced'
-        ? W.notPriced
+        ? r.w.notPriced
         : state === 'nothingYet'
-          ? W.nothingYet
-          : moneyRange(each.settled, each.ifAll),
+          ? r.w.nothingYet
+          : moneyRange(each.settled, each.ifAll, r),
   };
 }
 
@@ -345,19 +378,23 @@ export const PLANNING_FEE = 300000;
 const charged = (minor: number, category: Category): number =>
   Math.round((minor * (100 + (MARKUP[category] ?? MARKUP.event))) / 100);
 
-export function clientRows(lines: readonly CostLine[] = COST_LINES): Row[] {
+export function clientRows(lines: readonly CostLine[] = COST_LINES, r: Reading = ENGLISH): Row[] {
   return [
     ...lines.map((line) => {
-      const row = everyday(line);
+      const row = everyday(line, r);
       if (lineState(line) !== 'priced') return row;
       const each = amounts(line);
 
       return {
         ...row,
-        value: moneyRange(charged(each.settled, line.category), charged(each.ifAll, line.category)),
+        value: moneyRange(
+          charged(each.settled, line.category),
+          charged(each.ifAll, line.category),
+          r,
+        ),
       };
     }),
-    { title: W.planningFee, line: null, value: money(PLANNING_FEE) },
+    { title: r.w.planningFee, line: null, value: money(PLANNING_FEE, r) },
   ];
 }
 
@@ -375,8 +412,10 @@ export function clientTotals(lines: readonly CostLine[] = COST_LINES): [number, 
   );
 }
 
-function rangeSentence(low: number, high: number): string {
-  return low === high ? W.repliesDoNot : W.between(whole(low), whole(high), HEADS.stillToAnswer);
+function rangeSentence(low: number, high: number, r: Reading): string {
+  return low === high
+    ? r.w.repliesDoNot
+    : r.w.between(whole(low, r), whole(high, r), HEADS.stillToAnswer);
 }
 
 function soonest(payments: readonly Payment[]): Payment | undefined {
@@ -399,7 +438,9 @@ function paymentsOf(category: Category | null): Payment[] {
   return PAYMENTS.filter((one) => vendors.has(one.vendorId));
 }
 
-function payments(category: Category | null): Row[] {
+/** Paid and still to pay; with no payment recorded or scheduled yet, one row that says so, never £0 (sc-94's "without payments"). */
+function payments(category: Category | null, r: Reading, none: boolean): Row[] {
+  if (none) return [{ title: r.w.paid, line: r.w.noneScheduled, value: r.w.nothingYet }];
   const these = paymentsOf(category);
   const paid = these.reduce((sum, one) => sum + (one.paid?.amount ?? 0), 0);
   const still = these.filter(owed).reduce((sum, one) => sum + one.amount, 0);
@@ -408,47 +449,65 @@ function payments(category: Category | null): Row[] {
     next == null
       ? null
       : category == null
-        ? W.nextTo(money(next.amount), vendorName(next.vendorId), shortDay(next.dueOn))
-        : W.next(money(next.amount), shortDay(next.dueOn));
+        ? r.w.nextTo(money(next.amount, r), vendorName(next.vendorId), dayOf(next.dueOn, r))
+        : r.w.next(money(next.amount, r), dayOf(next.dueOn, r));
 
   return [
-    { title: W.paid, line: null, value: money(paid) },
-    { title: W.stillToPay, line, value: money(still) },
+    { title: r.w.paid, line: null, value: money(paid, r) },
+    { title: r.w.stillToPay, line, value: money(still, r) },
   ];
 }
 
-export function timeOf(at: Date): string {
-  return writtenTime(at, LOCALE, ZONE);
+export function timeOf(at: Date, r: Reading = ENGLISH): string {
+  return writtenTime(at, r.locale, ZONE);
 }
 
-export const UPDATED_LINE = W.sharedBy(ORGANISATION, shortDay(TODAY), timeOf(NOW));
+export function updatedLine(r: Reading = ENGLISH): string {
+  return r.w.sharedBy(ORGANISATION, dayOf(TODAY, r), timeOf(NOW, r));
+}
+
+export const UPDATED_LINE = updatedLine();
+
+export interface ViewOptions {
+  marked?: boolean;
+  none?: boolean;
+  reading?: Reading;
+}
 
 /** What a scope shows, top to bottom; with a client price on any line, client figures and no payments at all (sc-94, sc-92). */
-export function sharedView(scope: Scope, marked = false): Shared {
+export function sharedView(
+  scope: Scope,
+  { marked = false, none = false, reading: r = ENGLISH }: ViewOptions = {},
+): Shared {
   if (scope === 'payer') {
     const one = payerOf('obi') as Payer;
     const [low, high] = one.share;
+    const [stillLow, stillHigh] = none ? one.share : stillToCome(one);
 
     return {
-      title: W.yourShareOf(EVENT_NAME),
+      title: r.w.yourShareOf(EVENT_NAME),
       name: one.name,
-      label: W.yourShare,
-      figure: wholeRange(low, high),
-      sentence: rangeSentence(low, high),
+      label: r.w.yourShare,
+      figure: wholeRange(low, high, r),
+      sentence: rangeSentence(low, high, r),
       blocks: [
         {
           head: null,
           rows: [
-            { title: W.paid, line: null, value: money(one.paid) },
-            { title: W.stillToCome, line: null, value: moneyRange(...stillToCome(one)) },
+            {
+              title: r.w.paid,
+              line: null,
+              value: none ? r.w.nothingYet : money(one.paid, r),
+            },
+            { title: r.w.stillToCome, line: null, value: moneyRange(stillLow, stillHigh, r) },
           ],
         },
         {
-          head: W.whatItCovers,
+          head: r.w.whatItCovers,
           rows: one.covers.map((cover) => ({
             title: COST_LINES.find((line) => line.id === cover.lineId)?.name ?? '',
-            line: cover.how,
-            value: moneyRange(...cover.amount),
+            line: r.w.covers[cover.how],
+            value: moneyRange(...cover.amount, r),
           })),
         },
       ],
@@ -459,21 +518,21 @@ export function sharedView(scope: Scope, marked = false): Shared {
     const category: Category = 'flowers';
     const lines = COST_LINES.filter((line) => line.category === category);
     const sum = totals(lines);
-    const word = CATEGORY_WORDS[category];
+    const word = r.w.categories[category];
     const sentence = [
-      rangeSentence(sum.settled, sum.ifAll),
-      sum.notPriced === 0 ? null : W.notPricedYet(sum.notPriced),
+      rangeSentence(sum.settled, sum.ifAll, r),
+      sum.notPriced === 0 ? null : r.w.notPricedYet(sum.notPriced),
     ];
 
     return {
-      title: W.categoryFor(word, EVENT_NAME),
+      title: r.w.categoryFor(word, EVENT_NAME),
       name: word,
-      label: W.willCost(word),
-      figure: wholeRange(sum.settled, sum.ifAll),
+      label: r.w.willCost(word),
+      figure: wholeRange(sum.settled, sum.ifAll, r),
       sentence: sentence.filter(Boolean).join(' '),
       blocks: [
-        { head: null, rows: lines.map(everyday), loose: true },
-        { head: null, rows: payments(category) },
+        { head: null, rows: lines.map((line) => everyday(line, r)), loose: true },
+        { head: null, rows: payments(category, r, none) },
       ],
     };
   }
@@ -483,19 +542,30 @@ export function sharedView(scope: Scope, marked = false): Shared {
     ? { settled: Math.round(low / HEADS.coming), ifAll: Math.round(high / HEADS.ifAllCome) }
     : perHead();
   const heads: Row[] = [
-    { title: W.perHeadSettled, line: W.coming(HEADS.coming), value: money(each.settled ?? 0) },
-    { title: W.perHeadIfAll, line: W.coming(HEADS.ifAllCome), value: money(each.ifAll ?? 0) },
+    {
+      title: r.w.perHeadSettled,
+      line: r.w.coming(HEADS.coming),
+      value: money(each.settled ?? 0, r),
+    },
+    {
+      title: r.w.perHeadIfAll,
+      line: r.w.coming(HEADS.ifAllCome),
+      value: money(each.ifAll ?? 0, r),
+    },
   ];
 
   return {
-    title: W.budgetFor(EVENT_NAME),
-    name: W.thisEventWillCost,
+    title: r.w.budgetFor(EVENT_NAME),
+    name: r.w.thisEventWillCost,
     label: null,
-    figure: wholeRange(low, high),
-    sentence: rangeSentence(low, high),
+    figure: wholeRange(low, high, r),
+    sentence: rangeSentence(low, high, r),
     blocks: [
-      { head: null, rows: marked ? heads : [...heads, ...payments(null)] },
-      { head: W.whatItIsMadeOf, rows: marked ? clientRows() : COST_LINES.map(everyday) },
+      { head: null, rows: marked ? heads : [...heads, ...payments(null, r, none)] },
+      {
+        head: r.w.whatItIsMadeOf,
+        rows: marked ? clientRows(COST_LINES, r) : COST_LINES.map((line) => everyday(line, r)),
+      },
     ],
   };
 }
@@ -504,7 +574,9 @@ export function sharedView(scope: Scope, marked = false): Shared {
 export type Answer = 'open' | 'wrong' | 'locked' | 'lockedSoon';
 
 export type Visit =
-  | { page: 'shown'; scope: Scope; marked: boolean }
+  | { page: 'shown'; scope: Scope; marked: boolean; none: boolean }
+  | { page: 'loading'; scope: Scope }
+  | { page: 'failed'; scope: Scope }
   | { page: 'gate'; scope: Scope; wrong: number; answer: Answer | null; tried: string }
   | { page: 'ended'; by: string }
   | { page: 'gone' };
@@ -514,7 +586,10 @@ export function visitOf(path: string | undefined, state: string | null): Visit {
 
   if (scope != null && state === 'ended') return { page: 'ended', by: READER };
   if (scope == null || state === 'gone') return { page: 'gone' };
-  if (state === 'marked_up') return { page: 'shown', scope: 'whole', marked: true };
+  if (state === 'marked_up') return { page: 'shown', scope: 'whole', marked: true, none: false };
+  if (state === 'loading' || state === 'failed') return { page: state, scope };
+  if (state?.endsWith('_no_payments') === true)
+    return { page: 'shown', scope, marked: false, none: true };
   if (state === 'passphrase') return { page: 'gate', scope, wrong: 0, answer: null, tried: '' };
   if (state === 'wrong_passphrase')
     return { page: 'gate', scope, wrong: 1, answer: 'wrong', tried: 'marigold' };
@@ -527,7 +602,7 @@ export function visitOf(path: string | undefined, state: string | null): Visit {
       tried: 'marigold',
     };
 
-  return { page: 'shown', scope, marked: false };
+  return { page: 'shown', scope, marked: false, none: false };
 }
 
 /** The server's answer to a passphrase: locked after 10 wrong, the right one refused too. */
@@ -563,6 +638,11 @@ const RECIPIENT: Record<RecipientState, { scope: Scope; name: string }> = {
   too_many_soon: { scope: 'whole', name: 'Too many wrong passphrases, with no time to wait for' },
   ended: { scope: 'whole', name: 'Revoked or ended: who to ask for a new one' },
   gone: { scope: 'whole', name: 'Never made, or a removed payer’s: one answer' },
+  payer_no_payments: { scope: 'payer', name: 'Mr and Mrs Obi’s share, nothing paid yet' },
+  whole_no_payments: { scope: 'whole', name: 'The whole budget, no payments yet' },
+  category_no_payments: { scope: 'category', name: 'One category, Flowers, no payments yet' },
+  loading: { scope: 'payer', name: 'Loading' },
+  failed: { scope: 'payer', name: 'Could not load: Try again' },
 };
 
 export function recipientAt(state: RecipientState): string {

@@ -678,12 +678,12 @@ function SummaryCard({
         ]}
       />
       {step && next != null ? (
-        <div className="bud-card-foot">
+        <div className="bud-card-foot bud-card-foot-stack">
           <CardStrong>{needsYou(next)}</CardStrong>
           <CardStep label={W.markPaid} onClick={() => onMark(next)} />
         </div>
       ) : step && early ? (
-        <div className="bud-card-foot">
+        <div className="bud-card-foot bud-card-foot-stack">
           <CardStrong>{`${W.notPricedCount(sum.notPriced)}.`}</CardStrong>
           <CardStep label="Add a price" onClick={onPrice} />
         </div>

@@ -7,7 +7,7 @@ import android.os.Build
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
-/** Android's Bold text, read from the application: the activity keeps its own adjustment at zero, so the app draws the heavier faces itself. */
+/** Android's Bold text, read from the application: the app's own views take no adjustment, so the app draws the heavier faces itself. */
 class BoldTextModule : Module() {
   private var application: Context? = null
   private var last = false

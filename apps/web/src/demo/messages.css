@@ -2157,7 +2157,8 @@
 }
 
 .mg-when-field.is-time {
-  flex: 0 0 120px;
+  flex: 0 0 auto;
+  min-width: 120px;
 }
 
 .mg-when-field:focus {

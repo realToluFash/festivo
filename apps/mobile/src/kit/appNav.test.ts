@@ -26,7 +26,7 @@ describe('sign-in lands on the signed-in home', () => {
     const launch = source(join(APP, 'index.tsx'));
 
     expect(launch).toMatch(/if \(launching === 'signedIn'\) return <SignedInHome \/>;/u);
-    expect(launch).toMatch(/if \(live && loaded\) setLaunching\('signedIn'\);/u);
+    expect(launch).toMatch(/else setLaunching\('signedIn'\);/u);
     expect(launch).not.toMatch(/href="\/security"|href="\/account"/u);
   });
 });
@@ -69,9 +69,15 @@ describe('the frame shows only what is built', () => {
   });
 });
 
-describe('Settings > Security holds every card', () => {
-  it.each(['WaysCard', 'TwoFactorCard', 'DevicesCard'])('%s', (card) => {
-    expect(source(join(APP, 'settings', 'security.tsx'))).toMatch(new RegExp(`<${card}\\b`, 'u'));
+describe('Settings > Security holds every section', () => {
+  it('through the page its demo draws', () => {
+    expect(source(join(APP, 'settings', 'security.tsx'))).toMatch(/<SecurityPage\b/u);
+  });
+
+  it.each(['WaysSection', 'TwoFactorSection', 'DevicesSection'])('%s', (section) => {
+    expect(source(join(SRC, 'components', 'SecurityPage.tsx'))).toMatch(
+      new RegExp(`<${section}\\b`, 'u'),
+    );
   });
 });
 
@@ -96,7 +102,10 @@ describe('"Sign out" on the Settings list', () => {
 describe('the Settings list', () => {
   it('has Organisation, Members and Sign-in rules rows below Security, under their own heading', () => {
     expect(settingsGroups({ permissions: ['members.read'] })).toEqual([
-      { heading: 'yourAccount', sections: ['account', 'security', 'notifications'] },
+      {
+        heading: 'yourAccount',
+        sections: ['account', 'security', 'notifications', 'personalisation'],
+      },
       { heading: 'organisationHeading', sections: ['organisation', 'members', 'signInRules'] },
     ]);
   });
@@ -117,7 +126,10 @@ describe('the Settings list', () => {
 
   it('leaves the Organisation rows out while the account is in no organisation', () => {
     expect(settingsGroups(null)).toEqual([
-      { heading: 'yourAccount', sections: ['account', 'security', 'notifications'] },
+      {
+        heading: 'yourAccount',
+        sections: ['account', 'security', 'notifications', 'personalisation'],
+      },
     ]);
   });
 

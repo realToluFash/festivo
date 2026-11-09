@@ -23,7 +23,7 @@ import {
 import { tokens } from '../../theme/tokens.ts';
 import { SeenBy } from './Frame.tsx';
 import { useLoad } from './MembersLoading.tsx';
-import { ConfettiSwitch } from './NotificationsSwitch.tsx';
+import { ConfettiSwitch } from '../../components/ConfettiSwitch.tsx';
 import { DOMAIN_WORDS } from './OrganisationWords.ts';
 import { memberLooking } from './sample.ts';
 import {

@@ -17,7 +17,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
 import { SAMPLE } from '../samples.ts';
 import { DOMAINS_WORDS } from './DataWords.ts';
-import { ConfettiSwitch } from './NotificationsSwitch.tsx';
+import { ConfettiSwitch } from '../../components/ConfettiSwitch.tsx';
 import {
   DOMAINS_MOST,
   domainProblem,

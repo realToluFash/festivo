@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
-import { NotificationSettingsGrid } from '../../src/components/NotificationSettingsGrid.tsx';
+import { NotificationsPage } from '../../src/components/NotificationsPage.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { Text, type TextHandle } from '../../src/components/Text.tsx';
@@ -14,7 +14,7 @@ import { useOffline } from '../../src/offline.ts';
 import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
-/** Settings > Notifications in the app (sc-3980), under Your account. */
+/** Settings > Notification settings in the app, summary first: the card, then the six kinds (sc-30411). */
 export default function Notifications() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();
@@ -60,12 +60,9 @@ export default function Notifications() {
               {refreshingWords}
             </View>
           )}
-          <NotificationSettingsGrid
-            kind={kind}
-            watch={watch}
-            refresh={refresh}
-            onLoaded={setLoaded}
-          />
+          <View style={styles.blocks}>
+            <NotificationsPage watch={watch} refresh={refresh} onLoaded={setLoaded} />
+          </View>
         </Screen>
       </SettingsSplit>
     </AppFrame>
@@ -74,6 +71,7 @@ export default function Notifications() {
 
 const styles = StyleSheet.create({
   shrink: { flexShrink: 1, minWidth: 0 },
+  blocks: { gap: 18 },
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,

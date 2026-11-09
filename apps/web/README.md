@@ -35,13 +35,14 @@ the first render, and the container writes that file from its environment at
 start-up. So one built image works in every environment, and pointing it
 somewhere else is a variable rather than a rebuild.
 
-| Variable              | Required | What it is                                                                          |
-| --------------------- | -------- | ----------------------------------------------------------------------------------- |
-| `SOIRELY_API_URL`     | yes      | Where the API is **from the browser**, not from inside the network                  |
-| `SOIRELY_MERCURE_URL` | no       | Where Mercure is, from the browser                                                  |
-| `SOIRELY_STORAGE_URL` | no       | The object store's public origin, which receives uploads and serves uploaded images |
-| `SOIRELY_ENVIRONMENT` | no       | A name, so a support conversation can establish which deployment                    |
-| `SOIRELY_SCHEME`      | no       | One of B Confetti's colour schemes, such as `cobalt`; unset draws violet            |
+| Variable                | Required | What it is                                                                           |
+| ----------------------- | -------- | ------------------------------------------------------------------------------------ |
+| `SOIRELY_API_URL`       | yes      | Where the API is **from the browser**, not from inside the network                   |
+| `SOIRELY_MERCURE_URL`   | no       | Where Mercure is, from the browser                                                   |
+| `SOIRELY_STORAGE_URL`   | no       | The object store's public origin, which receives uploads and serves uploaded images  |
+| `SOIRELY_ENVIRONMENT`   | no       | A name, so a support conversation can establish which deployment                     |
+| `SOIRELY_SCHEME`        | no       | One of B Confetti's colour schemes, such as `cobalt`; unset draws violet             |
+| `SOIRELY_SUPPORT_EMAIL` | no       | Soirely support's address, the API's `SUPPORT_EMAIL`; unset is `support@soirely.com` |
 
 A missing `SOIRELY_API_URL` stops the container. That is deliberate: a default
 would be a browser quietly talking to the wrong host, which looks like an

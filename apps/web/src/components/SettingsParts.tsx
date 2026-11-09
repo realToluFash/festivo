@@ -347,6 +347,8 @@ export function Field({
 }
 
 export interface Choice {
+  /** What a pick answers with, when two choices could share a name. */
+  id?: string;
   name: string;
   line?: string | null;
   now?: boolean;
@@ -376,8 +378,10 @@ export function Choices({
       <legend className={hideLegend ? 'desk-unseen' : 'desk-legend'}>{legend}</legend>
       <ul className="desk-rows">
         {choices.map((choice) => (
-          <li key={choice.name}>
-            <label className={choice.name === picked ? 'desk-row is-picked' : 'desk-row'}>
+          <li key={choice.id ?? choice.name}>
+            <label
+              className={(choice.id ?? choice.name) === picked ? 'desk-row is-picked' : 'desk-row'}
+            >
               <RowWords
                 title={choice.name}
                 tag={choice.now === true && <Tag kind="now" word={t('settings.choiceNow')} />}
@@ -387,8 +391,8 @@ export function Choices({
                 type="radio"
                 className="desk-radio"
                 name={name}
-                checked={choice.name === picked}
-                onChange={() => onPick(choice.name)}
+                checked={(choice.id ?? choice.name) === picked}
+                onChange={() => onPick(choice.id ?? choice.name)}
               />
             </label>
           </li>

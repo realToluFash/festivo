@@ -32,6 +32,13 @@ describe('the web entrypoint', () => {
     });
   });
 
+  it("names support's address, Soirely's own when none is given", () => {
+    expect(json(run({}), 'config.json').supportAddress).toBe('support@soirely.com');
+    expect(
+      json(run({ SOIRELY_SUPPORT_EMAIL: 'help@example.test' }), 'config.json').supportAddress,
+    ).toBe('help@example.test');
+  });
+
   it('keeps every fingerprint in assetlinks.json when one holds a quote', () => {
     const root = run({ SOIRELY_ANDROID_CERT_SHA256: 'AA:BB, CC"\\,DD' });
 
