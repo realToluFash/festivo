@@ -782,7 +782,6 @@
     "matches_other": "{{count, number}} organisations match",
     "matches_many": "{{count, number}} organisations match",
     "yourRole": "A sua função · {{role}}",
-    "heading": "As suas organizações",
     "current": "Atual",
     "remembered": "A Soirely lembra a sua escolha neste dispositivo.",
     "switched": "Agora a trabalhar em {{name}}.",

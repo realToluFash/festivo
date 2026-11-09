@@ -16,7 +16,7 @@ appId: host.exp.Exponent
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 5000
-- assertVisible: '{{t:switcher.heading}}'
+- assertVisible: '{{t:switcher.asks}}'
 - takeScreenshot: top
 - swipe:
     start: '50%,70%'

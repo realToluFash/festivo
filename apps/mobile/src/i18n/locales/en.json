@@ -762,7 +762,6 @@
     "matches_one": "{{count, number}} organisation matches",
     "matches_other": "{{count, number}} organisations match",
     "yourRole": "Your role · {{role}}",
-    "heading": "Your organisations",
     "current": "Current",
     "remembered": "Soirely remembers your choice on this device.",
     "switched": "Now working in {{name}}.",

@@ -67,5 +67,5 @@ appId: host.exp.Exponent
 - takeScreenshot: deleted-moved-on
 - runFlow: ../open-switcher.yaml
 - assertNotVisible:
-    id: 'switcher.${output.joined}'
+    id: 'switcher.tile.${output.joined}'
 - takeScreenshot: switcher
