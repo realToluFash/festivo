@@ -98,7 +98,7 @@ export const DOMAINS_WORDS = {
     removed: (domain: string) => `${domain} was removed`,
     removedLine: 'It is no longer proved.',
     locked: 'Available on Enterprise',
-    lockedLine: `Prove that ${ORG} owns its domain, then keep the accounts at it to ${ORG}.`,
+    lockedLine: `Prove that ${ORG} owns its domain, then limit the accounts at it to ${ORG}.`,
     off: (day: string) => `Switched off on ${day}`,
     offLine: `${ORG} left Enterprise. Its domains are kept as they were, and come back on with Enterprise.`,
     onlyProved: (domain: string) => `${domain} is proved`,

@@ -253,7 +253,7 @@ export function domainsCard(
   if (view.plan === 'free')
     return {
       says: 'Available on Enterprise',
-      line: `Prove that ${ORG} owns its domain, then keep the accounts at it to ${ORG}.`,
+      line: `Prove that ${ORG} owns its domain, then limit the accounts at it to ${ORG}.`,
       step: { does: 'contact' },
     };
   if (view.plan === 'left')

@@ -29,7 +29,7 @@ export const DATA_CONTROL_PAGES: PageLinks = [
       hub(undefined, 'An admin in London: ireevents.com waiting, See the record', VIEWERS.julien),
       hub('quiet', 'Nothing needs your attention'),
       hub('new', 'Nothing set up yet: Prove a domain'),
-      hub('locked', 'Never on Enterprise: three of these locked'),
+      hub('locked', 'Never on Enterprise: these locked'),
       hub('downgraded', 'Left Enterprise: kept as they were'),
       hub(undefined, 'A member: no Data and control', VIEWERS.ana),
       hub('loading', 'Loading'),

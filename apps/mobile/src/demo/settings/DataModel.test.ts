@@ -374,7 +374,7 @@ describe('Email domains: each state’s card and rows (sc-560, sc-563)', () => {
   it('locks the page on the free plan, and keeps ire.events read only once Ire Events left', () => {
     expect(card('ed_locked')).toMatchObject({
       says: 'Available on Enterprise',
-      line: 'Prove that Ire Events owns its domain, then keep the accounts at it to Ire Events.',
+      line: 'Prove that Ire Events owns its domain, then limit the accounts at it to Ire Events.',
       step: { label: 'Contact Soirely about Enterprise' },
     });
     expect(card('ed_downgraded')).toMatchObject({
