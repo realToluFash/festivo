@@ -294,7 +294,7 @@ function MarkLink({
       to={itemLink(item)}
       className={`cal-piece cal-mark is-from-${mark.from} is-row-${mark.row}`}
       data-piece={mark.key}
-      aria-label={needs ? needsLabel(item, locale, CLOCKS.rest) : markLabel(item, locale)}
+      aria-label={markLabel(item, locale)}
       tabIndex={-1}
       onKeyDown={onKeyDown}
     >
@@ -534,7 +534,7 @@ export function AgendaList({
               {entry.empty ? (
                 <>
                   <span className="cal-date" aria-hidden="true" />
-                  <p className="cal-nothing">
+                  <p className="cal-nothing" tabIndex={-1}>
                     {(needs ? W.emptyNeedsMonth : W.emptyMonth)(monthName(month, locale))}
                   </p>
                 </>

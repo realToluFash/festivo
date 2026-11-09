@@ -79,7 +79,8 @@ const SEEN: Record<string, () => unknown> = {
   resetLink: () => screen.getByRole('dialog', { name: FEED_WORDS.confirmTitle }),
   needsMenu: () =>
     screen.getByRole('menuitemradio', { name: CAL_WORDS.showNeedsYou, checked: true }),
-  needsMonth: () => screen.getByRole('link', { name: /^Agree the toasts, .*, overdue$/ }),
+  needsMonth: () =>
+    screen.getByRole('link', { name: /^Agree the toasts, / }).querySelector('.cal-late-mark'),
   needsDay: () =>
     within(screen.getByRole('complementary', { name: 'Tuesday, Nov 3' })).getAllByRole('link'),
   needsAgenda: () =>
@@ -498,6 +499,7 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
     expect(rows[1]?.textContent).not.toContain(CAL_WORDS.overdue);
     expect(cake?.textContent).toContain('Confirm the cake');
     expect(cake?.textContent).not.toContain('wedding');
+    expect(cake?.getAttribute('aria-label')).not.toMatch(/wedding|overdue/);
     expect(cake?.querySelector('.cal-late')).not.toBeNull();
   });
 
@@ -553,6 +555,16 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
       expect(screen.getByRole('heading', { level: 2, name: 'Monday, Nov 2' })).toBeDefined();
     },
   );
+
+  it('puts Today in Agenda on the empty line when the month needs nothing', SLOW, async () => {
+    await calendar('needsReadOnly');
+    fireEvent.click(screen.getByRole('radio', { name: 'View: Agenda' }));
+    fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.today }));
+
+    const quiet = CAL_WORDS.emptyNeedsMonth('November 2026');
+
+    expect(document.activeElement?.textContent).toBe(quiet);
+  });
 
   it('starts on Events and milestones again after a reload', SLOW, async () => {
     await calendar('needsMonth');

@@ -321,7 +321,7 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
         ? null
         : [...(box?.querySelectorAll<HTMLElement>('[data-entry]') ?? [])]
             .find((one) => one.dataset.entry === landing)
-            ?.querySelector<HTMLElement>('h2.cal-date');
+            ?.querySelector<HTMLElement>('h2.cal-date, .cal-nothing[tabindex]');
 
     if (landingHeading != null) {
       headingTo.current = null;
@@ -379,8 +379,7 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
     const day = landed(view, show, days, TODAY);
 
     setFocusDay(TODAY);
-    headingTo.current =
-      view === 'agenda' && load !== 'failed' && (show !== 'needs' || days.has(day)) ? day : null;
+    headingTo.current = view === 'agenda' && load !== 'failed' ? day : null;
     goTo({ day, glide: true, turn: false, pin: pinFor(TODAY) });
   }
 
