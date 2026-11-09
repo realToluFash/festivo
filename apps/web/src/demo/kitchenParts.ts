@@ -1,11 +1,12 @@
 import { demoWords } from './demoWords.ts';
 import { BASE, type Figures } from './kitchenChanges.ts';
+import { type HowServed, MW, usesParts } from './menuServed.ts';
 
 /** The kitchen sheet's parts (sc-34244): a course served In parts or Family style counts each part under its dish, then Served with this course, Plated at the pass and, Family style only, By table. */
 export const PW = {
-  inParts: 'In parts',
-  familyStyle: 'Family style',
-  servedWith: 'Served with this course',
+  inParts: MW.ways.in_parts,
+  familyStyle: MW.ways.family_style,
+  servedWith: MW.own,
   byTable: 'By table',
   tableHead: 'Table',
   plattersHead: 'Platters',
@@ -42,8 +43,6 @@ export const PW = {
 const { filled, many } = demoWords(PW);
 
 export { filled as pw, many as pwMany };
-
-export type HowServed = 'plated' | 'in_parts' | 'family_style' | 'buffet';
 
 export type Part =
   | { kind: 'fixed'; name: string }
@@ -123,7 +122,7 @@ const TABLE_TAILS = [
 ] as const;
 
 export function hasParts(course: Pick<PartsCourse, 'howServed'>): boolean {
-  return course.howServed === 'in_parts' || course.howServed === 'family_style';
+  return usesParts(course.howServed);
 }
 
 type DishPick = Extract<GuestPick, { dish: string }>;
