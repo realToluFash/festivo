@@ -1,5 +1,7 @@
 /** The pass's print controls (sc-4018, PassPrint.dc.html on page 35): who prints what, on this device's own record. */
 
+import { NOW } from './PassSample.ts';
+
 export type PrintPlatform = 'ipad' | 'android';
 export type Roll = '80' | '58';
 export type Connection = 'live' | 'stale' | 'offline';
@@ -93,15 +95,17 @@ export function startOf(
     noTickets: false,
     connection: 'live',
   };
-  const on = ipad ? { whenFired: true, onSince: '20:10', printer } : {};
+  const onSince = (since: string) => (ipad ? { whenFired: true, onSince: since, printer } : {});
+  const onBeforeT15 = onSince('20:09');
+  const onNow = onSince(NOW);
 
   switch (state) {
     case 'ticket':
       return base;
     case 'printed':
-      return { ...base, ...on, record: ipad ? TWO_AND_FAILED : TWO };
+      return { ...base, ...onBeforeT15, record: ipad ? TWO_AND_FAILED : TWO };
     case 'printTickets':
-      return { ...base, ...on, record: ipad ? TWO_AND_FAILED : TWO, panel: 'tickets' };
+      return { ...base, ...onBeforeT15, record: ipad ? TWO_AND_FAILED : TWO, panel: 'tickets' };
     case 'noneLeft':
       return {
         ...base,
@@ -118,9 +122,9 @@ export function startOf(
       return { ...base, panel: 'printing', pickerClosed: ipad };
     case 'printingOn':
     case 'versionB':
-      return { ...base, ...on, panel: 'printing' };
+      return { ...base, ...onNow, panel: 'printing' };
     case 'headerOn':
-      return { ...base, ...on, record: TWO };
+      return { ...base, ...onNow, record: TWO };
     case 'offline':
       return {
         ...base,
@@ -200,7 +204,7 @@ export function dueToPrint(
 
   return tickets.filter(
     (ticket) =>
-      ticket.firedAt >= onSince &&
+      ticket.firedAt > onSince &&
       !record.tried.includes(ticket.table) &&
       record.printed[ticket.table] == null,
   );

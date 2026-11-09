@@ -46,6 +46,7 @@ export const PW = {
   changePrinter: 'Change printer',
   asksForPrinter: 'Turning it on asks which AirPrint printer to use.',
   pickerClosed: 'No printer chosen, so Print when fired stays Off.',
+  chosen: 'Chosen',
   needsIpad: 'Print when fired needs the Soirely app on an iPad.',
   pickerCaption: 'iOS’s printer picker · a plain stand-in, not Soirely’s',
   dialogueCaption: {

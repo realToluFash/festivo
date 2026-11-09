@@ -350,7 +350,7 @@ export function PrinterPicker({
           </Text>
           {current === name && (
             <Text size={14} style={styles.label}>
-              Chosen
+              {PW.chosen}
             </Text>
           )}
         </Pressable>

@@ -131,6 +131,26 @@ describe('the pass’s print controls (sc-4018)', () => {
     expect(choicesOf(tickets, failed, 'unprinted').failedCount).toBe(1);
   });
 
+  it('never prints a ticket fired in the same minute it was turned on', () => {
+    expect(printWhenFired(TICKETS, EMPTY_RECORD, '20:11', true, '20:12')).toBe(EMPTY_RECORD);
+  });
+
+  it('starts every state with it on so that a fire prints only table 17, and a refetch nothing', () => {
+    const tickets = [...TICKETS, FIRED_LATER];
+    for (const state of PASS_STATES) {
+      const setup = startOf(state, 'ipad', TABLES, PRINTERS[0]);
+      if (!setup.whenFired) continue;
+
+      expect(printWhenFired(TICKETS, setup.record, setup.onSince, true, '20:12')).toBe(
+        setup.record,
+      );
+      const fired = printWhenFired(tickets, setup.record, setup.onSince, true, '20:13');
+      expect(Object.keys(fired.printed).filter((t) => setup.record.printed[t] == null)).toEqual([
+        'T17',
+      ]);
+    }
+  });
+
   it('draws Printing A only on the iPad', () => {
     expect(startOf('printingOn', 'ipad', TABLES, PRINTERS[0]).whenFired).toBe(true);
     expect(startOf('printingOn', 'android', TABLES, PRINTERS[0]).whenFired).toBe(false);
