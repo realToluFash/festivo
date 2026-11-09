@@ -233,8 +233,12 @@ export function SecurityPage({
     setReads((count) => count + 1);
   }
 
-  function retry(): void {
+  function retryStatus(): void {
     setStatus({ kind: 'loading' });
+    readAgain();
+  }
+
+  function retryDevices(): void {
     setSessions({ kind: 'loading' });
     readAgain();
   }
@@ -423,38 +427,38 @@ export function SecurityPage({
     newCodes: newCodesAsk(t),
   });
 
-  if (status.kind === 'loading') return <LoadingBlock words={t('pending.loading')} icons />;
-  if (status.kind === 'failed')
-    return (
-      <FailedBlock
-        title={t('twoFactorCard.failedTitle')}
-        line={t('twoFactorCard.failedBody')}
-        onRetry={retry}
-        testID="security.retry"
-      />
-    );
-
   const acted = openedWay ?? ways.providers[0];
 
   return (
     <>
-      <SecurityCard
-        says={cardSays(on, t)}
-        counts={cardCounts(ways, listed?.length ?? null, t)}
-        line={cardLine(said, on, t)}
-        wide={layout === 'portrait'}
-        saysRef={targets.card}
-        step={
-          on
-            ? null
-            : {
-                label: t('twoFactorCard.turnOn'),
-                onPress: () => setUp('step'),
-                testID: 'security.step',
-                ref: targets.step,
-              }
-        }
-      />
+      {status.kind === 'loading' && <LoadingBlock words={t('pending.loading')} icons />}
+      {status.kind === 'failed' && (
+        <FailedBlock
+          title={t('twoFactorCard.failedTitle')}
+          line={t('twoFactorCard.failedBody')}
+          onRetry={retryStatus}
+          testID="security.retry"
+        />
+      )}
+      {status.kind === 'ready' && (
+        <SecurityCard
+          says={cardSays(on, t)}
+          counts={cardCounts(ways, listed?.length ?? null, t)}
+          line={cardLine(said, on, t)}
+          wide={layout === 'portrait'}
+          saysRef={targets.card}
+          step={
+            on
+              ? null
+              : {
+                  label: t('twoFactorCard.turnOn'),
+                  onPress: () => setUp('step'),
+                  testID: 'security.step',
+                  ref: targets.step,
+                }
+          }
+        />
+      )}
       <WaysSection
         ways={ways}
         rules={rules}
@@ -470,22 +474,24 @@ export function SecurityPage({
         onLink={onLink}
         onUnlink={(provider) => asking('unlink', provider, 'unlink')}
       />
-      <TwoFactorSection
-        on={on}
-        codesLeft={twoFactor?.recoveryCodesLeft ?? 0}
-        email={email}
-        rules={rules}
-        opened={opened}
-        error={rowError != null && rowError.id === opened ? rowError.message : null}
-        setupRef={targets.setup}
-        turnOffRef={targets.turnOff}
-        newCodesRef={targets.newCodes}
-        onSetup={() => setUp('setup')}
-        onBlock={onBlock}
-        onToggle={toggle}
-        onTurnOff={() => asking('turnOff', 'authenticator', 'turnOff')}
-        onNewCodes={() => asking('newCodes', 'codes', 'newCodes')}
-      />
+      {status.kind === 'ready' && (
+        <TwoFactorSection
+          on={on}
+          codesLeft={twoFactor?.recoveryCodesLeft ?? 0}
+          email={email}
+          rules={rules}
+          opened={opened}
+          error={rowError != null && rowError.id === opened ? rowError.message : null}
+          setupRef={targets.setup}
+          turnOffRef={targets.turnOff}
+          newCodesRef={targets.newCodes}
+          onSetup={() => setUp('setup')}
+          onBlock={onBlock}
+          onToggle={toggle}
+          onTurnOff={() => asking('turnOff', 'authenticator', 'turnOff')}
+          onNewCodes={() => asking('newCodes', 'codes', 'newCodes')}
+        />
+      )}
       {sessions.kind === 'ready' && (
         <DevicesSection
           devices={devices}
@@ -507,7 +513,7 @@ export function SecurityPage({
         <FailedBlock
           title={t('devices.failedTitle')}
           line={t('devices.failedBody')}
-          onRetry={retry}
+          onRetry={retryDevices}
           testID="security.devices.retry"
         />
       )}
