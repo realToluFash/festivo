@@ -2,80 +2,79 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
-import type { Membership } from '@soirely/api-client';
+import type { LinkedProvider, Membership } from '@soirely/api-client';
 import { setLanguage } from '../../../i18n/index.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 
 const OWNER = { id: 'role_1', seededAs: 'owner', name: null };
-const COORDINATOR = { id: 'role_4', seededAs: 'member', name: null };
+const ADMIN = { id: 'role_2', seededAs: 'administrator', name: null };
+const MEMBER = { id: 'role_4', seededAs: 'member', name: null };
+const READER = { role: MEMBER, permissions: ['events.read', 'events.manage'] };
 
 const PAGE = {
   providerOnly: false,
-  inactivityTimeoutDays: null,
-  administratorsNeedTwoFactor: false,
+  inactivityTimeoutDays: 30,
+  administratorsNeedTwoFactor: true,
   everyoneNeedsTwoFactor: false,
-  changedAt: null,
+  changedAt: '2026-10-28T15:12:00+00:00',
   inactivityChoices: [7, 30],
-  changes: [],
-  passwordOnly: [
+  changes: [
     {
-      userId: 'user_2',
-      name: 'Bisi Adeyemi',
-      role: { id: 'role_2', seededAs: 'administrator', name: null },
+      entry: 'entry_2',
+      at: '2026-10-28T15:12:00+00:00',
+      by: { name: 'Folake Adeyemi', role: OWNER },
+      rule: 'administratorsNeedTwoFactor',
+      now: true,
+      was: false,
     },
-    { userId: 'user_3', name: 'Chidi Okoro', role: COORDINATOR },
+    {
+      entry: 'entry_1',
+      at: '2026-09-01T10:05:00+00:00',
+      by: { name: 'Folake Adeyemi', role: OWNER },
+      rule: 'inactivityTimeoutDays',
+      now: 30,
+      was: null,
+    },
   ],
+  passwordOnly: [
+    { userId: 'user_2', name: 'Priya Shah', role: ADMIN },
+    { userId: 'user_3', name: 'Ana Souza', role: MEMBER },
+  ],
+  withoutTwoFactor: [],
+  twoFactorDeadline: { at: '2026-11-11T10:00:00+00:00', written: 'unused' },
+  inactivityLimit: { organisationId: 'org_1', organisation: 'Ìrè Events', days: 30 },
+  ownTwoFactor: true,
   ownProvider: true,
 };
 
-const UNLINKED = { ...PAGE, ownProvider: false };
+const GOOGLE: LinkedProvider = { provider: 'google', email: 'folake@gmail.com' };
 
-function refusingUnlinked(page: unknown) {
-  const sent: { method: string; body: unknown }[] = [];
-
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) => {
-    const method = init?.method ?? 'GET';
-    sent.push({ method, body: typeof init?.body === 'string' ? JSON.parse(init.body) : null });
-
-    return method === 'PATCH'
-      ? new Response(
-          JSON.stringify({
-            type: 'https://soirely.com/errors/oauth_only_unlinked',
-            title: 'Link Google or Apple before requiring it.',
-            status: 403,
-          }),
-          { status: 403, headers: { 'Content-Type': 'application/problem+json' } },
-        )
-      : new Response(JSON.stringify(page), { status: 200 });
-  });
-
-  return sent;
-}
-
-function signedIn(organisation: Membership): void {
+function signedIn(organisation: Membership, providers: LinkedProvider[] = [GOOGLE]): void {
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
     verified: true,
     complete: true,
     awaiting: null,
-    providers: [],
+    providers,
     userId: 'u1',
     needsOrganisation: false,
     hasPassword: true,
     organisation,
     organisations: [organisation],
     organisationCountry: null,
-    timezone: null,
+    timezone: 'Africa/Lagos',
     waitingFor: null,
   };
 
   __setSessionState({ status: 'signedIn', session });
 }
 
-function answering(page: unknown = PAGE, saved: unknown = page) {
+type Answer = (body: unknown) => Response | Promise<Response>;
+
+function answering(page: unknown = PAGE, saved: unknown | Answer = page) {
   const sent: { method: string; path: string; body: unknown }[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -83,14 +82,37 @@ function answering(page: unknown = PAGE, saved: unknown = page) {
     const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
     sent.push({ method, path: new URL(String(input)).pathname, body });
 
+    if (method === 'PATCH' && typeof saved === 'function') return (saved as Answer)(body);
+
     return new Response(JSON.stringify(method === 'PATCH' ? saved : page), { status: 200 });
   });
 
   return sent;
 }
 
+function problem(code: string): Response {
+  return new Response(
+    JSON.stringify({ type: `https://soirely.com/errors/${code}`, title: 'No.', status: 403 }),
+    { status: 403, headers: { 'Content-Type': 'application/problem+json' } },
+  );
+}
+
 function open(path = '/app/settings/sign-in-rules') {
-  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
+  const router = createMemoryRouter(routes, { initialEntries: [path] });
+  render(<RouterProvider router={router} />);
+
+  return router;
+}
+
+const patches = (sent: { method: string; body: unknown }[]) =>
+  sent.filter(({ method }) => method === 'PATCH').map(({ body }) => body);
+
+async function row(name: RegExp): Promise<HTMLElement> {
+  return screen.findByRole('button', { name });
+}
+
+function dialog(): ReturnType<typeof within> {
+  return within(screen.getByRole('dialog'));
 }
 
 afterEach(() => {
@@ -98,341 +120,430 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-describe('Settings > Sign-in rules, for someone who manages the organisation', () => {
-  it('names who a Google-or-Apple-only rule leaves with a password, before anything is saved', async () => {
+describe('Sign-in rules at a desk, summary first (sc-30192)', () => {
+  it('an owner meets every rule: the card, then where they stand in order, then what changed', async () => {
     signedIn(membership());
-    const sent = answering();
+    answering();
     open();
 
-    fireEvent.click(await screen.findByLabelText(/Google or Apple only/));
-
-    expect(screen.getByText('2 people sign in with a password only')).toBeDefined();
-    const affected = within(screen.getByRole('list', { name: 'People affected' }));
-    expect(affected.getByText('Bisi Adeyemi · Admin · password')).toBeDefined();
-    expect(screen.getByText(/asked to sign in again with it/)).toBeDefined();
-    expect(
-      screen.getByText(/Bisi Adeyemi and Chidi Okoro can read but not change/).textContent,
-    ).toMatch(/Their password still signs them in\.$/);
-    expect(sent.filter(({ method }) => method === 'PATCH')).toEqual([]);
+    expect(await screen.findByText('You meet Ìrè Events’s rules')).toBeDefined();
+    expect(screen.getByText('As an owner, you can change them below.')).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Sign-in rules' })).toBeDefined();
+    const page = screen
+      .getByRole('heading', { level: 1, name: 'Sign-in rules' })
+      .closest('.desk-column');
+    const headings = within(page as HTMLElement)
+      .getAllByRole('heading', { level: 2 })
+      .map((h) => h.textContent);
+    expect(headings).toEqual(['Where you stand', 'What changed']);
+    const rows = within(screen.getByText('Where you stand').closest('section')!)
+      .getAllByRole('button')
+      .map((button) => button.textContent);
+    expect(rows).toEqual([
+      'Met. Sign in any wayPassword, Google and Apple all work.Change',
+      'Met. Signed out after 30 days unusedAfter 30 days without Soirely, you sign in again.Change',
+      'Met. Two-factor for managersYours is on.Change',
+    ]);
+    expect(screen.getByText('Managers are owners and admins.')).toBeDefined();
+    expect(screen.queryByText(/Rules saved/)).toBeNull();
+    expect(screen.queryByText('What they will see')).toBeNull();
   });
 
-  it('sends only the rules that changed, and says everyone affected was emailed', async () => {
+  it('an admin is told they can change them', async () => {
+    signedIn(membership({ role: ADMIN }));
+    answering();
+    open();
+
+    expect(await screen.findByText('As an admin, you can change them below.')).toBeDefined();
+  });
+
+  it('a member reads, with no Change, and is pointed at owners and admins', async () => {
+    signedIn(membership(READER));
+    answering({ ...PAGE, passwordOnly: null, withoutTwoFactor: null });
+    open();
+
+    expect(
+      await screen.findByText('Set by its owners and admins. Only they can change them.'),
+    ).toBeDefined();
+    expect(screen.getByText('Doesn’t apply to your role, Member.')).toBeDefined();
+    expect(screen.queryByText('Change')).toBeNull();
+    expect(screen.getByText('Questions? Ask an owner or admin of Ìrè Events.')).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Sign-in rules' })).toBeDefined();
+  });
+
+  it('an admin held by two-factor reads, with the card’s step to Security', async () => {
+    signedIn(
+      membership({
+        role: ADMIN,
+        permissions: ['events.read'],
+        withheldUntilTwoFactor: ['organisation.manage', 'members.manage'],
+      }),
+    );
+    answering({ ...PAGE, ownTwoFactor: false });
+    const router = open();
+
+    expect(await screen.findByText('1 rule needs you')).toBeDefined();
+    expect(
+      screen.getByText(
+        'Until it’s on, changes to members or security wait. Your events keep working.',
+      ),
+    ).toBeDefined();
+    expect(
+      screen.getByText('Not on yet. Changes to members and security wait until it is.'),
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        'Until you turn on two-factor, you can see these rules but not change them.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText('Change')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Turn on two-factor' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/account/security'));
+  });
+
+  it('under Google or Apple only, a member with none linked gets the step, and the hold says why', async () => {
+    signedIn(
+      membership({ ...READER, readOnlyUntilLinked: true, withheldUntilLinked: ['events.manage'] }),
+      [],
+    );
+    answering({ ...PAGE, providerOnly: true, ownProvider: false, ownTwoFactor: false });
+    open();
+
+    expect(await screen.findByText('1 rule needs you')).toBeDefined();
+    expect(
+      screen.getByText('Until you link one, you can read but not change anything in Ìrè Events.'),
+    ).toBeDefined();
+    expect(
+      screen.getByText('Your password still signs you in. Link one to change things again.'),
+    ).toBeDefined();
+    expect(
+      within(screen.getByText('1 rule needs you').closest('section')!).getByRole('button', {
+        name: 'Link Google or Apple',
+      }),
+    ).toBeDefined();
+  });
+
+  it('names what the viewer has linked, from their account', async () => {
+    signedIn(membership(), [GOOGLE, { provider: 'apple', email: null }]);
+    answering({ ...PAGE, providerOnly: true });
+    open();
+
+    expect(await screen.findByText('You have Google and Apple linked.')).toBeDefined();
+  });
+
+  it('says a shorter limit from another organisation on the limit row, with no notice', async () => {
     signedIn(membership());
+    answering({
+      ...PAGE,
+      inactivityLimit: { organisationId: 'org_2', organisation: 'Lumen Studio', days: 7 },
+    });
+    open();
+
+    expect(
+      await screen.findByText('For you, 7 days: Lumen Studio’s rule is shorter.'),
+    ).toBeDefined();
+    expect(screen.queryByText(/For you, sign-ins end after/)).toBeNull();
+  });
+
+  it('under two-factor for everyone, gives the deadline with its weekday, and counts who is still without it', async () => {
+    signedIn(membership());
+    answering({
+      ...PAGE,
+      everyoneNeedsTwoFactor: true,
+      ownTwoFactor: false,
+      withoutTwoFactor: [
+        { userId: 'user_2', name: 'Priya Shah', role: ADMIN },
+        { userId: 'user_3', name: 'Ana Souza', role: MEMBER },
+      ],
+    });
+    open();
+
+    expect(await screen.findByText(/^Not on yet\. Turn it on by Wednesday, /)).toBeDefined();
+    expect(
+      screen.getByText(
+        '2 people don’t have two-factor yet. Each sees a banner until their deadline, then can’t open anything in Ìrè Events until they turn it on.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText('Managers are owners and admins.')).toBeNull();
+  });
+
+  it('tags a change after the last one this browser saw as New, and opening the page counts as seeing it', async () => {
+    window.localStorage.setItem('soirely.signInRulesSeen.org_1', '2026-09-01T10:05:00+00:00');
+    const organisation = membership({
+      signInRules: { ...membership().signInRules, changedAt: PAGE.changedAt },
+    });
+    signedIn(organisation);
+    answering();
+    open();
+
+    const changes = within((await screen.findByText('What changed')).closest('section')!);
+    const rows = changes.getAllByRole('listitem').map((item) => item.textContent);
+    expect(rows[0]).toMatch(/^Two-factor for managers: onNew.* · was off · Folake Adeyemi$/);
+    expect(rows[1]).toMatch(/^Signed out after: 30 days unused.* · was no limit · Folake Adeyemi$/);
+    expect(window.localStorage.getItem('soirely.signInRulesSeen.org_1')).toBe(PAGE.changedAt);
+  });
+
+  it('every change is New on a browser that has seen none', async () => {
+    signedIn(membership({ id: 'org_unseen' }));
+    answering();
+    open();
+
+    expect(await screen.findAllByText('New')).toHaveLength(2);
+  });
+
+  it('with no changes yet, says so', async () => {
+    signedIn(membership());
+    answering({ ...PAGE, changes: [], changedAt: null });
+    open();
+
+    expect(await screen.findByText('No changes yet')).toBeDefined();
+    expect(screen.getByText('These are the rules every organisation starts with.')).toBeDefined();
+  });
+});
+
+describe('changing a rule (sc-30192)', () => {
+  it('opens the rule in force, tagged Now, and offers no Save until the pick changes', async () => {
+    signedIn(membership());
+    answering();
+    open();
+
+    fireEvent.click(await row(/Signed out after 30 days unused/));
+
+    expect(
+      dialog().getByRole('heading', { name: 'How long a sign-in lasts unused' }),
+    ).toBeDefined();
+    expect((dialog().getByRole('radio', { name: /30 days/ }) as HTMLInputElement).checked).toBe(
+      true,
+    );
+    expect(dialog().getByRole('radio', { name: /30 days\s*Now/ })).toBeDefined();
+    expect(dialog().getByRole('radio', { name: /No limit/ })).toBeDefined();
+    expect(dialog().getByRole('button', { name: 'Save' }).getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+    expect(dialog().getByText('Nothing changes. These are the rules in force.')).toBeDefined();
+  });
+
+  it('sends only the rule the edit changes, then the row and what changed say it, and focus is back on the row', async () => {
+    signedIn(membership());
+    const savedChange = {
+      entry: 'entry_3',
+      at: '2026-11-09T09:00:00+00:00',
+      by: { name: 'Folake Adeyemi', role: OWNER },
+      rule: 'inactivityTimeoutDays',
+      now: 7,
+      was: 30,
+    };
     const sent = answering(PAGE, {
       ...PAGE,
       inactivityTimeoutDays: 7,
-      changedAt: '2026-10-19T10:00:00+00:00',
+      changedAt: savedChange.at,
+      changes: [savedChange, ...PAGE.changes],
     });
     open();
 
-    const idle = within(
-      await screen.findByRole('group', { name: 'How long a sign-in lasts unused' }),
+    const limit = await row(/Signed out after 30 days unused/);
+    fireEvent.click(limit);
+    fireEvent.click(dialog().getByRole('radio', { name: /^7 days/ }));
+    expect(
+      dialog().getByText(
+        'Anyone who has not used Soirely for 7 days is asked to sign in again, from their next visit.',
+      ),
+    ).toBeDefined();
+    expect(
+      dialog().getByText('Everyone affected gets an email saying what changed and why.'),
+    ).toBeDefined();
+    fireEvent.click(dialog().getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(patches(sent)).toEqual([{ inactivityTimeoutDays: 7 }]);
+    const again = await row(/Signed out after 7 days unused/);
+    await waitFor(() => expect(document.activeElement).toBe(again));
+    const changes = within(screen.getByText('What changed').closest('section')!);
+    expect(changes.getAllByRole('listitem')[0]?.textContent).toMatch(
+      /^Signed out after: 7 days unused.* · was 30 days · Folake Adeyemi$/,
     );
-    fireEvent.click(idle.getByRole('button', { name: '7 days' }));
-    expect(
-      screen.getByText(/has not used Soirely for 7 days is asked to sign in again/),
-    ).toBeDefined();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
-
-    expect(await screen.findByText(/Rules saved/)).toBeDefined();
-    expect(sent.at(-1)).toEqual({
-      method: 'PATCH',
-      path: '/api/orgs/org_1/sign-in-rules',
-      body: { inactivityTimeoutDays: 7 },
-    });
-    // Whoever made the change is not told about it as news.
-    expect(screen.queryByText('Sign-in rules changed')).toBeNull();
+    expect(screen.queryByText(/Rules saved/)).toBeNull();
   });
 
-  it('names owners and admins as who two-factor for managers covers, with no foot (sc-29915)', async () => {
+  it('while Save is out, it reads Saving… and is off, and Cancel and Escape do nothing', async () => {
     signedIn(membership());
-    answering();
+    let answer: (response: Response) => void = () => {};
+    const sent = answering(
+      PAGE,
+      () =>
+        new Promise<Response>((resolve) => {
+          answer = resolve;
+        }),
+    );
     open();
 
-    expect(
-      await screen.findByRole('button', { name: 'Require two-factor for owners and admins' }),
-    ).toBeDefined();
-    expect(screen.queryByText(/managers|manage members, roles/i)).toBeNull();
+    fireEvent.click(await row(/Signed out after 30 days unused/));
+    fireEvent.click(dialog().getByRole('radio', { name: /^7 days/ }));
+    fireEvent.click(dialog().getByRole('button', { name: 'Save' }));
+
+    const saving = await screen.findByRole('button', { name: 'Saving…' });
+    expect(saving.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(saving);
+    fireEvent.click(dialog().getByRole('button', { name: 'Cancel' }));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.getByRole('dialog')).toBeDefined();
+    expect(screen.queryByText('Discard your change?')).toBeNull();
+    expect(patches(sent)).toHaveLength(1);
+
+    await act(async () =>
+      answer(new Response(JSON.stringify({ ...PAGE, inactivityTimeoutDays: 7 }), { status: 200 })),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
-  it('lays the inactivity lengths out as pills that wrap', async () => {
+  it('a failed save keeps the dialog and the pick, says so as an alert, and Save tries again', async () => {
     signedIn(membership());
-    answering();
+    let fails = true;
+    const sent = answering(PAGE, () =>
+      fails
+        ? new Response(null, { status: 500 })
+        : new Response(JSON.stringify({ ...PAGE, inactivityTimeoutDays: 7 }), { status: 200 }),
+    );
     open();
 
-    const idle = await screen.findByRole('group', { name: 'How long a sign-in lasts unused' });
+    fireEvent.click(await row(/Signed out after 30 days unused/));
+    fireEvent.click(dialog().getByRole('radio', { name: /^7 days/ }));
+    fireEvent.click(dialog().getByRole('button', { name: 'Save' }));
 
-    expect(idle.className).toBe('sign-in-rules-choices');
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toBe(
+      'The rules were not saved. Nothing changed. Try again in a moment.',
+    );
+    expect(dialog().queryByText('What happens when you save')).toBeNull();
+    expect((dialog().getByRole('radio', { name: /^7 days/ }) as HTMLInputElement).checked).toBe(
+      true,
+    );
+
+    fails = false;
+    fireEvent.click(dialog().getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(patches(sent)).toHaveLength(2);
   });
 
-  it('refuses requiring two-factor while the person saving has none, and sends nothing', async () => {
+  it('Cancel after a change asks before discarding, Keep editing first, and Discard closes with nothing sent', async () => {
     signedIn(membership());
     const sent = answering();
     open();
 
-    const require = await screen.findByRole('button', {
-      name: 'Require two-factor for owners and admins',
-    });
-    fireEvent.click(require);
+    const limit = await row(/Signed out after 30 days unused/);
+    fireEvent.click(limit);
+    fireEvent.click(dialog().getByRole('radio', { name: /^7 days/ }));
+    fireEvent.click(dialog().getByRole('button', { name: 'Cancel' }));
 
-    const notice = screen.getByRole('alert');
-    expect(within(notice).getByText('Turn on two-factor for yourself first')).toBeDefined();
-    expect(within(notice).getByText('Then you can require it here.')).toBeDefined();
-    expect(
-      within(notice).getByRole('link', { name: 'Turn on two-factor' }).getAttribute('href'),
-    ).toBe('/app/account/security');
-    expect(require.getAttribute('aria-pressed')).toBe('false');
-    expect(
-      within(
-        screen.getByRole('region', {
-          name: 'Two-factor for owners and admins',
-        }),
-      ).getByText('Not required'),
-    ).toBeDefined();
-    expect(
-      screen.getByRole('button', { name: 'Rules are saved' }).getAttribute('aria-disabled'),
-    ).toBe('true');
-    expect(sent.filter(({ method }) => method === 'PATCH')).toEqual([]);
+    const ask = within(screen.getByRole('alertdialog'));
+    expect(ask.getByText('Discard your change?')).toBeDefined();
+    expect(ask.getByText('Signed out after 30 days unused stays the rule.')).toBeDefined();
+    expect(ask.getAllByRole('button').map((b) => b.textContent)).toEqual([
+      'Keep editing',
+      'Discard',
+    ]);
+    fireEvent.click(ask.getByRole('button', { name: 'Discard' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(limit));
+    expect(patches(sent)).toEqual([]);
   });
 
-  it('sends requiring two-factor once the person saving has it', async () => {
-    signedIn(membership());
-    const page = { ...PAGE, ownTwoFactor: true };
-    const sent = answering(page, { ...page, administratorsNeedTwoFactor: true });
-    open();
-
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'Require two-factor for owners and admins',
-      }),
-    );
-    expect(screen.queryByText('Turn on two-factor for yourself first')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
-
-    expect(await screen.findByText(/Rules saved/)).toBeDefined();
-    expect(sent.at(-1)?.body).toEqual({ administratorsNeedTwoFactor: true });
-  });
-
-  it('when the server refuses it, the switch goes back off and the other choices stay unsaved', async () => {
-    signedIn(membership());
-    const page = { ...PAGE, ownTwoFactor: true };
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) =>
-      init?.method === 'PATCH'
-        ? new Response(
-            JSON.stringify({
-              type: 'https://soirely.com/errors/two_factor_off',
-              title: 'Two-factor is not on.',
-              status: 409,
-            }),
-            { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
-          )
-        : new Response(JSON.stringify(page), { status: 200 }),
-    );
-    open();
-
-    const idle = within(
-      await screen.findByRole('group', { name: 'How long a sign-in lasts unused' }),
-    );
-    fireEvent.click(idle.getByRole('button', { name: '7 days' }));
-    const require = screen.getByRole('button', {
-      name: 'Require two-factor for owners and admins',
-    });
-    fireEvent.click(require);
-    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
-
-    expect(await screen.findByText('Turn on two-factor for yourself first')).toBeDefined();
-    expect(require.getAttribute('aria-pressed')).toBe('false');
-    expect(idle.getByRole('button', { name: '7 days' }).getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByRole('button', { name: 'Save rules' })).toBeDefined();
-    expect(screen.queryByText(/The rules were not saved/)).toBeNull();
-  });
-
-  it('refuses requiring Google or Apple while the person saving has neither linked, in place of its effects', async () => {
-    signedIn(membership());
-    const sent = answering(UNLINKED);
-    open();
-
-    const provider = await screen.findByLabelText(/Google or Apple only/);
-    fireEvent.click(provider);
-
-    const notice = screen.getByRole('alert');
-    expect(within(notice).getByText('Link Google or Apple for yourself first')).toBeDefined();
-    expect(within(notice).getByText('Then you can require it here.')).toBeDefined();
-    expect(
-      within(notice).getByRole('link', { name: 'Link Google or Apple' }).getAttribute('href'),
-    ).toBe('/app/account/security');
-    expect((provider as HTMLInputElement).checked).toBe(true);
-    expect(screen.queryByRole('list', { name: 'People affected' })).toBeNull();
-    expect(screen.queryByText(/sign in with a password only/)).toBeNull();
-    expect(screen.getByText('Nothing changes. These are the rules in force.')).toBeDefined();
-    expect(screen.queryByText(/asked to sign in again with it/)).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
-
-    expect(sent.filter(({ method }) => method === 'PATCH')).toEqual([]);
-    expect((screen.getByLabelText(/Any method/) as HTMLInputElement).checked).toBe(true);
-    expect(screen.getByText('Link Google or Apple for yourself first')).toBeDefined();
-    expect(
-      screen.getByRole('button', { name: 'Rules are saved' }).getAttribute('aria-disabled'),
-    ).toBe('true');
-  });
-
-  it('keeps the other unsaved choices when the provider choice is refused, and saves them on a second press', async () => {
-    signedIn(membership());
-    const sent = answering(UNLINKED, { ...UNLINKED, inactivityTimeoutDays: 7 });
-    open();
-
-    const idle = within(
-      await screen.findByRole('group', { name: 'How long a sign-in lasts unused' }),
-    );
-    fireEvent.click(idle.getByRole('button', { name: '7 days' }));
-    fireEvent.click(screen.getByLabelText(/Google or Apple only/));
-    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
-
-    expect(sent.filter(({ method }) => method === 'PATCH')).toEqual([]);
-    expect(idle.getByRole('button', { name: '7 days' }).getAttribute('aria-pressed')).toBe('true');
-    expect((screen.getByLabelText(/Any method/) as HTMLInputElement).checked).toBe(true);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
-
-    expect(await screen.findByText(/Rules saved/)).toBeDefined();
-    expect(sent.at(-1)?.body).toEqual({ inactivityTimeoutDays: 7 });
-    expect(screen.queryByText('Link Google or Apple for yourself first')).toBeNull();
-  });
-
-  it('clears the notice when "Any method" is chosen by hand', async () => {
-    signedIn(membership());
-    answering(UNLINKED);
-    open();
-
-    fireEvent.click(await screen.findByLabelText(/Google or Apple only/));
-    fireEvent.click(screen.getByLabelText(/Any method/));
-
-    expect(screen.queryByText('Link Google or Apple for yourself first')).toBeNull();
-  });
-
-  it('when the server refuses it, the method goes back to "Any method" and the other choices stay unsaved', async () => {
-    signedIn(membership());
-    const sent = refusingUnlinked(PAGE);
-    open();
-
-    const idle = within(
-      await screen.findByRole('group', { name: 'How long a sign-in lasts unused' }),
-    );
-    fireEvent.click(idle.getByRole('button', { name: '7 days' }));
-    fireEvent.click(screen.getByLabelText(/Google or Apple only/));
-    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
-
-    expect(await screen.findByText('Link Google or Apple for yourself first')).toBeDefined();
-    expect(sent.filter(({ method }) => method === 'PATCH')).toHaveLength(1);
-    expect((screen.getByLabelText(/Any method/) as HTMLInputElement).checked).toBe(true);
-    expect(idle.getByRole('button', { name: '7 days' }).getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByRole('button', { name: 'Save rules' })).toBeDefined();
-    expect(screen.queryByText(/The rules were not saved/)).toBeNull();
-    expect(screen.queryByText(/Read-only until you link/)).toBeNull();
-  });
-
-  it('after the server refuses it, choosing it again brings the notice back without a round trip', async () => {
-    signedIn(membership());
-    const sent = refusingUnlinked(PAGE);
-    open();
-
-    fireEvent.click(await screen.findByLabelText(/Google or Apple only/));
-    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
-    await screen.findByText('Link Google or Apple for yourself first');
-
-    fireEvent.click(screen.getByLabelText(/Any method/));
-    fireEvent.click(screen.getByLabelText(/Google or Apple only/));
-
-    expect(screen.getByText('Link Google or Apple for yourself first')).toBeDefined();
-    expect(screen.queryByRole('list', { name: 'People affected' })).toBeNull();
-    expect(sent.filter(({ method }) => method === 'PATCH')).toHaveLength(1);
-  });
-
-  it('when the rule is already required, a refused save of another rule leaves the method alone', async () => {
-    signedIn(membership());
-    const sent = refusingUnlinked({ ...PAGE, providerOnly: true });
-    open();
-
-    const idle = within(
-      await screen.findByRole('group', { name: 'How long a sign-in lasts unused' }),
-    );
-    fireEvent.click(idle.getByRole('button', { name: '7 days' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
-
-    expect(await screen.findByText(/The rules were not saved/)).toBeDefined();
-    expect(sent.at(-1)?.body).toEqual({ inactivityTimeoutDays: 7 });
-    expect((screen.getByLabelText(/Google or Apple only/) as HTMLInputElement).checked).toBe(true);
-    expect(screen.queryByText('Link Google or Apple for yourself first')).toBeNull();
-  });
-
-  it('sends requiring Google or Apple once the person saving has one linked', async () => {
-    signedIn(membership());
-    const sent = answering(PAGE, { ...PAGE, providerOnly: true });
-    open();
-
-    fireEvent.click(await screen.findByLabelText(/Google or Apple only/));
-    expect(screen.queryByText('Link Google or Apple for yourself first')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
-
-    expect(await screen.findByText(/Rules saved/)).toBeDefined();
-    expect(sent.at(-1)?.body).toEqual({ providerOnly: true });
-  });
-
-  it('offers no save while the rules are the ones in force', async () => {
+  it('picking Google or Apple only names who has a password only, before saving', async () => {
     signedIn(membership());
     answering();
     open();
 
-    const save = await screen.findByRole('button', { name: 'Rules are saved' });
+    fireEvent.click(await row(/Sign in any way/));
+    fireEvent.click(dialog().getByRole('radio', { name: /Google or Apple only/ }));
 
-    expect(save.getAttribute('aria-disabled')).toBe('true');
-    expect(screen.getByText('Nothing changes. These are the rules in force.')).toBeDefined();
+    expect(
+      dialog().getByText(
+        'Priya Shah and Ana Souza can read but not change anything until they link Google or Apple. Their password still signs them in.',
+      ),
+    ).toBeDefined();
   });
-});
 
-describe('Settings > Sign-in rules, for any other member', () => {
-  it('reads the rules in force and what changed, with nothing to change', async () => {
-    signedIn(membership({ role: COORDINATOR, permissions: ['events.read', 'events.manage'] }));
+  it('picking For everyone names who has no two-factor, after its line', async () => {
+    signedIn(membership());
     answering({
       ...PAGE,
-      inactivityTimeoutDays: 30,
-      changedAt: '2026-10-15T17:40:00+00:00',
-      changes: [
-        {
-          entry: 'entry_1',
-          at: '2026-10-15T17:40:00+00:00',
-          by: { name: 'Folake Adeyemi', role: OWNER },
-          rule: 'inactivityTimeoutDays',
-          now: 30,
-          was: null,
-        },
-      ],
-      passwordOnly: undefined,
+      withoutTwoFactor: [{ userId: 'user_3', name: 'Ana Souza', role: MEMBER }],
     });
     open();
 
-    expect(
-      await screen.findByRole('heading', { name: 'Ìrè Events’s sign-in rules' }),
-    ).toBeDefined();
-    expect(await screen.findAllByText('Sign-ins end after 30 days without use')).toHaveLength(2);
-    expect(screen.getByText('was: Sign-ins last until you sign out')).toBeDefined();
-    expect(screen.queryByRole('button', { name: /Save rules|Rules are saved/ })).toBeNull();
-  });
-});
+    fireEvent.click(await row(/Two-factor for managers/));
+    fireEvent.click(dialog().getByRole('radio', { name: /For everyone/ }));
 
-describe('two changes to one rule saved in the same second (sc-13954)', () => {
-  it('both show, newest first, each once, with no duplicate-key warning', async () => {
+    const lines = dialog()
+      .getAllByText(/./, { selector: 'p.desk-line' })
+      .map((line: HTMLElement) => line.textContent);
+    expect(lines).toEqual([
+      'Everyone needs two-factor. Anyone without it is emailed and has 7 days to turn it on.',
+      'Ana Souza doesn’t have it yet.',
+    ]);
+  });
+
+  it('a pick the viewer does not meet is refused in place of what happens, with its step, and Save stays off', async () => {
+    signedIn(membership(), []);
+    const sent = answering({ ...PAGE, administratorsNeedTwoFactor: false, ownTwoFactor: false });
+    open();
+
+    fireEvent.click(await row(/Two-factor not required/));
+    fireEvent.click(dialog().getByRole('radio', { name: /For managers/ }));
+
+    const refusal = within(screen.getByRole('alert'));
+    expect(refusal.getByText('Turn on two-factor for yourself first')).toBeDefined();
+    expect(refusal.getByText('Then you can require it here.')).toBeDefined();
+    expect(refusal.getByRole('button', { name: 'Turn on two-factor' })).toBeDefined();
+    expect(dialog().queryByText('What happens when you save')).toBeNull();
+    expect(dialog().getByRole('button', { name: 'Save' }).getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+    fireEvent.click(dialog().getByRole('button', { name: 'Save' }));
+    expect(patches(sent)).toEqual([]);
+  });
+
+  it('refused by the server because the viewer’s own two-factor went, shows that pick’s refusal', async () => {
+    signedIn(membership());
+    answering({ ...PAGE, administratorsNeedTwoFactor: false }, () => problem('two_factor_off'));
+    open();
+
+    fireEvent.click(await row(/Two-factor not required/));
+    fireEvent.click(dialog().getByRole('radio', { name: /For managers/ }));
+    fireEvent.click(dialog().getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Turn on two-factor for yourself first')).toBeDefined();
+    expect(screen.getByRole('dialog')).toBeDefined();
+    expect(dialog().getByRole('button', { name: 'Save' }).getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+  });
+
+  it('refused by the server because Google or Apple went, shows that pick’s refusal', async () => {
+    signedIn(membership());
+    answering(PAGE, () => problem('oauth_only_unlinked'));
+    open();
+
+    fireEvent.click(await row(/Sign in any way/));
+    fireEvent.click(dialog().getByRole('radio', { name: /Google or Apple only/ }));
+    fireEvent.click(dialog().getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Link Google or Apple for yourself first')).toBeDefined();
+  });
+
+  it('two changes saved in the same second both show, each once, with no duplicate-key warning (sc-13954)', async () => {
     const errors = vi.spyOn(console, 'error');
     const by = { name: 'Folake Adeyemi', role: OWNER };
-    signedIn(membership({ role: COORDINATOR, permissions: ['events.read'] }));
+    signedIn(membership(READER));
     answering({
       ...PAGE,
-      changedAt: '2026-10-26T14:27:46+00:00',
       changes: [
         {
-          entry: 'entry_2',
+          entry: 'e2',
           at: '2026-10-26T14:27:46+00:00',
           by,
           rule: 'inactivityTimeoutDays',
@@ -440,7 +551,7 @@ describe('two changes to one rule saved in the same second (sc-13954)', () => {
           was: 7,
         },
         {
-          entry: 'entry_1',
+          entry: 'e1',
           at: '2026-10-26T14:27:46+00:00',
           by,
           rule: 'inactivityTimeoutDays',
@@ -448,240 +559,76 @@ describe('two changes to one rule saved in the same second (sc-13954)', () => {
           was: 30,
         },
       ],
-      passwordOnly: undefined,
     });
     open();
 
-    const list = await waitFor(() => {
-      const [history] = within(screen.getByRole('main'))
-        .getAllByRole('list')
-        .filter((each) => each.closest('nav') == null);
-      if (history == null) throw new Error('the history has not loaded');
-
-      return history;
-    });
-    const rows = within(list).getAllByRole('listitem');
-
-    expect(rows.map((row) => row.textContent)).toEqual([
-      expect.stringContaining(
-        'Sign-ins last until you sign outwas: Sign-ins end after 7 days without use',
-      ),
-      expect.stringContaining(
-        'Sign-ins end after 7 days without usewas: Sign-ins end after 30 days without use',
-      ),
+    const changes = within((await screen.findByText('What changed')).closest('section')!);
+    expect(changes.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      expect.stringMatching(/^Signed out after: no limit/),
+      expect.stringMatching(/^Signed out after: 7 days unused/),
     ]);
     expect(errors.mock.calls.flat().join(' ')).not.toContain('same key');
   });
 });
 
-describe('whose inactivity limit applies, for a member of several organisations (sc-69)', () => {
-  it('names the other organisation whose shorter limit is the one in force', async () => {
-    signedIn(membership({ role: COORDINATOR, permissions: ['events.read'] }));
-    answering({
-      ...PAGE,
-      inactivityTimeoutDays: 30,
-      passwordOnly: undefined,
-      inactivityLimit: { organisationId: 'org_2', organisation: 'Studio Lumen', days: 7 },
-    });
-    open();
-
-    expect(
-      await screen.findByText(
-        'For you, sign-ins end after 7 days without use: Studio Lumen’s rule, the shortest of your organisations.',
-      ),
-    ).toBeDefined();
+describe('in another language', () => {
+  afterEach(async () => {
+    await act(() => setLanguage(null));
   });
 
-  it('says nothing more when this organisation’s own limit is the one in force', async () => {
-    signedIn(membership({ role: COORDINATOR, permissions: ['events.read'] }));
-    answering({
-      ...PAGE,
-      inactivityTimeoutDays: 7,
-      passwordOnly: undefined,
-      inactivityLimit: { organisationId: 'org_1', organisation: 'Ìrè Events', days: 7 },
-    });
+  it('reads the page in Spanish', async () => {
+    await act(() => setLanguage('es'));
+    signedIn(membership());
+    answering();
     open();
 
-    await screen.findAllByText('Sign-ins end after 7 days without use');
-    expect(screen.queryByText(/the shortest of your organisations/)).toBeNull();
+    expect(await screen.findByText('Cumple las normas de Ìrè Events')).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Su situación' })).toBeDefined();
   });
 });
 
-describe('Two-factor for everyone (sc-609), for someone who manages the organisation', () => {
-  const DEADLINE = { at: '2026-10-24T13:20:00+00:00', written: 'Saturday, Oct 24 at 14:20 WAT' };
-  const WITH_OWN = {
-    ...PAGE,
-    ownTwoFactor: true,
-    twoFactorDeadline: DEADLINE,
-    withoutTwoFactor: [{ userId: 'user_3', name: 'Chidi Okoro', role: COORDINATOR }],
-  };
-
-  it('is refused before saving to somebody without two-factor, with the same notice as the administrators’ rule', async () => {
+describe('loading and failing to load', () => {
+  it('says it is loading, in the demo’s words', async () => {
     signedIn(membership());
-    const sent = answering({ ...WITH_OWN, ownTwoFactor: false });
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
     open();
 
-    const everyone = await screen.findByRole('button', { name: 'Require two-factor for everyone' });
-    fireEvent.click(everyone);
-
-    expect(screen.getByText('Turn on two-factor for yourself first')).toBeDefined();
-    expect(screen.getByText('Then you can require it here.')).toBeDefined();
-    expect(everyone.getAttribute('aria-pressed')).toBe('false');
-    expect(sent.filter(({ method }) => method === 'PATCH')).toEqual([]);
+    expect(await screen.findByRole('status', { name: 'Loading the sign-in rules…' })).toBeDefined();
   });
 
-  it('names who has no two-factor and their deadline before saving, then says when it is required from', async () => {
-    signedIn(membership());
-    const sent = answering(WITH_OWN, { ...WITH_OWN, everyoneNeedsTwoFactor: true });
-    open();
+  function failingTwice(): void {
+    let reads = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (!new URL(String(input)).pathname.endsWith('/sign-in-rules')) {
+        throw new TypeError('Failed to fetch');
+      }
+      reads += 1;
+      if (reads < 3) throw new TypeError('Failed to fetch');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Require two-factor for everyone' }));
-
-    expect(screen.getByText('1 person doesn’t have two-factor yet')).toBeDefined();
-    expect(
-      screen.getByText(
-        'When you save, they get an email and see a banner. They have until Saturday, Oct 24 at 14:20 WAT to turn it on. After that they can’t open anything in Ìrè Events until they do. Their other organisations aren’t affected.',
-      ),
-    ).toBeDefined();
-    const without = within(screen.getByRole('list', { name: 'People without two-factor' }));
-    expect(without.getByText('Chidi Okoro · Member')).toBeDefined();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
-
-    expect(await screen.findByText('Required from Saturday, Oct 24 at 14:20 WAT')).toBeDefined();
-    expect(sent.at(-1)?.body).toEqual({ everyoneNeedsTwoFactor: true });
-  });
-
-  it('counts three people without two-factor, lists all three, and says each gets an email', async () => {
-    signedIn(membership());
-    answering({
-      ...WITH_OWN,
-      withoutTwoFactor: [
-        ...WITH_OWN.withoutTwoFactor,
-        { userId: 'user_5', name: 'Amaka Eze', role: COORDINATOR },
-        { userId: 'user_6', name: 'Bisi Adeyemi', role: COORDINATOR },
-      ],
+      return new Response(JSON.stringify(PAGE), { status: 200 });
     });
+  }
+
+  it('Try again that loads puts focus on the title, and one that fails again on what failed (sc-11369)', async () => {
+    signedIn(membership(READER));
+    failingTwice();
     open();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Require two-factor for everyone' }));
+    const failed = 'We could not load the sign-in rules.';
+    expect(await screen.findByText(failed)).toBeDefined();
+    expect(screen.getByText('Check your connection and try again.')).toBeDefined();
+    expect(document.activeElement).toBe(document.body);
 
-    expect(screen.getByText('3 people don’t have two-factor yet')).toBeDefined();
-    const without = within(screen.getByRole('list', { name: 'People without two-factor' }));
-    expect(without.getAllByRole('listitem')).toHaveLength(3);
-    expect(without.getByText('Bisi Adeyemi · Member')).toBeDefined();
-    expect(
-      screen.getByText(
-        'When you save, each gets an email and sees a banner. They have until Saturday, Oct 24 at 14:20 WAT to turn it on. After that they can’t open anything in Ìrè Events until they do. Their other organisations aren’t affected.',
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    const again = await screen.findByText(failed);
+    await waitFor(() => expect(document.activeElement).toBe(again));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Sign-in rules' }),
       ),
-    ).toBeDefined();
-  });
-
-  it('reads that people choose for themselves while the rule is off, saved or switched back before saving', async () => {
-    signedIn(membership());
-    answering({ ...WITH_OWN, everyoneNeedsTwoFactor: true });
-    open();
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Require two-factor for everyone' }));
-
-    expect(
-      screen.getByText('Off. Apart from the rule above, people choose for themselves.'),
-    ).toBeDefined();
-    expect(screen.queryByText(/single sign-on/)).toBeNull();
-  });
-
-  it('switched on and not yet saved, reads that everyone will need it whichever way they sign in', async () => {
-    signedIn(membership());
-    answering(WITH_OWN);
-    open();
-
-    expect(
-      await screen.findByText('Off. Apart from the rule above, people choose for themselves.'),
-    ).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: 'Require two-factor for everyone' }));
-
-    expect(
-      screen.getByText('Everyone in Ìrè Events will need two-factor, whichever way they sign in.'),
-    ).toBeDefined();
-    expect(screen.queryByText(/^Off\./)).toBeNull();
-  });
-
-  it.each([
-    [
-      1,
-      '1 person doesn’t have two-factor yet. They see a banner until their deadline, then can’t open anything in Ìrè Events until they turn it on.',
-    ],
-    [
-      3,
-      '3 people don’t have two-factor yet. Each sees a banner until their deadline, then can’t open anything in Ìrè Events until they turn it on.',
-    ],
-  ])('saved on with %i people left, counts them under the deadline', async (count, line) => {
-    signedIn(membership());
-    answering({
-      ...WITH_OWN,
-      everyoneNeedsTwoFactor: true,
-      withoutTwoFactor: Array.from({ length: count }, (_, i) => ({
-        userId: `user_${i + 3}`,
-        name: `Member ${i + 3}`,
-        role: COORDINATOR,
-      })),
-    });
-    open();
-
-    expect(await screen.findByText('Required from Saturday, Oct 24 at 14:20 WAT')).toBeDefined();
-    expect(screen.getByText(line)).toBeDefined();
-    expect(screen.queryByText(/will need two-factor|^Off\./)).toBeNull();
-    expect(screen.queryByText(/single sign-on/)).toBeNull();
-  });
-
-  it('saved on with nobody left, shows the deadline and no line under it', async () => {
-    signedIn(membership());
-    answering({ ...WITH_OWN, everyoneNeedsTwoFactor: true, withoutTwoFactor: [] });
-    open();
-
-    const required = await screen.findByText('Required from Saturday, Oct 24 at 14:20 WAT');
-
-    expect(required.nextElementSibling).toBeNull();
-  });
-
-  it('keeps the administrators’ switch, reading that everyone’s rule covers it', async () => {
-    signedIn(membership());
-    answering({ ...WITH_OWN, administratorsNeedTwoFactor: true, everyoneNeedsTwoFactor: true });
-    open();
-
-    expect(await screen.findByText('Covered by two-factor for everyone, below.')).toBeDefined();
-    expect(
-      screen
-        .getByRole('button', {
-          name: 'Require two-factor for owners and admins',
-        })
-        .getAttribute('aria-pressed'),
-    ).toBe('true');
-  });
-
-  it('when the server refuses it, the switch goes back off and the notice shows, never the server’s words', async () => {
-    signedIn(membership());
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) =>
-      init?.method === 'PATCH'
-        ? new Response(
-            JSON.stringify({
-              type: 'https://soirely.com/errors/two_factor_off',
-              title: 'Two-factor is not on.',
-              status: 409,
-            }),
-            { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
-          )
-        : new Response(JSON.stringify(WITH_OWN), { status: 200 }),
     );
-    open();
-
-    const everyone = await screen.findByRole('button', { name: 'Require two-factor for everyone' });
-    fireEvent.click(everyone);
-    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
-
-    expect(await screen.findByText('Turn on two-factor for yourself first')).toBeDefined();
-    expect(everyone.getAttribute('aria-pressed')).toBe('false');
-    expect(screen.queryByText('Two-factor is not on.')).toBeNull();
   });
 });
 
@@ -811,143 +758,5 @@ describe('what the rules ask of a member, on every page', () => {
     expect((await screen.findByRole('alert')).textContent).toMatch(/You are still signed in/);
     expect(document.activeElement).toBe(button);
     expect(screen.queryByRole('heading', { name: 'Sign in' })).toBeNull();
-  });
-});
-
-describe('the two-factor deadline after a language change (sc-9267)', () => {
-  const WRITTEN: Record<string, string> = {
-    en: 'Saturday 31 Oct at 10:44 GMT',
-    es: 'sábado 31 oct a las 10:44 GMT',
-  };
-
-  afterEach(async () => {
-    await act(() => setLanguage(null));
-  });
-
-  function answeringIn(spanish: () => Promise<Response> = async () => rulesIn('es')): string[] {
-    const asked: string[] = [];
-
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-      if (!new URL(String(input)).pathname.endsWith('/sign-in-rules')) {
-        return new Response(null, { status: 500 });
-      }
-
-      const language = new Headers(init?.headers).get('Accept-Language') ?? '';
-      asked.push(language);
-
-      return language === 'es' ? spanish() : rulesIn(language);
-    });
-
-    return asked;
-  }
-
-  function rulesIn(language: string): Response {
-    const deadline = { at: '2026-10-31T10:44:00+00:00', written: WRITTEN[language] ?? '' };
-
-    return new Response(
-      JSON.stringify({
-        ...PAGE,
-        everyoneNeedsTwoFactor: true,
-        ownTwoFactor: true,
-        twoFactorDeadline: deadline,
-        withoutTwoFactor: [],
-      }),
-      { status: 200 },
-    );
-  }
-
-  it('is asked for again in the picked language, without a reload', async () => {
-    signedIn(membership());
-    const asked = answeringIn();
-    open();
-    expect(await screen.findByText('Required from Saturday 31 Oct at 10:44 GMT')).toBeDefined();
-
-    await act(() => setLanguage('es'));
-
-    expect(
-      await screen.findByText('Obligatoria a partir del sábado 31 oct a las 10:44 GMT'),
-    ).toBeDefined();
-    expect(asked).toEqual(['en', 'es']);
-
-    await act(() => setLanguage('en'));
-
-    expect(await screen.findByText('Required from Saturday 31 Oct at 10:44 GMT')).toBeDefined();
-  });
-
-  it('keeps the date it had while asking, and after a failed ask, with no error', async () => {
-    signedIn(membership());
-    let answer: (response: Response) => void = () => {};
-    let spanish = () =>
-      new Promise<Response>((resolve) => {
-        answer = resolve;
-      });
-    answeringIn(() => spanish());
-    open();
-    await screen.findByText('Required from Saturday 31 Oct at 10:44 GMT');
-
-    await act(() => setLanguage('es'));
-
-    expect(screen.getByText('Obligatoria a partir del Saturday 31 Oct at 10:44 GMT')).toBeDefined();
-
-    await act(async () => answer(new Response(null, { status: 500 })));
-
-    expect(screen.getByText('Obligatoria a partir del Saturday 31 Oct at 10:44 GMT')).toBeDefined();
-    expect(screen.queryByRole('alert')).toBeNull();
-
-    spanish = async () => rulesIn('es');
-    await act(() => setLanguage('fr'));
-    await act(() => setLanguage('es'));
-
-    expect(
-      await screen.findByText('Obligatoria a partir del sábado 31 oct a las 10:44 GMT'),
-    ).toBeDefined();
-  });
-});
-
-describe('Try again under "The sign-in rules did not load." (sc-11369)', () => {
-  function failingTwice(): void {
-    let reads = 0;
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-      if (!new URL(String(input)).pathname.endsWith('/sign-in-rules')) {
-        throw new TypeError('Failed to fetch');
-      }
-      reads += 1;
-      if (reads < 3) throw new TypeError('Failed to fetch');
-
-      return new Response(JSON.stringify(PAGE), { status: 200 });
-    });
-  }
-
-  async function retryTwice(heading: string): Promise<void> {
-    const failed = 'The sign-in rules did not load.';
-    expect(await screen.findByText(failed)).toBeDefined();
-    expect(document.activeElement).toBe(document.body);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    const again = await screen.findByText(failed);
-    await waitFor(() => expect(document.activeElement).toBe(again));
-    expect(again.closest('[role="alert"]')).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: heading })),
-    );
-    expect(screen.queryByText(failed)).toBeNull();
-  }
-
-  it('puts focus on Sign-in rules once they load, or on the line once it fails again', async () => {
-    signedIn(membership({}));
-    failingTwice();
-    open();
-
-    await retryTwice('Sign-in rules');
-  });
-
-  it('puts focus on the organisation’s sign-in rules for a member who cannot change them', async () => {
-    signedIn(membership({ role: COORDINATOR, permissions: ['events.read', 'events.manage'] }));
-    failingTwice();
-    open();
-
-    await retryTwice('Ìrè Events’s sign-in rules');
   });
 });

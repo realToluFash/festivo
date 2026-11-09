@@ -71,8 +71,16 @@ describe('a number in a sentence (sc-15361)', () => {
     await setLanguage(locale);
 
     expect([
-      i18next.t('signInRules.strandedTitle', { count: 1000 }).split(' ').slice(0, 2).join(' '),
-      i18next.t('signInRules.strandedTitle', { count: 10_000 }).split(' ').slice(0, 2).join(' '),
+      i18next
+        .t('signInRules.everyoneStillWithout', { count: 1000 })
+        .split(' ')
+        .slice(0, 2)
+        .join(' '),
+      i18next
+        .t('signInRules.everyoneStillWithout', { count: 10_000 })
+        .split(' ')
+        .slice(0, 2)
+        .join(' '),
       i18next.t('ownership.events', { count: 1_000_000 }),
     ]).toEqual([thousand, tenThousand, million]);
   });
@@ -80,9 +88,7 @@ describe('a number in a sentence (sc-15361)', () => {
   it('reads as before under 1000', async () => {
     await setLanguage('fr');
 
-    expect(i18next.t('signInRules.strandedTitle', { count: 999 })).toBe(
-      '999 personnes se connectent uniquement par mot de passe',
-    );
+    expect(i18next.t('signInRules.days', { count: 999 })).toBe('999 jours');
   });
 });
 
