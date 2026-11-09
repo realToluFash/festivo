@@ -1,4 +1,4 @@
-import { zoneLabel } from '@soirely/domain';
+import { firstUnverified, primaryOf, zoneLabel } from '@soirely/domain';
 import { useLocalSearchParams } from 'expo-router';
 import { createRef, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import type { ScrollViewInstance, ViewInstance } from 'react-native';
@@ -23,9 +23,7 @@ import {
   cardLine,
   type Contact,
   type ContactKind,
-  firstUnverified,
   KIND_KEYS,
-  primaryOf,
   promotedWords,
   verifiedWords,
   verifyWords,

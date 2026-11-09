@@ -1,6 +1,7 @@
+import { primaryFirst } from '@soirely/domain';
 import { type ReactNode, useId } from 'react';
 
-import { type ContactKind, type ContactRow, primaryFirst } from '../accountPage.ts';
+import { type ContactKind, type ContactRow } from '../accountPage.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { Card, CardStep, Chevron, Head, OnCard, RowWords } from './SettingsParts.tsx';
 import './AccountParts.css';

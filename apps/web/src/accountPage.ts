@@ -1,4 +1,4 @@
-import { CONTACTS_MOST, contactsLeft } from '@soirely/domain';
+import { CONTACTS_MOST, contactsLeft, firstUnverified } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 export type ContactKind = 'email' | 'phone';
@@ -9,26 +9,6 @@ export interface ContactRow {
   shown: string;
   verified: boolean;
   primary: boolean;
-}
-
-export function primaryFirst<Row extends ContactRow>(rows: readonly Row[]): Row[] {
-  return [...rows].sort((one, other) => Number(other.primary) - Number(one.primary));
-}
-
-export function primaryOf(rows: readonly ContactRow[]): ContactRow | null {
-  return rows.find((row) => row.primary) ?? null;
-}
-
-/** The card's one step: the first address not verified yet, the primary first, else the first number. */
-export function firstUnverified(
-  emails: readonly ContactRow[],
-  phones: readonly ContactRow[],
-): { kind: ContactKind; row: ContactRow } | null {
-  const email = primaryFirst(emails).find((row) => !row.verified);
-  if (email != null) return { kind: 'email', row: email };
-  const phone = primaryFirst(phones).find((row) => !row.verified);
-
-  return phone == null ? null : { kind: 'phone', row: phone };
 }
 
 /** The one line under you: what just happened until the page is left, else what is not verified yet. */

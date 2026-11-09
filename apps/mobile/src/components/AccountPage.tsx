@@ -12,6 +12,8 @@ import {
   rereadAfterRefusal,
   zoneLabel,
   zoneValue,
+  firstUnverified,
+  primaryOf,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { createRef, type RefObject, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -25,9 +27,7 @@ import {
   cardLine,
   type Contact,
   type ContactKind,
-  firstUnverified,
   KIND_KEYS,
-  primaryOf,
   promotedWords,
   verifiedWords,
   verifyWords,

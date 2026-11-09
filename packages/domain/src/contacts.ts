@@ -65,3 +65,23 @@ export function justVerified<T extends ContactFacts & { id: string }>(
 ): T | null {
   return listedContacts(rows).find((row) => row.id === id && row.verified) ?? null;
 }
+
+export function primaryFirst<T extends ContactFacts>(rows: readonly T[]): T[] {
+  return [...rows].sort((one, other) => Number(other.primary) - Number(one.primary));
+}
+
+export function primaryOf<T extends ContactFacts>(rows: readonly T[]): T | null {
+  return rows.find((row) => row.primary) ?? null;
+}
+
+/** The card's one step on Your account: the first address not verified yet, the primary first, else the first number. */
+export function firstUnverified<T extends ContactFacts>(
+  emails: readonly T[],
+  phones: readonly T[],
+): { kind: 'email' | 'phone'; row: T } | null {
+  const email = primaryFirst(emails).find((row) => !row.verified);
+  if (email != null) return { kind: 'email', row: email };
+  const phone = primaryFirst(phones).find((row) => !row.verified);
+
+  return phone == null ? null : { kind: 'phone', row: phone };
+}

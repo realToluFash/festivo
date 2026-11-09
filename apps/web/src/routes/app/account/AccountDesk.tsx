@@ -12,6 +12,8 @@ import {
   rereadAfterRefusal,
   zoneLabel,
   zoneValue,
+  firstUnverified,
+  primaryOf,
 } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
@@ -24,8 +26,6 @@ import {
   cardLine,
   contactLine,
   contactsFoot,
-  firstUnverified,
-  primaryOf,
   promotedWords,
   verifiedWords,
   zoneLine,

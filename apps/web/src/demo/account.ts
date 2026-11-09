@@ -14,7 +14,7 @@ import {
   zoneLabel,
 } from '@soirely/domain';
 
-import { primaryFirst } from '../accountPage.ts';
+import { primaryFirst } from '@soirely/domain';
 import { SAMPLE, numberLine } from './rules.ts';
 import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
 
@@ -275,10 +275,6 @@ export function yourAccount(viewer: Pick<Viewer, 'key' | 'name' | 'id'>) {
     phone: contact('phone-1', 'phone', FIRST_PHONE, true, true),
     otherPhone: contact('phone-2', 'phone', SECOND_PHONE, false),
   };
-}
-
-export function primaryOf(rows: readonly Contact[]): Contact | null {
-  return rows.find((row) => row.primary) ?? null;
 }
 
 /** What is unfinished, or what was just done, with the card's one step while anything is unverified. */

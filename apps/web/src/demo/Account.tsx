@@ -1,5 +1,5 @@
 import { DemoBell } from './DemoBell.tsx';
-import { contactActions, initials, zoneLabel } from '@soirely/domain';
+import { contactActions, initials, primaryOf, zoneLabel } from '@soirely/domain';
 import { useState } from 'react';
 
 import {
@@ -14,7 +14,6 @@ import {
   contactsFoot,
   madePrimary,
   opening,
-  primaryOf,
   rowLine,
   verifiedWords,
 } from './account.ts';
