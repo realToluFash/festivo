@@ -1,18 +1,17 @@
 import {
   type Account,
-  ApiError,
   ApiUnreachableError,
-  type PhoneCodeRoute,
   phoneAwaitingCode,
   primaryEmailAddress,
 } from '@soirely/api-client';
-import { cleanCode, codeDigits, codeProblem, codeWording, formatPhone } from '@soirely/domain';
-import { type FormEvent, useEffect, useState } from 'react';
+import { cleanCode, codeDigits, codeProblem, formatPhone } from '@soirely/domain';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
-import { type CodeStatus, codeRefusal, openingStatus, selectCode } from '../../codeScreen.ts';
+import { apiCodeSource, useCodeCheck } from '../../codeCheck.ts';
+import { selectCode } from '../../codeScreen.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import {
   BackToAccount,
@@ -27,7 +26,6 @@ import { refreshAccount, useSessionState } from '../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../stepFocus.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { focusWhereSent } from '../../offField.ts';
-import { useResendCountdown } from '../../resendCountdown.ts';
 import { useSignOut } from '../../signOut.ts';
 
 /** "Check your messages": the code texted to the primary phone, under email's rules and with its parts. */
@@ -42,25 +40,18 @@ export function VerifyPhone() {
   const [attempt, setAttempt] = useState(0);
   const { signOut, unreached } = useSignOut(() => navigate('/sign-in'));
   const session = useSessionState();
-  const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
-  const resending = useResendCountdown({
-    resend: 'verifyPhone.resend',
-    resendIn: 'verifyPhone.resendIn',
-  });
-  const { begin } = resending;
+  // A try again after the API was out of reach opens the code check afresh, with a new source.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const source = useMemo(() => apiCodeSource('phone', alternative), [alternative, attempt]);
+  const check = useCodeCheck('phone', source);
+  const { status, resending, wording } = check;
   const [codeError, setCodeError] = useState<string | null>(null);
-  const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
-  const [textingFailed, setTextingFailed] = useState(false);
-  // From the verify answer, never the list read before it: the server decides (sc-2244).
-  const [madePrimary, setMadePrimary] = useState<boolean | null>(null);
   const [doneHeading, arriveAtDone] = useStepFocus();
   const [bannerTitle, arriveAtBanner] = useStepFocus<HTMLParagraphElement>();
   const [failedNotice, arriveAtFailed] = useStepFocus<HTMLDivElement>();
   const [answered, setAnswered] = useState(false);
   const [textedLine, arriveAtTexted] = useStepFocus<HTMLParagraphElement>();
-  const [textedHere, setTextedHere] = useState(false);
   const land = useFocusOnceShown();
-  const wording = codeWording(route);
 
   useEffect(() => {
     let live = true;
@@ -74,34 +65,10 @@ export function VerifyPhone() {
         if (live) setAccount(error instanceof ApiUnreachableError ? 'unreachable' : 'none');
       });
 
-    api
-      .phoneOpening(alternative)
-      .then(({ cooldownSeconds, codeState, route: sent }) => {
-        if (!live) return;
-        begin(cooldownSeconds);
-        setRoute(sent);
-        setStatus((now) => openingStatus(now, codeState));
-      })
-      .catch(() => {});
-
     return () => {
       live = false;
     };
-  }, [alternative, begin, attempt]);
-
-  // While the code is on WhatsApp, the server may hand it to SMS: the line follows within a few seconds.
-  useEffect(() => {
-    if (!wording.watch) return;
-
-    const watching = setInterval(() => {
-      api
-        .phoneOpening(alternative)
-        .then((opening) => setRoute(opening.route))
-        .catch(() => {});
-    }, 5000);
-
-    return () => clearInterval(watching);
-  }, [wording.watch, alternative]);
+  }, [attempt]);
 
   if (account === 'none') return <Navigate to="/sign-in" replace />;
   if (account === 'unreachable')
@@ -152,54 +119,37 @@ export function VerifyPhone() {
     const code = cleanCode(typed);
 
     setCodeError(null);
-    setStatus({ kind: 'verifying' });
     setAnswered(false);
     const landWhereSent = focusWhereSent();
+    const checked = await check.verify(code);
 
-    try {
-      setMadePrimary((await api.verifyPhone(code, alternative)).primary);
-      setStatus({ kind: 'verified' });
-      arriveAtDone();
-    } catch (error) {
-      const refusal = codeRefusal(error);
-      setStatus(refusal);
-      if (refusal.kind === 'expired' || refusal.kind === 'exhausted') {
-        setAnswered(true);
-        arriveAtBanner();
-      }
-      if (refusal.kind === 'wrong') {
-        landWhereSent('code');
-        selectCode();
-      }
+    if (checked == null) return;
+    if (checked.verified) return arriveAtDone();
+
+    const { refusal } = checked;
+    if (refusal.kind === 'expired' || refusal.kind === 'exhausted') {
+      setAnswered(true);
+      arriveAtBanner();
+    }
+    if (refusal.kind === 'wrong') {
+      landWhereSent('code');
+      selectCode();
     }
   }
 
-  const resend = (): Promise<void> => resending.once(() => sendOnce(false));
-  const resendInPlace = (): Promise<void> => resending.once(() => sendOnce(true));
+  async function resend(inPlace: boolean): Promise<void> {
+    const resent = await check.resend();
 
-  async function sendOnce(inPlace: boolean): Promise<void> {
-    try {
-      resending.countDown(await api.resendPhoneCode(alternative));
-      setStatus({ kind: 'entering' });
-      setAnswered(false);
-      if (inPlace) land(() => document.getElementById('code'));
-      setRoute((await api.phoneOpening(alternative)).route);
-    } catch (error) {
-      const seconds =
-        error instanceof ApiError ? Number(error.response?.headers.get('Retry-After')) : NaN;
-
-      if (Number.isFinite(seconds) && seconds > 0) {
-        resending.countDown(seconds);
-        setStatus({ kind: 'entering' });
-        setAnswered(false);
-        if (inPlace) land(() => document.getElementById('code'));
-        return;
-      }
-
-      setStatus({ kind: 'failed' });
+    if (resent == null) return;
+    if (resent === 'failed') {
+      check.fail();
       setAnswered(inPlace);
       if (inPlace) arriveAtFailed();
+      return;
     }
+
+    setAnswered(false);
+    if (inPlace) land(() => document.getElementById('code'));
   }
 
   async function carryOn(): Promise<void> {
@@ -213,21 +163,12 @@ export function VerifyPhone() {
       await api.completeProfile({ name });
       await carryOn();
     } catch {
-      setStatus({ kind: 'failed' });
+      check.fail();
     }
   }
 
   async function textInstead(): Promise<void> {
-    setTextingFailed(false);
-
-    try {
-      await api.textPhoneCodeInstead(alternative);
-      setRoute('sms_chosen');
-      setTextedHere(true);
-      arriveAtTexted();
-    } catch {
-      setTextingFailed(true);
-    }
+    if (await check.textInstead()) arriveAtTexted();
   }
 
   const entering = ['entering', 'verifying', 'wrong', 'failed'].includes(status.kind);
@@ -265,7 +206,7 @@ export function VerifyPhone() {
             <p>
               {alternative == null
                 ? t('verifyPhone.doneBody', { number })
-                : (madePrimary ?? phone.primary)
+                : (check.primary ?? phone.primary)
                   ? t('contacts.verifiedPrimaryPhone', { number })
                   : t('verifyPhone.doneBodyAlternative', { number })}
             </p>
@@ -285,9 +226,9 @@ export function VerifyPhone() {
             <h1>{t('verifyPhone.title')}</h1>
             {/* One live element whose text changes, so a fallback is announced without moving focus. */}
             <p
-              aria-live={textedHere ? 'off' : 'polite'}
+              aria-live={check.texted ? 'off' : 'polite'}
               ref={textedLine}
-              tabIndex={textedHere ? -1 : undefined}
+              tabIndex={check.texted ? -1 : undefined}
             >
               {line}
             </p>
@@ -327,7 +268,7 @@ export function VerifyPhone() {
             <button
               className="button button-primary"
               type="button"
-              onClick={() => void resendInPlace()}
+              onClick={() => void resend(true)}
             >
               {t('verifyPhone.resend')}
             </button>
@@ -377,14 +318,14 @@ export function VerifyPhone() {
               <ResendLine
                 resending={resending}
                 note={t('verifyPhone.resendNote')}
-                onResend={() => void resend()}
+                onResend={() => void resend(false)}
               >
                 {wording.offerText && (
                   <button className="link-button" type="button" onClick={() => void textInstead()}>
                     {t('verifyPhone.textInstead')}
                   </button>
                 )}
-                {textingFailed && (
+                {check.textingFailed && (
                   <FieldError
                     id="text-instead-error"
                     message={t('verifyPhone.textInsteadFailed')}
