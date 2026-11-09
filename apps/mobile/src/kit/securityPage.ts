@@ -1,4 +1,4 @@
-import type { Provider } from '@soirely/api-client';
+import { ApiError, type Provider } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 
 export interface WayIn {
@@ -184,4 +184,36 @@ export function everywhereDone(signedOut: number, t: TFunction): string {
   return signedOut === 0
     ? t('devices.everywhereNone')
     : t('devices.everywhereDone', { count: signedOut });
+}
+
+export type EverywhereOutcome =
+  | { kind: 'endedHere' }
+  | { kind: 'done'; words: string }
+  | { kind: 'failed'; message: string; refused: boolean };
+
+/** Signs out every other device; a failure is an outcome, so the sheet that sent it stays usable. */
+export async function signOutOthers(
+  send: () => Promise<{ signedOut: number; thisDevice: boolean }>,
+  t: TFunction,
+): Promise<EverywhereOutcome> {
+  try {
+    const { signedOut, thisDevice } = await send();
+
+    return thisDevice
+      ? { kind: 'endedHere' }
+      : { kind: 'done', words: everywhereDone(signedOut, t) };
+  } catch (refusal) {
+    return {
+      kind: 'failed',
+      message: t('devices.everywhereFailedBody'),
+      refused: refusal instanceof ApiError,
+    };
+  }
+}
+
+export function askBusy(ask: string | null, t: TFunction): string | undefined {
+  if (ask === 'unlink') return t('security.unlinking');
+  if (ask === 'signOut') return t('security.signingOut');
+
+  return undefined;
 }

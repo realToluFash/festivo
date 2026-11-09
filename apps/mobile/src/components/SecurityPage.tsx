@@ -6,6 +6,7 @@ import {
   primaryEmailAddress,
   type Provider,
   ProviderCancelled,
+  type ProviderSignInAttempt,
   type TwoFactorStatus,
 } from '@soirely/api-client';
 import {
@@ -32,6 +33,7 @@ import { retryAfter } from '../kit/code.ts';
 import { deviceMoment, deviceName } from '../kit/devices.ts';
 import { passwordRefusal, setCodeRefusal } from '../kit/passwordChange.ts';
 import {
+  askBusy,
   type AskWords,
   cardCounts,
   cardLine,
@@ -39,11 +41,11 @@ import {
   type DeviceKind,
   type DeviceView,
   everywhereAsk,
-  everywhereDone,
   linked,
   newCodesAsk,
   type SecurityRules,
   signOutAsk,
+  signOutOthers,
   turnOffAsk,
   unlinkAsk,
   type Ways,
@@ -287,19 +289,24 @@ export function SecurityPage({
     setActing(true);
     setRowError(null);
 
+    let signIn: ProviderSignInAttempt;
     try {
-      const signIn = await confirmWithProvider(provider);
+      signIn = await confirmWithProvider(provider);
+    } catch (refusal) {
+      setActing(false);
+      if (refusal instanceof ProviderCancelled) setScreen(null);
+      else refuseRow(provider, waysRefusal(refusal, provider, t, true));
+      return;
+    }
+
+    try {
       await api.linkProvider(provider, held, signIn);
       await onChanged();
       const words = t('security.linkedDone', { provider: PROVIDER_NAMES[provider] });
       if (atOnce) doneAtOnce(words);
       else done(words);
     } catch (refusal) {
-      if (refusal instanceof ProviderCancelled) {
-        setScreen(null);
-        return;
-      }
-      refuseRow(provider, waysRefusal(refusal, provider, t, true));
+      refuseRow(provider, waysRefusal(refusal, provider, t, false));
     } finally {
       setActing(false);
     }
@@ -349,14 +356,20 @@ export function SecurityPage({
     }
   }
 
-  async function signOutEverywhere(held: string): Promise<void> {
-    const result = await api.signOutEverywhereElse(held, others.sessionId);
-    if (result.thisDevice) {
-      onEndedHere();
-      return;
+  async function signOutEverywhere(held: string): Promise<ConfirmSays | null> {
+    const outcome = await signOutOthers(() => api.signOutEverywhereElse(held, others.sessionId), t);
+    switch (outcome.kind) {
+      case 'endedHere':
+        onEndedHere();
+        return null;
+      case 'done':
+        done(outcome.words);
+        readAgain();
+        return null;
+      case 'failed':
+        if (outcome.refused) await onRefused().catch(() => {});
+        return { password: null, code: null, checked: false, other: outcome.message };
     }
-    done(everywhereDone(result.signedOut, t));
-    readAgain();
   }
 
   function setUp(target: Target): void {
@@ -510,11 +523,16 @@ export function SecurityPage({
         opener={opener}
         title={question?.title ?? ''}
         line={question?.line ?? ''}
-        keep={{ label: question?.keep ?? '', testID: `security.${ask ?? 'ask'}.keep` }}
+        keep={{
+          label: question?.keep ?? '',
+          testID: `security.${ask ?? 'ask'}.keep`,
+          off: acting,
+        }}
         confirm={{
           label: question?.confirm ?? '',
           testID: `security.${ask ?? 'ask'}.confirm`,
           removes: question?.removes ?? false,
+          busy: acting ? askBusy(ask, t) : undefined,
         }}
         onKeep={() => {
           if (!acting) setAsk(null);
@@ -610,8 +628,7 @@ export function SecurityPage({
                 if (acted != null) await unlink(acted.provider, held);
                 return null;
               case 'everywhere':
-                await signOutEverywhere(held);
-                return null;
+                return signOutEverywhere(held);
               default:
                 return null;
             }
@@ -699,7 +716,7 @@ function ProofStep({
   email: string;
   opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
-  onProved: (proof: string, codeSpent: boolean) => Promise<null>;
+  onProved: (proof: string, codeSpent: boolean) => Promise<ConfirmSays | null>;
   /** Turning off and new codes: the code is the proof, sent with the change. */
   onCode: (code: string) => Promise<string | null>;
 }) {

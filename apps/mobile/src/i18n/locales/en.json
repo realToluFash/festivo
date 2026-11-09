@@ -353,6 +353,8 @@
     "twoFactorOn": "Two-factor is on. Every sign-in now asks for a code from your app.",
     "twoFactorOff": "Two-factor is off. We emailed {{email}} to say so.",
     "newCodesDone": "New recovery codes made. Your old ones no longer work.",
+    "unlinking": "Unlinking…",
+    "signingOut": "Signing out…",
     "passwordShort_one": "Use at least {{count, number}} character.",
     "passwordShort_other": "Use at least {{count, number}} characters.",
     "changeStays": "Your password stays as it was.",

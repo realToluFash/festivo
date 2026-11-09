@@ -1,15 +1,18 @@
+import { ApiError } from '@soirely/api-client';
 import { init, t } from 'i18next';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
 
 import {
+  askBusy,
   cardCounts,
   cardLine,
   everywhereAsk,
   keptByRule,
   lastWayIn,
   providerLine,
+  signOutOthers,
   type Ways,
   unlinkAsk,
   unlinkNote,
@@ -92,5 +95,44 @@ describe('signing out everywhere else', () => {
     );
     expect(everywhereAsk(2, true, t).line).toMatch(/^This signs out your 2 other devices/u);
     expect(everywhereAsk(2, false, t).line).toBe(t('devices.everywhereSelf', { count: 2 }));
+  });
+});
+
+describe('signing out everywhere else', () => {
+  it('says how many went, or that this device went too', async () => {
+    expect(await signOutOthers(async () => ({ signedOut: 2, thisDevice: false }), t)).toEqual({
+      kind: 'done',
+      words: t('devices.everywhereDone', { count: 2 }),
+    });
+    expect(await signOutOthers(async () => ({ signedOut: 3, thisDevice: true }), t)).toEqual({
+      kind: 'endedHere',
+    });
+  });
+
+  it('turns a dropped connection into words for the sheet, rather than a rejection', async () => {
+    const outcome = await signOutOthers(
+      () => Promise.reject(new TypeError('Network request failed')),
+      t,
+    );
+
+    expect(outcome).toEqual({
+      kind: 'failed',
+      message: en.devices.everywhereFailedBody,
+      refused: false,
+    });
+  });
+
+  it('marks a server refusal, so the rows are read again', async () => {
+    const outcome = await signOutOthers(() => Promise.reject(Object.create(ApiError.prototype)), t);
+
+    expect(outcome).toMatchObject({ kind: 'failed', refused: true });
+  });
+});
+
+describe('the ask while its change is sent', () => {
+  it('says Unlinking or Signing out, and nothing for an ask that opens a proof', () => {
+    expect(askBusy('unlink', t)).toBe('Unlinking…');
+    expect(askBusy('signOut', t)).toBe('Signing out…');
+    expect(askBusy('everywhere', t)).toBeUndefined();
   });
 });
