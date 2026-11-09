@@ -496,7 +496,28 @@
     "sectionAccount": "Cuenta",
     "sectionSecurity": "Seguridad",
     "sectionNotifications": "Notificaciones",
-    "sectionPersonalisation": "Personalisation"
+    "sectionPersonalisation": "Personalisation",
+    "aboutYou": "Sobre usted",
+    "yourName": "Su nombre",
+    "fullName": "Nombre completo",
+    "zoneLine": "Zona horaria · {{id}}",
+    "emailPrimaryLine": "Principal · para iniciar sesión",
+    "emailOtherLine": "Para contactar con usted, no para iniciar sesión",
+    "phonePrimaryLine": "Principal · en su perfil",
+    "phoneOtherLine": "Para contactar con usted",
+    "notVerifiedYet": "Falta verificar {{shown}}.",
+    "verifiedAlternative": "{{address}} está verificada. Seguirá siendo una dirección alternativa hasta que la haga principal.",
+    "verifiedAlternativePhone": "{{number}} está verificado. Seguirá siendo un número alternativo hasta que lo haga principal.",
+    "save": "Guardar",
+    "add": "Añadir",
+    "verify": "Verificar",
+    "discardTitle": "¿Descartar el cambio?",
+    "keepEditing": "Seguir editando",
+    "discard": "Descartar",
+    "nameStays": "Su nombre sigue siendo {{name}}.",
+    "zoneStays": "Su zona horaria sigue siendo {{zone}}.",
+    "zoneStaysUnset": "Su zona horaria sigue sin definir.",
+    "nothingAdded": "No se añadirá nada."
   },
   "devices": {
     "title": "Dispositivos con sesión abierta",
@@ -1504,7 +1525,9 @@
     "proveIntro": "Confirme que es usted antes de cambiar la dirección con la que inicia sesión.",
     "backToAccount": "Volver a Cuenta",
     "removeInAccount": "Quitarla en Cuenta",
-    "removeInAccountPhone": "Quitarlo en Cuenta"
+    "removeInAccountPhone": "Quitarlo en Cuenta",
+    "promoting": "Haciendo principal…",
+    "removing": "Quitando…"
   },
   "join": {
     "registerTitle": "Unirse a {{organisation}}",

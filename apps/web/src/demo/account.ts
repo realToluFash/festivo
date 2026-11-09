@@ -14,7 +14,7 @@ import {
   zoneLabel,
 } from '@soirely/domain';
 
-import { primaryFirst } from '../components/AccountParts.tsx';
+import { primaryFirst } from '../accountPage.ts';
 import { SAMPLE, numberLine } from './rules.ts';
 import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
 

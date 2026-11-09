@@ -18,7 +18,7 @@ import {
   zoneMatches,
   zoneRefusal,
 } from './account.ts';
-import { primaryFirst } from '../components/AccountParts.tsx';
+import { primaryFirst } from '../accountPage.ts';
 import { SAMPLE } from './rules.ts';
 import { VIEWERS } from './settings.ts';
 

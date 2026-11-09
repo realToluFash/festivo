@@ -496,7 +496,28 @@
     "sectionAccount": "Conta",
     "sectionSecurity": "Segurança",
     "sectionNotifications": "Notificações",
-    "sectionPersonalisation": "Personalisation"
+    "sectionPersonalisation": "Personalisation",
+    "aboutYou": "Sobre si",
+    "yourName": "O seu nome",
+    "fullName": "Nome completo",
+    "zoneLine": "Fuso horário · {{id}}",
+    "emailPrimaryLine": "Principal · para iniciar sessão",
+    "emailOtherLine": "Para falar consigo, não para iniciar sessão",
+    "phonePrimaryLine": "Principal · no seu perfil",
+    "phoneOtherLine": "Para falar consigo",
+    "notVerifiedYet": "{{shown}} ainda está por verificar.",
+    "verifiedAlternative": "{{address}} está verificado. Continua a ser um endereço alternativo até o tornar principal.",
+    "verifiedAlternativePhone": "{{number}} está verificado. Continua a ser um número alternativo até o tornar principal.",
+    "save": "Guardar",
+    "add": "Adicionar",
+    "verify": "Verificar",
+    "discardTitle": "Descartar a alteração?",
+    "keepEditing": "Continuar a editar",
+    "discard": "Descartar",
+    "nameStays": "O seu nome continua a ser {{name}}.",
+    "zoneStays": "O seu fuso horário continua a ser {{zone}}.",
+    "zoneStaysUnset": "O seu fuso horário continua por definir.",
+    "nothingAdded": "Nada será adicionado."
   },
   "devices": {
     "title": "Dispositivos com sessão iniciada",
@@ -1504,7 +1525,9 @@
     "proveIntro": "Confirme que é você antes de alterar o endereço com que inicia sessão.",
     "backToAccount": "Voltar a Conta",
     "removeInAccount": "Removê-lo em Conta",
-    "removeInAccountPhone": "Removê-lo em Conta"
+    "removeInAccountPhone": "Removê-lo em Conta",
+    "promoting": "A tornar principal…",
+    "removing": "A remover…"
   },
   "join": {
     "registerTitle": "Aderir a {{organisation}}",

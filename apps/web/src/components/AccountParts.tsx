@@ -1,24 +1,11 @@
 import { type ReactNode, useId } from 'react';
 
+import { type ContactKind, type ContactRow, primaryFirst } from '../accountPage.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { Card, CardStep, Chevron, Head, OnCard, RowWords } from './SettingsParts.tsx';
 import './AccountParts.css';
 
-export type ContactKind = 'email' | 'phone';
-
-/** An address or a number as Your account lists it. */
-export interface ContactRow {
-  id: string;
-  shown: string;
-  verified: boolean;
-  primary: boolean;
-}
-
 const ICONS: Record<ContactKind, GlyphName> = { email: 'mail', phone: 'phone' };
-
-export function primaryFirst<Row extends ContactRow>(rows: readonly Row[]): Row[] {
-  return [...rows].sort((one, other) => Number(other.primary) - Number(one.primary));
-}
 
 export function Lead({ name }: { name: GlyphName }) {
   return (
@@ -113,8 +100,7 @@ export function ContactsBlock<Row extends ContactRow>({
   foot,
   onToggle,
   onAdd,
-  offers,
-  under,
+  renderOffers,
 }: {
   kind: ContactKind;
   title: string;
@@ -128,9 +114,7 @@ export function ContactsBlock<Row extends ContactRow>({
   onToggle: (row: Row) => void;
   onAdd: () => void;
   /** What an opened row offers, with the line under its actions. */
-  offers: (row: Row) => ReactNode;
-  /** What stays under a row whether it is open or not: a refusal of what it was asked. */
-  under?: (row: Row) => ReactNode;
+  renderOffers: (row: Row) => ReactNode;
 }) {
   const id = useId();
 
@@ -192,10 +176,9 @@ export function ContactsBlock<Row extends ContactRow>({
               </button>
               {on && (
                 <div id={panel} className="account-open" role="group" aria-label={row.shown}>
-                  {offers(row)}
+                  {renderOffers(row)}
                 </div>
               )}
-              {under?.(row)}
             </li>
           );
         })}

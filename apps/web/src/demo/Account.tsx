@@ -253,25 +253,25 @@ function Contacts({
       foot={contactsFoot(kind, rows)}
       onToggle={onToggle}
       onAdd={onAdd}
-      offers={(row) => {
+      renderOffers={(row) => {
         const offers = contactActions(row);
 
         return (
           <RowOffers line={W.removeLine}>
             {offers.verify && (
-              <button type='button' className='desk-text' onClick={() => onAct(row, 'verify')}>
+              <button type="button" className="desk-text" onClick={() => onAct(row, 'verify')}>
                 {W.sendCode}
               </button>
             )}
             {offers.makePrimary && (
-              <button type='button' className='desk-text' onClick={() => onAct(row, 'primary')}>
+              <button type="button" className="desk-text" onClick={() => onAct(row, 'primary')}>
                 {W.makePrimary}
               </button>
             )}
             {offers.remove && (
               <button
-                type='button'
-                className='desk-text is-red'
+                type="button"
+                className="desk-text is-red"
                 onClick={() => onAct(row, 'remove')}
               >
                 {offers.askBeforeRemoving ? W.removeAsking : W.remove}
