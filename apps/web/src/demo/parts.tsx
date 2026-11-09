@@ -40,15 +40,17 @@ export function Heading({
   step,
   title,
   done = false,
+  focus,
   children,
 }: {
   step?: 1 | 2 | undefined;
   title: string;
   done?: boolean;
+  focus?: RefObject<HTMLDivElement | null>;
   children?: ReactNode;
 }) {
   return (
-    <div className="demo-heading">
+    <div className="demo-heading" ref={focus} tabIndex={focus == null ? undefined : -1}>
       {step != null && <p className="demo-step">Step {step} of 2</p>}
       {done ? (
         <div className="demo-done">

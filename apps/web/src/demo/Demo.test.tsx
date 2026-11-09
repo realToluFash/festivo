@@ -653,13 +653,17 @@ describe('the demo gets a password back (sc-29064)', () => {
     const button = screen.getByRole('button', { name: 'Try again' });
     fireEvent.click(button);
     expect(button.textContent).toBe('Trying again…');
+    await act(() => vi.advanceTimersByTimeAsync(500));
     fireEvent.click(button);
-    await wait();
+    await act(() => vi.advanceTimersByTimeAsync(450));
 
-    expect(screen.getByRole('heading', { name: 'That did not work' })).toBeDefined();
-    expect(document.activeElement).toBe(
-      screen.getByText('Something went wrong on the way. Try again in a moment.'),
-    );
+    const heading = screen.getByRole('heading', { name: 'That did not work' });
+    expect(document.activeElement).toBe(heading.parentElement);
+    expect(heading.parentElement?.textContent).toContain('Something went wrong on the way.');
+
+    button.focus();
+    await wait();
+    expect(document.activeElement).toBe(button);
   });
 
   it.each([

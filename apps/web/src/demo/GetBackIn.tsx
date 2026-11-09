@@ -353,7 +353,7 @@ function ReadFailed() {
   const navigate = useNavigate();
   const [next, setNext] = useState(0);
   const [busy, after] = useBusy();
-  const line = useRef<HTMLParagraphElement>(null);
+  const heading = useRef<HTMLDivElement>(null);
 
   function tryAgain(): void {
     if (busy) return;
@@ -361,7 +361,7 @@ function ReadFailed() {
     after(() => {
       const to = NEXT_READS[next]?.to;
       if (to == null) {
-        line.current?.focus();
+        heading.current?.focus();
         return;
       }
 
@@ -389,10 +389,8 @@ function ReadFailed() {
         </label>
       }
     >
-      <Heading title="That did not work">
-        <p className="demo-muted" ref={line} tabIndex={-1}>
-          Something went wrong on the way. Try again in a moment.
-        </p>
+      <Heading title="That did not work" focus={heading}>
+        <p className="demo-muted">Something went wrong on the way. Try again in a moment.</p>
       </Heading>
       <button
         className="button button-primary demo-wide"
