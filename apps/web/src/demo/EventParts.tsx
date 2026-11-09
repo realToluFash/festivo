@@ -1,25 +1,23 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 
+import { PhaseTag, Thumb } from '../components/EventParts.tsx';
 import { Toast } from '../components/Toast.tsx';
 import {
   type Card,
   type GlassKind,
   type SampleEvent,
-  type Shown,
   type Tab,
   cardOf,
   lineOf,
   offRule,
-  phaseWord,
   shownOf,
   soonOf,
-  tagKind,
 } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { type CardMilestone, KW } from './kitchen.ts';
 import { LayersContext } from '../layers.ts';
-import { Chevron, CardStep, RowWords, Tag } from '../components/SettingsParts.tsx';
+import { Chevron, CardStep, RowWords } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import './today.css';
 import '../components/SettingsParts.css';
@@ -73,17 +71,6 @@ export function EventsShell({
         {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
       </div>
     </LayersContext>
-  );
-}
-
-/** The event's cover at a size, or its colour from meshFor while it has no photo. */
-export function Thumb({ event, size }: { event: SampleEvent; size: 28 | 40 | 48 }) {
-  return event.photo ? (
-    <span className={`ev-thumb is-${size} is-photo`} aria-hidden="true">
-      <Glyph name="photo" size={Math.round(size / 2)} weight={1.8} />
-    </span>
-  ) : (
-    <span className={`ev-thumb is-${size} today-cover is-${event.mesh}`} aria-hidden="true" />
   );
 }
 
@@ -218,10 +205,6 @@ export function EventCard({
       </div>
     </section>
   );
-}
-
-export function PhaseTag({ shown }: { shown: Shown }) {
-  return <Tag kind={tagKind(shown)} word={phaseWord(shown)} />;
 }
 
 /** An event in the list: its cover or colour, its name, its days and place, how soon, and a tag where it is off its tab's rule. */

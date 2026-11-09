@@ -493,3 +493,25 @@
   color: var(--colorInkSecondary);
   font-variant-numeric: tabular-nums;
 }
+
+/* An event's own colour: the cover's base, for dots, bars and the readiness fill. */
+:is(.today, .desk) .is-wed {
+  --todayEvent: var(--optionRose);
+}
+
+:is(.today, .desk) .is-ireti {
+  --todayEvent: var(--optionTeal);
+}
+
+:is(.today, .desk) .is-party {
+  --todayEvent: var(--coverAccent, var(--colorAccent));
+}
+
+:is(.today, .desk) .is-draft {
+  --todayEvent: var(--optionAmber);
+}
+
+.today-grow {
+  flex: 1;
+  min-width: 0;
+}

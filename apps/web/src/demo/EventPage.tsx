@@ -50,7 +50,8 @@ import {
 } from './replyBy.ts';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
 import { type NeedsState, readerOf } from './needsYou.ts';
-import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
+import { Thumb } from '../components/EventParts.tsx';
+import { Alert, EventCard, EventsShell, NotBuilt, Switch } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { AllDates } from './EventDates.tsx';
 import {

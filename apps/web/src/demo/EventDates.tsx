@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { RowWords } from '../components/SettingsParts.tsx';
-import { Thumb } from './EventParts.tsx';
+import { Thumb } from '../components/EventParts.tsx';
 import { type SampleEvent, lineOf } from './events.ts';
 import { KW, datesOf, kw, momentOf } from './kitchen.ts';
 import './kitchen.css';

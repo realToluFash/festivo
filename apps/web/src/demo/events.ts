@@ -1,7 +1,6 @@
 import type { NeedsState } from './needsYou.ts';
 import {
   EVENT_TYPES,
-  type EventPhase,
   type EventState,
   type EventType,
   calledOff,
@@ -18,7 +17,7 @@ import {
   savedWallClock,
 } from '@soirely/domain';
 
-import type { MarkKind } from '../components/SettingsParts.tsx';
+import type { Shown } from '../components/eventShown.ts';
 import type { DemoLink } from './settings.ts';
 import type { EventKey } from './today.ts';
 import { type Mesh, meshFor } from '../mesh.ts';
@@ -698,7 +697,6 @@ export function areaOf(value: string | null): Area {
   return AREAS.find((one) => one.area === value)?.area ?? 'overview';
 }
 
-export type Shown = EventPhase | 'calledOff';
 
 export function shownOf(event: SampleEvent, now: Date): Shown {
   const phase = eventPhase(event, now);
@@ -903,22 +901,6 @@ export function needsName(event: SampleEvent): boolean {
 
 export function phaseWord(shown: Shown): string {
   return W.phase[shown];
-}
-
-export function tagKind(shown: Shown): MarkKind | 'now' {
-  switch (shown) {
-    case 'draft':
-      return 'waiting';
-    case 'live':
-      return 'yes';
-    case 'happening_now':
-      return 'now';
-    case 'paused':
-      return 'paused';
-    case 'finished':
-    case 'calledOff':
-      return 'ended';
-  }
 }
 
 export type Tab = 'upcoming' | 'drafts' | 'past';

@@ -1,17 +1,17 @@
 import { formatEventClock, monthOfDay } from '@soirely/domain';
-import { type KeyboardEvent, type ReactNode, type Ref, useEffect, useId, useRef } from 'react';
+import { type KeyboardEvent, type Ref, useContext, useEffect, useId, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import {
   type AgendaEntry,
   type Bar,
+  type CalendarLens,
   type Item,
   type Mark,
-  type MarkItem,
   type Week,
   type WeekDay,
-  CAL_WORDS as W,
-  TODAY,
+  CalendarFrameContext,
   agendaLabel,
   agendaStop,
   barLabel,
@@ -21,23 +21,26 @@ import {
   dayNumber,
   dayTitle,
   itemKey,
-  itemLink,
   markLabel,
   markWords,
   monthEdge,
   monthKey,
   monthName,
   rowLine,
-  timeOf,
   weekdayShort,
-} from './calendar.ts';
-import { isOverdue, needsLabel } from './calendarNeeds.ts';
+} from './calendarWeeks.ts';
+import { type Shown } from './eventShown.ts';
 import { PhaseTag, Thumb } from './EventParts.tsx';
-import { CLOCKS, type Shown } from './events.ts';
-import { Glyph } from '../components/Glyph.tsx';
-import { Chevron, RowWords } from '../components/SettingsParts.tsx';
+import { Glyph } from './Glyph.tsx';
+import { Chevron, RowWords } from './SettingsParts.tsx';
 
 export type Move = (key: string, from: string) => boolean;
+
+const OWNER_WORD = {
+  event: 'timeline.owner_event',
+  you: 'timeline.owner_you',
+  automatic: 'timeline.owner_automatic',
+} as const;
 
 export function BrokenLine({ words }: { words: string }) {
   return (
@@ -96,7 +99,7 @@ export function MonthWeeks({
   lit,
   open,
   loading,
-  needs,
+  lens,
   onOpen,
   onMove,
   onFocusIn,
@@ -109,12 +112,15 @@ export function MonthWeeks({
   lit: string | null;
   open: string | null;
   loading: boolean;
-  needs: boolean;
+  lens: CalendarLens | null;
   onOpen: (day: string) => void;
   onMove: Move;
   onFocusIn: (day: string | undefined) => void;
   onFocusOut: () => void;
 }) {
+  const { t } = useTranslation();
+  const { today } = useContext(CalendarFrameContext);
+
   function keys(event: KeyboardEvent<HTMLElement>, day: WeekDay | undefined): void {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     if (event.key === 'Tab') stepped(event, day);
@@ -151,7 +157,7 @@ export function MonthWeeks({
                   type="button"
                   className={[
                     'cal-day',
-                    one.day === TODAY && 'is-today',
+                    one.day === today && 'is-today',
                     one.day.endsWith('-01') && 'is-first',
                     one.day === lit && 'is-lit',
                     one.day === open && 'is-open',
@@ -159,7 +165,8 @@ export function MonthWeeks({
                     .filter(Boolean)
                     .join(' ')}
                   data-day={one.day}
-                  aria-label={dayLabel(one.day, one.count, locale)}
+                  aria-label={dayLabel(t, one.day, today, one.count, locale)}
+                  aria-current={one.day === today ? 'date' : undefined}
                   tabIndex={one.day === focusDay ? 0 : -1}
                   onClick={() => onOpen(one.day)}
                   onKeyDown={(event) => keys(event, one)}
@@ -191,7 +198,7 @@ export function MonthWeeks({
                         key={piece.key}
                         mark={piece}
                         locale={locale}
-                        needs={needs}
+                        lens={lens}
                         onKeyDown={(event) => keys(event, here)}
                       />
                     ),
@@ -205,7 +212,7 @@ export function MonthWeeks({
                     onClick={() => onOpen(one.day)}
                     onKeyDown={(event) => keys(event, here)}
                   >
-                    {W.more(one.more)}
+                    {t('calendar.moreItems', { count: one.more })}
                   </button>
                 )}
               </div>
@@ -242,11 +249,13 @@ function BarLink({
   locale: string;
   onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
 }) {
+  const { t } = useTranslation();
+  const { zone, linkOf } = useContext(CalendarFrameContext);
   const { event } = bar.item;
 
   return (
     <Link
-      to={itemLink(bar.item)}
+      to={linkOf(bar.item)}
       className={[
         'cal-piece cal-bar',
         `is-from-${bar.from} is-span-${bar.span} is-row-${bar.row} is-${event.mesh}`,
@@ -257,12 +266,12 @@ function BarLink({
         .join(' ')}
       data-piece={bar.key}
       data-shown={event.shown}
-      aria-label={barLabel(bar.item, locale)}
+      aria-label={barLabel(t, bar.item, zone, locale)}
       tabIndex={-1}
       onKeyDown={onKeyDown}
     >
       {barOffRule(event.shown) && <BarMark shown={event.shown} />}
-      <span className="cal-bar-words">{barWords(event)}</span>
+      <span className="cal-bar-words">{barWords(t, event)}</span>
     </Link>
   );
 }
@@ -271,30 +280,28 @@ function YouDot() {
   return <span className="cal-you" aria-hidden="true" />;
 }
 
-function lateIn(item: MarkItem, needs: boolean): boolean {
-  return needs && item.milestone.owner === 'you' && isOverdue(item.milestone, CLOCKS.rest);
-}
-
 function MarkLink({
   mark,
   locale,
-  needs,
+  lens,
   onKeyDown,
 }: {
   mark: Mark;
   locale: string;
-  needs: boolean;
+  lens: CalendarLens | null;
   onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
 }) {
+  const { t } = useTranslation();
+  const { zone, linkOf } = useContext(CalendarFrameContext);
   const { item } = mark;
-  const late = lateIn(item, needs);
+  const late = lens?.late(item) === true;
 
   return (
     <Link
-      to={itemLink(item)}
+      to={linkOf(item)}
       className={`cal-piece cal-mark is-from-${mark.from} is-row-${mark.row}`}
       data-piece={mark.key}
-      aria-label={markLabel(item, locale)}
+      aria-label={markLabel(t, item, zone, locale)}
       tabIndex={-1}
       onKeyDown={onKeyDown}
     >
@@ -319,84 +326,73 @@ function MarkLink({
   );
 }
 
-function needsLines(item: MarkItem, locale: string): ReactNode[] {
-  const time = timeOf(item.event, item.milestone.at, locale);
-
-  return [
-    isOverdue(item.milestone, CLOCKS.rest) ? (
-      <span key="time" className="cal-late cal-late-line">
-        <Glyph name="clock" size={14} weight={2.4} />
-        <span>{`${time} · ${W.overdue}`}</span>
-      </span>
-    ) : (
-      time
-    ),
-    <span key="event" className="cal-row-event">
-      {item.event.name}
-    </span>,
-  ];
-}
-
 function ItemRow({
   item,
   locale,
-  needs,
+  lens,
   tabIndex,
 }: {
   item: Item;
   locale: string;
-  needs: boolean;
+  lens: CalendarLens | null;
   tabIndex?: number | undefined;
 }) {
-  const you = item.kind === 'milestone' && item.milestone.owner === 'you';
+  const { t } = useTranslation();
+  const { zone, linkOf } = useContext(CalendarFrameContext);
 
-  return (
-    <li>
-      {item.kind === 'event' ? (
+  if (item.kind === 'event')
+    return (
+      <li>
         <Link
           className="desk-row cal-row"
-          to={itemLink(item)}
-          aria-label={barLabel(item, locale)}
+          to={linkOf(item)}
+          aria-label={barLabel(t, item, zone, locale)}
           tabIndex={tabIndex}
         >
           <Thumb event={item.event} size={40} />
           <RowWords
             title={item.event.name}
             tag={<PhaseTag shown={item.event.shown} />}
-            lines={[rowLine(item, locale)]}
+            lines={[rowLine(t, item, zone, locale)]}
           />
           <Chevron />
         </Link>
-      ) : (
-        <Link
-          className="desk-row cal-row"
-          to={itemLink(item)}
-          aria-label={needs ? needsLabel(item, locale, CLOCKS.rest) : markLabel(item, locale)}
-          tabIndex={tabIndex}
-        >
-          <span className={`cal-tile is-${item.event.mesh}`} aria-hidden="true">
-            {you ? <YouDot /> : <span className="cal-square" />}
-          </span>
-          <RowWords
-            title={item.milestone.title}
-            tag={
-              you ? (
-                <span className="desk-tag cal-you-tag">
-                  <YouDot />
-                  {W.you}
-                </span>
-              ) : (
-                <span className="desk-tag cal-event-tag">
-                  <span className="cal-square" aria-hidden="true" />
-                  {W.event}
-                </span>
-              )
-            }
-            lines={needs ? needsLines(item, locale) : [rowLine(item, locale)]}
-          />
-          <Chevron />
-        </Link>
-      )}
+      </li>
+    );
+
+  const { owner } = item.milestone;
+  const you = owner === 'you';
+
+  return (
+    <li>
+      <Link
+        className="desk-row cal-row"
+        to={linkOf(item)}
+        aria-label={lens == null ? markLabel(t, item, zone, locale) : lens.label(item)}
+        tabIndex={tabIndex}
+      >
+        <span className={`cal-tile is-${item.event.mesh}`} aria-hidden="true">
+          {you ? <YouDot /> : <span className="cal-square" />}
+        </span>
+        <RowWords
+          title={item.milestone.title}
+          tag={
+            you ? (
+              <span className="desk-tag cal-you-tag">
+                <YouDot />
+                {t(OWNER_WORD.you)}
+              </span>
+            ) : (
+              <span className="desk-tag cal-event-tag">
+                <span className="cal-square" aria-hidden="true" />
+                {t(OWNER_WORD[owner])}
+              </span>
+            )
+          }
+          lines={lens == null ? [rowLine(t, item, zone, locale)] : lens.lines(item)}
+        />
+        <Chevron />
+      </Link>
     </li>
   );
 }
@@ -404,12 +400,12 @@ function ItemRow({
 function Rows({
   items,
   locale,
-  needs,
+  lens,
   stop,
 }: {
   items: readonly Item[];
   locale: string;
-  needs: boolean;
+  lens: CalendarLens | null;
   /** Agenda's one Tab stop: the row that takes it, or false on a day without it. */
   stop?: number | false;
 }) {
@@ -420,7 +416,7 @@ function Rows({
           key={itemKey(item)}
           item={item}
           locale={locale}
-          needs={needs}
+          lens={lens}
           tabIndex={stop == null ? undefined : stop === at ? 0 : -1}
         />
       ))}
@@ -457,17 +453,18 @@ export function DayPanel({
   day,
   items,
   locale,
-  needs,
+  lens,
   headingRef,
   onClose,
 }: {
   day: string;
   items: readonly Item[];
   locale: string;
-  needs: boolean;
+  lens: CalendarLens | null;
   headingRef: Ref<HTMLHeadingElement>;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const id = useId();
 
   return (
@@ -477,13 +474,13 @@ export function DayPanel({
           {dayTitle(day, locale)}
         </h2>
         <button type="button" className="desk-text" onClick={onClose}>
-          {W.close}
+          {t('calendar.close')}
         </button>
       </div>
       {items.length === 0 ? (
-        <p className="cal-nothing">{needs ? W.emptyNeedsDay : W.emptyDay}</p>
+        <p className="cal-nothing">{lens?.emptyDay ?? t('calendar.emptyDay')}</p>
       ) : (
-        <Rows items={items} locale={locale} needs={needs} />
+        <Rows items={items} locale={locale} lens={lens} />
       )}
     </aside>
   );
@@ -493,15 +490,17 @@ export function AgendaList({
   entries,
   from,
   landing,
-  needs,
+  lens,
   locale,
 }: {
   entries: readonly AgendaEntry[];
   from: string;
   landing: string;
-  needs: boolean;
+  lens: CalendarLens | null;
   locale: string;
 }) {
+  const { t } = useTranslation();
+  const { today } = useContext(CalendarFrameContext);
   const stop = agendaStop(entries, from);
   const list = useRef<HTMLDivElement>(null);
 
@@ -518,16 +517,17 @@ export function AgendaList({
       {entries.map((entry) => {
         const month = monthOfDay(entry.day);
         const key = monthKey(month);
+        const named = monthName(month, locale);
 
         return (
           <div key={entry.empty ? `${key}|none` : entry.day} className="cal-entry">
             {entry.turn != null && (
               <p className="cal-turn" data-month={key}>
-                {monthName(month, locale)}
+                {named}
               </p>
             )}
             <div
-              className={entry.day === TODAY ? 'cal-agenda-day is-today' : 'cal-agenda-day'}
+              className={entry.day === today ? 'cal-agenda-day is-today' : 'cal-agenda-day'}
               data-month={key}
               data-entry={entry.day}
             >
@@ -535,26 +535,28 @@ export function AgendaList({
                 <>
                   <span className="cal-date" aria-hidden="true" />
                   <p className="cal-nothing" tabIndex={-1}>
-                    {(needs ? W.emptyNeedsMonth : W.emptyMonth)(monthName(month, locale))}
+                    {lens == null
+                      ? t('calendar.emptyMonth', { month: named })
+                      : lens.emptyMonth(named)}
                   </p>
                 </>
               ) : (
                 <>
                   <h2
                     className="cal-date"
-                    aria-label={agendaLabel(entry.day, locale)}
-                    tabIndex={entry.day === TODAY || entry.day === landing ? -1 : undefined}
+                    aria-label={agendaLabel(t, entry.day, today, locale)}
+                    tabIndex={entry.day === today || entry.day === landing ? -1 : undefined}
                   >
                     <span className="cal-weekday">{weekdayShort(entry.day, locale)}</span>
                     <span className="cal-date-number">{dayNumber(entry.day, locale)}</span>
                   </h2>
                   {entry.items.length === 0 ? (
-                    <p className="cal-nothing">{W.emptyDay}</p>
+                    <p className="cal-nothing">{t('calendar.emptyDay')}</p>
                   ) : (
                     <Rows
                       items={entry.items}
                       locale={locale}
-                      needs={needs}
+                      lens={lens}
                       stop={entry === stop?.entry && stop.row}
                     />
                   )}

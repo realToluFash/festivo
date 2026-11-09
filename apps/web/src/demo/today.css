@@ -51,11 +51,6 @@
   list-style: none;
 }
 
-.today-grow {
-  flex: 1;
-  min-width: 0;
-}
-
 .today-ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -132,23 +127,6 @@
 .today-right {
   flex: none;
   width: var(--todayEvents);
-}
-
-/* An event's own colour: the cover's base, for dots, bars and the readiness fill. */
-.today .is-wed {
-  --todayEvent: var(--optionRose);
-}
-
-.today .is-ireti {
-  --todayEvent: var(--optionTeal);
-}
-
-.today .is-party {
-  --todayEvent: var(--coverAccent, var(--colorAccent));
-}
-
-.today .is-draft {
-  --todayEvent: var(--optionAmber);
 }
 
 .today-dot {

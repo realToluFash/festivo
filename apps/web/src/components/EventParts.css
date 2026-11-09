@@ -1,0 +1,73 @@
+/* Events' shared parts at a desk, in A · Summary first: the root's sizes, a row that opens something, the title and an event's thumb. Measurements are the boards' (Events-A-Desk.dc.html, page 29). */
+
+.ev {
+  --evWide: 938px;
+  --evLeft: 560px;
+  --evRight: 346px;
+  --evSearch: 440px;
+  --evMenu: 272px;
+  --evWash: var(--colorNeutralFill);
+  --evScrim: color-mix(in srgb, var(--optionRose) 40%, var(--colorInk));
+}
+
+.ev :is(button, label).desk-row,
+.ev a.desk-row {
+  width: calc(100% + 20px);
+  margin: 0 -10px;
+  padding-inline: 10px;
+  border-radius: var(--radiusRow);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ev :is(button, label, a).desk-row:hover {
+  background: var(--evWash);
+}
+
+.ev-top {
+  gap: 10px;
+  min-height: 48px;
+}
+
+.ev-title {
+  font-size: 34px;
+}
+
+.ev-thumb {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+}
+
+.ev-thumb.is-28 {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.ev-thumb.is-40 {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radiusRow);
+}
+
+.ev-thumb.is-48 {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radiusInset);
+}
+
+.ev-thumb.is-photo {
+  background:
+    radial-gradient(at 25% 20%, var(--colorInkTertiary) 0, transparent 60%),
+    linear-gradient(160deg, var(--colorInkSecondary), var(--colorInk));
+  color: color-mix(in srgb, var(--colorInkOnDark) 70%, transparent);
+}
+
+.ev-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

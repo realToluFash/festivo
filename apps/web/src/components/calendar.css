@@ -8,6 +8,19 @@
   overflow: hidden;
 }
 
+/* In the app's shell the page takes what the band and the shell's padding leave of the window, so the weeks scroll inside it. */
+.shell-content .cal-page {
+  box-sizing: border-box;
+  height: calc(
+    100dvh - 2 * var(--spaceMd) - var(--sizeHit) - 2 * var(--spaceSm) - 2 * var(--shellBlock)
+  );
+  padding-bottom: 0;
+}
+
+.cal-page svg {
+  flex: none;
+}
+
 .cal-subscribe,
 .cal-retry,
 .cal-feed-button {
@@ -874,6 +887,7 @@
 
 .cal-feed-button {
   height: 48px;
+  text-decoration: none;
   font-size: 16px;
 }
 

@@ -2,17 +2,48 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { addDays } from '@soirely/domain';
+import i18next from 'i18next';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
+import { PhaseTag } from '../components/EventParts.tsx';
 import { routes } from '../routes/index.tsx';
-import { CALENDAR_STATES, CAL_WORDS, FEED_WORDS, TODAY } from './calendar.ts';
-import { PhaseTag } from './EventParts.tsx';
+import { CALENDAR_STATES, CAL_WORDS, OPENED_IN_APP, TODAY } from './calendar.ts';
 import { resetSample } from './events.ts';
 
 const tested = config();
+const t = i18next.t.bind(i18next);
+const W = {
+  ...CAL_WORDS,
+  previous: t('calendar.previous'),
+  next: t('calendar.next'),
+  today: t('calendar.today'),
+  showAll: t('calendar.showAll'),
+  showEvents: t('calendar.showEvents'),
+  close: t('calendar.close'),
+  loading: t('calendar.loading'),
+  failed: t('calendar.failed'),
+  retry: t('calendar.retry'),
+  emptyDay: t('calendar.emptyDay'),
+  emptyMonth: (month: string) => t('calendar.emptyMonth', { month }),
+  allDates: t('timeline.allDates'),
+  you: t('timeline.owner_you'),
+};
+const F = {
+  open: t('calendarFeed.title'),
+  copy: t('calendarFeed.copy'),
+  copyRefused: t('calendarFeed.copyRefused'),
+  linkLabel: t('calendarFeed.linkLabel'),
+  confirmTitle: t('calendarFeed.confirmTitle'),
+  keep: t('calendarFeed.keep'),
+  newLink: t('calendarFeed.newLink'),
+  openInApp: t('calendarFeed.openInApp'),
+  openedInApp: OPENED_IN_APP,
+  reset: t('calendarFeed.reset'),
+  resetOpen: t('calendarFeed.resetOpen'),
+};
 const SLOW = { timeout: 20000 };
 const WAIT = { timeout: 8000 };
 
@@ -65,32 +96,32 @@ function entered(): HTMLElement {
 const SEEN: Record<string, () => unknown> = {
   populated: () => screen.getByRole('grid'),
   agenda: () => screen.getByRole('radio', { name: 'View: Agenda', checked: true }),
-  showMenu: () => screen.getByRole('menuitemradio', { name: CAL_WORDS.showEvents, checked: true }),
-  eventsOnly: () => screen.getByRole('button', { name: `Show: ${CAL_WORDS.showEvents}` }),
+  showMenu: () => screen.getByRole('menuitemradio', { name: W.showEvents, checked: true }),
+  eventsOnly: () => screen.getByRole('button', { name: `Show: ${W.showEvents}` }),
   busyDay: () => screen.getByRole('heading', { level: 2, name: 'Saturday, Nov 14' }),
   monthEdge: () => screen.getAllByRole('link', { name: /^Okafor family reunion, / }),
   otherZone: () => screen.getByRole('heading', { level: 2, name: 'October 2026' }),
-  emptyMonth: () => screen.getByText(CAL_WORDS.emptyMonth('February 2027')),
+  emptyMonth: () => screen.getByText(W.emptyMonth('February 2027')),
   none: () => screen.getByText('Set up your first event'),
   loading: () => screen.getByRole('status', { name: '' }),
   failed: () => screen.getByRole('alert'),
-  subscribe: () => screen.getByRole('dialog', { name: FEED_WORDS.open }),
-  subscribeRefused: () => screen.getByText(FEED_WORDS.copyRefused),
-  resetLink: () => screen.getByRole('dialog', { name: FEED_WORDS.confirmTitle }),
+  subscribe: () => screen.getByRole('dialog', { name: F.open }),
+  subscribeRefused: () => screen.getByText(F.copyRefused),
+  resetLink: () => screen.getByRole('dialog', { name: F.confirmTitle }),
   needsMenu: () =>
-    screen.getByRole('menuitemradio', { name: CAL_WORDS.showNeedsYou, checked: true }),
+    screen.getByRole('menuitemradio', { name: W.showNeedsYou, checked: true }),
   needsMonth: () =>
     screen.getByRole('link', { name: /^Agree the toasts, / }).querySelector('.cal-late-mark'),
   needsDay: () =>
     within(screen.getByRole('complementary', { name: 'Tuesday, Nov 3' })).getAllByRole('link'),
   needsAgenda: () =>
     screen.getByRole('heading', { level: 2, name: 'Today, Tuesday, Nov 3' }) &&
-    screen.getByText(CAL_WORDS.emptyNeedsMonth('December 2026')),
-  needsEmptyMonth: () => screen.getByText(CAL_WORDS.emptyNeedsMonth('December 2026')),
-  needsEmptyDay: () => screen.getByText(CAL_WORDS.emptyNeedsDay),
+    screen.getByText(W.emptyNeedsMonth('December 2026')),
+  needsEmptyMonth: () => screen.getByText(W.emptyNeedsMonth('December 2026')),
+  needsEmptyDay: () => screen.getByText(W.emptyNeedsDay),
   needsReadOnly: () =>
-    screen.getByText(CAL_WORDS.emptyNeedsMonth('November 2026')) &&
-    screen.getByText(CAL_WORDS.emptyNeedsDay),
+    screen.getByText(W.emptyNeedsMonth('November 2026')) &&
+    screen.getByText(W.emptyNeedsDay),
   needsTodayEmpty: () =>
     screen.queryByRole('heading', { level: 2, name: 'Today, Tuesday, Nov 3' }) == null &&
     screen.getByRole('heading', { level: 2, name: 'Wednesday, Nov 4' }),
@@ -132,14 +163,14 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
   it('says it is loading, and a failed load offers Try again', SLOW, async () => {
     await calendar('loading');
 
-    expect(screen.getByText(CAL_WORDS.loading)).toBeDefined();
+    expect(screen.getByText(W.loading)).toBeDefined();
     expect(screen.getByRole('grid').getAttribute('aria-busy')).toBe('true');
 
     cleanup();
     await calendar('failed');
 
-    expect(within(screen.getByRole('alert')).getByText(CAL_WORDS.failed)).toBeDefined();
-    expect(screen.getByRole('button', { name: CAL_WORDS.retry })).toBeDefined();
+    expect(within(screen.getByRole('alert')).getByText(W.failed)).toBeDefined();
+    expect(screen.getByRole('button', { name: W.retry })).toBeDefined();
     expect(screen.queryByRole('grid')).toBeNull();
   });
 
@@ -191,7 +222,7 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
 
       fireEvent.click(day('2026-11-14'));
       expect(screen.getByRole('complementary', { name: 'Saturday, Nov 14' })).toBeDefined();
-      fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.close }));
+      fireEvent.click(screen.getByRole('button', { name: W.close }));
       expect(focused()).toBe('2026-11-14');
     },
   );
@@ -227,7 +258,7 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
     expect(events).toBe('desk-tag is-yes');
     expect(live).toHaveLength(2);
     expect(live.map((tag) => tag.className)).toEqual([events, events]);
-    expect(readFileSync(join(import.meta.dirname, 'calendar.css'), 'utf8')).not.toMatch(
+    expect(readFileSync(join(import.meta.dirname, '../components/calendar.css'), 'utf8')).not.toMatch(
       /\.is-yes\b/u,
     );
   });
@@ -248,17 +279,17 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
       screen.getAllByRole('link', { name: /^Adaeze & Tunde’s wedding starts, / }),
     ).not.toHaveLength(0);
 
-    fireEvent.click(screen.getByRole('button', { name: `Show: ${CAL_WORDS.showAll}` }));
+    fireEvent.click(screen.getByRole('button', { name: `Show: ${W.showAll}` }));
 
     const menu = screen.getByRole('menu');
 
     expect(document.activeElement).toBe(
-      within(menu).getByRole('menuitemradio', { name: CAL_WORDS.showAll }),
+      within(menu).getByRole('menuitemradio', { name: W.showAll }),
     );
 
-    fireEvent.click(within(menu).getByRole('menuitemradio', { name: CAL_WORDS.showEvents }));
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: W.showEvents }));
 
-    const show = screen.getByRole('button', { name: `Show: ${CAL_WORDS.showEvents}` });
+    const show = screen.getByRole('button', { name: `Show: ${W.showEvents}` });
 
     expect(screen.queryByRole('menu')).toBeNull();
     expect(document.activeElement).toBe(show);
@@ -271,7 +302,7 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
     await calendar('agenda');
 
     expect(screen.getByRole('heading', { level: 2, name: 'Today, Tuesday, Nov 3' })).toBeDefined();
-    expect(screen.getAllByText(CAL_WORDS.emptyDay).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(W.emptyDay).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('radio', { name: 'View: Month' }));
     expect(screen.getByRole('grid')).toBeDefined();
@@ -289,9 +320,9 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
   });
 
   it.each([
-    [[CAL_WORDS.next], '2026-12-01'],
-    [[CAL_WORDS.previous], '2026-10-01'],
-    [[CAL_WORDS.previous, CAL_WORDS.next], TODAY],
+    [[W.next], '2026-12-01'],
+    [[W.previous], '2026-10-01'],
+    [[W.previous, W.next], TODAY],
   ])('enters Agenda after %j where Month enters, on %s', SLOW, async (names, first) => {
     await calendar('agenda');
     for (const name of names) fireEvent.click(screen.getByRole('button', { name }));
@@ -308,7 +339,7 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
     async () => {
       await calendar('agenda');
       for (let step = 0; step < 3; step += 1) {
-        fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.next }));
+        fireEvent.click(screen.getByRole('button', { name: W.next }));
       }
 
       const stop = entered();
@@ -321,8 +352,8 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
 
   it('puts Today in Agenda on today’s heading, then Tab on its first row', SLOW, async () => {
     await calendar('agenda');
-    fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.next }));
-    fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.today }));
+    fireEvent.click(screen.getByRole('button', { name: W.next }));
+    fireEvent.click(screen.getByRole('button', { name: W.today }));
 
     expect(document.activeElement).toBe(
       screen.getByRole('heading', { level: 2, name: 'Today, Tuesday, Nov 3' }),
@@ -338,9 +369,9 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
   it('keeps a Today press with no list from taking the focus later', SLOW, async () => {
     await calendar('failed');
     fireEvent.click(screen.getByRole('radio', { name: 'View: Agenda' }));
-    fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.today }));
+    fireEvent.click(screen.getByRole('button', { name: W.today }));
     fireEvent.click(screen.getByRole('radio', { name: 'View: Month' }));
-    fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.retry }));
+    fireEvent.click(screen.getByRole('button', { name: W.retry }));
     fireEvent.click(screen.getByRole('radio', { name: 'View: Agenda' }));
 
     expect(screen.getByRole('heading', { level: 2, name: 'Today, Tuesday, Nov 3' })).toBeDefined();
@@ -367,9 +398,9 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
   });
 
   it.each([
-    [[CAL_WORDS.next], '2026-12-01'],
-    [[CAL_WORDS.previous], '2026-10-01'],
-    [[CAL_WORDS.next, CAL_WORDS.today], TODAY],
+    [[W.next], '2026-12-01'],
+    [[W.previous], '2026-10-01'],
+    [[W.next, W.today], TODAY],
   ])('enters Month after %j on %s, and its keys work from there', SLOW, async (names, at) => {
     await calendar();
     for (const name of names) fireEvent.click(screen.getByRole('button', { name }));
@@ -399,15 +430,15 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
   it('opens Subscribe as a dialog and gives focus back on Escape', SLOW, async () => {
     await calendar();
 
-    const subscribe = screen.getByRole('button', { name: FEED_WORDS.open });
+    const subscribe = screen.getByRole('button', { name: F.open });
 
     fireEvent.click(subscribe);
 
-    const dialog = screen.getByRole('dialog', { name: FEED_WORDS.open });
+    const dialog = screen.getByRole('dialog', { name: F.open });
 
-    expect(within(dialog).getByRole('textbox', { name: FEED_WORDS.linkLabel })).toBeDefined();
-    fireEvent.click(within(dialog).getByRole('button', { name: FEED_WORDS.openInApp }));
-    expect(within(dialog).getByText(FEED_WORDS.openedInApp)).toBeDefined();
+    expect(within(dialog).getByRole('textbox', { name: F.linkLabel })).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: F.openInApp }));
+    expect(within(dialog).getByText(F.openedInApp)).toBeDefined();
 
     key('Escape');
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -417,32 +448,32 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
   it('selects the link when the copy is refused', SLOW, async () => {
     await calendar('subscribeRefused');
 
-    const dialog = screen.getByRole('dialog', { name: FEED_WORDS.open });
-    const link = within(dialog).getByRole('textbox', { name: FEED_WORDS.linkLabel });
+    const dialog = screen.getByRole('dialog', { name: F.open });
+    const link = within(dialog).getByRole('textbox', { name: F.linkLabel });
 
-    expect(within(dialog).getByRole('alert').textContent).toBe(FEED_WORDS.copyRefused);
+    expect(within(dialog).getByRole('alert').textContent).toBe(F.copyRefused);
     expect(document.activeElement).toBe(link);
 
-    fireEvent.click(within(dialog).getByRole('button', { name: FEED_WORDS.copy }));
-    expect(await within(dialog).findByText(FEED_WORDS.copyRefused)).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: F.copy }));
+    expect(await within(dialog).findByText(F.copyRefused)).toBeDefined();
   });
 
   it('asks before it resets the link, and Keep this link changes nothing', SLOW, async () => {
     await calendar('resetLink');
 
-    let dialog = screen.getByRole('dialog', { name: FEED_WORDS.confirmTitle });
+    let dialog = screen.getByRole('dialog', { name: F.confirmTitle });
 
-    fireEvent.click(within(dialog).getByRole('button', { name: FEED_WORDS.keep }));
-    dialog = screen.getByRole('dialog', { name: FEED_WORDS.open });
+    fireEvent.click(within(dialog).getByRole('button', { name: F.keep }));
+    dialog = screen.getByRole('dialog', { name: F.open });
     expect(document.activeElement).toBe(
-      within(dialog).getByRole('button', { name: FEED_WORDS.resetOpen }),
+      within(dialog).getByRole('button', { name: F.resetOpen }),
     );
 
-    fireEvent.click(within(dialog).getByRole('button', { name: FEED_WORDS.resetOpen }));
-    fireEvent.click(screen.getByRole('button', { name: FEED_WORDS.reset }));
-    expect(screen.getByText(FEED_WORDS.newLink)).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: F.resetOpen }));
+    fireEvent.click(screen.getByRole('button', { name: F.reset }));
+    expect(await screen.findByText(F.newLink)).toBeDefined();
     expect(
-      (screen.getByRole('textbox', { name: FEED_WORDS.linkLabel }) as HTMLTextAreaElement).value,
+      (screen.getByRole('textbox', { name: F.linkLabel }) as HTMLTextAreaElement).value,
     ).toMatch(/Xc7Rt2LwQ9mB4kZp1VyN8sHd3JfGe6TuA0oKi5bWnEq\.ics$/);
   });
 
@@ -450,7 +481,7 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
     open('/demo/events/evt-ireti-2/dates');
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: CAL_WORDS.allDates }, WAIT),
+      await screen.findByRole('heading', { level: 1, name: W.allDates }, WAIT),
     ).toBeDefined();
     expect(screen.getByText('Ireti at 40 starts')).toBeDefined();
   });
@@ -460,23 +491,23 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
     SLOW,
     async () => {
       await calendar();
-      fireEvent.click(screen.getByRole('button', { name: `Show: ${CAL_WORDS.showAll}` }));
+      fireEvent.click(screen.getByRole('button', { name: `Show: ${W.showAll}` }));
 
       const choices = within(screen.getByRole('menu')).getAllByRole('menuitemradio');
 
       expect(choices.map((one) => one.textContent)).toEqual([
-        CAL_WORDS.showAll,
-        CAL_WORDS.showEvents,
-        CAL_WORDS.showNeedsYou,
+        W.showAll,
+        W.showEvents,
+        W.showNeedsYou,
       ]);
       fireEvent.click(choices[2] as HTMLElement);
 
-      const show = screen.getByRole('button', { name: `Show: ${CAL_WORDS.showNeedsYou}` });
+      const show = screen.getByRole('button', { name: `Show: ${W.showNeedsYou}` });
 
-      expect(show.textContent).toBe(CAL_WORDS.showNeedsYou);
+      expect(show.textContent).toBe(W.showNeedsYou);
       expect(show.className).toContain('is-on');
       expect(document.activeElement).toBe(show);
-      expect(screen.getByText(CAL_WORDS.emptyNeedsMonth('November 2026'))).toBeDefined();
+      expect(screen.getByText(W.emptyNeedsMonth('November 2026'))).toBeDefined();
     },
   );
 
@@ -494,9 +525,9 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
       expect.stringMatching(/^Pay the band’s balance, Adaeze & Tunde’s wedding, [^,]+$/),
     ]);
     expect(rows[0]?.textContent).toContain('Adaeze & Tunde’s wedding');
-    expect(rows[0]?.textContent).toContain(CAL_WORDS.overdue);
-    expect(rows[0]?.textContent).toContain(CAL_WORDS.you);
-    expect(rows[1]?.textContent).not.toContain(CAL_WORDS.overdue);
+    expect(rows[0]?.textContent).toContain(W.overdue);
+    expect(rows[0]?.textContent).toContain(W.you);
+    expect(rows[1]?.textContent).not.toContain(W.overdue);
     expect(cake?.textContent).toContain('Confirm the cake');
     expect(cake?.textContent).not.toContain('wedding');
     expect(cake?.getAttribute('aria-label')).not.toMatch(/wedding|overdue/);
@@ -511,8 +542,8 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
 
       expect(document.querySelectorAll('.cal-grid .cal-late')).not.toHaveLength(0);
 
-      fireEvent.click(screen.getByRole('button', { name: `Show: ${CAL_WORDS.showNeedsYou}` }));
-      fireEvent.click(screen.getByRole('menuitemradio', { name: CAL_WORDS.showAll }));
+      fireEvent.click(screen.getByRole('button', { name: `Show: ${W.showNeedsYou}` }));
+      fireEvent.click(screen.getByRole('menuitemradio', { name: W.showAll }));
 
       const toasts = screen.getByRole('link', { name: /^Agree the toasts, / });
 
@@ -520,8 +551,8 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
       expect(toasts.querySelector('.cal-you')).not.toBeNull();
       expect(document.querySelectorAll('.cal-grid .cal-late')).toHaveLength(0);
 
-      fireEvent.click(screen.getByRole('button', { name: `Show: ${CAL_WORDS.showAll}` }));
-      fireEvent.click(screen.getByRole('menuitemradio', { name: CAL_WORDS.showEvents }));
+      fireEvent.click(screen.getByRole('button', { name: `Show: ${W.showAll}` }));
+      fireEvent.click(screen.getByRole('menuitemradio', { name: W.showEvents }));
 
       expect(screen.queryByRole('link', { name: /^Agree the toasts, / })).toBeNull();
     },
@@ -529,14 +560,14 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
 
   it('says neither empty line while loading or failed', SLOW, async () => {
     await calendar('failed');
-    fireEvent.click(screen.getByRole('button', { name: `Show: ${CAL_WORDS.showAll}` }));
-    fireEvent.click(screen.getByRole('menuitemradio', { name: CAL_WORDS.showNeedsYou }));
+    fireEvent.click(screen.getByRole('button', { name: `Show: ${W.showAll}` }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: W.showNeedsYou }));
 
-    const quiet = CAL_WORDS.emptyNeedsMonth('November 2026');
+    const quiet = W.emptyNeedsMonth('November 2026');
 
     expect(screen.queryByText(quiet)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.retry }));
-    expect(screen.getByText(CAL_WORDS.loading)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: W.retry }));
+    expect(screen.getByText(W.loading)).toBeDefined();
     expect(screen.queryByText(quiet)).toBeNull();
     expect(await screen.findByText(quiet, {}, WAIT)).toBeDefined();
   });
@@ -546,8 +577,8 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
     SLOW,
     async () => {
       await calendar('needsTodayEmpty');
-      fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.next }));
-      fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.today }));
+      fireEvent.click(screen.getByRole('button', { name: W.next }));
+      fireEvent.click(screen.getByRole('button', { name: W.today }));
 
       expect(document.activeElement).toBe(
         screen.getByRole('heading', { level: 2, name: 'Wednesday, Nov 4' }),
@@ -559,22 +590,22 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
   it('puts Today in Agenda on the empty line when the month needs nothing', SLOW, async () => {
     await calendar('needsReadOnly');
     fireEvent.click(screen.getByRole('radio', { name: 'View: Agenda' }));
-    fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.today }));
+    fireEvent.click(screen.getByRole('button', { name: W.today }));
 
-    const quiet = CAL_WORDS.emptyNeedsMonth('November 2026');
+    const quiet = W.emptyNeedsMonth('November 2026');
 
     expect(document.activeElement?.textContent).toBe(quiet);
   });
 
   it('starts on Events and milestones again after a reload', SLOW, async () => {
     await calendar('needsMonth');
-    expect(screen.getByRole('button', { name: `Show: ${CAL_WORDS.showNeedsYou}` })).toBeDefined();
+    expect(screen.getByRole('button', { name: `Show: ${W.showNeedsYou}` })).toBeDefined();
 
     cleanup();
     open('/demo/calendar');
     await screen.findByRole('heading', { level: 1, name: 'Calendar' }, WAIT);
 
-    expect(screen.getByRole('button', { name: `Show: ${CAL_WORDS.showAll}` })).toBeDefined();
+    expect(screen.getByRole('button', { name: `Show: ${W.showAll}` })).toBeDefined();
   });
 
   it('carries a row to its action, else its event’s All dates', SLOW, async () => {

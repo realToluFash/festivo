@@ -1,34 +1,44 @@
-import { calendarDays, firstDayOfWeek, keptCalendarPlace, wallDay } from '@soirely/domain';
+import {
+  calendarDays,
+  firstDayOfWeek,
+  keptCalendarPlace,
+  readCalendarPlace,
+  wallDay,
+} from '@soirely/domain';
+import i18next from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import {
   type Bar,
-  type Item,
-  type Listed,
   type Week,
-  CAL_WORDS,
-  SHOWS,
-  TODAY,
   agendaOf,
   agendaStop,
-  barLabel,
-  barWords,
-  calendarStart,
-  calendarStateOf,
-  dayCountOf,
-  dayLabel,
+  barLabel as barLabelIn,
+  barWords as barWordsIn,
+  dayLabel as dayLabelIn,
   eased,
   fitted,
-  itemLink,
-  listedOf,
-  markLabel,
-  milestonesOf,
+  markLabel as markLabelIn,
   movedDay,
   pinnedOf,
-  rowLine,
+  rowLine as rowLineIn,
   topsOf,
   weekStart,
   weeksOf,
+} from '../components/calendarWeeks.ts';
+import {
+  type Item,
+  type Listed,
+  CAL_WORDS,
+  READER_ZONE,
+  SHOWS,
+  TODAY,
+  calendarStart,
+  calendarStateOf,
+  dayCountOf,
+  itemLink,
+  listedOf,
+  milestonesOf,
 } from './calendar.ts';
 import {
   daysFor,
@@ -42,6 +52,16 @@ import { CLOCKS, REUNION, sampleEvent, sampleEvents } from './events.ts';
 import { meshFor } from '../mesh.ts';
 
 const EN = 'en-US';
+const t = i18next.t.bind(i18next);
+const dayLabel = (day: string, count: number, locale: string) =>
+  dayLabelIn(t, day, TODAY, count, locale);
+const barLabel = (item: Parameters<typeof barLabelIn>[1], locale: string) =>
+  barLabelIn(t, item, READER_ZONE, locale);
+const barWords = (event: Parameters<typeof barWordsIn>[1]) => barWordsIn(t, event);
+const markLabel = (item: Parameters<typeof markLabelIn>[1], locale: string) =>
+  markLabelIn(t, item, READER_ZONE, locale);
+const rowLine = (item: Parameters<typeof rowLineIn>[1], locale: string) =>
+  rowLineIn(t, item, READER_ZONE, locale);
 const NOVEMBER = { year: 2026, month: 11 };
 const listed = listedOf(sampleEvents(), CLOCKS.rest);
 const all = calendarDays(listed, 'all');
@@ -100,7 +120,7 @@ describe('the Calendar in B · A · Weeks as lanes (sc-30329)', () => {
     expect(barOf(week, 'evt-gala-4')).toMatchObject({ row: 2, from: 6, span: 1 });
     expect(saturday).toMatchObject({ day: '2026-11-14', count: 4, more: 2 });
     expect(saturday?.keys).toEqual(['event|evt-ireti-2', 'event|evt-gala-4']);
-    expect(CAL_WORDS.more(2)).toBe('+2 more');
+    expect(t('calendar.moreItems', { count: 2 })).toBe('+2 more');
     expect(week.height).toBe(141);
   });
 
@@ -295,9 +315,9 @@ describe('the Calendar in B · A · Weeks as lanes (sc-30329)', () => {
 
     const kept = keptCalendarPlace({ view: 'agenda', month: { year: 2026, month: 12 } });
 
-    expect(calendarStart(null, kept)).toMatchObject({ view: 'agenda', at: '2026-12-01' });
-    expect(calendarStart('populated', kept)).toMatchObject({ view: 'month', at: TODAY });
-    expect(calendarStart(null, 'not json')).toMatchObject({ view: 'month', at: TODAY });
+    expect(calendarStart(null, readCalendarPlace(kept))).toMatchObject({ view: 'agenda', at: '2026-12-01' });
+    expect(calendarStart('populated', readCalendarPlace(kept))).toMatchObject({ view: 'month', at: TODAY });
+    expect(calendarStart(null, readCalendarPlace('not json'))).toMatchObject({ view: 'month', at: TODAY });
   });
 
   it('eases the scroll as main’s motionEase', () => {
@@ -325,7 +345,7 @@ describe('Only what needs you, the Calendar’s third Show (sc-32803)', () => {
 
     const kept = keptCalendarPlace({ view: 'agenda', month: NOVEMBER });
 
-    expect(calendarStart(null, kept).show).toBe('all');
+    expect(calendarStart(null, readCalendarPlace(kept)).show).toBe('all');
   });
 
   it('lists the You milestones the reader can change, by time then title', () => {
@@ -454,14 +474,14 @@ describe('Only what needs you, the Calendar’s third Show (sc-32803)', () => {
     expect(isOverdue(toasts.milestone, CLOCKS.rest)).toBe(true);
     expect(isOverdue(cake.milestone, CLOCKS.rest)).toBe(true);
     expect(isOverdue(band.milestone, CLOCKS.rest)).toBe(false);
-    expect(needsLabel(cake, EN, CLOCKS.rest)).toBe(
+    expect(needsLabel(t, cake, EN, CLOCKS.rest)).toBe(
       CAL_WORDS.needsRowLabelOverdue(
         'Confirm the cake',
         'Adaeze & Tunde’s wedding',
         rowLine(cake, EN),
       ),
     );
-    expect(needsLabel(band, EN, CLOCKS.rest)).toBe(
+    expect(needsLabel(t, band, EN, CLOCKS.rest)).toBe(
       CAL_WORDS.needsRowLabel(
         'Pay the band’s balance',
         'Adaeze & Tunde’s wedding',

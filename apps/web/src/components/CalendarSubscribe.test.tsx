@@ -1,11 +1,11 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
-import { PHONE_WIDTH } from '../../../phoneWidth.ts';
-import { __setSessionState, type Session } from '../../../session.ts';
-import { membership } from '../../../test-memberships.ts';
-import { routes } from '../../index.tsx';
+import { PHONE_WIDTH } from '../phoneWidth.ts';
+import { routes } from '../routes/index.tsx';
+import { __setSessionState, type Session } from '../session.ts';
+import { membership } from '../test-memberships.ts';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -67,8 +67,8 @@ async function openPanel(): Promise<HTMLElement> {
   return screen.getByRole('dialog', { name: 'Subscribe in your calendar app' });
 }
 
-function linkField(panel: HTMLElement): HTMLInputElement {
-  return within(panel).getByRole('textbox', { name: 'Your private link' }) as HTMLInputElement;
+function linkField(panel: HTMLElement): HTMLTextAreaElement {
+  return within(panel).getByRole('textbox', { name: 'Your private link' }) as HTMLTextAreaElement;
 }
 
 afterEach(() => {
@@ -136,7 +136,7 @@ describe('Subscribe in your calendar app (sc-3626)', () => {
     fireEvent.click(within(panel).getByRole('button', { name: 'Copy link' }));
 
     expect((await within(panel).findByRole('alert')).textContent).toMatch(/press Ctrl\+C/);
-    expect(document.activeElement).toBe(linkField(panel));
+    await waitFor(() => expect(document.activeElement).toBe(linkField(panel)));
   });
 
   it('resets the link only once confirmed, and shows the new one', async () => {
@@ -146,11 +146,11 @@ describe('Subscribe in your calendar app (sc-3626)', () => {
     await within(panel).findByDisplayValue(`http://api.test${OLD}`);
 
     fireEvent.click(within(panel).getByRole('button', { name: 'Reset link…' }));
-    const confirm = screen.getByRole('alertdialog', { name: 'Reset your link?' });
-    fireEvent.click(within(confirm).getByRole('button', { name: 'Reset link' }));
+    expect(screen.getByRole('dialog', { name: 'Reset your link?' })).toBe(panel);
+    fireEvent.click(within(panel).getByRole('button', { name: 'Reset link' }));
 
     expect(await within(panel).findByDisplayValue(`http://api.test${NEW}`)).toBeTruthy();
-    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('dialog', { name: 'Subscribe in your calendar app' })).toBe(panel);
     expect(within(panel).getByText(/New link made\. The old one has stopped working/)).toBeTruthy();
     expect(sent.filter((line) => line.startsWith('POST'))).toEqual([
       'POST /api/orgs/org_1/calendar-feed/reset',
@@ -165,19 +165,19 @@ describe('Subscribe in your calendar app (sc-3626)', () => {
     await within(panel).findByDisplayValue(`http://api.test${OLD}`);
 
     fireEvent.click(within(panel).getByRole('button', { name: 'Reset link…' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Keep this link' }));
+    fireEvent.click(within(panel).getByRole('button', { name: 'Keep this link' }));
 
-    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('dialog', { name: 'Subscribe in your calendar app' })).toBe(panel);
     expect(within(panel).getByRole('status').textContent).toBe('Link unchanged.');
     expect(sent.some((line) => line.startsWith('POST'))).toBe(false);
 
     fireEvent.click(within(panel).getByRole('button', { name: 'Reset link…' }));
-    const confirm = screen.getByRole('alertdialog', { name: 'Reset your link?' });
-    fireEvent.click(within(confirm).getByRole('button', { name: 'Reset link' }));
+    fireEvent.click(within(panel).getByRole('button', { name: 'Reset link' }));
 
-    expect((await within(confirm).findByRole('alert')).textContent).toMatch(
+    expect((await within(panel).findByRole('alert')).textContent).toMatch(
       /Not reset\. Your link is unchanged\. Try again\.$/,
     );
+    fireEvent.click(within(panel).getByRole('button', { name: 'Keep this link' }));
     expect(linkField(panel).value).toBe(`http://api.test${OLD}`);
   });
 
