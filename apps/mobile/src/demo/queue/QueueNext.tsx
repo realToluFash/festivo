@@ -44,10 +44,10 @@ export function WaiterNext({ first }: { first: QueueState }) {
   const p = next == null ? null : s.places[next.place];
   const moved = p != null && s.moved?.place === next?.place && p.trayOf === '';
   const two = s.on.length > 1;
-  const floorId = s.on[0] ?? 'A';
-  const floor = s.queues[floorId];
+  const floors = waiterSections(s).map((id) => ({ id, names: s.queues[id] }));
   const finish = trayToFinish(s);
-  const tablesLine = floor.length === 1 ? '1 table,' : `${floor.length} tables,`;
+  const tables = floors.reduce((n, f) => n + f.names.length, 0);
+  const tablesLine = tables === 1 ? '1 table,' : `${tables} tables,`;
   const head = `${onWords(s.on)} · Mains · ${WAITER}`;
   useReadOut(s.line);
 
@@ -74,7 +74,7 @@ export function WaiterNext({ first }: { first: QueueState }) {
         <Text size={15} weight="medium" style={styles.secondary}>
           {tab === 'next'
             ? head
-            : `${sectionOf(floorId).name} · ${tablesLine} in the queue’s order`}
+            : `${andList(floors.map((f) => sectionOf(f.id).name))} · ${tablesLine} in the queue’s order`}
         </Text>
         {s.line !== '' && (
           <View style={styles.line} testID="next.line">
@@ -152,40 +152,47 @@ export function WaiterNext({ first }: { first: QueueState }) {
             </View>
           )
         ) : (
-          <View style={styles.card}>
-            {floor.map((name, i) => {
-              const place = s.places[name];
-              if (place == null) return null;
-              const all = isServed(place);
-              const isMoved = s.moved?.place === name && place.trayOf === '';
-              const word = all
-                ? 'All served'
-                : place.trayOf !== ''
-                  ? 'Now'
-                  : next?.place === name
-                    ? 'Up next'
-                    : 'Later';
-              return (
-                <View key={name} style={[styles.floorRow, i > 0 && styles.sep]}>
-                  <View style={styles.grow}>
-                    <Text size={16} weight="semibold">
-                      {name}
-                    </Text>
-                    <Text size={14} style={isMoved ? styles.accent : styles.secondary}>
-                      {`${isMoved && s.moved != null ? `Moved up by ${s.moved.by} · ` : ''}${place.served} of ${place.total} served`}
-                    </Text>
+          floors.map(({ id, names }) => (
+            <View key={id} style={styles.card} testID={`next.floor.${id}`}>
+              {two && (
+                <Text size={13} weight="semibold" style={styles.kicker}>
+                  {sectionOf(id).name.toUpperCase()}
+                </Text>
+              )}
+              {names.map((name, i) => {
+                const place = s.places[name];
+                if (place == null) return null;
+                const all = isServed(place);
+                const isMoved = s.moved?.place === name && place.trayOf === '';
+                const word = all
+                  ? 'All served'
+                  : place.trayOf !== ''
+                    ? 'Now'
+                    : next?.place === name
+                      ? 'Up next'
+                      : 'Later';
+                return (
+                  <View key={name} style={[styles.floorRow, i > 0 && styles.sep]}>
+                    <View style={styles.grow}>
+                      <Text size={16} weight="semibold">
+                        {name}
+                      </Text>
+                      <Text size={14} style={isMoved ? styles.accent : styles.secondary}>
+                        {`${isMoved && s.moved != null ? `Moved up by ${s.moved.by} · ` : ''}${place.served} of ${place.total} served`}
+                      </Text>
+                    </View>
+                    <View
+                      style={[styles.word, (word === 'Now' || word === 'Up next') && styles.wordOn]}
+                    >
+                      <Text size={13} weight="semibold">
+                        {word}
+                      </Text>
+                    </View>
                   </View>
-                  <View
-                    style={[styles.word, (word === 'Now' || word === 'Up next') && styles.wordOn]}
-                  >
-                    <Text size={13} weight="semibold">
-                      {word}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
+                );
+              })}
+            </View>
+          ))
         )}
         <View style={styles.tabs} accessibilityRole="tablist">
           {(['next', 'floor'] as const).map((t) => (

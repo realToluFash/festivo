@@ -97,7 +97,7 @@ export function ModeChoice({
             onPress={() => onPick(m)}
             accessibilityRole="radio"
             accessibilityState={{ checked: on }}
-            style={[styles.segment, { minHeight: side - 4 }, on && styles.segmentOn]}
+            style={[styles.segment, { minHeight: side }, on && styles.segmentOn]}
             testID={`team.mode.${m}`}
           >
             <Text

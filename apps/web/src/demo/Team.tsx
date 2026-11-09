@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router';
 
 import { Toast } from '../components/Toast.tsx';
 import { Glyph } from './Queue.tsx';
+import { OFFLINE_GLYPH } from './queue.ts';
 import {
   CHOOSE_LINE,
   EMPTY_LINE,
@@ -45,12 +46,6 @@ const AREAS = ['Overview', 'Guests', 'Seating', 'Menu', 'Service', 'Messages', '
 const GROUPS: readonly { title: string; kind: PlaceKind }[] = [
   { title: 'Sections', kind: 'section' },
   { title: 'Kitchen', kind: 'kitchen' },
-];
-const OFFLINE_GLYPH = [
-  'M2 2l20 20',
-  'M8.5 16.5a5 5 0 0 1 7 0',
-  'M5 13a10 10 0 0 1 5.24-2.76',
-  'M12 20h.01',
 ];
 const ARROW_GLYPH = ['M5 12h14', 'm12 5 7 7-7 7'];
 const WARN_GLYPH = [

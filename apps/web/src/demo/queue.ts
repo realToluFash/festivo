@@ -272,6 +272,15 @@ function refused(s: QueueState): QueueState {
 }
 
 export const OFFLINE_LINE = 'Changing the queue needs a connection.';
+export const OFFLINE_GLYPH = [
+  'M2 2l20 20',
+  'M8.5 16.5a5 5 0 0 1 7 0',
+  'M2 8.82a15 15 0 0 1 4.17-2.65',
+  'M10.66 5c4.01-.36 8.14.9 11.34 3.76',
+  'M16.85 11.25a10 10 0 0 1 2.22 1.68',
+  'M5 13a10 10 0 0 1 5.24-2.76',
+  'M12 20h.01',
+];
 
 /** Bring forward, Move up or Move down, on the queue as the server has it. */
 export function move(s0: QueueState, id: SectionId, name: string, control: Control): QueueState {

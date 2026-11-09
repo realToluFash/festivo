@@ -1,4 +1,6 @@
-import { fresh as freshQueue } from './queue.ts';
+import { andList, fresh as freshQueue } from './queue.ts';
+
+export { andList };
 
 /** Team (sc-36034, Team.dc.html on page 35): who is on each section and kitchen station tonight, and the floor lead's move between them. */
 
@@ -146,11 +148,6 @@ export const KITCHEN_TRAYS: readonly KitchenTray[] = [
     when: 'Filling at the Pass',
   },
 ];
-
-export function andList(xs: readonly string[]): string {
-  if (xs.length <= 1) return xs[0] ?? '';
-  return `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1] ?? ''}`;
-}
 
 export function firstName(name: string): string {
   return name.split(' ')[0] ?? name;
