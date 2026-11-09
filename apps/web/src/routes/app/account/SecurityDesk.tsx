@@ -97,6 +97,7 @@ export function SecurityDesk() {
   const locale = dateLocale();
   const title = useRef<HTMLHeadingElement>(null);
   const saidLine = useRef<HTMLParagraphElement | null>(null);
+  const lineHeld = useRef(false);
   const { layers, covered, setHost } = useDeskLayers();
   const [twoFactor, setTwoFactor] = useState<Load<TwoFactorStatus>>(null);
   const [devices, setDevices] = useState<Load<DeviceSession[]>>(null);
@@ -114,6 +115,7 @@ export function SecurityDesk() {
   const [ask, setAsk] = useState<AskKind | null>(null);
   const [acting, setActing] = useState(false);
   const [dialog, setDialog] = useState<Opened | null>(() => returnedProof(returned));
+  const [opensOnLine] = useState(() => linksOnArrival(returned));
   const here = useSignOut(() => navigate('/sign-in'));
   const ways = waysOf(session.hasPassword, session.providers);
   const rules = rulesOf(session.organisations);
@@ -134,7 +136,11 @@ export function SecurityDesk() {
   useEffect(() => {
     let live = true;
     watch(api.twoFactorStatus()).then(
-      (now) => live && setTwoFactor(now),
+      (now) => {
+        if (!live) return;
+        lineHeld.current = saidLine.current != null && document.activeElement === saidLine.current;
+        setTwoFactor(now);
+      },
       (error: unknown) =>
         live && setTwoFactor((was) => (was != null && keepsWhatLoaded(error) ? was : 'failed')),
     );
@@ -160,6 +166,13 @@ export function SecurityDesk() {
   useEffect(() => {
     if (said != null) saidLine.current?.focus();
   }, [said]);
+
+  // The alone line unmounts as the card arrives, so its copy in the card takes focus it held.
+  useEffect(() => {
+    if (status == null || !lineHeld.current) return;
+    lineHeld.current = false;
+    saidLine.current?.focus();
+  }, [status]);
 
   // From an effect, so it lands after the closing Ask has handed focus back to its opener.
   useEffect(() => {
@@ -461,7 +474,7 @@ export function SecurityDesk() {
             <SectionFailed
               title={t('twoFactorCard.failedTitle')}
               line={t('twoFactorCard.failedBody')}
-              announce={factorTry === 0}
+              announce={factorTry === 0 && !opensOnLine}
               onRetry={() => {
                 setTwoFactor(null);
                 rereadFactor();
@@ -807,6 +820,11 @@ function returnRefusal(
   return back.purpose.kind === 'signOutOthers'
     ? { row: 'everywhere', message: t('devices.everywhereProviderFailed', { provider }) }
     : { row: back.provider, message: t('waysCard.providerFailed', { provider }) };
+}
+
+/** A link back from the provider with the proof still held: the page opens on its done line. */
+function linksOnArrival(back: ProviderReturn | null): boolean {
+  return back != null && !('failed' in back) && back.purpose.kind === 'link' && heldProof() != null;
 }
 
 /** Confirm it's you, opened again on the provider's answer it went to fetch, or when a link came back after the proof ran out. */

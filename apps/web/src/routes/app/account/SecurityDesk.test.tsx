@@ -222,6 +222,7 @@ describe('Security at a desk (sc-30411)', () => {
     openSecurity();
 
     expect(await screen.findByText('Two-factor did not load')).toBeDefined();
+    expect(section('Two-factor authentication').getByRole('alert')).toBeDefined();
     expect(screen.queryByText('Two-factor is off')).toBeNull();
     expect(screen.queryByText('Two-factor is on')).toBeNull();
 
@@ -627,6 +628,7 @@ describe('linking and unlinking at a desk', () => {
     const words = 'Google is linked. We emailed your verified addresses to say so.';
     const line = await screen.findByText(words);
     expect(await screen.findByText('Two-factor did not load')).toBeDefined();
+    expect(section('Two-factor authentication').queryByRole('alert')).toBeNull();
     expect(screen.queryByText('Two-factor is on')).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(line));
 
@@ -637,6 +639,75 @@ describe('linking and unlinking at a desk', () => {
 
     expect(await screen.findByText('Two-factor is on')).toBeDefined();
     expect(screen.getAllByText(words)).toHaveLength(1);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByText(words)));
+  });
+
+  it('reads no two-factor failure while the link is still on its way', async () => {
+    holdingProof();
+    returnedFrom({ kind: 'link' });
+    let linked: (answer: Response) => void = () => {};
+    answering({
+      'GET /api/auth/two-factor': () => json({ title: 'Down' }, 500),
+      'POST /api/auth/providers/google': () =>
+        new Promise<Response>((resolve) => {
+          linked = resolve;
+        }),
+      'GET /api/auth/me': () => json({ ...ME, providers: [{ provider: 'google', email: GMAIL }] }),
+    });
+    openSecurity();
+
+    expect(await screen.findByText('Two-factor did not load')).toBeDefined();
+    expect(section('Two-factor authentication').queryByRole('alert')).toBeNull();
+
+    linked(json({ provider: 'google', email: GMAIL }, 201));
+    expect(
+      await screen.findByText('Google is linked. We emailed your verified addresses to say so.'),
+    ).toBeDefined();
+    expect(section('Two-factor authentication').queryByRole('alert')).toBeNull();
+  });
+
+  it("reads the two-factor failure when the proof ran out and Confirm it's you is cancelled", async () => {
+    returnedFrom({ kind: 'link' });
+    answering({ 'GET /api/auth/two-factor': () => json({ title: 'Down' }, 500) });
+    openSecurity();
+
+    await screen.findByRole('dialog', { name: "Confirm it's you" });
+    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: "Confirm it's you" })).toBeNull(),
+    );
+
+    expect(await screen.findByText('Two-factor did not load')).toBeDefined();
+    expect(section('Two-factor authentication').getByRole('alert')).toBeDefined();
+  });
+
+  it('leaves focus where the user moved it when the card arrives', async () => {
+    holdingProof();
+    returnedFrom({ kind: 'link' });
+    let fails = true;
+    answering({
+      'GET /api/auth/two-factor': () =>
+        fails ? json({ title: 'Down' }, 500) : json({ on: true, recoveryCodesLeft: 8 }),
+      'POST /api/auth/providers/google': () => json({ provider: 'google', email: GMAIL }, 201),
+      'GET /api/auth/me': () => json({ ...ME, providers: [{ provider: 'google', email: GMAIL }] }),
+    });
+    openSecurity();
+
+    const line = await screen.findByText(
+      'Google is linked. We emailed your verified addresses to say so.',
+    );
+    await screen.findByText('Two-factor did not load');
+    await waitFor(() => expect(document.activeElement).toBe(line));
+    const title = screen.getByRole('heading', { level: 1, name: 'Security' });
+    title.focus();
+
+    fails = false;
+    fireEvent.click(
+      section('Two-factor authentication').getByRole('button', { name: 'Try again' }),
+    );
+
+    expect(await screen.findByText('Two-factor is on')).toBeDefined();
+    expect(document.activeElement).toBe(title);
   });
 
   it("refuses a Google account that is another Soirely account's, under its row", async () => {
@@ -799,6 +870,26 @@ describe('the devices at a desk', () => {
     expect(posts(sent)).toEqual([
       { call: 'POST /api/auth/sessions/others', body: { proof: 'held-proof', sessionId: HERE } },
     ]);
+  });
+
+  it('reads the first two-factor failure after the others were signed out while it loaded', async () => {
+    holdingProof();
+    let failed: (answer: Response) => void = () => {};
+    answering({
+      'GET /api/auth/two-factor': () =>
+        new Promise<Response>((resolve) => {
+          failed = resolve;
+        }),
+      'POST /api/auth/sessions/others': () => json({ signedOut: 1, thisDevice: false }),
+    });
+    openSecurity();
+
+    await everywhere();
+    expect(await screen.findByText('Your other device is signed out.')).toBeDefined();
+
+    failed(json({ title: 'Down' }, 500));
+    expect(await screen.findByText('Two-factor did not load')).toBeDefined();
+    expect(section('Two-factor authentication').getByRole('alert')).toBeDefined();
   });
 
   it('says nothing was signed out when it fails', async () => {
