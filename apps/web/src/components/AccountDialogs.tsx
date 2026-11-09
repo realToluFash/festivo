@@ -1,9 +1,4 @@
-import {
-  ApiError,
-  type Provider,
-  type ProviderSignInAttempt,
-  proofRefusal,
-} from '@soirely/api-client';
+import { type Provider, type ProviderSignInAttempt } from '@soirely/api-client';
 import {
   PROOF_MINUTES,
   type ZoneRow,
@@ -12,7 +7,6 @@ import {
   codeProblem,
   countryChoices,
   exactZone,
-  formatTimeOfDay,
   formerName,
   matchingZones,
   phoneLengthProblem,
@@ -31,10 +25,11 @@ import {
 } from '../accountPage.ts';
 import { type CodeSource, useCodeCheck } from '../codeCheck.ts';
 import { emailMessage } from '../formChecks.ts';
-import { currentLocale, dateLocale } from '../i18n/index.ts';
+import { currentLocale } from '../i18n/index.ts';
 import { offButton } from '../offButton.ts';
 import { codeChoice, phoneProblemMessage } from '../phoneProblem.ts';
 import { PROVIDER_NAMES, type ReturnPurpose, startProviderSignIn } from '../providerSignIn.ts';
+import { type ProveWith, useProving } from '../proving.ts';
 import { ExpiredCode } from './AccountParts.tsx';
 import { FieldError } from './FieldError.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -48,11 +43,6 @@ export interface Opening {
   tried?: boolean;
   discarding?: boolean;
 }
-
-export type ProveWith =
-  | { password: string }
-  | { provider: Provider; signIn: ProviderSignInAttempt }
-  | { pendingProof: string };
 
 const ZONES_SHOWN = 8;
 
@@ -459,30 +449,6 @@ export function AddPhoneDialog({
   );
 }
 
-type Refusal = { field: 'password' | 'code' | 'failed'; message: string };
-
-function provingRefusal(error: unknown, t: TFunction, providerName: string | null): Refusal {
-  const refusal = proofRefusal(error, providerName == null);
-
-  if (refusal.kind === 'trip')
-    return { field: 'failed', message: t('waysCard.providerRefused', { provider: providerName }) };
-  if (refusal.kind === 'limited')
-    return {
-      field: 'failed',
-      message:
-        refusal.until == null
-          ? t('passwordCard.pausedSoon')
-          : t('passwordCard.pausedBody', { time: formatTimeOfDay(refusal.until, dateLocale()) }),
-    };
-  if (refusal.kind === 'field')
-    return {
-      field: refusal.field,
-      message: refusal.field === 'password' ? t('waysCard.passwordWrong') : t('waysCard.codeWrong'),
-    };
-
-  return { field: 'failed', message: t('waysCard.failedBody') };
-}
-
 /** Confirm it's you before the address you sign in with changes: the password, or Google or Apple, then the code while two-factor is on. */
 export function ProveDialog({
   via,
@@ -506,80 +472,26 @@ export function ProveDialog({
   const { t } = useTranslation();
   const passwordRef = useRef<HTMLInputElement>(null);
   const codeRef = useRef<HTMLInputElement>(null);
-  const [signIn, setSignIn] = useState(returned);
-  const [expired, setExpired] = useState(false);
   const [password, setPassword] = useState(start?.password ?? '');
   const [code, setCode] = useState(start?.typed ?? '');
-  const [refusal, setRefusal] = useState<Refusal | null>(null);
-  const [checking, setChecking] = useState(false);
-  const [codeAsked, setCodeAsked] = useState(twoFactorOn);
-  const [vouched, setVouched] = useState<{ email: string | null } | null>(null);
-  // The API's kept proof once a sign-in waits for its code: Google's or Apple's is single-use (RFC 6749 §4.1.2).
-  const kept = useRef<string | null>(null);
-  const askPassword = via === 'password' && signIn == null;
-  const provider = via === 'password' || via == null ? null : via;
+  const proving = useProving({
+    via,
+    twoFactorOn,
+    returned,
+    prove,
+    onProved,
+    onSend: () => (outcome) => {
+      if (outcome.kind === 'code') window.requestAnimationFrame(() => codeRef.current?.focus());
+      if (outcome.kind === 'expired') setCode('');
+      if (outcome.kind === 'refused' && outcome.refusal.field !== 'failed')
+        (outcome.refusal.field === 'password' ? passwordRef : codeRef).current?.focus();
+    },
+  });
+  const { signIn, expired, refusal, setRefusal, checking, codeAsked, provider, askPassword } =
+    proving;
   const providerName = provider == null ? null : PROVIDER_NAMES[provider];
   const showsCode = codeAsked && (askPassword || signIn != null);
   const leaves = !askPassword && signIn == null && provider != null;
-
-  async function send(second: string | undefined): Promise<void> {
-    setChecking(true);
-
-    try {
-      const proof = await prove(
-        kept.current != null
-          ? { pendingProof: kept.current }
-          : signIn != null && provider != null
-            ? { provider, signIn }
-            : { password },
-        second,
-      );
-      onProved(proof);
-    } catch (error) {
-      setChecking(false);
-
-      if (error instanceof ApiError && error.is('two_factor_required')) {
-        if (signIn != null) {
-          kept.current = error.problem.pendingProof ?? kept.current;
-          const email = error.problem.providerEmail ?? null;
-          setVouched((now) => now ?? { email });
-        }
-        setCodeAsked(true);
-        window.requestAnimationFrame(() => codeRef.current?.focus());
-
-        return;
-      }
-
-      if (signIn != null && error instanceof ApiError && error.is('proof_required')) {
-        setSignIn(null);
-        kept.current = null;
-        setVouched(null);
-        setCode('');
-        setRefusal(null);
-        setExpired(true);
-
-        return;
-      }
-
-      if (signIn != null && error instanceof ApiError)
-        kept.current = error.problem.pendingProof ?? kept.current;
-      const refused = provingRefusal(error, t, signIn != null ? providerName : null);
-      setRefusal(refused);
-      if (refused.field === 'password') passwordRef.current?.focus();
-      if (refused.field === 'code') codeRef.current?.focus();
-    }
-  }
-
-  // Google's or Apple's sign-in is exchanged the moment it returns: the minute counts from it, not the code.
-  const exchanged = useRef(false);
-
-  useEffect(() => {
-    if (signIn == null || exchanged.current) return;
-    exchanged.current = true;
-    void send(undefined);
-    // Once, on arrival: what came back from the provider is taken then and never again.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   function go(): void {
     if (checking) return;
@@ -605,12 +517,12 @@ export function ProveDialog({
       (blank.password != null ? passwordRef : codeRef).current?.focus();
       return;
     }
-    void send(showsCode ? code.trim() : undefined);
+    void proving.send(password, showsCode ? code.trim() : undefined);
   }
 
   useTriedOnArrival(start?.tried, () => go());
 
-  const stepTwo = vouched != null && signIn != null ? providerName : null;
+  const stepTwo = proving.stepTwo == null ? null : PROVIDER_NAMES[proving.stepTwo];
 
   return (
     <Dialog

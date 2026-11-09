@@ -12,7 +12,7 @@ import {
 } from '@soirely/domain';
 
 import { type CodeSource } from '../codeCheck.ts';
-import { type ProveWith } from '../components/AccountDialogs.tsx';
+import { type ProveWith } from '../proving.ts';
 import { SAMPLE } from './rules.ts';
 import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
 
