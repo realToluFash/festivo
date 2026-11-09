@@ -157,5 +157,4 @@ export const OWNERSHIP_WORDS = {
   deleteExactly: 'Exactly as it is written, accents included.',
 } as const;
 
-export const TRY_AGAIN = 'Try again';
 export const LOADING = 'Loading…';

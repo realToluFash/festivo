@@ -443,6 +443,36 @@ export function FailedBlock({
   );
 }
 
+/** A section that loads by itself fails in its own place; FailedBlock is the whole screen's. */
+export function SectionFailed({
+  title,
+  line,
+  onRetry,
+  testID,
+}: {
+  title: string;
+  line?: string;
+  onRetry: () => void;
+  testID: string;
+}) {
+  const { t } = useTranslation();
+  useReadOut(line == null ? title : `${title} ${line}`);
+
+  return (
+    <View style={styles.sectionFailed}>
+      <Text size={16} weight="semibold">
+        {title}
+      </Text>
+      {line != null && (
+        <Text size={15} weight="medium" style={styles.secondary}>
+          {line}
+        </Text>
+      )}
+      <TextAction label={t('frame.tryAgain')} onPress={onRetry} testID={testID} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   blocks: { gap: 18 },
   column: {
@@ -491,5 +521,6 @@ const styles = StyleSheet.create({
   barThick: { height: 14, borderRadius: 7, backgroundColor: tokens.colorNeutralFill },
   barThin: { height: 12, borderRadius: 6, backgroundColor: tokens.colorNeutralFill },
   failed: { gap: tokens.spaceSm, paddingTop: tokens.spaceXs },
+  sectionFailed: { gap: tokens.spaceXxs, paddingTop: tokens.spaceXxs },
   toast: { position: 'absolute', left: tokens.spaceXl, right: tokens.spaceXl },
 });

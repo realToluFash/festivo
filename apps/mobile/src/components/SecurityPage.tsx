@@ -69,15 +69,7 @@ import {
 } from './SecurityTwoFactor.tsx';
 import { WaysSection } from './SecurityWays.tsx';
 import { useShellLayout } from './settingsShell.ts';
-import {
-  Ask,
-  bringIntoView,
-  FailedBlock,
-  LoadingBlock,
-  RowShapes,
-  Section,
-  useRowClear,
-} from './Summary.tsx';
+import { Ask, bringIntoView, RowShapes, Section, SectionFailed, useRowClear } from './Summary.tsx';
 import type { TextHandle } from './Text.tsx';
 
 type AskKind = 'unlink' | 'turnOff' | 'newCodes' | 'signOut' | 'everywhere';
@@ -138,7 +130,7 @@ export function SecurityPage({
   const [acting, setActing] = useState(false);
   const [screen, setScreen] = useState<Screen | null>(null);
   const [proof, setProof] = useState<Proof | null>(null);
-  const [enrolment, setEnrolment] = useState<Enrolment | { failed: string } | null>(null);
+  const [enrolment, setEnrolment] = useState<Enrolment | { retry: () => void } | null>(null);
   const [newCodes, setNewCodes] = useState<readonly string[] | null>(null);
   const [visit, setVisit] = useState(0);
   const blocks = useRef<Partial<Record<string, ViewInstance | null>>>({});
@@ -377,16 +369,20 @@ export function SecurityPage({
   }
 
   function setUp(target: Target): void {
-    setEnrolment(null);
     setNewCodes(null);
     show('setup', target);
+    enrol();
+  }
+
+  function enrol(): void {
+    setEnrolment(null);
     api.enrolTwoFactor().then(
       (enrolled) =>
         setEnrolment({
           qr: <SvgXml xml={enrolled.qrSvg} width={QR_SIDE} height={QR_SIDE} />,
           secret: enrolled.secret,
         }),
-      () => setEnrolment({ failed: t('twoFactorCard.failedBody') }),
+      () => setEnrolment({ retry: enrol }),
     );
   }
 
@@ -431,15 +427,6 @@ export function SecurityPage({
 
   return (
     <>
-      {status.kind === 'loading' && <LoadingBlock words={t('pending.loading')} icons />}
-      {status.kind === 'failed' && (
-        <FailedBlock
-          title={t('twoFactorCard.failedTitle')}
-          line={t('twoFactorCard.failedBody')}
-          onRetry={retryStatus}
-          testID="security.retry"
-        />
-      )}
       {status.kind === 'ready' && (
         <SecurityCard
           says={cardSays(on, t)}
@@ -492,6 +479,20 @@ export function SecurityPage({
           onNewCodes={() => asking('newCodes', 'codes', 'newCodes')}
         />
       )}
+      {status.kind !== 'ready' && (
+        <Section title={t('twoFactorCard.title')}>
+          {status.kind === 'loading' ? (
+            <RowShapes count={1} words={t('pending.loading')} />
+          ) : (
+            <SectionFailed
+              title={t('twoFactorCard.failedTitle')}
+              line={t('twoFactorCard.failedBody')}
+              onRetry={retryStatus}
+              testID="security.retry"
+            />
+          )}
+        </Section>
+      )}
       {sessions.kind === 'ready' && (
         <DevicesSection
           devices={devices}
@@ -504,18 +505,19 @@ export function SecurityPage({
           onSignOutHere={onSignOutHere}
         />
       )}
-      {sessions.kind === 'loading' && (
+      {sessions.kind !== 'ready' && (
         <Section title={t('devices.title')}>
-          <RowShapes count={2} words={t('devices.loading')} icons />
+          {sessions.kind === 'loading' ? (
+            <RowShapes count={2} words={t('devices.loading')} icons />
+          ) : (
+            <SectionFailed
+              title={t('devices.failedTitle')}
+              line={t('devices.failedBody')}
+              onRetry={retryDevices}
+              testID="security.devices.retry"
+            />
+          )}
         </Section>
-      )}
-      {sessions.kind === 'failed' && (
-        <FailedBlock
-          title={t('devices.failedTitle')}
-          line={t('devices.failedBody')}
-          onRetry={retryDevices}
-          testID="security.devices.retry"
-        />
       )}
       {others.count > 0 && (
         <Everywhere
