@@ -15,6 +15,8 @@
 }
 
 .kp-part {
+  display: block;
+  padding-left: var(--spaceLg);
   font-variant-numeric: tabular-nums;
 }
 
