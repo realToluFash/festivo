@@ -35,9 +35,12 @@ describe('the Main’s sample room', () => {
     const dietOnly = Object.values(PARTS_FIGURES.otherDiets).reduce((a, b) => a + b, 0);
 
     expect(room.guests).toHaveLength(PARTS_FIGURES.coming);
-    expect(room.guests.filter((guest) => guest.needs)).toHaveLength(
-      allergic(PARTS_FIGURES).length + dietOnly,
+    expect(room.guests.filter((guest) => guest.allergies.length > 0)).toHaveLength(
+      allergic(PARTS_FIGURES).length,
     );
+    expect(
+      room.guests.filter((guest) => guest.allergies.length === 0 && guest.diets.length > 0),
+    ).toHaveLength(dietOnly);
   });
 
   it('keeps the Diets block’s counts with one allergic guest also Halal', () => {
@@ -80,15 +83,18 @@ describe('part totals on an In parts course (sc-34244)', () => {
     expect(sheet('inParts').plated).toBe('Plated at the pass · 45');
   });
 
-  it('counts a guest with an allergy and a diet once, as one recorded need', () => {
+  it('counts a guest with an allergy record and a diet record as one plate', () => {
     const course = mainCourse('in_parts');
+    const jollof = { dish: 'm-jollof', variant: null, answers: { 'q-meat': 'Chicken' } };
     const both: Guest = {
       id: 'g-amaka',
       table: 't1',
-      needs: true,
-      pick: { dish: 'm-jollof', variant: null, answers: { 'q-meat': 'Chicken' } },
+      allergies: ['peanut', 'sesame'],
+      diets: ['halal'],
+      pick: jollof,
     };
-    const room: Room = { tables: [], guests: [both] };
+    const none: Guest = { id: 'g-ada', table: 't1', allergies: [], diets: [], pick: jollof };
+    const room: Room = { tables: [], guests: [both, none] };
 
     expect(courseSheet(course, room).plated).toBe('Plated at the pass · 1');
   });
@@ -113,7 +119,8 @@ describe('a guest who skipped the course', () => {
       'Plantain · 41',
     ]);
     expect(now.servedWith).toEqual(['Drink · 94']);
-    expect(now.plated).toBe(was.plated);
+    expect(was.plated).toBe('Plated at the pass · 45');
+    expect(now.plated).toBe('Plated at the pass · 44');
   });
 });
 

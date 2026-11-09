@@ -1,6 +1,7 @@
 import { demoWords } from './demoWords.ts';
-import { BASE, type Figures } from './kitchenChanges.ts';
+import { BASE, type Figures, allergic } from './kitchenChanges.ts';
 import { type HowServed, MW, usesParts } from './menuServed.ts';
+import { natural } from './seating.ts';
 
 /** The kitchen sheet's parts (sc-34244): a course served In parts or Family style counts each part under its dish, then Served with this course, Plated at the pass and, Family style only, By table. */
 export const PW = {
@@ -76,7 +77,8 @@ export type GuestPick =
 export interface Guest {
   id: string;
   table: string | null;
-  needs: boolean;
+  allergies: readonly string[];
+  diets: readonly string[];
   pick: GuestPick;
 }
 
@@ -202,9 +204,9 @@ function dishOf(course: PartsCourse, guest: Guest): Dish | null {
   return pick == null ? null : (course.dishes.find((dish) => dish.id === pick.dish) ?? null);
 }
 
-/** One plate: an allergy or a diet, a dish with no parts, or (Family style) a seat at a Plated at table; each guest once. */
+/** One plate: an allergy or a diet, a dish with no parts, or (Family style) a seat at a Plated at table; each guest once, however many records they have. */
 export function platedAtPass(course: PartsCourse, guest: Guest): boolean {
-  if (guest.needs) return true;
+  if (guest.allergies.length > 0 || guest.diets.length > 0) return true;
 
   const dish = dishOf(course, guest);
 
@@ -216,8 +218,6 @@ export function platedAtPass(course: PartsCourse, guest: Guest): boolean {
     course.platedAt.includes(guest.table)
   );
 }
-
-const NATURAL = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
 
 function tableLines(course: PartsCourse, guests: readonly Guest[]): string[] {
   const lines: string[] = [];
@@ -249,7 +249,7 @@ export function byTable(course: PartsCourse, room: Room): TableLine[] {
   if (course.howServed !== 'family_style') return [];
 
   const platter = counted(room).filter((guest) => !platedAtPass(course, guest));
-  const tables = [...room.tables].sort((a, b) => NATURAL.compare(a.name, b.name));
+  const tables = [...room.tables].sort((a, b) => natural(a.name, b.name));
   const lines: TableLine[] = [];
 
   for (const table of tables) {
@@ -337,7 +337,7 @@ export function mainCourse(howServed: HowServed, platedAt: readonly string[] = [
 }
 
 // A seat: JC/JB Jollof chicken/beef; Bp/Bn bass butter, pepper sauce/none; Dp/Dn bass dairy-free; R risotto;
-// K Kitchen's choice; H Needs the host; N not chosen yet. A star is an allergy or a diet.
+// K Kitchen's choice; H Needs the host; N not chosen yet. A star takes the next of RECORDS: the allergic guests, then the diets.
 const SEATS: readonly [string | null, string][] = [
   ['top', 'JC JC* JB Bp Bp* Dn* R* R JC JB* Bn JC'],
   ['t1', 'JC JC JB JB* Bp* Bn R* JC'],
@@ -352,6 +352,19 @@ const SEATS: readonly [string | null, string][] = [
   ['t10', 'JC JC JB Bp* Dp Dn* R N*'],
   [null, 'JC JB Bp N'],
 ];
+
+type Records = Pick<Guest, 'allergies' | 'diets'>;
+
+function records(): Records[] {
+  const diets = Object.entries(PARTS_FIGURES.otherDiets).flatMap(([diet, count]) =>
+    Array.from({ length: count }, () => ({ allergies: [], diets: [diet] })),
+  );
+
+  return [
+    ...allergic(PARTS_FIGURES).map(({ allergies, diets }) => ({ allergies, diets })),
+    ...diets,
+  ];
+}
 
 function pickOf(code: string): GuestPick {
   const short = code.replace('*', '');
@@ -380,17 +393,20 @@ export interface RoomOptions {
 
 export function mainRoom({ skipped = 0, seatAll = false }: RoomOptions = {}): Room {
   let skipping = skipped;
+  const left = records();
   const guests: Guest[] = [];
 
   for (const [table, codes] of SEATS)
     codes.split(' ').forEach((code, index) => {
-      const skips = skipping > 0 && code === 'JC';
+      const skips = skipping > 0 && code.startsWith('JC');
+      const recorded = code.endsWith('*') ? left.shift() : undefined;
 
       if (skips) skipping -= 1;
       guests.push({
         id: `g-${table ?? 'none'}-${index + 1}`,
         table: table ?? (seatAll ? 'top' : null),
-        needs: code.endsWith('*'),
+        allergies: recorded?.allergies ?? [],
+        diets: recorded?.diets ?? [],
         pick: skips ? { none: 'skipped' } : pickOf(code),
       });
     });

@@ -769,7 +769,7 @@ export function leastUsed(sections: readonly Section[]): Colour {
   return COLOURS.reduce((best, colour) => (used(colour) < used(best) ? colour : best), COLOURS[0]!);
 }
 
-function natural(a: string, b: string): number {
+export function natural(a: string, b: string): number {
   return a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' });
 }
 
