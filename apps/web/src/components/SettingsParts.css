@@ -954,6 +954,7 @@
   display: flex;
   flex-direction: column;
   width: var(--deskDialog);
+  max-width: calc(100vw - 2 * var(--spaceXl));
   max-height: calc(100vh - 2 * var(--space6xl));
   overflow: hidden;
   border: 1px solid var(--colorBorder);
@@ -1027,6 +1028,7 @@
   flex-direction: column;
   gap: var(--spaceSm);
   width: var(--deskAsk);
+  max-width: calc(100vw - 2 * var(--spaceXl));
   padding: var(--space3xl) var(--space3xl) var(--spaceLg);
   border-radius: var(--space3xl);
 }
