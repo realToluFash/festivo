@@ -403,15 +403,19 @@ describe('Room settings and sections (sc-3998)', () => {
     ).toBeDefined();
   });
 
-  it('asks only "Delete {name}?" for a section with no tables (pm, 9 Nov)', SLOW, async () => {
-    await seating('sectionDeleteEmpty');
-    const ask = screen.getByRole('alertdialog', { name: 'Delete Quiet corner?' });
+  it(
+    'asks only "Delete {name}?" for a section with a row but no tables (pm, 9 Nov)',
+    SLOW,
+    async () => {
+      await seating('sectionDeleteEmpty');
+      const ask = screen.getByRole('alertdialog', { name: 'Delete Quiet corner?' });
 
-    expect(ask.textContent).not.toContain('stay where they are');
-    expect(ask.querySelector('p')?.textContent).toBe('');
-    fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));
-    expect(screen.queryByRole('alertdialog')).toBeNull();
-  });
+      expect(ask.textContent).not.toContain('stay where they are');
+      expect(ask.querySelector('p')?.textContent).toBe('');
+      fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    },
+  );
 });
 
 describe('tables, rows and seats (sc-4000, sc-4003)', () => {

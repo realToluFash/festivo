@@ -258,6 +258,17 @@ function tablet(state: SeatingState, b: Seating): Seating {
       };
     case 'sectionDelete':
       return { ...stageEdit, ask: { kind: 'deleteSection', key: 'stage' } };
+    case 'sectionDeleteEmpty': {
+      const quiet = run(
+        {
+          ...b,
+          sections: [...b.sections, { key: 'quiet', name: 'Quiet corner', colour: 'Blue' }],
+          items: b.items.map((it) => (it.kind === 'row' ? { ...it, sec: 'quiet' } : it)),
+        },
+        { type: 'arrange', shows: 'sectionEdit', key: 'quiet' },
+      );
+      return { ...quiet, ask: { kind: 'deleteSection', key: 'quiet' } };
+    }
     case 'sparse':
       return {
         ...b,

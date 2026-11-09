@@ -44,6 +44,7 @@ export const SEATING_STATES = [
   'sectionLimit',
   'sectionEdit',
   'sectionDelete',
+  'sectionDeleteEmpty',
   'sparse',
   'addMenu',
   'placing',

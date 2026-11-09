@@ -398,6 +398,7 @@ export function seedOf(state: SeatingState | null): Ui {
         plan: {
           ...plan,
           sections: [...plan.sections, { id: 'quiet', name: 'Quiet corner', colour: 'Blue' }],
+          items: plan.items.map((item) => (item.id === 'rowA' ? { ...item, sec: 'quiet' } : item)),
         },
         panel: { kind: 'sectionEdit', id: 'quiet' },
         asking: { kind: 'deleteSection', id: 'quiet' },

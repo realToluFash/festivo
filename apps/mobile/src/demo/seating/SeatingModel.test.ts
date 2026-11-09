@@ -53,7 +53,7 @@ const item = (m: Seating, id: string) => {
 
 describe('the states', () => {
   it('are seating-a-spec §6’s, by the names both demos use', () => {
-    expect(SEATING_STATES).toHaveLength(100);
+    expect(SEATING_STATES).toHaveLength(101);
     expect(new Set(SEATING_STATES).size).toBe(SEATING_STATES.length);
     expect(SEATING_STATES.slice(0, 5)).toEqual([
       'plan',
@@ -541,7 +541,16 @@ describe('sections', () => {
 
   it('asks with its tables counted, and with no line when it has none (pm, 9 Nov)', () => {
     expect(say.sectionDeleteBody(5)).toBe('Its 5 tables stay where they are, with no section.');
+    expect(say.sectionDeleteBody(1)).toBe('Its 1 table stays where it is, with no section.');
     expect(say.sectionDeleteBody(0)).toBe('');
+  });
+
+  it('asks about Quiet corner, a section holding rows and no tables, with its state', () => {
+    const m = startOf('sectionDeleteEmpty', 'landscape');
+    expect(m.ask).toEqual({ kind: 'deleteSection', key: 'quiet' });
+    expect(m.items.some((it) => it.sec === 'quiet' && it.kind === 'row')).toBe(true);
+    const done = run(m, { type: 'confirm' });
+    expect(done.sections.map((s) => s.key)).not.toContain('quiet');
   });
 });
 

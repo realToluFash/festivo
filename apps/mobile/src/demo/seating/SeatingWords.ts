@@ -164,7 +164,9 @@ export const say = {
   sectionDeleteBody: (n: number) =>
     n === 0
       ? ''
-      : `Its ${plural(n, 'table stays', 'tables stay')} where they are, with no section.`,
+      : n === 1
+        ? 'Its 1 table stays where it is, with no section.'
+        : `Its ${n} tables stay where they are, with no section.`,
   sectionsCount: (n: number) => `Sections · ${n}`,
   placeBar: (shape: string) =>
     `Tap the floor to place a ${shape.toLowerCase()}. It snaps to the grid.`,
