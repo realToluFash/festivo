@@ -138,6 +138,7 @@ import {
   releasePlatform,
   simulatorArch,
   staleBuilds,
+  iosBuildEnv,
   iosReleaseBuildArgs,
   xcodeWorkspace,
   renderQaEnv,
@@ -1075,6 +1076,14 @@ describe('a release build', () => {
       'Soirely.xcworkspace',
     );
     expect(() => xcodeWorkspace(['Soirely.xcodeproj'])).toThrow(/found 0/);
+  });
+
+  it('builds iOS in a UTF-8 locale whatever the calling shell has, so pod install does not fail', () => {
+    const env = iosBuildEnv({ EXPO_PUBLIC_API_URL: 'http://x', LC_ALL: 'C' });
+    expect(env.LANG).toBe('en_US.UTF-8');
+    expect(env.LC_ALL).toBe('en_US.UTF-8');
+    expect(env.EXPO_PUBLIC_API_URL).toBe('http://x');
+    expect(env.EXPO_PUBLIC_ENVIRONMENT).toBe('qa');
   });
 
   it('signs the release build ad hoc, so the Keychain keeps a session across a cold start', () => {
