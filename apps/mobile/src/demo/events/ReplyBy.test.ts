@@ -217,14 +217,16 @@ describe('the sample and the words', () => {
   });
 
   it('writes the row, the hint, the preview and the saved line at 24 hours', () => {
-    expect(replyByRow('2026-11-04', LONDON, 'en-US', new Date('2026-11-04T23:59:58Z'))).toEqual({
+    expect(replyByRow('2026-11-04', LONDON, 'en-US', new Date('2026-11-04T23:59:59Z'))).toEqual({
       title: 'Wed, Nov 4, 2026',
       line: 'Reply by · Replies close at 23:59, Europe/London time.',
     });
-    expect(replyByRow('2026-11-04', LONDON, 'en-US', new Date('2026-11-04T23:59:59Z'))).toEqual({
-      title: 'Wed, Nov 4, 2026',
-      line: 'Reply by · Replies closed.',
-    });
+    expect(replyByRow('2026-11-04', LONDON, 'en-US', new Date('2026-11-04T23:59:59.001Z'))).toEqual(
+      {
+        title: 'Wed, Nov 4, 2026',
+        line: 'Reply by · Replies closed.',
+      },
+    );
     expect(replyByRow(null, LONDON, 'en-US', new Date('2026-11-04T12:00:00Z'))).toEqual({
       title: 'Replies stay open until the event starts.',
       line: 'Reply by',
