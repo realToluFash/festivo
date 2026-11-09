@@ -976,7 +976,20 @@
     "savedLanguage": "Saved. Invitation emails to people without a Soirely account go out in {{language}} from now on. Invitations already sent are not sent again.",
     "refused": "Nothing was saved. Your role does not include the permission this needs.",
     "refusedByRule": "Nothing was saved.",
-    "searchLanguage": "Search languages"
+    "searchLanguage": "Search languages",
+    "edit": "Edit details",
+    "editTitle": "Organisation details",
+    "details": "Details",
+    "defaults": "Defaults for new events",
+    "invitations": "Invitations",
+    "searchCountry": "Search countries",
+    "saveVerb": "Save",
+    "savedSays": "Saved",
+    "discardTitle_one": "Discard your change?",
+    "discardTitle_other": "Discard your changes?",
+    "discardLine": "{{organisation}} stays as it was.",
+    "keepEditing": "Keep editing",
+    "discard": "Discard"
   },
   "invitations": {
     "heading": "Invitations",
@@ -1183,7 +1196,12 @@
     "deleteExactly": "Exactly as it is written, accents included.",
     "deleteButton": "Delete {{organisation}}",
     "deleteKeep": "Keep {{organisation}}",
-    "failed": "That did not go through, so nothing was changed. Try again."
+    "failed": "That did not go through, so nothing was changed. Try again.",
+    "transferVerb": "Transfer",
+    "transferredSays": "{{name}} is now the owner",
+    "transferredLine": "You are an Admin. You both have an email saying so.",
+    "deleteScreenTitle": "Delete {{organisation}}",
+    "deleteVerb": "Delete"
   },
   "domainJoining": {
     "intro": "Your address is at {{domain}}. Ask to join your company’s organisation, or start your own.",
@@ -1233,7 +1251,14 @@
     "removed": "{{domain}} removed.",
     "removedNext": "People at it can no longer ask to join this way.",
     "failed": "That did not work. Try again in a moment.",
-    "unreadable": "The list could not be loaded."
+    "unreadable": "The list could not be loaded.",
+    "lead": "People whose main email address is at a domain on this list can ask to join {{organisation}} when they sign up. Somebody who can manage members answers each one.",
+    "offUntil": "It is off until you add a domain.",
+    "addVerb": "Add",
+    "field": "Domain",
+    "confirmRemove": "Remove",
+    "addedLine": "Added. People whose main email address is at it can now ask to join.",
+    "proved": "Proved"
   },
   "membersScreen": {
     "proveOwner_one": "To make somebody an owner of {{organisation}}, confirm it's you. You won't be asked again for a minute.",
@@ -1405,7 +1430,8 @@
       "copied": "Link copied."
     },
     "failed": "That did not work. Try again in a moment.",
-    "unreadable": "The request link could not be loaded."
+    "unreadable": "The request link could not be loaded.",
+    "lead": "Anybody with this link can ask to join {{organisation}}. Somebody who can manage members answers each request."
   },
   "requestToJoin": {
     "title": "Ask to join {{organisation}}",

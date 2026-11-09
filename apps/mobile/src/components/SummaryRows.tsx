@@ -171,6 +171,8 @@ export interface RowProps {
   title: string;
   titleLines?: number | undefined;
   line?: string | undefined;
+  /** Under the title in place of a plain line: a line with its own mark. */
+  below?: ReactNode;
   lead?: ReactNode;
   tag?: RowTag | null | undefined;
   opens?: boolean;
@@ -198,6 +200,7 @@ export function Row({
   title,
   titleLines,
   line,
+  below,
   lead,
   tag,
   opens = false,
@@ -222,7 +225,7 @@ export function Row({
   const grouped = pressed || accessibilityLabel != null;
   const box = [
     styles.row,
-    { minHeight: line == null ? 52 : 64, paddingVertical: pad, paddingHorizontal: gutter },
+    { minHeight: line == null && below == null ? 52 : 64, paddingVertical: pad, paddingHorizontal: gutter },
     selected && styles.rowSelected,
   ];
   const words = (
@@ -252,6 +255,7 @@ export function Row({
             {line}
           </Text>
         )}
+        {below}
       </View>
       {value != null && (
         <Text

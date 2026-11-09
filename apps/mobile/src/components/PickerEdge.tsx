@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { useFocusEdge } from '../components/Field.tsx';
+import { useFocusEdge } from './Field.tsx';
 import { tokens } from '../theme/tokens.ts';
 
 /** A refused text field's red edge over a picker the demo cannot change, 2pt with focus (sc-30447). */
