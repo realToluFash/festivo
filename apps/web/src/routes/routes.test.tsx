@@ -51,6 +51,48 @@ const ADA: Session = {
   waitingFor: null,
 };
 
+function overdueSession(): Session {
+  const overdue = {
+    ...MEMBERSHIP,
+    twoFactorDue: {
+      at: '2020-01-01T00:00:00+00:00',
+      written: 'Wednesday, Jan 1 at 00:00 UTC',
+      overdue: true,
+    },
+  };
+
+  return { ...ADA, organisation: overdue, organisations: [overdue] };
+}
+
+function pausedSession(): Session {
+  const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
+    id: 'org_3',
+    name: 'Lagos Weddings',
+  });
+
+  return {
+    ...ADA,
+    organisation: null,
+    pausedIn: {
+      id,
+      name,
+      countryCode,
+      currency,
+      timezone,
+      contactAddress,
+      locale,
+      suspension: {
+        reason: 'address_gone',
+        domain: 'lagosweddings.ng',
+        since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
+        removesAt: null,
+        onlyOwner: false,
+      },
+      ownerClaim: null,
+    },
+  };
+}
+
 /**
  * The shell, through the router, at the addresses people actually open.
  *
@@ -415,18 +457,7 @@ describe('the application tree', () => {
     });
 
     it('holds only the organisation while the overdue screen stands in', () => {
-      const overdue = {
-        ...MEMBERSHIP,
-        twoFactorDue: {
-          at: '2020-01-01T00:00:00+00:00',
-          written: 'Wednesday, Jan 1 at 00:00 UTC',
-          overdue: true,
-        },
-      };
-      __setSessionState({
-        status: 'signedIn',
-        session: { ...ADA, organisation: overdue, organisations: [overdue] },
-      });
+      __setSessionState({ status: 'signedIn', session: overdueSession() });
 
       at('/app/events');
 
@@ -434,34 +465,7 @@ describe('the application tree', () => {
     });
 
     it('holds only the organisation while a paused one stands in', () => {
-      const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
-        id: 'org_3',
-        name: 'Lagos Weddings',
-      });
-      __setSessionState({
-        status: 'signedIn',
-        session: {
-          ...ADA,
-          organisation: null,
-          pausedIn: {
-            id,
-            name,
-            countryCode,
-            currency,
-            timezone,
-            contactAddress,
-            locale,
-            suspension: {
-              reason: 'address_gone',
-              domain: 'lagosweddings.ng',
-              since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
-              removesAt: null,
-              onlyOwner: false,
-            },
-            ownerClaim: null,
-          },
-        },
-      });
+      __setSessionState({ status: 'signedIn', session: pausedSession() });
 
       at('/app/events');
 
@@ -670,6 +674,45 @@ describe('the application tree', () => {
       at(path);
 
       expect(selectedTile()).toEqual([expect.stringMatching(`${name}$`)]);
+    });
+
+    it.each([
+      ['paused', pausedSession, '.access-paused'],
+      ['two-factor overdue', overdueSession, '.two-factor-overdue'],
+    ])(
+      'shows an organisation section as its %s stand-in beside the list',
+      (_, session, standIn) => {
+        __setSessionState({ status: 'signedIn', session: session() });
+
+        for (const path of [
+          '/app/settings',
+          '/app/settings/members',
+          '/app/settings/sign-in-rules',
+        ]) {
+          const { unmount } = at(path);
+
+          const page = document.querySelector('.settings-desk > .settings-desk-page');
+          expect(page?.querySelector(standIn)).not.toBeNull();
+          expect(
+            within(screen.getByRole('navigation', { name: 'Settings' })).getByRole('link', {
+              name: /Security$/u,
+            }),
+          ).toBeDefined();
+          unmount();
+        }
+      },
+    );
+
+    it.each([
+      ['paused', pausedSession, '.access-paused'],
+      ['two-factor overdue', overdueSession, '.two-factor-overdue'],
+    ])('keeps the %s stand-in alone outside Settings', (_, session, standIn) => {
+      __setSessionState({ status: 'signedIn', session: session() });
+
+      at('/app/events');
+
+      expect(document.querySelector(standIn)).not.toBeNull();
+      expect(document.querySelector('.settings-desk')).toBeNull();
     });
 
     it('opens the account of somebody in no organisation with the list beside it, the page as wide as it was alone', () => {
