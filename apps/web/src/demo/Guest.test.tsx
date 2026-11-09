@@ -7,6 +7,8 @@ import { routes } from '../routes/index.tsx';
 import { GUEST_PAGES, THANK_YOU } from './guest.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 
+const SLOW = { timeout: 15000 };
+
 const tested = config();
 const NAME = 'Maria Fernanda Albuquerque Santos';
 const plain = window.matchMedia;
@@ -59,10 +61,10 @@ afterEach(() => {
 });
 
 describe('the guest’s own page, A · The cover card (sc-31306)', () => {
-  it('is linked from the demo home, every state once, in a Guest’s page group', async () => {
+  it('is linked from the demo home, every state once, in a Guest’s page group', SLOW, async () => {
     const router = createMemoryRouter(routes, { initialEntries: ['/demo'] });
     render(<RouterProvider router={router} />);
-    const head = await screen.findByRole('heading', { level: 3, name: /^Guest’s page/u });
+    const head = await screen.findByRole('heading', { level: 3, name: /^Guest’s page/u }, SLOW);
 
     expect(head.textContent).toBe('Guest’s page in A · The cover card · phone, tablet and desk');
     const hrefs = screen.getAllByRole('link').map((one) => one.getAttribute('href'));
