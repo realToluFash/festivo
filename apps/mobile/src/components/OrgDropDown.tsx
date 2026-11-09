@@ -62,7 +62,6 @@ import { Text, type TextHandle } from './Text.tsx';
 const GROW_FROM = 0.92;
 const LEAVE = Easing.bezier(0.4, 0, 1, 1);
 const CARET = 16;
-/** A tile's name stops at two lines with an ellipsis, in the grid and beside its mark alike; the label, the search and the opened panel keep it whole (sc-486, sc-13496). */
 const NAME_LINES = 2;
 
 interface Sizes {
@@ -938,7 +937,6 @@ function InvitationPanel({
   );
 }
 
-/** The pressed answer while it is out: the Pill's `off` ground, the turning mark and what it is doing in Ink 2, as the Ask's busy confirm says it. */
 function SendingPill({
   words,
   full,
