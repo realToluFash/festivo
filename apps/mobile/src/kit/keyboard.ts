@@ -111,6 +111,16 @@ export function keyboardInWindow(screenY: number, origin: number): number {
   return screenY + origin;
 }
 
+/** A view's distance from the window's bottom that keeps it `gap` above the keys while they are up, and never lower than `rest`. */
+export function bottomOverKeys(
+  rest: number,
+  windowHeight: number,
+  keyboardTop: number | null,
+  gap: number,
+): number {
+  return keyboardTop == null ? rest : Math.max(rest, windowHeight - keyboardTop + gap);
+}
+
 /** How much of a view, measured in the window, the keyboard covers from its bottom up. */
 export function keysOver(view: Rect, keyboardTop: number | null): number {
   return keyboardTop == null ? 0 : Math.max(0, view.y + view.height - keyboardTop);

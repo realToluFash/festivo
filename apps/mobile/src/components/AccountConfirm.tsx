@@ -2,7 +2,14 @@ import { type RefObject, useRef, useState } from 'react';
 import type { TextInputInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { CodeField, Field, focusChecked, focusRefused, keysStayDown } from './Field.tsx';
+import {
+  CodeField,
+  Field,
+  FieldError,
+  focusChecked,
+  focusRefused,
+  keysStayDown,
+} from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
@@ -90,7 +97,7 @@ export function ConfirmScreen({
         <Notice tone="attention" mark="!" body={asks.expired.text} answer={asks.expired.answer} />
       )}
       {asks.note != null && <Line size={14} text={asks.note} />}
-      {says.other != null && <Line size={14} text={says.other} />}
+      {says.other != null && <FieldError message={says.other} answer={says} />}
       {asks.password && (
         <Field label={t('waysCard.yourPassword')} error={says.password}>
           <PasswordField

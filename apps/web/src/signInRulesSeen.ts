@@ -25,7 +25,8 @@ export function markRulesSeen(organisation: Membership): void {
   for (const listener of listeners) listener();
 }
 
-function seenAt(organisationId: string): string | null {
+/** The change this browser last saw, read once as a page opens. */
+export function seenAt(organisationId: string): string | null {
   const told = remembered.get(organisationId);
   if (told != null) return told;
 

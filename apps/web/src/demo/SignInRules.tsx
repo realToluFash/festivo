@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
+import { RuleMark, RulesBones } from '../components/SignInRulesParts.tsx';
 import type { Load } from './members.ts';
 import { type HeldStep, heldStepPath } from './security.ts';
 import type { Viewer } from './settings.ts';
@@ -29,7 +30,6 @@ import {
   type Edit,
   LIMIT_INTRO,
   MARK_WORD,
-  type Mark,
   REFUSALS,
   type RuleRow,
   type RulesPage,
@@ -50,7 +50,6 @@ import {
   whereYouStand,
 } from './signInRules.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
-import './signInRules.css';
 
 const RETRY_MS = 1200;
 
@@ -185,19 +184,6 @@ function RuleWords({ rule }: { rule: RuleRow }) {
   );
 }
 
-/** Met is the green tick, needs you the amber half disc, and doesn't apply a grey disc with a bar. */
-function RuleMark({ mark }: { mark: Mark }) {
-  return (
-    <span
-      className={`signin-mark is-${mark === 'notApplicable' ? 'not-applicable' : mark}`}
-      aria-hidden="true"
-    >
-      {mark === 'met' && <Glyph name="tick" size={13} weight={3.2} />}
-      {mark === 'notApplicable' && <span />}
-    </span>
-  );
-}
-
 function Changes({ changes }: { changes: readonly ChangeRow[] }) {
   if (changes.length === 0)
     return (
@@ -303,23 +289,7 @@ function EditDialog({
 }
 
 function Loading() {
-  return (
-    <div className="desk-loading" role="status" aria-label="Loading the sign-in rules…">
-      <span className="desk-unseen">Loading the sign-in rules…</span>
-      <span className="desk-sunk is-card" aria-hidden="true" />
-      <ul className="desk-rows signin-rows" aria-hidden="true">
-        {[1, 2, 3].map((bar) => (
-          <li key={bar} className="desk-row is-bones">
-            <span className="desk-sunk signin-mark" />
-            <span className="desk-row-words">
-              <span className={`desk-sunk is-title b${bar}`} />
-              <span className={`desk-sunk is-line b${bar}`} />
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+  return <RulesBones words="Loading the sign-in rules…" />;
 }
 
 function Failed({ onRetry }: { onRetry: () => void }) {

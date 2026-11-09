@@ -75,7 +75,7 @@ export default function ResetPassword() {
     try {
       const { account } = await api.resetPassword(token, typed.current);
       await followAccount(account);
-      sayOnLanding(t('recovery.changed'));
+      sayOnLanding('recovery.changed');
       router.replace(landingFor(awaiting(account)));
     } catch (error) {
       const dead = deadFrom(error);

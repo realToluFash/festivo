@@ -1,4 +1,3 @@
-import { primaryEmailAddress } from '@soirely/api-client';
 import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -6,14 +5,12 @@ import { useTranslation } from 'react-i18next';
 import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
-import { DevicesCard } from '../../src/components/DevicesCard.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
+import { SecurityPage } from '../../src/components/SecurityPage.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { Text, type TextHandle } from '../../src/components/Text.tsx';
 import { moveScreenReaderFocus } from '../../src/components/screenReaderFocus.ts';
 import { useOffline } from '../../src/offline.ts';
-import { TwoFactorCard } from '../../src/components/TwoFactorCard.tsx';
-import { WaysCard } from '../../src/components/WaysCard.tsx';
 import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import {
   endedHere,
@@ -24,18 +21,13 @@ import {
 } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
-/** Settings > Security, `AppSettings-*` state `security`: every card the interim screen held. */
+/** Settings > Security in the app, summary first: the card, the ways in, two-factor and the devices (sc-30411). */
 export default function Security() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();
   const { kind } = useLayout();
   const { account, organisations } = useSignedIn();
-  const [sessionsEnded, setSessionsEnded] = useState(0);
-  const [codesSpent, setCodesSpent] = useState(0);
-  const codeSpent = () => setCodesSpent((n) => n + 1);
-
   const alone = !settingsListBeside(kind);
-  const email = account == null ? '' : (primaryEmailAddress(account) ?? '');
   const title = useRef<TextHandle>(null);
   const [loaded, setLoaded] = useState(false);
   const [refresh, setRefresh] = useState(0);
@@ -75,42 +67,17 @@ export default function Security() {
             </View>
           )}
           {account != null && (
-            <View style={styles.cards}>
-              <WaysCard
-                email={email}
-                hasPassword={account.hasPassword}
-                providers={account.providers}
-                kind={kind}
-                onChanged={async () => {
-                  await reloadSignedIn();
-                  setSessionsEnded((n) => n + 1);
-                }}
-                onRefused={rereadAccount}
-                onPasswordAdded={reloadSignedIn}
-                onPasswordChanged={() => setSessionsEnded((n) => n + 1)}
-                onSignedOutHere={signOutHere}
-                onCodeSpent={codeSpent}
-              />
-              <TwoFactorCard
-                email={email}
-                kind={kind}
-                recount={codesSpent}
-                keptBy={
-                  organisations.find((one) => one.signInRules.everyoneNeedsTwoFactor)?.name ?? null
-                }
-                onTurnedOn={() => void reloadSignedIn()}
-              />
-              <DevicesCard
-                hasPassword={account.hasPassword}
-                providers={account.providers}
-                kind={kind}
-                reload={sessionsEnded}
+            <View style={styles.blocks}>
+              <SecurityPage
+                account={account}
+                organisations={organisations}
                 watch={watch}
                 refresh={refresh}
                 onLoaded={setLoaded}
+                onChanged={reloadSignedIn}
+                onRefused={rereadAccount}
                 onSignOutHere={signOutHere}
                 onEndedHere={endedHere}
-                onCodeSpent={codeSpent}
               />
             </View>
           )}
@@ -135,7 +102,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space5xl,
     paddingBottom: tokens.space6xl,
   },
-  cards: { gap: tokens.spaceLg },
+  blocks: { gap: 18 },
 });
 
 const CONTENT: Record<LayoutKind, object> = {

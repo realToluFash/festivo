@@ -43,6 +43,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 Nov 2026. A página Definições de notificações da app** (sc-34901 para sc-30411,
+  `mobile:notificationSettings.*`). O cabeçalho tem verbo, "Só recebe notificações push"; as
+  linhas não: "Push e e-mail", "Só push", "Desativado", como `off`. A secção é "Notificações
+  que recebe". `notLoadedLine` diz "a ligação à Internet", porque "a ligação" sozinha é o link
+  neste guia. O dispositivo tem "definições", como em `pushBlocked`. "Bloqueadas neste
+  dispositivo" concorda com as notificações push. A nota de Conta e segurança perde "O e-mail
+  não pode ser desativado.", agora `locked.email`, por baixo do interruptor.
+- **9 Nov 2026. A página Segurança da app** (sc-34792 para sc-30411, `mobile:security.*`). Segue os termos da web: "Associada · {{address}}", "Encerrar as outras sessões", "Concluído" para Done. `expires` é "Sessão válida até {{day}} se não voltar a ser usada": "Expira na/no" concordaria com o dia da semana ("no sábado", "na segunda-feira"), e "até" não leva artigo. O estado no topo é "ativa"/"inativa", como `twoFactorCard.on`/`off`.
+- **9 Nov 2026. A página da ligação enviada na web e a linha de quem perdeu tudo** (sc-33788 para sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). `nothingThere` segue a app, e a ligação é "envie de novo". `sentAgain` é "Voltámos a enviar a ligação.", sem a segunda frase da app. `lostBothIntro` diz "confirmar a sua identidade", nunca "que é você", e "depois de iniciar sessão", sem concordância com a pessoa, e "o apoio ao cliente da Soirely", do guia.
 - **8 Nov 2026. A sua conta na app** (sc-34175 para sc-30411, `mobile:account.*`,
   `contacts.promoting`, `removing`). A secção é "Sobre si". As linhas de cada linha da lista
   não têm sujeito: "Principal · para iniciar sessão", "Para falar consigo, não para iniciar
@@ -737,3 +746,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **Cancelar um pedido para voltar a entrar** (sc-29979): "Cancelar o seu pedido?"; a saída é "Continuar à espera", nunca "Cancelar", e a confirmação reutiliza "Cancelar o pedido".
 - **O estado de um campo recusado, só para o leitor de ecrã** (`mobile:forms.invalid`, sc-31909): "Dados inválidos", depois do nome do campo ("Palavra-passe, Dados inválidos"). É o que o VoiceOver diz na web; não concorda com o género do nome, masculino ou feminino.
 - **O plano de mesas** (sc-33304 para sc-3998, `seating.*`, `messages:seating.*`): a área é "Mesas" e o que se desenha, "o plano de mesas" ("o plano" dentro da área); "Floor plan" é "Planta da sala". Uma "section" é uma **zona**, nunca "secção", que na Soirely é uma parte das definições: "Adicionar uma zona", "Sem zona", "Manter a zona". O local abre a linha das unidades como etiqueta, "Local: {{venue}}.", para que nenhuma preposição tenha de concordar com o nome ("no/na"). "Seated" não concorda com o género: "convidados com lugar passam para Sem lugar". As cores: Azul, Roxo, Ameixa, Vinho, Rosa, Castanho, Verde-azeitona, Verde-petróleo. A ajuda em pés usa a vírgula decimal e as abreviaturas CLDR que o campo lê: "12 ft 4 pol., 12,5 ft ou 148 pol.".
+- **9 Nov 2026. Personalização** (sc-34920 para sc-30441, `web:personalisation.*`,
+  `mobile:personalisation.*`, `mobile:settings.personalisation*`,
+  `messages:validation.colour_scheme_unknown`). A escolha são "as suas cores", e nada concorda
+  com o nome de um esquema: "A escolha de {{picked}} não foi guardada. As suas cores continuam
+  a ser {{kept}}."; "Current" é "Atual", invariável. Sem "acompanhá-lo" nem "trazê-lo": "Só são
+  visíveis para si", "regressa a este ecrã". Só a recusa da API diz "esquemas de cores". Os oito
+  nomes: Violeta, Cobalto, Jardim, Citrinos, Frutos vermelhos, Traje de rigor (Black tie, o
+  traje exigido em Portugal), Sorvete (o sorbet, não o gelado) e Terracota.

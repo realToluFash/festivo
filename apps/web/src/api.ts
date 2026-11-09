@@ -9,6 +9,7 @@
 import { ApiClient } from '@soirely/api-client';
 import { connection } from '@soirely/domain';
 
+import { followMeAnswers } from './colourScheme.ts';
 import { config } from './config.ts';
 import { currentLocale } from './i18n/index.ts';
 import { dropRegistration } from './pendingRegistration.ts';
@@ -37,6 +38,7 @@ export const api = new ApiClient({
   fetch: (input, init) => {
     const answer = fetch(input, init);
     connection.observe(answer, init);
+    followMeAnswers(input, answer);
 
     return answer;
   },

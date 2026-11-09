@@ -1,26 +1,29 @@
+import type { Provider } from '@soirely/api-client';
+
 import { writtenTime } from '../clock.ts';
 import { SAMPLE } from '../samples.ts';
 import { IPS } from './sample.ts';
 
-export type Provider = 'Google' | 'Apple';
-
-export interface Ways {
+/** Which ways in the sample has: a password, and each provider linked or not. */
+export interface SampleWays {
   password: boolean;
-  Google: boolean;
-  Apple: boolean;
+  google: boolean;
+  apple: boolean;
 }
 
-export const PROVIDERS: readonly Provider[] = ['Google', 'Apple'];
+export const PROVIDERS: readonly Provider[] = ['google', 'apple'];
+
+export const PROVIDER_NAME: Record<Provider, string> = { google: 'Google', apple: 'Apple' };
 
 /** The address each provider signs in as; Apple can hide it, so it has none. */
 export const PROVIDER_ADDRESS: Record<Provider, string | null> = {
-  Google: 'folake.adeyemi@gmail.com',
-  Apple: null,
+  google: 'folake.adeyemi@gmail.com',
+  apple: null,
 };
 
 export const PROOF_MINUTES = 5;
 
-export function linkedProviders(ways: Ways): Provider[] {
+export function linkedProviders(ways: SampleWays): Provider[] {
   return PROVIDERS.filter((provider) => ways[provider]);
 }
 
@@ -46,11 +49,9 @@ export const RECOVERY_CODES: readonly string[] = [
 /** How many of the ten are still unused at rest. */
 export const RECOVERY_LEFT = 8;
 
-export type DeviceKind = 'device' | 'laptop' | 'tablet';
-
 export interface Device {
   id: string;
-  kind: DeviceKind;
+  kind: 'device' | 'laptop' | 'tablet';
   name: string;
   here: boolean;
   signedIn: Date;

@@ -2686,6 +2686,11 @@ export class ApiClient {
     }
   }
 
+  /** Ends a session this client no longer holds, as a reinstall's first launch does (sc-34831); unanswered, it lapses. */
+  async signOutKept(refreshToken: string): Promise<void> {
+    await this.sendTokenRequest('/api/auth/logout', { refreshToken }).catch(() => null);
+  }
+
   /** A 503 is an answer here — it names the dependency that is down — so it is not thrown. */
   async health(): Promise<Health> {
     const response = await this.send('/api/health', { method: 'GET', anonymous: true });
