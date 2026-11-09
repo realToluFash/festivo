@@ -1,5 +1,7 @@
 import { Glyph } from '../components/Glyph.tsx';
+import { Notice } from '../components/Notice.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
+import { EVENT_WORDS } from './events.ts';
 import {
   type AgendaDay,
   EVENTS,
@@ -297,7 +299,7 @@ const STEPS = [
   ['Make it live', 'It stays a draft until you do.'],
 ] as const;
 
-export function FirstRun({ tell }: { tell: Tell }) {
+export function FirstRun({ tell, asks = false }: { tell: Tell; asks?: boolean }) {
   return (
     <section className="today-first" aria-labelledby="today-first">
       <div className="today-head">
@@ -308,6 +310,7 @@ export function FirstRun({ tell }: { tell: Tell }) {
       <p className="today-first-line">
         Give it a name, a date and a place. What needs you, and what’s coming, shows here.
       </p>
+      {asks && <Notice kind="quiet">{EVENT_WORDS.firstRunAsk}</Notice>}
       <ol className="today-panel today-steps">
         {STEPS.map(([title, line], index) => (
           <li key={title} className="today-step">
@@ -321,14 +324,16 @@ export function FirstRun({ tell }: { tell: Tell }) {
           </li>
         ))}
       </ol>
-      <button
-        type="button"
-        className="today-create"
-        onClick={() => tell('Create an event has its own design.')}
-      >
-        <Glyph name="plus" size={18} />
-        Start your first event
-      </button>
+      {!asks && (
+        <button
+          type="button"
+          className="today-create"
+          onClick={() => tell('Create an event has its own design.')}
+        >
+          <Glyph name="plus" size={18} />
+          Start your first event
+        </button>
+      )}
     </section>
   );
 }

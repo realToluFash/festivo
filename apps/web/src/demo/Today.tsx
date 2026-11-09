@@ -24,7 +24,9 @@ export function Today() {
   const where = useWhere();
   const [params] = useSearchParams();
   const raw = params.get('moment');
-  const name = isFresh(where) ? 'first' : isMoment(raw) ? raw : 'plan';
+  // A role without Create events: Events' firstAsk, on Today (sc-30413, #36412).
+  const asks = raw === 'firstAsk' && !isFresh(where);
+  const name = isFresh(where) || asks ? 'first' : isMoment(raw) ? raw : 'plan';
   // The demo's words are English, so its dates are too, in the browser's own region.
   const notSent = name === 'plan' && params.get('invites') === 'none';
   const moment = useMemo(
@@ -75,7 +77,7 @@ export function Today() {
                 <Banner moment={moment} tell={tell} />
               )}
               {moment.kind === 'first' ? (
-                <FirstRun tell={tell} />
+                <FirstRun tell={tell} asks={asks} />
               ) : (
                 <div className="today-columns">
                   <div className="today-left">
