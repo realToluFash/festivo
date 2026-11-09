@@ -1,0 +1,32 @@
+# sc-34175: the card's Send a code for the one unverified contact ALT, its Verify sheet, and the verified-alternative notice after the code.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.step'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'account.step'
+- extendedWaitUntil:
+    visible:
+      id: 'account.verify.code'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: verify-sheet
+- runScript:
+    file: ../scripts/sc34175-code.js
+    env:
+      ALT: ${ALT}
+- tapOn:
+    id: 'account.verify.code'
+- inputText: ${output.code}
+- tapOn:
+    id: 'account.verify.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'account.said'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: verified-notice
