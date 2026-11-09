@@ -124,13 +124,13 @@
   flex: none;
   flex-direction: column;
   box-sizing: border-box;
-  width: 595px;
-  min-height: 842px;
-  padding: 36px 36px 24px;
+  width: 794px;
+  min-height: 1123px;
+  padding: 48px 48px 32px;
   background: var(--colorCard);
   box-shadow: 0 18px 40px color-mix(in srgb, var(--colorPrintInk) 18%, transparent);
   color: var(--colorPrintInk);
-  font: 500 12px/1.4 var(--fontFamily);
+  font: 500 13px/1.45 var(--fontFamily);
   font-variant-numeric: tabular-nums;
 }
 
@@ -235,6 +235,9 @@
 
   .kp-sheet {
     box-shadow: none;
+    width: auto;
+    min-height: 0;
+    padding: 0;
     break-after: page;
   }
 
