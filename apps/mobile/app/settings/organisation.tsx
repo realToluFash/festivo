@@ -44,10 +44,10 @@ export default function Organisation() {
   const organisationId = organisation?.id;
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(0);
-  const [said, setSaid] = useState<CardSaid | null>(null);
+  const [saidFor, setSaidFor] = useState<{ id: string; said: CardSaid } | null>(null);
   const [editing, setEditing] = useState(false);
   const [editVisit, setEditVisit] = useState(0);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toastFor, setToastFor] = useState<{ id: string; words: string } | null>(null);
   const [members, setMembers] = useState<{ id: string; list: OrganisationMember[] } | null>(null);
   const { watch, stale, refreshing } = useOffline({
     loaded: loadedFor != null && loadedFor === organisationId,
@@ -90,6 +90,8 @@ export default function Organisation() {
 
   const refreshingWords = refreshing ? <Refreshing testID="organisation.refreshing" /> : null;
   const listed = members != null && members.id === organisationId ? members.list : null;
+  const said = saidFor != null && saidFor.id === organisationId ? saidFor.said : null;
+  const toast = toastFor != null && toastFor.id === organisationId ? toastFor.words : null;
   const candidates: Candidate[] = (listed ?? [])
     .filter((one) => one.status === 'active' && !one.self)
     .map((one) => ({ id: one.id, name: one.user.name, role: roleName(t, one.role) }));
@@ -111,6 +113,8 @@ export default function Organisation() {
         : { by: 'role', role: roleName(t, organisation.role) };
     const details = detailsOf(organisation);
     const managesMembers = roleHolds(organisation, 'members.manage');
+    const say = (next: CardSaid) => setSaidFor({ id: organisation.id, said: next });
+    const onToast = (words: string) => setToastFor({ id: organisation.id, words });
 
     return (
       <>
@@ -132,7 +136,7 @@ export default function Organisation() {
             key={`domains-${organisation.id}`}
             organisation={organisation}
             calls={api}
-            onToast={setToast}
+            onToast={onToast}
           />
         )}
         {managesMembers && (
@@ -141,7 +145,7 @@ export default function Organisation() {
             organisation={organisation}
             calls={api}
             phone={kind === 'phone'}
-            onToast={setToast}
+            onToast={onToast}
           />
         )}
         <OwnershipSection
@@ -153,7 +157,7 @@ export default function Organisation() {
           candidates={candidates}
           via={via}
           onTransferred={(to) => {
-            setSaid({ kind: 'transferred', to });
+            say({ kind: 'transferred', to });
             void reloadSignedIn();
           }}
           onGone={() => router.replace('/')}
@@ -181,7 +185,7 @@ export default function Organisation() {
             onClose={() => setEditing(false)}
             onSaved={(_, words) => {
               setEditing(false);
-              setSaid({ kind: 'saved', words });
+              say({ kind: 'saved', words });
             }}
           />
         )}
@@ -221,7 +225,7 @@ export default function Organisation() {
       {toast != null && (
         <PageToast
           words={toast}
-          onClose={() => setToast(null)}
+          onClose={() => setToastFor(null)}
           bottom={insets.bottom + tokens.spaceLg}
         />
       )}
