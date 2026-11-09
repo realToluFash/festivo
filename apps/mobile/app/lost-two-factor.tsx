@@ -474,7 +474,11 @@ function Request({
       >
         <Heading
           mark={['progress', t('lostTwoFactor.waitingMark')]}
-          title={t('lostTwoFactor.waitingFor', { organisations })}
+          title={
+            state.nobody
+              ? t('lostTwoFactor.nobodyTitle')
+              : t('lostTwoFactor.waitingFor', { organisations })
+          }
           intro={t(recoveryIntroKey('waiting', state.nobody), { organisations })}
           answer={tapped}
         />
