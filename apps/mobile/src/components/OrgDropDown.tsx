@@ -1,6 +1,14 @@
 import { invitationWording, refusalBody } from '@soirely/domain';
 import { useIsFocused } from 'expo-router';
-import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
+import {
+  Fragment,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
@@ -13,6 +21,7 @@ import {
   StyleSheet,
   type TextInputInstance,
   View,
+  type ViewInstance,
 } from 'react-native';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -45,7 +54,13 @@ import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
 import { OrgMark } from './OrgMark.tsx';
 import { useReadOut } from './ReadOut.tsx';
-import { SETTLED_MS } from './Screen.tsx';
+import {
+  SETTLED_MS,
+  type StepClosed,
+  stepClosed,
+  useFocusBackToOpener,
+  useFocusOnAnswer,
+} from './Screen.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Pill } from './SettingsParts.tsx';
 import { useFocusBack, useWindowTurn } from './Sheet.tsx';
@@ -98,7 +113,8 @@ export interface DropDownAnswers {
   /** Opens the invitation or offer under its tile, or closes it again. */
   onExpand: (id: string) => void;
   onAnswer: (invite: Invite, yes: boolean) => void;
-  onAsk: () => void;
+  /** Settles once the request is answered; Ask stays off until then. */
+  onAsk: () => void | Promise<void>;
   onNotNow: () => void;
 }
 
@@ -146,12 +162,28 @@ export function OrgDropDown({
   const [cleared, setCleared] = useState(0);
   const [under, setUnder] = useState(false);
   const [answered, setAnswered] = useState<object | undefined>(undefined);
+  const [asking, setAsking] = useState(false);
+  const tileRefs = useRef(new Map<string, ViewInstance>());
+  const remembered = useRef<TextHandle>(null);
+  const [afterOffer, setAfterOffer] = useState<{ closed: StepClosed; next: string | null }>();
   const locale = dateLocale();
   const sizes = session.large ? DRAWN_LARGE : accessibilitySizes ? ROWS : GRID;
   const large = sizes !== GRID;
   const typingAtOpen = searchable(session) && session.query !== '';
 
   useFocusBack(open, back);
+  // Not now takes the offer's tile away, and the focused button with it (sc-11173).
+  const afterOfferTarget = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        const next = afterOffer?.next;
+
+        return (next == null ? undefined : tileRefs.current.get(next)) ?? remembered.current;
+      },
+    }),
+    [afterOffer],
+  );
+  useFocusBackToOpener(afterOffer?.closed, afterOfferTarget);
 
   useEffect(() => {
     if (open && !here) onClose();
@@ -220,8 +252,18 @@ export function OrgDropDown({
     onAnswer(invite, yes);
   };
   const ask = () => {
+    if (asking) return;
     setAnswered({});
-    onAsk();
+    setAsking(true);
+    void Promise.resolve(onAsk()).finally(() => setAsking(false));
+  };
+  const notNow = (offerKey: string) => {
+    const after = tiles[tiles.findIndex((tile) => tileKey(tile) === offerKey) + 1];
+    setAfterOffer({
+      closed: stepClosed('afterOffer'),
+      next: after == null ? null : tileKey(after),
+    });
+    onNotNow();
   };
 
   return (
@@ -352,6 +394,10 @@ export function OrgDropDown({
                           width={large ? null : cell}
                           sizes={sizes}
                           open={tileKey(tile) === session.expanded}
+                          ref={(view) => {
+                            if (view == null) tileRefs.current.delete(tileKey(tile));
+                            else tileRefs.current.set(tileKey(tile), view);
+                          }}
                           onPress={() => {
                             if (tile.kind === 'create') onCreate();
                             else if (tile.kind === 'place' && tile.current) onClose();
@@ -390,8 +436,9 @@ export function OrgDropDown({
                             email={email}
                             sizes={sizes}
                             answered={answered}
+                            busy={asking}
                             onAsk={ask}
-                            onNotNow={onNotNow}
+                            onNotNow={() => notNow(tileKey(opened))}
                           />
                         ) : (
                           <InvitationPanel
@@ -413,6 +460,7 @@ export function OrgDropDown({
               })}
             </View>
             <Text
+              ref={remembered}
               size={sizes.note}
               weight="medium"
               maxFontSizeMultiplier={sizes.fixed ? 1 : undefined}
@@ -533,12 +581,14 @@ function Cell({
   width,
   sizes,
   open,
+  ref,
   onPress,
 }: {
   tile: Tile;
   width: number | null;
   sizes: Sizes;
   open: boolean;
+  ref: (view: ViewInstance | null) => void;
   onPress: () => void;
 }) {
   const { t } = useTranslation();
@@ -550,6 +600,7 @@ function Cell({
 
   return (
     <Pressable
+      ref={ref}
       onPress={onPress}
       style={({ pressed }) => [
         beside ? styles.entry : [styles.cell, { width }],
@@ -890,6 +941,7 @@ function OfferPanel({
   email,
   sizes,
   answered,
+  busy,
   onAsk,
   onNotNow,
 }: {
@@ -897,6 +949,7 @@ function OfferPanel({
   email: string;
   sizes: Sizes;
   answered: object | undefined;
+  busy: boolean;
   onAsk: () => void;
   onNotNow: () => void;
 }) {
@@ -911,9 +964,8 @@ function OfferPanel({
   useReadOut(refused && answered != null ? t('domainJoining.unavailable') : null, {
     answer: answered,
   });
-  useReadOut(asked && answered != null ? `${waiting}\n${askedWords}` : null, {
-    answer: answered,
-  });
+  // Ask's answer takes its buttons' place, so it takes focus in place of being read out (sc-11173).
+  const { read: waitingWords } = useFocusOnAnswer<ViewInstance>(asked ? answered : undefined);
 
   return (
     <View>
@@ -936,7 +988,7 @@ function OfferPanel({
       {asked ? (
         <View style={styles.asked}>
           <View style={styles.askedRing} />
-          <View style={styles.grow} accessible>
+          <View ref={waitingWords} style={styles.grow} accessible>
             <Text
               size={sizes.body}
               weight="semibold"
@@ -970,6 +1022,7 @@ function OfferPanel({
           <View style={styles.buttons}>
             <Pill
               label={t('domainJoining.ask')}
+              kind={busy ? 'off' : 'primary'}
               full={full}
               height={full ? tokens.sizeHitPhoneHero : tokens.sizeHit}
               onPress={onAsk}
@@ -977,7 +1030,7 @@ function OfferPanel({
             />
             <Pill
               label={t('domainJoining.notNow')}
-              kind="secondary"
+              kind={busy ? 'off' : 'secondary'}
               full={full}
               height={full ? tokens.sizeHitPhoneHero : tokens.sizeHit}
               onPress={onNotNow}

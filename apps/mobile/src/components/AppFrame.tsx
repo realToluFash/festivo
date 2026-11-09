@@ -546,7 +546,7 @@ export function AppFrame({
             }}
             onAsk={() => {
               setOfferRefused(false);
-              offer.ask().catch(() => setOfferRefused(true));
+              return offer.ask().catch(() => setOfferRefused(true));
             }}
             onNotNow={() => {
               setExpanded(null);
