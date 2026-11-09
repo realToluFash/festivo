@@ -1603,6 +1603,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/new-password',
       },
       { title: 'This link has expired', what: 'One button', href: '/demo/link-expired' },
+      {
+        title: 'That did not work',
+        what: 'Reading the link failed: Try again reads it again',
+        href: '/demo/read-failed',
+      },
     ],
   },
   {
