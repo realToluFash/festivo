@@ -227,7 +227,7 @@
     "sentAgain": "Nous l’avons renvoyé. Utilisez le dernier e-mail.",
     "openMail": "Ouvrir la boîte mail",
     "sendAgain": "Le renvoyer",
-    "sendAgainIn": "Send it again in {{time}}",
+    "sendAgainIn": "Le renvoyer dans {{time}}",
     "limitedLine": "Trop de demandes. Réessayez à {{time}}. Tout lien déjà envoyé fonctionne toujours.",
     "failedTitle": "Cela n’a pas fonctionné",
     "failedBody": "Un problème est survenu en route. Réessayez dans un instant.",
