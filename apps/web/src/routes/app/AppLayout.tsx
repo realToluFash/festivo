@@ -188,7 +188,6 @@ function Shell() {
   );
 
   const atAccount = pathname.startsWith('/app/account');
-  const standingIn = !atAccount && (session.pausedIn != null || (organisation != null && overdue));
 
   const atSettings = pathname === '/app/settings' || pathname.startsWith('/app/settings/');
   // At an organisation's Settings section the stand-in takes the page beside the Settings list, so the account stays a row away.
@@ -203,7 +202,7 @@ function Shell() {
         }}
         onChoose={() => setChoosing((times) => times + 1)}
       />
-    ) : organisation != null && standingIn ? (
+    ) : organisation != null && overdue && !atAccount ? (
       <TwoFactorOverdue organisation={organisation} />
     ) : null;
 
@@ -312,7 +311,7 @@ function Shell() {
           <p className="shell-crumb">
             {organisation?.name ?? session.pausedIn?.name}
             {/* A screen standing in for the page leaves only the organisation (pm, 2 Nov). */}
-            {!standingIn && (
+            {standIn == null && (
               <>
                 <span aria-hidden="true"> / </span>
                 <b>
