@@ -50,6 +50,12 @@ describe('/demo/queue (sc-36033)', () => {
     expect(document.activeElement).toBe(button('Move Table 4 down'));
   });
 
+  it('never tells the lead of their own change', async () => {
+    await open('waiterNotice');
+    expect(names()[0]).toBe('Table 5');
+    expect(screen.queryByText(/Moved up by/)).toBeNull();
+  });
+
   it('refuses a change offline with the line, and changes nothing', async () => {
     await open('populated');
     fireEvent.click(screen.getByRole('button', { name: 'Go offline' }));

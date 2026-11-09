@@ -342,14 +342,6 @@
   color: var(--colorAccentText);
 }
 
-.queue-moved {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceXxs);
-  color: var(--colorAccentText);
-  font: var(--typeSmallStrong);
-}
-
 .queue-flag {
   display: flex;
   align-items: center;

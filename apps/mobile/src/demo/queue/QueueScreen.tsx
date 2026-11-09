@@ -26,6 +26,7 @@ import {
   drawn,
   goOnline,
   move,
+  onIt,
   pick,
   placeLine,
   queueStateOf,
@@ -159,7 +160,7 @@ function QueueLead({ start }: { start: ReturnType<typeof queueStateOf> }) {
       </ScrollView>
       {phone && (
         <Sheet
-          open={sheetOpen && s.manage}
+          open={sheetOpen}
           onClose={() => setSheetOpen(false)}
           scrimLabel="Close the section"
           opener={sheetOpener}
@@ -270,17 +271,27 @@ function QueuePanel({
       <Text size={13} weight="semibold" style={styles.kicker}>
         ON IT
       </Text>
-      {sec.on.length > 0 ? (
-        sec.on.map((w) => (
-          <Text key={w} size={15} weight="semibold">
-            {w}
-          </Text>
-        ))
-      ) : (
-        <Text size={15} style={styles.secondary}>
-          Nobody on {sec.name} · put someone on it from Team
-        </Text>
-      )}
+      {onIt(s, id).map((person) => (
+        <View key={person.name} style={styles.person}>
+          <View
+            style={styles.initials}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            <Text size={13} weight="bold" accessible={false}>
+              {person.initials}
+            </Text>
+          </View>
+          <View style={styles.grow}>
+            <Text size={15} weight="semibold">
+              {person.name}
+            </Text>
+            <Text size={14} style={styles.secondary}>
+              {person.line}
+            </Text>
+          </View>
+        </View>
+      ))}
       {q.length === 0 ? (
         <Text size={15} style={styles.secondary}>
           No tables in {sec.name} yet. A table added to it joins the end of its queue.
@@ -467,6 +478,15 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   onAccent: { color: tokens.colorInkOnDark },
   kicker: { color: tokens.colorInkSecondary, letterSpacing: 0.6 },
+  person: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd, minHeight: 48 },
+  initials: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: tokens.colorInset,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   header: { gap: tokens.spaceXs },
   status: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.colorAccent },

@@ -49,6 +49,11 @@ export const RIVAL = 'Tobi Adeyemi';
 export const WAITER = 'Kunle Ajayi';
 export const CONTROLS: readonly Control[] = ['front', 'up', 'down'];
 
+/** The order another lead saved first, so a refused save never looks like the lead's own. */
+export const RIVAL_QUEUES: Partial<Record<SectionId, readonly string[]>> = {
+  D: ['Table 17', 'Table 15', 'Table 16', 'Table 18', 'Table 19'],
+};
+
 function place(
   name: string,
   kind: PlaceKind,
@@ -307,9 +312,13 @@ export function save(s0: QueueState): QueueState {
   s.build = null;
   s.waiterToast = '';
   if (s.rivalFirst) {
-    const q = s.queues[id];
-    const last = q.pop();
-    if (last != null) q.unshift(last);
+    const rival = RIVAL_QUEUES[id];
+    if (rival != null) s.queues[id] = [...rival];
+    else {
+      const q = s.queues[id];
+      const last = q.pop();
+      if (last != null) q.unshift(last);
+    }
     s.rivalFirst = false;
     s.notice = { kind: 'conflict', by: RIVAL, section: id };
     s.say = conflictLine(RIVAL);
@@ -322,6 +331,37 @@ export function save(s0: QueueState): QueueState {
   s.say = `${sectionOf(id).name} queue saved${next == null ? '' : ` · ${next} is next`}`;
   tellWaiter(s, id, before);
   return s;
+}
+
+export interface OnIt {
+  name: string;
+  initials: string;
+  line: string;
+}
+
+export function onIt(s: QueueState, id: SectionId): OnIt[] {
+  const sec = sectionOf(id);
+  if (sec.on.length === 0)
+    return [{ name: `Nobody on ${sec.name}`, initials: '–', line: 'Put someone on it from Team' }];
+  const next = upNext(s, id);
+  return sec.on.map((person) => {
+    const tray = s.queues[id].map((n) => s.places[n]).find((p) => p?.trayOf === person);
+    return {
+      name: person,
+      initials: person
+        .split(' ')
+        .filter((_, i, all) => i === 0 || i === all.length - 1)
+        .map((word) => word[0])
+        .join('')
+        .toUpperCase(),
+      line:
+        tray != null
+          ? `Serving ${tray.name} · ${tray.onTray} plates`
+          : next != null
+            ? `Next: ${next}`
+            : 'Nobody left to serve',
+    };
+  });
 }
 
 export function conflictLine(by: string): string {
@@ -480,7 +520,7 @@ export function seed(name: QueueStateName): QueueState {
     case 'offline':
       return { ...s, online: false, notice: { kind: 'offline' } };
     case 'conflict':
-      s.queues.D = ['Table 17', 'Table 15', 'Table 16', 'Table 18', 'Table 19'];
+      s.queues.D = [...(RIVAL_QUEUES.D ?? [])];
       return { ...s, selected: 'D', notice: { kind: 'conflict', by: RIVAL, section: 'D' } };
     case 'rivalMove':
       return { ...s, rivalFirst: true };

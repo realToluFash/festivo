@@ -13,6 +13,7 @@ import {
   LEAD,
   type QueueState,
   WAITER,
+  andList,
   isServed,
   move,
   queueStateOf,
@@ -20,6 +21,7 @@ import {
   seed,
   startTray,
   waiterNext,
+  waiterSections,
 } from './QueueModel.ts';
 import { FlagLine, Glyph } from './QueueParts.tsx';
 
@@ -37,6 +39,7 @@ function WaiterNext({ start }: { start: ReturnType<typeof queueStateOf> }) {
   const next = waiterNext(s);
   const p = next == null ? null : s.places[next.place];
   const moved = p != null && s.moved?.place === next?.place && p.trayOf === '';
+  const tablesLine = s.queues.A.length === 1 ? '1 table,' : `${s.queues.A.length} tables,`;
   const head = `${s.asWell ? 'Section A, and Section B as well' : 'Section A'} · Mains · ${WAITER}`;
 
   function lead(change: (x: QueueState) => QueueState): void {
@@ -60,12 +63,12 @@ function WaiterNext({ start }: { start: ReturnType<typeof queueStateOf> }) {
           {tab === 'next' ? 'Next' : 'Floor'}
         </Text>
         <Text size={15} weight="medium" style={styles.secondary}>
-          {tab === 'next' ? head : 'Section A · 6 tables, in the queue’s order'}
+          {tab === 'next' ? head : `Section A · ${tablesLine} in the queue’s order`}
         </Text>
         {tab === 'next' ? (
           next == null || p == null ? (
             <Text size={15} style={styles.secondary}>
-              Nothing to serve in Section A.
+              Nothing to serve in {andList(waiterSections(s).map((id) => sectionOf(id).name))}.
             </Text>
           ) : (
             <View style={styles.card}>

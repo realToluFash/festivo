@@ -18,6 +18,7 @@ import {
   drawn,
   goOnline,
   move,
+  onIt,
   pick,
   placeLine,
   queueStateOf,
@@ -63,7 +64,6 @@ const OFFLINE_GLYPH = [
 ];
 const INFO_GLYPH = ['M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z', 'M12 16v-4', 'M12 8h.01'];
 const FLAG_GLYPH = ['M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z', 'M4 22v-7'];
-const MOVED_GLYPH = ['M12 19V5', 'm5 12 7-7 7 7'];
 
 type After = 'move' | 'build' | 'leave' | null;
 
@@ -181,7 +181,7 @@ function Queue({ name }: { name: QueueStateName }) {
                 <h2 id="queue-on-it" className="queue-label">
                   On it
                 </h2>
-                {onIt(state, section).map((person) => (
+                {onIt(state, section.id).map((person) => (
                   <div key={person.name} className="queue-person">
                     <span className="queue-initials" aria-hidden="true">
                       {person.initials}
@@ -236,7 +236,6 @@ function Queue({ name }: { name: QueueStateName }) {
                       {queue.map((place, index) => {
                         const p = state.places[place];
                         if (p == null) return null;
-                        const moved = state.moved?.place === place && p.trayOf === '';
 
                         return (
                           <li key={place} className="queue-row">
@@ -260,12 +259,6 @@ function Queue({ name }: { name: QueueStateName }) {
                                   </span>
                                 ))}
                               </div>
-                              {moved && (
-                                <div className="queue-moved">
-                                  <Glyph paths={MOVED_GLYPH} size={13} />
-                                  Moved up by {state.moved?.by}
-                                </div>
-                              )}
                               <div className="queue-meta">{placeLine(p)}</div>
                               {p.flag !== '' && (
                                 <div className="queue-flag">
@@ -441,36 +434,6 @@ function sectionLine(section: Section): string {
   const tables = n === 0 ? 'No tables' : n === 1 ? '1 table' : `${n} tables`;
 
   return `${section.on.length > 0 ? section.on.join(', ') : 'Nobody on it'} · ${tables}`;
-}
-
-function onIt(state: QueueState, section: Section) {
-  if (section.on.length === 0)
-    return [
-      { name: `Nobody on ${section.name}`, initials: '–', line: 'Put someone on it from Team' },
-    ];
-  const next = upNext(state, section.id);
-
-  return section.on.map((person) => {
-    const tray = state.queues[section.id]
-      .map((place) => state.places[place])
-      .find((p) => p?.trayOf === person);
-
-    return {
-      name: person,
-      initials: person
-        .split(' ')
-        .filter((_, i, all) => i === 0 || i === all.length - 1)
-        .map((word) => word[0])
-        .join('')
-        .toUpperCase(),
-      line:
-        tray != null
-          ? `Serving ${tray.name} · ${tray.onTray} plates`
-          : next != null
-            ? `Next: ${next}`
-            : 'Nobody left to serve',
-    };
-  });
 }
 
 function Glyph({ paths, size }: { paths: readonly string[]; size: number }) {

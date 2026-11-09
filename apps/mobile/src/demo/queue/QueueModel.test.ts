@@ -9,6 +9,7 @@ import {
   fresh,
   goOnline,
   move,
+  onIt,
   pick,
   save,
   seed,
@@ -115,7 +116,7 @@ describe('build the queue', () => {
   it('is refused with the other lead named when the queue changed since', () => {
     const s = save(pick(startBuild({ ...fresh(), rivalFirst: true }, 'D'), 'Table 19'));
     expect(s.notice).toEqual({ kind: 'conflict', by: 'Tobi Adeyemi', section: 'D' });
-    expect(s.queues.D[0]).toBe('Table 19');
+    expect(s.queues.D).toEqual(['Table 17', 'Table 15', 'Table 16', 'Table 18', 'Table 19']);
     expect(s.build).toBeNull();
   });
 });
@@ -161,4 +162,25 @@ describe('the waiter’s Next', () => {
 
 it('seeds every state', () => {
   for (const name of QUEUE_STATES) expect(seed(name).queues.A).toHaveLength(6);
+});
+
+describe('on it', () => {
+  it('gives each person their tray, else the next table, else nothing left', () => {
+    expect(onIt(fresh(), 'A')).toEqual([
+      { name: 'Kunle Ajayi', initials: 'KA', line: 'Serving Table 4 · 3 plates' },
+    ]);
+    expect(onIt(fresh(), 'B').map((p) => p.line)).toEqual([
+      'Serving Table 9 · 2 plates',
+      expect.stringMatching(/^Next: /),
+    ]);
+    expect(onIt(fresh(), 'E')).toEqual([
+      { name: 'Yinka Hassan', initials: 'YH', line: 'Nobody left to serve' },
+    ]);
+  });
+
+  it('says when nobody is on the section', () => {
+    expect(onIt(fresh(), 'C')).toEqual([
+      { name: 'Nobody on Section C', initials: '–', line: 'Put someone on it from Team' },
+    ]);
+  });
 });
