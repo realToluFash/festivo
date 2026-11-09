@@ -6,6 +6,7 @@ import type { LinkedProvider, Membership } from '@soirely/api-client';
 import { setLanguage } from '../../../i18n/index.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
+import { atPhoneWidth } from '../../../test-widths.ts';
 import { routes } from '../../index.tsx';
 
 const OWNER = { id: 'role_1', seededAs: 'owner', name: null };
@@ -459,6 +460,32 @@ describe('changing a rule (sc-30192)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(limit));
     expect(patches(sent)).toEqual([]);
+  });
+
+  it('at a phone-wide window an edit keeps Cancel, the title and Save, and Discard keeps Keep editing first', async () => {
+    atPhoneWidth();
+    signedIn(membership());
+    answering();
+    open();
+
+    fireEvent.click(await row(/Signed out after 30 days unused/));
+    const bar = dialog().getByRole('heading', {
+      name: 'How long a sign-in lasts unused',
+    }).parentElement!;
+    expect([...bar.children].map((child) => child.textContent)).toEqual([
+      'Cancel',
+      'How long a sign-in lasts unused',
+      'Save',
+    ]);
+
+    fireEvent.click(dialog().getByRole('radio', { name: /^7 days/ }));
+    fireEvent.click(dialog().getByRole('button', { name: 'Cancel' }));
+
+    const ask = within(screen.getByRole('alertdialog'));
+    expect(ask.getAllByRole('button').map((b) => b.textContent)).toEqual([
+      'Keep editing',
+      'Discard',
+    ]);
   });
 
   it('picking Google or Apple only names who has a password only, before saving', async () => {

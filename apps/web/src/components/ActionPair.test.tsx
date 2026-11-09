@@ -99,4 +99,26 @@ describe('a pair of actions', () => {
 
     expect(seen()).toEqual(['Continue', 'Send a new code', 'Cancel']);
   });
+
+  it('keeps its one row, the way back first, when it does not stack', () => {
+    const turn = aWindowThatTurns();
+    render(
+      <ActionPair
+        stacks={false}
+        dismiss={<button type="button">Cancel</button>}
+        between={<h2>How people sign in</h2>}
+        confirm={<button type="button">Save</button>}
+      />,
+    );
+    const pair = screen.getByRole('button', { name: 'Cancel' }).parentElement!;
+
+    turn(true);
+
+    expect([...pair.children].map((child) => child.textContent)).toEqual([
+      'Cancel',
+      'How people sign in',
+      'Save',
+    ]);
+    expect(pair.classList.contains('is-row')).toBe(true);
+  });
 });

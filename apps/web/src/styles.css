@@ -3587,6 +3587,11 @@ span {
   }
 }
 
+.actions-pair.is-row {
+  flex-direction: row;
+  align-items: center;
+}
+
 /* ── An invitation to join ────────────────────────────────────────────────── */
 
 .join-org {
