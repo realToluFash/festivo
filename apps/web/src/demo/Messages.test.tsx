@@ -516,6 +516,24 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     expect(screen.getByRole('heading', { level: 3, name: 'Everyone · 96' })).toBeDefined();
   });
 
+  it.each(['Write a follow-up', 'Write to your guests'])(
+    'keeps typing in order when the first letter in %s opens the composer',
+    SLOW,
+    async (name) => {
+      await messages(name === 'Write a follow-up' ? 'sent' : 'inUse');
+
+      fireEvent.change(screen.getByRole('textbox', { name }), { target: { value: 'H' } });
+      const field = await screen.findByRole('textbox', { name: 'Message' });
+
+      await vi.waitFor(() => expect(document.activeElement).toBe(field));
+      const caret = window.getSelection()!.getRangeAt(0);
+
+      expect(caret.collapsed).toBe(true);
+      caret.insertNode(document.createTextNode('ello there'));
+      expect(field.textContent).toBe('Hello there');
+    },
+  );
+
   it('keeps the sent message and adds a follow-up after it', SLOW, async () => {
     await messages('sent');
 
@@ -1129,6 +1147,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     const search = within(picker).getByRole('searchbox', { name: 'Search guests' });
 
     await vi.waitFor(() => expect(document.activeElement).toBe(search));
+    expect(search.closest('label')?.className).toBe('mg-search');
     fireEvent.change(search, { target: { value: 'claude' } });
     expect(within(picker).getAllByRole('radio')).toHaveLength(1);
     fireEvent.change(search, { target: { value: 'Dubois' } });
