@@ -18,6 +18,7 @@ import {
 
 import { TextField } from '../../components/Field.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
+import { DraftTile } from '../../components/DraftTile.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text, type TextHandle } from '../../components/Text.tsx';
 import { glide } from '../../motion.ts';
@@ -40,7 +41,7 @@ import {
   rowLabel,
   search,
 } from './CreateWalk.ts';
-import { DraftTile, FactLine, Question, Refusal, Tag, TWICE, ZoneLine } from './WalkParts.tsx';
+import { FactLine, Question, Refusal, Tag, TWICE, ZoneLine } from './WalkParts.tsx';
 
 const hidden = {
   accessibilityElementsHidden: true,

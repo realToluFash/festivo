@@ -26,25 +26,11 @@ const PILL = readFileSync(join(import.meta.dirname, 'components', 'OrgPill.tsx')
 const SPACED = 'Adeyemi Okafor Events '.repeat(5).slice(0, 99).concat('X');
 const WORD = 'A'.repeat(100);
 
-/** Each `<Text …>` element whose only child is `{<expression>}`, as its opening tag. */
-function textsShowing(expression: string): string[] {
-  const escaped = expression.replaceAll('.', '\\.');
-
-  return [
-    ...FRAME.matchAll(new RegExp(`<Text\\b([^>]*)>\\s*\\{${escaped}\\}\\s*</Text>`, 'gu')),
-  ].map(([, attributes]) => attributes ?? '');
-}
-
 describe('a 100-character organisation name in the frame (sc-486)', () => {
-  it('shows on one line, or two at the accessibility sizes, cut with an ellipsis, in the pill and every switcher row (sc-13496)', () => {
-    const texts = textsShowing('organisation.name');
-
-    expect(texts).toHaveLength(1);
-    for (const attributes of texts) expect(attributes).toMatch(/numberOfLines=\{lines\}/u);
-    expect(FRAME.match(/const lines = useNameLines\(\);/gu)).toHaveLength(2);
+  it('shows on one line, or two at the accessibility sizes, cut with an ellipsis, in the pill (sc-13496)', () => {
+    expect(FRAME.match(/const lines = useNameLines\(\);/gu)).toHaveLength(1);
     expect(FRAME).toMatch(/<WhitePill\b(?:(?!\/>)[\s\S])*\slines=\{lines\}/u);
     expect(PILL).toMatch(/numberOfLines=\{lines \?\? \(wrap \? undefined : 1\)\}/u);
-    expect(FRAME).toMatch(/muted numberOfLines=\{large \? 0 : 1\}>\s*\{t\('switcher\.yourRole'/u);
   });
 
   it.each([

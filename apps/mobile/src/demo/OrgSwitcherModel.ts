@@ -1,45 +1,32 @@
-import { type InvitationOutcome, isWaiting, waitingInvitations } from '@soirely/domain';
+import { type InvitationOutcome, isWaiting } from '@soirely/domain';
 
 import { meshFor, type MeshKey } from '../kit/today.ts';
+import type { Invite, Offer, OfferStatus, Place, Session } from '../kit/orgSwitcher.ts';
 
-export interface Place {
-  id: string;
-  name: string;
-  role: string;
-  /** Made in the walk just now, so it has no events yet. */
-  fresh?: boolean;
-}
-
-export interface Invite {
-  id: string;
-  name: string;
-  inviter: string;
-  role: string;
-  until: string;
-}
-
-export type OfferStatus = 'open' | 'asked' | 'unavailable' | 'dismissed';
-
-export interface Offer {
-  id: string;
-  name: string;
-  domain: string;
-  status: OfferStatus;
-}
-
-export interface Session {
-  places: readonly Place[];
-  current: string;
-  invitations: readonly Invite[];
-  outcomes: Readonly<Record<string, InvitationOutcome>>;
-  offer: Offer | null;
-  /** The invitation or offer opened in place under its row. */
-  expanded: string | null;
-  query: string;
-  large: boolean;
-  /** sc-563: the invitation whose Join is refused, the address being managed by Ire Events. */
-  managed?: string;
-}
+export {
+  CELL_GAP,
+  type DropFrame,
+  type Invite,
+  type Offer,
+  type Place,
+  SEARCH_ABOVE,
+  type Session,
+  type Tile,
+  cellWidth,
+  columnsFor,
+  fold,
+  frameFor,
+  matches,
+  noneMatch,
+  rowsOf,
+  scrollToShow,
+  searchable,
+  startsAWord,
+  tileKey,
+  tilesOf,
+  untilIn,
+  waitingOf,
+} from '../kit/orgSwitcher.ts';
 
 export const VIEWER = { name: 'Folake Adeyemi', email: 'folake@ire.events' } as const;
 
@@ -125,16 +112,20 @@ const INVITATIONS: readonly Invite[] = [
   {
     id: 'org-celebraciones-alameda',
     name: 'Celebraciones Alameda',
-    inviter: 'Kemi Adeyemi',
+    invitedBy: { name: 'Kemi Adeyemi' },
     role: 'Member',
     until: '2026-11-20',
+    email: VIEWER.email,
+    signedInAs: VIEWER.email,
   },
   {
     id: 'org-bluebird-gatherings',
     name: 'Bluebird Gatherings',
-    inviter: 'Beatriz Lima',
+    invitedBy: { name: 'Beatriz Lima' },
     role: 'Admin',
     until: '2026-11-30',
+    email: VIEWER.email,
+    signedInAs: VIEWER.email,
   },
 ];
 
@@ -225,87 +216,8 @@ export function sessionFor(state: SwitcherState): Session {
   }
 }
 
-export function waitingOf(session: Session): number {
-  return waitingInvitations(session.invitations, session.outcomes);
-}
-
 export function currentPlace(session: Session): Place {
   return session.places.find((place) => place.id === session.current) ?? IRE_EVENTS;
-}
-
-/** The switcher searches above this many organisations, and Members' person menu above this many people (sc-614). */
-export const SEARCH_ABOVE = 15;
-
-export function searchable(session: Session): boolean {
-  return session.places.length > SEARCH_ABOVE;
-}
-
-export function fold(words: string): string {
-  return words.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase();
-}
-
-export function matches(name: string, query: string): boolean {
-  return fold(name).includes(fold(query.trim()));
-}
-
-/** People's rule (handover-a-spec.md §2.2): a name matches at the start of any of its words, so "jo" finds Joana and João. */
-export function startsAWord(name: string, query: string): boolean {
-  const typed = fold(query.trim());
-
-  return (
-    typed === '' ||
-    fold(name)
-      .split(/\s+/u)
-      .some((word) => word.startsWith(typed))
-  );
-}
-
-export type Tile =
-  | { kind: 'place'; place: Place; current: boolean }
-  | { kind: 'joined'; invite: Invite }
-  | { kind: 'invitation'; invite: Invite; outcome: InvitationOutcome | undefined }
-  | { kind: 'offer'; offer: Offer }
-  | { kind: 'create' };
-
-export function tileKey(tile: Tile): string {
-  switch (tile.kind) {
-    case 'place':
-      return tile.place.id;
-    case 'joined':
-    case 'invitation':
-      return tile.invite.id;
-    case 'offer':
-      return tile.offer.id;
-    case 'create':
-      return 'create';
-  }
-}
-
-/** Your places in main's order, then the offer and the invitations, and Create an organisation always last, under a search too. */
-export function tilesOf(session: Session, query: string): Tile[] {
-  const shown = (name: string) => !searchable(session) || matches(name, query);
-  const places: Tile[] = session.places
-    .filter((place) => shown(place.name))
-    .map((place) => ({ kind: 'place', place, current: place.id === session.current }));
-  const offer: Tile[] =
-    session.offer == null || session.offer.status === 'dismissed' || !shown(session.offer.name)
-      ? []
-      : [{ kind: 'offer', offer: session.offer }];
-  const invitations: Tile[] = session.invitations
-    .filter((invite) => shown(invite.name))
-    .map((invite) => {
-      const outcome = session.outcomes[invite.id];
-
-      return outcome?.kind === 'accepted'
-        ? { kind: 'joined', invite }
-        : { kind: 'invitation', invite, outcome };
-    });
-
-  return [...places, ...offer, ...invitations, { kind: 'create' }];
-}
-
-export function noneMatch(session: Session, query: string): boolean {
-  return searchable(session) && query.trim() !== '' && tilesOf(session, query).length === 1;
 }
 
 export function expand(session: Session, id: string): Session {
@@ -375,109 +287,4 @@ export function placeOf(session: Session): Place | null {
 
 export function orgMesh(id: string): MeshKey {
   return meshFor(id);
-}
-
-export function untilIn(locale: string, day: string): string {
-  return new Intl.DateTimeFormat(locale, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${day}T00:00Z`));
-}
-
-export const LEAST_CELL = 112;
-export const CELL_GAP = 4;
-const EDGES = 2;
-const PADDING = 12;
-
-export function gridWidth(width: number): number {
-  return width - EDGES - 2 * PADDING;
-}
-
-export function columnsFor(width: number): number {
-  return Math.max(1, Math.floor((gridWidth(width) + CELL_GAP) / (LEAST_CELL + CELL_GAP)));
-}
-
-export function cellWidth(width: number): number {
-  const across = columnsFor(width);
-
-  return (gridWidth(width) - CELL_GAP * (across - 1)) / across;
-}
-
-export function rowsOf<T>(items: readonly T[], across: number): T[][] {
-  const rows: T[][] = [];
-
-  for (let at = 0; at < items.length; at += across) rows.push(items.slice(at, at + across));
-
-  return rows;
-}
-
-export interface Box {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-export interface DropFrame {
-  left: number;
-  top: number;
-  width: number;
-  maxHeight: number;
-  /** The opener's centre, across the drop-down's top edge: where it grows from. */
-  originX: number;
-}
-
-export const DROP_WIDTH = 500;
-const BELOW_OPENER = 8;
-const ABOVE_FOOT = 12;
-const SIDE = 12;
-const TAB_BAR = 64;
-const LEAST_HEIGHT = 160;
-
-export function frameFor({
-  opener,
-  window,
-  insets,
-  phone,
-}: {
-  opener: Box;
-  window: { width: number; height: number };
-  insets: { bottom: number };
-  phone: boolean;
-}): DropFrame {
-  const top = opener.y + opener.height + BELOW_OPENER;
-  const left = phone ? SIDE : Math.max(SIDE, opener.x);
-  const width = phone ? window.width - 2 * SIDE : Math.min(DROP_WIDTH, window.width - left - SIDE);
-  const foot = phone ? Math.max(insets.bottom - 4, 12) + TAB_BAR : Math.max(insets.bottom, 20);
-
-  return {
-    left,
-    top,
-    width,
-    maxHeight: Math.max(LEAST_HEIGHT, window.height - foot - ABOVE_FOOT - top),
-    originX: opener.x + opener.width / 2 - left,
-  };
-}
-
-/** The least scroll that shows all of a part with some to spare; none when it already shows. */
-export function scrollToShow({
-  top,
-  bottom,
-  offset,
-  viewport,
-  spare = 12,
-}: {
-  top: number;
-  bottom: number;
-  offset: number;
-  viewport: number;
-  spare?: number;
-}): number | null {
-  if (bottom + spare > offset + viewport)
-    return Math.max(0, Math.min(top, bottom + spare - viewport));
-  if (top < offset) return Math.max(0, top - spare);
-
-  return null;
 }

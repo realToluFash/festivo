@@ -773,6 +773,13 @@
     "rolesBack": "‹ Roles"
   },
   "switcher": {
+    "asks": "Where are you working?",
+    "canAsk": "You can ask to join",
+    "search": "Search organisations",
+    "clearSearch": "Clear search",
+    "noMatch": "No organisation matches “{{text}}”.",
+    "matches_one": "{{count, number}} organisation matches",
+    "matches_other": "{{count, number}} organisations match",
     "yourRole": "Su función · {{role}}",
     "heading": "Sus organizaciones",
     "current": "Actual",

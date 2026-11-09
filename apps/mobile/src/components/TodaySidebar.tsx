@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { Brand } from './Brand.tsx';
 import { SIDEBAR_WIDTH } from '../layout/textSize.ts';
@@ -12,6 +12,7 @@ import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ShownEvent } from '../kit/today.ts';
 import { SETTINGS_ID, type Tab } from './TodayCover.tsx';
 import { Initials } from './Initials.tsx';
+import { OrgPill } from './OrgPill.tsx';
 import { type TodayShell, useTodayShell } from './todayShell.ts';
 
 const PLACES: readonly (readonly [Tab, GlyphName])[] = [
@@ -83,38 +84,37 @@ function Place({
   );
 }
 
+/** The sidebar's opener, the switcher's pill at the head of iPad landscape's sidebar. */
+function SidebarOrg() {
+  const ref = useRef<ViewInstance>(null);
+  const org = useTodayShell().useOrgOpener(ref, true);
+
+  return (
+    <OrgPill
+      ref={ref}
+      sidebar
+      id={org.id}
+      name={org.name}
+      waiting={org.waiting}
+      label={org.label}
+      expanded={org.expanded}
+      onPress={org.onPress}
+      testID="home.switchOrganisation"
+    />
+  );
+}
+
 export function SidebarHead({ search, org = true }: { search?: boolean; org?: boolean }) {
   const { t } = useTranslation();
   const shell = useTodayShell();
-  const { organisation, open, OrgOpener } = shell;
+  const { open } = shell;
 
   return (
     <>
       <View style={styles.logo}>
         <Brand lockup height={24} />
       </View>
-      {org && OrgOpener != null && <OrgOpener at="sidebar" />}
-      {org && OrgOpener == null && (
-        <Pressable
-          onPress={() => open({ to: 'organisation' })}
-          style={styles.org}
-          accessibilityRole="button"
-          accessibilityLabel={t('todayScreen.switchOrganisation', { name: organisation })}
-          testID="home.switchOrganisation"
-        >
-          <View
-            style={styles.orgTile}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          >
-            <Initials name={organisation} size={12} weight="bold" style={styles.onAccent} />
-          </View>
-          <Text size={15} weight="semibold" accessible={false} style={styles.grow}>
-            {organisation}
-          </Text>
-          <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
-        </Pressable>
-      )}
+      {org && <SidebarOrg />}
       {(search ?? shell.search) && (
         <Pressable
           onPress={() => open({ to: 'search' })}

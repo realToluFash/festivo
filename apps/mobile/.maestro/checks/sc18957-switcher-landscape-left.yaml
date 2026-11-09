@@ -27,7 +27,7 @@ appId: host.exp.Exponent
 - takeScreenshot: middle
 - scrollUntilVisible:
     element:
-      id: 'switcher.create'
+      id: 'switcher.tile.create'
     direction: DOWN
     centerElement: false
     timeout: 30000
