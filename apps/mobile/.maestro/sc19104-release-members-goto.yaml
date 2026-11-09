@@ -11,7 +11,7 @@ appId: com.soirely.app
     id: 'members.goToOrganisation'
 - extendedWaitUntil:
     visible:
-      id: 'organisation.name'
+      id: 'organisation.card'
     timeout: 15000
 - waitForAnimationToEnd
 - takeScreenshot: organisation-from-members

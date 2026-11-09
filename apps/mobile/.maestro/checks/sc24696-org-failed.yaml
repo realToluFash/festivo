@@ -15,37 +15,37 @@ onFlowComplete:
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
     visible:
-      id: 'organisation.name'
+      id: 'organisation.card'
     timeout: 60000
 - scrollUntilVisible:
     element:
-      id: 'requestLink.retry'
+      id: 'organisation.link.tryAgain'
     timeout: 60000
     centerElement: true
 - assertVisible: '{{t:requestLink.title}}'
 - assertVisible: '{{t:requestLink.unreadable}}'
 - assertNotVisible:
-    id: 'requestLink.switch'
+    id: 'organisation.link.switch'
 - takeScreenshot: request-failed
 - scrollUntilVisible:
     element:
-      id: 'companyDomains.retry'
+      id: 'organisation.domain.tryAgain'
     direction: UP
     centerElement: true
 - assertVisible: '{{t:companyDomains.title}}'
 - assertVisible: '{{t:companyDomains.unreadable}}'
 - assertNotVisible:
-    id: 'companyDomains.domain'
+    id: 'organisation.domain.add'
 - takeScreenshot: domains-failed
 - scrollUntilVisible:
     element:
-      id: 'requestLink.retry'
+      id: 'organisation.link.tryAgain'
     centerElement: true
 - tapOn:
-    id: 'requestLink.retry'
+    id: 'organisation.link.tryAgain'
 - extendedWaitUntil:
     visible:
-      id: 'requestLink.retry'
+      id: 'organisation.link.tryAgain'
     timeout: 30000
 - takeScreenshot: request-failed-again
 - runScript:
@@ -53,26 +53,26 @@ onFlowComplete:
     env:
       ASK: /api?to=up
 - tapOn:
-    id: 'requestLink.retry'
+    id: 'organisation.link.tryAgain'
 - extendedWaitUntil:
     visible:
-      id: 'requestLink.switch'
+      id: 'organisation.link.switch'
     timeout: 30000
 - assertNotVisible:
-    id: 'requestLink.retry'
+    id: 'organisation.link.tryAgain'
 - takeScreenshot: request-recovered
 - scrollUntilVisible:
     element:
-      id: 'companyDomains.retry'
+      id: 'organisation.domain.tryAgain'
     direction: UP
     centerElement: true
 - takeScreenshot: domains-still-failed
 - tapOn:
-    id: 'companyDomains.retry'
+    id: 'organisation.domain.tryAgain'
 - extendedWaitUntil:
     visible:
-      id: 'companyDomains.domain'
+      id: 'organisation.domain.add'
     timeout: 30000
 - assertNotVisible:
-    id: 'companyDomains.retry'
+    id: 'organisation.domain.tryAgain'
 - takeScreenshot: domains-recovered

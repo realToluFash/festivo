@@ -4,6 +4,12 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
     visible:
+      id: organisation.edit
+    timeout: 30000
+- tapOn:
+    id: organisation.edit
+- extendedWaitUntil:
+    visible:
       id: 'organisation.country'
     timeout: 30000
 - assertNotVisible: '.*Lisbon.*'
@@ -16,7 +22,7 @@ appId: host.exp.Exponent
     timeout: 10000
 - takeScreenshot: org-country-list
 - tapOn:
-    id: 'organisation.country.close'
+    id: 'organisation.country.back'
 - extendedWaitUntil:
     notVisible:
       id: 'organisation.country.search'
@@ -29,7 +35,7 @@ appId: host.exp.Exponent
     timeout: 10000
 - takeScreenshot: org-currency-list
 - tapOn:
-    id: 'organisation.currency.close'
+    id: 'organisation.currency.back'
 - extendedWaitUntil:
     notVisible:
       id: 'organisation.currency.search'
@@ -42,14 +48,14 @@ appId: host.exp.Exponent
     id: 'organisation.language'
 - extendedWaitUntil:
     visible:
-      id: 'organisation.language.close'
+      id: 'organisation.language.back'
     timeout: 10000
 - takeScreenshot: org-language-list
 - tapOn:
-    id: 'organisation.language.close'
+    id: 'organisation.language.back'
 - extendedWaitUntil:
     notVisible:
-      id: 'organisation.language.close'
+      id: 'organisation.language.back'
     timeout: 10000
 - scrollUntilVisible:
     element:
@@ -67,7 +73,7 @@ appId: host.exp.Exponent
 - inputText: 'Lisbon'
 - takeScreenshot: org-timezone-list
 - tapOn:
-    id: 'organisation.timezone.close'
+    id: 'organisation.timezone.back'
 - extendedWaitUntil:
     notVisible:
       id: 'organisation.timezone.search'

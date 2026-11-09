@@ -12,17 +12,17 @@ onFlowComplete:
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'ownership.delete'
+      id: 'organisation.ownership.delete'
     timeout: 60000
 - runScript:
     file: ../batch/helper.js
     env:
       ASK: /api?to=stopped
 - tapOn:
-    id: 'ownership.delete'
+    id: 'organisation.ownership.delete'
 - extendedWaitUntil:
     visible:
-      id: 'ownership.delete.retry'
+      id: 'organisation.delete.retry'
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: failed-top
@@ -32,19 +32,19 @@ onFlowComplete:
       ASK: /api?to=up
 - scrollUntilVisible:
     element:
-      id: 'ownership.delete.name'
+      id: 'organisation.delete.name'
     timeout: 20000
 - tapOn:
-    id: 'ownership.delete.name'
+    id: 'organisation.delete.name'
 - inputText: 'Not the name'
 - waitForAnimationToEnd
 - takeScreenshot: keyboard-field
 - scrollUntilVisible:
     element:
-      id: 'ownership.delete.send'
+      id: 'organisation.delete.send'
     timeout: 20000
 - waitForAnimationToEnd
 - takeScreenshot: keyboard-send
 - assertVisible:
-    id: 'ownership.delete.send'
+    id: 'organisation.delete.send'
 - assertVisible: 'Not the name'

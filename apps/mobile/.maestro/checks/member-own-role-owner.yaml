@@ -21,6 +21,6 @@ appId: host.exp.Exponent
     id: members.goToOrganisation
 - extendedWaitUntil:
     visible:
-      id: organisation.name
+      id: organisation.card
     timeout: 20000
 - takeScreenshot: member-own-role-owner-go

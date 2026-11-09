@@ -976,7 +976,6 @@
     "removeInAccountPhone": "Le retirer dans Compte"
   },
   "orgGeneral": {
-    "intro": "Le nom que voient votre équipe et vos invités, et les réglages avec lesquels chaque nouvel événement commence.",
     "name": "Nom",
     "country": "Pays",
     "contact": "Adresse de contact",
@@ -1003,7 +1002,21 @@
     "savedLanguage": "Enregistré. Les e-mails d’invitation adressés aux personnes sans compte Soirely partent désormais en {{language}}. Les invitations déjà envoyées ne sont pas renvoyées.",
     "refused": "Rien n’a été enregistré. Votre rôle n’inclut pas l’autorisation nécessaire.",
     "refusedByRule": "Rien n’a été enregistré.",
-    "searchLanguage": "Rechercher une langue"
+    "searchLanguage": "Rechercher une langue",
+    "edit": "Edit details",
+    "editTitle": "Organisation details",
+    "details": "Details",
+    "defaults": "Defaults for new events",
+    "invitations": "Invitations",
+    "searchCountry": "Search countries",
+    "saveVerb": "Save",
+    "savedSays": "Saved",
+    "discardTitle_one": "Discard your change?",
+    "discardTitle_other": "Discard your changes?",
+    "discardLine": "{{organisation}} stays as it was.",
+    "keepEditing": "Keep editing",
+    "discard": "Discard",
+    "discardTitle_many": "Discard your changes?"
   },
   "invitations": {
     "heading": "Invitations",
@@ -1185,9 +1198,6 @@
     "codeBlank": "Saisissez le code de votre application d’authentification, ou un code de récupération.",
     "bothEmailed": "Un e-mail vous le confirmera, à vous et à {{name}}.",
     "theNewOwner": "la personne qui deviendra propriétaire",
-    "makeOwner": "Transférer à {{name}}",
-    "keep": "Rester propriétaire",
-    "transferred": "{{name}} est désormais propriétaire de {{organisation}}, et vous avez le rôle Administrateur. Un e-mail de confirmation a été envoyé aux deux comptes.",
     "leave": "Quitter {{organisation}}",
     "leaveOpener": "Quitter {{organisation}}…",
     "leaveNote": "Vous n’aurez plus accès à ses événements. Tout ce que vous avez créé reste dans {{organisation}}.",
@@ -1196,10 +1206,8 @@
     "stay": "Rester",
     "onlyOwnerTitle": "Vous êtes la seule personne ayant le rôle Propriétaire",
     "onlyOwnerBody": "Attribuez le rôle Propriétaire à une autre personne, puis vous pourrez partir.",
-    "delete": "Supprimer l’organisation",
     "deleteOpener": "Supprimer l’organisation…",
     "deleteNote": "Supprime tous les événements, les invités et les membres qu’elle contient.",
-    "deleteTitle": "Supprimer {{organisation}} ?",
     "deleteWarningTitle": "Tout son contenu disparaît",
     "deleteLoading": "Calcul de son contenu…",
     "deleteUncounted": "Impossible de calculer son contenu. Si vous la supprimez, tous ses événements, invités et membres sont tout de même supprimés, pour tout le monde, dès maintenant. L’assistance Soirely peut la restaurer pendant 30 jours.",
@@ -1219,9 +1227,12 @@
     "deleteMismatch": "Saisissez {{organisation}} exactement comme indiqué pour la supprimer.",
     "deleteMatches": "Le nom correspond.",
     "deleteExactly": "Tel qu’il est écrit, accents compris.",
-    "deleteButton": "Supprimer {{organisation}}",
-    "deleteKeep": "Conserver {{organisation}}",
-    "failed": "La demande n’a pas abouti, donc rien n’a été modifié. Réessayez."
+    "failed": "La demande n’a pas abouti, donc rien n’a été modifié. Réessayez.",
+    "transferVerb": "Transfer",
+    "transferredSays": "{{name}} is now the owner",
+    "transferredLine": "You are an Admin. You both have an email saying so.",
+    "deleteScreenTitle": "Delete {{organisation}}",
+    "deleteVerb": "Delete"
   },
   "domainJoining": {
     "intro": "Votre adresse utilise le domaine {{domain}}. Demandez à rejoindre l’organisation de votre entreprise, ou créez la vôtre.",
@@ -1243,9 +1254,7 @@
   },
   "companyDomains": {
     "title": "Adhésion par domaine d’entreprise",
-    "on": "Activée",
     "off": "Désactivée",
-    "intro": "Les personnes dont l’adresse e-mail principale appartient à un domaine de cette liste peuvent demander à rejoindre {{organisation}} lors de leur inscription. Chaque demande est traitée par une personne qui peut gérer les membres. L’adhésion reste désactivée tant que vous n’avez ajouté aucun domaine.",
     "listLabel": "Domaines de la liste",
     "working": "Ouvert aux demandes",
     "stopped": "Sans effet",
@@ -1254,7 +1263,6 @@
     "removeLabel": "Retirer {{domain}}",
     "removeTitle": "Retirer {{domain}} ?",
     "removeBody": "Les personnes de {{domain}} ne pourront plus demander à rejoindre l’organisation de cette façon.",
-    "removeConfirm": "Retirer {{domain}}",
     "keep": "Le garder",
     "addLabel": "Ajouter un domaine",
     "add": "Ajouter le domaine",
@@ -1269,12 +1277,16 @@
     "full_many": "La liste compte {{count, number}} de domaines, le maximum possible. Retirez-en un pour en ajouter un autre.",
     "blank": "Saisissez un domaine, par exemple {{example}}.",
     "shape": "Saisissez un domaine avec un point et sans espace, par exemple {{example}}.",
-    "added": "{{domain}} a été ajouté.",
-    "addedNext": "Les personnes dont l’adresse e-mail principale appartient à ce domaine peuvent désormais demander à rejoindre l’organisation.",
     "removed": "{{domain}} a été retiré.",
-    "removedNext": "Les personnes de ce domaine ne peuvent plus demander à rejoindre l’organisation de cette façon.",
     "failed": "Cela n’a pas fonctionné. Réessayez dans un instant.",
-    "unreadable": "Impossible de charger la liste."
+    "unreadable": "Impossible de charger la liste.",
+    "lead": "People whose main email address is at a domain on this list can ask to join {{organisation}} when they sign up. Somebody who can manage members answers each one.",
+    "offUntil": "It is off until you add a domain.",
+    "addVerb": "Add",
+    "field": "Domain",
+    "confirmRemove": "Remove",
+    "addedLine": "Added. People whose main email address is at it can now ask to join.",
+    "proved": "Proved"
   },
   "membersScreen": {
     "proveOwner_one": "Pour donner à quelqu’un le rôle de Propriétaire de {{organisation}}, confirmez que c’est bien vous. Cela ne vous sera pas redemandé pendant une minute.",
@@ -1430,10 +1442,7 @@
   },
   "requestLink": {
     "title": "Demandes d’adhésion",
-    "on": "Activées",
-    "off": "Désactivées",
     "switchLabel": "Demandes d’adhésion",
-    "intro": "Toute personne disposant de ce lien peut demander à rejoindre {{organisation}}. Une personne habilitée à gérer les membres répond à chaque demande. Le lien reste désactivé tant que vous ne l’activez pas.",
     "linkLabel": "Lien d’adhésion",
     "copy": "Copier le lien",
     "help": "Partagez-le avec les personnes dont vous souhaitez recevoir une demande. Aucun annuaire ne permet de trouver votre organisation.",
@@ -1449,7 +1458,8 @@
       "copied": "Lien copié."
     },
     "failed": "Cela n’a pas fonctionné. Réessayez dans un instant.",
-    "unreadable": "Impossible de charger le lien d’adhésion."
+    "unreadable": "Impossible de charger le lien d’adhésion.",
+    "lead": "Anybody with this link can ask to join {{organisation}}. Somebody who can manage members answers each request."
   },
   "requestToJoin": {
     "title": "Demander à rejoindre {{organisation}}",

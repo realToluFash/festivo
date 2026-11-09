@@ -9,21 +9,27 @@ onFlowComplete:
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
     visible:
-      id: organisation.name
+      id: organisation.card
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: companyDomains.add
+      id: organisation.domain.add
     centerElement: true
 - swipe:
     start: '50%,40%'
     end: '50%,60%'
 - waitForAnimationToEnd
+- tapOn:
+    id: organisation.domain.add
+- extendedWaitUntil:
+    visible:
+      id: organisation.domain.field
+    timeout: 10000
 - repeat:
     times: 3
     commands:
       - tapOn:
-          id: companyDomains.domain
+          id: organisation.domain.field
       - eraseText: 80
 - inputText: 'example.org'
 - waitForAnimationToEnd
@@ -35,10 +41,10 @@ onFlowComplete:
       ASK: /api?to=stopped
 - scrollUntilVisible:
     element:
-      id: companyDomains.add
+      id: organisation.domain.send
     centerElement: true
 - tapOn:
-    id: companyDomains.add
+    id: organisation.domain.send
 - scrollUntilVisible:
     element: '.*{{t:companyDomains.failed}}.*'
     direction: UP
@@ -48,7 +54,7 @@ onFlowComplete:
 - assertVisible: '(?i)(shift|delete)'
 - scrollUntilVisible:
     element:
-      id: companyDomains.domain
+      id: organisation.domain.field
     direction: UP
     centerElement: true
 - waitForAnimationToEnd
@@ -56,5 +62,5 @@ onFlowComplete:
 - assertVisible: '(?i)(shift|delete)'
 - inputText: x
 - assertVisible:
-    id: companyDomains.domain
+    id: organisation.domain.field
     text: 'example.orgx'

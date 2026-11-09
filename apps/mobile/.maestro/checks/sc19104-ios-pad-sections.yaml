@@ -36,7 +36,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - assertVisible:
     id: 'settings.account'
-- assertVisible: '{{t:orgGeneral.intro}}'
+- assertVisible: '{{t:orgGeneral.details}}'
 - takeScreenshot: organisation-beside
 - scrollUntilVisible:
     element:
