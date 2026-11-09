@@ -757,3 +757,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   visíveis para si", "regressa a este ecrã". Só a recusa da API diz "esquemas de cores". Os oito
   nomes: Violeta, Cobalto, Jardim, Citrinos, Frutos vermelhos, Traje de rigor (Black tie, o
   traje exigido em Portugal), Sorvete (o sorbet, não o gelado) e Terracota.
+- **9 Nov 2026. Os títulos das folhas de adicionar na aplicação** (sc-35661,
+  `mobile:contacts.addEmail`, `addPhone`). A mesma chave é a ligação ao lado do título da secção e
+  o título da folha: "Novo endereço" e "Novo número", que a secção situa. "Número", não
+  "telemóvel", porque pode ser um fixo. Rejeitado "Adicionar um número de telefone", cortado como
+  "Adicionar um nú…" num telemóvel Android.
