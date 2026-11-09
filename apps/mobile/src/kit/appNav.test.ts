@@ -69,9 +69,15 @@ describe('the frame shows only what is built', () => {
   });
 });
 
-describe('Settings > Security holds every card', () => {
-  it.each(['WaysCard', 'TwoFactorCard', 'DevicesCard'])('%s', (card) => {
-    expect(source(join(APP, 'settings', 'security.tsx'))).toMatch(new RegExp(`<${card}\\b`, 'u'));
+describe('Settings > Security holds every section', () => {
+  it('through the page its demo draws', () => {
+    expect(source(join(APP, 'settings', 'security.tsx'))).toMatch(/<SecurityPage\b/u);
+  });
+
+  it.each(['WaysSection', 'TwoFactorSection', 'DevicesSection'])('%s', (section) => {
+    expect(source(join(SRC, 'components', 'SecurityPage.tsx'))).toMatch(
+      new RegExp(`<${section}\\b`, 'u'),
+    );
   });
 });
 

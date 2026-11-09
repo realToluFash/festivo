@@ -1,17 +1,11 @@
 import type { Ref } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { useReadOut } from '../../components/ReadOut.tsx';
-import { type TextHandle, Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
-import type { SecurityLine } from './SecurityModel.ts';
-import {
-  CardGlyph,
-  OnCard,
-  ShapeMark,
-  type StepProps,
-  SummaryCard,
-} from '../../components/Summary.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import { type TextHandle, Text } from './Text.tsx';
+import { tokens } from '../theme/tokens.ts';
+import type { SecurityLine } from '../kit/securityPage.ts';
+import { CardGlyph, OnCard, ShapeMark, type StepProps, SummaryCard } from './Summary.tsx';
 
 /** How you are protected on Confetti: the shield, two-factor on or off and what signs you in, then what just happened or why it matters. */
 export function SecurityCard({

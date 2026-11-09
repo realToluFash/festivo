@@ -7,7 +7,7 @@ import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
-import { CheckMark } from '../settings/SecurityTwoFactor.tsx';
+import { CheckMark } from '../../components/SecurityTwoFactor.tsx';
 import {
   addView,
   type EventRole,

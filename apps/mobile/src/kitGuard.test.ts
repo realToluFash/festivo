@@ -613,8 +613,9 @@ describe('the app runs on Hermes', () => {
 
 describe('a field that takes a recovery code gets the full keyboard', () => {
   // sc-124 QA #1616: these fields fell back to the number pad, and a recovery code has letters and a hyphen.
-  // The proof step's field is ConfirmItsYou's, named by the card that opens it (ways, contacts).
-  const RECOVERY_CODE_FIELDS = ['devices.everywhere.code', '${idPrefix}.code'];
+  // The proof step's field is ConfirmItsYou's, named by the card that opens it (ways, contacts);
+  // Security's proofs, Sign out everywhere else among them, take ConfirmScreen's.
+  const RECOVERY_CODE_FIELDS = ['${testID}.code', '${idPrefix}.code'];
 
   it.each(RECOVERY_CODE_FIELDS)('%s', (testID) => {
     const fields = sources(['src', 'app']).flatMap(({ text }) =>
@@ -639,24 +640,24 @@ describe('a field that takes a recovery code gets the full keyboard', () => {
 });
 
 describe('a way back in Two-factor authentication is off while its request runs (sc-12537)', () => {
-  it('on Cancel, Keep it on and Keep current codes', () => {
-    const text = readFileSync(join('src', 'components', 'TwoFactorCard.tsx'), 'utf8');
-    const off = selfClosing('QuietButton', text)
-      .filter(({ markup }) => /\boff=\{checking\}/u.test(markup))
-      .map(({ markup }) => propValue(markup, 'testID'));
+  it('on Cancel in Set up two-factor, which waits while the code is checked', () => {
+    const text = readFileSync(join('src', 'components', 'SecurityTwoFactor.tsx'), 'utf8');
+    const start = text.lastIndexOf('<FocusedScreen');
+    const screen = text.slice(start, tagEnd(text, start));
 
-    expect(off).toEqual(['"twoFactor.cancel"', '"twoFactor.keepItOn"', '"twoFactor.keepCodes"']);
+    expect(propValue(screen, 'waits')).toBe('{checking}');
   });
 });
 
-describe('the ten recovery codes show in the sheet, a dialog on an iPad (sc-23282)', () => {
+describe('the ten recovery codes show in their own screen (sc-23282)', () => {
   it('with the codes and Finish inside it', () => {
-    const text = readFileSync(join('src', 'components', 'TwoFactorCard.tsx'), 'utf8');
-    const sheet = /<Sheet\b[\s\S]*?<\/Sheet>/u.exec(text)?.[0] ?? '';
+    const text = readFileSync(join('src', 'components', 'SecurityTwoFactor.tsx'), 'utf8');
+    const start = text.indexOf('<FocusedScreen');
+    const screen = text.slice(start, text.indexOf('</FocusedScreen>', start));
 
-    expect(sheet).toContain('testID="twoFactor.codesSheet"');
-    expect(sheet).toContain('<SavingCodes');
-    expect(text.match(/<SavingCodes\b/gu)).toHaveLength(1);
+    expect(screen).toContain("testID: 'security.codes.finish'");
+    expect(screen).toContain('<CodesBody');
+    expect(text.match(/<CodesBody\b/gu)).toHaveLength(1);
   });
 });
 
@@ -729,11 +730,10 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
   const HELD_FORMS = [
     'src/components/ConfirmItsYou.tsx',
     'src/components/CreateOrganisation.tsx',
-    'src/components/DevicesCard.tsx',
-    'src/components/PasswordCard.tsx',
+    'src/components/SecurityPassword.tsx',
     'src/components/AccountName.tsx',
     'src/components/AccountZone.tsx',
-    'src/components/TwoFactorCard.tsx',
+    'src/components/SecurityTwoFactor.tsx',
     'src/components/SecondFactorStep.tsx',
     'src/steps/TwoFactorStep.tsx',
     'src/components/OrganisationDetails.tsx',
@@ -1014,8 +1014,7 @@ describe('a second return key while the request runs sends nothing (sc-20209)', 
 describe('a submit with the keys down keeps them down (sc-20208)', () => {
   it.each([
     ['ConfirmItsYou.tsx', 1],
-    ['DevicesCard.tsx', 1],
-    ['TwoFactorCard.tsx', 3],
+    ['SecurityTwoFactor.tsx', 1],
   ])('%s lets go of a focused field before each request starts', (file, requests) => {
     const lines = readFileSync(join('src', 'components', file), 'utf8').split('\n');
     const starts = lines.flatMap((line, index) =>
@@ -1029,12 +1028,14 @@ describe('a submit with the keys down keeps them down (sc-20208)', () => {
 
 describe('a Password submit with the keys down keeps them down (sc-13408)', () => {
   it('lets go of a focused field before each request starts', () => {
-    const lines = readFileSync(join('src', 'components', 'PasswordCard.tsx'), 'utf8').split('\n');
+    const lines = readFileSync(join('src', 'components', 'SecurityPassword.tsx'), 'utf8').split(
+      '\n',
+    );
     const starts = lines.flatMap((line, index) =>
       /^\s*set(Saving|Busy)\(true\);/u.test(line) ? [index] : [],
     );
 
-    expect(starts).toHaveLength(3);
+    expect(starts).toHaveLength(4);
     expect(starts.filter((index) => lines[index - 1]?.trim() !== 'keysStayDown();')).toEqual([]);
   });
 });
@@ -1068,11 +1069,19 @@ describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
       .filter(({ markup }) => markup.includes(`off={${busy}}`))
       .map(({ markup }) => propValue(markup, 'testID'));
 
-  it('in Password, beside Save new password and Save password, not beside the code check', () => {
-    expect([
-      ...offWhile('PasswordCard.tsx', 'saving'),
-      ...offWhile('PasswordCard.tsx', 'busy'),
-    ]).toEqual(['"password.cancel"', '"password.setCancel"']);
+  it('in Password, where each screen that sends waits on Cancel while it is busy', () => {
+    const source = readFileSync(join('src', 'components', 'SecurityPassword.tsx'), 'utf8');
+    const screens = [...source.matchAll(/<FocusedScreen\b/gu)].map(({ index }) =>
+      source.slice(index, tagEnd(source, index)),
+    );
+
+    expect(screens.map((screen) => propValue(screen, 'waits'))).toEqual([
+      null,
+      '{busy}',
+      '{busy}',
+      '{busy}',
+      '{busy}',
+    ]);
   });
 
   it.each([
@@ -1130,11 +1139,11 @@ describe('Create an organisation cannot be closed while it sends (sc-25667)', ()
 });
 
 describe("a lapsed proof at Unlink goes back to Confirm it's you (sc-12545)", () => {
-  it('in the ways card, before the refusal reaches the list', () => {
-    const text = readFileSync(join('src', 'components', 'WaysCard.tsx'), 'utf8');
+  it('on Security, before the refusal reaches the row', () => {
+    const text = readFileSync(join('src', 'components', 'SecurityPage.tsx'), 'utf8');
 
     expect(text).toMatch(
-      /if \(unlinkProofLapsed\(error\)\) \{\s*setStage\(\{ kind: 'proving', act: \{ action: 'unlink', provider \} \}\);/,
+      /if \(unlinkProofLapsed\(refusal\)\) \{\s*prove\('unlink', 'unlink'\);\s*return;/,
     );
   });
 });
