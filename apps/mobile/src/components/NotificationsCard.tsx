@@ -1,9 +1,9 @@
 import { StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
-import { WORDS } from './NotificationsModel.ts';
-import { CardGlyph, OnCard, SummaryCard } from '../../components/Summary.tsx';
+import { tokens } from '../theme/tokens.ts';
+import { CardGlyph, OnCard, SummaryCard } from './Summary.tsx';
+import { Text } from './Text.tsx';
 
 /** How you hear on Confetti: the bell, the channels and their counts, and a step only while this device blocks push. */
 export function NotificationsCard({
@@ -19,6 +19,7 @@ export function NotificationsCard({
   wide: boolean;
   onSettings: () => void;
 }) {
+  const { t } = useTranslation();
   const face = wide ? 64 : 56;
   const size = wide ? 24 : 22;
 
@@ -28,7 +29,11 @@ export function NotificationsCard({
       height={200}
       step={
         blocked
-          ? { label: WORDS.openSettings, onPress: onSettings, testID: 'notifications.step' }
+          ? {
+              label: t('notificationSettings.openSettings'),
+              onPress: onSettings,
+              testID: 'notifications.step',
+            }
           : null
       }
       testID="notifications.card"
@@ -51,7 +56,7 @@ export function NotificationsCard({
           <OnCard text={counts} />
         </View>
       </View>
-      {blocked && <OnCard text={WORDS.pushBlocked} strong />}
+      {blocked && <OnCard text={t('notificationSettings.pushBlocked')} strong />}
     </SummaryCard>
   );
 }
