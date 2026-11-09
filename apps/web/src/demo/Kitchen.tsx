@@ -5,7 +5,7 @@ import { Glyph } from '../components/Glyph.tsx';
 import { Ask, CardStep, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
-import { Opened } from './EventEdits.tsx';
+import { Opened } from '../components/EventPageParts.tsx';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { type SampleEvent, localDay, sampleEvent } from './events.ts';

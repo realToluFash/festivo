@@ -261,44 +261,6 @@ export function NotBuilt({ words }: { words: string }) {
   return <span className="ev-pill">{words}</span>;
 }
 
-export function Alert({ children }: { children: ReactNode }) {
-  return (
-    <p className="desk-error" role="alert">
-      <Glyph name="alert" size={15} weight={2.2} />
-      {children}
-    </p>
-  );
-}
-
-/** The broken notice, with what to do about it under its words. */
-export function Broken({ children, action }: { children: ReactNode; action?: ReactNode }) {
-  return (
-    <div className="notice notice-broken ev-notice" role="alert">
-      <span className="mark mark-broken" aria-hidden="true">
-        ✕
-      </span>
-      <div className="notice-body">
-        <p>{children}</p>
-        {action}
-      </div>
-    </div>
-  );
-}
-
-export function Quiet({ children, action }: { children: ReactNode; action?: ReactNode }) {
-  return (
-    <div className="notice notice-quiet ev-notice" role="status">
-      <span className="mark mark-info" aria-hidden="true">
-        i
-      </span>
-      <div className="notice-body">
-        <p className="notice-title">{children}</p>
-        {action}
-      </div>
-    </div>
-  );
-}
-
 export function Switch({
   on,
   label,

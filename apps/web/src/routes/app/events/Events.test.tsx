@@ -6,7 +6,6 @@ import { EVENT_TYPES, connection, forgetEventsTab, serverClock } from '@soirely/
 import { api } from '../../../api.ts';
 import { __setSessionState, type Session, switchOrganisation } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
-import { WIDE_WIDTH } from '../../../phoneWidth.ts';
 import { SKELETON_AFTER_MS } from '../../../shownAfter.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
@@ -1555,82 +1554,27 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
 describe("An event's Overview (sc-22103)", () => {
   const PAST = { startsAt: '2020-11-14T16:00:00+01:00', endsAt: '2020-11-15T02:00:00+01:00' };
 
-  it('opens on the tiles as placeholders, then Details, Coming up and Manage', async () => {
+  it('opens on Details, Coming up, and Name and cover, beside Just for you and Manage (sc-30413)', async () => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
 
-    const tiles = screen.getByRole('list', { name: 'Overview' });
+    expect(screen.queryByRole('list', { name: 'Overview' })).toBeNull();
     expect(
-      within(tiles)
+      screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual(['Details', 'Coming up', 'Name and cover', 'Just for you', 'Manage']);
+    for (const label of ['On track', 'Replies', 'Needs you', 'Team on this event'])
+      expect(screen.queryByRole('region', { name: label })).toBeNull();
+    expect(screen.queryByText('Invited')).toBeNull();
+    expect(
+      within(screen.getByRole('navigation', { name: 'Breadcrumb' }))
         .getAllByRole('listitem')
-        .map((tile) => spaced(tile.textContent)),
-    ).toEqual([
-      'Coming Coming soon',
-      'Meal picks in Coming soon',
-      'Seated Coming soon',
-      'Budget used Coming soon',
-    ]);
-    expect(
-      screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
-    ).toEqual([
-      'Details',
-      'On track',
-      'Needs you',
-      'Replies',
-      'Coming up',
-      'Team on this event',
-      'Manage',
-      'Just for you',
-    ]);
-    expect(screen.queryByRole('button', { name: /more/i })).toBeNull();
+        .map((part) => part.textContent),
+    ).toEqual(['Events', 'Adaeze and Tunde']);
   });
 
-  it('reads its cards column by column where the two columns sit side by side (sc-25008)', async () => {
-    vi.spyOn(window, 'matchMedia').mockImplementation(
-      (query) =>
-        ({
-          matches: query === WIDE_WIDTH,
-          media: query,
-          addEventListener: () => undefined,
-          removeEventListener: () => undefined,
-        }) as unknown as MediaQueryList,
-    );
-    signedIn();
-    answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
-    at('/app/events/ev_1');
-    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
-
-    expect(
-      screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
-    ).toEqual([
-      'Details',
-      'Needs you',
-      'Coming up',
-      'Team on this event',
-      'On track',
-      'Replies',
-      'Manage',
-      'Just for you',
-    ]);
-  });
-
-  it('shows On track, Replies, Needs you and Team on this event as placeholders, with nothing to press and no hosts (sc-25008)', async () => {
-    signedIn();
-    answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
-    at('/app/events/ev_1');
-    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
-
-    for (const label of ['On track', 'Replies', 'Needs you', 'Team on this event']) {
-      const card = screen.getByRole('region', { name: label });
-      expect(spaced(card.textContent)).toBe(`${label}Coming soon`);
-      expect(within(card).queryByRole('link')).toBeNull();
-      expect(within(card).queryByRole('button')).toBeNull();
-    }
-  });
-
-  it('opens Edit details at each row: Starts, the venue and the hosts', async () => {
+  it('reads each part as its value over its label', async () => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
     at('/app/events/ev_1');
@@ -1638,19 +1582,20 @@ describe("An event's Overview (sc-22103)", () => {
     const details = await screen.findByRole('region', { name: 'Details' });
     expect(
       within(details)
-        .getAllByRole('link')
-        .map((link) => link.getAttribute('href')),
+        .getAllByRole('button')
+        .map((row) => spaced(row.textContent)),
     ).toEqual([
-      '/app/events/ev_1/edit',
-      '/app/events/ev_1/edit#starts',
-      '/app/events/ev_1/edit#venue',
-      '/app/events/ev_1/edit#hosts',
+      expect.stringMatching(/Dates · 2 days · Africa\/Lagos$/u),
+      'Venue to be confirmedVenue',
+      'Funmi AdeyemiHosted by',
+      'WeddingType',
+      expect.stringMatching(/^NGN · .+Currency$/u),
     ]);
-    expect(within(details).getByText('Funmi Adeyemi')).toBeDefined();
-
-    fireEvent.click(within(details).getByRole('link', { name: /^Dates/ }));
-    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
-    await waitFor(() => expect(document.activeElement?.id).toBe('event-start-date'));
+    expect(
+      within(screen.getByRole('region', { name: 'Name and cover' }))
+        .getAllByRole('button')
+        .map((row) => spaced(row.textContent)),
+    ).toEqual(['Adaeze and TundeEvent name', 'Default coverCover']);
   });
 
   it('says there are no hosts yet in Hosted by', async () => {
@@ -1659,27 +1604,60 @@ describe("An event's Overview (sc-22103)", () => {
     at('/app/events/ev_1');
 
     const details = await screen.findByRole('region', { name: 'Details' });
+    expect(within(details).getByText('No hosts yet')).toBeDefined();
     expect(
       within(details).getByText(
-        'No hosts yet. The event can be made live once it has at least one.',
+        'Hosted by · The event can be made live once it has at least one.',
       ),
     ).toBeDefined();
   });
 
-  it('gives a Read-only member rows that open nothing, no primary, and only Just for you in Manage', async () => {
+  it('gives a Read-only member rows that open nothing, no primary, and no Manage', async () => {
     signedIn(READER);
     answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
     at('/app/events/ev_1');
 
     const details = await screen.findByRole('region', { name: 'Details' });
+    expect(within(details).queryAllByRole('button')).toEqual([]);
     expect(within(details).queryAllByRole('link')).toEqual([]);
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
-    const manage = screen.getByRole('region', { name: 'Manage' });
-    expect(within(manage).queryAllByRole('button')).toEqual([]);
-    expect(within(manage).getByRole('heading', { name: 'Just for you' })).toBeDefined();
+    expect(screen.queryByRole('region', { name: 'Manage' })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Just for you' })).toBeDefined();
   });
 
-  it('makes Duplicate the primary on a Finished event, and does not repeat it in Manage', async () => {
+  it('lists in Manage each step that changes the whole event, over what it does', async () => {
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({
+          event: event({
+            startsAt: '2030-11-14T16:00:00+01:00',
+            endsAt: '2030-11-15T02:00:00+01:00',
+            status: 'live',
+            phase: 'live',
+            madeLiveAt: '2026-10-26T15:00:00+00:00',
+          }),
+        }),
+    });
+    at('/app/events/ev_1');
+
+    const manage = await screen.findByRole('region', { name: 'Manage' });
+    expect(
+      within(manage)
+        .getAllByRole('button')
+        .map((step) => [step.textContent, step.getAttribute('aria-describedby') != null]),
+    ).toEqual([
+      ['Duplicate', true],
+      ['Pause', true],
+      ['Call off…', true],
+      ['Delete event…', true],
+    ]);
+    expect(
+      within(manage).getByRole('button', { name: 'Call off…' }).className,
+    ).toContain('is-red');
+  });
+
+  it('makes Duplicate the primary on a Finished event, and keeps it in Manage', async () => {
     signedIn();
     answering({
       'GET /api/events/ev_1': () =>
@@ -1692,7 +1670,28 @@ describe("An event's Overview (sc-22103)", () => {
       name: 'Duplicate',
     });
     expect(duplicate.className).toContain('button-primary');
-    expect(screen.getAllByRole('button', { name: 'Duplicate' })).toHaveLength(1);
+    expect(
+      within(screen.getByRole('region', { name: 'Manage' })).getByRole('button', {
+        name: 'Duplicate',
+      }),
+    ).toBeDefined();
+  });
+
+  it('locks the dates of a Finished event, saying why', async () => {
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({ event: event({ ...PAST, status: 'ended', phase: 'finished' }) }),
+    });
+    at('/app/events/ev_1');
+
+    const details = await screen.findByRole('region', { name: 'Details' });
+    expect(within(details).queryByRole('button', { name: /^.*Dates/u })).toBeNull();
+    expect(
+      within(details).getByText(
+        "Dates · This event is over, so its start, end and time zone can't be changed.",
+      ),
+    ).toBeDefined();
   });
 
   it('makes Change dates the primary on a Draft past its end, opening Edit details at Starts', async () => {

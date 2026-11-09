@@ -192,7 +192,22 @@
     "onTrack": "Dans les temps",
     "replies": "Réponses",
     "needsYou": "À traiter",
-    "team": "Équipe de l’événement"
+    "team": "Équipe de l’événement",
+    "crumb": "Breadcrumb",
+    "save": "Save",
+    "discardTitle": "Discard your change?",
+    "discardLine": "What you changed here is not saved.",
+    "discard": "Discard",
+    "nameAndCover": "Name and cover",
+    "dayCount_one": "{{count, number}} day",
+    "dayCount_other": "{{count, number}} days",
+    "dayCount_many": "{{count, number}} days",
+    "noHosts": "No hosts yet",
+    "noHostsLine": "The event can be made live once it has at least one.",
+    "defaultCover": "Default cover",
+    "yourPhoto": "Your photo",
+    "searchTypes": "Search types",
+    "timesIn": "Times in {{timeZone}}"
   },
   "eventLive": {
     "guestsBlocked": "Vous ne pourrez inviter personne tant que cet événement n’est pas publié.",

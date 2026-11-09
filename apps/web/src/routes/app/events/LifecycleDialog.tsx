@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
+import { ManageItem } from '../../../components/EventPageParts.tsx';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { offButton } from '../../../offButton.ts';
 import { type Asking } from './useLifecycleAction.ts';
@@ -108,5 +109,29 @@ export function LifecycleDialog<C>({
         </div>
       </div>
     </>
+  );
+}
+
+type Look = { className: string; describedBy: string } | null;
+
+/** In Manage on the event's page the opener is an item over what it does, and its dialog an item of its own, so it outlives an opener the reloaded event no longer offers. */
+export function InManage({
+  on,
+  line,
+  red = false,
+  children,
+}: {
+  on: boolean;
+  line?: string;
+  red?: boolean;
+  children: ReactNode | ((look: Look) => ReactNode);
+}) {
+  if (typeof children !== 'function') return on ? <li>{children}</li> : children;
+  if (!on || line == null) return children(null);
+
+  return (
+    <ManageItem line={line} red={red}>
+      {children}
+    </ManageItem>
   );
 }

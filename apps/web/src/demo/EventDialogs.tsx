@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router';
 
 import { ActionPair } from '../components/ActionPair.tsx';
 import { type SampleEvent, EVENT_WORDS as W, copyStart, instantOf, keepCopy } from './events.ts';
-import { DateTime } from './EventEdits.tsx';
+import { DateTime } from '../components/EventPageParts.tsx';
 import { LayersContext, useDeskDialog } from '../layers.ts';
 import { Dialog, Head } from '../components/SettingsParts.tsx';
 
