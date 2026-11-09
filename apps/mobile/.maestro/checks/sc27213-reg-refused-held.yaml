@@ -1,5 +1,5 @@
-# sc-27213 regression: a wrong current password sent by the return key is refused with the keys up and New password still focused (sc-13408); then a key typed there and sent again with the API paused leaves Cancel off, and a tap on it closes nothing (sc-12545). Needs ${METRO_URL}.
-# The return key is Enter on iOS and the keyboard's action key on Android, where Enter can type into the field instead (sc-18648): tapped by its name, Done, where the keyboard names it, else at its place.
+# sc-27213 regression: a wrong current password sent by the return key is refused with the keys up and Current password focused, the field the refusal names (sc-13408); then a key typed into New password and sent again with the API paused leaves Cancel off, and a tap on it closes nothing (sc-12545). Needs ${METRO_URL}.
+# The return key is Enter on iOS and the keyboard's action key on Android, where Enter can type into the field instead (sc-18648): tapped by its name, Done, where the keyboard names it, else at its place. The choice is made before anything is sent, so a fast refusal cannot draw a second tap.
 appId: host.exp.Exponent
 onFlowComplete:
   - runScript:
@@ -49,15 +49,15 @@ onFlowComplete:
     commands:
       - runFlow:
           when:
-            visible: '(?i)^(done|listo|hecho|ok)$'
-          commands:
-            - tapOn: '(?i)^(done|listo|hecho|ok)$'
-      - runFlow:
-          when:
             notVisible: '(?i)^(done|listo|hecho|ok)$'
           commands:
             - tapOn:
                 point: '92%,88%'
+      - runFlow:
+          when:
+            visible: '(?i)^(done|listo|hecho|ok)$'
+          commands:
+            - tapOn: '(?i)^(done|listo|hecho|ok)$'
 - extendedWaitUntil:
     visible: '{{t:passwordCard.wrongCurrent}}'
     timeout: 15000
@@ -70,13 +70,25 @@ onFlowComplete:
       platform: Android
     commands:
       - assertVisible:
-          id: 'security.change.new'
+          id: 'security.change.current'
           focused: true
 - runScript:
     file: ../batch/helper.js
     env:
       ASK: /api?to=paused
-# Focus, proved as sc13408-change-return-up.yaml does: the key and the send reach the form only if New password still holds it.
+# Back to New password, whose return key sends; Current password's moves on to New password instead.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+      - scrollUntilVisible:
+          element:
+            id: 'security.change.new'
+          timeout: 10000
+          centerElement: true
+- tapOn:
+    id: 'security.change.new'
 - inputText: 'x'
 - runFlow:
     when:
@@ -89,15 +101,15 @@ onFlowComplete:
     commands:
       - runFlow:
           when:
-            visible: '(?i)^(done|listo|hecho|ok)$'
-          commands:
-            - tapOn: '(?i)^(done|listo|hecho|ok)$'
-      - runFlow:
-          when:
             notVisible: '(?i)^(done|listo|hecho|ok)$'
           commands:
             - tapOn:
                 point: '92%,88%'
+      - runFlow:
+          when:
+            visible: '(?i)^(done|listo|hecho|ok)$'
+          commands:
+            - tapOn: '(?i)^(done|listo|hecho|ok)$'
 - extendedWaitUntil:
     visible:
       id: 'security.change.cancel'
