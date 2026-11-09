@@ -2281,7 +2281,7 @@
     "enterWidth": "Indiquez la largeur de la salle.",
     "enterLength": "Indiquez la longueur de la salle.",
     "roomRange": "La salle doit mesurer entre {{min}} et {{max}}.",
-    "usHint": "Saisissez 12′ 4″, 12 pi 4 po, 12,5 pi ou 148 po.",
+    "usHint": "Saisissez 12′ 4″, 12 pi 4 po, 12,5 pi ou 148 po.",
     "feetInches": "{{feet}} {{inches}}",
     "room": "Salle",
     "roomSettings": "Paramètres de la salle",

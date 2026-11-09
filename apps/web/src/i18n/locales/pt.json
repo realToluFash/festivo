@@ -2281,7 +2281,7 @@
     "enterWidth": "Indique a largura da sala.",
     "enterLength": "Indique o comprimento da sala.",
     "roomRange": "A sala tem de medir entre {{min}} e {{max}}.",
-    "usHint": "Escreva 12′ 4″, 12 ft 4 pol., 12,5 ft ou 148 pol.",
+    "usHint": "Escreva 12′ 4″, 12 ft 4 pol., 12,5 ft ou 148 pol.",
     "feetInches": "{{feet}} {{inches}}",
     "room": "Sala",
     "roomSettings": "Definições da sala",
