@@ -1315,7 +1315,7 @@ span {
   padding: var(--shellBlock) var(--shellInline);
 }
 
-/* The reading column stops at 680, so a wider window leaves the room at the right. */
+/* The reading column stops at 680, so a wider window leaves the room at the right. A column cap leaves out .dialog and .dialog-scrim, which are fixed to the window. */
 .settings-desk .settings-desk-page > * > :not(.account-header, .toast, .dialog, .dialog-scrim) {
   max-width: 42.5rem;
 }
