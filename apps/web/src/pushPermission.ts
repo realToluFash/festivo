@@ -19,10 +19,7 @@ function onReturn(changed: () => void): () => void {
   };
 }
 
-/**
- * Whether this browser blocks Soirely's pushes, read again whenever the tab comes back (sc-30243):
- * a browser says nothing when its reader allows notifications in its settings.
- */
+/** Read again whenever the tab comes back: a browser says nothing when push is allowed in its settings (sc-30243). */
 export function usePushBlocked(): boolean {
   const permission = useSyncExternalStore(onReturn, permissionNow);
   const was = useRef(permission);
