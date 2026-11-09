@@ -5,6 +5,7 @@ import type { AreaKey } from './EventsSample.ts';
 /** Main's English for Events, with the curly apostrophes the boards draw, and the words pm accepted on 6 Nov 2026. */
 export const W = {
   events: 'Events',
+  loading: 'Loading events…',
   newEvent: 'New event',
   search: 'Search events',
   clearSearch: 'Clear search',
