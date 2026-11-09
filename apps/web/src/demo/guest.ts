@@ -1,4 +1,4 @@
-import { LOCALES, hostsLine } from '@soirely/domain';
+import { LOCALES, formattingLocale, hostsLine } from '@soirely/domain';
 import i18next from 'i18next';
 
 import { writtenTime } from './clock.ts';
@@ -605,6 +605,16 @@ const TAGS: Record<Lang, string> = { en: 'en-US', es: 'es-ES', fr: 'fr-FR', pt: 
 
 export function tagOf(lang: Lang): string {
   return TAGS[lang];
+}
+
+/** Money and dates in the reader's locale (CLDR): the shown language, refined by the browser's region when it speaks that language. */
+export function readerTag(
+  lang: Lang,
+  device: string | undefined = globalThis.navigator?.language,
+): string {
+  const tag = formattingLocale(lang, device);
+
+  return tag === lang ? TAGS[lang] : tag;
 }
 
 function format(at: string | Date, lang: Lang, zone: string, options: Intl.DateTimeFormatOptions) {

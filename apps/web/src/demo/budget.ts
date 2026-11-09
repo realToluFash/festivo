@@ -1,10 +1,11 @@
+import { readerTag } from './guest.ts';
 import { type Category } from './vendors.ts';
 import { CATEGORY_WORDS } from './vendorsWords.ts';
 
 /** Budget A's sample (budget-a-spec.md §1): the wedding as Guests A counts it, in pounds, read on Tue, Nov 3 at 09:41 London time. */
 export const BUDGET_EVENT = 'evt-wed-4';
 export const CURRENCY = 'GBP';
-export const LOCALE = 'en-US';
+export const LOCALE = readerTag('en');
 export const TODAY = '2026-11-03';
 export const NOW = new Date('2026-11-03T09:41:00Z');
 export const READER = 'Folake Adeyemi';
@@ -133,25 +134,22 @@ export function wholeRange(low: number, high: number): string {
   return low === high ? whole(low) : `${whole(low)} to ${whole(high)}`;
 }
 
-const SHORT = new Intl.DateTimeFormat(LOCALE, {
-  weekday: 'short',
-  month: 'short',
-  day: 'numeric',
-  timeZone: 'UTC',
-});
-const LONG = new Intl.DateTimeFormat(LOCALE, {
-  weekday: 'long',
-  month: 'long',
-  day: 'numeric',
-  timeZone: 'UTC',
-});
-
-export function shortDay(day: string): string {
-  return SHORT.format(new Date(`${day}T00:00:00Z`));
+export function shortDay(day: string, locale = LOCALE): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${day}T00:00:00Z`));
 }
 
-export function longDay(day: string): string {
-  return LONG.format(new Date(`${day}T00:00:00Z`));
+export function longDay(day: string, locale = LOCALE): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${day}T00:00:00Z`));
 }
 
 const BASIS_UNIT: Record<Basis, string> = {

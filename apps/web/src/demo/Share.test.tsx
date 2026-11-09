@@ -326,6 +326,57 @@ describe('the share a link opens, signed out (sc-94, sc-1300)', () => {
       expect(hrefs).toContain(state.to);
   });
 
+  it(
+    'reads in the language chosen from its menu, money and dates too (board 26)',
+    SLOW,
+    async () => {
+      await open('/demo/share/payer?state=payer');
+      fireEvent.click(screen.getByRole('button', { name: 'Language: English' }));
+      fireEvent.click(screen.getByRole('menuitemradio', { name: 'Português' }));
+
+      expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
+        'A sua parte em Adaeze & Tunde’s wedding',
+      );
+      const page = screen.getByRole('main');
+      expect(page.getAttribute('lang')).toBe('pt');
+      expect(page.textContent).toContain('Atualizado a 3 de novembro às 09:41');
+      expect(page.textContent).toContain('3150,00\u00a0£');
+      expect(screen.getByRole('heading', { level: 2, name: 'O que cobre' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Imprimir' })).toBeDefined();
+      expect(page.textContent).not.toMatch(/Paid|Still to come|£\d/u);
+    },
+  );
+
+  it('says it is loading with no figures, and offers Try again when it fails', SLOW, async () => {
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/demo/share/payer?state=loading'],
+    });
+    render(<RouterProvider router={router} />);
+    const busy = await screen.findByRole('status', {}, SLOW);
+    expect(busy.closest('[aria-busy="true"]')).not.toBeNull();
+    expect(screen.getByRole('main').textContent).not.toMatch(/£/u);
+
+    await act(() => router.navigate('/demo/share/payer?state=failed'));
+    const retry = await screen.findByRole('button', { name: 'Try again' }, SLOW);
+    expect(screen.getByRole('main').textContent).not.toMatch(/£/u);
+    fireEvent.click(retry);
+    expect(
+      await screen.findByRole(
+        'heading',
+        { level: 1, name: 'Your share of Adaeze & Tunde’s wedding' },
+        SLOW,
+      ),
+    ).toBeDefined();
+  });
+
+  it('says a share with no payments yet in a row, never £0.00', SLOW, async () => {
+    await open('/demo/share/category?state=category_no_payments');
+    const page = screen.getByRole('main').textContent ?? '';
+
+    expect(page).toContain('No payments scheduled yet');
+    expect(page).not.toMatch(/£0\.00|Still to pay|Next:/u);
+  });
+
   it('tells a stopped link who to ask for a new one', async () => {
     await open('/demo/share/whole?state=ended');
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('This link has ended.');
