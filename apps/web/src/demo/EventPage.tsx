@@ -61,6 +61,7 @@ import {
   seedFromEvent,
   timelineOf,
 } from './kitchen.ts';
+import { MW, menuAt } from './menuServed.ts';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { LayersContext } from '../layers.ts';
 import { BUDGET_EVENT } from './budget.ts';
@@ -425,10 +426,16 @@ function EventView({
                   line={COMING[area]}
                 />
                 {area === 'menu' && event.id === KITCHEN_EVENT && (
-                  <Link className="desk-text" to={kitchenAt(event.id)}>
-                    {KW.title}
-                    <Glyph name="chevron" size={16} weight={2.4} />
-                  </Link>
+                  <>
+                    <Link className="desk-text" to={menuAt(event.id)}>
+                      {MW.title}
+                      <Glyph name="chevron" size={16} weight={2.4} />
+                    </Link>
+                    <Link className="desk-text" to={kitchenAt(event.id)}>
+                      {KW.title}
+                      <Glyph name="chevron" size={16} weight={2.4} />
+                    </Link>
+                  </>
                 )}
               </>
             )}
