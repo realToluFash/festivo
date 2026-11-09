@@ -6,13 +6,12 @@ import {
   organisationChanges,
   organisationProblem,
 } from '@soirely/domain';
-import { type TFunction } from 'i18next';
 import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { checkAll, type FieldErrors } from '../kit/formChecks.ts';
-import { type SaveOutcome } from '../kit/organisationSave.ts';
+import { type CardSaid, cardWords, type SaveOutcome, savedWords } from '../kit/organisationSave.ts';
 import { tokens } from '../theme/tokens.ts';
 import { focusPicker } from './CountryPicker.tsx';
 import { FailureLine } from './FailureLine.tsx';
@@ -50,7 +49,6 @@ import {
   SummaryCard,
   TextAction,
 } from './Summary.tsx';
-import { Text } from './Text.tsx';
 
 const hidden = {
   accessibilityElementsHidden: true,
@@ -59,8 +57,6 @@ const hidden = {
 
 export type DetailsOutcome =
   Exclude<SaveOutcome, { kind: 'saved' }> | { kind: 'saved'; details: OrganisationDetails };
-
-export type CardSaid = { kind: 'saved'; words: string } | { kind: 'transferred'; to: string };
 
 /** What keeps a reader from changing the details: their role, or each sign-in rule that holds it back (sc-16265). */
 export type HeldBack = { by: 'role'; role: string } | { by: 'rules'; rules: readonly string[] };
@@ -181,22 +177,6 @@ function CardTile({ name, side }: { name: string; side: number }) {
       <Initials name={name} size={Math.round(side * 0.36)} weight="bold" style={styles.accent} />
     </View>
   );
-}
-
-export function cardWords(
-  t: TFunction,
-  details: OrganisationDetails,
-  said: CardSaid | null,
-): { says: string; line: string; said: boolean } {
-  if (said == null) return { says: details.name, line: details.contactAddress, said: false };
-  if (said.kind === 'saved')
-    return { says: t('orgGeneral.savedSays'), line: said.words, said: true };
-
-  return {
-    says: t('ownership.transferredSays', { name: said.to }),
-    line: t('ownership.transferredLine'),
-    said: true,
-  };
 }
 
 export function DetailRows({
@@ -546,15 +526,6 @@ export function DetailsScreen({
       </View>
     </FocusedScreen>
   );
-}
-
-/** A new invitation language is named, since it changes what goes out from now on. */
-function savedWords(t: TFunction, now: OrganisationDetails, before: OrganisationDetails): string {
-  return now.locale === before.locale
-    ? t('orgGeneral.saved', { name: now.name })
-    : t('orgGeneral.savedLanguage', {
-        language: t(`languageNamesInSentence.${now.locale}`, { defaultValue: now.locale }),
-      });
 }
 
 function changeCount(

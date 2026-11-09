@@ -1,7 +1,25 @@
 import { ApiError, type Membership } from '@soirely/api-client';
-import { describe, expect, it, vi } from 'vitest';
+import { createInstance } from 'i18next';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { afterEdit, detailsOf, refusalOf, saveOrganisation } from './organisationSave.ts';
+import en from '../i18n/locales/en.json';
+import {
+  afterEdit,
+  cardWords,
+  detailsOf,
+  refusalOf,
+  saveOrganisation,
+  savedWords,
+} from './organisationSave.ts';
+
+const i18n = createInstance();
+beforeAll(() =>
+  i18n.init({
+    resources: { en: { translation: en } },
+    lng: 'en',
+    interpolation: { escapeValue: false },
+  }),
+);
 
 const organisation: Membership = {
   id: 'org_1',
@@ -158,5 +176,39 @@ describe('focus after a refused save', () => {
       expect(edited.focus).toBe(refused.focus);
       expect(edited.errors[field]).toBeUndefined();
     }
+  });
+});
+
+describe('the Organisation card', () => {
+  const details = detailsOf(organisation);
+
+  it('names the organisation and its contact at rest', () => {
+    expect(cardWords(i18n.t, details, null)).toEqual({
+      says: 'Ìrè Events',
+      line: 'hello@ire.events',
+      said: false,
+    });
+  });
+
+  it('says what was saved, or who owns it now, until the page is left', () => {
+    expect(cardWords(i18n.t, details, { kind: 'saved', words: 'Saved.' })).toEqual({
+      says: 'Saved',
+      line: 'Saved.',
+      said: true,
+    });
+    expect(cardWords(i18n.t, details, { kind: 'transferred', to: 'Priya Shah' })).toEqual({
+      says: 'Priya Shah is now the owner',
+      line: 'You are an Admin. You both have an email saying so.',
+      said: true,
+    });
+  });
+
+  it('names a new invitation language once saved, and otherwise the organisation', () => {
+    expect(savedWords(i18n.t, details, details)).toBe(
+      'Saved. Everyone in Ìrè Events sees the new details on their next screen.',
+    );
+    expect(savedWords(i18n.t, { ...details, locale: 'fr' }, details)).toMatch(
+      /^Saved\. Invitation emails .* go out in French /u,
+    );
   });
 });

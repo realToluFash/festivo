@@ -7,7 +7,6 @@ import type { ScrollViewInstance, ViewInstance } from 'react-native';
 import { SeenBy } from './Frame.tsx';
 import { LEAVER, offeredFor, SAMPLE_LEADS, samplePeople } from './MembersSample.ts';
 import {
-  type CardSaid,
   DetailRows,
   type DetailsOpening,
   DetailsScreen,
@@ -17,6 +16,7 @@ import {
 import { DomainsSection, RequestsSection } from '../../components/OrganisationJoining.tsx';
 import { OwnershipSection } from '../../components/OrganisationOwnership.tsx';
 import { useOrganisationChoices } from '../../components/OrganisationPicker.tsx';
+import { type CardSaid } from '../../kit/organisationSave.ts';
 import { sampleCalls } from './OrganisationCalls.ts';
 import {
   CANDIDATES,

@@ -10,7 +10,6 @@ import { api } from '../../src/api.ts';
 import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import {
-  type CardSaid,
   DetailRows,
   DetailsScreen,
   type HeldBack,
@@ -26,7 +25,7 @@ import { PageToast } from '../../src/components/Summary.tsx';
 import { Text, type TextHandle } from '../../src/components/Text.tsx';
 import { moveScreenReaderFocus } from '../../src/components/screenReaderFocus.ts';
 import { SECTION_HREF } from '../../src/kit/appNav.ts';
-import { detailsOf, saveOrganisation } from '../../src/kit/organisationSave.ts';
+import { type CardSaid, detailsOf, saveOrganisation } from '../../src/kit/organisationSave.ts';
 import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { useOffline } from '../../src/offline.ts';
 import { reloadSignedIn, replaceOrganisation, useSignedIn } from '../../src/signedIn.ts';
