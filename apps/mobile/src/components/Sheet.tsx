@@ -40,7 +40,7 @@ import { tokens } from '../theme/tokens.ts';
 import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { useModalOpen } from '../updateRequired.ts';
-import { keyboardTopNow, useKeysUp, watchKeyboardTop } from './keyboardWatch.ts';
+import { useKeyboardTop, useKeysUp } from './keyboardWatch.ts';
 import { SETTLED_MS } from './Screen.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 
@@ -478,15 +478,6 @@ const Revealed = createContext(true);
 /** False while a sheet that names no window hides its content, so a heading waits to take focus until it can (sc-11032). */
 export function useSheetRevealed(): boolean {
   return useContext(Revealed);
-}
-
-/** The keyboard's top edge in the sheet's window, or null while the keys are down. */
-function useKeyboardTop(): number | null {
-  const [top, setTop] = useState(() => keyboardTopNow(0));
-
-  useEffect(() => watchKeyboardTop(() => 0, setTop), []);
-
-  return top;
 }
 
 /** Hands screen reader focus back to `opener` once a sheet or dialog that was open has gone (WCAG 2.4.3). */
