@@ -50,7 +50,18 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 Nov 2026. Las normas de inicio de sesión en la app: su situación y qué ha cambiado** (`mobile:signInRules.stand.*`, `readIntro`, `settings.personLabel*`, sc-34925 para sc-30412). La app repite `web:signInRules.*` palabra por palabra; si cambia una, cambia la otra. Las áreas en espera (`stand.area.*`) van sin artículo, «miembros», «facturación», «seguridad», tras «Los cambios en {{areas}}», como en la web, y se unen con «y». La tarjeta de Ajustes, para el lector de pantalla, es «Su cuenta. {{name}}, {{email}}, {{role}} en {{organisation}}».
+- **9 Nov 2026. La página Configuración de notificaciones de la app** (sc-34901 para
+  sc-30411, `mobile:notificationSettings.*`). La cabecera lleva verbo, «Recibe notificaciones
+  push y por correo», «Solo recibe notificaciones push»; las filas no: «Push y correo», «Solo
+  push», «Desactivado», como `off`. «Por correo», como en el resto de la app, para que quepa la
+  línea de cuentas, «3 de 6 por push · 6 de 6 por correo». El dispositivo tiene «ajustes», la
+  palabra del iPhone y de Android en España: «Abrir los ajustes del dispositivo». «Bloqueadas
+  en este dispositivo» concuerda con las notificaciones push del interruptor. La nota de Cuenta
+  y seguridad pierde «El correo electrónico no se puede desactivar.», que ahora es
+  `locked.email`, bajo el interruptor.
 - **9 Nov 2026. La página Seguridad de la app** (sc-34792 para sc-30411, `mobile:security.*`). Sigue los términos de la web: «Vinculada · {{address}}», «Cerrar las demás sesiones», «Listo» para Done, como `countryPicker.close`. `expires` es «Caduca el {{day}}», que vale para todos los días de la semana. `_many` lleva «de», como el 25 Oct.
+- **9 Nov 2026. «Support» es siempre «el servicio de asistencia de Soirely», nunca «el soporte»** (sc-33828, de qa2; `lostTwoFactor.nobodyTitle`, `nobodyIntro`, `twoFactor.turnedDownIntro`, `recovery.nobody_to_approve`, en la app, la web y la API). El título y la introducción decían «el soporte de Soirely» y el botón `emailSoirely`, «servicio de asistencia»: ahora la pantalla nombra el servicio con una sola palabra, y el botón sigue sin «de Soirely» porque el título ya lo nombra.
 - **9 Nov 2026. La página de enlace enviado en la web y la línea de quien lo ha perdido todo** (sc-33788 para sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). `nothingThere` sigue a la app, «¿No le ha llegado nada?…», y el enlace es «envíelo de nuevo». `sentAgain` es «Se lo hemos enviado de nuevo.», sin la segunda frase de la app: la página ya la explica. En `lostBothIntro`, «después de que inicie sesión», sin concordar con la persona, y «el servicio de asistencia de Soirely», del glosario.
 - **9 Nov 2026. The app names Settings one way** (sc-34869, from qa2 on #34621). In the app,
   the Settings section is «Ajustes» everywhere: the tab, the hub title (`settings.title`, also
@@ -724,3 +735,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **Cancelar una solicitud para volver a entrar** (sc-29979): «¿Cancelar su solicitud?»; la salida es «Seguir esperando», nunca «Cancelar», y la confirmación reutiliza «Cancelar la solicitud».
 - **El estado de un control rechazado, solo para el lector de pantalla** (`mobile:forms.invalid`, sc-31909): «Datos no válidos», tras el nombre del control («País, Datos no válidos»). Es lo que VoiceOver dice en la web; no concuerda con el género del nombre, que puede ser masculino o femenino.
 - **El plano de mesas** (sc-33304 para sc-3998, `seating.*`, `messages:seating.*`): el área es «Mesas» y lo que se dibuja, «el plano de mesas» («el plano» dentro del área); "Floor plan" es «Plano». Una "section" es una **zona**, nunca «sección», que en Soirely es una parte de la configuración: «Añadir una zona», «Sin zona», «Conservarla». Ancho y largo de la sala, como sustantivos. El lugar abre la línea de unidades como etiqueta, «Lugar: {{venue}}.», para que ninguna preposición tenga que concordar con el nombre. "Seated" no concuerda con el género del invitado: «invitados con asiento pasan a Sin asiento». «Esto también elimina {{counts}}.» no concuerda en número con la lista. Los colores: Azul, Morado, Ciruela, Vino, Rosa, Marrón, Verde oliva, Verde petróleo. La pista de pies usa la coma decimal y las abreviaturas de CLDR: «12 ft 4 in, 12,5 ft».
+- **9 nov. 2026. Personalización** (sc-34920 para sc-30441, `web:personalisation.*`,
+  `mobile:personalisation.*`, `mobile:settings.personalisation*`,
+  `messages:validation.colour_scheme_unknown`). La elección es «sus colores», en plural, para
+  que nada concuerde con el nombre de la combinación: «Los ha elegido usted. Los de Soirely son
+  {{own}}.», «No se ha guardado {{picked}}. Sus colores siguen siendo {{kept}}.». Solo la
+  negativa de la API dice «combinaciones de colores». Los ocho nombres: Violeta, Cobalto, Jardín,
+  Cítricos, Frutos rojos, Gala (Black tie, el código de vestimenta; «Etiqueta» se leería como
+  rótulo), Sorbete y Terracota. Sin conexión es «porque no tiene conexión», como la banda.

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { sampleEvent } from './events.ts';
@@ -633,5 +636,17 @@ describe('Who it reached, its fixes, the filter and a resend (sc-3966)', () => {
       'Marked as told · 0',
     ]);
     expect(shownOf(who, 'reached').groups[0]).toMatchObject({ count: 140, more: 138 });
+  });
+});
+
+describe('Scheduled for later’s time field', () => {
+  const css = readFileSync(join(import.meta.dirname, 'messages.css'), 'utf8');
+  const start = css.indexOf('\n.mg-when-field.is-time {');
+  const rule = css.slice(start, css.indexOf('}', start));
+
+  it('takes the width its locale’s format needs, so 06:00 PM shows whole', () => {
+    expect(rule).toMatch(/\sflex: 0 0 auto;/u);
+    expect(rule).toMatch(/\smin-width: 120px;/u);
+    expect(rule).not.toMatch(/\swidth:/u);
   });
 });

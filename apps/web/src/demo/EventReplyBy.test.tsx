@@ -234,6 +234,9 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
       fireEvent.click(within(ask).getByRole('button', { name: 'Close replies now' }));
       expect(await screen.findByText('Saved. Replies are now closed.')).toBeDefined();
       expect(screen.queryByText(/^Saved\. Replies close on/u)).toBeNull();
+      const row = document.querySelectorAll('.ev-details .ev-detail')[1];
+      expect(row?.textContent).toContain('Reply by · Replies closed.');
+      expect(row?.textContent).not.toContain('Replies close at');
     },
   );
 

@@ -1,14 +1,14 @@
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../../components/Glyph.tsx';
+import { tokens } from '../theme/tokens.ts';
+import { Glyph } from './Glyph.tsx';
+import { Text } from './Text.tsx';
 
 const TRACK_W = 51;
 const TRACK_H = 31;
 const KNOB = 27;
 const KNOB_GAP = 2;
-const ON_OFF = { on: 'On', off: 'Off' };
 
 /** B's switch with its On or Off word, so a state is never colour alone: under it on the phone, beside it on a tablet. */
 export function ConfettiSwitch({
@@ -19,7 +19,7 @@ export function ConfettiSwitch({
   busy = false,
   stacked = false,
   width,
-  words = ON_OFF,
+  words,
   onChange,
   testID,
 }: {
@@ -32,11 +32,13 @@ export function ConfettiSwitch({
   stacked?: boolean;
   /** The cell's own width, wide enough for the longer word, so a flip never moves its row. */
   width?: number | undefined;
-  words?: { on: string; off: string };
+  words?: { on: string; off: string } | undefined;
   onChange: (next: boolean) => void;
   testID: string;
 }) {
+  const { t } = useTranslation();
   const off = locked || busy;
+  const said = words ?? { on: t('notificationSettings.on'), off: t('notificationSettings.off') };
 
   return (
     <Pressable
@@ -57,7 +59,7 @@ export function ConfettiSwitch({
           accessible={false}
           style={on ? styles.inkOn : styles.inkOff}
         >
-          {on ? words.on : words.off}
+          {on ? said.on : said.off}
         </Text>
         {locked && <Glyph name="lock" size={13} ink={tokens.colorInkSecondary} weight={2.4} />}
       </View>

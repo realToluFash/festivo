@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { PrimaryButton, QuietButton } from '../../../src/components/Buttons.tsx';
+import { PrimaryButton, QuietButton, SecondaryButton } from '../../../src/components/Buttons.tsx';
 import { Notice } from '../../../src/components/Notice.tsx';
 import { Text } from '../../../src/components/Text.tsx';
 import { CodeBoxes, type CodeBoxesHandle, CodeLabel } from '../../../src/steps/CodeBoxes.tsx';
@@ -18,7 +18,7 @@ import {
   spentWords,
   wrongAsk,
 } from '../../../src/demo/lostAuth.ts';
-import { Heading, Says } from '../../../src/steps/Lines.tsx';
+import { DemoOnly, Heading, Says } from '../../../src/steps/Lines.tsx';
 import { CODE_LENGTH, minutesSeconds, RESEND_SECONDS } from '../../../src/steps/rules.ts';
 import { SAMPLE } from '../../../src/demo/samples.ts';
 import { useCountdown } from '../../../src/steps/useCountdown.ts';
@@ -28,7 +28,7 @@ function opening(state: string | undefined): Spent | null {
   return state === 'expired' || state === 'exhausted' ? state : null;
 }
 
-/** `state=expired` or `state=exhausted` opens with the codes spent, as five wrong asks leave them. */
+/** `state=expired` or `state=exhausted` opens with the codes spent, as five wrong asks leave them. Nobody left to confirm ends the request here, before it waits (sc-29072). */
 export default function LostCodes() {
   const params = useLocalSearchParams<{ email?: string; emailOnly?: string; state?: string }>();
   const email = params.email ?? SAMPLE.email;
@@ -173,6 +173,15 @@ export default function LostCodes() {
           )}
         </>
       )}
+      <DemoOnly title={`Demo: nobody in ${SAMPLE.organisation} can confirm`}>
+        <SecondaryButton
+          label="Nobody can confirm"
+          onPress={() =>
+            router.replace({ pathname: '/demo/ending', params: { kind: 'nobody', email } })
+          }
+          testID="demo.nobody"
+        />
+      </DemoOnly>
     </DemoScreen>
   );
 }

@@ -88,7 +88,14 @@
     "mobile:todayScreen.notifications",
     "web:seating.countTables_one",
     "web:seating.countTables_other",
-    "web:seating.colours.rose"
+    "web:seating.colours.rose",
+    "web:personalisation.scheme.violet",
+    "web:personalisation.scheme.cobalt",
+    "web:personalisation.scheme.sorbet",
+    "mobile:personalisation.scheme.violet",
+    "mobile:personalisation.scheme.cobalt",
+    "mobile:personalisation.scheme.sorbet",
+    "web:generalDesk.invitations"
   ],
   "pt": [
     "web:nav.menu",

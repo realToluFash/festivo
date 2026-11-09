@@ -1062,8 +1062,6 @@
         "billing": "billing",
         "security": "security"
       },
-      "and": "{{rest}} and {{last}}",
-      "listComma": ", ",
       "mark": {
         "met": "Met.",
         "needs": "Needs you.",
@@ -1824,8 +1822,27 @@
     "emailNotSaved": "The email switch was not saved. Try again.",
     "couldNotLoad": "Your notification settings did not load.",
     "tryAgain": "Try again",
-    "pushBlocked": "Push is off on this device, so pushes won't reach you here. Turn it on in your device's settings.",
+    "pushBlocked": "Push is off on this device, so pushes won't reach you here.",
     "quietHours": "Between {{start}} and {{end}} your time, only Event day pushes come through.",
+    "kinds": "What you hear about",
+    "openSettings": "Open device settings",
+    "blockedHere": "Blocked on this device",
+    "notLoadedLine": "Check your connection and try again.",
+    "saving": "Saving…",
+    "savedTag": "Saved",
+    "saysBoth": "You hear by push and email",
+    "saysPush": "You hear by push only",
+    "saysEmail": "You hear by email only",
+    "counts": "{{push, number}} of {{total, number}} by push · {{email, number}} of {{total, number}} by email",
+    "heardBoth": "Push and email",
+    "heardPush": "Push only",
+    "heardEmail": "Email only",
+    "heardNone": "Off",
+    "emailAlwaysOn": "{{heard}} · email always on",
+    "locked": {
+      "email": "Email cannot be switched off.",
+      "push": "Push cannot be switched off."
+    },
     "category": {
       "guest_replies": "Guest replies",
       "messages": "Messages",
@@ -1840,7 +1857,7 @@
       "event_day": "Your shift or call time changed, or the event changed in its last 24 hours.",
       "event_changes": "When someone else changes whether, when or where an event you are on takes place.",
       "money": "Payments due, usage at {{low}} and {{high}}, failed payments and invoices.",
-      "account_security": "Sign-ins, your password, two-factor, ownership and access. Email cannot be switched off."
+      "account_security": "Sign-ins, your password, two-factor, ownership and access."
     }
   },
   "timeline": {

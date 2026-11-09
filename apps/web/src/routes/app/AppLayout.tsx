@@ -188,7 +188,23 @@ function Shell() {
   );
 
   const atAccount = pathname.startsWith('/app/account');
-  const standingIn = !atAccount && (session.pausedIn != null || (organisation != null && overdue));
+
+  const atSettings = pathname === '/app/settings' || pathname.startsWith('/app/settings/');
+  // At an organisation's Settings section the stand-in takes the page beside the Settings list, so the account stays a row away.
+  const standIn =
+    session.pausedIn != null && !atAccount ? (
+      <AccessPaused
+        paused={session.pausedIn}
+        others={session.organisations}
+        onSwitch={(next) => {
+          switchOrganisation(next.id);
+          setSwitched({ id: next.id, name: next.name, at: pathname, takesFocus: true });
+        }}
+        onChoose={() => setChoosing((times) => times + 1)}
+      />
+    ) : organisation != null && overdue && !atAccount ? (
+      <TwoFactorOverdue organisation={organisation} />
+    ) : null;
 
   // Every product page would open this page again, so it stands alone: only what works without an organisation, the account pages under the same header.
   if (organisation == null && session.pausedIn == null) {
@@ -295,7 +311,7 @@ function Shell() {
           <p className="shell-crumb">
             {organisation?.name ?? session.pausedIn?.name}
             {/* A screen standing in for the page leaves only the organisation (pm, 2 Nov). */}
-            {!standingIn && (
+            {standIn == null && (
               <>
                 <span aria-hidden="true"> / </span>
                 <b>
@@ -320,21 +336,7 @@ function Shell() {
           )}
 
           <ErrorBoundary>
-            {session.pausedIn != null && !atAccount ? (
-              <AccessPaused
-                paused={session.pausedIn}
-                others={session.organisations}
-                onSwitch={(next) => {
-                  switchOrganisation(next.id);
-                  setSwitched({ id: next.id, name: next.name, at: pathname, takesFocus: true });
-                }}
-                onChoose={() => setChoosing((times) => times + 1)}
-              />
-            ) : organisation != null && standingIn ? (
-              <TwoFactorOverdue organisation={organisation} />
-            ) : (
-              <Outlet />
-            )}
+            {standIn != null && !atSettings ? standIn : <Outlet context={standIn} />}
           </ErrorBoundary>
         </main>
 

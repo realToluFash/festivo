@@ -239,6 +239,12 @@ final class SeatingPlanTest extends ApiTestCase
 
         self::assertSame(409, $this->statusCode());
         self::assertSame('https://soirely.com/errors/seating_section_limit', $this->last()['type'] ?? null);
+        self::assertSame('A plan can have up to 30 sections. Delete one to add another.', $this->last()['detail'] ?? null);
+
+        $this->as($this->owner, 'POST', $this->sections(), ['name' => 'Section 31'], language: 'fr');
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame('Un plan peut comporter jusqu’à 30 zones. Supprimez-en une pour en ajouter une autre.', $this->last()['detail'] ?? null);
     }
 
     #[Test]
@@ -545,12 +551,13 @@ final class SeatingPlanTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
-    private function as(User $user, string $method, string $path, ?array $body = null, ?string $ifMatch = null): array
+    private function as(User $user, string $method, string $path, ?array $body = null, ?string $ifMatch = null, string $language = 'en'): array
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($who),
+            'HTTP_ACCEPT_LANGUAGE' => $language,
             ...null === $ifMatch ? [] : ['HTTP_IF_MATCH' => $ifMatch],
         ], content: null === $body ? null : Json\encode($body));
 

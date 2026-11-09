@@ -365,7 +365,7 @@ export function domainsCard(model: DomainsModel, owns: boolean, say: DataSay): C
   if (model.plan === 'downgraded')
     return { says: C.off(say.day(AT.leftEnterprise)), line: C.offLine, step: CONTACT };
   const keep = (domain: string) =>
-    owns ? { label: C.keep, go: { kind: 'only', domain } as Go } : null;
+    owns ? { label: C.keep(domain), go: { kind: 'only', domain } as Go } : null;
   const said = model.said;
   if (said?.kind === 'proved')
     return {

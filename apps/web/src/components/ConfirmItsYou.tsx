@@ -1,20 +1,13 @@
-import {
-  ApiError,
-  type Provider,
-  type ProviderSignInAttempt,
-  proofRefusal,
-} from '@soirely/api-client';
-import { PROOF_MINUTES, formatTimeOfDay } from '@soirely/domain';
-import { type TFunction } from 'i18next';
+import { type Provider, type ProviderSignInAttempt } from '@soirely/api-client';
+import { PROOF_MINUTES } from '@soirely/domain';
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { useFormChecks } from '../formChecks.ts';
-import { dateLocale } from '../i18n/index.ts';
 import { focusWhereSent, offField } from '../offField.ts';
 import { PROVIDER_NAMES, type ReturnPurpose, startProviderSignIn } from '../providerSignIn.ts';
+import { useProving } from '../proving.ts';
 import { dropProof, holdProof } from '../recentProof.ts';
 import { FieldError } from './FieldError.tsx';
 import { PasswordField } from './PasswordField.tsx';
@@ -50,26 +43,49 @@ export function ConfirmItsYou({
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  // Dropped when the five minutes from the provider's sign-in run out: back to step one, the change kept.
-  const [signIn, setSignIn] = useState(returned);
-  const [expired, setExpired] = useState(false);
-  const askPassword = via === 'password' && signIn == null;
-  const viaProvider = via === 'password' ? null : via;
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
-  const [refusal, setRefusal] = useState<{
-    field: ProvingField | 'failed';
-    message: string;
-  } | null>(null);
-  const [checking, setChecking] = useState(false);
-  // The API's kept proof once a sign-in waits for its code: Google's or Apple's is single-use (RFC 6749 §4.1.2).
-  const kept = useRef<string | null>(null);
-  // Turned on in the two-factor card since this page loaded: the API says so, and the field appears.
-  const [codeAsked, setCodeAsked] = useState(twoFactorOn);
-  // Step two after Google or Apple: the sign-in passed and the code is asked for (sc-2197).
-  const [vouched, setVouched] = useState<{ email: string | null } | null>(null);
   const passwordInput = useRef<HTMLInputElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  // Before the hook's own arrival exchange, so a refusal on arrival lands from the heading.
+  useEffect(() => {
+    heading.current?.focus();
+  }, []);
+
+  const proving = useProving({
+    via,
+    twoFactorOn,
+    returned,
+    prove: async (first, second) => {
+      try {
+        const proof = await api.prove(first, second);
+        holdProof(proof);
+        if (second != null) onCodeSpent?.();
+
+        return proof.proof;
+      } catch (error) {
+        dropProof();
+        throw error;
+      }
+    },
+    onProved,
+    onSend: () => {
+      const land = focusWhereSent();
+
+      return (outcome) => {
+        if (outcome.kind === 'code' && !outcome.afterProvider) land(`${idPrefix}-code`);
+        if (outcome.kind === 'expired') {
+          setCode('');
+          heading.current?.focus();
+        }
+        if (outcome.kind === 'refused' && outcome.refusal.field !== 'failed')
+          land(`${idPrefix}-${outcome.refusal.field}`);
+      };
+    },
+  });
+  const { signIn, expired, refusal, setRefusal, checking, codeAsked, vouched, askPassword } =
+    proving;
+  const viaProvider = proving.provider;
 
   const checks = useFormChecks<ProvingField>(
     askPassword ? ['password', 'code'] : ['code'],
@@ -88,86 +104,13 @@ export function ConfirmItsYou({
     event.preventDefault();
     if (checking || !checks.passes({ password, code })) return;
 
-    await send(codeAsked ? code.trim() : undefined);
+    await proving.send(password, codeAsked ? code.trim() : undefined);
   }
-
-  async function send(second: string | undefined): Promise<void> {
-    setChecking(true);
-    const land = focusWhereSent();
-
-    try {
-      const proof = await api.prove(
-        kept.current != null
-          ? { pendingProof: kept.current }
-          : signIn != null && viaProvider != null
-            ? { provider: viaProvider, signIn }
-            : { password },
-        second,
-      );
-      holdProof(proof);
-      if (second != null) onCodeSpent?.();
-      onProved(proof.proof);
-    } catch (error) {
-      setChecking(false);
-      dropProof();
-
-      if (error instanceof ApiError && error.is('two_factor_required')) {
-        if (signIn != null) {
-          kept.current = error.problem.pendingProof ?? kept.current;
-          const email = error.problem.providerEmail ?? null;
-          setVouched((now) => now ?? { email });
-          setCodeAsked(true);
-
-          return;
-        }
-
-        // The field the answer asks for, once it is there to take focus.
-        flushSync(() => setCodeAsked(true));
-        land(`${idPrefix}-code`);
-
-        return;
-      }
-
-      if (signIn != null && error instanceof ApiError && error.is('proof_required')) {
-        setSignIn(null);
-        kept.current = null;
-        setVouched(null);
-        setCode('');
-        setRefusal(null);
-        setExpired(true);
-        heading.current?.focus();
-
-        return;
-      }
-
-      if (signIn != null && error instanceof ApiError)
-        kept.current = error.problem.pendingProof ?? kept.current;
-      const refused = provingRefusal(
-        error,
-        t,
-        signIn != null && viaProvider != null ? PROVIDER_NAMES[viaProvider] : null,
-      );
-      setRefusal(refused);
-      if (refused.field !== 'failed') land(`${idPrefix}-${refused.field}`);
-    }
-  }
-
-  // Google's or Apple's sign-in is exchanged the moment it returns: the five minutes count from it, not the code.
-  const exchanged = useRef(false);
-
-  useEffect(() => {
-    heading.current?.focus();
-    if (signIn == null || exchanged.current) return;
-    exchanged.current = true;
-    void send(undefined);
-    // Once, on arrival: what came back from the provider is taken then and never again.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const passwordError =
     checks.errors.password ?? (refusal?.field === 'password' ? refusal.message : null);
   const codeError = checks.errors.code ?? (refusal?.field === 'code' ? refusal.message : null);
-  const stepTwo = vouched != null && signIn != null && viaProvider != null ? viaProvider : null;
+  const stepTwo = proving.stepTwo;
   const codeHelp =
     stepTwo == null ? `${idPrefix}-code-help` : `${idPrefix}-code-help ${idPrefix}-code-kept`;
 
@@ -337,31 +280,4 @@ export function ConfirmItsYou({
       </form>
     </>
   );
-}
-
-function provingRefusal(
-  error: unknown,
-  t: TFunction,
-  providerName: string | null,
-): { field: ProvingField | 'failed'; message: string } {
-  const refusal = proofRefusal(error, providerName == null);
-
-  if (refusal.kind === 'trip')
-    return { field: 'failed', message: t('waysCard.providerRefused', { provider: providerName }) };
-
-  if (refusal.kind === 'limited')
-    return {
-      field: 'failed',
-      message:
-        refusal.until == null
-          ? t('passwordCard.pausedSoon')
-          : t('passwordCard.pausedBody', { time: formatTimeOfDay(refusal.until, dateLocale()) }),
-    };
-  if (refusal.kind === 'field')
-    return {
-      field: refusal.field,
-      message: refusal.field === 'password' ? t('waysCard.passwordWrong') : t('waysCard.codeWrong'),
-    };
-
-  return { field: 'failed', message: t('waysCard.failedBody') };
 }

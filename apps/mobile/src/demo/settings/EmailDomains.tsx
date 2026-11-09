@@ -23,7 +23,7 @@ import {
 import { tokens } from '../../theme/tokens.ts';
 import { SeenBy } from './Frame.tsx';
 import { useLoad } from './MembersLoading.tsx';
-import { ConfettiSwitch } from './NotificationsSwitch.tsx';
+import { ConfettiSwitch } from '../../components/ConfettiSwitch.tsx';
 import { DOMAIN_WORDS } from './OrganisationWords.ts';
 import { memberLooking } from './sample.ts';
 import {
@@ -54,7 +54,7 @@ const HELD_MS = 8000;
 const AFTER_WINDOW_MS = SETTLED_MS * 2 + 100;
 const ONLY_INDENT = 40;
 
-/** Email domains in B (sc-560, sc-563): prove a domain by its DNS record, then keep its accounts to Ire Events. */
+/** Email domains in B (sc-560, sc-563): prove a domain by its DNS record, then limit its accounts to Ire Events. */
 export function EmailDomainsSection() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const { viewer } = useDataNav();

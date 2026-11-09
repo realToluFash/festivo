@@ -12,6 +12,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
+import { atPhoneWidth } from '../../../test-widths.ts';
 import { tokens } from '../../../tokens.ts';
 import { routes } from '../../index.tsx';
 
@@ -109,6 +110,7 @@ async function change(): Promise<void> {
 
 beforeEach(() => {
   tokens.save({ accessToken: 'live', refreshExpiresAt: '', sessionId: 's' });
+  atPhoneWidth();
 });
 
 afterEach(() => {

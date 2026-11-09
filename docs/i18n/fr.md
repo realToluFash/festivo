@@ -71,6 +71,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **9 nov. 2026. Les règles de connexion dans l’app : votre situation, ce qui a changé** (`mobile:signInRules.stand.*`, `readIntro`, `settings.personLabel*`, sc-34925 pour sc-30412). L’app reprend mot pour mot `web:signInRules.*` ; une phrase qui change sur l’un change sur l’autre. Les domaines bloqués (`stand.area.*`) portent leur article et leur préposition, « des membres », « de la facturation », « de la sécurité », pour que `managersNotOn`, « Les modifications {{areas}} attendent qu’elle le soit. », s’accorde quelle que soit la liste. Le délai de la double authentification pour tous est « Pas encore activée. Date limite : {{day}} », sans point final, car `{{day}}` finit sur « nov. ». « Pas de limite » est « Votre session reste ouverte jusqu’à ce que vous vous déconnectiez. », jamais « Vous restez connecté », qui s’accorde au masculin. La carte de Paramètres, pour le lecteur d’écran, est « Votre compte. {{name}}, {{email}}, {{role}} dans {{organisation}} ». U+00A0 avant chaque deux-points de ces règles, web compris.
+- **9 nov. 2026. La page Paramètres de notification de l’app** (sc-34901 pour sc-30411,
+  `mobile:notificationSettings.*`). L’en-tête a un verbe, « Vous recevez uniquement des
+  notifications push » ; les lignes n’en ont pas : « Push et e-mail », « Push uniquement »,
+  « Désactivé », comme `off`. Le titre de section est « Ce qui vous est notifié », sans accord
+  avec la personne. Le décompte dit « en push » et « par e-mail » : « 3 sur 6 en push · 6 sur 6
+  par e-mail ». L’appareil a des « réglages », comme dans `pushBlocked`. « Bloquées sur cet
+  appareil » s’accorde avec les notifications push. La note de Compte et sécurité perd « Les
+  e-mails ne peuvent pas être désactivés. », désormais `locked.email`, sous l’interrupteur.
 - **9 nov. 2026. La page Sécurité de l’app** (sc-34792 pour sc-30411, `mobile:security.*`). Reprend les termes du web : « Associé · {{address}} », « Déconnecter les autres appareils », « Terminé » pour Done. Rien ne s’accorde avec la personne : `signOutLine` dit « cet appareil-ci reste connecté », jamais « vous restez connecté », et `signedUpWith` commence par « Inscription avec Google ou Apple ? », au lieu du « Inscrit » du web (`web:recovery.providerNote`, à aligner au prochain ticket web). `expires` est « Expire le {{day}} sans nouvelle utilisation ».
 - **9 nov. 2026. La page du lien envoyé sur le web et la ligne de qui a tout perdu** (sc-33788 pour sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). `nothingThere` reprend l’app, « Rien reçu ? », et le lien est « renvoyez-le ». `sentAgain` est « Nous l’avons renvoyé. », sans la deuxième phrase de l’app. `lostBothIntro` dit « ne peut confirmer votre identité qu’après une connexion avec votre mot de passe », jamais « une fois connecté », qui s’accorde au masculin ; « l’assistance Soirely », du guide.
 - **8 nov. 2026. Votre compte dans l’app** (sc-34175 pour sc-30411, `mobile:account.*`,
@@ -784,3 +793,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **Annuler une demande pour revenir** (sc-29979) : « Annuler votre demande ? » ; la sortie est « Continuer d’attendre », jamais « Annuler », et la confirmation reprend « Annuler la demande ».
 - **L’état d’un champ refusé, seulement pour le lecteur d’écran** (`mobile:forms.invalid`, sc-31909) : « Données non valides », après le nom du champ (« Adresse e-mail, Données non valides »). C’est ce que dit VoiceOver sur le web ; rien ne s’accorde avec le nom, masculin ou féminin.
 - **Le plan de table** (sc-33304 pour sc-3998, `seating.*`, `messages:seating.*`) : l’espace est « Plan de table », et le dessin « le plan de la salle ». Une "section" est une **zone**, jamais « section », réservée aux parties des paramètres : « Ajouter une zone », « Aucune zone », « La conserver ». Le lieu ouvre la ligne des unités comme une étiquette, « Lieu : {{venue}}. », pour ne jamais écrire « à Le Grand Hôtel » ; « là où se trouve {{organisation}} » évite tout accord avec l’organisation. "Seated" se dit « ayant une place », sans accord : « invités ayant une place passent dans Sans place ». Les couleurs : Bleu, Violet, Prune, Bordeaux, Rose, Marron, Vert olive, Bleu canard. L’aide en pieds reprend les abréviations CLDR françaises que le champ lit : « 12 pi 4 po, 12,5 pi ou 148 po ».
+- **9 nov. 2026. Personnalisation** (sc-34920 pour sc-30441, `web:personalisation.*`,
+  `mobile:personalisation.*`, `mobile:settings.personalisation*`,
+  `messages:validation.colour_scheme_unknown`). Le choix, ce sont « vos couleurs », et rien ne
+  s’accorde avec le nom d’un jeu : « Votre choix, {{picked}}, n’a pas été enregistré. Vous gardez
+  {{kept}}. ». "Current" est « Choix actuel », jamais « Actuel·le », que « Fruits rouges » ou
+  « Tenue de soirée » ne pourraient porter. « Toutes les pages sont désormais à vos couleurs ». Seul le
+  refus de l’API dit « jeux de couleurs ». Les huit noms : Violet, Cobalt, Jardin, Agrumes,
+  Fruits rouges, Tenue de soirée (Black tie, la tenue exigée), Sorbet et Terre cuite ; Violet,
+  Cobalt et Sorbet sont les mots français (`same-as-english.json`).

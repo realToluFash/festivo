@@ -259,6 +259,7 @@ export const say = {
   recordedBy: (who: string, how: string, date: string) =>
     `recorded by ${who}, ${how.toLowerCase()}, ${date}`,
   invitedBy: (who: string, how: string, date: string) => `Invited by ${who}, ${how}, ${date}`,
+  closedOn: (date: string) => `Replies closed on ${date}.`,
   closed: (date: string) =>
     `Replies closed on ${date}. Record a reply opens again if you let them change their reply.`,
   reopened: (who: string, date: string) =>

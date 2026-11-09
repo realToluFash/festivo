@@ -383,6 +383,12 @@ describe('the states', () => {
     expect(listStateOf('nonsense')).toBeNull();
   });
 
+  it('opens loading on Upcoming, with no tab emptied', () => {
+    expect(listStateOf('loading')).toBe('loading');
+    expect(listStart('loading').tab).toBe('upcoming');
+    expect(emptyTabOf('loading')).toBeNull();
+  });
+
   it.each([
     ['emptyUpcoming', 'upcoming'],
     ['emptyDrafts', 'drafts'],

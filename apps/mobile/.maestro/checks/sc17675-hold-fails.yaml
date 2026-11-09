@@ -1,4 +1,4 @@
-# sc-17675: fails on purpose while it holds the QA api paused, so a batch shows that a held check reports its own step and leaves the next check a live api. Run it first of three: qa-env.mjs batch sc17675 sc17675-hold-fails sc17675-hold-stopped-fails sc17675-api-live EMAIL=… PASSWORD=…. Expect two failures, each on its 5 s wait for sc17675-never-there, and sc17675-api-live passing.
+# sc-17675: fails on purpose while it holds the QA api paused, so a batch shows that a held check reports its own step and leaves the next check a live api. Run it first of three: qa-env.mjs batch sc17675 sc17675-hold-fails sc17675-hold-stopped-fails sc17675-api-live ORIENT=PORTRAIT EMAIL=… PASSWORD=…. Expect two failures, each on its 5 s wait for sc17675-never-there, and sc17675-api-live passing.
 appId: host.exp.Exponent
 onFlowComplete:
   - runScript:

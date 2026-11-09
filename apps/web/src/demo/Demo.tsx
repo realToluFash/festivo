@@ -39,6 +39,8 @@ import { LegalPage } from './Legal.tsx';
 import { LEGAL_PAGES } from './legal.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { NOTIFICATIONS_PAGES } from './notifications.ts';
+import { PassPage } from './Pass.tsx';
+import { PASS_PAGES } from './pass.ts';
 import { leave } from './chosenScheme.ts';
 import { PERSONALISATION_PAGES } from './personalisation.ts';
 import { SECURITY_PAGES } from './security.ts';
@@ -218,6 +220,7 @@ export default function Demo() {
       <Route path="unsubscribe" element={<Unsubscribe />} />
       <Route path="guest" element={<GuestPage />} />
       <Route path="guests" element={<Guests />} />
+      <Route path="pass" element={<PassPage />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -280,6 +283,12 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={KITCHEN_PAGES} />
         <h3>Changes since the kitchen’s last copy, in Guests A · desktop</h3>
         <BoardPages pages={CHANGES_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-35">
+        <h2 id="demo-page-35">35 · Service · the pass</h2>
+        <h3>The pass’s print controls, in page 35’s language · desktop, Printing in version B</h3>
+        <BoardPages pages={PASS_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-81">

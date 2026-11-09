@@ -407,6 +407,7 @@ export function tabWord(tab: ListTab): string {
 }
 
 export const LIST_STATES = [
+  'loading',
   'first',
   'firstAsk',
   'emptyUpcoming',

@@ -41,6 +41,7 @@ export interface Bar {
   kind: 'tint' | 'amber' | 'undo';
   words: string;
   does?: 'placing' | 'pick' | 'undo';
+  at?: 'floor';
 }
 
 export interface FieldSeed {
@@ -285,7 +286,7 @@ export function seedOf(state: SeatingState | null): Ui {
         ...ui,
         plan: { ...plan, items: [], sections: [] },
         people: [],
-        bar: { kind: 'tint', words: SW.firstItem },
+        bar: { kind: 'tint', words: SW.firstItem, at: 'floor' },
       };
     case 'loading':
       return { ...ui, load: 'loading', people: [] };
@@ -391,6 +392,17 @@ export function seedOf(state: SeatingState | null): Ui {
         ...ui,
         panel: { kind: 'sectionEdit', id: 'stage' },
         asking: { kind: 'deleteSection', id: 'stage' },
+      };
+    case 'sectionDeleteEmpty':
+      return {
+        ...ui,
+        plan: {
+          ...plan,
+          sections: [...plan.sections, { id: 'quiet', name: 'Quiet corner', colour: 'Blue' }],
+          items: plan.items.map((item) => (item.id === 'rowA' ? { ...item, sec: 'quiet' } : item)),
+        },
+        panel: { kind: 'sectionEdit', id: 'quiet' },
+        asking: { kind: 'deleteSection', id: 'quiet' },
       };
     case 'addMenu':
       return { ...ui, menu: true };

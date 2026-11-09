@@ -26,6 +26,7 @@ const BOARDS: Record<SeatingState, readonly [string, string]> = {
   sectionLimit: ['a 31st section', 'A plan can have up to 30 sections'],
   sectionEdit: ['edit a section', 'Stage side in Wine, its tables lit'],
   sectionDelete: ['delete a section', 'Its 5 tables stay, with no section'],
+  sectionDeleteEmpty: ['delete a section with no tables', 'Only Delete Quiet corner?'],
   sparse: ['the sparse plan', 'One table, one section'],
   addMenu: ['Add table', 'The four shapes'],
   placing: ['placing', 'Tap the floor, or Place at the centre'],

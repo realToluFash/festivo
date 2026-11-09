@@ -1,20 +1,19 @@
+import { ApiError, type PhoneCodeRoute } from '@soirely/api-client';
 import {
   CONTACTS_MOST,
   type ZoneRow,
   callingCode,
   cleanCode,
-  codeProblem,
   contactsLeft,
-  emailProblem,
-  exactZone,
   formatCountdown,
   formatPhone,
-  formerName,
-  matchingZones,
+  primaryFirst,
   zoneLabel,
 } from '@soirely/domain';
 
-import { SAMPLE, numberLine } from './rules.ts';
+import { type CodeSource } from '../codeCheck.ts';
+import { type ProveWith } from '../proving.ts';
+import { SAMPLE } from './rules.ts';
 import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
 
 export type Kind = 'email' | 'phone';
@@ -35,7 +34,6 @@ export const WRONG_CODE = '482170';
 export const WRONG_FACTOR = '714 320';
 export const SEND_MS = 500;
 export const RESEND_FROM = 42;
-export const ZONES_SHOWN = 8;
 
 export const ACCOUNT_WORDS = {
   title: 'Your account',
@@ -72,9 +70,6 @@ export const KIND_WORDS = {
     primaryLine: 'Primary · signs you in',
     otherLine: 'Can reach you, cannot sign you in',
     removeTitle: 'Remove this address?',
-    field: 'Email address to add',
-    help: 'We email a code to prove it is yours. Until then it stays unverified.',
-    blank: 'Enter your email address.',
     linked: 'That address is already linked to an account.',
     madePrimary: (shown: string) =>
       `${shown} is now your primary address. Sign in with it from now on.`,
@@ -87,9 +82,6 @@ export const KIND_WORDS = {
     primaryLine: 'Primary · on your profile',
     otherLine: 'Can reach you',
     removeTitle: 'Remove this number?',
-    field: 'Mobile number to add',
-    help: 'We text a code to prove it is yours. Until then it stays unverified.',
-    blank: 'Enter your mobile number.',
     linked: 'That number is already linked to an account.',
     madePrimary: (shown: string) => `${shown} is now your primary number.`,
   },
@@ -100,30 +92,6 @@ export const DISCARD = {
   keep: 'Keep editing',
   go: 'Discard',
   nothingAdded: 'Nothing is added.',
-} as const;
-
-export const NAME_WORDS = {
-  title: 'Name',
-  verb: 'Save',
-  field: 'Full name',
-  blank: 'Enter your name.',
-  stays: (name: string) => `Your name stays ${name}.`,
-} as const;
-
-export const ZONE_WORDS = {
-  title: 'Time zone',
-  verb: 'Save',
-  intro: 'Times in the emails and texts Soirely sends you are written in this zone.',
-  field: 'Find your time zone',
-  placeholder: 'Lagos, Ghana or UTC+01',
-  help: (now: string) =>
-    `Type a city, a country or an offset, then pick from the list. Now: ${now}.`,
-  matches: 'Matching time zones',
-  choose: 'Choose a time zone from the list.',
-  chooseNone: (typed: string) => `Choose a time zone from the list. Nothing matches “${typed}”.`,
-  none: (typed: string) =>
-    `No time zone matches “${typed}”. Try a city, a country or an offset like UTC+01.`,
-  stays: (zone: string) => `Your time zone stays ${zone}.`,
 } as const;
 
 export const ADD_WORDS = {
@@ -276,14 +244,6 @@ export function yourAccount(viewer: Pick<Viewer, 'key' | 'name' | 'id'>) {
   };
 }
 
-export function primaryFirst(rows: readonly Contact[]): Contact[] {
-  return [...rows].sort((one, other) => Number(other.primary) - Number(one.primary));
-}
-
-export function primaryOf(rows: readonly Contact[]): Contact | null {
-  return rows.find((row) => row.primary) ?? null;
-}
-
 /** What is unfinished, or what was just done, with the card's one step while anything is unverified. */
 export function cardLine(
   emails: readonly Contact[],
@@ -326,96 +286,72 @@ export function madePrimary(rows: readonly Contact[], id: string): Contact[] {
   return rows.map((row) => ({ ...row, primary: row.id === id }));
 }
 
-export function sentCodeProblem(typed: string): 'blank' | 'short' | 'wrong' | null {
-  const problem = codeProblem(typed);
-  if (problem != null) return problem;
-
-  return cleanCode(typed) === SAMPLE.code ? null : 'wrong';
-}
-
-export function codeRefusal(typed: string, channel: Channel): string | null {
-  const problem = sentCodeProblem(typed);
-  if (problem == null) return null;
-  if (problem === 'short') return VERIFY_WORDS.short;
-
-  return problem === 'blank' ? CHANNEL_WORDS[channel].blank : CHANNEL_WORDS[channel].wrong;
-}
-
-export function proveProblems(
-  password: string,
-  code: string,
-): { password?: string; code?: string } {
-  const factor = cleanCode(code).toLowerCase();
-  const problems: { password?: string; code?: string } = {};
-
-  if (password === '') problems.password = PROVE_WORDS.passwordBlank;
-  else if (password !== SAMPLE.password) problems.password = PROVE_WORDS.passwordWrong;
-  if (factor === '') problems.code = PROVE_WORDS.codeBlank;
-  else if (factor !== SAMPLE.authenticator && factor !== SAMPLE.recovery)
-    problems.code = PROVE_WORDS.codeWrong;
-
-  return problems;
-}
-
 export function phoneShown(country: string, typed: string): string {
   return formatPhone(`${callingCode(country) ?? ''}${typed.replace(/\D/gu, '')}`);
 }
 
-export function emailRefusal(typed: string, rows: readonly Contact[]): string | null {
-  const problem = emailProblem(typed);
-  if (problem === 'blank') return KIND_WORDS.email.blank;
-  if (problem === 'shape') return ADD_WORDS.shape;
-  const address = typed.trim().toLowerCase();
-
-  return rows.some((row) => row.shown.toLowerCase() === address) ? KIND_WORDS.email.linked : null;
+function sampleRefusal(code: string): ApiError {
+  return new ApiError({ type: `https://soirely.com/errors/${code}`, title: code, status: 422 });
 }
 
-export function phoneRefusal(
-  typed: string,
-  country: string,
-  rows: readonly Contact[],
-): string | null {
-  const line = numberLine(typed, country, false);
-  if (line != null) return line;
-  const shown = phoneShown(country, typed);
-
-  return rows.some((row) => row.shown === shown) ? KIND_WORDS.phone.linked : null;
+function afterSending<T>(answer: () => T): Promise<T> {
+  return new Promise((resolve, reject) =>
+    setTimeout(() => {
+      try {
+        resolve(answer());
+      } catch (refusal) {
+        reject(refusal instanceof Error ? refusal : new Error(String(refusal)));
+      }
+    }, SEND_MS),
+  );
 }
 
-export interface ZoneMatch {
-  zone: ZoneRow;
-  label: string;
-  line: string;
+/** What a save does in the sample: it goes after a moment, or the server's reason comes back. */
+export function sampleSave(refusal: string | null, saved: () => void): Promise<string | null> {
+  return afterSending(() => {
+    if (refusal == null) saved();
+
+    return refusal;
+  });
 }
 
-export function zoneMatches(typed: string): ZoneMatch[] {
-  if (typed.trim() === '') return [];
+/** The sample's code check: the code goes to the opening's channel, and only the sample's code verifies. */
+export function sampleCodeSource(start: DialogStart): CodeSource {
+  let route: PhoneCodeRoute | null =
+    start.channel === 'email' ? null : start.channel === 'text' ? 'sms_chosen' : 'whatsapp';
 
-  return matchingZones(ZONES, typed)
-    .slice(0, ZONES_SHOWN)
-    .map((zone) => {
-      const former = formerName(zone, typed);
+  return {
+    opening: () =>
+      Promise.resolve({
+        cooldownSeconds: start.expired ? 0 : RESEND_FROM,
+        codeState: start.expired ? 'expired' : 'live',
+        route,
+      }),
+    verify: (code) =>
+      afterSending(() => {
+        if (code !== SAMPLE.code) throw sampleRefusal('verification_code_invalid');
 
-      return {
-        zone,
-        label: zoneLabel(zone),
-        line: former == null ? zone.country : `${zone.country} · was ${former}`,
-      };
-    });
+        return { primary: false };
+      }),
+    resend: () => afterSending(() => RESEND_FROM),
+    textInstead: () =>
+      afterSending(() => {
+        route = 'sms_chosen';
+      }),
+  };
 }
 
-export function zoneChosen(typed: string, picked: ZoneRow | null): ZoneRow | null {
-  if (picked != null && typed === zoneLabel(picked)) return picked;
+/** The sample's proof: its password, then its authenticator or a recovery code. */
+export function sampleProof(first: ProveWith, code?: string): Promise<string> {
+  return afterSending(() => {
+    if ('password' in first && first.password !== SAMPLE.password)
+      throw sampleRefusal('invalid_credentials');
+    const factor = cleanCode(code ?? '').toLowerCase();
+    if (factor !== SAMPLE.authenticator && factor !== SAMPLE.recovery)
+      throw sampleRefusal('two_factor_code_invalid');
 
-  return exactZone(ZONES, typed);
-}
-
-export function zoneRefusal(typed: string): string {
-  const wanted = typed.trim();
-
-  return wanted === '' || zoneMatches(typed).length > 0
-    ? ZONE_WORDS.choose
-    : ZONE_WORDS.chooseNone(wanted);
+    return 'sample-proof';
+  });
 }
 
 export type DialogKind = 'name' | 'zone' | 'addEmail' | 'addPhone' | 'confirm' | 'verify';

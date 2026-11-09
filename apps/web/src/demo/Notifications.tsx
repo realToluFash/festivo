@@ -40,7 +40,7 @@ import {
   TitleRow,
 } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
-import './account.css';
+import '../components/AccountParts.css';
 import './notifications.css';
 
 const LEADS: Record<Category, GlyphName> = {

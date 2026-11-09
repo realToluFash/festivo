@@ -1,4 +1,4 @@
-import { CONTACTS_MOST, contactsLeft } from '@soirely/domain';
+import { CONTACTS_MOST, contactsLeft, firstUnverified } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 export type ContactKind = 'email' | 'phone';
@@ -12,26 +12,6 @@ export interface Contact {
 }
 
 export type CardLine = { kind: 'done' | 'todo'; text: string } | null;
-
-export function primaryFirst(rows: readonly Contact[]): Contact[] {
-  return [...rows].sort((a, b) => Number(b.primary) - Number(a.primary));
-}
-
-export function primaryOf(rows: readonly Contact[]): Contact | null {
-  return rows.find((row) => row.primary) ?? null;
-}
-
-/** The card's one step: the first address not verified yet, the primary first, else the first number. */
-export function firstUnverified(
-  emails: readonly Contact[],
-  phones: readonly Contact[],
-): { kind: ContactKind; row: Contact } | null {
-  const email = primaryFirst(emails).find((row) => !row.verified);
-  if (email != null) return { kind: 'email', row: email };
-  const phone = primaryFirst(phones).find((row) => !row.verified);
-
-  return phone == null ? null : { kind: 'phone', row: phone };
-}
 
 /** The one line under you: what just happened until the page is left, else what is not verified yet. */
 export function cardLine(

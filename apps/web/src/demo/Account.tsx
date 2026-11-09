@@ -1,6 +1,6 @@
 import { DemoBell } from './DemoBell.tsx';
-import { contactActions, initials, zoneLabel } from '@soirely/domain';
-import { useId, useState } from 'react';
+import { contactActions, initials, primaryOf, zoneLabel } from '@soirely/domain';
+import { useState } from 'react';
 
 import {
   ACCOUNT_WORDS as W,
@@ -8,15 +8,19 @@ import {
   type DialogStart,
   KIND_WORDS,
   type Kind,
+  PHONE_COUNTRY,
+  ZONES,
   accountStart,
   canAdd,
   cardLine,
   contactsFoot,
   madePrimary,
   opening,
-  primaryFirst,
-  primaryOf,
+  phoneShown,
   rowLine,
+  sampleCodeSource,
+  sampleProof,
+  sampleSave,
   verifiedWords,
 } from './account.ts';
 import {
@@ -26,28 +30,18 @@ import {
   ProveDialog,
   VerifyDialog,
   ZoneDialog,
-} from './AccountDialogs.tsx';
-import { Glyph, type GlyphName } from '../components/Glyph.tsx';
+} from '../components/AccountDialogs.tsx';
+import { SAMPLE } from './rules.ts';
 import type { Viewer } from './settings.ts';
-import {
-  Ask,
-  Card,
-  CardStep,
-  Chevron,
-  Head,
-  OnCard,
-  RowWords,
-  TitleRow,
-} from '../components/SettingsParts.tsx';
+import { saveName, savedNameOf } from './savedName.ts';
+import { AboutRow, ContactsBlock, PersonCard, RowOffers } from '../components/AccountParts.tsx';
+import { Ask, Head, TitleRow } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
-import './account.css';
-
-const ICONS: Record<Kind, GlyphName> = { email: 'mail', phone: 'phone' };
 
 /** Your account at a desk in B · Summary first (Web-Account-*.dc.html): the app's page, the same for every role. */
 export function Account({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
   const [start] = useState(() => accountStart(state, viewer));
-  const [name, setName] = useState(start.name);
+  const [name, setName] = useState(() => savedNameOf(viewer.key) ?? start.name);
   const [zone, setZone] = useState(start.zone);
   const [emails, setEmails] = useState(start.emails);
   const [phones, setPhones] = useState(start.phones);
@@ -100,59 +94,32 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
     <div className="desk-page">
       <div className="desk-column">
         <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
-        <Card size="person">
-          <div>
-            <div className="desk-who">
-              <span className="desk-disc" aria-hidden="true">
-                {initials(name)}
-              </span>
-              <div className="desk-who-words">
-                <p className="desk-name">{name}</p>
-                <OnCard>{primary?.shown}</OnCard>
-              </div>
-            </div>
-            <div aria-live="polite">
-              {card.line != null && (
-                <p className={card.done ? 'account-said is-done' : 'account-said'}>
-                  {card.done && (
-                    <span className="desk-mark is-yes account-done" aria-hidden="true">
-                      <Glyph name="tick" size={11} weight={3.4} />
-                    </span>
-                  )}
-                  {card.line}
-                </p>
-              )}
-            </div>
-          </div>
-          {card.waiting != null && (
-            <CardStep label={W.sendCode} onClick={() => card.waiting && verify(card.waiting)} />
-          )}
-        </Card>
+        <PersonCard
+          initials={initials(name)}
+          name={name}
+          address={primary?.shown ?? null}
+          said={card.line == null ? null : { text: card.line, done: card.done }}
+          step={
+            card.waiting == null
+              ? null
+              : { label: W.sendCode, onClick: () => card.waiting && verify(card.waiting) }
+          }
+        />
         <section className="desk-block">
           <Head title={W.about} />
           <ul className="desk-rows account-rows">
-            <li>
-              <button
-                type="button"
-                className="desk-row account-row"
-                onClick={() => setDialog(opening('name', { typed: name }))}
-              >
-                <Lead name="user" />
-                <RowWords title={name} lines={[W.yourName]} />
-                <Chevron />
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                className="desk-row account-row"
-                onClick={() => setDialog(opening('zone'))}
-              >
-                <Lead name="globe" />
-                <RowWords title={zoneLabel(zone)} lines={[W.zoneLine(zone.id)]} />
-                <Chevron />
-              </button>
-            </li>
+            <AboutRow
+              lead="user"
+              title={name}
+              line={W.yourName}
+              onOpen={() => setDialog(opening('name', { typed: name }))}
+            />
+            <AboutRow
+              lead="globe"
+              title={zoneLabel(zone)}
+              line={W.zoneLine(zone.id)}
+              onOpen={() => setDialog(opening('zone'))}
+            />
           </ul>
         </section>
         {(['email', 'phone'] as const).map((kind) => (
@@ -196,58 +163,80 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
           start={dialog}
           saved={name}
           onClose={() => setDialog(null)}
-          onSaved={(next) => {
-            setName(next);
-            finish(W.nameSaved(next));
-          }}
+          onSave={(next) =>
+            sampleSave(null, () => {
+              setName(next);
+              saveName(viewer.key, next);
+              finish(W.nameSaved(next));
+            })
+          }
         />
       )}
       {dialog?.kind === 'zone' && (
         <ZoneDialog
+          zones={ZONES}
+          now={zoneLabel(zone)}
           start={dialog}
-          now={zone}
           onClose={() => setDialog(null)}
-          onSaved={(next) => {
-            setZone(next);
-            finish(W.zoneSaved(zoneLabel(next)));
-          }}
+          onSave={(next) =>
+            sampleSave(null, () => {
+              setZone(next);
+              finish(W.zoneSaved(zoneLabel(next)));
+            })
+          }
         />
       )}
       {dialog?.kind === 'addEmail' && (
         <AddEmailDialog
           start={dialog}
-          rows={emails}
           onClose={() => setDialog(null)}
-          onAdded={(shown) => {
-            setEmails((rows) => [...rows, added('email', shown)]);
-            finish(W.added);
-          }}
+          onAdd={(address) =>
+            sampleSave(linked(emails, address) ? KIND_WORDS.email.linked : null, () => {
+              setEmails((rows) => [...rows, added('email', address)]);
+              finish(W.added);
+            })
+          }
         />
       )}
       {dialog?.kind === 'addPhone' && (
         <AddPhoneDialog
+          startCountry={PHONE_COUNTRY}
           start={dialog}
-          rows={phones}
           onClose={() => setDialog(null)}
-          onAdded={(shown) => {
-            setPhones((rows) => [...rows, added('phone', shown)]);
-            finish(W.added);
+          onAdd={(country, number) => {
+            const shown = phoneShown(country, number);
+
+            return sampleSave(linked(phones, shown) ? KIND_WORDS.phone.linked : null, () => {
+              setPhones((rows) => [...rows, added('phone', shown)]);
+              finish(W.added);
+            });
           }}
         />
       )}
       {dialog?.kind === 'confirm' && target != null && (
         <ProveDialog
-          start={dialog}
+          via="password"
+          twoFactorOn
+          returned={null}
+          purpose={{ kind: 'makePrimary', address: target.id }}
+          start={{
+            password: dialog.tried ? SAMPLE.password : '',
+            typed: dialog.typed,
+            tried: dialog.tried,
+          }}
+          prove={sampleProof}
           onClose={() => setDialog(null)}
           onProved={() => promote(target)}
         />
       )}
       {dialog?.kind === 'verify' && target != null && (
         <VerifyDialog
+          kind={target.kind}
+          source={sampleCodeSource(dialog)}
           start={dialog}
           row={target}
           onClose={() => setDialog(null)}
-          onVerified={() => {
+          onVerified={async () => {
             setRows(target.kind)((rows) =>
               rows.map((row) => (row.id === target.id ? { ...row, verified: true } : row)),
             );
@@ -263,15 +252,11 @@ function added(kind: Kind, shown: string): Contact {
   return { id: `${kind}-${shown}`, kind, shown, verified: false, primary: false };
 }
 
-function Lead({ name }: { name: GlyphName }) {
-  return (
-    <span className="account-lead" aria-hidden="true">
-      <Glyph name={name} size={22} />
-    </span>
-  );
+function linked(rows: readonly Contact[], shown: string): boolean {
+  return rows.some((row) => row.shown.toLowerCase() === shown.trim().toLowerCase());
 }
 
-/** A section of addresses or numbers: the primary first and still, every other row opening in place under a Violet rule. */
+/** A section of addresses or numbers, with the offers its opened row makes. */
 function Contacts({
   kind,
   rows,
@@ -287,105 +272,47 @@ function Contacts({
   onAct: (row: Contact, action: 'verify' | 'primary' | 'remove') => void;
   onAdd: () => void;
 }) {
-  const id = useId();
   const words = KIND_WORDS[kind];
 
   return (
-    <section className="desk-block">
-      <Head title={words.title}>
-        {canAdd(rows) && (
-          <button type="button" className="desk-text" onClick={onAdd}>
-            {words.add}
-          </button>
-        )}
-      </Head>
-      <ul className="desk-rows account-rows">
-        {primaryFirst(rows).map((row) => {
-          const rowWords = (
-            <>
-              <Lead name={ICONS[kind]} />
-              <RowWords
-                title={row.shown}
-                tag={
-                  !row.verified && (
-                    <span className="desk-tag is-notyet">
-                      <span className="desk-mark is-notyet" aria-hidden="true" />
-                      {W.unverified}
-                    </span>
-                  )
-                }
-                lines={[rowLine(row)]}
-              />
-            </>
-          );
+    <ContactsBlock
+      kind={kind}
+      title={words.title}
+      add={canAdd(rows) ? words.add : null}
+      rows={rows}
+      open={open}
+      unverified={W.unverified}
+      lineOf={rowLine}
+      foot={contactsFoot(kind, rows)}
+      onToggle={onToggle}
+      onAdd={onAdd}
+      renderOffers={(row) => {
+        const offers = contactActions(row);
 
-          if (row.primary)
-            return (
-              <li key={row.id} className="desk-row">
-                {rowWords}
-              </li>
-            );
-
-          const on = row.id === open;
-          const offers = contactActions(row);
-          const panel = `${id}-${row.id}`;
-
-          return (
-            <li key={row.id}>
+        return (
+          <RowOffers line={W.removeLine}>
+            {offers.verify && (
+              <button type="button" className="desk-text" onClick={() => onAct(row, 'verify')}>
+                {W.sendCode}
+              </button>
+            )}
+            {offers.makePrimary && (
+              <button type="button" className="desk-text" onClick={() => onAct(row, 'primary')}>
+                {W.makePrimary}
+              </button>
+            )}
+            {offers.remove && (
               <button
                 type="button"
-                className={on ? 'desk-row account-row is-open' : 'desk-row account-row'}
-                aria-expanded={on}
-                aria-controls={on ? panel : undefined}
-                onClick={() => onToggle(row)}
+                className="desk-text is-red"
+                onClick={() => onAct(row, 'remove')}
               >
-                {rowWords}
-                <Glyph
-                  name={on ? 'chevup' : 'chevdown'}
-                  size={18}
-                  weight={2.4}
-                  className="desk-chevron"
-                />
+                {offers.askBeforeRemoving ? W.removeAsking : W.remove}
               </button>
-              {on && (
-                <div id={panel} className="account-open" role="group" aria-label={row.shown}>
-                  <div className="account-acts">
-                    {offers.verify && (
-                      <button
-                        type="button"
-                        className="desk-text"
-                        onClick={() => onAct(row, 'verify')}
-                      >
-                        {W.sendCode}
-                      </button>
-                    )}
-                    {offers.makePrimary && (
-                      <button
-                        type="button"
-                        className="desk-text"
-                        onClick={() => onAct(row, 'primary')}
-                      >
-                        {W.makePrimary}
-                      </button>
-                    )}
-                    {offers.remove && (
-                      <button
-                        type="button"
-                        className="desk-text is-red"
-                        onClick={() => onAct(row, 'remove')}
-                      >
-                        {offers.askBeforeRemoving ? W.removeAsking : W.remove}
-                      </button>
-                    )}
-                  </div>
-                  <p className="desk-note">{W.removeLine}</p>
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      <p className="desk-foot">{contactsFoot(kind, rows)}</p>
-    </section>
+            )}
+          </RowOffers>
+        );
+      }}
+    />
   );
 }

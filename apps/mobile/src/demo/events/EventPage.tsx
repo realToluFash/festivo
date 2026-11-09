@@ -8,7 +8,7 @@ import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { LineIcon } from '../../components/AccountCard.tsx';
-import { SwitchTrack } from '../settings/NotificationsSwitch.tsx';
+import { SwitchTrack } from '../../components/ConfettiSwitch.tsx';
 import { EventCard, EventThumb } from '../../components/EventCard.tsx';
 import { AcPill, AlertLine, CHANGED, EditScreen } from './EventEdits.tsx';
 import { AreaPage, EventFrame } from './EventFrame.tsx';
@@ -283,6 +283,7 @@ export function EventScreen({
     <Details
       shown={shown}
       replyBy={replyBy}
+      now={now}
       locale={locale}
       refFor={refFor}
       onEdit={openEdit}
@@ -529,6 +530,7 @@ type RefFor = (key: string) => (node: ViewInstance | null) => void;
 function Details({
   shown,
   replyBy,
+  now,
   locale,
   refFor,
   onEdit,
@@ -536,6 +538,7 @@ function Details({
 }: {
   shown: Shown;
   replyBy: string | null;
+  now: Date;
   locale: string;
   refFor: RefFor;
   onEdit: (part: EditPart) => void;
@@ -544,7 +547,7 @@ function Details({
   const dates = datesRow(shown, locale);
   const hosts = hostsRow(shown, locale);
   const locked = scheduleLocked(shown);
-  const reply = replyByRow(replyBy, shown.timeZone, locale);
+  const reply = replyByRow(replyBy, shown.timeZone, locale, now);
 
   return (
     <Section title={W.details}>

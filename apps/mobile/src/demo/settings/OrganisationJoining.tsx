@@ -17,7 +17,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
 import { SAMPLE } from '../samples.ts';
 import { DOMAINS_WORDS } from './DataWords.ts';
-import { ConfettiSwitch } from './NotificationsSwitch.tsx';
+import { ConfettiSwitch } from '../../components/ConfettiSwitch.tsx';
 import {
   DOMAINS_MOST,
   domainProblem,
@@ -30,13 +30,7 @@ import {
   SEND_MS,
   YOUR_DOMAIN,
 } from './OrganisationModel.ts';
-import {
-  DOMAIN_WORDS as D,
-  LINK_WORDS as L,
-  LOADING,
-  OFF,
-  TRY_AGAIN,
-} from './OrganisationWords.ts';
+import { DOMAIN_WORDS as D, LINK_WORDS as L, LOADING, OFF } from './OrganisationWords.ts';
 import {
   Ask,
   FocusedScreen,
@@ -45,6 +39,7 @@ import {
   RowList,
   RowShapes,
   Section,
+  SectionFailed,
   TextAction,
 } from '../../components/Summary.tsx';
 
@@ -315,19 +310,14 @@ export function RequestsSection({
         {status === 'loading' ? (
           <RowShapes count={1} words={LOADING} />
         ) : (
-          <View style={styles.failed}>
-            <Text size={16} weight="semibold">
-              {L.unreadable}
-            </Text>
-            <TextAction
-              label={TRY_AGAIN}
-              onPress={() => {
-                setStatus('loading');
-                later(RETRY_MS, () => setStatus('loaded'));
-              }}
-              testID="organisation.link.tryAgain"
-            />
-          </View>
+          <SectionFailed
+            title={L.unreadable}
+            onRetry={() => {
+              setStatus('loading');
+              later(RETRY_MS, () => setStatus('loaded'));
+            }}
+            testID="organisation.link.tryAgain"
+          />
         )}
       </Section>
     );
@@ -407,7 +397,6 @@ const styles = StyleSheet.create({
   words: { flex: 1, minWidth: 0, gap: 3 },
   off: { gap: 3, paddingVertical: tokens.spaceXs },
   globe: { width: 28, alignItems: 'center' },
-  failed: { gap: tokens.spaceXxs, paddingTop: tokens.spaceXxs },
   switchRow: {
     minHeight: 64,
     flexDirection: 'row',

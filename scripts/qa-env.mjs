@@ -2312,14 +2312,28 @@ function stopAppServices(root) {
   run('docker', ['compose', 'stop', ...APP_SERVICES], { cwd: root });
 }
 
-// Makes what a `down` removed, where `start` fails on a stack with no containers. `up` refuses a
-// paused container, and a batch killed while a check held the API leaves it paused.
-export function startServices(services, { run, capture }) {
-  const paused = (capture(['ps', '--status', 'paused', '--format', '{{.Service}}']) ?? '')
+const lines = (out) =>
+  (out ?? '')
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean);
-  if (paused.length) run(['unpause', ...paused]);
+
+const sleepSync = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+// Makes what a `down` removed, where `start` fails on a stack with no containers. `up` refuses a
+// paused container, and a batch killed while a check held the API leaves it paused, unhealthy
+// until its next probe: `up --wait` gives up on that at once.
+export function startServices(
+  services,
+  { run, capture, sleep = sleepSync, now = Date.now, ms = 90_000 },
+) {
+  const paused = lines(capture(['ps', '--status', 'paused', '--format', '{{.Service}}']));
+  if (paused.length) {
+    run(['unpause', ...paused]);
+    const health = ['ps', '--format', '{{.Service}} {{.Health}}', ...paused];
+    const unhealthy = () => lines(capture(health)).some((line) => line.endsWith(' unhealthy'));
+    for (const deadline = now() + ms; now() < deadline && unhealthy();) sleep(1000);
+  }
   run(['up', '-d', '--wait', '--no-recreate', ...services]);
 }
 
@@ -3017,7 +3031,8 @@ export const apiStateOf = (containerState) =>
 // since a killed batch or a half-done move leaves the container in a state nobody recorded.
 // Stopped to paused passes through up, and anything the app asks then is answered, so that move
 // runs inside `unreached`, which keeps the device from the API. A move that ends up returns once
-// `healthy` says the API answers: the api service has no healthcheck for `--wait` to wait on.
+// `healthy` says the API answers: `unpause` has no `--wait`, though the api has a healthcheck,
+// and that check still reads unhealthy for a probe interval after a long pause.
 export function apiControl({
   run,
   read,

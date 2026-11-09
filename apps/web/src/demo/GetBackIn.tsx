@@ -67,6 +67,8 @@ export function GetBackInBoard() {
       return <Changed key={key} email={reset.email} />;
     case 'code':
       return <CodeFirst key={key} email={reset.email} />;
+    case 'support':
+      return <Support key={key} />;
     case 'link':
       return state === 'offline' ? (
         <Unreachable key={key} to={backIn('new')} signedIn={false} />
@@ -312,26 +314,22 @@ function Changed({ email }: { email: string }) {
   );
 }
 
+/** The API names no address for a dead token, so the form starts empty. */
 function DeadLink({ state }: { state: string }) {
-  const navigate = useNavigate();
   const dead = DEAD[state] ?? BROKEN;
-  const [busy, after] = useBusy();
 
   return (
     <BoardPage end={null}>
       <Heading title={dead.title}>
         <p className="demo-muted">{dead.body}</p>
       </Heading>
-      <button
+      <Link
         className="button button-primary demo-wide"
-        type="button"
-        aria-busy={busy}
-        onClick={() => {
-          if (!busy) after(() => void navigate(backIn('sent')));
-        }}
+        to={backIn('reset')}
+        state={{ email: '', back: backIn('link', state) } satisfies Reset}
       >
-        {busy ? 'Sending…' : 'Send a new link'}
-      </button>
+        Send a new link
+      </Link>
       <p className="demo-aside">
         <span>Remembered it after all?</span>
         <Link className="link-button demo-link" to="/demo/sign-in">
@@ -368,10 +366,31 @@ function CodeFirst({ email }: { email: string }) {
         <Link className="link-button demo-link" to={twoFactorAt('recovery')}>
           Use a recovery code instead
         </Link>
-        <Link className="link-button demo-link" to={twoFactorAt('start')}>
+        <Link className="link-button demo-link" to={backIn('support')} state={{ email }}>
           Lost your authenticator and your recovery codes?
         </Link>
       </div>
+    </BoardPage>
+  );
+}
+
+function Support() {
+  const location = useLocation();
+
+  return (
+    <BoardPage end={null} back={{ to: backIn('code'), state: location.state }}>
+      <Heading title="Contact Soirely support">
+        <p className="demo-muted">
+          Your organisation can confirm it’s you only once you’ve signed in with your password. If
+          you’ve lost your password too, contact Soirely support.
+        </p>
+      </Heading>
+      <a className="button button-primary demo-wide" href="mailto:support@soirely.com">
+        Email support@soirely.com
+      </a>
+      <Link className="link-button demo-link" to="/demo/sign-in" state={location.state}>
+        Back to sign in
+      </Link>
     </BoardPage>
   );
 }
