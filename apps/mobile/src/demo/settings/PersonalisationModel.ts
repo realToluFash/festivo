@@ -1,7 +1,23 @@
+import { createInstance } from 'i18next';
 import { useSyncExternalStore } from 'react';
 
+import en from '../../i18n/locales/en.json';
+import * as kit from '../../kit/personalisation.ts';
+import type { Choice, Colours, Phase, Refusal, SaveAnswer } from '../../kit/personalisation.ts';
+import { OWN } from '../../kit/personalisation.ts';
 import type { Scheme } from '../../theme/tokens.ts';
-import { lookOf, SCHEME_ORDER } from './PersonalisationSchemes.ts';
+
+export {
+  type Choice,
+  type Colours,
+  inUse,
+  OWN,
+  type Phase,
+  type Refusal,
+  type SaveAnswer,
+  saveOn,
+} from '../../kit/personalisation.ts';
+export { schemeOf } from '../../kit/schemes.ts';
 
 export const PERSONALISATION_TITLE = 'Personalisation';
 
@@ -24,81 +40,56 @@ export function personalisationStateOf(name: string | undefined): Personalisatio
   return PERSONALISATION_STATES.find((state) => state === name) ?? null;
 }
 
-export function schemeOf(name: string | undefined): Scheme | null {
-  return SCHEME_ORDER.find((scheme) => scheme === name) ?? null;
-}
-
-export const OWN: Scheme = 'violet';
-
-/** The person's choice: null until they save one, and `violet` once they pick Violet. */
-export type Choice = Scheme | null;
-
-export function inUse(choice: Choice): Scheme {
-  return choice ?? OWN;
-}
-
-export type Refusal = 'failed' | 'offline';
+/** The demo is in English: the app's own words, from its catalogue. */
+const english = createInstance();
+void english.init({
+  lng: 'en',
+  resources: { en: { translation: en } },
+  initAsync: false,
+  interpolation: { escapeValue: false },
+});
+const { t } = english;
+const words = en.personalisation;
 
 export const WORDS = {
-  listLine: 'Your colours, for every screen',
-  never: 'Soirely’s own colours, until you choose others.',
-  chosen: 'Your choice. Violet is Soirely’s own.',
-  saved: 'Saved. Every screen is in your colours now.',
-  choose: 'Choose colours',
-  follows: 'Your colours follow you on every device you sign in on. Only you see them.',
-  keeps: 'Event covers, emails, messages and guests’ pages keep their own colours.',
-  colours: 'Colours',
-  lead: 'Pick the colours Soirely shows you.',
-  inUse: 'In use now. Pick another to see it here.',
-  restart: 'Saving restarts Soirely’s screens to put your colours on, then brings you back here.',
-  current: 'Current',
-  save: 'Save',
-  saving: 'Saving…',
-  tryAgain: 'Try again',
-  notLoaded: 'Your colours did not load.',
-  notLoadedLine: 'Check your connection and try again.',
-  loading: 'Loading…',
+  listLine: en.settings.personalisationLine,
+  never: words.never,
+  chosen: t('personalisation.chosen', { own: kit.nameOf(t, OWN) }),
+  saved: words.saved,
+  choose: words.choose,
+  follows: words.follows,
+  keeps: words.keeps,
+  colours: words.colours,
+  lead: words.lead,
+  inUse: words.inUse,
+  restart: words.restart,
+  current: words.current,
+  save: words.save,
+  saving: words.saving,
+  tryAgain: words.tryAgain,
+  notLoaded: words.notLoaded,
+  notLoadedLine: words.notLoadedLine,
+  loading: words.loading,
 } as const;
 
-export const nameOf = (scheme: Scheme): string => lookOf(scheme).name;
+export const nameOf = (scheme: Scheme): string => kit.nameOf(t, scheme);
 
-export function cardSays(scheme: Scheme): string {
-  return `You see Soirely in ${nameOf(scheme)}`;
-}
+export const cardSays = (scheme: Scheme): string => kit.cardSays(t, scheme);
 
-/** The card's line: Saved with its mark just after a save, else whether the colours are a choice. */
-export function cardLine(choice: Choice, saved: boolean): { text: string; done: boolean } {
-  if (saved) return { text: WORDS.saved, done: true };
+export const cardLine = (choice: Choice, saved: boolean) => kit.cardLine(t, choice, saved);
 
-  return { text: choice == null ? WORDS.never : WORDS.chosen, done: false };
-}
+export const statusLine = (picked: Scheme, current: Scheme): string =>
+  kit.statusLine(t, picked, current);
 
-export function statusLine(picked: Scheme, current: Scheme): string {
-  return picked === current
-    ? WORDS.inUse
-    : `Not saved yet. Save puts ${nameOf(picked)} on every screen.`;
-}
+export const notSavedLine = (refusal: Refusal, picked: Scheme, kept: Scheme): string =>
+  kit.notSavedLine(t, refusal, picked, kept);
 
-export function notSavedLine(refusal: Refusal, picked: Scheme, kept: Scheme): string {
-  const because = refusal === 'offline' ? ' because you are offline' : '';
-
-  return `${nameOf(picked)} was not saved${because}. Your colours stay ${nameOf(kept)}.`;
-}
-
-export function swatchName(scheme: Scheme, current: Scheme): string {
-  return scheme === current ? `${nameOf(scheme)}, current` : nameOf(scheme);
-}
+export const swatchName = (scheme: Scheme, current: Scheme): string =>
+  kit.swatchName(t, scheme, current);
 
 /** What the demo says in the app's place: it cannot restart its screens, as its colours are fixed when it is built. */
 export function restartTold(scheme: Scheme): string {
   return `Soirely restarts its screens in ${nameOf(scheme)} here. The demo cannot, so only the card and the tile change.`;
-}
-
-export type Phase = 'choosing' | 'saving' | Refusal;
-
-export interface Colours {
-  picked: Scheme;
-  phase: Phase;
 }
 
 export interface PersonalisationStart {
@@ -138,13 +129,6 @@ export function personalisationStart(
       return { ...page, choice: held, load: state };
   }
 }
-
-/** Save waits until the pick differs from the colours in use, and while a save is out. */
-export function saveOn({ picked, phase }: Colours, current: Scheme): boolean {
-  return picked !== current && phase !== 'saving';
-}
-
-export type SaveAnswer = { saved: true; choice: Scheme } | { saved: false; refusal: Refusal };
 
 export interface ColoursClient {
   read: () => Promise<Choice>;

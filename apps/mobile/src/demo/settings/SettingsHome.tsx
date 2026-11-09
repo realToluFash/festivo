@@ -7,9 +7,9 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import { Bell, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
-import { WORDS as PERSONALISATION } from './PersonalisationModel.ts';
+import { inUse, useHeldChoice, WORDS as PERSONALISATION } from './PersonalisationModel.ts';
 import { SettingsDemoRow } from './SettingsDemoRow.tsx';
-import { SchemeTile } from './PersonalisationParts.tsx';
+import { SchemeTile } from '../../components/SchemeParts.tsx';
 import { dataHref } from './DataModel.ts';
 import { DataTile, useDataNav, useDataOpen } from './DataParts.tsx';
 import { DATA_WORDS } from './DataWords.ts';
@@ -150,7 +150,7 @@ function Group({
   const side = rowSide(dense);
   const rows = sections.map((section) => ({
     ...(section === 'personalisation'
-      ? { key: section, tile: <SchemeTile side={side} /> }
+      ? { key: section, tile: <HeldTile side={side} /> }
       : rowOf(section, side)),
     ...words[section],
   }));
@@ -369,3 +369,8 @@ const styles = StyleSheet.create({
   legal: { marginTop: tokens.spaceXs },
   legalUnder: { marginTop: tokens.spaceXl },
 });
+
+/** Personalisation's tile in the demo's list: the demo's own pick, held in memory. */
+function HeldTile({ side }: { side: number }) {
+  return <SchemeTile side={side} scheme={inUse(useHeldChoice())} />;
+}
