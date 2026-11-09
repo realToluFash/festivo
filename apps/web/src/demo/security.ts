@@ -1,10 +1,4 @@
-import {
-  PASSWORD_MINIMUM_LENGTH,
-  cleanCode,
-  codeProblem,
-  emailProblem,
-  meetsPasswordLength,
-} from '@soirely/domain';
+import { PASSWORD_MINIMUM_LENGTH } from '@soirely/domain';
 
 import {
   ADD_WORDS,
@@ -400,53 +394,6 @@ export function deviceLine(device: Device, locale: string): string {
   return device.lastUsed == null ? W.here : W.used(dayAtTime(device.lastUsed, locale));
 }
 
-export function ruleMet(password: string): boolean {
-  return meetsPasswordLength(password);
-}
-
-export function changeProblems(current: string, next: string): { current?: string; next?: string } {
-  if (current === '' || next === '')
-    return {
-      ...(current === '' && { current: PASSWORD_WORDS.currentBlank }),
-      ...(next === '' && { next: PASSWORD_WORDS.nextBlank }),
-    };
-  if (!meetsPasswordLength(next)) return { next: PASSWORD_WORDS.short };
-  if (current !== SAMPLE.password) return { current: PASSWORD_WORDS.wrongCurrent };
-  if (next === current) return { next: PASSWORD_WORDS.same };
-
-  return next === SAMPLE.breachedPassword ? { next: PASSWORD_WORDS.breached } : {};
-}
-
-export function chooseRefusal(password: string): string | null {
-  if (password === '') return PASSWORD_WORDS.chooseBlank;
-  if (!meetsPasswordLength(password)) return PASSWORD_WORDS.short;
-
-  return password === SAMPLE.breachedPassword ? PASSWORD_WORDS.breached : null;
-}
-
-export function emailedCodeRefusal(typed: string): string | null {
-  const problem = codeProblem(typed);
-  if (problem === 'blank') return PASSWORD_WORDS.codeBlank;
-  if (problem === 'short') return PASSWORD_WORDS.codeShort;
-
-  return cleanCode(typed) === SAMPLE.code ? null : PASSWORD_WORDS.codeWrong;
-}
-
-export function setupRefusal(typed: string): string | null {
-  const problem = codeProblem(typed);
-  if (problem === 'blank') return SETUP_WORDS.blank;
-  if (problem === 'short') return SETUP_WORDS.short;
-
-  return cleanCode(typed) === SAMPLE.authenticator ? null : SETUP_WORDS.wrong;
-}
-
-export function forgotRefusal(typed: string): string | null {
-  const problem = emailProblem(typed);
-  if (problem === 'blank') return FORGOT_WORDS.blank;
-
-  return problem === 'shape' ? FORGOT_WORDS.shape : null;
-}
-
 export type Purpose = 'link' | 'unlink' | 'everywhere' | 'turnOff' | 'newCodes';
 
 export interface ProveAsks {
@@ -487,29 +434,6 @@ export function proveAsks(
           ? CONFIRM_WORDS.offEmailed(email)
           : CONFIRM_WORDS.codeHelp,
   };
-}
-
-export function proveProblems(
-  asks: Pick<ProveAsks, 'password' | 'code'>,
-  purpose: Purpose,
-  password: string,
-  code: string,
-): { password?: string; code?: string } {
-  const factor = cleanCode(code).toLowerCase();
-  const problems: { password?: string; code?: string } = {};
-  const wrong =
-    purpose === 'link' || purpose === 'unlink'
-      ? CONFIRM_WORDS.codeWrong
-      : CONFIRM_WORDS.codeWrongLong;
-
-  if (asks.password && password === '') problems.password = CONFIRM_WORDS.passwordBlank;
-  else if (asks.password && password !== SAMPLE.password)
-    problems.password = CONFIRM_WORDS.passwordWrong;
-  if (asks.code && factor === '') problems.code = CONFIRM_WORDS.codeBlank;
-  else if (asks.code && factor !== SAMPLE.authenticator && factor !== SAMPLE.recovery)
-    problems.code = wrong;
-
-  return problems;
 }
 
 /** A drawn QR, not an encoding: its three finder squares and a scatter from `seed`, `quiet` modules of white around it. */

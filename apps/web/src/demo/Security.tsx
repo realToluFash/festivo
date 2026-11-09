@@ -1,4 +1,5 @@
 import { DemoBell } from './DemoBell.tsx';
+import { type Provider as ApiProvider } from '@soirely/api-client';
 import { formattingLocale } from '@soirely/domain';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -37,16 +38,29 @@ import {
   stillLine,
   yourSecurity,
 } from './security.ts';
+import { ProveDialog } from '../components/AccountDialogs.tsx';
 import {
-  ChangeDialog,
-  ChooseDialog,
+  ChangePasswordDialog,
+  ChoosePasswordDialog,
+  FactorDialog,
   ForgotDialog,
-  ProveDialog,
   RecoveryDialog,
   SentDialog,
   SetCodeDialog,
   SetupDialog,
-} from './SecurityDialogs.tsx';
+} from '../components/SecurityDialogs.tsx';
+import { afterSending } from './account.ts';
+import {
+  sampleActivate,
+  sampleBegin,
+  sampleChange,
+  sampleEnrol,
+  sampleFactor,
+  samplePass,
+  sampleSavePassword,
+  sampleSecurityProof,
+  sampleSend,
+} from './securitySamples.ts';
 import type { Viewer } from './settings.ts';
 import { Ask, Chevron, Head, RedAction, RowWords, TitleRow } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
@@ -348,9 +362,10 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
         />
       )}
       {dialog?.kind === 'change' && (
-        <ChangeDialog
+        <ChangePasswordDialog
           start={dialog}
           email={you.email}
+          change={(current, next) => sampleChange(current, next, others)}
           onClose={() => setDialog(null)}
           onForgot={() => setDialog(opening('forgot', { typed: you.email }))}
           onChanged={() => done(R.changed(others), { devices: here(page) })}
@@ -359,6 +374,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
       {dialog?.kind === 'forgot' && (
         <ForgotDialog
           start={dialog}
+          send={sampleSend}
           onClose={() => setDialog(null)}
           onSent={() => setDialog(opening('sent'))}
         />
@@ -373,15 +389,19 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
         <SetCodeDialog
           start={dialog}
           email={you.email}
+          begin={sampleBegin}
+          pass={samplePass}
           onClose={() => setDialog(null)}
-          onMatched={() => setDialog(opening('choose'))}
+          onPassed={() => setDialog(opening('choose'))}
         />
       )}
       {dialog?.kind === 'choose' && (
-        <ChooseDialog
+        <ChoosePasswordDialog
           start={dialog}
           email={you.email}
+          save={sampleSavePassword}
           onClose={() => setDialog(null)}
+          onExpired={() => setDialog(opening('setCode', { expired: true }))}
           onAdded={() =>
             done(R.added(linkedProviders(page.ways)[0] ?? 'Google'), {
               ways: { ...page.ways, password: true },
@@ -389,18 +409,36 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
           }
         />
       )}
-      {dialog?.kind === 'prove' && dialog.purpose != null && (
-        <ProveDialog
-          start={dialog}
-          purpose={dialog.purpose}
-          asks={proveAsks(dialog.purpose, dialog.provider, page, you.email)}
-          onClose={() => setDialog(null)}
-          onProved={() => dialog.purpose != null && provedFor(dialog.purpose, dialog.provider)}
-        />
-      )}
+      {dialog?.kind === 'prove' &&
+        (dialog.purpose === 'turnOff' || dialog.purpose === 'newCodes') && (
+          <FactorDialog
+            purpose={dialog.purpose}
+            email={you.email}
+            start={{ typed: dialog.second, tried: dialog.tried }}
+            submit={sampleFactor}
+            onClose={() => setDialog(null)}
+            onDone={() => dialog.purpose != null && provedFor(dialog.purpose, null)}
+            onKept={() => setDialog(null)}
+          />
+        )}
+      {dialog?.kind === 'prove' &&
+        (dialog.purpose === 'link' ||
+          dialog.purpose === 'unlink' ||
+          dialog.purpose === 'everywhere') && (
+          <ProveSample
+            dialog={dialog}
+            purpose={dialog.purpose}
+            page={page}
+            email={you.email}
+            onClose={() => setDialog(null)}
+            onProved={(purpose, provider) => provedFor(purpose, provider)}
+          />
+        )}
       {dialog?.kind === 'setup' && (
         <SetupDialog
           start={dialog}
+          enrol={sampleEnrol}
+          activate={sampleActivate}
           onClose={() => setDialog(null)}
           onOn={() => {
             setPage((now) => ({ ...now, on: true, unused: CODES_MADE }));
@@ -418,6 +456,49 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
         />
       )}
     </div>
+  );
+}
+
+const ID: Record<Provider, ApiProvider> = { Google: 'google', Apple: 'apple' };
+
+/** Confirm it's you for a link, an unlink or signing out everywhere else; with no password, the provider comes back at once. */
+function ProveSample({
+  dialog,
+  purpose,
+  page,
+  email,
+  onClose,
+  onProved,
+}: {
+  dialog: DialogStart;
+  purpose: 'link' | 'unlink' | 'everywhere';
+  page: SecurityPage;
+  email: string;
+  onClose: () => void;
+  onProved: (purpose: Purpose, provider: Provider | null) => void;
+}) {
+  const asks = proveAsks(purpose, dialog.provider, page, email);
+  const by = asks.provider == null ? null : ID[asks.provider];
+
+  return (
+    <ProveDialog
+      via={asks.password ? 'password' : by}
+      twoFactorOn={page.on}
+      returned={null}
+      purpose={
+        purpose === 'everywhere' || dialog.provider == null
+          ? { kind: 'signOutOthers' }
+          : { kind: 'prove', then: { action: purpose, provider: ID[dialog.provider] } }
+      }
+      start={{ password: dialog.typed, typed: dialog.second, tried: dialog.tried }}
+      lead={asks.lead}
+      note={asks.note ?? undefined}
+      codeHelp={asks.codeHelp}
+      prove={sampleSecurityProof}
+      leave={() => afterSending(() => onProved(purpose, dialog.provider))}
+      onClose={onClose}
+      onProved={() => onProved(purpose, dialog.provider)}
+    />
   );
 }
 

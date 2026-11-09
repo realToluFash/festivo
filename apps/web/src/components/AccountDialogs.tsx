@@ -460,6 +460,7 @@ export function ProveDialog({
   note,
   codeHelp,
   prove,
+  leave = startProviderSignIn,
   onClose,
   onProved,
 }: {
@@ -473,6 +474,8 @@ export function ProveDialog({
   note?: string | undefined;
   codeHelp?: string | undefined;
   prove: (first: ProveWith, code?: string) => Promise<string>;
+  /** Off to the provider for the proof; the demo comes back at once instead. */
+  leave?: (provider: Provider, purpose: ReturnPurpose) => Promise<void>;
   onClose: () => void;
   onProved: (proof: string) => void;
 }) {
@@ -503,7 +506,7 @@ export function ProveDialog({
   function go(): void {
     if (checking) return;
     if (leaves && provider != null) {
-      void startProviderSignIn(provider, purpose).catch(() =>
+      void leave(provider, purpose).catch(() =>
         setRefusal({
           field: 'failed',
           message: t('waysCard.providerFailed', { provider: providerName }),

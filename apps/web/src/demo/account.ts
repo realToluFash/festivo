@@ -290,11 +290,11 @@ export function phoneShown(country: string, typed: string): string {
   return formatPhone(`${callingCode(country) ?? ''}${typed.replace(/\D/gu, '')}`);
 }
 
-function sampleRefusal(code: string): ApiError {
+export function sampleRefusal(code: string): ApiError {
   return new ApiError({ type: `https://soirely.com/errors/${code}`, title: code, status: 422 });
 }
 
-function afterSending<T>(answer: () => T): Promise<T> {
+export function afterSending<T>(answer: () => T): Promise<T> {
   return new Promise((resolve, reject) =>
     setTimeout(() => {
       try {
