@@ -2994,6 +2994,19 @@ describe('the flows a batch runs', () => {
           expect(catalogues[code].todayScreen.tab.today).toMatch(toSettings);
         }
       }
+      const atSettings = new RegExp(
+        `^(?:${readFileSync(join(target, 'batch/to-settings.yaml'), 'utf8')
+          .match(/extendedWaitUntil:\s+visible: '(.*)'/)[1]
+          .replaceAll("''", "'")})$`,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        expect(catalogues[code].signInRules.overdueTitle).toMatch(atSettings);
+        expect(
+          catalogues[code].settings.personLabelWithRole.replace(/\{\{\w+\}\}/g, 'Ada'),
+        ).toMatch(atSettings);
+        expect(catalogues[code].todayScreen.tab.today).not.toMatch(atSettings);
+        expect(catalogues[code].settings.title).not.toMatch(atSettings);
+      }
       const upright = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
       expect(upright.indexOf('setOrientation: PORTRAIT')).toBeGreaterThan(-1);
       expect(upright.indexOf('ASK: /portrait')).toBeGreaterThan(
