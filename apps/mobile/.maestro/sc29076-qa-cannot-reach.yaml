@@ -1,4 +1,5 @@
 # With the API stopped, a cold launch shows Cannot reach Soirely on the brand. Needs ${METRO_URL}, SHOT. sc-29076.
+# Not sc19634-relaunch: qa2 ran it on the bare METRO_URL link, as recorded on sc-29076.
 appId: host.exp.Exponent
 ---
 - stopApp: host.exp.Exponent

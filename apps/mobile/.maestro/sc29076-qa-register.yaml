@@ -1,4 +1,4 @@
-# From welcome, Create an account opens Create your account with no Google or Apple; blank, then a new account, keys up, then the step after. Needs EMAIL (unused), ${METRO_URL}. sc-29076.
+# From welcome, Create an account opens Create your account with no Google or Apple; blank, then a new account, keys up, then the step after. Needs NEWEMAIL, ${METRO_URL}. sc-29076.
 #
 #   node .qa/bin/qa-env.mjs maestro sc29076-qa-register --android NEWEMAIL=…
 appId: host.exp.Exponent

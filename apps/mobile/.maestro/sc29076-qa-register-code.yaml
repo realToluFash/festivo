@@ -1,4 +1,4 @@
-# From Check your email after registering, the code, then each step after it to the phone step, keys up. Needs CODE. sc-29076.
+# From Check your email after registering, the code, then the step after it. Needs CODE. sc-29076.
 appId: host.exp.Exponent
 ---
 - inputText: ${CODE}
