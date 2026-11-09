@@ -11,7 +11,7 @@
   },
   "home": {
     "signedInTo": "Ha iniciado sesión en {{name}}",
-    "openSettings": "Abrir Configuración",
+    "openSettings": "Abrir Ajustes",
     "switchOrganisation": "Cambiar de organización"
   },
   "noOrganisation": {
@@ -745,7 +745,7 @@
     "reportsComing": "Los informes de este evento llegarán pronto."
   },
   "settings": {
-    "title": "Configuración",
+    "title": "Ajustes",
     "yourAccount": "Su cuenta",
     "account": "Cuenta",
     "accountLine": "Su nombre, direcciones de correo electrónico y números de teléfono",
@@ -793,7 +793,7 @@
     "nameHelp": "Su equipo y sus invitados verán este nombre. Puede cambiarlo más adelante.",
     "nameLong": "Ese nombre tiene {{length, number}} caracteres. Acórtelo a 100 como máximo.",
     "country": "País",
-    "defaults": "La moneda depende del país, la zona horaria se toma de este dispositivo y la dirección de contacto es su correo electrónico principal, {{email}}. Puede cambiarlas en Configuración > General.",
+    "defaults": "La moneda depende del país, la zona horaria se toma de este dispositivo y la dirección de contacto es su correo electrónico principal, {{email}}. Puede cambiarlas en Ajustes > General.",
     "limitedTitle": "Por ahora no se pueden crear más organizaciones.",
     "limitedBody": "Inténtelo de nuevo a las {{time}}.",
     "failed": "No se ha podido crear la organización. No se ha creado nada. Inténtelo de nuevo en un momento.",
