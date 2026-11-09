@@ -178,7 +178,7 @@
     "recovery.own_request": "Su propia solicitud tiene que responderla otra persona.",
     "recovery.closed": "Esta solicitud ya ha terminado.",
     "recovery.link_invalid": "Ese enlace no funciona.",
-    "recovery.nobody_to_approve": "Nadie de su organización puede confirmarlo. Póngase en contacto con el soporte de Soirely.",
+    "recovery.nobody_to_approve": "Nadie de su organización puede confirmarlo. Póngase en contacto con el servicio de asistencia de Soirely.",
     "recovery.start_again": "Empiece de nuevo desde la pantalla del código de inicio de sesión.",
     "recovery.replaced": "Se ha iniciado una solicitud más reciente en otro dispositivo. Empiece de nuevo para pedirlo desde aquí.",
     "recovery.codes_wait": "Espere antes de pedir códigos nuevos.",
