@@ -26,7 +26,6 @@ const ANSWERS = [
   ['Turn it down', 'turnedDown'],
   ['Let it end', 'ended'],
   ['Ask from another device', 'replaced'],
-  ['Nobody can confirm', 'nobody'],
 ] as const;
 
 /** The answers sc-29961 says close the sheet: approved, turned down, replaced from another device. */
@@ -43,7 +42,7 @@ const ANSWERED_FIRST: readonly (readonly [string, Answer])[] = [
   ['Ask from another device', 'replaced'],
 ];
 
-/** Waiting in plain lines; the screen changes by itself, which the demo's buttons stand in for. Cancel the request asks first (sc-29961), and says so when it does not go through (sc-30737). */
+/** Waiting in plain lines; with nobody left to confirm (`?state=nobody`), the title and line send the person to Soirely support and the request stays open (sc-29072); the screen changes by itself, which the demo's buttons stand in for. Cancel the request asks first (sc-29961), and says so when it does not go through (sc-30737). */
 export default function Waiting() {
   const params = useLocalSearchParams<{ email?: string; state?: string }>();
   const email = params.email ?? SAMPLE.email;
@@ -60,6 +59,8 @@ export default function Waiting() {
         : CLOSED,
   );
   const [reachable, setReachable] = useState(true);
+  const [nobody, setNobody] = useState(params.state === 'nobody');
+  const [support, setSupport] = useState(false);
   const [answered, setAnswered] = useState<Answer | null>(null);
   const end = useCallback(
     (kind: string) => {
@@ -112,8 +113,12 @@ export default function Waiting() {
     >
       <Heading
         mark={['progress', 'Waiting for an answer']}
-        title={`Waiting for ${SAMPLE.organisation}`}
-        intro={`We’ve asked the owners and admins of ${SAMPLE.organisation} to confirm it’s you. One answer is enough.`}
+        title={nobody ? 'Contact Soirely support' : `Waiting for ${SAMPLE.organisation}`}
+        intro={
+          nobody
+            ? 'Nobody in your organisation can confirm this. Contact Soirely support.'
+            : `We’ve asked the owners and admins of ${SAMPLE.organisation} to confirm it’s you. One answer is enough.`
+        }
       />
       <Plain top={tokens.spaceXxl} ink>
         {`Asked ${SAMPLE.askedAt}. If nobody answers by ${SAMPLE.endsAt}, the request ends.`}
@@ -121,6 +126,28 @@ export default function Waiting() {
       <Plain top={tokens.spaceLg}>
         {`You stay signed out until somebody answers. We’ll email ${email} either way, and this screen changes by itself.`}
       </Plain>
+      {nobody && (
+        <View style={styles.ways}>
+          <SecondaryButton
+            label="Email Soirely support"
+            onPress={() => setSupport(true)}
+            testID="demo.support"
+          />
+        </View>
+      )}
+      {support && (
+        <Plain top={tokens.spaceLg}>In the build, this opens a new email to Soirely support.</Plain>
+      )}
+      <DemoOnly title="Demo: who is left to confirm">
+        <SecondaryButton
+          label={nobody ? 'An owner or admin joins' : 'The last owner or admin leaves'}
+          onPress={() => {
+            setNobody(!nobody);
+            setSupport(false);
+          }}
+          testID="demo.nobody"
+        />
+      </DemoOnly>
       <DemoOnly title={`Demo: answer as ${SAMPLE.organisation}`}>
         {ANSWERS.map(([label, kind]) => (
           <SecondaryButton
@@ -192,4 +219,5 @@ export default function Waiting() {
 
 const styles = StyleSheet.create({
   foot: { alignItems: 'center', gap: tokens.spaceXs },
+  ways: { marginTop: tokens.spaceLg, alignItems: 'flex-start' },
 });
