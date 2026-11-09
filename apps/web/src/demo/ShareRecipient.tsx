@@ -5,17 +5,19 @@ import lockupUrl from '../brand/lockup.svg';
 import { Glyph } from '../components/Glyph.tsx';
 import { useMatches } from '../phoneWidth.ts';
 import { LAYOUT_MEDIA, LEGAL, type Lang, layoutOf, twoColumns, wordsFor } from './guest.ts';
-import { LanguageMenu, TextAction } from './GuestParts.tsx';
+import { LanguageMenu, TextAction, Unreachable, Waiting } from './GuestParts.tsx';
 import { legalPath } from './legal.ts';
 import {
   EVENT_NAME,
   LOCKED_UNTIL,
+  type Reading,
   type Shared,
-  UPDATED_LINE,
   type Visit,
   answerTo,
+  readingOf,
   sharedView,
   timeOf,
+  updatedLine,
   visitOf,
 } from './share.ts';
 import { SHARE_WORDS as W } from './shareWords.ts';
@@ -55,12 +57,31 @@ function Recipient({ path, state }: { path: string | undefined; state: string | 
   const [opened, setOpened] = useState(false);
   const layout = useLayout();
   const two = twoColumns(layout);
+  const [retrying, setRetrying] = useState(false);
   const frame = useMemo(() => wordsFor(lang), [lang]);
+  const reading = useMemo(() => readingOf(lang), [lang]);
+  const r = reading.w;
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
   useEffect(() => {
     if (opened) document.getElementById('sh-h1')?.focus();
   }, [opened]);
+
+  useEffect(() => {
+    if (!retrying) return undefined;
+    const done = window.setTimeout(() => {
+      setRetrying(false);
+      setVisit((was) => ({
+        page: 'shown',
+        scope: was.page === 'failed' ? was.scope : 'payer',
+        marked: false,
+        none: false,
+      }));
+      setOpened(true);
+    }, 900);
+
+    return () => window.clearTimeout(done);
+  }, [retrying]);
 
   return (
     <>
@@ -80,24 +101,37 @@ function Recipient({ path, state }: { path: string | undefined; state: string | 
             }}
           />
         </header>
-        <main id="content" lang="en" className={two ? 'gp-main is-two' : 'gp-main is-one'}>
+        <main id="content" lang={lang} className={two ? 'gp-main is-two' : 'gp-main is-one'}>
           {visit.page === 'ended' ? (
             <div className="gp-alone-wrap">
-              <h1 className="sh-gone-title">{W.endedTitle}</h1>
-              <p className="sh-gone-line">{W.endedLine(visit.by)}</p>
+              <h1 className="sh-gone-title">{r.endedTitle}</h1>
+              <p className="sh-gone-line">{r.endedLine(visit.by)}</p>
             </div>
           ) : visit.page === 'gone' ? (
             <div className="gp-alone-wrap">
-              <h1 className="sh-gone-title">{W.goneTitle}</h1>
-              <p className="sh-gone-line">{W.goneLine}</p>
+              <h1 className="sh-gone-title">{r.goneTitle}</h1>
+              <p className="sh-gone-line">{r.goneLine}</p>
+            </div>
+          ) : visit.page === 'loading' ? (
+            <div className="gp-columns" aria-busy="true">
+              <p className="visually-hidden" role="status">
+                {frame.loading}
+              </p>
+              <Waiting part="cover" />
+              <Waiting part="under" />
+            </div>
+          ) : visit.page === 'failed' ? (
+            <div className="gp-alone-wrap">
+              <Unreachable words={frame} busy={retrying} onRetry={() => setRetrying(true)} />
             </div>
           ) : visit.page === 'gate' ? (
             <Gate
+              reading={reading}
               visit={visit}
               onAnswer={(typed) => {
                 const answer = answerTo(typed, visit.wrong, visit.answer !== 'lockedSoon');
                 if (answer === 'open') {
-                  setVisit({ page: 'shown', scope: visit.scope, marked: false });
+                  setVisit({ page: 'shown', scope: visit.scope, marked: false, none: false });
                   setOpened(true);
                   return;
                 }
@@ -110,7 +144,10 @@ function Recipient({ path, state }: { path: string | undefined; state: string | 
               }}
             />
           ) : (
-            <Shown view={sharedView(visit.scope, visit.marked)} />
+            <Shown
+              reading={reading}
+              view={sharedView(visit.scope, { marked: visit.marked, none: visit.none, reading })}
+            />
           )}
         </main>
         <footer className="gp-footer">
@@ -130,7 +167,7 @@ function Recipient({ path, state }: { path: string | undefined; state: string | 
   );
 }
 
-function Shown({ view }: { view: Shared }) {
+function Shown({ view, reading }: { view: Shared; reading: Reading }) {
   return (
     <div className="sh-columns">
       <section className={`sh-cover ev-card today-cover is-${MESH}`} aria-labelledby="sh-h1">
@@ -143,7 +180,7 @@ function Shown({ view }: { view: Shared }) {
             {view.title}
           </h1>
           <p className="sh-cover-name">{view.name}</p>
-          <p className="sh-cover-line">{UPDATED_LINE}</p>
+          <p className="sh-cover-line">{updatedLine(reading)}</p>
         </div>
       </section>
       <div className="sh-rest">
@@ -176,7 +213,7 @@ function Shown({ view }: { view: Shared }) {
         ))}
         <div className="sh-print">
           <TextAction icon={<PrintLine />} onClick={() => window.print()}>
-            {W.print}
+            {reading.w.print}
           </TextAction>
         </div>
       </div>
@@ -204,22 +241,25 @@ function PrintLine() {
 }
 
 function Gate({
+  reading,
   visit,
   onAnswer,
 }: {
+  reading: Reading;
   visit: Extract<Visit, { page: 'gate' }>;
   onAnswer: (typed: string) => void;
 }) {
   const [typed, setTyped] = useState(visit.tried);
   const [tries, setTries] = useState(0);
   const field = useRef<HTMLInputElement>(null);
+  const r = reading.w;
   const error =
     visit.answer === 'wrong'
-      ? W.wrongPassphrase
+      ? r.wrongPassphrase
       : visit.answer === 'locked'
-        ? W.tooMany(timeOf(LOCKED_UNTIL))
+        ? r.tooMany(timeOf(LOCKED_UNTIL, reading))
         : visit.answer === 'lockedSoon'
-          ? W.tooManySoon
+          ? r.tooManySoon
           : null;
 
   useEffect(() => field.current?.focus(), []);
@@ -234,11 +274,11 @@ function Gate({
   return (
     <div className="gp-alone-wrap sh-gate">
       <p className="sh-gate-event">{EVENT_NAME}</p>
-      <h1 className="sh-gate-title">{W.asksTitle}</h1>
-      <p className="sh-gate-line">{W.asksLine}</p>
+      <h1 className="sh-gate-title">{r.asksTitle}</h1>
+      <p className="sh-gate-line">{r.asksLine}</p>
       <form className="sh-gate-form" noValidate onSubmit={submit}>
         <div className="sh-field">
-          <label htmlFor="sh-passphrase">{W.passphrase}</label>
+          <label htmlFor="sh-passphrase">{r.passphrase}</label>
           <div className={error == null ? 'sh-box' : 'sh-box is-wrong'}>
             <input
               ref={field}
@@ -259,7 +299,7 @@ function Gate({
           )}
         </div>
         <button type="submit" className="gp-filled">
-          {W.open}
+          {r.open}
         </button>
       </form>
     </div>
