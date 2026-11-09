@@ -1094,6 +1094,7 @@ export const MEMBERS_STATES = [
   'recoveryApproved',
   'recoveryTurnedDown',
   'recoveryClosed',
+  'recoveryClosedLast',
   'recoverySending',
   'recoveryFailed',
   'recoveryDone',
@@ -1137,6 +1138,12 @@ function recoveryStart(
       return {
         recoveries: both.map((one) => (one.id === KOFI ? { ...one, ended: true } : one)),
         notice: null,
+        dialog: asks('approve', 'closed'),
+      };
+    case 'recoveryClosedLast':
+      return {
+        recoveries: both.filter((one) => one.id === KOFI).map((one) => ({ ...one, ended: true })),
+        notice: answered(PRIYA, 'approve'),
         dialog: asks('approve', 'closed'),
       };
     case 'recoverySending':

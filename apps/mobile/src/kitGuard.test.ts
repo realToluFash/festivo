@@ -25,11 +25,11 @@ const KIT_STYLES = [
 ];
 const KIT_FIELDS = ['TextField', 'PasswordField', 'CodeField'];
 
-describe('every field carries the caret colour', () => {
+describe("every TextInput starts from the kit's defaults", () => {
   it('in every TextInput in the app', () => {
     const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
       selfClosing('TextInput', text)
-        .filter((tag) => !caretSet(tag.markup))
+        .filter((tag) => !startsFromKitDefaults(tag.markup))
         .map((tag) => `${path}:${tag.line}`),
     );
 
@@ -39,10 +39,10 @@ describe('every field carries the caret colour', () => {
     ).toEqual([]);
   });
 
-  it('notices a TextInput that leaves the caret to the platform', () => {
+  it('notices a TextInput that sets its own props instead', () => {
     expect(
       selfClosing('TextInput', '<TextInput\n  style={styles.input}\n/>').filter(
-        (tag) => !caretSet(tag.markup),
+        (tag) => !startsFromKitDefaults(tag.markup),
       ),
     ).toHaveLength(1);
     expect(selfClosing('TextInput', 'const input = useRef<TextInputInstance>(null);')).toHaveLength(
@@ -50,7 +50,7 @@ describe('every field carries the caret colour', () => {
     );
     expect(
       selfClosing('TextInput', '<TextInput {...FIELD_DEFAULTS} style={x} />').filter(
-        (tag) => !caretSet(tag.markup),
+        (tag) => !startsFromKitDefaults(tag.markup),
       ),
     ).toHaveLength(0);
   });
@@ -1490,11 +1490,8 @@ function fixedAroundText(text: string): number[] {
   );
 }
 
-function caretSet(markup: string): boolean {
-  return (
-    /\{\.\.\.(FIELD_DEFAULTS|codeProps\(|passwordProps\()/u.test(markup) ||
-    /\bcursorColor=/u.test(markup)
-  );
+function startsFromKitDefaults(markup: string): boolean {
+  return /\{\.\.\.(FIELD_DEFAULTS|codeProps\(|passwordProps\()/u.test(markup);
 }
 
 function takesRecoveryCode(markup: string): boolean {

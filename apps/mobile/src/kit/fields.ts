@@ -1,7 +1,8 @@
 import { tokens } from '../theme/tokens.ts';
 
-/** Every field in the kit starts from these: the caret in the text's colour, never the platform blue, and no guessing at what was typed. */
+/** Every field in the kit starts from these: the caret in the text's colour, never the platform blue, no guessing at what was typed, and on an Android phone on its side the form stays in sight rather than giving way to the keyboard's full-screen box (sc-35256). */
 export const FIELD_DEFAULTS = {
+  disableFullscreenUI: true,
   cursorColor: tokens.colorInk,
   selectionColor: tokens.colorInk,
   placeholderTextColor: tokens.colorInkTertiary,

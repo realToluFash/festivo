@@ -250,7 +250,10 @@ export function OnBrand({ title, body, size }: { title: string; body: string; si
   useReadOut(`${title}. ${body}`);
 
   return (
-    <View style={styles.notice} testID="welcome.notice">
+    <View
+      style={[styles.notice, kind === 'phone' ? styles.noticePhone : styles.noticeTablet]}
+      testID="welcome.notice"
+    >
       <Text
         size={size}
         weight="bold"
@@ -360,7 +363,9 @@ const styles = StyleSheet.create({
   choicesMiddle: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   choicesWidth: { width: 400, maxWidth: '100%' },
   onCover: { color: tokens.colorInkOnDark },
-  notice: { maxWidth: 330, gap: tokens.spaceSm, alignItems: 'center' },
+  notice: { gap: tokens.spaceSm, alignItems: 'center' },
+  noticePhone: { maxWidth: 330 },
+  noticeTablet: { maxWidth: 480 },
   centre: { textAlign: 'center' },
   choices: { gap: tokens.spaceSm },
   buttons: { gap: tokens.spaceLg },

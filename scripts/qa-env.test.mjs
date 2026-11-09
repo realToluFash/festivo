@@ -142,6 +142,7 @@ import {
   xcodeWorkspace,
   renderQaEnv,
   reversedPorts,
+  unreversed,
   simulatorFor,
   TESTERS,
   testerOf,
@@ -792,6 +793,21 @@ describe('the ports an emulator is given', () => {
     const ports = reversedPorts(QA_PORTS);
     expect(ports).not.toContain(QA_PORTS.POSTGRES_PORT);
     expect(ports).not.toContain(QA_PORTS.REDIS_PORT);
+  });
+});
+
+describe('the reversed ports read back', () => {
+  it('names the ports adb does not list', () => {
+    const list = 'emulator-5574 tcp:18081 tcp:18081\nemulator-5574 tcp:18000 tcp:18000';
+    expect(unreversed(list, [18081, 18000, 19000])).toEqual([19000]);
+  });
+
+  it('reads the older (reverse) form', () => {
+    expect(unreversed('(reverse) tcp:18081 tcp:18081', [18081])).toEqual([]);
+  });
+
+  it('counts every port missing when adb answers nothing', () => {
+    expect(unreversed(null, [18081, 18000])).toEqual([18081, 18000]);
   });
 });
 
@@ -2840,13 +2856,13 @@ describe('the flows a batch runs', () => {
         onAndroid: false,
       });
       expect(readFileSync(join(target, '_checks/settings.es.yaml'), 'utf8')).toContain(
-        "'Configuración'",
+        localise("'{{t:settings.title}}'", catalogues, 'es'),
       );
       expect(readFileSync(join(target, '_checks/security.es.yaml'), 'utf8')).toContain(
-        "'Seguridad'",
+        localise("'{{t:security.title}}'", catalogues, 'es'),
       );
       expect(readFileSync(join(target, '_checks/sign-in-rules.fr.yaml'), 'utf8')).toContain(
-        "'Règles de connexion'",
+        localise("'{{t:settings.signInRules}}'", catalogues, 'fr'),
       );
       expect(readFileSync(join(target, '_checks/sc23267-start-cold.fr.yaml'), 'utf8')).toContain(
         'file: sc23267-start-cold.fr.sc23267-start-cold-once.flow.yaml',
@@ -2977,6 +2993,19 @@ describe('the flows a batch runs', () => {
         for (const code of ['en', 'es', 'fr', 'pt']) {
           expect(catalogues[code].todayScreen.tab.today).toMatch(toSettings);
         }
+      }
+      const atSettings = new RegExp(
+        `^(?:${readFileSync(join(target, 'batch/to-settings.yaml'), 'utf8')
+          .match(/extendedWaitUntil:\s+visible: '(.*)'/)[1]
+          .replaceAll("''", "'")})$`,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        expect(catalogues[code].signInRules.overdueTitle).toMatch(atSettings);
+        expect(
+          catalogues[code].settings.personLabelWithRole.replace(/\{\{\w+\}\}/g, 'Ada'),
+        ).toMatch(atSettings);
+        expect(catalogues[code].todayScreen.tab.today).not.toMatch(atSettings);
+        expect(catalogues[code].settings.title).not.toMatch(atSettings);
       }
       const upright = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
       expect(upright.indexOf('setOrientation: PORTRAIT')).toBeGreaterThan(-1);

@@ -695,6 +695,48 @@
   background-size: var(--spaceXxs) 1.4px;
 }
 
+.cal-you {
+  display: inline-block;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+.cal-mark .cal-you,
+.desk-tag.cal-you-tag {
+  color: var(--colorAttentionText);
+}
+
+.cal-tile .cal-you {
+  width: 14px;
+  height: 14px;
+}
+
+.desk-tag.cal-you-tag {
+  gap: var(--spaceXs);
+  padding: 0 9px 0 var(--spaceSm);
+  background: var(--colorAttentionTint);
+}
+
+.cal-late,
+.cal-late-mark {
+  flex: none;
+  color: var(--colorBroken);
+  font-weight: 600;
+}
+
+.cal-late-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cal-row-event {
+  color: var(--colorInkSecondary);
+}
+
 .cal-nothing {
   padding-top: var(--spaceXxl);
   color: var(--colorInkSecondary);
