@@ -20,7 +20,6 @@ export type ProveWith =
 
 export type ProvingRefusal = { field: 'password' | 'code' | 'failed'; message: string };
 
-/** What a try that did not prove left, for the drawing to move focus: the code now asked, the provider's sign-in run out, or a refusal. */
 export type Unproved =
   | { kind: 'code'; afterProvider: boolean }
   | { kind: 'expired' }
@@ -49,9 +48,7 @@ export function useProving({
   const [expired, setExpired] = useState(false);
   const [refusal, setRefusal] = useState<ProvingRefusal | null>(null);
   const [checking, setChecking] = useState(false);
-  // Turned on in the two-factor card since this page loaded: the API says so, and the field appears.
   const [codeAsked, setCodeAsked] = useState(twoFactorOn);
-  // Step two after Google or Apple: the sign-in passed and the code is asked for (sc-2197).
   const [vouched, setVouched] = useState<{ email: string | null } | null>(null);
   // The API's kept proof once a sign-in waits for its code: Google's or Apple's is single-use (RFC 6749 §4.1.2).
   const kept = useRef<string | null>(null);

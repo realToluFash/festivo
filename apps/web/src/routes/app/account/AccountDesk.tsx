@@ -79,7 +79,17 @@ export function AccountDesk() {
   const [refresh, setRefresh] = useState(0);
   const [said, setSaid] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
-  const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
+  const [rowError, setRowError] = useState<{
+    id: string;
+    kind: ContactKind;
+    message: string;
+  } | null>(null);
+
+  // From an effect, so it lands after the closing Ask has handed focus back to its opener.
+  useEffect(() => {
+    if (rowError == null) return;
+    focusWhenFree(() => document.getElementById(`${rowError.kind}-${rowError.id}-error`));
+  }, [rowError]);
   const [ask, setAsk] = useState<'promote' | 'remove' | null>(null);
   const [acting, setActing] = useState(false);
   // Back from Google or Apple, started by Make primary: once, on arrival.
@@ -216,10 +226,7 @@ export function AccountDesk() {
       setDialog(null);
       // The row may be gone, so the reason goes on the card's line, where it can be read out.
       if (changed) done(message);
-      else {
-        setRowError({ id: row.id, message });
-        focusWhenFree(() => document.getElementById(`${kind}-${row.id}-error`));
-      }
+      else setRowError({ id: row.id, kind, message });
     } finally {
       setActing(false);
     }
