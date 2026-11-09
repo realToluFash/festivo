@@ -9,7 +9,7 @@ appId: host.exp.Exponent
 - inputText: '000000'
 - extendedWaitUntil: { visible: '{{t:twoFactor.codeWrong}}', timeout: 15000 }
 - takeScreenshot: code-wrong
-- hideKeyboard
+- runFlow: ../sc29072-close-code-pad.yaml
 - tapOn: { id: 'twoFactor.switch' }
 - extendedWaitUntil: { visible: '{{t:twoFactor.recoveryTitle}}', timeout: 10000 }
 - waitForAnimationToEnd
