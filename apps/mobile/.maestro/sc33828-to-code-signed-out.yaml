@@ -13,6 +13,13 @@ appId: host.exp.Exponent
 - tapOn: { id: 'signIn.password' }
 - eraseText: 120
 - inputText: ${PASSWORD}
-- hideKeyboard
-- tapOn: { id: 'signIn.submit' }
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when: { platform: Android }
+    commands:
+      - hideKeyboard
+      - tapOn: { id: 'signIn.submit' }
 - extendedWaitUntil: { visible: { id: 'twoFactor.code' }, timeout: 30000 }

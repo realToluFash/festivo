@@ -1,4 +1,4 @@
-# sc-33828: Signed in under the six boxes once a right authenticator code goes in, recorded, as it shows for half a second.
+# sc-33828: Signed in under the six boxes once a right authenticator code goes in, recorded, as it shows for half a second. EMAIL, PASSWORD and TOTP_SECRET of a two-factor account.
 appId: host.exp.Exponent
 ---
 - runFlow: ../sc29072-to-code.yaml
