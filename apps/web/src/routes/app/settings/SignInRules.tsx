@@ -183,8 +183,9 @@ function RulesDesk({ organisation }: { organisation: Membership }) {
           : error.is('oauth_only_unlinked')
             ? { ownProvider: false }
             : null);
-      if (ownGone) setLoad({ kind: 'loaded', page: { ...page, ...ownGone } });
-      setEdit({ ...sent, saving: false, failed: !ownGone });
+      const now = ownGone ? { ...page, ...ownGone } : page;
+      if (ownGone) setLoad({ kind: 'loaded', page: now });
+      setEdit({ ...sent, saving: false, failed: refusalOf(sent.key, sent.picked, now) == null });
     }
   }
 

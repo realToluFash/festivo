@@ -535,6 +535,25 @@ describe('changing a rule (sc-30192)', () => {
     expect(await screen.findByText('Link Google or Apple for yourself first')).toBeDefined();
   });
 
+  it('refused because Google or Apple went, on a change with no refusal of its own, says it was not saved', async () => {
+    signedIn(membership());
+    answering({ ...PAGE, providerOnly: true }, () => problem('oauth_only_unlinked'));
+    open();
+
+    fireEvent.click(await row(/Signed out after 30 days unused/));
+    fireEvent.click(dialog().getByRole('radio', { name: /^7 days/ }));
+    fireEvent.click(dialog().getByRole('button', { name: 'Save' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toBe(
+      'The rules were not saved. Nothing changed. Try again in a moment.',
+    );
+    expect(dialog().queryByText('What happens when you save')).toBeNull();
+    expect(dialog().getByRole('button', { name: 'Save' }).getAttribute('aria-disabled')).not.toBe(
+      'true',
+    );
+  });
+
   it('two changes saved in the same second both show, each once, with no duplicate-key warning (sc-13954)', async () => {
     const errors = vi.spyOn(console, 'error');
     const by = { name: 'Folake Adeyemi', role: OWNER };
