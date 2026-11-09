@@ -742,7 +742,8 @@ span {
 /* Honoured rather than ignored: a spinner is decoration, and somebody who has
    asked for less motion should not get it anyway. */
 @media (prefers-reduced-motion: reduce) {
-  .pending-spinner {
+  .pending-spinner,
+  .colours-spin {
     animation: none;
   }
 }
@@ -8220,19 +8221,7 @@ button.members-row {
   border: 2px solid var(--colorInsetBorder);
   border-top-color: currentcolor;
   border-radius: 50%;
-  animation: colours-spin 0.9s linear infinite;
-}
-
-@keyframes colours-spin {
-  to {
-    transform: rotate(1turn);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .colours-spin {
-    animation: none;
-  }
+  animation: spin 0.9s linear infinite;
 }
 
 .colours-body {
