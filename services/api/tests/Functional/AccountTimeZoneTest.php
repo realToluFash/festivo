@@ -87,7 +87,7 @@ final class AccountTimeZoneTest extends ApiTestCase
         self::assertSame(422, $this->client->getResponse()->getStatusCode());
         $violations = Type\vec(Type\shape(['propertyPath' => Type\string(), 'message' => Type\string()], true))->coerce($body['violations']);
         self::assertSame('timezone', $violations[0]['propertyPath']);
-        self::assertSame("That time zone isn't one we know, so nothing was saved. Choose one from the list.", $violations[0]['message']);
+        self::assertSame('That time zone is not one we know, so nothing was saved. Choose one from the list.', $violations[0]['message']);
         self::assertSame($violations[0]['message'], $body['detail'] ?? null);
         self::assertSame('Africa/Lagos', $this->fresh($user)->getTimezone());
     }
