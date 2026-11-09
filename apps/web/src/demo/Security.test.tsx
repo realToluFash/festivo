@@ -369,4 +369,28 @@ describe('Security at a desk (sc-30223)', () => {
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Sign out everywhere else…' })).toBeNull();
   });
+
+  it("says what it did in the card's place while two-factor has not loaded, then inside the card", async () => {
+    await security('/demo/settings/security?state=factorFailed');
+    expect(
+      within(block('Two-factor authentication')).getByText('Two-factor did not load'),
+    ).toBeDefined();
+    expect(screen.queryByText('Two-factor is on')).toBeNull();
+
+    const phone = open('Signed in on', /Soirely app on iPhone/);
+    fireEvent.click(within(phone).getByRole('button', { name: 'Sign out…' }));
+    fireEvent.click(
+      within(ask('Sign out Soirely app on iPhone?')).getByRole('button', { name: 'Sign it out' }),
+    );
+
+    const line = screen.getByText('Soirely app on iPhone is signed out.');
+    expect(document.activeElement).toBe(line);
+    expect(screen.queryByText('Two-factor is on')).toBeNull();
+
+    fireEvent.click(
+      within(block('Two-factor authentication')).getByRole('button', { name: 'Try again' }),
+    );
+    expect(await screen.findByText('Two-factor is on', undefined, WAIT)).toBeDefined();
+    expect(screen.getAllByText('Soirely app on iPhone is signed out.')).toHaveLength(1);
+  });
 });

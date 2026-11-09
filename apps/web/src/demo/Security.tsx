@@ -6,11 +6,13 @@ import { useNavigate } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { Lead } from '../components/AccountParts.tsx';
-import { KeptAction, Openable, ShieldCard } from '../components/SecurityParts.tsx';
+import { Bones } from '../components/GeneralParts.tsx';
+import { KeptAction, Openable, SaidLine, ShieldCard } from '../components/SecurityParts.tsx';
 import {
   ASK_WORDS as A,
   type AskKind,
   CODES_MADE,
+  FACTOR_LOADING_MS,
   type Device,
   type DialogStart,
   NEW_CODES,
@@ -18,6 +20,7 @@ import {
   PROVIDERS,
   type Provider,
   RECOVERY_CODES,
+  SEND_MS,
   RESULT_WORDS as R,
   type Purpose,
   SECURITY_WORDS as W,
@@ -46,6 +49,7 @@ import {
   ForgotDialog,
   RecoveryDialog,
   SentDialog,
+  SectionFailed,
   SetCodeDialog,
   SetupDialog,
 } from '../components/SecurityDialogs.tsx';
@@ -79,7 +83,9 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
   const [dialog, setDialog] = useState<DialogStart | null>(start.dialog);
   const [proved, setProved] = useState(false);
   const later = useLater();
+  const [loadMs, setLoadMs] = useState(FACTOR_LOADING_MS);
   const column = useRef<HTMLDivElement>(null);
+  const saidLine = useRef<HTMLParagraphElement | null>(null);
   const card = cardOf(page, said);
   const devices = devicesOf(page);
   const others = othersOf(page);
@@ -123,6 +129,21 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
   }
 
   useEffect(() => {
+    if (said != null) saidLine.current?.focus();
+  }, [said]);
+
+  useEffect(() => {
+    if (page.factor !== 'loading') return;
+    const timer = setTimeout(() => setPage((now) => ({ ...now, factor: 'loaded' })), loadMs);
+    return () => clearTimeout(timer);
+  }, [page.factor, loadMs]);
+
+  function retryFactor(): void {
+    setLoadMs(SEND_MS);
+    setPage((now) => ({ ...now, factor: 'loading' }));
+  }
+
+  useEffect(() => {
     if (start.open == null) return;
     const opened = column.current?.querySelector('.account-open');
     if (opened != null && 'scrollIntoView' in opened) opened.scrollIntoView({ block: 'center' });
@@ -134,16 +155,28 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
     <div className="desk-page">
       <div ref={column} className="desk-column">
         <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
-        <ShieldCard
-          says={card.says}
-          summary={card.summary}
-          said={card.line == null ? null : { text: card.line, done: card.done }}
-          step={
-            card.step == null
-              ? null
-              : { label: card.step, onClick: () => setDialog(opening('setup')) }
-          }
-        />
+        {page.factor === 'loaded' ? (
+          <ShieldCard
+            says={card.says}
+            summary={card.summary}
+            said={card.line == null ? null : { text: card.line, done: card.done }}
+            saidRef={(line) => {
+              saidLine.current = line;
+            }}
+            step={
+              card.step == null
+                ? null
+                : { label: card.step, onClick: () => setDialog(opening('setup')) }
+            }
+          />
+        ) : (
+          <SaidLine
+            said={said == null ? null : { text: said, done: true }}
+            saidRef={(line) => {
+              saidLine.current = line;
+            }}
+          />
+        )}
         <section className="desk-block">
           <Head title={W.ways} />
           <ul className="desk-rows account-rows">
@@ -200,7 +233,16 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
         </section>
         <section className="desk-block">
           <Head title={W.twoFactor} />
-          {page.on ? (
+          {page.factor === 'failed' ? (
+            <SectionFailed
+              title={W.factorFailed}
+              line={W.factorFailedLine}
+              announce={false}
+              onRetry={retryFactor}
+            />
+          ) : page.factor === 'loading' ? (
+            <Bones count={1} label={W.loading} />
+          ) : page.on ? (
             <ul className="desk-rows account-rows">
               <Openable
                 title={W.authenticator}
