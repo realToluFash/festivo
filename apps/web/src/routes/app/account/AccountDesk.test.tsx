@@ -97,9 +97,9 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function problem(code: string, status: number): Response {
+function problem(code: string, status: number, extra: Record<string, unknown> = {}): Response {
   return new Response(
-    JSON.stringify({ type: `https://soirely.com/errors/${code}`, title: code, status }),
+    JSON.stringify({ type: `https://soirely.com/errors/${code}`, title: code, status, ...extra }),
     { status, headers: { 'Content-Type': 'application/problem+json' } },
   );
 }
@@ -427,5 +427,166 @@ describe('Your account at a desk, summary first (sc-30411)', () => {
     fails = false;
     fireEvent.click(screen.getAllByRole('button', { name: 'Try again' })[0]!);
     expect(await screen.findByText('folake.adeyemi@gmail.com')).toBeDefined();
+  });
+});
+
+const NEW_PHONE = {
+  id: 'p2',
+  number: '+2348035550199',
+  countryCode: 'NG',
+  verified: false,
+  primary: false,
+  pending: false,
+};
+
+describe('codes and proofs at a desk (sc-30411)', () => {
+  it('verifies a number from WhatsApp, saying when Text it to me instead fails and when it goes', async () => {
+    let verified = false;
+    let texts = 0;
+    const sent = answering({
+      'GET /api/auth/me': () =>
+        json({ ...ME, phoneNumbers: [...ME.phoneNumbers, { ...NEW_PHONE, verified }] }),
+      'GET /api/auth/verify/phone/resend': () =>
+        json({ cooldownSeconds: 30, codeState: 'live', route: 'whatsapp' }),
+      'POST /api/auth/verify/phone/text-instead': () => {
+        texts += 1;
+        return texts === 1 ? problem('server_error', 500) : json({ route: 'sms_chosen' });
+      },
+      'POST /api/auth/verify/phone': () => {
+        verified = true;
+        return json({ ...NEW_PHONE, verified: true });
+      },
+    });
+    open();
+
+    fireEvent.click(await within(card()).findByRole('button', { name: 'Send a code' }));
+    expect(within(dialog()).getByRole('heading', { name: 'Check your messages' })).toBeDefined();
+    expect(await within(dialog()).findByLabelText('Code from WhatsApp')).toBeDefined();
+
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Text it to me instead' }));
+    expect(
+      await within(dialog()).findByText('The text could not be sent. Try again in a moment.'),
+    ).toBeDefined();
+
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Text it to me instead' }));
+    expect(await within(dialog()).findByText(/^We texted the same code to /)).toBeDefined();
+    expect(within(dialog()).queryByRole('button', { name: 'Text it to me instead' })).toBeNull();
+    expect(
+      within(dialog()).queryByText('The text could not be sent. Try again in a moment.'),
+    ).toBeNull();
+
+    fireEvent.change(within(dialog()).getByLabelText('Code from the text'), {
+      target: { value: '654321' },
+    });
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Verify' }));
+
+    expect(
+      await within(card()).findByText(/is verified\. It stays an alternative number until you/),
+    ).toBeDefined();
+    expect(sent.find((one) => one.call === 'POST /api/auth/verify/phone')?.body).toEqual({
+      code: '654321',
+      phone: 'p2',
+    });
+  });
+
+  it('sends one new code for two quick presses, and keeps Send a new code when it fails', async () => {
+    let answer: (response: Response) => void = () => {};
+    const sent = answering({
+      'GET /api/auth/me': () =>
+        json({ ...ME, emailAddresses: [PRIMARY, { ...OTHER, verified: false }] }),
+      'GET /api/auth/verify/resend': () => json({ cooldownSeconds: 0, codeState: 'live' }),
+      'POST /api/auth/verify/resend': () =>
+        new Promise<Response>((resolve) => {
+          answer = resolve;
+        }),
+    });
+    open();
+
+    fireEvent.click(await within(card()).findByRole('button', { name: 'Send a code' }));
+    const resend = await within(dialog()).findByRole('button', { name: 'Send a new code' });
+    fireEvent.click(resend);
+    fireEvent.click(resend);
+    await waitFor(() =>
+      expect(sent.filter((one) => one.call === 'POST /api/auth/verify/resend')).toHaveLength(1),
+    );
+    answer(problem('server_error', 500));
+
+    expect(
+      await within(dialog()).findByText('Something went wrong on the way. Try again in a moment.'),
+    ).toBeDefined();
+    expect(within(dialog()).getByRole('button', { name: 'Send a new code' })).toBeDefined();
+    expect(within(dialog()).queryByText(/^Send a new code in /)).toBeNull();
+  });
+
+  function backFromGoogle(): void {
+    sessionStorage.setItem(
+      'soirely.provider.returned',
+      JSON.stringify({
+        provider: 'google',
+        purpose: { kind: 'makePrimary', address: 'e2' },
+        signIn: { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' },
+      }),
+    );
+  }
+
+  const GOOGLE_ONLY = {
+    ...ME,
+    hasPassword: false,
+    providers: [{ provider: 'google', email: 'folake@gmail.com' }],
+  };
+
+  it('asks for the two-factor code after Google, keeping the sign-in, then makes it primary', async () => {
+    backFromGoogle();
+    const answers = [
+      () =>
+        problem('two_factor_required', 403, {
+          pendingProof: 'kept-1',
+          providerEmail: 'folake@gmail.com',
+        }),
+      () => json({ proof: 'p-g', expiresAt: new Date(Date.now() + 300_000).toISOString() }),
+    ];
+    const sent = answering({
+      'GET /api/auth/me': () => json(GOOGLE_ONLY),
+      'GET /api/auth/two-factor': () => json({ on: true }),
+      'POST /api/auth/proof': () => answers.shift()!(),
+      'PATCH /api/auth/emails/e2/primary': () => json({ ...OTHER, primary: true }),
+    });
+    open({ hasPassword: false });
+
+    expect(
+      await within(await screen.findByRole('dialog')).findByText('Signed in with Google'),
+    ).toBeDefined();
+    fireEvent.change(within(dialog()).getByLabelText('Code'), { target: { value: '123456' } });
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Continue' }));
+
+    expect(
+      await within(card()).findByText(
+        'folake.adeyemi@gmail.com is now your primary address. Sign in with it from now on.',
+      ),
+    ).toBeDefined();
+    const proofs = sent.filter((one) => one.call === 'POST /api/auth/proof').map((one) => one.body);
+    expect(proofs).toHaveLength(2);
+    expect(proofs[0]).toEqual(expect.objectContaining({ provider: 'google' }));
+    expect(proofs[1]).toEqual({ pendingProof: 'kept-1', code: '123456' });
+    expect(sent.find((one) => one.call === 'PATCH /api/auth/emails/e2/primary')?.body).toEqual({
+      proof: 'p-g',
+    });
+  });
+
+  it('says a Google sign-in that came back too late changed nothing, and offers Google again', async () => {
+    backFromGoogle();
+    const sent = answering({
+      'GET /api/auth/me': () => json(GOOGLE_ONLY),
+      'POST /api/auth/proof': () => problem('proof_required', 403),
+    });
+    open({ hasPassword: false });
+
+    expect(
+      await within(await screen.findByRole('dialog')).findByText(
+        'Your Google sign-in was more than 5 minutes ago, so nothing has changed yet. Continue with Google again to carry on.',
+      ),
+    ).toBeDefined();
+    expect(within(dialog()).getByRole('button', { name: 'Continue with Google' })).toBeDefined();
+    expect(sent.some((one) => one.call === 'PATCH /api/auth/emails/e2/primary')).toBe(false);
   });
 });
