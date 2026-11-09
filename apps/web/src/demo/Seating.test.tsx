@@ -239,9 +239,8 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
       expect(within(panel()).getByText('The room must be between 2 m and 500 m.')).toBeDefined();
       fireEvent.change(within(panel()).getByLabelText('Length'), { target: { value: '18' } });
       fireEvent.click(start);
-      expect(
-        await screen.findByText('Add your first table, row or seat from the bar below.'),
-      ).toBeDefined();
+      const hint = await screen.findByText('Add your first table, row or seat from the bar below.');
+      expect(hint.closest('.st-bar')?.classList.contains('is-floor')).toBe(true);
       expect(
         within(panel()).getByText(
           'No sections yet. A section is a name and a colour on part of the room, such as Terrace.',

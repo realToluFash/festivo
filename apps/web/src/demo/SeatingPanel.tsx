@@ -474,7 +474,7 @@ function StartForm() {
       {
         panel: null,
         people: [],
-        bar: { kind: 'tint', words: SW.firstItem },
+        bar: { kind: 'tint', words: SW.firstItem, at: 'floor' },
       },
     );
   }
