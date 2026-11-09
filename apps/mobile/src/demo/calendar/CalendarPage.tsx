@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   type CalendarMonth,
-  type CalendarShow,
   type CalendarView,
   firstDayOfWeek,
   formattingLocale,
@@ -58,17 +57,20 @@ import {
   type CalendarState,
   type Feed,
   type Load,
+  NOW,
   PHONE_WEEK,
+  type Show,
   WIDE_WEEK,
   type Week,
   agendaMonth,
   agendaOf,
   calendarEvents,
   daysOf,
-  emptyMonth,
   firstOf,
   monthKey,
+  monthLine,
   monthName,
+  needsLanding,
   pinnedOf,
   sampleOf,
   startOf,
@@ -84,7 +86,7 @@ import {
   WeekList,
   offsetsOf,
 } from './CalendarWeeks.tsx';
-import { CW, say } from './CalendarWords.ts';
+import { CW } from './CalendarWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
 import {
@@ -101,7 +103,6 @@ import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 /** The demo keeps its own place, so it never moves the real Calendar's. */
 const KEPT = 'soirely.demo.calendar';
 const TODAY = wallDay(CLOCKS.reader, READER_ZONE);
-const NOW = new Date(CLOCKS.reader);
 const RETRY_MS = 900;
 
 function landingOf(month: CalendarMonth): string {
@@ -169,11 +170,11 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
     return { locale: dates, firstDay: firstDayOfWeek(dates) };
   }, []);
   const start = useMemo(() => startOf(state, TODAY), [state]);
-  const events = useMemo(() => calendarEvents(sampleOf(state), NOW), [state]);
+  const events = useMemo(() => calendarEvents(sampleOf(state), NOW, start.needs), [state, start]);
 
   const [view, setView] = useState<CalendarView | null>(start.view);
   const [at, setAt] = useState<string | null>(start.at);
-  const [show, setShow] = useState<CalendarShow>(start.show);
+  const [show, setShow] = useState<Show>(start.show);
   const [open, setOpen] = useState<string | null>(start.open);
   const [feed, setFeed] = useState<Feed | null>(start.feed);
   const [feeds, setFeeds] = useState(0);
@@ -229,7 +230,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
   const weeks = useMemo(() => weeksAround(monthOfDay(TODAY), firstDay, days), [firstDay, days]);
   const look = lookOf(big, phone);
   const offsets = useMemo(() => offsetsOf(weeks, look.week), [weeks, look]);
-  const entries = useMemo(() => agendaOf(monthOfDay(TODAY), days, TODAY), [days]);
+  const entries = useMemo(() => agendaOf(monthOfDay(TODAY), days, TODAY, show), [days, show]);
   const startIndex = weekIndexOf(weeks, at ?? TODAY);
   const topWeek = weeks[top ?? startIndex];
   const pinned =
@@ -296,7 +297,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
     scrollWeeks(weekIndexOf(weeks, firstOf(shiftMonth(pinned, step))), false);
   };
   const onToday = () => {
-    if (view === 'agenda') scrollAgenda(TODAY, true);
+    if (view === 'agenda') scrollAgenda(show === 'needs' ? needsLanding(days, TODAY) : TODAY, true);
     else scrollWeeks(weekIndexOf(weeks, TODAY), true);
   };
   const toView = (next: CalendarView) => {
@@ -307,7 +308,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
     setOpen(null);
     setView(next);
   };
-  const toShow = (next: CalendarShow) => {
+  const toShow = (next: Show) => {
     if (next === show) return;
     setAt(view === 'agenda' ? landingOf(pinned) : (topWeek?.start ?? TODAY));
     setTop(null);
@@ -323,7 +324,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
     setFeed('panel');
   };
 
-  const agendaLanding = landingIn(entries, at);
+  const agendaLanding = show === 'needs' ? needsLanding(days, at ?? TODAY) : landingIn(entries, at);
   const onAgendaY = useCallback((key: string, y: number) => {
     places.current.set(key, y);
   }, []);
@@ -336,7 +337,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
     for (const entry of entries) {
       const place = places.current.get(entry.key);
       if (place == null || place > y + 1) continue;
-      found = entry.kind === 'month' ? monthKey(entry.month) : entry.day.slice(0, 7);
+      found = entry.kind === 'day' ? entry.day.slice(0, 7) : monthKey(entry.month);
     }
     if (found != null && found !== agendaTop) setAgendaTop(found);
   };
@@ -395,7 +396,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
       </View>
     ) : (
       <View style={styles.toolbarPhone}>
-        <View style={styles.row}>
+        <View style={[styles.row, styles.wrap]}>
           {viewSwitch}
           <View style={styles.grow} />
           {showButton}
@@ -423,6 +424,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
     </View>
   );
 
+  const emptyLine = view === 'month' ? monthLine(load, show, pinned, days, monthWords) : null;
   const line =
     load === 'loading' ? (
       <ReadOut words={CW.loading} style={styles.loading}>
@@ -431,14 +433,14 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
           {CW.loading}
         </Text>
       </ReadOut>
-    ) : loaded && view === 'month' && emptyMonth(pinned, days) ? (
+    ) : emptyLine != null ? (
       <Text
         size={15}
         weight="medium"
         style={[styles.secondary, styles.said]}
         testID="calendar.emptyMonth"
       >
-        {say.emptyMonth(monthWords)}
+        {emptyLine}
       </Text>
     ) : null;
 
@@ -493,6 +495,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
         entries={entries}
         land={agendaLanding}
         today={TODAY}
+        show={show}
         locale={locale}
         big={big}
         lead={big ? 68 : phone ? 44 : 56}
@@ -522,6 +525,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
               lit={lit}
               pinned={pinned}
               locale={locale}
+              show={show}
               start={startIndex}
               bottom={bottom}
               onDay={onDay}
@@ -537,6 +541,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
                 day={open}
                 today={TODAY}
                 items={items}
+                show={show}
                 locale={locale}
                 big={big}
                 onClose={closeDay}
@@ -560,11 +565,12 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
       }}
     />
   );
-  const dayList = lastDay != null && (
+  const dayList = loaded && lastDay != null && (
     <DayList
       day={lastDay}
       today={TODAY}
       items={items}
+      show={show}
       locale={locale}
       big={big}
       onClose={closeDay}
@@ -753,6 +759,7 @@ const styles = StyleSheet.create({
     minHeight: tokens.sizeHit,
     gap: tokens.spaceMd,
   },
+  wrap: { flexWrap: 'wrap' },
   toolbarPhone: { gap: tokens.spaceMd, marginTop: tokens.spaceMd, marginBottom: tokens.spaceXs },
   toolbarBig: { gap: tokens.spaceMd, marginTop: tokens.spaceMd, marginBottom: tokens.spaceXs },
   stepperBig: { minHeight: 60, justifyContent: 'center', alignItems: 'flex-start' },

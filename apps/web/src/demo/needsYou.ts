@@ -66,7 +66,19 @@ export function dueWords(
   return { words: `Due ${dateWords(at, now, timeZone, locale)}`, late: false };
 }
 
-/** A You milestone the reader's role changes, earliest first, a tie by title in the shown language. A milestone has no id, so its key is its area, moment and title. */
+/** A You milestone the reader's role changes: the rule both Today's Needs you and the Calendar's Only what needs you take. */
+export function needsMe(milestone: Milestone, permissions: readonly string[]): boolean {
+  return milestone.owner === 'you' && levelOf(permissions, milestone.area) === 'change';
+}
+
+/** Earliest first, a tie by title in the shown language. */
+export function dueOrder(locale: string): (a: Milestone, b: Milestone) => number {
+  const byTitle = new Intl.Collator(locale);
+
+  return (a, b) => Date.parse(a.at) - Date.parse(b.at) || byTitle.compare(a.title, b.title);
+}
+
+/** needsMe's milestones in dueOrder. A milestone has no id, so its key is its area, moment and title. */
 export function needRows(
   milestones: readonly Milestone[],
   permissions: readonly string[],
@@ -74,11 +86,9 @@ export function needRows(
   timeZone: string,
   locale: string,
 ): NeedRow[] {
-  const byTitle = new Intl.Collator(locale);
-
   return milestones
-    .filter((one) => one.owner === 'you' && levelOf(permissions, one.area) === 'change')
-    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || byTitle.compare(a.title, b.title))
+    .filter((one) => needsMe(one, permissions))
+    .sort(dueOrder(locale))
     .map((one) => {
       const { words, late } = dueWords(one.at, now, timeZone, locale);
 

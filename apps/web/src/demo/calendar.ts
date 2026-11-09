@@ -2,7 +2,6 @@ import {
   type CalendarCell,
   type CalendarItem,
   type CalendarMonth,
-  type CalendarShow,
   type CalendarView,
   type Milestone,
   addDays,
@@ -41,6 +40,7 @@ export interface Listed extends SampleEvent {
   dayCount: number;
   milestones: readonly Milestone[];
   shown: Shown;
+  permissions?: readonly string[];
 }
 
 export type Item = CalendarItem<Listed>;
@@ -62,6 +62,7 @@ export const CAL_WORDS = {
   show: 'Show',
   showAll: 'Events and milestones',
   showEvents: 'Events only',
+  showNeedsYou: 'Only what needs you',
   chosen: (name: string, word: string) => `${name}: ${word}`,
   close: 'Close',
   timeInZone: (time: string, zone: string) => `${time} ${zone}`,
@@ -71,6 +72,13 @@ export const CAL_WORDS = {
   retry: 'Try again',
   emptyMonth: (month: string) => `Nothing on the calendar in ${month}.`,
   emptyDay: 'Nothing on this day.',
+  emptyNeedsMonth: (month: string) => `Nothing needs you in ${month}.`,
+  emptyNeedsDay: 'Nothing needs you on this day.',
+  overdue: 'Overdue',
+  you: 'You',
+  needsRowLabel: (title: string, event: string, time: string) => `${title}, ${event}, ${time}`,
+  needsRowLabelOverdue: (title: string, event: string, time: string) =>
+    `${title}, ${event}, ${time}, overdue`,
   starts: (name: string) => `${name} starts`,
   ends: (name: string) => `${name} ends`,
   calledOff: (name: string) => `${name} called off`,
@@ -84,6 +92,16 @@ export const CAL_WORDS = {
 } as const;
 
 const W = CAL_WORDS;
+
+export type Show = 'all' | 'events' | 'needs';
+
+export const SHOWS: readonly Show[] = ['all', 'events', 'needs'];
+
+export function showWord(show: Show): string {
+  if (show === 'events') return W.showEvents;
+
+  return show === 'needs' ? W.showNeedsYou : W.showAll;
+}
 
 /** The API's EventDayCount: the days its start and end fall on in its zone, an end at midnight closing the day before. */
 export function dayCountOf({ startsAt, endsAt, timeZone }: SampleEvent): number {
@@ -354,13 +372,14 @@ export function agendaOf(
   to: CalendarMonth,
   days: ReadonlyMap<string, Item[]>,
   today: string,
+  withToday = true,
 ): AgendaEntry[] {
   const entries: AgendaEntry[] = [];
 
   for (let month = from; monthIndex(month) <= monthIndex(to); month = shiftMonth(month, 1)) {
     const listed = agendaDays(month, days);
 
-    if (inMonth(today, month) && !listed.some(({ day }) => day === today))
+    if (withToday && inMonth(today, month) && !listed.some(({ day }) => day === today))
       listed.push({ day: today, items: [] });
     listed.sort((a, b) => a.day.localeCompare(b.day));
 
@@ -566,6 +585,14 @@ export const CALENDAR_STATES = [
   'subscribe',
   'subscribeRefused',
   'resetLink',
+  'needsMenu',
+  'needsMonth',
+  'needsDay',
+  'needsAgenda',
+  'needsEmptyMonth',
+  'needsEmptyDay',
+  'needsReadOnly',
+  'needsTodayEmpty',
 ] as const;
 
 export type CalendarState = (typeof CALENDAR_STATES)[number];
@@ -576,16 +603,19 @@ export function calendarStateOf(value: string | null): CalendarState | null {
 
 export type Feed = 'open' | 'refused' | 'reset';
 
+export type NeedsSeed = 'owner' | 'readOnly' | 'todayEmpty';
+
 export interface CalendarStart {
   view: CalendarView;
   at: string;
-  show: CalendarShow;
+  show: Show;
   menu: boolean;
   open: string | null;
   reunion: boolean;
   none: boolean;
   load: 'loading' | 'failed' | 'loaded';
   feed: Feed | null;
+  needs: NeedsSeed | null;
 }
 
 const AT_REST: CalendarStart = {
@@ -598,6 +628,7 @@ const AT_REST: CalendarStart = {
   none: false,
   load: 'loaded',
   feed: null,
+  needs: null,
 };
 
 const STARTS: Record<CalendarState, Partial<CalendarStart>> = {
@@ -615,6 +646,14 @@ const STARTS: Record<CalendarState, Partial<CalendarStart>> = {
   subscribe: { feed: 'open' },
   subscribeRefused: { feed: 'refused' },
   resetLink: { feed: 'reset' },
+  needsMenu: { show: 'needs', menu: true, needs: 'owner' },
+  needsMonth: { show: 'needs', needs: 'owner' },
+  needsDay: { show: 'needs', needs: 'owner', open: TODAY },
+  needsAgenda: { view: 'agenda', show: 'needs', needs: 'owner' },
+  needsEmptyMonth: { show: 'needs', needs: 'owner', at: '2026-12-01' },
+  needsEmptyDay: { show: 'needs', needs: 'owner', open: '2026-11-14' },
+  needsReadOnly: { show: 'needs', needs: 'readOnly', open: '2026-11-04' },
+  needsTodayEmpty: { view: 'agenda', show: 'needs', needs: 'todayEmpty' },
 };
 
 export function calendarStart(state: CalendarState | null, kept: string | null): CalendarStart {
@@ -664,6 +703,19 @@ export const CALENDAR_PAGES: readonly { name: string; states: readonly DemoLink[
       at('subscribe', 'Subscribe'),
       at('subscribeRefused', 'Subscribe, a refused copy'),
       at('resetLink', 'Reset your link?'),
+    ],
+  },
+  {
+    name: 'Only what needs you',
+    states: [
+      at('needsMenu', 'Show’s menu, Only what needs you chosen'),
+      at('needsMonth', 'Only what needs you, the month'),
+      at('needsDay', 'Today open, one overdue'),
+      at('needsAgenda', 'Agenda, on today'),
+      at('needsEmptyMonth', 'A month with nothing for you'),
+      at('needsEmptyDay', 'A day with events and nothing for you'),
+      at('needsReadOnly', 'A reader who can only view'),
+      at('needsTodayEmpty', 'Agenda with nothing today'),
     ],
   },
   {
