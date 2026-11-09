@@ -11,6 +11,7 @@ import {
   wallDay,
 } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
+import { router } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -22,37 +23,60 @@ import {
   type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
-import { Cover } from '../../components/Cover.tsx';
-import { Notice } from '../../components/Notice.tsx';
-import { ReadOut } from '../../components/ReadOut.tsx';
-import { SETTLED_MS } from '../../components/Screen.tsx';
-import { Sheet } from '../../components/Sheet.tsx';
-import { Text } from '../../components/Text.tsx';
-import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
-import { useAccessibilitySizes } from '../../layout/useLayout.ts';
-import { motionEase } from '../../motion.ts';
-import { useReducedMotion } from '../../reducedMotion.ts';
-import { tokens } from '../../theme/tokens.ts';
-import { SAMPLE } from '../samples.ts';
-import { CardPieces } from '../../components/EventCard.tsx';
-import { openEvent } from '../events/EventsList.tsx';
-import { CLOCKS, EVENT_OF_KEY, READER_ZONE } from '../events/EventsSample.ts';
-import { W } from '../events/EventsWords.ts';
-import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
-import { Agenda } from './CalendarAgenda.tsx';
+import { Agenda } from '../../components/CalendarAgenda.tsx';
 import {
   MonthName,
+  type ShowChoice,
   ShowButton,
   ShowMenu,
   Spinner,
   Stepper,
   SubscribeRound,
   ViewSwitch,
-} from './CalendarControls.tsx';
-import { DayList } from './CalendarDay.tsx';
+} from '../../components/CalendarControls.tsx';
 import {
-  type AgendaEntry,
+  DayList,
+  DayRow,
+  MilestoneLead,
+  type RowProps,
+  RowLine,
+  YouTag,
+  leadSide,
+} from '../../components/CalendarDay.tsx';
+import {
+  CentredDialog,
+  SIDE_GAP,
+  SIDE_PANEL,
+  SidePanel,
+} from '../../components/CalendarOverlays.tsx';
+import { CalendarFeed, type FeedSource } from '../../components/CalendarSubscribe.tsx';
+import {
+  type GridLook,
+  LoadingWeeks,
+  WeekdayHeads,
+  WeekList,
+} from '../../components/CalendarWeeks.tsx';
+import { EventsFirstRun } from '../../components/EventsList.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
+import { Notice } from '../../components/Notice.tsx';
+import { ReadOut } from '../../components/ReadOut.tsx';
+import { SETTLED_MS } from '../../components/Screen.tsx';
+import { Sheet } from '../../components/Sheet.tsx';
+import { Text } from '../../components/Text.tsx';
+import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
+import { type Item as ProductItem, landingIn, offsetsOf } from '../../kit/calendar.ts';
+import { useAccessibilitySizes } from '../../layout/useLayout.ts';
+import { motionEase } from '../../motion.ts';
+import { useReducedMotion } from '../../reducedMotion.ts';
+import { tokens } from '../../theme/tokens.ts';
+import { SAMPLE } from '../samples.ts';
+import { openEvent } from '../events/EventsList.tsx';
+import { CLOCKS, EVENT_OF_KEY, READER_ZONE } from '../events/EventsSample.ts';
+import { W } from '../events/EventsWords.ts';
+import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
+import {
   BIG_WEEK,
   type CalendarState,
   type Feed,
@@ -65,39 +89,27 @@ import {
   agendaMonth,
   agendaOf,
   calendarEvents,
+  dayWords,
   daysOf,
   firstOf,
+  itemHref,
   monthKey,
   monthLine,
   monthName,
+  needsLabel,
   needsLanding,
+  needsWhen,
+  overdueIn,
   pinnedOf,
   sampleOf,
   startOf,
   weekIndexOf,
   weeksAround,
 } from './CalendarModel.ts';
-import { CentredDialog, SIDE_GAP, SIDE_PANEL, SidePanel } from './CalendarOverlays.tsx';
-import { SubscribePanel } from './CalendarSubscribe.tsx';
-import {
-  type GridLook,
-  LoadingWeeks,
-  WeekdayHeads,
-  WeekList,
-  offsetsOf,
-} from './CalendarWeeks.tsx';
-import { CW } from './CalendarWords.ts';
+import { CW, say } from './CalendarWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
-import {
-  type Anchor,
-  anchorUnder,
-  CardSays,
-  Row,
-  RowList,
-  StepButton,
-  SummaryCard,
-} from '../../components/Summary.tsx';
+import { type Anchor, anchorUnder } from '../../components/Summary.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 
 /** The demo keeps its own place, so it never moves the real Calendar's. */
@@ -105,11 +117,15 @@ const KEPT = 'soirely.demo.calendar';
 const TODAY = wallDay(CLOCKS.reader, READER_ZONE);
 const RETRY_MS = 900;
 
+const LINKS = [
+  'https://soirely.app/api/calendar-feeds/pV3kQ8sLm2Xr7TnB0cYw5Hd9JfAe4GuZ1oKi6bRtNqM.ics',
+  'https://soirely.app/api/calendar-feeds/Zt4bWq9Lr2Hk7Vx0Ns5Jd8Fc3Gm6Pa1YuEo4TiRyQwB.ics',
+].map((url) => ({ url, webcal: url.replace(/^https:/, 'webcal:') }));
+
 function landingOf(month: CalendarMonth): string {
   return monthKey(month) === TODAY.slice(0, 7) ? TODAY : firstOf(month);
 }
 
-/** Agenda lands on today, or on the month asked for, or the next month with days in it. */
 const LOOKS: Record<'big' | 'phone' | 'wide', GridLook> = {
   big: { week: BIG_WEEK, wide: false, big: true },
   phone: { week: PHONE_WEEK, wide: false, big: false },
@@ -120,13 +136,31 @@ function lookOf(big: boolean, phone: boolean): GridLook {
   return LOOKS[big ? 'big' : phone ? 'phone' : 'wide'];
 }
 
-function landingIn(entries: readonly AgendaEntry[], at: string | null): string {
-  if (at == null || at === TODAY) return TODAY;
-  const key = monthKey(monthOfDay(at));
-  const found = entries.find((entry) => entry.kind === 'month' && monthKey(entry.month) >= key);
+const NEEDS_LATE = (item: ProductItem) => overdueIn(item, 'needs');
 
-  return found?.key ?? TODAY;
+/** A row under Only what needs you: the title and You, its time (the clock and Overdue once due), then the event it is for. */
+function NeedsRow({ item, locale, big, onOpen }: RowProps) {
+  const late = overdueIn(item, 'needs');
+
+  return (
+    <DayRow
+      item={item}
+      big={big}
+      lead={<MilestoneLead item={item} side={leadSide(big)} />}
+      tag={<YouTag />}
+      label={needsLabel(item, locale)}
+      onOpen={onOpen}
+    >
+      <View style={styles.when}>
+        {late && <Glyph name="clock" size={13} ink={tokens.colorBroken} weight={2.4} />}
+        <RowLine words={needsWhen(item, locale)} figures late={late} />
+      </View>
+      <RowLine words={item.event.name} />
+    </DayRow>
+  );
 }
+
+const openItem = (item: ProductItem) => router.push(itemHref(item));
 
 /** A scroll the page drives itself, over motionSlow with motionEase, or at once under Reduce Motion. */
 function useGlide(reduced: boolean) {
@@ -159,6 +193,7 @@ function useGlide(reduced: boolean) {
 
 /** The Calendar in B, weeks as lanes, on the demo's sample: every state the AC names, by ?state=. */
 export function CalendarPage({ state }: { state: CalendarState | null }) {
+  const { t } = useTranslation();
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
@@ -176,8 +211,8 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
   const [at, setAt] = useState<string | null>(start.at);
   const [show, setShow] = useState<Show>(start.show);
   const [open, setOpen] = useState<string | null>(start.open);
-  const [feed, setFeed] = useState<Feed | null>(start.feed);
-  const [feeds, setFeeds] = useState(0);
+  const [feed, setFeed] = useState(start.feed != null);
+  const [feedStart, setFeedStart] = useState<Feed>(start.feed ?? 'panel');
   const [load, setLoad] = useState<Load>(start.load);
   const [menuAt, setMenuAt] = useState<Anchor | null>(null);
   const [top, setTop] = useState<number | null>(null);
@@ -320,11 +355,47 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
     setTimeout(() => setLoad('loaded'), RETRY_MS);
   };
   const subscribe = () => {
-    setFeeds((count) => count + 1);
-    setFeed('panel');
+    setFeedStart('panel');
+    setFeed(true);
   };
+  const closeFeed = useCallback(() => setFeed(false), []);
+  const source = useMemo<FeedSource>(
+    () => ({
+      known: LINKS[0]!,
+      read: async () => LINKS[0]!,
+      reset: async () => LINKS[1]!,
+      openInApp: async () => {
+        setFeed(false);
+        tell(CW.openApp);
+      },
+    }),
+    [tell],
+  );
 
-  const agendaLanding = show === 'needs' ? needsLanding(days, at ?? TODAY) : landingIn(entries, at);
+  const choices = useMemo<ShowChoice<Show>[]>(
+    () => [
+      { value: 'all', word: t('calendar.showAll') },
+      { value: 'events', word: t('calendar.showEvents') },
+      { value: 'needs', word: CW.showNeedsYou },
+    ],
+    [t],
+  );
+  const emptyDay = dayWords(show);
+  const agendaWords = useMemo(
+    () => ({
+      emptyDay,
+      emptyMonth: (month: CalendarMonth) =>
+        show === 'needs'
+          ? say.emptyNeedsMonth(monthName(month, locale))
+          : t('calendar.emptyMonth', { month: monthName(month, locale) }),
+    }),
+    [show, emptyDay, locale, t],
+  );
+  const Row = show === 'needs' ? NeedsRow : undefined;
+  const lateOf = show === 'needs' ? NEEDS_LATE : undefined;
+
+  const agendaLanding =
+    show === 'needs' ? needsLanding(days, at ?? TODAY) : landingIn(entries, at, TODAY);
   const onAgendaY = useCallback((key: string, y: number) => {
     places.current.set(key, y);
   }, []);
@@ -357,20 +428,20 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
         maxFontSizeMultiplier={44 / (phone ? 30 : 34)}
         style={[styles.grow, titled(phone ? 30 : 34)]}
       >
-        {CW.title}
+        {t('calendar.title')}
       </Text>
       {phone ? (
         <SubscribeRound onPress={subscribe} ref={subscribeRef} />
       ) : (
         <Pill
-          label={CW.subscribe}
+          label={t('calendarFeed.open')}
           kind="secondary"
           glyph="calendar"
           height={tokens.sizeHit}
           full={false}
           onPress={subscribe}
           ref={subscribeRef}
-          testID="calendar.subscribe"
+          testID="calendarFeed.open"
         />
       )}
     </View>
@@ -380,6 +451,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
   const showButton = (
     <ShowButton
       show={show}
+      choices={choices}
       big={big && phone}
       onPress={() => anchorUnder(showRef, setMenuAt)}
       ref={showRef}
@@ -427,10 +499,10 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
   const emptyLine = view === 'month' ? monthLine(load, show, pinned, days, monthWords) : null;
   const line =
     load === 'loading' ? (
-      <ReadOut words={CW.loading} style={styles.loading}>
+      <ReadOut words={t('calendar.loading')} style={styles.loading}>
         <Spinner />
         <Text size={14} weight="medium" style={styles.secondary}>
-          {CW.loading}
+          {t('calendar.loading')}
         </Text>
       </ReadOut>
     ) : emptyLine != null ? (
@@ -455,15 +527,23 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
         contentContainerStyle={[styles.first, { paddingBottom: bottom }]}
         showsVerticalScrollIndicator={false}
       >
-        <FirstRun wide={!phone} onTell={tell} />
+        <EventsFirstRun
+          wide={!phone}
+          onCreate={() => tell(`${W.firstRunCreate} has its own design.`)}
+        />
       </ScrollView>
     );
   else if (load === 'failed')
     body = (
       <View style={styles.failed} testID="calendar.failed">
-        <Notice tone="broken" mark={tokens.marks.broken.glyph} body={CW.failed} announce />
+        <Notice
+          tone="broken"
+          mark={tokens.marks.broken.glyph}
+          body={t('calendar.failed')}
+          announce
+        />
         <Pill
-          label={CW.tryAgain}
+          label={t('calendar.retry')}
           kind="secondary"
           height={tokens.sizeHit}
           onPress={retry}
@@ -495,13 +575,16 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
         entries={entries}
         land={agendaLanding}
         today={TODAY}
-        show={show}
+        words={agendaWords}
+        Row={Row}
         locale={locale}
+        readerZone={READER_ZONE}
         big={big}
         lead={big ? 68 : phone ? 44 : 56}
         maxWidth={phone ? null : 640}
         bottom={bottom}
         scrollRef={agendaRef}
+        onOpen={openItem}
         onY={onAgendaY}
         onLand={onAgendaLand}
         onScroll={onAgendaScroll}
@@ -525,7 +608,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
               lit={lit}
               pinned={pinned}
               locale={locale}
-              show={show}
+              lateOf={lateOf}
               start={startIndex}
               bottom={bottom}
               onDay={onDay}
@@ -541,9 +624,12 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
                 day={open}
                 today={TODAY}
                 items={items}
-                show={show}
+                emptyWords={emptyDay}
+                Row={Row}
                 locale={locale}
+                readerZone={READER_ZONE}
                 big={big}
+                onOpen={openItem}
                 onClose={closeDay}
               />
             )}
@@ -552,27 +638,17 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
       </View>
     );
 
-  const subscribePanel = feed != null && (
-    <SubscribePanel
-      key={feeds}
-      organisation={SAMPLE.organisation}
-      start={feed}
-      wide={!phone}
-      onClose={() => setFeed(null)}
-      onOpenApp={() => {
-        setFeed(null);
-        tell(CW.openApp);
-      }}
-    />
-  );
   const dayList = loaded && lastDay != null && (
     <DayList
       day={lastDay}
       today={TODAY}
       items={items}
-      show={show}
+      emptyWords={emptyDay}
+      Row={Row}
       locale={locale}
+      readerZone={READER_ZONE}
       big={big}
+      onOpen={openItem}
       onClose={closeDay}
     />
   );
@@ -582,61 +658,47 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
       <ShowMenu
         at={menuAt}
         show={show}
+        choices={choices}
         opener={showRef}
         onShow={toShow}
         onClose={() => setMenuAt(null)}
       />
       {phone ? (
-        <>
-          <Sheet
+        <Sheet
+          open={open != null}
+          onClose={closeDay}
+          opener={dayOpener}
+          scrimLabel={t('calendar.close')}
+          headingTakesFocus
+          testID="calendar.daySheet"
+        >
+          <ScrollView bounces={false} contentContainerStyle={styles.sheetBody}>
+            {dayList}
+          </ScrollView>
+        </Sheet>
+      ) : (
+        shell.layout === 'portrait' && (
+          <CentredDialog
             open={open != null}
             onClose={closeDay}
             opener={dayOpener}
-            scrimLabel={CW.close}
-            headingTakesFocus
-            testID="calendar.daySheet"
+            width={560}
+            testID="calendar.dayDialog"
           >
-            <ScrollView bounces={false} contentContainerStyle={styles.sheetBody}>
-              {dayList}
-            </ScrollView>
-          </Sheet>
-          <Sheet
-            open={feed != null}
-            onClose={() => setFeed(null)}
-            opener={subscribeRef}
-            scrimLabel={CW.close}
-            headingTakesFocus
-            testID="calendar.subscribeSheet"
-          >
-            <ScrollView bounces={false} contentContainerStyle={styles.sheetBody}>
-              {subscribePanel}
-            </ScrollView>
-          </Sheet>
-        </>
-      ) : (
-        <>
-          {shell.layout === 'portrait' && (
-            <CentredDialog
-              open={open != null}
-              onClose={closeDay}
-              opener={dayOpener}
-              width={560}
-              testID="calendar.dayDialog"
-            >
-              {dayList}
-            </CentredDialog>
-          )}
-          <CentredDialog
-            open={feed != null}
-            onClose={() => setFeed(null)}
-            opener={subscribeRef}
-            width={shell.layout === 'portrait' ? 560 : 600}
-            testID="calendar.subscribeDialog"
-          >
-            {subscribePanel}
+            {dayList}
           </CentredDialog>
-        </>
+        )
       )}
+      <CalendarFeed
+        open={feed}
+        onClose={closeFeed}
+        opener={subscribeRef}
+        phone={phone}
+        upright={shell.layout === 'portrait'}
+        organisationName={SAMPLE.organisation}
+        source={source}
+        start={feedStart}
+      />
     </>
   );
 
@@ -689,55 +751,6 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
   );
 }
 
-function StepTile({ n }: { n: number }) {
-  return (
-    <View
-      style={styles.stepTile}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      <Text size={16} weight="bold" accessible={false} style={[styles.accent, styles.figures]}>
-        {String(n)}
-      </Text>
-    </View>
-  );
-}
-
-/** No events at all: the Events first run, in place of the toolbar and the weeks. */
-function FirstRun({ wide, onTell }: { wide: boolean; onTell: (words: string) => void }) {
-  return (
-    <>
-      <SummaryCard
-        size={wide ? 'wide' : 'page'}
-        height={200}
-        backdrop={
-          <>
-            <Cover shade="side" pieces={[]} />
-            <CardPieces />
-          </>
-        }
-        testID="calendar.first"
-      >
-        <CardSays text={W.firstRunTitle} size={wide ? 28 : 24} heading />
-        <View style={styles.cardFoot}>
-          <StepButton
-            label={W.firstRunCreate}
-            onPress={() => onTell(`${W.firstRunCreate} has its own design.`)}
-            testID="calendar.first.create"
-          />
-        </View>
-      </SummaryCard>
-      <RowList
-        items={W.firstRunSteps.map((step, index) => ({
-          key: step,
-          inset: 52,
-          row: <Row title={step} lead={<StepTile n={index + 1} />} />,
-        }))}
-      />
-    </>
-  );
-}
-
 function titled(size: number) {
   return { lineHeight: size * 1.12, letterSpacing: size * -0.02 };
 }
@@ -746,8 +759,6 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   page: { flex: 1, backgroundColor: tokens.colorCard },
   secondary: { color: tokens.colorInkSecondary },
-  accent: { color: tokens.colorAccentText },
-  figures: { fontVariant: ['tabular-nums'] },
   phone: { flex: 1, paddingTop: tokens.spaceXxs, paddingHorizontal: tokens.spaceXxl },
   portrait: { flex: 1, paddingTop: 26, paddingHorizontal: tokens.space5xl },
   pane: { flex: 1, paddingTop: 26, paddingHorizontal: 30 },
@@ -781,20 +792,12 @@ const styles = StyleSheet.create({
   },
   said: { lineHeight: 15 * 1.45, marginBottom: tokens.spaceSm },
   sideRow: { flexDirection: 'row', gap: SIDE_GAP },
+  when: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
   first: { gap: 18, paddingTop: tokens.spacePillEnd },
-  cardFoot: { marginTop: 'auto' },
   failed: { gap: tokens.spaceLg, paddingTop: tokens.spaceXxs },
   sheetBody: {
     paddingTop: tokens.spaceXl,
     paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.spaceSm,
-  },
-  stepTile: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorAccentTint,
   },
 });

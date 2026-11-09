@@ -1,38 +1,38 @@
-import { type Href, router } from 'expo-router';
-import { Fragment } from 'react';
+import { type ComponentType, Fragment, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { eventColour } from '../../components/EventMesh.tsx';
-import { Glyph } from '../../components/Glyph.tsx';
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
-import { EventThumb } from '../../components/EventCard.tsx';
-import { eventHref, rowTag } from '../events/EventsModel.ts';
-import {
-  type Item,
-  type Show,
-  dayHeading,
-  dayLine,
-  isYou,
-  itemHref,
-  itemKey,
-  needsLabel,
-  needsWhen,
-  overdueIn,
-  rowTitle,
-  rowWhen,
-} from './CalendarModel.ts';
-import { CW } from './CalendarWords.ts';
+import { type Item, dayHeading, isYou, itemKey, rowTitle, rowWhen } from '../kit/calendar.ts';
+import { rowTag } from '../kit/eventsList.ts';
+import { tokens } from '../theme/tokens.ts';
 import { EventSquare, YouDot } from './CalendarWeeks.tsx';
-import { Tag } from '../../components/SummaryRows.tsx';
+import { EventThumb } from './EventCard.tsx';
+import { eventColour } from './EventMesh.tsx';
+import { Glyph } from './Glyph.tsx';
+import { Tag } from './SummaryRows.tsx';
+import { Text } from './Text.tsx';
 
 const hidden = {
   accessibilityElementsHidden: true,
   importantForAccessibility: 'no-hide-descendants',
 } as const;
 
-/** The Event owner's tag on a milestone's row: its square and "Event", in Sunk. */
-function EventTag() {
+const OWNER_WORD = {
+  event: 'timeline.owner_event',
+  you: 'timeline.owner_you',
+  automatic: 'timeline.owner_automatic',
+} as const;
+
+export interface RowProps {
+  item: Item;
+  locale: string;
+  readerZone: string;
+  big: boolean;
+  onOpen: (item: Item) => void;
+}
+
+/** A milestone owner's tag on its row: the Event square and its word, in Sunk. */
+function OwnerTag({ word }: { word: string }) {
   return (
     <View style={styles.ownerTag}>
       <EventSquare side={10} />
@@ -43,14 +43,16 @@ function EventTag() {
         accessible={false}
         style={styles.secondary}
       >
-        {CW.event}
+        {word}
       </Text>
     </View>
   );
 }
 
 /** The You owner's tag, where the Event tag sits: the dot and "You", in the attention tint. */
-function YouTag() {
+export function YouTag() {
+  const { t } = useTranslation();
+
   return (
     <View style={[styles.ownerTag, styles.youTag]}>
       <YouDot side={8} />
@@ -61,13 +63,13 @@ function YouTag() {
         accessible={false}
         style={styles.youWords}
       >
-        {CW.you}
+        {t('timeline.owner_you')}
       </Text>
     </View>
   );
 }
 
-function MilestoneLead({ item, side }: { item: Item; side: number }) {
+export function MilestoneLead({ item, side }: { item: Item; side: number }) {
   const dot = eventColour(item.event);
 
   return (
@@ -82,125 +84,124 @@ function MilestoneLead({ item, side }: { item: Item; side: number }) {
   );
 }
 
-/** A row under Only what needs you: the title and You, its time (the clock and Overdue once due), then the event it is for. */
-function NeedsRow({
+export function leadSide(big: boolean): number {
+  return big ? 48 : 40;
+}
+
+/** A day's row: its lead, the title with its tag, then its lines, opening on a tap. */
+export function DayRow({
   item,
-  locale,
   big,
+  lead,
+  tag,
+  label,
   onOpen,
+  children,
 }: {
   item: Item;
-  locale: string;
   big: boolean;
-  onOpen: (href: string) => void;
+  lead: ReactNode;
+  tag: ReactNode;
+  label: string;
+  onOpen: (item: Item) => void;
+  children: ReactNode;
 }) {
-  const late = overdueIn(item, 'needs');
-
   return (
     <Pressable
-      onPress={() => onOpen(eventHref(item.event.id, { area: 'schedule' }))}
+      onPress={() => onOpen(item)}
       style={({ pressed }) => [styles.row, big && styles.rowBig, pressed && styles.rowPressed]}
       accessibilityRole="link"
-      accessibilityLabel={needsLabel(item, locale)}
+      accessibilityLabel={label}
       testID={`calendar.row.${itemKey(item)}`}
     >
-      <MilestoneLead item={item} side={big ? 48 : 40} />
+      {lead}
       <View style={styles.words}>
         <View style={[styles.titleRow, big && styles.titleStack]}>
           <Text size={16} weight="semibold" accessible={false} style={styles.title}>
             {rowTitle(item)}
           </Text>
-          <YouTag />
+          {tag}
         </View>
-        <View style={styles.when}>
-          {late && <Glyph name="clock" size={13} ink={tokens.colorBroken} weight={2.4} />}
-          <Text
-            size={14}
-            weight={late ? 'semibold' : 'medium'}
-            accessible={false}
-            style={[late ? styles.late : styles.secondary, styles.line, styles.figures]}
-          >
-            {needsWhen(item, locale)}
-          </Text>
-        </View>
-        <Text size={14} weight="medium" accessible={false} style={[styles.secondary, styles.line]}>
-          {item.event.name}
-        </Text>
+        {children}
       </View>
       <Glyph name="chevron" size={17} ink={tokens.colorInkTertiary} weight={2.3} />
     </Pressable>
   );
 }
 
-/** A row in the Events list's system: an event's cover, name, tag and line; a milestone's tinted square, its title and Event. */
-export function CalRow({
-  item,
-  locale,
-  big,
-  onOpen,
+/** A line under a row's title, in secondary ink. */
+export function RowLine({
+  words,
+  figures = false,
+  late = false,
 }: {
-  item: Item;
-  locale: string;
-  big: boolean;
-  onOpen: (href: string) => void;
+  words: string;
+  figures?: boolean;
+  late?: boolean;
 }) {
-  const title = rowTitle(item);
-  const line = rowWhen(item, locale);
-  const tag = item.kind === 'event' ? rowTag(item.event, true) : null;
-  const you = isYou(item);
-  const side = big ? 48 : 40;
+  return (
+    <Text
+      size={14}
+      weight={late ? 'semibold' : 'medium'}
+      accessible={false}
+      style={[late ? styles.late : styles.secondary, styles.line, figures && styles.figures]}
+    >
+      {words}
+    </Text>
+  );
+}
+
+/** A row in the Events list's system: an event's cover, name, tag and line; a milestone's tinted square, its title and its owner. */
+export function CalRow({ item, locale, readerZone, big, onOpen }: RowProps) {
+  const { t } = useTranslation();
+  const line = rowWhen(item, locale, readerZone, t);
+  const tag = item.kind === 'event' ? rowTag(item.event, true, t) : null;
+  const owner = item.kind === 'milestone' ? item.milestone.owner : null;
+  const side = leadSide(big);
 
   return (
-    <Pressable
-      onPress={() => onOpen(itemHref(item))}
-      style={({ pressed }) => [styles.row, big && styles.rowBig, pressed && styles.rowPressed]}
-      accessibilityRole="link"
-      accessibilityLabel={[title, tag?.word ?? (you ? CW.you : CW.event), line].join(', ')}
-      testID={`calendar.row.${itemKey(item)}`}
+    <DayRow
+      item={item}
+      big={big}
+      lead={
+        item.kind === 'event' ? (
+          <EventThumb event={item.event} side={side} radius={12} />
+        ) : (
+          <MilestoneLead item={item} side={side} />
+        )
+      }
+      tag={
+        tag != null ? (
+          <Tag kind={tag.kind} word={tag.word} />
+        ) : owner === 'you' ? (
+          <YouTag />
+        ) : owner != null ? (
+          <OwnerTag word={t(OWNER_WORD[owner])} />
+        ) : null
+      }
+      label={t('calendar.rowLabel', {
+        title: rowTitle(item),
+        tag: tag?.word ?? (owner == null ? '' : t(OWNER_WORD[owner])),
+        when: line,
+      })}
+      onOpen={onOpen}
     >
-      {item.kind === 'event' ? (
-        <EventThumb event={item.event} side={side} radius={12} />
-      ) : (
-        <MilestoneLead item={item} side={side} />
-      )}
-      <View style={styles.words}>
-        <View style={[styles.titleRow, big && styles.titleStack]}>
-          <Text size={16} weight="semibold" accessible={false} style={styles.title}>
-            {title}
-          </Text>
-          {tag != null ? <Tag kind={tag.kind} word={tag.word} /> : you ? <YouTag /> : <EventTag />}
-        </View>
-        <Text
-          size={14}
-          weight="medium"
-          accessible={false}
-          style={[styles.secondary, styles.line, styles.figures]}
-        >
-          {line}
-        </Text>
-      </View>
-      <Glyph name="chevron" size={17} ink={tokens.colorInkTertiary} weight={2.3} />
-    </Pressable>
+      <RowLine words={line} figures />
+    </DayRow>
   );
 }
 
 export function DayRows({
   items,
-  show,
-  locale,
-  big,
-  onOpen,
+  emptyWords,
+  Row = CalRow,
+  ...row
 }: {
   items: readonly Item[];
-  show: Show;
-  locale: string;
-  big: boolean;
-  onOpen: (href: string) => void;
-}) {
-  const empty = dayLine('loaded', show, items);
-  const Row = show === 'needs' ? NeedsRow : CalRow;
-
-  if (empty != null)
+  emptyWords: string;
+  Row?: ComponentType<RowProps> | undefined;
+} & Omit<RowProps, 'item'>) {
+  if (items.length === 0)
     return (
       <Text
         size={15}
@@ -208,7 +209,7 @@ export function DayRows({
         style={[styles.secondary, styles.empty]}
         testID="calendar.emptyDay"
       >
-        {empty}
+        {emptyWords}
       </Text>
     );
 
@@ -216,8 +217,8 @@ export function DayRows({
     <View>
       {items.map((item, index) => (
         <Fragment key={itemKey(item)}>
-          {index > 0 && <View style={[styles.hairline, { marginLeft: (big ? 48 : 40) + 12 }]} />}
-          <Row item={item} locale={locale} big={big} onOpen={onOpen} />
+          {index > 0 && <View style={[styles.hairline, { marginLeft: leadSide(row.big) + 12 }]} />}
+          <Row item={item} {...row} />
         </Fragment>
       ))}
     </View>
@@ -229,23 +230,26 @@ export function DayList({
   day,
   today,
   items,
-  show,
+  emptyWords,
+  Row,
   locale,
+  readerZone,
   big,
+  onOpen,
   onClose,
 }: {
   day: string;
   today: string;
   items: readonly Item[];
-  show: Show;
+  emptyWords: string;
+  Row?: ComponentType<RowProps> | undefined;
   locale: string;
+  readerZone: string;
   big: boolean;
+  onOpen: (item: Item) => void;
   onClose: () => void;
 }) {
-  const open = (href: string) => {
-    onClose();
-    router.push(href as Href);
-  };
+  const { t } = useTranslation();
 
   return (
     <View style={styles.list} testID="calendar.dayList">
@@ -256,21 +260,32 @@ export function DayList({
           accessibilityRole="header"
           style={[styles.grow, styles.heading]}
         >
-          {dayHeading(day, today, locale)}
+          {dayHeading(day, today, locale, t)}
         </Text>
         <Pressable
           onPress={onClose}
           style={({ pressed }) => [styles.close, pressed && styles.pressed]}
           accessibilityRole="button"
-          accessibilityLabel={CW.close}
-          testID="calendar.day.close"
+          accessibilityLabel={t('calendar.close')}
+          testID="calendar.dayList.close"
         >
           <Text size={16} weight="semibold" accessible={false} style={styles.accent}>
-            {CW.close}
+            {t('calendar.close')}
           </Text>
         </Pressable>
       </View>
-      <DayRows items={items} show={show} locale={locale} big={big} onOpen={open} />
+      <DayRows
+        items={items}
+        emptyWords={emptyWords}
+        Row={Row}
+        locale={locale}
+        readerZone={readerZone}
+        big={big}
+        onOpen={(item) => {
+          onClose();
+          onOpen(item);
+        }}
+      />
     </View>
   );
 }
@@ -341,7 +356,6 @@ const styles = StyleSheet.create({
   },
   youTag: { backgroundColor: tokens.colorAttentionTint },
   youWords: { color: tokens.colorAttentionText },
-  when: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
   late: { color: tokens.colorBroken },
   hairline: { height: 1, backgroundColor: tokens.colorBorder },
   empty: { lineHeight: 15 * 1.45, paddingVertical: tokens.spaceSm },

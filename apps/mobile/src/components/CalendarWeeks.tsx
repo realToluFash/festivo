@@ -9,17 +9,11 @@ import {
   View,
   type ViewInstance,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { eventColour } from '../../components/EventMesh.tsx';
-import { Glyph } from '../../components/Glyph.tsx';
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
 import {
   type Item,
   type Piece,
-  type Show,
-  isYou,
-  overdueIn,
   type Week,
   type WeekLook,
   barLook,
@@ -27,16 +21,27 @@ import {
   dayLabel,
   dayNumber,
   firstNamed,
+  isYou,
   markWords,
   monthKey,
   offRule,
+  offsetsOf,
   piecesOf,
   rowsTop,
   shownIn,
+  topIndex,
   weekHeight,
-} from './CalendarModel.ts';
-import { say } from './CalendarWords.ts';
-import { type MarkKind, ShapeMark } from '../../components/StatusMark.tsx';
+} from '../kit/calendar.ts';
+import { tokens } from '../theme/tokens.ts';
+import { eventColour } from './EventMesh.tsx';
+import { Glyph } from './Glyph.tsx';
+import { type MarkKind, ShapeMark } from './StatusMark.tsx';
+import { Text } from './Text.tsx';
+
+/** Whether a milestone is drawn late: the demo's Only what needs you marks a passed one. */
+export type LateOf = (item: Item) => boolean;
+
+const NEVER_LATE: LateOf = () => false;
 
 const hidden = {
   accessibilityElementsHidden: true,
@@ -48,7 +53,7 @@ const FIXED = 1;
 
 export interface GridLook {
   week: WeekLook;
-  /** The iPad's and the desk's: names and words on every bar, a milestone's title after its time. */
+  /** The iPad's: names and words on every bar, a milestone's title after its time. */
   wide: boolean;
   /** The largest text: bars with no words, "+n" for more. */
   big: boolean;
@@ -202,14 +207,15 @@ function Bar({
   width: number;
   look: GridLook;
 }) {
+  const { t } = useTranslation();
   const { event, lane, from, to, first, last } = piece;
   const { rowH, gap } = look.week;
   const left = from * width + (first ? 2 : 0);
   const radius = rowH >= 18 ? 6 : 4;
   const kind = barLook(event);
   const dot = eventColour(event);
-  const mark = markOf(offRule(event)?.kind);
-  const words = look.big ? '' : barWords(event, look.wide, to - from + 1);
+  const mark = markOf(offRule(event, t)?.kind);
+  const words = look.big ? '' : barWords(event, look.wide, to - from + 1, t);
 
   return (
     <View
@@ -273,16 +279,16 @@ function Mark({
   width,
   look,
   locale,
-  show,
+  lateOf,
 }: {
   piece: Extract<Piece, { kind: 'mark' }>;
   width: number;
   look: GridLook;
   locale: string;
-  show: Show;
+  lateOf: LateOf;
 }) {
   const { rowH, gap } = look.week;
-  const late = overdueIn(piece.item, show);
+  const late = lateOf(piece.item);
 
   return (
     <View
@@ -341,6 +347,7 @@ function DayCell({
   locale: string;
   onDay: (day: string, opener: ViewInstance | null) => void;
 }) {
+  const { t } = useTranslation();
   const ref = useRef<ViewInstance>(null);
 
   return (
@@ -349,7 +356,7 @@ function DayCell({
       onPress={() => onDay(day, ref.current)}
       style={[styles.day, { left: index * width, width, height }]}
       accessibilityRole="button"
-      accessibilityLabel={dayLabel(day, today, count, locale)}
+      accessibilityLabel={dayLabel(day, today, count, locale, t)}
       accessibilityState={{ selected: lit }}
       testID={`calendar.day.${day}`}
     >
@@ -373,7 +380,7 @@ export const WeekRow = memo(function WeekRow({
   today,
   lit,
   locale,
-  show,
+  lateOf,
   walked,
   onDay,
 }: {
@@ -383,11 +390,12 @@ export const WeekRow = memo(function WeekRow({
   today: string;
   lit: string | null;
   locale: string;
-  show: Show;
+  lateOf: LateOf;
   /** Out of the pinned month, a week is left to scrolling, so a screen reader walks that month's weeks. */
   walked: boolean;
   onDay: (day: string, opener: ViewInstance | null) => void;
 }) {
+  const { t } = useTranslation();
   const cw = width / 7;
   const height = weekHeight(week, look.week);
   const { fit, rowH, gap, moreH } = look.week;
@@ -426,7 +434,7 @@ export const WeekRow = memo(function WeekRow({
               width={cw}
               look={look}
               locale={locale}
-              show={show}
+              lateOf={lateOf}
             />
           ),
         )}
@@ -453,7 +461,9 @@ export const WeekRow = memo(function WeekRow({
                   },
                 ]}
               >
-                {look.big ? say.moreShort(more) : say.more(more)}
+                {look.big
+                  ? t('calendar.more', { count: more })
+                  : t('calendar.moreItems', { count: more })}
               </Text>
             )
           );
@@ -539,7 +549,7 @@ export function WeekList({
   lit,
   pinned,
   locale,
-  show,
+  lateOf = NEVER_LATE,
   start,
   bottom,
   onDay,
@@ -553,7 +563,7 @@ export function WeekList({
   lit: string | null;
   pinned: CalendarMonth;
   locale: string;
-  show: Show;
+  lateOf?: LateOf | undefined;
   start: number;
   bottom: number;
   onDay: (day: string, opener: ViewInstance | null) => void;
@@ -591,7 +601,7 @@ export function WeekList({
           today={today}
           lit={lit}
           locale={locale}
-          show={show}
+          lateOf={lateOf}
           walked={item.cells.some((cell) => cell.day.startsWith(key))}
           onDay={onDay}
         />
@@ -603,33 +613,9 @@ export function WeekList({
       scrollEventThrottle={16}
       contentContainerStyle={{ paddingBottom: bottom }}
       showsVerticalScrollIndicator={false}
-      testID="calendar.weeks"
+      testID="calendar.grid"
     />
   );
-}
-
-export function offsetsOf(weeks: readonly Week[], look: WeekLook): number[] {
-  const offsets = [0];
-
-  for (const week of weeks)
-    offsets.push((offsets[offsets.length - 1] ?? 0) + weekHeight(week, look));
-
-  return offsets;
-}
-
-/** The week whose top is at or above `y`, the one the month is pinned from. */
-export function topIndex(offsets: readonly number[], y: number): number {
-  let low = 0;
-  let high = Math.max(0, offsets.length - 2);
-
-  while (low < high) {
-    const middle = Math.ceil((low + high) / 2);
-
-    if ((offsets[middle] ?? 0) <= y + 1) low = middle;
-    else high = middle - 1;
-  }
-
-  return low;
 }
 
 const styles = StyleSheet.create({

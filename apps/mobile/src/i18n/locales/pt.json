@@ -1991,14 +1991,22 @@
     "showEvents": "Só eventos",
     "more_one": "+{{count, number}}",
     "more_other": "+{{count, number}}",
+    "moreItems_one": "+{{count, number}} more",
+    "moreItems_other": "+{{count, number}} more",
     "more_many": "+{{count, number}}",
+    "moreItems_many": "+{{count, number}} more",
     "close": "Fechar",
     "timeInZone": "{{time}} {{timeZone}}",
     "range": "De {{from}} até {{to}}",
     "loading": "A carregar o calendário…",
     "failed": "Não foi possível carregar o calendário. Verifique a ligação e tente novamente. Nada foi alterado.",
     "emptyMonth": "Nada no calendário em {{month}}.",
-    "emptyDay": "Nada neste dia."
+    "emptyDay": "Nada neste dia.",
+    "barStatus": "{{name}} · {{status}}",
+    "barStatusFirst": "{{status}} · {{name}}",
+    "timeAndRange": "{{time}} · {{range}}",
+    "rowLabel": "{{title}}, {{tag}}, {{when}}",
+    "retry": "Try again"
   },
   "calendarFeed": {
     "open": "Subscrever na sua aplicação de calendário",

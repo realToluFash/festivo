@@ -2,16 +2,15 @@ import type { CalendarView } from '@soirely/domain';
 import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 
-import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
-import { useReadOut } from '../../components/ReadOut.tsx';
-import { Text } from '../../components/Text.tsx';
-import { motionEase } from '../../motion.ts';
-import { useReducedMotion } from '../../reducedMotion.ts';
-import { tokens } from '../../theme/tokens.ts';
-import { type Show, SHOWS } from './CalendarModel.ts';
-import { CW, say } from './CalendarWords.ts';
-import { type Anchor, AnchoredMenu } from '../../components/Summary.tsx';
+import { motionEase } from '../motion.ts';
+import { useReducedMotion } from '../reducedMotion.ts';
+import { tokens } from '../theme/tokens.ts';
+import { Glyph, type GlyphName } from './Glyph.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import { type Anchor, AnchoredMenu } from './Summary.tsx';
+import { Text } from './Text.tsx';
 
 /** The toolbar's words grow to twice their size and no further, so Month, Show and the month's name are never cut. */
 const DOUBLED = 2;
@@ -22,9 +21,15 @@ const hidden = {
 } as const;
 
 const VIEWS: readonly [CalendarView, string][] = [
-  ['month', CW.month],
-  ['agenda', CW.agenda],
+  ['month', 'calendar.month'],
+  ['agenda', 'calendar.agenda'],
 ];
+
+/** One of Show's options: the first one listed shows everything. */
+export interface ShowChoice<S extends string> {
+  value: S;
+  word: string;
+}
 
 /** View, main's radiogroup, in B's segment: the chosen half white with a tick. */
 export function ViewSwitch({
@@ -36,10 +41,13 @@ export function ViewSwitch({
   onView: (view: CalendarView) => void;
   big: boolean;
 }) {
+  const { t } = useTranslation();
+
   return (
     <View style={[styles.segment, big && styles.segmentBig]} accessibilityRole="radiogroup">
-      {VIEWS.map(([each, word]) => {
+      {VIEWS.map(([each, key]) => {
         const on = each === view;
+        const word = t(key);
 
         return (
           <Pressable
@@ -69,26 +77,24 @@ export function ViewSwitch({
   );
 }
 
-const SHOW_WORDS: Record<Show, string> = {
-  all: CW.showAll,
-  events: CW.showEvents,
-  needs: CW.showNeedsYou,
-};
-
 /** Show, a 44 pill in Surf that reads its choice in Tint while one is on; a long choice wraps inside it, never cut. */
-export function ShowButton({
+export function ShowButton<S extends string>({
   show,
+  choices,
   big,
   onPress,
   ref,
 }: {
-  show: Show;
+  show: S;
+  choices: readonly ShowChoice<S>[];
   big: boolean;
   onPress: () => void;
   ref: Ref<ViewInstance>;
 }) {
-  const only = show !== 'all';
+  const { t } = useTranslation();
+  const only = show !== choices[0]?.value;
   const ink = only ? tokens.colorAccentText : tokens.colorInk;
+  const word = choices.find((choice) => choice.value === show)?.word ?? '';
 
   return (
     <Pressable
@@ -102,7 +108,7 @@ export function ShowButton({
         pressed && styles.pressed,
       ]}
       accessibilityRole="button"
-      accessibilityLabel={say.choiceIn(CW.show, SHOW_WORDS[show])}
+      accessibilityLabel={t('calendar.choiceIn', { group: t('calendar.show'), choice: word })}
       testID="calendar.show"
     >
       <Glyph name="filter" size={17} ink={ink} weight={2.2} />
@@ -113,24 +119,26 @@ export function ShowButton({
         accessible={false}
         style={[styles.showWords, { color: ink }]}
       >
-        {only ? SHOW_WORDS[show] : CW.show}
+        {only ? word : t('calendar.show')}
       </Text>
     </Pressable>
   );
 }
 
 /** Show's choices, under the button with its right edge on Show's. */
-export function ShowMenu({
+export function ShowMenu<S extends string>({
   at,
   show,
+  choices,
   opener,
   onShow,
   onClose,
 }: {
   at: Anchor | null;
-  show: Show;
+  show: S;
+  choices: readonly ShowChoice<S>[];
   opener: RefObject<ViewInstance | null>;
-  onShow: (show: Show) => void;
+  onShow: (show: S) => void;
   onClose: () => void;
 }) {
   return (
@@ -142,15 +150,14 @@ export function ShowMenu({
       testID="calendar.showMenu"
     >
       <View style={styles.menu}>
-        {SHOWS.map((each) => {
-          const on = each === show;
-          const word = SHOW_WORDS[each];
+        {choices.map(({ value, word }) => {
+          const on = value === show;
 
           return (
             <Pressable
-              key={each}
+              key={value}
               onPress={() => {
-                onShow(each);
+                onShow(value);
                 onClose();
               }}
               style={({ pressed }) => [
@@ -161,7 +168,7 @@ export function ShowMenu({
               accessibilityRole="radio"
               accessibilityState={{ checked: on }}
               accessibilityLabel={word}
-              testID={`calendar.show.${each}`}
+              testID={`calendar.show.${value}`}
             >
               <Text
                 size={16}
@@ -216,11 +223,13 @@ export function Stepper({
   onStep: (step: -1 | 1) => void;
   onToday: () => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.stepper}>
       <RoundStep
         glyph="back"
-        label={CW.previous}
+        label={t('calendar.previous')}
         onPress={() => onStep(-1)}
         testID="calendar.previous"
       />
@@ -228,7 +237,7 @@ export function Stepper({
         onPress={onToday}
         style={({ pressed }) => [styles.pill, running && styles.pillOn, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={CW.today}
+        accessibilityLabel={t('calendar.today')}
         testID="calendar.today"
       >
         <Text
@@ -238,10 +247,15 @@ export function Stepper({
           accessible={false}
           style={{ color: running ? tokens.colorAccentText : tokens.colorInk }}
         >
-          {CW.today}
+          {t('calendar.today')}
         </Text>
       </Pressable>
-      <RoundStep glyph="chevron" label={CW.next} onPress={() => onStep(1)} testID="calendar.next" />
+      <RoundStep
+        glyph="chevron"
+        label={t('calendar.next')}
+        onPress={() => onStep(1)}
+        testID="calendar.next"
+      />
     </View>
   );
 }
@@ -313,14 +327,16 @@ export function MonthName({ name, size }: { name: string; size: number }) {
 
 /** Subscribe in your calendar app: a 44 round button in Surf on the phone. */
 export function SubscribeRound({ onPress, ref }: { onPress: () => void; ref: Ref<ViewInstance> }) {
+  const { t } = useTranslation();
+
   return (
     <Pressable
       ref={ref}
       onPress={onPress}
       style={({ pressed }) => [styles.round, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={CW.subscribe}
-      testID="calendar.subscribe"
+      accessibilityLabel={t('calendarFeed.open')}
+      testID="calendarFeed.open"
     >
       <Glyph name="calendar" size={20} ink={tokens.colorInk} weight={2.1} />
     </Pressable>

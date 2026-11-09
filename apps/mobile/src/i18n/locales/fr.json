@@ -1991,14 +1991,22 @@
     "showEvents": "Événements seulement",
     "more_one": "+{{count, number}}",
     "more_other": "+{{count, number}}",
+    "moreItems_one": "+{{count, number}} more",
+    "moreItems_other": "+{{count, number}} more",
     "more_many": "+{{count, number}}",
+    "moreItems_many": "+{{count, number}} more",
     "close": "Fermer",
     "timeInZone": "{{time}} {{timeZone}}",
     "range": "Du {{from}} au {{to}}",
     "loading": "Chargement du calendrier…",
     "failed": "Le calendrier n’a pas pu être chargé. Vérifiez votre connexion, puis réessayez. Rien n’a été modifié.",
     "emptyMonth": "Rien au calendrier en {{month}}.",
-    "emptyDay": "Rien ce jour-là."
+    "emptyDay": "Rien ce jour-là.",
+    "barStatus": "{{name}} · {{status}}",
+    "barStatusFirst": "{{status}} · {{name}}",
+    "timeAndRange": "{{time}} · {{range}}",
+    "rowLabel": "{{title}}, {{tag}}, {{when}}",
+    "retry": "Try again"
   },
   "calendarFeed": {
     "open": "S’abonner dans votre agenda",

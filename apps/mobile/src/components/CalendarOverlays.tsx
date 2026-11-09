@@ -9,14 +9,14 @@ import {
   type ViewInstance,
   useWindowDimensions,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { useFocusBack, useWindowTurn } from '../../components/Sheet.tsx';
-import { TURNS_WITH_THE_APP } from '../../layout/orientations.ts';
-import { glide } from '../../motion.ts';
-import { useReducedMotion } from '../../reducedMotion.ts';
-import { tokens } from '../../theme/tokens.ts';
-import { useModalOpen } from '../../updateRequired.ts';
-import { CW } from './CalendarWords.ts';
+import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
+import { glide } from '../motion.ts';
+import { useReducedMotion } from '../reducedMotion.ts';
+import { tokens } from '../theme/tokens.ts';
+import { useModalOpen } from '../updateRequired.ts';
+import { useFocusBack, useWindowTurn } from './Sheet.tsx';
 
 /** An iPad's dialog as the boards draw it: centred, 560 or 600 wide, radius 28, over the dialog scrim; it fades in and out. */
 export function CentredDialog({
@@ -37,6 +37,7 @@ export function CentredDialog({
   testID?: string;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   const window = useWindowDimensions();
   const [present, setPresent] = useState(open);
   const [fade] = useState(() => new Animated.Value(0));
@@ -72,7 +73,7 @@ export function CentredDialog({
           style={StyleSheet.absoluteFill}
           onPress={onClose}
           accessibilityRole="button"
-          accessibilityLabel={CW.close}
+          accessibilityLabel={t('calendar.close')}
         />
         <Animated.View
           style={[
