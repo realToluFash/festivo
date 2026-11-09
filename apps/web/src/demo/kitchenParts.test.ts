@@ -49,19 +49,19 @@ describe('the Main’s sample room', () => {
 });
 
 describe('part totals on an In parts course (sc-34244)', () => {
-  it('lists each dish’s parts under it in the menu’s order, a choice by option', () => {
+  it('lists each dish’s parts under it in the menu’s order, a choice by option, None for me on no line', () => {
     expect(row('inParts', 'Jollof rice')).toMatchObject({
       count: 43,
-      parts: ['Rice · 43', 'Chicken 26 · Beef 17', 'Plantain · 43'],
+      parts: ['Rice · 43', 'Chicken · 43', 'Plantain 24 · Salad 11 · Moi moi 6'],
     });
   });
 
-  it('sums a dish’s variants into its parts, and counts no line for None for me', () => {
-    const bass = row('inParts', 'Grilled sea bass');
+  it('sums a dish’s variants into its parts', () => {
+    const fish = row('inParts', 'Grilled fish');
     const variants = sheet('inParts').rows.filter((one) => one.kind === 'variant');
 
-    expect(variants.map((one) => one.count).reduce((a, b) => a + b, 0)).toBe(bass?.count);
-    expect(bass?.parts).toEqual(['Rice · 33', 'Sea bass · 33', 'Pepper sauce 22']);
+    expect(variants.map((one) => one.count).reduce((a, b) => a + b, 0)).toBe(fish?.count);
+    expect(fish?.parts).toEqual(['Fish · 33', 'Pepper sauce · 33', 'Yam chips · 33']);
   });
 
   it('keeps a dish with no parts as sc-3911’s row alone', () => {
@@ -85,7 +85,7 @@ describe('part totals on an In parts course (sc-34244)', () => {
 
   it('counts a guest with an allergy record and a diet record as one plate', () => {
     const course = mainCourse('in_parts');
-    const jollof = { dish: 'm-jollof', variant: null, answers: { 'q-meat': 'Chicken' } };
+    const jollof = { dish: course.dishes[0]?.id ?? '', variant: null, answers: {} };
     const both: Guest = {
       id: 'g-amaka',
       table: 't1',
@@ -115,8 +115,8 @@ describe('a guest who skipped the course', () => {
     expect(now.rows.find((one) => one.name === PW.skipped)?.count).toBe(2);
     expect(now.rows.find((one) => one.name === 'Jollof rice')?.parts).toEqual([
       'Rice · 41',
-      'Chicken 24 · Beef 17',
-      'Plantain · 41',
+      'Chicken · 41',
+      'Plantain 22 · Salad 11 · Moi moi 6',
     ]);
     expect(now.servedWith).toEqual(['Drink · 94']);
     expect(was.plated).toBe('Plated at the pass · 45');
@@ -143,10 +143,48 @@ describe('By table on a Family style course (sc-34244)', () => {
     ]);
   });
 
-  it('groups a table’s parts under their dish, never adding two dishes’ Rice together, and None for me is no count', () => {
-    expect(tables.find((one) => one.name === 'Table 4')?.lines).toEqual([
-      'Jollof rice: Rice 3 · Chicken 1 · Beef 2 · Plantain 3',
-      'Grilled sea bass: Rice 1 · Sea bass 1',
+  it('groups a table’s parts under their dish, and None for me is no count', () => {
+    expect(tables.find((one) => one.name === 'Table 1')?.lines).toEqual([
+      'Jollof rice: Rice 4 · Chicken 4 · Plantain 2 · Salad 1',
+      'Grilled fish: Fish 1 · Pepper sauce 1 · Yam chips 1',
+    ]);
+  });
+
+  it('never adds two dishes’ parts of one name together', () => {
+    const rice = { kind: 'fixed', name: 'Rice' } as const;
+    const two: PartsCourse = {
+      ...course,
+      platedAt: [],
+      dishes: [
+        {
+          id: 'a',
+          name: 'Jollof rice',
+          variants: [],
+          parts: [rice, { kind: 'fixed', name: 'Chicken' }],
+        },
+        {
+          id: 'b',
+          name: 'Fried rice',
+          variants: [],
+          parts: [rice, { kind: 'fixed', name: 'Beef' }],
+        },
+      ],
+    };
+    const eats = (id: string, dish: string): Guest => ({
+      id,
+      table: 't1',
+      allergies: [],
+      diets: [],
+      pick: { dish, variant: null, answers: {} },
+    });
+    const one: Room = {
+      tables: [{ id: 't1', name: 'Table 1' }],
+      guests: [eats('g1', 'a'), eats('g2', 'a'), eats('g3', 'b')],
+    };
+
+    expect(byTable(two, one)[0]?.lines).toEqual([
+      'Jollof rice: Rice 2 · Chicken 2',
+      'Fried rice: Rice 1 · Beef 1',
     ]);
   });
 
@@ -154,8 +192,8 @@ describe('By table on a Family style course (sc-34244)', () => {
     expect(tables.find((one) => one.name === 'Table 3')?.lines.at(-1)).toBe('Kitchen’s choice 1');
     expect(tables.find((one) => one.name === 'Table 6')?.lines.at(-1)).toBe('Needs the host 1');
     expect(tables.find((one) => one.name === PW.noTable)?.lines).toEqual([
-      'Jollof rice: Rice 2 · Chicken 1 · Beef 1 · Plantain 2',
-      'Grilled sea bass: Rice 1 · Sea bass 1 · Pepper sauce 1',
+      'Jollof rice: Rice 2 · Chicken 2 · Plantain 1 · Salad 1',
+      'Grilled fish: Fish 1 · Pepper sauce 1 · Yam chips 1',
       'Not chosen yet 1',
     ]);
   });
@@ -181,7 +219,7 @@ describe('By table on a Family style course (sc-34244)', () => {
     const onLines = tables
       .flatMap((one) => one.lines)
       .map((line) => {
-        const [, first] = /^(?:Jollof rice|Grilled sea bass): Rice (\d+)/u.exec(line) ?? [];
+        const [, first] = /^[^:]+: \D+(\d+)/u.exec(line) ?? [];
         const [, tail] = /(\d+)$/u.exec(line) ?? [];
 
         return Number(first ?? tail);

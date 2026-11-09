@@ -1,6 +1,14 @@
 import { demoWords } from './demoWords.ts';
 import { BASE, type Figures, allergic } from './kitchenChanges.ts';
-import { type HowServed, MW, usesParts } from './menuServed.ts';
+import {
+  type Dish as MenuDish,
+  type HowServed,
+  MENU_FISH,
+  MENU_JOLLOF,
+  MW,
+  choiceOf,
+  usesParts,
+} from './menuServed.ts';
 import { natural } from './seating.ts';
 
 /** The kitchen sheet's parts (sc-34244): a course served In parts or Family style counts each part under its dish, then Served with this course, Plated at the pass and, Family style only, By table. */
@@ -298,30 +306,23 @@ export const TABLES: readonly Table[] = [
   })),
 ];
 
-const JOLLOF: Dish = {
-  id: 'm-jollof',
-  name: 'Jollof rice',
-  variants: [],
-  parts: [
-    { kind: 'fixed', name: 'Rice' },
-    { kind: 'choice', id: 'q-meat', question: 'Chicken or beef?', options: ['Chicken', 'Beef'] },
-    { kind: 'fixed', name: 'Plantain' },
-  ],
-};
+function fromMenu(dish: MenuDish): Dish {
+  return {
+    id: dish.id,
+    name: dish.name,
+    variants: dish.variants.map((name, index) => ({ id: `${dish.id}-v${index + 1}`, name })),
+    parts: dish.parts.flatMap((part): Part[] => {
+      if (part.kind === 'fixed') return [{ kind: 'fixed', name: part.name }];
 
-const BASS: Dish = {
-  id: 'm-bass',
-  name: 'Grilled sea bass',
-  variants: [
-    { id: 'm-bass-butter', name: 'With butter' },
-    { id: 'm-bass-dairy', name: 'Dairy-free' },
-  ],
-  parts: [
-    { kind: 'fixed', name: 'Rice' },
-    { kind: 'fixed', name: 'Sea bass' },
-    { kind: 'choice', id: 'q-sauce', question: 'Pepper sauce?', options: ['Pepper sauce'] },
-  ],
-};
+      const choice = choiceOf(dish, part.choiceId);
+
+      return choice == null ? [] : [{ kind: 'choice', ...choice }];
+    }),
+  };
+}
+
+const JOLLOF = fromMenu(MENU_JOLLOF);
+const FISH = fromMenu(MENU_FISH);
 
 const RISOTTO: Dish = { id: 'm-risotto', name: 'Mushroom risotto', variants: [], parts: [] };
 
@@ -330,27 +331,27 @@ export function mainCourse(howServed: HowServed, platedAt: readonly string[] = [
     id: 'm',
     name: 'Main',
     howServed,
-    dishes: [JOLLOF, BASS, RISOTTO],
+    dishes: [JOLLOF, FISH, RISOTTO],
     ownParts: hasParts({ howServed }) ? ['Drink'] : [],
     platedAt,
   };
 }
 
-// A seat: JC/JB Jollof chicken/beef; Bp/Bn bass butter, pepper sauce/none; Dp/Dn bass dairy-free; R risotto;
-// K Kitchen's choice; H Needs the host; N not chosen yet. A star takes the next of RECORDS: the allergic guests, then the diets.
+// A seat: JP/JS/JM Jollof with Plantain/Salad/Moi moi, J with None for me; C/T fish, Croaker/Tilapia; R risotto;
+// K Kitchen's choice; H Needs the host; N not chosen yet. A star takes the next of records(): the allergic guests, then the diets.
 const SEATS: readonly [string | null, string][] = [
-  ['top', 'JC JC* JB Bp Bp* Dn* R* R JC JB* Bn JC'],
-  ['t1', 'JC JC JB JB* Bp* Bn R* JC'],
-  ['t2', 'JC* JB Bp Bp Dp* R JC JC*'],
-  ['t3', 'JC JC JB K Bp Dn* R* JB'],
-  ['t4', 'JC JC* JB JB Bp* Bn Dp* R'],
-  ['t5', 'JC JB* JB Bp* Bp Dp* R* N'],
-  ['t6', 'JC JC* JB Bn Dp Dn* R* H'],
-  ['t7', 'JC* JB* Bp* Dp* R* R* JC* Bn*'],
-  ['t8', 'JC JC JB* Bp Dp* Dn R K'],
-  ['t9', 'JC JB* JC* Bp Bn* Dp R* N'],
-  ['t10', 'JC JC JB Bp* Dp Dn* R N*'],
-  [null, 'JC JB Bp N'],
+  ['top', 'JP JP* JS C C* T* R* R JP JM* C JP'],
+  ['t1', 'JP J JS JM* C* C R* JP'],
+  ['t2', 'JP* JS C C T* R JP JP*'],
+  ['t3', 'JP JP JS K C T* R* JM'],
+  ['t4', 'JP JP* JS JM C* C T* R'],
+  ['t5', 'JP JS* JM C* C T* R* N'],
+  ['t6', 'JP JP* JS C T T* R* H'],
+  ['t7', 'JP* JS* C* T* R* R* J* C*'],
+  ['t8', 'JP JP JS* C T* T R K'],
+  ['t9', 'JP JM* JP* C C* T R* N'],
+  ['t10', 'JP JP JS C* T T* R N*'],
+  [null, 'JP JS C N'],
 ];
 
 type Records = Pick<Guest, 'allergies' | 'diets'>;
@@ -366,23 +367,28 @@ function records(): Records[] {
   ];
 }
 
+const SIDES: Readonly<Record<string, number>> = { P: 0, S: 1, M: 2 };
+
+function sideAnswers(code: string): Record<string, string | null> {
+  const side = JOLLOF.parts.find((part) => part.kind === 'choice');
+
+  if (side?.kind !== 'choice') return {};
+
+  return { [side.id]: side.options[SIDES[code.slice(1)] ?? -1] ?? null };
+}
+
 function pickOf(code: string): GuestPick {
   const short = code.replace('*', '');
   const none = { K: 'kitchen', X: 'skipped', H: 'host', N: 'notChosen' } as const;
 
   if (short in none) return { none: none[short as keyof typeof none] };
   if (short === 'R') return { dish: RISOTTO.id, variant: null, answers: {} };
-  if (short.startsWith('J'))
-    return {
-      dish: JOLLOF.id,
-      variant: null,
-      answers: { 'q-meat': short === 'JC' ? 'Chicken' : 'Beef' },
-    };
+  if (short.startsWith('J')) return { dish: JOLLOF.id, variant: null, answers: sideAnswers(short) };
 
   return {
-    dish: BASS.id,
-    variant: short.startsWith('B') ? 'm-bass-butter' : 'm-bass-dairy',
-    answers: { 'q-sauce': short.endsWith('p') ? 'Pepper sauce' : null },
+    dish: FISH.id,
+    variant: FISH.variants[short === 'C' ? 0 : 1]?.id ?? null,
+    answers: {},
   };
 }
 
@@ -398,7 +404,7 @@ export function mainRoom({ skipped = 0, seatAll = false }: RoomOptions = {}): Ro
 
   for (const [table, codes] of SEATS)
     codes.split(' ').forEach((code, index) => {
-      const skips = skipping > 0 && code.startsWith('JC');
+      const skips = skipping > 0 && code.startsWith('JP');
       const recorded = code.endsWith('*') ? left.shift() : undefined;
 
       if (skips) skipping -= 1;
@@ -435,12 +441,14 @@ export const PARTS_SAMPLES: Record<PartsSample, () => PartsSheet> = {
   plated: () => ({ course: mainCourse('plated'), room: mainRoom() }),
 };
 
-/** The sheet around the parts: sc-3911's Allergies and Diets as they are, the Main's dish named as this menu names it, and one guest with both an allergy and a diet. */
+/** The sheet around the parts: sc-3911's Allergies and Diets as they are, the Main's dishes named as the Menu names them, and one guest with both an allergy and a diet. */
 export const PARTS_FIGURES: Figures = {
   ...BASE,
   needs: BASE.needs.map((need) => ({
     ...need,
-    dishes: need.dishes.replaceAll('Jollof rice with chicken', 'Jollof rice'),
+    dishes: need.dishes
+      .replaceAll('Jollof rice with chicken', JOLLOF.name)
+      .replaceAll('Grilled sea bass', FISH.name),
     diets: need.guest === 'g-amaka' ? ['halal'] : need.diets,
   })),
   otherDiets: { ...BASE.otherDiets, halal: (BASE.otherDiets.halal ?? 0) - 1 },

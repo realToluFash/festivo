@@ -507,9 +507,9 @@ describe('Each part of a course, and each table’s platters (sc-34244)', () => 
 
       const block = main();
       expect(within(block).getByText(PW.inParts)).toBeDefined();
-      expect(within(block).getByText('Chicken 26 · Beef 17')).toBeDefined();
+      expect(within(block).getByText('Plantain 24 · Salad 11 · Moi moi 6')).toBeDefined();
       expect(within(block).getByText('Rice · 43')).toBeDefined();
-      expect(within(block).getByText('Rice · 33')).toBeDefined();
+      expect(within(block).getByText('Fish · 33')).toBeDefined();
       expect(within(block).getByRole('list', { name: PW.servedWith }).textContent).toBe(
         'Drink · 96',
       );
