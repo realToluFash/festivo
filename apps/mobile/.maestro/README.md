@@ -155,7 +155,11 @@ held request while it drains. `stopped` to `paused` passes through
 up, and Soirely answers anything asked in those seconds, so on Android the harness takes the
 API's `adb reverse` away for that move and puts it back once the API is held: the app is refused
 throughout, with no network change announced. `qa-env.mjs ios`, `android` and `release` unpause
-a paused API before starting the stack, so a batch killed mid-hold does not block the next run.
+a paused API before starting the stack, so a batch killed mid-hold does not block the next run,
+and wait out the unhealthy status a long pause leaves before `up --wait`, which would give up on
+it. The `sc17675-*` checks turn the device with `${ORIENT}`: pass `ORIENT=PORTRAIT`
+(`LANDSCAPE_LEFT` on a landscape-natural tablet), or Maestro reports the unset value as a driver
+crash.
 A picture at a held moment, which `takeScreenshot` would take only once the screen settles, is
 `ASK: /shot?name=<name>`: the harness screenshots the device at once and saves it with the
 batch's screenshots under the same check-and-language prefix, so `held-1` in an English batch
