@@ -40,7 +40,8 @@ export interface QueueState {
   rivalFirst: boolean;
   moved: { place: string; by: string } | null;
   waiterToast: string;
-  asWell: boolean;
+  on: SectionId[];
+  line: string;
   started: boolean;
 }
 
@@ -159,7 +160,8 @@ export function fresh(): QueueState {
     rivalFirst: false,
     moved: null,
     waiterToast: '',
-    asWell: false,
+    on: ['A'],
+    line: '',
     started: true,
   };
 }
@@ -196,7 +198,30 @@ export function isServed(p: Place): boolean {
 }
 
 export function waiterSections(s: QueueState): SectionId[] {
-  return s.asWell ? ['A', 'B'] : ['A'];
+  return s.on;
+}
+
+/** The waiter as Team left them (sc-36034): on these sections now, told so in one line. */
+export function placedOn(on: readonly SectionId[], line: string): QueueState {
+  return { ...fresh(), on: [...on], line };
+}
+
+/** A tray the waiter started in a section they are no longer on: still theirs to finish. */
+export function trayToFinish(s: QueueState): { place: Place; section: SectionId } | null {
+  for (const id of SECTIONS.map((x) => x.id))
+    if (!s.on.includes(id))
+      for (const n of s.queues[id]) {
+        const p = s.places[n];
+        if (p != null && p.trayOf === WAITER && p.onTray > 0) return { place: p, section: id };
+      }
+  return null;
+}
+
+/** Where the waiter is, as Next's header says it: their first section, and any other as well. */
+export function onWords(on: readonly SectionId[]): string {
+  const [first, ...rest] = on.map((id) => sectionOf(id).name);
+  if (first == null) return 'On no section';
+  return rest.length === 0 ? first : `${first}, and ${andList(rest)} as well`;
 }
 
 export interface WaiterNext {
@@ -534,10 +559,10 @@ export function seed(name: QueueStateName): QueueState {
       return settle(move(s, 'A', 'Row C', 'up'));
     case 'asWell':
       Object.assign(s.places['Table 6'] ?? {}, { owed: 1, owedAt: '20:28' });
-      return { ...s, asWell: true };
+      return { ...s, on: ['A', 'B'] };
     case 'asWellTie':
       Object.assign(s.places['Table 10'] ?? {}, { owed: 0, owedAt: '' });
       s.queues.A = ['Table 5', 'Table 2', 'Table 4', 'Table 10', 'Row C', 'Seats 1 to 10'];
-      return { ...s, asWell: true };
+      return { ...s, on: ['A', 'B'] };
   }
 }

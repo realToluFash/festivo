@@ -23,8 +23,8 @@ const LEAD: Record<TeamStateName, readonly [string, string]> = {
 };
 
 const MOVED: Partial<Record<TeamStateName, readonly [string, string]>> = {
-  movedAsWell: ['Kunle’s Next · on two sections', 'Owed first, then both queues mixed'],
-  movedInstead: ['Kunle’s Next · Instead', 'His started tray at Table 4 stays his'],
+  movedAsWell: ['Kunle’s Next · on two sections', 'Queue’s Next: the oldest owed across both'],
+  movedInstead: ['Kunle’s Next · Instead', 'Queue’s Next, his tray at Table 4 still his'],
   movedKitchen: ['Tayo’s station · Grill and Fryer', 'Each tray names its station'],
 };
 

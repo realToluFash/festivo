@@ -1,3 +1,5 @@
+import { fresh as freshQueue } from '../queue/QueueModel.ts';
+
 /** Team (sc-36034, Team.dc.html on page 35): who is on each section and kitchen station tonight, and the floor lead's move between them. */
 
 export type PlaceKind = 'section' | 'kitchen';
@@ -27,7 +29,8 @@ export interface MoveSheet {
 }
 
 export type Notice =
-  { kind: 'need'; place: string } | { kind: 'conflict'; who: string; by: string; to: string };
+  | { kind: 'need'; place: string }
+  | { kind: 'conflict'; who: string; by: string; to: string; place: string };
 
 export interface TeamState {
   on: Record<string, string[]>;
@@ -40,7 +43,6 @@ export interface TeamState {
   empty: boolean;
   rival: boolean;
   lines: Record<string, string>;
-  waiter: string;
   disher: string;
   focus: string | null;
   opened: string | null;
@@ -87,40 +89,10 @@ export const STAFF: readonly Person[] = [
   { name: 'Emeka Obi', access: 'floor', here: false, on: [] },
 ];
 
-export interface Table {
-  table: string;
-  toServe: number;
-  owed?: number;
-  owedAt?: string;
+/** The tray a waiter has out now, from the Queue board's sample: theirs to finish wherever Team puts them. */
+export function trayOutOf(who: string): string | null {
+  return Object.values(freshQueue().places).find((p) => p.trayOf === who)?.name ?? null;
 }
-
-/** Sample queues, as on the Queue board: what the waiter's Next mixes, not Team's own data. */
-export const TABLES: Record<string, readonly Table[]> = {
-  A: [
-    { table: 'Table 2', toServe: 5 },
-    { table: 'Table 5', toServe: 8 },
-    { table: 'Table 3', toServe: 6 },
-  ],
-  B: [
-    { table: 'Table 9', toServe: 4 },
-    { table: 'Table 6', toServe: 6 },
-    { table: 'Table 11', toServe: 10 },
-  ],
-  C: [
-    { table: 'Table 12', toServe: 10 },
-    { table: 'Table 13', toServe: 8, owed: 1, owedAt: '20:31' },
-    { table: 'Table 14', toServe: 6 },
-  ],
-  D: [
-    { table: 'Table 16', toServe: 4 },
-    { table: 'Table 17', toServe: 8 },
-    { table: 'Table 18', toServe: 10 },
-  ],
-};
-
-export const STARTED: Record<string, { table: string; section: string; plates: number }> = {
-  'Kunle Ajayi': { table: 'Table 4', section: 'A', plates: 3 },
-};
 
 export interface KitchenTray {
   who: string;
@@ -269,7 +241,7 @@ export function choiceFor(s: TeamState): Choice | null {
   if (mode === 'none') return null;
   const first = firstName(sheet.who);
   const target = nameOf(sheet.place);
-  const started = STARTED[sheet.who];
+  const started = trayOutOf(sheet.who);
 
   return {
     label:
@@ -285,7 +257,7 @@ export function choiceFor(s: TeamState): Choice | null {
     leaves: leavesLine(emptied(s, sheet.who, sheet.place, mode)),
     tray:
       mode === 'instead' && started != null
-        ? `${first} finishes the tray already out to ${started.table}. Their next tray comes from ${target}.`
+        ? `${first} finishes the tray already out to ${started}. Their next tray comes from ${target}.`
         : '',
   };
 }
@@ -312,7 +284,6 @@ export function fresh(): TeamState {
     empty: false,
     rival: false,
     lines: {},
-    waiter: 'Kunle Ajayi',
     disher: 'Tayo Bamidele',
     focus: null,
     opened: null,
@@ -356,8 +327,10 @@ export function goOnline(s: TeamState, online: boolean): TeamState {
   };
 }
 
+/** Got it leaves the refusal and goes back to the place the lead was moving someone to. */
 export function dismiss(s: TeamState): TeamState {
-  return { ...s, notice: null };
+  const back = s.notice?.kind === 'conflict' ? `row|${s.notice.place}` : s.focus;
+  return { ...s, notice: null, say: '', focus: back };
 }
 
 export function move(s: TeamState): TeamState {
@@ -373,7 +346,7 @@ export function move(s: TeamState): TeamState {
       ...s,
       on: { ...s.on, [who]: ['D'] },
       sheet: null,
-      notice: { kind: 'conflict', who, by: RIVAL, to: 'D' },
+      notice: { kind: 'conflict', who, by: RIVAL, to: 'D', place: target },
       say: `${who} wasn’t moved. ${RIVAL} has just put them on Section D.`,
       toast: '',
       focus: `row|${target}`,
@@ -400,41 +373,9 @@ export function move(s: TeamState): TeamState {
           ? `You’re on ${name} now, as well as ${stationText(before)}.`
           : `You’re on ${name} now.`,
     },
-    waiter: kind === 'section' ? who : s.waiter,
     disher: kind === 'kitchen' ? who : s.disher,
     focus: `row|${target}`,
   };
-}
-
-export interface NextTable extends Table {
-  section: string;
-}
-
-/** sc-36033: owed plates first across their sections, oldest first; then the table placed highest in its own queue, a tie to their own section. */
-export function nextFor(s: TeamState, who: string): { sections: string[]; tables: NextTable[] } {
-  const sections = stationsOf(s, who).filter((id) => TABLES[id] != null);
-  const own = personOf(who)?.on.find((id) => sections.includes(id)) ?? sections[0];
-  const order = own == null ? [] : [own, ...sections.filter((id) => id !== own)];
-  const owed: NextTable[] = [];
-  const rest: NextTable[] = [];
-  for (const id of order)
-    for (const t of TABLES[id] ?? []) if (t.owed != null) owed.push({ ...t, section: id });
-  owed.sort((a, b) => (a.owedAt ?? '').localeCompare(b.owedAt ?? ''));
-  const longest = Math.max(0, ...order.map((id) => TABLES[id]?.length ?? 0));
-  for (let i = 0; i < longest; i++)
-    for (const id of order) {
-      const t = TABLES[id]?.[i];
-      if (t != null && !owed.some((o) => o.table === t.table)) rest.push({ ...t, section: id });
-    }
-  return { sections, tables: [...owed, ...rest] };
-}
-
-export function startedLine(s: TeamState, who: string): string {
-  const started = STARTED[who];
-  if (started == null) return '';
-  return stationsOf(s, who).includes(started.section)
-    ? nameOf(started.section)
-    : `${nameOf(started.section)} · yours to finish at ${started.table}`;
 }
 
 export function dishTrays(s: TeamState, who: string): { stations: string[]; trays: KitchenTray[] } {

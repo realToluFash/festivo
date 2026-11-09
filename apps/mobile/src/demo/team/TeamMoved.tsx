@@ -6,29 +6,36 @@ import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
+import { SECTIONS, type SectionId, WAITER, placedOn } from '../queue/QueueModel.ts';
+import { WaiterNext } from '../queue/QueueNext.tsx';
 import { Glyph } from '../queue/QueueParts.tsx';
 import {
   NOW,
-  STARTED,
   type TeamState,
   dishTrays,
-  firstName,
   nameOf,
-  nextFor,
   seed,
-  startedLine,
   stationText,
+  stationsOf,
   teamStateOf,
 } from './TeamModel.ts';
 import { Disc } from './TeamParts.tsx';
 
-/** /demo/team-moved (sc-36034): the moved person's own screen, a waiter's Next or a disher's station. */
+/** /demo/team-moved (sc-36034): the moved person's own screen, the waiter's Next from sc-36033 or a disher's station. */
 export function TeamMovedRoute() {
   const params = useLocalSearchParams<{ state?: string }>();
   const state = teamStateOf(params.state);
   const s = seed(state);
 
-  return state === 'movedKitchen' ? <Station key={state} s={s} /> : <Next key={state} s={s} />;
+  return state === 'movedKitchen' ? (
+    <Station key={state} s={s} />
+  ) : (
+    <WaiterNext key={state} first={placedOn(sectionsOf(s), s.lines[WAITER] ?? '')} />
+  );
+}
+
+function sectionsOf(s: TeamState): SectionId[] {
+  return stationsOf(s, WAITER).filter((id): id is SectionId => SECTIONS.some((x) => x.id === id));
 }
 
 function Frame({ children }: { children: React.ReactNode }) {
@@ -63,70 +70,6 @@ function MovedLine({ words }: { words: string }) {
         {words}
       </Text>
     </View>
-  );
-}
-
-function Next({ s }: { s: TeamState }) {
-  const who = s.waiter;
-  const next = nextFor(s, who);
-  const started = STARTED[who];
-
-  return (
-    <Frame>
-      <Text size={30} weight="bold" accessibilityRole="header">
-        Next
-      </Text>
-      <Text size={15} weight="medium" style={styles.secondary}>
-        {firstName(who)} · {next.sections.length > 0 ? stationText(next.sections) : 'on no section'}
-      </Text>
-      <MovedLine words={s.lines[who] ?? ''} />
-      {started != null && (
-        <View style={styles.card}>
-          <Text size={13} weight="semibold" style={styles.kicker}>
-            YOUR TRAY
-          </Text>
-          <Text size={20} weight="bold">
-            {started.table} · {started.plates} plates
-          </Text>
-          <Text size={14} style={styles.secondary}>
-            {startedLine(s, who)}
-          </Text>
-        </View>
-      )}
-      <View style={styles.card}>
-        {next.tables.slice(0, 5).map((t, i) => (
-          <View
-            key={t.table}
-            style={[styles.row, i > 0 && styles.rowSep]}
-            testID={`moved.next.${t.table}`}
-          >
-            <View style={[styles.n, i === 0 && styles.nFirst]} accessibilityElementsHidden>
-              <Text
-                size={15}
-                weight="bold"
-                accessible={false}
-                style={i === 0 ? styles.onAccent : undefined}
-              >
-                {String(i + 1)}
-              </Text>
-            </View>
-            <View style={styles.grow}>
-              <Text size={16} weight="semibold">
-                {t.table}
-              </Text>
-              <Text size={14} style={styles.secondary}>
-                {nameOf(t.section)} · {t.toServe} to serve
-              </Text>
-              {t.owed != null && (
-                <Text size={14} weight="semibold">
-                  {t.owed} owed · goes first
-                </Text>
-              )}
-            </View>
-          </View>
-        ))}
-      </View>
-    </Frame>
   );
 }
 
@@ -176,8 +119,6 @@ const styles = StyleSheet.create({
   back: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
   accent: { color: tokens.colorAccentText },
   secondary: { color: tokens.colorInkSecondary },
-  onAccent: { color: tokens.colorInkOnDark },
-  kicker: { color: tokens.colorInkSecondary, letterSpacing: 0.6 },
   line: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -203,13 +144,4 @@ const styles = StyleSheet.create({
   },
   rowSep: { borderTopWidth: 1, borderTopColor: tokens.colorBorder },
   grow: { flex: 1, minWidth: 0, gap: 2 },
-  n: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorInset,
-  },
-  nFirst: { backgroundColor: tokens.colorAccent },
 });

@@ -436,7 +436,7 @@ function sectionLine(section: Section): string {
   return `${section.on.length > 0 ? section.on.join(', ') : 'Nobody on it'} · ${tables}`;
 }
 
-function Glyph({ paths, size }: { paths: readonly string[]; size: number }) {
+export function Glyph({ paths, size }: { paths: readonly string[]; size: number }) {
   return (
     <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" className="queue-glyph">
       {paths.map((d) => (

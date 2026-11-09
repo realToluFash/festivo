@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
+import { Toast } from '../components/Toast.tsx';
+import { Glyph } from './Queue.tsx';
 import {
   CHOOSE_LINE,
   EMPTY_LINE,
@@ -209,12 +211,14 @@ function Team({ name }: { name: TeamStateName }) {
         </main>
       </div>
       <div className="visually-hidden" aria-live="polite">
-        {state.say}
+        {state.say === state.toast ? '' : state.say}
       </div>
       {state.toast !== '' && (
-        <div className="team-toast" aria-hidden="true">
-          {state.toast}
-        </div>
+        <Toast
+          key={state.toast}
+          words={state.toast}
+          onClose={() => setState((x) => ({ ...x, toast: '' }))}
+        />
       )}
       <section className="queue-demo" aria-labelledby="team-demo-heading">
         <h2 id="team-demo-heading" className="queue-label">
@@ -444,15 +448,5 @@ function Warn({ words }: { words: string }) {
       <Glyph paths={WARN_GLYPH} size={14} />
       {words}
     </span>
-  );
-}
-
-function Glyph({ paths, size }: { paths: readonly string[]; size: number }) {
-  return (
-    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" className="queue-glyph">
-      {paths.map((d) => (
-        <path key={d} d={d} />
-      ))}
-    </svg>
   );
 }

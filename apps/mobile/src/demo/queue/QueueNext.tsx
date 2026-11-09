@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PrimaryButton, SecondaryButton } from '../../components/Buttons.tsx';
+import { useReadOut } from '../../components/ReadOut.tsx';
 import { PageToast } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { DemoOnly } from '../../steps/Lines.tsx';
@@ -16,10 +17,12 @@ import {
   andList,
   isServed,
   move,
+  onWords,
   queueStateOf,
   sectionOf,
   seed,
   startTray,
+  trayToFinish,
   waiterNext,
   waiterSections,
 } from './QueueModel.ts';
@@ -29,18 +32,24 @@ export function QueueNextRoute() {
   const params = useLocalSearchParams<{ state?: string }>();
   const state = queueStateOf(params.state);
 
-  return <WaiterNext key={state} start={state} />;
+  return <WaiterNext key={state} first={seed(state)} />;
 }
 
-function WaiterNext({ start }: { start: ReturnType<typeof queueStateOf> }) {
+/** The waiter's Next and Floor; Team (sc-36034) opens it on the sections it has just put them on. */
+export function WaiterNext({ first }: { first: QueueState }) {
   const insets = useSafeAreaInsets();
-  const [s, setS] = useState<QueueState>(() => seed(start));
+  const [s, setS] = useState<QueueState>(first);
   const [tab, setTab] = useState<'next' | 'floor'>('next');
   const next = waiterNext(s);
   const p = next == null ? null : s.places[next.place];
   const moved = p != null && s.moved?.place === next?.place && p.trayOf === '';
-  const tablesLine = s.queues.A.length === 1 ? '1 table,' : `${s.queues.A.length} tables,`;
-  const head = `${s.asWell ? 'Section A, and Section B as well' : 'Section A'} · Mains · ${WAITER}`;
+  const two = s.on.length > 1;
+  const floorId = s.on[0] ?? 'A';
+  const floor = s.queues[floorId];
+  const finish = trayToFinish(s);
+  const tablesLine = floor.length === 1 ? '1 table,' : `${floor.length} tables,`;
+  const head = `${onWords(s.on)} · Mains · ${WAITER}`;
+  useReadOut(s.line);
 
   function lead(change: (x: QueueState) => QueueState): void {
     setS((x) => change({ ...x, waiterToast: '' }));
@@ -63,8 +72,31 @@ function WaiterNext({ start }: { start: ReturnType<typeof queueStateOf> }) {
           {tab === 'next' ? 'Next' : 'Floor'}
         </Text>
         <Text size={15} weight="medium" style={styles.secondary}>
-          {tab === 'next' ? head : `Section A · ${tablesLine} in the queue’s order`}
+          {tab === 'next'
+            ? head
+            : `${sectionOf(floorId).name} · ${tablesLine} in the queue’s order`}
         </Text>
+        {s.line !== '' && (
+          <View style={styles.line} testID="next.line">
+            <Glyph paths={['M5 12h14', 'm12 5 7 7-7 7']} ink={tokens.colorAccentText} side={15} />
+            <Text size={15} weight="semibold" style={[styles.accent, styles.grow]}>
+              {s.line}
+            </Text>
+          </View>
+        )}
+        {tab === 'next' && finish != null && (
+          <View style={styles.card} testID="next.finish">
+            <Text size={13} weight="semibold" style={styles.kicker}>
+              YOUR TRAY
+            </Text>
+            <Text size={22} weight="bold">
+              {finish.place.name}
+            </Text>
+            <Text size={15} style={styles.secondary}>
+              {`${sectionOf(finish.section).name} · yours to finish at ${finish.place.name} · ${finish.place.onTray} plates`}
+            </Text>
+          </View>
+        )}
         {tab === 'next' ? (
           next == null || p == null ? (
             <Text size={15} style={styles.secondary}>
@@ -102,7 +134,7 @@ function WaiterNext({ start }: { start: ReturnType<typeof queueStateOf> }) {
               )}
               <Text size={15} style={styles.secondary}>
                 {[
-                  s.asWell ? sectionOf(next.section).name : '',
+                  two ? sectionOf(next.section).name : '',
                   next.owed
                     ? `${p.owed === 1 ? '1 plate owed' : `${p.owed} plates owed`} since ${p.owedAt}`
                     : `${Math.min(3, p.toServe)} plates`,
@@ -121,7 +153,7 @@ function WaiterNext({ start }: { start: ReturnType<typeof queueStateOf> }) {
           )
         ) : (
           <View style={styles.card}>
-            {s.queues.A.map((name, i) => {
+            {floor.map((name, i) => {
               const place = s.places[name];
               if (place == null) return null;
               const all = isServed(place);
@@ -188,7 +220,7 @@ function WaiterNext({ start }: { start: ReturnType<typeof queueStateOf> }) {
           />
           <SecondaryButton
             label="Start again"
-            onPress={() => setS(seed(start))}
+            onPress={() => setS(first)}
             testID="next.demo.reset"
           />
         </DemoOnly>
@@ -230,6 +262,14 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   moved: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  line: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceXs,
+    padding: tokens.spaceMd,
+    borderRadius: tokens.radiusRow,
+    backgroundColor: tokens.colorAccentTint,
+  },
   floorRow: {
     flexDirection: 'row',
     alignItems: 'center',

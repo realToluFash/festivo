@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { placedOn, trayToFinish, waiterNext } from '../queue/QueueModel.ts';
+
 import {
   CHOOSE_LINE,
   NEED_LINE,
@@ -11,12 +13,11 @@ import {
   dishTrays,
   fresh,
   goOnline,
+  dismiss,
   move,
-  nextFor,
   onPlace,
   openSheet,
   seed,
-  startedLine,
   stationsOf,
   tryOffline,
 } from './TeamModel.ts';
@@ -95,9 +96,21 @@ describe('the move', () => {
 
   it('is a 409 when another lead moved them first', () => {
     const s = seed('conflict');
-    expect(s.notice).toEqual({ kind: 'conflict', who: 'Grace Udo', by: 'Tobi Adeyemi', to: 'D' });
+    expect(s.notice).toEqual({
+      kind: 'conflict',
+      who: 'Grace Udo',
+      by: 'Tobi Adeyemi',
+      to: 'D',
+      place: 'C',
+    });
     expect(onPlace(s, 'D')).toContain('Grace Udo');
     expect(onPlace(s, 'C')).toEqual([]);
+  });
+
+  it('sends focus back to the place being moved to on Got it', () => {
+    const s = dismiss(seed('conflict'));
+    expect(s.notice).toBeNull();
+    expect(s.focus).toBe('row|C');
   });
 
   it('makes nothing offline and queues nothing', () => {
@@ -108,22 +121,20 @@ describe('the move', () => {
 });
 
 describe('the moved person’s screens', () => {
-  it('mixes both sections’ tables, owed first', () => {
-    const next = nextFor(seed('movedAsWell'), 'Kunle Ajayi');
-    expect(next.tables.map((t) => t.table)).toEqual([
-      'Table 13',
-      'Table 2',
-      'Table 12',
-      'Table 5',
-      'Table 3',
-      'Table 14',
-    ]);
+  it('takes the waiter’s Next from the Queue’s own rule, owed first across both', () => {
+    const s = seed('movedAsWell');
+    const q = placedOn(['A', 'C'], s.lines['Kunle Ajayi'] ?? '');
+    expect(q.line).toBe('You’re on Section C now, as well as Section A.');
+    expect(waiterNext(q)).toEqual({ place: 'Table 10', section: 'A', owed: true });
+    expect(trayToFinish(q)).toBeNull();
   });
 
   it('keeps the started tray after Instead', () => {
-    expect(startedLine(seed('movedInstead'), 'Kunle Ajayi')).toBe(
-      'Section A · yours to finish at Table 4',
-    );
+    const q = placedOn(['C'], seed('movedInstead').lines['Kunle Ajayi'] ?? '');
+    expect(q.line).toBe('You’re on Section C now.');
+    expect(waiterNext(q)?.place).toBe('Table 12');
+    expect(trayToFinish(q)?.place.name).toBe('Table 4');
+    expect(trayToFinish(q)?.section).toBe('A');
   });
 
   it('names each tray’s station for a disher on two', () => {

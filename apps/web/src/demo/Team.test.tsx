@@ -42,7 +42,7 @@ describe('/demo/team (sc-36034)', () => {
     fireEvent.click(within(sheet).getByRole('button', { name: 'Put Kunle Ajayi on Section C' }));
     expect(panel()).toBeNull();
     expect(
-      screen.getByText('Kunle Ajayi is on Section C.', { selector: '[aria-live]' }),
+      screen.getByText('Kunle Ajayi is on Section C.', { selector: '.toast-words' }),
     ).toBeTruthy();
     expect(document.activeElement).toBe(button('Move someone to Section C'));
   });
@@ -76,6 +76,9 @@ describe('/demo/team (sc-36034)', () => {
     expect(screen.getByRole('alert').textContent).toContain('Grace Udo wasn’t moved');
     const d = screen.getByText('Section D', { selector: 'strong' }).closest('li') as HTMLElement;
     expect(within(d).getByText('Grace Udo')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Got it' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(document.activeElement).toBe(button('Move someone to Section C'));
   });
 
   it('opens on the place an alert names, with focus on its Move', async () => {

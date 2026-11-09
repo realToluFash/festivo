@@ -233,16 +233,3 @@
   justify-content: flex-end;
   gap: var(--spaceSm);
 }
-
-.team-toast {
-  position: fixed;
-  bottom: var(--space3xl);
-  left: 50%;
-  padding: var(--spaceMd) var(--spaceXl);
-  border-radius: var(--radiusPill);
-  background: var(--colorInk);
-  color: var(--colorInkOnDark);
-  box-shadow: var(--shadowToast);
-  font: var(--typeSmallStrong);
-  transform: translateX(-50%);
-}

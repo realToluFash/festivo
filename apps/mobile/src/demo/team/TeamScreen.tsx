@@ -4,11 +4,13 @@ import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'reac
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PrimaryButton, QuietButton, SecondaryButton } from '../../components/Buttons.tsx';
+import type { GlyphName } from '../../components/Glyph.tsx';
 import { readOut } from '../../components/ReadOut.tsx';
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import { Sheet } from '../../components/Sheet.tsx';
 import { PageToast } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
+import { PHONE_TAB_BAR, TabBar, TabBarFade, tabBarFoot } from '../../components/TodayCover.tsx';
 import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
@@ -72,6 +74,7 @@ function Team({ start }: { start: ReturnType<typeof teamStateOf> }) {
   const phone = kind === 'phone';
   const docked = kind === 'tabletLandscape';
   const side = phone ? tokens.sizeHitPhonePrimary : tokens.sizeHit;
+  const foot = tabBarFoot(insets.bottom);
 
   function apply(next: TeamState): void {
     if (next.sheet != null) opener.current = movers.current.get(`row|${next.sheet.place}`) ?? null;
@@ -98,7 +101,13 @@ function Team({ start }: { start: ReturnType<typeof teamStateOf> }) {
 
   return (
     <View style={[styles.page, { paddingTop: insets.top }]}>
-      <ScrollView contentContainerStyle={[styles.body, phone && styles.bodyPhone]}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.body,
+          phone && styles.bodyPhone,
+          phone && { paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2 },
+        ]}
+      >
         <Pressable
           onPress={goBack}
           accessibilityRole="button"
@@ -110,7 +119,7 @@ function Team({ start }: { start: ReturnType<typeof teamStateOf> }) {
           </Text>
         </Pressable>
         <Header s={s} />
-        <Tabs manage={s.manage} side={side} />
+        {!phone && <Tabs manage={s.manage} side={side} />}
         {!s.manage ? (
           <Text size={15} style={styles.secondary}>
             Without service.manage there is no Team tab: Next, Floor and Service only.
@@ -198,6 +207,18 @@ function Team({ start }: { start: ReturnType<typeof teamStateOf> }) {
           />
         </DemoOnly>
       </ScrollView>
+      {phone && (
+        <>
+          <TabBarFade />
+          <TabBar
+            tabs={tabsOf(s.manage)}
+            bottom={foot}
+            at={s.manage ? 'Team' : 'Service'}
+            onTab={() => {}}
+            ids={TAB_IDS}
+          />
+        </>
+      )}
       {!docked && (
         <Sheet
           open={s.sheet != null}
@@ -213,7 +234,11 @@ function Team({ start }: { start: ReturnType<typeof teamStateOf> }) {
         <PageToast
           words={s.toast}
           onClose={() => setS({ ...s, toast: '' })}
-          bottom={insets.bottom + tokens.spaceXl}
+          bottom={
+            phone
+              ? foot + PHONE_TAB_BAR + tokens.spaceXl + tokens.spaceHair
+              : insets.bottom + tokens.spaceXl
+          }
         />
       )}
     </View>
@@ -247,8 +272,30 @@ function Header({ s }: { s: TeamState }) {
   );
 }
 
+type ServiceTab = 'Next' | 'Floor' | 'Service' | 'Team';
+
+const SERVICE_TABS: readonly (readonly [ServiceTab, GlyphName])[] = [
+  ['Next', 'arrow'],
+  ['Floor', 'seating'],
+  ['Service', 'overview'],
+  ['Team', 'people'],
+];
+
+const TAB_IDS: Record<ServiceTab, string> = {
+  Next: 'team.tab.next',
+  Floor: 'team.tab.floor',
+  Service: 'team.tab.service',
+  Team: 'team.tab.team',
+};
+
+/** Without service.manage there is no Team tab. */
+function tabsOf(manage: boolean): readonly (readonly [ServiceTab, GlyphName])[] {
+  return manage ? SERVICE_TABS : SERVICE_TABS.filter(([t]) => t !== 'Team');
+}
+
+/** Tablet's tab row, a segmented row under the header; the phone has the bottom tab bar. */
 function Tabs({ manage, side }: { manage: boolean; side: number }) {
-  const tabs = manage ? ['Next', 'Floor', 'Service', 'Team'] : ['Next', 'Floor', 'Service'];
+  const tabs = tabsOf(manage).map(([t]) => t);
   const current = manage ? 'Team' : 'Service';
 
   return (
