@@ -1,17 +1,7 @@
 import { type RefObject, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { Glyph } from '../../components/Glyph.tsx';
-import { RadioMark } from '../../components/RadioMark.tsx';
-import { useReadOut } from '../../components/ReadOut.tsx';
-import { SETTLED_MS } from '../../components/Screen.tsx';
-import {
-  moveScreenReaderFocus,
-  type ScreenReaderTarget,
-} from '../../components/screenReaderFocus.ts';
-import { Text } from '../../components/Text.tsx';
-import type { Scheme } from '../../theme/tokens.ts';
-import { tokens } from '../../theme/tokens.ts';
 import {
   type Colours,
   nameOf,
@@ -19,12 +9,20 @@ import {
   saveOn,
   statusLine,
   swatchName,
-  WORDS,
-} from './PersonalisationModel.ts';
-import { PreviewCard, SchemeGround, swatchSpots } from './PersonalisationParts.tsx';
-import { lookOf, SCHEME_ORDER } from './PersonalisationSchemes.ts';
-import { useShell } from '../../components/settingsShell.ts';
-import { FocusedScreen, Tag, TextAction } from '../../components/Summary.tsx';
+} from '../kit/personalisation.ts';
+import { lookOf, SCHEME_ORDER } from '../kit/schemes.ts';
+import type { Scheme } from '../theme/tokens.ts';
+import { tokens } from '../theme/tokens.ts';
+import { useShellLayout } from './settingsShell.ts';
+import { FocusedScreen } from './SummaryOverlays.tsx';
+import { Glyph } from './Glyph.tsx';
+import { RadioMark } from './RadioMark.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import { PreviewCard, SchemeGround, swatchSpots } from './SchemeParts.tsx';
+import { SETTLED_MS } from './Screen.tsx';
+import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
+import { Text } from './Text.tsx';
+import { Tag, TextAction } from './SummaryRows.tsx';
 
 /** Colours: the card in the pick, what the pick means, the restart line, then the lead line as the heading of the eight swatches; Cancel leaves without asking. */
 export function ColoursScreen({
@@ -44,14 +42,16 @@ export function ColoursScreen({
   onSave: () => void;
   onCancel: () => void;
 }) {
-  const { layout } = useShell();
-  const phone = layout === 'phone';
+  const { t } = useTranslation();
+  const phone = useShellLayout() === 'phone';
   const checked = useRef<ViewInstance>(null);
   const saving = colours.phase === 'saving';
   const refusal = colours.phase === 'failed' || colours.phase === 'offline' ? colours.phase : null;
-  const status = statusLine(colours.picked, current);
+  const status = statusLine(t, colours.picked, current);
 
-  useReadOut(refusal == null ? null : notSavedLine(refusal, colours.picked, current));
+  const notSaved = refusal == null ? null : notSavedLine(t, refusal, colours.picked, current);
+
+  useReadOut(notSaved);
 
   useEffect(() => {
     if (!open) return;
@@ -63,9 +63,9 @@ export function ColoursScreen({
   return (
     <FocusedScreen
       open={open}
-      title={WORDS.colours}
+      title={t('personalisation.colours')}
       verb={{
-        label: saving ? WORDS.saving : WORDS.save,
+        label: saving ? t('personalisation.saving') : t('personalisation.save'),
         on: saveOn(colours, current),
         busy: saving,
         onPress: onSave,
@@ -80,7 +80,7 @@ export function ColoursScreen({
     >
       <View style={styles.pick}>
         <PreviewCard scheme={colours.picked} />
-        {refusal == null ? (
+        {notSaved == null ? (
           <StatusLine text={status} />
         ) : (
           <View>
@@ -94,10 +94,14 @@ export function ColoursScreen({
                 accessible={false}
                 style={[styles.words, styles.broken]}
               >
-                {notSavedLine(refusal, colours.picked, current)}
+                {notSaved}
               </Text>
             </View>
-            <TextAction label={WORDS.tryAgain} onPress={onSave} testID="personalisation.tryAgain" />
+            <TextAction
+              label={t('personalisation.tryAgain')}
+              onPress={onSave}
+              testID="personalisation.tryAgain"
+            />
           </View>
         )}
       </View>
@@ -106,12 +110,12 @@ export function ColoursScreen({
           <Glyph name="info" size={16} ink={tokens.colorInkSecondary} weight={2.2} />
         </View>
         <Text size={14} weight="medium" style={[styles.words, styles.quiet]}>
-          {WORDS.restart}
+          {t('personalisation.restart')}
         </Text>
       </View>
       {/* The swatches' group name: a View that is not accessible has no label a reader speaks, so the heading just before the first swatch names it. */}
       <Text size={15} weight="medium" accessibilityRole="header">
-        {WORDS.lead}
+        {t('personalisation.lead')}
       </Text>
       <Swatches
         picked={colours.picked}
@@ -155,6 +159,7 @@ function Swatches({
   checkedRef: RefObject<ViewInstance | null>;
   onPick: (scheme: Scheme) => void;
 }) {
+  const { t } = useTranslation();
   const rows = Array.from({ length: Math.ceil(SCHEME_ORDER.length / across) }, (_, row) =>
     SCHEME_ORDER.slice(row * across, row * across + across),
   );
@@ -169,7 +174,7 @@ function Swatches({
               key={scheme}
               scheme={scheme}
               picked={scheme === picked}
-              name={swatchName(scheme, current)}
+              name={swatchName(t, scheme, current)}
               current={scheme === current}
               meshHeight={meshHeight}
               waits={waits}
@@ -205,6 +210,7 @@ function Swatch({
   ref: RefObject<ViewInstance | null> | undefined;
   onPick: () => void;
 }) {
+  const { t } = useTranslation();
   const look = lookOf(scheme);
 
   return (
@@ -224,14 +230,14 @@ function Swatch({
             <SchemeGround look={look} washed={false} spots={swatchSpots(meshHeight)} from="right" />
             {current && (
               <View style={styles.current}>
-                <Tag kind="yes" word={WORDS.current} />
+                <Tag kind="yes" word={t('personalisation.current')} />
               </View>
             )}
           </View>
           <View style={styles.swatchRow}>
             <RadioMark on={picked} />
             <Text size={15.5} weight="semibold" numberOfLines={1} accessible={false}>
-              {nameOf(scheme)}
+              {nameOf(t, scheme)}
             </Text>
           </View>
           {/* The edge lies over the swatch, as the board's shadow does, so it adds no height. */}
