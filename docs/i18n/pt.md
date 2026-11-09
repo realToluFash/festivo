@@ -763,3 +763,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   o título da folha: "Novo endereço" e "Novo número", que a secção situa. "Número", não
   "telemóvel", porque pode ser um fixo. Rejeitado "Adicionar um número de telefone", cortado como
   "Adicionar um nú…" num telemóvel Android.
+- **9 Nov 2026. O título da folha de ativar a autenticação de dois fatores na aplicação** (sc-34792,
+  `mobile:security.setupTitle`). "Ativar dois fatores", a forma curta que `settings.securityLine`
+  já usa. Rejeitado "Ativar a autenticação de dois fatores", cortado no cabeçalho de um telemóvel.
+  `web:security.setupTitle` fica completo, porque o computador tem espaço.
