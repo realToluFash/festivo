@@ -34,6 +34,8 @@ import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { Guests } from './Guests.tsx';
 import { GUESTS_PAGES } from './guests.ts';
 import { KitchenPage } from './Kitchen.tsx';
+import { MenuPage } from './MenuServed.tsx';
+import { MENU_PAGES } from './menuServed.ts';
 import { CHANGES_PAGES, KITCHEN_PAGES, PARTS_PAGES } from './kitchen.ts';
 import { LegalPage } from './Legal.tsx';
 import { LEGAL_PAGES } from './legal.ts';
@@ -177,6 +179,7 @@ export default function Demo() {
       <Route path="events/:id/messages" element={<EventPage messages />} />
       <Route path="events/:id/seating" element={<SeatingPage />} />
       <Route path="events/:id/kitchen" element={<KitchenPage />} />
+      <Route path="events/:id/menu" element={<MenuPage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -285,6 +288,11 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={CHANGES_PAGES} />
       </section>
 
+      <section className="demo-home-page" aria-labelledby="demo-page-32">
+        <h2 id="demo-page-32">32 · Menu</h2>
+        <h3>How a course is served, and a dish’s parts · sc-34230 · desktop</h3>
+        <BoardPages pages={MENU_PAGES} />
+      </section>
       <section className="demo-home-page" aria-labelledby="demo-page-32-kitchen">
         <h2 id="demo-page-32-kitchen">32 · Menu · the kitchen sheet’s parts</h2>
         <h3>Each part of a course, and each table’s platters · sc-34244 · desktop and A4</h3>
