@@ -326,7 +326,7 @@ function needsLines(item: MarkItem, locale: string): ReactNode[] {
     isOverdue(item.milestone, CLOCKS.rest) ? (
       <span key="time" className="cal-late cal-late-line">
         <Glyph name="clock" size={14} weight={2.4} />
-        {time} · {W.overdue}
+        <span>{`${time} · ${W.overdue}`}</span>
       </span>
     ) : (
       time
