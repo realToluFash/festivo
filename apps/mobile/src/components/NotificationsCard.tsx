@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { tokens } from '../theme/tokens.ts';
-import { useWordsBox } from './Cover.tsx';
+import { useCardWords } from './Cover.tsx';
 import { CardGlyph, OnCard, SummaryCard } from './Summary.tsx';
 import { Text } from './Text.tsx';
 
@@ -23,13 +23,14 @@ export function NotificationsCard({
   const { t } = useTranslation();
   const face = wide ? 64 : 56;
   const size = wide ? 24 : 22;
-  const words = useWordsBox();
+  const blockedLine = t('notificationSettings.pushBlocked');
+  const words = useCardWords(blocked ? blockedLine : null);
 
   return (
     <SummaryCard
       size={wide ? 'wide' : 'page'}
       height={200}
-      words={words.box}
+      words={words.boxes}
       step={
         blocked
           ? {
@@ -59,7 +60,11 @@ export function NotificationsCard({
           <OnCard text={counts} />
         </View>
       </View>
-      {blocked && <OnCard text={t('notificationSettings.pushBlocked')} strong />}
+      {blocked && (
+        <View style={styles.line} onLayout={words.onLine}>
+          <OnCard text={blockedLine} strong />
+        </View>
+      )}
     </SummaryCard>
   );
 }
@@ -68,4 +73,5 @@ const styles = StyleSheet.create({
   face: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   words: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
   white: { color: tokens.colorInkOnDark },
+  line: { alignSelf: 'flex-start' },
 });

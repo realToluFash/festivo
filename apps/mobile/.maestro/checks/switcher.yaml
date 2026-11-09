@@ -3,7 +3,7 @@ appId: host.exp.Exponent
 ---
 - runFlow: ../open-switcher.yaml
 - scrollUntilVisible:
-    element: '{{t:switcher.heading}}'
+    element: '{{t:switcher.asks}}'
     direction: UP
     timeout: 30000
 - takeScreenshot: switcher

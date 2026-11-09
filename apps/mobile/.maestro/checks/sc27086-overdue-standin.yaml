@@ -65,7 +65,7 @@ onFlowComplete:
 - runFlow:
     file: ../scroll-tap.yaml
     env:
-      ID: switcher.${OTHER_ORG}
+      ID: switcher.tile.${OTHER_ORG}
 - extendedWaitUntil:
     notVisible:
       id: 'twoFactorOverdue.signOut'

@@ -255,6 +255,10 @@ From `CLAUDE.md` and the foundations. Each one is a decision, not a preference:
 - **On the app, a load error's Try again is a move.** Use `CardFailed` or `EventsFailed`,
   which call `rereadOrganisations()` before retrying; a button of your own calls it too,
   or a member suspended while the screen was open sees nothing red (sc-28178).
+- **On the web, a reading-column cap leaves dialogs out.** A cap on a container's
+  children written as `> :not(…)` lists `.dialog` and `.dialog-scrim` among its
+  exceptions. Both are fixed to the window, and a capped scrim dims only the column, as
+  `.settings-desk-page` and `.arrived` once did (sc-36346).
 
 ## 7. What the stack cannot express
 

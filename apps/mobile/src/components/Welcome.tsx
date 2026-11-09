@@ -127,7 +127,7 @@ export function WelcomeFrame({
         <View
           style={[styles.cover, styles.coverHalf, { paddingTop: insets.top, paddingLeft: left }]}
         >
-          <Cover scale={1.5} words={words.box} />
+          <Cover scale={1.5} words={words.box && [words.box]} />
           <OnCover.Provider value>
             <View style={styles.brandBeside} onLayout={words.onArea}>
               <View style={styles.words} onLayout={words.onWords}>
@@ -160,7 +160,10 @@ export function WelcomeFrame({
           tablet ? { height: Math.round(height * COVER_SHARE) } : styles.coverPhone,
         ]}
       >
-        <Cover scale={tablet ? 1.5 : side < tokens.space3xl ? 0.76 : 1} words={words.box} />
+        <Cover
+          scale={tablet ? 1.5 : side < tokens.space3xl ? 0.76 : 1}
+          words={words.box && [words.box]}
+        />
         <OnCover.Provider value>
           <View
             style={[styles.top, { marginTop: insets.top, paddingLeft: left, paddingRight: right }]}

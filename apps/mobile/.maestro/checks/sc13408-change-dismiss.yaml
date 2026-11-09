@@ -9,20 +9,20 @@ onFlowComplete:
 - openLink: ${METRO_URL}/--/settings/security
 - scrollUntilVisible:
     element:
-      id: 'password.change'
+      id: 'security.password'
     timeout: 60000
     centerElement: true
 - tapOn:
-    id: 'password.change'
+    id: 'security.password'
 - extendedWaitUntil:
     visible:
-      id: 'password.current'
+      id: 'security.change.current'
     timeout: 15000
 - tapOn:
-    id: 'password.current'
+    id: 'security.change.current'
 - inputText: 'not-my-password-at-all'
 - tapOn:
-    id: 'password.new'
+    id: 'security.change.new'
 - inputText: 'a-long-new-password-2026'
 - waitForAnimationToEnd
 - takeScreenshot: keys-up
@@ -36,11 +36,13 @@ onFlowComplete:
     env:
       ASK: /api?to=paused
 - tapOn:
-    id: 'password.save'
+    id: 'security.change.save'
 - waitForAnimationToEnd
 - takeScreenshot: at-tap
 - assertNotVisible: '(?i)(shift|delete)'
-- assertVisible: '{{t:passwordCard.saving}}'
+- assertVisible:
+    id: 'security.change.cancel'
+    enabled: false
 - waitForAnimationToEnd:
     timeout: 3000
 - waitForAnimationToEnd
@@ -51,7 +53,7 @@ onFlowComplete:
     env:
       ASK: /api?to=up
 - extendedWaitUntil:
-    visible: '{{t:passwordCard.save}}'
+    visible: '{{t:passwordCard.wrongCurrent}}'
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: refused

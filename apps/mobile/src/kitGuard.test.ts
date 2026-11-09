@@ -25,6 +25,19 @@ const KIT_STYLES = [
 ];
 const KIT_FIELDS = ['TextField', 'PasswordField', 'CodeField'];
 
+describe('nothing loads react-native whole at run time', () => {
+  it("in no import('react-native') in the app", () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ text }) => /import\(\s*['"]react-native['"]\s*\)/u.test(text))
+      .map(({ path }) => path);
+
+    expect(
+      offenders,
+      'Its namespace copy reads PushNotificationIOS, which throws in Expo Go: import the name statically, from a module loaded lazily if need be (src/devReload.ts).',
+    ).toEqual([]);
+  });
+});
+
 describe("every TextInput starts from the kit's defaults", () => {
   it('in every TextInput in the app', () => {
     const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>

@@ -139,7 +139,7 @@ export function SummaryCard({
   backdrop?: ReactNode;
   gap?: number;
   /** Where the card's words are, so the pieces keep clear of them; null draws none until they are measured. */
-  words?: Box | null;
+  words?: readonly Box[] | null;
   children: ReactNode;
   testID?: string;
 }) {
