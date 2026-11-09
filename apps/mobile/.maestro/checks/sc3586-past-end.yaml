@@ -7,7 +7,7 @@ appId: host.exp.Exponent
       id: 'events.phase.finished'
     timeout: 30000
 - assertNotVisible:
-    id: 'events.resume'
+    id: 'events.card.step'
 - assertNotVisible:
-    id: 'events.pausedRow'
+    id: 'events.card'
 - takeScreenshot: past-end-finished

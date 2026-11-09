@@ -4,11 +4,11 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/events/${EV_OK}
 - extendedWaitUntil:
     visible:
-      id: 'events.draftLine'
+      id: 'events.card'
     timeout: 30000
 - takeScreenshot: draft-row
 - tapOn:
-    id: 'events.makeLive'
+    id: 'events.card.step'
 - extendedWaitUntil:
     visible:
       id: 'events.makeLiveYes'
@@ -18,6 +18,6 @@ appId: host.exp.Exponent
     id: 'events.makeLiveYes'
 - extendedWaitUntil:
     notVisible:
-      id: 'events.draftLine'
+      id: 'events.card'
     timeout: 15000
 - takeScreenshot: made-live

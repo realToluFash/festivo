@@ -9,10 +9,10 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/events/${FINISHED_ID}
 - extendedWaitUntil:
     visible:
-      id: 'events.page.edit'
+      id: 'events.details.name'
     timeout: 30000
 - tapOn:
-    id: 'events.page.edit'
+    id: 'events.details.name'
 - extendedWaitUntil:
     visible:
       id: 'eventForm.name'

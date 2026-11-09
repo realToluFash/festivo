@@ -8,10 +8,10 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/events/${output.event}
 - extendedWaitUntil:
     visible:
-      id: 'events.makeLive'
+      id: 'events.card.step'
     timeout: 30000
 - tapOn:
-    id: 'events.makeLive'
+    id: 'events.card.step'
 - extendedWaitUntil:
     visible:
       id: 'events.makeLiveHost'

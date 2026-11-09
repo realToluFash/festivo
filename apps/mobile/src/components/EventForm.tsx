@@ -165,11 +165,7 @@ export function EventForm({
   const zoneField = useRef<ViewInstance>(null);
   const currencyField = useRef<ViewInstance>(null);
   const [focusOn, setFocusOn] = useState<{ field: EventFormField } | null>(() =>
-    arriveAt === 'starts'
-      ? { field: 'startsAt' }
-      : arriveAt === 'venue'
-        ? { field: 'venueName' }
-        : null,
+    arriveAt == null || arriveAt === 'hosts' ? null : { field: ARRIVE_AT[arriveAt] },
   );
 
   useEffect(() => {
@@ -642,6 +638,14 @@ export function EventForm({
     </>
   );
 }
+
+const ARRIVE_AT: Record<Exclude<EditAt, 'hosts'>, EventFormField> = {
+  starts: 'startsAt',
+  venue: 'venueName',
+  name: 'name',
+  type: 'type',
+  currency: 'currency',
+};
 
 /** The answer to a press at the foot of the form shows at its top, so it scrolls there; ReadOut already says it, so focus stays. */
 export function InSight({ children }: { children: ReactNode }) {

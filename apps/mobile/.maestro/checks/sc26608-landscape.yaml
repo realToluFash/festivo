@@ -23,7 +23,7 @@ appId: host.exp.Exponent
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'events.page.onTrack'
+      id: 'events.mute.switch'
     direction: DOWN
     timeout: 20000
 - takeScreenshot: overview-landscape-1

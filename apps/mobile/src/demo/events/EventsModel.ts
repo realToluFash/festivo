@@ -1,8 +1,6 @@
 import {
   type Milestone,
   type EventType,
-  endLabel,
-  eventAllows,
   eventPhase,
   eventsHome,
   formatEventRange,
@@ -28,6 +26,11 @@ import {
   rowTag as productRowTag,
   shownEvent as productShownEvent,
 } from '../../kit/eventsList.ts';
+import {
+  type ManageKey,
+  manageOf as productManageOf,
+  scheduleLocked as productScheduleLocked,
+} from '../../kit/eventOverview.ts';
 import { CLOCKS, READER_ZONE, type SampleEvent, TYPE_WORDS } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { CHANGES_STATES, FINAL_NUMBERS_STATES, kitchenOwed, othersOwed } from './FinalNumbers.ts';
@@ -169,22 +172,14 @@ export function cardStep(event: Shown, now: Date, locale: string): CardStep {
   return productCardStep(event, now, locale, t);
 }
 
-export type ManageKey = 'duplicate' | 'pause' | 'callOff' | 'endNow' | 'delete';
+export type { ManageKey };
 
-/** Only what event-states.json allows the phase; Resume is the paused card's step, so it is not repeated here. */
 export function manageOf(event: Shown, now: Date): ManageKey[] {
-  const end = endLabel(event, event.phase, now);
-
-  return [
-    'duplicate',
-    ...(eventAllows(event.phase, 'pause') ? (['pause'] as const) : []),
-    ...(end == null ? [] : [end]),
-    ...(eventAllows(event.phase, 'delete') ? (['delete'] as const) : []),
-  ];
+  return productManageOf(event, event.phase, now);
 }
 
 export function scheduleLocked(event: Shown): boolean {
-  return !eventAllows(event.phase, 'edit_schedule');
+  return productScheduleLocked(event.phase);
 }
 
 export function datesRow(event: Shown, locale: string): { title: string; line: string } {

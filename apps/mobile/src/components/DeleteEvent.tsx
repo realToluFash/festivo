@@ -1,6 +1,6 @@
 import { type EventDeletion, type OrganisationEvent } from '@soirely/api-client';
 import { typedNameMatches } from '@soirely/domain';
-import { useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
   ScrollView,
@@ -8,7 +8,6 @@ import {
   StyleSheet,
   type TextInputInstance,
   View,
-  type ViewInstance,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -18,26 +17,27 @@ import { refusalTitle } from '../kit/refusal.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { DestructiveButton, QuietButton } from './Buttons.tsx';
-import { Field, FieldError, TextField, focusChecked, focusRefused } from './Field.tsx';
+import { Field, TextField, focusChecked, focusRefused } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut, useSendingWords } from './ReadOut.tsx';
 import { SETTLED_MS } from './Screen.tsx';
-import { moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Sheet, SheetActions } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 
-/** sc-3592: at the foot of the event page, apart from its everyday actions, to a role with Create events. */
-export function DeleteEventSection({
+/** sc-3592: Delete event from Manage, to a role with Create events; it reads what deleting removes before it asks. */
+export function useDeleteEvent({
   kind,
   event,
   onDeleted,
+  opener,
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
   onDeleted: (event: OrganisationEvent) => void;
+  opener: RefObject<ScreenReaderTarget | null>;
 }) {
   const { t } = useTranslation();
-  const opener = useRef<ViewInstance>(null);
   const [opening, setOpening] = useState(false);
   const [openFailed, setOpenFailed] = useState<string | null>(null);
   const [deletion, setDeletion] = useState<EventDeletion | null>(null);
@@ -59,37 +59,26 @@ export function DeleteEventSection({
   };
   const close = () => !pending && setDeletion(null);
 
-  return (
-    <View style={styles.section} testID="events.deleteSection">
-      <Text size={tokens.typeSmall.size} muted>
-        {t('eventDelete.note')}
-      </Text>
-      {openFailed != null && <FieldError message={openFailed} />}
-      <DestructiveButton
-        ref={opener}
-        label={t('eventDelete.open')}
-        onPress={open}
-        off={opening}
-        testID="events.delete"
-      />
-      <Sheet open={deletion != null} onClose={close} opener={opener} testID="events.deleteSheet">
-        {deletion != null && (
-          <Confirm
-            phone={kind === 'phone'}
-            event={event}
-            deletion={deletion}
-            pending={pending}
-            onPending={setPending}
-            onKeep={close}
-            onDeleted={() => {
-              setDeletion(null);
-              onDeleted(event);
-            }}
-          />
-        )}
-      </Sheet>
-    </View>
+  const sheet = (
+    <Sheet open={deletion != null} onClose={close} opener={opener} testID="events.deleteSheet">
+      {deletion != null && (
+        <Confirm
+          phone={kind === 'phone'}
+          event={event}
+          deletion={deletion}
+          pending={pending}
+          onPending={setPending}
+          onKeep={close}
+          onDeleted={() => {
+            setDeletion(null);
+            onDeleted(event);
+          }}
+        />
+      )}
+    </Sheet>
   );
+
+  return { open, opening, openFailed, sheet };
 }
 
 function Confirm({
@@ -285,13 +274,6 @@ function Confirm({
 }
 
 const styles = StyleSheet.create({
-  section: {
-    gap: tokens.spaceSm,
-    marginTop: tokens.spaceLg,
-    paddingTop: tokens.spaceLg,
-    borderTopWidth: 1,
-    borderTopColor: tokens.colorBorder,
-  },
   body: { flexShrink: 1 },
   content: {
     gap: tokens.spaceLg,
