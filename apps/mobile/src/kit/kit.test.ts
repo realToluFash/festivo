@@ -533,6 +533,7 @@ describe('every field carries the caret colour', () => {
       expect(props.selectionColor).toBe(tokens.colorInk);
       expect(props.autoCorrect).toBe(false);
       expect(props.spellCheck).toBe(false);
+      expect(props.disableFullscreenUI).toBe(true);
     }
   });
 });
