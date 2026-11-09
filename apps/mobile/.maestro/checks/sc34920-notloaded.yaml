@@ -1,0 +1,20 @@
+# sc-34920: with the API stopped, Personalisation opened fresh says the colours did not load.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- openLink: ${METRO_URL}/--/settings/personalisation
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil:
+    visible:
+      id: personalisation.tryAgainLoad
+    timeout: 30000
+- takeScreenshot: not-loaded

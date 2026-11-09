@@ -1,0 +1,44 @@
+# sc-34920: Save restarts the screens and lands on Personalisation saying Saved, then puts Soirely's own colours back.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/personalisation
+- extendedWaitUntil:
+    visible:
+      id: personalisation.choose
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- tapOn:
+    id: personalisation.choose
+- extendedWaitUntil:
+    visible:
+      id: personalisation.colours
+    timeout: 15000
+- tapOn:
+    id: personalisation.swatch.garden
+- tapOn:
+    id: personalisation.save
+- extendedWaitUntil:
+    visible:
+      id: personalisation.card
+    timeout: 60000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: saved
+- tapOn:
+    id: personalisation.choose
+- extendedWaitUntil:
+    visible:
+      id: personalisation.colours
+    timeout: 15000
+- takeScreenshot: colours-current
+- tapOn:
+    id: personalisation.swatch.violet
+- tapOn:
+    id: personalisation.save
+- extendedWaitUntil:
+    visible:
+      id: personalisation.card
+    timeout: 60000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: chosen
