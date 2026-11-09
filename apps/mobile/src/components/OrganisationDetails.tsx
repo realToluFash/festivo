@@ -163,7 +163,7 @@ function LockRow({
       <View style={styles.grow}>
         <OnCard text={words} />
         {action != null && (
-          <TextAction label={action.label} onPress={action.onPress} testID={action.testID} />
+          <TextAction label={action.label} onPress={action.onPress} onFill testID={action.testID} />
         )}
       </View>
     </View>

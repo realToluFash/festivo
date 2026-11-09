@@ -353,6 +353,7 @@ export function TextAction({
   plain = false,
   off = false,
   figures = false,
+  onFill = false,
   glyph,
   renderMark,
   after,
@@ -367,6 +368,7 @@ export function TextAction({
   plain?: boolean;
   off?: boolean;
   figures?: boolean;
+  onFill?: boolean;
   glyph?: GlyphName;
   renderMark?: (ink: string) => ReactNode;
   after?: GlyphName;
@@ -377,11 +379,13 @@ export function TextAction({
 }) {
   const ink = off
     ? tokens.colorInkTertiary
-    : removes
-      ? tokens.colorBroken
-      : plain
-        ? tokens.colorInk
-        : tokens.colorAccentText;
+    : onFill
+      ? tokens.colorInkOnDark
+      : removes
+        ? tokens.colorBroken
+        : plain
+          ? tokens.colorInk
+          : tokens.colorAccentText;
   const action = (
     <Pressable
       ref={ref}
@@ -399,7 +403,7 @@ export function TextAction({
         size={15}
         weight="semibold"
         accessible={false}
-        style={[{ color: ink }, figures && styles.figures]}
+        style={[{ color: ink }, figures && styles.figures, onFill && styles.onFill]}
       >
         {label}
       </Text>
@@ -441,6 +445,7 @@ const styles = StyleSheet.create({
   accent: { color: tokens.colorAccentText },
   off: { color: tokens.colorInkTertiary },
   pressed: { opacity: tokens.opacityPressed },
+  onFill: { textDecorationLine: 'underline' },
   tag: {
     minHeight: 24,
     flexDirection: 'row',

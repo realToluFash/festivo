@@ -1329,6 +1329,18 @@ describe('a mark or a pill grows with the text inside it (sc-13281)', () => {
   });
 });
 
+describe('an action on the Confetti card reads white and underlined (sc-30412)', () => {
+  it('in the kit’s TextAction, and on the card held back by a sign-in rule', () => {
+    const read = (file: string) => readFileSync(join('src', 'components', file), 'utf8');
+    const kit = read('SummaryRows.tsx');
+    const [action] = selfClosing('TextAction', read('OrganisationDetails.tsx'));
+
+    expect(kit).toMatch(/: onFill\n\s*\? tokens\.colorInkOnDark/u);
+    expect(kit).toContain("onFill: { textDecorationLine: 'underline' },");
+    expect(action?.markup).toMatch(/\sonFill\s/u);
+  });
+});
+
 describe('a way back that names an outcome is off while its request runs (sc-12511)', () => {
   it('in Organisation, on Cancel while a send is out and on each Ask’s way back', () => {
     const read = (file: string) => readFileSync(join('src', 'components', file), 'utf8');
