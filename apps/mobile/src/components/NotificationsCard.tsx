@@ -23,7 +23,8 @@ export function NotificationsCard({
   const { t } = useTranslation();
   const face = wide ? 64 : 56;
   const size = wide ? 24 : 22;
-  const words = useCardWords(blocked ? 'blocked' : null);
+  const blockedLine = t('notificationSettings.pushBlocked');
+  const words = useCardWords(blocked ? blockedLine : null);
 
   return (
     <SummaryCard
@@ -61,7 +62,7 @@ export function NotificationsCard({
       </View>
       {blocked && (
         <View style={styles.line} onLayout={words.onLine}>
-          <OnCard text={t('notificationSettings.pushBlocked')} strong />
+          <OnCard text={blockedLine} strong />
         </View>
       )}
     </SummaryCard>

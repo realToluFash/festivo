@@ -26,7 +26,7 @@ export function SecurityCard({
 }) {
   const face = wide ? 64 : 56;
   const size = wide ? 24 : 22;
-  const words = useCardWords(line?.kind ?? null);
+  const words = useCardWords(line?.text ?? null);
 
   useReadOut(line?.kind === 'done' ? line.text : null, { quietAtMount: true });
 
