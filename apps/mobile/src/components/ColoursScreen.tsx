@@ -236,7 +236,7 @@ function Swatch({
           </View>
           <View style={styles.swatchRow}>
             <RadioMark on={picked} />
-            <Text size={15.5} weight="semibold" accessible={false}>
+            <Text size={15.5} weight="semibold" accessible={false} style={styles.swatchName}>
               {nameOf(t, scheme)}
             </Text>
           </View>
@@ -296,4 +296,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceLg,
     paddingVertical: tokens.spaceSm,
   },
+  swatchName: { flexShrink: 1 },
 });
