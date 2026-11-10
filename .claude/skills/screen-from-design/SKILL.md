@@ -261,7 +261,7 @@ From `CLAUDE.md` and the foundations. Each one is a decision, not a preference:
   `.settings-desk-page` and `.arrived` once did (sc-36346).
 - **On the web, a desk page renders inside `DeskPage`** (`components/SettingsParts.tsx`).
   The desk tokens are defined on `.desk`, so a column wrapped in anything else draws
-  unstyled at 1024 and wider, with no error and nothing red in a test that only finds the
+  unstyled, with no error and nothing red in a test that only finds the
   text. Its test asserts the card's `.desk` ancestor, as `SecurityDesk` and
   `NotificationsDesk` do (sc-35456).
 
