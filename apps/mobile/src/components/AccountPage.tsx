@@ -25,6 +25,7 @@ import { dateLocale } from '../i18n/index.ts';
 import {
   type CodeLine,
   cardLine,
+  codeErrors,
   type Contact,
   type ContactKind,
   KIND_KEYS,
@@ -545,7 +546,7 @@ function VerifyStep({
       title={words.title}
       lead={words.lead}
       codeLabel={words.codeLabel}
-      errors={{ ...words, failed: t('verifyEmail.failedBody') }}
+      errors={codeErrors(words, t)}
       spent={spent}
       wait={cooldown}
       startError={null}

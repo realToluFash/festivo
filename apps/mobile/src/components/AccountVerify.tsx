@@ -3,6 +3,7 @@ import { type RefObject, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import type { CodeError } from '../kit/accountPage.ts';
 import { tokens } from '../theme/tokens.ts';
 import {
   CodeField,
@@ -29,8 +30,6 @@ export function CodeExpired({ title, line }: { title: string; line: string }) {
     </View>
   );
 }
-
-export type CodeError = 'blank' | 'short' | 'wrong' | 'failed';
 
 /** Why a code was not taken: `checked` when the client found it before sending. */
 export interface CodeSays {

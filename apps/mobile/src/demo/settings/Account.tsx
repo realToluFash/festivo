@@ -21,6 +21,7 @@ import { Ask, bringIntoView, useRowClear } from '../../components/Summary.tsx';
 import type { TextHandle } from '../../components/Text.tsx';
 import {
   cardLine,
+  codeErrors,
   type Contact,
   type ContactKind,
   KIND_KEYS,
@@ -389,7 +390,7 @@ function SampleVerify({
       title={words.title}
       lead={words.lead}
       codeLabel={words.codeLabel}
-      errors={{ ...words, failed: t('verifyEmail.failedBody') }}
+      errors={codeErrors(words, t)}
       spent={expired ? words.expired : null}
       wait={countdown.left}
       prefill={start === 'wrong' ? WRONG_CODE : ''}
