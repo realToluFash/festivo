@@ -576,7 +576,7 @@ export function membersCard({
       case 'theirs':
         return {
           ...quiet,
-          says: `${nameOf(CLAIMANT)} is becoming the owner`,
+          says: `${claimantName(people)} is becoming the owner`,
           line: `Their DNS record has not been found yet. Without it, the claim lapses on ${say.deadline(DEADLINES.theirsLapses)}.`,
           step: null,
           readsOut: false,
@@ -584,7 +584,7 @@ export function membersCard({
       case 'theirsFound':
         return {
           ...quiet,
-          says: `${nameOf(CLAIMANT)} is becoming the owner`,
+          says: `${claimantName(people)} is becoming the owner`,
           line: `Their record is found. Ownership passes on ${say.deadline(DEADLINES.theirsPasses)}.`,
           step: null,
           readsOut: false,
@@ -592,7 +592,7 @@ export function membersCard({
       case 'stopped':
         return {
           ...quiet,
-          says: `You stopped ${nameOf(CLAIMANT)}’s claim`,
+          says: `You stopped ${claimantName(people)}’s claim`,
           line: `Everybody who was told is emailed. Only Soirely support can restore an owner of ${ORGANISATION} now.`,
           step: null,
         };
@@ -674,6 +674,9 @@ const MARTA = 'marta.silva@ire.events';
 const DANIEL = 'daniel.kim@ire.events';
 const TOM = VIEWERS.tom.id;
 const JULIEN = VIEWERS.julien.id;
+
+/** claimRefused's viewer: Tom as an admin, whose main address is at gmail.com, not the domain. */
+const OFF_DOMAIN_ADMIN: MembersViewer = { ...VIEWERS.tom, role: 'Admin', manages: true };
 
 /** Another admin's claim, as Julien sees it, is Ana Souza's: she is an admin in those states. */
 const CLAIMANT = ANA;
@@ -985,12 +988,15 @@ export function membersStart(
     case 'claimClosed':
       return { ...claimedByAna, claim: 'closed' };
     case 'claimRefused':
-    case 'claimManaged':
       return {
         ...noOwner,
+        viewer: OFF_DOMAIN_ADMIN,
+        people: changedRole(noOwner.people, TOM, 'Admin'),
         claim: 'unclaimed',
-        refusal: state === 'claimRefused' ? 'address' : 'managed',
+        refusal: 'address',
       };
+    case 'claimManaged':
+      return { ...noOwner, claim: 'unclaimed', refusal: 'managed' };
     case 'waitingTwo':
       return { ...base, people: withKwameWaiting(people) };
   }

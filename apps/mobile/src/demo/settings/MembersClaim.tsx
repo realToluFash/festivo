@@ -19,7 +19,14 @@ import {
   STOP_CONSEQUENCE,
 } from './MembersSample.ts';
 import { RecordRows, useCopied } from './RecordRows.tsx';
-import { Ask, FocusedScreen, Line, Section, TextAction } from '../../components/Summary.tsx';
+import {
+  Ask,
+  type AskProps,
+  FocusedScreen,
+  Line,
+  Section,
+  TextAction,
+} from '../../components/Summary.tsx';
 
 const CHECK_MS = 900;
 
@@ -109,6 +116,21 @@ export function useOwnerClaim(start: ClaimStart): OwnerClaim {
   };
 }
 
+/** Withdraw your claim, from its screen or, once the record is found, from under the card. */
+function withdrawAsk(found: boolean, onKeep: () => void, onConfirm: () => void): AskProps {
+  const record = found ? ', and the record is no longer needed' : '';
+
+  return {
+    title: 'Withdraw your claim?',
+    line: `You won't become the owner of ${ORGANISATION}${record}. Any admin, you included, can start a new claim.`,
+    keep: { label: 'Keep my claim', testID: 'ownerClaim.withdrawNo' },
+    confirm: { label: 'Withdraw', testID: 'ownerClaim.withdrawYes', removes: true },
+    onKeep,
+    onConfirm,
+    testID: 'ownerClaim.withdrawConfirm',
+  };
+}
+
 /** Become the owner, on its own screen: the record to publish, checking it, and withdrawing the claim. */
 export function ClaimScreen({
   owner,
@@ -135,19 +157,7 @@ export function ClaimScreen({
       onCancel={owner.close}
       cancelTestID="ownerClaim.cancel"
       opener={opener}
-      ask={
-        owner.asking
-          ? {
-              title: 'Withdraw your claim?',
-              line: `You won't become the owner of ${ORGANISATION}. Any admin, you included, can start a new claim.`,
-              keep: { label: 'Keep my claim', testID: 'ownerClaim.withdrawNo' },
-              confirm: { label: 'Withdraw', testID: 'ownerClaim.withdrawYes', removes: true },
-              onKeep: () => owner.ask(false),
-              onConfirm: owner.withdraw,
-              testID: 'ownerClaim.withdrawConfirm',
-            }
-          : null
-      }
+      ask={owner.asking ? withdrawAsk(false, () => owner.ask(false), owner.withdraw) : null}
       toast={copied == null ? null : { words: copied.copied, onClose: clear }}
     >
       <Line
@@ -231,13 +241,7 @@ export function ClaimUnderCard({
       <Ask
         open={owner.pageAsk === 'withdraw'}
         opener={opener}
-        title="Withdraw your claim?"
-        line={`You won't become the owner of ${ORGANISATION}, and the record is no longer needed. Any admin, you included, can start a new claim.`}
-        keep={{ label: 'Keep my claim', testID: 'ownerClaim.withdrawNo' }}
-        confirm={{ label: 'Withdraw', testID: 'ownerClaim.withdrawYes', removes: true }}
-        onKeep={() => owner.askOnPage(null)}
-        onConfirm={owner.withdraw}
-        testID="ownerClaim.withdrawConfirm"
+        {...withdrawAsk(true, () => owner.askOnPage(null), owner.withdraw)}
       />
       <Ask
         open={owner.pageAsk === 'stop'}

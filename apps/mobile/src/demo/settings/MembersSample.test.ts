@@ -269,6 +269,10 @@ describe('Members in the demo', () => {
     expect(membersStart('claimStop')).toMatchObject({ claim: 'theirs', stopping: true });
     expect(membersStart('claimTheirs').viewer).toBe(VIEWERS.julien);
     expect(membersStart('claimRefused')).toMatchObject({ claim: 'unclaimed', refusal: 'address' });
+    const refused = membersStart('claimRefused');
+    expect(refused.viewer).toMatchObject({ id: 'tom.becker@gmail.com', manages: true });
+    expect(refused.viewer.id.endsWith('@ire.events')).toBe(false);
+    expect(refused.people.find((one) => one.id === refused.viewer.id)?.role).toBe('Admin');
     expect(membersStart('claimManaged').refusal).toBe('managed');
     expect(at('claimRefused').step).toEqual({ label: 'Become the owner', does: 'becomeOwner' });
   });
