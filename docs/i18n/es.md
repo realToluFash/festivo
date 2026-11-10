@@ -50,6 +50,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **10 nov. 2026. Ninguna hora del cliente lleva artículo** (sc-37178, web y app: `offline.asOf*`, los bloqueos `*.limitedBody`, `recovery.limitedLine`, `requestToJoin.limited*`, `signIn.locked*`, `twoFactor.pausedBody|tryAgainAt`, `passwordCard.pausedBody`, `devices.dayAtTime|everywhere*`, `domainJoining.asked`). Los clientes solo pasan `{{time}}`, sin `{{hour}}`, y «a las 01:30» falla a la 1:00. Una frase dice «Inténtelo de nuevo a partir de esta hora: {{time}}.», con «a partir de», que es lo que significa el límite; con día, «a partir de esta fecha y hora: {{day}}, {{time}}». Un botón desactivado es «Reintentar · {{time}}», y una pausa, «en pausa hasta esta hora: {{time}}». Una fecha y su hora se unen con coma: «{{day}}, {{time}}», «actualizado: {{time}}». Rechazado «a la hora {{time}}», que no se dice. Lo que llega del API con `{hour}` sigue con el artículo concordado (25 Oct).
 - **10 Nov 2026. El Calendario en la web de escritorio** (sc-36920 para sc-30413, `web:calendar.moreItems_*|chosen|barStatus|barLabel|markLabel`). La pastilla de la casilla del día es «+{{count, number}} más», invariable y sin «de» en `_many`, porque no lleva sustantivo. `chosen`, `barStatus`, `barLabel` y `markLabel` son solo puntuación y huecos, y quedan como en inglés. En la app, `mobile:calendar.moreItems_*` dice lo mismo y `retry` es «Reintentar».
 - **10 nov. 2026. La tarjeta de un evento y su página en la web** (sc-36898 para sc-30413, `web:events.calledOff|today|itsDays|dayOf|nextUp`, `web:eventPage.*`). La etiqueta de fase es «Cancelado», en masculino con «evento»; «Lo próximo: {{title}}» como `timeline.nextUp`. El nombre de las casillas de días para el lector de pantalla es «Días del evento», no «Sus días», que con _usted_ se leería como los días de la persona. La miga es «Ruta de navegación», como `seating.crumb`; «Horas en {{timeZone}}», como `eventDuplicate`. Los rótulos de la página toman las palabras de la app (sc-36555).
 - **10 nov. 2026. Crear una organización en la web de escritorio** (sc-37138 para sc-30412, `web:createOrganisation.*`). Las preguntas, «De este dispositivo», «Todos los países», «Ninguna por ahora» y la hoja de descartar son las de la app (sc-36766). Los botones son «Atrás» / «Continuar», como `web:onboarding`, y la búsqueda «Buscar países», como `generalDesk`. Lo que oye el lector de pantalla al elegir un país sigue el patrón de la tarjeta, etiqueta y valor con coma: «Moneda, {{currency}}. Zona horaria, de este dispositivo, {{zone}}.»
@@ -624,7 +625,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   among them; "Keep it/them signed in" is «Mantener la sesión» / «Mantener las sesiones».
   "Nothing was signed out" is «No se ha cerrado ninguna sesión», the perfect because it has
   just happened; the result lines keep the preterite of `passwordCard.done_*`. A disabled
-  "Try again at {{time}}" button is «Reintentar a las {{time}}», short where a sentence would
+  "Try again at {{time}}" button is «Reintentar · {{time}}» (since sc-37178), short where a sentence would
   say «Inténtelo de nuevo» (sc-1193).
 
 - **17 Oct 2026. A picker's search field is «Buscar» and the plural noun.** «Buscar
@@ -738,8 +739,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   la lista de eventos, en masculino con «evento»: Borrador, Publicado, En pausa, Finalizado,
   Cancelado, Eliminado. "Dietary notes" es «Las notas sobre alimentación». El límite concuerda el
   artículo con la hora, como `limits.tries`.
-- **La banda sin conexión** (sc-22586): «Sin conexión · actualizado a las {{time}}», y «… el {{day}}
-  a las {{time}}» cuando la carga fue otro día. «Actualizado» dice de cuándo es lo que se ve, en
+- **La banda sin conexión** (sc-22586, sin artículo desde sc-37178): «Sin conexión · actualizado: {{time}}», y «…
+  actualizado: {{day}}, {{time}}» cuando la carga fue otro día. «Actualizado» dice de cuándo es lo que se ve, en
   vez de calcar «as of». Mientras se reintenta, «Actualizando…», como en la app.
 - **El marco de las páginas sin sesión** (sc-29037): "New to Soirely?" es «¿Aún no tiene cuenta?»,
   antes de «Crear una cuenta»; «¿Es nuevo…?» concuerda con un género. «© {{year}} Soirely» queda
