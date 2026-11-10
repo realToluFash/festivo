@@ -72,7 +72,7 @@ import {
   qrPath,
   RECOVERY_CODES,
 } from './SecuritySample.ts';
-import { AloneLine } from './SecurityAlone.tsx';
+import { AloneLine } from '../../components/SecurityAlone.tsx';
 import { SummaryPage } from './SummaryPage.tsx';
 
 export { SECURITY_STATES } from './SecurityModel.ts';

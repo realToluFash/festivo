@@ -58,6 +58,7 @@ import { ConfirmScreen, type ConfirmSays, type ProofAsks } from './AccountConfir
 import { useProof } from './ConfirmItsYou.tsx';
 import { SETTLED_MS, ScreenScroll } from './Screen.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { AloneLine } from './SecurityAlone.tsx';
 import { SecurityCard } from './SecurityCard.tsx';
 import { DevicesSection, Everywhere } from './SecurityDevices.tsx';
 import { ChangePasswordScreen, SetPasswordScreen, type Setting } from './SecurityPassword.tsx';
@@ -133,9 +134,13 @@ export function SecurityPage({
   const [enrolment, setEnrolment] = useState<Enrolment | { retry: () => void } | null>(null);
   const [newCodes, setNewCodes] = useState<readonly string[] | null>(null);
   const [visit, setVisit] = useState(0);
+  const [statusTries, setStatusTries] = useState(0);
+  const cardShown = useRef(false);
+  const lineHeld = useRef(false);
   const blocks = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const [targets] = useState(() => ({
     card: createRef<TextHandle>(),
+    line: createRef<TextHandle>(),
     step: createRef<ViewInstance>(),
     password: createRef<ViewInstance>(),
     link: createRef<ViewInstance>(),
@@ -219,6 +224,14 @@ export function SecurityPage({
     if (said != null) screenScroll?.ref.current?.scrollTo({ y: 0, animated: true });
   }, [said, screenScroll]);
 
+  useEffect(() => {
+    cardShown.current = status.kind === 'ready';
+    if (status.kind !== 'ready' || !lineHeld.current) return;
+    lineHeld.current = false;
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => moveScreenReaderFocus(targets.line.current), SETTLED_MS);
+  }, [status.kind, targets]);
+
   useEffect(() => () => clearTimeout(timer.current), []);
 
   function readAgain(): void {
@@ -226,11 +239,14 @@ export function SecurityPage({
   }
 
   function retryStatus(): void {
+    lineHeld.current = false;
+    setStatusTries((count) => count + 1);
     setStatus({ kind: 'loading' });
     readAgain();
   }
 
   function retryDevices(): void {
+    lineHeld.current = false;
     setSessions({ kind: 'loading' });
     readAgain();
   }
@@ -240,6 +256,7 @@ export function SecurityPage({
   }
 
   function show(next: Screen, target: Target): void {
+    lineHeld.current = false;
     from.current = target;
     setVisit((count) => count + 1);
     setScreen(next);
@@ -252,6 +269,7 @@ export function SecurityPage({
   }
 
   function asking(question: AskKind, block: string, target: Target): void {
+    lineHeld.current = false;
     from.current = target;
     setRowError(null);
     setAsk(question);
@@ -259,6 +277,7 @@ export function SecurityPage({
   }
 
   function done(words: string): void {
+    lineHeld.current = !cardShown.current;
     from.current = 'card';
     setSaid(words);
     setOpened(null);
@@ -427,6 +446,7 @@ export function SecurityPage({
 
   return (
     <>
+      {status.kind !== 'ready' && said != null && <AloneLine text={said} lineRef={targets.card} />}
       {status.kind === 'ready' && (
         <SecurityCard
           says={cardSays(on, t)}
@@ -434,6 +454,7 @@ export function SecurityPage({
           line={cardLine(said, on, t)}
           wide={layout === 'portrait'}
           saysRef={targets.card}
+          lineRef={targets.line}
           step={
             on
               ? null
@@ -489,6 +510,7 @@ export function SecurityPage({
               line={t('twoFactorCard.failedBody')}
               onRetry={retryStatus}
               testID="security.retry"
+              announce={statusTries === 0}
             />
           )}
         </Section>
@@ -698,6 +720,7 @@ export function SecurityPage({
   );
 
   function toggle(id: string): void {
+    lineHeld.current = false;
     setRowError(null);
     setOpened((now) => (now === id ? null : id));
   }
