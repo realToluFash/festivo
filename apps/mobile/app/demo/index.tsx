@@ -14,6 +14,7 @@ import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
 import { GUESTS_BOARDS } from '../../src/demo/guests/GuestsBoards.ts';
 import { PASS_BOARDS } from '../../src/demo/pass/PassBoards.ts';
 import { NEXT_BOARDS, QUEUE_BOARDS } from '../../src/demo/queue/QueueBoards.ts';
+import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowItsGoingBoards.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
@@ -39,6 +40,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'A planning day · invitations not sent',
         what: 'The party with nobody invited',
         href: '/demo/today?moment=plan&invites=none',
+      },
+      {
+        title: 'A planning day · the event starts later today',
+        what: 'The party at 19:00, read at 09:41',
+        href: '/demo/today?moment=plan&starts=later',
       },
       {
         title: 'Needs you · every overdue form',
@@ -457,6 +463,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Security · reset sent',
         what: 'Check your email, Done',
         href: '/demo/settings/security?state=forgotSent',
+      },
+      {
+        title: 'Security · two-factor did not load',
+        what: 'No card; Try again in its section',
+        href: '/demo/settings/security?state=factorFailed',
+      },
+      {
+        title: 'Security · Apple linked, no card',
+        what: 'The done line alone, then the failure',
+        href: '/demo/settings/security?state=factorFailedLinked',
+      },
+      {
+        title: 'Security · signed out, still loading',
+        what: 'The line alone, then back in the card',
+        href: '/demo/settings/security?state=factorLoadingSignedOut',
       },
       {
         title: 'Notifications',
@@ -1331,6 +1352,18 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Service · the moved person’s own screen (sc-36034) · phone',
     boards: MOVED_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · How it’s going (sc-34107) · phone from 320 px',
+    boards: SERVICE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the waiter’s Next, a tray the lead paused or gave (sc-34107) · phone',
+    boards: SERVICE_NEXT_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
   },
   {
     page: 'Guests · A Summary first',

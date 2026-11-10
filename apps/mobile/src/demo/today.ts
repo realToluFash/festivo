@@ -254,17 +254,20 @@ function card(
   moment: MomentName,
   say: Say,
   guests: GuestsOf,
+  later: EventKey | null,
 ): EventCard {
   const event = EVENTS[key];
   const until = daysFrom(today, event.first);
-  const live = until <= 0 && daysFrom(today, event.last) >= 0;
+  const live = until <= 0 && daysFrom(today, event.last) >= 0 && key !== later;
   const count = event.draft
     ? 'Draft'
-    : live
-      ? `Day ${1 - until} of ${daysFrom(event.first, event.last) + 1}`
-      : until === 1
-        ? 'Tomorrow'
-        : `In ${until} days`;
+    : key === later
+      ? 'Today'
+      : live
+        ? `Day ${1 - until} of ${daysFrom(event.first, event.last) + 1}`
+        : until === 1
+          ? 'Tomorrow'
+          : `In ${until} days`;
 
   return {
     event: sample(key),
@@ -273,7 +276,7 @@ function card(
     count,
     live,
     draft: event.draft,
-    stage: !event.draft && !live && until <= 7 ? 'Final week' : null,
+    stage: !event.draft && !live && until > 0 && until <= 7 ? 'Final week' : null,
     ready:
       READY[moment]?.includes(key) !== true
         ? null
@@ -284,7 +287,13 @@ function card(
 }
 
 /** Live events and the ones still to come, soonest first, then drafts. */
-function cards(today: string, moment: MomentName, say: Say, guests: GuestsOf): EventCard[] {
+function cards(
+  today: string,
+  moment: MomentName,
+  say: Say,
+  guests: GuestsOf,
+  later: EventKey | null = null,
+): EventCard[] {
   return (Object.keys(EVENTS) as EventKey[])
     .filter((key) => daysFrom(today, EVENTS[key].last) >= 0)
     .sort(
@@ -292,7 +301,7 @@ function cards(today: string, moment: MomentName, say: Say, guests: GuestsOf): E
         Number(EVENTS[a].draft) - Number(EVENTS[b].draft) ||
         EVENTS[a].first.localeCompare(EVENTS[b].first),
     )
-    .map((key) => card(key, today, moment, say, guests));
+    .map((key) => card(key, today, moment, say, guests, later));
 }
 
 /** One bar for each event on in the week, with its other days' milestones as dots. */
@@ -454,27 +463,52 @@ function now(today: string, time: string, say: Say): Now {
   };
 }
 
-/** `at` draws the moment on another day and time; `guests` gives the events other guests. */
+/** `?starts=later`: the party's own day at 09:41, the party starting at 19:00 (sc-30413). */
+export const STARTS_LATER = {
+  event: 'party',
+  date: '2026-11-28',
+  time: '09:41',
+  starts: '19:00',
+} as const;
+
+const LATER_AGENDA: readonly (readonly [string, Item[]])[] = [
+  [STARTS_LATER.date, [[STARTS_LATER.starts, 'The party starts', STARTS_LATER.event, '']]],
+];
+
+/** `at` draws the moment on another day and time; `guests` gives the events other guests; `later` draws `?starts=later`. */
 export function momentOf(
   name: MomentName,
   say: Say,
   t: TFunction,
   {
     needing,
-    at = needing === 'overdue' ? DUE_DAY_LAST_MINUTE : TODAY[name],
+    later = false,
+    at = later && name === 'plan'
+      ? STARTS_LATER
+      : needing === 'overdue'
+        ? DUE_DAY_LAST_MINUTE
+        : TODAY[name],
     guests = SAMPLE_GUESTS,
   }: {
     at?: { date: string; time: string } | undefined;
     guests?: GuestsOf | undefined;
     needing?: NeedsState | undefined;
+    later?: boolean | undefined;
   } = {},
 ): Moment {
+  const starting = later && name === 'plan';
   const { date: today, time } = at;
   const kind = name === 'planNow' ? 'plan' : name === 'dayNow' ? 'day' : (name as Moment['kind']);
   const full = name !== 'planNow' && name !== 'dayNow';
-  const agenda = name === 'first' ? [] : name === 'dayNow' ? builtNow(today) : AGENDA[name];
+  const agenda = starting
+    ? LATER_AGENDA
+    : name === 'first'
+      ? []
+      : name === 'dayNow'
+        ? builtNow(today)
+        : AGENDA[name];
   const { days, bars } = week(today, agenda, say);
-  const waiting = needs(name, at, say, needing);
+  const waiting = needs(name, at, say, starting ? 'none' : needing);
   const wedding = EVENTS.wed.first;
   const party = EVENTS.party;
 
@@ -495,9 +529,11 @@ export function momentOf(
     sub:
       name === 'first'
         ? 'Your first event starts here.'
-        : name === 'quiet'
-          ? t('todayScreen.startsOnDate', { name: party.name, date: say.day(party.first) })
-          : `The wedding starts on ${say.weekdayLong(wedding)}.`,
+        : starting
+          ? `${party.name} starts today at ${say.clock(STARTS_LATER.starts)}.`
+          : name === 'quiet'
+            ? t('todayScreen.startsOnDate', { name: party.name, date: say.day(party.first) })
+            : `The wedding starts on ${say.weekdayLong(wedding)}.`,
     needs: waiting,
     days,
     bars,
@@ -523,7 +559,8 @@ export function momentOf(
             when: `${say.day(party.first)} · ${howFar(today, party.first)}`,
           }
         : null,
-    events: name === 'first' ? [] : cards(today, name, say, guests),
+    events:
+      name === 'first' ? [] : cards(today, name, say, guests, starting ? STARTS_LATER.event : null),
     now: kind === 'day' ? now(today, time, say) : null,
   };
 }
