@@ -1,15 +1,16 @@
 import { useIsFocused } from 'expo-router';
 import {
+  createContext,
   type ReactNode,
   type Ref,
   type RefObject,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 import {
-  AccessibilityInfo,
   KeyboardAvoidingView,
   type LayoutChangeEvent,
   Modal,
@@ -26,8 +27,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
-import { SETTLED_MS, useWindowOrigin } from './Screen.tsx';
-import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
+import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
+import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { useFocusBack, useUnnamedWindow, useWindowTurn } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { Toast } from './Toast.tsx';
@@ -166,7 +167,6 @@ export function FocusedScreen({
   scrollRef,
   fills = false,
   gap = tokens.spaceLg,
-  focusFirst,
   children,
   testID,
 }: {
@@ -189,8 +189,6 @@ export function FocusedScreen({
   scrollRef?: Ref<ScrollViewInstance>;
   fills?: boolean;
   gap?: number;
-  /** A notice that takes screen reader focus in the title's place when it is already there as focus moves (sc-11032). */
-  focusFirst?: RefObject<ScreenReaderTarget | null>;
   children: ReactNode;
   testID?: string;
 }) {
@@ -201,7 +199,7 @@ export function FocusedScreen({
   const phone = layout === 'phone';
   const asking = ask != null;
   const covered = asking || over != null;
-  const heading = useTitleTakesFocus(title, onScreen, covered, focusFirst);
+  const heading = useTitleTakesFocus(title, onScreen, covered);
   const bottom = phone ? insets.bottom : 0;
   const cancel = waits ? stay : onCancel;
   const close = asking ? ask.onKeep : over != null ? over.onClose : cancel;
@@ -229,6 +227,7 @@ export function FocusedScreen({
             onAccessibilityEscape={cancel}
             accessibilityElementsHidden={covered}
             importantForAccessibility={covered || heading.hidden ? 'no-hide-descendants' : 'auto'}
+            ref={heading.shown}
             testID={testID}
           >
             <FocusNav
@@ -245,7 +244,7 @@ export function FocusedScreen({
             />
             {fills ? (
               <View style={[phone ? styles.fill : styles.sheetFill, { paddingBottom: bottom }]}>
-                {children}
+                <TitleFocus.Provider value={heading.focus}>{children}</TitleFocus.Provider>
               </View>
             ) : (
               <ScrollView
@@ -258,7 +257,7 @@ export function FocusedScreen({
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >
-                {children}
+                <TitleFocus.Provider value={heading.focus}>{children}</TitleFocus.Provider>
               </ScrollView>
             )}
           </View>
@@ -275,39 +274,53 @@ export function FocusedScreen({
   );
 }
 
-/** Once its window is up, and again with each new title in a window that stays up, the title takes screen reader focus; a notice already there as focus moves takes it instead (sc-11032). */
+/** Where a focused screen's title focus goes: `first` takes it in the title's place while `coming` (sc-11032). */
+export interface TitleFocusing {
+  first: RefObject<ViewInstance | null>;
+  /** Focus has not yet moved for this step, so whatever holds `first` now is read as focus lands on it. */
+  coming: () => boolean;
+}
+
+export const TitleFocus = createContext<TitleFocusing | null>(null);
+
+/** Once its window is up, and again with each new title in a window that stays up, the title takes screen reader focus, or `first` when it is there as focus moves; nothing moves while an ask covers the screen (sc-11032). */
 function useTitleTakesFocus(
   title: string,
   onScreen: boolean,
   covered: boolean,
-  first: RefObject<ScreenReaderTarget | null> | undefined,
-): { heading: RefObject<TextHandle | null>; hidden: boolean } {
+): {
+  heading: RefObject<TextHandle | null>;
+  shown: RefObject<ViewInstance | null>;
+  hidden: boolean;
+  focus: TitleFocusing;
+} {
   const heading = useRef<TextHandle>(null);
+  const first = useRef<ViewInstance>(null);
   const hidden = useUnnamedWindow(Platform.OS === 'android', onScreen, title);
+  const step = onScreen && !hidden ? title : undefined;
   const asked = useRef(covered);
+  const moved = useRef(false);
   useEffect(() => {
     asked.current = covered;
   });
-
   useEffect(() => {
-    if (!onScreen || hidden || asked.current) return;
+    moved.current = false;
+  }, [step]);
 
-    let gone = false;
-    let focus: ReturnType<typeof setTimeout> | undefined;
-    void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
-      if (on && !gone)
-        focus = setTimeout(() => {
-          if (!asked.current) moveScreenReaderFocus(first?.current ?? heading.current);
-        }, SETTLED_MS);
-    });
+  // Read only as focus moves, since `shown` is the screen: the move is what ends `coming`.
+  const target = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        moved.current = true;
+        return asked.current ? null : (first.current ?? heading.current);
+      },
+    }),
+    [],
+  );
+  const { shown } = useFocusOnAnswer(step, target);
+  const focus = useMemo(() => ({ first, coming: () => !moved.current }), []);
 
-    return () => {
-      gone = true;
-      clearTimeout(focus);
-    };
-  }, [onScreen, hidden, title, first]);
-
-  return { heading, hidden };
+  return { heading, shown, hidden, focus };
 }
 
 /** In a list opened from the screen, ‹ and where it goes back to in Cancel's place; "Back" when the title needs the room, as iOS does. */

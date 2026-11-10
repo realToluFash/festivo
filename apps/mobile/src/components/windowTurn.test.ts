@@ -86,4 +86,17 @@ describe('a focused screen whose title takes focus with each new step (sc-11032)
   it('hides on Android through the sheet’s own wait, restarted by each new title', () => {
     expect(screen).toContain("useUnnamedWindow(Platform.OS === 'android', onScreen, title)");
   });
+
+  it('moves focus the way an answer does, through useFocusOnAnswer', () => {
+    expect(screen).toContain('useFocusOnAnswer(step, target)');
+  });
+
+  it('lets Turn on two-factor’s failure take focus as one item, not read out as well', () => {
+    const summary = readFileSync(join(import.meta.dirname, 'Summary.tsx'), 'utf8');
+    const twoFactor = readFileSync(join(import.meta.dirname, 'SecurityTwoFactor.tsx'), 'utf8');
+
+    expect(summary).toContain('quietAtMount: focused');
+    expect(summary).toContain('accessible={focused || undefined}');
+    expect(twoFactor).toMatch(/<SectionFailed[^>]*takesFocus/);
+  });
 });
