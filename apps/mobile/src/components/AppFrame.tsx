@@ -57,7 +57,7 @@ import {
   useLayout,
   useNameLines,
 } from '../layout/useLayout.ts';
-import { type DropFrame, frameFor, switcherSession } from '../kit/orgSwitcher.ts';
+import { type DropFrame, frameFor, openerInModal, switcherSession } from '../kit/orgSwitcher.ts';
 import { joinOrganisation, onMovedOn, switchOrganisation, useSignedIn } from '../signedIn.ts';
 import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { switcherFocusBack } from '../kit/focusBack.ts';
@@ -96,7 +96,7 @@ import {
 import { OrgDropDown } from './OrgDropDown.tsx';
 import { AREA_GLYPH } from './areaGlyph.ts';
 import { ReadOut } from './ReadOut.tsx';
-import { SETTLED_MS, useFocusOnAnswer } from './Screen.tsx';
+import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text } from './Text.tsx';
 import { Title, useWholeWords } from './Title.tsx';
@@ -335,6 +335,7 @@ export function AppFrame({
   const overdueIn = useRef<string | undefined>(undefined);
   const overdueHeading = useRef<TextHandle>(null);
   const window = useWindowDimensions();
+  const origin = useWindowOrigin();
   const [drop, setDrop] = useState<{ frame: DropFrame; visit: number } | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [answeredHere, setAnsweredHere] = useState<ReadonlySet<string>>(new Set());
@@ -345,17 +346,17 @@ export function AppFrame({
       const place = (x: number, y: number, width: number, height: number) =>
         setDrop((last) => ({
           frame: frameFor({
-            opener: { x, y, width, height },
+            opener: openerInModal({ x, y, width, height }, origin),
             window,
             insets: { bottom: insets.bottom },
             phone: kind === 'phone',
           }),
           visit: (last?.visit ?? 0) + (again ? 0 : 1),
         }));
-      if (at == null) place(0, insets.top, window.width, 0);
+      if (at == null) place(0, insets.top + origin, window.width, 0);
       else at.measureInWindow(place);
     },
-    [window, insets.bottom, insets.top, kind],
+    [window, insets.bottom, insets.top, kind, origin],
   );
   // It opens with one organisation too, because it ends with "Create an organisation" (sc-390).
   const openSwitcher =
