@@ -44,9 +44,12 @@ export function ShieldCard({
 export function SaidLine({
   said,
   saidRef,
+  alone = false,
 }: {
   said: { text: string; done: boolean } | null;
   saidRef?: ((line: HTMLParagraphElement | null) => void) | undefined;
+  /** On the page ground in the card's place, so it takes the page's ink. */
+  alone?: boolean;
 }) {
   return (
     <div aria-live="polite">
@@ -54,7 +57,7 @@ export function SaidLine({
         <p
           ref={saidRef}
           tabIndex={saidRef == null ? undefined : -1}
-          className={said.done ? 'account-said is-done' : 'account-said'}
+          className={`account-said${said.done ? ' is-done' : ''}${alone ? ' is-alone' : ''}`}
         >
           {said.done && (
             <span className="desk-mark is-yes account-done" aria-hidden="true">

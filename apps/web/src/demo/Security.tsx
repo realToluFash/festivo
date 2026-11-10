@@ -181,6 +181,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
           />
         ) : (
           <SaidLine
+            alone
             said={said == null ? null : { text: said, done: true }}
             saidRef={(line) => {
               saidLine.current = line;
