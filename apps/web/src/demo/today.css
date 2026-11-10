@@ -196,17 +196,3 @@
   background: var(--colorAccentTint);
   color: var(--colorAccentText);
 }
-
-/* This week in rows (?week=rows, sc-37302): a row is the bar's height with the bar's gap above it, so one row draws as the strip does today, and the strip keeps its room below the last row. */
-.today-bar-row {
-  position: relative;
-  height: var(--space5xl);
-  margin-top: var(--spaceXs);
-}
-
-.today-bar-row > .today-bar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  margin-top: 0;
-}

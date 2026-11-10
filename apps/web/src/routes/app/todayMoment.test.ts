@@ -60,7 +60,7 @@ describe('todayMoment', () => {
       now: null,
     });
     expect(plan.bars.map(({ event: { id }, ...bar }) => [id, bar])).toEqual([
-      ['Wedding', { start: 3, span: 3, label: '3 days', openLeft: false }],
+      ['Wedding', { start: 3, span: 3, label: '3 days', openLeft: false, lane: 0 }],
     ]);
     expect(
       plan.agenda.map(({ day, when, items }) => [day, when, items.map((item) => item.title)]),
@@ -110,6 +110,29 @@ describe('todayMoment', () => {
       [],
     ]);
     expect(plan.sub).toBe('Party starts on Sat 28 Nov.');
+  });
+
+  it('a bar takes the first row free on every day it covers (sc-37302)', () => {
+    const spanning = (name: string, first: string, last: string, dayCount: number) =>
+      event(name, {
+        startsAt: `2026-11-${first}T10:00:00Z`,
+        endsAt: `2026-11-${last}T20:00:00Z`,
+        dayCount,
+      });
+    const plan = moment([
+      spanning('A', '03', '06', 4),
+      spanning('B', '05', '08', 4),
+      spanning('C', '07', '09', 3),
+      spanning('D', '20', '21', 2),
+    ]);
+
+    expect(
+      plan.bars.map(({ event: { id }, start, span, lane }) => [id, start, span, lane]),
+    ).toEqual([
+      ['A', 0, 4, 0],
+      ['B', 2, 4, 1],
+      ['C', 4, 3, 0],
+    ]);
   });
 
   it('on the day, the cover is Now', () => {

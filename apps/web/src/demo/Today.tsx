@@ -15,7 +15,6 @@ import { Banner, type BannerActions, NowBanner } from '../components/TodayBanner
 import { FirstRun, ThisWeek, YourEvents } from '../components/TodayParts.tsx';
 import { NeedsYou } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
-import { ThisWeekInRows } from './TodayWeek.tsx';
 import './today.css';
 
 /** The demo's bell, with its sample's three unread. */
@@ -112,11 +111,7 @@ export function Today() {
                 <div className="today-columns">
                   <div className="today-left">
                     <NeedsYou moment={moment} tell={tell} />
-                    {rows ? (
-                      <ThisWeekInRows moment={moment} open={open} />
-                    ) : (
-                      <ThisWeek moment={moment} open={open} />
-                    )}
+                    <ThisWeek moment={moment} open={open} />
                   </div>
                   <div className="today-right">
                     <YourEvents moment={moment} open={open} />

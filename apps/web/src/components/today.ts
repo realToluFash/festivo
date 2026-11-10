@@ -36,6 +36,8 @@ export interface StripBar {
   label: string;
   /** Started before the week shown, so it runs in from the left edge. */
   openLeft: boolean;
+  /** Its row, 0 first: bars that share a day never share a row (sc-37302). */
+  lane: number;
 }
 
 export interface EventCard {

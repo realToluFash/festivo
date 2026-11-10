@@ -82,6 +82,7 @@ function open() {
 const content = () => document.getElementById('content') as HTMLElement;
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -141,6 +142,34 @@ describe('Today at a desk (sc-30413)', () => {
     expect(router.state.location.pathname).toBe(
       `/app/events/ev_${'Bisi & Kola’s engagement'.length}`,
     );
+  });
+
+  it('draws This week’s bars in rows, two that share a day one above the other (sc-37302)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-03T09:00:00+01:00'));
+    const spanning = (name: string, first: string, last: string, dayCount: number) =>
+      event(name, {
+        status: 'live',
+        phase: 'live',
+        startsAt: `2026-11-${first}T10:00:00+01:00`,
+        endsAt: `2026-11-${last}T20:00:00+01:00`,
+        dayCount,
+      });
+    signedIn(membership({ id: 'org_1' }));
+    serving([
+      spanning('Aso ebi', '03', '06', 4),
+      spanning('Bisi’s 40th', '05', '08', 4),
+      spanning('Chidi & Ngozi', '07', '09', 3),
+    ]);
+    open();
+
+    const week = await screen.findByRole('region', { name: 'This week' });
+    await within(week).findAllByText('Aso ebi');
+    const rows = [...week.querySelectorAll('.today-bar-row')].map((row) =>
+      [...row.querySelectorAll('.today-bar-name')].map((name) => name.textContent),
+    );
+
+    expect(rows).toEqual([['Aso ebi', 'Chidi & Ngozi'], ['Bisi’s 40th']]);
   });
 
   it('keeps New event off the banner for a role without Create events', async () => {
