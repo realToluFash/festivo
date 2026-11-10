@@ -452,7 +452,6 @@ export function whatsAppCredits(number: string): number {
   return UTILITY_CREDITS.find((one) => number.startsWith(`${one.code} `))?.credits ?? 0;
 }
 
-/** The sample guests who agreed to WhatsApp, by their number. */
 export const WHATSAPP_NUMBERS: Readonly<Record<string, string>> = {
   lucia: '+34 612 345 678',
   kwame: '+44 7700 900412',
@@ -479,7 +478,6 @@ const WHATSAPP: Record<Sample, WhatsAppSample> = {
   notReplied: { reaches: ['duboise'], noMobile: 16, stopped: 0, notAgreed: 8 },
 };
 
-/** WhatsApp's credits for these guests: each one's number at its country's rate, summed; a guest without one costs nothing. */
 export function whatsAppCreditsFor(ids: readonly string[]): number {
   return ids.reduce((sum, id) => sum + whatsAppCredits(WHATSAPP_NUMBERS[id] ?? ''), 0);
 }
@@ -493,7 +491,6 @@ export interface WhatsAppReach {
   credits: number;
 }
 
-/** Who WhatsApp reaches in an audience, and its credits: each reachable number's country rate, summed (not one a message). */
 export function whatsAppOf(audience: Audience): WhatsAppReach {
   const { reaches, noMobile, stopped, notAgreed } = WHATSAPP[sampleOf(audience)];
 
@@ -507,7 +504,6 @@ export function whatsAppOf(audience: Audience): WhatsAppReach {
   };
 }
 
-/** WhatsApp's reach line, shown whenever it is ticked; a part that is 0 is left out. */
 export function whatsAppLine(audience: Audience): string {
   const reach = whatsAppOf(audience);
 
