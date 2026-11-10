@@ -176,26 +176,23 @@ describe('Today in Agenda under this option', () => {
 });
 
 describe('the empty lines', () => {
-  const needsWords = showWords('needs');
-  const allWords = showWords('all');
-
   it('replace the month’s under this option only, and only once loaded', () => {
-    expect(emptyMonthLine(true, DECEMBER, needs, needsWords.emptyMonth, 'December 2026')).toBe(
-      'Nothing needs you in December 2026.',
-    );
-    expect(emptyMonthLine(true, DECEMBER, new Map(), allWords.emptyMonth, 'December 2026')).toBe(
-      'Nothing on the calendar in December 2026.',
-    );
     expect(
-      emptyMonthLine(true, NOVEMBER, needs, needsWords.emptyMonth, 'November 2026'),
+      emptyMonthLine(true, DECEMBER, needs, showWords('needs').emptyMonth, 'December 2026'),
+    ).toBe('Nothing needs you in December 2026.');
+    expect(
+      emptyMonthLine(true, DECEMBER, new Map(), showWords('all').emptyMonth, 'December 2026'),
+    ).toBe('Nothing on the calendar in December 2026.');
+    expect(
+      emptyMonthLine(true, NOVEMBER, needs, showWords('needs').emptyMonth, 'November 2026'),
     ).toBeNull();
     expect(
-      emptyMonthLine(false, DECEMBER, needs, needsWords.emptyMonth, 'December 2026'),
+      emptyMonthLine(false, DECEMBER, needs, showWords('needs').emptyMonth, 'December 2026'),
     ).toBeNull();
   });
 
   it('say the day’s under this option only', () => {
-    expect(needsWords.emptyDay).toBe('Nothing needs you on this day.');
-    expect(allWords.emptyDay).toBe('Nothing on this day.');
+    expect(showWords('needs').emptyDay).toBe('Nothing needs you on this day.');
+    expect(showWords('all').emptyDay).toBe('Nothing on this day.');
   });
 });
