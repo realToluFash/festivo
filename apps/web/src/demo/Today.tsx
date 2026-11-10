@@ -8,12 +8,17 @@ import { NoOrganisation } from './NoOrganisation.tsx';
 import { VIEWERS } from './settings.ts';
 import { AccessPaused, Switched } from './OrgSwitcher.tsx';
 import { inNone, isFresh, useSwitcherStart, useWhere } from './switcher.ts';
-import { INVITES_NOT_SENT, MOMENTS, type MomentName, momentOf, sayIn } from './today.ts';
-import { Banner, NowBanner } from './TodayBanner.tsx';
+import { INVITES_NOT_SENT, keyOf, MOMENTS, type MomentName, momentOf, sayIn } from './today.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
-import { FirstRun, NeedsYou, ThisWeek, YourEvents } from './TodayParts.tsx';
+import type { Open } from '../components/today.ts';
+import { Banner, type BannerActions, NowBanner } from '../components/TodayBanner.tsx';
+import { FirstRun, ThisWeek, YourEvents } from '../components/TodayParts.tsx';
+import { NeedsYou } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import './today.css';
+
+/** The demo's bell, with its sample's three unread. */
+const ACTIONS: BannerActions = { create: true, unread: 3 };
 
 function isMoment(name: string | null): name is MomentName {
   return MOMENTS.some((moment) => moment === name);
@@ -42,6 +47,23 @@ export function Today() {
   );
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);
+  const open = useCallback<Open>(
+    (opens) =>
+      tell(
+        opens.to === 'event'
+          ? `${opens.name} has its own design.`
+          : opens.to === 'create'
+            ? 'Create an event has its own design.'
+            : opens.to === 'notifications'
+              ? 'Notifications have their own design.'
+              : opens.to === 'runOfShow'
+                ? 'The run of show has its own design.'
+                : opens.to === 'calendar'
+                  ? 'Calendar has its own design.'
+                  : 'Events has its own design.',
+      ),
+    [tell],
+  );
   const page = useRef<HTMLElement>(null);
   const { layers, covered, setHost } = useDeskLayers();
 
@@ -64,7 +86,7 @@ export function Today() {
     <LayersContext value={layers}>
       <div className="today">
         <TodaySidebar
-          events={moment.events.map(({ event }) => event)}
+          events={moment.events.map(({ event }) => keyOf(event.id))}
           person={asks ? VIEWERS.ana : undefined}
           tell={tell}
           onToday={() => page.current?.scrollTo({ top: 0 })}
@@ -77,20 +99,20 @@ export function Today() {
           ) : (
             <>
               {moment.now != null ? (
-                <NowBanner now={moment.now} full={moment.full} tell={tell} />
+                <NowBanner now={moment.now} full={moment.full} actions={ACTIONS} open={open} />
               ) : (
-                <Banner moment={moment} tell={tell} />
+                <Banner moment={moment} actions={ACTIONS} open={open} />
               )}
               {moment.kind === 'first' ? (
-                <FirstRun tell={tell} asks={asks} />
+                <FirstRun open={open} create={!asks} />
               ) : (
                 <div className="today-columns">
                   <div className="today-left">
                     <NeedsYou moment={moment} tell={tell} />
-                    <ThisWeek moment={moment} tell={tell} />
+                    <ThisWeek moment={moment} open={open} />
                   </div>
                   <div className="today-right">
-                    <YourEvents moment={moment} tell={tell} />
+                    <YourEvents moment={moment} open={open} />
                   </div>
                 </div>
               )}

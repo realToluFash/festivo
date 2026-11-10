@@ -267,7 +267,7 @@ describe('Events', () => {
     answering({
       'GET /api/orgs/org_1/events': listed([event()], [event({ id: 'ev_2' })]),
     });
-    at('/app');
+    at('/app/guests');
 
     expect(await screen.findByText('2 events')).toBeDefined();
   });
