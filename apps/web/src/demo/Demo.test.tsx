@@ -1652,6 +1652,7 @@ describe('Today at a desk (sc-29092)', () => {
     expect(screen.getByRole('heading', { name: 'Set up your first event' })).toBeDefined();
     expect(screen.getByText('Make it live')).toBeDefined();
     expect(screen.getByText(/Ask an owner if you need to create one/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Ana Souza, Member' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Start your first event' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'New event' })).toBeNull();
   });

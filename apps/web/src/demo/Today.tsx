@@ -35,7 +35,7 @@ export function Today() {
     () =>
       momentOf(name, sayIn(formattingLocale('en', navigator.language)), {
         guests: notSent ? INVITES_NOT_SENT : undefined,
-        first: asks ? 'Ana' : undefined,
+        first: asks ? VIEWERS.ana.name.split(' ')[0] : undefined,
         later,
       }),
     [name, notSent, asks, later],
