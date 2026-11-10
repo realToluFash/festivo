@@ -1,7 +1,11 @@
-# sc-34869: the defaults line on the Create an organisation sheet. Any device, needs ${METRO_URL}, no ${ORIENT}.
+# sc-34869: the defaults line on Create an organisation's Ready to create it? step. Any device, needs ${METRO_URL}, no ${ORIENT}.
 appId: host.exp.Exponent
 ---
 - runFlow: ../open-create-organisation.yaml
+- runFlow:
+    file: ../walk-to-ready.yaml
+    env:
+      NAME: 'Defaults Shown'
 - scrollUntilVisible:
     element:
       text: '{{t:createOrganisation.defaults|email}}'
