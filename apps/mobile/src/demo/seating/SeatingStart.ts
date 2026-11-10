@@ -153,7 +153,7 @@ function seatEveryone(m: Seating): Seating {
   }, m);
 }
 
-function nobodyComing(m: Seating): Seating {
+function withNobodyComing(m: Seating): Seating {
   return {
     ...m,
     tray: [],
@@ -501,7 +501,7 @@ function tablet(state: SeatingState, b: Seating): Seating {
     case 'everyoneSeated':
       return settled(seatEveryone(seat));
     case 'nobodyComing':
-      return settled(nobodyComing(seat));
+      return settled(withNobodyComing(seat));
     case 'noMatch':
       return { ...seat, search: 'Olu' };
     case 'notSureYet':
@@ -592,7 +592,7 @@ function phone(state: SeatingState, b: Seating): Seating {
     case 'everyoneSeated':
       return settled(seatEveryone(b));
     case 'nobodyComing':
-      return settled(nobodyComing(b));
+      return settled(withNobodyComing(b));
     case 'noMatch':
       return { ...open, search: 'Olu' };
     case 'notSureYet':
