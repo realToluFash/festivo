@@ -87,7 +87,9 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
   const [onEvent, setOnEvent] = useState<OnEvent[]>(start.onEvent);
   const [opened, setOpened] = useState<Opened | null>(() => openedAtStart(start));
-  const [adding, setAdding] = useState({ open: false, visit: 0 });
+  const [adding, setAdding] = useState(() =>
+    start.adding === true ? { open: true, visit: 1 } : { open: false, visit: 0 },
+  );
   const [lit, setLit] = useState<{ id: string; held: boolean } | null>(() =>
     start.opened == null ? null : { id: start.opened.id, held: true },
   );
@@ -287,10 +289,12 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
           viewer={viewer}
           organisation={world.organisation}
           opener={focusBack}
+          refuses={start.addRefuses}
           onClose={() => setAdding((was) => ({ ...was, open: false }))}
-          onAdd={(role, added) => {
+          onAdd={(role, added, finished) => {
             const next = withAdded(onEvent, role, added);
             setOnEvent(next.onEvent);
+            if (!finished) return;
             setAdding((was) => ({ ...was, open: false }));
             setToast(addedToast(next.names, role));
           }}

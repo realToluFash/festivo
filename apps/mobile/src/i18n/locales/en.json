@@ -2159,7 +2159,10 @@
     "everyoneOn": "Everyone in {{organisation}} is on this event already.",
     "cancel": "Cancel",
     "addConfirm": "Add",
-    "addFailed": "Adding did not work. Nobody else was added. Try again in a moment.",
+    "addFailedOne": "We couldn’t add {{name}}, so they’re still ticked. Check your connection and press Add again.",
+    "addFailedMany_one": "We couldn’t add the {{count, number}} still ticked. Check your connection and press Add again.",
+    "addFailedMany_other": "We couldn’t add the {{count, number}} still ticked. Check your connection and press Add again.",
+    "addedThenRefused": "{{added}} {{refused}}",
     "nowOne": {
       "lead": "{{name}} leads this event now.",
       "can_edit": "{{name}} can edit now.",

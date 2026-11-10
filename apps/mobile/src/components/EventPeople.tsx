@@ -125,7 +125,18 @@ function addWords(t: TFunction, organisation: string, nothingLeft: boolean): Add
     discardLine: t('eventPeople.discardLine'),
     discardKeep: t('eventPeople.discardKeep'),
     discard: t('eventPeople.discard'),
-    refusal: (error) => refusal(error, t('eventPeople.addFailed')),
+    refusal: (error, role, went, left) => {
+      const refused = refusal(
+        error,
+        left.length === 1
+          ? t('eventPeople.addFailedOne', { name: left[0] ?? '' })
+          : t('eventPeople.addFailedMany', { count: left.length }),
+      );
+
+      return went.length === 0
+        ? refused
+        : t('eventPeople.addedThenRefused', { added: nowCan(t, role, went), refused });
+    },
     everyoneOn: nothingLeft ? t('eventPeople.everyoneOn', { organisation }) : undefined,
   };
 }

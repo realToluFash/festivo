@@ -108,6 +108,14 @@ function onEventAs(id: string, role: EventRole): OnEvent {
   return { id, name, initials, tone, role, outside: false, label: null };
 }
 
+function everyoneOn(onEvent: readonly OnEvent[]): OnEvent[] {
+  const rest = sampleMembers().filter(
+    (one) => one.active && !onEvent.some((there) => there.id === one.id),
+  );
+
+  return [...onEvent, ...rest.map((one) => onEventAs(one.id, 'Can view'))];
+}
+
 export function sampleOnEvent(): OnEvent[] {
   return [
     onEventAs(PRIYA, 'Lead'),
@@ -326,6 +334,8 @@ export const PEOPLE_STATES = [
   'lead',
   'nobody',
   'roleFails',
+  'addPartial',
+  'everyoneOn',
   'loading',
   'failed',
 ] as const;
@@ -359,6 +369,10 @@ export interface PeopleStart {
   load: Load;
   onEvent: OnEvent[];
   roleFails: boolean;
+  /** Add people open on arrival. */
+  adding?: boolean;
+  /** The member Add people cannot add, so a batch with them in stops there. */
+  addRefuses?: string;
   world?: PeopleWorld;
   /** Someone's sheet open on arrival, or its Remove asking or sending. */
   opened?: { id: string; removing: Removing };
@@ -384,6 +398,10 @@ export function peopleStart(state: PeopleState): PeopleStart {
       return { ...base, onEvent: [] };
     case 'roleFails':
       return { ...base, roleFails: true };
+    case 'addPartial':
+      return { ...base, adding: true, addRefuses: JULIEN };
+    case 'everyoneOn':
+      return { ...base, adding: true, onEvent: everyoneOn(base.onEvent) };
     case 'loading':
     case 'failed':
       return { ...base, load: state };
@@ -415,7 +433,28 @@ export function sheetWords(person: OnEvent): RoleSheetWords<EventRole> {
   };
 }
 
-export function addWords(organisation: string = ORGANISATION): AddWords<EventRole> {
+/** Who went in, if anyone did, then who did not and what to do. */
+export function addRefusedLine(
+  role: EventRole,
+  went: readonly string[],
+  left: readonly string[],
+): string {
+  const refused =
+    left.length === 1
+      ? `We couldn’t add ${left[0] ?? ''}, so they’re still ticked. Check your connection and press Add again.`
+      : `We couldn’t add the ${left.length} still ticked. Check your connection and press Add again.`;
+
+  return went.length === 0 ? refused : `${addedToast(went, role)} ${refused}`;
+}
+
+export function everyoneOnLine(organisation: string = ORGANISATION): string {
+  return `Everyone in ${organisation} is on this event already.`;
+}
+
+export function addWords(
+  organisation: string = ORGANISATION,
+  nothingLeft = false,
+): AddWords<EventRole> {
   return {
     ...ROLE_WORDS,
     title: 'Add people',
@@ -430,6 +469,7 @@ export function addWords(organisation: string = ORGANISATION): AddWords<EventRol
     discardLine: 'Nobody is added to this event.',
     discardKeep: 'Keep editing',
     discard: 'Discard',
-    refusal: () => '',
+    refusal: (_error, role, went, left) => addRefusedLine(role, went, left),
+    everyoneOn: nothingLeft ? everyoneOnLine(organisation) : undefined,
   };
 }

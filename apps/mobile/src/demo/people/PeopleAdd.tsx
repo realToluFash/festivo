@@ -23,6 +23,7 @@ export function AddScreen({
   viewer,
   organisation = ORGANISATION,
   opener,
+  refuses,
   onClose,
   onAdd,
 }: {
@@ -32,9 +33,13 @@ export function AddScreen({
   viewer: PeopleViewer;
   organisation?: string;
   opener: RefObject<ScreenReaderTarget | null>;
+  refuses?: string | undefined;
   onClose: () => void;
-  onAdd: (role: EventRole, adding: readonly OrgMember[]) => void;
+  onAdd: (role: EventRole, adding: readonly OrgMember[], finished: boolean) => void;
 }) {
+  const view = addView('', members, onEvent);
+  const nothingLeft = view.kind === 'members' && view.offered.length === 0;
+
   return (
     <AddPeople
       open={open}
@@ -51,17 +56,17 @@ export function AddScreen({
               line: offerLine(member, viewer),
             }));
       }}
-      words={addWords(organisation)}
+      words={addWords(organisation, nothingLeft)}
       opener={opener}
       onClose={onClose}
       add={(_role, id) => {
         const member = members.find((one) => one.id === id);
 
-        return member == null
-          ? Promise.reject(new Error(`${id} is not in the sample.`))
+        return member == null || id === refuses
+          ? Promise.reject(new Error(`${id} is not added in the sample.`))
           : Promise.resolve(member);
       }}
-      onAdded={(role, added) => onAdd(role, added)}
+      onAdded={onAdd}
     />
   );
 }

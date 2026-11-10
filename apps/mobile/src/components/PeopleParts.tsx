@@ -440,9 +440,21 @@ export interface AddWords<R extends string> extends RoleWords<R> {
   discardLine: string;
   discardKeep: string;
   discard: string;
-  refusal: (error: unknown) => string;
+  /** One line: who went in, if anyone did, then why the rest did not. */
+  refusal: (error: unknown, role: R, went: readonly string[], left: readonly string[]) => string;
   /** Said when there is nobody left to add; none where nothing says it. */
   everyoneOn?: string | undefined;
+}
+
+function Unsent({ failed }: { failed: { line: string; times: number } }) {
+  return (
+    <ReadOut words={failed.line} answer={failed.times} style={styles.failed}>
+      <Glyph name="alert" size={18} ink={tokens.colorAttention} weight={2.3} />
+      <Text size={15} weight="medium" style={[styles.grow, styles.notice]}>
+        {failed.line}
+      </Text>
+    </ReadOut>
+  );
 }
 
 /** Sends each ticked member in turn; a refusal stops there and leaves the screen open, the ones not added still ticked. */
@@ -484,6 +496,8 @@ export function AddScreen<R extends string, T>({
     setFailed(null);
     const added: T[] = [];
     const went: string[] = [];
+    const named = new Map(offered('').map((one) => [one.id, one.name]));
+    const names = (ids: readonly string[]) => ids.map((id) => named.get(id) ?? '');
     try {
       for (const id of ticked) {
         added.push(await add(role, id));
@@ -492,7 +506,9 @@ export function AddScreen<R extends string, T>({
     } catch (error) {
       setBusy(false);
       setTicked((now) => now.filter((id) => !went.includes(id)));
-      setFailed((was) => ({ line: words.refusal(error), times: (was?.times ?? 0) + 1 }));
+      const left = ticked.filter((id) => !went.includes(id));
+      const line = words.refusal(error, role, names(went), names(left));
+      setFailed((was) => ({ line, times: (was?.times ?? 0) + 1 }));
       if (added.length > 0) onAdded(role, added, false);
       return;
     }
@@ -559,7 +575,7 @@ export function AddScreen<R extends string, T>({
       over={over}
       testID="people.add"
     >
-      {failed != null && <Refused failed={failed} />}
+      {failed != null && <Unsent failed={failed} />}
       <View>
         <SectionHead title={words.theirRole} />
         <Row
@@ -656,6 +672,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
+  notice: { color: tokens.colorAttentionText },
   pressed: { opacity: tokens.opacityPressed },
   addBox: {
     height: 52,

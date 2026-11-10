@@ -2224,7 +2224,11 @@
     "everyoneOn": "Toutes les personnes de {{organisation}} participent déjà à cet événement.",
     "cancel": "Annuler",
     "addConfirm": "Ajouter",
-    "addFailed": "L’ajout n’a pas abouti. Aucune autre personne n’a été ajoutée. Réessayez dans un instant.",
+    "addFailedOne": "We couldn’t add {{name}}, so they’re still ticked. Check your connection and press Add again.",
+    "addFailedMany_one": "We couldn’t add the {{count, number}} still ticked. Check your connection and press Add again.",
+    "addFailedMany_many": "We couldn’t add the {{count, number}} still ticked. Check your connection and press Add again.",
+    "addFailedMany_other": "We couldn’t add the {{count, number}} still ticked. Check your connection and press Add again.",
+    "addedThenRefused": "{{added}} {{refused}}",
     "nowOne": {
       "lead": "{{name}} est désormais responsable de cet événement.",
       "can_edit": "{{name}} peut désormais modifier l’événement.",
