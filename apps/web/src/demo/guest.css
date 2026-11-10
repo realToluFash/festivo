@@ -1324,6 +1324,99 @@
   margin-top: 0;
 }
 
+/* sc-3950: the optional WhatsApp box on Check and send; the whole label row is the hit area */
+.gp-wa {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.gp-check-row + .gp-wa {
+  margin-top: 8px;
+}
+
+.gp-wa + :is(.gp-filled, .gp-notice) {
+  margin-top: 10px;
+}
+
+.gk-check > .gp-wa {
+  margin: -8px 0;
+}
+
+.gp-wa-box {
+  position: relative;
+  display: flex;
+  flex: none;
+  width: 24px;
+  height: 24px;
+}
+
+.gp .gp-wa .gp-wa-input {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border-radius: 6px;
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 2px var(--colorFieldBorder);
+  cursor: pointer;
+  appearance: none;
+}
+
+.gp .gp-wa .gp-wa-input:checked {
+  background: var(--colorAccent);
+  box-shadow: none;
+}
+
+.gp .gp-wa .gp-wa-input:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 2px var(--colorFieldBorder),
+    var(--deskRing);
+}
+
+.gp .gp-wa .gp-wa-input:checked:focus-visible {
+  box-shadow: var(--deskRing);
+}
+
+.gp-wa-tick {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  color: var(--colorInkOnDark);
+  pointer-events: none;
+}
+
+.gp-wa-words {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gp-wa-label {
+  color: var(--colorInk);
+  font: 600 16px/24px var(--fontFamily);
+}
+
+.gp-wa-hint {
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.4 var(--fontFamily);
+}
+
+.gp-wa-told {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.gp-wa-told svg {
+  flex: none;
+  margin-top: 3px;
+}
+
 /* ── One column up to 64rem (402 and 320 in the gutters, 600 centred from 641); from it the cover and details sit left, measured ── */
 
 .gp-main.is-one :is(.gp-columns, .gp-alone-wrap) {
@@ -1448,4 +1541,165 @@
   .gp-notice {
     animation-name: gp-fade;
   }
+
+  .gp .gp-switch-knob {
+    transition: none;
+  }
+}
+
+/* sc-3969's Your messages, opened from the guest's page (sc-3950): one column, no cover, 560 at the wide widths */
+.gp-main .gp-alone-wrap.gp-yours-wrap {
+  padding-top: 0;
+}
+
+.gp-yours {
+  display: flex;
+  flex-direction: column;
+}
+
+.gp .gp-yours-title {
+  margin-top: 4px;
+  color: var(--colorInk);
+  font: 700 24px/1.2 var(--fontFamily);
+  letter-spacing: -0.02em;
+}
+
+.gp-yours > .gp-yours-title + .gp-sub {
+  margin-top: 8px;
+}
+
+.gp-yours-rows {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+}
+
+.gp-yours-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 0;
+}
+
+.gp-yours-row + .gp-yours-row {
+  border-top: 1px solid var(--colorBorder);
+}
+
+.gp-yours-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding-top: 10px;
+}
+
+.gp .gp-yours-name {
+  color: var(--colorInk);
+  font: 600 16px/24px var(--fontFamily);
+}
+
+.gp .gp-yours-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.4 var(--fontFamily);
+}
+
+.gp-yours-line.is-saved svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--colorAccent);
+}
+
+.gp-yours-none {
+  position: relative;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--colorInkSecondary);
+}
+
+.gp-yours-none::after {
+  position: absolute;
+  top: 6px;
+  left: 4px;
+  width: 6px;
+  height: 1.5px;
+  background: var(--colorInkSecondary);
+  content: '';
+}
+
+.gp-yours-rows + .gp-small {
+  margin-top: 20px;
+}
+
+.gp-switch {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-width: var(--sizeHit);
+  min-height: var(--sizeHit);
+  cursor: pointer;
+}
+
+.gp-switch-track {
+  position: relative;
+  display: flex;
+  flex: none;
+}
+
+.gp .gp-switch .gp-switch-input {
+  width: var(--sizeToggleW);
+  height: var(--sizeToggleH);
+  margin: 0;
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 2px var(--colorFieldBorder);
+  cursor: pointer;
+  appearance: none;
+}
+
+.gp .gp-switch .gp-switch-input:checked {
+  background: var(--colorAccent);
+  box-shadow: none;
+}
+
+.gp .gp-switch .gp-switch-input:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 2px var(--colorFieldBorder),
+    var(--deskRing);
+}
+
+.gp .gp-switch .gp-switch-input:checked:focus-visible {
+  box-shadow: var(--deskRing);
+}
+
+.gp-switch-knob {
+  position: absolute;
+  top: calc((var(--sizeToggleH) - 16px) / 2);
+  left: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--colorFieldBorder);
+  pointer-events: none;
+  transition: transform 120ms var(--gpEase);
+}
+
+.gp-switch-input:checked + .gp-switch-knob {
+  background: var(--colorCard);
+  transform: translateX(calc(var(--sizeToggleW) - 24px));
+}
+
+.gp-switch-word {
+  min-width: 26px;
+  color: var(--colorInk);
+  font: 600 14px/1 var(--fontFamily);
 }

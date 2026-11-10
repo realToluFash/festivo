@@ -23,6 +23,7 @@ import {
   sentWhen,
   shortDay,
   codePath,
+  offersWhatsApp,
 } from './guest.ts';
 
 const LINES = {
@@ -214,6 +215,47 @@ export function Filled({
       {busy && <Spinner size={16} on="fill" />}
       {children}
     </button>
+  );
+}
+
+/** sc-3950: the optional box on Check and send, unticked by default; Send my answer never checks it. */
+export function WhatsAppBox({
+  visit,
+  words,
+  busy,
+  onTick,
+}: {
+  visit: Visit;
+  words: Words;
+  busy: boolean;
+  onTick: () => void;
+}) {
+  if (!offersWhatsApp(visit)) return null;
+
+  return (
+    <label className="gp-wa">
+      <span className="gp-wa-box">
+        <input
+          type="checkbox"
+          className="gp-wa-input"
+          checked={visit.ticked}
+          data-focus="whatsApp"
+          aria-labelledby="gp-wa-label"
+          aria-describedby="gp-wa-hint"
+          aria-disabled={busy || undefined}
+          onChange={onTick}
+        />
+        {visit.ticked && <Glyph name="tick" size={16} weight={3} className="gp-wa-tick" />}
+      </span>
+      <span className="gp-wa-words">
+        <span id="gp-wa-label" className="gp-wa-label">
+          {words.whatsAppBox}
+        </span>
+        <span id="gp-wa-hint" className="gp-wa-hint">
+          {words.whatsAppHint}
+        </span>
+      </span>
+    </label>
   );
 }
 

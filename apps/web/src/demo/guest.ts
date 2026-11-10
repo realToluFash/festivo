@@ -26,6 +26,8 @@ export const OPEN_NOW = '2026-10-27T10:00:00Z';
 export const AFTER_REPLY_BY = '2026-10-31T10:00:00Z';
 /** sc-3787: the member who recorded a reply for the guest, the Guests demo's own on evt-wed-4. */
 export const RECORDER = 'Folake Adeyemi';
+/** The organisation of the wedding, the web demo's own (switcher.ts): WhatsApp's line names it (sc-3950). */
+export const ORGANISATION = 'Ire Events';
 
 /** The reader's zone is the browser's; the sample reads in London, and the zone state from São Paulo. */
 export const READER_ZONE = 'Europe/London';
@@ -87,7 +89,16 @@ export type Answer = 'coming' | 'notComing' | 'notSure';
 export const ANSWERS: readonly Answer[] = ['coming', 'notComing', 'notSure'];
 export type Phase = 'live' | 'paused' | 'calledOff' | 'over' | 'finished';
 export type Lang = 'en' | 'es' | 'fr' | 'pt';
-export type Page = 'event' | 'gone' | 'unreachable' | 'loading';
+export type Page = 'event' | 'gone' | 'unreachable' | 'loading' | 'messages';
+
+/** sc-3969's channels on Your messages, always in this order; WhatsApp's switch is the guest's agreement. */
+export type Channel = 'email' | 'sms' | 'whatsApp';
+export const CHANNELS: readonly Channel[] = ['email', 'sms', 'whatsApp'];
+export interface Reach {
+  email: boolean;
+  sms: boolean;
+  saved: Channel | null;
+}
 
 export type View =
   | { kind: 'answer'; busy: Answer | null; note: 'unsent' | 'notSentTap' | null }
@@ -103,6 +114,37 @@ export interface Recorded {
   answer: Answer;
   on: string;
   by?: string;
+  whatsApp?: true;
+}
+
+/** sc-3950: a guest's WhatsApp agreement with this organisation, their own or the host's record; `stopped` ended it. */
+export type WhatsAppConsent = 'none' | 'agreed' | 'hostRecorded' | 'stopped';
+
+/** Who sees the box on Check and send: a mobile number on the record, and no agreement in force. */
+export function offersWhatsApp(guest: { mobile: boolean; whatsApp: WhatsAppConsent }): boolean {
+  return guest.mobile && (guest.whatsApp === 'none' || guest.whatsApp === 'stopped');
+}
+
+/** What Send my answer records with the answer: the agreement only from a box shown and ticked. */
+export function agreesOnSend(guest: {
+  mobile: boolean;
+  whatsApp: WhatsAppConsent;
+  ticked: boolean;
+}): boolean {
+  return offersWhatsApp(guest) && guest.ticked;
+}
+
+/** The answer Send my answer records, with what changed: the agreement, if ticked (sc-3950). */
+export function sentAnswer(was: Visit, answer: Answer): Partial<Visit> {
+  const agreed = agreesOnSend(was);
+  const same = sameAnswer(was.recorded, answer) && !agreed;
+  const recorded: Recorded = agreed ? { answer, on: TODAY, whatsApp: true } : { answer, on: TODAY };
+
+  return {
+    recorded: same ? was.recorded : recorded,
+    view: { kind: 'recorded', same },
+    ...(agreed ? { whatsApp: 'agreed' as const } : {}),
+  };
 }
 
 /** The guest's own answer, sent again unchanged; one a host recorded is never the same as theirs. */
@@ -142,6 +184,10 @@ export interface Visit {
   wantId: number;
   /** sc-3778's step, once Yes has led to it; null for sc-1439's Check and send on its own. */
   kitchen: GuestKitchen | null;
+  mobile: boolean;
+  whatsApp: WhatsAppConsent;
+  ticked: boolean;
+  reach: Reach;
 }
 
 export const OPEN: View = { kind: 'answer', busy: null, note: null };
@@ -172,6 +218,10 @@ const BASE: Visit = {
   want: null,
   wantId: 0,
   kitchen: null,
+  mobile: false,
+  whatsApp: 'none',
+  ticked: false,
+  reach: { email: true, sms: true, saved: null },
 };
 
 const COMING = { answer: 'coming', on: TODAY } as const;
@@ -193,6 +243,14 @@ const STATES = {
     name: 'Yes, I’ll be there, then Check and send',
     starts: { view: check(), want: 'checkHead' },
   },
+  checkWhatsApp: {
+    name: 'Check and send, with a mobile number: the WhatsApp box',
+    starts: { view: check(), mobile: true, want: 'checkHead' },
+  },
+  checkWhatsAppTicked: {
+    name: 'Check and send, the WhatsApp box ticked',
+    starts: { view: check(), mobile: true, ticked: true, want: 'checkHead' },
+  },
   sending: {
     name: 'Sending Send my answer',
     starts: { view: check({ busy: true }), want: 'send' },
@@ -212,6 +270,16 @@ const STATES = {
   coming: {
     name: 'Answered Coming',
     starts: { recorded: COMING, view: RECORDED, want: 'greeting' },
+  },
+  comingWhatsApp: {
+    name: 'Answered Coming, with WhatsApp updates ticked',
+    starts: {
+      recorded: { ...COMING, whatsApp: true },
+      view: RECORDED,
+      mobile: true,
+      whatsApp: 'agreed',
+      want: 'greeting',
+    },
   },
   comingAlone: {
     name: 'Answered Coming, no companion coming',
@@ -428,6 +496,38 @@ const STATES = {
     name: 'A message that failed',
     starts: { ...MESSAGED, draft: MINE, draftFailed: true, want: 'sendMessage' },
   },
+  messagesWhatsAppOff: {
+    name: 'Your messages: WhatsApp off, never agreed',
+    starts: { page: 'messages', mobile: true },
+  },
+  messagesWhatsAppTurnedOn: {
+    name: 'Your messages: WhatsApp just turned on, saved',
+    starts: {
+      page: 'messages',
+      mobile: true,
+      whatsApp: 'agreed',
+      reach: { email: true, sms: true, saved: 'whatsApp' },
+      want: 'switch-whatsApp',
+    },
+  },
+  messagesWhatsAppOn: {
+    name: 'Your messages: WhatsApp on, agreed earlier',
+    starts: { page: 'messages', mobile: true, whatsApp: 'agreed' },
+  },
+  messagesWhatsAppTurnedOff: {
+    name: 'Your messages: WhatsApp turned off again, saved',
+    starts: {
+      page: 'messages',
+      mobile: true,
+      whatsApp: 'stopped',
+      reach: { email: true, sms: true, saved: 'whatsApp' },
+      want: 'switch-whatsApp',
+    },
+  },
+  messagesNoMobile: {
+    name: 'Your messages: no mobile number on record',
+    starts: { page: 'messages' },
+  },
 } satisfies Record<string, { name: string; starts: Partial<Visit> }>;
 
 export type GuestStateName = keyof typeof STATES;
@@ -463,11 +563,14 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'open',
         'openNoDate',
         'check',
+        'checkWhatsApp',
+        'checkWhatsAppTicked',
         'sending',
         'notSent',
         'sendingTap',
         'notSentTap',
         'coming',
+        'comingWhatsApp',
         'comingAlone',
         'notComing',
         'notSure',
@@ -540,6 +643,18 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'replyFailed',
         'calledOffMessages',
         'finishedMessages',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'Your messages, opened from the guest’s page (sc-3969, sc-3950)',
+    states: (
+      [
+        'messagesWhatsAppOff',
+        'messagesWhatsAppTurnedOn',
+        'messagesWhatsAppOn',
+        'messagesWhatsAppTurnedOff',
+        'messagesNoMobile',
       ] as const
     ).map(link),
   },
@@ -752,6 +867,29 @@ const BOARD_ENGLISH = {
   messageFailed: 'Your message wasn’t sent. Your words are still here. Try again.',
   messageCount: '{{count}} of {{most}} characters',
   messageTooLong: 'Shorten your message to {{most}} characters or fewer.',
+  whatsAppBox: 'Send me updates on WhatsApp',
+  whatsAppHint:
+    'Soirely sends them on behalf of {{organisation}}. Reply STOP at any time to end them.',
+  whatsAppTold: 'Updates will come on WhatsApp. Reply STOP at any time to end them.',
+  yourMessages: 'Your messages',
+  yourMessagesIntro:
+    'Choose how {{organisation}} can reach you. This changes nothing for anyone else who uses Soirely.',
+  channelEmail: 'Email',
+  channelSms: 'Text messages',
+  channelWhatsApp: 'WhatsApp',
+  switchOn: 'On',
+  switchOff: 'Off',
+  noPhone: '{{organisation}} has no phone number for you.',
+  whatsAppUpdates:
+    'Soirely sends updates on WhatsApp on behalf of {{organisation}}. Reply STOP at any time to end them.',
+  emailOn: 'Emails from {{organisation}} are on again.',
+  emailOff: 'Emails from {{organisation}} are off.',
+  smsOn: 'Texts from {{organisation}} are on again.',
+  smsOff: 'Texts from {{organisation}} are off.',
+  whatsAppOn: 'WhatsApp messages from {{organisation}} are on again.',
+  whatsAppOff: 'WhatsApp messages from {{organisation}} are off.',
+  yourMessagesFoot:
+    'Only you can turn these back on. {{organisation}} can see which you have turned off, and when.',
   switched: 'This page is now in English.',
   notSaved:
     'Your language was not saved. This page stays in English on this device, but it may open in another language on other devices.',
@@ -894,6 +1032,23 @@ export function wordsFor(lang: Lang) {
     messageTooLong: board('messageTooLong', { most: MESSAGE_MOST }),
     sent: board('sent'),
     messageFailed: board('messageFailed'),
+    whatsAppBox: board('whatsAppBox'),
+    whatsAppHint: board('whatsAppHint', { organisation: ORGANISATION }),
+    whatsAppTold: board('whatsAppTold'),
+    yourMessages: board('yourMessages'),
+    yourMessagesIntro: board('yourMessagesIntro', { organisation: ORGANISATION }),
+    channel: (channel: Channel): string =>
+      board(
+        ({ email: 'channelEmail', sms: 'channelSms', whatsApp: 'channelWhatsApp' } as const)[
+          channel
+        ],
+      ),
+    switchWord: (on: boolean): string => board(on ? 'switchOn' : 'switchOff'),
+    noPhone: board('noPhone', { organisation: ORGANISATION }),
+    whatsAppUpdates: board('whatsAppUpdates', { organisation: ORGANISATION }),
+    savedLine: (channel: Channel, on: boolean): string =>
+      board(`${channel}${on ? 'On' : 'Off'}`, { organisation: ORGANISATION }),
+    yourMessagesFoot: board('yourMessagesFoot', { organisation: ORGANISATION }),
     switched: board('switched'),
     notSaved: board('notSaved'),
   };
