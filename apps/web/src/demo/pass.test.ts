@@ -51,9 +51,10 @@ describe('the pass’s print controls at a desk (sc-4018)', () => {
     expect(printed).toEqual({ T9: '20:09', T12: '20:12', T13: '20:12' });
   });
 
-  it('keeps printing working while the strip is not live', () => {
-    expect(startOf('offline')).toMatchObject({ connection: 'offline', panel: 'tickets' });
-    expect(startOf('reconnecting').connection).toBe('stale');
+  it('keeps printing working while the pass has no connection', () => {
+    expect(startOf('ticket').connection).toBe('connected');
+    expect(startOf('offline')).toMatchObject({ connection: 'none', panel: 'tickets' });
+    expect(startOf('reconnecting').connection).toBe('none');
   });
 
   it('adds up what is still to make from the tickets on screen', () => {

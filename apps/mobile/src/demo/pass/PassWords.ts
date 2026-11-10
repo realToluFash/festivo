@@ -58,15 +58,8 @@ export const PW = {
   oneTicket: (table: string) => `Table ${table.slice(1)} · 1 ticket`,
   forMain: (n: number) => `${n} ${n === 1 ? 'ticket' : 'tickets'} for Main`,
   printTicketAria: (table: string) => `Print table ${table.slice(1)}’s ticket`,
-  live: ['Live', 'Updated just now. Plates move here as soon as the room moves them.'],
-  stale: [
-    'Reconnecting · as of 20:09',
-    'Last update 20:09. What you see may have moved. Your taps are kept and sent when the signal is back.',
-  ],
-  offline: [
-    'Offline · as of 20:09',
-    'Marking plates and reading tickets still work. Requests from other devices won’t arrive until the signal is back.',
-  ],
+  connected: 'Connected · up to date 20:09',
+  noConnection: 'No connection · as of 20:09',
   asOf: 'as of 20:09',
   demoTitle: 'Demo only: printing as on',
   demoFire: 'Fire table 17',

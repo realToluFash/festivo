@@ -53,10 +53,7 @@ function Pass({ state }: { state: PassState }) {
   const opener = useRef<HTMLElement | null>(null);
   const tickets = start.noTickets ? [] : TICKETS;
   const choices = choicesOf(tickets, printed, which);
-  const stale = start.connection !== 'live';
-  const [stripTitle, stripBody] = { live: PW.live, stale: PW.stale, offline: PW.offline }[
-    start.connection
-  ];
+  const stale = start.connection === 'none';
   const canPrintAll = tickets.length > 0;
 
   function open(next: 'tickets' | 'printing', from: HTMLElement): void {
@@ -132,8 +129,7 @@ function Pass({ state }: { state: PassState }) {
         </header>
         <div className="pass-strip" data-connection={start.connection} role="status">
           <span className="pass-strip-dot" aria-hidden="true" />
-          <strong>{stripTitle}</strong>
-          <span>{stripBody}</span>
+          <strong>{stale ? PW.noConnection : PW.connected}</strong>
         </div>
         <div className="pass-body">
           <section className="pass-tickets" aria-labelledby="pass-tickets-heading">
