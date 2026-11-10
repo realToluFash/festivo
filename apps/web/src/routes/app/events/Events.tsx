@@ -41,8 +41,10 @@ import {
 } from '../../../components/EventsList.tsx';
 import {
   type Calendar,
+  EventsReadOut,
   EventsResults,
   EventsSearchRow,
+  type ResultsGroup,
 } from '../../../components/EventsSearch.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
@@ -400,15 +402,36 @@ function EventsOf({
     }
   };
 
-  const results = () => {
-    if (
-      found == null ||
-      found.kind === 'loading' ||
-      (found.kind === 'failed' && found.search !== searchKey)
-    )
-      return <EventsLoading />;
+  const matchedGroups = ((): ResultsGroup[] | null => {
+    if (search == null || found?.kind !== 'loaded') return null;
 
-    if (found.kind === 'failed')
+    const matched = eventsHome({ ...found, pastTotal: found.past.length }, now, locale);
+    const shownMatched = (events: readonly ListedEvent[]) =>
+      events.map((event) => shownEvent(listEventOf(event), shownPhase(event, found.at, now)));
+    return (
+      [
+        ['upcoming', [...matched.happeningNow, ...matched.upcoming]],
+        ['drafts', matched.drafts],
+        ['past', matched.past],
+      ] as const
+    ).map(([group, events]) => ({
+      tab: group,
+      count: events.length,
+      rows: shownMatched(events).map((event) => (
+        <EventRow
+          key={event.id}
+          event={event}
+          now={now}
+          locale={locale}
+          to={eventLink(event)}
+          everyPhase
+        />
+      )),
+    }));
+  })();
+
+  const results = () => {
+    if (found?.kind === 'failed' && found.search === searchKey)
       return (
         <div className="notice notice-broken" role="alert">
           <span className="mark mark-broken" aria-hidden="true">
@@ -430,31 +453,9 @@ function EventsOf({
         </div>
       );
 
-    const matched = eventsHome({ ...found, pastTotal: found.past.length }, now, locale);
-    const shownMatched = (events: readonly ListedEvent[]) =>
-      events.map((event) => shownEvent(listEventOf(event), shownPhase(event, found.at, now)));
-    const groups = (
-      [
-        ['upcoming', [...matched.happeningNow, ...matched.upcoming]],
-        ['drafts', matched.drafts],
-        ['past', matched.past],
-      ] as const
-    ).map(([group, events]) => ({
-      tab: group,
-      count: events.length,
-      rows: shownMatched(events).map((event) => (
-        <EventRow
-          key={event.id}
-          event={event}
-          now={now}
-          locale={locale}
-          to={eventLink(event)}
-          everyPhase
-        />
-      )),
-    }));
+    if (matchedGroups == null) return <EventsLoading />;
 
-    return <EventsResults look={look} groups={groups} calendar={calendar} onLook={onLook} />;
+    return <EventsResults look={look} groups={matchedGroups} calendar={calendar} onLook={onLook} />;
   };
 
   return page(
@@ -462,7 +463,10 @@ function EventsOf({
     <>
       {searchRow(false)}
       {search != null ? (
-        <div className="ev-column">{results()}</div>
+        <div className="ev-column">
+          <EventsReadOut groups={matchedGroups} />
+          {results()}
+        </div>
       ) : (
         <div className="ev-column arrives" ref={home}>
           <EventsTabs

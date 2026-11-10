@@ -125,6 +125,15 @@ function text(element: Element | null): string {
   return (element?.textContent ?? '').replace(/\s/g, ' ');
 }
 
+/** The search's polite status, which a screen reader reads the count from. */
+function readOut(): Element | null {
+  return document.querySelector('.ev-column > [role="status"]');
+}
+
+async function readsOut(count: string): Promise<void> {
+  await waitFor(() => expect(readOut()?.textContent).toBe(count));
+}
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -137,7 +146,7 @@ describe('Searching and filtering Events (sc-30302)', () => {
     const asked = answering();
     routed('/app/events?q=lucia');
 
-    expect(await screen.findByText('3 events')).toBeDefined();
+    await readsOut('3 events');
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.getAllByRole('region').map((group) => group.getAttribute('aria-label'))).toEqual([
       'Upcoming',
@@ -170,7 +179,7 @@ describe('Searching and filtering Events (sc-30302)', () => {
     fireEvent.change(field, { target: { value: 'owa' } });
 
     await waitFor(() => expect(router.state.location.search).toBe('?q=owa'));
-    expect(await screen.findByText('1 event')).toBeDefined();
+    await readsOut('1 event');
     expect(document.activeElement).toBe(field);
   });
 
@@ -184,7 +193,7 @@ describe('Searching and filtering Events (sc-30302)', () => {
     fireEvent.keyDown(field, { key: 'Enter' });
 
     expect(router.state.location.search).toBe('?q=gala');
-    expect(await screen.findByText('1 event')).toBeDefined();
+    await readsOut('1 event');
 
     fireEvent.keyDown(field, { key: 'Escape' });
 
@@ -193,13 +202,42 @@ describe('Searching and filtering Events (sc-30302)', () => {
     expect(field).toHaveProperty('value', '');
   });
 
+  it('reads the first count out from a status already there, empty while the search loads', async () => {
+    signedIn();
+    answering();
+    const answer = vi.mocked(globalThis.fetch).getMockImplementation()!;
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      if (new URL(String(input)).pathname === '/api/orgs/org_1/events') await held;
+
+      return answer(input, init);
+    });
+    routed('/app/events?q=owa');
+
+    const status = await waitFor(() => {
+      expect(readOut()).not.toBeNull();
+
+      return readOut()!;
+    });
+    expect(status.getAttribute('aria-live')).toBe('polite');
+    expect(status.textContent).toBe('');
+
+    release();
+
+    await readsOut('1 event');
+    expect(readOut()).toBe(status);
+  });
+
   it('says what was searched and filtered when nothing matches, with Clear search and Clear filters', async () => {
     signedIn();
     answering();
     const router = routed('/app/events?q=garden%20party&type=wedding');
 
     expect(await screen.findByRole('heading', { name: 'No events match' })).toBeDefined();
-    expect(screen.getByText('0 events')).toBeDefined();
+    expect(readOut()?.textContent).toBe('0 events');
     expect(
       screen.getByText('You searched for “garden party” and filtered by Wedding.'),
     ).toBeDefined();
@@ -226,7 +264,7 @@ describe('Searching and filtering Events (sc-30302)', () => {
     fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Birthday' }));
 
     expect(router.state.location.search).toBe('?type=birthday');
-    expect(await screen.findByText('1 event')).toBeDefined();
+    await readsOut('1 event');
     expect(screen.getByRole('button', { name: 'Filter: Birthday' })).toBeDefined();
 
     fireEvent.click(screen.getByRole('menuitem', { name: 'Back to Filter' }));

@@ -533,7 +533,22 @@ export interface ResultsGroup {
   rows: ReactNode;
 }
 
-/** One set of results across Upcoming, Drafts and Past: the count first, a polite status, then each group with its count; or what was searched, with Clear search and Clear filters. */
+function matchCount(groups: readonly ResultsGroup[]): number {
+  return groups.reduce((total, group) => total + group.count, 0);
+}
+
+/** The count, read out politely; mounted for as long as a search is on, empty while one loads, so the first count is a change a screen reader announces. */
+export function EventsReadOut({ groups }: { groups: readonly ResultsGroup[] | null }) {
+  const { t } = useTranslation();
+
+  return (
+    <p className="visually-hidden" role="status" aria-live="polite">
+      {groups == null ? '' : t('eventsSearch.count', { count: matchCount(groups) })}
+    </p>
+  );
+}
+
+/** One set of results across Upcoming, Drafts and Past: the count first, then each group with its count; or what was searched, with Clear search and Clear filters. */
 export function EventsResults({
   look,
   groups,
@@ -546,13 +561,13 @@ export function EventsResults({
   onLook: (next: EventsLook) => void;
 }) {
   const { t } = useTranslation();
-  const count = groups.reduce((total, group) => total + group.count, 0);
+  const count = matchCount(groups);
   const clearFilters = () => onLook({ ...look, filters: NO_EVENTS_FILTERS });
 
   return (
     <>
       <div className="ev-count-row">
-        <p className="ev-count" role="status" aria-live="polite">
+        <p className="ev-count" aria-hidden="true">
           {t('eventsSearch.count', { count })}
         </p>
         {filtered(look.filters) && count > 0 && (
