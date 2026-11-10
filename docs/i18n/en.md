@@ -971,4 +971,8 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
   to WhatsApp on {{date}}" (the guest's own); and three whole keys for a host's record, "Agreed
   to WhatsApp in person, recorded by {{name}} on {{date}}", "… by phone, …", "… in writing, …",
   {{name}} the host's full name. Opted out, sc-3969's "Unsubscribed from WhatsApp on {date}"
-  and "Only the guest can change this."
+  and "Only the guest can change this." Under the **WhatsApp** switch in **Your messages**,
+  shown whether it is on or off and recorded when it is turned on: "Soirely sends updates on
+  WhatsApp on behalf of {{organisation}}. Reply STOP at any time to end them." It names
+  "updates on WhatsApp" because the row's label is only **WhatsApp**, so the tick's "them"
+  would point at nothing (settled on #36834).
