@@ -80,7 +80,7 @@ final class EventRepository extends ServiceEntityRepository
             }
         }
 
-        return Vec\sort(Vec\values($names), static fn (string $a, string $b): int => \strcasecmp($a, $b));
+        return Vec\sort(Vec\values($names), static fn (string $a, string $b): int => Str\Byte\compare_ci($a, $b));
     }
 
     public function countInOrganisation(Organisation $organisation): int

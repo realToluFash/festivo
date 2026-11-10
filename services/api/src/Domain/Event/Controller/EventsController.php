@@ -61,11 +61,7 @@ final readonly class EventsController
     ) {
     }
 
-    /**
-     * A page of the unfinished, or with `finished=true` the Finished, each with its timeline's milestones (sc-3594). A Member's has only the events they have a role on (sc-29912).
-     *
-     * `q` searches the name and the venue's name, and `type`, `from`, `to` and `host` filter them; `total` counts the matches (sc-30302).
-     */
+    /** A page of the unfinished, or with `finished=true` the Finished, each with its timeline's milestones (sc-3594). A Member's has only the events they have a role on (sc-29912). */
     #[Route('/api/orgs/{organisationId}/events', name: 'events_list', methods: ['GET'])]
     #[InOrganisation(null)]
     public function list(Request $request, string $organisationId): JsonResponse
