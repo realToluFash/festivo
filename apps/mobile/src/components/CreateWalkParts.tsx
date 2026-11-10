@@ -1,4 +1,5 @@
 import { type Ref, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Animated,
   Easing,
@@ -10,12 +11,12 @@ import {
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
-import { Glyph } from '../../components/Glyph.tsx';
-import { useReadOut } from '../../components/ReadOut.tsx';
-import { Text, type TextHandle } from '../../components/Text.tsx';
-import { glide } from '../../motion.ts';
-import { tokens } from '../../theme/tokens.ts';
-import { type Fact, STEPS, type Step, WALK } from './CreateWalk.ts';
+import { Glyph } from './Glyph.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import { Text, type TextHandle } from './Text.tsx';
+import { glide } from '../motion.ts';
+import { tokens } from '../theme/tokens.ts';
+import { type Fact, STEPS, type Step } from '../kit/createWalk.ts';
 
 export const TWICE = 2;
 
@@ -281,10 +282,12 @@ export function Question({
 
 /** "From this device": a shape with words, never a colour alone. */
 export function Tag() {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.tag}>
       <Text maxFontSizeMultiplier={TWICE} size={12.5} weight="semibold" muted accessible={false}>
-        {WALK.fromDevice}
+        {t('createOrganisation.fromDevice')}
       </Text>
     </View>
   );

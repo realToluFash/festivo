@@ -16,13 +16,13 @@ appId: host.exp.Exponent
     id: 'noOrganisation.start'
 - extendedWaitUntil:
     visible:
-      id: 'createOrganisation.cancel'
+      id: 'createWalk.cancel'
     timeout: 20000
 - waitForAnimationToEnd
 - takeScreenshot: start-cold-${RUN}
 - tapOn:
-    id: 'createOrganisation.cancel'
+    id: 'createWalk.cancel'
 - extendedWaitUntil:
     notVisible:
-      id: 'createOrganisation'
+      id: 'createWalk'
     timeout: 10000

@@ -1,28 +1,32 @@
-# Create an organisation: a blank Country refused takes the red edge; choosing one clears it. Device region no listed country. sc-30447.
+# Create an organisation: Continue on Where is it based? with no country chosen is refused; choosing one clears it. Device region no listed country. sc-30447.
 appId: host.exp.Exponent
 ---
 - runFlow: ../open-create-organisation.yaml
 - tapOn:
-    id: 'createOrganisation.name'
+    id: 'createWalk.name'
 - inputText: 'QA Second Ltd'
-- hideKeyboard
+- hideKeyboard:
+    optional: true
+- tapOn:
+    id: 'createWalk.primary'
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.whereTitle}}'
+    timeout: 10000
+- hideKeyboard:
+    optional: true
 - takeScreenshot: create-at-rest
 - tapOn:
-    id: 'createOrganisation.create'
+    id: 'createWalk.primary'
 - waitForAnimationToEnd
 - takeScreenshot: create-country-refused
 - assertVisible: '{{t:forms.countryBlank}}'
 - tapOn:
-    id: 'createOrganisation.country'
-- waitForAnimationToEnd
-- takeScreenshot: create-country-open
-- tapOn:
-    id: 'createOrganisation.country.search'
+    id: 'createWalk.search'
 - inputText: 'Portugal'
 - tapOn:
-    id: 'createOrganisation.country.PT'
+    id: 'createWalk.country.PT'
+- hideKeyboard:
+    optional: true
 - waitForAnimationToEnd
 - takeScreenshot: create-country-chosen
-- assertVisible:
-    id: 'createOrganisation.country'
 - assertNotVisible: '{{t:forms.countryBlank}}'

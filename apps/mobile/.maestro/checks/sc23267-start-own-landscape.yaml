@@ -1,4 +1,4 @@
-# sc-23267, the tablet in landscape: You are not in an organisation, its Start your own card, Start organisation opening the Create an organisation sheet, and creating one opening Home.
+# sc-23267, the tablet in landscape: You are not in an organisation, its Start your own card, Start organisation opening the Create an organisation walk, and creating one opening Home.
 appId: host.exp.Exponent
 ---
 - setOrientation: LANDSCAPE_LEFT
@@ -19,28 +19,31 @@ appId: host.exp.Exponent
     id: 'noOrganisation.start'
 - extendedWaitUntil:
     visible:
-      id: 'createOrganisation'
+      id: 'createWalk'
     timeout: 20000
-- takeScreenshot: noorg-sheet
+- takeScreenshot: noorg-walk
 - tapOn:
-    id: 'createOrganisation.name'
+    id: 'createWalk.name'
 - inputText: 'Started Here'
 - tapOn:
-    id: 'createOrganisation.country'
+    id: 'createWalk.primary'
 - tapOn:
-    id: 'createOrganisation.country.search'
+    id: 'createWalk.search'
 - inputText: 'Nigeria'
 - tapOn:
-    id: 'createOrganisation.country.NG'
+    id: 'createWalk.country.NG'
+- hideKeyboard:
+    optional: true
+- tapOn:
+    id: 'createWalk.primary'
 - extendedWaitUntil:
-    notVisible:
-      id: 'createOrganisation.country.search'
+    visible: '{{t:createOrganisation.readyTitle}}'
     timeout: 10000
 - tapOn:
-    id: 'createOrganisation.create'
+    id: 'createWalk.primary'
 - extendedWaitUntil:
     notVisible:
-      id: 'createOrganisation'
+      id: 'createWalk'
     timeout: 20000
 - extendedWaitUntil:
     visible: '.*Started Here.*'

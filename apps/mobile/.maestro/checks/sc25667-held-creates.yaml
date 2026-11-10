@@ -1,4 +1,4 @@
-# sc-25667: Create organisation pressed with the API paused reads Creating…, a second tap sends nothing, Cancel is off and does nothing, a tap on the scrim does nothing; once the API is back the sheet closes into the new organisation with Now working in it.
+# sc-25667: Create pressed with the API paused reads Creating…, a second tap sends nothing, Cancel and Back leave the walk, a tap above it does nothing; once the API is back the walk closes into the new organisation with Now working in it.
 appId: host.exp.Exponent
 onFlowComplete:
   - runScript:
@@ -7,37 +7,30 @@ onFlowComplete:
         ASK: /api?to=up
 ---
 - runFlow: ../open-create-organisation.yaml
-- tapOn:
-    id: 'createOrganisation.name'
-- inputText: 'Held Made'
-- hideKeyboard:
-    optional: true
+- runFlow:
+    file: ../walk-to-ready.yaml
+    env:
+      NAME: 'Held Made'
 - runScript:
     file: ../batch/helper.js
     env:
       ASK: /api?to=paused
 - tapOn:
-    id: 'createOrganisation.create'
+    id: 'createWalk.primary'
 - tapOn:
-    id: 'createOrganisation.create'
+    id: 'createWalk.primary'
 - takeScreenshot: held-creating
 - assertVisible: '{{t:createOrganisation.creating}}'
-- assertVisible:
-    id: 'createOrganisation.cancel'
-    enabled: false
-- tapOn:
-    id: 'createOrganisation.cancel'
-- waitForAnimationToEnd:
-    timeout: 3000
-- assertVisible:
-    id: 'createOrganisation'
-- takeScreenshot: held-after-cancel
+- assertNotVisible:
+    id: 'createWalk.cancel'
+- assertNotVisible:
+    id: 'createWalk.back'
 - tapOn:
     point: '50%,8%'
 - waitForAnimationToEnd:
     timeout: 3000
 - assertVisible:
-    id: 'createOrganisation'
+    id: 'createWalk'
 - takeScreenshot: held-after-scrim
 - runScript:
     file: ../batch/helper.js
@@ -45,7 +38,7 @@ onFlowComplete:
       ASK: /api?to=up
 - extendedWaitUntil:
     notVisible:
-      id: 'createOrganisation'
+      id: 'createWalk'
     timeout: 30000
 - extendedWaitUntil:
     visible: '{{t:switcher.switched}}'

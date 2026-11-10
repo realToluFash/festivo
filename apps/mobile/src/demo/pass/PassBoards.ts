@@ -13,8 +13,8 @@ const STATES: Record<PassState, readonly [string, string]> = {
   printingOn: ['Printing · On, printer named', 'Kitchen TSP143IV and Change printer (iPad)'],
   headerOn: ['Pass header · Print when fired · On', 'The chip in the header (iPad)'],
   versionB: ['Printing · version B', 'Paper roll and the iPad line (Android)'],
-  offline: ['Offline · printing still works', 'Print tickets from the tickets on screen'],
-  reconnecting: ['Reconnecting · printing still works', 'Print on each ticket, as of 20:09'],
+  offline: ['No connection · Print tickets', 'Print tickets from the tickets on screen'],
+  reconnecting: ['No connection · Print on a ticket', 'Print on each ticket, as of 20:09'],
 };
 
 const ANDROID: ReadonlySet<PassState> = new Set(['versionB']);

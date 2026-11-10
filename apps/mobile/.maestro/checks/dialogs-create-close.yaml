@@ -1,43 +1,62 @@
-# Create an organisation: the Country list's Done closes only the list, what was typed stays, Cancel then closes the sheet, and a tap above it closes it too.
+# Create an organisation: with a name typed, Cancel asks first and Keep editing leaves the walk as it was, the name still there; Cancel then Discard closes it; and on an iPad a tap on the scrim asks the same.
 appId: host.exp.Exponent
 ---
 - runFlow: ../open-create-organisation.yaml
 - tapOn:
-    id: 'createOrganisation.name'
+    id: 'createWalk.name'
 - inputText: 'Escape Typed'
+- hideKeyboard:
+    optional: true
 - tapOn:
-    id: 'createOrganisation.country'
+    id: 'createWalk.cancel'
 - extendedWaitUntil:
     visible:
-      id: 'createOrganisation.country.search'
+      id: 'createWalk.ask'
     timeout: 10000
-- takeScreenshot: create-country-list
+- takeScreenshot: create-discard-asked
 - tapOn:
-    id: 'createOrganisation.country.close'
+    id: 'createWalk.keep'
 - extendedWaitUntil:
     notVisible:
-      id: 'createOrganisation.country.search'
+      id: 'createWalk.ask'
     timeout: 10000
 - assertVisible:
-    id: 'createOrganisation'
+    id: 'createWalk'
 - assertVisible: 'Escape Typed'
-- takeScreenshot: create-after-list-done
+- takeScreenshot: create-after-keep
 - tapOn:
-    id: 'createOrganisation.cancel'
+    id: 'createWalk.cancel'
+- tapOn:
+    id: 'createWalk.discard'
 - extendedWaitUntil:
     notVisible:
-      id: 'createOrganisation'
+      id: 'createWalk'
     timeout: 10000
 - takeScreenshot: create-after-cancel
 - runFlow: ../open-create-organisation.yaml
-- hideKeyboard:
-    optional: true
-- waitForAnimationToEnd
-- takeScreenshot: create-before-scrim
-- tapOn:
-    point: '50%,15%'
-- extendedWaitUntil:
-    notVisible:
-      id: 'createOrganisation'
-    timeout: 10000
-- takeScreenshot: create-after-scrim
+- runFlow:
+    when:
+      visible:
+        id: 'createWalk.scrim'
+    commands:
+      - tapOn:
+          id: 'createWalk.name'
+      - inputText: 'Scrim Typed'
+      - hideKeyboard:
+          optional: true
+      - waitForAnimationToEnd
+      - takeScreenshot: create-before-scrim
+      - tapOn:
+          point: '50%,8%'
+      - extendedWaitUntil:
+          visible:
+            id: 'createWalk.ask'
+          timeout: 10000
+      - tapOn:
+          id: 'createWalk.discard'
+      - extendedWaitUntil:
+          notVisible:
+            id: 'createWalk'
+          timeout: 10000
+      - takeScreenshot: create-after-scrim
+- runFlow: ../return-home.yaml

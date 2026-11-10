@@ -1621,6 +1621,30 @@ export class ApiClient {
     return membership;
   }
 
+  /** The currency a new organisation starts with in each country, by its code; none for a country with no money of its own (sc-30412). */
+  async countryCurrencies(): Promise<ReadonlyMap<string, string | null>> {
+    const body = await this.get<{ countries?: unknown }>('/api/countries');
+    const listed = Array.isArray(body?.countries) ? body.countries : null;
+    const currencies = new Map<string, string | null>();
+
+    for (const country of listed ?? []) {
+      const { code, currency } = (country ?? {}) as { code?: unknown; currency?: unknown };
+      if (typeof code !== 'string' || (currency !== null && typeof currency !== 'string')) {
+        currencies.clear();
+        break;
+      }
+      currencies.set(code, currency);
+    }
+
+    if (currencies.size === 0) {
+      throw new Error(
+        'The API answered /api/countries in a shape this client does not know. Check CountriesController in services/api.',
+      );
+    }
+
+    return currencies;
+  }
+
   async updateOrganisation(id: string, changes: OrganisationChanges): Promise<Organisation> {
     const organisation = asOrganisation(
       await this.patch<unknown>(`/api/orgs/${encodeURIComponent(id)}`, changes),

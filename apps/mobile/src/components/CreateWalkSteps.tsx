@@ -16,19 +16,18 @@ import {
   View,
 } from 'react-native';
 
-import { TextField } from '../../components/Field.tsx';
-import { Glyph } from '../../components/Glyph.tsx';
-import { DraftTile } from '../../components/DraftTile.tsx';
-import { useReadOut } from '../../components/ReadOut.tsx';
-import { Text, type TextHandle } from '../../components/Text.tsx';
-import { glide } from '../../motion.ts';
-import { weight } from '../../theme/fonts.ts';
-import { tokens } from '../../theme/tokens.ts';
-import { EventNotice } from '../events/EventNotice.tsx';
+import { TextField } from './Field.tsx';
+import { Glyph } from './Glyph.tsx';
+import { DraftTile } from './DraftTile.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import { Text, type TextHandle } from './Text.tsx';
+import { glide } from '../motion.ts';
+import { weight } from '../theme/fonts.ts';
+import { tokens } from '../theme/tokens.ts';
+import { EventNotice } from './EventNotice.tsx';
 import {
   type Country,
-  ROLE,
-  WALK,
+  type Naming,
   type Walk,
   boxWords,
   cardNameSize,
@@ -39,8 +38,8 @@ import {
   limitedWords,
   rowLabel,
   search,
-} from './CreateWalk.ts';
-import { FactLine, Question, Refusal, Tag, TWICE, ZoneLine } from './WalkParts.tsx';
+} from '../kit/createWalk.ts';
+import { FactLine, Question, Refusal, Tag, TWICE, ZoneLine } from './CreateWalkParts.tsx';
 
 const hidden = {
   accessibilityElementsHidden: true,
@@ -67,6 +66,7 @@ function sizesOf({ phone, large }: Look) {
 interface StepProps {
   walk: Walk;
   look: Look;
+  naming: Naming;
   stepWords: string;
   question?: Ref<TextHandle> | undefined;
   answer: object | undefined;
@@ -141,7 +141,7 @@ function Preview({ name }: { name: string }) {
         accessible={false}
         style={styles.previewRole}
       >
-        {t('switcher.yourRole', { role: ROLE })}
+        {t('switcher.yourRole', { role: t('roles.owner') })}
       </Text>
     </View>
   );
@@ -208,7 +208,7 @@ export function NameStep({
       }}
     >
       <StepWords look={look} words={stepWords} />
-      <Question ref={question} words={WALK.whatTitle} size={sizes.question} />
+      <Question ref={question} words={t('createOrganisation.whatTitle')} size={sizes.question} />
       {look.phone && !look.large && <Preview name={walk.name} />}
       <View style={{ gap: sizes.gap }} onLayout={reveal}>
         <Text
@@ -310,15 +310,20 @@ function GroupHeading({
 
 function CountryRow({
   country,
+  naming,
   picked,
   ruled,
   onPick,
 }: {
   country: Country;
+  naming: Naming;
   picked: boolean;
   ruled: boolean;
   onPick: (code: string) => void;
 }) {
+  const { t } = useTranslation();
+  const currency = currencyWords(country.code, naming, t);
+
   return (
     <Pressable
       onPress={() => onPick(country.code)}
@@ -328,7 +333,7 @@ function CountryRow({
         pressed && !picked && styles.rowPressed,
       ]}
       accessibilityRole="button"
-      accessibilityLabel={rowLabel(country)}
+      accessibilityLabel={rowLabel(country, naming, t)}
       accessibilityState={{ selected: picked }}
       testID={`createWalk.country.${country.code}`}
     >
@@ -342,16 +347,18 @@ function CountryRow({
         >
           {country.name}
         </Text>
-        <Text
-          maxFontSizeMultiplier={TWICE}
-          size={13.5}
-          weight="medium"
-          muted
-          accessible={false}
-          style={styles.rowCurrency}
-        >
-          {currencyWords(country.code).words}
-        </Text>
+        {currency != null && (
+          <Text
+            maxFontSizeMultiplier={TWICE}
+            size={13.5}
+            weight="medium"
+            muted
+            accessible={false}
+            style={styles.rowCurrency}
+          >
+            {currency.words}
+          </Text>
+        )}
       </View>
       {picked && (
         <View style={styles.disc} {...hidden}>
@@ -431,6 +438,7 @@ const PINNED = 40;
 export function CountryStep({
   walk,
   look,
+  naming,
   stepWords,
   question,
   answer,
@@ -448,12 +456,13 @@ export function CountryStep({
   onPick: (code: string) => void;
   onSearchFocused: (focused: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const sizes = sizesOf(look);
   const list = useRef<FlatListInstance>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
   const [pinned, setPinned] = useState(false);
   const scrolledToPick = useRef(false);
-  const all = countries();
+  const all = countries(naming.locale);
   const searching = walk.query.trim() !== '';
   const items: readonly Item[] = searching
     ? search(all, walk.query).map((country) => ({ kind: 'country', country }))
@@ -481,7 +490,7 @@ export function CountryStep({
   const top = (
     <>
       <StepWords look={look} words={stepWords} />
-      <Question ref={question} words={WALK.whereTitle} size={sizes.question} />
+      <Question ref={question} words={t('createOrganisation.whereTitle')} size={sizes.question} />
       {walk.refusal != null && <Refusal words={walk.refusal} size={sizes.help} answer={answer} />}
       <CountrySearch
         value={walk.query}
@@ -493,9 +502,10 @@ export function CountryStep({
   );
   const deviceGroup = !searching && device != null && (
     <View style={styles.deviceGroup}>
-      <GroupHeading words={WALK.fromDevice} first />
+      <GroupHeading words={t('createOrganisation.fromDevice')} first />
       <CountryRow
         country={device}
+        naming={naming}
         picked={walk.country === device.code}
         ruled={false}
         onPick={pick}
@@ -521,10 +531,11 @@ export function CountryStep({
         keyExtractor={(item) => (item.kind === 'heading' ? 'all' : item.country.code)}
         renderItem={({ item, index }) =>
           item.kind === 'heading' ? (
-            <GroupHeading words={WALK.allCountries} ruled={pinned} />
+            <GroupHeading words={t('createOrganisation.allCountries')} ruled={pinned} />
           ) : (
             <CountryRow
               country={item.country}
+              naming={naming}
               picked={walk.country === item.country.code}
               ruled={index < items.length - 1}
               onPick={pick}
@@ -566,37 +577,39 @@ export function CountryStep({
 }
 
 /** What the country brings, over Continue on the phone: one element, said again when the pick changes. */
-export function Brings({ walk }: { walk: Walk }) {
+export function Brings({ walk, naming }: { walk: Walk; naming: Naming }) {
   const { t } = useTranslation();
-  const words = boxWords(walk, t);
-  const currency = currencyWords(walk.country);
+  const words = boxWords(walk, t, naming);
+  const currency = currencyWords(walk.country, naming, t);
 
   useReadOut(words, { quietAtMount: true });
 
   return (
     <View style={styles.brings} accessible accessibilityLabel={words} testID="createWalk.brings">
-      <View style={styles.bringsPart}>
-        <Text
-          maxFontSizeMultiplier={TWICE}
-          size={13}
-          weight="medium"
-          muted
-          accessible={false}
-          style={styles.factLabel}
-        >
-          {t('orgGeneral.currency')}
-        </Text>
-        <Text
-          maxFontSizeMultiplier={TWICE}
-          size={15}
-          weight="semibold"
-          muted={currency.none}
-          accessible={false}
-          style={styles.factValue}
-        >
-          {currency.words}
-        </Text>
-      </View>
+      {currency != null && (
+        <View style={styles.bringsPart}>
+          <Text
+            maxFontSizeMultiplier={TWICE}
+            size={13}
+            weight="medium"
+            muted
+            accessible={false}
+            style={styles.factLabel}
+          >
+            {t('orgGeneral.currency')}
+          </Text>
+          <Text
+            maxFontSizeMultiplier={TWICE}
+            size={15}
+            weight="semibold"
+            muted={currency.none}
+            accessible={false}
+            style={styles.factValue}
+          >
+            {currency.words}
+          </Text>
+        </View>
+      )}
       <View style={styles.bringsPart}>
         <View style={styles.tagged}>
           <Text
@@ -628,6 +641,7 @@ export interface CardFrame {
 export function ReadyStep({
   walk,
   look,
+  naming,
   stepWords,
   question,
   onScrolled,
@@ -638,14 +652,14 @@ export function ReadyStep({
 }: StepProps & { email: string; locale: string; card: CardFrame | null }) {
   const { t } = useTranslation();
   const sizes = sizesOf(look);
-  const limited = walk.sent === 'limited' ? limitedWords(locale, t) : null;
+  const limited = walk.sent === 'limited' ? limitedWords(walk, locale, t) : null;
   const failed = t('createOrganisation.failed');
-  const words = cardWords(walk, email, t);
+  const words = cardWords(walk, email, t, naming);
 
   return (
     <StepScroll look={look} gap={16} onScrolled={onScrolled}>
       <StepWords look={look} words={stepWords} />
-      <Question ref={question} words={WALK.readyTitle} size={sizes.question} />
+      <Question ref={question} words={t('createOrganisation.readyTitle')} size={sizes.question} />
       {limited != null && (
         <EventNotice
           tone="attention"
@@ -675,10 +689,10 @@ export function ReadyStep({
             accessible={false}
             style={styles.cardRole}
           >
-            {t('switcher.yourRole', { role: ROLE })}
+            {t('switcher.yourRole', { role: t('roles.owner') })}
           </Text>
           <View style={styles.facts}>
-            {factsOf(walk, email, t, true).map((fact) => (
+            {factsOf(walk, email, t, true, naming).map((fact) => (
               <View key={fact.key} style={look.large ? styles.factWhole : styles.factHalf}>
                 <FactLine fact={fact} />
               </View>
@@ -718,11 +732,11 @@ function FadeIn({ children }: { children: ReactNode }) {
 }
 
 /** The panel's card on the left, built as the walk is answered; the steps' controls say all of it, so it is never read itself. */
-export function WideCard({ walk, email }: { walk: Walk; email: string }) {
+export function WideCard({ walk, email, naming }: { walk: Walk; email: string; naming: Naming }) {
   const { t } = useTranslation();
   const name = walk.name.trim();
   const size = cardNameSize(name);
-  const facts = walk.step === 1 ? [] : factsOf(walk, email, t, walk.step === 3);
+  const facts = walk.step === 1 ? [] : factsOf(walk, email, t, walk.step === 3, naming);
 
   return (
     <View style={styles.wide} {...hidden}>
@@ -747,7 +761,7 @@ export function WideCard({ walk, email }: { walk: Walk; email: string }) {
           accessible={false}
           style={styles.wideRole}
         >
-          {t('switcher.yourRole', { role: ROLE })}
+          {t('switcher.yourRole', { role: t('roles.owner') })}
         </Text>
       </View>
       {facts.length > 0 && (

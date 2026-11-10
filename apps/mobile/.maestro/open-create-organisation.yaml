@@ -13,6 +13,6 @@ appId: host.exp.Exponent
     id: 'switcher.tile.create'
 - extendedWaitUntil:
     visible:
-      id: 'createOrganisation'
+      id: 'createWalk'
     timeout: 30000
 - takeScreenshot: mobile-create-organisation

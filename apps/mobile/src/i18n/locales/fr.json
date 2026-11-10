@@ -806,7 +806,16 @@
     "failed": "La création de l’organisation a échoué. Rien n’a été créé. Réessayez dans un instant.",
     "cancel": "Annuler",
     "create": "Créer l’organisation",
-    "creating": "Création…"
+    "creating": "Création…",
+    "whatTitle": "Quel est son nom ?",
+    "whereTitle": "Où se trouve-t-elle ?",
+    "readyTitle": "Tout est prêt pour la créer ?",
+    "fromDevice": "De cet appareil",
+    "allCountries": "Tous les pays",
+    "discardTitle": "Abandonner la création ?",
+    "discardBody": "Rien n’est créé et ce que vous avez saisi n’est pas conservé.",
+    "discard": "Abandonner",
+    "noneYet": "Aucune pour l’instant"
   },
   "roles": {
     "owner": "Propriétaire",

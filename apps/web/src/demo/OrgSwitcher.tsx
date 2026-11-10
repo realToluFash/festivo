@@ -84,7 +84,9 @@ export function OrgSwitcher({ tell, toast = false }: { tell: Tell; toast?: boole
     const raw = params.get('switcher');
     if (!isSwitcherState(raw) || raw === 'closed') return null;
 
-    return { ...openingOf(raw), kept: raw === 'declined' ? [BLUEBIRD] : [] };
+    const answered = raw === 'declined' || raw === 'expired' || raw === 'withdrawn';
+
+    return { ...openingOf(raw), kept: answered ? [BLUEBIRD] : [] };
   });
   const where = useWhere();
   const [open, setOpen] = useState(first != null);
@@ -268,6 +270,7 @@ function Menu({
         return (
           answer == null ||
           answer === 'failed' ||
+          answer === 'busy' ||
           answer === 'managed' ||
           kept.includes(invitation.id)
         );
@@ -325,6 +328,16 @@ function Menu({
       >
         {said === 'managed' ? (
           <ManagedBanner level={3} />
+        ) : said === 'expired' ? (
+          <Notice kind="attention" lands>
+            <strong>Expired</strong> This invitation has expired. Ask {invitation.inviter} to send a
+            new one.
+          </Notice>
+        ) : said === 'withdrawn' ? (
+          <Notice kind="quiet" lands>
+            <strong>Withdrawn</strong> This invitation was withdrawn by {invitation.name}. If you
+            think this is a mistake, ask the person who invited you.
+          </Notice>
         ) : said === 'declined' ? (
           <Notice kind="quiet" lands>
             You declined. {invitation.inviter} will see that you said no.
@@ -334,6 +347,7 @@ function Menu({
             name={invitation.name}
             note={`Declining tells ${invitation.inviter} you said no. Nothing else changes.`}
             failed={said === 'failed'}
+            busy={said === 'busy' ? 'accept' : null}
             onAccept={() => {
               tools.land('panel');
               join(invitation);
