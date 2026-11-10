@@ -820,6 +820,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   « Nouveau numéro », que la section situe. Les feuilles de vérification disent « Ouvrez vos
   e-mails » et « Ouvrez vos messages », comme le bouton « Ouvrir la boîte mail » ; « Consultez
   votre boîte mail » était tronqué sur un téléphone Android et reste celui de l’écran du lien.
+- **10 nov. 2026. Le titre de la feuille Vérifier le numéro dans l’app** (sc-35661,
+  `mobile:verifyPhone.title`). « Code envoyé » remplace « Ouvrez vos messages », tronqué en
+  « Ouvrez vos messa… » sur un Android de 360 dp, où tiennent environ 16 caractères entre
+  Annuler et Vérifier. Le même titre sert au SMS et à WhatsApp : « Ouvrez vos SMS » est donc
+  rejeté. La phrase sous le titre dit où le code est parti.
 - **9 nov. 2026. Le titre de la feuille d’activation de la double authentification dans l’app**
   (sc-34792, `mobile:security.setupTitle`). « Double authentification », sans verbe : le bouton à
   droite dit déjà « Activer ». Rejeté « Activer la double authentification », tronqué dans
