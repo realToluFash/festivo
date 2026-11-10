@@ -37,6 +37,8 @@ import {
   TO_FIGURES,
   TO_WORD,
   type ToGroup,
+  WHATSAPP,
+  whatsAppCreditsFor,
   formatCount,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
@@ -119,6 +121,9 @@ export const MESSAGES_STATES = [
   'editSent',
   'editCancelled',
   'editTooLate',
+  'whatsAppLine',
+  'checkWhatsApp',
+  'whatsAppRead',
 ] as const;
 
 export type MessagesState = (typeof MESSAGES_STATES)[number];
@@ -127,7 +132,7 @@ export function messagesStateOf(value: string | undefined): MessagesState | null
   return MESSAGES_STATES.find((state) => state === value) ?? null;
 }
 
-export type ReachedOf = 'parking' | 'invite' | 'draft';
+export type ReachedOf = 'parking' | 'invite' | 'receipts' | 'draft';
 
 export type FixKind = 'fixEmail' | 'addEmail' | 'addPhone';
 
@@ -261,6 +266,8 @@ export interface Messages {
   inserting?: boolean;
   refusedSave?: Refusal;
   closed: Closed | null;
+  /** WhatsApp's receipts (sc-3950): Parking told by email and WhatsApp stands in Parking's place. */
+  receipts: boolean;
   /** Without messages.read: the area opens the refusal, with no list and no count. */
   forbidden: boolean;
 }
@@ -359,8 +366,11 @@ const BASE: Messages = {
   bell: false,
   told: null,
   closed: null,
+  receipts: false,
   forbidden: false,
 };
+
+const ALL_CHANNELS = { email: true, sms: true, wa: true };
 
 const DRAFTED: Partial<Record<MessagesState, Draft>> = {
   to: sampleDraft('write'),
@@ -389,6 +399,8 @@ const DRAFTED: Partial<Record<MessagesState, Draft>> = {
   nobody: { ...sampleDraft('write'), zero: ['coming'] },
   longSubject: { ...sampleDraft('write'), subject: LONG_SUBJECT, over: ['subject'] },
   longMessage: { ...sampleDraft('write'), body: LONG_BODY, over: ['body'] },
+  whatsAppLine: { ...sampleDraft('write'), to: 'all', channels: ALL_CHANNELS },
+  checkWhatsApp: { ...sampleDraft('check'), to: 'all', channels: ALL_CHANNELS },
 };
 
 const CLOSED: Partial<Record<MessagesState, Closed>> = {
@@ -435,6 +447,8 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
     return { ...BASE, closed, kept: [], ...(closed === 'draft' ? { phase: 'first' } : {}) };
   const scheduled = state == null ? undefined : SCHEDULED_AS[state];
   if (scheduled != null) return scheduledStart(scheduled);
+  if (state === 'whatsAppRead')
+    return { ...BASE, receipts: true, open: { kind: 'reached', of: 'receipts' } };
   const ines: Open = { kind: 'guest', key: 'ines' };
   const unknown: Open = { kind: 'guest', key: 'unknown' };
   const lucia: Open = { kind: 'guest', key: 'lucia' };
@@ -722,7 +736,7 @@ export function reachedOf(m: Pick<Messages, 'open'>): ReachedOf {
   const open = m.open;
   if (open?.kind === 'reached') return open.of;
   if (open?.kind === 'draft') return 'draft';
-  if (open?.kind === 'many' && open.key === 'invite') return 'invite';
+  if (open?.kind === 'many' && open.key !== 'parking') return open.key;
 
   return 'parking';
 }
@@ -1050,7 +1064,7 @@ export function sectionsOf(m: Messages): Sections {
     needs: [
       ...waiting.filter((key) => !m.done.includes(key)).map(guest),
       ...(m.done.includes('unknown') ? [] : [guest('unknown')]),
-      many('parking'),
+      many(m.receipts ? 'receipts' : 'parking'),
     ],
     scheduled: mine.filter((one) => isScheduled(one.draft)).map(own),
     done: [
@@ -1084,6 +1098,49 @@ export interface Check {
   credits: number;
   after: string;
   whatsApp: boolean;
+  /** WhatsApp's reach line, only while it is ticked. */
+  reach?: string;
+}
+
+export interface WhatsAppReach {
+  reaches: number;
+  of: number;
+  noMobile: number;
+  stopped: number;
+  notAgreed: number;
+  credits: number;
+}
+
+/** Who WhatsApp reaches in a To, and its credits: each reachable number's country rate, summed. */
+export function whatsAppOf(to: ToGroup): WhatsAppReach {
+  const { reaches, noMobile, stopped, notAgreed } = WHATSAPP[to];
+
+  return {
+    reaches: reaches.length,
+    of: reaches.length + noMobile + stopped + notAgreed,
+    noMobile,
+    stopped,
+    notAgreed,
+    credits: whatsAppCreditsFor(reaches),
+  };
+}
+
+/** WhatsApp's reach line, shown whenever it is ticked; a part that is 0 is left out. */
+export function whatsAppLine(to: ToGroup): string {
+  const reach = whatsAppOf(to);
+
+  const cant = [
+    ...(reach.noMobile > 0 ? [say.noMobile(reach.noMobile)] : []),
+    ...(reach.stopped > 0 ? [say.stoppedWhatsApp(reach.stopped)] : []),
+    ...(reach.notAgreed > 0 ? [say.notAgreedWhatsApp(reach.notAgreed)] : []),
+  ];
+
+  return [
+    say.whatsAppReaches(reach.reaches, reach.of),
+    ...(cant.length > 0
+      ? [listFormat('en-US', { style: 'long', type: 'conjunction' }).format(cant)]
+      : []),
+  ].join(' · ');
 }
 
 export function countOf(to: ToGroup, zero: readonly ToGroup[] = []): number {
@@ -1095,7 +1152,10 @@ export function checkOf(draft: Draft): Check {
     ? { count: 0, email: 0, sms: 0, wa: 0, cantTell: 0 }
     : TO_FIGURES[draft.to];
   const ticked = (['email', 'sms', 'wa'] as const).filter((key) => draft.channels[key]);
-  const credits = (draft.channels.sms ? figures.sms : 0) + (draft.channels.wa ? figures.wa : 0);
+  const nobody = matchesNobody(draft);
+  const credits =
+    (draft.channels.sms ? figures.sms : 0) +
+    (draft.channels.wa && !nobody ? whatsAppOf(draft.to).credits : 0);
   const smsOff = draft.channels.sms ? 0 : SMS_ONLY[draft.to].length;
   const names = (smsOff > 0 ? SMS_ONLY[draft.to] : CANT_TELL[draft.to]).slice(0, 2);
   const cantTell = figures.cantTell + smsOff;
@@ -1110,6 +1170,7 @@ export function checkOf(draft: Draft): Check {
     credits,
     after: formatCount(BALANCE - credits),
     whatsApp: draft.channels.wa,
+    ...(draft.channels.wa ? { reach: whatsAppLine(draft.to) } : {}),
   };
 }
 

@@ -171,6 +171,10 @@ export const W = {
   closedDraft: 'This event is a draft. Make it live to write to your guests.',
   closedEnded:
     'This event finished more than 30 days ago, so you can no longer write to its guests.',
+  hasntAgreedWhatsApp: 'Hasn’t agreed to WhatsApp',
+  stoppedWhatsApp: 'Stopped WhatsApp',
+  read: 'Read',
+  failedReceipt: 'Failed',
   forbiddenTitle: 'You do not have access to this',
   forbiddenBody:
     'Your account does not have permission for this page. If you believe it should, ask an admin of this organisation.',
@@ -322,6 +326,13 @@ export const say = {
   optedOutCount: (count: number) => `${count} opted out`,
   noEmailOrPhoneCount: (count: number) => `${count} no email or phone`,
   cantBeToldCount: (count: number) => `${count} can’t be told`,
+  whatsAppReaches: (count: number, of: number) => `WhatsApp reaches ${count} of ${of}`,
+  stoppedWhatsApp: (count: number) =>
+    count === 1 ? '1 stopped WhatsApp' : `${count} stopped WhatsApp`,
+  notAgreedWhatsApp: (count: number) =>
+    count === 1 ? '1 hasn’t agreed to WhatsApp' : `${count} haven’t agreed to WhatsApp`,
+  noMobile: (count: number) =>
+    count === 1 ? '1 has no mobile number' : `${count} have no mobile number`,
   inZone: (day: string, time: string, zone: string) => `${day}, ${time} ${zone}`,
   dayTime: (day: string, time: string) => `${day}, ${time}`,
   subjectTooLong: (most: string) => `Shorten the subject to ${most} characters or fewer.`,
