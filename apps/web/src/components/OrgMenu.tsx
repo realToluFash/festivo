@@ -468,7 +468,7 @@ export function InvitationActions({
           {...offButton(busy != null, { dim: busy === 'decline' })}
           onClick={onAccept}
         >
-          {t('invitations.accept')}
+          {busy === 'accept' ? t('invitations.joining') : t('invitations.accept')}
         </button>
         <button
           type="button"
@@ -478,7 +478,7 @@ export function InvitationActions({
           {...offButton(busy != null, { dim: busy === 'accept' })}
           onClick={onDecline}
         >
-          {t('invitations.decline')}
+          {busy === 'decline' ? t('invitations.declining') : t('invitations.decline')}
         </button>
       </div>
       <p className="sw-panel-note">{note}</p>

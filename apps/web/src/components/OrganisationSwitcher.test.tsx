@@ -1143,6 +1143,47 @@ describe('an invitation in the switcher, answered in its panel (sc-30412)', () =
       within(panel).getByRole('button', { name: 'Decline the invitation to Adunni Weddings' }),
     ).toBeDefined();
   });
+
+  it('says Joining… on the pressed answer while it is sent, and holds the other dimmed', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      const path = new URL(String(input)).pathname;
+
+      return path === '/api/invitations/inv_1/accept'
+        ? new Promise<Response>(() => {})
+        : Promise.resolve(json({ invitations: [INVITATION] }, 200));
+    });
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    const accept = within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' });
+    fireEvent.click(accept);
+
+    await waitFor(() => expect(accept.textContent).toBe('Joining…'));
+    expect(accept.getAttribute('aria-busy')).toBe('true');
+    expect(accept.hasAttribute('data-off')).toBe(false);
+
+    const decline = within(panel).getByRole('button', {
+      name: 'Decline the invitation to Adunni Weddings',
+    });
+    expect(decline.textContent).toBe('Decline');
+    expect(decline.getAttribute('aria-disabled')).toBe('true');
+    expect(decline.hasAttribute('data-off')).toBe(true);
+  });
+
+  it('leaves the role out of the tile and the panel once it is gone, with no dangling dot', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+      json({ invitations: [{ ...INVITATION, role: null }] }, 200),
+    );
+    inTwo();
+    at('/app');
+
+    fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Adunni Weddings, Invitation' }));
+    const panel = screen.getByRole('group', { name: 'Adunni Weddings' });
+
+    expect(within(panel).getByText('Invitation from Bisi Adeyemi')).toBeDefined();
+  });
 });
 
 describe('more than 15 organisations (sc-30412)', () => {

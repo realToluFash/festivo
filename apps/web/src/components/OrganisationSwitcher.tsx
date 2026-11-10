@@ -261,7 +261,7 @@ function InvitationPanel({
   return (
     <InvitationAnswer
       name={organisation}
-      line={t(keys.line, { inviter, role })}
+      line={t(invitation.role == null ? `${keys.line}NoRole` : keys.line, { inviter, role })}
       until={t(keys.until, {
         date: formatDay(invitation.expiresAt, dateLocale()),
         email: invitation.email,
