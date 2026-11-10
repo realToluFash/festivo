@@ -44,6 +44,7 @@ import { type Previewing, previewStart } from './PreviewModel.ts';
 import { BRACED_BODY, DATED_BODY, PLAIN_BODY } from './PreviewSample.ts';
 import { type Refusal, TYPED_EDIT, refusalOf, reloaded } from './ScheduledSave.ts';
 import { EDGE } from './TokenText.ts';
+import { WAITS_STARTS, type Waits } from './CheckWaits.ts';
 
 /** Every state of Messaging B, each a `?state=` in both demos (spec §7 and §7b), in the spec's order. */
 export const MESSAGES_STATES = [
@@ -119,6 +120,16 @@ export const MESSAGES_STATES = [
   'editSent',
   'editCancelled',
   'editTooLate',
+  'checkWaitsWa',
+  'checkWaitsSms',
+  'checkWaitsBoth',
+  'checkWaitsNoEmail',
+  'checkWaitsOnly',
+  'askOwner',
+  'askSent',
+  'askSentOne',
+  'askFailed',
+  'sendWithout',
 ] as const;
 
 export type MessagesState = (typeof MESSAGES_STATES)[number];
@@ -260,6 +271,7 @@ export interface Messages {
   preview?: Previewing;
   inserting?: boolean;
   refusedSave?: Refusal;
+  waits?: Waits;
   closed: Closed | null;
   /** Without messages.read: the area opens the refusal, with no list and no count. */
   forbidden: boolean;
@@ -423,6 +435,16 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       draft: drafted,
       told: state === 'cancelled' && !wide ? W.cancelled : null,
       ...previewStart(state),
+    };
+  const waited = state == null ? undefined : WAITS_STARTS[state];
+  if (waited != null)
+    return {
+      ...BASE,
+      open: { kind: 'draft' },
+      thread: NEW_THREAD,
+      balance: 0,
+      draft: { ...sampleDraft(waited.step), channels: waited.channels },
+      waits: waited.waits,
     };
   const refused = refusalOf(state);
   if (refused != null)
@@ -1090,19 +1112,21 @@ export function countOf(to: ToGroup, zero: readonly ToGroup[] = []): number {
   return zero.includes(to) ? 0 : TO_FIGURES[to].count;
 }
 
+/** Each phone is told once: with WhatsApp ticked, those who agreed to it leave SMS (sc-3954, pm #36950). */
 export function checkOf(draft: Draft): Check {
   const figures = matchesNobody(draft)
     ? { count: 0, email: 0, sms: 0, wa: 0, cantTell: 0 }
     : TO_FIGURES[draft.to];
   const ticked = (['email', 'sms', 'wa'] as const).filter((key) => draft.channels[key]);
-  const credits = (draft.channels.sms ? figures.sms : 0) + (draft.channels.wa ? figures.wa : 0);
+  const counts = { ...figures, sms: draft.channels.wa ? figures.sms - figures.wa : figures.sms };
+  const credits = (draft.channels.sms ? counts.sms : 0) + (draft.channels.wa ? counts.wa : 0);
   const smsOff = draft.channels.sms ? 0 : SMS_ONLY[draft.to].length;
   const names = (smsOff > 0 ? SMS_ONLY[draft.to] : CANT_TELL[draft.to]).slice(0, 2);
   const cantTell = figures.cantTell + smsOff;
 
   return {
     count: figures.count,
-    told: ticked.map((key) => ({ key, count: figures[key] })),
+    told: ticked.map((key) => ({ key, count: counts[key] })),
     cantTell,
     smsOff,
     names,

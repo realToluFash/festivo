@@ -7,12 +7,14 @@ import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { TextAction } from '../../components/Summary.tsx';
+import { OWNER, type Waits, waitsCheckOf } from './CheckWaits.ts';
 import { ChannelTick } from './Composers.tsx';
 import { MessageGlyph } from './MessageMarks.tsx';
 import { type Draft, checkOf, dayWords } from './MessagesModel.ts';
 import { RESEND, formatCount, BALANCE } from './MessagesSample.ts';
 import type { ResendView } from './Reach.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
+import { WaitBlock } from './WaitBlock.tsx';
 
 /** The one filled button in the check: 48 tall, growing with its words. */
 export function BigButton({
@@ -112,9 +114,15 @@ export function CheckCard({
   onKeep,
   onChannel,
   onSeeAll,
+  balance = BALANCE,
+  waits,
+  onWithout,
 }: {
   draft: Draft;
   locale: string;
+  balance?: number;
+  waits?: Waits | undefined;
+  onWithout?: (drops: readonly ChannelKey[]) => void;
   headRef?: Ref<TextHandle>;
   goRef?: Ref<ViewInstance> | undefined;
   onGo: () => void;
@@ -122,9 +130,10 @@ export function CheckCard({
   onChange: () => void;
   onKeep: () => void;
   onChannel: (key: ChannelKey) => void;
-  onSeeAll: () => void;
+  onSeeAll: (count: number) => void;
 }) {
-  const check = checkOf(draft);
+  const waiting = draft.at == null ? waitsCheckOf(draft, balance, locale) : null;
+  const check = waiting?.check ?? checkOf(draft);
   const at = draft.at;
 
   return (
@@ -139,7 +148,9 @@ export function CheckCard({
         {say.cannotUndo(check.count)}
       </Text>
       <Text size={14} weight="medium" style={[styles.secondary, styles.line]}>
-        {at == null ? W.toldHow : say.instead(dayWords(at.date, locale), at.time)}
+        {at == null
+          ? (waiting?.told ?? W.toldHow)
+          : say.instead(dayWords(at.date, locale), at.time)}
       </Text>
       {at == null && (
         <View style={styles.pills}>
@@ -179,15 +190,25 @@ export function CheckCard({
           {check.seeAll && (
             <TextAction
               label={say.seeAll(check.cantTell)}
-              onPress={onSeeAll}
+              onPress={() => onSeeAll(check.cantTell)}
               testID="messages.check.seeAll"
             />
           )}
         </View>
       )}
-      <Text size={13.5} weight="medium" style={[styles.small, styles.figures]}>
-        {check.credits > 0 ? say.credits(check.credits, check.after, check.whatsApp) : W.emailFree}
-      </Text>
+      {waiting == null ? (
+        <Text size={13.5} weight="medium" style={[styles.small, styles.figures]}>
+          {check.credits > 0
+            ? say.credits(check.credits, check.after, check.whatsApp)
+            : W.emailFree}
+        </Text>
+      ) : (
+        <WaitBlock
+          view={waiting}
+          waits={waits ?? OWNER}
+          onWithout={(drops) => onWithout?.(drops)}
+        />
+      )}
       <View style={styles.actions}>
         <BigButton
           ref={goRef}

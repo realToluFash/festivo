@@ -81,6 +81,22 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   editSent: ['a refused save, sent', 'Already sent; Reload shows it as sent at 09:00'],
   editCancelled: ['a refused save, cancelled', 'Cancelled; Reload shows Cancelled by Bisi Okafor'],
   editTooLate: ['a refused save, too late', 'Too late to send; Reload shows Not sent: too late'],
+  checkWaitsWa: [
+    'too few credits, WhatsApp',
+    '3 WhatsApp messages will wait; Send without WhatsApp',
+  ],
+  checkWaitsSms: ['too few credits, SMS', '31 SMS messages will wait; Send without SMS'],
+  checkWaitsBoth: ['too few credits, both', 'WhatsApp · 3 and SMS · 28 wait; Send by email only'],
+  checkWaitsNoEmail: ['too few credits, no email', 'SMS and WhatsApp wait; 65 can’t be told'],
+  checkWaitsOnly: [
+    'too few credits, WhatsApp only',
+    '3 WhatsApp messages will wait; 93 can’t be told',
+  ],
+  askOwner: ['ask an owner', 'Bisi Okafor, Admin: Ask an owner where the app’s line was'],
+  askSent: ['ask an owner, sent', 'The owners have been sent the link to Plan and billing'],
+  askSentOne: ['ask an owner, one owner', 'The owner has been sent the link to Plan and billing'],
+  askFailed: ['ask an owner, not sent', 'Not sent. Try again in a moment.'],
+  sendWithout: ['after Send without SMS', 'The ten seconds, told by Email only'],
 };
 
 export const MESSAGES_BOARDS = MESSAGES_STATES.map((state) => ({
