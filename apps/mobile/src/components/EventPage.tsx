@@ -1,12 +1,11 @@
 import type { OrganisationEvent } from '@soirely/api-client';
-import { type Milestone, changedWords } from '@soirely/domain';
+import { changedWords } from '@soirely/domain';
 import { router } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
 import type { EditAt } from '../kit/eventNav.ts';
@@ -43,7 +42,7 @@ import { useMakeLive } from './MakeLive.tsx';
 import { useEventMute } from './MuteEventCard.tsx';
 import { useResume } from './PauseEvent.tsx';
 import { readOut } from './ReadOut.tsx';
-import { ComingUp } from './Timeline.tsx';
+import { ComingUp, useTimeline } from './Timeline.tsx';
 
 const EDIT_AT: Record<EventPart, EditAt | undefined> = {
   dates: 'starts',
@@ -85,7 +84,8 @@ export function EventPage({
   const now = useServerNow();
   const phase = useShownPhase(event, now);
   const said = useRef({ id: event.id, phase });
-  const milestones = useMilestones(event.id, event.status);
+  const timeline = useTimeline(event.id, now, event.status);
+  const milestones = timeline.load.kind === 'loaded' ? timeline.load.timeline.milestones : [];
   const shown = shownEvent(listEventOf({ ...event, milestones }), phase);
   const cardOpener = useRef<ViewInstance>(null);
   const pauseOpener = useRef<ViewInstance>(null);
@@ -156,6 +156,9 @@ export function EventPage({
         wide={kind !== 'phone'}
         takes={takes}
         onStep={onStep}
+        stepRef={cardOpener}
+        sending={resume.state === 'pending' ? t('eventPause.resuming') : null}
+        phaseTestID="events.phase"
         testID="events.card"
       />
       {resumeSays != null && <AlertLine text={resumeSays} />}
@@ -192,8 +195,7 @@ export function EventPage({
   const comingUp = (
     <ComingUp
       kind={kind}
-      event={event}
-      now={now}
+      timeline={timeline}
       onAllDates={() => router.push(`/events/${encodeURIComponent(event.id)}/dates`)}
     />
   );
@@ -332,28 +334,6 @@ const MANAGE_ITEM: Record<ManageKey, (t: TFunction) => ManageItem<ManageKey>> = 
     testID: 'events.delete',
   }),
 };
-
-/** The card's next step needs the event's dates, which the event's own read leaves out. */
-function useMilestones(eventId: string, status: string): Milestone[] {
-  const [held, setHeld] = useState<{ for: string; milestones: Milestone[] }>({
-    for: eventId,
-    milestones: [],
-  });
-
-  useEffect(() => {
-    let live = true;
-    api.eventTimeline(eventId).then(
-      (timeline) => live && setHeld({ for: eventId, milestones: timeline.milestones }),
-      () => undefined,
-    );
-
-    return () => {
-      live = false;
-    };
-  }, [eventId, status]);
-
-  return held.for === eventId ? held.milestones : [];
-}
 
 const styles = StyleSheet.create({
   page: { gap: 18 },
