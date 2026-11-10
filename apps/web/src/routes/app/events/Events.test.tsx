@@ -130,13 +130,22 @@ function spaced(text: string | null): string {
   return (text ?? '').replace(/\s/g, ' ');
 }
 
+/** The open tab's rows, under its card. */
+function listedRows(): HTMLElement[] {
+  return [...screen.getByRole('tabpanel').querySelectorAll<HTMLElement>('.ev-rows > li')];
+}
+
+function rowNames(): string[] {
+  return listedRows().map((row) => row.querySelector('.desk-row-name')?.textContent ?? '');
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   forgetEventsTab();
 });
 
 describe('Events', () => {
-  it('lists each draft as one link: its type, its dates and start, Draft, placeholders and its next step (sc-22103)', async () => {
+  it('draws the soonest draft as the card with its step, and each other as one link with its days, place and how soon (sc-30413)', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-13T12:00:00Z'));
     serverClock.observe(new Date().toUTCString());
@@ -157,14 +166,19 @@ describe('Events', () => {
     at('/app/events');
 
     fireEvent.click(await screen.findByRole('tab', { name: 'Drafts 2' }));
-    const rows = within(screen.getByRole('tabpanel')).getAllByRole('listitem');
+    const card = screen.getByRole('region', { name: 'Adaeze and Tunde' });
 
+    expect(spaced(card.textContent)).toBe(
+      'Draftin 32 daysAdaeze and TundeSaturday, Nov 14 to Sunday, Nov 15 · Venue to be confirmedSat14Sun15Guests can’t be invited until this event is live.Make live',
+    );
+    expect(within(card).getByRole('link').getAttribute('href')).toBe('/app/events/ev_1');
+
+    const rows = listedRows();
     expect(rows.map((row) => spaced(row.textContent))).toEqual([
-      'Adaeze and TundeWeddingSaturday, Nov 14 to Sunday, Nov 1516:00 · Africa/Lagos · in 32 daysDraftGuests Coming soonReplies Coming soonGuests can’t be invited until this event is live.',
-      'Board dinnerCorporate eventTuesday, Dec 119:00 · Europe/London · in 49 daysDraftGuests Coming soonReplies Coming soonGuests can’t be invited until this event is live.',
+      'Board dinnerTuesday, Dec 1 · Venue to be confirmedin 49 days',
     ]);
     expect(within(rows[0]!).getAllByRole('link')).toHaveLength(1);
-    expect(within(rows[0]!).getByRole('link').getAttribute('href')).toBe('/app/events/ev_1');
+    expect(within(rows[0]!).getByRole('link').getAttribute('href')).toBe('/app/events/ev_2');
     expect(within(rows[0]!).queryByRole('img')).toBeNull();
     expect(screen.getByRole('link', { name: 'New event' }).getAttribute('href')).toBe(
       '/app/events/new',
@@ -181,11 +195,11 @@ describe('Events', () => {
     const card = (await screen.findByRole('heading', { name: 'Set up your first event' }))
       .parentElement!;
 
-    expect(within(card).getAllByRole('listitem')).toHaveLength(3);
     expect(within(card).getByRole('link', { name: 'Create an event' }).getAttribute('href')).toBe(
       '/app/events/new',
     );
-    expect(screen.queryByRole('table')).toBeNull();
+    expect(document.querySelectorAll('.ev-steps > li')).toHaveLength(3);
+    expect(screen.queryByRole('tablist')).toBeNull();
   });
 
   it('shows no button without Create events, and says who can create one', async () => {
@@ -311,7 +325,7 @@ describe('Events Home (sc-3594)', () => {
     serverClock.observe(new Date().toUTCString());
   });
 
-  it('shows Happening now above the tabs as one link, with its dates, placeholders and Next up, on every tab', async () => {
+  it('draws a Happening now event as Upcoming’s card, its day of its days and Next up, and the rest as rows (sc-30413)', async () => {
     signedIn();
     answering({
       'GET /api/orgs/org_1/events': listed([
@@ -330,62 +344,33 @@ describe('Events Home (sc-3594)', () => {
     });
     at('/app/events');
 
-    const now = (await screen.findByRole('heading', { name: 'Happening now' })).parentElement!;
-    const card = within(now).getByRole('listitem');
+    const card = await screen.findByRole('region', { name: 'Tonight' });
     expect(spaced(card.textContent)).toBe(
-      'Sunday, Nov 1 to Tuesday, Nov 3Happening nowTonightWedding09:00 · Europe/Madrid · Ends in 2 daysArrived Coming soonCourse Coming soonNext cue Coming soonNext up Tonight ends',
+      'Happening nowDay 1 of 3TonightSunday, Nov 1 to Tuesday, Nov 3 · Venue to be confirmedToday1Mon2Tue3Next up: Tonight endsTue, Nov 3, 02:00 · in 2 days',
     );
     expect(within(card).getAllByRole('link')).toHaveLength(1);
-
-    const upcoming = screen.getByRole('tabpanel');
-    expect(spaced(within(upcoming).getByRole('listitem').textContent)).toBe(
-      'LaterWeddingSaturday, Nov 14 to Sunday, Nov 1516:00 · Africa/Lagos · in 13 daysLiveGuests Coming soonReplies Coming soonNext up Later starts',
-    );
+    expect(within(card).queryByRole('button')).toBeNull();
+    expect(listedRows().map((row) => spaced(row.textContent))).toEqual([
+      'LaterSaturday, Nov 14 to Sunday, Nov 15 · Venue to be confirmedin 13 days',
+    ]);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Past 0' }));
-    expect(screen.getByRole('heading', { name: 'Happening now' })).toBeDefined();
+    expect(screen.queryByRole('region', { name: 'Tonight' })).toBeNull();
   });
 
-  it('says how soon each event is, a minute behind the clock at most, and how soon it ends from its start (sc-25008)', async () => {
-    signedIn();
-    answering({
-      'GET /api/orgs/org_1/events': listed([
-        live('Party', {
-          startsAt: '2026-11-01T12:03:30Z',
-          endsAt: '2026-11-01T14:00:00Z',
-          timeZone: 'Africa/Lagos',
-          milestones: [],
-        }),
-      ]),
-    });
-    at('/app/events');
-
-    const row = async () =>
-      spaced(within(await screen.findByRole('tabpanel')).getByRole('link').textContent);
-    expect(await row()).toContain('13:03 · Africa/Lagos · in 3 minutes');
-
-    await act(() => vi.advanceTimersByTimeAsync(60_000));
-    expect(await row()).toContain('13:03 · Africa/Lagos · in 2 minutes');
-
-    await act(() => vi.advanceTimersByTimeAsync(150_000));
-    const now = (await screen.findByRole('heading', { name: 'Happening now' })).parentElement!;
-    expect(spaced(within(now).getByRole('link').textContent)).toContain(
-      '13:03 · Africa/Lagos · Ends in 1 hour',
-    );
-  });
-
-  it('reads the last minute as this minute, and gives a draft past its start and a finished event no phrase (sc-25008)', async () => {
+  it('says how soon each event starts, in days or today, and nothing once it has started, for a draft past its start or a finished event (sc-30413)', async () => {
     signedIn();
     answering({
       'GET /api/orgs/org_1/events': listed(
         [
-          live('Soon', { startsAt: '2026-11-01T12:00:40Z', milestones: [] }),
+          live('Soon', { startsAt: '2026-11-01T16:00:00Z', endsAt: '2026-11-01T20:00:00Z' }),
+          live('Later', { startsAt: '2026-11-04T16:00:00Z', endsAt: '2026-11-04T20:00:00Z' }),
+          event({ id: 'early', name: 'Early draft', startsAt: '2026-11-08T10:00:00Z' }),
           event({
             id: 'late',
             name: 'Late draft',
             startsAt: '2026-11-01T10:00:00Z',
             endsAt: '2026-11-01T14:00:00Z',
-            milestones: [],
           }),
         ],
         finished(1),
@@ -393,20 +378,21 @@ describe('Events Home (sc-3594)', () => {
     });
     at('/app/events');
 
-    const rows = async () =>
-      within(await screen.findByRole('tabpanel'))
-        .getAllByRole('link')
-        .map((link) => spaced(link.textContent));
-    expect((await rows())[0]).toContain('13:00 · Africa/Lagos · this minute');
+    const soon = () =>
+      [...screen.getByRole('tabpanel').querySelectorAll('.desk-glass, .ev-soon')].map(
+        (one) => one.textContent,
+      );
+    await screen.findByRole('region', { name: 'Soon' });
+    expect(soon()).toEqual(['Live', 'today', 'in 3 days']);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Drafts 1' }));
-    expect((await rows())[0]).toContain('11:00 · Africa/LagosDraft');
+    fireEvent.click(screen.getByRole('tab', { name: 'Drafts 2' }));
+    expect(soon()).toEqual(['Draft', 'in 7 days']);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Past 1' }));
-    expect((await rows())[0]).not.toMatch(/ · (in |Ends )/);
+    expect(soon()).toEqual([]);
   });
 
-  it('reads a Happening now event that started before today as its first and last day', async () => {
+  it('counts a Happening now event that started before today from its first day', async () => {
     signedIn();
     answering({
       'GET /api/orgs/org_1/events': listed([
@@ -421,21 +407,21 @@ describe('Events Home (sc-3594)', () => {
     });
     at('/app/events');
 
-    const now = (await screen.findByRole('heading', { name: 'Happening now' })).parentElement!;
-    expect(spaced(within(now).getByRole('listitem').textContent)).toBe(
-      'Saturday, Oct 31 to Monday, Nov 2Happening nowWeekendWedding09:00 · Europe/Madrid · Ends in 13 hoursArrived Coming soonCourse Coming soonNext cue Coming soonNext up Weekend ends',
-    );
+    const card = await screen.findByRole('region', { name: 'Weekend' });
+    expect(
+      [...card.querySelectorAll('.desk-glass, .ev-tile')].map((one) => spaced(one.textContent)),
+    ).toEqual(['Happening now', 'Day 2 of 3', 'Sat31', 'Today1', 'Mon2']);
   });
 
-  it('leaves Happening now out when nothing is, and Next up out with no milestone ahead', async () => {
+  it('leaves Next up off the card with no milestone ahead', async () => {
     signedIn();
     answering({ 'GET /api/orgs/org_1/events': listed([live('Later')]) });
     at('/app/events');
 
-    const [row] = await screen.findAllByRole('listitem');
+    const card = await screen.findByRole('region', { name: 'Later' });
 
-    expect(screen.queryByRole('heading', { name: 'Happening now' })).toBeNull();
-    expect(row!.textContent).not.toContain('Next up');
+    expect(card.textContent).not.toContain('Next up');
+    expect(listedRows()).toHaveLength(0);
   });
 
   it('counts each tab, Upcoming with the Paused, and moves between them by arrow keys', async () => {
@@ -460,11 +446,8 @@ describe('Events Home (sc-3594)', () => {
     const upcoming = await screen.findByRole('tab', { name: 'Upcoming 2' });
     expect(upcoming.getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('tab', { name: 'Drafts 1' }).getAttribute('tabindex')).toBe('-1');
-    expect(
-      within(screen.getByRole('tabpanel'))
-        .getAllByRole('link')
-        .map((link) => link.querySelector('.events-row-name')?.textContent),
-    ).toEqual(['Paused', 'Later']);
+    expect(screen.getByRole('region', { name: 'Paused' })).toBeDefined();
+    expect(rowNames()).toEqual(['Later']);
 
     fireEvent.keyDown(upcoming, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Drafts 1' }));
@@ -479,7 +462,7 @@ describe('Events Home (sc-3594)', () => {
     expect(document.activeElement).toBe(upcoming);
   });
 
-  it('sums up what is happening, upcoming and in draft, with the Upcoming tile and the footer counting the same (sc-22103)', async () => {
+  it('sums up what is happening, upcoming and in draft, and the footer counts the open tab, with no tiles (sc-30413)', async () => {
     signedIn();
     answering({
       'GET /api/orgs/org_1/events': listed(
@@ -501,26 +484,52 @@ describe('Events Home (sc-3594)', () => {
     at('/app/events');
 
     expect(await screen.findByText('1 happening now · 2 upcoming · 2 drafts')).toBeDefined();
-    const tiles = document.querySelectorAll('.events-tile');
-    expect([...tiles].map((tile) => spaced(tile.textContent))).toEqual([
-      'Upcoming events2',
-      'Guests invited Coming soon',
-      'Replies in Coming soon',
-      'Need attention Coming soon',
-    ]);
-    expect(tiles[1]!.querySelector('a, button, [tabindex]')).toBeNull();
-    expect(screen.getByText('2 events · Sorted by date')).toBeDefined();
-    expect(screen.getByRole('link', { name: /^Paused/ }).textContent).toContain(
-      'Paused. Guests can’t reply or change anything until you resume it.',
-    );
+    expect(document.querySelector('.events-tile, .ev-tile-number')).toBeNull();
+    expect(screen.getByRole('tab', { name: 'Upcoming 3' })).toBeDefined();
+    expect(screen.getByText('3 events · Sorted by date')).toBeDefined();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Drafts 2' }));
-    expect(screen.getByRole('link', { name: /^Ended draft/ }).textContent).toContain(
-      'This event’s end has passed, so it cannot be made live. Change its dates first.',
-    );
+    expect(screen.getByText('2 events · Sorted by date')).toBeDefined();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Past 14' }));
     expect(screen.getByText('14 events · Sorted by date')).toBeDefined();
+  });
+
+  it.each([
+    ['a paused event', 'Upcoming', 'Resume', live('Paused', { status: 'paused', phase: 'paused' })],
+    ['a draft', 'Drafts', 'Make live', event()],
+    [
+      'a draft past its end',
+      'Drafts',
+      'Change dates',
+      event({ endsAt: '2026-10-09T23:30:00+01:00' }),
+    ],
+  ])(
+    'offers %s its card step only with Manage events (sc-30413)',
+    async (_what, tab, label, one) => {
+      for (const [organisation, offered] of [
+        [READER, false],
+        [IRE, true],
+      ] as const) {
+        signedIn(organisation);
+        answering({ 'GET /api/orgs/org_1/events': listed([{ ...one, permissions: organisation.permissions }]) });
+        at('/app/events');
+        fireEvent.click(await screen.findByRole('tab', { name: new RegExp(`^${tab}`) }));
+
+        expect(screen.queryByRole('button', { name: label }) != null).toBe(offered);
+        cleanup();
+      }
+    },
+  );
+
+  it('draws Past as rows, with no card', async () => {
+    signedIn();
+    answering({ 'GET /api/orgs/org_1/events': listed([live('Later')], finished(2), 2) });
+    at('/app/events');
+    fireEvent.click(await screen.findByRole('tab', { name: 'Past 2' }));
+
+    expect(screen.queryByRole('region')).toBeNull();
+    expect(rowNames()).toEqual(['Past 00', 'Past 01']);
   });
 
   it('leaves out each part of the summary at 0, the whole line with only past events, and the footer on an empty tab', async () => {
@@ -530,8 +539,7 @@ describe('Events Home (sc-3594)', () => {
 
     await screen.findByRole('tab', { name: 'Upcoming 0' });
 
-    expect(document.querySelector('.events-summary')).toBeNull();
-    expect(spaced(document.querySelector('.events-tile')!.textContent)).toBe('Upcoming events0');
+    expect(document.querySelector('.ev-top + .desk-line')).toBeNull();
     expect(screen.queryByText(/Sorted by date/)).toBeNull();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Past 1' }));
@@ -587,7 +595,7 @@ describe('Events Home (sc-3594)', () => {
     );
     expect(screen.getByRole('tab', { name: 'Past 12' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
-    expect(document.querySelector('.events-panel [aria-live="polite"]')?.textContent).toBe(
+    expect(within(screen.getByRole('tabpanel')).getByRole('status').textContent).toBe(
       '2 more finished events shown.',
     );
     expect(sent.filter(({ line }) => line === 'GET /api/orgs/org_1/events')).toHaveLength(3);
@@ -649,7 +657,7 @@ describe('Events Home (sc-3594)', () => {
     expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
   });
 
-  it('moves an event to Happening now at its start and to Past at its end, with no reload', async () => {
+  it('marks an event Happening now at its start and moves it to Past at its end, with no reload', async () => {
     signedIn();
     const sent = answering({
       'GET /api/orgs/org_1/events': listed([
@@ -660,11 +668,13 @@ describe('Events Home (sc-3594)', () => {
     await screen.findByRole('tab', { name: 'Upcoming 1' });
 
     await act(() => vi.advanceTimersByTimeAsync(30_000));
-    expect(screen.getByRole('heading', { name: 'Happening now' })).toBeDefined();
-    expect(screen.getByRole('tab', { name: 'Upcoming 0' })).toBeDefined();
+    expect(
+      within(screen.getByRole('region', { name: 'Party' })).getByText('Happening now'),
+    ).toBeDefined();
+    expect(screen.getByRole('tab', { name: 'Upcoming 1' })).toBeDefined();
 
     await act(() => vi.advanceTimersByTimeAsync(30_000));
-    expect(screen.queryByRole('heading', { name: 'Happening now' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Party' })).toBeNull();
     expect(screen.getByRole('tab', { name: 'Past 1' })).toBeDefined();
     expect(sent.filter(({ line }) => line === 'GET /api/orgs/org_1/events')).toHaveLength(2);
   });
@@ -2911,8 +2921,8 @@ describe('Make live (sc-3584)', () => {
     answering({ 'GET /api/orgs/org_1/events': listed([live()]) });
     at('/app/events');
 
-    const row = await screen.findByRole('link', { name: /Adaeze and Tunde/ });
-    expect(within(row).getByText('Live')).toBeDefined();
+    const card = await screen.findByRole('region', { name: 'Adaeze and Tunde' });
+    expect(within(card).getByText('Live')).toBeDefined();
   });
 });
 
@@ -2959,18 +2969,22 @@ describe('The phase, End now and Call off (sc-3585)', () => {
   it.each([
     ['happening_now', 'Happening now'],
     ['paused', 'Paused'],
-    ['finished', 'Finished'],
-  ])('shows the server phase %s as %s in the list', async (phase, word) => {
+  ])('shows the server phase %s as %s on the list', async (phase, word) => {
     signedIn();
-    answering({
-      'GET /api/orgs/org_1/events':
-        phase === 'finished' ? listed([], [live({ phase })]) : listed([live({ phase })]),
-    });
+    answering({ 'GET /api/orgs/org_1/events': listed([live({ phase })]) });
     at('/app/events');
-    if (phase === 'finished') fireEvent.click(await screen.findByRole('tab', { name: /Past/ }));
 
-    const row = await screen.findByRole('link', { name: /Adaeze and Tunde/ });
-    expect(within(row).getByText(word)).toBeDefined();
+    const card = await screen.findByRole('region', { name: 'Adaeze and Tunde' });
+    expect(within(card).getByText(word)).toBeDefined();
+  });
+
+  it('lists the server phase finished under Past', async () => {
+    signedIn();
+    answering({ 'GET /api/orgs/org_1/events': listed([], [live({ phase: 'finished' })]) });
+    at('/app/events');
+    fireEvent.click(await screen.findByRole('tab', { name: 'Past 1' }));
+
+    expect(rowNames()).toEqual(['Adaeze and Tunde']);
   });
 
   it("shows the server's phase on load, whatever the device clock says", async () => {
@@ -3996,7 +4010,7 @@ describe('The cover (sc-3590)', () => {
     expect(sent.filter(({ line }) => line.includes('/cover'))).toEqual([]);
   });
 
-  it('shows no cover on the event page or in the list (sc-22103)', async () => {
+  it('shows no cover on the event page, and the list draws it with no words (sc-22103, sc-30413)', async () => {
     signedIn();
     answering({
       'GET /api/events/ev_1': () =>
@@ -4017,8 +4031,10 @@ describe('The cover (sc-3590)', () => {
     fireEvent.click(await screen.findByRole('tab', { name: /Drafts/ }));
     await screen.findAllByRole('link', { name: /Adaeze and Tunde/ });
 
+    const covers = document.querySelectorAll('.ev img');
+    expect(covers).toHaveLength(1);
+    expect(covers[0]!.getAttribute('alt')).toBe('');
     expect(screen.queryByRole('img')).toBeNull();
-    expect(document.querySelector('.events [class*="cover"]')).toBeNull();
   });
 
   it('a new event sends its staged photo once it is created', async () => {

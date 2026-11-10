@@ -51,7 +51,7 @@ import { usePhoneWidth, useWideWidth } from '../../../phoneWidth.ts';
 import { useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { PHASE_WORD } from '../events/eventWords.ts';
-import { FirstRun } from '../events/FirstRun.tsx';
+import { EventsFirstRun } from '../../../components/EventsList.tsx';
 import { StatusPill } from '../events/MakeLive.tsx';
 import { CalendarSubscribe } from './CalendarSubscribe.tsx';
 
@@ -197,7 +197,12 @@ function CalendarOf({
           {refreshing && <Refreshing />}
           {subscribe}
         </div>
-        <FirstRun creates={creates} createLabel="events.newEvent" />
+        <div className="desk ev ev-column">
+          <EventsFirstRun
+            create={creates ? '/app/events/new' : undefined}
+            createLabel="events.newEvent"
+          />
+        </div>
       </div>
     );
   }

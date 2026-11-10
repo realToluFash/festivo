@@ -1,6 +1,18 @@
 import { DemoBell } from './DemoBell.tsx';
-import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
+
+import {
+  EventsEmptyTab,
+  EventsFirstRun,
+  EventsFooter,
+  EventsLoading,
+  EventsTabs,
+  EventsTop,
+  NewEventWords,
+} from '../components/EventsList.tsx';
+import { summaryWords } from '../eventsList.ts';
 
 import {
   type Filters,
@@ -33,8 +45,7 @@ import { guestLineOf } from './guests.ts';
 import { EventCard, EventRow, EventsShell } from './EventParts.tsx';
 import { FilterMenu } from './EventFilter.tsx';
 import { Glyph } from '../components/Glyph.tsx';
-import { Notice } from '../components/Notice.tsx';
-import { CardStep, Head, TextAction } from '../components/SettingsParts.tsx';
+import { Head, TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { AccessPaused, Switched } from './OrgSwitcher.tsx';
@@ -103,6 +114,7 @@ function sidebarEvents(emptied: Tab | null): EventKey[] {
 }
 
 function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell: Tell }) {
+  const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const now = CLOCKS.rest;
@@ -125,6 +137,19 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
     past: lists.past,
   };
   const looking = searching(filters) || filtering(filters);
+  const counts: Record<Tab, number> = {
+    upcoming: upcoming.length,
+    drafts: lists.drafts.length,
+    past: lists.past.length,
+  };
+  const summary = summaryWords(
+    {
+      happeningNow: lists.happeningNow.length,
+      upcoming: lists.upcoming.length,
+      drafts: lists.drafts.length,
+    },
+    t,
+  );
   const guests = guestCountsOf(events, start.noGuests ? {} : SAMPLE_GUESTS, now);
   const guestsOf = (event: SampleEvent) => (start.noGuests ? null : guestLineOf(event.id));
   const firstNew = useRef<HTMLUListElement>(null);
@@ -160,7 +185,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
             now={now}
             onFilters={apply}
           />
-          <ListLoading />
+          <EventsLoading />
         </div>
       </div>
     );
@@ -188,7 +213,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
         )}
         <div>
           <ListTop tell={tell} />
-          <p className="desk-line">{W.summary(upcoming.length, lists.drafts.length)}</p>
+          {summary != null && <p className="desk-line">{summary}</p>}
         </div>
         <GuestTiles counts={guests} />
         <Switched />
@@ -208,13 +233,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
           />
         ) : (
           <>
-            <Tabs tab={tab} counts={byTab} onPick={pick} />
-            <div
-              id={`ev-${tab}`}
-              role="tabpanel"
-              aria-labelledby={`ev-tab-${tab}`}
-              className="ev-panel"
-            >
+            <EventsTabs tab={tab} counts={counts} onPick={pick}>
               {tab !== 'past' && byTab[tab][0] != null && (
                 <EventCard
                   event={byTab[tab][0]}
@@ -225,10 +244,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
                 />
               )}
               {byTab[tab].length === 0 ? (
-                <div className="ev-none">
-                  <h2>{W.emptyTab[tab].title}</h2>
-                  <p className="desk-line">{W.emptyTab[tab].line}</p>
-                </div>
+                <EventsEmptyTab tab={tab} />
               ) : (
                 <ul className="desk-rows ev-rows" ref={firstNew}>
                   {(tab === 'past'
@@ -263,8 +279,8 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
                   {W.moreShown(Math.min(byTab.past.length, PAST_PAGE * pastPages) - PAST_PAGE)}
                 </p>
               )}
-              {byTab[tab].length > 0 && <p className="desk-foot">{W.footer(byTab[tab].length)}</p>}
-            </div>
+              {byTab[tab].length > 0 && <EventsFooter count={byTab[tab].length} />}
+            </EventsTabs>
           </>
         )}
       </div>
@@ -310,76 +326,30 @@ function PausedPage() {
 
 function ListTop({ tell, creates = true }: { tell: Tell; creates?: boolean }) {
   return (
-    <header className="desk-top ev-top">
-      <h1 className="desk-title ev-title" tabIndex={-1}>
-        {W.title}
-      </h1>
-      {creates && (
-        <button
-          type="button"
-          className="ev-new"
-          onClick={() => tell('Create an event has its own design.')}
-        >
-          <Glyph name="plus" size={18} weight={2.4} />
-          {W.newEvent}
-        </button>
-      )}
+    <EventsTop
+      newEvent={
+        creates && (
+          <button
+            type="button"
+            className="ev-new"
+            onClick={() => tell('Create an event has its own design.')}
+          >
+            <NewEventWords />
+          </button>
+        )
+      }
+    >
       <DemoBell tell={tell} />
-    </header>
+    </EventsTop>
   );
 }
 
+/** The product's first run, its Create telling what it opens, and for a role without Create events the ask-an-owner Notice. */
 export function FirstRun({ tell, asks = false }: { tell: Tell; asks?: boolean }) {
   return (
-    <>
-      <section className="desk-card ev-first">
-        {[1, 2, 3, 4, 5, 6].map((piece) => (
-          <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
-        ))}
-        <div className="desk-card-inner">
-          <h2 className="ev-card-name">{W.firstRunTitle}</h2>
-          {!asks && (
-            <CardStep
-              label={W.firstRunCreate}
-              onClick={() => tell('Create an event has its own design.')}
-            />
-          )}
-        </div>
-      </section>
-      {asks && <Notice kind="quiet">{W.firstRunAsk}</Notice>}
-      <ol className="desk-rows ev-steps">
-        {W.firstRunSteps.map((step, index) => (
-          <li key={step} className="desk-row">
-            <span className="ev-step-number" aria-hidden="true">
-              {index + 1}
-            </span>
-            <span className="desk-row-name">{step}</span>
-          </li>
-        ))}
-      </ol>
-    </>
-  );
-}
-
-/** Where the tabs, the card and the rows go while the list loads, as the shared shapes, heard and not seen. */
-function ListLoading() {
-  return (
-    <div className="desk-loading" role="status" aria-busy="true">
-      <span className="desk-unseen">{W.loading}</span>
-      <span className="desk-sunk ev-bone-tabs" aria-hidden="true" />
-      <span className="desk-sunk is-card ev-bone-card" aria-hidden="true" />
-      <ul className="desk-rows" aria-hidden="true">
-        {[1, 2, 3].map((bone) => (
-          <li key={bone} className="desk-row is-bones ev-bone-row">
-            <span className="desk-sunk ev-bone-thumb" />
-            <span className="desk-row-words">
-              <span className={`desk-sunk is-title b${bone}`} />
-              <span className={`desk-sunk is-line b${bone}`} />
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <EventsFirstRun
+      create={asks ? undefined : () => tell('Create an event has its own design.')}
+    />
   );
 }
 
@@ -449,60 +419,6 @@ function SearchRow({
         )}
       </div>
       <FilterMenu filters={filters} off={off} start={menuStart} now={now} onFilters={onFilters} />
-    </div>
-  );
-}
-
-function Tabs({
-  tab,
-  counts,
-  onPick,
-}: {
-  tab: Tab;
-  counts: Record<Tab, readonly SampleEvent[]>;
-  onPick: (tab: Tab) => void;
-}) {
-  const list = useRef<HTMLDivElement>(null);
-  const keys = (event: KeyboardEvent<HTMLButtonElement>) => {
-    const at = TABS.indexOf(tab);
-    const step =
-      event.key === 'ArrowRight'
-        ? 1
-        : event.key === 'ArrowLeft'
-          ? -1
-          : event.key === 'Home'
-            ? -at
-            : event.key === 'End'
-              ? TABS.length - 1 - at
-              : 0;
-
-    if (step === 0) return;
-    event.preventDefault();
-    const next = TABS[(at + step + TABS.length) % TABS.length] ?? tab;
-    onPick(next);
-    list.current?.querySelector<HTMLElement>(`#ev-tab-${next}`)?.focus();
-  };
-
-  return (
-    <div ref={list} className="ev-tabs" role="tablist" aria-label={W.title}>
-      {TABS.map((one) => (
-        <button
-          key={one}
-          id={`ev-tab-${one}`}
-          type="button"
-          role="tab"
-          className="ev-tab"
-          aria-selected={one === tab}
-          aria-controls={one === tab ? `ev-${one}` : undefined}
-          tabIndex={one === tab ? 0 : -1}
-          onClick={() => onPick(one)}
-          onKeyDown={keys}
-        >
-          {one === tab && <Glyph name="tick" size={14} weight={2.6} />}
-          {TAB_WORDS[one]}
-          <span className="ev-tab-count">{counts[one].length}</span>
-        </button>
-      ))}
     </div>
   );
 }

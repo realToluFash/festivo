@@ -47,7 +47,13 @@ export function DuplicateEvent({
   );
 }
 
-function DuplicateDialog({ event, onClose }: { event: OrganisationEvent; onClose: () => void }) {
+export function DuplicateDialog({
+  event,
+  onClose,
+}: {
+  event: OrganisationEvent;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [date, setDate] = useState('');
