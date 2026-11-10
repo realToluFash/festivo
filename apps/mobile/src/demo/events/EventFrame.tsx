@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
-import { type ReactNode, type Ref, useRef } from 'react';
+import { type ReactNode, type Ref, useEffect, useRef } from 'react';
 import {
+  type LayoutChangeEvent,
   Pressable,
   ScrollView,
   type ScrollViewInstance,
@@ -374,9 +375,20 @@ function AreaPills({
   badge: AreaBadge | null;
   without: AreaKey | undefined;
 }) {
+  const strip = useRef<ScrollViewInstance>(null);
+  const starts = useRef<Partial<Record<AreaKey, number>>>({});
+  const reveal = (one: AreaKey) => {
+    const x = starts.current[one];
+    if (x != null)
+      strip.current?.scrollTo({ x: Math.max(0, x - tokens.space3xl), animated: false });
+  };
+  // The chosen area's pill is kept in view, so Budget is never cut to "Bud" at the iPad's edge.
+  useEffect(() => reveal(area), [area]);
+
   return (
     <View style={styles.pillsAt}>
       <ScrollView
+        ref={strip}
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.pillsBar}
@@ -392,6 +404,10 @@ function AreaPills({
             <Pressable
               key={one}
               onPress={() => toArea(one, onArea)}
+              onLayout={(event: LayoutChangeEvent) => {
+                starts.current[one] = event.nativeEvent.layout.x;
+                if (on) reveal(one);
+              }}
               style={[styles.pill, on && styles.pillOn]}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}

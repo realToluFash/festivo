@@ -16,6 +16,7 @@ import {
   ShapeMark,
   TextAction,
 } from '../../components/Summary.tsx';
+import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import type { Shown } from '../events/EventsModel.ts';
@@ -530,7 +531,10 @@ export function BudgetHome({
   onWashed: () => void;
 }) {
   const { layout } = useShell();
+  const big = useAccessibilitySizes();
   const phone = layout === 'phone';
+  // At the accessibility sizes the iPad's narrow column breaks words, so its blocks stack as the phone's do.
+  const stacked = phone || big;
   const title = (
     <PageTitle
       title={W.budget}
@@ -614,7 +618,7 @@ export function BudgetHome({
   );
   const ceilingAt = (event: LayoutChangeEvent) => actions.ceilingAt?.(event.nativeEvent.layout.y);
 
-  if (phone)
+  if (stacked)
     return (
       <>
         {title}
@@ -627,11 +631,16 @@ export function BudgetHome({
         <DueNext
           m={m}
           locale={locale}
-          count={3}
+          count={phone ? 3 : 2}
           link={m.vendors === 'on' ? 'head' : 'none'}
           actions={actions}
         />
-        <Ceiling m={m} locale={locale} onWashed={onWashed} onLayout={ceilingAt} />
+        <Ceiling
+          m={m}
+          locale={locale}
+          onWashed={onWashed}
+          {...(phone ? { onLayout: ceilingAt } : {})}
+        />
         <AgainstPlan m={m} locale={locale} onWashed={onWashed} />
         <WhoIsPaying m={m} locale={locale} onPayers={actions.onPayers} />
         <Costs m={m} locale={locale} onWashed={onWashed} onOwnDesign={actions.onOwnDesign} />
