@@ -106,7 +106,80 @@ describe("Members' card", () => {
     const shown = card({ claim });
 
     expect(shown.says).toBe('Ire Events has no active owner');
+    expect(shown.line).toBe(
+      'Events, guests and your permissions keep working. Only Owner actions, such as billing, wait for an owner.',
+    );
     expect(shown.step?.label).toBe('Become the owner');
+  });
+
+  const deadline = (written: string) => ({ at: '2026-11-13T08:41:00Z', written });
+  const banner = (over: Partial<OwnerClaimBanner>): OwnerClaimBanner => ({
+    state: 'open',
+    domain: 'ire.events',
+    claim: null,
+    stopped: null,
+    lapsed: null,
+    ...over,
+  });
+  const claimBy = (mine: boolean, passes: string | null): OwnerClaimBanner['claim'] => ({
+    id: 'claim_1',
+    claimant: { id: 'user_ana', name: 'Ana Souza', email: 'ana.souza@ire.events' },
+    mine,
+    domain: 'ire.events',
+    record: null,
+    startedAt: deadline('8 November 2026 at 09:41 WAT'),
+    lapsesAt: deadline('15 November 2026 at 16:20 WAT'),
+    foundAt: passes == null ? null : deadline('10 November 2026 at 09:41 WAT'),
+    passesAt: passes == null ? null : deadline(passes),
+  });
+
+  it('says a found claim of your own passes to you, with no step on the card', () => {
+    const shown = card({
+      claim: banner({ state: 'found', claim: claimBy(true, '13 November 2026 at 09:41 WAT') }),
+    });
+
+    expect(shown.says).toBe('Record found');
+    expect(shown.line).toBe('Ownership passes to you on 13 November 2026 at 09:41 WAT.');
+    expect(shown.step).toBeNull();
+  });
+
+  it("names the admin becoming the owner, with their record's state as the line", () => {
+    const unfound = card({ claim: banner({ claim: claimBy(false, null) }) });
+    const found = card({
+      claim: banner({ state: 'found', claim: claimBy(false, '12 November 2026 at 16:20 WAT') }),
+    });
+
+    expect(unfound.says).toBe('Ana Souza is becoming the owner');
+    expect(unfound.line).toBe(
+      'Their DNS record has not been found yet. Without it, the claim lapses on 15 November 2026 at 16:20 WAT.',
+    );
+    expect(found.says).toBe('Ana Souza is becoming the owner');
+    expect(found.line).toBe(
+      'Their record is found. Ownership passes on 12 November 2026 at 16:20 WAT.',
+    );
+  });
+
+  it('says you stopped the claim, and to anyone else that the organisation has no active owner', () => {
+    const stopped = {
+      by: 'user_folake',
+      claimant: 'Ana Souza',
+      mine: true,
+      at: deadline('10 November 2026 at 10:00 WAT'),
+    };
+    const yours = card({ claim: banner({ state: 'closed', stopped }) });
+    const closed = card({
+      claim: banner({ state: 'closed', stopped: { ...stopped, mine: false } }),
+    });
+
+    expect(yours.says).toBe('You stopped Ana Souza’s claim');
+    expect(yours.line).toBe(
+      'Everybody who was told is emailed. Only Soirely support can restore an owner of Ire Events now.',
+    );
+    expect(closed.says).toBe('Ire Events has no active owner');
+    expect(closed.line).toMatch(
+      /^A claim was stopped, so only Soirely support can restore an owner\. Events, guests/,
+    );
+    expect(closed.step).toBeNull();
   });
 });
 

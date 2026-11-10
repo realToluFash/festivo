@@ -141,6 +141,70 @@ function answerStep(t: TFunction, waiting: readonly OrganisationMember[]): Membe
       };
 }
 
+/** The card while no owner is active, in the words of the demo's claim states (sc-37693). */
+function claimCard(
+  t: TFunction,
+  banner: OwnerClaimBanner,
+  organisation: string,
+  become: MembersCard['step'],
+): Pick<MembersCard, 'says' | 'line' | 'step'> {
+  const { claim, stopped, lapsed } = banner;
+  const keepsWorking = t('ownerClaim.keepsWorking');
+
+  if (banner.state === 'closed')
+    return stopped?.mine === true
+      ? {
+          says: t('ownerClaim.stoppedTitle', { claimant: stopped.claimant }),
+          line: t('ownerClaim.stoppedLine', { organisation }),
+          step: null,
+        }
+      : {
+          says: t('ownerClaim.noOwner', { organisation }),
+          line: `${t('ownerClaim.closedLine')} ${keepsWorking}`,
+          step: null,
+        };
+
+  if (claim == null) {
+    const why =
+      lapsed == null
+        ? []
+        : [
+            lapsed.outcome === 'record_removed'
+              ? t('ownerClaim.recordRemoved')
+              : t('ownerClaim.lapsed', { when: lapsed.at.written }),
+          ];
+
+    return {
+      says: t('ownerClaim.noOwner', { organisation }),
+      line: [...why, keepsWorking].join(' '),
+      step: become,
+    };
+  }
+
+  const claimant = claim.claimant.name;
+  if (!claim.mine)
+    return {
+      says: t('ownerClaim.becomingTitle', { claimant }),
+      line:
+        claim.passesAt == null
+          ? t('ownerClaim.theirsUnfound', { when: claim.lapsesAt.written })
+          : t('ownerClaim.theirsFound', { when: claim.passesAt.written }),
+      step: null,
+    };
+
+  return claim.passesAt == null
+    ? {
+        says: t('ownerClaim.claimOpen'),
+        line: t('ownerClaim.checkEvery', { when: claim.lapsesAt.written }),
+        step: { label: t('ownerClaim.check'), does: { does: 'checkRecord' } },
+      }
+    : {
+        says: t('ownerClaim.found'),
+        line: t('ownerClaim.passesToYou', { when: claim.passesAt.written }),
+        step: null,
+      };
+}
+
 /** How Members stands, summary first (sc-29710): an answer or a removal just made, an owner claim, or the headcount. */
 export function membersCard({
   t,
@@ -200,28 +264,8 @@ export function membersCard({
       step: claim != null && ownerClaimView(claim, organisation).become ? become : null,
     };
 
-  if (claim != null) {
-    const view = ownerClaimView(claim, organisation);
-    const words = (line: { key: string; values: Record<string, string> }) =>
-      t(line.key, line.values);
-    const record = view.record && claim.claim != null;
-
-    return {
-      ...quiet,
-      says: record ? t('ownerClaim.claimOpen') : words(view.title),
-      line: record
-        ? t('ownerClaim.checkEvery', { when: claim.claim?.lapsesAt.written ?? '' })
-        : [...view.lines.map(words), ...(view.become ? [t('ownerClaim.keepsWorking')] : [])].join(
-            ' ',
-          ) || null,
-      step: view.become
-        ? become
-        : record
-          ? { label: t('ownerClaim.check'), does: { does: 'checkRecord' } }
-          : null,
-      readsOut: false,
-    };
-  }
+  if (claim != null)
+    return { ...quiet, ...claimCard(t, claim, organisation, become), readsOut: false };
 
   const all = membersShown(members, 'all');
   const faces = all.slice(0, 5).map(faceOf);

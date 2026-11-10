@@ -2,10 +2,11 @@ import { ApiError, type OwnerClaimBanner } from '@soirely/api-client';
 import { ownerClaimRefusalKey, ownerClaimView } from '@soirely/domain';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ViewInstance } from 'react-native';
+import { View, type ViewInstance } from 'react-native';
 
 import { api } from '../api.ts';
 import { useShownLanguage } from '../i18n/index.ts';
+import { AlertLine } from './AlertLine.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { RecordRows, useCopied } from './RecordRows.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
@@ -24,8 +25,8 @@ export interface OwnerClaimState {
   screen: boolean;
   check: Check;
   busy: boolean;
-  /** Why starting a claim was refused, under the card. */
-  refusal: string | null;
+  /** Why starting a claim was refused, under the card; `at` says it again at each press. */
+  refusal: { words: string; at: number } | null;
   asking: Asking | null;
   /** Withdrawn, and whether everybody who was told is emailed: on the card until the viewer moves on. */
   withdrew: { told: boolean } | null;
@@ -47,7 +48,7 @@ export function useOwnerClaim(organisationId: string | undefined, shown: boolean
   const [screen, setScreen] = useState(false);
   const [check, setCheck] = useState<Check>('resting');
   const [busy, setBusy] = useState(false);
-  const [refusal, setRefusal] = useState<string | null>(null);
+  const [refusal, setRefusal] = useState<OwnerClaimState['refusal']>(null);
   const [asking, setAsking] = useState<Asking | null>(null);
   const [withdrew, setWithdrew] = useState<{ told: boolean } | null>(null);
   const banner = held != null && held.for === organisationId ? held.banner : null;
@@ -93,13 +94,15 @@ export function useOwnerClaim(organisationId: string | undefined, shown: boolean
         reload();
       } else {
         const key = error instanceof ApiError ? ownerClaimRefusalKey(error.code) : null;
-        setRefusal(
-          key == null
-            ? t('ownerClaim.failed')
-            : banner.domain == null
-              ? (error as ApiError).problem.title
-              : t(key, { domain: banner.domain }),
-        );
+        setRefusal({
+          words:
+            key == null
+              ? t('ownerClaim.failed')
+              : banner.domain == null
+                ? (error as ApiError).problem.title
+                : t(key, { domain: banner.domain }),
+          at: Date.now(),
+        });
       }
     } finally {
       setBusy(false);
@@ -269,23 +272,26 @@ export function ClaimActions({
   const banner = owner.banner;
   if (banner == null) return null;
   const view = ownerClaimView(banner, organisation);
-  const withdraw = view.withdraw && !view.record;
+  const found = view.withdraw && !view.record;
   const action = view.stop ? (
     <TextAction
       ref={opener}
       label={t('ownerClaim.stop')}
       removes
       onPress={() => owner.ask('stop')}
-      consequence={t('ownerClaim.stopBody', { organisation })}
+      consequence={t('ownerClaim.stopConsequence')}
       testID="ownerClaim.stop"
     />
-  ) : withdraw ? (
-    <TextAction
-      ref={opener}
-      label={t('ownerClaim.withdraw')}
-      onPress={() => owner.ask('withdraw')}
-      testID="ownerClaim.withdraw"
-    />
+  ) : found ? (
+    <>
+      <Line text={t('ownerClaim.keepPublished')} />
+      <TextAction
+        ref={opener}
+        label={t('ownerClaim.withdraw')}
+        onPress={() => owner.ask('withdraw')}
+        testID="ownerClaim.withdraw"
+      />
+    </>
   ) : null;
   const ask = owner.screen ? null : claimAsk(t, owner, organisation);
 
@@ -318,7 +324,12 @@ function claimAsk(
   return asking.kind === 'withdraw'
     ? {
         title: t('ownerClaim.withdrawTitle'),
-        line: t('ownerClaim.withdrawBody', { organisation }),
+        line: t(
+          owner.banner?.claim?.passesAt == null
+            ? 'ownerClaim.withdrawBody'
+            : 'ownerClaim.withdrawFoundBody',
+          { organisation },
+        ),
         keep: {
           label: t('ownerClaim.withdrawNo'),
           testID: 'ownerClaim.withdrawNo',
@@ -337,7 +348,7 @@ function claimAsk(
       }
     : {
         title: t('ownerClaim.stopConfirm', { claimant }),
-        line: t('ownerClaim.stopBody', { organisation }),
+        line: t('ownerClaim.stopAskBody', { organisation }),
         keep: { label: t('ownerClaim.stopNo'), testID: 'ownerClaim.stopNo', off: asking.busy },
         confirm: {
           label: t('ownerClaim.stopYes'),
@@ -356,4 +367,15 @@ function Said({ text }: { text: string }) {
   useReadOut(text);
 
   return <Line quiet={false} text={text} />;
+}
+
+/** Why Become the owner was refused, under the card and said again at each press. */
+export function ClaimRefused({ text }: { text: string }) {
+  useReadOut(text);
+
+  return (
+    <View testID="ownerClaim.refused">
+      <AlertLine text={text} />
+    </View>
+  );
 }

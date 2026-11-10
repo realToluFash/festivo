@@ -1318,6 +1318,7 @@
     },
     "waitingTitle": "Waiting",
     "waitingFoot": "Removed on {{deadline}} if nobody answers.",
+    "waitingFootMany": "Each request is removed if nobody answers. {{name}}’s is first, on {{deadline}}.",
     "waitingLine": "{{email}} · asked {{date}}",
     "peopleTitle": "People",
     "filterName": "Show",
@@ -1481,7 +1482,17 @@
     "copyNamed": "Copy {{label}}",
     "copiedNamed": "{{label}}, copied",
     "endedTitle": "The claim has changed",
-    "stopping": "Stopping"
+    "stopping": "Stopping",
+    "passesToYou": "Ownership passes to you on {{when}}.",
+    "becomingTitle": "{{claimant}} is becoming the owner",
+    "theirsUnfound": "Their DNS record has not been found yet. Without it, the claim lapses on {{when}}.",
+    "theirsFound": "Their record is found. Ownership passes on {{when}}.",
+    "stoppedTitle": "You stopped {{claimant}}’s claim",
+    "stoppedLine": "Everybody who was told is emailed. Only Soirely support can restore an owner of {{organisation}} now.",
+    "closedLine": "A claim was stopped, so only Soirely support can restore an owner.",
+    "stopConsequence": "After a stop, only Soirely support can restore an owner.",
+    "stopAskBody": "It ends at once, and everybody who was told about it is emailed. After a stop, only Soirely support can restore an owner of {{organisation}}.",
+    "withdrawFoundBody": "You won't become the owner of {{organisation}}, and the record is no longer needed. Any admin, you included, can start a new claim."
   },
   "eventTypes": {
     "wedding": "Casamento",

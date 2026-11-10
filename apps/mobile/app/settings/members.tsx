@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
 import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
-import { FieldError } from '../../src/components/Field.tsx';
 import {
   type ListAndPageSpacing,
   ListAndPage,
@@ -15,7 +14,12 @@ import {
 } from '../../src/components/ListAndPage.tsx';
 import { PersonBody } from '../../src/components/MemberPerson.tsx';
 import { RequestScreen } from '../../src/components/MemberRequest.tsx';
-import { ClaimActions, ClaimScreen, useOwnerClaim } from '../../src/components/MembersClaim.tsx';
+import {
+  ClaimActions,
+  ClaimRefused,
+  ClaimScreen,
+  useOwnerClaim,
+} from '../../src/components/MembersClaim.tsx';
 import {
   MembersCardView,
   NobodyPicked,
@@ -255,9 +259,7 @@ export default function MembersScreen() {
           onStep={onStep}
         />
         {owner.refusal != null && (
-          <View accessibilityRole="alert">
-            <FieldError message={owner.refusal} />
-          </View>
+          <ClaimRefused key={owner.refusal.at} text={owner.refusal.words} />
         )}
         {owner.withdrew == null && current.said == null && (
           <ClaimActions owner={owner} organisation={organisation.name} />
