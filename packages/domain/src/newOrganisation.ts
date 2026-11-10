@@ -3,7 +3,6 @@ import type { Translate } from './eventWords.ts';
 import { type NewOrganisationField, newOrganisationProblem } from './organisations.ts';
 import { currencyLabel } from './regions.ts';
 
-/** sc-390's Create an organisation as both walks send it. */
 export interface NewOrganisation {
   name: string;
   countryCode: string;
@@ -57,7 +56,6 @@ export async function createNewOrganisation<Made>(
   }
 }
 
-/** The check before sending, in the words both walks use. */
 export function newOrganisationRefusal(
   field: NewOrganisationField,
   value: string,
@@ -87,7 +85,6 @@ export function newOrganisationLimit(
   };
 }
 
-/** Cancel asks first only when something was entered: a name, or a country other than the device's. */
 export function newOrganisationEntered(
   walk: { name: string; country: string | null },
   deviceCountry: string | null,
@@ -100,7 +97,6 @@ export type FoundingCurrencies = ReadonlyMap<string, string | null>;
 
 export interface FoundingCurrencyWords {
   words: string;
-  /** A country with no money of its own, said as none yet. */
   none: boolean;
 }
 
