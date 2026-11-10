@@ -765,8 +765,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `mobile:verifyPhone.title`). «Revise su móvil», como «Revise su correo»: el mismo título sirve
   al SMS y a WhatsApp, así que no nombra ninguno. Caben unos 16 caracteres entre Cancelar y
   Verificar en un Android de 360 dp; «Revise sus mensajes» se cortaba.
-- **9 Nov 2026. El título de la hoja de activar la verificación en dos pasos en la app** (sc-34792,
-  `mobile:security.setupTitle`). «Verificación en 2 pasos», con la cifra, como el título que da
-  Google a la misma función; el botón de la derecha ya dice «Activar». Rechazado «Activar la
-  verificación en dos pasos», cortado en la cabecera de un móvil. `web:security.setupTitle` sigue
+- **10 Nov 2026. El título de la hoja de activar la verificación en dos pasos en la app** (sc-34792,
+  `mobile:security.setupTitle`). «Doble factor», el nombre corto que se usa en España, y el botón de
+  la derecha ya dice «Activar». Caben unos 16 caracteres entre Cancelar y Activar en un Android de
+  360 dp: «Verificación en 2 pasos» (9 Nov) se cortaba en «Verificación en 2 p…», y antes «Activar la
+  verificación en dos pasos». Solo en esta cabecera; el texto corrido sigue diciendo «verificación
+  en dos pasos». `web:security.setupTitle` sigue
   completo, porque el escritorio tiene sitio.
