@@ -1,4 +1,4 @@
-import { wallDay } from './calendar.ts';
+import { wallDay, weekLanes } from './calendar.ts';
 import { shownPhase } from './eventStates.ts';
 import { type Greeting, type TodayEvent, today } from './today.ts';
 import type { Milestone } from './timeline.ts';
@@ -115,6 +115,7 @@ export function todayView<E extends TodayEvent>(
   const kind: TodayKind = first ? 'first' : shown.now != null ? 'day' : empty ? 'quiet' : 'plan';
   const dayOf = (event: E, day: string) => daysBetween(firstDay(event), day) + 1;
 
+  const lanes = weekLanes(shown.week.map(({ items }) => items));
   const bars: TodayBar<E>[] = [];
   for (const { items } of shown.week)
     for (const item of items) {
@@ -123,11 +124,6 @@ export function todayView<E extends TodayEvent>(
 
       const start = Math.max(0, daysBetween(on, firstDay(item.event)));
       const end = Math.min(shown.week.length - 1, daysBetween(on, lastDay(item.event)));
-      let lane = 0;
-      while (
-        bars.some((bar) => bar.lane === lane && bar.start <= end && start < bar.start + bar.span)
-      )
-        lane++;
 
       bars.push({
         event: item.event,
@@ -135,7 +131,7 @@ export function todayView<E extends TodayEvent>(
         span: end - start + 1,
         openLeft: start === 0 && !item.first,
         dayToday: dayOf(item.event, on),
-        lane,
+        lane: lanes.get(item.event.id) ?? 0,
       });
     }
 
