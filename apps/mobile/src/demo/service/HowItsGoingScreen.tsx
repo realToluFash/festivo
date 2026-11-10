@@ -8,6 +8,7 @@ import { useReadOut } from '../../components/ReadOut.tsx';
 import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { DemoOnly } from '../../steps/Lines.tsx';
+import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
 import { FlagLine, Glyph } from '../queue/QueueParts.tsx';
@@ -21,6 +22,7 @@ import {
   buttonOf,
   candidates,
   closeGive,
+  giveLine,
   giveTo,
   lineKind,
   nobodyElse,
@@ -36,6 +38,9 @@ import {
 import {
   ALERT_ICON,
   Chip,
+  type CountKey,
+  CountShape,
+  Hatch,
   Initials,
   PATHS,
   Strip,
@@ -60,6 +65,7 @@ const TEAM_PLACE: Partial<Record<Alert['kind'], string>> = {
 
 function ServiceLead({ start }: { start: ReturnType<typeof serviceStateOf> }) {
   const insets = useSafeAreaInsets();
+  const wide = useLayout().kind === 'tabletLandscape';
   const [s, setS] = useState<ServiceState>(() => seed(start));
   const [said, setSaid] = useState(0);
   const [tab, setTab] = useState<TabId>(() => (seed(start).manage ? 'service' : 'next'));
@@ -108,7 +114,7 @@ function ServiceLead({ start }: { start: ReturnType<typeof serviceStateOf> }) {
         </View>
         {shown === 'service' ? (
           s.started ? (
-            <Blocks s={s} apply={apply} note={note} setNote={setNote} opener={opener} />
+            <Blocks s={s} apply={apply} note={note} setNote={setNote} opener={opener} wide={wide} />
           ) : (
             <View style={shared.card}>
               <Text size={20} weight="bold" accessibilityRole="header">
@@ -185,106 +191,148 @@ function Blocks({
   note,
   setNote,
   opener,
+  wide,
 }: {
   s: ServiceState;
   apply: (next: ServiceState) => void;
   note: Note;
   setNote: (n: Note) => void;
   opener: RefObject<ViewInstance | null>;
+  wide: boolean;
 }) {
   const sum = s.summary;
-  return (
-    <>
-      <CourseBlock sum={sum} />
-      <View style={shared.card}>
-        <Text size={20} weight="bold" accessibilityRole="header">
-          Sections
+  const course = <CourseBlock sum={sum} wide={wide} />;
+  const sections = (
+    <View style={shared.card}>
+      <Text size={20} weight="bold" accessibilityRole="header">
+        Sections
+      </Text>
+      <Text size={14} style={shared.secondary}>
+        Nobody on it first, then the most left each.
+      </Text>
+      {sum.sections.map((sec, i) => (
+        <SectionRow key={sec.id} s={s} sec={sec} first={i === 0} apply={apply} />
+      ))}
+    </View>
+  );
+  const kitchen = (
+    <View style={shared.card}>
+      <Text size={20} weight="bold" accessibilityRole="header">
+        The kitchen
+      </Text>
+      <Text size={14} style={shared.secondary}>
+        Each item as its station last marked it.
+      </Text>
+      {sum.kitchen.map((k, i) => (
+        <KitchenRow key={k.item} k={k} first={i === 0} />
+      ))}
+    </View>
+  );
+  const alerts = (
+    <View style={shared.card}>
+      <Text size={20} weight="bold" accessibilityRole="header">
+        Alerts
+      </Text>
+      <Text size={14} style={shared.secondary}>
+        Newest first. Each leaves by itself once its cause clears.
+      </Text>
+      {sum.alerts.length === 0 && (
+        <Text size={15} style={shared.secondary}>
+          Nothing needs you.
         </Text>
-        <Text size={14} style={shared.secondary}>
-          Nobody on it first, then the most left each.
-        </Text>
-        {sum.sections.map((sec, i) => (
-          <SectionRow key={sec.id} s={s} sec={sec} first={i === 0} apply={apply} />
-        ))}
-      </View>
-      <View style={shared.card}>
-        <Text size={20} weight="bold" accessibilityRole="header">
-          The kitchen
-        </Text>
-        <Text size={14} style={shared.secondary}>
-          Each item as its station last marked it.
-        </Text>
-        {sum.kitchen.map((k, i) => (
-          <KitchenRow key={k.item} k={k} first={i === 0} />
-        ))}
-      </View>
-      <View style={shared.card}>
-        <Text size={20} weight="bold" accessibilityRole="header">
-          Alerts
-        </Text>
-        <Text size={14} style={shared.secondary}>
-          Newest first. Each leaves by itself once its cause clears.
-        </Text>
-        {sum.alerts.length === 0 && (
-          <Text size={15} style={shared.secondary}>
-            Nothing needs you.
+      )}
+      {sum.alerts.map((a, i) => (
+        <AlertRow
+          key={a.id}
+          s={s}
+          a={a}
+          first={i === 0}
+          note={note?.id === a.id ? note.words : ''}
+          onPress={(ref) => {
+            const b = buttonOf(s, a);
+            if (b === 'Give to…') {
+              opener.current = ref;
+              apply(openGive(s, a.id));
+            } else if (b === 'Go to table') {
+              setNote({ id: a.id, words: `Opens ${a.table} on Floor (sc-4021).` });
+            } else {
+              setNote({
+                id: a.id,
+                words: `Opens Team on ${TEAM_PLACE[a.kind] ?? 'the place it names'} (sc-36034).`,
+              });
+            }
+          }}
+        />
+      ))}
+    </View>
+  );
+  const earlier = (
+    <View style={shared.card}>
+      <Text size={20} weight="bold" accessibilityRole="header">
+        Earlier courses
+      </Text>
+      {sum.earlier.map((e, i) => (
+        <View key={e.course} style={[styles.earlier, i > 0 && shared.sep]}>
+          <Glyph paths={PATHS.check} ink={tokens.colorInkSecondary} side={16} />
+          <Text size={15} weight="medium" style={shared.grow}>
+            {`${e.course} · ${e.served} of ${e.due} served · ${e.minutes} min`}
           </Text>
-        )}
-        {sum.alerts.map((a, i) => (
-          <AlertRow
-            key={a.id}
-            s={s}
-            a={a}
-            first={i === 0}
-            note={note?.id === a.id ? note.words : ''}
-            onPress={(ref) => {
-              const b = buttonOf(s, a);
-              if (b === 'Give to…') {
-                opener.current = ref;
-                apply(openGive(s, a.id));
-              } else if (b === 'Go to table') {
-                setNote({ id: a.id, words: `Opens ${a.table} on Floor (sc-4021).` });
-              } else {
-                setNote({
-                  id: a.id,
-                  words: `Opens Team on ${TEAM_PLACE[a.kind] ?? 'the place it names'} (sc-36034).`,
-                });
-              }
-            }}
-          />
-        ))}
+        </View>
+      ))}
+    </View>
+  );
+
+  if (!wide)
+    return (
+      <>
+        {course}
+        {sections}
+        {kitchen}
+        {alerts}
+        {earlier}
+      </>
+    );
+  return (
+    <View style={styles.grid} experimental_accessibilityOrder={READING_ORDER}>
+      <View nativeID="service.course">{course}</View>
+      <View style={styles.columns}>
+        <View style={styles.column}>
+          <View nativeID="service.sections">{sections}</View>
+          <View nativeID="service.earlier">{earlier}</View>
+        </View>
+        <View style={styles.column}>
+          <View nativeID="service.kitchen">{kitchen}</View>
+          <View nativeID="service.alerts">{alerts}</View>
+        </View>
       </View>
-      <View style={shared.card}>
-        <Text size={20} weight="bold" accessibilityRole="header">
-          Earlier courses
-        </Text>
-        {sum.earlier.map((e, i) => (
-          <View key={e.course} style={[styles.earlier, i > 0 && shared.sep]}>
-            <Glyph paths={PATHS.check} ink={tokens.colorInkSecondary} side={16} />
-            <Text size={15} weight="medium" style={shared.grow}>
-              {`${e.course} · ${e.served} of ${e.due} served · ${e.minutes} min`}
-            </Text>
-          </View>
-        ))}
-      </View>
-    </>
+    </View>
   );
 }
 
-const COUNTS = [
-  { key: 'onTray', word: 'On a tray', paths: PATHS.tray, circle: false, swatch: 'swTray' },
-  {
-    key: 'kitchen',
-    word: 'Waiting on the kitchen',
-    paths: PATHS.clock,
-    circle: true,
-    swatch: 'swKitchen',
-  },
-  { key: 'toServe', word: 'To serve', paths: [], circle: true, swatch: 'swToServe' },
-  { key: 'served', word: 'Served', paths: PATHS.check, circle: false, swatch: 'swServed' },
-] as const;
+/** Two columns on a tablet in landscape; VoiceOver keeps the AC's order. */
+const READING_ORDER = [
+  'service.course',
+  'service.sections',
+  'service.kitchen',
+  'service.alerts',
+  'service.earlier',
+];
 
-function CourseBlock({ sum }: { sum: Summary }) {
+const COUNTS: readonly { key: CountKey; word: string }[] = [
+  { key: 'onTray', word: 'On a tray' },
+  { key: 'kitchen', word: 'Waiting on the kitchen' },
+  { key: 'toServe', word: 'To serve' },
+  { key: 'served', word: 'Served' },
+];
+
+const BAR_PART = {
+  served: { backgroundColor: tokens.colorAccent },
+  onTray: { backgroundColor: tokens.colorAccentTintBorder },
+  kitchen: { backgroundColor: tokens.colorTrack },
+  toServe: { backgroundColor: tokens.colorTrack },
+} as const;
+
+function CourseBlock({ sum, wide }: { sum: Summary; wide: boolean }) {
   const c = sum.course;
   return (
     <View style={shared.card}>
@@ -299,33 +347,33 @@ function CourseBlock({ sum }: { sum: Summary }) {
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        {COUNTS.map((k) => (
-          <View key={k.key} style={[styles.barPart, styles[k.swatch], { flex: c[k.key] }]} />
+        {[...COUNTS]
+          .reverse()
+          .filter((k) => c[k.key] > 0)
+          .map((k) => (
+            <View key={k.key} style={[styles.barPart, BAR_PART[k.key], { flex: c[k.key] }]}>
+              {k.key === 'kitchen' && <Hatch />}
+            </View>
+          ))}
+      </View>
+      <View style={wide && styles.countsWide}>
+        {COUNTS.map((k, i) => (
+          <View
+            key={k.key}
+            accessible
+            accessibilityLabel={`${k.word}, ${c[k.key]}`}
+            style={wide ? styles.countTile : [styles.countRow, i > 0 && shared.sep]}
+          >
+            <CountShape kind={k.key} />
+            <Text size={16} weight="semibold" style={shared.grow}>
+              {k.word}
+            </Text>
+            <Text size={20} weight="bold" style={styles.number}>
+              {String(c[k.key])}
+            </Text>
+          </View>
         ))}
       </View>
-      {COUNTS.map((k, i) => (
-        <View
-          key={k.key}
-          accessible
-          accessibilityLabel={`${k.word}, ${c[k.key]}`}
-          style={[styles.countRow, i > 0 && shared.sep]}
-        >
-          <View style={[styles.swatch, styles[k.swatch]]}>
-            <Glyph
-              paths={k.paths}
-              circle={k.circle}
-              ink={k.key === 'served' ? tokens.colorInkOnDark : tokens.colorInk}
-              side={14}
-            />
-          </View>
-          <Text size={16} weight="semibold" style={shared.grow}>
-            {k.word}
-          </Text>
-          <Text size={20} weight="bold" style={styles.number}>
-            {String(c[k.key])}
-          </Text>
-        </View>
-      ))}
       <View accessible accessibilityLabel={`Not here yet, ${c.notHere}`} style={styles.notHere}>
         <Glyph paths={PATHS.person} ink={tokens.colorInkSecondary} side={16} />
         <Text size={15} weight="semibold" style={shared.grow}>
@@ -358,7 +406,7 @@ function SectionRow({
       </Text>
       <View style={shared.wrap}>
         {sec.people === 0 && <Chip word="Nobody on it" paths={PATHS.nobody} />}
-        {sec.behind && <Chip word="Behind" paths={PATHS.behind} tone="attention" />}
+        {sec.behind && <Chip word="Behind" paths={PATHS.behind} />}
         <Text size={14} weight="medium" style={[shared.secondary, styles.number]}>
           {`${sec.served} of ${sec.due}`}
         </Text>
@@ -388,6 +436,7 @@ function SectionRow({
               {kind === 'started' && (
                 <TextAction
                   label="Pause the tray"
+                  accessibilityLabel={`Pause ${w.name}’s tray for ${w.tray?.table ?? ''}`}
                   paths={PATHS.pause}
                   onPress={() => apply(pause(s, w.name))}
                   testID={`service.pause.${sec.id}.${w.name}`}
@@ -426,7 +475,7 @@ function KitchenRow({ k, first }: { k: KitchenItem; first: boolean }) {
         {k.state === 'Ready' && <Chip word="Ready" paths={PATHS.diamond} tone="accent" />}
         {k.state === 'Preparing' && <Chip word="Preparing" paths={PATHS.clock} circle />}
         {k.heldUpMin != null && (
-          <Chip word={`Held up · ${k.heldUpMin} min`} paths={PATHS.hourglass} tone="attention" />
+          <Chip word={`Held up · ${k.heldUpMin} min`} paths={PATHS.hourglass} tone="outline" />
         )}
       </View>
       {k.readyIn != null && (
@@ -527,7 +576,7 @@ function GiveSheet({
             {`Give ${g.table}’s tray to…`}
           </Text>
           <Text size={15} weight="medium" style={shared.secondary}>
-            {`${g.waiter} paused it · ${section}`}
+            {giveLine(s.summary, g)}
           </Text>
           {s.refused !== '' && (
             <View accessibilityRole="alert" style={styles.refused}>
@@ -606,24 +655,24 @@ const styles = StyleSheet.create({
   kicker: { color: tokens.colorInkSecondary, letterSpacing: 0.6 },
   number: { fontVariant: ['tabular-nums'] },
   bar: { flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden', gap: 2 },
-  barPart: { minWidth: 4 },
-  swTray: { backgroundColor: tokens.colorAccentTint },
-  swKitchen: { backgroundColor: tokens.colorPausedTint },
+  barPart: { minWidth: 4, overflow: 'hidden' },
   kitchen: { gap: 4, paddingVertical: 10 },
-  swToServe: {
-    backgroundColor: tokens.colorInset,
-    borderWidth: 1,
-    borderColor: tokens.colorControlBorder,
-  },
-  swServed: { backgroundColor: tokens.colorAccent },
   countRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd, minHeight: 48 },
-  swatch: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+  countsWide: { flexDirection: 'row', gap: tokens.spaceSm },
+  countTile: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: tokens.spaceSm,
+    padding: tokens.spaceMd,
+    borderRadius: 12,
+    backgroundColor: tokens.colorInset,
   },
+  grid: { gap: tokens.spaceMd },
+  columns: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },
+  column: { flex: 1, minWidth: 0, gap: tokens.spaceMd },
   notHere: {
     flexDirection: 'row',
     alignItems: 'center',

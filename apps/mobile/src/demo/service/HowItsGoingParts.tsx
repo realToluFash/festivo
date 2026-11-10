@@ -1,5 +1,6 @@
-import type { Ref } from 'react';
+import { type Ref, useId } from 'react';
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import Svg, { Defs, Path, Pattern, Rect } from 'react-native-svg';
 
 import { ReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
@@ -14,11 +15,7 @@ export const PATHS = {
   diamond: ['M12 3 21 12 12 21 3 12z'],
   check: ['M20 6 9 17l-5-5'],
   tray: ['M4 16h16', 'M6 16a6 6 0 0 1 12 0'],
-  behind: [
-    'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
-    'M12 9v4',
-    'M12 17h.01',
-  ],
+  behind: ['M12 6v6l4 2', 'M20 12v5', 'M20 21h.01', 'M21.25 8.2A10 10 0 1 0 16 21.16'],
   nobody: [
     'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2',
     'M13 7a4 4 0 1 1-8 0 4 4 0 1 1 8 0',
@@ -52,10 +49,11 @@ export const ALERT_ICON: Record<AlertKind, { paths: readonly string[]; circle: b
   nobody: { paths: PATHS.nobody, circle: false },
 };
 
-export type ChipTone = 'plain' | 'accent' | 'paused' | 'attention' | 'broken';
+export type ChipTone = 'plain' | 'outline' | 'accent' | 'paused' | 'attention' | 'broken';
 
 const TONE: Record<ChipTone, { bg: string; ink: string }> = {
   plain: { bg: tokens.colorInset, ink: tokens.colorInk },
+  outline: { bg: tokens.colorCard, ink: tokens.colorInk },
   accent: { bg: tokens.colorAccentTint, ink: tokens.colorAccentText },
   paused: { bg: tokens.colorPausedTint, ink: tokens.colorPausedText },
   attention: { bg: tokens.colorAttentionTint, ink: tokens.colorAttentionText },
@@ -75,7 +73,7 @@ export function Chip({
 }) {
   const t = TONE[tone];
   return (
-    <View style={[styles.chip, { backgroundColor: t.bg }]}>
+    <View style={[styles.chip, { backgroundColor: t.bg }, tone === 'outline' && styles.outline]}>
       <Glyph paths={paths} ink={t.ink} side={13} circle={circle} />
       <Text size={13} weight="semibold" style={{ color: t.ink }} numberOfLines={1}>
         {word}
@@ -89,12 +87,14 @@ export function TextAction({
   paths,
   onPress,
   ref,
+  accessibilityLabel,
   testID,
 }: {
   label: string;
   paths: readonly string[];
   onPress: () => void;
   ref?: Ref<ViewInstance> | undefined;
+  accessibilityLabel?: string | undefined;
   testID: string;
 }) {
   return (
@@ -102,6 +102,7 @@ export function TextAction({
       ref={ref}
       onPress={onPress}
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       style={({ pressed }) => [styles.textAction, pressed && styles.pressed]}
       testID={testID}
     >
@@ -188,6 +189,42 @@ export function Strip({ online, refused }: { online: boolean; refused: string })
   );
 }
 
+export type CountKey = 'served' | 'onTray' | 'kitchen' | 'toServe';
+
+/** The board's non-colour cue for each count: Served a filled square, On a tray a dot, Waiting on the kitchen a hatched square, To serve a ring. */
+export function CountShape({ kind }: { kind: CountKey }) {
+  return (
+    <View
+      style={[styles.shape, SHAPE[kind]]}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      {kind === 'kitchen' && <Hatch />}
+    </View>
+  );
+}
+
+export function Hatch() {
+  const id = `hatch${useId().replace(/:/g, '')}`;
+  return (
+    <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+      <Defs>
+        <Pattern
+          id={id}
+          width={4}
+          height={4}
+          patternUnits="userSpaceOnUse"
+          patternTransform="rotate(45)"
+        >
+          <Rect width={4} height={4} fill={tokens.colorTrack} />
+          <Path d="M0 0v4" stroke={tokens.colorInkTertiary} strokeWidth={2} />
+        </Pattern>
+      </Defs>
+      <Rect width="100%" height="100%" fill={`url(#${id})`} />
+    </Svg>
+  );
+}
+
 export function Initials({ name }: { name: string }) {
   const ini = name
     .split(' ')
@@ -223,7 +260,16 @@ export const shared = StyleSheet.create({
   wrap: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
 });
 
+const SHAPE = StyleSheet.create({
+  served: { borderRadius: 3, backgroundColor: tokens.colorAccent },
+  onTray: { borderRadius: 7, backgroundColor: tokens.colorAccentTintBorder },
+  kitchen: { borderRadius: 3, borderWidth: 1.5, borderColor: tokens.colorInkTertiary },
+  toServe: { borderRadius: 7, borderWidth: 2, borderColor: tokens.colorInkSecondary },
+});
+
 const styles = StyleSheet.create({
+  shape: { width: 14, height: 14, overflow: 'hidden' },
+  outline: { borderWidth: 1, borderColor: tokens.colorControlBorder },
   chip: {
     height: 26,
     paddingHorizontal: 10,
