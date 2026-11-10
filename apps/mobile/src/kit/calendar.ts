@@ -3,6 +3,7 @@ import {
   type CalendarCell,
   type CalendarItem,
   type CalendarMonth,
+  type Milestone,
   addDays,
   agendaDays,
   dayDate,
@@ -19,8 +20,8 @@ import type { TFunction } from 'i18next';
 import type { RowTag } from '../components/SummaryRows.tsx';
 import { type Shown, listEventOf, shownEvent } from './eventsList.ts';
 
-/** An event as the Calendar draws it, a real one or the demo's. */
-export interface CalEvent extends Shown {
+export interface CalEvent extends Omit<Shown, 'milestones'> {
+  milestones: readonly Milestone[];
   dayCount: number;
 }
 
@@ -35,7 +36,11 @@ export interface Week {
 }
 
 export function calEventOf(event: ListedEvent): CalEvent {
-  return { ...shownEvent(listEventOf(event), event.phase), dayCount: event.dayCount };
+  return {
+    ...shownEvent(listEventOf(event), event.phase),
+    milestones: event.milestones,
+    dayCount: event.dayCount,
+  };
 }
 
 export const REACH_MONTHS = 24;
@@ -83,7 +88,6 @@ export function monthKey({ year, month }: CalendarMonth): string {
   return firstOf({ year, month }).slice(0, 7);
 }
 
-/** Where a view lands on a month: today in today's month, else the month's first day. */
 export function landingOf(month: CalendarMonth, today: string): string {
   return monthKey(month) === today.slice(0, 7) ? today : firstOf(month);
 }
@@ -182,7 +186,6 @@ export function offsetsOf(weeks: readonly Week[], look: WeekLook): number[] {
   return offsets;
 }
 
-/** The week whose top is at or above `y`, the one the month is pinned from. */
 export function topIndex(offsets: readonly number[], y: number): number {
   let low = 0;
   let high = Math.max(0, offsets.length - 2);
@@ -213,7 +216,6 @@ function sameEvent(item: Item | null | undefined, id: string): boolean {
   return item?.kind === 'event' && item.event.id === id;
 }
 
-/** What a week draws: each bar once across the days it holds in its lane, and each day's other items in their slots. */
 export function piecesOf(week: Week, fit: number): Piece[] {
   const pieces: Piece[] = [];
   const drawn = new Set<string>();
