@@ -4,24 +4,24 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/settings/account
 - extendedWaitUntil:
     visible:
-      id: 'nameCard.change'
+      id: 'account.name'
     timeout: 30000
 - tapOn:
-    id: 'nameCard.change'
+    id: 'account.name'
 - extendedWaitUntil:
     visible:
-      id: 'nameCard.field'
+      id: 'account.name.field'
     timeout: 5000
 - eraseText: 200
 - inputText: '   '
 - tapOn:
-    id: 'nameCard.save'
+    id: 'account.name.save'
 - waitForAnimationToEnd:
     timeout: 3000
 - assertVisible: '{{t:nameCard.blank}}'
 - takeScreenshot: blank
 - tapOn:
-    id: 'nameCard.field'
+    id: 'account.name.field'
 - inputText: 'x'
 - waitForAnimationToEnd:
     timeout: 2000
@@ -29,4 +29,15 @@ appId: host.exp.Exponent
 - takeScreenshot: blank-cleared
 - hideKeyboard
 - tapOn:
-    id: 'nameCard.cancel'
+    id: 'account.name.cancel'
+# Typed text makes Cancel ask before it discards it.
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.discard'
+    timeout: 5000
+- tapOn:
+    id: 'account.name.discard'
+- extendedWaitUntil:
+    notVisible:
+      id: 'account.name.screen'
+    timeout: 5000

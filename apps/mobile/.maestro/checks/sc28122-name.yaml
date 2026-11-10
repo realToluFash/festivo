@@ -1,10 +1,10 @@
-# sc-28122: Name: Change, tap Full name, keys up: Save name and Cancel above the keys; Cancel with keys up closes to Change, name as it was; five in five. Needs ${METRO_URL}.
+# sc-28122: Name: the Name row, tap Full name, keys up: Save and Cancel above the keys; Cancel with keys up closes to Your account with the Name row showing, past the ask that discards what was typed, name as it was; five in five. Needs ${METRO_URL}.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/account
 - scrollUntilVisible:
     element:
-      id: 'nameCard.change'
+      id: 'account.name'
     timeout: 30000
     centerElement: true
 - waitForAnimationToEnd:
@@ -13,25 +13,32 @@ appId: host.exp.Exponent
     times: 5
     commands:
       - tapOn:
-          id: 'nameCard.change'
+          id: 'account.name'
       - waitForAnimationToEnd:
           timeout: 3000
       - tapOn:
-          id: 'nameCard.field'
+          id: 'account.name.field'
       - inputText: ' Typed'
       - waitForAnimationToEnd:
           timeout: 3000
       - takeScreenshot: name-keys-up
       - tapOn:
-          id: 'nameCard.cancel'
+          id: 'account.name.cancel'
           waitToSettleTimeoutMs: 0
           retryTapIfNoChange: false
+      # Typed text makes Cancel ask before it discards it; the ask showing is the tap landing.
+      - extendedWaitUntil:
+          visible:
+            id: 'account.name.discard'
+          timeout: 5000
+      - tapOn:
+          id: 'account.name.discard'
       - waitForAnimationToEnd:
           timeout: 3000
       - takeScreenshot: name-after-cancel
       - assertNotVisible:
-          id: 'nameCard.cancel'
+          id: 'account.name.cancel'
       - assertNotVisible:
           text: '.*Typed.*'
       - assertVisible:
-          id: 'nameCard.change'
+          id: 'account.name'

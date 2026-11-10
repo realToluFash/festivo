@@ -12,7 +12,7 @@ onFlowComplete:
       SCREEN: account
       REFRESHING: 'account.refreshing'
       LOADED_TEXT: '.*'
-      LOADED_ID: 'nameCard.change'
+      LOADED_ID: 'account.name'
 - assertVisible:
-    id: 'nameCard.change'
+    id: 'account.name'
 - takeScreenshot: reloaded

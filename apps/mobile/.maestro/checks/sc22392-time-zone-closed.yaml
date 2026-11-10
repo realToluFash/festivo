@@ -1,4 +1,4 @@
-# Account, scrolled to the Time zone card with its step closed and Change on screen.
+# Your account, scrolled to the Time zone row with its screen closed.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/account
@@ -7,7 +7,9 @@ appId: host.exp.Exponent
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'timeZone.change'
+      id: 'account.zone'
     timeout: 30000
     centerElement: true
+- assertNotVisible:
+    id: 'account.zone.screen'
 - takeScreenshot: time-zone-closed
