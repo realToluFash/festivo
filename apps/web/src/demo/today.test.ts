@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  addDays,
   dueWords,
   INVITES_NOT_SENT,
   lanesOf,
@@ -187,14 +188,6 @@ describe('an event that starts later today, not under way yet (?starts=later)', 
 
 describe('events sharing days take rows (?week=rows, sc-37302)', () => {
   const rows = momentOf('plan', us, { rows: true });
-  const bar = (start: number, span: number) => ({
-    event: shown('wed'),
-    start,
-    span,
-    label: '',
-    openLeft: false,
-  });
-
   it('puts A on days 1 to 4 and C on 5 to 7 on the top row, and B on 3 to 6 on the second', () => {
     expect(
       rows.bars.map(({ event, start, span, lane, label }) => [
@@ -235,16 +228,55 @@ describe('events sharing days take rows (?week=rows, sc-37302)', () => {
     ]);
   });
 
-  it('shares a row between events that share no day, and never one between events that do', () => {
-    const lanes = (bars: ReturnType<typeof bar>[]) =>
-      lanesOf(bars.map((one, at) => ({ ...one, event: { ...one.event, id: `e${at}` } }))).map(
-        ({ lane }) => lane,
+  it('stacks by the domain’s weekLanes: a row shared only by events that share no day, ties by id', () => {
+    const today = '2026-11-03';
+    const lanes = (spans: [string, number, number][]) => {
+      const placed = lanesOf(
+        today,
+        spans.map(([id, from, to]) => ({
+          id,
+          first: addDays(today, from),
+          last: addDays(today, to),
+        })),
       );
 
-    expect(lanes([bar(0, 2), bar(3, 2)])).toEqual([0, 0]);
-    expect(lanes([bar(0, 3), bar(2, 3)])).toEqual([0, 1]);
-    expect(lanes([bar(0, 7), bar(0, 7), bar(0, 7)])).toEqual([0, 1, 2]);
-    expect(lanes([bar(4, 3), bar(0, 3), bar(2, 3)])).toEqual([0, 0, 1]);
+      return spans.map(([id]) => placed.get(id));
+    };
+
+    expect(
+      lanes([
+        ['a', 0, 1],
+        ['b', 3, 4],
+      ]),
+    ).toEqual([0, 0]);
+    expect(
+      lanes([
+        ['a', 0, 2],
+        ['b', 2, 4],
+      ]),
+    ).toEqual([0, 1]);
+    expect(
+      lanes([
+        ['c', 0, 6],
+        ['a', 0, 6],
+        ['b', 0, 6],
+      ]),
+    ).toEqual([2, 0, 1]);
+    expect(
+      lanes([
+        ['a', 4, 6],
+        ['b', -2, 2],
+        ['c', 2, 4],
+      ]),
+    ).toEqual([0, 0, 1]);
+  });
+
+  it('gives the rows state a Needs you its own dates agree with', () => {
+    expect(rows.needs?.map(({ event, title, due }) => [event, title, due])).toEqual([
+      ['party', 'Chase 19 replies', '3 days late'],
+      ['wed', 'Final numbers to the caterer', 'Due today'],
+      ['ireti', 'Chase 22 replies', 'Replies close Wed, Nov 4'],
+    ]);
   });
 
   it('reads the planning day as before without it', () => {
