@@ -805,7 +805,19 @@
     "labelSwitch": "Organisation : {{name}}, votre rôle {{role}}. Changer d’organisation",
     "labelSwitchWaiting_one": "Organisation : {{name}}, votre rôle {{role}}. Changer d’organisation. {{count, number}} invitation en attente",
     "labelSwitchWaiting_other": "Organisation : {{name}}, votre rôle {{role}}. Changer d’organisation. {{count, number}} invitations en attente",
-    "labelSwitchWaiting_many": "Organisation : {{name}}, votre rôle {{role}}. Changer d’organisation. {{count, number}} d’invitations en attente"
+    "labelSwitchWaiting_many": "Organisation : {{name}}, votre rôle {{role}}. Changer d’organisation. {{count, number}} d’invitations en attente",
+    "asks": "Where are you working?",
+    "search": "Search organisations",
+    "clearSearch": "Clear search",
+    "matches_one": "{{count, number}} organisation matches",
+    "matches_other": "{{count, number}} organisations match",
+    "matches_many": "{{count, number}} organisations match",
+    "noMatch": "No organisation matches “{{query}}”.",
+    "canAsk": "You can ask to join",
+    "invitationTile": "Invitation · {{role}}",
+    "invitationTileNoRole": "Invitation",
+    "option": "{{name}}, {{line}}",
+    "optionCurrent": "{{name}}, {{line}}, Current"
   },
   "createOrganisation": {
     "row": "Créer une organisation",

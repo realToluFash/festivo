@@ -15,7 +15,7 @@ import {
 import en from '../i18n/locales/en.json';
 import { SAMPLE } from './rules.ts';
 import { type SettingsSay, type Viewer, VIEWERS } from './settings.ts';
-import { fold } from './switcher.ts';
+import { fold } from '../components/orgMenu.ts';
 
 export const ORGANISATION = SAMPLE.organisation;
 export const DOMAIN = 'ire.events';

@@ -2079,94 +2079,6 @@ span {
   color: var(--colorInkSecondary);
 }
 
-.org-switcher-menu {
-  position: absolute;
-  top: calc(100% + var(--spaceSm));
-  left: 0;
-  z-index: 5;
-  display: flex;
-  flex-direction: column;
-  width: max(100%, 22rem);
-  max-width: calc(100vw - 2 * var(--spaceLg));
-  padding: var(--spaceSm) 0;
-  background: var(--colorCard);
-  border: var(--borderCard);
-  border-radius: var(--radiusCardDesktop);
-  box-shadow: var(--shadowDialog);
-  animation: rise-in var(--motionBase) var(--motionEase);
-}
-
-.org-switcher-menu ul {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.org-switcher-heading {
-  margin: 0;
-  padding: var(--spaceMd) var(--spaceXl) var(--spaceXs);
-  font: var(--typeLabel);
-  letter-spacing: var(--typeLabelTracking);
-  text-transform: uppercase;
-  color: var(--colorInkSecondary);
-}
-
-.org-switcher-option {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceLg);
-  width: 100%;
-  min-height: var(--sizeListRow);
-  padding: var(--spaceXs) var(--spaceXl);
-  border: 0;
-  background: var(--colorCard);
-  color: var(--colorInk);
-  text-align: left;
-  cursor: pointer;
-}
-
-.org-switcher-option:hover,
-.org-switcher-option-current {
-  background: var(--colorInset);
-}
-
-/* The current row differs in fill and in weight, never by colour alone (1.4.1). */
-.org-switcher-option:not(.org-switcher-option-current) .org-name {
-  font-weight: 500;
-}
-
-.org-switcher-current {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: var(--spaceXs);
-  font: var(--typeButton);
-  color: var(--colorAccentText);
-}
-
-.org-switcher-ring {
-  flex: none;
-  width: var(--spaceMd);
-  height: var(--spaceMd);
-  box-sizing: border-box;
-  border: 2px solid var(--colorInkSecondary);
-  border-radius: var(--radiusPill);
-}
-
-.org-switcher-invitations {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceSm);
-  min-width: 0;
-  margin: var(--spaceXs) var(--spaceXl) var(--spaceSm);
-}
-
-.org-switcher-invitations .org-switcher-heading {
-  padding: var(--spaceXs) 0 0;
-}
-
 .org-tile-invited {
   box-sizing: border-box;
   border: var(--borderMark) var(--colorInkTertiary);
@@ -2318,49 +2230,6 @@ span {
   color: var(--colorInkSecondary);
 }
 
-.org-switcher-note {
-  margin: 0;
-  padding: var(--spaceSm) var(--spaceXl) var(--spaceXs);
-  border-top: var(--borderInset);
-  font: var(--typeSmall);
-  color: var(--colorInkSecondary);
-}
-
-.org-switcher-create {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceLg);
-  width: 100%;
-  min-height: var(--sizeHitPhonePrimary);
-  margin-top: var(--spaceXs);
-  padding: var(--spaceXs) var(--spaceXl);
-  border: 0;
-  border-top: var(--borderInset);
-  background: var(--colorCard);
-  color: var(--colorAccentText);
-  font: var(--typeButton);
-  text-align: left;
-  cursor: pointer;
-}
-
-.org-switcher-create:hover {
-  background: var(--colorInset);
-}
-
-.org-tile-create {
-  box-sizing: border-box;
-  border: var(--borderMark) var(--colorAccentTintBorder);
-  border-style: dashed;
-  background: var(--colorCard);
-}
-
-.org-tile-create svg {
-  fill: none;
-  stroke: var(--colorAccentText);
-  stroke-width: 2.2;
-  stroke-linecap: round;
-}
-
 /* A dialog over the whole shell: centred on a desk, a sheet at phone width. */
 .dialog-scrim {
   position: fixed;
@@ -2507,7 +2376,6 @@ span {
 
 @media (prefers-reduced-motion: reduce) {
   .dialog,
-  .org-switcher-menu,
   #content[data-enter] {
     animation-name: fade-in;
     animation-duration: var(--motionBase);
@@ -4211,52 +4079,6 @@ button.members-row {
 .company-domain-add .input {
   flex: 1 1 200px;
   min-width: 0;
-}
-
-.org-switcher-offer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceMd);
-  min-width: 0;
-  margin: var(--spaceXs) var(--spaceXl) var(--spaceSm);
-  padding: var(--spaceLg) var(--spaceXl);
-  border: var(--borderInset);
-  border-radius: var(--radiusInset);
-  background: var(--colorInset);
-}
-
-.org-switcher-offer p {
-  margin: 0;
-}
-
-.org-switcher-offer-text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceHair);
-  font: var(--typeSmall);
-  color: var(--colorInkSecondary);
-}
-
-.org-switcher-offer-title {
-  font: var(--typeRowTitle);
-  color: var(--colorInk);
-}
-
-.org-switcher-offer-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spaceSm);
-}
-
-.org-switcher-offer-asked {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceSm);
-  font: var(--typeSmall);
-}
-
-.org-switcher-offer-asked .org-switcher-ring {
-  border-color: var(--colorAttention);
 }
 
 /* ── Events: the list, a new event and an event's page (sc-1486) ────────── */

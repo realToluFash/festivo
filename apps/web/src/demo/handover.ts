@@ -2,7 +2,7 @@ import { eventPhase } from '@soirely/domain';
 
 import { type SampleEvent, sampleEvent } from './events.ts';
 import type { Person } from './members.ts';
-import { fold } from './switcher.ts';
+import { fold } from '../components/orgMenu.ts';
 
 export const SEND_MS = 500;
 export const RETRY_MS = 1200;

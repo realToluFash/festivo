@@ -29,7 +29,7 @@ import {
 } from './handover.ts';
 import type { Person } from './members.ts';
 import { noMatchLine } from './people.ts';
-import { fold } from './switcher.ts';
+import { fold } from '../components/orgMenu.ts';
 import { Ask, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 import { useLater } from '../useLater.ts';
 import './handover.css';

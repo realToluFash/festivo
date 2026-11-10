@@ -1,14 +1,31 @@
-import type { Membership } from '@soirely/api-client';
-import { initials, roleName, waitingInvitations } from '@soirely/domain';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { InvitationPreview, Membership } from '@soirely/api-client';
+import {
+  formatDay,
+  invitationWording,
+  isWaiting,
+  refusalBody,
+  roleName,
+  waitingInvitations,
+} from '@soirely/domain';
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { dateLocale } from '../i18n/index.ts';
 import type { WaitingInvitations } from '../invitations.ts';
 import type { DomainOffer } from '../joinOffers.ts';
 import { leaveMenu } from '../leaving.ts';
-import { offButton } from '../offButton.ts';
-import { focusStep, useFocusOnceShown } from '../stepFocus.ts';
-import { InvitationRows } from './InvitationRows.tsx';
+import { focusStep } from '../stepFocus.ts';
+import { Notice } from './Notice.tsx';
+import {
+  InvitationActions,
+  InvitationAnswer,
+  JoinedAnswer,
+  type MenuPlace,
+  type MenuTile,
+  OfferAnswer,
+  OrgMenu,
+  type PanelTools,
+} from './OrgMenu.tsx';
 import { OrgPill } from './OrgPill.tsx';
 
 export function OrganisationSwitcher({
@@ -36,6 +53,7 @@ export function OrganisationSwitcher({
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [into, setInto] = useState(false);
   const container = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
@@ -45,13 +63,11 @@ export function OrganisationSwitcher({
   const [seen, setSeen] = useState(opened);
   // The organisation the button names once the menu has closed, when focus goes back to it; forgotten once focus goes elsewhere, as when a form with unsaved changes asks first.
   const returnTo = useRef<string | null>(null);
-  const invitationsHeading = useRef<HTMLParagraphElement>(null);
-  const note = useRef<HTMLParagraphElement>(null);
-  const land = useFocusOnceShown();
 
   if (opened !== seen) {
     setSeen(opened);
     setOpen(true);
+    setInto(true);
   }
 
   useLayoutEffect(() => {
@@ -79,9 +95,10 @@ export function OrganisationSwitcher({
     return () => leaveMenu(shown, parent);
   }, [open]);
 
-  function closeTo(organisationId: string): void {
+  function closeTo(organisationId: string | null): void {
     returnTo.current = organisationId;
     setOpen(false);
+    setInto(false);
   }
 
   useEffect(() => {
@@ -93,8 +110,7 @@ export function OrganisationSwitcher({
           ? event.key === 'Escape'
           : !container.current?.contains(event.target as Node)
       ) {
-        if (event instanceof KeyboardEvent) returnTo.current = current.id;
-        setOpen(false);
+        closeTo(event instanceof KeyboardEvent ? current.id : null);
       }
     };
 
@@ -107,8 +123,70 @@ export function OrganisationSwitcher({
     };
   }, [open, current.id]);
 
+  function pick(id: string): void {
+    const organisation = organisations.find((one) => one.id === id);
+    const stays = !paused && id === current.id;
+
+    closeTo(id);
+    if (organisation != null && !stays) onSwitch(organisation);
+  }
+
+  const places = organisations.map((organisation): MenuPlace => ({
+    id: organisation.id,
+    name: organisation.name,
+    role: roleName(t, organisation.role),
+  }));
+  const others: MenuTile[] = [
+    ...(offer?.organisation != null
+      ? [
+          {
+            kind: 'offer',
+            id: `offer-${offer.organisation.id}`,
+            name: offer.organisation.name,
+          } satisfies MenuTile,
+        ]
+      : []),
+    ...waiting.invitations
+      .filter((invitation) => waiting.outcomes[invitation.id]?.kind !== 'accepted')
+      .map((invitation): MenuTile => ({
+        kind: 'invitation',
+        id: invitation.id,
+        name: invitation.organisation.name,
+        role: invitation.role == null ? null : roleName(t, invitation.role),
+      })),
+  ];
+
+  function answer(tile: MenuTile, tools: PanelTools): ReactNode {
+    if (tile.kind === 'place')
+      return (
+        <JoinedAnswer
+          name={tile.place.name}
+          role={tile.place.role}
+          onOpen={() => pick(tile.place.id)}
+        />
+      );
+
+    if (tile.kind === 'offer')
+      return offer == null ? null : <OfferPanel offer={offer} email={email} tools={tools} />;
+
+    const invitation = waiting.invitations.find((one) => one.id === tile.id);
+
+    return (
+      invitation != null && (
+        <InvitationPanel invitation={invitation} waiting={waiting} tools={tools} />
+      )
+    );
+  }
+
   return (
-    <div className="org-switcher" ref={container}>
+    <div
+      className="org-switcher"
+      ref={container}
+      onBlur={(event) => {
+        const to = event.relatedTarget;
+        if (open && to != null && !event.currentTarget.contains(to)) closeTo(null);
+      }}
+    >
       <OrgPill
         ref={button}
         id={current.id}
@@ -122,129 +200,114 @@ export function OrganisationSwitcher({
         open={open}
         onClick={() => {
           returnTo.current = null;
+          setInto(false);
           setOpen((shown) => !shown);
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== 'ArrowDown' || open) return;
+
+          event.preventDefault();
+          setOpen(true);
+          setInto(true);
         }}
       />
 
       {open && (
-        <div className="org-switcher-menu" ref={menu}>
-          <p className="org-switcher-heading">{t('switcher.heading')}</p>
-          <ul role="listbox" aria-label={t('switcher.heading')}>
-            {organisations.map((organisation) => {
-              const isCurrent = !paused && organisation.id === current.id;
-
-              return (
-                <li key={organisation.id}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={isCurrent}
-                    className={
-                      isCurrent
-                        ? 'org-switcher-option org-switcher-option-current'
-                        : 'org-switcher-option'
-                    }
-                    onClick={() => {
-                      closeTo(organisation.id);
-                      if (!isCurrent) onSwitch(organisation);
-                    }}
-                  >
-                    <Tile name={organisation.name} />
-                    <Naming name={organisation.name} role={roleName(t, organisation.role)} />
-                    {isCurrent && (
-                      <span className="org-switcher-current">
-                        <span className="mark mark-done" aria-hidden="true">
-                          ✓
-                        </span>
-                        <span>{t('switcher.current')}</span>
-                      </span>
-                    )}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          {offer?.organisation != null && (
-            <OfferCard
-              offer={offer}
-              email={email}
-              onDismissed={() =>
-                land(() =>
-                  waiting.invitations.length > 0 ? invitationsHeading.current : note.current,
-                )
-              }
-            />
-          )}
-          {waiting.invitations.length > 0 && (
-            <section
-              className="org-switcher-invitations"
-              aria-labelledby="org-switcher-invitations"
-            >
-              <p
-                id="org-switcher-invitations"
-                className="org-switcher-heading"
-                ref={invitationsHeading}
-                tabIndex={-1}
-              >
-                {t('invitations.heading')}
-              </p>
-              <InvitationRows
-                waiting={waiting}
-                place="menu"
-                after={{
-                  open: (id) => {
-                    const joined = organisations.find((organisation) => organisation.id === id);
-
-                    closeTo(id);
-                    if (joined != null) onSwitch(joined);
-                  },
-                }}
-              />
-            </section>
-          )}
-          <p className="org-switcher-note" ref={note} tabIndex={-1}>
-            {t('switcher.remembered')}
-          </p>
-          <button
-            type="button"
-            className="org-switcher-create"
-            onClick={() => {
-              setOpen(false);
-              // The dialog hands focus back to whatever opened it, and this row goes with the menu.
-              button.current?.focus();
-              onCreate();
-            }}
-          >
-            <span className="org-tile org-tile-create" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            </span>
-            <span>{t('createOrganisation.row')}</span>
-          </button>
-        </div>
+        <OrgMenu
+          menu={menu}
+          anchor={button}
+          places={places}
+          current={paused ? null : current.id}
+          others={others}
+          into={into}
+          answer={answer}
+          onPick={(place) => pick(place.id)}
+          onCreate={() => {
+            closeTo(null);
+            // The dialog hands focus back to whatever opened it, and this tile goes with the menu.
+            button.current?.focus();
+            onCreate();
+          }}
+        />
       )}
     </div>
   );
 }
 
+/** An invitation's panel, answered through the API; a join moves the panel to the place it made. */
+function InvitationPanel({
+  invitation,
+  waiting,
+  tools,
+}: {
+  invitation: InvitationPreview;
+  waiting: WaitingInvitations;
+  tools: PanelTools;
+}) {
+  const { t } = useTranslation();
+  const outcome = waiting.outcomes[invitation.id];
+  const keys = invitationWording(invitation);
+  const organisation = invitation.organisation.name;
+  const inviter = invitation.invitedBy?.name ?? '';
+  const role = invitation.role == null ? '' : roleName(t, invitation.role);
+
+  async function reply(choice: 'accept' | 'decline'): Promise<void> {
+    const answered = await waiting.answer(invitation, choice);
+
+    if (answered.kind === 'accepted') tools.show(answered.organisationId);
+    if (answered.kind !== 'failed') tools.land('panel');
+  }
+
+  return (
+    <InvitationAnswer
+      name={organisation}
+      line={t(keys.line, { inviter, role })}
+      until={t(keys.until, {
+        date: formatDay(invitation.expiresAt, dateLocale()),
+        email: invitation.email,
+      })}
+    >
+      {isWaiting(outcome) ? (
+        <InvitationActions
+          name={organisation}
+          note={t(keys.declineNote, { inviter })}
+          failed={outcome?.kind === 'failed'}
+          busy={outcome?.kind === 'busy' ? outcome.answer : null}
+          onAccept={() => void reply('accept')}
+          onDecline={() => void reply('decline')}
+        />
+      ) : outcome?.kind === 'declined' ? (
+        <Notice kind="quiet" lands>
+          {t(keys.declined, { inviter })}
+        </Notice>
+      ) : outcome?.kind === 'refused' ? (
+        <Notice kind={outcome.refusal === 'invitation_expired' ? 'attention' : 'quiet'} lands>
+          <strong>{t(`invitations.refused.${outcome.refusal}.word`)}</strong>{' '}
+          {t(refusalBody(outcome.refusal, invitation.invitedBy != null), {
+            inviter,
+            organisation,
+            email: invitation.email,
+            signedInAs: invitation.signedInAs ?? '',
+          })}
+        </Notice>
+      ) : null}
+    </InvitationAnswer>
+  );
+}
+
 /** An organisation at the domain of the primary address: Ask to join, or Not now for good. */
-function OfferCard({
+function OfferPanel({
   offer,
   email,
-  onDismissed,
+  tools,
 }: {
   offer: DomainOffer;
   email: string;
-  onDismissed: () => void;
+  tools: PanelTools;
 }) {
-  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [askedHere, setAskedHere] = useState(false);
-  const askedLine = useRef<HTMLDivElement>(null);
-  const land = useFocusOnceShown();
-  const name = offer.organisation?.name ?? '';
 
   async function ask(): Promise<void> {
     setBusy(true);
@@ -253,85 +316,29 @@ function OfferCard({
 
     try {
       await offer.ask();
-      land(() => askedLine.current);
     } catch {
       setAskedHere(false);
       setFailed(true);
     } finally {
       setBusy(false);
+      tools.land('panel');
     }
   }
 
   return (
-    <div className="org-switcher-offer" role="group" aria-labelledby="org-switcher-offer">
-      <div className="org-switcher-offer-text">
-        <p id="org-switcher-offer" className="org-switcher-offer-title">
-          {t('domainJoining.usesSoirely', { organisation: name })}
-        </p>
-        <p>{t('domainJoining.switcherBody', { domain: offer.domain ?? '' })}</p>
-      </div>
-      {offer.asked ? (
-        <div
-          className="org-switcher-offer-asked"
-          role={askedHere ? undefined : 'status'}
-          ref={askedLine}
-          tabIndex={askedHere ? -1 : undefined}
-        >
-          <span className="org-switcher-ring" aria-hidden="true" />
-          <p>
-            <strong>{t('domainJoining.waiting')}</strong>
-            {' · '}
-            {t('domainJoining.switcherAsked', { email })}
-          </p>
-        </div>
-      ) : (
-        <>
-          {failed && <p role="alert">{t('domainJoining.unavailable')}</p>}
-          <div className="org-switcher-offer-buttons">
-            <button
-              className="button button-primary"
-              type="button"
-              aria-busy={busy}
-              {...offButton(busy)}
-              onClick={() => void ask()}
-            >
-              {t('domainJoining.ask')}
-            </button>
-            <button
-              className="button"
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                void offer.dismiss();
-                onDismissed();
-              }}
-            >
-              {t('domainJoining.notNow')}
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function Tile({ name }: { name: string }) {
-  return (
-    <span className="org-tile" aria-hidden="true">
-      {initials(name)}
-    </span>
-  );
-}
-
-function Naming({ name, role }: { name: string; role: string }) {
-  const { t } = useTranslation();
-
-  return (
-    <span className="org-naming">
-      <span className="org-name" title={name}>
-        {name}
-      </span>
-      <span className="org-role">{t('switcher.yourRole', { role })}</span>
-    </span>
+    <OfferAnswer
+      name={offer.organisation?.name ?? ''}
+      domain={offer.domain ?? ''}
+      email={email}
+      standing={offer.asked ? 'asked' : failed ? 'unavailable' : 'unasked'}
+      askedHere={askedHere}
+      busy={busy}
+      onAsk={() => void ask()}
+      onNotNow={() => {
+        void offer.dismiss();
+        tools.show(null);
+        tools.land('more');
+      }}
+    />
   );
 }

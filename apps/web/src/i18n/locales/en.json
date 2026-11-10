@@ -779,7 +779,18 @@
     "switched": "Now working in {{name}}.",
     "labelSwitch": "Organisation: {{name}}, your role {{role}}. Switch organisation",
     "labelSwitchWaiting_one": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count, number}} invitation waiting",
-    "labelSwitchWaiting_other": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count, number}} invitations waiting"
+    "labelSwitchWaiting_other": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count, number}} invitations waiting",
+    "asks": "Where are you working?",
+    "search": "Search organisations",
+    "clearSearch": "Clear search",
+    "matches_one": "{{count, number}} organisation matches",
+    "matches_other": "{{count, number}} organisations match",
+    "noMatch": "No organisation matches “{{query}}”.",
+    "canAsk": "You can ask to join",
+    "invitationTile": "Invitation · {{role}}",
+    "invitationTileNoRole": "Invitation",
+    "option": "{{name}}, {{line}}",
+    "optionCurrent": "{{name}}, {{line}}, Current"
   },
   "createOrganisation": {
     "row": "Create an organisation",
