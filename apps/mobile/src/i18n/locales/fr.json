@@ -372,7 +372,7 @@
     "nothingThereLine": "Vérifiez d’abord vos courriers indésirables, puis renvoyez-le.",
     "signedUpWith": "Inscription avec Google ou Apple ? Il n’y a alors pas de mot de passe à réinitialiser, et l’e-mail explique comment vous vous connectez.",
     "gotTheLink": "Vous avez le lien ? Ouvrez-le sur n’importe quel appareil.",
-    "setupTitle": "Double authentification",
+    "setupTitle": "Deux facteurs",
     "setupVerb": "Activer"
   },
   "passwordCard": {

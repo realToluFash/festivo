@@ -826,8 +826,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   « Ouvrez vos messa… » sur un Android de 360 dp, où tiennent environ 16 caractères entre
   Annuler et Vérifier. Le même titre sert au SMS et à WhatsApp : « Ouvrez vos SMS » est donc
   rejeté. La phrase sous le titre dit où le code est parti.
-- **9 nov. 2026. Le titre de la feuille d’activation de la double authentification dans l’app**
-  (sc-34792, `mobile:security.setupTitle`). « Double authentification », sans verbe : le bouton à
-  droite dit déjà « Activer ». Rejeté « Activer la double authentification », tronqué dans
-  l’en-tête d’un téléphone. Le nom tient tout juste à 390 points ; s’il faut plus court, c’est une
-  question de place pour [ux], pas une abréviation. `web:security.setupTitle` reste complet.
+- **10 nov. 2026. Le titre de la feuille d’activation de la double authentification dans l’app**
+  (sc-34792, `mobile:security.setupTitle`). « Deux facteurs », sans verbe : le bouton à droite dit
+  déjà « Activer », et l’en-tête se lit « Annuler · Deux facteurs · Activer ». Environ 16 caractères
+  tiennent entre Annuler et Activer sur un Android de 360 dp : « Double authentification » (9 nov.)
+  y était coupé en « Double authentific… », et avant lui « Activer la double authentification ».
+  Rejetés « 2FA », un sigle, et « Double vérification », trop long. Seulement dans cet en-tête ; le
+  texte courant garde « double authentification ». `web:security.setupTitle` reste complet.
