@@ -3663,9 +3663,12 @@ async function organisationOwner(root, { fresh }) {
   return apiSession(email, password, null);
 }
 
-export function madeAccount({ status, stdout, stderr }) {
+export function madeAccount({ status, signal, error, stdout, stderr }) {
   if (status === 0) return JSON.parse(stdout);
-  const why = (stderr ?? '').trim() || `exited ${status}`;
+  const why =
+    (stderr ?? '').trim() ||
+    error?.message ||
+    (signal ? `killed by ${signal}` : `exited ${status}`);
   throw new Error(`scripts/qa-account.mjs registered no account: ${why}`);
 }
 

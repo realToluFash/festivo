@@ -3806,8 +3806,21 @@ describe('madeAccount', () => {
 
   it('names the call and status qa-account failed on', () => {
     expect(() =>
-      madeAccount({ status: 1, stdout: '', stderr: '/api/auth/register answered 429\n' }),
-    ).toThrow('registered no account: /api/auth/register answered 429');
+      madeAccount({
+        status: 1,
+        stdout: '',
+        stderr: '\n✗ /api/auth/register answered 429: Too Many Requests\n',
+      }),
+    ).toThrow('/api/auth/register answered 429');
+  });
+
+  it('says why when qa-account never ran', () => {
+    expect(() =>
+      madeAccount({ status: null, error: new Error('spawnSync node ENOENT'), stderr: null }),
+    ).toThrow('spawnSync node ENOENT');
+    expect(() => madeAccount({ status: null, signal: 'SIGKILL', stderr: '' })).toThrow(
+      'killed by SIGKILL',
+    );
   });
 
   it('falls back to the exit status when qa-account said nothing', () => {
