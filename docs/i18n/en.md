@@ -7,7 +7,8 @@ whenever you decide something a second string will need.
 
 British English (en-GB). Plain, warm and direct. No contractions in error bodies: "cannot",
 not "can't". British spelling: organisation, cancelled, colour. Sentence case for every
-label and heading.
+label and heading. No serial comma: "Ana, Ben and Cleo". Join a list through `listFormat`
+from `@soirely/domain`, never `new Intl.ListFormat(locale)`.
 
 The rules every locale shares are in `.claude/skills/locale-parity`.
 
