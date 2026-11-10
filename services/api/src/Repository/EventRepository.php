@@ -15,7 +15,6 @@ use DateTimeZone;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
-use Psl\Json;
 use Psl\Str;
 use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
@@ -189,11 +188,11 @@ final class EventRepository extends ServiceEntityRepository
         if ([] !== $search->hosts) {
             $query->andWhere($query->expr()->orX(...Vec\map_with_key(
                 $search->hosts,
-                static fn (int $index, string $host): string => 'JSON_CONTAINS(e.hosts, :host' . $index . ') = true',
+                static fn (int $index, string $host): string => 'HOLDS_NAME(e.hosts, :host' . $index . ') = true',
             )));
 
             foreach ($search->hosts as $index => $host) {
-                $query->setParameter('host' . $index, Json\encode([$host]));
+                $query->setParameter('host' . $index, $host);
             }
         }
 

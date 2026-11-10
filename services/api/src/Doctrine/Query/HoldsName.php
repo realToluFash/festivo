@@ -11,16 +11,20 @@ use Doctrine\ORM\Query\SqlWalker;
 use Doctrine\ORM\Query\TokenType;
 use Psl\Str;
 
-/** `JSON_CONTAINS(column, :json) = true`: Postgres's `@>`, asking a JSON column whether it holds a value. */
-final class JsonContains extends FunctionNode
+/** `HOLDS_NAME(column, :name) = true`: whether a JSON list of names holds :name in any case, as the Filter offers each name once (sc-30302). */
+final class HoldsName extends FunctionNode
 {
     public Node $column;
 
-    public Node $json;
+    public Node $name;
 
     public function getSql(SqlWalker $sqlWalker): string
     {
-        return Str\format('(CAST(%s AS JSONB) @> CAST(%s AS JSONB))', $sqlWalker->walkStringPrimary($this->column), $sqlWalker->walkStringPrimary($this->json));
+        return Str\format(
+            '(EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS_TEXT(CAST(%s AS JSONB)) AS held(name) WHERE LOWER(held.name) = LOWER(%s)))',
+            $sqlWalker->walkStringPrimary($this->column),
+            $sqlWalker->walkStringPrimary($this->name),
+        );
     }
 
     public function parse(Parser $parser): void
@@ -29,7 +33,7 @@ final class JsonContains extends FunctionNode
         $parser->match(TokenType::T_OPEN_PARENTHESIS);
         $this->column = $parser->StringPrimary();
         $parser->match(TokenType::T_COMMA);
-        $this->json = $parser->StringPrimary();
+        $this->name = $parser->StringPrimary();
         $parser->match(TokenType::T_CLOSE_PARENTHESIS);
     }
 }

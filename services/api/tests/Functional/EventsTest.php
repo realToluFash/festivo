@@ -366,6 +366,17 @@ final class EventsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aHostIsFoundUnderTheSpellingTheFilterOffers(): void
+    {
+        $this->hosted($this->create('One', self::AHEAD), ['funmi adeyemi']);
+        $this->hosted($this->create('Two', self::AHEAD), ['Funmi Adeyemi']);
+        $this->hosted($this->create('Three', self::AHEAD), ['Funmilayo Adeyemi']);
+
+        self::assertSame(['hosts' => ['funmi adeyemi', 'Funmilayo Adeyemi']], $this->as($this->owner, 'GET', $this->path('events/hosts')));
+        self::assertSame(['One', 'Two'], $this->listed('host=' . \rawurlencode('funmi adeyemi')));
+    }
+
+    #[Test]
     public function anEventIsInARangeWhenAnyOfItsDaysIs(): void
     {
         $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'name' => 'Three days', 'startsAt' => '2026-11-14T16:00', 'endsAt' => '2026-11-16T23:00']);

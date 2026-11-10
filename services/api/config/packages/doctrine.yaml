@@ -28,7 +28,7 @@ doctrine:
         dql:
             string_functions:
                 FOLDED: App\Doctrine\Query\Folded
-                JSON_CONTAINS: App\Doctrine\Query\JsonContains
+                HOLDS_NAME: App\Doctrine\Query\HoldsName
         controller_resolver:
             auto_mapping: false
 
