@@ -407,6 +407,11 @@ function courses(main: Partial<Course> = {}): Course[] {
   ];
 }
 
+/** The menu Stations reads (sc-3910): the Main with the grilled fish's variants as an item. */
+export function servedCourses(): Course[] {
+  return courses({ dishes: [jollof(JOLLOF_ITEMS), FISH_VARIANT] });
+}
+
 export type Panel =
   { kind: 'course'; courseId: string } | { kind: 'dish'; courseId: string; dishId: string };
 
