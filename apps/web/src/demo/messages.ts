@@ -490,11 +490,15 @@ export function whatsAppOf(audience: Audience): WhatsAppReach {
 export function whatsAppLine(audience: Audience): string {
   const reach = whatsAppOf(audience);
 
-  return [
-    filled(MW.whatsAppReaches, { count: reach.reaches, total: reach.of }),
+  const cant = [
     ...(reach.noMobile > 0 ? [many('noMobile', reach.noMobile)] : []),
     ...(reach.stopped > 0 ? [many('stoppedCount', reach.stopped)] : []),
     ...(reach.notAgreed > 0 ? [many('notAgreedWhatsApp', reach.notAgreed)] : []),
+  ];
+
+  return [
+    filled(MW.whatsAppReaches, { count: reach.reaches, total: reach.of }),
+    ...(cant.length > 0 ? [listed(cant)] : []),
   ].join(' · ');
 }
 

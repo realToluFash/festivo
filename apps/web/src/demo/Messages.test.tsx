@@ -1500,7 +1500,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
   it('says who WhatsApp reaches under the ticks whenever it is ticked', SLOW, async () => {
     await messages('whatsAppLine');
     const line =
-      'WhatsApp reaches 4 of 142 · 102 have no mobile number · 2 stopped WhatsApp · 34 haven’t agreed to WhatsApp';
+      'WhatsApp reaches 4 of 142 · 102 have no mobile number, 2 stopped WhatsApp and 34 haven’t agreed to WhatsApp';
 
     expect(screen.getByRole('checkbox', { name: 'WhatsApp' }).getAttribute('aria-checked')).toBe(
       'true',
@@ -1521,7 +1521,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       expect(within(check).getByText('WhatsApp · 4')).toBeDefined();
       expect(
         within(check).getByText(
-          'WhatsApp reaches 4 of 142 · 102 have no mobile number · 2 stopped WhatsApp · 34 haven’t agreed to WhatsApp',
+          'WhatsApp reaches 4 of 142 · 102 have no mobile number, 2 stopped WhatsApp and 34 haven’t agreed to WhatsApp',
         ),
       ).toBeDefined();
       expect(

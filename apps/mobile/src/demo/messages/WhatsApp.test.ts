@@ -22,16 +22,16 @@ const waLines = (stage: HoldStage) =>
 describe('WhatsApp’s reach line', () => {
   it('counts each To: no mobile number, stopped, then not agreed', () => {
     expect(whatsAppLine('all')).toBe(
-      'WhatsApp reaches 4 of 142 · 102 have no mobile number · 2 stopped WhatsApp · 34 haven’t agreed to WhatsApp',
+      'WhatsApp reaches 4 of 142 · 102 have no mobile number, 2 stopped WhatsApp and 34 haven’t agreed to WhatsApp',
     );
     expect(whatsAppLine('coming')).toBe(
-      'WhatsApp reaches 3 of 96 · 65 have no mobile number · 1 stopped WhatsApp · 27 haven’t agreed to WhatsApp',
+      'WhatsApp reaches 3 of 96 · 65 have no mobile number, 1 stopped WhatsApp and 27 haven’t agreed to WhatsApp',
     );
   });
 
   it('leaves out a part that is 0', () => {
     expect(whatsAppLine('notReplied')).toBe(
-      'WhatsApp reaches 1 of 25 · 16 have no mobile number · 8 haven’t agreed to WhatsApp',
+      'WhatsApp reaches 1 of 25 · 16 have no mobile number and 8 haven’t agreed to WhatsApp',
     );
   });
 

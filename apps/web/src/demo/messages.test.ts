@@ -669,13 +669,13 @@ describe('Messaging B · WhatsApp only to guests who agreed (sc-3950)', () => {
 
   it('says who WhatsApp reaches, then who it can’t, each counted once, a 0 part left out', () => {
     expect(whatsAppLine(ALL)).toBe(
-      'WhatsApp reaches 4 of 142 · 102 have no mobile number · 2 stopped WhatsApp · 34 haven’t agreed to WhatsApp',
+      'WhatsApp reaches 4 of 142 · 102 have no mobile number, 2 stopped WhatsApp and 34 haven’t agreed to WhatsApp',
     );
     expect(whatsAppLine(COMING)).toBe(
-      'WhatsApp reaches 3 of 96 · 65 have no mobile number · 1 stopped WhatsApp · 27 haven’t agreed to WhatsApp',
+      'WhatsApp reaches 3 of 96 · 65 have no mobile number, 1 stopped WhatsApp and 27 haven’t agreed to WhatsApp',
     );
     expect(whatsAppLine(NOT_REPLIED)).toBe(
-      'WhatsApp reaches 1 of 25 · 16 have no mobile number · 8 haven’t agreed to WhatsApp',
+      'WhatsApp reaches 1 of 25 · 16 have no mobile number and 8 haven’t agreed to WhatsApp',
     );
     expect(many('noMobile', 1)).toBe('1 has no mobile number');
     expect(many('notAgreedWhatsApp', 1)).toBe('1 hasn’t agreed to WhatsApp');

@@ -1148,11 +1148,17 @@ export function whatsAppOf(to: ToGroup): WhatsAppReach {
 export function whatsAppLine(to: ToGroup): string {
   const reach = whatsAppOf(to);
 
-  return [
-    say.whatsAppReaches(reach.reaches, reach.of),
+  const cant = [
     ...(reach.noMobile > 0 ? [say.noMobile(reach.noMobile)] : []),
     ...(reach.stopped > 0 ? [say.stoppedWhatsApp(reach.stopped)] : []),
     ...(reach.notAgreed > 0 ? [say.notAgreedWhatsApp(reach.notAgreed)] : []),
+  ];
+
+  return [
+    say.whatsAppReaches(reach.reaches, reach.of),
+    ...(cant.length > 0
+      ? [listFormat('en-US', { style: 'long', type: 'conjunction' }).format(cant)]
+      : []),
   ].join(' · ');
 }
 
