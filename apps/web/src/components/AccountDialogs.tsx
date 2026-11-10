@@ -640,9 +640,10 @@ export function VerifyDialog({
   const { status, resending, wording } = check;
   const cooldown = resending.cooldown;
   const [typed, setTyped] = useState(start?.typed ?? '');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<'blank' | 'short' | 'wrong' | 'failed' | null>(null);
   const [resendFailed, setResendFailed] = useState(false);
   const words: VerifyWords = verifyWords(email ? 'email' : wording.line, row.shown, t);
+  const shownError = error === 'failed' ? t('verifyEmail.failedBody') : error && words[error];
   const spent =
     status.kind === 'expired'
       ? words.expired
@@ -655,16 +656,15 @@ export function VerifyDialog({
     if (busy || spent != null) return;
     const problem = codeProblem(typed);
     if (problem != null) {
-      setError(problem === 'blank' ? words.blank : words.short);
+      setError(problem);
       return input.current?.focus();
     }
     setResendFailed(false);
     const checked = await check.verify(cleanCode(typed));
     if (checked == null) return;
     if (checked.verified) return onVerified(checked.primary);
-    if (checked.refusal.kind === 'wrong') setError(words.wrong);
-    if (checked.refusal.kind === 'failed') setError(t('verifyEmail.failedBody'));
     if (checked.refusal.kind === 'wrong' || checked.refusal.kind === 'failed') {
+      setError(checked.refusal.kind);
       input.current?.focus();
       input.current?.select();
     } else resendButton.current?.focus();
@@ -710,7 +710,7 @@ export function VerifyDialog({
             inputMode="numeric"
             autoComplete="one-time-code"
             inputRef={input}
-            error={error}
+            error={shownError}
             onChange={(value) => {
               setTyped(value);
               setError(null);

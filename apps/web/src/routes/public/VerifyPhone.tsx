@@ -45,7 +45,7 @@ export function VerifyPhone() {
   const source = useMemo(() => apiCodeSource('phone', alternative), [alternative, attempt]);
   const check = useCodeCheck('phone', source);
   const { status, resending, wording } = check;
-  const [codeError, setCodeError] = useState<string | null>(null);
+  const [codeError, setCodeError] = useState<'blank' | 'short' | null>(null);
   const [doneHeading, arriveAtDone] = useStepFocus();
   const [bannerTitle, arriveAtBanner] = useStepFocus<HTMLParagraphElement>();
   const [failedNotice, arriveAtFailed] = useStepFocus<HTMLDivElement>();
@@ -105,13 +105,7 @@ export function VerifyPhone() {
     const problem = codeProblem(typed);
 
     if (problem != null) {
-      setCodeError(
-        problem === 'short'
-          ? t('verifyPhone.codeShort')
-          : wording.fromWhatsApp
-            ? t('verifyPhone.codeBlankWhatsApp')
-            : t('verifyPhone.codeBlank'),
-      );
+      setCodeError(problem);
       document.getElementById('code')?.focus();
       return;
     }
@@ -174,7 +168,17 @@ export function VerifyPhone() {
   const entering = ['entering', 'verifying', 'wrong', 'failed'].includes(status.kind);
   const dead = status.kind === 'expired' || status.kind === 'exhausted';
   const wrong = wording.fromWhatsApp ? t('verifyPhone.wrongWhatsApp') : t('verifyPhone.wrong');
-  const fieldError = codeError ?? (status.kind === 'wrong' ? wrong : null);
+  const blank = wording.fromWhatsApp
+    ? t('verifyPhone.codeBlankWhatsApp')
+    : t('verifyPhone.codeBlank');
+  const fieldError =
+    codeError === 'short'
+      ? t('verifyPhone.codeShort')
+      : codeError === 'blank'
+        ? blank
+        : status.kind === 'wrong'
+          ? wrong
+          : null;
   const line = {
     whatsapp: t('verifyPhone.introWhatsApp', { number }),
     fallback: t('verifyPhone.introFallback', { number }),
