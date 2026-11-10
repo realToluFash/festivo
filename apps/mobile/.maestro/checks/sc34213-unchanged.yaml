@@ -1,0 +1,74 @@
+# sc-34213 (from sc-31163's): Cancel with no change, Cancel then Discard after typing, and Save unchanged each leave the card, the list and the sidebar foot at FA. Needs ${METRO_URL}; ORIENT for a tablet.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: before
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: 'account.name.cancel'
+- extendedWaitUntil:
+    notVisible:
+      id: 'account.name.screen'
+    timeout: 10000
+- assertVisible: 'FA'
+- assertNotVisible: 'ZY'
+- assertNotVisible: 'Zed Young'
+- takeScreenshot: cancel-untouched
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 10000
+- eraseText: 120
+- inputText: 'Zed Young'
+- tapOn:
+    id: 'account.name.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.discard'
+    timeout: 10000
+- takeScreenshot: discard-ask
+- tapOn:
+    id: 'account.name.discard'
+- waitForAnimationToEnd
+- assertVisible: 'FA'
+- assertNotVisible: 'ZY'
+- assertNotVisible: 'Zed Young'
+- takeScreenshot: cancel-discarded
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: save-disabled-unchanged
+- tapOn:
+    id: 'account.name.save'
+- assertVisible:
+    id: 'account.name.screen'
+- pressKey: Enter
+- extendedWaitUntil:
+    notVisible:
+      id: 'account.name.screen'
+    timeout: 10000
+- assertVisible: 'FA'
+- assertNotVisible: 'ZY'
+- assertNotVisible: 'Zed Young'
+- takeScreenshot: save-unchanged
