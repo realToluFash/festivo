@@ -1,8 +1,10 @@
+import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
 import { type Translate } from './eventWords.ts';
 import {
   type HostRow,
+  eventSaveRefusal,
   firstRefusedOf,
   hostErrorsOf,
   hostRefusalsOf,
@@ -93,5 +95,73 @@ describe('moving and removing a host (sc-15497)', () => {
   it("arrives from Add who is hosting at the first host's name, else Add a host", () => {
     expect(hostsArrival(rows('Funmi', 'Tayo'))).toEqual({ key: 0, control: 'name' });
     expect(hostsArrival([])).toBe('add');
+  });
+});
+
+function problem(status: number, code: string, violations?: unknown[]): ApiError {
+  return new ApiError({
+    type: `https://soirely.com/errors/${code}`,
+    title: code,
+    status,
+    ...(violations == null ? {} : { violations }),
+  } as ConstructorParameters<typeof ApiError>[0]);
+}
+
+describe('A refused save of an event, read once for Edit details and the parts edited in place (sc-30413)', () => {
+  it('reads a 412 as changed elsewhere, and anything not from the API as failed', () => {
+    expect(eventSaveRefusal(problem(412, 'precondition_failed'), [], t)).toEqual({
+      kind: 'changed',
+    });
+    expect(eventSaveRefusal(new Error('offline'), [], t)).toEqual({ kind: 'failed' });
+    expect(eventSaveRefusal(problem(500, 'server_error'), [], t)).toEqual({ kind: 'failed' });
+  });
+
+  it('puts a concluded schedule under Starts, and says a currency in use', () => {
+    expect(eventSaveRefusal(problem(409, 'event_concluded'), [], t)).toEqual({
+      kind: 'refused',
+      errors: { startsAt: 'eventEdit.scheduleConcluded' },
+      hosts: {},
+      currencyInUse: false,
+    });
+    expect(eventSaveRefusal(problem(409, 'event_currency_in_use'), [], t)).toEqual({
+      kind: 'refused',
+      errors: {},
+      hosts: {},
+      currencyInUse: true,
+    });
+  });
+
+  it('puts the last host refused under the first row, and is failed with no rows to put it under', () => {
+    expect(eventSaveRefusal(problem(409, 'event_host_required'), rows('Funmi'), t)).toEqual({
+      kind: 'refused',
+      errors: {},
+      hosts: { 0: 'eventHosts.lastHostRefused' },
+      currencyInUse: false,
+    });
+    expect(eventSaveRefusal(problem(409, 'event_host_required'), [], t)).toEqual({
+      kind: 'failed',
+    });
+  });
+
+  it('keeps the form’s fields and host rows a 422 names, and is failed when it names none of them', () => {
+    const refused = problem(422, 'validation_failed', [
+      { propertyPath: 'name', message: 'Too long.' },
+      { propertyPath: 'hosts[1]', message: 'Blank.' },
+      { propertyPath: 'organisationId', message: 'Not yours.' },
+    ]);
+
+    expect(eventSaveRefusal(refused, rows('Funmi', ' '), t)).toEqual({
+      kind: 'refused',
+      errors: { name: 'Too long.' },
+      hosts: { 1: 'Blank.' },
+      currencyInUse: false,
+    });
+    expect(
+      eventSaveRefusal(
+        problem(422, 'validation_failed', [{ propertyPath: 'organisationId', message: 'No.' }]),
+        [],
+        t,
+      ),
+    ).toEqual({ kind: 'failed' });
   });
 });

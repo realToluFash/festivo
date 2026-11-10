@@ -15,7 +15,7 @@ import {
   startMoved,
   formatWallDay,
 } from '@soirely/domain';
-import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import {
   type Currency,
@@ -43,7 +43,16 @@ import {
   haventRepliedOf,
   replyByAfterStart,
 } from './replyBy.ts';
-import { Alert, Broken, NotBuilt, Quiet } from './EventParts.tsx';
+import { NotBuilt } from './EventParts.tsx';
+import {
+  Alert,
+  Broken,
+  DateTime,
+  EditText as Text,
+  Opened,
+  Quiet,
+  Radios,
+} from '../components/EventPageParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Ask, RedAction, RowWords, TextAction } from '../components/SettingsParts.tsx';
 
@@ -60,218 +69,11 @@ export interface PartProps {
   replyBy?: string | null;
 }
 
-/** An edit open in place at a desk: under a 2 px Violet rule, the part's fields, then Cancel and Save, Save in Ink 3 until something changes. */
-export function Opened({
-  label,
-  changed,
-  verb = W.save,
-  asking: first = null,
-  refused = false,
-  onLatest,
-  onCancel,
-  onSave,
-  children,
-}: {
-  label: string;
-  changed: boolean;
-  verb?: string;
-  asking?: 'discard' | 'latest' | null;
-  refused?: boolean;
-  onLatest?: () => void;
-  onCancel: () => void;
-  onSave: () => void;
-  children: ReactNode;
-}) {
-  const [asking, setAsking] = useState(first);
-  const cancel = () => (changed ? setAsking('discard') : onCancel());
-  const box = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const node = box.current;
-
-    if (node == null || asking != null) return;
-
-    const keys = (event: KeyboardEvent) => {
-      const open = event.target instanceof HTMLElement && event.target.ariaExpanded === 'true';
-
-      if (event.key !== 'Escape' || event.defaultPrevented || open) return;
-      event.preventDefault();
-      event.stopPropagation();
-      if (changed) setAsking('discard');
-      else onCancel();
-    };
-
-    node.addEventListener('keydown', keys);
-
-    return () => node.removeEventListener('keydown', keys);
-  }, [asking, changed, onCancel]);
-
-  return (
-    <div className="ev-opened" role="group" aria-label={label} ref={box}>
-      {refused && (
-        <Broken action={<TextAction label={W.showLatest} onClick={() => setAsking('latest')} />}>
-          {W.changedElsewhere}
-        </Broken>
-      )}
-      {children}
-      <div className="ev-opened-actions">
-        <TextAction label={W.cancel} onClick={cancel} />
-        <button
-          type="button"
-          className={changed ? 'desk-text' : 'desk-text is-off'}
-          aria-disabled={!changed}
-          onClick={() => {
-            if (changed) onSave();
-          }}
-        >
-          {verb}
-        </button>
-      </div>
-      {asking === 'discard' && (
-        <Ask
-          title={W.discardTitle}
-          line={W.discardLine}
-          keep={W.keepEditing}
-          go={W.discard}
-          onKeep={() => setAsking(null)}
-          onGo={() => {
-            setAsking(null);
-            onCancel();
-          }}
-        />
-      )}
-      {asking === 'latest' && (
-        <Ask
-          title={W.showLatestTitle}
-          line={W.showLatestBody}
-          keep={W.keepEditing}
-          go={W.showLatest}
-          onKeep={() => setAsking(null)}
-          onGo={() => {
-            setAsking(null);
-            onLatest?.();
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
 function OnceSaved() {
   return (
     <div className="ev-once">
       <p className="ev-once-words">{W.onceSaved}</p>
       <NotBuilt words={W.tellGuests} />
-    </div>
-  );
-}
-
-/** A date and a time in the event's zone, one label for the two, as main's EventFields types them. */
-export function DateTime({
-  legend,
-  wall,
-  wrong = false,
-  told,
-  onChange,
-}: {
-  legend: string;
-  wall: Wall;
-  wrong?: boolean;
-  told?: string;
-  onChange: (wall: Wall) => void;
-}) {
-  const id = useId();
-
-  return (
-    <fieldset className="ev-when">
-      <legend className="desk-label">{legend}</legend>
-      <div className="ev-when-pair">
-        <label htmlFor={`${id}-date`} className="desk-unseen">
-          {`${legend}, ${W.date}`}
-        </label>
-        <input
-          id={`${id}-date`}
-          type="date"
-          className={wrong ? 'ev-input is-wrong' : 'ev-input'}
-          value={wall.date}
-          aria-invalid={wrong}
-          aria-describedby={told}
-          onChange={(event) => onChange({ ...wall, date: event.target.value })}
-        />
-        <label htmlFor={`${id}-time`} className="desk-unseen">
-          {`${legend}, ${W.time}`}
-        </label>
-        <input
-          id={`${id}-time`}
-          type="time"
-          className={wrong ? 'ev-input is-time is-wrong' : 'ev-input is-time'}
-          value={wall.time}
-          aria-invalid={wrong}
-          aria-describedby={told}
-          onChange={(event) => onChange({ ...wall, time: event.target.value })}
-        />
-      </div>
-    </fieldset>
-  );
-}
-
-function Text({
-  label,
-  optional = false,
-  value,
-  help,
-  error,
-  inputRef,
-  maxLength,
-  onChange,
-  input,
-}: {
-  label: string;
-  optional?: boolean;
-  value: string;
-  help?: string | null;
-  error?: string | null;
-  inputRef?: React.RefObject<HTMLInputElement | null>;
-  maxLength?: number;
-  onChange: (value: string) => void;
-  input?: Partial<React.InputHTMLAttributes<HTMLInputElement>>;
-}) {
-  const id = useId();
-  const told = [help == null ? null : `${id}-help`, error == null ? null : `${id}-error`]
-    .filter(Boolean)
-    .join(' ');
-
-  return (
-    <div className="desk-field">
-      <label htmlFor={id} className="desk-label">
-        {label}
-        {optional && <span className="ev-optional">{` · ${W.optional}`}</span>}
-      </label>
-      <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
-        <input
-          ref={inputRef}
-          id={id}
-          type="text"
-          value={value}
-          maxLength={maxLength}
-          spellCheck={false}
-          aria-invalid={error != null}
-          aria-describedby={told === '' ? undefined : told}
-          onChange={(event) => onChange(event.target.value)}
-          {...input}
-        />
-      </div>
-      {help != null && (
-        <p id={`${id}-help`} className="desk-help">
-          {help}
-        </p>
-      )}
-      {error != null && (
-        <p id={`${id}-error`} className="desk-error">
-          <Glyph name="alert" size={15} weight={2.2} />
-          {error}
-        </p>
-      )}
     </div>
   );
 }
@@ -866,44 +668,6 @@ export function TypePart({ event, onDirty, onClose, onSave }: PartProps) {
         onPick={(type) => setPicked(type)}
       />
     </Opened>
-  );
-}
-
-function Radios<T extends string>({
-  legend,
-  choices,
-  picked,
-  onPick,
-}: {
-  legend: string;
-  choices: readonly (readonly [T, string])[];
-  picked: T;
-  onPick: (one: T) => void;
-}) {
-  const name = useId();
-
-  return (
-    <fieldset className="desk-choices">
-      <legend className="desk-unseen">{legend}</legend>
-      <ul className="desk-rows">
-        {choices.map(([one, words]) => (
-          <li key={one}>
-            <label
-              className={one === picked ? 'desk-row ev-choice is-picked' : 'desk-row ev-choice'}
-            >
-              <RowWords title={words} />
-              <input
-                type="radio"
-                className="desk-radio"
-                name={name}
-                checked={one === picked}
-                onChange={() => onPick(one)}
-              />
-            </label>
-          </li>
-        ))}
-      </ul>
-    </fieldset>
   );
 }
 

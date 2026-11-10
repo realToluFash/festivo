@@ -13,6 +13,7 @@ import {
   formatEventWeekday,
   milestoneDistance,
   nextStep,
+  stepAwaitsMilestones,
   wallDay,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -217,11 +218,9 @@ export type CardStep =
   | { kind: 'button'; line: string; label: string; action: StepAction }
   | { kind: 'next'; title: string; when: string; you: boolean; overdue: boolean };
 
-const STEP_BY_PHASE: ReadonlySet<EventPhase> = new Set(['draft', 'paused', 'finished']);
-
 /** The card's one step, by the domain's nextStep: what the phase asks for, else the next thing that happens; Duplicate once it is over. Null while a live event's milestones are still unread. */
 export function cardStep(event: Shown, now: Date, locale: string, t: TFunction): CardStep | null {
-  if (event.milestones == null && !STEP_BY_PHASE.has(event.phase)) return null;
+  if (event.milestones == null && stepAwaitsMilestones(event.phase)) return null;
 
   const step = nextStep({ ...event, milestones: event.milestones ?? [] }, event.phase, now);
 
