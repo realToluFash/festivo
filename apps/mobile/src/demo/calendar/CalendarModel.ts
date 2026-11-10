@@ -14,6 +14,7 @@ import { t } from 'i18next';
 import {
   type AgendaEntry,
   type CalEvent as ProductCalEvent,
+  type Days as ProductDays,
   type Item as ProductItem,
   agendaOf as productAgendaOf,
   barWords as productBarWords,
@@ -324,7 +325,7 @@ export function overdueIn(item: ProductItem, show: Show, now: Date = NOW): boole
 }
 
 /** Where Today and Agenda land under needs: the day asked for when it holds a row, else the month's next that does, else its last, else its empty line. */
-export function needsLanding(days: Days, from: string): string {
+export function needsLanding(days: ProductDays, from: string): string {
   const month = monthOfDay(from);
   const held = agendaDays(month, days).map(({ day }) => day);
 

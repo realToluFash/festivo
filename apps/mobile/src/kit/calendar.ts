@@ -3,6 +3,7 @@ import {
   type CalendarCell,
   type CalendarItem,
   type CalendarMonth,
+  type EventPhase,
   type Milestone,
   addDays,
   agendaDays,
@@ -35,9 +36,10 @@ export interface Week {
   cells: Cell[];
 }
 
-export function calEventOf(event: ListedEvent): CalEvent {
+/** `phase` is the one Events shows: shownPhase of the load's time and now. */
+export function calEventOf(event: ListedEvent, phase: EventPhase): CalEvent {
   return {
-    ...shownEvent(listEventOf(event), event.phase),
+    ...shownEvent(listEventOf(event), phase),
     milestones: event.milestones,
     dayCount: event.dayCount,
   };
