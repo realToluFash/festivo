@@ -36,7 +36,6 @@ export interface Week {
   cells: Cell[];
 }
 
-/** `phase` is the one Events shows: shownPhase of the load's time and now. */
 export function calEventOf(event: ListedEvent, phase: EventPhase): CalEvent {
   return {
     ...shownEvent(listEventOf(event), phase),
@@ -251,7 +250,6 @@ export function piecesOf(week: Week, fit: number): Piece[] {
   return pieces;
 }
 
-/** The Events list's tag, where tabs are mixed; Live and Happening now are the rule and carry none. */
 export function offRule(event: Shown, t: TFunction): RowTag | null {
   const tag = rowTag(event, true, t);
 
