@@ -90,6 +90,7 @@ function at(path: string) {
 
 async function openSwitcher(): Promise<HTMLElement> {
   fireEvent.click(await screen.findByRole('button', { name: /1 invitation waiting/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Adunni Weddings, Invitation · Admin' }));
 
   return screen.getByRole('group', { name: 'Adunni Weddings' });
 }
@@ -100,7 +101,7 @@ afterEach(() => {
 });
 
 describe('an invitation in the organisation switcher', () => {
-  it('rings the switcher and lists it under Invitations, even for somebody in one organisation', async () => {
+  it('rings the switcher and gives it a tile that opens, even for somebody in one organisation', async () => {
     signedIn([IRE]);
     answering(waiting(PREVIEW));
     at('/app');
@@ -111,7 +112,13 @@ describe('an invitation in the organisation switcher', () => {
     expect(within(trigger).getByText('1 invitation')).toBeDefined();
 
     fireEvent.click(trigger);
+    const tile = screen.getByRole('button', { name: 'Adunni Weddings, Invitation · Admin' });
+    expect(tile.getAttribute('aria-expanded')).toBe('false');
+
+    fireEvent.click(tile);
     const row = screen.getByRole('group', { name: 'Adunni Weddings' });
+
+    expect(tile.getAttribute('aria-expanded')).toBe('true');
 
     expect(within(row).getByText('Invitation from Bisi Adeyemi · Admin')).toBeDefined();
     expect(within(row).getByText('Works until Friday, Oct 23')).toBeDefined();
@@ -134,19 +141,17 @@ describe('an invitation in the organisation switcher', () => {
     const row = await openSwitcher();
     fireEvent.click(within(row).getByRole('button', { name: 'Accept and join Adunni Weddings' }));
 
-    expect(await within(row).findByText('You joined Adunni Weddings as Admin.')).toBeDefined();
+    expect(await screen.findByText('You joined Adunni Weddings as Admin.')).toBeDefined();
     expect(sent).toContain(ACCEPT);
+    expect(row.isConnected).toBe(false);
     expect(screen.getByRole('option', { name: /Adunni Weddings/ })).toBeDefined();
     expect(screen.getByRole('option', { name: /Ìrè Events/ }).getAttribute('aria-selected')).toBe(
       'true',
     );
     expect(screen.queryByText('1 invitation')).toBeNull();
 
-    const open = within(row).getByRole('button', { name: 'Open Adunni Weddings' });
-    expect(open.querySelector('.button-label-cut')?.textContent).toBe('Open Adunni Weddings');
-    expect(open.getAttribute('title')).toBe('Open Adunni Weddings');
-
-    fireEvent.click(open);
+    const joined = screen.getByRole('group', { name: 'Adunni Weddings' });
+    fireEvent.click(within(joined).getByRole('button', { name: 'Open Adunni Weddings' }));
 
     expect(screen.getByText('Now working in Adunni Weddings.')).toBeDefined();
     expect(window.localStorage.getItem('soirely.organisation')).toBe('org_7');
@@ -171,7 +176,7 @@ describe('an invitation in the organisation switcher', () => {
 
     expect(await within(row).findByText('Expired')).toBeDefined();
     expect(
-      within(row).getByText('This invitation has expired. Ask Bisi Adeyemi to send a new one.'),
+      within(row).getByText(/This invitation has expired\. Ask Bisi Adeyemi to send a new one\./u),
     ).toBeDefined();
     expect(within(row).queryByRole('button')).toBeNull();
   });
@@ -189,7 +194,7 @@ describe('an invitation in the organisation switcher', () => {
     expect(await within(row).findByText('Withdrawn')).toBeDefined();
     expect(
       within(row).getByText(
-        'This invitation was withdrawn by Adunni Weddings. If you think this is a mistake, ask the person who invited you.',
+        /This invitation was withdrawn by Adunni Weddings\. If you think this is a mistake, ask the person who invited you\./u,
       ),
     ).toBeDefined();
   });

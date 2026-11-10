@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import type { Membership } from '@soirely/api-client';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -11,6 +14,7 @@ import { routes } from '../routes/index.tsx';
 import { STYLES, cssRule } from '../test-styles.ts';
 import { OrganisationSwitcher } from './OrganisationSwitcher.tsx';
 
+const MENU_STYLES = readFileSync(join(import.meta.dirname, 'orgMenu.css'), 'utf8');
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 const OKAFOR = membership({
   id: 'org_2',
@@ -104,6 +108,16 @@ function openCreate(): void {
 
 function at(path: string) {
   return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
+}
+
+const OFFER_TILE = 'Ìrè Events Kitchen, You can ask to join';
+
+/** The offer waits behind its tile in the open menu; pressing it opens its panel. */
+async function openOffer(): Promise<HTMLElement> {
+  const tile = await screen.findByRole('button', { name: OFFER_TILE });
+  fireEvent.click(tile);
+
+  return tile;
 }
 
 afterEach(() => {
@@ -339,7 +353,7 @@ describe('a 100-character name (sc-486)', () => {
     const [current] = within(screen.getByRole('listbox')).getAllByRole('option');
 
     expect(current?.textContent).toContain(name);
-    expect(screen.getAllByTitle(name)).toHaveLength(2);
+    expect(screen.getAllByTitle(name)).toHaveLength(1);
   });
 
   it('wraps it whole in the trigger and every row, never cut with an ellipsis (sc-26270)', () => {
@@ -357,7 +371,7 @@ describe('a 100-character name (sc-486)', () => {
       /grid-template-columns: var\(--todaySide\) minmax\(0, 1fr\);/u,
     );
     expect(STYLES).toMatch(/\.shell \{[^}]*grid-template-columns: minmax\(0, 1fr\);/u);
-    expect(cssRule('.org-switcher-menu')).toMatch(/max-width: calc\(100vw - /u);
+    expect(MENU_STYLES).toMatch(/\.sw-menu \{[^}]*width: min\(500px, 100vw - 24px\);/u);
   });
 
   it('breaks a long word in any paragraph, heading, list, definition, button, label or span, and in a notice', () => {
@@ -807,15 +821,17 @@ describe('an organisation at the domain of the address (sc-561)', () => {
     at('/app');
 
     fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
+    const tile = await openOffer();
 
-    expect(await screen.findByText('Ìrè Events Kitchen uses Soirely')).toBeDefined();
+    expect(tile.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('group', { name: 'Ìrè Events Kitchen uses Soirely' })).toBeDefined();
     expect(
       screen.getByText(
         'Your address is at ire.events, so you can ask to join. Somebody there approves you before you see anything.',
       ),
     ).toBeDefined();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to join Ìrè Events Kitchen' }));
 
     expect(
       await screen.findByText('we’ll email folake@ire.events when they answer.', { exact: false }),
@@ -828,8 +844,10 @@ describe('an organisation at the domain of the address (sc-561)', () => {
     at('/app');
 
     fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
+    await openOffer();
     fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
 
+    expect(screen.queryByRole('button', { name: OFFER_TILE })).toBeNull();
     expect(screen.queryByText('Ìrè Events Kitchen uses Soirely')).toBeNull();
     await waitFor(() =>
       expect(sent.some((request) => request.path === '/api/join-offers/org_3/dismiss')).toBe(true),
@@ -967,30 +985,34 @@ describe('where focus goes on an offer in the switcher (sc-11369)', () => {
     at('/app');
 
     fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Ask to join' }));
+    await openOffer();
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask to join Ìrè Events Kitchen' }));
 
     const line = await screen.findByText('we’ll email folake@ire.events when they answer.', {
       exact: false,
     });
-    const asked = line.closest('.org-switcher-offer-asked');
+    const asked = line.closest('.sw-asked');
     await waitFor(() => expect(document.activeElement).toBe(asked));
     expect(asked?.getAttribute('role')).toBeNull();
   });
 
-  it('takes Not now to the note under the list when no invitation is waiting', async () => {
+  it('takes Not now to Create an organisation when no invitation is waiting', async () => {
     offering();
     inTwo();
     at('/app');
 
     fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
+    await openOffer();
     fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
 
-    expect(document.activeElement).toBe(
-      screen.getByText('Soirely remembers your choice on this device.'),
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: 'Create an organisation' }),
+      ),
     );
   });
 
-  it('takes Not now to Invitations when one is waiting', async () => {
+  it('takes Not now to the invitation’s tile when one is waiting', async () => {
     offering([
       {
         id: 'inv_1',
@@ -1008,11 +1030,250 @@ describe('where focus goes on an offer in the switcher (sc-11369)', () => {
     at('/app');
 
     fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
-    await screen.findByRole('button', { name: 'Accept and join Adunni Weddings' });
+    await screen.findByRole('button', { name: /^Adunni Weddings, Invitation · / });
+    await openOffer();
     fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
 
-    expect(document.activeElement).toBe(
-      within(screen.getByRole('region', { name: 'Invitations' })).getByText('Invitations'),
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: /^Adunni Weddings, Invitation · / }),
+      ),
     );
+  });
+});
+
+describe('an invitation in the switcher, answered in its panel (sc-30412)', () => {
+  const INVITATION = {
+    id: 'inv_1',
+    organisation: { id: 'org_7', name: 'Adunni Weddings' },
+    email: 'folake@ire.events',
+    role: { id: 'role_3', seededAs: 'administrator', name: null },
+    invitedBy: { name: 'Bisi Adeyemi' },
+    expiresAt: '2026-10-23T09:00:00+00:00',
+    refusal: null,
+    forYou: true,
+    signedInAs: 'folake@ire.events',
+  };
+  const ADUNNI = membership({
+    id: 'org_7',
+    name: 'Adunni Weddings',
+    role: { id: 'role_3', seededAs: 'administrator', name: null },
+  });
+
+  function answering(reply: (path: string) => Response | null) {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = new URL(String(input)).pathname;
+
+      return reply(path) ?? json({ invitations: [INVITATION] }, 200);
+    });
+  }
+
+  async function openInvitation(): Promise<HTMLElement> {
+    fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
+    const tile = await screen.findByRole('button', { name: /^Adunni Weddings, Invitation · / });
+    fireEvent.click(tile);
+
+    return screen.getByRole('group', { name: 'Adunni Weddings' });
+  }
+
+  it('waits behind a dashed tile, then opens to who sent it and until when', async () => {
+    answering(() => null);
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+
+    expect(within(panel).getByText(/^Invitation from Bisi Adeyemi · /)).toBeDefined();
+    expect(within(panel).getByText(/^Works until /)).toBeDefined();
+    expect(
+      within(panel).getByText('Declining tells Bisi Adeyemi you said no. Nothing else changes.'),
+    ).toBeDefined();
+  });
+
+  it('accepts in place, says so on the place it made, and opens it', async () => {
+    answering((path) =>
+      path === '/api/invitations/inv_1/accept' ? json({ organisation: ADUNNI }, 200) : null,
+    );
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    fireEvent.click(within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+
+    const joined = await screen.findByText(/^You joined Adunni Weddings as /);
+    await waitFor(() => expect(document.activeElement).toBe(joined.closest('[data-lands]')));
+    expect(screen.queryByRole('button', { name: /^Adunni Weddings, Invitation/ })).toBeNull();
+    expect(screen.getByRole('option', { name: /^Adunni Weddings, Your role/ })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Adunni Weddings' }));
+
+    expect(await screen.findByText('Now working in Adunni Weddings.')).toBeDefined();
+  });
+
+  it('declines in place, and keeps the tile saying so', async () => {
+    answering((path) =>
+      path === '/api/invitations/inv_1/decline' ? new Response(null, { status: 204 }) : null,
+    );
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Decline the invitation to Adunni Weddings' }),
+    );
+
+    expect(
+      await screen.findByText('You declined. Bisi Adeyemi will see that you said no.'),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: /^Adunni Weddings, Invitation/ })).toBeDefined();
+  });
+
+  it('keeps an answered tile only in the menu it was answered in', async () => {
+    answering((path) =>
+      path === '/api/invitations/inv_1/decline' ? new Response(null, { status: 204 }) : null,
+    );
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Decline the invitation to Adunni Weddings' }),
+    );
+    await screen.findByText('You declined. Bisi Adeyemi will see that you said no.');
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: /Switch organisation/ }));
+
+    expect(await screen.findByRole('option', { name: /Current/ })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Adunni Weddings, Invitation/ })).toBeNull();
+  });
+
+  it('keeps a tile whose answer did not reach us in the next menu', async () => {
+    answering((path) => (path === '/api/invitations/inv_1/accept' ? json({}, 500) : null));
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    fireEvent.click(within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+    await screen.findByText('Your answer did not reach us. Check your connection and try again.');
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: /Switch organisation/ }));
+
+    expect(
+      await screen.findByRole('button', { name: /^Adunni Weddings, Invitation · / }),
+    ).toBeDefined();
+  });
+
+  it('says when the answer did not reach us, and keeps both answers', async () => {
+    answering((path) => (path === '/api/invitations/inv_1/accept' ? json({}, 500) : null));
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    fireEvent.click(within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+
+    expect(
+      await screen.findByText('Your answer did not reach us. Check your connection and try again.'),
+    ).toBeDefined();
+    expect(
+      within(panel).getByRole('button', { name: 'Decline the invitation to Adunni Weddings' }),
+    ).toBeDefined();
+  });
+
+  it('says Joining… on the pressed answer while it is sent, and holds the other dimmed', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      const path = new URL(String(input)).pathname;
+
+      return path === '/api/invitations/inv_1/accept'
+        ? new Promise<Response>(() => {})
+        : Promise.resolve(json({ invitations: [INVITATION] }, 200));
+    });
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    const accept = within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' });
+    fireEvent.click(accept);
+
+    await waitFor(() => expect(accept.textContent).toBe('Joining…'));
+    expect(accept.getAttribute('aria-busy')).toBe('true');
+    expect(accept.hasAttribute('data-off')).toBe(false);
+
+    const decline = within(panel).getByRole('button', {
+      name: 'Decline the invitation to Adunni Weddings',
+    });
+    expect(decline.textContent).toBe('Decline');
+    expect(decline.getAttribute('aria-disabled')).toBe('true');
+    expect(decline.hasAttribute('data-off')).toBe(true);
+  });
+
+  it('leaves the role out of the tile and the panel once it is gone, with no dangling dot', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+      json({ invitations: [{ ...INVITATION, role: null }] }, 200),
+    );
+    inTwo();
+    at('/app');
+
+    fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Adunni Weddings, Invitation' }));
+    const panel = screen.getByRole('group', { name: 'Adunni Weddings' });
+
+    expect(within(panel).getByText('Invitation from Bisi Adeyemi')).toBeDefined();
+  });
+});
+
+describe('more than 15 organisations (sc-30412)', () => {
+  const MANY = Array.from({ length: 16 }, (_, index) =>
+    membership({ id: `org_${index + 1}`, name: index === 0 ? 'Ìrè Events' : `Place ${index + 1}` }),
+  );
+
+  function inMany(): void {
+    __setSessionState({
+      status: 'signedIn',
+      session: {
+        name: 'Folake Adeyemi',
+        email: 'folake@ire.events',
+        verified: true,
+        complete: true,
+        awaiting: null,
+        providers: [],
+        userId: 'u1',
+        needsOrganisation: false,
+        hasPassword: true,
+        organisation: MANY[0] ?? IRE,
+        organisations: MANY,
+        organisationCountry: null,
+        timezone: null,
+        waitingFor: null,
+      },
+    });
+  }
+
+  it('heads the menu with a search only past 15, narrowing by name', () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ invitations: [] }, 200));
+    inMany();
+    at('/app');
+
+    fireEvent.click(screen.getByRole('button', { name: /Switch organisation/ }));
+    const search = screen.getByRole('searchbox', { name: 'Search organisations' });
+    fireEvent.change(search, { target: { value: 'ire' } });
+
+    expect(within(screen.getByRole('listbox')).getAllByRole('option')).toHaveLength(1);
+
+    fireEvent.change(search, { target: { value: 'Belém' } });
+
+    expect(screen.getByText('No organisation matches “Belém”.')).toBeDefined();
+  });
+
+  it('has no search at 15 or fewer', () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ invitations: [] }, 200));
+    inTwo();
+    at('/app');
+
+    fireEvent.click(screen.getByRole('button', { name: /Switch organisation/ }));
+
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(screen.getByRole('heading', { level: 2, name: 'Where are you working?' })).toBeDefined();
   });
 });
