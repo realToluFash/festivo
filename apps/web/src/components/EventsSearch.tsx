@@ -537,7 +537,7 @@ function matchCount(groups: readonly ResultsGroup[]): number {
   return groups.reduce((total, group) => total + group.count, 0);
 }
 
-/** The count, read out politely; mounted for as long as a search is on, empty while one loads, so the first count is a change a screen reader announces. */
+/** Mounted, empty, before the first count arrives: a status inserted with its text is often not announced. */
 export function EventsReadOut({ groups }: { groups: readonly ResultsGroup[] | null }) {
   const { t } = useTranslation();
 
@@ -548,7 +548,6 @@ export function EventsReadOut({ groups }: { groups: readonly ResultsGroup[] | nu
   );
 }
 
-/** One set of results across Upcoming, Drafts and Past: the count first, then each group with its count; or what was searched, with Clear search and Clear filters. */
 export function EventsResults({
   look,
   groups,

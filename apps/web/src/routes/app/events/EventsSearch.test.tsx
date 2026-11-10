@@ -127,7 +127,7 @@ function text(element: Element | null): string {
 
 /** The search's polite status, which a screen reader reads the count from. */
 function readOut(): Element | null {
-  return document.querySelector('.ev-column > [role="status"]');
+  return document.querySelector('.ev-column > p.visually-hidden[role="status"]');
 }
 
 async function readsOut(count: string): Promise<void> {

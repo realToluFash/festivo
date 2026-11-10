@@ -248,6 +248,34 @@ function EventsOf({
       replace: typing,
     });
 
+  const matchedGroups = ((): ResultsGroup[] | null => {
+    if (search == null || found?.kind !== 'loaded') return null;
+
+    const matched = eventsHome({ ...found, pastTotal: found.past.length }, now, locale);
+    const shownMatched = (events: readonly ListedEvent[]) =>
+      events.map((event) => shownEvent(listEventOf(event), shownPhase(event, found.at, now)));
+    return (
+      [
+        ['upcoming', [...matched.happeningNow, ...matched.upcoming]],
+        ['drafts', matched.drafts],
+        ['past', matched.past],
+      ] as const
+    ).map(([group, events]) => ({
+      tab: group,
+      count: events.length,
+      rows: shownMatched(events).map((event) => (
+        <EventRow
+          key={event.id}
+          event={event}
+          now={now}
+          locale={locale}
+          to={eventLink(event)}
+          everyPhase
+        />
+      )),
+    }));
+  })();
+
   const page = (summary: string | null, body: ReactNode) => (
     <div className="desk ev">
       <div className="ev-column">
@@ -271,6 +299,7 @@ function EventsOf({
           )}
         </div>
         {deleted != null && <OutcomeLine words={t('eventDelete.deleted', { event: deleted })} />}
+        {search != null && <EventsReadOut groups={matchedGroups} />}
         {body}
       </div>
     </div>
@@ -402,34 +431,6 @@ function EventsOf({
     }
   };
 
-  const matchedGroups = ((): ResultsGroup[] | null => {
-    if (search == null || found?.kind !== 'loaded') return null;
-
-    const matched = eventsHome({ ...found, pastTotal: found.past.length }, now, locale);
-    const shownMatched = (events: readonly ListedEvent[]) =>
-      events.map((event) => shownEvent(listEventOf(event), shownPhase(event, found.at, now)));
-    return (
-      [
-        ['upcoming', [...matched.happeningNow, ...matched.upcoming]],
-        ['drafts', matched.drafts],
-        ['past', matched.past],
-      ] as const
-    ).map(([group, events]) => ({
-      tab: group,
-      count: events.length,
-      rows: shownMatched(events).map((event) => (
-        <EventRow
-          key={event.id}
-          event={event}
-          now={now}
-          locale={locale}
-          to={eventLink(event)}
-          everyPhase
-        />
-      )),
-    }));
-  })();
-
   const results = () => {
     if (found?.kind === 'failed' && found.search === searchKey)
       return (
@@ -463,10 +464,7 @@ function EventsOf({
     <>
       {searchRow(false)}
       {search != null ? (
-        <div className="ev-column">
-          <EventsReadOut groups={matchedGroups} />
-          {results()}
-        </div>
+        <div className="ev-column">{results()}</div>
       ) : (
         <div className="ev-column arrives" ref={home}>
           <EventsTabs
