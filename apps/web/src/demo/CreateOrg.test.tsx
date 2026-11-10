@@ -168,11 +168,18 @@ describe('creating an organisation in B · A short walk at a desk (sc-30335)', (
 
   it('holds too many for now, and says when to try again', SLOW, async () => {
     open('/demo/events?create=limited');
-    await walk();
+    const dialog = await walk();
 
     const alert = screen.getByRole('alert');
     expect(alert.textContent).toContain('Too many new organisations for now.');
     expect(alert.textContent).toContain('Try again at 10:41.');
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create organisation' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    const again = await screen.findByRole('alert', {}, WAIT);
+    expect(again.textContent).toContain('Too many new organisations for now.');
+    expect(screen.queryByText('Now working in Lumen Feiras.')).toBeNull();
   });
 
   it('opens from no organisation, and lands on Today with the notice focused', SLOW, async () => {

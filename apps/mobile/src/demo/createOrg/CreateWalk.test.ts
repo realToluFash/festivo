@@ -1,3 +1,9 @@
+import {
+  countrySearch,
+  foundingCurrencyWords,
+  newOrganisationEntered,
+  newOrganisationLimit,
+} from '@soirely/domain';
 import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
@@ -11,16 +17,12 @@ import {
   cardNameSize,
   cardWords,
   countries,
-  currencyWords,
-  entered,
   factsOf,
   footPlace,
   forward,
   freshWalk,
-  limitedWords,
   picked,
   rowLabel,
-  search,
   stepRefusal,
   typed,
 } from '../../kit/createWalk.ts';
@@ -136,26 +138,26 @@ describe('Back keeps everything', () => {
 
 describe('something entered, for Discard', () => {
   it('is nothing with no name and the device’s country', () => {
-    expect(entered(sample('name'))).toBe(false);
-    expect(entered({ ...sample('name'), name: '  ' })).toBe(false);
+    expect(newOrganisationEntered(sample('name'))).toBe(false);
+    expect(newOrganisationEntered({ ...sample('name'), name: '  ' })).toBe(false);
   });
 
   it('is a name', () => {
-    expect(entered(sample('typing'))).toBe(true);
+    expect(newOrganisationEntered(sample('typing'))).toBe(true);
   });
 
   it('is a country other than the device’s, with no name', () => {
-    expect(entered(picked(sample('name'), 'BR'))).toBe(true);
+    expect(newOrganisationEntered(picked(sample('name'), 'BR'))).toBe(true);
   });
 
   it('is nothing on a device with no country, before one is picked', () => {
-    expect(entered({ ...sample('country-none'), name: '' })).toBe(false);
+    expect(newOrganisationEntered({ ...sample('country-none'), name: '' })).toBe(false);
   });
 });
 
 describe('the search', () => {
   it('narrows by "bra" to the three the board draws, in order', () => {
-    expect(search(countries('en'), 'bra').map((country) => country.name)).toEqual([
+    expect(countrySearch(countries('en'), 'bra', 'en').map((country) => country.name)).toEqual([
       'Brazil',
       'Congo - Brazzaville',
       'Gibraltar',
@@ -163,14 +165,14 @@ describe('the search', () => {
   });
 
   it('ignores case and the ends', () => {
-    expect(search(countries('en'), '  POR ').map((country) => country.name)).toEqual([
+    expect(countrySearch(countries('en'), '  POR ', 'en').map((country) => country.name)).toEqual([
       'Portugal',
       'Singapore',
     ]);
   });
 
   it('keeps every country for an empty search', () => {
-    expect(search(countries('en'), ' ')).toHaveLength(249);
+    expect(countrySearch(countries('en'), ' ', 'en')).toHaveLength(249);
   });
 });
 
@@ -178,13 +180,19 @@ describe('the sample’s currency', () => {
   it('is the API’s', () => {
     expect(SAMPLE_CURRENCIES.get('PT')).toBe('EUR');
     expect(SAMPLE_CURRENCIES.get('BR')).toBe('BRL');
-    expect(currencyWords('BR', NAMING, t)).toEqual({ words: 'Brazilian Real (BRL)', none: false });
+    expect(foundingCurrencyWords('BR', NAMING.currencies, NAMING.locale, t)).toEqual({
+      words: 'Brazilian Real (BRL)',
+      none: false,
+    });
     expect(rowLabel({ code: 'PT', name: 'Portugal' }, NAMING, t)).toBe('Portugal, Euro (EUR)');
   });
 
   it('is "None yet" for Antarctica', () => {
     expect(SAMPLE_CURRENCIES.get('AQ')).toBeNull();
-    expect(currencyWords('AQ', NAMING, t)).toEqual({ words: 'None yet', none: true });
+    expect(foundingCurrencyWords('AQ', NAMING.currencies, NAMING.locale, t)).toEqual({
+      words: 'None yet',
+      none: true,
+    });
     expect(rowLabel({ code: 'AQ', name: 'Antarctica' }, NAMING, t)).toBe('Antarctica, None yet');
   });
 
@@ -234,7 +242,7 @@ describe('what the country brings', () => {
 describe('Create', () => {
   it('stays too many for now until 10:41', () => {
     expect(answerTo(sample('limited')).kind).toBe('limited');
-    expect(limitedWords(sample('limited'), 'en-GB', t)).toEqual({
+    expect(newOrganisationLimit(sample('limited').lifts, 'en-GB', t)).toEqual({
       title: 'Too many new organisations for now.',
       body: 'Try again at 10:41.',
     });

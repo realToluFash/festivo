@@ -9,11 +9,12 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useSearchParams } from 'react-router';
 
 import { leaveMenu } from '../leaving.ts';
 import { CreateWalk } from './CreateOrg.tsx';
-import { type Walk, freshWalk, isCreateState, walkOf } from './createOrg.ts';
+import { type DemoWalk, freshWalk, isCreateState, walkOf } from './createOrg.ts';
 import { AccessPaused as ProductAccessPaused } from '../components/AccessPaused.tsx';
 import { focusWhenFree } from '../layers.ts';
 import { Notice } from '../components/Notice.tsx';
@@ -78,6 +79,7 @@ function invitationsLine(count: number): string {
 
 /** The sidebar's organisation button, and the menu of places it drops (OrgSwitcher-B-Places-Web, page 29). Pages with no notice of their own say a switch in the toast. */
 export function OrgSwitcher({ tell, toast = false }: { tell: Tell; toast?: boolean }) {
+  const { t } = useTranslation();
   const [params] = useSearchParams();
   const { pathname } = useLocation();
   const [first, setFirst] = useState<Opening | null>(() => {
@@ -90,10 +92,10 @@ export function OrgSwitcher({ tell, toast = false }: { tell: Tell; toast?: boole
   });
   const where = useWhere();
   const [open, setOpen] = useState(first != null);
-  const [walk, setWalk] = useState<Walk | null>(() => {
+  const [walk, setWalk] = useState<DemoWalk | null>(() => {
     const raw = params.get('create');
 
-    return isCreateState(raw) && !alone(params) ? walkOf(raw) : null;
+    return isCreateState(raw) && !alone(params) ? walkOf(raw, t) : null;
   });
   const [landed] = useState(() => params.get('create') === 'created' && !alone(params));
   const [seen, setSeen] = useState(where.opens);

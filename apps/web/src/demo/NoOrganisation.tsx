@@ -1,10 +1,12 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { Brand } from '../components/Brand.tsx';
+import { StartYourOwn } from '../components/CreateOrganisation.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { CreateWalk } from './CreateOrg.tsx';
-import { NO_ORG_WORDS as W, type Walk, freshWalk, isCreateState, walkOf } from './createOrg.ts';
+import { NO_ORG_WORDS as W, type DemoWalk, freshWalk, isCreateState, walkOf } from './createOrg.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../layers.ts';
 import { SAMPLE } from './rules.ts';
@@ -15,14 +17,14 @@ import './createOrg.css';
 
 /** main's NoOrganisation, alone under the public header in B's desk look with no card (CreateOrg-B-Walk-Web, page 29). */
 export function NoOrganisation() {
-  const id = useId();
+  const { t } = useTranslation();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { layers, covered, setHost } = useDeskLayers();
-  const [walk, setWalk] = useState<Walk | null>(() => {
+  const [walk, setWalk] = useState<DemoWalk | null>(() => {
     const raw = params.get('create');
 
-    return isCreateState(raw) ? walkOf(raw) : null;
+    return isCreateState(raw) ? walkOf(raw, t) : null;
   });
   const [told, setTold] = useState<string | null>(null);
   const [opensOn] = useState(walk == null);
@@ -50,21 +52,7 @@ export function NoOrganisation() {
           <h1>{W.title}</h1>
           <p className="cw-none-body">{W.body}</p>
           <p className="cw-none-body is-quiet">{W.wayOn(SAMPLE.email)}</p>
-          <section className="cw-start" aria-labelledby={`${id}-start`}>
-            <span className="cw-start-tile" aria-hidden="true">
-              <Glyph name="plus" size={20} weight={2.4} />
-            </span>
-            <h2 id={`${id}-start`}>{W.startTitle}</h2>
-            <p>{W.startBody}</p>
-            <button
-              ref={start}
-              type="button"
-              className="cw-start-button"
-              onClick={() => setWalk(freshWalk())}
-            >
-              {W.start}
-            </button>
-          </section>
+          <StartYourOwn button={start} onStart={() => setWalk(freshWalk())} />
           <div className="cw-signed">
             <p>{W.signedInAs(SAMPLE.email)}</p>
             <div className="cw-signed-ways">

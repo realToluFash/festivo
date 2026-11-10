@@ -1,3 +1,4 @@
+import { newOrganisationRefusal } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import {
@@ -8,7 +9,6 @@ import {
   type WalkAnswer,
   freshWalk,
 } from '../../kit/createWalk.ts';
-import { newOrganisationMessage } from '../../kit/organisationCreate.ts';
 import type { Place } from '../OrgSwitcherModel.ts';
 
 export const CREATE_STATES = [
@@ -57,7 +57,7 @@ export function walkFor(state: CreateState, t: TFunction, phone: boolean): Walk 
     case 'name-blank':
       return { ...freshWalk(SAMPLE_DEVICE), refusal: t('orgGeneral.nameBlank') };
     case 'name-long':
-      return at(1, { name: LONG_NAME, refusal: newOrganisationMessage('name', LONG_NAME, t) });
+      return at(1, { name: LONG_NAME, refusal: newOrganisationRefusal('name', LONG_NAME, t) });
     case 'name-refused':
       return at(1, { refusal: t('orgGeneral.nameBlank') });
     case 'country':

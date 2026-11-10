@@ -4,6 +4,7 @@ import {
   type EventArea,
   MORE_EVENT_AREAS,
   PHONE_EVENT_TABS,
+  createNewOrganisation,
   roleHolds,
   roleName,
   waitingInvitations,
@@ -46,7 +47,6 @@ import {
 } from '../kit/appNav.ts';
 import { backRowHiding } from '../kit/backRow.ts';
 import { type Currencies, freshWalk } from '../kit/createWalk.ts';
-import { createOrganisation } from '../kit/organisationCreate.ts';
 import { phonePillAlone, pillBesideTabs } from '../kit/frameBand.ts';
 import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBack.ts';
 import { leaveThen } from '../leaveHeld.ts';
@@ -585,11 +585,7 @@ export function AppFrame({
             statusBar="dark"
             currencies={currencies}
             create={(walk) =>
-              createOrganisation(
-                (organisation) => api.createOrganisation(organisation),
-                { name: walk.name, countryCode: walk.country ?? '' },
-                walk.device.zone,
-              )
+              createNewOrganisation((organisation) => api.createOrganisation(organisation), walk)
             }
             onCancel={() => setCreating(false)}
             onCreated={(organisation) => {

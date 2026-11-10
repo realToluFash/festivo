@@ -1,4 +1,4 @@
-import { deviceRegion } from '@soirely/domain';
+import { deviceRegion, newOrganisationEntered } from '@soirely/domain';
 import { getCalendars, getLocales } from 'expo-localization';
 import { useIsFocused } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
@@ -42,7 +42,6 @@ import {
   type WalkAnswer,
   answered,
   back,
-  entered,
   footPlace,
   forward,
   picked,
@@ -239,7 +238,7 @@ export function CreateWalkWindow<Made>({
   }, [creating]);
   const cancel = () => {
     if (creating) return;
-    if (entered(walk)) setWalk({ ...walk, asking: true });
+    if (newOrganisationEntered(walk)) setWalk({ ...walk, asking: true });
     else onCancel();
   };
   const keep = () => setWalk((now) => ({ ...now, asking: false }));
