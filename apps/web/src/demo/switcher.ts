@@ -6,8 +6,8 @@ import { type CreateState, NEW_ORG, isCreateState } from './createOrg.ts';
 import type { DemoLink } from './settings.ts';
 
 export type Role = 'Owner' | 'Admin' | 'Member';
-export type Answer = 'joined' | 'declined' | 'failed' | 'managed' | Refused | 'busy';
-export type Refused = 'expired' | 'withdrawn';
+export type Answer =
+  'joined' | 'declined' | 'failed' | 'managed' | 'expired' | 'withdrawn' | 'busy';
 export type OfferStanding = 'unasked' | 'asked' | 'unavailable';
 
 export interface Place {
