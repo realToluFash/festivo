@@ -1,4 +1,4 @@
-import { type ReactNode, type RefObject, useRef, useState } from 'react';
+import { type ReactNode, type Ref, type RefObject, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -629,15 +629,21 @@ export function Chip({
   wrong,
   onPress,
   testID,
+  hint,
+  ref,
 }: {
   word: string;
   on: boolean;
   wrong: boolean;
   onPress: () => void;
   testID: string;
+  /** What a refusal says, read with the chip it puts the focus on. */
+  hint?: string | undefined;
+  ref?: Ref<ViewInstance> | undefined;
 }) {
   return (
     <Pressable
+      ref={ref}
       onPress={onPress}
       style={({ pressed }) => [
         styles.chip,
@@ -648,6 +654,7 @@ export function Chip({
       accessibilityRole="radio"
       accessibilityState={{ checked: on }}
       accessibilityLabel={word}
+      accessibilityHint={hint}
       aria-invalid={wrong}
       testID={testID}
     >
