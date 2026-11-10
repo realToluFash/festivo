@@ -5,8 +5,10 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/settings/members
 - extendedWaitUntil:
     visible:
-      id: 'members.filter.active'
+      id: 'members.card'
     timeout: 30000
+- tapOn:
+    id: 'members.filter'
 - tapOn:
     id: 'members.filter.active'
 - waitForAnimationToEnd

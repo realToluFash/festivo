@@ -12,6 +12,6 @@ appId: com.soirely.app
 - back
 - extendedWaitUntil:
     visible:
-      id: 'members.filter.active'
+      id: 'members.card'
     timeout: 10000
 - takeScreenshot: member-back-members
