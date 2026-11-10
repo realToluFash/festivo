@@ -1,7 +1,7 @@
 import { DemoBell } from './DemoBell.tsx';
 import { type Provider as ApiProvider } from '@soirely/api-client';
 import { formattingLocale } from '@soirely/domain';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
@@ -142,7 +142,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
     return () => clearTimeout(timer);
   }, [page.factor, loadMs]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (page.factor !== 'loaded' || !lineHeld.current) return;
     lineHeld.current = false;
     saidLine.current?.focus();
