@@ -11,7 +11,7 @@ import {
   wallDay,
 } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
-import { router } from 'expo-router';
+import { type Href, router } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -160,7 +160,7 @@ function NeedsRow({ item, locale, big, onOpen }: RowProps) {
   );
 }
 
-const openItem = (item: ProductItem) => router.push(itemHref(item));
+const openItem = (item: ProductItem) => router.push(itemHref(item) as Href);
 
 /** A scroll the page drives itself, over motionSlow with motionEase, or at once under Reduce Motion. */
 function useGlide(reduced: boolean) {
