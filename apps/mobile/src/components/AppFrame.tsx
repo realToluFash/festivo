@@ -1322,17 +1322,31 @@ const styles = StyleSheet.create({
 });
 
 let currenciesRead: Currencies | null = null;
+let currenciesAsked: Promise<Currencies> | null = null;
 
-/** The currency each country founds with, read once the walk first opens and kept: it changes only with the API. */
+/** The currency each country founds with, read once the walk first opens and kept: it changes only with the API. An answer that failed is asked again the next time the walk opens. */
 function useCountryCurrencies(open: boolean): Currencies | null {
   const [currencies, setCurrencies] = useState(currenciesRead);
 
   useEffect(() => {
-    if (!open || currenciesRead != null) return;
-    let live = true;
-    api.countryCurrencies().then(
+    if (!open) return;
+    if (currenciesRead != null) {
+      setCurrencies(currenciesRead);
+      return;
+    }
+    currenciesAsked ??= api.countryCurrencies().then(
       (read) => {
         currenciesRead = read;
+        return read;
+      },
+      (failure: unknown) => {
+        currenciesAsked = null;
+        throw failure;
+      },
+    );
+    let live = true;
+    currenciesAsked.then(
+      (read) => {
         if (live) setCurrencies(read);
       },
       () => {},
