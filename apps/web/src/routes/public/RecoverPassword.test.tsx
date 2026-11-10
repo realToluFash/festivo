@@ -472,24 +472,56 @@ describe('setting a new password from the link', () => {
     },
   );
 
-  it('moves on from a focused title to the page’s first control', async () => {
-    let reads = 0;
-    answering({
-      'POST /api/auth/password/reset/check': () =>
-        ++reads === 1 ? problem('internal_error', 500) : json({ email: 'folake@ire.events' }),
-    });
-    at('/reset-password?token=t1');
-    await screen.findByRole('heading', { level: 1, name: 'That did not work' });
+  const firstControl: Record<string, () => HTMLElement> = {
+    'Set a new password': () => screen.getByLabelText('New password'),
+    'Enter your code': () => screen.getByRole('textbox'),
+    'This link has expired': () => screen.getByRole('link', { name: 'Send a new link' }),
+    'This link has already been used': () => screen.getByRole('link', { name: 'Send a new link' }),
+    "This link doesn't work": () => screen.getByRole('link', { name: 'Send a new link' }),
+    'Cannot reach Soirely': () => screen.getByRole('button', { name: 'Try again' }),
+    'That did not work': () => screen.getByRole('button', { name: 'Try again' }),
+  };
 
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  it.each([
+    ...landings.map(([name, next, title]) => [name, 'That did not work', next, title] as const),
+    ['no answer', 'That did not work', unreached, 'Cannot reach Soirely'] as const,
+    [
+      'a failure',
+      'Cannot reach Soirely',
+      () => problem('internal_error', 500),
+      'That did not work',
+    ] as const,
+  ])(
+    'moves on by Tab from the focused page, %s after %s, to its first control',
+    async (_name, from, next, title) => {
+      let reads = 0;
+      answering({
+        'POST /api/auth/password/reset/check': () => {
+          if (++reads > 1) return next();
+          return from === 'That did not work' ? problem('internal_error', 500) : unreached();
+        },
+      });
+      at('/reset-password?token=t1');
+      await screen.findByRole('heading', { level: 1, name: from });
 
-    const heading = await screen.findByRole('heading', { level: 1, name: 'Set a new password' });
-    await waitFor(() => expect(document.activeElement).toBe(heading));
-    const order = Array.from(
-      document.querySelectorAll<HTMLElement>('h1, input, button, a[href]'),
-    ).filter((element) => element.tabIndex >= 0 || element === heading);
-    expect(order[order.indexOf(heading) + 1]).toBe(screen.getByLabelText('New password'));
-  });
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+      await screen.findByRole('heading', { level: 1, name: title });
+      await waitFor(() => expect(document.activeElement?.textContent).toContain(title));
+      const focused = document.activeElement as HTMLElement;
+      const tabbed = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          'input, button, a[href], select, textarea, [tabindex]',
+        ),
+      ).find(
+        (element) =>
+          element.tabIndex >= 0 &&
+          !(element as HTMLButtonElement).disabled &&
+          focused.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      expect(tabbed).toBe(firstControl[title]?.());
+    },
+  );
 
   it('stays on That did not work after a second failure, says Trying again… meanwhile, and announces it again', async () => {
     let reads = 0;
