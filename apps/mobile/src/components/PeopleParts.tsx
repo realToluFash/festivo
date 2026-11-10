@@ -32,7 +32,6 @@ export type Removing = 'ask' | 'sending' | null;
 
 const TICKED_INSET = 24 + tokens.spaceLg + 40 + tokens.spaceLg;
 
-/** The event roles as a person reads them: each one's name and what it lets them do, and the tags a pick carries while it is sent. */
 export interface RoleWords<R extends string> {
   roles: readonly R[];
   name: (role: R) => string;
@@ -60,7 +59,6 @@ export function PersonFace({
   );
 }
 
-/** The way in to Add people, drawn as the field it opens: 52 tall, the Edge ring, a Violet plus. */
 export function AddBox({
   ref,
   label,
@@ -87,7 +85,6 @@ export function AddBox({
   );
 }
 
-/** The four roles as radios, each with its line, any role not offered dimmed with why, and the picked one's tag while it is sent. */
 export function EventRoles<R extends string>({
   words,
   picked,
@@ -128,7 +125,6 @@ export function EventRoles<R extends string>({
   );
 }
 
-/** Done in Violet, 44 square, closing a sheet that applies what is tapped. */
 export function DoneAction({
   label,
   onPress,
@@ -153,7 +149,6 @@ export function DoneAction({
   );
 }
 
-/** Why something did not go, with the alert mark, read out each time it is said again. */
 function Refused({ failed }: { failed: { line: string; times: number } }) {
   return (
     <ReadOut
@@ -181,15 +176,11 @@ export interface RoleSheetWords<R extends string> extends RoleWords<R> {
   removeConfirm: string;
   removing: string;
   savedHeard: (role: R) => string;
-  /** The role that still holds when a change did not go. */
   notChanged: (held: R) => string;
   removeFailed: (error: unknown) => string;
 }
 
-/**
- * A person's row opened: who they are, their role saved as it is picked with the sheet left open, and Remove, which asks first.
- * `save` applies the change wherever it lives before it resolves, so a pick overtaken by a later one still lands.
- */
+/** `save` applies the change wherever it lives before it resolves, so a pick overtaken by a later one still lands. */
 export function RoleSheet<R extends string>({
   person,
   notes,
@@ -392,7 +383,6 @@ export function Ticked({
   );
 }
 
-/** A sheet over the screen inside its window: the bottom sheet on a phone, a 540 card on an iPad; Done or a tap on the dimmed screen closes it. */
 export function RoleLayer({
   closeLabel,
   onClose,
@@ -430,7 +420,6 @@ export function RoleLayer({
   );
 }
 
-/** A member Add people offers to tick. */
 export interface Offer {
   id: string;
   name: string;
@@ -456,11 +445,7 @@ export interface AddWords<R extends string> extends RoleWords<R> {
   everyoneOn?: string | undefined;
 }
 
-/**
- * Add people on its own screen: their role first, then members found by name to tick.
- * Each ticked member is sent in turn; `onAdded` hears every one that went, `finished` once all of them did. A refusal
- * stops there and leaves the screen open, with the refusal said and the ones not added still ticked.
- */
+/** Sends each ticked member in turn; a refusal stops there and leaves the screen open, the ones not added still ticked. */
 export function AddScreen<R extends string, T>({
   open,
   first,
@@ -636,7 +621,6 @@ export function AddScreen<R extends string, T>({
   );
 }
 
-/** Two Sunk groups where the list goes, a head, a line and rows, heard as the words alone. */
 export function PeopleLoading({ words }: { words: string }) {
   useReadOut(words);
 
