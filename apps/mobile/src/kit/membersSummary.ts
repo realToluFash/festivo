@@ -147,7 +147,7 @@ function claimCard(
   banner: OwnerClaimBanner,
   organisation: string,
   become: MembersCard['step'],
-): Pick<MembersCard, 'says' | 'line' | 'step'> {
+): Pick<MembersCard, 'says' | 'line' | 'step' | 'readsOut'> {
   const { claim, stopped, lapsed } = banner;
   const keepsWorking = t('ownerClaim.keepsWorking');
 
@@ -157,11 +157,13 @@ function claimCard(
           says: t('ownerClaim.stoppedTitle', { claimant: stopped.claimant }),
           line: t('ownerClaim.stoppedLine', { organisation }),
           step: null,
+          readsOut: true,
         }
       : {
           says: t('ownerClaim.noOwner', { organisation }),
           line: `${t('ownerClaim.closedLine')} ${keepsWorking}`,
           step: null,
+          readsOut: false,
         };
 
   if (claim == null) {
@@ -178,6 +180,7 @@ function claimCard(
       says: t('ownerClaim.noOwner', { organisation }),
       line: [...why, keepsWorking].join(' '),
       step: become,
+      readsOut: false,
     };
   }
 
@@ -190,6 +193,7 @@ function claimCard(
           ? t('ownerClaim.theirsUnfound', { when: claim.lapsesAt.written })
           : t('ownerClaim.theirsFound', { when: claim.passesAt.written }),
       step: null,
+      readsOut: false,
     };
 
   return claim.passesAt == null
@@ -197,11 +201,13 @@ function claimCard(
         says: t('ownerClaim.claimOpen'),
         line: t('ownerClaim.checkEvery', { when: claim.lapsesAt.written }),
         step: { label: t('ownerClaim.check'), does: { does: 'checkRecord' } },
+        readsOut: false,
       }
     : {
         says: t('ownerClaim.found'),
         line: t('ownerClaim.passesToYou', { when: claim.passesAt.written }),
         step: null,
+        readsOut: false,
       };
 }
 
@@ -264,8 +270,7 @@ export function membersCard({
       step: claim != null && ownerClaimView(claim, organisation).become ? become : null,
     };
 
-  if (claim != null)
-    return { ...quiet, ...claimCard(t, claim, organisation, become), readsOut: false };
+  if (claim != null) return { ...quiet, ...claimCard(t, claim, organisation, become) };
 
   const all = membersShown(members, 'all');
   const faces = all.slice(0, 5).map(faceOf);

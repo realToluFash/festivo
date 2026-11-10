@@ -175,6 +175,8 @@ describe("Members' card", () => {
     expect(yours.line).toBe(
       'Everybody who was told is emailed. Only Soirely support can restore an owner of Ire Events now.',
     );
+    expect(yours.readsOut).toBe(true);
+    expect(closed.readsOut).toBe(false);
     expect(closed.says).toBe('Ire Events has no active owner');
     expect(closed.line).toMatch(
       /^A claim was stopped, so only Soirely support can restore an owner\. Events, guests/,
