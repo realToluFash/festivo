@@ -435,13 +435,12 @@ export function CountryStep({
   question,
   answer,
   onScrolled,
-  foot,
   field,
   toPick,
   onQuery,
   onPick,
   onSearchFocused,
-}: StepProps & {
+}: Omit<StepProps, 'foot'> & {
   field: RefObject<TextInputInstance | null>;
   /** Reached by Back, or opened at the list: it scrolls to the pick, unless the device's own is ticked at the top. */
   toPick: boolean;
@@ -533,7 +532,6 @@ export function CountryStep({
           )
         }
         ListHeaderComponent={header}
-        ListFooterComponent={<>{foot}</>}
         stickyHeaderIndices={searching ? undefined : [1]}
         style={look.phone ? styles.fill : styles.wideList}
         contentContainerStyle={look.phone && styles.phoneList}
