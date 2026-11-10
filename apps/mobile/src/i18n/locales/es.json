@@ -1991,10 +1991,10 @@
     "showEvents": "Solo eventos",
     "more_one": "+{{count, number}}",
     "more_other": "+{{count, number}}",
-    "moreItems_one": "+{{count, number}} more",
-    "moreItems_other": "+{{count, number}} more",
+    "moreItems_one": "+{{count, number}} más",
+    "moreItems_other": "+{{count, number}} más",
     "more_many": "+{{count, number}}",
-    "moreItems_many": "+{{count, number}} more",
+    "moreItems_many": "+{{count, number}} más",
     "close": "Cerrar",
     "timeInZone": "{{time}} {{timeZone}}",
     "range": "Del {{from}} al {{to}}",
@@ -2006,7 +2006,7 @@
     "barStatusFirst": "{{status}} · {{name}}",
     "timeAndRange": "{{time}} · {{range}}",
     "rowLabel": "{{title}}, {{tag}}, {{when}}",
-    "retry": "Try again"
+    "retry": "Reintentar"
   },
   "calendarFeed": {
     "open": "Suscribirse en su aplicación de calendario",
