@@ -1,4 +1,4 @@
-# sc-35210: New event in French; the name counter under the name field, empty then with a name.
+# sc-35210: New event's name counter under the name field, empty then with a name.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/new

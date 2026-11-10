@@ -4,6 +4,6 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/demo/settings/notifications?state=pushBlocked
 - waitForAnimationToEnd
 - extendedWaitUntil:
-    visible: '.*push.*'
+    visible: '{{t:notificationSettings.pushBlocked}}'
     timeout: 30000
 - takeScreenshot: sc35210-push-blocked

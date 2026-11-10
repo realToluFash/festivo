@@ -1,4 +1,4 @@
-# sc-35210: Security in French; the why line, then Forgot password's sent page (Rien reçu ?, Inscription avec Google ou Apple ?, Vous avez le lien ?).
+# sc-35210: Security's why line, then Forgot password's sent page to its end, in the batch's language.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/security
@@ -32,6 +32,5 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - takeScreenshot: sc35210-forgot-sent
 - scrollUntilVisible:
-    element: '.*Vous avez le lien.*'
-    optional: true
+    element: '{{t:security.gotTheLink}}'
 - takeScreenshot: sc35210-forgot-sent-end
