@@ -959,3 +959,16 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
   keeping the English. The refusal keeps "isn't" for now because
   `AccountColourSchemeTest` pins the English; it should read "That is not one of …", which
   waits on [dev2].
+- **10 Nov 2026. Agreeing to WhatsApp** (sc-3950, settled on #36816 before any key exists).
+  The guest "agrees" to WhatsApp and a host "records" that they did; never "consent" or "opt
+  in" on screen. Under the tick **Send me updates on WhatsApp**: "Soirely sends them on behalf
+  of {{organisation}}. Reply STOP at any time to end them." ("on behalf of" names the business
+  the guest agrees to hear from; "for" reads as "to" in es and pt). The reach line's parts, each
+  a plural family joined through `listFormat`: "{{count}} have no mobile number", "{{count}}
+  stopped WhatsApp" (STOP or the switch, so not "texted STOP" as on SMS), "{{count}} haven't
+  agreed to WhatsApp"; one is "1 has …", "1 stopped …", "1 hasn't …". The host's **WhatsApp**
+  row under **Mobile number**, labels with no full stop: "Has not agreed to WhatsApp"; "Agreed
+  to WhatsApp on {{date}}" (the guest's own); and three whole keys for a host's record, "Agreed
+  to WhatsApp in person, recorded by {{name}} on {{date}}", "… by phone, …", "… in writing, …",
+  {{name}} the host's full name. Opted out, sc-3969's "Unsubscribed from WhatsApp on {date}"
+  and "Only the guest can change this."
