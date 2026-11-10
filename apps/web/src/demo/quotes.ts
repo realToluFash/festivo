@@ -1,3 +1,5 @@
+import { listFormat } from '@soirely/domain';
+
 import {
   BUDGET_EVENT,
   COST_LINES,
@@ -118,9 +120,7 @@ export function lineName(id: string): string {
   return COST_LINES.find((one) => one.id === id)?.name ?? id;
 }
 
-const LIST = new Intl.ListFormat(LOCALE.startsWith('en') ? 'en-GB' : LOCALE, {
-  type: 'conjunction',
-});
+const LIST = listFormat(LOCALE, { style: 'long', type: 'conjunction' });
 
 export function linesWords(ids: readonly string[]): string {
   return ids.length === 0 ? QW.noLines : LIST.format(ids.map(lineName));

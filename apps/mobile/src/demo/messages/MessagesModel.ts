@@ -1,3 +1,5 @@
+import { listFormat } from '@soirely/domain';
+
 import { instantOf } from '../events/EventsModel.ts';
 import { READER_ZONE } from '../events/EventsSample.ts';
 import {
@@ -1179,9 +1181,9 @@ export function justNow(locale = 'en-US'): string {
 }
 
 export function channelsWords(keys: readonly ChannelKey[], locale = 'en-US'): string {
-  return new Intl.ListFormat(locale.startsWith('en') ? 'en-GB' : locale, {
-    type: 'conjunction',
-  }).format(keys.map((key) => CHANNEL_WORD[key]));
+  return listFormat(locale, { style: 'long', type: 'conjunction' }).format(
+    keys.map((key) => CHANNEL_WORD[key]),
+  );
 }
 
 export function draftLine(draft: Draft, thread: Thread | null = null, locale = 'en-US'): string {

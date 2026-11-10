@@ -3,6 +3,7 @@ import {
   HOLDERS_SHOWN,
   type Level,
   levelOf,
+  listFormat,
   lockedAreas,
   MARGIN,
   replacementsFor,
@@ -283,7 +284,7 @@ export function describeRole(role: Pick<DemoRole, 'owner' | 'builtIn'> | null): 
 }
 
 export function andList(words: readonly string[]): string {
-  return new Intl.ListFormat('en-GB', { type: 'conjunction' }).format(words);
+  return listFormat('en', { style: 'long', type: 'conjunction' }).format(words);
 }
 
 const AREA_NAMES = new Map(AREAS.map(({ area, name }) => [area, name]));
