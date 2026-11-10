@@ -132,9 +132,9 @@ describe('removed from one of two organisations while signed in (sc-16229)', () 
 
     fireEvent.click(sidebarLink('Calendar'));
 
-    expect((await screen.findByRole('status')).textContent).toMatch(
-      /Now working in Okafor Family\./,
-    );
+    expect(
+      (await screen.findByText(/Now working in Okafor Family\./)).closest('[role="status"]'),
+    ).not.toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /Organisation: Okafor Family/ }));
     const options = within(
       screen.getByRole('listbox', { name: 'Your organisations' }),
@@ -151,9 +151,9 @@ describe('removed from one of two organisations while signed in (sc-16229)', () 
 
     backToTheTab();
 
-    expect((await screen.findByRole('status')).textContent).toMatch(
-      /Now working in Okafor Family\./,
-    );
+    expect(
+      (await screen.findByText(/Now working in Okafor Family\./)).closest('[role="status"]'),
+    ).not.toBeNull();
     expect(sidebarLink(/^Folake Adeyemi/).getAttribute('aria-current')).toBe('page');
   });
 });

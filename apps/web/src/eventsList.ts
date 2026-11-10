@@ -84,16 +84,34 @@ export interface RowTag {
   word: string;
 }
 
+/** An event's phase as a list shows it: a Finished event that never started is Called off. */
+export type ListPhase = EventPhase | 'calledOff';
+
+export function listPhase(event: { phase: EventPhase; calledOff: boolean }): ListPhase {
+  return event.phase !== 'happening_now' && event.phase !== 'paused' && event.calledOff
+    ? 'calledOff'
+    : event.phase;
+}
+
+const PHASE_TAG = {
+  draft: { kind: 'waiting', word: 'events.draft' },
+  live: { kind: 'yes', word: 'events.live' },
+  happening_now: { kind: 'now', word: 'events.happeningNow' },
+  paused: { kind: 'paused', word: 'events.paused' },
+  finished: { kind: 'ended', word: 'events.finished' },
+  calledOff: { kind: 'ended', word: 'events.calledOff' },
+} as const satisfies Record<ListPhase, { kind: TagKind; word: string }>;
+
+export function phaseTag(shown: ListPhase, t: TFunction): RowTag {
+  return { kind: PHASE_TAG[shown].kind, word: t(PHASE_TAG[shown].word) };
+}
+
 /** A row's tag: what sets it apart in its tab, or its phase whatever it is where tabs are mixed. */
 export function rowTag(event: Shown, everyPhase: boolean, t: TFunction): RowTag | null {
-  if (event.phase === 'happening_now') return { kind: 'now', word: t('events.happeningNow') };
-  if (event.phase === 'paused') return { kind: 'paused', word: t('events.paused') };
-  if (event.calledOff) return { kind: 'ended', word: t('events.calledOff') };
-  if (!everyPhase) return null;
-  if (event.phase === 'draft') return { kind: 'waiting', word: t('events.draft') };
-  if (event.phase === 'live') return { kind: 'yes', word: t('events.live') };
+  const shown = listPhase(event);
+  const apart = shown === 'happening_now' || shown === 'paused' || shown === 'calledOff';
 
-  return { kind: 'ended', word: t('events.finished') };
+  return apart || everyPhase ? phaseTag(shown, t) : null;
 }
 
 function distanceWords(at: string, timeZone: string, now: Date, t: TFunction): string {

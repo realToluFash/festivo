@@ -98,19 +98,19 @@
 }
 
 /* An event's own colour: the cover's base, for dots, bars and the readiness fill. */
-:is(.today, .today-page) .is-wed {
+:is(.today, .today-page, .cal-page) .is-wed {
   --todayEvent: var(--optionRose);
 }
 
-:is(.today, .today-page) .is-ireti {
+:is(.today, .today-page, .cal-page) .is-ireti {
   --todayEvent: var(--optionTeal);
 }
 
-:is(.today, .today-page) .is-party {
+:is(.today, .today-page, .cal-page) .is-party {
   --todayEvent: var(--coverAccent, var(--colorAccent));
 }
 
-:is(.today, .today-page) .is-draft {
+:is(.today, .today-page, .cal-page) .is-draft {
   --todayEvent: var(--optionAmber);
 }
 

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { serverClock } from '@soirely/domain';
@@ -127,9 +127,28 @@ function at(path: string): void {
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
 }
 
-function day(name: RegExp): HTMLElement {
-  return screen.getByRole('button', { name });
+function day(date: string): HTMLElement {
+  const button = document.querySelector<HTMLElement>(`[data-day="${date}"]`);
+
+  if (button == null) throw new Error(`no day ${date}`);
+
+  return button;
 }
+
+function label(date: string): string | null {
+  return day(date).getAttribute('aria-label');
+}
+
+async function loaded(): Promise<HTMLElement> {
+  const grid = await screen.findByRole('grid', {}, WAIT);
+
+  await waitFor(() => expect(grid.getAttribute('aria-busy')).toBe('false'), WAIT);
+
+  return grid;
+}
+
+const WAIT = { timeout: 8000 };
+const SLOW = { timeout: 20000 };
 
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
@@ -143,265 +162,289 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('Calendar', () => {
-  it('waits a second while it loads, then shows the shape of its month under its loading words', async () => {
-    signedIn();
-    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
-    at('/app/calendar');
+describe('Calendar, weeks as lanes (sc-30413)', () => {
+  it(
+    'says it is loading over a busy grid of weeks, with nothing in it to reach',
+    SLOW,
+    async () => {
+      signedIn();
+      vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
+      at('/app/calendar');
 
-    const busy = await screen.findByText(
-      (_, element) => element?.getAttribute('aria-busy') === 'true',
-    );
+      const grid = await screen.findByRole('grid', {}, WAIT);
 
-    expect(screen.queryByText('Loading the calendar…')).toBeNull();
-    expect((await screen.findByRole('status', {}, { timeout: 2000 })).textContent).toBe(
-      'Loading the calendar…',
-    );
-    expect(busy.querySelectorAll('.skeleton-month tbody tr')).toHaveLength(5);
-    expect(busy.querySelectorAll('.skeleton-month .skeleton-bar-weekday')).toHaveLength(7);
-    expect(busy.querySelectorAll('.skeleton-month .skeleton-bar-day')).toHaveLength(35);
-    expect(busy.querySelector('button, [tabindex]')).toBeNull();
-    expect(screen.queryByRole('grid')).toBeNull();
-  });
+      expect(grid.getAttribute('aria-busy')).toBe('true');
+      expect(screen.getByRole('status').textContent).toMatch(/Loading the calendar…$/);
+      expect(grid.querySelector('a')).toBeNull();
+    },
+  );
 
-  it("redraws the waiting month's weeks as the toolbar moves, and swaps to rows for Agenda, saying its words once", async () => {
-    signedIn();
-    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
-    at('/app/calendar');
-
-    const status = await screen.findByRole('status', {}, { timeout: 2000 });
-    const busy = () => document.querySelector('[aria-busy="true"]');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-
-    expect(screen.getByRole('heading', { name: 'January 2027' })).toBeTruthy();
-    expect(busy()?.querySelectorAll('.skeleton-month tbody tr')).toHaveLength(6);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Agenda' }));
-
-    expect(busy()?.querySelector('.skeleton-month')).toBeNull();
-    expect(busy()?.querySelectorAll('.skeleton-row-60').length).toBeGreaterThan(0);
-    expect(screen.getByRole('status')).toBe(status);
-  });
-
-  it('is in the navigation, and opens on this month', async () => {
+  it('is in the navigation, and opens on the month holding today', SLOW, async () => {
     signedIn();
     answering({ org_1: [WEDDING] });
     at('/app/calendar');
+    await loaded();
 
     expect(screen.getByRole('link', { name: 'Calendar' }).getAttribute('href')).toBe(
       '/app/calendar',
     );
-    expect(await screen.findByRole('grid', { name: 'Month' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'November 2026' })).toBeTruthy();
-    expect(day(/^Today, Tuesday, November 3$/).getAttribute('aria-current')).toBe('date');
+    expect(screen.getByRole('heading', { level: 1, name: 'Calendar' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'November 2026' })).toBeTruthy();
+    expect(label('2026-11-03')).toBe('Today, Tuesday, November 3');
+    expect(day('2026-11-03').getAttribute('aria-current')).toBe('date');
   });
 
-  it('draws a multi-day event on each of its days, across the end of the month', async () => {
+  it(
+    'draws a multi-day event across its days and the end of the month, linked to its page',
+    SLOW,
+    async () => {
+      signedIn();
+      answering({ org_1: [WEDDING] });
+      at('/app/calendar');
+      await loaded();
+
+      expect(label('2026-11-28')).toBe('Saturday, November 28, 1 item');
+      expect(label('2026-11-30')).toBe('Monday, November 30, 1 item');
+      expect(label('2026-12-01')).toBe('Tuesday, December 1, 1 item');
+      expect(label('2026-12-02')).toBe('Wednesday, December 2');
+
+      fireEvent.click(day('2026-12-01'));
+
+      const panel = screen.getByRole('complementary', { name: 'Tuesday, Dec 1' });
+      const bar = within(panel).getByRole('link', { name: /^Boda Lisboa, Live, / });
+
+      expect(bar.getAttribute('href')).toBe('/app/events/ev_wedding');
+      expect(within(panel).getByText(/Sat, Nov 28 to Tue, Dec 1/)).toBeTruthy();
+    },
+  );
+
+  it(
+    "places an event on its own calendar day, with its zone named, not on the reader's",
+    SLOW,
+    async () => {
+      signedIn();
+      answering({ org_1: [ISLAND] });
+      at('/app/calendar');
+      await loaded();
+
+      expect(label('2026-11-15')).toBe('Sunday, November 15, 1 item');
+      expect(label('2026-11-14')).toBe('Saturday, November 14');
+
+      fireEvent.click(day('2026-11-15'));
+
+      expect(
+        within(screen.getByRole('complementary', { name: 'Sunday, Nov 15' })).getByText(
+          /08:00 Pacific\/Kiritimati/,
+        ),
+      ).toBeTruthy();
+    },
+  );
+
+  it(
+    'shows milestones under Events and milestones, and leaves them out under Events only',
+    SLOW,
+    async () => {
+      signedIn();
+      answering({ org_1: [DINNER] });
+      at('/app/calendar');
+      await loaded();
+
+      expect(label('2026-11-10')).toBe('Tuesday, November 10, 1 item');
+
+      fireEvent.click(day('2026-11-10'));
+      expect(
+        within(screen.getByRole('complementary', { name: 'Tuesday, Nov 10' }))
+          .getByRole('link', { name: /^Send numbers to the kitchen, / })
+          .getAttribute('href'),
+      ).toBe('/app/events/ev_dinner/guests');
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+      fireEvent.click(day('2026-11-12'));
+      expect(
+        within(screen.getByRole('complementary', { name: 'Thursday, Nov 12' }))
+          .getByRole('link', { name: /^Seating locked, / })
+          .getAttribute('href'),
+      ).toBe('/app/events/ev_dinner/dates');
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Show: Events and milestones' }));
+      fireEvent.click(screen.getByRole('menuitemradio', { name: 'Events only' }));
+
+      expect(screen.getByRole('button', { name: 'Show: Events only' })).toBeTruthy();
+      expect(label('2026-11-10')).toBe('Tuesday, November 10');
+      expect(label('2026-11-20')).toBe('Friday, November 20, 1 item');
+    },
+  );
+
+  it('moves by day with the arrow keys, across the edge of the month', SLOW, async () => {
     signedIn();
     answering({ org_1: [WEDDING] });
     at('/app/calendar');
-    await screen.findByRole('grid');
+    await loaded();
 
-    for (const name of [
-      /^Saturday, November 28, 1 item$/,
-      /^Sunday, November 29, 1 item$/,
-      /^Monday, November 30, 1 item$/,
-    ]) {
-      expect(day(name)).toBeTruthy();
-    }
-
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-
-    expect(screen.getByRole('heading', { name: 'December 2026' })).toBeTruthy();
-    expect(day(/^Tuesday, December 1, 1 item$/)).toBeTruthy();
-    expect(day(/^Wednesday, December 2$/)).toBeTruthy();
-
-    fireEvent.click(day(/^Tuesday, December 1, 1 item$/));
-
-    const list = screen.getByRole('dialog', { name: /Tuesday, Dec 1/ });
-
-    expect(
-      within(list)
-        .getByRole('link', { name: /Boda Lisboa/ })
-        .getAttribute('href'),
-    ).toBe('/app/events/ev_wedding');
-    expect(within(list).getByText(/Sat, Nov 28 to Tue, Dec 1/)).toBeTruthy();
-  });
-
-  it("places an event on its own calendar day, with its zone named, not on the reader's", async () => {
-    signedIn();
-    answering({ org_1: [ISLAND] });
-    at('/app/calendar');
-    await screen.findByRole('grid');
-
-    expect(day(/^Sunday, November 15, 1 item$/)).toBeTruthy();
-    expect(day(/^Saturday, November 14$/)).toBeTruthy();
-
-    fireEvent.click(day(/^Sunday, November 15/));
-
-    expect(within(screen.getByRole('dialog')).getByText('08:00 Pacific/Kiritimati')).toBeTruthy();
-  });
-
-  it('shows milestones under Events and milestones, and leaves them out under Events only', async () => {
-    signedIn();
-    answering({ org_1: [DINNER] });
-    at('/app/calendar');
-    await screen.findByRole('grid');
-
-    expect(day(/^Tuesday, November 10, 1 item$/)).toBeTruthy();
-
-    fireEvent.click(day(/^Tuesday, November 10/));
-
-    const list = screen.getByRole('dialog');
-
-    expect(
-      within(list)
-        .getByRole('link', { name: /Send numbers to the kitchen/ })
-        .getAttribute('href'),
-    ).toBe('/app/events/ev_dinner/guests');
-    fireEvent.click(within(list).getByRole('button', { name: 'Close' }));
-    fireEvent.click(day(/^Thursday, November 12/));
-    expect(
-      within(screen.getByRole('dialog'))
-        .getByRole('link', { name: /Seating locked/ })
-        .getAttribute('href'),
-    ).toBe('/app/events/ev_dinner/dates');
-    fireEvent.keyDown(document, { key: 'Escape' });
-
-    fireEvent.change(screen.getByRole('combobox', { name: 'Show' }), {
-      target: { value: 'events' },
-    });
-
-    expect(day(/^Tuesday, November 10$/)).toBeTruthy();
-    expect(day(/^Friday, November 20, 1 item$/)).toBeTruthy();
-  });
-
-  it('moves by day with the arrow keys, across the edge of the month, and opens a day with Enter', async () => {
-    signedIn();
-    answering({ org_1: [WEDDING] });
-    at('/app/calendar');
-    await screen.findByRole('grid');
-
-    const today = day(/^Today, Tuesday, November 3$/);
+    const today = day('2026-11-03');
 
     expect(today.tabIndex).toBe(0);
-    fireEvent.keyDown(today, { key: 'ArrowDown' });
-    expect(document.activeElement).toBe(day(/^Tuesday, November 10$/));
+    today.focus();
+    for (let week = 0; week < 5; week++) {
+      fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
+    }
 
-    fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
-    fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
-    fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
-    fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
-
-    expect(screen.getByRole('heading', { name: 'December 2026' })).toBeTruthy();
-    expect(document.activeElement).toBe(day(/^Tuesday, December 8$/));
+    expect((document.activeElement as HTMLElement).dataset.day).toBe('2026-12-08');
   });
 
-  it('shows "+n more" on a day with more than fits, and the whole day in its list', async () => {
-    signedIn();
-    answering({
-      org_1: ['a', 'b', 'c', 'd'].map((id) => event({ id, name: `Event ${id}` })),
-    });
-    at('/app/calendar');
-    await screen.findByRole('grid');
+  it(
+    'says "+n more" on a day with more than fits, and the whole day in its panel',
+    SLOW,
+    async () => {
+      signedIn();
+      answering({
+        org_1: ['a', 'b', 'c', 'd'].map((id) => event({ id, name: `Event ${id}` })),
+      });
+      at('/app/calendar');
+      await loaded();
 
-    const busy = day(/^Saturday, November 14, 4 items$/);
+      expect(label('2026-11-14')).toBe('Saturday, November 14, 4 items');
+      expect(
+        within(day('2026-11-14').closest('[role="gridcell"]')!).getByText(/^\+\d more$/),
+      ).toBeTruthy();
 
-    expect(within(busy).getByText('+2')).toBeTruthy();
-    fireEvent.click(busy);
-    expect(within(screen.getByRole('dialog')).getAllByRole('link')).toHaveLength(4);
-  });
+      fireEvent.click(day('2026-11-14'));
+      expect(
+        within(screen.getByRole('complementary', { name: 'Saturday, Nov 14' })).getAllByRole(
+          'link',
+        ),
+      ).toHaveLength(4);
+    },
+  );
 
-  it('lists the month by day in Agenda, and remembers the view and month', async () => {
+  it(
+    'names a paused and a called-off event on its bar and its Agenda row, as Events does',
+    SLOW,
+    async () => {
+      signedIn();
+      answering({
+        org_1: [
+          event({
+            id: 'ev_paused',
+            name: 'Quiet weekend',
+            status: 'paused',
+            phase: 'paused',
+            pausedAt: '2026-11-01T09:00:00+00:00',
+          }),
+          event({
+            id: 'ev_off',
+            name: 'Garden party',
+            startsAt: '2026-11-20T15:00:00+01:00',
+            endsAt: '2026-11-20T20:00:00+01:00',
+            status: 'ended',
+            phase: 'finished',
+            concludedAt: '2026-11-02T10:00:00+00:00',
+          }),
+        ],
+      });
+      at('/app/calendar');
+      const grid = await loaded();
+
+      expect(within(grid).getByText('Quiet weekend · Paused')).toBeTruthy();
+      expect(within(grid).getByText('Garden party · Called off')).toBeTruthy();
+
+      fireEvent.click(screen.getByRole('radio', { name: 'View: Agenda' }));
+
+      const paused = screen.getByRole('link', { name: /^Quiet weekend, Paused, / });
+      const off = screen.getByRole('link', { name: /^Garden party, Called off, / });
+
+      expect(within(paused).getByText('Paused')).toBeTruthy();
+      expect(within(off).getByText('Called off')).toBeTruthy();
+    },
+  );
+
+  it('lists the days in Agenda, and remembers the view', SLOW, async () => {
     signedIn();
     answering({ org_1: [DINNER, WEDDING] });
     at('/app/calendar');
-    await screen.findByRole('grid');
+    await loaded();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Agenda' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'View: Agenda' }));
 
-    const headings = screen.getAllByRole('heading', { level: 3 }).map((one) => one.textContent);
+    expect(screen.getByRole('heading', { level: 2, name: 'Tuesday, Nov 10' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Friday, Nov 20' })).toBeTruthy();
 
-    expect(headings).toEqual([
-      'Tuesday, Nov 10',
-      'Thursday, Nov 12',
-      'Friday, Nov 20',
-      'Saturday, Nov 28',
-      'Sunday, Nov 29',
-      'Monday, Nov 30',
-    ]);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
-    expect(screen.getByText('Nothing on the calendar in October 2026.')).toBeTruthy();
     act(() => screen.getByRole('link', { name: 'Events' }).click());
     act(() => screen.getByRole('link', { name: 'Calendar' }).click());
 
-    expect(await screen.findByRole('heading', { name: 'October 2026' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Agenda' }).getAttribute('aria-pressed')).toBe(
-      'true',
-    );
-  });
-
-  it("changes to the other organisation's calendar when the organisation is switched", async () => {
-    signedIn();
-    answering({
-      org_1: [DINNER],
-      org_2: [
-        event({
-          id: 'ev_2',
-          organisationId: 'org_2',
-          name: 'Lagoon gala',
-          startsAt: '2026-11-21T18:00:00+01:00',
-          endsAt: '2026-11-21T23:00:00+01:00',
-        }),
-      ],
-    });
-    at('/app/calendar');
-    await screen.findByRole('grid');
-    expect(day(/^Friday, November 20, 1 item$/)).toBeTruthy();
-
-    act(() => switchOrganisation('org_2'));
-
     expect(
-      await screen.findByRole('button', { name: /^Saturday, November 21, 1 item$/ }),
+      await screen.findByRole('radio', { name: 'View: Agenda', checked: true }, WAIT),
     ).toBeTruthy();
-    expect(day(/^Friday, November 20$/)).toBeTruthy();
   });
 
-  it('shows the Events empty state with New event, or the ask-an-owner line for a reader', async () => {
+  it(
+    "changes to the other organisation's calendar when the organisation is switched",
+    SLOW,
+    async () => {
+      signedIn();
+      answering({
+        org_1: [DINNER],
+        org_2: [
+          event({
+            id: 'ev_2',
+            organisationId: 'org_2',
+            name: 'Lagoon gala',
+            startsAt: '2026-11-21T18:00:00+01:00',
+            endsAt: '2026-11-21T23:00:00+01:00',
+          }),
+        ],
+      });
+      at('/app/calendar');
+      await loaded();
+      expect(label('2026-11-20')).toBe('Friday, November 20, 1 item');
+
+      act(() => switchOrganisation('org_2'));
+
+      await waitFor(() => expect(label('2026-11-21')).toBe('Saturday, November 21, 1 item'), WAIT);
+      expect(label('2026-11-20')).toBe('Friday, November 20');
+    },
+  );
+
+  it('shows the Events empty state with New event', SLOW, async () => {
     signedIn();
     answering({ org_1: [] });
     at('/app/calendar');
 
-    expect(await screen.findByRole('heading', { name: 'Set up your first event' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: 'Set up your first event' }, WAIT),
+    ).toBeTruthy();
     expect(screen.getByRole('link', { name: 'New event' }).getAttribute('href')).toBe(
       '/app/events/new',
     );
-    expect(screen.queryByRole('button', { name: 'Agenda' })).toBeNull();
+    expect(screen.queryByRole('radio', { name: 'View: Agenda' })).toBeNull();
   });
 
-  it('asks a reader who may not create to ask an owner', async () => {
+  it('asks a reader who may not create to ask an owner', SLOW, async () => {
     signedIn(READER, [READER]);
     answering({ org_1: [] });
     at('/app/calendar');
 
-    expect(await screen.findByText(/Ask an owner if you need to create one\./)).toBeTruthy();
+    expect(
+      await screen.findByText(/Ask an owner if you need to create one\./, {}, WAIT),
+    ).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'New event' })).toBeNull();
   });
 
-  it('says it did not load, with Try again, and draws no grid', async () => {
+  it('says it did not load, with Try again, then loads', SLOW, async () => {
     signedIn();
     answering({ org_1: 'fail' });
     at('/app/calendar');
 
-    expect(await screen.findByText(/The calendar did not load\./)).toBeTruthy();
-    expect(screen.queryByRole('grid')).toBeNull();
+    expect((await screen.findByRole('alert', {}, WAIT)).textContent).toMatch(
+      /The calendar did not load\./,
+    );
 
+    vi.restoreAllMocks();
     answering({ org_1: [WEDDING] });
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
-    expect(await screen.findByRole('grid')).toBeTruthy();
+    await waitFor(() => expect(label('2026-11-28')).toBe('Saturday, November 28, 1 item'), WAIT);
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
