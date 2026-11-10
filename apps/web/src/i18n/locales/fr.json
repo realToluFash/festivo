@@ -135,7 +135,7 @@
     "dateAway": "{{date}} · {{distance}}",
     "calledOffOn": "Annulé le {{date}}",
     "daysAndPlace": "{{dates}} · {{place}}",
-    "today": "Auj.",
+    "today": "Aujourd’hui",
     "itsDays": "Jours de l’événement",
     "dayOf": "Jour {{day, number}} sur {{total, number}}",
     "showMore": "Afficher plus",
