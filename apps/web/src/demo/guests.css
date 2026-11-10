@@ -488,6 +488,11 @@
   min-width: 0;
 }
 
+/* sc-3950: the row takes the focus back after Saved, for screen readers; it is not a stop of its own. */
+.gs-whatsapp:focus {
+  outline: none;
+}
+
 .gs-fieldset {
   display: flex;
   flex-direction: column;

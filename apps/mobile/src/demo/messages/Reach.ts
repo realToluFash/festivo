@@ -9,6 +9,8 @@ import {
 } from './MessagesModel.ts';
 import {
   type GroupKey,
+  RECEIPTS,
+  RECEIPTS_CANT,
   INVITATION,
   INVITE_GROUPS,
   INVITE_REACHED,
@@ -24,6 +26,7 @@ import {
   type ReachPart,
   SENDING_GROUPS,
   SENDING_REACH,
+  receiptPeople,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
 
@@ -116,7 +119,7 @@ function toldPerson({ updated: _updated, ...person }: ReachPerson, time: string)
 }
 
 export interface GroupView {
-  key: GroupKey | 'told';
+  key: GroupKey | 'told' | 'whatsApp';
   mark: MarkKey;
   word: string;
   count: number;
@@ -152,9 +155,20 @@ interface Base {
   groups: readonly ReachGroup[];
   reachedRows: readonly NotReached[];
   progress: number;
+  /** A group counted beyond the people it draws. */
+  counts?: Partial<Record<GroupKey, number>>;
 }
 
 function baseOf(of: ReachedOf): Base {
+  if (of === 'receipts')
+    return {
+      reached: RECEIPTS.reached,
+      of: RECEIPTS.of,
+      groups: [{ key: 'cant', mark: 'none', word: W.cantBeTold, people: RECEIPTS_CANT }],
+      reachedRows: PARKING_REACHED.filter((person) => person.key === 'ines'),
+      progress: 0,
+      counts: { cant: RECEIPTS.cant },
+    };
   if (of === 'invite')
     return {
       reached: INVITATION.reached,
@@ -183,7 +197,7 @@ function baseOf(of: ReachedOf): Base {
 
 interface Counted {
   base: Base;
-  notReached: readonly GroupView[];
+  notReached: readonly (GroupView & { key: GroupKey })[];
   told: GroupView;
   reached: GroupView;
   reachedCount: number;
@@ -214,7 +228,7 @@ function counted(m: Messages, of: ReachedOf): Counted {
   const drawn = base.groups.find((group) => group.key === 'inProgress')?.people ?? [];
   const progressLeft = drawn.filter((person) => m.toldIn[personAt(of, person.key)] == null);
   const progress = base.progress - (drawn.length - progressLeft.length);
-  const inProgress: GroupView = {
+  const inProgress: GroupView & { key: GroupKey } = {
     key: 'inProgress',
     mark: 'sending',
     word: W.inProgress,
@@ -224,9 +238,19 @@ function counted(m: Messages, of: ReachedOf): Counted {
       ? { more: say.andMore(progress - progressLeft.length) }
       : {}),
   };
-  const rest: GroupView[] = groups
+  const rest: (GroupView & { key: GroupKey })[] = groups
     .filter((group) => group.key !== 'inProgress')
-    .map((group) => ({ ...group, count: group.people.length }));
+    .map((group) => {
+      const count = base.counts?.[group.key] ?? group.people.length;
+
+      return {
+        ...group,
+        count,
+        ...(count > group.people.length
+          ? { more: say.moreReached(count - group.people.length) }
+          : {}),
+      };
+    });
   const reachedCount = base.reached + told.length;
   const rows = base.reachedRows.map((person) => ({ ...person, offer: false }));
 
@@ -250,6 +274,13 @@ function counted(m: Messages, of: ReachedOf): Counted {
     },
     reachedCount,
   };
+}
+
+/** The receipts' WhatsApp, its own group above the rest: not a filter, and not counted as not reached. */
+function whatsAppGroup(): GroupView {
+  const people = receiptPeople().map((person) => ({ ...person, offer: false }));
+
+  return { key: 'whatsApp', mark: 'sending', word: CHANNEL_WORD.wa, count: people.length, people };
 }
 
 function shownGroups(c: Counted, filter: ReachFilter): readonly GroupView[] {
@@ -289,7 +320,7 @@ const COUNT_WORDS: Partial<Record<GroupKey, (count: number) => string>> = {
 export function reachViewOf(m: Messages, of: ReachedOf): ReachView {
   const c = counted(m, of);
   const notReached = c.base.of - c.reachedCount;
-  const filterOn = m.filter ?? (of === 'draft' ? 'everyone' : 'notReached');
+  const filterOn = m.filter ?? (of === 'draft' || of === 'receipts' ? 'everyone' : 'notReached');
   const options: FilterOption[] = [
     { key: 'everyone', word: W.everyone, count: c.base.of },
     { key: 'notReached', word: W.notReachedWord, count: notReached },
@@ -298,7 +329,8 @@ export function reachViewOf(m: Messages, of: ReachedOf): ReachView {
     { key: 'told', word: W.markedAsTold, count: c.told.count },
   ];
   const chosen = options.find((option) => option.key === filterOn) ?? options[1];
-  const groups = shownGroups(c, filterOn);
+  const shown = shownGroups(c, filterOn);
+  const groups = of === 'receipts' && filterOn === 'everyone' ? [whatsAppGroup(), ...shown] : shown;
   const count = (key: GroupKey) => c.notReached.find((group) => group.key === key)?.count ?? 0;
   const counts = c.notReached.flatMap((group) => {
     const words = COUNT_WORDS[group.key as GroupKey];
@@ -345,9 +377,12 @@ export function reachViewOf(m: Messages, of: ReachedOf): ReachView {
     options,
     groups,
     empty: groups.length === 0 ? (EMPTY_LINE[filterOn] ?? null) : null,
-    resend: c.notReached
-      .filter((group) => group.key !== 'inProgress')
-      .reduce((sum, group) => sum + group.count, 0),
+    resend:
+      of === 'receipts'
+        ? 0
+        : c.notReached
+            .filter((group) => group.key !== 'inProgress')
+            .reduce((sum, group) => sum + group.count, 0),
   };
 }
 

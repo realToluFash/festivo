@@ -1,6 +1,7 @@
 import { LOCALES } from '@soirely/domain';
 
 import type { ReplyKind } from './GuestsWords.ts';
+import type { WhatsAppConsent } from './WhatsAppConsent.ts';
 
 /** The boards' sample (guests-a-spec.md §17), not spec: the wedding counted as Messaging B counts it. */
 export const READER = 'Folake Adeyemi';
@@ -65,6 +66,8 @@ export interface SampleGuest {
   chose?: GuestLanguage | null;
   /** sc-3960: how messages greet them; none is their full name. */
   greetAs?: string | null;
+  /** sc-3950: their WhatsApp consent with this organisation; none is Has not agreed to WhatsApp. */
+  whatsApp?: WhatsAppConsent;
 }
 
 const SOIRELY: Invited = { by: 'Soirely’s message', how: null, day: '2026-10-12' };
@@ -130,7 +133,11 @@ export const GUESTS: readonly SampleGuest[] = [
     email: 'kwame.mensah@outlook.com',
     phone: '+44 7700 900412',
   }),
-  guest('lucia', 'Lucía Ortega', 'maybe', { when: '2026-10-18', phone: '+34 612 345 678' }),
+  guest('lucia', 'Lucía Ortega', 'maybe', {
+    when: '2026-10-18',
+    phone: '+34 612 345 678',
+    whatsApp: { kind: 'guest', day: '2026-11-02' },
+  }),
   guest('marta', 'Marta Silva', 'coming', {
     when: '2026-10-11',
     email: 'marta.silva@gmail.com',
@@ -144,8 +151,10 @@ export const GUESTS: readonly SampleGuest[] = [
   guest('sophie', 'Sophie Laurent', 'coming', {
     when: '2026-10-12',
     email: 'sophie.laurent@orange.fr',
+    phone: '+33 6 41 27 88 05',
     companions: [{ name: 'Marc Laurent', kind: 'coming' }],
     language: 'fr',
+    whatsApp: { kind: 'optedOut', day: '2026-11-01' },
   }),
   guest('tomas', 'Tomás Ferreira', 'noreply', { email: 'tomas.ferreira@gmial.com' }),
   guest('yusuf', 'Yusuf Ibrahim', 'notyet', { phone: '+234 809 221 4410' }),

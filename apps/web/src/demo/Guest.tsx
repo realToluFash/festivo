@@ -6,6 +6,7 @@ import { useMatches } from '../phoneWidth.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
   type Answer,
+  type Channel,
   COMPANIONS,
   HOLD_MS,
   LAYOUT_MEDIA,
@@ -16,7 +17,6 @@ import {
   OPEN,
   REPLY_BY,
   SEND_MS,
-  TODAY,
   type View,
   type Visit,
   type Words,
@@ -25,7 +25,7 @@ import {
   dayOf,
   forTheDay,
   layoutOf,
-  sameAnswer,
+  sentAnswer,
   shows,
   showsMessages,
   startOf,
@@ -52,6 +52,7 @@ import {
   Thanks,
   Unreachable,
   Waiting,
+  WhatsAppBox,
 } from './GuestParts.tsx';
 import {
   GuestKitchenCheck,
@@ -60,6 +61,8 @@ import {
   GUEST_KITCHEN_SAVED_ID,
 } from './GuestKitchen.tsx';
 import { type GuestKitchenActions, useGuestKitchen } from './useGuestKitchen.ts';
+import { YourMessages } from './GuestMessages.tsx';
+import { switched } from './guestMessages.ts';
 import { useLater } from '../useLater.ts';
 import { legalPath } from './legal.ts';
 import './today.css';
@@ -121,14 +124,8 @@ function Visitor({ state }: { state: string | null }) {
   const kitchen = useGuestKitchen(visit, state, go);
 
   const record = useCallback(
-    (answer: Answer) =>
-      go(
-        (was) => ({
-          recorded: sameAnswer(was.recorded, answer) ? was.recorded : { answer, on: TODAY },
-          view: { kind: 'recorded', same: sameAnswer(was.recorded, answer) },
-        }),
-        'greeting',
-      ),
+    (answer: Answer, fromCheck = false) =>
+      go((was) => sentAnswer(fromCheck ? was : { ...was, ticked: false }, answer), 'greeting'),
     [go],
   );
 
@@ -151,7 +148,7 @@ function Visitor({ state }: { state: string | null }) {
 
   useEffect(() => {
     const hold: Record<string, () => void> = {
-      sending: () => record('coming'),
+      sending: () => record('coming', true),
       sendingTap: () => record('notComing'),
       loading: () => go(() => ({ page: 'event' })),
       replySending: () => go((was) => ({ mine: was.mine.map((one) => ({ ...one, sent: true })) })),
@@ -190,7 +187,11 @@ function Visitor({ state }: { state: string | null }) {
     go((was) =>
       was.view.kind === 'check' ? { view: { ...was.view, busy: true, failed: false } } : {},
     );
-    later(SEND_MS, () => record('coming'));
+    later(SEND_MS, () => record('coming', true));
+  }
+
+  function tick(): void {
+    go((was) => (was.view.kind === 'check' && was.view.busy ? {} : { ticked: !was.ticked }));
   }
 
   function back(): void {
@@ -245,6 +246,7 @@ function Visitor({ state }: { state: string | null }) {
       onAnswer={answer}
       onSend={send}
       onBack={back}
+      onTick={tick}
       onChange={() => go(() => ({ view: { kind: 'changing', busy: null } }), 'newHead')}
       onKeep={() => go(() => ({ view: { kind: 'recorded', same: false } }), 'change')}
       onTellThem={tellThem}
@@ -285,6 +287,8 @@ function Visitor({ state }: { state: string | null }) {
             onRetry={retry}
             saving={saving}
             onSaveAgain={saveAgain}
+            onSwitch={(channel) => go((was) => switched(was, channel))}
+            onLeaveMessages={() => go(() => ({ page: 'event', view: OPEN }), 'h1')}
             onTell={() =>
               go(
                 (was) => ({ view: { kind: 'tellUs', busy: false, result: null, back: was.view } }),
@@ -319,6 +323,8 @@ function Body({
   onRetry,
   saving,
   onSaveAgain,
+  onSwitch,
+  onLeaveMessages,
   onTell,
 }: {
   visit: Visit;
@@ -329,6 +335,8 @@ function Body({
   onRetry: () => void;
   saving: boolean;
   onSaveAgain: () => void;
+  onSwitch: (channel: Channel) => void;
+  onLeaveMessages: () => void;
   onTell: () => void;
 }) {
   const [box, setBox] = useState<HTMLDivElement | null>(null);
@@ -369,6 +377,14 @@ function Body({
     );
   }
 
+  if (visit.page === 'messages') {
+    return (
+      <div className="gp-alone-wrap gp-yours-wrap">
+        <YourMessages visit={visit} words={words} onSwitch={onSwitch} onBack={onLeaveMessages} />
+      </div>
+    );
+  }
+
   if (visit.page === 'loading') {
     return (
       <div ref={setBox} className="gp-columns" aria-busy="true">
@@ -404,6 +420,7 @@ function Under({
   onAnswer,
   onSend,
   onBack,
+  onTick,
   onChange,
   onKeep,
   onTellThem,
@@ -417,6 +434,7 @@ function Under({
   onAnswer: (answer: Answer) => void;
   onSend: () => void;
   onBack: () => void;
+  onTick: () => void;
   onChange: () => void;
   onKeep: () => void;
   onTellThem: () => void;
@@ -438,6 +456,7 @@ function Under({
         onAnswer={onAnswer}
         onSend={onSend}
         onBack={onBack}
+        onTick={onTick}
         onChange={onChange}
         onKeep={onKeep}
         onTellThem={onTellThem}
@@ -464,6 +483,7 @@ function Shown({
   onAnswer,
   onSend,
   onBack,
+  onTick,
   onChange,
   onKeep,
   onTellThem,
@@ -476,6 +496,7 @@ function Shown({
   onAnswer: (answer: Answer) => void;
   onSend: () => void;
   onBack: () => void;
+  onTick: () => void;
   onChange: () => void;
   onKeep: () => void;
   onTellThem: () => void;
@@ -502,7 +523,14 @@ function Shown({
       return <GuestKitchenStep visit={visit} words={words} actions={kitchen} />;
     case 'check':
       if (visit.kitchen != null)
-        return <GuestKitchenCheck visit={visit} words={words} actions={kitchen} />;
+        return (
+          <GuestKitchenCheck
+            visit={visit}
+            words={words}
+            actions={kitchen}
+            box={<WhatsAppBox visit={visit} words={words} busy={view.busy} onTick={onTick} />}
+          />
+        );
 
       return (
         <section className="gp-check" aria-labelledby="gp-check-h">
@@ -523,6 +551,9 @@ function Shown({
             <span className="gp-answer-words">{words.answerLine('coming')}</span>
             {!view.refused && <TextAction onClick={onBack}>{words.changeShort}</TextAction>}
           </div>
+          {!view.refused && (
+            <WhatsAppBox visit={visit} words={words} busy={view.busy} onTick={onTick} />
+          )}
           {view.failed && <Notice kind="broken">{words.notSent}</Notice>}
           {!view.refused && (
             <>

@@ -104,6 +104,13 @@ export const W = {
   keepTheirs: 'Keep their reply',
   replaceTheirsLine:
     'Your answer takes the place of theirs, marked as recorded by you. They can still change it from their link.',
+  // WhatsApp (sc-3950)
+  whatsApp: 'WhatsApp',
+  notAgreed: 'Has not agreed to WhatsApp',
+  guestAgreed: 'The guest agreed to WhatsApp',
+  agreedToWhatsApp: 'Agreed to WhatsApp',
+  howAgreed: 'How?',
+  howAgreedBlank: 'Choose how they agreed.',
   // Add guest and From contacts
   fromContacts: 'From contacts',
   fromContactsLine:
@@ -209,6 +216,7 @@ export const REPLY_WORD: Record<ReplyKind | 'walkin', string> = {
 
 export const HOW_TOLD = ['By phone', 'In person', 'By message', 'Other'] as const;
 export const HOW_INVITED = ['WhatsApp', 'Text message', 'Email', 'In person', 'Other'] as const;
+export const HOW_AGREED = ['In person', 'By phone', 'In writing'] as const;
 
 export const say = {
   notSetLine: (organisation: string) =>
@@ -259,6 +267,20 @@ export const say = {
   recordedBy: (who: string, how: string, date: string) =>
     `recorded by ${who}, ${how.toLowerCase()}, ${date}`,
   invitedBy: (who: string, how: string, date: string) => `Invited by ${who}, ${how}, ${date}`,
+  agreedOn: (date: string) => `Agreed to WhatsApp on ${date}`,
+  /** Three whole keys, one per How? answer (pm #36836): never built from pieces. */
+  agreedHost: {
+    'In person': (name: string, date: string) =>
+      `Agreed to WhatsApp in person, recorded by ${name} on ${date}`,
+    'By phone': (name: string, date: string) =>
+      `Agreed to WhatsApp by phone, recorded by ${name} on ${date}`,
+    'In writing': (name: string, date: string) =>
+      `Agreed to WhatsApp in writing, recorded by ${name} on ${date}`,
+  },
+  optedOut: (date: string) => `Unsubscribed from WhatsApp on ${date}`,
+  onlyTheGuest: 'Only the guest can change this.',
+  forAgreed: (name: string, mobile: string) =>
+    `For ${name}, on ${mobile}. It will show as recorded by you.`,
   closedOn: (date: string) => `Replies closed on ${date}.`,
   closed: (date: string) =>
     `Replies closed on ${date}. Record a reply opens again if you let them change their reply.`,

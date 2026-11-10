@@ -99,10 +99,10 @@ const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
 
 function reachedLine(m: Messages, of: ReachedOf, locale: string): string {
   const told = channelsWords(SAMPLE_CHANNELS, locale);
-  if (of === 'parking')
+  if (of === 'parking' || of === 'receipts')
     return [
       W.allGuests,
-      say.onPageTold(told),
+      say.onPageTold(of === 'receipts' ? channelsWords(['email', 'wa'], locale) : told),
       say.dayTime(dayWords(DAYS.parking, locale), PARKING_TIME),
     ].join(' · ');
   if (of === 'invite')
@@ -120,7 +120,7 @@ function reachedLine(m: Messages, of: ReachedOf, locale: string): string {
 }
 
 function reachedTitle(m: Messages, of: ReachedOf): string {
-  if (of === 'parking') return PARKING;
+  if (of === 'parking' || of === 'receipts') return PARKING;
   if (of === 'invite') return W.invitation;
 
   return m.draft == null ? W.newMessage : draftTitle(m.draft, m.thread);
@@ -382,7 +382,11 @@ export function MessagesScreen({
     onCaret: (at) => {
       caret.current = at;
     },
-    onWho: () => dispatch({ type: 'open', open: { kind: 'reached', of: 'parking' } }),
+    onWho: () =>
+      dispatch({
+        type: 'open',
+        open: { kind: 'reached', of: m.receipts ? 'receipts' : 'parking' },
+      }),
     onWhoSent: () => dispatch({ type: 'open', open: { kind: 'reached', of: 'draft' } }),
     onWhoInvited: () => dispatch({ type: 'open', open: { kind: 'reached', of: 'invite' } }),
     onMatch: () => dispatch({ type: 'matching', open: true }),

@@ -74,7 +74,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
     );
 
     expect(guestLinks).toEqual(GUEST_PAGES.flatMap((one) => one.states).map((one) => one.to));
-    expect(guestLinks).toHaveLength(62);
+    expect(guestLinks).toHaveLength(70);
   });
 
   it('opens on the cover card: the invitation, the guest, the event, when and where', async () => {
@@ -104,10 +104,32 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
   });
 });
 
+const WHATSAPP = 'Send me updates on WhatsApp';
+const HINT = 'Soirely sends them on behalf of Ire Events. Reply STOP at any time to end them.';
+
+const UPDATES =
+  'Soirely sends updates on WhatsApp on behalf of Ire Events. Reply STOP at any time to end them.';
+const TURNED_ON = 'WhatsApp messages from Ire Events are on.';
+const OFF = 'WhatsApp messages from Ire Events are off.';
+
 const SAYS: [string, () => void][] = [
   ['open', () => screen.getByText(/^Please answer by Friday, October 30\./u)],
   ['openNoDate', () => expect(screen.queryByText(/^Please answer by/u)).toBeNull()],
-  ['check', () => screen.getByText('Nothing is sent until you press Send my answer.')],
+  [
+    'check',
+    () => {
+      screen.getByText('Nothing is sent until you press Send my answer.');
+      expect(screen.queryByRole('checkbox')).toBeNull();
+    },
+  ],
+  [
+    'checkWhatsApp',
+    () => expect(screen.getByRole('checkbox', { name: WHATSAPP })).toHaveProperty('checked', false),
+  ],
+  [
+    'checkWhatsAppTicked',
+    () => expect(screen.getByRole('checkbox', { name: WHATSAPP })).toHaveProperty('checked', true),
+  ],
   [
     'sending',
     () =>
@@ -125,6 +147,7 @@ const SAYS: [string, () => void][] = [
   ],
   ['notSentTap', () => screen.getByText(/Check your connection and tap it again\.$/u)],
   ['coming', () => screen.getByRole('heading', { name: `See you there, ${NAME}.` })],
+  ['comingWhatsApp', () => screen.getByRole('heading', { name: `See you there, ${NAME}.` })],
   ['comingAlone', () => screen.getByText('A screenshot works too.')],
   ['notComing', () => screen.getByRole('heading', { name: `We’ll miss you, ${NAME}.` })],
   ['notSure', () => screen.getByText('Your companions are on hold until you decide.')],
@@ -219,6 +242,20 @@ const SAYS: [string, () => void][] = [
   ['replyFailed', () => screen.getByText(/^Your message wasn’t sent\./u)],
   ['calledOffMessages', () => expect(screen.getAllByRole('article')).toHaveLength(3)],
   ['finishedMessages', () => screen.getByText(THANK_YOU)],
+  [
+    'messagesWhatsAppOff',
+    () => expect(screen.getByRole('switch', { name: 'WhatsApp' })).toHaveProperty('checked', false),
+  ],
+  ['messagesWhatsAppTurnedOn', () => screen.getByText(TURNED_ON, { selector: 'span' })],
+  [
+    'messagesWhatsAppOn',
+    () => expect(screen.getByRole('switch', { name: 'WhatsApp' })).toHaveProperty('checked', true),
+  ],
+  ['messagesWhatsAppTurnedOff', () => screen.getByText(OFF, { selector: 'span' })],
+  [
+    'messagesNoMobile',
+    () => expect(screen.getAllByText('Ire Events has no phone number for you.')).toHaveLength(2),
+  ],
 ];
 
 describe('every state, deep-linked by ?state=', () => {
@@ -232,6 +269,163 @@ describe('every state, deep-linked by ?state=', () => {
     await guest(state);
 
     says();
+  });
+});
+
+describe('WhatsApp updates on Check and send (sc-3950)', () => {
+  it('draws no box for a guest with no mobile number, and keeps Coming as it was', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('check');
+
+    expect(screen.queryByText(WHATSAPP)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+    await wait();
+    expect(screen.getByRole('heading', { name: `See you there, ${NAME}.` })).toBeDefined();
+    expect(screen.queryByText(/WhatsApp/u)).toBeNull();
+  });
+
+  it('is a real checkbox, unticked, its line as its description, the whole row its label', async () => {
+    await guest('checkWhatsApp');
+    const box = screen.getByRole('checkbox', { name: WHATSAPP });
+
+    expect(box).toHaveProperty('checked', false);
+    expect(box.getAttribute('aria-describedby')).toBe('gp-wa-hint');
+    expect(document.getElementById('gp-wa-hint')?.textContent).toBe(HINT);
+    expect(box.closest('label')?.classList.contains('gp-wa')).toBe(true);
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Check and send' }));
+    expect(
+      document
+        .querySelector('.gp-wa')
+        ?.compareDocumentPosition(screen.getByRole('button', { name: 'Send my answer' })),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('toggles from the box and from its words', async () => {
+    await guest('checkWhatsApp');
+    const box = screen.getByRole('checkbox', { name: WHATSAPP });
+
+    fireEvent.click(box);
+    expect(box).toHaveProperty('checked', true);
+    expect(document.querySelector('.gp-wa-tick')).not.toBeNull();
+    fireEvent.click(screen.getByText(HINT));
+    expect(box).toHaveProperty('checked', false);
+    expect(document.querySelector('.gp-wa-tick')).toBeNull();
+  });
+
+  it('is never required: Send unticked records Coming, nothing about WhatsApp', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('checkWhatsApp');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    await wait();
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: `See you there, ${NAME}.` }),
+    );
+    expect(screen.queryByText(/WhatsApp/u)).toBeNull();
+  });
+
+  it('ticked, then Send: the box keeps its tick while sending, then Coming as drawn', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('checkWhatsApp');
+    const box = screen.getByRole('checkbox', { name: WHATSAPP });
+
+    fireEvent.click(box);
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+    expect(box).toHaveProperty('checked', true);
+    fireEvent.click(box);
+    expect(box).toHaveProperty('checked', true);
+    await wait();
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: `See you there, ${NAME}.` }),
+    );
+    expect(screen.getByText('You answered Coming on Tuesday, October 27.')).toBeDefined();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.queryByText(/WhatsApp/u)).toBeNull();
+  });
+
+  it('comingWhatsApp: Coming as drawn, no line of its own, focus on the greeting', async () => {
+    await guest('comingWhatsApp');
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: `See you there, ${NAME}.` }),
+    );
+    expect(screen.queryByText(/WhatsApp/u)).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Show this at the door' })).toBeDefined();
+  });
+});
+
+describe('Your messages, opened from the guest’s page (sc-3969, sc-3950)', () => {
+  it('draws Back, the title, the intro, the three switches in order, and the footnote', async () => {
+    await guest('messagesWhatsAppOff');
+
+    expect(screen.getByRole('button', { name: 'Back' })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Your messages' })).toBeDefined();
+    expect(
+      screen.getByText(
+        'Choose how Ire Events can reach you. This changes nothing for anyone else who uses Soirely.',
+      ),
+    ).toBeDefined();
+    expect(screen.getAllByRole('switch').map((one) => one.getAttribute('aria-labelledby'))).toEqual(
+      ['gp-email-name', 'gp-sms-name', 'gp-whatsApp-name'],
+    );
+    expect(
+      screen.getAllByRole('switch', { name: /^(Email|Text messages|WhatsApp)$/u }),
+    ).toHaveLength(3);
+    expect(
+      screen.getByText(
+        'Only you can turn these back on. Ire Events can see which you have turned off, and when.',
+      ),
+    ).toBeDefined();
+    expect(document.querySelector('.gp-cover')).toBeNull();
+  });
+
+  it('describes WhatsApp’s switch by its line, on or off, and says each change politely', async () => {
+    await guest('messagesWhatsAppOff');
+    const whatsApp = screen.getByRole('switch', { name: 'WhatsApp' });
+    const live = document.querySelector('.gp-yours [aria-live="polite"]');
+
+    expect(whatsApp).toHaveProperty('checked', false);
+    expect(
+      document.getElementById(whatsApp.getAttribute('aria-describedby') ?? '')?.textContent,
+    ).toBe(UPDATES);
+    expect(live?.textContent).toBe('');
+
+    fireEvent.click(whatsApp);
+    expect(whatsApp).toHaveProperty('checked', true);
+    expect(whatsApp.getAttribute('aria-describedby')).toBe('gp-whatsApp-line gp-whatsApp-saved');
+    expect(live?.textContent).toBe(TURNED_ON);
+    expect(screen.getByText(UPDATES)).toBeDefined();
+
+    fireEvent.click(whatsApp);
+    expect(whatsApp).toHaveProperty('checked', false);
+    expect(live?.textContent).toBe(OFF);
+    expect(screen.getByText(UPDATES)).toBeDefined();
+  });
+
+  it('turned on: focus on WhatsApp’s switch, the saved line with its Violet tick', async () => {
+    await guest('messagesWhatsAppTurnedOn');
+    const whatsApp = screen.getByRole('switch', { name: 'WhatsApp' });
+
+    expect(document.activeElement).toBe(whatsApp);
+    expect(document.getElementById('gp-whatsApp-saved')?.querySelector('svg')).not.toBeNull();
+  });
+
+  it('no mobile number: only Email has a switch, and there is no WhatsApp line', async () => {
+    await guest('messagesNoMobile');
+
+    expect(screen.getAllByRole('switch')).toHaveLength(1);
+    expect(screen.queryByText(UPDATES)).toBeNull();
+  });
+
+  it('Back returns to the guest’s page, its heading focused', async () => {
+    await guest('messagesWhatsAppOn');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'You are invited' }),
+    );
   });
 });
 

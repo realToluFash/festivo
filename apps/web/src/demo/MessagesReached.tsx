@@ -56,7 +56,7 @@ function showFirst(state: MessagesState | null, of: ReachedOf): Show {
   if (state === 'added') return 'none';
   if (state === 'addedPhone') return 'optedOut';
 
-  return of === 'new' ? 'everyone' : 'notReached';
+  return of === 'new' || of === 'receipts' ? 'everyone' : 'notReached';
 }
 
 /** Who it reached, per person and grouped as sc-3966 counts them: a line per channel for Soirely's notice, its fix beside a failure, and their page. */
@@ -86,7 +86,7 @@ export function ReachedView({
   const shown = shownOf(who, show);
   const first = outsIn(inbox, thread)[0];
   const back =
-    of === 'parking'
+    of === 'parking' || of === 'receipts'
       ? PARKING.subject
       : of === 'invite'
         ? MW.invitation
