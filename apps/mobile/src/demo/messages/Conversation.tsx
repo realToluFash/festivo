@@ -45,12 +45,15 @@ import {
   EVENT,
   HOSTS,
   HELD_TOO_LONG,
+  HELD,
+  heldPeople,
 } from './MessagesSample.ts';
 import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { Preview } from './Preview.tsx';
 import { previewOf } from './PreviewModel.ts';
 import { RefusedSave } from './RefusedSave.tsx';
 import { SW } from './ScheduledSave.ts';
+import { HeldWaits } from './WhatsAppParts.tsx';
 import {
   type Bit,
   CountdownLine,
@@ -120,9 +123,10 @@ export interface Parts {
 }
 
 const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
+const HELD_CHANNELS: readonly ChannelKey[] = ['email', 'wa'];
 
-function many(locale: string): string {
-  return say.onPageTold(channelsWords(SAMPLE_CHANNELS, locale));
+function many(locale: string, channels = SAMPLE_CHANNELS): string {
+  return say.onPageTold(channelsWords(channels, locale));
 }
 
 function toldBy(channels: Record<ChannelKey, boolean>, locale: string): string {
@@ -788,7 +792,10 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
       <DayRule text={W.today} />
     );
 
-  if (key === 'parking')
+  if (key === 'parking' || key === 'held') {
+    const held = key === 'held';
+    const reach = held ? HELD : PARKING_REACH;
+
     return {
       title: PARKING,
       titleLines: 1,
@@ -797,7 +804,7 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
           ? undefined
           : m.resending && !talk.wide
             ? `${W.toAllGuests} · ${ALL} · ${dayWords(DAYS.parking, talk.locale)}`
-            : `${W.toAllGuests} · ${ALL} · ${many(talk.locale)}`,
+            : `${W.toAllGuests} · ${ALL} · ${many(talk.locale, held ? HELD_CHANNELS : undefined)}`,
       lead: <GroupTile side={44} />,
       head: own?.writing === true ? own.head : undefined,
       bare: own?.bare,
@@ -816,15 +823,11 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
               ]}
             />
             {m.resending ? (
-              <Resend talk={talk} of="parking" />
+              <Resend talk={talk} of={key} />
             ) : (
-              <Receipt
-                reached={PARKING_REACH.reached}
-                of={PARKING_REACH.of}
-                seen={PARKING_REACH.seen}
-                onWho={talk.onWho}
-              />
+              <Receipt reached={reach.reached} of={reach.of} seen={reach.seen} onWho={talk.onWho} />
             )}
+            {held && m.hold === 'held' && <HeldWaits count={heldPeople('held').length} />}
             {today}
             {own?.stream}
           </>
@@ -832,6 +835,7 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
       align: own?.align ?? 'end',
       foot: m.resending ? undefined : followUp(W.writeAFollowUp),
     };
+  }
   if (key === 'invite')
     return {
       title: W.invitation,

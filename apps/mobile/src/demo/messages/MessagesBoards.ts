@@ -81,6 +81,26 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   editSent: ['a refused save, sent', 'Already sent; Reload shows it as sent at 09:00'],
   editCancelled: ['a refused save, cancelled', 'Cancelled; Reload shows Cancelled by Bisi Okafor'],
   editTooLate: ['a refused save, too late', 'Too late to send; Reload shows Not sent: too late'],
+  whatsAppLine: [
+    'WhatsApp ticked',
+    'To All guests · 142: WhatsApp reaches 4 of 142, under the chips',
+  ],
+  checkWhatsApp: [
+    'the check, with WhatsApp',
+    'Email · 124, SMS · 39, WhatsApp · 4; the reach line; 52 credits',
+  ],
+  held: [
+    'held for credits',
+    'Parking by email and WhatsApp at 0 credits: 4 WhatsApp messages wait',
+  ],
+  whatsAppRead: [
+    'held, then sent',
+    'Credits back: WhatsApp · Read 10:14 (two), Delivered 10:02, Failed',
+  ],
+  whatsAppTooLate: [
+    'held, then too late',
+    'Held past its moment: the four read Not sent: too late',
+  ],
 };
 
 export const MESSAGES_BOARDS = MESSAGES_STATES.map((state) => ({

@@ -37,8 +37,11 @@ export type PersonKey =
   | 'mei'
   | 'kwame'
   | 'marta'
-  | 'ines';
-export type ManyKey = 'parking' | 'invite';
+  | 'ines'
+  | 'lucia'
+  | 'duboise'
+  | 'rafael';
+export type ManyKey = 'parking' | 'invite' | 'held';
 export type ToGroup = 'all' | 'coming' | 'notReplied';
 export type Token = 'Greeting' | 'Event' | 'Date' | 'Hosts';
 
@@ -414,6 +417,93 @@ export const PARKING_REACHED: readonly NotReached[] = [
     lines: [
       { mark: 'delivered', word: say.where(CHANNEL_WORD.sms, W.delivered), reason: '09:13' },
       PAGE_LINE,
+    ],
+    fixes: [],
+  },
+];
+
+interface WhatsAppNumber {
+  country: string;
+  credits: number;
+}
+
+const SPAIN: WhatsAppNumber = { country: 'Spain', credits: 4 };
+const BRAZIL: WhatsAppNumber = { country: 'Brazil', credits: 2 };
+const NIGERIA: WhatsAppNumber = { country: 'Nigeria', credits: 2 };
+const UK: WhatsAppNumber = { country: 'United Kingdom', credits: 5 };
+
+/** WhatsApp per To (sc-3950): the numbers it reaches, each at its country's rate (sc-3928's utility rates), and why the rest can't be. */
+export const WHATSAPP: Record<
+  ToGroup,
+  { numbers: readonly WhatsAppNumber[]; noMobile: number; stopped: number; notAgreed: number }
+> = {
+  all: { numbers: [SPAIN, BRAZIL, NIGERIA, UK], noMobile: 102, stopped: 2, notAgreed: 34 },
+  coming: { numbers: [SPAIN, BRAZIL, UK], noMobile: 65, stopped: 1, notAgreed: 27 },
+  notReplied: { numbers: [NIGERIA], noMobile: 16, stopped: 0, notAgreed: 8 },
+};
+
+/** Where a message's held WhatsApp notices stand: held for credits, sent once credits came back, or too late (sc-104). */
+export type HoldStage = 'held' | 'released' | 'tooLate';
+
+/** The held message: Parking's shape, to All guests by email and WhatsApp with the balance at 0. */
+export const HELD = { reached: 124, of: 142, seen: 87, cant: 18, emailAt: '18:21' };
+
+const WA = CHANNEL_WORD.wa;
+const HELD_LINE: Record<Exclude<HoldStage, 'released'>, ReachLine> = {
+  held: { mark: 'sending', word: say.where(WA, W.heldForCredits) },
+  tooLate: { mark: 'notsent', word: say.where(WA, W.tooLate) },
+};
+const READ: ReachLine = { mark: 'delivered', word: say.where(WA, W.read), reason: '10:14' };
+const RELEASED: Partial<Record<PersonKey, ReachLine>> = {
+  lucia: READ,
+  kwame: READ,
+  duboise: { mark: 'delivered', word: say.where(WA, W.delivered), reason: '10:02' },
+  rafael: { mark: 'bounced', word: say.where(WA, W.failedReceipt) },
+};
+const HELD_FOR: readonly (readonly [PersonKey, string, string])[] = [
+  ['lucia', 'LO', 'Lucía Ortega'],
+  ['kwame', 'KM', 'Kwame Mensah'],
+  ['duboise', 'DA', 'Duboise Akande'],
+  ['rafael', 'RC', 'Rafael Costa'],
+];
+
+/** The four whose WhatsApp was held: their email delivered, and WhatsApp as the hold left it. */
+export function heldPeople(stage: HoldStage): readonly NotReached[] {
+  return HELD_FOR.map(([key, initials, name]) => ({
+    key,
+    initials,
+    name,
+    lines: [
+      {
+        mark: 'delivered',
+        word: say.where(CHANNEL_WORD.email, W.delivered),
+        reason: HELD.emailAt,
+      },
+      (stage === 'released' ? RELEASED[key] : HELD_LINE[stage]) ?? HELD_LINE.held,
+    ],
+    fixes: [],
+  }));
+}
+
+/** Two of the held message's 18 not reached on any channel, each with WhatsApp's reason. */
+export const HELD_CANT: readonly NotReached[] = [
+  {
+    key: 'sophie',
+    initials: 'SL',
+    name: 'Sophie Laurent',
+    lines: [
+      EMAIL_OUT,
+      { mark: 'optout', word: say.where(WA, W.notSent), reason: W.stoppedWhatsApp },
+    ],
+    fixes: [],
+  },
+  {
+    key: 'amaka',
+    initials: 'AE',
+    name: 'Amaka Eze',
+    lines: [
+      { mark: 'none', word: W.noEmail },
+      { mark: 'notsent', word: say.where(WA, W.notSent), reason: W.hasntAgreedWhatsApp },
     ],
     fixes: [],
   },

@@ -16,6 +16,7 @@ import {
   GUESTS,
   type GroupKey,
   type GuestKey,
+  type HoldStage,
   LONG_BODY,
   LONG_SUBJECT,
   LOW_BALANCE,
@@ -37,6 +38,7 @@ import {
   TO_FIGURES,
   TO_WORD,
   type ToGroup,
+  WHATSAPP,
   formatCount,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
@@ -119,15 +121,22 @@ export const MESSAGES_STATES = [
   'editSent',
   'editCancelled',
   'editTooLate',
+  'whatsAppLine',
+  'checkWhatsApp',
+  'held',
+  'whatsAppRead',
+  'whatsAppTooLate',
 ] as const;
 
 export type MessagesState = (typeof MESSAGES_STATES)[number];
+
+export type { HoldStage };
 
 export function messagesStateOf(value: string | undefined): MessagesState | null {
   return MESSAGES_STATES.find((state) => state === value) ?? null;
 }
 
-export type ReachedOf = 'parking' | 'invite' | 'draft';
+export type ReachedOf = 'parking' | 'invite' | 'held' | 'draft';
 
 export type FixKind = 'fixEmail' | 'addEmail' | 'addPhone';
 
@@ -261,6 +270,8 @@ export interface Messages {
   inserting?: boolean;
   refusedSave?: Refusal;
   closed: Closed | null;
+  /** The held message's WhatsApp (sc-3950), in the held states only; it then stands in Parking's place. */
+  hold: HoldStage | null;
   /** Without messages.read: the area opens the refusal, with no list and no count. */
   forbidden: boolean;
 }
@@ -359,8 +370,11 @@ const BASE: Messages = {
   bell: false,
   told: null,
   closed: null,
+  hold: null,
   forbidden: false,
 };
+
+const ALL_CHANNELS = { email: true, sms: true, wa: true };
 
 const DRAFTED: Partial<Record<MessagesState, Draft>> = {
   to: sampleDraft('write'),
@@ -389,6 +403,14 @@ const DRAFTED: Partial<Record<MessagesState, Draft>> = {
   nobody: { ...sampleDraft('write'), zero: ['coming'] },
   longSubject: { ...sampleDraft('write'), subject: LONG_SUBJECT, over: ['subject'] },
   longMessage: { ...sampleDraft('write'), body: LONG_BODY, over: ['body'] },
+  whatsAppLine: { ...sampleDraft('write'), to: 'all', channels: ALL_CHANNELS },
+  checkWhatsApp: { ...sampleDraft('check'), to: 'all', channels: ALL_CHANNELS },
+};
+
+const HELD_AS: Partial<Record<MessagesState, { hold: HoldStage; open: Open }>> = {
+  held: { hold: 'held', open: { kind: 'many', key: 'held' } },
+  whatsAppRead: { hold: 'released', open: { kind: 'reached', of: 'held' } },
+  whatsAppTooLate: { hold: 'tooLate', open: { kind: 'reached', of: 'held' } },
 };
 
 const CLOSED: Partial<Record<MessagesState, Closed>> = {
@@ -435,6 +457,8 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
     return { ...BASE, closed, kept: [], ...(closed === 'draft' ? { phase: 'first' } : {}) };
   const scheduled = state == null ? undefined : SCHEDULED_AS[state];
   if (scheduled != null) return scheduledStart(scheduled);
+  const held = state == null ? undefined : HELD_AS[state];
+  if (held != null) return { ...BASE, ...held, balance: held.hold === 'released' ? BALANCE : 0 };
   const ines: Open = { kind: 'guest', key: 'ines' };
   const unknown: Open = { kind: 'guest', key: 'unknown' };
   const lucia: Open = { kind: 'guest', key: 'lucia' };
@@ -644,6 +668,15 @@ export type Action =
   | { type: 'inserting'; open: boolean }
   | { type: 'reload' };
 
+export type HoldEvent = 'topUp' | 'tooLate';
+
+/** Only a held notice moves: credits back send it, its too-late moment (sc-104) ends it. */
+export function holdAfter(stage: HoldStage, event: HoldEvent): HoldStage {
+  if (stage !== 'held') return stage;
+
+  return event === 'topUp' ? 'released' : 'tooLate';
+}
+
 function withDraft(m: Messages, change: (draft: Draft) => Draft): Messages {
   return m.draft == null ? m : { ...m, draft: change(m.draft) };
 }
@@ -722,7 +755,7 @@ export function reachedOf(m: Pick<Messages, 'open'>): ReachedOf {
   const open = m.open;
   if (open?.kind === 'reached') return open.of;
   if (open?.kind === 'draft') return 'draft';
-  if (open?.kind === 'many' && open.key === 'invite') return 'invite';
+  if (open?.kind === 'many' && open.key !== 'parking') return open.key;
 
   return 'parking';
 }
@@ -1050,7 +1083,7 @@ export function sectionsOf(m: Messages): Sections {
     needs: [
       ...waiting.filter((key) => !m.done.includes(key)).map(guest),
       ...(m.done.includes('unknown') ? [] : [guest('unknown')]),
-      many('parking'),
+      many(m.hold == null ? 'parking' : 'held'),
     ],
     scheduled: mine.filter((one) => isScheduled(one.draft)).map(own),
     done: [
@@ -1084,6 +1117,43 @@ export interface Check {
   credits: number;
   after: string;
   whatsApp: boolean;
+  /** WhatsApp's reach line, only while it is ticked. */
+  reach?: string;
+}
+
+export interface WhatsAppReach {
+  reaches: number;
+  of: number;
+  noMobile: number;
+  stopped: number;
+  notAgreed: number;
+  credits: number;
+}
+
+/** Who WhatsApp reaches in a To, and its credits: each reachable number's country rate, summed. */
+export function whatsAppOf(to: ToGroup): WhatsAppReach {
+  const { numbers, noMobile, stopped, notAgreed } = WHATSAPP[to];
+
+  return {
+    reaches: numbers.length,
+    of: numbers.length + noMobile + stopped + notAgreed,
+    noMobile,
+    stopped,
+    notAgreed,
+    credits: numbers.reduce((sum, one) => sum + one.credits, 0),
+  };
+}
+
+/** WhatsApp's reach line, shown whenever it is ticked; a part that is 0 is left out. */
+export function whatsAppLine(to: ToGroup): string {
+  const reach = whatsAppOf(to);
+
+  return [
+    say.whatsAppReaches(reach.reaches, reach.of),
+    ...(reach.noMobile > 0 ? [say.noMobile(reach.noMobile)] : []),
+    ...(reach.stopped > 0 ? [say.stoppedWhatsApp(reach.stopped)] : []),
+    ...(reach.notAgreed > 0 ? [say.notAgreedWhatsApp(reach.notAgreed)] : []),
+  ].join(' · ');
 }
 
 export function countOf(to: ToGroup, zero: readonly ToGroup[] = []): number {
@@ -1095,7 +1165,10 @@ export function checkOf(draft: Draft): Check {
     ? { count: 0, email: 0, sms: 0, wa: 0, cantTell: 0 }
     : TO_FIGURES[draft.to];
   const ticked = (['email', 'sms', 'wa'] as const).filter((key) => draft.channels[key]);
-  const credits = (draft.channels.sms ? figures.sms : 0) + (draft.channels.wa ? figures.wa : 0);
+  const nobody = matchesNobody(draft);
+  const credits =
+    (draft.channels.sms ? figures.sms : 0) +
+    (draft.channels.wa && !nobody ? whatsAppOf(draft.to).credits : 0);
   const smsOff = draft.channels.sms ? 0 : SMS_ONLY[draft.to].length;
   const names = (smsOff > 0 ? SMS_ONLY[draft.to] : CANT_TELL[draft.to]).slice(0, 2);
   const cantTell = figures.cantTell + smsOff;
@@ -1110,6 +1183,7 @@ export function checkOf(draft: Draft): Check {
     credits,
     after: formatCount(BALANCE - credits),
     whatsApp: draft.channels.wa,
+    ...(draft.channels.wa ? { reach: whatsAppLine(draft.to) } : {}),
   };
 }
 
