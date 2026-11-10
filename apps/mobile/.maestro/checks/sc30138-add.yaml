@@ -1,0 +1,78 @@
+# sc-30138: Add people in each locale: the sheet, its role picker, no match, Discard, then the API stopped and Add pressed with two ticked (addFailedMany) and with one (addFailedOne). Pass EV, M1, M2 (membership ids).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}?area=people
+- extendedWaitUntil:
+    visible:
+      id: 'people.add.open'
+    timeout: 30000
+- tapOn:
+    id: 'people.add.open'
+- extendedWaitUntil:
+    visible:
+      id: 'people.add.role'
+    timeout: 10000
+- takeScreenshot: sheet
+- tapOn:
+    id: 'people.add.role'
+- extendedWaitUntil:
+    visible:
+      id: 'people.add.roles.done'
+    timeout: 10000
+- takeScreenshot: roles
+- tapOn:
+    id: 'people.add.roles.done'
+- tapOn:
+    id: 'people.add.who'
+- inputText: 'zzz'
+- takeScreenshot: nomatch
+- tapOn:
+    id: 'people.add.who'
+- eraseText: 20
+- tapOn:
+    id: 'people.add.member.${M1}'
+- tapOn:
+    id: 'people.add.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'people.add.keep'
+    timeout: 10000
+- takeScreenshot: discard
+- tapOn:
+    id: 'people.add.keep'
+- tapOn:
+    id: 'people.add.member.${M2}'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'people.add.add'
+- waitForAnimationToEnd:
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      text: '.*(again|novamente|nouveau|vuelva).*'
+    timeout: 30000
+    optional: true
+- takeScreenshot: failed-many
+- tapOn:
+    id: 'people.add.member.${M2}'
+- tapOn:
+    id: 'people.add.add'
+- waitForAnimationToEnd:
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      text: '.*(again|novamente|nouveau|vuelva).*'
+    timeout: 30000
+    optional: true
+- takeScreenshot: failed-one
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    id: 'people.add.cancel'
+- tapOn:
+    id: 'people.add.discard'
