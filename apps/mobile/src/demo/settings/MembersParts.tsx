@@ -1,4 +1,4 @@
-import type { Ref } from 'react';
+import { type Ref, useRef } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { useReadOut } from '../../components/ReadOut.tsx';
@@ -7,7 +7,6 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import {
   type CardStep,
-  DEADLINES,
   type Filter,
   FILTERS,
   type MembersCard,
@@ -16,6 +15,7 @@ import {
   type Person,
   personLine,
   tagOf,
+  waitingFoot,
   waitingLine,
 } from './MembersSample.ts';
 import { Avatar } from '../../components/SettingsParts.tsx';
@@ -112,39 +112,46 @@ export function MembersCardView({
   );
 }
 
-/** Who asked to join, shown only to those who manage members; the row opens the request. */
+/** Who asked to join, oldest first, shown only to those who manage members; a row opens its request. */
 export function Waiting({
-  person,
+  waiting,
   dense,
   say,
   onOpen,
-  rowRef,
 }: {
-  person: Person;
+  waiting: readonly Person[];
   dense: boolean;
   say: MembersSay;
-  onOpen: () => void;
-  rowRef: Ref<ViewInstance>;
+  /** The row pressed, so the request gives the focus back to it. */
+  onOpen: (id: string, row: ViewInstance | null) => void;
 }) {
+  const rows = useRef<Record<string, ViewInstance | null>>({});
   const side = dense ? 36 : 40;
+  const gutter = dense ? 10 : 0;
+  const items: ListItem[] = waiting.map((person, index) => ({
+    key: person.id,
+    inset: side + tokens.spaceLg,
+    row: (
+      <Row
+        ref={(view) => {
+          rows.current[person.id] = view;
+        }}
+        title={person.name}
+        line={waitingLine(person, say)}
+        lead={<Avatar initials={person.initials} side={side} tone={person.tone} />}
+        tag={tagOf(person)}
+        opens
+        gutter={gutter}
+        onPress={() => onOpen(person.id, rows.current[person.id] ?? null)}
+        testID={index === 0 ? 'members.approve' : `members.approve.${person.initials}`}
+      />
+    ),
+  }));
 
   return (
-    <Section
-      title="Waiting"
-      foot={`Removed on ${say.deadline(DEADLINES.lucia)} if nobody answers.`}
-    >
+    <Section title="Waiting" foot={waitingFoot(waiting, say)}>
       <View style={dense && styles.bleed}>
-        <Row
-          ref={rowRef}
-          title={person.name}
-          line={waitingLine(person, say)}
-          lead={<Avatar initials={person.initials} side={side} tone={person.tone} />}
-          tag={tagOf(person)}
-          opens
-          gutter={dense ? 10 : 0}
-          onPress={onOpen}
-          testID="members.approve"
-        />
+        <RowList items={items} gutter={gutter} />
       </View>
     </Section>
   );

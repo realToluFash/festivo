@@ -19,6 +19,7 @@ import {
   reachableState,
   RECOVERY_STATES,
   removed,
+  removesAt,
   ROLE_MEANS,
   rowLine,
   samplePeople,
@@ -28,6 +29,7 @@ import {
   turnedDown,
   underRoles,
   VIEWERS,
+  waitingFoot,
   waitingLine,
   whenWord,
 } from './MembersSample.ts';
@@ -234,6 +236,64 @@ describe('Members in the demo', () => {
     expect(membersStart('withdraw').claim).toBe('open');
   });
 
+  it('says a found claim, another admin’s claim and a stopped one, with no step on the card', () => {
+    const at = (state: Parameters<typeof membersStart>[0]) => {
+      const start = membersStart(state);
+
+      return membersCard({
+        ...plainCard,
+        people: start.people,
+        viewer: start.viewer,
+        claim: start.claim,
+      });
+    };
+    expect(at('claimFound')).toMatchObject({
+      says: 'Record found',
+      line: 'Ownership passes to you on Friday, Nov 13 at 09:41 WAT.',
+      step: null,
+    });
+    expect(at('claimTheirs')).toMatchObject({
+      says: 'Ana Souza is becoming the owner',
+      line: 'Their DNS record has not been found yet. Without it, the claim lapses on Sunday, Nov 15 at 16:20 WAT.',
+      step: null,
+    });
+    expect(at('claimTheirsFound').line).toBe(
+      'Their record is found. Ownership passes on Thursday, Nov 12 at 16:20 WAT.',
+    );
+    expect(at('claimStopped')).toMatchObject({
+      says: 'You stopped Ana Souza’s claim',
+      step: null,
+      readsOut: true,
+    });
+    expect(at('claimClosed')).toMatchObject({ says: 'Ire Events has no active owner', step: null });
+    expect(membersStart('claimStop')).toMatchObject({ claim: 'theirs', stopping: true });
+    expect(membersStart('claimTheirs').viewer).toBe(VIEWERS.julien);
+    expect(membersStart('claimRefused')).toMatchObject({ claim: 'unclaimed', refusal: 'address' });
+    const refused = membersStart('claimRefused');
+    expect(refused.viewer).toMatchObject({ id: 'tom.becker@gmail.com', manages: true });
+    expect(refused.viewer.id.endsWith('@ire.events')).toBe(false);
+    expect(refused.people.find((one) => one.id === refused.viewer.id)?.role).toBe('Admin');
+    expect(membersStart('claimManaged').refusal).toBe('managed');
+    expect(at('claimRefused').step).toEqual({ label: 'Become the owner', does: 'becomeOwner' });
+  });
+
+  it('names one removal under one request, and the first to go under more', () => {
+    const start = membersStart('waitingTwo');
+    const waiting = start.people.filter((one) => one.status === 'pendingApproval');
+    expect(waiting.map(({ name }) => name)).toEqual(['Lucía Gómez', 'Kwame Asante']);
+    expect(waitingFoot(waiting.slice(0, 1), us)).toBe(
+      'Removed on Monday, Nov 16 at 09:12 WAT if nobody answers.',
+    );
+    expect(waitingFoot(waiting, us)).toBe(
+      'Each request is removed if nobody answers. Lucía Gómez’s is first, on Monday, Nov 16 at 09:12 WAT.',
+    );
+    expect(removesAt(waiting[1]?.id ?? '')).toBe(DEADLINES.kwame);
+    expect(membersCard({ ...plainCard, people: start.people })).toMatchObject({
+      says: '7 people · 2 waiting',
+      step: { label: 'Answer Lucía Gómez' },
+    });
+  });
+
   it('tags only who is off the rule, and keeps the dates for their page', () => {
     expect(tagOf(person('Priya Shah'))).toBeNull();
     expect(tagOf(person('Marta Silva'))).toEqual({
@@ -306,6 +366,15 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
       'handoverNowDone',
       'handoverReadOnly',
       'alsoMember',
+      'claimFound',
+      'claimTheirs',
+      'claimTheirsFound',
+      'claimStop',
+      'claimStopped',
+      'claimClosed',
+      'claimRefused',
+      'claimManaged',
+      'waitingTwo',
       'recovery',
       'recoveryApprove',
       'recoveryTurnDown',

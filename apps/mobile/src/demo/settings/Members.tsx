@@ -14,7 +14,7 @@ import {
 import { tokens } from '../../theme/tokens.ts';
 
 import { Landscape, SeenBy } from './Frame.tsx';
-import { ClaimScreen, useOwnerClaim } from './MembersClaim.tsx';
+import { ClaimScreen, ClaimUnderCard, useOwnerClaim } from './MembersClaim.tsx';
 import { useLoad } from './MembersLoading.tsx';
 import { MembersCardView, NobodyPicked, People, Waiting } from './MembersParts.tsx';
 import { type PersonOpening, PersonPage } from './MembersPerson.tsx';
@@ -35,6 +35,7 @@ import { RequestScreen } from './MembersRequest.tsx';
 import {
   approved,
   type CardStep,
+  claimantName,
   counts,
   type Filter,
   handedOver,
@@ -108,8 +109,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
   const [gone, setGone] = useState<Removal | null>(start.gone);
   const [removals, setRemovals] = useState(0);
   const [provedAt, setProvedAt] = useState<number | null>(null);
-  const owner = useOwnerClaim(start.claim, start.withdrawing);
-  const waitingRow = useRef<ViewInstance>(null);
+  const owner = useOwnerClaim(start);
   const cardStep = useRef<ViewInstance>(null);
   const focusBack = useRef<ScreenReaderTarget | null>(null);
   const insets = useSafeAreaInsets();
@@ -138,12 +138,14 @@ function MembersScreen({ start }: { start: MembersStart }) {
     }),
     [],
   );
-  const [askedId] = useState(
+  const [askedId, setAskedId] = useState(
     () => start.people.find((one) => one.status === 'pendingApproval')?.id ?? null,
   );
   const person = open == null ? null : (people.find((one) => one.id === open) ?? null);
   const asked = viewer.manages ? (people.find((one) => one.id === askedId) ?? null) : null;
-  const asking = asked?.status === 'pendingApproval' ? asked : null;
+  const waitingToJoin = viewer.manages
+    ? people.filter((one) => one.status === 'pendingApproval')
+    : [];
   const card = membersCard({
     people,
     viewer,
@@ -268,17 +270,20 @@ function MembersScreen({ start }: { start: MembersStart }) {
     focusBack.current = opener.current;
   }
 
-  function openRequest(opener: RefObject<ViewInstance | null>): void {
-    from(opener);
+  function openRequest(id: string, opener: ViewInstance | null): void {
+    focusBack.current = opener;
+    setAskedId(id);
     setRequestVisit((count) => count + 1);
     setRequest('approving');
   }
 
   function onStep(step: CardStep): void {
     switch (step) {
-      case 'answer':
-        openRequest(cardStep);
+      case 'answer': {
+        const first = waitingToJoin[0];
+        if (first != null) openRequest(first.id, cardStep.current);
         return;
+      }
       case 'answerRecovery':
         lightRecovery();
         return;
@@ -312,6 +317,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
         }}
         onStep={onStep}
       />
+      <ClaimUnderCard owner={owner} claimant={claimantName(people)} cardSays={cardSays} />
       {waitingBack.length > 0 && (
         <RecoveryRequests
           waiting={waitingBack}
@@ -326,14 +332,8 @@ function MembersScreen({ start }: { start: MembersStart }) {
           onAnswer={askRecovery}
         />
       )}
-      {asking != null && (
-        <Waiting
-          person={asking}
-          dense={landscape}
-          say={say}
-          onOpen={() => openRequest(waitingRow)}
-          rowRef={waitingRow}
-        />
+      {waitingToJoin.length > 0 && (
+        <Waiting waiting={waitingToJoin} dense={landscape} say={say} onOpen={openRequest} />
       )}
       <People
         listed={listed}
