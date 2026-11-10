@@ -1,8 +1,5 @@
 import { type Membership, primaryEmailAddress } from '@soirely/api-client';
 import {
-  EVENT_AREAS,
-  type EventArea,
-  MORE_EVENT_AREAS,
   PHONE_EVENT_TABS,
   createNewOrganisation,
   roleHolds,
@@ -49,6 +46,7 @@ import { backRowHiding } from '../kit/backRow.ts';
 import { type Currencies, freshWalk } from '../kit/createWalk.ts';
 import { phonePillAlone, pillBesideTabs } from '../kit/frameBand.ts';
 import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBack.ts';
+import { EVENT_PLACES, type EventPlace, MORE_PLACES } from '../kit/eventNav.ts';
 import { leaveThen } from '../leaveHeld.ts';
 import { backLabelSize, frameTitleSize } from '../layout/textSize.ts';
 import {
@@ -173,7 +171,7 @@ export function useHeaderWithoutBack(hidden: boolean): void {
 
 type IconPaths = readonly [string, string];
 
-const AREA_ICONS: Record<EventArea | 'more', IconPaths> = {
+const AREA_ICONS: Record<EventPlace | 'more', IconPaths> = {
   overview: ['M3 3h7v7H3zM14 3h7v7h-7z', 'M14 14h7v7h-7zM3 14h7v7H3z'],
   guests: [
     'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
@@ -187,6 +185,10 @@ const AREA_ICONS: Record<EventArea | 'more', IconPaths> = {
   messages: ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z', 'M8 9h8M8 13h5'],
   schedule: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 6v6l4 2'],
   staff: ['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+  people: [
+    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+    'M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  ],
   budget: [
     'M21 12V7H5a2 2 0 0 1 0-4h14v4',
     'M3 5v14a2 2 0 0 0 2 2h16v-5M18 12a2 2 0 0 0 0 4h4v-4z',
@@ -197,8 +199,8 @@ const AREA_ICONS: Record<EventArea | 'more', IconPaths> = {
 
 /** Inside an event the navigation is the event's areas, in each layout's own form (sc-22103, #24878). */
 export interface InsideEvent {
-  area: EventArea;
-  onArea: (area: EventArea) => void;
+  area: EventPlace;
+  onArea: (area: EventPlace) => void;
 }
 
 interface NavEntry {
@@ -210,7 +212,7 @@ interface NavEntry {
   testID: string;
 }
 
-function areaEntry(t: (key: string) => string, inside: InsideEvent, area: EventArea): NavEntry {
+function areaEntry(t: (key: string) => string, inside: InsideEvent, area: EventPlace): NavEntry {
   return {
     key: area,
     label: t(`eventNav.${area}`),
@@ -317,7 +319,7 @@ export function AppFrame({
   useEffect(() => navigation.setOptions({ gestureEnabled: stackSwipe }), [navigation, stackSwipe]);
   const signedIn = useSignedIn();
   usePushTaps(signedIn.account?.id);
-  const entries = inEvent == null ? [] : EVENT_AREAS.map((area) => areaEntry(t, inEvent, area));
+  const entries = inEvent == null ? [] : EVENT_PLACES.map((area) => areaEntry(t, inEvent, area));
   const waiting = useWaitingInvitations();
   const offer = useDomainOffer();
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
@@ -920,7 +922,7 @@ function TabBar({ entries, inEvent }: { entries: readonly NavEntry[]; inEvent: I
   const { fontScale } = useWindowDimensions();
   const [more, setMore] = useState(false);
   const moreTab = useRef<ViewInstance>(null);
-  const underMore = !(PHONE_EVENT_TABS as readonly EventArea[]).includes(inEvent.area);
+  const underMore = !(PHONE_EVENT_TABS as readonly EventPlace[]).includes(inEvent.area);
   const shown: readonly NavEntry[] = [
     ...entries.filter((entry) => (PHONE_EVENT_TABS as readonly string[]).includes(entry.key)),
     {
@@ -980,7 +982,7 @@ function TabBar({ entries, inEvent }: { entries: readonly NavEntry[]; inEvent: I
             {t('eventNav.more')}
           </Title>
           <View accessibilityRole="tablist" style={styles.moreList}>
-            {MORE_EVENT_AREAS.map((area) => {
+            {MORE_PLACES.map((area) => {
               const on = area === inEvent.area;
 
               return (
@@ -1094,7 +1096,7 @@ function FrameSidebar({
         <SidebarPlace
           key={entry.key}
           label={entry.label}
-          glyph={AREA_GLYPH[entry.key as EventArea]}
+          glyph={AREA_GLYPH[entry.key as EventPlace]}
           on={entry.on}
           onPress={entry.onPress}
           testID={entry.testID}

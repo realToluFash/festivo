@@ -1,5 +1,7 @@
-import { formatWallDay, listFormat } from '@soirely/domain';
+import { formatWallDay } from '@soirely/domain';
 
+import type { AddWords, RoleSheetWords, RoleWords } from '../../components/PeopleParts.tsx';
+import { everyEventLine, inRoleOrder, joinedLine, opensRow } from '../../kit/eventPeople.ts';
 import { writtenTime } from '../clock.ts';
 import { ORGANISATION } from '../settings/MembersSample.ts';
 import type { Load } from '../settings/RolesSample.ts';
@@ -106,6 +108,14 @@ function onEventAs(id: string, role: EventRole): OnEvent {
   return { id, name, initials, tone, role, outside: false, label: null };
 }
 
+function everyoneOn(onEvent: readonly OnEvent[]): OnEvent[] {
+  const rest = sampleMembers().filter(
+    (one) => one.active && !onEvent.some((there) => there.id === one.id),
+  );
+
+  return [...onEvent, ...rest.map((one) => onEventAs(one.id, 'Can view'))];
+}
+
 export function sampleOnEvent(): OnEvent[] {
   return [
     onEventAs(PRIYA, 'Lead'),
@@ -133,11 +143,7 @@ export function sampleOnEvent(): OnEvent[] {
 }
 
 export function listed(onEvent: readonly OnEvent[]): OnEvent[] {
-  return [...onEvent].sort(
-    (one, other) =>
-      EVENT_ROLES.indexOf(one.role) - EVENT_ROLES.indexOf(other.role) ||
-      one.name.localeCompare(other.name, 'en'),
-  );
+  return inRoleOrder(onEvent, EVENT_ROLES, (one) => one, 'en');
 }
 
 /** An owner, an admin or the event's lead changes who is on it. */
@@ -148,15 +154,11 @@ export function manages(viewer: PeopleViewer, onEvent: readonly OnEvent[]): bool
 }
 
 export function opens(person: OnEvent, viewer: PeopleViewer, onEvent: readonly OnEvent[]): boolean {
-  return manages(viewer, onEvent) && person.id !== viewer.id;
-}
-
-function joined(parts: readonly (string | null)[]): string {
-  return parts.filter((part) => part != null && part !== '').join(' · ');
+  return opensRow(person.id, manages(viewer, onEvent), viewer.id);
 }
 
 export function rowLine(person: OnEvent, viewer: PeopleViewer): string {
-  return joined([
+  return joinedLine([
     person.role,
     person.label,
     person.byCode == null ? null : BY_CODE,
@@ -165,31 +167,26 @@ export function rowLine(person: OnEvent, viewer: PeopleViewer): string {
 }
 
 export function sheetLine(person: OnEvent, organisation: string = ORGANISATION): string {
-  return joined([
+  return joinedLine([
     person.outside ? fromOutside(organisation) : `Member of ${organisation}`,
     person.label,
   ]);
-}
-
-function andList(words: readonly string[]): string {
-  return listFormat('en', { style: 'long', type: 'conjunction' }).format(words);
 }
 
 export function seesEveryEvent(
   members: readonly OrgMember[],
   organisation: string = ORGANISATION,
 ): string {
-  const above = (['Owner', 'Admin'] as const).map((role) =>
-    members.filter((one) => one.active && one.role === role),
-  );
-  const names = above.flat().map((one) => one.name);
-  const roles = above
-    .map((held, index) =>
-      held.length === 0 ? null : `${index === 0 ? 'owner' : 'admin'}${held.length > 1 ? 's' : ''}`,
-    )
-    .filter((role) => role != null);
+  const named = (role: OrgRole) =>
+    members.filter((one) => one.active && one.role === role).map((one) => one.name);
 
-  return `${andList(names)} ${names.length === 1 ? 'sees' : 'see'} every event, as ${andList(roles)} of ${organisation}.`;
+  return (
+    everyEventLine({ owners: named('Owner'), admins: named('Admin') }, 'en', {
+      role: (role, held) => (held > 1 ? `${role}s` : role),
+      line: (names, roles, count) =>
+        `${names} ${count === 1 ? 'sees' : 'see'} every event, as ${roles} of ${organisation}.`,
+    }) ?? ''
+  );
 }
 
 export function firstName(person: Pick<OnEvent, 'name'>): string {
@@ -337,6 +334,8 @@ export const PEOPLE_STATES = [
   'lead',
   'nobody',
   'roleFails',
+  'addPartial',
+  'everyoneOn',
   'loading',
   'failed',
 ] as const;
@@ -370,6 +369,10 @@ export interface PeopleStart {
   load: Load;
   onEvent: OnEvent[];
   roleFails: boolean;
+  /** Add people open on arrival. */
+  adding?: boolean;
+  /** The member Add people cannot add, so a batch with them in stops there. */
+  addRefuses?: string;
   world?: PeopleWorld;
   /** Someone's sheet open on arrival, or its Remove asking or sending. */
   opened?: { id: string; removing: Removing };
@@ -395,8 +398,78 @@ export function peopleStart(state: PeopleState): PeopleStart {
       return { ...base, onEvent: [] };
     case 'roleFails':
       return { ...base, roleFails: true };
+    case 'addPartial':
+      return { ...base, adding: true, addRefuses: JULIEN };
+    case 'everyoneOn':
+      return { ...base, adding: true, onEvent: everyoneOn(base.onEvent) };
     case 'loading':
     case 'failed':
       return { ...base, load: state };
   }
+}
+
+export const ROLE_WORDS: RoleWords<EventRole> = {
+  roles: EVENT_ROLES,
+  name: (role) => role,
+  means: (role) => ROLE_LINES[role],
+  saving: SAVING,
+  saved: 'Saved',
+};
+
+export function sheetWords(person: OnEvent): RoleSheetWords<EventRole> {
+  return {
+    ...ROLE_WORDS,
+    title: 'Role on this event',
+    done: 'Done',
+    remove: 'Remove from this event…',
+    removeTitle: removeTitle(person),
+    removeLine: removeLine(person),
+    keep: `Keep ${firstName(person)}`,
+    removeConfirm: 'Remove',
+    removing: REMOVING,
+    savedHeard: (role) => savedWords(person, role),
+    notChanged: (held) => notChangedLine({ ...person, role: held }),
+    removeFailed: () => '',
+  };
+}
+
+/** Who went in, if anyone did, then who did not and what to do. */
+export function addRefusedLine(
+  role: EventRole,
+  went: readonly string[],
+  left: readonly string[],
+): string {
+  const refused =
+    left.length === 1
+      ? `We couldn’t add ${left[0] ?? ''}, so they’re still ticked. Check your connection and press Add again.`
+      : `We couldn’t add the ${left.length} still ticked. Check your connection and press Add again.`;
+
+  return went.length === 0 ? refused : `${addedToast(went, role)} ${refused}`;
+}
+
+export function everyoneOnLine(organisation: string = ORGANISATION): string {
+  return `Everyone in ${organisation} is on this event already.`;
+}
+
+export function addWords(
+  organisation: string = ORGANISATION,
+  nothingLeft = false,
+): AddWords<EventRole> {
+  return {
+    ...ROLE_WORDS,
+    title: 'Add people',
+    add: 'Add',
+    cancel: 'Cancel',
+    done: 'Done',
+    theirRole: 'Their role',
+    find: NAME_LABEL,
+    inOrganisation: inOrganisation(organisation),
+    noMatch: (typed) => noMatchLine(typed, organisation),
+    discardTitle: 'Discard your changes?',
+    discardLine: 'Nobody is added to this event.',
+    discardKeep: 'Keep editing',
+    discard: 'Discard',
+    refusal: (_error, role, went, left) => addRefusedLine(role, went, left),
+    everyoneOn: nothingLeft ? everyoneOnLine(organisation) : undefined,
+  };
 }

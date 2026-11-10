@@ -1,5 +1,6 @@
 import type { Membership, OrganisationEvent } from '@soirely/api-client';
 import { type EventArea, rememberTabHolding, roleHolds, takesCardStep } from '@soirely/domain';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -9,8 +10,9 @@ import { api } from '../api.ts';
 import { type Stale, keepsWhatLoaded, useOffline } from '../offline.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
+import { offersEdit } from '../kit/eventEdit.ts';
 import { backToOriginal } from '../kit/eventDuplicate.ts';
-import { type EditAt, EVENT_AREA, areaBack } from '../kit/eventNav.ts';
+import { type EditAt, EVENT_AREA, type EventPlace, areaBack } from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
 import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
 import { SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
@@ -23,11 +25,13 @@ import { bodyEdges } from './bodyEdges.ts';
 import { SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { EventPage } from './EventPage.tsx';
+import { EventPeople } from './EventPeople.tsx';
 import { EventNotFound, EventTop, EventsFailed, usePhaseOf } from './Events.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { Refreshing } from './Refreshing.tsx';
 import { Screen, useScrolledToTop } from './Screen.tsx';
+import { PageToast } from './Summary.tsx';
 import { Arrived, Skeleton } from './Skeleton.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
@@ -42,7 +46,7 @@ export function EventScreen({
   keepsTab,
 }: {
   eventId: string;
-  area: EventArea;
+  area: EventPlace;
   /** The event this one was duplicated from, when Duplicate opened it (sc-22145). */
   copiedFrom?: string | undefined;
   /** Opened from Happening now, so Back returns to the tab that was showing. */
@@ -52,16 +56,14 @@ export function EventScreen({
   const { kind } = useLayout();
   const { account, organisation } = useSignedIn();
   const organisationId = organisation?.id;
-  const reads = organisation != null && roleHolds(organisation, 'events.read');
-  const creates = organisation != null && roleHolds(organisation, 'events.create');
-  const manages = organisation != null && roleHolds(organisation, 'events.manage');
-  const deletes = offersDelete(organisation);
   const phone = kind === 'phone';
   const navigation = useNavigation<{
-    setParams(params: { [SHOWN_EVENT]?: string; [EVENT_AREA]?: EventArea }): void;
+    setParams(params: { [SHOWN_EVENT]?: string; [EVENT_AREA]?: EventPlace }): void;
     getState(): { routes: readonly { params?: unknown }[]; index: number } | undefined;
   }>();
   const [savedEvent, setSavedEvent] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ eventId: string; words: string } | null>(null);
+  const insets = useSafeAreaInsets();
   const [coverRefused, setCoverRefused] = useState<{ eventId: string; reason: string } | null>(
     null,
   );
@@ -71,6 +73,9 @@ export function EventScreen({
   );
   const { reload, freshen, change } = opened;
   const event = opened.kind === 'loaded' ? opened.event : null;
+  const creates = event != null && roleHolds(event, 'events.create');
+  const manages = offersEdit(event);
+  const deletes = offersDelete(event);
   const now = useServerNow();
   const phase = usePhaseOf(event, now);
   const original = backToOriginal(eventId, eventId, copiedFrom);
@@ -99,7 +104,7 @@ export function EventScreen({
     }, [reload, freshen]),
   );
 
-  const chooseArea = (next: EventArea) => navigation.setParams({ [EVENT_AREA]: next });
+  const chooseArea = (next: EventPlace) => navigation.setParams({ [EVENT_AREA]: next });
   const leave = () => {
     if (original != null) goUpToEvent(navigation, router, original);
     else if (router.canGoBack()) router.back();
@@ -131,9 +136,7 @@ export function EventScreen({
     : undefined;
 
   const body =
-    organisation != null && !reads ? (
-      <EventNotFound onBack={leave} />
-    ) : event != null ? (
+    event != null ? (
       area === 'overview' ? (
         <Arrived style={styles.stack}>
           {savedEvent === eventId && <Saved />}
@@ -141,7 +144,7 @@ export function EventScreen({
             kind={kind}
             event={event}
             manages={manages}
-            takes={(action) => organisation != null && takesCardStep(organisation, action)}
+            takes={(action) => takesCardStep(event, action)}
             onChange={change}
             onEdit={onEdit}
             onDuplicate={onDuplicate}
@@ -165,6 +168,12 @@ export function EventScreen({
             </View>
           )}
         </Arrived>
+      ) : area === 'people' ? (
+        <EventPeople
+          key={event.id}
+          event={event}
+          tell={(words) => setToast(words == null ? null : { eventId, words })}
+        />
       ) : (
         <PlaceholderArea area={area}>
           <EventTop
@@ -205,11 +214,25 @@ export function EventScreen({
       back={phone ? { label: backLabel, onPress: back } : undefined}
       backInBody
       inEvent={event == null ? undefined : { area, onArea: chooseArea }}
+      underTitle={
+        area === 'people' && event != null ? (
+          <Text size={15} weight="medium" style={styles.secondary}>
+            {event.name}
+          </Text>
+        ) : undefined
+      }
     >
       <Screen edges={bodyEdges(kind)} contentStyle={phone ? styles.phone : styles.tablet}>
         {!phone && <BackButton label={backLabel} onPress={back} testID="events.back" />}
         {body}
       </Screen>
+      {toast?.eventId === eventId && area === 'people' && (
+        <PageToast
+          words={toast.words}
+          onClose={() => setToast(null)}
+          bottom={insets.bottom + tokens.spaceLg}
+        />
+      )}
     </AppFrame>
   );
 }
@@ -330,6 +353,7 @@ function useOpened(
 
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
+  secondary: { color: tokens.colorInkSecondary },
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,

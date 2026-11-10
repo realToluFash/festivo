@@ -1306,6 +1306,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/people?state=roleFails',
       },
       {
+        title: 'People · some added, one refused',
+        what: 'Tick Kofi then Julien: Kofi goes in, Julien stays ticked',
+        href: '/demo/people?state=addPartial',
+      },
+      {
+        title: 'People · nobody left to add',
+        what: 'Everyone in Ire Events is on it already',
+        href: '/demo/people?state=everyoneOn',
+      },
+      {
         title: 'People · loading',
         what: 'Loading the people on this event',
         href: '/demo/people?state=loading',

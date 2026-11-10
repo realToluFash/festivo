@@ -1,4 +1,4 @@
-# sc-23777 regression on an iPhone: the swipe from the bell's Notifications goes to the screen the bell was opened from, as its Back does (from ${EVENT}'s page, and from Settings > Roles).
+# sc-23777 regression on an iPhone: the swipe from the bell's Notifications goes to the screen the bell was opened from, as its Back does (from ${EVENT}'s page).
 appId: host.exp.Exponent
 ---
 - runFlow: ../return-home.yaml
@@ -19,25 +19,4 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     visible:
       id: 'events.page'
-    timeout: 10000
-- runFlow: ../return-home.yaml
-- tapOn:
-    id: 'frame.settings'
-- tapOn:
-    id: 'settings.roles'
-- extendedWaitUntil:
-    visible:
-      id: 'roles.role.owner'
-    timeout: 30000
-- tapOn:
-    id: 'frame.bell'
-- extendedWaitUntil:
-    visible: '{{t:notifications.heading}}'
-    timeout: 20000
-- takeScreenshot: bell-roles-before
-- runFlow: ../checks/sc23777/swipe.yaml
-- takeScreenshot: bell-roles-after
-- extendedWaitUntil:
-    visible:
-      id: 'roles.role.owner'
     timeout: 10000
