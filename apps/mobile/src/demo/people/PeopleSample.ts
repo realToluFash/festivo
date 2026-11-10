@@ -1,5 +1,7 @@
-import { formatWallDay, listFormat } from '@soirely/domain';
+import { formatWallDay } from '@soirely/domain';
 
+import type { AddWords, RoleSheetWords, RoleWords } from '../../components/PeopleParts.tsx';
+import { everyEventLine, inRoleOrder, joinedLine, opensRow } from '../../kit/eventPeople.ts';
 import { writtenTime } from '../clock.ts';
 import { ORGANISATION } from '../settings/MembersSample.ts';
 import type { Load } from '../settings/RolesSample.ts';
@@ -133,11 +135,7 @@ export function sampleOnEvent(): OnEvent[] {
 }
 
 export function listed(onEvent: readonly OnEvent[]): OnEvent[] {
-  return [...onEvent].sort(
-    (one, other) =>
-      EVENT_ROLES.indexOf(one.role) - EVENT_ROLES.indexOf(other.role) ||
-      one.name.localeCompare(other.name, 'en'),
-  );
+  return inRoleOrder(onEvent, EVENT_ROLES, (one) => one, 'en');
 }
 
 /** An owner, an admin or the event's lead changes who is on it. */
@@ -148,15 +146,11 @@ export function manages(viewer: PeopleViewer, onEvent: readonly OnEvent[]): bool
 }
 
 export function opens(person: OnEvent, viewer: PeopleViewer, onEvent: readonly OnEvent[]): boolean {
-  return manages(viewer, onEvent) && person.id !== viewer.id;
-}
-
-function joined(parts: readonly (string | null)[]): string {
-  return parts.filter((part) => part != null && part !== '').join(' · ');
+  return opensRow(person.id, manages(viewer, onEvent), viewer.id);
 }
 
 export function rowLine(person: OnEvent, viewer: PeopleViewer): string {
-  return joined([
+  return joinedLine([
     person.role,
     person.label,
     person.byCode == null ? null : BY_CODE,
@@ -165,31 +159,26 @@ export function rowLine(person: OnEvent, viewer: PeopleViewer): string {
 }
 
 export function sheetLine(person: OnEvent, organisation: string = ORGANISATION): string {
-  return joined([
+  return joinedLine([
     person.outside ? fromOutside(organisation) : `Member of ${organisation}`,
     person.label,
   ]);
-}
-
-function andList(words: readonly string[]): string {
-  return listFormat('en', { style: 'long', type: 'conjunction' }).format(words);
 }
 
 export function seesEveryEvent(
   members: readonly OrgMember[],
   organisation: string = ORGANISATION,
 ): string {
-  const above = (['Owner', 'Admin'] as const).map((role) =>
-    members.filter((one) => one.active && one.role === role),
-  );
-  const names = above.flat().map((one) => one.name);
-  const roles = above
-    .map((held, index) =>
-      held.length === 0 ? null : `${index === 0 ? 'owner' : 'admin'}${held.length > 1 ? 's' : ''}`,
-    )
-    .filter((role) => role != null);
+  const named = (role: OrgRole) =>
+    members.filter((one) => one.active && one.role === role).map((one) => one.name);
 
-  return `${andList(names)} ${names.length === 1 ? 'sees' : 'see'} every event, as ${andList(roles)} of ${organisation}.`;
+  return (
+    everyEventLine({ owners: named('Owner'), admins: named('Admin') }, 'en', {
+      role: (role, held) => (held > 1 ? `${role}s` : role),
+      line: (names, roles, count) =>
+        `${names} ${count === 1 ? 'sees' : 'see'} every event, as ${roles} of ${organisation}.`,
+    }) ?? ''
+  );
 }
 
 export function firstName(person: Pick<OnEvent, 'name'>): string {
@@ -399,4 +388,48 @@ export function peopleStart(state: PeopleState): PeopleStart {
     case 'failed':
       return { ...base, load: state };
   }
+}
+
+export const ROLE_WORDS: RoleWords<EventRole> = {
+  roles: EVENT_ROLES,
+  name: (role) => role,
+  means: (role) => ROLE_LINES[role],
+  saving: SAVING,
+  saved: 'Saved',
+};
+
+export function sheetWords(person: OnEvent): RoleSheetWords<EventRole> {
+  return {
+    ...ROLE_WORDS,
+    title: 'Role on this event',
+    done: 'Done',
+    remove: 'Remove from this event…',
+    removeTitle: removeTitle(person),
+    removeLine: removeLine(person),
+    keep: `Keep ${firstName(person)}`,
+    removeConfirm: 'Remove',
+    removing: REMOVING,
+    savedHeard: (role) => savedWords(person, role),
+    notChanged: (held) => notChangedLine({ ...person, role: held }),
+    removeFailed: () => '',
+  };
+}
+
+export function addWords(organisation: string = ORGANISATION): AddWords<EventRole> {
+  return {
+    ...ROLE_WORDS,
+    title: 'Add people',
+    add: 'Add',
+    cancel: 'Cancel',
+    done: 'Done',
+    theirRole: 'Their role',
+    find: NAME_LABEL,
+    inOrganisation: inOrganisation(organisation),
+    noMatch: (typed) => noMatchLine(typed, organisation),
+    discardTitle: 'Discard your changes?',
+    discardLine: 'Nobody is added to this event.',
+    discardKeep: 'Keep editing',
+    discard: 'Discard',
+    refusal: () => '',
+  };
 }

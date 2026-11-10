@@ -9,12 +9,27 @@ import {
 import { listFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
-/** By role, Lead first, then by name. */
+/** By the role's place in `order`, Lead first, then by name. */
+export function inRoleOrder<P, R>(
+  people: readonly P[],
+  order: readonly R[],
+  of: (person: P) => { role: R; name: string },
+  locale: string,
+): P[] {
+  return [...people].sort((one, other) => {
+    const a = of(one);
+    const b = of(other);
+
+    return order.indexOf(a.role) - order.indexOf(b.role) || a.name.localeCompare(b.name, locale);
+  });
+}
+
 export function inListOrder(people: readonly EventPerson[], locale: string): EventPerson[] {
-  return [...people].sort(
-    (one, other) =>
-      EVENT_ROLES.indexOf(one.role) - EVENT_ROLES.indexOf(other.role) ||
-      one.user.name.localeCompare(other.user.name, locale),
+  return inRoleOrder(
+    people,
+    EVENT_ROLES,
+    (one) => ({ role: one.role, name: one.user.name }),
+    locale,
   );
 }
 
@@ -23,18 +38,42 @@ export function managesPeople(event: { permissions: readonly string[] }): boolea
   return event.permissions.includes('people.manage');
 }
 
-export function opensRow(person: EventPerson, manages: boolean, userId: string | null): boolean {
-  return manages && person.user.id !== userId;
+/** Nobody opens their own row. */
+export function opensRow(userId: string, manages: boolean, viewerId: string | null): boolean {
+  return manages && userId !== viewerId;
+}
+
+/** The parts of a row's line that are there, a middle dot between them. */
+export function joinedLine(parts: readonly (string | null | undefined)[]): string {
+  return parts.filter((part) => part != null && part !== '').join(' · ');
 }
 
 export function rowLine(t: TFunction, person: EventPerson, userId: string | null): string {
-  return [
+  return joinedLine([
     t(`eventPeople.role.${person.role}`),
     person.jobLabel,
     person.user.id === userId ? t('eventPeople.you') : null,
-  ]
-    .filter((part) => part != null && part !== '')
-    .join(' · ');
+  ]);
+}
+
+/** The foot's line from the names above the event, or null with nobody above; `say` puts the names and their roles in words. */
+export function everyEventLine(
+  above: { owners: readonly string[]; admins: readonly string[] },
+  locale: string,
+  say: {
+    role: (role: 'owner' | 'admin', held: number) => string;
+    line: (names: string, roles: string, count: number) => string;
+  },
+): string | null {
+  const names = [...above.owners, ...above.admins];
+  if (names.length === 0) return null;
+  const list = listFormat(locale, { type: 'conjunction' });
+  const roles = (['owner', 'admin'] as const)
+    .map((role) => ({ role, held: above[`${role}s`].length }))
+    .filter(({ held }) => held > 0)
+    .map(({ role, held }) => say.role(role, held));
+
+  return say.line(list.format(names), list.format(roles), names.length);
 }
 
 /** "Folake Adeyemi and Julien Morel see every event, as owner and admin of Ire Events.", or null with nobody above. */
@@ -44,19 +83,9 @@ export function seesEveryEvent(
   organisation: string,
   locale: string,
 ): string | null {
-  const names = [...read.owners, ...read.admins];
-  if (names.length === 0) return null;
-  const list = listFormat(locale, { type: 'conjunction' });
-  const roles = (['owner', 'admin'] as const)
-    .map((role) => ({ role, held: read[`${role}s`].length }))
-    .filter(({ held }) => held > 0)
-    .map(({ role, held }) => t(`eventPeople.managerRole.${role}`, { count: held }));
-
-  return t('eventPeople.managers', {
-    count: names.length,
-    names: list.format(names),
-    roles: list.format(roles),
-    organisation,
+  return everyEventLine(read, locale, {
+    role: (role, held) => t(`eventPeople.managerRole.${role}`, { count: held }),
+    line: (names, roles, count) => t('eventPeople.managers', { count, names, roles, organisation }),
   });
 }
 

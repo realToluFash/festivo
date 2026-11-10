@@ -1,8 +1,8 @@
 import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { router, useLocalSearchParams } from 'expo-router';
-import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
@@ -13,7 +13,7 @@ import { doorStartOf, type DoorStart } from '../doorCode/DoorCodeModel.ts';
 import { DoorCodes } from '../doorCode/DoorCodes.tsx';
 import { useLoad } from '../settings/MembersLoading.tsx';
 import { AddScreen } from './PeopleAdd.tsx';
-import { PeopleLoading, PeoplePage } from './PeopleFrame.tsx';
+import { PeoplePage } from './PeopleFrame.tsx';
 import { Face, RoleSheet } from './PeopleRole.tsx';
 import {
   ADD_PROMPT,
@@ -24,6 +24,7 @@ import {
   FAILED_TITLE,
   ireWorld,
   listed,
+  LOADING_WORDS,
   manages,
   ON_EVENT,
   type OnEvent,
@@ -40,6 +41,7 @@ import {
   without,
   withRole,
 } from './PeopleSample.ts';
+import { AddBox, PeopleLoading } from '../../components/PeopleParts.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { FailedBlock, Line, Row, RowList, SectionHead } from '../../components/Summary.tsx';
 
@@ -154,7 +156,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
             testID="people.retry"
           />
         ) : (
-          <PeopleLoading />
+          <PeopleLoading words={LOADING_WORDS} />
         )}
       </PeoplePage>
     );
@@ -168,7 +170,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
         event={world.event}
         toast={toast == null ? null : { words: toast, onClose: () => setToast(null) }}
       >
-        {canChange && <AddBox ref={addBox} onPress={openAdd} />}
+        {canChange && <AddBox ref={addBox} label={ADD_PROMPT} onPress={openAdd} />}
         {canChange && door != null && (
           <DoorCodes
             start={door}
@@ -298,29 +300,9 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
   );
 }
 
-/** The way in to Add people, drawn as the field it opens: 52 tall, the Edge ring, a Violet plus. */
-function AddBox({ ref, onPress }: { ref: Ref<ViewInstance>; onPress: () => void }) {
-  return (
-    <Pressable
-      ref={ref}
-      onPress={onPress}
-      style={({ pressed }) => [styles.addBox, pressed && styles.pressed]}
-      accessibilityRole="button"
-      accessibilityLabel={ADD_PROMPT}
-      testID="people.add.open"
-    >
-      <Glyph name="plus" size={19} ink={tokens.colorAccent} weight={2.4} />
-      <Text size={16} weight="medium" accessible={false} style={styles.secondary}>
-        {ADD_PROMPT}
-      </Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   count: { fontVariant: ['tabular-nums'] },
-  pressed: { opacity: tokens.opacityPressed },
   nobody: { gap: tokens.spaceXs },
   lit: {
     position: 'absolute',
@@ -332,14 +314,4 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorAccentTint,
   },
   foot: { gap: tokens.spaceSm },
-  addBox: {
-    height: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceMd,
-    paddingHorizontal: 14,
-    borderRadius: tokens.radiusInset,
-    borderWidth: 1.5,
-    borderColor: tokens.colorFieldBorder,
-  },
 });

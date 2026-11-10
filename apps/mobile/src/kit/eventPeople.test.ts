@@ -54,9 +54,9 @@ describe('People on an event', () => {
   });
 
   it('opens every row but your own, and none without people.manage', () => {
-    expect(opensRow(TOM, true, 'u_priya')).toBe(true);
-    expect(opensRow(PRIYA, true, 'u_priya')).toBe(false);
-    expect(opensRow(TOM, false, 'u_priya')).toBe(false);
+    expect(opensRow(TOM.user.id, true, 'u_priya')).toBe(true);
+    expect(opensRow(PRIYA.user.id, true, 'u_priya')).toBe(false);
+    expect(opensRow(TOM.user.id, false, 'u_priya')).toBe(false);
   });
 
   it('lines a row with its role, then any job label, then You', () => {
