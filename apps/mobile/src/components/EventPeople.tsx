@@ -5,7 +5,7 @@ import {
   type EventRole,
   type OrganisationEvent,
 } from '@soirely/api-client';
-import { initials } from '@soirely/domain';
+import { firstName, initials } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -58,10 +58,6 @@ type Load =
 const LIT_MS = 2000;
 const ROW_INSET = 40 + tokens.spaceLg;
 const FIRST_ROLE: EventRole = 'can_view';
-
-function firstName(name: string): string {
-  return name.split(' ')[0] ?? name;
-}
 
 function toneOf(id: string): number {
   return [...id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
