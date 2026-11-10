@@ -49,6 +49,7 @@ import {
   litOf,
 } from './messages.ts';
 import { ConversationPane } from './MessagesThread.tsx';
+import { waitsTicksOf } from './messagesWaits.ts';
 import { InboxContext, type InboxApi } from './messagesContext.ts';
 import { type Group, useTo } from './messagesTo.ts';
 import { LeadMark, WhyNot } from './MessagesParts.tsx';
@@ -113,8 +114,10 @@ function firstFocus(state: MessagesState | null): string | null {
       return 'to-pick';
     case 'whoNoneSend':
       return 'refused';
+    case 'sendWithout':
+      return 'cancel';
     default:
-      return null;
+      return waitsTicksOf(state) == null ? null : 'check';
   }
 }
 

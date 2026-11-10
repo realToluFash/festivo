@@ -16,6 +16,7 @@ import {
   toSeedOf,
 } from './messagesTo.ts';
 import { type PersonId, previewDraftOf } from './messagesPreviewSample.ts';
+import { EMAIL_ONLY, WAITS_STATES, waitsTicksOf } from './messagesWaits.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
@@ -118,6 +119,7 @@ export const MESSAGE_STATES = [
   { key: 'editSent', name: 'Not saved: already sent' },
   { key: 'editCancelled', name: 'Not saved: cancelled' },
   { key: 'editTooLate', name: 'Not saved: too late to send' },
+  ...WAITS_STATES,
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -434,10 +436,13 @@ export function figuresOf(
         : { counts: { email: 92, sms: 31, whatsApp: 3 }, cantTell: 2, names: [TOMAS, JOAQUIN] };
   const notReplied = audience.kind === 'who' && audience.conditions[0] === 'notReplied';
   const smsOff = !ticks.sms && ticks.email && !notReplied ? SMS_ONLY.length : 0;
+  const { sms, whatsApp } = base.counts;
+  const counts =
+    ticks.sms && ticks.whatsApp ? { ...base.counts, sms: sms - whatsApp } : base.counts;
 
-  if (smsOff === 0) return { ...base, smsOff: 0 };
+  if (smsOff === 0) return { ...base, counts, smsOff: 0 };
 
-  return { ...base, cantTell: base.cantTell + smsOff, names: SMS_ONLY, smsOff };
+  return { ...base, counts, cantTell: base.cantTell + smsOff, names: SMS_ONLY, smsOff };
 }
 
 export const CHANNELS: readonly Channel[] = ['email', 'sms', 'whatsApp'];
@@ -1583,7 +1588,18 @@ export function seedOf(state: MessagesState | null): Inbox {
       };
     case 'previewNobody':
       return compose(base, { kind: 'who', conditions: [] }, 'write');
+    case 'sendWithout':
+      return {
+        ...base,
+        balance: 0,
+        pane: open('new'),
+        outs: [outOf('countdown', { ticks: EMAIL_ONLY })],
+      };
     default: {
+      const waits = waitsTicksOf(state);
+
+      if (waits != null) return { ...compose(base, COMING, 'check', waits), balance: 0 };
+
       const seed = toSeedOf(state);
 
       if (seed?.kind === 'compose')
