@@ -3,6 +3,7 @@ appId: host.exp.Exponent
 ---
 - evalScript: '${output.tail = String(Date.now()).slice(-6)}'
 - evalScript: "${output.row = '.*' + output.tail.split('').join(' ?') + '.*'}"
+- evalScript: "${output.title = '.*' + output.tail.split('').join(' ?')}"
 - openLink: ${METRO_URL}/--/settings/account
 - extendedWaitUntil:
     visible: '{{t:account.title}}'
@@ -52,5 +53,5 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'account\..+\.remove'
 - extendedWaitUntil:
-    notVisible: ${output.row}
+    notVisible: ${output.title}
     timeout: 15000
