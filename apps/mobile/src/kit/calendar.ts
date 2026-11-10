@@ -19,7 +19,7 @@ import {
 import type { TFunction } from 'i18next';
 
 import type { RowTag } from '../components/SummaryRows.tsx';
-import { type Shown, listEventOf, shownEvent } from './eventsList.ts';
+import { type Shown, listEventOf, rowTag, shownEvent } from './eventsList.ts';
 
 export interface CalEvent extends Omit<Shown, 'milestones'> {
   milestones: readonly Milestone[];
@@ -251,14 +251,11 @@ export function piecesOf(week: Week, fit: number): Piece[] {
   return pieces;
 }
 
-/** Live is the rule and carries no word; every other phase has its shape and its word, as the Events list's tags. */
+/** The Events list's tag, where tabs are mixed; Live and Happening now are the rule and carry none. */
 export function offRule(event: Shown, t: TFunction): RowTag | null {
-  if (event.phase === 'draft') return { kind: 'notyet', word: t('eventsScreen.draft') };
-  if (event.phase === 'paused') return { kind: 'paused', word: t('eventsScreen.paused') };
-  if (event.calledOff) return { kind: 'ended', word: t('eventsScreen.calledOff') };
-  if (event.phase === 'finished') return { kind: 'ended', word: t('eventsScreen.finished') };
+  const tag = rowTag(event, true, t);
 
-  return null;
+  return tag == null || tag.kind === 'yes' || tag.kind === 'now' ? null : tag;
 }
 
 export type BarLook = 'tint' | 'draft' | 'sunk';
