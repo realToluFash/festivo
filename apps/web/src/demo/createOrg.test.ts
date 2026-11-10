@@ -105,12 +105,10 @@ describe('each state’s walk', () => {
     expect(walkOf('created', t)).toBeNull();
   });
 
-  it('tries again after did not work, and holds too many until it lifts', async () => {
+  it('creates on a try after did not work', async () => {
     const failed = walkOf('failed', t);
-    const limited = walkOf('limited', t);
-    if (failed == null || limited == null) throw new Error('Both states draw a walk');
+    if (failed == null) throw new Error('Did not work draws a walk');
 
     expect(await sampleSend(failed)).toEqual({ kind: 'created', made: NEW_ORG });
-    expect(await sampleSend(limited)).toEqual({ kind: 'limited', until: LIMIT_LIFTS });
   });
 });

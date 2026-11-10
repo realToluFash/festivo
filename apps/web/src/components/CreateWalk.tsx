@@ -187,8 +187,8 @@ function Panel<Made>({
   function createIt(): void {
     if (walk.creating) return;
 
-    const from = { ...walk, creating: true, answer: null };
-    setWalk(from);
+    const from = { ...walk, creating: true };
+    setWalk({ ...from, answer: null });
     land('dialog');
     send.current(from);
   }
@@ -202,7 +202,7 @@ function Panel<Made>({
   }
 
   function pick(country: Country): void {
-    if (country.code !== walk.country) setHeard(pickLine(country, walk, language, t));
+    if (country.code !== walk.country) setHeard(pickLine(country, walk, t));
     setWalk((now) => ({ ...now, country: country.code, countryRefused: null }));
   }
 
