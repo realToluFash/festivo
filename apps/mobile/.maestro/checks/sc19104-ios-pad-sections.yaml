@@ -52,18 +52,6 @@ appId: host.exp.Exponent
 - takeScreenshot: members-beside
 - scrollUntilVisible:
     element:
-      id: 'settings.roles'
-    timeout: 20000
-- tapOn:
-    id: 'settings.roles'
-- waitForAnimationToEnd
-- assertVisible:
-    id: 'settings.account'
-- assertVisible:
-    id: 'roles.role.owner'
-- takeScreenshot: roles-beside
-- scrollUntilVisible:
-    element:
       id: 'settings.signInRules'
     timeout: 20000
 - tapOn:
