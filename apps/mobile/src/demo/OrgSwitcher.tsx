@@ -48,6 +48,7 @@ import {
   founded,
   frameFor,
   notNow,
+  openerInModal,
   openerLabel,
   pick,
   placeOf,
@@ -180,8 +181,7 @@ export function OrgSwitcherProvider({
         back.current = view;
         setFrame(
           frameFor({
-            // The drop-down's window starts behind the status bar, which Android measures the opener below.
-            opener: { x, y: y - origin, width: w, height: h },
+            opener: openerInModal({ x, y, width: w, height: h }, origin),
             window: { width, height },
             insets: { bottom },
             phone,
