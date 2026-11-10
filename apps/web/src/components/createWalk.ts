@@ -76,7 +76,6 @@ export function freshWalk(device: Device): Walk {
   };
 }
 
-/** Every country in the reader's language, each with the currency it founds with once that is read. */
 export function countriesOf(
   locale: string,
   currencies: Currencies | null,
@@ -101,7 +100,6 @@ export function optionLabel(country: Country): string {
   return country.currency == null ? country.name : `${country.name}, ${country.currency.words}`;
 }
 
-/** A case-insensitive "includes" on the name. */
 export function narrowed(
   countries: readonly Country[],
   query: string,
@@ -130,7 +128,6 @@ function countryRefusal(country: string | null, t: TFunction): string | null {
     : t('forms.countryBlank');
 }
 
-/** Cancel asks first once a name is typed or the country is not the device's. */
 export function entered(walk: Walk): boolean {
   return walk.name.trim() !== '' || walk.country !== walk.device.country;
 }
@@ -192,7 +189,6 @@ function lowered(words: string, locale: string): string {
   return words.charAt(0).toLocaleLowerCase(locale) + words.slice(1);
 }
 
-/** What a screen reader hears when a pick changes: its currency, if known, and the device's time zone. */
 export function pickLine(country: Country, walk: Walk, locale: string, t: TFunction): string {
   const zone = `${t('orgGeneral.timezone')}, ${lowered(t('createOrganisation.fromDevice'), locale)}, ${timezoneLabel(walk.device.zone)}.`;
 
@@ -201,7 +197,6 @@ export function pickLine(country: Country, walk: Walk, locale: string, t: TFunct
     : `${t('orgGeneral.currency')}, ${country.currency.words}. ${zone}`;
 }
 
-/** The card as one line, for a screen reader on Ready. */
 export function cardLine(
   walk: Walk,
   countries: readonly Country[],
