@@ -1,0 +1,14 @@
+# sc-12241: the Settings list in the current window, then scrolled to Sign out.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 30000
+- takeScreenshot: settings
+- scrollUntilVisible:
+    element:
+      id: 'settings.signOut'
+    direction: DOWN
+- takeScreenshot: settings-signout

@@ -1,0 +1,247 @@
+/* sc-34244: a course served In parts or Family style on the kitchen sheet, at a desk and on A4. */
+.kp-way {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  box-sizing: border-box;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 13px;
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+  font: 600 13px/1 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.kp-part {
+  display: block;
+  padding-left: var(--spaceLg);
+  font-variant-numeric: tabular-nums;
+}
+
+.kp-group {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--spaceLg);
+}
+
+.kp-head {
+  display: flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+  margin: 0;
+  color: var(--colorInk);
+  font: 700 16px/1.25 var(--fontFamily);
+}
+
+.kp-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kp-lines li,
+.kp-plated {
+  display: flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 15px/1.3 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.kp-plated {
+  margin-top: var(--spaceSm);
+  border-top: 1px solid var(--colorBorder);
+}
+
+.kp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.kp-table thead th {
+  padding: 0 var(--spaceLg) var(--spaceXs) 0;
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.3 var(--fontFamily);
+  text-align: left;
+}
+
+.kp-table tbody th,
+.kp-table tbody td {
+  padding: var(--spaceMd) var(--spaceLg) var(--spaceMd) 0;
+  border-top: 1px solid var(--colorBorder);
+  text-align: left;
+  vertical-align: top;
+}
+
+.kp-table tbody th {
+  width: 112px;
+  color: var(--colorInk);
+  font: 600 15px/1.4 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.kp-table tbody td {
+  color: var(--colorInk);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.kp-line {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+/* The printout: black ink on white, 1 px rules, real headings and tables, the health footer on every page. */
+.kp-paper-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space3xl);
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: var(--space3xl);
+  background: var(--colorNeutralFill);
+  font-family: var(--fontFamily);
+}
+
+.kp-back {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-height: var(--sizeHit);
+  color: var(--colorAccentText);
+  font: 600 15px/1 var(--fontFamily);
+  text-decoration: none;
+}
+
+.kp-sheet {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 794px;
+  min-height: 1123px;
+  padding: 48px 48px 32px;
+  background: var(--colorCard);
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--colorPrintInk) 18%, transparent);
+  color: var(--colorPrintInk);
+  font: 500 13px/1.45 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.kp-sheet-body {
+  flex: 1;
+}
+
+.kp-paper-head {
+  padding-bottom: var(--spaceMd);
+  border-bottom: 1px solid var(--colorPrintInk);
+}
+
+.kp-paper-head h1 {
+  margin: 0 0 var(--spaceXxs);
+  font: 700 20px/1.2 var(--fontFamily);
+}
+
+.kp-paper-head p {
+  margin: 0;
+}
+
+.kp-sheet h2 {
+  margin: var(--spaceXl) 0 var(--spaceXs);
+  font: 700 15px/1.25 var(--fontFamily);
+}
+
+.kp-sheet h3 {
+  margin: var(--spaceLg) 0 var(--spaceXxs);
+  font: 700 13px/1.25 var(--fontFamily);
+}
+
+.kp-paper-way {
+  font-weight: 600;
+}
+
+.kp-sheet table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.kp-sheet table th,
+.kp-sheet table td {
+  padding: 4px 8px 4px 0;
+  border-bottom: 1px solid var(--colorPrintInk);
+  text-align: left;
+  vertical-align: top;
+}
+
+.kp-sheet thead th {
+  font-weight: 700;
+}
+
+.kp-sheet tbody th {
+  font-weight: 600;
+}
+
+.kp-sheet tr.is-under th {
+  padding-left: 12px;
+  font-weight: 500;
+}
+
+.kp-sheet .kp-n {
+  text-align: right;
+}
+
+.kp-paper-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kp-paper-lines li,
+.kp-paper-plated {
+  margin: 0;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--colorPrintInk);
+  font-weight: 600;
+}
+
+.kp-paper-plated {
+  margin-top: var(--spaceSm);
+}
+
+.kp-foot {
+  display: flex;
+  gap: var(--spaceLg);
+  justify-content: space-between;
+  margin-top: var(--spaceXl);
+  padding-top: var(--spaceSm);
+  border-top: 1px solid var(--colorPrintInk);
+}
+
+@media print {
+  .kp-paper-page {
+    padding: 0;
+    background: none;
+  }
+
+  .kp-back {
+    display: none;
+  }
+
+  .kp-sheet {
+    box-shadow: none;
+    width: auto;
+    min-height: 0;
+    padding: 0;
+    break-after: page;
+  }
+
+  .kp-sheet tr {
+    break-inside: avoid;
+  }
+}

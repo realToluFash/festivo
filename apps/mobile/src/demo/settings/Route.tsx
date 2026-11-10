@@ -1,0 +1,191 @@
+import { type Href, router, useLocalSearchParams } from 'expo-router';
+import { type ComponentType, useCallback, useEffect, useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { Toast } from '../../components/Toast.tsx';
+import { SECTION_HREF } from '../../kit/appNav.ts';
+import { useLayout } from '../../layout/useLayout.ts';
+import { tokens } from '../../theme/tokens.ts';
+import { useBoldTextSwitch } from '../boldText/boldTextStore.ts';
+import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
+import { switcherStateOf } from '../OrgSwitcherModel.ts';
+import { PHONE_TAB_BAR, type Tab } from '../../components/TodayCover.tsx';
+import type { Tell } from '../../components/TodayParts.tsx';
+import { useCoverStatusBar } from '../Welcome.tsx';
+import { AccountSection } from './Account.tsx';
+import { AuditLogSection } from './AuditLog.tsx';
+import { DataHubSection } from './DataHub.tsx';
+import { type DataPage, dataViewerOf } from './DataModel.ts';
+import { DataOpenContext } from './DataParts.tsx';
+import { EmailDomainsSection } from './EmailDomains.tsx';
+import { SeenBy } from './Frame.tsx';
+import { MembersSection } from './Members.tsx';
+import { NotificationsSection } from './Notifications.tsx';
+import { OrganisationSection } from './Organisation.tsx';
+import { PersonalisationSection } from './Personalisation.tsx';
+import { holdChoice, schemeOf } from './PersonalisationModel.ts';
+import { lookingAs, managesOrganisation, memberLooking, SECTIONS, viewerOf } from './sample.ts';
+import { underSavedName, useSavedName } from './savedName.ts';
+import { SecuritySection } from './Security.tsx';
+import { SettingsColumn, SettingsHome, sectionsFor } from './SettingsHome.tsx';
+import { SignInRulesSection } from './SignInRules.tsx';
+import {
+  layoutOf,
+  type Shell,
+  ShellContext,
+  type ShellSection,
+  type Viewer,
+} from '../../components/settingsShell.ts';
+
+const PAGES: Record<ShellSection, ComponentType> = {
+  account: AccountSection,
+  security: SecuritySection,
+  notifications: NotificationsSection,
+  personalisation: PersonalisationSection,
+  organisation: OrganisationSection,
+  members: MembersSection,
+  signInRules: SignInRulesSection,
+};
+
+const DATA_PAGES: Record<DataPage, ComponentType> = {
+  hub: DataHubSection,
+  emailDomains: EmailDomainsSection,
+  auditLog: AuditLogSection,
+};
+
+const ANA = 'ana.souza@ire.events';
+
+/** The demo's paths are the app's own under /demo: /demo/settings/sign-in-rules; Personalisation's is ahead of the app's. */
+export function slugOf(section: ShellSection): string {
+  if (section === 'personalisation') return 'personalisation';
+
+  return SECTION_HREF[section].slice('/settings/'.length);
+}
+
+export function sectionOfSlug(slug: string | undefined): ShellSection | null {
+  return SECTIONS.find((section) => slugOf(section) === slug) ?? null;
+}
+
+export function settingsHref(viewer: Viewer, section: ShellSection | null, state?: string): Href {
+  const query = [state == null ? '' : `state=${state}`, viewer === 'owner' ? '' : `as=${viewer}`]
+    .filter((part) => part !== '')
+    .join('&');
+  const path = section == null ? '/demo/settings' : `/demo/settings/${slugOf(section)}`;
+
+  return `${path}${query === '' ? '' : `?${query}`}` as Href;
+}
+
+/** Settings in B, on sample data: the list, and each section's page under it; Data and control's pages are the demo's own (sc-560). */
+export function SettingsRoute({
+  section,
+  data = null,
+}: {
+  section: ShellSection | null;
+  data?: DataPage | null;
+}) {
+  const params = useLocalSearchParams<{ as?: string; switcher?: string; scheme?: string }>();
+  const layout = layoutOf(useLayout().kind);
+  const [told, setTold] = useState<string>();
+  const tell = useCallback<Tell>((words) => setTold(words), []);
+  const member = data != null && dataViewerOf(params.as) === 'ana';
+  const viewer = member ? 'member' : viewerOf(params.as);
+  const shown = section != null && sectionsFor(viewer).includes(section) ? section : null;
+  const dataShown = data != null && managesOrganisation(viewer) ? data : null;
+  const seed = schemeOf(params.scheme);
+  const bold = useBoldTextSwitch();
+  const saved = useSavedName();
+
+  useCoverStatusBar('dark', false);
+
+  useEffect(() => {
+    if (seed != null) holdChoice(seed);
+  }, [seed]);
+
+  const openSection = useCallback(
+    (next: ShellSection, state?: string) => {
+      if (next === shown && state == null) return;
+      // On its side the list stays put, so a row changes the page beside it rather than stacking one.
+      if (layout === 'landscape') router.replace(settingsHref(viewer, next, state));
+      else router.push(settingsHref(viewer, next, state));
+    },
+    [layout, shown, viewer],
+  );
+  const toSettings = useCallback(() => {
+    if (layout === 'landscape') router.replace(settingsHref(viewer, null));
+    else router.dismissTo(settingsHref(viewer, null));
+  }, [layout, viewer]);
+  const onTab = useCallback(
+    (tab: Tab) => {
+      if (tab === 'Today') router.replace('/demo/today');
+      else if (tab === 'Settings') {
+        if (shown != null) toSettings();
+      } else if (tab === 'Events') router.replace('/demo/events');
+      else router.replace('/demo/calendar');
+    },
+    [shown, toSettings],
+  );
+  const handlers = useMemo(
+    () => ({
+      onSignOut: () => router.replace('/demo/welcome?notice=signedOut'),
+      onDemo: () => router.dismissTo('/demo'),
+    }),
+    [],
+  );
+  const shell = useMemo<Shell>(
+    () => ({
+      layout,
+      viewer,
+      looking: underSavedName(lookingAs(viewer), saved),
+      open: shown,
+      openSection,
+      toSettings,
+      tell,
+      onTab,
+      listColumn: <SettingsColumn {...handlers} />,
+    }),
+    // Bold text: the list column is an element held here, so the switch has to make it again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [layout, viewer, shown, openSection, toSettings, tell, onTab, handlers, bold, saved],
+  );
+  const Page = dataShown != null ? DATA_PAGES[dataShown] : shown == null ? null : PAGES[shown];
+  const home = <SettingsHome {...handlers} />;
+
+  return (
+    <ShellContext.Provider value={shell}>
+      <OrgSwitcherProvider state={switcherStateOf(params.switcher)} tell={tell}>
+        <View style={styles.fill}>
+          <DataOpenContext.Provider value={dataShown}>
+            {Page != null ? (
+              <Page />
+            ) : member ? (
+              <SeenBy looking={memberLooking(ANA)}>{home}</SeenBy>
+            ) : (
+              home
+            )}
+          </DataOpenContext.Provider>
+          {told != null && (
+            <Told words={told} phone={layout === 'phone'} onClose={() => setTold(undefined)} />
+          )}
+        </View>
+      </OrgSwitcherProvider>
+    </ShellContext.Provider>
+  );
+}
+
+function Told({ words, phone, onClose }: { words: string; phone: boolean; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const bottom =
+    Math.max(insets.bottom, tokens.spaceLg) + (phone ? PHONE_TAB_BAR + tokens.spaceLg : 0);
+
+  return (
+    <View style={[styles.toast, { bottom }]}>
+      <Toast key={words} words={words} onClose={onClose} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  fill: { flex: 1, backgroundColor: tokens.colorCard },
+  toast: { position: 'absolute', left: tokens.spaceXl, right: tokens.spaceXl },
+});

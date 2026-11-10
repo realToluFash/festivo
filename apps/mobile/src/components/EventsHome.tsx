@@ -1,0 +1,238 @@
+import type { ListedEvent } from '@soirely/api-client';
+import { type EventsFilters, type EventsTab, eventsHome, shownPhase } from '@soirely/domain';
+import { StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+
+import { dateLocale } from '../i18n/index.ts';
+import { summaryWords } from '../kit/eventsHome.ts';
+import {
+  type CardStep,
+  type StepAction,
+  type Shown,
+  howSoon,
+  listEventOf,
+  rowLine,
+  rowTag,
+  shownEvent,
+} from '../kit/eventsList.ts';
+import { useServerNow } from '../kit/serverNow.ts';
+import { type LayoutKind } from '../layout/useLayout.ts';
+import { tokens } from '../theme/tokens.ts';
+import { EventCard, EventThumb } from './EventCard.tsx';
+import { EventsEmptyTab, EventsSummaryLine, EventsTabs, Said, SaidLine } from './EventsList.tsx';
+import { EventsResults } from './EventsSearch.tsx';
+import { Notice } from './Notice.tsx';
+import { Row, RowList, TextAction } from './SummaryRows.tsx';
+
+export interface HomeLoad {
+  unfinished: ListedEvent[];
+  past: ListedEvent[];
+  pastTotal: number;
+  pastPages: number;
+  at: Date;
+}
+
+/** Each tab's events as Events draws them: Upcoming holds what is happening now first (sc-22103). */
+function useEventsHome(load: HomeLoad) {
+  const now = useServerNow();
+  const grouped = eventsHome(load, now, dateLocale());
+  const shown = (events: readonly ListedEvent[]) =>
+    events.map((event) => shownEvent(listEventOf(event), shownPhase(event, load.at, now)));
+
+  return {
+    now,
+    grouped,
+    tabs: {
+      upcoming: shown([...grouped.happeningNow, ...grouped.upcoming]),
+      drafts: shown(grouped.drafts),
+      past: shown(grouped.past),
+    } satisfies Record<EventsTab, Shown[]>,
+  };
+}
+
+function eventTestID(event: Shown) {
+  return event.phase === 'happening_now' ? `events.now.${event.id}` : `events.row.${event.id}`;
+}
+
+/** The line under Events' title: only the counts that are not 0, and none on a first visit (sc-22103). */
+export function EventsSummary({ load }: { load: HomeLoad }) {
+  const { t } = useTranslation();
+  const { grouped } = useEventsHome(load);
+  const summary = summaryWords(
+    {
+      happeningNow: grouped.happeningNow.length,
+      upcoming: grouped.upcoming.length,
+      drafts: grouped.drafts.length,
+    },
+    t,
+  );
+
+  return summary == null ? null : <EventsSummaryLine words={summary} />;
+}
+
+/** Events as its demo draws it (sc-30413): the tabs, the soonest event as the card, then its rows; Past ten at a time. */
+export function EventsHome({
+  kind,
+  load,
+  tab,
+  onTab,
+  onOpen,
+  takes,
+  onStep,
+  more,
+  shown,
+  onShowMore,
+}: {
+  kind: LayoutKind;
+  load: HomeLoad;
+  tab: EventsTab;
+  onTab: (tab: EventsTab) => void;
+  /** Opened from Happening now, Back returns to the tab that was showing. */
+  onOpen: (id: string, fromHappeningNow: boolean) => void;
+  takes: (action: StepAction) => boolean;
+  onStep: (event: Shown, step: Extract<CardStep, { kind: 'button' }>) => void;
+  more: 'idle' | 'loading' | 'failed';
+  shown: string | null;
+  onShowMore: () => void;
+}) {
+  const { t } = useTranslation();
+  const locale = dateLocale();
+  const { grouped, tabs, now } = useEventsHome(load);
+  const wide = kind !== 'phone';
+  const counts: Record<EventsTab, number> = {
+    upcoming: tabs.upcoming.length,
+    drafts: tabs.drafts.length,
+    past: grouped.pastCount,
+  };
+  const events = tabs[tab];
+  const card = tab === 'past' ? null : (events[0] ?? null);
+  const rows = tab === 'past' ? events : events.slice(1);
+  const open = (event: Shown) => onOpen(event.id, event.phase === 'happening_now');
+
+  return (
+    <View style={styles.blocks}>
+      <EventsTabs tab={tab} counts={counts} onTab={onTab} />
+      {events.length === 0 && <EventsEmptyTab tab={tab} />}
+      {card != null && (
+        <EventCard
+          event={card}
+          now={now}
+          locale={locale}
+          wide={wide}
+          onOpen={() => open(card)}
+          takes={takes}
+          onStep={(step) => onStep(card, step)}
+          testID="events.card"
+          openTestID={eventTestID(card)}
+        />
+      )}
+      {rows.length > 0 && (
+        <RowList
+          items={rows.map((event) => ({
+            key: event.id,
+            inset: 60,
+            row: (
+              <Row
+                title={event.name}
+                line={rowLine(event, locale, t)}
+                lead={<EventThumb event={event} />}
+                tag={rowTag(event, false, t)}
+                value={wide ? (howSoon(event, now, t) ?? undefined) : undefined}
+                opens
+                onPress={() => open(event)}
+                testID={eventTestID(event)}
+              />
+            ),
+          }))}
+        />
+      )}
+      {tab === 'past' && grouped.past.length < grouped.pastCount && (
+        <TextAction
+          label={more === 'loading' ? t('eventsScreen.showingMore') : t('eventsScreen.showMore')}
+          onPress={more === 'loading' ? () => undefined : onShowMore}
+          testID="events.past.more"
+        />
+      )}
+      {tab === 'past' && more === 'failed' && (
+        <Notice
+          tone="broken"
+          mark={tokens.marks.broken.glyph}
+          body={t('eventsScreen.moreFailed')}
+          announce
+        />
+      )}
+      {tab === 'past' && shown != null && <Said key={shown} words={shown} />}
+      {counts[tab] > 0 && (
+        <SaidLine words={t('eventsScreen.footer', { count: counts[tab] })} testID="events.footer" />
+      )}
+    </View>
+  );
+}
+
+export interface FoundLoad {
+  unfinished: ListedEvent[];
+  past: ListedEvent[];
+  at: Date;
+}
+
+/** While something is searched or filtered: one set of results, Upcoming, Drafts and Past, each row saying its phase (sc-30302). */
+export function EventsFound({
+  kind,
+  found,
+  typed,
+  filters,
+  onOpen,
+  onClearSearch,
+  onClearFilters,
+}: {
+  kind: LayoutKind;
+  found: FoundLoad;
+  typed: string;
+  filters: EventsFilters;
+  onOpen: (id: string, fromHappeningNow: boolean) => void;
+  onClearSearch: () => void;
+  onClearFilters: () => void;
+}) {
+  const { t } = useTranslation();
+  const locale = dateLocale();
+  const { tabs, now } = useEventsHome({ ...found, pastTotal: found.past.length, pastPages: 1 });
+  const wide = kind !== 'phone';
+
+  return (
+    <EventsResults
+      typed={typed}
+      filters={filters}
+      locale={locale}
+      onClearSearch={onClearSearch}
+      onClearFilters={onClearFilters}
+      groups={(['upcoming', 'drafts', 'past'] as const).map((tab) => ({
+        tab,
+        count: tabs[tab].length,
+        rows: (
+          <RowList
+            items={tabs[tab].map((event) => ({
+              key: event.id,
+              inset: 60,
+              row: (
+                <Row
+                  title={event.name}
+                  line={rowLine(event, locale, t)}
+                  lead={<EventThumb event={event} />}
+                  tag={rowTag(event, true, t)}
+                  value={wide ? (howSoon(event, now, t) ?? undefined) : undefined}
+                  opens
+                  onPress={() => onOpen(event.id, event.phase === 'happening_now')}
+                  testID={eventTestID(event)}
+                />
+              ),
+            }))}
+          />
+        ),
+      }))}
+    />
+  );
+}
+
+const styles = StyleSheet.create({
+  blocks: { gap: 18 },
+});

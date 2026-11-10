@@ -1,0 +1,39 @@
+{
+  "interactiveLogin": false,
+  "httpServer": "NettyWrapper",
+  "tokenCallbacks": [
+    {
+      "issuerId": "google",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "client_id",
+          "match": "*",
+          "claims": {
+            "sub": "google-dev-subject-0001",
+            "email": "organiser@example.com",
+            "email_verified": true,
+            "name": "Dev Organiser",
+            "given_name": "Dev",
+            "family_name": "Organiser"
+          }
+        }
+      ]
+    },
+    {
+      "issuerId": "apple",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "client_id",
+          "match": "*",
+          "claims": {
+            "sub": "apple-dev-subject-0001",
+            "email": "organiser@privaterelay.example.com",
+            "email_verified": true
+          }
+        }
+      ]
+    }
+  ]
+}

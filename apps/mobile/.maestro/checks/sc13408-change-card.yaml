@@ -1,0 +1,60 @@
+# Change your password: keys hidden (card), Save new password tapped with the API held, then refused. Keys stay down throughout. sc-13408.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'security.password'
+    timeout: 60000
+    centerElement: true
+- tapOn:
+    id: 'security.password'
+- extendedWaitUntil:
+    visible:
+      id: 'security.change.current'
+    timeout: 15000
+- tapOn:
+    id: 'security.change.current'
+- inputText: 'not-my-password-at-all'
+- tapOn:
+    id: 'security.change.new'
+- inputText: 'a-long-new-password-2026'
+- waitForAnimationToEnd
+- takeScreenshot: keys-up
+- assertVisible: '(?i)(shift|delete)'
+- tapOn: '{{t:passwordCard.signsOut}}'
+- waitForAnimationToEnd
+- takeScreenshot: keys-hidden
+- assertNotVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'security.change.save'
+- waitForAnimationToEnd
+- takeScreenshot: at-tap
+- assertNotVisible: '(?i)(shift|delete)'
+- assertVisible:
+    id: 'security.change.cancel'
+    enabled: false
+- waitForAnimationToEnd:
+    timeout: 3000
+- waitForAnimationToEnd
+- takeScreenshot: while-held
+- assertNotVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: '{{t:passwordCard.wrongCurrent}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- assertNotVisible: '(?i)(shift|delete)'

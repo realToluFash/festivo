@@ -1,0 +1,65 @@
+# B Confetti on the signed-out app: the welcome's cover and sheet, the language sheet, the email step, a refusal,
+# and the password step with its field focused, in English then French. sc-29078.
+#
+#   node .qa/bin/qa-env.mjs maestro sc29078-confetti-signed-out EMAIL=… [--ipad | --se | --android [--tablet]]
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-english.yaml
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/welcome
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 90000
+- takeScreenshot: confetti-welcome-en
+- tapOn:
+    id: 'language.open'
+- extendedWaitUntil:
+    visible:
+      id: 'language.done'
+    timeout: 10000
+- takeScreenshot: confetti-language-sheet
+- tapOn:
+    id: 'language.done'
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 20000
+- takeScreenshot: confetti-email-step
+- tapOn:
+    id: 'signIn.submit'
+- takeScreenshot: confetti-email-blank
+- tapOn:
+    id: 'signIn.email'
+- inputText: '${EMAIL}'
+- takeScreenshot: confetti-email-focus
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.password'
+    timeout: 20000
+- tapOn:
+    id: 'signIn.password'
+- inputText: 'wrong password'
+- tapOn:
+    id: 'signIn.submit'
+- waitForAnimationToEnd
+- takeScreenshot: confetti-password-refused
+- runFlow:
+    file: sign-in-screen-language.yaml
+    env:
+      LANGUAGE: Français
+- takeScreenshot: confetti-email-step-fr
+- tapOn:
+    id: 'signIn.back'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 20000
+- takeScreenshot: confetti-welcome-fr
+- runFlow: sign-in-screen-english.yaml

@@ -1,0 +1,8 @@
+# An account with two-factor is asked for its code before Set a new password. sc-29071.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_2FA}
+- extendedWaitUntil: { visible: { id: 'twoFactor.code' }, timeout: 30000 }
+- assertNotVisible: { id: 'recovery.password' }
+- takeScreenshot: tf-01-code-first

@@ -1,0 +1,39 @@
+# The app's frame on a tablet, upright then on its side: each top-level place opens, the pill at the top. sc-30410.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: 'frame.organisation|home.switchOrganisation'
+    timeout: 30000
+- takeScreenshot: portrait-today
+- tapOn:
+    text: 'Events|Événements'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: portrait-events
+- tapOn:
+    text: 'Settings|Paramètres'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: portrait-settings
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: landscape-settings
+- tapOn:
+    text: 'Calendar|Calendrier'
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: 'frame.organisation|home.switchOrganisation'
+- takeScreenshot: landscape-calendar
+- tapOn:
+    text: 'Today|Aujourd’hui'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: landscape-today
+- setOrientation: PORTRAIT

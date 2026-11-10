@@ -1,0 +1,21 @@
+# sc-3624: ${EV_PAST}, an event whose dates have all passed: Coming up's Finished line with All dates still linked, and All dates with every row Passed.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_PAST}
+- scrollUntilVisible:
+    element:
+      id: 'timeline.finished'
+    direction: DOWN
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'timeline.allDates'
+    direction: DOWN
+- takeScreenshot: finished
+- tapOn:
+    id: 'timeline.allDates'
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.row'
+    timeout: 15000
+- takeScreenshot: all-dates-passed

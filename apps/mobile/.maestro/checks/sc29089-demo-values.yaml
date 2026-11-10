@@ -1,0 +1,9 @@
+# sc-29089: the design demo's sample data table, drawn in Instrument Sans. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo
+- extendedWaitUntil:
+    visible: 'Design demo'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: demo-values

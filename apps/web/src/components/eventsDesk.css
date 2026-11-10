@@ -1,0 +1,50 @@
+/* What Events' list and an event's page share at a desk (Events-A-Desk.dc.html, page 29): the page's measures, and the rows that open something. */
+
+.ev {
+  --evWide: 938px;
+  --evLeft: 560px;
+  --evRight: 346px;
+  --evSearch: 440px;
+  --evMenu: 272px;
+  --evWash: var(--colorNeutralFill);
+  --evScrim: color-mix(in srgb, var(--optionRose) 40%, var(--colorInk));
+}
+
+.ev :is(button, label).desk-row,
+.ev a.desk-row {
+  width: calc(100% + 20px);
+  margin: 0 -10px;
+  padding-inline: 10px;
+  border-radius: var(--radiusRow);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ev :is(button, label, a).desk-row:hover {
+  background: var(--evWash);
+}
+
+.ev a.desk-text {
+  text-decoration: none;
+}
+
+.ev a.desk-text:hover {
+  text-decoration: underline;
+}
+
+.ev .desk-text.is-off {
+  color: var(--colorInkTertiary);
+  cursor: default;
+}
+
+.ev .desk-text.is-off:hover {
+  text-decoration: none;
+}
+
+.ev-column,
+.ev-wide {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: var(--evWide);
+}

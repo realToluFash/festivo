@@ -1,0 +1,184 @@
+/** The door code's English: l10n's settled words (#32341, sc-72 "Decided, 8 Nov 2026 (pm)"; #32790), then spec §8, sc-72's, sc-4235's, People's and the app's. */
+export const W = {
+  doorCode: 'Door code',
+  noneSays: 'No door code yet',
+  noneLine: 'One code lets a crew in on the day. Each person gives their name and mobile number.',
+  makeFirst: 'Make a door code',
+  another: 'Make another door code',
+  show: 'Show the code',
+  makeNew: 'Make a new code',
+  stop: 'Stop this code',
+  stopConfirm: 'Stop the code',
+  tryAgain: 'Try again',
+  full: 'Full',
+  stopped: 'Stopped',
+  expired: 'Expired',
+  make: 'Make',
+  making: 'Making…',
+  theirRole: 'Their role',
+  theirRoleSaid: 'Their role on this event',
+  jobLabel: 'Job label (optional)',
+  jobHelp: 'What they’re there for, shown beside their name. It grants nothing.',
+  howMany: 'How many people',
+  howManyHelp: 'From 1 to 500.',
+  ends: 'Ends',
+  whenEventEnds: 'When the event ends',
+  earlier: 'Earlier',
+  earlierLine: 'A day and time before the event ends.',
+  day: 'Day',
+  time: 'Time',
+  done: 'Done',
+  capBlank: 'Enter how many people can use this code.',
+  capRange: 'Use a whole number from 1 to 500.',
+  past: 'Choose a time that hasn’t passed yet.',
+  noEdit: 'A code can’t give edit access. Give that to a named person instead.',
+  makeFailed: 'The door code was not made. Check your connection and try again.',
+  made: 'Door code made.',
+  newTitle: 'Make a new code?',
+  keepThis: 'Keep this one',
+  stopTitle: 'Stop this code?',
+  keepIt: 'Keep it',
+  stopping: 'Stopping…',
+  stopFailed: 'The code was not stopped, so it still works. Check your connection and try again.',
+  close: 'Close',
+  enterCode: 'Enter a door code',
+  codeBlank: 'Enter the door code.',
+  codeShort: 'A door code is 8 letters and numbers.',
+  continue: 'Continue',
+  refused: 'That code doesn’t work. Check it with whoever gave it to you.',
+  tooMany: 'Too many tries',
+  yourName: 'Your name',
+  countryCode: 'Country code',
+  mobileNumber: 'Mobile number',
+  sendCode: 'Send code',
+  nameBlank: 'Enter your full name.',
+  numberBlank: 'Enter your mobile number.',
+  checkWhatsApp: 'Check WhatsApp',
+  checkMessages: 'Check your messages',
+  codeLabel: 'Code, 6 digits',
+  textInstead: 'Text it to me instead',
+  sendNew: 'Send a new code',
+  expiredTitle: 'That code has expired',
+  expiredBody: 'Codes only work for a while. Send a new one and use the code in the newest text.',
+  expiredBodyWhatsApp:
+    'Codes only work for a while. Send a new one and use the code in the newest WhatsApp message.',
+  exhaustedTitle: 'Too many wrong tries',
+  exhaustedBody: 'That code no longer works. Send a new one to carry on.',
+  failedTitle: 'That did not work',
+  failedBody: 'Something went wrong on the way. Try again in a moment.',
+  memberLine: 'Members open an event from its People page. Ask its lead or an admin to add you.',
+  openEvents: 'Open Events',
+  endsLine: 'Access ends when the event concludes.',
+  openEvent: 'Open the event',
+  signOut: 'Sign out',
+  checkIn: 'Check guests in',
+  guests: 'Guests',
+  guestsLine: 'Names and replies only, no contact details',
+  people: 'People',
+  overview: 'Overview',
+  more: 'More',
+  yourAccount: 'Your account',
+  schedule: 'Schedule',
+  seating: 'Seating',
+  address: 'soirely.com/join',
+} as const;
+
+export function cardTop(role: string, job: string | null): string {
+  return ['Door code', role, job].filter((part) => part != null && part !== '').join(' · ');
+}
+
+/** "Q 7 K M, 4 X P 2": a screen reader hears each character, the two groups apart. */
+export function codeSaid(code: string): string {
+  return code
+    .split(' ')
+    .map((group) => [...group].join(' '))
+    .join(', ');
+}
+
+export function doorCodeSaid(code: string): string {
+  return `${W.doorCode} ${codeSaid(code)}`;
+}
+
+export function qrSaid(code: string): string {
+  return `QR code for the door code ${codeSaid(code)}`;
+}
+
+export function usedUntil(used: number, cap: number, until: string): string {
+  return `${used} of ${cap} used · until ${until}`;
+}
+
+export function usedEnded(used: number, cap: number, at: string): string {
+  return `${used} of ${cap} used · ended at ${at}`;
+}
+
+/** sc-72's count of who is in, with pm's singular (7 Nov). */
+export function cameIn(people: number): string {
+  if (people === 0) return 'Nobody came in with this code.';
+
+  return people === 1
+    ? '1 person came in with this code. They keep their access.'
+    : `${people} people came in with this code. They keep their access.`;
+}
+
+/** At 0 the Asks say so (pm, 8 Nov, sc-72), so a host learns stopping it shuts nobody out. */
+function alreadyIn(people: number): string {
+  if (people === 0) return 'Nobody has used it yet.';
+
+  return people === 1
+    ? '1 person is already in and keeps their access.'
+    : `${people} people are already in and keep their access.`;
+}
+
+export function newLine(code: string, people: number): string {
+  return `${code} stops working. ${alreadyIn(people)}`;
+}
+
+export function stopLine(people: number): string {
+  return `Nobody new can use it. ${alreadyIn(people)}`;
+}
+
+export function jobCount(job: string): string {
+  return `${W.jobHelp} ${[...job].length} of 60.`;
+}
+
+export function tooShortFor(country: string): string {
+  return `That number looks too short for ${country}. Check it and try again.`;
+}
+
+export function tryAgainAt(time: string): string {
+  return `Try again at ${time}`;
+}
+
+export function sentTo(number: string, texted: boolean): string {
+  return texted
+    ? `We texted a code to ${number}.`
+    : `We sent a code to your WhatsApp on ${number}.`;
+}
+
+export function wrongCode(texted: boolean): string {
+  return `That code does not match. Check the newest ${texted ? 'text' : 'WhatsApp message'} from Soirely and try again.`;
+}
+
+export function resendIn(time: string): string {
+  return `Send a new code in ${time}`;
+}
+
+export function memberTitle(organisation: string): string {
+  return `You’re already a member of ${organisation}`;
+}
+
+export function youreIn(event: string, job: string | null): string {
+  return job == null ? `You’re in for ${event}` : `You’re in for ${event} · ${job}`;
+}
+
+export function joinAs(name: string): string {
+  return `Join as ${name}`;
+}
+
+export function signedInAs(name: string): string {
+  return `Signed in as ${name}`;
+}
+
+export function onEventCount(people: number): string {
+  return people === 1 ? '1 person on this event' : `${people} people on this event`;
+}

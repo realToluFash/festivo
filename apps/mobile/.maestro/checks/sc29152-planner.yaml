@@ -1,0 +1,16 @@
+# sc-29152: the design demo's Settings in B Confetti, the list as a planner. Needs ${METRO_URL}; run under EXPO_PUBLIC_SCHEME=violet.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings?as=planner
+- extendedWaitUntil:
+    visible:
+      text: '.*, Planner of .*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: planner
+- swipe:
+    start: 85%, 80%
+    end: 85%, 30%
+- waitForAnimationToEnd
+- takeScreenshot: planner-scrolled

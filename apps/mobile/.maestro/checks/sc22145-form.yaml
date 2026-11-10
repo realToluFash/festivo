@@ -1,0 +1,59 @@
+# sc-22145: Duplicate {event}: refused with no start, a start picked, Create draft lands on the copy, whose back reads Event and returns to the original.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'frame.back'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- tapOn:
+    id: 'events.page.duplicate'
+- extendedWaitUntil:
+    visible: '{{t:eventDuplicate.copied}}'
+    timeout: 15000
+- takeScreenshot: form-top
+- scrollUntilVisible:
+    element:
+      id: 'eventDuplicate.create'
+    timeout: 15000
+- takeScreenshot: form-foot
+- tapOn:
+    id: 'eventDuplicate.create'
+- waitForAnimationToEnd
+- takeScreenshot: refused-empty
+- tapOn:
+    id: 'eventDuplicate.start.date'
+- waitForAnimationToEnd
+- takeScreenshot: date-dialog
+- tapOn: 'OK'
+- waitForAnimationToEnd
+- takeScreenshot: date-chosen
+- tapOn:
+    id: 'eventDuplicate.create'
+- waitForAnimationToEnd
+- takeScreenshot: refused-no-time
+- tapOn:
+    id: 'eventDuplicate.start.time'
+- waitForAnimationToEnd
+- takeScreenshot: time-dialog
+- tapOn: 'OK'
+- waitForAnimationToEnd
+- takeScreenshot: start-chosen
+- tapOn:
+    id: 'eventDuplicate.create'
+- takeScreenshot: created
+- extendedWaitUntil:
+    visible:
+      id: 'events.page.duplicate'
+    timeout: 1
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: copy-page
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- takeScreenshot: after-back

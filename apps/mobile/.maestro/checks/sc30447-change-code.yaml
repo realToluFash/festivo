@@ -1,0 +1,60 @@
+# Change your mobile number: "Choose a country." edges Code, not the number; choosing a Code clears it; short, long and empty lines edge the number, not Code. Needs no organisation country and a device region that is no listed country. sc-30447.
+# On Android, the edits after the first refusal are done by hand: the second edit drops typed text there.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/phone
+- extendedWaitUntil:
+    visible:
+      id: 'phone.number'
+    timeout: 30000
+- tapOn:
+    id: 'phone.number'
+- inputText: '241234567'
+- hideKeyboard
+- takeScreenshot: change-at-rest
+- tapOn:
+    id: 'phone.send'
+- waitForAnimationToEnd
+- assertVisible: '{{t:forms.countryBlank}}'
+- takeScreenshot: change-code-refused
+- tapOn:
+    id: 'phone.country'
+- tapOn:
+    id: 'phone.country.search'
+- inputText: '+44'
+- tapOn:
+    id: 'phone.country.GB'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'phone.number'
+- assertNotVisible: '{{t:forms.countryBlank}}'
+- takeScreenshot: change-code-chosen
+- longPressOn:
+    id: 'phone.number'
+- eraseText: 60
+- inputText: '74'
+- hideKeyboard
+- tapOn:
+    id: 'phone.send'
+- waitForAnimationToEnd
+- assertVisible: '{{t:verifyPhone.tooShort}}'
+- takeScreenshot: change-number-short
+- longPressOn:
+    id: 'phone.number'
+- eraseText: 60
+- inputText: '7400123456789012'
+- hideKeyboard
+- tapOn:
+    id: 'phone.send'
+- waitForAnimationToEnd
+- assertVisible: '{{t:verifyPhone.tooLong}}'
+- takeScreenshot: change-number-long
+- longPressOn:
+    id: 'phone.number'
+- eraseText: 60
+- hideKeyboard
+- tapOn:
+    id: 'phone.send'
+- waitForAnimationToEnd
+- assertVisible: '{{t:verifyPhone.numberBlank}}'
+- takeScreenshot: change-number-empty
