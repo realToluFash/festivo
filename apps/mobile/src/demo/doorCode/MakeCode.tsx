@@ -11,7 +11,7 @@ import {
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { AlertLine } from '../events/EventEdits.tsx';
-import { MomentBox, pick, type Picking, PickerLayer } from '../events/EventsPick.tsx';
+import { MomentBox, pick, type Picking, PickerLayer } from '../../components/MomentPick.tsx';
 import { HELD_MS, ROLE_LINES } from '../people/PeopleSample.ts';
 import { RoleLayer } from '../people/PeopleAdd.tsx';
 import { DoneAction } from '../people/PeopleRole.tsx';

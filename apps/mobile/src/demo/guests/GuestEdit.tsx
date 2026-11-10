@@ -17,7 +17,7 @@ import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { ASK_WIDTH, AlertLine, EventField } from '../events/EventEdits.tsx';
-import { BoxField } from '../events/EventsPick.tsx';
+import { BoxField } from '../../components/MomentPick.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { type AskProps, FocusedScreen, TextAction } from '../../components/Summary.tsx';

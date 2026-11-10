@@ -12,6 +12,7 @@ import {
   EVENT_PHASES,
   EVENT_STATES,
   type EventTimeline,
+  type EventsSearch,
   isEventType,
   type Milestone,
   MILESTONE_OWNERS,
@@ -439,6 +440,8 @@ export interface EventsQuery {
   finished?: boolean;
   page?: number;
   itemsPerPage?: number;
+  /** Searched by name or venue, and filtered by type, the days and the hosts (sc-30302). */
+  search?: EventsSearch;
 }
 
 export interface EventsPage {
@@ -1710,11 +1713,16 @@ export class ApiClient {
   /** One page of the unfinished events, soonest first, or of the Finished, most recently finished first; `total` counts every page (sc-3594). */
   async events(
     organisationId: string,
-    { finished = false, page = 1, itemsPerPage }: EventsQuery = {},
+    { finished = false, page = 1, itemsPerPage, search }: EventsQuery = {},
   ): Promise<EventsPage> {
     const query = new URLSearchParams({ finished: String(finished), page: String(page) });
 
     if (itemsPerPage != null) query.set('itemsPerPage', String(itemsPerPage));
+    if (search?.q != null) query.set('q', search.q);
+    if (search?.types != null && search.types.length > 0) query.set('type', search.types.join(','));
+    if (search?.from != null) query.set('from', search.from);
+    if (search?.to != null) query.set('to', search.to);
+    for (const host of search?.hosts ?? []) query.append('host[]', host);
 
     const body = await this.get<{ events?: unknown; total?: unknown }>(
       `/api/orgs/${encodeURIComponent(organisationId)}/events?${query.toString()}`,
@@ -1733,6 +1741,36 @@ export class ApiClient {
   /** Every page of them, so a list can group them by the clock without one falling off a page (sc-3594). */
   async unfinishedEvents(organisationId: string): Promise<ListedEvent[]> {
     return this.everyPage(organisationId, { finished: false });
+  }
+
+  /** Every event that matches, the unfinished and the Finished, for Events' results (sc-30302). */
+  async searchedEvents(
+    organisationId: string,
+    search: EventsSearch,
+  ): Promise<{ unfinished: ListedEvent[]; past: ListedEvent[] }> {
+    const query = { itemsPerPage: MOST_EVENTS_PER_PAGE, search };
+    const [unfinished, past] = await Promise.all([
+      this.everyPage(organisationId, { ...query, finished: false }),
+      this.everyPage(organisationId, { ...query, finished: true }),
+    ]);
+
+    return { unfinished, past };
+  }
+
+  /** The names Events' Filter offers under Hosted by, alphabetical (sc-30302). */
+  async eventHosts(organisationId: string): Promise<string[]> {
+    const body = await this.get<{ hosts?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/events/hosts`,
+    );
+    const hosts = body?.hosts;
+
+    if (!Array.isArray(hosts) || hosts.some((host) => typeof host !== 'string')) {
+      throw new Error(
+        'The API answered GET /api/orgs/{id}/events/hosts in a shape this client does not know. Check the events controller in services/api.',
+      );
+    }
+
+    return hosts as string[];
   }
 
   /** Every event the organisation has, unfinished and Finished, as the Calendar places them all (sc-3625). */

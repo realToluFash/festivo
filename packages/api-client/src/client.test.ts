@@ -2945,6 +2945,56 @@ describe('events (sc-1486)', () => {
     ]);
   });
 
+  test('a search asks for every page of the matches, unfinished and Finished, with each host its own host[] (sc-30302)', async () => {
+    const urls: string[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('live', null),
+      refreshTokenIn: 'cookie',
+      fetch: async (url) => {
+        const search = new URL(String(url)).search;
+        urls.push(search);
+
+        return json({
+          events: [
+            { ...EVENT, id: search.includes('finished=true') ? 'f1' : 'u1', milestones: [] },
+          ],
+          total: 1,
+        });
+      },
+    });
+
+    const found = await api.searchedEvents('org_1', {
+      q: 'lucía',
+      types: ['wedding', 'birthday'],
+      from: '2026-11-01',
+      to: '2026-11-30',
+      hosts: ['Ana', 'Bo, Jr'],
+    });
+
+    expect([found.unfinished.map(({ id }) => id), found.past.map(({ id }) => id)]).toEqual([
+      ['u1'],
+      ['f1'],
+    ]);
+    expect(urls.sort()).toEqual(
+      ['false', 'true'].map(
+        (finished) =>
+          `?finished=${finished}&page=1&itemsPerPage=200&q=luc%C3%ADa&type=wedding%2Cbirthday&from=2026-11-01&to=2026-11-30&host%5B%5D=Ana&host%5B%5D=Bo%2C+Jr`,
+      ),
+    );
+  });
+
+  test('the hosts the Filter offers are read, and a shape it does not know is refused (sc-30302)', async () => {
+    const { api, sent } = client(() => json({ hosts: ['Ana', 'Bo'] }));
+
+    expect(await api.eventHosts('org_1')).toEqual(['Ana', 'Bo']);
+    expect(sent).toEqual([{ line: 'GET /api/orgs/org_1/events/hosts', body: null }]);
+
+    const { api: odd } = client(() => json({ hosts: [1] }));
+
+    await expect(odd.eventHosts('org_1')).rejects.toThrow('/events/hosts');
+  });
+
   test('an event is created with local times and its zone, and read by its id', async () => {
     const { api, sent } = client(() => json({ event: EVENT }, 201));
     const body = {

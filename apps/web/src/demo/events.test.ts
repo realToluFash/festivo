@@ -1,3 +1,4 @@
+import { NO_EVENTS_FILTERS } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -5,25 +6,19 @@ import {
   EVENTS_PAGES,
   EVENT_STATES,
   type EventStateName,
-  NO_FILTERS,
   type SampleEvent,
   cardOf,
   eventStateOf,
-  filtersOf,
   listStateOf,
   listed,
   manageOf,
   matches,
-  noMatchLine,
-  paramsOf,
   resetSample,
   sampleEvent,
   sampleEvents,
   stateFits,
   suggestionsFor,
   wallOf,
-  whenOf,
-  whenRange,
 } from './events.ts';
 import { meshFor } from '../mesh.ts';
 
@@ -85,35 +80,23 @@ describe('Events in A at a desk, the model (sc-30304)', () => {
     expect(home.past.at(-1)?.id).toBe('evt-tomi-3');
   });
 
-  it('reads search and filters from the address, several types as one comma list, and writes them back without the state', () => {
-    const filters = filtersOf(new URLSearchParams('q=lucia&type=birthday,wedding,nonsense'));
-
-    expect(filters).toEqual({ ...NO_FILTERS, q: 'lucia', types: ['wedding', 'birthday'] });
-    expect(paramsOf(filters, new URLSearchParams('state=search&area=x')).toString()).toBe(
-      'area=x&q=lucia&type=wedding%2Cbirthday',
-    );
-  });
-
-  it('matches a name or venue ignoring case and accents, and says what found nothing', () => {
+  it('matches a name or venue ignoring case and accents, and a day of it in the span', () => {
     resetSample();
-    const lucia = sampleEvents().filter((one) => matches(one, { ...NO_FILTERS, q: 'LUCIA' }));
-    const nothing = { ...NO_FILTERS, q: 'garden party', types: ['wedding'] as const };
+    const lucia = sampleEvents().filter((one) =>
+      matches(one, { q: 'LUCIA', filters: NO_EVENTS_FILTERS }, null),
+    );
+    const nothing = {
+      q: 'garden party',
+      filters: { ...NO_EVENTS_FILTERS, types: ['wedding'] as const },
+    };
+    const inNovember = sampleEvents().filter((one) =>
+      matches(one, { q: '', filters: NO_EVENTS_FILTERS }, { from: '2026-11-01', to: '2026-11-30' }),
+    );
 
     expect(ids(lucia).sort()).toEqual(['evt-cena-4', 'evt-gala-4', 'evt-quince-4']);
-    expect(sampleEvents().filter((one) => matches(one, nothing))).toEqual([]);
-    expect(noMatchLine(nothing, CLOCKS.rest)).toBe(
-      'You searched for “garden party” and filtered by Wedding.',
-    );
-  });
-
-  it('turns This week, This month and the next three months into days, and back', () => {
-    expect(whenRange('week', CLOCKS.rest)).toEqual(['2026-11-02', '2026-11-08']);
-    expect(whenRange('month', CLOCKS.rest)).toEqual(['2026-11-01', '2026-11-30']);
-    expect(whenRange('quarter', CLOCKS.rest)).toEqual(['2026-11-03', '2027-02-03']);
-
-    const [from, to] = whenRange('week', CLOCKS.rest);
-    expect(whenOf({ ...NO_FILTERS, from, to }, CLOCKS.rest)).toBe('week');
-    expect(whenOf({ ...NO_FILTERS, from, to: '2026-11-20' }, CLOCKS.rest)).toBe('between');
+    expect(sampleEvents().filter((one) => matches(one, nothing, null))).toEqual([]);
+    expect(inNovember.length).toBeGreaterThan(0);
+    expect(inNovember.length).toBeLessThan(sampleEvents().length);
   });
 
   it('gives the card one step for each phase', () => {

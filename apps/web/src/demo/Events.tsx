@@ -1,5 +1,14 @@
 import { DemoBell } from './DemoBell.tsx';
-import { useEffect, useId, useRef, useState } from 'react';
+import {
+  type EventsLook,
+  eventsLookOf,
+  eventsLookParams,
+  filtered,
+  firstDayOfWeek,
+  searching,
+  whenSpan,
+} from '@soirely/domain';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 
@@ -12,48 +21,41 @@ import {
   EventsTop,
   NewEventWords,
 } from '../components/EventsList.tsx';
+import { type Calendar, EventsResults, EventsSearchRow } from '../components/EventsSearch.tsx';
 import { summaryWords } from '../eventsList.ts';
+import { dateLocale } from '../i18n/index.ts';
 
 import {
-  type Filters,
   type SampleEvent,
   type Tab,
   CLOCKS,
+  DISTINCT_HOSTS,
   EVENT_WORDS as W,
-  NO_FILTERS,
   PAST_PAGE,
   TABS,
   TODAY_IDS,
-  filtering,
-  filtersOf,
   listStart,
   listStateOf,
   listed,
+  localDay,
   matches,
-  noMatchLine,
-  paramsOf,
   rememberTab,
   rememberedTab,
   resetSample,
   sampleEvents,
-  searching,
   withoutTab,
 } from './events.ts';
 import { DuplicateDialog } from './EventDialogs.tsx';
 import { GUEST_WORDS as G, SAMPLE_GUESTS, figureOf, guestCountsOf } from './guestCounts.ts';
 import { guestLineOf } from './guests.ts';
 import { EventCard, EventRow, EventsShell } from './EventParts.tsx';
-import { FilterMenu } from './EventFilter.tsx';
-import { Glyph } from '../components/Glyph.tsx';
-import { Head, TextAction } from '../components/SettingsParts.tsx';
+import { TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { AccessPaused, Switched } from './OrgSwitcher.tsx';
 import { SIDEBAR_EVENTS, VIEWERS } from './settings.ts';
 import type { EventKey } from './today.ts';
 import { isFresh, usePaused, useSwitcherStart, useWhere } from './switcher.ts';
-
-const TAB_WORDS: Record<Tab, string> = { upcoming: W.upcoming, drafts: W.drafts, past: W.past };
 
 /** Events at a desk in A · Summary first (Events-A-Desk, page 29): the list from the Today sidebar, on sample data. */
 export function Events() {
@@ -127,8 +129,17 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
   const [offline, setOffline] = useState(start.offline);
   const [pastPages, setPastPages] = useState(start.pastPages);
   const [copying, setCopying] = useState<SampleEvent | null>(null);
+  const calendar: Calendar = {
+    today: localDay(now, 'Europe/London'),
+    firstDay: firstDayOfWeek(dateLocale()),
+    locale: dateLocale(),
+  };
   const addressed = ['q', 'type', 'from', 'to', 'host'].some((name) => params.has(name));
-  const filters = !addressed && start.filters != null ? start.filters : filtersOf(params);
+  const look =
+    !addressed && start.look != null
+      ? start.look
+      : eventsLookOf(params, calendar.today, calendar.firstDay);
+  const span = whenSpan(look.filters.when, calendar.today, calendar.firstDay);
   const lists = listed(events, now);
   const upcoming = [...lists.happeningNow, ...lists.upcoming];
   const byTab: Record<Tab, SampleEvent[]> = {
@@ -136,7 +147,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
     drafts: lists.drafts,
     past: lists.past,
   };
-  const looking = searching(filters) || filtering(filters);
+  const looking = searching(look.q) || filtered(look.filters);
   const counts: Record<Tab, number> = {
     upcoming: upcoming.length,
     drafts: lists.drafts.length,
@@ -154,8 +165,11 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
   const guestsOf = (event: SampleEvent) => (start.noGuests ? null : guestLineOf(event.id));
   const firstNew = useRef<HTMLUListElement>(null);
 
-  function apply(next: Filters, replace = false): void {
-    setParams(paramsOf(next, params), { replace });
+  function apply(next: EventsLook, replace = false): void {
+    const kept = new URLSearchParams(params);
+
+    kept.delete('state');
+    setParams(eventsLookParams(next, kept, calendar.today, calendar.firstDay), { replace });
   }
 
   function pick(next: Tab): void {
@@ -177,13 +191,13 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
         <div className="ev-column">
           <ListTop tell={tell} />
           <Switched />
-          <SearchRow
-            filters={filters}
+          <EventsSearchRow
+            look={look}
             offline={false}
             waiting
-            menuStart={null}
-            now={now}
-            onFilters={apply}
+            hosts={DISTINCT_HOSTS}
+            calendar={calendar}
+            onLook={apply}
           />
           <EventsLoading />
         </div>
@@ -217,19 +231,30 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
         </div>
         <GuestTiles counts={guests} />
         <Switched />
-        <SearchRow
-          filters={filters}
+        <EventsSearchRow
+          look={look}
           offline={offline}
+          hosts={DISTINCT_HOSTS}
           menuStart={start.menu}
-          now={now}
-          onFilters={apply}
+          calendar={calendar}
+          onLook={apply}
         />
         {looking ? (
-          <Results
-            filters={filters}
-            groups={TABS.map((one) => [one, byTab[one].filter((event) => matches(event, filters))])}
-            now={now}
-            onFilters={apply}
+          <EventsResults
+            look={look}
+            groups={TABS.map((one) => {
+              const found = byTab[one].filter((event) => matches(event, look, span));
+
+              return {
+                tab: one,
+                count: found.length,
+                rows: found.map((event) => (
+                  <EventRow key={event.id} event={event} now={now} tab="all" />
+                )),
+              };
+            })}
+            calendar={calendar}
+            onLook={apply}
           />
         ) : (
           <>
@@ -348,133 +373,5 @@ function ListTop({ tell, creates = true }: { tell: Tell; creates?: boolean }) {
 export function FirstRun({ tell, asks = false }: { tell: Tell; asks?: boolean }) {
   return (
     <EventsFirstRun create={asks ? undefined : () => tell('Create an event has its own design.')} />
-  );
-}
-
-function SearchRow({
-  filters,
-  offline,
-  waiting = false,
-  menuStart,
-  now,
-  onFilters,
-}: {
-  filters: Filters;
-  offline: boolean;
-  /** Off while the list loads, with no word about a connection. */
-  waiting?: boolean;
-  menuStart: 'top' | 'type' | null;
-  now: Date;
-  onFilters: (next: Filters, replace?: boolean) => void;
-}) {
-  const id = useId();
-  const field = useRef<HTMLInputElement>(null);
-  const off = offline || waiting;
-
-  return (
-    <div className="ev-search-row">
-      <div className="ev-search" role="search">
-        <div className={off ? 'ev-field is-off' : 'ev-field'}>
-          <Glyph name="search" size={18} weight={2.2} />
-          <input
-            ref={field}
-            type="search"
-            aria-label={W.searchEvents}
-            placeholder={W.searchEvents}
-            value={filters.q}
-            readOnly={off}
-            aria-disabled={off}
-            aria-describedby={offline ? `${id}-off` : undefined}
-            spellCheck={false}
-            onChange={(event) => onFilters({ ...filters, q: event.target.value }, true)}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape' && filters.q !== '') {
-                event.preventDefault();
-                onFilters({ ...filters, q: '' }, true);
-              }
-            }}
-          />
-          {filters.q !== '' && !off && (
-            <button
-              type="button"
-              className="ev-clear"
-              aria-label={W.clearSearch}
-              onClick={() => {
-                onFilters({ ...filters, q: '' });
-                field.current?.focus();
-              }}
-            >
-              <span className="ev-clear-disc" aria-hidden="true">
-                <Glyph name="clear" size={12} weight={3} />
-              </span>
-            </button>
-          )}
-        </div>
-        {offline && (
-          <p id={`${id}-off`} className="desk-note">
-            {W.searchOff}
-          </p>
-        )}
-      </div>
-      <FilterMenu filters={filters} off={off} start={menuStart} now={now} onFilters={onFilters} />
-    </div>
-  );
-}
-
-function Results({
-  filters,
-  groups,
-  now,
-  onFilters,
-}: {
-  filters: Filters;
-  groups: readonly (readonly [Tab, SampleEvent[]])[];
-  now: Date;
-  onFilters: (next: Filters) => void;
-}) {
-  const count = groups.reduce((total, [, events]) => total + events.length, 0);
-  const clearFilters = () => onFilters({ ...NO_FILTERS, q: filters.q });
-
-  return (
-    <>
-      <div className="ev-count-row">
-        <p className="ev-count" role="status" aria-live="polite">
-          {W.count(count)}
-        </p>
-        {filtering(filters) && count > 0 && (
-          <TextAction label={W.clearFilters} onClick={clearFilters} />
-        )}
-      </div>
-      {count === 0 ? (
-        <div className="ev-none" role="status">
-          <h2>{W.noMatch}</h2>
-          <p className="desk-line">{noMatchLine(filters, now)}</p>
-          <div className="ev-none-actions">
-            {searching(filters) && (
-              <TextAction label={W.clearSearch} onClick={() => onFilters({ ...filters, q: '' })} />
-            )}
-            {filtering(filters) && <TextAction label={W.clearFilters} onClick={clearFilters} />}
-          </div>
-        </div>
-      ) : (
-        <div className="ev-groups">
-          {groups.map(
-            ([tab, events]) =>
-              events.length > 0 && (
-                <section key={tab} aria-label={TAB_WORDS[tab]}>
-                  <Head title={TAB_WORDS[tab]}>
-                    <span className="ev-group-count">{events.length}</span>
-                  </Head>
-                  <ul className="desk-rows ev-rows">
-                    {events.map((event) => (
-                      <EventRow key={event.id} event={event} now={now} tab="all" />
-                    ))}
-                  </ul>
-                </section>
-              ),
-          )}
-        </div>
-      )}
-    </>
   );
 }

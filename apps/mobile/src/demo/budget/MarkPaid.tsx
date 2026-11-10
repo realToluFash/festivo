@@ -37,7 +37,7 @@ import {
 } from './BudgetModel.ts';
 import { COLLEAGUE, EVENT_NAME, TODAY, VENDORS } from './BudgetSample.ts';
 import { AlertBox, MoneyRow } from './BudgetParts.tsx';
-import { MomentBox } from '../events/EventsPick.tsx';
+import { MomentBox } from '../../components/MomentPick.tsx';
 import { W, say } from './BudgetWords.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;

@@ -10,7 +10,7 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { AlertLine } from '../events/EventEdits.tsx';
 import { EventFrame } from '../events/EventFrame.tsx';
-import { SearchField } from '../events/EventsList.tsx';
+import { SearchField } from '../../components/EventsSearch.tsx';
 import { shownEvent } from '../events/EventsModel.ts';
 import { sampleEvent } from '../events/EventsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';

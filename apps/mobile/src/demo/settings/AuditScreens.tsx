@@ -7,7 +7,7 @@ import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { ChoiceRow, FocusedScreen, Line, RowList, TextAction } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { MomentBox } from '../events/EventsPick.tsx';
+import { MomentBox } from '../../components/MomentPick.tsx';
 import {
   datesProblem,
   detailRows,

@@ -45,6 +45,7 @@ export * from './makeLiveHost.ts';
 export * from './timeline.ts';
 export * from './calendar.ts';
 export * from './eventsHome.ts';
+export * from './eventSearch.ts';
 export * from './today.ts';
 export * from './todayView.ts';
 export * from './eventAreas.ts';

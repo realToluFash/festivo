@@ -1,7 +1,7 @@
-import { formattingLocale } from '@soirely/domain';
+import { filtered, formattingLocale, searching, wallDay } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { type Href, router } from 'expo-router';
-import { type ReactNode, type Ref, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { TextField } from '../../components/Field.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -35,7 +34,15 @@ import {
   Said,
   SaidLine,
 } from '../../components/EventsList.tsx';
-import { EventsFilterMenu, FilterButton } from './EventsFilter.tsx';
+import {
+  type Calendar,
+  EventsFilterMenu,
+  EventsResults,
+  FilterButton,
+  SearchField,
+  SearchRow,
+  useFilterWord,
+} from '../../components/EventsSearch.tsx';
 import {
   type CardStep,
   type Filters,
@@ -43,35 +50,28 @@ import {
   NO_FILTERS,
   PAST_PAGE,
   type Shown,
-  tabWord,
   emptyTabOf,
   eventHref,
-  filterWord,
-  filtered,
   homeOf,
   hostNames,
   howSoon,
   listStart,
-  noMatchLine,
   resultsOf,
   rowLine,
   rowTag,
-  searching,
   summaryLine,
   withoutTab,
 } from './EventsModel.ts';
-import { CLOCKS, EVENTS, EVENT_OF_KEY, OFFLINE_AS_OF } from './EventsSample.ts';
+import { CLOCKS, EVENTS, EVENT_OF_KEY, OFFLINE_AS_OF, READER_ZONE } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
 import {
   type Anchor,
   anchorUnder,
-  HeadCount,
   LoadingBlock,
   Row,
   RowList,
-  SectionHead,
   SunkTabs,
   TextAction,
 } from '../../components/Summary.tsx';
@@ -141,9 +141,8 @@ export function EventsList({
     [looking, events, searched, filters, now, locale],
   );
   const hosts = useMemo(() => hostNames(EVENTS, locale), [locale]);
-  const word = filterWord(filters, locale);
-
-  useReadOut(results == null ? null : say.count(results.count));
+  const word = useFilterWord(filters, locale);
+  const calendar: Calendar = { today: wallDay(now, READER_ZONE), firstDay: 1, locale };
 
   useEffect(() => {
     if (typed === searched) return;
@@ -205,18 +204,23 @@ export function EventsList({
     return (
       <ListFrame offline={null}>
         {top}
-        <View style={styles.searchRow}>
-          <SearchField
-            typed=""
-            off
-            width={shell.layout === 'portrait' ? 420 : shell.layout === 'landscape' ? 440 : null}
-            onTyped={setTyped}
-            onSearch={() => undefined}
-            onClear={clearSearch}
-            ref={field}
-          />
-          <FilterButton ref={filterRef} word={word} off open={false} onPress={() => undefined} />
-        </View>
+        <SearchRow
+          offline={false}
+          field={
+            <SearchField
+              typed=""
+              off
+              width={shell.layout === 'portrait' ? 420 : shell.layout === 'landscape' ? 440 : null}
+              onTyped={setTyped}
+              onSearch={() => undefined}
+              onClear={clearSearch}
+              ref={field}
+            />
+          }
+          filter={
+            <FilterButton ref={filterRef} word={word} off open={false} onPress={() => undefined} />
+          }
+        />
         <SunkTabs />
         <LoadingBlock words={W.loading} />
       </ListFrame>
@@ -251,13 +255,14 @@ export function EventsList({
           filters={filters}
           onFilters={setFilters}
           hosts={hosts}
-          locale={locale}
+          calendar={calendar}
         />
       }
     >
       {top}
-      <View style={styles.searchBlock}>
-        <View style={styles.searchRow}>
+      <SearchRow
+        offline={offline}
+        field={
           <SearchField
             typed={typed}
             off={offline}
@@ -267,6 +272,8 @@ export function EventsList({
             onClear={clearSearch}
             ref={field}
           />
+        }
+        filter={
           <FilterButton
             ref={filterRef}
             word={word}
@@ -274,13 +281,8 @@ export function EventsList({
             open={menuAt != null}
             onPress={() => anchorUnder(filterRef, setMenuAt)}
           />
-        </View>
-        {offline && (
-          <Text size={14} weight="medium" style={[styles.secondary, styles.said]}>
-            {W.searchOffline}
-          </Text>
-        )}
-      </View>
+        }
+      />
       {results == null ? (
         <>
           <EventsTabs
@@ -318,49 +320,18 @@ export function EventsList({
           {tabEvents.length > 0 && <SaidLine words={say.footer(tabEvents.length)} />}
         </>
       ) : (
-        <Results
-          count={results.count}
-          onClearFilters={filtered(filters) ? () => setFilters(NO_FILTERS) : null}
-        >
-          {results.count === 0 ? (
-            <View style={styles.noMatch} testID="events.noMatch">
-              <Text size={18} weight="bold" accessibilityRole="header" style={styles.noMatchTitle}>
-                {W.noMatch}
-              </Text>
-              <Text size={15} weight="medium" style={[styles.secondary, styles.noMatchLine]}>
-                {noMatchLine(searched, filters, locale)}
-              </Text>
-              <View style={styles.noMatchActions}>
-                {searching(searched) && (
-                  <TextAction
-                    label={W.clearSearch}
-                    onPress={clearSearch}
-                    testID="events.noMatch.clearSearch"
-                  />
-                )}
-                {filtered(filters) && (
-                  <TextAction
-                    label={W.clearFilters}
-                    onPress={() => setFilters(NO_FILTERS)}
-                    testID="events.noMatch.clearFilters"
-                  />
-                )}
-              </View>
-            </View>
-          ) : (
-            <View style={styles.groups}>
-              {results.groups.map((group) => (
-                <View key={group.tab}>
-                  <SectionHead
-                    title={tabWord(group.tab)}
-                    right={<HeadCount text={String(group.events.length)} />}
-                  />
-                  <RowList items={group.events.map((event) => row(event, true))} />
-                </View>
-              ))}
-            </View>
-          )}
-        </Results>
+        <EventsResults
+          typed={searched}
+          filters={filters}
+          groups={results.groups.map((group) => ({
+            tab: group.tab,
+            count: group.events.length,
+            rows: <RowList items={group.events.map((event) => row(event, true))} />,
+          }))}
+          locale={locale}
+          onClearSearch={clearSearch}
+          onClearFilters={() => setFilters(NO_FILTERS)}
+        />
       )}
     </ListFrame>
   );
@@ -558,113 +529,6 @@ function titled(size: number) {
   return { lineHeight: size * 1.12, letterSpacing: size * -0.02 };
 }
 
-export function SearchField({
-  typed,
-  off,
-  width,
-  onTyped,
-  onSearch,
-  onClear,
-  label = W.search,
-  testID = 'events.search',
-  ref,
-}: {
-  typed: string;
-  off: boolean;
-  width: number | null;
-  onTyped: (typed: string) => void;
-  onSearch: () => void;
-  onClear: () => void;
-  label?: string;
-  testID?: string;
-  ref?: Ref<TextInputInstance>;
-}) {
-  const [focused, setFocused] = useState(false);
-
-  return (
-    <View accessibilityRole="search" style={width == null ? styles.searchPhone : { width }}>
-      <View
-        style={[
-          styles.search,
-          typed !== '' && styles.searchTyped,
-          off && styles.searchOff,
-          focused && styles.searchFocused,
-        ]}
-      >
-        <Glyph
-          name="search"
-          size={18}
-          ink={off ? tokens.colorInkTertiary : tokens.colorInkSecondary}
-          weight={2.2}
-        />
-        <TextField
-          ref={ref}
-          value={typed}
-          editable={!off}
-          placeholder={label}
-          placeholderTextColor={off ? tokens.colorInkTertiary : tokens.colorInkSecondary}
-          onChangeText={onTyped}
-          onSubmitEditing={onSearch}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          returnKeyType="search"
-          autoCorrect={false}
-          autoCapitalize="none"
-          accessibilityLabel={label}
-          style={styles.searchInput}
-          testID={testID}
-        />
-        {typed !== '' && (
-          <Pressable
-            onPress={onClear}
-            style={styles.clear}
-            accessibilityRole="button"
-            accessibilityLabel={W.clearSearch}
-            testID={`${testID}.clear`}
-          >
-            <View style={styles.clearDot}>
-              <Glyph name="x" size={12} ink={tokens.colorInkOnDark} weight={3} />
-            </View>
-          </Pressable>
-        )}
-      </View>
-    </View>
-  );
-}
-
-function Results({
-  count,
-  onClearFilters,
-  children,
-}: {
-  count: number;
-  onClearFilters: (() => void) | null;
-  children: ReactNode;
-}) {
-  return (
-    <View style={styles.results}>
-      <View style={styles.countRow}>
-        <Text
-          size={16}
-          weight="semibold"
-          style={[styles.grow, styles.figures]}
-          testID="events.count"
-        >
-          {say.count(count)}
-        </Text>
-        {onClearFilters != null && count > 0 && (
-          <TextAction
-            label={W.clearFilters}
-            onPress={onClearFilters}
-            testID="events.clearFilters"
-          />
-        )}
-      </View>
-      {children}
-    </View>
-  );
-}
-
 export function OfflineBand({
   onRetry,
   testID = 'events.offline',
@@ -719,65 +583,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: tokens.colorAccent,
   },
-  searchBlock: { gap: tokens.spaceXs },
-  searchRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    columnGap: tokens.spaceSm,
-    rowGap: tokens.spaceXxs,
-  },
-  searchPhone: { flexGrow: 1, flexBasis: 220 },
-  search: {
-    height: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceMd,
-    paddingLeft: 14,
-    paddingRight: 14,
-    borderWidth: 1.5,
-    borderColor: tokens.colorFieldBorder,
-    borderRadius: 14,
-    backgroundColor: tokens.colorCard,
-  },
-  searchTyped: { paddingRight: tokens.spaceHair },
-  searchOff: { borderColor: tokens.colorBorder, backgroundColor: tokens.colorInset },
-  searchFocused: { borderWidth: 2, borderColor: tokens.colorAccent, paddingLeft: 13.5 },
-  searchInput: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 44,
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-    borderWidth: 0,
-    backgroundColor: 'transparent',
-  },
-  clear: {
-    width: tokens.sizeHit,
-    height: tokens.sizeHit,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  clearDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorInkTertiary,
-  },
-  results: { gap: 18 },
-  countRow: {
-    minHeight: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceLg,
-  },
-  groups: { gap: tokens.spaceMd },
-  noMatch: { gap: tokens.spaceXs, paddingTop: tokens.spaceXxs },
-  noMatchTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
-  noMatchLine: { lineHeight: 15 * 1.45 },
-  noMatchActions: { flexDirection: 'row', flexWrap: 'wrap', columnGap: tokens.space3xl },
   band: {
     minHeight: tokens.sizeHit,
     flexDirection: 'row',

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -104,7 +104,7 @@ describe('Events in A at a desk (sc-30304)', () => {
       target: { value: 'lucia' },
     });
 
-    expect(router.state.location.search).toBe('?q=lucia');
+    await waitFor(() => expect(router.state.location.search).toBe('?q=lucia'));
     expect(await screen.findByText('3 events')).toBeDefined();
     expect(screen.getByRole('link', { name: /Lucía’s quinceañera/ })).toBeDefined();
 

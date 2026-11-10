@@ -1,5 +1,5 @@
 import type { ListedEvent } from '@soirely/api-client';
-import { type EventsTab, eventsHome, shownPhase } from '@soirely/domain';
+import { type EventsFilters, type EventsTab, eventsHome, shownPhase } from '@soirely/domain';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -20,6 +20,7 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { EventCard, EventThumb } from './EventCard.tsx';
 import { EventsEmptyTab, EventsSummaryLine, EventsTabs, Said, SaidLine } from './EventsList.tsx';
+import { EventsResults } from './EventsSearch.tsx';
 import { Notice } from './Notice.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
 
@@ -165,6 +166,70 @@ export function EventsHome({
         <SaidLine words={t('eventsScreen.footer', { count: counts[tab] })} testID="events.footer" />
       )}
     </View>
+  );
+}
+
+export interface FoundLoad {
+  unfinished: ListedEvent[];
+  past: ListedEvent[];
+  at: Date;
+}
+
+/** While something is searched or filtered: one set of results, Upcoming, Drafts and Past, each row saying its phase (sc-30302). */
+export function EventsFound({
+  kind,
+  found,
+  typed,
+  filters,
+  onOpen,
+  onClearSearch,
+  onClearFilters,
+}: {
+  kind: LayoutKind;
+  found: FoundLoad;
+  typed: string;
+  filters: EventsFilters;
+  onOpen: (id: string, fromHappeningNow: boolean) => void;
+  onClearSearch: () => void;
+  onClearFilters: () => void;
+}) {
+  const { t } = useTranslation();
+  const locale = dateLocale();
+  const { tabs, now } = useEventsHome({ ...found, pastTotal: found.past.length, pastPages: 1 });
+  const wide = kind !== 'phone';
+
+  return (
+    <EventsResults
+      typed={typed}
+      filters={filters}
+      locale={locale}
+      onClearSearch={onClearSearch}
+      onClearFilters={onClearFilters}
+      groups={(['upcoming', 'drafts', 'past'] as const).map((tab) => ({
+        tab,
+        count: tabs[tab].length,
+        rows: (
+          <RowList
+            items={tabs[tab].map((event) => ({
+              key: event.id,
+              inset: 60,
+              row: (
+                <Row
+                  title={event.name}
+                  line={rowLine(event, locale, t)}
+                  lead={<EventThumb event={event} />}
+                  tag={rowTag(event, true, t)}
+                  value={wide ? (howSoon(event, now, t) ?? undefined) : undefined}
+                  opens
+                  onPress={() => onOpen(event.id, event.phase === 'happening_now')}
+                  testID={eventTestID(event)}
+                />
+              ),
+            }))}
+          />
+        ),
+      }))}
+    />
   );
 }
 

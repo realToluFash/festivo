@@ -3,13 +3,13 @@ import { formatEventDate, formatWallClock, formatWallDay } from '@soirely/domain
 import { type Ref, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
-import { TextField, type TextFieldProps } from '../../components/Field.tsx';
-import { Text } from '../../components/Text.tsx';
-import { pickedInto, pickerValue } from '../../kit/eventForm.ts';
-import { weight } from '../../theme/fonts.ts';
-import { tokens } from '../../theme/tokens.ts';
-import { W } from './EventsWords.ts';
-import { Pill } from '../../components/SettingsParts.tsx';
+import { TextField, type TextFieldProps } from './Field.tsx';
+import { Text } from './Text.tsx';
+import { pickedInto, pickerValue } from '../kit/eventForm.ts';
+import { weight } from '../theme/fonts.ts';
+import { tokens } from '../theme/tokens.ts';
+import { useTranslation } from 'react-i18next';
+import { Pill } from './SettingsParts.tsx';
 
 export interface Picking {
   title: string;
@@ -46,6 +46,7 @@ export function PickerLayer({
   locale: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [held, setHeld] = useState(() =>
     pickerValue(picking.field.date, picking.field.time, new Date()),
   );
@@ -60,7 +61,7 @@ export function PickerLayer({
         style={StyleSheet.absoluteFill}
         onPress={onClose}
         accessibilityRole="button"
-        accessibilityLabel={W.cancel}
+        accessibilityLabel={t('frame.cancel')}
       />
       <View style={styles.card} accessibilityViewIsModal onAccessibilityEscape={onClose}>
         <Text size={18} weight="bold" accessibilityRole="header">
@@ -74,7 +75,7 @@ export function PickerLayer({
           locale={locale}
           onChange={(_event, picked) => picked != null && setHeld(picked)}
         />
-        <Pill label={W.done} onPress={done} testID="events.pick.done" />
+        <Pill label={t('eventForm.pickerDone')} onPress={done} testID="events.pick.done" />
       </View>
     </View>
   );

@@ -14,6 +14,7 @@ use App\Entity\Event;
 use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Enum\EventType;
 use App\Enum\Permission;
 use App\Http\Access\Grants;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
@@ -21,10 +22,15 @@ use App\Http\Access\Policy\InEvent;
 use App\Http\Access\Policy\InOrganisation;
 use App\Http\EntityTag;
 use App\Http\Exception\ApiException;
+use App\Http\Exception\ShapeRefusal;
 use App\Http\Input;
 use App\Repository\EventRepository;
+use App\Repository\EventSearch;
 use App\Repository\OrganisationRepository;
+use DateTimeImmutable;
+use DateTimeZone;
 use Psl\Math;
+use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
@@ -64,21 +70,38 @@ final readonly class EventsController
             'finished' => Type\optional(Type\union(Type\literal_scalar('true'), Type\literal_scalar('false'))),
             'page' => Type\optional(Type\positive_int()),
             'itemsPerPage' => Type\optional(Type\positive_int()),
+            'q' => Type\optional(Type\string()),
+            'type' => Type\optional(Type\string()),
+            'from' => Type\optional(Type\string()),
+            'to' => Type\optional(Type\string()),
+            'host' => Type\optional(Type\union(Type\string(), Type\vec(Type\string()))),
         ]));
+        $search = self::search($query);
         $organisation = $this->organisation($organisationId);
         $scope = $this->membershipDirectory->eventScopeIn($this->user(), $organisation->getId()) ?? throw ApiException::notFound('access.not_found');
         $finished = 'true' === ($query['finished'] ?? 'false');
         $page = $query['page'] ?? 1;
         $perPage = Math\minva($query['itemsPerPage'] ?? self::PER_PAGE, self::MOST_PER_PAGE);
         $now = $this->clock->now();
-        $events = $this->eventRepository->findPageInOrganisation($organisation, $finished, $now, $page, $perPage, $scope->onlyFor);
+        $events = $this->eventRepository->findPageInOrganisation($organisation, $finished, $now, $page, $perPage, $scope->onlyFor, $search);
 
         return new JsonResponse([
             'events' => Vec\map(Vec\zip($events, $this->eventSerialiser->events($events, $scope)), fn (array $pair): array => [...$pair[1], 'milestones' => $this->milestoneSerialiser->milestones($pair[0], $scope->on($pair[0]->getId()) ?? Grants::only([]))]),
-            'total' => $this->eventRepository->countPhaseInOrganisation($organisation, $finished, $now, $scope->onlyFor),
+            'total' => $this->eventRepository->countPhaseInOrganisation($organisation, $finished, $now, $scope->onlyFor, $search),
             'page' => $page,
             'itemsPerPage' => $perPage,
         ]);
+    }
+
+    /** The names Events' Filter offers under Hosted by: every one on the events the caller sees (sc-30302). */
+    #[Route('/api/orgs/{organisationId}/events/hosts', name: 'events_hosts', methods: ['GET'])]
+    #[InOrganisation(null)]
+    public function hosts(string $organisationId): JsonResponse
+    {
+        $organisation = $this->organisation($organisationId);
+        $scope = $this->membershipDirectory->eventScopeIn($this->user(), $organisation->getId()) ?? throw ApiException::notFound('access.not_found');
+
+        return new JsonResponse(['hosts' => $this->eventRepository->findHostNamesInOrganisation($organisation, $scope->onlyFor)]);
     }
 
     /** Start and end are local to `timeZone` (sc-1486); a zone or currency left out is the organisation's. `hosts` takes the edit's list (sc-22143). */
@@ -211,6 +234,36 @@ final readonly class EventsController
     private function event(string $id): Event
     {
         return $this->eventRepository->find($id) ?? throw ApiException::notFound('access.not_found');
+    }
+
+    /** @param array{q?: string, type?: string, from?: string, to?: string, host?: string|list<string>, ...} $query */
+    private static function search(array $query): EventSearch
+    {
+        $term = Str\trim($query['q'] ?? '');
+        $types = '' === ($query['type'] ?? '') ? [] : Vec\map(
+            Str\split($query['type'], ','),
+            static fn (string $type): EventType => EventType::tryFrom(Str\trim($type)) ?? throw new ShapeRefusal('type'),
+        );
+        $hosts = $query['host'] ?? [];
+
+        return new EventSearch(
+            term: Str\length($term) < EventSearch::SHORTEST_TERM ? null : $term,
+            types: $types,
+            from: self::day($query['from'] ?? null, 'from'),
+            to: self::day($query['to'] ?? null, 'to'),
+            hosts: Vec\filter(\is_string($hosts) ? [$hosts] : $hosts, static fn (string $host): bool => '' !== $host),
+        );
+    }
+
+    private static function day(?string $written, string $key): ?DateTimeImmutable
+    {
+        if (null === $written || '' === $written) {
+            return null;
+        }
+
+        $day = DateTimeImmutable::createFromFormat('!Y-m-d', $written, new DateTimeZone('UTC'));
+
+        return false === $day || $day->format('Y-m-d') !== $written ? throw new ShapeRefusal($key) : $day;
     }
 
     private function organisation(string $id): Organisation
