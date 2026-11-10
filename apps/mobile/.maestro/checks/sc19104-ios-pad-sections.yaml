@@ -13,7 +13,7 @@ appId: host.exp.Exponent
 - assertVisible:
     id: 'settings.account'
 - assertVisible:
-    id: 'timeZone.change'
+    id: 'account.zone'
 - takeScreenshot: account-beside
 - scrollUntilVisible:
     element:

@@ -4,19 +4,19 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/settings/account
 - extendedWaitUntil:
     visible:
-      id: 'nameCard.change'
+      id: 'account.name'
     timeout: 30000
 - tapOn:
-    id: 'nameCard.change'
+    id: 'account.name'
 - extendedWaitUntil:
     visible:
-      id: 'nameCard.field'
+      id: 'account.name.field'
     timeout: 5000
 - eraseText: 200
 - inputText: "  Zoë O'Brien-Núñez  "
 - takeScreenshot: typed
 - tapOn:
-    id: 'nameCard.save'
+    id: 'account.name.save'
 - extendedWaitUntil:
     visible: '.*Zoë O''Brien-Núñez\.'
     timeout: 10000

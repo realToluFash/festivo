@@ -6,5 +6,5 @@ appId: host.exp.Exponent
     env:
       QUERY: 'Lisbon'
 - tapOn:
-    id: 'timeZone.option.Europe/Lisbon'
+    id: 'account.zone.Europe/Lisbon'
 - takeScreenshot: mobile-13408-time-zone-fill

@@ -1,25 +1,25 @@
-# sc-27219: Settings › Account's Time zone row as the card first shows it, while the list is held, and settled. Needs GET /api/auth/timezones held back by hand for about 20 seconds (qa2 used a local proxy, with adb reverse tcp:28080 to it): the batch helper holds only the whole API.
+# sc-27219: Settings › Account's Time zone row as the page first shows it, while the list is held, and settled. Needs GET /api/auth/timezones held back by hand for about 20 seconds (qa2 used a local proxy, with adb reverse tcp:28080 to it): the batch helper holds only the whole API.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/account
 - extendedWaitUntil:
     visible:
-      id: 'nameCard.change'
+      id: 'account.name'
     timeout: 30000
 - takeScreenshot: tz-first
 - scrollUntilVisible:
     element:
-      text: '{{t:timeZone.intro}}'
+      id: 'account.zone'
     direction: DOWN
     timeout: 20000
 - takeScreenshot: tz-early
+# Settled once the row names the zone it holds, or says none is set.
 - extendedWaitUntil:
-    visible:
-      id: 'timeZone.change'
+    visible: '(?:{{t:account.zoneLine}}|{{t:timeZone.unset}})'
     timeout: 40000
 - scrollUntilVisible:
     element:
-      id: 'timeZone.change'
+      id: 'account.zone'
     direction: DOWN
     timeout: 10000
 - takeScreenshot: tz-settled

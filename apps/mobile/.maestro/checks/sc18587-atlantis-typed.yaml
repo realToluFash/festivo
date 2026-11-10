@@ -7,6 +7,6 @@ appId: host.exp.Exponent
       QUERY: 'Atlantis'
 # The text itself, so a check whose typing went nowhere fails rather than passing on its screenshot. sc-32521.
 - assertVisible:
-    id: 'timeZone.search'
+    id: 'account.zone.field'
     text: 'Atlantis'
 - takeScreenshot: time-zone-atlantis-typed
