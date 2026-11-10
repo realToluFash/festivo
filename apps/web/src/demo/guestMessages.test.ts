@@ -59,9 +59,7 @@ describe('Your messages, opened from the guest’s page (sc-3969, sc-3950)', () 
     expect(words.whatsAppUpdates).toBe(
       'Soirely sends updates on WhatsApp on behalf of Ire Events. Reply STOP at any time to end them.',
     );
-    expect(words.savedLine('whatsApp', true)).toBe(
-      'WhatsApp messages from Ire Events are on again.',
-    );
+    expect(words.savedLine('whatsApp', true)).toBe('WhatsApp messages from Ire Events are on.');
     expect(words.savedLine('whatsApp', false)).toBe('WhatsApp messages from Ire Events are off.');
     expect(words.noPhone).toBe('Ire Events has no phone number for you.');
     expect(words.yourMessagesFoot).toBe(

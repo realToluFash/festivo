@@ -797,7 +797,7 @@ describe('Guests, WhatsApp on a guest’s page (sc-3950)', () => {
       await within(column()).findByRole('heading', { name: 'Agreed to WhatsApp' }),
     ).toBeDefined();
     expect(
-      screen.getByText('For Kwame Mensah, on +44 7700 900412. It is marked as recorded by you.'),
+      screen.getByText('For Kwame Mensah, on +44 7700 900412. It will show as recorded by you.'),
     ).toBeDefined();
 
     const group = screen.getByRole('radiogroup', { name: 'How?' });

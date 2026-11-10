@@ -203,7 +203,7 @@ export const GW = {
   optedOut: (date: string) => `Unsubscribed from WhatsApp on ${date}`,
   onlyTheGuest: 'Only the guest can change this.',
   forAgreed: (name: string, mobile: string) =>
-    `For ${name}, on ${mobile}. It is marked as recorded by you.`,
+    `For ${name}, on ${mobile}. It will show as recorded by you.`,
   howAgreed: 'How?',
   howAgreedBlank: 'Choose how they agreed.',
 

@@ -171,7 +171,7 @@ export const W = {
   closedDraft: 'This event is a draft. Make it live to write to your guests.',
   closedEnded:
     'This event finished more than 30 days ago, so you can no longer write to its guests.',
-  hasntAgreedWhatsApp: 'Hasn’t agreed to WhatsApp',
+  hasNotAgreedWhatsApp: 'Has not agreed to WhatsApp',
   stoppedWhatsApp: 'Stopped WhatsApp',
   read: 'Read',
   failedReceipt: 'Failed',

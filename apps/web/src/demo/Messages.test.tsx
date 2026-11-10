@@ -1563,7 +1563,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       expect(screen.queryByRole('button', { name: 'Send without WhatsApp' })).toBeNull();
       const cant = screen.getByRole('region', { name: 'Can’t be told · 18' });
 
-      expect(cant.textContent).toContain('WhatsApp · Not sent · Hasn’t agreed to WhatsApp');
+      expect(cant.textContent).toContain('WhatsApp · Not sent · Has not agreed to WhatsApp');
       expect(cant.textContent).toContain('WhatsApp · Not sent · Stopped WhatsApp');
       expect(row(/^Parking at The Landmark, .*Not reached · 18$/)).toBeDefined();
     },

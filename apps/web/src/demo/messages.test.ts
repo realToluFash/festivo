@@ -767,7 +767,7 @@ describe('Messaging B · WhatsApp only to guests who agreed (sc-3950)', () => {
           .map((line) => [line.word, line.why].filter((part) => part != null).join(' · ')),
       ),
     ).toEqual([
-      ['Email · No email address', 'WhatsApp · Not sent · Hasn’t agreed to WhatsApp'],
+      ['Email · No email address', 'WhatsApp · Not sent · Has not agreed to WhatsApp'],
       ['Email · Not sent · Unsubscribed', 'WhatsApp · Not sent · Stopped WhatsApp'],
     ]);
     expect(who.waiting).toEqual([]);

@@ -885,7 +885,7 @@ const BOARD_ENGLISH = {
   emailOff: 'Emails from {{organisation}} are off.',
   smsOn: 'Texts from {{organisation}} are on again.',
   smsOff: 'Texts from {{organisation}} are off.',
-  whatsAppOn: 'WhatsApp messages from {{organisation}} are on again.',
+  whatsAppOn: 'WhatsApp messages from {{organisation}} are on.',
   whatsAppOff: 'WhatsApp messages from {{organisation}} are off.',
   yourMessagesFoot:
     'Only you can turn these back on. {{organisation}} can see which you have turned off, and when.',

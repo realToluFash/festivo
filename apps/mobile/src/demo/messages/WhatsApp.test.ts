@@ -127,7 +127,7 @@ describe('WhatsApp’s receipts', () => {
     expect(view.resend).toBe(0);
     expect(view.groups[1]?.people.map((person) => person.lines.map((line) => line.reason))).toEqual(
       [
-        [undefined, 'Hasn’t agreed to WhatsApp'],
+        [undefined, 'Has not agreed to WhatsApp'],
         ['Unsubscribed', 'Stopped WhatsApp'],
       ],
     );

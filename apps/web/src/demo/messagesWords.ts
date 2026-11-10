@@ -325,7 +325,7 @@ export const MW = {
   noMobile_other: '{{count, number}} have no mobile number',
   stoppedCount_one: '{{count, number}} stopped WhatsApp',
   stoppedCount_other: '{{count, number}} stopped WhatsApp',
-  hasntAgreedWhatsApp: 'Hasn’t agreed to WhatsApp',
+  hasNotAgreedWhatsApp: 'Has not agreed to WhatsApp',
   stoppedWhatsApp: 'Stopped WhatsApp',
   read: 'Read',
   failedReceipt: 'Failed',

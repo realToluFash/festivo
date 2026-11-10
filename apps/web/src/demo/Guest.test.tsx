@@ -109,7 +109,7 @@ const HINT = 'Soirely sends them on behalf of Ire Events. Reply STOP at any time
 
 const UPDATES =
   'Soirely sends updates on WhatsApp on behalf of Ire Events. Reply STOP at any time to end them.';
-const ON_AGAIN = 'WhatsApp messages from Ire Events are on again.';
+const TURNED_ON = 'WhatsApp messages from Ire Events are on.';
 const OFF = 'WhatsApp messages from Ire Events are off.';
 
 const SAYS: [string, () => void][] = [
@@ -246,7 +246,7 @@ const SAYS: [string, () => void][] = [
     'messagesWhatsAppOff',
     () => expect(screen.getByRole('switch', { name: 'WhatsApp' })).toHaveProperty('checked', false),
   ],
-  ['messagesWhatsAppTurnedOn', () => screen.getByText(ON_AGAIN, { selector: 'span' })],
+  ['messagesWhatsAppTurnedOn', () => screen.getByText(TURNED_ON, { selector: 'span' })],
   [
     'messagesWhatsAppOn',
     () => expect(screen.getByRole('switch', { name: 'WhatsApp' })).toHaveProperty('checked', true),
@@ -395,7 +395,7 @@ describe('Your messages, opened from the guest’s page (sc-3969, sc-3950)', () 
     fireEvent.click(whatsApp);
     expect(whatsApp).toHaveProperty('checked', true);
     expect(whatsApp.getAttribute('aria-describedby')).toBe('gp-whatsApp-line gp-whatsApp-saved');
-    expect(live?.textContent).toBe(ON_AGAIN);
+    expect(live?.textContent).toBe(TURNED_ON);
     expect(screen.getByText(UPDATES)).toBeDefined();
 
     fireEvent.click(whatsApp);

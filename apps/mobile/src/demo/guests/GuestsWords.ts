@@ -280,7 +280,7 @@ export const say = {
   optedOut: (date: string) => `Unsubscribed from WhatsApp on ${date}`,
   onlyTheGuest: 'Only the guest can change this.',
   forAgreed: (name: string, mobile: string) =>
-    `For ${name}, on ${mobile}. It is marked as recorded by you.`,
+    `For ${name}, on ${mobile}. It will show as recorded by you.`,
   closedOn: (date: string) => `Replies closed on ${date}.`,
   closed: (date: string) =>
     `Replies closed on ${date}. Record a reply opens again if you let them change their reply.`,

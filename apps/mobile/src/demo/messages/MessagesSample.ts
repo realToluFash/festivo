@@ -509,7 +509,7 @@ export const RECEIPTS_CANT: readonly NotReached[] = [
     name: 'Amaka Eze',
     lines: [
       { mark: 'none', word: W.noEmail },
-      { mark: 'notsent', word: say.where(WA, W.notSent), reason: W.hasntAgreedWhatsApp },
+      { mark: 'notsent', word: say.where(WA, W.notSent), reason: W.hasNotAgreedWhatsApp },
     ],
     fixes: [],
   },

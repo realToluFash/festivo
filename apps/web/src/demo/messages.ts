@@ -1071,7 +1071,7 @@ export const RECEIPTS_UNREACHED: readonly Unreached[] = [
     'cant',
     [
       NO_EMAIL,
-      { mark: 'notsent', word: `${MW.whatsApp} · ${MW.notSent}`, why: MW.hasntAgreedWhatsApp },
+      { mark: 'notsent', word: `${MW.whatsApp} · ${MW.notSent}`, why: MW.hasNotAgreedWhatsApp },
     ],
     [],
   ),
