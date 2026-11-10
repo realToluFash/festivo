@@ -33,7 +33,6 @@ import {
   NOW,
   type Show,
   calendarEvents,
-  dayWords,
   daysOf,
   itemHref,
   needsLabel,
@@ -41,9 +40,10 @@ import {
   needsWhen,
   overdueIn,
   sampleOf,
+  showWords,
   startOf,
 } from './CalendarModel.ts';
-import { CW, say } from './CalendarWords.ts';
+import { CW } from './CalendarWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
@@ -140,15 +140,11 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
         ? {
             Row: NeedsRow,
             lateOf: NEEDS_LATE,
-            emptyDay: dayWords(show),
-            emptyMonth: say.emptyNeedsMonth,
+            ...showWords(show),
             everyMonth: true,
             landing: needsLanding,
           }
-        : {
-            emptyDay: dayWords(show),
-            emptyMonth: (month: string) => t('calendar.emptyMonth', { month }),
-          },
+        : showWords(show),
     [t],
   );
 

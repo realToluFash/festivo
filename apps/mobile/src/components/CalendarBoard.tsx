@@ -37,7 +37,7 @@ import {
   type Week,
   agendaMonth,
   agendaOf,
-  emptyMonth,
+  emptyMonthLine,
   firstOf,
   landingIn,
   landingOf,
@@ -407,7 +407,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   );
 
   const emptyLine =
-    loaded && view === 'month' && emptyMonth(pinned, days) ? parts.emptyMonth(monthWords) : null;
+    view === 'month' ? emptyMonthLine(loaded, pinned, days, parts.emptyMonth, monthWords) : null;
   const line =
     load === 'loading' ? (
       <ReadOut words={t('calendar.loading')} style={styles.loading}>

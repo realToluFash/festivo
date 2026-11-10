@@ -104,6 +104,17 @@ export function emptyMonth(month: CalendarMonth, days: Days): boolean {
   return agendaDays(month, days).length === 0;
 }
 
+/** The line a month draws in place of its grid: once loaded, and only when it holds nothing. */
+export function emptyMonthLine(
+  loaded: boolean,
+  month: CalendarMonth,
+  days: Days,
+  words: (month: string) => string,
+  name: string,
+): string | null {
+  return loaded && emptyMonth(month, days) ? words(name) : null;
+}
+
 /** The slots a day has room for, with each bar left in its lane; "+n more" counts every item not drawn. */
 export function shownIn(cell: Cell, fit: number): { shown: (Item | null)[]; more: number } {
   const aligned = [...cell.slots];

@@ -20,7 +20,6 @@ import {
   barWords as productBarWords,
   dayHeading as productDayHeading,
   dayLabel as productDayLabel,
-  emptyMonth,
   monthKey,
   rowTitle,
   rowWhen as productRowWhen,
@@ -348,26 +347,14 @@ export function needsLabel(item: ProductItem, locale: string, now: Date = NOW): 
   return words(rowTitle(item), item.event.name, rowWhen(item, locale));
 }
 
-export function monthLine(
-  load: Load,
-  show: Show,
-  month: CalendarMonth,
-  days: Days,
-  name: string,
-): string | null {
-  if (load !== 'loaded' || !emptyMonth(month, days)) return null;
-
-  return show === 'needs' ? say.emptyNeedsMonth(name) : t('calendar.emptyMonth', { month: name });
-}
-
-export function dayWords(show: Show): string {
-  return show === 'needs' ? CW.emptyNeedsDay : t('calendar.emptyDay');
-}
-
-export function dayLine(load: Load, show: Show, items: readonly Item[]): string | null {
-  if (load !== 'loaded' || items.length > 0) return null;
-
-  return dayWords(show);
+/** The words the demo's board says for an empty day and an empty month, under each Show option. */
+export function showWords(show: Show): { emptyDay: string; emptyMonth: (month: string) => string } {
+  return show === 'needs'
+    ? { emptyDay: CW.emptyNeedsDay, emptyMonth: say.emptyNeedsMonth }
+    : {
+        emptyDay: t('calendar.emptyDay'),
+        emptyMonth: (month: string) => t('calendar.emptyMonth', { month }),
+      };
 }
 
 export function barWords(event: Shown, wide: boolean, columns: number): string {
