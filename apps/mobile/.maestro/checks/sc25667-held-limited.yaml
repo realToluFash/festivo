@@ -1,4 +1,4 @@
-# sc-25667: on an account at its limit, Cancel is off while it sends; once Too many new organisations for now. shows, Cancel is live and closes the sheet, and nothing named Held Limited is in the switcher.
+# sc-25667: on an account at its limit, Cancel and Back are gone while it sends; once Too many new organisations for now. shows, Cancel is live and leaves the walk by its Discard, and nothing named Held Limited is in the switcher.
 appId: host.exp.Exponent
 onFlowComplete:
   - runScript:
@@ -7,26 +7,20 @@ onFlowComplete:
         ASK: /api?to=up
 ---
 - runFlow: ../open-create-organisation.yaml
-- tapOn:
-    id: 'createOrganisation.name'
-- inputText: 'Held Limited'
-- hideKeyboard:
-    optional: true
+- runFlow:
+    file: ../walk-to-ready.yaml
+    env:
+      NAME: 'Held Limited'
 - runScript:
     file: ../batch/helper.js
     env:
       ASK: /api?to=paused
 - tapOn:
-    id: 'createOrganisation.create'
-- assertVisible:
-    id: 'createOrganisation.cancel'
-    enabled: false
-- tapOn:
-    id: 'createOrganisation.cancel'
-- waitForAnimationToEnd:
-    timeout: 3000
-- assertVisible:
-    id: 'createOrganisation'
+    id: 'createWalk.primary'
+- assertNotVisible:
+    id: 'createWalk.cancel'
+- assertNotVisible:
+    id: 'createWalk.back'
 - takeScreenshot: limited-held
 - runScript:
     file: ../batch/helper.js
@@ -35,17 +29,17 @@ onFlowComplete:
 - extendedWaitUntil:
     visible: '{{t:createOrganisation.limitedTitle}}'
     timeout: 30000
-- hideKeyboard:
-    optional: true
 - takeScreenshot: limited-answer
 - assertVisible:
-    id: 'createOrganisation.cancel'
+    id: 'createWalk.cancel'
     enabled: true
 - tapOn:
-    id: 'createOrganisation.cancel'
+    id: 'createWalk.cancel'
+- tapOn:
+    id: 'createWalk.discard'
 - extendedWaitUntil:
     notVisible:
-      id: 'createOrganisation'
+      id: 'createWalk'
     timeout: 10000
 - tapOn:
     id: 'home.switchOrganisation'

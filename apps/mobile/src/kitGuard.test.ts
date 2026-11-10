@@ -1143,6 +1143,16 @@ describe('Create an organisation cannot be closed while it sends (sc-25667)', ()
     expect(source).toMatch(/const goBack = \(\) => \{\s*if \(!creating\)/u);
   });
 
+  it('and on the iPad reads its scrim as off while it sends', () => {
+    const source = text();
+    const start = source.lastIndexOf('<Pressable', source.indexOf('testID="createWalk.scrim"'));
+    const scrim = source.slice(start, tagEnd(source, start));
+
+    expect(propValue(scrim, 'onPress')).toBe('{cancel}');
+    expect(propValue(scrim, 'disabled')).toBe('{creating}');
+    expect(propValue(scrim, 'accessibilityState')).toBe('{{ disabled: creating }}');
+  });
+
   it('where a held sheet ignores back, the escape and the scrim, and reads its scrim as off', () => {
     const source = readFileSync(join('src', 'components', 'Sheet.tsx'), 'utf8');
     const frame = source.slice(source.indexOf('function SheetFrame('));

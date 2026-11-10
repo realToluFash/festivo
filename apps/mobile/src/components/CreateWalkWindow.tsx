@@ -463,8 +463,10 @@ export function CreateWalkWindow<Made>({
             <Pressable
               style={StyleSheet.absoluteFill}
               onPress={cancel}
+              disabled={creating}
               accessibilityRole="button"
               accessibilityLabel={t('createOrganisation.cancel')}
+              accessibilityState={{ disabled: creating }}
               testID="createWalk.scrim"
             />
           </Animated.View>
