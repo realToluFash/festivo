@@ -52,6 +52,7 @@ import {
   SCREEN_READER_OFF,
   driverBuilds,
   driverPids,
+  leftDriverSay,
   bundlerArgs,
   bundlerEnv,
   commitTarget,
@@ -2475,6 +2476,16 @@ describe('the driver a frozen run leaves on the simulator', () => {
         'SIM-1',
       ),
     ).toEqual([4120]);
+  });
+
+  it('is stopped before a batch starts, and nothing is said when none is left', () => {
+    expect(leftDriverSay('SIM-1', { runners: [], builds: [] })).toBeNull();
+    expect(leftDriverSay('SIM-1', { runners: [], builds: [4120] })).toBe(
+      'Stopping the Maestro driver an earlier run left on SIM-1',
+    );
+    expect(leftDriverSay('SIM-1', { runners: [38266], builds: [] })).toBe(
+      'Stopping the Maestro driver an earlier run left on SIM-1',
+    );
   });
 });
 
