@@ -104,7 +104,8 @@ export function Waiting({
   const { t } = useTranslation();
   const side = dense ? 36 : 40;
   const gutter = dense ? 10 : 0;
-  const only = waiting.length === 1 ? waiting[0] : undefined;
+  const first = waiting[0];
+  const removes = first?.removesAt?.written;
   const items: ListItem[] = waiting.map((member) => {
     const face = faceOf(member);
 
@@ -131,9 +132,11 @@ export function Waiting({
     <Section
       title={t('membersScreen.waitingTitle')}
       foot={
-        only?.removesAt == null
+        first == null || removes == null
           ? undefined
-          : t('membersScreen.waitingFoot', { deadline: only.removesAt.written })
+          : waiting.length === 1
+            ? t('membersScreen.waitingFoot', { deadline: removes })
+            : t('membersScreen.waitingFootMany', { name: first.user.name, deadline: removes })
       }
     >
       <View style={dense && styles.bleed}>
