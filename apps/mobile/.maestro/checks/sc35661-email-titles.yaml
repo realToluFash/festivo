@@ -1,0 +1,40 @@
+# sc-35661: the Add an email address sheet's title, then the Verify sheet's (verifyEmail.title), in the header without truncation.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'account.email.add'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'account.email.add'
+- extendedWaitUntil:
+    visible:
+      id: 'account.email.add.field'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: add-email-sheet
+- assertVisible: '{{t:contacts.addEmail}}'
+- tapOn:
+    id: 'account.email.add.field'
+- inputRandomEmail
+- tapOn:
+    id: 'account.email.add.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'account.step'
+    timeout: 15000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'account.step'
+- extendedWaitUntil:
+    visible:
+      id: 'account.verify.code'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: verify-email-sheet
+- assertVisible: '{{t:verifyEmail.title}}'

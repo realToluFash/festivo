@@ -1,0 +1,42 @@
+# sc-35661: the Add a phone number sheet's title, then the Verify sheet's (verifyPhone.title), in the header without truncation.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'account.phone.add'
+- extendedWaitUntil:
+    visible:
+      id: 'account.phone.add.number'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: add-phone-sheet
+- assertVisible: '{{t:contacts.addPhone}}'
+- tapOn:
+    id: 'account.phone.add.number'
+- inputText: '74'
+- inputRandomNumber:
+    length: 8
+- tapOn:
+    id: 'account.phone.add.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'account.step'
+    timeout: 15000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'account.step'
+- extendedWaitUntil:
+    visible:
+      id: 'account.verify.code'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: verify-phone-sheet
+- assertVisible: '{{t:verifyPhone.title}}'
