@@ -46,13 +46,13 @@ describe('the countries (sc-30412)', () => {
   it('leaves the currency out while it is not yet known, never saying none', () => {
     expect(optionLabel(country('NG'))).toBe('Nigeria');
     expect(countriesOf('en', null, t).every((one) => one.currency == null)).toBe(true);
-    expect(pickLine(country('NG'), named, 'en', t)).toBe(
+    expect(pickLine(country('NG'), named, t)).toBe(
       'Time zone, from this device, Lisbon · Europe/Lisbon.',
     );
   });
 
   it('says the currency and the device’s zone when a pick changes', () => {
-    expect(pickLine(country('BR'), named, 'en', t)).toBe(
+    expect(pickLine(country('BR'), named, t)).toBe(
       'Currency, Brazilian Real (BRL). Time zone, from this device, Lisbon · Europe/Lisbon.',
     );
   });

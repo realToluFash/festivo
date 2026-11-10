@@ -814,6 +814,8 @@
     "clearSearch": "Clear search",
     "noMatch": "No country matches “{{text}}”.",
     "fromDevice": "From this device",
+    "picked": "Currency, {{currency}}. Time zone, from this device, {{zone}}.",
+    "pickedZone": "Time zone, from this device, {{zone}}.",
     "allCountries": "All countries",
     "noneYet": "None yet",
     "back": "Back",

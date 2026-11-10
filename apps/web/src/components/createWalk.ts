@@ -185,16 +185,12 @@ export function limitedLine(walk: Walk, locale: string, t: TFunction): string | 
     : t('createOrganisation.limitedBody', { time: formatTimeOfDay(walk.lifts, locale) });
 }
 
-function lowered(words: string, locale: string): string {
-  return words.charAt(0).toLocaleLowerCase(locale) + words.slice(1);
-}
-
-export function pickLine(country: Country, walk: Walk, locale: string, t: TFunction): string {
-  const zone = `${t('orgGeneral.timezone')}, ${lowered(t('createOrganisation.fromDevice'), locale)}, ${timezoneLabel(walk.device.zone)}.`;
+export function pickLine(country: Country, walk: Walk, t: TFunction): string {
+  const zone = timezoneLabel(walk.device.zone);
 
   return country.currency == null
-    ? zone
-    : `${t('orgGeneral.currency')}, ${country.currency.words}. ${zone}`;
+    ? t('createOrganisation.pickedZone', { zone })
+    : t('createOrganisation.picked', { currency: country.currency.words, zone });
 }
 
 export function cardLine(
