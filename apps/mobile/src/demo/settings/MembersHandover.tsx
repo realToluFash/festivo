@@ -14,7 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Glyph } from '../../components/Glyph.tsx';
 import { ReadOut, useReadOut } from '../../components/ReadOut.tsx';
-import { SETTLED_MS } from '../../components/Screen.tsx';
+import { SETTLED_MS, useWindowOrigin } from '../../components/Screen.tsx';
+import { keyboardInWindow } from '../../kit/keyboard.ts';
 import {
   moveScreenReaderFocus,
   type ScreenReaderTarget,
@@ -103,6 +104,7 @@ export function HandoverAsk({
   const [query, setQuery] = useState(start?.query ?? '');
   const [cleared, setCleared] = useState(0);
   const [keys, setKeys] = useState<number | null>(null);
+  const origin = useWindowOrigin();
   const [centred, setCentred] = useState<number | null>(null);
   const button = useRef<ViewInstance>(null);
   const field = useRef<TextInputInstance>(null);
@@ -260,7 +262,7 @@ export function HandoverAsk({
               width={menuAt.width}
               align="start"
               below={tokens.spaceXs}
-              floor={keys == null ? null : keys - tokens.spaceSm}
+              floor={keys == null ? null : keyboardInWindow(keys, origin) - tokens.spaceSm}
               head={
                 searching ? (
                   <View style={styles.searchHead}>
