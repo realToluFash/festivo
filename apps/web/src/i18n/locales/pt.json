@@ -2034,8 +2034,8 @@
   },
   "requestLink": {
     "title": "Pedidos de adesão",
-    "on": "Ativados",
-    "off": "Desativados",
+    "on": "Ativada",
+    "off": "Desativada",
     "switchLabel": "Pedidos de adesão",
     "intro": "Qualquer pessoa com esta ligação pode pedir para aderir a {{organisation}}. Alguém que possa gerir os membros responde a cada pedido. A ligação fica desativada até a ativar.",
     "linkLabel": "Ligação de adesão",
