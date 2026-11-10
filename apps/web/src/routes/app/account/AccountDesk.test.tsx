@@ -467,7 +467,7 @@ const NEW_PHONE = {
 };
 
 describe('codes and proofs at a desk (sc-30411)', () => {
-  it('rewords the blank and the wrong code with the label when the code is texted instead (sc-36468)', async () => {
+  function handingOverToAText(): void {
     answering({
       'GET /api/auth/me': () => json({ ...ME, phoneNumbers: [...ME.phoneNumbers, NEW_PHONE] }),
       'GET /api/auth/verify/phone/resend': () =>
@@ -476,6 +476,24 @@ describe('codes and proofs at a desk (sc-30411)', () => {
       'POST /api/auth/verify/phone': () => problem('verification_code_invalid', 422),
     });
     open();
+  }
+
+  it('rewords a blank code already showing when the code is texted instead (sc-36468)', async () => {
+    handingOverToAText();
+
+    fireEvent.click(await within(card()).findByRole('button', { name: 'Send a code' }));
+    await within(dialog()).findByLabelText('Code from WhatsApp');
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Verify' }));
+    expect(within(dialog()).getByText('Enter the 6-digit code from WhatsApp.')).toBeDefined();
+
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Text it to me instead' }));
+    expect(
+      await within(dialog()).findByText('Enter the 6-digit code from the text.'),
+    ).toBeDefined();
+  });
+
+  it('rewords a wrong code with the label when the code is texted instead (sc-36468)', async () => {
+    handingOverToAText();
 
     fireEvent.click(await within(card()).findByRole('button', { name: 'Send a code' }));
     const field = await within(dialog()).findByLabelText<HTMLInputElement>('Code from WhatsApp');
@@ -495,10 +513,6 @@ describe('codes and proofs at a desk (sc-30411)', () => {
     ).toBeDefined();
     expect(within(dialog()).getByLabelText('Code from the text')).toBe(field);
     expect(field.value).toBe('000000');
-
-    fireEvent.change(field, { target: { value: '' } });
-    fireEvent.click(within(dialog()).getByRole('button', { name: 'Verify' }));
-    expect(within(dialog()).getByText('Enter the 6-digit code from the text.')).toBeDefined();
   });
 
   it('verifies a number from WhatsApp, saying when Text it to me instead fails and when it goes', async () => {

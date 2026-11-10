@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import {
   type ContactKind,
   type ContactRow,
+  type CodeError,
   type VerifyWords,
   verifyWords,
 } from '../accountPage.ts';
@@ -640,7 +641,7 @@ export function VerifyDialog({
   const { status, resending, wording } = check;
   const cooldown = resending.cooldown;
   const [typed, setTyped] = useState(start?.typed ?? '');
-  const [error, setError] = useState<'blank' | 'short' | 'wrong' | 'failed' | null>(null);
+  const [error, setError] = useState<CodeError | null>(null);
   const [resendFailed, setResendFailed] = useState(false);
   const words: VerifyWords = verifyWords(email ? 'email' : wording.line, row.shown, t);
   const shownError = error === 'failed' ? t('verifyEmail.failedBody') : error && words[error];
