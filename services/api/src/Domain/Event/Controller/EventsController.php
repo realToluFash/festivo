@@ -249,18 +249,15 @@ final readonly class EventsController
         return new EventSearch(
             term: Str\length($term) < EventSearch::SHORTEST_TERM ? null : $term,
             types: $types,
-            from: self::day($query, 'from'),
-            to: self::day($query, 'to'),
+            from: self::day($query['from'] ?? null, 'from'),
+            to: self::day($query['to'] ?? null, 'to'),
             hosts: Vec\filter(\is_string($hosts) ? [$hosts] : $hosts, static fn (string $host): bool => '' !== $host),
         );
     }
 
-    /** @param array<string, mixed> $query */
-    private static function day(array $query, string $key): ?DateTimeImmutable
+    private static function day(?string $written, string $key): ?DateTimeImmutable
     {
-        $written = $query[$key] ?? null;
-
-        if (!\is_string($written) || '' === $written) {
+        if (null === $written || '' === $written) {
             return null;
         }
 
