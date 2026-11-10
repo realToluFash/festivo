@@ -426,7 +426,7 @@ export function barLabel(t: TFunction, item: EventItem, zone: string, locale: st
     name: item.event.name,
     status: phaseTag(item.event.shown, t).word,
     time: timeOf(t, item.event, item.event.startsAt, zone, locale),
-    days: daysOf(t, item, locale),
+    dates: daysOf(t, item, locale),
   });
 }
 

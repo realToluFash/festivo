@@ -2340,7 +2340,7 @@
     "moreItems_many": "+{{count, number}} more",
     "chosen": "{{name}}: {{word}}",
     "barStatus": "{{name}} · {{status}}",
-    "barLabel": "{{name}}, {{status}}, {{time}}, {{days}}",
+    "barLabel": "{{name}}, {{status}}, {{time}}, {{dates}}",
     "markLabel": "{{title}}, {{time}}",
     "close": "Fechar",
     "timeInZone": "{{time}} {{timeZone}}",
