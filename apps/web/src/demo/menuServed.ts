@@ -12,11 +12,7 @@ export type Item =
   | { key: string; kind: 'choice'; choiceId: string }
   | { key: string; kind: 'variant' };
 
-export interface FixedItem {
-  key: string;
-  kind: 'fixed';
-  name: string;
-}
+export type FixedItem = Extract<Item, { kind: 'fixed' }>;
 
 export interface Choice {
   id: string;
@@ -178,7 +174,7 @@ function nameErrors(
     const name = one.name.trim();
 
     if (one.fixed && name === '') byKey[one.key] = MW.blank;
-    else if (one.fixed && one.name.length > ITEM_NAME_MAX) byKey[one.key] = MW.long;
+    else if (one.fixed && name.length > ITEM_NAME_MAX) byKey[one.key] = MW.long;
     else if (seen.has(sameKey(name))) byKey[one.key] = MW.same;
 
     if (name !== '') seen.add(sameKey(name));

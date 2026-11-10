@@ -360,15 +360,6 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
   }
 
   function removeVariant(dishId: string, name: string) {
-    const target = findDish(courses, dishId);
-    if (target == null) return;
-
-    if (target.variants.length > 2) {
-      setCourses(
-        mapDish(courses, dishId, (d) => ({ ...d, variants: d.variants.filter((v) => v !== name) })),
-      );
-      return;
-    }
     setAsking({ dishId, kind: 'variant', name });
     focusAfter.current = `mn-ask-v-${dishId}`;
   }
