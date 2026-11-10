@@ -8,6 +8,7 @@ import {
   changeRefusal,
   chooseRefusal,
   emailedCodeRefusal,
+  finishedLine,
   proofAsks,
   SECURITY_STATES,
   sampleDevice,
@@ -30,9 +31,36 @@ const both: SampleWays = { password: true, google: true, apple: false };
 const googleOnly: SampleWays = { password: false, google: true, apple: false };
 const NEW_PASSWORD = 'a much longer passphrase';
 
+describe('two-factor not loaded', () => {
+  it('starts with no card, and the line of what had just finished', () => {
+    expect(securityStart('rest')).toMatchObject({ factor: 'ready', finished: null });
+    expect(securityStart('factorFailed')).toMatchObject({ factor: 'failed', finished: null });
+    expect(securityStart('factorFailedLinked')).toMatchObject({
+      ways: { password: true, google: true, apple: true },
+      factor: 'failed',
+      finished: { kind: 'linked', provider: 'apple' },
+    });
+    expect(securityStart('factorLoadingSignedOut')).toMatchObject({
+      factor: 'loading',
+      finished: { kind: 'signedOut', device: 'safari' },
+      signedOut: ['safari'],
+    });
+  });
+
+  it("says the finished action in the card's own words", () => {
+    expect(finishedLine(null, t)).toBeNull();
+    expect(finishedLine({ kind: 'linked', provider: 'apple' }, t)).toBe(
+      'Apple is linked. We emailed your verified addresses to say so.',
+    );
+    expect(finishedLine({ kind: 'signedOut', device: 'safari' }, t)).toBe(
+      'Safari on macOS is signed out.',
+    );
+  });
+});
+
 describe('a state link', () => {
   it('opens the state it names, and the page at rest for anything else', () => {
-    expect(SECURITY_STATES).toHaveLength(17);
+    expect(SECURITY_STATES).toHaveLength(20);
     expect(securityStateOf('forgotSent')).toBe('forgotSent');
     expect(securityStateOf('nonsense')).toBe('rest');
     expect(securityStateOf(undefined)).toBe('rest');

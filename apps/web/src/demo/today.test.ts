@@ -145,6 +145,37 @@ describe('the planning day before the party’s invitations go out (?invites=non
   });
 });
 
+describe('an event that starts later today, not under way yet (?starts=later)', () => {
+  const later = momentOf('plan', us, { later: true });
+
+  it('stays a planning day, with no Now, and says when it starts', () => {
+    expect(later.kind).toBe('plan');
+    expect(later.now).toBeNull();
+    expect(later.time).toBe('09:41');
+    expect(later.eyebrow).toBe('Saturday, November 28');
+    expect(later.sub).toBe('Ire Events end-of-year party starts today at 19:00.');
+    expect(later.needs).toEqual([]);
+    expect(later.lead).toBeNull();
+  });
+
+  it('counts the party as Today, not a started day, until 19:00', () => {
+    const party = later.events.find(({ name }) => name === 'Ire Events end-of-year party');
+
+    expect(party).toMatchObject({ count: 'Today', live: false, stage: null });
+    expect(later.agenda).toEqual([
+      expect.objectContaining({
+        day: 'Today',
+        today: true,
+        items: [expect.objectContaining({ time: '19:00', title: 'The party starts' })],
+      }),
+    ]);
+  });
+
+  it('reads the planning day as before without it', () => {
+    expect(momentOf('plan', us, { later: false }).sub).toBe('The wedding starts on Thursday.');
+  });
+});
+
 describe('the quiet states', () => {
   it('a quiet week has nothing due, and says what is next', () => {
     const quiet = momentOf('quiet', us);
@@ -173,5 +204,12 @@ describe('the small rules', () => {
     expect(railAt(['10:00', '12:00'], '09:00')).toBe(0);
     expect(railAt(['10:00', '12:00'], '13:00')).toBe(1);
     expect(railAt(['10:00', '12:00'], '11:00')).toBe(0.5);
+  });
+});
+
+describe('a first run for a member without Create events (?moment=firstAsk)', () => {
+  it('welcomes the member looking, not the owner', () => {
+    expect(momentOf('first', us, { first: 'Ana' }).hello).toBe('Welcome, Ana');
+    expect(momentOf('first', us).hello).toBe('Welcome, Folake');
   });
 });
