@@ -166,18 +166,21 @@ export interface StepProps {
   label: string;
   onPress: () => void;
   testID?: string;
-  ref?: Ref<ViewInstance>;
+  ref?: Ref<ViewInstance> | undefined;
+  /** Held while what it started is under way; the label then says so. */
+  busy?: boolean;
 }
 
 /** The card's one next step, the only filled button in B. */
-export function StepButton({ label, onPress, testID, ref }: StepProps) {
+export function StepButton({ label, onPress, testID, ref, busy = false }: StepProps) {
   return (
     <Pressable
       ref={ref}
-      onPress={onPress}
-      style={({ pressed }) => [styles.step, pressed && styles.pressed]}
+      onPress={busy ? undefined : onPress}
+      style={({ pressed }) => [styles.step, pressed && !busy && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled: busy, busy }}
       testID={testID}
     >
       <Text size={15} weight="semibold" accessible={false} style={styles.accent}>
@@ -334,13 +337,15 @@ export function GlassTag({
   word,
   mark,
   shape,
+  testID,
 }: {
   word: string;
   mark?: MarkKind | undefined;
   shape?: ReactNode;
+  testID?: string | undefined;
 }) {
   return (
-    <Glass height={28} style={styles.glassTag}>
+    <Glass height={28} style={styles.glassTag} testID={testID}>
       {shape ?? (mark != null && <ShapeMark kind={mark} side={13} ink={tokens.colorInkOnDark} />)}
       <Text size={13} weight="semibold" numberOfLines={1} style={styles.white}>
         {word}
@@ -458,14 +463,17 @@ export function SectionFailed({
   line,
   onRetry,
   testID,
+  announce = true,
 }: {
   title: string;
   line?: string;
   onRetry: () => void;
   testID: string;
+  /** False keeps the failure from being read out, as when it answers a Try again. */
+  announce?: boolean;
 }) {
   const { t } = useTranslation();
-  useReadOut(line == null ? title : `${title} ${line}`);
+  useReadOut(announce ? (line == null ? title : `${title} ${line}`) : null);
 
   return (
     <View style={styles.sectionFailed}>

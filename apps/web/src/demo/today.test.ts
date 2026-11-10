@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { dueWords, INVITES_NOT_SENT, momentOf, railAt, repliesOf, sayIn } from './today.ts';
+import { dueWords, INVITES_NOT_SENT, momentOf, railAt, repliesOf, sayIn, shown } from './today.ts';
 
 const us = sayIn('en-US');
 const gb = sayIn('en-GB');
@@ -37,9 +37,9 @@ describe('a planning day', () => {
 
   it('draws the wedding as one bar, and the other milestones as dots', () => {
     expect(plan.bars).toEqual([
-      { event: 'wed', start: 2, span: 3, label: '3 days', openLeft: false },
+      { event: shown('wed'), start: 2, span: 3, label: '3 days', openLeft: false },
     ]);
-    expect(plan.days.map(({ dots }) => dots)).toEqual([
+    expect(plan.days.map(({ dots }) => dots.map(({ mesh }) => mesh))).toEqual([
       ['ireti'],
       ['wed'],
       [],
@@ -74,7 +74,7 @@ describe('the event day', () => {
 
   it('runs the wedding’s bar in from the left', () => {
     expect(day.bars).toEqual([
-      { event: 'wed', start: 0, span: 2, label: 'day 2 of 3', openLeft: true },
+      { event: shown('wed'), start: 0, span: 2, label: 'day 2 of 3', openLeft: true },
     ]);
     expect(day.events[0]).toMatchObject({ count: 'Day 2 of 3', live: true, stage: null });
     expect(day.events[1]).toMatchObject({ count: 'In 8 days', stage: null });
@@ -183,7 +183,7 @@ describe('the quiet states', () => {
     expect(quiet.needs).toEqual([]);
     expect(quiet.bars).toEqual([]);
     expect(quiet.nextUp?.when).toBe('Sat, Nov 28 · in 10 days');
-    expect(quiet.events.map(({ event }) => event)).toEqual(['party', 'draft']);
+    expect(quiet.events.map(({ event }) => event.mesh)).toEqual(['party', 'draft']);
   });
 
   it('a first run has no events', () => {
@@ -204,5 +204,12 @@ describe('the small rules', () => {
     expect(railAt(['10:00', '12:00'], '09:00')).toBe(0);
     expect(railAt(['10:00', '12:00'], '13:00')).toBe(1);
     expect(railAt(['10:00', '12:00'], '11:00')).toBe(0.5);
+  });
+});
+
+describe('a first run for a member without Create events (?moment=firstAsk)', () => {
+  it('welcomes the member looking, not the owner', () => {
+    expect(momentOf('first', us, { first: 'Ana' }).hello).toBe('Welcome, Ana');
+    expect(momentOf('first', us).hello).toBe('Welcome, Folake');
   });
 });

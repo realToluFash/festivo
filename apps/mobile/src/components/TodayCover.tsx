@@ -108,15 +108,18 @@ export function Glass({
   height = 40,
   grows = false,
   style,
+  testID,
 }: {
   children: ReactNode;
   height?: number;
   /** Taller than `height` when its words wrap, rather than clipped to it. */
   grows?: boolean;
   style?: StyleProp<ViewStyle>;
+  testID?: string | undefined;
 }) {
   return (
     <View
+      testID={testID}
       style={[
         styles.glass,
         grows ? { minHeight: height } : { height },

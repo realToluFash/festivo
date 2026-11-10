@@ -426,7 +426,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
 
     expect(
       await within(people()).findByText(
-        'Folake Adeyemi, Ade Bello, and Julien Moreau see every event, as owners and admin of Ìrè Events.',
+        'Folake Adeyemi, Ade Bello and Julien Moreau see every event, as owners and admin of Ìrè Events.',
       ),
     ).toBeDefined();
   });

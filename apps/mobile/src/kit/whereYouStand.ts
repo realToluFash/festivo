@@ -1,4 +1,5 @@
 import type { SignInRuleChange } from '@soirely/api-client';
+import { listFormat } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
 /** The areas the two-factor rule for managers holds back, as Permission::isAdministrative has them. */
@@ -169,7 +170,7 @@ function twoFactor(
       'needs',
       title,
       t('signInRules.stand.managersNotOn', {
-        areas: new Intl.ListFormat(locale, { type: 'conjunction' }).format(
+        areas: listFormat(locale, { type: 'conjunction' }).format(
           viewer.manages.map((area) => t(`signInRules.stand.area.${area}`)),
         ),
       }),
@@ -235,7 +236,7 @@ export function rulesCard(t: TFunction, rules: readonly RuleRow[], viewer: Stand
   };
 }
 
-export type Change = Pick<SignInRuleChange, 'rule' | 'now' | 'was' | 'at'> & {
+export type Change = Pick<SignInRuleChange, 'entry' | 'rule' | 'now' | 'was' | 'at'> & {
   by: { name: string };
 };
 
@@ -278,6 +279,7 @@ export function wasWords(t: TFunction, change: Change): string {
 }
 
 export interface ChangeRow {
+  key: string;
   at: string;
   title: string;
   line: string;
@@ -305,6 +307,7 @@ export function changeRows(
       const title = changeTitle(t, change);
 
       return {
+        key: `${change.entry}.${change.rule}`,
         at: change.at,
         title,
         line: t('signInRules.stand.changeLine', words),

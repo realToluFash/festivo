@@ -4,9 +4,9 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/events/${EVENT_ID}
 - scrollUntilVisible:
     element:
-      id: events.mute
+      id: events.mute.switch
     timeout: 30000
-# The switch is events.mute.switch; events.mute is the whole card. It is disabled while the mute loads or saves.
+# The switch is the row events.mute.switch, disabled while the mute loads or saves.
 - extendedWaitUntil:
     visible:
       id: events.mute.switch

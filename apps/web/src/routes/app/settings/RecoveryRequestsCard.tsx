@@ -1,8 +1,10 @@
+import { listFormat } from '@soirely/domain';
 import { ApiError, type RecoveryRequest } from '@soirely/api-client';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { currentLocale } from '../../../i18n/index.ts';
 import { ActionPair } from '../../../components/ActionPair.tsx';
 import { useStepFocus } from '../../../stepFocus.ts';
 
@@ -132,7 +134,7 @@ export function RecoveryRequestsCard() {
                     <div className="notice notice-quiet">
                       <p>
                         {t('recoveryRequests.own', {
-                          organisations: new Intl.ListFormat(undefined, {
+                          organisations: listFormat(currentLocale(), {
                             type: 'conjunction',
                           }).format(request.organisations),
                         })}

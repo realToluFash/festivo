@@ -5,8 +5,34 @@ import {
   followPluralLocales,
   formattingLocale,
   languageChoices,
+  listFormat,
   pluralLocale,
 } from './locales.ts';
+
+describe('listFormat', () => {
+  it('joins English without the serial comma, as British copy does', () => {
+    expect(
+      listFormat('en', { type: 'conjunction' }).format(['members', 'billing', 'security']),
+    ).toBe('members, billing and security');
+    expect(listFormat('en', { type: 'disjunction' }).format(['Apple', 'Google', 'email'])).toBe(
+      'Apple, Google or email',
+    );
+  });
+
+  it.each([
+    ['es', 'a, b y c'],
+    ['fr', 'a, b et c'],
+    ['pt', 'a, b e c'],
+  ])('joins %s with its own word', (locale, joined) => {
+    expect(listFormat(locale, { type: 'conjunction' }).format(['a', 'b', 'c'])).toBe(joined);
+  });
+
+  it('reads no locale as the default language', () => {
+    expect(listFormat(undefined, { type: 'conjunction' }).format(['a', 'b', 'c'])).toBe(
+      'a, b and c',
+    );
+  });
+});
 
 describe('languageChoices', () => {
   it("names each supported language in the reader's language, then once more in its own", () => {

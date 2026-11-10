@@ -1,5 +1,5 @@
 import type { Account, ListedEvent, Membership } from '@soirely/api-client';
-import { roleName, serverClock } from '@soirely/domain';
+import { roleHolds, roleName, serverClock } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -112,11 +112,12 @@ export function TodayLanding({
       organisation: organisation.name,
       person: { name: account.name, role: roleName(t, organisation.role) },
       unread,
+      creates: roleHolds(organisation, 'events.create'),
       search: false,
       open,
       useOrgOpener: useFrameOrgOpener,
     }),
-    [account.name, organisation.name, organisation.role, unread, open, t],
+    [account.name, organisation, unread, open, t],
   );
   const onTab = useCallback((tab: Tab) => {
     if (tab !== 'Today') router.navigate(TAB_HREF[tab]);

@@ -207,7 +207,7 @@ describe('Sign-in rules: where you stand', () => {
     expect(
       rule({ ownTwoFactor: false }, 'twoFactor', { manages: ['members', 'billing', 'security'] })
         .line,
-    ).toBe('Not on yet. Changes to members, billing, and security wait until it is.');
+    ).toBe('Not on yet. Changes to members, billing and security wait until it is.');
   });
 
   it('explains managers only while that rule is the one in force', () => {
@@ -260,32 +260,32 @@ describe('Sign-in rules: what changed', () => {
   it('titles each rule with its new value, and says what it was', () => {
     const cases: [Change, string, string][] = [
       [
-        { rule: 'providerOnly', now: true, was: false, at: '', by: BY },
+        { entry: 'e', rule: 'providerOnly', now: true, was: false, at: '', by: BY },
         'How people sign in: Google or Apple only',
         'was any way',
       ],
       [
-        { rule: 'providerOnly', now: false, was: true, at: '', by: BY },
+        { entry: 'e', rule: 'providerOnly', now: false, was: true, at: '', by: BY },
         'How people sign in: any way',
         'was Google or Apple only',
       ],
       [
-        { rule: 'inactivityTimeoutDays', now: 30, was: null, at: '', by: BY },
+        { entry: 'e', rule: 'inactivityTimeoutDays', now: 30, was: null, at: '', by: BY },
         'Signed out after: 30 days unused',
         'was no limit',
       ],
       [
-        { rule: 'inactivityTimeoutDays', now: null, was: 30, at: '', by: BY },
+        { entry: 'e', rule: 'inactivityTimeoutDays', now: null, was: 30, at: '', by: BY },
         'Signed out after: no limit',
         'was 30 days',
       ],
       [
-        { rule: 'administratorsNeedTwoFactor', now: true, was: false, at: '', by: BY },
+        { entry: 'e', rule: 'administratorsNeedTwoFactor', now: true, was: false, at: '', by: BY },
         'Two-factor for managers: on',
         'was off',
       ],
       [
-        { rule: 'everyoneNeedsTwoFactor', now: false, was: true, at: '', by: BY },
+        { entry: 'e', rule: 'everyoneNeedsTwoFactor', now: false, was: true, at: '', by: BY },
         'Two-factor for everyone: off',
         'was on',
       ],
@@ -298,8 +298,16 @@ describe('Sign-in rules: what changed', () => {
   });
 
   const CHANGES: Change[] = [
-    { rule: 'inactivityTimeoutDays', now: 30, was: null, at: '2026-09-01T12:00:00Z', by: BY },
     {
+      entry: 'e1',
+      rule: 'inactivityTimeoutDays',
+      now: 30,
+      was: null,
+      at: '2026-09-01T12:00:00Z',
+      by: BY,
+    },
+    {
+      entry: 'e2',
       rule: 'administratorsNeedTwoFactor',
       now: true,
       was: false,
@@ -311,6 +319,7 @@ describe('Sign-in rules: what changed', () => {
   it('lists the changes newest first, the day as the locale writes it', () => {
     expect(changeRows(t, CHANGES, '2026-10-28T12:00:00Z', 'en-US', NOW)).toEqual([
       {
+        key: 'e2.administratorsNeedTwoFactor',
         at: '2026-10-28T12:00:00Z',
         title: 'Two-factor for managers: on',
         line: 'Oct 28 · was off · Folake Adeyemi',
@@ -318,6 +327,7 @@ describe('Sign-in rules: what changed', () => {
         label: 'Two-factor for managers: on. Oct 28. was off. Folake Adeyemi',
       },
       {
+        key: 'e1.inactivityTimeoutDays',
         at: '2026-09-01T12:00:00Z',
         title: 'Signed out after: 30 days unused',
         line: 'Sep 1 · was no limit · Folake Adeyemi',
@@ -328,6 +338,18 @@ describe('Sign-in rules: what changed', () => {
     expect(changeRows(t, CHANGES, null, 'en-GB', NOW)[0]!.line).toBe(
       '28 Oct · was off · Folake Adeyemi',
     );
+  });
+
+  it('keys each row by its entry and rule, so changes in one second stay apart', () => {
+    const at = '2026-11-09T22:26:40+00:00';
+    const sameSecond: Change[] = [
+      { entry: 'a', rule: 'inactivityTimeoutDays', now: 7, was: 30, at, by: BY },
+      { entry: 'b', rule: 'inactivityTimeoutDays', now: null, was: 7, at, by: BY },
+      { entry: 'b', rule: 'administratorsNeedTwoFactor', now: true, was: false, at, by: BY },
+    ];
+    const keys = changeRows(t, sameSecond, null, 'en-US', NOW).map(({ key }) => key);
+
+    expect(new Set(keys).size).toBe(3);
   });
 
   it('marks New what this device has not shown yet', () => {

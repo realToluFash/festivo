@@ -108,6 +108,7 @@ const TODAY_MOMENTS: { key: string; name: string }[] = [
   { key: 'dayNow', name: 'The event day, built now' },
   { key: 'quiet', name: 'A quiet week' },
   { key: 'first', name: 'A first run' },
+  { key: 'firstAsk', name: 'A first run, without Create events' },
 ];
 
 /** `fillsEmail`: the sign-in knew whose it was, so Email arrives filled. */

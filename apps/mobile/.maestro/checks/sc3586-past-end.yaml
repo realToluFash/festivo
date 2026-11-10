@@ -6,8 +6,7 @@ appId: host.exp.Exponent
     visible:
       id: 'events.phase.finished'
     timeout: 30000
+- assertNotVisible: '{{t:eventPause.resume}}'
 - assertNotVisible:
-    id: 'events.resume'
-- assertNotVisible:
-    id: 'events.pausedRow'
+    id: 'events.phase.paused'
 - takeScreenshot: past-end-finished

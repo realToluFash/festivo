@@ -16,6 +16,7 @@ export function SecurityCard({
   wide,
   step,
   saysRef,
+  lineRef,
 }: {
   says: string;
   counts: string;
@@ -23,6 +24,8 @@ export function SecurityCard({
   wide: boolean;
   step: StepProps | null;
   saysRef: Ref<TextHandle>;
+  /** The done line, where focus goes when the card takes the place of the line drawn alone. */
+  lineRef?: Ref<TextHandle> | undefined;
 }) {
   const face = wide ? 64 : 56;
   const size = wide ? 24 : 22;
@@ -68,7 +71,7 @@ export function SecurityCard({
             <ShapeMark kind="yes" side={16} ink={tokens.colorInkOnDark} />
           </View>
           <View style={styles.grow}>
-            <OnCard text={line.text} strong />
+            <OnCard ref={lineRef} text={line.text} strong />
           </View>
         </View>
       )}

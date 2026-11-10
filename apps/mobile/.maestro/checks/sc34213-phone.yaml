@@ -1,15 +1,20 @@
-# sc-31163, a tablet on its side (ORIENT as in sc31724-side-*): after saving Oluwafolakemi Bello the card's disc says OB, then after Cher it says C. Needs ${METRO_URL}.
+# Android only. sc-34213, a phone: after saving Oluwafolakemi Bello on Your account, going back to the Settings list shows its card as Oluwafolakemi Bello and OB; then Cher and C. Needs ${METRO_URL}.
 appId: host.exp.Exponent
 ---
-- setOrientation: ${ORIENT}
-- openLink: ${METRO_URL}/--/demo/settings/account
+- openLink: ${METRO_URL}/--/demo/settings
+- extendedWaitUntil:
+    visible: 'Folake Adeyemi'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: list-start
+- tapOn: 'Folake Adeyemi'
 - extendedWaitUntil:
     visible:
       id: 'account.name'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 8000
-- takeScreenshot: before
 - tapOn:
     id: 'account.name'
 - extendedWaitUntil:
@@ -26,9 +31,23 @@ appId: host.exp.Exponent
     timeout: 10000
 - waitForAnimationToEnd:
     timeout: 8000
+- takeScreenshot: page-ob
+- back
+- waitForAnimationToEnd:
+    timeout: 8000
 - assertVisible: 'Oluwafolakemi Bello'
 - assertVisible: 'OB'
-- takeScreenshot: saved-ob
+- assertNotVisible: 'Folake Adeyemi'
+- assertNotVisible: 'FA'
+- takeScreenshot: list-ob
+- tapOn: 'Oluwafolakemi Bello'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: 'OB'
 - tapOn:
     id: 'account.name'
 - extendedWaitUntil:
@@ -45,6 +64,11 @@ appId: host.exp.Exponent
     timeout: 10000
 - waitForAnimationToEnd:
     timeout: 8000
+- back
+- waitForAnimationToEnd:
+    timeout: 8000
 - assertVisible: 'Cher'
 - assertVisible: 'C'
-- takeScreenshot: saved-c
+- assertNotVisible: 'Oluwafolakemi Bello'
+- assertNotVisible: 'Folake Adeyemi'
+- takeScreenshot: list-cher

@@ -9,6 +9,7 @@ import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 
+import { verifyWords } from '../../accountPage.ts';
 import { api } from '../../api.ts';
 import { apiCodeSource, useCodeCheck } from '../../codeCheck.ts';
 import { selectCode } from '../../codeScreen.ts';
@@ -45,7 +46,7 @@ export function VerifyPhone() {
   const source = useMemo(() => apiCodeSource('phone', alternative), [alternative, attempt]);
   const check = useCodeCheck('phone', source);
   const { status, resending, wording } = check;
-  const [codeError, setCodeError] = useState<string | null>(null);
+  const [codeError, setCodeError] = useState<'blank' | 'short' | null>(null);
   const [doneHeading, arriveAtDone] = useStepFocus();
   const [bannerTitle, arriveAtBanner] = useStepFocus<HTMLParagraphElement>();
   const [failedNotice, arriveAtFailed] = useStepFocus<HTMLDivElement>();
@@ -105,13 +106,7 @@ export function VerifyPhone() {
     const problem = codeProblem(typed);
 
     if (problem != null) {
-      setCodeError(
-        problem === 'short'
-          ? t('verifyPhone.codeShort')
-          : wording.fromWhatsApp
-            ? t('verifyPhone.codeBlankWhatsApp')
-            : t('verifyPhone.codeBlank'),
-      );
+      setCodeError(problem);
       document.getElementById('code')?.focus();
       return;
     }
@@ -173,14 +168,10 @@ export function VerifyPhone() {
 
   const entering = ['entering', 'verifying', 'wrong', 'failed'].includes(status.kind);
   const dead = status.kind === 'expired' || status.kind === 'exhausted';
-  const wrong = wording.fromWhatsApp ? t('verifyPhone.wrongWhatsApp') : t('verifyPhone.wrong');
-  const fieldError = codeError ?? (status.kind === 'wrong' ? wrong : null);
-  const line = {
-    whatsapp: t('verifyPhone.introWhatsApp', { number }),
-    fallback: t('verifyPhone.introFallback', { number }),
-    chosen: t('verifyPhone.introChosen', { number }),
-    texted: t('verifyPhone.intro', { number }),
-  }[wording.line];
+  const words = verifyWords(wording.line, number, t);
+  const fieldError =
+    codeError != null ? words[codeError] : status.kind === 'wrong' ? words.wrong : null;
+  const line = words.lead;
 
   return (
     <AuthPage
@@ -278,11 +269,7 @@ export function VerifyPhone() {
             <>
               <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
                 <div className={fieldError == null ? 'field' : 'field field-wrong'}>
-                  <label htmlFor="code">
-                    {wording.fromWhatsApp
-                      ? t('verifyPhone.codeLabelWhatsApp')
-                      : t('verifyPhone.codeLabel')}
-                  </label>
+                  <label htmlFor="code">{words.codeLabel}</label>
                   <input
                     className={
                       fieldError == null ? 'input code-field' : 'input code-field input-wrong'

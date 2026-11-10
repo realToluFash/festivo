@@ -18,10 +18,12 @@ export function areaBack(area: EventArea): 'overview' | 'leave' {
 }
 
 /** The field Edit details opens with focus on, from a row of Details (sc-22103) or Make live's Add who is hosting (sc-15497). */
-export type EditAt = 'starts' | 'venue' | 'hosts';
+const EDIT_AT = ['starts', 'venue', 'hosts', 'name', 'type', 'currency'] as const;
+
+export type EditAt = (typeof EDIT_AT)[number];
 
 export function editAtOf(param: string | undefined): EditAt | undefined {
-  return param === 'starts' || param === 'venue' || param === 'hosts' ? param : undefined;
+  return EDIT_AT.find((at) => at === param);
 }
 
 export function eventHref(eventId: string, fromHappeningNow = false): `/events/${string}` {

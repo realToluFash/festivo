@@ -72,7 +72,7 @@ import {
   qrPath,
   RECOVERY_CODES,
 } from './SecuritySample.ts';
-import { AloneLine } from './SecurityAlone.tsx';
+import { AloneLine } from '../../components/SecurityAlone.tsx';
 import { SummaryPage } from './SummaryPage.tsx';
 
 export { SECURITY_STATES } from './SecurityModel.ts';
@@ -130,6 +130,7 @@ function SecurityPage({ start }: { start: SecurityStart }) {
   const blocks = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const [targets] = useState(() => ({
     card: createRef<TextHandle>(),
+    line: createRef<TextHandle>(),
     step: createRef<ViewInstance>(),
     password: createRef<ViewInstance>(),
     link: createRef<ViewInstance>(),
@@ -188,7 +189,7 @@ function SecurityPage({ start }: { start: SecurityStart }) {
     if (factor !== 'ready' || !lineHeld.current) return;
     lineHeld.current = false;
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => moveScreenReaderFocus(targets.card.current), SETTLED_MS);
+    timer.current = setTimeout(() => moveScreenReaderFocus(targets.line.current), SETTLED_MS);
   }, [factor, targets]);
 
   useEffect(() => {
@@ -367,6 +368,7 @@ function SecurityPage({ start }: { start: SecurityStart }) {
             line={cardLine(said, twoFactor, t)}
             wide={shell.layout === 'portrait'}
             saysRef={targets.card}
+            lineRef={targets.line}
             step={
               twoFactor
                 ? null

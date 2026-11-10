@@ -84,11 +84,11 @@ appId: host.exp.Exponent
     commands:
       - scrollUntilVisible:
           element:
-            id: 'events.page.edit'
+            id: 'events.details.name'
           direction: DOWN
           centerElement: true
 - tapOn:
-    id: 'events.page.edit'
+    id: 'events.details.name'
 - extendedWaitUntil:
     visible:
       id: 'eventForm.name'

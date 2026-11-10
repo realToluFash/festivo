@@ -4,6 +4,7 @@ import {
   type EventArea,
   MORE_EVENT_AREAS,
   PHONE_EVENT_TABS,
+  roleHolds,
   roleName,
   waitingInvitations,
 } from '@soirely/domain';
@@ -1048,13 +1049,14 @@ function FrameSidebar({
       organisation: organisation?.name ?? '',
       person,
       unread: 0,
+      creates: organisation != null && roleHolds(organisation, 'events.create'),
       search: false,
       open: (opens) => {
         if (opens.to === 'account') router.navigate(SECTION_HREF.account);
       },
       useOrgOpener: useFrameOrgOpener,
     }),
-    [organisation?.name, person],
+    [organisation, person],
   );
   const places = inEvent
     ? entries.map((entry) => (

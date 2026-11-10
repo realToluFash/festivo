@@ -8,7 +8,7 @@ import {
   namesZone,
   serverClock,
 } from '@soirely/domain';
-import { type EventStatus, type OrganisationEvent } from '@soirely/api-client';
+import { type EventStatus } from '@soirely/api-client';
 import { type RefObject, useEffect, useState } from 'react';
 import { PixelRatio, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -56,13 +56,21 @@ interface Watched {
   refresh: number;
 }
 
+export interface TimelineRead {
+  load: Load;
+  now: Date;
+  ended: boolean;
+  retried: boolean;
+  retry: () => void;
+}
+
 /** Read again when the event's status moves, so a Call off or End now shows its dates without a reload; judged by a clock no older than the read, so a date it stamped is never still ahead. */
-function useTimeline(
+export function useTimeline(
   eventId: string,
   now: Date,
   status?: EventStatus,
   watched?: Watched,
-): { load: Load; now: Date; ended: boolean; retried: boolean; retry: () => void } {
+): TimelineRead {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const watch = watched?.watch;
@@ -106,21 +114,19 @@ function readerZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-/** The event page's panel: the next four, or why there are none, in rows held at one height. */
+/** The event page's panel: the next four, or why there are none, in rows held at one height; the page reads the timeline, which its card needs too. */
 export function ComingUp({
   kind,
-  event,
-  now: tick,
+  timeline,
   onAllDates,
 }: {
   kind: LayoutKind;
-  event: OrganisationEvent;
-  now: Date;
+  timeline: TimelineRead;
   onAllDates: () => void;
 }) {
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
-  const { load, now, ended, retried, retry } = useTimeline(event.id, tick, event.status);
+  const { load, now, ended, retried, retry } = timeline;
   const shown = load.kind === 'loaded' ? comingUp(load.timeline.milestones, now, ended) : [];
 
   return (

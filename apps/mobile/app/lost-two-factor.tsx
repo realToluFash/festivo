@@ -5,6 +5,7 @@ import {
   formatCountdown,
   formatPhone,
   recoveryIntroKey,
+  listFormat,
 } from '@soirely/domain';
 import { Redirect, router } from 'expo-router';
 import {
@@ -1010,5 +1011,5 @@ const styles = StyleSheet.create({
 });
 
 function listed(names: string[], type: 'conjunction' | 'disjunction'): string {
-  return new Intl.ListFormat(currentLocale(), { type }).format(names);
+  return listFormat(currentLocale(), { type }).format(names);
 }

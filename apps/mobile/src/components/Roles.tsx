@@ -25,6 +25,7 @@ import {
   withExtra,
   withLevel,
   withoutRole,
+  listFormat,
 } from '@soirely/domain';
 import { type TFunction, getFixedT } from 'i18next';
 import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from 'react';
@@ -385,9 +386,7 @@ export function RolePage({
           body={t('rolesScreen.lockedIntro', {
             count: lockedLabels.length,
             role: roleName(t, organisation.role),
-            areas: new Intl.ListFormat(currentLocale(), { type: 'conjunction' }).format(
-              lockedLabels,
-            ),
+            areas: listFormat(currentLocale(), { type: 'conjunction' }).format(lockedLabels),
           })}
         />
       )}
@@ -671,7 +670,7 @@ function GridRow<T extends string>({
 
 function WhatTheySee({ grant, areas }: { grant: string[]; areas: string[] }) {
   const { t } = useTranslation();
-  const list = new Intl.ListFormat(currentLocale(), { type: 'conjunction' });
+  const list = listFormat(currentLocale(), { type: 'conjunction' });
   const { hidden, readOnly } = whatTheySee(grant, areas);
   const named = (some: string[]) => list.format(some.map((area) => t(`rolesScreen.area.${area}`)));
   const budget = levelOf(grant, 'budget');

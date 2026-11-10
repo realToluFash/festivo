@@ -35,7 +35,7 @@ appId: host.exp.Exponent
     id: 'events.pauseYes'
 - extendedWaitUntil:
     visible:
-      id: 'events.pausedRow'
+      id: 'events.card'
     timeout: 10000
 - assertVisible:
     id: 'events.phase.paused'
@@ -43,11 +43,11 @@ appId: host.exp.Exponent
     id: 'events.pause'
 - takeScreenshot: paused
 - tapOn:
-    id: 'events.resume'
+    id: 'events.card.step'
 - extendedWaitUntil:
     visible:
       id: 'events.phase.live'
     timeout: 10000
 - assertNotVisible:
-    id: 'events.pausedRow'
+    id: 'events.phase.paused'
 - takeScreenshot: resumed
