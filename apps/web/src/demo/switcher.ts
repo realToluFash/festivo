@@ -6,7 +6,8 @@ import { type CreateState, NEW_ORG, isCreateState } from './createOrg.ts';
 import type { DemoLink } from './settings.ts';
 
 export type Role = 'Owner' | 'Admin' | 'Member';
-export type Answer = 'joined' | 'declined' | 'failed' | 'managed';
+export type Answer =
+  'joined' | 'declined' | 'failed' | 'managed' | 'expired' | 'withdrawn' | 'busy';
 export type OfferStanding = 'unasked' | 'asked' | 'unavailable';
 
 export interface Place {
@@ -47,6 +48,9 @@ export const SWITCHER_STATES = [
   'joined',
   'declined',
   'failed',
+  'busy',
+  'expired',
+  'withdrawn',
   'managed',
   'paused',
 ] as const;
@@ -125,8 +129,8 @@ export function whereOf(state: SwitcherState | null): Where {
       ? { [CELEBRACIONES]: 'joined' }
       : state === 'declined'
         ? { [BLUEBIRD]: 'declined' }
-        : state === 'failed'
-          ? { [BLUEBIRD]: 'failed' }
+        : state === 'failed' || state === 'expired' || state === 'withdrawn' || state === 'busy'
+          ? { [BLUEBIRD]: state }
           : state === 'managed'
             ? { [CELEBRACIONES]: 'managed' }
             : {};
@@ -188,7 +192,11 @@ export function openingOf(state: SwitcherState): { panel: string | null; query: 
       ? OFFER.id
       : state === 'invitation' || state === 'joined' || state === 'managed'
         ? CELEBRACIONES
-        : state === 'declined' || state === 'failed'
+        : state === 'declined' ||
+            state === 'failed' ||
+            state === 'expired' ||
+            state === 'withdrawn' ||
+            state === 'busy'
           ? BLUEBIRD
           : null;
 
@@ -203,7 +211,7 @@ export function waiting(where: Where): readonly Invitation[] {
   return where.invitations.filter((one) => {
     const answer = where.answers[one.id];
 
-    return answer == null || answer === 'failed' || answer === 'managed';
+    return answer == null || answer === 'failed' || answer === 'busy' || answer === 'managed';
   });
 }
 
@@ -353,6 +361,9 @@ export const SWITCHER_PAGES: readonly { name: string; states: readonly DemoLink[
       switcherLink('joined', 'An invitation, joined'),
       switcherLink('declined', 'An invitation, declined'),
       switcherLink('failed', 'An invitation, the answer failed'),
+      switcherLink('busy', 'An invitation, joining'),
+      switcherLink('expired', 'An invitation, refused: expired'),
+      switcherLink('withdrawn', 'An invitation, refused: withdrawn'),
       switcherLink('managed', 'An invitation, managed by Ire Events: refused'),
     ],
   },
