@@ -543,7 +543,7 @@ describe('Delete the plan’s words (sc-3998)', () => {
         seatedGuests: 0,
       }),
     ).toBe(
-      'This also deletes 1 section, 2 tables, 1 row, and 4 single seats. The guest list does not change.',
+      'This also deletes 1 section, 2 tables, 1 row and 4 single seats. The guest list does not change.',
     );
   });
 
