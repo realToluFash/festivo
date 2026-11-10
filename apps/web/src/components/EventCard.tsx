@@ -141,13 +141,9 @@ export function EventCard({
   nextUp?: ReactNode;
   takes: (action: CardStepAction) => boolean;
   onStep: (step: ButtonStep) => void;
-  /** The page's own heading, where its steps send focus back. */
   nameRef?: RefObject<HTMLHeadingElement | null>;
-  /** Its step's button, where focus returns once a question it asked is closed. */
   stepRef?: RefObject<HTMLButtonElement | null>;
-  /** While a live event's milestones are still unread, its Next up is not yet known. */
   held?: boolean;
-  /** In place of the step's label while it is being taken. */
   sending?: string | null;
 }) {
   const { t } = useTranslation();
