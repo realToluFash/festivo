@@ -19,6 +19,8 @@ export interface TodayBar<E extends TodayEvent> {
   /** Started before the week shown, so it runs in from the left edge and says which day it is on. */
   openLeft: boolean;
   dayToday: number;
+  /** The row it is drawn in, 0 first: bars that share a day never share a row. */
+  lane: number;
 }
 
 export type TodayAgendaItem<E extends TodayEvent> =
@@ -121,6 +123,11 @@ export function todayView<E extends TodayEvent>(
 
       const start = Math.max(0, daysBetween(on, firstDay(item.event)));
       const end = Math.min(shown.week.length - 1, daysBetween(on, lastDay(item.event)));
+      let lane = 0;
+      while (
+        bars.some((bar) => bar.lane === lane && bar.start <= end && start < bar.start + bar.span)
+      )
+        lane++;
 
       bars.push({
         event: item.event,
@@ -128,6 +135,7 @@ export function todayView<E extends TodayEvent>(
         span: end - start + 1,
         openLeft: start === 0 && !item.first,
         dayToday: dayOf(item.event, on),
+        lane,
       });
     }
 
@@ -147,16 +155,19 @@ export function todayView<E extends TodayEvent>(
       day,
       today: isToday,
       daysAway: daysBetween(on, day),
-      items: items.map((item): TodayAgendaItem<E> =>
-        item.kind === 'milestone'
-          ? { kind: 'milestone', event: item.event, milestone: item.milestone }
-          : {
-              kind: item.first ? 'starts' : item.last ? 'ends' : 'continues',
-              event: item.event,
-              multiDay: item.multiDay,
-              day: dayOf(item.event, item.day),
-            },
-      ),
+      items: items
+        // The event's own start and end are Today's own rows; the timeline's copy of them would say each twice.
+        .filter((item) => item.kind !== 'milestone' || item.milestone.owner !== 'event')
+        .map((item): TodayAgendaItem<E> =>
+          item.kind === 'milestone'
+            ? { kind: 'milestone', event: item.event, milestone: item.milestone }
+            : {
+                kind: item.first ? 'starts' : item.last ? 'ends' : 'continues',
+                event: item.event,
+                multiDay: item.multiDay,
+                day: dayOf(item.event, item.day),
+              },
+        ),
     }));
 
   const soonest = shown.events
