@@ -12,10 +12,13 @@ import { LinkRetryPage } from './LinkRetryPage.tsx';
 export function Unreachable({
   signedIn,
   retry,
+  brought = false,
   bare = false,
 }: {
   signedIn: boolean;
   retry?: LinkRetry;
+  /** Opened by a Try again on another page, so it takes focus rather than announcing itself. */
+  brought?: boolean;
   bare?: boolean;
 }) {
   const { t } = useTranslation();
@@ -62,6 +65,7 @@ export function Unreachable({
         body={body}
         retry={retry}
         role="status"
+        brought={brought}
       />
     );
 

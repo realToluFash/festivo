@@ -6,7 +6,7 @@ import {
   lockLiftsAt,
   shapeRecovery,
 } from '@soirely/domain';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, type RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -38,6 +38,7 @@ export function SecondFactorStep({
   onVerify,
   onExpired,
   onBack,
+  headingRef,
 }: {
   intro: string;
   recoveryIntro: string;
@@ -51,6 +52,7 @@ export function SecondFactorStep({
   onExpired: () => void;
   /** The column's ‹ Back, where the step has one to go back to: a sign-in's (WebTwoFactor, page 27). */
   onBack?: () => void;
+  headingRef?: RefObject<HTMLHeadingElement | null>;
 }) {
   const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>('app');
@@ -140,7 +142,9 @@ export function SecondFactorStep({
     <>
       {onBack != null && <ColumnBack onClick={onBack} />}
       <div className="auth-heading">
-        <h1>{mode === 'app' ? t('twoFactor.title') : t('twoFactor.recoveryTitle')}</h1>
+        <h1 ref={headingRef} tabIndex={headingRef == null ? undefined : -1}>
+          {mode === 'app' ? t('twoFactor.title') : t('twoFactor.recoveryTitle')}
+        </h1>
         <p>{mode === 'app' ? intro : recoveryIntro}</p>
         {(status.kind === 'paused' || status.kind === 'failed') && (
           <div className="auth-notice" role="alert">

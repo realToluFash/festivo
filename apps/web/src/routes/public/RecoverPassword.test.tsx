@@ -395,34 +395,100 @@ describe('setting a new password from the link', () => {
     expect(screen.queryByText(/@/)).toBeNull();
   });
 
-  it.each([
-    ['a live link', () => json({ email: 'folake@ire.events' }), 'Set a new password'],
+  const unreached = () => {
+    throw new TypeError('Failed to fetch');
+  };
+  const landings: [string, () => Response | Promise<Response>, string, 'title' | 'block'][] = [
+    ['a live link', () => json({ email: 'folake@ire.events' }), 'Set a new password', 'title'],
     [
       'a live link with two-factor on',
       () => json({ email: 'folake@ire.events', twoFactor: true }),
       'Enter your code',
+      'title',
     ],
-    ['a dead link', () => problem('reset_link_expired', 410), 'This link has expired'],
+    ['an expired link', () => problem('reset_link_expired', 410), 'This link has expired', 'title'],
     [
-      'no answer',
-      () => {
-        throw new TypeError('Failed to fetch');
-      },
-      'Cannot reach Soirely',
+      'a used link',
+      () => problem('reset_link_used', 410),
+      'This link has already been used',
+      'title',
     ],
-  ])('reads the link again from That did not work, and opens %s', async (_name, next, title) => {
+    [
+      'an unknown link',
+      () => problem('reset_link_invalid', 404),
+      "This link doesn't work",
+      'title',
+    ],
+  ];
+
+  it.each([
+    ...landings,
+    ['no answer', unreached, 'Cannot reach Soirely', 'block'] as (typeof landings)[number],
+  ])(
+    'reads the link again from That did not work, opens %s, and focuses it',
+    async (_name, next, title, lands) => {
+      let reads = 0;
+      answering({
+        'POST /api/auth/password/reset/check': () =>
+          ++reads === 1 ? problem('internal_error', 500) : next(),
+      });
+      at('/reset-password?token=t1');
+      await screen.findByRole('heading', { level: 1, name: 'That did not work' });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+      const heading = await screen.findByRole('heading', { level: 1, name: title });
+      const focused = lands === 'title' ? heading : heading.parentElement;
+      await waitFor(() => expect(document.activeElement).toBe(focused));
+      expect(focused?.closest('[role="status"], [role="alert"], [aria-live]')).toBeNull();
+      expect(reads).toBe(2);
+    },
+  );
+
+  it.each([
+    ...landings,
+    [
+      'That did not work',
+      () => problem('internal_error', 500),
+      'That did not work',
+      'block',
+    ] as (typeof landings)[number],
+  ])(
+    'reads the link again from Cannot reach Soirely, opens %s, and focuses it',
+    async (_name, next, title, lands) => {
+      let reads = 0;
+      answering({
+        'POST /api/auth/password/reset/check': () => (++reads === 1 ? unreached() : next()),
+      });
+      at('/reset-password?token=t1');
+      await screen.findByRole('heading', { level: 1, name: 'Cannot reach Soirely' });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+      const heading = await screen.findByRole('heading', { level: 1, name: title });
+      const focused = lands === 'title' ? heading : heading.parentElement;
+      await waitFor(() => expect(document.activeElement).toBe(focused));
+      expect(reads).toBe(2);
+    },
+  );
+
+  it('moves on from a focused title to the page’s first control', async () => {
     let reads = 0;
     answering({
       'POST /api/auth/password/reset/check': () =>
-        ++reads === 1 ? problem('internal_error', 500) : next(),
+        ++reads === 1 ? problem('internal_error', 500) : json({ email: 'folake@ire.events' }),
     });
     at('/reset-password?token=t1');
     await screen.findByRole('heading', { level: 1, name: 'That did not work' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
-    expect(await screen.findByRole('heading', { level: 1, name: title })).toBeDefined();
-    expect(reads).toBe(2);
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Set a new password' });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    const order = Array.from(
+      document.querySelectorAll<HTMLElement>('h1, input, button, a[href]'),
+    ).filter((element) => element.tabIndex >= 0 || element === heading);
+    expect(order[order.indexOf(heading) + 1]).toBe(screen.getByLabelText('New password'));
   });
 
   it('stays on That did not work after a second failure, says Trying again… meanwhile, and announces it again', async () => {
@@ -452,6 +518,26 @@ describe('setting a new password from the link', () => {
       'Something went wrong on the way. Try again in a moment.',
     );
     expect(button).toBeDefined();
+    expect(reads).toBe(2);
+  });
+
+  it('stays on Cannot reach Soirely after a second failure, focuses its heading block, and still announces it', async () => {
+    let reads = 0;
+    answering({
+      'POST /api/auth/password/reset/check': () => {
+        reads++;
+        return unreached();
+      },
+    });
+    at('/reset-password?token=t1');
+    await screen.findByRole('heading', { level: 1, name: 'Cannot reach Soirely' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await screen.findByRole('button', { name: 'Try again' });
+    const heading = screen.getByRole('heading', { level: 1, name: 'Cannot reach Soirely' });
+    await waitFor(() => expect(document.activeElement).toBe(heading.parentElement));
+    expect(heading.parentElement?.getAttribute('role')).toBe('status');
     expect(reads).toBe(2);
   });
 
