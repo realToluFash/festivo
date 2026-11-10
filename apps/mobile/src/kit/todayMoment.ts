@@ -85,9 +85,11 @@ function card(one: TodayCard<ListedEvent>, reader: Reader, t: TFunction): EventC
         ? t('todayScreen.draft')
         : count.kind === 'dayOf'
           ? t('todayScreen.dayOfCapital', { day: count.day, total: count.total })
-          : count.days === 1
-            ? t('todayScreen.tomorrowCapital')
-            : t('todayScreen.inDaysCapital', { count: count.days }),
+          : count.kind === 'today'
+            ? t('todayScreen.today')
+            : count.days === 1
+              ? t('todayScreen.tomorrowCapital')
+              : t('todayScreen.inDaysCapital', { count: count.days }),
     live: one.live,
     draft: one.draft,
     stage: one.finalWeek ? t('todayScreen.finalWeek') : null,
@@ -132,8 +134,11 @@ function subOf(sub: TodaySub<ListedEvent>, reader: Reader, t: TFunction): string
       return t('todayScreen.firstSub');
     case 'nothingThisWeek':
       return t('todayScreen.nothingThisWeek');
-    case 'none':
-      return '';
+    case 'startsToday':
+      return t('todayScreen.startsTodayAt', {
+        name: sub.event.name,
+        time: formatEventClock(sub.event.startsAt, sub.event.timeZone, reader.locale),
+      });
     case 'startsOn':
       return sub.withinWeek
         ? t('todayScreen.startsOnWeekday', {

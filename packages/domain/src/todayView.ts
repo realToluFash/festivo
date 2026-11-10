@@ -40,13 +40,14 @@ export interface TodayAgendaDay<E extends TodayEvent> {
 export type TodayCount =
   | { kind: 'draft' }
   | { kind: 'dayOf'; day: number; total: number }
+  /** Its first day is today and it has not started yet. */
+  | { kind: 'today' }
   | { kind: 'inDays'; days: number };
 
 export interface TodayCard<E extends TodayEvent> {
   event: E;
   count: TodayCount;
   draft: boolean;
-  /** Its dates have reached the reader's today: a day that has started counts by its date, as the demo counts it. */
   live: boolean;
   finalWeek: boolean;
 }
@@ -59,12 +60,11 @@ export interface TodayNow<E extends TodayEvent> {
   endsIn: number;
 }
 
-/** The line under the greeting: the first event yet to reach its first day, or none. */
+/** The line under the greeting: the first event yet to start. */
 export type TodaySub<E extends TodayEvent> =
   | { kind: 'first' }
   | { kind: 'nothingThisWeek' }
-  /** Every event still to come is already on today's dates, and the demo gives no words for one that starts later today. */
-  | { kind: 'none' }
+  | { kind: 'startsToday'; event: E }
   | { kind: 'startsOn'; event: E; day: string; withinWeek: boolean };
 
 export interface TodayView<E extends TodayEvent> {
@@ -159,33 +159,33 @@ export function todayView<E extends TodayEvent>(
       ),
     }));
 
-  const reachedToday = (event: E) => daysBetween(on, firstDay(event)) <= 0;
-  const soonest = shown.events.find(
-    (event) => event.status !== 'draft' && event !== shown.now && !reachedToday(event),
-  );
-  const startsToday = shown.events.some(
-    (event) => event.status !== 'draft' && event !== shown.now && reachedToday(event),
-  );
+  const soonest = shown.events
+    .filter(
+      (event) =>
+        event.status !== 'draft' &&
+        event !== shown.now &&
+        Date.parse(event.startsAt) > now.getTime(),
+    )
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0];
+  const soonestDay = soonest == null ? null : firstDay(soonest);
   const sub: TodaySub<E> =
     kind === 'first'
       ? { kind: 'first' }
-      : soonest != null
-        ? {
-            kind: 'startsOn',
-            event: soonest,
-            day: firstDay(soonest),
-            withinWeek: daysBetween(on, firstDay(soonest)) < shown.week.length,
-          }
-        : startsToday
-          ? { kind: 'none' }
-          : { kind: 'nothingThisWeek' };
+      : soonest == null || soonestDay == null
+        ? { kind: 'nothingThisWeek' }
+        : soonestDay === on
+          ? { kind: 'startsToday', event: soonest }
+          : {
+              kind: 'startsOn',
+              event: soonest,
+              day: soonestDay,
+              withinWeek: daysBetween(on, soonestDay) < shown.week.length,
+            };
 
   const cards = shown.events.map((event): TodayCard<E> => {
     const until = daysBetween(on, firstDay(event));
     const draft = event.status === 'draft';
-    const live =
-      shownPhase(event, loaded.at, now) === 'happening_now' ||
-      (until <= 0 && daysBetween(on, lastDay(event)) >= 0);
+    const live = shownPhase(event, loaded.at, now) === 'happening_now';
 
     return {
       event,
@@ -193,10 +193,12 @@ export function todayView<E extends TodayEvent>(
         ? { kind: 'draft' }
         : live
           ? { kind: 'dayOf', day: 1 - until, total: event.dayCount }
-          : { kind: 'inDays', days: until },
+          : until <= 0
+            ? { kind: 'today' }
+            : { kind: 'inDays', days: until },
       draft,
       live,
-      finalWeek: !draft && !live && until <= FINAL_WEEK,
+      finalWeek: !draft && !live && until > 0 && until <= FINAL_WEEK,
     };
   });
 

@@ -53,7 +53,7 @@ describe('todayView', () => {
     ]);
   });
 
-  it('an event later today has reached its first day: its card is Day 1 of 1, and the line under the greeting names no other day for it', () => {
+  it('an event later today that has not started counts Today, is not live, and is the one the line under the greeting names', () => {
     const tonight = event('tonight', {
       startsAt: '2026-11-03T19:00:00Z',
       endsAt: '2026-11-03T23:00:00Z',
@@ -61,18 +61,32 @@ describe('todayView', () => {
     });
 
     const alone = view([tonight]);
+    expect(alone).toMatchObject({ kind: 'plan', now: null });
     expect(alone.cards[0]).toMatchObject({
-      count: { kind: 'dayOf', day: 1, total: 1 },
-      live: true,
+      count: { kind: 'today' },
+      live: false,
       finalWeek: false,
     });
-    expect(alone.sub).toEqual({ kind: 'none' });
+    expect(alone.sub).toMatchObject({ kind: 'startsToday', event: { id: 'tonight' } });
 
-    expect(view([tonight, event('wedding')]).sub).toMatchObject({
-      kind: 'startsOn',
-      event: { id: 'wedding' },
-      day: '2026-11-06',
+    expect(view([event('wedding'), tonight]).sub).toMatchObject({
+      kind: 'startsToday',
+      event: { id: 'tonight' },
     });
+  });
+
+  it('a draft dated today is a draft, never live', () => {
+    const card = view([
+      event('draft', {
+        status: 'draft',
+        phase: 'draft',
+        startsAt: '2026-11-03T08:00:00Z',
+        endsAt: '2026-11-03T23:00:00Z',
+        dayCount: 1,
+      }),
+    ]).cards[0];
+
+    expect(card).toMatchObject({ count: { kind: 'draft' }, draft: true, live: false });
   });
 
   it('tomorrow is one day away and in its final week', () => {

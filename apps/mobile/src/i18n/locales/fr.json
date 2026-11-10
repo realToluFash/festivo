@@ -2114,6 +2114,7 @@
     "firstSub": "Votre premier événement commence ici.",
     "nothingThisWeek": "Rien de prévu cette semaine.",
     "startsOnWeekday": "{{name}} commence {{weekday}}.",
+    "startsTodayAt": "{{name}} starts today at {{time}}.",
     "startsOnDate": "{{name}} commence le {{date}}.",
     "hello": {
       "morning": "Bonjour",
