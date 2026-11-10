@@ -1,0 +1,13 @@
+# sc-34869: the defaults line on the Create an organisation sheet. Any device, no ${METRO_URL} or ${ORIENT}.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- scrollUntilVisible:
+    element:
+      text: '{{t:createOrganisation.defaults|email}}'
+    direction: DOWN
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: defaults
+- runFlow: ../return-home.yaml

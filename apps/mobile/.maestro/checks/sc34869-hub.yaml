@@ -1,0 +1,13 @@
+# sc-34869: the Settings hub title and the tab bar under it. Any device, no ${METRO_URL} or ${ORIENT}.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'home.openSettings'
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: hub

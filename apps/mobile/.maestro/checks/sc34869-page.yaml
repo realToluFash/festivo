@@ -1,0 +1,15 @@
+# sc-34869: a settings page, its back control naming the hub, above the tab bar. Any device, no ${METRO_URL} or ${ORIENT}.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'home.openSettings'
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 30000
+- tapOn:
+    id: 'settings.account'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: page
