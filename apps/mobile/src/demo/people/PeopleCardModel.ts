@@ -20,7 +20,18 @@ export function cardFacts(
   };
 }
 
-export const CARD_STATES = ['one', 'noLead', 'nobody', 'loading', 'failed', 'readOnly'] as const;
+export const CARD_STATES = [
+  'one',
+  'noLead',
+  'nobody',
+  'loading',
+  'failed',
+  'readOnly',
+  'long',
+] as const;
+
+/** A Lead's name long enough to wrap under the count, as French and Portuguese lines will. */
+export const LONG_LEAD = 'Maria Fernanda Albuquerque Gonçalves';
 export type CardState = (typeof CARD_STATES)[number];
 
 export function cardStateOf(name: string | undefined): CardState | null {
@@ -63,5 +74,10 @@ export function cardStart(state: CardState | null): CardStart {
       return { ...base, load: state };
     case 'readOnly':
       return { ...base, viewer: PEOPLE_VIEWERS.ana, href: '/demo/people?state=readOnly' };
+    case 'long':
+      return {
+        ...base,
+        onEvent: onEvent.map((one) => (one.role === 'Lead' ? { ...one, name: LONG_LEAD } : one)),
+      };
   }
 }

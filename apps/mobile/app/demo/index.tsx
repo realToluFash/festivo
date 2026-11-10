@@ -1350,6 +1350,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'Ana sees the same card, People opens read only',
         href: '/demo/events/evt-wed-4?people=readOnly',
       },
+      {
+        title: 'People card · a long name',
+        what: 'The Lead line wraps under the count, nothing cut',
+        href: '/demo/events/evt-wed-4?people=long',
+      },
     ],
   },
   {

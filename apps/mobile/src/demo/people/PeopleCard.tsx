@@ -48,10 +48,15 @@ export function PeopleCard({ state }: { state: CardState | null }) {
         <Loading />
         <View style={styles.loading}>
           {mark}
-          <View style={styles.bar} />
-          <Text size={16} weight="semibold" style={styles.held}>
-            {HELD}
-          </Text>
+          <View style={styles.lines}>
+            <View style={styles.count}>
+              <View style={styles.bar} />
+              <Text size={16} weight="semibold">
+                {HELD}
+              </Text>
+            </View>
+            <View style={styles.lineBar} />
+          </View>
         </View>
       </View>
     );
@@ -103,6 +108,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceSm,
   },
+  lines: { gap: tokens.spaceXs },
+  count: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
   bar: { width: 24, height: 14, borderRadius: 7, backgroundColor: tokens.colorNeutralFill },
-  held: { color: tokens.colorInkSecondary },
+  lineBar: { width: 132, height: 12, borderRadius: 6, backgroundColor: tokens.colorNeutralFill },
 });
