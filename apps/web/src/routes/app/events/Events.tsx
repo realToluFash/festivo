@@ -1,17 +1,31 @@
 import { type ListedEvent } from '@soirely/api-client';
 import {
+  type EventsLook,
+  type EventsSearch,
   type EventsTab,
   eventsHome,
+  eventsLookOf,
+  eventsLookParams,
+  eventsSearchOf,
+  firstDayOfWeek,
   rememberEventsTab,
   rememberedEventsTab,
   serverClock,
   shownPhase,
   takesCardStep,
+  wallDay,
   withPastPage,
 } from '@soirely/domain';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, NavigationType, useLocation, useNavigate, useNavigationType } from 'react-router';
+import {
+  Link,
+  NavigationType,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+  useSearchParams,
+} from 'react-router';
 
 import { api } from '../../../api.ts';
 import { type ButtonStep, EventCard } from '../../../components/EventCard.tsx';
@@ -25,6 +39,11 @@ import {
   EventsTop,
   NewEventWords,
 } from '../../../components/EventsList.tsx';
+import {
+  type Calendar,
+  EventsResults,
+  EventsSearchRow,
+} from '../../../components/EventsSearch.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { TextAction } from '../../../components/SettingsParts.tsx';
@@ -50,6 +69,21 @@ type Load =
       pastPages: number;
       at: Date;
     };
+
+type Found =
+  | { search: string; kind: 'loading' }
+  | { search: string; kind: 'failed' }
+  | {
+      search: string;
+      kind: 'loaded';
+      unfinished: ListedEvent[];
+      past: ListedEvent[];
+      at: Date;
+    };
+
+function readerZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
 
 export function Events() {
   const session = useSession();
@@ -94,7 +128,7 @@ function eventLink(event: { id: string }): string {
   return `/app/events/${encodeURIComponent(event.id)}`;
 }
 
-/** Events as its demo draws it (sc-30413): the tabs, the soonest event as the card, then its rows; Past ten at a time. */
+/** Events as its demo draws it (sc-30413): the search and Filter (sc-30302), the tabs, the soonest event as the card, then its rows; Past ten at a time. While something is searched or filtered, one set of results instead of the tabs. */
 function EventsOf({
   organisationId,
   creates,
@@ -122,6 +156,18 @@ function EventsOf({
   const land = useFocusOnceShown();
   const now = useServerNow();
   const locale = dateLocale();
+  const [params, setParams] = useSearchParams();
+  const calendar: Calendar = {
+    today: wallDay(now, readerZone()),
+    firstDay: firstDayOfWeek(locale),
+    locale,
+  };
+  const look = eventsLookOf(params, calendar.today, calendar.firstDay);
+  const search = eventsSearchOf(look, calendar.today, calendar.firstDay);
+  const searchKey = search == null ? null : JSON.stringify(search);
+  const [found, setFound] = useState<Found | null>(null);
+  const [searchAttempt, setSearchAttempt] = useState(0);
+  const [hosts, setHosts] = useState<readonly string[]>([]);
   const { watch, refreshing } = useOffline({
     loaded: load.kind === 'loaded',
     reload: () => setRefresh((n) => n + 1),
@@ -159,6 +205,47 @@ function EventsOf({
     };
   }, [organisationId, attempt, refresh, watch]);
 
+  useEffect(() => {
+    let current = true;
+
+    api.eventHosts(organisationId).then(
+      (names) => current && setHosts(names),
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [organisationId, refresh]);
+
+  useEffect(() => {
+    if (searchKey == null) return;
+
+    let current = true;
+
+    watch(api.searchedEvents(organisationId, JSON.parse(searchKey) as EventsSearch)).then(
+      ({ unfinished, past }) =>
+        current &&
+        setFound({ search: searchKey, kind: 'loaded', unfinished, past, at: serverClock.now() }),
+      (error: unknown) =>
+        current &&
+        setFound((was) =>
+          was?.kind === 'loaded' && was.search === searchKey && keepsWhatLoaded(error)
+            ? was
+            : { search: searchKey, kind: 'failed' },
+        ),
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [organisationId, searchKey, searchAttempt, refresh, watch]);
+
+  const onLook = (next: EventsLook, typing = false) =>
+    setParams(eventsLookParams(next, params, calendar.today, calendar.firstDay), {
+      replace: typing,
+    });
+
   const page = (summary: string | null, body: ReactNode) => (
     <div className="desk ev">
       <div className="ev-column">
@@ -187,7 +274,25 @@ function EventsOf({
     </div>
   );
 
-  if (load.kind === 'loading') return page(null, <EventsLoading />);
+  const searchRow = (waiting: boolean) => (
+    <EventsSearchRow
+      look={look}
+      offline={false}
+      waiting={waiting}
+      hosts={hosts}
+      calendar={calendar}
+      onLook={onLook}
+    />
+  );
+
+  if (load.kind === 'loading')
+    return page(
+      null,
+      <>
+        {searchRow(true)}
+        <EventsLoading />
+      </>,
+    );
 
   if (load.kind === 'failed') {
     return page(
@@ -295,65 +400,127 @@ function EventsOf({
     }
   };
 
+  const results = () => {
+    if (
+      found == null ||
+      found.kind === 'loading' ||
+      (found.kind === 'failed' && found.search !== searchKey)
+    )
+      return <EventsLoading />;
+
+    if (found.kind === 'failed')
+      return (
+        <div className="notice notice-broken" role="alert">
+          <span className="mark mark-broken" aria-hidden="true">
+            ✕
+          </span>
+          <div className="notice-body">
+            <p>{t('events.failed')}</p>
+            <button
+              type="button"
+              className="button button-primary"
+              onClick={() => {
+                setFound({ search: found.search, kind: 'loading' });
+                setSearchAttempt((n) => n + 1);
+              }}
+            >
+              {t('events.retry')}
+            </button>
+          </div>
+        </div>
+      );
+
+    const matched = eventsHome({ ...found, pastTotal: found.past.length }, now, locale);
+    const shownMatched = (events: readonly ListedEvent[]) =>
+      events.map((event) => shownEvent(listEventOf(event), shownPhase(event, found.at, now)));
+    const groups = (
+      [
+        ['upcoming', [...matched.happeningNow, ...matched.upcoming]],
+        ['drafts', matched.drafts],
+        ['past', matched.past],
+      ] as const
+    ).map(([group, events]) => ({
+      tab: group,
+      count: events.length,
+      rows: shownMatched(events).map((event) => (
+        <EventRow
+          key={event.id}
+          event={event}
+          now={now}
+          locale={locale}
+          to={eventLink(event)}
+          everyPhase
+        />
+      )),
+    }));
+
+    return <EventsResults look={look} groups={groups} calendar={calendar} onLook={onLook} />;
+  };
+
   return page(
     summary,
     <>
-      <div className="ev-column arrives" ref={home}>
-        <EventsTabs
-          tab={tab}
-          counts={counts}
-          onPick={(next) => {
-            rememberEventsTab(organisationId, next);
-            setTab(next);
-          }}
-        >
-          {card != null && (
-            <EventCard
-              event={card}
-              now={now}
-              locale={locale}
-              level={2}
-              to={eventLink(card)}
-              takes={(action) => {
-                const event = loadedEvent(card.id);
+      {searchRow(false)}
+      {search != null ? (
+        <div className="ev-column">{results()}</div>
+      ) : (
+        <div className="ev-column arrives" ref={home}>
+          <EventsTabs
+            tab={tab}
+            counts={counts}
+            onPick={(next) => {
+              rememberEventsTab(organisationId, next);
+              setTab(next);
+            }}
+          >
+            {card != null && (
+              <EventCard
+                event={card}
+                now={now}
+                locale={locale}
+                level={2}
+                to={eventLink(card)}
+                takes={(action) => {
+                  const event = loadedEvent(card.id);
 
-                return event != null && takesCardStep(event, action);
-              }}
-              onStep={(step) => onStep(card, step)}
-            />
-          )}
-          {events.length === 0 ? (
-            <EventsEmptyTab tab={tab} />
-          ) : (
-            <ul className="desk-rows ev-rows" ref={rows}>
-              {listed.map((event) => (
-                <EventRow
-                  key={event.id}
-                  event={event}
-                  now={now}
-                  locale={locale}
-                  to={eventLink(event)}
-                />
-              ))}
-            </ul>
-          )}
-          {tab === 'past' && grouped.past.length < grouped.pastCount && (
-            <TextAction label={t('events.showMore')} onClick={showMore} />
-          )}
-          {tab === 'past' && more === 'failed' && (
-            <p className="desk-error" role="alert">
-              <Glyph name="alert" size={15} weight={2.2} />
-              {t('events.moreFailed')}
-            </p>
-          )}
-          {tab === 'past' && shown != null && (
-            <p className="desk-note" role="status">
-              {shown}
-            </p>
-          )}
-          {counts[tab] > 0 && <EventsFooter count={counts[tab]} />}
-        </EventsTabs>
-      </div>
+                  return event != null && takesCardStep(event, action);
+                }}
+                onStep={(step) => onStep(card, step)}
+              />
+            )}
+            {events.length === 0 ? (
+              <EventsEmptyTab tab={tab} />
+            ) : (
+              <ul className="desk-rows ev-rows" ref={rows}>
+                {listed.map((event) => (
+                  <EventRow
+                    key={event.id}
+                    event={event}
+                    now={now}
+                    locale={locale}
+                    to={eventLink(event)}
+                  />
+                ))}
+              </ul>
+            )}
+            {tab === 'past' && grouped.past.length < grouped.pastCount && (
+              <TextAction label={t('events.showMore')} onClick={showMore} />
+            )}
+            {tab === 'past' && more === 'failed' && (
+              <p className="desk-error" role="alert">
+                <Glyph name="alert" size={15} weight={2.2} />
+                {t('events.moreFailed')}
+              </p>
+            )}
+            {tab === 'past' && shown != null && (
+              <p className="desk-note" role="status">
+                {shown}
+              </p>
+            )}
+            {counts[tab] > 0 && <EventsFooter count={counts[tab]} />}
+          </EventsTabs>
+        </div>
+      )}
       {copying != null && (
         <DuplicateDialog
           event={copying}
