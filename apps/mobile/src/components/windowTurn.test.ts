@@ -65,16 +65,38 @@ describe('a sheet whose heading takes focus as it opens (sc-11032)', () => {
 
   it('counts the hidden time from when Android has put the window up, not from the render', () => {
     expect(sheet).toContain('onShow={() => setOnScreen(true)}');
-    expect(sheet).toContain('if (!hides || !onScreen) return;');
+    expect(sheet).toContain('if (!hides || !onScreen || !waiting) return;');
   });
 
   it('stays hidden for a share of the settle time, long enough for TalkBack to name the window', () => {
-    const [, delay] = sheet.match(/setTimeout\(\(\) => setAnnounced\(true\), ([^)]+)\)/) ?? [];
+    const [, delay] =
+      sheet.match(/setTimeout\(\(\) => setAnnounced\(\{ step \}\), ([^)]+)\)/) ?? [];
 
     expect(delay).toMatch(/^SETTLED_MS( \/ [1-9]\d*)?$/);
   });
 
   it('is how the language choice opens', () => {
     expect(language).toMatch(/headingTakesFocus\s+testID="language\.sheet"/);
+  });
+});
+
+describe('a focused screen whose title takes focus with each new step (sc-11032)', () => {
+  const screen = readFileSync(join(import.meta.dirname, 'SummaryOverlays.tsx'), 'utf8');
+
+  it('hides on Android through the sheet’s own wait, restarted by each new title', () => {
+    expect(screen).toContain("useUnnamedWindow(Platform.OS === 'android', onScreen, title)");
+  });
+
+  it('moves focus the way an answer does, through useFocusOnAnswer', () => {
+    expect(screen).toContain('useFocusOnAnswer(step, target)');
+  });
+
+  it('lets Turn on two-factor’s failure take focus as one item, not read out as well', () => {
+    const summary = readFileSync(join(import.meta.dirname, 'Summary.tsx'), 'utf8');
+    const twoFactor = readFileSync(join(import.meta.dirname, 'SecurityTwoFactor.tsx'), 'utf8');
+
+    expect(summary).toContain('quietAtMount: focused');
+    expect(summary).toContain('accessible={focused || undefined}');
+    expect(twoFactor).toMatch(/<SectionFailed[^>]*takesFocus/);
   });
 });
