@@ -10,7 +10,6 @@ import {
 import { useLayout } from '../layout/useLayout.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
-import { calendarGrid } from './calendarGrid.ts';
 import { cardFrame } from './cardFrame.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
@@ -20,8 +19,7 @@ export type CardShape = { lines?: number; fields?: number; options?: number; cov
 
 type Shape =
   | { shape: 'rows'; rowHeight: SkeletonRowHeight; picture?: boolean; rows?: number }
-  | { shape: 'cards'; cards: readonly CardShape[]; titled?: boolean }
-  | { shape: 'month'; weeks: number };
+  | { shape: 'cards'; cards: readonly CardShape[]; titled?: boolean };
 
 /** Nothing for a second, then the content's shape under its loading words; `inCard` draws inside a card already there, `edgeToEdge` inside one with no side padding, so the words take the rows' inset. */
 export function Skeleton({
@@ -60,8 +58,6 @@ export function Skeleton({
           },
         )}
       </View>
-    ) : shape.shape === 'month' ? (
-      <Month weeks={shape.weeks} phone={kind === 'phone'} />
     ) : (
       shape.cards.map((card, index) => (
         <Card
@@ -110,34 +106,6 @@ function Card({ card, titled, framed }: { card: CardShape; titled: boolean; fram
       ))}
       {Array.from({ length: options }, (_, index) => (
         <View key={`option-${index}`} style={[styles.block, styles.option]} />
-      ))}
-    </View>
-  );
-}
-
-/** The month grid's own card and cells, one bar where each weekday and each day number will be; never a button. */
-function Month({ weeks, phone }: { weeks: number; phone: boolean }) {
-  const days = Array.from({ length: 7 }, (_, index) => index);
-
-  return (
-    <View style={calendarGrid.grid}>
-      <View style={calendarGrid.week}>
-        {days.map((index) => (
-          <View key={index} style={[calendarGrid.head, styles.monthHead]}>
-            <View style={[styles.block, styles.monthBar, { width: phone ? 12 : 24 }]} />
-          </View>
-        ))}
-      </View>
-      {Array.from({ length: weeks }, (_, week) => (
-        <View key={week} style={calendarGrid.week}>
-          {days.map((index) => (
-            <View key={index} style={[calendarGrid.cell, phone && calendarGrid.cellPhone]}>
-              <View style={calendarGrid.number}>
-                <View style={[styles.block, styles.monthBar, styles.dayBar]} />
-              </View>
-            </View>
-          ))}
-        </View>
       ))}
     </View>
   );
@@ -226,11 +194,4 @@ const styles = StyleSheet.create({
   line: { height: 12 },
   field: { height: 48, borderRadius: tokens.radiusRow },
   option: { height: 52 },
-  monthHead: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: tokens.typeMeta.size * tokens.typeMeta.lineHeight + 2 * tokens.spaceSm,
-  },
-  monthBar: { height: 12 },
-  dayBar: { width: 16 },
 });

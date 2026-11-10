@@ -1,5 +1,5 @@
-import { type Href, router } from 'expo-router';
-import { memo, type RefObject, useCallback, useRef } from 'react';
+import type { CalendarMonth } from '@soirely/domain';
+import { type ComponentType, memo, type RefObject, useCallback, useRef } from 'react';
 import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -8,46 +8,56 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
-import { DayRows } from './CalendarDay.tsx';
 import {
   type AgendaEntry,
-  type Show,
+  type Item,
   dayHeading,
   dayNumber,
   monthName,
   weekdayShort,
-} from './CalendarModel.ts';
-import { say } from './CalendarWords.ts';
-
-function open(href: string) {
-  router.push(href as Href);
-}
+} from '../kit/calendar.ts';
+import { tokens } from '../theme/tokens.ts';
+import { DayRows, type RowProps } from './CalendarDay.tsx';
+import { Text } from './Text.tsx';
 
 /** Each entry is placed below its rule, so landing on it leaves the rule above the fold. */
 const RULE_SPACE = 1 + tokens.spaceXs * 2;
+
+interface AgendaWords {
+  /** A day with nothing on it. */
+  emptyDay: string;
+  /** A month listed with nothing in it. */
+  emptyMonth: (month: CalendarMonth) => string;
+}
 
 const AgendaRow = memo(function AgendaRow({
   entry,
   first,
   today,
-  show,
+  words,
+  Row,
   locale,
+  readerZone,
   big,
   lead,
+  onOpen,
   onY,
 }: {
   entry: AgendaEntry;
   first: boolean;
   today: string;
-  show: Show;
+  words: AgendaWords;
+  Row: ComponentType<RowProps> | undefined;
   locale: string;
+  readerZone: string;
   big: boolean;
   lead: number;
+  onOpen: (item: Item) => void;
   onY: (key: string, y: number) => void;
 }) {
+  const { t } = useTranslation();
   const rule = !first && <View style={styles.rule} />;
   const placed = (y: number) => onY(entry.key, first ? y : y + RULE_SPACE);
 
@@ -75,7 +85,7 @@ const AgendaRow = memo(function AgendaRow({
         style={[styles.secondary, styles.said]}
         testID={`calendar.agenda.${entry.key}`}
       >
-        {say.emptyNeedsMonth(monthName(entry.month, locale))}
+        {words.emptyMonth(entry.month)}
       </Text>
     );
 
@@ -92,7 +102,7 @@ const AgendaRow = memo(function AgendaRow({
           style={[styles.date, { width: lead }]}
           accessible
           accessibilityRole="header"
-          accessibilityLabel={dayHeading(entry.day, today, locale)}
+          accessibilityLabel={dayHeading(entry.day, today, locale, t)}
         >
           <Text
             size={12}
@@ -112,7 +122,15 @@ const AgendaRow = memo(function AgendaRow({
           </Text>
         </View>
         <View style={[styles.grow, entry.items.length === 0 && styles.emptyAt]}>
-          <DayRows items={entry.items} show={show} locale={locale} big={big} onOpen={open} />
+          <DayRows
+            items={entry.items}
+            emptyWords={words.emptyDay}
+            Row={Row}
+            locale={locale}
+            readerZone={readerZone}
+            big={big}
+            onOpen={onOpen}
+          />
         </View>
       </View>
     </View>
@@ -124,13 +142,16 @@ export function Agenda({
   entries,
   land,
   today,
-  show,
+  words,
+  Row,
   locale,
+  readerZone,
   big,
   lead,
   maxWidth,
   bottom,
   scrollRef,
+  onOpen,
   onY,
   onLand,
   onScroll,
@@ -139,13 +160,16 @@ export function Agenda({
   /** The entry it lands on as it opens: today, or the month asked for. */
   land: string;
   today: string;
-  show: Show;
+  words: AgendaWords;
+  Row?: ComponentType<RowProps> | undefined;
   locale: string;
+  readerZone: string;
   big: boolean;
   lead: number;
   maxWidth: number | null;
   bottom: number;
   scrollRef: RefObject<ScrollViewInstance | null>;
+  onOpen: (item: Item) => void;
   onY: (key: string, y: number) => void;
   onLand: (y: number) => void;
   onScroll: (y: number) => void;
@@ -180,10 +204,13 @@ export function Agenda({
           entry={entry}
           first={index === 0}
           today={today}
-          show={show}
+          words={words}
+          Row={Row}
           locale={locale}
+          readerZone={readerZone}
           big={big}
           lead={lead}
+          onOpen={onOpen}
           onY={placed}
         />
       ))}

@@ -34,8 +34,12 @@ appId: host.exp.Exponent
     timeout: 15000
 - takeScreenshot: agenda
 - tapOn:
+    id: 'calendar.show'
+- tapOn:
     id: calendar.show.events
 - takeScreenshot: agenda-events-only
+- tapOn:
+    id: 'calendar.show'
 - tapOn:
     id: calendar.show.all
 - tapOn:

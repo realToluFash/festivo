@@ -1,22 +1,32 @@
-import { describe, expect, it } from 'vitest';
+import { init } from 'i18next';
+import { beforeAll, describe, expect, it } from 'vitest';
 
+import en from '../../i18n/locales/en.json';
+import { emptyMonthLine } from '../../kit/calendar.ts';
 import { CLOCKS } from '../events/EventsSample.ts';
 import {
   type Item,
   SHOWS,
   agendaOf,
   calendarEvents,
-  dayLine,
   daysOf,
   heldOn,
-  monthLine,
   needsLabel,
   needsLanding,
   needsWhen,
   overdueIn,
   sampleOf,
+  showWords,
   startOf,
 } from './CalendarModel.ts';
+
+beforeAll(() =>
+  init({
+    resources: { en: { translation: en } },
+    lng: 'en',
+    interpolation: { escapeValue: false },
+  }),
+);
 
 const NOVEMBER = { year: 2026, month: 11 };
 const DECEMBER = { year: 2026, month: 12 };
@@ -166,18 +176,23 @@ describe('Today in Agenda under this option', () => {
 });
 
 describe('the empty lines', () => {
-  it('replace the month’s and the day’s under this option only, and only once loaded', () => {
-    expect(monthLine('loaded', 'needs', DECEMBER, needs, 'December 2026')).toBe(
-      'Nothing needs you in December 2026.',
-    );
-    expect(monthLine('loaded', 'all', DECEMBER, new Map(), 'December 2026')).toBe(
-      'Nothing on the calendar in December 2026.',
-    );
-    expect(monthLine('loading', 'needs', DECEMBER, needs, 'December 2026')).toBeNull();
-    expect(monthLine('failed', 'needs', DECEMBER, needs, 'December 2026')).toBeNull();
-    expect(dayLine('loaded', 'needs', [])).toBe('Nothing needs you on this day.');
-    expect(dayLine('loaded', 'all', [])).toBe('Nothing on this day.');
-    expect(dayLine('loading', 'needs', [])).toBeNull();
-    expect(dayLine('failed', 'needs', [])).toBeNull();
+  it('replace the month’s under this option only, and only once loaded', () => {
+    expect(
+      emptyMonthLine(true, DECEMBER, needs, showWords('needs').emptyMonth, 'December 2026'),
+    ).toBe('Nothing needs you in December 2026.');
+    expect(
+      emptyMonthLine(true, DECEMBER, new Map(), showWords('all').emptyMonth, 'December 2026'),
+    ).toBe('Nothing on the calendar in December 2026.');
+    expect(
+      emptyMonthLine(true, NOVEMBER, needs, showWords('needs').emptyMonth, 'November 2026'),
+    ).toBeNull();
+    expect(
+      emptyMonthLine(false, DECEMBER, needs, showWords('needs').emptyMonth, 'December 2026'),
+    ).toBeNull();
+  });
+
+  it('say the day’s under this option only', () => {
+    expect(showWords('needs').emptyDay).toBe('Nothing needs you on this day.');
+    expect(showWords('all').emptyDay).toBe('Nothing on this day.');
   });
 });
