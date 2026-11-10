@@ -24,7 +24,6 @@ import {
 import {
   barFits,
   coveredBy,
-  fieldKeptInSight,
   groupInWindow,
   heightFromFocus,
   keyboardInWindow,
@@ -47,7 +46,6 @@ import {
   shortWhileTyping,
   shownAboveKeys,
   shownEnd,
-  sheetScrollsWhileTyping,
 } from './keyboard.ts';
 
 describe('the keyboard lifts the card once', () => {
@@ -466,57 +464,6 @@ describe('a short Android phone gives up the help line and back row while typing
 
   it('never on iOS', () => {
     expect(shortWhileTyping({ ...smallAndroid, os: 'ios', height: 667 })).toBe(false);
-  });
-});
-
-describe('a phone on its side scrolls the whole sheet with its body while typing', () => {
-  const sideways = { os: 'ios', phone: true, width: 844, height: 390, keysUp: true };
-
-  it('on its side with the keys up', () => {
-    expect(sheetScrollsWhileTyping(sideways)).toBe(true);
-  });
-
-  it('never in portrait', () => {
-    expect(sheetScrollsWhileTyping({ ...sideways, width: 390, height: 844 })).toBe(false);
-  });
-
-  it('never with the keys down', () => {
-    expect(sheetScrollsWhileTyping({ ...sideways, keysUp: false })).toBe(false);
-  });
-
-  it('never on a tablet', () => {
-    expect(sheetScrollsWhileTyping({ ...sideways, phone: false })).toBe(false);
-  });
-
-  it('on an Android phone as on an iPhone', () => {
-    expect(sheetScrollsWhileTyping({ ...sideways, os: 'android' })).toBe(true);
-  });
-});
-
-describe('a sheet keeps its field in sight while typing, and on an iPhone on its side with the keys down (sc-9442)', () => {
-  const sideways = { os: 'ios', phone: true, width: 667, height: 375, keysUp: true };
-
-  it('with the keys up', () => {
-    expect(fieldKeptInSight({ ...sideways, width: 375, height: 667 })).toBe(true);
-    expect(fieldKeptInSight({ ...sideways, os: 'android', width: 360, height: 640 })).toBe(true);
-  });
-
-  it('on an iPhone on its side with the keys down', () => {
-    expect(fieldKeptInSight({ ...sideways, keysUp: false })).toBe(true);
-  });
-
-  it('not with the keys down upright', () => {
-    expect(fieldKeptInSight({ ...sideways, width: 375, height: 667, keysUp: false })).toBe(false);
-  });
-
-  it('not with the keys down on an iPad', () => {
-    expect(
-      fieldKeptInSight({ ...sideways, phone: false, width: 1180, height: 820, keysUp: false }),
-    ).toBe(false);
-  });
-
-  it('not with the keys down on an Android phone on its side', () => {
-    expect(fieldKeptInSight({ ...sideways, os: 'android', keysUp: false })).toBe(false);
   });
 });
 

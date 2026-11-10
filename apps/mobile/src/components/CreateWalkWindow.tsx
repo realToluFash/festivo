@@ -1,8 +1,8 @@
-import { deviceRegion, formattingLocale } from '@soirely/domain';
+import { deviceRegion } from '@soirely/domain';
 import { getCalendars, getLocales } from 'expo-localization';
-import { router, useIsFocused } from 'expo-router';
+import { useIsFocused } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
-import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
@@ -19,38 +19,36 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { focusChecked, focusRefused } from '../../components/Field.tsx';
-import { useKeysUp } from '../../components/keyboardWatch.ts';
-import { useSendingWords } from '../../components/ReadOut.tsx';
-import { SETTLED_MS } from '../../components/Screen.tsx';
+import { focusChecked, focusRefused } from './Field.tsx';
+import { useKeysUp } from './keyboardWatch.ts';
+import { useSendingWords } from './ReadOut.tsx';
+import { SETTLED_MS } from './Screen.tsx';
+import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { useFocusBack, useWindowTurn } from './Sheet.tsx';
+import type { TextHandle } from './Text.tsx';
+import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
+import { useAccessibilitySizes, useLayout } from '../layout/useLayout.ts';
+import { glide } from '../motion.ts';
+import { useReducedMotion } from '../reducedMotion.ts';
+import { tokens } from '../theme/tokens.ts';
+import { useModalOpen } from '../updateRequired.ts';
+import { currentLocale, dateLocale } from '../i18n/index.ts';
 import {
-  type ScreenReaderTarget,
-  moveScreenReaderFocus,
-} from '../../components/screenReaderFocus.ts';
-import { useFocusBack, useWindowTurn } from '../../components/Sheet.tsx';
-import type { TextHandle } from '../../components/Text.tsx';
-import { TURNS_WITH_THE_APP } from '../../layout/orientations.ts';
-import { useAccessibilitySizes, useLayout } from '../../layout/useLayout.ts';
-import { glide } from '../../motion.ts';
-import { useReducedMotion } from '../../reducedMotion.ts';
-import { tokens } from '../../theme/tokens.ts';
-import { useModalOpen } from '../../updateRequired.ts';
-import {
-  type CreateState,
+  type Currencies,
   type Device,
+  type Naming,
   STEPS,
-  WALK,
   type Walk,
-  answerTo,
+  type WalkAnswer,
+  answered,
   back,
   entered,
   footPlace,
   forward,
-  opensTyping,
   picked,
   typed,
-} from './CreateWalk.ts';
-import { Bars, NavAction, Progress, WalkButton } from './WalkParts.tsx';
+} from '../kit/createWalk.ts';
+import { Bars, NavAction, Progress, WalkButton } from './CreateWalkParts.tsx';
 import {
   Brings,
   type CardFrame,
@@ -59,13 +57,9 @@ import {
   NameStep,
   ReadyStep,
   WideCard,
-} from './WalkSteps.tsx';
-import { AskLayer } from '../../components/AskLayer.tsx';
-import { ManagedBanner } from '../Managed.tsx';
+} from './CreateWalkSteps.tsx';
+import { AskLayer } from './AskLayer.tsx';
 
-const SEND_MS = 1200;
-/** A deep-linked Creating… holds long enough to be looked at, then lands. */
-const HELD_MS = 8000;
 const LEAVE = Easing.bezier(0.4, 0, 1, 1);
 const GROW_FROM = 0.96;
 const PANEL = 760;
@@ -86,16 +80,22 @@ export function deviceNow(): Device {
 export interface WalkOpening {
   visit: number;
   walk: Walk;
-  state: CreateState | null;
+  /** What takes focus as it opens: the name, the country search, or the step's question. */
+  focus: 'name' | 'search' | 'question';
+  /** Opened at the country list: it scrolls to the pick. */
+  toPick: boolean;
   opener: RefObject<ScreenReaderTarget | null> | null;
 }
 
-/** The walk: full screen on the phone, one focused panel on the iPad. Nothing is sent: Create answers from the sample. */
-export function CreateWalkWindow({
+/** Create an organisation (sc-30334): full screen on the phone, one focused panel on the iPad. `create` sends it, and `onCreated` has what it made. */
+export function CreateWalkWindow<Made>({
   opening,
   open,
   email,
   statusBar,
+  currencies,
+  managedBanner,
+  create,
   onCancel,
   onCreated,
 }: {
@@ -103,8 +103,12 @@ export function CreateWalkWindow({
   open: boolean;
   email: string;
   statusBar: 'light' | 'dark';
+  currencies: Currencies | null;
+  /** sc-563's refusal, in place of the steps when the walk is `managed`. */
+  managedBanner?: ReactNode;
+  create: (walk: Walk) => Promise<WalkAnswer<Made>>;
   onCancel: () => void;
-  onCreated: (walk: Walk) => void;
+  onCreated: (made: Made) => void;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -119,7 +123,9 @@ export function CreateWalkWindow({
   const reduced = useReducedMotion();
   const keysUp = useKeysUp();
   const insets = useSafeAreaInsets();
-  const locale = useMemo(() => formattingLocale('en', getLocales()[0]?.languageTag), []);
+  const locale = dateLocale();
+  const language = currentLocale();
+  const naming = useMemo<Naming>(() => ({ locale: language, currencies }), [language, currencies]);
   const [walk, setWalk] = useState(opening.walk);
   const [leaving, setLeaving] = useState<Walk | null>(null);
   const [dir, setDir] = useState<1 | -1>(1);
@@ -140,8 +146,6 @@ export function CreateWalkWindow({
   const spare = useRef<TextInputInstance>(null);
   const question = useRef<TextHandle>(null);
   const nobody = useRef<ScreenReaderTarget>(null);
-  const result = useRef<'created' | 'limited'>('created');
-  const held = useRef(opening.state === 'creating');
   const focusing = useRef<ReturnType<typeof setTimeout> | null>(null);
   const creating = walk.sent === 'creating';
   const searching = walk.query.trim() !== '';
@@ -183,33 +187,13 @@ export function CreateWalkWindow({
   useEffect(() => {
     if (!shown || opening.walk.asking) return;
     const wait = setTimeout(() => {
-      if (opening.state === 'country-search') search.current?.focus();
-      else if (opening.walk.step === 1 && opensTyping(opening.state)) field.current?.focus();
+      if (opening.focus === 'search') search.current?.focus();
+      else if (opening.focus === 'name') field.current?.focus();
       else moveScreenReaderFocus(question.current);
     }, SETTLED_MS);
 
     return () => clearTimeout(wait);
   }, [shown, opening]);
-
-  useEffect(() => {
-    if (!creating) return;
-    const wait = setTimeout(
-      () => {
-        if (result.current === 'limited') {
-          setWalk((now) => ({ ...now, sent: 'limited' }));
-          return;
-        }
-        setLanded(true);
-        onCreated(walk);
-      },
-      held.current ? HELD_MS : SEND_MS,
-    );
-    held.current = false;
-
-    return () => clearTimeout(wait);
-    // Once per Create: the walk it sends is the one on screen as it was pressed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [creating]);
 
   useEffect(() => () => clearTimeout(focusing.current ?? undefined), []);
 
@@ -231,6 +215,28 @@ export function CreateWalkWindow({
     clearTimeout(focusing.current ?? undefined);
     focusing.current = setTimeout(() => moveScreenReaderFocus(question.current), SETTLED_MS);
   };
+  useEffect(() => {
+    if (!creating) return;
+    let live = true;
+    void create(walk).then((answer) => {
+      // Once the server has made it, it is joined even if the walk has gone.
+      if (answer.kind === 'created') {
+        setLanded(true);
+        onCreated(answer.made);
+        return;
+      }
+      if (!live) return;
+      const next = answered(walk, answer);
+      if (next.step === walk.step) setWalk(next);
+      else goTo(next);
+    });
+
+    return () => {
+      live = false;
+    };
+    // Once per Create: the walk it sends is the one on screen as it was pressed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [creating]);
   const cancel = () => {
     if (creating) return;
     if (entered(walk)) setWalk({ ...walk, asking: true });
@@ -253,7 +259,6 @@ export function CreateWalkWindow({
   const onPrimary = () => {
     if (creating) return;
     if (walk.step === 3) {
-      result.current = answerTo(walk);
       setWalk({ ...walk, sent: 'creating' });
       return;
     }
@@ -295,7 +300,7 @@ export function CreateWalkWindow({
       ]}
     >
       {walk.step === 2 && walk.country != null && !(searchFocused && keysUp) && (
-        <Brings walk={walk} />
+        <Brings walk={walk} naming={naming} />
       )}
       <WalkButton
         label={primaryLabel}
@@ -312,6 +317,7 @@ export function CreateWalkWindow({
     const shared = {
       walk: shownWalk,
       look,
+      naming,
       stepWords: stepWords(shownWalk),
       answer,
       onScrolled: live ? setScrolled : () => undefined,
@@ -333,7 +339,7 @@ export function CreateWalkWindow({
         <CountryStep
           {...shared}
           field={live ? search : spare}
-          toPick={shownWalk.cameBack || opening.state === 'country-list'}
+          toPick={shownWalk.cameBack || opening.toPick}
           onQuery={(query) => setWalk((now) => ({ ...now, query }))}
           onPick={(code) => setWalk((now) => picked(now, code))}
           onSearchFocused={setSearchFocused}
@@ -380,15 +386,7 @@ export function CreateWalkWindow({
   const behind = walk.asking ? ('no-hide-descendants' as const) : ('auto' as const);
   const managed = walk.managed;
   const refusal = (
-    <View style={[styles.refusal, phone && styles.refusalPhone]}>
-      <ManagedBanner
-        onChange={() => {
-          onCancel();
-          setTimeout(() => router.push('/demo/settings/account'), SETTLED_MS);
-        }}
-        testID="createWalk.managed"
-      />
-    </View>
+    <View style={[styles.refusal, phone && styles.refusalPhone]}>{managedBanner}</View>
   );
   const closeAction = (
     <NavAction label={t('switcher.close')} onPress={onCancel} testID="createWalk.close" />
@@ -465,8 +463,10 @@ export function CreateWalkWindow({
             <Pressable
               style={StyleSheet.absoluteFill}
               onPress={cancel}
+              disabled={creating}
               accessibilityRole="button"
               accessibilityLabel={t('createOrganisation.cancel')}
+              accessibilityState={{ disabled: creating }}
               testID="createWalk.scrim"
             />
           </Animated.View>
@@ -496,7 +496,7 @@ export function CreateWalkWindow({
                 testID="createWalk"
               >
                 <View style={styles.panelClip}>
-                  <WideCard walk={walk} email={email} />
+                  <WideCard walk={walk} email={email} naming={naming} />
                   <View style={styles.side}>
                     <View style={styles.top}>
                       {managed ? (
@@ -554,10 +554,14 @@ export function CreateWalkWindow({
       )}
       {walk.asking && (
         <AskLayer
-          title={WALK.discardTitle}
-          line={WALK.discardBody}
+          title={t('createOrganisation.discardTitle')}
+          line={t('createOrganisation.discardBody')}
           keep={{ label: t('eventEdit.keepEditing'), testID: 'createWalk.keep' }}
-          confirm={{ label: WALK.discard, removes: true, testID: 'createWalk.discard' }}
+          confirm={{
+            label: t('createOrganisation.discard'),
+            removes: true,
+            testID: 'createWalk.discard',
+          }}
           onKeep={keep}
           onConfirm={discard}
           width={phone ? 340 : 400}

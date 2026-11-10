@@ -2,7 +2,7 @@
 appId: host.exp.Exponent
 ---
 - tapOn:
-    id: 'createOrganisation.name'
+    id: 'createWalk.name'
 - eraseText: 60
 - inputText: 'QA Sin Pais'
 - takeScreenshot: mobile-13408-org-name

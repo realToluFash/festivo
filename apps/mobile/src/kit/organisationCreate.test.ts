@@ -2,12 +2,7 @@ import { ApiError, type Membership } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  createOrganisation,
-  dropsKeysAfter,
-  limitNotice,
-  newOrganisationMessage,
-} from './organisationCreate.ts';
+import { createOrganisation, limitNotice, newOrganisationMessage } from './organisationCreate.ts';
 
 const created: Membership = {
   id: 'org_9',
@@ -61,7 +56,7 @@ describe('creating an organisation', () => {
       countryCode: 'NG',
       timezone: 'Africa/Lagos',
     });
-    expect(outcome).toEqual({ kind: 'created', organisation: created });
+    expect(outcome).toEqual({ kind: 'created', made: created });
   });
 
   it('puts a refusal beside the fields the form has, and no other', async () => {
@@ -134,18 +129,5 @@ describe('the words before sending', () => {
       title: 'createOrganisation.limitedTitle',
       body: null,
     });
-  });
-});
-
-describe('the keys after an answer the name cannot fix', () => {
-  it('drops the keys on iOS after the limit or a failure, which typing cannot fix', () => {
-    expect(dropsKeysAfter('limited', 'ios')).toBe(true);
-    expect(dropsKeysAfter('failed', 'ios')).toBe(true);
-  });
-
-  it('keeps them after a refusal of a field, and on Android after anything', () => {
-    expect(dropsKeysAfter('refused', 'ios')).toBe(false);
-    expect(dropsKeysAfter('limited', 'android')).toBe(false);
-    expect(dropsKeysAfter('failed', 'android')).toBe(false);
   });
 });

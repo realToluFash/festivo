@@ -5,31 +5,35 @@ import en from '../../i18n/locales/en.json';
 import { orgMesh } from '../OrgSwitcherModel.ts';
 import { meshFor } from '../../kit/today.ts';
 import {
-  CREATE_STATES,
-  LONG_NAME,
-  NEW_ORG_ID,
-  SAMPLE_DEVICE,
-  answerTo,
+  type Naming,
   back,
   boxWords,
   cardNameSize,
   cardWords,
   countries,
-  createStateOf,
   currencyWords,
   entered,
   factsOf,
   footPlace,
   forward,
-  foundedPlace,
   freshWalk,
   limitedWords,
   picked,
   rowLabel,
-  sampleCurrency,
   search,
   stepRefusal,
   typed,
+} from '../../kit/createWalk.ts';
+import {
+  CREATE_STATES,
+  LONG_NAME,
+  NEW_ORG_ID,
+  SAMPLE_CURRENCIES,
+  SAMPLE_DEVICE,
+  answerTo,
+  createStateOf,
+  focusOf,
+  foundedPlace,
   walkFor,
 } from './CreateWalk.ts';
 
@@ -42,6 +46,7 @@ void i18n.init({
 });
 const t = i18n.t;
 const EMAIL = 'folake@ire.events';
+const NAMING: Naming = { locale: 'en', currencies: SAMPLE_CURRENCIES };
 
 function sample(state: Parameters<typeof walkFor>[0], phone = true) {
   const walk = walkFor(state, t, phone);
@@ -59,6 +64,14 @@ describe('the states', () => {
 
   it('lands with no walk when created', () => {
     expect(walkFor('created', t, true)).toBeNull();
+  });
+
+  it('opens typing the name, in the search, or on the question', () => {
+    expect(focusOf(null, sample('name'))).toBe('name');
+    expect(focusOf('name-long', sample('name-long'))).toBe('name');
+    expect(focusOf('country-search', sample('country-search'))).toBe('search');
+    expect(focusOf('ready', sample('ready'))).toBe('question');
+    expect(focusOf('back-name', sample('back-name'))).toBe('question');
   });
 
   it('asks Discard over step 2 on the phone and step 1 on the iPad', () => {
@@ -142,7 +155,7 @@ describe('something entered, for Discard', () => {
 
 describe('the search', () => {
   it('narrows by "bra" to the three the board draws, in order', () => {
-    expect(search(countries(), 'bra').map((country) => country.name)).toEqual([
+    expect(search(countries('en'), 'bra').map((country) => country.name)).toEqual([
       'Brazil',
       'Congo - Brazzaville',
       'Gibraltar',
@@ -150,48 +163,48 @@ describe('the search', () => {
   });
 
   it('ignores case and the ends', () => {
-    expect(search(countries(), '  POR ').map((country) => country.name)).toEqual([
+    expect(search(countries('en'), '  POR ').map((country) => country.name)).toEqual([
       'Portugal',
       'Singapore',
     ]);
   });
 
   it('keeps every country for an empty search', () => {
-    expect(search(countries(), ' ')).toHaveLength(249);
+    expect(search(countries('en'), ' ')).toHaveLength(249);
   });
 });
 
 describe('the sample’s currency', () => {
   it('is the API’s', () => {
-    expect(sampleCurrency('PT')).toBe('EUR');
-    expect(sampleCurrency('BR')).toBe('BRL');
-    expect(currencyWords('BR')).toEqual({ words: 'Brazilian Real (BRL)', none: false });
-    expect(rowLabel({ code: 'PT', name: 'Portugal' })).toBe('Portugal, Euro (EUR)');
+    expect(SAMPLE_CURRENCIES.get('PT')).toBe('EUR');
+    expect(SAMPLE_CURRENCIES.get('BR')).toBe('BRL');
+    expect(currencyWords('BR', NAMING, t)).toEqual({ words: 'Brazilian Real (BRL)', none: false });
+    expect(rowLabel({ code: 'PT', name: 'Portugal' }, NAMING, t)).toBe('Portugal, Euro (EUR)');
   });
 
   it('is "None yet" for Antarctica', () => {
-    expect(sampleCurrency('AQ')).toBeNull();
-    expect(currencyWords('AQ')).toEqual({ words: 'None yet', none: true });
-    expect(rowLabel({ code: 'AQ', name: 'Antarctica' })).toBe('Antarctica, None yet');
+    expect(SAMPLE_CURRENCIES.get('AQ')).toBeNull();
+    expect(currencyWords('AQ', NAMING, t)).toEqual({ words: 'None yet', none: true });
+    expect(rowLabel({ code: 'AQ', name: 'Antarctica' }, NAMING, t)).toBe('Antarctica, None yet');
   });
 
   it('is there for every country in the list', () => {
-    expect(countries().filter((country) => sampleCurrency(country.code) == null)).toEqual([
-      { code: 'AQ', name: 'Antarctica' },
-    ]);
+    expect(
+      countries('en').filter((country) => SAMPLE_CURRENCIES.get(country.code) == null),
+    ).toEqual([{ code: 'AQ', name: 'Antarctica' }]);
   });
 });
 
 describe('the Ready card', () => {
   it('reads as one element', () => {
-    expect(cardWords(sample('ready'), EMAIL, t)).toBe(
+    expect(cardWords(sample('ready'), EMAIL, t, NAMING)).toBe(
       'Lumen Feiras. Your role · Owner. Country, Portugal. Currency, Euro (EUR). Time zone, Lisbon · Europe/Lisbon. Contact address, folake@ire.events.',
     );
   });
 
   it('shows no country facts until a country is picked', () => {
-    expect(factsOf(sample('country-none'), EMAIL, t, false)).toEqual([]);
-    expect(factsOf(sample('country'), EMAIL, t, false).map((fact) => fact.key)).toEqual([
+    expect(factsOf(sample('country-none'), EMAIL, t, false, NAMING)).toEqual([]);
+    expect(factsOf(sample('country'), EMAIL, t, false, NAMING).map((fact) => fact.key)).toEqual([
       'country',
       'currency',
       'timezone',
@@ -199,7 +212,7 @@ describe('the Ready card', () => {
   });
 
   it('keeps the device’s zone whatever the country', () => {
-    expect(factsOf(sample('country-picked'), EMAIL, t, false)[2]?.value).toBe(
+    expect(factsOf(sample('country-picked'), EMAIL, t, false, NAMING)[2]?.value).toBe(
       'Lisbon · Europe/Lisbon',
     );
   });
@@ -212,7 +225,7 @@ describe('the Ready card', () => {
 
 describe('what the country brings', () => {
   it('reads as one element', () => {
-    expect(boxWords(sample('country'), t)).toBe(
+    expect(boxWords(sample('country'), t, NAMING)).toBe(
       'Currency, Euro (EUR). Time zone, from this device, Lisbon · Europe/Lisbon.',
     );
   });
@@ -220,16 +233,16 @@ describe('what the country brings', () => {
 
 describe('Create', () => {
   it('stays too many for now until 10:41', () => {
-    expect(answerTo(sample('limited'))).toBe('limited');
-    expect(limitedWords('en-GB', t)).toEqual({
+    expect(answerTo(sample('limited')).kind).toBe('limited');
+    expect(limitedWords(sample('limited'), 'en-GB', t)).toEqual({
       title: 'Too many new organisations for now.',
       body: 'Try again at 10:41.',
     });
   });
 
   it('works on a try after a failure', () => {
-    expect(answerTo(sample('failed'))).toBe('created');
-    expect(answerTo(sample('ready'))).toBe('created');
+    expect(answerTo(sample('failed')).kind).toBe('created');
+    expect(answerTo(sample('ready')).kind).toBe('created');
   });
 
   it('gives the new organisation one colour, amber, whatever the device or the pick', () => {

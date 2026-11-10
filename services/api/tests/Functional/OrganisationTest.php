@@ -187,6 +187,40 @@ final class OrganisationTest extends ApiTestCase
     }
 
     #[Test]
+    public function theCountriesListSaysTheCurrencyEachCountryFoundsWith(): void
+    {
+        $owner = $this->account('countries@example.com');
+        $this->signIn($owner);
+
+        $this->client->request('GET', '/api/countries');
+        self::assertResponseStatusCodeSame(200);
+        $listed = Type\shape(['countries' => Type\vec(Type\shape(['code' => Type\string(), 'currency' => Type\nullable(Type\string())]))])
+            ->coerce(Json\decode((string) $this->client->getResponse()->getContent()))['countries'];
+        $currencies = [];
+        foreach ($listed as $country) {
+            $currencies[$country['code']] = $country['currency'];
+        }
+
+        self::assertSame(Regions::countries(), Vec\keys($currencies));
+        self::assertSame(['NGN', 'EUR', 'EUR', null], [$currencies['NG'], $currencies['PT'], $currencies['BG'], $currencies['AQ']]);
+        foreach (['NG', 'BG', 'SL', 'AQ'] as $country) {
+            self::assertSame(
+                $this->found($owner, 'Events', $country, 'Europe/London')->getCurrency(),
+                $currencies[$country] ?? '',
+                $country,
+            );
+        }
+    }
+
+    #[Test]
+    public function theCountriesListIsForASignedInCaller(): void
+    {
+        $this->client->request('GET', '/api/countries');
+
+        self::assertResponseStatusCodeSame(401);
+    }
+
+    #[Test]
     public function onlyACurrencyInUseTodayIsAccepted(): void
     {
         $owner = $this->account('currencies@example.com');

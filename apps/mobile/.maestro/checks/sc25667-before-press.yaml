@@ -1,31 +1,49 @@
-# sc-25667: before Create organisation is pressed, Cancel closes the sheet with a name typed, and a tap on the scrim closes it, nothing created either way.
+# sc-25667: before Create organisation is pressed, Cancel leaves the walk with a name typed (by its Discard), and on an iPad a tap on the scrim does the same, nothing created either way.
 appId: host.exp.Exponent
 ---
 - runFlow: ../open-create-organisation.yaml
 - tapOn:
-    id: 'createOrganisation.name'
+    id: 'createWalk.name'
 - inputText: 'Before Cancel'
-- hideKeyboard
+- hideKeyboard:
+    optional: true
 - assertVisible:
-    id: 'createOrganisation.cancel'
+    id: 'createWalk.cancel'
     enabled: true
 - tapOn:
-    id: 'createOrganisation.cancel'
+    id: 'createWalk.cancel'
+- tapOn:
+    id: 'createWalk.discard'
 - extendedWaitUntil:
     notVisible:
-      id: 'createOrganisation'
+      id: 'createWalk'
     timeout: 10000
 - runFlow: ../open-create-organisation.yaml
-- tapOn:
-    id: 'createOrganisation.name'
-- inputText: 'Before Scrim'
-- hideKeyboard
-- waitForAnimationToEnd
-- tapOn:
-    point: '50%,15%'
+- runFlow:
+    when:
+      visible:
+        id: 'createWalk.scrim'
+    commands:
+      - tapOn:
+          id: 'createWalk.name'
+      - inputText: 'Before Scrim'
+      - hideKeyboard:
+          optional: true
+      - waitForAnimationToEnd
+      - tapOn:
+          point: '50%,8%'
+      - tapOn:
+          id: 'createWalk.discard'
+- runFlow:
+    when:
+      visible:
+        id: 'createWalk'
+    commands:
+      - tapOn:
+          id: 'createWalk.cancel'
 - extendedWaitUntil:
     notVisible:
-      id: 'createOrganisation'
+      id: 'createWalk'
     timeout: 10000
 - tapOn:
     id: 'home.switchOrganisation'
