@@ -389,10 +389,11 @@ function SampleVerify({
       title={words.title}
       lead={words.lead}
       codeLabel={words.codeLabel}
+      errors={{ ...words, failed: t('verifyEmail.failedBody') }}
       spent={expired ? words.expired : null}
       wait={countdown.left}
       prefill={start === 'wrong' ? WRONG_CODE : ''}
-      startError={start === 'wrong' ? words.wrong : null}
+      startError={start === 'wrong' ? 'wrong' : null}
       autoFocus={start === 'entering'}
       opener={opener}
       onClose={onClose}
@@ -402,10 +403,7 @@ function SampleVerify({
           if (row != null) onVerified(row);
           return Promise.resolve(null);
         }
-        const error =
-          problem === 'blank' ? words.blank : problem === 'short' ? words.short : words.wrong;
-
-        return Promise.resolve({ error, checked: problem !== 'wrong' });
+        return Promise.resolve({ error: problem, checked: problem !== 'wrong' });
       }}
       onResend={() => {
         setExpired(false);
