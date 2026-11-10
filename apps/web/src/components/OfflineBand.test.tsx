@@ -428,19 +428,23 @@ describe('the offline band on the planning screens (sc-27086)', () => {
     const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
     servingEvents(state);
     open('/app/calendar');
-    expect(await screen.findAllByText('Adaeze and Tunde')).not.toHaveLength(0);
+    expect(
+      await screen.findAllByRole('link', { name: /^Adaeze and Tunde, Draft, / }),
+    ).not.toHaveLength(0);
 
     vi.setSystemTime(new Date(2026, 10, 10, 9, 47, 0));
     state.soirely = 'unreachable';
     goOffline();
     await waitFor(() => expect(band()?.textContent).toContain('Offline · as of 09:41'));
-    expect(screen.getAllByText('Adaeze and Tunde')).not.toHaveLength(0);
+    expect(screen.getAllByRole('link', { name: /^Adaeze and Tunde, Draft, / })).not.toHaveLength(0);
 
     state.soirely = 'answers';
     state.name = 'Adaeze and Tunde, renamed';
     act(() => screen.getByRole('button', { name: 'Try again' }).click());
 
-    expect(await screen.findAllByText('Adaeze and Tunde, renamed')).not.toHaveLength(0);
+    expect(
+      await screen.findAllByRole('link', { name: /^Adaeze and Tunde, renamed, Draft, / }),
+    ).not.toHaveLength(0);
     expect(band()).toBeNull();
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Calendar' })),
@@ -454,7 +458,9 @@ describe('the offline band on the planning screens (sc-27086)', () => {
     const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
     const fetched = servingEvents(state);
     open('/app/calendar');
-    expect(await screen.findAllByText('Adaeze and Tunde')).not.toHaveLength(0);
+    expect(
+      await screen.findAllByRole('link', { name: /^Adaeze and Tunde, Draft, / }),
+    ).not.toHaveLength(0);
 
     vi.setSystemTime(new Date(2026, 10, 10, 9, 47, 0));
     state.soirely = 'unreachable';
@@ -465,7 +471,7 @@ describe('the offline band on the planning screens (sc-27086)', () => {
     await tryAgainUnanswered(fetched);
 
     expect(band()?.textContent).toContain('Offline · as of 09:41');
-    expect(screen.getAllByText('Adaeze and Tunde')).not.toHaveLength(0);
+    expect(screen.getAllByRole('link', { name: /^Adaeze and Tunde, Draft, / })).not.toHaveLength(0);
   });
 
   it('shows no band on a Calendar that loaded nothing', async () => {
