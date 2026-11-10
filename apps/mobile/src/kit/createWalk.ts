@@ -25,7 +25,6 @@ export interface Walk {
   query: string;
   refusal: string | null;
   sent: Sent;
-  /** When a `limited` answer's lock lifts, if the server said. */
   lifts: Date | null;
   asking: boolean;
   cameBack: boolean;
@@ -92,7 +91,6 @@ export function picked(walk: Walk, country: string): Walk {
   return { ...walk, country, refusal: null };
 }
 
-/** What Create was answered: `made` is what was created. */
 export type WalkAnswer<Made> =
   | { kind: 'created'; made: Made }
   | { kind: 'refused'; errors: Partial<Record<NewOrganisationField, string>> }
@@ -132,7 +130,6 @@ export function countries(locale: string): readonly Country[] {
   return made;
 }
 
-/** A case-insensitive "includes" on the trimmed search. */
 export function search(choices: readonly Country[], query: string): readonly Country[] {
   const needle = query.trim().toLocaleLowerCase();
   if (needle === '') return choices;
@@ -149,7 +146,6 @@ export function countryName(code: string | null, locale: string): string | null 
 /** The currency each country founds with, by its code, as the API's `Regions::currencyOf` says it: null where there is none. */
 export type Currencies = ReadonlyMap<string, string | null>;
 
-/** How the walk names things: the reader's language, and the currencies once they have been read. */
 export interface Naming {
   locale: string;
   currencies: Currencies | null;
