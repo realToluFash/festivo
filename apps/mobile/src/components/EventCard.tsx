@@ -373,6 +373,7 @@ export function EventCard({
 }) {
   const { t } = useTranslation();
   const name = <CardSays text={event.name} heading={onOpen == null} />;
+  const step = cardStep(event, now, locale, t);
 
   return (
     <SummaryCard
@@ -418,14 +419,16 @@ export function EventCard({
         {guests != null && <OnCard text={guests} />}
       </View>
       <DayTiles event={event} now={now} locale={locale} />
-      <CardFoot
-        step={cardStep(event, now, locale, t)}
-        takes={takes}
-        onStep={onStep}
-        stepRef={stepRef}
-        sending={sending}
-        testID={testID}
-      />
+      {step != null && (
+        <CardFoot
+          step={step}
+          takes={takes}
+          onStep={onStep}
+          stepRef={stepRef}
+          sending={sending}
+          testID={testID}
+        />
+      )}
     </SummaryCard>
   );
 }

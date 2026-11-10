@@ -168,7 +168,7 @@ export function datesOf(event: Omit<SampleEvent, 'photo'>, now: Date): Milestone
   ];
 }
 
-export function cardStep(event: Shown, now: Date, locale: string): CardStep {
+export function cardStep(event: Shown, now: Date, locale: string): CardStep | null {
   return productCardStep(event, now, locale, t);
 }
 
