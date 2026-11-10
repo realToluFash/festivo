@@ -99,7 +99,8 @@
     "mobile:personalisation.scheme.cobalt",
     "mobile:personalisation.scheme.sorbet",
     "web:generalDesk.invitations",
-    "mobile:orgGeneral.invitations"
+    "mobile:orgGeneral.invitations",
+    "web:invitations.fromNobodyNoRole"
   ],
   "pt": [
     "web:nav.menu",
