@@ -40,7 +40,7 @@ export interface TodayAgendaDay<E extends TodayEvent> {
 export type TodayCount =
   | { kind: 'draft' }
   | { kind: 'dayOf'; day: number; total: number }
-  /** Its first day is today and it has not started yet. */
+  /** Its first day is today and it has not started yet. A paused event past its first day counts `dayOf`. */
   | { kind: 'today' }
   | { kind: 'inDays'; days: number };
 
@@ -191,9 +191,9 @@ export function todayView<E extends TodayEvent>(
       event,
       count: draft
         ? { kind: 'draft' }
-        : live
+        : live || until < 0
           ? { kind: 'dayOf', day: 1 - until, total: event.dayCount }
-          : until <= 0
+          : until === 0
             ? { kind: 'today' }
             : { kind: 'inDays', days: until },
       draft,

@@ -75,6 +75,24 @@ describe('todayView', () => {
     });
   });
 
+  it('a paused event past its first day counts its day, not Today, and is not live', () => {
+    const card = view([
+      event('paused', {
+        status: 'paused',
+        phase: 'paused',
+        startsAt: '2026-11-01T10:00:00Z',
+        endsAt: '2026-11-05T22:00:00Z',
+        dayCount: 5,
+      }),
+    ]).cards[0];
+
+    expect(card).toMatchObject({
+      count: { kind: 'dayOf', day: 3, total: 5 },
+      live: false,
+      finalWeek: false,
+    });
+  });
+
   it('a draft dated today is a draft, never live', () => {
     const card = view([
       event('draft', {
