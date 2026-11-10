@@ -19,7 +19,7 @@ import {
   currencyWords,
   entered,
   factsOf,
-  footScrolls,
+  footPlace,
   forward,
   foundedPlace,
   freshWalk,
@@ -254,16 +254,22 @@ describe('Create', () => {
   });
 });
 
-describe('footScrolls', () => {
-  const sideways = { phone: true, width: 800, height: 360 };
+describe('footPlace', () => {
+  const sideways = { phone: true, width: 800, height: 360, step: 1 as const };
 
-  it('scrolls the foot with the step on a phone on its side with the keys up', () => {
-    expect(footScrolls({ ...sideways, keysUp: true })).toBe(true);
+  it('scrolls Continue with the step on a phone on its side with the keys up, an iPhone as much as an Android phone', () => {
+    expect(footPlace({ ...sideways, keysUp: true })).toBe('scrolls');
+    expect(footPlace({ ...sideways, step: 3, keysUp: true })).toBe('scrolls');
+  });
+
+  it('leaves it out on the country step until the keys go down, rather than under the whole list', () => {
+    expect(footPlace({ ...sideways, step: 2, keysUp: true })).toBe('hidden');
+    expect(footPlace({ ...sideways, step: 2, keysUp: false })).toBe('pinned');
   });
 
   it('pins it with the keys down, upright, and on a tablet', () => {
-    expect(footScrolls({ ...sideways, keysUp: false })).toBe(false);
-    expect(footScrolls({ phone: true, width: 360, height: 800, keysUp: true })).toBe(false);
-    expect(footScrolls({ ...sideways, phone: false, keysUp: true })).toBe(false);
+    expect(footPlace({ ...sideways, keysUp: false })).toBe('pinned');
+    expect(footPlace({ ...sideways, width: 360, height: 800, keysUp: true })).toBe('pinned');
+    expect(footPlace({ ...sideways, phone: false, keysUp: true })).toBe('pinned');
   });
 });

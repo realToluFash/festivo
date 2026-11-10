@@ -44,7 +44,7 @@ import {
   answerTo,
   back,
   entered,
-  footScrolls,
+  footPlace,
   forward,
   opensTyping,
   picked,
@@ -118,7 +118,6 @@ export function CreateWalkWindow({
   const here = useIsFocused();
   const reduced = useReducedMotion();
   const keysUp = useKeysUp();
-  const scrollsFoot = footScrolls({ phone, width, height, keysUp });
   const insets = useSafeAreaInsets();
   const locale = useMemo(() => formattingLocale('en', getLocales()[0]?.languageTag), []);
   const [walk, setWalk] = useState(opening.walk);
@@ -285,13 +284,14 @@ export function CreateWalkWindow({
         ? t('createOrganisation.creating')
         : t('createOrganisation.create')
       : t('steps.continue');
+  const placed = footPlace({ phone, width, height, keysUp, step: walk.step });
   const phoneFoot = (
     <View
       style={[
         walk.managed && styles.hidden,
         styles.foot,
-        scrollsFoot && styles.footScrolled,
         { paddingBottom: keysUp ? tokens.spaceLg : insets.bottom + tokens.spaceSm },
+        placed === 'scrolls' && styles.footScrolled,
       ]}
     >
       {walk.step === 2 && walk.country != null && !(searchFocused && keysUp) && (
@@ -316,7 +316,7 @@ export function CreateWalkWindow({
       answer,
       onScrolled: live ? setScrolled : () => undefined,
       ...(live ? { question } : {}),
-      ...(live && scrollsFoot ? { foot: phoneFoot } : {}),
+      ...(live && placed === 'scrolls' ? { foot: phoneFoot } : {}),
     };
 
     if (shownWalk.step === 1)
@@ -456,7 +456,7 @@ export function CreateWalkWindow({
               </View>
             </View>
             <View style={[styles.fill, styles.clip]}>{managed ? refusal : steps}</View>
-            {!scrollsFoot && phoneFoot}
+            {placed === 'pinned' && phoneFoot}
           </View>
         </KeyboardAvoidingView>
       ) : (
@@ -598,7 +598,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceXxl,
     backgroundColor: tokens.colorCard,
   },
-  footScrolled: { paddingHorizontal: 0 },
+  footScrolled: { paddingTop: 0, paddingBottom: 0, paddingHorizontal: 0 },
   scrim: { backgroundColor: tokens.scrimDialog },
   room: {
     flex: 1,

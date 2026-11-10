@@ -330,17 +330,21 @@ export const SAMPLE_FOUNDED: Place = foundedPlace({
   name: SAMPLE_NAME,
 });
 
-/** A phone on its side with the keys up leaves too little above them for a pinned foot and the field, so the foot scrolls as the step's last part (sc-35256). */
-export function footScrolls({
+/** Where Continue sits: pinned under the step, or, on a phone on its side with the keys up, where too little is left above them for a pinned foot and the field, scrolled as the step's last part, and on the country step left out until the keys go down, so it is not below the whole list (sc-35256). */
+export function footPlace({
   phone,
   width,
   height,
   keysUp,
+  step,
 }: {
   phone: boolean;
   width: number;
   height: number;
   keysUp: boolean;
-}): boolean {
-  return phone && keysUp && width > height;
+  step: Step;
+}): 'pinned' | 'scrolls' | 'hidden' {
+  if (!phone || !keysUp || width <= height) return 'pinned';
+
+  return step === 2 ? 'hidden' : 'scrolls';
 }
