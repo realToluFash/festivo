@@ -97,7 +97,7 @@ describe('Roles in the demo', () => {
   it('says what they will see, the margin included', () => {
     const lines = seeLines(grantFor('Event manager'));
     expect(lines.hidden).toBe(
-      'Not in their menus at all: Vendors, Members and roles, Billing, and Organisation.',
+      'Not in their menus at all: Vendors, Members and roles, Billing and Organisation.',
     );
     expect(lines.read).toBe(
       'They can change everything they can open. The budget opens with costs only, no margin.',
@@ -166,7 +166,7 @@ describe('Roles in the demo', () => {
   it('joins a list the way English does', () => {
     expect(andList(['Billing'])).toBe('Billing');
     expect(andList(['Billing', 'Margin'])).toBe('Billing and Margin');
-    expect(andList(['A', 'B', 'C'])).toBe('A, B, and C');
+    expect(andList(['A', 'B', 'C'])).toBe('A, B and C');
   });
 
   it('counts the roles on the card, and each role’s kind on its row', () => {

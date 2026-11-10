@@ -1179,9 +1179,9 @@ export function justNow(locale = 'en-US'): string {
 }
 
 export function channelsWords(keys: readonly ChannelKey[], locale = 'en-US'): string {
-  return new Intl.ListFormat(locale, { type: 'conjunction' }).format(
-    keys.map((key) => CHANNEL_WORD[key]),
-  );
+  return new Intl.ListFormat(locale.startsWith('en') ? 'en-GB' : locale, {
+    type: 'conjunction',
+  }).format(keys.map((key) => CHANNEL_WORD[key]));
 }
 
 export function draftLine(draft: Draft, thread: Thread | null = null, locale = 'en-US'): string {

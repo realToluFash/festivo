@@ -282,11 +282,8 @@ export function describeRole(role: Pick<DemoRole, 'owner' | 'builtIn'> | null): 
   return `Made by ${ORGANISATION}. It can be removed.`;
 }
 
-/** English's list, with the serial comma Intl.ListFormat gives en. */
 export function andList(words: readonly string[]): string {
-  if (words.length <= 2) return words.join(' and ');
-
-  return `${words.slice(0, -1).join(', ')}, and ${words.at(-1) ?? ''}`;
+  return new Intl.ListFormat('en-GB', { type: 'conjunction' }).format(words);
 }
 
 const AREA_NAMES = new Map(AREAS.map(({ area, name }) => [area, name]));
