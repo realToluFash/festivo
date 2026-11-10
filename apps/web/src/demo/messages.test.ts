@@ -14,6 +14,11 @@ import {
   NEW_MESSAGE,
   NOT_REPLIED,
   PARKING_UNREACHED,
+  heldPeople,
+  holdAfter,
+  rowOf,
+  whatsAppLine,
+  whatsAppOf,
   ROSEWOOD,
   TICKS,
   changed,
@@ -47,10 +52,17 @@ import { BOOK, GROUPS } from './messagesTo.ts';
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
 describe('Messaging B · Conversations, the rules (sc-31371)', () => {
-  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10 and sc-3963’s 4, in order, each linked once from the demo home', () => {
+  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 4 and sc-3950’s 5, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(94);
+    expect(keys).toHaveLength(99);
+    expect(keys.slice(-5)).toEqual([
+      'whatsAppLine',
+      'checkWhatsApp',
+      'held',
+      'whatsAppRead',
+      'whatsAppTooLate',
+    ]);
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
     expect(keys.slice(6, 10)).toEqual([
       'channelReply',
@@ -76,7 +88,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'editCancelled',
       'editTooLate',
     ]);
-    expect(new Set(keys).size).toBe(94);
+    expect(new Set(keys).size).toBe(99);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );
@@ -166,7 +178,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     ]);
     expect(smsOff.credits).toBe('Email uses no credits.');
     expect(checkOf(COMING, { ...TICKS, whatsApp: true }, GROUPS).credits).toBe(
-      'Texts and WhatsApp messages use 34 credits. Credits after sending: 1,466.',
+      'Texts and WhatsApp messages use 42 credits. Credits after sending: 1,458.',
     );
   });
 
@@ -648,5 +660,129 @@ describe('Scheduled for later’s time field', () => {
     expect(rule).toMatch(/\sflex: 0 0 auto;/u);
     expect(rule).toMatch(/\smin-width: 120px;/u);
     expect(rule).not.toMatch(/\swidth:/u);
+  });
+});
+
+describe('Messaging B · WhatsApp only to guests who agreed (sc-3950)', () => {
+  const ALL: Audience = { kind: 'all' };
+  const ALL_TICKED = { email: true, sms: true, whatsApp: true };
+
+  it('says who WhatsApp reaches, then who it can’t, each counted once, a 0 part left out', () => {
+    expect(whatsAppLine(ALL)).toBe(
+      'WhatsApp reaches 4 of 142 · 102 have no mobile number · 2 stopped WhatsApp · 34 haven’t agreed to WhatsApp',
+    );
+    expect(whatsAppLine(COMING)).toBe(
+      'WhatsApp reaches 3 of 96 · 65 have no mobile number · 1 stopped WhatsApp · 27 haven’t agreed to WhatsApp',
+    );
+    expect(whatsAppLine(NOT_REPLIED)).toBe(
+      'WhatsApp reaches 1 of 25 · 16 have no mobile number · 8 haven’t agreed to WhatsApp',
+    );
+    expect(many('noMobile', 1)).toBe('1 has no mobile number');
+    expect(many('notAgreedWhatsApp', 1)).toBe('1 hasn’t agreed to WhatsApp');
+    expect(many('stoppedCount', 2)).toBe('2 stopped WhatsApp');
+  });
+
+  it('sums WhatsApp’s credits by each number’s country, not one a message', () => {
+    expect([ALL, COMING, NOT_REPLIED].map((to) => whatsAppOf(to).credits)).toEqual([13, 11, 2]);
+
+    const check = checkOf(ALL, ALL_TICKED, GROUPS);
+
+    expect(check.pills.map((pill) => pill.count)).toEqual([124, 39, 4]);
+    expect(check.cantTell).toBe(9);
+    expect(check.credits).toBe(
+      'Texts and WhatsApp messages use 52 credits. Credits after sending: 1,448.',
+    );
+    expect(check.whatsApp).toBe(whatsAppLine(ALL));
+    expect(checkOf(ALL, TICKS, GROUPS).whatsApp).toBeNull();
+    expect(checkOf(NOT_REPLIED, { ...TICKS, sms: false, whatsApp: true }, GROUPS).credits).toBe(
+      'Texts and WhatsApp messages use 2 credits. Credits after sending: 1,498.',
+    );
+  });
+
+  it('moves only a held notice: sent once credits are back, or too late', () => {
+    expect(holdAfter('held', 'topUp')).toBe('released');
+    expect(holdAfter('held', 'tooLate')).toBe('tooLate');
+    expect(holdAfter('released', 'tooLate')).toBe('released');
+    expect(holdAfter('tooLate', 'topUp')).toBe('tooLate');
+    expect(changed(seedOf('held'), { kind: 'hold', event: 'topUp' }).hold).toBe('released');
+    expect(changed(seedOf(null), { kind: 'hold', event: 'topUp' }).hold).toBeUndefined();
+  });
+
+  it('reads each held row as the hold leaves it: held, its receipts, or too late', () => {
+    const whatsApp = (hold: Parameters<typeof heldPeople>[0]) =>
+      heldPeople(hold).map((one) => {
+        const line = one.lines[1];
+
+        return [line?.word, line?.why].filter((part) => part != null).join(' · ');
+      });
+
+    expect(heldPeople('held').map((one) => one.name)).toEqual([
+      'Lucía Ortega',
+      'Kwame Mensah',
+      'Duboise Akande',
+      'Rafael Costa',
+    ]);
+    expect(heldPeople('held').every((one) => one.lines[0]?.word === 'Email · Delivered')).toBe(
+      true,
+    );
+    expect(whatsApp('held')).toEqual(Array(4).fill('WhatsApp · Held: waiting for credits'));
+    expect(whatsApp('released')).toEqual([
+      'WhatsApp · Read · 10:14',
+      'WhatsApp · Read · 10:14',
+      'WhatsApp · Delivered · 10:02',
+      'WhatsApp · Failed',
+    ]);
+    expect(whatsApp('tooLate')).toEqual(Array(4).fill('WhatsApp · Not sent: too late'));
+  });
+
+  it('seeds the new message with WhatsApp ticked, and the held message in Parking’s place', () => {
+    expect(seedOf('whatsAppLine').draft).toMatchObject({ step: 'write', ticks: ALL_TICKED });
+    expect(seedOf('checkWhatsApp').draft).toMatchObject({ step: 'check', ticks: ALL_TICKED });
+
+    const held = seedOf('held');
+
+    expect(held).toMatchObject({ hold: 'held', balance: 0, pane: { kind: 'convo', id: 'held' } });
+    expect(held.present).toContain('held');
+    expect(held.present).not.toContain('parking');
+    expect(rowOf(held, 'held', GROUPS)).toMatchObject({
+      title: 'Parking at The Landmark',
+      tag: { word: 'Held' },
+    });
+    expect(rowOf(seedOf('whatsAppTooLate'), 'held', GROUPS).tag?.word).toBe('Not reached · 18');
+    expect(seedOf('whatsAppRead')).toMatchObject({
+      hold: 'released',
+      pane: { kind: 'reached', of: 'held' },
+    });
+    expect(seedOf('whatsAppTooLate').hold).toBe('tooLate');
+  });
+
+  it('groups the held four as WhatsApp · 4, never a filter, and gives WhatsApp’s reasons', () => {
+    const who = whoOf(seedOf('held'), 'held', 'held', GROUPS);
+
+    expect(who.groups.map((group) => `${group.name} · ${group.count}`)).toEqual([
+      'WhatsApp · 4',
+      'Can’t be told · 18',
+      'Marked as told · 0',
+      'Reached · 124',
+    ]);
+    expect(who.line).toBe('Seen by 87 on their page · 18 can’t be told');
+    expect(showItems(who).map((item) => `${item.word} ${item.count}`)).toEqual([
+      'Everyone 142',
+      'Not reached 18',
+      'Can’t be told 18',
+      'Reached 124',
+      'Marked as told 0',
+    ]);
+    expect(
+      who.groups[1]?.people.map((one) =>
+        one.lines
+          .slice(0, -1)
+          .map((line) => [line.word, line.why].filter((part) => part != null).join(' · ')),
+      ),
+    ).toEqual([
+      ['Email · Not sent · Unsubscribed', 'WhatsApp · Not sent · Stopped WhatsApp'],
+      ['Email · No email address', 'WhatsApp · Not sent · Hasn’t agreed to WhatsApp'],
+    ]);
+    expect(who.waiting).toEqual([]);
   });
 });

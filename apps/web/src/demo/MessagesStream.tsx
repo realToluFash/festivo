@@ -6,6 +6,8 @@ import {
   type Out,
   type Reach,
   EVENT_NAME,
+  HELD,
+  HELD_REACH,
   HOSTS,
   INVITE,
   INVITE_REACH,
@@ -196,8 +198,41 @@ function Outs({ thread, follows }: { thread: ConvoId; follows: boolean }) {
   });
 }
 
+/** WhatsApp notices held for credits (sc-3950, sc-3932's line): noticeWaits' wait look under the receipt, with no action. */
+function HeldWait() {
+  return (
+    <div className="mg-answer-wait mg-held">
+      <p className="mg-answer-waits">
+        <Glyph name="clock" size={15} weight={2.2} />
+        {many('whatsAppHeld', HELD.whatsApp)}
+      </p>
+    </div>
+  );
+}
+
 export function StreamItems({ thread }: { thread: ConvoId }) {
   const { inbox, act, focus } = useInbox();
+
+  if (thread === 'held')
+    return (
+      <>
+        <DayRule>{PARKING.day}</DayRule>
+        <HostBubble
+          subject={PARKING.subject}
+          body={<Words body={PARKING.body} />}
+          bits={[{ words: MW.onTheirPage }, { words: `${READER} · ${PARKING.at}` }]}
+        >
+          <Receipt
+            reach={HELD_REACH}
+            onWho={() => {
+              act({ kind: 'reached', of: 'held', thread });
+              focus('heading');
+            }}
+          />
+          {inbox.hold === 'held' && <HeldWait />}
+        </HostBubble>
+      </>
+    );
 
   if (thread === 'parking')
     return (
