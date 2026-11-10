@@ -52,10 +52,6 @@ export function EventScreen({
   const { kind } = useLayout();
   const { account, organisation } = useSignedIn();
   const organisationId = organisation?.id;
-  const reads = organisation != null && roleHolds(organisation, 'events.read');
-  const creates = organisation != null && roleHolds(organisation, 'events.create');
-  const manages = organisation != null && roleHolds(organisation, 'events.manage');
-  const deletes = offersDelete(organisation);
   const phone = kind === 'phone';
   const navigation = useNavigation<{
     setParams(params: { [SHOWN_EVENT]?: string; [EVENT_AREA]?: EventArea }): void;
@@ -71,6 +67,9 @@ export function EventScreen({
   );
   const { reload, freshen, change } = opened;
   const event = opened.kind === 'loaded' ? opened.event : null;
+  const creates = event != null && roleHolds(event, 'events.create');
+  const manages = event != null && roleHolds(event, 'events.manage');
+  const deletes = offersDelete(event);
   const now = useServerNow();
   const phase = usePhaseOf(event, now);
   const original = backToOriginal(eventId, eventId, copiedFrom);
@@ -131,9 +130,7 @@ export function EventScreen({
     : undefined;
 
   const body =
-    organisation != null && !reads ? (
-      <EventNotFound onBack={leave} />
-    ) : event != null ? (
+    event != null ? (
       area === 'overview' ? (
         <Arrived style={styles.stack}>
           {savedEvent === eventId && <Saved />}
@@ -141,7 +138,7 @@ export function EventScreen({
             kind={kind}
             event={event}
             manages={manages}
-            takes={(action) => organisation != null && takesCardStep(organisation, action)}
+            takes={(action) => takesCardStep(event, action)}
             onChange={change}
             onEdit={onEdit}
             onDuplicate={onDuplicate}

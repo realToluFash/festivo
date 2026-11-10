@@ -19,14 +19,14 @@ function recording(fails?: unknown): DeletesEvents & { sent: unknown[][] } {
 const gala = { id: 'evt_1', name: "Ada's Gala" };
 
 describe('offersDelete', () => {
-  it('offers Delete event to a role with events.create', () => {
+  it('offers Delete event to a role with events.create on the event', () => {
     expect(offersDelete({ permissions: ['events.read', 'events.create'] })).toBe(true);
   });
 
   it.each([[{ permissions: ['events.read', 'events.manage'] }], [null]])(
     'offers nothing without events.create',
-    (organisation) => {
-      expect(offersDelete(organisation)).toBe(false);
+    (event) => {
+      expect(offersDelete(event)).toBe(false);
     },
   );
 });

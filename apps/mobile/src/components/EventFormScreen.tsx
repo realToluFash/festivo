@@ -80,9 +80,6 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
   const title = useRef<TextHandle>(null);
   const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
 
-  if (organisation != null && !roleHolds(organisation, 'events.manage'))
-    return <Redirect href={eventHref(eventId)} />;
-
   return (
     <FormFrame
       kind={kind}
@@ -132,7 +129,6 @@ function EditEventLoad({
   const [refresh, setRefresh] = useState(0);
   const [reads, setReads] = useState(0);
   const [shownAt, setShownAt] = useState<Date | null>(null);
-  const manages = organisation != null && roleHolds(organisation, 'events.manage');
   const navigation = useNavigation();
   const { watch, stale, refreshing } = useOffline({
     loaded: 'event' in load,
@@ -145,7 +141,7 @@ function EditEventLoad({
 
   // Once the form shows, a load only asks whether Soirely answers: the form and the tag it saves against stay as opened (Decided, 2 Nov).
   useEffect(() => {
-    if (organisationId == null || !manages) return;
+    if (organisationId == null) return;
     let live = true;
     const settle = (read: Load) => live && setLoad((was) => formAfterLoad(was, read));
 
@@ -166,7 +162,7 @@ function EditEventLoad({
     return () => {
       live = false;
     };
-  }, [eventId, organisationId, manages, attempt, refresh, watch]);
+  }, [eventId, organisationId, attempt, refresh, watch]);
 
   return (
     <>
@@ -207,7 +203,10 @@ function EditEventLoad({
           heading
         />
       )}
-      {'event' in load && organisation != null && (
+      {'event' in load && !roleHolds(load.event, 'events.manage') && (
+        <Redirect href={eventHref(eventId)} />
+      )}
+      {'event' in load && organisation != null && roleHolds(load.event, 'events.manage') && (
         <Arrived style={formGap(kind)}>
           <EventForm
             key={reads}

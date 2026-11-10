@@ -1,9 +1,9 @@
 import { ApiError } from '@soirely/api-client';
 import { roleHolds, typedNameMatches } from '@soirely/domain';
 
-/** Delete event is offered only to a role that holds Create events (sc-3592). */
-export function offersDelete(organisation: { permissions: readonly string[] } | null): boolean {
-  return organisation != null && roleHolds(organisation, 'events.create');
+/** Delete event is offered only to a role that holds Create events on it (sc-3592, sc-29914). */
+export function offersDelete(event: { permissions: readonly string[] } | null): boolean {
+  return event != null && roleHolds(event, 'events.create');
 }
 
 export type DeleteAnswer =

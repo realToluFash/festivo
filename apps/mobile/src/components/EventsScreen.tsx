@@ -87,7 +87,7 @@ export function EventsScreen() {
   const { kind } = useListAndPageLayout(SPACING, 'nothing');
   const { organisation } = useSignedIn();
   const organisationId = organisation?.id;
-  const reads = organisation != null && roleHolds(organisation, 'events.read');
+  const reads = organisation != null;
   const creates = organisation != null && roleHolds(organisation, 'events.create');
   const [deleted, setDeleted] = useState<string | null>(null);
 

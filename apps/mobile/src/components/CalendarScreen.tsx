@@ -8,14 +8,13 @@ import {
   shownPhase,
   wallDay,
 } from '@soirely/domain';
-import { type Href, Redirect, router } from 'expo-router';
+import { type Href, router } from 'expo-router';
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
-import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { type CalEvent, type Item, calEventOf } from '../kit/calendar.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
@@ -65,9 +64,6 @@ export function CalendarScreen() {
     () => (organisationId == null ? null : apiFeed(organisationId)),
     [organisationId],
   );
-  const reads = organisation != null && roleHolds(organisation, 'events.read');
-
-  if (organisation != null && !reads) return <Redirect href={DESTINATION_HREF.home} />;
 
   const subscribe = () => setFeed(true);
 
