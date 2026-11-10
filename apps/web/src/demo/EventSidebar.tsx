@@ -7,6 +7,7 @@ import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { guestsAt, hasGuests } from './guests.ts';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
+import { STATIONS_EVENT } from './stations.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
 
 const GLYPHS: Record<Area, GlyphName> = {
@@ -89,7 +90,9 @@ export function EventSidebar({
                   ? '/demo/people'
                   : one.area === 'overview'
                     ? `/demo/events/${event.id}`
-                    : one.area === 'messages' || one.area === 'seating'
+                    : one.area === 'messages' ||
+                        one.area === 'seating' ||
+                        (one.area === 'staff' && event.id === STATIONS_EVENT)
                       ? `/demo/events/${event.id}/${one.area}`
                       : one.area === 'guests' && hasGuests(event.id)
                         ? guestsAt(event.id)
