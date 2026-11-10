@@ -19,6 +19,7 @@ import {
   currencyWords,
   entered,
   factsOf,
+  footScrolls,
   forward,
   foundedPlace,
   freshWalk,
@@ -250,5 +251,19 @@ describe('Create', () => {
       role: 'Owner',
       fresh: true,
     });
+  });
+});
+
+describe('footScrolls', () => {
+  const sideways = { phone: true, width: 800, height: 360 };
+
+  it('scrolls the foot with the step on a phone on its side with the keys up', () => {
+    expect(footScrolls({ ...sideways, keysUp: true })).toBe(true);
+  });
+
+  it('pins it with the keys down, upright, and on a tablet', () => {
+    expect(footScrolls({ ...sideways, keysUp: false })).toBe(false);
+    expect(footScrolls({ phone: true, width: 360, height: 800, keysUp: true })).toBe(false);
+    expect(footScrolls({ ...sideways, phone: false, keysUp: true })).toBe(false);
   });
 });

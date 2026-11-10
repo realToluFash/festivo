@@ -44,6 +44,7 @@ import {
   answerTo,
   back,
   entered,
+  footScrolls,
   forward,
   opensTyping,
   picked,
@@ -107,7 +108,7 @@ export function CreateWalkWindow({
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const accessibilitySizes = useAccessibilitySizes();
   const phone = kind === 'phone';
   const look = useMemo<Look>(
@@ -117,6 +118,7 @@ export function CreateWalkWindow({
   const here = useIsFocused();
   const reduced = useReducedMotion();
   const keysUp = useKeysUp();
+  const scrollsFoot = footScrolls({ phone, width, height, keysUp });
   const insets = useSafeAreaInsets();
   const locale = useMemo(() => formattingLocale('en', getLocales()[0]?.languageTag), []);
   const [walk, setWalk] = useState(opening.walk);
@@ -277,6 +279,35 @@ export function CreateWalkWindow({
           width: CARD,
           height: frame.panel,
         };
+  const primaryLabel =
+    walk.step === 3
+      ? creating
+        ? t('createOrganisation.creating')
+        : t('createOrganisation.create')
+      : t('steps.continue');
+  const phoneFoot = (
+    <View
+      style={[
+        walk.managed && styles.hidden,
+        styles.foot,
+        scrollsFoot && styles.footScrolled,
+        { paddingBottom: keysUp ? tokens.spaceLg : insets.bottom + tokens.spaceSm },
+      ]}
+    >
+      {walk.step === 2 && walk.country != null && !(searchFocused && keysUp) && (
+        <Brings walk={walk} />
+      )}
+      <WalkButton
+        label={primaryLabel}
+        busy={creating}
+        reduced={reduced}
+        height={look.large ? 64 : tokens.sizeHitPhoneHero}
+        size={look.large ? 15 : 16}
+        onPress={onPrimary}
+        testID="createWalk.primary"
+      />
+    </View>
+  );
   const stepFor = (shownWalk: Walk, live: boolean) => {
     const shared = {
       walk: shownWalk,
@@ -285,6 +316,7 @@ export function CreateWalkWindow({
       answer,
       onScrolled: live ? setScrolled : () => undefined,
       ...(live ? { question } : {}),
+      ...(live && scrollsFoot ? { foot: phoneFoot } : {}),
     };
 
     if (shownWalk.step === 1)
@@ -345,12 +377,6 @@ export function CreateWalkWindow({
         </Animated.View>
       );
     });
-  const primaryLabel =
-    walk.step === 3
-      ? creating
-        ? t('createOrganisation.creating')
-        : t('createOrganisation.create')
-      : t('steps.continue');
   const behind = walk.asking ? ('no-hide-descendants' as const) : ('auto' as const);
   const managed = walk.managed;
   const refusal = (
@@ -430,26 +456,7 @@ export function CreateWalkWindow({
               </View>
             </View>
             <View style={[styles.fill, styles.clip]}>{managed ? refusal : steps}</View>
-            <View
-              style={[
-                managed && styles.hidden,
-                styles.foot,
-                { paddingBottom: keysUp ? tokens.spaceLg : insets.bottom + tokens.spaceSm },
-              ]}
-            >
-              {walk.step === 2 && walk.country != null && !(searchFocused && keysUp) && (
-                <Brings walk={walk} />
-              )}
-              <WalkButton
-                label={primaryLabel}
-                busy={creating}
-                reduced={reduced}
-                height={look.large ? 64 : tokens.sizeHitPhoneHero}
-                size={look.large ? 15 : 16}
-                onPress={onPrimary}
-                testID="createWalk.primary"
-              />
-            </View>
+            {!scrollsFoot && phoneFoot}
           </View>
         </KeyboardAvoidingView>
       ) : (
@@ -591,6 +598,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceXxl,
     backgroundColor: tokens.colorCard,
   },
+  footScrolled: { paddingHorizontal: 0 },
   scrim: { backgroundColor: tokens.scrimDialog },
   room: {
     flex: 1,

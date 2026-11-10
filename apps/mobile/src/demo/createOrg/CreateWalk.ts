@@ -329,3 +329,18 @@ export const SAMPLE_FOUNDED: Place = foundedPlace({
   ...freshWalk(SAMPLE_DEVICE),
   name: SAMPLE_NAME,
 });
+
+/** A phone on its side with the keys up leaves too little above them for a pinned foot and the field, so the foot scrolls as the step's last part (sc-35256). */
+export function footScrolls({
+  phone,
+  width,
+  height,
+  keysUp,
+}: {
+  phone: boolean;
+  width: number;
+  height: number;
+  keysUp: boolean;
+}): boolean {
+  return phone && keysUp && width > height;
+}
