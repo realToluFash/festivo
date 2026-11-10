@@ -100,7 +100,9 @@
     "mobile:personalisation.scheme.sorbet",
     "web:generalDesk.invitations",
     "mobile:orgGeneral.invitations",
-    "web:invitations.fromNobodyNoRole"
+    "web:invitations.fromNobodyNoRole",
+    "web:eventsSearch.type",
+    "mobile:eventsSearch.type"
   ],
   "pt": [
     "web:nav.menu",
