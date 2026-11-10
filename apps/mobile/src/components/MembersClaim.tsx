@@ -193,7 +193,6 @@ export function ClaimScreen({
   const claim = owner.banner?.claim ?? null;
   const record = claim?.record ?? null;
   const checking = owner.check === 'checking';
-  const withdrawRef = useRef<ViewInstance>(null);
 
   return (
     <FocusedScreen
@@ -248,7 +247,6 @@ export function ClaimScreen({
       {checking && <Said text={t('ownerClaim.checking')} />}
       {owner.check === 'notFound' && <Said text={t('ownerClaim.notFound')} />}
       <TextAction
-        ref={withdrawRef}
         label={t('ownerClaim.withdraw')}
         onPress={() => owner.ask('withdraw')}
         testID="ownerClaim.withdraw"

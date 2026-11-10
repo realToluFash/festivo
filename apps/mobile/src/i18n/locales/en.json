@@ -1163,6 +1163,7 @@
       "people_other": "{{count, number}} people",
       "waiting_one": "{{count, number}} waiting",
       "waiting_other": "{{count, number}} waiting",
+      "peopleWaiting": "{{people}} · {{waiting}}",
       "answer": "Answer {{name}}",
       "joined": "{{name}} joined as {{role}}",
       "turnedDown": "You turned down {{name}}",
@@ -1240,7 +1241,7 @@
     "you": "you",
     "roleTitle": "Role",
     "eventsFromPeople": "A member’s events come from each event’s People.",
-    "ownerMakesOwner": "Only an owner makes someone an owner.",
+    "ownerMakesOwnerEvents": "Only an owner makes someone an owner. A member’s events come from each event’s People.",
     "roleKeptWhileSuspended": "Their role is kept while they're suspended. You can change it once their access is restored.",
     "accessConflict": "Someone else changed the access for {{name}} while this page was open, so your change was not made. This is how it stands now.",
     "roleMeans": {

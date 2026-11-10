@@ -1222,7 +1222,7 @@
     "you": "si",
     "roleTitle": "Função",
     "eventsFromPeople": "Os eventos de um Membro são definidos em Pessoas, em cada evento.",
-    "ownerMakesOwner": "Só alguém com a função Proprietário pode atribuir a função Proprietário.",
+    "ownerMakesOwnerEvents": "Só alguém com a função Proprietário pode atribuir a função Proprietário. Os eventos de um Membro são definidos em Pessoas, em cada evento.",
     "roleKeptWhileSuspended": "A função é mantida enquanto o acesso estiver suspenso. Pode alterá-la depois de o acesso ser reposto.",
     "accessConflict": "Outra pessoa alterou o acesso de {{name}} enquanto esta página estava aberta, por isso a sua alteração não foi aplicada. Esta é a situação atual.",
     "roleMeans": {
@@ -1306,6 +1306,7 @@
       "people_other": "{{count, number}} people",
       "waiting_one": "{{count, number}} waiting",
       "waiting_other": "{{count, number}} waiting",
+      "peopleWaiting": "{{people}} · {{waiting}}",
       "answer": "Answer {{name}}",
       "joined": "{{name}} joined as {{role}}",
       "turnedDown": "You turned down {{name}}",

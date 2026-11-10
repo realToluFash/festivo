@@ -11,6 +11,7 @@ import {
 import type { TFunction } from 'i18next';
 
 import type { MarkKind } from '../components/StatusMark.tsx';
+import { toneOf } from './personFace.ts';
 
 /** The app lists memberships and does not invite, so it has no Invited and no Waiting filter. */
 export type MembersFilter = Extract<MemberFilter, 'all' | 'active' | 'suspended' | 'former'>;
@@ -41,22 +42,13 @@ export function waitingToJoin(members: readonly OrganisationMember[]): Organisat
   return members.filter((member) => member.status === 'pending_approval');
 }
 
-/** The same person always has the same colour, wherever their face is drawn. */
-export function toneOf(id: string): number {
-  return [...id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-}
-
 export interface MemberFace {
   initials: string;
   tone: number;
 }
 
 export function faceOf(member: OrganisationMember): MemberFace {
-  return { initials: initials(member.user.name), tone: toneOf(member.id) };
-}
-
-export function firstName(name: string): string {
-  return name.split(' ')[0] ?? name;
+  return { initials: initials(member.user.name), tone: toneOf(member.user.id) };
 }
 
 export function memberRole(t: TFunction, member: OrganisationMember): string {
@@ -238,7 +230,10 @@ export function membersCard({
   return {
     says:
       waiting.length > 0
-        ? `${headcount} · ${t('membersScreen.card.waiting', { count: waiting.length })}`
+        ? t('membersScreen.card.peopleWaiting', {
+            people: headcount,
+            waiting: t('membersScreen.card.waiting', { count: waiting.length }),
+          })
         : headcount,
     line: null,
     step: answer,

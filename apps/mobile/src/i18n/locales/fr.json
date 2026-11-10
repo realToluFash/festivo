@@ -1222,7 +1222,7 @@
     "you": "vous",
     "roleTitle": "Rôle",
     "eventsFromPeople": "Les événements d’un Membre se décident dans Personnes, sur chaque événement.",
-    "ownerMakesOwner": "Seule une personne ayant le rôle Propriétaire peut attribuer le rôle Propriétaire.",
+    "ownerMakesOwnerEvents": "Seule une personne ayant le rôle Propriétaire peut attribuer le rôle Propriétaire. Les événements d’un Membre se décident dans Personnes, sur chaque événement.",
     "roleKeptWhileSuspended": "Le rôle est conservé pendant la suspension. Vous pourrez le changer une fois l’accès rétabli.",
     "accessConflict": "Quelqu’un d’autre a modifié l’accès pour {{name}} pendant que cette page était ouverte : votre modification n’a donc pas été appliquée. Voici où en est cet accès.",
     "roleMeans": {
@@ -1306,6 +1306,7 @@
       "people_other": "{{count, number}} people",
       "waiting_one": "{{count, number}} waiting",
       "waiting_other": "{{count, number}} waiting",
+      "peopleWaiting": "{{people}} · {{waiting}}",
       "answer": "Answer {{name}}",
       "joined": "{{name}} joined as {{role}}",
       "turnedDown": "You turned down {{name}}",

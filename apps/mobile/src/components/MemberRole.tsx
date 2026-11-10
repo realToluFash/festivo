@@ -6,24 +6,24 @@ import {
   type OrganisationRole,
 } from '@soirely/api-client';
 import { PROOF_MINUTES, roleName } from '@soirely/domain';
-import { type RefObject, useRef, useState } from 'react';
+import { type RefObject, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, type TextInputInstance, View } from 'react-native';
+import { View } from 'react-native';
 
 import { api } from '../api.ts';
 import { membersAfterWrite, withRole } from '../kit/membersAfterWrite.ts';
-import { firstName } from '../kit/membersSummary.ts';
+import { firstName } from '../kit/personFace.ts';
 import { refusalTitle } from '../kit/refusal.ts';
+import { codeHelp } from '../kit/waysProof.ts';
 import { PROVIDER_NAMES } from '../providerSignIn.ts';
 import { dropProof, heldProof, howToProve, type Proving } from '../recentProof.ts';
-import { tokens } from '../theme/tokens.ts';
+import { ConfirmScreen, type ConfirmSays } from './AccountConfirm.tsx';
 import { useProof } from './ConfirmItsYou.tsx';
-import { CodeField, Field, FieldError, focusChecked, focusRefused } from './Field.tsx';
+import { FieldError } from './Field.tsx';
 import { roleLines, roleNamed } from './MemberRequest.tsx';
-import { PasswordField } from './PasswordField.tsx';
 import { RoleChoices } from './RoleChoices.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
-import { type AskProps, FocusedScreen, Line, TextAction } from './Summary.tsx';
+import { type AskProps, FocusedScreen, Line } from './Summary.tsx';
 
 /** Change role on its own screen: only the roles the viewer may give, and an owner made here asks for proof first (sc-18930). */
 export function RoleScreen({
@@ -134,14 +134,12 @@ export function RoleScreen({
         organisation={organisation.name}
         first={first}
         proving={proving}
-        busy={busy}
-        failed={failed}
         opener={opener}
         onCancel={() => {
           setFailed(null);
           setProving(null);
         }}
-        onProved={(proof) => void save(proof)}
+        onProved={save}
       />
     );
 
@@ -197,21 +195,19 @@ export function RoleScreen({
         text={
           callerOwns
             ? t('membersScreen.eventsFromPeople')
-            : `${t('membersScreen.ownerMakesOwner')} ${t('membersScreen.eventsFromPeople')}`
+            : t('membersScreen.ownerMakesOwnerEvents')
         }
       />
     </FocusedScreen>
   );
 }
 
-/** Make an owner, after confirming it is you: the password, or Google or Apple, then the code with two-factor on. */
+/** Make an owner, after confirming it is you: Confirm it's you, titled for the owner it makes (sc-18930). */
 function ProveScreen({
   open,
   organisation,
   first,
   proving,
-  busy,
-  failed,
   opener,
   onCancel,
   onProved,
@@ -220,145 +216,62 @@ function ProveScreen({
   organisation: string;
   first: string;
   proving: Proving;
-  busy: boolean;
-  failed: string | null;
   opener: RefObject<ScreenReaderTarget | null>;
   onCancel: () => void;
-  onProved: (proof: string) => void;
+  onProved: (proof: string) => Promise<void>;
 }) {
   const { t } = useTranslation();
   const { via, twoFactorOn } = proving;
   const proof = useProof(via, twoFactorOn);
-  const { codeAsked, signedIn, checking, refusal, setRefusal } = proof;
-  const password = useRef('');
-  const code = useRef('');
-  const passwordInput = useRef<TextInputInstance>(null);
-  const codeInput = useRef<TextInputInstance>(null);
-  const [blank, setBlank] = useState<'password' | 'code' | null>(null);
-  const provider = via !== 'password' && via != null ? via : null;
-  const waiting = checking || busy;
-
-  async function submit(): Promise<void> {
-    if (waiting) return;
-    if (provider == null && password.current === '') {
-      setBlank('password');
-      focusChecked(passwordInput);
-      return;
-    }
-    if (codeAsked && code.current.trim() === '') {
-      setBlank('code');
-      focusChecked(codeInput);
-      return;
-    }
-    setBlank(null);
-    const outcome = await proof.submit(password.current, code.current);
-    if (outcome.kind === 'expired') code.current = '';
-    if (outcome.kind === 'refused' && outcome.refusal.field === 'password')
-      focusRefused(passwordInput);
-    if (outcome.kind === 'refused' && outcome.refusal.field === 'code') focusRefused(codeInput);
-    if (outcome.kind === 'proved') onProved(outcome.proof);
-  }
-
-  const passwordError =
-    blank === 'password'
-      ? t('waysCard.passwordBlank')
-      : refusal?.field === 'password'
-        ? refusal.message
-        : null;
-  const codeError =
-    blank === 'code' ? t('waysCard.codeBlank') : refusal?.field === 'code' ? refusal.message : null;
-  const general = refusal?.field === 'failed' ? refusal.message : failed;
+  const provider = via === 'password' || via == null ? null : PROVIDER_NAMES[via];
+  const stepTwo = provider != null && proof.signedIn != null ? provider : null;
 
   return (
-    <FocusedScreen
+    <ConfirmScreen
       open={open}
       title={t('membersScreen.makeOwnerTitle', { first })}
-      verb={{
-        label: t('membersScreen.makeOwner'),
-        on: !waiting,
-        busy: waiting,
-        onPress: () => void submit(),
-        testID: 'members.prove.continue',
+      verb={t('membersScreen.makeOwner')}
+      asks={{
+        lead: t('membersScreen.proveOwner', { organisation, count: PROOF_MINUTES }),
+        note:
+          provider == null || proof.codeAsked
+            ? undefined
+            : t('waysCard.proveWithProvider', { provider }),
+        expired:
+          proof.expired != null && provider != null
+            ? {
+                text: t('waysCard.proofExpired', { provider, count: PROOF_MINUTES }),
+                answer: proof.expired,
+              }
+            : undefined,
+        password: via === 'password',
+        code: proof.codeAsked,
+        codeHelp: codeHelp(t, stepTwo),
+        instead: provider,
       }}
-      waits={waiting}
-      onCancel={onCancel}
-      cancelLabel={t('membersScreen.awaiting.cancel')}
-      cancelTestID="members.prove.cancel"
       opener={opener}
-    >
-      <Line text={t('membersScreen.proveOwner', { organisation, count: PROOF_MINUTES })} />
-      {general != null && (
-        <View accessibilityRole="alert">
-          <FieldError message={general} />
-        </View>
-      )}
-      <View style={styles.fields}>
-        {provider == null && (
-          <Field label={t('waysCard.yourPassword')} error={passwordError}>
-            <PasswordField
-              ref={passwordInput}
-              wrong={passwordError != null}
-              submitting={waiting}
-              autoComplete="current-password"
-              textContentType="password"
-              onChangeText={(text) => {
-                password.current = text;
-                if (refusal?.field === 'password') setRefusal(null);
-                if (blank === 'password' && text !== '') setBlank(null);
-              }}
-              returnKeyType={codeAsked ? 'next' : 'done'}
-              onSubmitEditing={() => (codeAsked ? codeInput.current?.focus() : void submit())}
-              submitBehavior="submit"
-              accessibilityLabel={t('waysCard.yourPassword')}
-              testID="members.prove.password"
-            />
-          </Field>
-        )}
-        {provider != null && signedIn == null && (
-          <View style={styles.provider}>
-            <Line text={t('waysCard.proveWithProvider', { provider: PROVIDER_NAMES[provider] })} />
-            <TextAction
-              label={t('waysCard.continueWith', { provider: PROVIDER_NAMES[provider] })}
-              off={waiting}
-              onPress={() => void submit()}
-              testID="members.prove.provider"
-            />
-          </View>
-        )}
-        {provider != null && signedIn != null && (
-          <Line
-            quiet={false}
-            text={t('waysCard.signedInWith', { provider: PROVIDER_NAMES[provider] })}
-          />
-        )}
-        {codeAsked && (
-          <Field label={t('waysCard.code')} error={codeError} help={t('membersScreen.codeHelp')}>
-            <CodeField
-              ref={codeInput}
-              takesRecoveryCode
-              wrong={codeError != null}
-              submitting={waiting}
-              autoComplete="one-time-code"
-              textContentType="oneTimeCode"
-              onChangeText={(text) => {
-                code.current = text;
-                if (refusal?.field === 'code') setRefusal(null);
-                if (blank === 'code' && text.trim() !== '') setBlank(null);
-              }}
-              returnKeyType="done"
-              onSubmitEditing={() => void submit()}
-              submitBehavior="submit"
-              accessibilityLabel={t('waysCard.code')}
-              testID="members.prove.code"
-            />
-          </Field>
-        )}
-      </View>
-    </FocusedScreen>
+      onClose={onCancel}
+      onContinue={async (password, code): Promise<ConfirmSays | null> => {
+        const blank = {
+          password: via === 'password' && password === '' ? t('waysCard.passwordBlank') : null,
+          code: proof.codeAsked && code.trim() === '' ? t('waysCard.codeBlank') : null,
+        };
+        if (blank.password != null || blank.code != null) return { ...blank, checked: true };
+        const outcome = await proof.submit(password, code);
+        if (outcome.kind === 'proved') {
+          await onProved(outcome.proof);
+          return null;
+        }
+        if (outcome.kind !== 'refused') return { password: null, code: null, checked: false };
+        const { field, message } = outcome.refusal;
+        return {
+          password: field === 'password' ? message : null,
+          code: field === 'code' ? message : null,
+          checked: false,
+          other: field === 'failed' ? message : null,
+        };
+      }}
+      testID="members.prove"
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  fields: { gap: tokens.spaceXl, paddingTop: tokens.spaceXs },
-  provider: { gap: tokens.spaceXs },
-});
