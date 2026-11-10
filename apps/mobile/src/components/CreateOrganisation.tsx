@@ -60,7 +60,8 @@ export function CreateOrganisation({
   const { t } = useTranslation();
   const { kind, width, height } = useLayout();
   const phone = kind === 'phone';
-  // The `create_keyboard` drawing is for Android phones; the iPhone keeps its row (sc-9442).
+  // The `create_keyboard` drawing is for Android phones; the iPhone keeps its row (sc-9442),
+  // except on its side with the keys up, where the buttons stack and scroll (sc-35256).
   const drawn = Platform.OS === 'android' && phone;
   const keysUp = useKeysUp();
   const typing = phone && keysUp;
