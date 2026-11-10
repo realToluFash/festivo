@@ -1646,6 +1646,17 @@ describe('Today at a desk (sc-29092)', () => {
     expect(screen.queryByRole('heading', { name: 'Your events' })).toBeNull();
   });
 
+  it('tells a role without Create events why a first run has nothing to start', async () => {
+    await today('firstAsk');
+
+    expect(screen.getByRole('heading', { name: 'Set up your first event' })).toBeDefined();
+    expect(screen.getByText('Make it live')).toBeDefined();
+    expect(screen.getByText(/Ask an owner if you need to create one/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Ana Souza, Member' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Start your first event' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'New event' })).toBeNull();
+  });
+
   it('opens a planning day for a moment it does not know', async () => {
     await today('nope');
 

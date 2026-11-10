@@ -532,8 +532,9 @@ export function momentOf(
   say: Say,
   {
     guests = SAMPLE_GUESTS,
+    first = 'Folake',
     later = false,
-  }: { guests?: GuestsOf | undefined; later?: boolean } = {},
+  }: { guests?: GuestsOf | undefined; first?: string | undefined; later?: boolean } = {},
 ): Moment {
   const starting = later && name === 'plan';
   const { date: today, time } = starting ? STARTS_LATER : TODAY[name];
@@ -551,7 +552,7 @@ export function momentOf(
     full,
     time,
     eyebrow: say.long(today),
-    hello: name === 'first' ? 'Welcome, Folake' : `${greeting(time)}, Folake`,
+    hello: name === 'first' ? `Welcome, ${first}` : `${greeting(time)}, ${first}`,
     lead:
       waiting != null && waiting.length > 0
         ? `${waiting.length} ${waiting.length === 1 ? 'thing needs' : 'things need'} you.`
