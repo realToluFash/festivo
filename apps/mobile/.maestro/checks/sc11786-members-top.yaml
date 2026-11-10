@@ -4,7 +4,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/settings/members
 - extendedWaitUntil:
     visible:
-      id: 'members.filter.active'
+      id: 'members.card'
     timeout: 30000
 - scrollUntilVisible:
     element:
@@ -29,10 +29,10 @@ appId: host.exp.Exponent
     timeout: 15000
 - scrollUntilVisible:
     element:
-      id: 'members.request.${REQUEST}'
+      id: 'members.approve.${REQUEST}'
     direction: UP
     centerElement: true
 - tapOn:
-    id: 'members.request.${REQUEST}'
+    id: 'members.approve.${REQUEST}'
 - waitForAnimationToEnd
 - takeScreenshot: request-top

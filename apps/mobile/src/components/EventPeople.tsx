@@ -24,6 +24,7 @@ import {
   rowLine,
   seesEveryEvent,
 } from '../kit/eventPeople.ts';
+import { firstName, toneOf } from '../kit/personFace.ts';
 import { refusalSaid } from '../kit/refusal.ts';
 import { glide } from '../motion.ts';
 import { useSignedIn } from '../signedIn.ts';
@@ -58,14 +59,6 @@ type Load =
 const LIT_MS = 2000;
 const ROW_INSET = 40 + tokens.spaceLg;
 const FIRST_ROLE: EventRole = 'can_view';
-
-function firstName(name: string): string {
-  return name.split(' ')[0] ?? name;
-}
-
-function toneOf(id: string): number {
-  return [...id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-}
 
 function Face({ name, id, side }: { name: string; id: string; side: number }) {
   const letters = initials(name);

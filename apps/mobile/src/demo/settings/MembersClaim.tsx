@@ -18,7 +18,7 @@ import {
   ORGANISATION,
   STOP_CONSEQUENCE,
 } from './MembersSample.ts';
-import { RecordRows, useCopied } from './RecordRows.tsx';
+import { RecordRows, useCopied } from '../../components/RecordRows.tsx';
 import {
   Ask,
   type AskProps,

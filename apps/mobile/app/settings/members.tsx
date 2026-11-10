@@ -1,54 +1,65 @@
 import type { MembersList as Members, OrganisationRole } from '@soirely/api-client';
-import { grantableRoles, roleHolds, withheldRoles } from '@soirely/domain';
+import { formatDay, grantableRoles, roleHolds, withheldRoles } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { type Ref, useEffect, useRef, useState } from 'react';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
 import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
-import { ComeForward, FocusWhenBehind } from '../../src/components/comeForward.ts';
-import { SecondaryButton } from '../../src/components/Buttons.tsx';
-import {
-  type Answered,
-  MemberList,
-  MemberPage,
-  activeCount,
-} from '../../src/components/Members.tsx';
 import {
   type ListAndPageSpacing,
   ListAndPage,
   useListAndPageLayout,
 } from '../../src/components/ListAndPage.tsx';
-import { Notice } from '../../src/components/Notice.tsx';
-import { moveScreenReaderFocus } from '../../src/components/screenReaderFocus.ts';
-import { type StepClosed, stepClosed, useFocusOnAnswer } from '../../src/components/Screen.tsx';
+import { PersonBody } from '../../src/components/MemberPerson.tsx';
+import { RequestScreen } from '../../src/components/MemberRequest.tsx';
+import {
+  ClaimActions,
+  ClaimRefused,
+  ClaimScreen,
+  useOwnerClaim,
+} from '../../src/components/MembersClaim.tsx';
+import {
+  MembersCardView,
+  NobodyPicked,
+  People,
+  Waiting,
+} from '../../src/components/MembersSummary.tsx';
+import { Refreshing } from '../../src/components/Refreshing.tsx';
+import { SETTLED_MS } from '../../src/components/Screen.tsx';
+import {
+  moveScreenReaderFocus,
+  type ScreenReaderTarget,
+} from '../../src/components/screenReaderFocus.ts';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { SheetsAtRoot } from '../../src/components/Sheet.tsx';
-import { Refreshing } from '../../src/components/Refreshing.tsx';
+import { FailedBlock, LoadingBlock } from '../../src/components/Summary.tsx';
 import { type TextHandle, Text } from '../../src/components/Text.tsx';
-import { useShownLanguage } from '../../src/i18n/index.ts';
-import { useOffline } from '../../src/offline.ts';
+import { dateLocale, useShownLanguage } from '../../src/i18n/index.ts';
 import { DESTINATION_HREF, SECTION_HREF } from '../../src/kit/appNav.ts';
-import { rereadOrganisations, useSignedIn } from '../../src/signedIn.ts';
+import {
+  type MembersFilter,
+  type MembersSaid,
+  type MembersStep,
+  membersCard,
+  membersCounts,
+  membersShown,
+  waitingToJoin,
+} from '../../src/kit/membersSummary.ts';
 import { settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
+import { useOffline } from '../../src/offline.ts';
+import { rereadOrganisations, useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
-import { Arrived, Skeleton } from '../../src/components/Skeleton.tsx';
 
 type Load =
   | { kind: 'loading' }
-  | { kind: 'failed'; tapped: boolean }
+  | { kind: 'failed' }
   | { kind: 'loaded'; list: Members; roles: OrganisationRole[] };
-
-type Showing =
-  | { kind: 'list'; flash: string | null; answered?: Answered; closed?: StepClosed }
-  | { kind: 'member'; id: string; behind?: boolean; tapped?: object };
-
-const LIST: Showing = { kind: 'list', flash: null };
 
 const LOADING: Load = { kind: 'loading' };
 
-/** Settings > Members, `MembersApp-*` (sc-3404): who is in the organisation, a role change and a removal. */
+/** Settings › Members, summary first as its demo draws it (sc-37693): the card, who waits, the people, and a person's page. */
 export default function MembersScreen() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();
@@ -62,36 +73,36 @@ export default function MembersScreen() {
     load: LOADING,
   });
   const [attempt, setAttempt] = useState(0);
-  const [retried, setRetried] = useState<object | undefined>(undefined);
+  const [refresh, setRefresh] = useState(0);
+  const [view, setView] = useState<{
+    in: string | undefined;
+    open: string | null;
+    filter: MembersFilter;
+    said: MembersSaid | null;
+    request: string | null;
+  }>({ in: organisationId, open: null, filter: 'all', said: null, request: null });
   const membersTitle = useRef<TextHandle>(null);
+  const cardStep = useRef<ViewInstance>(null);
+  const cardSays = useRef<TextHandle>(null);
+  const rows = useRef<Record<string, ViewInstance | null>>({});
+  const opener = useRef<ScreenReaderTarget | null>(null);
+  const [backTo, setBackTo] = useState<{ id: string } | { card: true } | null>(null);
+  const language = useShownLanguage();
   const load = held.in === organisationId ? held.load : LOADING;
   const setLoad = (next: Load) => setHeld({ in: organisationId, load: next });
-  const [shown, setShown] = useState<{ in: string | undefined; showing: Showing }>({
+  const fresh = {
     in: organisationId,
-    showing: LIST,
-  });
-  const showing = shown.in === organisationId ? shown.showing : LIST;
-  const setShowing = (next: Showing) => setShown({ in: organisationId, showing: next });
+    open: null,
+    filter: 'all',
+    said: null,
+    request: null,
+  } as const;
+  const current = view.in === organisationId ? view : fresh;
+  const change = (next: Partial<typeof current>) => setView({ ...current, ...next });
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
-  if (landscape && shown.showing.kind === 'member' && shown.showing.behind === true) {
-    setShown({ ...shown, showing: { kind: 'member', id: shown.showing.id } });
-  }
-  const landscapeNow = useRef(landscape);
-  useEffect(() => {
-    landscapeNow.current = landscape;
-  }, [landscape]);
-  const { read: memberName } = useFocusOnAnswer<TextHandle>(
-    !landscape && shown.showing.kind === 'member' && shown.showing.behind !== true
-      ? shown.showing.tapped
-      : undefined,
-  );
-  const listBehindNow = useRef(false);
-  const [nameWhenBehind] = useState(
-    () => () => (listBehindNow.current ? memberName.current : null),
-  );
-  const language = useShownLanguage();
-  const [refresh, setRefresh] = useState(0);
+  const manages = organisation != null && roleHolds(organisation, 'members.manage');
+  const owner = useOwnerClaim(organisationId, organisation?.role.seededAs === 'administrator');
   const { watch, stale, refreshing } = useOffline({
     loaded: load.kind === 'loaded',
     reload: () => setRefresh((n) => n + 1),
@@ -102,16 +113,16 @@ export default function MembersScreen() {
     if (organisationId == null) return;
     let live = true;
 
-    const settle = (next: Load) => live && setHeld({ in: organisationId, load: next });
-
     watch(Promise.all([api.members(organisationId), api.roles(organisationId)])).then(
-      ([list, catalogue]) => settle({ kind: 'loaded', list, roles: catalogue.roles }),
+      ([list, catalogue]) =>
+        live &&
+        setHeld({ in: organisationId, load: { kind: 'loaded', list, roles: catalogue.roles } }),
       () =>
         live &&
         setHeld((before) =>
           before.in === organisationId && before.load.kind === 'loaded'
             ? before
-            : { in: organisationId, load: { kind: 'failed', tapped: attempt > 0 } },
+            : { in: organisationId, load: { kind: 'failed' } },
         ),
     );
 
@@ -120,146 +131,190 @@ export default function MembersScreen() {
     };
   }, [organisationId, attempt, refresh, language, watch]);
 
-  const member =
-    load.kind === 'loaded' && showing.kind === 'member'
-      ? (load.list.members.find((one) => one.id === showing.id) ?? null)
-      : null;
-  const inFront = showing.kind === 'member' && showing.behind === true ? null : member;
-  const listBehind = !landscape && inFront != null;
+  // Back on the list, the focus goes to the row that opened the page, or to the card's sentence after a removal.
   useEffect(() => {
-    listBehindNow.current = listBehind;
-  }, [listBehind]);
+    if (backTo == null) return;
+    const focus = setTimeout(
+      () =>
+        moveScreenReaderFocus(
+          'id' in backTo ? (rows.current[backTo.id] ?? membersTitle.current) : cardSays.current,
+        ),
+      SETTLED_MS,
+    );
 
-  useFocusOnAnswer<TextHandle>(load.kind === 'loaded' ? retried : undefined, membersTitle);
+    return () => clearTimeout(focus);
+  }, [backTo]);
 
   if (organisation != null && !roleHolds(organisation, 'members.read')) {
     return <Redirect href={DESTINATION_HREF.settings} />;
   }
 
-  const toList = () =>
-    setShowing(
-      showing.kind === 'member'
-        ? { kind: 'list', flash: null, closed: stepClosed(`row.${showing.id}`) }
-        : LIST,
-    );
-  const listForward = () => {
-    if (landscapeNow.current) return;
-    setShown((before) =>
-      before.in === organisationId && before.showing.kind === 'member'
-        ? { in: organisationId, showing: { ...before.showing, behind: true } }
-        : before,
-    );
-  };
-  const answered = (list: Members, done: Answered) => {
-    if (load.kind === 'loaded') setLoad({ ...load, list });
-    setShowing({ kind: 'list', flash: null, answered: done });
-  };
-  const subtitle =
-    organisation != null && load.kind === 'loaded'
-      ? t('membersScreen.subtitle', {
+  const members = load.kind === 'loaded' ? load.list.members : [];
+  const member =
+    current.open == null ? null : (members.find((one) => one.id === current.open) ?? null);
+  const asked =
+    current.request == null ? null : (members.find((one) => one.id === current.request) ?? null);
+  const listBehind = !landscape && member != null;
+  const day = (at: string) => formatDay(at, dateLocale());
+  const rowRef =
+    (id: string): Ref<ViewInstance> =>
+    (view) => {
+      rows.current[id] = view;
+    };
+
+  function moveOn(): void {
+    owner.moveOn();
+  }
+
+  function openPerson(id: string | null): void {
+    moveOn();
+    if (id == null && current.open != null) setBackTo({ id: current.open });
+    change({ open: id, said: null });
+  }
+
+  function openRequest(id: string, from: ScreenReaderTarget | null): void {
+    opener.current = from;
+    change({ request: id, said: null });
+  }
+
+  function onStep(step: MembersStep): void {
+    switch (step.does) {
+      case 'answer':
+        openRequest(step.member, cardStep.current);
+        return;
+      case 'seePerson':
+        openPerson(step.member);
+        return;
+      case 'seeFormer':
+        moveOn();
+        change({ filter: 'former', said: null });
+        return;
+      case 'becomeOwner':
+        opener.current = cardStep.current;
+        owner.become();
+        return;
+      case 'checkRecord':
+        opener.current = cardStep.current;
+        owner.checkRecord();
+    }
+  }
+
+  const card =
+    organisation == null
+      ? null
+      : membersCard({
+          t,
+          members,
+          manages,
           organisation: organisation.name,
-          count: activeCount(load.list),
-        })
-      : (organisation?.name ?? '');
+          said:
+            current.said ??
+            (owner.withdrew == null ? null : { kind: 'withdrew', ...owner.withdrew }),
+          claim: owner.banner,
+        });
+  const waiting = manages ? waitingToJoin(members) : [];
+  const roles =
+    load.kind === 'loaded' && organisation != null ? grantableRoles(load.roles, organisation) : [];
 
   const refreshingWords = refreshing ? <Refreshing testID="members.refreshing" /> : null;
-  const heading = (
-    <View style={styles.heading}>
-      {!alone && (
-        <View style={besideRow.row}>
-          <View style={styles.shrink}>
-            <Text
-              ref={membersTitle}
-              size={tokens.typeTitlePhone.size}
-              weight="bold"
-              accessibilityRole="header"
-            >
-              {t('membersScreen.title')}
-            </Text>
-          </View>
-          {refreshingWords}
-        </View>
-      )}
-      <Text size={tokens.typeBody.size} muted>
-        {subtitle}
-      </Text>
+  const heading = !alone && (
+    <View style={besideRow.row}>
+      <View style={styles.shrink}>
+        <Text
+          ref={membersTitle}
+          size={landscape ? 28 : 30}
+          weight="bold"
+          accessibilityRole="header"
+        >
+          {t('membersScreen.title')}
+        </Text>
+      </View>
+      {refreshingWords}
     </View>
   );
 
-  const waiting =
+  const list =
     load.kind === 'loading' ? (
-      <Skeleton words={t('membersScreen.loading')} shape="rows" rowHeight={64} picture />
+      <LoadingBlock words={t('membersScreen.loading')} height={landscape ? 156 : 200} />
     ) : load.kind === 'failed' ? (
-      <View style={styles.stack} accessibilityRole="alert">
-        <Notice
-          tone="broken"
-          mark={tokens.marks.broken.glyph}
-          body={t('membersScreen.failedLoad')}
-          announce={!load.tapped}
-          answer={load.tapped ? load : undefined}
-          takesFocus={load.tapped}
+      <FailedBlock
+        title={t('membersScreen.failedTitle')}
+        line={t('membersScreen.failedLine')}
+        onRetry={() => {
+          void rereadOrganisations();
+          setLoad({ kind: 'loading' });
+          setAttempt((n) => n + 1);
+        }}
+        testID="members.retry"
+      />
+    ) : organisation == null || card == null ? null : (
+      <View style={styles.blocks}>
+        <MembersCardView
+          card={card}
+          compact={landscape}
+          wide={kind === 'tabletPortrait'}
+          saysRef={cardSays}
+          stepRef={cardStep}
+          busy={owner.busy}
+          onStep={onStep}
         />
-        <SecondaryButton
-          label={t('membersScreen.retry')}
-          onPress={() => {
-            void rereadOrganisations();
-            setRetried({});
-            setLoad({ kind: 'loading' });
-            setAttempt((n) => n + 1);
+        {owner.refusal != null && (
+          <ClaimRefused key={owner.refusal.at} text={owner.refusal.words} />
+        )}
+        {owner.withdrew == null && current.said == null && (
+          <ClaimActions owner={owner} organisation={organisation.name} />
+        )}
+        {waiting.length > 0 && (
+          <Waiting
+            waiting={waiting}
+            dense={landscape}
+            day={day}
+            onOpen={(id) => openRequest(id, rows.current[`request.${id}`] ?? null)}
+            rowRef={(id) => rowRef(`request.${id}`)}
+          />
+        )}
+        <People
+          listed={membersShown(members, current.filter)}
+          counts={membersCounts(members)}
+          filter={current.filter}
+          organisation={organisation.name}
+          open={landscape ? (member?.id ?? null) : null}
+          dense={landscape}
+          manages={manages}
+          rowRef={rowRef}
+          onFilter={(filter) => {
+            moveOn();
+            change({ filter, said: null });
           }}
-          testID="members.retry"
+          onOpen={(id) => openPerson(id)}
         />
       </View>
-    ) : null;
-
-  const list =
-    organisation != null && load.kind === 'loaded' ? (
-      <MemberList
-        kind={kind}
-        organisation={organisation}
-        list={load.list}
-        roles={grantableRoles(load.roles, organisation)}
-        manages={roleHolds(organisation, 'members.manage')}
-        open={member?.id ?? null}
-        flash={showing.kind === 'list' ? showing.flash : null}
-        answered={showing.kind === 'list' ? (showing.answered ?? null) : null}
-        closed={showing.kind === 'list' ? showing.closed : undefined}
-        title={membersTitle}
-        onAnswered={answered}
-        onOpen={(id) => {
-          setRetried(undefined);
-          setShowing({ kind: 'member', id, tapped: {} });
-        }}
-      />
-    ) : null;
+    );
 
   const page =
     organisation != null && load.kind === 'loaded' && member != null ? (
-      <MemberPage
-        kind={kind}
-        organisation={organisation}
-        member={member}
-        list={load.list}
-        roles={grantableRoles(load.roles, organisation)}
-        withheld={withheldRoles(load.roles, organisation)}
-        manages={roleHolds(organisation, 'members.manage')}
-        onChanged={(list) => setLoad({ ...load, list })}
-        onRemoved={(list) => {
-          setLoad({ ...load, list });
-          setShowing({
-            kind: 'list',
-            flash: t('membersScreen.removed', {
-              name: member.user.name,
-              organisation: organisation.name,
-            }),
-          });
-        }}
-        onAnswered={answered}
-        onGoToOrganisation={() =>
-          router.replace({ pathname: SECTION_HREF.organisation, params: from ? { from } : {} })
-        }
-        nameRef={memberName}
-      />
+      <View style={styles.blocks}>
+        <PersonBody
+          key={member.id}
+          pane={landscape}
+          organisation={organisation}
+          member={member}
+          list={load.list}
+          roles={roles}
+          withheld={withheldRoles(load.roles, organisation)}
+          manages={manages}
+          onChanged={(next) => setLoad({ ...load, list: next })}
+          onRemoved={(next, name) => {
+            setLoad({ ...load, list: next });
+            moveOn();
+            change({ open: null, said: { kind: 'removed', name } });
+            setBackTo({ card: true });
+          }}
+          onGoToOrganisation={() =>
+            router.replace({ pathname: SECTION_HREF.organisation, params: from ? { from } : {} })
+          }
+        />
+      </View>
     ) : null;
 
   return (
@@ -269,18 +324,18 @@ export default function MembersScreen() {
       besideTitle={alone ? refreshingWords : undefined}
       title={
         phone
-          ? (inFront?.user.name ?? t('membersScreen.title'))
+          ? listBehind
+            ? (member?.user.name ?? '')
+            : t('membersScreen.title')
           : alone
             ? t('membersScreen.title')
             : t('settings.title')
       }
-      titleRef={
-        phone ? (inFront != null ? memberName : membersTitle) : alone ? membersTitle : undefined
-      }
+      titleRef={phone ? (listBehind ? undefined : membersTitle) : alone ? membersTitle : undefined}
       back={
-        phone && inFront != null
-          ? { label: t('membersScreen.title'), onPress: toList }
-          : alone && inFront == null
+        phone && listBehind
+          ? { label: t('membersScreen.title'), onPress: () => openPerson(null) }
+          : alone && !listBehind
             ? backToSettings(t('settings.title'))
             : undefined
       }
@@ -290,56 +345,63 @@ export default function MembersScreen() {
           <ListAndPage
             kind={kind}
             heading={heading}
-            list={
-              <ComeForward.Provider value={listForward}>
-                <FocusWhenBehind.Provider value={nameWhenBehind}>
-                  {waiting ?? <Arrived>{list}</Arrived>}
-                </FocusWhenBehind.Provider>
-              </ComeForward.Provider>
-            }
-            page={
-              page ??
-              (landscape && load.kind === 'loaded' && (
-                <Notice
-                  tone="quiet"
-                  mark={tokens.marks.info.glyph}
-                  body={t('membersScreen.pickSomebody')}
-                />
-              ))
-            }
+            list={list}
+            page={page ?? (landscape && load.kind === 'loaded' && <NobodyPicked />)}
             pageKey={member?.id ?? ''}
-            pageInFront={inFront != null}
-            back={{ label: t('membersScreen.backToList'), onPress: toList, testID: 'members.back' }}
+            pageInFront={listBehind}
+            back={{
+              label: t('membersScreen.backToList'),
+              onPress: () => openPerson(null),
+              testID: 'members.back',
+            }}
             spacing={SPACING}
           />
         </SheetsAtRoot>
       </SettingsSplit>
+      {organisation != null && load.kind === 'loaded' && asked != null && (
+        <RequestScreen
+          key={asked.id}
+          organisation={organisation}
+          member={asked}
+          list={load.list}
+          roles={roles}
+          open={asked.status === 'pending_approval'}
+          opener={opener}
+          onClose={() => change({ request: null })}
+          onAnswered={(next, said) => {
+            setLoad({ ...load, list: next });
+            change({ request: null, said });
+          }}
+        />
+      )}
+      {organisation != null && (
+        <ClaimScreen owner={owner} organisation={organisation.name} opener={opener} />
+      )}
     </AppFrame>
   );
 }
 
 const styles = StyleSheet.create({
-  stack: { gap: tokens.spaceMd },
-  heading: { gap: tokens.spaceXxs },
   shrink: { flexShrink: 1, minWidth: 0 },
+  blocks: { gap: 18 },
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceXl,
-    paddingBottom: tokens.space3xl,
+    paddingHorizontal: tokens.spaceXxl,
+    paddingBottom: tokens.space6xl * 2,
   },
   portrait: {
-    gap: 14,
-    paddingTop: tokens.space3xl,
-    paddingHorizontal: tokens.space4xl,
-    paddingBottom: tokens.space6xl,
+    gap: 18,
+    paddingTop: tokens.spaceXl,
+    paddingHorizontal: tokens.space5xl,
+    paddingBottom: tokens.space6xl * 2,
   },
   landscape: {
-    gap: 14,
-    paddingTop: tokens.space3xl,
-    paddingHorizontal: tokens.space3xl,
+    gap: 18,
+    paddingTop: 26,
+    paddingHorizontal: 30,
   },
-  column: { gap: tokens.spaceLg, paddingBottom: tokens.space5xl },
+  column: { gap: 18, paddingBottom: tokens.space6xl * 2 },
 });
 
 const SPACING: ListAndPageSpacing = {

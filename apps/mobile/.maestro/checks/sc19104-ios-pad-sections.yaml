@@ -48,7 +48,7 @@ appId: host.exp.Exponent
 - assertVisible:
     id: 'settings.account'
 - assertVisible:
-    id: 'members.filter.active'
+    id: 'members.card'
 - takeScreenshot: members-beside
 - scrollUntilVisible:
     element:

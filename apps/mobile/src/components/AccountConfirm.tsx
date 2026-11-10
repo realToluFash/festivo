@@ -44,10 +44,15 @@ export function ConfirmScreen({
   opener,
   onClose,
   onContinue,
+  title,
+  verb,
   testID = 'account.confirm',
 }: {
   open: boolean;
   asks: ProofAsks;
+  /** The change it guards, named in the title and verb, as Make an owner does; Confirm it's you · Continue otherwise. */
+  title?: string | undefined;
+  verb?: string | undefined;
   opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
   onContinue: (password: string, code: string) => Promise<ConfirmSays | null>;
@@ -78,9 +83,9 @@ export function ConfirmScreen({
   return (
     <FocusedScreen
       open={open}
-      title={t('waysCard.proveTitle')}
+      title={title ?? t('waysCard.proveTitle')}
       verb={{
-        label: t('waysCard.continue'),
+        label: verb ?? t('waysCard.continue'),
         on: true,
         busy: checking,
         onPress: () => void proceed(),
