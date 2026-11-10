@@ -1,4 +1,4 @@
-import type { EventCover, ListedEvent } from '@soirely/api-client';
+import type { EventCover, OrganisationEvent } from '@soirely/api-client';
 import {
   type CardStepAction,
   type EventPhase,
@@ -60,7 +60,9 @@ export function shownEvent(event: ListEvent, phase: EventPhase): Shown {
 }
 
 /** A loaded event as Events draws it: its venue's name or address for the place, and its photo once it has one. */
-export function listEventOf(event: ListedEvent): ListEvent {
+export function listEventOf(
+  event: OrganisationEvent & Pick<ListEvent, 'milestones'>,
+): ListEvent {
   return {
     ...event,
     place: event.venue?.name ?? event.venue?.address?.formatted ?? null,
