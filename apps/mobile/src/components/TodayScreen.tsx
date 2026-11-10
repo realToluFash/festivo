@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Dimensions,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   ScrollView,
@@ -118,7 +119,8 @@ function Scrolled({
     outputRange: [1, 0],
     extrapolate: 'clamp',
   });
-  const { height } = useWindowDimensions();
+  // The scroller's own height, not the window's: on an edge-to-edge Android tablet the window leaves out the system bars, and a short page would stop before it folds.
+  const [height, setHeight] = useState(() => Dimensions.get('window').height);
   const onScroll = useMemo(
     () =>
       Animated.event([{ nativeEvent: { contentOffset: { y: offset } } }], {
@@ -142,6 +144,7 @@ function Scrolled({
       {/* Like a large title, the cover is open or folded: a scroll that stops between snaps to one, and a short page still has the room to fold. */}
       <Animated.ScrollView
         ref={scroller}
+        onLayout={(event) => setHeight(event.nativeEvent.layout.height)}
         onScroll={onScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
