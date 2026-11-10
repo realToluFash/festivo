@@ -22,7 +22,7 @@ import {
   offsetIntoView,
   offsetToFocus,
   settledAnswer,
-  titleScrollsWhileTyping,
+  sheetScrollsWhileTyping,
 } from '../kit/keyboard.ts';
 import {
   NEW_ORGANISATION_FIELDS,
@@ -82,7 +82,7 @@ export function CreateOrganisation({
           keysUp={keysUp}
           typing={typing}
           inSight={fieldKeptInSight(turned)}
-          titleScrolls={titleScrollsWhileTyping(turned)}
+          scrollsWhole={sheetScrollsWhileTyping(turned)}
           onCreated={onCreated}
           onCancel={onCancel}
           onSending={setSending}
@@ -189,7 +189,7 @@ function Form({
   keysUp,
   typing,
   inSight,
-  titleScrolls,
+  scrollsWhole,
   onCreated,
   onCancel,
   onSending,
@@ -200,8 +200,8 @@ function Form({
   keysUp: boolean;
   typing: boolean;
   inSight: boolean;
-  /** An iPhone on its side has no room above the keys for a fixed title as well as the field. */
-  titleScrolls: boolean;
+  /** A phone on its side has no room above the keys for a pinned title and buttons as well as the field: they scroll with it, the buttons stacked last (sc-9442, sc-35256). */
+  scrollsWhole: boolean;
   onCreated: (created: Membership) => void;
   onCancel: () => void;
   onSending: (sending: boolean) => void;
@@ -293,7 +293,7 @@ function Form({
       label={t('createOrganisation.cancel')}
       onPress={onCancel}
       off={saving}
-      stacked={drawn}
+      stacked={drawn || scrollsWhole}
       testID="createOrganisation.cancel"
     />
   );
@@ -382,38 +382,42 @@ function Form({
       />
     </>
   );
-  const buttons = drawn ? (
-    <View style={styles.stacked}>
-      {createButton}
-      {cancelButton}
-    </View>
-  ) : (
-    <View style={styles.actions}>
-      {cancelButton}
-      {createButton}
-    </View>
-  );
+  const buttons =
+    drawn || scrollsWhole ? (
+      <View style={styles.stacked}>
+        {createButton}
+        {cancelButton}
+      </View>
+    ) : (
+      <View style={styles.actions}>
+        {cancelButton}
+        {createButton}
+      </View>
+    );
 
   return (
     <>
-      {!titleScrolls && (
+      {!scrollsWhole && (
         <View style={[styles.heading, typing && styles.headingTyping]}>{title}</View>
       )}
       <ScrollView
         ref={body}
         style={styles.body}
-        contentContainerStyle={[styles.form, titleScrolls && styles.formTitled]}
+        contentContainerStyle={[styles.form, scrollsWhole && styles.formTitled]}
         keyboardShouldPersistTaps="handled"
         onLayout={(event) => onBodyLayout(event.nativeEvent.layout.height)}
         onScroll={(event) => onBodyScroll(event.nativeEvent.contentOffset.y)}
         scrollEventThrottle={16}
         testID="createOrganisation"
       >
-        {titleScrolls && title}
+        {scrollsWhole && title}
         {intro}
         {fields}
+        {scrollsWhole && buttons}
       </ScrollView>
-      <View style={[styles.footer, typing && styles.footerTyping]}>{buttons}</View>
+      {!scrollsWhole && (
+        <View style={[styles.footer, typing && styles.footerTyping]}>{buttons}</View>
+      )}
     </>
   );
 }

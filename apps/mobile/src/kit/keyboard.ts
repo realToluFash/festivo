@@ -318,9 +318,9 @@ export interface SidewaysTyping {
   keysUp: boolean;
 }
 
-/** Whether an iPhone on its side with the keys up scrolls a sheet's title with its body, leaving the field room (sc-9442). */
-export function titleScrollsWhileTyping({ keysUp, ...turned }: SidewaysTyping): boolean {
-  return keysUp && iPhoneOnItsSide(turned);
+/** Whether a phone on its side with the keys up pins nothing around a sheet's body, scrolling its title and buttons with it, so the field has the room above the keys (sc-9442, sc-35256). */
+export function sheetScrollsWhileTyping({ keysUp, phone, width, height }: SidewaysTyping): boolean {
+  return keysUp && phone && width > height;
 }
 
 /** Whether a sheet keeps its field in the body's sight: while typing, and on an iPhone on its side once the keys go down too, resting the body at its top (sc-9442). */
