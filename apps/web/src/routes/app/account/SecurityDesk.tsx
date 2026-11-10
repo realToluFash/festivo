@@ -30,7 +30,14 @@ import {
   SetupDialog,
 } from '../../../components/SecurityDialogs.tsx';
 import { KeptAction, Openable, SaidLine, ShieldCard } from '../../../components/SecurityParts.tsx';
-import { Ask, Chevron, DeskPage, Head, RedAction, RowWords } from '../../../components/SettingsParts.tsx';
+import {
+  Ask,
+  Chevron,
+  DeskPage,
+  Head,
+  RedAction,
+  RowWords,
+} from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
