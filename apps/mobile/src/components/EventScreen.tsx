@@ -10,6 +10,7 @@ import { api } from '../api.ts';
 import { type Stale, keepsWhatLoaded, useOffline } from '../offline.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
+import { offersEdit } from '../kit/eventEdit.ts';
 import { backToOriginal } from '../kit/eventDuplicate.ts';
 import { type EditAt, EVENT_AREA, type EventPlace, areaBack } from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
@@ -73,7 +74,7 @@ export function EventScreen({
   const { reload, freshen, change } = opened;
   const event = opened.kind === 'loaded' ? opened.event : null;
   const creates = event != null && roleHolds(event, 'events.create');
-  const manages = event != null && roleHolds(event, 'events.manage');
+  const manages = offersEdit(event);
   const deletes = offersDelete(event);
   const now = useServerNow();
   const phase = usePhaseOf(event, now);

@@ -6,6 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { DESTINATION_HREF } from '../kit/appNav.ts';
+import { offersEdit } from '../kit/eventEdit.ts';
 import { eventHref } from '../kit/eventNav.ts';
 import { formTitles } from '../kit/formTitles.ts';
 import { goToArea, goUpToEvent } from '../kit/upToEvent.ts';
@@ -203,10 +204,8 @@ function EditEventLoad({
           heading
         />
       )}
-      {'event' in load && !roleHolds(load.event, 'events.manage') && (
-        <Redirect href={eventHref(eventId)} />
-      )}
-      {'event' in load && organisation != null && roleHolds(load.event, 'events.manage') && (
+      {'event' in load && !offersEdit(load.event) && <Redirect href={eventHref(eventId)} />}
+      {'event' in load && organisation != null && offersEdit(load.event) && (
         <Arrived style={formGap(kind)}>
           <EventForm
             key={reads}

@@ -2,6 +2,8 @@ import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState }
 import { Keyboard, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { addInTurn } from '../kit/addInTurn.ts';
+import { type PickAnswer, RolePicks } from '../kit/rolePicks.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Field, TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -214,8 +216,7 @@ export function RoleSheet<R extends string>({
   const [failed, setFailed] = useState<{ line: string; times: number } | null>(null);
   const [removing, setRemoving] = useState<Removing>(removingAtStart);
   const [removeFailed, setRemoveFailed] = useState<string | null>(null);
-  const held = useRef(start);
-  const latest = useRef({ sent: 0, settled: true });
+  const [picks] = useState(() => new RolePicks(start));
   const removesAtStart = useRef(removingAtStart === 'sending');
 
   function sendRemove(): void {
@@ -235,35 +236,30 @@ export function RoleSheet<R extends string>({
 
   function pick(role: R): void {
     if (role === picked) return;
-    const sent = latest.current.sent + 1;
-    latest.current = { sent, settled: false };
+    const sent = picks.pick();
     setPicked(role);
     setSending('saving');
     setFailed(null);
     readOut(words.saving);
     save(role).then(
-      (saved) => {
-        held.current = saved;
-        if (sent === latest.current.sent) {
-          latest.current.settled = true;
-          setSending('saved');
-          readOut(words.savedHeard(saved));
-        } else if (latest.current.settled) {
-          setPicked(saved);
-          setFailed((was) => (was == null ? null : { ...was, line: words.notChanged(saved) }));
-        }
-      },
-      () => {
-        if (sent !== latest.current.sent) return;
-        latest.current.settled = true;
-        setPicked(held.current);
-        setSending('idle');
-        setFailed((was) => ({
-          line: words.notChanged(held.current),
-          times: (was?.times ?? 0) + 1,
-        }));
-      },
+      (saved) => shown(picks.saved(sent, saved)),
+      () => shown(picks.refused(sent)),
     );
+  }
+
+  function shown(answer: PickAnswer<R>): void {
+    if (answer == null) return;
+    if (answer.kind === 'saved') {
+      setSending('saved');
+      readOut(words.savedHeard(answer.role));
+    } else if (answer.kind === 'overtaken') {
+      setPicked(answer.role);
+      setFailed((was) => (was == null ? null : { ...was, line: words.notChanged(answer.role) }));
+    } else {
+      setPicked(answer.held);
+      setSending('idle');
+      setFailed((was) => ({ line: words.notChanged(answer.held), times: (was?.times ?? 0) + 1 }));
+    }
   }
 
   const ask: AskProps = {
@@ -494,25 +490,19 @@ export function AddScreen<R extends string, T>({
     if (!canAdd) return;
     setBusy(true);
     setFailed(null);
-    const added: T[] = [];
-    const went: string[] = [];
     const named = new Map(offered('').map((one) => [one.id, one.name]));
     const names = (ids: readonly string[]) => ids.map((id) => named.get(id) ?? '');
-    try {
-      for (const id of ticked) {
-        added.push(await add(role, id));
-        went.push(id);
-      }
-    } catch (error) {
-      setBusy(false);
-      setTicked((now) => now.filter((id) => !went.includes(id)));
-      const left = ticked.filter((id) => !went.includes(id));
-      const line = words.refusal(error, role, names(went), names(left));
-      setFailed((was) => ({ line, times: (was?.times ?? 0) + 1 }));
-      if (added.length > 0) onAdded(role, added, false);
+    const sent = await addInTurn(ticked, (id) => add(role, id));
+    if (sent.kind === 'all') {
+      onAdded(role, sent.added, true);
       return;
     }
-    onAdded(role, added, true);
+    const { added, went, left, error } = sent;
+    setBusy(false);
+    setTicked((now) => now.filter((id) => !went.includes(id)));
+    const line = words.refusal(error, role, names(went), names(left));
+    setFailed((was) => ({ line, times: (was?.times ?? 0) + 1 }));
+    if (added.length > 0) onAdded(role, added, false);
   }
 
   function cancel(): void {
