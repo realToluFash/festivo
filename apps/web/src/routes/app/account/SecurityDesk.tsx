@@ -424,6 +424,7 @@ export function SecurityDesk() {
         </header>
         {status == null ? (
           <SaidLine
+            alone
             said={said == null ? null : { text: said, done: true }}
             saidRef={(line) => {
               saidLine.current = line;

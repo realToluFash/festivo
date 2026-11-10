@@ -458,14 +458,17 @@ export function SectionFailed({
   line,
   onRetry,
   testID,
+  announce = true,
 }: {
   title: string;
   line?: string;
   onRetry: () => void;
   testID: string;
+  /** False keeps the failure from being read out, as when it answers a Try again. */
+  announce?: boolean;
 }) {
   const { t } = useTranslation();
-  useReadOut(line == null ? title : `${title} ${line}`);
+  useReadOut(announce ? (line == null ? title : `${title} ${line}`) : null);
 
   return (
     <View style={styles.sectionFailed}>

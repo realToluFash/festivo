@@ -10,6 +10,10 @@
   overflow-wrap: anywhere;
 }
 
+.account-said.is-alone {
+  color: var(--colorInk);
+}
+
 .desk-mark.account-done {
   width: 16px;
   height: 16px;

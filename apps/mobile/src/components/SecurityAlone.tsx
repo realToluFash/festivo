@@ -1,10 +1,10 @@
 import type { Ref } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { useReadOut } from '../../components/ReadOut.tsx';
-import { ShapeMark } from '../../components/Summary.tsx';
-import { type TextHandle, Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
+import { useReadOut } from './ReadOut.tsx';
+import { ShapeMark } from './Summary.tsx';
+import { type TextHandle, Text } from './Text.tsx';
+import { tokens } from '../theme/tokens.ts';
 
 const SIZE = 14.5;
 
