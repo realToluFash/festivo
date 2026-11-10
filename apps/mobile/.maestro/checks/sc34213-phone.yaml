@@ -1,4 +1,4 @@
-# sc-34213, a phone: after saving Oluwafolakemi Bello on Your account, going back to the Settings list shows its card as Oluwafolakemi Bello and OB; then Cher and C. Needs ${METRO_URL}.
+# Android only. sc-34213, a phone: after saving Oluwafolakemi Bello on Your account, going back to the Settings list shows its card as Oluwafolakemi Bello and OB; then Cher and C. Needs ${METRO_URL}.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/settings

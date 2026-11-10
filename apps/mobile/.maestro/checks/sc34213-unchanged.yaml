@@ -1,4 +1,4 @@
-# sc-34213 (from sc-31163's): Cancel with no change, Cancel then Discard after typing, and Save unchanged each leave the card, the list and the sidebar foot at FA. Needs ${METRO_URL}; ORIENT for a tablet.
+# sc-34213 (from sc-31163's): Cancel with no change, Cancel then Discard after typing, and Save unchanged each leave the card, the list and the sidebar foot at FA. Needs ${METRO_URL} and ${ORIENT} (PORTRAIT on a phone).
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}

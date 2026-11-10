@@ -1,4 +1,4 @@
-# sc-34213: after saving Oluwafolakemi Bello, an incoming deep link to Security, then back to Your account, starts again from Folake Adeyemi and FA. Needs ${METRO_URL}; ORIENT for a tablet.
+# sc-34213: after saving Oluwafolakemi Bello, an incoming deep link to Security, then back to Your account, starts again from Folake Adeyemi and FA. Needs ${METRO_URL} and ${ORIENT} (PORTRAIT on a phone).
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}

@@ -1,4 +1,4 @@
-# sc-34213: after saving Oluwafolakemi Bello, opening Security, then Members, and coming back to Your account keeps it on the page's card, the list and the sidebar's foot; a deep link starts again from Folake Adeyemi. Needs ${METRO_URL}; ORIENT for a tablet.
+# sc-34213: after saving Oluwafolakemi Bello, opening Security, then Members, and coming back to Your account keeps it on the page's card, the list and the sidebar's foot; a deep link starts again from Folake Adeyemi. Needs ${METRO_URL} and ${ORIENT} (PORTRAIT on a phone).
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
