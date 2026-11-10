@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { arrive } from '../components/OrgMark.tsx';
 import { OrgDropDown } from '../components/OrgDropDown.tsx';
-import { SETTLED_MS } from '../components/Screen.tsx';
+import { SETTLED_MS, useWindowOrigin } from '../components/Screen.tsx';
 import { type Switched, SwitchedProvider } from '../components/SwitchedNotice.tsx';
 import type { Tell } from '../components/TodayParts.tsx';
 import type { OrgOpening } from '../components/todayShell.ts';
@@ -133,6 +133,7 @@ export function OrgSwitcherProvider({
   const phone = useLayout().kind === 'phone';
   const { width, height } = useWindowDimensions();
   const { bottom } = useSafeAreaInsets();
+  const origin = useWindowOrigin();
   const session = useSession();
   const [frame, setFrame] = useState<DropFrame | null>(null);
   const [openedBy, setOpenedBy] = useState<OpenerRef | null>(null);
@@ -179,7 +180,8 @@ export function OrgSwitcherProvider({
         back.current = view;
         setFrame(
           frameFor({
-            opener: { x, y, width: w, height: h },
+            // The drop-down's window starts behind the status bar, which Android measures the opener below.
+            opener: { x, y: y - origin, width: w, height: h },
             window: { width, height },
             insets: { bottom },
             phone,
@@ -188,7 +190,7 @@ export function OrgSwitcherProvider({
         setOpenedBy(opener);
       });
     },
-    [width, height, bottom, phone],
+    [width, height, bottom, phone, origin],
   );
 
   useEffect(() => {
