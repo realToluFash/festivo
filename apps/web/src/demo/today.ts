@@ -1,3 +1,5 @@
+import { calendarDays, weekLanes } from '@soirely/domain';
+
 import type {
   EventCard,
   Moment as Shown,
@@ -59,6 +61,16 @@ export const EVENTS: Record<EventKey, SampleEvent> = {
     place: '',
     draft: true,
   },
+};
+
+type Sample = Readonly<Record<EventKey, SampleEvent>>;
+
+/** `?week=rows`: three events of several days that share days, as sc-37302's AC lays them out: the wedding on the strip's days 1 to 4, Ireti on 3 to 6 and the party on 5 to 7. */
+export const ROWS: Sample = {
+  ...EVENTS,
+  wed: { ...EVENTS.wed, first: '2026-11-03', last: '2026-11-06' },
+  ireti: { ...EVENTS.ireti, first: '2026-11-05', last: '2026-11-08' },
+  party: { ...EVENTS.party, first: '2026-11-07', last: '2026-11-09' },
 };
 
 /** Dates as `2026-11-03` and times as `18:00`, written the reader's way. */
@@ -132,6 +144,7 @@ export interface Moment extends Shown {
   time: string;
   /** Null when the product has nothing to say yet; empty when nothing needs you. */
   needs: Need[] | null;
+  bars: RowBar[];
 }
 
 /** A sample event as the product's parts draw it: its colour is its key. */
@@ -283,8 +296,9 @@ function card(
   say: Say,
   guests: GuestsOf,
   later: EventKey | null,
+  sample: Sample,
 ): EventCard {
-  const event = EVENTS[key];
+  const event = sample[key];
   const until = daysFrom(today, event.first);
   const live = until <= 0 && daysFrom(today, event.last) >= 0 && key !== later;
   const count = event.draft
@@ -320,16 +334,45 @@ function cards(
   moment: MomentName,
   say: Say,
   guests: GuestsOf,
-  later: EventKey | null = null,
+  later: EventKey | null,
+  sample: Sample,
 ): EventCard[] {
-  return (Object.keys(EVENTS) as EventKey[])
-    .filter((key) => daysFrom(today, EVENTS[key].last) >= 0)
+  return (Object.keys(sample) as EventKey[])
+    .filter((key) => daysFrom(today, sample[key].last) >= 0)
     .sort(
       (a, b) =>
-        Number(EVENTS[a].draft) - Number(EVENTS[b].draft) ||
-        EVENTS[a].first.localeCompare(EVENTS[b].first),
+        Number(sample[a].draft) - Number(sample[b].draft) ||
+        sample[a].first.localeCompare(sample[b].first),
     )
-    .map((key) => card(key, today, moment, say, guests, later));
+    .map((key) => card(key, today, moment, say, guests, later, sample));
+}
+
+/** A bar in its row, 0 first: bars that share a day never share a row (sc-37302). */
+export interface RowBar extends StripBar {
+  lane: number;
+}
+
+/** A multi-day event's id and its first and last days. */
+export interface Span {
+  id: string;
+  first: string;
+  last: string;
+}
+
+/** The row each event takes in the seven days from `today`, by the domain's `weekLanes`, the walk the app's strip and Calendar stack by (sc-37302). */
+export function lanesOf(today: string, spans: readonly Span[]): Map<string, number> {
+  const byDay = calendarDays(
+    spans.map(({ id, first, last }) => ({
+      id,
+      startsAt: `${first}T00:00:00Z`,
+      timeZone: 'UTC',
+      dayCount: daysFrom(first, last) + 1,
+      milestones: [],
+    })),
+    'events',
+  );
+
+  return weekLanes(Array.from({ length: 7 }, (_, index) => byDay.get(addDays(today, index)) ?? []));
 }
 
 /** One bar for each event on in the week, with its other days' milestones as dots. */
@@ -337,31 +380,34 @@ function week(
   today: string,
   agenda: readonly (readonly [string, Item[]])[],
   say: Say,
-): { days: StripDay[]; bars: StripBar[] } {
+  sample: Sample,
+): { days: StripDay[]; bars: RowBar[] } {
   const last = addDays(today, 6);
-  const bars: StripBar[] = (Object.keys(EVENTS) as EventKey[])
-    .filter((key) => {
-      const event = EVENTS[key];
+  const keys = (Object.keys(sample) as EventKey[]).filter((key) => {
+    const event = sample[key];
 
-      return (
-        !event.draft && event.first !== event.last && event.first <= last && event.last >= today
-      );
-    })
-    .map((key) => {
-      const event = EVENTS[key];
-      const start = Math.max(0, daysFrom(today, event.first));
-      const end = Math.min(6, daysFrom(today, event.last));
-      const length = daysFrom(event.first, event.last) + 1;
-      const openLeft = event.first < today;
+    return !event.draft && event.first !== event.last && event.first <= last && event.last >= today;
+  });
+  const lanes = lanesOf(
+    today,
+    keys.map((key) => ({ id: IDS[key], first: sample[key].first, last: sample[key].last })),
+  );
+  const bars: RowBar[] = keys.map((key) => {
+    const event = sample[key];
+    const start = Math.max(0, daysFrom(today, event.first));
+    const end = Math.min(6, daysFrom(today, event.last));
+    const length = daysFrom(event.first, event.last) + 1;
+    const openLeft = event.first < today;
 
-      return {
-        event: shown(key),
-        start,
-        span: end - start + 1,
-        label: openLeft ? `day ${1 - daysFrom(today, event.first)} of ${length}` : `${length} days`,
-        openLeft,
-      };
-    });
+    return {
+      event: shown(key),
+      start,
+      span: end - start + 1,
+      label: openLeft ? `day ${1 - daysFrom(today, event.first)} of ${length}` : `${length} days`,
+      openLeft,
+      lane: lanes.get(IDS[key]) ?? 0,
+    };
+  });
   const covered = (key: EventKey, index: number) =>
     bars.some(
       (bar) => bar.event.id === IDS[key] && index >= bar.start && index < bar.start + bar.span,
@@ -393,18 +439,39 @@ const TODAY: Record<MomentName, { date: string; time: string }> = {
   first: { date: '2026-11-03', time: '09:41' },
 };
 
-function needs(name: MomentName, today: string, say: Say, guests: GuestsOf): Need[] | null {
+function needs(
+  name: MomentName,
+  today: string,
+  say: Say,
+  guests: GuestsOf,
+  rows: boolean,
+): Need[] | null {
   const row = (event: EventKey, title: string, due: string, action: string): Need => {
     const { words, late } = dueWords(today, due, say);
 
     return { event, title, due: words, late, action };
   };
+  const party =
+    guests[IDS.party]?.invited === 0
+      ? row('party', 'Send the invitations', '2026-10-31', 'Send')
+      : row('party', `Chase ${owedOf('party', guests)} replies`, '2026-10-31', 'Chase');
+
+  if (rows)
+    return [
+      party,
+      row('wed', 'Final numbers to the caterer', today, 'Review'),
+      {
+        event: 'ireti',
+        title: `Chase ${owedOf('ireti', guests)} replies`,
+        due: `Replies close ${say.day('2026-11-04')}`,
+        late: false,
+        action: 'Chase',
+      },
+    ];
 
   if (name === 'plan')
     return [
-      guests[IDS.party]?.invited === 0
-        ? row('party', 'Send the invitations', '2026-10-31', 'Send')
-        : row('party', `Chase ${owedOf('party', guests)} replies`, '2026-10-31', 'Chase'),
+      party,
       row('wed', 'Final numbers to the caterer', '2026-11-04', 'Review'),
       row('wed', 'Seat the last 12 guests', '2026-11-05', 'Seat'),
       {
@@ -474,7 +541,28 @@ const LATER_AGENDA: readonly (readonly [string, Item[]])[] = [
   [STARTS_LATER.date, [[STARTS_LATER.starts, 'The party starts', STARTS_LATER.event, '']]],
 ];
 
-/** `guests` gives the events other guests, as `?invites=none` does; `later` draws `?starts=later`. */
+/** `?week=rows`: the wedding starts this evening, so the day is still a planning one; Ireti's reminder is a dot on the one day no bar covers it. */
+const ROWS_START = '18:00';
+
+const ROWS_AGENDA: readonly (readonly [string, Item[]])[] = [
+  ['2026-11-03', [[ROWS_START, 'Welcome dinner', 'wed', 'Day 1 of 4']]],
+  [
+    '2026-11-04',
+    [
+      [
+        '10:00',
+        `Reminder goes to the ${owedOf('ireti')} who haven’t replied`,
+        'ireti',
+        'Automatic',
+      ],
+    ],
+  ],
+  ['2026-11-05', [['14:00', 'Ceremony', 'wed', 'Day 3 of 4']]],
+  ['2026-11-06', [['11:00', 'Farewell brunch', 'wed', 'Day 4 of 4']]],
+  ['2026-11-07', [['19:00', 'The party starts', 'party', 'Day 1 of 3']]],
+];
+
+/** `guests` gives the events other guests, as `?invites=none` does; `later` draws `?starts=later`; `rows` draws `?week=rows`. */
 export function momentOf(
   name: MomentName,
   say: Say,
@@ -482,15 +570,29 @@ export function momentOf(
     guests = SAMPLE_GUESTS,
     first = 'Folake',
     later = false,
-  }: { guests?: GuestsOf | undefined; first?: string | undefined; later?: boolean } = {},
+    rows = false,
+  }: {
+    guests?: GuestsOf | undefined;
+    first?: string | undefined;
+    later?: boolean;
+    rows?: boolean;
+  } = {},
 ): Moment {
   const starting = later && name === 'plan';
+  const stacked = rows && name === 'plan' && !starting;
+  const sample = stacked ? ROWS : EVENTS;
   const { date: today, time } = starting ? STARTS_LATER : TODAY[name];
   const kind = name === 'planNow' ? 'plan' : name === 'dayNow' ? 'day' : (name as Moment['kind']);
   const full = name !== 'planNow' && name !== 'dayNow';
-  const agenda = starting ? LATER_AGENDA : name === 'first' ? [] : AGENDA[name];
-  const { days, bars } = week(today, agenda, say);
-  const waiting = starting ? [] : needs(name, today, say, guests);
+  const agenda = starting
+    ? LATER_AGENDA
+    : stacked
+      ? ROWS_AGENDA
+      : name === 'first'
+        ? []
+        : AGENDA[name];
+  const { days, bars } = week(today, agenda, say, sample);
+  const waiting = starting ? [] : needs(name, today, say, guests, stacked);
   const wedding = EVENTS.wed.first;
   const party = EVENTS.party;
 
@@ -510,9 +612,11 @@ export function momentOf(
         ? 'Your first event starts here.'
         : starting
           ? `${party.name} starts today at ${say.clock(STARTS_LATER.starts)}.`
-          : name === 'quiet'
-            ? 'Nothing needs you this week.'
-            : `The wedding starts on ${say.weekdayLong(wedding)}.`,
+          : stacked
+            ? `The wedding starts today at ${say.clock(ROWS_START)}.`
+            : name === 'quiet'
+              ? 'Nothing needs you this week.'
+              : `The wedding starts on ${say.weekdayLong(wedding)}.`,
     needs: waiting,
     days,
     bars,
@@ -538,7 +642,16 @@ export function momentOf(
           }
         : null,
     events:
-      name === 'first' ? [] : cards(today, name, say, guests, starting ? STARTS_LATER.event : null),
+      name === 'first'
+        ? []
+        : cards(
+            today,
+            name,
+            say,
+            guests,
+            starting ? STARTS_LATER.event : stacked ? 'wed' : null,
+            sample,
+          ),
     now: kind === 'day' ? now(today, time, say) : null,
   };
 }

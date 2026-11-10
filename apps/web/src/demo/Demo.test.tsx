@@ -1586,6 +1586,28 @@ describe('Today at a desk (sc-29092)', () => {
     expect(screen.getByText('The party starts')).toBeDefined();
   });
 
+  it('draws events sharing days in rows, from the demo home (sc-37302)', async () => {
+    at('/demo');
+    await screen.findByRole('heading', { name: 'Design demo' });
+    expect(
+      screen
+        .getByRole('link', { name: /A planning day, events sharing days in rows/ })
+        .getAttribute('href'),
+    ).toBe('/demo/today?moment=plan&week=rows');
+
+    await today('plan&week=rows');
+
+    const week = screen.getByRole('region', { name: 'This week' });
+    const rows = [...week.querySelectorAll('.today-bar-row')].map((row) =>
+      [...row.querySelectorAll('.today-bar-name')].map((name) => name.textContent),
+    );
+    expect(rows).toEqual([
+      ['Adaeze & Tunde’s wedding', 'Ire Events end-of-year party'],
+      ['Ireti at 40'],
+    ]);
+    expect(screen.getByText('The wedding starts today at 18:00.')).toBeDefined();
+  });
+
   it('says what a press opens, and ⌘K opens search', async () => {
     await today('plan');
 
