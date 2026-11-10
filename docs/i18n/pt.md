@@ -43,6 +43,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **10 Nov 2026. Nenhuma hora do cliente leva "às"** (sc-37178, web e app: os bloqueios `*.limitedBody`, `recovery.limitedLine`, `requestToJoin.limited*`, `signIn.locked*`, `twoFactor.pausedBody|tryAgainAt`, `passwordCard.pausedBody`, `devices.dayAtTime|everywhere*`, `domainJoining.asked`, `eventForm.clocksSkipNextDay`). Os clientes só passam `{{time}}`, sem `{{hour}}`, e "às 01:30" falha à 01:00. Uma frase diz "Tente novamente a partir desta hora: {{time}}.", porque o limite vale dali em diante; com dia, "a partir desta data e hora: {{day}}, {{time}}". Um botão desativado é "Tentar novamente · {{time}}", e uma pausa "em pausa até esta hora: {{time}}". Uma data e a sua hora juntam-se com vírgula: "{{day}}, {{time}}", "data do pedido: {{day}}, {{time}}". A hora guardada no dia seguinte é "Será guardada no dia {{savedDay}}, como {{savedAs}}.", como a do próprio dia. Rejeitado "à hora {{time}}", que não se diz. O que vem da API com `{hour}` mantém a contração concordada (25 Oct).
 - **10 Nov 2026. O Calendário na web de secretária** (sc-36920 para sc-30413, `web:calendar.moreItems_*|chosen|barStatus|barLabel|markLabel`). A pastilha da casa do dia é "+{{count, number}} mais", invariável e sem "de" em `_many`, porque não leva nome. `chosen`, `barStatus`, `barLabel` e `markLabel` são só pontuação e espaços reservados, iguais ao inglês. Na app, `mobile:calendar.moreItems_*` diz o mesmo e `retry` é "Tentar novamente".
 - **10 Nov 2026. O cartão de um evento e a sua página na web** (sc-36898 para sc-30413, `web:events.calledOff|today|itsDays|dayOf|nextUp`, `web:eventPage.*`). A etiqueta de fase é "Cancelado"; "A seguir: {{title}}", como `timeline.nextUp`. O nome das casas dos dias para o leitor de ecrã é "Dias do evento". "Percurso de navegação", como `seating.crumb`; "Horas no fuso horário {{timeZone}}", como `eventDuplicate`. Os rótulos da página são os da app (sc-36555).
 - **10 Nov 2026. Criar uma organização na web de secretária** (sc-37138 para sc-30412, `web:createOrganisation.*`). As perguntas, "Deste dispositivo", "Todos os países", "Nenhuma por agora" e a folha de descartar são as da app (sc-36766). Os botões são "Voltar" / "Continuar", e "Continuar a editar" na folha; a pesquisa é "Pesquisar países" e, sem resultados, "Nenhum país corresponde a «{{text}}».". O que o leitor de ecrã ouve ao escolher um país segue o padrão do cartão, etiqueta e valor separados por vírgula: "Moeda, {{currency}}. Fuso horário, deste dispositivo, {{zone}}."
@@ -334,7 +335,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
   sc-10675, reworded in sc-11163). "Em {{zone}}, a hora {{time}} do dia {{day}} não existe:
   nessa noite, os relógios são adiantados. Será guardada como {{savedAs}}." The next-day line
-  ends "guardada no dia {{savedDay}}, às {{savedAs}}.", so the date never stands before the
+  ends "guardada no dia {{savedDay}}, como {{savedAs}}." (since sc-37178), so the date never stands before the
   colon ("mar.:") or closes the sentence. "Do dia" and "no dia"
   agree with "dia", not with the weekday, which is how a weekday date takes a preposition
   inside a sentence (the 19 Oct rule forbids "a" and "na/no" alone). "Guardada" agrees with
@@ -580,7 +581,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   "no" (sábado, domingo), which the copy cannot agree with, and the abbreviated month brings
   its own full stop. It is a label at the end, with no full stop after the slot:
   "{{organisation}} alterou as regras de início de sessão. Data da alteração: {{day}}". After a
-  status it is lowercase, with the time after a comma: "data do pedido: {{day}}, às {{time}}"
+  status it is lowercase, with the time after a comma: "data do pedido: {{day}}, {{time}}" (no "às" since sc-37178)
   (`domainJoining.asked`, sc-4434). The
   "a {when}" rule below stays for a date without a weekday. A period without use is "Quem
   passar {{count}} dias sem utilizar a Soirely terá de…" (`effectIdle_*`,
