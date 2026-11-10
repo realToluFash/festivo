@@ -2223,7 +2223,7 @@
     "yourEvents": "Sus eventos",
     "allEvents": "Todos los eventos",
     "firstTitle": "Prepare su primer evento",
-    "firstIntro": "Póngale un nombre, una fecha y un lugar. Aquí verá lo que está pendiente de usted y lo que se avecina.",
+    "firstIntro": "Póngale un nombre, una fecha y un lugar. Aquí verá sus eventos y lo que se avecina.",
     "firstStep": {
       "nameTitle": "Póngale nombre y fecha",
       "nameBody": "Un solo día o varios.",
