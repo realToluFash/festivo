@@ -7,11 +7,11 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import {
   approvalRoles,
-  DEADLINES,
   firstName,
   type MembersSay,
   ORGANISATION,
   type Person,
+  removesAt,
   ROLE_MEANS,
 } from './MembersSample.ts';
 import { Avatar } from '../../components/SettingsParts.tsx';
@@ -99,7 +99,7 @@ export function RequestScreen({
       </View>
       <Line
         quiet={false}
-        text={`Asked to join ${ORGANISATION} on ${say.day(person.when)}. Removed on ${say.deadline(DEADLINES.lucia)} if nobody answers.`}
+        text={`Asked to join ${ORGANISATION} on ${say.day(person.when)}. Removed on ${say.deadline(removesAt(person.id))} if nobody answers.`}
       />
       <Line text={NOTE} />
       <Section title="Role" foot="Owner is given from Members once they have joined.">
