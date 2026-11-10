@@ -1,4 +1,9 @@
-import { timezoneLabel } from '@soirely/domain';
+import {
+  countrySearch,
+  foundingCurrencyWords,
+  newOrganisationLimit,
+  timezoneLabel,
+} from '@soirely/domain';
 import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -33,11 +38,8 @@ import {
   cardNameSize,
   cardWords,
   countries,
-  currencyWords,
   factsOf,
-  limitedWords,
   rowLabel,
-  search,
 } from '../kit/createWalk.ts';
 import { FactLine, Question, Refusal, Tag, TWICE, ZoneLine } from './CreateWalkParts.tsx';
 
@@ -322,7 +324,7 @@ function CountryRow({
   onPick: (code: string) => void;
 }) {
   const { t } = useTranslation();
-  const currency = currencyWords(country.code, naming, t);
+  const currency = foundingCurrencyWords(country.code, naming.currencies, naming.locale, t);
 
   return (
     <Pressable
@@ -465,7 +467,7 @@ export function CountryStep({
   const all = countries(naming.locale);
   const searching = walk.query.trim() !== '';
   const items: readonly Item[] = searching
-    ? search(all, walk.query, naming.locale).map((country) => ({ kind: 'country', country }))
+    ? countrySearch(all, walk.query, naming.locale).map((country) => ({ kind: 'country', country }))
     : [HEADING, ...all.map((country): Item => ({ kind: 'country', country }))];
   const device = all.find((country) => country.code === walk.device.country) ?? null;
   const pick = (code: string) => {
@@ -580,7 +582,7 @@ export function CountryStep({
 export function Brings({ walk, naming }: { walk: Walk; naming: Naming }) {
   const { t } = useTranslation();
   const words = boxWords(walk, t, naming);
-  const currency = currencyWords(walk.country, naming, t);
+  const currency = foundingCurrencyWords(walk.country, naming.currencies, naming.locale, t);
 
   useReadOut(words, { quietAtMount: true });
 
@@ -652,7 +654,7 @@ export function ReadyStep({
 }: StepProps & { email: string; locale: string; card: CardFrame | null }) {
   const { t } = useTranslation();
   const sizes = sizesOf(look);
-  const limited = walk.sent === 'limited' ? limitedWords(walk, locale, t) : null;
+  const limited = walk.sent === 'limited' ? newOrganisationLimit(walk.lifts, locale, t) : null;
   const failed = t('createOrganisation.failed');
   const words = cardWords(walk, email, t, naming);
 

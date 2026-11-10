@@ -1,4 +1,4 @@
-import { ApiError, type Membership } from '@soirely/api-client';
+import { newOrganisationEntered, newOrganisationLimit } from '@soirely/domain';
 import i18next from 'i18next';
 import { describe, expect, it } from 'vitest';
 
@@ -7,10 +7,7 @@ import {
   answered,
   cardLine,
   countriesOf,
-  createOrganisation,
-  entered,
   freshWalk,
-  limitedLine,
   optionLabel,
   pickLine,
   shrinks,
@@ -83,10 +80,10 @@ describe('the step checks', () => {
   });
 
   it('asks before Cancel only once a name is typed or the country is not the device’s', () => {
-    expect(entered(freshWalk(LISBON))).toBe(false);
-    expect(entered({ ...freshWalk(LISBON), name: '  ' })).toBe(false);
-    expect(entered(named)).toBe(true);
-    expect(entered({ ...freshWalk(LISBON), country: 'BR' })).toBe(true);
+    expect(newOrganisationEntered(freshWalk(LISBON))).toBe(false);
+    expect(newOrganisationEntered({ ...freshWalk(LISBON), name: '  ' })).toBe(false);
+    expect(newOrganisationEntered(named)).toBe(true);
+    expect(newOrganisationEntered({ ...freshWalk(LISBON), country: 'BR' })).toBe(true);
   });
 });
 
@@ -98,8 +95,11 @@ describe('the answer', () => {
     const limited = answered(sending, { kind: 'limited', until: lifts });
 
     expect(limited).toMatchObject({ step: 3, creating: false, answer: 'limited' });
-    expect(limitedLine(limited, 'en-GB', t)).toBe('Try again at 10:41.');
-    expect(limitedLine(answered(sending, { kind: 'limited', until: null }), 'en-GB', t)).toBeNull();
+    expect(newOrganisationLimit(limited.lifts, 'en-GB', t).body).toBe('Try again at 10:41.');
+    expect(
+      newOrganisationLimit(answered(sending, { kind: 'limited', until: null }).lifts, 'en-GB', t)
+        .body,
+    ).toBeNull();
   });
 
   it('says it did not work on Ready, focus on Create', () => {
@@ -134,58 +134,5 @@ describe('the answer', () => {
     expect(cardLine(ready, countriesOf('en', null, t), 'folake@ire.events', t)).toBe(
       'Lumen Feiras. Your role · Owner. Country, Portugal. Time zone, Lisbon · Europe/Lisbon. Contact address, folake@ire.events.',
     );
-  });
-});
-
-describe('sending it', () => {
-  const made = { id: 'org_9', name: 'Lumen Feiras' } as Membership;
-
-  function refusal(
-    code: string,
-    violations: { propertyPath: string; message: string; code: string }[] = [],
-  ) {
-    return new ApiError({
-      type: `https://soirely.com/errors/${code}`,
-      title: code,
-      status: 422,
-      violations,
-    });
-  }
-
-  it('sends the name trimmed, the country and the device’s zone', async () => {
-    const sent: unknown[] = [];
-
-    expect(
-      await createOrganisation(
-        async (organisation) => {
-          sent.push(organisation);
-          return made;
-        },
-        { ...named, name: '  Lumen Feiras ' },
-      ),
-    ).toEqual({ kind: 'created', made });
-    expect(sent).toEqual([{ name: 'Lumen Feiras', countryCode: 'PT', timezone: 'Europe/Lisbon' }]);
-  });
-
-  it('answers a refused field, and failed for a refusal naming no field the walk has', async () => {
-    const refused = (violations: { propertyPath: string; message: string; code: string }[]) =>
-      createOrganisation(() => Promise.reject(refusal('validation_failed', violations)), named);
-
-    expect(await refused([{ propertyPath: 'name', message: 'Taken.', code: 'x' }])).toEqual({
-      kind: 'refused',
-      errors: { name: 'Taken.' },
-    });
-    expect(await refused([{ propertyPath: 'contactEmail', message: 'Bad.', code: 'x' }])).toEqual({
-      kind: 'failed',
-    });
-  });
-
-  it('answers too many, and failed for anything else', async () => {
-    expect(
-      await createOrganisation(() => Promise.reject(refusal('too_many_attempts')), named),
-    ).toEqual({ kind: 'limited', until: null });
-    expect(await createOrganisation(() => Promise.reject(new Error('offline')), named)).toEqual({
-      kind: 'failed',
-    });
   });
 });

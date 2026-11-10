@@ -2,6 +2,8 @@ import {
   countrySearch,
   formattingLocale,
   initials,
+  newOrganisationEntered,
+  newOrganisationLimit,
   newOrganisationRefusal,
   timezoneLabel,
 } from '@soirely/domain';
@@ -35,8 +37,6 @@ import {
   answered,
   cardLine,
   countriesOf,
-  entered,
-  limitedLine,
   optionLabel,
   pickLine,
   shrinks,
@@ -100,7 +100,7 @@ function Panel<Made>({ start, email, currencies, create, onClose, onCreated }: W
 
   function cancel(): void {
     if (walk.creating) return;
-    if (entered(walk)) setWalk((now) => ({ ...now, asking: true }));
+    if (newOrganisationEntered(walk)) setWalk((now) => ({ ...now, asking: true }));
     else onClose();
   }
 
@@ -272,7 +272,7 @@ function Panel<Made>({ start, email, currencies, create, onClose, onCreated }: W
   const title = t('createOrganisation.title');
 
   const refusalId = `${id}-refusal`;
-  const limited = limitedLine(walk, locale, t);
+  const limited = newOrganisationLimit(walk.lifts, locale, t).body;
 
   return (
     <>

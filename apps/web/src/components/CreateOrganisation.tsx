@@ -1,12 +1,12 @@
 import type { Membership } from '@soirely/api-client';
-import { deviceCountry } from '@soirely/domain';
+import { createNewOrganisation, deviceCountry } from '@soirely/domain';
 import { type RefObject, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { useDeskLayers } from '../layers.ts';
 import { CreateWalk } from './CreateWalk.tsx';
-import { type Currencies, createOrganisation, freshWalk } from './createWalk.ts';
+import { type Currencies, freshWalk } from './createWalk.ts';
 import { Glyph } from './Glyph.tsx';
 import { DeskPage } from './SettingsParts.tsx';
 import './SettingsParts.css';
@@ -45,7 +45,7 @@ export function CreateOrganisation({
         start={start}
         email={email}
         currencies={currencies}
-        create={(walk) => createOrganisation((made) => api.createOrganisation(made), walk)}
+        create={(walk) => createNewOrganisation((made) => api.createOrganisation(made), walk)}
         onClose={onCancel}
         onCreated={onCreated}
       />

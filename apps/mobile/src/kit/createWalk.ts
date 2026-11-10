@@ -1,12 +1,8 @@
 import {
   type FoundingCurrencies,
-  type FoundingCurrencyWords,
   type NewOrganisationAnswer,
   countryChoices,
-  countrySearch,
   foundingCurrencyWords,
-  newOrganisationEntered,
-  newOrganisationLimit,
   newOrganisationRefusal,
   timezoneLabel,
 } from '@soirely/domain';
@@ -51,10 +47,6 @@ export function freshWalk(device: Device): Walk {
     device,
     managed: false,
   };
-}
-
-export function entered(walk: Walk): boolean {
-  return newOrganisationEntered(walk, walk.device.country);
 }
 
 export function stepRefusal(walk: Walk, t: TFunction): string | null {
@@ -129,14 +121,6 @@ export function countries(locale: string): readonly Country[] {
   return made;
 }
 
-export function search(
-  choices: readonly Country[],
-  query: string,
-  locale: string,
-): readonly Country[] {
-  return countrySearch(choices, query, locale);
-}
-
 export function countryName(code: string | null, locale: string): string | null {
   if (code == null) return null;
 
@@ -150,16 +134,8 @@ export interface Naming {
   currencies: Currencies | null;
 }
 
-export function currencyWords(
-  country: string | null,
-  naming: Naming,
-  t: TFunction,
-): FoundingCurrencyWords | null {
-  return foundingCurrencyWords(country, naming.currencies, naming.locale, t);
-}
-
 export function rowLabel(country: Country, naming: Naming, t: TFunction): string {
-  const currency = currencyWords(country.code, naming, t);
+  const currency = foundingCurrencyWords(country.code, naming.currencies, naming.locale, t);
 
   return currency == null ? country.name : `${country.name}, ${currency.words}`;
 }
@@ -179,7 +155,7 @@ export function factsOf(
   naming: Naming,
 ): Fact[] {
   const name = countryName(walk.country, naming.locale);
-  const currency = currencyWords(walk.country, naming, t);
+  const currency = foundingCurrencyWords(walk.country, naming.currencies, naming.locale, t);
   const facts: Fact[] = [];
   if (name != null) {
     facts.push({
@@ -224,18 +200,10 @@ export function cardWords(walk: Walk, email: string, t: TFunction, naming: Namin
 export function boxWords(walk: Walk, t: TFunction, naming: Naming): string {
   const fromDevice = t('createOrganisation.fromDevice');
   const lowered = fromDevice.charAt(0).toLocaleLowerCase(naming.locale) + fromDevice.slice(1);
-  const currency = currencyWords(walk.country, naming, t);
+  const currency = foundingCurrencyWords(walk.country, naming.currencies, naming.locale, t);
   const zone = `${t('orgGeneral.timezone')}, ${lowered}, ${timezoneLabel(walk.device.zone)}.`;
 
   return currency == null ? zone : `${t('orgGeneral.currency')}, ${currency.words}. ${zone}`;
-}
-
-export function limitedWords(
-  walk: Walk,
-  locale: string,
-  t: TFunction,
-): { title: string; body: string | null } {
-  return newOrganisationLimit(walk.lifts, locale, t);
 }
 
 export function cardNameSize(name: string): number {

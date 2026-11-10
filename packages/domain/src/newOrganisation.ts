@@ -1,3 +1,5 @@
+import { ApiError } from '@soirely/api-client';
+
 import { formatTimeOfDay, lockLiftsAt } from './datetime.ts';
 import type { Translate } from './eventWords.ts';
 import { type NewOrganisationField, newOrganisationProblem } from './organisations.ts';
@@ -15,28 +17,31 @@ export type NewOrganisationAnswer<Made> =
   | { kind: 'limited'; until: Date | null }
   | { kind: 'failed' };
 
-/** The shape `@soirely/api-client` throws as `ApiError`; only what the answer needs. */
-export interface NewOrganisationRefusalInput {
-  is(code: string): boolean;
-  fieldErrors(): Record<string, string>;
-  readonly response?: { readonly headers: { get(name: string): string | null } } | undefined;
+/** The walk as both clients hold it: the name as typed, the country picked, and the device it started on. */
+export interface NewOrganisationWalk {
+  name: string;
+  country: string | null;
+  device: { country: string | null; zone: string };
 }
 
 const FIELDS: readonly NewOrganisationField[] = ['name', 'countryCode'];
 
-/** Sends the walk's answers, the name trimmed, and reads the server's answer in the walk's shape. `refusalOf` is the error as an `ApiError`, or null for anything else. */
+/** Sends the walk's answers, the name trimmed and the device's timezone, and reads the server's answer in the walk's shape. */
 export async function createNewOrganisation<Made>(
   create: (organisation: NewOrganisation) => Promise<Made>,
-  organisation: NewOrganisation,
-  refusalOf: (error: unknown) => NewOrganisationRefusalInput | null,
+  walk: NewOrganisationWalk,
 ): Promise<NewOrganisationAnswer<Made>> {
   try {
     return {
       kind: 'created',
-      made: await create({ ...organisation, name: organisation.name.trim() }),
+      made: await create({
+        name: walk.name.trim(),
+        countryCode: walk.country ?? '',
+        timezone: walk.device.zone,
+      }),
     };
   } catch (error) {
-    const refusal = refusalOf(error);
+    const refusal = error instanceof ApiError ? error : null;
     if (refusal?.is('too_many_attempts'))
       return {
         kind: 'limited',
@@ -85,11 +90,9 @@ export function newOrganisationLimit(
   };
 }
 
-export function newOrganisationEntered(
-  walk: { name: string; country: string | null },
-  deviceCountry: string | null,
-): boolean {
-  return walk.name.trim() !== '' || walk.country !== deviceCountry;
+/** Whether Cancel asks first: a name is typed, or the country is no longer the device's. */
+export function newOrganisationEntered(walk: NewOrganisationWalk): boolean {
+  return walk.name.trim() !== '' || walk.country !== walk.device.country;
 }
 
 /** The currency each country founds with, by its code, as the API's `Regions::currencyOf` says it: null where there is none. */

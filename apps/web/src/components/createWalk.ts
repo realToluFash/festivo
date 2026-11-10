@@ -1,14 +1,9 @@
-import { ApiError } from '@soirely/api-client';
 import {
   type FoundingCurrencies,
   type FoundingCurrencyWords,
-  type NewOrganisation,
   type NewOrganisationAnswer,
   countryChoices,
-  createNewOrganisation,
   foundingCurrencyWords,
-  newOrganisationEntered,
-  newOrganisationLimit,
   newOrganisationRefusal,
   timezoneLabel,
 } from '@soirely/domain';
@@ -91,10 +86,6 @@ export function optionLabel(country: Country): string {
   return country.currency == null ? country.name : `${country.name}, ${country.currency.words}`;
 }
 
-export function entered(walk: Walk): boolean {
-  return newOrganisationEntered(walk, walk.device.country);
-}
-
 export function shrinks(name: string): boolean {
   return Array.from(name.trim()).length >= NAME_SHRINKS_FROM;
 }
@@ -142,10 +133,6 @@ export function answered(
   };
 }
 
-export function limitedLine(walk: Walk, locale: string, t: TFunction): string | null {
-  return newOrganisationLimit(walk.lifts, locale, t).body;
-}
-
 export function pickLine(country: Country, walk: Walk, t: TFunction): string {
   const zone = timezoneLabel(walk.device.zone);
 
@@ -178,16 +165,4 @@ export function cardLine(
     `${t('switcher.yourRole', { role: t('roles.owner') })}.`,
     ...facts,
   ].join(' ');
-}
-
-/** sc-390's Create an organisation as the server answers it, in the walk's shape. */
-export function createOrganisation<Made>(
-  create: (organisation: NewOrganisation) => Promise<Made>,
-  walk: Walk,
-): Promise<WalkAnswer<Made>> {
-  return createNewOrganisation(
-    create,
-    { name: walk.name, countryCode: walk.country ?? '', timezone: walk.device.zone },
-    (error) => (error instanceof ApiError ? error : null),
-  );
 }

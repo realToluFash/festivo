@@ -1,9 +1,9 @@
+import { ApiError } from '@soirely/api-client';
 import { describe, expect, it, vi } from 'vitest';
 
 import { currencyLabel } from './regions.ts';
 import type { Translate } from './eventWords.ts';
 import {
-  type NewOrganisationRefusalInput,
   countrySearch,
   createNewOrganisation,
   foundingCurrencyWords,
@@ -15,39 +15,40 @@ import {
 const words = ((key: string, values?: Record<string, unknown>) =>
   values == null ? key : `${key} ${JSON.stringify(values)}`) as Translate;
 
-class Refusal extends Error implements NewOrganisationRefusalInput {
-  readonly response: { headers: Headers };
+function refusal(
+  code: string,
+  fields: Record<string, string> = {},
+  headers: Record<string, string> = {},
+): ApiError {
+  const problem = {
+    type: `https://soirely.com/errors/${code}`,
+    title: code,
+    status: 422,
+    violations: Object.entries(fields).map(([propertyPath, message]) => ({
+      propertyPath,
+      message,
+      code,
+    })),
+  };
 
-  constructor(
-    private readonly code: string,
-    private readonly fields: Record<string, string> = {},
-    headers: Record<string, string> = {},
-  ) {
-    super(code);
-    this.response = { headers: new Headers(headers) };
-  }
-
-  is(code: string): boolean {
-    return this.code === code;
-  }
-
-  fieldErrors(): Record<string, string> {
-    return this.fields;
-  }
+  return new ApiError(problem, new Response(JSON.stringify(problem), { status: 422, headers }));
 }
 
-const refusalOf = (error: unknown) => (error instanceof Refusal ? error : null);
-const organisation = { name: '  Lagos Supper Club ', countryCode: 'NG', timezone: 'Africa/Lagos' };
+const walk = {
+  name: '  Lagos Supper Club ',
+  country: 'NG',
+  device: { country: 'GH', zone: 'Africa/Lagos' },
+};
 
 function refusing(error: Error) {
-  return () => createNewOrganisation(() => Promise.reject(error), organisation, refusalOf);
+  return () => createNewOrganisation(() => Promise.reject(error), walk);
 }
 
 describe('creating an organisation', () => {
   it('sends the trimmed name, the country and the device timezone', async () => {
     const create = vi.fn(async () => 'made');
 
-    expect(await createNewOrganisation(create, organisation, refusalOf)).toEqual({
+    expect(await createNewOrganisation(create, walk)).toEqual({
       kind: 'created',
       made: 'made',
     });
@@ -60,22 +61,22 @@ describe('creating an organisation', () => {
 
   it('puts a refusal beside the fields the walk has, and no other', async () => {
     const answer = refusing(
-      new Refusal('validation_failed', { name: 'Enter the name.', currency: 'Bad currency.' }),
+      refusal('validation_failed', { name: 'Enter the name.', currency: 'Bad currency.' }),
     );
 
     expect(await answer()).toEqual({ kind: 'refused', errors: { name: 'Enter the name.' } });
   });
 
   it('is a failure when the refusal names no field the walk has', async () => {
-    const answer = refusing(new Refusal('validation_failed', { contactAddress: 'Bad address.' }));
+    const answer = refusing(refusal('validation_failed', { contactAddress: 'Bad address.' }));
 
     expect(await answer()).toEqual({ kind: 'failed' });
   });
 
   it('reads when the limit lifts from Retry-After, and no time when none came', async () => {
     const before = Date.now();
-    const timed = await refusing(new Refusal('too_many_attempts', {}, { 'Retry-After': '600' }))();
-    const untimed = await refusing(new Refusal('too_many_attempts'))();
+    const timed = await refusing(refusal('too_many_attempts', {}, { 'Retry-After': '600' }))();
+    const untimed = await refusing(refusal('too_many_attempts'))();
 
     expect(timed.kind === 'limited' && timed.until?.getTime()).toBeGreaterThanOrEqual(
       before + 600_000,
@@ -85,7 +86,7 @@ describe('creating an organisation', () => {
 
   it('is a failure, not a refusal, for anything else', async () => {
     expect(await refusing(new TypeError('Network request failed'))()).toEqual({ kind: 'failed' });
-    expect(await refusing(new Refusal('internal_error'))()).toEqual({ kind: 'failed' });
+    expect(await refusing(refusal('internal_error'))()).toEqual({ kind: 'failed' });
   });
 });
 
@@ -110,10 +111,14 @@ describe('the words before sending', () => {
 
 describe('what Cancel asks', () => {
   it('asks only once a name is typed or the country is not the device’s', () => {
-    expect(newOrganisationEntered({ name: ' ', country: 'PT' }, 'PT')).toBe(false);
-    expect(newOrganisationEntered({ name: 'Lumen', country: 'PT' }, 'PT')).toBe(true);
-    expect(newOrganisationEntered({ name: '', country: 'BR' }, 'PT')).toBe(true);
-    expect(newOrganisationEntered({ name: '', country: null }, null)).toBe(false);
+    const lisbon = { country: 'PT', zone: 'Europe/Lisbon' };
+
+    expect(newOrganisationEntered({ name: ' ', country: 'PT', device: lisbon })).toBe(false);
+    expect(newOrganisationEntered({ name: 'Lumen', country: 'PT', device: lisbon })).toBe(true);
+    expect(newOrganisationEntered({ name: '', country: 'BR', device: lisbon })).toBe(true);
+    expect(
+      newOrganisationEntered({ name: '', country: null, device: { country: null, zone: 'UTC' } }),
+    ).toBe(false);
   });
 });
 
