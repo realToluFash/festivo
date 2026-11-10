@@ -285,7 +285,10 @@ export function Faces({
   return (
     <View style={styles.faces} {...hidden}>
       {faces.map((face, index) => (
-        <View key={face.initials} style={[styles.ring, ringed, index > 0 && styles.overlap]}>
+        <View
+          key={`${face.initials}.${index}`}
+          style={[styles.ring, ringed, index > 0 && styles.overlap]}
+        >
           <Avatar initials={face.initials} side={side} tone={face.tone} />
         </View>
       ))}

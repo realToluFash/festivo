@@ -11,7 +11,7 @@ import {
   type MembersSay,
   ORGANISATION,
 } from './MembersSample.ts';
-import { RecordRows, useCopied } from './RecordRows.tsx';
+import { RecordRows, useCopied } from '../../components/RecordRows.tsx';
 import { FocusedScreen, Line, Section, TextAction } from '../../components/Summary.tsx';
 
 const CHECK_MS = 900;

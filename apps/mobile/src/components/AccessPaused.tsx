@@ -11,7 +11,7 @@ import { tokens } from '../theme/tokens.ts';
 import { bodyEdges } from './bodyEdges.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { Notice } from './Notice.tsx';
-import { PausedOwnerClaim } from './OwnerClaimBanner.tsx';
+import { PausedOwnerClaim } from './PausedOwnerClaim.tsx';
 import { Screen } from './Screen.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Text } from './Text.tsx';
