@@ -175,7 +175,6 @@ export const W = {
   stoppedWhatsApp: 'Stopped WhatsApp',
   read: 'Read',
   failedReceipt: 'Failed',
-  held: 'Held',
   forbiddenTitle: 'You do not have access to this',
   forbiddenBody:
     'Your account does not have permission for this page. If you believe it should, ask an admin of this organisation.',
@@ -334,10 +333,6 @@ export const say = {
     count === 1 ? '1 hasn’t agreed to WhatsApp' : `${count} haven’t agreed to WhatsApp`,
   noMobile: (count: number) =>
     count === 1 ? '1 has no mobile number' : `${count} have no mobile number`,
-  waitingForCredits: (count: number) =>
-    count === 1
-      ? '1 WhatsApp message is waiting for credits. The emails were sent.'
-      : `${count} WhatsApp messages are waiting for credits. The emails were sent.`,
   inZone: (day: string, time: string, zone: string) => `${day}, ${time} ${zone}`,
   dayTime: (day: string, time: string) => `${day}, ${time}`,
   subjectTooLong: (most: string) => `Shorten the subject to ${most} characters or fewer.`,

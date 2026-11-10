@@ -38,7 +38,7 @@ import {
   SAMPLE_EVENT_ID,
   DAYS,
   INVITATION,
-  HELD,
+  RECEIPTS,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
 
@@ -129,13 +129,13 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
         lead: <GroupTile />,
         tag: { kind: 'waiting', word: say.notReached(PARKING_REACH.notReached) },
       };
-    if (id.key === 'held')
+    if (id.key === 'receipts')
       return {
         title: PARKING,
-        line: `${W.toAllGuests} · ${say.didntGetIt(HELD.cant)}`,
+        line: `${W.toAllGuests} · ${say.didntGetIt(RECEIPTS.cant)}`,
         time: rowDay(DAYS.parking, '', locale),
         lead: <GroupTile />,
-        tag: { kind: 'waiting', word: m.hold === 'held' ? W.held : say.notReached(HELD.cant) },
+        tag: { kind: 'waiting', word: say.notReached(RECEIPTS.cant) },
       };
     return {
       title: W.invitation,

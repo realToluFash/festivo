@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  type HoldStage,
   blankDraft,
   checkOf,
-  holdAfter,
   reduce,
   sampleDraft,
   sectionsOf,
@@ -12,12 +10,12 @@ import {
   whatsAppLine,
   whatsAppOf,
 } from './MessagesModel.ts';
-import { heldPeople } from './MessagesSample.ts';
+import { TELL, receiptPeople, whatsAppCredits, whatsAppCreditsFor } from './MessagesSample.ts';
 import { say } from './MessagesWords.ts';
 import { reachViewOf } from './Reach.ts';
 
-const waLines = (stage: HoldStage) =>
-  heldPeople(stage).map((person) => [person.name, person.lines[1]?.word, person.lines[1]?.reason]);
+const waLines = () =>
+  receiptPeople().map((person) => [person.name, person.lines[1]?.word, person.lines[1]?.reason]);
 
 describe('WhatsApp’s reach line', () => {
   it('counts each To: no mobile number, stopped, then not agreed', () => {
@@ -39,12 +37,6 @@ describe('WhatsApp’s reach line', () => {
     expect(say.noMobile(1)).toBe('1 has no mobile number');
     expect(say.stoppedWhatsApp(1)).toBe('1 stopped WhatsApp');
     expect(say.notAgreedWhatsApp(1)).toBe('1 hasn’t agreed to WhatsApp');
-    expect(say.waitingForCredits(1)).toBe(
-      '1 WhatsApp message is waiting for credits. The emails were sent.',
-    );
-    expect(say.waitingForCredits(4)).toBe(
-      '4 WhatsApp messages are waiting for credits. The emails were sent.',
-    );
   });
 
   it('shows only while WhatsApp is ticked', () => {
@@ -61,6 +53,17 @@ describe('WhatsApp’s reach line', () => {
 });
 
 describe('WhatsApp’s credits', () => {
+  it('count each number at its country’s utility rate (sc-3928)', () => {
+    expect(
+      ['+234 802', '+55 21', '+52 55', '+44 7700', '+33 6', '+34 612', '+49 151', '+1 212'].map(
+        whatsAppCredits,
+      ),
+    ).toEqual([2, 2, 2, 5, 5, 4, 9, 0]);
+    expect(whatsAppCreditsFor(['lucia', 'kwame', 'duboise', 'rafael'])).toBe(13);
+    expect(whatsAppCreditsFor(['ines'])).toBe(0);
+    expect(TELL.credits).toBe(43);
+  });
+
   it('add each reachable number’s country rate', () => {
     expect(whatsAppOf('all').credits).toBe(13);
     expect(whatsAppOf('coming').credits).toBe(11);
@@ -86,57 +89,32 @@ describe('WhatsApp’s credits', () => {
   });
 });
 
-describe('a held message', () => {
-  it('moves only from held: credits back send it, its moment passing ends it', () => {
-    expect(holdAfter('held', 'topUp')).toBe('released');
-    expect(holdAfter('held', 'tooLate')).toBe('tooLate');
-    expect(holdAfter('released', 'tooLate')).toBe('released');
-    expect(holdAfter('tooLate', 'topUp')).toBe('tooLate');
-  });
-
-  it('reads each held person’s WhatsApp as the hold left it, their email delivered', () => {
-    expect(heldPeople('held').map((person) => person.lines[0]?.word)).toEqual(
+describe('WhatsApp’s receipts', () => {
+  it('reads Sent, Delivered, Read with its time, then Failed, their email delivered', () => {
+    expect(receiptPeople().map((person) => person.lines[0]?.word)).toEqual(
       Array(4).fill('Email · Delivered'),
     );
-    expect(waLines('held')).toEqual([
-      ['Lucía Ortega', 'WhatsApp · Held: waiting for credits', undefined],
-      ['Kwame Mensah', 'WhatsApp · Held: waiting for credits', undefined],
-      ['Duboise Akande', 'WhatsApp · Held: waiting for credits', undefined],
-      ['Rafael Costa', 'WhatsApp · Held: waiting for credits', undefined],
-    ]);
-    expect(waLines('released')).toEqual([
-      ['Lucía Ortega', 'WhatsApp · Read', '10:14'],
-      ['Kwame Mensah', 'WhatsApp · Read', '10:14'],
-      ['Duboise Akande', 'WhatsApp · Delivered', '10:02'],
+    expect(waLines()).toEqual([
+      ['Lucía Ortega', 'WhatsApp · Sent', '18:20'],
+      ['Duboise Akande', 'WhatsApp · Delivered', '18:21'],
+      ['Kwame Mensah', 'WhatsApp · Read', '18:24'],
       ['Rafael Costa', 'WhatsApp · Failed', undefined],
     ]);
-    expect(waLines('tooLate').map(([, word]) => word)).toEqual(
-      Array(4).fill('WhatsApp · Not sent: too late'),
-    );
   });
 
-  it('seeds each state, and stands in Parking’s place in Needs you', () => {
-    const held = startOf('held', false);
-    expect(held).toMatchObject({ hold: 'held', balance: 0, open: { kind: 'many', key: 'held' } });
-    expect(sectionsOf(held).needs).toContainEqual({ kind: 'many', key: 'held' });
-    expect(sectionsOf(held).needs).not.toContainEqual({ kind: 'many', key: 'parking' });
+  it('seeds the state, and stands in Parking’s place in Needs you', () => {
+    const read = startOf('whatsAppRead', false);
+    expect(read).toMatchObject({ receipts: true, open: { kind: 'reached', of: 'receipts' } });
+    expect(sectionsOf(read).needs).toContainEqual({ kind: 'many', key: 'receipts' });
+    expect(sectionsOf(read).needs).not.toContainEqual({ kind: 'many', key: 'parking' });
     expect(sectionsOf(startOf('inUse', false)).needs).toContainEqual({
       kind: 'many',
       key: 'parking',
     });
-    expect(startOf('whatsAppRead', true)).toMatchObject({
-      hold: 'released',
-      open: { kind: 'reached', of: 'held' },
-    });
-    expect(startOf('whatsAppTooLate', true)).toMatchObject({
-      hold: 'tooLate',
-      balance: 0,
-      open: { kind: 'reached', of: 'held' },
-    });
   });
 
   it('draws Who it reached: WhatsApp · 4, Can’t be told · 18, then Reached, and no resend', () => {
-    const view = reachViewOf(startOf('held', false), 'held');
+    const view = reachViewOf(startOf('whatsAppRead', false), 'receipts');
     expect(view.title).toBe('Reached 124 of 142');
     expect(view.line).toBe('Seen by 87 on their page · 18 can’t be told');
     expect(view.groups.map((group) => [group.word, group.count, group.more])).toEqual([
@@ -149,8 +127,8 @@ describe('a held message', () => {
     expect(view.resend).toBe(0);
     expect(view.groups[1]?.people.map((person) => person.lines.map((line) => line.reason))).toEqual(
       [
-        ['Unsubscribed', 'Stopped WhatsApp'],
         [undefined, 'Hasn’t agreed to WhatsApp'],
+        ['Unsubscribed', 'Stopped WhatsApp'],
       ],
     );
   });

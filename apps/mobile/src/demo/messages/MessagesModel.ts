@@ -16,7 +16,6 @@ import {
   GUESTS,
   type GroupKey,
   type GuestKey,
-  type HoldStage,
   LONG_BODY,
   LONG_SUBJECT,
   LOW_BALANCE,
@@ -39,6 +38,7 @@ import {
   TO_WORD,
   type ToGroup,
   WHATSAPP,
+  whatsAppCreditsFor,
   formatCount,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
@@ -123,20 +123,16 @@ export const MESSAGES_STATES = [
   'editTooLate',
   'whatsAppLine',
   'checkWhatsApp',
-  'held',
   'whatsAppRead',
-  'whatsAppTooLate',
 ] as const;
 
 export type MessagesState = (typeof MESSAGES_STATES)[number];
-
-export type { HoldStage };
 
 export function messagesStateOf(value: string | undefined): MessagesState | null {
   return MESSAGES_STATES.find((state) => state === value) ?? null;
 }
 
-export type ReachedOf = 'parking' | 'invite' | 'held' | 'draft';
+export type ReachedOf = 'parking' | 'invite' | 'receipts' | 'draft';
 
 export type FixKind = 'fixEmail' | 'addEmail' | 'addPhone';
 
@@ -270,8 +266,8 @@ export interface Messages {
   inserting?: boolean;
   refusedSave?: Refusal;
   closed: Closed | null;
-  /** The held message's WhatsApp (sc-3950), in the held states only; it then stands in Parking's place. */
-  hold: HoldStage | null;
+  /** WhatsApp's receipts (sc-3950): Parking told by email and WhatsApp stands in Parking's place. */
+  receipts: boolean;
   /** Without messages.read: the area opens the refusal, with no list and no count. */
   forbidden: boolean;
 }
@@ -370,7 +366,7 @@ const BASE: Messages = {
   bell: false,
   told: null,
   closed: null,
-  hold: null,
+  receipts: false,
   forbidden: false,
 };
 
@@ -405,12 +401,6 @@ const DRAFTED: Partial<Record<MessagesState, Draft>> = {
   longMessage: { ...sampleDraft('write'), body: LONG_BODY, over: ['body'] },
   whatsAppLine: { ...sampleDraft('write'), to: 'all', channels: ALL_CHANNELS },
   checkWhatsApp: { ...sampleDraft('check'), to: 'all', channels: ALL_CHANNELS },
-};
-
-const HELD_AS: Partial<Record<MessagesState, { hold: HoldStage; open: Open }>> = {
-  held: { hold: 'held', open: { kind: 'many', key: 'held' } },
-  whatsAppRead: { hold: 'released', open: { kind: 'reached', of: 'held' } },
-  whatsAppTooLate: { hold: 'tooLate', open: { kind: 'reached', of: 'held' } },
 };
 
 const CLOSED: Partial<Record<MessagesState, Closed>> = {
@@ -457,8 +447,8 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
     return { ...BASE, closed, kept: [], ...(closed === 'draft' ? { phase: 'first' } : {}) };
   const scheduled = state == null ? undefined : SCHEDULED_AS[state];
   if (scheduled != null) return scheduledStart(scheduled);
-  const held = state == null ? undefined : HELD_AS[state];
-  if (held != null) return { ...BASE, ...held, balance: held.hold === 'released' ? BALANCE : 0 };
+  if (state === 'whatsAppRead')
+    return { ...BASE, receipts: true, open: { kind: 'reached', of: 'receipts' } };
   const ines: Open = { kind: 'guest', key: 'ines' };
   const unknown: Open = { kind: 'guest', key: 'unknown' };
   const lucia: Open = { kind: 'guest', key: 'lucia' };
@@ -667,15 +657,6 @@ export type Action =
   | { type: 'previewing'; previewing: Previewing }
   | { type: 'inserting'; open: boolean }
   | { type: 'reload' };
-
-export type HoldEvent = 'topUp' | 'tooLate';
-
-/** Only a held notice moves: credits back send it, its too-late moment (sc-104) ends it. */
-export function holdAfter(stage: HoldStage, event: HoldEvent): HoldStage {
-  if (stage !== 'held') return stage;
-
-  return event === 'topUp' ? 'released' : 'tooLate';
-}
 
 function withDraft(m: Messages, change: (draft: Draft) => Draft): Messages {
   return m.draft == null ? m : { ...m, draft: change(m.draft) };
@@ -1083,7 +1064,7 @@ export function sectionsOf(m: Messages): Sections {
     needs: [
       ...waiting.filter((key) => !m.done.includes(key)).map(guest),
       ...(m.done.includes('unknown') ? [] : [guest('unknown')]),
-      many(m.hold == null ? 'parking' : 'held'),
+      many(m.receipts ? 'receipts' : 'parking'),
     ],
     scheduled: mine.filter((one) => isScheduled(one.draft)).map(own),
     done: [
@@ -1132,15 +1113,15 @@ export interface WhatsAppReach {
 
 /** Who WhatsApp reaches in a To, and its credits: each reachable number's country rate, summed. */
 export function whatsAppOf(to: ToGroup): WhatsAppReach {
-  const { numbers, noMobile, stopped, notAgreed } = WHATSAPP[to];
+  const { reaches, noMobile, stopped, notAgreed } = WHATSAPP[to];
 
   return {
-    reaches: numbers.length,
-    of: numbers.length + noMobile + stopped + notAgreed,
+    reaches: reaches.length,
+    of: reaches.length + noMobile + stopped + notAgreed,
     noMobile,
     stopped,
     notAgreed,
-    credits: numbers.reduce((sum, one) => sum + one.credits, 0),
+    credits: whatsAppCreditsFor(reaches),
   };
 }
 

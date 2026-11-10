@@ -89,17 +89,9 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
     'the check, with WhatsApp',
     'Email · 124, SMS · 39, WhatsApp · 4; the reach line; 52 credits',
   ],
-  held: [
-    'held for credits',
-    'Parking by email and WhatsApp at 0 credits: 4 WhatsApp messages wait',
-  ],
   whatsAppRead: [
-    'held, then sent',
-    'Credits back: WhatsApp · Read 10:14 (two), Delivered 10:02, Failed',
-  ],
-  whatsAppTooLate: [
-    'held, then too late',
-    'Held past its moment: the four read Not sent: too late',
+    'WhatsApp’s receipts',
+    'Parking by email and WhatsApp: Sent 18:20, Delivered 18:21, Read 18:24, Failed',
   ],
 };
 

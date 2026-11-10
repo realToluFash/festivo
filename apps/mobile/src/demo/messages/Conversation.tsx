@@ -45,15 +45,13 @@ import {
   EVENT,
   HOSTS,
   HELD_TOO_LONG,
-  HELD,
-  heldPeople,
+  RECEIPTS,
 } from './MessagesSample.ts';
 import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { Preview } from './Preview.tsx';
 import { previewOf } from './PreviewModel.ts';
 import { RefusedSave } from './RefusedSave.tsx';
 import { SW } from './ScheduledSave.ts';
-import { HeldWaits } from './WhatsAppParts.tsx';
 import {
   type Bit,
   CountdownLine,
@@ -792,9 +790,9 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
       <DayRule text={W.today} />
     );
 
-  if (key === 'parking' || key === 'held') {
-    const held = key === 'held';
-    const reach = held ? HELD : PARKING_REACH;
+  if (key === 'parking' || key === 'receipts') {
+    const held = key === 'receipts';
+    const reach = held ? RECEIPTS : PARKING_REACH;
 
     return {
       title: PARKING,
@@ -827,7 +825,6 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
             ) : (
               <Receipt reached={reach.reached} of={reach.of} seen={reach.seen} onWho={talk.onWho} />
             )}
-            {held && m.hold === 'held' && <HeldWaits count={heldPeople('held').length} />}
             {today}
             {own?.stream}
           </>

@@ -63,14 +63,8 @@ const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
   it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s six and sc-3960’s and sc-3963’s, by both demos’ names', () => {
-    expect(MESSAGES_STATES).toHaveLength(77);
-    expect(MESSAGES_STATES.slice(72)).toEqual([
-      'whatsAppLine',
-      'checkWhatsApp',
-      'held',
-      'whatsAppRead',
-      'whatsAppTooLate',
-    ]);
+    expect(MESSAGES_STATES).toHaveLength(75);
+    expect(MESSAGES_STATES.slice(72)).toEqual(['whatsAppLine', 'checkWhatsApp', 'whatsAppRead']);
     expect(MESSAGES_STATES.indexOf('tellPlace')).toBe(44);
     expect(MESSAGES_STATES.slice(6, 10)).toEqual([
       'channelReply',

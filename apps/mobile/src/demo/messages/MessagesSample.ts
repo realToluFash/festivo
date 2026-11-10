@@ -41,7 +41,7 @@ export type PersonKey =
   | 'lucia'
   | 'duboise'
   | 'rafael';
-export type ManyKey = 'parking' | 'invite' | 'held';
+export type ManyKey = 'parking' | 'invite' | 'receipts';
 export type ToGroup = 'all' | 'coming' | 'notReplied';
 export type Token = 'Greeting' | 'Event' | 'Date' | 'Hosts';
 
@@ -422,54 +422,70 @@ export const PARKING_REACHED: readonly NotReached[] = [
   },
 ];
 
-interface WhatsAppNumber {
-  country: string;
-  credits: number;
+/** sc-3928's utility credits for one WhatsApp message, by the number's calling code. */
+const UTILITY_CREDITS: readonly { code: string; country: string; credits: number }[] = [
+  { code: '+234', country: 'Nigeria', credits: 2 },
+  { code: '+55', country: 'Brazil', credits: 2 },
+  { code: '+52', country: 'Mexico', credits: 2 },
+  { code: '+44', country: 'United Kingdom', credits: 5 },
+  { code: '+33', country: 'France', credits: 5 },
+  { code: '+34', country: 'Spain', credits: 4 },
+  { code: '+49', country: 'Germany', credits: 9 },
+];
+
+export function whatsAppCredits(number: string): number {
+  return UTILITY_CREDITS.find((one) => number.startsWith(`${one.code} `))?.credits ?? 0;
 }
 
-const SPAIN: WhatsAppNumber = { country: 'Spain', credits: 4 };
-const BRAZIL: WhatsAppNumber = { country: 'Brazil', credits: 2 };
-const NIGERIA: WhatsAppNumber = { country: 'Nigeria', credits: 2 };
-const UK: WhatsAppNumber = { country: 'United Kingdom', credits: 5 };
+/** The sample guests who agreed to WhatsApp, by their number. */
+export const WHATSAPP_NUMBERS: Partial<Record<PersonKey, string>> = {
+  lucia: '+34 612 345 678',
+  kwame: '+44 7700 900412',
+  duboise: '+234 802 555 0199',
+  rafael: '+55 21 99555 0142',
+};
 
-/** WhatsApp per To (sc-3950): the numbers it reaches, each at its country's rate (sc-3928's utility rates), and why the rest can't be. */
+/** WhatsApp's credits for these guests: each one's number at its country's rate, summed. */
+export function whatsAppCreditsFor(keys: readonly PersonKey[]): number {
+  return keys.reduce((sum, key) => sum + whatsAppCredits(WHATSAPP_NUMBERS[key] ?? ''), 0);
+}
+
+/** WhatsApp per To (sc-3950): the guests it reaches, and why the rest can't be. */
 export const WHATSAPP: Record<
   ToGroup,
-  { numbers: readonly WhatsAppNumber[]; noMobile: number; stopped: number; notAgreed: number }
+  { reaches: readonly PersonKey[]; noMobile: number; stopped: number; notAgreed: number }
 > = {
-  all: { numbers: [SPAIN, BRAZIL, NIGERIA, UK], noMobile: 102, stopped: 2, notAgreed: 34 },
-  coming: { numbers: [SPAIN, BRAZIL, UK], noMobile: 65, stopped: 1, notAgreed: 27 },
-  notReplied: { numbers: [NIGERIA], noMobile: 16, stopped: 0, notAgreed: 8 },
+  all: {
+    reaches: ['lucia', 'kwame', 'duboise', 'rafael'],
+    noMobile: 102,
+    stopped: 2,
+    notAgreed: 34,
+  },
+  coming: { reaches: ['lucia', 'kwame', 'rafael'], noMobile: 65, stopped: 1, notAgreed: 27 },
+  notReplied: { reaches: ['duboise'], noMobile: 16, stopped: 0, notAgreed: 8 },
 };
 
-/** Where a message's held WhatsApp notices stand: held for credits, sent once credits came back, or too late (sc-104). */
-export type HoldStage = 'held' | 'released' | 'tooLate';
-
-/** The held message: Parking's shape, to All guests by email and WhatsApp with the balance at 0. */
-export const HELD = { reached: 124, of: 142, seen: 87, cant: 18, emailAt: '18:21' };
+/** Parking told by email and WhatsApp, for WhatsApp's receipts. */
+export const RECEIPTS = { reached: 124, of: 142, seen: 87, cant: 18, emailAt: '18:21' };
 
 const WA = CHANNEL_WORD.wa;
-const HELD_LINE: Record<Exclude<HoldStage, 'released'>, ReachLine> = {
-  held: { mark: 'sending', word: say.where(WA, W.heldForCredits) },
-  tooLate: { mark: 'notsent', word: say.where(WA, W.tooLate) },
-};
-const READ: ReachLine = { mark: 'delivered', word: say.where(WA, W.read), reason: '10:14' };
-const RELEASED: Partial<Record<PersonKey, ReachLine>> = {
-  lucia: READ,
-  kwame: READ,
-  duboise: { mark: 'delivered', word: say.where(WA, W.delivered), reason: '10:02' },
+/** Boards v515: nothing held, so WhatsApp went with the email, 18:20 to 18:24. */
+const RECEIPT: Partial<Record<PersonKey, ReachLine>> = {
+  lucia: { mark: 'sent', word: say.where(WA, W.sent), reason: '18:20' },
+  duboise: { mark: 'delivered', word: say.where(WA, W.delivered), reason: '18:21' },
+  kwame: { mark: 'delivered', word: say.where(WA, W.read), reason: '18:24' },
   rafael: { mark: 'bounced', word: say.where(WA, W.failedReceipt) },
 };
-const HELD_FOR: readonly (readonly [PersonKey, string, string])[] = [
+const RECEIPTS_FOR: readonly (readonly [PersonKey, string, string])[] = [
   ['lucia', 'LO', 'Lucía Ortega'],
-  ['kwame', 'KM', 'Kwame Mensah'],
   ['duboise', 'DA', 'Duboise Akande'],
+  ['kwame', 'KM', 'Kwame Mensah'],
   ['rafael', 'RC', 'Rafael Costa'],
 ];
 
-/** The four whose WhatsApp was held: their email delivered, and WhatsApp as the hold left it. */
-export function heldPeople(stage: HoldStage): readonly NotReached[] {
-  return HELD_FOR.map(([key, initials, name]) => ({
+/** The four told by WhatsApp: their email delivered, and WhatsApp's receipt. */
+export function receiptPeople(): readonly NotReached[] {
+  return RECEIPTS_FOR.map(([key, initials, name]) => ({
     key,
     initials,
     name,
@@ -477,26 +493,16 @@ export function heldPeople(stage: HoldStage): readonly NotReached[] {
       {
         mark: 'delivered',
         word: say.where(CHANNEL_WORD.email, W.delivered),
-        reason: HELD.emailAt,
+        reason: RECEIPTS.emailAt,
       },
-      (stage === 'released' ? RELEASED[key] : HELD_LINE[stage]) ?? HELD_LINE.held,
+      RECEIPT[key] ?? { mark: 'sent', word: say.where(WA, W.sent) },
     ],
     fixes: [],
   }));
 }
 
-/** Two of the held message's 18 not reached on any channel, each with WhatsApp's reason. */
-export const HELD_CANT: readonly NotReached[] = [
-  {
-    key: 'sophie',
-    initials: 'SL',
-    name: 'Sophie Laurent',
-    lines: [
-      EMAIL_OUT,
-      { mark: 'optout', word: say.where(WA, W.notSent), reason: W.stoppedWhatsApp },
-    ],
-    fixes: [],
-  },
+/** Two of the 18 not reached on any channel, each with WhatsApp's reason. */
+export const RECEIPTS_CANT: readonly NotReached[] = [
   {
     key: 'amaka',
     initials: 'AE',
@@ -504,6 +510,16 @@ export const HELD_CANT: readonly NotReached[] = [
     lines: [
       { mark: 'none', word: W.noEmail },
       { mark: 'notsent', word: say.where(WA, W.notSent), reason: W.hasntAgreedWhatsApp },
+    ],
+    fixes: [],
+  },
+  {
+    key: 'sophie',
+    initials: 'SL',
+    name: 'Sophie Laurent',
+    lines: [
+      EMAIL_OUT,
+      { mark: 'optout', word: say.where(WA, W.notSent), reason: W.stoppedWhatsApp },
     ],
     fixes: [],
   },
@@ -690,7 +706,7 @@ export const TELL = {
   sms: 30,
   wa: 4,
   cannot: 2,
-  credits: 34,
+  credits: 30 + whatsAppCreditsFor(WHATSAPP.all.reaches),
   now: '17:30',
   was: '18:00',
   startsAt: '2026-11-05T17:30:00Z',
