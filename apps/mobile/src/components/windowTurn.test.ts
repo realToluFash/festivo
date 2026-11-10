@@ -78,3 +78,20 @@ describe('a sheet whose heading takes focus as it opens (sc-11032)', () => {
     expect(language).toMatch(/headingTakesFocus\s+testID="language\.sheet"/);
   });
 });
+
+describe('a focused screen whose title takes focus with the answer it shows (sc-11032)', () => {
+  const screen = readFileSync(join(import.meta.dirname, 'SummaryOverlays.tsx'), 'utf8');
+  const security = readFileSync(join(import.meta.dirname, 'SecurityTwoFactor.tsx'), 'utf8');
+
+  it('hides from TalkBack until its window is up and has settled, then moves focus to the title', () => {
+    expect(screen).toContain('onShow={() => setOnScreen(true)}');
+    expect(screen).toContain('if (!waiting || !onScreen) return;');
+    expect(screen).toMatch(/covered \|\| heading\.hidden \? 'no-hide-descendants' : 'auto'/);
+    expect(screen).toContain('moveScreenReaderFocus(title.current)');
+    expect(screen).toContain('ref={titleRef}');
+  });
+
+  it('is how Save your recovery codes shows, after Make new codes and after Turn on', () => {
+    expect(security).toMatch(/titleTakesFocus=\{codes\}\s+testID="security\.codes\.screen"/);
+  });
+});

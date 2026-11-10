@@ -249,6 +249,7 @@ export function TwoFactorScreen({
         cancels={false}
         onCancel={() => (saved ? onFinished() : undefined)}
         opener={opener}
+        titleTakesFocus={codes}
         testID="security.codes.screen"
       >
         <CodesBody codes={codes} phone={phone} saved={saved} onSaved={setSaved} />
