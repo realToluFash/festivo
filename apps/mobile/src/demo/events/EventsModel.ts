@@ -3,9 +3,7 @@ import {
   type EventType,
   eventPhase,
   eventsHome,
-  formatEventRange,
   formatWallDay,
-  hostsLine,
   wallDay,
 } from '@soirely/domain';
 import { t } from 'i18next';
@@ -19,7 +17,6 @@ import {
   TAB_WORD,
   cardStep as productCardStep,
   cardTags as productCardTags,
-  dayCount,
   daysWords as productDaysWords,
   howSoon as productHowSoon,
   rowLine as productRowLine,
@@ -28,6 +25,9 @@ import {
 } from '../../kit/eventsList.ts';
 import {
   type ManageKey,
+  type RowWords,
+  datesRow as productDatesRow,
+  hostsRow as productHostsRow,
   manageOf as productManageOf,
   scheduleLocked as productScheduleLocked,
 } from '../../kit/eventOverview.ts';
@@ -182,24 +182,12 @@ export function scheduleLocked(event: Shown): boolean {
   return productScheduleLocked(event.phase);
 }
 
-export function datesRow(event: Shown, locale: string): { title: string; line: string } {
-  const range = formatEventRange(event.startsAt, event.endsAt, event.timeZone, locale);
-
-  if (scheduleLocked(event)) return { title: range, line: `${W.dates} · ${W.scheduleLocked}` };
-
-  const count = dayCount(event);
-  const parts = [W.dates, ...(count > 1 ? [say.dayCount(count)] : []), event.timeZone];
-
-  return { title: range, line: parts.join(' · ') };
+export function datesRow(event: Shown, locale: string): RowWords {
+  return productDatesRow(event, event.phase, locale, t);
 }
 
-export function hostsRow(
-  event: Omit<SampleEvent, 'photo'>,
-  locale: string,
-): { title: string; line: string } {
-  return event.hosts.length === 0
-    ? { title: W.noHosts, line: `${W.hostedBy} · ${W.noHostsLine}` }
-    : { title: hostsLine(event.hosts, locale), line: W.hostedBy };
+export function hostsRow(event: Omit<SampleEvent, 'photo'>, locale: string): RowWords {
+  return productHostsRow(event.hosts, locale, t);
 }
 
 export function needsName(event: SampleEvent): boolean {
