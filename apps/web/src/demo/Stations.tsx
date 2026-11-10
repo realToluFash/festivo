@@ -196,7 +196,7 @@ function StationsView({
   const lit = panel?.kind === 'people' ? panel.id : panel?.kind === 'name' ? panel.id : null;
 
   return (
-    <div className="desk-page ev-page gs mn st">
+    <div className="desk-page ev-page gs mn sn">
       <div className="ev-wide mn-page">
         <div className="ev-crumb-row">
           <nav className="ev-crumb" aria-label="Breadcrumb">

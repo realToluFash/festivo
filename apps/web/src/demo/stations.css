@@ -1,4 +1,12 @@
 /* Stations on the event's Staff page at a desk (sc-3910, Stations-Desktop.dc.html on page e34): the Menu's cards and docked panel, colours from tokens. */
+.sn {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
 .sn-tabs {
   display: flex;
   gap: var(--spaceHair);
@@ -387,6 +395,6 @@ button.sn-tab:hover {
   min-width: 0;
 }
 
-.st .mn-quiet.is-here {
+.sn .mn-quiet.is-here {
   color: var(--colorAccentText);
 }
