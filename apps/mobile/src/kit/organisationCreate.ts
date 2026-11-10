@@ -1,83 +1,16 @@
-import { ApiError, type Membership } from '@soirely/api-client';
-import {
-  type NewOrganisationField,
-  formatTimeOfDay,
-  lockLiftsAt,
-  newOrganisationProblem,
-} from '@soirely/domain';
-import type { TFunction } from 'i18next';
+import { ApiError } from '@soirely/api-client';
+import { type NewOrganisation, createNewOrganisation } from '@soirely/domain';
 
-import type { WalkAnswer } from './createWalk.ts';
+import type { Walk, WalkAnswer } from './createWalk.ts';
 
-const NEW_ORGANISATION_FIELDS: readonly NewOrganisationField[] = ['name', 'countryCode'];
-
-/** sc-390's "Create an organisation", as the web's dialog sends it. */
-export async function createOrganisation(
-  create: (organisation: {
-    name: string;
-    countryCode: string;
-    timezone: string;
-  }) => Promise<Membership>,
-  values: Record<NewOrganisationField, string>,
-  timezone: string,
-): Promise<WalkAnswer<Membership>> {
-  try {
-    const organisation = await create({
-      name: values.name.trim(),
-      countryCode: values.countryCode,
-      timezone,
-    });
-
-    return { kind: 'created', made: organisation };
-  } catch (error) {
-    if (error instanceof ApiError && error.is('too_many_attempts')) {
-      return {
-        kind: 'limited',
-        until: lockLiftsAt(Number(error.response?.headers.get('Retry-After'))),
-      };
-    }
-
-    if (error instanceof ApiError && error.is('validation_failed')) {
-      const named = error.fieldErrors();
-      const errors: Partial<Record<NewOrganisationField, string>> = {};
-      for (const field of NEW_ORGANISATION_FIELDS) {
-        if (named[field] != null) errors[field] = named[field];
-      }
-
-      // A refusal naming only a field this form lacks, such as the derived contact address.
-      return Object.keys(errors).length === 0 ? { kind: 'failed' } : { kind: 'refused', errors };
-    }
-
-    return { kind: 'failed' };
-  }
-}
-
-/** The check before sending, in the words both clients use. */
-export function newOrganisationMessage(
-  field: NewOrganisationField,
-  value: string,
-  t: TFunction,
-): string | null {
-  const problem = newOrganisationProblem(field, value);
-
-  if (problem == null) return null;
-  if (problem.kind === 'nameLong')
-    return t('createOrganisation.nameLong', { length: problem.length });
-
-  return problem.kind === 'nameBlank' ? t('orgGeneral.nameBlank') : t('forms.countryBlank');
-}
-
-/** "Too many new organisations for now." over "Try again at 14:35.", the time in the reader's own clock, and no second line when no time came. */
-export function limitNotice(
-  until: Date | null,
-  locale: string,
-  t: TFunction,
-): { title: string; body: string | null } {
-  return {
-    title: t('createOrganisation.limitedTitle'),
-    body:
-      until == null
-        ? null
-        : t('createOrganisation.limitedBody', { time: formatTimeOfDay(until, locale) }),
-  };
+/** sc-390's Create an organisation as the server answers it, in the walk's shape. */
+export function createOrganisation<Made>(
+  create: (organisation: NewOrganisation) => Promise<Made>,
+  walk: Pick<Walk, 'name' | 'country' | 'device'>,
+): Promise<WalkAnswer<Made>> {
+  return createNewOrganisation(
+    create,
+    { name: walk.name, countryCode: walk.country ?? '', timezone: walk.device.zone },
+    (error) => (error instanceof ApiError ? error : null),
+  );
 }

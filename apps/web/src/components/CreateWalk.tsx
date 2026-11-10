@@ -1,8 +1,13 @@
-import { formattingLocale, initials, timezoneLabel } from '@soirely/domain';
+import {
+  countrySearch,
+  formattingLocale,
+  initials,
+  newOrganisationRefusal,
+  timezoneLabel,
+} from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import {
   type KeyboardEvent,
-  type ReactNode,
   type RefObject,
   useContext,
   useEffect,
@@ -32,8 +37,6 @@ import {
   countriesOf,
   entered,
   limitedLine,
-  nameRefusal,
-  narrowed,
   optionLabel,
   pickLine,
   shrinks,
@@ -49,10 +52,6 @@ interface WalkProps<Made> {
   start: Walk;
   email: string;
   currencies: Currencies | null;
-  /** Which countries to offer; every one when left out. */
-  offered?: (code: string) => boolean;
-  /** sc-563's refusal, in place of the steps when the walk is `managed`. */
-  managedBanner?: ReactNode;
   create: (walk: Walk) => Promise<WalkAnswer<Made>>;
   onClose: () => void;
   onCreated: (made: Made) => void;
@@ -65,26 +64,11 @@ export function CreateWalk<Made>(props: WalkProps<Made>) {
   return host == null ? null : createPortal(<Panel {...props} />, host);
 }
 
-function Panel<Made>({
-  start,
-  email,
-  currencies,
-  offered,
-  managedBanner,
-  create,
-  onClose,
-  onCreated,
-}: WalkProps<Made>) {
+function Panel<Made>({ start, email, currencies, create, onClose, onCreated }: WalkProps<Made>) {
   const { t } = useTranslation();
   const id = useId();
   const language = currentLocale();
-  const countries = useMemo(
-    () =>
-      countriesOf(language, currencies, t).filter(
-        (country) => offered == null || offered(country.code),
-      ),
-    [language, currencies, t, offered],
-  );
+  const countries = useMemo(() => countriesOf(language, currencies, t), [language, currencies, t]);
   const locale = formattingLocale(language, navigator.language);
   const [walk, setWalk] = useState(start);
   const [landing, setLanding] = useState({ to: start.landing, count: 0 });
@@ -197,7 +181,10 @@ function Panel<Made>({
     setWalk((now) => ({
       ...now,
       name,
-      nameRefused: now.nameRefused != null && nameRefusal(name, t) == null ? null : now.nameRefused,
+      nameRefused:
+        now.nameRefused != null && newOrganisationRefusal('name', name, t) == null
+          ? null
+          : now.nameRefused,
     }));
   }
 
@@ -283,40 +270,6 @@ function Panel<Made>({
   });
 
   const title = t('createOrganisation.title');
-
-  if (walk.managed)
-    return (
-      <>
-        <button
-          type="button"
-          className="dialog-scrim"
-          tabIndex={-1}
-          aria-label={t('createOrganisation.close')}
-          onClick={onClose}
-        />
-        <div
-          ref={panel}
-          className="cw-panel"
-          role="dialog"
-          aria-modal="true"
-          aria-label={title}
-          aria-describedby={`${id}-managed`}
-          tabIndex={-1}
-        >
-          <div className="cw-side">
-            <div className="cw-body">
-              <h1 className="cw-question">{title}</h1>
-              <div id={`${id}-managed`}>{managedBanner}</div>
-            </div>
-            <div className="cw-foot">
-              <button type="button" className="cw-button" onClick={onClose}>
-                {t('createOrganisation.close')}
-              </button>
-            </div>
-          </div>
-        </div>
-      </>
-    );
 
   const refusalId = `${id}-refusal`;
   const limited = limitedLine(walk, locale, t);
@@ -609,7 +562,7 @@ function CountryPicker({
   const searching = walk.query.trim() !== '';
   const ours: Row[] =
     searching || device == null ? [] : [{ key: `device-${device.code}`, country: device }];
-  const all: Row[] = narrowed(countries, walk.query, language).map((country) => ({
+  const all: Row[] = countrySearch(countries, walk.query, language).map((country) => ({
     key: `all-${country.code}`,
     country,
   }));

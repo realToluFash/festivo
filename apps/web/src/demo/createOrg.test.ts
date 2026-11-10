@@ -10,7 +10,6 @@ import {
   SAMPLE_CURRENCIES,
   freshWalk,
   isCreateState,
-  offered,
   sampleSend,
   walkOf,
 } from './createOrg.ts';
@@ -30,7 +29,7 @@ describe('creating an organisation, the sample (sc-30335)', () => {
   });
 
   it('offers the countries drawn, in countryChoices order, with Antarctica’s currency none yet', () => {
-    const countries = countriesOf('en', SAMPLE_CURRENCIES, t).filter((one) => offered(one.code));
+    const countries = countriesOf('en', SAMPLE_CURRENCIES, t);
 
     expect(countries.map((one) => one.code)).toEqual([
       'AF',

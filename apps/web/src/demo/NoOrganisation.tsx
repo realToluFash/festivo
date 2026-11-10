@@ -6,7 +6,7 @@ import { Brand } from '../components/Brand.tsx';
 import { StartYourOwn } from '../components/CreateOrganisation.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { CreateWalk } from './CreateOrg.tsx';
-import { NO_ORG_WORDS as W, type Walk, freshWalk, isCreateState, walkOf } from './createOrg.ts';
+import { NO_ORG_WORDS as W, type DemoWalk, freshWalk, isCreateState, walkOf } from './createOrg.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../layers.ts';
 import { SAMPLE } from './rules.ts';
@@ -21,7 +21,7 @@ export function NoOrganisation() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { layers, covered, setHost } = useDeskLayers();
-  const [walk, setWalk] = useState<Walk | null>(() => {
+  const [walk, setWalk] = useState<DemoWalk | null>(() => {
     const raw = params.get('create');
 
     return isCreateState(raw) ? walkOf(raw, t) : null;

@@ -1,8 +1,7 @@
 import { ApiError, type Membership } from '@soirely/api-client';
-import type { TFunction } from 'i18next';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createOrganisation, limitNotice, newOrganisationMessage } from './organisationCreate.ts';
+import { createOrganisation } from './organisationCreate.ts';
 
 const created: Membership = {
   id: 'org_9',
@@ -38,18 +37,15 @@ function refusal(
   return new ApiError(problem, new Response(JSON.stringify(problem), { status, headers }));
 }
 
-const words = ((key: string, values?: Record<string, unknown>) =>
-  values == null ? key : `${key} ${JSON.stringify(values)}`) as unknown as TFunction;
+function walk(name: string, timezone = 'UTC') {
+  return { name, country: 'NG', device: { country: 'NG', zone: timezone } };
+}
 
 describe('creating an organisation', () => {
   it('sends the trimmed name, the country and the device timezone', async () => {
     const create = vi.fn(async () => created);
 
-    const outcome = await createOrganisation(
-      create,
-      { name: '  Lagos Supper Club ', countryCode: 'NG' },
-      'Africa/Lagos',
-    );
+    const outcome = await createOrganisation(create, walk('  Lagos Supper Club ', 'Africa/Lagos'));
 
     expect(create).toHaveBeenCalledWith({
       name: 'Lagos Supper Club',
@@ -67,7 +63,7 @@ describe('creating an organisation', () => {
       ]);
     });
 
-    const outcome = await createOrganisation(create, { name: ' ', countryCode: 'NG' }, 'UTC');
+    const outcome = await createOrganisation(create, walk(' '));
 
     expect(outcome).toEqual({ kind: 'refused', errors: { name: 'Enter the name.' } });
   });
@@ -79,7 +75,7 @@ describe('creating an organisation', () => {
       ]);
     });
 
-    expect(await createOrganisation(create, { name: 'X', countryCode: 'NG' }, 'UTC')).toEqual({
+    expect(await createOrganisation(create, walk('X'))).toEqual({
       kind: 'failed',
     });
   });
@@ -90,7 +86,7 @@ describe('creating an organisation', () => {
     });
     const before = Date.now();
 
-    const outcome = await createOrganisation(create, { name: 'Six', countryCode: 'NG' }, 'UTC');
+    const outcome = await createOrganisation(create, walk('Six'));
 
     expect(outcome.kind).toBe('limited');
     const until = outcome.kind === 'limited' ? outcome.until : null;
@@ -102,32 +98,8 @@ describe('creating an organisation', () => {
       throw new TypeError('Network request failed');
     });
 
-    expect(await createOrganisation(create, { name: 'X', countryCode: 'NG' }, 'UTC')).toEqual({
+    expect(await createOrganisation(create, walk('X'))).toEqual({
       kind: 'failed',
-    });
-  });
-});
-
-describe('the words before sending', () => {
-  it("uses sc-65's blank-name message, the length after trimming, and asks for a country", () => {
-    expect(newOrganisationMessage('name', '  ', words)).toBe('orgGeneral.nameBlank');
-    expect(newOrganisationMessage('name', 'é'.repeat(101), words)).toBe(
-      'createOrganisation.nameLong {"length":101}',
-    );
-    expect(newOrganisationMessage('countryCode', '', words)).toBe('forms.countryBlank');
-    expect(newOrganisationMessage('name', 'Supper', words)).toBeNull();
-  });
-
-  it('names the minute the limit lifts in 24-hour time', () => {
-    const until = new Date(2026, 9, 19, 14, 35);
-
-    expect(limitNotice(until, 'en', words)).toEqual({
-      title: 'createOrganisation.limitedTitle',
-      body: 'createOrganisation.limitedBody {"time":"14:35"}',
-    });
-    expect(limitNotice(null, 'en', words)).toEqual({
-      title: 'createOrganisation.limitedTitle',
-      body: null,
     });
   });
 });

@@ -1,4 +1,4 @@
-import { deviceCountry } from '@soirely/domain';
+import { deviceCountry, newOrganisationRefusal } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import {
@@ -6,11 +6,13 @@ import {
   type Walk,
   type WalkAnswer,
   freshWalk as productWalk,
-  nameRefusal,
 } from '../components/createWalk.ts';
 import type { DemoLink } from './settings.ts';
 
 export type { Walk };
+
+/** sc-563's managed account is the demo's alone: the API does not refuse it yet. */
+export type DemoWalk = Walk & { managed?: boolean };
 
 export const CREATE_STATES = [
   'name',
@@ -90,10 +92,6 @@ export function isCreateState(name: string | null): name is CreateState {
 /** The countries the demo draws, each with the currency the API gave it. */
 export const SAMPLE_CURRENCIES: Currencies = new Map(Object.entries(CURRENCIES));
 
-export function offered(code: string): boolean {
-  return SAMPLE_CURRENCIES.has(code);
-}
-
 export function freshWalk(none = false): Walk {
   return productWalk({
     country: deviceCountry(none ? NO_COUNTRY_LANGUAGES : DEVICE_LANGUAGES),
@@ -102,7 +100,7 @@ export function freshWalk(none = false): Walk {
 }
 
 /** The walk a `?create=` state opens on; `created` is the landing, so no walk. */
-export function walkOf(state: CreateState, t: TFunction): Walk | null {
+export function walkOf(state: CreateState, t: TFunction): DemoWalk | null {
   const named = { ...freshWalk(), name: NEW_ORG.name };
 
   switch (state) {
@@ -111,11 +109,15 @@ export function walkOf(state: CreateState, t: TFunction): Walk | null {
     case 'typing':
       return named;
     case 'name-blank':
-      return { ...freshWalk(), nameRefused: nameRefusal('', t) };
+      return { ...freshWalk(), nameRefused: newOrganisationRefusal('name', '', t) };
     case 'name-long':
-      return { ...named, name: LONG_NAME, nameRefused: nameRefusal(LONG_NAME, t) };
+      return {
+        ...named,
+        name: LONG_NAME,
+        nameRefused: newOrganisationRefusal('name', LONG_NAME, t),
+      };
     case 'name-refused':
-      return { ...named, nameRefused: nameRefusal('', t) };
+      return { ...named, nameRefused: newOrganisationRefusal('name', '', t) };
     case 'back-name':
       return { ...named, landing: 'question' };
     case 'country':

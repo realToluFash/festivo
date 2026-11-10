@@ -1,12 +1,16 @@
 import {
-  type NewOrganisationField,
+  type FoundingCurrencies,
+  type FoundingCurrencyWords,
+  type NewOrganisationAnswer,
   countryChoices,
-  currencyLabel,
+  countrySearch,
+  foundingCurrencyWords,
+  newOrganisationEntered,
+  newOrganisationLimit,
+  newOrganisationRefusal,
   timezoneLabel,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-
-import { limitNotice, newOrganisationMessage } from './organisationCreate.ts';
 
 export type Step = 1 | 2 | 3;
 export const STEPS = 3;
@@ -49,14 +53,13 @@ export function freshWalk(device: Device): Walk {
   };
 }
 
-/** Cancel asks first only when something was entered: a name, or a country other than the device's. */
 export function entered(walk: Walk): boolean {
-  return walk.name.trim() !== '' || walk.country !== walk.device.country;
+  return newOrganisationEntered(walk, walk.device.country);
 }
 
 export function stepRefusal(walk: Walk, t: TFunction): string | null {
-  if (walk.step === 1) return newOrganisationMessage('name', walk.name, t);
-  if (walk.step === 2) return newOrganisationMessage('countryCode', walk.country ?? '', t);
+  if (walk.step === 1) return newOrganisationRefusal('name', walk.name, t);
+  if (walk.step === 2) return newOrganisationRefusal('countryCode', walk.country ?? '', t);
 
   return null;
 }
@@ -91,11 +94,7 @@ export function picked(walk: Walk, country: string): Walk {
   return { ...walk, country, refusal: null };
 }
 
-export type WalkAnswer<Made> =
-  | { kind: 'created'; made: Made }
-  | { kind: 'refused'; errors: Partial<Record<NewOrganisationField, string>> }
-  | { kind: 'limited'; until: Date | null }
-  | { kind: 'failed' };
+export type WalkAnswer<Made> = NewOrganisationAnswer<Made>;
 
 /** The walk after an answer other than created: a refused field takes the walk back to its step, with the server's reason. */
 export function answered(
@@ -130,11 +129,12 @@ export function countries(locale: string): readonly Country[] {
   return made;
 }
 
-export function search(choices: readonly Country[], query: string): readonly Country[] {
-  const needle = query.trim().toLocaleLowerCase();
-  if (needle === '') return choices;
-
-  return choices.filter((choice) => choice.name.toLocaleLowerCase().includes(needle));
+export function search(
+  choices: readonly Country[],
+  query: string,
+  locale: string,
+): readonly Country[] {
+  return countrySearch(choices, query, locale);
 }
 
 export function countryName(code: string | null, locale: string): string | null {
@@ -143,26 +143,19 @@ export function countryName(code: string | null, locale: string): string | null 
   return countries(locale).find((country) => country.code === code)?.name ?? code;
 }
 
-/** The currency each country founds with, by its code, as the API's `Regions::currencyOf` says it: null where there is none. */
-export type Currencies = ReadonlyMap<string, string | null>;
+export type Currencies = FoundingCurrencies;
 
 export interface Naming {
   locale: string;
   currencies: Currencies | null;
 }
 
-/** "Euro (EUR)", or "None yet" for a country with no money of its own; null while the currencies are not yet read. */
 export function currencyWords(
   country: string | null,
   naming: Naming,
   t: TFunction,
-): { words: string; none: boolean } | null {
-  if (country == null || naming.currencies == null || !naming.currencies.has(country)) return null;
-  const currency = naming.currencies.get(country) ?? null;
-
-  return currency == null
-    ? { words: t('createOrganisation.noneYet'), none: true }
-    : { words: currencyLabel(currency, naming.locale), none: false };
+): FoundingCurrencyWords | null {
+  return foundingCurrencyWords(country, naming.currencies, naming.locale, t);
 }
 
 export function rowLabel(country: Country, naming: Naming, t: TFunction): string {
@@ -242,7 +235,7 @@ export function limitedWords(
   locale: string,
   t: TFunction,
 ): { title: string; body: string | null } {
-  return limitNotice(walk.lifts, locale, t);
+  return newOrganisationLimit(walk.lifts, locale, t);
 }
 
 export function cardNameSize(name: string): number {

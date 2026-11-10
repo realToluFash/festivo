@@ -155,7 +155,7 @@ describe('something entered, for Discard', () => {
 
 describe('the search', () => {
   it('narrows by "bra" to the three the board draws, in order', () => {
-    expect(search(countries('en'), 'bra').map((country) => country.name)).toEqual([
+    expect(search(countries('en'), 'bra', 'en').map((country) => country.name)).toEqual([
       'Brazil',
       'Congo - Brazzaville',
       'Gibraltar',
@@ -163,14 +163,14 @@ describe('the search', () => {
   });
 
   it('ignores case and the ends', () => {
-    expect(search(countries('en'), '  POR ').map((country) => country.name)).toEqual([
+    expect(search(countries('en'), '  POR ', 'en').map((country) => country.name)).toEqual([
       'Portugal',
       'Singapore',
     ]);
   });
 
   it('keeps every country for an empty search', () => {
-    expect(search(countries('en'), ' ')).toHaveLength(249);
+    expect(search(countries('en'), ' ', 'en')).toHaveLength(249);
   });
 });
 

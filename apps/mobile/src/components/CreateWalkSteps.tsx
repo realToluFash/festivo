@@ -465,7 +465,7 @@ export function CountryStep({
   const all = countries(naming.locale);
   const searching = walk.query.trim() !== '';
   const items: readonly Item[] = searching
-    ? search(all, walk.query).map((country) => ({ kind: 'country', country }))
+    ? search(all, walk.query, naming.locale).map((country) => ({ kind: 'country', country }))
     : [HEADING, ...all.map((country): Item => ({ kind: 'country', country }))];
   const device = all.find((country) => country.code === walk.device.country) ?? null;
   const pick = (code: string) => {

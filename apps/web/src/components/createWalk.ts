@@ -1,11 +1,15 @@
-import { ApiError, type Membership } from '@soirely/api-client';
+import { ApiError } from '@soirely/api-client';
 import {
-  type NewOrganisationField,
+  type FoundingCurrencies,
+  type FoundingCurrencyWords,
+  type NewOrganisation,
+  type NewOrganisationAnswer,
   countryChoices,
-  currencyLabel,
-  formatTimeOfDay,
-  lockLiftsAt,
-  newOrganisationProblem,
+  createNewOrganisation,
+  foundingCurrencyWords,
+  newOrganisationEntered,
+  newOrganisationLimit,
+  newOrganisationRefusal,
   timezoneLabel,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -21,14 +25,13 @@ export interface Device {
   zone: string;
 }
 
-/** The currency each country founds with, by its code, as the API's `Regions::currencyOf` says it: null where there is none. */
-export type Currencies = ReadonlyMap<string, string | null>;
+export type Currencies = FoundingCurrencies;
 
 export interface Country {
   code: string;
   name: string;
-  /** Its currency's words, `none` for a country with no money of its own; null while the currencies are not yet read. */
-  currency: { words: string; none: boolean } | null;
+  /** Null while the currencies are not yet read. */
+  currency: FoundingCurrencyWords | null;
 }
 
 export interface Walk {
@@ -45,15 +48,9 @@ export interface Walk {
   asking: boolean;
   landing: Landing;
   inList: boolean;
-  /** An account its home organisation manages (sc-563): the refusal in the first step's place. */
-  managed: boolean;
 }
 
-export type WalkAnswer<Made> =
-  | { kind: 'created'; made: Made }
-  | { kind: 'refused'; errors: Partial<Record<NewOrganisationField, string>> }
-  | { kind: 'limited'; until: Date | null }
-  | { kind: 'failed' };
+export type WalkAnswer<Made> = NewOrganisationAnswer<Made>;
 
 export const NAME_SHRINKS_FROM = 40;
 
@@ -72,64 +69,30 @@ export function freshWalk(device: Device): Walk {
     asking: false,
     landing: 'field',
     inList: false,
-    managed: false,
   };
 }
 
+/** The countries the API founds in, once it has said which, and every one the reader's language names until then. */
 export function countriesOf(
   locale: string,
   currencies: Currencies | null,
   t: TFunction,
 ): readonly Country[] {
-  return countryChoices(locale).map(({ code, name }) => {
-    if (currencies == null || !currencies.has(code)) return { code, name, currency: null };
-    const currency = currencies.get(code) ?? null;
-
-    return {
+  return countryChoices(locale)
+    .filter(({ code }) => currencies == null || currencies.has(code))
+    .map(({ code, name }) => ({
       code,
       name,
-      currency:
-        currency == null
-          ? { words: t('createOrganisation.noneYet'), none: true }
-          : { words: currencyLabel(currency, locale), none: false },
-    };
-  });
+      currency: foundingCurrencyWords(code, currencies, locale, t),
+    }));
 }
 
 export function optionLabel(country: Country): string {
   return country.currency == null ? country.name : `${country.name}, ${country.currency.words}`;
 }
 
-export function narrowed(
-  countries: readonly Country[],
-  query: string,
-  locale: string,
-): readonly Country[] {
-  const needle = query.trim().toLocaleLowerCase(locale);
-
-  return needle === ''
-    ? countries
-    : countries.filter((country) => country.name.toLocaleLowerCase(locale).includes(needle));
-}
-
-export function nameRefusal(name: string, t: TFunction): string | null {
-  const problem = newOrganisationProblem('name', name);
-
-  if (problem == null) return null;
-  if (problem.kind === 'nameLong')
-    return t('createOrganisation.nameLong', { length: problem.length });
-
-  return t('orgGeneral.nameBlank');
-}
-
-function countryRefusal(country: string | null, t: TFunction): string | null {
-  return newOrganisationProblem('countryCode', country ?? '') == null
-    ? null
-    : t('forms.countryBlank');
-}
-
 export function entered(walk: Walk): boolean {
-  return walk.name.trim() !== '' || walk.country !== walk.device.country;
+  return newOrganisationEntered(walk, walk.device.country);
 }
 
 export function shrinks(name: string): boolean {
@@ -142,12 +105,12 @@ export function stepRefused(
   t: TFunction,
 ): Pick<Walk, 'nameRefused' | 'countryRefused'> | null {
   if (walk.step === 1) {
-    const refused = nameRefusal(walk.name, t);
+    const refused = newOrganisationRefusal('name', walk.name, t);
 
     return refused == null ? null : { nameRefused: refused, countryRefused: null };
   }
   if (walk.step === 2) {
-    const refused = countryRefusal(walk.country, t);
+    const refused = newOrganisationRefusal('countryCode', walk.country ?? '', t);
 
     return refused == null ? null : { nameRefused: null, countryRefused: refused };
   }
@@ -180,9 +143,7 @@ export function answered(
 }
 
 export function limitedLine(walk: Walk, locale: string, t: TFunction): string | null {
-  return walk.lifts == null
-    ? null
-    : t('createOrganisation.limitedBody', { time: formatTimeOfDay(walk.lifts, locale) });
+  return newOrganisationLimit(walk.lifts, locale, t).body;
 }
 
 export function pickLine(country: Country, walk: Walk, t: TFunction): string {
@@ -219,45 +180,14 @@ export function cardLine(
   ].join(' ');
 }
 
-const FIELDS: readonly NewOrganisationField[] = ['name', 'countryCode'];
-
 /** sc-390's Create an organisation as the server answers it, in the walk's shape. */
-export async function createOrganisation(
-  create: (organisation: {
-    name: string;
-    countryCode: string;
-    timezone: string;
-  }) => Promise<Membership>,
+export function createOrganisation<Made>(
+  create: (organisation: NewOrganisation) => Promise<Made>,
   walk: Walk,
-): Promise<WalkAnswer<Membership>> {
-  try {
-    return {
-      kind: 'created',
-      made: await create({
-        name: walk.name.trim(),
-        countryCode: walk.country ?? '',
-        timezone: walk.device.zone,
-      }),
-    };
-  } catch (error) {
-    if (error instanceof ApiError && error.is('too_many_attempts'))
-      return {
-        kind: 'limited',
-        until: lockLiftsAt(Number(error.response?.headers.get('Retry-After'))),
-      };
-
-    if (error instanceof ApiError && error.is('validation_failed')) {
-      const named = error.fieldErrors();
-      const errors: Partial<Record<NewOrganisationField, string>> = {};
-      for (const field of FIELDS) {
-        const reason = named[field];
-        if (reason != null) errors[field] = reason;
-      }
-
-      // A refusal naming only a field the walk lacks, such as the derived contact address.
-      return Object.keys(errors).length === 0 ? { kind: 'failed' } : { kind: 'refused', errors };
-    }
-
-    return { kind: 'failed' };
-  }
+): Promise<WalkAnswer<Made>> {
+  return createNewOrganisation(
+    create,
+    { name: walk.name, countryCode: walk.country ?? '', timezone: walk.device.zone },
+    (error) => (error instanceof ApiError ? error : null),
+  );
 }

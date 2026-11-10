@@ -14,7 +14,7 @@ import { useLocation, useSearchParams } from 'react-router';
 
 import { leaveMenu } from '../leaving.ts';
 import { CreateWalk } from './CreateOrg.tsx';
-import { type Walk, freshWalk, isCreateState, walkOf } from './createOrg.ts';
+import { type DemoWalk, freshWalk, isCreateState, walkOf } from './createOrg.ts';
 import { AccessPaused as ProductAccessPaused } from '../components/AccessPaused.tsx';
 import { focusWhenFree } from '../layers.ts';
 import { Notice } from '../components/Notice.tsx';
@@ -92,7 +92,7 @@ export function OrgSwitcher({ tell, toast = false }: { tell: Tell; toast?: boole
   });
   const where = useWhere();
   const [open, setOpen] = useState(first != null);
-  const [walk, setWalk] = useState<Walk | null>(() => {
+  const [walk, setWalk] = useState<DemoWalk | null>(() => {
     const raw = params.get('create');
 
     return isCreateState(raw) && !alone(params) ? walkOf(raw, t) : null;

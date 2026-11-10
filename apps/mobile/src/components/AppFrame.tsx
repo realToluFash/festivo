@@ -585,11 +585,7 @@ export function AppFrame({
             statusBar="dark"
             currencies={currencies}
             create={(walk) =>
-              createOrganisation(
-                (organisation) => api.createOrganisation(organisation),
-                { name: walk.name, countryCode: walk.country ?? '' },
-                walk.device.zone,
-              )
+              createOrganisation((organisation) => api.createOrganisation(organisation), walk)
             }
             onCancel={() => setCreating(false)}
             onCreated={(organisation) => {

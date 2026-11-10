@@ -11,8 +11,6 @@ import {
   entered,
   freshWalk,
   limitedLine,
-  nameRefusal,
-  narrowed,
   optionLabel,
   pickLine,
   shrinks,
@@ -29,8 +27,8 @@ const CURRENCIES = new Map<string, string | null>([
 const countries = countriesOf('en', CURRENCIES, t);
 const named: Walk = { ...freshWalk(LISBON), name: 'Lumen Feiras' };
 
-function country(code: string) {
-  const found = countries.find((one) => one.code === code);
+function country(code: string, from = countries) {
+  const found = from.find((one) => one.code === code);
   if (found == null) throw new Error(`No country ${code}`);
 
   return found;
@@ -43,10 +41,17 @@ describe('the countries (sc-30412)', () => {
     expect(country('AQ').currency?.none).toBe(true);
   });
 
-  it('leaves the currency out while it is not yet known, never saying none', () => {
-    expect(optionLabel(country('NG'))).toBe('Nigeria');
-    expect(countriesOf('en', null, t).every((one) => one.currency == null)).toBe(true);
-    expect(pickLine(country('NG'), named, t)).toBe(
+  it('offers only the countries the API founds in, once it has said which', () => {
+    expect(countries.map((one) => one.code)).toEqual(['AQ', 'BR', 'PT']);
+  });
+
+  it('offers every country, the currency left out, while it is not yet known, never saying none', () => {
+    const unread = countriesOf('en', null, t);
+
+    expect(unread.length).toBeGreaterThan(200);
+    expect(unread.every((one) => one.currency == null)).toBe(true);
+    expect(optionLabel(country('NG', unread))).toBe('Nigeria');
+    expect(pickLine(country('NG', unread), named, t)).toBe(
       'Time zone, from this device, Lisbon · Europe/Lisbon.',
     );
   });
@@ -56,21 +61,9 @@ describe('the countries (sc-30412)', () => {
       'Currency, Brazilian Real (BRL). Time zone, from this device, Lisbon · Europe/Lisbon.',
     );
   });
-
-  it('narrows by a case-insensitive includes', () => {
-    expect(narrowed(countries, '  PORTU ', 'en').map((one) => one.name)).toEqual(['Portugal']);
-    expect(narrowed(countries, '   ', 'en')).toHaveLength(countries.length);
-    expect(narrowed(countries, 'zzz', 'en')).toEqual([]);
-  });
 });
 
 describe('the step checks', () => {
-  it('refuses a blank name and one over 100', () => {
-    expect(nameRefusal('   ', t)).toBe("Enter the organisation's name.");
-    expect(nameRefusal('x'.repeat(101), t)).toBe('That name is 101 characters. Use 100 or fewer.');
-    expect(nameRefusal(` ${'x'.repeat(100)} `, t)).toBeNull();
-  });
-
   it('checks only the step Continue is on', () => {
     expect(stepRefused(freshWalk(LISBON), t)).toEqual({
       nameRefused: "Enter the organisation's name.",
