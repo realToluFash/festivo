@@ -456,6 +456,12 @@ class DemoFirst(Base):
             actions.claim(self.as_("dev"), args(story="sc-1"))
         self.assertEqual(self.state(1), "In Progress")
 
+    def test_a_demo_line_reading_none_that_cites_numbers_is_claimed_without_asking_github(self):
+        self.drawn("**Demo:** none: nothing new to draw (ux's comments #37514 and #37515 on sc-29071).")
+        with mock.patch("soirely_queue.github.live", side_effect=AssertionError):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
     def test_a_demo_line_reading_none_yet_with_no_pull_request_is_refused(self):
         self.drawn("**Demo:** none yet, being drawn")
         self.refused("names no pull request")
