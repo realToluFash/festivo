@@ -308,26 +308,6 @@ export function shortWhileTyping({ os, phone, height, keysUp }: Typing): boolean
   return os === 'android' && phone && keysUp && height <= SHORT_ANDROID_HEIGHT;
 }
 
-export interface SidewaysTyping {
-  os: string;
-  phone: boolean;
-  /** The window's width, in dp. */
-  width: number;
-  /** The window's height, in dp. */
-  height: number;
-  keysUp: boolean;
-}
-
-/** Whether a phone on its side with the keys up pins nothing around a sheet's body, scrolling its title and buttons with it, so the field has the room above the keys (sc-9442, sc-35256). */
-export function sheetScrollsWhileTyping({ keysUp, phone, width, height }: SidewaysTyping): boolean {
-  return keysUp && phone && width > height;
-}
-
-/** Whether a sheet keeps its field in the body's sight: while typing, and on an iPhone on its side once the keys go down too, resting the body at its top (sc-9442). */
-export function fieldKeptInSight({ keysUp, ...turned }: SidewaysTyping): boolean {
-  return keysUp || iPhoneOnItsSide(turned);
-}
-
 /** The keyboard as a close puts it down: whether it is up, what hides it, and its hidden event. */
 export interface Keys {
   up(): boolean;

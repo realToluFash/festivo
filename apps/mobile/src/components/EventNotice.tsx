@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Glyph } from '../../components/Glyph.tsx';
-import { useReadOut } from '../../components/ReadOut.tsx';
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
+import { Glyph } from './Glyph.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import { Text } from './Text.tsx';
+import { tokens } from '../theme/tokens.ts';
 
 /** B's notice: its tint, the mark in a solid disc, the words in Ink and any way on under them. */
 export function EventNotice({

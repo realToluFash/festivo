@@ -2,5 +2,12 @@
 appId: host.exp.Exponent
 ---
 - tapOn:
-    id: 'createOrganisation.cancel'
+    id: 'createWalk.cancel'
+- runFlow:
+    when:
+      visible:
+        id: 'createWalk.discard'
+    commands:
+      - tapOn:
+          id: 'createWalk.discard'
 - runFlow: open-create-organisation.yaml

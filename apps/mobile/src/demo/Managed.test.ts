@@ -5,7 +5,8 @@ import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
-import { createStateOf, freshWalk, SAMPLE_DEVICE, walkFor } from './createOrg/CreateWalk.ts';
+import { freshWalk } from '../kit/createWalk.ts';
+import { createStateOf, SAMPLE_DEVICE, walkFor } from './createOrg/CreateWalk.ts';
 import { sessionFor, switcherStateOf, waitingOf } from './OrgSwitcherModel.ts';
 import { MANAGED_WORDS } from './settings/DataWords.ts';
 import { membersStart, membersStateOf } from './settings/MembersSample.ts';
@@ -38,7 +39,7 @@ describe('a managed account, wherever a membership path ends (sc-563, enterprise
       managed: true,
     });
     expect(freshWalk(SAMPLE_DEVICE).managed).toBe(false);
-    const window = read('src', 'demo', 'createOrg', 'CreateWalkWindow.tsx');
+    const window = read('src', 'components', 'CreateWalkWindow.tsx');
     expect(window).toMatch(/managed \? refusal : steps/u);
     expect(window).toMatch(/managed \? closeAction/u);
   });

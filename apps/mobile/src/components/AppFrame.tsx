@@ -33,6 +33,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
+import { api } from '../api.ts';
 import { usePushTaps } from '../appPush.ts';
 import { useWaitingInvitations } from '../invitations.ts';
 import { useDomainOffer } from '../joinOffers.ts';
@@ -44,6 +45,8 @@ import {
   destinations,
 } from '../kit/appNav.ts';
 import { backRowHiding } from '../kit/backRow.ts';
+import { type Currencies, freshWalk } from '../kit/createWalk.ts';
+import { createOrganisation } from '../kit/organisationCreate.ts';
 import { phonePillAlone, pillBesideTabs } from '../kit/frameBand.ts';
 import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBack.ts';
 import { leaveThen } from '../leaveHeld.ts';
@@ -61,7 +64,7 @@ import { switcherFocusBack } from '../kit/focusBack.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { BellButton } from './BellButton.tsx';
-import { CreateOrganisation } from './CreateOrganisation.tsx';
+import { CreateWalkWindow, type WalkOpening, deviceNow } from './CreateWalkWindow.tsx';
 import { HeaderPrimary, type HeaderPrimaryProps } from './Buttons.tsx';
 import { Sheet } from './Sheet.tsx';
 import type { GlyphName } from './Glyph.tsx';
@@ -285,7 +288,18 @@ export function AppFrame({
   // Create an organisation's sheet takes focus from the switcher, and hands it back itself (sc-8606).
   const [toSheet, setToSheet] = useState(false);
   const [switcherFrom, setSwitcherFrom] = useState<RefObject<ViewInstance | null> | null>(null);
-  const [creatingFrom, setCreatingFrom] = useState<RefObject<ViewInstance | null> | null>(null);
+  const [walking, setWalking] = useState<WalkOpening | null>(null);
+  // Where focus goes back to as the walk closes: what opened it, or, once it created the first organisation, the notice saying so (sc-11173).
+  const walkBack = useRef<RefObject<ViewInstance | null>>(pill);
+  const walkOpener = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        return walkBack.current.current;
+      },
+    }),
+    [],
+  );
+  const currencies = useCountryCurrencies(creating);
   const [created, setCreated] = useState<{ name: string; takesFocus: boolean } | null>(null);
   const createdWords = useRef<ViewInstance>(null);
   const switched = created == null ? null : t('switcher.switched', { name: created.name });
@@ -383,7 +397,14 @@ export function AppFrame({
   );
   const startOrganisation = (opener: RefObject<ViewInstance | null>) => {
     setCreated(null);
-    setCreatingFrom(opener);
+    walkBack.current = opener;
+    setWalking((last) => ({
+      visit: (last?.visit ?? 0) + 1,
+      walk: freshWalk(deviceNow()),
+      focus: 'name',
+      toPick: false,
+      opener: walkOpener,
+    }));
     setCreating(true);
   };
   const email = signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '');
@@ -555,21 +576,33 @@ export function AppFrame({
             }}
           />
         )}
-        <CreateOrganisation
-          open={creating}
-          email={email}
-          opener={creatingFrom ?? pill}
-          onCancel={() => setCreating(false)}
-          onCreated={(organisation) => {
-            // In no organisation, what opened the sheet goes with it, so the sheet hands focus to the notice (sc-11173).
-            const fromNone = signedIn.organisation == null;
-            if (fromNone) setCreatingFrom(createdWords);
-            setCreating(false);
-            joinOrganisation(organisation);
-            switchOrganisation(organisation.id);
-            setCreated({ name: organisation.name, takesFocus: fromNone });
-          }}
-        />
+        {walking != null && (
+          <CreateWalkWindow
+            key={walking.visit}
+            opening={walking}
+            open={creating}
+            email={email}
+            statusBar="dark"
+            currencies={currencies}
+            create={(walk) =>
+              createOrganisation(
+                (organisation) => api.createOrganisation(organisation),
+                { name: walk.name, countryCode: walk.country ?? '' },
+                walk.device.zone,
+              )
+            }
+            onCancel={() => setCreating(false)}
+            onCreated={(organisation) => {
+              // In no organisation, what opened the walk goes with it, so it hands focus to the notice (sc-11173).
+              const fromNone = signedIn.organisation == null;
+              if (fromNone) walkBack.current = createdWords;
+              setCreating(false);
+              joinOrganisation(organisation);
+              switchOrganisation(organisation.id);
+              setCreated({ name: organisation.name, takesFocus: fromNone });
+            }}
+          />
+        )}
       </View>
     </SwitcherOpenedBy.Provider>
   );
@@ -1287,3 +1320,28 @@ const styles = StyleSheet.create({
   },
   created: { paddingTop: tokens.spaceLg, paddingHorizontal: tokens.spaceXl },
 });
+
+let currenciesRead: Currencies | null = null;
+
+/** The currency each country founds with, read once the walk first opens and kept: it changes only with the API. */
+function useCountryCurrencies(open: boolean): Currencies | null {
+  const [currencies, setCurrencies] = useState(currenciesRead);
+
+  useEffect(() => {
+    if (!open || currenciesRead != null) return;
+    let live = true;
+    api.countryCurrencies().then(
+      (read) => {
+        currenciesRead = read;
+        if (live) setCurrencies(read);
+      },
+      () => {},
+    );
+
+    return () => {
+      live = false;
+    };
+  }, [open]);
+
+  return currencies;
+}

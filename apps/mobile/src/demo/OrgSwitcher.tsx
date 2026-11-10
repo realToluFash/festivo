@@ -23,15 +23,17 @@ import { type Switched, SwitchedProvider } from '../components/SwitchedNotice.ts
 import type { Tell } from '../components/TodayParts.tsx';
 import type { OrgOpening } from '../components/todayShell.ts';
 import { useLayout } from '../layout/useLayout.ts';
+import { CreateWalkWindow, type WalkOpening, deviceNow } from '../components/CreateWalkWindow.tsx';
+import { type Walk, type WalkAnswer, freshWalk } from '../kit/createWalk.ts';
 import {
   type CreateState,
+  SAMPLE_CURRENCIES,
   SAMPLE_FOUNDED,
-  type Walk,
+  answerTo,
+  focusOf,
   foundedPlace,
-  freshWalk,
   walkFor,
 } from './createOrg/CreateWalk.ts';
-import { CreateWalkWindow, type WalkOpening, deviceNow } from './createOrg/CreateWalkWindow.tsx';
 import { ManagedBanner } from './Managed.tsx';
 import {
   type DropFrame,
@@ -57,6 +59,9 @@ import {
 } from './OrgSwitcherModel.ts';
 
 const SENDING_MS = 900;
+const SEND_MS = 1200;
+/** A deep-linked Creating… holds long enough to be looked at, then lands. */
+const HELD_MS = 8000;
 
 const store = {
   session: sessionFor('populated'),
@@ -236,10 +241,27 @@ export function OrgSwitcherProvider({
     },
     [t, tell, close],
   );
+  const held = useRef(create === 'creating');
   const openWalk = useCallback((opener: OpenerRef | null, walk: Walk, from: CreateState | null) => {
-    setWalking((last) => ({ visit: (last?.visit ?? 0) + 1, walk, state: from, opener }));
+    setWalking((last) => ({
+      visit: (last?.visit ?? 0) + 1,
+      walk,
+      focus: focusOf(from, walk),
+      toPick: from === 'country-list',
+      opener,
+    }));
     setWalkOpen(true);
   }, []);
+  /** Nothing is sent: Create answers from the sample. */
+  const sendWalk = useCallback(
+    (walk: Walk) =>
+      new Promise<WalkAnswer<Walk>>((resolve) => {
+        const wait = held.current ? HELD_MS : SEND_MS;
+        held.current = false;
+        setTimeout(() => resolve(answerTo(walk)), wait);
+      }),
+    [],
+  );
   const onCreate = useCallback(() => {
     const opener = opening.current;
     close();
@@ -337,6 +359,17 @@ export function OrgSwitcherProvider({
           open={walkOpen}
           email={VIEWER.email}
           statusBar={statusBar}
+          currencies={SAMPLE_CURRENCIES}
+          managedBanner={
+            <ManagedBanner
+              onChange={() => {
+                onCancelWalk();
+                setTimeout(() => router.push('/demo/settings/account'), SETTLED_MS);
+              }}
+              testID="createWalk.managed"
+            />
+          }
+          create={sendWalk}
           onCancel={onCancelWalk}
           onCreated={onCreated}
         />
