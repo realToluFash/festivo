@@ -24,13 +24,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
-import { SETTLED_MS } from './Screen.tsx';
+import { SETTLED_MS, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { useFocusBack, useWindowTurn } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 import { Toast } from './Toast.tsx';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
+import { menuInModal } from '../kit/anchoredMenu.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
 import { Glyph } from './Glyph.tsx';
@@ -401,6 +402,28 @@ export function anchorUnder(trigger: RefObject<ViewInstance | null>, then: (at: 
   trigger.current?.measureInWindow((x, y, width, height) => then({ x, y: y + height, width }));
 }
 
+/** An open menu's anchor, measured again once a turned window settles; a button the turn took away closes it. */
+export function useAnchorFollowsTurn(
+  trigger: RefObject<ViewInstance | null>,
+  open: boolean,
+  then: (at: Anchor | null) => void,
+) {
+  const { width, height } = useWindowDimensions();
+  const size = useRef({ width, height });
+
+  useEffect(() => {
+    const turned = size.current.width !== width || size.current.height !== height;
+    size.current = { width, height };
+    if (!open || !turned) return;
+    const wait = setTimeout(() => {
+      if (trigger.current == null) then(null);
+      else anchorUnder(trigger, then);
+    }, SETTLED_MS);
+
+    return () => clearTimeout(wait);
+  }, [width, height, open, trigger, then]);
+}
+
 interface MenuProps {
   at: Anchor | null;
   onClose: () => void;
@@ -408,7 +431,7 @@ interface MenuProps {
   align?: 'start' | 'end';
   /** How far under what opened it. */
   below?: number;
-  /** Where it must end above, the keys' top less a gap; the window's foot otherwise. */
+  /** Where it must end above, in measureInWindow's frame as `at` is: the keys' top less a gap; the window's foot otherwise. */
   floor?: number | null;
   /** Above the scrolling items: a search field. */
   head?: ReactNode;
@@ -451,9 +474,11 @@ export function MenuLayer({
   const { t } = useTranslation();
   const frame = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const origin = useWindowOrigin();
   const [seen, setSeen] = useState({ panel: 0, content: 0, offset: 0 });
-  const top = (at?.y ?? 0) + below;
-  const room = (floor ?? frame.height - Math.max(insets.bottom, tokens.spaceLg)) - top;
+  const place = menuInModal({ under: at?.y ?? 0, below, floor, origin });
+  const top = place.top;
+  const room = (place.floor ?? frame.height - Math.max(insets.bottom, tokens.spaceLg)) - top;
   const more = seen.content - seen.offset - seen.panel > 1;
 
   return (

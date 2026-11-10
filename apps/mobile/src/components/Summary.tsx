@@ -61,6 +61,7 @@ export {
   type FocusVerb,
   type Layer,
   MenuLayer,
+  useAnchorFollowsTurn,
 } from './SummaryOverlays.tsx';
 
 const hidden = {

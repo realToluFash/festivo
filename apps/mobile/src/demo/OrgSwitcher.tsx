@@ -24,6 +24,7 @@ import type { Tell } from '../components/TodayParts.tsx';
 import type { OrgOpening } from '../components/todayShell.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { CreateWalkWindow, type WalkOpening, deviceNow } from '../components/CreateWalkWindow.tsx';
+import { inModal } from '../kit/anchoredMenu.ts';
 import { type Walk, type WalkAnswer, freshWalk } from '../kit/createWalk.ts';
 import {
   type CreateState,
@@ -48,7 +49,6 @@ import {
   founded,
   frameFor,
   notNow,
-  openerInModal,
   openerLabel,
   pick,
   placeOf,
@@ -181,7 +181,7 @@ export function OrgSwitcherProvider({
         back.current = view;
         setFrame(
           frameFor({
-            opener: openerInModal({ x, y, width: w, height: h }, origin),
+            opener: { x, y: inModal(y, origin), width: w, height: h },
             window: { width, height },
             insets: { bottom },
             phone,

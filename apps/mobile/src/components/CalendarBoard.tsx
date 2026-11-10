@@ -72,7 +72,7 @@ import { SETTLED_MS } from './Screen.tsx';
 import type { CoverLayout } from './TodayCover.tsx';
 import { Pill } from './SettingsParts.tsx';
 import { Sheet } from './Sheet.tsx';
-import { type Anchor, anchorUnder } from './Summary.tsx';
+import { type Anchor, anchorUnder, useAnchorFollowsTurn } from './Summary.tsx';
 import { Text } from './Text.tsx';
 
 export type BoardLoad = 'loading' | 'failed' | 'loaded';
@@ -232,6 +232,8 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
 
     return () => clearTimeout(wait);
   }, [start.menu]);
+
+  useAnchorFollowsTurn(showRef, menuAt != null, setMenuAt);
 
   const parts = useMemo(() => partsOf(show), [partsOf, show]);
   const days = useMemo(() => daysOf(events, show), [daysOf, events, show]);

@@ -54,7 +54,13 @@ import { AnswerInView } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
 import { Arrived } from './Skeleton.tsx';
-import { type Anchor, LoadingBlock, SunkTabs, anchorUnder } from './Summary.tsx';
+import {
+  type Anchor,
+  LoadingBlock,
+  SunkTabs,
+  anchorUnder,
+  useAnchorFollowsTurn,
+} from './Summary.tsx';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | ({ kind: 'loaded'; refreshing: boolean } & HomeLoad);
@@ -114,6 +120,7 @@ export function EventsScreen() {
   const [searchAttempt, setSearchAttempt] = useState(0);
   const [menuAt, setMenuAt] = useState<Anchor | null>(null);
   const filterRef = useRef<ViewInstance>(null);
+  useAnchorFollowsTurn(filterRef, menuAt != null, setMenuAt);
   const word = useFilterWord(filters, locale);
   if (lookIn !== organisationId) {
     setLookIn(organisationId);
