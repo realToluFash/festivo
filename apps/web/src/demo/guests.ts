@@ -343,7 +343,7 @@ function wedding(): Guest[] {
       phone: { country: 'FR', number: '6 41 27 88 05' },
       companions: companions('sophie', ['Marc Laurent'], 'coming'),
       language: 'fr',
-      whatsApp: { kind: 'optedOut', on: '2026-11-05' },
+      whatsApp: { kind: 'optedOut', on: '2026-11-01' },
     }),
     guest('tomas', 'Tomás Ferreira', 'noReply', { email: 'tomas.ferreira@gmial.com' }),
     guest('yusuf', 'Yusuf Ibrahim', 'notYet', { phone: { country: 'NG', number: '809 221 4410' } }),
@@ -1286,6 +1286,7 @@ export const GUESTS_STATES = [
   { key: 'whatsAppGuestAgreed', name: 'Lucía Ortega agreed on their page' },
   { key: 'whatsAppOptedOut', name: 'Sophie Laurent unsubscribed: only the guest can change it' },
   { key: 'whatsAppNoMobile', name: 'Inês Duarte, no mobile number: no WhatsApp row' },
+  { key: 'whatsAppViewer', name: 'Can view (guests.read): no contact details, no WhatsApp row' },
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number]['key'];
@@ -1539,6 +1540,8 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return column(guestPane('sophie'), { choice: 'coming' });
     case 'whatsAppNoMobile':
       return column(guestPane('ines'), { choice: 'coming' });
+    case 'whatsAppViewer':
+      return column(guestPane('kwame'), { choice: 'coming', role: 'viewer' });
   }
 }
 
@@ -1655,6 +1658,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'whatsAppGuestAgreed',
     'whatsAppOptedOut',
     'whatsAppNoMobile',
+    'whatsAppViewer',
   ]),
   group('The link and Mark as invited', [
     'linkCopied',

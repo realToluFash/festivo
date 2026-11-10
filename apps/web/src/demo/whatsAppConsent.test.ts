@@ -37,8 +37,8 @@ describe('the WhatsApp row (sc-3950)', () => {
       agree: false,
       note: null,
     });
-    expect(whatsAppRowOf({ kind: 'optedOut', on: '2026-11-05' }, EDITS, dayOf)).toEqual({
-      title: 'Unsubscribed from WhatsApp on Nov 5',
+    expect(whatsAppRowOf({ kind: 'optedOut', on: '2026-11-01' }, EDITS, dayOf)).toEqual({
+      title: 'Unsubscribed from WhatsApp on Nov 1',
       agree: false,
       note: 'Only the guest can change this.',
     });
@@ -78,7 +78,7 @@ describe('the WhatsApp sample and states (sc-3950)', () => {
     expect(one('kwame')?.whatsApp).toEqual({ kind: 'none' });
     expect(one('kwame')?.phone).not.toBeNull();
     expect(one('lucia')?.whatsApp).toEqual({ kind: 'guest', on: '2026-11-02' });
-    expect(one('sophie')?.whatsApp).toEqual({ kind: 'optedOut', on: '2026-11-05' });
+    expect(one('sophie')?.whatsApp).toEqual({ kind: 'optedOut', on: '2026-11-01' });
     expect(one('sophie')?.phone).toEqual({ country: 'FR', number: '6 41 27 88 05' });
     expect(one('ines')?.phone).toBeNull();
   });
@@ -108,6 +108,7 @@ describe('the WhatsApp sample and states (sc-3950)', () => {
       'whatsAppGuestAgreed',
       'whatsAppOptedOut',
       'whatsAppNoMobile',
+      'whatsAppViewer',
     ]);
     expect(open('whatsAppNone')).toEqual({ kind: 'guest', id: 'kwame' });
     expect(open('whatsAppAgree')).toEqual({ kind: 'whatsApp', id: 'kwame', start: {} });
@@ -129,6 +130,8 @@ describe('the WhatsApp sample and states (sc-3950)', () => {
     expect(open('whatsAppGuestAgreed')).toEqual({ kind: 'guest', id: 'lucia' });
     expect(open('whatsAppOptedOut')).toEqual({ kind: 'guest', id: 'sophie' });
     expect(open('whatsAppNoMobile')).toEqual({ kind: 'guest', id: 'ines' });
+    expect(open('whatsAppViewer')).toEqual({ kind: 'guest', id: 'kwame' });
+    expect(guestsStart('whatsAppViewer', new URLSearchParams()).role).toBe('viewer');
 
     const recorded = guestsStart('whatsAppRecorded', new URLSearchParams());
 

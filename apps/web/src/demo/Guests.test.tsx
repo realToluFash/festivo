@@ -873,7 +873,7 @@ describe('Guests, WhatsApp on a guest’s page (sc-3950)', () => {
     cleanup();
 
     await guests('whatsAppOptedOut');
-    expect(within(column()).getByText('Unsubscribed from WhatsApp on Nov 5')).toBeDefined();
+    expect(within(column()).getByText('Unsubscribed from WhatsApp on Nov 1')).toBeDefined();
     expect(within(column()).getByText('Only the guest can change this.')).toBeDefined();
     expect(within(column()).getByText('+33 6 41 27 88 05')).toBeDefined();
     expect(within(column()).queryByText('WhatsApp')).toBeNull();
@@ -888,6 +888,14 @@ describe('Guests, WhatsApp on a guest’s page (sc-3950)', () => {
   });
 
   it('shows a view-only role neither the row nor the action', SLOW, async () => {
+    await guests('whatsAppViewer');
+
+    expect(within(column()).getByRole('heading', { name: 'Kwame Mensah' })).toBeDefined();
+    expect(within(column()).queryByText('+44 7700 900412')).toBeNull();
+    expect(within(column()).queryByText('WhatsApp')).toBeNull();
+    expect(within(column()).queryByText('Has not agreed to WhatsApp')).toBeNull();
+    cleanup();
+
     await guests('guestViewer');
 
     expect(within(column()).queryByText('WhatsApp')).toBeNull();

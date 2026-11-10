@@ -27,6 +27,7 @@ const WHATSAPP = [
   'whatsAppGuestAgreed',
   'whatsAppOptedOut',
   'whatsAppNoMobile',
+  'whatsAppViewer',
 ] as const;
 
 function sample(key: string) {
@@ -59,8 +60,8 @@ describe('the WhatsApp row (sc-3950)', () => {
       agree: false,
       note: null,
     });
-    expect(whatsAppRowOf({ kind: 'optedOut', day: '2026-11-05' }, EDITS, day)).toEqual({
-      title: 'Unsubscribed from WhatsApp on Nov 5',
+    expect(whatsAppRowOf({ kind: 'optedOut', day: '2026-11-01' }, EDITS, day)).toEqual({
+      title: 'Unsubscribed from WhatsApp on Nov 1',
       agree: false,
       note: 'Only the guest can change this.',
     });
@@ -82,6 +83,7 @@ describe('the WhatsApp row (sc-3950)', () => {
     expect(whatsAppRowOf(NO_CONSENT, { mobile: false, edits: true }, day)).toBeNull();
     expect(whatsAppRowOf(NO_CONSENT, { mobile: true, edits: false }, day)).toBeNull();
     expect(roleOf('guestViewer')).toBe('viewer');
+    expect(roleOf('whatsAppViewer')).toBe('viewer');
   });
 
   it('refuses Save with nothing picked, then records the pick', () => {
@@ -119,11 +121,12 @@ describe('the WhatsApp states (sc-3950)', () => {
       'lucia',
       'sophie',
       'ines',
+      'kwame',
     ]);
     expect(sample('kwame').phone).not.toBeNull();
     expect(sample('kwame').whatsApp).toBeUndefined();
     expect(sample('lucia').whatsApp).toEqual({ kind: 'guest', day: '2026-11-02' });
-    expect(sample('sophie').whatsApp).toEqual({ kind: 'optedOut', day: '2026-11-05' });
+    expect(sample('sophie').whatsApp).toEqual({ kind: 'optedOut', day: '2026-11-01' });
     expect(sample('sophie').phone).toBe('+33 6 41 27 88 05');
     expect(sample('ines').phone).toBeNull();
   });

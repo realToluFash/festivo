@@ -154,7 +154,7 @@ export const GUESTS: readonly SampleGuest[] = [
     phone: '+33 6 41 27 88 05',
     companions: [{ name: 'Marc Laurent', kind: 'coming' }],
     language: 'fr',
-    whatsApp: { kind: 'optedOut', day: '2026-11-05' },
+    whatsApp: { kind: 'optedOut', day: '2026-11-01' },
   }),
   guest('tomas', 'Tomás Ferreira', 'noreply', { email: 'tomas.ferreira@gmial.com' }),
   guest('yusuf', 'Yusuf Ibrahim', 'notyet', { phone: '+234 809 221 4410' }),

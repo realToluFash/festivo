@@ -79,6 +79,7 @@ export const GUEST_STATES = [
   'whatsAppGuestAgreed',
   'whatsAppOptedOut',
   'whatsAppNoMobile',
+  'whatsAppViewer',
 ] as const;
 
 export const EDIT_STATES = [
@@ -228,7 +229,8 @@ export function roleOf(state: GuestsState | null): Role {
     state === 'guestViewer' ||
     state === 'repliesClosedViewer' ||
     state === 'overviewViewer' ||
-    state === 'greetAsViewer'
+    state === 'greetAsViewer' ||
+    state === 'whatsAppViewer'
   )
     return 'viewer';
   if (state === 'staffBefore' || state === 'staffDayBefore' || state === 'staffDoorOpen')
