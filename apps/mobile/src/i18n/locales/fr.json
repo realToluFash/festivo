@@ -898,7 +898,7 @@
     "contactInvalid": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu’elle contient un @ et un domaine.",
     "readOnly": "Votre rôle, {{role}}, permet de voir ces informations mais pas de les modifier. Les rôles Propriétaire et Administrateur le permettent.",
     "readOnlyUntilLinked": "{{organisation}} n’accepte que la connexion avec Google ou Apple. Tant que vous n’avez pas associé l’un des deux, vous pouvez voir ces informations mais pas les modifier.",
-    "readOnlyUntilTwoFactor": "{{organisation}} demande la double authentification aux personnes qui peuvent gérer les membres, les rôles, la facturation ou la sécurité. Tant que vous ne l’avez pas activée, vous pouvez voir ces informations mais pas les modifier.",
+    "readOnlyUntilTwoFactor": "{{organisation}} demande la double authentification aux personnes ayant le rôle Propriétaire ou Administrateur. Tant que vous ne l’avez pas activée, vous pouvez voir ces informations mais pas les modifier.",
     "failed": "L’enregistrement n’a pas abouti. Rien n’a été modifié. Réessayez dans un instant.",
     "searchCurrency": "Rechercher une devise",
     "searchTimezone": "Rechercher un fuseau horaire",
@@ -1062,7 +1062,7 @@
     "unlinkedBody": "{{organisation}} n’accepte plus que la connexion avec Google ou Apple. Votre mot de passe fonctionne encore pour l’instant, mais tant que vous n’avez pas associé l’un des deux, vous pouvez tout consulter dans {{organisation}}, sans rien pouvoir modifier.",
     "unlinkedLink": "Associer Google ou Apple",
     "gateTitle": "Double authentification exigée par {{organisation}}",
-    "gateBody": "{{organisation}} demande la double authentification aux personnes qui peuvent gérer les membres, les rôles, la facturation ou la sécurité. Tant que vous ne l’avez pas activée, ces actions sont suspendues. Vos événements continuent de fonctionner.",
+    "gateBody": "{{organisation}} demande la double authentification aux personnes ayant le rôle Propriétaire ou Administrateur. Tant que vous ne l’avez pas activée, les membres, la facturation et la sécurité sont suspendus. Vos événements continuent de fonctionner.",
     "gateTurnOn": "Activer la double authentification",
     "gateLater": "Pas maintenant",
     "changedTitle": "Les règles de connexion ont changé",
@@ -1230,8 +1230,8 @@
     "you": "vous",
     "youAs": "Vous · {{role}}",
     "roleTitle": "Rôle",
-    "eventsFromPeople": "A member’s events come from each event’s People.",
-    "ownerMakesOwner": "Only an owner makes someone an owner.",
+    "eventsFromPeople": "Les événements d’un Membre se décident dans Personnes, sur chaque événement.",
+    "ownerMakesOwner": "Seule une personne ayant le rôle Propriétaire peut attribuer le rôle Propriétaire.",
     "roleTakesEffect": "S’applique dès que cette personne utilise de nouveau Soirely ; aucune session n’est fermée.",
     "roleKeptWhileSuspended": "Le rôle est conservé pendant la suspension. Vous pourrez le changer une fois l’accès rétabli.",
     "accessConflict": "Quelqu’un d’autre a modifié l’accès pour {{name}} pendant que cette page était ouverte : votre modification n’a donc pas été appliquée. Voici où en est cet accès.",
@@ -1240,8 +1240,8 @@
     "roleChanged": "{{name}} a maintenant le rôle {{role}}. Cela s’applique dès sa prochaine utilisation de Soirely ; aucune session n’est fermée.",
     "roleMeans": {
       "owner": "Tout, y compris la facturation et la suppression de l’organisation.",
-      "administrator": "Tout dans les événements, plus les membres et les rôles. Pas la facturation.",
-      "member": "Works on the events they’re added to, and sees no others."
+      "administrator": "Tout sauf la facturation. Voit tous les événements et gère les membres.",
+      "member": "Travaille sur les événements qui lui sont confiés, et ne voit pas les autres."
     },
     "onlyOwner": "{{name}} est la seule personne à avoir le rôle Propriétaire. Une organisation en a toujours une : son rôle ne peut donc pas changer, et cette personne ne peut pas être retirée tant qu’une autre n’a pas aussi le rôle Propriétaire.",
     "askOwner": "Seule une personne ayant le rôle Propriétaire peut le donner à quelqu’un d’autre. Demandez à {{name}}.",
@@ -2224,10 +2224,10 @@
     "everyoneOn": "Toutes les personnes de {{organisation}} participent déjà à cet événement.",
     "cancel": "Annuler",
     "addConfirm": "Ajouter",
-    "addFailedOne": "We couldn’t add {{name}}, so they’re still ticked. Check your connection and press Add again.",
-    "addFailedMany_one": "We couldn’t add the {{count, number}} still ticked. Check your connection and press Add again.",
-    "addFailedMany_many": "We couldn’t add the {{count, number}} still ticked. Check your connection and press Add again.",
-    "addFailedMany_other": "We couldn’t add the {{count, number}} still ticked. Check your connection and press Add again.",
+    "addFailedOne": "Impossible d’ajouter {{name}}, dont la case reste cochée. Vérifiez votre connexion et appuyez de nouveau sur Ajouter.",
+    "addFailedMany_one": "Impossible d’ajouter {{count, number}} personne encore cochée. Vérifiez votre connexion et appuyez de nouveau sur Ajouter.",
+    "addFailedMany_many": "Impossible d’ajouter les {{count, number}} de personnes encore cochées. Vérifiez votre connexion et appuyez de nouveau sur Ajouter.",
+    "addFailedMany_other": "Impossible d’ajouter les {{count, number}} personnes encore cochées. Vérifiez votre connexion et appuyez de nouveau sur Ajouter.",
     "addedThenRefused": "{{added}} {{refused}}",
     "nowOne": {
       "lead": "{{name}} est désormais responsable de cet événement.",
@@ -2249,11 +2249,11 @@
       "can_check_in_many": "{{count, number}} de personnes peuvent désormais accueillir les invités.",
       "can_check_in_other": "{{count, number}} personnes peuvent désormais accueillir les invités."
     },
-    "failedTitle": "We could not load the people on this event.",
-    "failedLine": "Check your connection and try again.",
-    "discardTitle": "Discard your changes?",
-    "discardLine": "Nobody is added to this event.",
-    "discardKeep": "Keep editing",
-    "discard": "Discard"
+    "failedTitle": "Impossible de charger les personnes de cet événement.",
+    "failedLine": "Vérifiez votre connexion et réessayez.",
+    "discardTitle": "Abandonner vos modifications ?",
+    "discardLine": "Aucune personne ne sera ajoutée à cet événement.",
+    "discardKeep": "Continuer à modifier",
+    "discard": "Abandonner"
   }
 }
