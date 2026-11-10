@@ -43,7 +43,7 @@ import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { FailedBlock, Line, Row, RowList, SectionHead } from './Summary.tsx';
 import { Text } from './Text.tsx';
 
-/** `addable` is null for whoever may not change People: the API refuses them that list. */
+/** `addable` is null for whoever may not change People, and when its read failed: Add people stays off and the list still shows. */
 type Load =
   | { kind: 'loading' }
   | { kind: 'failed' }
@@ -158,13 +158,12 @@ export function EventPeople({
   useEffect(() => {
     let live = true;
 
-    (async () => {
-      const read = await api.eventPeople(event.id);
-      const addable = manages ? await api.addableEventMembers(event.id) : null;
+    const addableRead = manages
+      ? api.addableEventMembers(event.id).catch(() => null)
+      : Promise.resolve(null);
 
-      return { ...read, addable };
-    })().then(
-      (loaded) => live && setLoad({ kind: 'loaded', ...loaded }),
+    Promise.all([api.eventPeople(event.id), addableRead]).then(
+      ([read, addable]) => live && setLoad({ kind: 'loaded', ...read, addable }),
       () => live && setLoad({ kind: 'failed' }),
     );
 
