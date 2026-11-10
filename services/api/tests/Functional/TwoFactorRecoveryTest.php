@@ -210,6 +210,30 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertFalse($this->fresh($this->person)->hasTwoFactorSetupPrompt(), '"Not now"');
     }
 
+    /** sc-30894: Members shows a request only in the organisations the two share, told apart by id, and the answer takes it off each. */
+    #[Test]
+    public function eachRequestNamesTheOrganisationsWhoseMembersShowIt(): void
+    {
+        $hall = self::service(OrganisationFounder::class)->found($this->fresh($this->approver), 'Ìrè Events', 'NG', 'Africa/Lagos');
+        self::em()->flush();
+        $this->proved();
+
+        $here = [$this->organisation->getId()->toRfc4122()];
+        self::assertSame($here, $this->requestOrganisationIds(), 'not the approver\'s other organisation, though it has the same name');
+
+        $this->join($this->person, SeededRole::Member, $hall);
+        self::em()->flush();
+        self::assertSame([...$here, $hall->getId()->toRfc4122()], $this->requestOrganisationIds(), 'in both, once they belong to both');
+
+        $hall = Type\instance_of(Organisation::class)->coerce(self::em()->find(Organisation::class, $hall->getId()));
+        $hall->setAdministratorsNeedTwoFactor(true);
+        self::em()->flush();
+        self::assertSame($here, $this->requestOrganisationIds(), 'not where a sign-in rule holds the approver back (sc-69)');
+
+        $this->asApprover('POST', '/api/auth/recovery-requests/' . $this->requestId() . '/approve');
+        self::assertSame([], $this->asApprover('GET', '/api/auth/recovery-requests')['requests']);
+    }
+
     /** sc-69: answering is administration, so an organisation's two-factor rule holds it back with the rest. */
     #[Test]
     public function anApproverWithoutTheTwoFactorTheirOrganisationRequiresCannotAnswer(): void
@@ -677,6 +701,14 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         $recovery = self::em()->getRepository(TwoFactorRecovery::class)->findOneBy([], ['createdAt' => 'DESC']);
 
         return Type\instance_of(TwoFactorRecovery::class)->coerce($recovery)->getId()->toRfc4122();
+    }
+
+    /** @return list<string> */
+    private function requestOrganisationIds(): array
+    {
+        $requests = Type\vec(Type\shape(['organisationIds' => Type\vec(Type\string())], true))->coerce($this->asApprover('GET', '/api/auth/recovery-requests')['requests']);
+
+        return $requests[0]['organisationIds'] ?? [];
     }
 
     /** @return array<string, mixed> */
