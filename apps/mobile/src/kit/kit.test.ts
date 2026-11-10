@@ -33,6 +33,7 @@ import {
   settledAnswer,
   keysOver,
   liftNeeded,
+  settleLifts,
   listRoom,
   notesGiveWay,
   offsetAboveKeyboard,
@@ -141,6 +142,23 @@ describe('the field typed in stays in sight above a group lifted under it (sc-11
     const check = { shown: 400, group: { y: 150, height: 300 }, scrollTop: 100, margin: 16 };
 
     expect(liftNeeded({ ...check, focusTop: 120 })).toBe(true);
+  });
+});
+
+describe('a bar leaving the keys for the scroll settles the lifts made for less room (sc-35488)', () => {
+  it('lowers the scroll to the most any group needs', () => {
+    expect(settleLifts([120, 'stays', 80], 300)).toBe(120);
+    expect(settleLifts(['stays', 'stays'], 300)).toBe(0);
+  });
+
+  it('leaves the scroll when one group cannot be measured', () => {
+    expect(settleLifts([120, null], 300)).toBeNull();
+    expect(settleLifts([null, null], 300)).toBeNull();
+  });
+
+  it('never raises the scroll', () => {
+    expect(settleLifts([400], 300)).toBeNull();
+    expect(settleLifts([300], 300)).toBeNull();
   });
 });
 

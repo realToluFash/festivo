@@ -153,6 +153,17 @@ export function offsetAboveKeyboard({
   return Math.max(0, Math.min(bottomAboveKeys, Math.min(contentY, focusY) - margin));
 }
 
+/** A lift group's answer from the scroll's top: the offset it needs, `'stays'` when it needs none, or null when it cannot be measured now. */
+export type LiftFromTop = number | 'stays' | null;
+
+/** The lower offset a settle brings the scroll to, the most any group needs; null to leave it, when a group cannot be measured or none needs less than `offset` (sc-35488). */
+export function settleLifts(lifts: readonly LiftFromTop[], offset: number): number | null {
+  if (lifts.some((lift) => lift == null)) return null;
+  const y = Math.max(0, ...lifts.filter((lift) => typeof lift === 'number'));
+
+  return y < offset ? y : null;
+}
+
 export interface InScroll {
   /** The view's top inside the scroll content. */
   contentY: number;

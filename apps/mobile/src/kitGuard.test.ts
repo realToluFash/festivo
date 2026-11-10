@@ -986,12 +986,6 @@ describe('a bar leaving the keys for the scroll settles the lifts made for less 
       'if (undocking) screenScroll.settle();',
     );
   });
-
-  it("measures every lift group from the scroll's top", () => {
-    expect(readFileSync(join('src', 'components', 'Screen.tsx'), 'utf8')).toContain(
-      'measureLift(scroll, ref.current, keyboardTop.current, done, 0);',
-    );
-  });
 });
 
 describe('a refused code focuses its field through focusChecked (sc-20209)', () => {

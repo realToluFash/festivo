@@ -42,8 +42,10 @@ import {
   liftNeeded,
   type InContent,
   type IntoView,
+  type LiftFromTop,
   offsetAboveKeyboard,
   scrollInsets,
+  settleLifts,
   settledAnswer,
   settledOffsetKeeping,
   shownAboveKeys,
@@ -78,8 +80,8 @@ interface ScreenScrollView {
   /** Called when the scroll view itself resizes, which a child's onLayout does not see. */
   resized: Set<() => void>;
   /** Each lift group's offset needed above the keys, measured as if the scroll sat at its top. */
-  lifts: Set<(done: (y: number | null) => void) => void>;
-  /** Brings the scroll back to the least offset its lift groups need, once the room above the keys has grown under a lift made for less: a bar leaving the keys for the scroll (sc-35488). */
+  lifts: Set<(done: (lift: LiftFromTop) => void) => void>;
+  /** Lowers the scroll to the most offset its lift groups need, once the room above the keys has grown under a lift made for less: a bar leaving the keys for the scroll (sc-35488). */
   settle(): void;
   /** Called with the height a lift group needs from the focused field's top to its own end, as the group lifts with focus inside it. */
   focusedGroup: Set<(height: number) => void>;
@@ -156,12 +158,12 @@ export interface AboveKeyboard {
 // the top of the window, so under a header it stops short and leaves the button behind the keys.
 // Not measureInWindow on the group either: under Fabric it reads a scroll offset that can lag the
 // native one, so after the keys' own scroll to the field it can find the button uncovered.
-/** Measures where the scroll must sit to keep the group above the keys, `done` with that offset or null when it need not move; with `from`, as if the scroll sat there. */
+/** Measures where the scroll must sit to keep the group above the keys, `done` with that offset, `'stays'` when it need not move, or null when it cannot tell now; with `from`, as if the scroll sat there. */
 function measureLift(
   scroll: ScreenScrollView | null,
   group: ViewInstance | null,
   keyboardTop: number | null,
-  done: (y: number | null) => void,
+  done: (lift: LiftFromTop) => void,
   from?: number,
 ): void {
   const view = scroll?.ref.current;
@@ -184,7 +186,7 @@ function measureLift(
           const needed = focusY == null ? null : heightFromFocus({ contentY, height }, focusY);
           if (needed != null) scroll.focusedGroup.forEach((needs) => needs(needed));
           if (!liftNeeded({ shown, group, focusTop, scrollTop, margin: tokens.spaceLg }))
-            return done(null);
+            return done('stays');
 
           done(
             offsetAboveKeyboard({
@@ -218,7 +220,7 @@ function liftAboveKeyboard(
   keyboardTop: number | null,
 ): void {
   measureLift(scroll, group, keyboardTop, (y) => {
-    if (y != null) scroll?.ref.current?.scrollTo({ y, animated: true });
+    if (typeof y === 'number') scroll?.ref.current?.scrollTo({ y, animated: true });
   });
 }
 
@@ -249,8 +251,8 @@ export function useAboveKeyboard(still = false): AboveKeyboard {
     scroll?.resized.add(lift);
     // Next on the keys moves focus without the keys going up again.
     const unwatchFocus = watchFocusedField(lift);
-    const fromTop = (done: (y: number | null) => void) => {
-      if (stillNow.current) done(null);
+    const fromTop = (done: (lift: LiftFromTop) => void) => {
+      if (stillNow.current) done('stays');
       else measureLift(scroll, ref.current, keyboardTop.current, done, 0);
     };
     scroll?.lifts.add(fromTop);
@@ -1010,11 +1012,11 @@ export function useScreenScrollView() {
     lifts,
     settle: () => {
       const measured = [...lifts].map(
-        (measure) => new Promise<number | null>((resolve) => measure(resolve)),
+        (measure) => new Promise<LiftFromTop>((resolve) => measure(resolve)),
       );
       void Promise.all(measured).then((ys) => {
-        const y = Math.max(0, ...ys.filter((each) => each != null));
-        if (y !== offset.current) scrollView.current?.scrollTo({ y, animated: true });
+        const y = settleLifts(ys, offset.current);
+        if (y != null) scrollView.current?.scrollTo({ y, animated: true });
       });
     },
     focusedGroup: new Set(),
