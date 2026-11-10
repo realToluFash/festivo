@@ -37,7 +37,7 @@ final readonly class RecoveryApprovalController
 
         return new JsonResponse(['requests' => Vec\map(
             $this->recoveryDecisions->waitingFor($approver),
-            fn (TwoFactorRecovery $recovery): array => $this->recoveryView->request($recovery, $approver),
+            fn (TwoFactorRecovery $recovery): array => $this->recoveryView->request($recovery, $approver, $this->recoveryDecisions->answerableIn($approver, $recovery)),
         )]);
     }
 

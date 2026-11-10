@@ -171,6 +171,8 @@ export interface RecoveryRequest {
   provedPhone: boolean;
   own: boolean;
   organisations: string[];
+  /** The organisations whose Members show it to this reader. */
+  organisationIds: string[];
   asked: string | null;
   expires: string | null;
 }
@@ -4162,6 +4164,7 @@ function asRecoveryRequest(raw: unknown): RecoveryRequest | null {
     provedPhone: candidate.provedPhone === true,
     own: candidate.own === true,
     organisations: strings(candidate.organisations),
+    organisationIds: strings(candidate.organisationIds),
     asked: optionalString(candidate.asked),
     expires: optionalString(candidate.expires),
   };

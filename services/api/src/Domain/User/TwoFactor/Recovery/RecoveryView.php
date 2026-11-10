@@ -67,8 +67,12 @@ final readonly class RecoveryView
         ];
     }
 
-    /** @return array<string, mixed> one request on the approver's card */
-    public function request(TwoFactorRecovery $recovery, User $approver): array
+    /**
+     * @param list<Organisation> $shownIn named by id, since two organisations can share a name (sc-30894)
+     *
+     * @return array<string, mixed> one request on the approver's card
+     */
+    public function request(TwoFactorRecovery $recovery, User $approver, array $shownIn): array
     {
         $user = $recovery->getUser();
         $own = $user->getId()->equals($approver->getId());
@@ -81,6 +85,7 @@ final readonly class RecoveryView
             'provedPhone' => null !== $recovery->getPhoneNumber(),
             'own' => $own,
             'organisations' => self::names($shared),
+            'organisationIds' => Vec\map($shownIn, static fn (Organisation $organisation): string => $organisation->getId()->toRfc4122()),
             ...$this->times($recovery, $approver),
         ];
     }
