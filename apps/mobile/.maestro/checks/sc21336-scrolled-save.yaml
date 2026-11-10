@@ -8,7 +8,7 @@ appId: host.exp.Exponent
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'events.page.edit'
+      id: 'events.details.name'
     direction: DOWN
     visibilityPercentage: 100
 - swipe:
@@ -17,7 +17,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - takeScreenshot: scrolled
 - tapOn:
-    id: 'events.page.edit'
+    id: 'events.details.name'
 - extendedWaitUntil:
     visible:
       id: 'eventForm.name'
@@ -50,7 +50,7 @@ appId: host.exp.Exponent
 - assertVisible: '{{t:eventEdit.saved}}'
 - scrollUntilVisible:
     element:
-      id: 'events.page.edit'
+      id: 'events.details.name'
     direction: DOWN
     visibilityPercentage: 100
 - swipe:
@@ -58,7 +58,7 @@ appId: host.exp.Exponent
     end: 50%, 55%
 - waitForAnimationToEnd
 - tapOn:
-    id: 'events.page.edit'
+    id: 'events.details.name'
 - extendedWaitUntil:
     visible:
       id: 'eventForm.name'

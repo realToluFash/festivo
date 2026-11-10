@@ -2,7 +2,7 @@ import type { ListedEvent } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { listEventOf, rowTag, shownEvent } from './eventsList.ts';
+import { cardStep, listEventOf, rowTag, shownEvent } from './eventsList.ts';
 
 const t = ((key: string) => key) as unknown as TFunction;
 
@@ -61,5 +61,28 @@ describe('rowTag', () => {
     expect(rowTag(shown('draft'), true, t)?.word).toBe('eventsScreen.draft');
     expect(rowTag(shown('live'), true, t)?.word).toBe('eventsScreen.live');
     expect(rowTag(shown('finished'), true, t)?.word).toBe('eventsScreen.finished');
+  });
+});
+
+describe('cardStep', () => {
+  const NOW = new Date('2026-11-10T12:00:00Z');
+  const unread = (phase: Parameters<typeof shownEvent>[1]) =>
+    shownEvent({ ...listEventOf(EVENT), milestones: null }, phase);
+
+  it('offers no step for a live event whose milestones are still unread, never Duplicate', () => {
+    expect(cardStep(unread('live'), NOW, 'en', t)).toBeNull();
+    expect(cardStep(unread('happening_now'), NOW, 'en', t)).toBeNull();
+  });
+
+  it('offers Duplicate once a live event has no milestone left', () => {
+    expect(cardStep(shownEvent(listEventOf(EVENT), 'live'), NOW, 'en', t)).toMatchObject({
+      action: 'duplicate',
+    });
+  });
+
+  it('does not wait on milestones where the phase alone decides the step', () => {
+    expect(cardStep(unread('draft'), NOW, 'en', t)).toMatchObject({ action: 'makeLive' });
+    expect(cardStep(unread('paused'), NOW, 'en', t)).toMatchObject({ action: 'resume' });
+    expect(cardStep(unread('finished'), NOW, 'en', t)).toMatchObject({ action: 'duplicate' });
   });
 });

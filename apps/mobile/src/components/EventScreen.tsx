@@ -1,5 +1,5 @@
 import type { Membership, OrganisationEvent } from '@soirely/api-client';
-import { type EventArea, rememberTabHolding, roleHolds } from '@soirely/domain';
+import { type EventArea, rememberTabHolding, roleHolds, takesCardStep } from '@soirely/domain';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -22,7 +22,8 @@ import { AppFrame, BackButton } from './AppFrame.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { EventNotFound, EventPage, EventTop, EventsFailed, usePhaseOf } from './Events.tsx';
+import { EventPage } from './EventPage.tsx';
+import { EventNotFound, EventTop, EventsFailed, usePhaseOf } from './Events.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { Refreshing } from './Refreshing.tsx';
@@ -140,6 +141,7 @@ export function EventScreen({
             kind={kind}
             event={event}
             manages={manages}
+            takes={(action) => organisation != null && takesCardStep(organisation, action)}
             onChange={change}
             onEdit={onEdit}
             onDuplicate={onDuplicate}

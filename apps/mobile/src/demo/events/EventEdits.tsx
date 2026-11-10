@@ -23,6 +23,7 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { EventMesh } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
+import { AlertLine } from '../../components/AlertLine.tsx';
 import { LineIcon } from '../../components/AccountCard.tsx';
 import { PhotoFill } from '../../components/EventCard.tsx';
 import { EventNotice } from './EventNotice.tsx';
@@ -64,6 +65,8 @@ import {
   RowList,
   TextAction,
 } from '../../components/Summary.tsx';
+
+export { AlertLine };
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
@@ -172,23 +175,6 @@ function EditShell({
     >
       {children}
     </FocusedScreen>
-  );
-}
-
-export function AlertLine({ text, small = false }: { text: string; small?: boolean }) {
-  return (
-    <View style={styles.alert} accessibilityRole="alert">
-      <View style={small ? styles.alertMarkSmall : styles.alertMark}>
-        <Glyph name="alert" size={15} ink={tokens.colorBroken} weight={2.2} />
-      </View>
-      <Text
-        size={small ? 13.5 : 14}
-        weight="medium"
-        style={[styles.grow, styles.broken, small ? styles.hint : styles.said]}
-      >
-        {text}
-      </Text>
-    </View>
   );
 }
 
@@ -1289,11 +1275,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   searchRow: { flexDirection: 'row' },
   secondary: { color: tokens.colorInkSecondary },
-  broken: { color: tokens.colorBroken },
   pressed: { opacity: tokens.opacityPressed },
-  alert: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
-  alertMark: { paddingTop: tokens.spaceHair },
-  alertMarkSmall: { paddingTop: 1 },
   fieldHead: { flexDirection: 'row', flexWrap: 'wrap' },
   figures: { fontVariant: ['tabular-nums'] },
   acPill: {

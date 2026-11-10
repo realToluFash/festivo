@@ -1,13 +1,9 @@
 import {
   type Milestone,
   type EventType,
-  endLabel,
-  eventAllows,
   eventPhase,
   eventsHome,
-  formatEventRange,
   formatWallDay,
-  hostsLine,
   wallDay,
 } from '@soirely/domain';
 import { t } from 'i18next';
@@ -21,13 +17,20 @@ import {
   TAB_WORD,
   cardStep as productCardStep,
   cardTags as productCardTags,
-  dayCount,
   daysWords as productDaysWords,
   howSoon as productHowSoon,
   rowLine as productRowLine,
   rowTag as productRowTag,
   shownEvent as productShownEvent,
 } from '../../kit/eventsList.ts';
+import {
+  type ManageKey,
+  type RowWords,
+  datesRow as productDatesRow,
+  hostsRow as productHostsRow,
+  manageOf as productManageOf,
+  scheduleLocked as productScheduleLocked,
+} from '../../kit/eventOverview.ts';
 import { CLOCKS, READER_ZONE, type SampleEvent, TYPE_WORDS } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { CHANGES_STATES, FINAL_NUMBERS_STATES, kitchenOwed, othersOwed } from './FinalNumbers.ts';
@@ -165,46 +168,26 @@ export function datesOf(event: Omit<SampleEvent, 'photo'>, now: Date): Milestone
   ];
 }
 
-export function cardStep(event: Shown, now: Date, locale: string): CardStep {
+export function cardStep(event: Shown, now: Date, locale: string): CardStep | null {
   return productCardStep(event, now, locale, t);
 }
 
-export type ManageKey = 'duplicate' | 'pause' | 'callOff' | 'endNow' | 'delete';
+export type { ManageKey };
 
-/** Only what event-states.json allows the phase; Resume is the paused card's step, so it is not repeated here. */
 export function manageOf(event: Shown, now: Date): ManageKey[] {
-  const end = endLabel(event, event.phase, now);
-
-  return [
-    'duplicate',
-    ...(eventAllows(event.phase, 'pause') ? (['pause'] as const) : []),
-    ...(end == null ? [] : [end]),
-    ...(eventAllows(event.phase, 'delete') ? (['delete'] as const) : []),
-  ];
+  return productManageOf(event, event.phase, now);
 }
 
 export function scheduleLocked(event: Shown): boolean {
-  return !eventAllows(event.phase, 'edit_schedule');
+  return productScheduleLocked(event.phase);
 }
 
-export function datesRow(event: Shown, locale: string): { title: string; line: string } {
-  const range = formatEventRange(event.startsAt, event.endsAt, event.timeZone, locale);
-
-  if (scheduleLocked(event)) return { title: range, line: `${W.dates} · ${W.scheduleLocked}` };
-
-  const count = dayCount(event);
-  const parts = [W.dates, ...(count > 1 ? [say.dayCount(count)] : []), event.timeZone];
-
-  return { title: range, line: parts.join(' · ') };
+export function datesRow(event: Shown, locale: string): RowWords {
+  return productDatesRow(event, event.phase, locale, t);
 }
 
-export function hostsRow(
-  event: Omit<SampleEvent, 'photo'>,
-  locale: string,
-): { title: string; line: string } {
-  return event.hosts.length === 0
-    ? { title: W.noHosts, line: `${W.hostedBy} · ${W.noHostsLine}` }
-    : { title: hostsLine(event.hosts, locale), line: W.hostedBy };
+export function hostsRow(event: Omit<SampleEvent, 'photo'>, locale: string): RowWords {
+  return productHostsRow(event.hosts, locale, t);
 }
 
 export function needsName(event: SampleEvent): boolean {

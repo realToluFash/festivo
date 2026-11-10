@@ -16,13 +16,13 @@ appId: host.exp.Exponent
     id: 'events.row.${DRAFT}'
 - extendedWaitUntil:
     visible:
-      id: 'events.draftRow'
+      id: 'events.card'
     timeout: 30000
 - assertVisible:
     id: 'events.phase.draft'
 - takeScreenshot: draft
 - tapOn:
-    id: 'events.makeLive'
+    id: 'events.card.step'
 - extendedWaitUntil:
     visible:
       id: 'events.makeLiveSheet'
@@ -47,11 +47,12 @@ appId: host.exp.Exponent
     id: 'events.row.${PAST}'
 - extendedWaitUntil:
     visible:
-      id: 'events.draftLine'
+      id: 'events.card'
     timeout: 30000
-- assertVisible: '{{t:eventLive.endPassed}}'
-- assertNotVisible:
-    id: 'events.makeLive'
+- assertVisible: '{{t:eventsScreen.nextChangeDates}}'
+- assertVisible:
+    id: 'events.card.step'
+    text: '{{t:eventLive.changeDates}}'
 - takeScreenshot: past-end
 - openLink: ${METRO_URL}/--/events
 - scrollUntilVisible:
@@ -63,10 +64,10 @@ appId: host.exp.Exponent
     id: 'events.row.${EVENT}'
 - extendedWaitUntil:
     visible:
-      id: 'events.makeLive'
+      id: 'events.card.step'
     timeout: 30000
 - tapOn:
-    id: 'events.makeLive'
+    id: 'events.card.step'
 - extendedWaitUntil:
     visible:
       id: 'events.makeLiveYes'
@@ -78,9 +79,9 @@ appId: host.exp.Exponent
       id: 'events.phase.live'
     timeout: 20000
 - assertNotVisible:
-    id: 'events.makeLive'
+    id: 'events.card.step'
 - assertNotVisible:
-    id: 'events.draftRow'
+    id: 'events.phase.draft'
 - takeScreenshot: made-live
 - runFlow:
     when:

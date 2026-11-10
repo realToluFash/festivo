@@ -283,7 +283,7 @@ describe('the page', () => {
       line: 'Dates · Europe/Madrid',
     });
     expect(datesRow(shown('evt-wed-4', finished), LOCALE).line).toBe(
-      'Dates · This event is over, so its start, end and time zone can’t be changed.',
+      "Dates · This event is over, so its start, end and time zone can't be changed.",
     );
   });
 

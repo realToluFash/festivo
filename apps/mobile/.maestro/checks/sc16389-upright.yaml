@@ -52,13 +52,13 @@ appId: host.exp.Exponent
     id: 'events.row.${LIVE}'
 - extendedWaitUntil:
     visible:
-      id: 'events.draftRow'
+      id: 'events.card'
     timeout: 20000
 - assertVisible:
-    id: 'events.makeLive'
+    id: 'events.card.step'
 - takeScreenshot: draft-page
 - tapOn:
-    id: 'events.makeLive'
+    id: 'events.card.step'
 - extendedWaitUntil:
     visible:
       id: 'events.makeLiveYes'
@@ -71,9 +71,9 @@ appId: host.exp.Exponent
       id: 'events.phase.live'
     timeout: 20000
 - assertNotVisible:
-    id: 'events.makeLive'
+    id: 'events.card.step'
 - assertNotVisible:
-    id: 'events.draftRow'
+    id: 'events.phase.draft'
 - takeScreenshot: made-live
 - tapOn:
     id: 'events.back'
