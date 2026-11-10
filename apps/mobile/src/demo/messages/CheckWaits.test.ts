@@ -143,7 +143,7 @@ describe('the check with credits enough (pm #36950)', () => {
       { key: 'sms', count: 28 },
       { key: 'wa', count: 3 },
     ]);
-    expect(both).toMatchObject({ credits: 31, after: '1,469', cantTell: 2 });
+    expect(both).toMatchObject({ credits: 39, after: '1,461', cantTell: 2 });
     expect(checkOf(draft)).toMatchObject({ credits: 31, after: '1,469' });
   });
 });

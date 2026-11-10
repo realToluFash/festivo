@@ -21,9 +21,11 @@ import {
   SUBJECT_MOST,
   matchesNobody,
   toChip,
+  whatsAppLine,
 } from './MessagesModel.ts';
 import { formatCount, piecesOf } from './MessagesSample.ts';
 import { keepWhole, outsideToken, tokenText } from './TokenText.ts';
+import { WhatsAppReach } from './WhatsAppParts.tsx';
 import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 
 const INK2 = tokens.colorInkSecondary;
@@ -201,6 +203,7 @@ export function ToHead({
           ))}
         </View>
       </View>
+      {draft.channels.wa && <WhatsAppReach line={whatsAppLine(draft.to)} />}
     </View>
   );
 }

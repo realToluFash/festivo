@@ -13,6 +13,7 @@ import { MessageGlyph } from './MessageMarks.tsx';
 import { type Draft, checkOf, dayWords } from './MessagesModel.ts';
 import { RESEND, formatCount, BALANCE } from './MessagesSample.ts';
 import type { ResendView } from './Reach.ts';
+import { WhatsAppReach } from './WhatsAppParts.tsx';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { WaitBlock } from './WaitBlock.tsx';
 
@@ -172,6 +173,7 @@ export function CheckCard({
           ))}
         </View>
       )}
+      {check.reach != null && <WhatsAppReach line={check.reach} />}
       {check.smsOff > 0 && (
         <Text size={14} weight="semibold" style={styles.line}>
           {say.smsOff(check.smsOff)}

@@ -186,6 +186,27 @@ export const GW = {
   keepTheirs: 'Keep their reply',
   recorded: 'Reply recorded. It counts like any other reply.',
 
+  whatsApp: 'WhatsApp',
+  notAgreed: 'Has not agreed to WhatsApp',
+  guestAgreed: 'The guest agreed to WhatsApp',
+  agreedToWhatsApp: 'Agreed to WhatsApp',
+  agreedOn: (date: string) => `Agreed to WhatsApp on ${date}`,
+  /** Three whole keys, one per How? answer (pm #36836): never built from pieces. */
+  agreedHost: {
+    'In person': (name: string, date: string) =>
+      `Agreed to WhatsApp in person, recorded by ${name} on ${date}`,
+    'By phone': (name: string, date: string) =>
+      `Agreed to WhatsApp by phone, recorded by ${name} on ${date}`,
+    'In writing': (name: string, date: string) =>
+      `Agreed to WhatsApp in writing, recorded by ${name} on ${date}`,
+  },
+  optedOut: (date: string) => `Unsubscribed from WhatsApp on ${date}`,
+  onlyTheGuest: 'Only the guest can change this.',
+  forAgreed: (name: string, mobile: string) =>
+    `For ${name}, on ${mobile}. It will show as recorded by you.`,
+  howAgreed: 'How?',
+  howAgreedBlank: 'Choose how they agreed.',
+
   openList: 'Open the guest list',
   numbersLead: (coming: number, invited: number) =>
     `${figure(coming)} coming of ${figure(invited)} invited. Each number opens the guests it counts.`,

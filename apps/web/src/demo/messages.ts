@@ -119,6 +119,9 @@ export const MESSAGE_STATES = [
   { key: 'editSent', name: 'Not saved: already sent' },
   { key: 'editCancelled', name: 'Not saved: cancelled' },
   { key: 'editTooLate', name: 'Not saved: too late to send' },
+  { key: 'whatsAppLine', name: 'WhatsApp ticked: who it reaches' },
+  { key: 'checkWhatsApp', name: 'The check, with WhatsApp' },
+  { key: 'whatsAppRead', name: 'WhatsApp’s receipts' },
   ...WAITS_STATES,
 ] as const;
 
@@ -171,7 +174,14 @@ export type Channel = 'email' | 'sms' | 'whatsApp';
 export type Where = 'page' | Channel;
 export type GuestId = 'ines' | 'lucia' | 'kwame' | 'marta';
 export type ConvoId =
-  GuestId | 'unknown' | 'parking' | 'invite' | SentToId | `sched${string}` | `new${string}`;
+  | GuestId
+  | 'unknown'
+  | 'parking'
+  | 'invite'
+  | 'receipts'
+  | SentToId
+  | `sched${string}`
+  | `new${string}`;
 
 export interface SampleGuest {
   initials: string;
@@ -418,6 +428,99 @@ const SMS_ONLY: readonly Untellable[] = [
 
 export type Ticks = Record<Channel, boolean>;
 
+type Sample = 'all' | 'coming' | 'notReplied';
+
+/** Which of the boards' three samples an audience counts as: All guests, Hasn't replied alone, or Coming (every other). */
+function sampleOf(audience: Audience): Sample {
+  if (audience.kind === 'all') return 'all';
+
+  return audience.conditions[0] === 'notReplied' && audience.conditions.length === 1
+    ? 'notReplied'
+    : 'coming';
+}
+
+/** sc-3928's utility credits for one WhatsApp message, by the number's calling code. */
+const UTILITY_CREDITS: readonly { code: string; country: string; credits: number }[] = [
+  { code: '+234', country: 'Nigeria', credits: 2 },
+  { code: '+55', country: 'Brazil', credits: 2 },
+  { code: '+52', country: 'Mexico', credits: 2 },
+  { code: '+44', country: 'United Kingdom', credits: 5 },
+  { code: '+33', country: 'France', credits: 5 },
+  { code: '+34', country: 'Spain', credits: 4 },
+  { code: '+49', country: 'Germany', credits: 9 },
+];
+
+export function whatsAppCredits(number: string): number {
+  return UTILITY_CREDITS.find((one) => number.startsWith(`${one.code} `))?.credits ?? 0;
+}
+
+export const WHATSAPP_NUMBERS: Readonly<Record<string, string>> = {
+  lucia: '+34 612 345 678',
+  kwame: '+44 7700 900412',
+  duboise: '+234 802 555 0199',
+  rafael: '+55 21 99555 0142',
+};
+
+interface WhatsAppSample {
+  reaches: readonly string[];
+  noMobile: number;
+  stopped: number;
+  notAgreed: number;
+}
+
+/** WhatsApp per audience (sc-3950 spec §4): the guests it reaches, then each guest it can't, counted once. */
+const WHATSAPP: Record<Sample, WhatsAppSample> = {
+  all: {
+    reaches: ['lucia', 'kwame', 'duboise', 'rafael'],
+    noMobile: 102,
+    stopped: 2,
+    notAgreed: 34,
+  },
+  coming: { reaches: ['lucia', 'kwame', 'rafael'], noMobile: 65, stopped: 1, notAgreed: 27 },
+  notReplied: { reaches: ['duboise'], noMobile: 16, stopped: 0, notAgreed: 8 },
+};
+
+export function whatsAppCreditsFor(ids: readonly string[]): number {
+  return ids.reduce((sum, id) => sum + whatsAppCredits(WHATSAPP_NUMBERS[id] ?? ''), 0);
+}
+
+export interface WhatsAppReach {
+  reaches: number;
+  of: number;
+  noMobile: number;
+  stopped: number;
+  notAgreed: number;
+  credits: number;
+}
+
+export function whatsAppOf(audience: Audience): WhatsAppReach {
+  const { reaches, noMobile, stopped, notAgreed } = WHATSAPP[sampleOf(audience)];
+
+  return {
+    reaches: reaches.length,
+    of: reaches.length + noMobile + stopped + notAgreed,
+    noMobile,
+    stopped,
+    notAgreed,
+    credits: whatsAppCreditsFor(reaches),
+  };
+}
+
+export function whatsAppLine(audience: Audience): string {
+  const reach = whatsAppOf(audience);
+
+  const cant = [
+    ...(reach.noMobile > 0 ? [many('noMobile', reach.noMobile)] : []),
+    ...(reach.stopped > 0 ? [many('stoppedCount', reach.stopped)] : []),
+    ...(reach.notAgreed > 0 ? [many('notAgreedWhatsApp', reach.notAgreed)] : []),
+  ];
+
+  return [
+    filled(MW.whatsAppReaches, { count: reach.reaches, total: reach.of }),
+    ...(cant.length > 0 ? [listed(cant)] : []),
+  ].join(' · ');
+}
+
 /** Each audience's notices per channel and who no ticked channel reaches: the boards' sample (Web-1 and Web-4). */
 export function figuresOf(
   audience: Audience,
@@ -428,10 +531,11 @@ export function figuresOf(
   names: readonly Untellable[];
   smsOff: number;
 } {
+  const sample = sampleOf(audience);
   const base =
-    audience.kind === 'all'
+    sample === 'all'
       ? { counts: { email: 124, sms: 39, whatsApp: 4 }, cantTell: 9, names: [TOMAS, SOPHIE] }
-      : audience.conditions[0] === 'notReplied' && audience.conditions.length === 1
+      : sample === 'notReplied'
         ? { counts: { email: 23, sms: 9, whatsApp: 1 }, cantTell: 1, names: [MEI] }
         : { counts: { email: 92, sms: 31, whatsApp: 3 }, cantTell: 2, names: [TOMAS, JOAQUIN] };
   const notReplied = audience.kind === 'who' && audience.conditions[0] === 'notReplied';
@@ -459,6 +563,7 @@ export interface Check {
   cantTell: number;
   cant: readonly Untellable[];
   credits: string | null;
+  whatsApp: string | null;
 }
 
 /** The check before it goes (sc-3942, sc-3963): who is told and how, who cannot be, and the credits. */
@@ -466,7 +571,8 @@ export function checkOf(audience: Audience, ticks: Ticks, groups: readonly Group
   const count = countOf(audience, groups) ?? 0;
   const { counts, cantTell, names, smsOff } = figuresOf(audience, ticks);
   const on = CHANNELS.filter((channel) => ticks[channel]);
-  const credits = (ticks.sms ? counts.sms : 0) + (ticks.whatsApp ? counts.whatsApp : 0);
+  const credits =
+    (ticks.sms ? counts.sms : 0) + (ticks.whatsApp ? whatsAppOf(audience).credits : 0);
   const by = on.map((channel) =>
     channel === 'email' ? MW.byEmail : channel === 'sms' ? MW.bySms : MW.byWhatsApp,
   );
@@ -485,6 +591,7 @@ export function checkOf(audience: Audience, ticks: Ticks, groups: readonly Group
         : credits === 0
           ? MW.emailNoCredits
           : `${ticks.whatsApp ? many('textsAndWhatsAppUse', credits) : many('textsUse', credits)} ${after}`,
+    whatsApp: ticks.whatsApp ? whatsAppLine(audience) : null,
   };
 }
 
@@ -871,7 +978,7 @@ export const PARKING_SEEN = 87;
 export const INVITE_REACH = { reached: 140, of: GUESTS_N, seen: 121 };
 
 export function reachedOfThread(thread: ConvoId): ReachedOf {
-  return thread === 'parking' || thread === 'invite' ? thread : 'new';
+  return thread === 'parking' || thread === 'invite' || thread === 'receipts' ? thread : 'new';
 }
 
 export function phoneProblem(value: string): string | null {
@@ -923,10 +1030,122 @@ export function updatedPerson(person: Unreached, updates: readonly Saved[]): Unr
   };
 }
 
+/** Parking's shape told by email and WhatsApp (sc-3950 spec §3's sample), for WhatsApp's receipts. */
+export const RECEIPTS = {
+  ticks: { email: true, sms: false, whatsApp: true } as Ticks,
+  reached: 124,
+  cant: 18,
+  emailAt: '18:21',
+};
+
+/** Boards v515: nothing held, so WhatsApp went with the email, 18:20 to 18:24. */
+const RECEIPT: Record<string, Line> = {
+  lucia: { mark: 'sent', word: `${MW.whatsApp} · ${MW.sent}`, why: '18:20' },
+  duboise: { mark: 'delivered', word: `${MW.whatsApp} · ${MW.delivered}`, why: '18:21' },
+  kwame: { mark: 'delivered', word: `${MW.whatsApp} · ${MW.read}`, why: '18:24' },
+  rafael: { mark: 'bounced', word: `${MW.whatsApp} · ${MW.failedReceipt}` },
+};
+
+const RECEIPTS_FOR: readonly (readonly [string, string])[] = [
+  ['lucia', 'Lucía Ortega'],
+  ['duboise', 'Duboise Akande'],
+  ['kwame', 'Kwame Mensah'],
+  ['rafael', 'Rafael Costa'],
+];
+
+export function receiptPeople(): readonly Unreached[] {
+  return RECEIPTS_FOR.map(([id, name]) =>
+    person(
+      id,
+      name,
+      'none',
+      [
+        { mark: 'delivered', word: `${MW.email} · ${MW.delivered}`, why: RECEIPTS.emailAt },
+        RECEIPT[id] ?? { mark: 'sent', word: `${MW.whatsApp} · ${MW.sent}` },
+      ],
+      [],
+    ),
+  );
+}
+
+/** Not reached on any channel, each with WhatsApp's reason (`opted_out`, `no_whatsapp_consent`). */
+export const RECEIPTS_UNREACHED: readonly Unreached[] = [
+  person(
+    'amaka',
+    'Amaka Eze',
+    'cant',
+    [
+      NO_EMAIL,
+      { mark: 'notsent', word: `${MW.whatsApp} · ${MW.notSent}`, why: MW.hasNotAgreedWhatsApp },
+    ],
+    [],
+  ),
+  person(
+    'sophie',
+    'Sophie Laurent',
+    'cant',
+    [
+      optedOut('email'),
+      { mark: 'optout', word: `${MW.whatsApp} · ${MW.notSent}`, why: MW.stoppedWhatsApp },
+    ],
+    [],
+  ),
+];
+
+export const RECEIPTS_REACH: Reach = {
+  reached: RECEIPTS.reached,
+  of: GUESTS_N,
+  seen: PARKING_SEEN,
+  parts: [
+    { kind: 'reached', count: RECEIPTS.reached },
+    { kind: 'cant', count: RECEIPTS.cant },
+  ],
+};
+
+const RECEIPTS_REACHED: readonly Unreached[] = [
+  person(
+    'ines',
+    'Inês Duarte',
+    'none',
+    [{ mark: 'delivered', word: `${MW.email} · ${MW.delivered}`, why: RECEIPTS.emailAt }],
+    [],
+    { mark: 'delivered', word: MW.theirPage, why: filled(MW.seen, { time: '09:20' }) },
+  ),
+];
+
+/** The receipts' Who it reached (boards v509): its WhatsApp four as their own group, never a filter, then Can't be told and Reached. */
+function receiptsWho(): Who {
+  const four = receiptPeople();
+
+  return {
+    reach: RECEIPTS_REACH,
+    line: reachLine(RECEIPTS_REACH),
+    groups: [
+      { key: 'whatsApp', name: MW.whatsApp, people: four, count: four.length, more: 0 },
+      {
+        key: 'cant',
+        name: MW.legendCantBeTold,
+        people: RECEIPTS_UNREACHED,
+        count: RECEIPTS.cant,
+        more: RECEIPTS.cant - RECEIPTS_UNREACHED.length,
+      },
+      { key: 'told', name: MW.markedAsTold, people: [], count: 0, more: 0 },
+      {
+        key: 'reached',
+        name: MW.legendReached,
+        people: RECEIPTS_REACHED,
+        count: RECEIPTS.reached,
+        more: RECEIPTS.reached - RECEIPTS_REACHED.length,
+      },
+    ],
+    waiting: [],
+  };
+}
+
 export type Show = 'everyone' | 'notReached' | 'reached' | 'told' | Kind;
 
 export interface ReachGroup {
-  key: 'reached' | 'told' | Kind;
+  key: 'reached' | 'told' | 'whatsApp' | Kind;
   name: string;
   people: readonly Unreached[];
   count: number;
@@ -947,6 +1166,8 @@ function baseOf(of: ReachedOf): readonly Unreached[] {
 
 /** Who it reached for one message: its summary, its groups in Everyone's order, and who a resend is for; `groups` are the event's own. */
 export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: readonly Group[]): Who {
+  if (of === 'receipts') return receiptsWho();
+
   const marks = inbox.marked[thread] ?? [];
   const mine = (one: Unreached) => updatedPerson(one, savedOn(inbox, one.id, thread));
   const people = baseOf(of)
@@ -1057,7 +1278,7 @@ export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: read
 }
 
 function isNotReached(group: ReachGroup): boolean {
-  return group.key !== 'told' && group.key !== 'reached';
+  return group.key !== 'told' && group.key !== 'reached' && group.key !== 'whatsApp';
 }
 
 export interface ShowItem {
@@ -1179,7 +1400,9 @@ export function resendOf(
     cant: shown.map((one) =>
       [one.name, ...one.lines.slice(0, -1).map((line) => line.why ?? line.word)].join(' · '),
     ),
-    credits: (ticks.sms ? phones : 0) + (ticks.whatsApp && phones > 0 ? 1 : 0),
+    credits:
+      (ticks.sms ? phones : 0) +
+      (ticks.whatsApp ? whatsAppCreditsFor(tellable.map((one) => one.id)) : 0),
   };
 }
 
@@ -1235,7 +1458,7 @@ export interface Answer {
   notice?: 'held' | 'tooLate';
 }
 
-export type ReachedOf = 'parking' | 'invite' | 'new';
+export type ReachedOf = 'parking' | 'invite' | 'receipts' | 'new';
 
 export type Pane =
   | { kind: 'idle' }
@@ -1443,7 +1666,19 @@ export function seedOf(state: MessagesState | null): Inbox {
     updates: { [id]: [{ fix, address, sentOn: [], laterOn: [], ...more }] },
   });
 
+  const allTicked: Ticks = { email: true, sms: true, whatsApp: true };
+
   switch (state) {
+    case 'whatsAppLine':
+      return compose(base, { kind: 'all' }, 'write', allTicked);
+    case 'checkWhatsApp':
+      return compose(base, { kind: 'all' }, 'check', allTicked);
+    case 'whatsAppRead':
+      return {
+        ...base,
+        present: ALL.map((id) => (id === 'parking' ? 'receipts' : id)),
+        pane: { kind: 'reached', of: 'receipts', thread: 'receipts' },
+      };
     case 'first':
     case 'closedDraft':
       return { ...base, present: [] };
@@ -1825,6 +2060,14 @@ export function rowOf(inbox: Inbox, id: ConvoId, groups: readonly Group[]): Row 
         ? null
         : { kind: 'waiting', word: filled(MW.notReached, { count: inbox.unreached.length }) },
     );
+  if (id === 'receipts')
+    return manyRow(
+      id,
+      PARKING.subject,
+      `${MW.toAll} · ${many('didntGetIt', RECEIPTS.cant)}`,
+      PARKING.row,
+      { kind: 'waiting', word: filled(MW.notReached, { count: RECEIPTS.cant }) },
+    );
   if (id === 'invite')
     return manyRow(
       id,
@@ -1937,6 +2180,7 @@ export function sectionsOf(inbox: Inbox, groups: readonly Group[]): Sections {
     if (id !== arrived && here(id) && !inbox.done.includes(id))
       needs.push(rowOf(inbox, id, groups));
   if (here('parking') && inbox.unreached.length > 0) needs.push(rowOf(inbox, 'parking', groups));
+  if (here('receipts')) needs.push(rowOf(inbox, 'receipts', groups));
 
   const scheds = inbox.scheds.filter(
     (one) => (one.id !== 'sched' || here('sched')) && outsIn(inbox, one.id).length === 0,
@@ -2313,6 +2557,6 @@ export const TELL = {
     { channel: 'whatsApp', count: 4 },
   ] as const,
   cannot: 2,
-  credits: 34,
+  credits: 30 + whatsAppCreditsFor(WHATSAPP.all.reaches),
   movedTo: '2026-11-05T17:30:00Z',
 };

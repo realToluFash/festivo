@@ -437,10 +437,12 @@ export function GuestKitchenCheck({
   visit,
   words,
   actions,
+  box,
 }: {
   visit: Visit;
   words: Words;
   actions: GuestKitchenActions;
+  box?: ReactNode;
 }) {
   const say = useSay(visit);
   const { kitchen, view } = visit;
@@ -543,6 +545,7 @@ export function GuestKitchenCheck({
           );
         })}
       </div>
+      {box}
       {alert != null && <Notice kind="broken">{alert}</Notice>}
       <Filled busy={busy} focus="send" onClick={actions.send}>
         {words.send}

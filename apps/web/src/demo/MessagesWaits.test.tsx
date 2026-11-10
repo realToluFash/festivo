@@ -47,7 +47,7 @@ describe('the check with too few credits at a desk (sc-3963)', () => {
     expect(within(card).getByText('WhatsApp · 3')).toBeDefined();
     expect(
       within(card).getByText(
-        'Texts and WhatsApp messages use 31 credits. Credits after sending: 1,469.',
+        'Texts and WhatsApp messages use 39 credits. Credits after sending: 1,461.',
       ),
     ).toBeDefined();
   });

@@ -31,11 +31,12 @@ import {
   refusalOf,
   resendOf,
   tokenWord,
+  whatsAppLine,
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
 import { LaterDialog } from './MessagesDialogs.tsx';
 import { InsertMenu } from './MessagesInsert.tsx';
-import { WhereGlyph } from './MessagesParts.tsx';
+import { WhatsAppReach, WhereGlyph } from './MessagesParts.tsx';
 import { Preview } from './MessagesPreview.tsx';
 import { PW } from './messagesPreviewWords.ts';
 import { StreamItems } from './MessagesStream.tsx';
@@ -144,6 +145,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
               ))}
             </div>
           </div>
+          {draft.ticks.whatsApp && <WhatsAppReach line={whatsAppLine(draft.to)} />}
         </header>
       )}
       {draft.step !== 'preview' && following ? (
@@ -565,6 +567,7 @@ export function CheckCard({
           ))}
         </ul>
       )}
+      {check.whatsApp != null && <WhatsAppReach line={check.whatsApp} />}
       {check.smsOff != null && <p className="mg-cant-head">{check.smsOff}</p>}
       {check.cantTell > 0 && (
         <div className="mg-cant">

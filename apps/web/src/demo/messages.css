@@ -1422,6 +1422,20 @@
   font: 500 13.5px/1.45 var(--fontFamily);
 }
 
+.mg-wa-reach {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 500 13.5px/1.45 var(--fontFamily);
+}
+
+.mg-wa-reach svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+}
+
 .mg-check-acts {
   display: flex;
   flex-wrap: wrap;
