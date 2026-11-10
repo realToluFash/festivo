@@ -1282,7 +1282,7 @@
     "removeTitle": "Remover {{domain}}?",
     "removeBody": "Quem usa {{domain}} deixa de poder pedir para aderir desta forma.",
     "keep": "Manter",
-    "addLabel": "Adicionar um domínio",
+    "addLabel": "Adicionar domínio",
     "add": "Adicionar domínio",
     "help_one": "Apenas o domínio do seu próprio endereço. O seu é {{email}}. Até {{count, number}} domínio.",
     "help_other": "Apenas o domínio do seu próprio endereço. O seu é {{email}}. Até {{count, number}} domínios.",
