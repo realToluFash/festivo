@@ -36,7 +36,7 @@ import {
   SectionFailed,
   TextAction,
 } from './Summary.tsx';
-import { Text } from './Text.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 /** The app's checkbox; its state is read by the control it sits in. */
 export function CheckMark({ on }: { on: boolean }) {
@@ -212,6 +212,7 @@ export function TwoFactorScreen({
   const [saved, setSaved] = useState(false);
   const code = useRef('');
   const field = useRef<TextInputInstance>(null);
+  const failure = useRef<TextHandle>(null);
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
 
@@ -249,7 +250,6 @@ export function TwoFactorScreen({
         cancels={false}
         onCancel={() => (saved ? onFinished() : undefined)}
         opener={opener}
-        titleTakesFocus={codes}
         testID="security.codes.screen"
       >
         <CodesBody codes={codes} phone={phone} saved={saved} onSaved={setSaved} />
@@ -273,6 +273,7 @@ export function TwoFactorScreen({
       onCancel={onClose}
       cancelTestID="security.setup.cancel"
       opener={opener}
+      focusFirst={failure}
       testID="security.setup.screen"
     >
       {enrolment != null && 'retry' in enrolment ? (
@@ -280,6 +281,7 @@ export function TwoFactorScreen({
           title={t('twoFactorCard.failedTitle')}
           line={t('twoFactorCard.failedBody')}
           onRetry={enrolment.retry}
+          titleRef={failure}
           testID="security.setup.retry"
         />
       ) : (

@@ -28,7 +28,7 @@ import { useTranslation } from 'react-i18next';
 
 import { SETTLED_MS, useWindowOrigin } from './Screen.tsx';
 import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
-import { useFocusBack, useWindowTurn } from './Sheet.tsx';
+import { useFocusBack, useUnnamedWindow, useWindowTurn } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { Toast } from './Toast.tsx';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
@@ -166,7 +166,7 @@ export function FocusedScreen({
   scrollRef,
   fills = false,
   gap = tokens.spaceLg,
-  titleTakesFocus,
+  focusFirst,
   children,
   testID,
 }: {
@@ -189,19 +189,19 @@ export function FocusedScreen({
   scrollRef?: Ref<ScrollViewInstance>;
   fills?: boolean;
   gap?: number;
-  /** The tap's answer this screen shows: once it is up, its title takes screen reader focus, again with each new answer (sc-11032). */
-  titleTakesFocus?: unknown;
+  /** A notice that takes screen reader focus in the title's place when it is already there as focus moves (sc-11032). */
+  focusFirst?: RefObject<ScreenReaderTarget | null>;
   children: ReactNode;
   testID?: string;
 }) {
   const layout = useShellLayout();
   const [onScreen, setOnScreen] = useState(false);
   if (!open && onScreen) setOnScreen(false);
-  const heading = useTitleTakesFocus(titleTakesFocus, onScreen);
   const insets = useSafeAreaInsets();
   const phone = layout === 'phone';
   const asking = ask != null;
   const covered = asking || over != null;
+  const heading = useTitleTakesFocus(title, onScreen, covered, focusFirst);
   const bottom = phone ? insets.bottom : 0;
   const cancel = waits ? stay : onCancel;
   const close = asking ? ask.onKeep : over != null ? over.onClose : cancel;
@@ -234,7 +234,7 @@ export function FocusedScreen({
             <FocusNav
               key={`${back ?? ''}:${title}`}
               title={title}
-              titleRef={heading.title}
+              titleRef={heading.heading}
               verb={verb}
               back={back}
               cancels={cancels}
@@ -275,39 +275,39 @@ export function FocusedScreen({
   );
 }
 
-/** Hidden from TalkBack until its window is announced, or until a new answer has replaced what held focus, so neither the window's name nor the view Android hands input focus to is read before the title (sc-11032). */
+/** Once its window is up, and again with each new title in a window that stays up, the title takes screen reader focus; a notice already there as focus moves takes it instead (sc-11032). */
 function useTitleTakesFocus(
-  answer: unknown,
+  title: string,
   onScreen: boolean,
-): { title: RefObject<TextHandle | null>; hidden: boolean } {
-  const title = useRef<TextHandle>(null);
-  const [revealed, setRevealed] = useState<unknown>(undefined);
-  if (!onScreen && revealed !== undefined) setRevealed(undefined);
-  const waiting = answer !== undefined && revealed !== answer;
+  covered: boolean,
+  first: RefObject<ScreenReaderTarget | null> | undefined,
+): { heading: RefObject<TextHandle | null>; hidden: boolean } {
+  const heading = useRef<TextHandle>(null);
+  const hidden = useUnnamedWindow(Platform.OS === 'android', onScreen, title);
+  const asked = useRef(covered);
+  useEffect(() => {
+    asked.current = covered;
+  });
 
   useEffect(() => {
-    if (!waiting || !onScreen) return;
-    const reveal = setTimeout(() => setRevealed(() => answer), SETTLED_MS / 2);
-
-    return () => clearTimeout(reveal);
-  }, [waiting, onScreen, answer]);
-
-  useEffect(() => {
-    if (answer === undefined || revealed !== answer) return;
+    if (!onScreen || hidden || asked.current) return;
 
     let gone = false;
     let focus: ReturnType<typeof setTimeout> | undefined;
     void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
-      if (on && !gone) focus = setTimeout(() => moveScreenReaderFocus(title.current), SETTLED_MS);
+      if (on && !gone)
+        focus = setTimeout(() => {
+          if (!asked.current) moveScreenReaderFocus(first?.current ?? heading.current);
+        }, SETTLED_MS);
     });
 
     return () => {
       gone = true;
       clearTimeout(focus);
     };
-  }, [answer, revealed]);
+  }, [onScreen, hidden, title, first]);
 
-  return { title, hidden: Platform.OS === 'android' && waiting };
+  return { heading, hidden };
 }
 
 /** In a list opened from the screen, ‹ and where it goes back to in Cancel's place; "Back" when the title needs the room, as iOS does. */

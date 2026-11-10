@@ -65,11 +65,12 @@ describe('a sheet whose heading takes focus as it opens (sc-11032)', () => {
 
   it('counts the hidden time from when Android has put the window up, not from the render', () => {
     expect(sheet).toContain('onShow={() => setOnScreen(true)}');
-    expect(sheet).toContain('if (!hides || !onScreen) return;');
+    expect(sheet).toContain('if (!hides || !onScreen || !waiting) return;');
   });
 
   it('stays hidden for a share of the settle time, long enough for TalkBack to name the window', () => {
-    const [, delay] = sheet.match(/setTimeout\(\(\) => setAnnounced\(true\), ([^)]+)\)/) ?? [];
+    const [, delay] =
+      sheet.match(/setTimeout\(\(\) => setAnnounced\(\{ step \}\), ([^)]+)\)/) ?? [];
 
     expect(delay).toMatch(/^SETTLED_MS( \/ [1-9]\d*)?$/);
   });
@@ -79,19 +80,10 @@ describe('a sheet whose heading takes focus as it opens (sc-11032)', () => {
   });
 });
 
-describe('a focused screen whose title takes focus with the answer it shows (sc-11032)', () => {
+describe('a focused screen whose title takes focus with each new step (sc-11032)', () => {
   const screen = readFileSync(join(import.meta.dirname, 'SummaryOverlays.tsx'), 'utf8');
-  const security = readFileSync(join(import.meta.dirname, 'SecurityTwoFactor.tsx'), 'utf8');
 
-  it('hides from TalkBack until its window is up and has settled, then moves focus to the title', () => {
-    expect(screen).toContain('onShow={() => setOnScreen(true)}');
-    expect(screen).toContain('if (!waiting || !onScreen) return;');
-    expect(screen).toMatch(/covered \|\| heading\.hidden \? 'no-hide-descendants' : 'auto'/);
-    expect(screen).toContain('moveScreenReaderFocus(title.current)');
-    expect(screen).toContain('ref={titleRef}');
-  });
-
-  it('is how Save your recovery codes shows, after Make new codes and after Turn on', () => {
-    expect(security).toMatch(/titleTakesFocus=\{codes\}\s+testID="security\.codes\.screen"/);
+  it('hides on Android through the sheet’s own wait, restarted by each new title', () => {
+    expect(screen).toContain("useUnnamedWindow(Platform.OS === 'android', onScreen, title)");
   });
 });

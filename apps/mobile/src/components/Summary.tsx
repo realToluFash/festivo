@@ -465,11 +465,13 @@ export function SectionFailed({
   onRetry,
   testID,
   announce = true,
+  titleRef,
 }: {
   title: string;
   line?: string;
   onRetry: () => void;
   testID: string;
+  titleRef?: Ref<TextHandle>;
   /** False keeps the failure from being read out, as when it answers a Try again. */
   announce?: boolean;
 }) {
@@ -478,7 +480,7 @@ export function SectionFailed({
 
   return (
     <View style={styles.sectionFailed}>
-      <Text size={16} weight="semibold">
+      <Text ref={titleRef} size={16} weight="semibold">
         {title}
       </Text>
       {line != null && (
