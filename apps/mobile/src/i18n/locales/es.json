@@ -133,7 +133,7 @@
     "codeShort": "El código tiene 6 dígitos."
   },
   "verifyPhone": {
-    "title": "Revise sus mensajes",
+    "title": "Revise su móvil",
     "intro": "Hemos enviado un código por SMS a {{number}}.",
     "codeLabel": "Código del SMS",
     "submit": "Verificar número",
