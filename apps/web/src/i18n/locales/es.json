@@ -2034,8 +2034,8 @@
   },
   "requestLink": {
     "title": "Solicitudes para unirse",
-    "on": "Activadas",
-    "off": "Desactivadas",
+    "on": "Activado",
+    "off": "Desactivado",
     "switchLabel": "Solicitudes para unirse",
     "intro": "Cualquier persona con este enlace puede solicitar unirse a {{organisation}}. Alguien que pueda gestionar los miembros responde a cada solicitud. El enlace está desactivado hasta que lo active.",
     "linkLabel": "Enlace de solicitud",
