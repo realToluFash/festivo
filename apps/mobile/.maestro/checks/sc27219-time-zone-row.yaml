@@ -15,7 +15,7 @@ appId: host.exp.Exponent
 - takeScreenshot: tz-early
 # Settled once the row names the zone it holds, or says none is set.
 - extendedWaitUntil:
-    visible: '(?:{{t:account.zoneLine}}|{{t:timeZone.unset}})'
+    visible: '.*(?:{{t:account.zoneLine}}|{{t:timeZone.unset}}).*'
     timeout: 40000
 - scrollUntilVisible:
     element:
