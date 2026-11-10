@@ -72,6 +72,7 @@ import {
   startHelper,
   membershipChanges,
   keptOwner,
+  madeAccount,
   domainPause,
   STEP_MS,
   totp,
@@ -3793,5 +3794,23 @@ describe('missingCmdlineTools', () => {
     expect(message).toContain('/sdk/cmdline-tools/latest/bin');
     expect(message).toContain('developer.android.com/studio#command-tools');
     expect(message).toContain('run `node scripts/qa-env.mjs setup` again');
+  });
+});
+
+describe('madeAccount', () => {
+  it('reads the account qa-account printed', () => {
+    expect(madeAccount({ status: 0, stdout: '{"email":"a@b.c"}\n', stderr: '' })).toEqual({
+      email: 'a@b.c',
+    });
+  });
+
+  it('names the call and status qa-account failed on', () => {
+    expect(() =>
+      madeAccount({ status: 1, stdout: '', stderr: '/api/auth/register answered 429\n' }),
+    ).toThrow('registered no account: /api/auth/register answered 429');
+  });
+
+  it('falls back to the exit status when qa-account said nothing', () => {
+    expect(() => madeAccount({ status: 2, stdout: '', stderr: '' })).toThrow('exited 2');
   });
 });

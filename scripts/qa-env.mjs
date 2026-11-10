@@ -3663,13 +3663,20 @@ async function organisationOwner(root, { fresh }) {
   return apiSession(email, password, null);
 }
 
+export function madeAccount({ status, stdout, stderr }) {
+  if (status === 0) return JSON.parse(stdout);
+  const why = (stderr ?? '').trim() || `exited ${status}`;
+  throw new Error(`scripts/qa-account.mjs registered no account: ${why}`);
+}
+
 async function founder(root, organisationName, args = []) {
-  const made = capture('node', ['scripts/qa-account.mjs', '--json', ...args], {
-    cwd: root,
-    env: { ...process.env, SOIRELY_API_URL: CONFIG.urls.api, MAILPIT_URL: CONFIG.urls.mailpit },
-  });
-  if (made === null) throw new Error('scripts/qa-account.mjs registered no account');
-  const registered = JSON.parse(made);
+  const registered = madeAccount(
+    spawnSync('node', ['scripts/qa-account.mjs', '--json', ...args], {
+      cwd: root,
+      encoding: 'utf8',
+      env: { ...process.env, SOIRELY_API_URL: CONFIG.urls.api, MAILPIT_URL: CONFIG.urls.mailpit },
+    }),
+  );
   await api('/api/auth/complete-profile', {
     method: 'PATCH',
     token: registered.accessToken,
