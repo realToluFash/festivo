@@ -1,6 +1,8 @@
-# sc-35661: the Add a phone number sheet's title, then the Verify sheet's (verifyPhone.title), in the header without truncation.
+# sc-35661: the Add a phone number sheet's title, then the Verify sheet's (verifyPhone.title), each screenshotted in the header. The check adds one unverified number, opens Verify from that number's own row, and removes it before it ends, so it re-runs on one account and next to the email check.
 appId: host.exp.Exponent
 ---
+- evalScript: '${output.tail = String(Date.now()).slice(-6)}'
+- evalScript: "${output.row = '.*' + output.tail.split('').join(' ?') + '.*'}"
 - openLink: ${METRO_URL}/--/settings/account
 - extendedWaitUntil:
     visible: '{{t:account.title}}'
@@ -21,18 +23,18 @@ appId: host.exp.Exponent
 - assertVisible: '{{t:contacts.addPhone}}'
 - tapOn:
     id: 'account.phone.add.number'
-- inputText: '74'
-- inputRandomNumber:
-    length: 8
+- inputText: '7400${output.tail}'
 - tapOn:
     id: 'account.phone.add.submit'
-- extendedWaitUntil:
-    visible:
-      id: 'account.step'
+- scrollUntilVisible:
+    element:
+      text: ${output.row}
     timeout: 15000
 - waitForAnimationToEnd
 - tapOn:
-    id: 'account.step'
+    text: ${output.row}
+- tapOn:
+    id: 'account\..+\.send'
 - extendedWaitUntil:
     visible:
       id: 'account.verify.code'
@@ -40,3 +42,15 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - takeScreenshot: verify-phone-sheet
 - assertVisible: '{{t:verifyPhone.title}}'
+- tapOn:
+    id: 'account.verify.cancel'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'account\..+\.remove'
+    timeout: 15000
+- tapOn:
+    id: 'account\..+\.remove'
+- extendedWaitUntil:
+    notVisible: ${output.row}
+    timeout: 15000
