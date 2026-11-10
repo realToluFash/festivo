@@ -1,18 +1,26 @@
 import { type Milestone, agendaDays, calendarDays, monthOfDay, wallDay } from '@soirely/domain';
+import { type TFunction } from 'i18next';
 
+import {
+  type CalEvent,
+  type Item as CalItem,
+  type MarkItem as CalMark,
+  firstOf,
+  timeOf,
+} from '../components/calendarWeeks.ts';
 import {
   type Item,
   type Listed,
-  type MarkItem,
   type NeedsSeed,
   type Show,
   CAL_WORDS as W,
+  READER_ZONE,
   TODAY,
-  firstOf,
-  timeOf,
 } from './calendar.ts';
 import { KW, kitchenAt } from './kitchen.ts';
 import { dueOrder, needsMe } from './needsYou.ts';
+
+type MarkItem = Extract<Item, { kind: 'milestone' }>;
 
 const AREAS = ['events', 'seating', 'vendors', 'budget', 'menu'] as const;
 
@@ -144,19 +152,23 @@ export function isOverdue(milestone: Milestone, now: Date): boolean {
 }
 
 /** Where Today and Agenda land under needs: the day asked for when it holds a row, else the month's next that does, else its last, else its empty line. */
-export function needsLanding(days: ReadonlyMap<string, Item[]>, from: string): string {
+export function needsLanding(days: ReadonlyMap<string, CalItem[]>, from: string): string {
   const month = monthOfDay(from);
   const held = agendaDays(month, days).map(({ day }) => day);
 
   return held.find((day) => day >= from) ?? held.at(-1) ?? firstOf(month);
 }
 
-export function needsLabel(item: MarkItem, locale: string, now: Date): string {
+export function needsLabel(t: TFunction, item: CalMark, locale: string, now: Date): string {
   const words = isOverdue(item.milestone, now) ? W.needsRowLabelOverdue : W.needsRowLabel;
 
   return words(
     item.milestone.title,
     item.event.name,
-    timeOf(item.event, item.milestone.at, locale),
+    timeOf(t, item.event, item.milestone.at, READER_ZONE, locale),
   );
+}
+
+export function needsTime(t: TFunction, event: CalEvent, at: string, locale: string): string {
+  return timeOf(t, event, at, READER_ZONE, locale);
 }
