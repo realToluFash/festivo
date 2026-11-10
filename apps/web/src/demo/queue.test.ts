@@ -10,13 +10,16 @@ import {
   goOnline,
   move,
   onIt,
+  onWords,
   pick,
+  placedOn,
   save,
   seed,
   startBuild,
   startOrder,
   startTray,
   tagsFor,
+  trayToFinish,
   waiterNext,
 } from './queue.ts';
 
@@ -157,6 +160,14 @@ describe('the waiter’s Next', () => {
   it('takes owed plates across both sections oldest first, then a tie to their own', () => {
     expect(waiterNext(seed('asWell'))?.place).toBe('Table 6');
     expect(waiterNext(seed('asWellTie'))).toEqual({ place: 'Table 5', section: 'A', owed: false });
+  });
+
+  it('says where the waiter is, and keeps a tray left in a section they are off', () => {
+    expect(onWords(['A'])).toBe('Section A');
+    expect(onWords(['A', 'B'])).toBe('Section A, and Section B as well');
+    expect(onWords([])).toBe('On no section');
+    expect(trayToFinish(fresh())).toBeNull();
+    expect(trayToFinish(placedOn(['C'], ''))?.place.name).toBe('Table 4');
   });
 });
 

@@ -17,6 +17,7 @@ import { NEXT_BOARDS, QUEUE_BOARDS } from '../../src/demo/queue/QueueBoards.ts';
 import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowItsGoingBoards.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
+import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 interface Board {
@@ -1343,6 +1344,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Service · the waiter’s Next follows the queue (sc-36033) · phone',
     boards: NEXT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · Team, the floor lead moves someone (sc-36034) · phone and tablet landscape',
+    boards: TEAM_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the moved person’s own screen (sc-36034) · phone',
+    boards: MOVED_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Service · How it’s going (sc-34107) · phone from 320 px',
