@@ -80,7 +80,7 @@ export function ListPicker({
   const searching = useHeld(false, search, undefined, setSearch);
   const searchEdge = useFocusEdge();
   const bold = useBoldText();
-  const fieldEdge = useFocusEdge();
+  const fieldEdge = useFocusEdge(controlTaken);
   const refused = useRefused(wrong, line);
   const { kind, width, height } = useLayout();
   const beside = searchBesideTitle({ os: Platform.OS, phone: kind === 'phone', width, height });

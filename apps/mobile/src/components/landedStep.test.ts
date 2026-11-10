@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { landedStep, stepShown } from './landedStep.ts';
+import { landedStep, stepShown, stepsSoFar } from './landedStep.ts';
 
 describe('the step the landing toast keeps to (sc-37519)', () => {
   it('is the step shown last, with where its foot sits once placed', () => {
@@ -35,5 +35,21 @@ describe('the step the landing toast keeps to (sc-37519)', () => {
     expect(landedStep()).toBe(before);
 
     step.left();
+  });
+
+  it('leaves out the step a toast was said from, still in front as the flow moves on', () => {
+    const from = stepShown();
+    from.placed({ x: 144, width: 480 });
+    const said = stepsSoFar();
+
+    expect(landedStep(said)).toBeNull();
+
+    const landed = stepShown();
+    landed.placed({ x: 24, width: 720 });
+    from.left();
+
+    expect(landedStep(said)?.column).toEqual({ x: 24, width: 720 });
+
+    landed.left();
   });
 });

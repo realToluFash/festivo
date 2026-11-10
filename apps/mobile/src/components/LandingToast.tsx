@@ -1,19 +1,20 @@
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { focusedField, watchControlTaken, watchFocusedField } from './focusedField.ts';
+import { watchMovedOn } from './focusedField.ts';
 import { useKeyboardTop } from './keyboardWatch.ts';
-import { useLandedStep } from './landedStep.ts';
+import { stepsSoFar, useLandedStep } from './landedStep.ts';
 import { landingToastBottom } from './landingToastBottom.ts';
 import { SETTLED_MS } from './Screen.tsx';
 import { TAB_BAR } from './TodayScreen.tsx';
 import { Toast } from './Toast.tsx';
 
 let said: string | null = null;
+let saidOver = 0;
 const listeners = new Set<() => void>();
 
 function set(words: string | null): void {
@@ -29,6 +30,8 @@ function subscribe(listener: () => void): () => void {
 
 /** Said over whichever screen a flow lands on, which the flow cannot know in advance: Home, or a step still owed. A key, so the words are in the language the account brings with it, which may arrive after the call (sc-29071). */
 export function sayOnLanding(key: string): void {
+  // The step it is said from is still in front as the flow moves on, and is not where it lands.
+  saidOver = stepsSoFar();
   set(key);
 }
 
@@ -41,26 +44,19 @@ export function LandingToast() {
   const [height, setHeight] = useState<number | null>(null);
   const keyboardTop = useKeyboardTop();
   const { kind } = useLayout();
-  const step = useLandedStep();
+  const step = useLandedStep(saidOver);
   const stepId = step?.id;
   const column = kind === 'phone' ? null : step?.column;
 
   useEffect(() => {
     if (key == null || stepId == null) return undefined;
+    const watch = watchMovedOn(() => set(null));
     // Focus the step lands with is not focus moving: the field it settles on is the one typed in.
-    let landed: ViewInstance | null | undefined;
-    const settled = setTimeout(() => {
-      landed = focusedField();
-    }, SETTLED_MS);
-    const unwatchFocus = watchFocusedField(() => {
-      if (landed !== undefined && focusedField() !== landed) set(null);
-    });
-    const unwatchTaken = watchControlTaken(() => set(null));
+    const settled = setTimeout(watch.settled, SETTLED_MS);
 
     return () => {
       clearTimeout(settled);
-      unwatchFocus();
-      unwatchTaken();
+      watch.stop();
     };
   }, [key, stepId]);
 

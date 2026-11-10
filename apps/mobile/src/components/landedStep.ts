@@ -41,11 +41,18 @@ export function stepShown(): { placed(column: StepColumn): void; left(): void } 
   };
 }
 
-/** The step in front, or null when none with a foot is showing. */
-export function landedStep(): LandedStep | null {
-  return steps.at(-1) ?? null;
+/** How many steps have been shown so far, to pass as `after`. */
+export function stepsSoFar(): number {
+  return ids;
 }
 
-export function useLandedStep(): LandedStep | null {
-  return useSyncExternalStore(subscribe, landedStep);
+/** The step in front, or null when none with a foot is showing, or the one in front was shown no later than the `after`th. */
+export function landedStep(after = 0): LandedStep | null {
+  const front = steps.at(-1);
+
+  return front != null && front.id > after ? front : null;
+}
+
+export function useLandedStep(after = 0): LandedStep | null {
+  return useSyncExternalStore(subscribe, () => landedStep(after));
 }
