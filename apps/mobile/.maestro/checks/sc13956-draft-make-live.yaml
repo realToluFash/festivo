@@ -17,7 +17,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'events.makeLiveYes'
 - extendedWaitUntil:
-    notVisible:
-      id: 'events.card'
+    visible:
+      id: 'events.phase.live'
     timeout: 15000
 - takeScreenshot: made-live

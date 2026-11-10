@@ -73,7 +73,7 @@ appId: host.exp.Exponent
 - assertNotVisible:
     id: 'events.card.step'
 - assertNotVisible:
-    id: 'events.card'
+    id: 'events.phase.draft'
 - takeScreenshot: made-live
 - tapOn:
     id: 'events.back'

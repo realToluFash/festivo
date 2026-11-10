@@ -49,5 +49,5 @@ appId: host.exp.Exponent
       id: 'events.phase.live'
     timeout: 10000
 - assertNotVisible:
-    id: 'events.card'
+    id: 'events.phase.paused'
 - takeScreenshot: resumed
