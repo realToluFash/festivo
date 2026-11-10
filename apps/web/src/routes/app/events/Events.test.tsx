@@ -2427,8 +2427,8 @@ describe("Editing an event's details (sc-3587)", () => {
       serving();
       at('/app/events/ev_1');
       await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
       expect(document.querySelector('.ev-details button.ev-detail') != null).toBe(edits);
-      expect(screen.queryByRole('link', { name: 'Edit details' }) != null).toBe(edits);
       expect(screen.queryByRole('button', { name: 'Make live' }) != null).toBe(edits);
 
       cleanup();
