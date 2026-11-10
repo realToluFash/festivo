@@ -1,5 +1,5 @@
 import type { CardStepAction } from '@soirely/domain';
-import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -124,6 +124,10 @@ export function EventCard({
   nextUp = null,
   takes,
   onStep,
+  nameRef,
+  stepRef,
+  held = false,
+  sending = null,
 }: {
   event: Shown;
   now: Date;
@@ -137,6 +141,14 @@ export function EventCard({
   nextUp?: ReactNode;
   takes: (action: CardStepAction) => boolean;
   onStep: (step: ButtonStep) => void;
+  /** The page's own heading, where its steps send focus back. */
+  nameRef?: RefObject<HTMLHeadingElement | null>;
+  /** Its step's button, where focus returns once a question it asked is closed. */
+  stepRef?: RefObject<HTMLButtonElement | null>;
+  /** While a live event's milestones are still unread, its Next up is not yet known. */
+  held?: boolean;
+  /** In place of the step's label while it is being taken. */
+  sending?: string | null;
 }) {
   const { t } = useTranslation();
   const [photo, failed] = usePhoto(event.photo);
@@ -173,7 +185,7 @@ export function EventCard({
             </li>
           ))}
         </ul>
-        <Name className="ev-card-name" tabIndex={level === 1 ? -1 : undefined}>
+        <Name ref={nameRef} className="ev-card-name" tabIndex={level === 1 ? -1 : undefined}>
           {to == null ? (
             event.name
           ) : (
@@ -186,8 +198,8 @@ export function EventCard({
         {guests != null && <p className="desk-on-card">{guests}</p>}
         {tiles.length > 0 && (
           <ul className="ev-tiles" aria-label={t('events.itsDays')}>
-            {tiles.map((tile) => (
-              <li key={tile.day} className={tile.today ? 'ev-tile is-today' : 'ev-tile'}>
+            {tiles.map((tile, index) => (
+              <li key={index} className={tile.today ? 'ev-tile is-today' : 'ev-tile'}>
                 <span className="ev-tile-top">{tile.today ? t('events.today') : tile.weekday}</span>
                 <span className="ev-tile-day">{tile.day}</span>
               </li>
@@ -195,7 +207,7 @@ export function EventCard({
           </ul>
         )}
         <div className="ev-card-foot">
-          {step.kind === 'next' ? (
+          {held ? null : step.kind === 'next' ? (
             (nextUp ?? (
               <>
                 <p className="ev-card-next">{step.title}</p>
@@ -205,7 +217,14 @@ export function EventCard({
           ) : (
             <>
               <p className="desk-on-card">{step.line}</p>
-              {takes(step.action) && <StepButton label={step.label} onClick={() => onStep(step)} />}
+              {takes(step.action) && (
+                <StepButton
+                  ref={stepRef}
+                  label={sending ?? step.label}
+                  busy={sending != null}
+                  onClick={() => onStep(step)}
+                />
+              )}
             </>
           )}
         </div>

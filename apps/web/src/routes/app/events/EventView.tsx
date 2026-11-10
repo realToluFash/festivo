@@ -1,6 +1,5 @@
 import { ApiError, type OrganisationEvent, eventVersion } from '@soirely/api-client';
 import {
-  type EventPhase,
   type PlaceholderEventArea,
   formatEventRange,
   isPlaceholderEventArea,
@@ -23,7 +22,6 @@ import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { DuplicateEvent } from './DuplicateEvent.tsx';
-import { PHASE_WORD } from './eventWords.ts';
 import { DraftRow, StatusPill } from './MakeLive.tsx';
 import { PausedRow } from './PauseEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
@@ -31,7 +29,7 @@ import { EventPeople } from './EventPeople.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
 import { typeLabel } from './eventTypes.ts';
 import { AllDates } from './Timeline.tsx';
-import { EventCrumb, Overview } from './EventOverview.tsx';
+import { EventCrumb, Overview, PhaseChange } from './EventOverview.tsx';
 import { useShowEventName } from './EventNav.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 import { NotFound } from '../../public/NotFound.tsx';
@@ -193,12 +191,6 @@ function EventOf({
             {states}
             {load.kind === 'loaded' && (
               <Arrived>
-                <EventTop
-                  event={load.event}
-                  tag={load.tag}
-                  heading={heading}
-                  onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
-                />
                 <Overview
                   event={load.event}
                   tag={load.tag}
@@ -245,7 +237,7 @@ function EventOf({
   );
 }
 
-/** Above every area: the name, the phase, the dates, the venue, and the phase's one primary (sc-22103). */
+/** Above every area but Overview, whose cover card is its top: the name, the phase, the dates, the venue, and the phase's one primary (sc-22103). */
 function EventTop({
   event,
   tag,
@@ -336,18 +328,6 @@ function TopVenue({ event }: { event: OrganisationEvent }) {
         </a>
       )}
     </div>
-  );
-}
-
-/** WCAG 2.2 §4.1.3: a phase the clock changes on an open page is said politely; one the server sends is not. */
-function PhaseChange({ phase }: { phase: EventPhase }) {
-  const { t } = useTranslation();
-  const [opened] = useState(phase);
-
-  return (
-    <p className="visually-hidden" aria-live="polite">
-      {phase === opened ? '' : t(PHASE_WORD[phase])}
-    </p>
   );
 }
 

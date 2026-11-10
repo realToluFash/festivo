@@ -136,9 +136,25 @@ export function OnCard({ children }: { children: ReactNode }) {
   return <p className="desk-on-card">{children}</p>;
 }
 
-export function CardStep({ label, onClick }: { label: string; onClick: () => void }) {
+export function CardStep({
+  ref,
+  label,
+  busy = false,
+  onClick,
+}: {
+  ref?: RefObject<HTMLButtonElement | null> | undefined;
+  label: string;
+  busy?: boolean;
+  onClick: () => void;
+}) {
   return (
-    <button type="button" className="desk-step" onClick={onClick}>
+    <button
+      ref={ref}
+      type="button"
+      className="desk-step"
+      aria-busy={busy || undefined}
+      onClick={busy ? undefined : onClick}
+    >
       {label}
       <Glyph name="arrow" size={16} weight={2.4} />
     </button>

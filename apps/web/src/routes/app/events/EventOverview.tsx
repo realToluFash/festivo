@@ -1,10 +1,14 @@
 import { type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
 import {
+  type EventPhase,
+  changedWords,
   currencyLabel,
   formatEventRange,
   hostsLine,
   positionPart,
+  rememberTabHolding,
   shownPhase,
+  takesCardStep,
   wallDay,
 } from '@soirely/domain';
 import {
@@ -26,15 +30,17 @@ import {
   ManageList,
   PartRow,
 } from '../../../components/EventPageParts.tsx';
+import { type ButtonStep, EventCard } from '../../../components/EventCard.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { Ask, Head } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
+import { listEventOf, shownEvent } from '../../../eventsList.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn } from '../../../session.ts';
 import { DeleteEvent } from './DeleteEvent.tsx';
-import { DuplicateEvent } from './DuplicateEvent.tsx';
+import { DuplicateDialog, DuplicateEvent } from './DuplicateEvent.tsx';
 import { type EditOutcome } from './EditEvent.tsx';
 import { CalledOffNotice, EndButton } from './EndEvent.tsx';
 import { EventCoverImage } from './EventCoverImage.tsx';
@@ -49,12 +55,13 @@ import {
   TypePart,
   VenuePart,
 } from './EventPartEdits.tsx';
+import { useMakeLive } from './MakeLive.tsx';
 import { PHASE_WORD } from './eventWords.ts';
 import { typeLabel } from './eventTypes.ts';
 import { MuteEvent } from './MuteEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
-import { PauseButton } from './PauseEvent.tsx';
-import { ComingUp } from './Timeline.tsx';
+import { PauseButton, useResume } from './PauseEvent.tsx';
+import { ComingUp, useTimeline } from './Timeline.tsx';
 import { useLeaveGuard } from './useLeaveGuard.tsx';
 
 import '../../../components/SettingsParts.css';
@@ -89,7 +96,21 @@ function mapsLink(event: OrganisationEvent): string | null {
     : `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`;
 }
 
-/** The page's first area, as Events-A-Desk draws it (sc-30413): Details and Name and cover, each part edited in place, beside Just for you and Manage. */
+/** WCAG 2.2 §4.1.3: a phase the clock changes on an open page is said politely; one the server sends is not. */
+export function PhaseChange({ phase }: { phase: EventPhase }) {
+  const { t } = useTranslation();
+  const [opened] = useState(phase);
+
+  return (
+    <p className="visually-hidden" aria-live="polite">
+      {phase === opened ? '' : t(PHASE_WORD[phase])}
+    </p>
+  );
+}
+
+const STEP_WITHOUT_MILESTONES: readonly EventPhase[] = ['draft', 'paused', 'finished'];
+
+/** The page's first area, as Events-A-Desk draws it (sc-30413): the cover card and its one step, then Details and Name and cover, each part edited in place, beside Just for you and Manage. */
 export function Overview({
   event,
   tag,
@@ -120,6 +141,25 @@ export function Overview({
   const manages = canOn(event, 'events.manage');
   const creates = canOn(event, 'events.create');
   const guard = useLeaveGuard({ dirty, busy: false, body: t('eventEdit.leaveBody') });
+  const [madeLive, setMadeLive] = useState(false);
+  const [resumed, setResumed] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const stepButton = useRef<HTMLButtonElement>(null);
+  const makeLive = useMakeLive({
+    event,
+    tag,
+    heading,
+    opener: stepButton,
+    onChange,
+    onMadeLive: () => setMadeLive(true),
+  });
+  const resume = useResume({ event, heading, onChange, onResumed: () => setResumed(true) });
+  const comingUpHeading = useRef<HTMLHeadingElement>(null);
+  const timeline = useTimeline(event, comingUpHeading, now);
+  const milestones = timeline.load.kind === 'loaded' ? timeline.load.timeline.milestones : null;
+  const card = shownEvent(listEventOf({ ...event, milestones: milestones ?? [] }), phase);
+
+  useEffect(() => rememberTabHolding(event.organisationId, phase), [event.organisationId, phase]);
 
   useEffect(() => {
     if (editOutcome(location.state) == null && coverRefusal(location.state) == null) return;
@@ -145,6 +185,14 @@ export function Overview({
     setDirty(false);
   }, []);
 
+  const onStep = (step: ButtonStep) => {
+    if (step.action === 'makeLive') makeLive.start();
+    else if (step.action === 'changeDates') {
+      if (part !== 'dates') open('dates');
+    } else if (step.action === 'resume') resume.resume();
+    else setCopying(true);
+  };
+
   const saved = (next: TaggedEvent) => {
     onChange(next.event, next.tag);
     close();
@@ -165,6 +213,34 @@ export function Overview({
 
   return (
     <div className="event-overview">
+      <EventCard
+        event={card}
+        now={now}
+        locale={dateLocale()}
+        level={1}
+        nameRef={heading}
+        stepRef={stepButton}
+        held={milestones == null && !STEP_WITHOUT_MILESTONES.includes(phase)}
+        sending={resume.state === 'pending' ? t('eventPause.resuming') : null}
+        takes={(action) => takesCardStep(event, action)}
+        onStep={onStep}
+      />
+      <PhaseChange key={loadedAt.getTime()} phase={phase} />
+      {resume.state === 'failed' && (
+        <p className="desk-error" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {t('eventPause.resumeFailed')}
+        </p>
+      )}
+      {resume.changed && (
+        <div className="desk-error" role="alert">
+          {changedWords(event).map((line) => (
+            <p key={line}>{t(line)}</p>
+          ))}
+        </div>
+      )}
+      {madeLive && <OutcomeLine words={t('eventLive.madeLive')} />}
+      {resumed && <OutcomeLine words={t('eventPause.resumed', { name: event.name })} />}
       <CalledOffNotice event={event} />
       {ended && <OutcomeLine words={t(PHASE_WORD.finished)} />}
       {paused && <OutcomeLine words={t('eventPause.paused', { name: event.name })} />}
@@ -194,7 +270,7 @@ export function Overview({
             shown={shown}
             onCover={(next) => onChange(next, tag)}
             onOpen={open}
-            comingUp={<ComingUp event={event} now={now} />}
+            comingUp={<ComingUp event={event} timeline={timeline} heading={comingUpHeading} />}
           />
         </div>
         <div className="ev-right">
@@ -247,6 +323,16 @@ export function Overview({
             setPart(leaving.to);
             setDirty(false);
             setLeaving(null);
+          }}
+        />
+      )}
+      {makeLive.dialogs}
+      {copying && (
+        <DuplicateDialog
+          event={event}
+          onClose={() => {
+            setCopying(false);
+            window.setTimeout(() => (stepButton.current ?? heading.current)?.focus(), 0);
           }}
         />
       )}

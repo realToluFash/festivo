@@ -70,28 +70,21 @@ export function PauseButton({
   );
 }
 
-/** `Event View` (tweak: Paused): the amber line and the page's primary Resume, which asks nothing; past the end the phase is Finished and neither shows. A refusal reloads the event, which may then be past Paused: the row stays to say so. */
-export function PausedRow({
+/** Resume, which asks nothing; a refusal reloads the event, and `changed` says it has since moved past Paused. */
+export function useResume({
   event,
-  phase,
-  manages,
   heading,
   onChange,
   onResumed,
 }: {
   event: OrganisationEvent;
-  phase: EventPhase;
-  manages: boolean;
   heading: RefObject<HTMLHeadingElement | null>;
   onChange: (event: OrganisationEvent, tag: string) => void;
   onResumed: () => void;
-}) {
-  const { t } = useTranslation();
+}): { state: 'idle' | 'pending' | 'failed'; changed: boolean; resume: () => void } {
   const [state, setState] = useState<'idle' | 'pending' | 'failed'>('idle');
   const [changedTo, setChangedTo] = useState<EventStatus | null>(null);
   const changed = changedTo === event.status;
-
-  if (phase !== 'paused' && !changed) return null;
 
   const resume = () => {
     setState('pending');
@@ -122,6 +115,30 @@ export function PausedRow({
       },
     );
   };
+
+  return { state, changed, resume };
+}
+
+/** `Event View` (tweak: Paused): the amber line and the page's primary Resume, which asks nothing; past the end the phase is Finished and neither shows. A refusal reloads the event, which may then be past Paused: the row stays to say so. */
+export function PausedRow({
+  event,
+  phase,
+  manages,
+  heading,
+  onChange,
+  onResumed,
+}: {
+  event: OrganisationEvent;
+  phase: EventPhase;
+  manages: boolean;
+  heading: RefObject<HTMLHeadingElement | null>;
+  onChange: (event: OrganisationEvent, tag: string) => void;
+  onResumed: () => void;
+}) {
+  const { t } = useTranslation();
+  const { state, changed, resume } = useResume({ event, heading, onChange, onResumed });
+
+  if (phase !== 'paused' && !changed) return null;
 
   return (
     <div className="notice notice-attention event-paused">

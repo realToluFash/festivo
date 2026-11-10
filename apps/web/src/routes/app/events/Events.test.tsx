@@ -1665,7 +1665,7 @@ describe("An event's Overview (sc-22103)", () => {
     expect(within(manage).getByRole('button', { name: 'Call off…' }).className).toContain('is-red');
   });
 
-  it('makes Duplicate the primary on a Finished event, and keeps it in Manage', async () => {
+  it('offers Duplicate as the card’s step on a Finished event, opening its question, and keeps it in Manage (sc-30413)', async () => {
     signedIn();
     answering({
       'GET /api/events/ev_1': () =>
@@ -1677,12 +1677,30 @@ describe("An event's Overview (sc-22103)", () => {
     const duplicate = within(heading.closest('section')!).getByRole('button', {
       name: 'Duplicate',
     });
-    expect(duplicate.className).toContain('button-primary');
+    expect(duplicate.className).toContain('desk-step');
     expect(
       within(screen.getByRole('region', { name: 'Manage' })).getByRole('button', {
         name: 'Duplicate',
       }),
     ).toBeDefined();
+
+    fireEvent.click(duplicate);
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(duplicate));
+  });
+
+  it('offers no step on the card to a role that cannot take it (sc-30413)', async () => {
+    signedIn(READER);
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({ event: event({ ...PAST, status: 'ended', phase: 'finished' }) }),
+    });
+    at('/app/events/ev_1');
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    expect(within(heading.closest('section')!).queryByRole('button')).toBeNull();
   });
 
   it('locks the dates of a Finished event, saying why', async () => {
@@ -1702,15 +1720,18 @@ describe("An event's Overview (sc-22103)", () => {
     ).toBeDefined();
   });
 
-  it('makes Change dates the primary on a Draft past its end, opening Edit details at Starts', async () => {
+  it('offers Change dates as the card’s step on a Draft past its end, opening Dates in place (sc-30413)', async () => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event(PAST) }) });
     at('/app/events/ev_1');
 
     const heading = await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
-    const change = within(heading.closest('section')!).getByRole('link', { name: 'Change dates' });
-    expect(change.className).toContain('button-primary');
-    expect(change.getAttribute('href')).toBe('/app/events/ev_1/edit#starts');
+    const card = heading.closest('section')!;
+    expect(within(card).queryByRole('link', { name: 'Change dates' })).toBeNull();
+
+    fireEvent.click(within(card).getByRole('button', { name: 'Change dates' }));
+    const details = screen.getByRole('region', { name: 'Details' });
+    expect(await within(details).findByRole('group', { name: 'Starts' })).toBeDefined();
   });
 
   it('keeps the Top above an area, with the area in a panel under it', async () => {
@@ -1762,7 +1783,7 @@ describe("A request one test leaves unanswered, in the next test's 20 s (sc-2811
 });
 
 describe("An event's page", () => {
-  it("shows the name, Draft, and the start and end in the event's zone", async () => {
+  it("opens on its cover card: the name, Draft, its days in the event's zone and a tile for each (sc-30413)", async () => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
     at('/app/events/ev_1');
@@ -1770,14 +1791,15 @@ describe("An event's page", () => {
     const heading = await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
     const card = heading.closest('section')!;
 
-    expect(within(card).getByText('Draft')).toBeDefined();
-    expect(within(card).getByText('Wedding')).toBeDefined();
-    expect(spaced(within(card).getByText(/Africa\/Lagos/).textContent)).toBe(
-      'Sat, Nov 14, 2026, 16:00 – Sun, Nov 15, 2026, 02:00 · Africa/Lagos',
+    expect(card.className).toContain('ev-card');
+    expect(within(card).getByText('Draft', { selector: '.desk-glass' })).toBeDefined();
+    expect(spaced(card.querySelector('.desk-on-card')?.textContent ?? null)).toBe(
+      'Saturday, Nov 14 to Sunday, Nov 15 · Venue to be confirmed',
     );
+    expect(within(card).getByRole('list', { name: 'Its days' }).children).toHaveLength(2);
   });
 
-  it('writes the date once for an event that starts and ends on one day', async () => {
+  it('writes the day once, with no tiles, for an event that starts and ends on one day', async () => {
     signedIn();
     answering({
       'GET /api/events/ev_1': () => json({ event: event({ endsAt: '2026-11-14T23:00:00+01:00' }) }),
@@ -1785,10 +1807,12 @@ describe("An event's page", () => {
     at('/app/events/ev_1');
 
     const heading = await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    const card = heading.closest('section')!;
 
-    expect(spaced(within(heading.closest('section')!).getByText(/Africa\/Lagos/).textContent)).toBe(
-      'Sat, Nov 14, 2026, 16:00 – 23:00 · Africa/Lagos',
+    expect(spaced(card.querySelector('.desk-on-card')?.textContent ?? null)).toBe(
+      'Saturday, Nov 14 · Venue to be confirmed',
     );
+    expect(within(card).queryByRole('list', { name: 'Its days' })).toBeNull();
   });
 
   it('opens Guests, which says the guest list is coming', async () => {
@@ -2715,12 +2739,12 @@ describe("An event's venue (sc-3589)", () => {
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
 
-    const venue = screen.getByRole('group', { name: 'Venue' });
+    const card = screen.getByRole('heading', { level: 1 }).closest('section')!;
     const details = screen.getByRole('region', { name: 'Details' });
-    expect(within(venue).getByText('The Civic Centre')).toBeDefined();
+    expect(within(card).getByText(/The Civic Centre$/u)).toBeDefined();
     expect(within(details).getByText('The Civic Centre')).toBeDefined();
     expect(within(details).getByText('Venue · Ozumba Mbadiwe Avenue, Lagos')).toBeDefined();
-    expect(within(venue).getByRole('link', { name: 'Open in maps' }).getAttribute('href')).toBe(
+    expect(within(details).getByRole('link', { name: 'Open in maps' }).getAttribute('href')).toBe(
       'https://www.openstreetmap.org/?mlat=6.4316&mlon=3.4246#map=17/6.4316/3.4246',
     );
     expect(screen.queryByText('Venue to be confirmed')).toBeNull();
@@ -2801,7 +2825,7 @@ describe('Make live (sc-3584)', () => {
     signedIn();
     await onTheDraft();
 
-    expect(screen.getByText("Guests can't be invited until this event is live.")).toBeDefined();
+    expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
     expect(screen.getByText('Draft')).toBeDefined();
   });
@@ -2810,7 +2834,7 @@ describe('Make live (sc-3584)', () => {
     signedIn(READER);
     await onTheDraft();
 
-    expect(screen.getByText("Guests can't be invited until this event is live.")).toBeDefined();
+    expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
   });
 
@@ -2841,7 +2865,7 @@ describe('Make live (sc-3584)', () => {
     expect(screen.getByText('Live')).toBeDefined();
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('✓ Live'));
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
-    expect(screen.queryByText("Guests can't be invited until this event is live.")).toBeNull();
+    expect(screen.queryByText('Guests can’t be invited until this event is live.')).toBeNull();
     expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/make-live')).toHaveLength(1);
   });
 
@@ -2904,13 +2928,11 @@ describe('Make live (sc-3584)', () => {
 
     expect(
       screen.getByText(
-        "This event's end has passed, so it cannot be made live. Change its dates first.",
+        'This event’s end has passed, so it cannot be made live. Change its dates first.',
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'Change dates' }).getAttribute('href')).toBe(
-      '/app/events/ev_1/edit#starts',
-    );
+    expect(screen.getByRole('button', { name: 'Change dates' })).toBeDefined();
   });
 
   it('shows Live in the list', async () => {
@@ -2988,7 +3010,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     signedIn();
     await onThePage(live({ ...HAPPENING, phase: 'live' }));
 
-    expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined();
+    expect(screen.getByText('Live', { selector: '.desk-glass' })).toBeDefined();
     expect(screen.queryByText('Happening now')).toBeNull();
   });
 
@@ -3000,7 +3022,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
 
     await act(() => vi.advanceTimersByTimeAsync(15_000));
 
-    expect(screen.getByText('Happening now', { selector: '.pill-quiet' })).toBeDefined();
+    expect(screen.getByText('Happening now', { selector: '.desk-glass' })).toBeDefined();
     expect(document.querySelector('p.visually-hidden[aria-live="polite"]')?.textContent).toBe(
       'Happening now',
     );
@@ -3018,7 +3040,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
 
-    expect(screen.getByText('Happening now', { selector: '.pill-quiet' })).toBeDefined();
+    expect(screen.getByText('Happening now', { selector: '.desk-glass' })).toBeDefined();
   });
 
   it('still shows Live five minutes before the start on a device ten minutes fast', async () => {
@@ -3026,7 +3048,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     signedIn();
     await servedWithDate(live(), 'Thu, 14 Nov 2030 14:55:00 GMT');
 
-    expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined();
+    expect(screen.getByText('Live', { selector: '.desk-glass' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Call off…' })).toBeDefined();
   });
 
@@ -3045,7 +3067,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
 
     expect(
       screen.getByText(
-        "This event's end has passed, so it cannot be made live. Change its dates first.",
+        'This event’s end has passed, so it cannot be made live. Change its dates first.',
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
@@ -3089,9 +3111,11 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(screen.getByText('Finished', { selector: '.pill-quiet' })).toBeDefined();
+    expect(screen.getByText('Called off', { selector: '.desk-glass' })).toBeDefined();
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Finished'));
-    expect(screen.getByText(/^Called off on .*Oct 13, 2030, before it started\./)).toBeDefined();
+    expect(
+      screen.getAllByText(/^Called off on .*Oct 13, 2030, before it started\./).length,
+    ).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Call off…' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'End now…' })).toBeNull();
     expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/end')).toHaveLength(1);
@@ -3117,7 +3141,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'End now' }));
 
     await waitFor(() =>
-      expect(screen.getByText('Finished', { selector: '.pill-quiet' })).toBeDefined(),
+      expect(screen.getByText('Finished', { selector: '.desk-glass' })).toBeDefined(),
     );
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Finished'));
     expect(document.activeElement).toBe(
@@ -3149,7 +3173,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
 
     expect(await within(dialog).findByText('Not called off. Try again in a moment.')).toBeDefined();
     expect(within(dialog).getByRole('button', { name: 'Call off' })).toBeDefined();
-    expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined();
+    expect(screen.getByText('Live', { selector: '.desk-glass' })).toBeDefined();
   });
 
   it('says the event is already over when the API refuses it event_concluded', async () => {
@@ -3169,7 +3193,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     const refused = await screen.findByRole('alertdialog', { name: 'Not ended.' });
     expect(within(refused).getByText('This event is already over.')).toBeDefined();
     fireEvent.click(within(refused).getByRole('button', { name: 'Close' }));
-    expect(screen.getByText('Finished', { selector: '.pill-quiet' })).toBeDefined();
+    expect(screen.getByText('Finished', { selector: '.desk-glass' })).toBeDefined();
   });
 
   it('says it was called off, not that it is over, when the call-off is refused on a called-off event (sc-17382)', async () => {
@@ -3326,13 +3350,11 @@ describe('Pause and Resume (sc-3586)', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByText('Paused', { selector: '.pill-quiet' })).toBeDefined(),
+      expect(screen.getByText('Paused', { selector: '.desk-glass' })).toBeDefined(),
     );
     expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/pause')).toHaveLength(1);
     expect(
-      screen.getByText(
-        "Paused. Guests can't reply or change anything until you resume it. Check-in and service still work.",
-      ),
+      screen.getByText('Paused. Guests can’t reply or change anything until you resume it.'),
     ).toBeDefined();
     expect(screen.getByRole('button', { name: 'Resume' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
@@ -3351,7 +3373,7 @@ describe('Pause and Resume (sc-3586)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
 
     await waitFor(() =>
-      expect(screen.getByText('Happening now', { selector: '.pill-quiet' })).toBeDefined(),
+      expect(screen.getByText('Happening now', { selector: '.desk-glass' })).toBeDefined(),
     );
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/resume')).toHaveLength(1);
@@ -3490,7 +3512,7 @@ describe('Pause and Resume (sc-3586)', () => {
     signedIn();
     await onThePage(paused({ phase: 'finished', pausedAt: null }));
 
-    expect(screen.getByText('Finished', { selector: '.pill-quiet' })).toBeDefined();
+    expect(screen.getByText('Finished', { selector: '.desk-glass' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
     expect(screen.queryByText(/^Paused\. Guests/)).toBeNull();
   });
@@ -3576,7 +3598,7 @@ describe('An older copy never replaces the change the page made (sc-28121)', () 
       before: live,
       after: { ...live, ...ended },
       press: () => confirm('Call off…', 'Call off'),
-      shown: 'Finished',
+      shown: 'Called off',
       gone: 'Call off…',
     },
     {
@@ -3596,12 +3618,12 @@ describe('An older copy never replaces the change the page made (sc-28121)', () 
 
       press();
       await waitFor(() =>
-        expect(screen.getByText(shown, { selector: '.pill-quiet' })).toBeDefined(),
+        expect(screen.getByText(shown, { selector: '.desk-glass' })).toBeDefined(),
       );
       expect(document.querySelector('.offline-band')).not.toBeNull();
       await release(tagged({ event: before }, '"1"'));
 
-      expect(screen.getByText(shown, { selector: '.pill-quiet' })).toBeDefined();
+      expect(screen.getByText(shown, { selector: '.desk-glass' })).toBeDefined();
       expect(screen.queryByRole('button', { name: gone })).toBeNull();
       await waitFor(() => expect(document.querySelector('.offline-band')).toBeNull());
     },
@@ -3613,11 +3635,11 @@ describe('An older copy never replaces the change the page made (sc-28121)', () 
 
     confirm('Make live', 'Make live');
     await waitFor(() =>
-      expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined(),
+      expect(screen.getByText('Live', { selector: '.desk-glass' })).toBeDefined(),
     );
     await release(tagged({ event: live }, '"2"'));
 
-    expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined();
+    expect(screen.getByText('Live', { selector: '.desk-glass' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
   });
 
@@ -3628,13 +3650,13 @@ describe('An older copy never replaces the change the page made (sc-28121)', () 
 
     confirm('Make live', 'Make live');
     await waitFor(() =>
-      expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined(),
+      expect(screen.getByText('Live', { selector: '.desk-glass' })).toBeDefined(),
     );
     expect(screen.queryByText('Happening now')).toBeNull();
     await release(tagged({ event: happening }, '"2"'));
 
     expect(await screen.findByText('Happening now')).toBeDefined();
-    expect(screen.queryByText('Live', { selector: '.pill-quiet' })).toBeNull();
+    expect(screen.queryByText('Live', { selector: '.desk-glass' })).toBeNull();
   });
 
   it('shows the load error when a re-read is tagged with something that is not a version', async () => {
@@ -3643,7 +3665,7 @@ describe('An older copy never replaces the change the page made (sc-28121)', () 
 
     confirm('Make live', 'Make live');
     await waitFor(() =>
-      expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined(),
+      expect(screen.getByText('Live', { selector: '.desk-glass' })).toBeDefined(),
     );
     await release(tagged({ event: live }, 'W/"2"'));
 
@@ -3656,7 +3678,7 @@ describe('An older copy never replaces the change the page made (sc-28121)', () 
 
     confirm('Make live', 'Make live');
     await waitFor(() =>
-      expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined(),
+      expect(screen.getByText('Live', { selector: '.desk-glass' })).toBeDefined(),
     );
     await release(tagged({ event: { ...live, name: 'Adaeze and Tunde, at last' } }, '"3"'));
 
@@ -4007,7 +4029,7 @@ describe('The cover (sc-3590)', () => {
     expect(sent.filter(({ line }) => line.includes('/cover'))).toEqual([]);
   });
 
-  it('shows the cover on the event page only as its row’s unworded thumb, and the list draws it with no words (sc-22103, sc-30413)', async () => {
+  it('shows the cover on the event page over its card and as its row’s unworded thumb, and the list draws it with no words (sc-22103, sc-30413)', async () => {
     signedIn();
     answering({
       'GET /api/events/ev_1': () =>
@@ -4022,8 +4044,9 @@ describe('The cover (sc-3590)', () => {
 
     expect(screen.queryByRole('img')).toBeNull();
     const pageCovers = document.querySelectorAll('.event-page img');
-    expect(pageCovers).toHaveLength(1);
-    expect(pageCovers[0]!.closest('.ev-lead')?.getAttribute('aria-hidden')).toBe('true');
+    expect(pageCovers).toHaveLength(2);
+    expect(pageCovers[0]!.closest('.ev-card')).not.toBeNull();
+    expect(pageCovers[1]!.closest('.ev-lead')?.getAttribute('aria-hidden')).toBe('true');
     cleanup();
 
     at('/app/events');
