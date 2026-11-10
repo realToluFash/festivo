@@ -144,7 +144,7 @@ export interface Moment extends Shown {
   time: string;
   /** Null when the product has nothing to say yet; empty when nothing needs you. */
   needs: Need[] | null;
-  bars: RowBar[];
+  bars: StripBar[];
 }
 
 /** A sample event as the product's parts draw it: its colour is its key. */
@@ -347,11 +347,6 @@ function cards(
     .map((key) => card(key, today, moment, say, guests, later, sample));
 }
 
-/** A bar in its row, 0 first: bars that share a day never share a row (sc-37302). */
-export interface RowBar extends StripBar {
-  lane: number;
-}
-
 /** A multi-day event's id and its first and last days. */
 export interface Span {
   id: string;
@@ -381,7 +376,7 @@ function week(
   agenda: readonly (readonly [string, Item[]])[],
   say: Say,
   sample: Sample,
-): { days: StripDay[]; bars: RowBar[] } {
+): { days: StripDay[]; bars: StripBar[] } {
   const last = addDays(today, 6);
   const keys = (Object.keys(sample) as EventKey[]).filter((key) => {
     const event = sample[key];
@@ -392,7 +387,7 @@ function week(
     today,
     keys.map((key) => ({ id: IDS[key], first: sample[key].first, last: sample[key].last })),
   );
-  const bars: RowBar[] = keys.map((key) => {
+  const bars: StripBar[] = keys.map((key) => {
     const event = sample[key];
     const start = Math.max(0, daysFrom(today, event.first));
     const end = Math.min(6, daysFrom(today, event.last));

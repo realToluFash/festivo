@@ -58,6 +58,10 @@ function Bar({ bar }: { bar: StripBar }) {
 
 function Strip({ moment }: { moment: Moment }) {
   const { t } = useTranslation();
+  const rows = Array.from(
+    { length: Math.max(0, ...moment.bars.map((bar) => bar.lane + 1)) },
+    (_, lane) => moment.bars.filter((bar) => bar.lane === lane),
+  );
 
   return (
     <div
@@ -83,8 +87,12 @@ function Strip({ moment }: { moment: Moment }) {
           </li>
         ))}
       </ol>
-      {moment.bars.map((bar) => (
-        <Bar key={bar.event.id} bar={bar} />
+      {rows.map((row, lane) => (
+        <div key={lane} className="today-bar-row">
+          {row.map((bar) => (
+            <Bar key={bar.event.id} bar={bar} />
+          ))}
+        </div>
       ))}
     </div>
   );
