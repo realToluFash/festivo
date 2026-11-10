@@ -2,9 +2,12 @@ import { type ListedEvent } from '@soirely/api-client';
 import {
   CALENDAR_SHOWS,
   type CalendarShow,
+  type EventPhase,
   calendarDays,
   calledOff,
   inMonth,
+  serverClock,
+  shownPhase,
   wallDay,
 } from '@soirely/domain';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -23,6 +26,7 @@ import {
 } from '../../../components/calendarWeeks.ts';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { DeskPage } from '../../../components/SettingsParts.tsx';
+import { listPhase } from '../../../eventsList.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { useDeskLayers } from '../../../layers.ts';
 import { meshFor } from '../../../mesh.ts';
@@ -31,7 +35,8 @@ import { useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { EventsFirstRun } from '../../../components/EventsList.tsx';
 
-type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; events: ListedEvent[] };
+type Load =
+  { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; events: ListedEvent[]; at: Date };
 
 /** The Calendar at a desk in A · Weeks as lanes, as the design demo's /demo/calendar draws it (sc-30413). */
 export function Calendar() {
@@ -92,7 +97,7 @@ function CalendarOf({
     let current = true;
 
     watch(api.allEvents(organisationId)).then(
-      (events) => current && setLoad({ kind: 'loaded', events }),
+      (events) => current && setLoad({ kind: 'loaded', events, at: serverClock.now() }),
       (error: unknown) =>
         current &&
         setLoad((was) =>
@@ -105,7 +110,13 @@ function CalendarOf({
     };
   }, [organisationId, attempt, refresh, watch]);
 
-  const events = useMemo(() => (load.kind === 'loaded' ? load.events.map(calEvent) : []), [load]);
+  const events = useMemo(
+    () =>
+      load.kind === 'loaded'
+        ? load.events.map((event) => calEvent(event, shownPhase(event, load.at, now)))
+        : [],
+    [load, now],
+  );
   const frame = useMemo<CalendarFrame>(() => ({ today, zone, linkOf }), [today, zone]);
   const source = useMemo<FeedSource>(
     () => ({
@@ -164,10 +175,10 @@ function CalendarOf({
   );
 }
 
-function calEvent(event: ListedEvent): CalEvent {
+function calEvent(event: ListedEvent, phase: EventPhase): CalEvent {
   return {
     ...event,
-    shown: event.phase === 'finished' && calledOff(event) ? 'calledOff' : event.phase,
+    shown: listPhase({ phase, calledOff: calledOff(event) }),
     mesh: meshFor(event.id),
     photo: event.cover,
   };

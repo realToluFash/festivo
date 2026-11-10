@@ -318,6 +318,47 @@ describe('Calendar, weeks as lanes (sc-30413)', () => {
     },
   );
 
+  it(
+    'names a paused and a called-off event on its bar and its Agenda row, as Events does',
+    SLOW,
+    async () => {
+      signedIn();
+      answering({
+        org_1: [
+          event({
+            id: 'ev_paused',
+            name: 'Quiet weekend',
+            status: 'paused',
+            phase: 'paused',
+            pausedAt: '2026-11-01T09:00:00+00:00',
+          }),
+          event({
+            id: 'ev_off',
+            name: 'Garden party',
+            startsAt: '2026-11-20T15:00:00+01:00',
+            endsAt: '2026-11-20T20:00:00+01:00',
+            status: 'ended',
+            phase: 'finished',
+            concludedAt: '2026-11-02T10:00:00+00:00',
+          }),
+        ],
+      });
+      at('/app/calendar');
+      const grid = await loaded();
+
+      expect(within(grid).getByText('Quiet weekend · Paused')).toBeTruthy();
+      expect(within(grid).getByText('Garden party · Called off')).toBeTruthy();
+
+      fireEvent.click(screen.getByRole('radio', { name: 'View: Agenda' }));
+
+      const paused = screen.getByRole('link', { name: /^Quiet weekend, Paused, / });
+      const off = screen.getByRole('link', { name: /^Garden party, Called off, / });
+
+      expect(within(paused).getByText('Paused')).toBeTruthy();
+      expect(within(off).getByText('Called off')).toBeTruthy();
+    },
+  );
+
   it('lists the days in Agenda, and remembers the view', SLOW, async () => {
     signedIn();
     answering({ org_1: [DINNER, WEDDING] });
