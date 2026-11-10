@@ -453,6 +453,14 @@ describe.each([
     header: '1 148 pi 4 po',
     typed: '1148 pi 6 po',
   },
+  {
+    locale: 'es',
+    least: '6 ft 7 in',
+    largest: '1640 ft 5 in',
+    shown: '1148 ft 4 in',
+    header: '1148 ft 4 in',
+    typed: '1148 ft 6 in',
+  },
 ])(
   'A room over 1,000 ft, in $locale (sc-3998)',
   ({ locale, least, largest, shown, header, typed }) => {
