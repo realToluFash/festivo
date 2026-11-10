@@ -14,11 +14,13 @@ import {
   NEW_MESSAGE,
   NOT_REPLIED,
   PARKING_UNREACHED,
-  heldPeople,
-  holdAfter,
+  receiptPeople,
   rowOf,
   whatsAppLine,
   whatsAppOf,
+  whatsAppCredits,
+  whatsAppCreditsFor,
+  TELL,
   ROSEWOOD,
   TICKS,
   changed,
@@ -52,17 +54,11 @@ import { BOOK, GROUPS } from './messagesTo.ts';
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
 describe('Messaging B · Conversations, the rules (sc-31371)', () => {
-  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 4 and sc-3950’s 5, in order, each linked once from the demo home', () => {
+  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 4 and sc-3950’s 3, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(99);
-    expect(keys.slice(-5)).toEqual([
-      'whatsAppLine',
-      'checkWhatsApp',
-      'held',
-      'whatsAppRead',
-      'whatsAppTooLate',
-    ]);
+    expect(keys).toHaveLength(97);
+    expect(keys.slice(-3)).toEqual(['whatsAppLine', 'checkWhatsApp', 'whatsAppRead']);
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
     expect(keys.slice(6, 10)).toEqual([
       'channelReply',
@@ -88,7 +84,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'editCancelled',
       'editTooLate',
     ]);
-    expect(new Set(keys).size).toBe(99);
+    expect(new Set(keys).size).toBe(97);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );
@@ -699,65 +695,56 @@ describe('Messaging B · WhatsApp only to guests who agreed (sc-3950)', () => {
     );
   });
 
-  it('moves only a held notice: sent once credits are back, or too late', () => {
-    expect(holdAfter('held', 'topUp')).toBe('released');
-    expect(holdAfter('held', 'tooLate')).toBe('tooLate');
-    expect(holdAfter('released', 'tooLate')).toBe('released');
-    expect(holdAfter('tooLate', 'topUp')).toBe('tooLate');
-    expect(changed(seedOf('held'), { kind: 'hold', event: 'topUp' }).hold).toBe('released');
-    expect(changed(seedOf(null), { kind: 'hold', event: 'topUp' }).hold).toBeUndefined();
+  it('counts each WhatsApp number at its country’s utility rate (sc-3928)', () => {
+    expect(
+      ['+234 802', '+55 21', '+52 55', '+44 7700', '+33 6', '+34 612', '+49 151', '+1 212'].map(
+        whatsAppCredits,
+      ),
+    ).toEqual([2, 2, 2, 5, 5, 4, 9, 0]);
+    expect(whatsAppCreditsFor(['lucia', 'kwame', 'duboise', 'rafael'])).toBe(13);
+    expect(whatsAppCreditsFor(['ines'])).toBe(0);
+    expect(TELL.credits).toBe(43);
   });
 
-  it('reads each held row as the hold leaves it: held, its receipts, or too late', () => {
-    const whatsApp = (hold: Parameters<typeof heldPeople>[0]) =>
-      heldPeople(hold).map((one) => {
-        const line = one.lines[1];
+  it('reads each WhatsApp receipt: Sent, Delivered, Read with its time, then Failed', () => {
+    const whatsApp = receiptPeople().map((one) => {
+      const line = one.lines[1];
 
-        return [line?.word, line?.why].filter((part) => part != null).join(' · ');
-      });
+      return [line?.word, line?.why].filter((part) => part != null).join(' · ');
+    });
 
-    expect(heldPeople('held').map((one) => one.name)).toEqual([
+    expect(receiptPeople().map((one) => one.name)).toEqual([
       'Lucía Ortega',
-      'Kwame Mensah',
       'Duboise Akande',
+      'Kwame Mensah',
       'Rafael Costa',
     ]);
-    expect(heldPeople('held').every((one) => one.lines[0]?.word === 'Email · Delivered')).toBe(
-      true,
-    );
-    expect(whatsApp('held')).toEqual(Array(4).fill('WhatsApp · Held: waiting for credits'));
-    expect(whatsApp('released')).toEqual([
-      'WhatsApp · Read · 10:14',
-      'WhatsApp · Read · 10:14',
-      'WhatsApp · Delivered · 10:02',
+    expect(receiptPeople().every((one) => one.lines[0]?.word === 'Email · Delivered')).toBe(true);
+    expect(whatsApp).toEqual([
+      'WhatsApp · Sent · 18:20',
+      'WhatsApp · Delivered · 18:21',
+      'WhatsApp · Read · 18:24',
       'WhatsApp · Failed',
     ]);
-    expect(whatsApp('tooLate')).toEqual(Array(4).fill('WhatsApp · Not sent: too late'));
   });
 
-  it('seeds the new message with WhatsApp ticked, and the held message in Parking’s place', () => {
+  it('seeds the new message with WhatsApp ticked, and the receipts in Parking’s place', () => {
     expect(seedOf('whatsAppLine').draft).toMatchObject({ step: 'write', ticks: ALL_TICKED });
     expect(seedOf('checkWhatsApp').draft).toMatchObject({ step: 'check', ticks: ALL_TICKED });
 
-    const held = seedOf('held');
+    const read = seedOf('whatsAppRead');
 
-    expect(held).toMatchObject({ hold: 'held', balance: 0, pane: { kind: 'convo', id: 'held' } });
-    expect(held.present).toContain('held');
-    expect(held.present).not.toContain('parking');
-    expect(rowOf(held, 'held', GROUPS)).toMatchObject({
+    expect(read).toMatchObject({ pane: { kind: 'reached', of: 'receipts' } });
+    expect(read.present).toContain('receipts');
+    expect(read.present).not.toContain('parking');
+    expect(rowOf(read, 'receipts', GROUPS)).toMatchObject({
       title: 'Parking at The Landmark',
-      tag: { word: 'Held' },
+      tag: { word: 'Not reached · 18' },
     });
-    expect(rowOf(seedOf('whatsAppTooLate'), 'held', GROUPS).tag?.word).toBe('Not reached · 18');
-    expect(seedOf('whatsAppRead')).toMatchObject({
-      hold: 'released',
-      pane: { kind: 'reached', of: 'held' },
-    });
-    expect(seedOf('whatsAppTooLate').hold).toBe('tooLate');
   });
 
-  it('groups the held four as WhatsApp · 4, never a filter, and gives WhatsApp’s reasons', () => {
-    const who = whoOf(seedOf('held'), 'held', 'held', GROUPS);
+  it('groups the four as WhatsApp · 4, never a filter, and gives WhatsApp’s reasons', () => {
+    const who = whoOf(seedOf('whatsAppRead'), 'receipts', 'receipts', GROUPS);
 
     expect(who.groups.map((group) => `${group.name} · ${group.count}`)).toEqual([
       'WhatsApp · 4',
@@ -780,8 +767,8 @@ describe('Messaging B · WhatsApp only to guests who agreed (sc-3950)', () => {
           .map((line) => [line.word, line.why].filter((part) => part != null).join(' · ')),
       ),
     ).toEqual([
-      ['Email · Not sent · Unsubscribed', 'WhatsApp · Not sent · Stopped WhatsApp'],
       ['Email · No email address', 'WhatsApp · Not sent · Hasn’t agreed to WhatsApp'],
+      ['Email · Not sent · Unsubscribed', 'WhatsApp · Not sent · Stopped WhatsApp'],
     ]);
     expect(who.waiting).toEqual([]);
   });

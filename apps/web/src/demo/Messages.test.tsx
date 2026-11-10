@@ -69,7 +69,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       .parentElement as HTMLElement;
     const links = within(group).getAllByRole('link');
 
-    expect(links).toHaveLength(99);
+    expect(links).toHaveLength(97);
     expect(links[0]?.getAttribute('href')).toBe(`${AT}?state=first`);
     expect(links[7]?.getAttribute('href')).toBe(`${AT}?state=noticeCost`);
     expect(links[26]?.getAttribute('href')).toBe(`${AT}?state=bell`);
@@ -1542,51 +1542,30 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
   );
 
   it(
-    'holds WhatsApp without credits: the wait line under the receipt, no action',
+    'shows WhatsApp’s receipts: Sent, Delivered, Read with its time, Failed, and Not sent with its reason',
     SLOW,
     async () => {
-      await messages('held');
-      const log = screen.getByRole('log', { name: 'Parking at The Landmark' });
-
-      expect(row(/^Parking at The Landmark, .*Held$/)).toBeDefined();
-      expect(
-        within(log).getByText('4 WhatsApp messages are waiting for credits. The emails were sent.'),
-      ).toBeDefined();
-      expect(screen.queryByRole('button', { name: 'Send without WhatsApp' })).toBeNull();
-
-      fireEvent.click(within(log).getByRole('button', { name: 'Who it reached' }));
+      await messages('whatsAppRead');
       expect(
         await screen.findByRole('heading', { level: 2, name: 'Reached 124 of 142' }),
       ).toBeDefined();
       const four = screen.getByRole('region', { name: 'WhatsApp · 4' });
 
-      expect(within(four).getAllByText('WhatsApp · Held: waiting for credits')).toHaveLength(4);
       expect(within(four).getAllByText('Email · Delivered')).toHaveLength(4);
-      expect(screen.queryByText(/waiting for credits. The emails were sent/)).toBeNull();
+      expect(within(four).getByText('WhatsApp · Sent')).toBeDefined();
+      expect(within(four).getByText('WhatsApp · Delivered')).toBeDefined();
+      expect(within(four).getByText('WhatsApp · Read')).toBeDefined();
+      expect(within(four).getByText('WhatsApp · Failed')).toBeDefined();
+      expect(four.textContent).toContain('WhatsApp · Sent · 18:20');
+      expect(four.textContent).toContain('WhatsApp · Delivered · 18:21');
+      expect(four.textContent).toContain('WhatsApp · Read · 18:24');
+      expect(screen.queryByText(/waiting for credits/)).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Send without WhatsApp' })).toBeNull();
       const cant = screen.getByRole('region', { name: 'Can’t be told · 18' });
 
-      expect(cant.textContent).toContain('WhatsApp · Not sent · Stopped WhatsApp');
       expect(cant.textContent).toContain('WhatsApp · Not sent · Hasn’t agreed to WhatsApp');
+      expect(cant.textContent).toContain('WhatsApp · Not sent · Stopped WhatsApp');
+      expect(row(/^Parking at The Landmark, .*Not reached · 18$/)).toBeDefined();
     },
   );
-
-  it('shows the receipts once credits are back: Read twice, Delivered, Failed', SLOW, async () => {
-    await messages('whatsAppRead');
-    const four = screen.getByRole('region', { name: 'WhatsApp · 4' });
-
-    expect(within(four).getAllByText('WhatsApp · Read')).toHaveLength(2);
-    expect(within(four).getByText('WhatsApp · Delivered')).toBeDefined();
-    expect(within(four).getByText('WhatsApp · Failed')).toBeDefined();
-    expect(four.textContent).toContain('WhatsApp · Read · 10:14');
-    expect(four.textContent).toContain('WhatsApp · Delivered · 10:02');
-    expect(row(/^Parking at The Landmark, .*Not reached · 18$/)).toBeDefined();
-  });
-
-  it('reads a hold past its moment as Not sent: too late', SLOW, async () => {
-    await messages('whatsAppTooLate');
-    const four = screen.getByRole('region', { name: 'WhatsApp · 4' });
-
-    expect(within(four).getAllByText('WhatsApp · Not sent: too late')).toHaveLength(4);
-    expect(screen.queryByText(/waiting for credits/)).toBeNull();
-  });
 });
