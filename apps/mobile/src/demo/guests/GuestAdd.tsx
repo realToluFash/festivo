@@ -19,7 +19,7 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { ASK_WIDTH, AlertLine } from '../events/EventEdits.tsx';
-import { SearchField } from '../events/EventsList.tsx';
+import { SearchField } from '../../components/EventsSearch.tsx';
 import { LineIcon } from '../../components/AccountCard.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
 import {

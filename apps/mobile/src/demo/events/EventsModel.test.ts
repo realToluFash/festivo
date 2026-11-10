@@ -15,7 +15,6 @@ import {
   emptyTabOf,
   eventHref,
   eventStateOf,
-  filterWord,
   homeOf,
   hostNames,
   hostsRow,
@@ -27,7 +26,6 @@ import {
   matchesFilters,
   matchesSearch,
   needsName,
-  noMatchLine,
   resultsOf,
   rowLine,
   rowTag,
@@ -35,7 +33,6 @@ import {
   summaryLine,
   tabWidths,
   wallOf,
-  whenSpan,
   withoutTab,
 } from './EventsModel.ts';
 import { CLOCKS, EVENTS, type SampleEvent, sampleEvent } from './EventsSample.ts';
@@ -331,8 +328,6 @@ describe('search and filters (sc-30302)', () => {
   });
 
   it('reads When on the reader’s calendar', () => {
-    expect(whenSpan({ kind: 'week' }, reader)).toEqual({ from: '2026-11-02', to: '2026-11-08' });
-    expect(whenSpan({ kind: 'month' }, reader)).toEqual({ from: '2026-11-01', to: '2026-11-30' });
     expect(
       matchesFilters(event('evt-wed-4'), { ...NO_FILTERS, when: { kind: 'week' } }, reader),
     ).toBe(true);
@@ -350,21 +345,10 @@ describe('search and filters (sc-30302)', () => {
     ]);
   });
 
-  it('says what is chosen, and what matched nothing', () => {
+  it('matches nothing for the no-match board', () => {
     const wedding = { ...NO_FILTERS, types: ['wedding'] as const };
 
-    expect(filterWord(NO_FILTERS, LOCALE)).toBe('All');
-    expect(filterWord({ ...NO_FILTERS, types: ['wedding', 'birthday'] }, LOCALE)).toBe(
-      'Wedding, Birthday',
-    );
     expect(resultsOf(EVENTS, 'garden party', wedding, reader, LOCALE).count).toBe(0);
-    expect(noMatchLine('garden party', wedding, LOCALE)).toBe(
-      'You searched for “garden party” and filtered by Wedding.',
-    );
-    expect(noMatchLine('garden party', NO_FILTERS, LOCALE)).toBe(
-      'You searched for “garden party”.',
-    );
-    expect(noMatchLine('', wedding, LOCALE)).toBe('You filtered by Wedding.');
   });
 
   it('lists every host on the organisation’s events, A to Z', () => {

@@ -5,7 +5,7 @@ import { Row } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { EventField } from '../events/EventEdits.tsx';
-import { BoxField } from '../events/EventsPick.tsx';
+import { BoxField } from '../../components/MomentPick.tsx';
 import { LineIcon } from '../../components/AccountCard.tsx';
 import { GREET_AS_MAX, greetAsCount } from './GuestsModel.ts';
 import type { SampleGuest } from './GuestsSample.ts';
