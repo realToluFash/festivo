@@ -8,6 +8,7 @@ import {
   positionPart,
   rememberTabHolding,
   shownPhase,
+  stepAwaitsMilestones,
   takesCardStep,
   wallDay,
 } from '@soirely/domain';
@@ -107,8 +108,6 @@ export function PhaseChange({ phase }: { phase: EventPhase }) {
     </p>
   );
 }
-
-const STEP_WITHOUT_MILESTONES: readonly EventPhase[] = ['draft', 'paused', 'finished'];
 
 /** The page's first area, as Events-A-Desk draws it (sc-30413): the cover card and its one step, then Details and Name and cover, each part edited in place, beside Just for you and Manage. */
 export function Overview({
@@ -220,7 +219,7 @@ export function Overview({
         level={1}
         nameRef={heading}
         stepRef={stepButton}
-        held={milestones == null && !STEP_WITHOUT_MILESTONES.includes(phase)}
+        held={milestones == null && stepAwaitsMilestones(phase)}
         sending={resume.state === 'pending' ? t('eventPause.resuming') : null}
         takes={(action) => takesCardStep(event, action)}
         onStep={onStep}
