@@ -45,7 +45,7 @@ export function demoGroups(
 ): { heading: SettingsGroup['heading']; sections: ShellSection[] }[] {
   return settingsGroups(VIEWER_ORGANISATION[viewer]).map(({ heading, sections }) => ({
     heading,
-    sections: sections.filter((section): section is ShellSection => section !== 'roles'),
+    sections: [...sections],
   }));
 }
 

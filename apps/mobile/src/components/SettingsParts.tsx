@@ -233,7 +233,7 @@ export function RoundButton({
   );
 }
 
-type TileOf = Exclude<ShellSection, 'account' | 'personalisation'> | 'roles' | 'demo';
+type TileOf = Exclude<ShellSection, 'account' | 'personalisation'> | 'demo';
 
 const TILES: Record<TileOf, { glyph: GlyphName; fill: string }> = {
   security: { glyph: 'shield', fill: tokens.optionTeal },
@@ -241,7 +241,6 @@ const TILES: Record<TileOf, { glyph: GlyphName; fill: string }> = {
   organisation: { glyph: 'settings', fill: tokens.colorAccent },
   members: { glyph: 'users', fill: tokens.optionBlue },
   signInRules: { glyph: 'lock', fill: tokens.optionPurple },
-  roles: { glyph: 'key', fill: tokens.optionAmber },
   demo: { glyph: 'sparkle', fill: tokens.colorInk },
 };
 

@@ -1018,6 +1018,14 @@ function RolePicker({
           </Pressable>
         ))}
       </View>
+      {organisation.role.seededAs === 'administrator' && (
+        <Text size={tokens.typeBody.size} muted>
+          {t('membersScreen.roleOwnerMakesOwner')}
+        </Text>
+      )}
+      <Text size={tokens.typeBody.size} muted>
+        {t('membersScreen.roleEventsFrom')}
+      </Text>
       <Text size={tokens.typeBody.size} muted>
         {t('membersScreen.roleTakesEffect')}
       </Text>

@@ -12,15 +12,13 @@ export const DESTINATION_HREF = {
 /** The frame's Home tap, told apart from a replace to Home, which is a launch and reads the account again (sc-28178). */
 export const HOME_TAPPED = { pathname: '/', params: { tapped: '1' } } as const;
 
-/** Only what a story has built (sc-722, #727), and Events and Calendar only for a role that can read events (sc-1593, sc-3625). */
+/** Events and Calendar for anyone in an organisation: a Member's list holds the events they have a role on (sc-29914). */
 export function destinations(
   organisation: { permissions: readonly string[] } | null,
 ): readonly Destination[] {
   return [
     'home',
-    ...(organisation != null && roleHolds(organisation, 'events.read')
-      ? (['events', 'calendar'] as const)
-      : []),
+    ...(organisation != null ? (['events', 'calendar'] as const) : []),
     'settings',
   ];
 }
@@ -32,7 +30,6 @@ export type SettingsSection =
   | 'personalisation'
   | 'organisation'
   | 'members'
-  | 'roles'
   | 'signInRules';
 
 export const SECTION_HREF = {
@@ -42,7 +39,6 @@ export const SECTION_HREF = {
   personalisation: '/settings/personalisation',
   organisation: '/settings/organisation',
   members: '/settings/members',
-  roles: '/settings/roles',
   signInRules: '/settings/sign-in-rules',
 } as const satisfies Record<SettingsSection, string>;
 
@@ -69,7 +65,7 @@ export interface SettingsGroup {
   sections: readonly SettingsSection[];
 }
 
-/** Members only for a role that can read them, as on the web; Roles only for one that can change them (sc-1931). */
+/** Members only for an Owner or an Admin, as on the web; nobody has Roles, each role being fixed (sc-29914). */
 export function settingsGroups(
   organisation: { permissions: readonly string[] } | null,
 ): readonly SettingsGroup[] {
@@ -86,7 +82,6 @@ export function settingsGroups(
       sections: [
         'organisation',
         ...(roleHolds(organisation, 'members.read') ? (['members'] as const) : []),
-        ...(roleHolds(organisation, 'members.manage') ? (['roles'] as const) : []),
         'signInRules',
       ],
     },
