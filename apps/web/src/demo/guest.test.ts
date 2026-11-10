@@ -9,6 +9,7 @@ import {
   GUEST_PAGES,
   answersClosedByDate,
   LANGUAGES,
+  agreesOnSend,
   codePath,
   dayOf,
   eventDay,
@@ -16,7 +17,9 @@ import {
   forTheDay,
   isGuestState,
   layoutOf,
+  offersWhatsApp,
   sameAnswer,
+  sentAnswer,
   sentWhen,
   shows,
   showsMessages,
@@ -29,16 +32,17 @@ const LINKED = GUEST_PAGES.flatMap((page) => page.states);
 const STATES = LINKED.map((one) => /state=(\w+)/u.exec(one.to)?.[1] ?? '');
 
 describe('the guest’s page states (sc-31306)', () => {
-  it('links every state the boards draw once, in the boards’ five groups', () => {
+  it('links every state the boards draw once, in the boards’ six groups', () => {
     expect(GUEST_PAGES.map((page) => page.name)).toEqual([
       'Answering',
       'Coming back, and answers closing',
       'Over, gone, and the rest',
       'In the guest’s own language (sc-3790)',
       'The hosts’ messages and the guest’s own',
+      'Your messages, opened from the guest’s page (sc-3969, sc-3950)',
     ]);
-    expect(STATES).toHaveLength(62);
-    expect(new Set(STATES).size).toBe(62);
+    expect(STATES).toHaveLength(70);
+    expect(new Set(STATES).size).toBe(70);
     expect(STATES.every(isGuestState)).toBe(true);
     expect(LINKED.find((one) => one.to.includes('messageArrival'))?.to).toBe(
       '/demo/guest?state=messageArrival#m-3',
@@ -233,6 +237,83 @@ describe('the words and dates', () => {
       'Français',
       'Português',
     ]);
+  });
+});
+
+describe('WhatsApp updates on Check and send (sc-3950)', () => {
+  it('offers the box only to a guest with a mobile number and no agreement in force', () => {
+    expect(offersWhatsApp({ mobile: true, whatsApp: 'none' })).toBe(true);
+    expect(offersWhatsApp({ mobile: true, whatsApp: 'stopped' })).toBe(true);
+    expect(offersWhatsApp({ mobile: true, whatsApp: 'agreed' })).toBe(false);
+    expect(offersWhatsApp({ mobile: true, whatsApp: 'hostRecorded' })).toBe(false);
+    expect(offersWhatsApp({ mobile: false, whatsApp: 'none' })).toBe(false);
+    expect(offersWhatsApp(startOf('check'))).toBe(false);
+    expect(offersWhatsApp(startOf('checkWhatsApp'))).toBe(true);
+  });
+
+  it('records the agreement only from a box shown and ticked', () => {
+    expect(agreesOnSend(startOf('checkWhatsApp'))).toBe(false);
+    expect(agreesOnSend(startOf('checkWhatsAppTicked'))).toBe(true);
+    expect(agreesOnSend({ mobile: false, whatsApp: 'none', ticked: true })).toBe(false);
+    expect(agreesOnSend({ mobile: true, whatsApp: 'agreed', ticked: true })).toBe(false);
+    expect(agreesOnSend({ mobile: true, whatsApp: 'hostRecorded', ticked: true })).toBe(false);
+  });
+
+  it('records one agreement however often Coming is sent, and keeps offering the box when unticked', () => {
+    const ticked = startOf('checkWhatsAppTicked');
+    const once = { ...ticked, ...sentAnswer(ticked, 'coming') };
+    const twice = sentAnswer({ ...once, view: ticked.view }, 'coming');
+
+    expect(offersWhatsApp(once)).toBe(false);
+    expect(agreesOnSend(once)).toBe(false);
+    expect(twice.whatsApp).toBeUndefined();
+    expect(twice.recorded).toBe(once.recorded);
+
+    const unticked = startOf('checkWhatsApp');
+    const sent = { ...unticked, ...sentAnswer(unticked, 'coming') };
+    expect(sent.whatsApp).toBe('none');
+    expect(offersWhatsApp(sent)).toBe(true);
+  });
+
+  it('starts unticked, ticked, and answered with the line', () => {
+    expect(startOf('checkWhatsApp')).toMatchObject({
+      view: { kind: 'check' },
+      mobile: true,
+      ticked: false,
+      want: 'checkHead',
+    });
+    expect(startOf('checkWhatsAppTicked')).toMatchObject({ ticked: true, want: 'checkHead' });
+    expect(startOf('comingWhatsApp')).toMatchObject({
+      recorded: { answer: 'coming', whatsApp: true },
+      whatsApp: 'agreed',
+      want: 'greeting',
+    });
+    expect(startOf('coming').recorded?.whatsApp).toBeUndefined();
+    expect(startOf('check')).toMatchObject({ mobile: false, ticked: false });
+  });
+
+  it('sends Coming with the agreement when ticked, and only the answer when not', () => {
+    expect(sentAnswer(startOf('checkWhatsAppTicked'), 'coming')).toEqual({
+      recorded: { answer: 'coming', on: '2026-10-27', whatsApp: true },
+      view: { kind: 'recorded', same: false },
+      whatsApp: 'agreed',
+    });
+    expect(sentAnswer(startOf('checkWhatsApp'), 'coming')).toEqual({
+      recorded: { answer: 'coming', on: '2026-10-27' },
+      view: { kind: 'recorded', same: false },
+    });
+  });
+
+  it('writes the box, its line with the organisation (pm, 10 Nov), and the line after sending', () => {
+    const words = wordsFor('en');
+
+    expect(words.whatsAppBox).toBe('Send me updates on WhatsApp');
+    expect(words.whatsAppHint).toBe(
+      'Soirely sends them on behalf of Ire Events. Reply STOP at any time to end them.',
+    );
+    expect(words.whatsAppTold).toBe(
+      'Updates will come on WhatsApp. Reply STOP at any time to end them.',
+    );
   });
 });
 

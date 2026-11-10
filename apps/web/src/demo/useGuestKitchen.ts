@@ -9,7 +9,9 @@ import {
   TODAY,
   type View,
   type Visit,
+  agreesOnSend,
   sameAnswer,
+  sentAnswer,
 } from './guest.ts';
 import {
   type Field,
@@ -81,10 +83,10 @@ export function landed(was: Visit): Partial<Visit> {
   }
   const record = saved(kitchen, TODAY);
   const kept = { ...kitchen, record, people: fromRecord(record), tried: false, alert: null };
-  const coming = sameAnswer(was.recorded, 'coming');
+  const coming = sameAnswer(was.recorded, 'coming') && !agreesOnSend(was);
 
   return {
-    recorded: coming ? was.recorded : { answer: 'coming', on: TODAY },
+    ...sentAnswer(was, 'coming'),
     view: { kind: 'recorded', same: coming && !changes(kitchen) },
     kitchen: kept,
     ...focus('greeting'),

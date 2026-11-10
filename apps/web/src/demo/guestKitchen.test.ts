@@ -268,6 +268,27 @@ describe('the saved line after the date to answer by (lead, 4506198447)', () => 
   });
 });
 
+describe('Send with the WhatsApp box (sc-3950)', () => {
+  it('records the agreement with Coming when ticked, and nothing more when not', () => {
+    const sent = { ...startOf('check_and_send'), mobile: true };
+
+    expect(landed({ ...sent, ticked: true })).toMatchObject({
+      recorded: { answer: 'coming', whatsApp: true },
+      whatsApp: 'agreed',
+    });
+    expect(landed(sent).recorded?.whatsApp).toBeUndefined();
+    expect(landed(sent).whatsApp).toBeUndefined();
+  });
+
+  it('records nothing when the send fails', () => {
+    const sent = { ...startOf('check_and_send'), mobile: true, ticked: true };
+    const refused = landed({ ...sent, kitchen: { ...sent.kitchen!, refuses: true } });
+
+    expect(refused.recorded).toBeUndefined();
+    expect(refused.whatsApp).toBeUndefined();
+  });
+});
+
 describe('meal_ruled_out (sc-3907’s rule)', () => {
   it('marks the dish the new allergy rules out, and lets Send go once it is unpicked', () => {
     const kitchen = kitchenOf('meal_ruled_out');
