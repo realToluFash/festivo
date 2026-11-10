@@ -1,6 +1,5 @@
 import {
   type AddableMember,
-  ApiError,
   EVENT_ROLES,
   type EventPeople,
   type EventPerson,
@@ -8,6 +7,8 @@ import {
 } from '@soirely/api-client';
 import { listFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
+
+import { refusalSaid } from './refusal.ts';
 
 /** By the role's place in `order`, Lead first, then by name. */
 export function inRoleOrder<P, R>(
@@ -106,10 +107,22 @@ export function offered(addable: readonly AddableMember[], typed: string): Addab
   return wanted === '' ? [...addable] : addable.filter((one) => plain(one.name).includes(wanted));
 }
 
-/** The API's reason when it refused, or the fallback when it never answered. */
-export function refusal(error: unknown, fallback: string): string {
-  if (!(error instanceof ApiError) || error.status === 0 || error.status >= 500) return fallback;
-  const { violations, detail, title } = error.problem;
+/** Add people's one line: who went in, if anyone did, then why the rest did not. */
+export function addRefused(
+  t: TFunction,
+  error: unknown,
+  role: EventRole,
+  went: readonly string[],
+  left: readonly string[],
+): string {
+  const refused = refusalSaid(
+    error,
+    left.length === 1
+      ? t('eventPeople.addFailedOne', { name: left[0] ?? '' })
+      : t('eventPeople.addFailedMany', { count: left.length }),
+  );
 
-  return violations?.[0]?.message ?? detail ?? title;
+  return went.length === 0
+    ? refused
+    : t('eventPeople.addedThenRefused', { added: nowCan(t, role, went), refused });
 }

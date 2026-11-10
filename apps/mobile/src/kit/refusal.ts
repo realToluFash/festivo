@@ -14,3 +14,11 @@ export function refusalFor(error: unknown, field: string, fallback: string): str
 
   return violation?.message ?? refusalTitle(error, fallback);
 }
+
+/** The first violation, then the detail, then the title; the screen's own words when the API never answered or failed itself. */
+export function refusalSaid(error: unknown, fallback: string): string {
+  if (!(error instanceof ApiError) || error.status === 0 || error.status >= 500) return fallback;
+  const { violations, detail, title } = error.problem;
+
+  return violations?.[0]?.message ?? detail ?? title;
+}

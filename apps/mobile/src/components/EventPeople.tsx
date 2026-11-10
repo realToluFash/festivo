@@ -14,16 +14,17 @@ import { Animated, StyleSheet, View, type ViewInstance } from 'react-native';
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
 import {
+  addRefused,
   inListOrder,
   joinedLine,
   managesPeople,
   nowCan,
   offered,
   opensRow,
-  refusal,
   rowLine,
   seesEveryEvent,
 } from '../kit/eventPeople.ts';
+import { refusalSaid } from '../kit/refusal.ts';
 import { glide } from '../motion.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -106,7 +107,7 @@ function sheetWords(
         name: firstName(name),
         role: t(`eventPeople.role.${held}`),
       }),
-    removeFailed: (error) => refusal(error, t('eventPeople.removeFailed')),
+    removeFailed: (error) => refusalSaid(error, t('eventPeople.removeFailed')),
   };
 }
 
@@ -125,18 +126,7 @@ function addWords(t: TFunction, organisation: string, nothingLeft: boolean): Add
     discardLine: t('eventPeople.discardLine'),
     discardKeep: t('eventPeople.discardKeep'),
     discard: t('eventPeople.discard'),
-    refusal: (error, role, went, left) => {
-      const refused = refusal(
-        error,
-        left.length === 1
-          ? t('eventPeople.addFailedOne', { name: left[0] ?? '' })
-          : t('eventPeople.addFailedMany', { count: left.length }),
-      );
-
-      return went.length === 0
-        ? refused
-        : t('eventPeople.addedThenRefused', { added: nowCan(t, role, went), refused });
-    },
+    refusal: (error, role, went, left) => addRefused(t, error, role, went, left),
     everyoneOn: nothingLeft ? t('eventPeople.everyoneOn', { organisation }) : undefined,
   };
 }

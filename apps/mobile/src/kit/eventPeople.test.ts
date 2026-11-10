@@ -1,10 +1,11 @@
-import type { EventPerson, EventRole } from '@soirely/api-client';
+import { ApiError, type EventPerson, type EventRole } from '@soirely/api-client';
 import { init, t } from 'i18next';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
 
 import {
+  addRefused,
   inListOrder,
   managesPeople,
   nowCan,
@@ -93,5 +94,37 @@ describe('People on an event', () => {
     expect(offered(addable, 'lucia').map((one) => one.membershipId)).toEqual(['m1']);
     expect(offered(addable, '  ')).toHaveLength(2);
     expect(offered(addable, 'zed')).toEqual([]);
+  });
+});
+
+describe('Add people, part way', () => {
+  const refused = (() => {
+    const problem = {
+      type: 'https://soirely.com/errors/validation_failed',
+      title: 'Some of the information provided is not valid.',
+      status: 422,
+      violations: [
+        { propertyPath: 'membershipId', message: 'Ana Souza is not an active member.', code: 'x' },
+      ],
+    };
+
+    return new ApiError(problem, new Response(JSON.stringify(problem), { status: 422 }));
+  })();
+
+  it('names who went in, then the refusal', () => {
+    expect(addRefused(t, refused, 'can_view', ['Kofi Mensah'], ['Ana Souza', 'Tom Becker'])).toBe(
+      'Kofi Mensah can view now. Ana Souza is not an active member.',
+    );
+  });
+
+  it('names who is still ticked when nothing answered', () => {
+    const offline = new Error('offline');
+
+    expect(addRefused(t, offline, 'can_view', [], ['Tom Becker'])).toBe(
+      'We couldn’t add Tom Becker, so they’re still ticked. Check your connection and press Add again.',
+    );
+    expect(addRefused(t, offline, 'lead', ['A', 'B'], ['C', 'D', 'E'])).toBe(
+      '2 people lead this event now. We couldn’t add the 3 still ticked. Check your connection and press Add again.',
+    );
   });
 });
