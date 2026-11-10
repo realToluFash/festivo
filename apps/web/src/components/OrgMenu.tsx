@@ -235,8 +235,8 @@ export function OrgMenu({
       tile.kind === 'offer'
         ? t('switcher.canAsk')
         : tile.role == null
-          ? t('switcher.invitationTileNoRole')
-          : t('switcher.invitationTile', { role: tile.role });
+          ? t('invitations.fromNobodyNoRole')
+          : t('invitations.fromNobody', { role: tile.role });
 
     return (
       <button

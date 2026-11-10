@@ -787,8 +787,6 @@
     "matches_other": "{{count, number}} organisations match",
     "noMatch": "No organisation matches “{{query}}”.",
     "canAsk": "You can ask to join",
-    "invitationTile": "Invitation · {{role}}",
-    "invitationTileNoRole": "Invitation",
     "option": "{{name}}, {{line}}",
     "optionCurrent": "{{name}}, {{line}}, Current"
   },
