@@ -27,7 +27,10 @@ onFlowComplete:
 - waitForAnimationToEnd
 - takeScreenshot: keys-up
 - assertVisible: '(?i)(shift|delete)'
-- tapOn: '{{t:passwordCard.signsOut}}'
+- tapOn:
+    text: '{{t:passwordCard.new}}'
+    above:
+      id: 'security.change.new'
 - waitForAnimationToEnd
 - takeScreenshot: keys-hidden
 - assertNotVisible: '(?i)(shift|delete)'
