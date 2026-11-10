@@ -11,9 +11,9 @@ import {
   KindsLoading,
 } from '../../../components/NotificationParts.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
-import { Head, TextAction } from '../../../components/SettingsParts.tsx';
+import { DeskPage, Head, TextAction } from '../../../components/SettingsParts.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
-import { LayersContext, useDeskLayers } from '../../../layers.ts';
+import { useDeskLayers } from '../../../layers.ts';
 import {
   CHANNELS,
   type Channel,
@@ -161,7 +161,7 @@ export function NotificationsDesk() {
   }
 
   return (
-    <LayersContext value={layers}>
+    <DeskPage layers={layers}>
       <div className="desk-column account-desk" inert={covered}>
         {refreshing && <Refreshing />}
         <header className="desk-top">
@@ -219,6 +219,6 @@ export function NotificationsDesk() {
           onDone={() => setAllow(false)}
         />
       )}
-    </LayersContext>
+    </DeskPage>
   );
 }

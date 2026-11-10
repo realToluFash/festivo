@@ -213,6 +213,14 @@ describe('Security at a desk (sc-30411)', () => {
     expect(section('Signed in on').getByText('Chrome on Windows')).toBeDefined();
   });
 
+  it('draws the page in the desk’s look, beside the Settings list', async () => {
+    answering({ 'GET /api/auth/two-factor': () => json({ on: false, recoveryCodesLeft: 0 }) });
+    openSecurity();
+
+    const card = await screen.findByText('Two-factor is off');
+    expect(card.closest('.settings-desk-page .desk')).not.toBeNull();
+  });
+
   it('hides the card and says two-factor did not load, until Try again reads it', async () => {
     let fails = true;
     answering({

@@ -95,6 +95,13 @@ describe('Notification settings at a desk (sc-30411)', () => {
     ).toBeTruthy();
   });
 
+  it('draws the page in the desk’s look', async () => {
+    opened();
+
+    const card = await screen.findByText('You hear by push and email');
+    expect(card.closest('.desk')).not.toBeNull();
+  });
+
   it('a kind opens in place to what it covers and its two switches, one row at a time', async () => {
     opened();
 

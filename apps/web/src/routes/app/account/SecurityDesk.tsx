@@ -30,9 +30,16 @@ import {
   SetupDialog,
 } from '../../../components/SecurityDialogs.tsx';
 import { KeptAction, Openable, SaidLine, ShieldCard } from '../../../components/SecurityParts.tsx';
-import { Ask, Chevron, Head, RedAction, RowWords } from '../../../components/SettingsParts.tsx';
+import {
+  Ask,
+  Chevron,
+  DeskPage,
+  Head,
+  RedAction,
+  RowWords,
+} from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
-import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
+import { focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import {
   PROVIDER_NAMES,
@@ -414,7 +421,7 @@ export function SecurityDesk() {
   const provingAct = proving != null && proving.act !== 'everywhere' ? proving.act : null;
 
   return (
-    <LayersContext value={layers}>
+    <DeskPage layers={layers}>
       <div className="desk-column account-desk" inert={covered}>
         {refreshing && <Refreshing />}
         <header className="desk-top">
@@ -806,7 +813,7 @@ export function SecurityDesk() {
           }
         />
       )}
-    </LayersContext>
+    </DeskPage>
   );
 }
 
