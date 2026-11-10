@@ -195,6 +195,24 @@ export const CHANNEL_IN_LINE: Record<ChannelKey, string> = {
   wa: 'WhatsApp',
 };
 
+/** sc-3963's too-few-credits branch of the check, in the AC's English (l10n #23662, #23680). */
+export const WW = {
+  either: 'Email goes either way.',
+  withoutWa: 'Send without WhatsApp',
+  withoutSms: 'Send without SMS',
+  emailOnly: 'Send by email only',
+  askOwner: 'Ask an owner',
+  askFailed: 'Not sent. Try again in a moment.',
+} as const;
+
+function waits(paid: 'sms' | 'wa', count: number): string {
+  const name = paid === 'wa' ? 'WhatsApp' : 'SMS';
+
+  return count === 1
+    ? `1 ${name} message will wait for credits.`
+    : `${count} ${name} messages will wait for credits.`;
+}
+
 export const say = {
   section: (word: string, count: number) => `${word} · ${count}`,
   where: (where: string, text: string) => `${where} · ${text}`,
@@ -215,8 +233,14 @@ export const say = {
   toldBy: (channel: string) => `Told by ${channel}`,
   noticeCost: (paid: 'sms' | 'wa', credits: number, after: string) =>
     `This ${paid === 'wa' ? 'WhatsApp message' : 'text'} uses ${credits} ${credits === 1 ? 'credit' : 'credits'}. Credits after sending: ${after}.`,
-  noticeWaits: (paid: 'sms' | 'wa') =>
-    `1 ${paid === 'wa' ? 'WhatsApp' : 'SMS'} message will wait for credits.`,
+  waits,
+  noticeWaits: (paid: 'sms' | 'wa') => waits(paid, 1),
+  ownersAsked: (owners: number) =>
+    owners === 1
+      ? 'The owner has been sent the link to Plan and billing.'
+      : 'The owners have been sent the link to Plan and billing.',
+  toldHowBy: (channels: string) =>
+    `Your message goes on their page. Soirely tells them it is there by ${channels}.`,
   tellNowAs: (channel: string) => `Tell them now by ${channel}`,
   seenAt: (time: string) => `Seen ${time}`,
   you: (text: string) => `You: ${text}`,

@@ -7,6 +7,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { Avatar } from '../../components/SettingsParts.tsx';
 import { TextAction } from '../../components/Summary.tsx';
 import { BigButton, CancelAsk, CheckCard, ResendCheck } from './CheckCard.tsx';
+import { sendWithout } from './CheckWaits.ts';
 import { AnswerBox, MiniComposer, NewComposer, PreviewBar, ToHead } from './Composers.tsx';
 import { GroupTile } from './MessagesList.tsx';
 import {
@@ -567,7 +568,12 @@ function ownParts(talk: Talk, followUp: string): Own {
             onChange={talk.onChangeIt}
             onKeep={() => dispatch({ type: 'keepScheduled' })}
             onChannel={talk.onChannel}
-            onSeeAll={() => talk.ownDesign(say.seeAll(checkOf(draft).cantTell))}
+            onSeeAll={(count) => talk.ownDesign(say.seeAll(count))}
+            balance={m.balance}
+            waits={m.waits}
+            onWithout={(drops) => {
+              for (const action of sendWithout(drops)) dispatch(action);
+            }}
           />
         </>
       ),

@@ -41,6 +41,8 @@ import { Preview } from './MessagesPreview.tsx';
 import { PW } from './messagesPreviewWords.ts';
 import { StreamItems } from './MessagesStream.tsx';
 import { ToPopover } from './MessagesTo.tsx';
+import { WaitBlock } from './MessagesWaits.tsx';
+import { waitsCheckOf, waitsOf } from './messagesWaits.ts';
 
 function commandEnter(event: KeyboardEvent, then: () => void): void {
   if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return;
@@ -515,8 +517,10 @@ export function CheckCard({
   onChange: () => void;
   onLater: () => void;
 }) {
-  const { act, focus, tell, to } = useInbox();
-  const check = checkOf(draft.to, draft.ticks, to.book.groups);
+  const { inbox, act, focus, tell, to } = useInbox();
+  const counted = checkOf(draft.to, draft.ticks, to.book.groups);
+  const check = inbox.balance === 0 ? waitsCheckOf(counted, draft.to, draft.ticks) : counted;
+  const waits = inbox.balance === 0 ? waitsOf(check, draft.ticks) : null;
   const sentenceId = useId();
 
   return (
@@ -585,6 +589,7 @@ export function CheckCard({
         </div>
       )}
       {check.credits != null && <p className="mg-credits">{check.credits}</p>}
+      {waits != null && <WaitBlock waits={waits} />}
       <div className="mg-check-acts">
         <button
           type="button"

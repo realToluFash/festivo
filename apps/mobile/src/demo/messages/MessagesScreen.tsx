@@ -89,6 +89,7 @@ import {
   PARKING_TIME,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
+import { waitsCheckOf } from './CheckWaits.ts';
 import { SW, refusalLine } from './ScheduledSave.ts';
 import { outsideToken, tokenText } from './TokenText.ts';
 import { type ReachPerson, fixKindOf, reachViewOf, resendOf } from './Reach.ts';
@@ -393,10 +394,8 @@ export function MessagesScreen({
     onChannel: (key) => {
       dispatch({ type: 'channel', key });
       if (draft?.step !== 'check') return;
-      const check = checkOf({
-        ...draft,
-        channels: { ...draft.channels, [key]: !draft.channels[key] },
-      });
+      const next = { ...draft, channels: { ...draft.channels, [key]: !draft.channels[key] } };
+      const check = waitsCheckOf(next, m.balance, locale)?.check ?? checkOf(next);
       const told = check.told.map((one) => `${CHANNEL_WORD[one.key]} · ${one.count}`);
       readOut([...told, say.cantTell(check.cantTell)].join('. '));
     },

@@ -50,6 +50,7 @@ import {
   waitingLine,
 } from './messages.ts';
 import { BOOK, GROUPS } from './messagesTo.ts';
+import { WAITS_STATES } from './messagesWaits.ts';
 
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
@@ -57,8 +58,9 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
   it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 4 and sc-3950’s 3, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(97);
-    expect(keys.slice(-3)).toEqual(['whatsAppLine', 'checkWhatsApp', 'whatsAppRead']);
+    expect(keys).toHaveLength(107);
+    expect(keys.slice(94, 97)).toEqual(['whatsAppLine', 'checkWhatsApp', 'whatsAppRead']);
+    expect(keys.slice(97)).toEqual(WAITS_STATES.map((one) => one.key));
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
     expect(keys.slice(6, 10)).toEqual([
       'channelReply',
@@ -84,7 +86,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'editCancelled',
       'editTooLate',
     ]);
-    expect(new Set(keys).size).toBe(97);
+    expect(new Set(keys).size).toBe(107);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );
@@ -173,9 +175,17 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'No email address · SMS is off',
     ]);
     expect(smsOff.credits).toBe('Email uses no credits.');
-    expect(checkOf(COMING, { ...TICKS, whatsApp: true }, GROUPS).credits).toBe(
-      'Texts and WhatsApp messages use 42 credits. Credits after sending: 1,458.',
+    const both = checkOf(COMING, { ...TICKS, whatsApp: true }, GROUPS);
+
+    expect(both.pills.map((pill) => pill.count)).toEqual([92, 28, 3]);
+    expect(both.credits).toBe(
+      'Texts and WhatsApp messages use 39 credits. Credits after sending: 1,461.',
     );
+    expect(
+      checkOf({ kind: 'all' }, { ...TICKS, whatsApp: true }, GROUPS).pills.map(
+        (pill) => pill.count,
+      ),
+    ).toEqual([124, 35, 4]);
   });
 
   it('counts who it reached per person, grouped as sc-3966 counts them', () => {
@@ -683,10 +693,10 @@ describe('Messaging B · WhatsApp only to guests who agreed (sc-3950)', () => {
 
     const check = checkOf(ALL, ALL_TICKED, GROUPS);
 
-    expect(check.pills.map((pill) => pill.count)).toEqual([124, 39, 4]);
+    expect(check.pills.map((pill) => pill.count)).toEqual([124, 35, 4]);
     expect(check.cantTell).toBe(9);
     expect(check.credits).toBe(
-      'Texts and WhatsApp messages use 52 credits. Credits after sending: 1,448.',
+      'Texts and WhatsApp messages use 48 credits. Credits after sending: 1,452.',
     );
     expect(check.whatsApp).toBe(whatsAppLine(ALL));
     expect(checkOf(ALL, TICKS, GROUPS).whatsApp).toBeNull();

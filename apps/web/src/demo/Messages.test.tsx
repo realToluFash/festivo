@@ -69,7 +69,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       .parentElement as HTMLElement;
     const links = within(group).getAllByRole('link');
 
-    expect(links).toHaveLength(97);
+    expect(links).toHaveLength(107);
     expect(links[0]?.getAttribute('href')).toBe(`${AT}?state=first`);
     expect(links[7]?.getAttribute('href')).toBe(`${AT}?state=noticeCost`);
     expect(links[26]?.getAttribute('href')).toBe(`${AT}?state=bell`);
@@ -1529,7 +1529,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       ).toBeDefined();
       expect(
         within(check).getByText(
-          'Texts and WhatsApp messages use 52 credits. Credits after sending: 1,448.',
+          'Texts and WhatsApp messages use 48 credits. Credits after sending: 1,452.',
         ),
       ).toBeDefined();
 

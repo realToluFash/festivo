@@ -74,18 +74,18 @@ describe('WhatsApp’s credits', () => {
     const check = checkOf(startOf('checkWhatsApp', false).draft ?? blankDraft());
     expect(check.told).toEqual([
       { key: 'email', count: 124 },
-      { key: 'sms', count: 39 },
+      { key: 'sms', count: 35 },
       { key: 'wa', count: 4 },
     ]);
-    expect(check).toMatchObject({ count: 142, cantTell: 9, credits: 52, after: '1,448' });
+    expect(check).toMatchObject({ count: 142, cantTell: 9, credits: 48, after: '1,452' });
     expect(say.credits(check.credits, check.after, check.whatsApp)).toBe(
-      'Texts and WhatsApp messages use 52 credits. Credits after sending: 1,448.',
+      'Texts and WhatsApp messages use 48 credits. Credits after sending: 1,452.',
     );
   });
 
-  it('come to 42 for Coming with WhatsApp ticked', () => {
+  it('come to 39 for Coming with WhatsApp ticked', () => {
     const coming = reduce(startOf('check', false), { type: 'channel', key: 'wa' }).draft;
-    expect(checkOf(coming ?? blankDraft())).toMatchObject({ credits: 42, after: '1,458' });
+    expect(checkOf(coming ?? blankDraft())).toMatchObject({ credits: 39, after: '1,461' });
   });
 });
 
