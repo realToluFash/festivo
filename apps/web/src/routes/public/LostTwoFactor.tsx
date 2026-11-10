@@ -11,6 +11,7 @@ import {
   formatPhone,
   recoveryFirstStep,
   recoveryIntroKey,
+  listFormat,
 } from '@soirely/domain';
 import {
   type FormEvent,
@@ -968,5 +969,5 @@ function Codes({
 }
 
 function listed(names: string[], type: 'conjunction' | 'disjunction'): string {
-  return new Intl.ListFormat(currentLocale(), { type }).format(names);
+  return listFormat(currentLocale(), { type }).format(names);
 }

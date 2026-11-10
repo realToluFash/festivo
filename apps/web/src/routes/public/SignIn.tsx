@@ -1,4 +1,4 @@
-import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
+import { formatTimeOfDay, listFormat, lockLiftsAt } from '@soirely/domain';
 import { ApiError } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
@@ -333,5 +333,5 @@ function providerList(providers: string[]): string {
     (provider) => PROVIDER_NAMES[provider] ?? provider,
   );
 
-  return new Intl.ListFormat(currentLocale(), { type: 'disjunction' }).format(names);
+  return listFormat(currentLocale(), { type: 'disjunction' }).format(names);
 }

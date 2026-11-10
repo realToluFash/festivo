@@ -58,6 +58,16 @@ export function pluralLocale(locale: LocaleCode): string {
   return LOCALES.find((l) => l.code === locale)?.plurals ?? locale;
 }
 
+/** A list in the copy's own punctuation, from the shown language and never the device region: English copy is British (docs/i18n/en.md), so no serial comma. */
+export function listFormat(
+  locale: string | null | undefined,
+  options: Intl.ListFormatOptions,
+): Intl.ListFormat {
+  const shown = narrowLocale(locale);
+
+  return new Intl.ListFormat(shown === 'en' ? 'en-GB' : pluralLocale(shown), options);
+}
+
 interface PluralResolver {
   getRule(code: string, options?: object): unknown;
 }
