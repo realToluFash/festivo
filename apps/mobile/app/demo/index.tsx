@@ -40,6 +40,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/today?moment=plan&invites=none',
       },
       {
+        title: 'A planning day · the event starts later today',
+        what: 'The party at 19:00, read at 09:41',
+        href: '/demo/today?moment=plan&starts=later',
+      },
+      {
         title: 'Needs you · every overdue form',
         what: 'Overdue, 1 day overdue, 2 days overdue, at 23:59',
         href: '/demo/today?needs=overdue',
