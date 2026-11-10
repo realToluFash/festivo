@@ -1,4 +1,4 @@
-import { initials } from '@soirely/domain';
+import { type InvitationRefusalCode, initials, refusalBody } from '@soirely/domain';
 import {
   type KeyboardEvent,
   type ReactNode,
@@ -483,6 +483,35 @@ export function InvitationActions({
       </div>
       <p className="sw-panel-note">{note}</p>
     </>
+  );
+}
+
+/** Why the answer was refused: an expired invitation asks for attention, a withdrawn one is quiet. */
+export function RefusalAnswer({
+  refusal,
+  inviter,
+  organisation,
+  email,
+  signedInAs,
+}: {
+  refusal: InvitationRefusalCode;
+  inviter: string | null;
+  organisation: string;
+  email: string;
+  signedInAs: string;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Notice kind={refusal === 'invitation_expired' ? 'attention' : 'quiet'} lands>
+      <strong>{t(`invitations.refused.${refusal}.word`)}</strong>{' '}
+      {t(refusalBody(refusal, inviter != null), {
+        inviter: inviter ?? '',
+        organisation,
+        email,
+        signedInAs,
+      })}
+    </Notice>
   );
 }
 

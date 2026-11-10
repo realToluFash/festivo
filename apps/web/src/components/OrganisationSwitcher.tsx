@@ -3,7 +3,6 @@ import {
   formatDay,
   invitationWording,
   isWaiting,
-  refusalBody,
   roleName,
   waitingInvitations,
 } from '@soirely/domain';
@@ -24,6 +23,7 @@ import {
   type MenuTile,
   OfferAnswer,
   OrgMenu,
+  RefusalAnswer,
   type PanelTools,
 } from './OrgMenu.tsx';
 import { OrgPill } from './OrgPill.tsx';
@@ -298,15 +298,13 @@ function InvitationPanel({
           {t(keys.declined, { inviter })}
         </Notice>
       ) : outcome?.kind === 'refused' ? (
-        <Notice kind={outcome.refusal === 'invitation_expired' ? 'attention' : 'quiet'} lands>
-          <strong>{t(`invitations.refused.${outcome.refusal}.word`)}</strong>{' '}
-          {t(refusalBody(outcome.refusal, invitation.invitedBy != null), {
-            inviter,
-            organisation,
-            email: invitation.email,
-            signedInAs: invitation.signedInAs ?? '',
-          })}
-        </Notice>
+        <RefusalAnswer
+          refusal={outcome.refusal}
+          inviter={invitation.invitedBy?.name ?? null}
+          organisation={organisation}
+          email={invitation.email}
+          signedInAs={invitation.signedInAs ?? ''}
+        />
       ) : null}
     </InvitationAnswer>
   );
