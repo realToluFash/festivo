@@ -1,4 +1,4 @@
-import { type ReactNode, useRef } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
@@ -134,7 +134,14 @@ export function Glass({
 }
 
 /** The switcher's opener in glass: the tile alone on the band, the tile, the name and what waits on the cover. */
-export function OrgButton({ compact = false }: { compact?: boolean }) {
+export function OrgButton({
+  compact = false,
+  maxWidth,
+}: {
+  compact?: boolean;
+  /** The most it may take, so it stops short of what sits beside it. */
+  maxWidth?: number | undefined;
+}) {
   const ref = useRef<ViewInstance>(null);
   const org = useTodayShell().useOrgOpener(ref, !compact);
   const phone = useLayout().kind === 'phone';
@@ -162,7 +169,7 @@ export function OrgButton({ compact = false }: { compact?: boolean }) {
   const clear = phone ? tokens.spaceXl - 2 * tokens.spaceSm : tokens.space3xl;
 
   return (
-    <Pressable {...shared} style={[styles.orgWide, { marginRight: clear }]}>
+    <Pressable {...shared} style={[styles.orgWide, { marginRight: clear, maxWidth }]}>
       <Glass height={tall} style={[styles.orgGlass, { height: undefined, minHeight: tall }]}>
         <OrgMark id={org.id} name={org.name} side={28} glass />
         <OpenerWords name={org.name} waiting={org.waiting} onDark wrap />
@@ -631,16 +638,15 @@ export function TodayCover({
         shade="foot"
       />
       <Animated.View style={[styles.coverWords, { opacity: words }]}>
-        <View style={[phone ? styles.topPhone : styles.topTablet, { marginTop: top }]}>
-          <OrgButton />
-          <View style={styles.grow} />
-          <BellButton />
-          {!phone && (
-            <View style={styles.capsuleAt} pointerEvents="box-none">
-              <TabCapsule onTab={onTab} />
-            </View>
-          )}
-        </View>
+        {phone ? (
+          <View style={[styles.topPhone, { marginTop: top }]}>
+            <OrgButton />
+            <View style={styles.grow} />
+            <BellButton />
+          </View>
+        ) : (
+          <TabletTop top={top} onTab={onTab} />
+        )}
         <View style={[styles.grow, { minHeight: footClear(moment, phone) }]} />
         <View style={phone ? styles.footPhone : day ? styles.footTabletNow : styles.footTablet}>
           {day ? (
@@ -652,6 +658,32 @@ export function TodayCover({
           )}
         </View>
       </Animated.View>
+    </View>
+  );
+}
+
+/** The upright iPad's top row: the opener keeps to the left of the centred capsule, its name wrapping rather than running under it. */
+function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
+  const [row, setRow] = useState<number>();
+  const [capsule, setCapsule] = useState<number>();
+  const room =
+    row == null || capsule == null
+      ? undefined
+      : Math.max(0, (row - capsule) / 2 - tokens.space3xl - tokens.spaceSm);
+
+  return (
+    <View
+      style={[styles.topTablet, { marginTop: top }]}
+      onLayout={(event) => setRow(event.nativeEvent.layout.width)}
+    >
+      <OrgButton maxWidth={room} />
+      <View style={styles.grow} />
+      <BellButton />
+      <View style={styles.capsuleAt} pointerEvents="box-none">
+        <View onLayout={(event) => setCapsule(event.nativeEvent.layout.width)}>
+          <TabCapsule onTab={onTab} />
+        </View>
+      </View>
     </View>
   );
 }

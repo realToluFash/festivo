@@ -1,4 +1,4 @@
-import { wallDay } from './calendar.ts';
+import { wallDay, weekLanes } from './calendar.ts';
 import { shownPhase } from './eventStates.ts';
 import { type Greeting, type TodayEvent, today } from './today.ts';
 import type { Milestone } from './timeline.ts';
@@ -19,6 +19,8 @@ export interface TodayBar<E extends TodayEvent> {
   /** Started before the week shown, so it runs in from the left edge and says which day it is on. */
   openLeft: boolean;
   dayToday: number;
+  /** The row it is drawn in, 0 first: bars that share a day never share a row. */
+  lane: number;
 }
 
 export type TodayAgendaItem<E extends TodayEvent> =
@@ -113,6 +115,7 @@ export function todayView<E extends TodayEvent>(
   const kind: TodayKind = first ? 'first' : shown.now != null ? 'day' : empty ? 'quiet' : 'plan';
   const dayOf = (event: E, day: string) => daysBetween(firstDay(event), day) + 1;
 
+  const lanes = weekLanes(shown.week.map(({ items }) => items));
   const bars: TodayBar<E>[] = [];
   for (const { items } of shown.week)
     for (const item of items) {
@@ -128,6 +131,7 @@ export function todayView<E extends TodayEvent>(
         span: end - start + 1,
         openLeft: start === 0 && !item.first,
         dayToday: dayOf(item.event, on),
+        lane: lanes.get(item.event.id) ?? 0,
       });
     }
 
@@ -147,16 +151,19 @@ export function todayView<E extends TodayEvent>(
       day,
       today: isToday,
       daysAway: daysBetween(on, day),
-      items: items.map((item): TodayAgendaItem<E> =>
-        item.kind === 'milestone'
-          ? { kind: 'milestone', event: item.event, milestone: item.milestone }
-          : {
-              kind: item.first ? 'starts' : item.last ? 'ends' : 'continues',
-              event: item.event,
-              multiDay: item.multiDay,
-              day: dayOf(item.event, item.day),
-            },
-      ),
+      items: items
+        // The event's own start and end are Today's own rows; the timeline's copy of them would say each twice.
+        .filter((item) => item.kind !== 'milestone' || item.milestone.owner !== 'event')
+        .map((item): TodayAgendaItem<E> =>
+          item.kind === 'milestone'
+            ? { kind: 'milestone', event: item.event, milestone: item.milestone }
+            : {
+                kind: item.first ? 'starts' : item.last ? 'ends' : 'continues',
+                event: item.event,
+                multiDay: item.multiDay,
+                day: dayOf(item.event, item.day),
+              },
+        ),
     }));
 
   const soonest = shown.events

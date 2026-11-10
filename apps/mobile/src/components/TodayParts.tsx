@@ -250,6 +250,7 @@ const NAME_ROOM = 64;
 
 function Bar({ bar, wide }: { bar: StripBar; wide: boolean }) {
   const colour = eventColour(bar.event);
+  const height = wide ? 32 : 30;
   const [room, setRoom] = useState<number>();
   const [label, setLabel] = useState<number>();
   // A two-day bar on a phone has room for the name or its length, and the name says whose it is.
@@ -260,9 +261,10 @@ function Bar({ bar, wide }: { bar: StripBar; wide: boolean }) {
       style={[
         styles.bar,
         {
+          top: tokens.spaceXs + (bar.lane ?? 0) * (height + tokens.spaceXs),
           left: `${(bar.start / 7) * 100}%`,
           width: `${(bar.span / 7) * 100}%`,
-          height: wide ? 32 : 30,
+          height,
         },
       ]}
     >
@@ -348,7 +350,16 @@ function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
         ))}
       </View>
       {moment.bars.length > 0 && (
-        <View style={[styles.bars, { height: (wide ? 32 : 30) + tokens.spaceXs }]}>
+        <View
+          style={[
+            styles.bars,
+            {
+              height:
+                (1 + Math.max(...moment.bars.map((bar) => bar.lane ?? 0))) *
+                ((wide ? 32 : 30) + tokens.spaceXs),
+            },
+          ]}
+        >
           {moment.bars.map((bar) => (
             <Bar key={bar.event.id} bar={bar} wide={wide} />
           ))}
@@ -396,7 +407,7 @@ function AgendaDays({
 
                 return (
                   <View
-                    key={`${item.time}${item.title}`}
+                    key={`${item.event.id}${item.time}${item.title}`}
                     style={[styles.item, last && styles.itemLast, last && ruled && styles.ruled]}
                   >
                     <Text
@@ -814,7 +825,7 @@ const styles = StyleSheet.create({
   dots: { height: tokens.spaceXs, flexDirection: 'row', gap: 3 },
   dot: { width: tokens.spaceXs, height: tokens.spaceXs, borderRadius: 3 },
   bars: { position: 'relative' },
-  bar: { position: 'absolute', top: tokens.spaceXs, paddingRight: 3 },
+  bar: { position: 'absolute', paddingRight: 3 },
   barFill: {
     flex: 1,
     flexDirection: 'row',

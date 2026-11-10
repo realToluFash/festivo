@@ -182,7 +182,7 @@ export function todayMoment(
       today: isToday,
       dots: dots.map(shownEvent),
     })),
-    bars: view.bars.map(({ event, start, span, openLeft, dayToday }) => ({
+    bars: view.bars.map(({ event, start, span, openLeft, dayToday, lane }) => ({
       event: shownEvent(event),
       start,
       span,
@@ -190,6 +190,7 @@ export function todayMoment(
         ? t('todayScreen.dayOf', { day: dayToday, total: event.dayCount })
         : t('todayScreen.days', { count: event.dayCount }),
       openLeft,
+      lane,
     })),
     agenda: view.agenda.map(({ day, today: isToday, daysAway, items }) => ({
       date: day,
