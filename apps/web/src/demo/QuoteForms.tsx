@@ -24,7 +24,7 @@ import {
   shortDay,
 } from './budget.ts';
 import { BUDGET_WORDS as BW } from './budgetWords.ts';
-import { Alert } from './EventParts.tsx';
+import { Alert } from '../components/EventPageParts.tsx';
 import {
   type EventDays,
   SHAPES,

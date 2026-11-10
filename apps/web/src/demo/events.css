@@ -1,23 +1,5 @@
 /* Events at a desk, in A · Summary first. Measurements are the boards' (Events-A-Desk.dc.html, page 29); colours are tokens, and a row that opens something takes the Neutral wash under the pointer. */
 
-.ev a.desk-text {
-  text-decoration: none;
-}
-
-.ev a.desk-text:hover {
-  text-decoration: underline;
-}
-
-.ev .desk-text.is-off {
-  color: var(--colorInkTertiary);
-  cursor: default;
-}
-
-.ev .desk-text.is-off:hover {
-  text-decoration: none;
-}
-
-.ev-column,
 .ev-guests {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -301,44 +283,6 @@
   gap: 6px;
 }
 
-.ev-input {
-  box-sizing: border-box;
-  width: 100%;
-  height: 52px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: var(--radiusInset);
-  background: var(--colorCard);
-  box-shadow: inset 0 0 0 1.5px var(--colorFieldBorder);
-  color: var(--colorInk);
-  font: 500 16px/1 var(--fontFamily);
-  font-variant-numeric: tabular-nums;
-}
-
-.ev-when-pair {
-  display: flex;
-  gap: var(--spaceSm);
-}
-
-.ev-when-pair .ev-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.ev-when-pair .ev-input.is-time {
-  flex: none;
-  width: 160px;
-}
-
-.ev .ev-input:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2px var(--colorAccent);
-}
-
-.ev-input.is-wrong {
-  box-shadow: inset 0 0 0 2px var(--colorBroken);
-}
-
 .ev-count-row {
   display: flex;
   align-items: center;
@@ -424,161 +368,12 @@
   font: 500 12.5px/1.3 var(--fontFamily);
 }
 
-.ev-crumb-row {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceLg);
-  min-height: var(--sizeHit);
-}
-
-.ev-crumb {
-  flex: 1;
-  min-width: 0;
-}
-
-.ev-crumb ol {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  font: 600 15px/1.3 var(--fontFamily);
-  list-style: none;
-}
-
-.ev-crumb-part {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.ev-crumb-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ev-crumb a {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--sizeHit);
-  margin: 0 -6px;
-  padding: 0 6px;
-  border-radius: var(--radiusSmall);
-  color: var(--colorAccent);
-  text-decoration: none;
-}
-
-.ev-crumb a:hover {
-  background: var(--evWash);
-}
-
-.ev-columns {
-  display: grid;
-  grid-template-columns: minmax(0, var(--evLeft)) minmax(0, var(--evRight));
-  gap: 32px;
-  align-items: start;
-}
-
-.ev-left,
-.ev-right {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  min-width: 0;
-}
-
-.ev-details > * + * {
-  background-position: 40px 0;
-  background-size: calc(100% - 40px) 1px;
-}
-
-.ev-details > :has(> .is-lit),
-.ev-details > :has(> .is-lit) + * {
-  background: none;
-}
-
-.ev-detail {
-  gap: var(--spaceMd);
-}
-
-.ev .ev-detail.is-lit {
-  background: var(--colorAccentTint);
-}
-
-.ev-detail.is-lit .desk-row-name,
-.ev-detail.is-lit .desk-chevron {
-  color: var(--colorAccent);
-}
-
 .ev-detail.is-coming {
   padding-block: 4px;
 }
 
 .ev-detail.is-coming .desk-row-name {
   color: var(--colorInkSecondary);
-}
-
-.ev-lead {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  color: var(--colorInkSecondary);
-}
-
-.ev .ev-maps {
-  margin: -8px 0 6px 32px;
-  text-decoration: none;
-}
-
-.ev .ev-maps:hover {
-  background: var(--evWash);
-}
-
-.ev-opened {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceMd);
-  margin: 6px 0 var(--spaceMd) 14px;
-  padding: var(--spaceSm) 0 10px 14px;
-  border-left: 2px solid var(--colorAccent);
-}
-
-.ev-opened-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0 var(--space3xl);
-}
-
-.ev-opened-actions .desk-text {
-  margin-inline: 0;
-}
-
-.ev-opened .desk-choices .desk-rows {
-  margin-top: -6px;
-}
-
-.ev-when {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.ev-when legend {
-  margin-bottom: 7px;
-  padding: 0;
-}
-
-.ev-said {
-  color: var(--colorInkSecondary);
-  font: 500 13.5px/1.4 var(--fontFamily);
 }
 
 /* sc-3780: the guests' sentence with the chosen date, before it is saved */
@@ -590,31 +385,6 @@
   color: var(--colorInkSecondary);
   font: 500 14px/1.45 var(--fontFamily);
   overflow-wrap: anywhere;
-}
-
-.ev-select {
-  position: relative;
-  padding: 0;
-}
-
-.ev .ev-select select {
-  flex: 1;
-  height: 100%;
-  padding: 0 44px 0 var(--spaceXl);
-  border: 0;
-  border-radius: inherit;
-  outline: none;
-  background: none;
-  color: var(--colorInk);
-  font: 500 16px/1 var(--fontFamily);
-  appearance: none;
-}
-
-.ev-select svg {
-  position: absolute;
-  right: var(--spaceLg);
-  pointer-events: none;
-  color: var(--colorInkSecondary);
 }
 
 .ev-once {
@@ -643,121 +413,6 @@
   color: var(--colorInkSecondary);
   font: 600 12.5px/1 var(--fontFamily);
   white-space: nowrap;
-}
-
-.ev-optional {
-  color: var(--colorInkSecondary);
-  font-weight: 500;
-}
-
-.ev-combo {
-  position: relative;
-}
-
-.ev-options {
-  margin-top: 2px;
-  padding: 4px 10px;
-  border: 1px solid var(--colorBorder);
-  border-radius: 16px;
-  background: var(--colorCard);
-  box-shadow: var(--shadowPopover);
-}
-
-.ev-option {
-  gap: var(--spaceMd);
-  width: calc(100% + 12px);
-  margin: 0 -6px;
-  padding-inline: 6px;
-  border-radius: var(--radiusRow);
-  color: var(--colorInk);
-  cursor: pointer;
-}
-
-.ev-option svg {
-  color: var(--colorInkSecondary);
-}
-
-.ev-option:hover,
-.ev-option.is-active {
-  background: var(--evWash);
-}
-
-.ev-pair {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--space3xl);
-}
-
-.ev-notice .notice-body {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-}
-
-.ev-hosts {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceLg);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ev-host {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ev-host-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-block: -10px -4px;
-}
-
-.ev-host-line {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceSm);
-}
-
-.ev-host-line .desk-box {
-  flex: 1;
-  min-width: 0;
-}
-
-.ev-round {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: var(--sizeHit);
-  height: var(--sizeHit);
-  border-radius: 50%;
-  background: var(--colorNeutralFill);
-  color: var(--colorInk);
-}
-
-.ev-round:hover {
-  background: var(--colorInsetBorder);
-}
-
-.ev-round[aria-disabled='true'] {
-  color: var(--colorInkTertiary);
-  cursor: default;
-}
-
-.ev-round[aria-disabled='true']:hover {
-  background: var(--colorNeutralFill);
-}
-
-.ev-choice {
-  gap: var(--spaceMd);
-}
-
-.ev-choice.is-picked .desk-row-name {
-  color: var(--colorAccent);
 }
 
 .ev-preview {
@@ -869,41 +524,6 @@
   flex-direction: column;
   align-items: flex-start;
   padding: 11px 0 4px;
-}
-
-.ev-manage {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceSm);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ev-manage-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.ev-manage-do {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--sizeHit);
-  margin: 0 -10px;
-  padding: 0 10px;
-  border-radius: var(--radiusRow);
-  color: var(--colorInk);
-  font: 600 15px/1.2 var(--fontFamily);
-  white-space: nowrap;
-}
-
-.ev-manage-do.is-red {
-  color: var(--colorBroken);
-}
-
-.ev-manage-do:hover {
-  background: var(--evWash);
 }
 
 .ev-area-title {

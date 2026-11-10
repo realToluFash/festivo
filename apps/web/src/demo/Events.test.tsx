@@ -14,7 +14,12 @@ const tested = config();
 const SLOW = { timeout: 20000 };
 const WAIT = { timeout: 8000 };
 const WEDDING = 'Adaeze & Tunde’s wedding';
-const EVENTS_CSS = ['events.css', '../components/EventsList.css']
+const EVENTS_CSS = [
+  'events.css',
+  '../components/eventsDesk.css',
+  '../components/EventsList.css',
+  '../components/eventPage.css',
+]
   .map((file) => readFileSync(join(import.meta.dirname, file), 'utf8'))
   .join('\n');
 

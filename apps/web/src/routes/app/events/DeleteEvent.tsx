@@ -13,7 +13,13 @@ import { focusWhereSent, offField } from '../../../offField.ts';
 import { focusStep } from '../../../stepFocus.ts';
 
 /** `Event View` (sc-3592): at the foot of the page, apart from the actions that change the event. */
-export function DeleteEvent({ event }: { event: OrganisationEvent }) {
+export function DeleteEvent({
+  event,
+  look,
+}: {
+  event: OrganisationEvent;
+  look?: { className: string; describedBy: string } | undefined;
+}) {
   const { t } = useTranslation();
   const [opening, setOpening] = useState(false);
   const [unopened, setUnopened] = useState<string | null>(null);
@@ -43,12 +49,13 @@ export function DeleteEvent({ event }: { event: OrganisationEvent }) {
   };
 
   return (
-    <div className="event-delete">
-      <p className="event-delete-note">{t('eventDelete.note')}</p>
+    <div className={look == null ? 'event-delete' : undefined}>
+      {look == null && <p className="event-delete-note">{t('eventDelete.note')}</p>}
       <button
         ref={opener}
         type="button"
-        className="button button-danger"
+        className={look?.className ?? 'button button-danger'}
+        aria-describedby={look?.describedBy}
         {...offButton(opening, { dim: false })}
         aria-busy={opening}
         onClick={open}

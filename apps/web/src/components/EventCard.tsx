@@ -18,6 +18,7 @@ import { Glyph } from './Glyph.tsx';
 import { CardStep as StepButton } from './SettingsParts.tsx';
 import './desk.css';
 import './SettingsParts.css';
+import './eventsDesk.css';
 import './EventsList.css';
 
 /** The photo that shows: a saved cover until it fails to load, then none. */

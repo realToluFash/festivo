@@ -9,6 +9,7 @@ import { Glyph } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
 import { CardStep, Chevron, RowWords, Tag } from './SettingsParts.tsx';
 import './SettingsParts.css';
+import './eventsDesk.css';
 import './EventsList.css';
 
 const TAB_WORD: Record<EventsTab, string> = {

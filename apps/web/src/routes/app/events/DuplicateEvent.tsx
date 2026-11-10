@@ -19,9 +19,11 @@ const OPENING_AFTER = 700;
 export function DuplicateEvent({
   event,
   primary = false,
+  look,
 }: {
   event: OrganisationEvent;
   primary?: boolean;
+  look?: { className: string; describedBy: string } | undefined;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -37,7 +39,8 @@ export function DuplicateEvent({
       <button
         ref={opener}
         type="button"
-        className={primary ? 'button button-primary' : 'button'}
+        className={look?.className ?? (primary ? 'button button-primary' : 'button')}
+        aria-describedby={look?.describedBy}
         onClick={() => setOpen(true)}
       >
         {t('eventDuplicate.open')}

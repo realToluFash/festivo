@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { offButton } from '../../../offButton.ts';
-import { LifecycleDialog } from './LifecycleDialog.tsx';
+import { InManage, LifecycleDialog } from './LifecycleDialog.tsx';
 import { useLifecycleAction } from './useLifecycleAction.ts';
 
 /** `Lifecycle` (tweak: Pause): a secondary button beside Call off or End now, so it is never where a stray tap lands first. */
@@ -13,12 +13,14 @@ export function PauseButton({
   event,
   phase,
   heading,
+  inManage = false,
   onChange,
   onPaused,
 }: {
   event: OrganisationEvent;
   phase: EventPhase;
   heading: RefObject<HTMLHeadingElement | null>;
+  inManage?: boolean;
   onChange: (event: OrganisationEvent, tag: string) => void;
   onPaused: () => void;
 }) {
@@ -33,12 +35,23 @@ export function PauseButton({
   return (
     <>
       {eventAllows(phase, 'pause') && (
-        <button ref={opener} type="button" className="button" onClick={() => ask({})}>
-          {t('eventPause.pause')}
-        </button>
+        <InManage on={inManage} line={`${t('eventPause.body')} ${t('eventPause.nothingLost')}`}>
+          {(look) => (
+            <button
+              ref={opener}
+              type="button"
+              className={look?.className ?? 'button'}
+              aria-describedby={look?.describedBy}
+              onClick={() => ask({})}
+            >
+              {t('eventPause.pause')}
+            </button>
+          )}
+        </InManage>
       )}
       {asking != null && (
-        <LifecycleDialog
+        <InManage on={inManage}>
+          <LifecycleDialog
           id="pause-event"
           asking={asking}
           title={t('eventPause.title', { name: event.name })}
@@ -48,9 +61,10 @@ export function PauseButton({
           confirm={t('eventPause.pause')}
           sending={t('eventPause.pausing')}
           tone="primary"
-          onGo={() => go({}, () => api.pauseEvent(event.id))}
-          onClose={close}
-        />
+            onGo={() => go({}, () => api.pauseEvent(event.id))}
+            onClose={close}
+          />
+        </InManage>
       )}
     </>
   );

@@ -1,36 +1,5 @@
 /* Events' list at a desk, in A · Summary first, for the product and its design demo. Measurements are the boards' (Events-A-Desk.dc.html, page 29); colours are tokens, and a row that opens something takes the Neutral wash under the pointer. */
 
-.ev {
-  --evWide: 938px;
-  --evLeft: 560px;
-  --evRight: 346px;
-  --evSearch: 440px;
-  --evMenu: 272px;
-  --evWash: var(--colorNeutralFill);
-  --evScrim: color-mix(in srgb, var(--optionRose) 40%, var(--colorInk));
-}
-
-.ev :is(button, label).desk-row,
-.ev a.desk-row {
-  width: calc(100% + 20px);
-  margin: 0 -10px;
-  padding-inline: 10px;
-  border-radius: var(--radiusRow);
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.ev :is(button, label, a).desk-row:hover {
-  background: var(--evWash);
-}
-
-.ev-wide {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  max-width: var(--evWide);
-}
-
 .ev-top {
   gap: 10px;
   min-height: 48px;
