@@ -774,6 +774,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   o título da folha: "Novo endereço" e "Novo número", que a secção situa. "Número", não
   "telemóvel", porque pode ser um fixo. Rejeitado "Adicionar um número de telefone", cortado como
   "Adicionar um nú…" num telemóvel Android.
+- **10 Nov 2026. O título da folha de verificar o número na aplicação** (sc-35661,
+  `mobile:verifyPhone.title`). "Código enviado" substitui "Veja as suas mensagens", cortado num
+  Android de 360 dp, onde cabem cerca de 16 caracteres entre Cancelar e Verificar. O mesmo título
+  serve ao SMS e ao WhatsApp, por isso não nomeia nenhum; "Veja o seu telemóvel" também não
+  cabia. A frase por baixo diz para onde foi o código.
 - **9 Nov 2026. O título da folha de ativar a autenticação de dois fatores na aplicação** (sc-34792,
   `mobile:security.setupTitle`). "Ativar dois fatores", a forma curta que `settings.securityLine`
   já usa. Rejeitado "Ativar a autenticação de dois fatores", cortado no cabeçalho de um telemóvel.
