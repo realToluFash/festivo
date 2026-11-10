@@ -2034,8 +2034,8 @@
   },
   "requestLink": {
     "title": "Demandes d’adhésion",
-    "on": "Activées",
-    "off": "Désactivées",
+    "on": "Activé",
+    "off": "Désactivé",
     "switchLabel": "Demandes d’adhésion",
     "intro": "Toute personne disposant de ce lien peut demander à rejoindre {{organisation}}. Une personne habilitée à gérer les membres répond à chaque demande. Le lien reste désactivé tant que vous ne l’activez pas.",
     "linkLabel": "Lien d’adhésion",
