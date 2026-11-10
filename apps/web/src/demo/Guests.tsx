@@ -18,6 +18,7 @@ import { type SampleEvent, sampleEvent } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { AddForm, EditForm, RecordForm } from './GuestForms.tsx';
 import { type GuestActions, GuestView } from './GuestColumn.tsx';
+import { AgreeForm } from './GuestWhatsApp.tsx';
 import {
   CHOICES,
   LINK,
@@ -29,6 +30,7 @@ import {
   type Pane,
   type Reply,
   addGuest,
+  agreeToWhatsApp,
   choiceWord,
   countsOf,
   guestsAt,
@@ -96,6 +98,7 @@ function firstFocus(start: GuestsStart): string[] {
     return pane.start.replace === true ? ['replace-heading'] : ['answer-coming'];
   if (pane.kind === 'add')
     return pane.start.duplicate === true ? ['duplicate'] : [pane.start.at ?? 'name'];
+  if (pane.kind === 'whatsApp') return ['agree-0'];
   if (pane.kind === 'guest' && pane.invite === 'copied') return ['copy'];
   if (pane.kind === 'guest' && start.list.some((one) => one.replaced != null)) return ['replace'];
 
@@ -238,6 +241,9 @@ function GuestsPage({
     } else if (pane.kind === 'record') {
       setPane({ kind: 'guest', id: pane.id });
       focus('record', 'step');
+    } else if (pane.kind === 'whatsApp') {
+      setPane({ kind: 'guest', id: pane.id });
+      focus('whatsapp-agree');
     } else if (pane.kind === 'add') {
       setPane(lastRow.current == null ? { kind: 'none' } : { kind: 'guest', id: lastRow.current });
       focus('add', 'title');
@@ -280,6 +286,10 @@ function GuestsPage({
       setList((was) => markInvited(was, id, how, today));
       invite(id, null);
     },
+    onAgree: () => {
+      setPane({ kind: 'whatsApp', id, start: {} });
+      focus('agree-0');
+    },
   });
 
   function writeToThem(): void {
@@ -304,7 +314,12 @@ function GuestsPage({
     if (event.key !== 'Escape' || stack.length > 0 || event.defaultPrevented) return;
     if (pane.kind === 'none') return;
     event.preventDefault();
-    if (pane.kind === 'edit' || pane.kind === 'record' || pane.kind === 'add')
+    if (
+      pane.kind === 'edit' ||
+      pane.kind === 'record' ||
+      pane.kind === 'add' ||
+      pane.kind === 'whatsApp'
+    )
       guarded({ then: 'back' });
     else close();
   });
@@ -521,6 +536,21 @@ function GuestsPage({
                         setDirty(false);
                         setPane({ kind: 'guest', id: paneGuest.id, note: 'recorded' });
                         focus('guest-heading');
+                      }}
+                    />
+                  )}
+                  {pane.kind === 'whatsApp' && paneGuest != null && (
+                    <AgreeForm
+                      key={paneGuest.id}
+                      guest={paneGuest}
+                      start={pane.start}
+                      focus={focus}
+                      onCancel={back}
+                      onSave={(how) => {
+                        setList((was) => agreeToWhatsApp(was, paneGuest.id, how, today));
+                        setPane({ kind: 'guest', id: paneGuest.id });
+                        tell(GW.saved);
+                        focus('whatsapp');
                       }}
                     />
                   )}
