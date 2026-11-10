@@ -46,7 +46,7 @@ describe('hostsLine', () => {
   const cases: [string, string[], string][] = [
     ['en', ['Funmi'], 'Funmi'],
     ['en', ['Funmi', 'Tayo'], 'Funmi and Tayo'],
-    ['en', ['Funmi', 'Tayo', 'Ade'], 'Funmi, Tayo, and Ade'],
+    ['en', ['Funmi', 'Tayo', 'Ade'], 'Funmi, Tayo and Ade'],
     ['es', ['Funmi'], 'Funmi'],
     ['es', ['Funmi', 'Tayo'], 'Funmi y Tayo'],
     ['es', ['Funmi', 'Tayo', 'Ade'], 'Funmi, Tayo y Ade'],
