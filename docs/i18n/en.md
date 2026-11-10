@@ -976,4 +976,9 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
   shown whether it is on or off and recorded when it is turned on: "Soirely sends updates on
   WhatsApp on behalf of {{organisation}}. Reply STOP at any time to end them." It names
   "updates on WhatsApp" because the row's label is only **WhatsApp**, so the tick's "them"
-  would point at nothing (settled on #36834).
+  would point at nothing (settled on #36834). Turning it on saves "WhatsApp messages from {{organisation}} are on.", with no
+  "again": WhatsApp starts off, so the first turn-on and a return read the same; email and texts
+  keep "… are on again." The host's record, over **How?**: "For {{name}}, on {{number}}. It will
+  show as recorded by you." ("will": nothing is recorded until Save). In **Who it reached**, a
+  `not_sent` reason is "Has not agreed to WhatsApp", the details row's words, or "Stopped
+  WhatsApp", with no full stop (settled on #36939).
