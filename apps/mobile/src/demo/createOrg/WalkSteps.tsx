@@ -71,6 +71,8 @@ interface StepProps {
   question?: Ref<TextHandle> | undefined;
   answer: object | undefined;
   onScrolled: (scrolled: boolean) => void;
+  /** Continue, when a phone on its side with the keys up scrolls it as the step's last part. */
+  foot?: ReactNode;
 }
 
 function StepScroll({
@@ -162,6 +164,7 @@ export function NameStep({
   question,
   answer,
   onScrolled,
+  foot,
   field,
   onTyped,
   onContinue,
@@ -271,6 +274,7 @@ export function NameStep({
           </Text>
         )}
       </View>
+      {foot}
     </StepScroll>
   );
 }
@@ -436,7 +440,7 @@ export function CountryStep({
   onQuery,
   onPick,
   onSearchFocused,
-}: StepProps & {
+}: Omit<StepProps, 'foot'> & {
   field: RefObject<TextInputInstance | null>;
   /** Reached by Back, or opened at the list: it scrolls to the pick, unless the device's own is ticked at the top. */
   toPick: boolean;
@@ -627,6 +631,7 @@ export function ReadyStep({
   stepWords,
   question,
   onScrolled,
+  foot,
   email,
   locale,
   card,
@@ -697,6 +702,7 @@ export function ReadyStep({
       <Text maxFontSizeMultiplier={TWICE} size={14} weight="medium" muted style={styles.defaults}>
         {t('createOrganisation.defaults', { email })}
       </Text>
+      {foot}
     </StepScroll>
   );
 }

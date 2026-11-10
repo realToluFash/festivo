@@ -329,3 +329,22 @@ export const SAMPLE_FOUNDED: Place = foundedPlace({
   ...freshWalk(SAMPLE_DEVICE),
   name: SAMPLE_NAME,
 });
+
+/** Where Continue sits: pinned under the step, or, on a phone on its side with the keys up, where too little is left above them for a pinned foot and the field, scrolled as the step's last part, and on the country step left out until the keys go down, so it is not below the whole list (sc-35256). */
+export function footPlace({
+  phone,
+  width,
+  height,
+  keysUp,
+  step,
+}: {
+  phone: boolean;
+  width: number;
+  height: number;
+  keysUp: boolean;
+  step: Step;
+}): 'pinned' | 'scrolls' | 'hidden' {
+  if (!phone || !keysUp || width <= height) return 'pinned';
+
+  return step === 2 ? 'hidden' : 'scrolls';
+}
