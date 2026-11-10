@@ -8,7 +8,6 @@ export type TodayKind = 'first' | 'day' | 'quiet' | 'plan';
 export interface TodayStripDay<E extends TodayEvent> {
   day: string;
   today: boolean;
-  /** What falls on the day and has no bar across it. */
   dots: E[];
 }
 
@@ -19,7 +18,6 @@ export interface TodayBar<E extends TodayEvent> {
   span: number;
   /** Started before the week shown, so it runs in from the left edge and says which day it is on. */
   openLeft: boolean;
-  /** Which of its days the reader's today is. */
   dayToday: number;
 }
 
@@ -29,7 +27,6 @@ export type TodayAgendaItem<E extends TodayEvent> =
       kind: 'starts' | 'continues' | 'ends';
       event: E;
       multiDay: boolean;
-      /** Which of its days this is. */
       day: number;
     };
 
@@ -73,7 +70,6 @@ export type TodaySub<E extends TodayEvent> =
 export interface TodayView<E extends TodayEvent> {
   kind: TodayKind;
   greeting: Greeting | 'welcome';
-  /** The reader's today, `2026-11-03`. */
   on: string;
   days: TodayStripDay<E>[];
   bars: TodayBar<E>[];
