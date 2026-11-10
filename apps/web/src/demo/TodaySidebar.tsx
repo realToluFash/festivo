@@ -33,7 +33,7 @@ export function TodaySidebar({
   settings?: boolean;
   listing?: boolean;
   calendar?: boolean;
-  person?: DeskPerson;
+  person?: DeskPerson | undefined;
   inert?: boolean;
 }) {
   return (

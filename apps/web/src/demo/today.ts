@@ -509,7 +509,10 @@ function now(today: string, time: string, say: Say): Now {
 export function momentOf(
   name: MomentName,
   say: Say,
-  { guests = SAMPLE_GUESTS }: { guests?: GuestsOf | undefined } = {},
+  {
+    guests = SAMPLE_GUESTS,
+    first = 'Folake',
+  }: { guests?: GuestsOf | undefined; first?: string | undefined } = {},
 ): Moment {
   const { date: today, time } = TODAY[name];
   const kind = name === 'planNow' ? 'plan' : name === 'dayNow' ? 'day' : (name as Moment['kind']);
@@ -526,7 +529,7 @@ export function momentOf(
     full,
     time,
     eyebrow: say.long(today),
-    hello: name === 'first' ? 'Welcome, Folake' : `${greeting(time)}, Folake`,
+    hello: name === 'first' ? `Welcome, ${first}` : `${greeting(time)}, ${first}`,
     lead:
       waiting != null && waiting.length > 0
         ? `${waiting.length} ${waiting.length === 1 ? 'thing needs' : 'things need'} you.`

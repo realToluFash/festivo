@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router';
 import { Toast } from '../components/Toast.tsx';
 import { LayersContext, useDeskLayers } from '../layers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
+import { VIEWERS } from './settings.ts';
 import { AccessPaused, Switched } from './OrgSwitcher.tsx';
 import { inNone, isFresh, useSwitcherStart, useWhere } from './switcher.ts';
 import { INVITES_NOT_SENT, MOMENTS, type MomentName, momentOf, sayIn } from './today.ts';
@@ -33,8 +34,9 @@ export function Today() {
     () =>
       momentOf(name, sayIn(formattingLocale('en', navigator.language)), {
         guests: notSent ? INVITES_NOT_SENT : undefined,
+        first: asks ? 'Ana' : undefined,
       }),
-    [name, notSent],
+    [name, notSent, asks],
   );
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);
@@ -61,6 +63,7 @@ export function Today() {
       <div className="today">
         <TodaySidebar
           events={moment.events.map(({ event }) => event)}
+          person={asks ? VIEWERS.ana : undefined}
           tell={tell}
           onToday={() => page.current?.scrollTo({ top: 0 })}
           inert={covered}

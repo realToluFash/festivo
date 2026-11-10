@@ -175,3 +175,10 @@ describe('the small rules', () => {
     expect(railAt(['10:00', '12:00'], '11:00')).toBe(0.5);
   });
 });
+
+describe('a first run for a member without Create events (?moment=firstAsk)', () => {
+  it('welcomes the member looking, not the owner', () => {
+    expect(momentOf('first', us, { first: 'Ana' }).hello).toBe('Welcome, Ana');
+    expect(momentOf('first', us).hello).toBe('Welcome, Folake');
+  });
+});
