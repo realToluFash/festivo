@@ -132,7 +132,7 @@ describe('Duplicate an event (sc-3593)', () => {
     signedIn();
     await onTheEvent(live({ phase: 'finished', concludedAt: '2026-10-20T01:00:00+01:00' }));
 
-    expect(screen.getByRole('button', { name: 'Duplicate' })).toBeDefined();
+    expect(screen.getAllByRole('button', { name: 'Duplicate' })).toHaveLength(2);
   });
 
   it('is not offered without events.create, even to somebody who manages events', async () => {

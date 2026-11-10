@@ -1932,15 +1932,16 @@ describe("Editing an event's details (sc-3587)", () => {
     const heading = await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
 
     expect(heading).toBeDefined();
-    fireEvent.click(screen.getByRole('link', { name: 'Edit details' }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Edit details' })).toBeDefined();
+    expect(document.querySelectorAll('.ev-details button.ev-detail').length).toBeGreaterThan(0);
+    expect(document.querySelector('.ev-detail.is-locked')).toBeNull();
 
     cleanup();
     signedIn(READER);
     serving();
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
-    expect(screen.queryByRole('link', { name: 'Edit details' })).toBeNull();
+    expect(document.querySelector('.ev-details button.ev-detail')).toBeNull();
+    expect(document.querySelectorAll('.ev-detail.is-locked').length).toBeGreaterThan(0);
   });
 
   it("opens with the event's values, its times as saved in its zone", async () => {
@@ -2426,7 +2427,7 @@ describe("Editing an event's details (sc-3587)", () => {
       serving();
       at('/app/events/ev_1');
       await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
-
+      expect(document.querySelector('.ev-details button.ev-detail') != null).toBe(edits);
       expect(screen.queryByRole('link', { name: 'Edit details' }) != null).toBe(edits);
       expect(screen.queryByRole('button', { name: 'Make live' }) != null).toBe(edits);
 
@@ -2718,7 +2719,7 @@ describe("An event's venue (sc-3589)", () => {
     const details = screen.getByRole('region', { name: 'Details' });
     expect(within(venue).getByText('The Civic Centre')).toBeDefined();
     expect(within(details).getByText('The Civic Centre')).toBeDefined();
-    expect(within(details).getByText('Ozumba Mbadiwe Avenue, Lagos')).toBeDefined();
+    expect(within(details).getByText('Venue · Ozumba Mbadiwe Avenue, Lagos')).toBeDefined();
     expect(within(venue).getByRole('link', { name: 'Open in maps' }).getAttribute('href')).toBe(
       'https://www.openstreetmap.org/?mlat=6.4316&mlon=3.4246#map=17/6.4316/3.4246',
     );
@@ -2738,16 +2739,15 @@ describe("An event's venue (sc-3589)", () => {
     expect(screen.queryByRole('link', { name: 'Open in maps' })).toBeNull();
   });
 
-  it('says Venue to be confirmed, with Add the venue only for events.manage, opening the Venue section', async () => {
+  it('says Venue to be confirmed, its row opening the venue in place only for events.manage', async () => {
     signedIn();
     serving({});
     at('/app/events/ev_1');
     const details = await screen.findByRole('region', { name: 'Details' });
     expect(within(details).getByText('Venue to be confirmed')).toBeDefined();
 
-    fireEvent.click(within(details).getByRole('link', { name: /Add the venue/ }));
-    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
-    await waitFor(() => expect(document.activeElement?.id).toBe('event-venue-name'));
+    fireEvent.click(within(details).getByRole('button', { name: /Venue to be confirmed/ }));
+    expect(await within(details).findByLabelText(/Venue name/)).toBeDefined();
 
     cleanup();
     signedIn(READER);
@@ -2755,7 +2755,7 @@ describe("An event's venue (sc-3589)", () => {
     at('/app/events/ev_1');
     const readOnly = await screen.findByRole('region', { name: 'Details' });
     expect(within(readOnly).getByText('Venue to be confirmed')).toBeDefined();
-    expect(screen.queryByRole('link', { name: /Add the venue/ })).toBeNull();
+    expect(within(readOnly).queryByRole('button', { name: /Venue to be confirmed/ })).toBeNull();
   });
 });
 
