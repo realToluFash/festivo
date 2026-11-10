@@ -47,6 +47,8 @@ import { QueuePage } from './Queue.tsx';
 import { HowItsGoingPage } from './HowItsGoing.tsx';
 import { SERVICE_STATES, SERVICE_STATE_WHAT } from './howItsGoing.ts';
 import { QUEUE_STATES, type QueueStateName } from './queue.ts';
+import { StationsPage } from './Stations.tsx';
+import { STATIONS_PAGES } from './stations.ts';
 import { TeamPage } from './Team.tsx';
 import { TEAM_STATES, type TeamStateName } from './team.ts';
 import { leave } from './chosenScheme.ts';
@@ -188,6 +190,7 @@ export default function Demo() {
       <Route path="events/:id/seating" element={<SeatingPage />} />
       <Route path="events/:id/kitchen" element={<KitchenPage />} />
       <Route path="events/:id/menu" element={<MenuPage />} />
+      <Route path="events/:id/staff" element={<StationsPage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -308,6 +311,12 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-32-kitchen">32 · Menu · the kitchen sheet’s parts</h2>
         <h3>Each part of a course, and each table’s platters · sc-34244 · desktop and A4</h3>
         <BoardPages pages={PARTS_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-34">
+        <h2 id="demo-page-34">34 · Staffing</h2>
+        <h3>Stations and leads, what each station dishes, the walking order (sc-3910) · desktop</h3>
+        <BoardPages pages={STATIONS_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-35">

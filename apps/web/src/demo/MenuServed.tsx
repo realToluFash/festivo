@@ -833,7 +833,7 @@ function ItemsLine({ dish }: { dish: Dish }) {
   );
 }
 
-function IconButton({
+export function IconButton({
   id,
   glyph,
   label,
@@ -873,7 +873,7 @@ function Optional() {
   return <span className="gs-optional">{MW.optional}</span>;
 }
 
-function Wrong({ id, children }: { id: string; children: ReactNode }) {
+export function Wrong({ id, children }: { id: string; children: ReactNode }) {
   return (
     <p id={id} className="desk-error">
       <Glyph name="alert" size={15} weight={2.2} />
