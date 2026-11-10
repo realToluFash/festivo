@@ -16,14 +16,14 @@ final class HoldsName extends FunctionNode
 {
     public Node $column;
 
-    public Node $name;
+    public Node $sought;
 
     public function getSql(SqlWalker $sqlWalker): string
     {
         return Str\format(
             '(EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS_TEXT(CAST(%s AS JSONB)) AS held(name) WHERE LOWER(held.name) = LOWER(%s)))',
             $sqlWalker->walkStringPrimary($this->column),
-            $sqlWalker->walkStringPrimary($this->name),
+            $sqlWalker->walkStringPrimary($this->sought),
         );
     }
 
@@ -33,7 +33,7 @@ final class HoldsName extends FunctionNode
         $parser->match(TokenType::T_OPEN_PARENTHESIS);
         $this->column = $parser->StringPrimary();
         $parser->match(TokenType::T_COMMA);
-        $this->name = $parser->StringPrimary();
+        $this->sought = $parser->StringPrimary();
         $parser->match(TokenType::T_CLOSE_PARENTHESIS);
     }
 }
