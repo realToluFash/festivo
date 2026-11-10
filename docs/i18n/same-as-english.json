@@ -86,6 +86,7 @@
     "mobile:eventNav.budget",
     "web:auth.copyright",
     "mobile:todayScreen.notifications",
+    "web:today.notifications",
     "web:seating.countTables_one",
     "web:seating.countTables_other",
     "web:seating.colours.rose",
