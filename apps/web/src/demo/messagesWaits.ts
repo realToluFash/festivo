@@ -1,5 +1,5 @@
 import { demoWords } from './demoWords.ts';
-import type { Channel, Check, Ticks, Untellable } from './messages.ts';
+import { COMING, type Channel, type Check, type Ticks, figuresOf } from './messages.ts';
 import type { Audience } from './messagesTo.ts';
 import { MW } from './messagesWords.ts';
 import { WW } from './messagesWaitsWords.ts';
@@ -73,36 +73,20 @@ export function askedWords(owners: number): string {
   return ww.many('ownersSent', owners);
 }
 
-const TOMAS: Untellable = { name: 'Tomás Ferreira', why: [MW.addressBouncing, MW.noPhone] };
-const JOAQUIN: Untellable = { name: 'Joaquín Ruiz', why: [MW.noEmail, MW.noPhone] };
-const SMS_ONLY: readonly Untellable[] = [
-  { name: 'Amaka Eze', why: [MW.noEmail, MW.smsIsOff] },
-  { name: 'Priyanka Nair', why: [MW.noEmail, MW.smsIsOff] },
-];
 const COMING_N = 96;
 
-/** Coming · 96: Email 92, a mobile 31, 3 of them on WhatsApp; with both ticked each phone is told once (sc-3954). */
-export function waitsFiguresOf(ticks: Ticks): {
-  counts: Record<Channel, number>;
-  cantTell: number;
-  names: readonly Untellable[];
-  smsOff: number;
-} {
+/** Coming · 96 as the check counts it (sc-3954), unticked channels at 0; with no email, everyone no ticked phone channel reaches. */
+export function waitsFiguresOf(ticks: Ticks): ReturnType<typeof figuresOf> {
+  const figures = figuresOf(COMING, ticks);
   const counts = {
-    email: ticks.email ? 92 : 0,
-    sms: ticks.sms ? (ticks.whatsApp ? 28 : 31) : 0,
-    whatsApp: ticks.whatsApp ? 3 : 0,
+    email: ticks.email ? figures.counts.email : 0,
+    sms: ticks.sms ? figures.counts.sms : 0,
+    whatsApp: ticks.whatsApp ? figures.counts.whatsApp : 0,
   };
 
-  if (ticks.email && ticks.sms) return { counts, cantTell: 2, names: [TOMAS, JOAQUIN], smsOff: 0 };
-  if (ticks.email) return { counts, cantTell: 4, names: SMS_ONLY, smsOff: 2 };
+  if (ticks.email) return { ...figures, counts };
 
-  return {
-    counts,
-    cantTell: COMING_N - counts.sms - counts.whatsApp,
-    names: [TOMAS, JOAQUIN],
-    smsOff: 0,
-  };
+  return { ...figures, counts, cantTell: COMING_N - counts.sms - counts.whatsApp };
 }
 
 function isComing(audience: Audience): boolean {

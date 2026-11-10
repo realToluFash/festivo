@@ -11,15 +11,13 @@ import { tokens } from '../../theme/tokens.ts';
 import {
   ASK_MS,
   type Ask,
-  WW,
   type Waits,
   type WaitsCheck,
   askAnswered,
   pressAsk,
-  sayWaits,
 } from './CheckWaits.ts';
 import { DeliveryMark } from './MessageMarks.tsx';
-import { type ChannelKey, W } from './MessagesWords.ts';
+import { type ChannelKey, W, WW, say } from './MessagesWords.ts';
 
 /** sc-3963: under who can't be told, in place of the credits line, as noticeWaits does for one guest. */
 export function WaitBlock({
@@ -37,7 +35,7 @@ export function WaitBlock({
   const sentRef = useRef<ViewInstance>(null);
   const answer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const asks = !waits.canBill && ask !== 'sent';
-  const sent = sayWaits.asked(waits.owners);
+  const sent = say.ownersAsked(waits.owners);
 
   const move = (next: Ask) => {
     now.current = next;
@@ -82,7 +80,7 @@ export function WaitBlock({
             <DeliveryMark mark="sending" side={15} />
           </View>
           <Text size={13.5} weight="semibold" style={[styles.grow, styles.line, styles.figures]}>
-            {sayWaits.waits(one.key, one.count)}
+            {say.waits(one.key, one.count)}
           </Text>
         </View>
       ))}

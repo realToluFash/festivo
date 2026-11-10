@@ -2,33 +2,7 @@ import { listFormat } from '@soirely/domain';
 
 import type { Action, Check, Draft } from './MessagesModel.ts';
 import { CANT_TELL, SMS_ONLY, TO_FIGURES, formatCount } from './MessagesSample.ts';
-import type { ChannelKey } from './MessagesWords.ts';
-
-/** sc-3963's too-few-credits branch of the check, in the AC's English (l10n #23662, #23680). */
-export const WW = {
-  either: 'Email goes either way.',
-  withoutWa: 'Send without WhatsApp',
-  withoutSms: 'Send without SMS',
-  emailOnly: 'Send by email only',
-  askOwner: 'Ask an owner',
-  askFailed: 'Not sent. Try again in a moment.',
-} as const;
-
-export const sayWaits = {
-  waits: (channel: 'sms' | 'wa', count: number) => {
-    const name = channel === 'wa' ? 'WhatsApp' : 'SMS';
-
-    return count === 1
-      ? `1 ${name} message will wait for credits.`
-      : `${count} ${name} messages will wait for credits.`;
-  },
-  asked: (owners: number) =>
-    owners === 1
-      ? 'The owner has been sent the link to Plan and billing.'
-      : 'The owners have been sent the link to Plan and billing.',
-  toldHow: (channels: string) =>
-    `Your message goes on their page. Soirely tells them it is there by ${channels}.`,
-};
+import { type ChannelKey, WW, say } from './MessagesWords.ts';
 
 const IN_TOLD: Record<ChannelKey, string> = { email: 'email', sms: 'text', wa: 'WhatsApp' };
 
@@ -128,7 +102,7 @@ export function waitsCheckOf(draft: Draft, balance: number, locale = 'en-US'): W
       after: formatCount(balance),
       whatsApp: channels.wa,
     },
-    told: sayWaits.toldHow(
+    told: say.toldHowBy(
       listFormat(locale, { style: 'long', type: 'conjunction' }).format(
         ticked.map((key) => IN_TOLD[key]),
       ),

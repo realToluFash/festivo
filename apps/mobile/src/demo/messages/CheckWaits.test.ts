@@ -5,7 +5,6 @@ import {
   WAITS_STARTS,
   askAnswered,
   pressAsk,
-  sayWaits,
   sendWithout,
   waitsCheckOf,
 } from './CheckWaits.ts';
@@ -87,7 +86,7 @@ describe('the check at 0 credits (sc-3963)', () => {
   it('says Email goes either way only with Email ticked, then a wait line per paid channel, WhatsApp first', () => {
     expect(CHECKS.map((state) => shown(state).either)).toEqual([true, true, true, false, false]);
     const lines = (state: string) =>
-      shown(state).waiting.map((one) => sayWaits.waits(one.key, one.count));
+      shown(state).waiting.map((one) => say.waits(one.key, one.count));
 
     expect(lines('checkWaitsWa')).toEqual(['3 WhatsApp messages will wait for credits.']);
     expect(lines('checkWaitsSms')).toEqual(['31 SMS messages will wait for credits.']);
@@ -96,8 +95,8 @@ describe('the check at 0 credits (sc-3963)', () => {
       '28 SMS messages will wait for credits.',
     ]);
     expect(lines('checkWaitsNoEmail')).toHaveLength(2);
-    expect(sayWaits.waits('wa', 1)).toBe('1 WhatsApp message will wait for credits.');
-    expect(sayWaits.waits('sms', 1)).toBe('1 SMS message will wait for credits.');
+    expect(say.waits('wa', 1)).toBe('1 WhatsApp message will wait for credits.');
+    expect(say.waits('sms', 1)).toBe('1 SMS message will wait for credits.');
   });
 
   it('offers the one way past that leaves something to send', () => {
@@ -159,8 +158,8 @@ describe('who reads it', () => {
       'failed',
     ]);
     expect(startOf('askSentOne', false).waits?.owners).toBe(1);
-    expect(sayWaits.asked(2)).toBe('The owners have been sent the link to Plan and billing.');
-    expect(sayWaits.asked(1)).toBe('The owner has been sent the link to Plan and billing.');
+    expect(say.ownersAsked(2)).toBe('The owners have been sent the link to Plan and billing.');
+    expect(say.ownersAsked(1)).toBe('The owner has been sent the link to Plan and billing.');
   });
 
   it('sends one ask at a time, and is sent', () => {
