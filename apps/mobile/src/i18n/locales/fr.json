@@ -1202,7 +1202,7 @@
   },
   "ownership": {
     "title": "Propriété et départ",
-    "transfer": "Transférer la propriété",
+    "transfer": "Céder la propriété",
     "transferNote": "Confiez {{organisation}} à un autre membre. Votre mot de passe vous sera d’abord demandé.",
     "transferNoteProvider": "Confiez {{organisation}} à un autre membre. Vous devrez d’abord confirmer votre identité avec {{provider}}.",
     "transferBody": "La personne qui recevra le rôle Propriétaire pourra modifier la facturation, les membres et ces paramètres, et supprimer {{organisation}}. Vous aurez le rôle Administrateur.",
@@ -1246,7 +1246,7 @@
     "deleteMatches": "Le nom correspond.",
     "deleteExactly": "Tel qu’il est écrit, accents compris.",
     "failed": "La demande n’a pas abouti, donc rien n’a été modifié. Réessayez.",
-    "transferVerb": "Transférer",
+    "transferVerb": "Céder",
     "transferredSays": "{{name}} est désormais propriétaire",
     "transferredLine": "Vous avez désormais le rôle Administrateur. Un e-mail de confirmation a été envoyé aux deux comptes.",
     "deleteScreenTitle": "Supprimer {{organisation}}",
