@@ -220,6 +220,7 @@ function SecurityPage({ start }: { start: SecurityStart }) {
   }
 
   function retryFactor(): void {
+    lineHeld.current = false;
     setLoadMs(RETRY_MS);
     setFactor('loading');
   }
