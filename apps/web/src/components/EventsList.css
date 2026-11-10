@@ -324,6 +324,9 @@
 }
 
 .ev-tile.is-today {
+  width: auto;
+  min-width: 58px;
+  padding-inline: var(--spaceSm);
   background: var(--colorCard);
   color: var(--colorAccent);
 }
