@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
-import { MeasuredWords } from '../../components/Title.tsx';
 import { PHONE_TAB_BAR, TABS, type Tab } from '../../components/TodayCover.tsx';
 import { wordsIn } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
@@ -16,11 +15,13 @@ export function TextSizeBar({
   bottom,
   at,
   onTab,
+  onSize,
 }: {
   scale: number;
   bottom: number;
   at: Tab;
   onTab: (tab: Tab) => void;
+  onSize: (size: number, slot: number) => void;
 }) {
   const { t } = useTranslation();
   const labels = TABS.map(([, glyph]) => t(`todayScreen.tab.${glyph}`));
@@ -33,17 +34,34 @@ export function TextSizeBar({
   const size =
     slot > 0 && known ? tabLabelSize(scale, Math.max(...widths.map(Number)), slot) : TAB_LABEL;
 
+  useEffect(() => {
+    onSize(size, slot);
+  }, [onSize, size, slot]);
+
   return (
     <View style={[styles.bar, { bottom }]} accessibilityRole="tablist">
-      <MeasuredWords
-        words={words}
-        size={start}
-        weight="semibold"
-        maxFontSizeMultiplier={1}
-        onWidth={(word, width) => {
-          setMeasured((current) => ({ ...current, [`${start}|${word}`]: width }));
-        }}
-      />
+      <View
+        style={styles.measure}
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {[...new Set(words)].map((word) => (
+          <Text
+            key={word}
+            size={start}
+            weight="semibold"
+            allowFontScaling={false}
+            accessible={false}
+            onLayout={(event) => {
+              const { width } = event.nativeEvent.layout;
+              setMeasured((current) => ({ ...current, [`${start}|${word}`]: width }));
+            }}
+          >
+            {word}
+          </Text>
+        ))}
+      </View>
       {TABS.map(([tab, glyph], index) => {
         const on = tab === at;
         const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
@@ -101,4 +119,12 @@ const styles = StyleSheet.create({
     gap: TAB_GLYPH_GAP,
   },
   tabOn: { backgroundColor: tokens.colorAccentTint },
+  measure: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: 10000,
+    alignItems: 'flex-start',
+    opacity: 0,
+  },
 });

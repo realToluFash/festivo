@@ -4,7 +4,7 @@ export interface TextSizeBoard {
   href: string;
 }
 
-/** Each state sc-37298 asks for; "This phone" draws at the phone's own text size. */
+/** Each state sc-37298 asks for; a label size holds on the width named, and the demo box shows the size on the phone it runs on. */
 export const TEXT_SIZE_BOARDS: readonly TextSizeBoard[] = [
   {
     title: 'This phone’s text size',
@@ -13,22 +13,22 @@ export const TEXT_SIZE_BOARDS: readonly TextSizeBoard[] = [
   },
   {
     title: 'Default size · English',
-    what: 'As on main: labels at 12, the tile beside the words',
+    what: 'As on main: labels at 12 on any phone, the tile beside the words',
     href: '/demo/text-size?size=default',
   },
   {
     title: 'Default size · French',
-    what: 'As on main: Événements whole at 12',
+    what: 'As on main: Événements whole at 12 on any phone',
     href: '/demo/text-size?size=default&lang=fr',
   },
   {
     title: 'Android 200% · French · Aujourd’hui',
-    what: 'Labels at 12, the widest word whole; no tile',
+    what: 'On a 360-wide phone, labels at 12, the widest word whole; no tile',
     href: '/demo/text-size?size=android&lang=fr&tab=Today',
   },
   {
     title: 'Android 200% · Spanish · Ajustes',
-    what: 'qa’s state: labels at 14, Propietario · QA / Organisation whole',
+    what: 'qa’s state: on a 360-wide phone, labels at 14, Propietario · QA / Organisation whole',
     href: '/demo/text-size?size=android&lang=es&tab=Settings',
   },
   {
@@ -43,12 +43,12 @@ export const TEXT_SIZE_BOARDS: readonly TextSizeBoard[] = [
   },
   {
     title: 'iPhone ninth step · French · Calendrier',
-    what: 'Labels at 14',
+    what: 'On the 402-wide iPhone, labels at 14',
     href: '/demo/text-size?size=iphone&lang=fr&tab=Calendar',
   },
   {
     title: 'iPhone ninth step · Spanish · Bold text on · Ajustes',
-    what: 'Labels at 16',
+    what: 'On the 402-wide iPhone, labels at 16',
     href: '/demo/text-size?size=iphone&lang=es&tab=Settings&bold=on',
   },
   {

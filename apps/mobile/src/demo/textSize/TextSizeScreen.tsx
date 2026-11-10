@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -43,6 +43,8 @@ export function TextSizeScreen({ start }: { start: TextSizeStart }) {
   const [longOrganisation, setLongOrganisation] = useState(start.longOrganisation);
   const [longEmail, setLongEmail] = useState(start.longEmail);
   const [at, setAt] = useState<Tab>(start.at);
+  const [drawn, setDrawn] = useState({ size: 0, slot: 0 });
+  const onSize = useCallback((size: number, slot: number) => setDrawn({ size, slot }), []);
   const words = useMemo(
     () => i18n.cloneInstance({ lng: language, initAsync: false }),
     [i18n, language],
@@ -111,12 +113,19 @@ export function TextSizeScreen({ start }: { start: TextSizeStart }) {
               id="email"
             />
             <BoldTextSwitch />
+            <Text
+              size={tokens.typeSmall.size}
+              style={styles.secondary}
+              testID="demo.textSize.drawn"
+            >
+              {`On this phone each tab is ${Math.round(drawn.slot * 10) / 10} wide, so the labels are at ${drawn.size}. The boards' sizes are for a 360-wide Android phone and the 402-wide iPhone.`}
+            </Text>
           </DemoOnly>
         </View>
       </ScrollView>
       <TabBarFade />
       <I18nextProvider i18n={words}>
-        <TextSizeBar scale={scale} bottom={foot} at={at} onTab={setAt} />
+        <TextSizeBar scale={scale} bottom={foot} at={at} onTab={setAt} onSize={onSize} />
       </I18nextProvider>
     </View>
   );
