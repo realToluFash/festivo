@@ -3,7 +3,12 @@ export interface MenuPlace {
   floor: number | null;
 }
 
-/** A menu's top and floor, given in measureInWindow's frame, moved into its Modal's, which starts behind the status bar where Android's window starts below it. */
+/** A `y` measured in the window, moved into a statusBarTranslucent Modal's frame, which starts behind the status bar where Android's window starts below it. */
+export function inModal(y: number, origin: number): number {
+  return y - origin;
+}
+
+/** A menu's top and floor, both given in measureInWindow's frame, moved into its Modal's. */
 export function menuInModal({
   under,
   below,
@@ -15,5 +20,8 @@ export function menuInModal({
   floor: number | null;
   origin: number;
 }): MenuPlace {
-  return { top: under - origin + below, floor: floor == null ? null : floor - origin };
+  return {
+    top: inModal(under, origin) + below,
+    floor: floor == null ? null : inModal(floor, origin),
+  };
 }

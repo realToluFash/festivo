@@ -18,7 +18,6 @@ export {
   frameFor,
   matches,
   noneMatch,
-  openerInModal,
   rowsOf,
   scrollToShow,
   searchable,

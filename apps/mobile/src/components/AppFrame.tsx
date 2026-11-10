@@ -57,7 +57,8 @@ import {
   useLayout,
   useNameLines,
 } from '../layout/useLayout.ts';
-import { type DropFrame, frameFor, openerInModal, switcherSession } from '../kit/orgSwitcher.ts';
+import { inModal } from '../kit/anchoredMenu.ts';
+import { type DropFrame, frameFor, switcherSession } from '../kit/orgSwitcher.ts';
 import { joinOrganisation, onMovedOn, switchOrganisation, useSignedIn } from '../signedIn.ts';
 import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { switcherFocusBack } from '../kit/focusBack.ts';
@@ -346,7 +347,7 @@ export function AppFrame({
       const place = (x: number, y: number, width: number, height: number) =>
         setDrop((last) => ({
           frame: frameFor({
-            opener: openerInModal({ x, y, width, height }, origin),
+            opener: { x, y: inModal(y, origin), width, height },
             window,
             insets: { bottom: insets.bottom },
             phone: kind === 'phone',

@@ -183,11 +183,6 @@ const SIDE = 12;
 const TAB_BAR = 64;
 const LEAST_HEIGHT = 160;
 
-/** An opener measured in the window, moved into the drop-down's Modal, which starts behind the status bar where Android's window starts below it. */
-export function openerInModal(opener: Box, origin: number): Box {
-  return { ...opener, y: opener.y - origin };
-}
-
 export function frameFor({
   opener,
   window,

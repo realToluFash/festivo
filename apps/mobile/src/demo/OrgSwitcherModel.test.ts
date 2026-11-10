@@ -2,6 +2,7 @@ import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
+import { inModal } from '../kit/anchoredMenu.ts';
 import {
   answer,
   ask,
@@ -14,7 +15,6 @@ import {
   frameFor,
   noneMatch,
   notNow,
-  openerInModal,
   openerLabel,
   orgMesh,
   pick,
@@ -325,14 +325,12 @@ describe('the drop-down', () => {
   });
 
   it('drops 8 under its opener on Android, whose window starts below the status bar', () => {
-    const opener = openerInModal({ x: 20, y: 38, width: 186, height: 56 }, -24);
+    const opener = { x: 20, y: inModal(38, -24), width: 186, height: 56 };
 
-    expect(opener).toEqual({ x: 20, y: 62, width: 186, height: 56 });
     expect(
       frameFor({ opener, window: { width: 402, height: 874 }, insets: { bottom: 34 }, phone: true })
         .top,
     ).toBe(126);
-    expect(openerInModal({ x: 20, y: 62, width: 186, height: 56 }, 0).y).toBe(62);
   });
 
   it('drops 500 wide from the opener’s left edge on the iPad', () => {
