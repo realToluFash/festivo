@@ -402,6 +402,28 @@ export function anchorUnder(trigger: RefObject<ViewInstance | null>, then: (at: 
   trigger.current?.measureInWindow((x, y, width, height) => then({ x, y: y + height, width }));
 }
 
+/** An open menu's anchor, measured again once a turned window settles; a button the turn took away closes it. */
+export function useAnchorFollowsTurn(
+  trigger: RefObject<ViewInstance | null>,
+  open: boolean,
+  then: (at: Anchor | null) => void,
+) {
+  const { width, height } = useWindowDimensions();
+  const size = useRef({ width, height });
+
+  useEffect(() => {
+    const turned = size.current.width !== width || size.current.height !== height;
+    size.current = { width, height };
+    if (!open || !turned) return;
+    const wait = setTimeout(() => {
+      if (trigger.current == null) then(null);
+      else anchorUnder(trigger, then);
+    }, SETTLED_MS);
+
+    return () => clearTimeout(wait);
+  }, [width, height, open, trigger, then]);
+}
+
 interface MenuProps {
   at: Anchor | null;
   onClose: () => void;
