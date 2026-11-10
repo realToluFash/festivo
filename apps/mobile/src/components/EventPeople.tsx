@@ -237,6 +237,10 @@ export function EventPeople({
     setOpened((was) => (was == null ? null : { ...was, open: false }));
     setLit(null);
     tell(t('eventPeople.removed', { name: gone.user.name }));
+    api.addableEventMembers(event.id).then(
+      (addable) => setLoad((was) => (was.kind !== 'loaded' ? was : { ...was, addable })),
+      () => undefined,
+    );
   }
 
   function openAdd(): void {
