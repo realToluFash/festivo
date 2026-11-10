@@ -1,4 +1,4 @@
-# sc-34869: the Settings hub title and the tab bar under it. Any device, no ${METRO_URL} or ${ORIENT}.
+# sc-34869: the Settings hub title and the tab bar under it. Any device, needs ${METRO_URL}, no ${ORIENT}.
 appId: host.exp.Exponent
 ---
 - runFlow: ../return-home.yaml

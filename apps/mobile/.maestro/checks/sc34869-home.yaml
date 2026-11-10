@@ -1,4 +1,4 @@
-# sc-34869: Home's Open Settings button. Any device, no ${METRO_URL} or ${ORIENT}.
+# sc-34869: Home's Open Settings button. Any device, needs ${METRO_URL}, no ${ORIENT}.
 appId: host.exp.Exponent
 ---
 - runFlow: ../return-home.yaml
