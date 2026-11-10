@@ -108,6 +108,7 @@ export const SEATING_STATES = [
   'moveAll',
   'emptyTable',
   'everyoneSeated',
+  'nobodyComing',
   'noMatch',
   'notSureYet',
   'tables',

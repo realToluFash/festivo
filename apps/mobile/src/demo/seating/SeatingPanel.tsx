@@ -962,7 +962,7 @@ export function Tray({
           title={phone ? say.tab(W.withoutSeat, 0) : W.withoutSeat}
           right={phone ? undefined : <Count n={0} />}
         />
-        <Small text={W.everyoneSeated} />
+        <Small text={m.items.every((it) => filled(it) === 0) ? W.nobodyComing : W.everyoneSeated} />
       </View>
     );
   return (

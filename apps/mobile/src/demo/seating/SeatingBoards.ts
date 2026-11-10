@@ -90,6 +90,7 @@ const BOARDS: Record<SeatingState, readonly [string, string]> = {
   moveAll: ['Move everyone to…', 'Only tables with room for all'],
   emptyTable: ['an empty table', 'Nobody here yet'],
   everyoneSeated: ['everyone seated', 'Everyone who is coming has a seat'],
+  nobodyComing: ['nobody coming yet', 'Nobody has said they’re coming yet'],
   noMatch: ['no match', 'Olu, Clear search and group'],
   notSureYet: ['Not sure yet and no reply', 'Each with their reply in words'],
   tables: ['Tables', 'The cards'],

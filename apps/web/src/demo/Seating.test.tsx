@@ -844,27 +844,34 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
     },
   );
 
-  it('says an empty table, everyone seated, and a search that matches nobody', SLOW, async () => {
-    await seating('emptyTable');
-    expect(
-      within(panel()).getByText('Nobody here yet. Pick a guest in Seat, then this table.'),
-    ).toBeDefined();
-    await seating('everyoneSeated');
-    expect(
-      within(panel()).getAllByText('Everyone who is coming has a seat.').length,
-    ).toBeGreaterThan(0);
-    await seating('noMatch');
-    expect(within(panel()).getByText('Nobody without a seat matches this search.')).toBeDefined();
-    fireEvent.click(within(panel()).getByRole('button', { name: 'Clear search and group' }));
-    expect(within(panel()).getByRole('button', { name: /^Marta Silva/u })).toBeDefined();
-  });
+  it(
+    'says an empty table, everyone seated, nobody coming yet, and a search that matches nobody',
+    SLOW,
+    async () => {
+      await seating('emptyTable');
+      expect(
+        within(panel()).getByText('Nobody here yet. Pick a guest in Seat, then this table.'),
+      ).toBeDefined();
+      await seating('everyoneSeated');
+      expect(
+        within(panel()).getAllByText('Everyone who is coming has a seat.').length,
+      ).toBeGreaterThan(0);
+      await seating('nobodyComing');
+      expect(within(panel()).getByText('Nobody has said they’re coming yet.')).toBeDefined();
+      expect(within(panel()).queryByText('Everyone who is coming has a seat.')).toBeNull();
+      await seating('noMatch');
+      expect(within(panel()).getByText('Nobody without a seat matches this search.')).toBeDefined();
+      fireEvent.click(within(panel()).getByRole('button', { name: 'Clear search and group' }));
+      expect(within(panel()).getByRole('button', { name: /^Marta Silva/u })).toBeDefined();
+    },
+  );
 
   it(
     'shows Not sure yet and no reply in the guest’s own words when switched on',
     SLOW,
     async () => {
       await seating('notSureYet');
-      expect(within(panel()).getByText('31 more with Not sure yet or no reply')).toBeDefined();
+      expect(within(panel()).getByText('31 more: Not sure yet or No reply')).toBeDefined();
       expect(within(panel()).getByText('Work · Not sure yet')).toBeDefined();
       expect(within(panel()).getAllByText('Friends · No reply').length).toBeGreaterThan(0);
       fireEvent.click(within(panel()).getByRole('checkbox', { name: /^Work/u }));

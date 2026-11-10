@@ -153,6 +153,19 @@ function seatEveryone(m: Seating): Seating {
   }, m);
 }
 
+function nobodyComing(m: Seating): Seating {
+  return {
+    ...m,
+    tray: [],
+    items: m.items.map((it) => ({
+      ...it,
+      chairs: it.chairs.map((c) =>
+        c.state === 'taken' || c.state === 'held' ? { state: 'empty' as const, who: null } : c,
+      ),
+    })),
+  };
+}
+
 function settled(m: Seating): Seating {
   return { ...m, undo: null, bar: null, lit: [], save: 'saved', held: true };
 }
@@ -487,6 +500,8 @@ function tablet(state: SeatingState, b: Seating): Seating {
       return chosen(b, 't10', { tab: 'Seat' });
     case 'everyoneSeated':
       return settled(seatEveryone(seat));
+    case 'nobodyComing':
+      return settled(nobodyComing(seat));
     case 'noMatch':
       return { ...seat, search: 'Olu' };
     case 'notSureYet':
@@ -576,6 +591,8 @@ function phone(state: SeatingState, b: Seating): Seating {
       return run({ ...t8, chair: 0 }, { type: 'mark', id: 't8', chair: 0 });
     case 'everyoneSeated':
       return settled(seatEveryone(b));
+    case 'nobodyComing':
+      return settled(nobodyComing(b));
     case 'noMatch':
       return { ...open, search: 'Olu' };
     case 'notSureYet':
