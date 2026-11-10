@@ -1,0 +1,9 @@
+# sc-35210: the design demo's Notifications with push blocked, in the shown language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/notifications?state=pushBlocked
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '.*push.*'
+    timeout: 30000
+- takeScreenshot: sc35210-push-blocked

@@ -1,0 +1,37 @@
+# sc-35210: Security in French; the why line, then Forgot password's sent page (Rien reçu ?, Inscription avec Google ou Apple ?, Vous avez le lien ?).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible:
+      id: 'security.card'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: sc35210-security
+- tapOn:
+    id: 'security.password'
+- extendedWaitUntil:
+    visible:
+      id: 'security.change.screen'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'security.change.forgot'
+- tapOn:
+    id: 'security.change.forgot'
+- extendedWaitUntil:
+    visible:
+      id: 'security.reset.email'
+    timeout: 10000
+- tapOn:
+    id: 'security.reset.send'
+- extendedWaitUntil:
+    visible:
+      id: 'security.reset.done'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: sc35210-forgot-sent
+- scrollUntilVisible:
+    element: '.*Vous avez le lien.*'
+    optional: true
+- takeScreenshot: sc35210-forgot-sent-end
