@@ -103,7 +103,7 @@ describe('the page an account in no organisation stands on (sc-13339)', () => {
     },
   );
 
-  it('sends the account pages back to this page, with Dashboard and the rest gone (sc-13406)', async () => {
+  it('sends the account pages back to this page, with Today and the rest gone (sc-13406)', async () => {
     inNone();
     answering({ 'GET /api/invitations': () => json({ invitations: [] }) });
     app('/app/account');
@@ -487,7 +487,7 @@ describe('where focus goes on No organisation (sc-11369)', () => {
     return screen.getByText(`Now working in ${name}.`).closest('.sw-notice');
   }
 
-  it('takes Start organisation to "Now working in", read once, above Dashboard', async () => {
+  it('takes Start organisation to "Now working in", read once, above Today', async () => {
     inNone();
     const started = membership({ id: 'org_9', name: 'Okoro Weddings', countryCode: 'GH' });
     answering({
@@ -502,7 +502,7 @@ describe('where focus goes on No organisation (sc-11369)', () => {
     fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
     fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
 
-    await screen.findByRole('heading', { level: 1, name: 'Dashboard' });
+    await screen.findByRole('heading', { level: 1, name: 'Today' });
     for (const name of PRODUCT_LINKS) expect(screen.getByRole('link', { name })).toBeDefined();
     expect(document.activeElement).toBe(nowWorkingIn('Okoro Weddings'));
     expect(nowWorkingIn('Okoro Weddings')?.getAttribute('role')).toBeNull();
@@ -542,7 +542,7 @@ describe('where focus goes on No organisation (sc-11369)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Adunni Weddings' }));
 
-    await screen.findByRole('heading', { level: 1, name: 'Dashboard' });
+    await screen.findByRole('heading', { level: 1, name: 'Today' });
     for (const name of PRODUCT_LINKS) expect(screen.getByRole('link', { name })).toBeDefined();
     expect(document.activeElement).toBe(nowWorkingIn('Adunni Weddings'));
   });

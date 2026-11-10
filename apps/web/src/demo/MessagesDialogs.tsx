@@ -29,13 +29,14 @@ export function MatchPicker({
     <Dialog
       title={MW.whoIsThis}
       verb={filled(MW.thisIs, { name: picked })}
+      dismiss={MW.cancel}
       first={search}
       on={found.some((one) => one.name === picked)}
       onDismiss={onCancel}
       onConfirm={() => onMatch(picked)}
     >
       <div className="mg-pick">
-        <div className="mg-search">
+        <label className="mg-search">
           <Glyph name="search" size={16} />
           <input
             ref={search}
@@ -45,7 +46,7 @@ export function MatchPicker({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
-        </div>
+        </label>
         <fieldset className="mg-radios" aria-describedby={hintId}>
           <legend className="desk-unseen">{MW.whoIsThis}</legend>
           {found.map((one) => (
@@ -108,6 +109,7 @@ export function LaterDialog({
     <Dialog
       title={MW.whenItGoes}
       verb={MW.schedule}
+      dismiss={MW.cancel}
       first={later}
       onDismiss={onCancel}
       onConfirm={schedule}

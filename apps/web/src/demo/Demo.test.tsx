@@ -1571,6 +1571,21 @@ describe('Today at a desk (sc-29092)', () => {
     expect(screen.queryByRole('button', { name: 'Chase, Chase 19 replies' })).toBeNull();
   });
 
+  it('opens an event starting later today as a planning day, from the demo home', async () => {
+    at('/demo');
+    await screen.findByRole('heading', { name: 'Design demo' });
+    expect(
+      screen
+        .getByRole('link', { name: /A planning day, the event starts later today/ })
+        .getAttribute('href'),
+    ).toBe('/demo/today?moment=plan&starts=later');
+
+    await today('plan&starts=later');
+
+    expect(screen.getByText('Ire Events end-of-year party starts today at 19:00.')).toBeDefined();
+    expect(screen.getByText('The party starts')).toBeDefined();
+  });
+
   it('says what a press opens, and ⌘K opens search', async () => {
     await today('plan');
 
@@ -1629,6 +1644,17 @@ describe('Today at a desk (sc-29092)', () => {
     expect(screen.getByRole('button', { name: 'Start your first event' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'New event' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Your events' })).toBeNull();
+  });
+
+  it('tells a role without Create events why a first run has nothing to start', async () => {
+    await today('firstAsk');
+
+    expect(screen.getByRole('heading', { name: 'Set up your first event' })).toBeDefined();
+    expect(screen.getByText('Make it live')).toBeDefined();
+    expect(screen.getByText(/Ask an owner if you need to create one/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Ana Souza, Member' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Start your first event' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'New event' })).toBeNull();
   });
 
   it('opens a planning day for a moment it does not know', async () => {

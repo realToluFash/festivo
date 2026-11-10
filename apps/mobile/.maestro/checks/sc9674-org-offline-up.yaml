@@ -9,6 +9,12 @@ onFlowComplete:
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
     visible:
+      id: organisation.edit
+    timeout: 30000
+- tapOn:
+    id: organisation.edit
+- extendedWaitUntil:
+    visible:
       id: organisation.name
     timeout: 30000
 - tapOn:
@@ -21,10 +27,10 @@ onFlowComplete:
       ASK: /api?to=stopped
 - scrollUntilVisible:
     element:
-      id: organisation.save
+      id: organisation.details.save
     centerElement: true
 - tapOn:
-    id: organisation.save
+    id: organisation.details.save
 - extendedWaitUntil:
     visible: '{{t:orgGeneral.save}}'
     timeout: 45000
@@ -43,10 +49,10 @@ onFlowComplete:
     text: ${ORG_NAME}X
 - scrollUntilVisible:
     element:
-      id: organisation.save
+      id: organisation.details.save
     centerElement: true
 - tapOn:
-    id: organisation.save
+    id: organisation.details.save
 - extendedWaitUntil:
     visible: '{{t:orgGeneral.save}}'
     timeout: 45000

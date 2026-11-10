@@ -53,7 +53,7 @@ describe('Cannot reach Soirely, Try again (sc-11369)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
-    const heading = await screen.findByRole('heading', { level: 1, name: 'Dashboard' });
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Today' });
     await waitFor(() => expect(document.activeElement).toBe(heading));
   });
 

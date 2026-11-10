@@ -158,4 +158,28 @@ describe('todayMoment', () => {
       events: [],
     });
   });
+  it('an event later today that has not started counts Today, is not live, and the line under the greeting says when it starts', () => {
+    const tonight = event('Tonight', {
+      startsAt: '2026-11-03T19:00:00Z',
+      endsAt: '2026-11-03T23:00:00Z',
+      dayCount: 1,
+    });
+    const plan = moment([tonight]);
+
+    expect(plan).toMatchObject({ kind: 'plan', now: null, sub: 'Tonight starts today at 19:00.' });
+    expect(plan.events[0]).toMatchObject({ count: 'Today', live: false, stage: null });
+    expect(moment([event('Wedding'), tonight]).sub).toBe('Tonight starts today at 19:00.');
+  });
+
+  it('a draft dated today is a draft, never live', () => {
+    const draft = event('Draft', {
+      status: 'draft',
+      phase: 'draft',
+      startsAt: '2026-11-03T08:00:00Z',
+      endsAt: '2026-11-03T23:00:00Z',
+      dayCount: 1,
+    });
+
+    expect(moment([draft]).events[0]).toMatchObject({ count: 'Draft', draft: true, live: false });
+  });
 });

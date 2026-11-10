@@ -1,3 +1,11 @@
+import type {
+  EventCard,
+  Moment as Shown,
+  Now,
+  ShownEvent,
+  StripBar,
+  StripDay,
+} from '../components/today.ts';
 import { writtenTime } from './clock.ts';
 import { TODAY_IDS as IDS } from './events.ts';
 import { type Guests, SAMPLE_GUESTS } from './guestCounts.ts';
@@ -118,89 +126,22 @@ export interface Need {
   action: string;
 }
 
-export interface AgendaItem {
-  time: string;
-  title: string;
-  event: EventKey;
-  note: string;
-}
-
-export interface AgendaDay {
-  date: string;
-  day: string;
-  when: string;
-  today: boolean;
-  items: AgendaItem[];
-}
-
-export interface StripDay {
-  weekday: string;
-  number: string;
-  today: boolean;
-  dots: EventKey[];
-}
-
-export interface StripBar {
-  event: EventKey;
-  start: number;
-  span: number;
-  label: string;
-  /** Started before the week shown, so it runs in from the left edge. */
-  openLeft: boolean;
-}
-
-export interface EventCard {
-  event: EventKey;
-  name: string;
-  dates: string;
-  count: string;
-  live: boolean;
-  draft: boolean;
-  stage: string | null;
-  ready: { words: string; percent: number } | null;
-}
-
-export interface RailStop {
-  time: string;
-  name: string;
-  state: 'done' | 'now' | 'next' | 'later';
-}
-
-export interface Now {
-  event: EventKey;
-  name: string;
-  live: string;
-  happening: string;
-  until: string;
-  behind: string;
-  next: { time: string; title: string };
-  arrived: number;
-  expected: number;
-  rail: RailStop[];
-  /** Where the moment sits along the rail, from 0 at its first stop to 1 at its last. */
-  at: number;
-  ends: string;
-}
-
-export interface Moment {
+/** The product's Today, and what only the demo draws: Needs you (sc-29884). */
+export interface Moment extends Shown {
   name: MomentName;
-  kind: 'plan' | 'day' | 'quiet' | 'first';
-  /** False draws only what the product can show today, from the events' own dates. */
-  full: boolean;
   time: string;
-  eyebrow: string;
-  hello: string;
-  lead: string | null;
-  sub: string;
   /** Null when the product has nothing to say yet; empty when nothing needs you. */
   needs: Need[] | null;
-  days: StripDay[];
-  bars: StripBar[];
-  agenda: AgendaDay[];
-  nothing: string;
-  nextUp: { event: EventKey; name: string; when: string } | null;
-  events: EventCard[];
-  now: Now | null;
+}
+
+/** A sample event as the product's parts draw it: its colour is its key. */
+export function shown(key: EventKey): ShownEvent {
+  return { id: IDS[key], name: EVENTS[key].name, mesh: key };
+}
+
+/** The sample event an id names, for the parts that still take a key. */
+export function keyOf(id: string): EventKey {
+  return (Object.keys(IDS) as EventKey[]).find((key) => IDS[key] === id) ?? 'draft';
 }
 
 type Item = readonly [time: string, title: string, event: EventKey, note: string];
@@ -341,26 +282,29 @@ function card(
   moment: MomentName,
   say: Say,
   guests: GuestsOf,
+  later: EventKey | null,
 ): EventCard {
   const event = EVENTS[key];
   const until = daysFrom(today, event.first);
-  const live = until <= 0 && daysFrom(today, event.last) >= 0;
+  const live = until <= 0 && daysFrom(today, event.last) >= 0 && key !== later;
   const count = event.draft
     ? 'Draft'
-    : live
-      ? `Day ${1 - until} of ${daysFrom(event.first, event.last) + 1}`
-      : until === 1
-        ? 'Tomorrow'
-        : `In ${until} days`;
+    : key === later
+      ? 'Today'
+      : live
+        ? `Day ${1 - until} of ${daysFrom(event.first, event.last) + 1}`
+        : until === 1
+          ? 'Tomorrow'
+          : `In ${until} days`;
 
   return {
-    event: key,
+    event: shown(key),
     name: event.name,
     dates: eventDates(event, say),
     count,
     live,
     draft: event.draft,
-    stage: !event.draft && !live && until <= 7 ? 'Final week' : null,
+    stage: !event.draft && !live && until > 0 && until <= 7 ? 'Final week' : null,
     ready:
       READY[moment]?.includes(key) !== true
         ? null
@@ -371,7 +315,13 @@ function card(
 }
 
 /** Live events and the ones still to come, soonest first, then drafts. */
-function cards(today: string, moment: MomentName, say: Say, guests: GuestsOf): EventCard[] {
+function cards(
+  today: string,
+  moment: MomentName,
+  say: Say,
+  guests: GuestsOf,
+  later: EventKey | null = null,
+): EventCard[] {
   return (Object.keys(EVENTS) as EventKey[])
     .filter((key) => daysFrom(today, EVENTS[key].last) >= 0)
     .sort(
@@ -379,7 +329,7 @@ function cards(today: string, moment: MomentName, say: Say, guests: GuestsOf): E
         Number(EVENTS[a].draft) - Number(EVENTS[b].draft) ||
         EVENTS[a].first.localeCompare(EVENTS[b].first),
     )
-    .map((key) => card(key, today, moment, say, guests));
+    .map((key) => card(key, today, moment, say, guests, later));
 }
 
 /** One bar for each event on in the week, with its other days' milestones as dots. */
@@ -405,7 +355,7 @@ function week(
       const openLeft = event.first < today;
 
       return {
-        event: key,
+        event: shown(key),
         start,
         span: end - start + 1,
         label: openLeft ? `day ${1 - daysFrom(today, event.first)} of ${length}` : `${length} days`,
@@ -413,7 +363,9 @@ function week(
       };
     });
   const covered = (key: EventKey, index: number) =>
-    bars.some((bar) => bar.event === key && index >= bar.start && index < bar.start + bar.span);
+    bars.some(
+      (bar) => bar.event.id === IDS[key] && index >= bar.start && index < bar.start + bar.span,
+    );
   const days = Array.from({ length: 7 }, (_, index) => {
     const date = addDays(today, index);
     const items = agenda.find(([day]) => day === date)?.[1] ?? [];
@@ -421,7 +373,12 @@ function week(
       (event) => !covered(event, index),
     );
 
-    return { weekday: say.weekday(date), number: say.number(date), today: index === 0, dots };
+    return {
+      weekday: say.weekday(date),
+      number: say.number(date),
+      today: index === 0,
+      dots: dots.map(shown),
+    };
   });
 
   return { days, bars };
@@ -483,7 +440,7 @@ function now(today: string, time: string, say: Say): Now {
   const tomorrow = addDays(today, 1);
 
   return {
-    event: 'wed',
+    event: shown('wed'),
     name: event.name,
     live: `Day ${daysFrom(event.first, today) + 1} of ${daysFrom(event.first, event.last) + 1} · ${event.place}`,
     happening: 'Drinks reception',
@@ -505,18 +462,35 @@ function now(today: string, time: string, say: Say): Now {
   };
 }
 
-/** `guests` gives the events other guests, as `?invites=none` does. */
+/** `?starts=later`: the party's own day at 09:41, the party starting at 19:00 (sc-30413). */
+export const STARTS_LATER = {
+  event: 'party',
+  date: '2026-11-28',
+  time: '09:41',
+  starts: '19:00',
+} as const;
+
+const LATER_AGENDA: readonly (readonly [string, Item[]])[] = [
+  [STARTS_LATER.date, [[STARTS_LATER.starts, 'The party starts', STARTS_LATER.event, '']]],
+];
+
+/** `guests` gives the events other guests, as `?invites=none` does; `later` draws `?starts=later`. */
 export function momentOf(
   name: MomentName,
   say: Say,
-  { guests = SAMPLE_GUESTS }: { guests?: GuestsOf | undefined } = {},
+  {
+    guests = SAMPLE_GUESTS,
+    first = 'Folake',
+    later = false,
+  }: { guests?: GuestsOf | undefined; first?: string | undefined; later?: boolean } = {},
 ): Moment {
-  const { date: today, time } = TODAY[name];
+  const starting = later && name === 'plan';
+  const { date: today, time } = starting ? STARTS_LATER : TODAY[name];
   const kind = name === 'planNow' ? 'plan' : name === 'dayNow' ? 'day' : (name as Moment['kind']);
   const full = name !== 'planNow' && name !== 'dayNow';
-  const agenda = name === 'first' ? [] : AGENDA[name];
+  const agenda = starting ? LATER_AGENDA : name === 'first' ? [] : AGENDA[name];
   const { days, bars } = week(today, agenda, say);
-  const waiting = needs(name, today, say, guests);
+  const waiting = starting ? [] : needs(name, today, say, guests);
   const wedding = EVENTS.wed.first;
   const party = EVENTS.party;
 
@@ -526,7 +500,7 @@ export function momentOf(
     full,
     time,
     eyebrow: say.long(today),
-    hello: name === 'first' ? 'Welcome, Folake' : `${greeting(time)}, Folake`,
+    hello: name === 'first' ? `Welcome, ${first}` : `${greeting(time)}, ${first}`,
     lead:
       waiting != null && waiting.length > 0
         ? `${waiting.length} ${waiting.length === 1 ? 'thing needs' : 'things need'} you.`
@@ -534,9 +508,11 @@ export function momentOf(
     sub:
       name === 'first'
         ? 'Your first event starts here.'
-        : name === 'quiet'
-          ? 'Nothing needs you this week.'
-          : `The wedding starts on ${say.weekdayLong(wedding)}.`,
+        : starting
+          ? `${party.name} starts today at ${say.clock(STARTS_LATER.starts)}.`
+          : name === 'quiet'
+            ? 'Nothing needs you this week.'
+            : `The wedding starts on ${say.weekdayLong(wedding)}.`,
     needs: waiting,
     days,
     bars,
@@ -548,7 +524,7 @@ export function momentOf(
       items: items.map(([at, title, event, note]) => ({
         time: at === '' ? 'All day' : say.clock(at),
         title,
-        event,
+        event: shown(event),
         note,
       })),
     })),
@@ -556,12 +532,13 @@ export function momentOf(
     nextUp:
       name === 'quiet'
         ? {
-            event: 'party',
+            event: shown('party'),
             name: party.name,
             when: `${say.day(party.first)} · ${howFar(today, party.first)}`,
           }
         : null,
-    events: name === 'first' ? [] : cards(today, name, say, guests),
+    events:
+      name === 'first' ? [] : cards(today, name, say, guests, starting ? STARTS_LATER.event : null),
     now: kind === 'day' ? now(today, time, say) : null,
   };
 }

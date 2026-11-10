@@ -3,11 +3,11 @@ appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
-    visible: '{{t:orgGeneral.intro}}'
+    visible: '{{t:orgGeneral.details}}'
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'organisation.save'
+      id: 'organisation.edit'
     timeout: 20000
 - takeScreenshot: sc16265-editable
 - assertNotVisible:

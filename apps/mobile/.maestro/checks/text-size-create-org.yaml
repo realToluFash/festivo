@@ -9,7 +9,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'home.switchOrganisation'
 - tapOn:
-    id: 'switcher.create'
+    id: 'switcher.tile.create'
 - extendedWaitUntil:
     visible: '{{t:createOrganisation.title}}'
     timeout: 30000

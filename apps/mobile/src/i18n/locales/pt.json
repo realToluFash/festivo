@@ -372,7 +372,7 @@
     "nothingThereLine": "Veja primeiro a pasta de spam e depois envie de novo.",
     "signedUpWith": "Registou-se com a Google ou a Apple? Então não há palavra-passe a repor, e o e-mail explica como inicia sessão.",
     "gotTheLink": "Tem a ligação? Abra-a em qualquer dispositivo.",
-    "setupTitle": "Ativar a autenticação de dois fatores",
+    "setupTitle": "Ativar dois fatores",
     "setupVerb": "Ativar"
   },
   "passwordCard": {
@@ -773,8 +773,15 @@
     "rolesBack": "‹ Funções"
   },
   "switcher": {
+    "asks": "Onde está a trabalhar?",
+    "canAsk": "Pode pedir para aderir",
+    "search": "Pesquisar organizações",
+    "clearSearch": "Limpar a pesquisa",
+    "noMatch": "Nenhuma organização corresponde a «{{text}}».",
+    "matches_one": "{{count, number}} organização corresponde",
+    "matches_other": "{{count, number}} organizações correspondem",
+    "matches_many": "{{count, number}} de organizações correspondem",
     "yourRole": "A sua função · {{role}}",
-    "heading": "As suas organizações",
     "current": "Atual",
     "remembered": "A Soirely lembra a sua escolha neste dispositivo.",
     "switched": "Agora a trabalhar em {{name}}.",
@@ -976,7 +983,6 @@
     "removeInAccountPhone": "Removê-lo em Conta"
   },
   "orgGeneral": {
-    "intro": "O nome que a sua equipa e os seus convidados veem, e os valores com que cada novo evento começa.",
     "name": "Nome",
     "country": "País",
     "contact": "Endereço de contacto",
@@ -1003,7 +1009,21 @@
     "savedLanguage": "Guardado. A partir de agora, os e-mails de convite para pessoas sem conta Soirely são enviados em {{language}}. Os convites já enviados não voltam a ser enviados.",
     "refused": "Nada foi guardado. A sua função não inclui a permissão necessária para isto.",
     "refusedByRule": "Nada foi guardado.",
-    "searchLanguage": "Pesquisar idiomas"
+    "searchLanguage": "Pesquisar idiomas",
+    "edit": "Editar dados",
+    "editTitle": "Dados da organização",
+    "details": "Dados",
+    "defaults": "Predefinições dos novos eventos",
+    "invitations": "Convites",
+    "searchCountry": "Pesquisar países",
+    "saveVerb": "Guardar",
+    "savedSays": "Guardado",
+    "discardTitle_one": "Descartar a alteração?",
+    "discardTitle_other": "Descartar as alterações?",
+    "discardLine": "{{organisation}} fica como estava.",
+    "keepEditing": "Continuar a editar",
+    "discard": "Descartar",
+    "discardTitle_many": "Descartar as alterações?"
   },
   "invitations": {
     "heading": "Convites",
@@ -1018,6 +1038,8 @@
     "acceptLabel": "Aceitar e aderir a {{organisation}}",
     "decline": "Recusar",
     "declineLabel": "Recusar o convite de {{organisation}}",
+    "joining": "A aderir…",
+    "declining": "A recusar…",
     "declineNote": "Se recusar, {{inviter}} fica a saber. Nada mais muda.",
     "declineNoteNobody": "Se recusar, nada mais muda.",
     "joined": "Aderiu a {{organisation}} com a função {{role}}.",
@@ -1185,9 +1207,6 @@
     "codeBlank": "Introduza o código da sua aplicação de autenticação ou um código de recuperação.",
     "bothEmailed": "É enviado um e-mail de confirmação a si e a {{name}}.",
     "theNewOwner": "quem receber a propriedade",
-    "makeOwner": "Transferir para {{name}}",
-    "keep": "Manter a propriedade",
-    "transferred": "{{name}} tem agora a função Proprietário em {{organisation}}, e a sua função passou a ser Administrador. Foi enviado um e-mail de confirmação para as duas contas.",
     "leave": "Sair de {{organisation}}",
     "leaveOpener": "Sair de {{organisation}}…",
     "leaveNote": "Deixa de ter acesso aos eventos da organização. Tudo o que criou fica em {{organisation}}.",
@@ -1196,10 +1215,8 @@
     "stay": "Ficar",
     "onlyOwnerTitle": "É a única pessoa com a função Proprietário",
     "onlyOwnerBody": "Atribua a função Proprietário a outra pessoa e depois já pode sair.",
-    "delete": "Eliminar organização",
     "deleteOpener": "Eliminar organização…",
     "deleteNote": "Elimina todos os eventos, convidados e membros que contém.",
-    "deleteTitle": "Eliminar {{organisation}}?",
     "deleteWarningTitle": "Tudo o que contém desaparece",
     "deleteLoading": "A contar o que contém…",
     "deleteUncounted": "Não foi possível contar o que contém. Se a eliminar, todos os seus eventos, convidados e membros são eliminados na mesma, já e para todos. O apoio ao cliente da Soirely pode restaurá-la durante 30 dias.",
@@ -1219,9 +1236,12 @@
     "deleteMismatch": "Escreva {{organisation}} exatamente como aparece para a eliminar.",
     "deleteMatches": "Corresponde.",
     "deleteExactly": "Tal como está escrito, incluindo os acentos.",
-    "deleteButton": "Eliminar {{organisation}}",
-    "deleteKeep": "Manter {{organisation}}",
-    "failed": "Não foi possível concluir, por isso nada foi alterado. Tente novamente."
+    "failed": "Não foi possível concluir, por isso nada foi alterado. Tente novamente.",
+    "transferVerb": "Transferir",
+    "transferredSays": "{{name}} tem agora a função Proprietário",
+    "transferredLine": "A sua função passou a ser Administrador. Foi enviado um e-mail de confirmação às duas contas.",
+    "deleteScreenTitle": "Eliminar {{organisation}}",
+    "deleteVerb": "Eliminar"
   },
   "domainJoining": {
     "intro": "O seu endereço é do domínio {{domain}}. Peça para aderir à organização da sua empresa ou crie a sua.",
@@ -1243,9 +1263,7 @@
   },
   "companyDomains": {
     "title": "Adesão por domínio da empresa",
-    "on": "Ativada",
     "off": "Desativada",
-    "intro": "Quem tiver o endereço de e-mail principal num domínio desta lista pode pedir para aderir a {{organisation}} ao registar-se. Cada pedido é respondido por alguém que possa gerir membros. A adesão fica desativada até adicionar um domínio.",
     "listLabel": "Domínios da lista",
     "working": "Aceita pedidos",
     "stopped": "Sem efeito",
@@ -1254,7 +1272,6 @@
     "removeLabel": "Remover {{domain}}",
     "removeTitle": "Remover {{domain}}?",
     "removeBody": "Quem usa {{domain}} deixa de poder pedir para aderir desta forma.",
-    "removeConfirm": "Remover {{domain}}",
     "keep": "Manter",
     "addLabel": "Adicionar um domínio",
     "add": "Adicionar domínio",
@@ -1269,12 +1286,16 @@
     "full_many": "A lista já tem {{count, number}} de domínios, o máximo possível. Remova um para adicionar outro.",
     "blank": "Introduza um domínio, como {{example}}.",
     "shape": "Introduza um domínio com um ponto e sem espaços, como {{example}}.",
-    "added": "{{domain}} foi adicionado.",
-    "addedNext": "Quem tiver o endereço de e-mail principal neste domínio já pode pedir para aderir.",
     "removed": "{{domain}} foi removido.",
-    "removedNext": "Quem usa este domínio deixa de poder pedir para aderir desta forma.",
     "failed": "Não foi possível. Tente novamente daqui a pouco.",
-    "unreadable": "Não foi possível carregar a lista."
+    "unreadable": "Não foi possível carregar a lista.",
+    "lead": "Quem tiver o endereço de e-mail principal num domínio desta lista pode pedir para aderir a {{organisation}} ao registar-se. Cada pedido é respondido por alguém que possa gerir membros.",
+    "offUntil": "A adesão fica desativada até adicionar um domínio.",
+    "addVerb": "Adicionar",
+    "field": "Domínio",
+    "confirmRemove": "Remover",
+    "addedLine": "Adicionado. Quem tiver o endereço de e-mail principal neste domínio já pode pedir para aderir.",
+    "proved": "Verificado"
   },
   "membersScreen": {
     "proveOwner_one": "Para dar a alguém a função de Proprietário de {{organisation}}, confirme que é você. Não voltamos a pedir durante um minuto.",
@@ -1430,10 +1451,7 @@
   },
   "requestLink": {
     "title": "Pedidos de adesão",
-    "on": "Ativados",
-    "off": "Desativados",
     "switchLabel": "Pedidos de adesão",
-    "intro": "Qualquer pessoa com esta ligação pode pedir para aderir a {{organisation}}. Alguém que possa gerir os membros responde a cada pedido. A ligação fica desativada até a ativar.",
     "linkLabel": "Ligação de adesão",
     "copy": "Copiar ligação",
     "help": "Partilhe-a com as pessoas de quem quer receber pedidos. Não existe nenhum diretório de organizações onde possam encontrar a sua.",
@@ -1449,7 +1467,8 @@
       "copied": "Ligação copiada."
     },
     "failed": "Não funcionou. Tente de novo dentro de momentos.",
-    "unreadable": "Não foi possível carregar a ligação de adesão."
+    "unreadable": "Não foi possível carregar a ligação de adesão.",
+    "lead": "Qualquer pessoa com esta ligação pode pedir para aderir a {{organisation}}. Alguém que possa gerir os membros responde a cada pedido."
   },
   "requestToJoin": {
     "title": "Pedir para aderir a {{organisation}}",
@@ -2100,6 +2119,7 @@
     "firstSub": "O seu primeiro evento começa aqui.",
     "nothingThisWeek": "Nada previsto para esta semana.",
     "startsOnWeekday": "{{name}} começa {{weekday}}.",
+    "startsTodayAt": "{{name}} starts today at {{time}}.",
     "startsOnDate": "{{name}} começa {{date}}.",
     "hello": {
       "morning": "Bom dia",

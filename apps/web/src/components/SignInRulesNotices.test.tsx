@@ -52,15 +52,13 @@ afterEach(() => {
 });
 
 describe('a notice closed with its own button (sc-11369)', () => {
-  it('takes Close this notice under "Sign-in rules changed" to Dashboard when no notice is left', () => {
+  it('takes Close this notice under "Sign-in rules changed" to Today when no notice is left', () => {
     inside(changed('org_closes_last'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Close this notice' }));
 
     expect(screen.queryByText('Sign-in rules changed')).toBeNull();
-    expect(document.activeElement).toBe(
-      screen.getByRole('heading', { level: 1, name: 'Dashboard' }),
-    );
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Today' }));
   });
 
   it('takes Not now under "Two-factor required by" to the next notice, read as its title and words', () => {
@@ -75,14 +73,12 @@ describe('a notice closed with its own button (sc-11369)', () => {
     expect(title.hasAttribute('aria-describedby')).toBe(false);
   });
 
-  it('takes Not now to Dashboard when it was the only notice', () => {
+  it('takes Not now to Today when it was the only notice', () => {
     inside(membership({ id: 'org_gate_only', ...GATED }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
 
-    expect(document.activeElement).toBe(
-      screen.getByRole('heading', { level: 1, name: 'Dashboard' }),
-    );
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Today' }));
   });
 
   it('takes Dismiss under the linked notice to the next notice', () => {
@@ -96,15 +92,13 @@ describe('a notice closed with its own button (sc-11369)', () => {
     );
   });
 
-  it('takes Dismiss under the linked notice to Dashboard when no notice is left', () => {
+  it('takes Dismiss under the linked notice to Today when no notice is left', () => {
     sessionStorage.setItem('soirely.provider.linked', 'Apple');
     inside(membership({ id: 'org_linked_only' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
 
-    expect(document.activeElement).toBe(
-      screen.getByRole('heading', { level: 1, name: 'Dashboard' }),
-    );
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Today' }));
   });
 });
 

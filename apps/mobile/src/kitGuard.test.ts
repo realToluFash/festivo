@@ -25,6 +25,19 @@ const KIT_STYLES = [
 ];
 const KIT_FIELDS = ['TextField', 'PasswordField', 'CodeField'];
 
+describe('nothing loads react-native whole at run time', () => {
+  it("in no import('react-native') in the app", () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ text }) => /import\(\s*['"]react-native['"]\s*\)/u.test(text))
+      .map(({ path }) => path);
+
+    expect(
+      offenders,
+      'Its namespace copy reads PushNotificationIOS, which throws in Expo Go: import the name statically, from a module loaded lazily if need be (src/devReload.ts).',
+    ).toEqual([]);
+  });
+});
+
 describe("every TextInput starts from the kit's defaults", () => {
   it('in every TextInput in the app', () => {
     const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
@@ -737,8 +750,8 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
     'src/components/SecondFactorStep.tsx',
     'src/steps/TwoFactorStep.tsx',
     'src/components/OrganisationDetails.tsx',
-    'src/components/CompanyDomainsCard.tsx',
-    'src/components/OwnershipCard.tsx',
+    'src/components/OrganisationJoining.tsx',
+    'src/components/OrganisationOwnership.tsx',
     'src/components/AccountAdd.tsx',
     'src/components/AccountConfirm.tsx',
     'src/components/AccountVerify.tsx',
@@ -797,8 +810,8 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
   });
 
   it.each([
-    ['OrganisationDetails.tsx', 'if (refusal.focus != null)', '}, [refusal.focus]);'],
-    ['CompanyDomainsCard.tsx', '} catch (refusal) {', '} finally {'],
+    ['OrganisationDetails.tsx', 'if (refused != null) focusRefused', '}, [refused]);'],
+    ['OrganisationJoining.tsx', '} catch (refusal) {', '} finally {'],
   ])('%s focuses a field a server refusal names without raising the keys', (file, from, to) => {
     const text = readFileSync(join('src', 'components', file), 'utf8');
     const start = text.indexOf(from);
@@ -834,9 +847,9 @@ describe('Ask to join holds its message rather than disabling it (sc-9674)', () 
 });
 
 describe('Your password stays on screen when the transfer asks for a code (sc-9674)', () => {
-  it('in OwnershipCard.tsx, whatever the pending proof', () => {
-    const text = readFileSync(join('src', 'components', 'OwnershipCard.tsx'), 'utf8');
-    const field = text.indexOf('testID="ownership.password"');
+  it('in OrganisationOwnership.tsx, whatever the pending proof', () => {
+    const text = readFileSync(join('src', 'components', 'OrganisationOwnership.tsx'), 'utf8');
+    const field = text.indexOf('testID="organisation.transfer.password"');
     const shown = text
       .slice(0, field)
       .split('\n')
@@ -849,22 +862,22 @@ describe('Your password stays on screen when the transfer asks for a code (sc-96
     );
   });
 
-  it('in OwnershipCard.tsx, freed again once the code step proof lapses', () => {
-    const text = readFileSync(join('src', 'components', 'OwnershipCard.tsx'), 'utf8');
+  it('in OrganisationOwnership.tsx, freed again once the code step proof lapses', () => {
+    const text = readFileSync(join('src', 'components', 'OrganisationOwnership.tsx'), 'utf8');
 
     expect(text, 'A lapse gated on vouched alone keeps the password held.').toMatch(
       /keptProofRanOut\(error, transferSentKept\(vouched, pending\)\)/u,
     );
   });
 
-  it('in OwnershipCard.tsx, saying so on the password path, where no lapse notice shows', () => {
-    const text = readFileSync(join('src', 'components', 'OwnershipCard.tsx'), 'utf8');
+  it('in OrganisationOwnership.tsx, saying so on the password path, where no lapse notice shows', () => {
+    const text = readFileSync(join('src', 'components', 'OrganisationOwnership.tsx'), 'utf8');
     const start = text.indexOf('if (keptProofRanOut(error,');
     const lapse = start < 0 ? '' : text.slice(start, text.indexOf('return;', start));
 
     expect(lapse, 'the lapse branch').not.toBe('');
     expect(text, 'The lapse notice names a provider.').toMatch(
-      /expired != null && provider != null/u,
+      /const lapsed = expired && provider != null;/u,
     );
     expect(lapse, 'A lapse that sets nothing leaves a password owner no word why.').toMatch(
       /if \(provider == null\) setRefused\(\{ field: null, message: error\.problem\.title \}\)/u,
@@ -874,15 +887,15 @@ describe('Your password stays on screen when the transfer asks for a code (sc-96
 
 describe('a submit with the keys down keeps them down (sc-13408, sc-9674)', () => {
   it.each([
-    ['src/components/OrganisationDetails.tsx', /^\s*setStatus\('saving'\);/u, 1],
+    ['src/components/OrganisationDetails.tsx', /^\s*setSaving\(true\);/u, 1],
     [
-      'src/components/CompanyDomainsCard.tsx',
-      /^\s*setBusy\(true\);\n\s*setFlash\(null\);\n(?:.*\n){4}\s*const domain/u,
+      'src/components/OrganisationJoining.tsx',
+      /^\s*setBusy\(true\);\n\s*setFailed\(null\);\n\n\s*const domain/u,
       1,
     ],
     [
-      'src/components/OwnershipCard.tsx',
-      /^\s*setBusy\(true\);\n\s*set(Refused|Failed)\(null\);\n\n\s*try \{\n\s*(const proof|await api\.deleteOrganisation)/u,
+      'src/components/OrganisationOwnership.tsx',
+      /^\s*setBusy\(true\);\n\s*set(Refused|Failed)\(null\);\n\n\s*try \{\n\s*(const proof|await calls\.deleteOrganisation)/u,
       2,
     ],
     ['app/join/[token].tsx', /^\s*setBusy\(true\);/u, 1],
@@ -1208,48 +1221,34 @@ describe('a contact row ends Remove with an ellipsis only where it asks first (s
 
 describe('Organisation asks before it destroys, the confirming button on top (sc-23176)', () => {
   const read = (file: string) => readFileSync(join('src', 'components', file), 'utf8');
-  const ownership = read('OwnershipCard.tsx');
-  const domains = read('CompanyDomainsCard.tsx');
-  const link = read('RequestLinkCard.tsx');
-  const holding = (button: string, text: string, testID: string) =>
-    selfClosing(button, text).filter(({ markup }) => propValue(markup, 'testID') === testID);
+  const ownership = read('OrganisationOwnership.tsx');
+  const joining = read('OrganisationJoining.tsx');
 
-  it('opens each step with the destructive button, never the secondary', () => {
-    for (const testID of ['"ownership.leave"', '"ownership.delete"']) {
-      const [row] = selfClosing('Row', ownership).filter(
+  it('opens each step that destroys with a text action that removes', () => {
+    expect(ownership).toMatch(/leave: \{(?:\n.*){2}\n\s*removes: true,/u);
+    expect(ownership).toMatch(/delete: \{(?:\n.*){2}\n\s*removes: true,/u);
+    expect(ownership).toContain('removes={rows[step].removes}');
+
+    for (const testID of [
+      '{`organisation.domain.${domain}.remove`}',
+      '"organisation.link.replace"',
+    ]) {
+      const [action] = selfClosing('TextAction', joining).filter(
         ({ markup }) => propValue(markup, 'testID') === testID,
       );
-      expect(row?.markup, testID).toMatch(/^\s*destructive$/mu);
-    }
-    expect(ownership).toMatch(
-      /\{destructive \? \(\s*<DestructiveButton ref=\{opener\} label=\{action\}/u,
-    );
-
-    const openers: [string, string][] = [
-      [domains, '{`companyDomains.remove.${domain}`}'],
-      [link, '"requestLink.replace"'],
-    ];
-    for (const [text, testID] of openers) {
-      expect(holding('DestructiveButton', text, testID), testID).toHaveLength(1);
-      expect(holding('SecondaryButton', text, testID), testID).toHaveLength(0);
+      expect(action?.markup, testID).toMatch(/^\s*removes$/mu);
     }
   });
 
-  it('lists each confirm’s destructive button before its quiet one', () => {
-    const confirms: [string, string, string][] = [
-      [domains, '{`companyDomains.confirm.${domain}`}', '{`companyDomains.keep.${domain}`}'],
-      [link, '"requestLink.replaceConfirm"', '"requestLink.keep"'],
-      [ownership, '"ownership.leave.send"', '"ownership.leave.stay"'],
-      [ownership, '"ownership.delete.send"', '"ownership.delete.keep"'],
-    ];
-    for (const [text, confirm, keep] of confirms) {
-      const [destructive] = holding('DestructiveButton', text, confirm);
-      const quiet = holding('QuietButton', text, keep).map(({ line }) => line);
-      expect(destructive, confirm).toBeDefined();
-      expect(
-        quiet.some((line) => line > (destructive?.line ?? Infinity)),
-        keep,
-      ).toBe(true);
+  it('confirms each through the kit’s Ask, or a verb that removes', () => {
+    for (const [text, confirm] of [
+      [joining, "testID: 'organisation.domain.confirm',"],
+      [joining, "testID: 'organisation.link.confirm',"],
+      [ownership, "testID: 'organisation.leave.confirm',"],
+      [ownership, "testID: 'organisation.delete.send',"],
+    ] as const) {
+      const said = new RegExp(`removes: true,[^}]*${confirm}|${confirm}[^}]*removes: true,`, 'u');
+      expect(text, confirm).toMatch(said);
     }
   });
 
@@ -1343,18 +1342,39 @@ describe('a mark or a pill grows with the text inside it (sc-13281)', () => {
   });
 });
 
-describe('a way back that names an outcome is off while its request runs (sc-12511)', () => {
-  it('in Ownership and leaving, on Keep ownership, Stay and Keep ‹organisation›', () => {
-    const text = readFileSync(join('src', 'components', 'OwnershipCard.tsx'), 'utf8');
-    const off = selfClosing('QuietButton', text)
-      .filter(({ markup }) => /\boff=\{busy\}/u.test(markup))
-      .map(({ markup }) => propValue(markup, 'testID'));
+describe('an action on the Confetti card reads white and underlined (sc-30412)', () => {
+  it('in the kit’s TextAction, and on the card held back by a sign-in rule', () => {
+    const read = (file: string) => readFileSync(join('src', 'components', file), 'utf8');
+    const kit = read('SummaryRows.tsx');
+    const [action] = selfClosing('TextAction', read('OrganisationDetails.tsx'));
 
-    expect(off).toEqual([
-      '"ownership.transfer.keep"',
-      '"ownership.leave.stay"',
-      '"ownership.delete.keep"',
+    expect(kit).toMatch(/: onFill\n\s*\? tokens\.colorInkOnDark/u);
+    expect(kit).toContain("onFill: { textDecorationLine: 'underline' },");
+    expect(action?.markup).toMatch(/\sonFill\s/u);
+  });
+});
+
+describe('a way back that names an outcome is off while its request runs (sc-12511)', () => {
+  it('in Organisation, on Cancel while a send is out and on each Ask’s way back', () => {
+    const read = (file: string) => readFileSync(join('src', 'components', file), 'utf8');
+    const ownership = read('OrganisationOwnership.tsx');
+    const joining = read('OrganisationJoining.tsx');
+    const waiting = (text: string) =>
+      [...text.matchAll(/waits=\{(\w+)\}\n\s*cancelTestID="([\w.]+)"/gu)].map((found) =>
+        found.slice(1),
+      );
+
+    expect(waiting(ownership)).toEqual([
+      ['busy', 'organisation.transfer.cancel'],
+      ['busy', 'organisation.delete.cancel'],
     ]);
+    expect(waiting(joining)).toEqual([['busy', 'organisation.domain.cancel']]);
+    expect(waiting(read('OrganisationDetails.tsx'))).toEqual([
+      ['saving', 'organisation.details.cancel'],
+    ]);
+    expect(ownership).toContain("testID: 'organisation.leave.stay', off: leaving }");
+    expect(joining).toContain("testID: 'organisation.domain.keep', off: busy }");
+    expect(joining).toContain("testID: 'organisation.link.keep', off: busy }");
   });
 
   it('where QuietButton taken off cannot be pressed, and is read as off', () => {
@@ -1776,8 +1796,7 @@ describe('the code step fails in the words of the flow it is in (sc-22740)', () 
 
 describe('a notice answering a send comes into view (sc-24496)', () => {
   it.each([
-    ['src/components/OrganisationDetails.tsx', ['words={saved}', 'words={failed}']],
-    ['src/components/OwnershipCard.tsx', ['words={refused.message}', 'words={failed}']],
+    ['src/components/FailureLine.tsx', ['words={words}']],
     ['app/join/[token].tsx', ['words={`${failedTitle}']],
     ['src/components/EventsScreen.tsx', ["words={t('eventDelete.deleted'"]],
   ])('%s brings each in through AnswerInView', (file, words) => {

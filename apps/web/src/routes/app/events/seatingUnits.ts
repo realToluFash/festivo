@@ -16,7 +16,7 @@ function unit(
     unit: name,
     unitDisplay: display,
     maximumFractionDigits: 2,
-    useGrouping: grouping,
+    ...(grouping ? {} : { useGrouping: false }),
   }).format(value);
 }
 

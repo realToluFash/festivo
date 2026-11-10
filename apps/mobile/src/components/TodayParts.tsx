@@ -13,6 +13,7 @@ import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { EventMesh, eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
+import { Notice } from './Notice.tsx';
 import {
   type AgendaDay,
   type EventCard,
@@ -660,7 +661,7 @@ const STEPS = ['name', 'place', 'live'] as const;
 
 export function FirstRun({ wide }: { wide: boolean }) {
   const { t } = useTranslation();
-  const { open } = useTodayShell();
+  const { open, creates } = useTodayShell();
 
   return (
     <View style={[styles.first, wide && styles.firstWide]}>
@@ -668,6 +669,13 @@ export function FirstRun({ wide }: { wide: boolean }) {
       <Text size={15} weight="medium" style={[styles.secondary, styles.firstIntro]}>
         {t('todayScreen.firstIntro')}
       </Text>
+      {!creates && (
+        <Notice
+          tone="quiet"
+          mark={tokens.marks.info.glyph}
+          body={t('eventsScreen.firstRunAskOwner')}
+        />
+      )}
       <Panel style={styles.list}>
         {STEPS.map((step, index) => (
           <View key={step} style={[styles.step, index < STEPS.length - 1 && styles.ruled]}>
@@ -696,21 +704,23 @@ export function FirstRun({ wide }: { wide: boolean }) {
           </View>
         ))}
       </Panel>
-      <Pressable
-        onPress={() => open({ to: 'create' })}
-        style={({ pressed }) => [
-          styles.create,
-          wide && styles.createWide,
-          pressed && styles.pressed,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={t('todayScreen.startFirst')}
-      >
-        <Glyph name="plus" ink={tokens.colorInkOnDark} />
-        <Text size={TYPE.row} weight="semibold" accessible={false} style={styles.onAccent}>
-          {t('todayScreen.startFirst')}
-        </Text>
-      </Pressable>
+      {creates && (
+        <Pressable
+          onPress={() => open({ to: 'create' })}
+          style={({ pressed }) => [
+            styles.create,
+            wide && styles.createWide,
+            pressed && styles.pressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={t('todayScreen.startFirst')}
+        >
+          <Glyph name="plus" ink={tokens.colorInkOnDark} />
+          <Text size={TYPE.row} weight="semibold" accessible={false} style={styles.onAccent}>
+            {t('todayScreen.startFirst')}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }

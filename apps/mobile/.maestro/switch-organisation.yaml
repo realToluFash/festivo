@@ -9,14 +9,14 @@ appId: host.exp.Exponent
 - runFlow:
     when:
       notVisible:
-        id: switcher.${ORG}
+        id: switcher.tile.${ORG}
     commands:
       - scrollUntilVisible:
           element:
-            id: switcher.${ORG}
+            id: switcher.tile.${ORG}
           timeout: 15000
 - tapOn:
-    id: switcher.${ORG}
+    id: switcher.tile.${ORG}
 - extendedWaitUntil:
     notVisible:
       id: 'switcher\..+'

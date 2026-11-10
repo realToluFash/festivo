@@ -9,25 +9,25 @@ onFlowComplete:
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
     visible:
-      id: organisation.name
+      id: organisation.card
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: ownership.transfer
+      id: organisation.ownership.transfer
 - tapOn:
-    id: ownership.transfer
+    id: organisation.ownership.transfer
 - scrollUntilVisible:
     element:
-      id: ownership.owner.${MEMBER}
+      id: organisation.transfer.${MEMBER}
     centerElement: true
 - tapOn:
-    id: ownership.owner.${MEMBER}
+    id: organisation.transfer.${MEMBER}
 - scrollUntilVisible:
     element:
-      id: ownership.password
+      id: organisation.transfer.password
     centerElement: true
 - tapOn:
-    id: ownership.password
+    id: organisation.transfer.password
 - inputText: ${PASSWORD}
 - waitForAnimationToEnd
 - assertVisible: '(?i)(shift|delete)'
@@ -37,11 +37,11 @@ onFlowComplete:
       ASK: /api?to=stopped
 - scrollUntilVisible:
     element:
-      id: ownership.transfer.send
+      id: organisation.transfer.send
     centerElement: true
 - waitForAnimationToEnd
 - tapOn:
-    id: ownership.transfer.send
+    id: organisation.transfer.send
 - extendedWaitUntil:
     visible: '.*{{t:ownership.failed}}.*'
     timeout: 45000

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import type { CardLine } from '../kit/accountPage.ts';
 import { tokens } from '../theme/tokens.ts';
+import { useCardWords } from './Cover.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import {
@@ -39,14 +40,21 @@ export function YouCard({
 }) {
   const face = wide ? 64 : 56;
   const size = wide ? 24 : 22;
+  const words = useCardWords(line?.text ?? null);
 
   useReadOut(line?.text ?? null, { quietAtMount: true });
 
   return (
-    <SummaryCard size={wide ? 'wide' : 'page'} height={200} step={step} testID="account.card">
-      <View style={styles.you}>
+    <SummaryCard
+      size={wide ? 'wide' : 'page'}
+      height={200}
+      step={step}
+      words={words.boxes}
+      testID="account.card"
+    >
+      <View style={styles.you} onLayout={words.onArea}>
         <CardFace name={name} side={face} />
-        <View style={styles.words}>
+        <View style={styles.words} onLayout={words.onWords}>
           <Text
             ref={nameRef}
             size={size}
@@ -62,9 +70,13 @@ export function YouCard({
           <OnCard text={email} />
         </View>
       </View>
-      {line?.kind === 'todo' && <OnCard text={line.text} strong />}
+      {line?.kind === 'todo' && (
+        <View style={styles.line} onLayout={words.onLine}>
+          <OnCard text={line.text} strong />
+        </View>
+      )}
       {line?.kind === 'done' && (
-        <View style={styles.done} testID="account.said">
+        <View style={styles.done} onLayout={words.onLine} testID="account.said">
           <View style={styles.mark}>
             <ShapeMark kind="yes" side={16} ink={tokens.colorInkOnDark} />
           </View>
@@ -145,10 +157,16 @@ export function AboutSection({
 
 const styles = StyleSheet.create({
   you: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  words: { flex: 1, minWidth: 0, gap: tokens.spaceHair },
+  words: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
   white: { color: tokens.colorInkOnDark },
-  done: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  line: { alignSelf: 'flex-start' },
+  done: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    alignSelf: 'flex-start',
+    gap: tokens.spaceSm,
+  },
   mark: { marginTop: tokens.spaceHair },
-  grow: { flex: 1, minWidth: 0 },
+  grow: { flexShrink: 1, minWidth: 0 },
   icon: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
 });

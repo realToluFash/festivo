@@ -24,6 +24,7 @@ import { General } from './app/settings/General.tsx';
 import { Members } from './app/settings/Members.tsx';
 import { SignInRules } from './app/settings/SignInRules.tsx';
 import { SettingsDesk } from './app/SettingsDesk.tsx';
+import { SignedInHome } from './app/Today.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
 import { ChangePhone } from './public/ChangePhone.tsx';
@@ -85,7 +86,7 @@ export const routes = [
         path: '/app',
         element: <AppLayout />,
         children: [
-          { index: true, element: <Dashboard /> },
+          { index: true, element: <SignedInHome /> },
           { path: 'events', element: <Events /> },
           { path: 'events/new', element: <NewEvent /> },
           { path: 'events/:eventId', element: <EventView /> },

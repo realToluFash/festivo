@@ -143,16 +143,13 @@ def set_state(c, story, name, check=True, held=False):
     if moved and moved.get("moved_at"):
         store.mark_move(c.db, story["id"], state, moved["moved_at"], c.role)
         if held:
-            store.mark_move(c.db, story["id"], HELD_AT_MERGE, moved["moved_at"], c.role)
+            store.mark_move(c.db, story["id"], W.HELD_AT_MERGE, moved["moved_at"], c.role)
     return state
-
-
-HELD_AT_MERGE = "In Progress, tasks left at its merge"
 
 
 def held_at_merge(c, story):
     return story["state"] == "In Progress" and \
-        (story["id"], HELD_AT_MERGE, story["moved_at"]) in store.moves(c.db)
+        (story["id"], W.HELD_AT_MERGE, story["moved_at"]) in store.moves(c.db)
 
 
 def set_labels(c, story_id, add=(), remove=()):

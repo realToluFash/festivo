@@ -15,6 +15,7 @@ import { useReadOut } from './ReadOut.tsx';
 import { type TextHandle, Text } from './Text.tsx';
 import { Toast } from './Toast.tsx';
 import { tokens } from '../theme/tokens.ts';
+import type { Box } from '../kit/confettiClearance.ts';
 import { CARD_PIECES, Confetti, Cover } from './Cover.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { Glass } from './TodayCover.tsx';
@@ -127,6 +128,7 @@ export function SummaryCard({
   step,
   backdrop,
   gap,
+  words,
   children,
   testID,
 }: {
@@ -136,6 +138,8 @@ export function SummaryCard({
   /** In the Confetti's place: an event's own cover or colour, with its scrim. */
   backdrop?: ReactNode;
   gap?: number;
+  /** Where the card's words are, so the pieces keep clear of them; null draws none until they are measured. */
+  words?: readonly Box[] | null;
   children: ReactNode;
   testID?: string;
 }) {
@@ -149,7 +153,7 @@ export function SummaryCard({
       {backdrop ?? (
         <>
           <Cover shade="side" pieces={[]} />
-          <Confetti pieces={CARD_PIECES} scale={look.scale} />
+          <Confetti pieces={CARD_PIECES} scale={look.scale} words={words} />
         </>
       )}
       {children}
@@ -454,14 +458,17 @@ export function SectionFailed({
   line,
   onRetry,
   testID,
+  announce = true,
 }: {
   title: string;
   line?: string;
   onRetry: () => void;
   testID: string;
+  /** False keeps the failure from being read out, as when it answers a Try again. */
+  announce?: boolean;
 }) {
   const { t } = useTranslation();
-  useReadOut(line == null ? title : `${title} ${line}`);
+  useReadOut(announce ? (line == null ? title : `${title} ${line}`) : null);
 
   return (
     <View style={styles.sectionFailed}>

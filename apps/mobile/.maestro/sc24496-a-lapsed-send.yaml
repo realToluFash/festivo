@@ -3,10 +3,10 @@ appId: host.exp.Exponent
 ---
 - scrollUntilVisible:
     element:
-      id: ownership.code
+      id: organisation.transfer.code
     centerElement: true
 - tapOn:
-    id: ownership.code
+    id: organisation.transfer.code
 - inputText: ${CODE}
 - waitForAnimationToEnd
 - assertVisible: '(?i)(shift|delete|done|return)'
@@ -16,7 +16,7 @@ appId: host.exp.Exponent
     duration: 600
 - waitForAnimationToEnd
 - tapOn:
-    id: ownership.transfer.send
+    id: organisation.transfer.send
 - extendedWaitUntil:
     visible: '.*Confirm it is you first.*'
     timeout: 30000

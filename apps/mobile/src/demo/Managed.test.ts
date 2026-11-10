@@ -49,9 +49,10 @@ describe('a managed account, wherever a membership path ends (sc-563, enterprise
     expect(session.expanded).toBe('org-celebraciones-alameda');
     expect(session.managed).toBe('org-celebraciones-alameda');
     expect(waitingOf(session)).toBe(2);
-    expect(read('src', 'demo', 'OrgSwitcher.tsx')).toMatch(
-      /managed=\{session\.managed === opened\.invite\.id\}/u,
+    expect(read('src', 'components', 'OrgDropDown.tsx')).toMatch(
+      /managed=\{session\.managed === opened\.invite\.id \? managed : undefined\}/u,
     );
+    expect(read('src', 'demo', 'OrgSwitcher.tsx')).toMatch(/managed=\{\s*<ManagedBanner/u);
   });
 
   it('refuses Ask to join on the request link', () => {
@@ -75,8 +76,9 @@ describe('a managed account, wherever a membership path ends (sc-563, enterprise
     expect(organisationStateOf('domainBoth')).toBe('domainBoth');
     expect(organisationStart('domainBoth', 'Owner').proved).toEqual(['ire.events']);
     expect(organisationStart(null, 'Owner').proved).toEqual([]);
-    expect(read('src', 'demo', 'settings', 'OrganisationJoining.tsx')).toMatch(
-      /tag=\{start\.proved\.includes\(domain\) \? \{ kind: 'yes', word: PROVED \} : null\}/u,
+    expect(read('src', 'components', 'OrganisationJoining.tsx')).toMatch(
+      /proved\.includes\(domain\)\s*\? \{ kind: 'yes', word: t\('companyDomains\.proved'\) \}/u,
     );
+    expect(read('src', 'demo', 'settings', 'Organisation.tsx')).toContain('proved={start.proved}');
   });
 });
