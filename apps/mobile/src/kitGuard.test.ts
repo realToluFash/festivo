@@ -980,6 +980,20 @@ describe('Create your account opens on Android with its title whole (sc-35488)',
   });
 });
 
+describe('a bar leaving the keys for the scroll settles the lifts made for less room (sc-35488)', () => {
+  it('asks the scroll to settle as the foot goes inline', () => {
+    expect(readFileSync(join('src', 'steps', 'StepScreen.tsx'), 'utf8')).toContain(
+      'if (undocking) screenScroll.settle();',
+    );
+  });
+
+  it("measures every lift group from the scroll's top", () => {
+    expect(readFileSync(join('src', 'components', 'Screen.tsx'), 'utf8')).toContain(
+      'measureLift(scroll, ref.current, keyboardTop.current, done, 0);',
+    );
+  });
+});
+
 describe('a refused code focuses its field through focusChecked (sc-20209)', () => {
   it('on Check your email, from its checks', () => {
     expect(readFileSync(join('app', 'verify-email.tsx'), 'utf8')).toMatch(
