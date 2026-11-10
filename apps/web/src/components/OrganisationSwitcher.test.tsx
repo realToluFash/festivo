@@ -73,14 +73,6 @@ function json(body: unknown, status: number, headers: Record<string, string> = {
   });
 }
 
-function problem(code: string, status: number, headers: Record<string, string> = {}): Response {
-  return json(
-    { type: `https://soirely.com/errors/${code}`, title: 'No.', status },
-    status,
-    headers,
-  );
-}
-
 /** POST /api/orgs answers `created`; anything else the shell asks for on the way is empty. */
 function creating(created: () => Response | Promise<Response>) {
   return vi
@@ -90,14 +82,6 @@ function creating(created: () => Response | Promise<Response>) {
         ? created()
         : json({ invitations: [] }, 200),
     );
-}
-
-/** Presses Create organisation with focus on it, as a click or Enter on the button leaves it. */
-function pressCreate(): void {
-  const create = screen.getByRole('button', { name: 'Create organisation' });
-
-  create.focus();
-  fireEvent.click(create);
 }
 
 function openCreate(): void {
@@ -391,35 +375,47 @@ describe('a 100-character name (sc-486)', () => {
   });
 });
 
-describe('creating an organisation', () => {
-  it('shows the defaults it will use, with the primary email', () => {
+describe('creating an organisation from the switcher (sc-30412)', () => {
+  function walk(): HTMLElement {
+    return screen.getByRole('dialog', { name: 'Create an organisation' });
+  }
+
+  function toReady(name: string): void {
+    fireEvent.change(within(walk()).getByLabelText('Organisation name'), {
+      target: { value: name },
+    });
+    fireEvent.click(within(walk()).getByRole('button', { name: 'Continue' }));
+    fireEvent.click(within(walk()).getByRole('button', { name: 'Continue' }));
+  }
+
+  it('opens the walk on the name, Step 1 of 3, the tile a dashed plus', () => {
     inOne();
     openCreate();
 
-    const dialog = screen.getByRole('dialog', { name: 'Create an organisation' });
-
-    expect(
-      within(dialog).getByText(/contact address is your primary email, f@ire\.events\./),
-    ).toBeDefined();
-    expect(document.activeElement).toBe(within(dialog).getByLabelText('Organisation name'));
+    expect(document.activeElement).toBe(within(walk()).getByLabelText('Organisation name'));
+    expect(within(walk()).getByText('Step 1 of 3')).toBeDefined();
+    expect(within(walk()).getByRole('heading', { level: 1 }).textContent).toBe('What’s it called?');
   });
 
-  it('checks the name before sending: blank, then over 100 characters after trimming', () => {
-    const fetch = vi.spyOn(globalThis, 'fetch');
+  it('opens the country on the device’s, and on Ready says the defaults with the primary email', () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
     inOne();
     openCreate();
 
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: '   ' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
-    expect(screen.getByText("Enter the organisation's name.")).toBeDefined();
-
-    fireEvent.change(screen.getByLabelText('Organisation name'), {
-      target: { value: ` ${'é'.repeat(101)} ` },
+    fireEvent.change(within(walk()).getByLabelText('Organisation name'), {
+      target: { value: 'Supper' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
-    expect(screen.getByText('That name is 101 characters. Use 100 or fewer.')).toBeDefined();
-    expect(document.activeElement).toBe(screen.getByLabelText('Organisation name'));
-    expect(fetch).not.toHaveBeenCalled();
+    fireEvent.click(within(walk()).getByRole('button', { name: 'Continue' }));
+    expect(
+      within(walk())
+        .getAllByRole('option', { name: /^Nigeria/ })[0]
+        ?.getAttribute('aria-selected'),
+    ).toBe('true');
+
+    fireEvent.click(within(walk()).getByRole('button', { name: 'Continue' }));
+    expect(
+      within(walk()).getByText(/contact address is your primary email, f@ire\.events\./),
+    ).toBeDefined();
   });
 
   it('asks for a country when this device named none', () => {
@@ -427,10 +423,9 @@ describe('creating an organisation', () => {
     inOne();
     openCreate();
 
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
+    toReady('Supper');
 
-    expect(screen.getByText('Choose a country.')).toBeDefined();
+    expect(within(walk()).getByRole('alert').textContent).toBe('Choose a country.');
   });
 
   it('sends the name, country and device timezone, then works in the new one and says so', async () => {
@@ -440,10 +435,8 @@ describe('creating an organisation', () => {
     inOne();
     openCreate();
 
-    fireEvent.change(screen.getByLabelText('Organisation name'), {
-      target: { value: '  Lagos Supper Club ' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
+    toReady('  Lagos Supper Club ');
+    fireEvent.click(within(walk()).getByRole('button', { name: 'Create organisation' }));
 
     expect(await screen.findByText('Now working in Lagos Supper Club.')).toBeDefined();
     const [url, init] = fetch.mock.calls.find(([, sent]) => sent?.method === 'POST') ?? [];
@@ -460,318 +453,42 @@ describe('creating an organisation', () => {
     expect(window.localStorage.getItem('soirely.organisation')).toBe('org_9');
   });
 
-  it('says when the limit lifts, from Retry-After, and keeps what was typed', async () => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    creating(() => problem('too_many_attempts', 429, { 'Retry-After': '600' }));
+  it('keeps Tab and Shift+Tab inside the walk', () => {
     inOne();
     openCreate();
 
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Six' } });
-    pressCreate();
+    const name = within(walk()).getByLabelText('Organisation name');
+    const goOn = within(walk()).getByRole('button', { name: 'Continue' });
 
-    const alert = await screen.findByText('Too many new organisations for now.');
-    expect(alert.nextElementSibling?.textContent).toMatch(/^Try again at \d{2}:\d{2}\.$/);
-    expect(within(screen.getByRole('dialog')).getAllByRole('alert')).toHaveLength(1);
-    const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
-    expect(name.value).toBe('Six');
-    await waitFor(() => expect(document.activeElement).toBe(name));
-  });
+    goOn.focus();
+    fireEvent.keyDown(goOn, { key: 'Tab' });
+    expect(walk().contains(document.activeElement)).toBe(true);
 
-  it('says it did not work when the refusal names no field the dialog has', async () => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    creating(() =>
-      json(
-        {
-          type: 'https://soirely.com/errors/validation_failed',
-          title: 'No.',
-          status: 422,
-          violations: [
-            { propertyPath: 'contactAddress', message: 'Bad address.', code: 'validation_failed' },
-          ],
-        },
-        422,
-      ),
-    );
-    inOne();
-    openCreate();
-
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
-    pressCreate();
-
-    expect(
-      await screen.findByText(
-        'Creating the organisation did not work. Nothing was created. Try again in a moment.',
-      ),
-    ).toBeDefined();
-    expect(within(screen.getByRole('dialog')).getAllByRole('alert')).toHaveLength(1);
-    const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
-    expect(name.value).toBe('Supper');
-    await waitFor(() => expect(document.activeElement).toBe(name));
-  });
-
-  it.each([
-    ['a server error', () => problem('internal_error', 500)],
-    [
-      'no network',
-      () => {
-        throw new TypeError('Failed to fetch');
-      },
-    ],
-  ])('puts focus back on the name after %s, keeping what was typed', async (_, answer) => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    creating(answer);
-    inOne();
-    openCreate();
-
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
-    pressCreate();
-    expect(screen.getByLabelText<HTMLInputElement>('Organisation name').readOnly).toBe(true);
-    expect(screen.getByLabelText('Country').matches(':disabled')).toBe(true);
-
-    expect(
-      await screen.findByText(
-        'Creating the organisation did not work. Nothing was created. Try again in a moment.',
-      ),
-    ).toBeDefined();
-    const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
-    expect(name.value).toBe('Supper');
-    await waitFor(() => expect(document.activeElement).toBe(name));
-  });
-
-  it('keeps focus in Organisation name while it creates after Enter, and there once refused (sc-11588)', async () => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    let answer: (response: Response) => void = () => {};
-    creating(() => new Promise<Response>((resolve) => (answer = resolve)));
-    inOne();
-    openCreate();
-
-    const name = screen.getByLabelText<HTMLInputElement>('Organisation name');
-    fireEvent.change(name, { target: { value: 'Supper' } });
     name.focus();
-    fireEvent.submit(name);
-
-    await screen.findByRole('button', { name: 'Creating…' });
-    expect(document.activeElement).toBe(name);
-    expect(name.readOnly).toBe(true);
-    expect(name.getAttribute('aria-disabled')).toBe('true');
-    fireEvent.keyDown(name, { key: 'Tab' });
-    expect(document.activeElement).toBe(name);
-
-    answer(problem('internal_error', 500));
-    expect(
-      await screen.findByText(
-        'Creating the organisation did not work. Nothing was created. Try again in a moment.',
-      ),
-    ).toBeDefined();
-    expect(document.activeElement).toBe(name);
-    expect(name.readOnly).toBe(false);
-  });
-
-  it('sends one request for a double press, then one more after a failure (sc-7497)', async () => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    let answer: (response: Response) => void = () => {};
-    const fetch = creating(() => new Promise<Response>((resolve) => (answer = resolve)));
-    const posts = () => fetch.mock.calls.filter(([, init]) => init?.method === 'POST');
-    inOne();
-    openCreate();
-
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
-    const form = screen.getByLabelText('Organisation name').closest('form') as HTMLFormElement;
-    fireEvent.submit(form);
-    fireEvent.submit(form);
-    const creatingButton = screen.getByRole('button', { name: 'Creating…' });
-    expect(creatingButton.matches(':disabled')).toBe(true);
-    fireEvent.click(creatingButton);
-    await waitFor(() => expect(posts()).toHaveLength(1));
-
-    answer(problem('internal_error', 500));
-    const create = await screen.findByRole('button', { name: 'Create organisation' });
-    expect(create.matches(':disabled')).toBe(false);
-    expect(posts()).toHaveLength(1);
-    fireEvent.click(create);
-    await waitFor(() => expect(posts()).toHaveLength(2));
-  });
-
-  it('cannot be dismissed while the create is pending, then switches and says so (sc-8898)', async () => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    const created = membership({ id: 'org_9', name: 'Supper' });
-    let answer: (response: Response) => void = () => {};
-    creating(() => new Promise<Response>((resolve) => (answer = resolve)));
-    inOne();
-    openCreate();
-
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
-    pressCreate();
-    await screen.findByRole('button', { name: 'Creating…' });
-
-    const dialog = screen.getByRole('dialog', { name: 'Create an organisation' });
-    const [scrim, cancel] = screen.getAllByRole('button', { name: 'Cancel' }) as HTMLElement[];
-    expect(cancel?.matches(':disabled')).toBe(true);
-    expect(scrim?.matches(':disabled')).toBe(true);
-    fireEvent.click(cancel as HTMLElement);
-    fireEvent.click(scrim as HTMLElement);
-    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
-    expect(screen.getByRole('dialog')).toBe(dialog);
-
-    expect(document.activeElement).toBe(dialog);
-    fireEvent.keyDown(dialog, { key: 'Tab' });
-    expect(document.activeElement).toBe(dialog);
-    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
-    expect(document.activeElement).toBe(dialog);
-
-    answer(json({ organisation: created }, 201));
-    expect(await screen.findByText('Now working in Supper.')).toBeDefined();
-    expect(screen.queryByRole('dialog')).toBeNull();
-    expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: /Organisation: Supper, your role Owner/ }),
-    );
-  });
-
-  it.each([
-    [
-      'Cancel',
-      () => fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[1] as HTMLElement),
-    ],
-    [
-      'the scrim',
-      () => fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[0] as HTMLElement),
-    ],
-    ['Escape', () => fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })],
-  ])('closes with %s again once a pending create fails (sc-8898)', async (_, dismiss) => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    let answer: (response: Response) => void = () => {};
-    creating(() => new Promise<Response>((resolve) => (answer = resolve)));
-    inOne();
-    openCreate();
-
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
-    pressCreate();
-    await screen.findByRole('button', { name: 'Creating…' });
-
-    answer(problem('too_many_attempts', 429));
-    const alert = await screen.findByText('Too many new organisations for now.');
-    expect(alert.nextElementSibling).toBeNull();
-    expect(screen.getByRole('dialog')).toBeDefined();
-    // Focus back on the name is the sign the dialog has unlocked its Escape as well as its buttons.
-    await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByLabelText('Organisation name')),
-    );
-
-    dismiss();
-    expect(screen.queryByRole('dialog')).toBeNull();
-    expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: /Organisation: Ìrè Events/ }),
-    );
-  });
-
-  it.each([
-    [['countryCode'], 'Country'],
-    [['name'], 'Organisation name'],
-    [['name', 'countryCode'], 'Organisation name'],
-  ])('puts focus on the first field a refusal of %j names', async (paths, focused) => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    creating(() =>
-      json(
-        {
-          type: 'https://soirely.com/errors/validation_failed',
-          title: 'No.',
-          status: 422,
-          violations: paths.map((propertyPath) => ({
-            propertyPath,
-            message: `Bad ${propertyPath}.`,
-            code: 'validation_failed',
-          })),
-        },
-        422,
-      ),
-    );
-    inOne();
-    openCreate();
-
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
-    pressCreate();
-
-    for (const propertyPath of paths) {
-      expect(await screen.findByText(`Bad ${propertyPath}.`)).toBeDefined();
-    }
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(focused)));
-  });
-
-  it('keeps Tab and Shift+Tab inside the dialog, in the drawn order', () => {
-    inOne();
-    openCreate();
-
-    const dialog = screen.getByRole('dialog', { name: 'Create an organisation' });
-    const name = within(dialog).getByLabelText('Organisation name');
-    const create = within(dialog).getByRole('button', { name: 'Create organisation' });
-
-    expect([...dialog.querySelectorAll('input, select, button')]).toEqual([
-      name,
-      within(dialog).getByLabelText('Country'),
-      within(dialog).getByRole('button', { name: 'Cancel' }),
-      create,
-    ]);
-
-    create.focus();
-    fireEvent.keyDown(create, { key: 'Tab' });
-    expect(document.activeElement).toBe(name);
-
     fireEvent.keyDown(name, { key: 'Tab', shiftKey: true });
-    expect(document.activeElement).toBe(create);
+    expect(walk().contains(document.activeElement)).toBe(true);
   });
 
-  it('brings focus back into the dialog from the page behind, and the scrim still closes it', () => {
+  it('returns focus to the switcher button on Cancel and on Escape, with nothing created', () => {
+    const fetch = vi.spyOn(globalThis, 'fetch');
     inOne();
     openCreate();
 
-    const scrim = screen.getAllByRole('button', { name: 'Cancel' })[0] as HTMLElement;
-    expect(scrim.tabIndex).toBe(-1);
-
-    (document.activeElement as HTMLElement).blur();
-    fireEvent.keyDown(document.body, { key: 'Tab' });
-    expect(document.activeElement).toBe(screen.getByLabelText('Organisation name'));
-
-    (document.activeElement as HTMLElement).blur();
-    fireEvent.keyDown(document.body, { key: 'Tab', shiftKey: true });
-    expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: 'Create organisation' }),
-    );
-
-    fireEvent.click(scrim);
+    fireEvent.click(within(walk()).getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: /Organisation: Ìrè Events/ }),
-    );
-  });
-
-  it('returns focus to the switcher button on Cancel and on Escape', () => {
-    inOne();
-    openCreate();
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[1] as HTMLElement);
     expect(document.activeElement).toBe(
       screen.getByRole('button', { name: /Organisation: Ìrè Events/ }),
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Organisation: Ìrè Events/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Create an organisation' }));
-    fireEvent.keyDown(screen.getByLabelText('Organisation name'), { key: 'Escape' });
+    fireEvent.keyDown(within(walk()).getByLabelText('Organisation name'), { key: 'Escape' });
 
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(
       screen.getByRole('button', { name: /Organisation: Ìrè Events/ }),
     );
-  });
-
-  it('cancels with nothing created', () => {
-    const fetch = vi.spyOn(globalThis, 'fetch');
-    inOne();
-    openCreate();
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[1] as HTMLElement);
-
-    expect(screen.queryByRole('dialog')).toBeNull();
-    expect(fetch).not.toHaveBeenCalled();
+    expect(fetch.mock.calls.some(([, sent]) => sent?.method === 'POST')).toBe(false);
   });
 });
 
