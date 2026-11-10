@@ -336,6 +336,8 @@ export const PEOPLE_STATES = [
   'readOnly',
   'lead',
   'nobody',
+  'alone',
+  'noLead',
   'roleFails',
   'loading',
   'failed',
@@ -393,6 +395,14 @@ export function peopleStart(state: PeopleState): PeopleStart {
       return { ...base, viewer: PEOPLE_VIEWERS.priya };
     case 'nobody':
       return { ...base, onEvent: [] };
+    case 'alone':
+      return {
+        ...base,
+        viewer: PEOPLE_VIEWERS.priya,
+        onEvent: base.onEvent.filter((one) => one.id === PRIYA),
+      };
+    case 'noLead':
+      return { ...base, onEvent: base.onEvent.filter((one) => one.role !== 'Lead') };
     case 'roleFails':
       return { ...base, roleFails: true };
     case 'loading':
