@@ -23,6 +23,7 @@ import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
 import { FocusEdge, focusEdge, useFocusEdge, useHeld, useRefused } from './Field.tsx';
+import { controlTaken } from './focusedField.ts';
 import { LIFT } from './keyboardWatch.ts';
 import { Screen } from './Screen.tsx';
 import { Text } from './Text.tsx';
@@ -122,7 +123,10 @@ export function ListPicker({
           drawn != null && styles.fieldCompact,
           wrong && styles.fieldWrong,
         ]}
-        onPress={() => setOpen(true)}
+        onPress={() => {
+          controlTaken();
+          setOpen(true);
+        }}
         {...fieldEdge.edging}
         disabled={disabled || readOnly}
         accessibilityRole={readOnly ? undefined : 'button'}

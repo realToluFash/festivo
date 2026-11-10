@@ -45,3 +45,17 @@ export function watchCheckedField(checked: (field: ViewInstance) => void): () =>
 
   return () => checkWatchers.delete(checked);
 }
+
+const takers = new Set<() => void>();
+
+/** A control that takes no focus of its own was taken, as a picker opens from a tap. */
+export function controlTaken(): void {
+  takers.forEach((taken) => taken());
+}
+
+/** Calls `taken` each time a control with no focus of its own is taken. Returns the unsubscribe. */
+export function watchControlTaken(taken: () => void): () => void {
+  takers.add(taken);
+
+  return () => takers.delete(taken);
+}

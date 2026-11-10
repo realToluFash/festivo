@@ -1,12 +1,15 @@
-import { StyleSheet, View } from 'react-native';
-import { useState, useSyncExternalStore } from 'react';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
+import { focusedField, watchControlTaken, watchFocusedField } from './focusedField.ts';
 import { useKeyboardTop } from './keyboardWatch.ts';
+import { useLandedStep } from './landedStep.ts';
 import { landingToastBottom } from './landingToastBottom.ts';
+import { SETTLED_MS } from './Screen.tsx';
 import { TAB_BAR } from './TodayScreen.tsx';
 import { Toast } from './Toast.tsx';
 
@@ -29,7 +32,7 @@ export function sayOnLanding(key: string): void {
   set(key);
 }
 
-/** Over the whole stack; on a phone it clears the tab bar, and on a step the button docked at its foot. */
+/** Over the whole stack; on a phone it clears the tab bar, and on a step the button docked at its foot, to whose column a tablet keeps it. On a step it stays while the field it landed on keeps focus, and closes as another control takes it (sc-37519). */
 export function LandingToast() {
   const { t } = useTranslation();
   const key = useSyncExternalStore(subscribe, () => said);
@@ -38,6 +41,28 @@ export function LandingToast() {
   const [height, setHeight] = useState<number | null>(null);
   const keyboardTop = useKeyboardTop();
   const { kind } = useLayout();
+  const step = useLandedStep();
+  const stepId = step?.id;
+  const column = kind === 'phone' ? null : step?.column;
+
+  useEffect(() => {
+    if (key == null || stepId == null) return undefined;
+    // Focus the step lands with is not focus moving: the field it settles on is the one typed in.
+    let landed: ViewInstance | null | undefined;
+    const settled = setTimeout(() => {
+      landed = focusedField();
+    }, SETTLED_MS);
+    const unwatchFocus = watchFocusedField(() => {
+      if (landed !== undefined && focusedField() !== landed) set(null);
+    });
+    const unwatchTaken = watchControlTaken(() => set(null));
+
+    return () => {
+      clearTimeout(settled);
+      unwatchFocus();
+      unwatchTaken();
+    };
+  }, [key, stepId]);
 
   if (key == null) return null;
 
@@ -51,6 +76,7 @@ export function LandingToast() {
         <View
           style={[
             styles.toast,
+            column == null ? styles.margins : { left: column.x, width: column.width },
             // A step that lands with its field focused raises the keys, so the toast rides above the foot docked on them.
             {
               bottom: landingToastBottom(
@@ -71,5 +97,6 @@ export function LandingToast() {
 }
 
 const styles = StyleSheet.create({
-  toast: { position: 'absolute', left: tokens.spaceXl, right: tokens.spaceXl },
+  toast: { position: 'absolute' },
+  margins: { left: tokens.spaceXl, right: tokens.spaceXl },
 });
