@@ -1315,6 +1315,41 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'Could not load, Try again',
         href: '/demo/people?state=failed',
       },
+      {
+        title: 'People card',
+        what: 'On the Overview, after Guests: 5, Priya leads',
+        href: '/demo/events/evt-wed-4',
+      },
+      {
+        title: 'People card · you alone',
+        what: '1 on this event, Lead · You',
+        href: '/demo/events/evt-wed-4?people=one',
+      },
+      {
+        title: 'People card · no Lead',
+        what: '4 on this event, no second line',
+        href: '/demo/events/evt-wed-4?people=noLead',
+      },
+      {
+        title: 'People card · nobody yet',
+        what: 'Nobody is on this event yet, still opens People',
+        href: '/demo/events/evt-wed-4?people=nobody',
+      },
+      {
+        title: 'People card · loading',
+        what: 'The frame, the count held',
+        href: '/demo/events/evt-wed-4?people=loading',
+      },
+      {
+        title: 'People card · failed',
+        what: 'Could not load, Try again',
+        href: '/demo/events/evt-wed-4?people=failed',
+      },
+      {
+        title: 'People card · read only',
+        what: 'Ana sees the same card, People opens read only',
+        href: '/demo/events/evt-wed-4?people=readOnly',
+      },
     ],
   },
   {
