@@ -6,8 +6,7 @@ import {
   type HostRow,
   firstRefusedOf,
   hostErrorsOf,
-  hostRefusalsOf,
-  hostRequiredOf,
+  eventSaveRefusal,
   hostsChanged,
   hostsSent,
   draftOf,
@@ -44,7 +43,6 @@ import { Choice, FieldError, Moment } from './EventFields.tsx';
 import {
   ADD_HOST_ID,
   type Errors,
-  FIELDS,
   type Field,
   describedBy,
   hostInputId,
@@ -390,46 +388,24 @@ function DetailsForm({
       await api.updateEvent(saved.id, changes, opened.tag);
       close('saved');
     } catch (error) {
-      if (error instanceof ApiError && error.status === 412) {
+      const refusal = eventSaveRefusal(error, hosts, t);
+
+      if (refusal.kind === 'changed') {
         setStatus('changedElsewhere');
         return;
       }
 
-      if (error instanceof ApiError && error.is('event_concluded')) {
-        setStatus('editing');
-        refuse({ startsAt: t('eventEdit.scheduleConcluded') }, land);
+      if (refusal.kind === 'failed') {
+        setStatus('failed');
         return;
       }
 
-      const hostRequired =
-        error instanceof ApiError && error.is('event_host_required')
-          ? hostRequiredOf(hosts, t)
-          : null;
-      if (hostRequired != null) {
-        setStatus('editing');
-        refuse({}, land, hostRequired);
-        return;
-      }
-
-      if (error instanceof ApiError && error.is('event_currency_in_use')) {
-        setStatus('editing');
-        refuse({ currency: t('eventEdit.currencyInUse') }, land);
-        return;
-      }
-
-      const refused = error instanceof ApiError && error.status === 422 ? error.fieldErrors() : {};
-      const fromServer: Errors = {};
-      for (const field of FIELDS) if (refused[field] != null) fromServer[field] = refused[field];
-
-      const hostsFromServer = hostRefusalsOf(refused, hosts);
-
-      if (Object.keys(fromServer).length + Object.keys(hostsFromServer).length > 0) {
-        setStatus('editing');
-        refuse(fromServer, land, hostsFromServer);
-        return;
-      }
-
-      setStatus('failed');
+      setStatus('editing');
+      refuse(
+        refusal.currencyInUse ? { currency: t('eventEdit.currencyInUse') } : refusal.errors,
+        land,
+        refusal.hosts,
+      );
     }
   }
 

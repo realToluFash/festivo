@@ -1,9 +1,10 @@
-import { ApiError, type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
+import { type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
 import {
   EVENT_NAME_MAXIMUM,
   HOSTS_MAXIMUM,
   NOTHING_SEEN,
   type EventDraft,
+  type EventSaveRefusal,
   type EventFormField,
   type EventType,
   type HostErrors,
@@ -12,12 +13,11 @@ import {
   addressLookup,
   draftOf,
   eventChanges,
+  eventSaveRefusal,
   eventFormErrors,
   eventNameLength,
   hostCalled,
   hostErrorsOf,
-  hostRefusalsOf,
-  hostRequiredOf,
   hostsChanged,
   hostsSent,
   keepsLastHost,
@@ -65,11 +65,7 @@ type Typed = { draft: EventDraft; timeZone: string; currency: string; venue: Ven
 type Errors = { [Field in EventFormField]?: string | undefined };
 
 /** What a save came back with: the event as saved, or why not, in the words each part shows. */
-type Saving =
-  | { kind: 'saved' }
-  | { kind: 'changed' }
-  | { kind: 'failed' }
-  | { kind: 'refused'; errors: Errors; hosts: HostErrors; inUse: boolean };
+type Saving = { kind: 'saved' } | EventSaveRefusal;
 
 function typedOf(event: OrganisationEvent): Typed {
   return {
@@ -109,27 +105,8 @@ function useSave({ event, tag, onSaved }: Pick<PartProps, 'event' | 'tag' | 'onS
       return { kind: 'saved' };
     } catch (error) {
       setBusy(false);
-      if (!(error instanceof ApiError)) return { kind: 'failed' };
-      if (error.status === 412) return { kind: 'changed' };
-      if (error.is('event_concluded'))
-        return refused({ startsAt: t('eventEdit.scheduleConcluded') });
-      if (error.is('event_currency_in_use'))
-        return { kind: 'refused', errors: {}, hosts: {}, inUse: true };
 
-      const required = error.is('event_host_required') ? hostRequiredOf(hosts ?? [], t) : null;
-      if (required != null) return refused({}, required);
-      if (error.status !== 422) return { kind: 'failed' };
-
-      const fields = error.fieldErrors();
-      const found: Errors = {};
-      for (const [field, message] of Object.entries(fields))
-        if (field in typed.draft || field.startsWith('venue') || field.endsWith('At'))
-          found[field as EventFormField] = message;
-      const hostsFound = hosts == null ? {} : hostRefusalsOf(fields, hosts);
-
-      return Object.keys(found).length + Object.keys(hostsFound).length === 0
-        ? { kind: 'failed' }
-        : refused(found, hostsFound);
+      return eventSaveRefusal(error, hosts ?? [], t);
     }
   }
 
@@ -144,10 +121,6 @@ function useSave({ event, tag, onSaved }: Pick<PartProps, 'event' | 'tag' | 'onS
   }
 
   return { busy, save, latest };
-}
-
-function refused(errors: Errors, hosts: HostErrors = {}): Saving {
-  return { kind: 'refused', errors, hosts, inUse: false };
 }
 
 function only(errors: Errors, fields: readonly EventFormField[]): Errors {
@@ -314,7 +287,7 @@ export function CurrencyPart({ event, tag, onDirty, onClose, onSaved, onLatest }
       onSave={() =>
         void save({ ...typedOf(event), currency: picked }, null).then((saving) => {
           outcome.took(saving);
-          setInUse(saving.kind === 'refused' && saving.inUse);
+          setInUse(saving.kind === 'refused' && saving.currencyInUse);
         })
       }
     >
