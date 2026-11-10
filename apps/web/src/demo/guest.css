@@ -1406,17 +1406,6 @@
   font: 400 14px/1.4 var(--fontFamily);
 }
 
-.gp-wa-told {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-.gp-wa-told svg {
-  flex: none;
-  margin-top: 3px;
-}
-
 /* ── One column up to 64rem (402 and 320 in the gutters, 600 centred from 641); from it the cover and details sit left, measured ── */
 
 .gp-main.is-one :is(.gp-columns, .gp-alone-wrap) {

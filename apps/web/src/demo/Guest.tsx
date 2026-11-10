@@ -585,12 +585,6 @@ function Shown({
             ) : (
               <p className="gp-sub is-recorded">{words.recordedFor(recorded.by, day)}</p>
             )}
-            {recorded.whatsApp === true && (
-              <p className="gp-sub gp-wa-told">
-                <Glyph name="whatsApp" size={15} weight={2} />
-                <span>{words.whatsAppTold}</span>
-              </p>
-            )}
             {view.same && <p className="gp-sub is-ink">{words.same(recorded.answer)}</p>}
             {recorded.answer === 'notSure' && COMPANIONS > 0 && (
               <p className="gp-sub">{words.companions}</p>

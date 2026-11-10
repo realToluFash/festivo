@@ -272,7 +272,7 @@ const STATES = {
     starts: { recorded: COMING, view: RECORDED, want: 'greeting' },
   },
   comingWhatsApp: {
-    name: 'Answered Coming, with WhatsApp updates ticked',
+    name: 'Sent with WhatsApp ticked: Coming as drawn, the agreement recorded',
     starts: {
       recorded: { ...COMING, whatsApp: true },
       view: RECORDED,
@@ -870,7 +870,6 @@ const BOARD_ENGLISH = {
   whatsAppBox: 'Send me updates on WhatsApp',
   whatsAppHint:
     'Soirely sends them on behalf of {{organisation}}. Reply STOP at any time to end them.',
-  whatsAppTold: 'Updates will come on WhatsApp. Reply STOP at any time to end them.',
   yourMessages: 'Your messages',
   yourMessagesIntro:
     'Choose how {{organisation}} can reach you. This changes nothing for anyone else who uses Soirely.',
@@ -1034,7 +1033,6 @@ export function wordsFor(lang: Lang) {
     messageFailed: board('messageFailed'),
     whatsAppBox: board('whatsAppBox'),
     whatsAppHint: board('whatsAppHint', { organisation: ORGANISATION }),
-    whatsAppTold: board('whatsAppTold'),
     yourMessages: board('yourMessages'),
     yourMessagesIntro: board('yourMessagesIntro', { organisation: ORGANISATION }),
     channel: (channel: Channel): string =>

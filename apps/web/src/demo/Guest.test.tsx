@@ -106,7 +106,6 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
 
 const WHATSAPP = 'Send me updates on WhatsApp';
 const HINT = 'Soirely sends them on behalf of Ire Events. Reply STOP at any time to end them.';
-const TOLD = 'Updates will come on WhatsApp. Reply STOP at any time to end them.';
 
 const UPDATES =
   'Soirely sends updates on WhatsApp on behalf of Ire Events. Reply STOP at any time to end them.';
@@ -148,7 +147,7 @@ const SAYS: [string, () => void][] = [
   ],
   ['notSentTap', () => screen.getByText(/Check your connection and tap it again\.$/u)],
   ['coming', () => screen.getByRole('heading', { name: `See you there, ${NAME}.` })],
-  ['comingWhatsApp', () => screen.getByText(TOLD)],
+  ['comingWhatsApp', () => screen.getByRole('heading', { name: `See you there, ${NAME}.` })],
   ['comingAlone', () => screen.getByText('A screenshot works too.')],
   ['notComing', () => screen.getByRole('heading', { name: `We’ll miss you, ${NAME}.` })],
   ['notSure', () => screen.getByText('Your companions are on hold until you decide.')],
@@ -282,7 +281,7 @@ describe('WhatsApp updates on Check and send (sc-3950)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
     await wait();
     expect(screen.getByRole('heading', { name: `See you there, ${NAME}.` })).toBeDefined();
-    expect(screen.queryByText(TOLD)).toBeNull();
+    expect(screen.queryByText(/WhatsApp/u)).toBeNull();
   });
 
   it('is a real checkbox, unticked, its line as its description, the whole row its label', async () => {
@@ -313,7 +312,7 @@ describe('WhatsApp updates on Check and send (sc-3950)', () => {
     expect(document.querySelector('.gp-wa-tick')).toBeNull();
   });
 
-  it('is never required: Send unticked records Coming with no WhatsApp line', async () => {
+  it('is never required: Send unticked records Coming, nothing about WhatsApp', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await guest('checkWhatsApp');
 
@@ -323,10 +322,10 @@ describe('WhatsApp updates on Check and send (sc-3950)', () => {
     expect(document.activeElement).toBe(
       screen.getByRole('heading', { name: `See you there, ${NAME}.` }),
     );
-    expect(screen.queryByText(TOLD)).toBeNull();
+    expect(screen.queryByText(/WhatsApp/u)).toBeNull();
   });
 
-  it('ticked, then Send: the box keeps its tick while sending, then the line under the date', async () => {
+  it('ticked, then Send: the box keeps its tick while sending, then Coming as drawn', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await guest('checkWhatsApp');
     const box = screen.getByRole('checkbox', { name: WHATSAPP });
@@ -341,20 +340,18 @@ describe('WhatsApp updates on Check and send (sc-3950)', () => {
     expect(document.activeElement).toBe(
       screen.getByRole('heading', { name: `See you there, ${NAME}.` }),
     );
-    const told = screen.getByText(TOLD).closest('p');
-    expect(told?.previousElementSibling?.textContent).toBe(
-      'You answered Coming on Tuesday, October 27.',
-    );
-    expect(told?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(screen.getByText('You answered Coming on Tuesday, October 27.')).toBeDefined();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.queryByText(/WhatsApp/u)).toBeNull();
   });
 
-  it('comingWhatsApp: Coming as drawn, with the line, focus on the greeting', async () => {
+  it('comingWhatsApp: Coming as drawn, no line of its own, focus on the greeting', async () => {
     await guest('comingWhatsApp');
 
     expect(document.activeElement).toBe(
       screen.getByRole('heading', { name: `See you there, ${NAME}.` }),
     );
-    expect(screen.getByText(TOLD)).toBeDefined();
+    expect(screen.queryByText(/WhatsApp/u)).toBeNull();
     expect(screen.getByRole('heading', { name: 'Show this at the door' })).toBeDefined();
   });
 });

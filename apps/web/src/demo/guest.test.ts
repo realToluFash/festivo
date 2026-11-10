@@ -304,15 +304,12 @@ describe('WhatsApp updates on Check and send (sc-3950)', () => {
     });
   });
 
-  it('writes the box, its line with the organisation (pm, 10 Nov), and the line after sending', () => {
+  it('writes the box and its line with the organisation, l10n’s English (#36823)', () => {
     const words = wordsFor('en');
 
     expect(words.whatsAppBox).toBe('Send me updates on WhatsApp');
     expect(words.whatsAppHint).toBe(
       'Soirely sends them on behalf of Ire Events. Reply STOP at any time to end them.',
-    );
-    expect(words.whatsAppTold).toBe(
-      'Updates will come on WhatsApp. Reply STOP at any time to end them.',
     );
   });
 });
