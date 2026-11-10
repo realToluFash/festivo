@@ -1,20 +1,14 @@
 import { demoWords } from './demoWords.ts';
 import { BASE, type Figures, allergic } from './kitchenChanges.ts';
-import {
-  type Dish as MenuDish,
-  type HowServed,
-  MENU_FISH,
-  MENU_JOLLOF,
-  MW,
-  choiceOf,
-  usesParts,
-} from './menuServed.ts';
+import { type Dish as MenuDish, MENU_FISH, MENU_JOLLOF, MW, choiceOf } from './menuServed.ts';
 import { natural } from './seating.ts';
 
 /** The kitchen sheet's parts (sc-34244): a course served In parts or Family style counts each part under its dish, then Served with this course, Plated at the pass and, Family style only, By table. */
+export type HowServed = 'plated' | 'in_parts' | 'family_style' | 'buffet';
+
 export const PW = {
-  inParts: MW.ways.in_parts,
-  familyStyle: MW.ways.family_style,
+  inParts: 'In parts',
+  familyStyle: 'Family style',
   servedWith: MW.own,
   byTable: 'By table',
   tableHead: 'Table',
@@ -132,7 +126,7 @@ const TABLE_TAILS = [
 ] as const;
 
 export function hasParts(course: Pick<PartsCourse, 'howServed'>): boolean {
-  return usesParts(course.howServed);
+  return course.howServed === 'in_parts' || course.howServed === 'family_style';
 }
 
 type DishPick = Extract<GuestPick, { dish: string }>;
@@ -311,8 +305,9 @@ function fromMenu(dish: MenuDish): Dish {
     id: dish.id,
     name: dish.name,
     variants: dish.variants.map((name, index) => ({ id: `${dish.id}-v${index + 1}`, name })),
-    parts: dish.parts.flatMap((part): Part[] => {
+    parts: dish.items.flatMap((part): Part[] => {
       if (part.kind === 'fixed') return [{ kind: 'fixed', name: part.name }];
+      if (part.kind === 'variant') return [];
 
       const choice = choiceOf(dish, part.choiceId);
 

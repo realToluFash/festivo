@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
@@ -11,46 +11,42 @@ import { Pill } from './GuestsParts.tsx';
 import { clockOfKitchen, kitchenAt } from './kitchen.ts';
 import { keptInbox, waitingLine } from './messages.ts';
 import {
+  type Asking,
   type Course,
   type Dish,
-  type FixedPart,
-  type HowServed,
+  type FixedItem,
+  type Item,
+  type ItemErrors,
   type MenuStart,
+  type Offer,
   type Panel,
-  type Part,
-  type PartErrors,
-  type Table,
-  HOW_SERVED,
+  MAX_ITEMS,
   MAX_OWN,
-  MAX_PARTS,
   MENU_EVENT,
   MW,
+  asSingleDish,
   canAdd,
+  checkItems,
   checkOwn,
-  checkParts,
+  foldLine,
   hasErrors,
-  isDraftPart,
-  keptHidden,
+  isDraftItem,
+  itemName,
   menuStart,
   moved,
   movedLine,
   mw,
-  offeredChoices,
-  partName,
-  platedTables,
+  offered,
   removeChoiceLine,
   removedLine,
   shownName,
-  tableLabel,
-  usesParts,
-  usesPlatedAt,
   withoutChoice,
 } from './menuServed.ts';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
 import './menu.css';
 
-/** The event's Menu at a desk (board MenuServing, page e32): sc-3902's course cards and docked panel, with sc-34230's How it's served, Parts, Served with this course and Plated at. */
+/** The event's Menu at a desk (board MenuServing, page e32): sc-3902's course cards and docked panel, with sc-34230's Items on every course's dishes and Served with this course. */
 export function MenuPage() {
   const { id } = useParams();
   const [params] = useSearchParams();
@@ -95,15 +91,13 @@ function newKey(): string {
 interface CourseForm {
   name: string;
   servedAt: string;
-  how: HowServed;
-  own: FixedPart[];
-  platedAt: string[];
+  own: FixedItem[];
 }
 
 interface DishForm {
   name: string;
   desc: string;
-  parts: Part[];
+  items: Item[];
 }
 
 interface Form {
@@ -114,38 +108,43 @@ interface Form {
   failed: boolean;
 }
 
-function courseForm(course: Course): CourseForm {
-  return {
-    name: course.name,
-    servedAt: course.servedAt ?? '',
-    how: course.howServed,
-    own: course.ownParts.slice(),
-    platedAt: course.platedAt.slice(),
-  };
-}
-
 function formOf(panel: Panel, courses: readonly Course[], first: MenuStart | null): Form {
   const course = courses.find((one) => one.id === panel.courseId) as Course;
   const dish = panel.kind === 'dish' ? course.dishes.find((one) => one.id === panel.dishId) : null;
-  const base = courseForm(course);
 
   return {
     course: {
-      ...base,
-      how: first?.how ?? base.how,
-      own: first?.own ?? base.own,
+      name: course.name,
+      servedAt: course.servedAt ?? '',
+      own: first?.own ?? course.ownItems.slice(),
     },
     dish:
       dish == null
         ? null
-        : { name: dish.name, desc: dish.desc, parts: first?.parts ?? dish.parts.slice() },
+        : { name: dish.name, desc: dish.desc, items: first?.items ?? dish.items.slice() },
     pressed: false,
     addRefused: false,
     failed: false,
   };
 }
 
-const NO_ERRORS: PartErrors = { list: null, byKey: {} };
+const NO_ERRORS: ItemErrors = { list: null, byKey: {} };
+
+function mapDish(
+  courses: readonly Course[],
+  dishId: string,
+  change: (dish: Dish) => Dish,
+): Course[] {
+  return courses.map((one) =>
+    one.dishes.some((d) => d.id === dishId)
+      ? { ...one, dishes: one.dishes.map((d) => (d.id === dishId ? change(d) : d)) }
+      : one,
+  );
+}
+
+function findDish(courses: readonly Course[], dishId: string): Dish | undefined {
+  return courses.flatMap((one) => one.dishes).find((one) => one.id === dishId);
+}
 
 function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; tell: Tell }) {
   const [courses, setCourses] = useState(first.courses);
@@ -153,7 +152,7 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
   const [form, setForm] = useState<Form | null>(() =>
     first.panel == null ? null : formOf(first.panel, first.courses, first),
   );
-  const [asking, setAsking] = useState(first.asking ?? null);
+  const [asking, setAsking] = useState<Asking | null>(first.asking ?? null);
   const [said, setSaid] = useState(first.told ?? '');
   const [moveSaid, setMoveSaid] = useState('');
   const focusAfter = useRef<string | null>(null);
@@ -165,16 +164,13 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
     panel?.kind === 'dish' && course != null
       ? (course.dishes.find((one) => one.id === panel.dishId) ?? null)
       : null;
-  const how = form?.course.how ?? course?.howServed ?? 'plated';
 
   const dishErrors =
-    form?.pressed === true && form.dish != null && dish != null && usesParts(how)
-      ? checkParts(form.dish.parts, dish)
+    form?.pressed === true && form.dish != null && dish != null
+      ? checkItems(form.dish.items, dish)
       : NO_ERRORS;
   const ownErrors =
-    form?.pressed === true && panel?.kind === 'course' && usesParts(how)
-      ? checkOwn(form.course.own)
-      : NO_ERRORS;
+    form?.pressed === true && panel?.kind === 'course' ? checkOwn(form.course.own) : NO_ERRORS;
   const nameError =
     form?.pressed === true &&
     (panel?.kind === 'dish' ? form.dish?.name.trim() === '' : form.course.name.trim() === '')
@@ -193,11 +189,11 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
     if (started.current || form == null) return;
     started.current = true;
     if (first.pressSave === true) save();
-    if (first.pressAdd === 'part') addPart();
+    if (first.pressAdd === 'item') addItem();
     if (first.pressAdd === 'own') addOwn();
     if (first.moveFirst != null && form.dish != null) {
-      const at = form.dish.parts.findIndex((one) => one.key === first.moveFirst?.key);
-      if (at >= 0) movePart(at, first.moveFirst.by);
+      const at = form.dish.items.findIndex((one) => one.key === first.moveFirst?.key);
+      if (at >= 0) moveItem(at, first.moveFirst.by);
     }
   });
 
@@ -230,40 +226,44 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
     setForm((now) => (now == null ? now : { ...now, course: { ...now.course, ...next } }));
   }
 
-  function setParts(parts: Part[]) {
+  function setItems(items: Item[]) {
     setForm((now) =>
-      now?.dish == null ? now : { ...now, addRefused: false, dish: { ...now.dish, parts } },
+      now?.dish == null ? now : { ...now, addRefused: false, dish: { ...now.dish, items } },
     );
   }
 
-  function addPart() {
+  function addItem() {
     if (form?.dish == null) return;
-    if (!canAdd(form.dish.parts, MAX_PARTS)) {
+    if (!canAdd(form.dish.items, MAX_ITEMS)) {
       patch({ addRefused: true });
       return;
     }
     const key = newKey();
-    setParts([...form.dish.parts, { key, kind: 'fixed', name: '' }]);
-    focusAfter.current = `mn-part-${key}`;
+    setItems([...form.dish.items, { key, kind: 'fixed', name: '' }]);
+    focusAfter.current = `mn-item-${key}`;
   }
 
-  function addChoice(choiceId: string) {
+  function addOffer(offer: Offer) {
     if (form?.dish == null) return;
-    if (!canAdd(form.dish.parts, MAX_PARTS)) {
+    if (!canAdd(form.dish.items, MAX_ITEMS)) {
       patch({ addRefused: true });
       return;
     }
     const key = newKey();
-    setParts([...form.dish.parts, { key, kind: 'choice', choiceId }]);
-    focusAfter.current = form.dish.parts.length === 0 ? `mn-x-${key}` : `mn-up-${key}`;
+    const item: Item =
+      offer.kind === 'variant'
+        ? { key, kind: 'variant' }
+        : { key, kind: 'choice', choiceId: offer.choice.id };
+    setItems([...form.dish.items, item]);
+    focusAfter.current = form.dish.items.length === 0 ? `mn-x-${key}` : `mn-up-${key}`;
   }
 
-  function removePart(key: string) {
+  function removeItem(key: string) {
     if (form?.dish == null) return;
-    const parts = form.dish.parts;
-    const next = parts[parts.findIndex((one) => one.key === key) + 1];
-    setParts(parts.filter((one) => one.key !== key));
-    focusAfter.current = next == null ? 'mn-add-part' : `mn-x-${next.key}`;
+    const items = form.dish.items;
+    const next = items[items.findIndex((one) => one.key === key) + 1];
+    setItems(items.filter((one) => one.key !== key));
+    focusAfter.current = next == null ? 'mn-add-item' : `mn-x-${next.key}`;
   }
 
   function removeOwn(key: string) {
@@ -287,38 +287,35 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
     focusAfter.current = `mn-own-${key}`;
   }
 
-  function movePart(at: number, by: -1 | 1) {
+  function moveItem(at: number, by: -1 | 1) {
     if (form?.dish == null || dish == null) return;
-    const next = moved(form.dish.parts, at, by);
+    const next = moved(form.dish.items, at, by);
     if (next == null) return;
-    const part = form.dish.parts[at] as Part;
-    setParts(next);
-    setMoveSaid(movedLine(partName(part, dish), at + by, next.length));
+    const item = form.dish.items[at] as Item;
+    setItems(next);
+    setMoveSaid(movedLine(itemName(item, dish), at + by, next.length));
   }
 
   function moveOwn(at: number, by: -1 | 1) {
     if (form == null) return;
     const next = moved(form.course.own, at, by);
     if (next == null) return;
-    const part = form.course.own[at] as FixedPart;
+    const item = form.course.own[at] as FixedItem;
     patchCourse({ own: next });
-    setMoveSaid(movedLine(part.name, at + by, next.length));
+    setMoveSaid(movedLine(item.name, at + by, next.length));
   }
 
   function save() {
     if (form == null || panel == null || course == null) return;
-    const ownCheck =
-      panel.kind === 'course' && usesParts(how) ? checkOwn(form.course.own) : NO_ERRORS;
-    const partsCheck =
-      form.dish != null && dish != null && usesParts(how)
-        ? checkParts(form.dish.parts, dish)
-        : NO_ERRORS;
+    const ownCheck = panel.kind === 'course' ? checkOwn(form.course.own) : NO_ERRORS;
+    const itemsCheck =
+      form.dish != null && dish != null ? checkItems(form.dish.items, dish) : NO_ERRORS;
     const blankName =
       panel.kind === 'dish' ? form.dish?.name.trim() === '' : form.course.name.trim() === '';
 
-    if (blankName || hasErrors(ownCheck) || hasErrors(partsCheck)) {
+    if (blankName || hasErrors(ownCheck) || hasErrors(itemsCheck)) {
       setForm({ ...form, pressed: true, failed: false });
-      focusAfter.current = firstWrong(blankName, partsCheck, ownCheck, form);
+      focusAfter.current = firstWrong(blankName, itemsCheck, ownCheck, form);
       return;
     }
 
@@ -334,37 +331,48 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
     setSaid(mw(MW.saved, { name: name.trim() }));
   }
 
-  function removeChoice(dishId: string, choiceId: string) {
-    const holder = courses.find((one) => one.dishes.some((d) => d.id === dishId));
-    const target = holder?.dishes.find((d) => d.id === dishId);
-    const choice = target?.choices.find((one) => one.id === choiceId);
-    if (holder == null || target == null || choice == null) return;
-
-    setCourses(
-      courses.map((one) =>
-        one.id !== holder.id
-          ? one
-          : {
-              ...one,
-              dishes: one.dishes.map((d) => (d.id === dishId ? withoutChoice(d, choiceId) : d)),
+  function changeOpenDish(dishId: string, change: (dish: Dish) => Dish) {
+    if (panel?.kind !== 'dish' || panel.dishId !== dishId) return;
+    const target = findDish(courses, dishId);
+    if (target == null) return;
+    setForm((now) =>
+      now?.dish == null
+        ? now
+        : {
+            ...now,
+            dish: {
+              ...now.dish,
+              items: change({ ...target, items: now.dish.items }).items.slice(),
             },
-      ),
+          },
     );
-    if (panel?.kind === 'dish' && panel.dishId === dishId) {
-      setForm((now) =>
-        now?.dish == null
-          ? now
-          : {
-              ...now,
-              dish: {
-                ...now.dish,
-                parts: withoutChoice({ ...target, parts: now.dish.parts }, choiceId).parts.slice(),
-              },
-            },
-      );
-    }
+  }
+
+  function removeChoice(dishId: string, choiceId: string) {
+    const target = findDish(courses, dishId);
+    const choice = target?.choices.find((one) => one.id === choiceId);
+    if (target == null || choice == null) return;
+
+    setCourses(mapDish(courses, dishId, (d) => withoutChoice(d, choiceId)));
+    changeOpenDish(dishId, (d) => withoutChoice(d, choiceId));
     setAsking(null);
     setSaid(removedLine(target, choice));
+  }
+
+  function removeVariant(dishId: string, name: string) {
+    setAsking({ dishId, kind: 'variant', name });
+    focusAfter.current = `mn-ask-v-${dishId}`;
+  }
+
+  function makeSingle(dishId: string) {
+    const target = findDish(courses, dishId);
+    if (target == null) return;
+
+    setCourses(mapDish(courses, dishId, asSingleDish));
+    changeOpenDish(dishId, asSingleDish);
+    setAsking(null);
+    setSaid(mw(MW.folded, { dish: target.name }));
+    focusAfter.current = `mn-edit-${dishId}`;
   }
 
   return (
@@ -421,20 +429,21 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
                 key={one.id}
                 course={one}
                 index={index}
-                tables={first.tables}
                 manage={manage}
                 editing={panel}
                 asking={asking}
                 onEdit={(next) => open(next)}
                 onAsk={(dishId, choiceId) => {
-                  setAsking({ dishId, choiceId });
+                  setAsking({ dishId, kind: 'choice', choiceId });
                   focusAfter.current = `mn-ask-${choiceId}`;
                 }}
-                onKeep={(choiceId) => {
+                onKeep={(back) => {
                   setAsking(null);
-                  focusAfter.current = `mn-rm-${choiceId}`;
+                  focusAfter.current = back;
                 }}
                 onRemove={removeChoice}
+                onRemoveVariant={removeVariant}
+                onMakeSingle={makeSingle}
                 onAddDish={() => tell('Add dish is sc-3902’s, drawn on the Menu board.')}
               />
             ))}
@@ -443,9 +452,7 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
             <aside className="mn-panel" aria-labelledby="mn-panel-title">
               <div className="mn-panel-top">
                 <div className="mn-panel-names">
-                  <p className="mn-eyebrow">
-                    {dish == null ? `${course.name}` : `${course.name} · ${MW.ways[how]}`}
-                  </p>
+                  <p className="mn-eyebrow">{course.name}</p>
                   <h2 id="mn-panel-title" tabIndex={-1}>
                     {panel.kind === 'dish' ? MW.editDish : MW.editCourse}
                   </h2>
@@ -463,8 +470,6 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
                 {panel.kind === 'course' ? (
                   <CourseFields
                     form={form}
-                    course={course}
-                    tables={first.tables}
                     nameError={nameError}
                     ownErrors={ownErrors}
                     moveSaid={moveSaid}
@@ -479,7 +484,6 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
                     <DishFields
                       dishForm={form.dish}
                       dish={dish}
-                      how={how}
                       nameError={nameError}
                       errors={dishErrors}
                       addRefused={form.addRefused}
@@ -489,10 +493,10 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
                           now?.dish == null ? now : { ...now, dish: { ...now.dish, ...next } },
                         )
                       }
-                      onAdd={addPart}
-                      onAddChoice={addChoice}
-                      onMove={movePart}
-                      onRemove={removePart}
+                      onAdd={addItem}
+                      onAddOffer={addOffer}
+                      onMove={moveItem}
+                      onRemove={removeItem}
                     />
                   )
                 )}
@@ -521,56 +525,48 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
 
 function firstWrong(
   blankName: boolean,
-  parts: PartErrors,
-  own: PartErrors,
+  items: ItemErrors,
+  own: ItemErrors,
   form: Form,
 ): string | null {
   if (blankName) return 'mn-name';
-  const dishKey = form.dish?.parts.find((one) => parts.byKey[one.key] != null)?.key;
+  const dishKey = form.dish?.items.find((one) => items.byKey[one.key] != null)?.key;
   if (dishKey != null) {
-    const part = form.dish?.parts.find((one) => one.key === dishKey);
-    return part?.kind === 'fixed' ? `mn-part-${dishKey}` : `mn-up-${dishKey}`;
+    const item = form.dish?.items.find((one) => one.key === dishKey);
+    return item?.kind === 'fixed' ? `mn-item-${dishKey}` : `mn-up-${dishKey}`;
   }
-  if (parts.list != null) return 'mn-add-part';
+  if (items.list != null) return 'mn-add-item';
   const ownKey = form.course.own.find((one) => own.byKey[one.key] != null)?.key;
   return ownKey == null ? null : `mn-own-${ownKey}`;
 }
 
 function applied(course: Course, panel: Panel, form: Form): Course {
   if (panel.kind === 'course') {
-    const tidy = form.course.own.map((one) => ({ ...one, name: one.name.trim() }));
     return {
       ...course,
       name: form.course.name.trim(),
       servedAt: form.course.servedAt.trim() === '' ? null : form.course.servedAt.trim(),
-      howServed: form.course.how,
-      ownParts: tidy,
-      platedAt: form.course.platedAt,
+      ownItems: form.course.own.map((one) => ({ ...one, name: one.name.trim() })),
     };
   }
 
   const draft = form.dish;
   if (draft == null) return course;
-  const parts = draft.parts.map((one) =>
+  const items = draft.items.map((one) =>
     one.kind === 'fixed' ? { ...one, name: one.name.trim() } : one,
   );
 
   return {
     ...course,
     dishes: course.dishes.map((one) =>
-      one.id === panel.dishId ? { ...one, name: draft.name.trim(), desc: draft.desc, parts } : one,
+      one.id === panel.dishId ? { ...one, name: draft.name.trim(), desc: draft.desc, items } : one,
     ),
   };
-}
-
-function HowChip({ how }: { how: HowServed }) {
-  return <span className={`mn-how is-${how}`}>{MW.ways[how]}</span>;
 }
 
 function CourseCard({
   course,
   index,
-  tables,
   manage,
   editing,
   asking,
@@ -578,22 +574,23 @@ function CourseCard({
   onAsk,
   onKeep,
   onRemove,
+  onRemoveVariant,
+  onMakeSingle,
   onAddDish,
 }: {
   course: Course;
   index: number;
-  tables: readonly Table[];
   manage: boolean;
   editing: Panel | null;
-  asking: { dishId: string; choiceId: string } | null;
+  asking: Asking | null;
   onEdit: (panel: Panel) => void;
   onAsk: (dishId: string, choiceId: string) => void;
-  onKeep: (choiceId: string) => void;
+  onKeep: (back: string) => void;
   onRemove: (dishId: string, choiceId: string) => void;
+  onRemoveVariant: (dishId: string, name: string) => void;
+  onMakeSingle: (dishId: string) => void;
   onAddDish: () => void;
 }) {
-  const parted = usesParts(course.howServed);
-  const plated = platedTables(course, tables);
   const lit = editing?.kind === 'course' && editing.courseId === course.id;
 
   return (
@@ -605,13 +602,9 @@ function CourseCard({
         <div className="mn-course-names">
           <p className="mn-eyebrow">{mw(MW.course, { n: index + 1 })}</p>
           <h2 id={`mn-c-${course.id}`}>{course.name}</h2>
-          <p className="mn-course-line">
-            {course.servedAt != null && <span>{mw(MW.servedAt, { time: course.servedAt })}</span>}
-            <span className="mn-how-line">
-              <span className="desk-unseen">{MW.how}: </span>
-              <HowChip how={course.howServed} />
-            </span>
-          </p>
+          {course.servedAt != null && (
+            <p className="mn-course-line">{mw(MW.servedAt, { time: course.servedAt })}</p>
+          )}
         </div>
         {manage && (
           <IconButton
@@ -623,37 +616,28 @@ function CourseCard({
           />
         )}
       </div>
-      {(parted && course.ownParts.length > 0) || usesPlatedAt(course.howServed) ? (
+      {course.ownItems.length > 0 && (
         <dl className="mn-course-facts">
-          {parted && course.ownParts.length > 0 && (
-            <div>
-              <dt>{MW.own}</dt>
-              <dd>{course.ownParts.map((one) => one.name).join(' · ')}</dd>
-            </div>
-          )}
-          {usesPlatedAt(course.howServed) && (
-            <div>
-              <dt>{MW.platedAt}</dt>
-              <dd>
-                {plated.length === 0 ? MW.noneChosen : plated.map((one) => one.name).join(' · ')}
-              </dd>
-            </div>
-          )}
+          <div>
+            <dt>{MW.own}</dt>
+            <dd>{course.ownItems.map((one) => one.name).join(' · ')}</dd>
+          </div>
         </dl>
-      ) : null}
+      )}
       <ul className="mn-dishes">
         {course.dishes.map((dish) => (
           <DishRow
             key={dish.id}
             dish={dish}
-            parted={parted}
             manage={manage}
             lit={editing?.kind === 'dish' && editing.dishId === dish.id}
-            asking={asking?.dishId === dish.id ? asking.choiceId : null}
+            asking={asking?.dishId === dish.id ? asking : null}
             onEdit={() => onEdit({ kind: 'dish', courseId: course.id, dishId: dish.id })}
             onAsk={(choiceId) => onAsk(dish.id, choiceId)}
             onKeep={onKeep}
             onRemove={(choiceId) => onRemove(dish.id, choiceId)}
+            onRemoveVariant={(name) => onRemoveVariant(dish.id, name)}
+            onMakeSingle={() => onMakeSingle(dish.id)}
           />
         ))}
       </ul>
@@ -669,9 +653,11 @@ function CourseCard({
   );
 }
 
+const variantKey = (dishId: string, name: string): string =>
+  `mn-rmv-${dishId}-${name.toLowerCase().replace(/\W+/gu, '-')}`;
+
 function DishRow({
   dish,
-  parted,
   manage,
   lit,
   asking,
@@ -679,16 +665,19 @@ function DishRow({
   onAsk,
   onKeep,
   onRemove,
+  onRemoveVariant,
+  onMakeSingle,
 }: {
   dish: Dish;
-  parted: boolean;
   manage: boolean;
   lit: boolean;
-  asking: string | null;
+  asking: Asking | null;
   onEdit: () => void;
   onAsk: (choiceId: string) => void;
-  onKeep: (choiceId: string) => void;
+  onKeep: (back: string) => void;
   onRemove: (choiceId: string) => void;
+  onRemoveVariant: (name: string) => void;
+  onMakeSingle: () => void;
 }) {
   return (
     <li className={lit ? 'mn-dish is-lit' : 'mn-dish'}>
@@ -702,7 +691,7 @@ function DishRow({
             </span>
             {`${MW.contains} ${dish.contains.join(', ')}`}
           </p>
-          {dish.variants.length > 0 && (
+          {dish.variants.length > 0 && !manage && (
             <p className="mn-quiet">{`${MW.variants}: ${dish.variants.join(' · ')}`}</p>
           )}
         </div>
@@ -716,7 +705,43 @@ function DishRow({
           />
         )}
       </div>
-      {parted && <PartsLine dish={dish} />}
+      {dish.variants.length > 0 && manage && (
+        <div className="mn-variants-box">
+          <p className="mn-items-head">{MW.variants}</p>
+          <ul className="mn-variants" aria-label={`${MW.variants} · ${dish.name}`}>
+            {dish.variants.map((name) => (
+              <li key={name} className="mn-variant">
+                <span>{name}</span>
+                <IconButton
+                  id={variantKey(dish.id, name)}
+                  glyph="clear"
+                  label={mw(MW.removeVariantAria, { name })}
+                  hint={MW.remove}
+                  onClick={() => onRemoveVariant(name)}
+                />
+              </li>
+            ))}
+          </ul>
+          {asking?.kind === 'variant' && (
+            <div className="mn-ask">
+              <p id={`mn-ask-v-${dish.id}`} tabIndex={-1}>
+                {foldLine(dish)}
+              </p>
+              <div className="mn-ask-acts">
+                <button
+                  type="button"
+                  className="desk-text"
+                  onClick={() => onKeep(variantKey(dish.id, asking.name))}
+                >
+                  {MW.keepVariants}
+                </button>
+                <Pill label={MW.makeSingle} onClick={onMakeSingle} />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {dish.items.length > 0 && <ItemsLine dish={dish} />}
       {dish.choices.length > 0 && (
         <ul className="mn-choices" aria-label={`${MW.choices} · ${dish.name}`}>
           {dish.choices.map((choice, index) => {
@@ -747,13 +772,17 @@ function DishRow({
                     />
                   )}
                 </div>
-                {asking === choice.id && (
+                {asking?.kind === 'choice' && asking.choiceId === choice.id && (
                   <div className="mn-ask">
                     <p id={`mn-ask-${choice.id}`} tabIndex={-1}>
                       {removeChoiceLine(dish, choice, index)}
                     </p>
                     <div className="mn-ask-acts">
-                      <button type="button" className="desk-text" onClick={() => onKeep(choice.id)}>
+                      <button
+                        type="button"
+                        className="desk-text"
+                        onClick={() => onKeep(`mn-rm-${choice.id}`)}
+                      >
                         {MW.keepIt}
                       </button>
                       <Pill label={MW.removeChoice} onClick={() => onRemove(choice.id)} />
@@ -778,26 +807,25 @@ function DraftTag() {
   );
 }
 
-function PartsLine({ dish }: { dish: Dish }) {
-  if (dish.parts.length === 0) return <p className="mn-one-plate">{MW.onePlate}</p>;
-
+function ItemsLine({ dish }: { dish: Dish }) {
   return (
-    <div className="mn-parts-line">
-      <p className="mn-parts-head">{dish.variants.length > 0 ? MW.partsOn : MW.parts}</p>
-      <ol className="mn-part-chips">
-        {dish.parts.map((part) => (
+    <div className="mn-items-line">
+      <p className="mn-items-head">{MW.items}</p>
+      <ol className="mn-item-chips">
+        {dish.items.map((item) => (
           <li
-            key={part.key}
+            key={item.key}
             className={[
-              'mn-part-chip',
-              part.kind === 'choice' && 'is-choice',
-              isDraftPart(part, dish) && 'is-draft',
+              'mn-item-chip',
+              item.kind !== 'fixed' && 'is-choice',
+              isDraftItem(item, dish) && 'is-draft',
             ]
               .filter(Boolean)
               .join(' ')}
           >
-            {part.kind === 'choice' && <Glyph name="question" size={14} weight={2.2} />}
-            {partName(part, dish)}
+            {item.kind === 'choice' && <Glyph name="question" size={14} weight={2.2} />}
+            {item.kind === 'variant' && <Glyph name="updown" size={14} weight={2.2} />}
+            {itemName(item, dish)}
           </li>
         ))}
       </ol>
@@ -905,8 +933,6 @@ function TextField({
 
 function CourseFields({
   form,
-  course,
-  tables,
   nameError,
   ownErrors,
   moveSaid,
@@ -916,24 +942,14 @@ function CourseFields({
   onRemoveOwn,
 }: {
   form: Form;
-  course: Course;
-  tables: readonly Table[];
   nameError: string | null;
-  ownErrors: PartErrors;
+  ownErrors: ItemErrors;
   moveSaid: string;
   onCourse: (next: Partial<CourseForm>) => void;
   onAddOwn: () => void;
   onMoveOwn: (at: number, by: -1 | 1) => void;
   onRemoveOwn: (key: string) => void;
 }) {
-  const radios = useId();
-  const how = form.course.how;
-  const hidden = keptHidden({
-    ...course,
-    howServed: how,
-    ownParts: form.course.own,
-  });
-
   return (
     <>
       <TextField
@@ -951,146 +967,77 @@ function CourseFields({
         optional
         onChange={(servedAt) => onCourse({ servedAt })}
       />
-      <fieldset className="mn-how-set" aria-describedby={`${radios}-line`}>
-        <legend className="desk-label gs-label">{MW.how}</legend>
-        <div className="mn-radios">
-          {HOW_SERVED.map((one) => (
-            <label key={one} className={one === how ? 'mn-radio is-picked' : 'mn-radio'}>
-              <input
-                type="radio"
-                className="desk-radio"
-                name={radios}
-                checked={one === how}
-                onChange={() => onCourse({ how: one })}
-              />
-              {MW.ways[one]}
-            </label>
-          ))}
-        </div>
-        <p id={`${radios}-line`} className="mn-served-line">
-          {MW.served[how]}
+      <fieldset className="mn-items" aria-describedby="mn-own-help">
+        <legend className="desk-label gs-label">
+          {MW.own}
+          <Optional />
+        </legend>
+        <p id="mn-own-help" className="desk-help">
+          {MW.ownHelp}
         </p>
-      </fieldset>
-      {hidden && (
-        <p className="mn-kept">
-          <Glyph name="info" size={16} weight={2.2} />
-          {MW.kept}
+        <p className="mn-moved" role="status">
+          {moveSaid}
         </p>
-      )}
-      {usesParts(how) && (
-        <fieldset className="mn-parts" aria-describedby="mn-own-help">
-          <legend className="desk-label gs-label">
-            {MW.own}
-            <Optional />
-          </legend>
-          <p id="mn-own-help" className="desk-help">
-            {MW.ownHelp}
-          </p>
-          <p className="mn-moved" role="status">
-            {moveSaid}
-          </p>
-          {form.course.own.length > 0 && (
-            <ol className="mn-part-rows">
-              {form.course.own.map((part, at) => {
-                const error = ownErrors.byKey[part.key];
-                return (
-                  <li key={part.key} className="mn-part-row">
-                    <span className="mn-part-n" aria-hidden="true">
-                      {at + 1}
-                    </span>
-                    <div className="mn-part-main">
-                      <label htmlFor={`mn-own-${part.key}`} className="desk-unseen">
-                        {mw(MW.ownN, { n: at + 1 })}
-                      </label>
-                      <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
-                        <input
-                          id={`mn-own-${part.key}`}
-                          type="text"
-                          value={part.name}
-                          spellCheck={false}
-                          autoComplete="off"
-                          aria-invalid={error != null}
-                          aria-describedby={error == null ? undefined : `mn-own-${part.key}-error`}
-                          onChange={(change) =>
-                            onCourse({
-                              own: form.course.own.map((one) =>
-                                one.key === part.key ? { ...one, name: change.target.value } : one,
-                              ),
-                            })
-                          }
-                        />
-                      </div>
-                      {error != null && <Wrong id={`mn-own-${part.key}-error`}>{error}</Wrong>}
-                    </div>
-                    <RowMoves
-                      at={at}
-                      of={form.course.own.length}
-                      name={shownName(part.name)}
-                      idKey={part.key}
-                      onMove={onMoveOwn}
-                      onRemove={() => onRemoveOwn(part.key)}
-                    />
-                  </li>
-                );
-              })}
-            </ol>
-          )}
-          <div className="mn-add-row">
-            <button
-              id="mn-add-own"
-              type="button"
-              className="desk-text"
-              aria-describedby={form.addRefused ? 'mn-add-own-error' : undefined}
-              onClick={onAddOwn}
-            >
-              <Glyph name="plus" size={17} weight={2.3} />
-              {MW.addOwn}
-            </button>
-            {form.addRefused && <Wrong id="mn-add-own-error">{MW.ownTooMany}</Wrong>}
-          </div>
-        </fieldset>
-      )}
-      {usesPlatedAt(how) && (
-        <fieldset className="mn-parts" aria-describedby="mn-plated-help">
-          <legend className="desk-label gs-label">
-            {MW.platedAt}
-            <Optional />
-          </legend>
-          {tables.length === 0 ? (
-            <div id="mn-plated-help" className="mn-no-tables">
-              <p className="mn-no-tables-name">{MW.noTables}</p>
-              <p className="desk-help">{MW.noTablesLine}</p>
-            </div>
-          ) : (
-            <>
-              <p id="mn-plated-help" className="desk-help">
-                {MW.platedAtHelp}
-              </p>
-              <ul className="mn-tables">
-                {tables.map((table) => (
-                  <li key={table.id}>
-                    <label className="mn-table">
+        {form.course.own.length > 0 && (
+          <ol className="mn-item-rows">
+            {form.course.own.map((item, at) => {
+              const error = ownErrors.byKey[item.key];
+              return (
+                <li key={item.key} className="mn-item-row">
+                  <span className="mn-item-n" aria-hidden="true">
+                    {at + 1}
+                  </span>
+                  <div className="mn-item-main">
+                    <label htmlFor={`mn-own-${item.key}`} className="desk-unseen">
+                      {mw(MW.ownN, { n: at + 1 })}
+                    </label>
+                    <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
                       <input
-                        type="checkbox"
-                        className="gs-box"
-                        checked={form.course.platedAt.includes(table.id)}
+                        id={`mn-own-${item.key}`}
+                        type="text"
+                        value={item.name}
+                        spellCheck={false}
+                        autoComplete="off"
+                        aria-invalid={error != null}
+                        aria-describedby={error == null ? undefined : `mn-own-${item.key}-error`}
                         onChange={(change) =>
                           onCourse({
-                            platedAt: change.target.checked
-                              ? [...form.course.platedAt, table.id]
-                              : form.course.platedAt.filter((one) => one !== table.id),
+                            own: form.course.own.map((one) =>
+                              one.key === item.key ? { ...one, name: change.target.value } : one,
+                            ),
                           })
                         }
                       />
-                      {tableLabel(table)}
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </fieldset>
-      )}
+                    </div>
+                    {error != null && <Wrong id={`mn-own-${item.key}-error`}>{error}</Wrong>}
+                  </div>
+                  <RowMoves
+                    at={at}
+                    of={form.course.own.length}
+                    name={shownName(item.name)}
+                    idKey={item.key}
+                    onMove={onMoveOwn}
+                    onRemove={() => onRemoveOwn(item.key)}
+                  />
+                </li>
+              );
+            })}
+          </ol>
+        )}
+        <div className="mn-add-row">
+          <button
+            id="mn-add-own"
+            type="button"
+            className="desk-text"
+            aria-describedby={form.addRefused ? 'mn-add-own-error' : undefined}
+            onClick={onAddOwn}
+          >
+            <Glyph name="plus" size={17} weight={2.3} />
+            {MW.addOwn}
+          </button>
+          {form.addRefused && <Wrong id="mn-add-own-error">{MW.ownTooMany}</Wrong>}
+        </div>
+      </fieldset>
     </>
   );
 }
@@ -1111,7 +1058,7 @@ function RowMoves({
   onRemove: () => void;
 }) {
   return (
-    <div className="mn-part-acts">
+    <div className="mn-item-acts">
       <IconButton
         id={`mn-up-${idKey}`}
         glyph="chevup"
@@ -1131,7 +1078,7 @@ function RowMoves({
       <IconButton
         id={`mn-x-${idKey}`}
         glyph="clear"
-        label={mw(MW.removePart, { name })}
+        label={mw(MW.removeItem, { name })}
         hint={MW.removeHint}
         onClick={onRemove}
       />
@@ -1139,35 +1086,49 @@ function RowMoves({
   );
 }
 
+function FromDish({ item, dish }: { item: Item; dish: Dish }) {
+  const draft = isDraftItem(item, dish);
+
+  return (
+    <p className={draft ? 'mn-choice-item is-draft' : 'mn-choice-item'}>
+      <Glyph name={item.kind === 'variant' ? 'updown' : 'question'} size={16} weight={2.2} />
+      <span className="mn-choice-item-name">{itemName(item, dish)}</span>
+      {draft ? (
+        <DraftTag />
+      ) : (
+        <span className="mn-tag">{item.kind === 'variant' ? MW.variantTag : MW.choiceTag}</span>
+      )}
+    </p>
+  );
+}
+
 function DishFields({
   dishForm,
   dish,
-  how,
   nameError,
   errors,
   addRefused,
   moveSaid,
   onDish,
   onAdd,
-  onAddChoice,
+  onAddOffer,
   onMove,
   onRemove,
 }: {
   dishForm: DishForm;
   dish: Dish;
-  how: HowServed;
   nameError: string | null;
-  errors: PartErrors;
+  errors: ItemErrors;
   addRefused: boolean;
   moveSaid: string;
   onDish: (next: Partial<DishForm>) => void;
   onAdd: () => void;
-  onAddChoice: (choiceId: string) => void;
+  onAddOffer: (offer: Offer) => void;
   onMove: (at: number, by: -1 | 1) => void;
   onRemove: (key: string) => void;
 }) {
-  const offered = offeredChoices(dish, dishForm.parts);
-  const told = ['mn-parts-help', errors.list == null ? null : 'mn-parts-error']
+  const offers = offered(dish, dishForm.items);
+  const told = ['mn-items-help', errors.list == null ? null : 'mn-items-error']
     .filter(Boolean)
     .join(' ');
 
@@ -1195,133 +1156,113 @@ function DishFields({
           </span>
           {dish.contains.join(', ')}
         </p>
-        {usesParts(how) && <p className="desk-help">{MW.containsStays}</p>}
+        <p className="desk-help">{MW.containsStays}</p>
       </div>
-      {!usesParts(how) && dish.parts.length > 0 && (
-        <p className="mn-kept">
-          <Glyph name="info" size={16} weight={2.2} />
-          {MW.kept}
+      <fieldset className="mn-items" aria-describedby={told}>
+        <legend className="desk-label gs-label">
+          {MW.items}
+          <Optional />
+        </legend>
+        <p id="mn-items-help" className="desk-help">
+          {dish.variants.length > 0 ? `${MW.itemsHelp} ${MW.itemsVariants}` : MW.itemsHelp}
         </p>
-      )}
-      {usesParts(how) && (
-        <fieldset className="mn-parts" aria-describedby={told}>
-          <legend className="desk-label gs-label">
-            {MW.parts}
-            <Optional />
-          </legend>
-          <p id="mn-parts-help" className="desk-help">
-            {dish.variants.length > 0 ? `${MW.partsHelp} ${MW.partsVariants}` : MW.partsHelp}
-          </p>
-          <p className="mn-moved" role="status">
-            {moveSaid}
-          </p>
-          {dishForm.parts.length === 0 ? (
-            <p className="mn-one-plate">{MW.onePlate}</p>
-          ) : (
-            <ol className="mn-part-rows">
-              {dishForm.parts.map((part, at) => {
-                const error = errors.byKey[part.key];
-                const name = partName(part, dish);
-                return (
-                  <li key={part.key} className="mn-part-row">
-                    <span className="mn-part-n" aria-hidden="true">
-                      {at + 1}
-                    </span>
-                    <div className="mn-part-main">
-                      {part.kind === 'fixed' ? (
-                        <>
-                          <label htmlFor={`mn-part-${part.key}`} className="desk-unseen">
-                            {mw(MW.partN, { n: at + 1 })}
-                          </label>
-                          <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
-                            <input
-                              id={`mn-part-${part.key}`}
-                              type="text"
-                              value={part.name}
-                              spellCheck={false}
-                              autoComplete="off"
-                              aria-invalid={error != null}
-                              aria-describedby={
-                                error == null ? undefined : `mn-part-${part.key}-error`
-                              }
-                              onChange={(change) =>
-                                onDish({
-                                  parts: dishForm.parts.map((one) =>
-                                    one.key === part.key && one.kind === 'fixed'
-                                      ? { ...one, name: change.target.value }
-                                      : one,
-                                  ),
-                                })
-                              }
-                            />
-                          </div>
-                        </>
-                      ) : (
-                        <p
-                          className={
-                            isDraftPart(part, dish) ? 'mn-choice-part is-draft' : 'mn-choice-part'
-                          }
-                        >
-                          <Glyph name="question" size={16} weight={2.2} />
-                          <span className="mn-choice-part-name">{name}</span>
-                          {isDraftPart(part, dish) ? (
-                            <DraftTag />
-                          ) : (
-                            <span className="mn-tag">{MW.choiceTag}</span>
-                          )}
-                        </p>
-                      )}
-                      {error != null && <Wrong id={`mn-part-${part.key}-error`}>{error}</Wrong>}
-                    </div>
-                    <RowMoves
-                      at={at}
-                      of={dishForm.parts.length}
-                      name={shownName(name)}
-                      idKey={part.key}
-                      onMove={onMove}
-                      onRemove={() => onRemove(part.key)}
-                    />
-                  </li>
-                );
-              })}
-            </ol>
-          )}
-          {errors.list != null && <Wrong id="mn-parts-error">{errors.list}</Wrong>}
-          <div className="mn-add-row">
-            <button
-              id="mn-add-part"
-              type="button"
-              className="desk-text"
-              aria-describedby={addRefused ? 'mn-add-part-error' : undefined}
-              onClick={onAdd}
-            >
-              <Glyph name="plus" size={17} weight={2.3} />
-              {MW.addPart}
-            </button>
-            {addRefused && <Wrong id="mn-add-part-error">{MW.tooMany}</Wrong>}
-          </div>
-          {offered.length > 0 && (
-            <div className="mn-offer" role="group" aria-labelledby="mn-offer-head">
-              <p id="mn-offer-head" className="mn-offer-head">
-                {MW.addChoice}
-              </p>
-              <div className="mn-offer-list">
-                {offered.map((choice) => (
-                  <button
-                    key={choice.id}
-                    type="button"
-                    className="mn-offer-button"
-                    onClick={() => onAddChoice(choice.id)}
-                  >
-                    <Glyph name="plus" size={15} weight={2.4} />
-                    {choice.question}
-                  </button>
-                ))}
-              </div>
+        <p className="mn-moved" role="status">
+          {moveSaid}
+        </p>
+        {dishForm.items.length > 0 && (
+          <ol className="mn-item-rows">
+            {dishForm.items.map((item, at) => {
+              const error = errors.byKey[item.key];
+              return (
+                <li key={item.key} className="mn-item-row">
+                  <span className="mn-item-n" aria-hidden="true">
+                    {at + 1}
+                  </span>
+                  <div className="mn-item-main">
+                    {item.kind === 'fixed' ? (
+                      <>
+                        <label htmlFor={`mn-item-${item.key}`} className="desk-unseen">
+                          {mw(MW.itemN, { n: at + 1 })}
+                        </label>
+                        <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
+                          <input
+                            id={`mn-item-${item.key}`}
+                            type="text"
+                            value={item.name}
+                            spellCheck={false}
+                            autoComplete="off"
+                            aria-invalid={error != null}
+                            aria-describedby={
+                              error == null ? undefined : `mn-item-${item.key}-error`
+                            }
+                            onChange={(change) =>
+                              onDish({
+                                items: dishForm.items.map((one) =>
+                                  one.key === item.key && one.kind === 'fixed'
+                                    ? { ...one, name: change.target.value }
+                                    : one,
+                                ),
+                              })
+                            }
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <FromDish item={item} dish={dish} />
+                    )}
+                    {error != null && <Wrong id={`mn-item-${item.key}-error`}>{error}</Wrong>}
+                  </div>
+                  <RowMoves
+                    at={at}
+                    of={dishForm.items.length}
+                    name={shownName(itemName(item, dish))}
+                    idKey={item.key}
+                    onMove={onMove}
+                    onRemove={() => onRemove(item.key)}
+                  />
+                </li>
+              );
+            })}
+          </ol>
+        )}
+        {errors.list != null && <Wrong id="mn-items-error">{errors.list}</Wrong>}
+        <div className="mn-add-row">
+          <button
+            id="mn-add-item"
+            type="button"
+            className="desk-text"
+            aria-describedby={addRefused ? 'mn-add-item-error' : undefined}
+            onClick={onAdd}
+          >
+            <Glyph name="plus" size={17} weight={2.3} />
+            {MW.addItem}
+          </button>
+          {addRefused && <Wrong id="mn-add-item-error">{MW.tooMany}</Wrong>}
+        </div>
+        {offers.length > 0 && (
+          <div className="mn-offer" role="group" aria-labelledby="mn-offer-head">
+            <p id="mn-offer-head" className="mn-offer-head">
+              {MW.addFrom}
+            </p>
+            <div className="mn-offer-list">
+              {offers.map((offer) => (
+                <button
+                  key={offer.kind === 'variant' ? 'variant' : offer.choice.id}
+                  type="button"
+                  className="mn-offer-button"
+                  onClick={() => onAddOffer(offer)}
+                >
+                  <Glyph name="plus" size={15} weight={2.4} />
+                  {offer.kind === 'variant' ? offer.name : offer.choice.question}
+                  <span className="mn-tag">
+                    {offer.kind === 'variant' ? MW.variantTag : MW.choiceTag}
+                  </span>
+                </button>
+              ))}
             </div>
-          )}
-        </fieldset>
-      )}
+          </div>
+        )}
+      </fieldset>
     </>
   );
 }

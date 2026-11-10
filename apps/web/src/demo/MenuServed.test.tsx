@@ -30,62 +30,35 @@ beforeEach(() => {
   resetSample();
 });
 
-describe('How it’s served on the Menu (sc-34230)', () => {
-  it('opens Plated, with its line, and no parts on the dish rows', SLOW, async () => {
+describe('Items on every course’s dishes (sc-34230)', () => {
+  it('opens Edit dish with its items, and no How it’s served anywhere', SLOW, async () => {
     await menu();
 
-    expect(within(panel()).getByRole('radio', { name: 'Plated' })).toHaveProperty('checked', true);
-    expect(within(panel()).getByText(MW.served.plated)).toBeTruthy();
-    expect(screen.queryByText(MW.onePlate)).toBeNull();
+    expect(within(panel()).getByRole('group', { name: /^Items/u })).toBeTruthy();
+    expect(within(panel()).getByLabelText('Item 1')).toHaveProperty('value', 'Rice');
+    expect(screen.queryByText(/How it’s served|Plated|In parts|Family style|Buffet/u)).toBeNull();
+    expect(screen.getByText('Ice cream')).toBeTruthy();
   });
 
-  it('says when a guest counts as served for each way', SLOW, async () => {
+  it('shows nothing new on a dish with no items', SLOW, async () => {
+    await menu('noItems');
+
+    expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
+    expect(screen.queryByText(/one plate/u)).toBeNull();
+  });
+
+  it('shows Served with this course on Edit course', SLOW, async () => {
+    await menu('course');
+
+    expect(within(panel()).getByRole('group', { name: /Served with this course/u })).toBeTruthy();
+    expect(within(panel()).getByLabelText('Course item 1')).toHaveProperty('value', 'Bread roll');
+  });
+
+  it('moves an item and announces it, the ends greyed', SLOW, async () => {
     await menu();
-
-    for (const way of ['in_parts', 'family_style', 'buffet'] as const) {
-      fireEvent.click(within(panel()).getByRole('radio', { name: MW.ways[way] }));
-      expect(within(panel()).getByText(MW.served[way])).toBeTruthy();
-    }
-  });
-
-  it(
-    'shows Served with this course on In parts, and Plated at on Family style and Buffet',
-    SLOW,
-    async () => {
-      await menu('inParts');
-
-      expect(within(panel()).getByRole('group', { name: /Served with this course/u })).toBeTruthy();
-      expect(within(panel()).queryByRole('group', { name: /Plated at/u })).toBeNull();
-
-      fireEvent.click(within(panel()).getByRole('radio', { name: 'Buffet' }));
-      expect(within(panel()).queryByRole('group', { name: /Served with this course/u })).toBeNull();
-      expect(within(panel()).getByRole('group', { name: /Plated at/u })).toBeTruthy();
-      expect(within(panel()).getByText(MW.kept)).toBeTruthy();
-    },
-  );
-
-  it('keeps the parts through Plated and back', SLOW, async () => {
-    await menu('hidden');
-
-    expect(within(panel()).getByText(MW.kept)).toBeTruthy();
-    fireEvent.click(within(panel()).getByRole('radio', { name: 'In parts' }));
-    expect(within(panel()).getByLabelText('Course part 1')).toHaveProperty('value', 'Drink');
-  });
-
-  it('says No tables yet and offers nothing to choose', SLOW, async () => {
-    await menu('noTables');
-
-    expect(within(panel()).getByText(MW.noTables)).toBeTruthy();
-    expect(within(panel()).queryAllByRole('checkbox')).toHaveLength(0);
-  });
-});
-
-describe('a dish’s Parts', () => {
-  it('moves a part and announces it, the ends greyed', SLOW, async () => {
-    await menu('dishParts');
 
     fireEvent.click(within(panel()).getByRole('button', { name: 'Move Chicken up' }));
-    expect(within(panel()).getByRole('status').textContent).toBe('Chicken moved to part 1 of 3.');
+    expect(within(panel()).getByRole('status').textContent).toBe('Chicken moved to item 1 of 3');
     expect(
       within(panel())
         .getByRole('button', { name: 'Move Chicken up' })
@@ -98,53 +71,66 @@ describe('a dish’s Parts', () => {
     ).toBe('true');
   });
 
-  it('offers only the choices not yet parts, by question', SLOW, async () => {
+  it('offers only the choices not yet items, by question', SLOW, async () => {
     await menu('choiceDraft');
 
-    const offer = within(panel()).getByRole('group', { name: MW.addChoice });
+    const offer = within(panel()).getByRole('group', { name: MW.addFrom });
     expect(
       within(offer)
         .getAllByRole('button')
         .map((one) => one.textContent),
-    ).toEqual(['And a sauce?']);
+    ).toEqual([`And a sauce?${MW.choiceTag}`]);
     expect(within(panel()).getByText('Choice 3, no question yet')).toBeTruthy();
   });
 
-  it('refuses a 7th part beside Add a part', SLOW, async () => {
+  it('offers the variant by its names, and adds it as one item', SLOW, async () => {
+    await menu('variants');
+
+    const offer = within(panel()).getByRole('group', { name: MW.addFrom });
+    fireEvent.click(within(offer).getByRole('button', { name: /Croaker or Tilapia/u }));
+    expect(document.activeElement).toBe(
+      within(panel()).getByRole('button', { name: 'Move Croaker or Tilapia up' }),
+    );
+    expect(within(panel()).queryByRole('group', { name: MW.addFrom })).toBeNull();
+    expect(within(panel()).getByText(`${MW.itemsHelp} ${MW.itemsVariants}`)).toBeTruthy();
+  });
+
+  it('refuses a 7th item beside Add an item', SLOW, async () => {
     await menu('tooMany');
 
     expect(within(panel()).getByText(MW.tooMany)).toBeTruthy();
     expect(within(panel()).getAllByRole('listitem')).toHaveLength(6);
   });
 
-  it('refuses a single part on Save, saving nothing', SLOW, async () => {
+  it('refuses a single item on Save, saving nothing', SLOW, async () => {
     await menu('onlyOne');
 
     expect(within(panel()).getByText(MW.onlyOne)).toBeTruthy();
     expect(screen.getByRole('complementary')).toBeTruthy();
   });
 
-  it('refuses a blank part beside it and clears once named', SLOW, async () => {
+  it('refuses a blank item beside it and clears once named', SLOW, async () => {
     await menu('blankName');
 
-    const field = within(panel()).getByLabelText('Part 3');
+    const field = within(panel()).getByLabelText('Item 3');
     expect(field.getAttribute('aria-invalid')).toBe('true');
     expect(document.activeElement).toBe(field);
     fireEvent.change(field, { target: { value: 'Coleslaw' } });
     expect(within(panel()).queryByText(MW.blank)).toBeNull();
   });
 
-  it('saves parts and shows them on the dish row', SLOW, async () => {
-    await menu('onePlate');
+  it('saves items and shows them on the dish row', SLOW, async () => {
+    await menu('noItems');
 
-    fireEvent.click(within(panel()).getByRole('button', { name: MW.addPart }));
-    fireEvent.change(within(panel()).getByLabelText('Part 1'), { target: { value: 'Yam' } });
-    fireEvent.click(within(panel()).getByRole('button', { name: MW.addPart }));
-    fireEvent.change(within(panel()).getByLabelText('Part 2'), { target: { value: 'Egusi' } });
+    fireEvent.click(within(panel()).getByRole('button', { name: MW.addItem }));
+    fireEvent.change(within(panel()).getByLabelText('Item 1'), { target: { value: 'Yam' } });
+    fireEvent.click(within(panel()).getByRole('button', { name: MW.addItem }));
+    fireEvent.change(within(panel()).getByLabelText('Item 2'), { target: { value: 'Egusi' } });
     fireEvent.click(within(panel()).getByRole('button', { name: MW.save }));
 
     expect(screen.queryByRole('complementary')).toBeNull();
     expect(screen.getByText('Pounded yam and egusi saved.')).toBeTruthy();
+    expect(screen.getByText('Egusi')).toBeTruthy();
   });
 
   it('refuses a save without menu.manage, keeping the panel', SLOW, async () => {
@@ -153,6 +139,7 @@ describe('a dish’s Parts', () => {
     fireEvent.click(within(panel()).getByRole('button', { name: MW.save }));
     expect(within(panel()).getByRole('alert').textContent).toContain(MW.forbidden);
   });
+
   it('clears the refusal on a remove, and keeps focus on the next Remove', SLOW, async () => {
     await menu('tooMany');
 
@@ -164,22 +151,12 @@ describe('a dish’s Parts', () => {
     );
   });
 
-  it('lands on Add a part after removing the last part', SLOW, async () => {
-    await menu('dishParts');
+  it('lands on Add an item after removing the last item', SLOW, async () => {
+    await menu();
 
     const removes = within(panel()).getAllByRole('button', { name: /^Remove / });
     fireEvent.click(removes.at(-1) as HTMLElement);
-    expect(document.activeElement).toBe(within(panel()).getByRole('button', { name: MW.addPart }));
-  });
-
-  it('lands on the new row after adding a choice', SLOW, async () => {
-    await menu('choiceDraft');
-
-    const offer = within(panel()).getByRole('group', { name: MW.addChoice });
-    fireEvent.click(within(offer).getByRole('button', { name: 'And a sauce?' }));
-    expect(document.activeElement).toBe(
-      within(panel()).getByRole('button', { name: 'Move And a sauce? up' }),
-    );
+    expect(document.activeElement).toBe(within(panel()).getByRole('button', { name: MW.addItem }));
   });
 
   it('clears a course’s refusal on a remove, and keeps focus in the list', SLOW, async () => {
@@ -193,13 +170,13 @@ describe('a dish’s Parts', () => {
   });
 });
 
-describe('removing a choice that is a part, and read only', () => {
-  it('adds that the choice is a part, and takes the part with it', SLOW, async () => {
+describe('removing a choice or the variants, and read only', () => {
+  it('adds that the choice is an item, and takes the item with it', SLOW, async () => {
     await menu('removeChoice');
 
     expect(
       screen.getByText(
-        'Remove “And a side?” from Jollof rice? “And a side?” is also one of Jollof rice’s parts.',
+        'Remove “And a side?” from Jollof rice? “And a side?” is also one of Jollof rice’s items.',
       ),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: MW.removeChoice }));
@@ -207,7 +184,7 @@ describe('removing a choice that is a part, and read only', () => {
   });
 
   it(
-    'takes the part out of an open Edit dish too, and names a choice with no question',
+    'takes the item out of an open Edit dish too, and names a choice with no question',
     SLOW,
     async () => {
       await menu('choiceDraft');
@@ -224,11 +201,36 @@ describe('removing a choice that is a part, and read only', () => {
     },
   );
 
+  it('asks to make a dish single with the variants’ line, and takes the item', SLOW, async () => {
+    await menu('variantItem');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove the variant Tilapia…' }));
+    expect(
+      screen.getByText(
+        'Make this a single dish? The variants are also one of Grilled fish’s items.',
+      ),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: MW.makeSingle }));
+    expect(screen.getByText('Grilled fish is now a single dish.')).toBeTruthy();
+    expect(within(panel()).getAllByRole('listitem')).toHaveLength(2);
+    expect(screen.queryByText('Croaker or Tilapia')).toBeNull();
+  });
+
+  it('keeps the variants, and focus on the Remove pressed', SLOW, async () => {
+    await menu('fold');
+
+    fireEvent.click(screen.getByRole('button', { name: MW.keepVariants }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Remove the variant Tilapia…' }),
+    );
+  });
+
   it('shows everything as text without menu.manage', SLOW, async () => {
     await menu('readOnly');
 
     expect(screen.getByText(MW.lock)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /Edit/u })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Edit|Remove/u })).toBeNull();
     expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.getByText('Croaker or Tilapia')).toBeTruthy();
   });
 });
