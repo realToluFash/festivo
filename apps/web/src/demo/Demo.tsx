@@ -44,6 +44,8 @@ import { NOTIFICATIONS_PAGES } from './notifications.ts';
 import { PassPage } from './Pass.tsx';
 import { PASS_PAGES } from './pass.ts';
 import { QueuePage } from './Queue.tsx';
+import { HowItsGoingPage } from './HowItsGoing.tsx';
+import { SERVICE_STATES, SERVICE_STATE_WHAT } from './howItsGoing.ts';
 import { QUEUE_STATES, type QueueStateName } from './queue.ts';
 import { leave } from './chosenScheme.ts';
 import { PERSONALISATION_PAGES } from './personalisation.ts';
@@ -227,6 +229,7 @@ export default function Demo() {
       <Route path="guests" element={<Guests />} />
       <Route path="pass" element={<PassPage />} />
       <Route path="queue" element={<QueuePage />} />
+      <Route path="how-its-going" element={<HowItsGoingPage />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -308,6 +311,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={PASS_PAGES} />
         <h3>Service · the section’s queue (sc-36033) · desktop</h3>
         <BoardPages pages={QUEUE_PAGES} />
+        <h3>Service · How it’s going (sc-34107) · desktop</h3>
+        <BoardPages pages={HOW_ITS_GOING_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-81">
@@ -452,6 +457,16 @@ const QUEUE_PAGES = [
     states: QUEUE_STATES.map((state) => ({
       to: `/demo/queue?state=${state}`,
       name: QUEUE_WHAT[state],
+    })),
+  },
+];
+
+const HOW_ITS_GOING_PAGES = [
+  {
+    name: 'The floor lead’s view of how service is going',
+    states: SERVICE_STATES.map((state) => ({
+      to: `/demo/how-its-going?state=${state}`,
+      name: SERVICE_STATE_WHAT[state],
     })),
   },
 ];
