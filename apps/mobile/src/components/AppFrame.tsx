@@ -1329,11 +1329,7 @@ function useCountryCurrencies(open: boolean): Currencies | null {
   const [currencies, setCurrencies] = useState(currenciesRead);
 
   useEffect(() => {
-    if (!open) return;
-    if (currenciesRead != null) {
-      setCurrencies(currenciesRead);
-      return;
-    }
+    if (!open || currenciesRead != null) return;
     currenciesAsked ??= api.countryCurrencies().then(
       (read) => {
         currenciesRead = read;
@@ -1357,5 +1353,5 @@ function useCountryCurrencies(open: boolean): Currencies | null {
     };
   }, [open]);
 
-  return currencies;
+  return currencies ?? currenciesRead;
 }
