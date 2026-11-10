@@ -742,7 +742,6 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
   // sc-20209 carries it to adding and checking an address or a number, and to A few details. sc-20210: the signed-out forms.
   const HELD_FORMS = [
     'src/components/ConfirmItsYou.tsx',
-    'src/components/CreateOrganisation.tsx',
     'src/components/SecurityPassword.tsx',
     'src/components/AccountName.tsx',
     'src/components/AccountZone.tsx',
@@ -1134,23 +1133,24 @@ describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
 });
 
 describe('Create an organisation cannot be closed while it sends (sc-25667)', () => {
-  const text = () => readFileSync(join('src', 'components', 'CreateOrganisation.tsx'), 'utf8');
+  const text = () => readFileSync(join('src', 'components', 'CreateWalkWindow.tsx'), 'utf8');
 
-  it('so Cancel is off while it sends', () => {
-    const cancel = selfClosing('SecondaryButton', text()).find(
-      ({ markup }) => propValue(markup, 'testID') === '"createOrganisation.cancel"',
-    );
+  it('so Cancel, the scrim, back and the escape do nothing while it sends', () => {
+    const source = text();
 
-    expect(cancel && propValue(cancel.markup, 'off')).toBe('{saving}');
+    expect(source).toMatch(/const cancel = \(\) => \{\s*if \(creating\) return;/u);
+    expect(source).toMatch(/const escape = \(\) => \{[^}]*else if \(creating\) return;/u);
+    expect(source).toMatch(/const goBack = \(\) => \{\s*if \(!creating\)/u);
   });
 
-  it('so the sheet holds back, the escape and the scrim while it sends', () => {
+  it('and on the iPad reads its scrim as off while it sends', () => {
     const source = text();
-    const start = source.indexOf('<Sheet');
-    const sheet = source.slice(start, tagEnd(source, start));
+    const start = source.lastIndexOf('<Pressable', source.indexOf('testID="createWalk.scrim"'));
+    const scrim = source.slice(start, tagEnd(source, start));
 
-    expect(propValue(sheet, 'held')).toBe('{sending}');
-    expect(source).toMatch(/onSending\(saving\);\s*return \(\) => onSending\(false\);/u);
+    expect(propValue(scrim, 'onPress')).toBe('{cancel}');
+    expect(propValue(scrim, 'disabled')).toBe('{creating}');
+    expect(propValue(scrim, 'accessibilityState')).toBe('{{ disabled: creating }}');
   });
 
   it('where a held sheet ignores back, the escape and the scrim, and reads its scrim as off', () => {
@@ -1824,40 +1824,6 @@ describe('a notice answering a send comes into view (sc-24496)', () => {
     expect(
       answersInView('<AnswerInView>\n  <ReadOut words={failed} interrupts>', 'words={failed}'),
     ).toBe(true);
-  });
-});
-
-describe('a notice answering Create organisation comes into view (sc-25897)', () => {
-  const text = () => readFileSync(join('src', 'components', 'CreateOrganisation.tsx'), 'utf8');
-
-  it('measures both notices in the view the body brings into sight', () => {
-    const source = text();
-    const opened = source.indexOf('onNoticeLayout(event.nativeEvent.layout)');
-    const closed = source.indexOf('\n          </View>', opened);
-
-    expect(opened).toBeGreaterThan(0);
-    for (const said of ['words={[limited.title', 'words={notCreated}']) {
-      const at = source.indexOf(said);
-      expect(at > opened && at < closed, said).toBe(true);
-    }
-  });
-
-  it('counts each answer that shows a notice, so a second one comes in too', () => {
-    expect(text()).toContain(
-      "if (outcome.kind === 'limited' || outcome.kind === 'failed') setAnswer((sent) => sent + 1);",
-    );
-  });
-
-  it('holds the answering window for each answer, which brings the notice in', () => {
-    expect(text()).toMatch(
-      /if \(answer === 0\) return;\s*return settledAnswer\(\s*\(\) => lift\.current\?\.lift\(\),\s*SETTLED_MS,\s*\(on\) => \{\s*answering\.current = on;\s*\},\s*\);\s*\}, \[answer\]\);/u,
-    );
-  });
-
-  it('brings the notice in before lifting the field while it is answering', () => {
-    expect(text()).toMatch(
-      /if \(answering\.current\) bringNotice\(\);\s*else if \(inSight\) liftField\(\);/u,
-    );
   });
 });
 

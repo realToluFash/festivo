@@ -138,12 +138,12 @@ function Queue({ name }: { name: QueueStateName }) {
               {state.online ? (
                 <>
                   <span className="queue-status-dot" aria-hidden="true" />
-                  <span>{state.started ? 'Live · updated 20:41' : 'Not started yet'}</span>
+                  <span>{state.started ? 'Connected · up to date 20:41' : 'Not started yet'}</span>
                 </>
               ) : (
                 <>
                   <Glyph paths={OFFLINE_GLYPH} size={16} />
-                  <span>Offline · showing the room as of 20:41</span>
+                  <span>No connection · as of 20:41</span>
                 </>
               )}
             </div>

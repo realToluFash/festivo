@@ -22,6 +22,7 @@ import {
   handlesLive,
   itemOf,
   noSectionLine,
+  nobodyComing,
   placedCount,
   roomLine,
   sectionRowLine,
@@ -53,7 +54,7 @@ const item = (m: Seating, id: string) => {
 
 describe('the states', () => {
   it('are seating-a-spec §6’s, by the names both demos use', () => {
-    expect(SEATING_STATES).toHaveLength(101);
+    expect(SEATING_STATES).toHaveLength(102);
     expect(new Set(SEATING_STATES).size).toBe(SEATING_STATES.length);
     expect(SEATING_STATES.slice(0, 5)).toEqual([
       'plan',
@@ -307,6 +308,18 @@ describe('seating a party', () => {
   it('everyone seated empties the tray', () => {
     expect(startOf('everyoneSeated', 'landscape').tray).toEqual([]);
     expect(startOf('everyoneSeated', 'phone').tray).toEqual([]);
+    expect(nobodyComing(startOf('everyoneSeated', 'phone'))).toBe(false);
+  });
+
+  it('nobody coming yet empties the tray and every chair', () => {
+    for (const layout of ['landscape', 'phone'] as const) {
+      const m = startOf('nobodyComing', layout);
+      expect(m.tray).toEqual([]);
+      expect(m.items.every((it) => it.chairs.every((c) => c.who === null))).toBe(true);
+      expect(nobodyComing(m)).toBe(true);
+      expect(summaryLine(m, 0)).toBe(say.summary(tableCount(m.items), 0, 0, freeCount(m.items)));
+    }
+    expect(nobodyComing(pad)).toBe(false);
   });
 });
 

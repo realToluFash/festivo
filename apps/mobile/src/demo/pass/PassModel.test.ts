@@ -36,6 +36,12 @@ describe('the pass’s print controls (sc-4018)', () => {
     expect(platformOf(undefined, 'android')).toBe('android');
   });
 
+  it('shows sc-4028’s two states: Connected, and No connection on both no-connection rows', () => {
+    expect(off().connection).toBe('connected');
+    expect(startOf('offline', 'ipad', TABLES, PRINTERS[0]).connection).toBe('none');
+    expect(startOf('reconnecting', 'ipad', TABLES, PRINTERS[0]).connection).toBe('none');
+  });
+
   it('starts Print when fired off, with no printer, on the 80 mm roll', () => {
     const setup = off();
     expect(setup.whenFired).toBe(false);

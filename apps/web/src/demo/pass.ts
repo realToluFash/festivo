@@ -34,15 +34,8 @@ export const PW = {
   dialogueCaption: 'The browser’s print dialogue · a plain stand-in, not Soirely’s',
   newWords: 'New words · [en]',
   asOf: 'as of 20:09',
-  live: ['Live', 'Updated just now. Plates move here as soon as the room moves them.'],
-  stale: [
-    'Reconnecting · as of 20:09',
-    'Last update 20:09. What you see may have moved. Your taps are kept and sent when the signal is back.',
-  ],
-  offline: [
-    'Offline · as of 20:09',
-    'Marking plates and reading tickets still work. Requests from other devices won’t arrive until the signal is back.',
-  ],
+  connected: 'Connected · up to date 20:09',
+  noConnection: 'No connection · as of 20:09',
   demoNote:
     'Demo only: the stand-in shows where the browser’s print dialogue opens. Nothing is printed or stored.',
 } as const;
@@ -64,7 +57,7 @@ export const laidOut = (roll: string, stale: boolean): string =>
 export type Tone = 'chicken' | 'fish' | 'suya' | 'tofu' | 'none';
 export type Roll = '80' | '58';
 export type Which = 'unprinted' | 'all';
-export type Connection = 'live' | 'stale' | 'offline';
+export type Connection = 'connected' | 'none';
 
 export const ROLLS: Record<Roll, string> = { '80': '80 mm', '58': '58 mm' };
 
@@ -179,7 +172,7 @@ export function passStateOf(raw: string | null): PassState {
 const TWO: Printed = { T9: '20:09', T12: '20:10' };
 
 export function startOf(state: PassState): PassStart {
-  const base: PassStart = { printed: {}, panel: null, noTickets: false, connection: 'live' };
+  const base: PassStart = { printed: {}, panel: null, noTickets: false, connection: 'connected' };
 
   switch (state) {
     case 'ticket':
@@ -199,9 +192,9 @@ export function startOf(state: PassState): PassStart {
     case 'printing':
       return { ...base, panel: 'printing' };
     case 'offline':
-      return { ...base, connection: 'offline', printed: { T9: '20:09' }, panel: 'tickets' };
+      return { ...base, connection: 'none', printed: { T9: '20:09' }, panel: 'tickets' };
     case 'reconnecting':
-      return { ...base, connection: 'stale', printed: { T9: '20:09' } };
+      return { ...base, connection: 'none', printed: { T9: '20:09' } };
   }
 }
 
@@ -249,8 +242,8 @@ const NAMES: Record<PassState, string> = {
   'none-left': 'Print tickets · None left to print, All chosen',
   'no-tickets': 'Print tickets disabled · no tickets in Main',
   printing: 'Printing · version B, Paper roll and the iPad line',
-  offline: 'Offline · Print tickets still works, as of 20:09',
-  reconnecting: 'Reconnecting · Print still works, as of 20:09',
+  offline: 'No connection · Print tickets open, as of 20:09',
+  reconnecting: 'No connection · Print on each ticket, as of 20:09',
 };
 
 export const PASS_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [

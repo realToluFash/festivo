@@ -1,0 +1,269 @@
+import {
+  type NewOrganisationField,
+  countryChoices,
+  currencyLabel,
+  timezoneLabel,
+} from '@soirely/domain';
+import type { TFunction } from 'i18next';
+
+import { limitNotice, newOrganisationMessage } from './organisationCreate.ts';
+
+export type Step = 1 | 2 | 3;
+export const STEPS = 3;
+
+export type Sent = 'idle' | 'creating' | 'limited' | 'failed';
+
+export interface Device {
+  country: string | null;
+  zone: string;
+}
+
+export interface Walk {
+  step: Step;
+  name: string;
+  country: string | null;
+  query: string;
+  refusal: string | null;
+  sent: Sent;
+  lifts: Date | null;
+  asking: boolean;
+  cameBack: boolean;
+  device: Device;
+  /** sc-563: the address is managed by its home organisation, so the first step is the refusal. */
+  managed: boolean;
+}
+
+export function freshWalk(device: Device): Walk {
+  return {
+    step: 1,
+    name: '',
+    country: device.country,
+    query: '',
+    refusal: null,
+    sent: 'idle',
+    lifts: null,
+    asking: false,
+    cameBack: false,
+    device,
+    managed: false,
+  };
+}
+
+/** Cancel asks first only when something was entered: a name, or a country other than the device's. */
+export function entered(walk: Walk): boolean {
+  return walk.name.trim() !== '' || walk.country !== walk.device.country;
+}
+
+export function stepRefusal(walk: Walk, t: TFunction): string | null {
+  if (walk.step === 1) return newOrganisationMessage('name', walk.name, t);
+  if (walk.step === 2) return newOrganisationMessage('countryCode', walk.country ?? '', t);
+
+  return null;
+}
+
+export function forward(walk: Walk, t: TFunction): Walk {
+  const refusal = stepRefusal(walk, t);
+  if (refusal != null) return { ...walk, refusal };
+  if (walk.step === 3) return walk;
+
+  return { ...walk, step: walk.step === 1 ? 2 : 3, refusal: null, query: '', cameBack: false };
+}
+
+/** Back keeps everything: the name as typed, the country as picked; only the search clears. */
+export function back(walk: Walk): Walk {
+  if (walk.step === 1) return walk;
+
+  return {
+    ...walk,
+    step: walk.step === 3 ? 2 : 1,
+    refusal: null,
+    query: '',
+    sent: 'idle',
+    cameBack: true,
+  };
+}
+
+export function typed(walk: Walk, name: string): Walk {
+  return { ...walk, name, refusal: null };
+}
+
+export function picked(walk: Walk, country: string): Walk {
+  return { ...walk, country, refusal: null };
+}
+
+export type WalkAnswer<Made> =
+  | { kind: 'created'; made: Made }
+  | { kind: 'refused'; errors: Partial<Record<NewOrganisationField, string>> }
+  | { kind: 'limited'; until: Date | null }
+  | { kind: 'failed' };
+
+/** The walk after an answer other than created: a refused field takes the walk back to its step, with the server's reason. */
+export function answered(
+  walk: Walk,
+  answer: Exclude<WalkAnswer<unknown>, { kind: 'created' }>,
+): Walk {
+  if (answer.kind === 'limited') return { ...walk, sent: 'limited', lifts: answer.until };
+  if (answer.kind === 'failed') return { ...walk, sent: 'failed' };
+
+  const name = answer.errors.name;
+
+  return {
+    ...back(name != null ? { ...walk, step: 2 } : walk),
+    refusal: name ?? answer.errors.countryCode ?? null,
+  };
+}
+
+export interface Country {
+  code: string;
+  name: string;
+}
+
+const named = new Map<string, readonly Country[]>();
+
+/** Every country in the reader's language, made once: naming all 249 is slow on a phone. */
+export function countries(locale: string): readonly Country[] {
+  const known = named.get(locale);
+  if (known != null) return known;
+  const made = countryChoices(locale);
+  named.set(locale, made);
+
+  return made;
+}
+
+export function search(choices: readonly Country[], query: string): readonly Country[] {
+  const needle = query.trim().toLocaleLowerCase();
+  if (needle === '') return choices;
+
+  return choices.filter((choice) => choice.name.toLocaleLowerCase().includes(needle));
+}
+
+export function countryName(code: string | null, locale: string): string | null {
+  if (code == null) return null;
+
+  return countries(locale).find((country) => country.code === code)?.name ?? code;
+}
+
+/** The currency each country founds with, by its code, as the API's `Regions::currencyOf` says it: null where there is none. */
+export type Currencies = ReadonlyMap<string, string | null>;
+
+export interface Naming {
+  locale: string;
+  currencies: Currencies | null;
+}
+
+/** "Euro (EUR)", or "None yet" for a country with no money of its own; null while the currencies are not yet read. */
+export function currencyWords(
+  country: string | null,
+  naming: Naming,
+  t: TFunction,
+): { words: string; none: boolean } | null {
+  if (country == null || naming.currencies == null || !naming.currencies.has(country)) return null;
+  const currency = naming.currencies.get(country) ?? null;
+
+  return currency == null
+    ? { words: t('createOrganisation.noneYet'), none: true }
+    : { words: currencyLabel(currency, naming.locale), none: false };
+}
+
+export function rowLabel(country: Country, naming: Naming, t: TFunction): string {
+  const currency = currencyWords(country.code, naming, t);
+
+  return currency == null ? country.name : `${country.name}, ${currency.words}`;
+}
+
+export interface Fact {
+  key: 'country' | 'currency' | 'timezone' | 'contact';
+  label: string;
+  value: string;
+  none: boolean;
+}
+
+export function factsOf(
+  walk: Walk,
+  email: string,
+  t: TFunction,
+  contact: boolean,
+  naming: Naming,
+): Fact[] {
+  const name = countryName(walk.country, naming.locale);
+  const currency = currencyWords(walk.country, naming, t);
+  const facts: Fact[] = [];
+  if (name != null) {
+    facts.push({
+      key: 'country',
+      label: t('createOrganisation.country'),
+      value: name,
+      none: false,
+    });
+    if (currency != null)
+      facts.push({
+        key: 'currency',
+        label: t('orgGeneral.currency'),
+        value: currency.words,
+        none: currency.none,
+      });
+  }
+  if (name != null || contact)
+    facts.push({
+      key: 'timezone',
+      label: t('orgGeneral.timezone'),
+      value: timezoneLabel(walk.device.zone),
+      none: false,
+    });
+  if (contact)
+    facts.push({ key: 'contact', label: t('orgGeneral.contact'), value: email, none: false });
+
+  return facts;
+}
+
+export function cardWords(walk: Walk, email: string, t: TFunction, naming: Naming): string {
+  const facts = factsOf(walk, email, t, true, naming).map(
+    (fact) => `${fact.label}, ${fact.value}.`,
+  );
+
+  return [
+    `${walk.name.trim()}.`,
+    `${t('switcher.yourRole', { role: t('roles.owner') })}.`,
+    ...facts,
+  ].join(' ');
+}
+
+export function boxWords(walk: Walk, t: TFunction, naming: Naming): string {
+  const fromDevice = t('createOrganisation.fromDevice');
+  const lowered = fromDevice.charAt(0).toLocaleLowerCase(naming.locale) + fromDevice.slice(1);
+  const currency = currencyWords(walk.country, naming, t);
+  const zone = `${t('orgGeneral.timezone')}, ${lowered}, ${timezoneLabel(walk.device.zone)}.`;
+
+  return currency == null ? zone : `${t('orgGeneral.currency')}, ${currency.words}. ${zone}`;
+}
+
+export function limitedWords(
+  walk: Walk,
+  locale: string,
+  t: TFunction,
+): { title: string; body: string | null } {
+  return limitNotice(walk.lifts, locale, t);
+}
+
+export function cardNameSize(name: string): number {
+  return name.trim().length >= 40 ? 18 : 24;
+}
+
+/** Where Continue sits: pinned under the step, or, on a phone on its side with the keys up, where too little is left above them for a pinned foot and the field, scrolled as the step's last part, and on the country step left out until the keys go down, so it is not below the whole list (sc-35256). */
+export function footPlace({
+  phone,
+  width,
+  height,
+  keysUp,
+  step,
+}: {
+  phone: boolean;
+  width: number;
+  height: number;
+  keysUp: boolean;
+  step: Step;
+}): 'pinned' | 'scrolls' | 'hidden' {
+  if (!phone || !keysUp || width <= height) return 'pinned';
+
+  return step === 2 ? 'hidden' : 'scrolls';
+}

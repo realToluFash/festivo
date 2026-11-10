@@ -26,7 +26,7 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { AlertLine } from '../../components/AlertLine.tsx';
 import { LineIcon } from '../../components/AccountCard.tsx';
 import { PhotoFill } from '../../components/EventCard.tsx';
-import { EventNotice } from './EventNotice.tsx';
+import { EventNotice } from '../../components/EventNotice.tsx';
 import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from './EventsModel.ts';
 import {
   CLOSES_AT,

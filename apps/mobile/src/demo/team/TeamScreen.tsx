@@ -265,7 +265,7 @@ function Header({ s }: { s: TeamState }) {
           <View style={styles.dot} />
         )}
         <Text size={14} weight="medium" style={styles.secondary}>
-          {offline ? `No connection · as of ${NOW}` : `Live · updated ${NOW}`}
+          {offline ? `No connection · as of ${NOW}` : `Connected · up to date ${NOW}`}
         </Text>
       </View>
     </View>

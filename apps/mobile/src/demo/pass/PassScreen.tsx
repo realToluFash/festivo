@@ -75,10 +75,7 @@ function PassScreen({
   const [unreachable, setUnreachable] = useState(false);
   const tickets = setup.noTickets ? [] : fired ? [...TICKETS, FIRED_LATER] : TICKETS;
   const choices = choicesOf(tickets, setup.record, setup.which);
-  const stale = setup.connection !== 'live';
-  const [stripTitle, stripBody] = { live: PW.live, stale: PW.stale, offline: PW.offline }[
-    setup.connection
-  ];
+  const stale = setup.connection === 'none';
   const covered = setup.panel != null || setup.picker || dialogue != null;
   const ipad = platform === 'ipad';
   const change = (next: Partial<typeof setup>) => setSetup((was) => ({ ...was, ...next }));
@@ -192,46 +189,10 @@ function PassScreen({
             />
           </View>
         </View>
-        <View
-          style={[
-            styles.strip,
-            setup.connection === 'stale' && styles.stripStale,
-            setup.connection === 'offline' && styles.stripOffline,
-          ]}
-        >
-          <View
-            style={[
-              styles.stripDot,
-              setup.connection === 'live' && styles.stripDotLive,
-              setup.connection === 'stale' && styles.stripDotStale,
-              setup.connection === 'offline' && styles.stripDotOffline,
-            ]}
-          />
-          <Text
-            size={14}
-            weight="bold"
-            style={
-              setup.connection === 'offline'
-                ? styles.onDark
-                : setup.connection === 'stale'
-                  ? styles.attention
-                  : styles.accent
-            }
-          >
-            {stripTitle}
-          </Text>
-          <Text
-            size={14}
-            style={[
-              styles.flex,
-              setup.connection === 'offline'
-                ? styles.onDark
-                : setup.connection === 'stale'
-                  ? styles.attention
-                  : styles.accent,
-            ]}
-          >
-            {stripBody}
+        <View style={[styles.strip, stale && styles.stripStale]}>
+          <View style={[styles.stripDot, stale ? styles.stripDotStale : styles.stripDotLive]} />
+          <Text size={14} weight="bold" style={stale ? styles.attention : styles.accent}>
+            {stale ? PW.noConnection : PW.connected}
           </Text>
         </View>
         <View style={styles.body}>
@@ -445,7 +406,6 @@ const styles = StyleSheet.create({
   tertiary: { color: tokens.colorInkTertiary },
   attention: { color: tokens.colorAttentionText },
   accent: { color: tokens.colorAccentText },
-  onDark: { color: tokens.colorInkOnDark },
   caps: { textTransform: 'uppercase', letterSpacing: 1.2 },
   pressed: { opacity: tokens.opacityPressed },
   header: {
@@ -527,7 +487,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorAttentionTint,
     borderBottomColor: tokens.colorAttentionBorder,
   },
-  stripOffline: { backgroundColor: tokens.colorDark, borderBottomColor: tokens.colorDark },
   stripDot: { width: 12, height: 12, borderRadius: 6 },
   stripDotLive: { backgroundColor: tokens.colorAccent },
   stripDotStale: {
@@ -535,7 +494,6 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorAttention,
     backgroundColor: tokens.colorCard,
   },
-  stripDotOffline: { backgroundColor: tokens.colorAttentionOnDark },
   body: {
     flex: 1,
     flexDirection: 'row',

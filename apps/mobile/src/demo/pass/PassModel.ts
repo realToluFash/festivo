@@ -4,7 +4,7 @@ import { NOW } from './PassSample.ts';
 
 export type PrintPlatform = 'ipad' | 'android';
 export type Roll = '80' | '58';
-export type Connection = 'live' | 'stale' | 'offline';
+export type Connection = 'connected' | 'none';
 export type Panel = 'tickets' | 'printing';
 export type Which = 'unprinted' | 'all';
 
@@ -93,7 +93,7 @@ export function startOf(
     picker: false,
     pickerClosed: false,
     noTickets: false,
-    connection: 'live',
+    connection: 'connected',
   };
   const onSince = (since: string) => (ipad ? { whenFired: true, onSince: since, printer } : {});
   const onBeforeT15 = onSince('20:09');
@@ -128,14 +128,14 @@ export function startOf(
     case 'offline':
       return {
         ...base,
-        connection: 'offline',
+        connection: 'none',
         record: { ...EMPTY_RECORD, printed: { T9: '20:09' } },
         panel: 'tickets',
       };
     case 'reconnecting':
       return {
         ...base,
-        connection: 'stale',
+        connection: 'none',
         record: { ...EMPTY_RECORD, printed: { T9: '20:09' } },
       };
   }

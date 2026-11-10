@@ -21,6 +21,7 @@ import {
   itemOf,
   length,
   noSectionLine,
+  nobodyComing,
   partySize,
   partyWho,
   roomLine,
@@ -962,7 +963,7 @@ export function Tray({
           title={phone ? say.tab(W.withoutSeat, 0) : W.withoutSeat}
           right={phone ? undefined : <Count n={0} />}
         />
-        <Small text={W.everyoneSeated} />
+        <Small text={nobodyComing(m) ? W.nobodyComing : W.everyoneSeated} />
       </View>
     );
   return (

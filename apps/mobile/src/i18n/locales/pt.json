@@ -806,7 +806,16 @@
     "failed": "Não foi possível criar a organização. Nada foi criado. Tente novamente dentro de momentos.",
     "cancel": "Cancelar",
     "create": "Criar organização",
-    "creating": "A criar…"
+    "creating": "A criar…",
+    "whatTitle": "Como se chama?",
+    "whereTitle": "Onde está sediada?",
+    "readyTitle": "Tudo pronto para a criar?",
+    "fromDevice": "Deste dispositivo",
+    "allCountries": "Todos os países",
+    "discardTitle": "Descartar esta organização?",
+    "discardBody": "Nada é criado e o que introduziu não fica guardado.",
+    "discard": "Descartar",
+    "noneYet": "Nenhuma por agora"
   },
   "roles": {
     "owner": "Proprietário",

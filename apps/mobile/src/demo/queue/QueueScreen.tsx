@@ -194,9 +194,9 @@ function Header({ s }: { s: QueueState }) {
         <View style={[styles.dot, !s.online && styles.dotOff]} />
         <Text size={14} weight="medium" style={styles.secondary}>
           {!s.online
-            ? 'Offline · showing the room as of 20:41'
+            ? 'No connection · as of 20:41'
             : s.started
-              ? 'Live · updated 20:41'
+              ? 'Connected · up to date 20:41'
               : 'Not started yet'}
         </Text>
       </View>

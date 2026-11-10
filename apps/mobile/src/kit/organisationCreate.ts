@@ -7,13 +7,9 @@ import {
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
-export const NEW_ORGANISATION_FIELDS: readonly NewOrganisationField[] = ['name', 'countryCode'];
+import type { WalkAnswer } from './createWalk.ts';
 
-export type CreateOutcome =
-  | { kind: 'created'; organisation: Membership }
-  | { kind: 'refused'; errors: Partial<Record<NewOrganisationField, string>> }
-  | { kind: 'limited'; until: Date | null }
-  | { kind: 'failed' };
+const NEW_ORGANISATION_FIELDS: readonly NewOrganisationField[] = ['name', 'countryCode'];
 
 /** sc-390's "Create an organisation", as the web's dialog sends it. */
 export async function createOrganisation(
@@ -24,7 +20,7 @@ export async function createOrganisation(
   }) => Promise<Membership>,
   values: Record<NewOrganisationField, string>,
   timezone: string,
-): Promise<CreateOutcome> {
+): Promise<WalkAnswer<Membership>> {
   try {
     const organisation = await create({
       name: values.name.trim(),
@@ -32,7 +28,7 @@ export async function createOrganisation(
       timezone,
     });
 
-    return { kind: 'created', organisation };
+    return { kind: 'created', made: organisation };
   } catch (error) {
     if (error instanceof ApiError && error.is('too_many_attempts')) {
       return {
@@ -54,11 +50,6 @@ export async function createOrganisation(
 
     return { kind: 'failed' };
   }
-}
-
-/** Whether an answer the name cannot fix drops the keyboard: on iOS only, where sc-9442 makes it sc-9471's one exception. */
-export function dropsKeysAfter(outcome: CreateOutcome['kind'], os: string): boolean {
-  return os === 'ios' && (outcome === 'limited' || outcome === 'failed');
 }
 
 /** The check before sending, in the words both clients use. */

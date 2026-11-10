@@ -245,6 +245,36 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
     ).toBeDefined();
   });
 
+  it(
+    'opens a refused answer in place of the buttons, and an answer on its way held',
+    SLOW,
+    async () => {
+      open('/demo/events?switcher=expired');
+      const expired = await screen.findByText('Expired', {}, WAIT);
+      expect(expired.parentElement?.textContent).toContain('Ask Beatriz Lima to send a new one.');
+      expect(screen.queryByRole('button', { name: /^Accept and join/ })).toBeNull();
+      expect(await opener(/1 invitation waiting$/)).toBeDefined();
+      cleanup();
+
+      open('/demo/events?switcher=withdrawn');
+      const withdrawn = await screen.findByText('Withdrawn', {}, WAIT);
+      expect(withdrawn.parentElement?.textContent).toContain(
+        'This invitation was withdrawn by Bluebird Gatherings.',
+      );
+      cleanup();
+
+      open('/demo/events?switcher=busy');
+      const joining = await screen.findByRole(
+        'button',
+        { name: 'Accept and join Bluebird Gatherings' },
+        WAIT,
+      );
+      expect(joining.textContent).toBe('Joining…');
+      expect(joining.getAttribute('aria-busy')).toBe('true');
+      expect(await opener(/2 invitations waiting$/)).toBeDefined();
+    },
+  );
+
   it('asks to join the offer, or puts it away with Not now', SLOW, async () => {
     open('/demo/events?switcher=offer');
     await opener();

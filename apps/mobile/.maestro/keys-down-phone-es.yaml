@@ -1,15 +1,15 @@
-# Closes the keys by a tap on the sheet's own text, then taps Create organisation. sc-13408.
+# Closes the keys by a tap on the step's own question, then taps Continue. sc-13408.
 #
-# Spanish only. The tap is on the Spanish intro, the language the retest ran in: the sheet's text has
-# no testID to tap instead.
+# Run in Spanish, the language the retest ran in. The tap is on the first step's question by its
+# words: the question has no testID to tap instead.
 appId: host.exp.Exponent
 ---
-- tapOn: 'Usted tendrá.*'
+- tapOn: '{{t:createOrganisation.whatTitle}}'
 - waitForAnimationToEnd:
     timeout: 2000
 - takeScreenshot: mobile-13408-keys-down-before
 - tapOn:
-    id: 'createOrganisation.create'
+    id: 'createWalk.primary'
 - waitForAnimationToEnd:
     timeout: 2000
 - takeScreenshot: mobile-13408-keys-down-after

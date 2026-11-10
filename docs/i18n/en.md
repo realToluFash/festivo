@@ -67,6 +67,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **10 Nov 2026. Creating an organisation in the app, the three-step walk** (sc-36766 for sc-30412, `mobile:createOrganisation.whatTitle|whereTitle|readyTitle|fromDevice|allCountries|noneYet|discard*`). Kept as dev1 wrote it. Each step's title is a short question, and "What’s it called?" keeps its contraction: a warm question, not a refusal. "From this device" is a group heading, a tag on a row and, lowered, a phrase in the screen reader's "Time zone, from this device, …", so it agrees with nothing. "None yet" stands in for a currency.
 - **10 Nov 2026. An event's page in the app** (sc-36555 for sc-30413, `mobile:eventPage.datesLine*|datesLocked|venueLine|noHosts*|type|currency*|nameAndCover|eventName|cover*|defaultCover|yourPhoto|pauseLine|callOffLine|endLine`). Kept as sc-30413 wrote it. Each line under a row's title is "Label · detail", with the web's label: "Dates", "Venue", "Hosted by", "Cover". `datesLocked` is `web:eventEdit.scheduleLocked` after "Dates · " and keeps its "can't", since it explains; `noHostsLine` is `eventHosts.none` without its first sentence. `pauseLine`, `callOffLine` and `endLine` join on one line what `eventPause.body|nothingLost` and `eventEnd.callOffBody|endBody|final` said, word for word, and keep their contractions: they explain a confirm, they do not refuse.
 - **9 Nov 2026. The app's Organisation page** (sc-36126 for sc-30412, `mobile:orgGeneral.*`, `ownership.*`, `companyDomains.*`, `requestLink.lead`). Kept as dev1 wrote it. `ownership.transferredLine` should read "You are an admin.", lower case in running text per the glossary, but `organisationSave.test.ts` pins "Admin"; [dev] is asked on sc-30412 to change both. `orgGeneral.editTitle` is also the back label of the sheet's pickers, so every locale keeps it short. "Proved" tags a domain also proved under Email domains (sc-560).
 - **9 Nov 2026. The service floor's words** (sc-4005, epic 35 §4, §6, §7; settled in #36036,
@@ -959,3 +960,20 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
   keeping the English. The refusal keeps "isn't" for now because
   `AccountColourSchemeTest` pins the English; it should read "That is not one of …", which
   waits on [dev2].
+- **10 Nov 2026. Agreeing to WhatsApp** (sc-3950, settled on #36816 before any key exists).
+  The guest "agrees" to WhatsApp and a host "records" that they did; never "consent" or "opt
+  in" on screen. Under the tick **Send me updates on WhatsApp**: "Soirely sends them on behalf
+  of {{organisation}}. Reply STOP at any time to end them." ("on behalf of" names the business
+  the guest agrees to hear from; "for" reads as "to" in es and pt). The reach line's parts, each
+  a plural family joined through `listFormat`: "{{count}} have no mobile number", "{{count}}
+  stopped WhatsApp" (STOP or the switch, so not "texted STOP" as on SMS), "{{count}} haven't
+  agreed to WhatsApp"; one is "1 has …", "1 stopped …", "1 hasn't …". The host's **WhatsApp**
+  row under **Mobile number**, labels with no full stop: "Has not agreed to WhatsApp"; "Agreed
+  to WhatsApp on {{date}}" (the guest's own); and three whole keys for a host's record, "Agreed
+  to WhatsApp in person, recorded by {{name}} on {{date}}", "… by phone, …", "… in writing, …",
+  {{name}} the host's full name. Opted out, sc-3969's "Unsubscribed from WhatsApp on {date}"
+  and "Only the guest can change this." Under the **WhatsApp** switch in **Your messages**,
+  shown whether it is on or off and recorded when it is turned on: "Soirely sends updates on
+  WhatsApp on behalf of {{organisation}}. Reply STOP at any time to end them." It names
+  "updates on WhatsApp" because the row's label is only **WhatsApp**, so the tick's "them"
+  would point at nothing (settled on #36834).

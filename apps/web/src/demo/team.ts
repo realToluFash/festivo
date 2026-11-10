@@ -320,7 +320,7 @@ export function goOnline(s: TeamState, online: boolean): TeamState {
     online,
     sheet: null,
     notice: null,
-    say: online ? 'Live again.' : `No connection · as of ${NOW}.`,
+    say: online ? `Connected · up to date ${NOW}.` : `No connection · as of ${NOW}.`,
   };
 }
 

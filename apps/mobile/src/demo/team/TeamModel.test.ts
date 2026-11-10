@@ -118,6 +118,12 @@ describe('the move', () => {
     expect(s.say).toBe(NEED_LINE);
     expect(s.on).toEqual(fresh().on);
   });
+
+  it('announces each change of connection in the strip’s own words', () => {
+    const off = goOnline(fresh(), false);
+    expect(off.say).toBe('No connection · as of 20:41.');
+    expect(goOnline(off, true).say).toBe('Connected · up to date 20:41.');
+  });
 });
 
 describe('the moved person’s screens', () => {

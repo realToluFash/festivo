@@ -20,6 +20,13 @@ async function open(state: string): Promise<void> {
 const panel = () => screen.getByRole('dialog');
 
 describe('/demo/pass (sc-4018)', () => {
+  it('shows the strip as sc-4028’s Connected state alone, with no line under it', async () => {
+    await open('ticket');
+    expect(screen.getByText('Connected · up to date 20:09').parentElement?.textContent).toBe(
+      'Connected · up to date 20:09',
+    );
+  });
+
   it('records Printed when the stand-in dialogue closes, Cancel included, as a browser cannot tell them apart', async () => {
     await open('ticket');
     fireEvent.click(screen.getByRole('button', { name: 'Print table 9’s ticket' }));
@@ -69,9 +76,10 @@ describe('/demo/pass (sc-4018)', () => {
     expect(within(panel()).queryByRole('switch')).toBeNull();
   });
 
-  it('prints offline from the tickets on screen, saying the paper carries AS OF', async () => {
+  it('prints with no connection from the tickets on screen, saying the paper carries AS OF', async () => {
     await open('offline');
-    expect(screen.getByText('Offline · as of 20:09')).toBeTruthy();
+    expect(screen.getByText('No connection · as of 20:09')).toBeTruthy();
+    expect(screen.queryByText(/Offline|Reconnecting/)).toBeNull();
     expect(within(panel()).getByText(/Each ticket carries AS OF 20:09 at the top\./)).toBeTruthy();
   });
 });

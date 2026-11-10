@@ -1052,6 +1052,37 @@ describe('a browser never holds the refresh token', () => {
     ).rejects.toThrow(/OrganisationController/);
   });
 
+  test('reads each country’s currency, none where it has no money of its own', async () => {
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async () =>
+        json({
+          countries: [
+            { code: 'PT', currency: 'EUR' },
+            { code: 'AQ', currency: null },
+          ],
+        }),
+    });
+
+    const currencies = await client.countryCurrencies();
+
+    expect([...currencies]).toEqual([
+      ['PT', 'EUR'],
+      ['AQ', null],
+    ]);
+  });
+
+  test('a countries list in another shape is an error', async () => {
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async () => json({ countries: [{ code: 'PT', currency: 978 }] }),
+    });
+
+    await expect(client.countryCurrencies()).rejects.toThrow(/CountriesController/);
+  });
+
   test('reads the three roles as the API answers them since sc-29912', async () => {
     const client = new ApiClient({
       baseUrl: () => 'http://api.test',
