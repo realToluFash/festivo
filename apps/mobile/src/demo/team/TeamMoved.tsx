@@ -85,7 +85,7 @@ function Station({ s }: { s: TeamState }) {
       </Text>
       <Text size={15} weight="medium" style={styles.secondary}>
         {who}
-        {two ? ' · two stations' : ''} · Live · updated {NOW}
+        {two ? ' · two stations' : ''} · Connected · up to date {NOW}
       </Text>
       <MovedLine words={s.lines[who] ?? ''} />
       <View style={styles.card}>
