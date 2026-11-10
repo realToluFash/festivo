@@ -53,5 +53,5 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'account\..+\.remove'
 - extendedWaitUntil:
-    notVisible: ${output.title}
+    notVisible: '${output.title}(\. .*)?'
     timeout: 15000
