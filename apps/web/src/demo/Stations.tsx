@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
-import { Glyph, type GlyphName } from '../components/Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
 import { EventsShell } from './EventParts.tsx';
@@ -9,6 +9,7 @@ import { EventSidebar } from './EventSidebar.tsx';
 import { type SampleEvent, sampleEvent } from './events.ts';
 import { Pill } from './GuestsParts.tsx';
 import { clockOfKitchen } from './kitchen.ts';
+import { IconButton, Wrong } from './MenuServed.tsx';
 import { keptInbox, waitingLine } from './messages.ts';
 import {
   type Changed,
@@ -106,11 +107,11 @@ function StationsView({
   const manage = first.manage;
 
   useEffect(() => {
-    const id = first.scroll === 'dishes' ? 'st-dishes' : first.scroll === 'walk' ? 'st-walk' : null;
+    const id = first.scroll === 'dishes' ? 'sn-dishes' : first.scroll === 'walk' ? 'sn-walk' : null;
     if (id != null) document.getElementById(id)?.scrollIntoView?.({ block: 'start' });
-    if (first.asking != null) document.getElementById(`st-ask-${first.asking}`)?.focus();
+    if (first.asking != null) document.getElementById(`sn-ask-${first.asking}`)?.focus();
     if (first.pressed)
-      document.getElementById(first.panel?.kind === 'floor' ? 'st-floor' : 'st-name')?.focus();
+      document.getElementById(first.panel?.kind === 'floor' ? 'sn-floor' : 'sn-name')?.focus();
   }, [first]);
 
   useEffect(() => {
@@ -131,18 +132,18 @@ function StationsView({
     if (next?.kind === 'name')
       setDraft(next.id == null ? '' : (stationById(state, next.id)?.name ?? ''));
     if (next?.kind === 'floor') setFloorPick(state.floor ?? '');
-    focusAfter.current = 'st-panel-title';
+    focusAfter.current = 'sn-panel-title';
   }
 
   function close() {
     const back =
       panel?.kind === 'people'
-        ? `st-people-${panel.id}`
+        ? `sn-people-${panel.id}`
         : panel?.kind === 'floor'
-          ? 'st-floor-open'
+          ? 'sn-floor-open'
           : panel?.kind === 'name' && panel.id != null
-            ? `st-rename-${panel.id}`
-            : 'st-add';
+            ? `sn-rename-${panel.id}`
+            : 'sn-add';
     setPanel(null);
     setPressed(false);
     focusAfter.current = back;
@@ -155,7 +156,7 @@ function StationsView({
     if (panel?.kind !== 'name') return;
     if (checkName(state, draft, panel.id) != null) {
       setPressed(true);
-      focusAfter.current = 'st-name';
+      focusAfter.current = 'sn-name';
       return;
     }
     apply(panel.id == null ? addPlace(state, draft) : renamePlace(state, panel.id, draft));
@@ -165,7 +166,7 @@ function StationsView({
   function saveFloor() {
     if (floorPick === '') {
       setPressed(true);
-      focusAfter.current = 'st-floor';
+      focusAfter.current = 'sn-floor';
       return;
     }
     setState({ ...state, floor: floorPick });
@@ -180,14 +181,14 @@ function StationsView({
     const at = changed.state.walk.indexOf(placeId);
     const last = changed.state.walk.length - 1;
     const side = by === -1 ? (at > 0 ? 'up' : 'down') : at < last ? 'down' : 'up';
-    focusAfter.current = `st-${side}-${placeId}`;
+    focusAfter.current = `sn-${side}-${placeId}`;
   }
 
   function remove(placeId: string) {
     apply(removePlace(state, placeId));
     setAsking(null);
     if (panel?.kind === 'people' && panel.id === placeId) setPanel(null);
-    focusAfter.current = 'st-add';
+    focusAfter.current = 'sn-add';
   }
 
   const places = placesOf(state);
@@ -223,17 +224,17 @@ function StationsView({
             <p className="mn-sub">{SW.sub}</p>
           </div>
         </header>
-        <nav className="st-tabs" aria-label={SW.title}>
+        <nav className="sn-tabs" aria-label={SW.title}>
           {SW.tabs.map((tab) =>
             tab === 'Stations' ? (
-              <span key={tab} className="st-tab" aria-current="page">
+              <span key={tab} className="sn-tab" aria-current="page">
                 {tab}
               </span>
             ) : (
               <button
                 key={tab}
                 type="button"
-                className="st-tab"
+                className="sn-tab"
                 onClick={() => tell(`${tab} has its own design (sc-3906, sc-3908, sc-101).`)}
               >
                 {tab}
@@ -258,7 +259,7 @@ function StationsView({
         <div className="mn-split">
           <div className="mn-list">
             {removed && (
-              <div className="st-alert" role="alert">
+              <div className="sn-alert" role="alert">
                 <Glyph name="alert" size={18} weight={2.2} />
                 <div>
                   <strong>{SW.removedTitle}</strong>
@@ -273,15 +274,15 @@ function StationsView({
               </div>
             )}
             <FloorCard state={state} manage={manage} onOpen={() => open({ kind: 'floor' })} />
-            <section className="st-card" aria-labelledby="st-places">
-              <div className="st-card-top">
-                <div className="st-card-names">
-                  <h2 id="st-places">{SW.places}</h2>
+            <section className="sn-card" aria-labelledby="sn-places">
+              <div className="sn-card-top">
+                <div className="sn-card-names">
+                  <h2 id="sn-places">{SW.places}</h2>
                   <p className="mn-sub">{SW.placesSub}</p>
                 </div>
                 {manage && (
                   <button
-                    id="st-add"
+                    id="sn-add"
                     type="button"
                     className="desk-text"
                     onClick={() => open({ kind: 'name', id: null })}
@@ -291,7 +292,7 @@ function StationsView({
                   </button>
                 )}
               </div>
-              <ul className="st-rows">
+              <ul className="sn-rows">
                 {places.map((one) => (
                   <StationRow
                     key={one.id}
@@ -304,27 +305,27 @@ function StationsView({
                     onRename={() => open({ kind: 'name', id: one.id })}
                     onAsk={() => {
                       setAsking(one.id);
-                      focusAfter.current = `st-ask-${one.id}`;
+                      focusAfter.current = `sn-ask-${one.id}`;
                     }}
                     onKeep={() => {
                       setAsking(null);
-                      focusAfter.current = `st-remove-${one.id}`;
+                      focusAfter.current = `sn-remove-${one.id}`;
                     }}
                     onRemove={() => remove(one.id)}
                   />
                 ))}
               </ul>
-              <p className="st-foot">{SW.placesFoot}</p>
+              <p className="sn-foot">{SW.placesFoot}</p>
             </section>
-            <section className="st-card" aria-labelledby="st-sections">
-              <div className="st-card-names">
-                <h2 id="st-sections">{SW.sections}</h2>
+            <section className="sn-card" aria-labelledby="sn-sections">
+              <div className="sn-card-names">
+                <h2 id="sn-sections">{SW.sections}</h2>
                 <p className="mn-sub">{SW.sectionsSub}</p>
               </div>
               {sections.length === 0 ? (
-                <p className="st-empty">{SW.noSections}</p>
+                <p className="sn-empty">{SW.noSections}</p>
               ) : (
-                <ul className="st-rows">
+                <ul className="sn-rows">
                   {sections.map((one) => (
                     <StationRow
                       key={one.id}
@@ -338,7 +339,7 @@ function StationsView({
                   ))}
                 </ul>
               )}
-              <p className="st-foot">{SW.sectionsFoot}</p>
+              <p className="sn-foot">{SW.sectionsFoot}</p>
             </section>
             <Dishes
               state={state}
@@ -348,14 +349,14 @@ function StationsView({
               }
             />
             <Walk state={state} manage={manage} onMove={move} />
-            <section className="st-card" aria-labelledby="st-none">
-              <h2 id="st-none">{SW.noStation}</h2>
-              <p className="st-line">{noStationLine(state)}</p>
-              <p className="st-foot">{manage ? SW.unFoot : SW.lock}</p>
+            <section className="sn-card" aria-labelledby="sn-none">
+              <h2 id="sn-none">{SW.noStation}</h2>
+              <p className="sn-line">{noStationLine(state)}</p>
+              <p className="sn-foot">{manage ? SW.unFoot : SW.lock}</p>
             </section>
           </div>
           {manage && panel != null && (
-            <aside className="mn-panel" aria-labelledby="st-panel-title">
+            <aside className="mn-panel" aria-labelledby="sn-panel-title">
               {panel.kind === 'people' && (
                 <PeoplePanel
                   state={state}
@@ -370,16 +371,16 @@ function StationsView({
                   <PanelTop title={SW.floorLead} onClose={close} />
                   <div className="mn-panel-body">
                     <div className="desk-field">
-                      <label htmlFor="st-floor" className="desk-label">
+                      <label htmlFor="sn-floor" className="desk-label">
                         {SW.whoLeads}
                       </label>
                       <Select
-                        id="st-floor"
+                        id="sn-floor"
                         value={floorPick}
                         shown={floorPick === '' ? SW.choosePerson : personById(floorPick).name}
                         wrong={floorError != null}
                         describedBy={
-                          floorError != null ? 'st-floor-error st-floor-help' : 'st-floor-help'
+                          floorError != null ? 'sn-floor-error sn-floor-help' : 'sn-floor-help'
                         }
                         onChange={setFloorPick}
                         options={[
@@ -390,8 +391,8 @@ function StationsView({
                           })),
                         ]}
                       />
-                      {floorError != null && <Wrong id="st-floor-error">{floorError}</Wrong>}
-                      <p id="st-floor-help" className="desk-help">
+                      {floorError != null && <Wrong id="sn-floor-error">{floorError}</Wrong>}
+                      <p id="sn-floor-help" className="desk-help">
                         {SW.floorHelp}
                       </p>
                     </div>
@@ -411,24 +412,24 @@ function StationsView({
                   />
                   <div className="mn-panel-body">
                     <div className="desk-field">
-                      <label htmlFor="st-name" className="desk-label">
+                      <label htmlFor="sn-name" className="desk-label">
                         {SW.name}
                       </label>
                       <div className={nameError == null ? 'desk-box' : 'desk-box is-wrong'}>
                         <input
-                          id="st-name"
+                          id="sn-name"
                           type="text"
                           value={draft}
                           spellCheck={false}
                           aria-invalid={nameError != null}
                           aria-describedby={
-                            nameError != null ? 'st-name-error st-name-help' : 'st-name-help'
+                            nameError != null ? 'sn-name-error sn-name-help' : 'sn-name-help'
                           }
                           onChange={(change) => setDraft(change.target.value)}
                         />
                       </div>
-                      {nameError != null && <Wrong id="st-name-error">{nameError}</Wrong>}
-                      <p id="st-name-help" className="desk-help">
+                      {nameError != null && <Wrong id="sn-name-error">{nameError}</Wrong>}
+                      <p id="sn-name-help" className="desk-help">
                         {SW.nameHelp}
                       </p>
                     </div>
@@ -461,12 +462,12 @@ function FloorCard({
   const lead = state.floor == null ? null : personById(state.floor);
 
   return (
-    <section className="st-card st-floor" aria-labelledby="st-floor-title">
-      <div className="st-card-names">
-        <h2 id="st-floor-title" className="st-eyebrow">
+    <section className="sn-card sn-floor" aria-labelledby="sn-floor-title">
+      <div className="sn-card-names">
+        <h2 id="sn-floor-title" className="sn-eyebrow">
           {SW.floorLead}
         </h2>
-        <p className="st-floor-name">{lead == null ? SW.noFloorLead : lead.name}</p>
+        <p className="sn-floor-name">{lead == null ? SW.noFloorLead : lead.name}</p>
         <p className="mn-sub">
           {lead == null
             ? SW.noFloorMeta
@@ -512,21 +513,21 @@ function StationRow({
   const editable = station.kind === 'place' && station.id !== PASS;
 
   return (
-    <li className={lit ? 'st-row is-lit' : 'st-row'}>
-      <div className="st-row-top">
-        <div className="st-row-names">
+    <li className={lit ? 'sn-row is-lit' : 'sn-row'}>
+      <div className="sn-row-top">
+        <div className="sn-row-names">
           <h3>
             {label}
-            {station.id === PASS && <span className="st-tag">Fixed</span>}
+            {station.id === PASS && <span className="sn-tag">Fixed</span>}
           </h3>
           {meta !== '' && <p className="mn-quiet">{meta}</p>}
         </div>
         {manage && (
-          <div className="st-acts">
+          <div className="sn-acts">
             <button
-              id={`st-people-${station.id}`}
+              id={`sn-people-${station.id}`}
               type="button"
-              className="st-act"
+              className="sn-act"
               aria-label={`${SW.peopleAndLead} for ${label}`}
               onClick={onPeople}
             >
@@ -535,18 +536,18 @@ function StationRow({
             {editable && (
               <>
                 <button
-                  id={`st-rename-${station.id}`}
+                  id={`sn-rename-${station.id}`}
                   type="button"
-                  className="st-act"
+                  className="sn-act"
                   aria-label={`${SW.rename} ${station.name}`}
                   onClick={onRename}
                 >
                   {SW.rename}
                 </button>
                 <button
-                  id={`st-remove-${station.id}`}
+                  id={`sn-remove-${station.id}`}
                   type="button"
-                  className="st-act"
+                  className="sn-act"
                   aria-label={`Remove ${station.name}…`}
                   onClick={onAsk}
                 >
@@ -558,22 +559,22 @@ function StationRow({
         )}
       </div>
       {station.people.length > 0 ? (
-        <ul className="st-people" aria-label={`People on ${label}`}>
+        <ul className="sn-people" aria-label={`People on ${label}`}>
           {station.people.map((id) => {
             const one = personById(id);
 
             return (
-              <li key={id} className="st-person">
-                <span className="st-person-name">{one.name}</span>
-                <span className="st-time">{shiftOf(one)}</span>
-                {station.lead === id && <span className="st-lead">{SW.lead}</span>}
+              <li key={id} className="sn-person">
+                <span className="sn-person-name">{one.name}</span>
+                <span className="sn-time">{shiftOf(one)}</span>
+                {station.lead === id && <span className="sn-lead">{SW.lead}</span>}
               </li>
             );
           })}
         </ul>
       ) : (
-        <p className="st-nobody">
-          <span className="st-nobody-mark" aria-hidden="true" />
+        <p className="sn-nobody">
+          <span className="sn-nobody-mark" aria-hidden="true" />
           Nobody on {station.kind === 'section' ? station.name : label}
         </p>
       )}
@@ -582,7 +583,7 @@ function StationRow({
       )}
       {asking && (
         <div className="mn-ask">
-          <p id={`st-ask-${station.id}`} tabIndex={-1}>
+          <p id={`sn-ask-${station.id}`} tabIndex={-1}>
             {removeLine(state, station.id)}
           </p>
           <div className="mn-ask-acts">
@@ -609,36 +610,36 @@ function Dishes({
   const places = placesOf(state);
 
   return (
-    <section id="st-dishes" className="st-card" aria-labelledby="st-dishes-title">
-      <div className="st-card-names">
-        <h2 id="st-dishes-title">{SW.dishes}</h2>
+    <section id="sn-dishes" className="sn-card" aria-labelledby="sn-dishes-title">
+      <div className="sn-card-names">
+        <h2 id="sn-dishes-title">{SW.dishes}</h2>
         <p className="mn-sub">{SW.dishesSub}</p>
       </div>
       {state.courses.length === 0 ? (
-        <p className="st-empty">{SW.noCourses}</p>
+        <p className="sn-empty">{SW.noCourses}</p>
       ) : (
         state.courses.map((course, index) => (
-          <div key={course.id} className="st-course">
-            <h3 id={`st-course-${course.id}`}>
-              <span className="st-eyebrow">Course {index + 1}</span>
+          <div key={course.id} className="sn-course">
+            <h3 id={`sn-course-${course.id}`}>
+              <span className="sn-eyebrow">Course {index + 1}</span>
               {course.name}
             </h3>
             {course.items.length === 0 ? (
-              <p className="st-empty">{SW.noDishes}</p>
+              <p className="sn-empty">{SW.noDishes}</p>
             ) : (
-              <ul className="st-items" aria-labelledby={`st-course-${course.id}`}>
-                {course.items.map((item) => {
+              <ul className="sn-items" aria-labelledby={`sn-course-${course.id}`}>
+                {course.items.map((item, index) => {
                   const at = dishedAt(state, course.id, item);
                   const atName = stationById(state, at)?.name ?? '';
 
                   return (
-                    <li key={item} className="st-item">
-                      <span className="st-item-name" translate="no">
+                    <li key={item} className="sn-item">
+                      <span className="sn-item-name" translate="no">
                         {item}
                       </span>
                       {manage ? (
                         <Select
-                          id={`st-at-${course.id}-${item}`}
+                          id={`sn-at-${course.id}-${index}`}
                           value={at}
                           shown={atName}
                           label={`${SW.dishedAt}, ${item}, ${course.name}`}
@@ -647,8 +648,8 @@ function Dishes({
                           options={places.map((one) => ({ value: one.id, label: one.name }))}
                         />
                       ) : (
-                        <span className="st-at-text">
-                          <span className="st-at-label">{SW.dishedAt}</span>
+                        <span className="sn-at-text">
+                          <span className="sn-at-label">{SW.dishedAt}</span>
                           {atName}
                         </span>
                       )}
@@ -676,21 +677,21 @@ function Walk({
   const last = state.walk.length - 1;
 
   return (
-    <section id="st-walk" className="st-card" aria-labelledby="st-walk-title">
-      <div className="st-card-names">
-        <h2 id="st-walk-title">{SW.walk}</h2>
+    <section id="sn-walk" className="sn-card" aria-labelledby="sn-walk-title">
+      <div className="sn-card-names">
+        <h2 id="sn-walk-title">{SW.walk}</h2>
         <p className="mn-sub">{SW.walkSub}</p>
       </div>
       {state.walk.length === 0 ? (
-        <p className="st-empty">{SW.walkEmpty}</p>
+        <p className="sn-empty">{SW.walkEmpty}</p>
       ) : (
-        <ol className="st-walk" aria-labelledby="st-walk-title">
-          <li className="st-stop">
-            <span className="st-stop-n" aria-hidden="true">
+        <ol className="sn-walk" aria-labelledby="sn-walk-title">
+          <li className="sn-stop">
+            <span className="sn-stop-n" aria-hidden="true">
               1
             </span>
-            <span className="st-stop-names">
-              <span className="st-stop-name">Pass</span>
+            <span className="sn-stop-names">
+              <span className="sn-stop-name">Pass</span>
               <span className="mn-quiet">{SW.walkPass}</span>
             </span>
           </li>
@@ -698,37 +699,37 @@ function Walk({
             const name = stationById(state, id)?.name ?? '';
 
             return (
-              <li key={id} className="st-stop">
-                <span className="st-stop-n" aria-hidden="true">
+              <li key={id} className="sn-stop">
+                <span className="sn-stop-n" aria-hidden="true">
                   {at + 2}
                 </span>
-                <span className="st-stop-names">
-                  <span className="st-stop-name">{name}</span>
+                <span className="sn-stop-names">
+                  <span className="sn-stop-name">{name}</span>
                   <span className="mn-quiet">{dishesLine(itemsAt(state, id))}</span>
                 </span>
                 {manage && (
-                  <span className="st-stop-acts">
+                  <span className="sn-stop-acts">
                     {at > 0 ? (
                       <IconButton
-                        id={`st-up-${id}`}
+                        id={`sn-up-${id}`}
                         glyph="chevup"
                         label={`${SW.moveUp}, ${name}`}
                         hint={SW.moveUp}
                         onClick={() => onMove(id, -1)}
                       />
                     ) : (
-                      <span className="st-stop-gap" />
+                      <span className="sn-stop-gap" />
                     )}
                     {at < last ? (
                       <IconButton
-                        id={`st-down-${id}`}
+                        id={`sn-down-${id}`}
                         glyph="chevdown"
                         label={`${SW.moveDown}, ${name}`}
                         hint={SW.moveDown}
                         onClick={() => onMove(id, 1)}
                       />
                     ) : (
-                      <span className="st-stop-gap" />
+                      <span className="sn-stop-gap" />
                     )}
                   </span>
                 )}
@@ -737,7 +738,7 @@ function Walk({
           })}
         </ol>
       )}
-      <p className="st-foot">{SW.walkFoot}</p>
+      <p className="sn-foot">{SW.walkFoot}</p>
     </section>
   );
 }
@@ -767,25 +768,25 @@ function PeoplePanel({
       />
       <div className="mn-panel-body">
         <div className="desk-field">
-          <label htmlFor="st-lead" className="desk-label">
+          <label htmlFor="sn-lead" className="desk-label">
             {SW.lead}
           </label>
           <Select
-            id="st-lead"
+            id="sn-lead"
             value={lead ?? ''}
             shown={lead == null ? SW.noLead : personById(lead).name}
-            describedBy="st-lead-help"
+            describedBy="sn-lead-help"
             onChange={(value) => onLead(value === '' ? null : value)}
             options={[
               { value: '', label: SW.noLead },
               ...station.people.map((id) => ({ value: id, label: personById(id).name })),
             ]}
           />
-          <p id="st-lead-help" className="desk-help">
+          <p id="sn-lead-help" className="desk-help">
             {SW.leadHelp}
           </p>
         </div>
-        <ul className="st-roster" aria-label={SW.rosterLabel}>
+        <ul className="sn-roster" aria-label={SW.rosterLabel}>
           {ROSTER.map((one) => {
             const at = stationOf(state, one.id);
             const here = at?.id === station.id;
@@ -798,16 +799,16 @@ function PeoplePanel({
                 : `Move ${one.name} from ${labelOf(at)} to ${label}`;
 
             return (
-              <li key={one.id} className="st-roster-row">
-                <span className="st-roster-names">
-                  <span className="st-person-name">{one.name}</span>
+              <li key={one.id} className="sn-roster-row">
+                <span className="sn-roster-names">
+                  <span className="sn-person-name">{one.name}</span>
                   <span className={here ? 'mn-quiet is-here' : 'mn-quiet'}>
                     {`${one.job} · ${shiftOf(one)} · ${where}`}
                   </span>
                 </span>
                 <button
                   type="button"
-                  className="st-act"
+                  className="sn-act"
                   aria-label={aria}
                   onClick={() => onToggle(one.id)}
                 >
@@ -841,7 +842,7 @@ function PanelTop({
     <div className="mn-panel-top">
       <div className="mn-panel-names">
         {eyebrow != null && <p className="mn-eyebrow">{eyebrow}</p>}
-        <h2 id="st-panel-title" tabIndex={-1}>
+        <h2 id="sn-panel-title" tabIndex={-1}>
           {title}
         </h2>
       </div>
@@ -896,7 +897,7 @@ function Select({
 }) {
   return (
     <div
-      className={['desk-box gs-select st-select', dense && 'is-dense', wrong && 'is-wrong']
+      className={['desk-box gs-select sn-select', dense && 'is-dense', wrong && 'is-wrong']
         .filter(Boolean)
         .join(' ')}
     >
@@ -917,45 +918,5 @@ function Select({
         ))}
       </select>
     </div>
-  );
-}
-
-function IconButton({
-  id,
-  glyph,
-  label,
-  hint,
-  onClick,
-}: {
-  id: string;
-  glyph: GlyphName;
-  label: string;
-  hint: string;
-  onClick: () => void;
-}) {
-  return (
-    <span className="mn-icon">
-      <button
-        id={id}
-        type="button"
-        className="ev-round mn-icon-button"
-        aria-label={label}
-        onClick={onClick}
-      >
-        <Glyph name={glyph} size={18} weight={2.3} />
-      </button>
-      <span className="mn-hint" aria-hidden="true">
-        {hint}
-      </span>
-    </span>
-  );
-}
-
-function Wrong({ id, children }: { id: string; children: string }) {
-  return (
-    <p id={id} className="desk-error">
-      <Glyph name="alert" size={15} weight={2.2} />
-      {children}
-    </p>
   );
 }

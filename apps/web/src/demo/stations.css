@@ -1,5 +1,5 @@
 /* Stations on the event's Staff page at a desk (sc-3910, Stations-Desktop.dc.html on page e34): the Menu's cards and docked panel, colours from tokens. */
-.st-tabs {
+.sn-tabs {
   display: flex;
   gap: var(--spaceHair);
   align-self: flex-start;
@@ -8,7 +8,7 @@
   background: var(--colorInset);
 }
 
-.st-tab {
+.sn-tab {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -19,17 +19,17 @@
   font: var(--typeSmallStrong);
 }
 
-.st-tab[aria-current] {
+.sn-tab[aria-current] {
   background: var(--colorCard);
   box-shadow: var(--shadowKnob);
   color: var(--colorAccentText);
 }
 
-button.st-tab:hover {
+button.sn-tab:hover {
   color: var(--colorInk);
 }
 
-.st-card {
+.sn-card {
   display: flex;
   flex-direction: column;
   gap: var(--spaceMd);
@@ -41,21 +41,21 @@ button.st-tab:hover {
   scroll-margin-top: var(--spaceLg);
 }
 
-.st-card h2 {
+.sn-card h2 {
   margin: 0;
   font: 700 20px/1.25 var(--fontFamily);
   letter-spacing: -0.01em;
 }
 
-.st-card-top,
-.st-row-top {
+.sn-card-top,
+.sn-row-top {
   display: flex;
   align-items: flex-start;
   gap: var(--spaceMd);
 }
 
-.st-card-names,
-.st-row-names {
+.sn-card-names,
+.sn-row-names {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -63,35 +63,35 @@ button.st-tab:hover {
   min-width: 0;
 }
 
-.st-floor {
+.sn-floor {
   flex-direction: row;
   align-items: center;
 }
 
-.st-card h2.st-eyebrow,
-.st-eyebrow {
+.sn-card h2.sn-eyebrow,
+.sn-eyebrow {
   color: var(--colorInkSecondary);
   font: 600 12px/1.4 var(--fontFamily);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.st-floor-name {
+.sn-floor-name {
   margin: 0;
   font: 700 18px/1.3 var(--fontFamily);
 }
 
-.st-rows,
-.st-people,
-.st-items,
-.st-walk,
-.st-roster {
+.sn-rows,
+.sn-people,
+.sn-items,
+.sn-walk,
+.sn-roster {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.st-row {
+.sn-row {
   display: flex;
   flex-direction: column;
   gap: var(--spaceSm);
@@ -101,11 +101,11 @@ button.st-tab:hover {
   border-radius: var(--radiusRow);
 }
 
-.st-row.is-lit {
+.sn-row.is-lit {
   background: var(--colorAccentTint);
 }
 
-.st-row h3 {
+.sn-row h3 {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -114,7 +114,7 @@ button.st-tab:hover {
   font: 700 16px/1.35 var(--fontFamily);
 }
 
-.st-tag {
+.sn-tag {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
@@ -125,14 +125,14 @@ button.st-tab:hover {
   font: 600 12px/1.3 var(--fontFamily);
 }
 
-.st-acts {
+.sn-acts {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--spaceXs);
 }
 
-.st-act {
+.sn-act {
   display: inline-flex;
   flex: none;
   align-items: center;
@@ -146,17 +146,17 @@ button.st-tab:hover {
   white-space: nowrap;
 }
 
-.st-act:hover {
+.sn-act:hover {
   background: var(--colorInset);
 }
 
-.st-people {
+.sn-people {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spaceXs);
 }
 
-.st-person {
+.sn-person {
   display: inline-flex;
   align-items: center;
   gap: var(--spaceSm);
@@ -167,17 +167,17 @@ button.st-tab:hover {
   background: var(--colorCard);
 }
 
-.st-person-name {
+.sn-person-name {
   font: 600 14px/1.3 var(--fontFamily);
 }
 
-.st-time {
+.sn-time {
   color: var(--colorInkSecondary);
   font: 500 13px/1.3 var(--fontFamily);
   font-variant-numeric: tabular-nums;
 }
 
-.st-lead {
+.sn-lead {
   padding: 2px var(--spaceSm);
   border-radius: var(--radiusPill);
   background: var(--colorAccentTint);
@@ -185,7 +185,7 @@ button.st-tab:hover {
   font: 700 12px/1.3 var(--fontFamily);
 }
 
-.st-nobody {
+.sn-nobody {
   display: flex;
   align-items: center;
   gap: var(--spaceSm);
@@ -194,7 +194,7 @@ button.st-tab:hover {
   font: 600 14px/1.4 var(--fontFamily);
 }
 
-.st-nobody-mark {
+.sn-nobody-mark {
   flex: none;
   box-sizing: border-box;
   width: 16px;
@@ -203,19 +203,19 @@ button.st-tab:hover {
   border-radius: 50%;
 }
 
-.st-foot,
-.st-line {
+.sn-foot,
+.sn-line {
   margin: 0;
   color: var(--colorInkSecondary);
   font: 400 13.5px/1.45 var(--fontFamily);
 }
 
-.st-line {
+.sn-line {
   color: var(--colorInk);
   font-size: 14px;
 }
 
-.st-empty {
+.sn-empty {
   margin: 0;
   padding: var(--spaceMd) var(--spaceLg);
   border: 1px solid var(--colorInsetBorder);
@@ -225,7 +225,7 @@ button.st-tab:hover {
   font: 400 14px/1.45 var(--fontFamily);
 }
 
-.st-course {
+.sn-course {
   display: flex;
   flex-direction: column;
   gap: var(--spaceSm);
@@ -233,7 +233,7 @@ button.st-tab:hover {
   border-top: 1px solid var(--colorInsetBorder);
 }
 
-.st-course h3 {
+.sn-course h3 {
   display: flex;
   flex-direction: column;
   gap: var(--spaceHair);
@@ -241,66 +241,66 @@ button.st-tab:hover {
   font: 700 17px/1.3 var(--fontFamily);
 }
 
-.st-item {
+.sn-item {
   display: flex;
   align-items: center;
   gap: var(--spaceMd);
   min-height: 52px;
 }
 
-.st-item + .st-item {
+.sn-item + .sn-item {
   border-top: 1px solid var(--colorInsetBorder);
 }
 
-.st-item-name {
+.sn-item-name {
   flex: 1;
   min-width: 0;
   font: 500 15px/1.35 var(--fontFamily);
 }
 
-.desk-box.st-select {
+.desk-box.sn-select {
   height: var(--sizeHit);
 }
 
-.desk-box.st-select.is-dense {
+.desk-box.sn-select.is-dense {
   flex: none;
   width: 220px;
   font-size: 15px;
 }
 
-.desk-box.st-select.is-wrong {
+.desk-box.sn-select.is-wrong {
   box-shadow: inset 0 0 0 2px var(--colorBroken);
 }
 
-.st-at-text {
+.sn-at-text {
   display: inline-flex;
   flex-direction: column;
   align-items: flex-end;
   font: 600 15px/1.3 var(--fontFamily);
 }
 
-.st-at-label {
+.sn-at-label {
   color: var(--colorInkSecondary);
   font: 500 12px/1.3 var(--fontFamily);
 }
 
-.st-walk {
+.sn-walk {
   display: flex;
   flex-direction: column;
 }
 
-.st-stop {
+.sn-stop {
   display: flex;
   align-items: center;
   gap: var(--spaceMd);
   min-height: 56px;
 }
 
-.st-stop + .st-stop {
+.sn-stop + .sn-stop {
   border-top: 1px solid var(--colorInsetBorder);
 }
 
-.st-stop-n {
+.sn-stop-n {
   display: grid;
   flex: none;
   place-items: center;
@@ -313,7 +313,7 @@ button.st-tab:hover {
   font-variant-numeric: tabular-nums;
 }
 
-.st-stop-names {
+.sn-stop-names {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -321,20 +321,20 @@ button.st-tab:hover {
   min-width: 0;
 }
 
-.st-stop-name {
+.sn-stop-name {
   font: 700 15px/1.35 var(--fontFamily);
 }
 
-.st-stop-acts {
+.sn-stop-acts {
   display: flex;
   gap: var(--spaceXs);
 }
 
-.st-stop-gap {
+.sn-stop-gap {
   width: var(--sizeHit);
 }
 
-.st-alert {
+.sn-alert {
   display: flex;
   align-items: flex-start;
   gap: var(--spaceMd);
@@ -345,13 +345,13 @@ button.st-tab:hover {
   color: var(--colorInk);
 }
 
-.st-alert > svg {
+.sn-alert > svg {
   flex: none;
   margin-top: 2px;
   color: var(--colorAttentionText);
 }
 
-.st-alert > div {
+.sn-alert > div {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -359,27 +359,27 @@ button.st-tab:hover {
   min-width: 0;
 }
 
-.st-alert strong {
+.sn-alert strong {
   font: 700 15px/1.4 var(--fontFamily);
 }
 
-.st-alert p {
+.sn-alert p {
   margin: 0;
   font: 400 14px/1.45 var(--fontFamily);
 }
 
-.st-roster-row {
+.sn-roster-row {
   display: flex;
   align-items: center;
   gap: var(--spaceMd);
   padding: var(--spaceSm) 0;
 }
 
-.st-roster-row + .st-roster-row {
+.sn-roster-row + .sn-roster-row {
   border-top: 1px solid var(--colorInsetBorder);
 }
 
-.st-roster-names {
+.sn-roster-names {
   display: flex;
   flex: 1;
   flex-direction: column;
