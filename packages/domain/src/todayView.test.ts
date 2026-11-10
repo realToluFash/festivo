@@ -31,7 +31,7 @@ describe('todayView', () => {
 
     expect(plan).toMatchObject({ kind: 'plan', greeting: 'morning', on: '2026-11-03', now: null });
     expect(plan.bars.map(({ event: { id }, ...bar }) => [id, bar])).toEqual([
-      ['wedding', { start: 3, span: 3, openLeft: false, dayToday: -2 }],
+      ['wedding', { start: 3, span: 3, openLeft: false, dayToday: -2, lane: 0 }],
     ]);
     expect(plan.days.map(({ dots }) => dots.length)).toEqual([0, 0, 0, 0, 0, 0, 0]);
     expect(
@@ -133,6 +133,59 @@ describe('todayView', () => {
     expect(day.now).toMatchObject({ dayToday: 2, lastDay: '2026-11-08', endsIn: 1 });
     expect(day.bars[0]).toMatchObject({ start: 0, span: 2, openLeft: true, dayToday: 2 });
     expect(day.cards[0]).toMatchObject({ count: { kind: 'dayOf', day: 2, total: 3 }, live: true });
+  });
+
+  it('two events under way at once are barred in rows of their own, and one after them reuses the first', () => {
+    const plan = view([
+      event('wedding', { startsAt: '2026-11-02T10:00:00Z', endsAt: '2026-11-04T14:00:00Z' }),
+      event('retreat', { startsAt: '2026-11-03T08:00:00Z', endsAt: '2026-11-05T14:00:00Z' }),
+      event('summit', {
+        startsAt: '2026-11-07T08:00:00Z',
+        endsAt: '2026-11-08T14:00:00Z',
+        dayCount: 2,
+      }),
+    ]);
+
+    expect(
+      plan.bars.map(({ event: { id }, start, span, lane }) => [id, start, span, lane]),
+    ).toEqual([
+      ['wedding', 0, 2, 0],
+      ['retreat', 0, 3, 1],
+      ['summit', 4, 2, 0],
+    ]);
+  });
+
+  it("does not list an event's start or end twice: the timeline's own copy of them is left out", () => {
+    const starts = {
+      at: '2026-11-06T19:00:00Z',
+      title: 'wedding starts',
+      note: null,
+      owner: 'event' as const,
+      area: 'events',
+      action: null,
+    };
+    const speeches = {
+      ...starts,
+      at: '2026-11-07T20:00:00Z',
+      title: 'Speeches',
+      owner: 'you' as const,
+    };
+    const plan = view([
+      event('wedding', {
+        milestones: [
+          starts,
+          { ...starts, at: '2026-11-08T14:00:00Z', title: 'wedding ends' },
+          speeches,
+        ],
+      }),
+    ]);
+
+    expect(plan.agenda.flatMap(({ items }) => items.map((item) => item.kind))).toEqual([
+      'starts',
+      'continues',
+      'milestone',
+      'ends',
+    ]);
   });
 
   it('a milestone on a day with no bar is a dot', () => {

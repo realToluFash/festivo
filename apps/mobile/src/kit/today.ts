@@ -67,6 +67,8 @@ export interface StripBar {
   label: string;
   /** Started before the week shown, so it runs in from the left edge. */
   openLeft: boolean;
+  /** The row it is drawn in; the first row when not given. */
+  lane?: number;
 }
 
 export interface EventCard {

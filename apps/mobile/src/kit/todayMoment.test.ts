@@ -61,7 +61,7 @@ describe('todayMoment', () => {
       now: null,
     });
     expect(plan.bars.map(({ event: { id }, ...bar }) => [id, bar])).toEqual([
-      ['Wedding', { start: 3, span: 3, label: '3 days', openLeft: false }],
+      ['Wedding', { start: 3, span: 3, label: '3 days', openLeft: false, lane: 0 }],
     ]);
     expect(
       plan.agenda.map(({ day, when, items }) => [day, when, items.map((item) => item.title)]),
