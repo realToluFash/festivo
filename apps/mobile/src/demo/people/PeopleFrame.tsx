@@ -94,14 +94,14 @@ export function PeoplePage({
 }
 
 /** Two Sunk groups where the list goes, a head, a line and rows, heard as the words alone. */
-export function PeopleLoading() {
-  useReadOut(LOADING_WORDS);
+export function PeopleLoading({ words = LOADING_WORDS }: { words?: string }) {
+  useReadOut(words);
 
   return (
     <View
       style={styles.loading}
       accessible
-      accessibilityLabel={LOADING_WORDS}
+      accessibilityLabel={words}
       accessibilityState={{ busy: true }}
     >
       {[1, 2].map((rows) => (

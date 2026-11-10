@@ -94,17 +94,25 @@ export function EventRoles({
 }
 
 /** Done in Violet, 44 square, closing a sheet that applies what is tapped. */
-export function DoneAction({ onPress, testID }: { onPress: () => void; testID: string }) {
+export function DoneAction({
+  label = 'Done',
+  onPress,
+  testID,
+}: {
+  label?: string;
+  onPress: () => void;
+  testID: string;
+}) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.done, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel="Done"
+      accessibilityLabel={label}
       testID={testID}
     >
       <Text size={17} weight="semibold" accessible={false} style={styles.accent}>
-        Done
+        {label}
       </Text>
     </Pressable>
   );

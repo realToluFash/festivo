@@ -23,7 +23,7 @@ import {
   ROLE_LINES,
 } from './PeopleSample.ts';
 import { DoneAction, EventRoles } from './PeopleRole.tsx';
-import { useShell } from '../../components/settingsShell.ts';
+import { useShellLayout } from '../../components/settingsShell.ts';
 import { Avatar } from '../../components/SettingsParts.tsx';
 import {
   type AskProps,
@@ -178,7 +178,7 @@ export function AddScreen({
   );
 }
 
-function Ticked({
+export function Ticked({
   on,
   face,
   title,
@@ -189,7 +189,7 @@ function Ticked({
   on: boolean;
   face: ReactNode;
   title: string;
-  line: string;
+  line?: string | undefined;
   onPress: () => void;
   testID: string;
 }) {
@@ -204,7 +204,7 @@ function Ticked({
         </View>
       }
       onPress={onPress}
-      accessibilityLabel={`${title}. ${line}`}
+      accessibilityLabel={line == null ? title : `${title}. ${line}`}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: on }}
       testID={testID}
@@ -213,8 +213,16 @@ function Ticked({
 }
 
 /** A sheet over the screen inside its window: the bottom sheet on a phone, a 540 card on an iPad; Done or a tap on the dimmed screen closes it. */
-export function RoleLayer({ onClose, children }: { onClose: () => void; children: ReactNode }) {
-  const { layout } = useShell();
+export function RoleLayer({
+  closeLabel = 'Close',
+  onClose,
+  children,
+}: {
+  closeLabel?: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const layout = useShellLayout();
   const insets = useSafeAreaInsets();
   const phone = layout === 'phone';
 
@@ -224,7 +232,7 @@ export function RoleLayer({ onClose, children }: { onClose: () => void; children
         style={StyleSheet.absoluteFill}
         onPress={onClose}
         accessibilityRole="button"
-        accessibilityLabel="Close"
+        accessibilityLabel={closeLabel}
       />
       <View
         style={

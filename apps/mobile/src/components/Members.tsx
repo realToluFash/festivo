@@ -1020,11 +1020,11 @@ function RolePicker({
       </View>
       {organisation.role.seededAs === 'administrator' && (
         <Text size={tokens.typeBody.size} muted>
-          {t('membersScreen.roleOwnerMakesOwner')}
+          {t('membersScreen.ownerMakesOwner')}
         </Text>
       )}
       <Text size={tokens.typeBody.size} muted>
-        {t('membersScreen.roleEventsFrom')}
+        {t('membersScreen.eventsFromPeople')}
       </Text>
       <Text size={tokens.typeBody.size} muted>
         {t('membersScreen.roleTakesEffect')}

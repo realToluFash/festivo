@@ -16,11 +16,7 @@ export const HOME_TAPPED = { pathname: '/', params: { tapped: '1' } } as const;
 export function destinations(
   organisation: { permissions: readonly string[] } | null,
 ): readonly Destination[] {
-  return [
-    'home',
-    ...(organisation != null ? (['events', 'calendar'] as const) : []),
-    'settings',
-  ];
+  return ['home', ...(organisation != null ? (['events', 'calendar'] as const) : []), 'settings'];
 }
 
 export type SettingsSection =
