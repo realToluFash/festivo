@@ -9,11 +9,15 @@ use App\Entity\EventPerson;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Enum\EventStatus;
+use App\Enum\EventType;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
+use Psl\Json;
+use Psl\Str;
+use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
 
 /** @extends ServiceEntityRepository<Event> */
@@ -31,10 +35,10 @@ final class EventRepository extends ServiceEntityRepository
      *
      * @return list<Event> unfinished soonest first, Finished most recently closed first, then by name
      */
-    public function findPageInOrganisation(Organisation $organisation, bool $finished, DateTimeImmutable $now, int $page, int $perPage, ?Membership $onlyFor = null): array
+    public function findPageInOrganisation(Organisation $organisation, bool $finished, DateTimeImmutable $now, int $page, int $perPage, ?Membership $onlyFor = null, EventSearch $search = new EventSearch()): array
     {
         /** @var list<Event> */
-        return $this->phaseIn($organisation, $finished, $now, $onlyFor)
+        return $this->searched($this->phaseIn($organisation, $finished, $now, $onlyFor), $search)
             ->orderBy($finished ? 'e.closesAt' : 'e.startsAtUtc', $finished ? 'DESC' : 'ASC')
             ->addOrderBy('e.name', 'ASC')
             ->addOrderBy('e.id', 'ASC')
@@ -44,12 +48,39 @@ final class EventRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    public function countPhaseInOrganisation(Organisation $organisation, bool $finished, DateTimeImmutable $now, ?Membership $onlyFor = null): int
+    public function countPhaseInOrganisation(Organisation $organisation, bool $finished, DateTimeImmutable $now, ?Membership $onlyFor = null, EventSearch $search = new EventSearch()): int
     {
-        return (int) $this->phaseIn($organisation, $finished, $now, $onlyFor)
+        return (int) $this->searched($this->phaseIn($organisation, $finished, $now, $onlyFor), $search)
             ->select('COUNT(e.id)')
             ->getQuery()
             ->getSingleScalarResult();
+    }
+
+    /**
+     * The names on the hosts' lines of the events `$onlyFor` sees, each once whatever its case (sc-30302).
+     *
+     * @return list<string> alphabetical
+     */
+    public function findHostNamesInOrganisation(Organisation $organisation, ?Membership $onlyFor = null): array
+    {
+        /** @var list<array{hosts: list<string>}> $rows */
+        $rows = $this->onlyFor($this->createQueryBuilder('e'), $onlyFor)
+            ->select('e.hosts')
+            ->andWhere('e.organisation = :organisation')
+            ->setParameter('organisation', $organisation)
+            ->orderBy('e.startsAtUtc', 'ASC')
+            ->addOrderBy('e.id', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+        $names = [];
+
+        foreach ($rows as $row) {
+            foreach ($row['hosts'] as $name) {
+                $names[Str\lowercase($name)] ??= $name;
+            }
+        }
+
+        return Vec\sort(Vec\values($names), static fn (string $a, string $b): int => \strcasecmp($a, $b));
     }
 
     public function countInOrganisation(Organisation $organisation): int
@@ -127,6 +158,46 @@ final class EventRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
 
         return \is_array($id) && \is_string($id[1] ?? null) ? Uuid::fromString($id[1]) : null;
+    }
+
+    private function searched(QueryBuilder $query, EventSearch $search): QueryBuilder
+    {
+        if (null !== $search->term) {
+            $query
+                ->andWhere('FOLDED(e.name) LIKE FOLDED(:term) OR FOLDED(e.venueName) LIKE FOLDED(:term)')
+                ->setParameter('term', '%' . \addcslashes($search->term, '\\%_') . '%');
+        }
+
+        if ([] !== $search->types) {
+            $query
+                ->andWhere('e.type IN (:types)')
+                ->setParameter('types', Vec\map($search->types, static fn (EventType $type): string => $type->value));
+        }
+
+        if (null !== $search->from) {
+            $query
+                ->andWhere('e.endsAt > :from')
+                ->setParameter('from', $search->from, 'datetime_immutable');
+        }
+
+        if (null !== $search->to) {
+            $query
+                ->andWhere('e.startsAt < :dayAfterTo')
+                ->setParameter('dayAfterTo', $search->to->modify('+1 day'), 'datetime_immutable');
+        }
+
+        if ([] !== $search->hosts) {
+            $query->andWhere($query->expr()->orX(...Vec\map_with_key(
+                $search->hosts,
+                static fn (int $index, string $host): string => 'JSON_CONTAINS(e.hosts, :host' . $index . ') = true',
+            )));
+
+            foreach ($search->hosts as $index => $host) {
+                $query->setParameter('host' . $index, Json\encode([$host]));
+            }
+        }
+
+        return $query;
     }
 
     private function onlyFor(QueryBuilder $query, ?Membership $member): QueryBuilder

@@ -25,6 +25,10 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Entity'
                 prefix: 'App\Entity'
                 alias: App
+        dql:
+            string_functions:
+                FOLDED: App\Doctrine\Query\Folded
+                JSON_CONTAINS: App\Doctrine\Query\JsonContains
         controller_resolver:
             auto_mapping: false
 
