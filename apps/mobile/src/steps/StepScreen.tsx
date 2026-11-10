@@ -270,12 +270,15 @@ export function StepScreen({
   // The foot remounts as it moves, and a press on it that sent the keys down would leave the screen reader on nothing.
   useEffect(() => {
     const docking = wasInline.current && !inline;
+    const undocking = !wasInline.current && inline;
     wasInline.current = inline;
+    // A lift the keys asked for while the bar rested on them was for less room than the scroll now has.
+    if (undocking) screenScroll.settle();
     if (!docking) return;
     void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
       if (on) moveScreenReaderFocus(footRef.current);
     });
-  }, [inline]);
+  }, [inline, screenScroll]);
 
   const footView = (
     <View
