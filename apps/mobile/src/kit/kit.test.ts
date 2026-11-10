@@ -156,6 +156,10 @@ describe('a bar leaving the keys for the scroll settles the lifts made for less 
     expect(settleLifts([null, null], 300)).toBeNull();
   });
 
+  it('leaves the scroll when no group can vouch for the focused field', () => {
+    expect(settleLifts([], 300)).toBeNull();
+  });
+
   it('never raises the scroll', () => {
     expect(settleLifts([400], 300)).toBeNull();
     expect(settleLifts([300], 300)).toBeNull();

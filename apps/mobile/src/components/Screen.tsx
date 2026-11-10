@@ -252,7 +252,7 @@ export function useAboveKeyboard(still = false): AboveKeyboard {
     // Next on the keys moves focus without the keys going up again.
     const unwatchFocus = watchFocusedField(lift);
     const fromTop = (done: (lift: LiftFromTop) => void) => {
-      if (stillNow.current) done('stays');
+      if (stillNow.current) done(null);
       else measureLift(scroll, ref.current, keyboardTop.current, done, 0);
     };
     scroll?.lifts.add(fromTop);
