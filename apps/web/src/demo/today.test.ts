@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { dueWords, INVITES_NOT_SENT, momentOf, railAt, repliesOf, sayIn, shown } from './today.ts';
+import {
+  dueWords,
+  INVITES_NOT_SENT,
+  lanesOf,
+  momentOf,
+  railAt,
+  repliesOf,
+  sayIn,
+  shown,
+} from './today.ts';
 
 const us = sayIn('en-US');
 const gb = sayIn('en-GB');
@@ -37,7 +46,7 @@ describe('a planning day', () => {
 
   it('draws the wedding as one bar, and the other milestones as dots', () => {
     expect(plan.bars).toEqual([
-      { event: shown('wed'), start: 2, span: 3, label: '3 days', openLeft: false },
+      { event: shown('wed'), start: 2, span: 3, label: '3 days', openLeft: false, lane: 0 },
     ]);
     expect(plan.days.map(({ dots }) => dots.map(({ mesh }) => mesh))).toEqual([
       ['ireti'],
@@ -74,7 +83,7 @@ describe('the event day', () => {
 
   it('runs the wedding’s bar in from the left', () => {
     expect(day.bars).toEqual([
-      { event: shown('wed'), start: 0, span: 2, label: 'day 2 of 3', openLeft: true },
+      { event: shown('wed'), start: 0, span: 2, label: 'day 2 of 3', openLeft: true, lane: 0 },
     ]);
     expect(day.events[0]).toMatchObject({ count: 'Day 2 of 3', live: true, stage: null });
     expect(day.events[1]).toMatchObject({ count: 'In 8 days', stage: null });
@@ -173,6 +182,73 @@ describe('an event that starts later today, not under way yet (?starts=later)', 
 
   it('reads the planning day as before without it', () => {
     expect(momentOf('plan', us, { later: false }).sub).toBe('The wedding starts on Thursday.');
+  });
+});
+
+describe('events sharing days take rows (?week=rows, sc-37302)', () => {
+  const rows = momentOf('plan', us, { rows: true });
+  const bar = (start: number, span: number) => ({
+    event: shown('wed'),
+    start,
+    span,
+    label: '',
+    openLeft: false,
+  });
+
+  it('puts A on days 1 to 4 and C on 5 to 7 on the top row, and B on 3 to 6 on the second', () => {
+    expect(
+      rows.bars.map(({ event, start, span, lane, label }) => [
+        event.mesh,
+        start,
+        span,
+        lane,
+        label,
+      ]),
+    ).toEqual([
+      ['wed', 0, 4, 0, '4 days'],
+      ['ireti', 2, 4, 1, '4 days'],
+      ['party', 4, 3, 0, '3 days'],
+    ]);
+  });
+
+  it('keeps a dot only on the day no bar covers', () => {
+    expect(rows.days.map(({ dots }) => dots.map(({ mesh }) => mesh))).toEqual([
+      [],
+      ['ireti'],
+      [],
+      [],
+      [],
+      [],
+      [],
+    ]);
+  });
+
+  it('stays a planning day: the wedding starts this evening', () => {
+    expect(rows.kind).toBe('plan');
+    expect(rows.now).toBeNull();
+    expect(rows.sub).toBe('The wedding starts today at 18:00.');
+    expect(rows.events.map(({ count }) => count)).toEqual([
+      'Today',
+      'In 2 days',
+      'In 4 days',
+      'Draft',
+    ]);
+  });
+
+  it('shares a row between events that share no day, and never one between events that do', () => {
+    const lanes = (bars: ReturnType<typeof bar>[]) =>
+      lanesOf(bars.map((one, at) => ({ ...one, event: { ...one.event, id: `e${at}` } }))).map(
+        ({ lane }) => lane,
+      );
+
+    expect(lanes([bar(0, 2), bar(3, 2)])).toEqual([0, 0]);
+    expect(lanes([bar(0, 3), bar(2, 3)])).toEqual([0, 1]);
+    expect(lanes([bar(0, 7), bar(0, 7), bar(0, 7)])).toEqual([0, 1, 2]);
+    expect(lanes([bar(4, 3), bar(0, 3), bar(2, 3)])).toEqual([0, 0, 1]);
+  });
+
+  it('reads the planning day as before without it', () => {
+    expect(momentOf('plan', us, { rows: false }).bars).toHaveLength(1);
   });
 });
 

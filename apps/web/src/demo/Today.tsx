@@ -15,6 +15,7 @@ import { Banner, type BannerActions, NowBanner } from '../components/TodayBanner
 import { FirstRun, ThisWeek, YourEvents } from '../components/TodayParts.tsx';
 import { NeedsYou } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
+import { ThisWeekInRows } from './TodayWeek.tsx';
 import './today.css';
 
 /** The demo's bell, with its sample's three unread. */
@@ -36,14 +37,16 @@ export function Today() {
   // The demo's words are English, so its dates are too, in the browser's own region.
   const notSent = name === 'plan' && params.get('invites') === 'none';
   const later = name === 'plan' && params.get('starts') === 'later';
+  const rows = name === 'plan' && params.get('week') === 'rows';
   const moment = useMemo(
     () =>
       momentOf(name, sayIn(formattingLocale('en', navigator.language)), {
         guests: notSent ? INVITES_NOT_SENT : undefined,
         first: asks ? VIEWERS.ana.name.split(' ')[0] : undefined,
         later,
+        rows,
       }),
-    [name, notSent, asks, later],
+    [name, notSent, asks, later, rows],
   );
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);
@@ -109,7 +112,11 @@ export function Today() {
                 <div className="today-columns">
                   <div className="today-left">
                     <NeedsYou moment={moment} tell={tell} />
-                    <ThisWeek moment={moment} open={open} />
+                    {rows ? (
+                      <ThisWeekInRows moment={moment} open={open} />
+                    ) : (
+                      <ThisWeek moment={moment} open={open} />
+                    )}
                   </div>
                   <div className="today-right">
                     <YourEvents moment={moment} open={open} />
