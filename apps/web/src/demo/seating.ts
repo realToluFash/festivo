@@ -6,7 +6,7 @@ import type { DemoLink } from './settings.ts';
 /** Seating · A · The room (page e31, board/seating-a-spec.md): the sample, the room's geometry and the plan's rules; the words are in seatingWords.ts. */
 export { SW };
 
-const WORDS = demoWords(SW, { listLocale: 'en-GB' });
+const WORDS = demoWords(SW);
 
 export const { filled: say, many, listed } = WORDS;
 

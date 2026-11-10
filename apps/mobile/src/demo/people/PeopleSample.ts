@@ -1,4 +1,4 @@
-import { formatWallDay } from '@soirely/domain';
+import { formatWallDay, listFormat } from '@soirely/domain';
 
 import { writtenTime } from '../clock.ts';
 import { ORGANISATION } from '../settings/MembersSample.ts';
@@ -172,9 +172,7 @@ export function sheetLine(person: OnEvent, organisation: string = ORGANISATION):
 }
 
 function andList(words: readonly string[]): string {
-  if (words.length <= 1) return words.join('');
-
-  return `${words.slice(0, -1).join(', ')} and ${words.at(-1) ?? ''}`;
+  return listFormat('en', { style: 'long', type: 'conjunction' }).format(words);
 }
 
 export function seesEveryEvent(

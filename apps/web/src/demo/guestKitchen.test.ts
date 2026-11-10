@@ -209,7 +209,7 @@ describe('For the kitchen on Check and send', () => {
     );
 
     expect(lines[0]?.lines[0]).toEqual({ text: 'Allergy: peanuts', allergy: true, quiet: false });
-    expect(lines[1]?.lines[0]?.text).toBe('Allergies: peanuts, sesame, and Kiwi');
+    expect(lines[1]?.lines[0]?.text).toBe('Allergies: peanuts, sesame and Kiwi');
     expect(
       guestKitchenLines(party({ allergies: ['peanuts', 'sesame'] }), FR)[0]?.lines[0]?.text,
     ).toBe('[Allergies : arachides et sésame]');

@@ -714,7 +714,7 @@ describe('the sample’s days and channels', () => {
     expect(dayWords('2026-11-02', 'en-US')).toBe('Mon, Nov 2');
     expect(dayWords('2026-11-02', 'en-GB')).toBe('Mon 2 Nov');
     expect(channelsWords(['email', 'sms'], 'en-US')).toBe('Email and SMS');
-    expect(channelsWords(['email', 'sms', 'wa'], 'en-US')).toBe('Email, SMS, and WhatsApp');
+    expect(channelsWords(['email', 'sms', 'wa'], 'en-US')).toBe('Email, SMS and WhatsApp');
   });
 
   it('give a row the time today, the weekday this week, else the month and day', () => {
