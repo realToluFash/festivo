@@ -1,4 +1,5 @@
 import { eventTransition, type EventState } from './eventStates.ts';
+import { listFormat } from './locales.ts';
 
 /** The API's limits on an event's hosts (sc-6713): a name in code points after trimming, and how many. */
 export const HOST_NAME_MAXIMUM = 60;
@@ -48,9 +49,9 @@ export function hostsChanged(saved: readonly string[], typed: readonly string[])
   return sent.length !== saved.length || sent.some((name, index) => name !== saved[index]);
 }
 
-/** Every `{hosts}` a guest reads: the names in order, joined for the reader's language (CLDR). */
+/** Every `{hosts}` a guest reads: the names in order, joined in the reader's language's own punctuation. */
 export function hostsLine(hosts: readonly string[], locale: string): string {
-  return new Intl.ListFormat(locale, { type: 'conjunction' }).format(hosts);
+  return listFormat(locale, { type: 'conjunction' }).format(hosts);
 }
 
 /** Make live is refused `event_host_required` until the event names a host, as /event-states.json's `has_host` says. */

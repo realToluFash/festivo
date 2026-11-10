@@ -46,6 +46,10 @@ baked into code. One string, with slots: `send.confirm` → `"Send to {{count}} 
 **Counts take plural families**, `_one` and `_other`, not a ternary in the calling code.
 Languages have plural rules that are not "one versus everything else".
 
+**A list joins through `listFormat` from `@soirely/domain`, never `new Intl.ListFormat(locale)`.**
+It formats in the shown language, not the device region, and English copy is British, so
+"Ana, Ben and Cleo" has no serial comma.
+
 **Check for a key you are about to overwrite.** A namespace can hold both a count called
 `guests` and a heading called `Guests`. Overwriting is silent — the broken one renders as
 its own key path, and no test fails.

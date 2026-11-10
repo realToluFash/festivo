@@ -6,7 +6,7 @@ import {
   type EventRole,
   type OrganisationEvent,
 } from '@soirely/api-client';
-import { initials } from '@soirely/domain';
+import { initials, listFormat } from '@soirely/domain';
 import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -122,7 +122,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
   const own = people.find((person) => person.user.id === userId);
   const addable = loaded.addable;
   const managers = [...loaded.owners, ...loaded.admins];
-  const list = new Intl.ListFormat(currentLocale(), { type: 'conjunction' });
+  const list = listFormat(currentLocale(), { type: 'conjunction' });
   const count = new Intl.NumberFormat(currentLocale());
   const adds = manages && addable != null;
   const opened = open?.kind === 'person' ? people.find((one) => one.id === open.id) : undefined;

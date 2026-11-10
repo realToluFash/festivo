@@ -1,4 +1,5 @@
 import type { SignInRuleChange } from '@soirely/api-client';
+import { listFormat } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
 /** The areas the two-factor rule for managers holds back, as Permission::isAdministrative has them. */
@@ -169,7 +170,7 @@ function twoFactor(
       'needs',
       title,
       t('signInRules.stand.managersNotOn', {
-        areas: new Intl.ListFormat(locale, { type: 'conjunction' }).format(
+        areas: listFormat(locale, { type: 'conjunction' }).format(
           viewer.manages.map((area) => t(`signInRules.stand.area.${area}`)),
         ),
       }),

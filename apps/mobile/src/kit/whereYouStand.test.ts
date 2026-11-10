@@ -207,7 +207,7 @@ describe('Sign-in rules: where you stand', () => {
     expect(
       rule({ ownTwoFactor: false }, 'twoFactor', { manages: ['members', 'billing', 'security'] })
         .line,
-    ).toBe('Not on yet. Changes to members, billing, and security wait until it is.');
+    ).toBe('Not on yet. Changes to members, billing and security wait until it is.');
   });
 
   it('explains managers only while that rule is the one in force', () => {

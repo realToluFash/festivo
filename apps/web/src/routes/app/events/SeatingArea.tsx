@@ -16,6 +16,7 @@ import {
   leastUsedColour,
   readRoomSide,
   sectionHoldingName,
+  listFormat,
 } from '@soirely/domain';
 import {
   type KeyboardEvent,
@@ -1323,7 +1324,7 @@ export function deletePlanWords(
       : t('seating.deletePlanSeated', { count: counts.seatedGuests });
 
   if (parts.length === 0) return guests;
-  const listed = new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(parts);
+  const listed = listFormat(locale, { style: 'long', type: 'conjunction' }).format(parts);
 
   return `${t('seating.deletePlanDeletes', { counts: listed })} ${guests}`;
 }
