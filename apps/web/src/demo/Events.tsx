@@ -347,9 +347,7 @@ function ListTop({ tell, creates = true }: { tell: Tell; creates?: boolean }) {
 /** The product's first run, its Create telling what it opens, and for a role without Create events the ask-an-owner Notice. */
 export function FirstRun({ tell, asks = false }: { tell: Tell; asks?: boolean }) {
   return (
-    <EventsFirstRun
-      create={asks ? undefined : () => tell('Create an event has its own design.')}
-    />
+    <EventsFirstRun create={asks ? undefined : () => tell('Create an event has its own design.')} />
   );
 }
 

@@ -21,7 +21,6 @@ import { type Mesh, meshFor } from './mesh.ts';
 /** The event's photo, or `standIn` for the design demo's, which has no picture to load. */
 export type CardPhoto = EventCover | 'standIn';
 
-/** An event as Events draws it, a real one or the demo's. */
 export interface ListEvent {
   id: string;
   name: string;
@@ -30,7 +29,6 @@ export interface ListEvent {
   endsAt: string;
   status: EventState;
   concludedAt: string | null;
-  /** The list's place; null until there is a venue. */
   place: string | null;
   photo: CardPhoto | null;
   milestones: readonly Milestone[];
@@ -74,7 +72,7 @@ export function daysWords(event: Shown, locale: string, t: TFunction, keepDays =
 
 export function rowLine(event: Shown, locale: string, t: TFunction, keepDays = false): string {
   return t('events.daysAndPlace', {
-    days: daysWords(event, locale, t, keepDays),
+    dates: daysWords(event, locale, t, keepDays),
     place: event.place ?? t('eventPage.venueToBeConfirmed'),
   });
 }
@@ -113,7 +111,6 @@ function distanceWords(at: string, timeZone: string, now: Date, t: TFunction): s
   }
 }
 
-/** How soon it starts, until it does: "in 32 days", or "today". */
 export function howSoon(event: Shown, now: Date, t: TFunction): string | null {
   if (event.phase === 'finished' || event.phase === 'happening_now') return null;
   if (Date.parse(event.startsAt) <= now.getTime()) return null;

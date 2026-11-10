@@ -224,10 +224,7 @@ function EventsOf({
   if (load.unfinished.length === 0 && load.pastTotal === 0) {
     return page(
       null,
-      <EventsFirstRun
-        create={creates ? '/app/events/new' : undefined}
-        title={firstRunTitle}
-      />,
+      <EventsFirstRun create={creates ? '/app/events/new' : undefined} title={firstRunTitle} />,
     );
   }
 

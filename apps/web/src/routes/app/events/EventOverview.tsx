@@ -11,7 +11,11 @@ import {
   Fragment,
   type ReactNode,
   type RefObject,
-  useCallback, useEffect, useRef, useState } from 'react';
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
 
@@ -297,20 +301,13 @@ function Details({
       case 'currency':
         return <CurrencyPart {...parts} />;
       case 'cover':
-        return (
-          <CoverPart
-            event={event}
-            onClose={parts.onClose}
-            onCover={onCover}
-          />
-        );
+        return <CoverPart event={event} onClose={parts.onClose} onCover={onCover} />;
     }
   };
 
   // The latest version, once asked for, opens the part again from what was saved.
   const editing = (one: Part): ReactNode =>
     part === one ? <Fragment key={shown}>{editor(one)}</Fragment> : null;
-
 
   const row = (one: Part, lead: ReactNode, title: string, line: string, after?: ReactNode) => (
     <PartRow

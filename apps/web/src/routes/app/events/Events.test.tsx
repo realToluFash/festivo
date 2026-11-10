@@ -511,7 +511,9 @@ describe('Events Home (sc-3594)', () => {
         [IRE, true],
       ] as const) {
         signedIn(organisation);
-        answering({ 'GET /api/orgs/org_1/events': listed([{ ...one, permissions: organisation.permissions }]) });
+        answering({
+          'GET /api/orgs/org_1/events': listed([{ ...one, permissions: organisation.permissions }]),
+        });
         at('/app/events');
         fireEvent.click(await screen.findByRole('tab', { name: new RegExp(`^${tab}`) }));
 
@@ -1616,9 +1618,7 @@ describe("An event's Overview (sc-22103)", () => {
     const details = await screen.findByRole('region', { name: 'Details' });
     expect(within(details).getByText('No hosts yet')).toBeDefined();
     expect(
-      within(details).getByText(
-        'Hosted by · The event can be made live once it has at least one.',
-      ),
+      within(details).getByText('Hosted by · The event can be made live once it has at least one.'),
     ).toBeDefined();
   });
 
@@ -1662,9 +1662,7 @@ describe("An event's Overview (sc-22103)", () => {
       ['Call off…', true],
       ['Delete event…', true],
     ]);
-    expect(
-      within(manage).getByRole('button', { name: 'Call off…' }).className,
-    ).toContain('is-red');
+    expect(within(manage).getByRole('button', { name: 'Call off…' }).className).toContain('is-red');
   });
 
   it('makes Duplicate the primary on a Finished event, and keeps it in Manage', async () => {
@@ -4009,7 +4007,7 @@ describe('The cover (sc-3590)', () => {
     expect(sent.filter(({ line }) => line.includes('/cover'))).toEqual([]);
   });
 
-  it('shows no cover on the event page, and the list draws it with no words (sc-22103, sc-30413)', async () => {
+  it('shows the cover on the event page only as its row’s unworded thumb, and the list draws it with no words (sc-22103, sc-30413)', async () => {
     signedIn();
     answering({
       'GET /api/events/ev_1': () =>
@@ -4023,7 +4021,9 @@ describe('The cover (sc-3590)', () => {
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
 
     expect(screen.queryByRole('img')).toBeNull();
-    expect(document.querySelector('.event-page [class*="cover"]')).toBeNull();
+    const pageCovers = document.querySelectorAll('.event-page img');
+    expect(pageCovers).toHaveLength(1);
+    expect(pageCovers[0]!.closest('.ev-lead')?.getAttribute('aria-hidden')).toBe('true');
     cleanup();
 
     at('/app/events');

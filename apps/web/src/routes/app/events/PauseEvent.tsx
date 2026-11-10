@@ -52,15 +52,15 @@ export function PauseButton({
       {asking != null && (
         <InManage on={inManage}>
           <LifecycleDialog
-          id="pause-event"
-          asking={asking}
-          title={t('eventPause.title', { name: event.name })}
-          lines={[t('eventPause.body'), t('eventPause.nothingLost')]}
-          failed={t('eventPause.failed')}
-          keep={t('eventPause.keepItLive')}
-          confirm={t('eventPause.pause')}
-          sending={t('eventPause.pausing')}
-          tone="primary"
+            id="pause-event"
+            asking={asking}
+            title={t('eventPause.title', { name: event.name })}
+            lines={[t('eventPause.body'), t('eventPause.nothingLost')]}
+            failed={t('eventPause.failed')}
+            keep={t('eventPause.keepItLive')}
+            confirm={t('eventPause.pause')}
+            sending={t('eventPause.pausing')}
+            tone="primary"
             onGo={() => go({}, () => api.pauseEvent(event.id))}
             onClose={close}
           />
