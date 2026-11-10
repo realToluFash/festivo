@@ -1571,6 +1571,21 @@ describe('Today at a desk (sc-29092)', () => {
     expect(screen.queryByRole('button', { name: 'Chase, Chase 19 replies' })).toBeNull();
   });
 
+  it('opens an event starting later today as a planning day, from the demo home', async () => {
+    at('/demo');
+    await screen.findByRole('heading', { name: 'Design demo' });
+    expect(
+      screen
+        .getByRole('link', { name: /A planning day, the event starts later today/ })
+        .getAttribute('href'),
+    ).toBe('/demo/today?moment=plan&starts=later');
+
+    await today('plan&starts=later');
+
+    expect(screen.getByText('Ire Events end-of-year party starts today at 19:00.')).toBeDefined();
+    expect(screen.getByText('The party starts')).toBeDefined();
+  });
+
   it('says what a press opens, and ⌘K opens search', async () => {
     await today('plan');
 

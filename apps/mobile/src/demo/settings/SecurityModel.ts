@@ -11,6 +11,7 @@ import { CODE_SAYS, type SampleProofAsks } from './AccountModel.ts';
 import {
   BREACHED_PASSWORD,
   type Device,
+  DEVICES,
   linkedProviders,
   PROVIDER_ADDRESS,
   PROVIDER_NAME,
@@ -39,6 +40,9 @@ export const SECURITY_STATES = [
   'everywhere',
   'forgot',
   'forgotSent',
+  'factorFailed',
+  'factorFailedLinked',
+  'factorLoadingSignedOut',
 ] as const;
 
 export type SecurityState = (typeof SECURITY_STATES)[number];
@@ -58,6 +62,11 @@ export type SecurityScreen =
   | 'setup'
   | 'recovery';
 export type Proof = 'link' | 'unlink' | 'everywhere' | 'turnOff' | 'newCodes';
+/** Two-factor's status as the page has it: until it is ready, Security draws no card. */
+export type Factor = 'ready' | 'loading' | 'failed';
+/** The action that had just finished when the state opens, its line drawn alone while there is no card. */
+export type Finished =
+  { kind: 'linked'; provider: Provider } | { kind: 'signedOut'; device: string };
 
 export interface SecurityStart {
   ways: SampleWays;
@@ -69,9 +78,13 @@ export interface SecurityStart {
   ask: SecurityAsk | null;
   screen: SecurityScreen | null;
   proof: Proof | null;
+  factor: Factor;
+  finished: Finished | null;
+  signedOut: readonly string[];
 }
 
 const ORG = SAMPLE.organisation;
+const SIGNED_OUT = 'safari';
 const CODE_WRONG_NOW =
   'That code did not work. Enter the code your app shows now, or an unused recovery code.';
 
@@ -195,6 +208,9 @@ export function securityStart(state: SecurityState): SecurityStart {
     ask: null,
     screen: null,
     proof: null,
+    factor: 'ready',
+    finished: null,
+    signedOut: [],
   };
 
   switch (state) {
@@ -227,7 +243,34 @@ export function securityStart(state: SecurityState): SecurityStart {
       return { ...start, screen: 'forgot' };
     case 'forgotSent':
       return { ...start, screen: 'forgotSent' };
+    case 'factorFailed':
+      return { ...start, factor: 'failed' };
+    case 'factorFailedLinked':
+      return {
+        ...start,
+        ways: { ...start.ways, apple: true },
+        factor: 'failed',
+        finished: { kind: 'linked', provider: 'apple' },
+      };
+    case 'factorLoadingSignedOut':
+      return {
+        ...start,
+        factor: 'loading',
+        finished: { kind: 'signedOut', device: SIGNED_OUT },
+        signedOut: [SIGNED_OUT],
+      };
     default:
       return start;
   }
+}
+
+/** The finished action's done line, in the words the card would say it in. */
+export function finishedLine(finished: Finished | null, t: TFunction): string | null {
+  if (finished == null) return null;
+  if (finished.kind === 'linked')
+    return t('security.linkedDone', { provider: PROVIDER_NAME[finished.provider] });
+
+  return t('devices.ended', {
+    name: DEVICES.find((device) => device.id === finished.device)?.name ?? '',
+  });
 }

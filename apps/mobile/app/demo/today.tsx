@@ -90,6 +90,7 @@ function DemoTodayScreen() {
     numbers?: string;
     invites?: string;
     needs?: string;
+    starts?: string;
   }>();
   const place = useCurrentPlace();
   // An organisation made in the walk has no events yet.
@@ -102,9 +103,10 @@ function DemoTodayScreen() {
   const at = name === 'dayNow' && arrivedState != null ? ARRIVED_AT[arrivedState] : undefined;
   const guests = name === 'plan' && params.invites === 'none' ? INVITES_NOT_SENT : undefined;
   const needing = name === 'plan' && isNeedsState(params.needs) ? params.needs : undefined;
+  const later = name === 'plan' && params.starts === 'later';
   const moment = useMemo(
-    () => momentOf(name, say, i18n.getFixedT('en'), { at, guests, needing }),
-    [name, say, i18n, at, guests, needing],
+    () => momentOf(name, say, i18n.getFixedT('en'), { at, guests, needing, later }),
+    [name, say, i18n, at, guests, needing, later],
   );
   const numbers = useMemo(() => numbersIn(params.numbers), [params.numbers]);
   const live = useLive(arrivedState === 'live');

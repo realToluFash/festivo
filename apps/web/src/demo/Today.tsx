@@ -30,13 +30,15 @@ export function Today() {
   const name = isFresh(where) || asks ? 'first' : isMoment(raw) ? raw : 'plan';
   // The demo's words are English, so its dates are too, in the browser's own region.
   const notSent = name === 'plan' && params.get('invites') === 'none';
+  const later = name === 'plan' && params.get('starts') === 'later';
   const moment = useMemo(
     () =>
       momentOf(name, sayIn(formattingLocale('en', navigator.language)), {
         guests: notSent ? INVITES_NOT_SENT : undefined,
         first: asks ? 'Ana' : undefined,
+        later,
       }),
-    [name, notSent, asks],
+    [name, notSent, asks, later],
   );
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);

@@ -21,7 +21,14 @@ import {
 import { QR_SIDE, TwoFactorScreen, TwoFactorSection } from '../../components/SecurityTwoFactor.tsx';
 import { WaysSection } from '../../components/SecurityWays.tsx';
 import { useShell } from '../../components/settingsShell.ts';
-import { Ask, bringIntoView, useRowClear } from '../../components/Summary.tsx';
+import {
+  Ask,
+  bringIntoView,
+  RowShapes,
+  Section,
+  SectionFailed,
+  useRowClear,
+} from '../../components/Summary.tsx';
 import type { TextHandle } from '../../components/Text.tsx';
 import { dateLocale } from '../../i18n/index.ts';
 import {
@@ -44,6 +51,7 @@ import {
   changeRefusal,
   chooseRefusal,
   emailedCodeRefusal,
+  finishedLine,
   type Proof,
   proofAsks,
   sampleDevice,
@@ -64,6 +72,7 @@ import {
   qrPath,
   RECOVERY_CODES,
 } from './SecuritySample.ts';
+import { AloneLine } from './SecurityAlone.tsx';
 import { SummaryPage } from './SummaryPage.tsx';
 
 export { SECURITY_STATES } from './SecurityModel.ts';
@@ -83,6 +92,8 @@ type Target =
 const EVERYWHERE = 'everywhere';
 const QR_MODULES = 21;
 const RESEND_SECONDS = 42;
+const FACTOR_LOADING_MS = 8000;
+const RETRY_MS = 500;
 
 /** Settings › Security in B, summary first, on sample data that stays on the device. */
 export function SecuritySection() {
@@ -101,8 +112,13 @@ function SecurityPage({ start }: { start: SecurityStart }) {
   const [sample, setSample] = useState(start.ways);
   const [twoFactor, setTwoFactor] = useState(start.twoFactor);
   const [codesLeft, setCodesLeft] = useState(start.codesLeft);
-  const [devices, setDevices] = useState<readonly Device[]>(DEVICES);
-  const [said, setSaid] = useState<string | null>(null);
+  const [devices, setDevices] = useState<readonly Device[]>(() =>
+    DEVICES.filter((device) => !start.signedOut.includes(device.id)),
+  );
+  const [said, setSaid] = useState<string | null>(() => finishedLine(start.finished, t));
+  const [factor, setFactor] = useState(start.factor);
+  const [loadMs, setLoadMs] = useState(FACTOR_LOADING_MS);
+  const lineHeld = useRef(start.finished != null);
   const [opened, setOpened] = useState(start.opened);
   const [ask, setAsk] = useState(start.ask);
   const [screen, setScreen] = useState<SecurityScreen | null>(start.screen);
@@ -161,6 +177,27 @@ function SecurityPage({ start }: { start: SecurityStart }) {
     if (said != null) scroll.current?.scrollTo({ y: 0, animated: true });
   }, [said]);
 
+  useEffect(() => {
+    if (factor !== 'loading') return;
+    const loaded = setTimeout(() => setFactor('ready'), loadMs);
+
+    return () => clearTimeout(loaded);
+  }, [factor, loadMs]);
+
+  useEffect(() => {
+    if (factor !== 'ready' || !lineHeld.current) return;
+    lineHeld.current = false;
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => moveScreenReaderFocus(targets.card.current), SETTLED_MS);
+  }, [factor, targets]);
+
+  useEffect(() => {
+    if (start.finished == null || start.factor === 'ready') return;
+    const settled = setTimeout(() => moveScreenReaderFocus(targets.card.current), SETTLED_MS);
+
+    return () => clearTimeout(settled);
+  }, [start, targets]);
+
   useEffect(
     () => () => {
       clearTimeout(timer.current);
@@ -182,7 +219,19 @@ function SecurityPage({ start }: { start: SecurityStart }) {
     blocks.current[id] = block;
   }
 
+  function retryFactor(): void {
+    lineHeld.current = false;
+    setLoadMs(RETRY_MS);
+    setFactor('loading');
+  }
+
+  function toggle(id: string): void {
+    lineHeld.current = false;
+    setOpened((now) => (now === id ? null : id));
+  }
+
   function show(next: SecurityScreen, target: Target): void {
+    lineHeld.current = false;
     from.current = target;
     setVisit((count) => count + 1);
     setScreen(next);
@@ -195,12 +244,14 @@ function SecurityPage({ start }: { start: SecurityStart }) {
   }
 
   function asking(question: SecurityAsk, block: string, target: Target): void {
+    lineHeld.current = false;
     from.current = target;
     setAsk(question);
     bringIntoView(blocks.current[block], scroll.current, clear, true);
   }
 
   function done(words: string): void {
+    lineHeld.current = factor !== 'ready';
     from.current = 'card';
     setSaid(words);
     setOpened(null);
@@ -309,23 +360,27 @@ function SecurityPage({ start }: { start: SecurityStart }) {
   return (
     <>
       <SummaryPage title={t('security.title')} scrollRef={scroll}>
-        <SecurityCard
-          says={cardSays(twoFactor, t)}
-          counts={cardCounts(ways, devices.length, t)}
-          line={cardLine(said, twoFactor, t)}
-          wide={shell.layout === 'portrait'}
-          saysRef={targets.card}
-          step={
-            twoFactor
-              ? null
-              : {
-                  label: t('twoFactorCard.turnOn'),
-                  onPress: () => setUp('step'),
-                  testID: 'security.step',
-                  ref: targets.step,
-                }
-          }
-        />
+        {factor === 'ready' ? (
+          <SecurityCard
+            says={cardSays(twoFactor, t)}
+            counts={cardCounts(ways, devices.length, t)}
+            line={cardLine(said, twoFactor, t)}
+            wide={shell.layout === 'portrait'}
+            saysRef={targets.card}
+            step={
+              twoFactor
+                ? null
+                : {
+                    label: t('twoFactorCard.turnOn'),
+                    onPress: () => setUp('step'),
+                    testID: 'security.step',
+                    ref: targets.step,
+                  }
+            }
+          />
+        ) : (
+          said != null && <AloneLine text={said} lineRef={targets.card} />
+        )}
         <WaysSection
           ways={ways}
           rules={rules}
@@ -336,7 +391,7 @@ function SecurityPage({ start }: { start: SecurityStart }) {
           unlinkRef={targets.unlink}
           onPassword={() => show(ways.password ? 'change' : 'setPassword', 'password')}
           onBlock={onBlock}
-          onToggle={(id) => setOpened((now) => (now === id ? null : id))}
+          onToggle={toggle}
           onLink={(which) => {
             from.current = 'link';
             if (proved) link(which, true);
@@ -344,29 +399,45 @@ function SecurityPage({ start }: { start: SecurityStart }) {
           }}
           onUnlink={(which) => asking('unlink', which, 'unlink')}
         />
-        <TwoFactorSection
-          on={twoFactor}
-          codesLeft={codesLeft}
-          email={SAMPLE.email}
-          rules={rules}
-          opened={opened}
-          error={null}
-          setupRef={targets.setup}
-          turnOffRef={targets.turnOff}
-          newCodesRef={targets.newCodes}
-          onSetup={() => setUp('setup')}
-          onBlock={onBlock}
-          onToggle={(id) => setOpened((now) => (now === id ? null : id))}
-          onTurnOff={() => asking('turnOff', 'authenticator', 'turnOff')}
-          onNewCodes={() => asking('newCodes', 'codes', 'newCodes')}
-        />
+        {factor !== 'ready' && (
+          <Section title={t('twoFactorCard.title')}>
+            {factor === 'loading' ? (
+              <RowShapes count={1} words={t('pending.loading')} />
+            ) : (
+              <SectionFailed
+                title={t('twoFactorCard.failedTitle')}
+                line={t('twoFactorCard.failedBody')}
+                onRetry={retryFactor}
+                testID="security.retry"
+              />
+            )}
+          </Section>
+        )}
+        {factor === 'ready' && (
+          <TwoFactorSection
+            on={twoFactor}
+            codesLeft={codesLeft}
+            email={SAMPLE.email}
+            rules={rules}
+            opened={opened}
+            error={null}
+            setupRef={targets.setup}
+            turnOffRef={targets.turnOff}
+            newCodesRef={targets.newCodes}
+            onSetup={() => setUp('setup')}
+            onBlock={onBlock}
+            onToggle={toggle}
+            onTurnOff={() => asking('turnOff', 'authenticator', 'turnOff')}
+            onNewCodes={() => asking('newCodes', 'codes', 'newCodes')}
+          />
+        )}
         <DevicesSection
           devices={views}
           opened={opened}
           error={null}
           signOutRef={targets.signOut}
           onBlock={onBlock}
-          onToggle={(id) => setOpened((now) => (now === id ? null : id))}
+          onToggle={toggle}
           onSignOut={(device) => asking('signOut', device.id, 'signOut')}
           onSignOutHere={() => router.replace('/demo/welcome?notice=signedOut')}
         />
