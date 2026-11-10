@@ -118,7 +118,7 @@ export function TextSizeScreen({ start }: { start: TextSizeStart }) {
               style={styles.secondary}
               testID="demo.textSize.drawn"
             >
-              {`On this phone each tab is ${Math.round(drawn.slot * 10) / 10} wide, so the labels are at ${drawn.size}. The boards' sizes are for a 360-wide Android phone and the 402-wide iPhone.`}
+              {`On this phone each tab is ${Math.round(drawn.slot * 10) / 10} wide, so the labels are at ${Math.round(drawn.size * 10) / 10}. The boards' sizes are for a 360-wide Android phone and the 402-wide iPhone.`}
             </Text>
           </DemoOnly>
         </View>
