@@ -47,7 +47,7 @@ import {
   shortWhileTyping,
   shownAboveKeys,
   shownEnd,
-  titleScrollsWhileTyping,
+  sheetScrollsWhileTyping,
 } from './keyboard.ts';
 
 describe('the keyboard lifts the card once', () => {
@@ -469,27 +469,27 @@ describe('a short Android phone gives up the help line and back row while typing
   });
 });
 
-describe('an iPhone on its side scrolls the sheet title with its body while typing', () => {
+describe('a phone on its side scrolls the whole sheet with its body while typing', () => {
   const sideways = { os: 'ios', phone: true, width: 844, height: 390, keysUp: true };
 
   it('on its side with the keys up', () => {
-    expect(titleScrollsWhileTyping(sideways)).toBe(true);
+    expect(sheetScrollsWhileTyping(sideways)).toBe(true);
   });
 
   it('never in portrait', () => {
-    expect(titleScrollsWhileTyping({ ...sideways, width: 390, height: 844 })).toBe(false);
+    expect(sheetScrollsWhileTyping({ ...sideways, width: 390, height: 844 })).toBe(false);
   });
 
   it('never with the keys down', () => {
-    expect(titleScrollsWhileTyping({ ...sideways, keysUp: false })).toBe(false);
+    expect(sheetScrollsWhileTyping({ ...sideways, keysUp: false })).toBe(false);
   });
 
   it('never on a tablet', () => {
-    expect(titleScrollsWhileTyping({ ...sideways, phone: false })).toBe(false);
+    expect(sheetScrollsWhileTyping({ ...sideways, phone: false })).toBe(false);
   });
 
-  it('never on an Android phone', () => {
-    expect(titleScrollsWhileTyping({ ...sideways, os: 'android' })).toBe(false);
+  it('on an Android phone as on an iPhone', () => {
+    expect(sheetScrollsWhileTyping({ ...sideways, os: 'android' })).toBe(true);
   });
 });
 
