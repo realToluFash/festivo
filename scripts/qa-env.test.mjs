@@ -53,6 +53,7 @@ import {
   driverBuilds,
   driverPids,
   leftDriverSay,
+  clearForBatch,
   bundlerArgs,
   bundlerEnv,
   commitTarget,
@@ -2478,7 +2479,33 @@ describe('the driver a frozen run leaves on the simulator', () => {
     ).toEqual([4120]);
   });
 
-  it('is stopped before a batch starts, and nothing is said when none is left', () => {
+  const clearing = () => {
+    const calls = [];
+    return {
+      calls,
+      options: {
+        stop: (device, onAndroid, opts) => calls.push(['stop', device, onAndroid, opts]),
+        reset: (onAndroid, device) => calls.push(['reset', onAndroid, device]),
+      },
+    };
+  };
+
+  it('is stopped on the iPhone before a batch resets the app', async () => {
+    const { calls, options } = clearing();
+    await clearForBatch(false, 'SIM-1', options);
+    expect(calls).toEqual([
+      ['stop', 'SIM-1', false, { leftOver: true }],
+      ['reset', false, 'SIM-1'],
+    ]);
+  });
+
+  it('is left alone on Android, where the batch only resets the app', async () => {
+    const { calls, options } = clearing();
+    await clearForBatch(true, 'emulator-5554', options);
+    expect(calls).toEqual([['reset', true, 'emulator-5554']]);
+  });
+
+  it('is named when one is left, and nothing is said when none is', () => {
     expect(leftDriverSay('SIM-1', { runners: [], builds: [] })).toBeNull();
     expect(leftDriverSay('SIM-1', { runners: [], builds: [4120] })).toBe(
       'Stopping the Maestro driver an earlier run left on SIM-1',

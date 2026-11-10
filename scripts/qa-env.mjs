@@ -3309,6 +3309,15 @@ function catalogues(root) {
   );
 }
 
+export async function clearForBatch(
+  onAndroid,
+  device,
+  { stop = stopDriver, reset = resetForBatch } = {},
+) {
+  if (!onAndroid) await stop(device, false, { leftOver: true });
+  await reset(onAndroid, device);
+}
+
 async function batch(args) {
   const root = qaWorktree();
   const onAndroid = args.includes('--android');
@@ -3327,8 +3336,7 @@ async function batch(args) {
     );
   }
 
-  if (!onAndroid) await stopDriver(device, false, { leftOver: true });
-  await resetForBatch(onAndroid, device);
+  await clearForBatch(onAndroid, device);
 
   const out = join(root, '.qa', name);
   rmSync(out, { recursive: true, force: true });
