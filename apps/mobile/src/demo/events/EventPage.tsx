@@ -78,6 +78,8 @@ import { GuestsScreen } from '../guests/GuestsScreen.tsx';
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 import type { BudgetState } from '../budget/BudgetModel.ts';
 import { BudgetScreen } from '../budget/BudgetScreen.tsx';
+import { PeopleCard } from '../people/PeopleCard.tsx';
+import type { CardState } from '../people/PeopleCardModel.ts';
 
 type Mute = 'ok' | 'notLoaded' | 'notSaved';
 
@@ -126,6 +128,7 @@ export function EventScreen({
   seating = null,
   guests = null,
   budget = null,
+  people = null,
   without,
 }: {
   id: string | undefined;
@@ -136,6 +139,8 @@ export function EventScreen({
   /** With Guests' own states, Guests opens on one, or Overview on its counts. */
   guests?: GuestsState | null;
   budget?: BudgetState | null;
+  /** People's card on Overview in one of its states (sc-29914). */
+  people?: CardState | null;
   without?: AreaKey | undefined;
 }) {
   const shell = useShell();
@@ -316,6 +321,7 @@ export function EventScreen({
       onOpen={openGuests}
     />
   );
+  const peopleCard = <PeopleCard state={people ?? 'people'} />;
   const guestsPage = <GuestsPage />;
   const forYou = (
     <JustForYou
@@ -464,6 +470,7 @@ export function EventScreen({
         right={
           <>
             {numbers}
+            {peopleCard}
             {guestsPage}
             {forYou}
             {manage}
@@ -472,6 +479,7 @@ export function EventScreen({
         stacked={
           <>
             {numbers}
+            {peopleCard}
             {details}
             {needsYou}
             {nameCover}

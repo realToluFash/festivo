@@ -1301,6 +1301,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       { title: 'People · nobody yet', what: 'A new event', href: '/demo/people?state=nobody' },
       {
+        title: 'People · you alone',
+        what: 'Priya leads it, nobody else on it',
+        href: '/demo/people?state=alone',
+      },
+      {
+        title: 'People · nobody leads it',
+        what: 'Four on it, no Lead',
+        href: '/demo/people?state=noLead',
+      },
+      {
         title: 'People · a role change fails',
         what: 'Saving…, then the role holds',
         href: '/demo/people?state=roleFails',
@@ -1314,6 +1324,41 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'People · failed',
         what: 'Could not load, Try again',
         href: '/demo/people?state=failed',
+      },
+      {
+        title: 'People card on Overview',
+        what: 'After the guest numbers, opens People',
+        href: '/demo/events/evt-wed-4?area=people',
+      },
+      {
+        title: 'People card · you alone',
+        what: '1 on this event, Lead · You',
+        href: '/demo/events/evt-wed-4?area=people&state=alone',
+      },
+      {
+        title: 'People card · nobody leads it',
+        what: 'The count, no second line',
+        href: '/demo/events/evt-wed-4?area=people&state=noLead',
+      },
+      {
+        title: 'People card · nobody yet',
+        what: 'Still opens People, to add',
+        href: '/demo/events/evt-wed-4?area=people&state=nobody',
+      },
+      {
+        title: 'People card · read only',
+        what: 'The same card, opens People read only',
+        href: '/demo/events/evt-wed-4?area=people&state=readOnly',
+      },
+      {
+        title: 'People card · loading',
+        what: 'The count held, then the card',
+        href: '/demo/events/evt-wed-4?area=people&state=loading',
+      },
+      {
+        title: 'People card · failed',
+        what: 'Try again loads it again',
+        href: '/demo/events/evt-wed-4?area=people&state=failed',
       },
     ],
   },

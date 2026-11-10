@@ -21,6 +21,7 @@ import { messagesStateOf } from '../messages/MessagesModel.ts';
 import { seatingStateOf } from '../seating/SeatingModel.ts';
 import { guestsStateOf } from '../guests/GuestsModel.ts';
 import { budgetStateOf } from '../budget/BudgetModel.ts';
+import { cardStateOf } from '../people/PeopleCardModel.ts';
 import { areaOf, sampleEvent } from './EventsSample.ts';
 import { say } from './EventsWords.ts';
 import { type Shell, ShellContext, type ShellSection } from '../../components/settingsShell.ts';
@@ -112,7 +113,7 @@ export function EventsRoute() {
   );
 }
 
-/** /demo/events/[id]: one event, with ?state= for each phase, edit and question, and ?area= for an area; with ?area=messages, ?state= is Messages'. */
+/** /demo/events/[id]: one event, with ?state= for each phase, edit and question, and ?area= for an area; with ?area=messages, ?state= is Messages', and with ?area=people, Overview's People card's. */
 export function EventRoute() {
   const params = useLocalSearchParams<{
     id?: string;
@@ -127,13 +128,14 @@ export function EventRoute() {
   const budget = area === 'budget' ? budgetStateOf(params.state) : null;
   // Can edit has no Budget: a deep link to it opens the event page, More open without it (sc-93).
   const noBudget = area === 'budget' && (budget === 'no_budget' || params.as === 'kemi');
-  const state = noBudget ? 'more' : eventStateOf(params.state);
+  const people = area === 'people' ? cardStateOf(params.state) : null;
+  const state = noBudget ? 'more' : area === 'people' ? null : eventStateOf(params.state);
   const guests = area === 'guests' ? guestsStateOf(params.state) : null;
 
   return (
     <EventsShell switcher={params.switcher}>
       <EventScreen
-        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}`}
+        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}:${people ?? ''}`}
         id={params.id}
         state={state}
         area={noBudget ? null : area}
@@ -141,6 +143,7 @@ export function EventRoute() {
         seating={seating}
         guests={guests}
         budget={budget}
+        people={people}
         without={noBudget ? 'budget' : undefined}
       />
     </EventsShell>
