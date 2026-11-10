@@ -70,6 +70,20 @@ export function OrganisationSwitcher({
     setInto(true);
   }
 
+  const [openedAt, setOpenedAt] = useState(open);
+  // Invitations answered before this opening: an answer stays in the menu it was given in, and is gone from the next.
+  const [answered, setAnswered] = useState<readonly string[]>([]);
+
+  if (open !== openedAt) {
+    setOpenedAt(open);
+    if (open)
+      setAnswered(
+        waiting.invitations
+          .filter((invitation) => !isWaiting(waiting.outcomes[invitation.id]))
+          .map((invitation) => invitation.id),
+      );
+  }
+
   useLayoutEffect(() => {
     if (open || returnTo.current !== current.id) return;
 
@@ -147,7 +161,10 @@ export function OrganisationSwitcher({
         ]
       : []),
     ...waiting.invitations
-      .filter((invitation) => waiting.outcomes[invitation.id]?.kind !== 'accepted')
+      .filter(
+        (invitation) =>
+          waiting.outcomes[invitation.id]?.kind !== 'accepted' && !answered.includes(invitation.id),
+      )
       .map((invitation): MenuTile => ({
         kind: 'invitation',
         id: invitation.id,

@@ -1128,6 +1128,43 @@ describe('an invitation in the switcher, answered in its panel (sc-30412)', () =
     expect(screen.getByRole('button', { name: /^Adunni Weddings, Invitation/ })).toBeDefined();
   });
 
+  it('keeps an answered tile only in the menu it was answered in', async () => {
+    answering((path) =>
+      path === '/api/invitations/inv_1/decline' ? new Response(null, { status: 204 }) : null,
+    );
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Decline the invitation to Adunni Weddings' }),
+    );
+    await screen.findByText('You declined. Bisi Adeyemi will see that you said no.');
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: /Switch organisation/ }));
+
+    expect(await screen.findByRole('option', { name: /Current/ })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Adunni Weddings, Invitation/ })).toBeNull();
+  });
+
+  it('keeps a tile whose answer did not reach us in the next menu', async () => {
+    answering((path) => (path === '/api/invitations/inv_1/accept' ? json({}, 500) : null));
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    fireEvent.click(within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+    await screen.findByText('Your answer did not reach us. Check your connection and try again.');
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: /Switch organisation/ }));
+
+    expect(
+      await screen.findByRole('button', { name: /^Adunni Weddings, Invitation · / }),
+    ).toBeDefined();
+  });
+
   it('says when the answer did not reach us, and keeps both answers', async () => {
     answering((path) => (path === '/api/invitations/inv_1/accept' ? json({}, 500) : null));
     inTwo();
