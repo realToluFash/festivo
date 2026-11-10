@@ -1,6 +1,7 @@
 import { useIsFocused } from 'expo-router';
 import {
   createContext,
+  createRef,
   type ReactNode,
   type Ref,
   type RefObject,
@@ -199,7 +200,7 @@ export function FocusedScreen({
   const phone = layout === 'phone';
   const asking = ask != null;
   const covered = asking || over != null;
-  const heading = useTitleTakesFocus(title, onScreen, covered);
+  const { heading, shown, hidden, focus } = useTitleTakesFocus(title, onScreen, covered);
   const bottom = phone ? insets.bottom : 0;
   const cancel = waits ? stay : onCancel;
   const close = asking ? ask.onKeep : over != null ? over.onClose : cancel;
@@ -226,14 +227,14 @@ export function FocusedScreen({
             accessibilityViewIsModal
             onAccessibilityEscape={cancel}
             accessibilityElementsHidden={covered}
-            importantForAccessibility={covered || heading.hidden ? 'no-hide-descendants' : 'auto'}
-            ref={heading.shown}
+            importantForAccessibility={covered || hidden ? 'no-hide-descendants' : 'auto'}
+            ref={shown}
             testID={testID}
           >
             <FocusNav
               key={`${back ?? ''}:${title}`}
               title={title}
-              titleRef={heading.heading}
+              titleRef={heading}
               verb={verb}
               back={back}
               cancels={cancels}
@@ -244,7 +245,7 @@ export function FocusedScreen({
             />
             {fills ? (
               <View style={[phone ? styles.fill : styles.sheetFill, { paddingBottom: bottom }]}>
-                <TitleFocus.Provider value={heading.focus}>{children}</TitleFocus.Provider>
+                <TitleFocus.Provider value={focus}>{children}</TitleFocus.Provider>
               </View>
             ) : (
               <ScrollView
@@ -257,7 +258,7 @@ export function FocusedScreen({
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >
-                <TitleFocus.Provider value={heading.focus}>{children}</TitleFocus.Provider>
+                <TitleFocus.Provider value={focus}>{children}</TitleFocus.Provider>
               </ScrollView>
             )}
           </View>
@@ -283,6 +284,21 @@ export interface TitleFocusing {
 
 export const TitleFocus = createContext<TitleFocusing | null>(null);
 
+function titleFocusing(): TitleFocusing & { moved: () => void; restart: () => void } {
+  let moved = false;
+
+  return {
+    first: createRef<ViewInstance>(),
+    coming: () => !moved,
+    moved: () => {
+      moved = true;
+    },
+    restart: () => {
+      moved = false;
+    },
+  };
+}
+
 /** Once its window is up, and again with each new title in a window that stays up, the title takes screen reader focus, or `first` when it is there as focus moves; nothing moves while an ask covers the screen (sc-11032). */
 function useTitleTakesFocus(
   title: string,
@@ -295,30 +311,26 @@ function useTitleTakesFocus(
   focus: TitleFocusing;
 } {
   const heading = useRef<TextHandle>(null);
-  const first = useRef<ViewInstance>(null);
   const hidden = useUnnamedWindow(Platform.OS === 'android', onScreen, title);
   const step = onScreen && !hidden ? title : undefined;
   const asked = useRef(covered);
-  const moved = useRef(false);
+  const [focus] = useState(titleFocusing);
   useEffect(() => {
     asked.current = covered;
   });
-  useEffect(() => {
-    moved.current = false;
-  }, [step]);
+  useEffect(() => focus.restart(), [focus, step]);
 
   // Read only as focus moves, since `shown` is the screen: the move is what ends `coming`.
   const target = useMemo<RefObject<ScreenReaderTarget | null>>(
     () => ({
       get current() {
-        moved.current = true;
-        return asked.current ? null : (first.current ?? heading.current);
+        focus.moved();
+        return asked.current ? null : (focus.first.current ?? heading.current);
       },
     }),
-    [],
+    [focus],
   );
   const { shown } = useFocusOnAnswer(step, target);
-  const focus = useMemo(() => ({ first, coming: () => !moved.current }), []);
 
   return { heading, shown, hidden, focus };
 }
