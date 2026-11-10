@@ -127,7 +127,7 @@ function Team({ name }: { name: TeamStateName }) {
               ) : (
                 <>
                   <span className="queue-status-dot" aria-hidden="true" />
-                  <span>Live · updated {NOW}</span>
+                  <span>Connected · up to date {NOW}</span>
                 </>
               )}
             </div>
