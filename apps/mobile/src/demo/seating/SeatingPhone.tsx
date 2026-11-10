@@ -33,6 +33,7 @@ import {
   partyOf,
   partySize,
   partyWho,
+  nobodyComing,
   sectionName,
   sectionOf,
   shapeWord,
@@ -402,7 +403,7 @@ function Body({ m, go }: { m: Seating; go: Go }) {
       )}
       <View style={styles.summary}>
         <Text size={15} weight="semibold" style={[styles.grow, styles.figures]}>
-          {summaryLine(m, COMING)}
+          {summaryLine(m, nobodyComing(m) ? 0 : COMING)}
         </Text>
         <TextAction
           label={W.print}

@@ -1235,6 +1235,7 @@ export const SEATING_STATES = [
   { key: 'moveAll', name: 'Move everyone to…', group: 'Seating guests' },
   { key: 'emptyTable', name: 'An empty table', group: 'Seating guests' },
   { key: 'everyoneSeated', name: 'Everyone coming has a seat', group: 'Seating guests' },
+  { key: 'nobodyComing', name: 'Nobody coming yet', group: 'Seating guests' },
   { key: 'noMatch', name: 'A search that matches nobody', group: 'Seating guests' },
   { key: 'notSureYet', name: 'Not sure yet and no reply too', group: 'Seating guests' },
   { key: 'tables', name: 'The Tables view', group: 'Seating guests' },

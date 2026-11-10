@@ -806,6 +806,23 @@ export function seedOf(state: SeatingState | null): Ui {
       }
       return { ...ui, tab: 'seat', plan: next.plan, tray: next.tray };
     }
+    case 'nobodyComing':
+      return {
+        ...ui,
+        tab: 'seat',
+        plan: {
+          ...plan,
+          items: plan.items.map((item) => ({
+            ...item,
+            chairs: item.chairs.map((chair) =>
+              chair.state === 'taken' || chair.state === 'held'
+                ? { state: 'empty' as const }
+                : chair,
+            ),
+          })),
+        },
+        tray: ui.tray.filter((party) => party.reply !== 'coming'),
+      };
     case 'noMatch':
       return { ...ui, tab: 'seat', search: 'Olu' };
     case 'notSureYet':
