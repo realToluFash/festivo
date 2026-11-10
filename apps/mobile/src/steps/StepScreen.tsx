@@ -28,6 +28,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { QuietButton } from '../components/Buttons.tsx';
 import { keyboardTopNow, useKeysUp, watchKeyboardTop } from '../components/keyboardWatch.ts';
+import { stepShown } from '../components/landedStep.ts';
 import { moveScreenReaderFocus } from '../components/screenReaderFocus.ts';
 import {
   ScreenScroll,
@@ -244,6 +245,27 @@ export function StepScreen({
   if (nextInline !== inline) setInline(nextInline);
   const footRef = useRef<ViewInstance>(null);
   const wasInline = useRef(inline);
+  const hasFoot = foot != null;
+  const shown = useRef<ReturnType<typeof stepShown> | null>(null);
+
+  const placeFoot = useCallback(
+    () => footRef.current?.measureInWindow((x, _y, width) => shown.current?.placed({ x, width })),
+    [],
+  );
+
+  useEffect(() => {
+    if (!hasFoot) return undefined;
+    const step = stepShown();
+    shown.current = step;
+    // Laid out as it slides in, the foot is measured again once it has landed.
+    const settled = setTimeout(placeFoot, SETTLED_MS);
+
+    return () => {
+      clearTimeout(settled);
+      shown.current = null;
+      step.left();
+    };
+  }, [hasFoot, placeFoot]);
 
   useEffect(() => {
     if (!keysUp) return;
@@ -289,7 +311,7 @@ export function StepScreen({
       ]}
       onLayout={inline ? undefined : measuredAs('foot')}
     >
-      <View ref={footRef} style={[styles.column, styles.footColumn]}>
+      <View ref={footRef} style={[styles.column, styles.footColumn]} onLayout={placeFoot}>
         {foot}
       </View>
     </View>

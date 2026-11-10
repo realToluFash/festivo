@@ -611,6 +611,101 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/members?state=claim',
       },
       {
+        title: 'Members · the owner claim withdrawn',
+        what: 'Withdraw your claim? on its screen',
+        href: '/demo/settings/members?state=withdraw',
+      },
+      {
+        title: 'Members · the owner claim found',
+        what: 'Record found, Withdraw my claim',
+        href: '/demo/settings/members?state=claimFound',
+      },
+      {
+        title: 'Members · another admin’s claim',
+        what: 'Julien sees Ana Souza becoming the owner',
+        href: '/demo/settings/members?state=claimTheirs',
+      },
+      {
+        title: 'Members · stop another admin’s claim',
+        what: 'Stop Ana Souza’s claim?',
+        href: '/demo/settings/members?state=claimStop',
+      },
+      {
+        title: 'Members · another admin’s claim found',
+        what: 'Ana’s record is found',
+        href: '/demo/settings/members?state=claimTheirsFound',
+      },
+      {
+        title: 'Members · a claim stopped',
+        what: 'You stopped Ana Souza’s claim',
+        href: '/demo/settings/members?state=claimStopped',
+      },
+      {
+        title: 'Members · no active owner',
+        what: 'A claim was stopped, only support restores',
+        href: '/demo/settings/members?state=claimClosed',
+      },
+      {
+        title: 'Members · the owner claim refused',
+        what: 'Tom, an admin at gmail.com, is refused',
+        href: '/demo/settings/members?state=claimRefused',
+      },
+      {
+        title: 'Members · the domain managed elsewhere',
+        what: 'ire.events is managed by another organisation',
+        href: '/demo/settings/members?state=claimManaged',
+      },
+      {
+        title: 'Members · two requests waiting',
+        what: 'Lucía Gómez and Kwame Asante',
+        href: '/demo/settings/members?state=waitingTwo',
+      },
+      {
+        title: 'Members · approve a request',
+        what: 'Lucía’s request, the role to give',
+        href: '/demo/settings/members?state=approving',
+      },
+      {
+        title: 'Members · turn down a request',
+        what: 'Turn down Lucía Gómez?',
+        href: '/demo/settings/members?state=turningDown',
+      },
+      {
+        title: 'Members · a request approved',
+        what: 'Lucía Gómez is a Member',
+        href: '/demo/settings/members?state=approved',
+      },
+      {
+        title: 'Members · a person',
+        what: 'Priya Shah’s page',
+        href: '/demo/settings/members?state=priya',
+      },
+      {
+        title: 'Members · in other organisations',
+        what: 'Priya is in 2 other organisations',
+        href: '/demo/settings/members?state=alsoMember',
+      },
+      {
+        title: 'Members · removing a person',
+        what: 'Remove Priya Shah from Ire Events?',
+        href: '/demo/settings/members?state=removing',
+      },
+      {
+        title: 'Members · making an owner',
+        what: 'Make Ana an owner, your password and code',
+        href: '/demo/settings/members?state=makingOwner',
+      },
+      {
+        title: 'Members · nobody suspended',
+        what: 'The Suspended filter, empty',
+        href: '/demo/settings/members?state=nobodySuspended',
+      },
+      {
+        title: 'Members · nobody left',
+        what: 'The Former filter, empty',
+        href: '/demo/settings/members?state=nobodyLeft',
+      },
+      {
         title: 'Members · loading',
         what: 'Loading members',
         href: '/demo/settings/members?state=loading',
