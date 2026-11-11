@@ -1093,10 +1093,21 @@
 }
 
 .today-event-when {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.25em;
   margin-top: var(--spaceHair);
-  overflow: hidden;
   color: var(--colorInkSecondary);
   font: var(--todaySmall);
+}
+
+.today-event-count {
+  white-space: nowrap;
+}
+
+.today-event-dates {
+  max-width: 100%;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
