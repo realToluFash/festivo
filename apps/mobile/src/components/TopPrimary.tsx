@@ -4,18 +4,14 @@ import { tokens } from '../theme/tokens.ts';
 import { Glyph } from './Glyph.tsx';
 import { Pill } from './SettingsParts.tsx';
 
-/** The primary at the end of a top's title row, as the demos draw it: the round violet + on a phone, the + and its label wider (sc-39471). */
-export function TopPrimary({
-  label,
-  onPress,
-  wide,
-  testID,
-}: {
+export interface TopPrimaryProps {
   label: string;
   onPress: () => void;
-  wide: boolean;
   testID: string;
-}) {
+}
+
+/** The primary at the end of a top's title row, as the demos draw it: the round violet + on a phone, the + and its label wider (sc-39471). */
+export function TopPrimary({ label, onPress, wide, testID }: TopPrimaryProps & { wide: boolean }) {
   if (wide)
     return (
       <Pill

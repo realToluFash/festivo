@@ -68,7 +68,6 @@ import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { BellButton } from './BellButton.tsx';
 import { CreateWalkWindow, type WalkOpening, deviceNow } from './CreateWalkWindow.tsx';
-import { HeaderPrimary, type HeaderPrimaryProps } from './Buttons.tsx';
 import { Sheet } from './Sheet.tsx';
 import type { GlyphName } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
@@ -107,7 +106,7 @@ import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text, TitleCap } from './Text.tsx';
 import { Title, useWholeWords } from './Title.tsx';
 import { PAGE_TITLE, TOP_TITLE, pageTitle, topTitle } from './topTitle.ts';
-import { TopPrimary } from './TopPrimary.tsx';
+import { TopPrimary, type TopPrimaryProps } from './TopPrimary.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 import { type EdgeSwipeHandlers, EdgeSwipeStrip } from './useEdgeSwipeBack.ts';
@@ -252,12 +251,8 @@ export function AppFrame({
   children,
 }: {
   current: Destination;
-  /** The top as the screen's own demo draws it: `scrolls` with the page, which places `FrameTop` at the head of its scroll, or `stays` above it (sc-39471). */
-  top?: 'scrolls' | 'stays' | undefined;
   /** What the screen loaded, once Soirely stops answering (sc-22586). */
   offline?: Stale | null;
-  /** The screen's one primary, in the header band where [fd] puts it (sc-22103). */
-  primary?: HeaderPrimaryProps | undefined;
   /** A line under the title, in the header band, as Events' summary. */
   underTitle?: ReactNode;
   /** At the end of the title's row, as Members' Refreshing… (sc-27046). */
@@ -282,7 +277,15 @@ export function AppFrame({
   /** On a tablet, the body draws this page's back, and is false while that back is off. */
   backInBody?: boolean;
   children: ReactNode;
-}) {
+} & (
+  | { top?: undefined; primary?: undefined }
+  | {
+      /** The top as the screen's own demo draws it: `scrolls` with the page, which places `FrameTop` at the head of its scroll, or `stays` above it (sc-39471). */
+      top: 'scrolls' | 'stays';
+      /** The screen's one primary, at the end of its top's title row; only a screen with its own top has one (sc-39471). */
+      primary?: TopPrimaryProps | undefined;
+    }
+)) {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const insets = useSafeAreaInsets();
@@ -633,7 +636,7 @@ interface FrameHeaderProps {
   kind: LayoutKind;
   /** On a phone, the pill on a row of its own (`phonePillAlone`). */
   pillAlone: boolean;
-  primary: HeaderPrimaryProps | undefined;
+  primary: TopPrimaryProps | undefined;
   underTitle: ReactNode;
   besideTitle: ReactNode;
   besideBack: ReactNode;
@@ -817,7 +820,6 @@ function FrameHeader({
   onSwitch,
   pill,
   pillAlone,
-  primary,
   underTitle,
   besideTitle,
   besideBack,
@@ -847,7 +849,6 @@ function FrameHeader({
           </View>
           {underTitle}
         </View>
-        {primary != null && <HeaderPrimary {...primary} round={false} />}
         <BellButton />
       </View>
     );
@@ -872,7 +873,7 @@ function FrameHeader({
         testID="frame.back"
       />
     );
-  const titleRow = (end: ReactNode) => (
+  const titleRow = (end?: ReactNode) => (
     <View style={styles.titleRow}>
       <View style={styles.fill}>
         <View style={styles.titleRow}>
@@ -889,7 +890,7 @@ function FrameHeader({
     </View>
   );
 
-  // Out of an event, the pill and the bell head the page with the tabs between them, and the primary sits by the title, as the demos draw it (sc-30410).
+  // Out of an event, the pill and the bell head the page with the tabs between them, as the demos draw it (sc-30410).
   if (kind === 'tabletPortrait' && !inEvent) {
     return (
       <View style={[styles.portraitHeader, top]}>
@@ -917,7 +918,7 @@ function FrameHeader({
           </View>
         </View>
         {backView}
-        {titleRow(primary != null && <HeaderPrimary {...primary} round={false} />)}
+        {titleRow()}
       </View>
     );
   }
@@ -925,15 +926,8 @@ function FrameHeader({
   if (kind === 'tabletPortrait') {
     return (
       <View style={[styles.portraitHeader, top]}>
-        {organisation != null && primary == null && (
+        {organisation != null && (
           <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
-        )}
-        {primary != null && (
-          <View style={styles.titleRow}>
-            {pillView}
-            <View style={styles.fill} />
-            <HeaderPrimary {...primary} round={false} />
-          </View>
         )}
         <Pills entries={entries} scrolls={inEvent} />
         {backView}
@@ -950,7 +944,7 @@ function FrameHeader({
           <View style={styles.fill} />
           <BellButton />
         </View>
-        {titleRow(primary != null && <HeaderPrimary {...primary} round />)}
+        {titleRow()}
       </View>
     );
   }
@@ -959,13 +953,6 @@ function FrameHeader({
     <View style={[styles.phoneHeader, top]}>
       {pillAlone && organisation != null && (
         <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
-      )}
-      {primary != null && (
-        <View style={styles.titleRow}>
-          {pillView}
-          <View style={styles.fill} />
-          <HeaderPrimary {...primary} round />
-        </View>
       )}
       {backView}
       {titleRow(<BellButton />)}
