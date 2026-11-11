@@ -125,13 +125,13 @@ export function noteWhere(path: string): void {
   here = path === '/' ? null : path;
 }
 
-/** The screens to open over Today after a restart, the landing's destination under it, so Back leaves the landing as it did before (sc-30441). */
+/** The screens to open over Today after a restart: the landing, with its destination under it, so Back from the landing goes to that destination (sc-30441). */
 export function landingAfterRestart(): Href[] {
   const path = takeLanding();
   if (path == null || !path.startsWith('/') || path === '/') return [];
 
-  const root = DESTINATION_HREF[destinationOf(path)];
-  const pathname = path.split('?')[0];
+  const pathname = path.split('?')[0] ?? path;
+  const root = DESTINATION_HREF[destinationOf(pathname)];
 
   return root === '/' || pathname === root ? [path as Href] : [root, path as Href];
 }
