@@ -14,3 +14,11 @@ describe('the tab bar’s labels at twice the text size (sc-37298)', () => {
     );
   });
 });
+
+describe('the band’s tile while an invitation waits (sc-40298)', () => {
+  it('draws the cover tile’s ring, so the band returns the same tile', () => {
+    expect(cover).toMatch(/\{org\.waiting != null && <View style=\{styles\.tileRing\} \/>\}/u);
+    expect(cover).toMatch(/if \(compact\) return tile;/u);
+    expect(cover.match(/<View style=\{styles\.tileRing\} \/>/gu)).toHaveLength(1);
+  });
+});
