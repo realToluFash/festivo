@@ -119,10 +119,14 @@ describe('the field typed in stays in sight above a group lifted under it (sc-11
     expect(offset).toBeLessThan(offsetAboveKeyboard(card));
   });
 
-  it('lifts the whole group when it fits under the focused field', () => {
+  it('lifts the whole group when it fits under the focused field, only ever taking the scroll back up (sc-35488)', () => {
     const tall = { ...card, keyboardTop: 900 };
+    const lift = offsetAboveKeyboard({ ...tall, focusY: current });
+    const under = { contentY: card.contentY, focusY: current };
 
-    expect(offsetAboveKeyboard({ ...tall, focusY: current })).toBe(offsetAboveKeyboard(tall));
+    expect(lift).toBe(offsetAboveKeyboard(tall));
+    expect(liftUnderFocus(lift, { ...under, offset: 300 })).toBe(lift);
+    expect(liftUnderFocus(lift, { ...under, offset: 0 })).toBe('stays');
   });
 
   it('keeps the group top when the focused field sits inside the group', () => {
