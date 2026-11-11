@@ -431,7 +431,7 @@ export function EventCard({
         </Pressable>
       )}
       <View pointerEvents="none">
-        <OnCard text={rowLine(event, locale, t, false)} />
+        <OnCard text={rowLine(event, now, locale, t, false)} />
         {guests != null && <OnCard text={guests} />}
       </View>
       <DayTiles event={event} now={now} locale={locale} />
@@ -489,7 +489,12 @@ const styles = StyleSheet.create({
     gap: tokens.spaceHair,
   },
   tileGlass: { backgroundColor: tokens.colorInkOnDark, opacity: 0.22 },
-  tileToday: { backgroundColor: tokens.colorCard },
+  tileToday: {
+    width: 'auto',
+    minWidth: 58,
+    paddingHorizontal: tokens.spaceSm,
+    backgroundColor: tokens.colorCard,
+  },
   tileGap: { width: 'auto', minWidth: 40, paddingHorizontal: tokens.spaceSm },
   tileWeekday: { textTransform: 'uppercase', letterSpacing: 12 * 0.04 },
   tileDay: { lineHeight: 20, letterSpacing: 20 * -0.02, fontVariant: ['tabular-nums'] },

@@ -134,7 +134,7 @@ export function EventsHome({
             row: (
               <Row
                 title={event.name}
-                line={rowLine(event, locale, t)}
+                line={rowLine(event, now, locale, t)}
                 lead={<EventThumb event={event} />}
                 tag={rowTag(event, false, t)}
                 value={wide ? (howSoon(event, now, t) ?? undefined) : undefined}
@@ -216,7 +216,7 @@ export function EventsFound({
               row: (
                 <Row
                   title={event.name}
-                  line={rowLine(event, locale, t)}
+                  line={rowLine(event, now, locale, t)}
                   lead={<EventThumb event={event} />}
                   tag={rowTag(event, true, t)}
                   value={wide ? (howSoon(event, now, t) ?? undefined) : undefined}

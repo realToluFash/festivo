@@ -5,14 +5,13 @@ import {
   type EventState,
   type Milestone,
   calledOff,
-  eventDays,
+  eventDayWords,
   formatEventDate,
   formatEventMoment,
-  formatEventShortDay,
-  formatEventWeekday,
   milestoneDistance,
   nextStep,
-  wallDay,
+  shownDays,
+  wallDayNumber,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
@@ -53,26 +52,35 @@ export function listEventOf(event: ListedEvent): ListEvent {
   };
 }
 
-/** Its day or its first and last day; a called-off event's day it was called off, unless `keepDays`. */
-export function daysWords(event: Shown, locale: string, t: TFunction, keepDays = false): string {
-  const days = eventDays(event);
+/** Its day or its first and last day, with their year unless it is this one; a called-off event's day it was called off, unless `keepDays`. */
+export function daysWords(
+  event: Shown,
+  now: Date,
+  locale: string,
+  t: TFunction,
+  keepDays = false,
+): string {
+  const days = eventDayWords(event, now, locale, keepDays);
 
-  if (days.kind === 'calledOffOn' && !keepDays) {
-    return t('events.calledOffOn', {
-      date: formatEventShortDay(days.concludedAt, event.timeZone, locale),
-    });
+  switch (days.kind) {
+    case 'calledOffOn':
+      return t('events.calledOffOn', { date: days.date });
+    case 'oneDay':
+      return days.day;
+    case 'days':
+      return t('events.days', { first: days.first, last: days.last });
   }
-
-  const first = formatEventWeekday(event.startsAt, event.timeZone, locale);
-
-  return wallDay(event.startsAt, event.timeZone) === wallDay(event.endsAt, event.timeZone)
-    ? first
-    : t('events.days', { first, last: formatEventWeekday(event.endsAt, event.timeZone, locale) });
 }
 
-export function rowLine(event: Shown, locale: string, t: TFunction, keepDays = false): string {
+export function rowLine(
+  event: Shown,
+  now: Date,
+  locale: string,
+  t: TFunction,
+  keepDays = false,
+): string {
   return t('events.daysAndPlace', {
-    dates: daysWords(event, locale, t, keepDays),
+    dates: daysWords(event, now, locale, t, keepDays),
     place: event.place ?? t('eventPage.venueToBeConfirmed'),
   });
 }
@@ -136,31 +144,17 @@ export function howSoon(event: Shown, now: Date, t: TFunction): string | null {
   return distanceWords(event.startsAt, event.timeZone, now, t);
 }
 
-const DAY = 86_400_000;
-
-function dayNumber(moment: string | Date, timeZone: string): number {
-  return Date.parse(`${wallDay(moment, timeZone)}T00:00:00Z`) / DAY;
-}
-
 function dayCount(event: Shown): number {
-  return dayNumber(event.endsAt, event.timeZone) - dayNumber(event.startsAt, event.timeZone) + 1;
+  return (
+    wallDayNumber(event.endsAt, event.timeZone) - wallDayNumber(event.startsAt, event.timeZone) + 1
+  );
 }
 
 export type DayTile =
   | { kind: 'day'; key: string; weekday: string; day: string; today: boolean }
   | { kind: 'gap'; key: string; hidden: number; more: string };
 
-const FULL_WEEK = 7;
-
-function shownDays(first: number, last: number, today: number, on: boolean): number[] {
-  if (last - first + 1 <= FULL_WEEK) {
-    return Array.from({ length: last - first + 1 }, (_, index) => first + index);
-  }
-
-  const ends = on && today > first && today < last ? [first, today, last] : [first, last];
-
-  return ends.flatMap((day, index) => (ends[index + 1] === day + 2 ? [day, day + 1] : [day]));
-}
+const DAY = 86_400_000;
 
 /** A tile a day up to a week; past that its first day, today while it is on, and its last, with the days between counted. */
 export function dayTiles(event: Shown, now: Date, locale: string): DayTile[] {
@@ -168,12 +162,17 @@ export function dayTiles(event: Shown, now: Date, locale: string): DayTile[] {
 
   if (count < 2 || event.phase === 'finished') return [];
 
-  const first = dayNumber(event.startsAt, event.timeZone);
-  const today = dayNumber(now, event.timeZone);
+  const first = wallDayNumber(event.startsAt, event.timeZone);
+  const today = wallDayNumber(now, event.timeZone);
   const weekday = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' });
   const number = new Intl.DateTimeFormat(locale, { day: 'numeric', timeZone: 'UTC' });
   const plain = new Intl.NumberFormat(locale);
-  const shown = shownDays(first, first + count - 1, today, event.phase === 'happening_now');
+  const shown = shownDays({
+    first,
+    last: first + count - 1,
+    today,
+    on: event.phase === 'happening_now',
+  });
 
   return shown.flatMap((dayAt, index): DayTile[] => {
     const date = new Date(dayAt * DAY + DAY / 2);
@@ -213,7 +212,8 @@ export function cardTags(event: Shown, now: Date, t: TFunction): CardTag[] {
     case 'paused':
       return [{ word: t('events.paused'), mark: 'paused' }, ...soonTag];
     case 'happening_now': {
-      const day = dayNumber(now, event.timeZone) - dayNumber(event.startsAt, event.timeZone) + 1;
+      const day =
+        wallDayNumber(now, event.timeZone) - wallDayNumber(event.startsAt, event.timeZone) + 1;
       const count = dayCount(event);
       const tag = { word: t('events.happeningNow'), mark: 'now' } as const;
 

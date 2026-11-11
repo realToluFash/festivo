@@ -7,16 +7,15 @@ import {
   NO_EVENTS_FILTERS,
   calledOff,
   endLabel,
-  eventDays,
+  eventDayWords,
   eventPhase,
   eventsHome,
   formatEventDate,
   formatEventMoment,
-  formatEventShortDay,
-  formatEventWeekday,
   milestoneDistance,
   savedWallClock,
   searching,
+  wallDayNumber,
 } from '@soirely/domain';
 
 import type { MarkKind } from '../components/SettingsParts.tsx';
@@ -709,30 +708,25 @@ export function shownOf(event: SampleEvent, now: Date): Shown {
 
 const LOCALE = 'en-US';
 
-export function rangeOf(event: SampleEvent, keepDays = false): string {
-  const days = eventDays(event);
+export function rangeOf(event: SampleEvent, now: Date, keepDays = false): string {
+  const days = eventDayWords(event, now, LOCALE, keepDays);
 
-  if (days.kind === 'calledOffOn' && !keepDays)
-    return W.calledOffOn(formatEventShortDay(days.concludedAt, event.timeZone, LOCALE));
-  if (days.kind === 'oneDay' || (days.kind === 'calledOffOn' && sameDay(event)))
-    return formatEventWeekday(event.startsAt, event.timeZone, LOCALE);
-
-  return W.days(
-    formatEventWeekday(event.startsAt, event.timeZone, LOCALE),
-    formatEventWeekday(event.endsAt, event.timeZone, LOCALE),
-  );
-}
-
-function sameDay(event: SampleEvent): boolean {
-  return localDay(event.startsAt, event.timeZone) === localDay(event.endsAt, event.timeZone);
+  switch (days.kind) {
+    case 'calledOffOn':
+      return W.calledOffOn(days.date);
+    case 'oneDay':
+      return days.day;
+    case 'days':
+      return W.days(days.first, days.last);
+  }
 }
 
 export function placeOf(event: SampleEvent): string {
   return event.venue == null ? W.venueToBeConfirmed : `${event.venue.name}, ${event.venue.city}`;
 }
 
-export function lineOf(event: SampleEvent, keepDays = false): string {
-  return `${rangeOf(event, keepDays)} · ${placeOf(event)}`;
+export function lineOf(event: SampleEvent, now: Date, keepDays = false): string {
+  return `${rangeOf(event, now, keepDays)} · ${placeOf(event)}`;
 }
 
 export function soonOf(event: SampleEvent, now: Date): string | null {
@@ -758,42 +752,10 @@ export function localTime(moment: string, timeZone: string): string {
   }).format(new Date(moment));
 }
 
-export interface DayTile {
-  weekday: string;
-  day: string;
-  today: boolean;
-}
-
-export function dayTiles(event: SampleEvent, now: Date): DayTile[] {
-  const first = localDay(event.startsAt, event.timeZone);
-  const last = localDay(event.endsAt, event.timeZone);
-  const today = localDay(now, event.timeZone);
-  const tiles: DayTile[] = [];
-
-  for (let day = first; day <= last; day = nextDay(day)) {
-    const noon = new Date(`${day}T12:00:00Z`);
-    tiles.push({
-      weekday: new Intl.DateTimeFormat(LOCALE, { weekday: 'short', timeZone: 'UTC' }).format(noon),
-      day: new Intl.DateTimeFormat(LOCALE, { day: 'numeric', timeZone: 'UTC' }).format(noon),
-      today: day === today,
-    });
-  }
-
-  return tiles.length > 1 ? tiles : [];
-}
-
-export function nextDay(day: string): string {
-  const date = new Date(`${day}T12:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + 1);
-
-  return date.toISOString().slice(0, 10);
-}
-
 export type GlassKind = 'draft' | 'live' | 'now' | 'paused' | 'finished' | 'calledOff';
 
 export interface Card {
   tags: readonly { kind: GlassKind | null; word: string }[];
-  tiles: DayTile[];
   step:
     | { kind: 'next'; title: string; line: string }
     | { kind: 'button'; line: string; label: string; does: CardDoes };
@@ -804,7 +766,6 @@ export type CardDoes = 'makeLive' | 'changeDates' | 'resume' | 'duplicate';
 export function cardOf(event: SampleEvent, now: Date): Card {
   const shown = shownOf(event, now);
   const soon = soonOf(event, now);
-  const tiles = shown === 'finished' || shown === 'calledOff' ? [] : dayTiles(event, now);
   const moment = (iso: string) => formatEventMoment(iso, event.timeZone, LOCALE);
   const toThen = (iso: string) => {
     const distance = milestoneDistance(iso, event.timeZone, now);
@@ -818,7 +779,6 @@ export function cardOf(event: SampleEvent, now: Date): Card {
 
       return {
         tags: [{ kind: 'draft', word: W.phase.draft }, ...soonTag(passed ? null : soon)],
-        tiles,
         step: passed
           ? { kind: 'button', line: W.endPassed, label: W.changeDates, does: 'changeDates' }
           : { kind: 'button', line: W.guestsBlocked, label: W.makeLive, does: 'makeLive' },
@@ -827,7 +787,6 @@ export function cardOf(event: SampleEvent, now: Date): Card {
     case 'live':
       return {
         tags: [{ kind: 'live', word: W.phase.live }, ...soonTag(soon)],
-        tiles,
         step: {
           kind: 'next',
           title: W.nextStarts(event.name),
@@ -835,16 +794,16 @@ export function cardOf(event: SampleEvent, now: Date): Card {
         },
       };
     case 'happening_now': {
-      const lit = tiles.findIndex((tile) => tile.today);
+      const first = wallDayNumber(event.startsAt, event.timeZone);
+      const total = wallDayNumber(event.endsAt, event.timeZone) - first + 1;
 
       return {
         tags: [
           { kind: 'now', word: W.phase.happening_now },
-          ...(tiles.length > 1 && lit >= 0
-            ? [{ kind: null, word: W.dayOf(lit + 1, tiles.length) }]
+          ...(total > 1
+            ? [{ kind: null, word: W.dayOf(wallDayNumber(now, event.timeZone) - first + 1, total) }]
             : []),
         ],
-        tiles,
         step: {
           kind: 'next',
           title: W.nextEnds(event.name),
@@ -855,19 +814,16 @@ export function cardOf(event: SampleEvent, now: Date): Card {
     case 'paused':
       return {
         tags: [{ kind: 'paused', word: W.phase.paused }, ...soonTag(soon)],
-        tiles,
         step: { kind: 'button', line: W.nextResume, label: W.resume, does: 'resume' },
       };
     case 'finished':
       return {
         tags: [{ kind: 'finished', word: W.phase.finished }],
-        tiles,
         step: { kind: 'button', line: W.allPassed, label: W.duplicate, does: 'duplicate' },
       };
     case 'calledOff':
       return {
         tags: [{ kind: 'calledOff', word: W.phase.calledOff }],
-        tiles,
         step: {
           kind: 'button',
           line: W.calledOffNotice(

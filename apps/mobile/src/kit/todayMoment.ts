@@ -73,13 +73,13 @@ function agendaItem(item: TodayAgendaItem<ListedEvent>, reader: Reader, t: TFunc
   };
 }
 
-function card(one: TodayCard<ListedEvent>, reader: Reader, t: TFunction): EventCard {
+function card(one: TodayCard<ListedEvent>, now: Date, reader: Reader, t: TFunction): EventCard {
   const { event, count } = one;
 
   return {
     event: shownEvent(event),
     name: event.name,
-    dates: eventDatesWords(event, reader.locale, t).days,
+    dates: eventDatesWords(event, now, reader.locale, t).days,
     count:
       count.kind === 'draft'
         ? t('todayScreen.draft')
@@ -212,7 +212,7 @@ export function todayMoment(
               far: howFar(view.nextUp.daysAway, t),
             }),
           },
-    events: view.cards.map((one) => card(one, reader, t)),
+    events: view.cards.map((one) => card(one, now, reader, t)),
     now: view.now == null ? null : nowOf(view.now, reader, t),
   };
 }

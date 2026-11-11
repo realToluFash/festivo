@@ -6,6 +6,8 @@ import { eventDatesWords, summaryWords } from './eventsHome.ts';
 const t = ((key: string, values: Record<string, unknown> = {}) =>
   `${key} ${JSON.stringify(values)}`) as unknown as TFunction;
 
+const NOW = new Date('2026-11-11T12:00:00+01:00');
+
 const EVENT = {
   status: 'live' as const,
   startsAt: '2026-11-14T09:00:00+01:00',
@@ -34,7 +36,7 @@ describe('summaryWords', () => {
 
 describe('eventDatesWords', () => {
   it('writes one day, then its start and zone, in the event’s zone', () => {
-    expect(eventDatesWords(EVENT, 'en-US', t)).toEqual({
+    expect(eventDatesWords(EVENT, NOW, 'en-US', t)).toEqual({
       days: 'Saturday, Nov 14',
       time: 'eventsScreen.timeAndZone {"time":"09:00","timeZone":"Europe/Madrid"}',
     });
@@ -42,7 +44,7 @@ describe('eventDatesWords', () => {
 
   it('writes a multi-day event as its first and last day', () => {
     expect(
-      eventDatesWords({ ...EVENT, endsAt: '2026-11-16T12:00:00+01:00' }, 'en-US', t).days,
+      eventDatesWords({ ...EVENT, endsAt: '2026-11-16T12:00:00+01:00' }, NOW, 'en-US', t).days,
     ).toBe('eventsScreen.days {"first":"Saturday, Nov 14","last":"Monday, Nov 16"}');
   });
 
@@ -50,9 +52,16 @@ describe('eventDatesWords', () => {
     expect(
       eventDatesWords(
         { ...EVENT, status: 'ended', concludedAt: '2026-11-10T10:00:00+01:00' },
+        NOW,
         'en-US',
         t,
       ),
     ).toEqual({ days: 'eventsScreen.calledOffOn {"date":"Nov 10"}', time: null });
+  });
+
+  it('names the year on every date when one is not this year', () => {
+    expect(
+      eventDatesWords({ ...EVENT, endsAt: '2027-01-02T12:00:00+01:00' }, NOW, 'en-US', t).days,
+    ).toBe('eventsScreen.days {"first":"Saturday, Nov 14, 2026","last":"Saturday, Jan 2, 2027"}');
   });
 });

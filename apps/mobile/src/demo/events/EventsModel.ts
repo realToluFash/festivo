@@ -107,8 +107,10 @@ export function summaryLine(home: Home): string | null {
 
 export const PAST_PAGE = 10;
 
+const DEMO_NOW = new Date(CLOCKS.reader);
+
 export function daysWords(event: SampleEvent, locale: string, list: boolean): string {
-  return productDaysWords(event, locale, list, t);
+  return productDaysWords(event, DEMO_NOW, locale, list, t);
 }
 
 export function placeWords(event: SampleEvent): string {
@@ -116,7 +118,7 @@ export function placeWords(event: SampleEvent): string {
 }
 
 export function rowLine(event: Shown, locale: string, list = true): string {
-  return productRowLine(event, locale, t, list);
+  return productRowLine(event, DEMO_NOW, locale, t, list);
 }
 
 export function rowTag(event: Shown, everyPhase: boolean): RowTag | null {

@@ -190,7 +190,7 @@ export function EventCard({
             </Link>
           )}
         </Name>
-        <p className="desk-on-card">{rowLine(event, locale, t, event.calledOff)}</p>
+        <p className="desk-on-card">{rowLine(event, now, locale, t, event.calledOff)}</p>
         {guests != null && <p className="desk-on-card">{guests}</p>}
         {tiles.length > 0 && (
           <ul className="ev-tiles" aria-label={t('events.itsDays')}>

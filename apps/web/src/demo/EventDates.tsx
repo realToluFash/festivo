@@ -33,7 +33,7 @@ export function AllDates({ event, now }: { event: SampleEvent; now: Date }) {
       </h1>
       <div className="ev-strip">
         <Thumb event={event} size={40} />
-        <RowWords title={event.name} lines={[lineOf(event)]} />
+        <RowWords title={event.name} lines={[lineOf(event, now)]} />
       </div>
       <p className="dates-intro">{kw(KW.intro, { zone: event.timeZone })}</p>
       <ol className="desk-rows ev-details">

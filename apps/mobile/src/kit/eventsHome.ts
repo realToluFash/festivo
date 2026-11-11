@@ -1,10 +1,4 @@
-import {
-  type EventState,
-  eventDays,
-  formatEventClock,
-  formatEventShortDay,
-  formatEventWeekday,
-} from '@soirely/domain';
+import { type EventState, eventDayWords, formatEventClock } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 /** "2 happening now · 3 upcoming · 1 draft", leaving out any part whose count is 0; null with nothing to count (sc-22103). */
@@ -24,7 +18,7 @@ export function summaryWords(
     : parts.reduceRight((rest, first) => t('eventsScreen.summaryJoin', { first, rest }));
 }
 
-/** Its day, or its first and last day, then its start and zone, all in the event's own zone; a called-off event says when. */
+/** Its day, or its first and last day, with their year unless it is this one, then its start and zone, all in the event's own zone; a called-off event says when. */
 export function eventDatesWords(
   event: {
     status: EventState;
@@ -33,33 +27,26 @@ export function eventDatesWords(
     timeZone: string;
     concludedAt: string | null;
   },
+  now: Date,
   locale: string,
   t: TFunction,
 ): { days: string; time: string | null } {
-  const days = eventDays(event);
+  const days = eventDayWords(event, now, locale);
 
-  if (days.kind === 'calledOffOn') {
-    return {
-      days: t('eventsScreen.calledOffOn', {
-        date: formatEventShortDay(days.concludedAt, event.timeZone, locale),
-      }),
-      time: null,
-    };
+  switch (days.kind) {
+    case 'calledOffOn':
+      return { days: t('eventsScreen.calledOffOn', { date: days.date }), time: null };
+    case 'oneDay':
+    case 'days':
+      return {
+        days:
+          days.kind === 'oneDay'
+            ? days.day
+            : t('eventsScreen.days', { first: days.first, last: days.last }),
+        time: t('eventsScreen.timeAndZone', {
+          time: formatEventClock(event.startsAt, event.timeZone, locale),
+          timeZone: event.timeZone,
+        }),
+      };
   }
-
-  const first = formatEventWeekday(days.startsAt, event.timeZone, locale);
-
-  return {
-    days:
-      days.kind === 'oneDay'
-        ? first
-        : t('eventsScreen.days', {
-            first,
-            last: formatEventWeekday(days.endsAt, event.timeZone, locale),
-          }),
-    time: t('eventsScreen.timeAndZone', {
-      time: formatEventClock(event.startsAt, event.timeZone, locale),
-      timeZone: event.timeZone,
-    }),
-  };
 }

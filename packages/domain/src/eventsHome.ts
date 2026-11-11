@@ -1,3 +1,5 @@
+import { wallDay } from './calendar.ts';
+import { formatEventShortDay, formatEventWeekday } from './datetime.ts';
 import { type EventPhase, type EventState, calledOff, shownPhase } from './eventStates.ts';
 import { type LocaleCode, pluralLocale } from './locales.ts';
 import { type Milestone, milestoneDistance, nextUp } from './timeline.ts';
@@ -188,6 +190,42 @@ export function eventDays(event: {
   return day.format(new Date(event.startsAt)) === day.format(new Date(event.endsAt))
     ? { kind: 'oneDay', startsAt: event.startsAt }
     : { kind: 'days', startsAt: event.startsAt, endsAt: event.endsAt };
+}
+
+export type EventDayWords =
+  | { kind: 'oneDay'; day: string }
+  | { kind: 'days'; first: string; last: string }
+  | { kind: 'calledOffOn'; date: string };
+
+/** A dates line's dates in the reader's words; every one carries its year unless all are in this year, today's in the event's zone (sc-30413). A called-off event's day it was called off, unless `keepDays`. */
+export function eventDayWords(
+  event: Parameters<typeof eventDays>[0],
+  now: Date,
+  locale: string,
+  keepDays = false,
+): EventDayWords {
+  const { timeZone } = event;
+  const thisYear = wallDay(now, timeZone).slice(0, 4);
+  const withYear = (...moments: string[]) =>
+    moments.some((moment) => wallDay(moment, timeZone).slice(0, 4) !== thisYear);
+  const days = eventDays(event);
+
+  if (days.kind === 'calledOffOn' && !keepDays) {
+    const { concludedAt } = days;
+
+    return {
+      kind: 'calledOffOn',
+      date: formatEventShortDay(concludedAt, timeZone, locale, withYear(concludedAt)),
+    };
+  }
+
+  const { startsAt, endsAt } = event;
+  const year = withYear(startsAt, endsAt);
+  const first = formatEventWeekday(startsAt, timeZone, locale, year);
+
+  return wallDay(startsAt, timeZone) === wallDay(endsAt, timeZone)
+    ? { kind: 'oneDay', day: first }
+    : { kind: 'days', first, last: formatEventWeekday(endsAt, timeZone, locale, year) };
 }
 
 export interface HowSoon {
