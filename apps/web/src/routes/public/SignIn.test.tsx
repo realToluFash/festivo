@@ -216,7 +216,9 @@ describe('signing in, for real', () => {
     fillIn();
 
     await waitFor(() => expect(screen.getByRole('link', { name: 'Events' })).toBeDefined());
-    expect(screen.getByText('Signed in as Folake Ire')).toBeDefined();
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Set up your first event' })).toBeDefined(),
+    );
     await waitFor(() =>
       expect(sent.map((request) => request.path)).toEqual([
         '/api/auth/login',
