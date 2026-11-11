@@ -84,9 +84,17 @@ export function settledLift(liftNow: () => void): SettledLift {
   };
 }
 
-const textInput = codegenNativeCommands<{ blur(field: HostInstance): void }>({
-  supportedCommands: ['blur'],
+const textInput = codegenNativeCommands<{
+  blur(field: HostInstance): void;
+  focus(field: HostInstance): void;
+}>({
+  supportedCommands: ['blur', 'focus'],
 });
+
+/** Raises the keys on a field, focused or not, and leaves them up if they are. TextInput's focus() skips a field already focused, and Android's own focus command shows the keys whatever focus held. */
+export function raiseKeysOn(field: HostInstance): void {
+  textInput.focus(field);
+}
 
 /** Puts the keys down and calls `then` once they are and the scroll they move has landed after `settledMs`, as `keysDownThen`. With `field`, the one that raised them, they go down without moving input focus: once the field has given focus up, its blur only hides the keys, where Keyboard.dismiss no longer counts it as focused (sc-18587). Returns what cancels the call still to come. */
 export function putKeysDownThen(
