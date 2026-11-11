@@ -1380,7 +1380,7 @@
     "cancel": "Annuler",
     "turnDownTitle": "Refuser la demande de {{name}} ?",
     "turnDownBody": "La double authentification reste activée, et cette personne est prévenue par e-mail que la demande a été refusée.",
-    "turnDownConfirm": "Refuser la demande faite par {{name}}",
+    "turnDownConfirm": "Refuser la demande",
     "keep": "Garder la demande",
     "approved": "La double authentification de {{name}} est désactivée.",
     "approvedNext": "Cette personne a été prévenue par e-mail, et toutes ses sessions sont terminées.",
