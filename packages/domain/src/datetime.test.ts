@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   fallsOnEarlierDay,
@@ -55,6 +55,61 @@ describe('a time of day', () => {
     const iso = new Date(2026, 9, 15, 17, 5).toISOString();
 
     expect(formatTimeOfDay(iso, 'en')).toBe('17:05');
+  });
+});
+
+describe('a two-digit hour, in every language and on every engine', () => {
+  const LOCALES = ['es', 'pt', 'fr', 'en'];
+  const early = new Date(2026, 10, 11, 1, 33);
+  const midnight = new Date(2026, 10, 11, 0, 7);
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it.each(LOCALES)('writes 01:33 and 00:07 as a time of day in %s', (locale) => {
+    expect(formatTimeOfDay(early, locale)).toBe('01:33');
+    expect(formatTimeOfDay(midnight, locale)).toBe('00:07');
+  });
+
+  it.each(LOCALES)('writes 01:33 and 00:07 as an event’s clock in %s', (locale) => {
+    expect(formatEventClock('2026-11-11T01:33:00Z', 'UTC', locale)).toBe('01:33');
+    expect(formatEventClock('2026-11-11T00:07:00Z', 'UTC', locale)).toBe('00:07');
+  });
+
+  it('keeps a locale’s own separator, padding only the hour', () => {
+    expect(formatTimeOfDay(early, 'fr-CA')).toBe('01 h 33');
+  });
+
+  it('puts the zero back where the engine drops it, as Hermes does for es', async () => {
+    const RealFormat = Intl.DateTimeFormat;
+    const unpadded = (parts: Intl.DateTimeFormatPart[]) =>
+      parts.map((part) =>
+        part.type === 'hour' ? { ...part, value: String(Number(part.value)) } : part,
+      );
+    function HermesFormat(locale?: string | string[], options?: Intl.DateTimeFormatOptions) {
+      const real = new RealFormat(locale, options);
+
+      return {
+        formatToParts: (moment?: Date | number) => unpadded(real.formatToParts(moment)),
+        format: (moment?: Date | number) =>
+          unpadded(real.formatToParts(moment))
+            .map((part) => part.value)
+            .join(''),
+      };
+    }
+    vi.stubGlobal('Intl', { ...Intl, DateTimeFormat: HermesFormat });
+    vi.resetModules();
+    const hermes = await import('./datetime.ts');
+
+    expect(
+      new Intl.DateTimeFormat('es', { hour: '2-digit', minute: '2-digit' }).format(early),
+    ).toBe('1:33');
+    expect(hermes.formatTimeOfDay(early, 'es')).toBe('01:33');
+    expect(hermes.formatTimeOfDay(midnight, 'es')).toBe('00:07');
+    expect(hermes.formatEventClock('2026-11-11T01:33:00Z', 'UTC', 'es')).toBe('01:33');
+    expect(hermes.formatEventClock('2026-11-11T00:07:00Z', 'UTC', 'es')).toBe('00:07');
   });
 });
 
