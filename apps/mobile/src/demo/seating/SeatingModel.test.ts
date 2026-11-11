@@ -18,9 +18,12 @@ import {
   metres,
   nearestFree,
   overlapping,
+  overlaps,
   parseMetres,
   pct,
+  reachOf,
   sideFrom,
+  turn,
   wordsAt,
 } from './SeatingGeometry.ts';
 import {
@@ -782,6 +785,65 @@ describe('the room’s words and handles (qa3, 11 Nov)', () => {
           expect(h.x + 12, `${it.id} at ${pct(s)}%`).toBeLessThanOrEqual(ROOM.w * s);
           expect(h.x - 12, `${it.id} at ${pct(s)}%`).toBeGreaterThanOrEqual(0);
         }),
+      ),
+    );
+  });
+
+  const walls = (m: Seating) =>
+    [
+      { x: -1e4, y: null },
+      { x: 1e4, y: null },
+      { x: null, y: -1e4 },
+      { x: null, y: 1e4 },
+      { x: -1e4, y: -1e4 },
+      { x: 1e4, y: -1e4 },
+      { x: -1e4, y: 1e4 },
+      { x: 1e4, y: 1e4 },
+    ].flatMap((w) =>
+      chosen(m).flatMap((it0) => {
+        const it = { ...it0, ...heldInside({ ...it0, x: w.x ?? it0.x, y: w.y ?? it0.y }, m.room) };
+        const others = m.items.filter((o) => o.id !== it.id);
+        if (others.some((o) => overlaps(it, o))) return [];
+        return [{ it, plan: { ...m, items: [...others, it] } }];
+      }),
+    );
+
+  it('keeps every handle inside the walls with a table held against each wall and corner', () => {
+    [pad, phone].forEach((m) => {
+      const held = walls(m);
+      expect(held.length).toBeGreaterThan(20);
+      [...scales, at46].forEach((s) =>
+        held.forEach(({ it, plan }) =>
+          at(it, s, plan).forEach((h) => {
+            const said = `${it.id} at (${it.x}, ${it.y}), ${pct(s)}%`;
+            expect(h.x - 12, said).toBeGreaterThanOrEqual(-1e-9);
+            expect(h.y - 12, said).toBeGreaterThanOrEqual(-1e-9);
+            expect(h.x + 12, said).toBeLessThanOrEqual(m.room.w * s + 1e-9);
+            expect(h.y + 12, said).toBeLessThanOrEqual(m.room.l * s + 1e-9);
+          }),
+        ),
+      );
+    });
+  });
+
+  it('does not resize a table held against a wall when its handle is picked up', () => {
+    [pad, phone].forEach((m) =>
+      [at46, 0.5, 2].forEach((s) =>
+        walls(m).forEach(({ it, plan }) =>
+          handlePoints(it, s, plan).forEach((h, i) => {
+            const r = reachOf(it, s, h);
+            const q = turn(h, -it.rot);
+            const size = (n: number, reach: number) => (2 * (Math.abs(n) - reach)) / s;
+            if (it.kind === 'round' || it.kind === 'cocktail')
+              expect(size(Math.max(Math.abs(q.x), Math.abs(q.y)), Math.max(r.x, r.y))).toBeCloseTo(
+                it.d,
+              );
+            else {
+              if (i % 4 !== 1) expect(size(q.x, r.x), `${it.id} ${i}`).toBeCloseTo(it.w);
+              if (i % 4 !== 3) expect(size(q.y, r.y), `${it.id} ${i}`).toBeCloseTo(it.l);
+            }
+          }),
+        ),
       ),
     );
   });

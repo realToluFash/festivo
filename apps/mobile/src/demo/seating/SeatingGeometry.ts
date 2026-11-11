@@ -207,41 +207,52 @@ function othersChairs(
     );
 }
 
-/** How far past a table's own edge its handles sit, in px: zoomed out just clear of the table, then just clear of its chairs, from 150% clear of its chairs' targets, so no handle covers a chair's words or its target (sc-31783, qa3 11 Nov). Given the plan, they come in toward the table only as far as it takes to keep inside the walls and off every other item's chairs (lead, PR #1829). */
+/** A handle's centre held inside the walls: a table held against a wall keeps that side's handle in its frame, half a handle in from the wall. */
+function walled(it: Item, s: number, room: Room, p: Point): Point {
+  const lo = HANDLE_DRAWN / 2;
+  return {
+    x: Math.min(room.w * s - lo, Math.max(lo, it.x * s + p.x)) - it.x * s,
+    y: Math.min(room.l * s - lo, Math.max(lo, it.y * s + p.y)) - it.y * s,
+  };
+}
+
+/** How far past a table's own edge its handles sit, in px: zoomed out just clear of the table, then just clear of its chairs, from 150% clear of its chairs' targets, so no handle covers a chair's words or its target (sc-31783, qa3 11 Nov). Given the plan, they come in toward the table only as far as it takes to keep off every other item's chairs, or as near to that as any reach gets (lead, PR #1829). */
 export function handleReach(it: Item, s: number, plan?: Plan): Point {
   const own = ownReach(it, s);
   if (plan == null) return own;
   const chairs = othersChairs(it, s, plan);
   const cx = it.x * s;
   const cy = it.y * s;
-  const clear = (r: Point) =>
-    pointsAt(it, s, r).every((p) => {
-      const x = cx + p.x;
-      const y = cy + p.y;
-      const inside =
-        x - HANDLE_DRAWN / 2 >= 0 &&
-        y - HANDLE_DRAWN / 2 >= 0 &&
-        x + HANDLE_DRAWN / 2 <= plan.room.w * s &&
-        y + HANDLE_DRAWN / 2 <= plan.room.l * s;
-      return (
-        inside &&
-        chairs.every((c) => {
-          const dx = Math.max(0, Math.abs(x - c.x) - HANDLE_HIT / 2);
-          const dy = Math.max(0, Math.abs(y - c.y) - HANDLE_HIT / 2);
-          return c.box ? Math.max(dx, dy) >= c.r : Math.hypot(dx, dy) >= c.r;
-        })
-      );
-    });
+  const over = (r: Point) =>
+    pointsAt(it, s, r).reduce((sum, p0) => {
+      const p = walled(it, s, plan.room, p0);
+      return chairs.reduce((acc, c) => {
+        const dx = Math.max(0, Math.abs(cx + p.x - c.x) - HANDLE_HIT / 2);
+        const dy = Math.max(0, Math.abs(cy + p.y - c.y) - HANDLE_HIT / 2);
+        return acc + Math.max(0, c.r - (c.box ? Math.max(dx, dy) : Math.hypot(dx, dy)));
+      }, sum);
+    }, 0);
+  let best = { r: own, over: Infinity };
   for (let cut = 0; cut <= Math.min(own.x, own.y); cut += 1) {
     const r = { x: own.x - cut, y: own.y - cut };
-    if (clear(r)) return r;
+    const o = over(r);
+    if (o === 0) return r;
+    if (o < best.over) best = { r, over: o };
   }
-  return own;
+  return best.r;
 }
 
-/** A round or cocktail table's four corners, a long table's eight points, each handleReach past its edge, from its centre in px. */
+/** A round or cocktail table's four corners, a long table's eight points, each handleReach past its edge and inside the walls, from its centre in px. */
 export function handlePoints(it: Item, s: number, plan?: Plan): Point[] {
-  return pointsAt(it, s, handleReach(it, s, plan));
+  const points = pointsAt(it, s, handleReach(it, s, plan));
+  return plan == null ? points : points.map((p) => walled(it, s, plan.room, p));
+}
+
+/** How far past the table's edge one handle sits along the table's own axes, in px; less than its reach, or inside the edge, where a wall holds it in. */
+export function reachOf(it: Item, s: number, handle: Point): Point {
+  const half = bodyHalf(it);
+  const q = turn(handle, -it.rot);
+  return { x: Math.abs(q.x) - half.x * s, y: Math.abs(q.y) - half.y * s };
 }
 
 /** The size a handle dragged to n px from the centre asks for, in cm: its reach is taken off first, so a handle picked up does not grow the table. */

@@ -28,11 +28,11 @@ import {
   extent,
   filled,
   handlePoints,
-  handleReach,
   heldInside,
   isCircle,
   itemAt,
   overlapping,
+  reachOf,
   snapped,
   sideFrom,
   turn,
@@ -373,22 +373,24 @@ function itemShape({
     );
   if (look.handles != null && hasHandles(it)) {
     const size = look.handles;
+    const points = handlePoints(it, s, m);
     if (it.kind === 'round' || it.kind === 'cocktail') {
-      const h = (it.d / 2) * s + handleReach(it, s, m).x;
+      const xs = points.map((p) => p.x);
+      const ys = points.map((p) => p.y);
       out.push(
         <Rect
           key="frame"
-          x={cx - h}
-          y={cy - h}
-          width={2 * h}
-          height={2 * h}
+          x={cx + Math.min(...xs)}
+          y={cy + Math.min(...ys)}
+          width={Math.max(...xs) - Math.min(...xs)}
+          height={Math.max(...ys) - Math.min(...ys)}
           fill="none"
           stroke={VIOLET}
           strokeWidth={1.5}
         />,
       );
     }
-    handlePoints(it, s, m).forEach((p, i) =>
+    points.forEach((p, i) =>
       out.push(
         <Rect
           key={`h${i}`}
@@ -830,10 +832,13 @@ function roomGestures(dispatch: (action: Action) => void, show: (live: Live | nu
       { x: p.x - (mm.shown.ox + it.x * s), y: p.y - (mm.shown.oy + it.y * s) },
       -it.rot,
     );
-    const reach = handleReach(it, s, mm);
+    const reach = reachOf(it, s, handlePoints(it, s, mm)[cur.handle] ?? { x: 0, y: 0 });
     const round = it.kind === 'round' || it.kind === 'cocktail';
     const next = round
-      ? { ...it, d: sideFrom(Math.max(Math.abs(lp.x), Math.abs(lp.y)), reach.x, s) }
+      ? {
+          ...it,
+          d: sideFrom(Math.max(Math.abs(lp.x), Math.abs(lp.y)), Math.max(reach.x, reach.y), s),
+        }
       : {
           ...it,
           w: cur.handle % 4 === 1 ? it.w : sideFrom(lp.x, reach.x, s),
