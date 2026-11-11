@@ -8,6 +8,8 @@ import {
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
+import { type Turned, phoneOnItsSide } from './keyboard';
+
 export type Step = 1 | 2 | 3;
 export const STEPS = 3;
 
@@ -211,18 +213,8 @@ export function cardNameSize(name: string): number {
 }
 
 /** A phone on its side with the keys up: the strip above them is too short for the upright arrangement (sc-35256, sc-38666). */
-export function onItsSideTyping({
-  phone,
-  width,
-  height,
-  keysUp,
-}: {
-  phone: boolean;
-  width: number;
-  height: number;
-  keysUp: boolean;
-}): boolean {
-  return phone && keysUp && width > height;
+export function onItsSideTyping({ keysUp, ...screen }: Turned & { keysUp: boolean }): boolean {
+  return keysUp && phoneOnItsSide(screen);
 }
 
 /** Where Continue sits: pinned under the step, or, on a phone on its side with the keys up, where too little is left above them for a pinned foot and the field, scrolled as the step's last part, and on the country step left out until the keys go down, so it is not below the whole list (sc-35256). */

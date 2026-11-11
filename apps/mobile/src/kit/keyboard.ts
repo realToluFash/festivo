@@ -292,9 +292,13 @@ export interface Turned {
   height: number;
 }
 
-/** Whether a list's search sits beside its title: a phone on its side, either OS, leaves little more than a row above the keys (sc-10118, sc-35256). */
-export function searchBesideTitle({ phone, width, height }: Turned): boolean {
+export function phoneOnItsSide({ phone, width, height }: Turned): boolean {
   return phone && width > height;
+}
+
+/** Whether a list's search sits beside its title: a phone on its side, either OS, leaves little more than a row above the keys (sc-10118, sc-35256). */
+export function searchBesideTitle(screen: Turned): boolean {
+  return phoneOnItsSide(screen);
 }
 
 /** On an Android phone this tall or shorter, in dp, the keys leave no room for the help line and back row (sc-3132). */
