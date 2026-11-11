@@ -16,6 +16,7 @@ import {
 import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, RefreshControl, StyleSheet, View, type ViewInstance } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -48,9 +49,7 @@ import {
 } from './EventsSearch.tsx';
 import { EventsFirstRun } from './EventsList.tsx';
 import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './ListAndPage.tsx';
-import { Notice } from './Notice.tsx';
-import { ReadOut } from './ReadOut.tsx';
-import { AnswerInView } from './Screen.tsx';
+import { phoneTabBarClearance } from './TodayCover.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
 import { Arrived } from './Skeleton.tsx';
@@ -58,6 +57,7 @@ import {
   type Anchor,
   LoadingBlock,
   SunkTabs,
+  PageToast,
   anchorUnder,
   useAnchorFollowsTurn,
 } from './Summary.tsx';
@@ -91,6 +91,8 @@ const LOADING: Load = { kind: 'loading' };
 export function EventsScreen() {
   const { t } = useTranslation();
   const { kind } = useListAndPageLayout(SPACING, 'nothing');
+  const insets = useSafeAreaInsets();
+  const underTabs = phoneTabBarClearance(insets.bottom);
   const { organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const reads = organisation != null;
@@ -363,17 +365,6 @@ export function EventsScreen() {
     <EventsFailed onRetry={reload} testID="events.retry" />
   ) : (
     <Arrived style={styles.stack}>
-      {deleted != null && (
-        <AnswerInView key={deleted}>
-          <ReadOut words={t('eventDelete.deleted', { event: deleted })}>
-            <Notice
-              tone="done"
-              mark={tokens.marks.done.glyph}
-              body={t('eventDelete.deleted', { event: deleted })}
-            />
-          </ReadOut>
-        </AnswerInView>
-      )}
       {hasNoEvents(load) ? (
         <EventsFirstRun wide={kind !== 'phone'} onCreate={creates ? newEvent : undefined} />
       ) : results != null ? (
@@ -448,10 +439,11 @@ export function EventsScreen() {
       offline={stale}
       underTitle={underTitle}
       primary={
-        creates && !firstVisit
+        creates
           ? { label: t('eventsScreen.newEvent'), onPress: newEvent, testID: 'events.new' }
           : undefined
       }
+      listUnderTabs
     >
       <ListAndPage
         kind={kind}
@@ -468,6 +460,15 @@ export function EventsScreen() {
         back={{ label: t('eventsScreen.back'), onPress: () => undefined, testID: 'events.back' }}
         spacing={SPACING}
       />
+      {deleted != null && (
+        <PageToast
+          words={t('eventDelete.deleted', { event: deleted })}
+          onClose={() => setDeleted(null)}
+          bottom={
+            kind === 'phone' ? underTabs + tokens.spaceMd : Math.max(insets.bottom, tokens.spaceLg)
+          }
+        />
+      )}
     </AppFrame>
   );
 }
@@ -479,7 +480,7 @@ const styles = StyleSheet.create({
     gap: 18,
     paddingTop: tokens.spaceXxs,
     paddingHorizontal: tokens.spaceXxl,
-    paddingBottom: tokens.space3xl,
+    paddingBottom: tokens.space6xl * 2,
   },
   portrait: {
     gap: 18,

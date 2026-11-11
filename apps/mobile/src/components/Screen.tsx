@@ -68,6 +68,7 @@ import { tokens } from '../theme/tokens.ts';
 import { focusedField, watchCheckedField, watchFocusedField } from './focusedField.ts';
 import { fieldUnderToast, landingToastTop, watchLandingToastTop } from './landingToastTop.ts';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { useUnderTabs } from './underTabs.ts';
 import {
   LIFT,
   keyboardTopNow,
@@ -1139,6 +1140,7 @@ export function ScrollColumn({
 }) {
   const { screenScroll, scrollProps, heldStyle, onContentLayout } = useScreenScrollView();
   const docked = useContext(Dock)?.docked ?? false;
+  const underTabs = useUnderTabs();
   const left = useRef<number | null>(null);
   const restore = () => {
     if (away || left.current == null) return;
@@ -1173,11 +1175,13 @@ export function ScrollColumn({
         contentContainerStyle={[styles.grow, heldStyle]}
         refreshControl={refreshControl}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={underTabs === 0}
         {...scrollInsets(LIFT, docked)}
       >
         <View onLayout={onContentLayout} style={contentContainerStyle}>
           {children}
         </View>
+        {underTabs > 0 && <View style={{ height: underTabs }} />}
       </ScrollView>
     </ScreenScroll.Provider>
   );
