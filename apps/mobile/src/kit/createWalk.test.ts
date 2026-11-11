@@ -88,7 +88,7 @@ describe('the countries', () => {
 });
 
 describe('nameInSight', () => {
-  const group = { top: 200, fieldEnd: 77, bottom: 320, margin: 16 };
+  const group = { top: 200, fieldEnd: 77, field: 52, bottom: 320, margin: 16 };
 
   it('leaves the step where it is when the whole group fits', () => {
     expect(nameInSight({ ...group, viewport: 400 })).toBeNull();
@@ -106,8 +106,8 @@ describe('nameInSight', () => {
     expect(nameInSight({ ...group, viewport: 140 })).toBe(184);
   });
 
-  it('keeps the field whole when the label and field do not both fit', () => {
-    expect(nameInSight({ ...group, viewport: 60 })).toBe(233);
+  it('keeps the field whole when the label and field do not both fit, splitting what is left', () => {
+    expect(nameInSight({ ...group, viewport: 60 })).toBe(221);
   });
 
   it('waits for the step to be laid out', () => {
@@ -139,10 +139,25 @@ describe('Organisation name on a phone on its side with the keys up', () => {
 
   it('keeps the field in sight with its margins on arrival, the help one scroll down', () => {
     const row = nameRow({ sideways: true, large: false }).height;
-    const scroll = nameInSight({ viewport: strip, top: 200, fieldEnd: row, bottom: 300, margin });
+    const scroll = nameInSight({
+      viewport: strip,
+      top: 200,
+      fieldEnd: row,
+      field: row,
+      bottom: 300,
+      margin,
+    });
     expect(scroll).not.toBeNull();
     expect(200 - (scroll ?? 0)).toBeGreaterThanOrEqual(margin);
     expect(strip - (200 + row - (scroll ?? 0))).toBeGreaterThanOrEqual(margin);
+  });
+
+  it('shows the field whole with no margin where the strip is only the field (QA #40574)', () => {
+    // Soirely_QA1_Phone: 52 between the 44 nav's rule and the keys.
+    const row = nameRow({ sideways: true, large: false }).height;
+    expect(
+      nameInSight({ viewport: row, top: 200, fieldEnd: row, field: row, bottom: 300, margin }),
+    ).toBe(200);
   });
 });
 

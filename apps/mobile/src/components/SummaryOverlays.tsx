@@ -322,7 +322,8 @@ function useTitleTakesFocus(
     }),
     [focus],
   );
-  const { shown } = useFocusOnAnswer(step, target);
+  // In the gap between the reveal and the move, TalkBack names the window or puts its own focus back, and the title is heard twice.
+  const { shown } = useFocusOnAnswer(step, target, Platform.OS === 'android' ? 0 : SETTLED_MS);
 
   return { heading, shown, hidden, focus };
 }

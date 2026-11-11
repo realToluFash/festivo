@@ -1892,3 +1892,16 @@ function drawsFocusEdge(text: string): boolean {
     )
   );
 }
+
+describe('a failing check keeps the keys up on a field Android holds focused, over a Modal too (sc-40584)', () => {
+  const text = readFileSync(join('src', 'components', 'Field.tsx'), 'utf8');
+  const body =
+    /export function focusChecked\([^)]*\): void \{([\s\S]*?)\n\}/u.exec(text)?.[1] ?? '';
+  const from = body.indexOf("Platform.OS === 'android'");
+  const android = from < 0 ? '' : body.slice(from, body.indexOf('return;', from));
+
+  it('raises the keys there through the native focus command, with no blur first', () => {
+    expect(android).toContain('raiseKeysOn(input);');
+    expect(android).not.toMatch(/\.blur\(|Keyboard\.isVisible\(/u);
+  });
+});

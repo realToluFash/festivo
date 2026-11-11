@@ -44,6 +44,7 @@ import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { fieldChecked, fieldFocused, fieldLeft } from './focusedField.ts';
+import { raiseKeysOn } from './keyboardWatch.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
@@ -321,7 +322,13 @@ export function focusChecked(field: RefObject<TextInputInstance | null>): void {
   const input = field.current;
   if (input == null) return;
   const focused = input.isFocused();
-  // Android's back gesture hides the keys and leaves the field focused, and focus() skips a focused field.
+  // Android reads the keys as hidden over a Modal, so a blur there put them down on a check (sc-40584).
+  if (Platform.OS === 'android' && focused) {
+    fieldChecked(true);
+    raiseKeysOn(input);
+    return;
+  }
+  // An iPhone header tap hides the keys and leaves the field focused, and focus() skips a focused field.
   if (focused && !Keyboard.isVisible()) input.blur();
   fieldChecked(focused && Keyboard.isVisible());
   input.focus();
