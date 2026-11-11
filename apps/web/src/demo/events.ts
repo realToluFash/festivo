@@ -1372,6 +1372,10 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     ],
   },
   {
+    name: 'New event, its top once the band has gone (sc-39509)',
+    states: [{ to: '/demo/events/new', name: 'New event: ‹ Events and the bell, then the title' }],
+  },
+  {
     name: 'Searching and filtering',
     states: [
       { to: '/demo/events?q=lucia', name: 'Searching “lucia”' },
