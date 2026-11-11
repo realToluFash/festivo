@@ -188,6 +188,7 @@ export function NameStep({
     viewport: 0,
     top: 0,
     fieldEnd: 0,
+    field: 0,
     bottom: 0,
     margin: tokens.spaceLg,
   });
@@ -207,6 +208,7 @@ export function NameStep({
   const placeField = (event: LayoutChangeEvent) => {
     const { y, height } = event.nativeEvent.layout;
     seen.current.fieldEnd = y + height;
+    seen.current.field = sizes.field;
     keepInSight(seen.current, scroller);
   };
 
