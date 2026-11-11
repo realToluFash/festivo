@@ -46,7 +46,7 @@ import {
 } from '../kit/appNav.ts';
 import { backRowHiding } from '../kit/backRow.ts';
 import { type Currencies, freshWalk } from '../kit/createWalk.ts';
-import { phonePillAlone, pillBesideTabs } from '../kit/frameBand.ts';
+import { phonePillAlone } from '../kit/frameBand.ts';
 import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBack.ts';
 import { EVENT_PLACES, type EventPlace, MORE_PLACES } from '../kit/eventNav.ts';
 import { leaveThen } from '../leaveHeld.ts';
@@ -108,7 +108,7 @@ import { type TextHandle, Text, TitleCap } from './Text.tsx';
 import { Title, useWholeWords } from './Title.tsx';
 import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 import { TopPrimary, type TopPrimaryProps } from './TopPrimary.tsx';
-import { ListTop, PortraitTop } from './ListTop.tsx';
+import { ListTop, PortraitRow, PortraitTop } from './ListTop.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 import { type EdgeSwipeHandlers, EdgeSwipeStrip } from './useEdgeSwipeBack.ts';
@@ -746,7 +746,7 @@ function ScreenTop({
     );
   const under = (
     <>
-      {underTitle != null && <View style={styles.underTop}>{underTitle}</View>}
+      {underTitle}
       {switched}
     </>
   );
@@ -838,9 +838,6 @@ function FrameHeader({
   const { width, height } = useLayout();
   const titleSize = frameTitleSize(kind !== 'phone', Math.min(width, height));
   const tabs = useFrameTabs(current, organisation);
-  const [rowWidth, setRowWidth] = useState(0);
-  const [tabsWidth, setTabsWidth] = useState(0);
-  const besideTabs = pillBesideTabs(rowWidth, tabsWidth);
 
   if (kind === 'tabletLandscape') {
     return (
@@ -901,29 +898,21 @@ function FrameHeader({
   if (kind === 'tabletPortrait' && !inEvent) {
     return (
       <View style={[styles.portraitHeader, top]}>
-        <View
-          style={styles.titleRow}
-          onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}
-        >
-          {organisation != null && (
-            <View style={[styles.shrink, besideTabs != null && { maxWidth: besideTabs.maxWidth }]}>
+        <PortraitRow
+          renderPill={(room) =>
+            organisation != null && (
               <OrgPill
                 organisation={organisation}
                 waiting={waiting}
                 onSwitch={onSwitch}
-                room={besideTabs?.maxWidth}
+                room={room}
                 ref={pill}
               />
-            </View>
-          )}
-          <View style={styles.fill} />
-          <BellButton />
-          <View style={styles.capsuleAt} pointerEvents="box-none">
-            <View onLayout={(event) => setTabsWidth(event.nativeEvent.layout.width)}>
-              <WhiteCapsule {...tabs} />
-            </View>
-          </View>
-        </View>
+            )
+          }
+          bell={<BellButton />}
+          tabs={<WhiteCapsule {...tabs} />}
+        />
         {backView}
         {titleRow()}
       </View>
@@ -1410,7 +1399,6 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   topRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   pageRow: { minHeight: 0, paddingTop: 14 },
-  underTop: { marginTop: tokens.spaceHair },
   staysPhone: { paddingTop: tokens.spaceXxs, paddingHorizontal: tokens.spaceXxl },
   staysPortrait: { paddingTop: 26, paddingHorizontal: tokens.space5xl },
   staysLandscape: { paddingTop: 26, paddingHorizontal: 30 },
@@ -1505,15 +1493,6 @@ const styles = StyleSheet.create({
   },
   railItemOn: { backgroundColor: tokens.colorNeutralFill },
   whitePill: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
-  capsuleAt: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   created: { paddingTop: tokens.spaceLg, paddingHorizontal: tokens.spaceXl },
   switchedUnderTitle: { marginTop: 18 },
 });

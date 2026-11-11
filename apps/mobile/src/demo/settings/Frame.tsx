@@ -211,6 +211,7 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
   return (
     <ProductPortraitTop
       renderPill={() => <OrgPill />}
+      pillFits={false}
       bell={<Bell tell={shell.tell} />}
       tabs={<WhiteCapsule tabs={tabsFor(shell.viewer)} at={at} onTab={shell.onTab} />}
     />

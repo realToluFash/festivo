@@ -69,35 +69,43 @@ export function PillRow({ pill, bell }: { pill: ReactNode; bell: ReactNode }) {
   );
 }
 
-/** An iPad upright's row that stays: the pill, the tabs centred and the bell, 10 under the status bar; the pill turns to its tile when its words would not fit beside the tabs. */
-export function PortraitTop({
-  renderPill,
-  bell,
-  tabs,
-}: {
-  renderPill: (room: number | undefined) => ReactNode;
-  bell: ReactNode;
-  tabs: ReactNode;
-}) {
+/** An iPad upright's row that stays, 10 under the status bar, with its tabs 7 under it. */
+export function PortraitTop(props: PortraitRowProps) {
   const insets = useSafeAreaInsets();
-  const [rowWidth, setRowWidth] = useState(0);
-  const [tabsWidth, setTabsWidth] = useState(0);
-  const besideTabs = pillBesideTabs(rowWidth, tabsWidth);
-  const drawn = renderPill(besideTabs?.maxWidth);
 
   return (
     <View style={[styles.portraitTop, { paddingTop: insets.top + tokens.spaceMd }]}>
-      <View style={styles.row} onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}>
-        {drawn != null && drawn !== false && (
-          <View style={[styles.shrink, besideTabs != null && { maxWidth: besideTabs.maxWidth }]}>
-            {drawn}
-          </View>
-        )}
-        <View style={styles.fill} />
-        {bell}
-        <View style={styles.tabsAt} pointerEvents="box-none">
-          <View onLayout={(event) => setTabsWidth(event.nativeEvent.layout.width)}>{tabs}</View>
+      <PortraitRow {...props} />
+    </View>
+  );
+}
+
+type PortraitRowProps = {
+  renderPill: (room: number | undefined) => ReactNode;
+  bell: ReactNode;
+  tabs: ReactNode;
+  /** False leaves a pill that cannot turn to its tile at its own width. */
+  pillFits?: boolean;
+};
+
+/** The pill, the bell, and the tabs centred 3 above the row's top whatever the pill's height; the pill turns to its tile when its words would not fit beside the tabs. */
+export function PortraitRow({ renderPill, bell, tabs, pillFits = true }: PortraitRowProps) {
+  const [rowWidth, setRowWidth] = useState(0);
+  const [tabsWidth, setTabsWidth] = useState(0);
+  const besideTabs = pillFits ? pillBesideTabs(rowWidth, tabsWidth) : null;
+  const drawn = renderPill(besideTabs?.maxWidth);
+
+  return (
+    <View style={styles.row} onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}>
+      {drawn != null && drawn !== false && (
+        <View style={[styles.shrink, besideTabs != null && { maxWidth: besideTabs.maxWidth }]}>
+          {drawn}
         </View>
+      )}
+      <View style={styles.fill} />
+      {bell}
+      <View style={styles.tabsAt} pointerEvents="box-none">
+        <View onLayout={(event) => setTabsWidth(event.nativeEvent.layout.width)}>{tabs}</View>
       </View>
     </View>
   );
@@ -112,11 +120,9 @@ const styles = StyleSheet.create({
   portraitTop: { paddingHorizontal: tokens.space3xl, paddingBottom: tokens.spaceXxs },
   tabsAt: {
     position: 'absolute',
-    top: 0,
-    bottom: 0,
+    top: 7 - tokens.spaceMd,
     left: 0,
     right: 0,
     alignItems: 'center',
-    justifyContent: 'center',
   },
 });
