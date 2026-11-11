@@ -8,15 +8,17 @@ export const PILL_CHROME =
 /** The invitation line's ring and the gap after it, before its words. */
 export const WAITING_RING = 11 + tokens.spaceXs;
 
-/** A name breaks between words, so its first word is the narrowest it can be drawn without cutting one. */
-export function firstWord(name: string): string {
-  return name.trim().split(/\s+/u)[0] ?? '';
+/** The narrowest the name can be drawn without cutting a word: its first word, and the "…" that ends it on one line when more words follow. */
+export function nameStart(name: string): string {
+  const [first = '', ...rest] = name.trim().split(/\s+/u);
+
+  return rest.length > 0 ? `${first}…` : first;
 }
 
-/** Beside the tabs the pill draws its words only where the name's first word and the invitation line each fit whole on one line; otherwise it is its tile, as under sc-30410's 120. At the accessibility sizes the pill is bare and wraps, as on main, and only the 120 turns it to its tile (sc-38149). */
+/** Beside the tabs the pill draws its words only where the name's first word, with its "…" when more words follow, and the invitation line each fit whole on one line; otherwise it is its tile, as under sc-30410's 120. At the accessibility sizes the pill is bare and wraps, as on main, and only the 120 turns it to its tile (sc-38149). */
 export function pillShowsWords(
   room: number,
-  widths: { firstWord: number; waitingLine: number | null },
+  widths: { nameStart: number; waitingLine: number | null },
   largest = false,
 ): boolean {
   if (room < PILL_BESIDE_TABS.fewest) return false;
@@ -25,7 +27,7 @@ export function pillShowsWords(
   const words = room - PILL_CHROME;
   const waiting = widths.waitingLine == null ? 0 : WAITING_RING + widths.waitingLine;
 
-  return words >= Math.max(widths.firstWord, waiting);
+  return words >= Math.max(widths.nameStart, waiting);
 }
 
 /** The switcher's answer pill: its spinner and the gap after it while sending, and its sides (`Pill`, not full). */

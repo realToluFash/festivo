@@ -4,7 +4,7 @@ import {
   ANSWER,
   answersStack,
   answerWidth,
-  firstWord,
+  nameStart,
   PILL_CHROME,
   pillShowsWords,
   WAITING_RING,
@@ -12,29 +12,30 @@ import {
 
 describe('the organisation pill beside the tabs (sc-38149)', () => {
   it('is its tile under 120, as sc-30410 decided, however short the words', () => {
-    expect(pillShowsWords(119, { firstWord: 10, waitingLine: null })).toBe(false);
+    expect(pillShowsWords(119, { nameStart: 10, waitingLine: null })).toBe(false);
   });
 
   it('draws its words where the first word and the invitation line each fit whole', () => {
     const room = PILL_CHROME + WAITING_RING + 80;
 
-    expect(pillShowsWords(room, { firstWord: 20, waitingLine: 80 })).toBe(true);
-    expect(pillShowsWords(room - 1, { firstWord: 20, waitingLine: 80 })).toBe(false);
+    expect(pillShowsWords(room, { nameStart: 20, waitingLine: 80 })).toBe(true);
+    expect(pillShowsWords(room - 1, { nameStart: 20, waitingLine: 80 })).toBe(false);
   });
 
   it('turns to its tile where the first word would have to break', () => {
-    expect(pillShowsWords(PILL_CHROME + 149, { firstWord: 150, waitingLine: null })).toBe(false);
-    expect(pillShowsWords(PILL_CHROME + 150, { firstWord: 150, waitingLine: null })).toBe(true);
+    expect(pillShowsWords(PILL_CHROME + 149, { nameStart: 150, waitingLine: null })).toBe(false);
+    expect(pillShowsWords(PILL_CHROME + 150, { nameStart: 150, waitingLine: null })).toBe(true);
   });
 
   it('keeps main’s rule at the accessibility sizes: its tile under 120 only', () => {
-    expect(pillShowsWords(119, { firstWord: 10, waitingLine: null }, true)).toBe(false);
-    expect(pillShowsWords(120, { firstWord: 200, waitingLine: 200 }, true)).toBe(true);
+    expect(pillShowsWords(119, { nameStart: 10, waitingLine: null }, true)).toBe(false);
+    expect(pillShowsWords(120, { nameStart: 200, waitingLine: 200 }, true)).toBe(true);
   });
 
-  it('measures the first word, since a name breaks only between words', () => {
-    expect(firstWord('QA Organisation')).toBe('QA');
-    expect(firstWord('  Internationalisation ')).toBe('Internationalisation');
+  it('measures the first word, and the "…" a longer name ends in on one line', () => {
+    expect(nameStart('QA Organisation')).toBe('QA…');
+    expect(nameStart('Internationalisation Partners')).toBe('Internationalisation…');
+    expect(nameStart('  Internationalisation ')).toBe('Internationalisation');
   });
 });
 

@@ -49,7 +49,7 @@ import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBac
 import { EVENT_PLACES, type EventPlace, MORE_PLACES } from '../kit/eventNav.ts';
 import { leaveThen } from '../leaveHeld.ts';
 import { frameTitleSize } from '../layout/textSize.ts';
-import { firstWord, pillShowsWords } from '../layout/pillFit.ts';
+import { nameStart, pillShowsWords } from '../layout/pillFit.ts';
 import { backLeast, backScale } from '../layout/focusedHeader.ts';
 import {
   type LayoutKind,
@@ -1190,10 +1190,10 @@ function OrgPill({
   const label = useOpenerLabel(organisation, waiting, onSwitch != null);
   const expanded = useContext(SwitcherOpenedBy) === ref;
   const waitingWords = waiting > 0 ? t('invitations.count', { count: waiting }) : null;
-  const first = firstWord(organisation.name);
+  const start = nameStart(organisation.name);
   const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
   const widths = {
-    firstWord: measured[`name|${first}`] ?? 0,
+    nameStart: measured[`name|${start}`] ?? 0,
     waitingLine: waitingWords == null ? null : (measured[`waiting|${waitingWords}`] ?? 0),
   };
   const tileAlone = room != null && !pillShowsWords(room, widths, large);
@@ -1225,7 +1225,7 @@ function OrgPill({
     <View style={styles.whitePill}>
       {room != null && (
         <>
-          <MeasuredWords words={[first]} size={15} weight="semibold" onWidth={measure('name')} />
+          <MeasuredWords words={[start]} size={15} weight="semibold" onWidth={measure('name')} />
           {waitingWords != null && (
             <MeasuredWords
               words={[waitingWords]}
