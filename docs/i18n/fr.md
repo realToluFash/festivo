@@ -840,3 +840,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   y était coupé en « Double authentific… », et avant lui « Activer la double authentification ».
   Rejetés « 2FA », un sigle, et « Double vérification », trop long. Seulement dans cet en-tête ; le
   texte courant garde « double authentification ». `web:security.setupTitle` reste complet.
+- **11 nov. 2026. « Ajouter à mon application d’authentification »** (sc-40162,
+  `mobile:twoFactorCard.addToApp`). Le bouton parle au nom du membre, « mon », comme « J’ai
+  enregistré ces codes… » ; le reste de l’étape dit « votre application d’authentification ».
+  « Ajouter », comme `phoneSetupTitle`. Le dessin a prévu cette longueur : deux lignes centrées sur
+  le téléphone, une seule dans la feuille de l’iPad. Rejeté « Ajouter à l’app d’authentification »,
+  « app » n’étant pas le mot de l’étape.
