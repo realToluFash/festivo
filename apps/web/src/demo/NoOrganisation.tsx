@@ -12,7 +12,6 @@ import { LayersContext, focusWhenFree, useDeskLayers } from '../layers.ts';
 import { SAMPLE } from './rules.ts';
 import { NEW_PLACE, create } from './switcher.ts';
 import '../components/SettingsParts.css';
-import './settings.css';
 import './createOrg.css';
 
 /** main's NoOrganisation, alone under the public header in B's desk look with no card (CreateOrg-B-Walk-Web, page 29). */

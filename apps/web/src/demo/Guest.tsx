@@ -66,7 +66,7 @@ import { switched } from './guestMessages.ts';
 import { useLater } from '../useLater.ts';
 import { legalPath } from './legal.ts';
 import './today.css';
-import './settings.css';
+import '../components/SettingsParts.css';
 import './events.css';
 import './guest.css';
 

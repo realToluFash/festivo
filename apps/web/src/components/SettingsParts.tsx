@@ -458,7 +458,8 @@ export function Dialog(props: DialogProps) {
 
 interface DialogProps {
   title: string;
-  verb: string;
+  /** Null while the body holds its own way on, such as Confirm it's you. */
+  verb: string | null;
   dismiss?: string;
   /** False for a dialog that applies each pick at once: Done closes it, and nothing sits at its left. */
   cancel?: boolean;
@@ -523,14 +524,18 @@ function DialogBox({
             </h2>
           }
           confirm={
-            <button
-              type="button"
-              className={verbClass}
-              {...offButton(!on || locked, { dim: false })}
-              onClick={onConfirm}
-            >
-              {verb}
-            </button>
+            verb == null ? (
+              <span className="desk-nav-verb is-none" aria-hidden="true" />
+            ) : (
+              <button
+                type="button"
+                className={verbClass}
+                {...offButton(!on || locked, { dim: false })}
+                onClick={onConfirm}
+              >
+                {verb}
+              </button>
+            )
           }
         />
         <div className="desk-dialog-body">{children}</div>

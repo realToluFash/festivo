@@ -31,10 +31,10 @@ describe('BackControl', () => {
 
   it('is a button heard by its title when it has no place to go', () => {
     const onClick = vi.fn();
-    render(<BackControl className="members-back" label="Members" onClick={onClick} />);
+    render(<BackControl className="settings-back" label="Members" onClick={onClick} />);
 
     const back = screen.getByRole('button', { name: 'Members' });
-    expect(back.className).toBe('link-button back-control members-back');
+    expect(back.className).toBe('link-button back-control settings-back');
     fireEvent.click(back);
 
     expect(onClick).toHaveBeenCalledOnce();
