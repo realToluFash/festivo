@@ -418,6 +418,7 @@ function EventView({
               <>
                 <AreaPage
                   event={event}
+                  now={now}
                   name={AREAS.find((one) => one.area === area)?.name ?? ''}
                   line={COMING[area]}
                 />
@@ -864,7 +865,17 @@ function ManageBlock({
 }
 
 /** An area main has not built: its name, the event, and that it is coming. */
-function AreaPage({ event, name, line }: { event: SampleEvent; name: string; line: string }) {
+function AreaPage({
+  event,
+  now,
+  name,
+  line,
+}: {
+  event: SampleEvent;
+  now: Date;
+  name: string;
+  line: string;
+}) {
   return (
     <>
       <h1 className="ev-area-title" tabIndex={-1}>
@@ -872,7 +883,7 @@ function AreaPage({ event, name, line }: { event: SampleEvent; name: string; lin
       </h1>
       <div className="ev-strip">
         <Thumb event={event} size={40} />
-        <RowWords title={event.name} lines={[lineOf(event)]} />
+        <RowWords title={event.name} lines={[lineOf(event, now)]} />
       </div>
       <div className="ev-coming">
         <h2>{name}</h2>

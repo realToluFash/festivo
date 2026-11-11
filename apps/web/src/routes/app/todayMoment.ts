@@ -4,15 +4,13 @@ import {
   type TodayCard,
   type TodayNow,
   type TodaySub,
-  eventDays,
   formatEventClock,
-  formatEventShortDay,
-  formatEventWeekday,
   todayView,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import type { AgendaItem, EventCard, Moment, Now, ShownEvent } from '../../components/today.ts';
+import { daysWords } from '../../eventsList.ts';
 import { meshFor } from '../../mesh.ts';
 
 export interface Reader {
@@ -35,22 +33,6 @@ function dayWords(day: string, locale: string, options: Intl.DateTimeFormatOptio
 
 function howFar(days: number, t: TFunction): string {
   return days === 1 ? t('today.tomorrow') : t('today.inDays', { count: days });
-}
-
-/** Its day, or its first and last day, in its own zone, as Events writes them. */
-function eventDates(event: ListedEvent, locale: string, t: TFunction): string {
-  const days = eventDays(event);
-
-  if (days.kind === 'calledOffOn')
-    return t('events.calledOffOn', {
-      date: formatEventShortDay(days.concludedAt, event.timeZone, locale),
-    });
-
-  const first = formatEventWeekday(days.startsAt, event.timeZone, locale);
-
-  return days.kind === 'oneDay'
-    ? first
-    : t('events.days', { first, last: formatEventWeekday(days.endsAt, event.timeZone, locale) });
 }
 
 function agendaItem(item: TodayAgendaItem<ListedEvent>, reader: Reader, t: TFunction): AgendaItem {
@@ -78,13 +60,13 @@ function agendaItem(item: TodayAgendaItem<ListedEvent>, reader: Reader, t: TFunc
   };
 }
 
-function card(one: TodayCard<ListedEvent>, reader: Reader, t: TFunction): EventCard {
+function card(one: TodayCard<ListedEvent>, now: Date, reader: Reader, t: TFunction): EventCard {
   const { event, count } = one;
 
   return {
     event: shownEvent(event),
     name: event.name,
-    dates: eventDates(event, reader.locale, t),
+    dates: daysWords(event, now, reader.locale, t),
     count:
       count.kind === 'draft'
         ? t('events.draft')
@@ -213,7 +195,7 @@ export function todayMoment(
               far: howFar(view.nextUp.daysAway, t),
             }),
           },
-    events: view.cards.map((one) => card(one, reader, t)),
+    events: view.cards.map((one) => card(one, now, reader, t)),
     now: view.now == null ? null : nowOf(view.now, reader, t),
   };
 }

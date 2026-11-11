@@ -132,6 +132,8 @@
     "daysAndPlace": "{{dates}} · {{place}}",
     "today": "Today",
     "itsDays": "Its days",
+    "moreDays_one": "{{count, number}} more day",
+    "moreDays_other": "{{count, number}} more days",
     "dayOf": "Day {{day, number}} of {{total, number}}",
     "showMore": "Show more",
     "moreShown_one": "{{count, number}} more finished event shown.",

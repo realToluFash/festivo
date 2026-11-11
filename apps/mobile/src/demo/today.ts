@@ -243,9 +243,11 @@ export function railAt(stops: readonly string[], time: string): number {
 }
 
 function eventDates(event: SampleEvent, say: Say): string {
+  const withYear = event.first.slice(0, 4) !== event.last.slice(0, 4) || undefined;
+
   return event.first === event.last
     ? say.day(event.first)
-    : `${say.day(event.first)} – ${say.day(event.last)}`;
+    : `${say.day(event.first, withYear)} – ${say.day(event.last, withYear)}`;
 }
 
 function card(

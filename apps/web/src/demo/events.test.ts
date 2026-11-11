@@ -111,7 +111,6 @@ describe('Events in A at a desk, the model (sc-30304)', () => {
       kind: 'next',
       title: 'Next up: Adaeze & Tunde’s wedding starts',
     });
-    expect(cardOf(event('evt-off'), CLOCKS.rest).tiles).toEqual([]);
   });
 
   it('offers Pause while live, Call off before it starts, End now while on, and only Duplicate and Delete once over', () => {

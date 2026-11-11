@@ -237,13 +237,13 @@ describe('the card’s one step, by nextStep', () => {
   });
 
   it('draws a tile per day only for an event over several days that is not over', () => {
-    expect(dayTiles(shown('evt-wed-4'), reader, LOCALE)?.map((tile) => tile.day)).toEqual([
-      '5',
-      '6',
-      '7',
-    ]);
     expect(
-      dayTiles(shown('evt-wed-4', happening), happening, LOCALE)?.map((tile) => tile.today),
+      dayTiles(shown('evt-wed-4'), reader, LOCALE)?.map((tile) => tile.kind === 'day' && tile.day),
+    ).toEqual(['5', '6', '7']);
+    expect(
+      dayTiles(shown('evt-wed-4', happening), happening, LOCALE)?.map(
+        (tile) => tile.kind === 'day' && tile.today,
+      ),
     ).toEqual([false, true, false]);
     expect(dayTiles(shown('evt-ireti-2'), reader, LOCALE)?.length).toBe(2);
     expect(dayTiles(shown('evt-gala-4'), reader, LOCALE)).toBeNull();

@@ -143,7 +143,7 @@ export function EventRow({
   const { t } = useTranslation();
   const tag = rowTag(event, everyPhase, t);
   const soon = howSoon(event, now, t);
-  const line = rowLine(event, locale, t);
+  const line = rowLine(event, now, locale, t);
 
   return (
     <li>
