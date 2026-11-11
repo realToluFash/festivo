@@ -290,6 +290,22 @@ export function AboveKeyboardView({ still = false, ...props }: ViewProps & { sti
   return <View {...props} {...useAboveKeyboard(still)} />;
 }
 
+/** Keeps the focused field above the landing toast as the toast shows or moves, on a screen with no lift group to do it: the keys' own scroll stops at the keys, under the toast (sc-37983). */
+export function useFocusedFieldAboveToast(scroll: ScreenScrollView): void {
+  useEffect(() => {
+    const { lift, cancel } = settledLift(() => {
+      if (scroll.lifts.size > 0) return;
+      liftAboveKeyboard(scroll, focusedField(), keyboardTopNow(scroll.origin.current));
+    });
+    const unwatch = watchLandingToastTop(lift);
+
+    return () => {
+      cancel();
+      unwatch();
+    };
+  }, [scroll]);
+}
+
 /** The height a group may take between the scroll view's top and the keyboard, or null while the keys are down. */
 export function useRoomAboveKeyboard(): number | null {
   const room = useContext(Dock)?.room;
