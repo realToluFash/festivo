@@ -1,7 +1,11 @@
-import type { MembersList as Members, OrganisationRole } from '@soirely/api-client';
+import type {
+  MembersList as Members,
+  OrganisationRole,
+  RecoveryRequest,
+} from '@soirely/api-client';
 import { formatDay, grantableRoles, roleHolds, withheldRoles } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { type Ref, useEffect, useRef, useState } from 'react';
+import { type Ref, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -13,6 +17,7 @@ import {
   useListAndPageLayout,
 } from '../../src/components/ListAndPage.tsx';
 import { PersonBody } from '../../src/components/MemberPerson.tsx';
+import { RecoveryRequests, type RecoveryPart } from '../../src/components/MembersRecovery.tsx';
 import { RequestScreen } from '../../src/components/MemberRequest.tsx';
 import {
   ClaimActions,
@@ -34,9 +39,9 @@ import {
 } from '../../src/components/screenReaderFocus.ts';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { SheetsAtRoot } from '../../src/components/Sheet.tsx';
-import { FailedBlock, LoadingBlock } from '../../src/components/Summary.tsx';
+import { Ask, FailedBlock, LoadingBlock } from '../../src/components/Summary.tsx';
 import { type TextHandle, Text } from '../../src/components/Text.tsx';
-import { dateLocale, useShownLanguage } from '../../src/i18n/index.ts';
+import { currentLocale, dateLocale, useShownLanguage } from '../../src/i18n/index.ts';
 import { DESTINATION_HREF, SECTION_HREF } from '../../src/kit/appNav.ts';
 import {
   type MembersFilter,
@@ -47,6 +52,15 @@ import {
   membersShown,
   waitingToJoin,
 } from '../../src/kit/membersSummary.ts';
+import {
+  type RecoveryAnswer,
+  type RecoveryAsk,
+  recoveryAnswerable,
+  recoveryEndedByRemoval,
+  recoveryGone,
+  recoveryQuestion,
+  recoveryShownIn,
+} from '../../src/kit/membersRecovery.ts';
 import { settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { useOffline } from '../../src/offline.ts';
 import { rereadOrganisations, useSignedIn } from '../../src/signedIn.ts';
@@ -55,11 +69,13 @@ import { tokens } from '../../src/theme/tokens.ts';
 type Load =
   | { kind: 'loading' }
   | { kind: 'failed' }
-  | { kind: 'loaded'; list: Members; roles: OrganisationRole[] };
+  | { kind: 'loaded'; list: Members; roles: OrganisationRole[]; recovery: RecoveryRequest[] };
 
 const LOADING: Load = { kind: 'loading' };
 
-/** Settings › Members, summary first as its demo draws it (sc-37693): the card, who waits, the people, and a person's page. */
+type Targets = Partial<Record<string, Partial<Record<RecoveryPart, ViewInstance | null>>>>;
+
+/** Settings › Members, summary first as its demo draws it (sc-37693): the card, the requests to get back in (sc-30894), who waits, the people, and a person's page. */
 export default function MembersScreen() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();
@@ -80,13 +96,30 @@ export default function MembersScreen() {
     filter: MembersFilter;
     said: MembersSaid | null;
     request: string | null;
-  }>({ in: organisationId, open: null, filter: 'all', said: null, request: null });
+    lit: string | null;
+  }>({ in: organisationId, open: null, filter: 'all', said: null, request: null, lit: null });
   const membersTitle = useRef<TextHandle>(null);
   const cardStep = useRef<ViewInstance>(null);
-  const cardSays = useRef<TextHandle>(null);
+  const cardSays = useRef<ScreenReaderTarget | null>(null);
   const rows = useRef<Record<string, ViewInstance | null>>({});
   const opener = useRef<ScreenReaderTarget | null>(null);
   const [backTo, setBackTo] = useState<{ id: string } | { card: true } | null>(null);
+  const [recoveryAsk, setRecoveryAsk] = useState<RecoveryAsk | null>(null);
+  const [brought, setBrought] = useState(0);
+  const targets = useRef<Targets>({});
+  const lighting = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Where a closed confirm gives the focus back: the answer that opened it, the next request, or the card's words (null).
+  const recoveryBack = useRef<{ id: string; part: RecoveryPart } | null>(null);
+  const recoveryOpener = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        const at = recoveryBack.current;
+
+        return (at == null ? null : targets.current[at.id]?.[at.part]) ?? cardSays.current;
+      },
+    }),
+    [],
+  );
   const language = useShownLanguage();
   const load = held.in === organisationId ? held.load : LOADING;
   const setLoad = (next: Load) => setHeld({ in: organisationId, load: next });
@@ -96,6 +129,7 @@ export default function MembersScreen() {
     filter: 'all',
     said: null,
     request: null,
+    lit: null,
   } as const;
   const current = view.in === organisationId ? view : fresh;
   const change = (next: Partial<typeof current>) => setView({ ...current, ...next });
@@ -113,10 +147,25 @@ export default function MembersScreen() {
     if (organisationId == null) return;
     let live = true;
 
-    watch(Promise.all([api.members(organisationId), api.roles(organisationId)])).then(
-      ([list, catalogue]) =>
+    // Members and its requests to get back in load, and fail, as one (pm, Decided 8 Nov).
+    watch(
+      Promise.all([
+        api.members(organisationId),
+        api.roles(organisationId),
+        manages ? api.recoveryRequests() : Promise.resolve([]),
+      ]),
+    ).then(
+      ([list, catalogue, requests]) =>
         live &&
-        setHeld({ in: organisationId, load: { kind: 'loaded', list, roles: catalogue.roles } }),
+        setHeld({
+          in: organisationId,
+          load: {
+            kind: 'loaded',
+            list,
+            roles: catalogue.roles,
+            recovery: recoveryShownIn(requests, organisationId),
+          },
+        }),
       () =>
         live &&
         setHeld((before) =>
@@ -129,7 +178,9 @@ export default function MembersScreen() {
     return () => {
       live = false;
     };
-  }, [organisationId, attempt, refresh, language, watch]);
+  }, [organisationId, manages, attempt, refresh, language, watch]);
+
+  useEffect(() => () => clearTimeout(lighting.current), []);
 
   // Back on the list, the focus goes to the row that opened the page, or to the card's sentence after a removal.
   useEffect(() => {
@@ -154,6 +205,9 @@ export default function MembersScreen() {
     current.open == null ? null : (members.find((one) => one.id === current.open) ?? null);
   const asked =
     current.request == null ? null : (members.find((one) => one.id === current.request) ?? null);
+  const recovery = load.kind === 'loaded' && manages ? load.recovery : [];
+  const recoveryAsked =
+    recoveryAsk == null ? null : (recovery.find((one) => one.id === recoveryAsk.id) ?? null);
   const listBehind = !landscape && member != null;
   const day = (at: string) => formatDay(at, dateLocale());
   const rowRef =
@@ -174,13 +228,82 @@ export default function MembersScreen() {
 
   function openRequest(id: string, from: ScreenReaderTarget | null): void {
     opener.current = from;
-    change({ request: id, said: null });
+    change({ request: id, said: null, lit: null });
+  }
+
+  function dropRecovery(keep: (request: RecoveryRequest) => boolean): void {
+    setHeld((before) =>
+      before.load.kind === 'loaded'
+        ? { ...before, load: { ...before.load, recovery: before.load.recovery.filter(keep) } }
+        : before,
+    );
+  }
+
+  /** The card's step: the oldest request the viewer can answer comes into view, lit, and takes the focus. */
+  function lightRecovery(id: string): void {
+    change({ lit: id });
+    setBrought((n) => n + 1);
+    clearTimeout(lighting.current);
+    lighting.current = setTimeout(
+      () => moveScreenReaderFocus(targets.current[id]?.group ?? null),
+      SETTLED_MS,
+    );
+  }
+
+  function askRecovery(id: string, answer: RecoveryAnswer): void {
+    recoveryBack.current = { id, part: answer };
+    setRecoveryAsk({ id, answer, phase: 'asking' });
+  }
+
+  /** Answered elsewhere, ended, or its person gone: Close takes it off the page, and the next request, or the card, takes the focus. */
+  function closeGone(id: string): void {
+    const next = recovery.find((one) => one.id !== id);
+    recoveryBack.current = next == null ? null : { id: next.id, part: 'group' };
+    moveOn();
+    dropRecovery((one) => one.id !== id);
+    change({ said: null, lit: null });
+    setRecoveryAsk(null);
+  }
+
+  /** Cancel, Keep the request, Back and the swipe change nothing, and wait while an answer is out; once the request has gone, they are Close. */
+  function keepRecoveryAsk(): void {
+    if (recoveryAsk?.phase === 'sending') return;
+    if (recoveryAsk?.phase === 'closed') closeGone(recoveryAsk.id);
+    else setRecoveryAsk(null);
+  }
+
+  /** The verb sends the answer, or tries it again after a failure; the confirm stays open until it comes back. */
+  async function confirmRecoveryAsk(): Promise<void> {
+    const ask = recoveryAsk;
+    if (ask == null || recoveryAsked == null || ask.phase === 'sending' || ask.phase === 'closed')
+      return;
+    const name = recoveryAsked.name;
+    setRecoveryAsk({ ...ask, phase: 'sending' });
+
+    try {
+      await (ask.answer === 'approve' ? api.approveRecovery(ask.id) : api.turnDownRecovery(ask.id));
+    } catch (refusal) {
+      setRecoveryAsk({ ...ask, phase: recoveryGone(refusal) ? 'closed' : 'failed' });
+      return;
+    }
+
+    recoveryBack.current = null;
+    moveOn();
+    dropRecovery((one) => one.id !== ask.id);
+    change({
+      said: { kind: ask.answer === 'approve' ? 'recoveryApproved' : 'recoveryTurnedDown', name },
+      lit: null,
+    });
+    setRecoveryAsk(null);
   }
 
   function onStep(step: MembersStep): void {
     switch (step.does) {
       case 'answer':
         openRequest(step.member, cardStep.current);
+        return;
+      case 'answerRecovery':
+        lightRecovery(step.request);
         return;
       case 'seePerson':
         openPerson(step.member);
@@ -211,6 +334,7 @@ export default function MembersScreen() {
             current.said ??
             (owner.withdrew == null ? null : { kind: 'withdrew', ...owner.withdrew }),
           claim: owner.banner,
+          recovery: recoveryAnswerable(recovery),
         });
   const waiting = manages ? waitingToJoin(members) : [];
   const roles =
@@ -253,7 +377,9 @@ export default function MembersScreen() {
           card={card}
           compact={landscape}
           wide={kind === 'tabletPortrait'}
-          saysRef={cardSays}
+          saysRef={(view) => {
+            cardSays.current = view;
+          }}
           stepRef={cardStep}
           busy={owner.busy}
           onStep={onStep}
@@ -263,6 +389,19 @@ export default function MembersScreen() {
         )}
         {owner.withdrew == null && current.said == null && (
           <ClaimActions owner={owner} organisation={organisation.name} />
+        )}
+        {recovery.length > 0 && (
+          <RecoveryRequests
+            waiting={recovery}
+            lit={current.lit}
+            brought={brought}
+            dense={landscape}
+            locale={currentLocale()}
+            onTarget={(id, part, view) => {
+              targets.current[id] = { ...targets.current[id], [part]: view };
+            }}
+            onAnswer={askRecovery}
+          />
         )}
         {waiting.length > 0 && (
           <Waiting
@@ -305,7 +444,11 @@ export default function MembersScreen() {
           manages={manages}
           onChanged={(next) => setLoad({ ...load, list: next })}
           onRemoved={(next, name) => {
-            setLoad({ ...load, list: next });
+            setLoad({
+              ...load,
+              list: next,
+              recovery: recoveryEndedByRemoval(load.recovery, member.user.id),
+            });
             moveOn();
             change({ open: null, said: { kind: 'removed', name } });
             setBackTo({ card: true });
@@ -377,6 +520,14 @@ export default function MembersScreen() {
       {organisation != null && (
         <ClaimScreen owner={owner} organisation={organisation.name} opener={opener} />
       )}
+      <Ask
+        open={recoveryAsked != null}
+        opener={recoveryOpener}
+        {...recoveryQuestion(t, recoveryAsk, recoveryAsked?.name ?? '')}
+        onKeep={keepRecoveryAsk}
+        onConfirm={() => void confirmRecoveryAsk()}
+        testID="members.recovery.ask"
+      />
     </AppFrame>
   );
 }

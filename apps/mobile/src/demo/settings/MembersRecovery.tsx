@@ -1,5 +1,5 @@
 import type { Ref } from 'react';
-import { type ScrollViewInstance, StyleSheet, View, type ViewInstance } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -224,29 +224,6 @@ export function recoveryQuestion(
       busy,
     },
   };
-}
-
-/** The card's step: when the request is not wholly in view, the list's head comes up to `top` under the scroll's top, as the phone's board draws it. */
-export function bringListUp(
-  list: ViewInstance | null,
-  request: ViewInstance | null | undefined,
-  scroll: ScrollViewInstance | null,
-  top: number,
-  clear: number,
-): void {
-  const content = scroll?.getInnerViewRef();
-  if (list == null || request == null || scroll == null || content == null) return;
-  scroll.measureInWindow((_sx, scrollY, _sw, shown) => {
-    request.measureInWindow((_x, y, _w, height) => {
-      if (y >= scrollY + top && y + height <= scrollY + shown - clear) return;
-      list.measureLayout(content, (_lx, listY) => {
-        content.measure((_cx, _cy, _cw, contentHeight) => {
-          const most = Math.max(0, contentHeight - shown);
-          scroll.scrollTo({ y: Math.min(most, Math.max(0, listY - top)), animated: true });
-        });
-      });
-    });
-  });
 }
 
 const styles = StyleSheet.create({

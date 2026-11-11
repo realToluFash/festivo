@@ -18,12 +18,8 @@ import { ClaimScreen, ClaimUnderCard, useOwnerClaim } from './MembersClaim.tsx';
 import { useLoad } from './MembersLoading.tsx';
 import { MembersCardView, NobodyPicked, People, Waiting } from './MembersParts.tsx';
 import { type PersonOpening, PersonPage } from './MembersPerson.tsx';
-import {
-  bringListUp,
-  RecoveryRequests,
-  type RecoveryPart,
-  recoveryQuestion,
-} from './MembersRecovery.tsx';
+import { bringListUp } from '../../components/MembersRecovery.tsx';
+import { RecoveryRequests, type RecoveryPart, recoveryQuestion } from './MembersRecovery.tsx';
 import {
   answerable,
   answerTakes,
