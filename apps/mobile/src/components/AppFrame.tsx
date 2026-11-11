@@ -22,10 +22,12 @@ import {
 import {
   Pressable,
   ScrollView,
+  type StyleProp,
   StyleSheet,
   useWindowDimensions,
   View,
   type ViewInstance,
+  type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -104,6 +106,8 @@ import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text, TitleCap } from './Text.tsx';
 import { Title, useWholeWords } from './Title.tsx';
+import { PAGE_TITLE, TOP_TITLE, pageTitle, topTitle } from './topTitle.ts';
+import { TopPrimary } from './TopPrimary.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 import { type EdgeSwipeHandlers, EdgeSwipeStrip } from './useEdgeSwipeBack.ts';
@@ -243,10 +247,13 @@ export function AppFrame({
   underTitle,
   besideTitle,
   besideBack,
+  top,
   offline = null,
   children,
 }: {
   current: Destination;
+  /** The top as the screen's own demo draws it: `scrolls` with the page, which places `FrameTop` at the head of its scroll, or `stays` above it (sc-39471). */
+  top?: 'scrolls' | 'stays' | undefined;
   /** What the screen loaded, once Soirely stops answering (sc-22586). */
   offline?: Stale | null;
   /** The screen's one primary, in the header band where [fd] puts it (sc-22103). */
@@ -433,6 +440,27 @@ export function AppFrame({
   const framed = !ownChrome || standIn != null;
   const floatingTabs = framed && kind === 'phone' && inEvent == null;
   const sidebar = framed && kind === 'tabletLandscape';
+  const ownTop = framed && top != null && standIn == null;
+  const header: FrameHeaderProps = {
+    current,
+    kind,
+    entries,
+    inEvent: inEvent != null,
+    title,
+    titleRef: frameTitle,
+    switchAnswer: bodyTakesSwitch || standIn != null ? undefined : switchAnswer,
+    back: headerDrawsBack(kind, back, backInBody),
+    backHidden,
+    organisation: signedIn.organisation,
+    waiting: count,
+    onSwitch: switchFromPill,
+    pill,
+    pillAlone: phonePillAlone(current === 'home', primary != null, standIn != null),
+    primary: standIn == null ? primary : undefined,
+    underTitle: standIn == null ? underTitle : undefined,
+    besideTitle: standIn == null ? besideTitle : undefined,
+    besideBack: standIn == null || besideBack === undefined ? besideBack : null,
+  };
 
   return (
     <SwitcherOpenedBy.Provider value={choosing ? switcherFrom : null}>
@@ -457,28 +485,9 @@ export function AppFrame({
             sidebar && [styles.card, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }],
           ]}
         >
-          {framed && (
-            <FrameHeader
-              current={current}
-              kind={kind}
-              entries={entries}
-              inEvent={inEvent != null}
-              title={title}
-              titleRef={frameTitle}
-              switchAnswer={bodyTakesSwitch || standIn != null ? undefined : switchAnswer}
-              back={headerDrawsBack(kind, back, backInBody)}
-              backHidden={backHidden}
-              organisation={signedIn.organisation}
-              waiting={count}
-              onSwitch={switchFromPill}
-              pill={pill}
-              pillAlone={phonePillAlone(current === 'home', primary != null, standIn != null)}
-              primary={standIn == null ? primary : undefined}
-              underTitle={standIn == null ? underTitle : undefined}
-              besideTitle={standIn == null ? besideTitle : undefined}
-              besideBack={standIn == null || besideBack === undefined ? besideBack : null}
-            />
-          )}
+          {framed && !ownTop && <FrameHeader {...header} />}
+          {ownTop && <FixedTop {...header} />}
+          {ownTop && top === 'stays' && <ScreenTop {...header} stays />}
           <OfflineBand stale={standIn == null ? offline : null} inFront={inFront} />
           <View
             style={[
@@ -521,7 +530,11 @@ export function AppFrame({
                         headingRef={overdueHeading}
                       />
                     ) : (
-                      <FrameSwitch.Provider value={switchAnswer}>{children}</FrameSwitch.Provider>
+                      <FrameSwitch.Provider value={switchAnswer}>
+                        <ScrolledTop.Provider value={ownTop && top === 'scrolls' ? header : null}>
+                          {children}
+                        </ScrolledTop.Provider>
+                      </FrameSwitch.Provider>
                     )}
                   </EdgeSwipeStrip.Provider>
                 </HideBack.Provider>
@@ -615,26 +628,7 @@ export function AppFrame({
   );
 }
 
-function FrameHeader({
-  current,
-  kind,
-  entries,
-  inEvent,
-  title,
-  titleRef,
-  switchAnswer,
-  back,
-  backHidden,
-  organisation,
-  waiting,
-  onSwitch,
-  pill,
-  pillAlone,
-  primary,
-  underTitle,
-  besideTitle,
-  besideBack,
-}: {
+interface FrameHeaderProps {
   current: Destination;
   kind: LayoutKind;
   /** On a phone, the pill on a row of its own (`phonePillAlone`). */
@@ -655,7 +649,179 @@ function FrameHeader({
   waiting: number;
   onSwitch: (() => void) | undefined;
   pill: Ref<ViewInstance>;
+}
+
+const ScrolledTop = createContext<FrameHeaderProps | null>(null);
+
+/** The top of a screen whose top scrolls with it, placed at the head of that scroll; nothing on a screen whose frame draws its top (sc-39471). */
+export function FrameTop({
+  style,
+  rowStyle,
+}: {
+  style?: StyleProp<ViewStyle>;
+  /** The title's row, as Settings' column draws it shorter. */
+  rowStyle?: StyleProp<ViewStyle>;
 }) {
+  const top = useContext(ScrolledTop);
+
+  if (top == null) return null;
+
+  return <ScreenTop {...top} style={style} rowStyle={rowStyle} />;
+}
+
+/** What stays put above a demo's top: upright, the pill, the tabs and the bell; on a phone, the status bar's white. */
+function FixedTop({ kind, current, organisation, waiting, onSwitch, pill }: FrameHeaderProps) {
+  const insets = useSafeAreaInsets();
+  const tabs = useFrameTabs(current, organisation);
+  const [rowWidth, setRowWidth] = useState(0);
+  const [tabsWidth, setTabsWidth] = useState(0);
+  const besideTabs = pillBesideTabs(rowWidth, tabsWidth);
+
+  if (kind === 'phone') return <View style={{ height: insets.top }} />;
+  if (kind !== 'tabletPortrait') return null;
+
+  return (
+    <View style={[styles.portraitTop, { paddingTop: insets.top + tokens.spaceMd }]}>
+      <View
+        style={styles.titleRow}
+        onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}
+      >
+        {organisation != null && (
+          <View style={[styles.shrink, besideTabs != null && { maxWidth: besideTabs.maxWidth }]}>
+            <OrgPill
+              organisation={organisation}
+              waiting={waiting}
+              onSwitch={onSwitch}
+              room={besideTabs?.maxWidth}
+              ref={pill}
+            />
+          </View>
+        )}
+        <View style={styles.fill} />
+        <BellButton />
+        <View style={styles.capsuleAt} pointerEvents="box-none">
+          <View onLayout={(event) => setTabsWidth(event.nativeEvent.layout.width)}>
+            <WhiteCapsule {...tabs} />
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/** Events', the Calendar's and Settings' top as their demos draw it, on the page's white: a Settings page's Back and title, or the screen's title at 34 (sc-39471). */
+function ScreenTop({
+  kind,
+  title,
+  titleRef,
+  switchAnswer,
+  back,
+  backHidden,
+  organisation,
+  waiting,
+  onSwitch,
+  pill,
+  primary,
+  underTitle,
+  besideTitle,
+  besideBack,
+  stays = false,
+  style,
+  rowStyle,
+}: FrameHeaderProps & {
+  stays?: boolean;
+  style?: StyleProp<ViewStyle>;
+  rowStyle?: StyleProp<ViewStyle>;
+}) {
+  const { read } = useFocusOnAnswer<TextHandle>(switchAnswer, titleRef);
+  const page = back != null;
+  const backView =
+    back == null || backHidden ? null : (
+      <BesideBack beside={besideBack}>
+        <Back label={back.label} onPress={back.onPress} off={back.off} testID="frame.back" />
+      </BesideBack>
+    );
+  const titleRow = (
+    <View style={[styles.topRow, page && styles.pageRow, rowStyle]}>
+      <View style={styles.fill}>
+        <Title
+          size={page ? PAGE_TITLE : TOP_TITLE}
+          accessibilityRole="header"
+          ref={read}
+          style={page ? pageTitle : topTitle}
+        >
+          {title}
+        </Title>
+      </View>
+      {besideTitle}
+      {primary != null && <TopPrimary {...primary} wide={kind !== 'phone'} />}
+      {kind === 'tabletLandscape' && <BellButton />}
+    </View>
+  );
+  const under = underTitle != null && <View style={styles.underTop}>{underTitle}</View>;
+
+  if (kind === 'phone')
+    return (
+      <View style={[stays && styles.staysPhone, style]}>
+        <View style={[styles.titleRow, !page && styles.pillRow]}>
+          {page ? (
+            <View style={styles.fill}>{backView}</View>
+          ) : (
+            <>
+              {organisation != null && (
+                <View style={styles.shrink}>
+                  <OrgPill
+                    organisation={organisation}
+                    waiting={waiting}
+                    onSwitch={onSwitch}
+                    ref={pill}
+                  />
+                </View>
+              )}
+              <View style={styles.fill} />
+            </>
+          )}
+          <BellButton />
+        </View>
+        {titleRow}
+        {under}
+      </View>
+    );
+
+  return (
+    <View
+      style={[
+        stays && (kind === 'tabletPortrait' ? styles.staysPortrait : styles.staysLandscape),
+        style,
+      ]}
+    >
+      {kind === 'tabletPortrait' && backView}
+      {titleRow}
+      {under}
+    </View>
+  );
+}
+
+function FrameHeader({
+  current,
+  kind,
+  entries,
+  inEvent,
+  title,
+  titleRef,
+  switchAnswer,
+  back,
+  backHidden,
+  organisation,
+  waiting,
+  onSwitch,
+  pill,
+  pillAlone,
+  primary,
+  underTitle,
+  besideTitle,
+  besideBack,
+}: FrameHeaderProps) {
   const insets = useSafeAreaInsets();
   const top = kind === 'tabletLandscape' ? undefined : { paddingTop: insets.top + tokens.spaceXxs };
   const { read } = useFocusOnAnswer<TextHandle>(switchAnswer, titleRef);
@@ -726,7 +892,7 @@ function FrameHeader({
   // Out of an event, the pill and the bell head the page with the tabs between them, and the primary sits by the title, as the demos draw it (sc-30410).
   if (kind === 'tabletPortrait' && !inEvent) {
     return (
-      <View style={[styles.header, styles.portraitHeader, top]}>
+      <View style={[styles.portraitHeader, top]}>
         <View
           style={styles.titleRow}
           onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}
@@ -758,7 +924,7 @@ function FrameHeader({
 
   if (kind === 'tabletPortrait') {
     return (
-      <View style={[styles.header, styles.portraitHeader, top]}>
+      <View style={[styles.portraitHeader, top]}>
         {organisation != null && primary == null && (
           <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
         )}
@@ -778,7 +944,7 @@ function FrameHeader({
 
   if (back == null) {
     return (
-      <View style={[styles.header, styles.phoneHeader, top]}>
+      <View style={[styles.phoneHeader, top]}>
         <View style={styles.titleRow}>
           {pillView}
           <View style={styles.fill} />
@@ -790,7 +956,7 @@ function FrameHeader({
   }
 
   return (
-    <View style={[styles.header, styles.phoneHeader, top]}>
+    <View style={[styles.phoneHeader, top]}>
       {pillAlone && organisation != null && (
         <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
       )}
@@ -1247,12 +1413,15 @@ const styles = StyleSheet.create({
   ink: { color: tokens.colorInk },
   secondaryInk: { color: tokens.colorInkSecondary },
   centred: { textAlign: 'center' },
-  header: {
-    backgroundColor: tokens.colorHeader,
-    borderBottomWidth: 1,
-    borderBottomColor: tokens.colorHeaderBorder,
-  },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  portraitTop: { paddingHorizontal: tokens.space3xl, paddingBottom: tokens.spaceXxs },
+  pillRow: { marginBottom: tokens.spaceSm },
+  topRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
+  pageRow: { minHeight: 0, paddingTop: 14 },
+  underTop: { marginTop: tokens.spaceHair },
+  staysPhone: { paddingTop: tokens.spaceXxs, paddingHorizontal: tokens.spaceXxl },
+  staysPortrait: { paddingTop: 26, paddingHorizontal: tokens.space5xl },
+  staysLandscape: { paddingTop: 26, paddingHorizontal: 30 },
   phoneHeader: {
     gap: tokens.spaceLg,
     paddingHorizontal: tokens.spaceXxl,

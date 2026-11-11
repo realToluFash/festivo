@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AppFrame } from '../../src/components/AppFrame.tsx';
+import { AppFrame, FrameTop } from '../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { Screen } from '../../src/components/Screen.tsx';
 import { ChooseASection } from '../../src/components/SettingsHome.tsx';
@@ -15,12 +15,16 @@ export default function Settings() {
   const { kind } = useLayout();
 
   return (
-    <AppFrame current="settings" title={t('settings.title')}>
+    <AppFrame current="settings" top="scrolls" title={t('settings.title')}>
       <SettingsSplit open={null}>
         {settingsListBeside(kind) ? (
           <ChooseASection />
         ) : (
           <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
+            <FrameTop
+              style={kind === 'tabletPortrait' && styles.portraitTop}
+              rowStyle={kind === 'phone' ? styles.phoneTitle : styles.portraitTitle}
+            />
             <SettingsList kind={kind} open={null} />
           </Screen>
         )}
@@ -31,15 +35,20 @@ export default function Settings() {
 
 const styles = StyleSheet.create({
   phone: {
-    paddingTop: tokens.spaceLg,
+    gap: 0,
+    paddingTop: tokens.spaceXs,
     paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.space6xl,
   },
   portrait: {
-    paddingTop: tokens.spaceLg,
+    gap: 0,
+    paddingTop: 0,
     paddingHorizontal: tokens.space5xl,
     paddingBottom: tokens.space6xl,
   },
+  phoneTitle: { minHeight: 0, paddingTop: tokens.spaceXs, paddingBottom: 18 },
+  portraitTop: { paddingTop: 30, paddingBottom: 22, paddingHorizontal: tokens.spaceHair },
+  portraitTitle: { minHeight: 0 },
 });
 
 const CONTENT: Record<LayoutKind, object> = {

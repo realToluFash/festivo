@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
+import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { Screen } from '../../src/components/Screen.tsx';
@@ -20,6 +20,7 @@ import {
   useSignedIn,
 } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
+import { PANE_TITLE, paneTitle } from '../../src/components/topTitle.ts';
 
 /** Settings > Security in the app, summary first: the card, the ways in, two-factor and the devices (sc-30411). */
 export default function Security() {
@@ -42,6 +43,7 @@ export default function Security() {
   return (
     <AppFrame
       current="settings"
+      top="scrolls"
       aboutTheAccount
       offline={stale}
       besideTitle={alone ? refreshingWords : undefined}
@@ -51,14 +53,16 @@ export default function Security() {
     >
       <SettingsSplit open="security">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
+          {alone && <FrameTop />}
           {!alone && (
             <View style={besideRow.row}>
               <View style={styles.shrink}>
                 <Text
                   ref={title}
-                  size={tokens.typeTitlePage.size}
+                  size={PANE_TITLE}
                   weight="bold"
                   accessibilityRole="header"
+                  style={paneTitle}
                 >
                   {t('security.title')}
                 </Text>
@@ -91,15 +95,20 @@ const styles = StyleSheet.create({
   shrink: { flexShrink: 1, minWidth: 0 },
   phone: {
     gap: tokens.spaceLg,
-    paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceXl,
+    paddingTop: tokens.spaceXxs,
+    paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.space3xl,
   },
-  portrait: { gap: tokens.spaceXl, padding: tokens.space3xl, paddingBottom: tokens.space6xl },
+  portrait: {
+    gap: tokens.spaceXl,
+    paddingTop: tokens.spaceXl,
+    paddingHorizontal: tokens.space5xl,
+    paddingBottom: tokens.space6xl,
+  },
   landscape: {
     gap: tokens.spaceXxl,
-    paddingTop: tokens.space4xl,
-    paddingHorizontal: tokens.space5xl,
+    paddingTop: 26,
+    paddingHorizontal: 30,
     paddingBottom: tokens.space6xl,
   },
   blocks: { gap: 18 },

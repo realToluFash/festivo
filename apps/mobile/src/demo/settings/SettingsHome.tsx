@@ -28,7 +28,7 @@ import {
 } from '../../components/SettingsHome.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { LegalLinks } from '../LegalLinks.tsx';
-import { TOP_TITLE, topTitle } from '../topTitle.ts';
+import { TOP_TITLE, topTitle } from '../../components/topTitle.ts';
 
 type Listed = Exclude<ShellSection, 'account'>;
 

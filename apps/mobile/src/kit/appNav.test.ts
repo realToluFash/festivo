@@ -170,7 +170,9 @@ describe("A phone's event page keeps its name out of the header (sc-22871)", () 
     const events = source(join(SRC, 'components', 'EventsScreen.tsx'));
     const page = source(join(SRC, 'components', 'Events.tsx'));
 
-    expect(events).toMatch(/<AppFrame\s+current="events"\s+title=\{t\('eventsScreen\.title'\)\}/u);
+    expect(events).toMatch(
+      /<AppFrame\s+current="events"\s+top="scrolls"\s+title=\{t\('eventsScreen\.title'\)\}/u,
+    );
     expect(page).toMatch(/accessibilityRole="header">\s*\{event\.name\}/u);
   });
 });

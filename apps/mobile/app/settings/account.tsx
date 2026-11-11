@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
+import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { AccountPage } from '../../src/components/AccountPage.tsx';
@@ -14,6 +14,7 @@ import { useOffline } from '../../src/offline.ts';
 import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { reloadSignedIn, rereadAccount, useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
+import { PANE_TITLE, paneTitle } from '../../src/components/topTitle.ts';
 
 /** Settings > Your account in the app, summary first: you, About you, then the addresses and numbers (sc-30411). */
 export default function Account() {
@@ -50,6 +51,7 @@ export default function Account() {
   return (
     <AppFrame
       current="settings"
+      top="scrolls"
       aboutTheAccount
       offline={stale}
       besideTitle={alone ? refreshingWords : undefined}
@@ -59,14 +61,16 @@ export default function Account() {
     >
       <SettingsSplit open="account">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
+          {alone && <FrameTop />}
           {!alone && (
             <View style={besideRow.row}>
               <View style={styles.shrink}>
                 <Text
                   ref={title}
-                  size={tokens.typeTitlePage.size}
+                  size={PANE_TITLE}
                   weight="bold"
                   accessibilityRole="header"
+                  style={paneTitle}
                 >
                   {t('account.title')}
                 </Text>
@@ -89,15 +93,20 @@ const styles = StyleSheet.create({
   shrink: { flexShrink: 1, minWidth: 0 },
   phone: {
     gap: tokens.spaceLg,
-    paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceXl,
+    paddingTop: tokens.spaceXxs,
+    paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.space3xl,
   },
-  portrait: { gap: tokens.spaceXl, padding: tokens.space3xl, paddingBottom: tokens.space6xl },
+  portrait: {
+    gap: tokens.spaceXl,
+    paddingTop: tokens.spaceXl,
+    paddingHorizontal: tokens.space5xl,
+    paddingBottom: tokens.space6xl,
+  },
   landscape: {
     gap: tokens.spaceXxl,
-    paddingTop: tokens.space4xl,
-    paddingHorizontal: tokens.space5xl,
+    paddingTop: 26,
+    paddingHorizontal: 30,
     paddingBottom: tokens.space6xl,
   },
   blocks: { gap: 18 },

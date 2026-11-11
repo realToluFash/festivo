@@ -3,7 +3,6 @@ import { getLocales } from 'expo-localization';
 import { type Href, router } from 'expo-router';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Pressable,
   ScrollView,
   StyleSheet,
   type TextInputInstance,
@@ -23,7 +22,6 @@ import {
   guestCountsOf,
   rowGuests,
 } from './GuestCounts.ts';
-import { Glyph } from '../../components/Glyph.tsx';
 import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
 import { EventCard, EventThumb } from '../../components/EventCard.tsx';
@@ -65,7 +63,6 @@ import {
 import { CLOCKS, EVENTS, EVENT_OF_KEY, OFFLINE_AS_OF, READER_ZONE } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
-import { Pill } from '../../components/SettingsParts.tsx';
 import {
   type Anchor,
   anchorUnder,
@@ -78,7 +75,8 @@ import {
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { PrimaryButton } from '../../components/Buttons.tsx';
-import { TOP_TITLE, topTitle } from '../topTitle.ts';
+import { TOP_TITLE, topTitle } from '../../components/topTitle.ts';
+import { TopPrimary } from '../../components/TopPrimary.tsx';
 
 const SEARCH_PAUSE_MS = 300;
 const MENU_AFTER_MS = 700;
@@ -478,25 +476,8 @@ function ListTop({
         >
           {W.events}
         </Text>
-        {onNew == null ? null : wide ? (
-          <Pill
-            label={W.newEvent}
-            glyph="plus"
-            height={tokens.sizeHit}
-            full={false}
-            onPress={onNew}
-            testID="events.new"
-          />
-        ) : (
-          <Pressable
-            onPress={onNew}
-            style={({ pressed }) => [styles.newRound, pressed && styles.pressed]}
-            accessibilityRole="button"
-            accessibilityLabel={W.newEvent}
-            testID="events.new"
-          >
-            <Glyph name="plus" size={20} ink={tokens.colorInkOnDark} weight={2.6} />
-          </Pressable>
+        {onNew != null && (
+          <TopPrimary label={W.newEvent} onPress={onNew} wide={wide} testID="events.new" />
         )}
         {bell && !org && <Bell tell={onBell} />}
       </View>
@@ -586,7 +567,6 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
   figures: { fontVariant: ['tabular-nums'] },
-  pressed: { opacity: tokens.opacityPressed },
   blocks: { gap: 18 },
   pane: { paddingTop: 26, paddingHorizontal: 30, paddingBottom: tokens.space6xl * 2, gap: 18 },
   orgRow: { flexDirection: 'row', alignItems: 'center', marginBottom: tokens.spaceSm },
@@ -606,14 +586,6 @@ const styles = StyleSheet.create({
   },
   guestFigure: { lineHeight: 28 * 1.15 },
   said: { lineHeight: 14 * 1.45 },
-  newRound: {
-    width: tokens.sizeHit,
-    height: tokens.sizeHit,
-    borderRadius: tokens.sizeHit / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorAccent,
-  },
   band: {
     minHeight: tokens.sizeHit,
     flexDirection: 'row',
