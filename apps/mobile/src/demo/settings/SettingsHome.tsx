@@ -394,6 +394,7 @@ export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
         </Text>
         <Bell tell={shell.tell} />
       </View>
+      <SwitchedNotice style={styles.switched} />
       <PersonCard size="column" open={shell.open === 'account'} />
       {groups.map(({ heading, sections, data }, index) =>
         sections.length === 0 ? null : (
