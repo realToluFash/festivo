@@ -3,7 +3,7 @@ import { useId } from 'react';
 
 import { RowWords } from '../components/SettingsParts.tsx';
 
-/** Your account's four languages, each name marked with its own `lang` (WCAG 2.2, 3.1.2), saved as it is picked. */
+/** Stands in for `Choices` until `Choice` grows `lang?: string`; the product adds that field rather than copying this (WCAG 2.2, 3.1.2). */
 export function LanguageChoices({
   legend,
   picked,

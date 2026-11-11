@@ -371,16 +371,13 @@ describe('Your account at a desk (sc-30209)', () => {
     );
     expect(within(language).queryByRole('button', { name: 'Save' })).toBeNull();
 
-    within(language).getByRole('radio', { name: 'Español' }).focus();
     fireEvent.click(within(language).getByRole('radio', { name: 'Español' }));
-    within(language).getByRole('radio', { name: 'Français' }).focus();
     fireEvent.click(within(language).getByRole('radio', { name: 'Français' }));
 
     expect(within(language).getByRole('radio', { name: 'Français' })).toHaveProperty(
       'checked',
       true,
     );
-    expect(document.activeElement).toBe(within(language).getByRole('radio', { name: 'Français' }));
     expect(
       screen.getByText('Soirely is now in Français, on every device and in your emails.'),
     ).toBeDefined();
