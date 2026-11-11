@@ -467,90 +467,26 @@ describe('Settings > General', () => {
   });
 });
 
-describe('Settings > General, a request to get back in', () => {
-  const REQUEST = {
-    id: 'rq_1',
-    userId: 'u_tope',
-    name: 'Tope Bello',
-    email: 'tope.bello@ire.events',
-    provedPhone: false,
-    own: false,
-    organisations: ['Ìrè Events'],
-    asked: 'Saturday, Oct 17 at 14:20 WAT',
-    expires: 'Saturday, Oct 24 at 14:20 WAT',
-  };
-
-  it('shows who asked, what they proved and when it ends, and approves only once confirmed', async () => {
+describe('Settings > General, requests to get back in (sc-30189)', () => {
+  it('has no requests card: they are answered on Members, so General never asks for them', async () => {
     const sent = answering(
-      () => new Response(JSON.stringify({ requests: [REQUEST] }), { status: 200 }),
-    );
-    settings();
-
-    expect(await screen.findByText('Tope Bello')).toBeDefined();
-    expect(
-      screen.getByRole('heading', { level: 2, name: 'Requests to get back in' }),
-    ).toBeDefined();
-    expect(document.getElementById('requests')).not.toBeNull();
-    expect(screen.getByText('Proved with a code to their email (no verified phone)')).toBeDefined();
-    expect(
-      screen.getByText(
-        'Asked Saturday, Oct 17 at 14:20 WAT · ends Saturday, Oct 24 at 14:20 WAT if nobody answers',
-      ),
-    ).toBeDefined();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
-    expect(
-      screen.getByRole('heading', { name: 'Approve, and turn off Tope Bello’s two-factor?' }),
-    ).toBeDefined();
-    expect(sent.some((request) => request.path.endsWith('/approve'))).toBe(false);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Turn off two-factor' }));
-    expect(await screen.findByText('Tope Bello’s two-factor is off.')).toBeDefined();
-    expect(sent.filter((request) => request.path !== '/api/notifications').at(-1)).toEqual({
-      method: 'POST',
-      path: '/api/auth/recovery-requests/rq_1/approve',
-      body: null,
-    });
-    expect(screen.queryByText('Proved with a code to their email (no verified phone)')).toBeNull();
-  });
-
-  it.each([
-    ['Approve', 'Cancel'],
-    ['Turn down', 'Keep the request'],
-  ])('puts focus back on %s for that request after %s (sc-11369)', async (opener, closer) => {
-    answering(
       () =>
         new Response(
           JSON.stringify({
-            requests: [{ ...REQUEST, id: 'rq_0', name: 'Ada Obi' }, REQUEST],
+            requests: [
+              { id: 'rq_1', userId: 'u_tope', name: 'Tope Bello', email: 'tope@ire.events' },
+            ],
           }),
           { status: 200 },
         ),
     );
     settings();
 
-    const request = (await screen.findByText('Tope Bello')).closest('article')!;
-    fireEvent.click(within(request).getByRole('button', { name: opener }));
-    fireEvent.click(within(request).getByRole('button', { name: closer }));
-
-    expect(document.activeElement).toBe(within(request).getByRole('button', { name: opener }));
-  });
-
-  it('never offers an answer to your own request', async () => {
-    answering(
-      () =>
-        new Response(
-          JSON.stringify({ requests: [{ ...REQUEST, own: true, name: 'Folake Adeyemi' }] }),
-          { status: 200 },
-        ),
-    );
-    settings();
-
-    expect(await screen.findByText('Folake Adeyemi (you)')).toBeDefined();
-    expect(
-      screen.getByText('This is your own request. Somebody else in Ìrè Events has to answer it.'),
-    ).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
+    expect(await screen.findByRole('heading', { level: 1, name: 'General' })).toBeDefined();
+    await waitFor(() => expect(sent.length).toBeGreaterThan(0));
+    expect(screen.queryByText('Requests to get back in')).toBeNull();
+    expect(screen.queryByText('Tope Bello')).toBeNull();
+    expect(sent.some((request) => request.path === '/api/auth/recovery-requests')).toBe(false);
   });
 });
 

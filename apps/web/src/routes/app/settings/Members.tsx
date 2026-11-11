@@ -3,6 +3,7 @@ import {
   type MembersList,
   type OrganisationMember,
   type OrganisationRole,
+  type RecoveryRequest,
   type SentInvitation,
 } from '@soirely/api-client';
 import {
@@ -41,9 +42,17 @@ import { dropProviderReturn } from '../../../providerSignIn.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
 import { MemberPage } from './MemberPage.tsx';
-import { type CardStep, membersCard, type Notice, waitingMembers } from './membersCard.ts';
+import {
+  type CardStep,
+  membersCard,
+  type Notice,
+  type RecoveryAnswer,
+  recoveriesIn,
+  waitingMembers,
+} from './membersCard.ts';
 import { useOwnerClaim } from './MembersClaim.tsx';
 import { InviteDialog, RequestDialog } from './MembersDialogs.tsx';
+import { RecoveryAsk, RecoveryBlock } from './MembersRecovery.tsx';
 import { backToMakeOwner } from './ownerReturn.ts';
 import { memberTag } from './memberWords.ts';
 import '../../../components/SettingsParts.css';
@@ -52,11 +61,17 @@ import './members.css';
 type Load =
   | { kind: 'loading' }
   | { kind: 'failed'; retried: boolean }
-  | { kind: 'loaded'; list: MembersList; roles: OrganisationRole[] };
+  | {
+      kind: 'loaded';
+      list: MembersList;
+      roles: OrganisationRole[];
+      recoveries: RecoveryRequest[];
+    };
 
 type Dialog =
   | { kind: 'invite'; email: string; roleId: string | null; again: string | null }
-  | { kind: 'request'; id: string };
+  | { kind: 'request'; id: string }
+  | { kind: 'recovery'; id: string; answer: RecoveryAnswer };
 
 const FILTERS: readonly MemberFilter[] = [
   'all',
@@ -68,6 +83,12 @@ const FILTERS: readonly MemberFilter[] = [
 ];
 
 const title = () => document.querySelector<HTMLElement>('.members-desk h1');
+const cardWords = () => document.querySelector<HTMLElement>('.members-desk .desk-said-lines');
+const requestOf = (id: string) => document.getElementById(`request-${id}`);
+const answerOf = (id: string, answer: RecoveryAnswer) =>
+  requestOf(id)?.querySelectorAll<HTMLElement>('.desk-request-answers .desk-text')[
+    answer === 'approve' ? 0 : 1
+  ] ?? null;
 
 /** Settings › Members at a desk (sc-34200): the card, Waiting, People and the invitations, as the demo's Members draws them. */
 export function Members() {
@@ -96,11 +117,22 @@ export function Members() {
     let current = true;
     const askedAgain = loadedFor.current === organisationId;
 
-    watch(Promise.all([api.members(organisationId), api.roles(organisationId)])).then(
-      ([list, catalogue]) => {
+    watch(
+      Promise.all([
+        api.members(organisationId),
+        api.roles(organisationId),
+        manages ? api.recoveryRequests() : Promise.resolve([]),
+      ]),
+    ).then(
+      ([list, catalogue, recoveries]) => {
         if (!current) return;
         loadedFor.current = organisationId;
-        setLoad({ kind: 'loaded', list, roles: catalogue.roles });
+        setLoad({
+          kind: 'loaded',
+          list,
+          roles: catalogue.roles,
+          recoveries: recoveriesIn(recoveries, organisationId),
+        });
         if (retrying.current) focusWhenFree(title);
         retrying.current = false;
       },
@@ -118,7 +150,7 @@ export function Members() {
     return () => {
       current = false;
     };
-  }, [organisationId, attempt, refresh, language, watch]);
+  }, [organisationId, manages, attempt, refresh, language, watch]);
 
   useEffect(() => {
     heading.current = title() as HTMLHeadingElement | null;
@@ -163,8 +195,14 @@ export function Members() {
               organisation={organisation}
               list={load.list}
               roles={load.roles}
+              recoveries={load.recoveries}
               manages={manages}
-              onChange={(list) => setLoad({ ...load, list })}
+              onChange={(list) =>
+                setLoad((was) => (was.kind === 'loaded' ? { ...was, list } : was))
+              }
+              onRecoveries={(recoveries) =>
+                setLoad((was) => (was.kind === 'loaded' ? { ...was, recoveries } : was))
+              }
             />
           )}
         </div>
@@ -206,14 +244,18 @@ function MembersLoaded({
   organisation,
   list,
   roles,
+  recoveries,
   manages,
   onChange,
+  onRecoveries,
 }: {
   organisation: Membership;
   list: MembersList;
   roles: OrganisationRole[];
+  recoveries: RecoveryRequest[];
   manages: boolean;
   onChange: (list: MembersList) => void;
+  onRecoveries: (recoveries: RecoveryRequest[]) => void;
 }) {
   const { t } = useTranslation();
   // Back from Google or Apple, started by Confirm it's you before making an owner: once, on arrival.
@@ -229,6 +271,7 @@ function MembersLoaded({
   const [notice, setNotice] = useState<Notice | null>(null);
   const [filter, setFilter] = useState<MemberFilter>('all');
   const [menu, setMenu] = useState(false);
+  const [lit, setLit] = useState<string | null>(null);
   const split = useDeskSplit();
   const claim = useOwnerClaim(
     organisation.id,
@@ -264,6 +307,9 @@ function MembersLoaded({
     switch (does.does) {
       case 'answer':
         return answer(does.member);
+      case 'recover':
+        setLit(does.request);
+        return focusWhenFree(() => requestOf(does.request));
       case 'see':
         return openPerson(does.member);
       case 'former':
@@ -278,8 +324,16 @@ function MembersLoaded({
   const close = useCallback(() => setDialog(null), []);
   const asking =
     dialog?.kind === 'request' ? list.members.find((one) => one.id === dialog.id) : undefined;
+  const recovering =
+    dialog?.kind === 'recovery' ? recoveries.find((one) => one.id === dialog.id) : undefined;
+  const settle = (id: string) => {
+    onRecoveries(recoveries.filter((one) => one.id !== id));
+    setLit(null);
+    close();
+  };
   const card = membersCard({
     list,
+    recoveries,
     manages,
     notice,
     claim: claim.card,
@@ -289,6 +343,8 @@ function MembersLoaded({
   const blocks = {
     organisation,
     list,
+    recoveries,
+    lit,
     manages,
     filter,
     menu,
@@ -297,6 +353,8 @@ function MembersLoaded({
     onFilter: setFilter,
     onPerson: openPerson,
     onAnswer: answer,
+    onRecovery: (id: string, answer: RecoveryAnswer) => setDialog({ kind: 'recovery', id, answer }),
+    onMoveOn: () => setLit(null),
     onRevoked: (invitation: SentInvitation) =>
       onChange({
         ...list,
@@ -354,6 +412,28 @@ function MembersLoaded({
           }}
         />
       )}
+      {dialog?.kind === 'recovery' && recovering != null && (
+        <RecoveryAsk
+          key={`${dialog.id}:${dialog.answer}`}
+          request={recovering}
+          answer={dialog.answer}
+          onKeep={() => {
+            close();
+            focusWhenFree(() => answerOf(dialog.id, dialog.answer));
+          }}
+          onAnswered={() => {
+            settle(dialog.id);
+            setNotice({ kind: 'recovered', name: recovering.name, answer: dialog.answer });
+            focusWhenFree(cardWords);
+          }}
+          onGone={() => {
+            const next = recoveries.find((one) => one.id !== dialog.id);
+            settle(dialog.id);
+            setNotice((was) => (was?.kind === 'recovered' ? was : null));
+            focusWhenFree(() => (next == null ? cardWords() : requestOf(next.id)));
+          }}
+        />
+      )}
       {claim.dialog}
     </>
   );
@@ -378,6 +458,7 @@ function MembersLoaded({
         onChanged={onChange}
         onRemoved={(changed, name) => {
           onChange(changed);
+          onRecoveries(recoveries.filter((one) => one.userId !== person.user.id));
           setNotice({ kind: 'removed', name });
           back();
         }}
@@ -451,6 +532,8 @@ function MembersCardView({
 interface BlocksProps {
   organisation: Membership;
   list: MembersList;
+  recoveries: readonly RecoveryRequest[];
+  lit: string | null;
   manages: boolean;
   filter: MemberFilter;
   menu: boolean;
@@ -460,11 +543,13 @@ interface BlocksProps {
   onFilter: (filter: MemberFilter) => void;
   onPerson: (id: string) => void;
   onAnswer: (id: string) => void;
+  onRecovery: (id: string, answer: RecoveryAnswer) => void;
+  onMoveOn: () => void;
   onRevoked: (invitation: SentInvitation) => void;
   onAgain: (invitation: SentInvitation) => void;
 }
 
-/** Waiting, People with its filter, then the invitations: the list's blocks under the card. */
+/** Requests to get back in, then Waiting, People with its filter, and the invitations: the list's blocks under the card. */
 function MembersBlocks(props: BlocksProps) {
   const { list, manages, filter, menu, column, onMenu, onFilter } = props;
   const { t } = useTranslation();
@@ -486,8 +571,21 @@ function MembersBlocks(props: BlocksProps) {
     .filter((at) => at != null)
     .sort((one, other) => Date.parse(one.at) - Date.parse(other.at))[0];
 
+  const everyone = list.members.filter((one) => memberIsShown(one.status, 'all'));
+  const tones = new Map(everyone.map((one, tone) => [one.user.id, tone]));
+
   return (
     <>
+      {props.recoveries.length > 0 && (
+        <RecoveryBlock
+          recoveries={props.recoveries}
+          tones={tones}
+          lit={props.lit}
+          column={column}
+          onAnswer={props.onRecovery}
+          onMoveOn={props.onMoveOn}
+        />
+      )}
       {waiting.length > 0 && (
         <section className="desk-block">
           <Head title={t('membersScreen.waitingTitle')} />

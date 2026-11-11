@@ -114,7 +114,6 @@ function answering(answers: Record<string, () => Response | Promise<Response>> =
     'GET /api/orgs/org_1/domains': () => json(DOMAINS),
     'GET /api/orgs/org_1/request-link': () =>
       json({ on: true, url: 'https://soirely.app/join/r/7f3k9q' }),
-    'GET /api/orgs/org_1/recovery-requests': () => json({ requests: [] }),
     ...answers,
   };
 

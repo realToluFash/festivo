@@ -1387,7 +1387,9 @@
     "turnedDown": "La demande de {{name}} est refusée.",
     "turnedDownNext": "La double authentification reste activée, et cette personne a été prévenue par e-mail.",
     "closed": "Cette demande a déjà reçu une réponse, ou elle a pris fin.",
-    "failed": "Cela n’a pas fonctionné. Réessayez dans un instant."
+    "failed": "Cela n’a pas fonctionné. Réessayez dans un instant.",
+    "close": "Close",
+    "sending": "Sending your answer…"
   },
   "settings": {
     "sections": "Paramètres de l’organisation",
@@ -1637,7 +1639,14 @@
       "removedLine": "Their events stay with {{organisation}}. They are listed under Former, with everything they did kept.",
       "claimOpen": "Your claim is open",
       "withdrew": "You withdrew your claim",
-      "withdrewTold": "Everybody who was told is emailed."
+      "withdrewTold": "Everybody who was told is emailed.",
+      "toGetBackIn_one": "{{count, number}} to get back in",
+      "toGetBackIn_many": "{{count, number}} to get back in",
+      "toGetBackIn_other": "{{count, number}} to get back in",
+      "toJoin_one": "{{count, number}} to join",
+      "toJoin_many": "{{count, number}} to join",
+      "toJoin_other": "{{count, number}} to join",
+      "waitingKinds": "{{back}} · {{join}}"
     },
     "waitingTitle": "Waiting",
     "waitingRemoves": "Removed on {{deadline}} if nobody answers.",

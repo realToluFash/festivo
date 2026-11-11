@@ -35,7 +35,6 @@ import { can, useSession } from '../../../session.ts';
 import { AddDomainDialog, DetailsDialog } from './GeneralDeskDialogs.tsx';
 import { Ownership } from './GeneralDeskOwnership.tsx';
 import { languageName, rereadOrganisation } from './organisationDetails.ts';
-import { RecoveryRequestsCard } from './RecoveryRequestsCard.tsx';
 import '../../../components/SettingsParts.css';
 
 type Said = { kind: 'saved'; line: string } | { kind: 'transferred'; to: string };
@@ -97,7 +96,6 @@ export function GeneralDesk() {
           manages={manages}
           onEdit={() => setEditing(organisation.id)}
         />
-        <RecoveryRequestsCard />
         <Details organisation={organisation} />
         {joins && (
           <Domains key={`domains:${organisation.id}`} organisation={organisation} tell={setTold} />

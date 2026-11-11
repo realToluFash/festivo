@@ -1684,30 +1684,6 @@ span {
   color: var(--colorInkSecondary);
 }
 
-.request-state {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceSm);
-  margin: 0;
-  font: var(--typeButton);
-}
-
-.request-state-attention {
-  color: var(--colorAttentionText);
-}
-
-.request-state-done {
-  color: var(--colorAccentText);
-}
-
-.request-state-broken {
-  color: var(--colorBrokenText);
-}
-
-.request-state-ended {
-  color: var(--colorInkSecondary);
-}
-
 .mark-ended {
   border: var(--borderMark) var(--colorInkSecondary);
   color: var(--colorInkSecondary);
@@ -1715,32 +1691,6 @@ span {
 
 .button-danger {
   color: var(--colorInk);
-}
-
-.request-card-head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXxs);
-  padding-bottom: var(--spaceMd);
-  border-bottom: var(--borderInset);
-}
-
-.request {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXs);
-}
-
-.request h3 {
-  margin: 0;
-}
-
-.request-card-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXs);
-  padding-top: var(--spaceMd);
-  border-top: var(--borderInset);
 }
 
 /* ── A code from an email ─────────────────────────────────────────────────── */

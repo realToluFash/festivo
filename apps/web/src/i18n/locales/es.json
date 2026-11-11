@@ -1387,7 +1387,9 @@
     "turnedDown": "La solicitud de {{name}} se ha rechazado.",
     "turnedDownNext": "La verificación en dos pasos sigue activada, y se le ha enviado un correo.",
     "closed": "Esta solicitud ya se ha respondido o ha terminado.",
-    "failed": "No ha funcionado. Vuelva a intentarlo en un momento."
+    "failed": "No ha funcionado. Vuelva a intentarlo en un momento.",
+    "close": "Close",
+    "sending": "Sending your answer…"
   },
   "settings": {
     "sections": "Configuración de la organización",
@@ -1637,7 +1639,14 @@
       "removedLine": "Their events stay with {{organisation}}. They are listed under Former, with everything they did kept.",
       "claimOpen": "Your claim is open",
       "withdrew": "You withdrew your claim",
-      "withdrewTold": "Everybody who was told is emailed."
+      "withdrewTold": "Everybody who was told is emailed.",
+      "toGetBackIn_one": "{{count, number}} to get back in",
+      "toGetBackIn_many": "{{count, number}} to get back in",
+      "toGetBackIn_other": "{{count, number}} to get back in",
+      "toJoin_one": "{{count, number}} to join",
+      "toJoin_many": "{{count, number}} to join",
+      "toJoin_other": "{{count, number}} to join",
+      "waitingKinds": "{{back}} · {{join}}"
     },
     "waitingTitle": "Waiting",
     "waitingRemoves": "Removed on {{deadline}} if nobody answers.",
