@@ -145,6 +145,17 @@ function posts(sent: Sent[]): Sent[] {
 }
 
 /** Past a closing layer's hand-back and its few frames of retries. */
+/** jsdom focuses inside an `[inert]` subtree; a browser does not. */
+function focusSkipsInert(): void {
+  const focus = HTMLElement.prototype.focus;
+  vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (
+    this: HTMLElement,
+    options?: FocusOptions,
+  ) {
+    if (this.closest('[inert]') == null) focus.call(this, options);
+  });
+}
+
 async function settled(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve));
   for (let frame = 0; frame < 8; frame += 1) {
@@ -814,6 +825,7 @@ describe('linking and unlinking at a desk', () => {
 
 describe('the devices at a desk', () => {
   it('asks before signing another device out, then signs it out and says so', async () => {
+    focusSkipsInert();
     const sent = answering({
       [`DELETE /api/auth/sessions/${ELSEWHERE}`]: () => new Response(null, { status: 204 }),
     });
