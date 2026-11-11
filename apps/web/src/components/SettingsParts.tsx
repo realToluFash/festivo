@@ -600,7 +600,7 @@ function AskBox(props: AskProps) {
             <button
               ref={keepButton}
               type="button"
-              className={waits ? 'desk-text is-waits' : 'desk-text'}
+              className={waits ? 'desk-text desk-ask-keep is-waits' : 'desk-text desk-ask-keep'}
               {...offButton(waits, { dim: false })}
               onClick={onKeep}
             >

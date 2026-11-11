@@ -23,6 +23,7 @@ import { type MarkKind, ShapeMark } from './StatusMark.tsx';
 import { TextAction } from './SummaryRows.tsx';
 import { useShell } from './settingsShell.ts';
 import { Avatar, Back } from './SettingsParts.tsx';
+import { TitleFocus } from './SummaryOverlays.tsx';
 
 export {
   bringIntoView,
@@ -63,7 +64,6 @@ export {
   MenuLayer,
   useAnchorFollowsTurn,
 } from './SummaryOverlays.tsx';
-import { TitleFocus } from './SummaryOverlays.tsx';
 
 const hidden = {
   accessibilityElementsHidden: true,

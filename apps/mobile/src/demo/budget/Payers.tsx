@@ -2,6 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { PrimaryButton, SecondaryButton } from '../../components/Buttons.tsx';
 import { useShell } from '../../components/settingsShell.ts';
+import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { Line, RowList, RowShapes, Section, ShapeMark } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -348,6 +349,7 @@ export function SendAction({
 /** The iPad: what has a payer and what has none, then a card per payer in two columns, Send in each card's foot. */
 export function PayersPad({ m, locale, onSend, onWashed }: PayersProps) {
   const { layout } = useShell();
+  const big = useAccessibilitySizes();
   const list = m.payerList;
   const payers = payersOf(m.lines, list);
   const totals = totalsOf(m.lines);
@@ -395,7 +397,7 @@ export function PayersPad({ m, locale, onSend, onWashed }: PayersProps) {
       />
       <View style={[styles.cards, { gap }]}>
         {list.map((payer) => (
-          <View key={payer.key} style={styles.cardCell}>
+          <View key={payer.key} style={big ? styles.cardWhole : styles.cardCell}>
             <PadCard m={m} keyOf={payer.key} locale={locale} onSend={onSend} onWashed={onWashed} />
           </View>
         ))}
@@ -507,6 +509,7 @@ const styles = StyleSheet.create({
   cards: { flexDirection: 'row', flexWrap: 'wrap' },
   sunk: { height: 200, borderRadius: 26, backgroundColor: tokens.colorNeutralFill },
   cardCell: { flexBasis: '45%', flexGrow: 1, minWidth: 0 },
+  cardWhole: { flexBasis: '100%', minWidth: 0 },
   card: {
     gap: tokens.spaceMd,
     padding: tokens.spaceXl,

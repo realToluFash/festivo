@@ -33,6 +33,7 @@ import { Text } from './Text.tsx';
 
 const STEP_IDS: Record<MembersStep['does'], string> = {
   answer: 'members.answer',
+  answerRecovery: 'members.recovery.answer',
   seePerson: 'members.awaiting.see',
   seeFormer: 'members.awaiting.former',
   becomeOwner: 'ownerClaim.become',
@@ -52,7 +53,8 @@ export function MembersCardView({
   card: MembersCard;
   compact: boolean;
   wide: boolean;
-  saysRef?: Ref<ScreenReaderTarget | null>;
+  /** The card's words where the focus lands: the sentence, or the sentence and its line as one. */
+  saysRef?: (view: ScreenReaderTarget | null) => void;
   stepRef: Ref<ViewInstance>;
   busy?: boolean;
   onStep: (step: MembersStep) => void;
@@ -80,8 +82,23 @@ export function MembersCardView({
       }
       testID="members.card"
     >
-      <CardSays ref={saysRef} text={card.says} size={compact ? 20 : 24} heading />
-      {card.line != null && <OnCard text={card.line} />}
+      {card.takesFocus ? (
+        <View
+          ref={saysRef}
+          style={{ gap: compact ? 9 : tokens.spaceLg }}
+          accessible
+          accessibilityRole="header"
+          accessibilityLabel={[card.says, card.line].filter(Boolean).join(' ')}
+        >
+          <CardSays text={card.says} size={compact ? 20 : 24} accessible={false} />
+          {card.line != null && <OnCard text={card.line} accessible={false} />}
+        </View>
+      ) : (
+        <>
+          <CardSays ref={saysRef} text={card.says} size={compact ? 20 : 24} heading />
+          {card.line != null && <OnCard text={card.line} />}
+        </>
+      )}
       {card.faces.length > 0 && <Faces faces={card.faces} more={card.more} />}
     </SummaryCard>
   );

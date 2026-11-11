@@ -19,7 +19,6 @@ use App\Repository\TwoFactorFactorRepository;
 use App\Repository\TwoFactorRecoveryRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
-use Psl\Iter;
 use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
@@ -142,13 +141,25 @@ final readonly class RecoveryDecisions
         return Type\instance_of(TwoFactorRecovery::class)->coerce($decided);
     }
 
+    /** @return list<Organisation> whose Members show the request to this person: all of their own, or each they may answer it for */
+    public function answerableIn(User $approver, TwoFactorRecovery $recovery): array
+    {
+        $user = $recovery->getUser();
+
+        if ($user->getId()->equals($approver->getId())) {
+            return $this->recoveryApprovers->organisationsOf($user);
+        }
+
+        return Vec\filter(
+            $this->recoveryApprovers->sharedBy($approver, $user),
+            // An organisation's sign-in rules hold this duty back with the rest of administration (sc-69).
+            fn (Organisation $organisation): bool => $this->signInRules->leavesAdministration($approver, $organisation),
+        );
+    }
+
     private function mayAnswer(User $approver, TwoFactorRecovery $recovery): bool
     {
         return $recovery->getUser()->getId()->equals($approver->getId())
-            || Iter\any(
-                $this->recoveryApprovers->sharedBy($approver, $recovery->getUser()),
-                // An organisation's sign-in rules hold this duty back with the rest of administration (sc-69).
-                fn (Organisation $organisation): bool => $this->signInRules->leavesAdministration($approver, $organisation),
-            );
+            || [] !== $this->answerableIn($approver, $recovery);
     }
 }

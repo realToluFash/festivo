@@ -1049,9 +1049,21 @@
 }
 
 .desk-ask-pair.actions-pair {
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 0 var(--space3xl);
   padding-top: var(--spaceXs);
+}
+
+/* The way back can name a person: a long name wraps inside it, centred, as sc-14816 settled for the Roles buttons. */
+.desk-text.desk-ask-keep {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding-block: var(--spaceSm);
+  line-height: 1.3;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .desk-ask-body {

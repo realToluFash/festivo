@@ -17,6 +17,7 @@ export * from './datetime.ts';
 export * from './devices.ts';
 export * from './password.ts';
 export * from './regions.ts';
+export * from './firstName.ts';
 export * from './initials.ts';
 export * from './phone.ts';
 export * from './forms.ts';

@@ -5,7 +5,7 @@ import {
   type EventRole,
   type OrganisationEvent,
 } from '@soirely/api-client';
-import { initials } from '@soirely/domain';
+import { firstName, initials } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,7 +24,7 @@ import {
   rowLine,
   seesEveryEvent,
 } from '../kit/eventPeople.ts';
-import { firstName, toneOf } from '../kit/personFace.ts';
+import { toneOf } from '../kit/personFace.ts';
 import { refusalSaid } from '../kit/refusal.ts';
 import { glide } from '../motion.ts';
 import { useSignedIn } from '../signedIn.ts';

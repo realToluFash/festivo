@@ -4,7 +4,7 @@ import type {
   OrganisationMember,
   OrganisationRole,
 } from '@soirely/api-client';
-import { approvalRoles, formatDay, roleName } from '@soirely/domain';
+import { approvalRoles, firstName, formatDay, roleName } from '@soirely/domain';
 import { type RefObject, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
@@ -13,7 +13,6 @@ import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { membersAfterWrite, withApproved, withTurnedDown } from '../kit/membersAfterWrite.ts';
 import { faceOf, type MembersSaid } from '../kit/membersSummary.ts';
-import { firstName } from '../kit/personFace.ts';
 import { refusalFor } from '../kit/refusal.ts';
 import { tokens } from '../theme/tokens.ts';
 import { FieldError } from './Field.tsx';
