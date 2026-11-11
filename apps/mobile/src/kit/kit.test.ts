@@ -33,6 +33,7 @@ import {
   keysOver,
   liftNeeded,
   settleLifts,
+  liftUnderFocus,
   listRoom,
   notesGiveWay,
   offsetAboveKeyboard,
@@ -118,10 +119,14 @@ describe('the field typed in stays in sight above a group lifted under it (sc-11
     expect(offset).toBeLessThan(offsetAboveKeyboard(card));
   });
 
-  it('lifts the whole group when it fits under the focused field', () => {
+  it('lifts the whole group when it fits under the focused field, only ever taking the scroll back up (sc-35488)', () => {
     const tall = { ...card, keyboardTop: 900 };
+    const lift = offsetAboveKeyboard({ ...tall, focusY: current });
+    const under = { contentY: card.contentY, focusY: current };
 
-    expect(offsetAboveKeyboard({ ...tall, focusY: current })).toBe(offsetAboveKeyboard(tall));
+    expect(lift).toBe(offsetAboveKeyboard(tall));
+    expect(liftUnderFocus(lift, { ...under, offset: 300 })).toBe(lift);
+    expect(liftUnderFocus(lift, { ...under, offset: 0 })).toBe('stays');
   });
 
   it('keeps the group top when the focused field sits inside the group', () => {
@@ -1011,5 +1016,23 @@ describe('a field named on Android by words it never shows (sc-31323)', () => {
 
     expect(code).not.toMatch(/importantForAccessibility/u);
     expect(code).toMatch(/width: 0, height: 0, overflow: 'hidden'/u);
+  });
+});
+
+describe('a group under the focused field leaves the title in sight (sc-35488)', () => {
+  // Full name focused at 96 under the title; the Password group at 330, lifting to 80 above a docked bar.
+  const under = { contentY: 330, focusY: 96 };
+
+  it('does not take the scroll down past the title on arrival', () => {
+    expect(liftUnderFocus(80, { ...under, offset: 0 })).toBe('stays');
+  });
+
+  it('still takes the scroll back up to a focused field scrolled out of sight', () => {
+    expect(liftUnderFocus(80, { ...under, offset: 300 })).toBe(80);
+  });
+
+  it('lifts as before the group holding the focused field, or with nothing focused', () => {
+    expect(liftUnderFocus(80, { contentY: 330, focusY: 340, offset: 0 })).toBe(80);
+    expect(liftUnderFocus(80, { contentY: 330, offset: 0 })).toBe(80);
   });
 });

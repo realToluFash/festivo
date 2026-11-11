@@ -40,6 +40,7 @@ import {
   groupInWindow,
   keysOver,
   liftNeeded,
+  liftUnderFocus,
   type InContent,
   type IntoView,
   type LiftFromTop,
@@ -194,17 +195,20 @@ function measureLift(
             return done('stays');
 
           done(
-            offsetAboveKeyboard({
-              contentY,
-              height,
-              scrollTop,
-              keyboardTop: shown,
-              margin: tokens.spaceLg,
-              focusY,
-            }),
+            liftUnderFocus(
+              offsetAboveKeyboard({
+                contentY,
+                height,
+                scrollTop,
+                keyboardTop: shown,
+                margin: tokens.spaceLg,
+                focusY,
+              }),
+              { contentY, offset, focusY },
+            ),
           );
         };
-        // The field typed in comes first: a group under it lifts only as far as keeps it in sight (sc-11978).
+        // The field typed in comes first: a group under it never lifts it out of sight (sc-11978), nor the title above it (sc-35488).
         const field = focusedField();
         if (field == null) lift();
         else

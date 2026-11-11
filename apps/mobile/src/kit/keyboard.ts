@@ -153,6 +153,16 @@ export function offsetAboveKeyboard({
   return Math.max(0, Math.min(bottomAboveKeys, Math.min(contentY, focusY) - margin));
 }
 
+/** A group under the focused field may only take the scroll back up to that field, never further down: the title above the field outranks the rest of the form, and only the field outranks the title (sc-35488). */
+export function liftUnderFocus(
+  lift: number,
+  { contentY, offset, focusY }: { contentY: number; offset: number; focusY?: number | undefined },
+): number | 'stays' {
+  if (focusY == null || focusY >= contentY) return lift;
+
+  return lift < offset ? lift : 'stays';
+}
+
 /** A lift group's answer from the scroll's top: the offset it needs, `'stays'` when it needs none, or null when it cannot be measured now. */
 export type LiftFromTop = number | 'stays' | null;
 
