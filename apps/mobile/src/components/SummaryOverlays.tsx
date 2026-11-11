@@ -34,7 +34,7 @@ import { Text, type TextHandle } from './Text.tsx';
 import { Toast } from './Toast.tsx';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
-import { menuInModal } from '../kit/anchoredMenu.ts';
+import { menuInModal, menuMost } from '../kit/anchoredMenu.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
 import { Glyph } from './Glyph.tsx';
@@ -334,7 +334,6 @@ export interface MenuChoice<T extends string> {
 }
 
 const MENU_WIDTH = 220;
-const MENU_LEAST = 144;
 
 export interface Anchor {
   x: number;
@@ -422,7 +421,7 @@ export function MenuLayer({
   const [seen, setSeen] = useState({ panel: 0, content: 0, offset: 0 });
   const place = menuInModal({ under: at?.y ?? 0, below, floor, origin });
   const top = place.top;
-  const room = (place.floor ?? frame.height - Math.max(insets.bottom, tokens.spaceLg)) - top;
+  const room = menuMost(place, frame.height - Math.max(insets.bottom, tokens.spaceLg));
   const more = seen.content - seen.offset - seen.panel > 1;
 
   return (
@@ -441,7 +440,7 @@ export function MenuLayer({
               top,
               left: menuLeft(at, width, align, frame.width),
               width,
-              maxHeight: Math.max(room, MENU_LEAST),
+              maxHeight: room,
             },
           ]}
           accessibilityViewIsModal
