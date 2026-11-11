@@ -104,7 +104,9 @@ ops answers, re-run only the unrun rows and post the report on the whole story.
 **A story stuck in `In QA`** has a winning claim more than three hours old and no report,
 which means its tester's run died. Any tester may take it over with the same
 `sq qa claim sc-55`: it refuses a claim younger than three hours, and on an older one posts
-`QA claim: qa2, taking over from qa3's of 09:14`. A story named in the command
+`QA claim: qa2, taking over from qa3's of 09:14`. A claim waiting on an open `[ops]` thread
+for an unrun side-by-side row is not stuck, whatever its age: leave it until that thread is
+answered, and its tester re-runs only those rows. A story named in the command
 (`/soirely-qa-tester qa2 sc-55`) is claimed the same way.
 
 **A `translation` ticket is tested on `main`**, not on a pull request: the linguist moves
