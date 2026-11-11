@@ -1,4 +1,4 @@
-# sc-37811: another admin's claim: Stop asked while the claimant withdraws (the claim has changed), then a new claim stopped, then closed. Needs ${METRO_URL}, ORG, CLAIMANT_EMAIL, CLAIMANT_PASSWORD; an open claim of CLAIMANT's.
+# sc-37811: another admin's claim: Stop asked while the claimant withdraws (the claim has changed), then a new claim stopped, then closed. Needs ${METRO_URL}, ${API_URL}, ${WEB_URL}, ORG, CLAIMANT_EMAIL, CLAIMANT_PASSWORD; an open claim of CLAIMANT's.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/members
@@ -15,14 +15,14 @@ appId: host.exp.Exponent
     id: 'ownerClaim.stop'
 - waitForAnimationToEnd
 - takeScreenshot: stop-ask
-- evalScript: "${output.claimant = json(http.post('http://127.0.0.1:28080/api/auth/login', {headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email: CLAIMANT_EMAIL, password: CLAIMANT_PASSWORD})}).body).accessToken}"
-- evalScript: "${http.post('http://127.0.0.1:28080/api/orgs/' + ORG + '/owner-claim/withdraw', {headers: {Authorization: 'Bearer ' + output.claimant, Origin: 'http://127.0.0.1:25173'}, body: ''}).status}"
+- evalScript: "${output.claimant = json(http.post(API_URL + '/api/auth/login', {headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email: CLAIMANT_EMAIL, password: CLAIMANT_PASSWORD})}).body).accessToken}"
+- evalScript: "${http.post(API_URL + '/api/orgs/' + ORG + '/owner-claim/withdraw', {headers: {Authorization: 'Bearer ' + output.claimant, Origin: WEB_URL}, body: ''}).status}"
 - tapOn:
     id: 'ownerClaim.stopYes'
 - waitForAnimationToEnd:
     timeout: 8000
 - takeScreenshot: ended
-- evalScript: "${http.post('http://127.0.0.1:28080/api/orgs/' + ORG + '/owner-claim', {headers: {Authorization: 'Bearer ' + output.claimant, Origin: 'http://127.0.0.1:25173', 'Content-Type': 'application/json'}, body: '{}'}).status}"
+- evalScript: "${http.post(API_URL + '/api/orgs/' + ORG + '/owner-claim', {headers: {Authorization: 'Bearer ' + output.claimant, Origin: WEB_URL, 'Content-Type': 'application/json'}, body: '{}'}).status}"
 - tapOn:
     id: 'ownerClaim.reload'
 - waitForAnimationToEnd:
