@@ -80,6 +80,7 @@ final readonly class RecoveryView
 
         return [
             'id' => $recovery->getId()->toRfc4122(),
+            'userId' => $user->getId()->toRfc4122(),
             'name' => $user->getName(),
             'email' => $recovery->getEmailAddress()->getAddress(),
             'provedPhone' => null !== $recovery->getPhoneNumber(),

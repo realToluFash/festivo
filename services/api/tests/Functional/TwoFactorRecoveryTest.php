@@ -220,6 +220,8 @@ final class TwoFactorRecoveryTest extends ApiTestCase
 
         $here = [$this->organisation->getId()->toRfc4122()];
         self::assertSame($here, $this->requestOrganisationIds(), 'not the approver\'s other organisation, though it has the same name');
+        $asker = Type\vec(Type\shape(['userId' => Type\string()], true))->coerce($this->asApprover('GET', '/api/auth/recovery-requests')['requests']);
+        self::assertSame($this->person->getId()->toRfc4122(), $asker[0]['userId'] ?? null, 'whose request, so a removal takes it off');
 
         $this->join($this->person, SeededRole::Member, $hall);
         self::em()->flush();

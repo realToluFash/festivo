@@ -166,6 +166,8 @@ export interface RealtimeSubscription {
 /** One request on an owner's card: never a code, only what was proved and when. */
 export interface RecoveryRequest {
   id: string;
+  /** Whose request it is: a removal from the organisation ends it there. */
+  userId: string;
   name: string;
   email: string;
   provedPhone: boolean;
@@ -4151,6 +4153,7 @@ function asRecoveryRequest(raw: unknown): RecoveryRequest | null {
 
   if (
     typeof candidate.id !== 'string' ||
+    typeof candidate.userId !== 'string' ||
     typeof candidate.name !== 'string' ||
     typeof candidate.email !== 'string'
   ) {
@@ -4159,6 +4162,7 @@ function asRecoveryRequest(raw: unknown): RecoveryRequest | null {
 
   return {
     id: candidate.id,
+    userId: candidate.userId,
     name: candidate.name,
     email: candidate.email,
     provedPhone: candidate.provedPhone === true,
