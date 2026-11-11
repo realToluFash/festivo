@@ -30,10 +30,10 @@ export function pillShowsWords(
   return words >= Math.max(widths.nameStart, waiting);
 }
 
-/** The switcher's answer pill: its spinner and the gap after it while sending, and its sides (`Pill`, not full). */
+/** The switcher's answer pill: its spinner and the gap after it while sending, and its sides (`Pill` drawn full, `pillFull`, and its border). */
 export const ANSWER = {
   spinner: 16 + tokens.spaceSm,
-  sides: 2 * 22 + 2 * 1.5,
+  sides: 2 * tokens.spaceXxl + 2 * 1.5,
   gap: tokens.spaceMd,
 } as const;
 
