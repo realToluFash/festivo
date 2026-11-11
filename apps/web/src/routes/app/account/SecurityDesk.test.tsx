@@ -144,6 +144,14 @@ function posts(sent: Sent[]): Sent[] {
   return sent.filter((entry) => !entry.call.startsWith('GET'));
 }
 
+/** Past a closing layer's hand-back and its few frames of retries. */
+async function settled(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve));
+  for (let frame = 0; frame < 8; frame += 1) {
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+  }
+}
+
 function openSecurity() {
   return render(
     <RouterProvider
@@ -265,9 +273,9 @@ describe('changing the password at a desk', () => {
 
     await change('the old passphrase', 'a brand new passphrase');
 
-    expect(
-      await screen.findByText('Password changed. Your other device is signed out.'),
-    ).toBeDefined();
+    const line = await screen.findByText('Password changed. Your other device is signed out.');
+    await settled();
+    expect(document.activeElement).toBe(line);
     expect(posts(sent)).toEqual([
       {
         call: 'PATCH /api/auth/password',
@@ -815,7 +823,9 @@ describe('the devices at a desk', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign out…' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Sign it out' }));
 
-    expect(await screen.findByText('Chrome on Windows is signed out.')).toBeDefined();
+    const line = await screen.findByText('Chrome on Windows is signed out.');
+    await settled();
+    expect(document.activeElement).toBe(line);
     expect(posts(sent).map((entry) => entry.call)).toEqual([
       `DELETE /api/auth/sessions/${ELSEWHERE}`,
     ]);

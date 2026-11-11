@@ -171,7 +171,7 @@ export function SecurityDesk() {
   }, [devicesTry, refresh, watch]);
 
   useEffect(() => {
-    if (said != null) saidLine.current?.focus();
+    if (said != null) focusWhenFree(() => saidLine.current);
   }, [said]);
 
   // The alone line unmounts as the card arrives, so its copy in the card takes focus it held.
