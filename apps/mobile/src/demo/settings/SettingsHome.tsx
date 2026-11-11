@@ -1,5 +1,6 @@
+import { roleName } from '@soirely/domain';
 import { type Href, router } from 'expo-router';
-import { createContext, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -8,9 +9,8 @@ import { tokens } from '../../theme/tokens.ts';
 import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
 import { Bell, Landscape, OrgPill, PortraitTop, SettingsTabBar } from './Frame.tsx';
 import { type Held, HeldStandIn } from './Held.tsx';
-import { inUse, useHeldChoice, WORDS as PERSONALISATION } from './PersonalisationModel.ts';
+import { useHeldChoice } from './PersonalisationModel.ts';
 import { SettingsDemoRow } from './SettingsDemoRow.tsx';
-import { SchemeTile } from '../../components/SchemeParts.tsx';
 import { dataHref } from './DataModel.ts';
 import { DataTile, useDataNav, useDataOpen } from './DataParts.tsx';
 import { DATA_WORDS } from './DataWords.ts';
@@ -32,47 +32,21 @@ type Listed = Exclude<ShellSection, 'account'>;
 
 const DATA_ROW = 'dataAndControl';
 
-/** Settings' words: the page's title, its headings, the rows and their lines (the organisation's row carries its name), the role on your card and Sign out. */
-export interface SettingsWords {
-  title: string;
-  headings: Record<ReturnType<typeof demoGroups>[number]['heading'], string>;
-  rows: Record<Listed, { title: string; line: string }>;
-  role: (role: string) => string;
-  signOut: string;
-}
-
-export const SETTINGS_WORDS: SettingsWords = {
-  title: 'Settings',
-  headings: { yourAccount: 'Your account', organisationHeading: 'Organisation' },
-  rows: {
-    security: {
-      title: 'Security',
-      line: 'Password, ways to sign in, two-factor, signed-in devices',
-    },
-    notifications: {
-      title: 'Notifications',
-      line: 'Push and email, for each kind of notification',
-    },
-    personalisation: { title: 'Personalisation', line: PERSONALISATION.listLine },
-    organisation: { title: YOU.organisation, line: 'Name, contact address, currency, time zone' },
-    members: { title: 'Members', line: 'Who is in it, and their roles' },
-    signInRules: { title: 'Sign-in rules', line: 'How people sign in, and for how long' },
-  },
-  role: (role) => role,
-  signOut: 'Sign out',
-};
-
-/** English unless a state draws the page in another language, as Bold text's Spanish state does. */
-export const SettingsWordsContext = createContext(SETTINGS_WORDS);
-
 /** The sections a viewer sees; Your account is the card at the top. Data and control follows Sign-in rules for whoever manages the organisation (sc-560). */
-export function groupsFor(viewer: Viewer, words: SettingsWords = SETTINGS_WORDS) {
+function groupsFor(viewer: Viewer) {
   return demoGroups(viewer).map(({ heading, sections }) => ({
-    heading: words.headings[heading],
+    heading,
     sections: sections.filter((section): section is Listed => section !== 'account'),
     data: heading === 'organisationHeading' && managesOrganisation(viewer),
   }));
 }
+
+/** The demo's people hold the seeded roles, by their English names. */
+const SEEDED: Readonly<Record<string, string>> = {
+  Owner: 'owner',
+  Admin: 'administrator',
+  Member: 'member',
+};
 
 export function sectionsFor(viewer: Viewer): readonly ShellSection[] {
   return demoGroups(viewer).flatMap(({ sections }) => sections);
@@ -92,14 +66,17 @@ function PersonCard({
   open?: boolean;
 }) {
   const shell = useShell();
-  const words = useContext(SettingsWordsContext);
+  const { t } = useTranslation();
   const you = shell.looking;
 
   return (
     <ProductPersonCard
       person={{
         ...you,
-        role: you.role == null ? null : words.role(you.role),
+        role:
+          you.role == null
+            ? null
+            : roleName(t, { seededAs: SEEDED[you.role] ?? null, name: you.role }),
         organisation: YOU.organisation,
       }}
       size={size}
@@ -132,7 +109,7 @@ function useDataRow(dense: boolean) {
   };
 }
 
-/** The product's rows in the demo's words, Personalisation's tile ahead of the app, and Data and control after the organisation's. */
+/** The product's rows, Personalisation's tile showing the demo's held pick, and Data and control after the organisation's. */
 function useDemoList(
   dense: boolean,
   open: ShellSection | null,
@@ -140,19 +117,14 @@ function useDemoList(
   onDemo: () => void,
 ) {
   const shell = useShell();
-  const words = useContext(SettingsWordsContext);
-  const rowOf = useSectionRows(YOU.organisation);
+  const { t } = useTranslation();
+  const rowOf = useSectionRows(YOU.organisation, useHeldChoice());
   const dataRow = useDataRow(dense);
   const side = rowSide(dense);
-  const groups = groupsFor(shell.viewer, words).map(({ heading, sections, data }) => {
-    const rows = sections.map((section) => ({
-      ...(section === 'personalisation'
-        ? { key: section, tile: <HeldTile side={side} /> }
-        : rowOf(section, side)),
-      ...words.rows[section],
-    }));
+  const groups = groupsFor(shell.viewer).map(({ heading, sections, data }) => {
+    const rows = sections.map((section) => rowOf(section, side));
 
-    return { heading, rows: data ? [...rows, dataRow.row] : rows };
+    return { heading: t(`settings.${heading}`), rows: data ? [...rows, dataRow.row] : rows };
   });
 
   return {
@@ -166,7 +138,6 @@ function useDemoList(
       <>
         <SettingsDemoRow dense={dense} onDemo={onDemo} />
         <SettingsSignOut
-          label={words.signOut}
           height={height}
           onSignOut={onSignOut}
           under={beside ? undefined : <LegalLinks style={styles.legal} />}
@@ -185,7 +156,7 @@ export function SettingsHome({
 }: Handlers & { held?: Held | null }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
-  const words = useContext(SettingsWordsContext);
+  const { t } = useTranslation();
   const list = useDemoList(false, null, onSignOut, onDemo);
 
   if (held != null) return <HeldSettings held={held} onSignOut={onSignOut} />;
@@ -223,7 +194,7 @@ export function SettingsHome({
               accessibilityRole="header"
               style={[styles.grow, topTitle]}
             >
-              {words.title}
+              {t('settings.title')}
             </Text>
           </View>
           <SwitchedNotice style={styles.switched} />
@@ -253,7 +224,7 @@ export function SettingsHome({
           accessibilityRole="header"
           style={[topTitle, styles.portraitTitle]}
         >
-          {words.title}
+          {t('settings.title')}
         </Text>
         <SwitchedNotice style={styles.switched} />
         <SettingsListBody size="portrait" {...list} />
@@ -309,7 +280,7 @@ function HeldSettings({ held, onSignOut }: { held: Held; onSignOut: () => void }
 /** On its side, the Settings list stays in its column while a section is open beside it. */
 export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
   const shell = useShell();
-  const words = useContext(SettingsWordsContext);
+  const { t } = useTranslation();
   const list = useDemoList(true, shell.open, onSignOut, onDemo);
 
   return (
@@ -327,7 +298,7 @@ export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
               adjustsFontSizeToFit
               style={[styles.grow, topTitle]}
             >
-              {words.title}
+              {t('settings.title')}
             </Text>
             <Bell tell={shell.tell} />
           </View>
@@ -371,8 +342,3 @@ const styles = StyleSheet.create({
   legal: { marginTop: tokens.spaceXs },
   legalUnder: { marginTop: tokens.spaceXl },
 });
-
-/** Personalisation's tile in the demo's list: the demo's own pick, held in memory. */
-function HeldTile({ side }: { side: number }) {
-  return <SchemeTile side={side} scheme={inUse(useHeldChoice())} />;
-}

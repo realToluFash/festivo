@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import type { SettingsSection } from '../kit/appNav.ts';
 import { useAccountChoice } from '../colourScheme.ts';
-import { inUse } from '../kit/personalisation.ts';
+import { type Choice, inUse } from '../kit/personalisation.ts';
 import { schemeOf } from '../kit/schemes.ts';
 import { schemeAtLaunch, tokens } from '../theme/tokens.ts';
 import { breakableEmail } from '../layout/textSize.ts';
@@ -157,15 +157,15 @@ export function PersonCard({
   );
 }
 
-/** Each listed section's title and line; the organisation's row carries its name. */
-export function useSectionRows(organisation: string | null) {
+/** Each listed section's title and line; the organisation's row carries its name. Personalisation's tile shows `scheme` when one is given, as the demo's held pick is. */
+export function useSectionRows(organisation: string | null, scheme?: Choice) {
   const { t } = useTranslation();
 
   return (section: ListedSection, side: number): SettingsRow => ({
     key: section,
     title: section === 'organisation' ? (organisation ?? '') : t(`settings.${section}`),
     line: t(`settings.${section}Line`),
-    tile: <SectionTile section={section} side={side} organisation={organisation} />,
+    tile: <SectionTile section={section} side={side} organisation={organisation} scheme={scheme} />,
   });
 }
 
@@ -173,12 +173,14 @@ function SectionTile({
   section,
   side,
   organisation,
+  scheme,
 }: {
   section: ListedSection;
   side: number;
   organisation: string | null;
+  scheme: Choice | undefined;
 }) {
-  if (section === 'personalisation') return <PersonTile side={side} />;
+  if (section === 'personalisation') return <PersonTile side={side} scheme={scheme} />;
 
   return (
     <Tile
@@ -192,8 +194,9 @@ function SectionTile({
 }
 
 /** Personalisation's tile: the account's scheme once it has answered, the device's until then. */
-function PersonTile({ side }: { side: number }) {
-  const choice = useAccountChoice();
+function PersonTile({ side, scheme }: { side: number; scheme: Choice | undefined }) {
+  const account = useAccountChoice();
+  const choice = scheme !== undefined ? scheme : account;
 
   return (
     <SchemeTile
