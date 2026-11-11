@@ -11,18 +11,27 @@ use Doctrine\ORM\Query\SqlWalker;
 use Doctrine\ORM\Query\TokenType;
 use Psl\Str;
 
-/** `FOLDED(x)`: x in lower case without its accents, so "Lucía" and "LUCIA" both read "lucia" (sc-30302). Needs no extension. */
+/**
+ * `FOLDED(x)`: x in lower case without its marks, so "Lucía" reads "lucia" and "Ọlọ́run" reads "olorun" (sc-30302).
+ * NFD splits each accented letter into its base and combining marks, which are dropped; the few letters with
+ * no decomposition, such as ø, are translated first.
+ */
 final class Folded extends FunctionNode
 {
-    private const string ACCENTED = 'ÀÁÂÃÄÅàáâãäåÇçÈÉÊËèéêëÌÍÎÏìíîïÑñÒÓÔÕÖØòóôõöøÙÚÛÜùúûüÝýÿ';
+    private const string UNDECOMPOSED = 'ØøĐđŁłĦħ';
 
-    private const string PLAIN = 'AAAAAAaaaaaaCcEEEEeeeeIIIIiiiiNnOOOOOOooooooUUUUuuuuYyy';
+    private const string PLAIN = 'OoDdLlHh';
 
     public Node $text;
 
     public function getSql(SqlWalker $sqlWalker): string
     {
-        return Str\format("LOWER(TRANSLATE(%s, '%s', '%s'))", $sqlWalker->walkStringPrimary($this->text), self::ACCENTED, self::PLAIN);
+        return Str\format(
+            "LOWER(REGEXP_REPLACE(NORMALIZE(TRANSLATE(%s, '%s', '%s'), NFD), '[\\u0300-\\u036f]', '', 'g'))",
+            $sqlWalker->walkStringPrimary($this->text),
+            self::UNDECOMPOSED,
+            self::PLAIN,
+        );
     }
 
     public function parse(Parser $parser): void

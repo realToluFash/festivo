@@ -339,6 +339,20 @@ final class EventsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aSearchIgnoresTheMarksOnYorubaLettersAndTheirTones(): void
+    {
+        $atTheVenue = $this->create('Owambe', '2026-11-14T16:00');
+        $this->create('Ọlọ́run Thanksgiving', '2026-11-21T16:00');
+        $this->create('Øre', '2026-11-28T16:00');
+        self::service(Connection::class)->executeStatement("UPDATE events SET venue_name = 'Ẹ̀kọ́ Hall' WHERE id = :id", ['id' => $atTheVenue]);
+
+        self::assertSame(['Ọlọ́run Thanksgiving'], $this->listed('q=olorun'));
+        self::assertSame(['Owambe'], $this->listed('q=eko'));
+        self::assertSame(['Owambe'], $this->listed('q=' . \rawurlencode('Ẹkọ')));
+        self::assertSame(['Øre'], $this->listed('q=ore'));
+    }
+
+    #[Test]
     public function aSearchUnderTwoLettersIsIgnoredAndItsWildcardsAreLetters(): void
     {
         $this->create('Owambe', '2026-11-14T16:00');
