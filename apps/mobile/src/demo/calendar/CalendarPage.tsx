@@ -2,7 +2,7 @@ import type { CalendarFeedLink } from '@soirely/api-client';
 import { firstDayOfWeek, formattingLocale, wallDay } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { type Href, router } from 'expo-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,7 @@ import {
 } from '../../components/CalendarDay.tsx';
 import { CalendarFeed, type FeedSource } from '../../components/CalendarSubscribe.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
+import { SETTLED_MS } from '../../components/Screen.tsx';
 import { Text } from '../../components/Text.tsx';
 import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import type { Item as ProductItem } from '../../kit/calendar.ts';
@@ -103,8 +104,17 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
   const [feed, setFeed] = useState(start.feed != null);
   const [feedStart, setFeedStart] = useState<Feed>(start.feed ?? 'panel');
   const [load, setLoad] = useState<BoardLoad>(start.load);
+  const [settled, setSettled] = useState(start.load !== 'loaded');
   const subscribeRef = useRef<ViewInstance>(null);
   const tell = shell.tell;
+
+  // Android clips a list that mounts while its screen still slides in, until it is scrolled.
+  useEffect(() => {
+    if (settled) return;
+    const wait = setTimeout(() => setSettled(true), SETTLED_MS);
+
+    return () => clearTimeout(wait);
+  }, [settled]);
 
   const retry = () => {
     setLoad('loading');
@@ -193,7 +203,8 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
 
   const board = (
     <CalendarBoard
-      load={load}
+      key={settled ? 'settled' : 'opening'}
+      load={settled ? load : 'loading'}
       events={events}
       daysOf={daysOf}
       choices={choices}
@@ -205,7 +216,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
       locale={locale}
       firstDay={firstDay}
       kept={KEPT}
-      start={start}
+      start={settled ? start : { ...start, open: null, menu: false }}
       bottom={bottom}
       head={
         <>
