@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { tied } from './members.ts';
 
 const tested = config();
 const OFF = 'They’re emailed now, and every session they had has ended.';
@@ -451,9 +452,15 @@ describe('Remove from a long-named organisation, wrapped whole (sc-40153)', () =
       ).toBeDefined();
 
       fireEvent.click(remove);
-      expect(screen.getByRole('alertdialog')).toBeDefined();
+      expect(screen.getByRole('alertdialog').textContent).toContain(`from ${name}?`);
+      expect(remove.querySelector('.wrap-tied')?.textContent?.endsWith('…')).toBe(true);
     },
   );
+
+  it('ties the "…" to the name’s last letters, marks and all', () => {
+    expect(tied('Remove from Ẹ̀kìtì…')).toEqual(['Remove from Ẹ̀kì', 'tì…']);
+    expect(tied('Remove from Ire Events…')).toEqual(['Remove from Ire Even', 'ts…']);
+  });
 
   it('holds the column to a 320 page’s in the At320 states', async () => {
     await members('/demo/settings/members?state=longNameAt320');

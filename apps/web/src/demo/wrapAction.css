@@ -7,6 +7,10 @@
   overflow-wrap: anywhere;
 }
 
+.wrap-tied {
+  white-space: nowrap;
+}
+
 .wrap-at-320 {
   display: flex;
   flex-direction: column;

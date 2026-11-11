@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { tied } from './members.ts';
 import './wrapAction.css';
 
 /** sc-40153: RedAction whose label wraps whole, the organisation's name never cut; one that fits looks as today. */
@@ -12,10 +13,18 @@ export function WrapRedAction({
   line: string;
   onClick: () => void;
 }) {
+  const [head, tail] = tied(label);
+
   return (
     <div className="desk-red">
-      <button type="button" className="desk-text is-red is-wraps" onClick={onClick}>
-        {label}
+      <button
+        type="button"
+        className="desk-text is-red is-wraps"
+        aria-label={label}
+        onClick={onClick}
+      >
+        {head}
+        <span className="wrap-tied">{tail}</span>
       </button>
       <p className="desk-note">{line}</p>
     </div>

@@ -219,6 +219,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
       leads={leads}
       recoveries={recoveries}
       proved={proved}
+      organisation={organisationOf(state)}
       say={say}
       tell={tell}
       onClose={close}
@@ -701,6 +702,7 @@ interface MembersDialogsProps {
   leads: Leads;
   recoveries: readonly Recovery[];
   proved: boolean;
+  organisation: string;
   say: SettingsSay;
   tell: Tell;
   onClose: () => void;
@@ -723,14 +725,14 @@ interface Then {
 }
 
 function MembersDialogs(props: MembersDialogsProps) {
-  const { dialog, viewer, people, leads, onClose, onPeople } = props;
+  const { dialog, viewer, people, leads, organisation, onClose, onPeople } = props;
   const person =
     dialog != null && 'id' in dialog ? people.find((one) => one.id === dialog.id) : null;
   const events = person == null ? [] : ledBy(leads, person.id);
   const handing = (kind: 'remove' | 'hand', hand = handStart(viewer.id)) =>
     person != null && (
       <HandoverAsk
-        words={handoverAsk(kind, person.name, events.length)}
+        words={handoverAsk(kind, person.name, events.length, organisation)}
         events={events}
         offered={offeredFor(people, person.id)}
         viewer={viewer.id}
@@ -738,7 +740,7 @@ function MembersDialogs(props: MembersDialogsProps) {
         onKeep={() => {
           onClose();
           const opener =
-            kind === 'hand' ? HANDOVER_WORDS.handOverNow : `Remove from ${ORGANISATION}…`;
+            kind === 'hand' ? HANDOVER_WORDS.handOverNow : `Remove from ${organisation}…`;
           focusWhenFree(() => buttonNamed(opener));
         }}
         onDone={(chosen) => {
@@ -798,8 +800,8 @@ function MembersDialogs(props: MembersDialogsProps) {
       return (
         person != null && (
           <Ask
-            {...removeWords(person.name)}
-            line={LOSES}
+            {...removeWords(person.name, organisation)}
+            line={LOSES.replaceAll(ORGANISATION, organisation)}
             onKeep={onClose}
             onGo={() => {
               onClose();
