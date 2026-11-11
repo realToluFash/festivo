@@ -23,7 +23,7 @@ export const PILL_FIT_BOARDS: readonly PillFitBoard[] = [
   },
   {
     title: 'French · Internationalisation',
-    what: 'The word whole on one line, ending in … only where the room holds it, or the tile',
+    what: 'The word whole on one line, or the tile; never cut short with …',
     href: '/demo/pill-fit?lang=fr&org=long',
   },
   {
