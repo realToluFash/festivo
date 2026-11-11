@@ -427,8 +427,8 @@ describe("change password's notes give way while the keys are up (sc-28122)", ()
   });
 });
 
-describe("a list's search moves beside its title on an iPhone on its side (sc-10118)", () => {
-  const onItsSide = { os: 'ios', phone: true, width: 667, height: 375 };
+describe("a list's search moves beside its title on a phone on its side (sc-10118, sc-35256)", () => {
+  const onItsSide = { phone: true, width: 667, height: 375 };
 
   it('on its side', () => {
     expect(searchBesideTitle(onItsSide)).toBe(true);
@@ -438,8 +438,8 @@ describe("a list's search moves beside its title on an iPhone on its side (sc-10
     expect(searchBesideTitle({ ...onItsSide, width: 375, height: 667 })).toBe(false);
   });
 
-  it('not on an Android phone', () => {
-    expect(searchBesideTitle({ ...onItsSide, os: 'android' })).toBe(false);
+  it('on an Android phone too', () => {
+    expect(searchBesideTitle({ ...onItsSide, width: 640, height: 360 })).toBe(true);
   });
 
   it('not on an iPad', () => {
