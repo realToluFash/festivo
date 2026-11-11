@@ -3,7 +3,7 @@ appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/
 - tapOn:
-    text: 'Events|Événements|Eventos'
+    id: 'tab-events|frame.events'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: events

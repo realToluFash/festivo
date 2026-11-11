@@ -1,5 +1,10 @@
-# Opens the invitation ${INVITE}, pauses the API through ${HELPER_URL}, presses ${ANSWER} and screenshots it sending. sc-38149.
+# Opens the invitation ${INVITE}, pauses the API through the batch helper, presses ${ANSWER} and screenshots it sending. sc-38149.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - openLink: ${METRO_URL}/--/
 - tapOn:
@@ -25,7 +30,10 @@ appId: host.exp.Exponent
     timeout: 10000
 - waitForAnimationToEnd:
     timeout: 3000
-- evalScript: "${output.p = http.get(HELPER_URL + '/api?to=paused').body}"
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
 - takeScreenshot: ${ANSWER}-before
 - tapOn:
     id: 'switcher.invitation.${INVITE}.${ANSWER}'
@@ -33,4 +41,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 2000
 - takeScreenshot: ${ANSWER}-sending
-- evalScript: "${output.s = http.get(HELPER_URL + '/api?to=up').body}"
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
