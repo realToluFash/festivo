@@ -144,6 +144,25 @@ function posts(sent: Sent[]): Sent[] {
   return sent.filter((entry) => !entry.call.startsWith('GET'));
 }
 
+/** Past a closing layer's hand-back and its few frames of retries. */
+/** jsdom focuses inside an `[inert]` subtree; a browser does not. */
+function focusSkipsInert(): void {
+  const focus = HTMLElement.prototype.focus;
+  vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (
+    this: HTMLElement,
+    options?: FocusOptions,
+  ) {
+    if (this.closest('[inert]') == null) focus.call(this, options);
+  });
+}
+
+async function settled(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve));
+  for (let frame = 0; frame < 8; frame += 1) {
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+  }
+}
+
 function openSecurity() {
   return render(
     <RouterProvider
@@ -265,9 +284,9 @@ describe('changing the password at a desk', () => {
 
     await change('the old passphrase', 'a brand new passphrase');
 
-    expect(
-      await screen.findByText('Password changed. Your other device is signed out.'),
-    ).toBeDefined();
+    const line = await screen.findByText('Password changed. Your other device is signed out.');
+    await settled();
+    expect(document.activeElement).toBe(line);
     expect(posts(sent)).toEqual([
       {
         call: 'PATCH /api/auth/password',
@@ -806,6 +825,7 @@ describe('linking and unlinking at a desk', () => {
 
 describe('the devices at a desk', () => {
   it('asks before signing another device out, then signs it out and says so', async () => {
+    focusSkipsInert();
     const sent = answering({
       [`DELETE /api/auth/sessions/${ELSEWHERE}`]: () => new Response(null, { status: 204 }),
     });
@@ -815,7 +835,9 @@ describe('the devices at a desk', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign out…' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Sign it out' }));
 
-    expect(await screen.findByText('Chrome on Windows is signed out.')).toBeDefined();
+    const line = await screen.findByText('Chrome on Windows is signed out.');
+    await settled();
+    expect(document.activeElement).toBe(line);
     expect(posts(sent).map((entry) => entry.call)).toEqual([
       `DELETE /api/auth/sessions/${ELSEWHERE}`,
     ]);
