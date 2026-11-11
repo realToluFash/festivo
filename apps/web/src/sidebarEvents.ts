@@ -17,12 +17,7 @@ export function sidebarEvents(
   return today({ events, at }, now, { ...reader, hour: 0 }).events.map(shownEvent);
 }
 
-/**
- * The desk sidebar's Your events in the current organisation, loaded by the sidebar itself so
- * no screen's own loading or filters change it. Each move it is shown on re-reads it and keeps
- * what it has meanwhile; another organisation's list is never shown, not even while the new one
- * loads. An event's page has its own sidebar, so `shown` is false there and nothing is read.
- */
+/** Another organisation's list is never returned, not even while the new one loads. */
 export function useSidebarEvents(
   organisationId: string | null,
   pathname: string,
