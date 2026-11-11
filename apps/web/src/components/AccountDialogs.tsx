@@ -31,6 +31,7 @@ import { offButton } from '../offButton.ts';
 import { codeChoice, phoneProblemMessage } from '../phoneProblem.ts';
 import { PROVIDER_NAMES, type ReturnPurpose, startProviderSignIn } from '../providerSignIn.ts';
 import { type ProveWith, useProving } from '../proving.ts';
+import { useStepFocus } from '../stepFocus.ts';
 import { ExpiredCode } from './AccountParts.tsx';
 import { FieldError } from './FieldError.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -635,6 +636,7 @@ export function VerifyDialog({
   const { t } = useTranslation();
   const input = useRef<HTMLInputElement>(null);
   const resendButton = useRef<HTMLButtonElement>(null);
+  const [textedLine, arriveAtTexted] = useStepFocus<HTMLParagraphElement>({ onlyIfLost: true });
   const email = kind === 'email';
   const [held] = useState(source);
   const check = useCodeCheck(kind, held);
@@ -684,6 +686,10 @@ export function VerifyDialog({
     window.requestAnimationFrame(() => input.current?.focus());
   }
 
+  async function textInstead(): Promise<void> {
+    if (await check.textInstead()) arriveAtTexted();
+  }
+
   const note = check.textingFailed
     ? t('verifyPhone.textInsteadFailed')
     : resendFailed
@@ -700,7 +706,9 @@ export function VerifyDialog({
       onDismiss={onClose}
       onConfirm={() => void verify()}
     >
-      <Note>{words.lead}</Note>
+      <Note ref={textedLine} tabIndex={check.texted ? -1 : undefined}>
+        {words.lead}
+      </Note>
       {spent != null ? (
         <ExpiredCode title={spent.title} line={spent.line} />
       ) : (
@@ -734,7 +742,7 @@ export function VerifyDialog({
           {resending.status}
         </span>
         {!email && wording.offerText && spent == null && (
-          <button type="button" className="desk-text" onClick={() => void check.textInstead()}>
+          <button type="button" className="desk-text" onClick={() => void textInstead()}>
             {t('verifyPhone.textInstead')}
           </button>
         )}

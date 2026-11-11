@@ -538,14 +538,18 @@ describe('codes and proofs at a desk (sc-30411)', () => {
     expect(within(dialog()).getByRole('heading', { name: 'Check your messages' })).toBeDefined();
     expect(await within(dialog()).findByLabelText('Code from WhatsApp')).toBeDefined();
 
-    fireEvent.click(within(dialog()).getByRole('button', { name: 'Text it to me instead' }));
+    const textInstead = within(dialog()).getByRole('button', { name: 'Text it to me instead' });
+    textInstead.focus();
+    fireEvent.click(textInstead);
     expect(
       await within(dialog()).findByText('The text could not be sent. Try again in a moment.'),
     ).toBeDefined();
+    expect(document.activeElement).toBe(textInstead);
 
-    fireEvent.click(within(dialog()).getByRole('button', { name: 'Text it to me instead' }));
-    expect(await within(dialog()).findByText(/^We texted the same code to /)).toBeDefined();
+    fireEvent.click(textInstead);
+    const line = await within(dialog()).findByText(/^We texted the same code to /);
     expect(within(dialog()).queryByRole('button', { name: 'Text it to me instead' })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(line));
     expect(
       within(dialog()).queryByText('The text could not be sent. Try again in a moment.'),
     ).toBeNull();
@@ -562,6 +566,26 @@ describe('codes and proofs at a desk (sc-30411)', () => {
       code: '654321',
       phone: 'p2',
     });
+  });
+
+  it('leaves focus in the code field when the text is sent after the person moved there (sc-38373)', async () => {
+    answering({
+      'GET /api/auth/me': () =>
+        json({ ...ME, phoneNumbers: [...ME.phoneNumbers, { ...NEW_PHONE, verified: false }] }),
+      'GET /api/auth/verify/phone/resend': () =>
+        json({ cooldownSeconds: 30, codeState: 'live', route: 'whatsapp' }),
+      'POST /api/auth/verify/phone/text-instead': () => json({ route: 'sms_chosen' }),
+    });
+    open();
+
+    fireEvent.click(await within(card()).findByRole('button', { name: 'Send a code' }));
+    const field = await within(dialog()).findByLabelText('Code from WhatsApp');
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Text it to me instead' }));
+    field.focus();
+
+    expect(await within(dialog()).findByText(/^We texted the same code to /)).toBeDefined();
+    expect(within(dialog()).getByLabelText('Code from the text')).toBe(field);
+    expect(document.activeElement).toBe(field);
   });
 
   it('sends one new code for two quick presses, and keeps Send a new code when it fails', async () => {
