@@ -73,13 +73,14 @@ export function LandingToast() {
           style={[
             styles.toast,
             column == null ? styles.margins : { left: column.x, width: column.width },
-            // A step that lands with its field focused raises the keys, so the toast rides above the foot docked on them.
+            // On a step it rides above the foot, docked on the keys or at the screen's foot.
             {
               bottom: landingToastBottom(
                 insets.bottom,
                 kind === 'phone' ? TAB_BAR : 0,
                 height,
                 keyboardTop,
+                step != null,
               ),
             },
           ]}
