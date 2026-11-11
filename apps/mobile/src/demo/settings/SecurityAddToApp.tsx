@@ -28,7 +28,10 @@ import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { SAMPLE } from '../samples.ts';
 
-/** The product's TwoFactorScreen with Add to my authenticator app under the QR, where a device has an app for otpauth:// links. */
+/** The enrolment with the link the API already sends beside the secret and the QR. */
+export type DemoEnrolment = Enrolment & { otpauthUri: string };
+
+/** The product's TwoFactorScreen with Add to my authenticator app under the key, where a device has an app for otpauth:// links. */
 export function DemoTwoFactorScreen({
   open,
   enrolment,
@@ -39,10 +42,13 @@ export function DemoTwoFactorScreen({
   onTurnOn,
   onFinished,
   takesLinks,
+  startTyped = '',
+  startError = null,
+  startHanded = false,
 }: {
   open: boolean;
   /** Null while it is fetched; once it could not be, its failure takes the key's and the field's place. */
-  enrolment: Enrolment | { retry: () => void } | null;
+  enrolment: DemoEnrolment | { retry: () => void } | null;
   /** New codes already made: the screen starts at them. */
   startCodes: readonly string[] | null;
   phone: boolean;
@@ -52,15 +58,19 @@ export function DemoTwoFactorScreen({
   onFinished: () => void;
   /** Some app on the device opens otpauth:// links; with none, the step is the product's as it is. */
   takesLinks: boolean;
+  /** What the code field held when the step was last seen, as when coming back from the authenticator. */
+  startTyped?: string;
+  startError?: string | null;
+  startHanded?: boolean;
 }) {
   const { t } = useTranslation();
   const [codes, setCodes] = useState<readonly string[] | null>(startCodes);
   const [saved, setSaved] = useState(false);
-  const code = useRef('');
+  const code = useRef(startTyped);
   const field = useRef<TextInputInstance>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(startError);
   const [checking, setChecking] = useState(false);
-  const [handed, setHanded] = useState(false);
+  const [handed, setHanded] = useState(startHanded);
 
   async function turnOn(): Promise<void> {
     if (checking) return;
@@ -142,21 +152,6 @@ export function DemoTwoFactorScreen({
           >
             <View style={styles.qrSide}>{ready?.qr}</View>
           </View>
-          {ready != null && takesLinks && (
-            <SecondaryButton
-              label="Add to my authenticator app"
-              stacked
-              onPress={() => setHanded(true)}
-              testID="security.setup.addToApp"
-            />
-          )}
-          {handed && (
-            <DemoOnly
-              title={`Stand-in for the authenticator. The product opens Passwords on iOS, or the authenticator on Android, offering Soirely · ${SAMPLE.email} with the key below. The demo opens nothing. The code it would show: ${SAMPLE.authenticator}.`}
-            >
-              {null}
-            </DemoOnly>
-          )}
           <Line text={phone ? t('twoFactorCard.phoneCantScan') : t('twoFactorCard.cantScan')} />
           <View style={styles.key}>
             <Text
@@ -169,6 +164,21 @@ export function DemoTwoFactorScreen({
               {ready == null ? ' ' : keyInGroups(ready.secret)}
             </Text>
           </View>
+          {ready != null && takesLinks && (
+            <SecondaryButton
+              label="Add to my authenticator app"
+              stacked
+              onPress={() => setHanded(true)}
+              testID="security.setup.addToApp"
+            />
+          )}
+          {ready != null && takesLinks && handed && (
+            <DemoOnly
+              title={`Stand-in for the authenticator. The product opens ${ready.otpauthUri} in the app that takes otpauth:// links (Passwords on iOS; the authenticator, or Android’s chooser), offering Soirely · ${SAMPLE.email} with the key above. The demo opens nothing and copies nothing. The code that entry would show: ${SAMPLE.authenticator}.`}
+            >
+              {null}
+            </DemoOnly>
+          )}
           <Field
             label={t('twoFactorCard.enterCode')}
             error={error}
@@ -181,6 +191,7 @@ export function DemoTwoFactorScreen({
               autoComplete="one-time-code"
               textContentType="oneTimeCode"
               returnKeyType="done"
+              defaultValue={startTyped}
               onChangeText={(text) => {
                 code.current = text;
                 if (error != null) setError(null);

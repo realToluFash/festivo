@@ -17,7 +17,15 @@ import {
   setupRefusal,
   waysOf,
 } from './SecurityModel.ts';
-import { BREACHED_PASSWORD, DEVICES, type SampleWays } from './SecuritySample.ts';
+import {
+  AUTHENTICATOR_KEY,
+  BREACHED_PASSWORD,
+  DEVICES,
+  enrolledKey,
+  NEXT_AUTHENTICATOR_KEY,
+  otpauthLink,
+  type SampleWays,
+} from './SecuritySample.ts';
 
 beforeAll(() =>
   init({
@@ -60,7 +68,7 @@ describe('two-factor not loaded', () => {
 
 describe('a state link', () => {
   it('opens the state it names, and the page at rest for anything else', () => {
-    expect(SECURITY_STATES).toHaveLength(23);
+    expect(SECURITY_STATES).toHaveLength(26);
     expect(securityStateOf('forgotSent')).toBe('forgotSent');
     expect(securityStateOf('nonsense')).toBe('rest');
     expect(securityStateOf(undefined)).toBe('rest');
@@ -106,6 +114,16 @@ describe('a state link', () => {
       screen: 'setup',
       enrol: 'failed',
     });
+    expect(securityStart('setupRetried')).toMatchObject({ screen: 'setup', fetched: 2, typed: '' });
+    expect(securityStart('setupBack')).toMatchObject({
+      screen: 'setup',
+      fetched: 1,
+      typed: '305',
+      handed: true,
+    });
+    expect(securityStart('setupOldEntry')).toMatchObject({ screen: 'setup', fetched: 2 });
+    expect(setupRefusal(securityStart('setupOldEntry').typed)).not.toBeNull();
+    expect(securityStart('rest')).toMatchObject({ fetched: 0, typed: '', handed: false });
     expect(securityStart('signOutDevice')).toMatchObject({ opened: 'safari', ask: 'signOut' });
   });
 });
@@ -178,5 +196,16 @@ describe('the sample server', () => {
     expect(emailedCodeRefusal(SAMPLE.code)).toBeNull();
     expect(setupRefusal('714 320')).toMatch(/^That code does not match\./u);
     expect(setupRefusal(SAMPLE.authenticator)).toBeNull();
+  });
+});
+
+describe('the key Add to my authenticator app hands over', () => {
+  it('is new with every fetch, and named Soirely with the sample email', () => {
+    expect(enrolledKey(1)).toBe(AUTHENTICATOR_KEY);
+    expect(enrolledKey(2)).toBe(NEXT_AUTHENTICATOR_KEY);
+    expect(enrolledKey(3)).toBe(AUTHENTICATOR_KEY);
+    expect(otpauthLink(AUTHENTICATOR_KEY)).toBe(
+      `otpauth://totp/Soirely:${SAMPLE.email}?secret=${AUTHENTICATOR_KEY}&issuer=Soirely`,
+    );
   });
 });

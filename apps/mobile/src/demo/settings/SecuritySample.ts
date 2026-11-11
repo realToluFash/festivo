@@ -33,6 +33,19 @@ export const BREACHED_PASSWORD = '1q2w3e4r5t6y7u8i9o0p';
 /** The authenticator key, in base32 as an app takes it. */
 export const AUTHENTICATOR_KEY = 'KZ4TQ7MB2XRAH5VN6JDWP3YCLFREGSUZ';
 
+/** The key a second enrolment brings: after Try again, or after Cancel and Turn on two-factor again. */
+export const NEXT_AUTHENTICATOR_KEY = 'M7QD4HXPWC2NR6TBJ3ZKY5FAVE7SQL2G';
+
+/** The key of the nth enrolment this visit: each fetch makes a new one, as the server does. */
+export function enrolledKey(fetched: number): string {
+  return fetched % 2 === 0 ? NEXT_AUTHENTICATOR_KEY : AUTHENTICATOR_KEY;
+}
+
+/** What Add to my authenticator app hands over, as the server builds it for `otpauthUri`. */
+export function otpauthLink(key: string): string {
+  return `otpauth://totp/Soirely:${SAMPLE.email}?secret=${key}&issuer=Soirely`;
+}
+
 export const RECOVERY_CODES: readonly string[] = [
   SAMPLE.recovery,
   'k4mq-8wze',

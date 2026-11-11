@@ -36,6 +36,9 @@ export const SECURITY_STATES = [
   'setupNoAuthenticator',
   'setupLoading',
   'setupFailed',
+  'setupRetried',
+  'setupBack',
+  'setupOldEntry',
   'recovery',
   'newCodes',
   'turnOff',
@@ -88,6 +91,12 @@ export interface SecurityStart {
   takesLinks: boolean;
   /** The setup step's key: fetched, still on its way, or not fetched. */
   enrol: Factor;
+  /** How many keys this visit has fetched; the next one differs from the last. */
+  fetched: number;
+  /** What the setup step's code field holds when it opens. */
+  typed: string;
+  /** Add to my authenticator app was pressed before the step was seen again. */
+  handed: boolean;
 }
 
 const ORG = SAMPLE.organisation;
@@ -96,7 +105,12 @@ const SETUP_STATES: ReadonlySet<SecurityState> = new Set([
   'setupNoAuthenticator',
   'setupLoading',
   'setupFailed',
+  'setupRetried',
+  'setupBack',
+  'setupOldEntry',
 ]);
+/** A code from the entry the first key made, typed after Cancel brought a new key. */
+const OLD_ENTRY_CODE = '714320';
 const SIGNED_OUT = 'safari';
 const CODE_WRONG_NOW =
   'That code did not work. Enter the code your app shows now, or an unused recovery code.';
@@ -224,6 +238,9 @@ export function securityStart(state: SecurityState): SecurityStart {
     factor: 'ready',
     takesLinks: true,
     enrol: 'ready',
+    fetched: SETUP_STATES.has(state) ? 1 : 0,
+    typed: '',
+    handed: false,
     finished: null,
     signedOut: [],
   };
@@ -250,6 +267,12 @@ export function securityStart(state: SecurityState): SecurityStart {
       return { ...start, screen: 'setup', enrol: 'loading' };
     case 'setupFailed':
       return { ...start, screen: 'setup', enrol: 'failed' };
+    case 'setupRetried':
+      return { ...start, screen: 'setup', fetched: 2 };
+    case 'setupBack':
+      return { ...start, screen: 'setup', typed: '305', handed: true };
+    case 'setupOldEntry':
+      return { ...start, screen: 'setup', fetched: 2, typed: OLD_ENTRY_CODE };
     case 'recovery':
       return { ...start, screen: 'recovery' };
     case 'newCodes':
