@@ -1,0 +1,15 @@
+/* Your events, when there are more than the sidebar holds (sc-39290): the list scrolls under its heading, and the places above and Settings and the person at the foot stay in view. Below four rows the whole sidebar scrolls instead. */
+
+.today-side-events {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: calc(var(--sizeHit) * 4 + var(--space3xl));
+}
+
+.today-side-events > .today-places {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}

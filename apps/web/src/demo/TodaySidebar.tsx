@@ -1,12 +1,14 @@
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { DeskPersonFace, type DeskPerson, DeskSidebar } from '../components/DeskSidebar.tsx';
-import { TODAY_IDS } from './events.ts';
+import { sampleEvents, TODAY_IDS } from './events.ts';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
 import { EVENTS, type EventKey } from './today.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
+import type { Mesh } from '../mesh.ts';
+import './sidebar.css';
 
 const PLACES: readonly (readonly [string, GlyphName])[] = [
   ['Today', 'today'],
@@ -16,7 +18,21 @@ const PLACES: readonly (readonly [string, GlyphName])[] = [
 
 const FOLAKE: DeskPerson = { name: SAMPLE.name, initials: 'FA', role: 'Owner' };
 
-/** The iPad's sidebar at a desk: the places, your events by colour, and the person at its foot. Events, Calendar or Settings selects its place; Settings names who is looking. */
+interface SideEvent {
+  id: string;
+  name: string;
+  mesh: Mesh;
+}
+
+/** `?sidebar=none` lists nothing and `?sidebar=many` all twenty sample events, past ones borrowed only for length, longer than the sidebar at 1280 × 800, on every screen that has it (sc-39290). */
+function sideEvents(events: readonly EventKey[], asked: string | null): SideEvent[] {
+  if (asked === 'none') return [];
+  if (asked === 'many') return sampleEvents().map(({ id, name, mesh }) => ({ id, name, mesh }));
+
+  return events.map((key) => ({ id: TODAY_IDS[key], name: EVENTS[key].name, mesh: key }));
+}
+
+/** The iPad's sidebar at a desk: the places, your events by colour, and the person at its foot. With no events it has no heading; a list longer than the sidebar scrolls inside it, under the places and over the foot. Events, Calendar or Settings selects its place; Settings names who is looking. */
 export function TodaySidebar({
   events,
   tell,
@@ -36,6 +52,9 @@ export function TodaySidebar({
   person?: DeskPerson | undefined;
   inert?: boolean;
 }) {
+  const [params] = useSearchParams();
+  const listed = sideEvents(events, params.get('sidebar'));
+
   return (
     <DeskSidebar
       label="Soirely"
@@ -114,15 +133,15 @@ export function TodaySidebar({
           </li>
         ))}
       </ul>
-      {events.length > 0 && (
+      {listed.length > 0 && (
         <div className="today-side-events">
           <h2 className="today-caps">Your events</h2>
           <ul className="today-places">
-            {events.map((key) => (
-              <li key={key}>
-                <Link className="today-place" to={`/demo/events/${TODAY_IDS[key]}`}>
-                  <span className={`today-dot is-${key} is-side`} aria-hidden="true" />
-                  <span className="today-grow today-ellipsis">{EVENTS[key].name}</span>
+            {listed.map(({ id, name, mesh }) => (
+              <li key={id}>
+                <Link className="today-place" to={`/demo/events/${id}`}>
+                  <span className={`today-dot is-${mesh} is-side`} aria-hidden="true" />
+                  <span className="today-grow today-ellipsis">{name}</span>
                 </Link>
               </li>
             ))}
