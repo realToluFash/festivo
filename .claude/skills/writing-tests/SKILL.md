@@ -143,6 +143,25 @@ to discriminate. And `ActorReadableTest` only proved it covered four locales onc
 
 Say in the report which assertion you broke and what it printed.
 
+**A web test of focus after a dialog or an Ask closes has to honour `inert`.** jsdom does
+not: `focus()` on an element inside `[inert]` still moves focus there, so a test that focus
+lands right after a closing layer passes with the fix taken out. The lead found this twice
+in one day (#1841's `SecurityDesk.test.tsx`, #1842's demo `Security.test.tsx`). Make
+`focus()` do nothing inside `[inert]`, as a browser does, then take the fix out and watch
+the test go red:
+
+```ts
+const real = HTMLElement.prototype.focus;
+vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function focusUnlessInert(
+  this: HTMLElement,
+  options?: FocusOptions,
+) {
+  if (this.closest('[inert]') == null) real.call(this, options);
+});
+```
+
+`apps/web/src/demo/General.test.tsx` has it in use.
+
 ## What a green suite does not tell you
 
 - **`lint:container` is the gate after moving or renaming a class.** php-cs-fixer was clean
