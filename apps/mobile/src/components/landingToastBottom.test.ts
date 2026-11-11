@@ -22,9 +22,9 @@ describe('the landing toast on a step with a docked foot, as measured (sc-37983)
     expect(landingToastBottom(24, 0, 1200, 700, { footReaches: 580 })).toBe(580 + tokens.spaceLg);
   });
 
-  it('keeps over the tab bar a phone leaves room for, where the foot sits under it', () => {
-    expect(landingToastBottom(34, 64, 800, null, { footReaches: 34 + 52 })).toBe(
-      34 + 64 + tokens.spaceLg,
+  it('rests 12pt above a one-button foot on a phone, the step covering its tab bar', () => {
+    expect(landingToastBottom(34, 64, 800, null, { footReaches: 34 + 48 })).toBe(
+      34 + 48 + tokens.spaceLg,
     );
   });
 });
@@ -32,6 +32,10 @@ describe('the landing toast on a step with a docked foot, as measured (sc-37983)
 describe('the landing toast on a step whose foot has moved into the page (sc-37983)', () => {
   it('sits 12pt above the keys', () => {
     expect(landingToastBottom(34, 64, 800, 500, 'footInPage')).toBe(800 - 500 + tokens.spaceLg);
+  });
+
+  it('sits 12pt above low keys on a phone, the step covering its tab bar', () => {
+    expect(landingToastBottom(34, 64, 800, 740, 'footInPage')).toBe(800 - 740 + tokens.spaceLg);
   });
 });
 
