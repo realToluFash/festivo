@@ -59,6 +59,7 @@ import {
 import { inModal } from '../kit/anchoredMenu.ts';
 import { type DropFrame, frameFor, switcherSession } from '../kit/orgSwitcher.ts';
 import { joinOrganisation, onMovedOn, switchOrganisation, useSignedIn } from '../signedIn.ts';
+import { useSidebarEvents } from '../sidebarEvents.ts';
 import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { switcherFocusBack } from '../kit/focusBack.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -83,6 +84,7 @@ import { usePillFit } from './usePillFit.tsx';
 import {
   SidebarBack,
   SidebarColumn,
+  SidebarEvents,
   SidebarFoot,
   SidebarHead,
   SidebarPlace,
@@ -1092,6 +1094,7 @@ function FrameSidebar({
 }) {
   const { t } = useTranslation();
   const { account } = useSignedIn();
+  const events = useSidebarEvents(account?.id, inEvent ? undefined : organisation?.id);
   const tabs = useFrameTabs(current, organisation);
   const name = account?.name ?? '';
   const role = organisation == null ? null : roleName(t, organisation.role);
@@ -1105,6 +1108,7 @@ function FrameSidebar({
       search: false,
       open: (opens) => {
         if (opens.to === 'account') router.navigate(SECTION_HREF.account);
+        if (opens.to === 'event') router.push(`/events/${opens.id}`);
       },
       useOrgOpener: useFrameOrgOpener,
     }),
@@ -1156,7 +1160,7 @@ function FrameSidebar({
           />
         )}
         <SidebarPlaces>{places}</SidebarPlaces>
-        <View style={styles.fill} />
+        {inEvent ? <View style={styles.fill} /> : <SidebarEvents events={events} />}
         <SidebarFoot
           onTab={tabs.onTab}
           at={inEvent ? null : tabs.at}

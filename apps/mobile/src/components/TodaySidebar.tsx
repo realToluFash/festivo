@@ -241,40 +241,30 @@ export function SidebarPlaces({ children }: { children: ReactNode }) {
   );
 }
 
-/** iPad landscape's sidebar: the places, your events by colour, and the person at its foot. */
-export function TodaySidebar({
-  events,
-  onTab,
-  at = 'Today',
-  onPerson,
-  org = true,
-}: {
-  events: readonly ShownEvent[];
-  onTab: (tab: Tab) => void;
-  at?: Tab;
-  onPerson?: (() => void) | undefined;
-  org?: boolean;
-}) {
+/** The least the list's region shows before the whole sidebar scrolls instead (sc-39340). */
+const LEAST_ROWS = 4;
+
+/** Your events under the places: no heading over nothing, and a list longer than the sidebar holds scrolls in its own region while the places and the foot stay (sc-39340). */
+export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
   const { t } = useTranslation();
   const { open } = useTodayShell();
 
+  if (events.length === 0) return <View style={styles.grow} />;
+
   return (
-    <View style={styles.side}>
-      <SidebarHead org={org} />
-      <SidebarPlaces>
-        {PLACES.map(([label, glyph]) => (
-          <Place key={label} tab={label} glyph={glyph} onTab={onTab} at={at} />
-        ))}
-      </SidebarPlaces>
-      <View>
-        <Text
-          size={12}
-          weight="semibold"
-          accessibilityRole="header"
-          style={[styles.secondary, styles.caps]}
-        >
-          {t('todayScreen.yourEvents').toLocaleUpperCase()}
-        </Text>
+    <View style={styles.list}>
+      <Text
+        size={12}
+        weight="semibold"
+        accessibilityRole="header"
+        style={[styles.secondary, styles.caps]}
+      >
+        {t('todayScreen.yourEvents').toLocaleUpperCase()}
+      </Text>
+      <ScrollView
+        style={[styles.rows, { minHeight: Math.min(events.length, LEAST_ROWS) * tokens.sizeHit }]}
+        nestedScrollEnabled
+      >
         {events.map((event) => (
           <Pressable
             key={event.id}
@@ -295,10 +285,36 @@ export function TodaySidebar({
             </Text>
           </Pressable>
         ))}
-      </View>
-      <View style={styles.grow} />
-      <SidebarFoot onTab={onTab} at={at} onPerson={onPerson} />
+      </ScrollView>
     </View>
+  );
+}
+
+/** iPad landscape's sidebar: the places, your events by colour, and the person at its foot. */
+export function TodaySidebar({
+  events,
+  onTab,
+  at = 'Today',
+  onPerson,
+  org = true,
+}: {
+  events: readonly ShownEvent[];
+  onTab: (tab: Tab) => void;
+  at?: Tab;
+  onPerson?: (() => void) | undefined;
+  org?: boolean;
+}) {
+  return (
+    <SidebarColumn>
+      <SidebarHead org={org} />
+      <SidebarPlaces>
+        {PLACES.map(([label, glyph]) => (
+          <Place key={label} tab={label} glyph={glyph} onTab={onTab} at={at} />
+        ))}
+      </SidebarPlaces>
+      <SidebarEvents events={events} />
+      <SidebarFoot onTab={onTab} at={at} onPerson={onPerson} />
+    </SidebarColumn>
   );
 }
 
@@ -362,6 +378,8 @@ const styles = StyleSheet.create({
   backPressed: { opacity: tokens.opacityPressed },
   column: { width: SIDEBAR_WIDTH, flexGrow: 0 },
   fills: { flexGrow: 1 },
+  list: { flexGrow: 1 },
+  rows: { flexGrow: 1, flexBasis: 0 },
   place: {
     height: tokens.sizeHit,
     flexDirection: 'row',

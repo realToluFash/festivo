@@ -14,6 +14,7 @@ import { DESTINATION_HREF, SECTION_HREF } from '../kit/appNav.ts';
 import { todayMoment } from '../kit/todayMoment.ts';
 import { SKELETON_AFTER_MS } from '../kit/skeleton.ts';
 import { useLayout } from '../layout/useLayout.ts';
+import { publishSidebarEvents } from '../sidebarEvents.ts';
 import { useUnread } from '../notificationsUnread.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { afterFailedLoad } from '../offlineLoad.ts';
@@ -76,14 +77,18 @@ export function TodayLanding({
     let live = true;
 
     watch(api.allEvents(organisation.id)).then(
-      (events) => live && setLoad({ kind: 'loaded', events, at: serverClock.now() }),
+      (events) => {
+        const at = serverClock.now();
+        publishSidebarEvents(account.id, organisation.id, { events, at });
+        if (live) setLoad({ kind: 'loaded', events, at });
+      },
       (error: unknown) => live && setLoad((was) => afterFailedLoad(was, error, { kind: 'failed' })),
     );
 
     return () => {
       live = false;
     };
-  }, [organisation.id, attempt, refresh, watch]);
+  }, [account.id, organisation.id, attempt, refresh, watch]);
 
   const open = useCallback((opens: Opens) => {
     switch (opens.to) {
