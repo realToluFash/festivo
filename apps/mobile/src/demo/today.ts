@@ -1,4 +1,4 @@
-import { greetingAt } from '@soirely/domain';
+import { eventDayWords, greetingAt } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import { writtenTime } from './clock.ts';
@@ -80,6 +80,7 @@ export function sample(key: EventKey): ShownEvent {
 
 /** Dates as `2026-11-03` and times as `18:00`, written the reader's way. */
 export interface Say {
+  locale: string;
   long(date: string): string;
   day(date: string, withYear?: boolean): string;
   weekday(date: string): string;
@@ -101,6 +102,7 @@ export function sayIn(locale: string, thisYear = 2026): Say {
   const at = (date: string) => new Date(`${date}T00:00Z`);
 
   return {
+    locale,
     long: (date) => long.format(at(date)),
     day: (date, withYear = Number(date.slice(0, 4)) !== thisYear) =>
       (withYear ? dayAndYear : day).format(at(date)),
@@ -242,12 +244,25 @@ export function railAt(stops: readonly string[], time: string): number {
   return (after - 1 + share) / (stops.length - 1);
 }
 
-function eventDates(event: SampleEvent, say: Say): string {
-  const withYear = event.first.slice(0, 4) !== event.last.slice(0, 4) || undefined;
+/** Events' own words for its days, as the product's Today writes them (sc-30413, 11 Nov). */
+function eventDates(event: SampleEvent, today: string, say: Say, t: TFunction): string {
+  const days = eventDayWords(
+    {
+      status: event.draft ? 'draft' : 'live',
+      startsAt: `${event.first}T12:00:00Z`,
+      endsAt: `${event.last}T12:00:00Z`,
+      timeZone: 'UTC',
+      concludedAt: null,
+    },
+    new Date(`${today}T12:00:00Z`),
+    say.locale,
+  );
 
-  return event.first === event.last
-    ? say.day(event.first)
-    : `${say.day(event.first, withYear)} – ${say.day(event.last, withYear)}`;
+  return days.kind === 'days'
+    ? t('eventsScreen.days', { first: days.first, last: days.last })
+    : days.kind === 'oneDay'
+      ? days.day
+      : days.date;
 }
 
 function card(
@@ -255,6 +270,7 @@ function card(
   today: string,
   moment: MomentName,
   say: Say,
+  t: TFunction,
   guests: GuestsOf,
   later: EventKey | null,
 ): EventCard {
@@ -274,7 +290,7 @@ function card(
   return {
     event: sample(key),
     name: event.name,
-    dates: eventDates(event, say),
+    dates: eventDates(event, today, say, t),
     count,
     live,
     draft: event.draft,
@@ -293,6 +309,7 @@ function cards(
   today: string,
   moment: MomentName,
   say: Say,
+  t: TFunction,
   guests: GuestsOf,
   later: EventKey | null = null,
 ): EventCard[] {
@@ -303,7 +320,7 @@ function cards(
         Number(EVENTS[a].draft) - Number(EVENTS[b].draft) ||
         EVENTS[a].first.localeCompare(EVENTS[b].first),
     )
-    .map((key) => card(key, today, moment, say, guests, later));
+    .map((key) => card(key, today, moment, say, t, guests, later));
 }
 
 /** One bar for each event on in the week, with its other days' milestones as dots. */
@@ -562,7 +579,9 @@ export function momentOf(
           }
         : null,
     events:
-      name === 'first' ? [] : cards(today, name, say, guests, starting ? STARTS_LATER.event : null),
+      name === 'first'
+        ? []
+        : cards(today, name, say, t, guests, starting ? STARTS_LATER.event : null),
     now: kind === 'day' ? now(today, time, say) : null,
   };
 }
