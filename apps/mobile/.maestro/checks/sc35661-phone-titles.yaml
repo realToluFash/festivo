@@ -5,6 +5,30 @@ onFlowComplete:
       when:
         true: ${output.removed != true}
       commands:
+        - runFlow:
+            when:
+              visible:
+                id: 'account.verify.cancel'
+            commands:
+              - tapOn:
+                  id: 'account.verify.cancel'
+              - waitForAnimationToEnd
+        - runFlow:
+            when:
+              visible:
+                id: 'account.phone.add.cancel'
+            commands:
+              - tapOn:
+                  id: 'account.phone.add.cancel'
+              - waitForAnimationToEnd
+        - runFlow:
+            when:
+              visible:
+                id: 'account.phone.add.discard'
+            commands:
+              - tapOn:
+                  id: 'account.phone.add.discard'
+              - waitForAnimationToEnd
         - openLink: ${METRO_URL}/--/settings/account
         - scrollUntilVisible:
             element:
