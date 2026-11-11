@@ -480,8 +480,38 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'Security · set up two-factor',
-        what: 'The QR, the key, the app’s code',
+        what: 'The QR, the key, Add to my authenticator app, the app’s code',
         href: '/demo/settings/security?state=setup',
+      },
+      {
+        title: 'Security · set up, no authenticator',
+        what: 'No app takes otpauth:// links, so no Add button',
+        href: '/demo/settings/security?state=setupNoAuthenticator',
+      },
+      {
+        title: 'Security · set up, key loading',
+        what: 'No Add button until the key is in',
+        href: '/demo/settings/security?state=setupLoading',
+      },
+      {
+        title: 'Security · set up, did not load',
+        what: 'No Add button; Try again brings it with the key',
+        href: '/demo/settings/security?state=setupFailed',
+      },
+      {
+        title: 'Security · set up, after Try again',
+        what: 'A new key, and the Add button carries it',
+        href: '/demo/settings/security?state=setupRetried',
+      },
+      {
+        title: 'Security · set up, back from the authenticator',
+        what: 'The same key; the code field keeps what it held',
+        href: '/demo/settings/security?state=setupBack',
+      },
+      {
+        title: 'Security · set up, a code from an old entry',
+        what: 'After Cancel and a new key: today’s refusal',
+        href: '/demo/settings/security?state=setupOldEntry',
       },
       {
         title: 'Security · recovery codes',

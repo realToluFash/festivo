@@ -17,7 +17,16 @@ import {
   setupRefusal,
   waysOf,
 } from './SecurityModel.ts';
-import { BREACHED_PASSWORD, DEVICES, type SampleWays } from './SecuritySample.ts';
+import {
+  AUTHENTICATOR_KEY,
+  BREACHED_PASSWORD,
+  DEVICES,
+  enrolledKey,
+  keyCode,
+  NEXT_AUTHENTICATOR_KEY,
+  otpauthLink,
+  type SampleWays,
+} from './SecuritySample.ts';
 
 beforeAll(() =>
   init({
@@ -60,7 +69,7 @@ describe('two-factor not loaded', () => {
 
 describe('a state link', () => {
   it('opens the state it names, and the page at rest for anything else', () => {
-    expect(SECURITY_STATES).toHaveLength(20);
+    expect(SECURITY_STATES).toHaveLength(26);
     expect(securityStateOf('forgotSent')).toBe('forgotSent');
     expect(securityStateOf('nonsense')).toBe('rest');
     expect(securityStateOf(undefined)).toBe('rest');
@@ -88,6 +97,39 @@ describe('a state link', () => {
     });
     expect(securityStart('recovery')).toMatchObject({ twoFactor: true, codesLeft: 10 });
     expect(securityStart('setup')).toMatchObject({ twoFactor: false, screen: 'setup' });
+    expect(securityStart('setup')).toMatchObject({ takesLinks: true });
+    expect(securityStart('setupNoAuthenticator')).toMatchObject({
+      twoFactor: false,
+      screen: 'setup',
+      takesLinks: false,
+    });
+    expect(securityStart('setup')).toMatchObject({ enrol: 'ready' });
+    expect(securityStart('setupLoading')).toMatchObject({
+      twoFactor: false,
+      screen: 'setup',
+      enrol: 'loading',
+      takesLinks: true,
+    });
+    expect(securityStart('setupFailed')).toMatchObject({
+      twoFactor: false,
+      screen: 'setup',
+      enrol: 'failed',
+    });
+    expect(securityStart('setupRetried')).toMatchObject({ screen: 'setup', fetched: 2, typed: '' });
+    expect(securityStart('setupBack')).toMatchObject({
+      screen: 'setup',
+      fetched: 1,
+      typed: '305',
+      handed: true,
+      refused: false,
+    });
+    expect(securityStart('setupOldEntry')).toMatchObject({
+      screen: 'setup',
+      fetched: 2,
+      refused: true,
+    });
+    expect(setupRefusal(securityStart('setupOldEntry').typed, enrolledKey(2))).not.toBeNull();
+    expect(securityStart('rest')).toMatchObject({ fetched: 0, typed: '', handed: false });
     expect(securityStart('signOutDevice')).toMatchObject({ opened: 'safari', ask: 'signOut' });
   });
 });
@@ -158,7 +200,24 @@ describe('the sample server', () => {
     expect(chooseRefusal(NEW_PASSWORD)).toBeNull();
     expect(emailedCodeRefusal('482170')).toMatch(/^That code did not match\./u);
     expect(emailedCodeRefusal(SAMPLE.code)).toBeNull();
-    expect(setupRefusal('714 320')).toMatch(/^That code does not match\./u);
-    expect(setupRefusal(SAMPLE.authenticator)).toBeNull();
+    expect(setupRefusal('714 320', AUTHENTICATOR_KEY)).toMatch(/^That code does not match\./u);
+    expect(setupRefusal(SAMPLE.authenticator, AUTHENTICATOR_KEY)).toBeNull();
+  });
+
+  it('takes only the code of the key showing, so an entry from an earlier key is refused', () => {
+    expect(keyCode(AUTHENTICATOR_KEY)).not.toBe(keyCode(NEXT_AUTHENTICATOR_KEY));
+    expect(setupRefusal(keyCode(AUTHENTICATOR_KEY), NEXT_AUTHENTICATOR_KEY)).not.toBeNull();
+    expect(setupRefusal(keyCode(NEXT_AUTHENTICATOR_KEY), NEXT_AUTHENTICATOR_KEY)).toBeNull();
+  });
+});
+
+describe('the key Add to my authenticator app hands over', () => {
+  it('is new with every fetch, and named Soirely with the sample email', () => {
+    expect(enrolledKey(1)).toBe(AUTHENTICATOR_KEY);
+    expect(enrolledKey(2)).toBe(NEXT_AUTHENTICATOR_KEY);
+    expect(enrolledKey(3)).toBe(AUTHENTICATOR_KEY);
+    expect(otpauthLink(AUTHENTICATOR_KEY)).toBe(
+      `otpauth://totp/Soirely:${SAMPLE.email}?secret=${AUTHENTICATOR_KEY}&issuer=Soirely`,
+    );
   });
 });

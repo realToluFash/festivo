@@ -9,9 +9,11 @@ import { codeHelp, proveIntro } from '../../kit/waysProof.ts';
 import { SAMPLE } from '../samples.ts';
 import { CODE_SAYS, type SampleProofAsks } from './AccountModel.ts';
 import {
+  AUTHENTICATOR_KEY,
   BREACHED_PASSWORD,
   type Device,
   DEVICES,
+  keyCode,
   linkedProviders,
   PROVIDER_ADDRESS,
   PROVIDER_NAME,
@@ -33,6 +35,12 @@ export const SECURITY_STATES = [
   'linkPick',
   'unlink',
   'setup',
+  'setupNoAuthenticator',
+  'setupLoading',
+  'setupFailed',
+  'setupRetried',
+  'setupBack',
+  'setupOldEntry',
   'recovery',
   'newCodes',
   'turnOff',
@@ -81,9 +89,30 @@ export interface SecurityStart {
   factor: Factor;
   finished: Finished | null;
   signedOut: readonly string[];
+  /** Some app on the device opens otpauth:// links, so the setup step offers Add to my authenticator app. */
+  takesLinks: boolean;
+  /** The setup step's key: fetched, still on its way, or not fetched. */
+  enrol: Factor;
+  /** How many keys this visit has fetched; the next one differs from the last. */
+  fetched: number;
+  /** What the setup step's code field holds when it opens. */
+  typed: string;
+  /** Add to my authenticator app was pressed before the step was seen again. */
+  handed: boolean;
+  /** Turn on was pressed with what the field holds, and the code was refused. */
+  refused: boolean;
 }
 
 const ORG = SAMPLE.organisation;
+const SETUP_STATES: ReadonlySet<SecurityState> = new Set([
+  'setup',
+  'setupNoAuthenticator',
+  'setupLoading',
+  'setupFailed',
+  'setupRetried',
+  'setupBack',
+  'setupOldEntry',
+]);
 const SIGNED_OUT = 'safari';
 const CODE_WRONG_NOW =
   'That code did not work. Enter the code your app shows now, or an unused recovery code.';
@@ -184,8 +213,8 @@ export function emailedCodeRefusal(code: string): string | null {
     : 'That code did not match. Check the newest email from Soirely and try again.';
 }
 
-export function setupRefusal(code: string): string | null {
-  return cleanCode(code) === SAMPLE.authenticator
+export function setupRefusal(code: string, key: string): string | null {
+  return cleanCode(code) === keyCode(key)
     ? null
     : 'That code does not match. Check the app was set up with the key above, then enter the code it shows now.';
 }
@@ -197,7 +226,7 @@ export function securityStart(state: SecurityState): SecurityStart {
   const picking = state === 'linkPick';
   const start: SecurityStart = {
     ways: { password: !googleOnly, google: !picking, apple: false },
-    twoFactor: !googleOnly && state !== 'setup',
+    twoFactor: !googleOnly && !SETUP_STATES.has(state),
     codesLeft: state === 'recovery' ? RECOVERY_CODES.length : RECOVERY_LEFT,
     rules: {
       providerOnly: state === 'keptByRule' || picking ? ORG : null,
@@ -209,6 +238,12 @@ export function securityStart(state: SecurityState): SecurityStart {
     screen: null,
     proof: null,
     factor: 'ready',
+    takesLinks: true,
+    enrol: 'ready',
+    fetched: SETUP_STATES.has(state) ? 1 : 0,
+    typed: '',
+    handed: false,
+    refused: false,
     finished: null,
     signedOut: [],
   };
@@ -229,6 +264,24 @@ export function securityStart(state: SecurityState): SecurityStart {
       return { ...start, opened: 'google', ask: 'unlink' };
     case 'setup':
       return { ...start, screen: 'setup' };
+    case 'setupNoAuthenticator':
+      return { ...start, screen: 'setup', takesLinks: false };
+    case 'setupLoading':
+      return { ...start, screen: 'setup', enrol: 'loading' };
+    case 'setupFailed':
+      return { ...start, screen: 'setup', enrol: 'failed' };
+    case 'setupRetried':
+      return { ...start, screen: 'setup', fetched: 2 };
+    case 'setupBack':
+      return { ...start, screen: 'setup', typed: '305', handed: true };
+    case 'setupOldEntry':
+      return {
+        ...start,
+        screen: 'setup',
+        fetched: 2,
+        typed: keyCode(AUTHENTICATOR_KEY),
+        refused: true,
+      };
     case 'recovery':
       return { ...start, screen: 'recovery' };
     case 'newCodes':
