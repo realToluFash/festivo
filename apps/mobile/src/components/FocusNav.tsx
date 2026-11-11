@@ -16,9 +16,9 @@ import {
 } from '../layout/focusedHeader.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Glyph } from './Glyph.tsx';
-import { MeasureTexts, type MeasuredText } from './MeasureTexts.tsx';
 import { TurningMark } from './SummaryRows.tsx';
 import { Text, type TextHandle } from './Text.tsx';
+import { MeasuredWords } from './Title.tsx';
 
 export interface FocusVerb {
   label: string;
@@ -65,24 +65,16 @@ export function FocusNav({
     : back == null
       ? [cancelLabel ?? t('frame.cancel')]
       : [back, t('frame.back')];
-  const texts: MeasuredText[] = [
-    ...leftWords.map((text) => ({
-      key: `m|${size}|${text}`,
-      text,
-      size,
-      weight: 'medium' as const,
-    })),
-    ...(verb == null
-      ? []
-      : [{ key: `s|${size}|${verb.label}`, text: verb.label, size, weight: 'semibold' as const }]),
-    ...[...new Set([...titleWords, title])].map((text) => ({
-      key: `b|${size}|${text}`,
-      text,
-      size,
-      weight: 'bold' as const,
-    })),
-  ];
-  const known = width > 0 && texts.every(({ key }) => measured[key] != null);
+  const groups = [
+    { kind: 'm', weight: 'medium', texts: leftWords },
+    { kind: 's', weight: 'semibold', texts: verb == null ? [] : [verb.label] },
+    { kind: 'b', weight: 'bold', texts: [...titleWords, title] },
+  ] as const;
+  const known =
+    width > 0 &&
+    groups.every(({ kind, texts }) =>
+      texts.every((text) => measured[`${kind}|${size}|${text}`] != null),
+    );
   const widthOf = (kind: string, text: string) => measured[`${kind}|${size}|${text}`] ?? 0;
   const words = titleWords.map((word) => widthOf('b', word));
   const space =
@@ -229,12 +221,19 @@ export function FocusNav({
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
       testID={`focus.header.${form}`}
     >
-      <MeasureTexts
-        texts={texts}
-        onWidth={(key, value) => {
-          setMeasured((now) => (now[key] === value ? now : { ...now, [key]: value }));
-        }}
-      />
+      {groups.map(({ kind, weight, texts }) => (
+        <MeasuredWords
+          key={kind}
+          words={texts}
+          size={size}
+          weight={weight}
+          allowFontScaling={false}
+          onWidth={(text, value) => {
+            const key = `${kind}|${size}|${text}`;
+            setMeasured((now) => (now[key] === value ? now : { ...now, [key]: value }));
+          }}
+        />
+      ))}
       {rows[form]}
     </View>
   );

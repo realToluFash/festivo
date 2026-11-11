@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
+import { MeasuredWords } from '../../components/Title.tsx';
 import { PHONE_TAB_BAR, TABS, type Tab } from '../../components/TodayCover.tsx';
 import { wordsIn } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
@@ -40,28 +41,15 @@ export function TextSizeBar({
 
   return (
     <View style={[styles.bar, { bottom }]} accessibilityRole="tablist">
-      <View
-        style={styles.measure}
-        pointerEvents="none"
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
-        {[...new Set(words)].map((word) => (
-          <Text
-            key={word}
-            size={start}
-            weight="semibold"
-            allowFontScaling={false}
-            accessible={false}
-            onLayout={(event) => {
-              const { width } = event.nativeEvent.layout;
-              setMeasured((current) => ({ ...current, [`${start}|${word}`]: width }));
-            }}
-          >
-            {word}
-          </Text>
-        ))}
-      </View>
+      <MeasuredWords
+        words={words}
+        size={start}
+        weight="semibold"
+        allowFontScaling={false}
+        onWidth={(word, width) => {
+          setMeasured((current) => ({ ...current, [`${start}|${word}`]: width }));
+        }}
+      />
       {TABS.map(([tab, glyph], index) => {
         const on = tab === at;
         const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
@@ -119,12 +107,4 @@ const styles = StyleSheet.create({
     gap: TAB_GLYPH_GAP,
   },
   tabOn: { backgroundColor: tokens.colorAccentTint },
-  measure: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: 10000,
-    alignItems: 'flex-start',
-    opacity: 0,
-  },
 });
