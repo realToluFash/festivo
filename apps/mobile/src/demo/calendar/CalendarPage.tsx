@@ -1,7 +1,7 @@
 import type { CalendarFeedLink } from '@soirely/api-client';
 import { firstDayOfWeek, formattingLocale, wallDay } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
-import { type Href, router } from 'expo-router';
+import { type Href, router, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,8 +18,8 @@ import {
   leadSide,
 } from '../../components/CalendarDay.tsx';
 import { CalendarFeed, type FeedSource } from '../../components/CalendarSubscribe.tsx';
+import { onArrival } from '../../components/arrivalFocus.ts';
 import { Glyph } from '../../components/Glyph.tsx';
-import { SETTLED_MS } from '../../components/Screen.tsx';
 import { Text } from '../../components/Text.tsx';
 import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import type { Item as ProductItem } from '../../kit/calendar.ts';
@@ -106,15 +106,14 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
   const [load, setLoad] = useState<BoardLoad>(start.load);
   const [settled, setSettled] = useState(start.load !== 'loaded');
   const subscribeRef = useRef<ViewInstance>(null);
+  const navigation = useNavigation<Parameters<typeof onArrival>[0]>();
   const tell = shell.tell;
 
-  // Android clips a list that mounts while its screen still slides in, until it is scrolled.
   useEffect(() => {
-    if (settled) return;
-    const wait = setTimeout(() => setSettled(true), SETTLED_MS);
+    if (settled) return undefined;
 
-    return () => clearTimeout(wait);
-  }, [settled]);
+    return onArrival(navigation, () => setSettled(true));
+  }, [navigation, settled]);
 
   const retry = () => {
     setLoad('loading');
