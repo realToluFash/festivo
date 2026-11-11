@@ -9,13 +9,23 @@ import {
   filtered,
   formatWallDay,
   listFormat,
+  picksLead,
+  picksShown,
   searching,
   whenSpan,
   withHostToggled,
   withTypeToggled,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  useEffect,
+  useEffectEvent,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Glyph } from './Glyph.tsx';
@@ -82,13 +92,103 @@ function chosenWords(filters: EventsFilters, calendar: Calendar, t: TFunction): 
   ];
 }
 
-/** What Filter's button reads: All, or what is chosen. */
-function filterWord(filters: EventsFilters, calendar: Calendar, t: TFunction): string {
-  const chosen = chosenWords(filters, calendar, t);
+function listed(words: readonly string[], calendar: Calendar): string {
+  return listFormat(calendar.locale, { type: 'unit', style: 'short' }).format(words);
+}
 
-  return chosen.length === 0
-    ? t('eventsSearch.all')
-    : listFormat(calendar.locale, { type: 'unit', style: 'short' }).format(chosen);
+/** Where a line of picks is measured: its room, and the node whose resizing changes it. */
+interface Room {
+  width: number;
+  watch: Element;
+}
+
+let pen: CanvasRenderingContext2D | null | undefined;
+
+function shownIn(
+  line: HTMLElement,
+  room: Room | null,
+  picks: readonly string[],
+  whole: string,
+  more: (count: number) => string,
+): number {
+  pen ??= document.createElement('canvas').getContext('2d');
+  if (pen == null || room == null || room.width <= 0) return picks.length;
+  const style = getComputedStyle(line);
+  pen.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  const width = (text: string) => (pen as CanvasRenderingContext2D).measureText(text).width;
+
+  return picksShown(picks.length, (shown) =>
+    shown === picks.length
+      ? width(whole) <= room.width
+      : width(`${picksLead(picks, shown)} ${more(picks.length - shown)}`) <= room.width,
+  );
+}
+
+/** As many whole picks as fit the room, in order, then "+N more"; only the first is ever cut, and a screen reader hears them all (sc-39348). */
+function Picks({
+  picks,
+  whole,
+  roomOf,
+}: {
+  picks: readonly string[];
+  /** What the line reads when everything fits. */
+  whole: string;
+  roomOf: (line: HTMLElement) => Room | null;
+}) {
+  const { t } = useTranslation();
+  const line = useRef<HTMLSpanElement>(null);
+  const key = [whole, ...picks].join('\n');
+  const [fit, setFit] = useState({ key, shown: picks.length });
+  const shown = fit.key === key ? fit.shown : picks.length;
+  const more = (count: number) => t('calendar.moreItems', { count });
+  const measured = useEffectEvent(() => {
+    const node = line.current;
+    if (node == null) return null;
+    const room = roomOf(node);
+    setFit({ key, shown: shownIn(node, room, picks, whole, more) });
+
+    return room?.watch ?? null;
+  });
+
+  useLayoutEffect(() => {
+    const watch = measured();
+    void document.fonts?.ready.then(() => measured());
+    if (watch == null || typeof ResizeObserver === 'undefined') return undefined;
+    const resized = new ResizeObserver(() => measured());
+    resized.observe(watch);
+
+    return () => resized.disconnect();
+  }, [key]);
+
+  return (
+    <>
+      <span ref={line} className="ev-picks" aria-hidden={shown < picks.length || undefined}>
+        <span className="ev-picks-lead">
+          {shown === picks.length ? whole : picksLead(picks, shown)}
+        </span>
+        {shown < picks.length && (
+          <span className="ev-picks-more"> {more(picks.length - shown)}</span>
+        )}
+      </span>
+      {shown < picks.length && <span className="visually-hidden">{whole}</span>}
+    </>
+  );
+}
+
+/** Filter's room: what its slot beside the field holds, less the button's marks and padding. */
+function filterRoom(line: HTMLElement): Room | null {
+  const button = line.parentElement;
+  const slot = button?.parentElement;
+  if (button == null || slot == null) return null;
+
+  return { width: slot.clientWidth - (button.offsetWidth - line.offsetWidth), watch: slot };
+}
+
+/** A menu row's room: from its title to its chevron. */
+function valueRoom(line: HTMLElement): Room | null {
+  const value = line.parentElement;
+
+  return value == null ? null : { width: value.clientWidth, watch: value };
 }
 
 function noMatchLine(look: EventsLook, calendar: Calendar, t: TFunction): string {
@@ -234,7 +334,8 @@ export function EventsFilterMenu({
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const from = useRef<FilterView>('top');
-  const word = filterWord(filters, calendar, t);
+  const chosen = chosenWords(filters, calendar, t);
+  const word = chosen.length === 0 ? t('eventsSearch.all') : listed(chosen, calendar);
   const open = view != null;
   const offered = [...hosts, ...filters.hosts.filter((host) => !hosts.includes(host))];
 
@@ -322,21 +423,15 @@ export function EventsFilterMenu({
 
   const picked = between ? 'between' : filters.when.kind;
   const span = whenSpan(filters.when, calendar.today, calendar.firstDay);
-  const top: readonly [Exclude<FilterView, 'top'>, string][] = [
-    [
-      'type',
-      filters.types.length === 0
-        ? t('eventsSearch.anyType')
-        : listFormat(calendar.locale, { type: 'unit', style: 'short' }).format(
-            filters.types.map((type) => t(`eventTypes.${type}`)),
-          ),
-    ],
-    ['when', whenWord(filters.when, calendar, t)],
+  const types = filters.types.map((type) => t(`eventTypes.${type}`));
+  const whenNamed = whenWord(filters.when, calendar, t);
+  const top: readonly [Exclude<FilterView, 'top'>, readonly string[], string][] = [
+    ['type', types, types.length === 0 ? t('eventsSearch.anyType') : listed(types, calendar)],
+    ['when', [whenNamed], whenNamed],
     [
       'host',
-      filters.hosts.length === 0
-        ? t('eventsSearch.anyone')
-        : listFormat(calendar.locale, { type: 'unit', style: 'short' }).format(filters.hosts),
+      filters.hosts,
+      filters.hosts.length === 0 ? t('eventsSearch.anyone') : listed(filters.hosts, calendar),
     ],
   ];
 
@@ -358,7 +453,7 @@ export function EventsFilterMenu({
         }}
       >
         <Glyph name="filter" size={18} weight={2.2} />
-        <span className="ev-filter-word">{word}</span>
+        <Picks picks={chosen} whole={word} roomOf={filterRoom} />
         <Glyph name={open ? 'chevup' : 'chevdown'} size={16} weight={2.4} />
       </button>
       {open && (
@@ -371,7 +466,7 @@ export function EventsFilterMenu({
         >
           {view === 'top' ? (
             <>
-              {top.map(([one, value]) => (
+              {top.map(([one, picks, value]) => (
                 <button
                   key={one}
                   type="button"
@@ -382,8 +477,10 @@ export function EventsFilterMenu({
                   aria-haspopup="menu"
                   onClick={() => drill(one)}
                 >
-                  <span className="today-grow">{t(VIEW_WORD[one])}</span>
-                  <span className="ev-menu-value">{value}</span>
+                  <span className="ev-menu-title">{t(VIEW_WORD[one])}</span>
+                  <span className="ev-menu-value">
+                    <Picks picks={picks} whole={value} roomOf={valueRoom} />
+                  </span>
                   <Glyph name="chevron" size={16} weight={2.3} className="desk-chevron" />
                 </button>
               ))}
