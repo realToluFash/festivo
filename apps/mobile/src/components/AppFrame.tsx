@@ -587,7 +587,7 @@ export function AppFrame({
         )}
         {walking != null && (
           <CreateWalkWindow
-            key={walking.visit}
+            key={`walk${walking.visit}`}
             opening={walking}
             open={creating}
             email={email}
