@@ -294,21 +294,26 @@ export interface NameInSight {
   top: number;
   /** The field's bottom inside the name group. */
   fieldEnd: number;
+  /** The field's own height, the last part of the row that ends at fieldEnd. */
+  field: number;
   /** The group's bottom, under its help or reason, inside the scroll content. */
   bottom: number;
   margin: number;
 }
 
-/** The scroll that brings the name group's help or reason above the keys, never past the margin above the label, nor past the field where the label and field do not both fit; null when it needs none (sc-38666). */
+/** The scroll that brings the name group's help or reason above the keys, never past the margin above the label, nor past the field where the label and field do not both fit; the margin around the field shrinks to what the strip leaves, so a field that only just fits shows whole (sc-38666, QA #40574); null when it needs none. */
 export function nameInSight({
   viewport,
   top,
   fieldEnd,
+  field,
   bottom,
   margin,
 }: NameInSight): number | null {
   const over = bottom + margin - viewport;
   if (viewport <= 0 || over <= 0) return null;
 
-  return Math.max(0, Math.min(over, Math.max(top - margin, top + fieldEnd + margin - viewport)));
+  const below = Math.min(margin, Math.max(0, (viewport - field) / 2));
+
+  return Math.max(0, Math.min(over, Math.max(top - margin, top + fieldEnd + below - viewport)));
 }
