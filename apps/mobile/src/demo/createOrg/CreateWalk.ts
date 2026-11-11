@@ -20,6 +20,7 @@ export const CREATE_STATES = [
   'country',
   'country-list',
   'country-search',
+  'country-nomatch',
   'country-picked',
   'country-none',
   'ready',
@@ -65,6 +66,8 @@ export function walkFor(state: CreateState, t: TFunction, phone: boolean): Walk 
       return at(2);
     case 'country-search':
       return at(2, { query: 'bra' });
+    case 'country-nomatch':
+      return at(2, { query: 'zzz' });
     case 'country-picked':
       return at(2, { query: 'bra', country: 'BR' });
     case 'country-none':
@@ -96,7 +99,7 @@ export function walkFor(state: CreateState, t: TFunction, phone: boolean): Walk 
 
 /** Where focus goes as the walk opens in a state: the name, the search, or the question. */
 export function focusOf(state: CreateState | null, walk: Walk): 'name' | 'search' | 'question' {
-  if (state === 'country-search') return 'search';
+  if (state === 'country-search' || state === 'country-nomatch') return 'search';
   const typing =
     state == null ||
     state === 'name' ||

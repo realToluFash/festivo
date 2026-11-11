@@ -72,6 +72,7 @@ describe('the states', () => {
     expect(focusOf(null, sample('name'))).toBe('name');
     expect(focusOf('name-long', sample('name-long'))).toBe('name');
     expect(focusOf('country-search', sample('country-search'))).toBe('search');
+    expect(focusOf('country-nomatch', sample('country-nomatch'))).toBe('search');
     expect(focusOf('ready', sample('ready'))).toBe('question');
     expect(focusOf('back-name', sample('back-name'))).toBe('question');
   });
@@ -169,6 +170,13 @@ describe('the search', () => {
       'Portugal',
       'Singapore',
     ]);
+  });
+
+  it('finds nothing for the no-match state’s "zzz", in any language', () => {
+    expect(sample('country-nomatch')).toMatchObject({ step: 2, query: 'zzz' });
+    for (const locale of ['en', 'es', 'fr', 'pt']) {
+      expect(countrySearch(countries(locale), 'zzz', locale)).toEqual([]);
+    }
   });
 
   it('keeps every country for an empty search', () => {
