@@ -1,3 +1,5 @@
+import { titleFitsBeside } from '@soirely/domain';
+
 import { capUnderTitle, fitWidest } from './textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 
@@ -30,21 +32,6 @@ export function titleSlot(width: number, left: number, verb: number): number {
   return width - left - verb - 2 * NAV_BUTTON_SIDE;
 }
 
-export function linesFor(words: readonly number[], space: number, room: number): number {
-  let lines = 1;
-  let taken = 0;
-  for (const word of words) {
-    if (taken === 0) taken = word;
-    else if (taken + space + word <= room) taken += space + word;
-    else {
-      lines += 1;
-      taken = word;
-    }
-  }
-
-  return lines;
-}
-
 export interface HeaderMeasures {
   width: number;
   left: number;
@@ -58,9 +45,7 @@ export function fitsOneRow(
   { width, left, verb, words, space }: HeaderMeasures,
   lines: 1 | 2 = 2,
 ): boolean {
-  const slot = titleSlot(width, left, verb);
-
-  return Math.max(...words) <= slot && linesFor(words, space, slot) <= lines;
+  return titleFitsBeside(words, space, titleSlot(width, left, verb), lines);
 }
 
 /** The first form that holds every word whole; `lefts` are Cancel's widths to try in turn, a back label before Back, and only the last may sit beside a two-line title (as main's FocusNav). */

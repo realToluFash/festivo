@@ -12,6 +12,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
 import { ActionPair } from './ActionPair.tsx';
+import { useTitleUnder } from '../deskNavForm.ts';
 import { offButton } from '../offButton.ts';
 import { Glyph } from './Glyph.tsx';
 import { LayersContext, useDeskDialog, type useDeskLayers } from '../layers.ts';
@@ -490,6 +491,8 @@ function DialogBox({
   const box = useRef<HTMLDivElement>(null);
   const none = useRef<HTMLElement>(null);
   const covered = useDeskDialog(box, first ?? none, onDismiss, locked);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const under = useTitleUnder(heading, title);
   const verbClass = ['desk-nav-verb', red && 'is-red', !on && 'is-off'].filter(Boolean).join(' ');
 
   return (
@@ -505,7 +508,7 @@ function DialogBox({
         inert={covered}
       >
         <ActionPair
-          className="desk-nav"
+          className={under ? 'desk-nav is-under' : 'desk-nav'}
           stacks={false}
           dismiss={
             cancel ? (
@@ -519,7 +522,7 @@ function DialogBox({
             )
           }
           between={
-            <h2 id={`${id}-title`} className="desk-nav-title">
+            <h2 ref={heading} id={`${id}-title`} className="desk-nav-title">
               {title}
             </h2>
           }
