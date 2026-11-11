@@ -141,6 +141,71 @@ export function detailOf(s: number): Detail {
   return s >= 0.75 ? 'near' : 'fit';
 }
 
+export const HANDLE_DRAWN = 24;
+export const HANDLE_HIT = 48;
+export const CHAIR_HIT = 48;
+
+function bodyHalf(it: Item): Point {
+  return isCircle(it) ? { x: it.d / 2, y: it.d / 2 } : { x: it.w / 2, y: it.l / 2 };
+}
+
+/** How far past a table's own edge its handles sit, in px: zoomed out just clear of the table, closer in past its chairs, so no handle covers a chair's words or its target (sc-31783, qa3 11 Nov). */
+export function handleReach(it: Item, s: number): Point {
+  const e = extent(it);
+  const half = bodyHalf(it);
+  const pad =
+    detailOf(s) === 'out'
+      ? HANDLE_DRAWN / 2
+      : HANDLE_HIT / 2 + Math.max(0, CHAIR_HIT / 2 - CHAIR_R * s);
+  return { x: (e.x - half.x) * s + pad, y: (e.y - half.y) * s + pad };
+}
+
+/** A round or cocktail table's four corners, a long table's eight points, each handleReach past its edge, from its centre in px. */
+export function handlePoints(it: Item, s: number): Point[] {
+  const half = bodyHalf(it);
+  const r = handleReach(it, s);
+  const w = half.x * s + r.x;
+  const l = half.y * s + r.y;
+  if (it.kind === 'round' || it.kind === 'cocktail')
+    return [
+      { x: -w, y: -l },
+      { x: w, y: -l },
+      { x: w, y: l },
+      { x: -w, y: l },
+    ];
+  return [
+    { x: -w, y: -l },
+    { x: 0, y: -l },
+    { x: w, y: -l },
+    { x: w, y: 0 },
+    { x: w, y: l },
+    { x: 0, y: l },
+    { x: -w, y: l },
+    { x: -w, y: 0 },
+  ].map((p) => turn(p, it.rot));
+}
+
+/** The size a handle dragged to n px from the centre asks for, in cm: its reach is taken off first, so a handle picked up does not grow the table. */
+export function sideFrom(n: number, reach: number, s: number): number {
+  return Math.max(40, snapped((2 * Math.max(0, Math.abs(n) - reach)) / s, true));
+}
+
+const WORDS_DEPTH = 35;
+const NAME_DEPTH = 10;
+
+/** Where a zoomed-out item's name sits, in px: below it, or above it when its name, bar and count would cross the room's bottom wall at floor (sc-31783, qa3 11 Nov). The bar is 10 below the name and the count 25. */
+export function wordsAt(it: Item, cy: number, s: number, floor: number): number {
+  const e = extent(it);
+  const off =
+    it.kind === 'rect' || it.kind === 'head'
+      ? (it.l / 2) * s
+      : Math.max(e.y, 40) * s * (it.kind === 'row' ? 1 : 0.55);
+  const depth = it.kind === 'single' ? NAME_DEPTH : WORDS_DEPTH;
+  const below = cy + off + 12;
+  if (below + depth <= floor - 2) return below;
+  return cy - off - 2 - depth;
+}
+
 export function zoomAbout(view: View, factor: number, cx: number, cy: number): View {
   const s = Math.min(MAX_S, Math.max(MIN_S, view.s * factor));
   const k = s / view.s;

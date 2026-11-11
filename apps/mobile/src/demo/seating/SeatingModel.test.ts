@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import { type Action, reduce, tight, readRoom } from './SeatingActs.ts';
 import {
+  CHAIR_HIT,
+  HANDLE_HIT,
+  chairPoints,
   chairSides,
+  handlePoints,
+  handleReach,
   inside,
   detailOf,
   feetInches,
@@ -14,6 +19,8 @@ import {
   overlapping,
   parseMetres,
   pct,
+  sideFrom,
+  wordsAt,
 } from './SeatingGeometry.ts';
 import {
   SEATING_STATES,
@@ -697,5 +704,53 @@ describe('free seats', () => {
   it('count usable chairs only', () => {
     expect(free(item(pad, 't3'))).toBe(1);
     expect(free(item(pad, 't7'))).toBe(2);
+  });
+});
+
+describe('the room’s words and handles (qa3, 11 Nov)', () => {
+  const at46 = 0.23;
+
+  it('puts a name, bar and count above an item when below would cross the bottom wall', () => {
+    const bar = item(pad, 'bar1');
+    const cy = bar.y * at46;
+    const top = wordsAt(bar, cy, at46, ROOM.l * at46);
+    expect(top).toBeLessThan(cy);
+    expect(top + 35).toBeLessThan(cy - (bar.d / 2) * at46);
+  });
+
+  it('keeps the words below an item with room under it', () => {
+    const t4 = item(pad, 't4');
+    expect(wordsAt(t4, t4.y * at46, at46, ROOM.l * at46)).toBeGreaterThan(t4.y * at46);
+  });
+
+  it('keeps every handle off every chair target from 75% in', () => {
+    [0.75, 1, 2].forEach((s) =>
+      ['t4', 't9', 'top'].forEach((id) => {
+        const it = item(pad, id);
+        const chairs = chairPoints(it).map((p) => ({ x: p.x * s, y: p.y * s }));
+        handlePoints(it, s).forEach((h) =>
+          chairs.forEach((c) =>
+            expect(Math.max(Math.abs(h.x - c.x), Math.abs(h.y - c.y))).toBeGreaterThanOrEqual(
+              HANDLE_HIT / 2 + CHAIR_HIT / 2 - 1e-9,
+            ),
+          ),
+        );
+      }),
+    );
+  });
+
+  it('keeps a placed table’s handles off its body at 46%', () => {
+    const t4 = item(pad, 't4');
+    handlePoints(t4, at46).forEach((h) =>
+      expect(Math.hypot(Math.abs(h.x) - 12, Math.abs(h.y) - 12)).toBeGreaterThan((t4.d / 2) * at46),
+    );
+  });
+
+  it('does not grow a table when a handle is picked up', () => {
+    [at46, 1].forEach((s) => {
+      const t4 = item(pad, 't4');
+      const [corner] = handlePoints(t4, s);
+      expect(sideFrom(corner?.x ?? 0, handleReach(t4, s).x, s)).toBe(t4.d);
+    });
   });
 });
