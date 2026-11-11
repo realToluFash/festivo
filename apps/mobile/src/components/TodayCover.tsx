@@ -161,14 +161,16 @@ export function OrgButton({
     testID: 'home.switchOrganisation',
   } as const;
 
-  if (compact)
-    return (
-      <Pressable {...shared}>
-        <Glass style={styles.orgCompact}>
-          <OrgMark id={org.id} name={org.name} side={30} glass />
-        </Glass>
-      </Pressable>
-    );
+  const tile = (
+    <Pressable {...shared}>
+      <Glass style={styles.orgCompact}>
+        <OrgMark id={org.id} name={org.name} side={30} glass />
+      </Glass>
+      {org.waiting != null && <View style={styles.tileRing} />}
+    </Pressable>
+  );
+
+  if (compact) return tile;
 
   const tall = org.waiting != null ? OPENER.waiting : 40;
   // Clear of the bell by the cover's side margin; the phone's row already sets a gap either side of its spacer.
@@ -179,12 +181,7 @@ export function OrgButton({
     return (
       <View style={[styles.orgFit, { marginRight: clear, maxWidth }]}>
         {measure}
-        <Pressable {...shared}>
-          <Glass style={styles.orgCompact}>
-            <OrgMark id={org.id} name={org.name} side={30} glass />
-          </Glass>
-          {org.waiting != null && <View style={styles.tileRing} />}
-        </Pressable>
+        {tile}
       </View>
     );
 
