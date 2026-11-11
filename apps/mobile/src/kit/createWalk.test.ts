@@ -9,10 +9,13 @@ import {
   boxWords,
   countries,
   factsOf,
+  firstTurn,
   freshWalk,
   nameInSight,
   nameRow,
   rowLabel,
+  turnEnded,
+  turnTo,
   walkNav,
 } from './createWalk.ts';
 
@@ -140,5 +143,44 @@ describe('Organisation name on a phone on its side with the keys up', () => {
     expect(scroll).not.toBeNull();
     expect(200 - (scroll ?? 0)).toBeGreaterThanOrEqual(margin);
     expect(strip - (200 + row - (scroll ?? 0))).toBeGreaterThanOrEqual(margin);
+  });
+});
+
+describe('the walk turning between steps (qa3, #39178)', () => {
+  const name: Walk = { ...freshWalk(LISBON), name: 'Lumen Feiras' };
+  const country: Walk = { ...name, step: 2 };
+
+  it('gives the arriving step a new turn, with the step it leaves as the one before', () => {
+    expect(turnTo(firstTurn(name), country)).toEqual({
+      walk: country,
+      turn: 1,
+      leaving: name,
+      dir: 1,
+    });
+  });
+
+  it('replaces a walk at the same step in place, so no second copy of it leaves', () => {
+    const refused: Walk = { ...name, refusal: 'Give it a name' };
+    const turned = turnTo(firstTurn(name), refused);
+
+    expect(turned).toEqual({ walk: refused, turn: 0, leaving: null, dir: 1 });
+  });
+
+  it('turns back with the step it leaves behind it', () => {
+    const back: Walk = { ...name, cameBack: true };
+
+    expect(turnTo(turnTo(firstTurn(name), country), back)).toEqual({
+      walk: back,
+      turn: 2,
+      leaving: country,
+      dir: -1,
+    });
+  });
+
+  it('lets the leaving step go only at the end of the turn on screen', () => {
+    const twice = turnTo(turnTo(firstTurn(name), country), { ...country, step: 3 });
+
+    expect(turnEnded(twice, 1)).toBe(twice);
+    expect(turnEnded(twice, 2).leaving).toBeNull();
   });
 });
