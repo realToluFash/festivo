@@ -32,10 +32,7 @@ export interface FocusVerb {
 
 const BUSY_MARK = 14;
 
-/**
- * A focused screen's header, at every text size: one row as iOS draws it, the title under Cancel and the verb, or Cancel, the title and the verb each on a row, whichever first keeps every word whole (sc-37903).
- * In a list opened from the screen, ‹ and where it goes back to in Cancel's place; "Back" when the title needs the room, as iOS does.
- */
+/** The first of the header's forms that keeps every word whole; a back label shortens to "Back" before the title takes a second line, as iOS does. */
 export function FocusNav({
   title,
   titleRef,
