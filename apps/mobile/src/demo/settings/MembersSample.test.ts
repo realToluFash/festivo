@@ -7,10 +7,13 @@ import {
   counts,
   DEADLINES,
   grantable,
+  LONG_NAME,
   MEMBERS_STATES,
   membersCard,
   membersSayIn,
   membersStart,
+  ONE_WORD_NAME,
+  ORGANISATION,
   membersStateOf,
   type MembersViewer,
   membersViewerOf,
@@ -366,6 +369,8 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
       'handoverNowDone',
       'handoverReadOnly',
       'alsoMember',
+      'longName',
+      'oneWordName',
       'claimFound',
       'claimTheirs',
       'claimTheirsFound',
@@ -647,3 +652,14 @@ const plainCard = {
   claim: null,
   say: us,
 } as const;
+
+describe('sc-40153’s organisation names', () => {
+  it('are 89 characters with marks and 100 with no space, each on Priya’s page', () => {
+    expect(LONG_NAME).toHaveLength(89);
+    expect(ONE_WORD_NAME).toHaveLength(100);
+    expect(ONE_WORD_NAME).not.toMatch(/\s/u);
+    expect(membersStart('longName')).toMatchObject({ open: PRIYA, organisation: LONG_NAME });
+    expect(membersStart('oneWordName')).toMatchObject({ open: PRIYA, organisation: ONE_WORD_NAME });
+    expect(membersStart('priya').organisation).toBe(ORGANISATION);
+  });
+});

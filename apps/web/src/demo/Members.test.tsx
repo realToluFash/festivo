@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { tied } from './members.ts';
 
 const tested = config();
 const OFF = 'They’re emailed now, and every session they had has ended.';
@@ -426,5 +427,63 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
     await screen.findByRole('heading', { level: 1, name: 'General' });
 
     expect(screen.queryByText(/get back in/u)).toBeNull();
+  });
+});
+
+describe('Remove from a long-named organisation, wrapped whole (sc-40153)', () => {
+  beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+  afterEach(() => cleanup());
+
+  it.each([
+    ['longName', 'Ẹgbẹ́ Ọ̀rẹ́ Àṣà Ìbílẹ̀ Ọ̀ṣun Òṣogbo àti Ilé-Ifẹ̀, Ọ̀yọ́, Abẹ́òkúta, Ìjẹ̀bú-Òde àti Ẹ̀kìtì'],
+    [
+      'oneWordName',
+      'TheGrandBallroomWeddingsGalasAndGardenPartiesCompanyOfLagosLisbonMadridMonterreyAndPortoAlegreEvents',
+    ],
+  ])(
+    'names the whole of %s’s organisation, in its words and its name, and opens the confirm',
+    async (state, name) => {
+      await members(`/demo/settings/members?state=${state}`);
+
+      const remove = screen.getByRole('button', { name: `Remove from ${name}…` });
+      expect(remove.classList.contains('is-wraps')).toBe(true);
+      expect(
+        screen.getByText(`They lose access on their next request. Their events stay with ${name}.`),
+      ).toBeDefined();
+
+      fireEvent.click(remove);
+      expect(screen.getByRole('alertdialog').textContent).toContain(`from ${name}?`);
+      expect(remove.querySelector('.wrap-tied')?.textContent?.endsWith('…')).toBe(true);
+    },
+  );
+
+  it.each(['longName', 'oneWordName'])(
+    'names the same organisation in %s’s Suspend confirm',
+    async (state) => {
+      await members(`/demo/settings/members?state=${state}`);
+      const name = screen
+        .getByRole('button', { name: /^Remove from .+…$/u })
+        .textContent?.replace(/^Remove from |…$/gu, '');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Suspend…' }));
+      expect(screen.getByRole('alertdialog').textContent).toContain(`can’t use ${name} from`);
+    },
+  );
+
+  it('ties the "…" to the name’s last letters, marks and all', () => {
+    expect(tied('Remove from Ẹ̀kìtì…')).toEqual(['Remove from Ẹ̀kì', 'tì…']);
+    expect(tied('Remove from Ire Events…')).toEqual(['Remove from Ire Even', 'ts…']);
+  });
+
+  it('holds the column to a 320 page’s in the At320 states', async () => {
+    await members('/demo/settings/members?state=longNameAt320');
+
+    expect(screen.getByText('Demo only: a 320 page’s column, 288 wide')).toBeDefined();
+  });
+
+  it('keeps Ire Events as today', async () => {
+    await members('/demo/settings/members?state=priya');
+
+    expect(screen.getByRole('button', { name: 'Remove from Ire Events…' })).toBeDefined();
   });
 });

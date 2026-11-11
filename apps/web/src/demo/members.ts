@@ -696,25 +696,57 @@ export interface PersonView {
   handOver: boolean;
 }
 
+/** sc-40153's names: 89 characters with Yoruba marks, and one word of 100 that has nowhere to break. */
+export const LONG_NAME =
+  'Ẹgbẹ́ Ọ̀rẹ́ Àṣà Ìbílẹ̀ Ọ̀ṣun Òṣogbo àti Ilé-Ifẹ̀, Ọ̀yọ́, Abẹ́òkúta, Ìjẹ̀bú-Òde àti Ẹ̀kìtì';
+export const ONE_WORD_NAME =
+  'TheGrandBallroomWeddingsGalasAndGardenPartiesCompanyOfLagosLisbonMadridMonterreyAndPortoAlegreEvents';
+
+export function tied(label: string): [string, string] {
+  const marks = [...new Intl.Segmenter().segment(label)].map((one) => one.segment);
+  const tail = marks.slice(-3).join('');
+
+  return [label.slice(0, label.length - tail.length), tail];
+}
+
+export function organisationOf(state: string): string {
+  if (state.startsWith('longName')) return LONG_NAME;
+  if (state.startsWith('oneWordName')) return ONE_WORD_NAME;
+  return ORGANISATION;
+}
+
+/** The desk shell does not reflow at 320 until sc-32279, so these states hold the page's column to a 320 page's. */
+export function at320(state: string): boolean {
+  return state.endsWith('At320');
+}
+
 export const LOSES = `They lose access on their next request. Their events stay with ${ORGANISATION}.`;
 const OWNER_ONLY = 'Only an owner can change an owner’s role or remove them.';
 
 /** Remove's title, way back and verb: one source for today's confirm and the handover's. */
-export function removeWords(name: string): Pick<AskWords, 'title' | 'keep' | 'go'> {
+export function removeWords(
+  name: string,
+  organisation: string = ORGANISATION,
+): Pick<AskWords, 'title' | 'keep' | 'go'> {
   return {
-    title: `Remove ${name} from ${ORGANISATION}?`,
+    title: `Remove ${name} from ${organisation}?`,
     keep: `Keep ${firstName(name)}`,
     go: 'Remove',
   };
 }
 
 /** Remove's and Hand over now's confirm, with the events the person leads in it. */
-export function handoverAsk(kind: 'remove' | 'hand', name: string, count: number): AskWords {
+export function handoverAsk(
+  kind: 'remove' | 'hand',
+  name: string,
+  count: number,
+  organisation: string = ORGANISATION,
+): AskWords {
   const lead = H.leads(name, count);
 
   return kind === 'remove'
     ? {
-        ...removeWords(name),
+        ...removeWords(name, organisation),
         lead,
         last: H.removeTail,
         red: true,
@@ -864,10 +896,13 @@ export function personView({
 
 export const SUSPEND_LINE = `They can’t use ${ORGANISATION} from their next request until someone restores their access. Their role, their events and their history are kept.`;
 
-export function suspendAsk(name: string): { title: string; line: string } {
+export function suspendAsk(
+  name: string,
+  organisation: string = ORGANISATION,
+): { title: string; line: string } {
   return {
     title: `Suspend ${name}?`,
-    line: `${name} can’t use ${ORGANISATION} from their next request until someone restores their access. Their role, their events and their history are kept. They’re emailed in their language. The email doesn’t say who suspended them.`,
+    line: `${name} can’t use ${organisation} from their next request until someone restores their access. Their role, their events and their history are kept. They’re emailed in their language. The email doesn’t say who suspended them.`,
   };
 }
 
@@ -1040,6 +1075,10 @@ export const MEMBERS_STATES = [
   'former',
   'priya',
   'alsoMember',
+  'longName',
+  'oneWordName',
+  'longNameAt320',
+  'oneWordNameAt320',
   'role',
   'roleAdmin',
   'roleDiscard',
@@ -1288,6 +1327,10 @@ function openOf(state: MembersState, viewer: Pick<Viewer, 'id'>): string | null 
   switch (state) {
     case 'priya':
     case 'alsoMember':
+    case 'longName':
+    case 'oneWordName':
+    case 'longNameAt320':
+    case 'oneWordNameAt320':
     case 'role':
     case 'roleAdmin':
     case 'roleDiscard':

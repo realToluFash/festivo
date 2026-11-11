@@ -414,6 +414,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
           leads={leads}
           viewer={viewer}
           opening={opening}
+          organisation={start.organisation}
           say={say}
           column={column}
           back={

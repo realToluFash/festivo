@@ -770,6 +770,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/members?state=alsoMember',
       },
       {
+        title: 'Members · a long organisation name',
+        what: 'Remove from it wraps, the whole 89-character name',
+        href: '/demo/settings/members?state=longName',
+      },
+      {
+        title: 'Members · a one-word organisation name',
+        what: 'Remove from it breaks inside the 100-character name',
+        href: '/demo/settings/members?state=oneWordName',
+      },
+      {
         title: 'Members · removing a person',
         what: 'Remove Priya Shah from Ire Events?',
         href: '/demo/settings/members?state=removing',

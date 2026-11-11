@@ -16,6 +16,7 @@ import {
 import { focusWhenFree, useDeskSplit } from '../layers.ts';
 import { ClaimDialog, InviteDialog, RecoveryAsk, RequestDialog } from './MembersDialogs.tsx';
 import { PersonPage, RoleDialog } from './MembersPerson.tsx';
+import { At320 } from './WrapAction.tsx';
 import {
   approvalRoles,
   ALSO_MEMBER,
@@ -38,6 +39,8 @@ import {
   membersCard,
   type MembersDialog,
   membersStart,
+  organisationOf,
+  at320,
   type Notice,
   ORGANISATION,
   type Person,
@@ -216,6 +219,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
       leads={leads}
       recoveries={recoveries}
       proved={proved}
+      organisation={organisationOf(state)}
       say={say}
       tell={tell}
       onClose={close}
@@ -272,7 +276,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
     );
 
   if (person != null) {
-    const page = (
+    const personPage = (
       <PersonPage
         person={person}
         people={people}
@@ -283,6 +287,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         leadsLoad={leadsLoad}
         onLoadLeads={() => setLeadsLoad('retrying')}
         alsoMember={state === 'alsoMember' ? (ALSO_MEMBER[person.id] ?? null) : null}
+        organisation={organisationOf(state)}
         say={say}
         level={split ? 2 : 1}
         tell={tell}
@@ -304,6 +309,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         onHandOver={() => setDialog({ kind: 'handOver', id: person.id })}
       />
     );
+    const page = at320(state) ? <At320>{personPage}</At320> : personPage;
 
     return split ? (
       <>
@@ -696,6 +702,7 @@ interface MembersDialogsProps {
   leads: Leads;
   recoveries: readonly Recovery[];
   proved: boolean;
+  organisation: string;
   say: SettingsSay;
   tell: Tell;
   onClose: () => void;
@@ -718,14 +725,14 @@ interface Then {
 }
 
 function MembersDialogs(props: MembersDialogsProps) {
-  const { dialog, viewer, people, leads, onClose, onPeople } = props;
+  const { dialog, viewer, people, leads, organisation, onClose, onPeople } = props;
   const person =
     dialog != null && 'id' in dialog ? people.find((one) => one.id === dialog.id) : null;
   const events = person == null ? [] : ledBy(leads, person.id);
   const handing = (kind: 'remove' | 'hand', hand = handStart(viewer.id)) =>
     person != null && (
       <HandoverAsk
-        words={handoverAsk(kind, person.name, events.length)}
+        words={handoverAsk(kind, person.name, events.length, organisation)}
         events={events}
         offered={offeredFor(people, person.id)}
         viewer={viewer.id}
@@ -733,7 +740,7 @@ function MembersDialogs(props: MembersDialogsProps) {
         onKeep={() => {
           onClose();
           const opener =
-            kind === 'hand' ? HANDOVER_WORDS.handOverNow : `Remove from ${ORGANISATION}…`;
+            kind === 'hand' ? HANDOVER_WORDS.handOverNow : `Remove from ${organisation}…`;
           focusWhenFree(() => buttonNamed(opener));
         }}
         onDone={(chosen) => {
@@ -793,8 +800,8 @@ function MembersDialogs(props: MembersDialogsProps) {
       return (
         person != null && (
           <Ask
-            {...removeWords(person.name)}
-            line={LOSES}
+            {...removeWords(person.name, organisation)}
+            line={LOSES.replaceAll(ORGANISATION, organisation)}
             onKeep={onClose}
             onGo={() => {
               onClose();
@@ -810,7 +817,7 @@ function MembersDialogs(props: MembersDialogsProps) {
       return (
         person != null && (
           <Ask
-            {...suspendAsk(person.name)}
+            {...suspendAsk(person.name, organisation)}
             keep={`Keep ${firstName(person.name)}`}
             go="Suspend"
             onKeep={onClose}
