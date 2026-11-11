@@ -12,9 +12,11 @@ import {
   firstTurn,
   freshWalk,
   nameInSight,
+  nameRow,
   rowLabel,
   turnEnded,
   turnTo,
+  walkNav,
 } from './createWalk.ts';
 
 const i18n = createInstance();
@@ -96,8 +98,12 @@ describe('nameInSight', () => {
     expect(nameInSight({ ...group, viewport: 300 })).toBe(36);
   });
 
-  it('stops at the label when the help does not fit with it', () => {
-    expect(nameInSight({ ...group, viewport: 100 })).toBe(200);
+  it('stops with the field and its margin below in sight when the help does not fit with them', () => {
+    expect(nameInSight({ ...group, viewport: 100 })).toBe(193);
+  });
+
+  it('stops at the margin above the label when the help does not fit with it', () => {
+    expect(nameInSight({ ...group, viewport: 140 })).toBe(184);
   });
 
   it('keeps the field whole when the label and field do not both fit', () => {
@@ -106,6 +112,37 @@ describe('nameInSight', () => {
 
   it('waits for the step to be laid out', () => {
     expect(nameInSight({ ...group, viewport: 0 })).toBeNull();
+  });
+});
+
+describe('Organisation name on a phone on its side with the keys up', () => {
+  // QA #39307 measured about 69 above the keys on Soirely_QA2_Phone, under the upright nav.
+  const strip = 69 + walkNav(false) - walkNav(true);
+  const margin = 12;
+
+  it('fits the label and field with 12 above and below, under the shorter nav', () => {
+    expect(walkNav(true)).toBe(44);
+    expect(nameRow({ sideways: true, large: false }).height + 2 * margin).toBeLessThanOrEqual(
+      strip,
+    );
+  });
+
+  it('puts the label beside the field only there', () => {
+    expect(nameRow({ sideways: true, large: false }).beside).toBe(true);
+    expect(nameRow({ sideways: false, large: false })).toMatchObject({ beside: false });
+    expect(walkNav(false)).toBe(52);
+  });
+
+  it('keeps the label above at the accessibility sizes, where the field comes first', () => {
+    expect(nameRow({ sideways: true, large: true }).beside).toBe(false);
+  });
+
+  it('keeps the field in sight with its margins on arrival, the help one scroll down', () => {
+    const row = nameRow({ sideways: true, large: false }).height;
+    const scroll = nameInSight({ viewport: strip, top: 200, fieldEnd: row, bottom: 300, margin });
+    expect(scroll).not.toBeNull();
+    expect(200 - (scroll ?? 0)).toBeGreaterThanOrEqual(margin);
+    expect(strip - (200 + row - (scroll ?? 0))).toBeGreaterThanOrEqual(margin);
   });
 });
 
