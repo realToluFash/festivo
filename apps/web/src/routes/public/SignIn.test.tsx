@@ -225,9 +225,9 @@ describe('signing in, for real', () => {
         '/api/orgs',
         '/api/notifications',
         '/api/orgs/org_1/events',
-        '/api/orgs/org_1/events',
         '/api/invitations',
         '/api/join-offers',
+        '/api/orgs/org_1/events',
       ]),
     );
   });
