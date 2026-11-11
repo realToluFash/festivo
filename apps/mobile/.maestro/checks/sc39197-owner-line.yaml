@@ -17,8 +17,8 @@ appId: host.exp.Exponent
     timeout: 20000
 - tapOn:
     id: members.changeRole
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: members.role.${OWNER_ROLE_ID}
     timeout: 20000
 - waitForAnimationToEnd:
