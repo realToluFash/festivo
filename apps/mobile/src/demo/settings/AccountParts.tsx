@@ -1,10 +1,5 @@
-import { type Ref, useEffect, useState } from 'react';
-import type { ViewInstance } from 'react-native';
-import { useTranslation } from 'react-i18next';
+import { useEffect, useState } from 'react';
 
-import { LEAD_INSET, LineIcon } from '../../components/AccountCard.tsx';
-import { Skeleton } from '../../components/Skeleton.tsx';
-import { Row, RowList, Section } from '../../components/Summary.tsx';
 import { ZONE_HELD_MS } from './AccountModel.ts';
 
 /** Seconds until a new code may be sent; an expired code starts with none to wait. */
@@ -48,48 +43,4 @@ export function useZoneHeld(held: boolean): boolean {
   }, [held]);
 
   return waiting;
-}
-
-/** About you while the zone list loads: the Time zone row is the one-row skeleton, with nothing to open (sc-27219). */
-export function AboutZoneWaiting({
-  name,
-  nameRef,
-  onName,
-}: {
-  name: string;
-  nameRef: Ref<ViewInstance>;
-  onName: () => void;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <Section title={t('account.aboutYou')}>
-      <RowList
-        items={[
-          {
-            key: 'name',
-            inset: LEAD_INSET,
-            row: (
-              <Row
-                ref={nameRef}
-                title={name}
-                line={t('account.yourName')}
-                lead={<LineIcon name="user" />}
-                opens
-                onPress={onName}
-                testID="account.name"
-              />
-            ),
-          },
-          {
-            key: 'zone',
-            inset: LEAD_INSET,
-            row: (
-              <Skeleton words={t('pending.loading')} shape="rows" rowHeight={56} rows={1} inCard />
-            ),
-          },
-        ]}
-      />
-    </Section>
-  );
 }
