@@ -195,7 +195,7 @@ describe('Today at a desk (sc-30413)', () => {
       const when = row.querySelector('.today-event-when') as HTMLElement;
 
       expect(when.querySelector('.today-event-count')?.textContent).toBe('Em 149 dias ·');
-      expect(when.querySelector('.today-event-dates')?.textContent).toMatch(/abril/u);
+      expect(when.querySelector('.today-event-dates')?.textContent).toBe('quinta-feira, 1 de abr.');
     } finally {
       await act(() => i18next.changeLanguage('en'));
     }
