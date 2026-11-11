@@ -28,6 +28,7 @@ import { SvgXml } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
+import { authenticatorTakes } from '../authenticatorApp.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { retryAfter } from '../kit/code.ts';
 import { deviceMoment, deviceName } from '../kit/devices.ts';
@@ -132,6 +133,7 @@ export function SecurityPage({
   const [screen, setScreen] = useState<Screen | null>(null);
   const [proof, setProof] = useState<Proof | null>(null);
   const [enrolment, setEnrolment] = useState<Enrolment | { retry: () => void } | null>(null);
+  const [takesLinks, setTakesLinks] = useState(false);
   const [newCodes, setNewCodes] = useState<readonly string[] | null>(null);
   const [visit, setVisit] = useState(0);
   const [statusTries, setStatusTries] = useState(0);
@@ -396,11 +398,15 @@ export function SecurityPage({
   function enrol(): void {
     setEnrolment(null);
     api.enrolTwoFactor().then(
-      (enrolled) =>
+      async (enrolled) => {
+        const takes = await authenticatorTakes(enrolled.otpauthUri);
+        setTakesLinks(takes);
         setEnrolment({
           qr: <SvgXml xml={enrolled.qrSvg} width={QR_SIDE} height={QR_SIDE} />,
           secret: enrolled.secret,
-        }),
+          otpauthUri: enrolled.otpauthUri,
+        });
+      },
       () => setEnrolment({ retry: enrol }),
     );
   }
@@ -697,6 +703,7 @@ export function SecurityPage({
         key={`twoFactor.${visit}`}
         open={screen === 'setup'}
         enrolment={enrolment}
+        takesLinks={takesLinks}
         startCodes={newCodes}
         phone={layout === 'phone'}
         opener={opener}

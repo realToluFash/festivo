@@ -288,6 +288,7 @@
     "scan": "Scan this code with your authenticator app",
     "qrAlt": "QR code for your authenticator app",
     "cantScan": "Can’t scan it? Enter this key in the app instead.",
+    "addToApp": "Add to my authenticator app",
     "enterCode": "Enter the 6-digit code the app shows",
     "setupWrong": "That code does not match. Check the app was set up with the key above, then enter the code it shows now.",
     "staysOff": "Two-factor stays off until the code matches, so a setup mistake cannot lock you out.",
