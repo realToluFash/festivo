@@ -34,7 +34,7 @@ const start = (state: (typeof ACCOUNT_STATES)[number]) => accountStart(state, t)
 
 describe('a state link', () => {
   it('opens the state it names, and the page at rest for anything else', () => {
-    expect(ACCOUNT_STATES).toHaveLength(16);
+    expect(ACCOUNT_STATES).toHaveLength(17);
     expect(accountStateOf('verifyPhoneExpired')).toBe('verifyPhoneExpired');
     expect(accountStateOf('done')).toBe('rest');
     expect(accountStateOf(undefined)).toBe('rest');
@@ -57,6 +57,8 @@ describe('a state link', () => {
     expect(start('addPhone')).toMatchObject({ screen: 'addPhone', phoneCountry: 'GB' });
     expect(start('addPhoneNoCountry')).toMatchObject({ screen: 'addPhone', phoneCountry: '' });
     expect(start('zone')).toMatchObject({ screen: 'zone', typedZone: ZONE_TYPED });
+    expect(start('zoneWaiting')).toMatchObject({ screen: null, zoneHeld: true });
+    expect(start('zone').zoneHeld).toBe(false);
     expect(start('addEmail').screen).toBe('addEmail');
     expect(start('addEmail').emails.map((row) => row.shown)).toEqual([SAMPLE.email]);
   });

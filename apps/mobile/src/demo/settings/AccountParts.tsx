@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 
+import { ZONE_HELD_MS } from './AccountModel.ts';
+
 /** Seconds until a new code may be sent; an expired code starts with none to wait. */
 export function useCountdown(
   seconds: number,
@@ -27,4 +29,18 @@ export function useCountdown(
       setRound((value) => value + 1);
     },
   };
+}
+
+/** True while the sample's zone list is held back, until it arrives ZONE_HELD_MS after the page opens. */
+export function useZoneHeld(held: boolean): boolean {
+  const [waiting, setWaiting] = useState(held);
+
+  useEffect(() => {
+    if (!held) return undefined;
+    const timer = setTimeout(() => setWaiting(false), ZONE_HELD_MS);
+
+    return () => clearTimeout(timer);
+  }, [held]);
+
+  return waiting;
 }

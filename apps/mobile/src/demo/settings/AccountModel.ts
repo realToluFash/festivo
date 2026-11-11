@@ -27,6 +27,7 @@ export const ACCOUNT_STATES = [
   'addPhone',
   'addPhoneNoCountry',
   'zone',
+  'zoneWaiting',
   'verifyEmail',
   'verifyEmailWrong',
   'verifyEmailExpired',
@@ -56,6 +57,8 @@ export interface AccountStart {
   screen: AccountScreen | null;
   verifying: Verifying | null;
   typedZone: string;
+  /** The zone list held back, as sc-27219's check holds it, so the Time zone row waits. */
+  zoneHeld: boolean;
   /** Add a phone number's Code as it opens: blank when the device names no country. */
   phoneCountry: string;
 }
@@ -65,6 +68,7 @@ export const SECOND_PHONE_ID = 'phone-2';
 export const WRONG_CODE = '482170';
 export const ZONE_TYPED = 'San';
 export const COUNTDOWN_SECONDS = 42;
+export const ZONE_HELD_MS = 3000;
 
 export function accountStateOf(name: string | undefined): AccountState {
   return ACCOUNT_STATES.find((state) => state === name) ?? 'rest';
@@ -85,6 +89,7 @@ const AT_REST: AccountStart = {
   screen: null,
   verifying: null,
   typedZone: '',
+  zoneHeld: false,
   phoneCountry: PHONE_COUNTRY,
 };
 
@@ -113,6 +118,8 @@ export function accountStart(state: AccountState, t: TFunction): AccountStart {
       return { ...AT_REST, screen: 'addPhone', phoneCountry: '' };
     case 'zone':
       return { ...AT_REST, screen: 'zone', typedZone: ZONE_TYPED };
+    case 'zoneWaiting':
+      return { ...AT_REST, zoneHeld: true };
     case 'promote':
     case 'remove':
       return { ...AT_REST, emails: proved(), opened: SECOND_EMAIL_ID, ask: state };

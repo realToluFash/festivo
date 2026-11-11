@@ -369,6 +369,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/account?state=zone',
       },
       {
+        title: 'Your account · time zone loading',
+        what: 'The zone list held 3 s: blank, then Loading…',
+        href: '/demo/settings/account?state=zoneWaiting',
+      },
+      {
         title: 'Your account · check your email',
         what: 'The code for the second address',
         href: '/demo/settings/account?state=verifyEmail',
