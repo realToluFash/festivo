@@ -1,4 +1,5 @@
 import type { ListedEvent } from '@soirely/api-client';
+import { numberFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
@@ -179,6 +180,23 @@ describe('dayTiles', () => {
       '+6',
       '[21]',
     ]);
+  });
+
+  it.each([
+    ['pt-BR', '+1200'],
+    ['pt', '+1200'],
+    ['es-MX', '+1200'],
+    ['en-US', '+1,200'],
+    ['fr-CA', '+1\u202f200'],
+  ])('counts the days between in the shown language, never %s region', (locale, more) => {
+    expect(drawn(dayTiles(lasting(1202, 'draft'), before, locale))?.[1]).toBe(more);
+  });
+
+  it('groups seven digits with the space its screen-reader label is heard with', () => {
+    expect(drawn(dayTiles(lasting(1_365_247, 'draft'), before, 'pt-BR'))?.[1]).toBe(
+      `+${numberFormat('pt').format(1_365_245)}`,
+    );
+    expect(numberFormat('pt').format(1_365_245)).toMatch(/^1\s365\s245$/u);
   });
 
   it('keys each tile by its date, so a day number that repeats a month on is its own', () => {

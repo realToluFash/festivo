@@ -12,6 +12,7 @@ import {
   milestoneDistance,
   nextStep,
   notThisYear,
+  numberFormat,
   shownDays,
   stepAwaitsMilestones,
   wallDayNumber,
@@ -158,7 +159,7 @@ export function dayTiles(event: Shown, now: Date, locale: string): DayTile[] | n
   const today = wallDayNumber(now, event.timeZone);
   const weekday = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' });
   const number = new Intl.DateTimeFormat(locale, { day: 'numeric', timeZone: 'UTC' });
-  const plain = new Intl.NumberFormat(locale);
+  const plain = numberFormat(locale);
   const shown = shownDays({
     first,
     last: first + count - 1,
