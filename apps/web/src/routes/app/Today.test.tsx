@@ -203,6 +203,38 @@ describe('Today at a desk (sc-30413)', () => {
     }
   });
 
+  it('keeps each date of a multi-day row whole, breaking only at the connector (sc-39091)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-03T09:00:00+01:00'));
+    signedIn(membership({ id: 'org_1' }));
+    serving([
+      event('Casamento', {
+        status: 'live',
+        phase: 'live',
+        startsAt: '2026-11-04T16:00:00+01:00',
+        endsAt: '2026-11-06T23:00:00+01:00',
+        dayCount: 3,
+      }),
+    ]);
+    await act(() => i18next.changeLanguage('pt'));
+
+    try {
+      open();
+
+      const row = await screen.findByRole('button', { name: /^Casamento/u });
+      const when = row.querySelector('.today-event-when') as HTMLElement;
+      const dates = [...when.querySelectorAll('.today-event-date')].map((date) => date.textContent);
+
+      expect(when.querySelector('.today-event-count')?.textContent).toBe('Amanhã ·');
+      expect(dates).toEqual(['De quarta-feira, 4 de nov.', 'sexta-feira, 6 de nov.']);
+      expect(when.querySelector('.today-event-dates')?.textContent).toBe(
+        'De quarta-feira, 4 de nov. até sexta-feira, 6 de nov.',
+      );
+    } finally {
+      await act(() => i18next.changeLanguage('en'));
+    }
+  });
+
   it('keeps New event off the banner for a role without Create events', async () => {
     signedIn(
       membership({

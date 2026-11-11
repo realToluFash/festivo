@@ -4,12 +4,20 @@ import {
   type TodayCard,
   type TodayNow,
   type TodaySub,
+  eventDayWords,
   formatEventClock,
   todayView,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
-import type { AgendaItem, EventCard, Moment, Now, ShownEvent } from '../../components/today.ts';
+import type {
+  AgendaItem,
+  DayRange,
+  EventCard,
+  Moment,
+  Now,
+  ShownEvent,
+} from '../../components/today.ts';
 import { daysWords } from '../../eventsList.ts';
 import { meshFor } from '../../mesh.ts';
 
@@ -60,13 +68,21 @@ function agendaItem(item: TodayAgendaItem<ListedEvent>, reader: Reader, t: TFunc
   };
 }
 
+function cardDates(event: ListedEvent, now: Date, reader: Reader, t: TFunction): string | DayRange {
+  const days = eventDayWords(event, now, reader.locale);
+
+  return days.kind === 'days'
+    ? { first: days.first, last: days.last }
+    : daysWords(event, now, reader.locale, t);
+}
+
 function card(one: TodayCard<ListedEvent>, now: Date, reader: Reader, t: TFunction): EventCard {
   const { event, count } = one;
 
   return {
     event: shownEvent(event),
     name: event.name,
-    dates: daysWords(event, now, reader.locale, t),
+    dates: cardDates(event, now, reader, t),
     count:
       count.kind === 'draft'
         ? t('events.draft')

@@ -1,6 +1,7 @@
 import { calendarDays, weekLanes } from '@soirely/domain';
 
 import type {
+  DayRange,
   EventCard,
   Moment as Shown,
   Now,
@@ -284,12 +285,12 @@ function greeting(time: string): string {
   return hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 }
 
-function eventDates(event: SampleEvent, say: Say): string {
+function eventDates(event: SampleEvent, say: Say): string | DayRange {
   const withYear = event.first.slice(0, 4) !== event.last.slice(0, 4) || undefined;
 
   return event.first === event.last
     ? say.day(event.first)
-    : `${say.day(event.first, withYear)} – ${say.day(event.last, withYear)}`;
+    : { first: say.day(event.first, withYear), last: say.day(event.last, withYear) };
 }
 
 function card(

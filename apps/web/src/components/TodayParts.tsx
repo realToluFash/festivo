@@ -2,7 +2,15 @@ import { useTranslation } from 'react-i18next';
 
 import { Notice } from './Notice.tsx';
 import { Glyph } from './Glyph.tsx';
-import type { AgendaDay, EventCard, Moment, Open, ShownEvent, StripBar } from './today.ts';
+import type {
+  AgendaDay,
+  DayRange,
+  EventCard,
+  Moment,
+  Open,
+  ShownEvent,
+  StripBar,
+} from './today.ts';
 import './today.css';
 
 /** An event's cover, in its own colours from the option tokens. */
@@ -170,6 +178,25 @@ export function ThisWeek({ moment, open }: { moment: Moment; open: Open }) {
   );
 }
 
+const FIRST = '\u0001';
+const LAST = '\u0002';
+
+/** The range in its locale's words, broken only at the connector: each date, with the words glued to it, stays whole (sc-39091). */
+function RangeWords({ range }: { range: DayRange }) {
+  const { t } = useTranslation();
+  const words = t('events.days', { first: FIRST, last: LAST });
+  const [lead = '', afterFirst = ''] = words.split(FIRST);
+  const [between = '', trail = ''] = afterFirst.split(LAST);
+
+  return (
+    <>
+      <span className="today-event-date">{`${lead}${range.first}`}</span>
+      {between}
+      <span className="today-event-date">{`${range.last}${trail}`}</span>
+    </>
+  );
+}
+
 function EventRow({ card, full, open }: { card: EventCard; full: boolean; open: Open }) {
   const { t } = useTranslation();
   const ready = full ? card.ready : null;
@@ -188,7 +215,13 @@ function EventRow({ card, full, open }: { card: EventCard; full: boolean; open: 
             {!card.live && !card.draft && (
               <span className="today-event-count">{`${card.count} ·`}</span>
             )}
-            <span className="today-event-dates">{card.dates}</span>
+            {typeof card.dates === 'string' ? (
+              <span className="today-event-dates">{card.dates}</span>
+            ) : (
+              <span className="today-event-dates is-range">
+                <RangeWords range={card.dates} />
+              </span>
+            )}
           </span>
           {(card.draft || card.live || card.stage != null) && (
             <span className="today-chips">

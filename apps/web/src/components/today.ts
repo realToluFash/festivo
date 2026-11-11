@@ -40,10 +40,16 @@ export interface StripBar {
   lane: number;
 }
 
+/** A multi-day event's first and last day, each kept whole when the row wraps (sc-39091). */
+export interface DayRange {
+  first: string;
+  last: string;
+}
+
 export interface EventCard {
   event: ShownEvent;
   name: string;
-  dates: string;
+  dates: string | DayRange;
   count: string;
   live: boolean;
   draft: boolean;
