@@ -54,4 +54,8 @@ describe('the sidebar’s Your events (sc-39290)', () => {
     expect(SIDEBAR_CSS).toMatch(/\.today-side-events > \.today-places \{[^}]*overflow-y: auto;/u);
     expect(SIDEBAR_CSS).toMatch(/min-height: calc\(var\(--sizeHit\) \* 4 \+ var\(--space3xl\)\);/u);
   });
+
+  it('draws a focused row\u2019s ring inside the list, where the scroller cannot clip it', () => {
+    expect(SIDEBAR_CSS).toMatch(/\.today-place:focus-visible \{[^}]*outline-offset: -2px;/u);
+  });
 });

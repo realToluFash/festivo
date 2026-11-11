@@ -13,3 +13,7 @@
   overscroll-behavior: contain;
   scrollbar-width: thin;
 }
+
+.today-side-events > .today-places .today-place:focus-visible {
+  outline-offset: -2px;
+}
