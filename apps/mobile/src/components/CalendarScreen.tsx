@@ -70,6 +70,7 @@ export function CalendarScreen() {
   return (
     <AppFrame
       current="calendar"
+      top="stays"
       title={t('calendar.title')}
       titleRef={title}
       offline={offline.stale}
@@ -223,6 +224,6 @@ const styles = StyleSheet.create({
 
 const PAGE: Record<LayoutKind, { paddingHorizontal: number }> = {
   phone: { paddingHorizontal: tokens.spaceXxl },
-  tabletPortrait: { paddingHorizontal: tokens.space4xl },
+  tabletPortrait: { paddingHorizontal: tokens.space5xl },
   tabletLandscape: { paddingHorizontal: 30 },
 };

@@ -48,7 +48,7 @@ import { CW } from './CalendarWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
-import { TOP_TITLE, topTitle } from '../topTitle.ts';
+import { TOP_TITLE, topTitle } from '../../components/topTitle.ts';
 
 /** The demo keeps its own place, so it never moves the real Calendar's. */
 const KEPT = 'soirely.demo.calendar';

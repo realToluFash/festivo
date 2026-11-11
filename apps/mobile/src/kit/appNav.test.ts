@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -170,8 +170,37 @@ describe("A phone's event page keeps its name out of the header (sc-22871)", () 
     const events = source(join(SRC, 'components', 'EventsScreen.tsx'));
     const page = source(join(SRC, 'components', 'Events.tsx'));
 
-    expect(events).toMatch(/<AppFrame\s+current="events"\s+title=\{t\('eventsScreen\.title'\)\}/u);
+    expect(events).toMatch(
+      /<AppFrame\s+current="events"\s+top="scrolls"\s+title=\{t\('eventsScreen\.title'\)\}/u,
+    );
     expect(page).toMatch(/accessibilityRole="header">\s*\{event\.name\}/u);
+  });
+});
+
+describe('A screen whose top scrolls places it, and the band is gone (sc-39471)', () => {
+  const tsx = (dir: string): string[] =>
+    readdirSync(dir, { recursive: true, encoding: 'utf8' })
+      .filter((path) => path.endsWith('.tsx') && !path.includes('.test.'))
+      .map((path) => join(dir, path));
+  const scrolling = [...tsx(APP), ...tsx(join(SRC, 'components'))].filter((path) =>
+    /top=(?:"scrolls"|\{[^}]*'scrolls')/u.test(source(path)),
+  );
+
+  it('finds the screens it guards', () => {
+    expect(scrolling.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it.each(scrolling)('%s renders its top, directly or through the list that places it', (path) => {
+    expect(source(path)).toMatch(/<(?:FrameTop|ListAndPage|SettingsList)\b/u);
+  });
+
+  it('has the list and the Settings column place the top', () => {
+    expect(source(join(SRC, 'components', 'ListAndPage.tsx'))).toMatch(/<FrameTop\b/u);
+    expect(source(join(SRC, 'components', 'SettingsList.tsx'))).toMatch(/<FrameTop\b/u);
+  });
+
+  it('draws no band behind the frame', () => {
+    expect(source(join(SRC, 'components', 'AppFrame.tsx'))).not.toMatch(/colorHeader/u);
   });
 });
 

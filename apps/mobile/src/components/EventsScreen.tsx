@@ -442,6 +442,7 @@ export function EventsScreen() {
   return (
     <AppFrame
       current="events"
+      top="scrolls"
       title={t('eventsScreen.title')}
       titleRef={title}
       offline={stale}
@@ -476,22 +477,22 @@ const styles = StyleSheet.create({
   loading: { gap: 18 },
   phone: {
     gap: 18,
-    paddingTop: tokens.spaceXl,
+    paddingTop: tokens.spaceXxs,
     paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.space3xl,
   },
   portrait: {
-    gap: 14,
-    paddingTop: tokens.space3xl,
-    paddingHorizontal: tokens.space4xl,
+    gap: 18,
+    paddingTop: 26,
+    paddingHorizontal: tokens.space5xl,
     paddingBottom: tokens.space6xl,
   },
   landscape: {
-    gap: 14,
-    paddingTop: tokens.space3xl,
-    paddingHorizontal: tokens.space3xl,
+    gap: 18,
+    paddingTop: 26,
+    paddingHorizontal: 30,
   },
-  column: { gap: tokens.spaceLg, paddingBottom: tokens.space5xl },
+  column: { gap: 18, paddingBottom: tokens.space5xl },
 });
 
 const SPACING: ListAndPageSpacing = {

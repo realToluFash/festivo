@@ -29,6 +29,7 @@ import {
 } from '../layout/useLayout.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
+import { FrameTop } from './AppFrame.tsx';
 import { Caps } from './SettingsParts.tsx';
 import {
   type ListedSection,
@@ -182,6 +183,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
       onLayout={(event) => reveal({ viewport: event.nativeEvent.layout.height })}
       showsVerticalScrollIndicator={false}
     >
+      <FrameTop rowStyle={styles.columnTop} />
       {card('column')}
       {groups.map((each, index) => group(each, index === 0 ? tokens.spaceXxl : tokens.spaceXl))}
       <View style={settingsHomeStyles.footColumn}>{foot(tokens.sizeHit)}</View>
@@ -205,6 +207,7 @@ export function useBackToSettings() {
 const styles = StyleSheet.create({
   fill: { flex: 1, minWidth: 0 },
   row: { flexDirection: 'row' },
+  columnTop: { minHeight: tokens.sizeHit, marginBottom: tokens.spaceLg },
   tabletList: {
     flexGrow: 0,
     flexShrink: 0,

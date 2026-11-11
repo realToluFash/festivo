@@ -19,6 +19,7 @@ import {
 } from '../layout/useLayout.ts';
 import { pageTakesBack } from '../kit/systemBack.ts';
 import { tokens } from '../theme/tokens.ts';
+import { FrameTop } from './AppFrame.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { QuietButton } from './Buttons.tsx';
 import { Screen, ScrollColumn } from './Screen.tsx';
@@ -131,6 +132,7 @@ export function ListAndPage({
             refreshControl={listRefresh}
             away={!landscape && pageInFront}
           >
+            {(landscape ? pageless : !pageInFront) && <FrameTop />}
             {!landscape && heading}
             {list}
           </ScrollColumn>
@@ -144,6 +146,7 @@ export function ListAndPage({
           ]}
         >
           <ScrollColumn key={pageKey} style={styles.fill} contentContainerStyle={column}>
+            {!landscape && pageInFront && <FrameTop />}
             {kind === 'tabletPortrait' && (
               <View style={styles.start}>
                 <QuietButton label={back.label} onPress={back.onPress} testID={back.testID} />

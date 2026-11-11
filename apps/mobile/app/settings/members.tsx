@@ -70,6 +70,7 @@ import { settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { useOffline } from '../../src/offline.ts';
 import { rereadOrganisations, useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
+import { PAGE_TITLE, PANE_TITLE, pageTitle, paneTitle } from '../../src/components/topTitle.ts';
 
 type Load =
   | { kind: 'loading' }
@@ -351,8 +352,9 @@ export default function MembersScreen() {
       <View style={styles.shrink}>
         <Text
           ref={membersTitle}
-          size={landscape ? 28 : 30}
+          size={landscape ? PANE_TITLE : PAGE_TITLE}
           weight="bold"
+          style={landscape ? paneTitle : pageTitle}
           accessibilityRole="header"
         >
           {t('membersScreen.title')}
@@ -468,6 +470,7 @@ export default function MembersScreen() {
   return (
     <AppFrame
       current="settings"
+      top={alone || !givesWay ? 'scrolls' : undefined}
       offline={stale}
       besideTitle={alone ? refreshingWords : undefined}
       title={
@@ -542,7 +545,7 @@ const styles = StyleSheet.create({
   blocks: { gap: 18 },
   phone: {
     gap: tokens.spaceLg,
-    paddingTop: tokens.spaceXl,
+    paddingTop: tokens.spaceXxs,
     paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.space6xl * 2,
   },

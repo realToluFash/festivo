@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
-import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
+import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import {
   DetailRows,
@@ -30,6 +30,7 @@ import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout
 import { useOffline } from '../../src/offline.ts';
 import { reloadSignedIn, replaceOrganisation, useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
+import { PANE_TITLE, paneTitle } from '../../src/components/topTitle.ts';
 
 /** Settings > Organisation as its demo draws it (sc-30412): the card, the details, joining, then ownership and leaving. */
 export default function Organisation() {
@@ -196,6 +197,7 @@ export default function Organisation() {
   return (
     <AppFrame
       current="settings"
+      top="scrolls"
       offline={stale}
       besideTitle={alone ? refreshingWords : undefined}
       titleRef={alone ? title : undefined}
@@ -204,13 +206,15 @@ export default function Organisation() {
     >
       <SettingsSplit open="organisation">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
+          {alone && <FrameTop />}
           {!alone && (
             <View style={besideRow.row}>
               <View style={styles.shrink}>
                 <Text
                   ref={title}
-                  size={kind === 'tabletLandscape' ? 28 : 30}
+                  size={PANE_TITLE}
                   weight="bold"
+                  style={paneTitle}
                   accessibilityRole="header"
                 >
                   {t('settings.organisation')}
@@ -255,7 +259,7 @@ const styles = StyleSheet.create({
   shrink: { flexShrink: 1, minWidth: 0 },
   phone: {
     gap: 18,
-    paddingTop: tokens.spaceXl,
+    paddingTop: tokens.spaceXxs,
     paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.space6xl * 2,
   },
