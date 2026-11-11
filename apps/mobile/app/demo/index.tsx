@@ -6,6 +6,7 @@ import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
 import { BOLD_TEXT_BOARDS } from '../../src/demo/boldText/BoldTextBoards.ts';
 import { BUDGET_BOARDS } from '../../src/demo/budget/BudgetBoards.ts';
+import { PILL_FIT_BOARDS } from '../../src/demo/pillFit/PillFitBoards.ts';
 import { TEXT_SIZE_BOARDS } from '../../src/demo/textSize/TextSizeBoards.ts';
 import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
 import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeaderBoards.ts';
@@ -45,6 +46,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Text size · the phone’s tab bar and Settings card at twice the size (sc-37298)',
     boards: TEXT_SIZE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Organisation pill · when the words do not fit (sc-38149)',
+    boards: PILL_FIT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Today · where signing in lands',
