@@ -411,6 +411,8 @@ export const ACCOUNT_STATES = [
 ] as const;
 
 export const WEB_MOMENTS = [
+  'loading',
+  'failed',
   'open',
   'openVerified',
   'allVerified',
@@ -462,6 +464,8 @@ export function accountStart(state: string, viewer: Viewer = VIEWERS.folake): Ac
 
   switch (name) {
     case null:
+    case 'loading':
+    case 'failed':
       return REST;
     case 'open':
       return { ...REST, open: EMAIL_2.id };
@@ -567,6 +571,8 @@ export const ACCOUNT_PAGES: readonly { name: string; states: readonly DemoLink[]
       account(undefined, 'At rest, an address not verified yet'),
       { to: settingsPath('account', VIEWERS.julien), name: 'The same for an admin' },
       { to: settingsPath('account', VIEWERS.ana), name: 'The same for a member' },
+      account('loading', 'Addresses and numbers loading'),
+      account('failed', 'Addresses and numbers did not load'),
       account('open', 'An unverified address, opened'),
       account('openVerified', 'A verified address, opened'),
       account('allVerified', 'Everything verified'),

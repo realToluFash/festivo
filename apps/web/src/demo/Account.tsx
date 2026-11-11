@@ -1,6 +1,7 @@
 import { DemoBell } from './DemoBell.tsx';
 import { contactActions, initials, primaryOf, zoneLabel } from '@soirely/domain';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import {
   ACCOUNT_WORDS as W,
@@ -35,12 +36,17 @@ import { SAMPLE } from './rules.ts';
 import type { Viewer } from './settings.ts';
 import { saveName, savedNameOf } from './savedName.ts';
 import { AboutRow, ContactsBlock, PersonCard, RowOffers } from '../components/AccountParts.tsx';
-import { Ask, Head, TitleRow } from '../components/SettingsParts.tsx';
+import { Bones } from '../components/GeneralParts.tsx';
+import { Ask, Head, TextAction, TitleRow } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 
 /** Your account at a desk in B · Summary first (Web-Account-*.dc.html): the app's page, the same for every role. */
 export function Account({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
+  const { t } = useTranslation();
   const [start] = useState(() => accountStart(state, viewer));
+  const [load, setLoad] = useState<'loading' | 'failed' | 'loaded'>(
+    state === 'loading' || state === 'failed' ? state : 'loaded',
+  );
   const [name, setName] = useState(() => savedNameOf(viewer.key) ?? start.name);
   const [zone, setZone] = useState(start.zone);
   const [emails, setEmails] = useState(start.emails);
@@ -122,17 +128,39 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
             />
           </ul>
         </section>
-        {(['email', 'phone'] as const).map((kind) => (
-          <Contacts
-            key={kind}
-            kind={kind}
-            rows={kind === 'email' ? emails : phones}
-            open={open}
-            onToggle={(row) => setOpen((now) => (now === row.id ? null : row.id))}
-            onAct={act}
-            onAdd={() => setDialog(opening(kind === 'email' ? 'addEmail' : 'addPhone'))}
-          />
-        ))}
+        {load !== 'loaded'
+          ? (['email', 'phone'] as const).map((kind) => (
+              <section key={kind} className="desk-block">
+                <Head title={KIND_WORDS[kind].title} />
+                {load === 'failed' ? (
+                  <div className="desk-failed" role="alert">
+                    <p className="desk-line">
+                      {t(kind === 'email' ? 'contacts.emailsFailed' : 'contacts.phonesFailed')}
+                    </p>
+                    <TextAction
+                      label={t('error.retry')}
+                      onClick={() => {
+                        setLoad('loading');
+                        window.setTimeout(() => setLoad('loaded'), 700);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <Bones count={kind === 'email' ? 2 : 1} label={t('pending.loading')} />
+                )}
+              </section>
+            ))
+          : (['email', 'phone'] as const).map((kind) => (
+              <Contacts
+                key={kind}
+                kind={kind}
+                rows={kind === 'email' ? emails : phones}
+                open={open}
+                onToggle={(row) => setOpen((now) => (now === row.id ? null : row.id))}
+                onAct={act}
+                onAdd={() => setDialog(opening(kind === 'email' ? 'addEmail' : 'addPhone'))}
+              />
+            ))}
       </div>
       {ask === 'promote' && opened != null && (
         <Ask
