@@ -256,7 +256,7 @@ export function RoundButton({
   label: string;
   onPress: () => void;
   dot?: boolean;
-  testID?: string;
+  testID?: string | undefined;
   ref?: Ref<ViewInstance> | undefined;
 }) {
   return (

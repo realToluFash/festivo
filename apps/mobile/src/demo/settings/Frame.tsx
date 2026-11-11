@@ -22,7 +22,9 @@ import {
   useShell,
   type Viewer,
 } from '../../components/settingsShell.ts';
-import { Back, RoundButton } from '../../components/SettingsParts.tsx';
+import { Back } from '../../components/SettingsParts.tsx';
+import { Bell as ProductBell } from '../../components/BellButton.tsx';
+import { PortraitTop as ProductPortraitTop } from '../../components/ListTop.tsx';
 
 /** A page whose sample someone else sees: the Settings card, its rows and the sidebar's foot follow them. */
 export function SeenBy({ looking, children }: { looking: Looking; children: ReactNode }) {
@@ -139,6 +141,7 @@ export function TaskPage({
   );
 }
 
+/** The product's bell, with three unread. */
 export function Bell({
   tell,
   onPress,
@@ -148,14 +151,10 @@ export function Bell({
   onPress?: (() => void) | undefined;
   ref?: Ref<ViewInstance> | undefined;
 }) {
-  const { t } = useTranslation();
-
   return (
-    <RoundButton
+    <ProductBell
       ref={ref}
-      glyph="bell"
-      label={t('notifications.bellUnread', { count: 3 })}
-      dot
+      unread={3}
       onPress={onPress ?? (() => tell('Notifications have their own design.'))}
     />
   );
@@ -205,19 +204,17 @@ export function SettingsTabBar({ bottom }: { bottom: number }) {
   );
 }
 
+/** The product's upright row: the pill, the tabs and the bell. */
 export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
   const shell = useShell();
-  const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.portraitTop, { paddingTop: insets.top + tokens.spaceMd }]}>
-      <OrgPill />
-      <View style={styles.grow} />
-      <Bell tell={shell.tell} />
-      <View style={[styles.capsuleAt, { top: insets.top + 7 }]} pointerEvents="box-none">
-        <WhiteCapsule tabs={tabsFor(shell.viewer)} at={at} onTab={shell.onTab} />
-      </View>
-    </View>
+    <ProductPortraitTop
+      renderPill={() => <OrgPill />}
+      pillFits={false}
+      bell={<Bell tell={shell.tell} />}
+      tabs={<WhiteCapsule tabs={tabsFor(shell.viewer)} at={at} onTab={shell.onTab} />}
+    />
   );
 }
 
@@ -242,11 +239,4 @@ const styles = StyleSheet.create({
   task: { paddingHorizontal: tokens.space3xl, gap: tokens.spaceXl },
   taskTablet: { width: '100%', maxWidth: 560, alignSelf: 'center' },
   taskHead: { gap: tokens.spaceMd, paddingTop: tokens.spaceMd, paddingBottom: tokens.spaceSm },
-  portraitTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: tokens.space3xl,
-    paddingBottom: tokens.spaceXxs,
-  },
-  capsuleAt: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
 });

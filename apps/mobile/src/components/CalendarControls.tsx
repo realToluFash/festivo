@@ -11,6 +11,7 @@ import { Glyph, type GlyphName } from './Glyph.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { type Anchor, AnchoredMenu } from './Summary.tsx';
 import { Text } from './Text.tsx';
+import { Pill } from './SettingsParts.tsx';
 
 /** The toolbar's words grow to twice their size and no further, so Month, Show and the month's name are never cut. */
 const DOUBLED = 2;
@@ -341,6 +342,34 @@ export function SubscribeRound({ onPress, ref }: { onPress: () => void; ref: Ref
     >
       <Glyph name="calendar" size={20} ink={tokens.colorInk} weight={2.1} />
     </Pressable>
+  );
+}
+
+/** Subscribe at the end of the Calendar's title row: round on the phone, the pill with its words wider. */
+export function Subscribe({
+  phone,
+  onPress,
+  ref,
+}: {
+  phone: boolean;
+  onPress: () => void;
+  ref: Ref<ViewInstance>;
+}) {
+  const { t } = useTranslation();
+
+  if (phone) return <SubscribeRound onPress={onPress} ref={ref} />;
+
+  return (
+    <Pill
+      label={t('calendarFeed.open')}
+      kind="secondary"
+      glyph="calendar"
+      height={tokens.sizeHit}
+      full={false}
+      onPress={onPress}
+      ref={ref}
+      testID="calendarFeed.open"
+    />
   );
 }
 

@@ -421,6 +421,7 @@ export function EventsScreen() {
       <Text
         size={tokens.typeBodyPhone.size}
         muted
+        style={styles.underTitle}
         accessibilityRole="text"
         testID="events.refreshing"
       >
@@ -479,6 +480,7 @@ export function EventsScreen() {
 
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
+  underTitle: { marginTop: tokens.spaceHair },
   loading: { gap: 18 },
   phone: {
     gap: 18,

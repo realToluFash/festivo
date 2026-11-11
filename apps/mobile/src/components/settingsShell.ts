@@ -38,6 +38,14 @@ export function layoutOf(kind: LayoutKind): CoverLayout {
   return kind === 'phone' ? 'phone' : kind === 'tabletPortrait' ? 'portrait' : 'landscape';
 }
 
+export function kindOf(layout: CoverLayout): LayoutKind {
+  return layout === 'phone'
+    ? 'phone'
+    : layout === 'portrait'
+      ? 'tabletPortrait'
+      : 'tabletLandscape';
+}
+
 /** The layout a Settings part draws for: its shell's, or the device's in the app, which gives none. */
 export function useShellLayout(): CoverLayout {
   const shell = useContext(ShellContext);
