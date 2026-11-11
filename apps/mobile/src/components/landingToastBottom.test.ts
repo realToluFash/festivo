@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { tokens } from '../theme/tokens.ts';
-import { UNMEASURED_OVER_KEYS, landingToastBottom } from './landingToastBottom.ts';
+import { UNMEASURED_OVER_KEYS, landingToastBottom, underToast } from './landingToastBottom.ts';
 
 describe('the landing toast on a step with a docked foot, as measured (sc-37983)', () => {
   it('rests 12pt above a two-button foot, wherever its upper button starts', () => {
@@ -46,5 +46,24 @@ describe('the landing toast with no step foot under it (sc-29071, sc-37519)', ()
 
   it('rests over the inset alone on a tablet', () => {
     expect(landingToastBottom(24, 0, 1200, null, 'noFoot')).toBe(24);
+  });
+});
+
+describe('what a landed step puts under the toast, read against its frame (sc-37983)', () => {
+  it('is no foot while no step has landed, or its foot is not yet placed', () => {
+    expect(underToast(null, { y: 0, height: 800 })).toBe('noFoot');
+    expect(underToast({ id: 1, foot: null }, { y: 0, height: 800 })).toBe('noFoot');
+  });
+
+  it('is a foot in the page while the foot has moved off the bottom', () => {
+    expect(
+      underToast({ id: 1, foot: { x: 24, width: 320, top: null } }, { y: 0, height: 800 }),
+    ).toBe('footInPage');
+  });
+
+  it('reaches from the bottom of a frame starting below a status bar up to the docked foot top', () => {
+    expect(
+      underToast({ id: 1, foot: { x: 24, width: 320, top: 700 } }, { y: 24, height: 776 }),
+    ).toEqual({ footReaches: 100 });
   });
 });

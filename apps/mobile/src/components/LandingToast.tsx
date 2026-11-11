@@ -7,8 +7,8 @@ import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { watchMovedOn } from './focusedField.ts';
 import { useKeyboardTop } from './keyboardWatch.ts';
-import { type LandedStep, stepsSoFar, useLandedStep } from './landedStep.ts';
-import { landingToastBottom, type UnderToast } from './landingToastBottom.ts';
+import { stepsSoFar, useLandedStep } from './landedStep.ts';
+import { type Frame, landingToastBottom, underToast } from './landingToastBottom.ts';
 import { landingToastAt } from './landingToastTop.ts';
 import { SETTLED_MS } from './Screen.tsx';
 import { TAB_BAR } from './TodayScreen.tsx';
@@ -34,18 +34,6 @@ export function sayOnLanding(key: string): void {
   // The step it is said from is still in front as the flow moves on, and is not where it lands.
   saidOver = stepsSoFar();
   set(key);
-}
-
-interface Frame {
-  y: number;
-  height: number;
-}
-
-function underToast(step: LandedStep | null, frame: Frame): UnderToast {
-  if (step?.foot == null) return 'noFoot';
-  if (step.foot.top == null) return 'footInPage';
-
-  return { footReaches: frame.y + frame.height - step.foot.top };
 }
 
 /** Over the whole stack; on a phone it clears the tab bar, and on a step it rests on the foot as measured, to whose column a tablet keeps it. On a step it stays while the field it landed on keeps focus, and closes as another control takes it (sc-37519, sc-37983). */

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { landedStep, stepShown, stepsSoFar } from './landedStep.ts';
 
 describe('the step the landing toast keeps to (sc-37519)', () => {
-  it('has no foot to rest on until it has landed and been placed (sc-37983)', () => {
+  it('starts a new step with no foot placed', () => {
     const step = stepShown();
 
     expect(landedStep()?.foot).toBeNull();
