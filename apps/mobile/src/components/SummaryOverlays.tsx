@@ -13,7 +13,6 @@ import {
 } from 'react';
 import {
   KeyboardAvoidingView,
-  type LayoutChangeEvent,
   Modal,
   Platform,
   Pressable,
@@ -40,7 +39,8 @@ import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
 import { Glyph } from './Glyph.tsx';
 import { AskLayer, type AskProps } from './AskLayer.tsx';
-import { TextAction, TurningMark } from './SummaryRows.tsx';
+import { TextAction } from './SummaryRows.tsx';
+import { FocusNav, type FocusVerb } from './FocusNav.tsx';
 import { useShellLayout } from './settingsShell.ts';
 
 export { AskLayer, type AskProps } from './AskLayer.tsx';
@@ -135,15 +135,7 @@ export function Ask({
   );
 }
 
-export interface FocusVerb {
-  label: string;
-  on: boolean;
-  onPress: () => void;
-  removes?: boolean;
-  /** While its request is out: the turning mark and its words in Ink 2, off until the answer. */
-  busy?: boolean;
-  testID?: string;
-}
+export type { FocusVerb } from './FocusNav.tsx';
 
 export interface Layer {
   layer: ReactNode;
@@ -333,136 +325,6 @@ function useTitleTakesFocus(
   const { shown } = useFocusOnAnswer(step, target);
 
   return { heading, shown, hidden, focus };
-}
-
-/** In a list opened from the screen, ‹ and where it goes back to in Cancel's place; "Back" when the title needs the room, as iOS does. */
-function FocusNav({
-  title,
-  titleRef,
-  verb,
-  back,
-  cancels,
-  cancelLabel,
-  waits,
-  onCancel,
-  cancelTestID,
-}: {
-  title: string;
-  titleRef: RefObject<TextHandle | null>;
-  verb: FocusVerb | null;
-  back: string | undefined;
-  cancels: boolean;
-  cancelLabel?: string | undefined;
-  waits: boolean;
-  onCancel: () => void;
-  cancelTestID?: string | undefined;
-}) {
-  const { t } = useTranslation();
-  const [sides, setSides] = useState({ cancel: 0, verb: 0 });
-  const [short, setShort] = useState(false);
-  const fits = back == null || short;
-  const cancelLaid = (event: LayoutChangeEvent) => {
-    const width = event.nativeEvent.layout.width;
-    setSides((now) => ({ ...now, cancel: width }));
-  };
-
-  return (
-    <View style={styles.nav}>
-      {cancels ? (
-        <Pressable
-          onPress={onCancel}
-          disabled={waits}
-          onLayout={cancelLaid}
-          style={({ pressed }) => [
-            styles.navButton,
-            back != null && styles.navBack,
-            pressed && styles.pressed,
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={back ?? cancelLabel ?? t('frame.cancel')}
-          accessibilityState={waits ? { disabled: true } : undefined}
-          testID={cancelTestID}
-        >
-          {back != null && (
-            <Glyph name="back" size={20} ink={tokens.colorAccentText} weight={2.4} />
-          )}
-          <Text
-            size={17}
-            weight="medium"
-            accessible={false}
-            style={waits ? styles.waiting : styles.accent}
-          >
-            {back == null ? (cancelLabel ?? t('frame.cancel')) : short ? t('frame.back') : back}
-          </Text>
-        </Pressable>
-      ) : (
-        <View style={styles.navButton} onLayout={cancelLaid} />
-      )}
-      <View
-        style={[
-          styles.navTitle,
-          { left: sides.cancel + tokens.spaceLg, right: sides.verb + tokens.spaceLg },
-        ]}
-        pointerEvents="none"
-      >
-        <Text
-          ref={titleRef}
-          size={17}
-          weight="bold"
-          numberOfLines={fits ? 1 : undefined}
-          onTextLayout={
-            fits
-              ? undefined
-              : (event) => {
-                  if (event.nativeEvent.lines.length > 1) setShort(true);
-                }
-          }
-          accessibilityRole="header"
-        >
-          {title}
-        </Text>
-      </View>
-      <View style={styles.grow} />
-      {verb != null && (
-        <Pressable
-          onPress={verb.on ? verb.onPress : undefined}
-          disabled={!verb.on}
-          onLayout={(event) => {
-            const width = event.nativeEvent.layout.width;
-            setSides((now) => ({ ...now, verb: width }));
-          }}
-          style={({ pressed }) => [
-            styles.navButton,
-            verb.busy === true && styles.navBusy,
-            pressed && styles.pressed,
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={verb.label}
-          accessibilityState={{ disabled: !verb.on, busy: verb.busy === true }}
-          testID={verb.testID}
-        >
-          {verb.busy === true && <TurningMark side={14} />}
-          <Text
-            size={17}
-            weight="semibold"
-            accessible={false}
-            style={{
-              color:
-                verb.busy === true
-                  ? tokens.colorInkSecondary
-                  : !verb.on
-                    ? tokens.colorInkTertiary
-                    : verb.removes === true
-                      ? tokens.colorBroken
-                      : tokens.colorAccentText,
-            }}
-          >
-            {verb.label}
-          </Text>
-        </Pressable>
-      )}
-    </View>
-  );
 }
 
 export interface MenuChoice<T extends string> {
@@ -753,30 +615,6 @@ const styles = StyleSheet.create({
   sheetBody: { flexGrow: 0 },
   sheetFill: { flexShrink: 1, minHeight: 0 },
   body: { paddingTop: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl },
-  nav: {
-    height: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: tokens.spaceSm,
-    borderBottomWidth: 1,
-    borderBottomColor: tokens.colorBorder,
-  },
-  navButton: {
-    minHeight: tokens.sizeHit,
-    minWidth: tokens.sizeHit,
-    justifyContent: 'center',
-    paddingHorizontal: tokens.spaceLg,
-  },
-  navBack: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceHair, paddingLeft: 6 },
-  navBusy: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
-  waiting: { color: tokens.colorInkTertiary },
-  navTitle: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   menu: {
     position: 'absolute',
     borderWidth: 1,

@@ -23,7 +23,7 @@ export function MeasuredWords({
   words,
   onWidth,
   ...look
-}: Pick<TextProps, 'size' | 'weight' | 'style' | 'maxFontSizeMultiplier'> & {
+}: Pick<TextProps, 'size' | 'weight' | 'style' | 'maxFontSizeMultiplier' | 'allowFontScaling'> & {
   words: readonly string[];
   onWidth: (word: string, width: number) => void;
 }) {

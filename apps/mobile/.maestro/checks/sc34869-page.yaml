@@ -19,7 +19,7 @@ appId: host.exp.Exponent
     timeout: 10000
 - assertVisible:
     id: 'frame.back'
-    text: '{{t:settings.title}}'
+    text: '.*{{t:settings.title}}'
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: page

@@ -1,15 +1,26 @@
-import type { ReactElement, ReactNode, Ref } from 'react';
+import { type ReactElement, type ReactNode, type Ref, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Pressable,
   type StyleProp,
   StyleSheet,
+  useWindowDimensions,
   View,
   type ViewInstance,
   type ViewStyle,
 } from 'react-native';
 
-import { Text } from './Text.tsx';
+import { Text, TitleCap } from './Text.tsx';
+import {
+  PILL_ABOVE,
+  PILL_GAP,
+  PILL_GLYPH,
+  PILL_LEFT,
+  PILL_RIGHT,
+  PILL_TEXT,
+  backLeast,
+  backScale,
+} from '../layout/focusedHeader.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ShellSection } from './settingsShell.ts';
@@ -183,19 +194,50 @@ export function Pair({
   );
 }
 
-export function Back({ label, onPress }: { label?: string; onPress: () => void }) {
+/** At least 44, a capsule as tall as its word, the ‹ growing with it; a word wider than its room steps down to fit, never below 15 (sc-37903). */
+export function Back({
+  label,
+  onPress,
+  off = false,
+  testID,
+}: {
+  label?: string;
+  onPress: () => void;
+  off?: boolean | undefined;
+  testID?: string;
+}) {
   const { t } = useTranslation();
+  const { fontScale } = useWindowDimensions();
+  const scale = backScale(fontScale, useContext(TitleCap));
   const place = label ?? t('settings.title');
+  const size = PILL_TEXT * scale;
 
   return (
     <Pressable
       onPress={onPress}
+      disabled={off}
       style={({ pressed }) => [styles.back, pressed && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel={t('frame.backTo', { place })}
+      accessibilityState={{ disabled: off }}
+      testID={testID}
     >
-      <Glyph name="back" size={18} ink={tokens.colorInk} weight={2.4} />
-      <Text size={TYPE.body} weight="semibold" accessible={false}>
+      <Glyph
+        name="back"
+        size={PILL_GLYPH * scale}
+        ink={off ? tokens.colorInkSecondary : tokens.colorInk}
+        weight={2.4}
+      />
+      <Text
+        size={size}
+        weight="semibold"
+        muted={off}
+        allowFontScaling={false}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={backLeast(scale)}
+        accessible={false}
+      >
         {place}
       </Text>
     </Pressable>
@@ -441,13 +483,16 @@ const styles = StyleSheet.create({
   },
   back: {
     alignSelf: 'flex-start',
-    height: tokens.sizeHit,
+    flexShrink: 1,
+    maxWidth: '100%',
+    minHeight: tokens.sizeHit,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: tokens.spaceXxs,
-    paddingLeft: tokens.spaceMd,
-    paddingRight: tokens.spaceXl,
-    borderRadius: tokens.sizeHit / 2,
+    gap: PILL_GAP,
+    paddingVertical: PILL_ABOVE,
+    paddingLeft: PILL_LEFT,
+    paddingRight: PILL_RIGHT,
+    borderRadius: tokens.radiusPill,
     backgroundColor: tokens.colorInset,
   },
   round: {

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
+import { MeasuredWords } from '../../components/Title.tsx';
 import { type WeightName } from '../../theme/fonts.ts';
 import { tokens } from '../../theme/tokens.ts';
 import {
@@ -23,7 +24,7 @@ import {
   headerForm,
   pillTextSize,
   titleOnItsRow,
-} from './focusedHeaderRules.ts';
+} from '../../layout/focusedHeader.ts';
 
 const LINE = 1.22;
 
@@ -37,36 +38,6 @@ export interface NavSide {
 }
 
 type Measured = Readonly<Record<string, number>>;
-
-function Measure({
-  texts,
-  onWidth,
-}: {
-  texts: readonly { key: string; text: string; size: number; weight: WeightName }[];
-  onWidth: (key: string, width: number) => void;
-}) {
-  return (
-    <View
-      style={styles.measure}
-      pointerEvents="none"
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      {texts.map(({ key, text, size, weight }) => (
-        <Text
-          key={key}
-          size={size}
-          weight={weight}
-          allowFontScaling={false}
-          accessible={false}
-          onLayout={(event) => onWidth(key, event.nativeEvent.layout.width)}
-        >
-          {text}
-        </Text>
-      ))}
-    </View>
-  );
-}
 
 function NavButton({
   side,
@@ -129,19 +100,14 @@ export function DemoFocusNav({
   const [measured, setMeasured] = useState<Measured>({});
   const titleWords = title.split(/\s+/u).filter((word) => word !== '');
   const leftWords = left == null ? [] : left.short == null ? [left.word] : [left.word, left.short];
-  const texts = [
-    ...leftWords.map((text) => ({ key: `m|${text}`, text, size, weight: 'medium' as const })),
-    ...(verb == null
-      ? []
-      : [{ key: `s|${verb.word}`, text: verb.word, size, weight: 'semibold' as const }]),
-    ...[...new Set([...titleWords, title])].map((text) => ({
-      key: `b|${text}`,
-      text,
-      size,
-      weight: 'bold' as const,
-    })),
-  ];
-  const known = texts.every(({ key }) => measured[key] != null);
+  const groups = [
+    { kind: 'm', weight: 'medium', texts: leftWords },
+    { kind: 's', weight: 'semibold', texts: verb == null ? [] : [verb.word] },
+    { kind: 'b', weight: 'bold', texts: [...titleWords, title] },
+  ] as const;
+  const known = groups.every(({ kind, texts }) =>
+    texts.every((text) => measured[`${kind}|${text}`] != null),
+  );
   const widthOf = (key: string) => measured[key] ?? 0;
   const words = titleWords.map((word) => widthOf(`b|${word}`));
   const space =
@@ -200,12 +166,19 @@ export function DemoFocusNav({
 
   return (
     <View style={styles.nav} testID={`demo.header.${form}`}>
-      <Measure
-        texts={texts}
-        onWidth={(key, value) => {
-          setMeasured((now) => (now[key] === value ? now : { ...now, [key]: value }));
-        }}
-      />
+      {groups.map(({ kind, weight, texts }) => (
+        <MeasuredWords
+          key={kind}
+          words={texts}
+          size={size}
+          weight={weight}
+          allowFontScaling={false}
+          onWidth={(text, value) => {
+            const key = `${kind}|${text}`;
+            setMeasured((now) => (now[key] === value ? now : { ...now, [key]: value }));
+          }}
+        />
+      ))}
       {form === 'row' && (
         <View style={styles.row}>
           {leftSide}
@@ -256,9 +229,12 @@ export function DemoBack({
 
   return (
     <>
-      <Measure
-        texts={[{ key, text: word, size: full, weight: 'semibold' }]}
-        onWidth={(at, width) => setMeasured({ key: at, width })}
+      <MeasuredWords
+        words={[word]}
+        size={full}
+        weight="semibold"
+        allowFontScaling={false}
+        onWidth={(_, width) => setMeasured({ key, width })}
       />
       <Pressable
         onPress={onPress}
@@ -284,14 +260,6 @@ export function DemoBack({
 }
 
 const styles = StyleSheet.create({
-  measure: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: 10000,
-    alignItems: 'flex-start',
-    opacity: 0,
-  },
   nav: {
     borderBottomWidth: 1,
     borderBottomColor: tokens.colorBorder,
