@@ -1,0 +1,17 @@
+# sc-11032: Settings > Security, Authenticator app (Off), Turn on two-factor, its key shown. Leaves the code for the tester to type. Needs ${METRO_URL}, two-factor off.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'security.authenticator'
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'security.authenticator'
+- extendedWaitUntil:
+    visible:
+      id: 'security.setup.key'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: turn-on-key
