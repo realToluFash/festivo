@@ -39,6 +39,15 @@ function dayWords(day: string, locale: string, options: Intl.DateTimeFormatOptio
   );
 }
 
+/** An event's day, with its year when it is not in the year of `on`, today (sc-30413). */
+function dateWords(day: string, on: string, locale: string): string {
+  return dayWords(
+    day,
+    locale,
+    day.slice(0, 4) === on.slice(0, 4) ? SHORT_DAY : { ...SHORT_DAY, year: 'numeric' },
+  );
+}
+
 function howFar(days: number, t: TFunction): string {
   return days === 1 ? t('today.tomorrow') : t('today.inDays', { count: days });
 }
@@ -100,12 +109,12 @@ function card(one: TodayCard<ListedEvent>, now: Date, reader: Reader, t: TFuncti
   };
 }
 
-function nowOf(now: TodayNow<ListedEvent>, reader: Reader, t: TFunction): Now {
+function nowOf(now: TodayNow<ListedEvent>, on: string, reader: Reader, t: TFunction): Now {
   const { event } = now;
   const place = event.venue?.name ?? event.venue?.address?.formatted ?? null;
   const dayLine = t('today.dayOfCapital', { day: now.dayToday, total: event.dayCount });
   const ends = {
-    date: dayWords(now.lastDay, reader.locale, SHORT_DAY),
+    date: dateWords(now.lastDay, on, reader.locale),
     time: formatEventClock(event.endsAt, event.timeZone, reader.locale),
   };
 
@@ -131,7 +140,7 @@ function nowOf(now: TodayNow<ListedEvent>, reader: Reader, t: TFunction): Now {
   };
 }
 
-function subOf(sub: TodaySub<ListedEvent>, reader: Reader, t: TFunction): string {
+function subOf(sub: TodaySub<ListedEvent>, on: string, reader: Reader, t: TFunction): string {
   switch (sub.kind) {
     case 'first':
       return t('today.firstSub');
@@ -150,7 +159,7 @@ function subOf(sub: TodaySub<ListedEvent>, reader: Reader, t: TFunction): string
           })
         : t('today.startsOnDate', {
             name: sub.event.name,
-            date: dayWords(sub.day, reader.locale, SHORT_DAY),
+            date: dateWords(sub.day, on, reader.locale),
           });
   }
 }
@@ -175,7 +184,7 @@ export function todayMoment(
         ? t(`today.hello.${view.greeting}`)
         : t(`today.helloName.${view.greeting}`, { name }),
     lead: null,
-    sub: subOf(view.sub, reader, t),
+    sub: subOf(view.sub, view.on, reader, t),
     days: view.days.map(({ day, today: isToday, dots }) => ({
       weekday: dayWords(day, reader.locale, { weekday: 'short' }),
       number: dayWords(day, reader.locale, { day: 'numeric' }),
@@ -207,11 +216,11 @@ export function todayMoment(
             event: shownEvent(view.nextUp.event),
             name: view.nextUp.event.name,
             when: t('today.dateAndHowFar', {
-              date: shortDay(view.nextUp.day),
+              date: dateWords(view.nextUp.day, view.on, reader.locale),
               far: howFar(view.nextUp.daysAway, t),
             }),
           },
     events: view.cards.map((one) => card(one, now, reader, t)),
-    now: view.now == null ? null : nowOf(view.now, reader, t),
+    now: view.now == null ? null : nowOf(view.now, view.on, reader, t),
   };
 }
