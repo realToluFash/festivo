@@ -76,6 +76,7 @@ import {
   TextAction,
 } from '../../components/Summary.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
+import { TOP_TITLE, topTitle } from '../topTitle.ts';
 
 const SEARCH_PAUSE_MS = 300;
 const MENU_AFTER_MS = 700;
@@ -437,10 +438,10 @@ function ListTop({
       )}
       <View style={styles.titleRow}>
         <Text
-          size={wide ? 34 : 30}
+          size={TOP_TITLE}
           weight="bold"
           accessibilityRole="header"
-          style={[styles.grow, titled(wide ? 34 : 30)]}
+          style={[styles.grow, topTitle]}
         >
           {W.events}
         </Text>
@@ -523,10 +524,6 @@ function GuestTile({
       </Text>
     </View>
   );
-}
-
-function titled(size: number) {
-  return { lineHeight: size * 1.12, letterSpacing: size * -0.02 };
 }
 
 export function OfflineBand({

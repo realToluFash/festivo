@@ -47,6 +47,7 @@ import { CW } from './CalendarWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
+import { TOP_TITLE, topTitle } from '../topTitle.ts';
 
 /** The demo keeps its own place, so it never moves the real Calendar's. */
 const KEPT = 'soirely.demo.calendar';
@@ -154,11 +155,11 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
   const title = (
     <View style={styles.titleRow}>
       <Text
-        size={phone ? 30 : 34}
+        size={TOP_TITLE}
         weight="bold"
         accessibilityRole="header"
-        maxFontSizeMultiplier={44 / (phone ? 30 : 34)}
-        style={[styles.grow, titled(phone ? 30 : 34)]}
+        maxFontSizeMultiplier={44 / TOP_TITLE}
+        style={[styles.grow, topTitle]}
       >
         {t('calendar.title')}
       </Text>
@@ -176,6 +177,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
           testID="calendarFeed.open"
         />
       )}
+      {shell.layout === 'landscape' && <Bell tell={tell} />}
     </View>
   );
 
@@ -257,10 +259,6 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
       {feedPanel}
     </View>
   );
-}
-
-function titled(size: number) {
-  return { lineHeight: size * 1.12, letterSpacing: size * -0.02 };
 }
 
 const styles = StyleSheet.create({

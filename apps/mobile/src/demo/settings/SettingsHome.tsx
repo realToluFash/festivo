@@ -15,7 +15,7 @@ import { DataTile, useDataNav, useDataOpen } from './DataParts.tsx';
 import { DATA_WORDS } from './DataWords.ts';
 import { demoGroups, managesOrganisation, YOU } from './sample.ts';
 import { type ShellSection, useShell, type Viewer } from '../../components/settingsShell.ts';
-import { Caps, TYPE } from '../../components/SettingsParts.tsx';
+import { Caps } from '../../components/SettingsParts.tsx';
 import {
   ChooseASection,
   PersonCard as ProductPersonCard,
@@ -27,6 +27,7 @@ import {
 } from '../../components/SettingsHome.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { LegalLinks } from '../LegalLinks.tsx';
+import { TOP_TITLE, topTitle } from '../topTitle.ts';
 
 type Listed = Exclude<ShellSection, 'account'>;
 
@@ -223,10 +224,10 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
           </View>
           <View style={styles.titleRow}>
             <Text
-              size={TYPE.titlePhone}
+              size={TOP_TITLE}
               weight="bold"
               accessibilityRole="header"
-              style={[styles.grow, styles.title]}
+              style={[styles.grow, topTitle]}
             >
               {words.title}
             </Text>
@@ -285,10 +286,10 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
         showsVerticalScrollIndicator={false}
       >
         <Text
-          size={TYPE.titlePortrait}
+          size={TOP_TITLE}
           weight="bold"
           accessibilityRole="header"
-          style={[styles.title, styles.portraitTitle]}
+          style={[topTitle, styles.portraitTitle]}
         >
           {words.title}
         </Text>
@@ -321,13 +322,27 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
 /** On its side, the Settings list stays in its column while a section is open beside it. */
 export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
   const shell = useShell();
-  const groups = groupsFor(shell.viewer, useContext(SettingsWordsContext));
+  const words = useContext(SettingsWordsContext);
+  const groups = groupsFor(shell.viewer, words);
 
   return (
     <ScrollView
       contentContainerStyle={settingsHomeStyles.column}
       showsVerticalScrollIndicator={false}
     >
+      <View style={styles.columnTop}>
+        <Text
+          size={TOP_TITLE}
+          weight="bold"
+          accessibilityRole="header"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={[styles.grow, topTitle]}
+        >
+          {words.title}
+        </Text>
+        <Bell tell={shell.tell} />
+      </View>
       <PersonCard size="column" open={shell.open === 'account'} />
       {groups.map(({ heading, sections, data }, index) =>
         sections.length === 0 ? null : (
@@ -356,13 +371,19 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   orgRow: { flexDirection: 'row', alignItems: 'center', marginBottom: tokens.spaceSm },
-  title: { letterSpacing: -0.5 },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXs,
     paddingBottom: 18,
+  },
+  columnTop: {
+    minHeight: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    marginBottom: tokens.spaceLg,
   },
   portraitTitle: { paddingTop: 30, paddingBottom: 22, paddingHorizontal: tokens.spaceHair },
   switched: { marginBottom: tokens.spaceXl },
