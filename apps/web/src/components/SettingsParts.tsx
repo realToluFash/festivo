@@ -1,5 +1,6 @@
 import {
   type ReactNode,
+  type Ref,
   type RefObject,
   useContext,
   useEffect,
@@ -287,8 +288,22 @@ export function RedAction({
   );
 }
 
-export function Note({ children, strong = false }: { children: ReactNode; strong?: boolean }) {
-  return <p className={strong ? 'desk-line is-ink' : 'desk-line'}>{children}</p>;
+export function Note({
+  children,
+  strong = false,
+  ref,
+  tabIndex,
+}: {
+  children: ReactNode;
+  strong?: boolean;
+  ref?: Ref<HTMLParagraphElement>;
+  tabIndex?: number | undefined;
+}) {
+  return (
+    <p ref={ref} tabIndex={tabIndex} className={strong ? 'desk-line is-ink' : 'desk-line'}>
+      {children}
+    </p>
+  );
 }
 
 export function Field({

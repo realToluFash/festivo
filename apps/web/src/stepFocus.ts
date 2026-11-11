@@ -9,16 +9,19 @@ export function focusStep(target: HTMLElement | null): void {
 }
 
 /** Call `arrive()` with the state change a click's answer brings; once it renders, focus lands on the ref. */
-export function useStepFocus<T extends HTMLElement = HTMLHeadingElement>(): [
-  RefObject<T | null>,
-  () => void,
-] {
+export function useStepFocus<T extends HTMLElement = HTMLHeadingElement>({
+  onlyIfLost = false,
+}: { onlyIfLost?: boolean } = {}): [RefObject<T | null>, () => void] {
   const ref = useRef<T>(null);
   const [arrivals, setArrivals] = useState(0);
 
   useLayoutEffect(() => {
-    if (arrivals > 0) focusStep(ref.current);
-  }, [arrivals]);
+    if (arrivals === 0) return;
+    const held = document.activeElement;
+    if (onlyIfLost && held != null && held !== document.body) return;
+
+    focusStep(ref.current);
+  }, [arrivals, onlyIfLost]);
 
   const arrive = useCallback(() => setArrivals((count) => count + 1), []);
 
