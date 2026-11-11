@@ -151,6 +151,17 @@ export function FocusedHeaderScreen({ start }: { start: FocusedHeaderStart }) {
         left={null}
         verb={close('demo.header.close', BUDGET.close)}
       />
+    ) : screen === 'picker' ? (
+      <DemoFocusNav
+        scale={scale}
+        width={navWidth}
+        title={t('orgGeneral.currency')}
+        left={{
+          ...close('demo.header.backLabel', t('orgGeneral.editTitle')),
+          short: t('frame.back'),
+        }}
+        verb={null}
+      />
     ) : (
       <DemoFocusNav
         scale={scale}
@@ -206,6 +217,7 @@ const FIELDS = {
   name: 'account.fullName',
   password: 'passwordCard.current',
   timezone: 'timeZone.find',
+  picker: 'orgGeneral.searchCurrency',
 } as const;
 
 function Choices<Key extends string>({

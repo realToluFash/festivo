@@ -3,7 +3,7 @@ import { tokens } from '../../theme/tokens.ts';
 
 export type HeaderSize = 'phone' | 'default' | 'ninth' | 'twelfth' | 'android';
 export type HeaderLanguage = 'en' | 'fr';
-export type HeaderScreen = 'name' | 'password' | 'timezone' | 'due-now' | 'back';
+export type HeaderScreen = 'name' | 'password' | 'timezone' | 'picker' | 'due-now' | 'back';
 
 /** (a) one row, as main; (b) Cancel and the verb on a row, the title under them; (c) Cancel, the title and the verb each on a row. */
 export type HeaderForm = 'row' | 'under' | 'stacked';
@@ -25,6 +25,7 @@ export const HEADER_SCREENS: readonly { key: HeaderScreen; label: string }[] = [
   { key: 'name', label: 'Name' },
   { key: 'password', label: 'Change password' },
   { key: 'timezone', label: 'Time zone' },
+  { key: 'picker', label: 'Back label' },
   { key: 'due-now', label: 'Due now' },
   { key: 'back', label: 'Back pill' },
 ];
@@ -102,25 +103,30 @@ export interface HeaderMeasures {
   space: number;
 }
 
-/** (a) holds when the title, every word whole at its full size, takes one or two lines between the sides. */
-export function fitsOneRow({ width, left, verb, words, space }: HeaderMeasures): boolean {
+/** (a) holds when the title, every word whole at its full size, takes at most `lines` lines between the sides. */
+export function fitsOneRow(
+  { width, left, verb, words, space }: HeaderMeasures,
+  lines: 1 | 2 = 2,
+): boolean {
   const slot = titleSlot(width, left, verb);
 
-  return Math.max(...words) <= slot && linesFor(words, space, slot) <= 2;
+  return Math.max(...words) <= slot && linesFor(words, space, slot) <= lines;
 }
 
-/** The first form that holds every word whole; `lefts` are Cancel's widths to try in turn, a back label before Back. */
+/** The first form that holds every word whole; `lefts` are Cancel's widths to try in turn, a back label before Back, and only the last may sit beside a two-line title (as main's FocusNav). */
 export function headerForm(measures: Omit<HeaderMeasures, 'left'> & { lefts: readonly number[] }): {
   form: HeaderForm;
   at: number;
 } {
   const { lefts, ...rest } = measures;
-  const fits = lefts.findIndex((left) => fitsOneRow({ ...rest, left }));
+  const last = lefts.length - 1;
+  const fits = lefts.findIndex((left, index) =>
+    fitsOneRow({ ...rest, left }, index === last ? 2 : 1),
+  );
   if (fits >= 0) return { form: 'row', at: fits };
-  const at = lefts.length - 1;
-  const across = (lefts[at] ?? 0) + rest.verb;
+  const across = (lefts[last] ?? 0) + rest.verb;
 
-  return { form: across <= rest.width - 2 * NAV_SIDE ? 'under' : 'stacked', at };
+  return { form: across <= rest.width - 2 * NAV_SIDE ? 'under' : 'stacked', at: last };
 }
 
 /** The title on its own row: its full size unless its widest word is wider than the row, never below 17 (sc-13496). */

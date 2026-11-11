@@ -95,6 +95,14 @@ describe('the header takes the first form that holds every word whole', () => {
     ).toEqual({ form: 'row', at: 1 });
   });
 
+  it('shortens a back label to Back before the title takes a second line, as main', () => {
+    const lefts = [backWidth(159, 1), backWidth(38.7, 1)];
+
+    expect(
+      headerForm({ width: 402, lefts, verb: 0, words: at(1, 60, 60, 60), space: 3.2 }),
+    ).toEqual({ form: 'row', at: 1 });
+  });
+
   it('keeps a back label whole at the default size while the title fits beside it', () => {
     const lefts = [backWidth(159, 1), backWidth(38.7, 1)];
 
