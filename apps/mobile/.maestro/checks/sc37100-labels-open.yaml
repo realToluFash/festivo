@@ -1,0 +1,22 @@
+# sc-37100: leaves Events' Filter menu open on When, so the screen-reader labels of its rows and its back control can be read.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter'
+    timeout: 30000
+- tapOn:
+    id: 'events.filter'
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter.when'
+    timeout: 10000
+- takeScreenshot: top
+- tapOn:
+    id: 'events.filter.when'
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter.back'
+    timeout: 10000
+- takeScreenshot: when
