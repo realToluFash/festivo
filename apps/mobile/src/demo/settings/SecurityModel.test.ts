@@ -60,7 +60,7 @@ describe('two-factor not loaded', () => {
 
 describe('a state link', () => {
   it('opens the state it names, and the page at rest for anything else', () => {
-    expect(SECURITY_STATES).toHaveLength(20);
+    expect(SECURITY_STATES).toHaveLength(21);
     expect(securityStateOf('forgotSent')).toBe('forgotSent');
     expect(securityStateOf('nonsense')).toBe('rest');
     expect(securityStateOf(undefined)).toBe('rest');
@@ -88,6 +88,12 @@ describe('a state link', () => {
     });
     expect(securityStart('recovery')).toMatchObject({ twoFactor: true, codesLeft: 10 });
     expect(securityStart('setup')).toMatchObject({ twoFactor: false, screen: 'setup' });
+    expect(securityStart('setup')).toMatchObject({ takesLinks: true });
+    expect(securityStart('setupNoAuthenticator')).toMatchObject({
+      twoFactor: false,
+      screen: 'setup',
+      takesLinks: false,
+    });
     expect(securityStart('signOutDevice')).toMatchObject({ opened: 'safari', ask: 'signOut' });
   });
 });

@@ -484,6 +484,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/security?state=setup',
       },
       {
+        title: 'Security · set up, no authenticator',
+        what: 'No app takes otpauth:// links, so no Add button',
+        href: '/demo/settings/security?state=setupNoAuthenticator',
+      },
+      {
         title: 'Security · recovery codes',
         what: 'Saved once; Finish waits for the box',
         href: '/demo/settings/security?state=recovery',

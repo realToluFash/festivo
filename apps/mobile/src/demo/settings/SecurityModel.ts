@@ -33,6 +33,7 @@ export const SECURITY_STATES = [
   'linkPick',
   'unlink',
   'setup',
+  'setupNoAuthenticator',
   'recovery',
   'newCodes',
   'turnOff',
@@ -81,6 +82,8 @@ export interface SecurityStart {
   factor: Factor;
   finished: Finished | null;
   signedOut: readonly string[];
+  /** Some app on the device opens otpauth:// links, so the setup step offers Add to my authenticator app. */
+  takesLinks: boolean;
 }
 
 const ORG = SAMPLE.organisation;
@@ -197,7 +200,7 @@ export function securityStart(state: SecurityState): SecurityStart {
   const picking = state === 'linkPick';
   const start: SecurityStart = {
     ways: { password: !googleOnly, google: !picking, apple: false },
-    twoFactor: !googleOnly && state !== 'setup',
+    twoFactor: !googleOnly && state !== 'setup' && state !== 'setupNoAuthenticator',
     codesLeft: state === 'recovery' ? RECOVERY_CODES.length : RECOVERY_LEFT,
     rules: {
       providerOnly: state === 'keptByRule' || picking ? ORG : null,
@@ -209,6 +212,7 @@ export function securityStart(state: SecurityState): SecurityStart {
     screen: null,
     proof: null,
     factor: 'ready',
+    takesLinks: true,
     finished: null,
     signedOut: [],
   };
@@ -229,6 +233,8 @@ export function securityStart(state: SecurityState): SecurityStart {
       return { ...start, opened: 'google', ask: 'unlink' };
     case 'setup':
       return { ...start, screen: 'setup' };
+    case 'setupNoAuthenticator':
+      return { ...start, screen: 'setup', takesLinks: false };
     case 'recovery':
       return { ...start, screen: 'recovery' };
     case 'newCodes':

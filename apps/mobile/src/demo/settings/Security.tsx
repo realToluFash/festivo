@@ -18,7 +18,7 @@ import {
   type ChangeStage,
   SetPasswordScreen,
 } from '../../components/SecurityPassword.tsx';
-import { QR_SIDE, TwoFactorScreen, TwoFactorSection } from '../../components/SecurityTwoFactor.tsx';
+import { QR_SIDE, TwoFactorSection } from '../../components/SecurityTwoFactor.tsx';
 import { WaysSection } from '../../components/SecurityWays.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import {
@@ -72,6 +72,7 @@ import {
   qrPath,
   RECOVERY_CODES,
 } from './SecuritySample.ts';
+import { DemoTwoFactorScreen } from './SecurityAddToApp.tsx';
 import { AloneLine } from '../../components/SecurityAlone.tsx';
 import { SummaryPage } from './SummaryPage.tsx';
 
@@ -514,12 +515,13 @@ function SecurityPage({ start }: { start: SecurityStart }) {
         onContinue={(password, code) => sampleContinue(asks, proven)(password, code)}
         testID="security.confirm"
       />
-      <TwoFactorScreen
+      <DemoTwoFactorScreen
         key={`twoFactor.${visit}`}
         open={screen === 'setup' || screen === 'recovery'}
         enrolment={enrolment}
         startCodes={screen === 'recovery' ? RECOVERY_CODES : null}
         phone={shell.layout === 'phone'}
+        takesLinks={start.takesLinks}
         opener={opener}
         onClose={() => setScreen(null)}
         onTurnOn={(code) => {
