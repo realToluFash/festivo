@@ -22,7 +22,7 @@ appId: host.exp.Exponent
       - tapOn: { id: 'lostTwoFactor.phoneCode' }
       - inputText: ${output.code}
 - takeScreenshot: ${P}-codes-typed
-- hideKeyboard
+- runFlow: ../sc29072-close-codes-pad.yaml
 - tapOn: { id: 'lostTwoFactor.ask' }
 - extendedWaitUntil: { visible: { id: 'lostTwoFactor.cancel' }, timeout: 30000 }
 - waitForAnimationToEnd
