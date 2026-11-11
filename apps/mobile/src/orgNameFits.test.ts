@@ -24,6 +24,7 @@ beforeAll(async () => {
 const FRAME = readFileSync(join(import.meta.dirname, 'components', 'AppFrame.tsx'), 'utf8');
 const PILL = readFileSync(join(import.meta.dirname, 'components', 'OrgPill.tsx'), 'utf8');
 const COVER = readFileSync(join(import.meta.dirname, 'components', 'TodayCover.tsx'), 'utf8');
+const DEMO_FRAME = readFileSync(join(import.meta.dirname, 'demo', 'settings', 'Frame.tsx'), 'utf8');
 const SPACED = 'Adeyemi Okafor Events '.repeat(5).slice(0, 99).concat('X');
 const WORD = 'A'.repeat(100);
 
@@ -38,6 +39,13 @@ describe('a 100-character organisation name in the frame (sc-486)', () => {
     expect(COVER).toMatch(/usePillFit\(org\.name, org\.waiting, maxWidth, large\)/u);
     expect(COVER).toMatch(/const wrap = phone \|\| large;/u);
     expect(COVER).not.toMatch(/<OpenerWords[^>]*\swrap\s/u);
+  });
+
+  it("keeps the demo's upright pill to the room beside the tabs, as the product's (sc-39471)", () => {
+    expect(DEMO_FRAME).toMatch(/usePillFit\(org\.name, org\.waiting, room, false\)/u);
+    expect(DEMO_FRAME).toMatch(
+      /renderPill=\{\(room, givesWay\) => <OrgPill room=\{room\} givesWay=\{givesWay\} \/>\}/u,
+    );
   });
 
   it.each([
