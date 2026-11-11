@@ -97,6 +97,8 @@ export interface SecurityStart {
   typed: string;
   /** Add to my authenticator app was pressed before the step was seen again. */
   handed: boolean;
+  /** Turn on was pressed with what the field holds, and the code was refused. */
+  refused: boolean;
 }
 
 const ORG = SAMPLE.organisation;
@@ -241,6 +243,7 @@ export function securityStart(state: SecurityState): SecurityStart {
     fetched: SETUP_STATES.has(state) ? 1 : 0,
     typed: '',
     handed: false,
+    refused: false,
     finished: null,
     signedOut: [],
   };
@@ -272,7 +275,7 @@ export function securityStart(state: SecurityState): SecurityStart {
     case 'setupBack':
       return { ...start, screen: 'setup', typed: '305', handed: true };
     case 'setupOldEntry':
-      return { ...start, screen: 'setup', fetched: 2, typed: OLD_ENTRY_CODE };
+      return { ...start, screen: 'setup', fetched: 2, typed: OLD_ENTRY_CODE, refused: true };
     case 'recovery':
       return { ...start, screen: 'recovery' };
     case 'newCodes':

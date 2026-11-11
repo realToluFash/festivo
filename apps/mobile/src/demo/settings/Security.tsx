@@ -550,7 +550,7 @@ function SecurityPage({ start }: { start: SecurityStart }) {
         {...(visit === 0
           ? {
               startTyped: start.typed,
-              startError: start.typed === '' ? null : setupRefusal(start.typed),
+              startError: start.refused ? setupRefusal(start.typed) : null,
               startHanded: start.handed,
             }
           : {})}

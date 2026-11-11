@@ -120,8 +120,13 @@ describe('a state link', () => {
       fetched: 1,
       typed: '305',
       handed: true,
+      refused: false,
     });
-    expect(securityStart('setupOldEntry')).toMatchObject({ screen: 'setup', fetched: 2 });
+    expect(securityStart('setupOldEntry')).toMatchObject({
+      screen: 'setup',
+      fetched: 2,
+      refused: true,
+    });
     expect(setupRefusal(securityStart('setupOldEntry').typed)).not.toBeNull();
     expect(securityStart('rest')).toMatchObject({ fetched: 0, typed: '', handed: false });
     expect(securityStart('signOutDevice')).toMatchObject({ opened: 'safari', ask: 'signOut' });
