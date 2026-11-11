@@ -7,7 +7,7 @@ appId: host.exp.Exponent
     optional: true
 - extendedWaitUntil:
     visible:
-      id: 'tab-today'
+      id: 'tab-today|home.openSettings'
     timeout: 15000
 - waitForAnimationToEnd:
     timeout: 5000
