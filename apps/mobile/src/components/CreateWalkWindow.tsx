@@ -42,9 +42,12 @@ import {
   type WalkAnswer,
   answered,
   back,
+  firstTurn,
   footPlace,
   forward,
   picked,
+  turnEnded,
+  turnTo,
   typed,
 } from '../kit/createWalk.ts';
 import { Bars, NavAction, Progress, WalkButton } from './CreateWalkParts.tsx';
@@ -125,10 +128,14 @@ export function CreateWalkWindow<Made>({
   const locale = dateLocale();
   const language = currentLocale();
   const naming = useMemo<Naming>(() => ({ locale: language, currencies }), [language, currencies]);
-  const [walk, setWalk] = useState(opening.walk);
-  const [leaving, setLeaving] = useState<Walk | null>(null);
-  const [dir, setDir] = useState<1 | -1>(1);
+  const [turning, setTurning] = useState(() => firstTurn(opening.walk));
+  const { walk, turn, leaving, dir } = turning;
+  const setWalk = (change: (now: Walk) => Walk) =>
+    setTurning((now) => ({ ...now, walk: change(now.walk) }));
   const [move] = useState(() => new Animated.Value(1));
+  // 'waiting' from a turn until its step has laid out; then the turn whose glide may settle it.
+  const playing = useRef<'waiting' | number | null>(null);
+  const settling = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [answer, setAnswer] = useState<object | undefined>(undefined);
   const [scrolled, setScrolled] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -194,25 +201,53 @@ export function CreateWalkWindow<Made>({
     return () => clearTimeout(wait);
   }, [shown, opening]);
 
-  useEffect(() => () => clearTimeout(focusing.current ?? undefined), []);
+  useEffect(
+    () => () => {
+      clearTimeout(focusing.current ?? undefined);
+      clearTimeout(settling.current ?? undefined);
+    },
+    [],
+  );
 
+  const turnMs = phone ? 240 : tokens.motionBase;
+  const settle = () => {
+    clearTimeout(settling.current ?? undefined);
+    playing.current = null;
+    move.setValue(1);
+    setTurning((now) => turnEnded(now, now.turn));
+  };
   const goTo = (next: Walk) => {
-    const ahead = next.step > walk.step ? 1 : -1;
+    if (next.step === walk.step) {
+      setWalk(() => next);
+      return;
+    }
     Keyboard.dismiss();
     if (!phone && !reduced)
       LayoutAnimation.configureNext({
         duration: tokens.motionBase,
         update: { type: 'easeInEaseOut' },
       });
-    setLeaving(walk);
-    setDir(ahead);
+    setTurning((now) => turnTo(now, next));
     setScrolled(false);
     setSearchFocused(false);
-    setWalk(next);
+    playing.current = 'waiting';
     move.setValue(0);
-    glide(move, 1, phone ? 240 : tokens.motionBase).start(() => setLeaving(null));
+    // Android can lose a native glide's end, which kept the step it left on screen (qa3, #39178).
+    clearTimeout(settling.current ?? undefined);
+    settling.current = setTimeout(settle, turnMs + SETTLED_MS);
     clearTimeout(focusing.current ?? undefined);
     focusing.current = setTimeout(() => moveScreenReaderFocus(question.current), SETTLED_MS);
+  };
+  // A glide started before the arriving step's views exist is lost, so it starts once they are laid out (sc-23267).
+  const play = (forTurn: number) => {
+    if (playing.current !== 'waiting') return;
+    playing.current = forTurn;
+    requestAnimationFrame(() => {
+      if (playing.current !== forTurn) return;
+      glide(move, 1, turnMs).start(() => {
+        if (playing.current === forTurn) settle();
+      });
+    });
   };
   useEffect(() => {
     if (!creating) return;
@@ -225,9 +260,7 @@ export function CreateWalkWindow<Made>({
         return;
       }
       if (!live) return;
-      const next = answered(walk, answer);
-      if (next.step === walk.step) setWalk(next);
-      else goTo(next);
+      goTo(answered(walk, answer));
     });
 
     return () => {
@@ -238,7 +271,7 @@ export function CreateWalkWindow<Made>({
   }, [creating]);
   const cancel = () => {
     if (creating) return;
-    if (newOrganisationEntered(walk)) setWalk({ ...walk, asking: true });
+    if (newOrganisationEntered(walk)) setWalk((now) => ({ ...now, asking: true }));
     else onCancel();
   };
   const keep = () => setWalk((now) => ({ ...now, asking: false }));
@@ -258,7 +291,7 @@ export function CreateWalkWindow<Made>({
   const onPrimary = () => {
     if (creating) return;
     if (walk.step === 3) {
-      setWalk({ ...walk, sent: 'creating' });
+      setWalk((now) => ({ ...now, sent: 'creating' }));
       return;
     }
     const next = forward(walk, t);
@@ -266,7 +299,7 @@ export function CreateWalkWindow<Made>({
       goTo(next);
       return;
     }
-    setWalk(next);
+    setWalk(() => next);
     setAnswer({});
     if (walk.step === 1) focusChecked(field);
     else focusRefused(search);
@@ -358,7 +391,8 @@ export function CreateWalkWindow<Made>({
 
       return (
         <Animated.View
-          key={shownWalk.step}
+          key={live ? turn : turn - 1}
+          onLayout={live ? () => play(turn) : undefined}
           style={
             live
               ? [styles.step, { opacity: move, transform: [{ translateX: slide(dir * shift, 0) }] }]
