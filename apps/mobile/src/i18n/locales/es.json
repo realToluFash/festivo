@@ -1315,12 +1315,12 @@
       "removedLine": "Sus eventos se quedan en {{organisation}}. Aparece en Antiguos, con todo lo que hizo.",
       "people_many": "{{count, number}} de personas",
       "waiting_many": "{{count, number}} en espera",
-      "toGetBackIn_one": "{{count, number}} to get back in",
-      "toGetBackIn_other": "{{count, number}} to get back in",
-      "toGetBackIn_many": "{{count, number}} to get back in",
-      "toJoin_one": "{{count, number}} to join",
-      "toJoin_other": "{{count, number}} to join",
-      "toJoin_many": "{{count, number}} to join",
+      "toGetBackIn_one": "{{count, number}} pide volver a entrar",
+      "toGetBackIn_other": "{{count, number}} piden volver a entrar",
+      "toGetBackIn_many": "{{count, number}} piden volver a entrar",
+      "toJoin_one": "{{count, number}} pide unirse",
+      "toJoin_other": "{{count, number}} piden unirse",
+      "toJoin_many": "{{count, number}} piden unirse",
       "waitingKinds": "{{back}} · {{join}}"
     },
     "waitingTitle": "En espera",
@@ -2339,7 +2339,7 @@
     "turnedDownNext": "La verificación en dos pasos sigue activada, y se le ha enviado un correo.",
     "closed": "Esta solicitud ya se ha respondido o ha terminado.",
     "failed": "No ha funcionado. Vuelva a intentarlo en un momento.",
-    "close": "Close",
-    "sending": "Sending your answer…"
+    "close": "Cerrar",
+    "sending": "Enviando la respuesta…"
   }
 }

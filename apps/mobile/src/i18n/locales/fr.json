@@ -1315,12 +1315,12 @@
       "removedLine": "Ses événements restent rattachés à {{organisation}}. Cette personne figure dans Anciens, avec tout ce qu’elle a fait.",
       "people_many": "{{count, number}} de personnes",
       "waiting_many": "{{count, number}} en attente",
-      "toGetBackIn_one": "{{count, number}} to get back in",
-      "toGetBackIn_other": "{{count, number}} to get back in",
-      "toGetBackIn_many": "{{count, number}} to get back in",
-      "toJoin_one": "{{count, number}} to join",
-      "toJoin_other": "{{count, number}} to join",
-      "toJoin_many": "{{count, number}} to join",
+      "toGetBackIn_one": "{{count, number}} demande à revenir",
+      "toGetBackIn_other": "{{count, number}} demandent à revenir",
+      "toGetBackIn_many": "{{count, number}} demandent à revenir",
+      "toJoin_one": "{{count, number}} demande à rejoindre",
+      "toJoin_other": "{{count, number}} demandent à rejoindre",
+      "toJoin_many": "{{count, number}} demandent à rejoindre",
       "waitingKinds": "{{back}} · {{join}}"
     },
     "waitingTitle": "En attente",
@@ -2339,7 +2339,7 @@
     "turnedDownNext": "La double authentification reste activée, et cette personne a été prévenue par e-mail.",
     "closed": "Cette demande a déjà reçu une réponse, ou elle a pris fin.",
     "failed": "Cela n’a pas fonctionné. Réessayez dans un instant.",
-    "close": "Close",
-    "sending": "Sending your answer…"
+    "close": "Fermer",
+    "sending": "Envoi de votre réponse…"
   }
 }
