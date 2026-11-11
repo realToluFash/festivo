@@ -1,7 +1,8 @@
 import { type EventPhase, numberFormat } from '@soirely/domain';
+import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { type ListEvent, dayTiles, shownEvent } from './eventsList.ts';
+import { type ListEvent, cardStep, dayTiles, shownEvent } from './eventsList.ts';
 
 const DAY = 86_400_000;
 
@@ -109,5 +110,25 @@ describe('dayTiles', () => {
 
   it('draws no tiles once it is over', () => {
     expect(dayTiles(lasting(10, 'finished'), before, 'en-GB')).toEqual([]);
+  });
+});
+
+describe('cardStep', () => {
+  const withDate = ((key: string, values?: { date?: string }) =>
+    values?.date ?? key) as unknown as TFunction;
+  const nextUpAt = (at: string) => ({
+    ...lasting(547, 'happening_now'),
+    milestones: [
+      { at, title: 'ends', note: null, owner: 'event' as const, area: 'event', action: null },
+    ],
+  });
+
+  it("writes next up's day with its year only when it is not this year", () => {
+    expect(
+      cardStep(nextUpAt('2028-04-29T17:00:00+02:00'), before, 'en-GB', withDate),
+    ).toMatchObject({ kind: 'next', line: 'Sat, 29 Apr 2028, 17:00' });
+    expect(
+      cardStep(nextUpAt('2026-11-20T17:00:00+01:00'), before, 'en-GB', withDate),
+    ).toMatchObject({ kind: 'next', line: 'Fri 20 Nov, 17:00' });
   });
 });

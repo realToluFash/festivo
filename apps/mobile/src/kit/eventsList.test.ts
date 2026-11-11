@@ -81,6 +81,30 @@ describe('cardStep', () => {
     });
   });
 
+  it("writes next up's day with its year only when it is not this year", () => {
+    const withDate = ((key: string, values?: { date?: string }) =>
+      values?.date ?? key) as unknown as TFunction;
+    const nextUpAt = (at: string) =>
+      shownEvent(
+        {
+          ...listEventOf(EVENT),
+          milestones: [
+            { at, title: 'ends', note: null, owner: 'event' as const, area: 'event', action: null },
+          ],
+        },
+        'live',
+      );
+
+    expect(cardStep(nextUpAt('2028-04-29T17:00:00+02:00'), NOW, 'en-GB', withDate)).toMatchObject({
+      kind: 'next',
+      when: 'Sat, 29 Apr 2028, 17:00',
+    });
+    expect(cardStep(nextUpAt('2026-11-13T17:00:00+01:00'), NOW, 'en-GB', withDate)).toMatchObject({
+      kind: 'next',
+      when: 'Fri 13 Nov, 17:00',
+    });
+  });
+
   it('does not wait on milestones where the phase alone decides the step', () => {
     expect(cardStep(unread('draft'), NOW, 'en', t)).toMatchObject({ action: 'makeLive' });
     expect(cardStep(unread('paused'), NOW, 'en', t)).toMatchObject({ action: 'resume' });

@@ -152,7 +152,7 @@ export function EventsList({
   }, [typed, searched]);
 
   useEffect(() => {
-    if (state !== 'filterOpen') return;
+    if (state !== 'filterOpen' && state !== 'manyFiltersOpen') return;
     const wait = setTimeout(() => anchorUnder(filterRef, setMenuAt), MENU_AFTER_MS);
 
     return () => clearTimeout(wait);

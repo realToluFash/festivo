@@ -1195,7 +1195,6 @@
     "roleScreenTitle": "{{first}}'s role",
     "save": "Save",
     "now": "Now",
-    "ownerAsks": "Asks for your password and a code.",
     "takesEffect": "Takes effect on their next request. Nobody is signed out.",
     "roleBecomes": "{{name}} becomes {{role}} on their next request. Nobody is signed out.",
     "roleNow": "{{name}} is now {{role}}. Takes effect on their next request. Nobody is signed out.",

@@ -1342,7 +1342,6 @@
     "roleScreenTitle": "Rol de {{first}}",
     "save": "Guardar",
     "now": "Actual",
-    "ownerAsks": "Le pediremos su contraseña y un código.",
     "takesEffect": "Se aplica en cuanto vuelva a usar Soirely. No se cierra la sesión de nadie.",
     "roleBecomes": "{{name}} tendrá el rol {{role}} en cuanto vuelva a usar Soirely. No se cierra la sesión de nadie.",
     "roleNow": "{{name}} ya tiene el rol {{role}}. Se aplica en cuanto vuelva a usar Soirely. No se cierra la sesión de nadie.",

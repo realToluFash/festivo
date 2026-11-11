@@ -265,16 +265,17 @@ describe('Today at a desk (sc-30413)', () => {
     expect(router.state.location.pathname).toBe('/app/calendar');
   });
 
-  it('keeps the count it had for a role that cannot read events', async () => {
+  it('shows Today to a Member who reads events only as each one is shared', async () => {
     signedIn(
       membership({
         id: 'org_1',
         permissions: OWNER_PERMISSIONS.filter((permission) => !permission.startsWith('events.')),
       }),
     );
-    serving([]);
+    serving([event('Ireti at 40')]);
     open();
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Dashboard' })).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'All events' })).toBeDefined();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Dashboard' })).toBeNull();
   });
 });

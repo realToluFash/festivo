@@ -1342,7 +1342,6 @@
     "roleScreenTitle": "Função de {{first}}",
     "save": "Guardar",
     "now": "Atual",
-    "ownerAsks": "Pedimos a sua palavra-passe e um código.",
     "takesEffect": "Aplica-se assim que esta pessoa voltar a usar a Soirely. Nenhuma sessão é encerrada.",
     "roleBecomes": "{{name}} passa a ter a função {{role}} assim que voltar a usar a Soirely. Nenhuma sessão é encerrada.",
     "roleNow": "{{name}} tem agora a função {{role}}. Aplica-se assim que voltar a usar a Soirely. Nenhuma sessão é encerrada.",
