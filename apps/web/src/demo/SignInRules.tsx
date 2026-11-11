@@ -2,6 +2,7 @@ import { DemoBell } from './DemoBell.tsx';
 import { formattingLocale } from '@soirely/domain';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useLater } from '../useLater.ts';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { RuleMark, RulesBones } from '../components/SignInRulesParts.tsx';
@@ -28,6 +29,7 @@ import {
   EDIT_TITLES,
   EMAIL_NOTE,
   type Edit,
+  SAVE_FAILED,
   LIMIT_INTRO,
   MARK_WORD,
   REFUSALS,
@@ -52,6 +54,7 @@ import {
 import type { Tell } from '../components/SettingsParts.tsx';
 
 const RETRY_MS = 1200;
+const SEND_MS = 900;
 
 function wallClock(at: Date): string {
   const two = (value: number) => String(value).padStart(2, '0');
@@ -76,6 +79,7 @@ export function SignInRules({
   const [load, setLoad] = useState<Load | 'retrying'>(start.load);
   const [page, setPage] = useState(start.page);
   const [edit, setEdit] = useState<Edit | null>(start.edit);
+  const later = useLater();
   const thisYear = Number(now.slice(0, 4));
 
   useEffect(() => {
@@ -103,6 +107,11 @@ export function SignInRules({
     if (step != null) void navigate(heldStepPath(step, viewer));
   };
   const save = (next: Edit) => {
+    if (next.saving === true) return;
+    setEdit({ ...next, saving: true, failed: false });
+    later(SEND_MS, () => saved(next));
+  };
+  const saved = (next: Edit) => {
     const after = { ...page, ...applied(next.key, next.picked, page) };
     const moved = changesBetween(page, after, wallClock(new Date()), viewer.name);
 
@@ -179,7 +188,10 @@ function RuleWords({ rule }: { rule: RuleRow }) {
     <>
       <RuleMark mark={rule.mark} />
       <span className="desk-unseen">{MARK_WORD[rule.mark]} </span>
-      <RowWords title={rule.title} lines={[rule.line]} />
+      <RowWords
+        title={rule.title}
+        lines={rule.more == null ? [rule.line] : [rule.line, rule.more]}
+      />
     </>
   );
 }
@@ -237,10 +249,15 @@ function EditDialog({
     <>
       <Dialog
         title={EDIT_TITLES[edit.key]}
-        verb="Save"
+        verb={edit.saving === true ? 'Saving…' : 'Save'}
         on={changed && refusal == null}
+        locked={edit.saving === true}
         first={none}
-        onDismiss={() => (changed ? onEdit({ ...edit, ask: true }) : onClose())}
+        onDismiss={() => {
+          if (edit.saving === true) return;
+          if (changed) onEdit({ ...edit, ask: true });
+          else onClose();
+        }}
         onConfirm={() => onSave(edit)}
       >
         {edit.key === 'limit' && <Note>{LIMIT_INTRO}</Note>}
@@ -249,9 +266,16 @@ function EditDialog({
           hideLegend
           choices={choicesOf(edit.key, page)}
           picked={edit.picked}
-          onPick={(picked) => onEdit({ ...edit, picked })}
+          onPick={(picked) => onEdit({ ...edit, picked, failed: false })}
         />
-        {refused == null ? (
+        {refused == null && edit.failed === true ? (
+          <div className="signin-refusal" role="alert">
+            <Glyph name="alert" size={20} weight={2.2} />
+            <div className="desk-after">
+              <p className="desk-line">{SAVE_FAILED}</p>
+            </div>
+          </div>
+        ) : refused == null ? (
           <div className="desk-after">
             <Head title="What happens when you save" level={3} />
             {effectsOf(page, applied(edit.key, edit.picked, page), page.passwordOnly).map(

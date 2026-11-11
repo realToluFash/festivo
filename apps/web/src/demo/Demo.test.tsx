@@ -1801,6 +1801,9 @@ describe('Settings at a desk (sc-29708)', () => {
 
     expect(screen.queryByRole('heading', { level: 1, name: 'Members' })).toBeNull();
     expect(screen.queryByText('7 people')).toBeNull();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'You do not have access to this' }),
+    ).toBeDefined();
   });
 
   it('offers an admin Admin and Member, and says only an owner makes an owner', async () => {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useTranslation } from 'react-i18next';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { Toast } from '../components/Toast.tsx';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
@@ -31,7 +32,8 @@ import { Security } from './Security.tsx';
 import { SignInRules } from './SignInRules.tsx';
 import { StorefrontGlyph, Vendors } from './Vendors.tsx';
 import { vendorsViewerKey } from './vendors.ts';
-import type { Tell } from '../components/SettingsParts.tsx';
+import { TextAction, TitleRow, type Tell } from '../components/SettingsParts.tsx';
+import { DemoBell } from './DemoBell.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { usePaused, useSwitcherStart } from './switcher.ts';
 import './today.css';
@@ -163,6 +165,8 @@ export function Settings({
                   state={state}
                   tell={tell}
                 />
+              ) : open === 'members' ? (
+                <MembersForbidden tell={tell} />
               ) : (
                 <div className="desk-page" />
               )}
@@ -173,6 +177,22 @@ export function Settings({
         {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
       </div>
     </LayersContext>
+  );
+}
+
+/** Members for a role without members.read, as the product refuses it: why as the page's heading, and the way back. */
+function MembersForbidden({ tell }: { tell: Tell }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  return (
+    <div className="desk-page">
+      <div className="desk-column" role="alert">
+        <TitleRow title={t('forbidden.title')} bell={<DemoBell tell={tell} />} />
+        <p className="desk-line">{t('forbidden.body')}</p>
+        <TextAction label={t('forbidden.back')} onClick={() => void navigate('/demo/today')} />
+      </div>
+    </div>
   );
 }
 

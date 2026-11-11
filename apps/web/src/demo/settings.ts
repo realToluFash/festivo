@@ -179,7 +179,7 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
     states: [
       { to: settingsPath('members', VIEWERS.folake), name: 'Owner, Members open' },
       { to: settingsPath('members', VIEWERS.julien), name: 'Admin, Members open' },
-      { to: settingsPath('members', VIEWERS.ana), name: 'Member, no Members' },
+      { to: settingsPath('members', VIEWERS.ana), name: 'Member, Members refused (Forbidden)' },
     ],
   },
   {
