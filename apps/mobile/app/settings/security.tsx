@@ -5,13 +5,14 @@ import { useTranslation } from 'react-i18next';
 import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
+import { SETTINGS_PAGE } from '../../src/components/listFrame.ts';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SecurityPage } from '../../src/components/SecurityPage.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { Text, type TextHandle } from '../../src/components/Text.tsx';
 import { moveScreenReaderFocus } from '../../src/components/screenReaderFocus.ts';
 import { useOffline } from '../../src/offline.ts';
-import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
+import { settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import {
   endedHere,
   reloadSignedIn,
@@ -19,7 +20,6 @@ import {
   signOutHere,
   useSignedIn,
 } from '../../src/signedIn.ts';
-import { tokens } from '../../src/theme/tokens.ts';
 import { PANE_TITLE, paneTitle } from '../../src/components/topTitle.ts';
 
 /** Settings > Security in the app, summary first: the card, the ways in, two-factor and the devices (sc-30411). */
@@ -53,7 +53,7 @@ export default function Security() {
       back={alone ? backToSettings(t('settings.title')) : undefined}
     >
       <SettingsSplit open="security">
-        <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
+        <Screen edges={bodyEdges(kind)} contentStyle={SETTINGS_PAGE[kind]}>
           {alone && <FrameTop />}
           {!alone && (
             <View style={besideRow.row}>
@@ -94,29 +94,5 @@ export default function Security() {
 
 const styles = StyleSheet.create({
   shrink: { flexShrink: 1, minWidth: 0 },
-  phone: {
-    gap: tokens.spaceLg,
-    paddingTop: tokens.spaceXxs,
-    paddingHorizontal: tokens.spaceXxl,
-    paddingBottom: tokens.space6xl * 2,
-  },
-  portrait: {
-    gap: tokens.spaceXl,
-    paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.space5xl,
-    paddingBottom: tokens.space6xl,
-  },
-  landscape: {
-    gap: tokens.spaceXxl,
-    paddingTop: 26,
-    paddingHorizontal: 30,
-    paddingBottom: tokens.space6xl,
-  },
   blocks: { gap: 18 },
 });
-
-const CONTENT: Record<LayoutKind, object> = {
-  phone: styles.phone,
-  tabletPortrait: styles.portrait,
-  tabletLandscape: styles.landscape,
-};
