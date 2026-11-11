@@ -489,7 +489,6 @@ export const OFFLINE_ACTION =
 export const OFFLINE_ADD = 'Needs a connection to add a request. Nothing is kept to send later.';
 export const DECLINE_BLANK = 'Say why it can’t be done';
 
-/** The course in service: the last one fired, by the menu's own name. */
 export function servingName(courses: readonly Course[]): string | null {
   return courses.filter((c) => c.fired).at(-1)?.name ?? null;
 }
@@ -593,7 +592,6 @@ export interface Demo {
   say: string;
 }
 
-/** A Done the API refused stays off the card; Decline is still there. */
 export function offered(r: GuestRequest, d: Demo): Action[] {
   return actions(r, d.viewer).filter((a) => !(a === 'done' && d.noDone.includes(r.id)));
 }
