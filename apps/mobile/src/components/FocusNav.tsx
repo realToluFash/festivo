@@ -221,10 +221,11 @@ export function FocusNav({
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
       testID={`focus.header.${form}`}
     >
+      {/* Only words not yet measured: Android puts a hidden text's words in its window's events, and TalkBack named a new screen "Turn" by one (sc-11032). */}
       {groups.map(({ kind, weight, texts }) => (
         <MeasuredWords
           key={kind}
-          words={texts}
+          words={texts.filter((text) => measured[`${kind}|${size}|${text}`] == null)}
           size={size}
           weight={weight}
           allowFontScaling={false}
