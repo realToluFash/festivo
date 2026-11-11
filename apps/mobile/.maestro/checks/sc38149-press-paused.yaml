@@ -1,0 +1,36 @@
+# Opens the invitation ${INVITE}, pauses the API through ${HELPER_URL}, presses ${ANSWER} and screenshots it sending. sc-38149.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: 'switcher.tile.${INVITE}'
+    timeout: 15000
+- tapOn:
+    id: 'switcher.tile.${INVITE}'
+- scrollUntilVisible:
+    element:
+      id: 'switcher.invitation.${INVITE}.decline'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- evalScript: "${output.p = http.get(HELPER_URL + '/api?to=paused').body}"
+- takeScreenshot: ${ANSWER}-before
+- tapOn:
+    id: 'switcher.invitation.${INVITE}.${ANSWER}'
+- takeScreenshot: ${ANSWER}-now
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: ${ANSWER}-sending
+- evalScript: "${output.s = http.get(HELPER_URL + '/api?to=up').body}"
