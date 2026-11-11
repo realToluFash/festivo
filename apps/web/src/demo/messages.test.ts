@@ -324,12 +324,12 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     expect(sectionsOf(arrived, GROUPS).needs[0]).toMatchObject({
       id: 'lucia',
       when: 'now',
-      arrived: true,
+      fresh: true,
     });
     expect(sectionsOf(changed(arrived, { kind: 'settle' }), GROUPS).needs[0]).toMatchObject({
       id: 'lucia',
       when: '09:41',
-      arrived: false,
+      fresh: false,
     });
   });
 

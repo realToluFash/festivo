@@ -607,7 +607,7 @@ function Rows({
           <li key={row.id}>
             <a
               href={`${MESSAGES_AT}?c=${row.id}`}
-              className={['mg-row', on && 'is-on', row.arrived && 'is-arrived']
+              className={['mg-row', on && 'is-on', row.fresh && 'is-fresh']
                 .filter(Boolean)
                 .join(' ')}
               aria-label={name}

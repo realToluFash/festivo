@@ -329,6 +329,11 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
         ),
       WAIT,
     );
+
+    fireEvent.click(row(/^Lucía Ortega/));
+    const log = await screen.findByRole('log', { name: 'Lucía Ortega' }, WAIT);
+    expect(within(log).getByText('09:41')).toBeDefined();
+    expect(within(log).queryByText('07:58')).toBeNull();
   });
 
   it(

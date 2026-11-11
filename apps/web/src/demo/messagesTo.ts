@@ -771,7 +771,7 @@ export function sentToRow(id: SentToId, groups: readonly Group[]): Row {
     when: message.row,
     lead: { kind: 'many' },
     tag: null,
-    arrived: false,
+    fresh: false,
   };
 }
 

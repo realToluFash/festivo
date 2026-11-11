@@ -1874,7 +1874,7 @@ export interface Row {
   when: string;
   lead: Lead;
   tag: Tag | null;
-  arrived: boolean;
+  fresh: boolean;
 }
 
 export interface Sections {
@@ -1914,7 +1914,7 @@ function guestRow(inbox: Inbox, id: GuestId): Row {
     when: fresh ? MW.now : (answer?.at ?? (arrived ? NOW : guest.row)),
     lead: { kind: 'guest', initials: guest.initials, unread: !done },
     tag: null,
-    arrived: fresh,
+    fresh,
   };
 }
 
@@ -1933,7 +1933,7 @@ function unknownRow(inbox: Inbox): Row {
         ? { kind: 'unknown' }
         : { kind: 'guest', initials: match.initials, unread: !inbox.done.includes('unknown') },
     tag: match == null ? { kind: 'notyet', word: MW.notMatched } : null,
-    arrived: false,
+    fresh: false,
   };
 }
 
@@ -1996,7 +1996,7 @@ function busy(out: Out | undefined): boolean {
 }
 
 function manyRow(id: ConvoId, title: string, line: string, when: string, tag: Tag | null): Row {
-  return { id, title, line, when, lead: { kind: 'many' }, tag, arrived: false };
+  return { id, title, line, when, lead: { kind: 'many' }, tag, fresh: false };
 }
 
 /** Who cancelled a scheduled message and when: the reader, or (sc-3963's refused save) a colleague. */
