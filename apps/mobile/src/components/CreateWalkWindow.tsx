@@ -6,7 +6,6 @@ import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } 
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
-  Easing,
   Keyboard,
   KeyboardAvoidingView,
   LayoutAnimation,
@@ -28,7 +27,7 @@ import { useFocusBack, useWindowTurn } from './Sheet.tsx';
 import type { TextHandle } from './Text.tsx';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useAccessibilitySizes, useLayout } from '../layout/useLayout.ts';
-import { glide } from '../motion.ts';
+import { fadeAway, glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
@@ -62,7 +61,6 @@ import {
 } from './CreateWalkSteps.tsx';
 import { AskLayer } from './AskLayer.tsx';
 
-const LEAVE = Easing.bezier(0.4, 0, 1, 1);
 const GROW_FROM = 0.96;
 const PANEL = 760;
 const CARD = 300;
@@ -182,12 +180,8 @@ export function CreateWalkWindow<Made>({
 
   useEffect(() => {
     if (phone || open || !present) return;
-    Animated.timing(fade, {
-      toValue: 0,
-      duration: tokens.motionFast,
-      easing: LEAVE,
-      useNativeDriver: true,
-    }).start(() => setPresent(false));
+
+    return fadeAway(fade, SETTLED_MS, () => setPresent(false));
   }, [phone, open, present, fade]);
 
   useEffect(() => {
