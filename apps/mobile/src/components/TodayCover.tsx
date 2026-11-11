@@ -14,6 +14,7 @@ import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 
 import { Text } from './Text.tsx';
 import { useWholeWords } from './Title.tsx';
+import { CAPSULE_LABEL } from '../layout/capsuleFit.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
 import { EventMesh } from './EventMesh.tsx';
@@ -840,13 +841,18 @@ export function WhiteCapsule<T extends string>({
   at,
   say = (tab) => tab,
   ids,
+  labelSize,
 }: {
   tabs: readonly (readonly [T, GlyphName])[];
   onTab: (tab: T) => void;
   at: T;
   say?: (tab: T, glyph: GlyphName) => string;
   ids?: Partial<Record<T, string>>;
+  /** The one size its labels are drawn at, where the row it sits in chooses it (sc-40401). */
+  labelSize?: number | undefined;
 }) {
+  const multiplier = labelSize == null ? undefined : Math.max(1, labelSize / CAPSULE_LABEL);
+
   return (
     <View style={styles.whiteCapsule} accessibilityRole="tablist">
       {tabs.map(([label, glyph]) => {
@@ -865,7 +871,14 @@ export function WhiteCapsule<T extends string>({
             testID={ids?.[label]}
           >
             <Glyph name={glyph} ink={ink} />
-            <Text size={15} weight="semibold" accessible={false} style={{ color: ink }}>
+            <Text
+              size={CAPSULE_LABEL}
+              weight="semibold"
+              maxFontSizeMultiplier={multiplier}
+              numberOfLines={labelSize == null ? undefined : 1}
+              accessible={false}
+              style={{ color: ink }}
+            >
               {say(label, glyph)}
             </Text>
           </Pressable>

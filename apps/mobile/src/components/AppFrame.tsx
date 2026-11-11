@@ -704,19 +704,21 @@ function FixedTop({ kind, current, organisation, waiting, onSwitch, pill }: Fram
 
   return (
     <PortraitTop
-      renderPill={(room) =>
+      renderPill={(room, givesWay) =>
         organisation != null && (
           <OrgPill
             organisation={organisation}
             waiting={waiting}
             onSwitch={onSwitch}
             room={room}
+            givesWay={givesWay}
             ref={pill}
           />
         )
       }
       bell={<BellButton />}
-      tabs={<WhiteCapsule {...tabs} />}
+      tabLabels={tabLabels(tabs)}
+      renderTabs={(labelSize) => <WhiteCapsule {...tabs} labelSize={labelSize} />}
     />
   );
 }
@@ -903,19 +905,21 @@ function FrameHeader({
     return (
       <View style={[styles.portraitHeader, top]}>
         <PortraitRow
-          renderPill={(room) =>
+          renderPill={(room, givesWay) =>
             organisation != null && (
               <OrgPill
                 organisation={organisation}
                 waiting={waiting}
                 onSwitch={onSwitch}
                 room={room}
+                givesWay={givesWay}
                 ref={pill}
               />
             )
           }
           bell={<BellButton />}
-          tabs={<WhiteCapsule {...tabs} />}
+          tabLabels={tabLabels(tabs)}
+          renderTabs={(labelSize) => <WhiteCapsule {...tabs} labelSize={labelSize} />}
           tabsCentred
         />
         {backView}
@@ -1070,6 +1074,10 @@ function useFrameTabs(
     say: (_: Tab, glyph: GlyphName) => t(`todayScreen.tab.${glyph}`),
     ids: TAB_IDS,
   };
+}
+
+function tabLabels({ tabs, say }: ReturnType<typeof useFrameTabs>): string[] {
+  return tabs.map(([tab, glyph]) => say(tab, glyph));
 }
 
 /** The phone's tab bar as the demos draw it, floating over the page's foot. */
@@ -1332,6 +1340,7 @@ function OrgPill({
   onSwitch,
   sidebar = false,
   room,
+  givesWay = false,
   ref,
 }: {
   organisation: Membership;
@@ -1340,6 +1349,8 @@ function OrgPill({
   sidebar?: boolean;
   /** The room beside an upright tablet's tabs, where the pill turns to its tile when its words would not fit whole. */
   room?: number | undefined;
+  /** The tabs beside it took their room first, so it is its tile (sc-40401). */
+  givesWay?: boolean;
   ref: Ref<ViewInstance>;
 }) {
   const { t } = useTranslation();
@@ -1362,7 +1373,7 @@ function OrgPill({
       wrap={large}
       lines={lines}
       sidebar={sidebar}
-      tileAlone={tileAlone}
+      tileAlone={givesWay || tileAlone}
       testID="frame.organisation"
     />
   );
