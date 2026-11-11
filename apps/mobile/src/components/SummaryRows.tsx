@@ -440,6 +440,9 @@ export function Line({
   );
 }
 
+// Fabric rounds a text's edges to the pixel grid like any box, so a title at exactly its own width can lose a pixel, wrap its last word and hide it under a one-line height (Android tablets, sc-40664).
+const TITLE_SLACK = 1;
+
 const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
@@ -470,10 +473,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    columnGap: 8,
+    columnGap: 8 - TITLE_SLACK,
     rowGap: 4,
   },
-  title: { flexShrink: 1, lineHeight: 16 * 1.3 },
+  title: { flexShrink: 1, paddingRight: TITLE_SLACK, lineHeight: 16 * 1.3 },
   line: { lineHeight: 14 * 1.4 },
   consequence: { lineHeight: 14 * 1.45 },
   count: { fontVariant: ['tabular-nums'] },
