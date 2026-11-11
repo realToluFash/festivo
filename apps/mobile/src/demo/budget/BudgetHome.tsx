@@ -367,7 +367,7 @@ function AgainstPlan({
 }) {
   const totals = totalsOf(m.lines);
   const plan = planOf(m.ledger, totals);
-  const rows: [string, string, string | undefined][] = [
+  const rows: [string, string, string | undefined, (string | undefined)?][] = [
     [
       W.planned,
       money(plan.planned, locale),
@@ -375,19 +375,25 @@ function AgainstPlan({
     ],
     [W.committed, money(plan.committed, locale), W.whatQuoted],
     [W.paid, money(plan.paid, locale), say.paymentsMarked(plan.paidCount)],
-    [W.stillToPay, money(plan.stillToPay, locale), say.paymentsScheduled(plan.scheduledCount)],
+    [
+      W.stillToPay,
+      money(plan.stillToPay, locale),
+      say.paymentsScheduled(plan.scheduledCount),
+      plan.notScheduled > 0 ? say.notScheduled(money(plan.notScheduled, locale)) : undefined,
+    ],
   ];
 
   return (
     <Section title={W.againstPlan}>
       <RowList
-        items={rows.map(([title, value, line]) => ({
+        items={rows.map(([title, value, line, more]) => ({
           key: title,
           row: (
             <Wash on={washes(m, 'totals') && title === W.planned} onDone={onWashed}>
               <MoneyRow
                 title={title}
                 line={line}
+                more={more}
                 value={value}
                 quiet
                 testID={`budget.plan.${title}`}

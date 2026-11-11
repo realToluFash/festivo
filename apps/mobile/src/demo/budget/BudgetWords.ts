@@ -122,6 +122,7 @@ export const say = {
   over: (settled: string, ceiling: string) => `Settled, it is ${settled} against ${ceiling}.`,
   paymentsMarked: (count: number) =>
     count === 1 ? '1 payment marked paid' : `${count} payments marked paid`,
+  notScheduled: (amount: string) => `${amount} of the quotes is not scheduled yet`,
   paymentsScheduled: (count: number) =>
     count === 1 ? '1 payment scheduled' : `${count} payments scheduled`,
   payersLine: (count: number, noPayer: string) =>

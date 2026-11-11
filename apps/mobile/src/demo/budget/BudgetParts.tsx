@@ -166,6 +166,7 @@ export function MarkWord({ mark, word }: { mark: ReactNode; word: string }) {
 export function MoneyRow({
   title,
   line,
+  more,
   value,
   quiet = false,
   trail,
@@ -181,6 +182,8 @@ export function MoneyRow({
 }: {
   title: string;
   line?: string | undefined;
+  /** A second line under the first, as Still to pay's not scheduled yet. */
+  more?: string | undefined;
   value?: string | undefined;
   quiet?: boolean;
   trail?: ReactNode;
@@ -197,7 +200,7 @@ export function MoneyRow({
   ref?: Ref<ViewInstance> | undefined;
 }) {
   const named = value == null ? title : `${title}: ${value}`;
-  const label = [named, tag?.word, line].filter(Boolean).join('. ');
+  const label = [named, tag?.word, line, more].filter(Boolean).join('. ');
   const box = [styles.row, { minHeight: line == null ? 52 : 64 }, lit && styles.lit];
   const inner = (
     <>
@@ -210,6 +213,11 @@ export function MoneyRow({
       {line != null && (
         <Text size={14} weight="medium" accessible={false} style={[styles.secondary, styles.line]}>
           {line}
+        </Text>
+      )}
+      {more != null && (
+        <Text size={14} weight="medium" accessible={false} style={[styles.secondary, styles.line]}>
+          {more}
         </Text>
       )}
     </>
