@@ -45,7 +45,7 @@ import {
   type Verifying,
   WRONG_CODE,
 } from './AccountModel.ts';
-import { useCountdown } from './AccountParts.tsx';
+import { AboutZoneWaiting, useCountdown, useZoneHeld } from './AccountParts.tsx';
 import { HOME_ZONE, PHONE_COUNTRY, phoneShown, sentCodeProblem, ZONES } from './AccountSample.ts';
 import { saveName, savedName } from './savedName.ts';
 import { SummaryPage } from './SummaryPage.tsx';
@@ -79,6 +79,7 @@ function AccountPage({ start }: { start: AccountStart }) {
   const [screen, setScreen] = useState<AccountScreen | null>(start.screen);
   const [verifying, setVerifying] = useState<Verifying | null>(start.verifying);
   const [visit, setVisit] = useState(0);
+  const zoneWaiting = useZoneHeld(start.zoneHeld);
   const scroll = useRef<ScrollViewInstance>(null);
   const blocks = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const [targets] = useState(() => ({
@@ -228,14 +229,22 @@ function AccountPage({ start }: { start: AccountStart }) {
                 }
           }
         />
-        <AboutSection
-          name={name}
-          zone={{ title: zoneLabel(zone), line: zoneLine(zone.id, t) }}
-          nameRef={targets.name}
-          zoneRef={targets.zone}
-          onName={() => show('name', 'name')}
-          onZone={() => show('zone', 'zone')}
-        />
+        {zoneWaiting ? (
+          <AboutZoneWaiting
+            name={name}
+            nameRef={targets.name}
+            onName={() => show('name', 'name')}
+          />
+        ) : (
+          <AboutSection
+            name={name}
+            zone={{ title: zoneLabel(zone), line: zoneLine(zone.id, t) }}
+            nameRef={targets.name}
+            zoneRef={targets.zone}
+            onName={() => show('name', 'name')}
+            onZone={() => show('zone', 'zone')}
+          />
+        )}
         {contacts('email')}
         {contacts('phone')}
       </SummaryPage>
