@@ -1105,11 +1105,21 @@
   white-space: nowrap;
 }
 
-.today-event-dates {
+.today-event-dates,
+.today-event-date {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.today-event-dates.is-range {
+  white-space: normal;
+}
+
+.today-event-date {
+  display: inline-block;
+  vertical-align: top;
 }
 
 .today-chips {

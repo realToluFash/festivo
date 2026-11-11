@@ -75,7 +75,7 @@ describe('todayMoment', () => {
       'All day',
       '14:00',
     ]);
-    expect(plan.events[0]?.dates).toBe('Friday 6 Nov to Sunday 8 Nov');
+    expect(plan.events[0]?.dates).toEqual({ first: 'Friday 6 Nov', last: 'Sunday 8 Nov' });
     expect(plan.events.map(({ count, stage, draft }) => [count, stage, draft])).toEqual([
       ['In 3 days', 'Final week', false],
       ['Draft', null, true],
