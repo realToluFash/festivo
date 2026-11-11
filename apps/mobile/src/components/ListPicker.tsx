@@ -83,7 +83,7 @@ export function ListPicker({
   const fieldEdge = useFocusEdge(controlTaken);
   const refused = useRefused(wrong, line);
   const { kind, width, height } = useLayout();
-  const beside = searchBesideTitle({ os: Platform.OS, phone: kind === 'phone', width, height });
+  const beside = searchBesideTitle({ phone: kind === 'phone', width, height });
 
   const chosen = choices.find((choice) => choice.code === value)?.name ?? value;
   const blank = chosen === '';
@@ -170,6 +170,7 @@ export function ListPicker({
                   weight="bold"
                   accessibilityRole="header"
                   style={beside ? styles.titleBeside : undefined}
+                  numberOfLines={beside ? 1 : undefined}
                 >
                   {label}
                 </Text>

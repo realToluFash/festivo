@@ -287,19 +287,14 @@ export function focusWaitsForArrival(os: string): boolean {
 }
 
 export interface Turned {
-  os: string;
   phone: boolean;
   width: number;
   height: number;
 }
 
-export function iPhoneOnItsSide({ os, phone, width, height }: Turned): boolean {
-  return os === 'ios' && phone && width > height;
-}
-
-/** Whether a list's search sits beside its title: an iPhone on its side leaves little more than a row above the keys (sc-10118). */
-export function searchBesideTitle(turned: Turned): boolean {
-  return iPhoneOnItsSide(turned);
+/** Whether a list's search sits beside its title: a phone on its side, either OS, leaves little more than a row above the keys (sc-10118, sc-35256). */
+export function searchBesideTitle({ phone, width, height }: Turned): boolean {
+  return phone && width > height;
 }
 
 /** On an Android phone this tall or shorter, in dp, the keys leave no room for the help line and back row (sc-3132). */
