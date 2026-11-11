@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { tokens } from '../theme/tokens.ts';
-import { UNMEASURED_OVER_KEYS, landingToastBottom, underToast } from './landingToastBottom.ts';
+import {
+  UNMEASURED_OVER_KEYS,
+  landingToastBottom,
+  stepsAside,
+  underToast,
+} from './landingToastBottom.ts';
 
 describe('the landing toast on a step with a docked foot, as measured (sc-37983)', () => {
   it('rests 12pt above a two-button foot, wherever its upper button starts', () => {
@@ -69,5 +74,31 @@ describe('what a landed step puts under the toast, read against its frame (sc-37
     expect(
       underToast({ id: 1, foot: { x: 24, width: 320, top: 700 } }, { y: 24, height: 776 }),
     ).toEqual({ footReaches: 100 });
+  });
+});
+
+describe('the landing toast stepping aside for the focused field (sc-37983)', () => {
+  const organisationName = { top: 70, height: 76 };
+
+  it('steps aside on a phone on its side, where the field and the toast do not both fit above the keys', () => {
+    const toastTop = 411 - 190 - tokens.spaceLg - 68;
+
+    expect(stepsAside(221, organisationName, toastTop)).toBe(true);
+  });
+
+  it('stays where the field fits whole 12pt above it', () => {
+    const toastTop = 70 + tokens.spaceLg + 76 + tokens.spaceLg;
+
+    expect(stepsAside(500, organisationName, toastTop)).toBe(false);
+    expect(stepsAside(500, organisationName, toastTop - 1)).toBe(true);
+  });
+
+  it('shows with the keys down, or with no field to keep in sight', () => {
+    expect(stepsAside(null, organisationName, 0)).toBe(false);
+    expect(stepsAside(221, null, 0)).toBe(false);
+  });
+
+  it('does not step aside before it has been placed', () => {
+    expect(stepsAside(221, organisationName, null)).toBe(false);
   });
 });

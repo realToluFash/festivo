@@ -8,8 +8,8 @@ import { tokens } from '../theme/tokens.ts';
 import { watchMovedOn } from './focusedField.ts';
 import { useKeyboardTop } from './keyboardWatch.ts';
 import { stepsSoFar, useLandedStep } from './landedStep.ts';
-import { type Frame, landingToastBottom, underToast } from './landingToastBottom.ts';
-import { landingToastAt } from './landingToastTop.ts';
+import { type Frame, landingToastBottom, stepsAside, underToast } from './landingToastBottom.ts';
+import { landingToastAt, useFieldUnderToast } from './landingToastTop.ts';
 import { SETTLED_MS } from './Screen.tsx';
 import { TAB_BAR } from './TodayScreen.tsx';
 import { Toast } from './Toast.tsx';
@@ -36,7 +36,7 @@ export function sayOnLanding(key: string): void {
   set(key);
 }
 
-/** Over the whole stack; on a phone it clears the tab bar, and on a step it rests on the foot as measured, to whose column a tablet keeps it. On a step it stays while the field it landed on keeps focus, and closes as another control takes it (sc-37519, sc-37983). */
+/** Over the whole stack; on a phone it clears the tab bar, and on a step it rests on the foot as measured, to whose column a tablet keeps it. On a step it stays while the field it landed on keeps focus, and closes as another control takes it (sc-37519, sc-37983). Where it and the focused field do not both fit above the keys it steps aside, mounted so its 10 seconds run on and it is not read out again (sc-37983). */
 export function LandingToast() {
   const { t } = useTranslation();
   const key = useSyncExternalStore(subscribe, () => said);
@@ -44,7 +44,6 @@ export function LandingToast() {
   // The frame the toast is laid out in, in the window the foot is measured in, which the keys' top is read against too: Android's window height leaves out the system bars, and measured from it the toast sat a bar lower, over Continue (sc-29071).
   const [frame, setFrame] = useState<Frame | null>(null);
   const frameRef = useRef<ViewInstance>(null);
-  const toastRef = useRef<ViewInstance>(null);
   const keyboardTop = useKeyboardTop();
   const { kind } = useLayout();
   const step = useLandedStep(saidOver);
@@ -53,6 +52,25 @@ export function LandingToast() {
   const landing = step != null && step.foot == null;
   const shown = key != null && frame != null && !landing;
   const column = kind === 'phone' ? null : step?.foot;
+  // Only its height is measured, which moving it leaves as it is: its top is worked out in the render that moves it, so stepping aside never trails the keys by a layout pass.
+  const [height, setHeight] = useState<number | null>(null);
+  const bottom =
+    frame == null
+      ? null
+      : landingToastBottom(
+          insets.bottom,
+          kind === 'phone' ? TAB_BAR : 0,
+          frame.height,
+          keyboardTop,
+          underToast(step, frame),
+        );
+  const toastTop =
+    stepId == null || frame == null || bottom == null || height == null
+      ? null
+      : frame.y + frame.height - bottom - height;
+  const field = useFieldUnderToast();
+  const aside = stepsAside(keyboardTop, field, toastTop);
+  const top = shown && !aside ? toastTop : null;
 
   useEffect(() => {
     if (key == null || stepId == null) return undefined;
@@ -67,10 +85,10 @@ export function LandingToast() {
   }, [key, stepId]);
 
   useEffect(() => {
-    if (!shown || stepId == null) return undefined;
+    landingToastAt(top);
+  }, [top]);
 
-    return () => landingToastAt(null);
-  }, [shown, stepId]);
+  useEffect(() => () => landingToastAt(null), []);
 
   if (key == null) return null;
 
@@ -87,25 +105,16 @@ export function LandingToast() {
     >
       {shown && (
         <View
-          ref={toastRef}
           style={[
             styles.toast,
             column == null ? styles.margins : { left: column.x, width: column.width },
-            {
-              bottom: landingToastBottom(
-                insets.bottom,
-                kind === 'phone' ? TAB_BAR : 0,
-                frame.height,
-                keyboardTop,
-                underToast(step, frame),
-              ),
-            },
+            (aside || height == null) && styles.aside,
+            { bottom },
           ]}
-          pointerEvents="box-none"
-          onLayout={() => {
-            if (stepId == null) return;
-            toastRef.current?.measureInWindow((_x, y) => landingToastAt(y));
-          }}
+          pointerEvents={aside ? 'none' : 'box-none'}
+          accessibilityElementsHidden={aside}
+          importantForAccessibility={aside ? 'no-hide-descendants' : 'auto'}
+          onLayout={({ nativeEvent }) => setHeight(nativeEvent.layout.height)}
         >
           <Toast key={key} words={t(key)} onClose={() => set(null)} />
         </View>
@@ -117,4 +126,5 @@ export function LandingToast() {
 const styles = StyleSheet.create({
   toast: { position: 'absolute' },
   margins: { left: tokens.spaceXl, right: tokens.spaceXl },
+  aside: { opacity: 0 },
 });

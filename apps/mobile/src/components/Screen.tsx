@@ -66,7 +66,7 @@ import {
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { tokens } from '../theme/tokens.ts';
 import { focusedField, watchCheckedField, watchFocusedField } from './focusedField.ts';
-import { landingToastTop, watchLandingToastTop } from './landingToastTop.ts';
+import { fieldUnderToast, landingToastTop, watchLandingToastTop } from './landingToastTop.ts';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import {
   LIFT,
@@ -210,11 +210,16 @@ function measureLift(
         };
         // The field typed in comes first: a group under it never lifts it out of sight (sc-11978), nor the title above it (sc-35488).
         const field = focusedField();
-        if (field == null) lift();
-        else
+        if (field == null) {
+          fieldUnderToast(null);
+          lift();
+        } else
           field.measureLayout(
             content,
-            (_fx, focusY) => lift(focusY),
+            (_fx, focusY, _fw, fieldHeight) => {
+              fieldUnderToast({ top: scrollTop, height: fieldHeight });
+              lift(focusY);
+            },
             () => lift(),
           );
       });
