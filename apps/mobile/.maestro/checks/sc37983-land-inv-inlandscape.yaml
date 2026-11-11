@@ -1,0 +1,22 @@
+# In landscape from the start: lands from Set a new password on whichever step the account owes (Your organisation, You're invited, or the one-offer step) and pictures Password changed against the step's foot, keys up and down. sc-37983.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_INV}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: 'a-brand-new-password-37983'
+- hideKeyboard
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: '{{t:any:recovery.changed}}', timeout: 30000 }
+- takeScreenshot: invL-01-first
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: invL-02-settled
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: invL-03-later
+- assertVisible: '{{t:any:recovery.changed}}'
+- tapOn: '{{t:any:toast.close}}'
+- takeScreenshot: invL-04-closed
+- setOrientation: PORTRAIT
+- runFlow: ../sign-out-from-complete-profile.yaml

@@ -1,0 +1,20 @@
+# Lands from Set a new password on whichever step the account owes (Your organisation, You're invited, or the one-offer step) and pictures Password changed against the step's foot, keys up and down. sc-37983.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_ORG}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: 'a-brand-new-password-37983'
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: '{{t:any:recovery.changed}}', timeout: 30000 }
+- takeScreenshot: org-01-first
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: org-02-settled
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: org-03-keys-down
+- assertVisible: '{{t:any:recovery.changed}}'
+- tapOn: '{{t:any:toast.close}}'
+- takeScreenshot: org-04-closed
+- runFlow: ../sign-out-from-complete-profile.yaml
