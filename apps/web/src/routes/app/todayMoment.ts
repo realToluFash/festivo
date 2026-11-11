@@ -4,13 +4,13 @@ import {
   type TodayCard,
   type TodayNow,
   type TodaySub,
-  eventDayWords,
   formatEventClock,
   todayView,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import type { AgendaItem, EventCard, Moment, Now, ShownEvent } from '../../components/today.ts';
+import { daysWords } from '../../eventsList.ts';
 import { meshFor } from '../../mesh.ts';
 
 export interface Reader {
@@ -33,20 +33,6 @@ function dayWords(day: string, locale: string, options: Intl.DateTimeFormatOptio
 
 function howFar(days: number, t: TFunction): string {
   return days === 1 ? t('today.tomorrow') : t('today.inDays', { count: days });
-}
-
-/** Its day, or its first and last day, in its own zone, as Events writes them. */
-function eventDates(event: ListedEvent, now: Date, locale: string, t: TFunction): string {
-  const days = eventDayWords(event, now, locale);
-
-  switch (days.kind) {
-    case 'calledOffOn':
-      return t('events.calledOffOn', { date: days.date });
-    case 'oneDay':
-      return days.day;
-    case 'days':
-      return t('events.days', { first: days.first, last: days.last });
-  }
 }
 
 function agendaItem(item: TodayAgendaItem<ListedEvent>, reader: Reader, t: TFunction): AgendaItem {
@@ -80,7 +66,7 @@ function card(one: TodayCard<ListedEvent>, now: Date, reader: Reader, t: TFuncti
   return {
     event: shownEvent(event),
     name: event.name,
-    dates: eventDates(event, now, reader.locale, t),
+    dates: daysWords(event, now, reader.locale, t),
     count:
       count.kind === 'draft'
         ? t('events.draft')

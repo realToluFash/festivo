@@ -54,7 +54,7 @@ export function listEventOf(event: ListedEvent): ListEvent {
 
 /** Its day or its first and last day, with their year unless it is this one; a called-off event's day it was called off, unless `keepDays`. */
 export function daysWords(
-  event: Shown,
+  event: Parameters<typeof eventDayWords>[0],
   now: Date,
   locale: string,
   t: TFunction,

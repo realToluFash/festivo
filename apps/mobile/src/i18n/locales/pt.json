@@ -1573,7 +1573,6 @@
     "summaryJoin": "{{first}} · {{rest}}",
     "comingSoon": "Brevemente",
     "days": "De {{first}} até {{last}}",
-    "timeAndZone": "{{time}} · {{timeZone}}",
     "nextMakeLive": "Só é possível convidar pessoas depois de publicar este evento.",
     "nextChangeDates": "Este evento já terminou, por isso não pode ser publicado. Altere primeiro as datas.",
     "nextResume": "Em pausa. Os convidados não podem responder nem alterar nada até retomar o evento.",

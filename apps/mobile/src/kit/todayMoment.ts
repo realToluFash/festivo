@@ -17,7 +17,7 @@ import {
   type Now,
   type ShownEvent,
 } from './today.ts';
-import { eventDatesWords } from './eventsHome.ts';
+import { daysWords } from './eventsList.ts';
 
 export interface Reader {
   timeZone: string;
@@ -79,7 +79,7 @@ function card(one: TodayCard<ListedEvent>, now: Date, reader: Reader, t: TFuncti
   return {
     event: shownEvent(event),
     name: event.name,
-    dates: eventDatesWords(event, now, reader.locale, t).days,
+    dates: daysWords(event, now, reader.locale, true, t),
     count:
       count.kind === 'draft'
         ? t('todayScreen.draft')

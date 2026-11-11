@@ -2,7 +2,7 @@ import type { ListedEvent } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { cardStep, dayTiles, listEventOf, rowTag, shownEvent } from './eventsList.ts';
+import { cardStep, dayTiles, daysWords, listEventOf, rowTag, shownEvent } from './eventsList.ts';
 
 const t = ((key: string) => key) as unknown as TFunction;
 
@@ -161,5 +161,46 @@ describe('dayTiles', () => {
     const keys = (dayTiles(lasting(31, 'live'), before, 'en-GB') ?? []).map((tile) => tile.key);
 
     expect(keys).toEqual(['2026-11-14', 'gap-2026-11-14', '2026-12-14']);
+  });
+});
+
+describe('daysWords', () => {
+  const words = ((key: string, values: Record<string, unknown> = {}) =>
+    `${key} ${JSON.stringify(values)}`) as unknown as TFunction;
+  const now = new Date('2026-11-11T12:00:00+01:00');
+  const day = {
+    status: 'live' as const,
+    startsAt: '2026-11-14T09:00:00+01:00',
+    endsAt: '2026-11-14T23:00:00+01:00',
+    timeZone: 'Europe/Madrid',
+    concludedAt: null,
+  };
+
+  it('writes one day in the event’s zone', () => {
+    expect(daysWords(day, now, 'en-US', true, words)).toBe('Saturday, Nov 14');
+  });
+
+  it('writes a multi-day event as its first and last day', () => {
+    expect(
+      daysWords({ ...day, endsAt: '2026-11-16T12:00:00+01:00' }, now, 'en-US', true, words),
+    ).toBe('eventsScreen.days {"first":"Saturday, Nov 14","last":"Monday, Nov 16"}');
+  });
+
+  it('says in a list when an event was called off', () => {
+    expect(
+      daysWords(
+        { ...day, status: 'ended', concludedAt: '2026-11-10T10:00:00+01:00' },
+        now,
+        'en-US',
+        true,
+        words,
+      ),
+    ).toBe('eventsScreen.calledOffOn {"date":"Nov 10"}');
+  });
+
+  it('names the year on every date when one is not this year', () => {
+    expect(
+      daysWords({ ...day, endsAt: '2027-01-02T12:00:00+01:00' }, now, 'en-US', true, words),
+    ).toBe('eventsScreen.days {"first":"Saturday, Nov 14, 2026","last":"Saturday, Jan 2, 2027"}');
   });
 });

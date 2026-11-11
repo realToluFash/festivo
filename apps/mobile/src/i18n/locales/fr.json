@@ -1573,7 +1573,6 @@
     "summaryJoin": "{{first}} · {{rest}}",
     "comingSoon": "Bientôt disponible",
     "days": "Du {{first}} au {{last}}",
-    "timeAndZone": "{{time}} · {{timeZone}}",
     "nextMakeLive": "Personne ne peut être invité tant que cet événement n’est pas publié.",
     "nextChangeDates": "Cet événement est déjà terminé, il ne peut donc pas être publié. Modifiez d’abord ses dates.",
     "nextResume": "En pause. Les invités ne peuvent ni répondre ni rien modifier jusqu’à la reprise.",
