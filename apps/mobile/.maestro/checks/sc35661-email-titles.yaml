@@ -32,6 +32,11 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - tapOn:
     text: '${output.email}.*'
+- scrollUntilVisible:
+    element:
+      id: 'account\..+\.send'
+    timeout: 15000
+- waitForAnimationToEnd
 - tapOn:
     id: 'account\..+\.send'
 - extendedWaitUntil:
