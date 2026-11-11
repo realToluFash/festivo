@@ -195,7 +195,17 @@ export function Pair({
 }
 
 /** At least 44, a capsule as tall as its word, the ‹ growing with it; a word wider than its room steps down to fit, never below 15 (sc-37903). */
-export function Back({ label, onPress }: { label?: string; onPress: () => void }) {
+export function Back({
+  label,
+  onPress,
+  off = false,
+  testID,
+}: {
+  label?: string;
+  onPress: () => void;
+  off?: boolean | undefined;
+  testID?: string;
+}) {
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
   const scale = backScale(fontScale, useContext(TitleCap));
@@ -205,14 +215,23 @@ export function Back({ label, onPress }: { label?: string; onPress: () => void }
   return (
     <Pressable
       onPress={onPress}
+      disabled={off}
       style={({ pressed }) => [styles.back, pressed && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel={t('frame.backTo', { place })}
+      accessibilityState={{ disabled: off }}
+      testID={testID}
     >
-      <Glyph name="back" size={PILL_GLYPH * scale} ink={tokens.colorInk} weight={2.4} />
+      <Glyph
+        name="back"
+        size={PILL_GLYPH * scale}
+        ink={off ? tokens.colorInkSecondary : tokens.colorInk}
+        weight={2.4}
+      />
       <Text
         size={size}
         weight="semibold"
+        muted={off}
         allowFontScaling={false}
         numberOfLines={1}
         adjustsFontSizeToFit

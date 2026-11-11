@@ -96,6 +96,7 @@ import {
 import { OrgDropDown } from './OrgDropDown.tsx';
 import { AREA_GLYPH } from './areaGlyph.ts';
 import { ReadOut } from './ReadOut.tsx';
+import { Back } from './SettingsParts.tsx';
 import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text, TitleCap } from './Text.tsx';
@@ -265,7 +266,9 @@ export function AppFrame({
   /** The body draws its own header and tabs, as Today does (sc-29090); a stand-in still gets the frame's. */
   ownChrome?: boolean;
   /** The page this one was opened from, drawn in the header where `headerDrawsBack` says, as Security's "Settings"; with `systemBack`, Android's Back runs it too. */
-  back?: { label: string; onPress: () => void; systemBack?: boolean; off?: boolean } | undefined;
+  back?:
+    | { label: string; onPress: () => void; systemBack?: boolean; off?: boolean; pill?: boolean }
+    | undefined;
   /** On a tablet, the body draws this page's back, and is false while that back is off. */
   backInBody?: boolean;
   children: ReactNode;
@@ -643,7 +646,7 @@ function FrameHeader({
   titleRef: RefObject<TextHandle | null> | undefined;
   /** A tapped switch of organisation, which takes screen reader focus to the title. */
   switchAnswer: unknown;
-  back: { label: string; onPress: () => void; off?: boolean } | undefined;
+  back: { label: string; onPress: () => void; off?: boolean; pill?: boolean } | undefined;
   backHidden: boolean;
   organisation: Membership | null;
   waiting: number;
@@ -686,15 +689,20 @@ function FrameHeader({
       <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
     </View>
   );
-  const backView = back != null && !backHidden && (
-    <BackButton
-      label={back.label}
-      onPress={back.onPress}
-      off={back.off}
-      beside={besideBack}
-      testID="frame.back"
-    />
-  );
+  const backView =
+    back == null || backHidden ? null : back.pill === true ? (
+      <BesideBack beside={besideBack}>
+        <Back label={back.label} onPress={back.onPress} off={back.off} testID="frame.back" />
+      </BesideBack>
+    ) : (
+      <BackButton
+        label={back.label}
+        onPress={back.onPress}
+        off={back.off}
+        beside={besideBack}
+        testID="frame.back"
+      />
+    );
   const titleRow = (end: ReactNode) => (
     <View style={styles.titleRow}>
       <View style={styles.fill}>
@@ -846,11 +854,15 @@ export function BackButton({
     </Pressable>
   );
 
-  if (beside === undefined) return button;
+  return <BesideBack beside={beside}>{button}</BesideBack>;
+}
+
+function BesideBack({ beside, children }: { beside: ReactNode; children: ReactNode }) {
+  if (beside === undefined) return <>{children}</>;
 
   return (
     <View style={besideRow.row}>
-      {button}
+      {children}
       {beside}
     </View>
   );

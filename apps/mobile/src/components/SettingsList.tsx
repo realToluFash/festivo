@@ -198,6 +198,7 @@ export function useBackToSettings() {
     label,
     onPress: () => router.dismissTo(DESTINATION_HREF.settings),
     systemBack,
+    pill: true,
   });
 }
 
