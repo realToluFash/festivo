@@ -2,7 +2,7 @@
 appId: host.exp.Exponent
 ---
 - runScript:
-    file: ../sc36468-fresh-phone.js
+    file: ../scripts/sc36468-fresh-phone.js
     env:
       MODE: alt
       FAIL: '0'

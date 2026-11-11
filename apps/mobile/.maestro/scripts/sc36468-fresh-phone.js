@@ -12,16 +12,24 @@ var auth = {
   Origin: base.Origin,
   Authorization: 'Bearer ' + json(login.body).accessToken,
 };
-var me = json(http.get(API_URL + '/api/auth/me', { headers: auth }).body);
-var phones = me.phoneNumbers || [];
+var meAnswer = http.get(API_URL + '/api/auth/me', { headers: auth });
+if (!meAnswer.ok) throw new Error('profile refused: ' + meAnswer.body);
+var phones = json(meAnswer.body).phoneNumbers || [];
 for (var i = 0; i < phones.length; i++) {
-  if (phones[i].primary)
-    http.put(API_URL + '/api/auth/phone', {
-      headers: auth,
-      body: JSON.stringify({ countryCode: 'NG', number: '' }),
-    });
-  else
-    http.request(API_URL + '/api/auth/phones/' + phones[i].id, { method: 'DELETE', headers: auth });
+  if (phones[i].primary) {
+    if (MODE !== 'primary' && !phones[i].verified)
+      throw new Error(
+        'unverified primary ' +
+          phones[i].id +
+          ' would open from account.step before the added number',
+      );
+    continue;
+  }
+  var removed = http.request(API_URL + '/api/auth/phones/' + phones[i].id, {
+    method: 'DELETE',
+    headers: auth,
+  });
+  if (!removed.ok) throw new Error('number removal refused: ' + removed.body);
 }
 var tail = String(Date.now()).slice(-5);
 var number = (FAIL === '1' ? '80399' : '80356') + tail;
