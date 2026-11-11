@@ -56,6 +56,11 @@ Then the cross-cutting ones, which are missed most often:
 - the unmatched or out-of-range input
 - the empty state
 - what must keep working unchanged
+- on a story that moves a screen to its demo, a **Checked against the demo** bullet naming
+  each screen, each layout, each demo state (`?state=` on the web, the demo's linked states
+  in the app) and the top, and the frame, shell or band the screen sits in either owned by a
+  bullet or named under "Not in this story" with its story number (`create-ticket`). A
+  demo bullet that names no rows is a gap.
 
 ## Step 4: Report
 
