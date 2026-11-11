@@ -1,6 +1,7 @@
 import { bottomOverKeys } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
 import type { LandedStep } from './landedStep.ts';
+import type { FieldInSight } from './landingToastTop.ts';
 
 /** How far over the keys the toast rides where no step's foot is measured, as it did before feet were measured (sc-29071). */
 export const UNMEASURED_OVER_KEYS = tokens.spaceXl + tokens.sizeHitPhoneHero + tokens.spaceLg;
@@ -40,4 +41,15 @@ export function landingToastBottom(
     return bottomOverKeys(overInset, frameHeight, keyboardTop, tokens.spaceLg);
 
   return Math.max(overInset, under.footReaches + tokens.spaceLg);
+}
+
+/** Whether the toast steps aside: with the keys up, where the focused field whole, lifted to 12pt under the scroll's top and with 12pt under it, reaches below the toast's top (sc-37983). */
+export function stepsAside(
+  keyboardTop: number | null,
+  field: FieldInSight | null,
+  toastTop: number | null,
+): boolean {
+  if (keyboardTop == null || field == null || toastTop == null) return false;
+
+  return field.top + tokens.spaceLg + field.height + tokens.spaceLg > toastTop;
 }
