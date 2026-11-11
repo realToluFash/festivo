@@ -1,5 +1,10 @@
-# sc-30302: Events loaded, then the API stopped (by the runner, on the online screenshot) and a pull to refresh: the search says it needs a connection.
+# sc-30302: Events loaded, then the API stopped (by the helper, after the online screenshot) and a pull to refresh: the search says it needs a connection.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/events
@@ -8,10 +13,10 @@ appId: host.exp.Exponent
       id: 'events.search'
     timeout: 30000
 - takeScreenshot: online
-- extendedWaitUntil:
-    visible: 'never-on-screen-sc30302'
-    timeout: 20000
-    optional: true
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
 - swipe:
     start: 50%, 30%
     end: 50%, 85%
