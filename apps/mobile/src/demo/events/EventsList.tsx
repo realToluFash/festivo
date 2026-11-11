@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import {
@@ -77,6 +76,7 @@ import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { EventsFailed } from '../../components/Events.tsx';
 import { ListTop } from '../../components/ListTop.tsx';
+import { OfflineBand as ProductOfflineBand } from '../../components/OfflineBand.tsx';
 import { LIST_EDGES, LIST_GAP } from '../../components/listFrame.ts';
 
 const SEARCH_PAUSE_MS = 300;
@@ -487,24 +487,16 @@ function GuestTile({
   );
 }
 
-export function OfflineBand({
-  onRetry,
-  testID = 'events.offline',
-}: {
-  onRetry: () => void;
-  testID?: string;
-}) {
-  useReadOut(say.offline(OFFLINE_AS_OF));
+/** The product's band (sc-22586) over a sample Stale, its Try again clearing the demo's state and reaching no server. */
+export function OfflineBand({ onRetry }: { onRetry: () => void }) {
+  const [at] = useState(() => {
+    const day = new Date();
+    day.setHours(Number(OFFLINE_AS_OF.slice(0, 2)), Number(OFFLINE_AS_OF.slice(3)), 0, 0);
 
-  return (
-    <View style={styles.band} testID={testID}>
-      <View style={styles.diamond} />
-      <Text size={14.5} weight="semibold" style={[styles.grow, styles.figures]}>
-        {say.offline(OFFLINE_AS_OF)}
-      </Text>
-      <TextAction label={W.tryAgain} onPress={onRetry} testID={`${testID}.retry`} />
-    </View>
-  );
+    return day;
+  });
+
+  return <ProductOfflineBand stale={{ at, retry: onRetry, unanswered: 0 }} inFront />;
 }
 
 const styles = StyleSheet.create({
@@ -529,19 +521,4 @@ const styles = StyleSheet.create({
   },
   guestFigure: { lineHeight: 28 * 1.15 },
   said: { lineHeight: 14 * 1.45 },
-  band: {
-    minHeight: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceMd,
-    paddingHorizontal: tokens.spaceXxl,
-    backgroundColor: tokens.colorNeutralFill,
-  },
-  diamond: {
-    width: 8,
-    height: 8,
-    borderRadius: 2,
-    backgroundColor: tokens.colorInkSecondary,
-    transform: [{ rotate: '45deg' }],
-  },
 });

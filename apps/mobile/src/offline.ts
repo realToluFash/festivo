@@ -2,6 +2,8 @@ import { connection, createOfflineWatch } from '@soirely/domain';
 import { useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 
+import { rereadOrganisations } from './signedIn.ts';
+
 export { keepsWhatLoaded } from '@soirely/domain';
 
 export interface Stale {
@@ -38,6 +40,10 @@ export function useOffline({
   refreshing: boolean;
 } {
   const [offline] = useState(() => createOfflineWatch({ connection }));
+  const [retry] = useState(() => () => {
+    void rereadOrganisations();
+    offline.retry();
+  });
   const state = useSyncExternalStore(offline.subscribe, offline.state);
 
   useLayoutEffect(() => {
@@ -60,9 +66,9 @@ export function useOffline({
   const stale = useMemo(
     () =>
       state.stale && loaded && at != null
-        ? { at: since ?? at, retry: offline.retry, unanswered }
+        ? { at: since ?? at, retry, unanswered }
         : null,
-    [state.stale, loaded, at, since, offline, unanswered],
+    [state.stale, loaded, at, since, retry, unanswered],
   );
 
   return {
