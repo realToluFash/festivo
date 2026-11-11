@@ -912,6 +912,7 @@ function FrameHeader({
           }
           bell={<BellButton />}
           tabs={<WhiteCapsule {...tabs} />}
+          tabsCentred
         />
         {backView}
         {titleRow()}

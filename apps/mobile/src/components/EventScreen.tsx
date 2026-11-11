@@ -216,7 +216,7 @@ export function EventScreen({
       inEvent={event == null ? undefined : { area, onArea: chooseArea }}
       underTitle={
         area === 'people' && event != null ? (
-          <Text size={15} weight="medium" style={[styles.secondary, styles.under]}>
+          <Text size={15} weight="medium" style={styles.secondary}>
             {event.name}
           </Text>
         ) : undefined
@@ -354,7 +354,6 @@ function useOpened(
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
   secondary: { color: tokens.colorInkSecondary },
-  under: { marginTop: tokens.spaceHair },
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,

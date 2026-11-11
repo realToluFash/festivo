@@ -86,10 +86,18 @@ type PortraitRowProps = {
   tabs: ReactNode;
   /** False leaves a pill that cannot turn to its tile at its own width. */
   pillFits?: boolean;
+  /** Centres the tabs in the row, where a screen out of an event has always had them. */
+  tabsCentred?: boolean;
 };
 
 /** The pill, the bell, and the tabs centred 3 above the row's top whatever the pill's height; the pill turns to its tile when its words would not fit beside the tabs. */
-export function PortraitRow({ renderPill, bell, tabs, pillFits = true }: PortraitRowProps) {
+export function PortraitRow({
+  renderPill,
+  bell,
+  tabs,
+  pillFits = true,
+  tabsCentred = false,
+}: PortraitRowProps) {
   const [rowWidth, setRowWidth] = useState(0);
   const [tabsWidth, setTabsWidth] = useState(0);
   const besideTabs = pillFits ? pillBesideTabs(rowWidth, tabsWidth) : null;
@@ -104,7 +112,7 @@ export function PortraitRow({ renderPill, bell, tabs, pillFits = true }: Portrai
       )}
       <View style={styles.fill} />
       {bell}
-      <View style={styles.tabsAt} pointerEvents="box-none">
+      <View style={tabsCentred ? styles.tabsCentred : styles.tabsAt} pointerEvents="box-none">
         <View onLayout={(event) => setTabsWidth(event.nativeEvent.layout.width)}>{tabs}</View>
       </View>
     </View>
@@ -124,5 +132,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
+  },
+  tabsCentred: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
