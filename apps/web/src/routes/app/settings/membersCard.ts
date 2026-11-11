@@ -161,7 +161,3 @@ function claimCard(
     step: view.become ? become : null,
   };
 }
-
-export function firstName(name: string): string {
-  return name.trim().split(/\s+/u)[0] ?? name;
-}

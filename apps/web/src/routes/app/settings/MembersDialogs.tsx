@@ -10,6 +10,7 @@ import {
   PROOF_MINUTES,
   approvalRoles,
   emailProblem,
+  firstName,
   formatDay,
   initials,
   roleName,
@@ -31,7 +32,7 @@ import {
 } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { type Proving, dropProof, heldProof, howToProve } from '../../../recentProof.ts';
-import { firstName, type Notice } from './membersCard.ts';
+import { type Notice } from './membersCard.ts';
 import { roleChoices } from './memberWords.ts';
 import { type OwnerReturn, provingOnReturn, signInOnReturn } from './ownerReturn.ts';
 

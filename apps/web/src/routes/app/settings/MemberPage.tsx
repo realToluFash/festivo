@@ -8,6 +8,7 @@ import {
 } from '@soirely/api-client';
 import {
   PROOF_MINUTES,
+  firstName,
   formatDay,
   grantableRoles,
   historyLine,
@@ -41,7 +42,6 @@ import {
 import { dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree } from '../../../layers.ts';
 import { type Proving, dropProof, heldProof, howToProve } from '../../../recentProof.ts';
-import { firstName } from './membersCard.ts';
 import { memberTag, roleChoices } from './memberWords.ts';
 import { type OwnerReturn, provingOnReturn, signInOnReturn } from './ownerReturn.ts';
 
