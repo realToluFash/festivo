@@ -330,7 +330,9 @@ export function focusChecked(field: RefObject<TextInputInstance | null>): void {
 /** At a submit the client checks passed: keys hidden over a focused field stay hidden while it runs and after it. */
 export function keysStayDown(): void {
   // A header tap on an iPhone hides the keys and leaves the field focused, and iOS raises them again as the held field changes.
-  if (!Keyboard.isVisible()) TextInput.State.currentlyFocusedInput()?.blur();
+  // Android reads the keys as hidden over a Modal, so there the blur would put them down on a return-key submit.
+  if (Platform.OS === 'ios' && !Keyboard.isVisible())
+    TextInput.State.currentlyFocusedInput()?.blur();
 }
 
 /** Whether the field has focus, for drawing it on the field's own edge. */
