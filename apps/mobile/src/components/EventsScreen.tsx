@@ -44,7 +44,7 @@ import {
   FilterButton,
   SearchField,
   SearchRow,
-  useFilterWord,
+  useFilterWords,
 } from './EventsSearch.tsx';
 import { EventsFirstRun } from './EventsList.tsx';
 import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './ListAndPage.tsx';
@@ -121,7 +121,7 @@ export function EventsScreen() {
   const [menuAt, setMenuAt] = useState<Anchor | null>(null);
   const filterRef = useRef<ViewInstance>(null);
   useAnchorFollowsTurn(filterRef, menuAt != null, setMenuAt);
-  const word = useFilterWord(filters, locale);
+  const filterWords = useFilterWords(filters, locale);
   if (lookIn !== organisationId) {
     setLookIn(organisationId);
     setTyped('');
@@ -319,7 +319,8 @@ export function EventsScreen() {
       filter={
         <FilterButton
           ref={filterRef}
-          word={word}
+          {...filterWords}
+          wraps={SEARCH_WIDTH[kind] == null}
           off={off}
           open={menuAt != null}
           onPress={() => anchorUnder(filterRef, setMenuAt)}
