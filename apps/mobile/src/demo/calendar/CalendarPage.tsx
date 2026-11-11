@@ -24,8 +24,8 @@ import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCo
 import type { Item as ProductItem } from '../../kit/calendar.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { SAMPLE } from '../samples.ts';
-import { openEvent } from '../events/EventsList.tsx';
-import { CLOCKS, EVENT_OF_KEY, READER_ZONE } from '../events/EventsSample.ts';
+import { openEvent } from '../events/openEvent.ts';
+import { CLOCKS, READER_ZONE } from '../events/EventsSample.ts';
 import { W } from '../events/EventsWords.ts';
 import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
 import {
@@ -48,6 +48,7 @@ import { CW } from './CalendarWords.ts';
 import { kindOf, useShell } from '../../components/settingsShell.ts';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { ListTop } from '../../components/ListTop.tsx';
+import { LIST_EDGES } from '../../components/listFrame.ts';
 
 /** The demo keeps its own place, so it never moves the real Calendar's. */
 const KEPT = 'soirely.demo.calendar';
@@ -225,13 +226,8 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
 
   if (shell.layout === 'landscape')
     return (
-      <Landscape
-        column={null}
-        at="Calendar"
-        onEvent={(key) => openEvent(EVENT_OF_KEY[key])}
-        overlay={feedPanel}
-      >
-        <View style={styles.pane}>{board}</View>
+      <Landscape column={null} at="Calendar" overlay={feedPanel}>
+        <View style={[styles.grow, LIST_EDGES.tabletLandscape]}>{board}</View>
       </Landscape>
     );
 
@@ -239,7 +235,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
     return (
       <View style={styles.page}>
         <PortraitTop at="Calendar" />
-        <View style={styles.portrait}>{board}</View>
+        <View style={[styles.grow, LIST_EDGES.tabletPortrait]}>{board}</View>
         {feedPanel}
       </View>
     );
@@ -247,7 +243,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
   return (
     <View style={styles.page}>
       <View style={{ height: insets.top }} />
-      <View style={styles.phone}>{board}</View>
+      <View style={[styles.grow, LIST_EDGES.phone]}>{board}</View>
       <TabBarFade />
       <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Calendar" />
       {feedPanel}
@@ -257,8 +253,6 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: tokens.colorCard },
-  phone: { flex: 1, paddingTop: tokens.spaceXxs, paddingHorizontal: tokens.spaceXxl },
-  portrait: { flex: 1, paddingTop: 26, paddingHorizontal: tokens.space5xl },
-  pane: { flex: 1, paddingTop: 26, paddingHorizontal: 30 },
+  grow: { flex: 1 },
   when: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
 });

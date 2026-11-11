@@ -458,7 +458,7 @@ export function GuestsScreen({
     </>
   );
 
-  const band = offline && <OfflineBand onRetry={() => setOffline(false)} testID="guests.offline" />;
+  const band = offline && <OfflineBand onRetry={() => setOffline(false)} />;
 
   if (layout === 'landscape')
     return (

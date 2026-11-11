@@ -244,7 +244,6 @@ export const say = {
     `You searched for “${q}” and filtered by ${filters}.`,
   searched: (q: string) => `You searched for “${q}”.`,
   filtered: (filters: string) => `You filtered by ${filters}.`,
-  offline: (time: string) => `Offline · as of ${time}`,
   backTo: (word: string) => `‹ ${word}`,
   nameCount: (count: number) => `${count} of 120 characters`,
   describeCount: (count: number) => `${count} of 250 characters`,
