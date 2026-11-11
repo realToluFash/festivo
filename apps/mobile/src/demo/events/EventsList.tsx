@@ -41,7 +41,7 @@ import {
   FilterButton,
   SearchField,
   SearchRow,
-  useFilterWord,
+  useFilterWords,
 } from '../../components/EventsSearch.tsx';
 import {
   type CardStep,
@@ -141,7 +141,7 @@ export function EventsList({
     [looking, events, searched, filters, now, locale],
   );
   const hosts = useMemo(() => hostNames(EVENTS, locale), [locale]);
-  const word = useFilterWord(filters, locale);
+  const filterWords = useFilterWords(filters, locale);
   const calendar: Calendar = { today: wallDay(now, READER_ZONE), firstDay: 1, locale };
 
   useEffect(() => {
@@ -218,7 +218,14 @@ export function EventsList({
             />
           }
           filter={
-            <FilterButton ref={filterRef} word={word} off open={false} onPress={() => undefined} />
+            <FilterButton
+              ref={filterRef}
+              {...filterWords}
+              wraps={!wide}
+              off
+              open={false}
+              onPress={() => undefined}
+            />
           }
         />
         <SunkTabs />
@@ -276,7 +283,8 @@ export function EventsList({
         filter={
           <FilterButton
             ref={filterRef}
-            word={word}
+            {...filterWords}
+            wraps={!wide}
             off={offline}
             open={menuAt != null}
             onPress={() => anchorUnder(filterRef, setMenuAt)}

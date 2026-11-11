@@ -5,7 +5,7 @@ import {
   type EventRole,
   type OrganisationEvent,
 } from '@soirely/api-client';
-import { firstName, initials } from '@soirely/domain';
+import { firstName, initials, numberFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -283,7 +283,7 @@ export function EventPeople({
             title={t('eventPeople.onEvent')}
             right={
               <Text size={15} weight="medium" style={[styles.secondary, styles.count]}>
-                {new Intl.NumberFormat(locale).format(people.length)}
+                {numberFormat(locale).format(people.length)}
               </Text>
             }
           />

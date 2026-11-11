@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import i18next from 'i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -392,6 +393,20 @@ describe('People on an event, at a desk (sc-29915)', () => {
 
     expect(sent.filter((one) => one.line.startsWith('PATCH '))).toEqual([]);
     expect(within(dialog).queryByText(/Saving/)).toBeNull();
+  });
+
+  it('counts 1,200 people in Portuguese as pt-PT writes them, 1200', async () => {
+    const crowd = Array.from({ length: 1200 }, (_, n) => person(`g${n}`, `Guest ${n}`, 'can_view'));
+    signedIn();
+    await onPeople(crowd);
+    expect(within(people()).getByText('1,200')).toBeDefined();
+    await act(() => i18next.changeLanguage('pt'));
+
+    try {
+      expect(document.querySelector('.people-count')?.textContent).toBe('1200');
+    } finally {
+      await act(() => i18next.changeLanguage('en'));
+    }
   });
 
   it('names a lone owner in the singular', async () => {
