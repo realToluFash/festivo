@@ -19,6 +19,12 @@ import type { ChipKind } from '../../components/SettingsParts.tsx';
 import type { MarkKind } from '../../components/StatusMark.tsx';
 
 export const ORGANISATION = YOU.organisation;
+
+/** sc-40153's names: 89 characters with Yoruba marks, and one word of 100 that has nowhere to break. */
+export const LONG_NAME =
+  'Ẹgbẹ́ Ọ̀rẹ́ Àṣà Ìbílẹ̀ Ọ̀ṣun Òṣogbo àti Ilé-Ifẹ̀, Ọ̀yọ́, Abẹ́òkúta, Ìjẹ̀bú-Òde àti Ẹ̀kìtì';
+export const ONE_WORD_NAME =
+  'TheGrandBallroomWeddingsGalasAndGardenPartiesCompanyOfLagosLisbonMadridMonterreyAndPortoAlegreEvents';
 export const DOMAIN = 'ire.events';
 /** The demo's today, where the sample's dates sit. */
 export const TODAY = '2026-11-04';
@@ -346,6 +352,8 @@ export const MEMBERS_STATES = [
   'handoverNowDone',
   'handoverReadOnly',
   'alsoMember',
+  'longName',
+  'oneWordName',
   'claimFound',
   'claimTheirs',
   'claimTheirsFound',
@@ -431,6 +439,8 @@ export interface MembersStart {
   answering: Answering;
   /** sc-563: how many other organisations the open person is also a member of, never which. */
   otherOrganisations: number | null;
+  /** sc-40153: the organisation's name on the person's page, long in the states that wrap Remove. */
+  organisation: string;
 }
 
 /** Mine: `open` until the record is found, then `found`. Theirs: another admin's claim, seen by an admin who did not start it. */
@@ -816,6 +826,7 @@ export function membersStart(
     recoveryAnswer: null,
     answering: 'answers',
     otherOrganisations: null,
+    organisation: ORGANISATION,
   };
   const removing: MembersStart = {
     ...base,
@@ -905,6 +916,10 @@ export function membersStart(
       return { ...base, open: PRIYA };
     case 'alsoMember':
       return { ...base, open: PRIYA, otherOrganisations: 2 };
+    case 'longName':
+      return { ...base, open: PRIYA, organisation: LONG_NAME };
+    case 'oneWordName':
+      return { ...base, open: PRIYA, organisation: ONE_WORD_NAME };
     case 'removing':
     case 'handover':
     case 'handoverMenu':
