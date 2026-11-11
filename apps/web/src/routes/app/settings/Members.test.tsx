@@ -1739,13 +1739,62 @@ describe('requests to get back in on Members (sc-30189)', () => {
     );
   });
 
-  it('keeps the confirm open when an answer fails, and its verb tries again', async () => {
+  it('closes on the last request’s Close with the focus on the card’s words', async () => {
+    signedIn();
+    answering({
+      ...reads([KOFI]),
+      'POST /api/auth/recovery-requests/rq_kofi/approve': () =>
+        problem('recovery_request_closed', 409),
+    });
+    open();
+
+    fireEvent.click(await answerOf('Kofi Mensah', 'Approve'));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Turn off two-factor',
+      }),
+    );
+    await screen.findByText('This request has already been answered, or it has ended.');
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Close' }));
+
+    expect(page().queryByRole('article')).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(cardSays()));
+  });
+
+  it('waits out Escape while the answer is sending', async () => {
+    signedIn();
+    let reply: (answer: Response) => void = () => undefined;
+    answering({
+      ...reads(),
+      'POST /api/auth/recovery-requests/rq_kofi/approve': () =>
+        new Promise<Response>((resolve) => {
+          reply = resolve;
+        }),
+    });
+    open();
+
+    fireEvent.click(await answerOf('Kofi Mensah', 'Approve'));
+    const ask = within(await screen.findByRole('alertdialog'));
+    fireEvent.click(ask.getByRole('button', { name: 'Turn off two-factor' }));
+    expect(await ask.findByText('Sending your answer…')).toBeDefined();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.getByRole('alertdialog')).toBeDefined();
+    reply(done());
+    expect(await page().findByText('Kofi Mensah’s two-factor is off.')).toBeDefined();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it.each([
+    ['no connection', () => Promise.reject(new TypeError('Failed to fetch'))],
+    ['a 5xx', () => problem('server_error', 500)],
+  ])('keeps the confirm open on %s, and its verb tries again', async (_, failure) => {
     signedIn();
     let fails = true;
     answering({
       ...reads(),
-      'POST /api/auth/recovery-requests/rq_kofi/approve': () =>
-        fails ? problem('server_error', 500) : done(),
+      'POST /api/auth/recovery-requests/rq_kofi/approve': () => (fails ? failure() : done()),
     });
     open();
 
