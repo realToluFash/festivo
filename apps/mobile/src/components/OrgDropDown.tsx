@@ -191,12 +191,17 @@ export function OrgDropDown({
 
   useEffect(() => {
     if (open || !present) return;
+    const gone = () => setPresent(false);
+    // Android can lose a native fade's end, and the window left up held Create an organisation's walk back (qa3, #39178).
+    const lost = setTimeout(gone, tokens.motionFast + SETTLED_MS);
     Animated.timing(fade, {
       toValue: 0,
       duration: tokens.motionFast,
       easing: LEAVE,
       useNativeDriver: true,
-    }).start(() => setPresent(false));
+    }).start(gone);
+
+    return () => clearTimeout(lost);
   }, [open, present, fade]);
 
   useEffect(() => {
