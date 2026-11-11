@@ -1,4 +1,4 @@
-import type { OrganisationMember, OwnerClaimBanner } from '@soirely/api-client';
+import type { OrganisationMember, OwnerClaimBanner, RecoveryRequest } from '@soirely/api-client';
 import { init, t } from 'i18next';
 import { beforeAll, describe, expect, it } from 'vitest';
 
@@ -57,6 +57,82 @@ const card = (over: Partial<Parameters<typeof membersCard>[0]> = {}) =>
     claim: null,
     ...over,
   });
+
+function asking(id: string, name: string, more: Partial<RecoveryRequest> = {}): RecoveryRequest {
+  return {
+    id,
+    userId: `user_${id}`,
+    name,
+    email: `${id}@ire.events`,
+    provedPhone: true,
+    own: false,
+    organisations: ['Ire Events'],
+    organisationIds: ['org_ire'],
+    asked: 'Tuesday, Nov 3 at 18:05 WAT',
+    expires: 'Tuesday, Nov 10 at 18:05 WAT',
+    ...more,
+  };
+}
+
+const kofi = asking('kofi', 'Kofi Mensah');
+const priya = asking('priya', 'Priya Shah', { provedPhone: false });
+
+describe("Members' card with requests to get back in (sc-30894)", () => {
+  it('counts both kinds, says each on its line, and answers the oldest request to get back in first', () => {
+    const shown = card({ recovery: [kofi, priya] });
+
+    expect(shown.says).toBe('3 people · 3 waiting');
+    expect(shown.line).toBe('2 to get back in · 1 to join');
+    expect(shown.step).toEqual({
+      label: 'Answer Kofi Mensah',
+      does: { does: 'answerRecovery', request: 'kofi' },
+    });
+  });
+
+  it('has no second line while only one kind waits', () => {
+    const shown = card({
+      members: people.filter((one) => one.status !== 'pending_approval'),
+      recovery: [kofi],
+    });
+
+    expect(shown.says).toBe('3 people · 1 waiting');
+    expect(shown.line).toBeNull();
+  });
+
+  it('says an approval, takes the focus with it, and moves the step to the next request', () => {
+    const shown = card({
+      said: { kind: 'recoveryApproved', name: 'Kofi Mensah' },
+      recovery: [priya],
+    });
+
+    expect(shown.says).toBe('Kofi Mensah’s two-factor is off.');
+    expect(shown.line).toBe('They’re emailed now, and every session they had has ended.');
+    expect(shown.step?.label).toBe('Answer Priya Shah');
+    expect(shown.takesFocus).toBe(true);
+    expect(shown.readsOut).toBe(false);
+  });
+
+  it('says a turn-down, and goes back to the request to join once none is left', () => {
+    const shown = card({ said: { kind: 'recoveryTurnedDown', name: 'Kofi Mensah' } });
+
+    expect(shown.says).toBe('Kofi Mensah’s request is turned down.');
+    expect(shown.line).toBe('Two-factor stays on for them, and they’re emailed.');
+    expect(shown.step?.does).toEqual({ does: 'answer', member: 'lucia' });
+  });
+
+  it('after a removal, still answers the requests to get back in first', () => {
+    const shown = card({ said: { kind: 'removed', name: 'Priya Shah' }, recovery: [kofi] });
+
+    expect(shown.step?.label).toBe('Answer Kofi Mensah');
+  });
+
+  it('shows nothing of them to somebody who does not manage members', () => {
+    const shown = card({ manages: false, recovery: [kofi] });
+
+    expect(shown.says).toBe('3 people');
+    expect(shown.step).toBeNull();
+  });
+});
 
 describe("Members' card", () => {
   it('says how many people and how many wait, with answering the oldest as its step', () => {

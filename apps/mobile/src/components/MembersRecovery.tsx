@@ -1,74 +1,106 @@
-import type { Ref } from 'react';
+import type { RecoveryRequest } from '@soirely/api-client';
+import { type RefObject, useContext, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { type ScrollViewInstance, StyleSheet, View, type ViewInstance } from 'react-native';
 
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
+import type { MemberFace } from '../kit/membersSummary.ts';
 import {
   askerName,
-  OWN_LINE,
-  RECOVERY_WORDS,
-  type RecoveryAsk,
+  ownLine,
+  type RecoveryAnswer,
   recoveryFacts,
+  recoveryFace,
   recoveryHeard,
-  recoveryOf,
-} from './MembersRecoverySample.ts';
-import type { MembersSay, Person } from './MembersSample.ts';
-import { Avatar } from '../../components/SettingsParts.tsx';
+} from '../kit/membersRecovery.ts';
+import { tokens } from '../theme/tokens.ts';
+import { ScreenScroll } from './Screen.tsx';
+import { Avatar } from './SettingsParts.tsx';
 import {
-  type AskProps,
   type ListItem,
   RowList,
   Section,
   SELECTED_ROW,
   Tag,
   TextAction,
-} from '../../components/Summary.tsx';
+  useRowClear,
+} from './Summary.tsx';
+import { Text } from './Text.tsx';
 
 export type RecoveryPart = 'box' | 'group' | 'approve' | 'turnDown';
 
 type OnTarget = (id: string, part: RecoveryPart, view: ViewInstance | null) => void;
 
-/** Requests to get back in, under the card: the product's paragraph once, heard in each request's group instead, then each request as a Members row with its two answers. */
+/** Requests to get back in, under the card (sc-30894): the paragraph once, heard in each request's group instead, then each request as a Members row with its two answers. `lit` comes into view each time `brought` changes, its list's head `top` under the screen's scroll, or `scrollRef`'s. */
 export function RecoveryRequests({
   waiting,
-  you,
   lit,
+  brought,
   dense,
-  say,
-  listRef,
+  locale,
+  top = tokens.spaceSm,
+  scrollRef,
+  faceOf = recoveryFace,
   onTarget,
   onAnswer,
 }: {
-  waiting: readonly Person[];
-  you: string;
+  waiting: readonly RecoveryRequest[];
   lit: string | null;
+  brought: number;
   dense: boolean;
-  say: MembersSay;
-  listRef: Ref<ViewInstance>;
+  locale: string;
+  top?: number;
+  scrollRef?: RefObject<ScrollViewInstance | null>;
+  faceOf?: (request: RecoveryRequest) => MemberFace;
   onTarget: OnTarget;
-  onAnswer: (id: string, answer: RecoveryAsk['answer']) => void;
+  onAnswer: (id: string, answer: RecoveryAnswer) => void;
 }) {
+  const { t } = useTranslation();
   const side = dense ? 36 : 40;
-  const items: ListItem[] = waiting.map((person) => ({
-    key: person.id,
+  const scroll = useContext(ScreenScroll);
+  const clear = useRowClear();
+  const list = useRef<ViewInstance>(null);
+  const boxes = useRef<Record<string, ViewInstance | null>>({});
+  const target: OnTarget = (id, part, view) => {
+    if (part === 'box') boxes.current[id] = view;
+    onTarget(id, part, view);
+  };
+
+  useEffect(() => {
+    if (brought === 0 || lit == null) return;
+    const frame = requestAnimationFrame(() =>
+      bringListUp(
+        list.current,
+        boxes.current[lit],
+        scrollRef?.current ?? scroll?.ref.current ?? null,
+        top,
+        clear,
+      ),
+    );
+
+    return () => cancelAnimationFrame(frame);
+    // Once per press of the card's step, for the request it lit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brought]);
+  const items: ListItem[] = waiting.map((request) => ({
+    key: request.id,
     inset: side + tokens.spaceLg,
-    selected: person.id === lit,
+    selected: request.id === lit,
     row: (
       <RecoveryRow
-        person={person}
-        own={person.id === you}
-        lit={person.id === lit}
+        request={request}
+        lit={request.id === lit}
         dense={dense}
-        say={say}
-        onTarget={onTarget}
+        locale={locale}
+        face={faceOf(request)}
+        onTarget={target}
         onAnswer={onAnswer}
       />
     ),
   }));
 
   return (
-    <View ref={listRef} collapsable={false}>
-      <Section title={RECOVERY_WORDS.title} foot={RECOVERY_WORDS.note}>
+    <View ref={list} collapsable={false}>
+      <Section title={t('recoveryRequests.cardTitle')} foot={t('recoveryRequests.cardNote')}>
         <Text
           size={15}
           weight="medium"
@@ -77,7 +109,7 @@ export function RecoveryRequests({
           importantForAccessibility="no-hide-descendants"
           accessible={false}
         >
-          {RECOVERY_WORDS.intro}
+          {t('recoveryRequests.intro')}
         </Text>
         <View style={dense && styles.bleed}>
           <RowList items={items} gutter={dense ? tokens.spaceMd : 0} />
@@ -88,29 +120,29 @@ export function RecoveryRequests({
 }
 
 function RecoveryRow({
-  person,
-  own,
+  request,
   lit,
   dense,
-  say,
+  locale,
+  face,
   onTarget,
   onAnswer,
 }: {
-  person: Person;
-  own: boolean;
+  request: RecoveryRequest;
   lit: boolean;
   dense: boolean;
-  say: MembersSay;
+  locale: string;
+  face: MemberFace;
   onTarget: OnTarget;
-  onAnswer: (id: string, answer: RecoveryAsk['answer']) => void;
+  onAnswer: (id: string, answer: RecoveryAnswer) => void;
 }) {
-  const request = recoveryOf(person.id);
+  const { t } = useTranslation();
   const side = dense ? 36 : 40;
-  const testID = `members.recovery.${person.initials}`;
+  const testID = `members.recovery.${request.id}`;
 
   return (
     <View
-      ref={(view) => onTarget(person.id, 'box', view)}
+      ref={(view) => onTarget(request.id, 'box', view)}
       collapsable={false}
       style={[
         dense ? styles.rowDense : styles.row,
@@ -120,12 +152,12 @@ function RecoveryRow({
       testID={testID}
     >
       <View
-        ref={(view) => onTarget(person.id, 'group', view)}
+        ref={(view) => onTarget(request.id, 'group', view)}
         style={styles.group}
         accessible
-        accessibilityLabel={recoveryHeard(request, person, own, say)}
+        accessibilityLabel={recoveryHeard(t, request)}
       >
-        <Avatar initials={person.initials} side={side} tone={person.tone} />
+        <Avatar {...face} side={side} />
         <View style={styles.words}>
           <View style={styles.titleRow}>
             <Text
@@ -134,11 +166,11 @@ function RecoveryRow({
               accessible={false}
               style={[styles.name, lit && styles.accent]}
             >
-              {askerName(person, own)}
+              {askerName(t, request)}
             </Text>
-            <Tag kind="waiting" word={RECOVERY_WORDS.mark} wraps />
+            <Tag kind="waiting" word={t('recoveryRequests.mark')} wraps />
           </View>
-          {recoveryFacts(request, person, own, say).map((fact) => (
+          {recoveryFacts(t, request).map((fact) => (
             <Text
               key={fact}
               size={14}
@@ -152,22 +184,22 @@ function RecoveryRow({
         </View>
       </View>
       <View style={{ marginLeft: side + tokens.spaceLg }}>
-        {own ? (
+        {request.own ? (
           <Text size={14} weight="medium" style={styles.own}>
-            {OWN_LINE}
+            {ownLine(t, request, locale)}
           </Text>
         ) : (
           <View style={styles.answers}>
             <TextAction
-              ref={(view) => onTarget(person.id, 'approve', view)}
-              label={RECOVERY_WORDS.approve}
-              onPress={() => onAnswer(person.id, 'approve')}
+              ref={(view) => onTarget(request.id, 'approve', view)}
+              label={t('recoveryRequests.approve')}
+              onPress={() => onAnswer(request.id, 'approve')}
               testID={`${testID}.approve`}
             />
             <TextAction
-              ref={(view) => onTarget(person.id, 'turnDown', view)}
-              label={RECOVERY_WORDS.turnDown}
-              onPress={() => onAnswer(person.id, 'turnDown')}
+              ref={(view) => onTarget(request.id, 'turnDown', view)}
+              label={t('recoveryRequests.turnDown')}
+              onPress={() => onAnswer(request.id, 'turnDown')}
               testID={`${testID}.turnDown`}
             />
           </View>
@@ -175,55 +207,6 @@ function RecoveryRow({
       </View>
     </View>
   );
-}
-
-/** Members' one Ask for each answer: Cancel or Keep the request first, the verb last; Sending your answer… while it goes, the failed line if it fails, and Close alone once the request has gone. */
-export function recoveryQuestion(
-  ask: RecoveryAsk | null,
-  name: string,
-): Omit<AskProps, 'onKeep' | 'onConfirm'> {
-  const turningDown = ask?.answer === 'turnDown';
-  const title = turningDown
-    ? RECOVERY_WORDS.turnDownTitle(name)
-    : RECOVERY_WORDS.approveTitle(name);
-
-  const off = ask?.phase === 'sending';
-  const busy = off ? RECOVERY_WORDS.sending : undefined;
-  const failed = ask?.phase === 'failed' ? RECOVERY_WORDS.failed : null;
-
-  if (ask?.phase === 'closed')
-    return {
-      title,
-      line: RECOVERY_WORDS.closed,
-      alert: true,
-      keep: { label: RECOVERY_WORDS.close, testID: 'members.recovery.close' },
-      confirm: null,
-    };
-  if (turningDown)
-    return {
-      title,
-      line: RECOVERY_WORDS.turnDownBody,
-      failed,
-      keep: { label: RECOVERY_WORDS.keep, testID: 'members.recovery.keep', off },
-      confirm: {
-        label: RECOVERY_WORDS.turnDownConfirm,
-        testID: 'members.recovery.turnDownConfirm',
-        busy,
-      },
-    };
-
-  return {
-    title,
-    line: RECOVERY_WORDS.approveBody,
-    failed,
-    keep: { label: RECOVERY_WORDS.cancel, testID: 'members.recovery.cancel', off },
-    confirm: {
-      label: RECOVERY_WORDS.approveConfirm,
-      testID: 'members.recovery.turnOff',
-      removes: true,
-      busy,
-    },
-  };
 }
 
 /** The card's step: when the request is not wholly in view, the list's head comes up to `top` under the scroll's top, as the phone's board draws it. */

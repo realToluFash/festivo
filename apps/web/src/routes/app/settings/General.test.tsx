@@ -470,6 +470,7 @@ describe('Settings > General', () => {
 describe('Settings > General, a request to get back in', () => {
   const REQUEST = {
     id: 'rq_1',
+    userId: 'u_tope',
     name: 'Tope Bello',
     email: 'tope.bello@ire.events',
     provedPhone: false,

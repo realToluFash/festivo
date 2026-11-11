@@ -1,4 +1,4 @@
-import type { OrganisationMember, OwnerClaimBanner } from '@soirely/api-client';
+import type { OrganisationMember, OwnerClaimBanner, RecoveryRequest } from '@soirely/api-client';
 import {
   initials,
   type MemberFilter,
@@ -110,10 +110,13 @@ export type MembersSaid =
   | { kind: 'approved'; member: string; name: string; role: string }
   | { kind: 'turnedDown'; name: string }
   | { kind: 'removed'; name: string }
-  | { kind: 'withdrew'; told: boolean };
+  | { kind: 'withdrew'; told: boolean }
+  | { kind: 'recoveryApproved'; name: string }
+  | { kind: 'recoveryTurnedDown'; name: string };
 
 export type MembersStep =
   | { does: 'answer'; member: string }
+  | { does: 'answerRecovery'; request: string }
   | { does: 'seePerson'; member: string }
   | { does: 'seeFormer' }
   | { does: 'becomeOwner' }
@@ -127,10 +130,22 @@ export interface MembersCard {
   more: number;
   /** Said as it changes: an answer, a removal or a withdrawn claim, never the plain count. */
   readsOut: boolean;
+  /** An answer to a request to get back in takes the focus, so it is heard as one, sentence and line, and not read out again. */
+  takesFocus: boolean;
 }
 
-/** The card's one step at rest: the oldest request to join the viewer can answer. */
-function answerStep(t: TFunction, waiting: readonly OrganisationMember[]): MembersCard['step'] {
+/** The card's one step at rest: the oldest request to get back in the viewer can answer, then the oldest request to join. */
+function answerStep(
+  t: TFunction,
+  back: readonly RecoveryRequest[],
+  waiting: readonly OrganisationMember[],
+): MembersCard['step'] {
+  const recovery = back[0];
+  if (recovery != null)
+    return {
+      label: t('membersScreen.card.answer', { name: recovery.name }),
+      does: { does: 'answerRecovery', request: recovery.id },
+    };
   const first = waiting[0];
 
   return first == null
@@ -139,6 +154,16 @@ function answerStep(t: TFunction, waiting: readonly OrganisationMember[]): Membe
         label: t('membersScreen.card.answer', { name: first.user.name }),
         does: { does: 'answer', member: first.id },
       };
+}
+
+/** The card's second line, only while both kinds wait. */
+function waitingKinds(t: TFunction, back: number, join: number): string | null {
+  return back > 0 && join > 0
+    ? t('membersScreen.card.waitingKinds', {
+        back: t('membersScreen.card.toGetBackIn', { count: back }),
+        join: t('membersScreen.card.toJoin', { count: join }),
+      })
+    : null;
 }
 
 /** The card while no owner is active, in the words of the demo's claim states (sc-37693). */
@@ -219,6 +244,7 @@ export function membersCard({
   organisation,
   said,
   claim,
+  recovery = [],
 }: {
   t: TFunction;
   members: readonly OrganisationMember[];
@@ -226,10 +252,13 @@ export function membersCard({
   organisation: string;
   said: MembersSaid | null;
   claim: OwnerClaimBanner | null;
+  /** The requests to get back in this viewer can answer, oldest first: never their own. */
+  recovery?: readonly RecoveryRequest[];
 }): MembersCard {
-  const quiet = { line: null, faces: [], more: 0, readsOut: true };
+  const quiet = { line: null, faces: [], more: 0, readsOut: true, takesFocus: false };
   const waiting = manages ? waitingToJoin(members) : [];
-  const answer = answerStep(t, waiting);
+  const back = manages ? recovery : [];
+  const answer = answerStep(t, back, waiting);
   const seeFormer = {
     label: t('membersScreen.awaiting.turnedDownNext'),
     does: { does: 'seeFormer' },
@@ -255,6 +284,22 @@ export function membersCard({
       line: t('membersScreen.card.turnedDownLine'),
       step: seeFormer,
     };
+  if (said?.kind === 'recoveryApproved' || said?.kind === 'recoveryTurnedDown')
+    return {
+      ...quiet,
+      ...(said.kind === 'recoveryApproved'
+        ? {
+            says: t('recoveryRequests.approved', { name: said.name }),
+            line: t('recoveryRequests.approvedNext'),
+          }
+        : {
+            says: t('recoveryRequests.turnedDown', { name: said.name }),
+            line: t('recoveryRequests.turnedDownNext'),
+          }),
+      step: answer,
+      readsOut: false,
+      takesFocus: true,
+    };
   if (said?.kind === 'removed')
     return {
       ...quiet,
@@ -275,19 +320,21 @@ export function membersCard({
   const all = membersShown(members, 'all');
   const faces = all.slice(0, 5).map(faceOf);
   const headcount = t('membersScreen.card.people', { count: all.length });
+  const count = back.length + waiting.length;
 
   return {
     says:
-      waiting.length > 0
+      count > 0
         ? t('membersScreen.card.peopleWaiting', {
             people: headcount,
-            waiting: t('membersScreen.card.waiting', { count: waiting.length }),
+            waiting: t('membersScreen.card.waiting', { count }),
           })
         : headcount,
-    line: null,
+    line: waitingKinds(t, back.length, waiting.length),
     step: answer,
     faces,
     more: all.length - faces.length,
     readsOut: false,
+    takesFocus: false,
   };
 }

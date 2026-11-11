@@ -18,18 +18,15 @@ import { ClaimScreen, ClaimUnderCard, useOwnerClaim } from './MembersClaim.tsx';
 import { useLoad } from './MembersLoading.tsx';
 import { MembersCardView, NobodyPicked, People, Waiting } from './MembersParts.tsx';
 import { type PersonOpening, PersonPage } from './MembersPerson.tsx';
-import {
-  bringListUp,
-  RecoveryRequests,
-  type RecoveryPart,
-  recoveryQuestion,
-} from './MembersRecovery.tsx';
+import { RecoveryRequests, type RecoveryPart } from '../../components/MembersRecovery.tsx';
+import { recoveryQuestion } from '../../kit/membersRecovery.ts';
 import {
   answerable,
   answerTakes,
   endedByRemoval,
   type RecoveryAnswer,
   type RecoveryAsk,
+  recoveryRequestOf,
 } from './MembersRecoverySample.ts';
 import { RequestScreen } from './MembersRequest.tsx';
 import {
@@ -58,13 +55,7 @@ import {
 import { memberLooking } from './sample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { SummaryPage } from './SummaryPage.tsx';
-import {
-  Ask,
-  FailedBlock,
-  LoadingBlock,
-  SummaryColumn,
-  useRowClear,
-} from '../../components/Summary.tsx';
+import { Ask, FailedBlock, LoadingBlock, SummaryColumn } from '../../components/Summary.tsx';
 
 const PLAIN: PersonOpening = {
   step: 'resting',
@@ -96,7 +87,8 @@ function MembersScreen({ start }: { start: MembersStart }) {
   const shell = useShell();
   const landscape = shell.layout === 'landscape';
   const viewer = start.viewer;
-  const say = membersSayIn(formattingLocale('en', getLocales()[0]?.languageTag));
+  const locale = formattingLocale('en', getLocales()[0]?.languageTag);
+  const say = membersSayIn(locale);
   const { load, retry } = useLoad(start.load);
   const [people, setPeople] = useState<Person[]>(start.people);
   const [leads, setLeads] = useState<Leads>(start.leads);
@@ -113,14 +105,13 @@ function MembersScreen({ start }: { start: MembersStart }) {
   const cardStep = useRef<ViewInstance>(null);
   const focusBack = useRef<ScreenReaderTarget | null>(null);
   const insets = useSafeAreaInsets();
-  const clear = useRowClear();
   const [recovery, setRecovery] = useState<string[]>(start.recovery);
   const [recoveryAsk, setRecoveryAsk] = useState<RecoveryAsk | null>(start.recoveryAsk);
   const [recoveryAnswer, setRecoveryAnswer] = useState<RecoveryAnswer | null>(start.recoveryAnswer);
   const [lit, setLit] = useState<string | null>(null);
+  const [brought, setBrought] = useState(0);
   const [sent, setSent] = useState(start.recoveryAsk?.phase === 'sending' ? 1 : 0);
   const listScroll = useRef<ScrollViewInstance>(null);
-  const recoveryList = useRef<ViewInstance>(null);
   const cardSays = useRef<ScreenReaderTarget | null>(null);
   const targets = useRef<Targets>({});
   const lighting = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -192,10 +183,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
     const id = answerable(recovery, viewer.id)[0];
     if (id == null) return;
     setLit(id);
-    const top = (shell.layout === 'phone' ? insets.top : 0) + tokens.spaceSm;
-    requestAnimationFrame(() =>
-      bringListUp(recoveryList.current, targets.current[id]?.box, listScroll.current, top, clear),
-    );
+    setBrought((count) => count + 1);
     clearTimeout(lighting.current);
     lighting.current = setTimeout(
       () => moveScreenReaderFocus(targets.current[id]?.group ?? null),
@@ -320,12 +308,18 @@ function MembersScreen({ start }: { start: MembersStart }) {
       <ClaimUnderCard owner={owner} claimant={claimantName(people)} cardSays={cardSays} />
       {waitingBack.length > 0 && (
         <RecoveryRequests
-          waiting={waitingBack}
-          you={viewer.id}
+          waiting={waitingBack.map((one) => recoveryRequestOf(one, one.id === viewer.id, say))}
           lit={lit}
+          brought={brought}
           dense={landscape}
-          say={say}
-          listRef={recoveryList}
+          locale={locale}
+          top={(shell.layout === 'phone' ? insets.top : 0) + tokens.spaceSm}
+          scrollRef={listScroll}
+          faceOf={(request) => {
+            const one = waitingBack.find(({ id }) => id === request.id);
+
+            return { initials: one?.initials ?? '', tone: one?.tone ?? 0 };
+          }}
           onTarget={(id, part, view) => {
             targets.current[id] = { ...targets.current[id], [part]: view };
           }}
@@ -374,7 +368,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
       <Ask
         open={recoveryAsked != null}
         opener={recoveryOpener}
-        {...recoveryQuestion(recoveryAsk, recoveryAsked?.name ?? '')}
+        {...recoveryQuestion(t, recoveryAsk, recoveryAsked?.name ?? '')}
         onKeep={keepRecoveryAsk}
         onConfirm={confirmRecoveryAsk}
         testID="members.recovery.ask"

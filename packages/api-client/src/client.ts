@@ -166,11 +166,15 @@ export interface RealtimeSubscription {
 /** One request on an owner's card: never a code, only what was proved and when. */
 export interface RecoveryRequest {
   id: string;
+  /** Whose request it is: a removal from the organisation ends it there. */
+  userId: string;
   name: string;
   email: string;
   provedPhone: boolean;
   own: boolean;
   organisations: string[];
+  /** The organisations whose Members show it to this reader. */
+  organisationIds: string[];
   asked: string | null;
   expires: string | null;
 }
@@ -4149,6 +4153,7 @@ function asRecoveryRequest(raw: unknown): RecoveryRequest | null {
 
   if (
     typeof candidate.id !== 'string' ||
+    typeof candidate.userId !== 'string' ||
     typeof candidate.name !== 'string' ||
     typeof candidate.email !== 'string'
   ) {
@@ -4157,11 +4162,13 @@ function asRecoveryRequest(raw: unknown): RecoveryRequest | null {
 
   return {
     id: candidate.id,
+    userId: candidate.userId,
     name: candidate.name,
     email: candidate.email,
     provedPhone: candidate.provedPhone === true,
     own: candidate.own === true,
     organisations: strings(candidate.organisations),
+    organisationIds: strings(candidate.organisationIds),
     asked: optionalString(candidate.asked),
     expires: optionalString(candidate.expires),
   };
