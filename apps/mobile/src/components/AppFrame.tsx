@@ -72,7 +72,6 @@ import { Sheet } from './Sheet.tsx';
 import type { GlyphName } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
 import {
-  PHONE_TAB_BAR,
   type Tab,
   TABS,
   TabBar as PhoneTabs,
@@ -449,7 +448,8 @@ export function AppFrame({
   const floatingTabs = framed && kind === 'phone' && inEvent == null;
   const sidebar = framed && kind === 'tabletLandscape';
   const ownTop = framed && top != null && standIn == null;
-  const underTabs = floatingTabs && listUnderTabs ? phoneTabBarClearance(insets.bottom) : 0;
+  const underTabs =
+    floatingTabs && listUnderTabs && standIn == null ? phoneTabBarClearance(insets.bottom) : 0;
   const switchedNotice =
     switched == null ? null : created?.takesFocus === true ? (
       <View style={ownTop ? styles.switchedUnderTitle : styles.created}>
@@ -519,7 +519,7 @@ export function AppFrame({
               styles.body,
               floatingTabs &&
                 underTabs === 0 && {
-                  paddingBottom: tabBarFoot(insets.bottom) + PHONE_TAB_BAR + tokens.spaceMd,
+                  paddingBottom: phoneTabBarClearance(insets.bottom) + tokens.spaceMd,
                 },
             ]}
           >
