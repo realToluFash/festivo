@@ -5,6 +5,7 @@ import {
   Pressable,
   type StyleProp,
   StyleSheet,
+  useWindowDimensions,
   View,
   type ViewInstance,
   type ViewStyle,
@@ -12,6 +13,7 @@ import {
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { Text } from './Text.tsx';
+import { useWholeWords } from './Title.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
 import { EventMesh } from './EventMesh.tsx';
@@ -743,6 +745,10 @@ export function Band({
   );
 }
 
+const TAB_LABEL = 12;
+// Past 20 a label's line no longer fits under the glyph in the 54 tab (sc-37298).
+const TAB_LABEL_MOST = 20;
+
 export function TabBar<T extends string>({
   tabs,
   bottom,
@@ -758,9 +764,18 @@ export function TabBar<T extends string>({
   say?: (tab: T, glyph: GlyphName) => string;
   ids?: Partial<Record<T, string>>;
 }) {
+  const { fontScale } = useWindowDimensions();
+  const words = useWholeWords(
+    TAB_LABEL,
+    Math.min(TAB_LABEL * fontScale, TAB_LABEL_MOST),
+    tabs.map(([label, glyph]) => say(label, glyph)),
+    { weight: 'semibold' },
+  );
+
   return (
     <View style={[styles.tabBar, { bottom }]} accessibilityRole="tablist">
-      {tabs.map(([label, glyph]) => {
+      {words.measure}
+      {tabs.map(([label, glyph], index) => {
         const on = label === at;
         const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
 
@@ -773,11 +788,15 @@ export function TabBar<T extends string>({
             accessibilityState={{ selected: on }}
             accessibilityLabel={say(label, glyph)}
             testID={ids?.[label] ?? `tab-${label.toLowerCase()}`}
+            onLayout={
+              index === 0 ? (event) => words.room(event.nativeEvent.layout.width) : undefined
+            }
           >
             <Glyph name={glyph} size={22} ink={ink} />
             <Text
-              size={12}
+              size={TAB_LABEL}
               weight={on ? 'semibold' : 'medium'}
+              maxFontSizeMultiplier={words.maxFontSizeMultiplier}
               accessible={false}
               style={{ color: ink }}
             >
