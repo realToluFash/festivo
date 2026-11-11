@@ -199,7 +199,15 @@ describe('the application tree', () => {
     fireEvent.click(retry);
 
     const welcome = await screen.findByRole('heading', { level: 1, name: 'Welcome, Ada' });
-    expect([...asked].sort()).toEqual(['finished', 'finished', 'unfinished', 'unfinished']);
+    // Today reads both halves twice; the sidebar's Your events reads them once, on arrival.
+    expect([...asked].sort()).toEqual([
+      'finished',
+      'finished',
+      'finished',
+      'unfinished',
+      'unfinished',
+      'unfinished',
+    ]);
     await waitFor(() => expect(document.activeElement).toBe(welcome));
   });
 

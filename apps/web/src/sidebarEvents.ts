@@ -19,16 +19,21 @@ export function sidebarEvents(
 
 /**
  * The desk sidebar's Your events in the current organisation, loaded by the sidebar itself so
- * no screen's own loading or filters change it. Each move re-reads it and keeps what it has
- * meanwhile; another organisation's list is never shown, not even while the new one loads.
+ * no screen's own loading or filters change it. Each move it is shown on re-reads it and keeps
+ * what it has meanwhile; another organisation's list is never shown, not even while the new one
+ * loads. An event's page has its own sidebar, so `shown` is false there and nothing is read.
  */
-export function useSidebarEvents(organisationId: string | null, pathname: string): ShownEvent[] {
+export function useSidebarEvents(
+  organisationId: string | null,
+  pathname: string,
+  shown: boolean,
+): ShownEvent[] {
   const [loaded, setLoaded] = useState<{ organisationId: string; events: ShownEvent[] } | null>(
     null,
   );
 
   useEffect(() => {
-    if (organisationId == null) return;
+    if (organisationId == null || !shown) return;
 
     let current = true;
 
@@ -50,7 +55,7 @@ export function useSidebarEvents(organisationId: string | null, pathname: string
     return () => {
       current = false;
     };
-  }, [organisationId, pathname]);
+  }, [organisationId, pathname, shown]);
 
   return loaded != null && loaded.organisationId === organisationId ? loaded.events : [];
 }

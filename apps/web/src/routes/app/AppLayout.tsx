@@ -397,7 +397,7 @@ function ShellEvents({ organisationId }: { organisationId: string | null }) {
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const inside = useInsideEvent();
-  const events = useSidebarEvents(organisationId, pathname);
+  const events = useSidebarEvents(organisationId, pathname, inside == null);
 
   if (inside != null) return null;
 

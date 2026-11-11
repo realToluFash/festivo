@@ -97,7 +97,7 @@ async function onEvents(): Promise<void> {
     <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/app/events'] })} />,
   );
   fireEvent.click(await screen.findByRole('tab', { name: /^Drafts/ }));
-  await screen.findByText('Adaeze and Tunde');
+  await screen.findByText('Adaeze and Tunde', { selector: '#content *' });
 }
 
 afterEach(() => {
@@ -120,7 +120,7 @@ describe('the offline band (sc-22586)', () => {
     goOffline();
 
     await waitFor(() => expect(band()?.textContent).toContain('Offline · as of 20:09'));
-    expect(screen.getByText('Adaeze and Tunde')).toBeDefined();
+    expect(screen.getByText('Adaeze and Tunde', { selector: '#content *' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeDefined();
     await waitFor(() =>
       expect(document.querySelector('.offline-band > [aria-live="polite"]')?.textContent).toBe(
@@ -490,18 +490,18 @@ describe('the offline band on the planning screens (sc-27086)', () => {
     const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
     const fetched = servingEvents(state);
     open('/app');
-    await screen.findByText('Adaeze and Tunde');
+    await screen.findByText('Adaeze and Tunde', { selector: '#content *' });
 
     state.soirely = 'unreachable';
     goOffline();
     await waitFor(() => expect(band()?.textContent).toMatch(/^Offline · as of /));
-    expect(screen.getByText('Adaeze and Tunde')).toBeDefined();
+    expect(screen.getByText('Adaeze and Tunde', { selector: '#content *' })).toBeDefined();
 
     fetched.mockImplementation(() => new Promise<Response>(() => {}));
     act(() => screen.getByRole('button', { name: 'Try again' }).click());
 
     await screen.findByText('Refreshing…');
-    expect(screen.getByText('Adaeze and Tunde')).toBeDefined();
+    expect(screen.getByText('Adaeze and Tunde', { selector: '#content *' })).toBeDefined();
   });
 
   it('shows the new events once Try again on Today is answered, and lands on its greeting', async () => {
@@ -509,7 +509,7 @@ describe('the offline band on the planning screens (sc-27086)', () => {
     const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
     servingEvents(state);
     open('/app');
-    await screen.findByText('Adaeze and Tunde');
+    await screen.findByText('Adaeze and Tunde', { selector: '#content *' });
 
     state.soirely = 'unreachable';
     goOffline();
@@ -533,7 +533,7 @@ describe('the offline band on the planning screens (sc-27086)', () => {
     const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
     const fetched = servingEvents(state);
     open('/app');
-    await screen.findByText('Adaeze and Tunde');
+    await screen.findByText('Adaeze and Tunde', { selector: '#content *' });
 
     vi.setSystemTime(new Date(2026, 10, 10, 9, 47, 0));
     state.soirely = 'unreachable';
@@ -544,7 +544,7 @@ describe('the offline band on the planning screens (sc-27086)', () => {
     await tryAgainUnanswered(fetched);
 
     expect(band()?.textContent).toContain('Offline · as of 09:41');
-    expect(screen.getByText('Adaeze and Tunde')).toBeDefined();
+    expect(screen.getByText('Adaeze and Tunde', { selector: '#content *' })).toBeDefined();
   });
 
   describe('Edit details', () => {

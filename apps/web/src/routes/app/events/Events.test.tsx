@@ -599,7 +599,7 @@ describe('Events Home (sc-3594)', () => {
     expect(within(screen.getByRole('tabpanel')).getByRole('status').textContent).toBe(
       '2 more finished events shown.',
     );
-    expect(sent.filter(({ line }) => line === 'GET /api/orgs/org_1/events')).toHaveLength(3);
+    expect(sent.filter(({ line }) => line === 'GET /api/orgs/org_1/events')).toHaveLength(5);
   });
 
   it('reaches every Finished event, counted once, when one finishes between the first page and Show more', async () => {
@@ -677,7 +677,7 @@ describe('Events Home (sc-3594)', () => {
     await act(() => vi.advanceTimersByTimeAsync(30_000));
     expect(screen.queryByRole('region', { name: 'Party' })).toBeNull();
     expect(screen.getByRole('tab', { name: 'Past 1' })).toBeDefined();
-    expect(sent.filter(({ line }) => line === 'GET /api/orgs/org_1/events')).toHaveLength(2);
+    expect(sent.filter(({ line }) => line === 'GET /api/orgs/org_1/events')).toHaveLength(4);
   });
 
   it('keeps the tab chosen when the person comes back, and opens on Upcoming after Switch organisation', async () => {
