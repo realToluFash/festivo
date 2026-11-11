@@ -65,6 +65,7 @@ import {
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { tokens } from '../theme/tokens.ts';
 import { focusedField, watchCheckedField, watchFocusedField } from './focusedField.ts';
+import { landingToastTop, watchLandingToastTop } from './landingToastTop.ts';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import {
   LIFT,
@@ -179,7 +180,11 @@ function measureLift(
         const lift = (focusY?: number) => {
           const offset = from ?? scroll.offset.current;
           const groupY = groupInWindow({ scrollTop, contentY, offset });
-          const shown = shownEnd(keyboardTop, { y: scrollTop, height: scrollHeight });
+          // The landing toast over a step covers what is under it as the keys do (sc-37983).
+          const shown = Math.min(
+            shownEnd(keyboardTop, { y: scrollTop, height: scrollHeight }),
+            landingToastTop() ?? Infinity,
+          );
           const focusTop =
             focusY == null ? undefined : groupInWindow({ scrollTop, contentY: focusY, offset });
           const group = { y: groupY, height };
@@ -251,6 +256,7 @@ export function useAboveKeyboard(still = false): AboveKeyboard {
     scroll?.resized.add(lift);
     // Next on the keys moves focus without the keys going up again.
     const unwatchFocus = watchFocusedField(lift);
+    const unwatchToast = watchLandingToastTop(lift);
     const fromTop = (done: (lift: LiftFromTop) => void) => {
       if (stillNow.current) done(null);
       else measureLift(scroll, ref.current, keyboardTop.current, done, 0);
@@ -261,6 +267,7 @@ export function useAboveKeyboard(still = false): AboveKeyboard {
       cancel();
       unwatch();
       unwatchFocus();
+      unwatchToast();
       scroll?.resized.delete(lift);
       scroll?.lifts.delete(fromTop);
     };

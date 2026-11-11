@@ -247,23 +247,53 @@ export function StepScreen({
   const wasInline = useRef(inline);
   const hasFoot = foot != null;
   const shown = useRef<ReturnType<typeof stepShown> | null>(null);
+  const footInPage = useRef(inline);
 
+  // Measured as it slides in, the foot would be placed where it is passing: it is placed only once it has landed.
   const placeFoot = useCallback(
-    () => footRef.current?.measureInWindow((x, _y, width) => shown.current?.placed({ x, width })),
+    () =>
+      footRef.current?.measureInWindow((x, y, width) =>
+        shown.current?.placed({ x, width, top: footInPage.current ? null : y }),
+      ),
     [],
   );
 
   useEffect(() => {
     if (!hasFoot) return undefined;
     const step = stepShown();
-    shown.current = step;
-    // Laid out as it slides in, the foot is measured again once it has landed.
-    const settled = setTimeout(placeFoot, SETTLED_MS);
+    const landed = setTimeout(() => {
+      shown.current = step;
+      placeFoot();
+    }, SETTLED_MS);
+
+    return () => {
+      clearTimeout(landed);
+      shown.current = null;
+      step.left();
+    };
+  }, [hasFoot, placeFoot]);
+
+  useEffect(() => {
+    footInPage.current = inline;
+    placeFoot();
+  }, [inline, placeFoot]);
+
+  // The keys move the foot without laying it out again where the page pads for them, or a sheet rises clear of them.
+  useEffect(() => {
+    if (!hasFoot) return undefined;
+    let settled: ReturnType<typeof setTimeout> | undefined;
+    const unwatch = watchKeyboardTop(
+      () => 0,
+      () => {
+        placeFoot();
+        clearTimeout(settled);
+        settled = setTimeout(placeFoot, SETTLED_MS);
+      },
+    );
 
     return () => {
       clearTimeout(settled);
-      shown.current = null;
-      step.left();
+      unwatch();
     };
   }, [hasFoot, placeFoot]);
 
@@ -309,7 +339,10 @@ export function StepScreen({
         styles.foot,
         inline ? styles.inlineFoot : { paddingHorizontal: side, paddingBottom: bottom },
       ]}
-      onLayout={inline ? undefined : measuredAs('foot')}
+      onLayout={(event) => {
+        if (!inline) measuredAs('foot')(event);
+        placeFoot();
+      }}
     >
       <View ref={footRef} style={[styles.column, styles.footColumn]} onLayout={placeFoot}>
         {foot}

@@ -1,5 +1,5 @@
-import { StyleSheet, View } from 'react-native';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -8,7 +8,8 @@ import { tokens } from '../theme/tokens.ts';
 import { watchMovedOn } from './focusedField.ts';
 import { useKeyboardTop } from './keyboardWatch.ts';
 import { stepsSoFar, useLandedStep } from './landedStep.ts';
-import { landingToastBottom } from './landingToastBottom.ts';
+import { type Frame, landingToastBottom, underToast } from './landingToastBottom.ts';
+import { landingToastAt } from './landingToastTop.ts';
 import { SETTLED_MS } from './Screen.tsx';
 import { TAB_BAR } from './TodayScreen.tsx';
 import { Toast } from './Toast.tsx';
@@ -35,18 +36,23 @@ export function sayOnLanding(key: string): void {
   set(key);
 }
 
-/** Over the whole stack; on a phone it clears the tab bar, and on a step the button docked at its foot, to whose column a tablet keeps it. On a step it stays while the field it landed on keeps focus, and closes as another control takes it (sc-37519). */
+/** Over the whole stack; on a phone it clears the tab bar, and on a step it rests on the foot as measured, to whose column a tablet keeps it. On a step it stays while the field it landed on keeps focus, and closes as another control takes it (sc-37519, sc-37983). */
 export function LandingToast() {
   const { t } = useTranslation();
   const key = useSyncExternalStore(subscribe, () => said);
   const insets = useSafeAreaInsets();
-  // The frame the toast is laid out in, which the keys' top is read against: Android's window height leaves out the system bars, and measured from it the toast sat a bar lower, over Continue (sc-29071).
-  const [height, setHeight] = useState<number | null>(null);
+  // The frame the toast is laid out in, in the window the foot is measured in, which the keys' top is read against too: Android's window height leaves out the system bars, and measured from it the toast sat a bar lower, over Continue (sc-29071).
+  const [frame, setFrame] = useState<Frame | null>(null);
+  const frameRef = useRef<ViewInstance>(null);
+  const toastRef = useRef<ViewInstance>(null);
   const keyboardTop = useKeyboardTop();
   const { kind } = useLayout();
   const step = useLandedStep(saidOver);
   const stepId = step?.id;
-  const column = kind === 'phone' ? null : step?.column;
+  // A step is measured once it has landed; until then nothing says where its foot will rest.
+  const landing = step != null && step.foot == null;
+  const shown = key != null && frame != null && !landing;
+  const column = kind === 'phone' ? null : step?.foot;
 
   useEffect(() => {
     if (key == null || stepId == null) return undefined;
@@ -60,31 +66,46 @@ export function LandingToast() {
     };
   }, [key, stepId]);
 
+  useEffect(() => {
+    if (!shown || stepId == null) return undefined;
+
+    return () => landingToastAt(null);
+  }, [shown, stepId]);
+
   if (key == null) return null;
 
   return (
     <View
+      ref={frameRef}
       style={StyleSheet.absoluteFill}
       pointerEvents="box-none"
-      onLayout={(event) => setHeight(event.nativeEvent.layout.height)}
+      onLayout={() =>
+        frameRef.current?.measureInWindow((_x, y, _width, height) =>
+          setFrame((was) => (was?.y === y && was.height === height ? was : { y, height })),
+        )
+      }
     >
-      {height != null && (
+      {shown && (
         <View
+          ref={toastRef}
           style={[
             styles.toast,
             column == null ? styles.margins : { left: column.x, width: column.width },
-            // On a step it rides above the foot, docked on the keys or at the screen's foot.
             {
               bottom: landingToastBottom(
                 insets.bottom,
                 kind === 'phone' ? TAB_BAR : 0,
-                height,
+                frame.height,
                 keyboardTop,
-                step != null,
+                underToast(step, frame),
               ),
             },
           ]}
           pointerEvents="box-none"
+          onLayout={() => {
+            if (stepId == null) return;
+            toastRef.current?.measureInWindow((_x, y) => landingToastAt(y));
+          }}
         >
           <Toast key={key} words={t(key)} onClose={() => set(null)} />
         </View>
