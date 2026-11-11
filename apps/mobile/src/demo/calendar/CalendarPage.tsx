@@ -48,6 +48,7 @@ import { CW } from './CalendarWords.ts';
 import { kindOf, useShell } from '../../components/settingsShell.ts';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { ListTop } from '../../components/ListTop.tsx';
+import { LIST_EDGES } from '../../components/listFrame.ts';
 
 /** The demo keeps its own place, so it never moves the real Calendar's. */
 const KEPT = 'soirely.demo.calendar';
@@ -231,7 +232,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
         onEvent={(key) => openEvent(EVENT_OF_KEY[key])}
         overlay={feedPanel}
       >
-        <View style={styles.pane}>{board}</View>
+        <View style={[styles.grow, LIST_EDGES.tabletLandscape]}>{board}</View>
       </Landscape>
     );
 
@@ -239,7 +240,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
     return (
       <View style={styles.page}>
         <PortraitTop at="Calendar" />
-        <View style={styles.portrait}>{board}</View>
+        <View style={[styles.grow, LIST_EDGES.tabletPortrait]}>{board}</View>
         {feedPanel}
       </View>
     );
@@ -247,7 +248,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
   return (
     <View style={styles.page}>
       <View style={{ height: insets.top }} />
-      <View style={styles.phone}>{board}</View>
+      <View style={[styles.grow, LIST_EDGES.phone]}>{board}</View>
       <TabBarFade />
       <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Calendar" />
       {feedPanel}
@@ -257,8 +258,6 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: tokens.colorCard },
-  phone: { flex: 1, paddingTop: tokens.spaceXxs, paddingHorizontal: tokens.spaceXxl },
-  portrait: { flex: 1, paddingTop: 26, paddingHorizontal: tokens.space5xl },
-  pane: { flex: 1, paddingTop: 26, paddingHorizontal: 30 },
+  grow: { flex: 1 },
   when: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
 });

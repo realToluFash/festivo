@@ -77,6 +77,7 @@ import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { EventsFailed } from '../../components/Events.tsx';
 import { ListTop } from '../../components/ListTop.tsx';
+import { LIST_EDGES, LIST_GAP } from '../../components/listFrame.ts';
 
 const SEARCH_PAUSE_MS = 300;
 const MENU_AFTER_MS = 700;
@@ -396,7 +397,7 @@ function ListFrame({
         {band}
         <ScrollView
           style={styles.grow}
-          contentContainerStyle={styles.pane}
+          contentContainerStyle={[styles.pane, LIST_EDGES.tabletLandscape]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -417,16 +418,8 @@ function ListFrame({
         contentContainerStyle={[
           styles.blocks,
           phone
-            ? {
-                paddingTop: tokens.spaceXxs,
-                paddingHorizontal: tokens.spaceXxl,
-                paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2,
-              }
-            : {
-                paddingTop: 26,
-                paddingHorizontal: tokens.space5xl,
-                paddingBottom: insets.bottom + tokens.space6xl * 2,
-              },
+            ? [LIST_EDGES.phone, { paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2 }]
+            : [LIST_EDGES.tabletPortrait, { paddingBottom: insets.bottom + tokens.space6xl * 2 }],
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -520,8 +513,8 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
   figures: { fontVariant: ['tabular-nums'] },
-  blocks: { gap: 18 },
-  pane: { paddingTop: 26, paddingHorizontal: 30, paddingBottom: tokens.space6xl * 2, gap: 18 },
+  blocks: { gap: LIST_GAP },
+  pane: { paddingBottom: tokens.space6xl * 2, gap: LIST_GAP },
   guests: { flexDirection: 'row', gap: tokens.spaceMd },
   guest: {
     flex: 1,

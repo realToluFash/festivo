@@ -25,6 +25,7 @@ import {
 import { Back } from '../../components/SettingsParts.tsx';
 import { Bell as ProductBell } from '../../components/BellButton.tsx';
 import { PortraitTop as ProductPortraitTop } from '../../components/ListTop.tsx';
+import { useSideFrame } from '../../components/listFrame.ts';
 
 /** A page whose sample someone else sees: the Settings card, its rows and the sidebar's foot follow them. */
 export function SeenBy({ looking, children }: { looking: Looking; children: ReactNode }) {
@@ -59,10 +60,10 @@ export function Landscape({
   onEvent?: (key: EventKey) => void;
 }) {
   const shell = useShell();
-  const insets = useSafeAreaInsets();
+  const side = useSideFrame();
 
   return (
-    <View style={[styles.chrome, { paddingTop: insets.top }]}>
+    <View style={[styles.grow, side.chrome]}>
       {sidebar ?? (
         <TodayShellProvider
           value={{ ...demoShell(shell.tell, { event: onEvent }), person: shell.looking }}
@@ -76,7 +77,7 @@ export function Landscape({
           />
         </TodayShellProvider>
       )}
-      <View style={[styles.main, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
+      <View style={[styles.main, side.card]}>
         {column != null && <View style={styles.column}>{column}</View>}
         <View style={styles.grow}>{children}</View>
       </View>
@@ -224,17 +225,7 @@ const styles = StyleSheet.create({
   title: { letterSpacing: -0.5 },
   secondary: { color: tokens.colorInkSecondary },
   cardsPhone: { gap: tokens.spaceXl },
-  chrome: { flex: 1, flexDirection: 'row', backgroundColor: tokens.colorNeutralFill },
-  main: {
-    flex: 1,
-    flexDirection: 'row',
-    marginRight: tokens.spaceMd,
-    borderRadius: tokens.space3xl,
-    backgroundColor: tokens.colorCard,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    overflow: 'hidden',
-  },
+  main: { flex: 1, flexDirection: 'row' },
   column: { width: 360, borderRightWidth: 1, borderRightColor: tokens.colorBorder },
   task: { paddingHorizontal: tokens.space3xl, gap: tokens.spaceXl },
   taskTablet: { width: '100%', maxWidth: 560, alignSelf: 'center' },

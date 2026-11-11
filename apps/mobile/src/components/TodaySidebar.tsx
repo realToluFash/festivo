@@ -290,7 +290,7 @@ export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
   );
 }
 
-/** iPad landscape's sidebar: the places, your events by colour, and the person at its foot. */
+/** iPad landscape's sidebar: the places, your events by colour, and the person at its foot; with no organisation, Today alone above Settings (sc-29914). */
 export function TodaySidebar({
   events,
   onTab,
@@ -308,7 +308,7 @@ export function TodaySidebar({
     <SidebarColumn>
       <SidebarHead org={org} />
       <SidebarPlaces>
-        {PLACES.map(([label, glyph]) => (
+        {PLACES.filter(([tab]) => org || tab === 'Today').map(([label, glyph]) => (
           <Place key={label} tab={label} glyph={glyph} onTab={onTab} at={at} />
         ))}
       </SidebarPlaces>

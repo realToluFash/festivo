@@ -114,6 +114,7 @@ import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 import { type EdgeSwipeHandlers, EdgeSwipeStrip } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
 import { OfflineBand } from './OfflineBand.tsx';
+import { LIST_EDGES, useSideFrame } from './listFrame.ts';
 import { type Stale } from '../offline.ts';
 
 type Opening = (opener: RefObject<ViewInstance | null>) => void;
@@ -294,6 +295,7 @@ export function AppFrame({
   const { t } = useTranslation();
   const { kind } = useLayout();
   const insets = useSafeAreaInsets();
+  const side = useSideFrame();
   const navigation = useNavigation();
   useSystemBack(back?.systemBack === true, () => back?.onPress());
   // As the screen goes, by either Back, its header back is where TalkBack puts its focus, and says it with no name (sc-20554).
@@ -491,7 +493,7 @@ export function AppFrame({
   return (
     <SwitcherOpenedBy.Provider value={choosing ? switcherFrom : null}>
       <View
-        style={[styles.root, sidebar && [styles.chrome, { paddingTop: insets.top }]]}
+        style={[styles.root, sidebar && side.chrome]}
         importantForAccessibility={inFront ? 'auto' : 'no-hide-descendants'}
       >
         {sidebar && (
@@ -505,12 +507,7 @@ export function AppFrame({
             pill={pill}
           />
         )}
-        <View
-          style={[
-            styles.column,
-            sidebar && [styles.card, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }],
-          ]}
-        >
+        <View style={[styles.column, sidebar && side.card]}>
           {framed && !ownTop && <FrameHeader {...header} />}
           {ownTop && <FixedTop {...header} />}
           {ownTop && top === 'stays' && <ScreenTop {...header} stays />}
@@ -750,13 +747,7 @@ function ScreenTop({
       {switched}
     </>
   );
-  const staysStyle =
-    stays &&
-    (kind === 'phone'
-      ? styles.staysPhone
-      : kind === 'tabletPortrait'
-        ? styles.staysPortrait
-        : styles.staysLandscape);
+  const staysStyle = stays && LIST_EDGES[kind];
 
   if (!page)
     return (
@@ -1400,9 +1391,6 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   topRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   pageRow: { minHeight: 0, paddingTop: 14 },
-  staysPhone: { paddingTop: tokens.spaceXxs, paddingHorizontal: tokens.spaceXxl },
-  staysPortrait: { paddingTop: 26, paddingHorizontal: tokens.space5xl },
-  staysLandscape: { paddingTop: 26, paddingHorizontal: 30 },
   phoneHeader: {
     gap: tokens.spaceLg,
     paddingHorizontal: tokens.spaceXxl,
@@ -1420,15 +1408,6 @@ const styles = StyleSheet.create({
     paddingTop: 26,
     paddingHorizontal: 30,
     paddingBottom: tokens.spaceLg,
-  },
-  chrome: { flexDirection: 'row', backgroundColor: tokens.colorNeutralFill },
-  card: {
-    marginRight: tokens.spaceMd,
-    borderRadius: tokens.space3xl,
-    backgroundColor: tokens.colorCard,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    overflow: 'hidden',
   },
   stacked: { flexDirection: 'column', alignItems: 'flex-start', gap: tokens.spaceXs },
   back: {
