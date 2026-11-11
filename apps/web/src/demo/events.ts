@@ -3,6 +3,7 @@ import {
   type EventPhase,
   type EventState,
   type EventType,
+  type EventsFilters,
   type EventsLook,
   NO_EVENTS_FILTERS,
   calledOff,
@@ -298,7 +299,7 @@ const SAMPLE_EVENTS: readonly SampleEvent[] = [
     'live',
     ['2026-07-18T15:00:00Z', '2026-07-18T21:00:00Z', 'Africa/Lagos'],
     at('Eko Hotel', 'Lagos'),
-    ['Funmi Ade'],
+    ['Funmilayo Adéṣínà-Ọláolúwa'],
     'NGN',
   ),
   sample(
@@ -989,6 +990,9 @@ export type ListState =
   | 'search'
   | 'filtered'
   | 'filterOpen'
+  | 'manyFilters'
+  | 'manyFiltersOpen'
+  | 'longHost'
   | 'noMatch'
   | 'noGuests';
 
@@ -1006,6 +1010,9 @@ const LIST_STATES: readonly ListState[] = [
   'search',
   'filtered',
   'filterOpen',
+  'manyFilters',
+  'manyFiltersOpen',
+  'longHost',
   'noMatch',
   'noGuests',
 ];
@@ -1029,6 +1036,15 @@ export interface ListStart {
   look: EventsLook | null;
   noGuests: boolean;
 }
+
+/** More picks than Filter has room for at 1280, and more than the menu's Type and Hosted by rows have; the wedding this week still matches (sc-39348). */
+export const MANY_FILTERS: EventsFilters = {
+  types: ['wedding', 'birthday', 'gala', 'corporate'],
+  when: { kind: 'week' },
+  hosts: ['Adaeze Obi', 'Tunde Bakare', 'The Mensah family'],
+};
+
+export const LONG_HOST = 'Funmilayo Adéṣínà-Ọláolúwa';
 
 export function listStart(state: ListState | null): ListStart {
   const rest: ListStart = {
@@ -1076,6 +1092,12 @@ export function listStart(state: ListState | null): ListStart {
       };
     case 'filterOpen':
       return { ...rest, tab: 'upcoming', menu: 'type' };
+    case 'manyFilters':
+      return { ...rest, look: { q: '', filters: MANY_FILTERS } };
+    case 'manyFiltersOpen':
+      return { ...rest, menu: 'top', look: { q: '', filters: MANY_FILTERS } };
+    case 'longHost':
+      return { ...rest, look: { q: '', filters: { ...NO_EVENTS_FILTERS, hosts: [LONG_HOST] } } };
     case 'noMatch':
       return {
         ...rest,
@@ -1355,6 +1377,9 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       { to: '/demo/events?q=lucia', name: 'Searching “lucia”' },
       list('filterOpen', 'The Filter menu, on Type'),
       { to: '/demo/events?type=wedding,birthday', name: 'Filtered by Wedding and Birthday' },
+      list('manyFilters', 'More filters than fit on a line'),
+      list('manyFiltersOpen', 'The Filter menu, its rows ending in +N more'),
+      list('longHost', 'One host longer than the line'),
       { to: '/demo/events?q=garden+party&type=wedding', name: 'No match' },
     ],
   },

@@ -9,9 +9,14 @@ import {
   boxWords,
   countries,
   factsOf,
+  firstTurn,
   freshWalk,
   nameInSight,
+  nameRow,
   rowLabel,
+  turnEnded,
+  turnTo,
+  walkNav,
 } from './createWalk.ts';
 
 const i18n = createInstance();
@@ -93,8 +98,12 @@ describe('nameInSight', () => {
     expect(nameInSight({ ...group, viewport: 300 })).toBe(36);
   });
 
-  it('stops at the label when the help does not fit with it', () => {
-    expect(nameInSight({ ...group, viewport: 100 })).toBe(200);
+  it('stops with the field and its margin below in sight when the help does not fit with them', () => {
+    expect(nameInSight({ ...group, viewport: 100 })).toBe(193);
+  });
+
+  it('stops at the margin above the label when the help does not fit with it', () => {
+    expect(nameInSight({ ...group, viewport: 140 })).toBe(184);
   });
 
   it('keeps the field whole when the label and field do not both fit', () => {
@@ -103,5 +112,75 @@ describe('nameInSight', () => {
 
   it('waits for the step to be laid out', () => {
     expect(nameInSight({ ...group, viewport: 0 })).toBeNull();
+  });
+});
+
+describe('Organisation name on a phone on its side with the keys up', () => {
+  // QA #39307 measured about 69 above the keys on Soirely_QA2_Phone, under the upright nav.
+  const strip = 69 + walkNav(false) - walkNav(true);
+  const margin = 12;
+
+  it('fits the label and field with 12 above and below, under the shorter nav', () => {
+    expect(walkNav(true)).toBe(44);
+    expect(nameRow({ sideways: true, large: false }).height + 2 * margin).toBeLessThanOrEqual(
+      strip,
+    );
+  });
+
+  it('puts the label beside the field only there', () => {
+    expect(nameRow({ sideways: true, large: false }).beside).toBe(true);
+    expect(nameRow({ sideways: false, large: false })).toMatchObject({ beside: false });
+    expect(walkNav(false)).toBe(52);
+  });
+
+  it('keeps the label above at the accessibility sizes, where the field comes first', () => {
+    expect(nameRow({ sideways: true, large: true }).beside).toBe(false);
+  });
+
+  it('keeps the field in sight with its margins on arrival, the help one scroll down', () => {
+    const row = nameRow({ sideways: true, large: false }).height;
+    const scroll = nameInSight({ viewport: strip, top: 200, fieldEnd: row, bottom: 300, margin });
+    expect(scroll).not.toBeNull();
+    expect(200 - (scroll ?? 0)).toBeGreaterThanOrEqual(margin);
+    expect(strip - (200 + row - (scroll ?? 0))).toBeGreaterThanOrEqual(margin);
+  });
+});
+
+describe('the walk turning between steps (qa3, #39178)', () => {
+  const name: Walk = { ...freshWalk(LISBON), name: 'Lumen Feiras' };
+  const country: Walk = { ...name, step: 2 };
+
+  it('gives the arriving step a new turn, with the step it leaves as the one before', () => {
+    expect(turnTo(firstTurn(name), country)).toEqual({
+      walk: country,
+      turn: 1,
+      leaving: name,
+      dir: 1,
+    });
+  });
+
+  it('replaces a walk at the same step in place, so no second copy of it leaves', () => {
+    const refused: Walk = { ...name, refusal: 'Give it a name' };
+    const turned = turnTo(firstTurn(name), refused);
+
+    expect(turned).toEqual({ walk: refused, turn: 0, leaving: null, dir: 1 });
+  });
+
+  it('turns back with the step it leaves behind it', () => {
+    const back: Walk = { ...name, cameBack: true };
+
+    expect(turnTo(turnTo(firstTurn(name), country), back)).toEqual({
+      walk: back,
+      turn: 2,
+      leaving: country,
+      dir: -1,
+    });
+  });
+
+  it('lets the leaving step go only at the end of the turn on screen', () => {
+    const twice = turnTo(turnTo(firstTurn(name), country), { ...country, step: 3 });
+
+    expect(turnEnded(twice, 1)).toBe(twice);
+    expect(turnEnded(twice, 2).leaving).toBeNull();
   });
 });

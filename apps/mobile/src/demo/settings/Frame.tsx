@@ -7,10 +7,11 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { useOrgOpener } from '../OrgSwitcher.tsx';
 import { OrgPill as ProductOrgPill } from '../../components/OrgPill.tsx';
-import { type EventKey, sample } from '../today.ts';
+import type { EventKey } from '../today.ts';
 import { type Tab, TABS, WhiteCapsule } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
-import { TodaySidebar } from '../../components/TodaySidebar.tsx';
+import { DemoSidebar } from '../Sidebar.tsx';
+import { SIDEBAR_EVENTS } from '../sideEvents.ts';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { demoShell } from '../demoShell.ts';
 import { viewerOfRole } from './sample.ts';
@@ -33,8 +34,6 @@ export function SeenBy({ looking, children }: { looking: Looking; children: Reac
 
   return <ShellContext.Provider value={seen}>{children}</ShellContext.Provider>;
 }
-
-const SIDEBAR_EVENTS = (['wed', 'ireti', 'party', 'draft'] as const).map(sample);
 
 /** On its side: the app's sidebar, or an area's own in its place, beside the main card. */
 export function Landscape({
@@ -61,7 +60,7 @@ export function Landscape({
         <TodayShellProvider
           value={{ ...demoShell(shell.tell, { event: onEvent }), person: shell.looking }}
         >
-          <TodaySidebar
+          <DemoSidebar
             events={SIDEBAR_EVENTS}
             onTab={shell.onTab}
             at={at}

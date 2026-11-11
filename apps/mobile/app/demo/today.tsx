@@ -27,6 +27,7 @@ import {
   withArrived,
 } from '../../src/demo/today/arrived.ts';
 import { NeedsTodayScreen } from '../../src/demo/today/NeedsToday.tsx';
+import { PlanTodayLandscape } from '../../src/demo/today/PlanToday.tsx';
 import { RunTodayScreen } from '../../src/demo/today/RunToday.tsx';
 import { isRunState, withRun } from '../../src/demo/today/runOfShow.ts';
 import type { MomentName } from '../../src/kit/today.ts';
@@ -188,6 +189,8 @@ function DemoTodayScreen() {
             <ArrivedTodayScreen moment={arrived} onTab={onTab} notices={notices} />
           ) : moment.needs != null ? (
             <NeedsTodayScreen moment={moment} onTab={onTab} notices={notices} />
+          ) : kind === 'tabletLandscape' ? (
+            <PlanTodayLandscape moment={moment} onTab={onTab} notices={notices} />
           ) : (
             <TodayScreen moment={moment} onTab={onTab} notices={notices} />
           )}

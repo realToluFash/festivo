@@ -137,6 +137,50 @@ describe('todayMoment', () => {
     expect(ends('2026-11-06T20:00:00Z')).toBe('Ends Sun 8 Nov at 14:00');
   });
 
+  it('an event day outside this year carries its year: when Now ends, when it starts, and what is next', () => {
+    const long = event('Long run', {
+      phase: 'happening_now',
+      startsAt: '2026-10-31T10:00:00Z',
+      endsAt: '2028-04-29T16:00:00Z',
+      dayCount: 547,
+    });
+    const nextYear = event('New year', {
+      startsAt: '2027-02-13T18:00:00Z',
+      endsAt: '2027-02-13T23:00:00Z',
+      dayCount: 1,
+    });
+
+    expect(moment([long]).now?.ends).toBe('Ends Sat, 29 Apr 2028 at 17:00');
+    expect(moment([nextYear])).toMatchObject({
+      sub: 'New year starts on Sat, 13 Feb 2027.',
+      nextUp: { name: 'New year', when: 'Sat, 13 Feb 2027 · in 102 days' },
+    });
+  });
+
+  it("takes this year from today in the event's zone, not the reader's", () => {
+    const newYearsEve = new Date('2026-12-31T12:00:00Z');
+    const auckland = { timeZone: 'Pacific/Auckland', venue: null };
+    const summer = event('Summer', {
+      ...auckland,
+      phase: 'happening_now',
+      startsAt: '2026-12-30T20:00:00Z',
+      endsAt: '2027-01-04T05:00:00Z',
+      dayCount: 6,
+    });
+    const picnic = event('Picnic', {
+      ...auckland,
+      startsAt: '2027-01-08T23:00:00Z',
+      endsAt: '2027-01-09T04:00:00Z',
+      dayCount: 1,
+    });
+
+    expect(moment([summer], newYearsEve).now?.ends).toBe('Ends Mon 4 Jan at 18:00');
+    expect(moment([picnic], newYearsEve)).toMatchObject({
+      sub: 'Picnic starts on Sat 9 Jan.',
+      nextUp: { when: 'Sat 9 Jan · in 9 days' },
+    });
+  });
+
   it('a quiet week says so and shows what is next', () => {
     const quiet = moment([
       event('Party', {

@@ -40,7 +40,11 @@ import {
   cardWords,
   countries,
   factsOf,
+  NAME_LABEL,
+  nameField,
+  nameGap,
   nameInSight,
+  nameRow,
   rowLabel,
 } from '../kit/createWalk.ts';
 import { FactLine, Question, Refusal, Tag, TWICE, ZoneLine } from './CreateWalkParts.tsx';
@@ -54,16 +58,18 @@ export interface Look {
   phone: boolean;
   /** The phone at the accessibility sizes: the board's "twice the text". */
   large: boolean;
+  /** A phone on its side with the keys up. */
+  sideways: boolean;
 }
 
 function sizesOf({ phone, large }: Look) {
   return {
     question: phone ? 28 : 26,
-    label: 14,
-    field: large ? 72 : 52,
+    label: NAME_LABEL,
+    field: nameField(large),
     fieldText: 16,
     help: 13.5,
-    gap: large ? 8 : 7,
+    gap: nameGap(large),
   };
 }
 
@@ -185,6 +191,9 @@ export function NameStep({
     bottom: 0,
     margin: tokens.spaceLg,
   });
+  const [labelWidth, setLabelWidth] = useState(0);
+  const { beside } = nameRow(look);
+  const underField = beside ? { marginLeft: labelWidth + tokens.spaceXl } : null;
   const refusal = walk.refusal;
   const edge = focused || refusal != null ? 2 : 1.5;
   const help = t('createOrganisation.nameHelp');
@@ -224,56 +233,61 @@ export function NameStep({
       <Question ref={question} words={t('createOrganisation.whatTitle')} size={sizes.question} />
       {look.phone && !look.large && <Preview name={walk.name} />}
       <View style={{ gap: sizes.gap }} onLayout={reveal}>
-        <Text
-          maxFontSizeMultiplier={TWICE}
-          size={sizes.label}
-          weight="semibold"
-          {...hidden}
-          accessible={false}
-          style={{ lineHeight: sizes.label * 1.3 }}
-        >
-          {t('createOrganisation.name')}
-        </Text>
-        <TextField
-          maxFontSizeMultiplier={TWICE}
-          ref={field}
-          onLayout={placeField}
-          value={walk.name}
-          onChangeText={onTyped}
-          onSubmitEditing={onContinue}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          submitBehavior="submit"
-          wrong={refusal != null}
-          autoComplete="organization"
-          textContentType="organizationName"
-          autoCorrect={false}
-          spellCheck={false}
-          returnKeyType="next"
-          accessibilityLabel={t('createOrganisation.name')}
-          accessibilityHint={refusal ?? help}
-          style={[
-            styles.name,
-            {
-              height: sizes.field,
-              minHeight: sizes.field,
-              borderRadius: look.large ? 16 : 14,
-              borderWidth: edge,
-              borderColor:
-                refusal != null
-                  ? tokens.colorBroken
-                  : focused
-                    ? tokens.colorAccent
-                    : tokens.colorFieldBorder,
-              paddingLeft: (look.large ? 18 : 16) - edge,
-              paddingRight: (look.large ? 14 : 12) - edge,
-              fontSize: sizes.fieldText,
-            },
-          ]}
-          testID="createWalk.name"
-        />
+        <View style={beside ? styles.nameBeside : { gap: sizes.gap }} onLayout={placeField}>
+          <Text
+            maxFontSizeMultiplier={TWICE}
+            size={sizes.label}
+            weight="semibold"
+            {...hidden}
+            accessible={false}
+            onLayout={(event) => setLabelWidth(event.nativeEvent.layout.width)}
+            style={[{ lineHeight: sizes.label * 1.3 }, beside && styles.nameLabelBeside]}
+          >
+            {t('createOrganisation.name')}
+          </Text>
+          <TextField
+            maxFontSizeMultiplier={TWICE}
+            ref={field}
+            value={walk.name}
+            onChangeText={onTyped}
+            onSubmitEditing={onContinue}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            submitBehavior="submit"
+            wrong={refusal != null}
+            autoComplete="organization"
+            textContentType="organizationName"
+            autoCorrect={false}
+            spellCheck={false}
+            returnKeyType="next"
+            accessibilityLabel={t('createOrganisation.name')}
+            accessibilityHint={refusal ?? help}
+            style={[
+              styles.name,
+              {
+                height: sizes.field,
+                minHeight: sizes.field,
+                borderRadius: look.large ? 16 : 14,
+                borderWidth: edge,
+                borderColor:
+                  refusal != null
+                    ? tokens.colorBroken
+                    : focused
+                      ? tokens.colorAccent
+                      : tokens.colorFieldBorder,
+                paddingLeft: (look.large ? 18 : 16) - edge,
+                paddingRight: (look.large ? 14 : 12) - edge,
+                fontSize: sizes.fieldText,
+              },
+              beside && styles.nameFieldBeside,
+            ]}
+            testID="createWalk.name"
+          />
+        </View>
         {refusal != null ? (
-          <Refusal words={refusal} size={sizes.help} answer={answer} />
+          <View style={underField}>
+            <Refusal words={refusal} size={sizes.help} answer={answer} />
+          </View>
         ) : (
           <Text
             maxFontSizeMultiplier={TWICE}
@@ -282,7 +296,7 @@ export function NameStep({
             muted
             {...hidden}
             accessible={false}
-            style={{ lineHeight: sizes.help * 1.4 }}
+            style={[{ lineHeight: sizes.help * 1.4 }, underField]}
           >
             {help}
           </Text>
@@ -806,6 +820,9 @@ const styles = StyleSheet.create({
   },
   previewRole: { textAlign: 'center', lineHeight: 14 * 1.4 },
   name: { paddingVertical: 0, ...weight('medium') },
+  nameBeside: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXl },
+  nameLabelBeside: { maxWidth: '40%' },
+  nameFieldBeside: { flex: 1 },
   header: { gap: tokens.spaceXl, paddingTop: tokens.spaceLg },
   headerWide: { paddingTop: tokens.spaceXl },
   wideTop: { gap: 18 },

@@ -8,6 +8,8 @@ import {
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
+import { type Turned, phoneOnItsSide } from './keyboard';
+
 export type Step = 1 | 2 | 3;
 export const STEPS = 3;
 
@@ -62,6 +64,34 @@ export function forward(walk: Walk, t: TFunction): Walk {
   if (walk.step === 3) return walk;
 
   return { ...walk, step: walk.step === 1 ? 2 : 3, refusal: null, query: '', cameBack: false };
+}
+
+/** The step on screen and the one leaving it; each turn has its own number, so the two never share a key. */
+export interface WalkTurn {
+  walk: Walk;
+  turn: number;
+  leaving: Walk | null;
+  dir: 1 | -1;
+}
+
+export function firstTurn(walk: Walk): WalkTurn {
+  return { walk, turn: 0, leaving: null, dir: 1 };
+}
+
+/** A walk at the same step replaces it in place; another step is a new turn, with the one on screen leaving. */
+export function turnTo(now: WalkTurn, next: Walk): WalkTurn {
+  if (next.step === now.walk.step) return { ...now, walk: next };
+
+  return {
+    walk: next,
+    turn: now.turn + 1,
+    leaving: now.walk,
+    dir: next.step > now.walk.step ? 1 : -1,
+  };
+}
+
+export function turnEnded(now: WalkTurn, turn: number): WalkTurn {
+  return now.turn === turn && now.leaving != null ? { ...now, leaving: null } : now;
 }
 
 /** Back keeps everything: the name as typed, the country as picked; only the search clears. */
@@ -210,13 +240,15 @@ export function cardNameSize(name: string): number {
   return name.trim().length >= 40 ? 18 : 24;
 }
 
+/** A phone on its side with the keys up: the strip above them is too short for the upright arrangement (sc-35256, sc-38666). */
+export function onItsSideTyping({ keysUp, ...screen }: Turned & { keysUp: boolean }): boolean {
+  return keysUp && phoneOnItsSide(screen);
+}
+
 /** Where Continue sits: pinned under the step, or, on a phone on its side with the keys up, where too little is left above them for a pinned foot and the field, scrolled as the step's last part, and on the country step left out until the keys go down, so it is not below the whole list (sc-35256). */
 export function footPlace({
-  phone,
-  width,
-  height,
-  keysUp,
   step,
+  ...screen
 }: {
   phone: boolean;
   width: number;
@@ -224,9 +256,35 @@ export function footPlace({
   keysUp: boolean;
   step: Step;
 }): 'pinned' | 'scrolls' | 'hidden' {
-  if (!phone || !keysUp || width <= height) return 'pinned';
+  if (!onItsSideTyping(screen)) return 'pinned';
 
   return step === 2 ? 'hidden' : 'scrolls';
+}
+
+/** The walk's nav under the status bar: shorter on a phone on its side with the keys up, as both platforms shorten theirs, never under the 44 touch floor (sc-38666). */
+export function walkNav(sideways: boolean): number {
+  return sideways ? 44 : 52;
+}
+
+export const NAME_LABEL = 14;
+
+export function nameField(large: boolean): number {
+  return large ? 72 : 52;
+}
+
+export function nameGap(large: boolean): number {
+  return large ? 8 : 7;
+}
+
+/** Organisation name's label and field: the label beside the field on a phone on its side with the keys up, so the row is the field's height; above it everywhere else, and at the accessibility sizes, where the field comes first (sc-38666). */
+export function nameRow({ sideways, large }: { sideways: boolean; large: boolean }): {
+  beside: boolean;
+  height: number;
+} {
+  const field = nameField(large);
+  if (sideways && !large) return { beside: true, height: field };
+
+  return { beside: false, height: NAME_LABEL * 1.3 + nameGap(large) + field };
 }
 
 export interface NameInSight {
@@ -241,7 +299,7 @@ export interface NameInSight {
   margin: number;
 }
 
-/** The scroll that brings the name group's help or reason above the keys, never past the label, nor past the field where the label and field do not both fit; null when it needs none (sc-38666). */
+/** The scroll that brings the name group's help or reason above the keys, never past the margin above the label, nor past the field where the label and field do not both fit; null when it needs none (sc-38666). */
 export function nameInSight({
   viewport,
   top,
@@ -252,5 +310,5 @@ export function nameInSight({
   const over = bottom + margin - viewport;
   if (viewport <= 0 || over <= 0) return null;
 
-  return Math.max(0, Math.min(over, Math.max(top, top + fieldEnd + margin - viewport)));
+  return Math.max(0, Math.min(over, Math.max(top - margin, top + fieldEnd + margin - viewport)));
 }

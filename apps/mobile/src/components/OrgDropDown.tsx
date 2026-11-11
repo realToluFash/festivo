@@ -4,7 +4,6 @@ import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState }
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
-  Easing,
   type LayoutChangeEvent,
   Modal,
   Pressable,
@@ -37,7 +36,7 @@ import {
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { answersStack, answerWidth } from '../layout/pillFit.ts';
 import { useAccessibilitySizes } from '../layout/useLayout.ts';
-import { glide } from '../motion.ts';
+import { fadeAway, glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
@@ -61,7 +60,6 @@ import { Text, type TextHandle } from './Text.tsx';
 import { MeasuredWords } from './Title.tsx';
 
 const GROW_FROM = 0.92;
-const LEAVE = Easing.bezier(0.4, 0, 1, 1);
 const CARET = 16;
 const NAME_LINES = 2;
 
@@ -191,12 +189,8 @@ export function OrgDropDown({
 
   useEffect(() => {
     if (open || !present) return;
-    Animated.timing(fade, {
-      toValue: 0,
-      duration: tokens.motionFast,
-      easing: LEAVE,
-      useNativeDriver: true,
-    }).start(() => setPresent(false));
+
+    return fadeAway(fade, SETTLED_MS, () => setPresent(false));
   }, [open, present, fade]);
 
   useEffect(() => {

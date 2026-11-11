@@ -14,6 +14,7 @@ import { dateLocale } from '../i18n/index.ts';
 import { membersAfterWrite, withApproved, withTurnedDown } from '../kit/membersAfterWrite.ts';
 import { faceOf, type MembersSaid } from '../kit/membersSummary.ts';
 import { refusalFor } from '../kit/refusal.ts';
+import { roleLines, roleNamed } from '../kit/roleChoices.ts';
 import { tokens } from '../theme/tokens.ts';
 import { FieldError } from './Field.tsx';
 import { RoleChoices } from './RoleChoices.tsx';
@@ -214,30 +215,6 @@ export function RequestScreen({
         testID="members.turnDown"
       />
     </FocusedScreen>
-  );
-}
-
-type NamedRole = Pick<OrganisationRole, 'id' | 'seededAs' | 'name'>;
-
-export function roleNamed(
-  t: Parameters<typeof roleName>[0],
-  roles: readonly NamedRole[],
-  id: string,
-): string {
-  const role = roles.find((one) => one.id === id);
-
-  return role == null ? '' : roleName(t, role);
-}
-
-/** What each role means, in the reader's language; a role an organisation made has no line. */
-export function roleLines(
-  t: (key: string) => string,
-  roles: readonly NamedRole[],
-): Record<string, string> {
-  return Object.fromEntries(
-    roles
-      .filter((role) => role.seededAs != null)
-      .map((role) => [role.id, t(`membersScreen.roleMeans.${role.seededAs}`)]),
   );
 }
 

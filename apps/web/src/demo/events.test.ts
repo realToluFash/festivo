@@ -1,4 +1,4 @@
-import { NO_EVENTS_FILTERS } from '@soirely/domain';
+import { NO_EVENTS_FILTERS, whenSpan } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -9,8 +9,10 @@ import {
   type SampleEvent,
   cardOf,
   eventStateOf,
+  listStart,
   listStateOf,
   listed,
+  localDay,
   manageOf,
   matches,
   resetSample,
@@ -139,12 +141,40 @@ describe('Events in A at a desk, the model (sc-30304)', () => {
       expect(stateFits(state as EventStateName, event(id)), state).toBe(true);
   });
 
+  it.each(['manyFilters', 'manyFiltersOpen', 'longHost'] as const)(
+    'opens %s on results this week, not on no match',
+    (state) => {
+      const look = listStart(state).look;
+      const today = localDay(CLOCKS.rest, 'Europe/London');
+
+      expect(look).not.toBeNull();
+      for (const firstDay of [0, 1, 6]) {
+        const span = look == null ? null : whenSpan(look.filters.when, today, firstDay);
+
+        expect(
+          sampleEvents().some((one) => look != null && matches(one, look, span)),
+          `week from day ${firstDay}`,
+        ).toBe(true);
+      }
+    },
+  );
+
   it('links every state from the demo home, on its own event', () => {
     const links = EVENTS_PAGES.flatMap((page) => page.states.map((one) => one.to));
 
     for (const [state, id] of Object.entries(EVENT_STATES))
       expect(links, state).toContain(`/demo/events/${id}?state=${state}`);
-    for (const state of ['first', 'drafts', 'past', 'pastMore', 'offline', 'filterOpen'])
+    for (const state of [
+      'first',
+      'drafts',
+      'past',
+      'pastMore',
+      'offline',
+      'filterOpen',
+      'manyFilters',
+      'manyFiltersOpen',
+      'longHost',
+    ])
       expect(links, state).toContain(`/demo/events?state=${state}`);
     expect(links).toContain('/demo/events?q=lucia');
     expect(links).toContain('/demo/events?type=wedding,birthday');

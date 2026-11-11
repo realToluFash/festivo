@@ -1,3 +1,4 @@
+import { roleMeans } from '../kit/roleChoices.ts';
 import { RadioMark } from './RadioMark.tsx';
 import { Row, RowList, type RowTag } from './Summary.tsx';
 
@@ -30,11 +31,7 @@ export function RoleChoices<R extends string>({
       items={roles.map((role) => {
         const on = role === picked;
         const dim = off?.roles.includes(role) === true;
-        const means = dim
-          ? (off?.line ?? '')
-          : [lines[role], role === owned?.role ? owned.line : undefined]
-              .filter((part) => part != null)
-              .join(' ');
+        const means = roleMeans(role, { lines, owned, off });
         const tag: RowTag | null =
           on && pickedTag != null
             ? pickedTag

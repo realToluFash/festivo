@@ -134,13 +134,24 @@ export function formatEventDate(moment: string, timeZone: string, locale: string
   return new Intl.DateTimeFormat(locale, { ...EVENT_DAY, timeZone }).format(date);
 }
 
-export function formatEventMoment(moment: string, timeZone: string, locale: string): string {
+/** "Sat 29 Apr, 17:00", or with its year `withYear`. */
+export function formatEventMoment(
+  moment: string,
+  timeZone: string,
+  locale: string,
+  withYear = false,
+): string {
   const date = asDate(moment);
 
   if (date == null) return '';
 
   return clockText(
-    new Intl.DateTimeFormat(locale, { ...EVENT_DAY_WITHOUT_YEAR, ...EVENT_CLOCK, timeZone }),
+    new Intl.DateTimeFormat(locale, {
+      ...EVENT_DAY_WITHOUT_YEAR,
+      ...(withYear ? { year: 'numeric' } : {}),
+      ...EVENT_CLOCK,
+      timeZone,
+    }),
     date,
   );
 }

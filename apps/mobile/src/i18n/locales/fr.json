@@ -1226,7 +1226,7 @@
     "roleKeptWhileSuspended": "Le rôle est conservé pendant la suspension. Vous pourrez le changer une fois l’accès rétabli.",
     "accessConflict": "Quelqu’un d’autre a modifié l’accès pour {{name}} pendant que cette page était ouverte : votre modification n’a donc pas été appliquée. Voici où en est cet accès.",
     "roleMeans": {
-      "owner": "Tout, y compris la facturation et la suppression de l’organisation.",
+      "owner": "Tout, y compris la facturation et la suppression de l’organisation. Vous devrez confirmer que c’est bien vous.",
       "administrator": "Tout sauf la facturation. Voit tous les événements et gère les membres.",
       "member": "Travaille sur les événements qui lui sont confiés, et ne voit pas les autres."
     },
@@ -1342,7 +1342,6 @@
     "roleScreenTitle": "Rôle de {{first}}",
     "save": "Enregistrer",
     "now": "Actuel",
-    "ownerAsks": "Votre mot de passe et un code vous seront demandés.",
     "takesEffect": "Prend effet dès sa prochaine utilisation de Soirely. Aucune session n’est fermée.",
     "roleBecomes": "{{name}} aura le rôle {{role}} dès sa prochaine utilisation de Soirely. Aucune session n’est fermée.",
     "roleNow": "{{name}} a désormais le rôle {{role}}. Il prend effet dès sa prochaine utilisation de Soirely. Aucune session n’est fermée.",

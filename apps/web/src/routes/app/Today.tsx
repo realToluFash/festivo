@@ -24,12 +24,12 @@ type Load =
   | { kind: 'failed' }
   | { kind: 'loaded'; events: readonly ListedEvent[]; at: Date };
 
-/** Where signing in lands at a desk: Today for a role that reads events (sc-30413), the count it had before for one that does not. */
+/** Where signing in lands at a desk: Today for anyone in an organisation, as on the app, since a Member granted events one by one sees them too (sc-30413). */
 export function SignedInHome() {
   const session = useSession();
   const organisationId = session.organisation?.id;
 
-  if (organisationId == null || !can(session, 'events.read')) return <Dashboard />;
+  if (organisationId == null) return <Dashboard />;
 
   return <Today key={organisationId} organisationId={organisationId} />;
 }

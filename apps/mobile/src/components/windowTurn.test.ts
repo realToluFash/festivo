@@ -100,3 +100,38 @@ describe('a focused screen whose title takes focus with each new step (sc-11032)
     expect(twoFactor).toMatch(/<SectionFailed[^>]*takesFocus/);
   });
 });
+
+describe('Create an organisation on Android, where a native animation’s end can be lost (qa3, #39178)', () => {
+  const walk = readFileSync(join(import.meta.dirname, 'CreateWalkWindow.tsx'), 'utf8');
+  const switcher = readFileSync(join(import.meta.dirname, 'OrgDropDown.tsx'), 'utf8');
+  const motion = readFileSync(join(import.meta.dirname, '..', 'motion.ts'), 'utf8');
+
+  it('keys each step by its turn, so the step leaving and the one arriving never share a key', () => {
+    expect(walk).toContain('key={live ? turn : turn - 1}');
+  });
+
+  it('starts the arriving step’s glide once its views are laid out', () => {
+    expect(walk).toContain('onLayout={live ? () => play(turn) : undefined}');
+  });
+
+  it('settles the turn on a timer when the glide’s end never comes', () => {
+    expect(walk).toContain('settling.current = setTimeout(settle, turnMs + SETTLED_MS);');
+  });
+
+  it.each([
+    ['the walk', walk],
+    ['the switcher', switcher],
+  ])('lets %s’s window go through fadeAway, its timer cancelled on cleanup', (_, text) => {
+    expect(text).toContain('return fadeAway(fade, SETTLED_MS, () => setPresent(false));');
+  });
+
+  it('has fadeAway end the window on its timer as well as on the fade’s end', () => {
+    expect(motion).toContain('const lost = setTimeout(end, tokens.motionFast + grace);');
+    expect(motion).toContain('}).start(end);');
+  });
+
+  it('has fadeAway call gone at most once, and never after its cancel', () => {
+    expect(motion).toContain('if (done) return;');
+    expect(motion).toMatch(/return \(\) => \{\s+done = true;\s+clearTimeout\(lost\);/);
+  });
+});

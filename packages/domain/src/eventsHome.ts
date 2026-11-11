@@ -197,7 +197,14 @@ export type EventDayWords =
   | { kind: 'days'; first: string; last: string }
   | { kind: 'calledOffOn'; date: string };
 
-/** A dates line's dates in the reader's words; every one carries its year unless all are in this year, today's in the event's zone (sc-30413). A called-off event's day it was called off, unless `keepDays`. */
+/** Whether any of these moments falls outside this year, today's in the event's zone: such a date is written with its year (sc-30413). */
+export function notThisYear(timeZone: string, now: Date, ...moments: string[]): boolean {
+  const thisYear = wallDay(now, timeZone).slice(0, 4);
+
+  return moments.some((moment) => wallDay(moment, timeZone).slice(0, 4) !== thisYear);
+}
+
+/** A dates line's dates in the reader's words; every one carries its year unless all are in this year (sc-30413). A called-off event's day it was called off, unless `keepDays`. */
 export function eventDayWords(
   event: Parameters<typeof eventDays>[0],
   now: Date,
@@ -205,9 +212,7 @@ export function eventDayWords(
   keepDays = false,
 ): EventDayWords {
   const { timeZone } = event;
-  const thisYear = wallDay(now, timeZone).slice(0, 4);
-  const withYear = (...moments: string[]) =>
-    moments.some((moment) => wallDay(moment, timeZone).slice(0, 4) !== thisYear);
+  const withYear = (...moments: string[]) => notThisYear(timeZone, now, ...moments);
   const days = eventDays(event);
 
   if (days.kind === 'calledOffOn' && !keepDays) {

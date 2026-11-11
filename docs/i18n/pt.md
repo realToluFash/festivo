@@ -790,3 +790,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `mobile:security.setupTitle`). "Ativar dois fatores", a forma curta que `settings.securityLine`
   já usa. Rejeitado "Ativar a autenticação de dois fatores", cortado no cabeçalho de um telemóvel.
   `web:security.setupTitle` fica completo, porque o computador tem espaço.
+- **11 Nov 2026. "Outros" vem antes do número** (sc-35456, `everywhereLine_*`, `everywhereBody_*`,
+  `everywhereDone_*`, `password.done_*`, web e aplicação). "nos seus outros {{count}}
+  dispositivos", como "os meus outros dois irmãos"; "nos seus 2 outros dispositivos" soa a
+  tradução (QA, 11 Nov). `_many`: "nos seus outros {{count}} de dispositivos". Vale para qualquer
+  contagem com "outros".

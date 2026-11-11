@@ -13,13 +13,13 @@ import { View } from 'react-native';
 import { api } from '../api.ts';
 import { membersAfterWrite, withRole } from '../kit/membersAfterWrite.ts';
 import { refusalTitle } from '../kit/refusal.ts';
+import { roleLines, roleNamed } from '../kit/roleChoices.ts';
 import { codeHelp } from '../kit/waysProof.ts';
 import { PROVIDER_NAMES } from '../providerSignIn.ts';
 import { dropProof, heldProof, howToProve, type Proving } from '../recentProof.ts';
 import { ConfirmScreen, type ConfirmSays } from './AccountConfirm.tsx';
 import { useProof } from './ConfirmItsYou.tsx';
 import { FieldError } from './Field.tsx';
-import { roleLines, roleNamed } from './MemberRequest.tsx';
 import { RoleChoices } from './RoleChoices.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type AskProps, FocusedScreen, Line } from './Summary.tsx';
@@ -59,7 +59,6 @@ export function RoleScreen({
   const role = offered.find((one) => one.id === picked);
   const changed = picked !== current && role != null;
   const toOwner = role?.seededAs === 'owner';
-  const owner = offered.find((one) => one.seededAs === 'owner');
   const first = firstName(member.user.name);
   const callerOwns = organisation.role.seededAs === 'owner';
 
@@ -173,9 +172,6 @@ export function RoleScreen({
           picked={picked}
           name={(id) => roleNamed(t, offered, id)}
           now={{ role: current, word: t('membersScreen.now') }}
-          {...(owner != null && {
-            owned: { role: owner.id, line: t('membersScreen.ownerAsks') },
-          })}
           lines={roleLines(t, offered)}
           onPick={(id) => {
             setFailed(null);
