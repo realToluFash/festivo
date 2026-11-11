@@ -11,10 +11,12 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { codesLine, type SecurityRules } from '../kit/securityPage.ts';
+import { openInAuthenticator } from '../authenticatorApp.ts';
 import { typedCodeProblem } from '../kit/twoFactor.ts';
 import { tokens } from '../theme/tokens.ts';
 import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
 import { CODE_FIGURES } from './AccountVerify.tsx';
+import { SecondaryButton } from './Buttons.tsx';
 import {
   CodeField,
   Field,
@@ -176,10 +178,11 @@ export function TwoFactorSection({
   );
 }
 
-/** What the authenticator was given to scan, drawn in the screen's frame, and its key to type instead. */
+/** What the authenticator was given to scan, drawn in the screen's frame, its key to type instead, and the link that hands it over. */
 export interface Enrolment {
   qr: ReactNode;
   secret: string;
+  otpauthUri: string;
 }
 
 /** Turning on resolves to the codes, or to why the code was not taken. */
@@ -195,6 +198,7 @@ export function TwoFactorScreen({
   onClose,
   onTurnOn,
   onFinished,
+  takesLinks,
 }: {
   open: boolean;
   /** Null while it is fetched; once it could not be, its failure takes the key's and the field's place. */
@@ -206,6 +210,8 @@ export function TwoFactorScreen({
   onClose: () => void;
   onTurnOn: TurningOn;
   onFinished: () => void;
+  /** Some app on the device opens the enrolment's otpauth:// link; with none, the step has no Add to my authenticator app. */
+  takesLinks: boolean;
 }) {
   const { t } = useTranslation();
   const [codes, setCodes] = useState<readonly string[] | null>(startCodes);
@@ -307,6 +313,14 @@ export function TwoFactorScreen({
               {ready == null ? ' ' : keyInGroups(ready.secret)}
             </Text>
           </View>
+          {ready != null && takesLinks && (
+            <SecondaryButton
+              label={t('twoFactorCard.addToApp')}
+              stacked
+              onPress={() => openInAuthenticator(ready.otpauthUri)}
+              testID="security.setup.addToApp"
+            />
+          )}
           <Field
             label={t('twoFactorCard.enterCode')}
             error={error}
