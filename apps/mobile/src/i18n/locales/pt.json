@@ -1315,12 +1315,12 @@
       "removedLine": "Os eventos desta pessoa continuam associados a {{organisation}}. Aparece em Antigos, com tudo o que fez.",
       "people_many": "{{count, number}} de pessoas",
       "waiting_many": "{{count, number}} em espera",
-      "toGetBackIn_one": "{{count, number}} to get back in",
-      "toGetBackIn_other": "{{count, number}} to get back in",
-      "toGetBackIn_many": "{{count, number}} to get back in",
-      "toJoin_one": "{{count, number}} to join",
-      "toJoin_other": "{{count, number}} to join",
-      "toJoin_many": "{{count, number}} to join",
+      "toGetBackIn_one": "{{count, number}} pede para voltar a entrar",
+      "toGetBackIn_other": "{{count, number}} pedem para voltar a entrar",
+      "toGetBackIn_many": "{{count, number}} pedem para voltar a entrar",
+      "toJoin_one": "{{count, number}} pede para aderir",
+      "toJoin_other": "{{count, number}} pedem para aderir",
+      "toJoin_many": "{{count, number}} pedem para aderir",
       "waitingKinds": "{{back}} · {{join}}"
     },
     "waitingTitle": "Em espera",
@@ -2339,7 +2339,7 @@
     "turnedDownNext": "A autenticação de dois fatores continua ativa, e já recebeu um email.",
     "closed": "Este pedido já foi respondido, ou terminou.",
     "failed": "Não funcionou. Tente de novo dentro de momentos.",
-    "close": "Close",
-    "sending": "Sending your answer…"
+    "close": "Fechar",
+    "sending": "A enviar a resposta…"
   }
 }
