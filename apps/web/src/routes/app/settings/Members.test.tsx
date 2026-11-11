@@ -1,7 +1,9 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { setLanguage } from '../../../i18n/index.ts';
+import { holdProof } from '../../../recentProof.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
@@ -790,5 +792,761 @@ describe('the owner claim on the summary card (sc-34200, sc-6640)', () => {
 
     expect(await page().findByText('2 people')).toBeDefined();
     expect(sent.some((one) => one.line.includes('owner-claim'))).toBe(false);
+  });
+});
+
+function problem(code: string, status = 409, extra: Record<string, unknown> = {}): Response {
+  return new Response(
+    JSON.stringify({
+      type: `https://soirely.com/errors/${code}`,
+      title: `Refused: ${code}.`,
+      status,
+      ...extra,
+    }),
+    { status, headers: { 'Content-Type': 'application/problem+json' } },
+  );
+}
+
+const ADMINISTRATOR = membership({
+  id: 'org_1',
+  name: 'Ìrè Events',
+  role: { id: 'role_4', seededAs: 'administrator', name: null },
+  permissions: OWNER_PERMISSIONS.filter((one) => !one.startsWith('billing')),
+});
+
+const DOMAIN_GONE = {
+  reason: 'address_gone',
+  domain: 'ire.events',
+  since: { at: '2026-10-17T13:20:00+00:00', written: 'Saturday, Oct 17 at 14:20 WAT' },
+  removesAt: { at: '2026-11-16T13:20:00+00:00', written: 'Monday, Nov 16 at 14:20 WAT' },
+  onlyOwner: false,
+};
+const REMOVED_ON = 'If nobody answers by Monday, Nov 16 at 14:20 WAT, they are removed.';
+
+function domainSuspended(suspension: Record<string, unknown> = {}) {
+  return member({
+    ...ACTIVE_BISI,
+    status: 'suspended',
+    channel: 'domain',
+    suspension: { ...DOMAIN_GONE, ...suspension },
+  });
+}
+
+/** Bisi, an Administrator, is the viewer; Folake is an owner unless told otherwise. */
+function adminViewing(folake: Record<string, unknown>, others: ReturnType<typeof member>[] = []) {
+  return {
+    ...LIST,
+    members: [
+      member({ self: false, ...folake }),
+      ...others,
+      member({
+        id: 'm_bisi',
+        user: { ...BISI, email: 'bisi@ire.events' },
+        role: ADMIN,
+        self: true,
+      }),
+    ],
+  };
+}
+
+const TUNDE = member({
+  id: 'm_tunde',
+  user: { id: 'u_tunde', name: 'Tunde Bakare', email: 'tunde@ire.events' },
+  self: false,
+});
+
+describe('restoring, and what a refusal says (sc-34200)', () => {
+  it('says every seat is in use, and names the plan only to an owner', async () => {
+    for (const [session, way] of [
+      [
+        IRE,
+        'To restore Bisi Adeyemi, free a seat by suspending or removing someone who no longer needs access, or change the plan.',
+      ],
+      [
+        ADMINISTRATOR,
+        'To restore Bisi Adeyemi, free a seat by suspending or removing someone who no longer needs access. Only an Owner can change the plan.',
+      ],
+    ] as const) {
+      signedIn(session);
+      answering({
+        ...READS,
+        'GET /api/orgs/org_1/members': () => json(listWith(SUSPENDED_BISI)),
+        'POST /api/orgs/org_1/members/m_bisi/restore': () =>
+          problem('team_seats_in_use', 409, { limit: 5 }),
+      });
+      const view = open();
+
+      await openPerson('Bisi Adeyemi');
+      fireEvent.click(page().getByRole('button', { name: 'Restore access' }));
+
+      expect(
+        await page().findByText(
+          "All 5 team seats on this organisation's plan are in use, so nothing has changed.",
+        ),
+      ).toBeDefined();
+      expect(page().getByText(way)).toBeDefined();
+      expect(page().getByText('Suspended members do not take a seat.')).toBeDefined();
+      expect(page().getByRole('button', { name: 'Open Members ›' })).toBeDefined();
+      expect(page().queryByRole('link', { name: /Change the plan/ })).toBeNull();
+      view.unmount();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('says why a domain member is suspended, when they go, and refuses Restore without the address', async () => {
+    signedIn();
+    const sent = answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () => json(listWith(domainSuspended())),
+      'POST /api/orgs/org_1/members/m_bisi/restore': () => problem('restore_needs_address'),
+    });
+    open();
+
+    await openPerson('Bisi Adeyemi');
+    expect(
+      page().getByText("Bisi Adeyemi's ire.events address is no longer on their account."),
+    ).toBeDefined();
+    expect(page().getByText(REMOVED_ON)).toBeDefined();
+    expect(page().queryByRole('button', { name: 'Change role' })).toBeNull();
+    fireEvent.click(page().getByRole('button', { name: 'Restore' }));
+
+    expect(
+      await page().findByText('Bisi Adeyemi needs a verified ire.events address first.'),
+    ).toBeDefined();
+    expect(sent.map((one) => one.line)).toContain('POST /api/orgs/org_1/members/m_bisi/restore');
+  });
+
+  it('lets an administrator restore the suspended only owner, and says why Remove was refused', async () => {
+    signedIn(ADMINISTRATOR);
+    const sent = answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json(
+          adminViewing({
+            status: 'suspended',
+            channel: 'domain',
+            suspension: { ...DOMAIN_GONE, removesAt: null, onlyOwner: true },
+          }),
+        ),
+      'DELETE /api/orgs/org_1/members/m_folake': () => problem('last_owner'),
+      'POST /api/orgs/org_1/members/m_folake/restore': done,
+    });
+    open();
+
+    await openPerson('Folake Adeyemi');
+    expect(
+      page().getByText(
+        'Folake Adeyemi is the only owner of Ìrè Events, so they stay suspended, still an owner, and are not removed.',
+      ),
+    ).toBeDefined();
+    expect(page().queryByText(/If nobody answers/)).toBeNull();
+    fireEvent.click(page().getByRole('button', { name: /^Remove from Ìrè Events/ }));
+
+    expect(
+      await page().findByText(
+        'Refused: last_owner. Folake Adeyemi is the only owner, so they cannot be removed. Restore works once their main email address is a verified ire.events address again.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+
+    fireEvent.click(page().getByRole('button', { name: 'Restore' }));
+    await waitFor(() =>
+      expect(sent.map((one) => one.line)).toContain(
+        'POST /api/orgs/org_1/members/m_folake/restore',
+      ),
+    );
+  });
+});
+
+describe('when somebody else changed their access first (sc-9549)', () => {
+  const CONFLICT =
+    'Someone else changed the access for Bisi Adeyemi while this page was open, so your change was not made. This is how it stands now.';
+
+  function racing(line: string, from: ReturnType<typeof member>, to: ReturnType<typeof member>) {
+    let reloaded = false;
+    signedIn();
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () => json(listWith(reloaded ? to : from)),
+      [line]: () => {
+        reloaded = true;
+        return problem('conflict');
+      },
+    });
+    open();
+  }
+
+  it('reloads and says why on Suspend', async () => {
+    racing('POST /api/orgs/org_1/members/m_bisi/suspend', ACTIVE_BISI, SUSPENDED_BISI);
+
+    await openPerson('Bisi Adeyemi');
+    fireEvent.click(page().getByRole('button', { name: 'Suspend…' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Suspend' }),
+    );
+
+    expect(await page().findByText(CONFLICT)).toBeDefined();
+    expect(await page().findByRole('button', { name: 'Restore access' })).toBeDefined();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('reloads and says why on Restore', async () => {
+    racing('POST /api/orgs/org_1/members/m_bisi/restore', SUSPENDED_BISI, ACTIVE_BISI);
+
+    await openPerson('Bisi Adeyemi');
+    fireEvent.click(page().getByRole('button', { name: 'Restore access' }));
+
+    expect(await page().findByText(CONFLICT)).toBeDefined();
+    expect(await page().findByRole('button', { name: 'Change role' })).toBeDefined();
+  });
+
+  it('reloads and says why when a role change meets a member suspended meanwhile', async () => {
+    racing('PATCH /api/orgs/org_1/members/m_bisi', ACTIVE_BISI, SUSPENDED_BISI);
+
+    await openPerson('Bisi Adeyemi');
+    fireEvent.click(page().getByRole('button', { name: 'Change role' }));
+    const dialog = within(await screen.findByRole('dialog', { name: 'Bisi’s role' }));
+    fireEvent.click(dialog.getByRole('radio', { name: /^Member/ }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Save' }));
+
+    expect(await page().findByText(CONFLICT)).toBeDefined();
+    expect(await page().findByRole('button', { name: 'Restore access' })).toBeDefined();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+});
+
+describe('what a person’s page lets the viewer do (sc-34200)', () => {
+  const BEYOND =
+    'Their role holds a permission yours does not, so you cannot change their role or their access.';
+  const FINANCE = { id: 'role_9', seededAs: null, name: 'Finance' };
+  const WITH_FINANCE = {
+    ...ROLES,
+    roles: [
+      ...ROLES.roles,
+      { ...role('role_9', 'custom', ['billing.manage']), seededAs: null, name: 'Finance' },
+    ],
+  };
+
+  function viewingFinance(bisi: ReturnType<typeof member>, session = ADMINISTRATOR): void {
+    signedIn(session);
+    answering({
+      'GET /api/orgs/org_1/members': () => json(listWith(member({ ...bisi, role: FINANCE }))),
+      'GET /api/orgs/org_1/roles': () => json(WITH_FINANCE),
+    });
+    open();
+  }
+
+  it('offers nothing on a member whose role holds a permission the viewer lacks (sc-11160)', async () => {
+    viewingFinance(ACTIVE_BISI);
+
+    await openPerson('Bisi Adeyemi');
+    expect(page().getByText(BEYOND)).toBeDefined();
+    expect(page().queryByRole('button', { name: 'Change role' })).toBeNull();
+    expect(page().queryByRole('button', { name: 'Suspend…' })).toBeNull();
+    expect(page().queryByRole('button', { name: /^Remove/ })).toBeNull();
+  });
+
+  it('offers no Restore on such a member once suspended', async () => {
+    viewingFinance(SUSPENDED_BISI);
+
+    await openPerson('Bisi Adeyemi');
+    expect(page().getAllByText(BEYOND)).toHaveLength(1);
+    expect(page().queryByRole('button', { name: /^Restore/ })).toBeNull();
+    expect(page().queryByText(/Restore access returns them/)).toBeNull();
+  });
+
+  it('lets an owner change the same member', async () => {
+    viewingFinance(ACTIVE_BISI, IRE);
+
+    await openPerson('Bisi Adeyemi');
+    expect(page().queryByText(BEYOND)).toBeNull();
+    expect(page().getByRole('button', { name: 'Change role' })).toBeDefined();
+  });
+
+  it('says the only owner can be neither changed nor removed, nor suspended', async () => {
+    signedIn(ADMINISTRATOR);
+    answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(adminViewing({})) });
+    open();
+
+    await openPerson('Folake Adeyemi');
+    expect(page().getByText(/^Folake Adeyemi is the only owner\. /)).toBeDefined();
+    expect(
+      page().getByText('Only an owner can make somebody else an owner. Ask Folake Adeyemi.'),
+    ).toBeDefined();
+    expect(
+      page().getByText(
+        'Owners cannot be suspended. To suspend Folake Adeyemi, change their role first.',
+      ),
+    ).toBeDefined();
+    expect(page().queryByRole('button', { name: 'Change role' })).toBeNull();
+    expect(page().queryByRole('button', { name: /^Remove/ })).toBeNull();
+  });
+
+  it('tells an administrator why an owner beside another owner offers nothing', async () => {
+    signedIn(ADMINISTRATOR);
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () => json(adminViewing({}, [TUNDE])),
+    });
+    open();
+
+    await openPerson('Folake Adeyemi');
+    expect(
+      page().getAllByText("Only an owner can change an owner's role or remove them."),
+    ).toHaveLength(1);
+    expect(page().queryByRole('button', { name: 'Change role' })).toBeNull();
+    expect(page().queryByRole('button', { name: /^Remove/ })).toBeNull();
+  });
+
+  it('shows a suspended owner beside another owner read-only, removal date included', async () => {
+    signedIn(ADMINISTRATOR);
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json(
+          adminViewing({ status: 'suspended', channel: 'domain', suspension: DOMAIN_GONE }, [
+            TUNDE,
+          ]),
+        ),
+    });
+    open();
+
+    await openPerson('Folake Adeyemi');
+    expect(
+      page().getByText("Folake Adeyemi's ire.events address is no longer on their account."),
+    ).toBeDefined();
+    expect(page().getByText(REMOVED_ON)).toBeDefined();
+    expect(page().queryByRole('button', { name: /^Restore/ })).toBeNull();
+    expect(page().queryByRole('button', { name: /^Remove/ })).toBeNull();
+  });
+
+  it('shows a domain suspension read-only to a viewer who cannot manage members', async () => {
+    signedIn(membership({ id: 'org_1', name: 'Ìrè Events', permissions: ['members.read'] }));
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () => json(listWith(domainSuspended())),
+    });
+    open();
+
+    await openPerson('Bisi Adeyemi');
+    expect(page().getByText(REMOVED_ON)).toBeDefined();
+    expect(page().queryByRole('button', { name: /^Restore/ })).toBeNull();
+    expect(page().queryByRole('button', { name: /^Remove/ })).toBeNull();
+  });
+});
+
+describe('the dates the server wrote, after a language change (sc-9267)', () => {
+  const WRITTEN: Record<string, { asked: string; suspended: string }> = {
+    en: { asked: 'Wednesday, Nov 11 at 09:40 WAT', suspended: 'Monday, Nov 16 at 14:20 WAT' },
+    es: { asked: 'miércoles, 11 nov a las 09:40 WAT', suspended: 'lunes, 16 nov a las 14:20 WAT' },
+  };
+
+  afterEach(async () => {
+    await act(() => setLanguage(null));
+  });
+
+  function listIn(language: string): Response {
+    const written = WRITTEN[language] ?? { asked: '', suspended: '' };
+    const removes = { at: '2026-11-16T13:20:00+00:00', written: written.suspended };
+
+    return json({
+      ...LIST,
+      members: [
+        LIST.members[0],
+        domainSuspended({ since: removes, removesAt: removes }),
+        { ...ADA, removesAt: { at: '2026-11-11T08:40:00+00:00', written: written.asked } },
+      ],
+    });
+  }
+
+  function answeringIn(spanish: () => Promise<Response> = async () => listIn('es')): string[] {
+    const asked: string[] = [];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = new URL(String(input)).pathname;
+      if (path === '/api/orgs/org_1/roles') return json(ROLES);
+      if (path !== '/api/orgs/org_1/members') return new Response(null, { status: 500 });
+
+      const language = new Headers(init?.headers).get('Accept-Language') ?? '';
+      asked.push(language);
+
+      return language === 'es' ? spanish() : listIn(language);
+    });
+
+    return asked;
+  }
+
+  it('asks for the list again in the picked language, without a reload', async () => {
+    signedIn();
+    const asked = answeringIn();
+    open();
+    expect(
+      await page().findByText('Removed on Wednesday, Nov 11 at 09:40 WAT if nobody answers.'),
+    ).toBeDefined();
+
+    await act(() => setLanguage('es'));
+
+    expect(
+      await page().findByText('Removed on miércoles, 11 nov a las 09:40 WAT if nobody answers.'),
+    ).toBeDefined();
+    expect(asked).toEqual(['en', 'es']);
+
+    fireEvent.click(page().getByRole('button', { name: /^Bisi Adeyemi/ }));
+    expect(
+      await page().findByText(
+        'Si nadie responde antes del lunes, 16 nov a las 14:20 WAT, se quitará a esta persona de la organización.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('keeps the dates it had after a failed ask, with no error', async () => {
+    signedIn();
+    const asked = answeringIn(async () => new Response(null, { status: 500 }));
+    open();
+    await openPerson('Bisi Adeyemi');
+    expect(page().getByText(REMOVED_ON)).toBeDefined();
+
+    await act(() => setLanguage('es'));
+    await waitFor(() => expect(asked).toEqual(['en', 'es']));
+    await act(async () => {});
+
+    expect(
+      page().getByText(
+        'Si nadie responde antes del Monday, Nov 16 at 14:20 WAT, se quitará a esta persona de la organización.',
+      ),
+    ).toBeDefined();
+    expect(page().queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('making somebody an owner asks for a recent proof (sc-18930)', () => {
+  const ME = {
+    id: 'u_folake',
+    name: 'Folake Adeyemi',
+    businessName: null,
+    countryCode: null,
+    organisationCountry: 'NG',
+    locale: 'en',
+    timezone: 'Africa/Lagos',
+    waitingFor: null,
+    verified: true,
+    complete: true,
+    needsOrganisation: false,
+    hasPassword: true,
+    providers: [],
+    emailAddresses: [{ id: 'e1', address: 'folake@ire.events', verified: true, primary: true }],
+    phoneNumbers: [],
+  };
+  const PROVING = {
+    'GET /api/auth/me': () => json(ME),
+    'GET /api/auth/two-factor': () => json({ on: false, recoveryCodesLeft: 0 }),
+    'POST /api/auth/proof': () =>
+      json({ proof: 'p-1', expiresAt: new Date(Date.now() + 300_000).toISOString() }),
+  };
+  const INTRO =
+    "To make somebody an owner of Ìrè Events, confirm it's you. You won't be asked again for 5 minutes.";
+  const SENT = () =>
+    json(
+      {
+        invitation: { ...LIST.invitations[0], id: 'inv_3', email: 'kemi@ire.events', role: OWNER },
+      },
+      201,
+    );
+  const INVITED = 'Invitation sent to kemi@ire.events';
+  const RETURNED = 'soirely.provider.returned';
+
+  async function inviteAsOwner() {
+    fireEvent.click(await page().findByRole('button', { name: 'Invite somebody' }));
+    const dialog = within(await screen.findByRole('dialog', { name: 'Invite somebody' }));
+    fireEvent.change(dialog.getByRole('textbox', { name: 'Email' }), {
+      target: { value: 'kemi@ire.events' },
+    });
+    fireEvent.click(dialog.getByRole('radio', { name: /^Owner/ }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Send invitation' }));
+  }
+
+  function prove(): void {
+    fireEvent.change(screen.getByLabelText('Your password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  }
+
+  function inviteSent(sent: { line: string; body: unknown }[]) {
+    return sent.find((one) => one.line === 'POST /api/orgs/org_1/members/invite')?.body;
+  }
+
+  it('confirms it is you before an Owner invitation is sent, then sends it with no second press', async () => {
+    signedIn();
+    const sent = answering({ ...READS, ...PROVING, 'POST /api/orgs/org_1/members/invite': SENT });
+    open();
+
+    await inviteAsOwner();
+    expect(await screen.findByText(INTRO)).toBeDefined();
+    expect(inviteSent(sent)).toBeUndefined();
+    prove();
+
+    expect(await page().findByText(INVITED)).toBeDefined();
+    expect(inviteSent(sent)).toEqual({ email: 'kemi@ire.events', roleId: 'role_1', proof: 'p-1' });
+  });
+
+  it('returns to the form as it was on Cancel, with nothing sent', async () => {
+    signedIn();
+    const sent = answering({ ...READS, ...PROVING });
+    open();
+
+    await inviteAsOwner();
+    await screen.findByText(INTRO);
+    // The dialog's own Cancel heads it; Confirm it's you's Cancel closes the form it adds.
+    const cancels = screen.getAllByRole('button', { name: 'Cancel' });
+    expect(cancels).toHaveLength(2);
+    fireEvent.click(cancels[1] as HTMLElement);
+
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('kemi@ire.events');
+    expect((screen.getByRole('radio', { name: /^Owner/ }) as HTMLInputElement).checked).toBe(true);
+    expect(sent.some((one) => one.line.startsWith('POST /api/orgs'))).toBe(false);
+  });
+
+  it('asks nothing more while the proof this tab holds stands', async () => {
+    holdProof({ proof: 'held', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    signedIn();
+    const sent = answering({ ...READS, 'POST /api/orgs/org_1/members/invite': SENT });
+    open();
+
+    await inviteAsOwner();
+
+    expect(await page().findByText(INVITED)).toBeDefined();
+    expect(inviteSent(sent)).toEqual({ email: 'kemi@ire.events', roleId: 'role_1', proof: 'held' });
+  });
+
+  it('asks again when the API finds the held invitation proof has lapsed', async () => {
+    holdProof({ proof: 'stale', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    signedIn();
+    answering({
+      ...READS,
+      ...PROVING,
+      'POST /api/orgs/org_1/members/invite': () => problem('proof_required', 403),
+    });
+    open();
+
+    await inviteAsOwner();
+
+    expect(await screen.findByText(INTRO)).toBeDefined();
+  });
+
+  it('asks again on a role change to Owner whose held proof has lapsed, then saves it', async () => {
+    holdProof({ proof: 'stale', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    signedIn();
+    let lapsed = true;
+    const sent = answering({
+      ...READS,
+      ...PROVING,
+      'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)),
+      'PATCH /api/orgs/org_1/members/m_bisi': () => {
+        if (!lapsed) return done();
+        lapsed = false;
+        return problem('proof_required', 403);
+      },
+    });
+    open();
+
+    await openPerson('Bisi Adeyemi');
+    fireEvent.click(page().getByRole('button', { name: 'Change role' }));
+    const dialog = within(await screen.findByRole('dialog', { name: 'Bisi’s role' }));
+    fireEvent.click(dialog.getByRole('radio', { name: /^Owner/ }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText(INTRO)).toBeDefined();
+    expect(screen.getByRole('dialog', { name: 'Make Bisi an owner' })).toBeDefined();
+    prove();
+
+    await waitFor(() =>
+      expect(
+        sent.filter((one) => one.line === 'PATCH /api/orgs/org_1/members/m_bisi').at(-1)?.body,
+      ).toEqual({ roleId: 'role_1', proof: 'p-1' }),
+    );
+  });
+
+  it('finishes the invitation the dialog held, back from Google', async () => {
+    sessionStorage.setItem(
+      RETURNED,
+      JSON.stringify({
+        provider: 'google',
+        purpose: {
+          kind: 'makeOwner',
+          roleId: 'role_1',
+          to: { email: 'kemi@ire.events', again: null },
+        },
+        signIn: { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' },
+      }),
+    );
+    signedIn();
+    const sent = answering({ ...READS, ...PROVING, 'POST /api/orgs/org_1/members/invite': SENT });
+    open();
+
+    expect(await page().findByText(INVITED)).toBeDefined();
+    expect(sent.find((one) => one.line === 'POST /api/auth/proof')?.body).toEqual(
+      expect.objectContaining({ provider: 'google' }),
+    );
+    expect(inviteSent(sent)).toEqual({ email: 'kemi@ire.events', roleId: 'role_1', proof: 'p-1' });
+    expect(sessionStorage.getItem(RETURNED)).toBeNull();
+  });
+
+  it('finishes the role change the person’s page held, back from Google', async () => {
+    sessionStorage.setItem(
+      RETURNED,
+      JSON.stringify({
+        provider: 'google',
+        purpose: { kind: 'makeOwner', roleId: 'role_1', to: { member: 'm_bisi' } },
+        signIn: { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' },
+      }),
+    );
+    signedIn();
+    const sent = answering({
+      ...READS,
+      ...PROVING,
+      'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)),
+      'PATCH /api/orgs/org_1/members/m_bisi': done,
+    });
+    open();
+
+    await waitFor(() =>
+      expect(sent.find((one) => one.line === 'PATCH /api/orgs/org_1/members/m_bisi')?.body).toEqual(
+        { roleId: 'role_1', proof: 'p-1' },
+      ),
+    );
+    expect(sent.filter((one) => one.line === 'POST /api/auth/proof')).toHaveLength(1);
+    expect(sessionStorage.getItem(RETURNED)).toBeNull();
+  });
+});
+
+describe('offline (sc-22586)', () => {
+  it('refuses an invitation pressed offline with its own words, and keeps the address', async () => {
+    signedIn();
+    let reachable = true;
+    const sent = answering({
+      'GET /api/orgs/org_1/members': () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+        return json(LIST);
+      },
+      'GET /api/orgs/org_1/roles': () => json(ROLES),
+    });
+    open();
+
+    fireEvent.click(await page().findByRole('button', { name: 'Invite somebody' }));
+    const dialog = within(await screen.findByRole('dialog', { name: 'Invite somebody' }));
+    reachable = false;
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+    fireEvent.change(dialog.getByRole('textbox', { name: 'Email' }), {
+      target: { value: 'amara.o@gmail.com' },
+    });
+    fireEvent.click(dialog.getByRole('button', { name: 'Send invitation' }));
+
+    expect(
+      await dialog.findByText(
+        'We could not send the invitation. Check your connection and try again.',
+      ),
+    ).toBeDefined();
+    expect((dialog.getByRole('textbox', { name: 'Email' }) as HTMLInputElement).value).toBe(
+      'amara.o@gmail.com',
+    );
+
+    reachable = true;
+    act(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+    await act(async () => {});
+    expect(sent.filter((one) => one.line === 'POST /api/orgs/org_1/members/invite')).toHaveLength(
+      1,
+    );
+  });
+});
+
+describe('what the claim says when it is refused (sc-34200, sc-6640)', () => {
+  it('loads the claim again when another Administrator’s started first', async () => {
+    let started = false;
+    withClaim({
+      [`GET ${CLAIM_PATH}`]: () => json({ ownerClaim: started ? claimed(false) : banner() }),
+      [`POST ${CLAIM_PATH}`]: () => {
+        started = true;
+        return problem('owner_claim_open');
+      },
+    });
+    open();
+
+    fireEvent.click(await page().findByRole('button', { name: 'Become the owner' }));
+
+    expect(await page().findByText(/^Bisi is becoming the owner\./)).toBeDefined();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(page().getByRole('button', { name: 'Stop this claim' })).toBeDefined();
+  });
+
+  it('says so when the claim ended before the stop arrived', async () => {
+    withClaim({
+      [`GET ${CLAIM_PATH}`]: () => json({ ownerClaim: claimed(false) }),
+      [`POST ${CLAIM_PATH}/stop`]: () => problem('owner_claim_ended'),
+    });
+    open();
+
+    fireEvent.click(await page().findByRole('button', { name: 'Stop this claim' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Stop the claim',
+      }),
+    );
+
+    expect(
+      await page().findByText('This claim has already ended, so there was nothing to stop.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('says so when the claim ended before the withdrawal arrived', async () => {
+    withClaim({
+      [`GET ${CLAIM_PATH}`]: () => json({ ownerClaim: claimed(true, true) }),
+      [`POST ${CLAIM_PATH}/withdraw`]: () => problem('owner_claim_ended'),
+    });
+    open();
+
+    fireEvent.click(await page().findByRole('button', { name: 'Withdraw my claim' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Withdraw' }),
+    );
+
+    expect(await page().findByText('This claim has already ended.')).toBeDefined();
+  });
+
+  it('says only the claimant can withdraw, when the API refuses it', async () => {
+    withClaim({
+      [`GET ${CLAIM_PATH}`]: () => json({ ownerClaim: claimed(true, true) }),
+      [`POST ${CLAIM_PATH}/withdraw`]: () => problem('forbidden', 403),
+    });
+    open();
+
+    fireEvent.click(await page().findByRole('button', { name: 'Withdraw my claim' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Withdraw' }),
+    );
+
+    expect(
+      await page().findByText('Only the person who started this claim can withdraw it.'),
+    ).toBeDefined();
+  });
+
+  it('keeps the ask open and says so when the withdrawal fails', async () => {
+    withClaim({
+      [`GET ${CLAIM_PATH}`]: () => json({ ownerClaim: claimed(true, true) }),
+      [`POST ${CLAIM_PATH}/withdraw`]: () => problem('internal', 500),
+    });
+    open();
+
+    fireEvent.click(await page().findByRole('button', { name: 'Withdraw my claim' }));
+    const ask = within(await screen.findByRole('alertdialog'));
+    fireEvent.click(ask.getByRole('button', { name: 'Withdraw' }));
+
+    expect(await ask.findByText('That did not work. Please try again.')).toBeDefined();
+    expect(page().getByText('Record found')).toBeDefined();
   });
 });
