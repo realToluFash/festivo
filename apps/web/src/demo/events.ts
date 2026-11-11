@@ -299,7 +299,7 @@ const SAMPLE_EVENTS: readonly SampleEvent[] = [
     'live',
     ['2026-07-18T15:00:00Z', '2026-07-18T21:00:00Z', 'Africa/Lagos'],
     at('Eko Hotel', 'Lagos'),
-    ['Funmi Ade'],
+    ['Funmilayo Adéṣínà-Ọláolúwa'],
     'NGN',
   ),
   sample(
@@ -991,6 +991,7 @@ export type ListState =
   | 'filtered'
   | 'filterOpen'
   | 'manyFilters'
+  | 'longHost'
   | 'noMatch'
   | 'noGuests';
 
@@ -1009,6 +1010,7 @@ const LIST_STATES: readonly ListState[] = [
   'filtered',
   'filterOpen',
   'manyFilters',
+  'longHost',
   'noMatch',
   'noGuests',
 ];
@@ -1039,6 +1041,8 @@ export const MANY_FILTERS: EventsFilters = {
   when: { kind: 'week' },
   hosts: ['Chidi Okafor', 'The Mensah family'],
 };
+
+export const LONG_HOST = 'Funmilayo Adéṣínà-Ọláolúwa';
 
 export function listStart(state: ListState | null): ListStart {
   const rest: ListStart = {
@@ -1088,6 +1092,8 @@ export function listStart(state: ListState | null): ListStart {
       return { ...rest, tab: 'upcoming', menu: 'type' };
     case 'manyFilters':
       return { ...rest, look: { q: '', filters: MANY_FILTERS } };
+    case 'longHost':
+      return { ...rest, look: { q: '', filters: { ...NO_EVENTS_FILTERS, hosts: [LONG_HOST] } } };
     case 'noMatch':
       return {
         ...rest,
@@ -1368,6 +1374,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       list('filterOpen', 'The Filter menu, on Type'),
       { to: '/demo/events?type=wedding,birthday', name: 'Filtered by Wedding and Birthday' },
       list('manyFilters', 'More filters than fit on a line'),
+      list('longHost', 'One host longer than the line'),
       { to: '/demo/events?q=garden+party&type=wedding', name: 'No match' },
     ],
   },

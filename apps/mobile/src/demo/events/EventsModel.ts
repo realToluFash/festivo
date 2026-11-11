@@ -310,6 +310,7 @@ export const LIST_STATES = [
   'filtered',
   'filterOpen',
   'manyFilters',
+  'longHost',
   'noMatch',
   'noGuests',
   'events',
@@ -352,6 +353,8 @@ export const MANY_FILTERS: Filters = {
   hosts: ['Chidi Okafor'],
 };
 
+export const LONG_HOST = 'Funmilayo Adéṣínà-Ọláolúwa';
+
 export function listStart(state: ListState | null): {
   tab: ListTab;
   typed: string;
@@ -381,6 +384,8 @@ export function listStart(state: ListState | null): {
       return { ...start, filters: { ...NO_FILTERS, types: ['wedding', 'birthday'] } };
     case 'manyFilters':
       return { ...start, filters: MANY_FILTERS };
+    case 'longHost':
+      return { ...start, filters: { ...NO_FILTERS, hosts: [LONG_HOST] } };
     case 'noMatch':
       return { ...start, typed: 'garden party', filters: { ...NO_FILTERS, types: ['wedding'] } };
     default:

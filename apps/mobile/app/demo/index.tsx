@@ -1048,6 +1048,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events?state=manyFilters',
       },
       {
+        title: 'Events · one long host',
+        what: 'A host whose name is longer than the line, chosen alone',
+        href: '/demo/events?state=longHost',
+      },
+      {
         title: 'Events · no match',
         what: 'Search and a filter, both to clear',
         href: '/demo/events?state=noMatch',
