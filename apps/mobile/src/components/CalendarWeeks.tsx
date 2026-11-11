@@ -461,9 +461,9 @@ export const WeekRow = memo(function WeekRow({
                   },
                 ]}
               >
-                {look.big
-                  ? t('calendar.more', { count: more })
-                  : t('calendar.moreItems', { count: more })}
+                {look.wide
+                  ? t('calendar.moreItems', { count: more })
+                  : t('calendar.more', { count: more })}
               </Text>
             )
           );
