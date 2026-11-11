@@ -141,6 +141,152 @@ export function detailOf(s: number): Detail {
   return s >= 0.75 ? 'near' : 'fit';
 }
 
+export const HANDLE_DRAWN = 24;
+export const HANDLE_HIT = 48;
+export const CHAIR_HIT = 48;
+
+function bodyHalf(it: Item): Point {
+  return isCircle(it) ? { x: it.d / 2, y: it.d / 2 } : { x: it.w / 2, y: it.l / 2 };
+}
+
+export interface Plan {
+  room: Room;
+  items: readonly Item[];
+}
+
+function ownReach(it: Item, s: number): Point {
+  const e = extent(it);
+  const half = bodyHalf(it);
+  const pad =
+    detailOf(s) === 'near'
+      ? HANDLE_HIT / 2 + Math.max(0, CHAIR_HIT / 2 - CHAIR_R * s)
+      : HANDLE_DRAWN / 2;
+  return { x: (e.x - half.x) * s + pad, y: (e.y - half.y) * s + pad };
+}
+
+function pointsAt(it: Item, s: number, r: Point): Point[] {
+  const half = bodyHalf(it);
+  const w = half.x * s + r.x;
+  const l = half.y * s + r.y;
+  if (it.kind === 'round' || it.kind === 'cocktail')
+    return [
+      { x: -w, y: -l },
+      { x: w, y: -l },
+      { x: w, y: l },
+      { x: -w, y: l },
+    ];
+  return [
+    { x: -w, y: -l },
+    { x: 0, y: -l },
+    { x: w, y: -l },
+    { x: w, y: 0 },
+    { x: w, y: l },
+    { x: 0, y: l },
+    { x: -w, y: l },
+    { x: -w, y: 0 },
+  ].map((p) => turn(p, it.rot));
+}
+
+/** Other items' chairs as a touch would meet them, in px from the room's corner: a 48 target from 150%, the drawn chair below, none zoomed out. */
+function othersChairs(
+  it: Item,
+  s: number,
+  plan: Plan,
+): { x: number; y: number; r: number; box: boolean }[] {
+  const detail = detailOf(s);
+  if (detail === 'out') return [];
+  const r = detail === 'near' ? CHAIR_HIT / 2 : CHAIR_R * s;
+  return plan.items
+    .filter((o) => o.id !== it.id)
+    .flatMap((o) =>
+      chairPoints(o).map((p0) => {
+        const p = turn(p0, o.rot);
+        return { x: (o.x + p.x) * s, y: (o.y + p.y) * s, r, box: detail === 'near' };
+      }),
+    );
+}
+
+/** A handle's centre held inside the walls: a table held against a wall keeps that side's handle in its frame, half a handle in from the wall. */
+function walled(it: Item, s: number, room: Room, p: Point): Point {
+  const lo = HANDLE_DRAWN / 2;
+  return {
+    x: Math.min(room.w * s - lo, Math.max(lo, it.x * s + p.x)) - it.x * s,
+    y: Math.min(room.l * s - lo, Math.max(lo, it.y * s + p.y)) - it.y * s,
+  };
+}
+
+/** How far past a table's edge its handles sit, in px: off its own chairs' targets, inside the walls and, given the plan, off every other item's chairs. */
+export function handleReach(it: Item, s: number, plan?: Plan): Point {
+  const own = ownReach(it, s);
+  if (plan == null) return own;
+  const chairs = othersChairs(it, s, plan);
+  const cx = it.x * s;
+  const cy = it.y * s;
+  const over = (r: Point) =>
+    pointsAt(it, s, r).reduce((sum, p0) => {
+      const p = walled(it, s, plan.room, p0);
+      return chairs.reduce((acc, c) => {
+        const dx = Math.max(0, Math.abs(cx + p.x - c.x) - HANDLE_HIT / 2);
+        const dy = Math.max(0, Math.abs(cy + p.y - c.y) - HANDLE_HIT / 2);
+        return acc + Math.max(0, c.r - (c.box ? Math.max(dx, dy) : Math.hypot(dx, dy)));
+      }, sum);
+    }, 0);
+  let best = { r: own, over: Infinity };
+  for (let cut = 0; cut <= Math.min(own.x, own.y); cut += 1) {
+    const r = { x: own.x - cut, y: own.y - cut };
+    const o = over(r);
+    if (o === 0) return r;
+    if (o < best.over) best = { r, over: o };
+  }
+  return best.r;
+}
+
+/** A round or cocktail table's four corners, a long table's eight points, each handleReach past its edge and inside the walls, from its centre in px. */
+export function handlePoints(it: Item, s: number, plan?: Plan): Point[] {
+  const points = pointsAt(it, s, handleReach(it, s, plan));
+  return plan == null ? points : points.map((p) => walled(it, s, plan.room, p));
+}
+
+/** How far past the table's edge one handle sits along the table's own axes, in px; less than its reach, or inside the edge, where a wall holds it in. */
+export function reachOf(it: Item, s: number, handle: Point): Point {
+  const half = bodyHalf(it);
+  const q = turn(handle, -it.rot);
+  return { x: Math.abs(q.x) - half.x * s, y: Math.abs(q.y) - half.y * s };
+}
+
+/** The size a handle dragged to n px from the centre asks for, in cm: its reach is taken off first, so a handle picked up does not grow the table. */
+export function sideFrom(n: number, reach: number, s: number): number {
+  return Math.max(40, snapped((2 * Math.max(0, Math.abs(n) - reach)) / s, true));
+}
+
+const WORDS_DEPTH = 35;
+const NAME_DEPTH = 10;
+
+/** Where a zoomed-out item's name sits, in px: below it, or above it when its name, bar and count would cross the bottom wall at floor. */
+export function wordsAt(it: Item, cy: number, s: number, floor: number): number {
+  const e = extent(it);
+  const off =
+    it.kind === 'rect' || it.kind === 'head'
+      ? (it.l / 2) * s
+      : Math.max(e.y, 40) * s * (it.kind === 'row' ? 1 : 0.55);
+  const depth = it.kind === 'single' ? NAME_DEPTH : WORDS_DEPTH;
+  const below = cy + off + 12;
+  if (below + depth <= floor - 2) return below;
+  return cy - off - 2 - depth;
+}
+
+/** Where a table's name sits from 50%, in px: on the table when it fits there, else below it, or above it when below would cross the bottom wall at floor. The name is drawn from 10 above to 6 below. */
+export function nameAt(it: Item, cy: number, s: number, floor: number): number {
+  const round = it.kind === 'round' || it.kind === 'cocktail';
+  const bw = (round ? it.d : it.w) * s;
+  const bh = (round ? it.d : it.l) * s;
+  if (it.name.length * 12 * 0.56 <= bw - 3 && bh >= 15) return cy;
+  const e = extent(it).y * s;
+  const below = cy + e + 10;
+  if (below + 6 <= floor - 2) return below;
+  return cy - e - 8;
+}
+
 export function zoomAbout(view: View, factor: number, cx: number, cy: number): View {
   const s = Math.min(MAX_S, Math.max(MIN_S, view.s * factor));
   const k = s / view.s;

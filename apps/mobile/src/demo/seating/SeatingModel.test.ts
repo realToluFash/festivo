@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { type Action, reduce, tight, readRoom } from './SeatingActs.ts';
 import {
+  CHAIR_HIT,
+  CHAIR_R,
+  HANDLE_HIT,
+  chairPoints,
   chairSides,
+  handlePoints,
+  handleReach,
   inside,
   detailOf,
   feetInches,
@@ -12,8 +18,14 @@ import {
   metres,
   nearestFree,
   overlapping,
+  overlaps,
   parseMetres,
   pct,
+  reachOf,
+  sideFrom,
+  turn,
+  wordsAt,
+  nameAt,
 } from './SeatingGeometry.ts';
 import {
   SEATING_STATES,
@@ -697,5 +709,182 @@ describe('free seats', () => {
   it('count usable chairs only', () => {
     expect(free(item(pad, 't3'))).toBe(1);
     expect(free(item(pad, 't7'))).toBe(2);
+  });
+});
+
+describe('the room’s words and handles (qa3, 11 Nov)', () => {
+  const at46 = 0.23;
+
+  it('puts a name, bar and count above an item when below would cross the bottom wall', () => {
+    const bar = item(pad, 'bar1');
+    const cy = bar.y * at46;
+    const top = wordsAt(bar, cy, at46, ROOM.l * at46);
+    expect(top).toBeLessThan(cy);
+    expect(top + 35).toBeLessThan(cy - (bar.d / 2) * at46);
+  });
+
+  it('keeps the words below an item with room under it', () => {
+    const t4 = item(pad, 't4');
+    expect(wordsAt(t4, t4.y * at46, at46, ROOM.l * at46)).toBeGreaterThan(t4.y * at46);
+  });
+
+  const scales = [0.25, 0.335, 0.375, 0.5, 0.75, 1, 1.5, 2];
+
+  it('keeps every name, bar and count inside the bottom wall at every zoom', () => {
+    [pad, phone].forEach((m) =>
+      [0.125, at46, ...scales].forEach((s) =>
+        m.items
+          .filter((it) => it.kind !== 'single' && it.kind !== 'row')
+          .forEach((it) => {
+            const cy = it.y * s;
+            const floor = m.room.l * s;
+            const out = detailOf(s) === 'out';
+            const y = out ? wordsAt(it, cy, s, floor) : nameAt(it, cy, s, floor);
+            const said = `${it.id} at ${pct(s)}%`;
+            expect(y + (out ? 35 : 6), said).toBeLessThanOrEqual(floor);
+            expect(y - 10, said).toBeGreaterThanOrEqual(0);
+          }),
+      ),
+    );
+  });
+  const chosen = (m: Seating) =>
+    m.items.filter((it) => ['round', 'cocktail', 'rect', 'head'].includes(it.kind));
+  const at = (it: Seating['items'][number], s: number, m: Seating) =>
+    handlePoints(it, s, m).map((h) => ({ x: it.x * s + h.x, y: it.y * s + h.y }));
+
+  it('keeps every handle off its own chairs’ targets from 150%', () => {
+    scales
+      .filter((s) => pct(s) >= 150)
+      .forEach((s) =>
+        chosen(pad).forEach((it) => {
+          const chairs = chairPoints(it).map((p) => ({ x: (it.x + p.x) * s, y: (it.y + p.y) * s }));
+          at(it, s, pad).forEach((h) =>
+            chairs.forEach((c) =>
+              expect(
+                Math.max(Math.abs(h.x - c.x), Math.abs(h.y - c.y)),
+                `${it.id} at ${pct(s)}%`,
+              ).toBeGreaterThanOrEqual(HANDLE_HIT / 2 + CHAIR_HIT / 2 - 1e-9),
+            ),
+          );
+        }),
+      );
+  });
+
+  it('keeps a chosen table’s handle targets off every other item’s chairs from 50%', () => {
+    [pad, phone].forEach((m) =>
+      scales.forEach((s) =>
+        chosen(m).forEach((it) =>
+          m.items
+            .filter((o) => o.id !== it.id)
+            .forEach((o) =>
+              chairPoints(o).forEach((p) => {
+                const c = { x: (o.x + p.x) * s, y: (o.y + p.y) * s };
+                at(it, s, m).forEach((h) => {
+                  const dx = Math.max(0, Math.abs(h.x - c.x) - HANDLE_HIT / 2);
+                  const dy = Math.max(0, Math.abs(h.y - c.y) - HANDLE_HIT / 2);
+                  const near = pct(s) >= 150;
+                  expect(
+                    near ? Math.max(dx, dy) : Math.hypot(dx, dy),
+                    `${it.id} on ${o.id} at ${pct(s)}%`,
+                  ).toBeGreaterThanOrEqual(near ? CHAIR_HIT / 2 : CHAIR_R * s);
+                });
+              }),
+            ),
+        ),
+      ),
+    );
+  });
+
+  it('keeps every handle inside the room, the bars by the bottom wall too', () => {
+    [...scales, at46].forEach((s) =>
+      chosen(pad).forEach((it) =>
+        at(it, s, pad).forEach((h) => {
+          expect(h.y + 12, `${it.id} at ${pct(s)}%`).toBeLessThanOrEqual(ROOM.l * s);
+          expect(h.y - 12, `${it.id} at ${pct(s)}%`).toBeGreaterThanOrEqual(0);
+          expect(h.x + 12, `${it.id} at ${pct(s)}%`).toBeLessThanOrEqual(ROOM.w * s);
+          expect(h.x - 12, `${it.id} at ${pct(s)}%`).toBeGreaterThanOrEqual(0);
+        }),
+      ),
+    );
+  });
+
+  const walls = (m: Seating) =>
+    [
+      { x: -1e4, y: null },
+      { x: 1e4, y: null },
+      { x: null, y: -1e4 },
+      { x: null, y: 1e4 },
+      { x: -1e4, y: -1e4 },
+      { x: 1e4, y: -1e4 },
+      { x: -1e4, y: 1e4 },
+      { x: 1e4, y: 1e4 },
+    ].flatMap((w) =>
+      chosen(m).flatMap((it0) => {
+        const it = { ...it0, ...heldInside({ ...it0, x: w.x ?? it0.x, y: w.y ?? it0.y }, m.room) };
+        const others = m.items.filter((o) => o.id !== it.id);
+        if (others.some((o) => overlaps(it, o))) return [];
+        return [{ it, plan: { ...m, items: [...others, it] } }];
+      }),
+    );
+
+  it('keeps every handle inside the walls with a table held against each wall and corner', () => {
+    [pad, phone].forEach((m) => {
+      const held = walls(m);
+      expect(held.length).toBeGreaterThan(20);
+      [...scales, at46].forEach((s) =>
+        held.forEach(({ it, plan }) =>
+          at(it, s, plan).forEach((h) => {
+            const said = `${it.id} at (${it.x}, ${it.y}), ${pct(s)}%`;
+            expect(h.x - 12, said).toBeGreaterThanOrEqual(-1e-9);
+            expect(h.y - 12, said).toBeGreaterThanOrEqual(-1e-9);
+            expect(h.x + 12, said).toBeLessThanOrEqual(m.room.w * s + 1e-9);
+            expect(h.y + 12, said).toBeLessThanOrEqual(m.room.l * s + 1e-9);
+          }),
+        ),
+      );
+    });
+  });
+
+  it('does not resize a table held against a wall when its handle is picked up', () => {
+    [pad, phone].forEach((m) =>
+      [at46, 0.5, 2].forEach((s) =>
+        walls(m).forEach(({ it, plan }) =>
+          handlePoints(it, s, plan).forEach((h, i) => {
+            const r = reachOf(it, s, h);
+            const q = turn(h, -it.rot);
+            const size = (n: number, reach: number) => (2 * (Math.abs(n) - reach)) / s;
+            if (it.kind === 'round' || it.kind === 'cocktail')
+              expect(size(Math.max(Math.abs(q.x), Math.abs(q.y)), Math.max(r.x, r.y))).toBeCloseTo(
+                it.d,
+              );
+            else {
+              if (i % 4 !== 1) expect(size(q.x, r.x), `${it.id} ${i}`).toBeCloseTo(it.w);
+              if (i % 4 !== 3) expect(size(q.y, r.y), `${it.id} ${i}`).toBeCloseTo(it.l);
+            }
+          }),
+        ),
+      ),
+    );
+  });
+
+  it('pulls a chosen table’s handles in only as far as a neighbour needs', () => {
+    const t9 = item(pad, 't9');
+    expect(handleReach(t9, 0.5, pad)).toEqual(handleReach(t9, 0.5));
+    expect(handleReach(t9, 0.25, pad).x).toBeLessThan(handleReach(t9, 0.25).x);
+  });
+
+  it('keeps a placed table’s handles off its body at 46%', () => {
+    const t4 = item(pad, 't4');
+    handlePoints(t4, at46).forEach((h) =>
+      expect(Math.hypot(Math.abs(h.x) - 12, Math.abs(h.y) - 12)).toBeGreaterThan((t4.d / 2) * at46),
+    );
+  });
+
+  it('does not grow a table when a handle is picked up', () => {
+    [at46, 0.25, 1].forEach((s) => {
+      const t4 = item(pad, 't4');
+      const [corner] = handlePoints(t4, s, pad);
+      expect(sideFrom(corner?.x ?? 0, handleReach(t4, s, pad).x, s)).toBe(t4.d);
+    });
   });
 });

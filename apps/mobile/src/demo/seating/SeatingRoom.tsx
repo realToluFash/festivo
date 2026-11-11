@@ -15,7 +15,10 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import type { Action } from './SeatingActs.ts';
 import {
+  CHAIR_HIT,
   CHAIR_R,
+  HANDLE_DRAWN,
+  HANDLE_HIT,
   type Detail,
   type Point,
   type View as Shown,
@@ -24,13 +27,18 @@ import {
   detailOf,
   extent,
   filled,
+  handlePoints,
   heldInside,
   isCircle,
   itemAt,
   overlapping,
+  reachOf,
   snapped,
+  sideFrom,
   turn,
   usable,
+  wordsAt,
+  nameAt,
   zoomAbout,
 } from './SeatingGeometry.ts';
 import {
@@ -58,9 +66,6 @@ const hidden = {
 const TINT = tokens.colorAccentTint;
 const VIOLET = tokens.colorAccent;
 const AMBER = tokens.colorAttention;
-const HANDLE_DRAWN = 24;
-const HANDLE_HIT = 48;
-const CHAIR_HIT = 48;
 const VIEWS_BAND = tokens.spaceXl + 48;
 
 export interface Look {
@@ -85,30 +90,6 @@ interface Label {
 function colourOf(m: Seating, it: Item): string {
   const sec = sectionOf(m, it.sec);
   return sec == null ? NO_SECTION_EDGE : hexOf(sec.colour);
-}
-
-function handlePoints(it: Item, s: number): Point[] {
-  if (it.kind === 'round' || it.kind === 'cocktail') {
-    const h = (it.d / 2) * s;
-    return [
-      { x: -h, y: -h },
-      { x: h, y: -h },
-      { x: h, y: h },
-      { x: -h, y: h },
-    ];
-  }
-  const w = (it.w / 2) * s;
-  const l = (it.l / 2) * s;
-  return [
-    { x: -w, y: -l },
-    { x: 0, y: -l },
-    { x: w, y: -l },
-    { x: w, y: 0 },
-    { x: w, y: l },
-    { x: 0, y: l },
-    { x: -w, y: l },
-    { x: -w, y: 0 },
-  ].map((p) => turn(p, it.rot));
 }
 
 export function hasHandles(it: Item): boolean {
@@ -283,7 +264,7 @@ function itemShape({
       {body}
     </G>,
   );
-  if (look.faint !== true) addWords(it, cx, cy, s, detail, labels);
+  if (look.faint !== true) addWords(it, cx, cy, s, v.oy + m.room.l * s, detail, labels);
   if (look.ring != null) {
     const pad = look.lit === true ? 10 : 2;
     const c = look.ring.colour;
@@ -393,22 +374,24 @@ function itemShape({
     );
   if (look.handles != null && hasHandles(it)) {
     const size = look.handles;
+    const points = handlePoints(it, s, m);
     if (it.kind === 'round' || it.kind === 'cocktail') {
-      const h = (it.d / 2) * s;
+      const xs = points.map((p) => p.x);
+      const ys = points.map((p) => p.y);
       out.push(
         <Rect
           key="frame"
-          x={cx - h}
-          y={cy - h}
-          width={2 * h}
-          height={2 * h}
+          x={cx + Math.min(...xs)}
+          y={cy + Math.min(...ys)}
+          width={Math.max(...xs) - Math.min(...xs)}
+          height={Math.max(...ys) - Math.min(...ys)}
           fill="none"
           stroke={VIOLET}
           strokeWidth={1.5}
         />,
       );
     }
-    handlePoints(it, s).forEach((p, i) =>
+    points.forEach((p, i) =>
       out.push(
         <Rect
           key={`h${i}`}
@@ -483,14 +466,18 @@ function ChairShape({
   return shape(tokens.colorCard, EMPTY_EDGE);
 }
 
-function addWords(it: Item, cx: number, cy: number, s: number, detail: Detail, labels: Label[]) {
-  const e = extent(it);
+function addWords(
+  it: Item,
+  cx: number,
+  cy: number,
+  s: number,
+  floor: number,
+  detail: Detail,
+  labels: Label[],
+) {
   const name = { key: `${it.id}.name`, size: 12, bold: true, ink: tokens.colorInk, words: it.name };
   if (detail === 'out') {
-    const by =
-      it.kind === 'rect' || it.kind === 'head'
-        ? cy + (it.l / 2) * s + 12
-        : cy + Math.max(e.y, 40) * s * (it.kind === 'row' ? 1 : 0.55) + 12;
+    const by = wordsAt(it, cy, s, floor);
     labels.push({ ...name, x: cx, y: by });
     if (it.kind !== 'single')
       labels.push({
@@ -515,26 +502,18 @@ function addWords(it: Item, cx: number, cy: number, s: number, detail: Detail, l
     return;
   }
   if (it.kind === 'row') return;
-  const bw = (it.kind === 'round' || it.kind === 'cocktail' ? it.d : it.w) * s;
-  const bh = (it.kind === 'round' || it.kind === 'cocktail' ? it.d : it.l) * s;
-  const fits = it.name.length * 12 * 0.56 <= bw - 3 && bh >= 15;
-  labels.push({ ...name, x: cx, y: fits ? cy : cy + e.y * s + 10 });
+  labels.push({ ...name, x: cx, y: nameAt(it, cy, s, floor) });
 }
 
-function Bars({ v, items }: { v: Shown; items: readonly Item[] }) {
+function Bars({ v, floor, items }: { v: Shown; floor: number; items: readonly Item[] }) {
   if (detailOf(v.s) !== 'out') return null;
   return (
     <>
       {items
         .filter((it) => it.kind !== 'single')
         .map((it) => {
-          const e = extent(it);
           const cx = v.ox + it.x * v.s;
-          const cy = v.oy + it.y * v.s;
-          const by =
-            (it.kind === 'rect' || it.kind === 'head'
-              ? cy + (it.l / 2) * v.s + 12
-              : cy + Math.max(e.y, 40) * v.s * (it.kind === 'row' ? 1 : 0.55) + 12) + 10;
+          const by = wordsAt(it, v.oy + it.y * v.s, v.s, floor) + 10;
           const share = filled(it) / Math.max(1, usable(it));
           return (
             <G key={`bar.${it.id}`}>
@@ -626,7 +605,7 @@ export function RoomDrawing({
         {floor && <Rect x={v.ox} y={v.oy} width={rw} height={rl} fill={tokens.colorCard} />}
         {lines}
         {shapes}
-        <Bars v={v} items={items.filter((it) => looks[it.id]?.faint !== true)} />
+        <Bars v={v} floor={v.oy + rl} items={items.filter((it) => looks[it.id]?.faint !== true)} />
         {m.wallAt != null && (
           <Line
             x1={v.ox + m.wallAt * v.s}
@@ -763,7 +742,7 @@ function roomGestures(dispatch: (action: Action) => void, show: (live: Live | nu
     if (!hasHandles(it)) return null;
     const cx = view.ox + it.x * view.s;
     const cy = view.oy + it.y * view.s;
-    const i = handlePoints(it, view.s).findIndex(
+    const i = handlePoints(it, view.s, m).findIndex(
       (h) =>
         Math.abs(cx + h.x - p.x) <= HANDLE_HIT / 2 && Math.abs(cy + h.y - p.y) <= HANDLE_HIT / 2,
     );
@@ -850,14 +829,17 @@ function roomGestures(dispatch: (action: Action) => void, show: (live: Live | nu
       { x: p.x - (mm.shown.ox + it.x * s), y: p.y - (mm.shown.oy + it.y * s) },
       -it.rot,
     );
-    const side = (n: number) => Math.max(40, snapped((2 * Math.abs(n)) / s, true));
+    const reach = reachOf(it, s, handlePoints(it, s, mm)[cur.handle] ?? { x: 0, y: 0 });
     const round = it.kind === 'round' || it.kind === 'cocktail';
     const next = round
-      ? { ...it, d: side(Math.max(Math.abs(lp.x), Math.abs(lp.y))) }
+      ? {
+          ...it,
+          d: sideFrom(Math.max(Math.abs(lp.x), Math.abs(lp.y)), Math.max(reach.x, reach.y), s),
+        }
       : {
           ...it,
-          w: cur.handle % 4 === 1 ? it.w : side(lp.x),
-          l: cur.handle % 4 === 3 ? it.l : side(lp.y),
+          w: cur.handle % 4 === 1 ? it.w : sideFrom(lp.x, reach.x, s),
+          l: cur.handle % 4 === 3 ? it.l : sideFrom(lp.y, reach.y, s),
         };
     const across = round ? next.d : next.w;
     setLive({
