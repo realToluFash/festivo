@@ -465,7 +465,11 @@ export function EventsScreen() {
           words={t('eventDelete.deleted', { event: deleted })}
           onClose={() => setDeleted(null)}
           bottom={
-            kind === 'phone' ? underTabs + tokens.spaceMd : Math.max(insets.bottom, tokens.spaceLg)
+            kind === 'phone'
+              ? underTabs + tokens.spaceMd
+              : kind === 'tabletLandscape'
+                ? Math.max(insets.bottom, tokens.spaceLg) - Math.max(insets.bottom, tokens.spaceMd)
+                : Math.max(insets.bottom, tokens.spaceLg)
           }
         />
       )}

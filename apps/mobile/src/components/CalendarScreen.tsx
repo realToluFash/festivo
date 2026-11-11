@@ -213,9 +213,7 @@ function CalendarOf({
         locale={locale}
         firstDay={firstDay}
         kept={KEPT}
-        bottom={
-          kind === 'tabletPortrait' ? insets.bottom + tokens.space3xl : underTabs + tokens.space3xl
-        }
+        bottom={kind === 'phone' ? underTabs + tokens.space3xl : insets.bottom + tokens.space3xl}
         onOpen={openItem}
         onRetry={retry}
         onCreate={creates ? () => router.push('/events/new') : undefined}
