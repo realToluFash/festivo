@@ -1,4 +1,5 @@
 import quietHours from '../../../quiet-hours.json' with { type: 'json' };
+import { numberFormat } from './locales.ts';
 
 /** The shape `@soirely/api-client` reads as `NotificationSetting`; only what the grid needs. */
 export interface SettingRow {
@@ -57,7 +58,7 @@ export function quietHoursIn(locale: string): { start: string; end: string } {
 }
 
 export function usageThresholdsIn(locale: string): { low: string; high: string } {
-  const percent = new Intl.NumberFormat(locale, { style: 'percent' });
+  const percent = numberFormat(locale, { style: 'percent' });
 
   return { low: percent.format(USAGE_THRESHOLDS.low), high: percent.format(USAGE_THRESHOLDS.high) };
 }

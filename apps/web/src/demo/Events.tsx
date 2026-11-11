@@ -380,6 +380,8 @@ function PausedPage() {
 }
 
 function ListTop({ tell, creates = true }: { tell: Tell; creates?: boolean }) {
+  const navigate = useNavigate();
+
   return (
     <EventsTop
       newEvent={
@@ -387,7 +389,7 @@ function ListTop({ tell, creates = true }: { tell: Tell; creates?: boolean }) {
           <button
             type="button"
             className="ev-new"
-            onClick={() => tell('Create an event has its own design.')}
+            onClick={() => void navigate('/demo/events/new')}
           >
             <NewEventWords />
           </button>

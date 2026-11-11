@@ -1,5 +1,5 @@
 import { type MeasurementSystem } from '@soirely/api-client';
-import { feetAndInchesOf } from '@soirely/domain';
+import { feetAndInchesOf, numberFormat } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
 type Display = 'short' | 'long';
@@ -11,7 +11,7 @@ function unit(
   display: Display,
   grouping: boolean,
 ) {
-  return new Intl.NumberFormat(locale, {
+  return numberFormat(locale, {
     style: 'unit',
     unit: name,
     unitDisplay: display,
@@ -48,8 +48,6 @@ export function lengthField(
   system: MeasurementSystem,
 ): string {
   return system === 'metric'
-    ? new Intl.NumberFormat(locale, { maximumFractionDigits: 2, useGrouping: false }).format(
-        cm / 100,
-      )
+    ? numberFormat(locale, { maximumFractionDigits: 2, useGrouping: false }).format(cm / 100)
     : lengthWords(t, locale, cm, system, { grouping: false });
 }

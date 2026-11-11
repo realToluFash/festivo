@@ -1,6 +1,7 @@
 import { DemoBell } from './DemoBell.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
-import { contactActions, initials, primaryOf, zoneLabel } from '@soirely/domain';
+import { LanguageChoices } from './LanguageChoices.tsx';
+import { LOCALES, contactActions, initials, primaryOf, zoneLabel } from '@soirely/domain';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -50,6 +51,7 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
   );
   const [name, setName] = useState(() => savedNameOf(viewer.key) ?? start.name);
   const [zone, setZone] = useState(start.zone);
+  const [language, setLanguage] = useState(start.language);
   const [emails, setEmails] = useState(start.emails);
   const [phones, setPhones] = useState(start.phones);
   const [said, setSaid] = useState(start.said);
@@ -129,6 +131,21 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
               onOpen={() => setDialog(opening('zone'))}
             />
           </ul>
+        </section>
+        <section className="desk-block">
+          <Head title={W.language} />
+          <LanguageChoices
+            legend={W.language}
+            picked={language}
+            onPick={(code) => {
+              setLanguage(code);
+              setOpen(null);
+              setSaid(
+                W.languageSaved(LOCALES.find((locale) => locale.code === code)?.nativeName ?? code),
+              );
+            }}
+            foot={W.languageFoot}
+          />
         </section>
         {load !== 'loaded'
           ? (['email', 'phone'] as const).map((kind) => (

@@ -58,6 +58,10 @@ export const ACCOUNT_WORDS = {
   added: 'Added. It is unverified until you enter the code we sent.',
   nameSaved: (name: string) => `Name changed to ${name}.`,
   zoneSaved: (zone: string) => `Time zone changed to ${zone}. Times in your emails now use it.`,
+  language: 'Language',
+  languageFoot:
+    'Every device you sign in on shows Soirely in it, and your emails are written in it. It changes as soon as you choose.',
+  languageSaved: (name: string) => `Soirely is now in ${name}, on every device and in your emails.`,
   removed: (shown: string) => `${shown} has been removed.`,
 } as const;
 
@@ -384,6 +388,8 @@ export function opening(kind: DialogKind, more: Partial<DialogStart> = {}): Dial
 export interface AccountStart {
   name: string;
   zone: ZoneRow;
+  /** The account's language, one of the four codes. */
+  language: string;
   emails: Contact[];
   phones: Contact[];
   said: string | null;
@@ -432,6 +438,7 @@ export const WEB_MOMENTS = [
   'added',
   'addPhoneShort',
   'verifyPhoneTexted',
+  'languageSaved',
 ] as const;
 
 type AccountState = (typeof ACCOUNT_STATES)[number] | (typeof WEB_MOMENTS)[number];
@@ -449,6 +456,7 @@ export function accountStart(state: string, viewer: Viewer = VIEWERS.folake): Ac
   const REST: AccountStart = {
     name: you.name,
     zone: HOME_ZONE,
+    language: 'en',
     emails: [EMAIL_1, EMAIL_2],
     phones: [PHONE_1],
     said: null,
@@ -494,6 +502,8 @@ export function accountStart(state: string, viewer: Viewer = VIEWERS.folake): Ac
       };
     case 'zoneSaved':
       return { ...REST, zone: SAN_MARINO, said: ACCOUNT_WORDS.zoneSaved(zoneLabel(SAN_MARINO)) };
+    case 'languageSaved':
+      return { ...REST, language: 'fr', said: ACCOUNT_WORDS.languageSaved('Français') };
     case 'promote':
       return { ...proved, open: EMAIL_2.id, ask: 'promote' };
     case 'confirm':
@@ -590,6 +600,13 @@ export const ACCOUNT_PAGES: readonly { name: string; states: readonly DemoLink[]
       account('zoneNone', 'Time zone, nothing matches'),
       account('zonePicked', 'Time zone, picked'),
       account('zoneSaved', 'Time zone saved'),
+    ],
+  },
+  {
+    name: 'Language, moved here from the band (sc-39509)',
+    states: [
+      account(undefined, 'English, the account’s language'),
+      account('languageSaved', 'Français chosen, saved at once'),
     ],
   },
   {

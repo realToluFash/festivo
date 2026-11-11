@@ -89,7 +89,8 @@
 
 .ev-filter-at {
   position: relative;
-  flex: none;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .ev-filter {
@@ -101,6 +102,7 @@
   padding: 0 var(--spaceSm);
   border-radius: var(--radiusRow);
   color: var(--colorAccent);
+  max-width: 100%;
   font: 600 15px/1 var(--fontFamily);
   white-space: nowrap;
 }
@@ -165,13 +167,35 @@
   font-weight: 600;
 }
 
+.ev-menu-title {
+  flex: none;
+}
+
 .ev-menu-value {
-  max-width: 120px;
-  overflow: hidden;
+  display: flex;
+  flex: 1 1 0;
+  justify-content: flex-end;
+  min-width: 0;
   color: var(--colorInkSecondary);
   font: 500 14px/1.3 var(--fontFamily);
-  text-overflow: ellipsis;
+}
+
+/* Whole picks then "+N more" (sc-39348): only the first pick ever shrinks, into "…". */
+.ev-picks {
+  display: flex;
+  min-width: 0;
   white-space: nowrap;
+}
+
+.ev-picks-lead {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ev-picks-more {
+  flex: none;
+  white-space: pre;
 }
 
 .ev-menu-rule {

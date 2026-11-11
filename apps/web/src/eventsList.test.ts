@@ -1,4 +1,4 @@
-import type { EventPhase } from '@soirely/domain';
+import { type EventPhase, numberFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
@@ -89,6 +89,23 @@ describe('dayTiles', () => {
     const keys = dayTiles(lasting(31, 'live'), before, 'en-GB').map((tile) => tile.key);
 
     expect(keys).toEqual(['2026-11-14', 'gap-2026-11-14', '2026-12-14']);
+  });
+
+  it.each([
+    ['pt-BR', '+1200'],
+    ['pt', '+1200'],
+    ['es-MX', '+1200'],
+    ['en-US', '+1,200'],
+    ['fr-CA', '+1\u202f200'],
+  ])('counts the days between in the shown language, never %s region', (locale, more) => {
+    expect(drawn(dayTiles(lasting(1202, 'draft'), before, locale))?.[1]).toBe(more);
+  });
+
+  it('groups seven digits with the space its screen-reader label is heard with', () => {
+    expect(drawn(dayTiles(lasting(1_365_247, 'draft'), before, 'pt-BR'))?.[1]).toBe(
+      `+${numberFormat('pt').format(1_365_245)}`,
+    );
+    expect(numberFormat('pt').format(1_365_245)).toMatch(/^1\s365\s245$/u);
   });
 
   it('draws no tiles once it is over', () => {
