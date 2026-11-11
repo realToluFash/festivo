@@ -168,16 +168,24 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
 
     return start.needs == null ? listed : seeded(listed, start.needs);
   }, [start]);
+  const reads = useRef(0);
   const source = useMemo<FeedSource>(
     () => ({
-      read: () => Promise.resolve(feedLink(FEED_LINK)),
+      read: () => {
+        reads.current += 1;
+        if (start.read === 'waiting') return new Promise<never>(() => undefined);
+        if (start.read === 'unreadable' && reads.current === 1)
+          return Promise.reject(new Error('unreadable'));
+
+        return Promise.resolve(feedLink(FEED_LINK));
+      },
       reset: () => Promise.resolve(feedLink(NEW_FEED_LINK)),
       copy: (url) =>
         start.feed === 'refused'
           ? Promise.reject(new Error('refused'))
           : navigator.clipboard.writeText(url),
     }),
-    [start.feed],
+    [start.feed, start.read],
   );
   const needs = useMemo(() => needsLens(t, locale), [t, locale]);
 
@@ -193,7 +201,7 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
         <Switched />
         {start.none ? (
           <div className="cal-first">
-            <FirstRun tell={tell} />
+            <FirstRun tell={tell} asks={start.asks} />
           </div>
         ) : (
           <CalendarBoard
@@ -217,7 +225,7 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
           <CalendarSubscribe
             organisationName={organisation}
             source={source}
-            first={feedLink(FEED_LINK)}
+            {...(start.read === 'loaded' && { first: feedLink(FEED_LINK) })}
             confirm={feed === 'reset'}
             refused={feed === 'refused'}
             instead={OPENED_IN_APP}

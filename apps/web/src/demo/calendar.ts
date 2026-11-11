@@ -116,10 +116,13 @@ export const CALENDAR_STATES = [
   'otherZone',
   'emptyMonth',
   'none',
+  'noneAsk',
   'loading',
   'failed',
   'subscribe',
   'subscribeRefused',
+  'subscribeLoading',
+  'subscribeUnreadable',
   'resetLink',
   'needsMenu',
   'needsMonth',
@@ -149,8 +152,10 @@ export interface CalendarStart {
   open: string | null;
   reunion: boolean;
   none: boolean;
+  asks: boolean;
   load: 'loading' | 'failed' | 'loaded';
   feed: Feed | null;
+  read: 'loaded' | 'waiting' | 'unreadable';
   needs: NeedsSeed | null;
 }
 
@@ -162,6 +167,8 @@ const AT_REST: CalendarStart = {
   open: null,
   reunion: false,
   none: false,
+  asks: false,
+  read: 'loaded',
   load: 'loaded',
   feed: null,
   needs: null,
@@ -177,10 +184,13 @@ const STARTS: Record<CalendarState, Partial<CalendarStart>> = {
   otherZone: { at: '2026-10-04', open: '2026-10-10' },
   emptyMonth: { at: '2027-02-01' },
   none: { none: true },
+  noneAsk: { none: true, asks: true },
   loading: { load: 'loading' },
   failed: { load: 'failed' },
   subscribe: { feed: 'open' },
   subscribeRefused: { feed: 'refused' },
+  subscribeLoading: { feed: 'open', read: 'waiting' },
+  subscribeUnreadable: { feed: 'open', read: 'unreadable' },
   resetLink: { feed: 'reset' },
   needsMenu: { show: 'needs', menu: true, needs: 'owner' },
   needsMonth: { show: 'needs', needs: 'owner' },
@@ -229,6 +239,7 @@ export const CALENDAR_PAGES: readonly { name: string; states: readonly DemoLink[
     name: 'No events, loading and failing',
     states: [
       at('none', 'No events yet'),
+      at('noneAsk', 'No events yet, without Create events'),
       at('loading', 'Loading'),
       at('failed', 'Failed, with Try again'),
     ],
@@ -238,6 +249,8 @@ export const CALENDAR_PAGES: readonly { name: string; states: readonly DemoLink[
     states: [
       at('subscribe', 'Subscribe'),
       at('subscribeRefused', 'Subscribe, a refused copy'),
+      at('subscribeLoading', 'Subscribe, the link loading'),
+      at('subscribeUnreadable', 'Subscribe, the link did not load'),
       at('resetLink', 'Reset your link?'),
     ],
   },

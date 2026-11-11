@@ -1,4 +1,5 @@
 import { DemoBell } from './DemoBell.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import {
   type EventsLook,
   eventsLookOf,
@@ -128,6 +129,8 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
   const [tab, setTab] = useState<Tab>(start.tab ?? rememberedTab());
   const [offline, setOffline] = useState(start.offline);
   const [pastPages, setPastPages] = useState(start.pastPages);
+  const [failed, setFailed] = useState(start.failed);
+  const [moreFailed, setMoreFailed] = useState(start.moreFailed);
   const [copying, setCopying] = useState<SampleEvent | null>(null);
   const calendar: Calendar = {
     today: localDay(now, 'Europe/London'),
@@ -200,6 +203,31 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
             onLook={apply}
           />
           <EventsLoading />
+        </div>
+      </div>
+    );
+
+  if (failed)
+    return (
+      <div className="desk-page">
+        <div className="ev-column">
+          <ListTop tell={tell} />
+          <Switched />
+          <div className="notice notice-broken" role="alert">
+            <span className="mark mark-broken" aria-hidden="true">
+              ✕
+            </span>
+            <div className="notice-body">
+              <p>{t('events.failed')}</p>
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={() => setFailed(false)}
+              >
+                {t('events.retry')}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -290,6 +318,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
                 <TextAction
                   label={W.showMore}
                   onClick={() => {
+                    setMoreFailed(false);
                     setPastPages((pages) => pages + 1);
                     window.requestAnimationFrame(() => {
                       const links = firstNew.current?.querySelectorAll<HTMLElement>('a');
@@ -298,6 +327,12 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
                     });
                   }}
                 />
+              )}
+              {tab === 'past' && moreFailed && (
+                <p className="desk-error" role="alert">
+                  <Glyph name="alert" size={15} weight={2.2} />
+                  {t('events.moreFailed')}
+                </p>
               )}
               {tab === 'past' && pastPages > 1 && (
                 <p className="desk-note" role="status">
