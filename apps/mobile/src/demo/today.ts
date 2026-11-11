@@ -1,7 +1,8 @@
-import { eventDayWords, greetingAt } from '@soirely/domain';
+import { greetingAt } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import { writtenTime } from './clock.ts';
+import { daysWords } from '../kit/eventsList.ts';
 import {
   addDays,
   daysFrom,
@@ -244,9 +245,9 @@ export function railAt(stops: readonly string[], time: string): number {
   return (after - 1 + share) / (stops.length - 1);
 }
 
-/** Events' own words for its days, as the product's Today writes them (sc-30413, 11 Nov). */
+/** Events' own words for its days, the product's Today's own function (sc-30413, 11 Nov). */
 function eventDates(event: SampleEvent, today: string, say: Say, t: TFunction): string {
-  const days = eventDayWords(
+  return daysWords(
     {
       status: event.draft ? 'draft' : 'live',
       startsAt: `${event.first}T12:00:00Z`,
@@ -256,13 +257,9 @@ function eventDates(event: SampleEvent, today: string, say: Say, t: TFunction): 
     },
     new Date(`${today}T12:00:00Z`),
     say.locale,
+    true,
+    t,
   );
-
-  return days.kind === 'days'
-    ? t('eventsScreen.days', { first: days.first, last: days.last })
-    : days.kind === 'oneDay'
-      ? days.day
-      : days.date;
 }
 
 function card(
