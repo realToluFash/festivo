@@ -50,6 +50,8 @@ export const DOMAIN_WORDS = {
 
 export const OWNERSHIP_WORDS = {
   passwordWrong: 'That is not your password. Nothing was changed. Try again, or reset it by email.',
+  codeAsked: 'Enter a code from your app, or a recovery code.',
+  codeWrong: 'That code did not work. Check your app and try again.',
   leave: `Leave ${ORG}`,
   leaveOpener: `Leave ${ORG}…`,
   leaveTitle: `Leave ${ORG}?`,

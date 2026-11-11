@@ -1,3 +1,4 @@
+import { flushSync } from 'react-dom';
 import {
   type OrganisationDetails,
   type OrganisationField,
@@ -310,6 +311,7 @@ export function TransferDialog({
   const [owner, setOwner] = useState(opening.owner);
   const [password, setPassword] = useState(opening.password);
   const [code, setCode] = useState(opening.code);
+  const [codeAsked, setCodeAsked] = useState(picked);
   const [problems, setProblems] = useState<TransferProblems>({});
   const [busy, setBusy] = useState(false);
   const [asking, setAsking] = useState(false);
@@ -331,14 +333,18 @@ export function TransferDialog({
 
   function transfer(): void {
     if (busy) return;
-    const found = transferProblems(owner, password, code);
+    const found = transferProblems(owner, password, codeAsked ? code : null);
     land(found);
     if (owner == null || Object.keys(found).length > 0) return;
 
     setBusy(true);
     later(SEND_MS, () => {
       setBusy(false);
-      const refused = transferRefusal(password, code);
+      const refused = transferRefusal(password, codeAsked ? code : null);
+      if (refused === 'codeAsked') {
+        flushSync(() => setCodeAsked(true));
+        return codeRef.current?.focus();
+      }
       if (Object.keys(refused).length === 0) return onDone(owner);
       land(refused);
     });
@@ -387,18 +393,20 @@ export function TransferDialog({
               setProblems((now) => without(now, 'password'));
             }}
           />
-          <Field
-            label={O.code}
-            value={code}
-            autoComplete="one-time-code"
-            help={O.codeHelp}
-            error={problems.code ?? null}
-            inputRef={codeRef}
-            onChange={(value) => {
-              setCode(value);
-              setProblems((now) => without(now, 'code'));
-            }}
-          />
+          {codeAsked && (
+            <Field
+              label={O.code}
+              value={code}
+              autoComplete="one-time-code"
+              help={O.codeHelp}
+              error={problems.code ?? null}
+              inputRef={codeRef}
+              onChange={(value) => {
+                setCode(value);
+                setProblems((now) => without(now, 'code'));
+              }}
+            />
+          )}
         </div>
         <Note>{O.bothEmailed(owner ?? O.theNewOwner)}</Note>
       </Dialog>

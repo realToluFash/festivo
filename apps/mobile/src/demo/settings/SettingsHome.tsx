@@ -5,8 +5,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
-import { Bell, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
+import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
+import { Bell, Landscape, OrgPill, PortraitTop, SettingsTabBar } from './Frame.tsx';
+import { type Held, HeldStandIn } from './Held.tsx';
 import { inUse, useHeldChoice, WORDS as PERSONALISATION } from './PersonalisationModel.ts';
 import { SettingsDemoRow } from './SettingsDemoRow.tsx';
 import { SchemeTile } from '../../components/SchemeParts.tsx';
@@ -190,11 +191,17 @@ function SignOut({
 }
 
 /** Settings itself: on a phone one column; upright your account's group beside the organisation's. */
-export function SettingsHome({ onSignOut, onDemo }: Handlers) {
+export function SettingsHome({
+  onSignOut,
+  onDemo,
+  held = null,
+}: Handlers & { held?: Held | null }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const words = useContext(SettingsWordsContext);
   const groups = groupsFor(shell.viewer, words);
+
+  if (held != null) return <HeldSettings held={held} onSignOut={onSignOut} />;
 
   if (shell.layout === 'landscape')
     return (
@@ -249,7 +256,7 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
         </ScrollView>
         <View style={[styles.statusStrip, { height: insets.top }]} pointerEvents="none" />
         <TabBarFade />
-        <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Settings" />
+        <SettingsTabBar bottom={foot} />
       </View>
     );
   }
@@ -319,6 +326,50 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
   );
 }
 
+/** Paused access or two-factor overdue in place of Settings: the pill and the bell stay, so the switcher is a tap away. */
+function HeldSettings({ held, onSignOut }: { held: Held; onSignOut: () => void }) {
+  const shell = useShell();
+  const insets = useSafeAreaInsets();
+  const standIn = <HeldStandIn held={held} onSignOut={onSignOut} />;
+
+  if (shell.layout === 'landscape')
+    return (
+      <Landscape column={null}>
+        <View style={styles.heldSide}>{standIn}</View>
+      </Landscape>
+    );
+
+  if (shell.layout === 'portrait')
+    return (
+      <View style={styles.page}>
+        <PortraitTop at="Settings" />
+        <View style={styles.heldUpright}>{standIn}</View>
+      </View>
+    );
+
+  const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
+
+  return (
+    <View style={styles.page}>
+      <View
+        style={[
+          styles.heldPhone,
+          { paddingTop: insets.top + tokens.spaceXs, paddingBottom: foot + PHONE_TAB_BAR },
+        ]}
+      >
+        <View style={styles.orgRow}>
+          <OrgPill />
+          <View style={styles.grow} />
+          <Bell tell={shell.tell} />
+        </View>
+        {standIn}
+      </View>
+      <TabBarFade />
+      <SettingsTabBar bottom={foot} />
+    </View>
+  );
+}
+
 /** On its side, the Settings list stays in its column while a section is open beside it. */
 export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
   const shell = useShell();
@@ -371,6 +422,9 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   orgRow: { flexDirection: 'row', alignItems: 'center', marginBottom: tokens.spaceSm },
+  heldPhone: { flex: 1, paddingHorizontal: tokens.spaceXxl },
+  heldUpright: { flex: 1, paddingHorizontal: tokens.space5xl },
+  heldSide: { flex: 1, paddingHorizontal: 30 },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',

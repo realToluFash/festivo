@@ -6,9 +6,9 @@ import { Back } from '../../components/SettingsParts.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { PageToast, type PageToastProps } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
-import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
+import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Bell, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
+import { Bell, Landscape, OrgPill, PortraitTop, SettingsTabBar } from './Frame.tsx';
 
 /** A section page in B, summary first: back and the bell on top, the title, then the card and the lists. */
 export function SummaryPage({
@@ -85,7 +85,7 @@ export function SummaryPage({
         <>
           <View style={[styles.statusStrip, { height: insets.top }]} pointerEvents="none" />
           <TabBarFade />
-          <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Settings" />
+          <SettingsTabBar bottom={foot} />
         </>
       )}
       {toast != null && (

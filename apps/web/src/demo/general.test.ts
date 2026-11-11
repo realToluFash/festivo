@@ -119,10 +119,15 @@ describe('General’s sample (sc-30063)', () => {
       password: 'Enter your password.',
       code: 'Enter a code from your app, or a recovery code.',
     });
+    expect(transferProblems('Kemi', SAMPLE.password, null)).toEqual({});
+    expect(transferRefusal(SAMPLE.password, null)).toBe('codeAsked');
+    expect(transferRefusal('wrong', null)).toEqual({
+      password: 'That is not your password. Nothing was changed. Try again, or reset it by email.',
+    });
     expect(transferRefusal('wrong', '000000')).toEqual({
       password: 'That is not your password. Nothing was changed. Try again, or reset it by email.',
     });
-    expect(transferRefusal(SAMPLE.password, '000000').code).toBe(
+    expect((transferRefusal(SAMPLE.password, '000000') as { code?: string }).code).toBe(
       'That code did not work. Check your app and try again.',
     );
     expect(transferRefusal(SAMPLE.password, SAMPLE.recovery.toUpperCase())).toEqual({});

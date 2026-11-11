@@ -8,7 +8,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { useOrgOpener } from '../OrgSwitcher.tsx';
 import { OrgPill as ProductOrgPill } from '../../components/OrgPill.tsx';
 import type { EventKey } from '../today.ts';
-import { type Tab, TABS, WhiteCapsule } from '../../components/TodayCover.tsx';
+import { SETTINGS_ID, type Tab, TabBar, TABS, WhiteCapsule } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { DemoSidebar } from '../Sidebar.tsx';
 import { SIDEBAR_EVENTS } from '../sideEvents.ts';
@@ -16,7 +16,12 @@ import { TodayShellProvider } from '../../components/todayShell.ts';
 import { demoShell } from '../demoShell.ts';
 import { viewerOfRole } from './sample.ts';
 import { underSavedName, useSavedName } from './savedName.ts';
-import { type Looking, ShellContext, useShell } from '../../components/settingsShell.ts';
+import {
+  type Looking,
+  ShellContext,
+  useShell,
+  type Viewer,
+} from '../../components/settingsShell.ts';
 import { Back, RoundButton } from '../../components/SettingsParts.tsx';
 
 /** A page whose sample someone else sees: the Settings card, its rows and the sidebar's foot follow them. */
@@ -178,6 +183,28 @@ export function OrgPill() {
   );
 }
 
+/** With no organisation the tabs are Today and Settings, as the product's (sc-29914). */
+export function tabsFor(viewer: Viewer): readonly (typeof TABS)[number][] {
+  return viewer === 'noOrg' ? TABS.filter(([tab]) => tab === 'Today' || tab === 'Settings') : TABS;
+}
+
+/** The phone's tab bar, holding only the tabs the viewer has. */
+export function SettingsTabBar({ bottom }: { bottom: number }) {
+  const { t } = useTranslation();
+  const shell = useShell();
+
+  return (
+    <TabBar
+      tabs={tabsFor(shell.viewer)}
+      bottom={bottom}
+      onTab={shell.onTab}
+      at="Settings"
+      say={(_, glyph) => t(`todayScreen.tab.${glyph}`)}
+      ids={SETTINGS_ID}
+    />
+  );
+}
+
 export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
@@ -188,7 +215,7 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
       <View style={styles.grow} />
       <Bell tell={shell.tell} />
       <View style={[styles.capsuleAt, { top: insets.top + 7 }]} pointerEvents="box-none">
-        <WhiteCapsule tabs={TABS} at={at} onTab={shell.onTab} />
+        <WhiteCapsule tabs={tabsFor(shell.viewer)} at={at} onTab={shell.onTab} />
       </View>
     </View>
   );
