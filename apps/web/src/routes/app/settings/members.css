@@ -31,3 +31,12 @@
   align-items: flex-start;
   gap: var(--spaceXs);
 }
+
+.members-desk .desk-top {
+  flex-wrap: wrap;
+}
+
+.members-desk .desk-title {
+  min-width: auto;
+  overflow-wrap: break-word;
+}
