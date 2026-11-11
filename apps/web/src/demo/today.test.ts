@@ -31,6 +31,17 @@ describe('Today’s dates follow the locale', () => {
   });
 });
 
+describe('Your events writes Events’ words for its days', () => {
+  it('weekdays in full, and the year only on a date outside this one', () => {
+    expect(momentOf('plan', gb).events.map(({ dates }) => dates)).toEqual([
+      { first: 'Thursday 5 Nov', last: 'Saturday 7 Nov' },
+      { first: 'Saturday 14 Nov', last: 'Sunday 15 Nov' },
+      'Saturday 28 Nov',
+      'Saturday, 9 Jan 2027',
+    ]);
+  });
+});
+
 describe('a planning day', () => {
   const plan = momentOf('plan', us);
 
