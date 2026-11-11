@@ -263,8 +263,11 @@ export function SearchField({
   );
 }
 
-/** Filter's marks and padding around its picks. */
-const FILTER_SIDES = 4 * tokens.spaceXs + 18 + 16;
+const FILTER_MARK = 18;
+const FILTER_CHEVRON = 16;
+const FILTER_SPACE = tokens.spaceXs;
+/** Filter's marks and padding around its picks: the padding at both ends, a gap either side of the picks, and the two marks. */
+const FILTER_SIDES = 4 * FILTER_SPACE + FILTER_MARK + FILTER_CHEVRON;
 
 /** Filter beside the search: its mark, what is chosen, and a chevron, in Violet. On a phone (`wraps`) it moves under the field when its picks do not fit beside it, and fits them to the full width there. */
 export function FilterButton({
@@ -307,7 +310,7 @@ export function FilterButton({
         accessibilityLabel={t('eventsSearch.filterLabel', { what: word })}
         testID="events.filter"
       >
-        <Glyph name="filter" size={18} ink={ink} weight={2.2} />
+        <Glyph name="filter" size={FILTER_MARK} ink={ink} weight={2.2} />
         <PicksLine
           picks={picks}
           whole={word}
@@ -317,7 +320,7 @@ export function FilterButton({
           weight="semibold"
           ink={ink}
         />
-        <Glyph name="down" size={16} ink={ink} weight={2.4} />
+        <Glyph name="down" size={FILTER_CHEVRON} ink={ink} weight={2.4} />
       </Pressable>
     </View>
   );
@@ -833,8 +836,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     flexShrink: 1,
-    gap: tokens.spaceXs,
-    paddingHorizontal: tokens.spaceXs,
+    gap: FILTER_SPACE,
+    paddingHorizontal: FILTER_SPACE,
   },
   top: {
     minHeight: tokens.sizeHitPhonePrimary,
