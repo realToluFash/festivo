@@ -24,8 +24,8 @@ import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCo
 import type { Item as ProductItem } from '../../kit/calendar.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { SAMPLE } from '../samples.ts';
-import { openEvent } from '../events/EventsList.tsx';
-import { CLOCKS, EVENT_OF_KEY, READER_ZONE } from '../events/EventsSample.ts';
+import { openEvent } from '../events/openEvent.ts';
+import { CLOCKS, READER_ZONE } from '../events/EventsSample.ts';
 import { W } from '../events/EventsWords.ts';
 import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
 import {
@@ -226,12 +226,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
 
   if (shell.layout === 'landscape')
     return (
-      <Landscape
-        column={null}
-        at="Calendar"
-        onEvent={(key) => openEvent(EVENT_OF_KEY[key])}
-        overlay={feedPanel}
-      >
+      <Landscape column={null} at="Calendar" overlay={feedPanel}>
         <View style={[styles.grow, LIST_EDGES.tabletLandscape]}>{board}</View>
       </Landscape>
     );

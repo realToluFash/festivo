@@ -1,12 +1,12 @@
-import { type Href, router, useGlobalSearchParams } from 'expo-router';
+import { useGlobalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 
 import type { Tab } from '../components/TodayCover.tsx';
 import { TodaySidebar } from '../components/TodaySidebar.tsx';
 import { type Opens, TodayShellProvider, useTodayShell } from '../components/todayShell.ts';
 import type { ShownEvent } from '../kit/today.ts';
-import { eventHref } from './events/EventsModel.ts';
 import { EVENT_OF_KEY } from './events/EventsSample.ts';
+import { openEvent } from './events/openEvent.ts';
 import { useCurrentPlace } from './OrgSwitcher.tsx';
 import { sideEventsOf } from './sideEvents.ts';
 import type { EventKey } from './today.ts';
@@ -34,7 +34,7 @@ export function DemoSidebar({
       open: (opens: Opens) => {
         if (opens.to !== 'event') return shell.open(opens);
         const id = opens.id in EVENT_OF_KEY ? EVENT_OF_KEY[opens.id as EventKey] : opens.id;
-        router.push(eventHref(id) as Href);
+        openEvent(id);
       },
     }),
     [shell],

@@ -1,6 +1,5 @@
 import { filtered, formattingLocale, searching, wallDay } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
-import { type Href, router } from 'expo-router';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ScrollView,
@@ -49,7 +48,6 @@ import {
   PAST_PAGE,
   type Shown,
   emptyTabOf,
-  eventHref,
   homeOf,
   hostNames,
   howSoon,
@@ -60,7 +58,7 @@ import {
   summaryLine,
   withoutTab,
 } from './EventsModel.ts';
-import { CLOCKS, EVENTS, EVENT_OF_KEY, OFFLINE_AS_OF, READER_ZONE } from './EventsSample.ts';
+import { CLOCKS, EVENTS, OFFLINE_AS_OF, READER_ZONE } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { kindOf, useShell } from '../../components/settingsShell.ts';
 import {
@@ -78,13 +76,10 @@ import { EventsFailed } from '../../components/Events.tsx';
 import { ListTop } from '../../components/ListTop.tsx';
 import { OfflineBand as ProductOfflineBand } from '../../components/OfflineBand.tsx';
 import { LIST_EDGES, LIST_GAP } from '../../components/listFrame.ts';
+import { openEvent } from './openEvent.ts';
 
 const SEARCH_PAUSE_MS = 300;
 const MENU_AFTER_MS = 700;
-
-export function openEvent(id: string, query?: Readonly<Record<string, string>>): void {
-  router.push(eventHref(id, query) as Href);
-}
 
 /** The card's step from the list: the event opens where the step is. */
 export function stepFrom(
@@ -388,12 +383,7 @@ function ListFrame({
 
   if (shell.layout === 'landscape')
     return (
-      <Landscape
-        column={null}
-        at="Events"
-        onEvent={(key) => openEvent(EVENT_OF_KEY[key])}
-        overlay={overlay}
-      >
+      <Landscape column={null} at="Events" overlay={overlay}>
         {band}
         <ScrollView
           style={styles.grow}

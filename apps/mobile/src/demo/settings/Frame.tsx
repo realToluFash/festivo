@@ -7,7 +7,6 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { useOrgOpener } from '../OrgSwitcher.tsx';
 import { OrgPill as ProductOrgPill } from '../../components/OrgPill.tsx';
-import type { EventKey } from '../today.ts';
 import { SETTINGS_ID, type Tab, TabBar, TABS, WhiteCapsule } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { DemoSidebar } from '../Sidebar.tsx';
@@ -50,14 +49,12 @@ export function Landscape({
   overlay,
   at = 'Settings',
   sidebar,
-  onEvent,
 }: {
   column: ReactNode;
   children: ReactNode;
   overlay?: ReactNode;
   at?: Tab;
   sidebar?: ReactNode;
-  onEvent?: (key: EventKey) => void;
 }) {
   const shell = useShell();
   const side = useSideFrame();
@@ -65,9 +62,7 @@ export function Landscape({
   return (
     <View style={[styles.grow, side.chrome]}>
       {sidebar ?? (
-        <TodayShellProvider
-          value={{ ...demoShell(shell.tell, { event: onEvent }), person: shell.looking }}
-        >
+        <TodayShellProvider value={{ ...demoShell(shell.tell), person: shell.looking }}>
           <DemoSidebar
             events={SIDEBAR_EVENTS}
             onTab={shell.onTab}
