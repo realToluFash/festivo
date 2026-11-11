@@ -13,13 +13,13 @@ import {
   SidebarPlace,
   SidebarPlaces,
 } from '../components/TodaySidebar.tsx';
-import { useTodayShell } from '../components/todayShell.ts';
 import type { ShownEvent } from '../kit/today.ts';
 import { tokens } from '../theme/tokens.ts';
 import { eventHref } from './events/EventsModel.ts';
+import { EVENT_OF_KEY } from './events/EventsSample.ts';
 import { useCurrentPlace } from './OrgSwitcher.tsx';
 import { LEAST_ROWS, sideEventsOf } from './sideEvents.ts';
-import { EVENTS } from './today.ts';
+import type { EventKey } from './today.ts';
 
 const PLACES: readonly (readonly [Tab, GlyphName])[] = [
   ['Today', 'today'],
@@ -28,16 +28,11 @@ const PLACES: readonly (readonly [Tab, GlyphName])[] = [
 ];
 
 function SideEvent({ event }: { event: ShownEvent }) {
-  const { open } = useTodayShell();
-  const today = Object.keys(EVENTS).includes(event.id);
+  const id = event.id in EVENT_OF_KEY ? EVENT_OF_KEY[event.id as EventKey] : event.id;
 
   return (
     <Pressable
-      onPress={() =>
-        today
-          ? open({ to: 'event', id: event.id, name: event.name })
-          : router.push(eventHref(event.id) as Href)
-      }
+      onPress={() => router.push(eventHref(id) as Href)}
       style={({ pressed }) => [styles.event, pressed && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel={event.name}
