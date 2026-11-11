@@ -201,6 +201,8 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+const NO_RECOVERIES = { 'GET /api/auth/recovery-requests': () => json({ requests: [] }) };
+
 function answering(answers: Record<string, () => Response | Promise<Response>>) {
   const sent: { line: string; body: unknown }[] = [];
 
@@ -208,7 +210,7 @@ function answering(answers: Record<string, () => Response | Promise<Response>>) 
     const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
     sent.push({ line, body: typeof init?.body === 'string' ? JSON.parse(init.body) : null });
 
-    const answer = answers[line];
+    const answer = { ...NO_RECOVERIES, ...answers }[line];
     if (answer == null) throw new TypeError('Failed to fetch');
 
     return answer();
@@ -1165,6 +1167,7 @@ describe('the dates the server wrote, after a language change (sc-9267)', () => 
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const path = new URL(String(input)).pathname;
       if (path === '/api/orgs/org_1/roles') return json(ROLES);
+      if (path === '/api/auth/recovery-requests') return json({ requests: [] });
       if (path !== '/api/orgs/org_1/members') return new Response(null, { status: 500 });
 
       const language = new Headers(init?.headers).get('Accept-Language') ?? '';
@@ -1548,5 +1551,357 @@ describe('what the claim says when it is refused (sc-34200, sc-6640)', () => {
 
     expect(await ask.findByText('That did not work. Please try again.')).toBeDefined();
     expect(page().getByText('Record found')).toBeDefined();
+  });
+});
+
+describe('requests to get back in on Members (sc-30189)', () => {
+  const asker = (id: string, name: string) =>
+    member({
+      id: `m_${id}`,
+      user: { id: `u_${id}`, name, email: `${id}@ire.events` },
+      role: { id: 'role_5', seededAs: 'member', name: null },
+      channel: 'invitation',
+      self: false,
+    });
+  const RECOVERY_LIST = {
+    ...WAITING,
+    members: [...WAITING.members, asker('kofi', 'Kofi Mensah'), asker('priya', 'Priya Shah')],
+  };
+  const request = (id: string, name: string, more: Record<string, unknown> = {}) => ({
+    id: `rq_${id}`,
+    userId: `u_${id}`,
+    name,
+    email: `${id}@ire.events`,
+    provedPhone: true,
+    own: false,
+    organisations: ['Ìrè Events'],
+    organisationIds: ['org_1'],
+    askedAt: '2026-11-03T12:05:00+00:00',
+    asked: 'Tuesday 3 Nov at 13:05 WAT',
+    expiresAt: '2026-11-10T12:05:00+00:00',
+    expires: 'Tuesday 10 Nov at 13:05 WAT',
+    ...more,
+  });
+  const KOFI = request('kofi', 'Kofi Mensah');
+  const PRIYA = request('priya', 'Priya Shah', {
+    provedPhone: false,
+    askedAt: '2026-11-04T08:40:00+00:00',
+  });
+  const ELSEWHERE = request('tunde', 'Tunde Bello', { organisationIds: ['org_2'] });
+  const reads = (requests: unknown[] = [KOFI, PRIYA, ELSEWHERE]) => ({
+    'GET /api/orgs/org_1/members': () => json(RECOVERY_LIST),
+    'GET /api/orgs/org_1/roles': () => json(ROLES),
+    'GET /api/auth/recovery-requests': () => json({ requests }),
+  });
+  const requestOf = (name: string) =>
+    within(page().getByRole('article', { name: new RegExp(`^${name}`) }));
+  const answerOf = async (name: string, action: string) =>
+    within(await page().findByRole('article', { name: new RegExp(`^${name}`) })).getByRole(
+      'button',
+      { name: action },
+    );
+  const cardSays = () => document.querySelector<HTMLElement>('.members-desk .desk-said-lines');
+
+  it('lists this organisation’s requests above Waiting, counts them on the card, and steps to the oldest', async () => {
+    signedIn();
+    answering(reads());
+    open();
+
+    expect(await page().findByText('4 people · 3 waiting')).toBeDefined();
+    expect(page().getByText('2 to get back in · 1 to join')).toBeDefined();
+    expect(
+      page()
+        .getAllByRole('heading')
+        .map((one) => one.textContent),
+    ).toEqual(['Members', 'Requests to get back in', 'Waiting', 'People', 'Invitations']);
+    expect(
+      page()
+        .getAllByRole('article')
+        .map((one) => one.id),
+    ).toEqual(['request-rq_kofi', 'request-rq_priya']);
+    expect(page().queryByText('Tunde Bello')).toBeNull();
+
+    const kofi = requestOf('Kofi Mensah');
+    expect(kofi.getByText('Waiting for an answer')).toBeDefined();
+    expect(
+      kofi.getByText('Asked to turn off two-factor · Proved with codes to their email and phone'),
+    ).toBeDefined();
+    expect(kofi.getByText('kofi@ire.events')).toBeDefined();
+    expect(
+      kofi.getByText(/^Asked Tuesday, Nov 3 at \d\d:\d\d · ends Tuesday, Nov 10 at \d\d:\d\d/),
+    ).toBeDefined();
+    expect(
+      requestOf('Priya Shah').getByText(
+        'Asked to turn off two-factor · Proved with a code to their email (no verified phone)',
+      ),
+    ).toBeDefined();
+    expect(
+      page().getByText(
+        'Only owners and admins see this. A request leaves it once somebody answers or it ends.',
+      ),
+    ).toBeDefined();
+
+    fireEvent.click(page().getByRole('button', { name: 'Answer Kofi Mensah' }));
+
+    const lit = document.getElementById('request-rq_kofi');
+    await waitFor(() => expect(document.activeElement).toBe(lit));
+    expect(lit?.classList.contains('is-on')).toBe(true);
+  });
+
+  it('approves only once confirmed, says so on the card, and steps on to the next request', async () => {
+    signedIn();
+    const sent = answering({
+      ...reads(),
+      'POST /api/auth/recovery-requests/rq_kofi/approve': done,
+    });
+    open();
+
+    fireEvent.click(await answerOf('Kofi Mensah', 'Approve'));
+    const ask = within(
+      await screen.findByRole('alertdialog', {
+        name: 'Approve, and turn off Kofi Mensah’s two-factor?',
+      }),
+    );
+    expect(ask.getAllByRole('button').map((one) => one.textContent)).toEqual([
+      'Cancel',
+      'Turn off two-factor',
+    ]);
+    expect(sent.some((one) => one.line.endsWith('/approve'))).toBe(false);
+
+    fireEvent.click(ask.getByRole('button', { name: 'Turn off two-factor' }));
+
+    expect(await page().findByText('Kofi Mensah’s two-factor is off.')).toBeDefined();
+    expect(
+      page().getByText('They’re emailed now, and every session they had has ended.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(page().queryByRole('article', { name: /^Kofi Mensah/ })).toBeNull();
+    expect(page().getByRole('button', { name: 'Answer Priya Shah' })).toBeDefined();
+    await waitFor(() => expect(document.activeElement).toBe(cardSays()));
+  });
+
+  it('turns a request down, and Keep the request goes back to Turn down with nothing sent', async () => {
+    signedIn();
+    const sent = answering({
+      ...reads(),
+      'POST /api/auth/recovery-requests/rq_kofi/turn-down': done,
+    });
+    open();
+
+    fireEvent.click(await answerOf('Kofi Mensah', 'Turn down'));
+    const asked = await screen.findByRole('alertdialog', {
+      name: 'Turn down Kofi Mensah’s request?',
+    });
+    fireEvent.click(within(asked).getByRole('button', { name: 'Keep the request' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        requestOf('Kofi Mensah').getByRole('button', { name: 'Turn down' }),
+      ),
+    );
+    expect(sent.some((one) => one.line.endsWith('/turn-down'))).toBe(false);
+
+    fireEvent.click(requestOf('Kofi Mensah').getByRole('button', { name: 'Turn down' }));
+    const again = await screen.findByRole('alertdialog', {
+      name: 'Turn down Kofi Mensah’s request?',
+    });
+    fireEvent.click(within(again).getByRole('button', { name: 'Turn down the request' }));
+
+    expect(await page().findByText('Kofi Mensah’s request is turned down.')).toBeDefined();
+    expect(page().getByText('Two-factor stays on for them, and they’re emailed.')).toBeDefined();
+  });
+
+  it.each([
+    ['closed', () => problem('recovery_request_closed', 409)],
+    ['no longer theirs', () => problem('not_found', 404)],
+  ])('says a request %s has already been answered, with Close alone', async (_, refusal) => {
+    signedIn();
+    answering({ ...reads(), 'POST /api/auth/recovery-requests/rq_kofi/approve': refusal });
+    open();
+
+    fireEvent.click(await answerOf('Kofi Mensah', 'Approve'));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Turn off two-factor',
+      }),
+    );
+
+    expect(
+      await screen.findByText('This request has already been answered, or it has ended.'),
+    ).toBeDefined();
+    const ask = within(screen.getByRole('alertdialog'));
+    expect(ask.getAllByRole('button').map((one) => one.textContent)).toEqual(['Close']);
+    fireEvent.click(ask.getByRole('button', { name: 'Close' }));
+
+    expect(page().queryByRole('article', { name: /^Kofi Mensah/ })).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(document.getElementById('request-rq_priya')),
+    );
+  });
+
+  it('closes on the last request’s Close with the focus on the card’s words', async () => {
+    signedIn();
+    answering({
+      ...reads([KOFI]),
+      'POST /api/auth/recovery-requests/rq_kofi/approve': () =>
+        problem('recovery_request_closed', 409),
+    });
+    open();
+
+    fireEvent.click(await answerOf('Kofi Mensah', 'Approve'));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Turn off two-factor',
+      }),
+    );
+    await screen.findByText('This request has already been answered, or it has ended.');
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Close' }));
+
+    expect(page().queryByRole('article')).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(cardSays()));
+  });
+
+  it('waits out Escape while the answer is sending', async () => {
+    signedIn();
+    let reply: (answer: Response) => void = () => undefined;
+    answering({
+      ...reads(),
+      'POST /api/auth/recovery-requests/rq_kofi/approve': () =>
+        new Promise<Response>((resolve) => {
+          reply = resolve;
+        }),
+    });
+    open();
+
+    fireEvent.click(await answerOf('Kofi Mensah', 'Approve'));
+    const ask = within(await screen.findByRole('alertdialog'));
+    fireEvent.click(ask.getByRole('button', { name: 'Turn off two-factor' }));
+    expect(await ask.findByText('Sending your answer…')).toBeDefined();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.getByRole('alertdialog')).toBeDefined();
+    reply(done());
+    expect(await page().findByText('Kofi Mensah’s two-factor is off.')).toBeDefined();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it.each([
+    ['no connection', () => Promise.reject(new TypeError('Failed to fetch'))],
+    ['a 5xx', () => problem('server_error', 500)],
+  ])('keeps the confirm open on %s, and its verb tries again', async (_, failure) => {
+    signedIn();
+    let fails = true;
+    answering({
+      ...reads(),
+      'POST /api/auth/recovery-requests/rq_kofi/approve': () => (fails ? failure() : done()),
+    });
+    open();
+
+    fireEvent.click(await answerOf('Kofi Mensah', 'Approve'));
+    const ask = within(await screen.findByRole('alertdialog'));
+    fireEvent.click(ask.getByRole('button', { name: 'Turn off two-factor' }));
+
+    expect(await ask.findByText('That did not work. Try again in a moment.')).toBeDefined();
+    fails = false;
+    fireEvent.click(ask.getByRole('button', { name: 'Turn off two-factor' }));
+
+    expect(await page().findByText('Kofi Mensah’s two-factor is off.')).toBeDefined();
+  });
+
+  it('shows your own request with who has to answer it, and never counts or steps to it', async () => {
+    signedIn();
+    answering(
+      reads([
+        request('folake', 'Folake Adeyemi', {
+          own: true,
+          organisations: ['Ìrè Events', 'Ìrè Weddings'],
+        }),
+      ]),
+    );
+    open();
+
+    expect(await page().findByText('Folake Adeyemi (you)')).toBeDefined();
+    expect(
+      page().getByText(
+        'This is your own request. Somebody else in Ìrè Events and Ìrè Weddings has to answer it.',
+      ),
+    ).toBeDefined();
+    expect(
+      page().getByText('Asked to turn off two-factor · Proved with codes to your email and phone'),
+    ).toBeDefined();
+    expect(page().queryByRole('button', { name: 'Approve' })).toBeNull();
+    expect(page().getByText('4 people · 1 waiting')).toBeDefined();
+    expect(page().getByRole('button', { name: 'Answer Ada Okeke' })).toBeDefined();
+  });
+
+  it('writes its dates in the page’s language', async () => {
+    signedIn();
+    answering(reads());
+    open();
+    await page().findByRole('article', { name: /^Kofi Mensah/ });
+
+    await act(() => setLanguage('fr'));
+
+    expect(await requestOf('Kofi Mensah').findByText(/mardi 3 nov/)).toBeDefined();
+    await act(() => setLanguage(null));
+  });
+
+  it('leaves nothing of the list once none waits', async () => {
+    signedIn();
+    answering(reads([]));
+    open();
+
+    expect(await page().findByText('4 people · 1 waiting')).toBeDefined();
+    expect(page().queryByText('Requests to get back in')).toBeNull();
+  });
+
+  it('takes a removed member’s request off the list', async () => {
+    signedIn();
+    answering({ ...reads(), 'DELETE /api/orgs/org_1/members/m_kofi': done });
+    open();
+
+    await openPerson('Kofi Mensah');
+    fireEvent.click(page().getByRole('button', { name: 'Remove from Ìrè Events…' }));
+    const ask = within(
+      await screen.findByRole('alertdialog', { name: 'Remove Kofi Mensah from Ìrè Events?' }),
+    );
+    fireEvent.click(ask.getByRole('button', { name: 'Remove' }));
+
+    expect(await page().findByText('Kofi Mensah was removed')).toBeDefined();
+    expect(page().queryByRole('article', { name: /^Kofi Mensah/ })).toBeNull();
+    expect(page().getByRole('button', { name: 'Answer Priya Shah' })).toBeDefined();
+  });
+
+  it('shows Members’ failed state when the requests do not load, and Try again loads both', async () => {
+    signedIn();
+    let fails = true;
+    const sent = answering({
+      ...reads(),
+      'GET /api/auth/recovery-requests': () => {
+        if (fails) throw new TypeError('Failed to fetch');
+        return json({ requests: [KOFI] });
+      },
+    });
+    open();
+
+    expect(await page().findByText('We could not load the members.')).toBeDefined();
+    fails = false;
+    fireEvent.click(page().getByRole('button', { name: 'Try again' }));
+
+    expect(await page().findByRole('article', { name: /^Kofi Mensah/ })).toBeDefined();
+    expect(sent.filter((one) => one.line === 'GET /api/auth/recovery-requests')).toHaveLength(2);
+  });
+
+  it('never asks for requests for a viewer who cannot manage members', async () => {
+    signedIn(
+      membership({ id: 'org_1', name: 'Ìrè Events', permissions: ['members.read', 'events.read'] }),
+    );
+    const sent = answering(reads());
+    open();
+
+    expect(await page().findByText('4 people')).toBeDefined();
+    expect(page().queryByText('Requests to get back in')).toBeNull();
+    expect(sent.some((one) => one.line === 'GET /api/auth/recovery-requests')).toBe(false);
   });
 });

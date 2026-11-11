@@ -27,7 +27,6 @@ import {
   rereadOrganisation,
 } from './organisationDetails.ts';
 import { OwnershipCard } from './OwnershipCard.tsx';
-import { RecoveryRequestsCard } from './RecoveryRequestsCard.tsx';
 import { RequestLinkCard } from './RequestLinkCard.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
@@ -98,8 +97,6 @@ function PhoneGeneral() {
         <p className="settings-organisation">{organisation.name}</p>
         <p>{t('orgGeneral.intro')}</p>
       </div>
-
-      <RecoveryRequestsCard />
 
       {refused != null && (
         <div className="notice notice-broken" ref={refusal} tabIndex={-1}>

@@ -1,4 +1,4 @@
-import type { MembersList, OrganisationMember } from '@soirely/api-client';
+import type { MembersList, OrganisationMember, RecoveryRequest } from '@soirely/api-client';
 import i18next from 'i18next';
 import { beforeAll, describe, expect, it } from 'vitest';
 
@@ -74,6 +74,87 @@ describe('Members’ summary card', () => {
     expect(card(true, { kind: 'removed', name: 'Chidi Okoro' }).step).toMatchObject({
       does: 'answer',
       member: 'lucia',
+    });
+  });
+
+  describe('with requests to get back in (sc-30189)', () => {
+    const recovery = (id: string, name: string, own = false): RecoveryRequest => ({
+      id,
+      userId: `u_${id}`,
+      name,
+      email: `${id}@ire.events`,
+      provedPhone: true,
+      own,
+      organisations: ['Ìrè Events'],
+      organisationIds: ['org_1'],
+      askedAt: '2026-11-03T17:05:00+00:00',
+      asked: null,
+      expiresAt: '2026-11-10T17:05:00+00:00',
+      expires: null,
+    });
+    const KOFI = recovery('kofi', 'Kofi Mensah');
+    const PRIYA = recovery('priya', 'Priya Shah');
+    const withRecoveries = (
+      recoveries: RecoveryRequest[],
+      notice: Parameters<typeof membersCard>[0]['notice'] = null,
+      list: MembersList = LIST,
+    ) =>
+      membersCard({
+        list,
+        recoveries,
+        manages: true,
+        notice,
+        organisation: 'Ìrè Events',
+        t: i18next.t,
+      });
+
+    it('counts them with the requests to join, says both kinds, and answers the oldest request to get back in first', () => {
+      const shown = withRecoveries([KOFI, PRIYA]);
+
+      expect(shown.says).toBe('2 people · 3 waiting');
+      expect(shown.lines).toEqual(['2 to get back in · 1 to join']);
+      expect(shown.step).toEqual({ label: 'Answer Kofi Mensah', does: 'recover', request: 'kofi' });
+    });
+
+    it('has no second line while only one kind waits', () => {
+      const noJoin = { ...LIST, members: LIST.members.filter((one) => one.id !== 'lucia') };
+
+      expect(withRecoveries([KOFI], null, noJoin)).toMatchObject({
+        says: '2 people · 1 waiting',
+        lines: [],
+      });
+      expect(withRecoveries([]).lines).toEqual([]);
+    });
+
+    it('never counts or answers the viewer’s own request', () => {
+      const shown = withRecoveries([recovery('julien', 'Julien Moreau', true)]);
+
+      expect(shown.says).toBe('2 people · 1 waiting');
+      expect(shown.step).toMatchObject({ does: 'answer', member: 'lucia' });
+    });
+
+    it('says what an answer came to, and steps on to the next request', () => {
+      expect(
+        withRecoveries([PRIYA], { kind: 'recovered', name: 'Kofi Mensah', answer: 'approve' }),
+      ).toMatchObject({
+        says: 'Kofi Mensah’s two-factor is off.',
+        lines: ['They’re emailed now, and every session they had has ended.'],
+        step: { label: 'Answer Priya Shah', does: 'recover', request: 'priya' },
+      });
+      expect(
+        withRecoveries([], { kind: 'recovered', name: 'Priya Shah', answer: 'turnDown' }),
+      ).toMatchObject({
+        says: 'Priya Shah’s request is turned down.',
+        lines: ['Two-factor stays on for them, and they’re emailed.'],
+        step: { label: 'Answer Lucía Gómez', does: 'answer', member: 'lucia' },
+      });
+    });
+
+    it('answers the next request to get back in after a removal', () => {
+      expect(withRecoveries([PRIYA], { kind: 'removed', name: 'Kofi Mensah' }).step).toMatchObject({
+        does: 'recover',
+        request: 'priya',
+      });
     });
   });
 });

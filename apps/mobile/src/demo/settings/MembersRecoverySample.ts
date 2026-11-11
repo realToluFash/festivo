@@ -72,7 +72,9 @@ export function recoveryRequestOf(person: Asker, own: boolean, say: MembersSay):
     own,
     organisations: [YOU.organisation],
     organisationIds: [],
+    askedAt: null,
     asked: say.deadline(sample.asked),
+    expiresAt: null,
     expires: say.deadline(endsAt(sample.asked)),
   };
 }

@@ -1350,7 +1350,9 @@
     "turnedDown": "{{name}}’s request is turned down.",
     "turnedDownNext": "Two-factor stays on for them, and they’re emailed.",
     "closed": "This request has already been answered, or it has ended.",
-    "failed": "That did not work. Try again in a moment."
+    "failed": "That did not work. Try again in a moment.",
+    "close": "Close",
+    "sending": "Sending your answer…"
   },
   "settings": {
     "sections": "Organisation settings",
@@ -1596,7 +1598,12 @@
       "removedLine": "Their events stay with {{organisation}}. They are listed under Former, with everything they did kept.",
       "claimOpen": "Your claim is open",
       "withdrew": "You withdrew your claim",
-      "withdrewTold": "Everybody who was told is emailed."
+      "withdrewTold": "Everybody who was told is emailed.",
+      "toGetBackIn_one": "{{count, number}} to get back in",
+      "toGetBackIn_other": "{{count, number}} to get back in",
+      "toJoin_one": "{{count, number}} to join",
+      "toJoin_other": "{{count, number}} to join",
+      "waitingKinds": "{{back}} · {{join}}"
     },
     "waitingTitle": "Waiting",
     "waitingRemoves": "Removed on {{deadline}} if nobody answers.",

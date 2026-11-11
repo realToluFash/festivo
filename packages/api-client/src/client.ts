@@ -175,7 +175,9 @@ export interface RecoveryRequest {
   organisations: string[];
   /** The organisations whose Members show it to this reader. */
   organisationIds: string[];
+  askedAt: string | null;
   asked: string | null;
+  expiresAt: string | null;
   expires: string | null;
 }
 
@@ -4169,7 +4171,9 @@ function asRecoveryRequest(raw: unknown): RecoveryRequest | null {
     own: candidate.own === true,
     organisations: strings(candidate.organisations),
     organisationIds: strings(candidate.organisationIds),
+    askedAt: optionalString(candidate.askedAt),
     asked: optionalString(candidate.asked),
+    expiresAt: optionalString(candidate.expiresAt),
     expires: optionalString(candidate.expires),
   };
 }
