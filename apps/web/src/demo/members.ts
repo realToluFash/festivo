@@ -372,7 +372,7 @@ export const WHERE_EVENTS = 'A member’s events come from each event’s People
 
 export function roleMeans(role: string): string | null {
   return role === 'Owner'
-    ? `${ROLE_MEANS.Owner} Asks for your password and a code.`
+    ? `${ROLE_MEANS.Owner} Asks you to confirm it’s you.`
     : (ROLE_MEANS[role] ?? null);
 }
 

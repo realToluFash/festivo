@@ -21,7 +21,7 @@ import {
 import { type AskProps, FocusedScreen, Line } from '../../components/Summary.tsx';
 
 export const TAKES_EFFECT = 'Takes effect on their next request. Nobody is signed out.';
-const OWNER_ASKS = 'Asks for your password and a code.';
+const OWNER_ASKS = 'Asks you to confirm it’s you.';
 const PASSWORD_LABEL = 'Your password';
 const CODE_LABEL = 'Code';
 
