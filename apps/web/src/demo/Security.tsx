@@ -68,6 +68,7 @@ import {
 import type { Viewer } from './settings.ts';
 import { Ask, Chevron, Head, RedAction, RowWords, TitleRow } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
+import { focusWhenFree } from '../layers.ts';
 import { useLater } from '../useLater.ts';
 
 /** Security at a desk in B · Summary first (Web-Security-*.dc.html): the app's page, the same for every role. */
@@ -130,7 +131,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
   }
 
   useEffect(() => {
-    if (said != null) saidLine.current?.focus();
+    if (said != null) focusWhenFree(() => saidLine.current);
   }, [said]);
 
   useEffect(() => {

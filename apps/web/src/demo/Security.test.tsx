@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -47,8 +47,18 @@ function open(section: string, name: RegExp): HTMLElement {
 }
 
 describe('Security at a desk (sc-30223)', () => {
-  beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+  beforeEach(() => {
+    __setConfig({ ...tested, environment: 'development' });
+    const focus = HTMLElement.prototype.focus;
+    vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (
+      this: HTMLElement,
+      options?: FocusOptions,
+    ) {
+      if (this.closest('[inert]') == null) focus.call(this, options);
+    });
+  });
   afterEach(() => {
+    vi.restoreAllMocks();
     Reflect.deleteProperty(navigator, 'clipboard');
   });
 
@@ -122,13 +132,12 @@ describe('Security at a desk (sc-30223)', () => {
     expect(within(dialog()).getByText('Met')).toBeDefined();
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Save' }));
 
-    expect(
-      await screen.findByText(
-        'Password changed. Your 2 other devices are signed out.',
-        undefined,
-        WAIT,
-      ),
-    ).toBeDefined();
+    const changed = await screen.findByText(
+      'Password changed. Your 2 other devices are signed out.',
+      undefined,
+      WAIT,
+    );
+    await waitFor(() => expect(document.activeElement).toBe(changed));
     expect(within(block('Signed in on')).getAllByRole('button')).toHaveLength(1);
     expect(screen.queryByRole('button', { name: 'Sign out everywhere else…' })).toBeNull();
   });
@@ -345,7 +354,8 @@ describe('Security at a desk (sc-30223)', () => {
     expect(buttonsOf(out)).toEqual(['Keep it signed in', 'Sign it out']);
     fireEvent.click(within(out).getByRole('button', { name: 'Sign it out' }));
 
-    expect(screen.getByText('Soirely app on iPhone is signed out.')).toBeDefined();
+    const gone = screen.getByText('Soirely app on iPhone is signed out.');
+    await waitFor(() => expect(document.activeElement).toBe(gone));
     expect(within(block('Signed in on')).getAllByRole('button')).toHaveLength(2);
 
     const here = open('Signed in on', /Safari on macOS/);
@@ -384,7 +394,7 @@ describe('Security at a desk (sc-30223)', () => {
     );
 
     const line = screen.getByText('Soirely app on iPhone is signed out.');
-    expect(document.activeElement).toBe(line);
+    await waitFor(() => expect(document.activeElement).toBe(line));
     expect(screen.queryByText('Two-factor is on')).toBeNull();
 
     fireEvent.click(
