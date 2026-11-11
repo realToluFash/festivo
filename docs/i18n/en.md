@@ -986,3 +986,7 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
   show as recorded by you." ("will": nothing is recorded until Save). In **Who it reached**, a
   `not_sent` reason is "Has not agreed to WhatsApp", the details row's words, or "Stopped
   WhatsApp", with no full stop (settled on #36939).
+- **11 Nov 2026. Add to my authenticator app** (sc-40162 for sc-40025, `mobile:twoFactorCard.addToApp`).
+  The button speaks as the member, "my", like "I have saved these codes somewhere safe"; the lines
+  around it describe the screen, "your authenticator app". Kept as the AC names it. It opens the
+  device's authenticator with the key, so "Add", never "Open" or "Copy".
