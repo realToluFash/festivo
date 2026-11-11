@@ -314,7 +314,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     expect(within(list()).getByRole('link', { name: /^Lucía Ortega/ })).toBeDefined();
   });
 
-  it('puts a reply that arrives first, washed, and says it', SLOW, async () => {
+  it('puts a reply that arrives first, washed, and says it, and keeps it first', SLOW, async () => {
     await messages('replyArrived');
 
     expect(within(list()).queryByRole('link', { name: /^Lucía Ortega/ })).toBeNull();
@@ -322,6 +322,18 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     expect(within(list()).getAllByRole('link')[0]?.getAttribute('aria-label')).toMatch(
       /^Lucía Ortega, .*, now$/,
     );
+    await vi.waitFor(
+      () =>
+        expect(within(list()).getAllByRole('link')[0]?.getAttribute('aria-label')).toMatch(
+          /^Lucía Ortega, .*, 09:41$/,
+        ),
+      WAIT,
+    );
+
+    fireEvent.click(row(/^Lucía Ortega/));
+    const log = await screen.findByRole('log', { name: 'Lucía Ortega' }, WAIT);
+    expect(within(log).getByText('09:41')).toBeDefined();
+    expect(within(log).queryByText('07:58')).toBeNull();
   });
 
   it(

@@ -138,11 +138,11 @@
 }
 
 .mg-row.is-on,
-.mg-row.is-arrived {
+.mg-row.is-fresh {
   background: var(--colorAccentTint);
 }
 
-.mg-row.is-arrived:not(.is-on) {
+.mg-row.is-fresh:not(.is-on) {
   animation: mg-arrive 2s ease-out both;
 }
 
@@ -1963,9 +1963,9 @@
 }
 
 .mg-rows > li:has(> .is-on),
-.mg-rows > li:has(> .is-arrived),
+.mg-rows > li:has(> .is-fresh),
 .mg-rows > li:has(> .is-on) + li,
-.mg-rows > li:has(> .is-arrived) + li {
+.mg-rows > li:has(> .is-fresh) + li {
   background: none;
 }
 
@@ -2243,7 +2243,7 @@
   .mg-check,
   .mg-pop,
   .mg-bubble.is-arriving,
-  .mg-row.is-arrived:not(.is-on) {
+  .mg-row.is-fresh:not(.is-on) {
     animation: none;
   }
 
