@@ -2,24 +2,35 @@ import { describe, expect, it } from 'vitest';
 
 import {
   EMPTY_FORM,
+  HOST,
   ME,
+  OFFLINE_ACTION,
+  OFFLINE_ADD,
   STAFFED,
   THE_LEAD,
   TRAYS,
   actions,
+  add,
   check,
+  decline,
   dishOptions,
+  done,
   noSeatCanChange,
   nextOrder,
+  offered,
+  openDecline,
   otherLine,
   ownerLine,
   refusal,
+  requestSeed,
   requests,
   routeLine,
   seatWhy,
+  servingName,
   table12,
   table7,
   table9,
+  take,
 } from './RequestsModel.ts';
 
 const byId = (id: string) => {
@@ -41,6 +52,11 @@ describe('who has which buttons', () => {
     expect(actions(byId('song'), ME)).toEqual([]);
     expect(actions(byId('song'), THE_LEAD)).toEqual(['done', 'decline']);
     expect(ownerLine(byId('song'), ME)).toBe('With Ifeoma Nduka, floor lead · open 16 min');
+  });
+
+  it('gives service.manage without the floor lead no moment, but lets it close a taken request', () => {
+    expect(actions(byId('song'), HOST)).toEqual([]);
+    expect(actions(byId('blind'), HOST)).toEqual(['done', 'decline']);
   });
 
   it('names who is on it, with how long it has been open', () => {
@@ -74,6 +90,7 @@ describe('Next', () => {
       nextOrder({ inHand: null, given: null, next: null }, [lone], v, STAFFED).length;
     expect(ids(THE_LEAD)).toBe(1);
     expect(ids(ME)).toBe(0);
+    expect(ids(HOST)).toBe(0);
   });
 });
 
@@ -159,5 +176,87 @@ describe('Add request checks before it sends', () => {
     expect(routeLine({ ...EMPTY_FORM, kind: 'moment' }, table9())).toBe(
       'Goes to Ifeoma Nduka, floor lead, and onto the run of show.',
     );
+  });
+});
+
+describe('what each action does to a request', () => {
+  it('refuses every action offline and leaves the list as it was', () => {
+    const off = requestSeed('offline');
+    for (const next of [
+      take(off, 'chair'),
+      done(off, 'stew'),
+      openDecline(off, 'stew'),
+      decline({ ...off, declining: 'stew', reason: 'Out of stew.' }),
+    ]) {
+      expect(next.list).toEqual(off.list);
+      expect(next.refused).toBe(OFFLINE_ACTION);
+    }
+    const adding = { ...off, form: { ...EMPTY_FORM, kind: 'table' as const, words: 'Water.' } };
+    const added = add(adding).d;
+    expect(added.list).toEqual(off.list);
+    expect(added.refused).toBe(OFFLINE_ADD);
+  });
+
+  it('takes, closes and declines with who and when', () => {
+    const d = take(requestSeed('untaken'), 'chair');
+    expect(d.list.find((r) => r.id === 'chair')?.owner).toBe(ME.name);
+    const closed = done(d, 'chair').list.find((r) => r.id === 'chair')?.closed;
+    expect(closed).toEqual({ outcome: 'Done', by: ME.name, at: '20:24' });
+    const declined = decline({ ...openDecline(d, 'chair'), reason: '  None left.  ' });
+    expect(declined.list.find((r) => r.id === 'chair')?.closed).toEqual({
+      outcome: 'Declined',
+      by: ME.name,
+      at: '20:24',
+      reason: 'None left.',
+    });
+  });
+
+  it('refuses a blank reason and keeps the request open', () => {
+    const d = { ...openDecline(requestSeed('yours'), 'chair'), reason: '   ' };
+    const next = decline(d);
+    expect(next.reasonWrong).toBe(true);
+    expect(next.declining).toBe('chair');
+    expect(next.list.find((r) => r.id === 'chair')?.closed).toBeUndefined();
+  });
+
+  it('records the other person’s close when they closed it first', () => {
+    const d = requestSeed('closedFirst');
+    expect(d.list.find((r) => r.id === 'chair')?.closed).toEqual({
+      outcome: 'Done',
+      by: 'Grace Udo',
+      at: '20:23',
+    });
+    expect(d.notice.chair).toBe('Not closed. Grace Udo closed this request at 20:23.');
+  });
+
+  it('withholds Done after a refusal, keeps Decline, and names the course from the menu', () => {
+    for (const state of ['refusedStage', 'refusedFlag'] as const) {
+      const d = requestSeed(state);
+      const stew = d.list.find((r) => r.id === 'stew')!;
+      expect(stew.closed).toBeUndefined();
+      expect(offered(stew, d)).toEqual(['decline']);
+    }
+    expect(requestSeed('refusedStage').notice.stew).toBe(
+      'Not changed. Seat 1’s Mains became Dishing before Done, so it can’t change now. The request is still open.',
+    );
+  });
+
+  it('adds a request open to the section, and keeps a form with blanks', () => {
+    const d = { ...requestSeed('add') };
+    expect(add(d).d.list).toEqual(d.list);
+    const full = { ...d, form: { ...EMPTY_FORM, kind: 'table' as const, words: ' Water. ' } };
+    const added = add(full).d;
+    expect(added.form).toBeNull();
+    expect(added.list.at(-1)).toMatchObject({
+      table: 'Table 9',
+      kind: 'table',
+      words: 'Water.',
+      owner: null,
+    });
+  });
+
+  it('heads the screen with the course in service, by its menu name', () => {
+    expect(servingName(table9().courses)).toBe('Mains');
+    expect(servingName(table7().courses)).toBe('Dessert');
   });
 });

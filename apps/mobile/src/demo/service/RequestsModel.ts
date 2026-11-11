@@ -68,12 +68,14 @@ export interface Viewer {
   name: string;
   section: string;
   manage: boolean;
+  lead: boolean;
 }
 
 export const NOW = '20:24';
 export const AS_OF = '20:22';
-export const ME: Viewer = { name: 'Bisi Lawal', section: 'B', manage: false };
-export const THE_LEAD: Viewer = { name: LEAD, section: 'B', manage: true };
+export const ME: Viewer = { name: 'Bisi Lawal', section: 'B', manage: false, lead: false };
+export const THE_LEAD: Viewer = { name: LEAD, section: 'B', manage: true, lead: true };
+export const HOST: Viewer = { name: 'Kemi Bello', section: 'A', manage: true, lead: false };
 export const OTHER = 'Grace Udo';
 
 export const MENU: readonly Dish[] = [
@@ -325,10 +327,10 @@ export const ACTION_WORD: Record<Action, string> = {
   decline: 'Decline',
 };
 
-/** The buttons a person has on a request: anyone takes an open one, its taker closes it, and service.manage closes any; a moment is the floor lead's alone. */
+/** The buttons a person has on a request: anyone takes an open one, its taker closes it, and service.manage closes any; a moment is the floor lead's alone, whoever else has service.manage. */
 export function actions(r: GuestRequest, v: Viewer): Action[] {
   if (r.closed != null) return [];
-  if (r.kind === 'moment') return v.manage ? ['done', 'decline'] : [];
+  if (r.kind === 'moment') return v.lead ? ['done', 'decline'] : [];
   if (r.owner === v.name) return ['done', 'decline'];
   if (r.owner == null) return v.manage ? ['take', 'done', 'decline'] : ['take', 'decline'];
   return v.manage ? ['done', 'decline'] : [];
@@ -356,7 +358,7 @@ export function owns(r: GuestRequest, v: Viewer, staffed: Record<string, boolean
   if (r.closed != null || r.kind === 'moment') return false;
   if (r.owner != null) return r.owner === v.name;
   if (r.section === v.section) return true;
-  return v.manage && staffed[r.section] === false;
+  return v.lead && staffed[r.section] === false;
 }
 
 export interface Tray {
@@ -487,11 +489,22 @@ export const OFFLINE_ACTION =
 export const OFFLINE_ADD = 'Needs a connection to add a request. Nothing is kept to send later.';
 export const DECLINE_BLANK = 'Say why it can’t be done';
 
+/** The course in service: the last one fired, by the menu's own name. */
+export function servingName(courses: readonly Course[]): string | null {
+  return courses.filter((c) => c.fired).at(-1)?.name ?? null;
+}
+
 export type Refusal = 'closedFirst' | 'stage' | 'flag';
 
-export function refusalLine(r: GuestRequest, why: Refusal, by = OTHER, at = '20:23'): string {
+export function refusalLine(
+  r: GuestRequest,
+  why: Refusal,
+  courses: readonly Course[],
+  by = OTHER,
+  at = '20:23',
+): string {
   const seat = r.seat ?? 0;
-  const course = r.plate?.course === 'dessert' ? 'Dessert' : 'Mains';
+  const course = courses.find((c) => c.id === r.plate?.course)?.name ?? 'This course';
   switch (why) {
     case 'closedFirst':
       return `Not closed. ${by} closed this request at ${at}.`;
@@ -578,6 +591,11 @@ export interface Demo {
   form: Form | null;
   tried: boolean;
   say: string;
+}
+
+/** A Done the API refused stays off the card; Decline is still there. */
+export function offered(r: GuestRequest, d: Demo): Action[] {
+  return actions(r, d.viewer).filter((a) => !(a === 'done' && d.noDone.includes(r.id)));
 }
 
 function close(
@@ -678,7 +696,7 @@ export function done(d: Demo, id: string): Demo {
   const r = d.list.find((q) => q.id === id);
   if (r == null) return d;
   if (d.pending === 'closedFirst') {
-    const line = refusalLine(r, 'closedFirst');
+    const line = refusalLine(r, 'closedFirst', d.table.courses);
     return {
       ...d,
       pending: null,
@@ -688,7 +706,7 @@ export function done(d: Demo, id: string): Demo {
     };
   }
   if (r.kind === 'plate' && (d.pending === 'stage' || d.pending === 'flag')) {
-    const line = refusalLine(r, d.pending);
+    const line = refusalLine(r, d.pending, d.table.courses);
     return {
       ...d,
       pending: null,

@@ -32,16 +32,17 @@ import {
   STAFFED,
   TRAYS,
   WORDS_MAX,
-  actions,
   closedLine,
   decline,
   done,
   kindLine,
   nextOrder,
+  offered,
   openDecline,
   openFor,
   ownerLine,
   requestSeed,
+  servingName,
   requestStateOf,
   take,
   table21,
@@ -79,6 +80,13 @@ function Requests({ start }: { start: ReturnType<typeof requestStateOf> }) {
     const node = 'to' in aim ? targets.current.get(`${aim.id}.${aim.to}`) : heading.current;
     moveScreenReaderFocus(node ?? null);
   }, [aim]);
+
+  const docked = layout === 'tabletLandscape' && d.view === 'floor' && d.form != null;
+  const wasDocked = useRef(docked);
+  useEffect(() => {
+    if (wasDocked.current && !docked) moveScreenReaderFocus(opener.current);
+    wasDocked.current = docked;
+  }, [docked]);
 
   function apply(next: Demo, then: Aim = null): void {
     setD(next);
@@ -205,7 +213,9 @@ function TableView({
           {d.table.name}
         </Text>
         <Text size={15} weight="medium" style={shared.secondary}>
-          {`Section ${d.table.section} · Mains · ${d.viewer.name}`}
+          {[`Section ${d.table.section}`, servingName(d.table.courses), d.viewer.name]
+            .filter(Boolean)
+            .join(' · ')}
         </Text>
         <Strip online={d.online} refused={d.refused} />
       </View>
@@ -317,7 +327,7 @@ function RequestCard({
         </View>
       </View>
     );
-  const buttons = actions(r, d.viewer).filter((a) => !(a === 'done' && d.noDone.includes(r.id)));
+  const buttons = offered(r, d);
   const declining = d.declining === r.id;
   return (
     <View style={styles.card} testID={`requests.card.${r.id}`}>
@@ -477,7 +487,7 @@ function AlertsView({ d, onGo }: { d: Demo; onGo: () => void }) {
           Service
         </Text>
         <Text size={15} weight="medium" style={shared.secondary}>
-          {`Mains · ${d.viewer.name}`}
+          {[servingName(d.table.courses), d.viewer.name].filter(Boolean).join(' · ')}
         </Text>
         <Strip online={d.online} refused="" />
       </View>

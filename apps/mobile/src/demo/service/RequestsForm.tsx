@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -10,7 +10,7 @@ import {
 import { PrimaryButton, QuietButton } from '../../components/Buttons.tsx';
 import { Field, TextField, focusRefused } from '../../components/Field.tsx';
 import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
-import { Text } from '../../components/Text.tsx';
+import { type TextHandle, Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { FlagLine, Glyph } from '../queue/QueueParts.tsx';
 import { PATHS, shared } from './HowItsGoingParts.tsx';
@@ -47,6 +47,12 @@ export function AddRequest({
   const seatRef = useRef<ViewInstance | null>(null);
   const dishRef = useRef<ViewInstance | null>(null);
   const wordsRef = useRef<TextInputInstance | null>(null);
+  const head = useRef<TextHandle | null>(null);
+  useEffect(() => {
+    if (framed !== 'docked') return;
+    const timer = setTimeout(() => moveScreenReaderFocus(head.current), 300);
+    return () => clearTimeout(timer);
+  }, [framed]);
   const form = d.form;
   if (form == null) return null;
 
@@ -71,7 +77,7 @@ export function AddRequest({
 
   return (
     <View style={styles.form} testID={`requests.form.${framed}`}>
-      <Text size={22} weight="bold" accessibilityRole="header">
+      <Text ref={head} size={22} weight="bold" accessibilityRole="header">
         {`Add request · ${table.name}`}
       </Text>
       {!d.online && (
