@@ -260,8 +260,8 @@ export function Stepper({
   );
 }
 
-/** The pinned month's name, a heading said once as it turns, cross-fading in motionFast. */
-export function MonthName({ name, size }: { name: string; size: number }) {
+/** The pinned month's name, a heading said once as it turns, cross-fading in motionFast; `wraps` lets it take lines rather than cut. */
+export function MonthName({ name, size, wraps }: { name: string; size: number; wraps?: boolean }) {
   const reduced = useReducedMotion();
   const [was, setWas] = useState<string | null>(null);
   const [shown, setShown] = useState(name);
@@ -289,14 +289,15 @@ export function MonthName({ name, size }: { name: string; size: number }) {
   }, [was, fade]);
 
   const look = [styles.month, { lineHeight: Math.round(size * 1.2), letterSpacing: size * -0.015 }];
+  const lines = wraps ? undefined : 1;
 
   return (
-    <View style={styles.monthBox}>
+    <View style={[styles.monthBox, wraps && styles.clipped]}>
       <Animated.View style={{ opacity: was == null ? 1 : fade }}>
         <Text
           size={size}
           weight="bold"
-          numberOfLines={1}
+          numberOfLines={lines}
           maxFontSizeMultiplier={DOUBLED}
           accessibilityRole="header"
           style={look}
@@ -313,7 +314,7 @@ export function MonthName({ name, size }: { name: string; size: number }) {
           <Text
             size={size}
             weight="bold"
-            numberOfLines={1}
+            numberOfLines={lines}
             maxFontSizeMultiplier={DOUBLED}
             style={look}
           >
@@ -445,6 +446,7 @@ const styles = StyleSheet.create({
   },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
   monthBox: { flexShrink: 1, minWidth: 0 },
+  clipped: { overflow: 'hidden' },
   month: { color: tokens.colorInk },
   menu: { gap: tokens.spaceHair, paddingHorizontal: tokens.spaceXs },
   choice: {
