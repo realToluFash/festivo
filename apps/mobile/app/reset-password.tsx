@@ -1,12 +1,12 @@
-import { ApiError, awaiting } from '@soirely/api-client';
+import { ApiError } from '@soirely/api-client';
 import { PASSWORD_MINIMUM_LENGTH, meetsPasswordLength } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { followAccount } from '../src/accountLanguage.ts';
 import { api } from '../src/api.ts';
+import { nextAfterSignIn } from '../src/challenge.ts';
 import { closeReset } from '../src/closeReset.ts';
 import { PrimaryButton } from '../src/components/Buttons.tsx';
 import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
@@ -14,7 +14,6 @@ import { sayOnLanding } from '../src/components/LandingToast.tsx';
 import { Pending } from '../src/components/Pending.tsx';
 import { SecondFactorStep } from '../src/components/SecondFactorStep.tsx';
 import { ruleRefusal, signInRoute } from '../src/kit/signInRules.ts';
-import { landingFor } from '../src/landing.ts';
 import { deadFrom, readFailure } from '../src/resetLink.ts';
 import { FieldLine, InsideField } from '../src/steps/InsideField.tsx';
 import { Heading, Plain, Says } from '../src/steps/Lines.tsx';
@@ -98,10 +97,9 @@ export default function ResetPassword() {
     setStatus({ kind: 'saving', email });
 
     try {
-      const { account } = await api.resetPassword(token, typed.current);
-      await followAccount(account);
+      const next = await nextAfterSignIn(await api.resetPassword(token, typed.current));
       sayOnLanding('recovery.changed');
-      router.replace(landingFor(awaiting(account)));
+      router.replace(next);
     } catch (error) {
       const dead = deadFrom(error);
       const refusal = error instanceof ApiError ? ruleRefusal(error.problem) : null;
