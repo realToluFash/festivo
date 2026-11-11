@@ -687,13 +687,13 @@ const styles = StyleSheet.create({
   pillsAt: { paddingHorizontal: tokens.space5xl, paddingTop: tokens.spaceSm },
   pillsBar: { flexGrow: 0, borderRadius: 26, backgroundColor: tokens.colorInset },
   pills: {
-    height: 52,
+    minHeight: 52,
     alignItems: 'center',
     gap: tokens.spaceHair,
     paddingHorizontal: tokens.spaceXxs,
   },
   pill: {
-    height: tokens.sizeHit,
+    minHeight: tokens.sizeHit,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceSm,
