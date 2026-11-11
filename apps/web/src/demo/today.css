@@ -31,10 +31,6 @@
   font: 500 12px/1.2 var(--fontFamily);
 }
 
-.today-side-events .today-place {
-  font: 500 14px/1 var(--fontFamily);
-}
-
 .today-main {
   display: flex;
   flex: 1;
@@ -48,13 +44,6 @@
   border-radius: var(--radiusCardLarge);
   background: var(--colorCard);
   box-shadow: 0 4px 20px color-mix(in srgb, var(--colorInk) 5%, transparent);
-}
-
-.today-dot.is-side {
-  width: var(--spaceMd);
-  height: var(--spaceMd);
-  margin: 0 var(--spaceXxs);
-  border-radius: 5px;
 }
 
 .today-needs {

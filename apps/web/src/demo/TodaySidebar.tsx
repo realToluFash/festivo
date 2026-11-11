@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from 'react-router';
 
+import { DeskEvents } from '../components/DeskEvents.tsx';
 import { DeskPersonFace, type DeskPerson, DeskSidebar } from '../components/DeskSidebar.tsx';
 import { sampleEvents, TODAY_IDS } from './events.ts';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
@@ -7,8 +8,7 @@ import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
 import { EVENTS, type EventKey } from './today.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
-import type { Mesh } from '../mesh.ts';
-import './sidebar.css';
+import type { ShownEvent } from '../components/today.ts';
 
 const PLACES: readonly (readonly [string, GlyphName])[] = [
   ['Today', 'today'],
@@ -18,14 +18,8 @@ const PLACES: readonly (readonly [string, GlyphName])[] = [
 
 const FOLAKE: DeskPerson = { name: SAMPLE.name, initials: 'FA', role: 'Owner' };
 
-interface SideEvent {
-  id: string;
-  name: string;
-  mesh: Mesh;
-}
-
 /** `?sidebar=none` lists nothing and `?sidebar=many` all twenty sample events, past ones borrowed only for length, longer than the sidebar at 1280 × 800, on every screen that has it (sc-39290). */
-function sideEvents(events: readonly EventKey[], asked: string | null): SideEvent[] {
+function sideEvents(events: readonly EventKey[], asked: string | null): ShownEvent[] {
   if (asked === 'none') return [];
   if (asked === 'many') return sampleEvents().map(({ id, name, mesh }) => ({ id, name, mesh }));
 
@@ -133,21 +127,7 @@ export function TodaySidebar({
           </li>
         ))}
       </ul>
-      {listed.length > 0 && (
-        <div className="today-side-events">
-          <h2 className="today-caps">Your events</h2>
-          <ul className="today-places">
-            {listed.map(({ id, name, mesh }) => (
-              <li key={id}>
-                <Link className="today-place" to={`/demo/events/${id}`}>
-                  <span className={`today-dot is-${mesh} is-side`} aria-hidden="true" />
-                  <span className="today-grow today-ellipsis">{name}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <DeskEvents heading="Your events" events={listed} to={(id) => `/demo/events/${id}`} />
     </DeskSidebar>
   );
 }
