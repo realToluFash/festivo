@@ -817,7 +817,7 @@ function MembersDialogs(props: MembersDialogsProps) {
       return (
         person != null && (
           <Ask
-            {...suspendAsk(person.name)}
+            {...suspendAsk(person.name, organisation)}
             keep={`Keep ${firstName(person.name)}`}
             go="Suspend"
             onKeep={onClose}

@@ -896,10 +896,13 @@ export function personView({
 
 export const SUSPEND_LINE = `They can’t use ${ORGANISATION} from their next request until someone restores their access. Their role, their events and their history are kept.`;
 
-export function suspendAsk(name: string): { title: string; line: string } {
+export function suspendAsk(
+  name: string,
+  organisation: string = ORGANISATION,
+): { title: string; line: string } {
   return {
     title: `Suspend ${name}?`,
-    line: `${name} can’t use ${ORGANISATION} from their next request until someone restores their access. Their role, their events and their history are kept. They’re emailed in their language. The email doesn’t say who suspended them.`,
+    line: `${name} can’t use ${organisation} from their next request until someone restores their access. Their role, their events and their history are kept. They’re emailed in their language. The email doesn’t say who suspended them.`,
   };
 }
 
