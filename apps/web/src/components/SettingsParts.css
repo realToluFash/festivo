@@ -1007,6 +1007,18 @@
   overflow-wrap: break-word;
 }
 
+.desk-nav.is-under {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  row-gap: 0;
+}
+
+.desk-nav.is-under .desk-nav-title {
+  flex-basis: 100%;
+  order: 1;
+  padding: 0 var(--spaceXxl) var(--spaceSm);
+}
+
 .desk-dialog-body {
   display: flex;
   flex-direction: column;
