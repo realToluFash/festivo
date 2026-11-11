@@ -290,7 +290,7 @@
     "scan": "Scannez ce code avec votre application d’authentification",
     "qrAlt": "Code QR pour votre application d’authentification",
     "cantScan": "Impossible de le scanner ? Saisissez plutôt cette clé dans l’application.",
-    "addToApp": "Add to my authenticator app",
+    "addToApp": "Ajouter à mon application d’authentification",
     "enterCode": "Saisissez le code à 6 chiffres affiché par l’application",
     "setupWrong": "Ce code ne correspond pas. Vérifiez que l’application a été configurée avec la clé ci-dessus, puis saisissez le code qu’elle affiche maintenant.",
     "staysOff": "La double authentification reste désactivée tant que le code ne correspond pas : une erreur de configuration ne peut pas vous bloquer.",
