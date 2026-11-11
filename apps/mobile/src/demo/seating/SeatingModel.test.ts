@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { type Action, reduce, tight, readRoom } from './SeatingActs.ts';
 import {
   CHAIR_HIT,
+  CHAIR_R,
   HANDLE_HIT,
   chairPoints,
   chairSides,
@@ -723,20 +724,72 @@ describe('the room’s words and handles (qa3, 11 Nov)', () => {
     expect(wordsAt(t4, t4.y * at46, at46, ROOM.l * at46)).toBeGreaterThan(t4.y * at46);
   });
 
-  it('keeps every handle off every chair target from 75% in', () => {
-    [0.75, 1, 2].forEach((s) =>
-      ['t4', 't9', 'top'].forEach((id) => {
-        const it = item(pad, id);
-        const chairs = chairPoints(it).map((p) => ({ x: p.x * s, y: p.y * s }));
-        handlePoints(it, s).forEach((h) =>
-          chairs.forEach((c) =>
-            expect(Math.max(Math.abs(h.x - c.x), Math.abs(h.y - c.y))).toBeGreaterThanOrEqual(
-              HANDLE_HIT / 2 + CHAIR_HIT / 2 - 1e-9,
+  const scales = [0.25, 0.335, 0.375, 0.5, 0.75, 1, 1.5, 2];
+  const chosen = (m: Seating) =>
+    m.items.filter((it) => ['round', 'cocktail', 'rect', 'head'].includes(it.kind));
+  const at = (it: Seating['items'][number], s: number, m: Seating) =>
+    handlePoints(it, s, m).map((h) => ({ x: it.x * s + h.x, y: it.y * s + h.y }));
+
+  it('keeps every handle off its own chairs’ targets from 150%', () => {
+    scales
+      .filter((s) => pct(s) >= 150)
+      .forEach((s) =>
+        chosen(pad).forEach((it) => {
+          const chairs = chairPoints(it).map((p) => ({ x: (it.x + p.x) * s, y: (it.y + p.y) * s }));
+          at(it, s, pad).forEach((h) =>
+            chairs.forEach((c) =>
+              expect(
+                Math.max(Math.abs(h.x - c.x), Math.abs(h.y - c.y)),
+                `${it.id} at ${pct(s)}%`,
+              ).toBeGreaterThanOrEqual(HANDLE_HIT / 2 + CHAIR_HIT / 2 - 1e-9),
             ),
-          ),
-        );
-      }),
+          );
+        }),
+      );
+  });
+
+  it('keeps a chosen table’s handle targets off every other item’s chairs from 50%', () => {
+    [pad, phone].forEach((m) =>
+      scales.forEach((s) =>
+        chosen(m).forEach((it) =>
+          m.items
+            .filter((o) => o.id !== it.id)
+            .forEach((o) =>
+              chairPoints(o).forEach((p) => {
+                const c = { x: (o.x + p.x) * s, y: (o.y + p.y) * s };
+                at(it, s, m).forEach((h) => {
+                  const dx = Math.max(0, Math.abs(h.x - c.x) - HANDLE_HIT / 2);
+                  const dy = Math.max(0, Math.abs(h.y - c.y) - HANDLE_HIT / 2);
+                  const near = pct(s) >= 150;
+                  expect(
+                    near ? Math.max(dx, dy) : Math.hypot(dx, dy),
+                    `${it.id} on ${o.id} at ${pct(s)}%`,
+                  ).toBeGreaterThanOrEqual(near ? CHAIR_HIT / 2 : CHAIR_R * s);
+                });
+              }),
+            ),
+        ),
+      ),
     );
+  });
+
+  it('keeps every handle inside the room, the bars by the bottom wall too', () => {
+    [...scales, at46].forEach((s) =>
+      chosen(pad).forEach((it) =>
+        at(it, s, pad).forEach((h) => {
+          expect(h.y + 12, `${it.id} at ${pct(s)}%`).toBeLessThanOrEqual(ROOM.l * s);
+          expect(h.y - 12, `${it.id} at ${pct(s)}%`).toBeGreaterThanOrEqual(0);
+          expect(h.x + 12, `${it.id} at ${pct(s)}%`).toBeLessThanOrEqual(ROOM.w * s);
+          expect(h.x - 12, `${it.id} at ${pct(s)}%`).toBeGreaterThanOrEqual(0);
+        }),
+      ),
+    );
+  });
+
+  it('pulls a chosen table’s handles in only as far as a neighbour needs', () => {
+    const t9 = item(pad, 't9');
+    expect(handleReach(t9, 0.5, pad)).toEqual(handleReach(t9, 0.5));
+    expect(handleReach(t9, 0.25, pad).x).toBeLessThan(handleReach(t9, 0.25).x);
   });
 
   it('keeps a placed table’s handles off its body at 46%', () => {
@@ -747,10 +800,10 @@ describe('the room’s words and handles (qa3, 11 Nov)', () => {
   });
 
   it('does not grow a table when a handle is picked up', () => {
-    [at46, 1].forEach((s) => {
+    [at46, 0.25, 1].forEach((s) => {
       const t4 = item(pad, 't4');
-      const [corner] = handlePoints(t4, s);
-      expect(sideFrom(corner?.x ?? 0, handleReach(t4, s).x, s)).toBe(t4.d);
+      const [corner] = handlePoints(t4, s, pad);
+      expect(sideFrom(corner?.x ?? 0, handleReach(t4, s, pad).x, s)).toBe(t4.d);
     });
   });
 });

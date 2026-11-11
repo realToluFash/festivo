@@ -374,7 +374,7 @@ function itemShape({
   if (look.handles != null && hasHandles(it)) {
     const size = look.handles;
     if (it.kind === 'round' || it.kind === 'cocktail') {
-      const h = (it.d / 2) * s + handleReach(it, s).x;
+      const h = (it.d / 2) * s + handleReach(it, s, m).x;
       out.push(
         <Rect
           key="frame"
@@ -388,7 +388,7 @@ function itemShape({
         />,
       );
     }
-    handlePoints(it, s).forEach((p, i) =>
+    handlePoints(it, s, m).forEach((p, i) =>
       out.push(
         <Rect
           key={`h${i}`}
@@ -743,7 +743,7 @@ function roomGestures(dispatch: (action: Action) => void, show: (live: Live | nu
     if (!hasHandles(it)) return null;
     const cx = view.ox + it.x * view.s;
     const cy = view.oy + it.y * view.s;
-    const i = handlePoints(it, view.s).findIndex(
+    const i = handlePoints(it, view.s, m).findIndex(
       (h) =>
         Math.abs(cx + h.x - p.x) <= HANDLE_HIT / 2 && Math.abs(cy + h.y - p.y) <= HANDLE_HIT / 2,
     );
@@ -830,7 +830,7 @@ function roomGestures(dispatch: (action: Action) => void, show: (live: Live | nu
       { x: p.x - (mm.shown.ox + it.x * s), y: p.y - (mm.shown.oy + it.y * s) },
       -it.rot,
     );
-    const reach = handleReach(it, s);
+    const reach = handleReach(it, s, mm);
     const round = it.kind === 'round' || it.kind === 'cocktail';
     const next = round
       ? { ...it, d: sideFrom(Math.max(Math.abs(lp.x), Math.abs(lp.y)), reach.x, s) }

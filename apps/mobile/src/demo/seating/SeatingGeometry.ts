@@ -149,21 +149,24 @@ function bodyHalf(it: Item): Point {
   return isCircle(it) ? { x: it.d / 2, y: it.d / 2 } : { x: it.w / 2, y: it.l / 2 };
 }
 
-/** How far past a table's own edge its handles sit, in px: zoomed out just clear of the table, closer in past its chairs, so no handle covers a chair's words or its target (sc-31783, qa3 11 Nov). */
-export function handleReach(it: Item, s: number): Point {
+/** Where a chosen table's handles may not go: past the room's walls, or onto another item's chairs. */
+export interface Plan {
+  room: Room;
+  items: readonly Item[];
+}
+
+function ownReach(it: Item, s: number): Point {
   const e = extent(it);
   const half = bodyHalf(it);
   const pad =
-    detailOf(s) === 'out'
-      ? HANDLE_DRAWN / 2
-      : HANDLE_HIT / 2 + Math.max(0, CHAIR_HIT / 2 - CHAIR_R * s);
+    detailOf(s) === 'near'
+      ? HANDLE_HIT / 2 + Math.max(0, CHAIR_HIT / 2 - CHAIR_R * s)
+      : HANDLE_DRAWN / 2;
   return { x: (e.x - half.x) * s + pad, y: (e.y - half.y) * s + pad };
 }
 
-/** A round or cocktail table's four corners, a long table's eight points, each handleReach past its edge, from its centre in px. */
-export function handlePoints(it: Item, s: number): Point[] {
+function pointsAt(it: Item, s: number, r: Point): Point[] {
   const half = bodyHalf(it);
-  const r = handleReach(it, s);
   const w = half.x * s + r.x;
   const l = half.y * s + r.y;
   if (it.kind === 'round' || it.kind === 'cocktail')
@@ -183,6 +186,62 @@ export function handlePoints(it: Item, s: number): Point[] {
     { x: -w, y: l },
     { x: -w, y: 0 },
   ].map((p) => turn(p, it.rot));
+}
+
+/** Other items' chairs as a touch would meet them, in px from the room's corner: a 48 target from 150%, the drawn chair below, none zoomed out. */
+function othersChairs(
+  it: Item,
+  s: number,
+  plan: Plan,
+): { x: number; y: number; r: number; box: boolean }[] {
+  const detail = detailOf(s);
+  if (detail === 'out') return [];
+  const r = detail === 'near' ? CHAIR_HIT / 2 : CHAIR_R * s;
+  return plan.items
+    .filter((o) => o.id !== it.id)
+    .flatMap((o) =>
+      chairPoints(o).map((p0) => {
+        const p = turn(p0, o.rot);
+        return { x: (o.x + p.x) * s, y: (o.y + p.y) * s, r, box: detail === 'near' };
+      }),
+    );
+}
+
+/** How far past a table's own edge its handles sit, in px: zoomed out just clear of the table, then just clear of its chairs, from 150% clear of its chairs' targets, so no handle covers a chair's words or its target (sc-31783, qa3 11 Nov). Given the plan, they come in toward the table only as far as it takes to keep inside the walls and off every other item's chairs (lead, PR #1829). */
+export function handleReach(it: Item, s: number, plan?: Plan): Point {
+  const own = ownReach(it, s);
+  if (plan == null) return own;
+  const chairs = othersChairs(it, s, plan);
+  const cx = it.x * s;
+  const cy = it.y * s;
+  const clear = (r: Point) =>
+    pointsAt(it, s, r).every((p) => {
+      const x = cx + p.x;
+      const y = cy + p.y;
+      const inside =
+        x - HANDLE_DRAWN / 2 >= 0 &&
+        y - HANDLE_DRAWN / 2 >= 0 &&
+        x + HANDLE_DRAWN / 2 <= plan.room.w * s &&
+        y + HANDLE_DRAWN / 2 <= plan.room.l * s;
+      return (
+        inside &&
+        chairs.every((c) => {
+          const dx = Math.max(0, Math.abs(x - c.x) - HANDLE_HIT / 2);
+          const dy = Math.max(0, Math.abs(y - c.y) - HANDLE_HIT / 2);
+          return c.box ? Math.max(dx, dy) >= c.r : Math.hypot(dx, dy) >= c.r;
+        })
+      );
+    });
+  for (let cut = 0; cut <= Math.min(own.x, own.y); cut += 1) {
+    const r = { x: own.x - cut, y: own.y - cut };
+    if (clear(r)) return r;
+  }
+  return own;
+}
+
+/** A round or cocktail table's four corners, a long table's eight points, each handleReach past its edge, from its centre in px. */
+export function handlePoints(it: Item, s: number, plan?: Plan): Point[] {
+  return pointsAt(it, s, handleReach(it, s, plan));
 }
 
 /** The size a handle dragged to n px from the centre asks for, in cm: its reach is taken off first, so a handle picked up does not grow the table. */
