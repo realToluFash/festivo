@@ -33,7 +33,7 @@ export const TABLET_TABS_BOARDS: readonly TabletTabsBoard[] = [
   },
   {
     title: 'Android 200% · English',
-    what: 'The tabs at their own 30 where the capsule fits at it; under it where it does not',
+    what: 'Today, Events, Calendar, Settings whole at about 27, under their own 30; the pill its tile with its ring, clear of the capsule',
     href: '/demo/tablet-tabs?size=android&lang=en',
   },
   {
@@ -43,7 +43,7 @@ export const TABLET_TABS_BOARDS: readonly TabletTabsBoard[] = [
   },
   {
     title: 'iPad ninth step · French',
-    what: 'The same rule on the 834-wide iPad',
+    what: 'The same rule on the 834-wide iPad: about 29 under its own 32, the pill its tile',
     href: '/demo/tablet-tabs?size=iphone&lang=fr',
   },
 ];
