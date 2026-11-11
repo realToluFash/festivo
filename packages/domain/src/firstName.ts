@@ -1,4 +1,4 @@
-/** A person's name up to its first space; a name with no space is its own first name. */
+/** A member's own account name up to its first space. Never a guest's: guests go through guestName.ts. */
 export function firstName(name: string): string {
   return name.split(' ')[0] ?? name;
 }
