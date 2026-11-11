@@ -25,7 +25,11 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'signIn.submit'
 - extendedWaitUntil:
-    visible: '.*\d:\d\d.*'
+    visible:
+      id: 'signIn.submit'
+      enabled: false
     timeout: 20000
+- assertVisible: '{{t:signIn.lockedTitle}}'
+- assertVisible: '.*\d:\d\d.*'
 - hideKeyboard
 - takeScreenshot: signin-locked
