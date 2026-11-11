@@ -1620,8 +1620,10 @@
     "failedLine": "Check your connection and try again.",
     "card": {
       "people_one": "{{count, number}} person",
+      "people_many": "{{count, number}} people",
       "people_other": "{{count, number}} people",
       "waiting_one": "{{count, number}} waiting",
+      "waiting_many": "{{count, number}} waiting",
       "waiting_other": "{{count, number}} waiting",
       "answer": "Answer {{name}}",
       "sent": "Invitation sent to {{email}}",

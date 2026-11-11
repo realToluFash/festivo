@@ -641,6 +641,15 @@
   background: var(--deskHairline) no-repeat 0 0 / 100% 1px;
 }
 
+.desk-faces {
+  display: flex;
+  align-items: center;
+}
+
+.desk-faces > * + * {
+  margin-left: -9px;
+}
+
 .desk-rows.has-lead > * + * {
   background-position: 52px 0;
   background-size: calc(100% - 52px) 1px;
@@ -1242,15 +1251,6 @@
   padding: var(--spaceXxl) var(--spaceXl);
   overflow-y: auto;
   border-right: 1px solid var(--colorBorder);
-}
-
-.desk-faces {
-  display: flex;
-  align-items: center;
-}
-
-.desk-faces > * + * {
-  margin-left: -9px;
 }
 
 .desk-more {
