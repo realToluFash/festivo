@@ -395,9 +395,8 @@ function ShellLinks({ onFollow }: { onFollow?: () => void }) {
 /** Your events under the places, as Today lists them; an event's page has its own sidebar instead. */
 function ShellEvents({ organisationId }: { organisationId: string | null }) {
   const { t } = useTranslation();
-  const { pathname } = useLocation();
   const inside = useInsideEvent();
-  const events = useSidebarEvents(organisationId, pathname, inside == null);
+  const events = useSidebarEvents(organisationId, inside == null);
 
   if (inside != null) return null;
 

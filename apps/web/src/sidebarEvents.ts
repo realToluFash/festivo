@@ -18,11 +18,7 @@ export function sidebarEvents(
 }
 
 /** Another organisation's list is never returned, not even while the new one loads. */
-export function useSidebarEvents(
-  organisationId: string | null,
-  pathname: string,
-  shown: boolean,
-): ShownEvent[] {
+export function useSidebarEvents(organisationId: string | null, shown: boolean): ShownEvent[] {
   const [loaded, setLoaded] = useState<{ organisationId: string; events: ShownEvent[] } | null>(
     null,
   );
@@ -32,25 +28,30 @@ export function useSidebarEvents(
 
     let current = true;
 
-    api.allEvents(organisationId).then(
-      (events) => {
-        if (!current) return;
+    const read = () =>
+      api.allEvents(organisationId).then(
+        (events) => {
+          if (!current) return;
 
-        const now = serverClock.now();
-        const reader = {
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          locale: dateLocale(),
-        };
+          const now = serverClock.now();
+          const reader = {
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            locale: dateLocale(),
+          };
 
-        setLoaded({ organisationId, events: sidebarEvents(events, now, now, reader) });
-      },
-      () => undefined,
-    );
+          setLoaded({ organisationId, events: sidebarEvents(events, now, now, reader) });
+        },
+        () => undefined,
+      );
+
+    read();
+    window.addEventListener('focus', read);
 
     return () => {
       current = false;
+      window.removeEventListener('focus', read);
     };
-  }, [organisationId, pathname, shown]);
+  }, [organisationId, shown]);
 
   return loaded != null && loaded.organisationId === organisationId ? loaded.events : [];
 }

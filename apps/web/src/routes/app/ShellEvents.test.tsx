@@ -146,6 +146,30 @@ describe('the sidebar’s Your events at a desk (sc-39290)', () => {
     expect(within(sidebar()).queryByRole('heading', { name: 'Your events' })).toBeNull();
   });
 
+  it('keeps its events while another screen’s content loads', async () => {
+    signedIn(membership({ id: 'org_1' }));
+    const fetched = serving({ org_1: EVENTS });
+    const router = open('/app');
+
+    await within(sidebar()).findByRole('heading', { name: 'Your events' });
+    const rows = () => {
+      const heading = within(sidebar()).getByRole('heading', { name: 'Your events' });
+
+      return within(heading.parentElement as HTMLElement)
+        .getAllByRole('link')
+        .map((row) => row.textContent);
+    };
+    const listed = rows();
+
+    fetched.mockImplementation(() => new Promise<Response>(() => {}));
+
+    for (const path of ['/app/events', '/app/calendar', '/app/settings']) {
+      await act(() => router.navigate(path));
+
+      expect(rows()).toEqual(listed);
+    }
+  });
+
   it('never shows the previous organisation’s events once the switch is made', async () => {
     const first = membership({ id: 'org_1' });
     const second = membership({ id: 'org_2', name: 'Second' });
