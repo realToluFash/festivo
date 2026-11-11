@@ -53,6 +53,35 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     boards: PILL_FIT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
+    page: 'Sidebar on its side · Your events on every place (sc-39340)',
+    boards: [
+      { title: 'Today', what: 'Your events under the places', href: '/demo/today' },
+      { title: 'Events', what: 'The same list', href: '/demo/events' },
+      { title: 'Calendar', what: 'The same list', href: '/demo/calendar' },
+      { title: 'Settings', what: 'The same list', href: '/demo/settings' },
+      {
+        title: 'No events',
+        what: 'No heading, nothing in its place',
+        href: '/demo/settings?sidebar=none',
+      },
+      {
+        title: 'Today · no events',
+        what: 'No heading over nothing here too',
+        href: '/demo/today?sidebar=none',
+      },
+      {
+        title: 'More than it holds',
+        what: 'Twenty, scrolling under the heading; the foot stays',
+        href: '/demo/events?sidebar=many',
+      },
+      {
+        title: 'Today · more than it holds',
+        what: 'The same scroll on Today',
+        href: '/demo/today?sidebar=many',
+      },
+    ],
+  },
+  {
     page: 'Today · where signing in lands',
     boards: [
       { title: 'A planning day', what: 'Four things need you', href: '/demo/today' },

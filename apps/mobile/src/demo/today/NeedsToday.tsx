@@ -26,7 +26,7 @@ import {
   tabBarFoot,
 } from '../../components/TodayCover.tsx';
 import { ThisWeek, YourEvents } from '../../components/TodayParts.tsx';
-import { TodaySidebar } from '../../components/TodaySidebar.tsx';
+import { DemoSidebar } from '../Sidebar.tsx';
 import { NeedsYou } from './NeedsYou.tsx';
 
 const TAB_BAR = 64;
@@ -192,7 +192,7 @@ function Landscape({
 
   return (
     <View style={[styles.chrome, { paddingTop: insets.top }]}>
-      <TodaySidebar events={events} onTab={onTab} />
+      <DemoSidebar events={events} onTab={onTab} />
       <View style={[styles.pageCard, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
         <ScrollView contentContainerStyle={styles.cardPage} showsVerticalScrollIndicator={false}>
           <TodayCover moment={moment} layout="landscape" top={0} onTab={onTab} />
