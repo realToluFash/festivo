@@ -14,6 +14,7 @@ import {
   TITLE_LINE,
   titleSize,
   wordsIn,
+  wordsSlot,
 } from './textSize.ts';
 
 const AX1 = 1.786;
@@ -223,4 +224,34 @@ describe('rowsFloor', () => {
       expect(rowsFloor(1, density)).toBeGreaterThan(rowsFloor(1, null));
     },
   );
+});
+
+describe('the width labels have to fit (sc-37298)', () => {
+  it('keeps a container’s reported width when only the text size changes', () => {
+    const reported = { windowWidth: 360, width: 76 };
+
+    expect(wordsSlot({ wrapped: null, kept: null, reported }, 12, 360)).toBe(76);
+    expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, 360)).toBe(76);
+  });
+
+  it('forgets a reported width once the window changes width', () => {
+    const reported = { windowWidth: 360, width: 76 };
+
+    expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, 412)).toBe(0);
+  });
+
+  it('keeps a wrapped text’s width only for the start it wrapped at', () => {
+    const kept = { key: '20|360', width: 120 };
+
+    expect(wordsSlot({ wrapped: null, kept, reported: null }, 20, 360)).toBe(120);
+    expect(wordsSlot({ wrapped: null, kept, reported: null }, 24, 360)).toBe(0);
+  });
+
+  it('takes the width a text wrapped at over anything kept', () => {
+    const kept = { key: '20|360', width: 120 };
+
+    expect(
+      wordsSlot({ wrapped: 90, kept, reported: { windowWidth: 360, width: 76 } }, 20, 360),
+    ).toBe(90);
+  });
 });

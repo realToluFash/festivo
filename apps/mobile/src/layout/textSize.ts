@@ -53,6 +53,27 @@ export function fitWidest(size: number, start: number, widest: number, slot: num
 }
 
 /** A name in the frame takes one line, and two at the accessibility sizes, before it is cut. */
+export interface WordsRoom {
+  /** The width a text drawn at the start wrapped at, when it wrapped. */
+  wrapped: number | null;
+  /** That width, kept under the start and window width it was read at. */
+  kept: { key: string; width: number } | null;
+  /** A container's width, as its caller reports it, under the window width it was read at. */
+  reported: { windowWidth: number; width: number } | null;
+}
+
+/** The width the texts have to fit, 0 while it is not known. */
+export function wordsSlot(
+  { wrapped, kept, reported }: WordsRoom,
+  start: number,
+  windowWidth: number,
+): number {
+  if (wrapped != null) return wrapped;
+  if (kept?.key === `${start}|${windowWidth}`) return kept.width;
+  // A container's onLayout does not fire again when only the text size changes (sc-37298).
+  return reported?.windowWidth === windowWidth ? reported.width : 0;
+}
+
 export function nameLines(fontScale: number): 1 | 2 {
   return atAccessibilitySizes(fontScale) ? 2 : 1;
 }
