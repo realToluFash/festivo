@@ -7,6 +7,7 @@ import {
   markedMilestones,
   type MilestoneOwner,
   namesZone,
+  notThisYear,
   serverClock,
 } from '@soirely/domain';
 import { type RefObject, useEffect, useState } from 'react';
@@ -227,7 +228,12 @@ function MilestoneRow({
 }) {
   const { t } = useTranslation();
   const { milestone, standing, nextUp } = marked;
-  const moment = formatEventMoment(milestone.at, timeZone, dateLocale());
+  const moment = formatEventMoment(
+    milestone.at,
+    timeZone,
+    dateLocale(),
+    notThisYear(timeZone, now, milestone.at),
+  );
 
   return (
     <li className={`timeline-row${standing === 'passed' ? ' timeline-row-passed' : ''}`}>
