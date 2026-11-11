@@ -76,6 +76,8 @@ import {
   TextAction,
 } from '../../components/Summary.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
+import { Notice } from '../../components/Notice.tsx';
+import { PrimaryButton } from '../../components/Buttons.tsx';
 import { TOP_TITLE, topTitle } from '../topTitle.ts';
 
 const SEARCH_PAUSE_MS = 300;
@@ -115,6 +117,8 @@ export function EventsList({
   const [filters, setFilters] = useState<Filters>(start.filters);
   const [pastShown, setPastShown] = useState(start.pastShown);
   const [offline, setOffline] = useState(state === 'offline' || state === 'eventsOffline');
+  const [failed, setFailed] = useState(state === 'failed');
+  const [moreFailed, setMoreFailed] = useState(state === 'pastFailed');
   const [menuAt, setMenuAt] = useState<Anchor | null>(null);
   const filterRef = useRef<ViewInstance>(null);
   const field = useRef<TextInputInstance>(null);
@@ -189,14 +193,14 @@ export function EventsList({
   const top = (
     <>
       <ListTop
-        summary={first || loading ? null : summaryLine(home)}
+        summary={first || loading || failed ? null : summaryLine(home)}
         wide={wide}
         bell={shell.layout !== 'portrait'}
         org={shell.layout === 'phone'}
         onNew={asks ? null : () => shell.tell(say.ownDesign(W.newEvent))}
         onBell={shell.tell}
       />
-      {!first && !loading && <GuestTiles counts={guests} locale={locale} />}
+      {!first && !loading && !failed && <GuestTiles counts={guests} locale={locale} />}
       <SwitchedNotice />
     </>
   );
@@ -224,6 +228,21 @@ export function EventsList({
         />
         <SunkTabs />
         <LoadingBlock words={W.loading} />
+      </ListFrame>
+    );
+
+  if (failed)
+    return (
+      <ListFrame offline={null}>
+        {top}
+        <View style={styles.failed} accessibilityRole="alert">
+          <Notice tone="broken" mark={tokens.marks.broken.glyph} body={W.failedLoad} announce />
+          <PrimaryButton
+            label={W.tryAgain}
+            onPress={() => setFailed(false)}
+            testID="events.failed.retry"
+          />
+        </View>
       </ListFrame>
     );
 
@@ -313,9 +332,15 @@ export function EventsList({
           {more && (
             <TextAction
               label={W.showMore}
-              onPress={() => setPastShown((shown) => shown + PAST_PAGE)}
+              onPress={() => {
+                setMoreFailed(false);
+                setPastShown((shown) => shown + PAST_PAGE);
+              }}
               testID="events.showMore"
             />
+          )}
+          {tab === 'past' && moreFailed && (
+            <Notice tone="broken" mark={tokens.marks.broken.glyph} body={W.moreFailed} announce />
           )}
           {shownMore > 0 && <Said words={say.moreShown(shownMore)} />}
           {tabEvents.length > 0 && <SaidLine words={say.footer(tabEvents.length)} />}
@@ -549,6 +574,7 @@ export function OfflineBand({
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   page: { flex: 1, backgroundColor: tokens.colorCard },
+  failed: { gap: tokens.spaceMd },
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
   figures: { fontVariant: ['tabular-nums'] },

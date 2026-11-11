@@ -305,6 +305,8 @@ export const LIST_STATES = [
   'drafts',
   'past',
   'pastMore',
+  'pastFailed',
+  'failed',
   'offline',
   'search',
   'filtered',
@@ -376,6 +378,7 @@ export function listStart(state: ListState | null): {
       return { ...start, tab: 'drafts' };
     case 'past':
     case 'emptyPast':
+    case 'pastFailed':
       return { ...start, tab: 'past' };
     case 'pastMore':
       return { ...start, tab: 'past', pastShown: PAST_PAGE * 2 };

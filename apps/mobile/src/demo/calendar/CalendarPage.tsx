@@ -1,3 +1,4 @@
+import type { CalendarFeedLink } from '@soirely/api-client';
 import { firstDayOfWeek, formattingLocale, wallDay } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { type Href, router } from 'expo-router';
@@ -114,17 +115,26 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
     setFeed(true);
   };
   const closeFeed = useCallback(() => setFeed(false), []);
+  const reads = useRef(0);
   const source = useMemo<FeedSource>(
     () => ({
-      known: LINKS[0]!,
-      read: async () => LINKS[0]!,
+      ...(state === 'subscribeLoading' || state === 'subscribeUnreadable'
+        ? {}
+        : { known: LINKS[0]! }),
+      read: () => {
+        reads.current += 1;
+        if (state === 'subscribeLoading') return new Promise<CalendarFeedLink>(() => undefined);
+        if (state === 'subscribeUnreadable' && reads.current === 1)
+          return Promise.reject(new Error());
+        return Promise.resolve(LINKS[0]!);
+      },
       reset: async () => LINKS[1]!,
       openInApp: async () => {
         setFeed(false);
         tell(CW.openApp);
       },
     }),
-    [tell],
+    [state, tell],
   );
 
   const choices = useMemo<ShowChoice<Show>[]>(
@@ -205,7 +215,9 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
       }
       onOpen={openItem}
       onRetry={retry}
-      onCreate={() => tell(`${W.firstRunCreate} has its own design.`)}
+      onCreate={
+        state === 'noneAsk' ? undefined : () => tell(`${W.firstRunCreate} has its own design.`)
+      }
     />
   );
 
