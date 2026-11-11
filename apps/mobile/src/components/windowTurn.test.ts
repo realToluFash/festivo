@@ -126,7 +126,12 @@ describe('Create an organisation on Android, where a native animation’s end ca
   });
 
   it('has fadeAway end the window on its timer as well as on the fade’s end', () => {
-    expect(motion).toContain('const lost = setTimeout(gone, tokens.motionFast + grace);');
-    expect(motion).toContain('return () => clearTimeout(lost);');
+    expect(motion).toContain('const lost = setTimeout(end, tokens.motionFast + grace);');
+    expect(motion).toContain('}).start(end);');
+  });
+
+  it('has fadeAway call gone at most once, and never after its cancel', () => {
+    expect(motion).toContain('if (done) return;');
+    expect(motion).toMatch(/return \(\) => \{\s+done = true;\s+clearTimeout\(lost\);/);
   });
 });
