@@ -68,7 +68,9 @@ function asking(id: string, name: string, more: Partial<RecoveryRequest> = {}): 
     own: false,
     organisations: ['Ire Events'],
     organisationIds: ['org_ire'],
+    askedAt: '2026-11-03T17:05:00+00:00',
     asked: 'Tuesday, Nov 3 at 18:05 WAT',
+    expiresAt: '2026-11-10T17:05:00+00:00',
     expires: 'Tuesday, Nov 10 at 18:05 WAT',
     ...more,
   };
