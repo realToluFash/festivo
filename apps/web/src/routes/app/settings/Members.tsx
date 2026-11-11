@@ -41,6 +41,7 @@ import { dateLocale, useShownLanguage } from '../../../i18n/index.ts';
 import { focusWhenFree, LayersContext, useDeskLayers, useDeskSplit } from '../../../layers.ts';
 import { useOffline } from '../../../offline.ts';
 import { dropProviderReturn } from '../../../providerSignIn.ts';
+import { useDeskTop } from '../../../deskTop.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
 import { MemberPage } from './MemberPage.tsx';
@@ -259,6 +260,7 @@ function MembersLoaded({
   onRecoveries: (recoveries: RecoveryRequest[]) => void;
 }) {
   const { t } = useTranslation();
+  const desk = useDeskTop();
   // Back from Google or Apple, started by Confirm it's you before making an owner: once, on arrival.
   const [returned] = useState(backToMakeOwner);
   const [open, setOpen] = useState<string | null>(() =>
@@ -479,12 +481,15 @@ function MembersLoaded({
           {claim.under}
           <MembersBlocks {...blocks} column />
         </div>
-        <div className="members-side">{page}</div>
+        <div className="members-side">
+          {desk.bell != null && <div className="desk-top is-end">{desk.bell}</div>}
+          {page}
+        </div>
         {dialogs}
       </div>
     ) : (
       <Column>
-        <BackRow to={t('membersScreen.title')} onBack={back} />
+        <BackRow to={t('membersScreen.title')} onBack={back} bell={desk.bell} />
         {page}
         {dialogs}
       </Column>

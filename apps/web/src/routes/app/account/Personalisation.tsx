@@ -16,9 +16,11 @@ import { AccountHeader } from '../../../components/AccountHeader.tsx';
 import { ActionPair } from '../../../components/ActionPair.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { Dots, Ground, Pieces } from '../../../components/SchemeArt.tsx';
+import { TitleRow } from '../../../components/SettingsParts.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { offButton } from '../../../offButton.ts';
+import { usePhoneWidth } from '../../../phoneWidth.ts';
 import { PAGE_ART, PREVIEW_ART, SWATCH_ART, isLightGround } from '../../../schemeArt.ts';
 import { type Scheme, confetti, defaultScheme, schemeNames } from '../../../scheme.ts';
 
@@ -27,6 +29,7 @@ type Refusal = 'failed' | 'offline';
 /** Settings › Personalisation (sc-30441): the colours Soirely shows this person, on every device they sign in on. */
 export function Personalisation() {
   const { t } = useTranslation();
+  const phone = usePhoneWidth();
   const { shown, chosen } = useColourScheme();
   const [load, setLoad] = useState<'loading' | 'failed' | 'loaded'>(
     chosen === undefined ? 'loading' : 'loaded',
@@ -100,7 +103,11 @@ export function Personalisation() {
 
   return (
     <div className="account personalisation">
-      <AccountHeader title={t('personalisation.title')} />
+      {phone ? (
+        <AccountHeader title={t('personalisation.title')} />
+      ) : (
+        <TitleRow title={t('personalisation.title')} />
+      )}
 
       <div className="visually-hidden" aria-live="polite">
         {said}

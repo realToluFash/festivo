@@ -12,6 +12,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
 import { ActionPair } from './ActionPair.tsx';
+import { useDeskTop } from '../deskTop.ts';
 import { useTitleUnder } from '../deskNavForm.ts';
 import { offButton } from '../offButton.ts';
 import { Glyph } from './Glyph.tsx';
@@ -36,12 +37,25 @@ export function DeskPage({
 
 export type MarkKind = 'yes' | 'waiting' | 'paused' | 'ended';
 
-export function Bell({ unread, onOpen }: { unread: number; onOpen: () => void }) {
+/** The title row's bell: round and grey, a red dot for unread, the count in its name. `expanded` is set when it opens a panel. */
+export function Bell({
+  ref,
+  unread,
+  expanded,
+  onOpen,
+}: {
+  ref?: Ref<HTMLButtonElement>;
+  unread: number;
+  expanded?: boolean;
+  onOpen: () => void;
+}) {
   const { t } = useTranslation();
 
   return (
     <button
+      ref={ref}
       type="button"
+      aria-expanded={expanded}
       className="desk-bell"
       aria-label={
         unread > 0 ? t('notifications.bellUnread', { count: unread }) : t('notifications.bell')
@@ -54,26 +68,33 @@ export function Bell({ unread, onOpen }: { unread: number; onOpen: () => void })
   );
 }
 
-/** The page's title, its one header action, and the bell. */
+/** The page's title, its one header action, and the bell: in the product the shell's, with "Now working in…" under the row. A compact row heads a column, and the bell is the page's beside it. */
 export function TitleRow({
   title,
+  titleRef,
   action,
   bell,
   compact = false,
 }: {
   title: string;
+  titleRef?: Ref<HTMLHeadingElement>;
   action?: ReactNode;
   bell?: ReactNode;
   compact?: boolean;
 }) {
+  const desk = useDeskTop();
+
   return (
-    <header className={compact ? 'desk-top is-compact' : 'desk-top'}>
-      <h1 className="desk-title" tabIndex={-1}>
-        {title}
-      </h1>
-      {action}
-      {bell}
-    </header>
+    <>
+      <header className={compact ? 'desk-top is-compact' : 'desk-top'}>
+        <h1 ref={titleRef} className="desk-title" tabIndex={-1}>
+          {title}
+        </h1>
+        {action}
+        {bell ?? (compact ? null : desk.bell)}
+      </header>
+      {desk.said}
+    </>
   );
 }
 

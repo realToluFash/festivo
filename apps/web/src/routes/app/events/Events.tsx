@@ -52,6 +52,7 @@ import { TextAction } from '../../../components/SettingsParts.tsx';
 import { type Shown, listEventOf, shownEvent, summaryWords } from '../../../eventsList.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
+import { useDeskTop } from '../../../deskTop.ts';
 import { useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
@@ -141,6 +142,7 @@ function EventsOf({
   deleted: string | null;
 }) {
   const { t } = useTranslation();
+  const desk = useDeskTop();
   const navigate = useNavigate();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -289,7 +291,9 @@ function EventsOf({
                 </Link>
               )
             }
-          />
+          >
+            {desk.bell}
+          </EventsTop>
           {refreshing ? (
             <p className="desk-line">
               <Refreshing />
@@ -298,6 +302,7 @@ function EventsOf({
             summary != null && <p className="desk-line">{summary}</p>
           )}
         </div>
+        {desk.said}
         {deleted != null && <OutcomeLine words={t('eventDelete.deleted', { event: deleted })} />}
         {search != null && <EventsReadOut groups={matchedGroups} />}
         {body}

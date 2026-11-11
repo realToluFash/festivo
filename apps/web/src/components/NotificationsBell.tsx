@@ -26,14 +26,17 @@ import { markPushAsked, pushAskDue } from '../pushAsk.ts';
 import { subscribeWebPush } from '../webPush.ts';
 import { MuteSwitch } from './MuteSwitch.tsx';
 import { Refreshing, StaleBand } from './OfflineBand.tsx';
+import { Bell } from './SettingsParts.tsx';
+import './SettingsParts.css';
+import './today.css';
 
 type Feed =
   | { status: 'loading' }
   | { status: 'failed' }
   | { status: 'loaded'; items: NotificationItem[]; unread: number; next: string | null };
 
-/** The bell and its feed (sc-3980): a popover from the sidebar on the web, at every width. */
-export function NotificationsBell({ userId }: { userId: string }) {
+/** The bell and its feed (sc-3980), a popover at every width. `desk` is the title row's bell, as the desk demos draw it: round and grey, a red dot for unread, the panel reaching back across the page. */
+export function NotificationsBell({ userId, desk = false }: { userId: string; desk?: boolean }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [feed, setFeed] = useState<Feed>({ status: 'loading' });
@@ -302,24 +305,28 @@ export function NotificationsBell({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="notifications" ref={container}>
-      <button
-        ref={button}
-        type="button"
-        className="notifications-bell"
-        aria-expanded={open}
-        aria-label={
-          unread > 0 ? t('notifications.bellUnread', { count: unread }) : t('notifications.bell')
-        }
-        onClick={openBell}
-      >
-        <BellMark />
-        {badge != null && (
-          <span className="notifications-badge" aria-hidden="true">
-            {badge}
-          </span>
-        )}
-      </button>
+    <div className={desk ? 'notifications is-desk' : 'notifications'} ref={container}>
+      {desk ? (
+        <Bell ref={button} unread={unread} expanded={open} onOpen={openBell} />
+      ) : (
+        <button
+          ref={button}
+          type="button"
+          className="notifications-bell"
+          aria-expanded={open}
+          aria-label={
+            unread > 0 ? t('notifications.bellUnread', { count: unread }) : t('notifications.bell')
+          }
+          onClick={openBell}
+        >
+          <BellMark />
+          {badge != null && (
+            <span className="notifications-badge" aria-hidden="true">
+              {badge}
+            </span>
+          )}
+        </button>
+      )}
 
       <div className="visually-hidden" aria-live="polite">
         {said}
