@@ -1,6 +1,7 @@
 import type { Href } from 'expo-router';
 import { useSyncExternalStore } from 'react';
 
+import { DESTINATION_HREF, destinationOf } from './kit/appNav.ts';
 import { type Choice, inUse } from './kit/personalisation.ts';
 import { schemeOf } from './kit/schemes.ts';
 import {
@@ -124,10 +125,15 @@ export function noteWhere(path: string): void {
   here = path === '/' ? null : path;
 }
 
-export function landingAfterRestart(): Href | null {
+/** The screens to open over Today after a restart: the landing, with its destination under it, so Back from the landing goes to that destination (sc-30441). */
+export function landingAfterRestart(): Href[] {
   const path = takeLanding();
+  if (path == null || !path.startsWith('/') || path === '/') return [];
 
-  return path != null && path.startsWith('/') && path !== '/' ? (path as Href) : null;
+  const pathname = path.split('?')[0] ?? path;
+  const root = DESTINATION_HREF[destinationOf(pathname)];
+
+  return root === '/' || pathname === root ? [path as Href] : [root, path as Href];
 }
 
 /** What the account answered, at launch or back in the foreground: kept on the device, and followed where the screens are in other colours. */
