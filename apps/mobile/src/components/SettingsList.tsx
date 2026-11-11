@@ -30,6 +30,7 @@ import {
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { FrameTop } from './AppFrame.tsx';
+import { SETTINGS_COLUMN } from './listFrame.ts';
 import { Caps } from './SettingsParts.tsx';
 import {
   type ListedSection,
@@ -211,8 +212,6 @@ const styles = StyleSheet.create({
   tabletList: {
     flexGrow: 0,
     flexShrink: 0,
-    backgroundColor: tokens.colorCard,
-    borderRightWidth: 1,
-    borderRightColor: tokens.colorBorder,
+    ...SETTINGS_COLUMN,
   },
 });

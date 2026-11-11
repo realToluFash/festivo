@@ -20,7 +20,7 @@ import {
 import { pageTakesBack } from '../kit/systemBack.ts';
 import { tokens } from '../theme/tokens.ts';
 import { FrameTop } from './AppFrame.tsx';
-import { LIST_EDGES } from './listFrame.ts';
+import { LIST_EDGES, SETTINGS_COLUMN } from './listFrame.ts';
 import { COLUMN } from './Summary.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { QuietButton } from './Buttons.tsx';
@@ -129,7 +129,7 @@ export function ListAndPage({
         <View
           style={[
             split ? { width: listWidth } : styles.fill,
-            inColumn && styles.settingsColumn,
+            inColumn && SETTINGS_COLUMN,
             !landscape && pageInFront && !listUnder && styles.behind,
           ]}
         >
@@ -173,7 +173,6 @@ export function ListAndPage({
 
 const styles = StyleSheet.create({
   fill: { flex: 1, minWidth: 0 },
-  settingsColumn: { borderRightWidth: 1, borderRightColor: tokens.colorBorder },
   bare: { padding: 0, gap: 0 },
   behind: { display: 'none' },
   start: { alignSelf: 'flex-start' },
