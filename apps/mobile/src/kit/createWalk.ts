@@ -64,6 +64,34 @@ export function forward(walk: Walk, t: TFunction): Walk {
   return { ...walk, step: walk.step === 1 ? 2 : 3, refusal: null, query: '', cameBack: false };
 }
 
+/** The step on screen and the one leaving it; each turn has its own number, so the two never share a key. */
+export interface WalkTurn {
+  walk: Walk;
+  turn: number;
+  leaving: Walk | null;
+  dir: 1 | -1;
+}
+
+export function firstTurn(walk: Walk): WalkTurn {
+  return { walk, turn: 0, leaving: null, dir: 1 };
+}
+
+/** A walk at the same step replaces it in place; another step is a new turn, with the one on screen leaving. */
+export function turnTo(now: WalkTurn, next: Walk): WalkTurn {
+  if (next.step === now.walk.step) return { ...now, walk: next };
+
+  return {
+    walk: next,
+    turn: now.turn + 1,
+    leaving: now.walk,
+    dir: next.step > now.walk.step ? 1 : -1,
+  };
+}
+
+export function turnEnded(now: WalkTurn, turn: number): WalkTurn {
+  return now.turn === turn && now.leaving != null ? { ...now, leaving: null } : now;
+}
+
 /** Back keeps everything: the name as typed, the country as picked; only the search clears. */
 export function back(walk: Walk): Walk {
   if (walk.step === 1) return walk;
