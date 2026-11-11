@@ -1044,8 +1044,13 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'Events · many filters',
-        what: 'Three types, This week and a host, more than fit on a line',
+        what: 'Three types, This week and two hosts, more than fit on a line',
         href: '/demo/events?state=manyFilters',
+      },
+      {
+        title: 'Events · many filters, menu open',
+        what: 'The Type and Hosted by rows ending in +N more',
+        href: '/demo/events?state=manyFiltersOpen',
       },
       {
         title: 'Events · one long host',

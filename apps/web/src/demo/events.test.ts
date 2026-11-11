@@ -9,6 +9,7 @@ import {
   type SampleEvent,
   cardOf,
   eventStateOf,
+  listStart,
   listStateOf,
   listed,
   manageOf,
@@ -139,12 +140,34 @@ describe('Events in A at a desk, the model (sc-30304)', () => {
       expect(stateFits(state as EventStateName, event(id)), state).toBe(true);
   });
 
+  it.each(['manyFilters', 'manyFiltersOpen', 'longHost'] as const)(
+    'opens %s on results this week, not on no match',
+    (state) => {
+      const look = listStart(state).look;
+      const span =
+        look?.filters.when.kind === 'week' ? { from: '2026-11-02', to: '2026-11-08' } : null;
+
+      expect(look).not.toBeNull();
+      expect(sampleEvents().some((one) => look != null && matches(one, look, span))).toBe(true);
+    },
+  );
+
   it('links every state from the demo home, on its own event', () => {
     const links = EVENTS_PAGES.flatMap((page) => page.states.map((one) => one.to));
 
     for (const [state, id] of Object.entries(EVENT_STATES))
       expect(links, state).toContain(`/demo/events/${id}?state=${state}`);
-    for (const state of ['first', 'drafts', 'past', 'pastMore', 'offline', 'filterOpen'])
+    for (const state of [
+      'first',
+      'drafts',
+      'past',
+      'pastMore',
+      'offline',
+      'filterOpen',
+      'manyFilters',
+      'manyFiltersOpen',
+      'longHost',
+    ])
       expect(links, state).toContain(`/demo/events?state=${state}`);
     expect(links).toContain('/demo/events?q=lucia');
     expect(links).toContain('/demo/events?type=wedding,birthday');
