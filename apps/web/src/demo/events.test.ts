@@ -1,4 +1,4 @@
-import { NO_EVENTS_FILTERS } from '@soirely/domain';
+import { NO_EVENTS_FILTERS, whenSpan } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -12,6 +12,7 @@ import {
   listStart,
   listStateOf,
   listed,
+  localDay,
   manageOf,
   matches,
   resetSample,
@@ -144,11 +145,17 @@ describe('Events in A at a desk, the model (sc-30304)', () => {
     'opens %s on results this week, not on no match',
     (state) => {
       const look = listStart(state).look;
-      const span =
-        look?.filters.when.kind === 'week' ? { from: '2026-11-02', to: '2026-11-08' } : null;
+      const today = localDay(CLOCKS.rest, 'Europe/London');
 
       expect(look).not.toBeNull();
-      expect(sampleEvents().some((one) => look != null && matches(one, look, span))).toBe(true);
+      for (const firstDay of [0, 1, 6]) {
+        const span = look == null ? null : whenSpan(look.filters.when, today, firstDay);
+
+        expect(
+          sampleEvents().some((one) => look != null && matches(one, look, span)),
+          `week from day ${firstDay}`,
+        ).toBe(true);
+      }
     },
   );
 
