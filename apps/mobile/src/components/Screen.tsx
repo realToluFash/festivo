@@ -1224,6 +1224,9 @@ export function Screen({
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const { screenScroll, scrollProps, heldStyle, onContentLayout } = useScreenScrollView();
+  const tabs = useUnderTabs();
+  // A screen that insets the bottom itself, as a sheet does, ends above the tab bar already.
+  const underTabs = edges.includes('bottom') ? 0 : tabs;
   const avoider = useRef<ViewInstance>(null);
   const keyboardTop = useRef<number | null>(null);
   const [keysCover, setKeysCover] = useState(0);
@@ -1279,11 +1282,13 @@ export function Screen({
       // dismissing the keyboard, which otherwise makes every button in a
       // form need pressing twice.
       keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={underTabs === 0}
       {...scrollInsets(LIFT, docked != null)}
     >
       <View onLayout={onContentLayout} style={[styles.content, contentStyle]}>
         {children}
       </View>
+      {underTabs > 0 && <View style={{ height: underTabs }} />}
     </ScrollView>
   ) : (
     <View style={[styles.fill, styles.content, contentStyle]}>{children}</View>

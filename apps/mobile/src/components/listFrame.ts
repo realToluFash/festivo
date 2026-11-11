@@ -15,6 +15,35 @@ export const LIST_EDGES = StyleSheet.create({
   tabletLandscape: { paddingTop: 26, paddingHorizontal: 30 },
 }) satisfies Record<LayoutKind, object>;
 
+/** The Settings list's column on its side, the rule at its right; Members' own list takes the same column (sc-39471). */
+export const SETTINGS_COLUMN = {
+  backgroundColor: tokens.colorCard,
+  borderRightWidth: 1,
+  borderRightColor: tokens.colorBorder,
+} as const;
+
+/** Where a Settings page's body starts and ends in each layout, as the demo's `SummaryPage` draws it: 2 × 6xl past its last block (sc-39471). */
+export const SETTINGS_PAGE = StyleSheet.create({
+  phone: {
+    gap: tokens.spaceLg,
+    paddingTop: tokens.spaceXxs,
+    paddingHorizontal: tokens.spaceXxl,
+    paddingBottom: tokens.space6xl * 2,
+  },
+  tabletPortrait: {
+    gap: tokens.spaceXl,
+    paddingTop: tokens.spaceXl,
+    paddingHorizontal: tokens.space5xl,
+    paddingBottom: tokens.space6xl * 2,
+  },
+  tabletLandscape: {
+    gap: LIST_GAP,
+    paddingTop: 26,
+    paddingHorizontal: 30,
+    paddingBottom: tokens.space6xl * 2,
+  },
+}) satisfies Record<LayoutKind, object>;
+
 /** On its side: the grey ground the sidebar sits on, and the white card the screen sits in. */
 export function useSideFrame() {
   const insets = useSafeAreaInsets();

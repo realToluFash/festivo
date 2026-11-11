@@ -15,7 +15,7 @@ export default function Settings() {
   const { kind } = useLayout();
 
   return (
-    <AppFrame current="settings" top="scrolls" title={t('settings.title')}>
+    <AppFrame current="settings" top="scrolls" listUnderTabs title={t('settings.title')}>
       <SettingsSplit open={null}>
         {settingsListBeside(kind) ? (
           <ChooseASection />

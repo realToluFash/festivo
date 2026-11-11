@@ -60,7 +60,13 @@ import {
 } from '../layout/useLayout.ts';
 import { inModal } from '../kit/anchoredMenu.ts';
 import { type DropFrame, frameFor, switcherSession } from '../kit/orgSwitcher.ts';
-import { joinOrganisation, onMovedOn, switchOrganisation, useSignedIn } from '../signedIn.ts';
+import {
+  joinOrganisation,
+  onMovedOn,
+  signOutHere,
+  switchOrganisation,
+  useSignedIn,
+} from '../signedIn.ts';
 import { useSidebarEvents } from '../sidebarEvents.ts';
 import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { switcherFocusBack } from '../kit/focusBack.ts';
@@ -535,9 +541,11 @@ export function AppFrame({
                       />
                     ) : standIn === 'overdue' && signedIn.organisation != null ? (
                       <TwoFactorOverdue
-                        organisation={signedIn.organisation}
+                        organisation={signedIn.organisation.name}
                         answer={switchAnswer ?? lapsed}
                         headingRef={overdueHeading}
+                        onTurnOn={() => router.navigate(SECTION_HREF.security)}
+                        onSignOut={signOutHere}
                       />
                     ) : (
                       <FrameSwitch.Provider value={switchAnswer}>
@@ -679,6 +687,11 @@ export function FrameTop({
   if (top == null) return null;
 
   return <ScreenTop {...top} style={style} rowStyle={rowStyle} />;
+}
+
+/** "Now working in …" for a heading in the body that stands in for the frame's top, as Members' in the Settings column on its side; nothing on a screen whose frame draws its top (sc-39471). */
+export function FrameSwitched() {
+  return useContext(ScrolledTop)?.switched ?? null;
 }
 
 /** What stays put above a demo's top: upright, the pill, the tabs and the bell; on a phone, the status bar's white. */

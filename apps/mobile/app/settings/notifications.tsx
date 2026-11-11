@@ -5,14 +5,14 @@ import { useTranslation } from 'react-i18next';
 import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
+import { SETTINGS_PAGE } from '../../src/components/listFrame.ts';
 import { NotificationsPage } from '../../src/components/NotificationsPage.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { Text, type TextHandle } from '../../src/components/Text.tsx';
 import { moveScreenReaderFocus } from '../../src/components/screenReaderFocus.ts';
 import { useOffline } from '../../src/offline.ts';
-import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
-import { tokens } from '../../src/theme/tokens.ts';
+import { settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { PANE_TITLE, paneTitle } from '../../src/components/topTitle.ts';
 
 /** Settings > Notification settings in the app, summary first: the card, then the six kinds (sc-30411). */
@@ -38,6 +38,7 @@ export default function Notifications() {
     <AppFrame
       current="settings"
       top="scrolls"
+      listUnderTabs
       aboutTheAccount
       offline={stale}
       besideTitle={alone ? refreshingWords : undefined}
@@ -46,7 +47,7 @@ export default function Notifications() {
       back={alone ? backToSettings(t('settings.title')) : undefined}
     >
       <SettingsSplit open="notifications">
-        <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
+        <Screen edges={bodyEdges(kind)} contentStyle={SETTINGS_PAGE[kind]}>
           {alone && <FrameTop />}
           {!alone && (
             <View style={besideRow.row}>
@@ -76,28 +77,4 @@ export default function Notifications() {
 const styles = StyleSheet.create({
   shrink: { flexShrink: 1, minWidth: 0 },
   blocks: { gap: 18 },
-  phone: {
-    gap: tokens.spaceLg,
-    paddingTop: tokens.spaceXxs,
-    paddingHorizontal: tokens.spaceXxl,
-    paddingBottom: tokens.space3xl,
-  },
-  portrait: {
-    gap: tokens.spaceXl,
-    paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.space5xl,
-    paddingBottom: tokens.space6xl,
-  },
-  landscape: {
-    gap: tokens.spaceXxl,
-    paddingTop: 26,
-    paddingHorizontal: 30,
-    paddingBottom: tokens.space6xl,
-  },
 });
-
-const CONTENT: Record<LayoutKind, object> = {
-  phone: styles.phone,
-  tabletPortrait: styles.portrait,
-  tabletLandscape: styles.landscape,
-};
