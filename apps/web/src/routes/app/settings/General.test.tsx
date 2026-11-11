@@ -467,6 +467,22 @@ describe('Settings > General', () => {
   });
 });
 
+describe('Settings > General, cards for one who manages members (sc-38891)', () => {
+  it('draws each card once, in order, with no two siblings sharing a key', async () => {
+    answering(() => new Response(null, { status: 404 }));
+    const warned = vi.spyOn(console, 'error').mockImplementation(() => {});
+    settings();
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'General' })).toBeDefined();
+    const titles = screen.getAllByRole('heading', { level: 2 }).map((title) => title.textContent);
+    expect(titles.filter((title) => title === 'Company domain joining')).toHaveLength(1);
+    expect(titles.filter((title) => title === 'Requests to join')).toHaveLength(1);
+    expect(
+      warned.mock.calls.some((call) => String(call[0]).includes('two children with the same key')),
+    ).toBe(false);
+  });
+});
+
 describe('Settings > General, requests to get back in (sc-30189)', () => {
   it('has no requests card: they are answered on Members, so General never asks for them', async () => {
     const sent = answering(
