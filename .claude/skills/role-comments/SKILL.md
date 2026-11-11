@@ -88,6 +88,12 @@ the address the person typed.
   is an answer the next role builds against the old AC.
 - **Can't answer?** Say why and re-address it: `[pm] (from ux)` with what you need. Do not
   leave it unanswered — an open thread is somebody else's blocked work.
+- **A deferral names its story.** A reply that leaves something for "its own story", "a
+  later story" or "the X's story" files that story in the same run (`new-story`, or a
+  `[pm]` comment asking for one) and gives its number in the reply. A reply that defers
+  with no number is not an answer: the role asked says so in the thread, and the thread
+  stays open. The web's bell was left in the band "for its own story" that nobody filed,
+  and the band reached three screens whose demos never drew it (sc-39535).
 - **A reply that only confirms carries no tag.** "Read, no questions", "Noted, nothing to
   change", a relay checked and found right: nothing in it is for the asker to act on, so
   post it with `sq <role> comment sc-N --reply-to <id> --untagged --text "…"`. It reads

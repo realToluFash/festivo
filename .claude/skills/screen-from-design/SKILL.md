@@ -458,7 +458,11 @@ missing list is ambiguous.
   each.
 - No hex, no untranslated literal, no fixture import left behind.
 - The screen's components are the product's one copy, the demo flow still works, and
-  nothing on the screen is missing from its demo.
+  nothing on the screen differs from its demo, its top and the frame around it included,
+  not only that nothing is missing. A band, title or header another story built is still
+  part of the screen you hand over.
+- The pull request's body lists each layout with a pair of screenshots, the product and
+  the demo's route at the same size, or names the layouts not checked.
 - Every `testID` the change removed or renamed is gone from `apps/mobile/.maestro`.
 - Commits scoped per **making-commits**; never `git add -A`.
 - Say which layouts you checked and how, and name anything still unverified.
