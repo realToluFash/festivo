@@ -33,6 +33,7 @@ import { moveScreenReaderFocus } from '../components/screenReaderFocus.ts';
 import {
   ScreenScroll,
   SETTLED_MS,
+  useFocusedFieldAboveToast,
   useScreenScrollView,
   useWindowOrigin,
 } from '../components/Screen.tsx';
@@ -224,6 +225,7 @@ export function StepScreen({
   const measured = ANDROID || inSheet;
   const cover = useKeysCover(page, measured, inSheet ? insets.top + SHEET_LIFTED_GAP : 0);
   const { screenScroll, scrollProps } = useScreenScrollView();
+  useFocusedFieldAboveToast(screenScroll);
   const [sizes, setSizes] = useState({ shown: 0, foot: 0, field: 0, group: 0 });
   const measuredAs = (key: 'shown' | 'foot') => (event: LayoutChangeEvent) => {
     const height = event.nativeEvent.layout.height;

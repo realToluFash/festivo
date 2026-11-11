@@ -22,7 +22,7 @@ export function underToast(step: LandedStep | null, frame: Frame): UnderToast {
   return { footReaches: frame.y + frame.height - step.foot.top };
 }
 
-/** The landing toast's bottom: over the inset and the tab bar, and on a step 12pt above its docked foot wherever it was measured, or 12pt above the keys where the foot has moved into the page (sc-29071, sc-37519, sc-37983). */
+/** The landing toast's bottom: over the inset and the tab bar, and on a step, which covers the tab bar, 12pt above its docked foot wherever it was measured, or 12pt above the keys where the foot has moved into the page (sc-29071, sc-37519, sc-37983). */
 export function landingToastBottom(
   inset: number,
   tabBar: number,
@@ -30,11 +30,14 @@ export function landingToastBottom(
   keyboardTop: number | null,
   under: UnderToast,
 ): number {
-  const overBar = Math.max(inset, tokens.spaceLg) + (tabBar > 0 ? tabBar + tokens.spaceLg : 0);
-  if (under === 'noFoot')
-    return bottomOverKeys(overBar, frameHeight, keyboardTop, UNMEASURED_OVER_KEYS);
-  if (under === 'footInPage')
-    return bottomOverKeys(overBar, frameHeight, keyboardTop, tokens.spaceLg);
+  const overInset = Math.max(inset, tokens.spaceLg);
+  if (under === 'noFoot') {
+    const overBar = overInset + (tabBar > 0 ? tabBar + tokens.spaceLg : 0);
 
-  return Math.max(overBar, under.footReaches + tokens.spaceLg);
+    return bottomOverKeys(overBar, frameHeight, keyboardTop, UNMEASURED_OVER_KEYS);
+  }
+  if (under === 'footInPage')
+    return bottomOverKeys(overInset, frameHeight, keyboardTop, tokens.spaceLg);
+
+  return Math.max(overInset, under.footReaches + tokens.spaceLg);
 }
