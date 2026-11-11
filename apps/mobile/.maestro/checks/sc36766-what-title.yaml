@@ -9,4 +9,5 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd: { timeout: 3000 }
 - hideKeyboard
 - waitForAnimationToEnd: { timeout: 3000 }
+- assertVisible: '{{t:createOrganisation.whatTitle}}'
 - takeScreenshot: what-title
