@@ -11,11 +11,13 @@ appId: host.exp.Exponent
 - takeScreenshot: card
 - tapOn:
     id: 'ownerClaim.open'
-    optional: true
 - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'ownerClaim.copy'
+    timeout: 10000
 - takeScreenshot: screen
 - tapOn:
     id: 'ownerClaim.copy'
     index: 2
-    optional: true
 - takeScreenshot: copied

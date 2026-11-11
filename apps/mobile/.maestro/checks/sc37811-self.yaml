@@ -1,4 +1,4 @@
-# sc-37811: your own page, and Marta's (suspended). Needs ${METRO_URL}.
+# sc-37811: your own page, then back to Members (Marta's is sc37811-marta). Needs ${METRO_URL}.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/members
