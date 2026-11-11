@@ -1043,6 +1043,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events?state=filterOpen',
       },
       {
+        title: 'Events · many filters',
+        what: 'Three types, This week and a host, more than fit on a line',
+        href: '/demo/events?state=manyFilters',
+      },
+      {
         title: 'Events · no match',
         what: 'Search and a filter, both to clear',
         href: '/demo/events?state=noMatch',

@@ -3,6 +3,7 @@ import {
   type EventPhase,
   type EventState,
   type EventType,
+  type EventsFilters,
   type EventsLook,
   NO_EVENTS_FILTERS,
   calledOff,
@@ -989,6 +990,7 @@ export type ListState =
   | 'search'
   | 'filtered'
   | 'filterOpen'
+  | 'manyFilters'
   | 'noMatch'
   | 'noGuests';
 
@@ -1006,6 +1008,7 @@ const LIST_STATES: readonly ListState[] = [
   'search',
   'filtered',
   'filterOpen',
+  'manyFilters',
   'noMatch',
   'noGuests',
 ];
@@ -1029,6 +1032,13 @@ export interface ListStart {
   look: EventsLook | null;
   noGuests: boolean;
 }
+
+/** More picks than Filter has room for at 1280, and more types than the menu's Type row has (sc-39348). */
+export const MANY_FILTERS: EventsFilters = {
+  types: ['wedding', 'birthday', 'gala', 'corporate'],
+  when: { kind: 'week' },
+  hosts: ['Chidi Okafor', 'The Mensah family'],
+};
 
 export function listStart(state: ListState | null): ListStart {
   const rest: ListStart = {
@@ -1076,6 +1086,8 @@ export function listStart(state: ListState | null): ListStart {
       };
     case 'filterOpen':
       return { ...rest, tab: 'upcoming', menu: 'type' };
+    case 'manyFilters':
+      return { ...rest, look: { q: '', filters: MANY_FILTERS } };
     case 'noMatch':
       return {
         ...rest,
@@ -1355,6 +1367,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       { to: '/demo/events?q=lucia', name: 'Searching “lucia”' },
       list('filterOpen', 'The Filter menu, on Type'),
       { to: '/demo/events?type=wedding,birthday', name: 'Filtered by Wedding and Birthday' },
+      list('manyFilters', 'More filters than fit on a line'),
       { to: '/demo/events?q=garden+party&type=wedding', name: 'No match' },
     ],
   },

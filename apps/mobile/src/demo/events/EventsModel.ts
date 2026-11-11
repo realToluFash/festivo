@@ -309,6 +309,7 @@ export const LIST_STATES = [
   'search',
   'filtered',
   'filterOpen',
+  'manyFilters',
   'noMatch',
   'noGuests',
   'events',
@@ -344,6 +345,13 @@ export function withoutTab(
   return events.filter((event) => !gone.has(event.id));
 }
 
+/** More picks than a phone's Filter has room for, and more types than the menu's Type row has (sc-39348). */
+export const MANY_FILTERS: Filters = {
+  types: ['wedding', 'birthday', 'gala'],
+  when: { kind: 'week' },
+  hosts: ['Chidi Okafor'],
+};
+
 export function listStart(state: ListState | null): {
   tab: ListTab;
   typed: string;
@@ -371,6 +379,8 @@ export function listStart(state: ListState | null): {
       return { ...start, typed: 'lucia' };
     case 'filtered':
       return { ...start, filters: { ...NO_FILTERS, types: ['wedding', 'birthday'] } };
+    case 'manyFilters':
+      return { ...start, filters: MANY_FILTERS };
     case 'noMatch':
       return { ...start, typed: 'garden party', filters: { ...NO_FILTERS, types: ['wedding'] } };
     default:
