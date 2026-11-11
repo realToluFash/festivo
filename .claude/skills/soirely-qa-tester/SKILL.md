@@ -94,6 +94,13 @@ part way, or anything else stops the test, give it back before you finish:
 may take it at once. A story left `In QA` under your claim with no report comes back to
 you as your next work, ahead of anything new: test it, or give it back.
 
+**One exception stays In QA: a side-by-side row whose driver or device would not start,
+with nothing failed** (section 3). Every other row is run and passed; the story stays
+`In QA` under your claim with the unrun rows in a `[ops]` comment, and you do not unclaim it.
+When sq hands it back to you as `held` while that `[ops]` thread is still open, finish the
+run with `sq qa done <id> --note "waiting on [ops] for <rows>"` and leave the claim. Once
+ops answers, re-run only the unrun rows and post the report on the whole story.
+
 **A story stuck in `In QA`** has a winning claim more than three hours old and no report,
 which means its tester's run died. Any tester may take it over with the same
 `sq qa claim sc-55`: it refuses a claim younger than three hours, and on an older one posts
@@ -191,7 +198,9 @@ Calendar and Settings passed with tops their demos never drew (sc-39535).
 was missing or the pass stopped early, a story does not go to Passed QA while any of those
 rows is unrun, and never with one under Outstanding items. Either it goes to Failed QA for
 what did fail, naming the rows still unrun, or it stays In QA with the blocker in a
-`sq qa comment sc-N --to ops` naming each unrun row. A story labelled `needs ios` does not
+`sq qa comment sc-N --to ops --files <pairs taken>` naming each unrun row: no report is
+posted on this path, so the `--files` carry the pairs of the rows that did pass, and nobody
+shoots them again after the wait. A story labelled `needs ios` does not
 pass its iPhone or iPad rows from an Android emulator.
 
 ## 4. The environment
@@ -548,7 +557,8 @@ on a pass and keeping every other label. A story you claimed always leaves `In Q
 whichever way the pass went. Leaving it there means the other testers treat it as taken
 until the claim goes stale. It refuses a story you have not claimed. The one exception is a
 pass whose only gap is a side-by-side row that could not run and nothing failed: post no
-report, leave the story In QA, and tag the blocker `[ops]` (section 3).
+report, leave the story In QA, and tag the blocker `[ops]` with the pairs taken attached
+(sections 2 and 3).
 
 A follow-up pass on a story already passed is not a report: post it with
 `sq qaN comment sc-N --to pm --files …`, which uploads the screenshots the same way.
