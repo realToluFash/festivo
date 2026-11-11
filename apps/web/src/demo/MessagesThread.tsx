@@ -17,6 +17,7 @@ import {
   HELD_TOO_LONG,
   MATCHES,
   MW,
+  NOW,
   PARKING,
   READER,
   TICKS,
@@ -414,7 +415,10 @@ function GuestThread({
             {id !== 'kwame' && <DayRule>{guest.day}</DayRule>}
             <GuestBubble
               text={guest.asked}
-              bits={whereBits(guest.where, inbox.arrived === id ? MW.now : guest.at)}
+              bits={whereBits(
+                guest.where,
+                inbox.fresh === id ? MW.now : inbox.arrived === id ? NOW : guest.at,
+              )}
             />
             {id === 'kwame' && <SystemLine glyph="sms">{MW.cameBySms}</SystemLine>}
           </>

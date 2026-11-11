@@ -326,6 +326,11 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       when: 'now',
       arrived: true,
     });
+    expect(sectionsOf(changed(arrived, { kind: 'settle' }), GROUPS).needs[0]).toMatchObject({
+      id: 'lucia',
+      when: '09:41',
+      arrived: false,
+    });
   });
 
   it('counts a guest marked as told in person as reached', () => {

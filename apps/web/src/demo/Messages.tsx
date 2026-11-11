@@ -263,12 +263,12 @@ function Messages({
   }, [arriving, act, tell]);
 
   useEffect(() => {
-    if (inbox.arrived == null) return;
+    if (inbox.fresh == null) return;
 
     const timer = window.setTimeout(() => act({ kind: 'settle' }), WASH_MS);
 
     return () => window.clearTimeout(timer);
-  }, [inbox.arrived, act]);
+  }, [inbox.fresh, act]);
 
   const sendingAnswer = Object.entries(inbox.answers).find(([, answers]) =>
     answers.some((answer) => answer.stage === 'sending'),

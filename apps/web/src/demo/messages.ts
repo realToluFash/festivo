@@ -1482,6 +1482,8 @@ export interface Inbox {
   /** `noticeNotSent`: Lucía's earlier question, whose answer's notice was held 48 hours for credits. */
   heldTooLong?: boolean;
   arrived: ConvoId | null;
+  /** The arrived row's wash and its "now"; the settle clears only this, so the row keeps its place and time. */
+  fresh: ConvoId | null;
   matched: string | null;
   pane: Pane;
   draft: Draft | null;
@@ -1646,6 +1648,7 @@ export function seedOf(state: MessagesState | null): Inbox {
     answers: {},
     balance: BALANCE,
     arrived: null,
+    fresh: null,
     matched: null,
     pane: { kind: 'idle' },
     draft: null,
@@ -1896,6 +1899,7 @@ function guestRow(inbox: Inbox, id: GuestId): Row {
   const done = inbox.done.includes(id);
   const answer = inbox.answers[id]?.at(-1);
   const arrived = inbox.arrived === id;
+  const fresh = inbox.fresh === id;
   const said = answer == null ? guest.asked : filled(MW.you, { text: answer.text });
   const line = [
     whereWord(guest.where),
@@ -1907,10 +1911,10 @@ function guestRow(inbox: Inbox, id: GuestId): Row {
     id,
     title: guest.name,
     line,
-    when: arrived ? MW.now : answer != null ? answer.at : guest.row,
+    when: fresh ? MW.now : (answer?.at ?? (arrived ? NOW : guest.row)),
     lead: { kind: 'guest', initials: guest.initials, unread: !done },
     tag: null,
-    arrived,
+    arrived: fresh,
   };
 }
 
@@ -2309,15 +2313,17 @@ export function changed(inbox: Inbox, change: Change): Inbox {
         present: inbox.present.includes(change.id) ? inbox.present : [...inbox.present, change.id],
         done: inbox.done.filter((id) => id !== change.id),
         arrived: change.id,
+        fresh: change.id,
       };
     case 'settle':
-      return { ...inbox, arrived: null };
+      return { ...inbox, fresh: null };
     case 'done':
       return {
         ...inbox,
         done: [change.id, ...inbox.done.filter((id) => id !== change.id)],
         doneAt: { ...inbox.doneAt, [change.id]: change.at },
         arrived: inbox.arrived === change.id ? null : inbox.arrived,
+        fresh: inbox.fresh === change.id ? null : inbox.fresh,
       };
     case 'waiting':
       return { ...inbox, done: inbox.done.filter((id) => id !== change.id) };
