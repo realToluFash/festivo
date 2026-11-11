@@ -106,7 +106,7 @@ export function CalendarScreen() {
       )}
       {organisation != null && source != null && (
         <CalendarFeed
-          key={organisation.id}
+          key={`feed:${organisation.id}`}
           open={feed}
           onClose={() => setFeed(false)}
           opener={subscribeRef}
