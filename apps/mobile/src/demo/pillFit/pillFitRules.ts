@@ -35,6 +35,10 @@ export function waitingOf(count: string | undefined): 0 | 1 | 2 {
   return count === '0' ? 0 : count === '2' ? 2 : 1;
 }
 
+export function largestOf(size: string | undefined): boolean {
+  return size === 'largest';
+}
+
 /** What the pill draws around its words: its start, the 28 tile, a gap each side of the words, the caret and its end (`OrgPill`). */
 export const PILL_CHROME =
   tokens.spaceSm + 28 + tokens.spaceSm + tokens.spaceSm + 14 + tokens.spacePillEnd;
@@ -47,12 +51,14 @@ export function firstWord(name: string): string {
   return name.trim().split(/\s+/u)[0] ?? '';
 }
 
-/** Beside the tabs the pill draws its words only where the name's first word and the invitation line each fit whole on one line; otherwise it is its tile, as under sc-30410's 120. */
+/** Beside the tabs the pill draws its words only where the name's first word and the invitation line each fit whole on one line; otherwise it is its tile, as under sc-30410's 120. At the accessibility sizes the pill is bare and wraps, as on main, and only the 120 turns it to its tile. */
 export function pillShowsWords(
   room: number,
   widths: { firstWord: number; waitingLine: number | null },
+  largest = false,
 ): boolean {
   if (room < PILL_BESIDE_TABS.fewest) return false;
+  if (largest) return true;
 
   const words = room - PILL_CHROME;
   const waiting = widths.waitingLine == null ? 0 : WAITING_RING + widths.waitingLine;

@@ -1,16 +1,16 @@
+import { roleName } from '@soirely/domain';
 import { type ReactNode, useMemo, useState } from 'react';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BellButton } from '../../components/BellButton.tsx';
 import type { GlyphName } from '../../components/Glyph.tsx';
 import { OrgPill } from '../../components/OrgPill.tsx';
-import { Pill, TYPE } from '../../components/SettingsParts.tsx';
+import { Pill, RoundButton, TYPE } from '../../components/SettingsParts.tsx';
 import { Text } from '../../components/Text.tsx';
 import { type Tab, TABS, WhiteCapsule } from '../../components/TodayCover.tsx';
 import { pillBesideTabs } from '../../kit/frameBand.ts';
-import { useNameLines } from '../../layout/useLayout.ts';
+import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { NavBar } from '../DemoScreen.tsx';
@@ -31,6 +31,7 @@ export interface PillFitStart {
   organisation: PillFitOrganisation;
   waiting: 0 | 1 | 2;
   sending: Sending;
+  largest: boolean;
 }
 
 const ROOMS = [120, 140, 160, 180, 200, 220, 240, 260, 280] as const;
@@ -43,6 +44,8 @@ export function PillFitScreen({ start }: { start: PillFitStart }) {
   const [organisation, setOrganisation] = useState(start.organisation);
   const [waiting, setWaiting] = useState(start.waiting);
   const [sending, setSending] = useState<Sending>(start.sending);
+  const deviceLargest = useAccessibilitySizes();
+  const [largest, setLargest] = useState(start.largest || deviceLargest);
   const words = useMemo(
     () => i18n.cloneInstance({ lng: language, initAsync: false }),
     [i18n, language],
@@ -56,10 +59,26 @@ export function PillFitScreen({ start }: { start: PillFitStart }) {
       >
         <NavBar />
         <I18nextProvider i18n={words}>
-          <PillAndAnswers name={name} waiting={waiting} sending={sending} onSend={setSending} />
+          <PillAndAnswers
+            name={name}
+            waiting={waiting}
+            sending={sending}
+            largest={largest}
+            onSend={setSending}
+          />
         </I18nextProvider>
         <View style={styles.page}>
-          <DemoOnly title="Stand in for the phone’s language and qa’s account. The words are the app’s own; nothing is sent.">
+          <DemoOnly title="Stand in for the phone’s language, its text size and qa’s account. Largest draws the pill as main does at the accessibility sizes, with no tile and the name on up to two lines; the words grow only with the device’s own text size. The words are the app’s own; nothing is sent.">
+            <Choices
+              heading="Text size"
+              options={[
+                { key: 'default', label: 'Default' },
+                { key: 'largest', label: 'Largest' },
+              ]}
+              chosen={largest ? 'largest' : 'default'}
+              onChoose={(key) => setLargest(key === 'largest')}
+              id="size"
+            />
             <Choices
               heading="Language"
               options={LANGUAGES}
@@ -107,15 +126,16 @@ function PillAndAnswers({
   name,
   waiting,
   sending,
+  largest,
   onSend,
 }: {
   name: string;
   waiting: 0 | 1 | 2;
   sending: Sending;
+  largest: boolean;
   onSend: (sending: Sending) => void;
 }) {
   const { t } = useTranslation();
-  const lines = useNameLines();
   const waitingWords = waiting > 0 ? t('invitations.count', { count: waiting }) : null;
   const [widths, setWidths] = useState<Record<string, number>>({});
   const measured = (key: string) => widths[key] ?? 0;
@@ -123,9 +143,11 @@ function PillAndAnswers({
     firstWord: measured('firstWord'),
     waitingLine: waitingWords == null ? null : measured('waiting'),
   };
-  const label = `Organisation: ${name}, your role Owner. Switch organisation${
-    waiting === 0 ? '' : `. ${waiting} ${waiting === 1 ? 'invitation' : 'invitations'} waiting`
-  }`;
+  const role = roleName(t, { seededAs: 'owner', name: null });
+  const label =
+    waiting === 0
+      ? t('switcher.labelSwitch', { name, role })
+      : t('switcher.labelSwitchWaiting', { name, role, count: waiting });
   const pill = (room: number) => (
     <OrgPill
       id="org-qa"
@@ -133,8 +155,10 @@ function PillAndAnswers({
       waiting={waitingWords}
       label={label}
       onPress={() => undefined}
-      lines={lines}
-      tileAlone={!pillShowsWords(room, pillWidths)}
+      bare={largest}
+      wrap={largest}
+      lines={largest ? 2 : 1}
+      tileAlone={!pillShowsWords(room, pillWidths, largest)}
       testID={`demo.pillFit.pill.${room}`}
     />
   );
@@ -158,8 +182,9 @@ function PillAndAnswers({
       <View style={styles.page}>
         <Heading>Where it turns to its tile</Heading>
         <Text size={TYPE.small} style={styles.secondary}>
-          The room beside the tabs, from sc-30410’s 120 up. It draws its words where the name’s
-          first word and the invitation line each fit whole; the name takes one line and ends in …
+          {largest
+            ? 'The room beside the tabs, from sc-30410’s 120 up. At the largest sizes it is as on main: no tile, the name on up to two lines, and its tile alone only under 120.'
+            : 'The room beside the tabs, from sc-30410’s 120 up. It draws its words where the name’s first word and the invitation line each fit whole; the name takes one line and ends in …'}
         </Text>
         {ROOMS.map((room) => (
           <View key={room} style={styles.ladderRow}>
@@ -197,7 +222,7 @@ function HeaderRow({ pill }: { pill: (room: number) => ReactNode }) {
           {pill(beside?.maxWidth ?? 0)}
         </View>
         <View style={styles.fill} />
-        <BellButton />
+        <RoundButton glyph="bell" label={t('notifications.bell')} onPress={() => undefined} />
         <View style={styles.capsuleAt} pointerEvents="box-none">
           <View onLayout={(event) => setTabsWidth(event.nativeEvent.layout.width)}>
             <WhiteCapsule

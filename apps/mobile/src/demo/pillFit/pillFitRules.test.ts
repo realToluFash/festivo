@@ -6,6 +6,7 @@ import {
   answerWidth,
   firstWord,
   languageOf,
+  largestOf,
   organisationOf,
   PILL_CHROME,
   sendingOf,
@@ -29,6 +30,11 @@ describe('the organisation pill beside the tabs (sc-38149)', () => {
   it('turns to its tile where the first word would have to break', () => {
     expect(pillShowsWords(PILL_CHROME + 149, { firstWord: 150, waitingLine: null })).toBe(false);
     expect(pillShowsWords(PILL_CHROME + 150, { firstWord: 150, waitingLine: null })).toBe(true);
+  });
+
+  it('keeps main’s rule at the accessibility sizes: its tile under 120 only', () => {
+    expect(pillShowsWords(119, { firstWord: 10, waitingLine: null }, true)).toBe(false);
+    expect(pillShowsWords(120, { firstWord: 200, waitingLine: 200 }, true)).toBe(true);
   });
 
   it('measures the first word, since a name breaks only between words', () => {
@@ -60,5 +66,7 @@ describe('the board’s choices', () => {
     expect(waitingOf('0')).toBe(0);
     expect(sendingOf('decline')).toBe('decline');
     expect(sendingOf('yes')).toBeNull();
+    expect(largestOf('largest')).toBe(true);
+    expect(largestOf(undefined)).toBe(false);
   });
 });

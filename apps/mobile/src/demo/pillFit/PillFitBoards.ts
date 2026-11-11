@@ -27,6 +27,11 @@ export const PILL_FIT_BOARDS: readonly PillFitBoard[] = [
     href: '/demo/pill-fit?lang=fr&org=long',
   },
   {
+    title: 'French · Largest text size',
+    what: 'As on main: no tile, the name on up to two lines, the tile alone only under 120',
+    href: '/demo/pill-fit?lang=fr&size=largest',
+  },
+  {
     title: 'French · Decline sending',
     what: 'Refus en cours… whole; the two answers already stood on two rows',
     href: '/demo/pill-fit?lang=fr&sending=decline',
