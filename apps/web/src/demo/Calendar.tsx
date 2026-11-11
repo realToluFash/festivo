@@ -6,6 +6,7 @@ import { useSearchParams } from 'react-router';
 
 import { CalendarBoard } from '../components/CalendarBoard.tsx';
 import { CalendarSubscribe, type FeedSource } from '../components/CalendarSubscribe.tsx';
+import { DemoOffline } from './DemoOffline.tsx';
 import {
   type CalendarFrame,
   type CalendarLens,
@@ -197,6 +198,7 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
   return (
     <CalendarFrameContext value={FRAME}>
       <div className="desk-page cal-page">
+        <DemoOffline on={start.offline} />
         <TopWithBell subscribe={subscribe} onSubscribe={() => setFeed('open')} tell={tell} />
         <Switched />
         {start.none ? (

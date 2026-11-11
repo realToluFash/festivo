@@ -1,4 +1,5 @@
 import { DemoBell } from './DemoBell.tsx';
+import { DemoOffline } from './DemoOffline.tsx';
 import { contactActions, initials, primaryOf, zoneLabel } from '@soirely/domain';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -99,6 +100,7 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
   return (
     <div className="desk-page">
       <div className="desk-column">
+        <DemoOffline />
         <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
         <PersonCard
           initials={initials(name)}

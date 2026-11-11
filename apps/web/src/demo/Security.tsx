@@ -1,4 +1,5 @@
 import { DemoBell } from './DemoBell.tsx';
+import { DemoOffline } from './DemoOffline.tsx';
 import { type Provider as ApiProvider } from '@soirely/api-client';
 import { formattingLocale } from '@soirely/domain';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -176,6 +177,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
   return (
     <div className="desk-page">
       <div ref={column} className="desk-column">
+        <DemoOffline />
         <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
         {page.factor === 'loaded' ? (
           <ShieldCard

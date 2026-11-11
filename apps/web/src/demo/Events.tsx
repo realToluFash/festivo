@@ -1,4 +1,5 @@
 import { DemoBell } from './DemoBell.tsx';
+import { OfflineBox } from './DemoOffline.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import {
   type EventsLook,
@@ -246,13 +247,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
   return (
     <div className="desk-page">
       <div className="ev-column">
-        {offline && (
-          <div className="ev-offline" role="status">
-            <span className="ev-offline-mark" aria-hidden="true" />
-            <span className="today-grow">{W.offline('09:32')}</span>
-            <TextAction label={W.retry} onClick={() => setOffline(false)} />
-          </div>
-        )}
+        {offline && <OfflineBox onRetry={() => setOffline(false)} />}
         <div>
           <ListTop tell={tell} />
           {summary != null && <p className="desk-line">{summary}</p>}

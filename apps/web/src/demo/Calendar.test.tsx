@@ -109,6 +109,7 @@ const SEEN: Record<string, () => unknown> = {
     screen.queryByRole('link', { name: 'Create an event' }) == null,
   loading: () => screen.getByRole('status', { name: '' }),
   failed: () => screen.getByRole('alert'),
+  offline: () => screen.getByText('Offline · as of 09:32'),
   subscribe: () => screen.getByRole('dialog', { name: F.open }),
   subscribeRefused: () => screen.getByText(F.copyRefused),
   subscribeLoading: () => screen.getByText('Getting your link…'),

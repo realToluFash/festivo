@@ -119,6 +119,7 @@ export const CALENDAR_STATES = [
   'noneAsk',
   'loading',
   'failed',
+  'offline',
   'subscribe',
   'subscribeRefused',
   'subscribeLoading',
@@ -153,6 +154,7 @@ export interface CalendarStart {
   reunion: boolean;
   none: boolean;
   asks: boolean;
+  offline: boolean;
   load: 'loading' | 'failed' | 'loaded';
   feed: Feed | null;
   read: 'loaded' | 'waiting' | 'unreadable';
@@ -168,6 +170,7 @@ const AT_REST: CalendarStart = {
   reunion: false,
   none: false,
   asks: false,
+  offline: false,
   read: 'loaded',
   load: 'loaded',
   feed: null,
@@ -185,6 +188,7 @@ const STARTS: Record<CalendarState, Partial<CalendarStart>> = {
   emptyMonth: { at: '2027-02-01' },
   none: { none: true },
   noneAsk: { none: true, asks: true },
+  offline: { offline: true },
   loading: { load: 'loading' },
   failed: { load: 'failed' },
   subscribe: { feed: 'open' },
@@ -242,6 +246,7 @@ export const CALENDAR_PAGES: readonly { name: string; states: readonly DemoLink[
       at('noneAsk', 'No events yet, without Create events'),
       at('loading', 'Loading'),
       at('failed', 'Failed, with Try again'),
+      at('offline', 'Offline, the amber box above the title'),
     ],
   },
   {
