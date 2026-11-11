@@ -149,7 +149,6 @@ function bodyHalf(it: Item): Point {
   return isCircle(it) ? { x: it.d / 2, y: it.d / 2 } : { x: it.w / 2, y: it.l / 2 };
 }
 
-/** Where a chosen table's handles may not go: past the room's walls, or onto another item's chairs. */
 export interface Plan {
   room: Room;
   items: readonly Item[];
