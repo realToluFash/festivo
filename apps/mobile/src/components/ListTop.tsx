@@ -88,8 +88,6 @@ type PortraitRowProps = {
   /** The labels the tabs draw, measured to choose their one size. */
   tabLabels: readonly string[];
   renderTabs: (labelSize: number) => ReactNode;
-  /** False leaves a pill that cannot turn to its tile at its own width. */
-  pillFits?: boolean;
   /** Centres the tabs in the row, where a screen out of an event has always had them. */
   tabsCentred?: boolean;
 };
@@ -100,13 +98,12 @@ export function PortraitRow({
   bell,
   tabLabels,
   renderTabs,
-  pillFits = true,
   tabsCentred = false,
 }: PortraitRowProps) {
   const [rowWidth, setRowWidth] = useState(0);
   const [tabsWidth, setTabsWidth] = useState(0);
   const { labelSize, givesWay, measure } = useCapsuleLabels(tabLabels, rowWidth);
-  const besideTabs = pillFits ? pillBesideTabs(rowWidth, tabsWidth) : null;
+  const besideTabs = pillBesideTabs(rowWidth, tabsWidth);
   const drawn = renderPill(besideTabs?.maxWidth, givesWay);
 
   return (
