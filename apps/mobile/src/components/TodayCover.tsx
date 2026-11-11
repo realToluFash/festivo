@@ -903,6 +903,11 @@ export function tabBarFoot(bottomInset: number): number {
   return Math.max(bottomInset - tokens.spaceXxs, tokens.spaceLg);
 }
 
+/** How far the phone's tab bar and its fade reach up from the screen's foot. */
+export function phoneTabBarClearance(bottomInset: number): number {
+  return tabBarFoot(bottomInset) + PHONE_TAB_BAR;
+}
+
 export function PhoneTabBar({
   bottom,
   onTab,

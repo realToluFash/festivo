@@ -15,7 +15,6 @@ import { PausedRow } from './PauseEvent.tsx';
 import { Notice } from './Notice.tsx';
 import { Placeholder } from './Placeholder.tsx';
 import { StatusChip } from './StatusChip.tsx';
-import { StepMark } from './StepMark.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { rereadOrganisations } from '../signedIn.ts';
@@ -53,56 +52,6 @@ function EventType({ event, size }: { event: OrganisationEvent; size: number }) 
     <Text size={size} muted>
       {t(`eventTypes.${event.type}`)}
     </Text>
-  );
-}
-
-const FIRST_RUN_STEPS = [
-  'eventsScreen.firstRunStepName',
-  'eventsScreen.firstRunStepDefaults',
-  'eventsScreen.firstRunStepOpen',
-] as const;
-
-export function NoEvents({
-  kind,
-  createLabel,
-  onCreate,
-}: {
-  kind: LayoutKind;
-  createLabel?: string;
-  /** Absent for a role without Create events, which reads where events will come from. */
-  onCreate?: (() => void) | undefined;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <View style={[cardFrame(kind), styles.across]} testID="events.firstRun">
-      <Text size={tokens.typeRowTitle.size} weight="semibold" accessibilityRole="header">
-        {t('eventsScreen.firstRunTitle')}
-      </Text>
-      <View role="list" style={styles.stack}>
-        {FIRST_RUN_STEPS.map((step, index) => (
-          <View key={step} role="listitem" style={styles.firstRunStep}>
-            <StepMark step={index + 1} state="later" />
-            <Text size={tokens.typeBody.size} style={styles.stepText}>
-              {t(step)}
-            </Text>
-          </View>
-        ))}
-      </View>
-      {onCreate == null ? (
-        <Notice
-          tone="quiet"
-          mark={tokens.marks.info.glyph}
-          body={t('eventsScreen.firstRunAskOwner')}
-        />
-      ) : (
-        <PrimaryButton
-          label={createLabel ?? t('eventsScreen.firstRunCreate')}
-          onPress={onCreate}
-          testID="events.none.new"
-        />
-      )}
-    </View>
   );
 }
 
@@ -237,9 +186,6 @@ export function EventNotFound({ onBack }: { onBack: () => void }) {
 
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
-  across: { maxWidth: '100%' },
-  firstRunStep: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
-  stepText: { flex: 1 },
   pageHead: { gap: tokens.spaceXs },
   top: { gap: tokens.spaceSm },
 });

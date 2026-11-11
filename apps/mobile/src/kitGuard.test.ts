@@ -1806,17 +1806,17 @@ describe('a notice answering a send comes into view (sc-24496)', () => {
   it.each([
     ['src/components/FailureLine.tsx', ['words={words}']],
     ['app/join/[token].tsx', ['words={`${failedTitle}']],
-    ['src/components/EventsScreen.tsx', ["words={t('eventDelete.deleted'"]],
   ])('%s brings each in through AnswerInView', (file, words) => {
     const text = readFileSync(join(...file.split('/')), 'utf8');
 
     for (const said of words) expect(answersInView(text, said), said).toBe(true);
   });
 
-  it('mounts a new notice for each event deleted, so a second one comes in too', () => {
+  it('says a delete in the toast at the foot, as the demo does (sc-39471)', () => {
     const text = readFileSync(join('src', 'components', 'EventsScreen.tsx'), 'utf8');
 
-    expect(text).toContain('<AnswerInView key={deleted}>');
+    expect(text).toMatch(/<PageToast\s+words=\{t\('eventDelete\.deleted'/u);
+    expect(text).not.toContain('AnswerInView');
   });
 
   it('notices a notice left where it shows', () => {

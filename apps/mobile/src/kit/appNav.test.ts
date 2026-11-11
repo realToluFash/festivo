@@ -199,6 +199,12 @@ describe('A screen whose top scrolls places it, and the band is gone (sc-39471)'
     expect(source(join(SRC, 'components', 'SettingsList.tsx'))).toMatch(/<FrameTop\b/u);
   });
 
+  it('leaves the body its foot room while a paused or overdue screen stands in for the list', () => {
+    expect(source(join(SRC, 'components', 'AppFrame.tsx'))).toMatch(
+      /const underTabs =\s*floatingTabs && listUnderTabs && standIn == null \?/u,
+    );
+  });
+
   it('draws no band behind the frame', () => {
     expect(source(join(SRC, 'components', 'AppFrame.tsx'))).not.toMatch(/colorHeader/u);
   });

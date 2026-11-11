@@ -11,6 +11,7 @@ import {
 import { type Href, router } from 'expo-router';
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -31,6 +32,7 @@ import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { layoutOf } from './settingsShell.ts';
 import { Pill } from './SettingsParts.tsx';
 import type { TextHandle } from './Text.tsx';
+import { useUnderTabs } from './underTabs.ts';
 
 const KEPT = 'soirely.calendar';
 
@@ -71,6 +73,7 @@ export function CalendarScreen() {
     <AppFrame
       current="calendar"
       top="stays"
+      listUnderTabs
       title={t('calendar.title')}
       titleRef={title}
       offline={offline.stale}
@@ -135,6 +138,8 @@ function CalendarOf({
   onOffline: (offline: ScreenOffline) => void;
 }) {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const underTabs = useUnderTabs();
   const now = useServerNow();
   const locale = dateLocale();
   const firstDay = firstDayOfWeek(locale);
@@ -208,7 +213,7 @@ function CalendarOf({
         locale={locale}
         firstDay={firstDay}
         kept={KEPT}
-        bottom={tokens.space3xl}
+        bottom={kind === 'phone' ? underTabs + tokens.space3xl : insets.bottom + tokens.space3xl}
         onOpen={openItem}
         onRetry={retry}
         onCreate={creates ? () => router.push('/events/new') : undefined}

@@ -72,16 +72,17 @@ import { Sheet } from './Sheet.tsx';
 import type { GlyphName } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
 import {
-  PHONE_TAB_BAR,
   type Tab,
   TABS,
   TabBar as PhoneTabs,
   TabBarFade,
   tabBarFoot,
+  phoneTabBarClearance,
   WhiteCapsule,
 } from './TodayCover.tsx';
 import { OrgPill as WhitePill } from './OrgPill.tsx';
 import { usePillFit } from './usePillFit.tsx';
+import { UnderTabsProvider } from './underTabs.ts';
 import {
   SidebarBack,
   SidebarColumn,
@@ -247,6 +248,7 @@ export function AppFrame({
   besideTitle,
   besideBack,
   top,
+  listUnderTabs = false,
   offline = null,
   children,
 }: {
@@ -278,12 +280,14 @@ export function AppFrame({
   backInBody?: boolean;
   children: ReactNode;
 } & (
-  | { top?: undefined; primary?: undefined }
+  | { top?: undefined; primary?: undefined; listUnderTabs?: undefined }
   | {
       /** The top as the screen's own demo draws it: `scrolls` with the page, which places `FrameTop` at the head of its scroll, or `stays` above it (sc-39471). */
       top: 'scrolls' | 'stays';
       /** The screen's one primary, at the end of its top's title row; only a screen with its own top has one (sc-39471). */
       primary?: TopPrimaryProps | undefined;
+      /** On a phone the list runs on under the tab bar and its fade, and ends clear of them (sc-39471). */
+      listUnderTabs?: boolean;
     }
 )) {
   const { t } = useTranslation();
@@ -444,6 +448,23 @@ export function AppFrame({
   const floatingTabs = framed && kind === 'phone' && inEvent == null;
   const sidebar = framed && kind === 'tabletLandscape';
   const ownTop = framed && top != null && standIn == null;
+  const underTabs =
+    floatingTabs && listUnderTabs && standIn == null ? phoneTabBarClearance(insets.bottom) : 0;
+  const switchedNotice =
+    switched == null ? null : created?.takesFocus === true ? (
+      <View style={ownTop ? styles.switchedUnderTitle : styles.created}>
+        <Notice
+          tone="done"
+          mark={tokens.marks.done.glyph}
+          body={switched}
+          wordsRef={createdWords}
+        />
+      </View>
+    ) : (
+      <ReadOut style={ownTop ? styles.switchedUnderTitle : styles.created} words={switched}>
+        <Notice tone="done" mark={tokens.marks.done.glyph} body={switched} />
+      </ReadOut>
+    );
   const header: FrameHeaderProps = {
     current,
     kind,
@@ -463,6 +484,7 @@ export function AppFrame({
     underTitle: standIn == null ? underTitle : undefined,
     besideTitle: standIn == null ? besideTitle : undefined,
     besideBack: standIn == null || besideBack === undefined ? besideBack : null,
+    switched: ownTop ? switchedNotice : null,
   };
 
   return (
@@ -495,26 +517,13 @@ export function AppFrame({
           <View
             style={[
               styles.body,
-              floatingTabs && {
-                paddingBottom: tabBarFoot(insets.bottom) + PHONE_TAB_BAR + tokens.spaceMd,
-              },
+              floatingTabs &&
+                underTabs === 0 && {
+                  paddingBottom: phoneTabBarClearance(insets.bottom) + tokens.spaceMd,
+                },
             ]}
           >
-            {switched != null &&
-              (created?.takesFocus === true ? (
-                <View style={styles.created}>
-                  <Notice
-                    tone="done"
-                    mark={tokens.marks.done.glyph}
-                    body={switched}
-                    wordsRef={createdWords}
-                  />
-                </View>
-              ) : (
-                <ReadOut style={styles.created} words={switched}>
-                  <Notice tone="done" mark={tokens.marks.done.glyph} body={switched} />
-                </ReadOut>
-              ))}
+            {!ownTop && switchedNotice}
             <OpenSwitcher.Provider value={openSwitcher}>
               <StartOrganisation.Provider value={startOrganisation}>
                 <HideBack.Provider value={backRow.hide}>
@@ -535,7 +544,7 @@ export function AppFrame({
                     ) : (
                       <FrameSwitch.Provider value={switchAnswer}>
                         <ScrolledTop.Provider value={ownTop && top === 'scrolls' ? header : null}>
-                          {children}
+                          <UnderTabsProvider value={underTabs}>{children}</UnderTabsProvider>
                         </ScrolledTop.Provider>
                       </FrameSwitch.Provider>
                     )}
@@ -652,6 +661,8 @@ interface FrameHeaderProps {
   waiting: number;
   onSwitch: (() => void) | undefined;
   pill: Ref<ViewInstance>;
+  /** "Now working in …", under the title of a screen with its own top (sc-39471). */
+  switched: ReactNode;
 }
 
 const ScrolledTop = createContext<FrameHeaderProps | null>(null);
@@ -728,6 +739,7 @@ function ScreenTop({
   underTitle,
   besideTitle,
   besideBack,
+  switched,
   stays = false,
   style,
   rowStyle,
@@ -761,7 +773,12 @@ function ScreenTop({
       {kind === 'tabletLandscape' && <BellButton />}
     </View>
   );
-  const under = underTitle != null && <View style={styles.underTop}>{underTitle}</View>;
+  const under = (
+    <>
+      {underTitle != null && <View style={styles.underTop}>{underTitle}</View>}
+      {switched}
+    </>
+  );
 
   if (kind === 'phone')
     return (
@@ -1510,6 +1527,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   created: { paddingTop: tokens.spaceLg, paddingHorizontal: tokens.spaceXl },
+  switchedUnderTitle: { marginTop: 18 },
 });
 
 let currenciesRead: Currencies | null = null;
