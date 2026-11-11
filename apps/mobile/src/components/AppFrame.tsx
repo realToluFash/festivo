@@ -106,8 +106,9 @@ import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text, TitleCap } from './Text.tsx';
 import { Title, useWholeWords } from './Title.tsx';
-import { PAGE_TITLE, TOP_TITLE, pageTitle, topTitle } from './topTitle.ts';
+import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 import { TopPrimary, type TopPrimaryProps } from './TopPrimary.tsx';
+import { ListTop, PortraitTop } from './ListTop.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 import { type EdgeSwipeHandlers, EdgeSwipeStrip } from './useEdgeSwipeBack.ts';
@@ -687,39 +688,26 @@ export function FrameTop({
 function FixedTop({ kind, current, organisation, waiting, onSwitch, pill }: FrameHeaderProps) {
   const insets = useSafeAreaInsets();
   const tabs = useFrameTabs(current, organisation);
-  const [rowWidth, setRowWidth] = useState(0);
-  const [tabsWidth, setTabsWidth] = useState(0);
-  const besideTabs = pillBesideTabs(rowWidth, tabsWidth);
 
   if (kind === 'phone') return <View style={{ height: insets.top }} />;
   if (kind !== 'tabletPortrait') return null;
 
   return (
-    <View style={[styles.portraitTop, { paddingTop: insets.top + tokens.spaceMd }]}>
-      <View
-        style={styles.titleRow}
-        onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}
-      >
-        {organisation != null && (
-          <View style={[styles.shrink, besideTabs != null && { maxWidth: besideTabs.maxWidth }]}>
-            <OrgPill
-              organisation={organisation}
-              waiting={waiting}
-              onSwitch={onSwitch}
-              room={besideTabs?.maxWidth}
-              ref={pill}
-            />
-          </View>
-        )}
-        <View style={styles.fill} />
-        <BellButton />
-        <View style={styles.capsuleAt} pointerEvents="box-none">
-          <View onLayout={(event) => setTabsWidth(event.nativeEvent.layout.width)}>
-            <WhiteCapsule {...tabs} />
-          </View>
-        </View>
-      </View>
-    </View>
+    <PortraitTop
+      renderPill={(room) =>
+        organisation != null && (
+          <OrgPill
+            organisation={organisation}
+            waiting={waiting}
+            onSwitch={onSwitch}
+            room={room}
+            ref={pill}
+          />
+        )
+      }
+      bell={<BellButton />}
+      tabs={<WhiteCapsule {...tabs} />}
+    />
   );
 }
 
@@ -756,15 +744,44 @@ function ScreenTop({
         <Back label={back.label} onPress={back.onPress} off={back.off} testID="frame.back" />
       </BesideBack>
     );
+  const under = (
+    <>
+      {underTitle != null && <View style={styles.underTop}>{underTitle}</View>}
+      {switched}
+    </>
+  );
+  const staysStyle =
+    stays &&
+    (kind === 'phone'
+      ? styles.staysPhone
+      : kind === 'tabletPortrait'
+        ? styles.staysPortrait
+        : styles.staysLandscape);
+
+  if (!page)
+    return (
+      <ListTop
+        kind={kind}
+        title={title}
+        titleRef={read}
+        pill={
+          organisation != null && (
+            <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
+          )
+        }
+        bell={<BellButton />}
+        beside={besideTitle}
+        primary={primary}
+        under={under}
+        style={[staysStyle, style]}
+        rowStyle={rowStyle}
+      />
+    );
+
   const titleRow = (
-    <View style={[styles.topRow, page && styles.pageRow, rowStyle]}>
+    <View style={[styles.topRow, styles.pageRow, rowStyle]}>
       <View style={styles.fill}>
-        <Title
-          size={page ? PAGE_TITLE : TOP_TITLE}
-          accessibilityRole="header"
-          ref={read}
-          style={page ? pageTitle : topTitle}
-        >
+        <Title size={PAGE_TITLE} accessibilityRole="header" ref={read} style={pageTitle}>
           {title}
         </Title>
       </View>
@@ -773,34 +790,12 @@ function ScreenTop({
       {kind === 'tabletLandscape' && <BellButton />}
     </View>
   );
-  const under = (
-    <>
-      {underTitle != null && <View style={styles.underTop}>{underTitle}</View>}
-      {switched}
-    </>
-  );
 
   if (kind === 'phone')
     return (
-      <View style={[stays && styles.staysPhone, style]}>
-        <View style={[styles.titleRow, !page && styles.pillRow]}>
-          {page ? (
-            <View style={styles.fill}>{backView}</View>
-          ) : (
-            <>
-              {organisation != null && (
-                <View style={styles.shrink}>
-                  <OrgPill
-                    organisation={organisation}
-                    waiting={waiting}
-                    onSwitch={onSwitch}
-                    ref={pill}
-                  />
-                </View>
-              )}
-              <View style={styles.fill} />
-            </>
-          )}
+      <View style={[staysStyle, style]}>
+        <View style={styles.titleRow}>
+          <View style={styles.fill}>{backView}</View>
           <BellButton />
         </View>
         {titleRow}
@@ -809,12 +804,7 @@ function ScreenTop({
     );
 
   return (
-    <View
-      style={[
-        stays && (kind === 'tabletPortrait' ? styles.staysPortrait : styles.staysLandscape),
-        style,
-      ]}
-    >
+    <View style={[staysStyle, style]}>
       {kind === 'tabletPortrait' && backView}
       {titleRow}
       {under}
@@ -1418,8 +1408,6 @@ const styles = StyleSheet.create({
   secondaryInk: { color: tokens.colorInkSecondary },
   centred: { textAlign: 'center' },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
-  portraitTop: { paddingHorizontal: tokens.space3xl, paddingBottom: tokens.spaceXxs },
-  pillRow: { marginBottom: tokens.spaceSm },
   topRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   pageRow: { minHeight: 0, paddingTop: 14 },
   underTop: { marginTop: tokens.spaceHair },

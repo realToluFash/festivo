@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { type BoardLoad, CalendarBoard, type ShowParts } from '../../components/CalendarBoard.tsx';
-import { type ShowChoice, SubscribeRound } from '../../components/CalendarControls.tsx';
+import { type ShowChoice, Subscribe } from '../../components/CalendarControls.tsx';
 import {
   DayRow,
   MilestoneLead,
@@ -19,7 +19,6 @@ import {
 } from '../../components/CalendarDay.tsx';
 import { CalendarFeed, type FeedSource } from '../../components/CalendarSubscribe.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { Text } from '../../components/Text.tsx';
 import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import type { Item as ProductItem } from '../../kit/calendar.ts';
 import { tokens } from '../../theme/tokens.ts';
@@ -45,10 +44,9 @@ import {
   startOf,
 } from './CalendarModel.ts';
 import { CW } from './CalendarWords.ts';
-import { useShell } from '../../components/settingsShell.ts';
-import { Pill } from '../../components/SettingsParts.tsx';
+import { kindOf, useShell } from '../../components/settingsShell.ts';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
-import { TOP_TITLE, topTitle } from '../../components/topTitle.ts';
+import { ListTop } from '../../components/ListTop.tsx';
 
 /** The demo keeps its own place, so it never moves the real Calendar's. */
 const KEPT = 'soirely.demo.calendar';
@@ -163,32 +161,13 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
   const bottom = phone ? foot + PHONE_TAB_BAR + tokens.space3xl : insets.bottom + tokens.space3xl;
 
   const title = (
-    <View style={styles.titleRow}>
-      <Text
-        size={TOP_TITLE}
-        weight="bold"
-        accessibilityRole="header"
-        maxFontSizeMultiplier={44 / TOP_TITLE}
-        style={[styles.grow, topTitle]}
-      >
-        {t('calendar.title')}
-      </Text>
-      {phone ? (
-        <SubscribeRound onPress={subscribe} ref={subscribeRef} />
-      ) : (
-        <Pill
-          label={t('calendarFeed.open')}
-          kind="secondary"
-          glyph="calendar"
-          height={tokens.sizeHit}
-          full={false}
-          onPress={subscribe}
-          ref={subscribeRef}
-          testID="calendarFeed.open"
-        />
-      )}
-      {shell.layout === 'landscape' && <Bell tell={tell} />}
-    </View>
+    <ListTop
+      kind={kindOf(shell.layout)}
+      title={t('calendar.title')}
+      pill={<OrgPill />}
+      bell={<Bell tell={tell} />}
+      beside={<Subscribe phone={phone} onPress={subscribe} ref={subscribeRef} />}
+    />
   );
 
   const board = (
@@ -258,14 +237,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
   return (
     <View style={styles.page}>
       <View style={{ height: insets.top }} />
-      <View style={styles.phone}>
-        <View style={styles.orgRow}>
-          <OrgPill />
-          <View style={styles.grow} />
-          <Bell tell={tell} />
-        </View>
-        {board}
-      </View>
+      <View style={styles.phone}>{board}</View>
       <TabBarFade />
       <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Calendar" />
       {feedPanel}
@@ -274,12 +246,9 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
 }
 
 const styles = StyleSheet.create({
-  grow: { flex: 1, minWidth: 0 },
   page: { flex: 1, backgroundColor: tokens.colorCard },
   phone: { flex: 1, paddingTop: tokens.spaceXxs, paddingHorizontal: tokens.spaceXxl },
   portrait: { flex: 1, paddingTop: 26, paddingHorizontal: tokens.space5xl },
   pane: { flex: 1, paddingTop: 26, paddingHorizontal: 30 },
-  orgRow: { flexDirection: 'row', alignItems: 'center', marginBottom: tokens.spaceSm },
-  titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   when: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
 });

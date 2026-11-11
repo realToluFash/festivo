@@ -359,7 +359,7 @@ describe('The bell in [fd] (sc-23233)', () => {
   it('draws the bell as the demos do: a dot while anything is unread, the count in its name', () => {
     const button = source(join(SRC, 'components', 'BellButton.tsx'));
 
-    expect(button).toMatch(/<RoundButton\s+glyph="bell"/u);
+    expect(button).toMatch(/<RoundButton\s+ref=\{ref\}\s+glyph="bell"/u);
     expect(button).toMatch(/t\('notifications\.bellUnread', \{ count: unread \}\)/u);
     expect(button).toMatch(/dot=\{unread > 0\}/u);
   });

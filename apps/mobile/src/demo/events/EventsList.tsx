@@ -28,6 +28,7 @@ import { EventCard, EventThumb } from '../../components/EventCard.tsx';
 import {
   EventsEmptyTab,
   EventsFirstRun,
+  EventsSummaryLine,
   EventsTabs,
   Said,
   SaidLine,
@@ -62,7 +63,7 @@ import {
 } from './EventsModel.ts';
 import { CLOCKS, EVENTS, EVENT_OF_KEY, OFFLINE_AS_OF, READER_ZONE } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
-import { useShell } from '../../components/settingsShell.ts';
+import { kindOf, useShell } from '../../components/settingsShell.ts';
 import {
   type Anchor,
   anchorUnder,
@@ -75,8 +76,7 @@ import {
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { EventsFailed } from '../../components/Events.tsx';
-import { TOP_TITLE, topTitle } from '../../components/topTitle.ts';
-import { TopPrimary } from '../../components/TopPrimary.tsx';
+import { ListTop } from '../../components/ListTop.tsx';
 
 const SEARCH_PAUSE_MS = 300;
 const MENU_AFTER_MS = 700;
@@ -188,15 +188,24 @@ export function EventsList({
     ),
   });
 
+  const summary = first || loading || failed ? null : summaryLine(home);
   const top = (
     <>
       <ListTop
-        summary={first || loading || failed ? null : summaryLine(home)}
-        wide={wide}
-        bell={shell.layout !== 'portrait'}
-        org={shell.layout === 'phone'}
-        onNew={asks ? null : () => shell.tell(say.ownDesign(W.newEvent))}
-        onBell={shell.tell}
+        kind={kindOf(shell.layout)}
+        title={W.events}
+        pill={<OrgPill />}
+        bell={<Bell tell={shell.tell} />}
+        primary={
+          asks
+            ? undefined
+            : {
+                label: W.newEvent,
+                onPress: () => shell.tell(say.ownDesign(W.newEvent)),
+                testID: 'events.new',
+              }
+        }
+        under={summary != null && <EventsSummaryLine words={summary} />}
       />
       {!first && !loading && !failed && <GuestTiles counts={guests} locale={locale} />}
       <SwitchedNotice />
@@ -435,54 +444,6 @@ function ListFrame({
   );
 }
 
-function ListTop({
-  summary,
-  wide,
-  bell,
-  org,
-  onNew,
-  onBell,
-}: {
-  summary: string | null;
-  wide: boolean;
-  bell: boolean;
-  org: boolean;
-  /** Absent for a role without Create events. */
-  onNew: (() => void) | null;
-  onBell: (words: string) => void;
-}) {
-  return (
-    <View>
-      {org && (
-        <View style={styles.orgRow}>
-          <OrgPill />
-          <View style={styles.grow} />
-          {bell && <Bell tell={onBell} />}
-        </View>
-      )}
-      <View style={styles.titleRow}>
-        <Text
-          size={TOP_TITLE}
-          weight="bold"
-          accessibilityRole="header"
-          style={[styles.grow, topTitle]}
-        >
-          {W.events}
-        </Text>
-        {onNew != null && (
-          <TopPrimary label={W.newEvent} onPress={onNew} wide={wide} testID="events.new" />
-        )}
-        {bell && !org && <Bell tell={onBell} />}
-      </View>
-      {summary != null && (
-        <Text size={15} weight="medium" style={[styles.secondary, styles.figures, styles.summary]}>
-          {summary}
-        </Text>
-      )}
-    </View>
-  );
-}
-
 function GuestTiles({ counts, locale }: { counts: GuestCounts; locale: string }) {
   return (
     <View style={styles.guests} testID="events.guests">
@@ -561,9 +522,6 @@ const styles = StyleSheet.create({
   figures: { fontVariant: ['tabular-nums'] },
   blocks: { gap: 18 },
   pane: { paddingTop: 26, paddingHorizontal: 30, paddingBottom: tokens.space6xl * 2, gap: 18 },
-  orgRow: { flexDirection: 'row', alignItems: 'center', marginBottom: tokens.spaceSm },
-  titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
-  summary: { marginTop: tokens.spaceHair, lineHeight: 15 * 1.45 },
   guests: { flexDirection: 'row', gap: tokens.spaceMd },
   guest: {
     flex: 1,

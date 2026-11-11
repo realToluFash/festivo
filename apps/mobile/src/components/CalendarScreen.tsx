@@ -25,12 +25,11 @@ import { rereadOrganisations, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
 import { CalendarBoard, type ShowParts } from './CalendarBoard.tsx';
-import { type ShowChoice, SubscribeRound } from './CalendarControls.tsx';
+import { type ShowChoice, Subscribe } from './CalendarControls.tsx';
 import { CalendarFeed, apiFeed } from './CalendarSubscribe.tsx';
 import { Refreshing } from './Refreshing.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { layoutOf } from './settingsShell.ts';
-import { Pill } from './SettingsParts.tsx';
 import type { TextHandle } from './Text.tsx';
 import { useUnderTabs } from './underTabs.ts';
 
@@ -80,21 +79,9 @@ export function CalendarScreen() {
       besideTitle={
         <View style={styles.beside}>
           {offline.refreshing && <Refreshing testID="calendar.refreshing" />}
-          {organisation != null &&
-            (kind === 'phone' ? (
-              <SubscribeRound onPress={subscribe} ref={subscribeRef} />
-            ) : (
-              <Pill
-                label={t('calendarFeed.open')}
-                kind="secondary"
-                glyph="calendar"
-                height={tokens.sizeHit}
-                full={false}
-                onPress={subscribe}
-                ref={subscribeRef}
-                testID="calendarFeed.open"
-              />
-            ))}
+          {organisation != null && (
+            <Subscribe phone={kind === 'phone'} onPress={subscribe} ref={subscribeRef} />
+          )}
         </View>
       }
     >
