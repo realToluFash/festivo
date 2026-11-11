@@ -1,4 +1,4 @@
-# sc-36766: each step's question, the country list's headings, None yet beside Antarctica, and the discard sheet, in the account's language.
+# sc-36766: each step's question, the country list's headings, None yet beside Antarctica, and the discard sheet, in the account's language. Pass METRO_URL, the Expo dev server for this stack.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/today?create=name
