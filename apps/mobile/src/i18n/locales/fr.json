@@ -1342,7 +1342,6 @@
     "roleScreenTitle": "Rôle de {{first}}",
     "save": "Enregistrer",
     "now": "Actuel",
-    "ownerAsks": "Asks you to confirm it’s you.",
     "takesEffect": "Prend effet dès sa prochaine utilisation de Soirely. Aucune session n’est fermée.",
     "roleBecomes": "{{name}} aura le rôle {{role}} dès sa prochaine utilisation de Soirely. Aucune session n’est fermée.",
     "roleNow": "{{name}} a désormais le rôle {{role}}. Il prend effet dès sa prochaine utilisation de Soirely. Aucune session n’est fermée.",
