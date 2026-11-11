@@ -1854,6 +1854,22 @@ describe('a screen still reading says so in words (sc-23279)', () => {
   });
 });
 
+describe('every sign-in lands through nextAfterSignIn (sc-39703)', () => {
+  it.each([
+    'app/sign-in.tsx',
+    'app/reset-password.tsx',
+    'src/components/ProviderSignIn.tsx',
+    'src/steps/SignInSecondFactor.tsx',
+  ])('%s', (file) => {
+    const text = readFileSync(join(...file.split('/')), 'utf8');
+
+    expect(
+      /\bnextAfterSignIn\b/u.test(text) && !/\blandingFor\(/u.test(text),
+      'Route signed-in tokens through nextAfterSignIn in src/challenge.ts, which owes Two-factor again and a held link.',
+    ).toBe(true);
+  });
+});
+
 /** Whether the branch that `reading` opens renders Pending before the next branch starts. */
 function showsPending(text: string, reading: string): boolean {
   const at = text.indexOf(`if (${reading})`);
