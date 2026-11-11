@@ -203,7 +203,7 @@ describe('Today at a desk (sc-30413)', () => {
     }
   });
 
-  it('keeps each date of a multi-day row whole, breaking only after the connector (sc-39091)', async () => {
+  it('keeps each date of a multi-day row whole, breaking only at the words around them (sc-39091)', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-11-03T09:00:00+01:00'));
     signedIn(membership({ id: 'org_1' }));
@@ -226,7 +226,7 @@ describe('Today at a desk (sc-30413)', () => {
       const dates = [...when.querySelectorAll('.today-event-date')].map((date) => date.textContent);
 
       expect(when.querySelector('.today-event-count')?.textContent).toBe('Amanhã ·');
-      expect(dates).toEqual(['De quarta-feira, 4 de nov. até', 'sexta-feira, 6 de nov.']);
+      expect(dates).toEqual(['quarta-feira, 4 de nov.', 'sexta-feira, 6 de nov.']);
       expect(
         screen.getByRole('button', {
           name: 'Casamento Amanhã · De quarta-feira, 4 de nov. até sexta-feira, 6 de nov. Última semana',
