@@ -796,3 +796,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   dispositivos", como "os meus outros dois irmãos"; "nos seus 2 outros dispositivos" soa a
   tradução (QA, 11 Nov). `_many`: "nos seus outros {{count}} de dispositivos". Vale para qualquer
   contagem com "outros".
+- **11 Nov 2026. "Adicionar à minha aplicação de autenticação"** (sc-40162,
+  `mobile:twoFactorCard.addToApp`). O botão fala como o membro, "minha", tal como "Guardei estes
+  códigos…"; o resto do passo diz "a sua aplicação de autenticação". "Adicionar", como
+  `phoneSetupTitle`; "aplicação", nunca "app". No telemóvel pode ocupar duas linhas centradas; no
+  iPad, uma.

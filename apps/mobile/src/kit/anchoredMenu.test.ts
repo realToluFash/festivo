@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { inModal, menuInModal } from './anchoredMenu.ts';
+import { inModal, menuInModal, menuMost } from './anchoredMenu.ts';
 import { keyboardInWindow } from './keyboard.ts';
 
 describe('menuInModal', () => {
@@ -30,5 +30,19 @@ describe('inModal', () => {
   it('moves a window y below the status bar into the Modal, and leaves an iPhone y as it is', () => {
     expect(inModal(38, -24)).toBe(62);
     expect(inModal(62, 0)).toBe(62);
+  });
+});
+
+describe('menuMost', () => {
+  it('ends above the gesture handle on a phone on its side, though that leaves less than a menu of three', () => {
+    expect(menuMost({ top: 224, floor: null }, 360 - 24)).toBe(112);
+  });
+
+  it('ends at its floor when the keys give one', () => {
+    expect(menuMost({ top: 128, floor: 500 }, 900)).toBe(372);
+  });
+
+  it('is nothing, never less, under a button at the foot', () => {
+    expect(menuMost({ top: 340, floor: null }, 336)).toBe(0);
   });
 });

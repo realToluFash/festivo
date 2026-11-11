@@ -32,6 +32,7 @@ import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { layoutOf } from './settingsShell.ts';
 import type { TextHandle } from './Text.tsx';
 import { useUnderTabs } from './underTabs.ts';
+import { LIST_EDGES } from './listFrame.ts';
 
 const KEPT = 'soirely.calendar';
 
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
 });
 
 const PAGE: Record<LayoutKind, { paddingHorizontal: number }> = {
-  phone: { paddingHorizontal: tokens.spaceXxl },
-  tabletPortrait: { paddingHorizontal: tokens.space5xl },
-  tabletLandscape: { paddingHorizontal: 30 },
+  phone: { paddingHorizontal: LIST_EDGES.phone.paddingHorizontal },
+  tabletPortrait: { paddingHorizontal: LIST_EDGES.tabletPortrait.paddingHorizontal },
+  tabletLandscape: { paddingHorizontal: LIST_EDGES.tabletLandscape.paddingHorizontal },
 };

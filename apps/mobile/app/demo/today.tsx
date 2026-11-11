@@ -36,7 +36,7 @@ import type { Tell } from '../../src/components/TodayParts.tsx';
 import { TAB_BAR, TodayScreen } from '../../src/components/TodayScreen.tsx';
 import { TodayShellProvider } from '../../src/components/todayShell.ts';
 import { demoShell } from '../../src/demo/demoShell.ts';
-import { openEvent } from '../../src/demo/events/EventsList.tsx';
+import { openEvent } from '../../src/demo/events/openEvent.ts';
 import { EVENT_OF_KEY } from '../../src/demo/events/EventsSample.ts';
 import { useCoverStatusBar } from '../../src/demo/Welcome.tsx';
 import { tokens } from '../../src/theme/tokens.ts';

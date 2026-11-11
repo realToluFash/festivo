@@ -1,16 +1,10 @@
 import type { Membership, PausedOrganisation } from '@soirely/api-client';
 import { useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Platform, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
+import type { ViewInstance } from 'react-native';
 
 import { AccessPaused } from '../../components/AccessPaused.tsx';
-import { AnswerHeading } from '../../components/AnswerHeading.tsx';
-import { PrimaryButton, SecondaryButton } from '../../components/Buttons.tsx';
-import { cardFrame } from '../../components/cardFrame.ts';
-import { Text } from '../../components/Text.tsx';
+import { TwoFactorOverdue } from '../../components/TwoFactorOverdue.tsx';
 import { useShell } from '../../components/settingsShell.ts';
-import { useLayout } from '../../layout/useLayout.ts';
-import { tokens } from '../../theme/tokens.ts';
 import { useOrgOpener } from '../OrgSwitcher.tsx';
 import { YOU } from './sample.ts';
 
@@ -60,59 +54,20 @@ function Paused() {
   );
 }
 
-/** Two-factor overdue as the product draws it; Turn on opens Security's setup, Sign out lands on Welcome. */
+/** The product's overdue screen on sample data; Turn on opens Security's setup, Sign out lands on Welcome. */
 function Overdue({ onSignOut }: { onSignOut: () => void }) {
-  const { t } = useTranslation();
-  const { kind } = useLayout();
   const shell = useShell();
-  const wide = kind !== 'phone';
 
   return (
-    <ScrollView contentContainerStyle={wide ? styles.contentWide : styles.content}>
-      <View style={[cardFrame(kind), styles.card, wide && styles.cardWide]}>
-        <AnswerHeading size={tokens.typeTitleDialog.size} weight="bold" answer={null}>
-          {t('signInRules.overdueTitle')}
-        </AnswerHeading>
-        <Text size={tokens.typeBodyPhone.size}>
-          {t('signInRules.overdueBody', { organisation: YOU.organisation })}
-        </Text>
-        <Text size={tokens.typeBodyPhone.size} muted>
-          {t('signInRules.overdueElsewhere')}
-        </Text>
-        <View style={[styles.actions, wide && styles.actionsWide]}>
-          <PrimaryButton
-            label={t('signInRules.overdueTurnOn')}
-            onPress={() => shell.openSection('security', 'setup')}
-            paired
-            testID="twoFactorOverdue.turnOn"
-          />
-          <SecondaryButton
-            label={t('signInRules.overdueSignOut')}
-            onPress={onSignOut}
-            stacked
-            paired
-            testID="twoFactorOverdue.signOut"
-          />
-        </View>
-      </View>
-    </ScrollView>
+    <TwoFactorOverdue
+      organisation={YOU.organisation}
+      answer={null}
+      onTurnOn={() => shell.openSection('security', 'setup')}
+      onSignOut={onSignOut}
+    />
   );
 }
 
 export function HeldStandIn({ held, onSignOut }: { held: Held; onSignOut: () => void }) {
   return held === 'paused' ? <Paused /> : <Overdue onSignOut={onSignOut} />;
 }
-
-const styles = StyleSheet.create({
-  content: { paddingTop: tokens.spaceXl, paddingBottom: tokens.space3xl },
-  contentWide: { paddingTop: tokens.space3xl, paddingBottom: tokens.space5xl },
-  card: {
-    padding: tokens.spaceXxl,
-    ...(Platform.OS === 'ios'
-      ? tokens.elevationNative.card.ios
-      : tokens.elevationNative.card.android),
-  },
-  cardWide: { maxWidth: 560 },
-  actions: { gap: tokens.spaceMd, marginTop: tokens.spaceSm },
-  actionsWide: { maxWidth: 400 },
-});

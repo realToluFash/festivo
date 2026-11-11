@@ -290,7 +290,7 @@
     "scan": "Escanee este código con su aplicación de autenticación",
     "qrAlt": "Código QR para su aplicación de autenticación",
     "cantScan": "¿No puede escanearlo? Introduzca esta clave en la aplicación.",
-    "addToApp": "Add to my authenticator app",
+    "addToApp": "Añadir a mi aplicación de autenticación",
     "enterCode": "Introduzca el código de 6 dígitos que muestra la aplicación",
     "setupWrong": "Ese código no coincide. Compruebe que la aplicación se configuró con la clave de arriba e introduzca el código que muestra ahora.",
     "staysOff": "La verificación en dos pasos sigue desactivada hasta que el código coincida, así que un error al configurarla no puede bloquearle.",

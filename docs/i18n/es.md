@@ -783,3 +783,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `everywhereDone_*`, `password.done_*`, web y app). «sus otros {{count}} dispositivos», como
   «mis otros dos hermanos»; «sus 2 otros dispositivos» suena traducido (QA, 11 Nov). `_many`:
   «sus otros {{count}} de dispositivos». Vale para cualquier cuenta con «otros».
+- **11 Nov 2026. «Añadir a mi aplicación de autenticación»** (sc-40162, `mobile:twoFactorCard.addToApp`).
+  El botón habla como el miembro, «mi», igual que «He guardado estos códigos…»; el resto del paso
+  dice «su aplicación de autenticación». «Añadir», como `phoneSetupTitle`, nunca «Agregar». En el
+  teléfono puede ocupar dos líneas centradas; en el iPad, una.

@@ -161,7 +161,7 @@ describe('Events titles itself once, in the frame header (sc-17559)', () => {
   it('leaves no head row on a tablet on its side when there is nothing to put in it', () => {
     const split = source(join(SRC, 'components', 'ListAndPage.tsx'));
 
-    expect(split).toMatch(/\{landscape && \(heading \|\| besideHeading\) && \(/u);
+    expect(split).toMatch(/\{landscape && !inColumn && \(heading \|\| besideHeading\) && \(/u);
   });
 });
 

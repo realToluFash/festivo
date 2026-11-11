@@ -50,6 +50,7 @@ import {
 import { EventsFirstRun } from './EventsList.tsx';
 import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './ListAndPage.tsx';
 import { phoneTabBarClearance } from './TodayCover.tsx';
+import { LIST_EDGES, LIST_GAP } from './listFrame.ts';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
 import { Arrived } from './Skeleton.tsx';
@@ -481,25 +482,11 @@ export function EventsScreen() {
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
   underTitle: { marginTop: tokens.spaceHair },
-  loading: { gap: 18 },
-  phone: {
-    gap: 18,
-    paddingTop: tokens.spaceXxs,
-    paddingHorizontal: tokens.spaceXxl,
-    paddingBottom: tokens.space6xl * 2,
-  },
-  portrait: {
-    gap: 18,
-    paddingTop: 26,
-    paddingHorizontal: tokens.space5xl,
-    paddingBottom: tokens.space6xl * 2,
-  },
-  landscape: {
-    gap: 18,
-    paddingTop: 26,
-    paddingHorizontal: 30,
-  },
-  column: { gap: 18, paddingBottom: tokens.space6xl * 2 },
+  loading: { gap: LIST_GAP },
+  phone: { ...LIST_EDGES.phone, gap: LIST_GAP, paddingBottom: tokens.space6xl * 2 },
+  portrait: { ...LIST_EDGES.tabletPortrait, gap: LIST_GAP, paddingBottom: tokens.space6xl * 2 },
+  landscape: { ...LIST_EDGES.tabletLandscape, gap: LIST_GAP },
+  column: { gap: LIST_GAP, paddingBottom: tokens.space6xl * 2 },
 });
 
 const SPACING: ListAndPageSpacing = {

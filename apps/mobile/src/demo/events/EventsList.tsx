@@ -1,6 +1,5 @@
 import { filtered, formattingLocale, searching, wallDay } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
-import { type Href, router } from 'expo-router';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ScrollView,
@@ -11,7 +10,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import {
@@ -50,7 +48,6 @@ import {
   PAST_PAGE,
   type Shown,
   emptyTabOf,
-  eventHref,
   homeOf,
   hostNames,
   howSoon,
@@ -61,7 +58,7 @@ import {
   summaryLine,
   withoutTab,
 } from './EventsModel.ts';
-import { CLOCKS, EVENTS, EVENT_OF_KEY, OFFLINE_AS_OF, READER_ZONE } from './EventsSample.ts';
+import { CLOCKS, EVENTS, OFFLINE_AS_OF, READER_ZONE } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { kindOf, useShell } from '../../components/settingsShell.ts';
 import {
@@ -77,13 +74,12 @@ import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { EventsFailed } from '../../components/Events.tsx';
 import { ListTop } from '../../components/ListTop.tsx';
+import { OfflineBand as ProductOfflineBand } from '../../components/OfflineBand.tsx';
+import { LIST_EDGES, LIST_GAP } from '../../components/listFrame.ts';
+import { openEvent } from './openEvent.ts';
 
 const SEARCH_PAUSE_MS = 300;
 const MENU_AFTER_MS = 700;
-
-export function openEvent(id: string, query?: Readonly<Record<string, string>>): void {
-  router.push(eventHref(id, query) as Href);
-}
 
 /** The card's step from the list: the event opens where the step is. */
 export function stepFrom(
@@ -387,16 +383,11 @@ function ListFrame({
 
   if (shell.layout === 'landscape')
     return (
-      <Landscape
-        column={null}
-        at="Events"
-        onEvent={(key) => openEvent(EVENT_OF_KEY[key])}
-        overlay={overlay}
-      >
+      <Landscape column={null} at="Events" overlay={overlay}>
         {band}
         <ScrollView
           style={styles.grow}
-          contentContainerStyle={styles.pane}
+          contentContainerStyle={[styles.pane, LIST_EDGES.tabletLandscape]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -417,16 +408,8 @@ function ListFrame({
         contentContainerStyle={[
           styles.blocks,
           phone
-            ? {
-                paddingTop: tokens.spaceXxs,
-                paddingHorizontal: tokens.spaceXxl,
-                paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2,
-              }
-            : {
-                paddingTop: 26,
-                paddingHorizontal: tokens.space5xl,
-                paddingBottom: insets.bottom + tokens.space6xl * 2,
-              },
+            ? [LIST_EDGES.phone, { paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2 }]
+            : [LIST_EDGES.tabletPortrait, { paddingBottom: insets.bottom + tokens.space6xl * 2 }],
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -494,24 +477,16 @@ function GuestTile({
   );
 }
 
-export function OfflineBand({
-  onRetry,
-  testID = 'events.offline',
-}: {
-  onRetry: () => void;
-  testID?: string;
-}) {
-  useReadOut(say.offline(OFFLINE_AS_OF));
+/** The product's band (sc-22586) over a sample Stale, its Try again clearing the demo's state and reaching no server. */
+export function OfflineBand({ onRetry }: { onRetry: () => void }) {
+  const [at] = useState(() => {
+    const day = new Date();
+    day.setHours(Number(OFFLINE_AS_OF.slice(0, 2)), Number(OFFLINE_AS_OF.slice(3)), 0, 0);
 
-  return (
-    <View style={styles.band} testID={testID}>
-      <View style={styles.diamond} />
-      <Text size={14.5} weight="semibold" style={[styles.grow, styles.figures]}>
-        {say.offline(OFFLINE_AS_OF)}
-      </Text>
-      <TextAction label={W.tryAgain} onPress={onRetry} testID={`${testID}.retry`} />
-    </View>
-  );
+    return day;
+  });
+
+  return <ProductOfflineBand stale={{ at, retry: onRetry, unanswered: 0 }} inFront />;
 }
 
 const styles = StyleSheet.create({
@@ -520,8 +495,8 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
   figures: { fontVariant: ['tabular-nums'] },
-  blocks: { gap: 18 },
-  pane: { paddingTop: 26, paddingHorizontal: 30, paddingBottom: tokens.space6xl * 2, gap: 18 },
+  blocks: { gap: LIST_GAP },
+  pane: { paddingBottom: tokens.space6xl * 2, gap: LIST_GAP },
   guests: { flexDirection: 'row', gap: tokens.spaceMd },
   guest: {
     flex: 1,
@@ -536,19 +511,4 @@ const styles = StyleSheet.create({
   },
   guestFigure: { lineHeight: 28 * 1.15 },
   said: { lineHeight: 14 * 1.45 },
-  band: {
-    minHeight: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceMd,
-    paddingHorizontal: tokens.spaceXxl,
-    backgroundColor: tokens.colorNeutralFill,
-  },
-  diamond: {
-    width: 8,
-    height: 8,
-    borderRadius: 2,
-    backgroundColor: tokens.colorInkSecondary,
-    transform: [{ rotate: '45deg' }],
-  },
 });
