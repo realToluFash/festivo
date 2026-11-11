@@ -5,6 +5,7 @@ import {
   type TodayNow,
   type TodaySub,
   formatEventClock,
+  notThisYear,
   todayView,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -42,12 +43,18 @@ function dayWords(day: string, locale: string, options: Intl.DateTimeFormatOptio
   );
 }
 
-/** An event's day, with its year when it is not in the year of `on`, today (sc-30413). */
-function dateWords(day: string, on: string, locale: string): string {
+/** An event's day, the wall day of `moment` in its zone, with its year when that is not this year in the event's zone (sc-30413). */
+function dateWords(
+  day: string,
+  moment: string,
+  event: ListedEvent,
+  now: Date,
+  locale: string,
+): string {
   return dayWords(
     day,
     locale,
-    day.slice(0, 4) === on.slice(0, 4) ? SHORT_DAY : { ...SHORT_DAY, year: 'numeric' },
+    notThisYear(event.timeZone, now, moment) ? { ...SHORT_DAY, year: 'numeric' } : SHORT_DAY,
   );
 }
 
@@ -106,12 +113,12 @@ function card(one: TodayCard<ListedEvent>, now: Date, reader: Reader, t: TFuncti
   };
 }
 
-function nowOf(now: TodayNow<ListedEvent>, on: string, reader: Reader, t: TFunction): Now {
+function nowOf(now: TodayNow<ListedEvent>, at: Date, reader: Reader, t: TFunction): Now {
   const { event } = now;
   const place = event.venue?.name ?? event.venue?.address?.formatted ?? null;
   const dayLine = t('todayScreen.dayOfCapital', { day: now.dayToday, total: event.dayCount });
   const ends = {
-    date: dateWords(now.lastDay, on, reader.locale),
+    date: dateWords(now.lastDay, event.endsAt, event, at, reader.locale),
     time: formatEventClock(event.endsAt, event.timeZone, reader.locale),
   };
 
@@ -137,7 +144,7 @@ function nowOf(now: TodayNow<ListedEvent>, on: string, reader: Reader, t: TFunct
   };
 }
 
-function subOf(sub: TodaySub<ListedEvent>, on: string, reader: Reader, t: TFunction): string {
+function subOf(sub: TodaySub<ListedEvent>, now: Date, reader: Reader, t: TFunction): string {
   switch (sub.kind) {
     case 'first':
       return t('todayScreen.firstSub');
@@ -156,7 +163,7 @@ function subOf(sub: TodaySub<ListedEvent>, on: string, reader: Reader, t: TFunct
           })
         : t('todayScreen.startsOnDate', {
             name: sub.event.name,
-            date: dateWords(sub.day, on, reader.locale),
+            date: dateWords(sub.day, sub.event.startsAt, sub.event, now, reader.locale),
           });
   }
 }
@@ -183,7 +190,7 @@ export function todayMoment(
         ? t(`todayScreen.hello.${view.greeting}`)
         : t(`todayScreen.helloName.${view.greeting}`, { name }),
     lead: null,
-    sub: subOf(view.sub, view.on, reader, t),
+    sub: subOf(view.sub, now, reader, t),
     needs: null,
     days: view.days.map(({ day, today: isToday, dots }) => ({
       weekday: dayWords(day, reader.locale, { weekday: 'short' }),
@@ -217,11 +224,17 @@ export function todayMoment(
             event: shownEvent(view.nextUp.event),
             name: view.nextUp.event.name,
             when: t('todayScreen.dateAndHowFar', {
-              date: dateWords(view.nextUp.day, view.on, reader.locale),
+              date: dateWords(
+                view.nextUp.day,
+                view.nextUp.event.startsAt,
+                view.nextUp.event,
+                now,
+                reader.locale,
+              ),
               far: howFar(view.nextUp.daysAway, t),
             }),
           },
     events: view.cards.map((one) => card(one, now, reader, t)),
-    now: view.now == null ? null : nowOf(view.now, view.on, reader, t),
+    now: view.now == null ? null : nowOf(view.now, now, reader, t),
   };
 }

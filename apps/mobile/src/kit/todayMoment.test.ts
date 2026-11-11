@@ -157,6 +157,30 @@ describe('todayMoment', () => {
     });
   });
 
+  it("takes this year from today in the event's zone, not the reader's", () => {
+    const newYearsEve = new Date('2026-12-31T12:00:00Z');
+    const auckland = { timeZone: 'Pacific/Auckland', venue: null };
+    const summer = event('Summer', {
+      ...auckland,
+      phase: 'happening_now',
+      startsAt: '2026-12-30T20:00:00Z',
+      endsAt: '2027-01-04T05:00:00Z',
+      dayCount: 6,
+    });
+    const picnic = event('Picnic', {
+      ...auckland,
+      startsAt: '2027-01-08T23:00:00Z',
+      endsAt: '2027-01-09T04:00:00Z',
+      dayCount: 1,
+    });
+
+    expect(moment([summer], newYearsEve).now?.ends).toBe('Ends Mon 4 Jan at 18:00');
+    expect(moment([picnic], newYearsEve)).toMatchObject({
+      sub: 'Picnic starts on Sat 9 Jan.',
+      nextUp: { when: 'Sat 9 Jan · in 9 days' },
+    });
+  });
+
   it('a quiet week says so and shows what is next', () => {
     const quiet = moment([
       event('Party', {
