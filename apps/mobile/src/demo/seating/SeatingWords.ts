@@ -91,7 +91,7 @@ export const W = {
   reconnecting: 'Can’t see who else is here. Reconnecting…',
   onThisPlan: 'On this plan',
   canView: 'Can view',
-  showNotYet: 'Show Not sure yet and no reply too',
+  showNotYet: 'Also show Not sure yet and No reply',
   withoutSeat: 'Without a seat',
   searchByName: 'Search by name',
   unseatEveryone: 'Unseat everyone',
@@ -99,6 +99,7 @@ export const W = {
   rename: 'Rename',
   nobodyHere: 'Nobody here yet. Pick a guest in Seat, then this table.',
   everyoneSeated: 'Everyone who is coming has a seat.',
+  nobodyComing: 'Nobody has said they’re coming yet.',
   noMatch: 'Nobody without a seat matches this search.',
   clearSearch: 'Clear search and group',
   undidRefused: 'These seats changed since. Nothing was undone.',
@@ -162,7 +163,11 @@ export const say = {
   sectionTaken: (name: string) => `This plan already has a section called ${name}.`,
   deleteAsk: (name: string) => `Delete ${name}?`,
   sectionDeleteBody: (n: number) =>
-    `Its ${plural(n, 'table stays', 'tables stay')} where they are, with no section.`,
+    n === 0
+      ? ''
+      : n === 1
+        ? 'Its 1 table stays where it is, with no section.'
+        : `Its ${n} tables stay where they are, with no section.`,
   sectionsCount: (n: number) => `Sections · ${n}`,
   placeBar: (shape: string) =>
     `Tap the floor to place a ${shape.toLowerCase()}. It snaps to the grid.`,
@@ -229,7 +234,7 @@ export const say = {
   movedAll: (n: number, table: string) => `${plural(n, 'guest', 'guests')} moved to ${table}.`,
   race: (lead: string) => `Someone just took that seat. ${lead} is still without a seat.`,
   roomForAll: (n: number) => `Tables with room for all ${n}.`,
-  moreNotYet: (n: number) => `${n} more with Not sure yet or no reply`,
+  moreNotYet: (n: number) => `${n} more: Not sure yet or No reply`,
   tab: (word: string, n: number) => `${word} · ${n}`,
   summary: (tables: number, seated: number, coming: number, free: number) =>
     `${tables} tables · ${seated} of ${coming} seated · ${free} seats free`,

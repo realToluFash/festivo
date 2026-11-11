@@ -12,6 +12,7 @@ import {
   midSentence,
 } from './guestsWords.ts';
 import { numberLine } from './rules.ts';
+import { type HowAgreed, NO_CONSENT, type WhatsAppConsent, hostAgreed } from './whatsAppConsent.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Guests in A · Summary first (page e30, board/guests-a-spec.md): the sample, its counts and the states; the words are in guestsWords.ts. */
@@ -96,6 +97,7 @@ export interface Guest {
   language: GuestLanguage | null;
   chose: GuestLanguage | null;
   greetAs: string | null;
+  whatsApp: WhatsAppConsent;
 }
 
 const ADDED: Said = { by: COLLEAGUE, how: null, on: '2026-09-14' };
@@ -119,6 +121,7 @@ function guest(id: string, name: string, reply: Reply, extra: Partial<Guest> = {
     language: null,
     chose: null,
     greetAs: null,
+    whatsApp: NO_CONSENT,
     ...extra,
   };
 }
@@ -327,6 +330,7 @@ function wedding(): Guest[] {
     guest('lucia', 'Lucía Ortega', 'notSure', {
       replied: '2026-10-18',
       phone: { country: 'ES', number: '612 345 678' },
+      whatsApp: { kind: 'guest', on: '2026-11-02' },
     }),
     guest('marta', 'Marta Silva', 'coming', {
       replied: '2026-10-11',
@@ -336,8 +340,10 @@ function wedding(): Guest[] {
     guest('sophie', 'Sophie Laurent', 'coming', {
       replied: '2026-10-12',
       email: 'sophie.laurent@orange.fr',
+      phone: { country: 'FR', number: '6 41 27 88 05' },
       companions: companions('sophie', ['Marc Laurent'], 'coming'),
       language: 'fr',
+      whatsApp: { kind: 'optedOut', on: '2026-11-01' },
     }),
     guest('tomas', 'Tomás Ferreira', 'noReply', { email: 'tomas.ferreira@gmial.com' }),
     guest('yusuf', 'Yusuf Ibrahim', 'notYet', { phone: { country: 'NG', number: '809 221 4410' } }),
@@ -984,6 +990,18 @@ export function markInvited(
   );
 }
 
+/** sc-3950: the host's record that the guest agreed to WhatsApp, by the demo's member, today. */
+export function agreeToWhatsApp(
+  list: readonly Guest[],
+  id: string,
+  how: HowAgreed,
+  on: string,
+): Guest[] {
+  return list.map((one) =>
+    one.id === id ? { ...one, whatsApp: hostAgreed(READER, how, on) } : one,
+  );
+}
+
 export function replaceLink(list: readonly Guest[], id: string, on: string): Guest[] {
   return list.map((one) => (one.id === id ? { ...one, replaced: on } : one));
 }
@@ -1125,6 +1143,12 @@ export interface RecordStart {
   notSaved?: boolean;
 }
 
+export interface AgreeStart {
+  how?: HowAgreed;
+  tried?: boolean;
+  notSaved?: boolean;
+}
+
 export interface AddStart {
   values?: Partial<Values>;
   tried?: boolean;
@@ -1141,6 +1165,7 @@ export type Pane =
   | { kind: 'notFound' }
   | { kind: 'edit'; id: string; start: EditStart }
   | { kind: 'record'; id: string; start: RecordStart }
+  | { kind: 'whatsApp'; id: string; start: AgreeStart }
   | { kind: 'add'; start: AddStart };
 
 export interface GuestsStart {
@@ -1249,6 +1274,19 @@ export const GUESTS_STATES = [
   { key: 'greetAsSpaces', name: 'Only spaces saved: their full name' },
   { key: 'greetAsViewer', name: 'Can view: Greet as, no Edit' },
   { key: 'greetAsAdd', name: 'Add guest, Greet as “Auntie Bisi”' },
+  {
+    key: 'whatsAppNone',
+    name: 'WhatsApp: Has not agreed to WhatsApp, and The guest agreed to WhatsApp',
+  },
+  { key: 'whatsAppAgree', name: 'Agreed to WhatsApp, nothing picked' },
+  { key: 'whatsAppAgreeBlank', name: 'Save with nothing picked' },
+  { key: 'whatsAppAgreePicked', name: 'In person picked' },
+  { key: 'whatsAppNotSaved', name: 'Agreed to WhatsApp failed' },
+  { key: 'whatsAppRecorded', name: 'Saved: the host’s record' },
+  { key: 'whatsAppGuestAgreed', name: 'Lucía Ortega agreed on their page' },
+  { key: 'whatsAppOptedOut', name: 'Sophie Laurent unsubscribed: only the guest can change it' },
+  { key: 'whatsAppNoMobile', name: 'Inês Duarte, no mobile number: no WhatsApp row' },
+  { key: 'whatsAppViewer', name: 'Can view (guests.read): no contact details, no WhatsApp row' },
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number]['key'];
@@ -1301,6 +1339,10 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     column({ kind: 'edit', id, start: from });
   const record = (id: string, from: RecordStart = {}): GuestsStart =>
     column({ kind: 'record', id, start: from });
+  const agree = (from: AgreeStart = {}): GuestsStart => ({
+    ...column({ kind: 'whatsApp', id: 'kwame', start: from }),
+    choice: 'coming',
+  });
   const add = (from: AddStart = {}): GuestsStart => column({ kind: 'add', start: from });
   const closed = { clock: CLOCK_DOOR, card: 'beforeDoor' as const };
   const picked = applyParams(start, params);
@@ -1476,6 +1518,30 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return column(guestPane('bisi'), { choice: 'notYet', role: 'viewer' });
     case 'greetAsAdd':
       return add({ values: { name: 'Olabisi Martins', greetAs: 'Auntie Bisi' }, at: 'greet-as' });
+    case 'whatsAppNone':
+      return column(guestPane('kwame'), { choice: 'coming' });
+    case 'whatsAppAgree':
+      return agree();
+    case 'whatsAppAgreeBlank':
+      return agree({ tried: true });
+    case 'whatsAppAgreePicked':
+      return agree({ how: 'In person' });
+    case 'whatsAppNotSaved':
+      return agree({ how: 'In person', notSaved: true });
+    case 'whatsAppRecorded':
+      return column(guestPane('kwame'), {
+        choice: 'coming',
+        list: agreeToWhatsApp(start.list, 'kwame', 'In person', TODAY),
+        told: GW.saved,
+      });
+    case 'whatsAppGuestAgreed':
+      return column(guestPane('lucia'), { choice: 'notSure' });
+    case 'whatsAppOptedOut':
+      return column(guestPane('sophie'), { choice: 'coming' });
+    case 'whatsAppNoMobile':
+      return column(guestPane('ines'), { choice: 'coming' });
+    case 'whatsAppViewer':
+      return column(guestPane('kwame'), { choice: 'coming', role: 'viewer' });
   }
 }
 
@@ -1581,6 +1647,18 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'greetAsSpaces',
     'greetAsViewer',
     'greetAsAdd',
+  ]),
+  group('WhatsApp, only to guests who agreed (sc-3950)', [
+    'whatsAppNone',
+    'whatsAppAgree',
+    'whatsAppAgreeBlank',
+    'whatsAppAgreePicked',
+    'whatsAppNotSaved',
+    'whatsAppRecorded',
+    'whatsAppGuestAgreed',
+    'whatsAppOptedOut',
+    'whatsAppNoMobile',
+    'whatsAppViewer',
   ]),
   group('The link and Mark as invited', [
     'linkCopied',

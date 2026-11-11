@@ -13,9 +13,24 @@ import { useTranslation } from 'react-i18next';
 import { ActionPair } from './ActionPair.tsx';
 import { offButton } from '../offButton.ts';
 import { Glyph } from './Glyph.tsx';
-import { LayersContext, useDeskDialog } from '../layers.ts';
+import { LayersContext, useDeskDialog, type useDeskLayers } from '../layers.ts';
 
 export type Tell = (words: string) => void;
+
+/** A product page beside the Settings list, in B: inside the desk's look, with the layers its dialogs take turns on. */
+export function DeskPage({
+  layers,
+  children,
+}: {
+  layers: ReturnType<typeof useDeskLayers>['layers'];
+  children: ReactNode;
+}) {
+  return (
+    <LayersContext value={layers}>
+      <div className="desk">{children}</div>
+    </LayersContext>
+  );
+}
 
 export type MarkKind = 'yes' | 'waiting' | 'paused' | 'ended';
 
@@ -121,9 +136,25 @@ export function OnCard({ children }: { children: ReactNode }) {
   return <p className="desk-on-card">{children}</p>;
 }
 
-export function CardStep({ label, onClick }: { label: string; onClick: () => void }) {
+export function CardStep({
+  ref,
+  label,
+  busy = false,
+  onClick,
+}: {
+  ref?: RefObject<HTMLButtonElement | null> | undefined;
+  label: string;
+  busy?: boolean;
+  onClick: () => void;
+}) {
   return (
-    <button type="button" className="desk-step" onClick={onClick}>
+    <button
+      ref={ref}
+      type="button"
+      className="desk-step"
+      aria-busy={busy || undefined}
+      onClick={busy ? undefined : onClick}
+    >
       {label}
       <Glyph name="arrow" size={16} weight={2.4} />
     </button>
@@ -459,6 +490,7 @@ function DialogBox({
       >
         <ActionPair
           className="desk-nav"
+          stacks={false}
           dismiss={
             cancel ? (
               <button type="button" className="desk-nav-cancel" onClick={onDismiss}>
@@ -563,11 +595,12 @@ function AskBox(props: AskProps) {
         )}
         <ActionPair
           className="desk-ask-pair"
+          stacks={false}
           dismiss={
             <button
               ref={keepButton}
               type="button"
-              className={waits ? 'desk-text is-waits' : 'desk-text'}
+              className={waits ? 'desk-text desk-ask-keep is-waits' : 'desk-text desk-ask-keep'}
               {...offButton(waits, { dim: false })}
               onClick={onKeep}
             >

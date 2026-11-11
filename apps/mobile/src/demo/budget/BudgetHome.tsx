@@ -16,6 +16,7 @@ import {
   ShapeMark,
   TextAction,
 } from '../../components/Summary.tsx';
+import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import type { Shown } from '../events/EventsModel.ts';
@@ -366,7 +367,7 @@ function AgainstPlan({
 }) {
   const totals = totalsOf(m.lines);
   const plan = planOf(m.ledger, totals);
-  const rows: [string, string, string | undefined][] = [
+  const rows: [string, string, string | undefined, (string | undefined)?][] = [
     [
       W.planned,
       money(plan.planned, locale),
@@ -374,19 +375,25 @@ function AgainstPlan({
     ],
     [W.committed, money(plan.committed, locale), W.whatQuoted],
     [W.paid, money(plan.paid, locale), say.paymentsMarked(plan.paidCount)],
-    [W.stillToPay, money(plan.stillToPay, locale), say.paymentsScheduled(plan.scheduledCount)],
+    [
+      W.stillToPay,
+      money(plan.stillToPay, locale),
+      say.paymentsScheduled(plan.scheduledCount),
+      plan.notScheduled > 0 ? say.notScheduled(money(plan.notScheduled, locale)) : undefined,
+    ],
   ];
 
   return (
     <Section title={W.againstPlan}>
       <RowList
-        items={rows.map(([title, value, line]) => ({
+        items={rows.map(([title, value, line, more]) => ({
           key: title,
           row: (
             <Wash on={washes(m, 'totals') && title === W.planned} onDone={onWashed}>
               <MoneyRow
                 title={title}
                 line={line}
+                more={more}
                 value={value}
                 quiet
                 testID={`budget.plan.${title}`}
@@ -530,7 +537,10 @@ export function BudgetHome({
   onWashed: () => void;
 }) {
   const { layout } = useShell();
+  const big = useAccessibilitySizes();
   const phone = layout === 'phone';
+  // At the accessibility sizes the iPad's narrow column breaks words, so its blocks stack as the phone's do.
+  const stacked = phone || big;
   const title = (
     <PageTitle
       title={W.budget}
@@ -614,7 +624,7 @@ export function BudgetHome({
   );
   const ceilingAt = (event: LayoutChangeEvent) => actions.ceilingAt?.(event.nativeEvent.layout.y);
 
-  if (phone)
+  if (stacked)
     return (
       <>
         {title}
@@ -627,11 +637,16 @@ export function BudgetHome({
         <DueNext
           m={m}
           locale={locale}
-          count={3}
+          count={phone ? 3 : 2}
           link={m.vendors === 'on' ? 'head' : 'none'}
           actions={actions}
         />
-        <Ceiling m={m} locale={locale} onWashed={onWashed} onLayout={ceilingAt} />
+        <Ceiling
+          m={m}
+          locale={locale}
+          onWashed={onWashed}
+          {...(phone ? { onLayout: ceilingAt } : {})}
+        />
         <AgainstPlan m={m} locale={locale} onWashed={onWashed} />
         <WhoIsPaying m={m} locale={locale} onPayers={actions.onPayers} />
         <Costs m={m} locale={locale} onWashed={onWashed} onOwnDesign={actions.onOwnDesign} />

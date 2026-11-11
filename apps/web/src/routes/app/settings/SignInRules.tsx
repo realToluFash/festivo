@@ -10,6 +10,7 @@ import {
   Ask,
   Card,
   CardStep,
+  DeskPage,
   Choices,
   Dialog,
   Head,
@@ -22,7 +23,7 @@ import {
 } from '../../../components/SettingsParts.tsx';
 import { RuleMark, RulesBones } from '../../../components/SignInRulesParts.tsx';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
-import { LayersContext, useDeskLayers } from '../../../layers.ts';
+import { useDeskLayers } from '../../../layers.ts';
 import { useOffline } from '../../../offline.ts';
 import { can, replaceOrganisation, useSession } from '../../../session.ts';
 import { markRulesSeen, seenAt } from '../../../signInRulesSeen.ts';
@@ -190,7 +191,7 @@ function RulesDesk({ organisation }: { organisation: Membership }) {
   }
 
   return (
-    <LayersContext value={layers}>
+    <DeskPage layers={layers}>
       <div className="desk-column" inert={covered}>
         {refreshing && <Refreshing />}
         <header className="desk-top">
@@ -248,7 +249,7 @@ function RulesDesk({ organisation }: { organisation: Membership }) {
           }}
         />
       )}
-    </LayersContext>
+    </DeskPage>
   );
 }
 

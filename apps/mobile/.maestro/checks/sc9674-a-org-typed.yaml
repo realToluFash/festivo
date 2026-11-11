@@ -4,6 +4,12 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
     visible:
+      id: organisation.edit
+    timeout: 30000
+- tapOn:
+    id: organisation.edit
+- extendedWaitUntil:
+    visible:
       id: organisation.name
     timeout: 30000
 - repeat:
@@ -18,7 +24,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - scrollUntilVisible:
     element:
-      id: organisation.save
+      id: organisation.details.save
     centerElement: true
 - waitForAnimationToEnd
 - assertVisible: '(?i)(shift|delete)'

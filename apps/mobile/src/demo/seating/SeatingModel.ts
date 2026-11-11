@@ -44,6 +44,7 @@ export const SEATING_STATES = [
   'sectionLimit',
   'sectionEdit',
   'sectionDelete',
+  'sectionDeleteEmpty',
   'sparse',
   'addMenu',
   'placing',
@@ -107,6 +108,7 @@ export const SEATING_STATES = [
   'moveAll',
   'emptyTable',
   'everyoneSeated',
+  'nobodyComing',
   'noMatch',
   'notSureYet',
   'tables',
@@ -340,6 +342,8 @@ export const seatedCount = (items: readonly Item[]): number =>
 /** Delete the plan's seated guests: a held chair is a person with a place too (pm and ux, 8 Nov 2026). */
 export const placedCount = (items: readonly Item[]): number =>
   items.reduce((n, it) => n + filled(it), 0);
+export const nobodyComing = (m: Seating): boolean =>
+  m.tray.length === 0 && placedCount(m.items) === 0;
 export const freeCount = (items: readonly Item[]): number =>
   items.reduce((n, it) => n + free(it), 0);
 export const tableCount = (items: readonly Item[]): number => items.filter(isTable).length;

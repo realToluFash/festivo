@@ -8,9 +8,9 @@ appId: host.exp.Exponent
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'events.page.edit'
+      id: 'events.details.name'
 - tapOn:
-    id: 'events.page.edit'
+    id: 'events.details.name'
 - scrollUntilVisible:
     element:
       id: 'eventForm.scheduleOver'

@@ -1,5 +1,5 @@
 import type { Opens, TodayShell } from '../components/todayShell.ts';
-import { DemoOrgOpener } from './OrgSwitcher.tsx';
+import { useOrgOpener } from './OrgSwitcher.tsx';
 import { SAMPLE } from './samples.ts';
 import { EVENTS, type EventKey } from './today.ts';
 
@@ -8,7 +8,6 @@ const DEMO_WORDS: Record<Exclude<Opens['to'], 'event'>, string> = {
   events: 'Events has its own design.',
   create: 'Create an event has its own design.',
   notifications: 'Notifications have their own design.',
-  organisation: 'Switching organisation has its own design.',
   search: 'Search has its own design.',
   account: 'Your account has its own design.',
 };
@@ -30,8 +29,9 @@ export function demoShell(tell: (words: string) => void, drawn: DemoOpens = {}):
     organisation: SAMPLE.organisation,
     person: { name: SAMPLE.name, role: 'Owner' },
     unread: 3,
+    creates: true,
     search: true,
-    OrgOpener: DemoOrgOpener,
+    useOrgOpener,
     open: (opens) => {
       const key = opens.to === 'event' ? eventKeyOf(opens.id) : undefined;
 

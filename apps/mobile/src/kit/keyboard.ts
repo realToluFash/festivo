@@ -153,6 +153,17 @@ export function offsetAboveKeyboard({
   return Math.max(0, Math.min(bottomAboveKeys, Math.min(contentY, focusY) - margin));
 }
 
+/** A lift group's answer from the scroll's top: the offset it needs, `'stays'` when it needs none, or null when it cannot be measured now. */
+export type LiftFromTop = number | 'stays' | null;
+
+/** The lower offset a settle brings the scroll to, the most any group needs; null to leave it, when there is no group, a group cannot be measured, or none needs less than `offset` (sc-35488). */
+export function settleLifts(lifts: readonly LiftFromTop[], offset: number): number | null {
+  if (lifts.length === 0 || lifts.some((lift) => lift == null)) return null;
+  const y = Math.max(0, ...lifts.filter((lift) => typeof lift === 'number'));
+
+  return y < offset ? y : null;
+}
+
 export interface InScroll {
   /** The view's top inside the scroll content. */
   contentY: number;
@@ -260,6 +271,11 @@ export function notesGiveWay({ room, step, notes, away }: NotesGiveWay): boolean
   return room != null && step + (away ? notes : 0) > room;
 }
 
+/** Whether a field focused as its screen opens waits for the screen to arrive. Android raises keys asked for mid-slide, and the form lifted then is measured where it is passing, a title too high (sc-35488). */
+export function focusWaitsForArrival(os: string): boolean {
+  return os === 'android';
+}
+
 export interface Turned {
   os: string;
   phone: boolean;
@@ -290,26 +306,6 @@ export interface Typing {
 /** Whether a card gives up its help line and the header its back row while the keys are up. */
 export function shortWhileTyping({ os, phone, height, keysUp }: Typing): boolean {
   return os === 'android' && phone && keysUp && height <= SHORT_ANDROID_HEIGHT;
-}
-
-export interface SidewaysTyping {
-  os: string;
-  phone: boolean;
-  /** The window's width, in dp. */
-  width: number;
-  /** The window's height, in dp. */
-  height: number;
-  keysUp: boolean;
-}
-
-/** Whether an iPhone on its side with the keys up scrolls a sheet's title with its body, leaving the field room (sc-9442). */
-export function titleScrollsWhileTyping({ keysUp, ...turned }: SidewaysTyping): boolean {
-  return keysUp && iPhoneOnItsSide(turned);
-}
-
-/** Whether a sheet keeps its field in the body's sight: while typing, and on an iPhone on its side once the keys go down too, resting the body at its top (sc-9442). */
-export function fieldKeptInSight({ keysUp, ...turned }: SidewaysTyping): boolean {
-  return keysUp || iPhoneOnItsSide(turned);
 }
 
 /** The keyboard as a close puts it down: whether it is up, what hides it, and its hidden event. */

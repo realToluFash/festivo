@@ -143,16 +143,13 @@ def set_state(c, story, name, check=True, held=False):
     if moved and moved.get("moved_at"):
         store.mark_move(c.db, story["id"], state, moved["moved_at"], c.role)
         if held:
-            store.mark_move(c.db, story["id"], HELD_AT_MERGE, moved["moved_at"], c.role)
+            store.mark_move(c.db, story["id"], W.HELD_AT_MERGE, moved["moved_at"], c.role)
     return state
-
-
-HELD_AT_MERGE = "In Progress, tasks left at its merge"
 
 
 def held_at_merge(c, story):
     return story["state"] == "In Progress" and \
-        (story["id"], HELD_AT_MERGE, story["moved_at"]) in store.moves(c.db)
+        (story["id"], W.HELD_AT_MERGE, story["moved_at"]) in store.moves(c.db)
 
 
 def set_labels(c, story_id, add=(), remove=()):
@@ -386,7 +383,7 @@ SHOWS_NOTHING = re.compile(r"^[\s*_>-]*demo[*_]*:[\s*_]*none(?:\s*[:.]|[\s*_]*$)
 def demo_missing(story):
     """Why a story the designer drew is not ready to build: a pull request its Demo line
     names is still open, or none of them merged. A closed one was superseded. A story with no Design section, or whose Demo line reads `none`, shows nothing,
-    so nothing is missing."""
+    so nothing is missing, whatever numbers the rest of the line cites."""
     design = T.find(story.get("description"), "Design")
     if not design:
         return None
@@ -395,9 +392,9 @@ def demo_missing(story):
         return "its Design section has no Demo: line"
     if NOT_BUILT.search(line):
         return "its Demo: line says the demo is not built"
-    numbers = [int(n) for n in re.findall(r"#(\d+)", line)]
-    if not numbers and SHOWS_NOTHING.match(line):
+    if SHOWS_NOTHING.match(line):
         return None
+    numbers = [int(n) for n in re.findall(r"#(\d+)", line)]
     if not numbers:
         return "its Demo: line names no pull request"
     states = {n: pr_state(n) for n in dict.fromkeys(numbers)}

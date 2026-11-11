@@ -26,7 +26,7 @@ appId: host.exp.Exponent
     timeout: 10000
 - takeScreenshot: happening-paused
 - tapOn:
-    id: 'events.resume'
+    id: 'events.card.step'
 - extendedWaitUntil:
     visible:
       id: 'events.phase.happening_now'

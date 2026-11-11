@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { useOrgOpener } from '../OrgSwitcher.tsx';
-import { SW } from '../OrgSwitcherModel.ts';
 import { OrgPill as ProductOrgPill } from '../../components/OrgPill.tsx';
 import { type EventKey, sample } from '../today.ts';
 import { type Tab, TABS, WhiteCapsule } from '../../components/TodayCover.tsx';
@@ -15,15 +14,21 @@ import { TodaySidebar } from '../../components/TodaySidebar.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { demoShell } from '../demoShell.ts';
 import { viewerOfRole } from './sample.ts';
+import { underSavedName, useSavedName } from './savedName.ts';
 import { type Looking, ShellContext, useShell } from '../../components/settingsShell.ts';
 import { Back, RoundButton } from '../../components/SettingsParts.tsx';
 
 /** A page whose sample someone else sees: the Settings card, its rows and the sidebar's foot follow them. */
 export function SeenBy({ looking, children }: { looking: Looking; children: ReactNode }) {
   const shell = useShell();
+  const saved = useSavedName();
   const seen = useMemo(
-    () => ({ ...shell, looking, viewer: viewerOfRole(looking.role) }),
-    [shell, looking],
+    () => ({
+      ...shell,
+      looking: underSavedName(looking, saved),
+      viewer: viewerOfRole(looking.role),
+    }),
+    [shell, looking, saved],
   );
 
   return <ShellContext.Provider value={seen}>{children}</ShellContext.Provider>;
@@ -163,9 +168,9 @@ export function OrgPill() {
   return (
     <ProductOrgPill
       ref={ref}
-      id={org.place.id}
-      name={org.place.name}
-      waiting={org.waiting > 0 ? SW.count(org.waiting) : null}
+      id={org.id}
+      name={org.name}
+      waiting={org.waiting}
       label={org.label}
       expanded={org.expanded}
       onPress={org.onPress}

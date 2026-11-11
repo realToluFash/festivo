@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
@@ -6,6 +6,7 @@ import {
   type StyleProp,
   StyleSheet,
   View,
+  type ViewInstance,
   type ViewStyle,
 } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
@@ -16,7 +17,9 @@ import { Confetti, Cover, type Piece } from './Cover.tsx';
 import { EventMesh } from './EventMesh.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { Moment, Now } from '../kit/today.ts';
-import { Initials } from './Initials.tsx';
+import { useLayout } from '../layout/useLayout.ts';
+import { OrgMark } from './OrgMark.tsx';
+import { OPENER, OpenerWords } from './OrgPill.tsx';
 import { useTodayShell } from './todayShell.ts';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
@@ -103,66 +106,75 @@ export const SETTINGS_ID: Partial<Record<Tab, string>> = { Settings: 'home.openS
 export function Glass({
   children,
   height = 40,
+  grows = false,
   style,
+  testID,
 }: {
   children: ReactNode;
   height?: number;
+  /** Taller than `height` when its words wrap, rather than clipped to it. */
+  grows?: boolean;
   style?: StyleProp<ViewStyle>;
+  testID?: string | undefined;
 }) {
   return (
-    <View style={[styles.glass, { height, borderRadius: height / 2 }, style]}>
+    <View
+      testID={testID}
+      style={[
+        styles.glass,
+        grows ? { minHeight: height } : { height },
+        { borderRadius: height / 2 },
+        style,
+      ]}
+    >
       <View style={[StyleSheet.absoluteFill, styles.glassFill]} />
       {children}
     </View>
   );
 }
 
-function OrgTileWhite({ side = 28 }: { side?: number }) {
-  const { organisation } = useTodayShell();
+/** The switcher's opener in glass: the tile alone on the band, the tile, the name and what waits on the cover. */
+export function OrgButton({
+  compact = false,
+  maxWidth,
+}: {
+  compact?: boolean;
+  /** The most it may take, so it stops short of what sits beside it. */
+  maxWidth?: number | undefined;
+}) {
+  const ref = useRef<ViewInstance>(null);
+  const org = useTodayShell().useOrgOpener(ref, !compact);
+  const phone = useLayout().kind === 'phone';
+  const shared = {
+    ref,
+    onPress: org.onPress,
+    accessibilityRole: 'button',
+    accessibilityLabel: org.label,
+    accessibilityState: { expanded: org.expanded },
+    hitSlop: tokens.spaceXxs,
+    testID: 'home.switchOrganisation',
+  } as const;
 
-  return (
-    <View
-      style={[styles.orgTile, { width: side, height: side, borderRadius: Math.round(side * 0.32) }]}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      <Initials
-        name={organisation}
-        size={Math.round(side * 0.4)}
-        weight="bold"
-        style={styles.accent}
-      />
-    </View>
-  );
-}
-
-export function OrgButton({ compact = false }: { compact?: boolean }) {
-  const { t } = useTranslation();
-  const { organisation, open, OrgOpener } = useTodayShell();
-
-  if (OrgOpener != null) return <OrgOpener at={compact ? 'band' : 'cover'} />;
-
-  return (
-    <Pressable
-      onPress={() => open({ to: 'organisation' })}
-      accessibilityRole="button"
-      accessibilityLabel={t('todayScreen.switchOrganisation', { name: organisation })}
-      hitSlop={tokens.spaceXxs}
-      testID="home.switchOrganisation"
-    >
-      {compact ? (
+  if (compact)
+    return (
+      <Pressable {...shared}>
         <Glass style={styles.orgCompact}>
-          <OrgTileWhite side={30} />
+          <OrgMark id={org.id} name={org.name} side={30} glass />
         </Glass>
-      ) : (
-        <Glass style={styles.orgWide}>
-          <OrgTileWhite />
-          <Text size={15} weight="semibold" accessible={false} style={styles.white}>
-            {organisation}
-          </Text>
-          <Glyph name="updown" size={14} ink={tokens.colorInkOnDark} />
-        </Glass>
-      )}
+      </Pressable>
+    );
+
+  const tall = org.waiting != null ? OPENER.waiting : 40;
+  // Clear of the bell by the cover's side margin; the phone's row already sets a gap either side of its spacer.
+  const clear = phone ? tokens.spaceXl - 2 * tokens.spaceSm : tokens.space3xl;
+
+  return (
+    <Pressable {...shared} style={[styles.orgWide, { marginRight: clear, maxWidth }]}>
+      <Glass height={tall} style={[styles.orgGlass, { height: undefined, minHeight: tall }]}>
+        <OrgMark id={org.id} name={org.name} side={28} glass />
+        <OpenerWords name={org.name} waiting={org.waiting} onDark wrap />
+        <Glyph name="updown" size={14} ink={tokens.colorInkOnDark} />
+      </Glass>
     </Pressable>
   );
 }
@@ -626,16 +638,15 @@ export function TodayCover({
         shade="foot"
       />
       <Animated.View style={[styles.coverWords, { opacity: words }]}>
-        <View style={[phone ? styles.topPhone : styles.topTablet, { marginTop: top }]}>
-          <OrgButton />
-          <View style={styles.grow} />
-          <BellButton />
-          {!phone && (
-            <View style={styles.capsuleAt} pointerEvents="box-none">
-              <TabCapsule onTab={onTab} />
-            </View>
-          )}
-        </View>
+        {phone ? (
+          <View style={[styles.topPhone, { marginTop: top }]}>
+            <OrgButton />
+            <View style={styles.grow} />
+            <BellButton />
+          </View>
+        ) : (
+          <TabletTop top={top} onTab={onTab} />
+        )}
         <View style={[styles.grow, { minHeight: footClear(moment, phone) }]} />
         <View style={phone ? styles.footPhone : day ? styles.footTabletNow : styles.footTablet}>
           {day ? (
@@ -647,6 +658,32 @@ export function TodayCover({
           )}
         </View>
       </Animated.View>
+    </View>
+  );
+}
+
+/** The upright iPad's top row: the opener keeps to the left of the centred capsule, its name wrapping rather than running under it. */
+function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
+  const [row, setRow] = useState<number>();
+  const [capsule, setCapsule] = useState<number>();
+  const room =
+    row == null || capsule == null
+      ? undefined
+      : Math.max(0, (row - capsule) / 2 - tokens.space3xl - tokens.spaceSm);
+
+  return (
+    <View
+      style={[styles.topTablet, { marginTop: top }]}
+      onLayout={(event) => setRow(event.nativeEvent.layout.width)}
+    >
+      <OrgButton maxWidth={room} />
+      <View style={styles.grow} />
+      <BellButton />
+      <View style={styles.capsuleAt} pointerEvents="box-none">
+        <View onLayout={(event) => setCapsule(event.nativeEvent.layout.width)}>
+          <TabCapsule onTab={onTab} />
+        </View>
+      </View>
     </View>
   );
 }
@@ -878,13 +915,15 @@ const styles = StyleSheet.create({
   gapXl: { gap: 22 },
   glass: { flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
   glassFill: { backgroundColor: tokens.colorInkOnDark, opacity: 0.22 },
-  orgWide: { gap: tokens.spaceSm, paddingLeft: tokens.spaceXs, paddingRight: tokens.spaceLg },
-  orgCompact: { paddingHorizontal: 5 },
-  orgTile: {
-    backgroundColor: tokens.colorInkOnDark,
-    alignItems: 'center',
-    justifyContent: 'center',
+  orgWide: { flexShrink: 1 },
+  orgGlass: {
+    flexShrink: 1,
+    gap: tokens.spaceSm,
+    paddingVertical: tokens.spaceXs,
+    paddingLeft: tokens.spaceSm,
+    paddingRight: tokens.spacePillEnd,
   },
+  orgCompact: { paddingHorizontal: 5 },
   bell: { width: 40, justifyContent: 'center' },
   unread: {
     position: 'absolute',

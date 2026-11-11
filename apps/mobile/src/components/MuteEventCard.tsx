@@ -1,11 +1,9 @@
-import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { announceMute, useMutes } from '../eventMutes.ts';
-import { SECTION_HREF } from '../kit/appNav.ts';
 import {
   type HeldMute,
   type MuteState,
@@ -15,41 +13,14 @@ import {
   saveMute,
   shownMute,
 } from '../kit/eventMute.ts';
-import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { Footnote } from './Buttons.tsx';
 import { Notice } from './Notice.tsx';
 import { OnOffSwitch } from './OnOffSwitch.tsx';
 import { Text } from './Text.tsx';
-import { cardFrame } from './cardFrame.ts';
 import { rereadOrganisations } from '../signedIn.ts';
 
-/** `MuteEvent-*` (sc-3980): per person, on the event's page below its buttons, for everyone who can open it. */
-export function MuteEventCard({ kind, eventId }: { kind: LayoutKind; eventId: string }) {
-  const { t } = useTranslation();
-
-  return (
-    <View style={cardFrame(kind)} testID="events.mute">
-      <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
-        {t('eventMute.heading')}
-      </Text>
-      <Text size={tokens.typeBodyPhone.size} muted>
-        {t('eventMute.note')}
-      </Text>
-      <MuteEventSwitch eventId={eventId} testID="events.mute" />
-      <Footnote
-        action={t('eventMute.settings')}
-        role="link"
-        onPress={() => router.push(SECTION_HREF.notifications)}
-        testID="events.mute.settings"
-      />
-    </View>
-  );
-}
-
-/** The one Mute this event switch, on the event's page and in a bell item's More. */
-export function MuteEventSwitch({ eventId, testID }: { eventId: string; testID: string }) {
-  const { t } = useTranslation();
+/** `MuteEvent-*` (sc-3980): the viewer's own mute for an event, read on opening, saved on each change, and heard from elsewhere. */
+export function useEventMute(eventId: string) {
   const [held, setHeld] = useState<HeldMute>({ eventId, state: { status: 'loading' } });
   const mute = shownMute(held, eventId);
   const setMute = (state: MuteState): void => setHeld({ eventId, state });
@@ -84,6 +55,19 @@ export function MuteEventSwitch({ eventId, testID }: { eventId: string; testID: 
   const loaded = mute.status === 'loaded';
   const muted = loaded && mute.muted;
   const busy = mute.status === 'loading' || (loaded && mute.saving);
+  const retry = (): void => {
+    void rereadOrganisations();
+    setMute({ status: 'loading' });
+    setAttempt((tries) => tries + 1);
+  };
+
+  return { mute, loaded, muted, busy, change, retry, tap };
+}
+
+/** The one Mute this event switch, in a bell item's More. */
+export function MuteEventSwitch({ eventId, testID }: { eventId: string; testID: string }) {
+  const { t } = useTranslation();
+  const { mute, loaded, muted, busy, change, retry, tap } = useEventMute(eventId);
 
   return (
     <>
@@ -109,16 +93,12 @@ export function MuteEventSwitch({ eventId, testID }: { eventId: string; testID: 
           announce
           action={{
             label: t('eventMute.tryAgain'),
-            onPress: () => {
-              void rereadOrganisations();
-              setMute({ status: 'loading' });
-              setAttempt((tries) => tries + 1);
-            },
+            onPress: retry,
             testID: `${testID}.tryAgain`,
           }}
         />
       )}
-      {loaded && mute.unsaved && (
+      {mute.status === 'loaded' && mute.unsaved && (
         <Notice
           tone="broken"
           mark={tokens.marks.broken.glyph}

@@ -327,6 +327,20 @@ export interface Plan {
   paidCount: number;
   stillToPay: number;
   scheduledCount: number;
+  notScheduled: number;
+}
+
+/** sc-87's difference, each quote less what is scheduled against it; a schedule over its quote counts as 0. */
+export function notScheduledOf(ledger: Ledger): number {
+  const onSchedule = PAYMENTS.filter(
+    (payment) => !ledger.cancelled.includes(payment.id) && !ledger.unscheduled.includes(payment.id),
+  );
+  return (Object.keys(VENDORS) as VendorKey[]).reduce((sum, vendor) => {
+    const scheduled = onSchedule
+      .filter((payment) => payment.vendor === vendor)
+      .reduce((total, payment) => total + payment.amount, 0);
+    return sum + Math.max(0, VENDORS[vendor].quote - scheduled);
+  }, 0);
 }
 
 export function planOf(ledger: Ledger, totals: Totals = totalsOf()): Plan {
@@ -339,6 +353,7 @@ export function planOf(ledger: Ledger, totals: Totals = totalsOf()): Plan {
     paidCount: paid.length,
     stillToPay: due.reduce((sum, one) => sum + one.amount, 0),
     scheduledCount: due.length,
+    notScheduled: notScheduledOf(ledger),
   };
 }
 

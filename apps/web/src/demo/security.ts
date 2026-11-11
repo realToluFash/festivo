@@ -1,19 +1,4 @@
-import {
-  PASSWORD_MINIMUM_LENGTH,
-  cleanCode,
-  codeProblem,
-  emailProblem,
-  meetsPasswordLength,
-} from '@soirely/domain';
-
-import {
-  ADD_WORDS,
-  CHANNEL_WORDS,
-  PROVE_WORDS,
-  VERIFY_WORDS,
-  WRONG_CODE,
-  WRONG_FACTOR,
-} from './account.ts';
+import { PROVE_WORDS, WRONG_CODE, WRONG_FACTOR } from './account.ts';
 import { writtenTime } from './clock.ts';
 import { SAMPLE } from './rules.ts';
 import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
@@ -45,6 +30,7 @@ export interface SecurityPage {
   devices: readonly string[];
   providerRule: boolean;
   twoFactorRule: boolean;
+  factor: 'loaded' | 'loading' | 'failed';
 }
 
 export const PROVIDERS: readonly Provider[] = ['Google', 'Apple'];
@@ -52,6 +38,7 @@ export const ORG = SAMPLE.organisation;
 export const PROOF_MINUTES = 5;
 export const CODES_MADE = 10;
 export const SEND_MS = 500;
+export const FACTOR_LOADING_MS = 8000;
 export const RESEND_FROM = 42;
 export const NEW_PASSWORD = 'violet confetti hall';
 export const SHORT_PASSWORD = 'short pwd';
@@ -155,6 +142,9 @@ export const SECURITY_WORDS = {
   keptWay: (provider: Provider, other: Provider) =>
     `A rule set by ${ORG}: everyone in it signs in with Google or Apple, so your last one cannot be removed. Link ${other} first if you want to unlink ${provider}.`,
   twoFactor: 'Two-factor authentication',
+  factorFailed: 'Two-factor did not load',
+  factorFailedLine: 'Something went wrong on our side. Try again in a moment.',
+  loading: 'Loading…',
   authenticator: 'Authenticator app',
   onLine: 'On · every sign-in asks for a code',
   offRow: 'Off',
@@ -212,7 +202,7 @@ export const ASK_WORDS = {
 } as const;
 
 export const CONFIRM_WORDS = {
-  ...PROVE_WORDS,
+  codeHelp: PROVE_WORDS.codeHelp,
   line: (verb: 'link' | 'unlink', provider: Provider) =>
     `To ${verb} ${provider}, confirm it's you. You won't be asked again for ${PROOF_MINUTES} minutes.`,
   everywhereWhy: 'So that nobody who picks up this device can do this without you.',
@@ -220,93 +210,6 @@ export const CONFIRM_WORDS = {
   everywhereHelp:
     'From your authenticator app, or one of your recovery codes. Two-factor protects this the way it protects signing in.',
   offEmailed: (email: string) => `We will email ${email} to say it was turned off.`,
-  withProvider: (provider: Provider) =>
-    `You sign in with ${provider}, so confirm with ${provider} instead.`,
-  codeWrongLong:
-    'That code did not work. Enter the code your app shows now, or an unused recovery code.',
-} as const;
-
-export const PASSWORD_WORDS = {
-  title: 'Change password',
-  verb: 'Save',
-  current: 'Current password',
-  forgot: 'Forgot it?',
-  next: 'New password',
-  rule: `At least ${PASSWORD_MINIMUM_LENGTH} characters`,
-  met: 'Met',
-  notYet: 'Not yet',
-  ruleNote:
-    'That is the only rule. When you submit, we also check the password has not appeared in a known data breach.',
-  signsOut: 'Saving signs out your other devices; this one stays signed in.',
-  changedEmailed: (email: string) => `We will email ${email} to say it was changed.`,
-  currentBlank: 'Enter your current password.',
-  nextBlank: 'Enter a new password.',
-  wrongCurrent: 'That is not your current password. Try again, or reset it by email.',
-  same: 'That is already your password. Choose a different one.',
-  short: `Use at least ${PASSWORD_MINIMUM_LENGTH} characters.`,
-  breached: 'This password has appeared in a known data breach. Choose another.',
-  codeTitle: CHANNEL_WORDS.email.title,
-  codeVerb: 'Continue',
-  codeIntro: (email: string) => `We sent a 6-digit code to ${email} to make sure it's you.`,
-  codeField: CHANNEL_WORDS.email.field,
-  codeNewest: CHANNEL_WORDS.email.newest,
-  codeNote: "Adding a password needs this, so someone using this device without you can't add one.",
-  codeBlank: CHANNEL_WORDS.email.blank,
-  codeShort: VERIFY_WORDS.short,
-  codeWrong: 'That code did not match. Check the newest email from Soirely and try again.',
-  chooseTitle: 'Choose a password',
-  chooseField: 'Password',
-  addedEmailed: (email: string) => `We will email ${email} to say a password was added.`,
-  chooseBlank: 'Enter a password.',
-} as const;
-
-export const SETUP_WORDS = {
-  title: 'Set up two-factor',
-  verb: 'Turn on',
-  scan: 'Scan this code with your authenticator app',
-  qr: 'QR code for your authenticator app',
-  cantScan: 'Can’t scan it? Enter this key in the app instead.',
-  key: 'Setup key',
-  field: 'Enter the 6-digit code the app shows',
-  staysOff: 'Two-factor stays off until the code matches, so a setup mistake cannot lock you out.',
-  blank: 'Enter the 6-digit code from your app.',
-  short: VERIFY_WORDS.short,
-  wrong:
-    'That code does not match. Check the app was set up with the key above, then enter the code it shows now.',
-} as const;
-
-export const RECOVERY_WORDS = {
-  title: 'Save your recovery codes',
-  verb: 'Finish',
-  intro:
-    'If you lose your authenticator, each of these signs you in once. This is the only time they are shown.',
-  list: 'Recovery codes',
-  copyAll: 'Copy all',
-  copied: 'Copied',
-  copiedAll: `All ${CODES_MADE} codes are on your clipboard.`,
-  saved: 'I have saved these codes somewhere safe',
-  locked: 'Two-factor is on. Confirm you have saved the codes to leave this step.',
-  ready: 'Two-factor is on. Finish to go back to Security.',
-} as const;
-
-export const FORGOT_WORDS = {
-  title: 'Reset your password',
-  verb: 'Send',
-  intro:
-    'Enter the email you sign in with. If it has an account, we send it a link to set a new password.',
-  field: 'Email',
-  blank: 'Enter your email address.',
-  shape: ADD_WORDS.shape,
-  sentTitle: CHANNEL_WORDS.email.title,
-  sentVerb: 'Done',
-  sentIntro:
-    'If that address has an account, we have sent it a link to set a new password. The link works once.',
-  nothingThere: 'Nothing there?',
-  spam: 'Check your spam folder first, then send it again.',
-  again: 'Send it again',
-  providerNote:
-    'Signed up with Google or Apple? Then there is no password to reset, and the email says how you sign in instead.',
-  gotLink: 'Got the link? Open it on any device.',
 } as const;
 
 export const RESULT_WORDS = {
@@ -400,53 +303,6 @@ export function deviceLine(device: Device, locale: string): string {
   return device.lastUsed == null ? W.here : W.used(dayAtTime(device.lastUsed, locale));
 }
 
-export function ruleMet(password: string): boolean {
-  return meetsPasswordLength(password);
-}
-
-export function changeProblems(current: string, next: string): { current?: string; next?: string } {
-  if (current === '' || next === '')
-    return {
-      ...(current === '' && { current: PASSWORD_WORDS.currentBlank }),
-      ...(next === '' && { next: PASSWORD_WORDS.nextBlank }),
-    };
-  if (!meetsPasswordLength(next)) return { next: PASSWORD_WORDS.short };
-  if (current !== SAMPLE.password) return { current: PASSWORD_WORDS.wrongCurrent };
-  if (next === current) return { next: PASSWORD_WORDS.same };
-
-  return next === SAMPLE.breachedPassword ? { next: PASSWORD_WORDS.breached } : {};
-}
-
-export function chooseRefusal(password: string): string | null {
-  if (password === '') return PASSWORD_WORDS.chooseBlank;
-  if (!meetsPasswordLength(password)) return PASSWORD_WORDS.short;
-
-  return password === SAMPLE.breachedPassword ? PASSWORD_WORDS.breached : null;
-}
-
-export function emailedCodeRefusal(typed: string): string | null {
-  const problem = codeProblem(typed);
-  if (problem === 'blank') return PASSWORD_WORDS.codeBlank;
-  if (problem === 'short') return PASSWORD_WORDS.codeShort;
-
-  return cleanCode(typed) === SAMPLE.code ? null : PASSWORD_WORDS.codeWrong;
-}
-
-export function setupRefusal(typed: string): string | null {
-  const problem = codeProblem(typed);
-  if (problem === 'blank') return SETUP_WORDS.blank;
-  if (problem === 'short') return SETUP_WORDS.short;
-
-  return cleanCode(typed) === SAMPLE.authenticator ? null : SETUP_WORDS.wrong;
-}
-
-export function forgotRefusal(typed: string): string | null {
-  const problem = emailProblem(typed);
-  if (problem === 'blank') return FORGOT_WORDS.blank;
-
-  return problem === 'shape' ? FORGOT_WORDS.shape : null;
-}
-
 export type Purpose = 'link' | 'unlink' | 'everywhere' | 'turnOff' | 'newCodes';
 
 export interface ProveAsks {
@@ -487,29 +343,6 @@ export function proveAsks(
           ? CONFIRM_WORDS.offEmailed(email)
           : CONFIRM_WORDS.codeHelp,
   };
-}
-
-export function proveProblems(
-  asks: Pick<ProveAsks, 'password' | 'code'>,
-  purpose: Purpose,
-  password: string,
-  code: string,
-): { password?: string; code?: string } {
-  const factor = cleanCode(code).toLowerCase();
-  const problems: { password?: string; code?: string } = {};
-  const wrong =
-    purpose === 'link' || purpose === 'unlink'
-      ? CONFIRM_WORDS.codeWrong
-      : CONFIRM_WORDS.codeWrongLong;
-
-  if (asks.password && password === '') problems.password = CONFIRM_WORDS.passwordBlank;
-  else if (asks.password && password !== SAMPLE.password)
-    problems.password = CONFIRM_WORDS.passwordWrong;
-  if (asks.code && factor === '') problems.code = CONFIRM_WORDS.codeBlank;
-  else if (asks.code && factor !== SAMPLE.authenticator && factor !== SAMPLE.recovery)
-    problems.code = wrong;
-
-  return problems;
 }
 
 /** A drawn QR, not an encoding: its three finder squares and a scatter from `seed`, `quiet` modules of white around it. */
@@ -635,6 +468,9 @@ export const WEB_MOMENTS = [
   'everywhereProve',
   'everywhereBlank',
   'everywhereDone',
+  'factorFailed',
+  'factorFailedLinked',
+  'factorLoadingSignedOut',
 ] as const;
 
 type SecurityState = (typeof SECURITY_STATES)[number] | (typeof WEB_MOMENTS)[number];
@@ -650,6 +486,7 @@ export const REST_PAGE: SecurityPage = {
   devices: ALL_DEVICES,
   providerRule: false,
   twoFactorRule: false,
+  factor: 'loaded',
 };
 
 /** What a state link opens on; one the page does not know opens it at rest. */
@@ -809,6 +646,23 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
         page: page({ devices: here }),
         said: RESULT_WORDS.everywhere(ALL_DEVICES.length - here.length),
       };
+    case 'factorFailed':
+      return { ...REST, page: page({ factor: 'failed' }) };
+    case 'factorFailedLinked':
+      return {
+        ...REST,
+        page: page({ ways: { password: true, Google: true, Apple: true }, factor: 'failed' }),
+        said: RESULT_WORDS.linked('Apple'),
+      };
+    case 'factorLoadingSignedOut':
+      return {
+        ...REST,
+        page: page({
+          devices: ALL_DEVICES.filter((id) => id !== OTHER_DEVICE.id),
+          factor: 'loading',
+        }),
+        said: RESULT_WORDS.device(OTHER_DEVICE.name),
+      };
   }
 }
 
@@ -891,6 +745,9 @@ export const SECURITY_PAGES: readonly { name: string; states: readonly DemoLink[
       security('turnOff', 'Turn off two-factor?'),
       security('turnOffProve', 'Turn off, Confirm it’s you'),
       security('turnedOff', 'Two-factor off'),
+      security('factorFailed', 'Two-factor did not load, no card'),
+      security('factorFailedLinked', 'Did not load, Apple linked: the line alone'),
+      security('factorLoadingSignedOut', 'Still loading, a device signed out: the line alone'),
     ],
   },
   {

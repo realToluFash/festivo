@@ -6,33 +6,29 @@ import { usePageTitle } from '../pageTitle.ts';
 import { retrySession, useSessionState } from '../session.ts';
 import { focusStep, useStepFocus } from '../stepFocus.ts';
 import { AuthPage } from './AuthPage.tsx';
+import { LinkRetryPage } from './LinkRetryPage.tsx';
 
 /** No sign-in heading or form, which would tell somebody signed in otherwise. Without `retry`, Try again reads the account. */
 export function Unreachable({
   signedIn,
   retry,
+  brought = false,
   bare = false,
 }: {
   signedIn: boolean;
   retry?: LinkRetry;
+  /** Opened by a Try again on another page, so it takes focus rather than announcing itself. */
+  brought?: boolean;
   bare?: boolean;
 }) {
   const { t } = useTranslation();
   const state = useSessionState();
-  const retrying = retry?.retrying ?? (state.status === 'unreachable' && state.retrying);
-  const linked = retry != null;
-  const linkNotice = useRef<HTMLDivElement>(null);
-  const wasRetrying = useRef(false);
+  const retrying = state.status === 'unreachable' && state.retrying;
   const [pressed, setPressed] = useState(false);
   const [notice, arriveAtNotice] = useStepFocus<HTMLDivElement>();
   const retried = useRef(false);
 
   usePageTitle(t('session.unreachableTitle'));
-
-  useEffect(() => {
-    if (linked && wasRetrying.current && !retrying) linkNotice.current?.focus();
-    wasRetrying.current = retrying;
-  }, [linked, retrying]);
 
   useEffect(
     () => () => {
@@ -54,11 +50,24 @@ export function Unreachable({
       type="button"
       disabled={retrying}
       aria-busy={retrying}
-      onClick={() => void (retry == null ? retryAccount() : retry.again())}
+      onClick={() => void retryAccount()}
     >
       {retrying ? t('session.retrying') : t('error.retry')}
     </button>
   );
+
+  const body = signedIn ? t('session.unreachableBody') : t('session.unreachableBodySignedOut');
+
+  if (retry != null)
+    return (
+      <LinkRetryPage
+        title={t('session.unreachableTitle')}
+        body={body}
+        retry={retry}
+        role="status"
+        brought={brought}
+      />
+    );
 
   // Creating an account's steps draw it as the page itself (WebNewAccount, page 27).
   if (bare) {
@@ -66,12 +75,12 @@ export function Unreachable({
       <AuthPage bare end={null}>
         <div
           className="auth-heading"
-          ref={linked ? linkNotice : notice}
+          ref={notice}
           role={pressed ? undefined : 'status'}
-          tabIndex={pressed || linked ? -1 : undefined}
+          tabIndex={pressed ? -1 : undefined}
         >
           <h1>{t('session.unreachableTitle')}</h1>
-          <p>{signedIn ? t('session.unreachableBody') : t('session.unreachableBodySignedOut')}</p>
+          <p>{body}</p>
         </div>
         {tryAgain}
       </AuthPage>
@@ -80,18 +89,13 @@ export function Unreachable({
 
   return (
     <AuthPage>
-      <div
-        ref={linkNotice}
-        className="notice notice-quiet"
-        role={pressed ? undefined : 'status'}
-        tabIndex={linked ? -1 : undefined}
-      >
+      <div className="notice notice-quiet" role={pressed ? undefined : 'status'}>
         <span className="mark mark-info" aria-hidden="true">
           i
         </span>
         <div className="notice-body" ref={notice} tabIndex={pressed ? -1 : undefined}>
           <h1 className="notice-heading">{t('session.unreachableTitle')}</h1>
-          <p>{signedIn ? t('session.unreachableBody') : t('session.unreachableBodySignedOut')}</p>
+          <p>{body}</p>
         </div>
       </div>
 

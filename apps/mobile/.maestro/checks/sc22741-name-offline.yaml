@@ -9,13 +9,13 @@ onFlowComplete:
 - openLink: ${METRO_URL}/--/settings/account
 - extendedWaitUntil:
     visible:
-      id: 'nameCard.change'
+      id: 'account.name'
     timeout: 30000
 - tapOn:
-    id: 'nameCard.change'
+    id: 'account.name'
 - extendedWaitUntil:
     visible:
-      id: 'nameCard.field'
+      id: 'account.name.field'
     timeout: 5000
 - eraseText: 200
 - inputText: 'Offline Name'
@@ -25,11 +25,11 @@ onFlowComplete:
     env:
       ASK: /api?to=stopped
 - tapOn:
-    id: 'nameCard.save'
+    id: 'account.name.save'
 - extendedWaitUntil:
     visible: '{{t:nameCard.failed}}'
     timeout: 60000
 - assertVisible:
-    id: 'nameCard.field'
+    id: 'account.name.field'
 - assertVisible: 'Offline Name'
 - takeScreenshot: offline-failed

@@ -1,0 +1,55 @@
+# sc-35661: the Add an email address sheet's title, then the Verify sheet's (verifyEmail.title), each screenshotted in the header. The check adds one unverified address, opens Verify from that address's own row, and removes it before it ends, so it re-runs on one account.
+appId: host.exp.Exponent
+---
+- evalScript: "${output.email = 'sc35661.' + Date.now() + '@soirely.test'}"
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'account.email.add'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'account.email.add'
+- extendedWaitUntil:
+    visible:
+      id: 'account.email.add.field'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: add-email-sheet
+- assertVisible: '{{t:contacts.addEmail}}'
+- tapOn:
+    id: 'account.email.add.field'
+- inputText: ${output.email}
+- tapOn:
+    id: 'account.email.add.submit'
+- scrollUntilVisible:
+    element:
+      text: '${output.email}.*'
+    timeout: 15000
+- waitForAnimationToEnd
+- tapOn:
+    text: '${output.email}.*'
+- tapOn:
+    id: 'account\..+\.send'
+- extendedWaitUntil:
+    visible:
+      id: 'account.verify.code'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: verify-email-sheet
+- assertVisible: '{{t:verifyEmail.title}}'
+- tapOn:
+    id: 'account.verify.cancel'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'account\..+\.remove'
+    timeout: 15000
+- tapOn:
+    id: 'account\..+\.remove'
+- extendedWaitUntil:
+    notVisible: '${output.email}(\. .*)?'
+    timeout: 15000

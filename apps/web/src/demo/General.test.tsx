@@ -87,7 +87,7 @@ describe('General at a desk (sc-30063)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Turn on two-factor' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Security' })).toBeDefined();
     expect(router.state.location.search).toBe('?as=julien&state=setup');
-    expect(screen.getByRole('dialog', { name: 'Set up two-factor' })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: 'Turn on two-factor' })).toBeDefined();
   });
 
   it('holds an admin until Google or Apple is linked, the step opening Security on both', async () => {
@@ -103,7 +103,7 @@ describe('General at a desk (sc-30063)', () => {
 
     fireEvent.click(ways.getByRole('button', { name: /Google/ }));
     fireEvent.click(ways.getByRole('button', { name: 'Link Google' }));
-    expect(screen.getByRole('dialog', { name: 'Confirm it’s you' })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: "Confirm it's you" })).toBeDefined();
   });
 
   it('opens a state it does not know as the page with no state', async () => {

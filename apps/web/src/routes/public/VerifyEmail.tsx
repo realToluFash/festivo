@@ -1,17 +1,12 @@
-import {
-  type Account,
-  ApiError,
-  type CodeOpening,
-  type PendingRegistration,
-  awaiting,
-} from '@soirely/api-client';
+import { type Account, ApiError, type PendingRegistration, awaiting } from '@soirely/api-client';
 import { cleanCode, codeDigits, codeProblem } from '@soirely/domain';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
-import { type CodeStatus, codeRefusal, openingStatus, selectCode } from '../../codeScreen.ts';
+import { type CodeSource, apiCodeSource, useCodeCheck } from '../../codeCheck.ts';
+import { selectCode } from '../../codeScreen.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import {
   BackToAccount,
@@ -41,7 +36,6 @@ import { useFocusOnceShown, useStepFocus } from '../../stepFocus.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { offButton } from '../../offButton.ts';
 import { focusWhereSent } from '../../offField.ts';
-import { useResendCountdown } from '../../resendCountdown.ts';
 import { useFormChecks } from '../../formChecks.ts';
 import { useSignOut } from '../../signOut.ts';
 import type { Carried } from './Register.tsx';
@@ -85,11 +79,7 @@ function ForAlternative({ id }: { id: string }) {
     <CodeScreen
       address={held.address}
       alreadyVerified={held.verified}
-      opening={() => api.verificationOpening(id)}
-      verify={async (code) => {
-        await api.verifyEmail(code, id);
-      }}
-      resend={() => api.resendVerification(id)}
+      source={apiCodeSource('email', id)}
       onExpired={() => navigate('/app/account', { replace: true })}
       fromAccount={id}
     />
@@ -114,14 +104,22 @@ function ForRegistration({ pending }: { pending: PendingRegistration }) {
     <CodeScreen
       address={pending.email}
       alreadyVerified={false}
-      opening={() => api.registrationOpening(pending.registration)}
-      verify={async (code) => {
-        const signedIn = await api.confirmRegistration(pending.registration, code);
-        dropRegistration();
-        await adoptAccount(signedIn.account);
-        setAccount(signedIn.account);
+      source={{
+        opening: () =>
+          api
+            .registrationOpening(pending.registration)
+            .then((opening) => ({ ...opening, route: null })),
+        verify: async (code) => {
+          const signedIn = await api.confirmRegistration(pending.registration, code);
+          dropRegistration();
+          await adoptAccount(signedIn.account);
+          setAccount(signedIn.account);
+
+          return { primary: true };
+        },
+        resend: () => api.resendRegistrationCode(pending.registration),
+        textInstead: () => Promise.resolve(),
       }}
-      resend={() => api.resendRegistrationCode(pending.registration)}
       onExpired={timedOut}
       onGone={() => {
         // A session that ended under the held sign-up says so once the sign-up is gone too (sc-927).
@@ -169,11 +167,7 @@ function ForSession() {
     <CodeScreen
       address={state.session.email}
       alreadyVerified={state.session.verified}
-      opening={() => api.verificationOpening()}
-      verify={async (code) => {
-        await api.verifyEmail(code);
-      }}
-      resend={() => api.resendVerification()}
+      source={apiCodeSource('email')}
       onExpired={() => navigate('/sign-in', { replace: true })}
       carryOn={async () => {
         // The account is read again, so the next gate, or the product, opens rather than this screen.
@@ -189,9 +183,7 @@ function ForSession() {
 function CodeScreen({
   address,
   alreadyVerified,
-  opening: readOpening,
-  verify,
-  resend: sendAgain,
+  source,
   onExpired,
   onGone,
   carryOn,
@@ -202,9 +194,7 @@ function CodeScreen({
 }: {
   address: string;
   alreadyVerified: boolean;
-  opening: () => Promise<CodeOpening>;
-  verify: (code: string) => Promise<void>;
-  resend: () => Promise<number>;
+  source: CodeSource;
   onExpired: () => void;
   /** The sign-up had already run out when the screen opened. */
   onGone?: () => void;
@@ -218,12 +208,19 @@ function CodeScreen({
   fromAccount?: string;
 }) {
   const { t } = useTranslation();
-  const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
-  const resending = useResendCountdown({
-    resend: 'verifyEmail.resend',
-    resendIn: 'verifyEmail.resendIn',
+  // Fixed for the screen's life, as the sign-up or the address it checks is.
+  const [held] = useState(source);
+  const check = useCodeCheck('email', held, {
+    opens: !alreadyVerified,
+    leaves: (error, when) => {
+      if (!(error instanceof ApiError && error.is('registration_expired'))) return false;
+      if (when === 'opening') onGone?.();
+      else onExpired();
+
+      return true;
+    },
   });
-  const { begin } = resending;
+  const { status, resending } = check;
   const [doneHeading, arriveAtDone] = useStepFocus();
   const [answerNotice, arriveAtAnswer] = useStepFocus<HTMLDivElement>();
   const [answered, setAnswered] = useState(false);
@@ -240,32 +237,6 @@ function CodeScreen({
     () => document.getElementById('code')?.focus(),
   );
 
-  // Read once, when the screen opens: the source is fixed for the screen's life.
-  const firstOpening = useRef(readOpening);
-  const gone = useRef(onGone);
-
-  useEffect(() => {
-    if (alreadyVerified) return;
-
-    let live = true;
-
-    // A failed read leaves the button enabled; a press then learns the time from the 429.
-    firstOpening
-      .current()
-      .then(({ cooldownSeconds, codeState }) => {
-        if (!live) return;
-        begin(cooldownSeconds);
-        setStatus((now) => openingStatus(now, codeState));
-      })
-      .catch((error: unknown) => {
-        if (live && error instanceof ApiError && error.is('registration_expired')) gone.current?.();
-      });
-
-    return () => {
-      live = false;
-    };
-  }, [alreadyVerified, begin]);
-
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
@@ -276,27 +247,18 @@ function CodeScreen({
 
     const code = cleanCode(typed);
 
-    setStatus({ kind: 'verifying' });
     setAnswered(false);
     const landWhereSent = focusWhereSent();
+    const checked = await check.verify(code);
 
-    try {
-      await verify(code);
-      setStatus({ kind: 'verified' });
-      arriveAtDone();
-    } catch (error) {
-      if (error instanceof ApiError && error.is('registration_expired')) {
-        onExpired();
-        return;
-      }
+    if (checked == null) return;
+    if (checked.verified) return arriveAtDone();
 
-      const refusal = codeRefusal(error);
-      setStatus(refusal);
-      if (refusal.kind === 'expired' || refusal.kind === 'exhausted') answer();
-      if (refusal.kind === 'wrong') {
-        landWhereSent('code');
-        selectCode();
-      }
+    const { refusal } = checked;
+    if (refusal.kind === 'expired' || refusal.kind === 'exhausted') answer();
+    if (refusal.kind === 'wrong') {
+      landWhereSent('code');
+      selectCode();
     }
   }
 
@@ -305,37 +267,19 @@ function CodeScreen({
     arriveAtAnswer();
   }
 
-  const resend = (): Promise<void> => resending.once(() => sendOnce(false));
-  const resendInPlace = (): Promise<void> => resending.once(() => sendOnce(true));
+  async function resend(inPlace: boolean): Promise<void> {
+    const resent = await check.resend();
 
-  async function sendOnce(inPlace: boolean): Promise<void> {
-    try {
-      resending.countDown(await sendAgain());
-      setStatus({ kind: 'entering' });
-      setAnswered(false);
-      if (inPlace) land(() => document.getElementById('code'));
-    } catch (error) {
-      const seconds =
-        error instanceof ApiError ? Number(error.response?.headers.get('Retry-After')) : NaN;
-
-      if (error instanceof ApiError && error.is('registration_expired')) {
-        onExpired();
-        return;
-      }
-
-      if (Number.isFinite(seconds) && seconds > 0) {
-        resending.countDown(seconds);
-        setStatus({ kind: 'entering' });
-        setAnswered(false);
-        if (inPlace) land(() => document.getElementById('code'));
-
-        return;
-      }
-
-      setStatus({ kind: 'failed' });
+    if (resent == null) return;
+    if (resent === 'failed') {
+      check.fail();
       setAnswered(inPlace);
       if (inPlace) arriveAtAnswer();
+      return;
     }
+
+    setAnswered(false);
+    if (inPlace) land(() => document.getElementById('code'));
   }
 
   const verified = status.kind === 'verified' || alreadyVerified;
@@ -417,7 +361,7 @@ function CodeScreen({
             <button
               className="button button-primary"
               type="button"
-              onClick={() => void resendInPlace()}
+              onClick={() => void resend(true)}
             >
               {t('verifyEmail.resend')}
             </button>
@@ -465,7 +409,7 @@ function CodeScreen({
               <ResendLine
                 resending={resending}
                 note={t('verifyEmail.resendNote')}
-                onResend={() => void resend()}
+                onResend={() => void resend(false)}
               />
             </>
           )}

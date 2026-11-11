@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { atPhoneWidth } from '../../../test-widths.ts';
 import { NotificationSettings } from './NotificationSettings.tsx';
 
 const CATEGORIES = [
@@ -36,13 +37,17 @@ function settings(put: () => Response | Promise<Response>) {
   render(<RouterProvider router={router} />);
 }
 
+beforeEach(() => {
+  atPhoneWidth();
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
 const PUSH_BLOCKED =
-  "Push is off in this browser, so pushes won't reach you here. Turn it on in your browser settings.";
+  'Push is off in this browser, so pushes will not reach you here. Turn it on in your browser settings.';
 
 function permission(state: NotificationPermission): void {
   vi.stubGlobal('Notification', { permission: state });

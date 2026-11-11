@@ -1,11 +1,14 @@
-import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Animated, StyleSheet, View } from 'react-native';
 
 import { meshFor, type MeshKey } from '../kit/today.ts';
 import { scrimFor } from '../kit/scrim.ts';
+import { glide } from '../motion.ts';
 import { tokens } from '../theme/tokens.ts';
+import { DraftTile } from './DraftTile.tsx';
 import { EventMesh, eventColour } from './EventMesh.tsx';
 import { Initials } from './Initials.tsx';
+import { SETTLED_MS } from './Screen.tsx';
 
 interface Wash {
   cover: MeshKey;
@@ -27,20 +30,27 @@ function washOf(id: string): Wash {
   return wash;
 }
 
+const arrival = { id: '', at: 0 };
+const ARRIVE_MS = 300;
+const ARRIVING_MS = SETTLED_MS * 4;
+
+/** A new organisation has its id: each of its tiles drawn soon after crossfades from the draft to its colour. */
+export function arrive(id: string): void {
+  arrival.id = id;
+  arrival.at = Date.now();
+}
+
 /** An organisation's tile in its own colour: its B cover under a wash that keeps white initials at 4.5:1. */
 export function OrgMark({
   id,
   name,
   side,
   glass = false,
-  children,
 }: {
   id: string;
   name: string;
   side: number;
   glass?: boolean;
-  /** Drawn over the tile, as the demo's walk crossfades a new organisation in. */
-  children?: ReactNode;
 }) {
   const wash = washOf(id);
   const big = side >= 40;
@@ -62,8 +72,48 @@ export function OrgMark({
         weight="bold"
         style={{ color: glass ? wash.ink : tokens.colorInkOnDark }}
       />
-      {children}
+      <Arrival key={id} id={id} name={name} side={side} big={big} />
     </View>
+  );
+}
+
+/** Not motion, so Reduce Motion keeps it. */
+function Arrival({
+  id,
+  name,
+  side,
+  big,
+}: {
+  id: string;
+  name: string;
+  side: number;
+  big: boolean;
+}) {
+  const [draft] = useState(() =>
+    arrival.id === id && Date.now() - arrival.at < ARRIVING_MS ? new Animated.Value(1) : null,
+  );
+
+  useEffect(() => {
+    if (draft == null) return;
+    const wait = setTimeout(
+      () => glide(draft, 0, ARRIVE_MS).start(),
+      Math.max(0, arrival.at + SETTLED_MS - Date.now()),
+    );
+
+    return () => clearTimeout(wait);
+  }, [draft]);
+
+  if (draft == null) return null;
+
+  return (
+    <Animated.View style={[StyleSheet.absoluteFill, { opacity: draft }]} pointerEvents="none">
+      <DraftTile
+        name={name}
+        side={side}
+        radius={Math.round(side / 3)}
+        initials={big ? Math.floor(side * 0.42) : 12}
+      />
+    </Animated.View>
   );
 }
 

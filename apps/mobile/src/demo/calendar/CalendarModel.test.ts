@@ -1,10 +1,12 @@
 import { firstDayOfWeek, weekdayNames } from '@soirely/domain';
-import { describe, expect, it } from 'vitest';
+import { init } from 'i18next';
+import { beforeAll, describe, expect, it } from 'vitest';
 
+import en from '../../i18n/locales/en.json';
 import { CLOCKS, REUNION } from '../events/EventsSample.ts';
+import type { Item } from '../../kit/calendar.ts';
 import { meshFor } from '../../kit/today.ts';
 import {
-  type Item,
   PHONE_WEEK,
   WIDE_WEEK,
   agendaMonth,
@@ -28,6 +30,14 @@ import {
   weekIndexOf,
   weeksAround,
 } from './CalendarModel.ts';
+
+beforeAll(() =>
+  init({
+    resources: { en: { translation: en } },
+    lng: 'en',
+    interpolation: { escapeValue: false },
+  }),
+);
 
 const NOVEMBER = { year: 2026, month: 11 };
 const now = new Date(CLOCKS.reader);

@@ -441,6 +441,12 @@ export function reversedPorts(ports) {
   return reached.map((key) => ports[key]);
 }
 
+// `adb reverse --list` prints `<serial> tcp:<device> tcp:<host>`, or `(reverse) …` on older adb.
+export function unreversed(list, ports) {
+  const held = new Set([...(list ?? '').matchAll(/tcp:(\d+)\s+tcp:/g)].map((m) => Number(m[1])));
+  return ports.filter((port) => !held.has(Number(port)));
+}
+
 export function androidSdk(env = process.env, platform = process.platform, home = homedir()) {
   return (
     env.ANDROID_HOME ??
@@ -583,6 +589,17 @@ export function iosBundle(appConfig) {
   const id = /ios:\s*\{[^}]*bundleIdentifier:\s*'([^']+)'/.exec(appConfig)?.[1];
   if (!id) throw new Error('no ios.bundleIdentifier in apps/mobile/app.config.ts');
   return id;
+}
+
+// CocoaPods fails on ASCII-8BIT strings when the calling shell has no UTF-8 locale.
+export function iosBuildEnv(appConfig) {
+  return {
+    ...appConfig,
+    EXPO_PUBLIC_ENVIRONMENT: 'qa',
+    CI: '1',
+    LANG: 'en_US.UTF-8',
+    LC_ALL: 'en_US.UTF-8',
+  };
 }
 
 // Signed ad hoc, never unsigned: an unsigned .app has no application-identifier, so the Keychain
@@ -1689,6 +1706,21 @@ function unitState(unit) {
   return spawnSync('systemctl', ['--user', 'is-active', unit], { encoding: 'utf8' }).stdout.trim();
 }
 
+// adbd can still be settling once boot completes, and a reverse made then is dropped without an error (sc-35453).
+async function reversePorts(tools) {
+  let missing = reversedPorts(CONFIG.ports);
+  for (let i = 0; i < 10 && missing.length; i++) {
+    if (i) await pause(1000);
+    for (const port of missing) adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
+    missing = unreversed(adbOut(tools, ['reverse', '--list']), reversedPorts(CONFIG.ports));
+  }
+  if (missing.length) {
+    throw new Error(
+      `${emulatorSerial()} still has ${missing.join(', ')} unreversed after ten seconds`,
+    );
+  }
+}
+
 async function stopEmulator(tools) {
   const unit = `${CONFIG.project}-emulator`;
   adbOut(tools, ['emu', 'kill']);
@@ -1875,11 +1907,7 @@ export const ANDROID_START = [
   },
   {
     name: 'ports reversed',
-    run: ({ tools }) => {
-      for (const port of reversedPorts(CONFIG.ports)) {
-        adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
-      }
-    },
+    run: ({ tools }) => reversePorts(tools),
   },
   {
     name: 'Expo Go stopped',
@@ -2234,9 +2262,7 @@ async function releaseAndroid(args) {
     adbOut(tools, ['reverse', '--remove-all']);
     await waitOffline(tools);
   } else {
-    for (const port of reversedPorts(CONFIG.ports)) {
-      adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
-    }
+    await reversePorts(tools);
   }
 
   const video = launchVideo(root, sha, 'android', open);
@@ -2266,7 +2292,7 @@ function buildIosRelease(root, app) {
     throw new Error('no CocoaPods on this Mac: brew install cocoapods');
   }
   const mobile = join(root, 'apps/mobile');
-  const env = { ...CONFIG.app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
+  const env = iosBuildEnv(CONFIG.app);
 
   const pkg = join(mobile, 'package.json');
   const scripts = readFileSync(pkg, 'utf8');
@@ -2974,7 +3000,14 @@ export const DRIVER_GONE_MS = 30_000;
 
 // A frozen driver outlives the Maestro the watchdog stopped, and the next run waits on it.
 // The next Maestro starts only once the old runner and its xcodebuild are gone.
-async function stopDriver(device, onAndroid) {
+// A batch killed or timed out leaves its driver holding the simulator, and the next one's never
+// becomes ready, so a batch starts by stopping whatever an earlier one left.
+export function leftDriverSay(device, { runners, builds }) {
+  if (!runners.length && !builds.length) return null;
+  return `Stopping the Maestro driver an earlier run left on ${device}`;
+}
+
+async function stopDriver(device, onAndroid, { leftOver = false } = {}) {
   if (onAndroid) {
     const stopped = ANDROID_DRIVERS.map(
       (id) => adbOut(androidTools(), ['shell', 'am', 'force-stop', id]) !== null,
@@ -2987,7 +3020,11 @@ async function stopDriver(device, onAndroid) {
     builds: driverBuilds(capture('ps', ['-Ao', 'pid=,command=']) ?? '', device),
   });
   const { runners, builds } = left();
-  if (!runners.length) console.error(`\nNo Maestro driver found on ${device} to stop`);
+  if (leftOver) {
+    const say = leftDriverSay(device, { runners, builds });
+    if (!say) return;
+    console.log(say);
+  } else if (!runners.length) console.error(`\nNo Maestro driver found on ${device} to stop`);
   for (const pid of builds) run('kill', ['-KILL', String(pid)], { optional: true });
   for (const pid of runners) {
     if (!run('kill', ['-KILL', String(pid)], { optional: true }))
@@ -3272,6 +3309,15 @@ function catalogues(root) {
   );
 }
 
+export async function clearForBatch(
+  onAndroid,
+  device,
+  { stop = stopDriver, reset = resetForBatch } = {},
+) {
+  if (!onAndroid) await stop(device, false, { leftOver: true });
+  await reset(onAndroid, device);
+}
+
 async function batch(args) {
   const root = qaWorktree();
   const onAndroid = args.includes('--android');
@@ -3290,7 +3336,7 @@ async function batch(args) {
     );
   }
 
-  await resetForBatch(onAndroid, device);
+  await clearForBatch(onAndroid, device);
 
   const out = join(root, '.qa', name);
   rmSync(out, { recursive: true, force: true });
@@ -3637,13 +3683,23 @@ async function organisationOwner(root, { fresh }) {
   return apiSession(email, password, null);
 }
 
+export function madeAccount({ status, signal, error, stdout, stderr }) {
+  if (status === 0) return JSON.parse(stdout);
+  const why =
+    (stderr ?? '').trim() ||
+    error?.message ||
+    (signal ? `killed by ${signal}` : `exited ${status}`);
+  throw new Error(`scripts/qa-account.mjs registered no account: ${why}`);
+}
+
 async function founder(root, organisationName, args = []) {
-  const made = capture('node', ['scripts/qa-account.mjs', '--json', ...args], {
-    cwd: root,
-    env: { ...process.env, SOIRELY_API_URL: CONFIG.urls.api, MAILPIT_URL: CONFIG.urls.mailpit },
-  });
-  if (made === null) throw new Error('scripts/qa-account.mjs registered no account');
-  const registered = JSON.parse(made);
+  const registered = madeAccount(
+    spawnSync('node', ['scripts/qa-account.mjs', '--json', ...args], {
+      cwd: root,
+      encoding: 'utf8',
+      env: { ...process.env, SOIRELY_API_URL: CONFIG.urls.api, MAILPIT_URL: CONFIG.urls.mailpit },
+    }),
+  );
   await api('/api/auth/complete-profile', {
     method: 'PATCH',
     token: registered.accessToken,

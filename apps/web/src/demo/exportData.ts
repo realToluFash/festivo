@@ -103,7 +103,7 @@ export function exportCard(state: ExportState, locale: string, zone: ReaderZone)
       };
     case 'ex_failed':
       return {
-        says: 'Your export didn’t finish',
+        says: 'Your export did not finish',
         lines: ['Nothing was emailed, and it doesn’t count toward today’s export.'],
         step: 'retry',
       };

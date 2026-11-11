@@ -13,6 +13,7 @@ import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ShellSection } from './settingsShell.ts';
+import { TurningMark } from './SummaryRows.tsx';
 import type { CoverLayout } from './TodayCover.tsx';
 
 export const TYPE = {
@@ -97,6 +98,7 @@ export function Pill({
   kind = 'primary',
   onPress,
   glyph,
+  busy = false,
   full = true,
   height = tokens.sizeHitPhoneHero,
   accessibilityLabel,
@@ -107,14 +109,15 @@ export function Pill({
   kind?: PillKind;
   onPress?: () => void;
   glyph?: GlyphName;
+  busy?: boolean;
   full?: boolean;
   height?: number;
   accessibilityLabel?: string;
   testID?: string;
   ref?: Ref<ViewInstance>;
 }) {
-  const look = PILL[kind];
-  const off = kind === 'off';
+  const look = PILL[busy ? 'off' : kind];
+  const off = busy || kind === 'off';
 
   return (
     <Pressable
@@ -135,11 +138,12 @@ export function Pill({
         pressed && styles.pressed,
       ]}
       accessibilityRole="button"
-      accessibilityState={{ disabled: off }}
+      accessibilityState={{ disabled: off, busy }}
       accessibilityLabel={accessibilityLabel ?? label}
       testID={testID}
     >
-      {glyph != null && <Glyph name={glyph} size={18} ink={look.ink} weight={2.1} />}
+      {busy && <TurningMark side={16} />}
+      {!busy && glyph != null && <Glyph name={glyph} size={18} ink={look.ink} weight={2.1} />}
       <Text
         size={height >= tokens.sizeHitPhonePrimary ? 16 : TYPE.body}
         weight="semibold"
@@ -229,7 +233,7 @@ export function RoundButton({
   );
 }
 
-type TileOf = Exclude<ShellSection, 'account' | 'personalisation'> | 'roles' | 'demo';
+type TileOf = Exclude<ShellSection, 'account' | 'personalisation'> | 'demo';
 
 const TILES: Record<TileOf, { glyph: GlyphName; fill: string }> = {
   security: { glyph: 'shield', fill: tokens.optionTeal },
@@ -237,7 +241,6 @@ const TILES: Record<TileOf, { glyph: GlyphName; fill: string }> = {
   organisation: { glyph: 'settings', fill: tokens.colorAccent },
   members: { glyph: 'users', fill: tokens.optionBlue },
   signInRules: { glyph: 'lock', fill: tokens.optionPurple },
-  roles: { glyph: 'key', fill: tokens.optionAmber },
   demo: { glyph: 'sparkle', fill: tokens.colorInk },
 };
 

@@ -6,5 +6,5 @@ appId: host.exp.Exponent
     env:
       QUERY: 'lag'
 - tapOn:
-    id: 'timeZone.option.Africa/Lagos'
+    id: 'account.zone.Africa/Lagos'
 - takeScreenshot: time-zone-lagos-picked

@@ -236,7 +236,7 @@ function Swatch({
           </View>
           <View style={styles.swatchRow}>
             <RadioMark on={picked} />
-            <Text size={15.5} weight="semibold" numberOfLines={1} accessible={false}>
+            <Text size={15.5} weight="semibold" accessible={false} style={styles.swatchName}>
               {nameOf(t, scheme)}
             </Text>
           </View>
@@ -269,6 +269,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
   cell: { flex: 1, minWidth: 0 },
   ring: {
+    flex: 1,
     margin: -(RING + RING_GAP),
     padding: RING_GAP,
     borderWidth: RING,
@@ -277,6 +278,7 @@ const styles = StyleSheet.create({
   },
   ringPicked: { borderColor: tokens.colorAccent },
   swatch: {
+    flex: 1,
     borderRadius: 18,
     overflow: 'hidden',
     backgroundColor: tokens.colorCard,
@@ -286,10 +288,13 @@ const styles = StyleSheet.create({
   swatchPicked: { borderColor: tokens.colorCard },
   current: { position: 'absolute', top: 10, left: 10 },
   swatchRow: {
+    flex: 1,
     minHeight: tokens.sizeHit,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceMd,
     paddingHorizontal: tokens.spaceLg,
+    paddingVertical: tokens.spaceSm,
   },
+  swatchName: { flexShrink: 1 },
 });

@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -13,8 +13,13 @@ import { tokens } from '../../src/theme/tokens.ts';
 
 /** No connection, said on the brand; the app tries again by itself once the connection is back. */
 export default function Unreachable() {
-  const { signedIn } = useLocalSearchParams<{ signedIn?: string }>();
+  const { signedIn, back: from } = useLocalSearchParams<{ signedIn?: string; back?: string }>();
   const stillIn = signedIn != null;
+  const home: Href = from?.startsWith('/demo/')
+    ? (from as Href)
+    : stillIn
+      ? '/demo/today'
+      : '/demo/welcome';
   const [trying, setTrying] = useState(false);
   const [back, setBack] = useState(false);
   const body = `${stillIn ? 'You are still signed in. ' : ''}Soirely is not answering, so nothing can load yet. Check your connection: the app tries again as soon as it’s back.`;
@@ -25,11 +30,11 @@ export default function Unreachable() {
     if (!trying) return;
     const timer = setTimeout(() => {
       setTrying(false);
-      if (back) router.replace(stillIn ? '/demo/today' : '/demo/welcome');
+      if (back) router.replace(home);
     }, 900);
 
     return () => clearTimeout(timer);
-  }, [back, stillIn, trying]);
+  }, [back, home, trying]);
 
   return (
     <WelcomeFrame

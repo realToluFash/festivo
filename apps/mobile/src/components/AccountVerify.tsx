@@ -3,6 +3,7 @@ import { type RefObject, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import type { CodeError } from '../kit/accountPage.ts';
 import { tokens } from '../theme/tokens.ts';
 import {
   CodeField,
@@ -32,7 +33,7 @@ export function CodeExpired({ title, line }: { title: string; line: string }) {
 
 /** Why a code was not taken: `checked` when the client found it before sending. */
 export interface CodeSays {
-  error: string;
+  error: CodeError;
   checked: boolean;
 }
 
@@ -42,6 +43,7 @@ export function VerifyScreen({
   title,
   lead,
   codeLabel,
+  errors,
   spent,
   wait,
   prefill = '',
@@ -58,12 +60,14 @@ export function VerifyScreen({
   title: string;
   lead: string;
   codeLabel: string;
+  /** Each error in the words of the way the code goes now, so a handover to a text rewords it. */
+  errors: Record<CodeError, string>;
   /** Expired or out of tries: its words, in the field's place. */
   spent: { title: string; line: string } | null;
   /** Seconds until a new code may be sent. */
   wait: number;
   prefill?: string;
-  startError?: string | null;
+  startError?: CodeError | null;
   autoFocus?: boolean;
   opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
@@ -77,7 +81,7 @@ export function VerifyScreen({
 }) {
   const { t } = useTranslation();
   const [sent, setSent] = useState(0);
-  const [error, setError] = useState<string | null>(startError);
+  const [error, setError] = useState<CodeError | null>(startError);
   const [verifying, setVerifying] = useState(false);
   const code = useRef(prefill);
   const field = useRef<TextInputInstance>(null);
@@ -123,7 +127,7 @@ export function VerifyScreen({
         <CodeExpired title={spent.title} line={spent.line} />
       ) : (
         <View style={styles.field}>
-          <Field label={codeLabel} error={error}>
+          <Field label={codeLabel} error={error && errors[error]}>
             <CodeField
               key={sent}
               ref={field}
@@ -161,10 +165,7 @@ export function VerifyScreen({
       {onTextInstead != null && spent == null && (
         <TextAction
           label={t('verifyPhone.textInstead')}
-          onPress={() => {
-            setError(null);
-            void onTextInstead();
-          }}
+          onPress={() => void onTextInstead()}
           testID="account.verify.text"
         />
       )}

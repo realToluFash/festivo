@@ -178,7 +178,7 @@ describe('the audit log’s states (sc-611)', () => {
 
   it('exports on the iPad by how many match: a download, prepared and emailed, or refused', () => {
     expect(auditStart('export').exporting).toEqual({ format: 'csv', refused: false });
-    expect(auditStart('export_small').toast).toBe('Downloading Ire Events’ audit log as CSV.');
+    expect(auditStart('export_small').toast).toBe('Downloading the audit log as CSV.');
     expect(auditStart('export_preparing')).toMatchObject({ preparing: true });
     expect(auditStart('export_too_many').exporting).toEqual({ format: 'csv', refused: true });
     expect(exportAnswer('small')).toBe('download');

@@ -171,6 +171,10 @@ export const W = {
   closedDraft: 'This event is a draft. Make it live to write to your guests.',
   closedEnded:
     'This event finished more than 30 days ago, so you can no longer write to its guests.',
+  hasNotAgreedWhatsApp: 'Has not agreed to WhatsApp',
+  stoppedWhatsApp: 'Stopped WhatsApp',
+  read: 'Read',
+  failedReceipt: 'Failed',
   forbiddenTitle: 'You do not have access to this',
   forbiddenBody:
     'Your account does not have permission for this page. If you believe it should, ask an admin of this organisation.',
@@ -190,6 +194,24 @@ export const CHANNEL_IN_LINE: Record<ChannelKey, string> = {
   sms: 'SMS',
   wa: 'WhatsApp',
 };
+
+/** sc-3963's too-few-credits branch of the check, in the AC's English (l10n #23662, #23680). */
+export const WW = {
+  either: 'Email goes either way.',
+  withoutWa: 'Send without WhatsApp',
+  withoutSms: 'Send without SMS',
+  emailOnly: 'Send by email only',
+  askOwner: 'Ask an owner',
+  askFailed: 'Not sent. Try again in a moment.',
+} as const;
+
+function waits(paid: 'sms' | 'wa', count: number): string {
+  const name = paid === 'wa' ? 'WhatsApp' : 'SMS';
+
+  return count === 1
+    ? `1 ${name} message will wait for credits.`
+    : `${count} ${name} messages will wait for credits.`;
+}
 
 export const say = {
   section: (word: string, count: number) => `${word} · ${count}`,
@@ -211,8 +233,14 @@ export const say = {
   toldBy: (channel: string) => `Told by ${channel}`,
   noticeCost: (paid: 'sms' | 'wa', credits: number, after: string) =>
     `This ${paid === 'wa' ? 'WhatsApp message' : 'text'} uses ${credits} ${credits === 1 ? 'credit' : 'credits'}. Credits after sending: ${after}.`,
-  noticeWaits: (paid: 'sms' | 'wa') =>
-    `1 ${paid === 'wa' ? 'WhatsApp' : 'SMS'} message will wait for credits.`,
+  waits,
+  noticeWaits: (paid: 'sms' | 'wa') => waits(paid, 1),
+  ownersAsked: (owners: number) =>
+    owners === 1
+      ? 'The owner has been sent the link to Plan and billing.'
+      : 'The owners have been sent the link to Plan and billing.',
+  toldHowBy: (channels: string) =>
+    `Your message goes on their page. Soirely tells them it is there by ${channels}.`,
   tellNowAs: (channel: string) => `Tell them now by ${channel}`,
   seenAt: (time: string) => `Seen ${time}`,
   you: (text: string) => `You: ${text}`,
@@ -322,6 +350,13 @@ export const say = {
   optedOutCount: (count: number) => `${count} opted out`,
   noEmailOrPhoneCount: (count: number) => `${count} no email or phone`,
   cantBeToldCount: (count: number) => `${count} can’t be told`,
+  whatsAppReaches: (count: number, of: number) => `WhatsApp reaches ${count} of ${of}`,
+  stoppedWhatsApp: (count: number) =>
+    count === 1 ? '1 stopped WhatsApp' : `${count} stopped WhatsApp`,
+  notAgreedWhatsApp: (count: number) =>
+    count === 1 ? '1 hasn’t agreed to WhatsApp' : `${count} haven’t agreed to WhatsApp`,
+  noMobile: (count: number) =>
+    count === 1 ? '1 has no mobile number' : `${count} have no mobile number`,
   inZone: (day: string, time: string, zone: string) => `${day}, ${time} ${zone}`,
   dayTime: (day: string, time: string) => `${day}, ${time}`,
   subjectTooLong: (most: string) => `Shorten the subject to ${most} characters or fewer.`,

@@ -36,6 +36,9 @@ describe('editAtOf', () => {
     expect(editAtOf('starts')).toBe('starts');
     expect(editAtOf('venue')).toBe('venue');
     expect(editAtOf('hosts')).toBe('hosts');
+    expect(editAtOf('name')).toBe('name');
+    expect(editAtOf('type')).toBe('type');
+    expect(editAtOf('currency')).toBe('currency');
     expect(editAtOf('cover')).toBeUndefined();
     expect(editAtOf(undefined)).toBeUndefined();
   });

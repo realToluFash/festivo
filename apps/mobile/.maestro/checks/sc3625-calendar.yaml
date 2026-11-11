@@ -44,6 +44,8 @@ appId: host.exp.Exponent
     id: 'calendar.dayList.close'
 - waitForAnimationToEnd
 - tapOn:
+    id: 'calendar.show'
+- tapOn:
     id: 'calendar.show.events'
 - waitForAnimationToEnd
 - tapOn:
@@ -60,6 +62,8 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'calendar.dayList.close'
 - waitForAnimationToEnd
+- tapOn:
+    id: 'calendar.show'
 - tapOn:
     id: 'calendar.show.all'
 - tapOn:

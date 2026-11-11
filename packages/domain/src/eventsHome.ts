@@ -138,6 +138,13 @@ export type NextStep =
   | { kind: 'resume' }
   | { kind: 'nextUp'; milestone: Milestone };
 
+const STEP_WITHOUT_MILESTONES: ReadonlySet<EventPhase> = new Set(['draft', 'paused', 'finished']);
+
+/** Whether a phase's step is read from its milestones, so a card holds its step until they load (sc-30413). */
+export function stepAwaitsMilestones(phase: EventPhase): boolean {
+  return !STEP_WITHOUT_MILESTONES.has(phase);
+}
+
 /** An event's last line on Events Home: what its phase asks for next, else its next milestone (sc-22103). */
 export function nextStep(
   event: { status: EventState; endsAt: string; milestones: readonly Milestone[] },

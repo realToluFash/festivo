@@ -31,15 +31,18 @@ import {
   refusalOf,
   resendOf,
   tokenWord,
+  whatsAppLine,
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
 import { LaterDialog } from './MessagesDialogs.tsx';
 import { InsertMenu } from './MessagesInsert.tsx';
-import { WhereGlyph } from './MessagesParts.tsx';
+import { WhatsAppReach, WhereGlyph } from './MessagesParts.tsx';
 import { Preview } from './MessagesPreview.tsx';
 import { PW } from './messagesPreviewWords.ts';
 import { StreamItems } from './MessagesStream.tsx';
 import { ToPopover } from './MessagesTo.tsx';
+import { WaitBlock } from './MessagesWaits.tsx';
+import { waitsCheckOf, waitsOf } from './messagesWaits.ts';
 
 function commandEnter(event: KeyboardEvent, then: () => void): void {
   if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return;
@@ -142,6 +145,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
               ))}
             </div>
           </div>
+          {draft.ticks.whatsApp && <WhatsAppReach line={whatsAppLine(draft.to)} />}
         </header>
       )}
       {draft.step !== 'preview' && following ? (
@@ -249,6 +253,16 @@ export function TickChip({
   );
 }
 
+function caretToEnd(node: HTMLElement): void {
+  const range = document.createRange();
+  const selection = window.getSelection();
+
+  range.selectNodeContents(node);
+  range.collapse(false);
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
 function nodeOf(part: Segment): Node {
   if (part.kind === 'text') return document.createTextNode(part.text);
 
@@ -305,9 +319,11 @@ function MessageField({
 }) {
   const box = useRef<HTMLDivElement>(null);
   const first = useRef(body);
+  const toEnd = useRef(false);
 
   useLayoutEffect(() => {
     box.current?.replaceChildren(...first.current.map(nodeOf));
+    toEnd.current = (box.current?.childNodes.length ?? 0) > 0;
   }, [seed]);
 
   useEffect(() => {
@@ -327,6 +343,13 @@ function MessageField({
       data-placeholder={MW.writeToGuests}
       data-focus="body"
       tabIndex={0}
+      onFocus={() => {
+        const field = box.current;
+
+        if (!toEnd.current || field == null) return;
+        toEnd.current = false;
+        queueMicrotask(() => caretToEnd(field));
+      }}
       onInput={() => {
         const now = box.current == null ? [] : read(box.current);
 
@@ -494,8 +517,10 @@ export function CheckCard({
   onChange: () => void;
   onLater: () => void;
 }) {
-  const { act, focus, tell, to } = useInbox();
-  const check = checkOf(draft.to, draft.ticks, to.book.groups);
+  const { inbox, act, focus, tell, to } = useInbox();
+  const counted = checkOf(draft.to, draft.ticks, to.book.groups);
+  const check = inbox.balance === 0 ? waitsCheckOf(counted, draft.to, draft.ticks) : counted;
+  const waits = inbox.balance === 0 ? waitsOf(check, draft.ticks) : null;
   const sentenceId = useId();
 
   return (
@@ -542,6 +567,7 @@ export function CheckCard({
           ))}
         </ul>
       )}
+      {check.whatsApp != null && <WhatsAppReach line={check.whatsApp} />}
       {check.smsOff != null && <p className="mg-cant-head">{check.smsOff}</p>}
       {check.cantTell > 0 && (
         <div className="mg-cant">
@@ -563,6 +589,7 @@ export function CheckCard({
         </div>
       )}
       {check.credits != null && <p className="mg-credits">{check.credits}</p>}
+      {waits != null && <WaitBlock waits={waits} />}
       <div className="mg-check-acts">
         <button
           type="button"

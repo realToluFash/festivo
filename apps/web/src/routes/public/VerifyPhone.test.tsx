@@ -191,6 +191,65 @@ describe('check your messages', () => {
     vi.useRealTimers();
   });
 
+  it('rewords the field error with the label when WhatsApp hands the code to SMS (sc-36468)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let route = 'whatsapp';
+    answering({
+      'GET /api/auth/me': () => json(account()),
+      'GET /api/auth/verify/phone/resend': () =>
+        json({ cooldownSeconds: 60, codeState: 'live', route }),
+      'POST /api/auth/verify/phone': () => problem(422, 'verification_code_invalid'),
+    });
+    at('/verify-phone');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Verify number' }));
+    expect(screen.getByText('Enter the 6-digit code from WhatsApp.')).toBeDefined();
+    const field = screen.getByLabelText<HTMLInputElement>('Code from WhatsApp');
+    expect(document.activeElement).toBe(field);
+
+    route = 'sms_fallback';
+    await vi.advanceTimersByTimeAsync(5000);
+
+    await waitFor(() => expect(screen.getByLabelText('Code from the text')).toBe(field));
+    expect(screen.getByText('Enter the 6-digit code from the text.')).toBeDefined();
+    expect(screen.queryByText('Enter the 6-digit code from WhatsApp.')).toBeNull();
+    expect(document.activeElement).toBe(field);
+    vi.useRealTimers();
+  });
+
+  it('rewords a wrong code, and keeps "The code is 6 digits.", when the code is texted instead (sc-36468)', async () => {
+    answering({
+      'GET /api/auth/me': () => json(account()),
+      'GET /api/auth/verify/phone/resend': () =>
+        json({ cooldownSeconds: 60, codeState: 'live', route: 'whatsapp' }),
+      'POST /api/auth/verify/phone': () => problem(422, 'verification_code_invalid'),
+      'POST /api/auth/verify/phone/text-instead': () => json({ route: 'sms_chosen' }),
+    });
+    at('/verify-phone');
+
+    const field = await screen.findByLabelText<HTMLInputElement>('Code from WhatsApp');
+    fireEvent.change(field, { target: { value: '000000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
+    expect(
+      await screen.findByText(
+        'That code does not match. Check the newest WhatsApp message from Soirely and try again.',
+      ),
+    ).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Text it to me instead' }));
+
+    expect(
+      await screen.findByText(
+        'That code does not match. Check the newest text from Soirely and try again.',
+      ),
+    ).toBeDefined();
+    expect(field.value).toBe('000000');
+
+    fireEvent.change(field, { target: { value: '1234' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
+    expect(screen.getByText('The code is 6 digits.')).toBeDefined();
+  });
+
   it('checks the code is six digits before sending', async () => {
     const sent = answering({
       'GET /api/auth/me': () => json(account()),

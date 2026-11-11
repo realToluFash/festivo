@@ -1,5 +1,5 @@
 import { type Account } from '@soirely/api-client';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -71,6 +71,7 @@ const CHIDI_ACCOUNT: Account = {
   needsOrganisation: false,
   hasPassword: true,
   twoFactorSetupPrompt: false,
+  colourScheme: null,
   waitingFor: null,
   providers: [],
   emailAddresses: [],
@@ -102,7 +103,7 @@ describe('the page an account in no organisation stands on (sc-13339)', () => {
     },
   );
 
-  it('sends the account pages back to this page, with Dashboard and the rest gone (sc-13406)', async () => {
+  it('sends the account pages back to this page, with Today and the rest gone (sc-13406)', async () => {
     inNone();
     answering({ 'GET /api/invitations': () => json({ invitations: [] }) });
     app('/app/account');
@@ -126,7 +127,7 @@ describe('the page an account in no organisation stands on (sc-13339)', () => {
     answering({ 'GET /api/invitations': () => json({ invitations: [] }) });
     app('/app/account/security');
 
-    await screen.findByRole('heading', { level: 1, name: 'Your account' });
+    await screen.findByRole('heading', { level: 1, name: 'Security' });
     expect(screen.getByRole('link', { name: 'Join or start an organisation' })).toBeDefined();
     for (const name of PRODUCT_LINKS) expect(screen.queryByRole('link', { name })).toBeNull();
     expect(screen.getByLabelText('Language')).toBeDefined();
@@ -161,7 +162,10 @@ describe('the page an account in no organisation stands on (sc-13339)', () => {
       });
       app(path);
 
-      await screen.findByRole('heading', { level: 1, name: 'Your account' });
+      await screen.findByRole('heading', {
+        level: 1,
+        name: path.endsWith('security') ? 'Security' : 'Your account',
+      });
       for (const name of PRODUCT_LINKS) expect(screen.getByRole('link', { name })).toBeDefined();
       expect(screen.getByRole('button', { name: /Organisation: Ìrè Events/ })).toBeDefined();
       expect(screen.queryByRole('link', { name: 'Join or start an organisation' })).toBeNull();
@@ -196,33 +200,50 @@ describe('the page an account in no organisation stands on (sc-13339)', () => {
   });
 });
 
-describe('No organisation', () => {
-  it('asks for a name and a country before starting one sends anything', async () => {
-    inNone();
-    const sent = answering({ 'GET /api/invitations': () => json({ invitations: [] }) });
-    app();
+const REFUSED_NAME = {
+  type: 'https://soirely.com/errors/validation_failed',
+  title: 'Some fields need attention.',
+  status: 422,
+  violations: [{ propertyPath: 'name', message: 'Keep it to 100 characters.', code: 'x' }],
+};
+const BROKEN = { type: 'about:blank', title: 'Internal Server Error', status: 500 };
 
-    fireEvent.change(await screen.findByLabelText('Country'), { target: { value: '' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
+async function openWalk(): Promise<HTMLElement> {
+  fireEvent.click(await screen.findByRole('button', { name: 'Start organisation' }));
 
-    expect(screen.getByText("Enter the organisation's name.")).toBeDefined();
-    expect(screen.getByText('Choose a country.')).toBeDefined();
-    expect(document.activeElement).toBe(screen.getByLabelText('Organisation name'));
-    expect(sent.some((one) => one.line === 'POST /api/orgs')).toBe(false);
+  return screen.findByRole('dialog', { name: 'Create an organisation' });
+}
+
+/** Start organisation, then the name, then the country by search, to Ready to create it?. */
+async function walkToReady(name: string, country = 'Ghana'): Promise<HTMLElement> {
+  const walk = await openWalk();
+
+  fireEvent.change(within(walk).getByLabelText('Organisation name'), { target: { value: name } });
+  fireEvent.click(within(walk).getByRole('button', { name: 'Continue' }));
+  fireEvent.change(within(walk).getByRole('searchbox', { name: 'Search countries' }), {
+    target: { value: country },
   });
+  fireEvent.click(within(walk).getByRole('option', { name: new RegExp(`^${country}`) }));
+  fireEvent.click(within(walk).getByRole('button', { name: 'Continue' }));
+  within(walk).getByRole('heading', { level: 1, name: 'Ready to create it?' });
 
-  it('refuses a name over 100 characters, saying how long it is', async () => {
+  return walk;
+}
+
+describe('No organisation starts one with the walk (sc-30412)', () => {
+  it('opens the walk on the name, and refuses Continue with none before anything is sent', async () => {
     inNone();
     const sent = answering({ 'GET /api/invitations': () => json({ invitations: [] }) });
     app();
 
-    fireEvent.change(await screen.findByLabelText('Organisation name'), {
-      target: { value: 'a'.repeat(101) },
-    });
-    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
+    const walk = await openWalk();
+    const field = within(walk).getByLabelText('Organisation name');
+    expect(document.activeElement).toBe(field);
 
-    expect(screen.getByText('That name is 101 characters. Use 100 or fewer.')).toBeDefined();
+    fireEvent.click(within(walk).getByRole('button', { name: 'Continue' }));
+
+    expect(within(walk).getByRole('alert').textContent).toBe("Enter the organisation's name.");
+    expect(document.activeElement).toBe(field);
     expect(sent.some((one) => one.line === 'POST /api/orgs')).toBe(false);
   });
 
@@ -235,11 +256,8 @@ describe('No organisation', () => {
     });
     app();
 
-    fireEvent.change(await screen.findByLabelText('Organisation name'), {
-      target: { value: '  Okoro Weddings ' },
-    });
-    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
+    const walk = await walkToReady('  Okoro Weddings ');
+    fireEvent.click(within(walk).getByRole('button', { name: 'Create organisation' }));
 
     await waitFor(() =>
       expect(screen.queryByRole('heading', { name: 'You are not in an organisation' })).toBeNull(),
@@ -251,109 +269,92 @@ describe('No organisation', () => {
     });
   });
 
-  it('shows the server refusal against the field it names', async () => {
+  it('shows the currency the API gives each country, a country with none as none yet', async () => {
     inNone();
     answering({
       'GET /api/invitations': () => json({ invitations: [] }),
-      'POST /api/orgs': () =>
-        json(
-          {
-            type: 'https://soirely.com/errors/validation_failed',
-            title: 'Some fields need attention.',
-            status: 422,
-            violations: [
-              { propertyPath: 'name', message: 'Keep it to 100 characters.', code: 'x' },
-            ],
-          },
-          422,
-        ),
+      'GET /api/countries': () =>
+        json({
+          countries: [
+            { code: 'GH', currency: 'GHS' },
+            { code: 'AQ', currency: null },
+          ],
+        }),
     });
     app();
 
-    fireEvent.change(await screen.findByLabelText('Organisation name'), {
-      target: { value: 'Okoro Weddings' },
-    });
-    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
+    const walk = await walkToReady('Okoro Weddings');
 
-    expect(await screen.findByText('Keep it to 100 characters.')).toBeDefined();
-    expect(screen.getByRole('heading', { name: 'You are not in an organisation' })).toBeDefined();
+    expect(within(walk).getByText(/Currency, Ghanaian Cedi \(GHS\)\./)).toBeDefined();
+    fireEvent.click(within(walk).getByRole('button', { name: 'Back' }));
+    fireEvent.change(within(walk).getByRole('searchbox', { name: 'Search countries' }), {
+      target: { value: 'Antarctica' },
+    });
+    expect(within(walk).getByRole('option', { name: 'Antarctica, None yet' })).toBeDefined();
+  });
+
+  it('takes a name the server refuses back to the name, with its reason', async () => {
+    inNone();
+    answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'POST /api/orgs': () => json(REFUSED_NAME, 422),
+    });
+    app();
+
+    const walk = await walkToReady('Okoro Weddings');
+    fireEvent.click(within(walk).getByRole('button', { name: 'Create organisation' }));
+
+    expect(await within(walk).findByText('Keep it to 100 characters.')).toBeDefined();
     await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByLabelText('Organisation name')),
+      expect(document.activeElement).toBe(within(walk).getByLabelText('Organisation name')),
     );
-    expect(screen.queryByText('Starting it did not work. Try again in a moment.')).toBeNull();
   });
 
-  it('puts focus on the country when the refusal names only the country', async () => {
+  it('says it did not work on Ready, focus on Create organisation', async () => {
+    inNone();
+    answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'POST /api/orgs': () => json(BROKEN, 500),
+    });
+    app();
+
+    const walk = await walkToReady('Okoro Weddings');
+    fireEvent.click(within(walk).getByRole('button', { name: 'Create organisation' }));
+
+    expect(
+      await within(walk).findByText(
+        'Creating the organisation did not work. Nothing was created. Try again in a moment.',
+      ),
+    ).toBeDefined();
+    expect(document.activeElement).toBe(
+      within(walk).getByRole('button', { name: 'Create organisation' }),
+    );
+  });
+
+  it('holds too many for now on Ready, with the time to try again', async () => {
     inNone();
     answering({
       'GET /api/invitations': () => json({ invitations: [] }),
       'POST /api/orgs': () =>
-        json(
-          {
-            type: 'https://soirely.com/errors/validation_failed',
-            title: 'Some fields need attention.',
-            status: 422,
-            violations: [{ propertyPath: 'countryCode', message: 'Not a country.', code: 'x' }],
-          },
-          422,
+        new Response(
+          JSON.stringify({
+            type: 'https://soirely.com/errors/too_many_attempts',
+            title: 'Too many',
+            status: 429,
+          }),
+          { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': '600' } },
         ),
     });
     app();
 
-    fireEvent.change(await screen.findByLabelText('Organisation name'), {
-      target: { value: 'Okoro Weddings' },
-    });
-    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
+    const walk = await walkToReady('Okoro Weddings');
+    fireEvent.click(within(walk).getByRole('button', { name: 'Create organisation' }));
 
-    expect(await screen.findByText('Not a country.')).toBeDefined();
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Country')));
+    expect(await within(walk).findByText('Too many new organisations for now.')).toBeDefined();
+    expect(within(walk).getByText(/^Try again at /)).toBeDefined();
   });
 
-  it('holds both fields while it starts, the button reading Starting…', async () => {
-    inNone();
-    answering({
-      'GET /api/invitations': () => json({ invitations: [] }),
-      'POST /api/orgs': () => new Promise<Response>(() => {}),
-    });
-    app();
-
-    fireEvent.change(await screen.findByLabelText('Organisation name'), {
-      target: { value: 'Okoro Weddings' },
-    });
-    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
-
-    expect(await screen.findByRole('button', { name: 'Starting…' })).toBeDefined();
-    expect((screen.getByLabelText('Organisation name') as HTMLInputElement).readOnly).toBe(true);
-    expect((screen.getByLabelText('Country') as HTMLSelectElement).disabled).toBe(true);
-  });
-
-  it('keeps focus in Organisation name while it starts after Enter, and there once refused (sc-11588)', async () => {
-    inNone();
-    let answer: (response: Response) => void = () => {};
-    answering({
-      'GET /api/invitations': () => json({ invitations: [] }),
-      'POST /api/orgs': () => new Promise<Response>((resolve) => (answer = resolve)),
-    });
-    app();
-
-    const name = (await screen.findByLabelText('Organisation name')) as HTMLInputElement;
-    fireEvent.change(name, { target: { value: 'Okoro Weddings' } });
-    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
-    name.focus();
-    fireEvent.submit(name);
-
-    await screen.findByRole('button', { name: 'Starting…' });
-    expect(document.activeElement).toBe(name);
-
-    answer(json({ type: 'about:blank', title: 'Internal Server Error', status: 500 }, 500));
-    expect(await screen.findByRole('button', { name: 'Start organisation' })).toBeDefined();
-    expect(document.activeElement).toBe(name);
-  });
-
-  it('sends one request for a double press, then one more after a failure (sc-8327)', async () => {
+  it('sends one request while it creates, with no way out, then one more after a failure (sc-8327)', async () => {
     inNone();
     let answer: (response: Response) => void = () => {};
     const sent = answering({
@@ -363,100 +364,39 @@ describe('No organisation', () => {
     const posts = () => sent.filter(({ line }) => line === 'POST /api/orgs');
     app();
 
-    fireEvent.change(await screen.findByLabelText('Organisation name'), {
-      target: { value: 'Okoro Weddings' },
-    });
-    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
-    const form = screen.getByLabelText('Organisation name').closest('form') as HTMLFormElement;
-    fireEvent.submit(form);
-    fireEvent.submit(form);
-    const starting = await screen.findByRole('button', { name: 'Starting…' });
-    expect(starting.matches(':disabled')).toBe(true);
-    fireEvent.click(starting);
+    const walk = await walkToReady('Okoro Weddings');
+    fireEvent.click(within(walk).getByRole('button', { name: 'Create organisation' }));
+    const creating = within(walk).getByRole('button', { name: 'Creating…' });
+    expect(creating.matches(':disabled')).toBe(true);
+    expect(within(walk).queryByRole('button', { name: 'Cancel' })).toBeNull();
+    fireEvent.click(creating);
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
     await waitFor(() => expect(posts()).toHaveLength(1));
+    expect(screen.getByRole('dialog', { name: 'Create an organisation' })).toBe(walk);
 
-    answer(json({ type: 'about:blank', title: 'Internal Server Error', status: 500 }, 500));
-    const start = await screen.findByRole('button', { name: 'Start organisation' });
-    expect(start.matches(':disabled')).toBe(false);
-    expect(posts()).toHaveLength(1);
-    fireEvent.click(start);
+    answer(json(BROKEN, 500));
+    fireEvent.click(await within(walk).findByRole('button', { name: 'Create organisation' }));
     await waitFor(() => expect(posts()).toHaveLength(2));
   });
 
-  it.each([
-    [
-      'too many new organisations',
-      () =>
-        json(
-          {
-            type: 'https://soirely.com/errors/too_many_attempts',
-            title: 'Too many attempts.',
-            status: 429,
-          },
-          429,
-        ),
-    ],
-    [
-      'a server error',
-      () => json({ type: 'about:blank', title: 'Internal Server Error', status: 500 }, 500),
-    ],
-    [
-      'no network',
-      () => {
-        throw new TypeError('Failed to fetch');
-      },
-    ],
-  ])('puts focus back on the name, keeping what was entered, after %s', async (_, answer) => {
+  it('asks before Cancel throws away a name, and closes at once with nothing entered', async () => {
     inNone();
-    answering({
-      'GET /api/invitations': () => json({ invitations: [] }),
-      'POST /api/orgs': answer,
-    });
+    answering({ 'GET /api/invitations': () => json({ invitations: [] }) });
     app();
 
-    fireEvent.change(await screen.findByLabelText('Organisation name'), {
+    let walk = await openWalk();
+    fireEvent.click(within(walk).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog', { name: 'Create an organisation' })).toBeNull();
+
+    walk = await openWalk();
+    fireEvent.change(within(walk).getByLabelText('Organisation name'), {
       target: { value: 'Okoro Weddings' },
     });
-    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
+    fireEvent.click(within(walk).getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Discard' }));
 
-    expect(await screen.findByRole('alert')).toBeDefined();
-    expect(screen.getAllByRole('alert')).toHaveLength(1);
-    const name = screen.getByLabelText<HTMLInputElement>('Organisation name');
-    await waitFor(() => expect(document.activeElement).toBe(name));
-    expect(name.value).toBe('Okoro Weddings');
-    expect(screen.getByLabelText<HTMLSelectElement>('Country').value).toBe('GH');
-  });
-
-  it('says starting it did not work when the refusal names no field the page has', async () => {
-    inNone();
-    answering({
-      'GET /api/invitations': () => json({ invitations: [] }),
-      'POST /api/orgs': () =>
-        json(
-          {
-            type: 'https://soirely.com/errors/validation_failed',
-            title: 'Some fields need attention.',
-            status: 422,
-            violations: [{ propertyPath: 'contactAddress', message: 'Bad address.', code: 'x' }],
-          },
-          422,
-        ),
-    });
-    app();
-
-    fireEvent.change(await screen.findByLabelText('Organisation name'), {
-      target: { value: 'Okoro Weddings' },
-    });
-    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
-
-    expect(
-      await screen.findByText('Starting it did not work. Try again in a moment.'),
-    ).toBeDefined();
-    expect(screen.queryByText('Bad address.')).toBeNull();
     await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByLabelText('Organisation name')),
+      expect(screen.queryByRole('dialog', { name: 'Create an organisation' })).toBeNull(),
     );
   });
 });
@@ -483,7 +423,7 @@ describe('where focus goes on No organisation (sc-11369)', () => {
     return screen.getByText(`Now working in ${name}.`).closest('.sw-notice');
   }
 
-  it('takes Start organisation to "Now working in", read once, above Dashboard', async () => {
+  it('takes Start organisation to "Now working in", read once, above Today', async () => {
     inNone();
     const started = membership({ id: 'org_9', name: 'Okoro Weddings', countryCode: 'GH' });
     answering({
@@ -492,13 +432,10 @@ describe('where focus goes on No organisation (sc-11369)', () => {
     });
     app();
 
-    fireEvent.change(await screen.findByLabelText('Organisation name'), {
-      target: { value: 'Okoro Weddings' },
-    });
-    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
+    const walk = await walkToReady('Okoro Weddings');
+    fireEvent.click(within(walk).getByRole('button', { name: 'Create organisation' }));
 
-    await screen.findByRole('heading', { level: 1, name: 'Dashboard' });
+    await screen.findByRole('heading', { level: 1, name: 'Today' });
     for (const name of PRODUCT_LINKS) expect(screen.getByRole('link', { name })).toBeDefined();
     expect(document.activeElement).toBe(nowWorkingIn('Okoro Weddings'));
     expect(nowWorkingIn('Okoro Weddings')?.getAttribute('role')).toBeNull();
@@ -538,7 +475,7 @@ describe('where focus goes on No organisation (sc-11369)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Adunni Weddings' }));
 
-    await screen.findByRole('heading', { level: 1, name: 'Dashboard' });
+    await screen.findByRole('heading', { level: 1, name: 'Today' });
     for (const name of PRODUCT_LINKS) expect(screen.getByRole('link', { name })).toBeDefined();
     expect(document.activeElement).toBe(nowWorkingIn('Adunni Weddings'));
   });

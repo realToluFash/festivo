@@ -5,7 +5,7 @@ import type {
   SignInRulesChanges,
   SignInRulesPage,
 } from '@soirely/api-client';
-import { keptBackBy, roleName } from '@soirely/domain';
+import { keptBackBy, listFormat, roleName } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import type { Mark } from '../../../components/SignInRulesParts.tsx';
@@ -486,7 +486,7 @@ export function effectsOf(
 ): string[] {
   const before = rulesOf(page);
   const names = (people: readonly { name: string }[]) =>
-    new Intl.ListFormat(language, { type: 'conjunction' }).format(people.map(({ name }) => name));
+    listFormat(language, { type: 'conjunction' }).format(people.map(({ name }) => name));
   const said: string[] = [];
 
   if (after.providerOnly !== before.providerOnly) {

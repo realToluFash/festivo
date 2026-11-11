@@ -1,9 +1,9 @@
 import type { Account, ListedEvent, Membership } from '@soirely/api-client';
-import { roleName, serverClock } from '@soirely/domain';
+import { firstName, roleHolds, roleName, serverClock } from '@soirely/domain';
 import { router } from 'expo-router';
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppState, StyleSheet, View, type ViewInstance } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
 
 import { api } from '../api.ts';
 import type { Tab } from './TodayCover.tsx';
@@ -18,7 +18,7 @@ import { useUnread } from '../notificationsUnread.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { afterFailedLoad } from '../offlineLoad.ts';
 import { tokens } from '../theme/tokens.ts';
-import { useOpenSwitcher } from './AppFrame.tsx';
+import { useFrameOrgOpener } from './AppFrame.tsx';
 import { EventsFailed } from './Events.tsx';
 import { Pending } from './Pending.tsx';
 import { Refreshing } from './Refreshing.tsx';
@@ -50,8 +50,6 @@ export function TodayLanding({
   const { t } = useTranslation();
   const { kind } = useLayout();
   const unread = useUnread();
-  const openSwitcher = useOpenSwitcher();
-  const switchFrom = useRef<ViewInstance>(null);
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [refresh, setRefresh] = useState(0);
@@ -87,43 +85,39 @@ export function TodayLanding({
     };
   }, [organisation.id, attempt, refresh, watch]);
 
-  const open = useCallback(
-    (opens: Opens) => {
-      switch (opens.to) {
-        case 'event':
-          router.push(`/events/${opens.id}`);
-          return;
-        case 'calendar':
-        case 'events':
-          router.navigate(DESTINATION_HREF[opens.to]);
-          return;
-        case 'create':
-          router.push('/events/new');
-          return;
-        case 'notifications':
-          router.push('/notifications');
-          return;
-        case 'account':
-          router.navigate(SECTION_HREF.account);
-          return;
-        case 'organisation':
-          openSwitcher?.(switchFrom);
-          return;
-        case 'search':
-          return;
-      }
-    },
-    [openSwitcher],
-  );
+  const open = useCallback((opens: Opens) => {
+    switch (opens.to) {
+      case 'event':
+        router.push(`/events/${opens.id}`);
+        return;
+      case 'calendar':
+      case 'events':
+        router.navigate(DESTINATION_HREF[opens.to]);
+        return;
+      case 'create':
+        router.push('/events/new');
+        return;
+      case 'notifications':
+        router.push('/notifications');
+        return;
+      case 'account':
+        router.navigate(SECTION_HREF.account);
+        return;
+      case 'search':
+        return;
+    }
+  }, []);
   const shell = useMemo<TodayShell>(
     () => ({
       organisation: organisation.name,
       person: { name: account.name, role: roleName(t, organisation.role) },
       unread,
+      creates: roleHolds(organisation, 'events.create'),
       search: false,
       open,
+      useOrgOpener: useFrameOrgOpener,
     }),
-    [account.name, organisation.name, organisation.role, unread, open, t],
+    [account.name, organisation, unread, open, t],
   );
   const onTab = useCallback((tab: Tab) => {
     if (tab !== 'Today') router.navigate(TAB_HREF[tab]);
@@ -150,7 +144,7 @@ export function TodayLanding({
     load,
     serverClock.now(),
     { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, locale: dateLocale() },
-    account.name.split(' ')[0] ?? '',
+    firstName(account.name),
     t,
   );
 

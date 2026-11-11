@@ -25,6 +25,7 @@ import { dateLocale } from '../i18n/index.ts';
 import {
   type CodeLine,
   cardLine,
+  codeErrors,
   type Contact,
   type ContactKind,
   KIND_KEYS,
@@ -545,6 +546,7 @@ function VerifyStep({
       title={words.title}
       lead={words.lead}
       codeLabel={words.codeLabel}
+      errors={codeErrors(words, t)}
       spent={spent}
       wait={cooldown}
       startError={null}
@@ -552,8 +554,7 @@ function VerifyStep({
       onClose={onClose}
       onVerify={async (typed): Promise<CodeSays | null> => {
         const problem = codeProblem(typed);
-        if (problem != null)
-          return { error: problem === 'blank' ? words.blank : words.short, checked: true };
+        if (problem != null) return { error: problem, checked: true };
         setResendFailed(false);
         setStatus({ kind: 'verifying' });
         const checked = await check.verify(cleanCode(typed));
@@ -561,9 +562,8 @@ function VerifyStep({
           await onVerified(checked.primary);
           return null;
         }
-        if (checked.refusal.kind === 'wrong') return { error: words.wrong, checked: false };
-        if (checked.refusal.kind === 'failed')
-          return { error: t('verifyEmail.failedBody'), checked: false };
+        if (checked.refusal.kind === 'wrong' || checked.refusal.kind === 'failed')
+          return { error: checked.refusal.kind, checked: false };
 
         return null;
       }}

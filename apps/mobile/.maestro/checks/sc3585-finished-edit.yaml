@@ -11,9 +11,9 @@ appId: host.exp.Exponent
 - takeScreenshot: finished
 - scrollUntilVisible:
     element:
-      id: 'events.page.edit'
+      id: 'events.details.name'
 - tapOn:
-    id: 'events.page.edit'
+    id: 'events.details.name'
 - waitForAnimationToEnd
 - takeScreenshot: edit-top
 - scroll

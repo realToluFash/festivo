@@ -24,7 +24,6 @@ import {
 import {
   barFits,
   coveredBy,
-  fieldKeptInSight,
   groupInWindow,
   heightFromFocus,
   keyboardInWindow,
@@ -33,6 +32,7 @@ import {
   settledAnswer,
   keysOver,
   liftNeeded,
+  settleLifts,
   listRoom,
   notesGiveWay,
   offsetAboveKeyboard,
@@ -46,7 +46,6 @@ import {
   shortWhileTyping,
   shownAboveKeys,
   shownEnd,
-  titleScrollsWhileTyping,
 } from './keyboard.ts';
 
 describe('the keyboard lifts the card once', () => {
@@ -141,6 +140,27 @@ describe('the field typed in stays in sight above a group lifted under it (sc-11
     const check = { shown: 400, group: { y: 150, height: 300 }, scrollTop: 100, margin: 16 };
 
     expect(liftNeeded({ ...check, focusTop: 120 })).toBe(true);
+  });
+});
+
+describe('a bar leaving the keys for the scroll settles the lifts made for less room (sc-35488)', () => {
+  it('lowers the scroll to the most any group needs', () => {
+    expect(settleLifts([120, 'stays', 80], 300)).toBe(120);
+    expect(settleLifts(['stays', 'stays'], 300)).toBe(0);
+  });
+
+  it('leaves the scroll when one group cannot be measured', () => {
+    expect(settleLifts([120, null], 300)).toBeNull();
+    expect(settleLifts([null, null], 300)).toBeNull();
+  });
+
+  it('leaves the scroll when no group can vouch for the focused field', () => {
+    expect(settleLifts([], 300)).toBeNull();
+  });
+
+  it('never raises the scroll', () => {
+    expect(settleLifts([400], 300)).toBeNull();
+    expect(settleLifts([300], 300)).toBeNull();
   });
 });
 
@@ -447,57 +467,6 @@ describe('a short Android phone gives up the help line and back row while typing
   });
 });
 
-describe('an iPhone on its side scrolls the sheet title with its body while typing', () => {
-  const sideways = { os: 'ios', phone: true, width: 844, height: 390, keysUp: true };
-
-  it('on its side with the keys up', () => {
-    expect(titleScrollsWhileTyping(sideways)).toBe(true);
-  });
-
-  it('never in portrait', () => {
-    expect(titleScrollsWhileTyping({ ...sideways, width: 390, height: 844 })).toBe(false);
-  });
-
-  it('never with the keys down', () => {
-    expect(titleScrollsWhileTyping({ ...sideways, keysUp: false })).toBe(false);
-  });
-
-  it('never on a tablet', () => {
-    expect(titleScrollsWhileTyping({ ...sideways, phone: false })).toBe(false);
-  });
-
-  it('never on an Android phone', () => {
-    expect(titleScrollsWhileTyping({ ...sideways, os: 'android' })).toBe(false);
-  });
-});
-
-describe('a sheet keeps its field in sight while typing, and on an iPhone on its side with the keys down (sc-9442)', () => {
-  const sideways = { os: 'ios', phone: true, width: 667, height: 375, keysUp: true };
-
-  it('with the keys up', () => {
-    expect(fieldKeptInSight({ ...sideways, width: 375, height: 667 })).toBe(true);
-    expect(fieldKeptInSight({ ...sideways, os: 'android', width: 360, height: 640 })).toBe(true);
-  });
-
-  it('on an iPhone on its side with the keys down', () => {
-    expect(fieldKeptInSight({ ...sideways, keysUp: false })).toBe(true);
-  });
-
-  it('not with the keys down upright', () => {
-    expect(fieldKeptInSight({ ...sideways, width: 375, height: 667, keysUp: false })).toBe(false);
-  });
-
-  it('not with the keys down on an iPad', () => {
-    expect(
-      fieldKeptInSight({ ...sideways, phone: false, width: 1180, height: 820, keysUp: false }),
-    ).toBe(false);
-  });
-
-  it('not with the keys down on an Android phone on its side', () => {
-    expect(fieldKeptInSight({ ...sideways, os: 'android', keysUp: false })).toBe(false);
-  });
-});
-
 describe('an iPhone on its side rests the sheet body at its top once the keys go down (sc-9442)', () => {
   // An SE on its side, keys down: a 170 body under the fixed title; the 40 intro, the 16 gap, then the 76 name field, or a 40 notice and a 16 gap before it.
   const body = { scrollTop: 0, keyboardTop: 170, margin: 16 };
@@ -533,6 +502,7 @@ describe('every field carries the caret colour', () => {
       expect(props.selectionColor).toBe(tokens.colorInk);
       expect(props.autoCorrect).toBe(false);
       expect(props.spellCheck).toBe(false);
+      expect(props.disableFullscreenUI).toBe(true);
     }
   });
 });

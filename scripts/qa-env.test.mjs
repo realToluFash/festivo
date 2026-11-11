@@ -52,6 +52,8 @@ import {
   SCREEN_READER_OFF,
   driverBuilds,
   driverPids,
+  leftDriverSay,
+  clearForBatch,
   bundlerArgs,
   bundlerEnv,
   commitTarget,
@@ -72,6 +74,7 @@ import {
   startHelper,
   membershipChanges,
   keptOwner,
+  madeAccount,
   domainPause,
   STEP_MS,
   totp,
@@ -138,10 +141,12 @@ import {
   releasePlatform,
   simulatorArch,
   staleBuilds,
+  iosBuildEnv,
   iosReleaseBuildArgs,
   xcodeWorkspace,
   renderQaEnv,
   reversedPorts,
+  unreversed,
   simulatorFor,
   TESTERS,
   testerOf,
@@ -795,6 +800,21 @@ describe('the ports an emulator is given', () => {
   });
 });
 
+describe('the reversed ports read back', () => {
+  it('names the ports adb does not list', () => {
+    const list = 'emulator-5574 tcp:18081 tcp:18081\nemulator-5574 tcp:18000 tcp:18000';
+    expect(unreversed(list, [18081, 18000, 19000])).toEqual([19000]);
+  });
+
+  it('reads the older (reverse) form', () => {
+    expect(unreversed('(reverse) tcp:18081 tcp:18081', [18081])).toEqual([]);
+  });
+
+  it('counts every port missing when adb answers nothing', () => {
+    expect(unreversed(null, [18081, 18000])).toEqual([18081, 18000]);
+  });
+});
+
 describe('the Android SDK', () => {
   it('is ANDROID_HOME, then ANDROID_SDK_ROOT', () => {
     expect(androidSdk({ ANDROID_HOME: '/a', ANDROID_SDK_ROOT: '/b' }, 'linux', '/h')).toBe('/a');
@@ -1059,6 +1079,14 @@ describe('a release build', () => {
       'Soirely.xcworkspace',
     );
     expect(() => xcodeWorkspace(['Soirely.xcodeproj'])).toThrow(/found 0/);
+  });
+
+  it('builds iOS in a UTF-8 locale whatever the calling shell has, so pod install does not fail', () => {
+    const env = iosBuildEnv({ EXPO_PUBLIC_API_URL: 'http://x', LC_ALL: 'C' });
+    expect(env.LANG).toBe('en_US.UTF-8');
+    expect(env.LC_ALL).toBe('en_US.UTF-8');
+    expect(env.EXPO_PUBLIC_API_URL).toBe('http://x');
+    expect(env.EXPO_PUBLIC_ENVIRONMENT).toBe('qa');
   });
 
   it('signs the release build ad hoc, so the Keychain keeps a session across a cold start', () => {
@@ -2450,6 +2478,42 @@ describe('the driver a frozen run leaves on the simulator', () => {
       ),
     ).toEqual([4120]);
   });
+
+  const clearing = () => {
+    const calls = [];
+    return {
+      calls,
+      options: {
+        stop: (device, onAndroid, opts) => calls.push(['stop', device, onAndroid, opts]),
+        reset: (onAndroid, device) => calls.push(['reset', onAndroid, device]),
+      },
+    };
+  };
+
+  it('is stopped on the iPhone before a batch resets the app', async () => {
+    const { calls, options } = clearing();
+    await clearForBatch(false, 'SIM-1', options);
+    expect(calls).toEqual([
+      ['stop', 'SIM-1', false, { leftOver: true }],
+      ['reset', false, 'SIM-1'],
+    ]);
+  });
+
+  it('is left alone on Android, where the batch only resets the app', async () => {
+    const { calls, options } = clearing();
+    await clearForBatch(true, 'emulator-5554', options);
+    expect(calls).toEqual([['reset', true, 'emulator-5554']]);
+  });
+
+  it('is named when one is left, and nothing is said when none is', () => {
+    expect(leftDriverSay('SIM-1', { runners: [], builds: [] })).toBeNull();
+    expect(leftDriverSay('SIM-1', { runners: [], builds: [4120] })).toBe(
+      'Stopping the Maestro driver an earlier run left on SIM-1',
+    );
+    expect(leftDriverSay('SIM-1', { runners: [38266], builds: [] })).toBe(
+      'Stopping the Maestro driver an earlier run left on SIM-1',
+    );
+  });
 });
 
 describe('one Maestro run of a batch', () => {
@@ -2840,13 +2904,13 @@ describe('the flows a batch runs', () => {
         onAndroid: false,
       });
       expect(readFileSync(join(target, '_checks/settings.es.yaml'), 'utf8')).toContain(
-        "'Configuración'",
+        localise("'{{t:settings.title}}'", catalogues, 'es'),
       );
       expect(readFileSync(join(target, '_checks/security.es.yaml'), 'utf8')).toContain(
-        "'Seguridad'",
+        localise("'{{t:security.title}}'", catalogues, 'es'),
       );
       expect(readFileSync(join(target, '_checks/sign-in-rules.fr.yaml'), 'utf8')).toContain(
-        "'Règles de connexion'",
+        localise("'{{t:settings.signInRules}}'", catalogues, 'fr'),
       );
       expect(readFileSync(join(target, '_checks/sc23267-start-cold.fr.yaml'), 'utf8')).toContain(
         'file: sc23267-start-cold.fr.sc23267-start-cold-once.flow.yaml',
@@ -2977,6 +3041,19 @@ describe('the flows a batch runs', () => {
         for (const code of ['en', 'es', 'fr', 'pt']) {
           expect(catalogues[code].todayScreen.tab.today).toMatch(toSettings);
         }
+      }
+      const atSettings = new RegExp(
+        `^(?:${readFileSync(join(target, 'batch/to-settings.yaml'), 'utf8')
+          .match(/extendedWaitUntil:\s+visible: '(.*)'/)[1]
+          .replaceAll("''", "'")})$`,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        expect(catalogues[code].signInRules.overdueTitle).toMatch(atSettings);
+        expect(
+          catalogues[code].settings.personLabelWithRole.replace(/\{\{\w+\}\}/g, 'Ada'),
+        ).toMatch(atSettings);
+        expect(catalogues[code].todayScreen.tab.today).not.toMatch(atSettings);
+        expect(catalogues[code].settings.title).not.toMatch(atSettings);
       }
       const upright = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
       expect(upright.indexOf('setOrientation: PORTRAIT')).toBeGreaterThan(-1);
@@ -3755,5 +3832,36 @@ describe('missingCmdlineTools', () => {
     expect(message).toContain('/sdk/cmdline-tools/latest/bin');
     expect(message).toContain('developer.android.com/studio#command-tools');
     expect(message).toContain('run `node scripts/qa-env.mjs setup` again');
+  });
+});
+
+describe('madeAccount', () => {
+  it('reads the account qa-account printed', () => {
+    expect(madeAccount({ status: 0, stdout: '{"email":"a@b.c"}\n', stderr: '' })).toEqual({
+      email: 'a@b.c',
+    });
+  });
+
+  it('names the call and status qa-account failed on', () => {
+    expect(() =>
+      madeAccount({
+        status: 1,
+        stdout: '',
+        stderr: '\n✗ /api/auth/register answered 429: Too Many Requests\n',
+      }),
+    ).toThrow('/api/auth/register answered 429');
+  });
+
+  it('says why when qa-account never ran', () => {
+    expect(() =>
+      madeAccount({ status: null, error: new Error('spawnSync node ENOENT'), stderr: null }),
+    ).toThrow('spawnSync node ENOENT');
+    expect(() => madeAccount({ status: null, signal: 'SIGKILL', stderr: '' })).toThrow(
+      'killed by SIGKILL',
+    );
+  });
+
+  it('falls back to the exit status when qa-account said nothing', () => {
+    expect(() => madeAccount({ status: 2, stdout: '', stderr: '' })).toThrow('exited 2');
   });
 });

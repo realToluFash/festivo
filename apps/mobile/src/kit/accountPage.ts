@@ -106,6 +106,9 @@ export function promotedWords(kind: ContactKind, shown: string, t: TFunction): s
 /** How a code reached the person: by email, or a phone's route as `codeWording` names it. */
 export type CodeLine = 'email' | 'whatsapp' | 'fallback' | 'chosen' | 'texted';
 
+/** Why the code field refuses what was typed or sent. */
+export type CodeError = 'blank' | 'short' | 'wrong' | 'failed';
+
 export interface VerifyWords {
   title: string;
   lead: string;
@@ -147,6 +150,15 @@ export function verifyWords(line: CodeLine, shown: string, t: TFunction): Verify
     wrong: t(whatsApp ? 'verifyPhone.wrongWhatsApp' : 'verifyPhone.wrong'),
     expired: { title: t('verifyPhone.expiredTitle'), line: t('verifyPhone.expiredBody') },
     exhausted: { title: t('verifyPhone.exhaustedTitle'), line: t('verifyPhone.exhaustedBody') },
+  };
+}
+
+export function codeErrors(words: VerifyWords, t: TFunction): Record<CodeError, string> {
+  return {
+    blank: words.blank,
+    short: words.short,
+    wrong: words.wrong,
+    failed: t('verifyEmail.failedBody'),
   };
 }
 

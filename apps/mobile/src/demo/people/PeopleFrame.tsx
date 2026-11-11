@@ -2,11 +2,10 @@ import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Bell, PortraitTop } from '../settings/Frame.tsx';
-import { EVENT, LOADING_WORDS } from './PeopleSample.ts';
+import { EVENT } from './PeopleSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Back } from '../../components/SettingsParts.tsx';
 import { PageToast, type PageToastProps } from '../../components/Summary.tsx';
@@ -93,38 +92,6 @@ export function PeoplePage({
   );
 }
 
-/** Two Sunk groups where the list goes, a head, a line and rows, heard as the words alone. */
-export function PeopleLoading() {
-  useReadOut(LOADING_WORDS);
-
-  return (
-    <View
-      style={styles.loading}
-      accessible
-      accessibilityLabel={LOADING_WORDS}
-      accessibilityState={{ busy: true }}
-    >
-      {[1, 2].map((rows) => (
-        <View key={rows} style={styles.sunkGroup}>
-          <View style={styles.sunkHead} />
-          <View style={styles.sunkLine} />
-          <View>
-            {Array.from({ length: rows }, (_, index) => (
-              <View key={index}>
-                {index > 0 && <View style={styles.sunkRule} />}
-                <View style={styles.sunkRow}>
-                  <View style={styles.sunkFace} />
-                  <View style={[styles.sunkBar, { width: `${46 + 12 * index}%` }]} />
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   page: { flex: 1, backgroundColor: tokens.colorCard },
@@ -151,22 +118,4 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   paneBody: { paddingTop: 26, paddingHorizontal: 26, paddingBottom: tokens.space6xl },
-  loading: { gap: 26 },
-  sunkGroup: { gap: tokens.spaceMd },
-  sunkHead: {
-    width: 96,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: tokens.colorNeutralFill,
-  },
-  sunkLine: {
-    width: '78%',
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: tokens.colorNeutralFill,
-  },
-  sunkRule: { height: 1, marginLeft: 52, backgroundColor: tokens.colorBorder },
-  sunkRow: { height: 52, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
-  sunkFace: { width: 40, height: 40, borderRadius: 20, backgroundColor: tokens.colorNeutralFill },
-  sunkBar: { height: 14, borderRadius: 7, backgroundColor: tokens.colorNeutralFill },
 });

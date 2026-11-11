@@ -13,49 +13,49 @@ onFlowComplete:
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'ownership.delete'
+      id: 'organisation.ownership.delete'
     timeout: 60000
 - runScript:
     file: ../batch/helper.js
     env:
       ASK: /api?to=stopped
 - tapOn:
-    id: 'ownership.delete'
+    id: 'organisation.ownership.delete'
 - extendedWaitUntil:
     visible:
-      id: 'ownership.delete.retry'
+      id: 'organisation.delete.retry'
     timeout: 30000
 - runScript:
     file: ../batch/helper.js
     env:
       ASK: /api?to=up
 - tapOn:
-    id: 'ownership.delete.name'
+    id: 'organisation.delete.name'
 - inputText: 'QA Organisatio'
 - scrollUntilVisible:
     element:
-      id: 'ownership.delete.send'
+      id: 'organisation.delete.send'
     timeout: 20000
 - waitForAnimationToEnd
 - tapOn:
-    id: 'ownership.delete.send'
+    id: 'organisation.delete.send'
 - waitForAnimationToEnd
 - assertVisible: '{{t:ownership.deleteMismatch}}'
 - takeScreenshot: mismatch
 - tapOn:
-    id: 'ownership.delete.name'
+    id: 'organisation.delete.name'
 - eraseText: 60
 - inputText: 'QA Organisation'
 - scrollUntilVisible:
     element:
-      id: 'ownership.delete.send'
+      id: 'organisation.delete.send'
     timeout: 20000
 - waitForAnimationToEnd
 - tapOn:
-    id: 'ownership.delete.send'
+    id: 'organisation.delete.send'
 - extendedWaitUntil:
     notVisible:
-      id: 'ownership.delete.send'
+      id: 'organisation.delete.send'
     timeout: 20000
 - waitForAnimationToEnd
 - takeScreenshot: deleted

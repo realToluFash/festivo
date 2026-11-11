@@ -1,12 +1,5 @@
 import { ApiError } from '@soirely/api-client';
-import {
-  cleanCode,
-  codeProblem,
-  formatTimeOfDay,
-  lockLiftsAt,
-  meetsPasswordLength,
-} from '@soirely/domain';
-import { type TFunction } from 'i18next';
+import { cleanCode, codeProblem, meetsPasswordLength } from '@soirely/domain';
 import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -18,7 +11,12 @@ import { PasswordRule } from '../../../components/PasswordRule.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
 import { focusWhereSent } from '../../../offField.ts';
 import { useResendCountdown } from '../../../resendCountdown.ts';
-import { dateLocale } from '../../../i18n/index.ts';
+import {
+  type ChangeRefusal,
+  changeRefusal,
+  chosenRefusal,
+  emailedCodeRefusal,
+} from '../../../securityRefusals.ts';
 import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { currentSessionId } from '../../../tokens.ts';
 import { ActionPair } from '../../../components/ActionPair.tsx';
@@ -108,7 +106,7 @@ export function Setting({
       setStep({ kind: 'password', stepUp: await api.passPasswordCode(cleanCode(code)) });
       arriveAtStep();
     } catch (error) {
-      const refused = codeRefusal(error, t);
+      const refused = emailedCodeRefusal(error, t);
       setStep({ kind: 'code', ...refused });
       if (refused.refusal != null) land('set-code');
     } finally {
@@ -147,15 +145,7 @@ export function Setting({
         return;
       }
 
-      const violation =
-        error instanceof ApiError
-          ? error.problem.violations?.find((v) => v.propertyPath === 'newPassword')
-          : undefined;
-      setPasswordRefusal(
-        violation?.code === 'password_breached'
-          ? t('register.breached')
-          : (violation?.message ?? t('passwordCard.failedBody')),
-      );
+      setPasswordRefusal(chosenRefusal(error, t));
       landWhereSent('set-password');
     }
   }
@@ -313,47 +303,6 @@ export function Setting({
   );
 }
 
-/** A refused code, in the card's words: a pause states its time, in the reader's clock. */
-function codeRefusal(
-  error: unknown,
-  t: TFunction,
-): { refusal: string | null; paused: string | null } {
-  if (error instanceof ApiError && error.is('too_many_attempts')) {
-    const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
-
-    return {
-      refusal: null,
-      paused:
-        liftsAt == null
-          ? t('passwordCard.pausedSoon')
-          : t('passwordCard.pausedBody', { time: formatTimeOfDay(liftsAt, dateLocale()) }),
-    };
-  }
-
-  if (error instanceof ApiError && error.is('verification_code_expired')) {
-    return { refusal: t('passwordCard.setCodeExpired'), paused: null };
-  }
-
-  if (error instanceof ApiError && error.is('verification_code_exhausted')) {
-    return { refusal: t('passwordCard.setCodeSpent'), paused: null };
-  }
-
-  if (
-    error instanceof ApiError &&
-    (error.is('verification_code_invalid') || error.is('validation_failed'))
-  ) {
-    return { refusal: t('passwordCard.setCodeWrong'), paused: null };
-  }
-
-  return { refusal: t('passwordCard.failedBody'), paused: null };
-}
-
-type Refusal =
-  | { field: 'currentPassword'; message: string }
-  | { field: 'newPassword'; message: string }
-  | { field: 'paused'; message: string }
-  | { field: 'failed'; message: string };
-
 export function Changing({
   email,
   onChanged,
@@ -367,7 +316,7 @@ export function Changing({
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [saving, setSaving] = useState(false);
-  const [refusal, setRefusal] = useState<Refusal | null>(null);
+  const [refusal, setRefusal] = useState<ChangeRefusal | null>(null);
   const currentInput = useRef<HTMLInputElement>(null);
   const nextInput = useRef<HTMLInputElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -409,7 +358,7 @@ export function Changing({
     } catch (error) {
       setSaving(false);
 
-      const refused = refusalFrom(error, t);
+      const refused = changeRefusal(error, t);
       setRefusal(refused);
       if (refused.field === 'currentPassword') land('current-password');
       if (refused.field === 'newPassword') land('new-password');
@@ -524,44 +473,4 @@ export function Changing({
       </form>
     </>
   );
-}
-
-/** Each refusal under the field it is about; the pause states its time, in the reader's clock. */
-function refusalFrom(error: unknown, t: TFunction): Refusal {
-  if (!(error instanceof ApiError))
-    return { field: 'failed', message: t('passwordCard.failedBody') };
-
-  if (error.is('invalid_credentials')) {
-    return { field: 'currentPassword', message: t('passwordCard.wrongCurrent') };
-  }
-
-  if (error.is('too_many_attempts')) {
-    const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
-
-    return {
-      field: 'paused',
-      message:
-        liftsAt == null
-          ? t('passwordCard.pausedSoon')
-          : t('passwordCard.pausedBody', { time: formatTimeOfDay(liftsAt, dateLocale()) }),
-    };
-  }
-
-  const violation = error.is('validation_failed')
-    ? error.problem.violations?.find((v) => v.propertyPath === 'newPassword')
-    : undefined;
-
-  if (violation != null) {
-    return {
-      field: 'newPassword',
-      message:
-        violation.code === 'password_breached'
-          ? t('register.breached')
-          : violation.code === 'password_unchanged'
-            ? t('passwordCard.same')
-            : violation.message,
-    };
-  }
-
-  return { field: 'failed', message: t('passwordCard.failedBody') };
 }

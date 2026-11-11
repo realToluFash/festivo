@@ -30,7 +30,7 @@ appId: host.exp.Exponent
     duration: 400
 - extendedWaitUntil:
     visible:
-      id: 'settings.roles'
+      id: 'settings.members'
     timeout: 10000
 - assertNotVisible:
     id: 'members.row.${MEMBER}'

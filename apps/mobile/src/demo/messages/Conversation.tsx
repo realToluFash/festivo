@@ -7,6 +7,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { Avatar } from '../../components/SettingsParts.tsx';
 import { TextAction } from '../../components/Summary.tsx';
 import { BigButton, CancelAsk, CheckCard, ResendCheck } from './CheckCard.tsx';
+import { sendWithout } from './CheckWaits.ts';
 import { AnswerBox, MiniComposer, NewComposer, PreviewBar, ToHead } from './Composers.tsx';
 import { GroupTile } from './MessagesList.tsx';
 import {
@@ -45,6 +46,7 @@ import {
   EVENT,
   HOSTS,
   HELD_TOO_LONG,
+  RECEIPTS,
 } from './MessagesSample.ts';
 import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { Preview } from './Preview.tsx';
@@ -120,9 +122,10 @@ export interface Parts {
 }
 
 const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
+const HELD_CHANNELS: readonly ChannelKey[] = ['email', 'wa'];
 
-function many(locale: string): string {
-  return say.onPageTold(channelsWords(SAMPLE_CHANNELS, locale));
+function many(locale: string, channels = SAMPLE_CHANNELS): string {
+  return say.onPageTold(channelsWords(channels, locale));
 }
 
 function toldBy(channels: Record<ChannelKey, boolean>, locale: string): string {
@@ -565,7 +568,12 @@ function ownParts(talk: Talk, followUp: string): Own {
             onChange={talk.onChangeIt}
             onKeep={() => dispatch({ type: 'keepScheduled' })}
             onChannel={talk.onChannel}
-            onSeeAll={() => talk.ownDesign(say.seeAll(checkOf(draft).cantTell))}
+            onSeeAll={(count) => talk.ownDesign(say.seeAll(count))}
+            balance={m.balance}
+            waits={m.waits}
+            onWithout={(drops) => {
+              for (const action of sendWithout(drops)) dispatch(action);
+            }}
           />
         </>
       ),
@@ -788,7 +796,10 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
       <DayRule text={W.today} />
     );
 
-  if (key === 'parking')
+  if (key === 'parking' || key === 'receipts') {
+    const held = key === 'receipts';
+    const reach = held ? RECEIPTS : PARKING_REACH;
+
     return {
       title: PARKING,
       titleLines: 1,
@@ -797,7 +808,7 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
           ? undefined
           : m.resending && !talk.wide
             ? `${W.toAllGuests} · ${ALL} · ${dayWords(DAYS.parking, talk.locale)}`
-            : `${W.toAllGuests} · ${ALL} · ${many(talk.locale)}`,
+            : `${W.toAllGuests} · ${ALL} · ${many(talk.locale, held ? HELD_CHANNELS : undefined)}`,
       lead: <GroupTile side={44} />,
       head: own?.writing === true ? own.head : undefined,
       bare: own?.bare,
@@ -816,14 +827,9 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
               ]}
             />
             {m.resending ? (
-              <Resend talk={talk} of="parking" />
+              <Resend talk={talk} of={key} />
             ) : (
-              <Receipt
-                reached={PARKING_REACH.reached}
-                of={PARKING_REACH.of}
-                seen={PARKING_REACH.seen}
-                onWho={talk.onWho}
-              />
+              <Receipt reached={reach.reached} of={reach.of} seen={reach.seen} onWho={talk.onWho} />
             )}
             {today}
             {own?.stream}
@@ -832,6 +838,7 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
       align: own?.align ?? 'end',
       foot: m.resending ? undefined : followUp(W.writeAFollowUp),
     };
+  }
   if (key === 'invite')
     return {
       title: W.invitation,

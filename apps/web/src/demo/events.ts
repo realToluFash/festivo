@@ -1,9 +1,10 @@
 import type { NeedsState } from './needsYou.ts';
 import {
-  EVENT_TYPES,
   type EventPhase,
   type EventState,
   type EventType,
+  type EventsLook,
+  NO_EVENTS_FILTERS,
   calledOff,
   endLabel,
   eventDays,
@@ -13,9 +14,9 @@ import {
   formatEventMoment,
   formatEventShortDay,
   formatEventWeekday,
-  hostsLine,
   milestoneDistance,
   savedWallClock,
+  searching,
 } from '@soirely/domain';
 
 import type { MarkKind } from '../components/SettingsParts.tsx';
@@ -986,61 +987,6 @@ export function rememberTab(tab: Tab): void {
   remembered = tab;
 }
 
-export type When = 'any' | 'week' | 'month' | 'quarter' | 'between';
-
-export interface Filters {
-  q: string;
-  types: readonly EventType[];
-  from: string;
-  to: string;
-  hosts: readonly string[];
-}
-
-export const NO_FILTERS: Filters = { q: '', types: [], from: '', to: '', hosts: [] };
-
-const DAY_PATTERN = /^\d{4}-\d\d-\d\d$/;
-
-/** q, type, from, to and host, as the address carries them: several types as `type=wedding,birthday`, each host its own `host=`. */
-export function filtersOf(params: URLSearchParams): Filters {
-  const types = params
-    .getAll('type')
-    .flatMap((value) => value.split(','))
-    .filter((value): value is EventType => (EVENT_TYPES as readonly string[]).includes(value));
-  const day = (value: string | null) => (value != null && DAY_PATTERN.test(value) ? value : '');
-
-  return {
-    q: params.get('q') ?? '',
-    types: EVENT_TYPES.filter((type) => types.includes(type)),
-    from: day(params.get('from')),
-    to: day(params.get('to')),
-    hosts: DISTINCT_HOSTS.filter((host) => params.getAll('host').includes(host)),
-  };
-}
-
-export function paramsOf(filters: Filters, keep: URLSearchParams): URLSearchParams {
-  const next = new URLSearchParams();
-
-  for (const [name, value] of keep)
-    if (!['q', 'type', 'from', 'to', 'host', 'state'].includes(name)) next.append(name, value);
-  if (filters.q !== '') next.set('q', filters.q);
-  if (filters.types.length > 0) next.set('type', filters.types.join(','));
-  if (filters.from !== '') next.set('from', filters.from);
-  if (filters.to !== '') next.set('to', filters.to);
-  for (const host of filters.hosts) next.append('host', host);
-
-  return next;
-}
-
-export function searching(filters: Filters): boolean {
-  return filters.q.trim().length >= 2;
-}
-
-export function filtering(filters: Filters): boolean {
-  return (
-    filters.types.length > 0 || filters.from !== '' || filters.to !== '' || filters.hosts.length > 0
-  );
-}
-
 function folded(text: string): string {
   return text
     .normalize('NFD')
@@ -1049,109 +995,28 @@ function folded(text: string): string {
     .toLowerCase();
 }
 
-export function whenRange(when: Exclude<When, 'any' | 'between'>, now: Date): [string, string] {
-  const today = localDay(now, 'Europe/London');
-  const date = new Date(`${today}T12:00:00Z`);
-  const shift = (days: number) => {
-    const moved = new Date(date);
-    moved.setUTCDate(moved.getUTCDate() + days);
-
-    return moved.toISOString().slice(0, 10);
-  };
-
-  if (when === 'week') {
-    const monday = (date.getUTCDay() + 6) % 7;
-
-    return [shift(-monday), shift(6 - monday)];
-  }
-  if (when === 'month') {
-    const last = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0, 12));
-
-    return [`${today.slice(0, 8)}01`, last.toISOString().slice(0, 10)];
-  }
-
-  const later = new Date(date);
-  later.setUTCMonth(later.getUTCMonth() + 3);
-
-  return [today, later.toISOString().slice(0, 10)];
-}
-
-export function whenOf(filters: Filters, now: Date): When {
-  if (filters.from === '' && filters.to === '') return 'any';
-
-  for (const when of ['week', 'month', 'quarter'] as const) {
-    const [from, to] = whenRange(when, now);
-    if (filters.from === from && filters.to === to) return when;
-  }
-
-  return 'between';
-}
-
-export function whenWord(filters: Filters, now: Date): string {
-  const when = whenOf(filters, now);
-  const day = (value: string) =>
-    new Intl.DateTimeFormat(LOCALE, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      timeZone: 'UTC',
-    }).format(new Date(`${value}T12:00:00Z`));
-
-  switch (when) {
-    case 'any':
-      return W.anyTime;
-    case 'week':
-      return W.thisWeek;
-    case 'month':
-      return W.thisMonth;
-    case 'quarter':
-      return W.nextThreeMonths;
-    case 'between':
-      return filters.from !== '' && filters.to !== ''
-        ? W.days(day(filters.from), day(filters.to))
-        : day(filters.from || filters.to);
-  }
-}
-
-/** Name or venue, any part of a word, case and accents ignored; within a filter any of, across filters all of; a day of it in the range. */
-export function matches(event: SampleEvent, filters: Filters): boolean {
-  const q = folded(filters.q.trim());
+/** The sample's stand-in for the API's search: name or venue, any part of a word, case and accents ignored; within a filter any of, across filters all of; a day of it in `span`. */
+export function matches(
+  event: SampleEvent,
+  look: EventsLook,
+  span: { from: string; to: string } | null,
+): boolean {
+  const q = folded(look.q.trim());
   const named =
-    !searching(filters) ||
+    !searching(look.q) ||
     folded(event.name).includes(q) ||
     (event.venue != null && folded(event.venue.name).includes(q));
-  const typed = filters.types.length === 0 || filters.types.includes(event.type);
+  const typed = look.filters.types.length === 0 || look.filters.types.includes(event.type);
   const hosted =
-    filters.hosts.length === 0 || event.hosts.some((host) => filters.hosts.includes(host));
+    look.filters.hosts.length === 0 ||
+    event.hosts.some((host) => look.filters.hosts.includes(host));
   const first = localDay(event.startsAt, event.timeZone);
   const last = localDay(event.endsAt, event.timeZone);
   const dated =
-    (filters.from === '' || last >= filters.from) && (filters.to === '' || first <= filters.to);
+    span == null ||
+    ((span.from === '' || last >= span.from) && (span.to === '' || first <= span.to));
 
   return named && typed && hosted && dated;
-}
-
-export function filterWord(filters: Filters, now: Date): string {
-  const chosen = chosenWords(filters, now);
-
-  return chosen.length === 0 ? W.all : chosen.join(', ');
-}
-
-function chosenWords(filters: Filters, now: Date): string[] {
-  return [
-    ...filters.types.map((type) => TYPE_WORDS[type]),
-    ...(filters.from === '' && filters.to === '' ? [] : [whenWord(filters, now)]),
-    ...filters.hosts,
-  ];
-}
-
-export function noMatchLine(filters: Filters, now: Date): string {
-  const chosen = hostsLine(chosenWords(filters, now), LOCALE);
-  const q = filters.q.trim();
-
-  if (searching(filters) && filtering(filters)) return W.searchedAndFiltered(q, chosen);
-
-  return searching(filters) ? W.searched(q) : W.filtered(chosen);
 }
 
 export type ListState =
@@ -1205,7 +1070,7 @@ export interface ListStart {
   offline: boolean;
   pastPages: number;
   menu: 'top' | 'type' | null;
-  filters: Filters | null;
+  look: EventsLook | null;
   noGuests: boolean;
 }
 
@@ -1219,7 +1084,7 @@ export function listStart(state: ListState | null): ListStart {
     offline: false,
     pastPages: 1,
     menu: null,
-    filters: null,
+    look: null,
     noGuests: false,
   };
 
@@ -1247,13 +1112,19 @@ export function listStart(state: ListState | null): ListStart {
     case 'offline':
       return { ...rest, offline: true };
     case 'search':
-      return { ...rest, filters: { ...NO_FILTERS, q: 'lucia' } };
+      return { ...rest, look: { q: 'lucia', filters: NO_EVENTS_FILTERS } };
     case 'filtered':
-      return { ...rest, filters: { ...NO_FILTERS, types: ['wedding', 'birthday'] } };
+      return {
+        ...rest,
+        look: { q: '', filters: { ...NO_EVENTS_FILTERS, types: ['wedding', 'birthday'] } },
+      };
     case 'filterOpen':
       return { ...rest, tab: 'upcoming', menu: 'type' };
     case 'noMatch':
-      return { ...rest, filters: { ...NO_FILTERS, q: 'garden party', types: ['wedding'] } };
+      return {
+        ...rest,
+        look: { q: 'garden party', filters: { ...NO_EVENTS_FILTERS, types: ['wedding'] } },
+      };
     case 'noGuests':
       return { ...rest, noGuests: true };
   }

@@ -1,14 +1,12 @@
 import {
+  type EventsFilters,
   type Milestone,
-  type EventType,
-  endLabel,
-  eventAllows,
+  NO_EVENTS_FILTERS,
   eventPhase,
   eventsHome,
-  formatEventRange,
-  formatWallDay,
-  hostsLine,
+  searching,
   wallDay,
+  whenSpan,
 } from '@soirely/domain';
 import { t } from 'i18next';
 
@@ -21,14 +19,21 @@ import {
   TAB_WORD,
   cardStep as productCardStep,
   cardTags as productCardTags,
-  dayCount,
   daysWords as productDaysWords,
   howSoon as productHowSoon,
   rowLine as productRowLine,
   rowTag as productRowTag,
   shownEvent as productShownEvent,
 } from '../../kit/eventsList.ts';
-import { CLOCKS, READER_ZONE, type SampleEvent, TYPE_WORDS } from './EventsSample.ts';
+import {
+  type ManageKey,
+  type RowWords,
+  datesRow as productDatesRow,
+  hostsRow as productHostsRow,
+  manageOf as productManageOf,
+  scheduleLocked as productScheduleLocked,
+} from '../../kit/eventOverview.ts';
+import { CLOCKS, READER_ZONE, type SampleEvent } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { CHANGES_STATES, FINAL_NUMBERS_STATES, kitchenOwed, othersOwed } from './FinalNumbers.ts';
 
@@ -165,184 +170,66 @@ export function datesOf(event: Omit<SampleEvent, 'photo'>, now: Date): Milestone
   ];
 }
 
-export function cardStep(event: Shown, now: Date, locale: string): CardStep {
+export function cardStep(event: Shown, now: Date, locale: string): CardStep | null {
   return productCardStep(event, now, locale, t);
 }
 
-export type ManageKey = 'duplicate' | 'pause' | 'callOff' | 'endNow' | 'delete';
+export type { ManageKey };
 
-/** Only what event-states.json allows the phase; Resume is the paused card's step, so it is not repeated here. */
 export function manageOf(event: Shown, now: Date): ManageKey[] {
-  const end = endLabel(event, event.phase, now);
-
-  return [
-    'duplicate',
-    ...(eventAllows(event.phase, 'pause') ? (['pause'] as const) : []),
-    ...(end == null ? [] : [end]),
-    ...(eventAllows(event.phase, 'delete') ? (['delete'] as const) : []),
-  ];
+  return productManageOf(event, event.phase, now);
 }
 
 export function scheduleLocked(event: Shown): boolean {
-  return !eventAllows(event.phase, 'edit_schedule');
+  return productScheduleLocked(event.phase);
 }
 
-export function datesRow(event: Shown, locale: string): { title: string; line: string } {
-  const range = formatEventRange(event.startsAt, event.endsAt, event.timeZone, locale);
-
-  if (scheduleLocked(event)) return { title: range, line: `${W.dates} · ${W.scheduleLocked}` };
-
-  const count = dayCount(event);
-  const parts = [W.dates, ...(count > 1 ? [say.dayCount(count)] : []), event.timeZone];
-
-  return { title: range, line: parts.join(' · ') };
+export function datesRow(event: Shown, locale: string): RowWords {
+  return productDatesRow(event, event.phase, locale, t);
 }
 
-export function hostsRow(
-  event: Omit<SampleEvent, 'photo'>,
-  locale: string,
-): { title: string; line: string } {
-  return event.hosts.length === 0
-    ? { title: W.noHosts, line: `${W.hostedBy} · ${W.noHostsLine}` }
-    : { title: hostsLine(event.hosts, locale), line: W.hostedBy };
+export function hostsRow(event: Omit<SampleEvent, 'photo'>, locale: string): RowWords {
+  return productHostsRow(event.hosts, locale, t);
 }
 
 export function needsName(event: SampleEvent): boolean {
   return event.status !== 'draft';
 }
 
-export type When =
-  | { kind: 'any' }
-  | { kind: 'week' }
-  | { kind: 'month' }
-  | { kind: 'next3' }
-  | { kind: 'between'; from: string; to: string };
+export type Filters = EventsFilters;
 
-export interface Filters {
-  types: readonly EventType[];
-  when: When;
-  hosts: readonly string[];
-}
+export const NO_FILTERS: Filters = NO_EVENTS_FILTERS;
 
-export const NO_FILTERS: Filters = { types: [], when: { kind: 'any' }, hosts: [] };
-
-export const SEARCH_LEAST = 2;
+/** The sample's weeks start on Monday, as the boards draw them. */
+const SAMPLE_FIRST_DAY = 1;
 
 export function folded(text: string): string {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('en').replace(/[‘’]/g, "'");
 }
 
-/** Any part of a word in the event's or the venue's name, accents ignored; under 2 characters is no search. */
+/** The sample's stand-in for the API's search: any part of the event's or the venue's name, accents ignored. */
 export function matchesSearch(event: SampleEvent, typed: string): boolean {
-  const q = folded(typed.trim());
+  if (!searching(typed)) return true;
 
-  if (q.length < SEARCH_LEAST) return true;
+  const q = folded(typed.trim());
 
   return [event.name, event.venue?.name ?? ''].some((name) => folded(name).includes(q));
 }
 
-const DAY = 86_400_000;
-
-function addMonths(day: string, months: number): string {
-  const [year = 0, month = 1, date = 1] = day.split('-').map(Number);
-  const moved = new Date(Date.UTC(year, month - 1 + months, date));
-
-  return moved.toISOString().slice(0, 10);
-}
-
-function addDays(day: string, days: number): string {
-  return new Date(Date.parse(`${day}T00:00:00Z`) + days * DAY).toISOString().slice(0, 10);
-}
-
-export function whenSpan(when: When, now: Date): { from: string; to: string } | null {
-  const today = wallDay(now, READER_ZONE);
-
-  switch (when.kind) {
-    case 'any':
-      return null;
-    case 'week': {
-      const weekday = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7;
-      const monday = addDays(today, -weekday);
-
-      return { from: monday, to: addDays(monday, 6) };
-    }
-    case 'month':
-      return {
-        from: `${today.slice(0, 7)}-01`,
-        to: addDays(addMonths(`${today.slice(0, 7)}-01`, 1), -1),
-      };
-    case 'next3':
-      return { from: today, to: addMonths(today, 3) };
-    case 'between':
-      return { from: when.from, to: when.to };
-  }
-}
-
-/** Choices within one filter widen the results; different filters narrow them. */
+/** Choices within one filter widen the results; different filters narrow them; a day of it in the span. */
 export function matchesFilters(event: SampleEvent, filters: Filters, now: Date): boolean {
   if (filters.types.length > 0 && !filters.types.includes(event.type)) return false;
   if (filters.hosts.length > 0 && !event.hosts.some((host) => filters.hosts.includes(host)))
     return false;
 
-  const span = whenSpan(filters.when, now);
+  const span = whenSpan(filters.when, wallDay(now, READER_ZONE), SAMPLE_FIRST_DAY);
 
   if (span == null) return true;
 
   return (
-    wallDay(event.startsAt, event.timeZone) <= span.to &&
-    wallDay(event.endsAt, event.timeZone) >= span.from
+    (span.to === '' || wallDay(event.startsAt, event.timeZone) <= span.to) &&
+    (span.from === '' || wallDay(event.endsAt, event.timeZone) >= span.from)
   );
-}
-
-export function filtered(filters: Filters): boolean {
-  return filters.types.length > 0 || filters.when.kind !== 'any' || filters.hosts.length > 0;
-}
-
-export function searching(typed: string): boolean {
-  return folded(typed.trim()).length >= SEARCH_LEAST;
-}
-
-export function whenWords(when: When, locale: string): string {
-  switch (when.kind) {
-    case 'any':
-      return W.anyTime;
-    case 'week':
-      return W.thisWeek;
-    case 'month':
-      return W.thisMonth;
-    case 'next3':
-      return W.next3Months;
-    case 'between':
-      return say.days(formatWallDay(when.from, locale), formatWallDay(when.to, locale));
-  }
-}
-
-export function typesWords(types: readonly EventType[]): string {
-  return types.length === 0 ? W.anyType : types.map((type) => TYPE_WORDS[type]).join(', ');
-}
-
-export function hostsWords(hosts: readonly string[]): string {
-  return hosts.length === 0 ? W.anyone : hosts.join(', ');
-}
-
-export function filterWord(filters: Filters, locale: string): string {
-  const parts = [
-    ...filters.types.map((type) => TYPE_WORDS[type]),
-    ...(filters.when.kind === 'any' ? [] : [whenWords(filters.when, locale)]),
-    ...filters.hosts,
-  ];
-
-  return parts.length === 0 ? W.all : parts.join(', ');
-}
-
-export function noMatchLine(typed: string, filters: Filters, locale: string): string {
-  const q = typed.trim();
-  const what = filterWord(filters, locale);
-
-  if (searching(q) && filtered(filters)) return say.searchedAndFiltered(q, what);
-  if (searching(q)) return say.searched(q);
-
-  return say.filtered(what);
 }
 
 export interface Results {

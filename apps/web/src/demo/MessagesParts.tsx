@@ -21,6 +21,16 @@ export function WhereGlyph({ where, size = 14 }: { where: Where; size?: number }
   return <Glyph name={name} size={size} weight={2} />;
 }
 
+/** WhatsApp's reach line (sc-3950), whenever WhatsApp is ticked: its mark, then who it reaches and who it can't. */
+export function WhatsAppReach({ line }: { line: string }) {
+  return (
+    <p className="mg-wa-reach">
+      <WhereGlyph where="whatsApp" size={15} />
+      <span>{line}</span>
+    </p>
+  );
+}
+
 /** A delivery's shape, always beside its word: never colour alone. */
 export function DeliveryMark({ kind }: { kind: Delivery }) {
   switch (kind) {

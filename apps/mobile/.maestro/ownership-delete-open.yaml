@@ -7,12 +7,12 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/settings/organisation
 - scrollUntilVisible:
     element:
-      id: 'ownership.delete'
+      id: 'organisation.ownership.delete'
     timeout: 60000
 - tapOn:
-    id: 'ownership.delete'
+    id: 'organisation.ownership.delete'
 - scrollUntilVisible:
     element:
-      id: 'ownership.delete.keep'
+      id: 'organisation.delete.cancel'
     timeout: 30000
 - takeScreenshot: ownership-delete-open

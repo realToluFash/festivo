@@ -1,4 +1,4 @@
-import type { ReactNode, Ref } from 'react';
+import { type ReactNode, type Ref, useContext, useState } from 'react';
 import {
   type DimensionValue,
   Pressable,
@@ -15,6 +15,7 @@ import { useReadOut } from './ReadOut.tsx';
 import { type TextHandle, Text } from './Text.tsx';
 import { Toast } from './Toast.tsx';
 import { tokens } from '../theme/tokens.ts';
+import type { Box } from '../kit/confettiClearance.ts';
 import { CARD_PIECES, Confetti, Cover } from './Cover.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { Glass } from './TodayCover.tsx';
@@ -22,6 +23,7 @@ import { type MarkKind, ShapeMark } from './StatusMark.tsx';
 import { TextAction } from './SummaryRows.tsx';
 import { useShell } from './settingsShell.ts';
 import { Avatar, Back } from './SettingsParts.tsx';
+import { TitleFocus } from './SummaryOverlays.tsx';
 
 export {
   bringIntoView,
@@ -60,6 +62,7 @@ export {
   type FocusVerb,
   type Layer,
   MenuLayer,
+  useAnchorFollowsTurn,
 } from './SummaryOverlays.tsx';
 
 const hidden = {
@@ -127,6 +130,7 @@ export function SummaryCard({
   step,
   backdrop,
   gap,
+  words,
   children,
   testID,
 }: {
@@ -136,6 +140,8 @@ export function SummaryCard({
   /** In the Confetti's place: an event's own cover or colour, with its scrim. */
   backdrop?: ReactNode;
   gap?: number;
+  /** Where the card's words are, so the pieces keep clear of them; null draws none until they are measured. */
+  words?: readonly Box[] | null;
   children: ReactNode;
   testID?: string;
 }) {
@@ -149,7 +155,7 @@ export function SummaryCard({
       {backdrop ?? (
         <>
           <Cover shade="side" pieces={[]} />
-          <Confetti pieces={CARD_PIECES} scale={look.scale} />
+          <Confetti pieces={CARD_PIECES} scale={look.scale} words={words} />
         </>
       )}
       {children}
@@ -162,18 +168,21 @@ export interface StepProps {
   label: string;
   onPress: () => void;
   testID?: string;
-  ref?: Ref<ViewInstance>;
+  ref?: Ref<ViewInstance> | undefined;
+  /** Held while what it started is under way; the label then says so. */
+  busy?: boolean;
 }
 
 /** The card's one next step, the only filled button in B. */
-export function StepButton({ label, onPress, testID, ref }: StepProps) {
+export function StepButton({ label, onPress, testID, ref, busy = false }: StepProps) {
   return (
     <Pressable
       ref={ref}
-      onPress={onPress}
-      style={({ pressed }) => [styles.step, pressed && styles.pressed]}
+      onPress={busy ? undefined : onPress}
+      style={({ pressed }) => [styles.step, pressed && !busy && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled: busy, busy }}
       testID={testID}
     >
       <Text size={15} weight="semibold" accessible={false} style={styles.accent}>
@@ -277,7 +286,10 @@ export function Faces({
   return (
     <View style={styles.faces} {...hidden}>
       {faces.map((face, index) => (
-        <View key={face.initials} style={[styles.ring, ringed, index > 0 && styles.overlap]}>
+        <View
+          key={`${face.initials}.${index}`}
+          style={[styles.ring, ringed, index > 0 && styles.overlap]}
+        >
           <Avatar initials={face.initials} side={side} tone={face.tone} />
         </View>
       ))}
@@ -330,13 +342,15 @@ export function GlassTag({
   word,
   mark,
   shape,
+  testID,
 }: {
   word: string;
   mark?: MarkKind | undefined;
   shape?: ReactNode;
+  testID?: string | undefined;
 }) {
   return (
-    <Glass height={28} style={styles.glassTag}>
+    <Glass height={28} style={styles.glassTag} testID={testID}>
       {shape ?? (mark != null && <ShapeMark kind={mark} side={13} ink={tokens.colorInkOnDark} />)}
       <Text size={13} weight="semibold" numberOfLines={1} style={styles.white}>
         {word}
@@ -379,6 +393,11 @@ export function LoadingBlock({
       <RowShapes icons={icons} />
     </View>
   );
+}
+
+/** One sunk segment where a list's tabs go while it loads. */
+export function SunkTabs() {
+  return <View style={styles.sunkTabs} />;
 }
 
 /** Rows' shapes where a section's rows go while they load; with `words`, a screen reader stops on them and hears those. */
@@ -443,6 +462,52 @@ export function FailedBlock({
   );
 }
 
+/** A section that loads by itself fails in its own place; FailedBlock is the whole screen's. */
+export function SectionFailed({
+  title,
+  line,
+  onRetry,
+  testID,
+  announce = true,
+  takesFocus = false,
+}: {
+  title: string;
+  line?: string;
+  onRetry: () => void;
+  testID: string;
+  /** False keeps the failure from being read out, as when it answers a Try again. */
+  announce?: boolean;
+  /** In a focused screen, a failure there before the title takes focus takes it instead, its words as one item, and is not read out as well (sc-11032). */
+  takesFocus?: boolean;
+}) {
+  const { t } = useTranslation();
+  const focus = useContext(TitleFocus);
+  const [focused] = useState(() => takesFocus && focus != null && focus.coming());
+  useReadOut(announce ? (line == null ? title : `${title} ${line}`) : null, {
+    quietAtMount: focused,
+  });
+
+  return (
+    <View style={styles.sectionFailed}>
+      <View
+        ref={focused ? focus?.first : undefined}
+        style={styles.sectionWords}
+        accessible={focused || undefined}
+      >
+        <Text size={16} weight="semibold">
+          {title}
+        </Text>
+        {line != null && (
+          <Text size={15} weight="medium" style={styles.secondary}>
+            {line}
+          </Text>
+        )}
+      </View>
+      <TextAction label={t('frame.tryAgain')} onPress={onRetry} testID={testID} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   blocks: { gap: 18 },
   column: {
@@ -482,6 +547,7 @@ const styles = StyleSheet.create({
   ringFill: { backgroundColor: tokens.colorInkOnDark, opacity: 0.28 },
   glassTag: { alignSelf: 'flex-start', gap: tokens.spaceXs, paddingLeft: 9, paddingRight: 11 },
   sunkCard: { borderRadius: 26, backgroundColor: tokens.colorNeutralFill },
+  sunkTabs: { height: tokens.sizeHit, borderRadius: 22, backgroundColor: tokens.colorNeutralFill },
   loadingRule: { height: 1, marginLeft: 52, backgroundColor: tokens.colorBorder },
   loadingRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   disc: { width: 40, height: 40, borderRadius: 20, backgroundColor: tokens.colorNeutralFill },
@@ -491,5 +557,7 @@ const styles = StyleSheet.create({
   barThick: { height: 14, borderRadius: 7, backgroundColor: tokens.colorNeutralFill },
   barThin: { height: 12, borderRadius: 6, backgroundColor: tokens.colorNeutralFill },
   failed: { gap: tokens.spaceSm, paddingTop: tokens.spaceXs },
+  sectionFailed: { gap: tokens.spaceXxs, paddingTop: tokens.spaceXxs },
+  sectionWords: { gap: tokens.spaceXxs },
   toast: { position: 'absolute', left: tokens.spaceXl, right: tokens.spaceXl },
 });

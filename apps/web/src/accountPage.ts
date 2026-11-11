@@ -99,6 +99,9 @@ export function promotedWords(kind: ContactKind, shown: string, t: TFunction): s
 /** How a code reached the person: by email, or a phone's route as `codeWording` names it. */
 export type CodeLine = 'email' | 'whatsapp' | 'fallback' | 'chosen' | 'texted';
 
+/** Why the code field refuses what was typed or sent. */
+export type CodeError = 'blank' | 'short' | 'wrong' | 'failed';
+
 export interface VerifyWords {
   title: string;
   lead: string;

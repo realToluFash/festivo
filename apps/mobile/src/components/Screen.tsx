@@ -42,8 +42,10 @@ import {
   liftNeeded,
   type InContent,
   type IntoView,
+  type LiftFromTop,
   offsetAboveKeyboard,
   scrollInsets,
+  settleLifts,
   settledAnswer,
   settledOffsetKeeping,
   shownAboveKeys,
@@ -77,6 +79,10 @@ interface ScreenScrollView {
   ref: RefObject<ScrollViewInstance | null>;
   /** Called when the scroll view itself resizes, which a child's onLayout does not see. */
   resized: Set<() => void>;
+  /** Each lift group's offset needed above the keys, measured as if the scroll sat at its top. */
+  lifts: Set<(done: (lift: LiftFromTop) => void) => void>;
+  /** Lowers the scroll to the most offset its lift groups need, once the room above the keys has grown under a lift made for less: a bar leaving the keys for the scroll (sc-35488). */
+  settle(): void;
   /** Called with the height a lift group needs from the focused field's top to its own end, as the group lifts with focus inside it. */
   focusedGroup: Set<(height: number) => void>;
   /** Where a view at the screen's top measures in the window. */
@@ -152,52 +158,69 @@ export interface AboveKeyboard {
 // the top of the window, so under a header it stops short and leaves the button behind the keys.
 // Not measureInWindow on the group either: under Fabric it reads a scroll offset that can lag the
 // native one, so after the keys' own scroll to the field it can find the button uncovered.
+/** Measures where the scroll must sit to keep the group above the keys, `done` with that offset, `'stays'` when it need not move, or null when it cannot tell now; with `from`, as if the scroll sat there. */
+function measureLift(
+  scroll: ScreenScrollView | null,
+  group: ViewInstance | null,
+  keyboardTop: number | null,
+  done: (lift: LiftFromTop) => void,
+  from?: number,
+): void {
+  const view = scroll?.ref.current;
+  const content = view?.getInnerViewRef();
+  const scrollHost = view?.getNativeScrollRef();
+  if (scroll == null || view == null || content == null || scrollHost == null) return done(null);
+  if (group == null || keyboardTop == null || scroll.answeringNow()) return done(null);
+
+  group.measureLayout(
+    content,
+    (_x, contentY, _w, height) => {
+      scrollHost.measureInWindow((_sx, scrollTop, _sw, scrollHeight) => {
+        const lift = (focusY?: number) => {
+          const offset = from ?? scroll.offset.current;
+          const groupY = groupInWindow({ scrollTop, contentY, offset });
+          const shown = shownEnd(keyboardTop, { y: scrollTop, height: scrollHeight });
+          const focusTop =
+            focusY == null ? undefined : groupInWindow({ scrollTop, contentY: focusY, offset });
+          const group = { y: groupY, height };
+          const needed = focusY == null ? null : heightFromFocus({ contentY, height }, focusY);
+          if (needed != null) scroll.focusedGroup.forEach((needs) => needs(needed));
+          if (!liftNeeded({ shown, group, focusTop, scrollTop, margin: tokens.spaceLg }))
+            return done('stays');
+
+          done(
+            offsetAboveKeyboard({
+              contentY,
+              height,
+              scrollTop,
+              keyboardTop: shown,
+              margin: tokens.spaceLg,
+              focusY,
+            }),
+          );
+        };
+        // The field typed in comes first: a group under it lifts only as far as keeps it in sight (sc-11978).
+        const field = focusedField();
+        if (field == null) lift();
+        else
+          field.measureLayout(
+            content,
+            (_fx, focusY) => lift(focusY),
+            () => lift(),
+          );
+      });
+    },
+    () => done(null),
+  );
+}
+
 function liftAboveKeyboard(
   scroll: ScreenScrollView | null,
   group: ViewInstance | null,
   keyboardTop: number | null,
 ): void {
-  const view = scroll?.ref.current;
-  const content = view?.getInnerViewRef();
-  const scrollHost = view?.getNativeScrollRef();
-  if (scroll == null || view == null || content == null || scrollHost == null) return;
-  if (group == null || keyboardTop == null || scroll.answeringNow()) return;
-
-  group.measureLayout(content, (_x, contentY, _w, height) => {
-    scrollHost.measureInWindow((_sx, scrollTop, _sw, scrollHeight) => {
-      const lift = (focusY?: number) => {
-        const offset = scroll.offset.current;
-        const groupY = groupInWindow({ scrollTop, contentY, offset });
-        const shown = shownEnd(keyboardTop, { y: scrollTop, height: scrollHeight });
-        const focusTop =
-          focusY == null ? undefined : groupInWindow({ scrollTop, contentY: focusY, offset });
-        const group = { y: groupY, height };
-        const needed = focusY == null ? null : heightFromFocus({ contentY, height }, focusY);
-        if (needed != null) scroll.focusedGroup.forEach((needs) => needs(needed));
-        if (!liftNeeded({ shown, group, focusTop, scrollTop, margin: tokens.spaceLg })) return;
-
-        view.scrollTo({
-          y: offsetAboveKeyboard({
-            contentY,
-            height,
-            scrollTop,
-            keyboardTop: shown,
-            margin: tokens.spaceLg,
-            focusY,
-          }),
-          animated: true,
-        });
-      };
-      // The field typed in comes first: a group under it lifts only as far as keeps it in sight (sc-11978).
-      const field = focusedField();
-      if (field == null) lift();
-      else
-        field.measureLayout(
-          content,
-          (_fx, focusY) => lift(focusY),
-          () => lift(),
-        );
-    });
+  measureLift(scroll, group, keyboardTop, (y) => {
+    if (typeof y === 'number') scroll?.ref.current?.scrollTo({ y, animated: true });
   });
 }
 
@@ -228,12 +251,18 @@ export function useAboveKeyboard(still = false): AboveKeyboard {
     scroll?.resized.add(lift);
     // Next on the keys moves focus without the keys going up again.
     const unwatchFocus = watchFocusedField(lift);
+    const fromTop = (done: (lift: LiftFromTop) => void) => {
+      if (stillNow.current) done(null);
+      else measureLift(scroll, ref.current, keyboardTop.current, done, 0);
+    };
+    scroll?.lifts.add(fromTop);
 
     return () => {
       cancel();
       unwatch();
       unwatchFocus();
       scroll?.resized.delete(lift);
+      scroll?.lifts.delete(fromTop);
     };
   }, [scroll]);
 
@@ -976,9 +1005,20 @@ export function useScreenScrollView() {
   const [stepClosing, setStepClosing] = useState(false);
   const closingNow = useRef(false);
   const answers = useRef(0);
+  const [lifts] = useState<ScreenScrollView['lifts']>(() => new Set());
   const [screenScroll] = useState<ScreenScrollView>(() => ({
     ref: scrollView,
     resized: new Set(),
+    lifts,
+    settle: () => {
+      const measured = [...lifts].map(
+        (measure) => new Promise<LiftFromTop>((resolve) => measure(resolve)),
+      );
+      void Promise.all(measured).then((ys) => {
+        const y = settleLifts(ys, offset.current);
+        if (y != null) scrollView.current?.scrollTo({ y, animated: true });
+      });
+    },
     focusedGroup: new Set(),
     origin,
     offset,

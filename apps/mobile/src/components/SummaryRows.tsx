@@ -171,6 +171,8 @@ export interface RowProps {
   title: string;
   titleLines?: number | undefined;
   line?: string | undefined;
+  /** Under the title in place of a plain line: a line with its own mark. */
+  below?: ReactNode;
   lead?: ReactNode;
   tag?: RowTag | null | undefined;
   opens?: boolean;
@@ -198,6 +200,7 @@ export function Row({
   title,
   titleLines,
   line,
+  below,
   lead,
   tag,
   opens = false,
@@ -222,7 +225,11 @@ export function Row({
   const grouped = pressed || accessibilityLabel != null;
   const box = [
     styles.row,
-    { minHeight: line == null ? 52 : 64, paddingVertical: pad, paddingHorizontal: gutter },
+    {
+      minHeight: line == null && below == null ? 52 : 64,
+      paddingVertical: pad,
+      paddingHorizontal: gutter,
+    },
     selected && styles.rowSelected,
   ];
   const words = (
@@ -252,6 +259,7 @@ export function Row({
             {line}
           </Text>
         )}
+        {below}
       </View>
       {value != null && (
         <Text
@@ -345,6 +353,7 @@ export function TextAction({
   plain = false,
   off = false,
   figures = false,
+  onFill = false,
   glyph,
   renderMark,
   after,
@@ -359,6 +368,7 @@ export function TextAction({
   plain?: boolean;
   off?: boolean;
   figures?: boolean;
+  onFill?: boolean;
   glyph?: GlyphName;
   renderMark?: (ink: string) => ReactNode;
   after?: GlyphName;
@@ -369,11 +379,13 @@ export function TextAction({
 }) {
   const ink = off
     ? tokens.colorInkTertiary
-    : removes
-      ? tokens.colorBroken
-      : plain
-        ? tokens.colorInk
-        : tokens.colorAccentText;
+    : onFill
+      ? tokens.colorInkOnDark
+      : removes
+        ? tokens.colorBroken
+        : plain
+          ? tokens.colorInk
+          : tokens.colorAccentText;
   const action = (
     <Pressable
       ref={ref}
@@ -391,7 +403,7 @@ export function TextAction({
         size={15}
         weight="semibold"
         accessible={false}
-        style={[{ color: ink }, figures && styles.figures]}
+        style={[{ color: ink }, figures && styles.figures, onFill && styles.onFill]}
       >
         {label}
       </Text>
@@ -433,6 +445,7 @@ const styles = StyleSheet.create({
   accent: { color: tokens.colorAccentText },
   off: { color: tokens.colorInkTertiary },
   pressed: { opacity: tokens.opacityPressed },
+  onFill: { textDecorationLine: 'underline' },
   tag: {
     minHeight: 24,
     flexDirection: 'row',

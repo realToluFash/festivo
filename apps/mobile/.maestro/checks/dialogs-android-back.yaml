@@ -1,35 +1,50 @@
 # Android only: back has no meaning on the iOS simulator.
-# Android back closes the Country list alone, then Create an organisation; and closes a Settings > Organisation list with the field unchanged.
+# Android back steps Create an organisation back from Where is it based? with the name kept, then on its first step asks to discard it; and closes a Settings > Organisation list with the field unchanged.
 appId: host.exp.Exponent
 ---
 - runFlow: ../open-create-organisation.yaml
 - tapOn:
-    id: 'createOrganisation.name'
+    id: 'createWalk.name'
 - inputText: 'Back Typed'
 - hideKeyboard
 - tapOn:
-    id: 'createOrganisation.country'
+    id: 'createWalk.primary'
 - extendedWaitUntil:
     visible:
-      id: 'createOrganisation.country.search'
+      id: 'createWalk.search'
     timeout: 10000
-- takeScreenshot: android-country-list
+- hideKeyboard:
+    optional: true
+- takeScreenshot: android-country-step
 - back
 - extendedWaitUntil:
-    notVisible:
-      id: 'createOrganisation.country.search'
+    visible: '{{t:createOrganisation.whatTitle}}'
     timeout: 10000
 - assertVisible:
-    id: 'createOrganisation'
+    id: 'createWalk'
 - assertVisible: 'Back Typed'
-- takeScreenshot: android-after-list-back
+- takeScreenshot: android-after-step-back
+- hideKeyboard:
+    optional: true
 - back
 - extendedWaitUntil:
-    notVisible:
-      id: 'createOrganisation'
+    visible:
+      id: 'createWalk.ask'
     timeout: 10000
-- takeScreenshot: android-after-sheet-back
+- tapOn:
+    id: 'createWalk.discard'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createWalk'
+    timeout: 10000
+- takeScreenshot: android-after-walk-back
 - openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.edit
+    timeout: 30000
+- tapOn:
+    id: organisation.edit
 - extendedWaitUntil:
     visible:
       id: 'organisation.timezone'

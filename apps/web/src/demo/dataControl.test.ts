@@ -74,7 +74,7 @@ describe('Data and control, the hub (sc-560, enterprise-b-spec §4)', () => {
     });
     expect(soonestAsk(asks, VIEWERS.ana)).toBeNull();
     expect(hubCard(view('quiet'), VIEWERS.folake, LOCALE)).toEqual({
-      says: 'Nothing needs you',
+      says: 'Nothing needs your attention',
       line: 'ire.events is proved. Deleting guest data is off.',
       step: null,
     });
@@ -83,11 +83,11 @@ describe('Data and control, the hub (sc-560, enterprise-b-spec §4)', () => {
   it('starts a new organisation on its domain, and asks a free one to contact Soirely', () => {
     expect(hubCard(view('new'), VIEWERS.folake, LOCALE)).toMatchObject({
       says: 'Nothing is set up yet',
-      line: 'Start by proving Ire Events’ email domain.',
+      line: 'Start by proving the email domain of Ire Events.',
       step: 'prove',
     });
     expect(hubCard(view('locked'), VIEWERS.folake, LOCALE)).toMatchObject({
-      says: 'Three of these come with Enterprise',
+      says: 'These come with Enterprise',
       step: 'contact',
     });
     expect(hubCard(view('downgraded'), VIEWERS.julien, LOCALE)).toMatchObject({
@@ -135,7 +135,7 @@ describe('Data and control, the hub (sc-560, enterprise-b-spec §4)', () => {
       ['deleteGuestData', 'locked'],
       ['guestRequest', null],
     ]);
-    expect(locked.control[0]?.line).toBe('Prove your domain and keep its accounts to Ire Events');
+    expect(locked.control[0]?.line).toBe('Prove your domain and limit its accounts to Ire Events');
     expect(left.control[0]).toMatchObject({
       line: 'ire.events kept as it was',
       state: 'ed_downgraded',

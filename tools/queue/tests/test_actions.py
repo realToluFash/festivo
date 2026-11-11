@@ -456,6 +456,12 @@ class DemoFirst(Base):
             actions.claim(self.as_("dev"), args(story="sc-1"))
         self.assertEqual(self.state(1), "In Progress")
 
+    def test_a_demo_line_reading_none_that_cites_numbers_is_claimed_without_asking_github(self):
+        self.drawn("**Demo:** none: nothing new to draw (ux's comments #37514 and #37515 on sc-29071).")
+        with mock.patch("soirely_queue.github.live", side_effect=AssertionError):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
     def test_a_demo_line_reading_none_yet_with_no_pull_request_is_refused(self):
         self.drawn("**Demo:** none yet, being drawn")
         self.refused("names no pull request")
@@ -1452,6 +1458,16 @@ class Merging(Base):
             self.assertEqual(len(self.fake.comments), told + 1)
             self.assertEqual(self.fake.comments[-1][1], "(from dev2)\nPR #9 merged as "
                              f"{'m' * 40}. Tasks left: 31 step 1, 32 step 2")
+
+    def test_a_merge_with_tasks_left_wakes_its_builder_for_the_next_task(self):
+        self.fake.add(1, "Passed Code Review", ["dev2"])
+        self.tasks(1, True, False)
+        store.put_pr(self.db, pr("pass"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge"), \
+                mock.patch("soirely_queue.sync.sync_github"):
+            actions.merge(self.as_("dev2"), args(pr=9, text=None))
+        self.assertEqual(self.queue_wakes("dev2"), ["sc-1 moved to In Progress"])
 
     def test_the_next_task_goes_to_review_after_a_merge_with_tasks_left(self):
         self.fake.add(1, "In Review", ["dev2"])

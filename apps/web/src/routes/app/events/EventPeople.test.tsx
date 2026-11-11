@@ -316,9 +316,10 @@ describe('People on an event, at a desk (sc-29915)', () => {
     expect(
       within(ask).getByText('They lose this event on their next request. They stay in Ìrè Events.'),
     ).toBeDefined();
-    expect(document.activeElement).toBe(
-      within(ask).getByRole('button', { name: 'Keep Tom Becker' }),
-    );
+    const keep = within(ask).getByRole('button', { name: 'Keep Tom' });
+
+    expect(document.activeElement).toBe(keep);
+    expect(keep.getAttribute('title')).toBeNull();
 
     fireEvent.click(within(ask).getByRole('button', { name: 'Remove' }));
     const removing = await within(ask).findByRole('button', { name: 'Removing…' });
@@ -426,7 +427,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
 
     expect(
       await within(people()).findByText(
-        'Folake Adeyemi, Ade Bello, and Julien Moreau see every event, as owners and admin of Ìrè Events.',
+        'Folake Adeyemi, Ade Bello and Julien Moreau see every event, as owners and admin of Ìrè Events.',
       ),
     ).toBeDefined();
   });
@@ -604,6 +605,32 @@ describe('People on an event, at a desk (sc-29915)', () => {
     await waitFor(() => expect(document.activeElement).toBe(add));
   });
 
+  it('names the way back by the first name, and keeps the title’s full name', async () => {
+    const long = person('max', 'Maximiliana Fernández-Castellanos de la Vega', 'can_view');
+    const word = person('olu', 'Oluwatobilobaoluwadamilareadebayoakinola', 'can_view');
+    signedIn();
+    await onPeople([PRIYA, long, word]);
+
+    fireEvent.click(within(people()).getByRole('button', { name: /Maximiliana/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from this event…' }));
+    const ask = screen.getByRole('alertdialog', {
+      name: 'Remove Maximiliana Fernández-Castellanos de la Vega from this event?',
+    });
+
+    expect(within(ask).getByRole('button', { name: 'Keep Maximiliana' })).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'Keep Maximiliana' }));
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    fireEvent.click(within(people()).getByRole('button', { name: /Oluwatobiloba/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from this event…' }));
+
+    expect(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Keep Oluwatobilobaoluwadamilareadebayoakinola',
+      }),
+    ).toBeDefined();
+  });
+
   it('keeps Tab inside the ask before removing, never in the dialog behind it', async () => {
     signedIn();
     await onPeople([PRIYA, TOM]);
@@ -613,11 +640,9 @@ describe('People on an event, at a desk (sc-29915)', () => {
     const ask = screen.getByRole('alertdialog', { name: 'Remove Tom Becker from this event?' });
 
     await waitFor(() =>
-      expect(document.activeElement).toBe(
-        within(ask).getByRole('button', { name: 'Keep Tom Becker' }),
-      ),
+      expect(document.activeElement).toBe(within(ask).getByRole('button', { name: 'Keep Tom' })),
     );
-    const keep = within(ask).getByRole('button', { name: 'Keep Tom Becker' });
+    const keep = within(ask).getByRole('button', { name: 'Keep Tom' });
     const remove = within(ask).getByRole('button', { name: 'Remove' });
     remove.focus();
     fireEvent.keyDown(document, { key: 'Tab' });

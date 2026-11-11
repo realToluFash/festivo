@@ -209,7 +209,7 @@ describe('For the kitchen on Check and send', () => {
     );
 
     expect(lines[0]?.lines[0]).toEqual({ text: 'Allergy: peanuts', allergy: true, quiet: false });
-    expect(lines[1]?.lines[0]?.text).toBe('Allergies: peanuts, sesame, and Kiwi');
+    expect(lines[1]?.lines[0]?.text).toBe('Allergies: peanuts, sesame and Kiwi');
     expect(
       guestKitchenLines(party({ allergies: ['peanuts', 'sesame'] }), FR)[0]?.lines[0]?.text,
     ).toBe('[Allergies : arachides et sésame]');
@@ -265,6 +265,27 @@ describe('the saved line after the date to answer by (lead, 4506198447)', () => 
 
     expect(landed({ ...late, kitchen }).kitchen?.saved).toBe(false);
     expect(landed({ ...late, kitchen: { ...kitchen, refuses: false } }).kitchen?.saved).toBe(true);
+  });
+});
+
+describe('Send with the WhatsApp box (sc-3950)', () => {
+  it('records the agreement with Coming when ticked, and nothing more when not', () => {
+    const sent = { ...startOf('check_and_send'), mobile: true };
+
+    expect(landed({ ...sent, ticked: true })).toMatchObject({
+      recorded: { answer: 'coming', whatsApp: true },
+      whatsApp: 'agreed',
+    });
+    expect(landed(sent).recorded?.whatsApp).toBeUndefined();
+    expect(landed(sent).whatsApp).toBeUndefined();
+  });
+
+  it('records nothing when the send fails', () => {
+    const sent = { ...startOf('check_and_send'), mobile: true, ticked: true };
+    const refused = landed({ ...sent, kitchen: { ...sent.kitchen!, refuses: true } });
+
+    expect(refused.recorded).toBeUndefined();
+    expect(refused.whatsApp).toBeUndefined();
   });
 });
 

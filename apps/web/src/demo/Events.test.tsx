@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,7 +14,14 @@ const tested = config();
 const SLOW = { timeout: 20000 };
 const WAIT = { timeout: 8000 };
 const WEDDING = 'Adaeze & Tunde’s wedding';
-const EVENTS_CSS = readFileSync(join(import.meta.dirname, 'events.css'), 'utf8');
+const EVENTS_CSS = [
+  'events.css',
+  '../components/eventsDesk.css',
+  '../components/EventsList.css',
+  '../components/eventPage.css',
+]
+  .map((file) => readFileSync(join(import.meta.dirname, file), 'utf8'))
+  .join('\n');
 
 function cssValue(selector: string, property: string): string | undefined {
   const start = EVENTS_CSS.indexOf(`\n${selector} {`);
@@ -97,7 +104,7 @@ describe('Events in A at a desk (sc-30304)', () => {
       target: { value: 'lucia' },
     });
 
-    expect(router.state.location.search).toBe('?q=lucia');
+    await waitFor(() => expect(router.state.location.search).toBe('?q=lucia'));
     expect(await screen.findByText('3 events')).toBeDefined();
     expect(screen.getByRole('link', { name: /Lucía’s quinceañera/ })).toBeDefined();
 

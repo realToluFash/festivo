@@ -642,6 +642,46 @@ describe('the demo gets a password back (sc-29064)', () => {
     expect(await screen.findByRole('heading', { name: 'Set a new password' })).toBeDefined();
   });
 
+  it('says That did not work with only Try again, and stays there while the read fails', async () => {
+    await page('?page=link&state=failed', 'That did not work');
+    expect(
+      screen.getByText('Something went wrong on the way. Try again in a moment.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Send a new link' })).toBeNull();
+    expect(screen.queryByText(SAMPLE.email)).toBeNull();
+
+    const button = screen.getByRole('button', { name: 'Try again' });
+    fireEvent.click(button);
+    expect(button.textContent).toBe('Trying again…');
+    await act(() => vi.advanceTimersByTimeAsync(500));
+    fireEvent.click(button);
+    await act(() => vi.advanceTimersByTimeAsync(450));
+
+    const heading = screen.getByRole('heading', { name: 'That did not work' });
+    expect(document.activeElement).toBe(heading.parentElement);
+    expect(heading.parentElement?.textContent).toContain('Something went wrong on the way.');
+
+    button.focus();
+    await wait();
+    expect(document.activeElement).toBe(button);
+  });
+
+  it.each([
+    ['a live link', 'Set a new password'],
+    ['a live link, two-factor on', 'Enter your code'],
+    ['an expired link', 'This link has expired'],
+    ['no answer', 'Cannot reach Soirely'],
+  ])('reads the link again on Try again: %s opens %s', async (answer, title) => {
+    await page('?page=link&state=failed', 'That did not work');
+    fireEvent.change(screen.getByLabelText('Demo: the next read answers'), {
+      target: { value: (screen.getByRole('option', { name: answer }) as HTMLOptionElement).value },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await wait();
+
+    expect(await screen.findByRole('heading', { level: 1, name: title })).toBeDefined();
+  });
+
   it('asks for the code first, and changes nothing until it passes', async () => {
     await page('?page=code', 'Enter your code');
     expect(screen.queryByText(/No code\?/)).toBeNull();
@@ -1531,6 +1571,43 @@ describe('Today at a desk (sc-29092)', () => {
     expect(screen.queryByRole('button', { name: 'Chase, Chase 19 replies' })).toBeNull();
   });
 
+  it('opens an event starting later today as a planning day, from the demo home', async () => {
+    at('/demo');
+    await screen.findByRole('heading', { name: 'Design demo' });
+    expect(
+      screen
+        .getByRole('link', { name: /A planning day, the event starts later today/ })
+        .getAttribute('href'),
+    ).toBe('/demo/today?moment=plan&starts=later');
+
+    await today('plan&starts=later');
+
+    expect(screen.getByText('Ire Events end-of-year party starts today at 19:00.')).toBeDefined();
+    expect(screen.getByText('The party starts')).toBeDefined();
+  });
+
+  it('draws events sharing days in rows, from the demo home (sc-37302)', async () => {
+    at('/demo');
+    await screen.findByRole('heading', { name: 'Design demo' });
+    expect(
+      screen
+        .getByRole('link', { name: /A planning day, events sharing days in rows/ })
+        .getAttribute('href'),
+    ).toBe('/demo/today?moment=plan&week=rows');
+
+    await today('plan&week=rows');
+
+    const week = screen.getByRole('region', { name: 'This week' });
+    const rows = [...week.querySelectorAll('.today-bar-row')].map((row) =>
+      [...row.querySelectorAll('.today-bar-name')].map((name) => name.textContent),
+    );
+    expect(rows).toEqual([
+      ['Adaeze & Tunde’s wedding', 'Ire Events end-of-year party'],
+      ['Ireti at 40'],
+    ]);
+    expect(screen.getByText('The wedding starts today at 18:00.')).toBeDefined();
+  });
+
   it('says what a press opens, and ⌘K opens search', async () => {
     await today('plan');
 
@@ -1589,6 +1666,17 @@ describe('Today at a desk (sc-29092)', () => {
     expect(screen.getByRole('button', { name: 'Start your first event' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'New event' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Your events' })).toBeNull();
+  });
+
+  it('tells a role without Create events why a first run has nothing to start', async () => {
+    await today('firstAsk');
+
+    expect(screen.getByRole('heading', { name: 'Set up your first event' })).toBeDefined();
+    expect(screen.getByText('Make it live')).toBeDefined();
+    expect(screen.getByText(/Ask an owner if you need to create one/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Ana Souza, Member' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Start your first event' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'New event' })).toBeNull();
   });
 
   it('opens a planning day for a moment it does not know', async () => {

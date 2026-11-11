@@ -18,12 +18,12 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/settings/organisation
 - scrollUntilVisible:
     element:
-      id: 'ownership.leave'
+      id: 'organisation.ownership.leave'
     timeout: 60000
 - tapOn:
-    id: 'ownership.leave'
+    id: 'organisation.ownership.leave'
 - scrollUntilVisible:
     element:
-      id: 'ownership.leave.stay'
+      id: 'organisation.leave.stay'
     timeout: 30000
 - takeScreenshot: ownership-leave-open

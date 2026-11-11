@@ -445,6 +445,14 @@ class Queue(unittest.TestCase):
         self.assertNotIn("pm", woken)
         self.assertEqual(woken, [])
 
+    def test_a_merge_with_tasks_left_wakes_its_builder_though_it_made_the_move(self):
+        held = story(state="In Progress", labels=["dev2"], moved_at="t1")
+        own = {(1, "In Progress", "t1"): "dev2"}
+        self.assertEqual(work.queue_items([held], own), [])
+        items = work.queue_items(
+            [held], {**own, (1, work.HELD_AT_MERGE, "t1"): "dev2"})
+        self.assertEqual([r for i in items for r in i["roles"]], ["dev2"])
+
     def test_each_state_wakes_its_roles(self):
         for state, woken in (("Backlog", ["bm", "pm"]), ("To Do", ["pm"]),
                              ("Needs Design", ["ux"]), ("Failed Code Review", ["dev2"]),

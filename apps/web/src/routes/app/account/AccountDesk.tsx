@@ -40,9 +40,9 @@ import {
 import { FieldError } from '../../../components/FieldError.tsx';
 import { Bones } from '../../../components/GeneralParts.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
-import { Ask, Head, TextAction } from '../../../components/SettingsParts.tsx';
+import { Ask, DeskPage, Head, TextAction } from '../../../components/SettingsParts.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
-import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
+import { focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { useOffline } from '../../../offline.ts';
 import { dropProviderReturn, heldProviderReturn } from '../../../providerSignIn.ts';
 import { dropProof, heldProof, holdProof } from '../../../recentProof.ts';
@@ -313,7 +313,7 @@ export function AccountDesk() {
     dialog?.kind === 'confirm' ? (emails.find((row) => row.id === dialog.id) ?? null) : null;
 
   return (
-    <LayersContext value={layers}>
+    <DeskPage layers={layers}>
       <div className="desk-column account-desk" inert={covered}>
         {refreshing && <Refreshing />}
         <header className="desk-top">
@@ -519,6 +519,6 @@ export function AccountDesk() {
           }}
         />
       )}
-    </LayersContext>
+    </DeskPage>
   );
 }

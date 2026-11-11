@@ -5,6 +5,7 @@ import {
   type OrganisationField,
   organisationChanges,
 } from '@soirely/domain';
+import { type TFunction } from 'i18next';
 
 export type SaveOutcome =
   | { kind: 'saved'; organisation: Membership }
@@ -78,4 +79,35 @@ export function detailsOf(organisation: OrganisationDetails): OrganisationDetail
     timezone: organisation.timezone,
     locale: organisation.locale,
   };
+}
+
+export type CardSaid = { kind: 'saved'; words: string } | { kind: 'transferred'; to: string };
+
+export function cardWords(
+  t: TFunction,
+  details: OrganisationDetails,
+  said: CardSaid | null,
+): { says: string; line: string; said: boolean } {
+  if (said == null) return { says: details.name, line: details.contactAddress, said: false };
+  if (said.kind === 'saved')
+    return { says: t('orgGeneral.savedSays'), line: said.words, said: true };
+
+  return {
+    says: t('ownership.transferredSays', { name: said.to }),
+    line: t('ownership.transferredLine'),
+    said: true,
+  };
+}
+
+/** A new invitation language is named, since it changes what goes out from now on. */
+export function savedWords(
+  t: TFunction,
+  now: OrganisationDetails,
+  before: OrganisationDetails,
+): string {
+  return now.locale === before.locale
+    ? t('orgGeneral.saved', { name: now.name })
+    : t('orgGeneral.savedLanguage', {
+        language: t(`languageNamesInSentence.${now.locale}`, { defaultValue: now.locale }),
+      });
 }

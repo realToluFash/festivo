@@ -14,6 +14,7 @@ import {
   rememberEventsTab,
   rememberTabHolding,
   rememberedEventsTab,
+  stepAwaitsMilestones,
   withPastPage,
 } from './eventsHome.ts';
 
@@ -319,6 +320,19 @@ describe('cardDate', () => {
       kind: 'dateAway',
       startsAt: ended.startsAt,
     });
+  });
+});
+
+describe('stepAwaitsMilestones', () => {
+  it('holds the step of a Live or Happening now event, whose step is its next milestone', () => {
+    expect(stepAwaitsMilestones('live')).toBe(true);
+    expect(stepAwaitsMilestones('happening_now')).toBe(true);
+  });
+
+  it('never holds a Draft, Paused or Finished event, whose step does not read its milestones', () => {
+    expect(stepAwaitsMilestones('draft')).toBe(false);
+    expect(stepAwaitsMilestones('paused')).toBe(false);
+    expect(stepAwaitsMilestones('finished')).toBe(false);
   });
 });
 

@@ -1,29 +1,33 @@
-# Android only. sc-25667: before Create organisation is pressed, Cancel closes the sheet with a name typed, and Android back closes it, nothing created either way.
+# Android only. sc-25667: before Create organisation is pressed, Cancel leaves the walk with a name typed (by its Discard), and Android back on the first step does the same, nothing created either way.
 appId: host.exp.Exponent
 ---
 - runFlow: ../open-create-organisation.yaml
 - tapOn:
-    id: 'createOrganisation.name'
+    id: 'createWalk.name'
 - inputText: 'Before Cancel'
 - assertVisible:
-    id: 'createOrganisation.cancel'
+    id: 'createWalk.cancel'
     enabled: true
 - tapOn:
-    id: 'createOrganisation.cancel'
+    id: 'createWalk.cancel'
+- tapOn:
+    id: 'createWalk.discard'
 - extendedWaitUntil:
     notVisible:
-      id: 'createOrganisation'
+      id: 'createWalk'
     timeout: 10000
 - runFlow: ../open-create-organisation.yaml
 - tapOn:
-    id: 'createOrganisation.name'
+    id: 'createWalk.name'
 - inputText: 'Before Back'
-- back
+- hideKeyboard
 - waitForAnimationToEnd
 - back
+- tapOn:
+    id: 'createWalk.discard'
 - extendedWaitUntil:
     notVisible:
-      id: 'createOrganisation'
+      id: 'createWalk'
     timeout: 10000
 - tapOn:
     id: 'home.switchOrganisation'

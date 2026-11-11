@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { dueWords, INVITES_NOT_SENT, momentOf, railAt, repliesOf, sayIn } from './today.ts';
+import {
+  addDays,
+  dueWords,
+  INVITES_NOT_SENT,
+  lanesOf,
+  momentOf,
+  railAt,
+  repliesOf,
+  sayIn,
+  shown,
+} from './today.ts';
 
 const us = sayIn('en-US');
 const gb = sayIn('en-GB');
@@ -37,9 +47,9 @@ describe('a planning day', () => {
 
   it('draws the wedding as one bar, and the other milestones as dots', () => {
     expect(plan.bars).toEqual([
-      { event: 'wed', start: 2, span: 3, label: '3 days', openLeft: false },
+      { event: shown('wed'), start: 2, span: 3, label: '3 days', openLeft: false, lane: 0 },
     ]);
-    expect(plan.days.map(({ dots }) => dots)).toEqual([
+    expect(plan.days.map(({ dots }) => dots.map(({ mesh }) => mesh))).toEqual([
       ['ireti'],
       ['wed'],
       [],
@@ -74,7 +84,7 @@ describe('the event day', () => {
 
   it('runs the wedding’s bar in from the left', () => {
     expect(day.bars).toEqual([
-      { event: 'wed', start: 0, span: 2, label: 'day 2 of 3', openLeft: true },
+      { event: shown('wed'), start: 0, span: 2, label: 'day 2 of 3', openLeft: true, lane: 0 },
     ]);
     expect(day.events[0]).toMatchObject({ count: 'Day 2 of 3', live: true, stage: null });
     expect(day.events[1]).toMatchObject({ count: 'In 8 days', stage: null });
@@ -145,6 +155,135 @@ describe('the planning day before the party’s invitations go out (?invites=non
   });
 });
 
+describe('an event that starts later today, not under way yet (?starts=later)', () => {
+  const later = momentOf('plan', us, { later: true });
+
+  it('stays a planning day, with no Now, and says when it starts', () => {
+    expect(later.kind).toBe('plan');
+    expect(later.now).toBeNull();
+    expect(later.time).toBe('09:41');
+    expect(later.eyebrow).toBe('Saturday, November 28');
+    expect(later.sub).toBe('Ire Events end-of-year party starts today at 19:00.');
+    expect(later.needs).toEqual([]);
+    expect(later.lead).toBeNull();
+  });
+
+  it('counts the party as Today, not a started day, until 19:00', () => {
+    const party = later.events.find(({ name }) => name === 'Ire Events end-of-year party');
+
+    expect(party).toMatchObject({ count: 'Today', live: false, stage: null });
+    expect(later.agenda).toEqual([
+      expect.objectContaining({
+        day: 'Today',
+        today: true,
+        items: [expect.objectContaining({ time: '19:00', title: 'The party starts' })],
+      }),
+    ]);
+  });
+
+  it('reads the planning day as before without it', () => {
+    expect(momentOf('plan', us, { later: false }).sub).toBe('The wedding starts on Thursday.');
+  });
+});
+
+describe('events sharing days take rows (?week=rows, sc-37302)', () => {
+  const rows = momentOf('plan', us, { rows: true });
+  it('puts A on days 1 to 4 and C on 5 to 7 on the top row, and B on 3 to 6 on the second', () => {
+    expect(
+      rows.bars.map(({ event, start, span, lane, label }) => [
+        event.mesh,
+        start,
+        span,
+        lane,
+        label,
+      ]),
+    ).toEqual([
+      ['wed', 0, 4, 0, '4 days'],
+      ['ireti', 2, 4, 1, '4 days'],
+      ['party', 4, 3, 0, '3 days'],
+    ]);
+  });
+
+  it('keeps a dot only on the day no bar covers', () => {
+    expect(rows.days.map(({ dots }) => dots.map(({ mesh }) => mesh))).toEqual([
+      [],
+      ['ireti'],
+      [],
+      [],
+      [],
+      [],
+      [],
+    ]);
+  });
+
+  it('stays a planning day: the wedding starts this evening', () => {
+    expect(rows.kind).toBe('plan');
+    expect(rows.now).toBeNull();
+    expect(rows.sub).toBe('The wedding starts today at 18:00.');
+    expect(rows.events.map(({ count }) => count)).toEqual([
+      'Today',
+      'In 2 days',
+      'In 4 days',
+      'Draft',
+    ]);
+  });
+
+  it('stacks by the domain’s weekLanes: a row shared only by events that share no day, ties by id', () => {
+    const today = '2026-11-03';
+    const lanes = (spans: [string, number, number][]) => {
+      const placed = lanesOf(
+        today,
+        spans.map(([id, from, to]) => ({
+          id,
+          first: addDays(today, from),
+          last: addDays(today, to),
+        })),
+      );
+
+      return spans.map(([id]) => placed.get(id));
+    };
+
+    expect(
+      lanes([
+        ['a', 0, 1],
+        ['b', 3, 4],
+      ]),
+    ).toEqual([0, 0]);
+    expect(
+      lanes([
+        ['a', 0, 2],
+        ['b', 2, 4],
+      ]),
+    ).toEqual([0, 1]);
+    expect(
+      lanes([
+        ['c', 0, 6],
+        ['a', 0, 6],
+        ['b', 0, 6],
+      ]),
+    ).toEqual([2, 0, 1]);
+    expect(
+      lanes([
+        ['a', 4, 6],
+        ['b', -2, 2],
+        ['c', 2, 4],
+      ]),
+    ).toEqual([0, 0, 1]);
+  });
+
+  it('gives the rows state a Needs you its own dates agree with', () => {
+    expect(rows.needs?.map(({ event, title, due }) => [event, title, due])).toEqual([
+      ['party', 'Chase 19 replies', '3 days late'],
+      ['wed', 'Final numbers to the caterer', 'Due today'],
+      ['ireti', 'Chase 22 replies', 'Replies close Wed, Nov 4'],
+    ]);
+  });
+
+  it('reads the planning day as before without it', () => {
+    expect(momentOf('plan', us, { rows: false }).bars).toHaveLength(1);
+  });
+});
+
 describe('the quiet states', () => {
   it('a quiet week has nothing due, and says what is next', () => {
     const quiet = momentOf('quiet', us);
@@ -152,7 +291,7 @@ describe('the quiet states', () => {
     expect(quiet.needs).toEqual([]);
     expect(quiet.bars).toEqual([]);
     expect(quiet.nextUp?.when).toBe('Sat, Nov 28 · in 10 days');
-    expect(quiet.events.map(({ event }) => event)).toEqual(['party', 'draft']);
+    expect(quiet.events.map(({ event }) => event.mesh)).toEqual(['party', 'draft']);
   });
 
   it('a first run has no events', () => {
@@ -173,5 +312,12 @@ describe('the small rules', () => {
     expect(railAt(['10:00', '12:00'], '09:00')).toBe(0);
     expect(railAt(['10:00', '12:00'], '13:00')).toBe(1);
     expect(railAt(['10:00', '12:00'], '11:00')).toBe(0.5);
+  });
+});
+
+describe('a first run for a member without Create events (?moment=firstAsk)', () => {
+  it('welcomes the member looking, not the owner', () => {
+    expect(momentOf('first', us, { first: 'Ana' }).hello).toBe('Welcome, Ana');
+    expect(momentOf('first', us).hello).toBe('Welcome, Folake');
   });
 });

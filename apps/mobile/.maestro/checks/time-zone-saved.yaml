@@ -10,18 +10,18 @@ appId: host.exp.Exponent
       platform: iOS
     commands:
       - tapOn:
-          id: 'timeZone.search'
+          id: 'account.zone.field'
           optional: true
 - tapOn:
-    id: 'timeZone.option.Europe/Lisbon'
+    id: 'account.zone.Europe/Lisbon'
     optional: true
 - tapOn:
-    id: 'timeZone.save'
+    id: 'account.zone.save'
     optional: true
 - extendedWaitUntil:
     visible: '.*Lis(bon|bonne).*'
     timeout: 15000
 - scrollUntilVisible:
     element:
-      id: 'timeZone.change'
+      id: 'account.zone'
 - takeScreenshot: time-zone-saved

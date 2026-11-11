@@ -28,6 +28,7 @@ const ADA_ACCOUNT: Account = {
   needsOrganisation: false,
   hasPassword: true,
   twoFactorSetupPrompt: false,
+  colourScheme: null,
   waitingFor: null,
   providers: [],
   emailAddresses: [],
@@ -145,10 +146,10 @@ describe('the application tree', () => {
       screen.getByRole('button', { name: /Organisation: Okonkwo Events, your role Owner/ }),
     ).toBeDefined();
     expect(screen.getByRole('link', { name: 'Events' })).toBeDefined();
-    expect(screen.getByText('Signed in as Ada Okonkwo')).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Today' })).toBeDefined();
   });
 
-  it("shows the Dashboard's event count as one waiting row from one second, then its failure line when it fails (sc-23303, sc-24696)", async () => {
+  it("shows Today's events as one waiting row from one second, then its failure line when they fail (sc-23303, sc-24696, sc-30413)", async () => {
     let fail: () => void = () => {};
     const counted = new Promise<Response>((_, reject) => {
       fail = () => reject(new TypeError('Failed to fetch'));
@@ -168,15 +169,14 @@ describe('the application tree', () => {
     fail();
 
     await waitFor(() => expect(container.querySelector('#content [aria-busy="true"]')).toBeNull());
-    expect(screen.queryByText(/events?$/u)).toBeNull();
     expect(screen.getByRole('alert').textContent).toContain(
       'The events did not load. Try again in a moment.',
     );
     expect(screen.getByRole('button', { name: 'Try again' })).toBeDefined();
-    expect(screen.getByText('Signed in as Ada Okonkwo')).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Today' })).toBeDefined();
   });
 
-  it("never shows half the Dashboard's count, and Try again reloads both halves (sc-24696)", async () => {
+  it('never shows Today from half its events, and Try again reloads both halves (sc-24696, sc-30413)', async () => {
     let finishedFails = true;
     const asked: string[] = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
@@ -186,24 +186,24 @@ describe('the application tree', () => {
       asked.push(finished ? 'finished' : 'unfinished');
       if (finished && finishedFails) throw new TypeError('Failed to fetch');
 
-      return new Response(JSON.stringify({ events: [], total: finished ? 2 : 3 }), {
+      return new Response(JSON.stringify({ events: [], total: 0 }), {
         headers: { 'Content-Type': 'application/json' },
       });
     });
     at('/app');
 
     const retry = await screen.findByRole('button', { name: 'Try again' });
-    expect(screen.queryByText(/events?$/u)).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Set up your first event' })).toBeNull();
 
     finishedFails = false;
     fireEvent.click(retry);
 
-    const count = await screen.findByText('5 events');
+    const welcome = await screen.findByRole('heading', { level: 1, name: 'Welcome, Ada' });
     expect([...asked].sort()).toEqual(['finished', 'finished', 'unfinished', 'unfinished']);
-    await waitFor(() => expect(document.activeElement).toBe(count));
+    await waitFor(() => expect(document.activeElement).toBe(welcome));
   });
 
-  it("moves focus to the Dashboard's failure line when Try again fails again (sc-24696)", async () => {
+  it("moves focus to Today's failure line when Try again fails again (sc-24696)", async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       if (new URL(String(input)).pathname !== '/api/orgs/org_1/events') {
         return new Promise<Response>(() => {});
@@ -394,7 +394,9 @@ describe('the application tree', () => {
       ),
     );
 
-    await waitFor(() => expect(screen.getByText('Signed in as Ada Okonkwo')).toBeDefined());
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: 'Today' })).toBeDefined(),
+    );
   });
 
   it('waits rather than redirecting while the session is being checked', async () => {

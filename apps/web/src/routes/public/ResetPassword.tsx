@@ -7,6 +7,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
+import { LinkRetryPage } from '../../components/LinkRetryPage.tsx';
 import { SignedInAs, Tick } from '../../components/Onboarding.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
 import { PasswordRuleLine } from '../../components/PasswordRule.tsx';
@@ -28,6 +29,7 @@ type Dead = 'used' | 'expired' | 'invalid';
 type Status =
   | { kind: 'checking' }
   | { kind: 'unreachable' }
+  | { kind: 'unread' }
   | { kind: 'ready'; email: string }
   | { kind: 'saving'; email: string }
   | { kind: 'failed'; email: string }
@@ -49,7 +51,11 @@ export function ResetPassword() {
   const [refusal, setRefusal] = useState<string | null>(null);
   const [short, setShort] = useState(false);
   const [reads, setReads] = useState(0);
-  const retry = useLinkRetry(status, () => setReads((count) => count + 1));
+  const [retriedFrom, setRetriedFrom] = useState<Status['kind'] | null>(null);
+  const retry = useLinkRetry(status, () => {
+    setRetriedFrom(status.kind);
+    setReads((count) => count + 1);
+  });
   const { signOut, unreached } = useSignOut(() => navigate('/sign-in', { replace: true }));
   const passwordInput = useRef<HTMLInputElement>(null);
   const [stepHeading, arriveAtStep] = useStepFocus();
@@ -66,22 +72,26 @@ export function ResetPassword() {
       .checkResetLink(token)
       .then(({ email, twoFactor }) => {
         // With two-factor on the code comes first, and nothing changes until it passes.
-        if (live) setStatus({ kind: twoFactor ? 'code' : 'ready', email });
+        if (!live) return;
+        setStatus({ kind: twoFactor ? 'code' : 'ready', email });
+        if (reads > 0) arriveAtStep();
       })
       .catch((error: unknown) => {
         if (!live) return;
-        // A link that could not be read is not a dead one: reading it again may work.
+        // Only the API's refusal makes a dead link: any other failure may read on a second try.
+        const dead = error instanceof ApiUnreachableError ? null : deadFrom(error);
         setStatus(
           error instanceof ApiUnreachableError
             ? { kind: 'unreachable' }
-            : { kind: deadFrom(error) ?? 'invalid' },
+            : { kind: dead ?? 'unread' },
         );
+        if (dead != null && reads > 0) arriveAtStep();
       });
 
     return () => {
       live = false;
     };
-  }, [token, reads]);
+  }, [token, reads, arriveAtStep]);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -131,7 +141,17 @@ export function ResetPassword() {
   }
 
   if (status.kind === 'checking') return <PendingPage />;
-  if (status.kind === 'unreachable') return <Unreachable signedIn={false} retry={retry} bare />;
+  if (status.kind === 'unreachable')
+    return <Unreachable signedIn={false} retry={retry} brought={retriedFrom === 'unread'} bare />;
+  if (status.kind === 'unread')
+    return (
+      <LinkRetryPage
+        title={t('recovery.failedTitle')}
+        body={t('recovery.failedBody')}
+        retry={retry}
+        brought={retriedFrom === 'unreachable'}
+      />
+    );
 
   if (status.kind === 'used' || status.kind === 'expired' || status.kind === 'invalid') {
     return (
@@ -181,6 +201,7 @@ export function ResetPassword() {
           failedTitle={t('recovery.failedTitle')}
           failedBody={t('recovery.failedBody')}
           lostBoth={{ to: `?token=${encodeURIComponent(token)}`, state: { lostBoth: true } }}
+          headingRef={stepHeading}
           onVerify={async (factor) => {
             try {
               await api.passResetCode(token, factor);

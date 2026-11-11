@@ -1,3 +1,9 @@
+import {
+  countrySearch,
+  foundingCurrencyWords,
+  newOrganisationEntered,
+  newOrganisationLimit,
+} from '@soirely/domain';
 import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
@@ -5,30 +11,31 @@ import en from '../../i18n/locales/en.json';
 import { orgMesh } from '../OrgSwitcherModel.ts';
 import { meshFor } from '../../kit/today.ts';
 import {
-  CREATE_STATES,
-  LONG_NAME,
-  NEW_ORG_ID,
-  SAMPLE_DEVICE,
-  answerTo,
+  type Naming,
   back,
   boxWords,
   cardNameSize,
   cardWords,
   countries,
-  createStateOf,
-  currencyWords,
-  entered,
   factsOf,
+  footPlace,
   forward,
-  foundedPlace,
   freshWalk,
-  limitedWords,
   picked,
   rowLabel,
-  sampleCurrency,
-  search,
   stepRefusal,
   typed,
+} from '../../kit/createWalk.ts';
+import {
+  CREATE_STATES,
+  LONG_NAME,
+  NEW_ORG_ID,
+  SAMPLE_CURRENCIES,
+  SAMPLE_DEVICE,
+  answerTo,
+  createStateOf,
+  focusOf,
+  foundedPlace,
   walkFor,
 } from './CreateWalk.ts';
 
@@ -41,6 +48,7 @@ void i18n.init({
 });
 const t = i18n.t;
 const EMAIL = 'folake@ire.events';
+const NAMING: Naming = { locale: 'en', currencies: SAMPLE_CURRENCIES };
 
 function sample(state: Parameters<typeof walkFor>[0], phone = true) {
   const walk = walkFor(state, t, phone);
@@ -58,6 +66,14 @@ describe('the states', () => {
 
   it('lands with no walk when created', () => {
     expect(walkFor('created', t, true)).toBeNull();
+  });
+
+  it('opens typing the name, in the search, or on the question', () => {
+    expect(focusOf(null, sample('name'))).toBe('name');
+    expect(focusOf('name-long', sample('name-long'))).toBe('name');
+    expect(focusOf('country-search', sample('country-search'))).toBe('search');
+    expect(focusOf('ready', sample('ready'))).toBe('question');
+    expect(focusOf('back-name', sample('back-name'))).toBe('question');
   });
 
   it('asks Discard over step 2 on the phone and step 1 on the iPad', () => {
@@ -122,26 +138,26 @@ describe('Back keeps everything', () => {
 
 describe('something entered, for Discard', () => {
   it('is nothing with no name and the device’s country', () => {
-    expect(entered(sample('name'))).toBe(false);
-    expect(entered({ ...sample('name'), name: '  ' })).toBe(false);
+    expect(newOrganisationEntered(sample('name'))).toBe(false);
+    expect(newOrganisationEntered({ ...sample('name'), name: '  ' })).toBe(false);
   });
 
   it('is a name', () => {
-    expect(entered(sample('typing'))).toBe(true);
+    expect(newOrganisationEntered(sample('typing'))).toBe(true);
   });
 
   it('is a country other than the device’s, with no name', () => {
-    expect(entered(picked(sample('name'), 'BR'))).toBe(true);
+    expect(newOrganisationEntered(picked(sample('name'), 'BR'))).toBe(true);
   });
 
   it('is nothing on a device with no country, before one is picked', () => {
-    expect(entered({ ...sample('country-none'), name: '' })).toBe(false);
+    expect(newOrganisationEntered({ ...sample('country-none'), name: '' })).toBe(false);
   });
 });
 
 describe('the search', () => {
   it('narrows by "bra" to the three the board draws, in order', () => {
-    expect(search(countries(), 'bra').map((country) => country.name)).toEqual([
+    expect(countrySearch(countries('en'), 'bra', 'en').map((country) => country.name)).toEqual([
       'Brazil',
       'Congo - Brazzaville',
       'Gibraltar',
@@ -149,48 +165,54 @@ describe('the search', () => {
   });
 
   it('ignores case and the ends', () => {
-    expect(search(countries(), '  POR ').map((country) => country.name)).toEqual([
+    expect(countrySearch(countries('en'), '  POR ', 'en').map((country) => country.name)).toEqual([
       'Portugal',
       'Singapore',
     ]);
   });
 
   it('keeps every country for an empty search', () => {
-    expect(search(countries(), ' ')).toHaveLength(249);
+    expect(countrySearch(countries('en'), ' ', 'en')).toHaveLength(249);
   });
 });
 
 describe('the sample’s currency', () => {
   it('is the API’s', () => {
-    expect(sampleCurrency('PT')).toBe('EUR');
-    expect(sampleCurrency('BR')).toBe('BRL');
-    expect(currencyWords('BR')).toEqual({ words: 'Brazilian Real (BRL)', none: false });
-    expect(rowLabel({ code: 'PT', name: 'Portugal' })).toBe('Portugal, Euro (EUR)');
+    expect(SAMPLE_CURRENCIES.get('PT')).toBe('EUR');
+    expect(SAMPLE_CURRENCIES.get('BR')).toBe('BRL');
+    expect(foundingCurrencyWords('BR', NAMING.currencies, NAMING.locale, t)).toEqual({
+      words: 'Brazilian Real (BRL)',
+      none: false,
+    });
+    expect(rowLabel({ code: 'PT', name: 'Portugal' }, NAMING, t)).toBe('Portugal, Euro (EUR)');
   });
 
   it('is "None yet" for Antarctica', () => {
-    expect(sampleCurrency('AQ')).toBeNull();
-    expect(currencyWords('AQ')).toEqual({ words: 'None yet', none: true });
-    expect(rowLabel({ code: 'AQ', name: 'Antarctica' })).toBe('Antarctica, None yet');
+    expect(SAMPLE_CURRENCIES.get('AQ')).toBeNull();
+    expect(foundingCurrencyWords('AQ', NAMING.currencies, NAMING.locale, t)).toEqual({
+      words: 'None yet',
+      none: true,
+    });
+    expect(rowLabel({ code: 'AQ', name: 'Antarctica' }, NAMING, t)).toBe('Antarctica, None yet');
   });
 
   it('is there for every country in the list', () => {
-    expect(countries().filter((country) => sampleCurrency(country.code) == null)).toEqual([
-      { code: 'AQ', name: 'Antarctica' },
-    ]);
+    expect(
+      countries('en').filter((country) => SAMPLE_CURRENCIES.get(country.code) == null),
+    ).toEqual([{ code: 'AQ', name: 'Antarctica' }]);
   });
 });
 
 describe('the Ready card', () => {
   it('reads as one element', () => {
-    expect(cardWords(sample('ready'), EMAIL, t)).toBe(
+    expect(cardWords(sample('ready'), EMAIL, t, NAMING)).toBe(
       'Lumen Feiras. Your role · Owner. Country, Portugal. Currency, Euro (EUR). Time zone, Lisbon · Europe/Lisbon. Contact address, folake@ire.events.',
     );
   });
 
   it('shows no country facts until a country is picked', () => {
-    expect(factsOf(sample('country-none'), EMAIL, t, false)).toEqual([]);
-    expect(factsOf(sample('country'), EMAIL, t, false).map((fact) => fact.key)).toEqual([
+    expect(factsOf(sample('country-none'), EMAIL, t, false, NAMING)).toEqual([]);
+    expect(factsOf(sample('country'), EMAIL, t, false, NAMING).map((fact) => fact.key)).toEqual([
       'country',
       'currency',
       'timezone',
@@ -198,7 +220,7 @@ describe('the Ready card', () => {
   });
 
   it('keeps the device’s zone whatever the country', () => {
-    expect(factsOf(sample('country-picked'), EMAIL, t, false)[2]?.value).toBe(
+    expect(factsOf(sample('country-picked'), EMAIL, t, false, NAMING)[2]?.value).toBe(
       'Lisbon · Europe/Lisbon',
     );
   });
@@ -211,7 +233,7 @@ describe('the Ready card', () => {
 
 describe('what the country brings', () => {
   it('reads as one element', () => {
-    expect(boxWords(sample('country'), t)).toBe(
+    expect(boxWords(sample('country'), t, NAMING)).toBe(
       'Currency, Euro (EUR). Time zone, from this device, Lisbon · Europe/Lisbon.',
     );
   });
@@ -219,16 +241,16 @@ describe('what the country brings', () => {
 
 describe('Create', () => {
   it('stays too many for now until 10:41', () => {
-    expect(answerTo(sample('limited'))).toBe('limited');
-    expect(limitedWords('en-GB', t)).toEqual({
+    expect(answerTo(sample('limited')).kind).toBe('limited');
+    expect(newOrganisationLimit(sample('limited').lifts, 'en-GB', t)).toEqual({
       title: 'Too many new organisations for now.',
       body: 'Try again at 10:41.',
     });
   });
 
   it('works on a try after a failure', () => {
-    expect(answerTo(sample('failed'))).toBe('created');
-    expect(answerTo(sample('ready'))).toBe('created');
+    expect(answerTo(sample('failed')).kind).toBe('created');
+    expect(answerTo(sample('ready')).kind).toBe('created');
   });
 
   it('gives the new organisation one colour, amber, whatever the device or the pick', () => {
@@ -250,5 +272,25 @@ describe('Create', () => {
       role: 'Owner',
       fresh: true,
     });
+  });
+});
+
+describe('footPlace', () => {
+  const sideways = { phone: true, width: 800, height: 360, step: 1 as const };
+
+  it('scrolls Continue with the step on a phone on its side with the keys up, an iPhone as much as an Android phone', () => {
+    expect(footPlace({ ...sideways, keysUp: true })).toBe('scrolls');
+    expect(footPlace({ ...sideways, step: 3, keysUp: true })).toBe('scrolls');
+  });
+
+  it('leaves it out on the country step until the keys go down, rather than under the whole list', () => {
+    expect(footPlace({ ...sideways, step: 2, keysUp: true })).toBe('hidden');
+    expect(footPlace({ ...sideways, step: 2, keysUp: false })).toBe('pinned');
+  });
+
+  it('pins it with the keys down, upright, and on a tablet', () => {
+    expect(footPlace({ ...sideways, keysUp: false })).toBe('pinned');
+    expect(footPlace({ ...sideways, width: 360, height: 800, keysUp: true })).toBe('pinned');
+    expect(footPlace({ ...sideways, phone: false, keysUp: true })).toBe('pinned');
   });
 });

@@ -1,4 +1,4 @@
-import type { EventCover, ListedEvent } from '@soirely/api-client';
+import type { EventCover, OrganisationEvent } from '@soirely/api-client';
 import {
   type CardStepAction,
   type EventPhase,
@@ -13,6 +13,7 @@ import {
   formatEventWeekday,
   milestoneDistance,
   nextStep,
+  stepAwaitsMilestones,
   wallDay,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -45,7 +46,8 @@ export interface ListEvent {
   /** The list's place: the venue's name, or its address; null until there is a venue. */
   place: string | null;
   photo: CardPhoto | null;
-  milestones: readonly Milestone[];
+  /** Null while they are still being read: an event's page reads them apart from the event. */
+  milestones: readonly Milestone[] | null;
 }
 
 export interface Shown extends ListEvent {
@@ -59,7 +61,7 @@ export function shownEvent(event: ListEvent, phase: EventPhase): Shown {
 }
 
 /** A loaded event as Events draws it: its venue's name or address for the place, and its photo once it has one. */
-export function listEventOf(event: ListedEvent): ListEvent {
+export function listEventOf(event: OrganisationEvent & Pick<ListEvent, 'milestones'>): ListEvent {
   return {
     ...event,
     place: event.venue?.name ?? event.venue?.address?.formatted ?? null,
@@ -216,9 +218,11 @@ export type CardStep =
   | { kind: 'button'; line: string; label: string; action: StepAction }
   | { kind: 'next'; title: string; when: string; you: boolean; overdue: boolean };
 
-/** The card's one step, by the domain's nextStep: what the phase asks for, else the next thing that happens; Duplicate once it is over. */
-export function cardStep(event: Shown, now: Date, locale: string, t: TFunction): CardStep {
-  const step = nextStep(event, event.phase, now);
+/** The card's one step, by the domain's nextStep: what the phase asks for, else the next thing that happens; Duplicate once it is over. Null while a live event's milestones are still unread. */
+export function cardStep(event: Shown, now: Date, locale: string, t: TFunction): CardStep | null {
+  if (event.milestones == null && stepAwaitsMilestones(event.phase)) return null;
+
+  const step = nextStep({ ...event, milestones: event.milestones ?? [] }, event.phase, now);
 
   switch (step?.kind) {
     case 'makeLive':

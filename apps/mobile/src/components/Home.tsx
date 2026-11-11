@@ -1,5 +1,5 @@
 import { type Account, type Membership, primaryEmailAddress } from '@soirely/api-client';
-import { roleHolds, roleName } from '@soirely/domain';
+import { roleName } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type Ref, type RefObject, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
@@ -29,10 +29,7 @@ import { TodayLanding } from './TodayLanding.tsx';
 export function Home() {
   const { t } = useTranslation();
   const { account, organisation } = useSignedIn();
-  const today =
-    account != null && organisation != null && roleHolds(organisation, 'events.read')
-      ? { account, organisation }
-      : null;
+  const today = account != null && organisation != null ? { account, organisation } : null;
   const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
 
   return (

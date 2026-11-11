@@ -1,5 +1,5 @@
 import { ApiError } from '@soirely/api-client';
-import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
+import { formatTimeOfDay, listFormat, lockLiftsAt } from '@soirely/domain';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, type TextInputInstance, View } from 'react-native';
@@ -187,7 +187,7 @@ export default function SignIn() {
                 'signIn.providerOnlyBody',
                 {
                   organisation: refusal.organisation,
-                  providers: new Intl.ListFormat(currentLocale(), { type: 'disjunction' }).format(
+                  providers: listFormat(currentLocale(), { type: 'disjunction' }).format(
                     providerNames(refusal.providers),
                   ),
                 },

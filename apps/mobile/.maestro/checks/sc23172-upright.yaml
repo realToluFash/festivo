@@ -82,21 +82,6 @@ appId: host.exp.Exponent
     id: 'settings.members'
 - scrollUntilVisible:
     element:
-      id: 'settings.roles'
-    direction: DOWN
-- tapOn:
-    id: 'settings.roles'
-- waitForAnimationToEnd
-- takeScreenshot: up-roles
-- assertNotVisible:
-    id: 'settings.signOut'
-- tapOn:
-    id: 'frame.back'
-- waitForAnimationToEnd
-- assertVisible:
-    id: 'settings.roles'
-- scrollUntilVisible:
-    element:
       id: 'settings.signInRules'
     direction: DOWN
 - tapOn:

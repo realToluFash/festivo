@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import type { Ref } from 'react';
+import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
@@ -267,11 +268,15 @@ function CardFoot({
   step,
   takes,
   onStep,
+  stepRef,
+  sending,
   testID,
 }: {
   step: CardStep;
   takes: (action: StepAction) => boolean;
   onStep: (step: Extract<CardStep, { kind: 'button' }>) => void;
+  stepRef: Ref<ViewInstance> | undefined;
+  sending: string | null;
   testID: string;
 }) {
   const { t } = useTranslation();
@@ -316,7 +321,13 @@ function CardFoot({
         <OnCard text={step.line} />
       </View>
       {takes(step.action) && (
-        <StepButton label={step.label} onPress={() => onStep(step)} testID={`${testID}.step`} />
+        <StepButton
+          ref={stepRef}
+          label={sending ?? step.label}
+          busy={sending != null}
+          onPress={() => onStep(step)}
+          testID={`${testID}.step`}
+        />
       )}
     </View>
   );
@@ -333,6 +344,9 @@ export function EventCard({
   takes,
   onStep,
   guests = null,
+  stepRef,
+  sending = null,
+  phaseTestID,
   testID,
   openTestID = `${testID}.open`,
 }: {
@@ -348,11 +362,18 @@ export function EventCard({
   /** Whether the viewer's role can take the step: one it cannot keeps the step's line and loses the button. */
   takes: (action: StepAction) => boolean;
   onStep: (step: Extract<CardStep, { kind: 'button' }>) => void;
+  /** Where focus goes back to when a sheet the step opened closes. */
+  stepRef?: Ref<ViewInstance> | undefined;
+  /** While the step is under way, what its button says instead; it is held until then. */
+  sending?: string | null;
+  /** On the page, the phase tag's id is this followed by the phase. */
+  phaseTestID?: string | undefined;
   testID: string;
   openTestID?: string;
 }) {
   const { t } = useTranslation();
   const name = <CardSays text={event.name} heading={onOpen == null} />;
+  const step = cardStep(event, now, locale, t);
 
   return (
     <SummaryCard
@@ -375,6 +396,9 @@ export function EventCard({
             key={tag.word}
             word={tag.word}
             shape={tag.mark == null ? undefined : <PhaseShape mark={tag.mark} />}
+            testID={
+              tag.mark == null || phaseTestID == null ? undefined : `${phaseTestID}.${event.phase}`
+            }
           />
         ))}
       </View>
@@ -395,12 +419,16 @@ export function EventCard({
         {guests != null && <OnCard text={guests} />}
       </View>
       <DayTiles event={event} now={now} locale={locale} />
-      <CardFoot
-        step={cardStep(event, now, locale, t)}
-        takes={takes}
-        onStep={onStep}
-        testID={testID}
-      />
+      {step != null && (
+        <CardFoot
+          step={step}
+          takes={takes}
+          onStep={onStep}
+          stepRef={stepRef}
+          sending={sending}
+          testID={testID}
+        />
+      )}
     </SummaryCard>
   );
 }

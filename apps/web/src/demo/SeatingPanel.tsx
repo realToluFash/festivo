@@ -474,7 +474,7 @@ function StartForm() {
       {
         panel: null,
         people: [],
-        bar: { kind: 'tint', words: SW.firstItem },
+        bar: { kind: 'tint', words: SW.firstItem, at: 'floor' },
       },
     );
   }
@@ -1352,6 +1352,7 @@ function Tray({ chips = true }: { chips?: boolean }) {
   const coming = ui.tray.filter((party) => party.reply === 'coming');
   const count = coming.reduce((sum, party) => sum + peopleIn(party), 0);
   const unsure = unsureLeft(ui.tray);
+  const nobodySeated = ui.plan.items.every((item) => filled(item) === 0);
   const shown = shownParties(ui);
   const groups = [...GROUP_ORDER, SW.noGroup]
     .map((group) => ({
@@ -1390,7 +1391,7 @@ function Tray({ chips = true }: { chips?: boolean }) {
         <p className="st-line is-strong">{say(SW.moreUnsure, { n: unsure })}</p>
       )}
       {count === 0 && !ui.unsure ? (
-        <Line>{SW.everyoneSeated}</Line>
+        <Line>{nobodySeated ? SW.nobodyComing : SW.everyoneSeated}</Line>
       ) : (
         <>
           <div className="st-search">

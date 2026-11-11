@@ -1,9 +1,8 @@
 import { type Membership, primaryEmailAddress } from '@soirely/api-client';
 import {
-  EVENT_AREAS,
-  type EventArea,
-  MORE_EVENT_AREAS,
   PHONE_EVENT_TABS,
+  createNewOrganisation,
+  roleHolds,
   roleName,
   waitingInvitations,
 } from '@soirely/domain';
@@ -32,9 +31,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
+import { api } from '../api.ts';
 import { usePushTaps } from '../appPush.ts';
-import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
-import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
+import { useWaitingInvitations } from '../invitations.ts';
+import { useDomainOffer } from '../joinOffers.ts';
 import {
   DESTINATION_HREF,
   type Destination,
@@ -43,8 +43,10 @@ import {
   destinations,
 } from '../kit/appNav.ts';
 import { backRowHiding } from '../kit/backRow.ts';
+import { type Currencies, freshWalk } from '../kit/createWalk.ts';
 import { phonePillAlone, pillBesideTabs } from '../kit/frameBand.ts';
 import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBack.ts';
+import { EVENT_PLACES, type EventPlace, MORE_PLACES } from '../kit/eventNav.ts';
 import { leaveThen } from '../leaveHeld.ts';
 import { backLabelSize, frameTitleSize } from '../layout/textSize.ts';
 import {
@@ -53,21 +55,17 @@ import {
   useLayout,
   useNameLines,
 } from '../layout/useLayout.ts';
+import { inModal } from '../kit/anchoredMenu.ts';
+import { type DropFrame, frameFor, switcherSession } from '../kit/orgSwitcher.ts';
 import { joinOrganisation, onMovedOn, switchOrganisation, useSignedIn } from '../signedIn.ts';
 import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { switcherFocusBack } from '../kit/focusBack.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { BellButton } from './BellButton.tsx';
-import { CreateOrganisation } from './CreateOrganisation.tsx';
-import {
-  HeaderPrimary,
-  type HeaderPrimaryProps,
-  PrimaryButton,
-  SecondaryButton,
-} from './Buttons.tsx';
+import { CreateWalkWindow, type WalkOpening, deviceNow } from './CreateWalkWindow.tsx';
+import { HeaderPrimary, type HeaderPrimaryProps } from './Buttons.tsx';
 import { Sheet } from './Sheet.tsx';
-import { InvitationRows } from './InvitationRows.tsx';
 import type { GlyphName } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
 import {
@@ -80,7 +78,6 @@ import {
   WhiteCapsule,
 } from './TodayCover.tsx';
 import { OrgPill as WhitePill } from './OrgPill.tsx';
-import { OrgTile } from './OrgTile.tsx';
 import {
   SidebarBack,
   SidebarColumn,
@@ -89,10 +86,16 @@ import {
   SidebarPlace,
   SidebarPlaces,
 } from './TodaySidebar.tsx';
-import { type TodayShell, TodayShellProvider } from './todayShell.ts';
+import {
+  type OpenerRef,
+  type OrgOpening,
+  type TodayShell,
+  TodayShellProvider,
+} from './todayShell.ts';
+import { OrgDropDown } from './OrgDropDown.tsx';
 import { AREA_GLYPH } from './areaGlyph.ts';
-import { ReadOut, useReadOut } from './ReadOut.tsx';
-import { type StepClosed, stepClosed, useFocusBackToOpener, useFocusOnAnswer } from './Screen.tsx';
+import { ReadOut } from './ReadOut.tsx';
+import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text } from './Text.tsx';
 import { Title, useWholeWords } from './Title.tsx';
@@ -106,10 +109,42 @@ import { type Stale } from '../offline.ts';
 type Opening = (opener: RefObject<ViewInstance | null>) => void;
 
 const OpenSwitcher = createContext<Opening | undefined>(undefined);
+const SwitcherOpenedBy = createContext<OpenerRef | null>(null);
 
 /** Opens the frame's organisation switcher; undefined while there is no organisation and no invitation. */
 export function useOpenSwitcher(): Opening | undefined {
   return useContext(OpenSwitcher);
+}
+
+function useOpenerLabel(organisation: Membership | null, waiting: number, switches: boolean) {
+  const { t } = useTranslation();
+  if (organisation == null) return '';
+  const name = organisation.name;
+  const role = roleName(t, organisation.role);
+
+  if (!switches) return t('switcher.label', { name, role });
+  if (waiting > 0) return t('switcher.labelSwitchWaiting', { name, role, count: waiting });
+
+  return t('switcher.labelSwitch', { name, role });
+}
+
+/** Today's openers in the signed-in app: the organisation being worked in, opening the frame's switcher. */
+export function useFrameOrgOpener(ref: OpenerRef): OrgOpening {
+  const { t } = useTranslation();
+  const { organisation } = useSignedIn();
+  const { invitations, outcomes } = useWaitingInvitations();
+  const open = useOpenSwitcher();
+  const openedBy = useContext(SwitcherOpenedBy);
+  const count = waitingInvitations(invitations, outcomes);
+
+  return {
+    id: organisation?.id ?? '',
+    name: organisation?.name ?? '',
+    waiting: count > 0 ? t('invitations.count', { count }) : null,
+    label: useOpenerLabel(organisation, count, open != null),
+    expanded: openedBy === ref,
+    onPress: () => open?.(ref),
+  };
 }
 
 type OrganisationStart = Opening;
@@ -136,7 +171,7 @@ export function useHeaderWithoutBack(hidden: boolean): void {
 
 type IconPaths = readonly [string, string];
 
-const AREA_ICONS: Record<EventArea | 'more', IconPaths> = {
+const AREA_ICONS: Record<EventPlace | 'more', IconPaths> = {
   overview: ['M3 3h7v7H3zM14 3h7v7h-7z', 'M14 14h7v7h-7zM3 14h7v7H3z'],
   guests: [
     'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
@@ -150,6 +185,10 @@ const AREA_ICONS: Record<EventArea | 'more', IconPaths> = {
   messages: ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z', 'M8 9h8M8 13h5'],
   schedule: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 6v6l4 2'],
   staff: ['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+  people: [
+    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+    'M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  ],
   budget: [
     'M21 12V7H5a2 2 0 0 1 0-4h14v4',
     'M3 5v14a2 2 0 0 0 2 2h16v-5M18 12a2 2 0 0 0 0 4h4v-4z',
@@ -160,8 +199,8 @@ const AREA_ICONS: Record<EventArea | 'more', IconPaths> = {
 
 /** Inside an event the navigation is the event's areas, in each layout's own form (sc-22103, #24878). */
 export interface InsideEvent {
-  area: EventArea;
-  onArea: (area: EventArea) => void;
+  area: EventPlace;
+  onArea: (area: EventPlace) => void;
 }
 
 interface NavEntry {
@@ -173,7 +212,7 @@ interface NavEntry {
   testID: string;
 }
 
-function areaEntry(t: (key: string) => string, inside: InsideEvent, area: EventArea): NavEntry {
+function areaEntry(t: (key: string) => string, inside: InsideEvent, area: EventPlace): NavEntry {
   return {
     key: area,
     label: t(`eventNav.${area}`),
@@ -252,7 +291,18 @@ export function AppFrame({
   // Create an organisation's sheet takes focus from the switcher, and hands it back itself (sc-8606).
   const [toSheet, setToSheet] = useState(false);
   const [switcherFrom, setSwitcherFrom] = useState<RefObject<ViewInstance | null> | null>(null);
-  const [creatingFrom, setCreatingFrom] = useState<RefObject<ViewInstance | null> | null>(null);
+  const [walking, setWalking] = useState<WalkOpening | null>(null);
+  // Where focus goes back to as the walk closes: what opened it, or, once it created the first organisation, the notice saying so (sc-11173).
+  const walkBack = useRef<RefObject<ViewInstance | null>>(pill);
+  const walkOpener = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        return walkBack.current.current;
+      },
+    }),
+    [],
+  );
+  const currencies = useCountryCurrencies(creating);
   const [created, setCreated] = useState<{ name: string; takesFocus: boolean } | null>(null);
   const createdWords = useRef<ViewInstance>(null);
   const switched = created == null ? null : t('switcher.switched', { name: created.name });
@@ -269,7 +319,7 @@ export function AppFrame({
   useEffect(() => navigation.setOptions({ gestureEnabled: stackSwipe }), [navigation, stackSwipe]);
   const signedIn = useSignedIn();
   usePushTaps(signedIn.account?.id);
-  const entries = inEvent == null ? [] : EVENT_AREAS.map((area) => areaEntry(t, inEvent, area));
+  const entries = inEvent == null ? [] : EVENT_PLACES.map((area) => areaEntry(t, inEvent, area));
   const waiting = useWaitingInvitations();
   const offer = useDomainOffer();
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
@@ -287,6 +337,30 @@ export function AppFrame({
   );
   const overdueIn = useRef<string | undefined>(undefined);
   const overdueHeading = useRef<TextHandle>(null);
+  const window = useWindowDimensions();
+  const origin = useWindowOrigin();
+  const [drop, setDrop] = useState<{ frame: DropFrame; visit: number } | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [answeredHere, setAnsweredHere] = useState<ReadonlySet<string>>(new Set());
+  const [offerRefused, setOfferRefused] = useState(false);
+  const dropFrom = useCallback(
+    (opener: RefObject<ViewInstance | null>, again: boolean) => {
+      const at = opener.current;
+      const place = (x: number, y: number, width: number, height: number) =>
+        setDrop((last) => ({
+          frame: frameFor({
+            opener: { x, y: inModal(y, origin), width, height },
+            window,
+            insets: { bottom: insets.bottom },
+            phone: kind === 'phone',
+          }),
+          visit: (last?.visit ?? 0) + (again ? 0 : 1),
+        }));
+      if (at == null) place(0, insets.top + origin, window.width, 0);
+      else at.measureInWindow(place);
+    },
+    [window, insets.bottom, insets.top, kind, origin],
+  );
   // It opens with one organisation too, because it ends with "Create an organisation" (sc-390).
   const openSwitcher =
     signedIn.organisation != null || waiting.invitations.length > 0 || offer.organisation != null
@@ -295,9 +369,21 @@ export function AppFrame({
           setCreated(null);
           setSwitcherFrom(opener);
           setToSheet(false);
+          setExpanded(null);
+          setAnsweredHere(new Set());
+          dropFrom(opener, false);
           setChoosing(true);
         }
       : undefined;
+  const closeSwitcher = useCallback(() => setChoosing(false), []);
+  // The opener moves when the window turns, so the drop-down follows it there.
+  useEffect(() => {
+    if (!choosing || switcherFrom == null) return;
+    const wait = setTimeout(() => dropFrom(switcherFrom, true), SETTLED_MS);
+
+    return () => clearTimeout(wait);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [window.width, window.height]);
   const switchFromPill = openSwitcher && (() => openSwitcher(pill));
   // An opener a pick took away, as the paused screen's, falls back to the organisation's name, then the title (sc-11413).
   const switcherOpener = useMemo<RefObject<ScreenReaderTarget | null>>(
@@ -315,7 +401,14 @@ export function AppFrame({
   );
   const startOrganisation = (opener: RefObject<ViewInstance | null>) => {
     setCreated(null);
-    setCreatingFrom(opener);
+    walkBack.current = opener;
+    setWalking((last) => ({
+      visit: (last?.visit ?? 0) + 1,
+      walk: freshWalk(deviceNow()),
+      focus: 'name',
+      toPick: false,
+      opener: walkOpener,
+    }));
     setCreating(true);
   };
   const email = signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '');
@@ -335,142 +428,183 @@ export function AppFrame({
   const sidebar = framed && kind === 'tabletLandscape';
 
   return (
-    <View
-      style={[styles.root, sidebar && [styles.chrome, { paddingTop: insets.top }]]}
-      importantForAccessibility={inFront ? 'auto' : 'no-hide-descendants'}
-    >
-      {sidebar && (
-        <FrameSidebar
-          current={current}
-          entries={entries}
-          inEvent={inEvent != null}
-          organisation={signedIn.organisation}
-          waiting={count}
-          onSwitch={switchFromPill}
-          pill={pill}
-        />
-      )}
+    <SwitcherOpenedBy.Provider value={choosing ? switcherFrom : null}>
       <View
-        style={[
-          styles.column,
-          sidebar && [styles.card, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }],
-        ]}
+        style={[styles.root, sidebar && [styles.chrome, { paddingTop: insets.top }]]}
+        importantForAccessibility={inFront ? 'auto' : 'no-hide-descendants'}
       >
-        {framed && (
-          <FrameHeader
+        {sidebar && (
+          <FrameSidebar
             current={current}
-            kind={kind}
             entries={entries}
             inEvent={inEvent != null}
-            title={title}
-            titleRef={frameTitle}
-            switchAnswer={bodyTakesSwitch || standIn != null ? undefined : switchAnswer}
-            back={headerDrawsBack(kind, back, backInBody)}
-            backHidden={backHidden}
             organisation={signedIn.organisation}
             waiting={count}
             onSwitch={switchFromPill}
             pill={pill}
-            pillAlone={phonePillAlone(current === 'home', primary != null, standIn != null)}
-            primary={standIn == null ? primary : undefined}
-            underTitle={standIn == null ? underTitle : undefined}
-            besideTitle={standIn == null ? besideTitle : undefined}
-            besideBack={standIn == null || besideBack === undefined ? besideBack : null}
           />
         )}
-        <OfflineBand stale={standIn == null ? offline : null} inFront={inFront} />
         <View
           style={[
-            styles.body,
-            floatingTabs && {
-              paddingBottom: tabBarFoot(insets.bottom) + PHONE_TAB_BAR + tokens.spaceMd,
-            },
+            styles.column,
+            sidebar && [styles.card, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }],
           ]}
         >
-          {switched != null &&
-            (created?.takesFocus === true ? (
-              <View style={styles.created}>
-                <Notice
-                  tone="done"
-                  mark={tokens.marks.done.glyph}
-                  body={switched}
-                  wordsRef={createdWords}
-                />
-              </View>
-            ) : (
-              <ReadOut style={styles.created} words={switched}>
-                <Notice tone="done" mark={tokens.marks.done.glyph} body={switched} />
-              </ReadOut>
-            ))}
-          <OpenSwitcher.Provider value={openSwitcher}>
-            <StartOrganisation.Provider value={startOrganisation}>
-              <HideBack.Provider value={backRow.hide}>
-                <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
-                  {standIn === 'paused' && signedIn.pausedIn != null ? (
-                    <AccessPaused
-                      paused={signedIn.pausedIn}
-                      others={signedIn.organisations}
-                      onSwitch={(next) => switchByTap(next.id)}
-                      onChoose={(opener) => openSwitcher?.(opener)}
-                    />
-                  ) : standIn === 'overdue' && signedIn.organisation != null ? (
-                    <TwoFactorOverdue
-                      organisation={signedIn.organisation}
-                      answer={switchAnswer ?? lapsed}
-                      headingRef={overdueHeading}
-                    />
-                  ) : (
-                    <FrameSwitch.Provider value={switchAnswer}>{children}</FrameSwitch.Provider>
-                  )}
-                </EdgeSwipeStrip.Provider>
-              </HideBack.Provider>
-            </StartOrganisation.Provider>
-          </OpenSwitcher.Provider>
+          {framed && (
+            <FrameHeader
+              current={current}
+              kind={kind}
+              entries={entries}
+              inEvent={inEvent != null}
+              title={title}
+              titleRef={frameTitle}
+              switchAnswer={bodyTakesSwitch || standIn != null ? undefined : switchAnswer}
+              back={headerDrawsBack(kind, back, backInBody)}
+              backHidden={backHidden}
+              organisation={signedIn.organisation}
+              waiting={count}
+              onSwitch={switchFromPill}
+              pill={pill}
+              pillAlone={phonePillAlone(current === 'home', primary != null, standIn != null)}
+              primary={standIn == null ? primary : undefined}
+              underTitle={standIn == null ? underTitle : undefined}
+              besideTitle={standIn == null ? besideTitle : undefined}
+              besideBack={standIn == null || besideBack === undefined ? besideBack : null}
+            />
+          )}
+          <OfflineBand stale={standIn == null ? offline : null} inFront={inFront} />
+          <View
+            style={[
+              styles.body,
+              floatingTabs && {
+                paddingBottom: tabBarFoot(insets.bottom) + PHONE_TAB_BAR + tokens.spaceMd,
+              },
+            ]}
+          >
+            {switched != null &&
+              (created?.takesFocus === true ? (
+                <View style={styles.created}>
+                  <Notice
+                    tone="done"
+                    mark={tokens.marks.done.glyph}
+                    body={switched}
+                    wordsRef={createdWords}
+                  />
+                </View>
+              ) : (
+                <ReadOut style={styles.created} words={switched}>
+                  <Notice tone="done" mark={tokens.marks.done.glyph} body={switched} />
+                </ReadOut>
+              ))}
+            <OpenSwitcher.Provider value={openSwitcher}>
+              <StartOrganisation.Provider value={startOrganisation}>
+                <HideBack.Provider value={backRow.hide}>
+                  <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
+                    {standIn === 'paused' && signedIn.pausedIn != null ? (
+                      <AccessPaused
+                        paused={signedIn.pausedIn}
+                        others={signedIn.organisations}
+                        onSwitch={(next) => switchByTap(next.id)}
+                        onChoose={(opener) => openSwitcher?.(opener)}
+                      />
+                    ) : standIn === 'overdue' && signedIn.organisation != null ? (
+                      <TwoFactorOverdue
+                        organisation={signedIn.organisation}
+                        answer={switchAnswer ?? lapsed}
+                        headingRef={overdueHeading}
+                      />
+                    ) : (
+                      <FrameSwitch.Provider value={switchAnswer}>{children}</FrameSwitch.Provider>
+                    )}
+                  </EdgeSwipeStrip.Provider>
+                </HideBack.Provider>
+              </StartOrganisation.Provider>
+            </OpenSwitcher.Provider>
+          </View>
+          {floatingTabs && <FrameTabBar current={current} organisation={signedIn.organisation} />}
+          {framed && kind === 'phone' && inEvent != null && (
+            <TabBar entries={entries} inEvent={inEvent} />
+          )}
         </View>
-        {floatingTabs && <FrameTabBar current={current} organisation={signedIn.organisation} />}
-        {framed && kind === 'phone' && inEvent != null && (
-          <TabBar entries={entries} inEvent={inEvent} />
+        {edgeSwipe != null && (
+          <View
+            style={styles.edgeSwipe}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            {...edgeSwipe}
+          />
+        )}
+        {drop != null && (
+          <OrgDropDown
+            key={drop.visit}
+            session={switcherSession({
+              organisations: signedIn.organisations,
+              current: signedIn.pausedIn != null ? null : signedIn.organisation,
+              waiting,
+              answeredHere,
+              offer,
+              offerRefused,
+              expanded,
+              role: (role) => roleName(t, role),
+            })}
+            frame={drop.frame}
+            open={choosing}
+            back={switcherOpener}
+            email={email}
+            onClose={closeSwitcher}
+            onPick={(id) => {
+              closeSwitcher();
+              if (id !== signedIn.organisation?.id || signedIn.pausedIn != null) {
+                switchOrganisation(id);
+              }
+            }}
+            onCreate={() => {
+              setToSheet(true);
+              closeSwitcher();
+              startOrganisation(switcherFrom ?? pill);
+            }}
+            onExpand={(id) => setExpanded((open) => (open === id ? null : id))}
+            onAnswer={(invite, yes) => {
+              const invitation = waiting.invitations.find((known) => known.id === invite.id);
+              if (invitation == null) return;
+              setAnsweredHere((answered) => new Set(answered).add(invite.id));
+              void waiting.answer(invitation, yes ? 'accept' : 'decline');
+            }}
+            onAsk={() => {
+              setOfferRefused(false);
+              return offer.ask().catch(() => setOfferRefused(true));
+            }}
+            onNotNow={() => {
+              setExpanded(null);
+              void offer.dismiss();
+            }}
+          />
+        )}
+        {walking != null && (
+          <CreateWalkWindow
+            key={walking.visit}
+            opening={walking}
+            open={creating}
+            email={email}
+            statusBar="dark"
+            currencies={currencies}
+            create={(walk) =>
+              createNewOrganisation((organisation) => api.createOrganisation(organisation), walk)
+            }
+            onCancel={() => setCreating(false)}
+            onCreated={(organisation) => {
+              // In no organisation, what opened the walk goes with it, so it hands focus to the notice (sc-11173).
+              const fromNone = signedIn.organisation == null;
+              if (fromNone) walkBack.current = createdWords;
+              setCreating(false);
+              joinOrganisation(organisation);
+              switchOrganisation(organisation.id);
+              setCreated({ name: organisation.name, takesFocus: fromNone });
+            }}
+          />
         )}
       </View>
-      {edgeSwipe != null && (
-        <View
-          style={styles.edgeSwipe}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          {...edgeSwipe}
-        />
-      )}
-      <Switcher
-        open={choosing}
-        organisations={signedIn.organisations}
-        current={signedIn.pausedIn != null ? null : signedIn.organisation}
-        waiting={waiting}
-        offer={offer}
-        email={email}
-        opener={switcherOpener}
-        onClose={() => setChoosing(false)}
-        onCreate={() => {
-          setToSheet(true);
-          setChoosing(false);
-          startOrganisation(switcherFrom ?? pill);
-        }}
-      />
-      <CreateOrganisation
-        open={creating}
-        email={email}
-        opener={creatingFrom ?? pill}
-        onCancel={() => setCreating(false)}
-        onCreated={(organisation) => {
-          // In no organisation, what opened the sheet goes with it, so the sheet hands focus to the notice (sc-11173).
-          const fromNone = signedIn.organisation == null;
-          if (fromNone) setCreatingFrom(createdWords);
-          setCreating(false);
-          joinOrganisation(organisation);
-          switchOrganisation(organisation.id);
-          setCreated({ name: organisation.name, takesFocus: fromNone });
-        }}
-      />
-    </View>
+    </SwitcherOpenedBy.Provider>
   );
 }
 
@@ -788,7 +922,7 @@ function TabBar({ entries, inEvent }: { entries: readonly NavEntry[]; inEvent: I
   const { fontScale } = useWindowDimensions();
   const [more, setMore] = useState(false);
   const moreTab = useRef<ViewInstance>(null);
-  const underMore = !(PHONE_EVENT_TABS as readonly EventArea[]).includes(inEvent.area);
+  const underMore = !(PHONE_EVENT_TABS as readonly EventPlace[]).includes(inEvent.area);
   const shown: readonly NavEntry[] = [
     ...entries.filter((entry) => (PHONE_EVENT_TABS as readonly string[]).includes(entry.key)),
     {
@@ -848,7 +982,7 @@ function TabBar({ entries, inEvent }: { entries: readonly NavEntry[]; inEvent: I
             {t('eventNav.more')}
           </Title>
           <View accessibilityRole="tablist" style={styles.moreList}>
-            {MORE_EVENT_AREAS.map((area) => {
+            {MORE_PLACES.map((area) => {
               const on = area === inEvent.area;
 
               return (
@@ -948,20 +1082,21 @@ function FrameSidebar({
       organisation: organisation?.name ?? '',
       person,
       unread: 0,
+      creates: organisation != null && roleHolds(organisation, 'events.create'),
       search: false,
       open: (opens) => {
         if (opens.to === 'account') router.navigate(SECTION_HREF.account);
-        if (opens.to === 'organisation') onSwitch?.();
       },
+      useOrgOpener: useFrameOrgOpener,
     }),
-    [organisation?.name, person, onSwitch],
+    [organisation, person],
   );
   const places = inEvent
     ? entries.map((entry) => (
         <SidebarPlace
           key={entry.key}
           label={entry.label}
-          glyph={AREA_GLYPH[entry.key as EventArea]}
+          glyph={AREA_GLYPH[entry.key as EventPlace]}
           on={entry.on}
           onPress={entry.onPress}
           testID={entry.testID}
@@ -1032,13 +1167,8 @@ function OrgPill({
   const { t } = useTranslation();
   const large = useAccessibilitySizes();
   const lines = useNameLines();
-  const role = roleName(t, organisation.role);
-  const label =
-    onSwitch == null
-      ? t('switcher.label', { name: organisation.name, role })
-      : waiting > 0
-        ? t('switcher.labelSwitchWaiting', { name: organisation.name, role, count: waiting })
-        : t('switcher.labelSwitch', { name: organisation.name, role });
+  const label = useOpenerLabel(organisation, waiting, onSwitch != null);
+  const expanded = useContext(SwitcherOpenedBy) === ref;
   const pill = (
     <WhitePill
       ref={ref}
@@ -1046,6 +1176,7 @@ function OrgPill({
       name={organisation.name}
       waiting={waiting > 0 ? t('invitations.count', { count: waiting }) : null}
       label={label}
+      expanded={expanded}
       onPress={onSwitch}
       bare={large}
       wrap={large}
@@ -1057,239 +1188,6 @@ function OrgPill({
   );
 
   return sidebar ? pill : <View style={styles.whitePill}>{pill}</View>;
-}
-
-function Switcher({
-  open,
-  organisations,
-  current,
-  waiting,
-  offer,
-  email,
-  opener,
-  onClose,
-  onCreate,
-}: {
-  open: boolean;
-  organisations: readonly Membership[];
-  current: Membership | null;
-  waiting: WaitingInvitations;
-  offer: DomainOffer;
-  email: string;
-  /** Where screen reader focus goes back to once the switcher has gone. */
-  opener: RefObject<ScreenReaderTarget | null>;
-  onClose: () => void;
-  onCreate: () => void;
-}) {
-  const { t } = useTranslation();
-  const large = useAccessibilitySizes();
-  const lines = useNameLines();
-  const invitationsHeading = useRef<TextHandle>(null);
-  const remembered = useRef<TextHandle>(null);
-  const [offerClosed, setOfferClosed] = useState<StepClosed | undefined>(undefined);
-  const afterOffer = useMemo<RefObject<ScreenReaderTarget | null>>(
-    () => ({
-      get current() {
-        return invitationsHeading.current ?? remembered.current;
-      },
-    }),
-    [],
-  );
-  useFocusBackToOpener(offerClosed, afterOffer);
-
-  return (
-    <Sheet open={open} onClose={onClose} scrimLabel={t('switcher.close')} opener={opener}>
-      <ScrollView contentContainerStyle={styles.sheet}>
-        <Title
-          size={tokens.typeTitleDialog.size}
-          accessibilityRole="header"
-          testID="switcher.heading"
-        >
-          {t('switcher.heading')}
-        </Title>
-        {organisations.map((organisation) => {
-          const isCurrent = organisation.id === current?.id;
-
-          return (
-            <Pressable
-              key={organisation.id}
-              style={[styles.option, isCurrent && styles.optionOn]}
-              onPress={() => {
-                onClose();
-                if (!isCurrent) switchOrganisation(organisation.id);
-              }}
-              accessibilityRole="button"
-              accessibilityState={{ selected: isCurrent }}
-              testID={`switcher.${organisation.id}`}
-            >
-              {!large && <OrgTile name={organisation.name} />}
-              <View style={[styles.fill, styles.shrink]}>
-                <Text
-                  size={tokens.typeBodyPhone.size}
-                  weight={isCurrent ? 'semibold' : 'medium'}
-                  numberOfLines={lines}
-                >
-                  {organisation.name}
-                </Text>
-                <Text size={tokens.typeBody.size} muted numberOfLines={large ? 0 : 1}>
-                  {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
-                </Text>
-                {isCurrent && large && <Current />}
-              </View>
-              {isCurrent && !large && <Current />}
-            </Pressable>
-          );
-        })}
-        {offer.organisation != null && (
-          <OfferCard
-            offer={offer}
-            email={email}
-            onDismissed={() => setOfferClosed(stepClosed('afterOffer'))}
-          />
-        )}
-        {waiting.invitations.length > 0 && (
-          <View style={styles.invitations}>
-            <Text
-              ref={invitationsHeading}
-              size={tokens.typeLabel.size}
-              weight="semibold"
-              muted
-              accessibilityRole="header"
-            >
-              {t('invitations.heading')}
-            </Text>
-            <InvitationRows
-              waiting={waiting}
-              after={{
-                open: (id) => {
-                  onClose();
-                  switchOrganisation(id);
-                },
-              }}
-            />
-          </View>
-        )}
-        <Text ref={remembered} size={tokens.typeBody.size} muted>
-          {t('switcher.remembered')}
-        </Text>
-        {current != null && (
-          <Pressable
-            style={[styles.option, styles.create]}
-            onPress={onCreate}
-            accessibilityRole="button"
-            testID="switcher.create"
-          >
-            <View style={[styles.tile, styles.createTile]}>
-              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                <Path d="M12 5v14M5 12h14" {...STROKE} stroke={tokens.colorAccentText} />
-              </Svg>
-            </View>
-            <Text size={tokens.typeBodyPhone.size} weight="semibold" style={styles.accent}>
-              {t('createOrganisation.row')}
-            </Text>
-          </Pressable>
-        )}
-      </ScrollView>
-    </Sheet>
-  );
-}
-
-function Current() {
-  const { t } = useTranslation();
-
-  return (
-    <Text size={tokens.typeBody.size} weight="semibold" style={styles.accent}>
-      {t('switcher.current')}
-    </Text>
-  );
-}
-
-/** An organisation at the domain of the primary address: Ask to join, or Not now for good. */
-function OfferCard({
-  offer,
-  email,
-  onDismissed,
-}: {
-  offer: DomainOffer;
-  email: string;
-  /** Not now was tapped, so focus goes to the item after the card (sc-11173). */
-  onDismissed: () => void;
-}) {
-  const { t } = useTranslation();
-  const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
-  // Ask to join's answer takes its buttons' place, so it takes focus in place of being read out (sc-11173).
-  const [askedByTap, setAskedByTap] = useState<object | undefined>(undefined);
-  const { read: askedWords } = useFocusOnAnswer(offer.asked ? askedByTap : undefined);
-  const unavailable = t('domainJoining.unavailable');
-  useReadOut(failed ? unavailable : null);
-  const waiting = t('domainJoining.waiting');
-  const asked = t('domainJoining.switcherAsked', { email });
-  useReadOut(offer.asked && askedByTap == null ? `${waiting}\n${asked}` : null, {
-    quietAtMount: true,
-  });
-
-  async function ask(): Promise<void> {
-    setBusy(true);
-    setFailed(false);
-    setAskedByTap({});
-
-    try {
-      await offer.ask();
-    } catch {
-      setAskedByTap(undefined);
-      setFailed(true);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <View style={styles.offer}>
-      <Text size={tokens.typeRowTitle.size} weight="semibold" accessibilityRole="header">
-        {t('domainJoining.usesSoirely', { organisation: offer.organisation?.name ?? '' })}
-      </Text>
-      <Text size={tokens.typeBody.size} muted>
-        {t('domainJoining.switcherBody', { domain: offer.domain ?? '' })}
-      </Text>
-      {offer.asked ? (
-        <View style={styles.offerAsked}>
-          <View style={styles.offerRing} />
-          <View ref={askedWords} style={styles.offerAskedWords} accessible>
-            <Text size={tokens.typeBody.size} weight="semibold">
-              {waiting}
-            </Text>
-            <Text size={tokens.typeBody.size}>{`· ${asked}`}</Text>
-          </View>
-        </View>
-      ) : (
-        <>
-          {failed && (
-            <Text size={tokens.typeBody.size} style={styles.broken} accessibilityRole="alert">
-              {unavailable}
-            </Text>
-          )}
-          <View style={styles.offerButtons}>
-            <PrimaryButton
-              label={t('domainJoining.ask')}
-              busy={busy}
-              onPress={() => void ask()}
-              testID="switcher.offer.ask"
-            />
-            <SecondaryButton
-              label={t('domainJoining.notNow')}
-              off={busy}
-              onPress={() => {
-                void offer.dismiss();
-                onDismissed();
-              }}
-              testID="switcher.offer.notNow"
-            />
-          </View>
-        </>
-      )}
-    </View>
-  );
 }
 
 const STROKE = { strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
@@ -1315,33 +1213,7 @@ const styles = StyleSheet.create({
   shrink: { flexShrink: 1, minWidth: 0 },
   ink: { color: tokens.colorInk },
   secondaryInk: { color: tokens.colorInkSecondary },
-  accent: { color: tokens.colorAccentText },
   centred: { textAlign: 'center' },
-  broken: { color: tokens.colorBrokenText },
-  offer: {
-    gap: tokens.spaceSm,
-    padding: tokens.spaceXl,
-    borderRadius: tokens.radiusInset,
-    borderWidth: 1,
-    borderColor: tokens.colorInsetBorder,
-    backgroundColor: tokens.colorInset,
-  },
-  offerButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
-  offerAsked: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
-  offerAskedWords: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    flexShrink: 1,
-    minWidth: 0,
-    columnGap: tokens.spaceXxs,
-  },
-  offerRing: {
-    width: tokens.spaceMd,
-    height: tokens.spaceMd,
-    borderRadius: tokens.spaceMd / 2,
-    borderWidth: 2,
-    borderColor: tokens.colorAttention,
-  },
   header: {
     backgroundColor: tokens.colorHeader,
     borderBottomWidth: 1,
@@ -1446,34 +1318,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tile: {
-    width: tokens.space5xl,
-    height: tokens.space5xl,
-    borderRadius: tokens.radiusSmall,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorAccentTint,
-  },
-  sheet: {
-    gap: tokens.spaceLg,
-    padding: tokens.spaceXxl,
-  },
-  invitations: { gap: tokens.spaceSm },
-  option: {
-    minHeight: tokens.sizeListRow,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceLg,
-    padding: tokens.spaceMd,
-    borderRadius: tokens.radiusRow,
-  },
-  optionOn: { backgroundColor: tokens.colorRowSelected },
-  create: { borderTopWidth: 1, borderTopColor: tokens.colorInsetBorder, borderRadius: 0 },
-  createTile: {
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: tokens.colorAccentTintBorder,
-    backgroundColor: tokens.colorCard,
-  },
   created: { paddingTop: tokens.spaceLg, paddingHorizontal: tokens.spaceXl },
 });
+
+let currenciesRead: Currencies | null = null;
+let currenciesAsked: Promise<Currencies> | null = null;
+
+/** The currency each country founds with, read once the walk first opens and kept: it changes only with the API. An answer that failed is asked again the next time the walk opens. */
+function useCountryCurrencies(open: boolean): Currencies | null {
+  const [currencies, setCurrencies] = useState(currenciesRead);
+
+  useEffect(() => {
+    if (!open || currenciesRead != null) return;
+    currenciesAsked ??= api.countryCurrencies().then(
+      (read) => {
+        currenciesRead = read;
+        return read;
+      },
+      (failure: unknown) => {
+        currenciesAsked = null;
+        throw failure;
+      },
+    );
+    let live = true;
+    currenciesAsked.then(
+      (read) => {
+        if (live) setCurrencies(read);
+      },
+      () => {},
+    );
+
+    return () => {
+      live = false;
+    };
+  }, [open]);
+
+  return currencies ?? currenciesRead;
+}

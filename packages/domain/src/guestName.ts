@@ -6,7 +6,8 @@
  * "first name" produces "Dear Chief", and worse, matches and deduplicates
  * against a token that is not a name.
  *
- * So there is no firstName() here, on purpose. If you want one, you want this.
+ * So a guest gets no first name, on purpose. If you want one, you want this.
+ * firstName.ts is for a person's own account name, never a guest's.
  */
 
 /** Titles seen in real guest lists. Order matters: longest first. */

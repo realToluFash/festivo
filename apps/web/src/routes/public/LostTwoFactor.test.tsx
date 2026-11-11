@@ -870,6 +870,7 @@ describe('after an approved request', () => {
             complete: true,
             hasPassword: true,
             twoFactorSetupPrompt: true,
+            colourScheme: null,
             emailAddresses: [
               { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },
             ],

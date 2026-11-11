@@ -3,6 +3,7 @@ appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/account
 - extendedWaitUntil:
-    visible: '{{t:timeZone.intro}}'
+    visible:
+      id: 'account.zone'
     timeout: 30000
 - takeScreenshot: tz-load

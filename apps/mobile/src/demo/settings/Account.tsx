@@ -21,6 +21,7 @@ import { Ask, bringIntoView, useRowClear } from '../../components/Summary.tsx';
 import type { TextHandle } from '../../components/Text.tsx';
 import {
   cardLine,
+  codeErrors,
   type Contact,
   type ContactKind,
   KIND_KEYS,
@@ -46,6 +47,7 @@ import {
 } from './AccountModel.ts';
 import { useCountdown } from './AccountParts.tsx';
 import { HOME_ZONE, PHONE_COUNTRY, phoneShown, sentCodeProblem, ZONES } from './AccountSample.ts';
+import { saveName, savedName } from './savedName.ts';
 import { SummaryPage } from './SummaryPage.tsx';
 
 export { ACCOUNT_STATES } from './AccountModel.ts';
@@ -66,7 +68,8 @@ function AccountPage({ start }: { start: AccountStart }) {
   const { t } = useTranslation();
   const shell = useShell();
   const clear = useRowClear();
-  const [name, setName] = useState<string>(SAMPLE.name);
+  const yours = shell.viewer !== 'member';
+  const [name, setName] = useState<string>(() => (yours ? savedName() : null) ?? SAMPLE.name);
   const [zone, setZone] = useState(HOME_ZONE);
   const [emails, setEmails] = useState(start.emails);
   const [phones, setPhones] = useState(start.phones);
@@ -278,6 +281,7 @@ function AccountPage({ start }: { start: AccountStart }) {
         onClose={() => setScreen(null)}
         onSave={(next) => {
           setName(next);
+          if (yours) saveName(next);
           done(t('nameCard.saved', { name: next }));
 
           return Promise.resolve(null);
@@ -386,10 +390,11 @@ function SampleVerify({
       title={words.title}
       lead={words.lead}
       codeLabel={words.codeLabel}
+      errors={codeErrors(words, t)}
       spent={expired ? words.expired : null}
       wait={countdown.left}
       prefill={start === 'wrong' ? WRONG_CODE : ''}
-      startError={start === 'wrong' ? words.wrong : null}
+      startError={start === 'wrong' ? 'wrong' : null}
       autoFocus={start === 'entering'}
       opener={opener}
       onClose={onClose}
@@ -399,10 +404,7 @@ function SampleVerify({
           if (row != null) onVerified(row);
           return Promise.resolve(null);
         }
-        const error =
-          problem === 'blank' ? words.blank : problem === 'short' ? words.short : words.wrong;
-
-        return Promise.resolve({ error, checked: problem !== 'wrong' });
+        return Promise.resolve({ error: problem, checked: problem !== 'wrong' });
       }}
       onResend={() => {
         setExpired(false);

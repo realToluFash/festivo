@@ -11,7 +11,7 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { SearchField } from '../events/EventsList.tsx';
+import { SearchField } from '../../components/EventsSearch.tsx';
 import {
   type Anchor,
   AnchoredMenu,

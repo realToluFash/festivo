@@ -157,6 +157,14 @@ describe('Your account at a desk, summary first (sc-30411)', () => {
     ).toBeDefined();
   });
 
+  it('draws the page in the desk’s look, beside the Settings list', async () => {
+    answering();
+    open();
+
+    expect(await screen.findByText('folake.adeyemi@gmail.com')).toBeDefined();
+    expect(card().closest('.settings-desk-page .desk')).not.toBeNull();
+  });
+
   it('says what is not verified yet on the card, with Send a code as its one step', async () => {
     answering({
       'GET /api/auth/me': () =>
@@ -459,6 +467,54 @@ const NEW_PHONE = {
 };
 
 describe('codes and proofs at a desk (sc-30411)', () => {
+  function handingOverToAText(): void {
+    answering({
+      'GET /api/auth/me': () => json({ ...ME, phoneNumbers: [...ME.phoneNumbers, NEW_PHONE] }),
+      'GET /api/auth/verify/phone/resend': () =>
+        json({ cooldownSeconds: 30, codeState: 'live', route: 'whatsapp' }),
+      'POST /api/auth/verify/phone/text-instead': () => json({ route: 'sms_chosen' }),
+      'POST /api/auth/verify/phone': () => problem('verification_code_invalid', 422),
+    });
+    open();
+  }
+
+  it('rewords a blank code already showing when the code is texted instead (sc-36468)', async () => {
+    handingOverToAText();
+
+    fireEvent.click(await within(card()).findByRole('button', { name: 'Send a code' }));
+    await within(dialog()).findByLabelText('Code from WhatsApp');
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Verify' }));
+    expect(within(dialog()).getByText('Enter the 6-digit code from WhatsApp.')).toBeDefined();
+
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Text it to me instead' }));
+    expect(
+      await within(dialog()).findByText('Enter the 6-digit code from the text.'),
+    ).toBeDefined();
+  });
+
+  it('rewords a wrong code with the label when the code is texted instead (sc-36468)', async () => {
+    handingOverToAText();
+
+    fireEvent.click(await within(card()).findByRole('button', { name: 'Send a code' }));
+    const field = await within(dialog()).findByLabelText<HTMLInputElement>('Code from WhatsApp');
+    fireEvent.change(field, { target: { value: '000000' } });
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Verify' }));
+    expect(
+      await within(dialog()).findByText(
+        'That code does not match. Check the newest WhatsApp message from Soirely and try again.',
+      ),
+    ).toBeDefined();
+
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Text it to me instead' }));
+    expect(
+      await within(dialog()).findByText(
+        'That code does not match. Check the newest text from Soirely and try again.',
+      ),
+    ).toBeDefined();
+    expect(within(dialog()).getByLabelText('Code from the text')).toBe(field);
+    expect(field.value).toBe('000000');
+  });
+
   it('verifies a number from WhatsApp, saying when Text it to me instead fails and when it goes', async () => {
     let verified = false;
     let texts = 0;

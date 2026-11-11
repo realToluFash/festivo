@@ -1,3 +1,5 @@
+import { listFormat } from '@soirely/domain';
+
 import { instantOf } from '../events/EventsModel.ts';
 import { READER_ZONE } from '../events/EventsSample.ts';
 import {
@@ -35,6 +37,8 @@ import {
   TO_FIGURES,
   TO_WORD,
   type ToGroup,
+  WHATSAPP,
+  whatsAppCreditsFor,
   formatCount,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
@@ -42,6 +46,7 @@ import { type Previewing, previewStart } from './PreviewModel.ts';
 import { BRACED_BODY, DATED_BODY, PLAIN_BODY } from './PreviewSample.ts';
 import { type Refusal, TYPED_EDIT, refusalOf, reloaded } from './ScheduledSave.ts';
 import { EDGE } from './TokenText.ts';
+import { WAITS_STARTS, type Waits } from './CheckWaits.ts';
 
 /** Every state of Messaging B, each a `?state=` in both demos (spec §7 and §7b), in the spec's order. */
 export const MESSAGES_STATES = [
@@ -117,6 +122,19 @@ export const MESSAGES_STATES = [
   'editSent',
   'editCancelled',
   'editTooLate',
+  'whatsAppLine',
+  'checkWhatsApp',
+  'whatsAppRead',
+  'checkWaitsWa',
+  'checkWaitsSms',
+  'checkWaitsBoth',
+  'checkWaitsNoEmail',
+  'checkWaitsOnly',
+  'askOwner',
+  'askSent',
+  'askSentOne',
+  'askFailed',
+  'sendWithout',
 ] as const;
 
 export type MessagesState = (typeof MESSAGES_STATES)[number];
@@ -125,7 +143,7 @@ export function messagesStateOf(value: string | undefined): MessagesState | null
   return MESSAGES_STATES.find((state) => state === value) ?? null;
 }
 
-export type ReachedOf = 'parking' | 'invite' | 'draft';
+export type ReachedOf = 'parking' | 'invite' | 'receipts' | 'draft';
 
 export type FixKind = 'fixEmail' | 'addEmail' | 'addPhone';
 
@@ -258,7 +276,10 @@ export interface Messages {
   preview?: Previewing;
   inserting?: boolean;
   refusedSave?: Refusal;
+  waits?: Waits;
   closed: Closed | null;
+  /** WhatsApp's receipts (sc-3950): Parking told by email and WhatsApp stands in Parking's place. */
+  receipts: boolean;
   /** Without messages.read: the area opens the refusal, with no list and no count. */
   forbidden: boolean;
 }
@@ -357,8 +378,11 @@ const BASE: Messages = {
   bell: false,
   told: null,
   closed: null,
+  receipts: false,
   forbidden: false,
 };
+
+const ALL_CHANNELS = { email: true, sms: true, wa: true };
 
 const DRAFTED: Partial<Record<MessagesState, Draft>> = {
   to: sampleDraft('write'),
@@ -387,6 +411,8 @@ const DRAFTED: Partial<Record<MessagesState, Draft>> = {
   nobody: { ...sampleDraft('write'), zero: ['coming'] },
   longSubject: { ...sampleDraft('write'), subject: LONG_SUBJECT, over: ['subject'] },
   longMessage: { ...sampleDraft('write'), body: LONG_BODY, over: ['body'] },
+  whatsAppLine: { ...sampleDraft('write'), to: 'all', channels: ALL_CHANNELS },
+  checkWhatsApp: { ...sampleDraft('check'), to: 'all', channels: ALL_CHANNELS },
 };
 
 const CLOSED: Partial<Record<MessagesState, Closed>> = {
@@ -422,6 +448,16 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       told: state === 'cancelled' && !wide ? W.cancelled : null,
       ...previewStart(state),
     };
+  const waited = state == null ? undefined : WAITS_STARTS[state];
+  if (waited != null)
+    return {
+      ...BASE,
+      open: { kind: 'draft' },
+      thread: NEW_THREAD,
+      balance: 0,
+      draft: { ...sampleDraft(waited.step), channels: waited.channels },
+      waits: waited.waits,
+    };
   const refused = refusalOf(state);
   if (refused != null)
     return {
@@ -433,6 +469,8 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
     return { ...BASE, closed, kept: [], ...(closed === 'draft' ? { phase: 'first' } : {}) };
   const scheduled = state == null ? undefined : SCHEDULED_AS[state];
   if (scheduled != null) return scheduledStart(scheduled);
+  if (state === 'whatsAppRead')
+    return { ...BASE, receipts: true, open: { kind: 'reached', of: 'receipts' } };
   const ines: Open = { kind: 'guest', key: 'ines' };
   const unknown: Open = { kind: 'guest', key: 'unknown' };
   const lucia: Open = { kind: 'guest', key: 'lucia' };
@@ -720,7 +758,7 @@ export function reachedOf(m: Pick<Messages, 'open'>): ReachedOf {
   const open = m.open;
   if (open?.kind === 'reached') return open.of;
   if (open?.kind === 'draft') return 'draft';
-  if (open?.kind === 'many' && open.key === 'invite') return 'invite';
+  if (open?.kind === 'many' && open.key !== 'parking') return open.key;
 
   return 'parking';
 }
@@ -1048,7 +1086,7 @@ export function sectionsOf(m: Messages): Sections {
     needs: [
       ...waiting.filter((key) => !m.done.includes(key)).map(guest),
       ...(m.done.includes('unknown') ? [] : [guest('unknown')]),
-      many('parking'),
+      many(m.receipts ? 'receipts' : 'parking'),
     ],
     scheduled: mine.filter((one) => isScheduled(one.draft)).map(own),
     done: [
@@ -1082,25 +1120,73 @@ export interface Check {
   credits: number;
   after: string;
   whatsApp: boolean;
+  /** WhatsApp's reach line, only while it is ticked. */
+  reach?: string;
+}
+
+export interface WhatsAppReach {
+  reaches: number;
+  of: number;
+  noMobile: number;
+  stopped: number;
+  notAgreed: number;
+  credits: number;
+}
+
+/** Who WhatsApp reaches in a To, and its credits: each reachable number's country rate, summed. */
+export function whatsAppOf(to: ToGroup): WhatsAppReach {
+  const { reaches, noMobile, stopped, notAgreed } = WHATSAPP[to];
+
+  return {
+    reaches: reaches.length,
+    of: reaches.length + noMobile + stopped + notAgreed,
+    noMobile,
+    stopped,
+    notAgreed,
+    credits: whatsAppCreditsFor(reaches),
+  };
+}
+
+/** WhatsApp's reach line, shown whenever it is ticked; a part that is 0 is left out. */
+export function whatsAppLine(to: ToGroup): string {
+  const reach = whatsAppOf(to);
+
+  const cant = [
+    ...(reach.noMobile > 0 ? [say.noMobile(reach.noMobile)] : []),
+    ...(reach.stopped > 0 ? [say.stoppedWhatsApp(reach.stopped)] : []),
+    ...(reach.notAgreed > 0 ? [say.notAgreedWhatsApp(reach.notAgreed)] : []),
+  ];
+
+  return [
+    say.whatsAppReaches(reach.reaches, reach.of),
+    ...(cant.length > 0
+      ? [listFormat('en-US', { style: 'long', type: 'conjunction' }).format(cant)]
+      : []),
+  ].join(' · ');
 }
 
 export function countOf(to: ToGroup, zero: readonly ToGroup[] = []): number {
   return zero.includes(to) ? 0 : TO_FIGURES[to].count;
 }
 
+/** Each phone is told once: with WhatsApp ticked, those who agreed to it leave SMS (sc-3954, pm #36950). */
 export function checkOf(draft: Draft): Check {
   const figures = matchesNobody(draft)
     ? { count: 0, email: 0, sms: 0, wa: 0, cantTell: 0 }
     : TO_FIGURES[draft.to];
   const ticked = (['email', 'sms', 'wa'] as const).filter((key) => draft.channels[key]);
-  const credits = (draft.channels.sms ? figures.sms : 0) + (draft.channels.wa ? figures.wa : 0);
+  const nobody = matchesNobody(draft);
+  const counts = { ...figures, sms: draft.channels.wa ? figures.sms - figures.wa : figures.sms };
+  const credits =
+    (draft.channels.sms ? counts.sms : 0) +
+    (draft.channels.wa && !nobody ? whatsAppOf(draft.to).credits : 0);
   const smsOff = draft.channels.sms ? 0 : SMS_ONLY[draft.to].length;
   const names = (smsOff > 0 ? SMS_ONLY[draft.to] : CANT_TELL[draft.to]).slice(0, 2);
   const cantTell = figures.cantTell + smsOff;
 
   return {
     count: figures.count,
-    told: ticked.map((key) => ({ key, count: figures[key] })),
+    told: ticked.map((key) => ({ key, count: counts[key] })),
     cantTell,
     smsOff,
     names,
@@ -1108,6 +1194,7 @@ export function checkOf(draft: Draft): Check {
     credits,
     after: formatCount(BALANCE - credits),
     whatsApp: draft.channels.wa,
+    ...(draft.channels.wa ? { reach: whatsAppLine(draft.to) } : {}),
   };
 }
 
@@ -1179,7 +1266,7 @@ export function justNow(locale = 'en-US'): string {
 }
 
 export function channelsWords(keys: readonly ChannelKey[], locale = 'en-US'): string {
-  return new Intl.ListFormat(locale, { type: 'conjunction' }).format(
+  return listFormat(locale, { style: 'long', type: 'conjunction' }).format(
     keys.map((key) => CHANNEL_WORD[key]),
   );
 }

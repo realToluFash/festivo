@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
-import { LifecycleDialog } from './LifecycleDialog.tsx';
+import { InManage, LifecycleDialog } from './LifecycleDialog.tsx';
 import { useLifecycleAction } from './useLifecycleAction.ts';
 
 type Label = 'callOff' | 'endNow';
@@ -16,6 +16,7 @@ export function EndButton({
   phase,
   now,
   heading,
+  inManage = false,
   onChange,
   onEnded,
 }: {
@@ -23,6 +24,7 @@ export function EndButton({
   phase: EventPhase;
   now: Date;
   heading: RefObject<HTMLHeadingElement | null>;
+  inManage?: boolean;
   onChange: (event: OrganisationEvent, tag: string) => void;
   onEnded: () => void;
 }) {
@@ -46,26 +48,42 @@ export function EndButton({
   return (
     <>
       {label != null && (
-        <button ref={opener} type="button" className="button" onClick={() => ask({ label })}>
-          {t(label === 'callOff' ? 'eventEnd.callOffOpen' : 'eventEnd.endNowOpen')}
-        </button>
+        <InManage
+          on={inManage}
+          red
+          line={`${t(label === 'callOff' ? 'eventEnd.callOffBody' : 'eventEnd.endBody')} ${t('eventEnd.final')}`}
+        >
+          {(look) => (
+            <button
+              ref={opener}
+              type="button"
+              className={look?.className ?? 'button'}
+              aria-describedby={look?.describedBy}
+              onClick={() => ask({ label })}
+            >
+              {t(label === 'callOff' ? 'eventEnd.callOffOpen' : 'eventEnd.endNowOpen')}
+            </button>
+          )}
+        </InManage>
       )}
       {asking != null && (
-        <LifecycleDialog
-          id="end-event"
-          asking={asking}
-          title={t(callOff ? 'eventEnd.callOffTitle' : 'eventEnd.endTitle', { name: event.name })}
-          lines={[t(callOff ? 'eventEnd.callOffBody' : 'eventEnd.endBody'), t('eventEnd.final')]}
-          failed={t(callOff ? 'eventEnd.callOffFailed' : 'eventEnd.failed')}
-          keep={t('eventEnd.keepItOn')}
-          confirm={t(callOff ? 'eventEnd.callOff' : 'eventEnd.endNow')}
-          sending={t(callOff ? 'eventEnd.callingOff' : 'eventEnd.ending')}
-          tone="danger"
-          onGo={() =>
-            asking.kind === 'confirm' && go({ label: asking.label }, () => api.endEvent(event.id))
-          }
-          onClose={close}
-        />
+        <InManage on={inManage}>
+          <LifecycleDialog
+            id="end-event"
+            asking={asking}
+            title={t(callOff ? 'eventEnd.callOffTitle' : 'eventEnd.endTitle', { name: event.name })}
+            lines={[t(callOff ? 'eventEnd.callOffBody' : 'eventEnd.endBody'), t('eventEnd.final')]}
+            failed={t(callOff ? 'eventEnd.callOffFailed' : 'eventEnd.failed')}
+            keep={t('eventEnd.keepItOn')}
+            confirm={t(callOff ? 'eventEnd.callOff' : 'eventEnd.endNow')}
+            sending={t(callOff ? 'eventEnd.callingOff' : 'eventEnd.ending')}
+            tone="danger"
+            onGo={() =>
+              asking.kind === 'confirm' && go({ label: asking.label }, () => api.endEvent(event.id))
+            }
+            onClose={close}
+          />
+        </InManage>
       )}
     </>
   );

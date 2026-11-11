@@ -1,108 +1,211 @@
-import { type CalendarFeedLink } from '@soirely/api-client';
+import type { CalendarFeedLink } from '@soirely/api-client';
 import { setStringAsync } from 'expo-clipboard';
-import { useEffect, useRef, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
-import Svg, { Path, Rect } from 'react-native-svg';
+import { type RefObject, useEffect, useState } from 'react';
+import { Linking, Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { tokens } from '../theme/tokens.ts';
-import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
-import { Notice } from './Notice.tsx';
-import { ReadOut } from './ReadOut.tsx';
-import { Sheet } from './Sheet.tsx';
-import { GlyphMark } from './StatusMark.tsx';
-import { Text } from './Text.tsx';
 import { rereadOrganisations } from '../signedIn.ts';
-
-const ATTENTION_MARK = {
-  glyph: '!',
-  fill: tokens.colorCard,
-  ring: tokens.colorAttentionText,
-  ink: tokens.colorAttentionText,
-};
+import { tokens } from '../theme/tokens.ts';
+import { CentredDialog } from './CalendarOverlays.tsx';
+import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Notice } from './Notice.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import { Pill } from './SettingsParts.tsx';
+import { Sheet } from './Sheet.tsx';
+import { TextAction } from './SummaryRows.tsx';
+import { Text } from './Text.tsx';
 
 const IN_FEED = ['inName', 'inTimes', 'inVenue', 'inMilestones'] as const;
 
 const NEVER_IN_FEED = ['outGuests', 'outContacts', 'outDietary', 'outMoney'] as const;
 
+/** Where the panel's link comes from: the API in the product, the sample in the demo. */
+export interface FeedSource {
+  read: () => Promise<CalendarFeedLink>;
+  reset: () => Promise<CalendarFeedLink>;
+  openInApp: (link: CalendarFeedLink) => Promise<void>;
+  /** Before a read is tried again. */
+  onRetry?: () => void;
+  /** A link already in hand, shown without a read. */
+  known?: CalendarFeedLink;
+}
+
+/** How the panel opens: as it is, with a copy already refused, or asking to reset. */
+export type FeedStart = 'panel' | 'refused' | 'reset';
+
+export function apiFeed(organisationId: string): FeedSource {
+  return {
+    read: () => api.calendarFeed(organisationId),
+    reset: () => api.resetCalendarFeed(organisationId),
+    openInApp: async (link) => {
+      await Linking.openURL(link.webcal);
+    },
+    onRetry: () => void rereadOrganisations(),
+  };
+}
+
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; link: CalendarFeedLink };
 
-/** The Calendar's "Subscribe in your calendar app" (sc-3626): the reader's own private feed link, to copy, open or reset. */
-export function CalendarSubscribe({
-  organisationId,
-  organisationName,
+/** The Calendar's "Subscribe in your calendar app" (sc-3626): a sheet on the phone, a centred dialog on an iPad. */
+export function CalendarFeed({
+  open,
+  onClose,
+  opener,
   phone,
+  upright,
+  organisationName,
+  source,
+  start = 'panel',
 }: {
-  organisationId: string;
-  organisationName: string;
+  open: boolean;
+  onClose: () => void;
+  opener: RefObject<ViewInstance | null>;
   phone: boolean;
+  upright: boolean;
+  organisationName: string;
+  source: FeedSource;
+  start?: FeedStart;
 }) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
-  const opener = useRef<ViewInstance>(null);
+  const close = () => {
+    if (!resetting) onClose();
+  };
+  const panel = open && (
+    <SubscribePanel
+      organisationName={organisationName}
+      source={source}
+      start={start}
+      wide={!phone}
+      onResetting={setResetting}
+      onClose={close}
+    />
+  );
 
-  return (
-    <>
-      <SecondaryButton
-        ref={opener}
-        label={t('calendarFeed.open')}
-        stacked={phone}
-        onPress={() => setOpen(true)}
-        testID="calendarFeed.open"
-      />
+  if (phone)
+    return (
       <Sheet
         open={open}
-        onClose={() => setOpen(false)}
-        scrimLabel={t('calendarFeed.close')}
+        onClose={onClose}
         held={resetting}
         opener={opener}
+        scrimLabel={t('calendarFeed.close')}
+        headingTakesFocus
         testID="calendarFeed.sheet"
       >
-        {open && (
-          <SubscribePanel
-            organisationId={organisationId}
-            organisationName={organisationName}
-            phone={phone}
-            onResetting={setResetting}
-            onClose={() => setOpen(false)}
-          />
-        )}
+        <ScrollView bounces={false} contentContainerStyle={styles.sheetBody}>
+          {panel}
+        </ScrollView>
       </Sheet>
-    </>
+    );
+
+  return (
+    <CentredDialog
+      open={open}
+      onClose={close}
+      opener={opener}
+      width={upright ? 560 : 600}
+      testID="calendarFeed.sheet"
+    >
+      {panel}
+    </CentredDialog>
   );
 }
 
-function SubscribePanel({
-  organisationId,
+function Disc({ yes }: { yes: boolean }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[styles.disc, yes ? styles.discYes : styles.discNo]}
+    >
+      <Glyph
+        name={yes ? 'tick' : 'x'}
+        size={yes ? 12 : 11}
+        ink={yes ? tokens.marks.done.ink : tokens.colorInkSecondary}
+        weight={3}
+      />
+    </View>
+  );
+}
+
+function List({ title, items, yes }: { title: string; items: readonly string[]; yes: boolean }) {
+  return (
+    <View style={styles.listBlock}>
+      <Text size={15} weight="bold" accessibilityRole="header" style={styles.listTitle}>
+        {title}
+      </Text>
+      {items.map((item) => (
+        <View key={item} style={styles.listRow}>
+          <Disc yes={yes} />
+          <Text size={15} weight="medium" style={styles.listWords}>
+            {item}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function Close({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
+
+  return (
+    <Pressable
+      onPress={onClose}
+      style={({ pressed }) => [styles.close, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={t('calendarFeed.close')}
+      testID="calendarFeed.close"
+    >
+      <Glyph name="x" size={18} ink={tokens.colorInk} weight={2.4} />
+    </Pressable>
+  );
+}
+
+function Said({ words, answer }: { words: string; answer: unknown }) {
+  useReadOut(words, { answer });
+
+  return null;
+}
+
+/** The reader's own private feed link, to copy, open in a calendar app or reset; stacked on the phone, side by side on an iPad. */
+export function SubscribePanel({
   organisationName,
-  phone,
+  source,
+  start,
+  wide,
   onResetting,
   onClose,
 }: {
-  organisationId: string;
   organisationName: string;
-  phone: boolean;
+  source: FeedSource;
+  start: FeedStart;
+  wide: boolean;
   onResetting: (resetting: boolean) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const [load, setLoad] = useState<Load>({ kind: 'loading' });
+  const [load, setLoad] = useState<Load>(
+    source.known == null ? { kind: 'loading' } : { kind: 'loaded', link: source.known },
+  );
   const [attempt, setAttempt] = useState(0);
-  const [copied, setCopied] = useState(false);
-  const [copyRefused, setCopyRefused] = useState(false);
+  const [asking, setAsking] = useState(start === 'reset');
+  const [refused, setRefused] = useState(start === 'refused');
   const [noApp, setNoApp] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [renewed, setRenewed] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [notReset, setNotReset] = useState(false);
-  const [announce, setAnnounce] = useState('');
+  const [said, setSaid] = useState<{ words: string; at: number } | null>(null);
+  const say = (words: string) => setSaid({ words, at: Date.now() });
 
   useEffect(() => {
+    if (source.known != null && attempt === 0) return;
     let current = true;
 
-    api.calendarFeed(organisationId).then(
+    source.read().then(
       (link) => current && setLoad({ kind: 'loaded', link }),
       () => current && setLoad({ kind: 'failed' }),
     );
@@ -110,134 +213,158 @@ function SubscribePanel({
     return () => {
       current = false;
     };
-  }, [organisationId, attempt]);
+  }, [source, attempt]);
 
-  async function copy(url: string): Promise<void> {
-    try {
-      await setStringAsync(url);
-      setCopied(true);
-      setCopyRefused(false);
-      setAnnounce(t('calendarFeed.copiedAnnounce'));
-    } catch {
-      setCopyRefused(true);
-    }
-  }
+  const copy = (url: string) => {
+    setStringAsync(url).then(
+      () => {
+        setCopied(true);
+        setRefused(false);
+        say(t('calendarFeed.copiedAnnounce'));
+      },
+      () => setRefused(true),
+    );
+  };
 
-  async function openInApp(webcal: string): Promise<void> {
-    try {
-      await Linking.openURL(webcal);
-      setNoApp(false);
-    } catch {
-      setNoApp(true);
-    }
-  }
+  const openInApp = (link: CalendarFeedLink) => {
+    source.openInApp(link).then(
+      () => setNoApp(false),
+      () => setNoApp(true),
+    );
+  };
 
-  async function reset(): Promise<void> {
+  const reset = () => {
     setResetting(true);
     onResetting(true);
     setNotReset(false);
+    source
+      .reset()
+      .then(
+        (link) => {
+          setLoad({ kind: 'loaded', link });
+          setAsking(false);
+          setRenewed(true);
+          setCopied(false);
+          setRefused(false);
+          say(t('calendarFeed.newLink'));
+        },
+        () => setNotReset(true),
+      )
+      .finally(() => {
+        setResetting(false);
+        onResetting(false);
+      });
+  };
 
-    try {
-      const link = await api.resetCalendarFeed(organisationId);
-      setLoad({ kind: 'loaded', link });
-      setConfirming(false);
-      setRenewed(true);
-      setCopied(false);
-      setCopyRefused(false);
-      setAnnounce(t('calendarFeed.newLink'));
-    } catch {
-      setNotReset(true);
-    } finally {
-      setResetting(false);
-      onResetting(false);
-    }
-  }
+  const keep = () => {
+    setAsking(false);
+    say(t('calendarFeed.kept'));
+  };
 
-  if (confirming) {
+  const head = (title: string) => (
+    <View style={styles.head}>
+      <Text size={20} weight="bold" accessibilityRole="header" style={[styles.grow, styles.title]}>
+        {title}
+      </Text>
+      <Close onClose={onClose} />
+    </View>
+  );
+
+  if (asking) {
+    const keepPill = (
+      <Pill
+        label={t('calendarFeed.keep')}
+        kind={resetting ? 'off' : 'secondary'}
+        height={wide ? tokens.sizeHit : tokens.sizeHitPhonePrimary}
+        full={!wide}
+        onPress={keep}
+        testID="calendarFeed.keep"
+      />
+    );
+
     return (
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.panel}
-        testID="calendarFeed.confirm"
-      >
-        <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
-          {t('calendarFeed.confirmTitle')}
+      <View style={styles.panel} testID="calendarFeed.confirm">
+        {said != null && <Said words={said.words} answer={said.at} />}
+        {head(t('calendarFeed.confirmTitle'))}
+        <Text size={15} weight="medium" style={styles.body}>
+          {t('calendarFeed.confirmBody')}
         </Text>
-        <Text size={tokens.typeBodyPhone.size}>{t('calendarFeed.confirmBody')}</Text>
         {notReset && (
-          <ReadOut words={t('calendarFeed.notReset')} interrupts accessibilityRole="alert">
-            <Notice
-              tone="broken"
-              mark={tokens.marks.broken.glyph}
-              body={t('calendarFeed.notReset')}
-            />
-          </ReadOut>
-        )}
-        <View style={phone ? styles.confirmButtonsPhone : styles.confirmButtons}>
-          <QuietButton
-            label={t('calendarFeed.keep')}
-            off={resetting}
-            onPress={() => {
-              setConfirming(false);
-              setAnnounce(t('calendarFeed.kept'));
-            }}
-            testID="calendarFeed.keep"
+          <Notice
+            tone="broken"
+            mark={tokens.marks.broken.glyph}
+            body={t('calendarFeed.notReset')}
+            announce
+            interrupts
           />
-          <DestructiveButton
+        )}
+        <View style={wide ? styles.pairRow : styles.stack}>
+          {wide && keepPill}
+          <Pill
             label={t('calendarFeed.reset')}
-            busy={resetting}
-            onPress={() => void reset()}
+            kind={resetting ? 'off' : 'danger'}
+            height={wide ? tokens.sizeHit : tokens.sizeHitPhonePrimary}
+            full={!wide}
+            onPress={reset}
             testID="calendarFeed.resetConfirm"
           />
+          {!wide && keepPill}
         </View>
-      </ScrollView>
+      </View>
     );
   }
 
+  const link = load.kind === 'loaded' ? load.link : null;
+  const buttons =
+    link == null
+      ? []
+      : [
+          <Pill
+            key="copy"
+            label={copied ? t('calendarFeed.copied') : t('calendarFeed.copy')}
+            glyph={copied ? 'tick' : 'copy'}
+            height={tokens.sizeHitPhonePrimary}
+            onPress={() => copy(link.url)}
+            testID="calendarFeed.copy"
+          />,
+          <Pill
+            key="open"
+            label={t('calendarFeed.openInApp')}
+            kind="secondary"
+            glyph="link"
+            height={tokens.sizeHitPhonePrimary}
+            onPress={() => openInApp(link)}
+            testID="calendarFeed.openInApp"
+          />,
+        ];
+
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.panel}
-      testID="calendarFeed.panel"
-    >
-      <View style={styles.head}>
-        <Text
-          size={tokens.typeRowTitle.size}
-          weight="bold"
-          accessibilityRole="header"
-          style={styles.fill}
-        >
-          {t('calendarFeed.title')}
-        </Text>
-        <QuietButton
-          label={t('calendarFeed.close')}
-          onPress={onClose}
-          testID="calendarFeed.close"
-        />
-      </View>
-      <Text size={tokens.typeBodyPhone.size}>
+    <View style={styles.panel} testID="calendarFeed.panel">
+      {said != null && <Said words={said.words} answer={said.at} />}
+      {head(t('calendarFeed.title'))}
+      <Text size={15} weight="medium" style={[styles.secondary, styles.body]}>
         {t('calendarFeed.intro', { organisation: organisationName })}
       </Text>
-
       {load.kind === 'loading' && (
-        <Text size={tokens.typeBodyPhone.size} muted>
+        <Text size={15} weight="medium" style={[styles.secondary, styles.body]}>
           {t('calendarFeed.loading')}
         </Text>
       )}
-
       {load.kind === 'failed' && (
-        <View style={styles.section}>
-          <ReadOut words={t('calendarFeed.unreadable')} accessibilityRole="alert">
-            <Notice
-              tone="broken"
-              mark={tokens.marks.broken.glyph}
-              body={t('calendarFeed.unreadable')}
-            />
-          </ReadOut>
-          <SecondaryButton
+        <View style={styles.stack}>
+          <Notice
+            tone="broken"
+            mark={tokens.marks.broken.glyph}
+            body={t('calendarFeed.unreadable')}
+            announce
+          />
+          <Pill
             label={t('calendarFeed.retry')}
+            kind="secondary"
+            height={tokens.sizeHit}
+            full={false}
             onPress={() => {
-              void rereadOrganisations();
+              source.onRetry?.();
               setLoad({ kind: 'loading' });
               setAttempt((tries) => tries + 1);
             }}
@@ -245,168 +372,166 @@ function SubscribePanel({
           />
         </View>
       )}
-
-      {load.kind === 'loaded' && (
-        <View style={styles.section}>
-          <Text size={tokens.typeSmall.size} weight="semibold" style={styles.label}>
-            {t('calendarFeed.linkLabel')}
-          </Text>
-          <View style={styles.url}>
-            <Text size={tokens.typeBodyPhone.size} selectable testID="calendarFeed.url">
-              {load.link.url}
+      {link != null && (
+        <>
+          <View style={styles.linkBlock}>
+            <Text size={13} weight="semibold" style={styles.secondary}>
+              {t('calendarFeed.linkLabel')}
             </Text>
+            <View style={styles.link}>
+              <Text
+                size={14.5}
+                weight="medium"
+                selectable
+                style={styles.linkWords}
+                testID="calendarFeed.url"
+              >
+                {link.url}
+              </Text>
+            </View>
           </View>
           {renewed && (
             <Notice tone="done" mark={tokens.marks.done.glyph} body={t('calendarFeed.newLink')} />
           )}
-          {copyRefused && (
-            <ReadOut words={t('calendarFeed.copyRefused')} accessibilityRole="alert">
-              <View style={styles.line}>
-                <GlyphMark mark={ATTENTION_MARK} />
-                <Text size={tokens.typeBodyPhone.size} style={[styles.fill, styles.warning]}>
-                  {t('calendarFeed.copyRefused')}
-                </Text>
-              </View>
-            </ReadOut>
+          {refused && (
+            <Notice
+              tone="broken"
+              mark={tokens.marks.broken.glyph}
+              body={t('calendarFeed.copyRefused')}
+              announce={start !== 'refused'}
+            />
           )}
           {noApp && (
-            <ReadOut words={t('calendarFeed.noApp')} accessibilityRole="alert">
-              <View style={styles.line}>
-                <GlyphMark mark={ATTENTION_MARK} />
-                <Text size={tokens.typeBodyPhone.size} style={[styles.fill, styles.warning]}>
-                  {t('calendarFeed.noApp')}
-                </Text>
-              </View>
-            </ReadOut>
+            <Notice
+              tone="broken"
+              mark={tokens.marks.broken.glyph}
+              body={t('calendarFeed.noApp')}
+              announce
+            />
           )}
-          <View style={phone ? styles.buttonsPhone : styles.buttons}>
-            <PrimaryButton
-              label={copied ? t('calendarFeed.copied') : t('calendarFeed.copy')}
-              onPress={() => void copy(load.link.url)}
-              testID="calendarFeed.copy"
-            />
-            <SecondaryButton
-              label={t('calendarFeed.openInApp')}
-              onPress={() => void openInApp(load.link.webcal)}
-              testID="calendarFeed.openInApp"
-            />
+          <View style={wide ? styles.pairWide : styles.stack}>
+            {wide
+              ? buttons.map((button) => (
+                  <View key={button.key} style={styles.grow}>
+                    {button}
+                  </View>
+                ))
+              : buttons}
           </View>
-          <View style={styles.line}>
-            <LockMark />
-            <Text size={tokens.typeBodyPhone.size} style={[styles.fill, styles.warning]}>
-              {t('calendarFeed.private')}
-            </Text>
-          </View>
-        </View>
+          <Line glyph="shield" words={t('calendarFeed.private')} />
+        </>
       )}
-
-      <View style={styles.lists}>
-        <View style={styles.section}>
-          <Text size={tokens.typeBodyPhone.size} weight="bold" accessibilityRole="header">
-            {t('calendarFeed.inTitle')}
-          </Text>
-          {IN_FEED.map((key) => (
-            <Text key={key} size={tokens.typeBodyPhone.size}>
-              {`• ${t(`calendarFeed.${key}`)}`}
-            </Text>
-          ))}
-        </View>
-        <View style={styles.section}>
-          <Text size={tokens.typeBodyPhone.size} weight="bold" accessibilityRole="header">
-            {t('calendarFeed.outTitle')}
-          </Text>
-          {NEVER_IN_FEED.map((key) => (
-            <Text key={key} size={tokens.typeBodyPhone.size}>
-              {`• ${t(`calendarFeed.${key}`)}`}
-            </Text>
-          ))}
-        </View>
-        <Text size={tokens.typeSmall.size} muted>
-          {t('calendarFeed.access')}
-        </Text>
-      </View>
-
-      {load.kind === 'loaded' && (
-        <View style={[styles.section, styles.reset]}>
-          <Text size={tokens.typeBodyPhone.size} weight="bold" accessibilityRole="header">
-            {t('calendarFeed.resetTitle')}
-          </Text>
-          <Text size={tokens.typeBodyPhone.size} muted>
-            {t('calendarFeed.resetBody')}
-          </Text>
-          <SecondaryButton
-            label={t('calendarFeed.resetOpen')}
-            onPress={() => {
-              setNotReset(false);
-              setAnnounce('');
-              setConfirming(true);
-            }}
-            testID="calendarFeed.reset"
+      <View style={styles.rule} />
+      <View style={wide ? styles.columns : styles.stackLists}>
+        <View style={wide ? styles.grow : undefined}>
+          <List
+            title={t('calendarFeed.inTitle')}
+            items={IN_FEED.map((key) => t(`calendarFeed.${key}`))}
+            yes
           />
         </View>
+        <View style={wide ? styles.grow : undefined}>
+          <List
+            title={t('calendarFeed.outTitle')}
+            items={NEVER_IN_FEED.map((key) => t(`calendarFeed.${key}`))}
+            yes={false}
+          />
+        </View>
+      </View>
+      <Text size={14} weight="medium" style={[styles.secondary, styles.small]}>
+        {t('calendarFeed.access')}
+      </Text>
+      {link != null && (
+        <>
+          <View style={styles.rule} />
+          <View style={styles.resetBlock}>
+            <Text size={15} weight="bold" accessibilityRole="header" style={styles.listTitle}>
+              {t('calendarFeed.resetTitle')}
+            </Text>
+            <Text size={14} weight="medium" style={[styles.secondary, styles.small]}>
+              {t('calendarFeed.resetBody')}
+            </Text>
+            <View style={styles.resetAction}>
+              <TextAction
+                label={t('calendarFeed.resetOpen')}
+                removes
+                onPress={() => {
+                  setNotReset(false);
+                  setAsking(true);
+                }}
+                testID="calendarFeed.reset"
+              />
+            </View>
+          </View>
+        </>
       )}
-
-      <ReadOut words={announce} />
-    </ScrollView>
+    </View>
   );
 }
 
-function LockMark() {
+function Line({ glyph, words }: { glyph: GlyphName; words: string }) {
   return (
-    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <Svg
-        width={tokens.sizeMark}
-        height={tokens.sizeMark}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke={tokens.colorAttentionText}
-        strokeWidth={2.25}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <Rect x={5} y={11} width={14} height={10} rx={2} />
-        <Path d="M8 11V7a4 4 0 0 1 8 0v4" />
-      </Svg>
+    <View style={styles.line}>
+      <View style={styles.lineGlyph}>
+        <Glyph name={glyph} size={16} ink={tokens.colorInkSecondary} weight={2} />
+      </View>
+      <Text size={14} weight="medium" style={[styles.grow, styles.secondary, styles.small]}>
+        {words}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flexShrink: 1, flexGrow: 0 },
-  panel: { gap: tokens.spaceXl, padding: tokens.space3xl },
-  head: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
-  fill: { flex: 1 },
-  section: { gap: tokens.spaceSm },
-  label: { color: tokens.marks.info.ink },
-  url: {
-    padding: tokens.spaceLg,
-    borderRadius: tokens.radiusRow,
-    borderWidth: 1,
-    borderColor: tokens.colorFieldBorder,
-    backgroundColor: tokens.colorInset,
+  grow: { flex: 1, minWidth: 0 },
+  secondary: { color: tokens.colorInkSecondary },
+  pressed: { opacity: tokens.opacityPressed },
+  sheetBody: {
+    paddingTop: tokens.spaceXl,
+    paddingHorizontal: tokens.spaceXxl,
+    paddingBottom: tokens.spaceSm,
   },
-  line: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
-  warning: { color: tokens.colorAttentionText },
-  buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
-  buttonsPhone: { gap: tokens.spaceSm },
-  confirmButtons: {
+  panel: { gap: tokens.spacePillEnd },
+  head: {
+    minHeight: tokens.sizeHit,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-    gap: tokens.spaceSm,
+    alignItems: 'center',
+    gap: tokens.spaceMd,
   },
-  confirmButtonsPhone: { flexDirection: 'column-reverse', gap: tokens.spaceSm },
-  lists: {
-    gap: tokens.spaceLg,
-    padding: tokens.spaceXl,
-    borderRadius: tokens.radiusInset,
-    borderWidth: 1,
-    borderColor: tokens.colorInsetBorder,
+  title: { lineHeight: 20 * 1.25, letterSpacing: -0.2 },
+  close: {
+    width: tokens.sizeHit,
+    height: tokens.sizeHit,
+    borderRadius: tokens.sizeHit / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: tokens.colorInset,
   },
-  reset: {
-    paddingTop: tokens.spaceLg,
-    borderTopWidth: 1,
-    borderTopColor: tokens.colorInsetBorder,
+  body: { lineHeight: 15 * 1.45 },
+  small: { lineHeight: 14 * 1.45 },
+  linkBlock: { gap: tokens.spaceXs },
+  link: {
+    paddingVertical: tokens.spaceLg,
+    paddingHorizontal: tokens.spacePillEnd,
+    borderRadius: tokens.spacePillEnd,
+    backgroundColor: tokens.colorInset,
   },
+  linkWords: { lineHeight: 14.5 * 1.45 },
+  stack: { gap: tokens.spaceMd },
+  pairWide: { flexDirection: 'row', gap: tokens.spaceMd },
+  pairRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: tokens.spaceMd },
+  line: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  lineGlyph: { paddingTop: 2 },
+  rule: { height: 1, backgroundColor: tokens.colorBorder },
+  columns: { flexDirection: 'row', gap: tokens.space3xl },
+  stackLists: { gap: tokens.spaceXl },
+  listBlock: { gap: tokens.spaceSm },
+  listTitle: { lineHeight: 15 * 1.3 },
+  listRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
+  listWords: { flexShrink: 1, lineHeight: 15 * 1.4 },
+  disc: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  discYes: { backgroundColor: tokens.marks.done.fill },
+  discNo: { backgroundColor: tokens.colorInsetBorder },
+  resetBlock: { gap: tokens.spaceXs },
+  resetAction: { alignItems: 'flex-start' },
 });

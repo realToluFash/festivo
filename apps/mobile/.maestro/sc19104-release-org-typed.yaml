@@ -1,6 +1,12 @@
 # sc-19104, Android release build, Settings > Organisation open: a new name typed in Name and not saved.
 appId: com.soirely.app
 ---
+- extendedWaitUntil:
+    visible:
+      id: organisation.edit
+    timeout: 30000
+- tapOn:
+    id: organisation.edit
 - tapOn:
     id: 'organisation.name'
 - eraseText: 120

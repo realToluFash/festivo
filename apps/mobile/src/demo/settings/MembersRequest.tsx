@@ -1,17 +1,17 @@
 import { type RefObject, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { RadioMark } from '../../components/RadioMark.tsx';
+import { RoleChoices } from '../../components/RoleChoices.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import {
   approvalRoles,
-  DEADLINES,
   firstName,
   type MembersSay,
   ORGANISATION,
   type Person,
+  removesAt,
   ROLE_MEANS,
 } from './MembersSample.ts';
 import { Avatar } from '../../components/SettingsParts.tsx';
@@ -19,14 +19,9 @@ import {
   type AskProps,
   FocusedScreen,
   Line,
-  Row,
-  RowList,
-  type RowTag,
   Section,
   TextAction,
 } from '../../components/Summary.tsx';
-
-const NOW_TAG: RowTag = { kind: 'now', word: 'Now' };
 
 const NOTE =
   'Only people who manage members see these requests. Nobody is added until one of you approves them.';
@@ -104,7 +99,7 @@ export function RequestScreen({
       </View>
       <Line
         quiet={false}
-        text={`Asked to join ${ORGANISATION} on ${say.day(person.when)}. Removed on ${say.deadline(DEADLINES.lucia)} if nobody answers.`}
+        text={`Asked to join ${ORGANISATION} on ${say.day(person.when)}. Removed on ${say.deadline(removesAt(person.id))} if nobody answers.`}
       />
       <Line text={NOTE} />
       <Section title="Role" foot="Owner is given from Members once they have joined.">
@@ -112,6 +107,7 @@ export function RequestScreen({
           <RoleChoices
             roles={approvalRoles()}
             picked={role}
+            lines={ROLE_MEANS}
             onPick={setRole}
             testID="members.approveAs"
           />
@@ -125,61 +121,6 @@ export function RequestScreen({
         testID="members.turnDown"
       />
     </FocusedScreen>
-  );
-}
-
-/** Radio rows, each role with what it means; the picked one in Violet, Now on the role held today, and any role not offered dimmed with why. */
-export function RoleChoices<R extends string>({
-  roles,
-  picked,
-  now,
-  owned,
-  lines = ROLE_MEANS,
-  off,
-  pickedTag,
-  onPick,
-  testID,
-}: {
-  roles: readonly R[];
-  picked: R;
-  now?: R | null;
-  owned?: string;
-  lines?: Readonly<Record<string, string>>;
-  off?: { roles: readonly R[]; line: string };
-  pickedTag?: RowTag | null;
-  onPick: (role: R) => void;
-  testID: string;
-}) {
-  return (
-    <RowList
-      items={roles.map((role) => {
-        const on = role === picked;
-        const dim = off?.roles.includes(role) === true;
-        const means = dim
-          ? (off?.line ?? '')
-          : [lines[role], role === 'Owner' ? owned : undefined]
-              .filter((part) => part != null)
-              .join(' ');
-
-        return {
-          key: role,
-          row: (
-            <Row
-              title={role}
-              line={means === '' ? undefined : means}
-              tag={on && pickedTag != null ? pickedTag : role === now ? NOW_TAG : null}
-              accent={on}
-              off={dim}
-              trail={<RadioMark on={on} />}
-              onPress={() => onPick(role)}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: on }}
-              testID={`${testID}.${role}`}
-            />
-          ),
-        };
-      })}
-    />
   );
 }
 

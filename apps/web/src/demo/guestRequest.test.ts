@@ -47,10 +47,10 @@ describe('A guest’s request and Their data (sc-30193)', () => {
 
   it('counts every record of theirs, and says what ties each to them', () => {
     expect(coversLine(COVERED)).toBe(
-      'A request covers every record of theirs in Ire Events: 4 records on 3 events.',
+      'A request covers every record of theirs in Ire Events: 4 records, on 3 events.',
     );
     expect(coversLine(CHANGED)).toBe(
-      'A request covers every record of theirs in Ire Events: 5 records on 4 events.',
+      'A request covers every record of theirs in Ire Events: 5 records, on 4 events.',
     );
     expect(COVERED.map((one) => [one.name, coveredLine(one, LOCALE)])).toEqual([
       ['Dr Emeka Nwosu', 'Adaeze & Tunde’s wedding · Thursday, Nov 5'],
@@ -71,7 +71,7 @@ describe('A guest’s request and Their data (sc-30193)', () => {
       'Their export is ready. It downloads once, until Tuesday, Oct 20 at 10:20 WAT, and only for you.',
     );
     expect(erasedLine(LOCALE, LAGOS)).toBe(
-      'Erased Monday, Oct 19 at 10:12 WAT. Their reply, seat and place in the counts stay.',
+      'Erased on Monday, Oct 19 at 10:12 WAT. Their reply, seat and place in the counts stay.',
     );
   });
 

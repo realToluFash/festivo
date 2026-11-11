@@ -63,7 +63,12 @@ const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
   it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s six and sc-3960’s and sc-3963’s, by both demos’ names', () => {
-    expect(MESSAGES_STATES).toHaveLength(72);
+    expect(MESSAGES_STATES).toHaveLength(85);
+    expect(MESSAGES_STATES.slice(72, 75)).toEqual([
+      'whatsAppLine',
+      'checkWhatsApp',
+      'whatsAppRead',
+    ]);
     expect(MESSAGES_STATES.indexOf('tellPlace')).toBe(44);
     expect(MESSAGES_STATES.slice(6, 10)).toEqual([
       'channelReply',
@@ -714,7 +719,7 @@ describe('the sample’s days and channels', () => {
     expect(dayWords('2026-11-02', 'en-US')).toBe('Mon, Nov 2');
     expect(dayWords('2026-11-02', 'en-GB')).toBe('Mon 2 Nov');
     expect(channelsWords(['email', 'sms'], 'en-US')).toBe('Email and SMS');
-    expect(channelsWords(['email', 'sms', 'wa'], 'en-US')).toBe('Email, SMS, and WhatsApp');
+    expect(channelsWords(['email', 'sms', 'wa'], 'en-US')).toBe('Email, SMS and WhatsApp');
   });
 
   it('give a row the time today, the weekday this week, else the month and day', () => {

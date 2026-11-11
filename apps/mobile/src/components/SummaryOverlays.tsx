@@ -1,10 +1,13 @@
 import { useIsFocused } from 'expo-router';
 import {
+  createContext,
+  createRef,
   type ReactNode,
   type Ref,
   type RefObject,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -12,6 +15,7 @@ import {
   KeyboardAvoidingView,
   type LayoutChangeEvent,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   type ScrollViewInstance,
@@ -24,13 +28,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
-import { SETTLED_MS } from './Screen.tsx';
+import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
-import { useFocusBack, useWindowTurn } from './Sheet.tsx';
-import { Text } from './Text.tsx';
+import { useFocusBack, useUnnamedWindow, useWindowTurn } from './Sheet.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 import { Toast } from './Toast.tsx';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
+import { menuInModal } from '../kit/anchoredMenu.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
 import { Glyph } from './Glyph.tsx';
@@ -67,6 +72,7 @@ function Window({
   opener,
   slides = false,
   waitsAway = false,
+  onShow,
   children,
 }: {
   open: boolean;
@@ -74,6 +80,7 @@ function Window({
   opener: Opener;
   slides?: boolean;
   waitsAway?: boolean;
+  onShow?: () => void;
   children: ReactNode;
 }) {
   useFocusBack(open, opener);
@@ -105,6 +112,7 @@ function Window({
       statusBarTranslucent
       navigationBarTranslucent
       onRequestClose={onClose}
+      onShow={onShow}
       onDismiss={gone}
     >
       {children}
@@ -186,16 +194,26 @@ export function FocusedScreen({
   testID?: string;
 }) {
   const layout = useShellLayout();
+  const [onScreen, setOnScreen] = useState(false);
+  if (!open && onScreen) setOnScreen(false);
   const insets = useSafeAreaInsets();
   const phone = layout === 'phone';
   const asking = ask != null;
   const covered = asking || over != null;
+  const { heading, shown, hidden, focus } = useTitleTakesFocus(title, onScreen, covered);
   const bottom = phone ? insets.bottom : 0;
   const cancel = waits ? stay : onCancel;
   const close = asking ? ask.onKeep : over != null ? over.onClose : cancel;
 
   return (
-    <Window open={open} onClose={close} opener={opener} slides={phone} waitsAway>
+    <Window
+      open={open}
+      onClose={close}
+      opener={opener}
+      slides={phone}
+      waitsAway
+      onShow={() => setOnScreen(true)}
+    >
       {/* Whatever the keys take from the bottom stays the screen's white, or the dimmed page on an iPad. */}
       <KeyboardAvoidingView
         style={[styles.fill, phone ? styles.screen : styles.dimmed]}
@@ -209,12 +227,14 @@ export function FocusedScreen({
             accessibilityViewIsModal
             onAccessibilityEscape={cancel}
             accessibilityElementsHidden={covered}
-            importantForAccessibility={covered ? 'no-hide-descendants' : 'auto'}
+            importantForAccessibility={covered || hidden ? 'no-hide-descendants' : 'auto'}
+            ref={shown}
             testID={testID}
           >
             <FocusNav
               key={`${back ?? ''}:${title}`}
               title={title}
+              titleRef={heading}
               verb={verb}
               back={back}
               cancels={cancels}
@@ -225,7 +245,7 @@ export function FocusedScreen({
             />
             {fills ? (
               <View style={[phone ? styles.fill : styles.sheetFill, { paddingBottom: bottom }]}>
-                {children}
+                <TitleFocus.Provider value={focus}>{children}</TitleFocus.Provider>
               </View>
             ) : (
               <ScrollView
@@ -238,7 +258,7 @@ export function FocusedScreen({
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >
-                {children}
+                <TitleFocus.Provider value={focus}>{children}</TitleFocus.Provider>
               </ScrollView>
             )}
           </View>
@@ -255,9 +275,70 @@ export function FocusedScreen({
   );
 }
 
+/** Where a focused screen's title focus goes: `first` takes it in the title's place while `coming` (sc-11032). */
+export interface TitleFocusing {
+  first: RefObject<ViewInstance | null>;
+  /** Focus has not yet moved for this step, so whatever holds `first` now is read as focus lands on it. */
+  coming: () => boolean;
+}
+
+export const TitleFocus = createContext<TitleFocusing | null>(null);
+
+function titleFocusing(): TitleFocusing & { moved: () => void; restart: () => void } {
+  let moved = false;
+
+  return {
+    first: createRef<ViewInstance>(),
+    coming: () => !moved,
+    moved: () => {
+      moved = true;
+    },
+    restart: () => {
+      moved = false;
+    },
+  };
+}
+
+/** Once its window is up, and again with each new title in a window that stays up, the title takes screen reader focus, or `first` when it is there as focus moves; nothing moves while an ask covers the screen (sc-11032). */
+function useTitleTakesFocus(
+  title: string,
+  onScreen: boolean,
+  covered: boolean,
+): {
+  heading: RefObject<TextHandle | null>;
+  shown: RefObject<ViewInstance | null>;
+  hidden: boolean;
+  focus: TitleFocusing;
+} {
+  const heading = useRef<TextHandle>(null);
+  const hidden = useUnnamedWindow(Platform.OS === 'android', onScreen, title);
+  const step = onScreen && !hidden ? title : undefined;
+  const asked = useRef(covered);
+  const [focus] = useState(titleFocusing);
+  useEffect(() => {
+    asked.current = covered;
+  });
+  useEffect(() => focus.restart(), [focus, step]);
+
+  // Read only as focus moves, since `shown` is the screen: the move is what ends `coming`.
+  const target = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        focus.moved();
+        return asked.current ? null : (focus.first.current ?? heading.current);
+      },
+    }),
+    [focus],
+  );
+  const { shown } = useFocusOnAnswer(step, target);
+
+  return { heading, shown, hidden, focus };
+}
+
 /** In a list opened from the screen, ‹ and where it goes back to in Cancel's place; "Back" when the title needs the room, as iOS does. */
 function FocusNav({
   title,
+  titleRef,
   verb,
   back,
   cancels,
@@ -267,6 +348,7 @@ function FocusNav({
   cancelTestID,
 }: {
   title: string;
+  titleRef: RefObject<TextHandle | null>;
   verb: FocusVerb | null;
   back: string | undefined;
   cancels: boolean;
@@ -324,6 +406,7 @@ function FocusNav({
         pointerEvents="none"
       >
         <Text
+          ref={titleRef}
           size={17}
           weight="bold"
           numberOfLines={fits ? 1 : undefined}
@@ -401,6 +484,28 @@ export function anchorUnder(trigger: RefObject<ViewInstance | null>, then: (at: 
   trigger.current?.measureInWindow((x, y, width, height) => then({ x, y: y + height, width }));
 }
 
+/** An open menu's anchor, measured again once a turned window settles; a button the turn took away closes it. */
+export function useAnchorFollowsTurn(
+  trigger: RefObject<ViewInstance | null>,
+  open: boolean,
+  then: (at: Anchor | null) => void,
+) {
+  const { width, height } = useWindowDimensions();
+  const size = useRef({ width, height });
+
+  useEffect(() => {
+    const turned = size.current.width !== width || size.current.height !== height;
+    size.current = { width, height };
+    if (!open || !turned) return;
+    const wait = setTimeout(() => {
+      if (trigger.current == null) then(null);
+      else anchorUnder(trigger, then);
+    }, SETTLED_MS);
+
+    return () => clearTimeout(wait);
+  }, [width, height, open, trigger, then]);
+}
+
 interface MenuProps {
   at: Anchor | null;
   onClose: () => void;
@@ -408,7 +513,7 @@ interface MenuProps {
   align?: 'start' | 'end';
   /** How far under what opened it. */
   below?: number;
-  /** Where it must end above, the keys' top less a gap; the window's foot otherwise. */
+  /** Where it must end above, in measureInWindow's frame as `at` is: the keys' top less a gap; the window's foot otherwise. */
   floor?: number | null;
   /** Above the scrolling items: a search field. */
   head?: ReactNode;
@@ -451,9 +556,11 @@ export function MenuLayer({
   const { t } = useTranslation();
   const frame = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const origin = useWindowOrigin();
   const [seen, setSeen] = useState({ panel: 0, content: 0, offset: 0 });
-  const top = (at?.y ?? 0) + below;
-  const room = (floor ?? frame.height - Math.max(insets.bottom, tokens.spaceLg)) - top;
+  const place = menuInModal({ under: at?.y ?? 0, below, floor, origin });
+  const top = place.top;
+  const room = (place.floor ?? frame.height - Math.max(insets.bottom, tokens.spaceLg)) - top;
   const more = seen.content - seen.offset - seen.panel > 1;
 
   return (

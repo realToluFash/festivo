@@ -1,7 +1,9 @@
+import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
+import en from '../i18n/locales/en.json';
+import { inModal } from '../kit/anchoredMenu.ts';
 import {
-  SW,
   answer,
   ask,
   cellWidth,
@@ -20,6 +22,7 @@ import {
   rowsOf,
   scrollToShow,
   searchable,
+  sending,
   sessionFor,
   settled,
   switcherStateOf,
@@ -30,12 +33,22 @@ import {
   withoutPlaces,
 } from './OrgSwitcherModel.ts';
 
+const i18n = createInstance();
+void i18n.init({
+  resources: { en: { translation: en } },
+  lng: 'en',
+  interpolation: { escapeValue: false },
+  initAsync: false,
+});
+const { t } = i18n;
+const CREATE = t('createOrganisation.row');
+
 const names = (tiles: ReturnType<typeof tilesOf>) =>
   tiles.map((tile) =>
     tile.kind === 'place'
       ? tile.place.name
       : tile.kind === 'create'
-        ? SW.create
+        ? CREATE
         : tile.kind === 'offer'
           ? tile.offer.name
           : tile.invite.name,
@@ -46,7 +59,9 @@ describe('the switch', () => {
     const switched = pick(sessionFor('populated'), 'org-casa-lumen');
 
     expect(currentPlace(switched).name).toBe('Casa Lumen Eventos');
-    expect(SW.switched(currentPlace(switched).name)).toBe('Now working in Casa Lumen Eventos.');
+    expect(t('switcher.switched', { name: currentPlace(switched).name })).toBe(
+      'Now working in Casa Lumen Eventos.',
+    );
     expect(tilesOf(switched, '').filter((tile) => tile.kind === 'place' && tile.current)).toEqual([
       { kind: 'place', place: currentPlace(switched), current: true },
     ]);
@@ -64,7 +79,7 @@ describe('the switch', () => {
     expect(openerLabel(currentPlace(session), 0)).toBe(
       'Organisation: Ire Events, your role Owner. Switch organisation',
     );
-    expect(SW.count(2)).toBe('2 invitations');
+    expect(t('invitations.count', { count: 2 })).toBe('2 invitations');
   });
 
   it('opens in each state ?switcher= names, and in none it does not know', () => {
@@ -80,7 +95,7 @@ describe('the switch', () => {
       'Atelier Céleste Réceptions et Mariages',
       'Celebraciones Alameda',
       'Bluebird Gatherings',
-      SW.create,
+      CREATE,
     ]);
     expect(names(tilesOf(sessionFor('offer'), ''))).toEqual([
       'Ire Events',
@@ -89,9 +104,9 @@ describe('the switch', () => {
       'Ire Weddings',
       'Celebraciones Alameda',
       'Bluebird Gatherings',
-      SW.create,
+      CREATE,
     ]);
-    expect(names(tilesOf(sessionFor('one'), ''))).toEqual(['Ire Events', SW.create]);
+    expect(names(tilesOf(sessionFor('one'), ''))).toEqual(['Ire Events', CREATE]);
   });
 });
 
@@ -102,14 +117,14 @@ describe('a new organisation', () => {
     const session = founded(sessionFor('one'), lumen);
 
     expect(placeOf(session)).toEqual(lumen);
-    expect(names(tilesOf(session, ''))).toEqual(['Ire Events', 'Lumen Feiras', SW.create]);
+    expect(names(tilesOf(session, ''))).toEqual(['Ire Events', 'Lumen Feiras', CREATE]);
   });
 
   it('is the only one for somebody who had none', () => {
     const none = withoutPlaces(sessionFor('one'));
 
     expect(placeOf(none)).toBeNull();
-    expect(names(tilesOf(founded(none, lumen), ''))).toEqual(['Lumen Feiras', SW.create]);
+    expect(names(tilesOf(founded(none, lumen), ''))).toEqual(['Lumen Feiras', CREATE]);
   });
 
   it('takes amber from the id the walk gives it', () => {
@@ -119,7 +134,7 @@ describe('a new organisation', () => {
   it('is made again, not twice, by a second walk', () => {
     const again = founded(founded(sessionFor('one'), lumen), { ...lumen, name: 'Lumen Eventos' });
 
-    expect(names(tilesOf(again, ''))).toEqual(['Ire Events', 'Lumen Eventos', SW.create]);
+    expect(names(tilesOf(again, ''))).toEqual(['Ire Events', 'Lumen Eventos', CREATE]);
   });
 });
 
@@ -140,23 +155,23 @@ describe('the search', () => {
       'Eventos Mar Azul',
       'Thornbury Hall Events',
       'Atlântico Comunicações e Eventos',
-      SW.create,
+      CREATE,
     ]);
     expect(names(tilesOf(sessionFor('many'), '  CÉLESTE '))).toEqual([
       'Atelier Céleste Réceptions et Mariages',
-      SW.create,
+      CREATE,
     ]);
-    expect(SW.matches(6)).toBe('6 organisations match');
-    expect(SW.matches(1)).toBe('1 organisation matches');
+    expect(t('switcher.matches', { count: 6 })).toBe('6 organisations match');
+    expect(t('switcher.matches', { count: 1 })).toBe('1 organisation matches');
   });
 
   it('says no organisation matches, keeps Create, and clears', () => {
     const session = sessionFor('no-match');
 
     expect(noneMatch(session, session.query)).toBe(true);
-    expect(SW.noMatch(session.query)).toBe('No organisation matches “Belém”.');
-    expect(names(tilesOf(session, session.query))).toEqual([SW.create]);
-    expect(SW.clearSearch).toBe('Clear search');
+    expect(t('switcher.noMatch', { text: session.query })).toBe('No organisation matches “Belém”.');
+    expect(names(tilesOf(session, session.query))).toEqual([CREATE]);
+    expect(t('switcher.clearSearch')).toBe('Clear search');
     expect(noneMatch(session, '')).toBe(false);
     expect(settled(session).query).toBe('');
   });
@@ -182,7 +197,7 @@ describe('the answers', () => {
       invite: expect.objectContaining({ id: CELEBRACIONES }) as unknown,
     });
     expect(waitingOf(joined)).toBe(1);
-    expect(SW.joined('Celebraciones Alameda', 'Member')).toBe(
+    expect(t('invitations.joined', { organisation: 'Celebraciones Alameda', role: 'Member' })).toBe(
       'You joined Celebraciones Alameda as Member.',
     );
 
@@ -198,7 +213,7 @@ describe('the answers', () => {
       'Atelier Céleste Réceptions et Mariages',
       'Celebraciones Alameda',
       'Bluebird Gatherings',
-      SW.create,
+      CREATE,
     ]);
     expect(tilesOf(opened, '')[3]?.kind).toBe('place');
   });
@@ -209,7 +224,7 @@ describe('the answers', () => {
     expect(waitingOf(declined)).toBe(1);
     expect(tilesOf(declined, '').map(tileKey)).toContain(BLUEBIRD);
     expect(tilesOf(settled(declined), '').map(tileKey)).not.toContain(BLUEBIRD);
-    expect(SW.declined('Beatriz Lima')).toBe(
+    expect(t('invitations.declined', { inviter: 'Beatriz Lima' })).toBe(
       'You declined. Beatriz Lima will see that you said no.',
     );
   });
@@ -222,6 +237,33 @@ describe('the answers', () => {
     expect(waitingOf(answer(failed, BLUEBIRD, true))).toBe(1);
   });
 
+  it('holds a press in flight as still waiting, saying what the pressed answer is doing (#36160)', () => {
+    const busy = sending(sessionFor('invitation'), BLUEBIRD, false);
+
+    expect(busy.outcomes[BLUEBIRD]).toEqual({ kind: 'busy', answer: 'decline' });
+    expect(busy.expanded).toBe(BLUEBIRD);
+    expect(waitingOf(busy)).toBe(2);
+    expect(sessionFor('busy').outcomes[BLUEBIRD]).toEqual({ kind: 'busy', answer: 'accept' });
+    expect([t('invitations.joining'), t('invitations.declining')]).toEqual([
+      'Joining…',
+      'Declining…',
+    ]);
+  });
+
+  it('draws a refused answer in the panel and takes the invitation off the next opening (#36160)', () => {
+    const expired = sessionFor('refused');
+    const withdrawn = sessionFor('withdrawn');
+
+    expect(expired.outcomes[BLUEBIRD]).toEqual({ kind: 'refused', refusal: 'invitation_expired' });
+    expect(withdrawn.outcomes[BLUEBIRD]).toEqual({
+      kind: 'refused',
+      refusal: 'invitation_revoked',
+    });
+    expect(waitingOf(expired)).toBe(1);
+    expect(tilesOf(expired, '').map(tileKey)).toContain(BLUEBIRD);
+    expect(tilesOf(settled(expired), '').map(tileKey)).not.toContain(BLUEBIRD);
+  });
+
   it('asks to join, keeps a refusal, and puts the offer away for Not now', () => {
     expect(ask(sessionFor('offer')).offer?.status).toBe('asked');
     expect(ask(sessionFor('offer-unavailable')).offer?.status).toBe('unavailable');
@@ -230,7 +272,7 @@ describe('the answers', () => {
     expect(away.expanded).toBeNull();
     expect(names(tilesOf(away, ''))).not.toContain('Ire Weddings');
     expect(settled(away).offer).toBeNull();
-    expect(SW.switcherAsked('folake@ire.events')).toBe(
+    expect(t('domainJoining.switcherAsked', { email: 'folake@ire.events' })).toBe(
       'we’ll email folake@ire.events when they answer.',
     );
   });
@@ -280,6 +322,15 @@ describe('the drop-down', () => {
         phone: true,
       }),
     ).toEqual({ left: 12, top: 126, width: 378, maxHeight: 642, originX: 101 });
+  });
+
+  it('drops 8 under its opener on Android, whose window starts below the status bar', () => {
+    const opener = { x: 20, y: inModal(38, -24), width: 186, height: 56 };
+
+    expect(
+      frameFor({ opener, window: { width: 402, height: 874 }, insets: { bottom: 34 }, phone: true })
+        .top,
+    ).toBe(126);
   });
 
   it('drops 500 wide from the opener’s left edge on the iPad', () => {

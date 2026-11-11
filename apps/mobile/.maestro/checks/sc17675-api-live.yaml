@@ -9,5 +9,5 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     notVisible: '{{t:membersScreen.loading}}'
     timeout: 30000
-- assertNotVisible: '{{t:membersScreen.failedLoad}}'
+- assertNotVisible: '{{t:membersScreen.failedTitle}}'
 - takeScreenshot: members-live

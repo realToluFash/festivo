@@ -26,7 +26,16 @@ import {
 import { Glyph } from './Glyph.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
-import { FocusedScreen, Line, OpenRow, Row, RowList, Section, TextAction } from './Summary.tsx';
+import {
+  FocusedScreen,
+  Line,
+  OpenRow,
+  Row,
+  RowList,
+  Section,
+  SectionFailed,
+  TextAction,
+} from './Summary.tsx';
 import { Text } from './Text.tsx';
 
 /** The app's checkbox; its state is read by the control it sits in. */
@@ -188,8 +197,8 @@ export function TwoFactorScreen({
   onFinished,
 }: {
   open: boolean;
-  /** Null while it is fetched, or once it could not be: `failed` says why in the field's place. */
-  enrolment: Enrolment | { failed: string } | null;
+  /** Null while it is fetched; once it could not be, its failure takes the key's and the field's place. */
+  enrolment: Enrolment | { retry: () => void } | null;
   /** New codes already made: the screen starts at them. */
   startCodes: readonly string[] | null;
   phone: boolean;
@@ -246,7 +255,7 @@ export function TwoFactorScreen({
       </FocusedScreen>
     );
 
-  const ready = enrolment != null && !('failed' in enrolment) ? enrolment : null;
+  const ready = enrolment != null && !('retry' in enrolment) ? enrolment : null;
 
   return (
     <FocusedScreen
@@ -265,48 +274,63 @@ export function TwoFactorScreen({
       opener={opener}
       testID="security.setup.screen"
     >
-      <Text size={15} weight="semibold">
-        {t('twoFactorCard.scan')}
-      </Text>
-      {enrolment != null && 'failed' in enrolment && <FieldError message={enrolment.failed} />}
-      <View
-        style={styles.qr}
-        accessible
-        accessibilityRole="image"
-        accessibilityLabel={t('twoFactorCard.qrAlt')}
-      >
-        <View style={styles.qrSide}>{ready?.qr}</View>
-      </View>
-      <Line text={phone ? t('twoFactorCard.phoneCantScan') : t('twoFactorCard.cantScan')} />
-      <View style={styles.key}>
-        <Text
-          size={18}
-          weight="semibold"
-          selectable
-          style={styles.keyText}
-          testID="security.setup.key"
-        >
-          {ready == null ? ' ' : keyInGroups(ready.secret)}
-        </Text>
-      </View>
-      <Field label={t('twoFactorCard.enterCode')} error={error} help={t('twoFactorCard.staysOff')}>
-        <CodeField
-          ref={field}
-          wrong={error != null}
-          submitting={checking}
-          autoComplete="one-time-code"
-          textContentType="oneTimeCode"
-          returnKeyType="done"
-          onChangeText={(text) => {
-            code.current = text;
-            if (error != null) setError(null);
-          }}
-          onSubmitEditing={() => void turnOn()}
-          submitBehavior="submit"
-          accessibilityLabel={t('twoFactorCard.enterCode')}
-          testID="security.setup.code"
+      {enrolment != null && 'retry' in enrolment ? (
+        <SectionFailed
+          title={t('twoFactorCard.failedTitle')}
+          line={t('twoFactorCard.failedBody')}
+          onRetry={enrolment.retry}
+          takesFocus
+          testID="security.setup.retry"
         />
-      </Field>
+      ) : (
+        <>
+          <Text size={15} weight="semibold">
+            {t('twoFactorCard.scan')}
+          </Text>
+          <View
+            style={styles.qr}
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel={t('twoFactorCard.qrAlt')}
+          >
+            <View style={styles.qrSide}>{ready?.qr}</View>
+          </View>
+          <Line text={phone ? t('twoFactorCard.phoneCantScan') : t('twoFactorCard.cantScan')} />
+          <View style={styles.key}>
+            <Text
+              size={18}
+              weight="semibold"
+              selectable
+              style={styles.keyText}
+              testID="security.setup.key"
+            >
+              {ready == null ? ' ' : keyInGroups(ready.secret)}
+            </Text>
+          </View>
+          <Field
+            label={t('twoFactorCard.enterCode')}
+            error={error}
+            help={t('twoFactorCard.staysOff')}
+          >
+            <CodeField
+              ref={field}
+              wrong={error != null}
+              submitting={checking}
+              autoComplete="one-time-code"
+              textContentType="oneTimeCode"
+              returnKeyType="done"
+              onChangeText={(text) => {
+                code.current = text;
+                if (error != null) setError(null);
+              }}
+              onSubmitEditing={() => void turnOn()}
+              submitBehavior="submit"
+              accessibilityLabel={t('twoFactorCard.enterCode')}
+              testID="security.setup.code"
+            />
+          </Field>
+        </>
+      )}
     </FocusedScreen>
   );
 }

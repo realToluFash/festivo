@@ -1,23 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
+import { SEARCH_FROM, holds } from '../components/orgMenu.ts';
 import {
   BLUEBIRD,
   CELEBRACIONES,
   OFFER,
   PAUSED,
-  SEARCH_FROM,
   SWITCHER_PAGES,
   SWITCHER_STATES,
-  columnsOf,
   currentPlace,
-  fold,
-  holds,
   isSwitcherState,
-  matchesLine,
-  noMatchLine,
   openerLabel,
   openingOf,
-  stepTo,
   waiting,
   whereOf,
 } from './switcher.ts';
@@ -80,13 +74,7 @@ describe('the organisation switcher’s sample (sc-30323)', () => {
     expect(PAUSED.name).toBe('Casa Lumen Eventos');
   });
 
-  it('narrows by name, ignoring case and accents', () => {
-    expect(fold('Maison Ondine Événements')).toBe('maison ondine evenements');
-    expect(holds('Maison Ondine Événements', 'EVEN')).toBe(true);
-    expect(holds('Atlântico Comunicações e Eventos', 'comunicacoes')).toBe(true);
-    expect(holds('Ire Events', '  ire ')).toBe(true);
-    expect(holds('Ire Events', 'Belém')).toBe(false);
-
+  it('finds six of the many by “even”, ignoring case and accents', () => {
     const many = whereOf('many').places.filter((place) => holds(place.name, 'even'));
     expect(many.map((place) => place.name)).toEqual([
       'Ire Events',
@@ -96,33 +84,6 @@ describe('the organisation switcher’s sample (sc-30323)', () => {
       'Thornbury Hall Events',
       'Atlântico Comunicações e Eventos',
     ]);
-  });
-
-  it('says what the search found', () => {
-    expect(matchesLine(1)).toBe('1 organisation matches');
-    expect(matchesLine(6)).toBe('6 organisations match');
-    expect(noMatchLine(' Belém ')).toBe('No organisation matches “Belém”.');
-  });
-
-  it('lays out 4 places to a row at 500, and fewer as the window narrows', () => {
-    expect(columnsOf(500 - 2 - 24)).toBe(4);
-    expect(columnsOf(360 - 24 - 2 - 24)).toBe(2);
-    expect(columnsOf(112)).toBe(1);
-    expect(columnsOf(0)).toBe(4);
-  });
-
-  it('moves through the grid with the arrows, Home and End', () => {
-    expect(stepTo('ArrowRight', 0, 6, 4)).toBe(1);
-    expect(stepTo('ArrowRight', 5, 6, 4)).toBe(5);
-    expect(stepTo('ArrowLeft', 0, 6, 4)).toBe(0);
-    expect(stepTo('ArrowDown', 1, 6, 4)).toBe(5);
-    expect(stepTo('ArrowDown', 3, 6, 4)).toBe(5);
-    expect(stepTo('ArrowDown', 5, 6, 4)).toBe(5);
-    expect(stepTo('ArrowUp', 5, 6, 4)).toBe(1);
-    expect(stepTo('ArrowUp', 2, 6, 4)).toBe(2);
-    expect(stepTo('Home', 4, 6, 4)).toBe(0);
-    expect(stepTo('End', 0, 6, 4)).toBe(5);
-    expect(stepTo('a', 0, 6, 4)).toBeNull();
   });
 
   it('names the button with its organisation, its role and what waits', () => {

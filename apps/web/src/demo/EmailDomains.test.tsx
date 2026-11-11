@@ -48,7 +48,7 @@ describe('Data and control › Email domains (sc-560, sc-563)', () => {
     ).toBeDefined();
     expect(
       screen.getByText(
-        'Proving a domain lets nobody join. Company domain joining is its own list, in General.',
+        'Proving a domain does not let anyone join. Company domain joining is its own list, in General.',
       ),
     ).toBeDefined();
   });
@@ -115,7 +115,7 @@ describe('Data and control › Email domains (sc-560, sc-563)', () => {
 
     expect(within(dialog).getByText(line)).toBeDefined();
     expect(
-      within(dialog).getByText('Like ire.events. A subdomain needs adding on its own.'),
+      within(dialog).getByText('For example, ire.events. A subdomain needs adding on its own.'),
     ).toBeDefined();
   });
 
@@ -130,7 +130,7 @@ describe('Data and control › Email domains (sc-560, sc-563)', () => {
     ).toBeDefined();
     expect(
       within(record).getByText(
-        'Add this record where ireevents.com’s DNS is managed, then press Verify.',
+        'Add this record where the DNS for ireevents.com is managed, then press Verify.',
       ),
     ).toBeDefined();
   });
@@ -142,7 +142,7 @@ describe('Data and control › Email domains (sc-560, sc-563)', () => {
     expect(toggle.getAttribute('aria-checked')).toBe('false');
     fireEvent.click(toggle);
     const ask = screen.getByRole('alertdialog', {
-      name: 'Keep ire.events accounts to Ire Events?',
+      name: 'Limit ire.events accounts to Ire Events?',
     });
 
     expect(

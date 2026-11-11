@@ -1,7 +1,7 @@
 import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { refusalFor } from './refusal.ts';
+import { refusalFor, refusalSaid } from './refusal.ts';
 
 function refused(extra: Record<string, unknown> = {}): ApiError {
   const problem = {
@@ -38,5 +38,29 @@ describe('a refusal about one field', () => {
 
   it('says the screen words when the API never answered', () => {
     expect(refusalFor(new Error('offline'), 'roleId', 'Failed.')).toBe('Failed.');
+  });
+});
+
+describe('a refusal said whole', () => {
+  it('says the first violation, whichever field it is on', () => {
+    const one = refused({
+      violations: [{ propertyPath: 'membershipId', message: 'Not a member.', code: 'x' }],
+    });
+
+    expect(refusalSaid(one, 'Failed.')).toBe('Not a member.');
+  });
+
+  it('says the detail, then the title, with no violation', () => {
+    expect(refusalSaid(refused({ detail: 'Already on the event.' }), 'Failed.')).toBe(
+      'Already on the event.',
+    );
+    expect(refusalSaid(refused(), 'Failed.')).toBe(
+      'Some of the information provided is not valid.',
+    );
+  });
+
+  it('says the screen words when the API never answered or failed itself', () => {
+    expect(refusalSaid(new Error('offline'), 'Failed.')).toBe('Failed.');
+    expect(refusalSaid(refused({ status: 503 }), 'Failed.')).toBe('Failed.');
   });
 });

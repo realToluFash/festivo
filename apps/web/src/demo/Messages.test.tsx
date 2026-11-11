@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import i18next from 'i18next';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -68,7 +69,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       .parentElement as HTMLElement;
     const links = within(group).getAllByRole('link');
 
-    expect(links).toHaveLength(94);
+    expect(links).toHaveLength(107);
     expect(links[0]?.getAttribute('href')).toBe(`${AT}?state=first`);
     expect(links[7]?.getAttribute('href')).toBe(`${AT}?state=noticeCost`);
     expect(links[26]?.getAttribute('href')).toBe(`${AT}?state=bell`);
@@ -514,6 +515,24 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     ).toBeDefined();
     expect(screen.getByRole('heading', { level: 3, name: 'Everyone · 96' })).toBeDefined();
   });
+
+  it.each(['Write a follow-up', 'Write to your guests'])(
+    'keeps typing in order when the first letter in %s opens the composer',
+    SLOW,
+    async (name) => {
+      await messages(name === 'Write a follow-up' ? 'sent' : 'inUse');
+
+      fireEvent.change(screen.getByRole('textbox', { name }), { target: { value: 'H' } });
+      const field = await screen.findByRole('textbox', { name: 'Message' });
+
+      await vi.waitFor(() => expect(document.activeElement).toBe(field));
+      const caret = window.getSelection()!.getRangeAt(0);
+
+      expect(caret.collapsed).toBe(true);
+      caret.insertNode(document.createTextNode('ello there'));
+      expect(field.textContent).toBe('Hello there');
+    },
+  );
 
   it('keeps the sent message and adds a follow-up after it', SLOW, async () => {
     await messages('sent');
@@ -1128,6 +1147,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     const search = within(picker).getByRole('searchbox', { name: 'Search guests' });
 
     await vi.waitFor(() => expect(document.activeElement).toBe(search));
+    expect(search.closest('label')?.className).toBe('mg-search');
     fireEvent.change(search, { target: { value: 'claude' } });
     expect(within(picker).getAllByRole('radio')).toHaveLength(1);
     fireEvent.change(search, { target: { value: 'Dubois' } });
@@ -1138,6 +1158,24 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     expect(await screen.findByText('Matched to Camille Dubois.', {}, WAIT)).toBeDefined();
     expect(screen.getByRole('textbox', { name: 'Your answer' })).toBeDefined();
     expect(screen.getByRole('link', { name: 'Messages, 4 waiting' })).toBeDefined();
+  });
+
+  it('keeps the dialogs’ Cancel in the demo’s English in a French browser', SLOW, async () => {
+    await i18next.changeLanguage('fr');
+    try {
+      await messages('later');
+      const when = await screen.findByRole('dialog', { name: 'When it goes' });
+      expect(within(when).getByRole('button', { name: 'Cancel' })).toBeDefined();
+      fireEvent.click(within(when).getByRole('button', { name: 'Cancel' }));
+      cleanup();
+
+      await messages('notMatched');
+      fireEvent.click(screen.getByRole('button', { name: 'Choose the guest' }));
+      const picker = await screen.findByRole('dialog', { name: 'Who is this?' });
+      expect(within(picker).getByRole('button', { name: 'Cancel' })).toBeDefined();
+    } finally {
+      await i18next.changeLanguage('en');
+    }
   });
 
   it('opens Tell guests when Overview’s start time is saved', SLOW, async () => {
@@ -1458,4 +1496,76 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       'false',
     );
   });
+
+  it('says who WhatsApp reaches under the ticks whenever it is ticked', SLOW, async () => {
+    await messages('whatsAppLine');
+    const line =
+      'WhatsApp reaches 4 of 142 · 102 have no mobile number, 2 stopped WhatsApp and 34 haven’t agreed to WhatsApp';
+
+    expect(screen.getByRole('checkbox', { name: 'WhatsApp' }).getAttribute('aria-checked')).toBe(
+      'true',
+    );
+    expect(screen.getByText(line)).toBeDefined();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'WhatsApp' }));
+    expect(screen.queryByText(line)).toBeNull();
+  });
+
+  it(
+    'checks with WhatsApp: its reach beside who can’t be told, its credits by country',
+    SLOW,
+    async () => {
+      await messages('checkWhatsApp');
+      const check = screen.getByRole('alertdialog', { name: 'Check it before it goes' });
+
+      expect(within(check).getByText('WhatsApp · 4')).toBeDefined();
+      expect(
+        within(check).getByText(
+          'WhatsApp reaches 4 of 142 · 102 have no mobile number, 2 stopped WhatsApp and 34 haven’t agreed to WhatsApp',
+        ),
+      ).toBeDefined();
+      expect(
+        within(check).getByText('9 can’t be told · it is on their page if they open it'),
+      ).toBeDefined();
+      expect(
+        within(check).getByText(
+          'Texts and WhatsApp messages use 48 credits. Credits after sending: 1,452.',
+        ),
+      ).toBeDefined();
+
+      fireEvent.click(within(check).getByRole('checkbox', { name: 'WhatsApp' }));
+      expect(within(check).queryByText(/^WhatsApp reaches/)).toBeNull();
+      expect(
+        within(check).getByText('Texts use 39 credits. Credits after sending: 1,461.'),
+      ).toBeDefined();
+    },
+  );
+
+  it(
+    'shows WhatsApp’s receipts: Sent, Delivered, Read with its time, Failed, and Not sent with its reason',
+    SLOW,
+    async () => {
+      await messages('whatsAppRead');
+      expect(
+        await screen.findByRole('heading', { level: 2, name: 'Reached 124 of 142' }),
+      ).toBeDefined();
+      const four = screen.getByRole('region', { name: 'WhatsApp · 4' });
+
+      expect(within(four).getAllByText('Email · Delivered')).toHaveLength(4);
+      expect(within(four).getByText('WhatsApp · Sent')).toBeDefined();
+      expect(within(four).getByText('WhatsApp · Delivered')).toBeDefined();
+      expect(within(four).getByText('WhatsApp · Read')).toBeDefined();
+      expect(within(four).getByText('WhatsApp · Failed')).toBeDefined();
+      expect(four.textContent).toContain('WhatsApp · Sent · 18:20');
+      expect(four.textContent).toContain('WhatsApp · Delivered · 18:21');
+      expect(four.textContent).toContain('WhatsApp · Read · 18:24');
+      expect(screen.queryByText(/waiting for credits/)).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Send without WhatsApp' })).toBeNull();
+      const cant = screen.getByRole('region', { name: 'Can’t be told · 18' });
+
+      expect(cant.textContent).toContain('WhatsApp · Not sent · Has not agreed to WhatsApp');
+      expect(cant.textContent).toContain('WhatsApp · Not sent · Stopped WhatsApp');
+      expect(row(/^Parking at The Landmark, .*Not reached · 18$/)).toBeDefined();
+    },
+  );
 });

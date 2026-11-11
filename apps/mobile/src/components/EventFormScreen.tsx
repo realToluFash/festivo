@@ -6,6 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { DESTINATION_HREF } from '../kit/appNav.ts';
+import { offersEdit } from '../kit/eventEdit.ts';
 import { eventHref } from '../kit/eventNav.ts';
 import { formTitles } from '../kit/formTitles.ts';
 import { goToArea, goUpToEvent } from '../kit/upToEvent.ts';
@@ -80,9 +81,6 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
   const title = useRef<TextHandle>(null);
   const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
 
-  if (organisation != null && !roleHolds(organisation, 'events.manage'))
-    return <Redirect href={eventHref(eventId)} />;
-
   return (
     <FormFrame
       kind={kind}
@@ -132,7 +130,6 @@ function EditEventLoad({
   const [refresh, setRefresh] = useState(0);
   const [reads, setReads] = useState(0);
   const [shownAt, setShownAt] = useState<Date | null>(null);
-  const manages = organisation != null && roleHolds(organisation, 'events.manage');
   const navigation = useNavigation();
   const { watch, stale, refreshing } = useOffline({
     loaded: 'event' in load,
@@ -145,7 +142,7 @@ function EditEventLoad({
 
   // Once the form shows, a load only asks whether Soirely answers: the form and the tag it saves against stay as opened (Decided, 2 Nov).
   useEffect(() => {
-    if (organisationId == null || !manages) return;
+    if (organisationId == null) return;
     let live = true;
     const settle = (read: Load) => live && setLoad((was) => formAfterLoad(was, read));
 
@@ -166,7 +163,7 @@ function EditEventLoad({
     return () => {
       live = false;
     };
-  }, [eventId, organisationId, manages, attempt, refresh, watch]);
+  }, [eventId, organisationId, attempt, refresh, watch]);
 
   return (
     <>
@@ -207,7 +204,8 @@ function EditEventLoad({
           heading
         />
       )}
-      {'event' in load && organisation != null && (
+      {'event' in load && !offersEdit(load.event) && <Redirect href={eventHref(eventId)} />}
+      {'event' in load && organisation != null && offersEdit(load.event) && (
         <Arrived style={formGap(kind)}>
           <EventForm
             key={reads}

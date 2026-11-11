@@ -273,26 +273,22 @@ function maximisedRegion(locale: Intl.Locale | null): string | undefined {
   }
 }
 
-function laidOut<E extends CalendarEvent>(
-  week: string[],
-  month: CalendarMonth,
-  days: ReadonlyMap<string, CalendarItem<E>[]>,
-): CalendarCell<E>[] {
+/** The row each multi-day event takes across one week, first fit in the order its days list it; Calendar's month and Today's strip both stack by it. */
+export function weekLanes<E extends CalendarEvent>(
+  week: readonly (readonly CalendarItem<E>[])[],
+): Map<string, number> {
   const lanes = new Map<string, number>();
   const taken: Set<number>[] = week.map(() => new Set());
 
-  week.forEach((day, at) => {
-    for (const item of days.get(day) ?? []) {
+  week.forEach((items, at) => {
+    for (const item of items) {
       if (item.kind !== 'event' || !item.multiDay || lanes.has(item.event.id)) continue;
 
       let lane = 0;
       const span = week
         .slice(at)
         .findIndex(
-          (later) =>
-            !(days.get(later) ?? []).some(
-              (one) => one.kind === 'event' && one.event.id === item.event.id,
-            ),
+          (later) => !later.some((one) => one.kind === 'event' && one.event.id === item.event.id),
         );
       const reach = span === -1 ? week.length : at + span;
 
@@ -301,6 +297,16 @@ function laidOut<E extends CalendarEvent>(
       lanes.set(item.event.id, lane);
     }
   });
+
+  return lanes;
+}
+
+function laidOut<E extends CalendarEvent>(
+  week: string[],
+  month: CalendarMonth,
+  days: ReadonlyMap<string, CalendarItem<E>[]>,
+): CalendarCell<E>[] {
+  const lanes = weekLanes(week.map((day) => days.get(day) ?? []));
 
   return week.map((day) => {
     const items = days.get(day) ?? [];

@@ -59,11 +59,26 @@ export function standViewer(viewer: RulesViewer): StandViewer {
 const BY = { name: YOU.name };
 
 export const CHANGES: readonly Change[] = [
-  { rule: 'administratorsNeedTwoFactor', now: true, was: false, at: '2026-10-28T15:12', by: BY },
-  { rule: 'inactivityTimeoutDays', now: 30, was: null, at: '2026-09-01T10:05', by: BY },
+  {
+    entry: 'demo-2',
+    rule: 'administratorsNeedTwoFactor',
+    now: true,
+    was: false,
+    at: '2026-10-28T15:12',
+    by: BY,
+  },
+  {
+    entry: 'demo-1',
+    rule: 'inactivityTimeoutDays',
+    now: 30,
+    was: null,
+    at: '2026-09-01T10:05',
+    by: BY,
+  },
 ];
 
 const EVERYONE: Change = {
+  entry: 'demo-4',
   rule: 'everyoneNeedsTwoFactor',
   now: true,
   was: false,
@@ -72,6 +87,7 @@ const EVERYONE: Change = {
 };
 
 const GOOGLE_ONLY: Change = {
+  entry: 'demo-3',
   rule: 'providerOnly',
   now: true,
   was: false,

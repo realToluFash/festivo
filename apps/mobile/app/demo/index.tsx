@@ -6,13 +6,19 @@ import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
 import { BOLD_TEXT_BOARDS } from '../../src/demo/boldText/BoldTextBoards.ts';
 import { BUDGET_BOARDS } from '../../src/demo/budget/BudgetBoards.ts';
+import { TEXT_SIZE_BOARDS } from '../../src/demo/textSize/TextSizeBoards.ts';
 import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
+import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
 import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
 import { GUESTS_BOARDS } from '../../src/demo/guests/GuestsBoards.ts';
+import { PASS_BOARDS } from '../../src/demo/pass/PassBoards.ts';
+import { NEXT_BOARDS, QUEUE_BOARDS } from '../../src/demo/queue/QueueBoards.ts';
+import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowItsGoingBoards.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
+import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 interface Board {
@@ -28,6 +34,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     boards: BOLD_TEXT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
+    page: 'Text size · the phone’s tab bar and Settings card at twice the size (sc-37298)',
+    boards: TEXT_SIZE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
     page: 'Today · where signing in lands',
     boards: [
       { title: 'A planning day', what: 'Four things need you', href: '/demo/today' },
@@ -35,6 +45,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'A planning day · invitations not sent',
         what: 'The party with nobody invited',
         href: '/demo/today?moment=plan&invites=none',
+      },
+      {
+        title: 'A planning day · the event starts later today',
+        what: 'The party at 19:00, read at 09:41',
+        href: '/demo/today?moment=plan&starts=later',
       },
       {
         title: 'Needs you · every overdue form',
@@ -155,6 +170,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       { title: 'A quiet week', what: 'Nothing due, nothing on', href: '/demo/today?moment=quiet' },
       { title: 'A first run', what: 'No events yet', href: '/demo/today?moment=first' },
     ],
+  },
+  {
+    page: 'The switcher · every state',
+    boards: SWITCHER_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Create an organisation · B · A short walk',
@@ -451,6 +470,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/security?state=forgotSent',
       },
       {
+        title: 'Security · two-factor did not load',
+        what: 'No card; Try again in its section',
+        href: '/demo/settings/security?state=factorFailed',
+      },
+      {
+        title: 'Security · Apple linked, no card',
+        what: 'The done line alone, then the failure',
+        href: '/demo/settings/security?state=factorFailedLinked',
+      },
+      {
+        title: 'Security · signed out, still loading',
+        what: 'The line alone, then back in the card',
+        href: '/demo/settings/security?state=factorLoadingSignedOut',
+      },
+      {
         title: 'Notifications',
         what: 'How you hear, a row per kind',
         href: '/demo/settings/notifications',
@@ -580,6 +614,101 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Members · the owner claim',
         what: 'Julien claims Ire Events by its domain',
         href: '/demo/settings/members?state=claim',
+      },
+      {
+        title: 'Members · the owner claim withdrawn',
+        what: 'Withdraw your claim? on its screen',
+        href: '/demo/settings/members?state=withdraw',
+      },
+      {
+        title: 'Members · the owner claim found',
+        what: 'Record found, Withdraw my claim',
+        href: '/demo/settings/members?state=claimFound',
+      },
+      {
+        title: 'Members · another admin’s claim',
+        what: 'Julien sees Ana Souza becoming the owner',
+        href: '/demo/settings/members?state=claimTheirs',
+      },
+      {
+        title: 'Members · stop another admin’s claim',
+        what: 'Stop Ana Souza’s claim?',
+        href: '/demo/settings/members?state=claimStop',
+      },
+      {
+        title: 'Members · another admin’s claim found',
+        what: 'Ana’s record is found',
+        href: '/demo/settings/members?state=claimTheirsFound',
+      },
+      {
+        title: 'Members · a claim stopped',
+        what: 'You stopped Ana Souza’s claim',
+        href: '/demo/settings/members?state=claimStopped',
+      },
+      {
+        title: 'Members · no active owner',
+        what: 'A claim was stopped, only support restores',
+        href: '/demo/settings/members?state=claimClosed',
+      },
+      {
+        title: 'Members · the owner claim refused',
+        what: 'Tom, an admin at gmail.com, is refused',
+        href: '/demo/settings/members?state=claimRefused',
+      },
+      {
+        title: 'Members · the domain managed elsewhere',
+        what: 'ire.events is managed by another organisation',
+        href: '/demo/settings/members?state=claimManaged',
+      },
+      {
+        title: 'Members · two requests waiting',
+        what: 'Lucía Gómez and Kwame Asante',
+        href: '/demo/settings/members?state=waitingTwo',
+      },
+      {
+        title: 'Members · approve a request',
+        what: 'Lucía’s request, the role to give',
+        href: '/demo/settings/members?state=approving',
+      },
+      {
+        title: 'Members · turn down a request',
+        what: 'Turn down Lucía Gómez?',
+        href: '/demo/settings/members?state=turningDown',
+      },
+      {
+        title: 'Members · a request approved',
+        what: 'Lucía Gómez is a Member',
+        href: '/demo/settings/members?state=approved',
+      },
+      {
+        title: 'Members · a person',
+        what: 'Priya Shah’s page',
+        href: '/demo/settings/members?state=priya',
+      },
+      {
+        title: 'Members · in other organisations',
+        what: 'Priya is in 2 other organisations',
+        href: '/demo/settings/members?state=alsoMember',
+      },
+      {
+        title: 'Members · removing a person',
+        what: 'Remove Priya Shah from Ire Events?',
+        href: '/demo/settings/members?state=removing',
+      },
+      {
+        title: 'Members · making an owner',
+        what: 'Make Ana an owner, your password and code',
+        href: '/demo/settings/members?state=makingOwner',
+      },
+      {
+        title: 'Members · nobody suspended',
+        what: 'The Suspended filter, empty',
+        href: '/demo/settings/members?state=nobodySuspended',
+      },
+      {
+        title: 'Members · nobody left',
+        what: 'The Former filter, empty',
+        href: '/demo/settings/members?state=nobodyLeft',
       },
       {
         title: 'Members · loading',
@@ -1277,6 +1406,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/people?state=roleFails',
       },
       {
+        title: 'People · some added, one refused',
+        what: 'Tick Kofi then Julien: Kofi goes in, Julien stays ticked',
+        href: '/demo/people?state=addPartial',
+      },
+      {
+        title: 'People · nobody left to add',
+        what: 'Everyone in Ire Events is on it already',
+        href: '/demo/people?state=everyoneOn',
+      },
+      {
         title: 'People · loading',
         what: 'Loading the people on this event',
         href: '/demo/people?state=loading',
@@ -1285,6 +1424,46 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'People · failed',
         what: 'Could not load, Try again',
         href: '/demo/people?state=failed',
+      },
+      {
+        title: 'People card',
+        what: 'On the Overview, after Guests: 5, Priya leads',
+        href: '/demo/events/evt-wed-4',
+      },
+      {
+        title: 'People card · you alone',
+        what: '1 on this event, Lead · You',
+        href: '/demo/events/evt-wed-4?people=one',
+      },
+      {
+        title: 'People card · no Lead',
+        what: '4 on this event, no second line',
+        href: '/demo/events/evt-wed-4?people=noLead',
+      },
+      {
+        title: 'People card · nobody yet',
+        what: 'Nobody is on this event yet, still opens People',
+        href: '/demo/events/evt-wed-4?people=nobody',
+      },
+      {
+        title: 'People card · loading',
+        what: 'The frame, the count held',
+        href: '/demo/events/evt-wed-4?people=loading',
+      },
+      {
+        title: 'People card · failed',
+        what: 'Could not load, Try again',
+        href: '/demo/events/evt-wed-4?people=failed',
+      },
+      {
+        title: 'People card · read only',
+        what: 'Ana sees the same card, People opens read only',
+        href: '/demo/events/evt-wed-4?people=readOnly',
+      },
+      {
+        title: 'People card · a long name',
+        what: 'The Lead line wraps under the count, nothing cut',
+        href: '/demo/events/evt-wed-4?people=long',
       },
     ],
   },
@@ -1303,6 +1482,38 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Seating · A The room',
     boards: SEATING_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the pass’s print controls (sc-4018) · tablet landscape',
+    boards: PASS_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the section’s queue (sc-36033) · phone, tablet portrait and landscape',
+    boards: QUEUE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the waiter’s Next follows the queue (sc-36033) · phone',
+    boards: NEXT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · Team, the floor lead moves someone (sc-36034) · phone and tablet landscape',
+    boards: TEAM_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the moved person’s own screen (sc-36034) · phone',
+    boards: MOVED_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · How it’s going (sc-34107) · phone from 320 px',
+    boards: SERVICE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the waiter’s Next, a tray the lead paused or gave (sc-34107) · phone',
+    boards: SERVICE_NEXT_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
   },
   {
     page: 'Guests · A Summary first',
@@ -1380,6 +1591,51 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Calendar · reset your link?',
         what: 'Reset link, or keep it',
         href: '/demo/calendar?state=resetLink',
+      },
+    ],
+  },
+  {
+    page: 'Calendar · Only what needs you',
+    boards: [
+      {
+        title: 'Calendar · the Show menu',
+        what: 'Only what needs you, chosen',
+        href: '/demo/calendar?state=needsMenu',
+      },
+      {
+        title: 'Calendar · only what needs you',
+        what: 'Overdue on Nov 2 and 3, +1 more on Nov 4',
+        href: '/demo/calendar?state=needsMonth',
+      },
+      {
+        title: 'Calendar · today open',
+        what: 'Confirm the cake overdue, then the band',
+        href: '/demo/calendar?state=needsDay',
+      },
+      {
+        title: 'Calendar · Agenda',
+        what: 'Landing on today, Nov 2 overdue above',
+        href: '/demo/calendar?state=needsAgenda',
+      },
+      {
+        title: 'Calendar · a month with nothing for you',
+        what: 'December 2026',
+        href: '/demo/calendar?state=needsEmptyMonth',
+      },
+      {
+        title: 'Calendar · a day with nothing for you',
+        what: 'Sat, Nov 14 open, two events',
+        href: '/demo/calendar?state=needsEmptyDay',
+      },
+      {
+        title: 'Calendar · a reader who can only view',
+        what: 'Nothing needs you in November',
+        href: '/demo/calendar?state=needsReadOnly',
+      },
+      {
+        title: 'Calendar · Agenda, nothing today',
+        what: 'Today lands on Wed, Nov 4',
+        href: '/demo/calendar?state=needsTodayEmpty',
       },
     ],
   },
@@ -1553,6 +1809,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/new-password',
       },
       { title: 'This link has expired', what: 'One button', href: '/demo/link-expired' },
+      {
+        title: 'That did not work',
+        what: 'Reading the link failed: Try again reads it again',
+        href: '/demo/read-failed',
+      },
     ],
   },
   {

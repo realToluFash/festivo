@@ -17,8 +17,21 @@ export const PERSONALISATION_LANDING = '/settings/personalisation?saved=1' satis
 export type Reload = (reason: string) => Promise<void>;
 
 // Loaded when it is needed: the API client imports this module, and expo's entry needs the app's runtime.
-export const reloadAppAsync: Reload = (reason) =>
-  import('expo').then((expo) => expo.reloadAppAsync(reason));
+// Never the react-native namespace itself: copying it reads every getter, and PushNotificationIOS's throws in Expo Go.
+// Expo's reload does nothing outside a ReactActivity, as in Expo Go on Android; a development bundle reloads through DevSettings everywhere.
+export const reloadAppAsync: Reload = async (reason) => {
+  if (__DEV__) {
+    const { devReload } = await import('./devReload.ts');
+    devReload(reason);
+    return;
+  }
+
+  const expo = await import('expo');
+  await expo.reloadAppAsync(reason);
+};
+
+/** A reload that took has ended this JS by now; one still running after it never restarted. */
+export const RESTART_GRACE_MS = 2000;
 
 /** Undefined until the account has been read on this launch. */
 let heard: Choice | undefined;
@@ -64,29 +77,33 @@ export function keepLaunchScheme(launchedIn: string = schemeAtLaunch): void {
   if (scheme != null) keepDeviceScheme(scheme);
 }
 
-let restarting = false;
+let restart: Promise<boolean> | null = null;
 
-/** Keeps the scheme on the device and starts the JS again in it; false, and nothing restarted, where the device cannot keep it. */
-export async function restartIn(
+/** Keeps the scheme on the device and starts the JS again in it, which never answers; false, and nothing restarted, where the device cannot keep it or the reload never came. A restart asked for during another answers with that one. */
+export function restartIn(
   scheme: Scheme,
   landing: string | null,
   reload: Reload = reloadAppAsync,
 ): Promise<boolean> {
-  if (restarting) return true;
-  if (!keepDeviceScheme(scheme)) return false;
+  if (restart != null) return restart;
+  if (!keepDeviceScheme(scheme)) return Promise.resolve(false);
   if (landing != null) holdLanding(landing);
-  restarting = true;
 
-  try {
-    await reload(`colour scheme ${scheme}`);
+  restart = (async () => {
+    try {
+      await reload(`colour scheme ${scheme}`);
+      await new Promise((resolve) => setTimeout(resolve, RESTART_GRACE_MS));
+    } catch {
+      // Not restarted: below, as when the grace runs out.
+    }
 
-    return true;
-  } catch {
-    restarting = false;
+    restart = null;
     takeLanding();
 
     return false;
-  }
+  })();
+
+  return restart;
 }
 
 /** On an install's first launch, the colours kept from before an uninstall are forgotten, and the JS starts again in the default where it opened in them. */
@@ -138,7 +155,7 @@ export function readsMe(input: RequestInfo | URL, init?: RequestInit): boolean {
   return method.toUpperCase() === 'GET' && ME.test(url);
 }
 
-/** Every read of the person carries their colours, which the client's Account leaves out; cloned before the client reads the body. */
+/** Every read of the person carries their colours, from whichever screen made it, so each is heard here rather than at every caller; cloned before the client reads the body. */
 export function heardFrom(response: Response): Response {
   if (!response.ok) return response;
 

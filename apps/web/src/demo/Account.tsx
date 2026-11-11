@@ -33,6 +33,7 @@ import {
 } from '../components/AccountDialogs.tsx';
 import { SAMPLE } from './rules.ts';
 import type { Viewer } from './settings.ts';
+import { saveName, savedNameOf } from './savedName.ts';
 import { AboutRow, ContactsBlock, PersonCard, RowOffers } from '../components/AccountParts.tsx';
 import { Ask, Head, TitleRow } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
@@ -40,7 +41,7 @@ import type { Tell } from '../components/SettingsParts.tsx';
 /** Your account at a desk in B · Summary first (Web-Account-*.dc.html): the app's page, the same for every role. */
 export function Account({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
   const [start] = useState(() => accountStart(state, viewer));
-  const [name, setName] = useState(start.name);
+  const [name, setName] = useState(() => savedNameOf(viewer.key) ?? start.name);
   const [zone, setZone] = useState(start.zone);
   const [emails, setEmails] = useState(start.emails);
   const [phones, setPhones] = useState(start.phones);
@@ -165,6 +166,7 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
           onSave={(next) =>
             sampleSave(null, () => {
               setName(next);
+              saveName(viewer.key, next);
               finish(W.nameSaved(next));
             })
           }

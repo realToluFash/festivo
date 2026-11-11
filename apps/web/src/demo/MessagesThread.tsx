@@ -13,6 +13,7 @@ import {
   type Sched,
   ANSWERS,
   GUESTS,
+  RECEIPTS,
   HELD_TOO_LONG,
   MATCHES,
   MW,
@@ -574,7 +575,7 @@ function ManyThread({ id }: { id: ConvoId }) {
   const { inbox, to: event } = useInbox();
   const first = outsIn(inbox, id)[0];
   const resending = inbox.resend?.thread === id;
-  const fixed = id === 'parking' || id === 'invite';
+  const fixed = id === 'parking' || id === 'invite' || id === 'receipts';
   const to: Audience = fixed ? { kind: 'all' } : (first?.to ?? { kind: 'all' });
   const title = fixed
     ? id === 'invite'
@@ -586,7 +587,9 @@ function ManyThread({ id }: { id: ConvoId }) {
   const line = [
     toLine(to, event.book.groups),
     countOf(to, event.book.groups),
-    id === 'invite' ? listed([MW.email, MW.sms]) : toldWords(first?.ticks ?? TICKS),
+    id === 'invite'
+      ? listed([MW.email, MW.sms])
+      : toldWords(id === 'receipts' ? RECEIPTS.ticks : (first?.ticks ?? TICKS)),
   ]
     .filter((part) => part != null && part !== '')
     .join(' · ');

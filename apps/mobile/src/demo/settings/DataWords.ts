@@ -13,10 +13,10 @@ export const DATA_WORDS = {
   contact: 'Contact Soirely about Enterprise',
   contacting: 'Contacting Soirely has its own design.',
   enterprise: 'Enterprise',
-  nothing: 'Nothing needs you',
+  nothing: 'Nothing needs your attention',
   nothingLine: 'ire.events is proved.',
   nothingSet: 'Nothing is set up yet',
-  nothingSetLine: `Start by proving ${ORG}’ email domain.`,
+  nothingSetLine: `Start by proving the email domain of ${ORG}.`,
   locked: 'These come with Enterprise',
   lockedLine: 'Email domains and the audit log.',
   left: (day: string) => `${ORG} left Enterprise on ${day}`,
@@ -27,7 +27,7 @@ export const DATA_WORDS = {
     audit: 'Audit log',
     auditLine: 'Who did what, for 365 days',
     noDomains: 'No domains yet',
-    lockedDomains: `Prove your domain and keep its accounts to ${ORG}`,
+    lockedDomains: `Prove your domain and limit its accounts to ${ORG}`,
     keptDomain: (domain: string) => `${domain} kept as it was`,
   },
 } as const;
@@ -36,7 +36,7 @@ export const DOMAINS_WORDS = {
   title: 'Email domains',
   block: 'Domains',
   prove: 'Prove a domain',
-  foot: 'Proving a domain lets nobody join. Company domain joining is its own list, in Organisation.',
+  foot: 'Proving a domain does not let anyone join. Company domain joining is its own list, in Organisation.',
   none: 'No domains yet.',
   loading: 'Loading Email domains…',
   failed: 'We could not load Email domains.',
@@ -65,7 +65,7 @@ export const DOMAINS_WORDS = {
     verify: 'Verify',
     verifying: 'Verifying…',
     lead: (domain: string) =>
-      `Add this record where ${possessive(domain)} DNS is managed, then press Verify.`,
+      `Add this record where the DNS for ${domain} is managed, then press Verify.`,
     type: 'Type',
     name: 'Name',
     value: 'Value',
@@ -76,7 +76,7 @@ export const DOMAINS_WORDS = {
     title: 'Prove a domain',
     verb: 'Add',
     field: 'Domain',
-    help: 'Like ire.events. A subdomain needs adding on its own.',
+    help: 'For example, ire.events. A subdomain needs adding on its own.',
     publicDomain: 'You cannot use a public email domain.',
     taken:
       'Another organisation has already proved this domain. Contact Soirely support if it is yours.',
@@ -85,11 +85,11 @@ export const DOMAINS_WORDS = {
     waiting: (domain: string) => `${domain} is waiting for its record`,
     waitingLine: (at: string) => `We check every hour until ${at}.`,
     seeRecord: 'See the record',
-    empty: `Prove ${ORG}’ email domain`,
-    emptyLine: `Add a DNS record where your domain is managed. Once it is proved, you can keep the accounts at it to ${ORG}.`,
+    empty: `Prove the email domain of ${ORG}`,
+    emptyLine: `Add a DNS record where your domain is managed. Once it is proved, you can limit the accounts at it to ${ORG}.`,
     proved: (domain: string) => `${domain} is proved`,
     provedLine: (at: string) => `Proved ${at}.`,
-    keep: `Keep its accounts to ${ORG}`,
+    keep: (domain: string) => `Limit ${domain} accounts to ${ORG}`,
     failed: (domain: string) => `${domain} was not proved`,
     failedLine: (at: string) => `We stopped checking on ${at}. Add the record, then Verify.`,
     missing: (domain: string) => `The record for ${domain} is missing`,
@@ -98,7 +98,7 @@ export const DOMAINS_WORDS = {
     removed: (domain: string) => `${domain} was removed`,
     removedLine: 'It is no longer proved.',
     locked: 'Available on Enterprise',
-    lockedLine: `Prove that ${ORG} owns its domain, then keep the accounts at it to ${ORG}.`,
+    lockedLine: `Prove that ${ORG} owns its domain, then limit the accounts at it to ${ORG}.`,
     off: (day: string) => `Switched off on ${day}`,
     offLine: `${ORG} left Enterprise. Its domains are kept as they were, and come back on with Enterprise.`,
     onlyProved: (domain: string) => `${domain} is proved`,
@@ -120,7 +120,7 @@ export const DOMAINS_WORDS = {
     keep: 'Keep it',
   },
   onlyAsk: {
-    title: (domain: string) => `Keep ${domain} accounts to ${ORG}?`,
+    title: (domain: string) => `Limit ${domain} accounts to ${ORG}?`,
     line: (at: string, domain: string) =>
       `From ${at}, 14 days from now, an account whose main email address is at ${domain} can only be a member of ${ORG}.`,
     more: (domain: string) =>
@@ -129,15 +129,10 @@ export const DOMAINS_WORDS = {
   },
 } as const;
 
-/** ire.events’ DNS, ireevents.com’s DNS: as the spec writes Ire Events’. */
-export function possessive(name: string): string {
-  return name.endsWith('s') ? `${name}’` : `${name}’s`;
-}
-
 export const AUDIT_WORDS = {
   title: 'Audit log',
   says: `Who did what in ${ORG}`,
-  line: 'Kept for 365 days. An entry can’t be changed or deleted, by anybody.',
+  line: 'Kept for 365 days. Nobody can change or delete an entry.',
   export: 'Export these entries',
   loading: 'Loading the audit log…',
   failed: 'We could not load the audit log.',
@@ -156,7 +151,7 @@ export const AUDIT_WORDS = {
   entry: 'Entry',
   done: 'Done',
   back: 'Audit log',
-  fixed: 'An entry can’t be changed or deleted, by anybody.',
+  fixed: 'Nobody can change or delete an entry.',
   labels: {
     when: 'When',
     who: 'Who',
@@ -179,7 +174,7 @@ export const AUDIT_WORDS = {
   csv: 'CSV',
   jsonLines: 'JSON Lines',
   exportLine: 'Up to 10,000 entries download at once. More are prepared, and we email you a link.',
-  downloading: (format: string) => `Downloading ${ORG}’ audit log as ${format}.`,
+  downloading: (format: string) => `Downloading the audit log as ${format}.`,
   preparing: 'Preparing your export',
   preparingLine: (email: string) =>
     `We’ll email ${email} a link when it’s ready. It works once, for 24 hours.`,
