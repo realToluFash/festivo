@@ -12,9 +12,19 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'createWalk.name'
 - inputText: 'Ọmọ Ẹ̀gbẹ́ Lagos'
-- hideKeyboard
-- tapOn:
-    id: 'createWalk.primary'
+# On iOS the name field's Return continues the walk; hideKeyboard stops an iPhone run (README).
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+      - tapOn:
+          id: 'createWalk.primary'
 - waitForAnimationToEnd: { timeout: 3000 }
 - assertVisible: '{{t:createOrganisation.whereTitle}}'
 - assertVisible: '{{t:createOrganisation.fromDevice}}'
@@ -23,7 +33,17 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'createWalk.search'
 - inputText: 'Ant'
-- hideKeyboard
+# On iOS the search field's Return puts the keys away.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - waitForAnimationToEnd: { timeout: 3000 }
 - assertVisible: '{{t:createOrganisation.noneYet}}'
 - takeScreenshot: words-03-antarctica

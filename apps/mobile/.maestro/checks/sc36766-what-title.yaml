@@ -7,7 +7,18 @@ appId: host.exp.Exponent
       id: 'createWalk.name'
     timeout: 20000
 - waitForAnimationToEnd: { timeout: 3000 }
-- hideKeyboard
+# The outcome is the keys put away by hand: on an iPhone a tap on blank page, since hideKeyboard hangs there (README).
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: '2%,45%'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - waitForAnimationToEnd: { timeout: 3000 }
 - assertVisible: '{{t:createOrganisation.whatTitle}}'
 - takeScreenshot: what-title
