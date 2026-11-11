@@ -696,6 +696,23 @@ export interface PersonView {
   handOver: boolean;
 }
 
+/** sc-40153's names: 89 characters with Yoruba marks, and one word of 100 that has nowhere to break. */
+export const LONG_NAME =
+  'Ẹgbẹ́ Ọ̀rẹ́ Àṣà Ìbílẹ̀ Ọ̀ṣun Òṣogbo àti Ilé-Ifẹ̀, Ọ̀yọ́, Abẹ́òkúta, Ìjẹ̀bú-Òde àti Ẹ̀kìtì';
+export const ONE_WORD_NAME =
+  'TheGrandBallroomWeddingsGalasAndGardenPartiesCompanyOfLagosLisbonMadridMonterreyAndPortoAlegreEvents';
+
+export function organisationOf(state: string): string {
+  if (state.startsWith('longName')) return LONG_NAME;
+  if (state.startsWith('oneWordName')) return ONE_WORD_NAME;
+  return ORGANISATION;
+}
+
+/** The desk shell does not reflow at 320 until sc-32279, so these states hold the page's column to a 320 page's. */
+export function at320(state: string): boolean {
+  return state.endsWith('At320');
+}
+
 export const LOSES = `They lose access on their next request. Their events stay with ${ORGANISATION}.`;
 const OWNER_ONLY = 'Only an owner can change an owner’s role or remove them.';
 
@@ -1040,6 +1057,10 @@ export const MEMBERS_STATES = [
   'former',
   'priya',
   'alsoMember',
+  'longName',
+  'oneWordName',
+  'longNameAt320',
+  'oneWordNameAt320',
   'role',
   'roleAdmin',
   'roleDiscard',
@@ -1288,6 +1309,10 @@ function openOf(state: MembersState, viewer: Pick<Viewer, 'id'>): string | null 
   switch (state) {
     case 'priya':
     case 'alsoMember':
+    case 'longName':
+    case 'oneWordName':
+    case 'longNameAt320':
+    case 'oneWordNameAt320':
     case 'role':
     case 'roleAdmin':
     case 'roleDiscard':

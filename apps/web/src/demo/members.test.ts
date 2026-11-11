@@ -9,11 +9,14 @@ import {
   invitationRow,
   inviteProblem,
   KOFI,
+  LONG_NAME,
   LUCIA,
   MARTA,
   MEMBERS_STATES,
   membersCard,
   membersStart,
+  ONE_WORD_NAME,
+  organisationOf,
   PRIYA,
   personView,
   proofProblem,
@@ -363,5 +366,17 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
       '/demo/settings/members?state=recoveryDone',
       '/demo/settings/members?as=julien&state=recoveryOwn',
     ]);
+  });
+});
+
+describe('sc-40153’s organisation names', () => {
+  it('are 89 characters with marks and 100 with no space, and open on Priya', () => {
+    expect(LONG_NAME).toHaveLength(89);
+    expect(ONE_WORD_NAME).toHaveLength(100);
+    expect(ONE_WORD_NAME).not.toMatch(/\s/u);
+    expect(organisationOf('longName')).toBe(LONG_NAME);
+    expect(organisationOf('oneWordName')).toBe(ONE_WORD_NAME);
+    expect(organisationOf('oneWordNameAt320')).toBe(ONE_WORD_NAME);
+    expect(organisationOf('priya')).toBe('Ire Events');
   });
 });

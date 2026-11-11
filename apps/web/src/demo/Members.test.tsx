@@ -428,3 +428,42 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
     expect(screen.queryByText(/get back in/u)).toBeNull();
   });
 });
+
+describe('Remove from a long-named organisation, wrapped whole (sc-40153)', () => {
+  beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+  afterEach(() => cleanup());
+
+  it.each([
+    ['longName', 'Ẹgbẹ́ Ọ̀rẹ́ Àṣà Ìbílẹ̀ Ọ̀ṣun Òṣogbo àti Ilé-Ifẹ̀, Ọ̀yọ́, Abẹ́òkúta, Ìjẹ̀bú-Òde àti Ẹ̀kìtì'],
+    [
+      'oneWordName',
+      'TheGrandBallroomWeddingsGalasAndGardenPartiesCompanyOfLagosLisbonMadridMonterreyAndPortoAlegreEvents',
+    ],
+  ])(
+    'names the whole of %s’s organisation, in its words and its name, and opens the confirm',
+    async (state, name) => {
+      await members(`/demo/settings/members?state=${state}`);
+
+      const remove = screen.getByRole('button', { name: `Remove from ${name}…` });
+      expect(remove.classList.contains('is-wraps')).toBe(true);
+      expect(
+        screen.getByText(`They lose access on their next request. Their events stay with ${name}.`),
+      ).toBeDefined();
+
+      fireEvent.click(remove);
+      expect(screen.getByRole('alertdialog')).toBeDefined();
+    },
+  );
+
+  it('holds the column to a 320 page’s in the At320 states', async () => {
+    await members('/demo/settings/members?state=longNameAt320');
+
+    expect(screen.getByText('Demo only: a 320 page’s column, 288 wide')).toBeDefined();
+  });
+
+  it('keeps Ire Events as today', async () => {
+    await members('/demo/settings/members?state=priya');
+
+    expect(screen.getByRole('button', { name: 'Remove from Ire Events…' })).toBeDefined();
+  });
+});

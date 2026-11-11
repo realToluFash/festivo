@@ -16,6 +16,7 @@ import {
 import { focusWhenFree, useDeskSplit } from '../layers.ts';
 import { ClaimDialog, InviteDialog, RecoveryAsk, RequestDialog } from './MembersDialogs.tsx';
 import { PersonPage, RoleDialog } from './MembersPerson.tsx';
+import { At320 } from './WrapAction.tsx';
 import {
   approvalRoles,
   ALSO_MEMBER,
@@ -38,6 +39,8 @@ import {
   membersCard,
   type MembersDialog,
   membersStart,
+  organisationOf,
+  at320,
   type Notice,
   ORGANISATION,
   type Person,
@@ -272,7 +275,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
     );
 
   if (person != null) {
-    const page = (
+    const personPage = (
       <PersonPage
         person={person}
         people={people}
@@ -283,6 +286,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         leadsLoad={leadsLoad}
         onLoadLeads={() => setLeadsLoad('retrying')}
         alsoMember={state === 'alsoMember' ? (ALSO_MEMBER[person.id] ?? null) : null}
+        organisation={organisationOf(state)}
         say={say}
         level={split ? 2 : 1}
         tell={tell}
@@ -304,6 +308,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         onHandOver={() => setDialog({ kind: 'handOver', id: person.id })}
       />
     );
+    const page = at320(state) ? <At320>{personPage}</At320> : personPage;
 
     return split ? (
       <>
