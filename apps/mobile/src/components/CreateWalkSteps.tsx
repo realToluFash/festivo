@@ -33,12 +33,14 @@ import { EventNotice } from './EventNotice.tsx';
 import {
   type Country,
   type Naming,
+  type NameInSight,
   type Walk,
   boxWords,
   cardNameSize,
   cardWords,
   countries,
   factsOf,
+  nameInSight,
   rowLabel,
 } from '../kit/createWalk.ts';
 import { FactLine, Question, Refusal, Tag, TWICE, ZoneLine } from './CreateWalkParts.tsx';
@@ -151,12 +153,9 @@ function Preview({ name }: { name: string }) {
 
 // Over 100 and at twice the text, the field's reason or help runs under the keys unless the body
 // scrolls to it; a scroll while the keys still rise stops short, so it goes again once they are up.
-function keepInSight(
-  { viewport, bottom }: { viewport: number; bottom: number },
-  scroller: RefObject<ScrollViewInstance | null>,
-) {
-  const over = bottom + tokens.spaceLg - viewport;
-  if (viewport > 0 && over > 0) scroller.current?.scrollTo({ y: over, animated: true });
+function keepInSight(seen: NameInSight, scroller: RefObject<ScrollViewInstance | null>) {
+  const y = nameInSight(seen);
+  if (y != null) scroller.current?.scrollTo({ y, animated: true });
 }
 
 export function NameStep({
@@ -179,15 +178,27 @@ export function NameStep({
   const sizes = sizesOf(look);
   const [focused, setFocused] = useState(false);
   const scroller = useRef<ScrollViewInstance>(null);
-  const seen = useRef({ viewport: 0, bottom: 0 });
+  const seen = useRef<NameInSight>({
+    viewport: 0,
+    top: 0,
+    fieldEnd: 0,
+    bottom: 0,
+    margin: tokens.spaceLg,
+  });
   const refusal = walk.refusal;
   const edge = focused || refusal != null ? 2 : 1.5;
   const help = t('createOrganisation.nameHelp');
 
   const reveal = (event: LayoutChangeEvent) => {
     const { y, height } = event.nativeEvent.layout;
+    seen.current.fieldEnd += y - seen.current.top;
+    seen.current.top = y;
     seen.current.bottom = y + height;
     keepInSight(seen.current, scroller);
+  };
+  const placeField = (event: LayoutChangeEvent) => {
+    const { y, height } = event.nativeEvent.layout;
+    seen.current.fieldEnd = seen.current.top + y + height;
   };
 
   useEffect(() => {
@@ -226,6 +237,7 @@ export function NameStep({
         <TextField
           maxFontSizeMultiplier={TWICE}
           ref={field}
+          onLayout={placeField}
           value={walk.name}
           onChangeText={onTyped}
           onSubmitEditing={onContinue}

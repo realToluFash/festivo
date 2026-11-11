@@ -228,3 +228,29 @@ export function footPlace({
 
   return step === 2 ? 'hidden' : 'scrolls';
 }
+
+export interface NameInSight {
+  /** The step's scroll view height, down to the keys while they are up. */
+  viewport: number;
+  /** The name group's top, its label's, inside the scroll content. */
+  top: number;
+  /** The field's bottom inside the scroll content. */
+  fieldEnd: number;
+  /** The group's bottom, under its help or reason, inside the scroll content. */
+  bottom: number;
+  margin: number;
+}
+
+/** The scroll that brings the name group's help or reason above the keys, never past the label, nor past the field where the label and field do not both fit; null when it needs none (sc-38666). */
+export function nameInSight({
+  viewport,
+  top,
+  fieldEnd,
+  bottom,
+  margin,
+}: NameInSight): number | null {
+  const over = bottom + margin - viewport;
+  if (viewport <= 0 || over <= 0) return null;
+
+  return Math.max(0, Math.min(over, Math.max(top, fieldEnd + margin - viewport)));
+}
