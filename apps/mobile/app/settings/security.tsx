@@ -44,6 +44,7 @@ export default function Security() {
     <AppFrame
       current="settings"
       top="scrolls"
+      listUnderTabs
       aboutTheAccount
       offline={stale}
       besideTitle={alone ? refreshingWords : undefined}
@@ -97,7 +98,7 @@ const styles = StyleSheet.create({
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXxs,
     paddingHorizontal: tokens.spaceXxl,
-    paddingBottom: tokens.space3xl,
+    paddingBottom: tokens.space6xl * 2,
   },
   portrait: {
     gap: tokens.spaceXl,

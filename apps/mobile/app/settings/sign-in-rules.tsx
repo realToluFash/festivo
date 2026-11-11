@@ -203,6 +203,7 @@ export default function SignInRules() {
     <AppFrame
       current="settings"
       top="scrolls"
+      listUnderTabs
       offline={stale}
       besideTitle={alone ? refreshingWords : undefined}
       title={alone ? title : t('settings.title')}

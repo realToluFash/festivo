@@ -198,6 +198,7 @@ export default function Organisation() {
     <AppFrame
       current="settings"
       top="scrolls"
+      listUnderTabs
       offline={stale}
       besideTitle={alone ? refreshingWords : undefined}
       titleRef={alone ? title : undefined}
