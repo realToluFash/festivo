@@ -169,13 +169,23 @@ describe("the app follows the account's colours (sc-30441)", () => {
 
   it('lands nowhere but a screen path after a restart', () => {
     holdLanding('/events/42');
-    expect(landingAfterRestart()).toBe('/events/42');
-    expect(landingAfterRestart()).toBeNull();
+    expect(landingAfterRestart()).toEqual(['/events', '/events/42']);
+    expect(landingAfterRestart()).toEqual([]);
 
     holdLanding('/');
-    expect(landingAfterRestart()).toBeNull();
+    expect(landingAfterRestart()).toEqual([]);
     holdLanding('https://elsewhere.test');
-    expect(landingAfterRestart()).toBeNull();
+    expect(landingAfterRestart()).toEqual([]);
+  });
+
+  it('opens Personalisation over Settings after a restart, so Back goes to Settings', () => {
+    holdLanding('/settings/personalisation?saved=1');
+    expect(landingAfterRestart()).toEqual(['/settings', '/settings/personalisation?saved=1']);
+
+    holdLanding('/settings?saved=1');
+    expect(landingAfterRestart()).toEqual(['/settings?saved=1']);
+    holdLanding('/join/abc');
+    expect(landingAfterRestart()).toEqual(['/join/abc']);
   });
 
   it('reads the person from GET /api/auth/me only', () => {

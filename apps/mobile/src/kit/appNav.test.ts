@@ -26,7 +26,9 @@ describe('sign-in lands on the signed-in home', () => {
     const launch = source(join(APP, 'index.tsx'));
 
     expect(launch).toMatch(/if \(launching === 'signedIn'\) return <SignedInHome \/>;/u);
-    expect(launch).toMatch(/else setLaunching\('signedIn'\);/u);
+    expect(launch).toMatch(
+      /setLaunching\('signedIn'\);\s+for \(const screen of landingAfterRestart\(\)\)/u,
+    );
     expect(launch).not.toMatch(/href="\/security"|href="\/account"/u);
   });
 });
