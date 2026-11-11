@@ -60,7 +60,13 @@ import {
 } from '../layout/useLayout.ts';
 import { inModal } from '../kit/anchoredMenu.ts';
 import { type DropFrame, frameFor, switcherSession } from '../kit/orgSwitcher.ts';
-import { joinOrganisation, onMovedOn, switchOrganisation, useSignedIn } from '../signedIn.ts';
+import {
+  joinOrganisation,
+  onMovedOn,
+  signOutHere,
+  switchOrganisation,
+  useSignedIn,
+} from '../signedIn.ts';
 import { useSidebarEvents } from '../sidebarEvents.ts';
 import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { switcherFocusBack } from '../kit/focusBack.ts';
@@ -535,9 +541,11 @@ export function AppFrame({
                       />
                     ) : standIn === 'overdue' && signedIn.organisation != null ? (
                       <TwoFactorOverdue
-                        organisation={signedIn.organisation}
+                        organisation={signedIn.organisation.name}
                         answer={switchAnswer ?? lapsed}
                         headingRef={overdueHeading}
+                        onTurnOn={() => router.navigate(SECTION_HREF.security)}
+                        onSignOut={signOutHere}
                       />
                     ) : (
                       <FrameSwitch.Provider value={switchAnswer}>
