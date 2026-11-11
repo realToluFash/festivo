@@ -191,14 +191,14 @@ export function NameStep({
 
   const reveal = (event: LayoutChangeEvent) => {
     const { y, height } = event.nativeEvent.layout;
-    seen.current.fieldEnd += y - seen.current.top;
     seen.current.top = y;
     seen.current.bottom = y + height;
     keepInSight(seen.current, scroller);
   };
   const placeField = (event: LayoutChangeEvent) => {
     const { y, height } = event.nativeEvent.layout;
-    seen.current.fieldEnd = seen.current.top + y + height;
+    seen.current.fieldEnd = y + height;
+    keepInSight(seen.current, scroller);
   };
 
   useEffect(() => {

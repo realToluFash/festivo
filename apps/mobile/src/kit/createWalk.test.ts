@@ -83,7 +83,7 @@ describe('the countries', () => {
 });
 
 describe('nameInSight', () => {
-  const group = { top: 200, fieldEnd: 277, bottom: 320, margin: 16 };
+  const group = { top: 200, fieldEnd: 77, bottom: 320, margin: 16 };
 
   it('leaves the step where it is when the whole group fits', () => {
     expect(nameInSight({ ...group, viewport: 400 })).toBeNull();

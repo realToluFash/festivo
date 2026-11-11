@@ -234,7 +234,7 @@ export interface NameInSight {
   viewport: number;
   /** The name group's top, its label's, inside the scroll content. */
   top: number;
-  /** The field's bottom inside the scroll content. */
+  /** The field's bottom inside the name group. */
   fieldEnd: number;
   /** The group's bottom, under its help or reason, inside the scroll content. */
   bottom: number;
@@ -252,5 +252,5 @@ export function nameInSight({
   const over = bottom + margin - viewport;
   if (viewport <= 0 || over <= 0) return null;
 
-  return Math.max(0, Math.min(over, Math.max(top, fieldEnd + margin - viewport)));
+  return Math.max(0, Math.min(over, Math.max(top, top + fieldEnd + margin - viewport)));
 }
