@@ -88,7 +88,7 @@ describe('cardStep', () => {
         {
           ...listEventOf(EVENT),
           milestones: [
-            { at, title: 'ends', note: null, owner: 'event', area: 'event', action: null },
+            { at, title: 'ends', note: null, owner: 'event' as const, area: 'event', action: null },
           ],
         },
         'live',

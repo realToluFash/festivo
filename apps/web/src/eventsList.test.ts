@@ -101,7 +101,9 @@ describe('cardStep', () => {
     values?.date ?? key) as unknown as TFunction;
   const nextUpAt = (at: string) => ({
     ...lasting(547, 'happening_now'),
-    milestones: [{ at, title: 'ends', note: null, owner: 'event', area: 'event', action: null }],
+    milestones: [
+      { at, title: 'ends', note: null, owner: 'event' as const, area: 'event', action: null },
+    ],
   });
 
   it("writes next up's day with its year only when it is not this year", () => {
