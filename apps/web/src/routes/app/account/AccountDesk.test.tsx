@@ -689,3 +689,102 @@ describe('codes and proofs at a desk (sc-30411)', () => {
     expect(sent.some((one) => one.call === 'PATCH /api/auth/emails/e2/primary')).toBe(false);
   });
 });
+
+describe('a Verify dialog opened on a spent code (sc-38970)', () => {
+  function spentNumber(codeState: 'expired' | 'exhausted', cooldownSeconds = 0): Sent[] {
+    return answering({
+      'GET /api/auth/me': () => json({ ...ME, phoneNumbers: [...ME.phoneNumbers, NEW_PHONE] }),
+      'GET /api/auth/verify/phone/resend': () => json({ cooldownSeconds, codeState, route: 'sms' }),
+      'POST /api/auth/verify/phone/resend': () => json({ cooldownSeconds: 30 }),
+    });
+  }
+
+  it('lands on Send a new code when the number’s code has expired', async () => {
+    spentNumber('expired');
+    open();
+
+    fireEvent.click(await within(card()).findByRole('button', { name: 'Send a code' }));
+    const notice = await within(dialog()).findByRole('alert');
+    expect(within(notice).getByText('That code has expired')).toBeDefined();
+    expect(within(dialog()).queryByLabelText(/^Code from/)).toBeNull();
+    expect(document.activeElement).toBe(
+      within(dialog()).getByRole('button', { name: 'Send a new code' }),
+    );
+  });
+
+  it('lands on Send a new code when the number’s code has had too many wrong tries', async () => {
+    spentNumber('exhausted');
+    open();
+
+    fireEvent.click(await within(card()).findByRole('button', { name: 'Send a code' }));
+    const notice = await within(dialog()).findByRole('alert');
+    expect(within(notice).getByText('Too many wrong tries')).toBeDefined();
+    expect(document.activeElement).toBe(
+      within(dialog()).getByRole('button', { name: 'Send a new code' }),
+    );
+  });
+
+  it('lands on Send a new code when an address’s code has expired', async () => {
+    answering({
+      'GET /api/auth/me': () =>
+        json({ ...ME, emailAddresses: [PRIMARY, { ...OTHER, verified: false }] }),
+      'GET /api/auth/verify/resend': () => json({ cooldownSeconds: 0, codeState: 'expired' }),
+    });
+    open();
+
+    fireEvent.click(await within(card()).findByRole('button', { name: 'Send a code' }));
+    expect(await within(dialog()).findByText('That code has expired')).toBeDefined();
+    expect(document.activeElement).toBe(
+      within(dialog()).getByRole('button', { name: 'Send a new code' }),
+    );
+  });
+
+  it('lands on Send a new code still waiting, which sends nothing until the wait ends', async () => {
+    const sent = spentNumber('expired', 42);
+    open();
+
+    fireEvent.click(await within(card()).findByRole('button', { name: 'Send a code' }));
+    const waiting = await within(dialog()).findByRole('button', { name: /^Send a new code in / });
+    expect(document.activeElement).toBe(waiting);
+    fireEvent.click(waiting);
+    expect(sent.some((one) => one.call === 'POST /api/auth/verify/phone/resend')).toBe(false);
+  });
+
+  it('leaves focus on Cancel when the person moved there before the notice showed', async () => {
+    let opened: ((answer: Response) => void) | null = null;
+    const sent = answering({
+      'GET /api/auth/me': () => json({ ...ME, phoneNumbers: [...ME.phoneNumbers, NEW_PHONE] }),
+      'GET /api/auth/verify/phone/resend': () =>
+        new Promise<Response>((resolve) => {
+          opened = resolve;
+        }),
+    });
+    open();
+
+    fireEvent.click(await within(card()).findByRole('button', { name: 'Send a code' }));
+    const cancel = within(dialog()).getByRole('button', { name: 'Cancel' });
+    cancel.focus();
+    await waitFor(() =>
+      expect(sent.some((one) => one.call === 'GET /api/auth/verify/phone/resend')).toBe(true),
+    );
+    opened!(json({ cooldownSeconds: 0, codeState: 'expired', route: 'sms' }));
+
+    expect(await within(dialog()).findByText('That code has expired')).toBeDefined();
+    expect(document.activeElement).toBe(cancel);
+  });
+
+  it('sends a new code from there, and puts focus on the empty code field', async () => {
+    const sent = spentNumber('expired');
+    open();
+
+    fireEvent.click(await within(card()).findByRole('button', { name: 'Send a code' }));
+    await within(dialog()).findByText('That code has expired');
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Send a new code' }));
+
+    const field = await within(dialog()).findByLabelText<HTMLInputElement>(/^Code from/);
+    expect(sent.some((one) => one.call === 'POST /api/auth/verify/phone/resend')).toBe(true);
+    expect(within(dialog()).queryByText('That code has expired')).toBeNull();
+    expect(field.value).toBe('');
+    await waitFor(() => expect(document.activeElement).toBe(field));
+  });
+});

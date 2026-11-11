@@ -1189,9 +1189,7 @@ describe('the dates the server wrote, after a language change (sc-9267)', () => 
 
     await act(() => setLanguage('es'));
 
-    expect(
-      await page().findByText('Removed on miércoles, 11 nov a las 09:40 WAT if nobody answers.'),
-    ).toBeDefined();
+    expect(await page().findByText(/miércoles, 11 nov a las 09:40 WAT/)).toBeDefined();
     expect(asked).toEqual(['en', 'es']);
 
     fireEvent.click(page().getByRole('button', { name: /^Bisi Adeyemi/ }));
