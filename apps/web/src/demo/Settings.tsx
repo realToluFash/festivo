@@ -37,7 +37,6 @@ import { usePaused, useSwitcherStart } from './switcher.ts';
 import './today.css';
 import '../components/SettingsParts.css';
 import '../components/SettingsList.css';
-import './settings.css';
 
 const TILES: Record<
   Exclude<Section, 'account' | 'general' | 'personalisation' | 'vendors' | 'data'>,

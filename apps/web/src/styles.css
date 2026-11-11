@@ -3506,7 +3506,7 @@ span {
   align-self: flex-start;
 }
 
-/* The banner while an organisation has no active Owner (sc-6640): wraps rather than truncates at every width. */
+/* Who is becoming the owner, on the paused screen (sc-6640): wraps rather than truncates at every width. */
 .owner-claim {
   display: flex;
   flex-direction: column;
@@ -3525,48 +3525,12 @@ span {
   gap: var(--spaceSm);
 }
 
-.owner-claim-skeleton {
-  min-height: calc(var(--sizeHit) * 2);
-  background: var(--colorInset);
-}
-
 .mark-waiting {
   border: var(--borderMark) var(--colorInkSecondary);
   color: var(--colorInkSecondary);
 }
 
-.owner-claim-record {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceSm);
-  margin: 0;
-  padding: var(--spaceLg);
-  background: var(--colorInset);
-  border: var(--borderInset);
-  border-radius: var(--radiusInset);
-}
-
-.owner-claim-record-row dt {
-  color: var(--colorInkSecondary);
-}
-
-.owner-claim-record-row dd {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceSm);
-  margin: 0;
-}
-
-.owner-claim-record-row code {
-  flex: 1;
-  min-width: 0;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
-  word-break: break-all;
-}
-
-/* Withdraw your claim? (sc-8204): the scrim is not a way out, and the sheet stacks its buttons. */
+/* The scrim is not a way out. */
 .dialog-scrim[aria-hidden='true'] {
   cursor: default;
 }
@@ -3582,16 +3546,6 @@ span {
   background: transparent;
   color: var(--colorInkSecondary);
   cursor: pointer;
-}
-
-.owner-claim-withdraw .dialog-actions {
-  justify-content: flex-start;
-}
-
-@media (width <= 40rem) {
-  .owner-claim-withdraw {
-    border-radius: var(--radiusSheet) var(--radiusSheet) 0 0;
-  }
 }
 
 .members-chips {
