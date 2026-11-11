@@ -287,11 +287,14 @@ export function AccountPage({
       />
       <AboutSection
         name={account.name}
-        zone={{
-          title:
-            zone.kind === 'shown' ? zone.name : zone.kind === 'unset' ? t('timeZone.unset') : '',
-          line: zoneLine(zone.kind === 'shown' ? zone.id : null, t),
-        }}
+        zone={
+          zone.kind === 'waiting'
+            ? 'waiting'
+            : {
+                title: zone.kind === 'shown' ? zone.name : t('timeZone.unset'),
+                line: zoneLine(zone.kind === 'shown' ? zone.id : null, t),
+              }
+        }
         nameRef={targets.name}
         zoneRef={targets.zone}
         onName={() => show('name', 'name')}

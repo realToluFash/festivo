@@ -7,6 +7,7 @@ import { tokens } from '../theme/tokens.ts';
 import { useCardWords } from './Cover.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { useReadOut } from './ReadOut.tsx';
+import { Skeleton } from './Skeleton.tsx';
 import {
   CardFace,
   OnCard,
@@ -107,7 +108,7 @@ export function AboutSection({
   onZone,
 }: {
   name: string;
-  zone: { title: string; line: string };
+  zone: { title: string; line: string } | 'waiting';
   nameRef: Ref<ViewInstance>;
   zoneRef: Ref<ViewInstance>;
   onName: () => void;
@@ -137,17 +138,26 @@ export function AboutSection({
           {
             key: 'zone',
             inset: LEAD_INSET,
-            row: (
-              <Row
-                ref={zoneRef}
-                title={zone.title}
-                line={zone.line}
-                lead={<LineIcon name="globe" />}
-                opens
-                onPress={onZone}
-                testID="account.zone"
-              />
-            ),
+            row:
+              zone === 'waiting' ? (
+                <Skeleton
+                  words={t('pending.loading')}
+                  shape="rows"
+                  rowHeight={56}
+                  rows={1}
+                  inCard
+                />
+              ) : (
+                <Row
+                  ref={zoneRef}
+                  title={zone.title}
+                  line={zone.line}
+                  lead={<LineIcon name="globe" />}
+                  opens
+                  onPress={onZone}
+                  testID="account.zone"
+                />
+              ),
           },
         ]}
       />
