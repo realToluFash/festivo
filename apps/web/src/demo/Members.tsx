@@ -312,6 +312,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
           <MembersBlocks {...list} column />
         </Column>
         <Page>
+          <DemoOffline />
           <div className="desk-top is-end">
             <DemoBell tell={tell} />
           </div>
@@ -321,6 +322,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
       </>
     ) : (
       <Page>
+        <DemoOffline />
         <BackRow to="Members" onBack={back} bell={<DemoBell tell={tell} />} />
         {page}
         {dialogs}

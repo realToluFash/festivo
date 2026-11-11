@@ -34,6 +34,7 @@ import { StorefrontGlyph, Vendors } from './Vendors.tsx';
 import { vendorsViewerKey } from './vendors.ts';
 import { TextAction, TitleRow, type Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
+import { DemoOffline } from './DemoOffline.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { usePaused, useSwitcherStart } from './switcher.ts';
 import './today.css';
@@ -184,6 +185,7 @@ function MembersForbidden({ tell }: { tell: Tell }) {
   return (
     <div className="desk-page">
       <div className="desk-column" role="alert">
+        <DemoOffline />
         <TitleRow title={t('forbidden.title')} bell={<DemoBell tell={tell} />} />
         <p className="desk-line">{t('forbidden.body')}</p>
         <TextAction label={t('forbidden.back')} onClick={() => void navigate('/demo/today')} />

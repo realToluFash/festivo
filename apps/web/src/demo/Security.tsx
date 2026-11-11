@@ -91,6 +91,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
   const [deviceLoad, setDeviceLoad] = useState<'loaded' | 'loading' | 'failed'>(
     state === 'loading' || state === 'failed' ? state : 'loaded',
   );
+  const [devicesTry, setDevicesTry] = useState(0);
   const column = useRef<HTMLDivElement>(null);
   const saidLine = useRef<HTMLParagraphElement | null>(null);
   const lineHeld = useRef(false);
@@ -333,8 +334,9 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
             <SectionFailed
               title={t('devices.failedTitle')}
               line={t('devices.failedBody')}
-              announce={false}
+              announce={devicesTry === 0}
               onRetry={() => {
+                setDevicesTry((was) => was + 1);
                 setLoadMs(SEND_MS);
                 setDeviceLoad('loading');
               }}
