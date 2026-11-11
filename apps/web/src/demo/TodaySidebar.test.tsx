@@ -50,9 +50,16 @@ describe('the sidebar’s Your events (sc-39290)', () => {
     },
   );
 
-  it('scrolls the list under its heading, keeping at least four rows before the sidebar scrolls', () => {
+  it('scrolls the list under its heading, keeping its heading and four whole rows before the sidebar scrolls', () => {
     expect(SIDEBAR_CSS).toMatch(/\.today-side-events > \.today-places \{[^}]*overflow-y: auto;/u);
-    expect(SIDEBAR_CSS).toMatch(/min-height: calc\(var\(--sizeHit\) \* 4 \+ var\(--space3xl\)\);/u);
+    expect(SIDEBAR_CSS).toMatch(
+      /\.today-side-events:has\(> \.today-places > li:nth-child\(4\)\) \{[^}]*min-height: calc\(var\(--spaceXs\) \* 2 \+ 12px \* 1\.2 \+ var\(--sizeHit\) \* 4 \+ var\(--spaceHair\) \* 3\);/u,
+    );
+  });
+
+  it('leaves a list of three or fewer whole, reserving nothing for rows it does not have', () => {
+    expect(SIDEBAR_CSS).toMatch(/\.today-side-events \{[^}]*flex: 0 0 auto;/u);
+    expect(SIDEBAR_CSS).not.toMatch(/\.today-side-events \{[^}]*min-height/u);
   });
 
   it('draws a focused row\u2019s ring inside the list, where the scroller cannot clip it', () => {
