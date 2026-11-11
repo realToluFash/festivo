@@ -1,4 +1,5 @@
 import { DemoBell } from './DemoBell.tsx';
+import { LanguageChoices } from './LanguageChoices.tsx';
 import { LOCALES, contactActions, initials, primaryOf, zoneLabel } from '@soirely/domain';
 import { useState } from 'react';
 
@@ -35,7 +36,7 @@ import { SAMPLE } from './rules.ts';
 import type { Viewer } from './settings.ts';
 import { saveName, savedNameOf } from './savedName.ts';
 import { AboutRow, ContactsBlock, PersonCard, RowOffers } from '../components/AccountParts.tsx';
-import { Ask, Choices, Head, TitleRow } from '../components/SettingsParts.tsx';
+import { Ask, Head, TitleRow } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 
 /** Your account at a desk in B · Summary first (Web-Account-*.dc.html): the app's page, the same for every role. */
@@ -125,10 +126,8 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
         </section>
         <section className="desk-block">
           <Head title={W.language} />
-          <Choices
+          <LanguageChoices
             legend={W.language}
-            hideLegend
-            choices={LOCALES.map((locale) => ({ id: locale.code, name: locale.nativeName }))}
             picked={language}
             onPick={(code) => {
               setLanguage(code);
