@@ -88,7 +88,13 @@ describe('a focused screen whose title takes focus with each new step (sc-11032)
   });
 
   it('moves focus the way an answer does, through useFocusOnAnswer', () => {
-    expect(screen).toContain('useFocusOnAnswer(step, target)');
+    expect(screen).toMatch(/useFocusOnAnswer\(step, target[,)]/);
+  });
+
+  it('moves focus on Android as the title is revealed, leaving TalkBack no gap to read it first', () => {
+    expect(screen).toContain(
+      "useFocusOnAnswer(step, target, Platform.OS === 'android' ? 0 : SETTLED_MS)",
+    );
   });
 
   it('lets Turn on two-factor’s failure take focus as one item, not read out as well', () => {
