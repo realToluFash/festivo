@@ -47,8 +47,18 @@ function open(section: string, name: RegExp): HTMLElement {
 }
 
 describe('Security at a desk (sc-30223)', () => {
-  beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+  beforeEach(() => {
+    __setConfig({ ...tested, environment: 'development' });
+    const focus = HTMLElement.prototype.focus;
+    vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (
+      this: HTMLElement,
+      options?: FocusOptions,
+    ) {
+      if (this.closest('[inert]') == null) focus.call(this, options);
+    });
+  });
   afterEach(() => {
+    vi.restoreAllMocks();
     Reflect.deleteProperty(navigator, 'clipboard');
   });
 
