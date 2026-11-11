@@ -458,18 +458,25 @@ export function useWindowTurn(wanted: boolean): { shown: boolean; gone: () => vo
   return { shown, gone };
 }
 
-/** Hidden until TalkBack has announced the window, counted from when Android has put it up, a heading that takes focus is not also read as the window's name; a new `step` in a window that stays up hides it again (sc-11032). */
-export function useUnnamedWindow(hides: boolean, onScreen: boolean, step: unknown = null): boolean {
+/** Hidden until TalkBack has announced the window, counted from when Android has put it up and, as it opens, `arriving` ms more while it slides or fades in, a heading that takes focus is not also read as the window's name; a new `step` in a window that stays up hides it again (sc-11032). */
+export function useUnnamedWindow(
+  hides: boolean,
+  onScreen: boolean,
+  step: unknown = null,
+  arriving = 0,
+): boolean {
   const [announced, setAnnounced] = useState<{ step: unknown } | null>(null);
   if (!onScreen && announced != null) setAnnounced(null);
   const waiting = announced == null || announced.step !== step;
+  const opening = announced == null;
 
   useEffect(() => {
     if (!hides || !onScreen || !waiting) return;
-    const shown = setTimeout(() => setAnnounced({ step }), SETTLED_MS / 2);
+    const wait = (opening ? arriving : 0) + SETTLED_MS / 2;
+    const shown = setTimeout(() => setAnnounced({ step }), wait);
 
     return () => clearTimeout(shown);
-  }, [hides, onScreen, waiting, step]);
+  }, [hides, onScreen, waiting, opening, arriving, step]);
 
   return hides && waiting;
 }
