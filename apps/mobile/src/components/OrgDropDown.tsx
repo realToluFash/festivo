@@ -35,6 +35,7 @@ import {
   untilIn,
 } from '../kit/orgSwitcher.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
+import { answersStack, answerWidth } from '../layout/pillFit.ts';
 import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
@@ -54,9 +55,10 @@ import {
   useFocusOnAnswer,
 } from './Screen.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { Pill } from './SettingsParts.tsx';
+import { Pill, TYPE } from './SettingsParts.tsx';
 import { useFocusBack, useWindowTurn } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
+import { MeasuredWords } from './Title.tsx';
 
 const GROW_FROM = 0.92;
 const LEAVE = Easing.bezier(0.4, 0, 1, 1);
@@ -788,6 +790,21 @@ function InvitationPanel({
   const inviter = invite.invitedBy?.name ?? '';
   const busy = outcome?.kind === 'busy' ? outcome.answer : null;
   const height = full ? tokens.sizeHitPhoneHero : tokens.sizeHit;
+  const words = {
+    accept: t('invitations.accept'),
+    joining: t('invitations.joining'),
+    decline: t('invitations.decline'),
+    declining: t('invitations.declining'),
+  };
+  const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
+  const [row, setRow] = useState(0);
+  const widthOf = (word: string) => measured[word] ?? 0;
+  const acceptWidth = answerWidth(widthOf(words.accept), widthOf(words.joining));
+  const declineWidth = answerWidth(widthOf(words.decline), widthOf(words.declining));
+  const stacked = !full && row > 0 && answersStack(row, acceptWidth, declineWidth);
+  // At the default sizes each answer keeps the width sending needs, so pressing moves nothing (sc-38149); at the accessibility sizes they are as on main.
+  const answer = (pill: ReactNode, width: number) =>
+    full ? pill : <View style={stacked ? undefined : { minWidth: width }}>{pill}</View>;
 
   useSendingWords(
     busy == null
@@ -884,35 +901,52 @@ function InvitationPanel({
               />
             </View>
           )}
-          <View style={styles.buttons}>
-            <Pill
-              label={busy === 'accept' ? t('invitations.joining') : t('invitations.accept')}
-              accessibilityLabel={
-                busy === 'accept'
-                  ? t('invitations.joining')
-                  : t('invitations.acceptLabel', { organisation })
+          {!full && (
+            <MeasuredWords
+              words={Object.values(words)}
+              size={TYPE.body}
+              weight="semibold"
+              onWidth={(word, width) =>
+                setMeasured((now) => (now[word] === width ? now : { ...now, [word]: width }))
               }
-              kind={busy == null ? 'primary' : 'off'}
-              busy={busy === 'accept'}
-              full={full}
-              height={height}
-              onPress={() => onAnswer(true)}
-              testID={`switcher.invitation.${invite.id}.accept`}
             />
-            <Pill
-              label={busy === 'decline' ? t('invitations.declining') : t('invitations.decline')}
-              accessibilityLabel={
-                busy === 'decline'
-                  ? t('invitations.declining')
-                  : t('invitations.declineLabel', { organisation })
-              }
-              kind={busy == null ? 'secondary' : 'off'}
-              busy={busy === 'decline'}
-              full={full}
-              height={height}
-              onPress={() => onAnswer(false)}
-              testID={`switcher.invitation.${invite.id}.decline`}
-            />
+          )}
+          <View
+            style={full ? styles.buttons : stacked ? styles.answersStacked : styles.answersBeside}
+            onLayout={full ? undefined : (event) => setRow(event.nativeEvent.layout.width)}
+          >
+            {answer(
+              <Pill
+                label={busy === 'accept' ? words.joining : words.accept}
+                accessibilityLabel={
+                  busy === 'accept' ? words.joining : t('invitations.acceptLabel', { organisation })
+                }
+                kind={busy == null ? 'primary' : 'off'}
+                busy={busy === 'accept'}
+                full
+                height={height}
+                onPress={() => onAnswer(true)}
+                testID={`switcher.invitation.${invite.id}.accept`}
+              />,
+              acceptWidth,
+            )}
+            {answer(
+              <Pill
+                label={busy === 'decline' ? words.declining : words.decline}
+                accessibilityLabel={
+                  busy === 'decline'
+                    ? words.declining
+                    : t('invitations.declineLabel', { organisation })
+                }
+                kind={busy == null ? 'secondary' : 'off'}
+                busy={busy === 'decline'}
+                full
+                height={height}
+                onPress={() => onAnswer(false)}
+                testID={`switcher.invitation.${invite.id}.decline`}
+              />,
+              declineWidth,
+            )}
           </View>
           <Text
             size={sizes.line}
@@ -1182,6 +1216,8 @@ const styles = StyleSheet.create({
   answerUnder: { marginTop: tokens.spaceMd },
   failed: { marginBottom: tokens.spaceSm },
   buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceMd },
+  answersBeside: { flexDirection: 'row', gap: tokens.spaceMd },
+  answersStacked: { gap: tokens.spaceMd },
   buttonsUnder: { marginTop: tokens.spaceMd, alignItems: 'flex-start' },
   declineNote: { marginTop: tokens.spaceSm },
   offerBody: { marginTop: tokens.spaceMd },

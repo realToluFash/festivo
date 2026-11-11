@@ -14,15 +14,12 @@ import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { NavBar } from '../DemoScreen.tsx';
+import { answersStack, answerWidth, nameStart, pillShowsWords } from '../../layout/pillFit.ts';
 import {
-  answersStack,
-  answerWidth,
-  firstWord,
   LANGUAGES,
   ORGANISATIONS,
   type PillFitLanguage,
   type PillFitOrganisation,
-  pillShowsWords,
   type Sending,
 } from './pillFitRules.ts';
 
@@ -140,7 +137,7 @@ function PillAndAnswers({
   const [widths, setWidths] = useState<Record<string, number>>({});
   const measured = (key: string) => widths[key] ?? 0;
   const pillWidths = {
-    firstWord: measured('firstWord'),
+    nameStart: measured('nameStart'),
     waitingLine: waitingWords == null ? null : measured('waiting'),
   };
   const role = roleName(t, { seededAs: 'owner', name: null });
@@ -167,7 +164,7 @@ function PillAndAnswers({
     <>
       <Measure
         items={[
-          ['firstWord', firstWord(name), 15],
+          ['nameStart', nameStart(name), 15],
           ['waiting', waitingWords ?? '', 12.5],
           ['accept', t('invitations.accept'), TYPE.body],
           ['joining', t('invitations.joining'), TYPE.body],

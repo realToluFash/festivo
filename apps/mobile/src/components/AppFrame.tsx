@@ -49,6 +49,7 @@ import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBac
 import { EVENT_PLACES, type EventPlace, MORE_PLACES } from '../kit/eventNav.ts';
 import { leaveThen } from '../leaveHeld.ts';
 import { frameTitleSize } from '../layout/textSize.ts';
+import { nameStart, pillShowsWords } from '../layout/pillFit.ts';
 import { backLeast, backScale } from '../layout/focusedHeader.ts';
 import {
   type LayoutKind,
@@ -100,7 +101,7 @@ import { Back } from './SettingsParts.tsx';
 import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text, TitleCap } from './Text.tsx';
-import { Title, useWholeWords } from './Title.tsx';
+import { MeasuredWords, Title, useWholeWords } from './Title.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 import { type EdgeSwipeHandlers, EdgeSwipeStrip } from './useEdgeSwipeBack.ts';
@@ -734,7 +735,7 @@ function FrameHeader({
                 organisation={organisation}
                 waiting={waiting}
                 onSwitch={onSwitch}
-                tileAlone={besideTabs?.tileAlone ?? false}
+                room={besideTabs?.maxWidth}
                 ref={pill}
               />
             </View>
@@ -1172,14 +1173,15 @@ function OrgPill({
   waiting,
   onSwitch,
   sidebar = false,
-  tileAlone = false,
+  room,
   ref,
 }: {
   organisation: Membership;
   waiting: number;
   onSwitch: (() => void) | undefined;
   sidebar?: boolean;
-  tileAlone?: boolean;
+  /** The room beside an upright tablet's tabs, where the pill turns to its tile when its words would not fit whole. */
+  room?: number | undefined;
   ref: Ref<ViewInstance>;
 }) {
   const { t } = useTranslation();
@@ -1187,12 +1189,24 @@ function OrgPill({
   const lines = useNameLines();
   const label = useOpenerLabel(organisation, waiting, onSwitch != null);
   const expanded = useContext(SwitcherOpenedBy) === ref;
+  const waitingWords = waiting > 0 ? t('invitations.count', { count: waiting }) : null;
+  const start = nameStart(organisation.name);
+  const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
+  const widths = {
+    nameStart: measured[`name|${start}`] ?? 0,
+    waitingLine: waitingWords == null ? null : (measured[`waiting|${waitingWords}`] ?? 0),
+  };
+  const tileAlone = room != null && !pillShowsWords(room, widths, large);
+  const measure = (kind: string) => (word: string, width: number) => {
+    const key = `${kind}|${word}`;
+    setMeasured((now) => (now[key] === width ? now : { ...now, [key]: width }));
+  };
   const pill = (
     <WhitePill
       ref={ref}
       id={organisation.id}
       name={organisation.name}
-      waiting={waiting > 0 ? t('invitations.count', { count: waiting }) : null}
+      waiting={waitingWords}
       label={label}
       expanded={expanded}
       onPress={onSwitch}
@@ -1205,7 +1219,26 @@ function OrgPill({
     />
   );
 
-  return sidebar ? pill : <View style={styles.whitePill}>{pill}</View>;
+  if (sidebar) return pill;
+
+  return (
+    <View style={styles.whitePill}>
+      {room != null && (
+        <>
+          <MeasuredWords words={[start]} size={15} weight="semibold" onWidth={measure('name')} />
+          {waitingWords != null && (
+            <MeasuredWords
+              words={[waitingWords]}
+              size={12.5}
+              weight="semibold"
+              onWidth={measure('waiting')}
+            />
+          )}
+        </>
+      )}
+      {pill}
+    </View>
+  );
 }
 
 const STROKE = { strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
