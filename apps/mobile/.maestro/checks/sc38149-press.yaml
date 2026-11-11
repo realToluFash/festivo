@@ -1,0 +1,9 @@
+# Presses the opened invitation's ${ANSWER} with the API paused, and screenshots it sending. sc-38149.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'switcher.invitation.${INVITE}.${ANSWER}'
+- takeScreenshot: ${OUT}-now
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: ${OUT}
