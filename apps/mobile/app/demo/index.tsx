@@ -8,6 +8,7 @@ import { BOLD_TEXT_BOARDS } from '../../src/demo/boldText/BoldTextBoards.ts';
 import { BUDGET_BOARDS } from '../../src/demo/budget/BudgetBoards.ts';
 import { TEXT_SIZE_BOARDS } from '../../src/demo/textSize/TextSizeBoards.ts';
 import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
+import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeaderBoards.ts';
 import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
@@ -32,6 +33,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Bold text · the weight map',
     boards: BOLD_TEXT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Focused header · the largest text sizes',
+    boards: FOCUSED_HEADER_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
   },
   {
     page: 'Text size · the phone’s tab bar and Settings card at twice the size (sc-37298)',
