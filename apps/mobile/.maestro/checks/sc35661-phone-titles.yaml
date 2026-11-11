@@ -1,5 +1,27 @@
 # sc-35661: the Add a phone number sheet's title, then the Verify sheet's (verifyPhone.title), each screenshotted in the header. The check adds one unverified number, opens Verify from that number's own row, and removes it before it ends, so it re-runs on one account and next to the email check.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runFlow:
+      when:
+        true: ${output.removed != true}
+      commands:
+        - openLink: ${METRO_URL}/--/settings/account
+        - scrollUntilVisible:
+            element:
+              id: 'account.phone.add'
+            timeout: 30000
+        - waitForAnimationToEnd
+        - runFlow:
+            when:
+              visible: ${output.row}
+            commands:
+              - tapOn: ${output.row}
+              - scrollUntilVisible:
+                  element:
+                    id: 'account\..+\.remove'
+                  timeout: 15000
+              - tapOn:
+                  id: 'account\..+\.remove'
 ---
 - evalScript: '${output.tail = String(Date.now()).slice(-6)}'
 - evalScript: "${output.row = '.*' + output.tail.split('').join(' ?') + '.*'}"
@@ -60,3 +82,4 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     notVisible: '${output.title}(\. .*)?'
     timeout: 15000
+- evalScript: '${output.removed = true}'

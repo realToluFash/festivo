@@ -1,5 +1,27 @@
 # sc-35661: the Add an email address sheet's title, then the Verify sheet's (verifyEmail.title), each screenshotted in the header. The check adds one unverified address, opens Verify from that address's own row, and removes it before it ends, so it re-runs on one account.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runFlow:
+      when:
+        true: ${output.removed != true}
+      commands:
+        - openLink: ${METRO_URL}/--/settings/account
+        - scrollUntilVisible:
+            element:
+              id: 'account.email.add'
+            timeout: 30000
+        - waitForAnimationToEnd
+        - runFlow:
+            when:
+              visible: '${output.email}.*'
+            commands:
+              - tapOn: '${output.email}.*'
+              - scrollUntilVisible:
+                  element:
+                    id: 'account\..+\.remove'
+                  timeout: 15000
+              - tapOn:
+                  id: 'account\..+\.remove'
 ---
 - evalScript: "${output.email = 'sc35661.' + Date.now() + '@soirely.test'}"
 - openLink: ${METRO_URL}/--/settings/account
@@ -58,3 +80,4 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     notVisible: '${output.email}(\. .*)?'
     timeout: 15000
+- evalScript: '${output.removed = true}'
