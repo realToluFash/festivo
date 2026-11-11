@@ -1,0 +1,21 @@
+# sc-37811: your own page, and Marta's (suspended). Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'members.row.01a1c84d-7a58-7d35-829d-e46b261243d0'
+- tapOn:
+    id: 'members.row.01a1c84d-7a58-7d35-829d-e46b261243d0'
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: self
+- back
+- waitForAnimationToEnd
+- takeScreenshot: back

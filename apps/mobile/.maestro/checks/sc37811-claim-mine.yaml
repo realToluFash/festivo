@@ -1,0 +1,21 @@
+# sc-37811: your own open claim: the card, then its screen and a Copy. Needs ${METRO_URL}; an open claim of the account's own.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: card
+- tapOn:
+    id: 'ownerClaim.open'
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: screen
+- tapOn:
+    id: 'ownerClaim.copy'
+    index: 2
+    optional: true
+- takeScreenshot: copied
