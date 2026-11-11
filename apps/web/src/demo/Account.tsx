@@ -1,5 +1,5 @@
 import { DemoBell } from './DemoBell.tsx';
-import { contactActions, initials, primaryOf, zoneLabel } from '@soirely/domain';
+import { LOCALES, contactActions, initials, primaryOf, zoneLabel } from '@soirely/domain';
 import { useState } from 'react';
 
 import {
@@ -35,7 +35,7 @@ import { SAMPLE } from './rules.ts';
 import type { Viewer } from './settings.ts';
 import { saveName, savedNameOf } from './savedName.ts';
 import { AboutRow, ContactsBlock, PersonCard, RowOffers } from '../components/AccountParts.tsx';
-import { Ask, Head, TitleRow } from '../components/SettingsParts.tsx';
+import { Ask, Choices, Head, TitleRow } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 
 /** Your account at a desk in B · Summary first (Web-Account-*.dc.html): the app's page, the same for every role. */
@@ -43,6 +43,7 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
   const [start] = useState(() => accountStart(state, viewer));
   const [name, setName] = useState(() => savedNameOf(viewer.key) ?? start.name);
   const [zone, setZone] = useState(start.zone);
+  const [language, setLanguage] = useState(start.language);
   const [emails, setEmails] = useState(start.emails);
   const [phones, setPhones] = useState(start.phones);
   const [said, setSaid] = useState(start.said);
@@ -121,6 +122,23 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
               onOpen={() => setDialog(opening('zone'))}
             />
           </ul>
+        </section>
+        <section className="desk-block">
+          <Head title={W.language} />
+          <Choices
+            legend={W.language}
+            hideLegend
+            choices={LOCALES.map((locale) => ({ id: locale.code, name: locale.nativeName }))}
+            picked={language}
+            onPick={(code) => {
+              setLanguage(code);
+              setOpen(null);
+              setSaid(
+                W.languageSaved(LOCALES.find((locale) => locale.code === code)?.nativeName ?? code),
+              );
+            }}
+            foot={W.languageFoot}
+          />
         </section>
         {(['email', 'phone'] as const).map((kind) => (
           <Contacts

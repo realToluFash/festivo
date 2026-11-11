@@ -349,4 +349,42 @@ describe('Your account at a desk (sc-30209)', () => {
       ).toBe('false'),
     );
   });
+
+  it('offers the four languages, each in its own, and saves the one chosen at once (sc-39509)', async () => {
+    await account('/demo/settings/account');
+    const language = block('Language');
+    const radios = within(language).getAllByRole('radio');
+
+    expect(radios.map((radio) => radio.closest('label')?.textContent)).toEqual([
+      'English',
+      'Español',
+      'Français',
+      'Português',
+    ]);
+    expect(within(language).queryByText(/Automatic/)).toBeNull();
+    expect(within(language).getByRole('radio', { name: 'English' })).toHaveProperty(
+      'checked',
+      true,
+    );
+    expect(within(language).queryByRole('button', { name: 'Save' })).toBeNull();
+
+    fireEvent.click(within(language).getByRole('radio', { name: 'Français' }));
+
+    expect(within(language).getByRole('radio', { name: 'Français' })).toHaveProperty(
+      'checked',
+      true,
+    );
+    expect(
+      screen.getByText('Soirely is now in Français, on every device and in your emails.'),
+    ).toBeDefined();
+  });
+
+  it('opens with Français saved on its state link', async () => {
+    await account('/demo/settings/account?state=languageSaved');
+
+    expect(within(block('Language')).getByRole('radio', { name: 'Français' })).toHaveProperty(
+      'checked',
+      true,
+    );
+  });
 });
