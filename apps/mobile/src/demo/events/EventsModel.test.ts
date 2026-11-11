@@ -367,6 +367,15 @@ describe('the states', () => {
     expect(listStateOf('nonsense')).toBeNull();
   });
 
+  it.each(['manyFilters', 'manyFiltersOpen', 'longHost'] as const)(
+    'opens %s on results, not on no match',
+    (state) => {
+      const { typed, filters } = listStart(state);
+
+      expect(resultsOf(EVENTS, typed, filters, reader, LOCALE).count).toBeGreaterThan(0);
+    },
+  );
+
   it('opens loading on Upcoming, with no tab emptied', () => {
     expect(listStateOf('loading')).toBe('loading');
     expect(listStart('loading').tab).toBe('upcoming');

@@ -244,7 +244,7 @@ const ROWS: readonly Row[] = [
     {
       venue: venue('Eko Hotel', 'Lagos', 'Lagos'),
       timeZone: LAGOS,
-      hosts: ['Funmi Ade'],
+      hosts: ['Funmilayo Adéṣínà-Ọláolúwa'],
       currency: 'NGN',
     },
   ),

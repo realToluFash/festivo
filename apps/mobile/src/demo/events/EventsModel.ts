@@ -309,6 +309,9 @@ export const LIST_STATES = [
   'search',
   'filtered',
   'filterOpen',
+  'manyFilters',
+  'manyFiltersOpen',
+  'longHost',
   'noMatch',
   'noGuests',
   'events',
@@ -344,6 +347,15 @@ export function withoutTab(
   return events.filter((event) => !gone.has(event.id));
 }
 
+/** More picks than a phone's Filter has room for, and more than the menu's Type and Hosted by rows have; the wedding this week still matches (sc-39348). */
+export const MANY_FILTERS: Filters = {
+  types: ['wedding', 'birthday', 'gala'],
+  when: { kind: 'week' },
+  hosts: ['Adaeze Obi', 'Tunde Bakare'],
+};
+
+export const LONG_HOST = 'Funmilayo Adéṣínà-Ọláolúwa';
+
 export function listStart(state: ListState | null): {
   tab: ListTab;
   typed: string;
@@ -371,6 +383,11 @@ export function listStart(state: ListState | null): {
       return { ...start, typed: 'lucia' };
     case 'filtered':
       return { ...start, filters: { ...NO_FILTERS, types: ['wedding', 'birthday'] } };
+    case 'manyFilters':
+    case 'manyFiltersOpen':
+      return { ...start, filters: MANY_FILTERS };
+    case 'longHost':
+      return { ...start, filters: { ...NO_FILTERS, hosts: [LONG_HOST] } };
     case 'noMatch':
       return { ...start, typed: 'garden party', filters: { ...NO_FILTERS, types: ['wedding'] } };
     default:
