@@ -18,7 +18,7 @@ import {
   type ChangeStage,
   SetPasswordScreen,
 } from '../../components/SecurityPassword.tsx';
-import { QR_SIDE, TwoFactorSection } from '../../components/SecurityTwoFactor.tsx';
+import { type Enrolment, QR_SIDE, TwoFactorSection } from '../../components/SecurityTwoFactor.tsx';
 import { WaysSection } from '../../components/SecurityWays.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import {
@@ -51,6 +51,7 @@ import {
   changeRefusal,
   chooseRefusal,
   emailedCodeRefusal,
+  type Factor,
   finishedLine,
   type Proof,
   proofAsks,
@@ -95,6 +96,7 @@ const QR_MODULES = 21;
 const RESEND_SECONDS = 42;
 const FACTOR_LOADING_MS = 8000;
 const RETRY_MS = 500;
+const KEY_LOADING_MS = 1500;
 
 /** Settings › Security in B, summary first, on sample data that stays on the device. */
 export function SecuritySection() {
@@ -119,6 +121,7 @@ function SecurityPage({ start }: { start: SecurityStart }) {
   const [said, setSaid] = useState<string | null>(() => finishedLine(start.finished, t));
   const [factor, setFactor] = useState(start.factor);
   const [loadMs, setLoadMs] = useState(FACTOR_LOADING_MS);
+  const [enrol, setEnrol] = useState(start.enrol);
   const lineHeld = useRef(start.finished != null);
   const [opened, setOpened] = useState(start.opened);
   const [ask, setAsk] = useState(start.ask);
@@ -169,6 +172,7 @@ function SecurityPage({ start }: { start: SecurityStart }) {
     }),
     [],
   );
+  const setupKey = enrolmentOf(enrol, enrolment, () => setEnrol('loading'));
   const others = devices.filter((device) => !device.here);
   const provider: Provider = opened === 'apple' ? 'apple' : 'google';
   const way = ways.providers.find((each) => each.provider === provider);
@@ -185,6 +189,13 @@ function SecurityPage({ start }: { start: SecurityStart }) {
 
     return () => clearTimeout(loaded);
   }, [factor, loadMs]);
+
+  useEffect(() => {
+    if (enrol !== 'loading') return;
+    const loaded = setTimeout(() => setEnrol('ready'), KEY_LOADING_MS);
+
+    return () => clearTimeout(loaded);
+  }, [enrol]);
 
   useEffect(() => {
     if (factor !== 'ready' || !lineHeld.current) return;
@@ -294,6 +305,7 @@ function SecurityPage({ start }: { start: SecurityStart }) {
 
   function setUp(target: Target): void {
     setCodesFor('setup');
+    setEnrol('loading');
     show('setup', target);
   }
 
@@ -518,7 +530,7 @@ function SecurityPage({ start }: { start: SecurityStart }) {
       <DemoTwoFactorScreen
         key={`twoFactor.${visit}`}
         open={screen === 'setup' || screen === 'recovery'}
-        enrolment={enrolment}
+        enrolment={setupKey}
         startCodes={screen === 'recovery' ? RECOVERY_CODES : null}
         phone={shell.layout === 'phone'}
         takesLinks={start.takesLinks}
@@ -538,6 +550,16 @@ function SecurityPage({ start }: { start: SecurityStart }) {
       />
     </>
   );
+}
+
+function enrolmentOf(
+  enrol: Factor,
+  ready: Enrolment,
+  retry: () => void,
+): Enrolment | { retry: () => void } | null {
+  if (enrol === 'ready') return ready;
+
+  return enrol === 'failed' ? { retry } : null;
 }
 
 function askOf(

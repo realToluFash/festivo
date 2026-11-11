@@ -34,6 +34,8 @@ export const SECURITY_STATES = [
   'unlink',
   'setup',
   'setupNoAuthenticator',
+  'setupLoading',
+  'setupFailed',
   'recovery',
   'newCodes',
   'turnOff',
@@ -84,9 +86,17 @@ export interface SecurityStart {
   signedOut: readonly string[];
   /** Some app on the device opens otpauth:// links, so the setup step offers Add to my authenticator app. */
   takesLinks: boolean;
+  /** The setup step's key: fetched, still on its way, or not fetched. */
+  enrol: Factor;
 }
 
 const ORG = SAMPLE.organisation;
+const SETUP_STATES: ReadonlySet<SecurityState> = new Set([
+  'setup',
+  'setupNoAuthenticator',
+  'setupLoading',
+  'setupFailed',
+]);
 const SIGNED_OUT = 'safari';
 const CODE_WRONG_NOW =
   'That code did not work. Enter the code your app shows now, or an unused recovery code.';
@@ -200,7 +210,7 @@ export function securityStart(state: SecurityState): SecurityStart {
   const picking = state === 'linkPick';
   const start: SecurityStart = {
     ways: { password: !googleOnly, google: !picking, apple: false },
-    twoFactor: !googleOnly && state !== 'setup' && state !== 'setupNoAuthenticator',
+    twoFactor: !googleOnly && !SETUP_STATES.has(state),
     codesLeft: state === 'recovery' ? RECOVERY_CODES.length : RECOVERY_LEFT,
     rules: {
       providerOnly: state === 'keptByRule' || picking ? ORG : null,
@@ -213,6 +223,7 @@ export function securityStart(state: SecurityState): SecurityStart {
     proof: null,
     factor: 'ready',
     takesLinks: true,
+    enrol: 'ready',
     finished: null,
     signedOut: [],
   };
@@ -235,6 +246,10 @@ export function securityStart(state: SecurityState): SecurityStart {
       return { ...start, screen: 'setup' };
     case 'setupNoAuthenticator':
       return { ...start, screen: 'setup', takesLinks: false };
+    case 'setupLoading':
+      return { ...start, screen: 'setup', enrol: 'loading' };
+    case 'setupFailed':
+      return { ...start, screen: 'setup', enrol: 'failed' };
     case 'recovery':
       return { ...start, screen: 'recovery' };
     case 'newCodes':

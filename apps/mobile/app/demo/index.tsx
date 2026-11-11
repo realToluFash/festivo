@@ -489,6 +489,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/security?state=setupNoAuthenticator',
       },
       {
+        title: 'Security · set up, key loading',
+        what: 'No Add button until the key is in',
+        href: '/demo/settings/security?state=setupLoading',
+      },
+      {
+        title: 'Security · set up, did not load',
+        what: 'No Add button; Try again brings it with the key',
+        href: '/demo/settings/security?state=setupFailed',
+      },
+      {
         title: 'Security · recovery codes',
         what: 'Saved once; Finish waits for the box',
         href: '/demo/settings/security?state=recovery',
