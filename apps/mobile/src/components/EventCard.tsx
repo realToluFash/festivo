@@ -234,32 +234,48 @@ function DayTiles({ event, now, locale }: { event: Shown; now: Date; locale: str
 
   return (
     <View style={styles.tiles} pointerEvents="none" accessibilityRole="list">
-      {tiles.map((tile) => (
-        <View
-          key={`${tile.weekday}${tile.day}`}
-          style={[styles.tile, tile.today && styles.tileToday]}
-          accessible
-          accessibilityLabel={tile.today ? `${today}, ${tile.day}` : `${tile.weekday} ${tile.day}`}
-        >
-          {!tile.today && <View style={[StyleSheet.absoluteFill, styles.tileGlass]} />}
-          <Text
-            size={12}
-            weight="bold"
-            accessible={false}
-            style={[styles.tileWeekday, tile.today ? styles.accent : styles.white]}
+      {tiles.map((tile) =>
+        tile.kind === 'gap' ? (
+          <View
+            key={tile.key}
+            style={[styles.tile, styles.tileGap]}
+            accessible
+            accessibilityLabel={t('eventsScreen.moreDays', { count: tile.hidden })}
           >
-            {tile.today ? today : tile.weekday}
-          </Text>
-          <Text
-            size={20}
-            weight="bold"
-            accessible={false}
-            style={[styles.tileDay, tile.today ? styles.accent : styles.white]}
+            <View style={[StyleSheet.absoluteFill, styles.tileGlass]} />
+            <Text size={20} weight="bold" accessible={false} style={[styles.tileDay, styles.white]}>
+              {tile.more}
+            </Text>
+          </View>
+        ) : (
+          <View
+            key={tile.key}
+            style={[styles.tile, tile.today && styles.tileToday]}
+            accessible
+            accessibilityLabel={
+              tile.today ? `${today}, ${tile.day}` : `${tile.weekday} ${tile.day}`
+            }
           >
-            {tile.day}
-          </Text>
-        </View>
-      ))}
+            {!tile.today && <View style={[StyleSheet.absoluteFill, styles.tileGlass]} />}
+            <Text
+              size={12}
+              weight="bold"
+              accessible={false}
+              style={[styles.tileWeekday, tile.today ? styles.accent : styles.white]}
+            >
+              {tile.today ? today : tile.weekday}
+            </Text>
+            <Text
+              size={20}
+              weight="bold"
+              accessible={false}
+              style={[styles.tileDay, tile.today ? styles.accent : styles.white]}
+            >
+              {tile.day}
+            </Text>
+          </View>
+        ),
+      )}
     </View>
   );
 }
@@ -474,6 +490,7 @@ const styles = StyleSheet.create({
   },
   tileGlass: { backgroundColor: tokens.colorInkOnDark, opacity: 0.22 },
   tileToday: { backgroundColor: tokens.colorCard },
+  tileGap: { width: 'auto', minWidth: 40, paddingHorizontal: tokens.spaceSm },
   tileWeekday: { textTransform: 'uppercase', letterSpacing: 12 * 0.04 },
   tileDay: { lineHeight: 20, letterSpacing: 20 * -0.02, fontVariant: ['tabular-nums'] },
   foot: { marginTop: 'auto', gap: tokens.spaceSm },

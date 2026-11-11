@@ -1497,6 +1497,8 @@
     "paused": "Paused",
     "finished": "Finished",
     "calledOff": "Called off",
+    "moreDays_one": "{{count, number}} more day",
+    "moreDays_other": "{{count, number}} more days",
     "tabUpcoming": "Upcoming",
     "tabDrafts": "Drafts",
     "tabPast": "Past",

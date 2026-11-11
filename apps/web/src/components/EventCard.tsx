@@ -194,12 +194,25 @@ export function EventCard({
         {guests != null && <p className="desk-on-card">{guests}</p>}
         {tiles.length > 0 && (
           <ul className="ev-tiles" aria-label={t('events.itsDays')}>
-            {tiles.map((tile, index) => (
-              <li key={index} className={tile.today ? 'ev-tile is-today' : 'ev-tile'}>
-                <span className="ev-tile-top">{tile.today ? t('events.today') : tile.weekday}</span>
-                <span className="ev-tile-day">{tile.day}</span>
-              </li>
-            ))}
+            {tiles.map((tile) =>
+              tile.kind === 'gap' ? (
+                <li key={tile.key} className="ev-tile is-gap">
+                  <span className="ev-tile-day" aria-hidden="true">
+                    {tile.more}
+                  </span>
+                  <span className="desk-unseen">
+                    {t('events.moreDays', { count: tile.hidden })}
+                  </span>
+                </li>
+              ) : (
+                <li key={tile.key} className={tile.today ? 'ev-tile is-today' : 'ev-tile'}>
+                  <span className="ev-tile-top">
+                    {tile.today ? t('events.today') : tile.weekday}
+                  </span>
+                  <span className="ev-tile-day">{tile.day}</span>
+                </li>
+              ),
+            )}
           </ul>
         )}
         <div className="ev-card-foot">
