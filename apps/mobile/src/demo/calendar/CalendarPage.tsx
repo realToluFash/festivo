@@ -1,3 +1,4 @@
+import type { CalendarFeedLink } from '@soirely/api-client';
 import { firstDayOfWeek, formattingLocale, wallDay } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { type Href, router } from 'expo-router';
@@ -47,6 +48,7 @@ import { CW } from './CalendarWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
+import { TOP_TITLE, topTitle } from '../topTitle.ts';
 
 /** The demo keeps its own place, so it never moves the real Calendar's. */
 const KEPT = 'soirely.demo.calendar';
@@ -113,17 +115,26 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
     setFeed(true);
   };
   const closeFeed = useCallback(() => setFeed(false), []);
+  const reads = useRef(0);
   const source = useMemo<FeedSource>(
     () => ({
-      known: LINKS[0]!,
-      read: async () => LINKS[0]!,
+      ...(state === 'subscribeLoading' || state === 'subscribeUnreadable'
+        ? {}
+        : { known: LINKS[0]! }),
+      read: () => {
+        reads.current += 1;
+        if (state === 'subscribeLoading') return new Promise<CalendarFeedLink>(() => undefined);
+        if (state === 'subscribeUnreadable' && reads.current === 1)
+          return Promise.reject(new Error());
+        return Promise.resolve(LINKS[0]!);
+      },
       reset: async () => LINKS[1]!,
       openInApp: async () => {
         setFeed(false);
         tell(CW.openApp);
       },
     }),
-    [tell],
+    [state, tell],
   );
 
   const choices = useMemo<ShowChoice<Show>[]>(
@@ -154,11 +165,11 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
   const title = (
     <View style={styles.titleRow}>
       <Text
-        size={phone ? 30 : 34}
+        size={TOP_TITLE}
         weight="bold"
         accessibilityRole="header"
-        maxFontSizeMultiplier={44 / (phone ? 30 : 34)}
-        style={[styles.grow, titled(phone ? 30 : 34)]}
+        maxFontSizeMultiplier={44 / TOP_TITLE}
+        style={[styles.grow, topTitle]}
       >
         {t('calendar.title')}
       </Text>
@@ -176,6 +187,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
           testID="calendarFeed.open"
         />
       )}
+      {shell.layout === 'landscape' && <Bell tell={tell} />}
     </View>
   );
 
@@ -203,7 +215,9 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
       }
       onOpen={openItem}
       onRetry={retry}
-      onCreate={() => tell(`${W.firstRunCreate} has its own design.`)}
+      onCreate={
+        state === 'noneAsk' ? undefined : () => tell(`${W.firstRunCreate} has its own design.`)
+      }
     />
   );
 
@@ -257,10 +271,6 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
       {feedPanel}
     </View>
   );
-}
-
-function titled(size: number) {
-  return { lineHeight: size * 1.12, letterSpacing: size * -0.02 };
 }
 
 const styles = StyleSheet.create({

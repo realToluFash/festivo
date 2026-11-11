@@ -1,4 +1,5 @@
 import { DemoBell } from './DemoBell.tsx';
+import { DemoOffline } from './DemoOffline.tsx';
 import { formattingLocale } from '@soirely/domain';
 import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
@@ -264,6 +265,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
   if (load !== 'loaded')
     return (
       <Page>
+        <DemoOffline />
         <TitleRow title="Members" bell={<DemoBell tell={tell} />} />
         {load === 'failed' ? <Failed onRetry={() => setLoad('retrying')} /> : <Loading />}
       </Page>
@@ -310,6 +312,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
           <MembersBlocks {...list} column />
         </Column>
         <Page>
+          <DemoOffline />
           <div className="desk-top is-end">
             <DemoBell tell={tell} />
           </div>
@@ -319,6 +322,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
       </>
     ) : (
       <Page>
+        <DemoOffline />
         <BackRow to="Members" onBack={back} bell={<DemoBell tell={tell} />} />
         {page}
         {dialogs}
@@ -328,6 +332,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
 
   return (
     <Page>
+      <DemoOffline />
       <TitleRow title="Members" action={invite} bell={<DemoBell tell={tell} />} />
       <MembersCardView card={card} onStep={step} />
       {claim === 'found' && (

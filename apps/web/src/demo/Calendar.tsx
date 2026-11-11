@@ -1,11 +1,12 @@
 import { formattingLocale } from '@soirely/domain';
 import { type TFunction } from 'i18next';
-import { type ReactNode, useMemo, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 
-import { CalendarBoard, CalendarTop } from '../components/CalendarBoard.tsx';
+import { CalendarBoard } from '../components/CalendarBoard.tsx';
 import { CalendarSubscribe, type FeedSource } from '../components/CalendarSubscribe.tsx';
+import { DemoOffline } from './DemoOffline.tsx';
 import {
   type CalendarFrame,
   type CalendarLens,
@@ -14,6 +15,7 @@ import {
   readKept,
 } from '../components/calendarWeeks.ts';
 import { Glyph } from '../components/Glyph.tsx';
+import { DemoBell } from './DemoBell.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import {
   type CalendarStart,
@@ -123,6 +125,32 @@ function needsLens(t: TFunction, locale: string): CalendarLens {
   };
 }
 
+/** The Calendar's title row once the band leaves (sc-39471): Subscribe, then the bell last, as Events ends with New event and the bell. */
+function TopWithBell({
+  subscribe,
+  onSubscribe,
+  tell,
+}: {
+  subscribe: RefObject<HTMLButtonElement | null>;
+  onSubscribe: () => void;
+  tell: Tell;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <header className="desk-top ev-top">
+      <h1 className="desk-title ev-title" tabIndex={-1}>
+        {t('calendar.title')}
+      </h1>
+      <button ref={subscribe} type="button" className="cal-subscribe" onClick={onSubscribe}>
+        <Glyph name="calendar" size={18} weight={2.2} />
+        {t('calendarFeed.open')}
+      </button>
+      <DemoBell tell={tell} />
+    </header>
+  );
+}
+
 function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
   const { t } = useTranslation();
   const where = useWhere();
@@ -141,16 +169,24 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
 
     return start.needs == null ? listed : seeded(listed, start.needs);
   }, [start]);
+  const reads = useRef(0);
   const source = useMemo<FeedSource>(
     () => ({
-      read: () => Promise.resolve(feedLink(FEED_LINK)),
+      read: () => {
+        reads.current += 1;
+        if (start.read === 'waiting') return new Promise<never>(() => undefined);
+        if (start.read === 'unreadable' && reads.current === 1)
+          return Promise.reject(new Error('unreadable'));
+
+        return Promise.resolve(feedLink(FEED_LINK));
+      },
       reset: () => Promise.resolve(feedLink(NEW_FEED_LINK)),
       copy: (url) =>
         start.feed === 'refused'
           ? Promise.reject(new Error('refused'))
           : navigator.clipboard.writeText(url),
     }),
-    [start.feed],
+    [start.feed, start.read],
   );
   const needs = useMemo(() => needsLens(t, locale), [t, locale]);
 
@@ -162,11 +198,12 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
   return (
     <CalendarFrameContext value={FRAME}>
       <div className="desk-page cal-page">
-        <CalendarTop subscribe={subscribe} onSubscribe={() => setFeed('open')} />
+        <DemoOffline on={start.offline} />
+        <TopWithBell subscribe={subscribe} onSubscribe={() => setFeed('open')} tell={tell} />
         <Switched />
         {start.none ? (
           <div className="cal-first">
-            <FirstRun tell={tell} />
+            <FirstRun tell={tell} asks={start.asks} />
           </div>
         ) : (
           <CalendarBoard
@@ -190,7 +227,7 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
           <CalendarSubscribe
             organisationName={organisation}
             source={source}
-            first={feedLink(FEED_LINK)}
+            {...(start.read === 'loaded' && { first: feedLink(FEED_LINK) })}
             confirm={feed === 'reset'}
             refused={feed === 'refused'}
             instead={OPENED_IN_APP}

@@ -471,6 +471,8 @@ export const WEB_MOMENTS = [
   'factorFailed',
   'factorFailedLinked',
   'factorLoadingSignedOut',
+  'loading',
+  'failed',
 ] as const;
 
 type SecurityState = (typeof SECURITY_STATES)[number] | (typeof WEB_MOMENTS)[number];
@@ -647,7 +649,10 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
         said: RESULT_WORDS.everywhere(ALL_DEVICES.length - here.length),
       };
     case 'factorFailed':
+    case 'failed':
       return { ...REST, page: page({ factor: 'failed' }) };
+    case 'loading':
+      return { ...REST, page: page({ factor: 'loading' }) };
     case 'factorFailedLinked':
       return {
         ...REST,
@@ -748,6 +753,8 @@ export const SECURITY_PAGES: readonly { name: string; states: readonly DemoLink[
       security('factorFailed', 'Two-factor did not load, no card'),
       security('factorFailedLinked', 'Did not load, Apple linked: the line alone'),
       security('factorLoadingSignedOut', 'Still loading, a device signed out: the line alone'),
+      security('loading', 'Two-factor and the devices loading'),
+      security('failed', 'Two-factor and the devices did not load'),
     ],
   },
   {

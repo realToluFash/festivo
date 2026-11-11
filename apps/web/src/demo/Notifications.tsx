@@ -1,4 +1,5 @@
 import { DemoBell } from './DemoBell.tsx';
+import { DemoOffline } from './DemoOffline.tsx';
 import { formattingLocale, settingFlipped } from '@soirely/domain';
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 
@@ -106,6 +107,7 @@ export function Notifications({ state, tell }: { state: string; tell: Tell }) {
   return (
     <div className="desk-page">
       <div ref={column} className="desk-column">
+        <DemoOffline />
         <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
         {load === 'loading' && <KindsLoading label={W.loading} />}
         {load === 'failed' && (

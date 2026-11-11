@@ -986,6 +986,8 @@ export type ListState =
   | 'drafts'
   | 'past'
   | 'pastMore'
+  | 'pastFailed'
+  | 'failed'
   | 'offline'
   | 'search'
   | 'filtered'
@@ -1006,6 +1008,8 @@ const LIST_STATES: readonly ListState[] = [
   'drafts',
   'past',
   'pastMore',
+  'pastFailed',
+  'failed',
   'offline',
   'search',
   'filtered',
@@ -1035,6 +1039,8 @@ export interface ListStart {
   menu: 'top' | 'type' | null;
   look: EventsLook | null;
   noGuests: boolean;
+  failed: boolean;
+  moreFailed: boolean;
 }
 
 /** More picks than Filter has room for at 1280, and more than the menu's Type and Hosted by rows have; the wedding this week still matches (sc-39348). */
@@ -1058,6 +1064,8 @@ export function listStart(state: ListState | null): ListStart {
     menu: null,
     look: null,
     noGuests: false,
+    failed: false,
+    moreFailed: false,
   };
 
   switch (state) {
@@ -1081,6 +1089,10 @@ export function listStart(state: ListState | null): ListStart {
       return { ...rest, tab: 'past' };
     case 'pastMore':
       return { ...rest, tab: 'past', pastPages: 2 };
+    case 'pastFailed':
+      return { ...rest, tab: 'past', moreFailed: true };
+    case 'failed':
+      return { ...rest, failed: true };
     case 'offline':
       return { ...rest, offline: true };
     case 'search':
@@ -1361,6 +1373,8 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       list('drafts', 'Drafts, the soonest with its dates passed'),
       list('past', 'Past, a page of ten'),
       list('pastMore', 'Past, after Show more'),
+      list('pastFailed', 'Past, More finished events did not load'),
+      list('failed', 'The events did not load'),
       list('loading', 'Loading, the card and rows as shapes'),
       list('first', 'A first run'),
       list('firstAsk', 'A first run, without Create events'),

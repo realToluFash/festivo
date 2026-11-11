@@ -12,6 +12,7 @@ import { createPortal } from 'react-dom';
 
 import { ActionPair } from '../components/ActionPair.tsx';
 import { DemoBell } from './DemoBell.tsx';
+import { DemoOffline } from './DemoOffline.tsx';
 import { offButton } from '../offButton.ts';
 import { choose, useChosenScheme } from './chosenScheme.ts';
 import { Glyph } from '../components/Glyph.tsx';
@@ -134,6 +135,7 @@ export function Personalisation({ state, tell }: { state: string; tell: Tell }) 
   return (
     <div className={keyed ? 'desk-page pers is-keyed' : 'desk-page pers'}>
       <div className="desk-column">
+        <DemoOffline />
         <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
         {load === 'loading' && <Loading />}
         {load === 'failed' && (

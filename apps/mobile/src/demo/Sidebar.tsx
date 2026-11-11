@@ -74,7 +74,7 @@ export function DemoSidebar({
     <SidebarColumn>
       <SidebarHead org={org} />
       <SidebarPlaces>
-        {PLACES.map(([tab, glyph]) => (
+        {PLACES.filter(([tab]) => org || tab === 'Today').map(([tab, glyph]) => (
           <SidebarPlace
             key={tab}
             label={t(`todayScreen.tab.${glyph}`)}

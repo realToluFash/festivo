@@ -76,10 +76,13 @@ export const CALENDAR_STATES = [
   'otherZone',
   'emptyMonth',
   'none',
+  'noneAsk',
   'loading',
   'failed',
   'subscribe',
   'subscribeRefused',
+  'subscribeLoading',
+  'subscribeUnreadable',
   'resetLink',
   'needsMenu',
   'needsMonth',
@@ -146,6 +149,8 @@ export function startOf(state: CalendarState | null, today: string): Start {
     case 'failed':
       return { ...start, load: state };
     case 'subscribe':
+    case 'subscribeLoading':
+    case 'subscribeUnreadable':
       return { ...start, feed: 'panel' };
     case 'subscribeRefused':
       return { ...start, feed: 'refused' };
@@ -173,7 +178,7 @@ export function startOf(state: CalendarState | null, today: string): Start {
 }
 
 export function sampleOf(state: CalendarState | null): readonly SampleEvent[] {
-  if (state === 'none') return [];
+  if (state === 'none' || state === 'noneAsk') return [];
 
   return state === 'monthEdge' ? [...EVENTS, REUNION] : EVENTS;
 }

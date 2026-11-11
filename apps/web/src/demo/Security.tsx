@@ -1,7 +1,9 @@
 import { DemoBell } from './DemoBell.tsx';
+import { DemoOffline } from './DemoOffline.tsx';
 import { type Provider as ApiProvider } from '@soirely/api-client';
 import { formattingLocale } from '@soirely/domain';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
@@ -74,6 +76,7 @@ import { useLater } from '../useLater.ts';
 /** Security at a desk in B · Summary first (Web-Security-*.dc.html): the app's page, the same for every role. */
 export function Security({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
   const you = yourSecurity(viewer);
   const [start] = useState(() => securityStart(state, viewer));
@@ -85,6 +88,10 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
   const [proved, setProved] = useState(false);
   const later = useLater();
   const [loadMs, setLoadMs] = useState(FACTOR_LOADING_MS);
+  const [deviceLoad, setDeviceLoad] = useState<'loaded' | 'loading' | 'failed'>(
+    state === 'loading' || state === 'failed' ? state : 'loaded',
+  );
+  const [devicesTry, setDevicesTry] = useState(0);
   const column = useRef<HTMLDivElement>(null);
   const saidLine = useRef<HTMLParagraphElement | null>(null);
   const lineHeld = useRef(false);
@@ -149,6 +156,12 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
     saidLine.current?.focus();
   }, [page.factor]);
 
+  useEffect(() => {
+    if (deviceLoad !== 'loading') return;
+    const timer = setTimeout(() => setDeviceLoad('loaded'), loadMs);
+    return () => clearTimeout(timer);
+  }, [deviceLoad, loadMs]);
+
   function retryFactor(): void {
     setLoadMs(SEND_MS);
     setPage((now) => ({ ...now, factor: 'loading' }));
@@ -165,6 +178,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
   return (
     <div className="desk-page">
       <div ref={column} className="desk-column">
+        <DemoOffline />
         <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
         {page.factor === 'loaded' ? (
           <ShieldCard
@@ -316,43 +330,58 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
         </section>
         <section className="desk-block">
           <Head title={W.devices} />
-          <ul className="desk-rows account-rows">
-            {devices.map((device) => (
-              <Openable
-                key={device.id}
-                title={device.name}
-                line={deviceLine(device, locale)}
-                lead={device.kind}
-                on={open === device.id}
-                onToggle={() => toggle(device.id)}
-              >
-                <p className="security-meta">
-                  {W.signedFrom(dayAtTime(device.signedIn, locale), device.ip)}
-                </p>
-                <p className="security-meta">{W.expires(dayOf(device.expires, locale))}</p>
-                <div className="account-acts">
-                  {device.here ? (
-                    <button type="button" className="desk-text" onClick={() => signOut(device)}>
-                      <Glyph name="signOut" size={17} weight={2.3} />
-                      {W.signOut}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="desk-text is-red"
-                      onClick={() => setAsk('signOut')}
-                    >
-                      {W.signOutAsking}
-                    </button>
-                  )}
-                </div>
-                <p className="desk-note">{device.here ? W.hereOut : W.signInAgain}</p>
-              </Openable>
-            ))}
-          </ul>
-          <p className="desk-foot">{W.devicesFoot}</p>
+          {deviceLoad === 'failed' ? (
+            <SectionFailed
+              title={t('devices.failedTitle')}
+              line={t('devices.failedBody')}
+              announce={devicesTry === 0}
+              onRetry={() => {
+                setDevicesTry((was) => was + 1);
+                setLoadMs(SEND_MS);
+                setDeviceLoad('loading');
+              }}
+            />
+          ) : deviceLoad === 'loading' ? (
+            <Bones count={2} label={W.loading} />
+          ) : (
+            <ul className="desk-rows account-rows">
+              {devices.map((device) => (
+                <Openable
+                  key={device.id}
+                  title={device.name}
+                  line={deviceLine(device, locale)}
+                  lead={device.kind}
+                  on={open === device.id}
+                  onToggle={() => toggle(device.id)}
+                >
+                  <p className="security-meta">
+                    {W.signedFrom(dayAtTime(device.signedIn, locale), device.ip)}
+                  </p>
+                  <p className="security-meta">{W.expires(dayOf(device.expires, locale))}</p>
+                  <div className="account-acts">
+                    {device.here ? (
+                      <button type="button" className="desk-text" onClick={() => signOut(device)}>
+                        <Glyph name="signOut" size={17} weight={2.3} />
+                        {W.signOut}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="desk-text is-red"
+                        onClick={() => setAsk('signOut')}
+                      >
+                        {W.signOutAsking}
+                      </button>
+                    )}
+                  </div>
+                  <p className="desk-note">{device.here ? W.hereOut : W.signInAgain}</p>
+                </Openable>
+              ))}
+            </ul>
+          )}
+          {deviceLoad === 'loaded' && <p className="desk-foot">{W.devicesFoot}</p>}
         </section>
-        {others > 0 && (
+        {deviceLoad === 'loaded' && others > 0 && (
           <RedAction
             label={W.everywhere}
             line={W.everywhereHint}

@@ -103,10 +103,17 @@ const SEEN: Record<string, () => unknown> = {
   otherZone: () => screen.getByRole('heading', { level: 2, name: 'October 2026' }),
   emptyMonth: () => screen.getByText(W.emptyMonth('February 2027')),
   none: () => screen.getByText('Set up your first event'),
+  noneAsk: () =>
+    screen.getByText('Set up your first event') &&
+    screen.queryByRole('button', { name: 'Create an event' }) == null &&
+    screen.queryByRole('link', { name: 'Create an event' }) == null,
   loading: () => screen.getByRole('status', { name: '' }),
   failed: () => screen.getByRole('alert'),
+  offline: () => screen.getByText('Offline · as of 09:32'),
   subscribe: () => screen.getByRole('dialog', { name: F.open }),
   subscribeRefused: () => screen.getByText(F.copyRefused),
+  subscribeLoading: () => screen.getByText('Getting your link…'),
+  subscribeUnreadable: () => screen.findByText('Your link did not load. Try again.'),
   resetLink: () => screen.getByRole('dialog', { name: F.confirmTitle }),
   needsMenu: () => screen.getByRole('menuitemradio', { name: W.showNeedsYou, checked: true }),
   needsMonth: () =>
@@ -155,7 +162,7 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
 
   it.each(CALENDAR_STATES)('draws ?state=%s', SLOW, async (state) => {
     await calendar(state);
-    expect(SEEN[state]?.()).toBeTruthy();
+    expect(await SEEN[state]?.()).toBeTruthy();
   });
 
   it('says it is loading, and a failed load offers Try again', SLOW, async () => {

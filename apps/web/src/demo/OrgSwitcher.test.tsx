@@ -319,6 +319,31 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
     );
   });
 
+  it(
+    'keeps the Settings list while paused, with the stand-in on the organisation’s sections only',
+    SLOW,
+    async () => {
+      open('/demo/settings/sign-in-rules?switcher=paused');
+      await opener();
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+
+      expect(screen.getByRole('link', { name: /Security/ })).toBeDefined();
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: /^Your access to Casa Lumen Eventos is paused/,
+        }),
+      ).toBeDefined();
+
+      cleanup();
+      open('/demo/settings/security?switcher=paused');
+      await opener();
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+
+      expect(screen.getByRole('heading', { level: 1, name: 'Security' })).toBeDefined();
+    },
+  );
+
   it('marks nothing current while access is paused, and switches away from it', SLOW, async () => {
     open('/demo/events?switcher=paused');
     await opener();

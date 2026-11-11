@@ -119,11 +119,16 @@ export function sampleCalls(start: OrganisationStart, locale: string): Organisat
 
         return link;
       }),
-    prove: (first) =>
+    prove: (first, code) =>
       after(SEND_MS, () => {
-        if ('password' in first && first.password === SAMPLE.password)
-          return { proof: 'sample-proof', expiresAt: '' };
-        throw refusal('invalid_credentials', OWNERSHIP_WORDS.passwordWrong);
+        if (!('password' in first) || first.password !== SAMPLE.password)
+          throw refusal('invalid_credentials', OWNERSHIP_WORDS.passwordWrong);
+        if (code == null) throw refusal('two_factor_required', OWNERSHIP_WORDS.codeAsked);
+        const typed = code.replaceAll(/\s/gu, '').toLowerCase();
+        if (typed !== SAMPLE.authenticator && typed !== SAMPLE.recovery)
+          throw refusal('two_factor_code_invalid', OWNERSHIP_WORDS.codeWrong);
+
+        return { proof: 'sample-proof', expiresAt: '' };
       }),
     transferOwnership: () => after(SEND_MS, () => undefined),
     leaveOrganisation: () => after(SEND_MS, () => undefined),
