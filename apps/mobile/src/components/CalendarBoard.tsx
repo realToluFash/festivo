@@ -377,7 +377,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
       <View style={styles.toolbarBig}>
         {viewSwitch}
         {showButton}
-        <MonthName name={monthWords} size={22} />
+        <MonthName name={monthWords} size={22} wraps />
         <View style={styles.stepperBig}>{stepper}</View>
       </View>
     ) : (
@@ -387,11 +387,8 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
           <View style={styles.grow} />
           {showButton}
         </View>
-        <View style={styles.row}>
-          <MonthName name={monthWords} size={22} />
-          <View style={styles.grow} />
-          {stepper}
-        </View>
+        <MonthName name={monthWords} size={22} wraps />
+        <View style={styles.row}>{stepper}</View>
       </View>
     )
   ) : (
