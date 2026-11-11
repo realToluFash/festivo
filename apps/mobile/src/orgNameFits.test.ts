@@ -23,6 +23,7 @@ beforeAll(async () => {
 
 const FRAME = readFileSync(join(import.meta.dirname, 'components', 'AppFrame.tsx'), 'utf8');
 const PILL = readFileSync(join(import.meta.dirname, 'components', 'OrgPill.tsx'), 'utf8');
+const COVER = readFileSync(join(import.meta.dirname, 'components', 'TodayCover.tsx'), 'utf8');
 const SPACED = 'Adeyemi Okafor Events '.repeat(5).slice(0, 99).concat('X');
 const WORD = 'A'.repeat(100);
 
@@ -31,6 +32,12 @@ describe('a 100-character organisation name in the frame (sc-486)', () => {
     expect(FRAME.match(/const lines = useNameLines\(\);/gu)).toHaveLength(1);
     expect(FRAME).toMatch(/<WhitePill\b(?:(?!\/>)[\s\S])*\slines=\{lines\}/u);
     expect(PILL).toMatch(/numberOfLines=\{lines \?\? \(wrap \? undefined : 1\)\}/u);
+  });
+
+  it("keeps Today's cover pill beside an upright tablet's tabs to one line, or its tile, as the frame's (sc-38149)", () => {
+    expect(COVER).toMatch(/usePillFit\(org\.name, org\.waiting, maxWidth, large\)/u);
+    expect(COVER).toMatch(/const wrap = phone \|\| large;/u);
+    expect(COVER).not.toMatch(/<OpenerWords[^>]*\swrap\s/u);
   });
 
   it.each([

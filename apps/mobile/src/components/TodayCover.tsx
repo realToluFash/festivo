@@ -19,10 +19,11 @@ import { Confetti, Cover, type Piece } from './Cover.tsx';
 import { EventMesh } from './EventMesh.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { Moment, Now } from '../kit/today.ts';
-import { useLayout } from '../layout/useLayout.ts';
+import { useAccessibilitySizes, useLayout, useNameLines } from '../layout/useLayout.ts';
 import { OrgMark } from './OrgMark.tsx';
 import { OPENER, OpenerWords } from './OrgPill.tsx';
 import { useTodayShell } from './todayShell.ts';
+import { usePillFit } from './usePillFit.tsx';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
 
@@ -147,6 +148,9 @@ export function OrgButton({
   const ref = useRef<ViewInstance>(null);
   const org = useTodayShell().useOrgOpener(ref, !compact);
   const phone = useLayout().kind === 'phone';
+  const large = useAccessibilitySizes();
+  const lines = useNameLines();
+  const { tileAlone, measure } = usePillFit(org.name, org.waiting, maxWidth, large);
   const shared = {
     ref,
     onPress: org.onPress,
@@ -169,15 +173,38 @@ export function OrgButton({
   const tall = org.waiting != null ? OPENER.waiting : 40;
   // Clear of the bell by the cover's side margin; the phone's row already sets a gap either side of its spacer.
   const clear = phone ? tokens.spaceXl - 2 * tokens.spaceSm : tokens.space3xl;
+  const wrap = phone || large;
+
+  if (tileAlone)
+    return (
+      <View style={[styles.orgFit, { marginRight: clear, maxWidth }]}>
+        {measure}
+        <Pressable {...shared}>
+          <Glass style={styles.orgCompact}>
+            <OrgMark id={org.id} name={org.name} side={30} glass />
+          </Glass>
+          {org.waiting != null && <View style={styles.tileRing} />}
+        </Pressable>
+      </View>
+    );
 
   return (
-    <Pressable {...shared} style={[styles.orgWide, { marginRight: clear, maxWidth }]}>
-      <Glass height={tall} style={[styles.orgGlass, { height: undefined, minHeight: tall }]}>
-        <OrgMark id={org.id} name={org.name} side={28} glass />
-        <OpenerWords name={org.name} waiting={org.waiting} onDark wrap />
-        <Glyph name="updown" size={14} ink={tokens.colorInkOnDark} />
-      </Glass>
-    </Pressable>
+    <View style={[styles.orgFit, { marginRight: clear, maxWidth }]}>
+      {measure}
+      <Pressable {...shared} style={styles.orgWide}>
+        <Glass height={tall} style={[styles.orgGlass, { height: undefined, minHeight: tall }]}>
+          <OrgMark id={org.id} name={org.name} side={28} glass />
+          <OpenerWords
+            name={org.name}
+            waiting={org.waiting}
+            onDark
+            wrap={wrap}
+            lines={wrap ? undefined : lines}
+          />
+          <Glyph name="updown" size={14} ink={tokens.colorInkOnDark} />
+        </Glass>
+      </Pressable>
+    </View>
   );
 }
 
@@ -934,6 +961,7 @@ const styles = StyleSheet.create({
   gapXl: { gap: 22 },
   glass: { flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
   glassFill: { backgroundColor: tokens.colorInkOnDark, opacity: 0.22 },
+  orgFit: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
   orgWide: { flexShrink: 1 },
   orgGlass: {
     flexShrink: 1,
@@ -943,6 +971,16 @@ const styles = StyleSheet.create({
     paddingRight: tokens.spacePillEnd,
   },
   orgCompact: { paddingHorizontal: 5 },
+  tileRing: {
+    position: 'absolute',
+    top: -4,
+    end: -4,
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
+    borderWidth: 2,
+    borderColor: tokens.colorInkOnDark,
+  },
   bell: { width: 40, justifyContent: 'center' },
   unread: {
     position: 'absolute',
