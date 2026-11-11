@@ -490,14 +490,14 @@ const styles = StyleSheet.create({
     gap: 18,
     paddingTop: 26,
     paddingHorizontal: tokens.space5xl,
-    paddingBottom: tokens.space6xl,
+    paddingBottom: tokens.space6xl * 2,
   },
   landscape: {
     gap: 18,
     paddingTop: 26,
     paddingHorizontal: 30,
   },
-  column: { gap: 18, paddingBottom: tokens.space5xl },
+  column: { gap: 18, paddingBottom: tokens.space6xl * 2 },
 });
 
 const SPACING: ListAndPageSpacing = {
