@@ -1293,12 +1293,12 @@
       "approve": "Approuver",
       "turnDown": "Refuser",
       "cancel": "Annuler",
-      "turnDownTitle": "Refuser la demande de {{name}} ?",
+      "turnDownTitle": "Refuser la demande faite par {{name}} ?",
       "turnDownBody": "{{name}} recevra un e-mail lui indiquant que sa demande pour rejoindre {{organisation}} a été refusée. L’e-mail ne précise pas qui l’a refusée.",
       "keep": "Garder la demande",
       "approved": "{{name}} est maintenant membre, avec le rôle {{role}}.",
       "approvedNext": "Voir {{name}}",
-      "turnedDown": "La demande de {{name}} a été refusée.",
+      "turnedDown": "La demande faite par {{name}} a été refusée.",
       "turnedDownNext": "Voir Anciens"
     },
     "card": {
@@ -1309,7 +1309,7 @@
       "peopleWaiting": "{{people}} · {{waiting}}",
       "answer": "Répondre à {{name}}",
       "joined": "{{name}} a rejoint l’organisation avec le rôle {{role}}",
-      "turnedDown": "Vous avez refusé la demande de {{name}}",
+      "turnedDown": "Vous avez refusé la demande faite par {{name}}",
       "turnedDownLine": "Cette personne figure dans Anciens.",
       "removed": "{{name}} ne fait plus partie de l’organisation",
       "removedLine": "Ses événements restent rattachés à {{organisation}}. Cette personne figure dans Anciens, avec tout ce qu’elle a fait.",
