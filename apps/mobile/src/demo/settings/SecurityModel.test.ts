@@ -22,6 +22,7 @@ import {
   BREACHED_PASSWORD,
   DEVICES,
   enrolledKey,
+  keyCode,
   NEXT_AUTHENTICATOR_KEY,
   otpauthLink,
   type SampleWays,
@@ -127,7 +128,7 @@ describe('a state link', () => {
       fetched: 2,
       refused: true,
     });
-    expect(setupRefusal(securityStart('setupOldEntry').typed)).not.toBeNull();
+    expect(setupRefusal(securityStart('setupOldEntry').typed, enrolledKey(2))).not.toBeNull();
     expect(securityStart('rest')).toMatchObject({ fetched: 0, typed: '', handed: false });
     expect(securityStart('signOutDevice')).toMatchObject({ opened: 'safari', ask: 'signOut' });
   });
@@ -199,8 +200,14 @@ describe('the sample server', () => {
     expect(chooseRefusal(NEW_PASSWORD)).toBeNull();
     expect(emailedCodeRefusal('482170')).toMatch(/^That code did not match\./u);
     expect(emailedCodeRefusal(SAMPLE.code)).toBeNull();
-    expect(setupRefusal('714 320')).toMatch(/^That code does not match\./u);
-    expect(setupRefusal(SAMPLE.authenticator)).toBeNull();
+    expect(setupRefusal('714 320', AUTHENTICATOR_KEY)).toMatch(/^That code does not match\./u);
+    expect(setupRefusal(SAMPLE.authenticator, AUTHENTICATOR_KEY)).toBeNull();
+  });
+
+  it('takes only the code of the key showing, so an entry from an earlier key is refused', () => {
+    expect(keyCode(AUTHENTICATOR_KEY)).not.toBe(keyCode(NEXT_AUTHENTICATOR_KEY));
+    expect(setupRefusal(keyCode(AUTHENTICATOR_KEY), NEXT_AUTHENTICATOR_KEY)).not.toBeNull();
+    expect(setupRefusal(keyCode(NEXT_AUTHENTICATOR_KEY), NEXT_AUTHENTICATOR_KEY)).toBeNull();
   });
 });
 

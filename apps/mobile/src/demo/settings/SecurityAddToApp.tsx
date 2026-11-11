@@ -27,6 +27,7 @@ import { typedCodeProblem } from '../../kit/twoFactor.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { SAMPLE } from '../samples.ts';
+import { keyCode } from './SecuritySample.ts';
 
 /** The enrolment with the link the API already sends beside the secret and the QR. */
 export type DemoEnrolment = Enrolment & { otpauthUri: string };
@@ -174,7 +175,7 @@ export function DemoTwoFactorScreen({
           )}
           {ready != null && takesLinks && handed && (
             <DemoOnly
-              title={`Stand-in for the authenticator. The product opens ${ready.otpauthUri} in the app that takes otpauth:// links (Passwords on iOS; the authenticator, or Android’s chooser), offering Soirely · ${SAMPLE.email} with the key above. The demo opens nothing and copies nothing. The code that entry would show: ${SAMPLE.authenticator}.`}
+              title={`Stand-in for the authenticator. The product opens ${ready.otpauthUri} in the app that takes otpauth:// links (Passwords on iOS; the authenticator, or Android’s chooser), offering Soirely · ${SAMPLE.email} with the key above. The demo opens nothing and copies nothing. The code that entry would show: ${keyCode(ready.secret)}.`}
             >
               {null}
             </DemoOnly>

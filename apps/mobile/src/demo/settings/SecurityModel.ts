@@ -9,9 +9,11 @@ import { codeHelp, proveIntro } from '../../kit/waysProof.ts';
 import { SAMPLE } from '../samples.ts';
 import { CODE_SAYS, type SampleProofAsks } from './AccountModel.ts';
 import {
+  AUTHENTICATOR_KEY,
   BREACHED_PASSWORD,
   type Device,
   DEVICES,
+  keyCode,
   linkedProviders,
   PROVIDER_ADDRESS,
   PROVIDER_NAME,
@@ -111,8 +113,6 @@ const SETUP_STATES: ReadonlySet<SecurityState> = new Set([
   'setupBack',
   'setupOldEntry',
 ]);
-/** A code from the entry the first key made, typed after Cancel brought a new key. */
-const OLD_ENTRY_CODE = '714320';
 const SIGNED_OUT = 'safari';
 const CODE_WRONG_NOW =
   'That code did not work. Enter the code your app shows now, or an unused recovery code.';
@@ -213,8 +213,8 @@ export function emailedCodeRefusal(code: string): string | null {
     : 'That code did not match. Check the newest email from Soirely and try again.';
 }
 
-export function setupRefusal(code: string): string | null {
-  return cleanCode(code) === SAMPLE.authenticator
+export function setupRefusal(code: string, key: string): string | null {
+  return cleanCode(code) === keyCode(key)
     ? null
     : 'That code does not match. Check the app was set up with the key above, then enter the code it shows now.';
 }
@@ -275,7 +275,13 @@ export function securityStart(state: SecurityState): SecurityStart {
     case 'setupBack':
       return { ...start, screen: 'setup', typed: '305', handed: true };
     case 'setupOldEntry':
-      return { ...start, screen: 'setup', fetched: 2, typed: OLD_ENTRY_CODE, refused: true };
+      return {
+        ...start,
+        screen: 'setup',
+        fetched: 2,
+        typed: keyCode(AUTHENTICATOR_KEY),
+        refused: true,
+      };
     case 'recovery':
       return { ...start, screen: 'recovery' };
     case 'newCodes':

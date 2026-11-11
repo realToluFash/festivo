@@ -550,14 +550,14 @@ function SecurityPage({ start }: { start: SecurityStart }) {
         {...(visit === 0
           ? {
               startTyped: start.typed,
-              startError: start.refused ? setupRefusal(start.typed) : null,
+              startError: start.refused ? setupRefusal(start.typed, enrolment.secret) : null,
               startHanded: start.handed,
             }
           : {})}
         opener={opener}
         onClose={() => setScreen(null)}
         onTurnOn={(code) => {
-          const refused = setupRefusal(code);
+          const refused = setupRefusal(code, enrolment.secret);
           if (refused != null) return Promise.resolve({ error: refused });
           setTwoFactor(true);
           setCodesLeft(RECOVERY_CODES.length);

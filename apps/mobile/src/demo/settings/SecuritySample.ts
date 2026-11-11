@@ -41,6 +41,11 @@ export function enrolledKey(fetched: number): string {
   return fetched % 2 === 0 ? NEXT_AUTHENTICATOR_KEY : AUTHENTICATOR_KEY;
 }
 
+/** The code an authenticator entry made from this key shows now; each key's entry shows its own. */
+export function keyCode(key: string): string {
+  return key === NEXT_AUTHENTICATOR_KEY ? '714320' : SAMPLE.authenticator;
+}
+
 /** What Add to my authenticator app hands over, as the server builds it for `otpauthUri`. */
 export function otpauthLink(key: string): string {
   return `otpauth://totp/Soirely:${SAMPLE.email}?secret=${key}&issuer=Soirely`;
