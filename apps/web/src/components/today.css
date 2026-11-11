@@ -1093,9 +1093,6 @@
 }
 
 .today-event-when {
-  display: flex;
-  flex-wrap: wrap;
-  column-gap: 0.25em;
   margin-top: var(--spaceHair);
   color: var(--colorInkSecondary);
   font: var(--todaySmall);
@@ -1107,19 +1104,17 @@
 
 .today-event-dates,
 .today-event-date {
+  display: inline-block;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  vertical-align: top;
 }
 
 .today-event-dates.is-range {
+  display: inline;
   white-space: normal;
-}
-
-.today-event-date {
-  display: inline-block;
-  vertical-align: top;
 }
 
 .today-chips {
