@@ -282,6 +282,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/today?create=country-search',
       },
       {
+        title: 'Step 2 · nothing matches',
+        what: '“zzz”: No country matches',
+        href: '/demo/today?create=country-nomatch',
+      },
+      {
         title: 'Step 2 · another country',
         what: 'Brazil picked, the zone still Lisbon',
         href: '/demo/today?create=country-picked',
