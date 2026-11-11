@@ -577,7 +577,7 @@ describe('a person at a desk (sc-34200)', () => {
     expect(sent.some((one) => one.line.endsWith('/restore'))).toBe(true);
   });
 
-  it('removes only once it is confirmed, then says so on the list’s card', async () => {
+  it('removes only once it is confirmed, then says so on the list’s card, which takes the focus', async () => {
     signedIn();
     let list: unknown = listWith(ACTIVE_BISI);
     answering({
@@ -599,6 +599,9 @@ describe('a person at a desk (sc-34200)', () => {
 
     expect(await page().findByText('Bisi Adeyemi was removed')).toBeDefined();
     expect(page().getByRole('button', { name: 'See Former' })).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(document.querySelector('.members-desk .desk-said-lines')),
+    );
   });
 
   it('offers nothing to change on your own page', async () => {

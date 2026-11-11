@@ -280,6 +280,7 @@ function MembersLoaded({
     organisation.role.seededAs === 'administrator',
   );
   const moved = useRef(false);
+  const toSays = useRef(false);
   const granted = grantableRoles(roles, organisation);
   const person = open == null ? null : (list.members.find((one) => one.id === open) ?? null);
 
@@ -291,7 +292,9 @@ function MembersLoaded({
   useEffect(() => {
     if (!moved.current) return;
     moved.current = false;
-    if (!split || open == null) title()?.focus();
+    if (toSays.current) focusWhenFree(cardWords);
+    else if (!split || open == null) title()?.focus();
+    toSays.current = false;
   }, [open, split]);
 
   const openPerson = (id: string) => {
@@ -461,6 +464,7 @@ function MembersLoaded({
           onChange(changed);
           onRecoveries(recoveryEndedByRemoval(recoveries, person.user.id));
           setNotice({ kind: 'removed', name });
+          toSays.current = true;
           back();
         }}
         onBack={back}
