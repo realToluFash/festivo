@@ -47,7 +47,13 @@ export function OpenerWords({
               { borderColor: onDark ? tokens.colorInkOnDark : tokens.colorInk },
             ]}
           />
-          <Text size={12.5} weight="semibold" accessible={false} style={[styles.waitingWords, ink]}>
+          <Text
+            size={12.5}
+            weight="semibold"
+            numberOfLines={wrap ? undefined : 1}
+            accessible={false}
+            style={[styles.waitingWords, ink]}
+          >
             {waiting}
           </Text>
         </View>

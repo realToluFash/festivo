@@ -14,15 +14,12 @@ import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { NavBar } from '../DemoScreen.tsx';
+import { answersStack, answerWidth, firstWord, pillShowsWords } from '../../layout/pillFit.ts';
 import {
-  answersStack,
-  answerWidth,
-  firstWord,
   LANGUAGES,
   ORGANISATIONS,
   type PillFitLanguage,
   type PillFitOrganisation,
-  pillShowsWords,
   type Sending,
 } from './pillFitRules.ts';
 
