@@ -3471,20 +3471,6 @@ span {
 
 /* ── Settings > Members ───────────────────────────────────────────────────── */
 
-.members {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceLg);
-}
-
-.members h1 {
-  margin: 0;
-}
-
-.members-back {
-  align-self: flex-start;
-}
-
 /* Who is becoming the owner, on the paused screen (sc-6640): wraps rather than truncates at every width. */
 .owner-claim {
   display: flex;
@@ -6412,8 +6398,7 @@ button.members-row {
 }
 
 .arrives,
-.arrived > :not(h1, h2, .card-heading, .card, .members, .roles, .dialog, .dialog-scrim),
-.arrived > .members > :not(.members-head, .dialog, .dialog-scrim),
+.arrived > :not(h1, h2, .card-heading, .card, .roles, .dialog, .dialog-scrim),
 .arrived > .roles > :not(.roles-list, .dialog, .dialog-scrim),
 .arrived .roles-list > :not(.roles-list-head, .dialog, .dialog-scrim),
 .arrived > .card > :not(h2, .card-heading, .contacts-head, .dialog, .dialog-scrim) {
@@ -6423,8 +6408,7 @@ button.members-row {
 @media (prefers-reduced-motion: reduce) {
   .skeleton-shown .skeleton-blocks,
   .arrives,
-  .arrived > :not(h1, h2, .card-heading, .card, .members, .roles, .dialog, .dialog-scrim),
-  .arrived > .members > :not(.members-head, .dialog, .dialog-scrim),
+  .arrived > :not(h1, h2, .card-heading, .card, .roles, .dialog, .dialog-scrim),
   .arrived > .roles > :not(.roles-list, .dialog, .dialog-scrim),
   .arrived .roles-list > :not(.roles-list-head, .dialog, .dialog-scrim),
   .arrived > .card > :not(h2, .card-heading, .contacts-head, .dialog, .dialog-scrim) {
