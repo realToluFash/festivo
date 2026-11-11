@@ -1,0 +1,30 @@
+# sc-30302: Events loaded, then the API stopped (by the runner, on the online screenshot) and a pull to refresh: the search says it needs a connection.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.search'
+    timeout: 30000
+- takeScreenshot: online
+- extendedWaitUntil:
+    visible: 'never-on-screen-sc30302'
+    timeout: 20000
+    optional: true
+- swipe:
+    start: 50%, 30%
+    end: 50%, 85%
+    duration: 800
+- extendedWaitUntil:
+    visible: 'Search needs a connection.'
+    timeout: 90000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: offline
+- tapOn:
+    id: 'events.search'
+- inputText: 'gala'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: offline-typed
