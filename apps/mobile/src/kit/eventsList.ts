@@ -11,6 +11,7 @@ import {
   formatEventMoment,
   milestoneDistance,
   nextStep,
+  notThisYear,
   shownDays,
   stepAwaitsMilestones,
   wallDayNumber,
@@ -257,7 +258,12 @@ export function cardStep(event: Shown, now: Date, locale: string, t: TFunction):
         kind: 'next',
         title: t('eventsScreen.nextUp', { title: step.milestone.title }),
         when: t('todayScreen.dateAndHowFar', {
-          date: formatEventMoment(step.milestone.at, event.timeZone, locale),
+          date: formatEventMoment(
+            step.milestone.at,
+            event.timeZone,
+            locale,
+            notThisYear(event.timeZone, now, step.milestone.at),
+          ),
           far: distanceWords(step.milestone.at, event.timeZone, now, t),
         }),
         you: step.milestone.owner === 'you',
