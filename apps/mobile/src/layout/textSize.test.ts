@@ -260,6 +260,8 @@ describe('the width labels have to fit (sc-37298)', () => {
     const reported = { windowWidth: 360, width: tab };
     const widestAt = (start: number) => (start / 12) * 60;
 
+    expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, 360)).toBeGreaterThan(0);
+
     const before = fitWidest(
       12,
       12,
