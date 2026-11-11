@@ -393,7 +393,7 @@ function MembersLoaded({
           {claim.under}
           <MembersBlocks {...blocks} column />
         </div>
-        <div className="members-person">{page}</div>
+        <div className="members-side">{page}</div>
         {dialogs}
       </div>
     ) : (
