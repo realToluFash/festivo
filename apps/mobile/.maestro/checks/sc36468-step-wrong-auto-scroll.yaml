@@ -1,0 +1,30 @@
+# sc-36468: the new-account phone step, a wrong code under WhatsApp, then the code goes to a text; the line follows. Keys stay up: no hideKeyboard (a Back on Android), only scrolls.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../sc36468-fresh-phone.js
+    env:
+      MODE: primary
+      FAIL: '0'
+- openLink: ${METRO_URL}/--/verify-phone?from=onboarding
+- extendedWaitUntil:
+    visible: '{{t:verifyPhone.introWhatsApp}}'
+    timeout: 30000
+- tapOn:
+    id: 'verifyPhone.code'
+- inputText: '000000'
+- scrollUntilVisible:
+    element: '{{t:verifyPhone.wrongWhatsApp}}'
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: before
+- extendedWaitUntil:
+    visible: '{{t:verifyPhone.introFallback}}'
+    timeout: 80000
+- takeScreenshot: handover-top
+- scrollUntilVisible:
+    element: '{{t:verifyPhone.wrong}}'
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: after
+- assertNotVisible: '{{t:verifyPhone.wrongWhatsApp}}'

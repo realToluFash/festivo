@@ -1,0 +1,41 @@
+# sc-36468: own screen, blank error, then the code goes to a text by text; the error follows (or keeps its words).
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../sc36468-fresh-phone.js
+    env:
+      MODE: alt
+      FAIL: '0'
+- openLink: ${METRO_URL}/--/verify-phone?phone=${output.phoneId}
+- extendedWaitUntil:
+    visible: '{{t:verifyPhone.introWhatsApp}}'
+    timeout: 30000
+- tapOn:
+    id: 'verifyPhone.code'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'verifyPhone.submit'
+    timeout: 10000
+- tapOn:
+    id: 'verifyPhone.submit'
+- extendedWaitUntil:
+    visible: '{{t:verifyPhone.codeBlankWhatsApp}}'
+    timeout: 10000
+- takeScreenshot: before
+- swipe:
+    start: 50%, 45%
+    end: 50%, 15%
+- scrollUntilVisible:
+    element:
+      id: 'verifyPhone.textInstead'
+    timeout: 10000
+- tapOn:
+    id: 'verifyPhone.textInstead'
+- extendedWaitUntil:
+    visible: '{{t:verifyPhone.introChosen}}'
+    timeout: 15000
+- waitForAnimationToEnd
+- assertVisible: '{{t:verifyPhone.codeBlank}}'
+- assertNotVisible: '{{t:verifyPhone.codeBlankWhatsApp}}'
+- takeScreenshot: after

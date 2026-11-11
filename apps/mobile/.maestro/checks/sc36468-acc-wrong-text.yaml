@@ -1,0 +1,41 @@
+# sc-36468: acc screen, wrong error, then the code goes to a text by text; the error follows (or keeps its words).
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../sc36468-fresh-phone.js
+    env:
+      MODE: alt
+      FAIL: '0'
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.step'
+    timeout: 30000
+- tapOn:
+    id: 'account.step'
+- extendedWaitUntil:
+    visible: '{{t:verifyPhone.introWhatsApp}}'
+    timeout: 30000
+- tapOn:
+    id: 'account.verify.code'
+- inputText: '000000'
+- tapOn:
+    id: 'account.verify.submit'
+- extendedWaitUntil:
+    visible: '{{t:verifyPhone.wrongWhatsApp}}'
+    timeout: 10000
+- takeScreenshot: before
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'account.verify.text'
+    timeout: 10000
+- tapOn:
+    id: 'account.verify.text'
+- extendedWaitUntil:
+    visible: '{{t:verifyPhone.introChosen}}'
+    timeout: 15000
+- waitForAnimationToEnd
+- assertVisible: '{{t:verifyPhone.wrong}}'
+- assertNotVisible: '{{t:verifyPhone.wrongWhatsApp}}'
+- takeScreenshot: after
