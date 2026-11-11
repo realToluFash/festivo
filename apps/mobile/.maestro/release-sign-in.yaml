@@ -11,7 +11,7 @@ appId: com.soirely.app
       - tapOn: 'Cancel'
 - extendedWaitUntil:
     visible:
-      id: 'home\.open(SignIn|Settings)'
+      id: '(welcome\.email|signIn\.email|home\.openSettings)'
     timeout: 60000
 - runFlow:
     when:
@@ -20,10 +20,16 @@ appId: com.soirely.app
     commands:
       - tapOn:
           id: 'welcome.email'
-      - extendedWaitUntil:
-          visible:
-            id: 'signIn.email'
-          timeout: 30000
+          optional: true
+- extendedWaitUntil:
+    visible:
+      id: '(signIn\.email|home\.openSettings)'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'signIn.email'
+    commands:
       - tapOn:
           id: 'signIn.email'
       - inputText: ${EMAIL}
