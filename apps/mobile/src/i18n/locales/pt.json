@@ -290,7 +290,7 @@
     "scan": "Leia este código com a sua aplicação de autenticação",
     "qrAlt": "Código QR para a sua aplicação de autenticação",
     "cantScan": "Não consegue ler? Introduza antes esta chave na aplicação.",
-    "addToApp": "Add to my authenticator app",
+    "addToApp": "Adicionar à minha aplicação de autenticação",
     "enterCode": "Introduza o código de 6 dígitos que a aplicação mostra",
     "setupWrong": "Esse código não corresponde. Confirme que a aplicação foi configurada com a chave acima e introduza o código que mostra agora.",
     "staysOff": "A autenticação de dois fatores fica inativa até o código corresponder, por isso um erro na configuração não o pode bloquear.",
