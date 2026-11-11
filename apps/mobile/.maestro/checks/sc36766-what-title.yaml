@@ -1,0 +1,12 @@
+# sc-36766: step 1's question, What's it called?, with the keyboard down, in the account's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today?create=name
+- extendedWaitUntil:
+    visible:
+      id: 'createWalk.name'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 3000 }
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: what-title
