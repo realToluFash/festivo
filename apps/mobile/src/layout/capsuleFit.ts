@@ -1,5 +1,6 @@
 import { PILL_BESIDE_TABS } from '../kit/frameBand.ts';
 import { tokens } from '../theme/tokens.ts';
+import { fitWidest } from './textSize.ts';
 
 /** The capsule's label at the default size (`WhiteCapsule`). */
 export const CAPSULE_LABEL = 15;
@@ -29,14 +30,10 @@ export function capsuleLabelSize(
   room: number,
 ): number {
   const own = CAPSULE_LABEL * fontScale;
-  const chrome = capsuleChrome(tabs);
 
-  if (labels <= 0 || room <= 0 || chrome + labels <= room) return own;
+  if (labels <= 0 || room <= 0) return own;
 
-  return Math.max(
-    Math.min(CAPSULE_LABEL, own),
-    Math.min(own, Math.floor((own * (room - chrome)) / labels)),
-  );
+  return fitWidest(Math.min(CAPSULE_LABEL, own), own, labels, room - capsuleChrome(tabs));
 }
 
 /** The tabs take their room first: while their labels are under their own size the pill is its tile. */

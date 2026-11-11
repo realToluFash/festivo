@@ -1,24 +1,13 @@
 import { type ReactNode, type RefObject, useState } from 'react';
-import {
-  type StyleProp,
-  StyleSheet,
-  View,
-  type ViewStyle,
-  useWindowDimensions,
-} from 'react-native';
+import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { type LayoutKind } from '../layout/classify.ts';
 import { pillBesideTabs } from '../kit/frameBand.ts';
-import {
-  CAPSULE_LABEL,
-  capsuleLabelSize,
-  capsuleRoom,
-  pillGivesWay,
-} from '../layout/capsuleFit.ts';
 import { tokens } from '../theme/tokens.ts';
 import { type TextHandle } from './Text.tsx';
-import { MeasuredWords, Title } from './Title.tsx';
+import { useCapsuleLabels } from './CapsuleLabels.tsx';
+import { Title } from './Title.tsx';
 import { TOP_TITLE, topTitle } from './topTitle.ts';
 import { TopPrimary, type TopPrimaryProps } from './TopPrimary.tsx';
 
@@ -114,36 +103,15 @@ export function PortraitRow({
   pillFits = true,
   tabsCentred = false,
 }: PortraitRowProps) {
-  const { fontScale } = useWindowDimensions();
   const [rowWidth, setRowWidth] = useState(0);
   const [tabsWidth, setTabsWidth] = useState(0);
-  const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
-  const start = CAPSULE_LABEL * fontScale;
-  const widths = tabLabels.map((label) => measured[`${start}|${label}`]);
-  const labels = widths.every((width) => width != null)
-    ? widths.reduce<number>((sum, width) => sum + (width ?? 0), 0)
-    : 0;
-  const labelSize = capsuleLabelSize(
-    fontScale,
-    tabLabels.length,
-    labels,
-    rowWidth > 0 ? capsuleRoom(rowWidth) : 0,
-  );
+  const { labelSize, givesWay, measure } = useCapsuleLabels(tabLabels, rowWidth);
   const besideTabs = pillFits ? pillBesideTabs(rowWidth, tabsWidth) : null;
-  const drawn = renderPill(besideTabs?.maxWidth, pillGivesWay(fontScale, labelSize));
+  const drawn = renderPill(besideTabs?.maxWidth, givesWay);
 
   return (
     <View style={styles.row} onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}>
-      <MeasuredWords
-        words={tabLabels}
-        size={start}
-        weight="semibold"
-        allowFontScaling={false}
-        onWidth={(label, width) => {
-          const key = `${start}|${label}`;
-          setMeasured((now) => (now[key] === width ? now : { ...now, [key]: width }));
-        }}
-      />
+      {measure}
       {drawn != null && drawn !== false && (
         <View style={[styles.shrink, besideTabs != null && { maxWidth: besideTabs.maxWidth }]}>
           {drawn}
