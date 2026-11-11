@@ -490,7 +490,15 @@ export default function MembersScreen() {
             ? t('membersScreen.title')
             : t('settings.title')
       }
-      titleRef={phone ? (listBehind ? undefined : membersTitle) : alone ? membersTitle : undefined}
+      titleRef={
+        phone
+          ? listBehind
+            ? undefined
+            : membersTitle
+          : alone || givesWay
+            ? membersTitle
+            : undefined
+      }
       back={
         phone && listBehind
           ? { label: t('membersScreen.title'), onPress: () => openPerson(null) }

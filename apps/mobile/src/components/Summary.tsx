@@ -1,4 +1,4 @@
-import { type ReactNode, type Ref, useContext, useState } from 'react';
+import { type ReactNode, type Ref, type RefObject, useContext, useState } from 'react';
 import {
   type DimensionValue,
   Pressable,
@@ -12,6 +12,9 @@ import { useTranslation } from 'react-i18next';
 
 import { Initials } from './Initials.tsx';
 import { useReadOut } from './ReadOut.tsx';
+import { AnswerHeading } from './AnswerHeading.tsx';
+import { FrameSwitched } from './AppFrame.tsx';
+import { useTappedSwitch } from '../tappedSwitch.ts';
 import { type TextHandle, Text } from './Text.tsx';
 import { Toast } from './Toast.tsx';
 import { tokens } from '../theme/tokens.ts';
@@ -117,7 +120,7 @@ export function ColumnHead({
 }: {
   title: string;
   onBack: () => void;
-  titleRef?: Ref<TextHandle | null>;
+  titleRef?: RefObject<TextHandle | null>;
   /** At the end of the title's row, as Members' Refreshing… (sc-27046). */
   beside?: ReactNode;
 }) {
@@ -126,18 +129,19 @@ export function ColumnHead({
       <Back onPress={onBack} />
       <View style={styles.columnTitleRow}>
         <View style={styles.shrink}>
-          <Text
+          <AnswerHeading
             ref={titleRef}
+            answer={useTappedSwitch()}
             size={COLUMN_TITLE}
             weight="bold"
-            accessibilityRole="header"
             style={styles.columnTitle}
           >
             {title}
-          </Text>
+          </AnswerHeading>
         </View>
         {beside}
       </View>
+      <FrameSwitched />
     </>
   );
 }
