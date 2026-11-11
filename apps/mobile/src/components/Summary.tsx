@@ -1,4 +1,4 @@
-import type { ReactNode, Ref } from 'react';
+import { type ReactNode, type Ref, useContext, useState } from 'react';
 import {
   type DimensionValue,
   Pressable,
@@ -23,6 +23,7 @@ import { type MarkKind, ShapeMark } from './StatusMark.tsx';
 import { TextAction } from './SummaryRows.tsx';
 import { useShell } from './settingsShell.ts';
 import { Avatar, Back } from './SettingsParts.tsx';
+import { TitleFocus } from './SummaryOverlays.tsx';
 
 export {
   bringIntoView,
@@ -285,7 +286,10 @@ export function Faces({
   return (
     <View style={styles.faces} {...hidden}>
       {faces.map((face, index) => (
-        <View key={face.initials} style={[styles.ring, ringed, index > 0 && styles.overlap]}>
+        <View
+          key={`${face.initials}.${index}`}
+          style={[styles.ring, ringed, index > 0 && styles.overlap]}
+        >
           <Avatar initials={face.initials} side={side} tone={face.tone} />
         </View>
       ))}
@@ -465,6 +469,7 @@ export function SectionFailed({
   onRetry,
   testID,
   announce = true,
+  takesFocus = false,
 }: {
   title: string;
   line?: string;
@@ -472,20 +477,32 @@ export function SectionFailed({
   testID: string;
   /** False keeps the failure from being read out, as when it answers a Try again. */
   announce?: boolean;
+  /** In a focused screen, a failure there before the title takes focus takes it instead, its words as one item, and is not read out as well (sc-11032). */
+  takesFocus?: boolean;
 }) {
   const { t } = useTranslation();
-  useReadOut(announce ? (line == null ? title : `${title} ${line}`) : null);
+  const focus = useContext(TitleFocus);
+  const [focused] = useState(() => takesFocus && focus != null && focus.coming());
+  useReadOut(announce ? (line == null ? title : `${title} ${line}`) : null, {
+    quietAtMount: focused,
+  });
 
   return (
     <View style={styles.sectionFailed}>
-      <Text size={16} weight="semibold">
-        {title}
-      </Text>
-      {line != null && (
-        <Text size={15} weight="medium" style={styles.secondary}>
-          {line}
+      <View
+        ref={focused ? focus?.first : undefined}
+        style={styles.sectionWords}
+        accessible={focused || undefined}
+      >
+        <Text size={16} weight="semibold">
+          {title}
         </Text>
-      )}
+        {line != null && (
+          <Text size={15} weight="medium" style={styles.secondary}>
+            {line}
+          </Text>
+        )}
+      </View>
       <TextAction label={t('frame.tryAgain')} onPress={onRetry} testID={testID} />
     </View>
   );
@@ -541,5 +558,6 @@ const styles = StyleSheet.create({
   barThin: { height: 12, borderRadius: 6, backgroundColor: tokens.colorNeutralFill },
   failed: { gap: tokens.spaceSm, paddingTop: tokens.spaceXs },
   sectionFailed: { gap: tokens.spaceXxs, paddingTop: tokens.spaceXxs },
+  sectionWords: { gap: tokens.spaceXxs },
   toast: { position: 'absolute', left: tokens.spaceXl, right: tokens.spaceXl },
 });

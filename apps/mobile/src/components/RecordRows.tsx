@@ -1,7 +1,8 @@
 import { setStringAsync } from 'expo-clipboard';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
-import { Row, RowList, TextAction } from '../../components/Summary.tsx';
+import { Row, RowList, TextAction } from './Summary.tsx';
 
 export interface RecordValue {
   label: string;
@@ -21,6 +22,8 @@ export function RecordRows({
   onCopy: (row: RecordValue) => void;
   testID: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <RowList
       items={rows.map((row) => {
@@ -35,10 +38,14 @@ export function RecordRows({
               selectable
               trail={
                 <TextAction
-                  label={done ? 'Copied' : 'Copy'}
+                  label={done ? t('ownerClaim.copied') : t('ownerClaim.copy')}
                   glyph={done ? 'tick' : 'copy'}
                   onPress={() => onCopy(row)}
-                  accessibilityLabel={done ? `${row.label}, copied` : `Copy ${row.label}`}
+                  accessibilityLabel={
+                    done
+                      ? t('ownerClaim.copiedNamed', { label: row.label })
+                      : t('ownerClaim.copyNamed', { label: row.label })
+                  }
                   testID={`${testID}.${row.label.toLowerCase()}`}
                 />
               }

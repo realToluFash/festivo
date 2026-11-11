@@ -279,6 +279,7 @@ export function TwoFactorScreen({
           title={t('twoFactorCard.failedTitle')}
           line={t('twoFactorCard.failedBody')}
           onRetry={enrolment.retry}
+          takesFocus
           testID="security.setup.retry"
         />
       ) : (

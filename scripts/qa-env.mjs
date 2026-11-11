@@ -3000,7 +3000,14 @@ export const DRIVER_GONE_MS = 30_000;
 
 // A frozen driver outlives the Maestro the watchdog stopped, and the next run waits on it.
 // The next Maestro starts only once the old runner and its xcodebuild are gone.
-async function stopDriver(device, onAndroid) {
+// A batch killed or timed out leaves its driver holding the simulator, and the next one's never
+// becomes ready, so a batch starts by stopping whatever an earlier one left.
+export function leftDriverSay(device, { runners, builds }) {
+  if (!runners.length && !builds.length) return null;
+  return `Stopping the Maestro driver an earlier run left on ${device}`;
+}
+
+async function stopDriver(device, onAndroid, { leftOver = false } = {}) {
   if (onAndroid) {
     const stopped = ANDROID_DRIVERS.map(
       (id) => adbOut(androidTools(), ['shell', 'am', 'force-stop', id]) !== null,
@@ -3013,7 +3020,11 @@ async function stopDriver(device, onAndroid) {
     builds: driverBuilds(capture('ps', ['-Ao', 'pid=,command=']) ?? '', device),
   });
   const { runners, builds } = left();
-  if (!runners.length) console.error(`\nNo Maestro driver found on ${device} to stop`);
+  if (leftOver) {
+    const say = leftDriverSay(device, { runners, builds });
+    if (!say) return;
+    console.log(say);
+  } else if (!runners.length) console.error(`\nNo Maestro driver found on ${device} to stop`);
   for (const pid of builds) run('kill', ['-KILL', String(pid)], { optional: true });
   for (const pid of runners) {
     if (!run('kill', ['-KILL', String(pid)], { optional: true }))
@@ -3298,6 +3309,15 @@ function catalogues(root) {
   );
 }
 
+export async function clearForBatch(
+  onAndroid,
+  device,
+  { stop = stopDriver, reset = resetForBatch } = {},
+) {
+  if (!onAndroid) await stop(device, false, { leftOver: true });
+  await reset(onAndroid, device);
+}
+
 async function batch(args) {
   const root = qaWorktree();
   const onAndroid = args.includes('--android');
@@ -3316,7 +3336,7 @@ async function batch(args) {
     );
   }
 
-  await resetForBatch(onAndroid, device);
+  await clearForBatch(onAndroid, device);
 
   const out = join(root, '.qa', name);
   rmSync(out, { recursive: true, force: true });
