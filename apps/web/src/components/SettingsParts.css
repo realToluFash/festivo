@@ -1017,6 +1017,7 @@
   flex-basis: 100%;
   order: 1;
   padding: 0 var(--spaceXxl) var(--spaceSm);
+  text-align: start;
 }
 
 .desk-dialog-body {

@@ -1,22 +1,5 @@
+import { titleFitsBeside } from '@soirely/domain';
 import { type RefObject, useLayoutEffect, useState } from 'react';
-
-/** The app's focused header (sc-37903): one row while the title, every word whole, takes at most two lines between Cancel and the verb; else the title on a row under them. */
-export function titleGoesUnder(words: readonly number[], space: number, slot: number): boolean {
-  if (words.length === 0) return false;
-  if (Math.max(...words) > slot) return true;
-  let lines = 1;
-  let taken = 0;
-  for (const word of words) {
-    if (taken === 0) taken = word;
-    else if (taken + space + word <= slot) taken += space + word;
-    else {
-      lines += 1;
-      taken = word;
-    }
-  }
-
-  return lines > 2;
-}
 
 function measureUnder(title: HTMLElement): boolean {
   const bar = title.parentElement;
@@ -37,7 +20,7 @@ function measureUnder(title: HTMLElement): boolean {
   pen.font = `${titleStyle.fontWeight} ${titleStyle.fontSize} ${titleStyle.fontFamily}`;
   const words = (title.textContent ?? '').split(/\s+/).filter(Boolean);
 
-  return titleGoesUnder(
+  return !titleFitsBeside(
     words.map((word) => pen.measureText(word).width),
     pen.measureText(' ').width,
     slot,

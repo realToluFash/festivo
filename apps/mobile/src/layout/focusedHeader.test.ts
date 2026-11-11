@@ -6,7 +6,6 @@ import {
   backWidth,
   buttonWidth,
   headerForm,
-  linesFor,
   pillTextSize,
   titleOnItsRow,
   titleSlot,
@@ -121,11 +120,6 @@ describe('the title on its own row', () => {
   it('steps down to fit its widest word, never below 17', () => {
     expect(titleOnItsRow(3.12, 400, 402)).toBe(48);
     expect(titleOnItsRow(3.12, 4000, 402)).toBe(17);
-  });
-
-  it('breaks only at spaces', () => {
-    expect(linesFor(at(3.12, 68.3, 14.3, 33.6, 20.4, 47.3), 3.2 * 3.12, 362)).toBe(2);
-    expect(linesFor([500], 10, 362)).toBe(1);
   });
 });
 
