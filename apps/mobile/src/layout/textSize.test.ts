@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  backLabelSize,
   bandPlace,
   breakableEmail,
   capUnderTitle,
@@ -79,22 +78,6 @@ describe('frameTitleSize', () => {
 
   it('draws it at 43 on a phone at the largest text', () => {
     expect(titleSize(frameTitleSize(false, 402), AX2)).toBe(43);
-  });
-});
-
-describe('backLabelSize', () => {
-  it.each([
-    [1, 15],
-    [1.5, 22.5],
-    [2, 30],
-  ])('grows with the text at %s', (fontScale, size) => {
-    expect(backLabelSize(fontScale)).toBe(size);
-  });
-
-  it('stops at twice its default, so the top two iOS steps draw it alike (sc-23361)', () => {
-    expect(backLabelSize(AX1)).toBe(15 * AX1);
-    expect(backLabelSize(AX2)).toBe(30);
-    expect(backLabelSize(3)).toBe(30);
   });
 });
 

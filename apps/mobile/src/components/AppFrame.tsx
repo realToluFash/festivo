@@ -48,7 +48,8 @@ import { phonePillAlone, pillBesideTabs } from '../kit/frameBand.ts';
 import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBack.ts';
 import { EVENT_PLACES, type EventPlace, MORE_PLACES } from '../kit/eventNav.ts';
 import { leaveThen } from '../leaveHeld.ts';
-import { backLabelSize, frameTitleSize } from '../layout/textSize.ts';
+import { frameTitleSize } from '../layout/textSize.ts';
+import { backLeast, backScale } from '../layout/focusedHeader.ts';
 import {
   type LayoutKind,
   useAccessibilitySizes,
@@ -97,7 +98,7 @@ import { AREA_GLYPH } from './areaGlyph.ts';
 import { ReadOut } from './ReadOut.tsx';
 import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
-import { type TextHandle, Text } from './Text.tsx';
+import { type TextHandle, Text, TitleCap } from './Text.tsx';
 import { Title, useWholeWords } from './Title.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
@@ -812,6 +813,8 @@ export function BackButton({
   testID: string;
 }) {
   const { fontScale } = useWindowDimensions();
+  const scale = backScale(fontScale, useContext(TitleCap));
+  const mark = tokens.sizeMark * scale;
   const button = (
     <Pressable
       style={styles.back}
@@ -822,7 +825,7 @@ export function BackButton({
       accessibilityState={{ disabled: off }}
       testID={testID}
     >
-      <Svg width={tokens.sizeMark} height={tokens.sizeMark} viewBox="0 0 24 24" fill="none">
+      <Svg width={mark} height={mark} viewBox="0 0 24 24" fill="none">
         <Path
           d="m15 18-6-6 6-6"
           {...STROKE}
@@ -830,10 +833,13 @@ export function BackButton({
         />
       </Svg>
       <Text
-        size={tokens.typeBodyPhone.size}
+        size={tokens.typeBodyPhone.size * scale}
         weight="semibold"
         muted={off}
-        maxFontSizeMultiplier={backLabelSize(fontScale) / tokens.typeBodyPhone.size}
+        allowFontScaling={false}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={backLeast(scale)}
       >
         {label}
       </Text>
@@ -1250,6 +1256,8 @@ const styles = StyleSheet.create({
   stacked: { flexDirection: 'column', alignItems: 'flex-start', gap: tokens.spaceXs },
   back: {
     alignSelf: 'flex-start',
+    flexShrink: 1,
+    maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceXs,

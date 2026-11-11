@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Glyph } from '../../components/Glyph.tsx';
+import { MeasureTexts } from '../../components/MeasureTexts.tsx';
 import { Text } from '../../components/Text.tsx';
 import { type WeightName } from '../../theme/fonts.ts';
 import { tokens } from '../../theme/tokens.ts';
@@ -23,7 +24,7 @@ import {
   headerForm,
   pillTextSize,
   titleOnItsRow,
-} from './focusedHeaderRules.ts';
+} from '../../layout/focusedHeader.ts';
 
 const LINE = 1.22;
 
@@ -37,36 +38,6 @@ export interface NavSide {
 }
 
 type Measured = Readonly<Record<string, number>>;
-
-function Measure({
-  texts,
-  onWidth,
-}: {
-  texts: readonly { key: string; text: string; size: number; weight: WeightName }[];
-  onWidth: (key: string, width: number) => void;
-}) {
-  return (
-    <View
-      style={styles.measure}
-      pointerEvents="none"
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      {texts.map(({ key, text, size, weight }) => (
-        <Text
-          key={key}
-          size={size}
-          weight={weight}
-          allowFontScaling={false}
-          accessible={false}
-          onLayout={(event) => onWidth(key, event.nativeEvent.layout.width)}
-        >
-          {text}
-        </Text>
-      ))}
-    </View>
-  );
-}
 
 function NavButton({
   side,
@@ -200,7 +171,7 @@ export function DemoFocusNav({
 
   return (
     <View style={styles.nav} testID={`demo.header.${form}`}>
-      <Measure
+      <MeasureTexts
         texts={texts}
         onWidth={(key, value) => {
           setMeasured((now) => (now[key] === value ? now : { ...now, [key]: value }));
@@ -256,7 +227,7 @@ export function DemoBack({
 
   return (
     <>
-      <Measure
+      <MeasureTexts
         texts={[{ key, text: word, size: full, weight: 'semibold' }]}
         onWidth={(at, width) => setMeasured({ key: at, width })}
       />
@@ -284,14 +255,6 @@ export function DemoBack({
 }
 
 const styles = StyleSheet.create({
-  measure: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: 10000,
-    alignItems: 'flex-start',
-    opacity: 0,
-  },
   nav: {
     borderBottomWidth: 1,
     borderBottomColor: tokens.colorBorder,
