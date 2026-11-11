@@ -1486,7 +1486,7 @@
     "emailBlank": "Enter their email address.",
     "emailShape": "That does not look like an email address. Check it has an @ and a domain, like amara.o@gmail.com.",
     "roleMeans": {
-      "owner": "Everything, including billing and deleting the organisation.",
+      "owner": "Everything, including billing and deleting the organisation. Asks you to confirm it’s you.",
       "administrator": "Everything except billing. Sees every event and manages members.",
       "member": "Works on the events they’re added to, and sees no others."
     },

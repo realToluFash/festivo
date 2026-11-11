@@ -1251,7 +1251,7 @@
     "roleKeptWhileSuspended": "Their role is kept while they're suspended. You can change it once their access is restored.",
     "accessConflict": "Someone else changed the access for {{name}} while this page was open, so your change was not made. This is how it stands now.",
     "roleMeans": {
-      "owner": "Everything, including billing and deleting the organisation.",
+      "owner": "Everything, including billing and deleting the organisation. Asks you to confirm it’s you.",
       "administrator": "Everything except billing. Sees every event and manages members.",
       "member": "Works on the events they’re added to, and sees no others."
     },
