@@ -10,6 +10,7 @@ import {
   countries,
   factsOf,
   freshWalk,
+  nameInSight,
   rowLabel,
 } from './createWalk.ts';
 
@@ -78,5 +79,29 @@ describe('the countries', () => {
   it('are named in the reader’s language', () => {
     expect(countries('pt').find((each) => each.code === 'DE')?.name).toBe('Alemanha');
     expect(countries('en').find((each) => each.code === 'DE')?.name).toBe('Germany');
+  });
+});
+
+describe('nameInSight', () => {
+  const group = { top: 200, fieldEnd: 277, bottom: 320, margin: 16 };
+
+  it('leaves the step where it is when the whole group fits', () => {
+    expect(nameInSight({ ...group, viewport: 400 })).toBeNull();
+  });
+
+  it('brings the help above the keys when the label still shows', () => {
+    expect(nameInSight({ ...group, viewport: 300 })).toBe(36);
+  });
+
+  it('stops at the label when the help does not fit with it', () => {
+    expect(nameInSight({ ...group, viewport: 100 })).toBe(200);
+  });
+
+  it('keeps the field whole when the label and field do not both fit', () => {
+    expect(nameInSight({ ...group, viewport: 60 })).toBe(233);
+  });
+
+  it('waits for the step to be laid out', () => {
+    expect(nameInSight({ ...group, viewport: 0 })).toBeNull();
   });
 });
