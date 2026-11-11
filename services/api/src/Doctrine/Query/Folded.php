@@ -11,11 +11,7 @@ use Doctrine\ORM\Query\SqlWalker;
 use Doctrine\ORM\Query\TokenType;
 use Psl\Str;
 
-/**
- * `FOLDED(x)`: x in lower case without its marks, so "Lucía" reads "lucia" and "Ọlọ́run" reads "olorun" (sc-30302).
- * NFD splits each accented letter into its base and combining marks, which are dropped; the few letters with
- * no decomposition, such as ø, are translated first.
- */
+/** `FOLDED(x)`: x in lower case without its marks, so "Ọlọ́run" reads "olorun"; ø and its kin have no NFD form, so are translated. */
 final class Folded extends FunctionNode
 {
     private const string UNDECOMPOSED = 'ØøĐđŁłĦħ';
