@@ -1,0 +1,25 @@
+# sc-34869: a settings page, its back control naming the hub, above the tab bar. Phone or upright tablet, needs ${METRO_URL}, no ${ORIENT}.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'home.openSettings'
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 30000
+- tapOn:
+    id: 'settings.account'
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: 'frame.back'
+    timeout: 10000
+- assertVisible:
+    id: 'frame.back'
+    text: '.*{{t:settings.title}}'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: page

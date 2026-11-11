@@ -1,0 +1,14 @@
+# Mute this event, the card on the event's page (sc-14815).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: events.mute.settings
+    centerElement: true
+    timeout: 30000
+- takeScreenshot: event-mute

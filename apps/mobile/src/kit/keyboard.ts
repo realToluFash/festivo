@@ -1,0 +1,375 @@
+// One lift per platform; both at once is the double lift. iOS never moves the window, so
+// the scroll view adjusts its insets. Android is edge to edge here, so the window does not
+// resize either, and the screen pads its content by as much as the keys cover.
+export interface KeyboardLift {
+  avoid: 'padding' | null;
+  adjustScrollInsets: boolean;
+}
+
+export function keyboardLift(os: string): KeyboardLift {
+  if (os === 'ios') return { avoid: null, adjustScrollInsets: true };
+  if (os === 'android') return { avoid: 'padding', adjustScrollInsets: false };
+
+  return { avoid: null, adjustScrollInsets: false };
+}
+
+export interface Rect {
+  y: number;
+  height: number;
+}
+
+/** Where the scroll view's visible area ends: at the keys, or above them where a bar docked on the keys ends it. */
+export function shownEnd(keyboardTop: number, scrollView: Rect): number {
+  return Math.min(keyboardTop, scrollView.y + scrollView.height);
+}
+
+/** The height of the scroll view left in sight: down to the keys while they are up. */
+export function shownAboveKeys(keyboardTop: number | null, scrollView: Rect): number {
+  return keyboardTop == null
+    ? scrollView.height
+    : Math.max(0, shownEnd(keyboardTop, scrollView) - scrollView.y);
+}
+
+export interface DockRoom {
+  /** The height between the scroll view's top and the keyboard. */
+  room: number;
+  field: number;
+  bar: number;
+  margin: number;
+}
+
+/** Whether a bar may dock on the keys: only when the field it saves, and its margins, still fit above it (sc-7099). */
+export function barFits({ room, field, bar, margin }: DockRoom): boolean {
+  return field + 2 * margin + bar <= room;
+}
+
+export interface ScrollInsets {
+  automaticallyAdjustKeyboardInsets: boolean;
+  contentInset: { bottom: number } | undefined;
+}
+
+// A docked bar ends the frame above the keys, but iOS set the scroll view's bottom inset to the
+// keys' whole overlap as they rose and keeps it. Only a change of contentInset resets it, and a
+// zero one is no change, so the docked inset is a hairline.
+export const DOCKED_INSET = { bottom: 0.5 };
+
+/** While a bar is docked the frame clears the keys, so the scroll view must not inset for them too. */
+export function scrollInsets(lift: KeyboardLift, docked: boolean): ScrollInsets {
+  return docked
+    ? { automaticallyAdjustKeyboardInsets: false, contentInset: DOCKED_INSET }
+    : { automaticallyAdjustKeyboardInsets: lift.adjustScrollInsets, contentInset: undefined };
+}
+
+/** Whether the keyboard covers any of a group, or its margin, in window coordinates. */
+export function coveredBy(keyboardTop: number, group: Rect, margin: number): boolean {
+  return group.y + group.height + margin > keyboardTop;
+}
+
+export interface LiftCheck {
+  /** Where the scroll view's visible area ends, in the window. */
+  shown: number;
+  /** The group in the window. */
+  group: Rect;
+  /** The focused field's top in the window. */
+  focusTop?: number | undefined;
+  /** The scroll view's top in the window. */
+  scrollTop: number;
+  margin: number;
+}
+
+/** Whether a group must lift: the keys cover it, or the focused field has gone under the scroll view's top (sc-11978). */
+export function liftNeeded({ shown, group, focusTop, scrollTop, margin }: LiftCheck): boolean {
+  return coveredBy(shown, group, margin) || (focusTop != null && focusTop < scrollTop);
+}
+
+/** The height a group needs above a docked bar, from the focused field's top to the group's end, or null when focus is outside it; both tops inside the scroll content. */
+export function heightFromFocus(
+  group: { contentY: number; height: number },
+  focusY: number,
+): number | null {
+  const end = group.contentY + group.height;
+
+  return focusY >= group.contentY && focusY < end ? end - focusY : null;
+}
+
+export interface GroupInScroll {
+  /** The scroll view's top in the window. */
+  scrollTop: number;
+  /** The group's top inside the scroll content. */
+  contentY: number;
+  /** The scroll offset the native scroll view last reported. */
+  offset: number;
+}
+
+/** The group's top in the window, from where it sits in a scrolled view. */
+export function groupInWindow({ scrollTop, contentY, offset }: GroupInScroll): number {
+  return scrollTop + contentY - offset;
+}
+
+/** The keyboard's top in measureInWindow's frame, which on Android can start below the status bar. */
+export function keyboardInWindow(screenY: number, origin: number): number {
+  return screenY + origin;
+}
+
+/** A view's distance from the window's bottom that keeps it `gap` above the keys while they are up, and never lower than `rest`. */
+export function bottomOverKeys(
+  rest: number,
+  windowHeight: number,
+  keyboardTop: number | null,
+  gap: number,
+): number {
+  return keyboardTop == null ? rest : Math.max(rest, windowHeight - keyboardTop + gap);
+}
+
+/** How much of a view, measured in the window, the keyboard covers from its bottom up. */
+export function keysOver(view: Rect, keyboardTop: number | null): number {
+  return keyboardTop == null ? 0 : Math.max(0, view.y + view.height - keyboardTop);
+}
+
+export interface Lift {
+  /** The group's top inside the scroll content. */
+  contentY: number;
+  height: number;
+  /** The scroll view's top in the window. */
+  scrollTop: number;
+  /** The keyboard's top in the window. */
+  keyboardTop: number;
+  margin: number;
+  /** The focused field's top inside the scroll content; it caps the lift only when it sits above the group. */
+  focusY?: number | undefined;
+}
+
+/** The scroll offset that rests a group's bottom `margin` above the keyboard, its top and the focused field's never above the scroll view's. */
+export function offsetAboveKeyboard({
+  contentY,
+  height,
+  scrollTop,
+  keyboardTop,
+  margin,
+  focusY = contentY,
+}: Lift): number {
+  const bottomAboveKeys = contentY + height + margin - (keyboardTop - scrollTop);
+
+  return Math.max(0, Math.min(bottomAboveKeys, Math.min(contentY, focusY) - margin));
+}
+
+/** A group under the focused field may only take the scroll back up to that field, never further down: the title above the field outranks the rest of the form, and only the field outranks the title (sc-35488). */
+export function liftUnderFocus(
+  lift: number,
+  { contentY, offset, focusY }: { contentY: number; offset: number; focusY?: number | undefined },
+): number | 'stays' {
+  if (focusY == null || focusY >= contentY) return lift;
+
+  return lift < offset ? lift : 'stays';
+}
+
+/** A lift group's answer from the scroll's top: the offset it needs, `'stays'` when it needs none, or null when it cannot be measured now. */
+export type LiftFromTop = number | 'stays' | null;
+
+/** The lower offset a settle brings the scroll to, the most any group needs; null to leave it, when there is no group, a group cannot be measured, or none needs less than `offset` (sc-35488). */
+export function settleLifts(lifts: readonly LiftFromTop[], offset: number): number | null {
+  if (lifts.length === 0 || lifts.some((lift) => lift == null)) return null;
+  const y = Math.max(0, ...lifts.filter((lift) => typeof lift === 'number'));
+
+  return y < offset ? y : null;
+}
+
+export interface InScroll {
+  /** The view's top inside the scroll content. */
+  contentY: number;
+  height: number;
+  /** The scroll offset the native scroll view last reported. */
+  offset: number;
+  /** The scroll view's own height. */
+  shown: number;
+  margin: number;
+}
+
+/** The scroll offset that brings a view wholly into sight, `margin` clear of the edge it came from; null when it is already there. */
+export function offsetIntoView({
+  contentY,
+  height,
+  offset,
+  shown,
+  margin,
+}: InScroll): number | null {
+  if (contentY >= offset && contentY + height <= offset + shown) return null;
+  if (contentY < offset) return Math.max(0, contentY - margin);
+
+  return Math.max(0, Math.min(contentY + height + margin - shown, contentY - margin));
+}
+
+/** Whether no part of a view is in sight. TalkBack's focus rests on a view partly in sight, and a scroll under it moves that focus on (sc-18588). */
+export function outOfSight({ contentY, height, offset, shown }: Omit<InScroll, 'margin'>): boolean {
+  return contentY + height <= offset || contentY >= offset + shown;
+}
+
+/** How far a pass brings a view into sight: `wholly`, or only back into sight once it has wholly left it. */
+export type IntoView = 'wholly' | 'outOfSight';
+
+/** The scroll offset a pass brings a view to, as offsetIntoView, except that an `outOfSight` pass leaves a view with any part in sight where it is, under TalkBack's focus (sc-18588); null when it stays put. */
+export function settledOffset(at: InScroll, when: IntoView): number | null {
+  if (when === 'outOfSight' && !outOfSight(at)) return null;
+
+  return offsetIntoView(at);
+}
+
+/** Where a view sits inside the scroll content. */
+export interface InContent {
+  contentY: number;
+  height: number;
+}
+
+/** As settledOffset, except that a scroll back up stops where `kept`, the control TalkBack's focus is on, still shows wholly, when the view shows there at all: a scroll that carries the control out of sight is one TalkBack reads as a manual scroll away from its focus, which it moves on to a neighbour (sc-18588). */
+export function settledOffsetKeeping(
+  at: InScroll,
+  when: IntoView,
+  kept: InContent | null,
+): number | null {
+  const to = settledOffset(at, when);
+  if (to == null || kept == null || to >= at.offset) return to;
+
+  const keeping = Math.max(to, kept.contentY + kept.height - at.shown);
+
+  return outOfSight({ ...at, offset: keeping }) ? to : keeping;
+}
+
+/** Where the focused field sits inside the scroll content, as the last part of its group. */
+export interface Focused {
+  contentY: number;
+  height: number;
+}
+
+/** As offsetAboveKeyboard while the group fits; when it does not, the field wins and the group's top goes. */
+export function offsetToFocus(group: Lift, field: Focused): number {
+  const room = group.keyboardTop - group.scrollTop;
+
+  return offsetAboveKeyboard(
+    group.height + 2 * group.margin <= room ? group : { ...group, ...field },
+  );
+}
+
+export interface ListRoom {
+  /** The height between the scroll view's top and the keyboard, less a margin at each end. */
+  room: number;
+  /** The height of everything in the group but the list. */
+  rest: number;
+  /** The list's height at one whole row. */
+  oneRow: number;
+  /** The list's height with the keyboard down. */
+  most: number;
+}
+
+/** The tallest a list may grow so its group fits above the keyboard, never under one whole row. */
+export function listRoom({ room, rest, oneRow, most }: ListRoom): number {
+  return Math.max(oneRow, Math.min(most, room - rest));
+}
+
+export interface NotesGiveWay {
+  /** The height above the keys, or null while they are down. */
+  room: number | null;
+  /** The step's height as laid out. */
+  step: number;
+  /** The notes' last height, with the gap before them. */
+  notes: number;
+  /** Whether the step was laid out with its notes away. */
+  away: boolean;
+}
+
+/** Whether a step's notes give way: while the keys are up and the step, notes added back, would not fit above them (sc-28122). */
+export function notesGiveWay({ room, step, notes, away }: NotesGiveWay): boolean {
+  return room != null && step + (away ? notes : 0) > room;
+}
+
+/** Whether a field focused as its screen opens waits for the screen to arrive. Android raises keys asked for mid-slide, and the form lifted then is measured where it is passing, a title too high (sc-35488). */
+export function focusWaitsForArrival(os: string): boolean {
+  return os === 'android';
+}
+
+export interface Turned {
+  phone: boolean;
+  width: number;
+  height: number;
+}
+
+/** Whether a list's search sits beside its title: a phone on its side, either OS, leaves little more than a row above the keys (sc-10118, sc-35256). */
+export function searchBesideTitle({ phone, width, height }: Turned): boolean {
+  return phone && width > height;
+}
+
+/** On an Android phone this tall or shorter, in dp, the keys leave no room for the help line and back row (sc-3132). */
+export const SHORT_ANDROID_HEIGHT = 700;
+
+export interface Typing {
+  os: string;
+  phone: boolean;
+  /** The window's height, in dp. */
+  height: number;
+  keysUp: boolean;
+}
+
+/** Whether a card gives up its help line and the header its back row while the keys are up. */
+export function shortWhileTyping({ os, phone, height, keysUp }: Typing): boolean {
+  return os === 'android' && phone && keysUp && height <= SHORT_ANDROID_HEIGHT;
+}
+
+/** The keyboard as a close puts it down: whether it is up, what hides it, and its hidden event. */
+export interface Keys {
+  up(): boolean;
+  hide(): void;
+  onHidden(hidden: () => void): () => void;
+}
+
+/** Hides `keys` and calls `then` once they have stayed down `settledMs`. Gboard swapping a password's keys for the ones a button gets says they went down and came back up, and a hide asked in that swap is lost, so each hidden event starts the settle again and keys up at its end are hidden once more. Keys already down at the call may be in that swap too, so they wait the same settle (sc-18588). Returns what cancels the call still to come. */
+export function keysDownThen(keys: Keys, then: () => void, settledMs: number): () => void {
+  let asked = 0;
+  let settle: ReturnType<typeof setTimeout> | undefined;
+  const unwatch = keys.onHidden(wait);
+  ask();
+
+  function ask(): void {
+    asked += 1;
+    keys.hide();
+    // Keys that never say they went down do not hold the close for ever.
+    wait();
+  }
+
+  function wait(): void {
+    clearTimeout(settle);
+    settle = setTimeout(landed, settledMs);
+  }
+
+  function landed(): void {
+    if (keys.up() && asked < 2) return ask();
+    unwatch();
+    then();
+  }
+
+  return () => {
+    unwatch();
+    clearTimeout(settle);
+  };
+}
+
+/** The window an answer holds the scroll for: `answering(true)`, `bring` now and once `settledMs` has passed, as content that shrinks around a notice mounting can stop the first scroll short (sc-9382), then `answering(false)` once two settles have passed. Returns what ends it sooner, which says false once only (sc-25897). */
+export function settledAnswer(
+  bring: () => void,
+  settledMs: number,
+  answering: (on: boolean) => void = () => {},
+): () => void {
+  let ended = false;
+  answering(true);
+  bring();
+  const settled = setTimeout(bring, settledMs);
+  const done = setTimeout(end, 2 * settledMs);
+
+  function end(): void {
+    if (ended) return;
+    ended = true;
+    clearTimeout(settled);
+    clearTimeout(done);
+    answering(false);
+  }
+
+  return end;
+}

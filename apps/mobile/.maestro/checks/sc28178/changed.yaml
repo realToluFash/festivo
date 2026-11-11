@@ -1,0 +1,21 @@
+# sc-28178 subflow: from FROM, the harness makes CHANGE to the membership in ORG with the app
+# open, nothing moves for three seconds, then a tap on MOVE.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: '${FROM}'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: ${CHANGE}-before
+- runScript:
+    file: ../../batch/helper.js
+    env:
+      ASK: /membership?change=${CHANGE}&org=${ORG}
+- extendedWaitUntil:
+    visible:
+      id: 'never.there'
+    timeout: 3000
+    optional: true
+- takeScreenshot: ${CHANGE}-no-move-yet
+- tapOn:
+    id: '${MOVE}'

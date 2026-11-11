@@ -1,0 +1,17 @@
+# sc-34925: Sign-in rules for a member, on the organisation already open, read top to bottom: the card, Where you stand, What changed.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/sign-in-rules
+- extendedWaitUntil:
+    visible:
+      id: 'signInRules.card'
+    timeout: 30000
+- takeScreenshot: rules-1
+- scroll
+- takeScreenshot: rules-2
+- scroll
+- takeScreenshot: rules-3
+- scroll
+- takeScreenshot: rules-4
+- scroll
+- takeScreenshot: rules-5

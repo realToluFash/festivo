@@ -1,0 +1,14 @@
+# Password changed is still on screen once Home has drawn. sc-29071.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_HOME}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: 'a-brand-new-password-29071'
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: '{{t:recovery.changed}}', timeout: 30000 }
+- takeScreenshot: toh-01-landed
+- extendedWaitUntil: { visible: { id: 'home.openSettings' }, timeout: 30000 }
+- takeScreenshot: toh-02-home-drawn
+- assertVisible: '{{t:any:recovery.changed}}'

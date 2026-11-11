@@ -1,0 +1,20 @@
+# sc-29089: the owner claim's record (type, name, value) on Settings > Members' claim screen, drawn in Instrument Sans. Needs ${METRO_URL}, an Administrator with an open claim of their own.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'ownerClaim.open'
+    timeout: 60000
+- tapOn:
+    id: 'ownerClaim.open'
+- extendedWaitUntil:
+    visible:
+      id: 'ownerClaim.copy.value'
+    timeout: 10000
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'ownerClaim.copy.value'
+    centerElement: true
+- takeScreenshot: record

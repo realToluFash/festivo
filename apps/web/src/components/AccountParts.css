@@ -1,0 +1,138 @@
+/* Your account at a desk, in B · Summary first (Web-Account-*.dc.html): the product's page and its demo. Its rows take the grey wash under the pointer and open lit, with no ring. */
+
+.account-said {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin-top: var(--spaceLg);
+  color: var(--deskOnCard);
+  font: 600 14.5px/1.4 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.account-said.is-alone {
+  color: var(--colorInk);
+}
+
+.desk-mark.account-done {
+  width: 16px;
+  height: 16px;
+  margin-top: var(--spaceHair);
+}
+
+.account-lead {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  width: 28px;
+  color: var(--colorInkSecondary);
+}
+
+.desk-rows.account-rows > * + * {
+  background-position: 40px 0;
+  background-size: calc(100% - 40px) 1px;
+}
+
+.desk-rows > :has(> .account-row.is-open),
+.desk-rows > :has(> .account-row.is-open) + * {
+  background: none;
+}
+
+.desk-row.account-row {
+  width: calc(100% + 20px);
+  margin: 0 -10px;
+  padding-inline: var(--spaceMd);
+  border-radius: var(--radiusRow);
+}
+
+.desk-row.account-row:hover {
+  background: var(--colorNeutralFill);
+}
+
+.desk-row.account-row.is-open {
+  background: var(--colorAccentTint);
+}
+
+.account-row.is-open :is(.desk-row-name, .desk-chevron) {
+  color: var(--colorAccent);
+}
+
+.desk-tag.is-notyet {
+  background: var(--colorNeutralFill);
+  color: var(--colorInkSecondary);
+}
+
+.desk-mark.is-notyet {
+  box-shadow: inset 0 0 0 2px var(--colorFieldBorder);
+}
+
+.account-open {
+  display: flex;
+  flex-direction: column;
+  margin-left: 14px;
+  padding: var(--spaceHair) 0 var(--spaceSm) 14px;
+  border-left: 2px solid var(--colorAccent);
+}
+
+.account-acts {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space3xl);
+}
+
+.account-status:empty {
+  margin-top: calc(-1 * var(--spaceLg));
+}
+
+.account-phone {
+  display: flex;
+  gap: var(--spaceSm);
+}
+
+.account-phone > .desk-box:last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.desk-box.account-country {
+  position: relative;
+  flex: none;
+  gap: var(--spaceXs);
+  color: var(--colorInk);
+  font: 500 16px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.account-country > svg {
+  color: var(--colorInkSecondary);
+}
+
+.account-country select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.account-expired {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  padding-top: var(--spaceXs);
+}
+
+.account-expired-title {
+  color: var(--colorInk);
+  font: 600 16px/1.3 var(--fontFamily);
+}
+
+.desk-text.account-wait {
+  color: var(--colorInkTertiary);
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+
+.desk-text.account-wait:hover {
+  text-decoration: none;
+}

@@ -1,0 +1,20 @@
+# sc-23327 regression on iOS: New event with a name typed; the swipe from the left edge asks before leaving, as on main.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: 'Swipe test'
+- tapOn:
+    point: 50%,12%
+- waitForAnimationToEnd
+- swipe:
+    start: 1%, 50%
+    end: 85%, 50%
+    duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: after-swipe
