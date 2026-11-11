@@ -6,6 +6,7 @@ import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react
 import { followSavedLanguage } from '../../accountLanguage.ts';
 import { Brand } from '../../components/Brand.tsx';
 import { CreateOrganisation } from '../../components/CreateOrganisation.tsx';
+import { DeskEvents } from '../../components/DeskEvents.tsx';
 import { DeskPersonFace, DeskSidebar } from '../../components/DeskSidebar.tsx';
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
@@ -31,6 +32,7 @@ import {
   useSession,
   useSessionState,
 } from '../../session.ts';
+import { useSidebarEvents } from '../../sidebarEvents.ts';
 import { useWaitingInvitations } from '../../invitations.ts';
 import { UNASKED } from '../../pageArrival.ts';
 import { useDomainOffer } from '../../joinOffers.ts';
@@ -304,6 +306,7 @@ function Shell() {
             <div className="shell-links">
               <ShellLinks />
             </div>
+            <ShellEvents organisationId={organisation?.id ?? null} />
           </DeskSidebar>
         </aside>
 
@@ -386,6 +389,23 @@ function ShellLinks({ onFollow }: { onFollow?: () => void }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Your events under the places, as Today lists them; an event's page has its own sidebar instead. */
+function ShellEvents({ organisationId }: { organisationId: string | null }) {
+  const { t } = useTranslation();
+  const inside = useInsideEvent();
+  const events = useSidebarEvents(organisationId, inside == null);
+
+  if (inside != null) return null;
+
+  return (
+    <DeskEvents
+      heading={t('today.yourEvents')}
+      events={events}
+      to={(id) => `/app/events/${encodeURIComponent(id)}`}
+    />
   );
 }
 

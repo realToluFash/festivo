@@ -12,7 +12,7 @@ import { resetSample, sampleEvents } from './events.ts';
 const tested = config();
 const SLOW = { timeout: 20000 };
 const WAIT = { timeout: 8000 };
-const SIDEBAR_CSS = readFileSync(join(import.meta.dirname, 'sidebar.css'), 'utf8');
+const SIDEBAR_CSS = readFileSync(join(import.meta.dirname, '../components/deskEvents.css'), 'utf8');
 
 async function side(path: string): Promise<HTMLElement> {
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);

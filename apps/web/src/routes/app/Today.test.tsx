@@ -133,7 +133,7 @@ describe('Today at a desk (sc-30413)', () => {
 
     const row = await screen.findByRole('button', { name: /^Bisi & Kola’s engagement/u });
     expect(screen.getByRole('heading', { level: 2, name: 'This week' })).toBeDefined();
-    expect(screen.getByRole('heading', { level: 2, name: 'Your events' })).toBeDefined();
+    expect(within(content()).getByRole('heading', { level: 2, name: 'Your events' })).toBeDefined();
     expect(screen.queryByRole('heading', { name: /Needs you/u })).toBeNull();
     expect(within(row).getByText('Draft')).toBeDefined();
     expect(within(content()).getByRole('button', { name: 'New event' })).toBeDefined();

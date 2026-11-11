@@ -1,0 +1,36 @@
+/* The desk sidebar's Your events, the demo's and the product's (sc-39290). When there are more than the sidebar holds, the list scrolls under its heading, and the places above and Settings and the person at the foot stay in view. It shrinks no further than its heading and four whole rows, and a list of three or fewer never shrinks; below that the whole sidebar scrolls instead. */
+
+@import url('./today.css');
+
+.today-side-events {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+}
+
+.today-side-events:has(> .today-places > li:nth-child(4)) {
+  flex-shrink: 1;
+  min-height: calc(var(--spaceXs) * 2 + 12px * 1.2 + var(--sizeHit) * 4 + var(--spaceHair) * 3);
+}
+
+.today-side-events > .today-places {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.today-side-events .today-place {
+  font: 500 14px/1 var(--fontFamily);
+}
+
+.today-side-events > .today-places .today-place:focus-visible {
+  outline-offset: -2px;
+}
+
+.today-dot.is-side {
+  width: var(--spaceMd);
+  height: var(--spaceMd);
+  margin: 0 var(--spaceXxs);
+  border-radius: 5px;
+}
