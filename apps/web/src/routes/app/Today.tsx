@@ -1,5 +1,5 @@
 import type { ListedEvent } from '@soirely/api-client';
-import { serverClock } from '@soirely/domain';
+import { firstName, serverClock } from '@soirely/domain';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -126,7 +126,7 @@ function Today({ organisationId }: { organisationId: string }) {
     load,
     now,
     { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, locale: dateLocale() },
-    session.name.split(' ')[0] ?? '',
+    firstName(session.name),
     t,
   );
   // The bell is the frame's, in the band above the page, so the banner carries only New event.

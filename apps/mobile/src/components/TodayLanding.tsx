@@ -1,5 +1,5 @@
 import type { Account, ListedEvent, Membership } from '@soirely/api-client';
-import { roleHolds, roleName, serverClock } from '@soirely/domain';
+import { firstName, roleHolds, roleName, serverClock } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -144,7 +144,7 @@ export function TodayLanding({
     load,
     serverClock.now(),
     { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, locale: dateLocale() },
-    account.name.split(' ')[0] ?? '',
+    firstName(account.name),
     t,
   );
 

@@ -6,6 +6,7 @@ import {
   type OrganisationRole,
 } from '@soirely/api-client';
 import {
+  firstName,
   formatDay,
   type MemberStanding,
   memberChannelWords,
@@ -21,7 +22,6 @@ import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { membersAfterWrite, withRemoved, withRestored } from '../kit/membersAfterWrite.ts';
 import { memberMark, memberRole, whenKey } from '../kit/membersSummary.ts';
-import { firstName } from '../kit/personFace.ts';
 import { refusalTitle } from '../kit/refusal.ts';
 import { FieldError } from './Field.tsx';
 import { RoleScreen } from './MemberRole.tsx';

@@ -5,14 +5,13 @@ import {
   type OrganisationMember,
   type OrganisationRole,
 } from '@soirely/api-client';
-import { PROOF_MINUTES, roleName } from '@soirely/domain';
+import { firstName, PROOF_MINUTES, roleName } from '@soirely/domain';
 import { type RefObject, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { api } from '../api.ts';
 import { membersAfterWrite, withRole } from '../kit/membersAfterWrite.ts';
-import { firstName } from '../kit/personFace.ts';
 import { refusalTitle } from '../kit/refusal.ts';
 import { codeHelp } from '../kit/waysProof.ts';
 import { PROVIDER_NAMES } from '../providerSignIn.ts';
