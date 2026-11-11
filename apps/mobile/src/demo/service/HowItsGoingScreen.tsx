@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { type RefObject, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -253,6 +253,8 @@ function Blocks({
             if (b === 'Give to…') {
               opener.current = ref;
               apply(openGive(s, a.id));
+            } else if (b === 'Go to table' && a.kind === 'request') {
+              router.push('/demo/requests?state=alert');
             } else if (b === 'Go to table') {
               setNote({ id: a.id, words: `Opens ${a.table} on Floor (sc-4021).` });
             } else {
