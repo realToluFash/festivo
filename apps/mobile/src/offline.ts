@@ -64,10 +64,7 @@ export function useOffline({
 
   const { at, unanswered } = state;
   const stale = useMemo(
-    () =>
-      state.stale && loaded && at != null
-        ? { at: since ?? at, retry, unanswered }
-        : null,
+    () => (state.stale && loaded && at != null ? { at: since ?? at, retry, unanswered } : null),
     [state.stale, loaded, at, since, retry, unanswered],
   );
 
