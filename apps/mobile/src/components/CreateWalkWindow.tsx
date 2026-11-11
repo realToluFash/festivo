@@ -43,6 +43,8 @@ import {
   answered,
   back,
   footPlace,
+  onItsSideTyping,
+  walkNav,
   forward,
   picked,
   typed,
@@ -64,7 +66,6 @@ const GROW_FROM = 0.96;
 const PANEL = 760;
 const CARD = 300;
 const SIDE_PADDING = 32;
-const NAV = 52;
 
 export function deviceNow(): Device {
   return {
@@ -114,13 +115,14 @@ export function CreateWalkWindow<Made>({
   const { width, height } = useWindowDimensions();
   const accessibilitySizes = useAccessibilitySizes();
   const phone = kind === 'phone';
+  const keysUp = useKeysUp();
+  const sideways = onItsSideTyping({ phone, width, height, keysUp });
   const look = useMemo<Look>(
-    () => ({ phone, large: phone && accessibilitySizes }),
-    [phone, accessibilitySizes],
+    () => ({ phone, large: phone && accessibilitySizes, sideways }),
+    [phone, accessibilitySizes, sideways],
   );
   const here = useIsFocused();
   const reduced = useReducedMotion();
-  const keysUp = useKeysUp();
   const insets = useSafeAreaInsets();
   const locale = dateLocale();
   const language = currentLocale();
@@ -418,7 +420,7 @@ export function CreateWalkWindow<Made>({
             <View
               style={[
                 styles.nav,
-                { paddingTop: insets.top, minHeight: insets.top + NAV },
+                { paddingTop: insets.top, minHeight: insets.top + walkNav(sideways) },
                 scrolled && styles.navRuled,
               ]}
             >
