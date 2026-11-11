@@ -2,14 +2,14 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
-import { __setSessionState, type Session } from '../../../session.ts';
+import { __setSessionState, switchOrganisation, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 import { atPhoneWidth } from '../../../test-widths.ts';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
-function signedIn(organisation = IRE): void {
+function signedIn(organisation = IRE, others: Session['organisations'] = []): void {
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
@@ -21,7 +21,7 @@ function signedIn(organisation = IRE): void {
     needsOrganisation: false,
     hasPassword: true,
     organisation,
-    organisations: [organisation],
+    organisations: [organisation, ...others],
     organisationCountry: null,
     timezone: null,
     waitingFor: null,
@@ -464,6 +464,84 @@ describe('Settings > General', () => {
     expect(list?.compareDocumentPosition(note)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(note.compareDocumentPosition(role)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(note.compareDocumentPosition(readOnlyLanguage())).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+});
+
+describe('Settings > General, cards for one who manages members (sc-38891)', () => {
+  const OSUN = membership({ id: 'org_2', name: 'Ọ̀ṣun Weddings' });
+  const IRE_LINK = 'https://soirely.test/join/' + 'cd'.repeat(16);
+  const OSUN_LINK = 'https://soirely.test/join/' + 'ef'.repeat(16);
+
+  function json(body: unknown): Response {
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  function domains(domain: string, ownAddress: string) {
+    return json({ domains: [{ domain, stopped: false }], most: 5, ownAddress });
+  }
+
+  function titles(): (string | null)[] {
+    return [...document.querySelectorAll('section.settings-card h2')].map(
+      (title) => title.textContent,
+    );
+  }
+
+  function requestLink(): string {
+    return (screen.getByLabelText('Request link') as HTMLInputElement).value;
+  }
+
+  it('draws each card once, in order, for each organisation switched to and back, with no two siblings sharing a key', async () => {
+    signedIn(IRE, [OSUN]);
+    const osunAnswers: (() => void)[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      if (line === 'GET /api/orgs/org_1/domains') return domains('ire.events', 'folake@ire.events');
+      if (line === 'GET /api/orgs/org_1/request-link') return json({ on: true, url: IRE_LINK });
+      if (line === 'GET /api/orgs/org_2/domains' || line === 'GET /api/orgs/org_2/request-link') {
+        await new Promise<void>((answer) => osunAnswers.push(answer));
+
+        return line.endsWith('/domains')
+          ? domains('osun.weddings', 'folake@osun.weddings')
+          : json({ on: true, url: OSUN_LINK });
+      }
+
+      return new Response(null, { status: 404 });
+    });
+    const warned = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const inOrder = [
+      'Organisation',
+      'Company domain joining',
+      'Requests to join',
+      'Ownership and leaving',
+    ];
+    settings();
+
+    expect(await screen.findByText('ire.events')).toBeDefined();
+    await waitFor(() => expect(requestLink()).toBe(IRE_LINK));
+    expect(titles()).toEqual(inOrder);
+
+    act(() => switchOrganisation('org_2'));
+
+    expect(screen.queryByText('ire.events')).toBeNull();
+    expect(screen.queryByLabelText('Request link')).toBeNull();
+    await waitFor(() => expect(osunAnswers).toHaveLength(2));
+    act(() => osunAnswers.forEach((answer) => answer()));
+    expect(await screen.findByText('osun.weddings')).toBeDefined();
+    await waitFor(() => expect(requestLink()).toBe(OSUN_LINK));
+    expect(titles()).toEqual(inOrder);
+
+    act(() => switchOrganisation('org_1'));
+
+    expect(screen.queryByText('osun.weddings')).toBeNull();
+    expect(await screen.findByText('ire.events')).toBeDefined();
+    await waitFor(() => expect(requestLink()).toBe(IRE_LINK));
+    expect(titles()).toEqual(inOrder);
+    expect(
+      warned.mock.calls.some((call) => String(call[0]).includes('two children with the same key')),
+    ).toBe(false);
   });
 });
 

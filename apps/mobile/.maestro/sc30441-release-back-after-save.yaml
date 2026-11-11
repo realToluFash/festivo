@@ -1,0 +1,15 @@
+# Release build, Android, signed in: saves SCHEME in Personalisation, then system Back twice; Settings, then Today. sc-30441.
+appId: com.soirely.app
+---
+- runFlow: sc30441-release-open-colours.yaml
+- runFlow: sc30441-release-save-twice.yaml
+- waitForAnimationToEnd
+- back
+- waitForAnimationToEnd
+- takeScreenshot: after-first-back
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 10000
+- takeScreenshot: after-second-back
