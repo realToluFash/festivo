@@ -8,6 +8,8 @@ import { useAccountChoice } from '../colourScheme.ts';
 import { inUse } from '../kit/personalisation.ts';
 import { schemeOf } from '../kit/schemes.ts';
 import { schemeAtLaunch, tokens } from '../theme/tokens.ts';
+import { breakableEmail } from '../layout/textSize.ts';
+import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { CARD_PIECES, Confetti, Cover } from './Cover.tsx';
 import { Glyph } from './Glyph.tsx';
 import { SchemeTile } from './SchemeParts.tsx';
@@ -73,6 +75,9 @@ export function PersonCard({
 }) {
   const { t } = useTranslation();
   const look = CARD_LOOK[size];
+  // On a phone at the accessibility sizes the tile gives its room to the words (sc-37298).
+  const largest = useAccessibilitySizes();
+  const tileShown = size !== 'phone' || !largest;
   const role =
     person.role == null || person.organisation == null
       ? null
@@ -105,23 +110,25 @@ export function PersonCard({
           <Cover shade="side" pieces={[]} />
           <Confetti pieces={CARD_PIECES} scale={look.scale} />
         </View>
-        <View
-          style={[
-            styles.personAvatar,
-            { width: look.avatar, height: look.avatar, borderRadius: look.avatar / 2 },
-          ]}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          <Text
-            size={Math.round(look.avatar * 0.36)}
-            weight="bold"
-            accessible={false}
-            style={styles.accent}
+        {tileShown && (
+          <View
+            style={[
+              styles.personAvatar,
+              { width: look.avatar, height: look.avatar, borderRadius: look.avatar / 2 },
+            ]}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
           >
-            {person.initials}
-          </Text>
-        </View>
+            <Text
+              size={Math.round(look.avatar * 0.36)}
+              weight="bold"
+              accessible={false}
+              style={styles.accent}
+            >
+              {person.initials}
+            </Text>
+          </View>
+        )}
         <View style={styles.personWords}>
           <Text
             size={look.name}
@@ -132,7 +139,7 @@ export function PersonCard({
             {person.name}
           </Text>
           <Text size={look.mail} weight="medium" accessible={false} style={styles.white}>
-            {person.email}
+            {breakableEmail(person.email)}
           </Text>
           {role != null && (
             <Glass height={28} grows style={styles.roleChip}>
