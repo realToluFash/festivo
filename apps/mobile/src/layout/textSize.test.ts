@@ -254,4 +254,26 @@ describe('the width labels have to fit (sc-37298)', () => {
       wordsSlot({ wrapped: 90, kept, reported: { windowWidth: 360, width: 76 } }, 20, 360),
     ).toBe(90);
   });
+
+  it('steps the bar’s labels below the cap after a live change with no new layout', () => {
+    const tab = 76;
+    const reported = { windowWidth: 360, width: tab };
+    const widestAt = (start: number) => (start / 12) * 60;
+
+    const before = fitWidest(
+      12,
+      12,
+      widestAt(12),
+      wordsSlot({ wrapped: null, kept: null, reported }, 12, 360),
+    );
+    const after = fitWidest(
+      12,
+      20,
+      widestAt(20),
+      wordsSlot({ wrapped: null, kept: null, reported }, 20, 360),
+    );
+
+    expect(before / 12).toBe(1);
+    expect(after / 12).toBeLessThan(20 / 12);
+  });
 });

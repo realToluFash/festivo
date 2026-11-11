@@ -52,7 +52,6 @@ export function fitWidest(size: number, start: number, widest: number, slot: num
   return Math.max(size, Math.floor((start * slot) / widest));
 }
 
-/** A name in the frame takes one line, and two at the accessibility sizes, before it is cut. */
 export interface WordsRoom {
   /** The width a text drawn at the start wrapped at, when it wrapped. */
   wrapped: number | null;
@@ -74,6 +73,7 @@ export function wordsSlot(
   return reported?.windowWidth === windowWidth ? reported.width : 0;
 }
 
+/** A name in the frame takes one line, and two at the accessibility sizes, before it is cut. */
 export function nameLines(fontScale: number): 1 | 2 {
   return atAccessibilitySizes(fontScale) ? 2 : 1;
 }
