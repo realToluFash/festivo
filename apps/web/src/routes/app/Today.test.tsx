@@ -1,5 +1,6 @@
 import type { Membership } from '@soirely/api-client';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import i18next from 'i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -170,6 +171,34 @@ describe('Today at a desk (sc-30413)', () => {
     );
 
     expect(rows).toEqual([['Aso ebi', 'Chidi & Ngozi'], ['Bisi’s 40th']]);
+  });
+
+  it('keeps a row’s day count and its date each whole, so the date wraps rather than cuts (sc-36532)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-03T09:00:00+01:00'));
+    signedIn(membership({ id: 'org_1' }));
+    serving([
+      event('Casamento', {
+        status: 'live',
+        phase: 'live',
+        startsAt: '2027-04-01T16:00:00+01:00',
+        endsAt: '2027-04-01T23:00:00+01:00',
+        dayCount: 1,
+      }),
+    ]);
+    await act(() => i18next.changeLanguage('pt'));
+
+    try {
+      open();
+
+      const row = await screen.findByRole('button', { name: /^Casamento/u });
+      const when = row.querySelector('.today-event-when') as HTMLElement;
+
+      expect(when.querySelector('.today-event-count')?.textContent).toBe('Em 149 dias ·');
+      expect(when.querySelector('.today-event-dates')?.textContent).toBe('quinta-feira, 1 de abr.');
+    } finally {
+      await act(() => i18next.changeLanguage('en'));
+    }
   });
 
   it('keeps New event off the banner for a role without Create events', async () => {

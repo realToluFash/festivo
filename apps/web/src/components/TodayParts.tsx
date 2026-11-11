@@ -172,7 +172,6 @@ export function ThisWeek({ moment, open }: { moment: Moment; open: Open }) {
 
 function EventRow({ card, full, open }: { card: EventCard; full: boolean; open: Open }) {
   const { t } = useTranslation();
-  const when = card.live || card.draft ? card.dates : `${card.count} · ${card.dates}`;
   const ready = full ? card.ready : null;
 
   return (
@@ -185,7 +184,12 @@ function EventRow({ card, full, open }: { card: EventCard; full: boolean; open: 
         <EventCover event={card.event} className="today-event-cover" />
         <span className="today-event-words">
           <span className="today-event-name">{card.name}</span>
-          <span className="today-event-when">{when}</span>
+          <span className="today-event-when">
+            {!card.live && !card.draft && (
+              <span className="today-event-count">{`${card.count} ·`}</span>
+            )}
+            <span className="today-event-dates">{card.dates}</span>
+          </span>
           {(card.draft || card.live || card.stage != null) && (
             <span className="today-chips">
               {card.draft && <span className="today-chip is-draft">{t('events.draft')}</span>}
