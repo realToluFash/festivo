@@ -10,6 +10,7 @@ import { AnswerHeading } from '../../src/components/AnswerHeading.tsx';
 import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
+import { LIST_GAP, SETTINGS_PAGE } from '../../src/components/listFrame.ts';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { StandChanges, StandRules } from '../../src/components/SignInRulesStand.tsx';
@@ -41,7 +42,6 @@ import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout
 import { PROVIDER_NAMES } from '../../src/providerSignIn.ts';
 import { markRulesSeen, useRulesSeen } from '../../src/signInRulesSeen.ts';
 import { rereadOrganisations, useSignedIn } from '../../src/signedIn.ts';
-import { tokens } from '../../src/theme/tokens.ts';
 import { PANE_TITLE, paneTitle } from '../../src/components/topTitle.ts';
 
 /** `tapped` when it answers Try again, so focus moves to it (sc-11173). */
@@ -238,28 +238,10 @@ export default function SignInRules() {
 
 const styles = StyleSheet.create({
   shrink: { flexShrink: 1, minWidth: 0 },
-  phone: {
-    gap: 18,
-    paddingTop: tokens.spaceXxs,
-    paddingHorizontal: tokens.spaceXxl,
-    paddingBottom: tokens.space6xl * 2,
-  },
-  portrait: {
-    gap: 18,
-    paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.space5xl,
-    paddingBottom: tokens.space6xl * 2,
-  },
-  landscape: {
-    gap: 18,
-    paddingTop: 26,
-    paddingHorizontal: 30,
-    paddingBottom: tokens.space6xl * 2,
-  },
 });
 
-const CONTENT: Record<LayoutKind, object> = {
-  phone: styles.phone,
-  tabletPortrait: styles.portrait,
-  tabletLandscape: styles.landscape,
-};
+const CONTENT = {
+  phone: { ...SETTINGS_PAGE.phone, gap: LIST_GAP },
+  tabletPortrait: { ...SETTINGS_PAGE.tabletPortrait, gap: LIST_GAP },
+  tabletLandscape: { ...SETTINGS_PAGE.tabletLandscape, gap: LIST_GAP },
+} satisfies Record<LayoutKind, object>;

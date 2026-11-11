@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../src/api.ts';
 import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
+import { LIST_GAP, SETTINGS_PAGE } from '../../src/components/listFrame.ts';
 import {
   DetailRows,
   DetailsScreen,
@@ -258,28 +259,10 @@ async function rereadOrganisation(
 
 const styles = StyleSheet.create({
   shrink: { flexShrink: 1, minWidth: 0 },
-  phone: {
-    gap: 18,
-    paddingTop: tokens.spaceXxs,
-    paddingHorizontal: tokens.spaceXxl,
-    paddingBottom: tokens.space6xl * 2,
-  },
-  portrait: {
-    gap: 18,
-    paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.space5xl,
-    paddingBottom: tokens.space6xl * 2,
-  },
-  landscape: {
-    gap: 18,
-    paddingTop: 26,
-    paddingHorizontal: 30,
-    paddingBottom: tokens.space6xl * 2,
-  },
 });
 
-const CONTENT: Record<LayoutKind, object> = {
-  phone: styles.phone,
-  tabletPortrait: styles.portrait,
-  tabletLandscape: styles.landscape,
-};
+const CONTENT = {
+  phone: { ...SETTINGS_PAGE.phone, gap: LIST_GAP },
+  tabletPortrait: { ...SETTINGS_PAGE.tabletPortrait, gap: LIST_GAP },
+  tabletLandscape: { ...SETTINGS_PAGE.tabletLandscape, gap: LIST_GAP },
+} satisfies Record<LayoutKind, object>;
