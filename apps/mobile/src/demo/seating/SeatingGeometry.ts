@@ -216,7 +216,7 @@ function walled(it: Item, s: number, room: Room, p: Point): Point {
   };
 }
 
-/** How far past a table's own edge its handles sit, in px: zoomed out just clear of the table, then just clear of its chairs, from 150% clear of its chairs' targets, so no handle covers a chair's words or its target (sc-31783, qa3 11 Nov). Given the plan, they come in toward the table only as far as it takes to keep off every other item's chairs, or as near to that as any reach gets (lead, PR #1829). */
+/** How far past a table's edge its handles sit, in px: off its own chairs' targets, inside the walls and, given the plan, off every other item's chairs. */
 export function handleReach(it: Item, s: number, plan?: Plan): Point {
   const own = ownReach(it, s);
   if (plan == null) return own;
@@ -263,7 +263,7 @@ export function sideFrom(n: number, reach: number, s: number): number {
 const WORDS_DEPTH = 35;
 const NAME_DEPTH = 10;
 
-/** Where a zoomed-out item's name sits, in px: below it, or above it when its name, bar and count would cross the room's bottom wall at floor (sc-31783, qa3 11 Nov). The bar is 10 below the name and the count 25. */
+/** Where a zoomed-out item's name sits, in px: below it, or above it when its name, bar and count would cross the bottom wall at floor. */
 export function wordsAt(it: Item, cy: number, s: number, floor: number): number {
   const e = extent(it);
   const off =
@@ -274,6 +274,18 @@ export function wordsAt(it: Item, cy: number, s: number, floor: number): number 
   const below = cy + off + 12;
   if (below + depth <= floor - 2) return below;
   return cy - off - 2 - depth;
+}
+
+/** Where a table's name sits from 50%, in px: on the table when it fits there, else below it, or above it when below would cross the bottom wall at floor. The name is drawn from 10 above to 6 below. */
+export function nameAt(it: Item, cy: number, s: number, floor: number): number {
+  const round = it.kind === 'round' || it.kind === 'cocktail';
+  const bw = (round ? it.d : it.w) * s;
+  const bh = (round ? it.d : it.l) * s;
+  if (it.name.length * 12 * 0.56 <= bw - 3 && bh >= 15) return cy;
+  const e = extent(it).y * s;
+  const below = cy + e + 10;
+  if (below + 6 <= floor - 2) return below;
+  return cy - e - 8;
 }
 
 export function zoomAbout(view: View, factor: number, cx: number, cy: number): View {

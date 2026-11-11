@@ -38,6 +38,7 @@ import {
   turn,
   usable,
   wordsAt,
+  nameAt,
   zoomAbout,
 } from './SeatingGeometry.ts';
 import {
@@ -474,7 +475,6 @@ function addWords(
   detail: Detail,
   labels: Label[],
 ) {
-  const e = extent(it);
   const name = { key: `${it.id}.name`, size: 12, bold: true, ink: tokens.colorInk, words: it.name };
   if (detail === 'out') {
     const by = wordsAt(it, cy, s, floor);
@@ -502,10 +502,7 @@ function addWords(
     return;
   }
   if (it.kind === 'row') return;
-  const bw = (it.kind === 'round' || it.kind === 'cocktail' ? it.d : it.w) * s;
-  const bh = (it.kind === 'round' || it.kind === 'cocktail' ? it.d : it.l) * s;
-  const fits = it.name.length * 12 * 0.56 <= bw - 3 && bh >= 15;
-  labels.push({ ...name, x: cx, y: fits ? cy : cy + e.y * s + 10 });
+  labels.push({ ...name, x: cx, y: nameAt(it, cy, s, floor) });
 }
 
 function Bars({ v, floor, items }: { v: Shown; floor: number; items: readonly Item[] }) {

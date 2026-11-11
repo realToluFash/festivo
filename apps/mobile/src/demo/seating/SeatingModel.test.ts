@@ -25,6 +25,7 @@ import {
   sideFrom,
   turn,
   wordsAt,
+  nameAt,
 } from './SeatingGeometry.ts';
 import {
   SEATING_STATES,
@@ -728,6 +729,24 @@ describe('the room’s words and handles (qa3, 11 Nov)', () => {
   });
 
   const scales = [0.25, 0.335, 0.375, 0.5, 0.75, 1, 1.5, 2];
+
+  it('keeps every name, bar and count inside the bottom wall at every zoom', () => {
+    [pad, phone].forEach((m) =>
+      [0.125, at46, ...scales].forEach((s) =>
+        m.items
+          .filter((it) => it.kind !== 'single' && it.kind !== 'row')
+          .forEach((it) => {
+            const cy = it.y * s;
+            const floor = m.room.l * s;
+            const out = detailOf(s) === 'out';
+            const y = out ? wordsAt(it, cy, s, floor) : nameAt(it, cy, s, floor);
+            const said = `${it.id} at ${pct(s)}%`;
+            expect(y + (out ? 35 : 6), said).toBeLessThanOrEqual(floor);
+            expect(y - 10, said).toBeGreaterThanOrEqual(0);
+          }),
+      ),
+    );
+  });
   const chosen = (m: Seating) =>
     m.items.filter((it) => ['round', 'cocktail', 'rect', 'head'].includes(it.kind));
   const at = (it: Seating['items'][number], s: number, m: Seating) =>
