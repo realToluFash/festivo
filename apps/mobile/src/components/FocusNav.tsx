@@ -245,11 +245,12 @@ const styles = StyleSheet.create({
     borderBottomColor: tokens.colorBorder,
   },
   row: {
-    minHeight: NAV_LEAST,
+    minHeight: NAV_LEAST - 1,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: NAV_SIDE,
-    paddingVertical: tokens.spaceXxs,
+    // The nav's border is its 52nd point, as on main: 44 tall buttons and this padding fill the other 51.
+    paddingVertical: (NAV_LEAST - 1 - tokens.sizeHit) / 2,
   },
   apart: { justifyContent: 'space-between' },
   end: { justifyContent: 'flex-end' },
