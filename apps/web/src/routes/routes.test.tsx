@@ -454,10 +454,19 @@ describe('the application tree', () => {
     }
 
     it('names the organisation and the page', () => {
-      at('/app/events');
+      at('/app/events/new');
 
       expect(crumb()).toBe('Okonkwo Events / Events');
     });
+
+    it.each(['/app/events', '/app/calendar', '/app/settings', '/app/account'])(
+      'is not above %s at a desk (sc-39471)',
+      (place) => {
+        at(place);
+
+        expect(crumb()).toBeUndefined();
+      },
+    );
 
     it("names Today at the sidebar's Today", () => {
       at('/app');
@@ -468,7 +477,7 @@ describe('the application tree', () => {
     it('holds only the organisation while the overdue screen stands in', () => {
       __setSessionState({ status: 'signedIn', session: overdueSession() });
 
-      at('/app/events');
+      at('/app');
 
       expect(crumb()).toBe('Okonkwo Events');
     });
@@ -476,7 +485,7 @@ describe('the application tree', () => {
     it('holds only the organisation while a paused one stands in', () => {
       __setSessionState({ status: 'signedIn', session: pausedSession() });
 
-      at('/app/events');
+      at('/app');
 
       expect(crumb()).toBe('Lagos Weddings');
       const person = document.querySelector<HTMLAnchorElement>('a.today-person');

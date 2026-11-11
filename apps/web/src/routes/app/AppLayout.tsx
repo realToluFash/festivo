@@ -356,7 +356,14 @@ function Shell() {
             }
           >
             <ErrorBoundary>
-              {standIn != null && !atSettings ? standIn : <Outlet context={standIn} />}
+              {standIn != null && !atSettings ? (
+                <>
+                  {bandless && said}
+                  {standIn}
+                </>
+              ) : (
+                <Outlet context={standIn} />
+              )}
             </ErrorBoundary>
           </DeskTopContext>
         </main>
