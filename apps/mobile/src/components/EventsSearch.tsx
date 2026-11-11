@@ -7,6 +7,8 @@ import {
   filtered,
   formatWallDay,
   listFormat,
+  picksLead,
+  picksShown,
   searching,
   whenSpan,
   withHostToggled,
@@ -32,6 +34,7 @@ import { useReadOut } from './ReadOut.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type Anchor, AnchoredMenu, HeadCount, SectionHead, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
+import { MeasuredWords } from './Title.tsx';
 
 type Level = 'top' | 'type' | 'when' | 'hosts';
 
@@ -88,12 +91,99 @@ function chosenWords(filters: EventsFilters, locale: string, t: TFunction): stri
   ];
 }
 
-/** What Filter reads: All, or what is chosen. */
-export function useFilterWord(filters: EventsFilters, locale: string): string {
-  const { t } = useTranslation();
-  const chosen = chosenWords(filters, locale, t);
+/** What Filter names: each pick, and the whole list a screen reader hears, or All. */
+export interface FilterWords {
+  picks: readonly string[];
+  word: string;
+}
 
-  return chosen.length === 0 ? t('eventsSearch.all') : listed(chosen, locale);
+export function useFilterWords(filters: EventsFilters, locale: string): FilterWords {
+  const { t } = useTranslation();
+  const picks = chosenWords(filters, locale, t);
+
+  return { picks, word: picks.length === 0 ? t('eventsSearch.all') : listed(picks, locale) };
+}
+
+/** Each way a line of picks can read, measured hidden, and how many show whole in a room (sc-39348). */
+function usePicksFit(
+  picks: readonly string[],
+  whole: string,
+  look: { size: number; weight: 'semibold' | 'medium' },
+) {
+  const { t } = useTranslation();
+  const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
+  const more = (count: number) => t('calendar.moreItems', { count });
+  const read = (shown: number) =>
+    shown === picks.length ? whole : `${picksLead(picks, shown)} ${more(picks.length - shown)}`;
+  const reads = picks.length === 0 ? [whole] : picks.map((_, index) => read(index + 1));
+  const measured = reads.every((text) => widths[`${look.weight}|${text}`] != null);
+  const widthOf = (text: string) => widths[`${look.weight}|${text}`] ?? 0;
+
+  return {
+    measurer: (
+      <MeasuredWords
+        words={reads}
+        size={look.size}
+        weight={look.weight}
+        onWidth={(text, width) => {
+          const key = `${look.weight}|${text}`;
+          setWidths((now) => (now[key] === width ? now : { ...now, [key]: width }));
+        }}
+      />
+    ),
+    whole: measured ? widthOf(whole) : null,
+    shownIn: (room: number | null) =>
+      room == null || !measured
+        ? picks.length
+        : picksShown(picks.length, (shown) => widthOf(read(shown)) <= room),
+    more,
+  };
+}
+
+/** The first `shown` picks whole, then "+N more"; only the first is ever cut. */
+function PicksLine({
+  picks,
+  whole,
+  shown,
+  more,
+  size,
+  weight,
+  ink,
+}: {
+  picks: readonly string[];
+  whole: string;
+  shown: number;
+  more: (count: number) => string;
+  size: number;
+  weight: 'semibold' | 'medium';
+  ink: string;
+}) {
+  const rest = picks.length - shown;
+
+  return (
+    <View style={styles.picks}>
+      <Text
+        size={size}
+        weight={weight}
+        numberOfLines={1}
+        accessible={false}
+        style={[styles.shrink, { color: ink }]}
+      >
+        {rest > 0 ? picksLead(picks, shown) : whole}
+      </Text>
+      {rest > 0 && (
+        <Text
+          size={size}
+          weight={weight}
+          numberOfLines={1}
+          accessible={false}
+          style={{ color: ink }}
+        >
+          {` ${more(rest)}`}
+        </Text>
+      )}
+    </View>
+  );
 }
 
 /** The search field: the search mark, the words, and once typed a 44 clear button; Return searches. */
@@ -173,15 +263,23 @@ export function SearchField({
   );
 }
 
-/** Filter beside the search: its mark, what is chosen, and a chevron, in Violet. */
+const FILTER_MARK = 18;
+const FILTER_CHEVRON = 16;
+const FILTER_SPACE = tokens.spaceXs;
+/** Filter's marks and padding around its picks: the padding at both ends, a gap either side of the picks, and the two marks. */
+const FILTER_SIDES = 4 * FILTER_SPACE + FILTER_MARK + FILTER_CHEVRON;
+
+/** Filter beside the search: its mark, what is chosen, and a chevron, in Violet. On a phone (`wraps`) it moves under the field when its picks do not fit beside it, and fits them to the full width there. */
 export function FilterButton({
+  picks,
   word,
+  wraps,
   off,
   open,
   onPress,
   ref,
-}: {
-  word: string;
+}: FilterWords & {
+  wraps: boolean;
   off: boolean;
   open: boolean;
   onPress: () => void;
@@ -189,30 +287,42 @@ export function FilterButton({
 }) {
   const { t } = useTranslation();
   const ink = off ? tokens.colorInkTertiary : tokens.colorAccentText;
+  const fit = usePicksFit(picks, word, { size: 15, weight: 'semibold' });
+  const [slot, setSlot] = useState<number | null>(null);
 
   return (
-    <Pressable
-      ref={ref}
-      onPress={off ? undefined : onPress}
-      disabled={off}
-      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: off, expanded: open }}
-      accessibilityLabel={t('eventsSearch.filterLabel', { what: word })}
-      testID="events.filter"
+    <View
+      style={wraps ? styles.filterWraps : styles.filterBeside}
+      onLayout={(event) => setSlot(event.nativeEvent.layout.width)}
     >
-      <Glyph name="filter" size={18} ink={ink} weight={2.2} />
-      <Text
-        size={15}
-        weight="semibold"
-        numberOfLines={1}
-        accessible={false}
-        style={[styles.shrink, { color: ink }]}
+      {fit.measurer}
+      {/* As wide as every pick, so the row moves Filter under the field exactly when they do not fit beside it. */}
+      {wraps && fit.whole != null && (
+        <View style={[styles.strut, { width: fit.whole + FILTER_SIDES }]} />
+      )}
+      <Pressable
+        ref={ref}
+        onPress={off ? undefined : onPress}
+        disabled={off}
+        style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: off, expanded: open }}
+        accessibilityLabel={t('eventsSearch.filterLabel', { what: word })}
+        testID="events.filter"
       >
-        {word}
-      </Text>
-      <Glyph name="down" size={16} ink={ink} weight={2.4} />
-    </Pressable>
+        <Glyph name="filter" size={FILTER_MARK} ink={ink} weight={2.2} />
+        <PicksLine
+          picks={picks}
+          whole={word}
+          shown={fit.shownIn(slot == null ? null : slot - FILTER_SIDES)}
+          more={fit.more}
+          size={15}
+          weight="semibold"
+          ink={ink}
+        />
+        <Glyph name="down" size={FILTER_CHEVRON} ink={ink} weight={2.4} />
+      </Pressable>
+    </View>
   );
 }
 
@@ -238,6 +348,8 @@ export function EventsFilterMenu({
   const [level, setLevel] = useState<Level>('top');
   const [picking, setPicking] = useState<Picking | null>(null);
   const { locale } = calendar;
+  const types = filters.types.map((type) => t(`eventTypes.${type}`));
+  const whenNamed = whenWords(filters.when, locale, t);
   const offered = [...hosts, ...filters.hosts.filter((host) => !hosts.includes(host))];
   const close = () => {
     setLevel('top');
@@ -285,25 +397,21 @@ export function EventsFilterMenu({
         <>
           <TopRow
             title={t('eventsSearch.type')}
-            value={
-              filters.types.length === 0
-                ? t('eventsSearch.anyType')
-                : listed(
-                    filters.types.map((type) => t(`eventTypes.${type}`)),
-                    locale,
-                  )
-            }
+            picks={types}
+            value={types.length === 0 ? t('eventsSearch.anyType') : listed(types, locale)}
             onPress={() => setLevel('type')}
             testID="events.filter.type"
           />
           <TopRow
             title={t('eventsSearch.when')}
-            value={whenWords(filters.when, locale, t)}
+            picks={[whenNamed]}
+            value={whenNamed}
             onPress={() => setLevel('when')}
             testID="events.filter.when"
           />
           <TopRow
             title={t('eventsSearch.hostedBy')}
+            picks={filters.hosts}
             value={
               filters.hosts.length === 0 ? t('eventsSearch.anyone') : listed(filters.hosts, locale)
             }
@@ -392,18 +500,23 @@ export function EventsFilterMenu({
   );
 }
 
+/** A menu row: its title, then its picks fitted between the title and the chevron. */
 function TopRow({
   title,
+  picks,
   value,
   onPress,
   testID,
 }: {
   title: string;
+  picks: readonly string[];
   value: string;
   onPress: () => void;
   testID: string;
 }) {
   const { t } = useTranslation();
+  const fit = usePicksFit(picks, value, { size: 15, weight: 'medium' });
+  const [room, setRoom] = useState<number | null>(null);
 
   return (
     <Pressable
@@ -413,18 +526,21 @@ function TopRow({
       accessibilityLabel={t('eventsSearch.choice', { title, value })}
       testID={testID}
     >
-      <Text size={16} weight="medium" accessible={false} style={styles.grow}>
+      <Text size={16} weight="medium" accessible={false} style={styles.title}>
         {title}
       </Text>
-      <Text
-        size={15}
-        weight="medium"
-        numberOfLines={1}
-        accessible={false}
-        style={[styles.secondary, styles.value]}
-      >
-        {value}
-      </Text>
+      <View style={styles.value} onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+        {fit.measurer}
+        <PicksLine
+          picks={picks}
+          whole={value}
+          shown={fit.shownIn(room)}
+          more={fit.more}
+          size={15}
+          weight="medium"
+          ink={tokens.colorInkSecondary}
+        />
+      </View>
       <Glyph name="chevron" size={16} ink={tokens.colorInkTertiary} weight={2.3} />
     </Pressable>
   );
@@ -720,8 +836,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     flexShrink: 1,
-    gap: tokens.spaceXs,
-    paddingHorizontal: tokens.spaceXs,
+    gap: FILTER_SPACE,
+    paddingHorizontal: FILTER_SPACE,
   },
   top: {
     minHeight: tokens.sizeHitPhonePrimary,
@@ -731,7 +847,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spacePillEnd,
   },
   on: { color: tokens.colorAccentText },
-  value: { maxWidth: 120 },
+  title: { flexShrink: 0 },
+  value: { flex: 1, minWidth: 0, alignItems: 'flex-end' },
+  picks: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
+  filterWraps: { flexShrink: 1, minWidth: 0, alignItems: 'flex-start' },
+  filterBeside: { flex: 1, minWidth: 0, alignItems: 'flex-start' },
+  strut: { height: 0 },
   rule: { height: 1, marginVertical: tokens.spaceXs, backgroundColor: tokens.colorBorder },
   back: {
     minHeight: tokens.sizeHitPhonePrimary,
