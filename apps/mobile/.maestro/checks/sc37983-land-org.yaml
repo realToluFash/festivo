@@ -1,4 +1,4 @@
-# Lands from Set a new password on whichever step the account owes (Your organisation, You're invited, or the one-offer step) and pictures Password changed against the step's foot, keys up and down. sc-37983.
+# sc-37983: Set a new password lands on Your organisation in portrait with Password changed showing, lowers the keys, then closes the toast. Pass METRO_URL and TOKEN_ORG, a reset token for an account with no organisation and no invitation.
 appId: host.exp.Exponent
 ---
 - runFlow: ../sign-out.yaml
