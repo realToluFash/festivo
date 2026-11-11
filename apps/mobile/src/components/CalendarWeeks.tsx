@@ -448,6 +448,8 @@ export const WeekRow = memo(function WeekRow({
                 size={look.big ? 22 : 12}
                 weight="semibold"
                 numberOfLines={1}
+                adjustsFontSizeToFit={look.big}
+                minimumFontScale={0.6}
                 maxFontSizeMultiplier={FIXED}
                 accessible={false}
                 style={[
@@ -455,7 +457,8 @@ export const WeekRow = memo(function WeekRow({
                   styles.secondary,
                   styles.figures,
                   {
-                    left: index * cw + 4,
+                    left: index * cw + 5,
+                    width: cw - 9,
                     top: rowsTop(look.week) + fit * (rowH + gap),
                     lineHeight: moreH - 2,
                   },
