@@ -99,28 +99,26 @@ describe('the thresholds', () => {
   });
 });
 
-/** Roles' list is 236 with 16 between and margins of 64; Members' is 300 with 20 and 48; Events' 360 with 20 and 48. */
+/** Roles' list is 236 with 16 between and margins of 64; Events' 360 with 20 and 48. Members' list takes the Settings list's column, 360 with nothing between, beside a page with 30 at its sides. */
 describe('a list beside its page', () => {
   const ROLES = { margins: 64, list: 236, between: 16 };
-  const MEMBERS = { margins: 48, list: 300, between: 20 };
+  const MEMBERS = { margins: 60, list: 360, between: 0 };
   const side = (width: number, fontScale = 1) => ({ width, height: 800, fontScale });
 
   it.each([
-    ['an iPad mini on its side', 1133, 'tabletPortrait', 'tabletPortrait'],
-    ['an 11-inch iPad on its side', 1180, 'tabletPortrait', 'tabletPortrait'],
-    ['1240 wide', 1240, 'tabletPortrait', 'tabletPortrait'],
-    ['the Android tablet on its side', 1280, 'tabletPortrait', 'tabletPortrait'],
-    ['a 13-inch iPad on its side', 1376, 'tabletLandscape', 'tabletLandscape'],
-  ])('%s in Settings: Roles %s, Members %s', (_name, width, roles, members) => {
-    expect(listAndPageKind(side(width), 'settingsList', ROLES)).toBe(roles);
-    expect(listAndPageKind(side(width), 'settingsList', MEMBERS)).toBe(members);
+    ['an iPad mini on its side', 1133],
+    ['an 11-inch iPad on its side', 1180],
+    ['the Android tablet on its side', 1280],
+    ['a 13-inch iPad on its side', 1376],
+  ])('%s gives Members the Settings list’s column, not a third one', (_name, width) => {
+    expect(settingsListGivesWay(side(width), 'settingsList', MEMBERS)).toBe(true);
+    expect(listAndPageKind(side(width), 'settingsList', MEMBERS)).toBe('tabletLandscape');
   });
 
   it('keeps a page its 360 at the boundary', () => {
-    expect(listAndPageKind(side(1288), 'settingsList', ROLES)).toBe('tabletLandscape');
-    expect(listAndPageKind(side(1287), 'settingsList', ROLES)).toBe('tabletPortrait');
-    expect(listAndPageKind(side(1340), 'settingsList', MEMBERS)).toBe('tabletLandscape');
-    expect(listAndPageKind(side(1339), 'settingsList', MEMBERS)).toBe('tabletPortrait');
+    expect(settingsListGivesWay(side(1032), 'settingsList', MEMBERS)).toBe(true);
+    expect(settingsListGivesWay(side(1031), 'settingsList', MEMBERS)).toBe(false);
+    expect(listAndPageKind(side(1031), 'settingsList', MEMBERS)).toBe('tabletPortrait');
   });
 
   it('gives a section the window less the sidebar, and less the Settings list on its side in Settings', () => {
@@ -132,23 +130,14 @@ describe('a list beside its page', () => {
 
   it('widens the lists, not the sidebar, at the accessibility sizes', () => {
     expect(sectionWidth(side(1376, 2), 'settingsList')).toBe(1376 - 252 - Math.round(1124 * 0.4));
+    expect(settingsListGivesWay(side(1376, 2), 'settingsList', MEMBERS)).toBe(true);
   });
 
-  it('gives a section’s own list the Settings list’s place on its side at the accessibility sizes', () => {
-    for (const list of [ROLES, MEMBERS]) {
-      expect(settingsListGivesWay(side(1376, 2), 'settingsList', list)).toBe(true);
-      expect(listAndPageKind(side(1376, 2), 'settingsList', list)).toBe('tabletLandscape');
-      expect(settingsListGivesWay(side(1180, 1.786), 'settingsList', list)).toBe(true);
-    }
-  });
-
-  it('keeps the Settings list where the three fit, below the accessibility sizes, and held upright', () => {
-    expect(settingsListGivesWay(side(1376), 'settingsList', MEMBERS)).toBe(false);
-    expect(settingsListGivesWay(side(1180), 'settingsList', MEMBERS)).toBe(false);
+  it('never gives way upright, or where nothing is beside the section', () => {
     expect(
       settingsListGivesWay({ width: 1032, height: 1376, fontScale: 2 }, 'settingsList', MEMBERS),
     ).toBe(false);
-    expect(settingsListGivesWay(side(1376, 2), 'nothing', MEMBERS)).toBe(false);
+    expect(settingsListGivesWay(side(1376), 'nothing', MEMBERS)).toBe(false);
   });
 
   it('shows one at a time where even the section’s own list leaves its page too little', () => {

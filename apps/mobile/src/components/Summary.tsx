@@ -98,18 +98,59 @@ export function SummaryColumn({
   return (
     <ScrollView
       ref={scrollRef}
-      contentContainerStyle={styles.column}
+      contentContainerStyle={COLUMN}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      <Back onPress={() => shell.toSettings()} />
-      <Text size={26} weight="bold" accessibilityRole="header" style={styles.columnTitle}>
-        {title}
-      </Text>
+      <ColumnHead title={title} onBack={() => shell.toSettings()} />
       {children}
     </ScrollView>
   );
 }
+
+/** The head of a section's own list in the Settings list's column: Back to Settings, then the section's title (sc-39471). */
+export function ColumnHead({
+  title,
+  onBack,
+  titleRef,
+  beside,
+}: {
+  title: string;
+  onBack: () => void;
+  titleRef?: Ref<TextHandle | null>;
+  /** At the end of the title's row, as Members' Refreshing… (sc-27046). */
+  beside?: ReactNode;
+}) {
+  return (
+    <>
+      <Back onPress={onBack} />
+      <View style={styles.columnTitleRow}>
+        <View style={styles.shrink}>
+          <Text
+            ref={titleRef}
+            size={COLUMN_TITLE}
+            weight="bold"
+            accessibilityRole="header"
+            style={styles.columnTitle}
+          >
+            {title}
+          </Text>
+        </View>
+        {beside}
+      </View>
+    </>
+  );
+}
+
+const COLUMN_TITLE = 26;
+
+/** A section's own list in the Settings list's column on its side. */
+export const COLUMN = {
+  paddingTop: tokens.spaceXl,
+  paddingHorizontal: tokens.spaceXl,
+  paddingBottom: tokens.space6xl,
+  gap: tokens.spaceLg,
+} as const;
 
 export type CardSize = 'page' | 'compact' | 'wide';
 
@@ -510,13 +551,9 @@ export function SectionFailed({
 
 const styles = StyleSheet.create({
   blocks: { gap: 18 },
-  column: {
-    paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceXl,
-    paddingBottom: tokens.space6xl,
-    gap: tokens.spaceLg,
-  },
-  columnTitle: { letterSpacing: 26 * -0.02 },
+  columnTitle: { letterSpacing: COLUMN_TITLE * -0.02 },
+  columnTitleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
+  shrink: { flexShrink: 1, minWidth: 0 },
   white: { color: tokens.colorInkOnDark },
   says: { maxWidth: '80%' },
   onCard: { lineHeight: 14.5 * 1.4 },

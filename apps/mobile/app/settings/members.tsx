@@ -47,7 +47,7 @@ import {
 } from '../../src/components/screenReaderFocus.ts';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { SheetsAtRoot } from '../../src/components/Sheet.tsx';
-import { Ask, FailedBlock, LoadingBlock } from '../../src/components/Summary.tsx';
+import { Ask, ColumnHead, FailedBlock, LoadingBlock } from '../../src/components/Summary.tsx';
 import { type TextHandle, Text } from '../../src/components/Text.tsx';
 import { currentLocale, dateLocale, useShownLanguage } from '../../src/i18n/index.ts';
 import { DESTINATION_HREF, SECTION_HREF } from '../../src/kit/appNav.ts';
@@ -66,11 +66,11 @@ import {
   recoveryGone,
   recoveryQuestion,
 } from '../../src/kit/membersRecovery.ts';
-import { settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
+import { SETTINGS_LIST_WIDTH, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { useOffline } from '../../src/offline.ts';
 import { rereadOrganisations, useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
-import { PAGE_TITLE, PANE_TITLE, pageTitle, paneTitle } from '../../src/components/topTitle.ts';
+import { PAGE_TITLE, pageTitle } from '../../src/components/topTitle.ts';
 
 type Load =
   | { kind: 'loading' }
@@ -347,14 +347,21 @@ export default function MembersScreen() {
     load.kind === 'loaded' && organisation != null ? grantableRoles(load.roles, organisation) : [];
 
   const refreshingWords = refreshing ? <Refreshing testID="members.refreshing" /> : null;
-  const heading = !alone && (
+  const heading = alone ? null : givesWay ? (
+    <ColumnHead
+      title={t('membersScreen.title')}
+      onBack={backToSettings(t('settings.title')).onPress}
+      titleRef={membersTitle}
+      beside={refreshingWords}
+    />
+  ) : (
     <View style={besideRow.row}>
       <View style={styles.shrink}>
         <Text
           ref={membersTitle}
-          size={landscape ? PANE_TITLE : PAGE_TITLE}
+          size={PAGE_TITLE}
           weight="bold"
-          style={landscape ? paneTitle : pageTitle}
+          style={pageTitle}
           accessibilityRole="header"
         >
           {t('membersScreen.title')}
@@ -470,7 +477,8 @@ export default function MembersScreen() {
   return (
     <AppFrame
       current="settings"
-      top={alone || !givesWay ? 'scrolls' : undefined}
+      top="scrolls"
+      listUnderTabs
       offline={stale}
       besideTitle={alone ? refreshingWords : undefined}
       title={
@@ -478,7 +486,7 @@ export default function MembersScreen() {
           ? listBehind
             ? (member?.user.name ?? '')
             : t('membersScreen.title')
-          : alone
+          : alone || givesWay
             ? t('membersScreen.title')
             : t('settings.title')
       }
@@ -486,7 +494,7 @@ export default function MembersScreen() {
       back={
         phone && listBehind
           ? { label: t('membersScreen.title'), onPress: () => openPerson(null) }
-          : alone && !listBehind
+          : (alone && !listBehind) || givesWay
             ? backToSettings(t('settings.title'))
             : undefined
       }
@@ -495,6 +503,7 @@ export default function MembersScreen() {
         <SheetsAtRoot>
           <ListAndPage
             kind={kind}
+            settingsColumn={givesWay}
             heading={heading}
             list={list}
             page={page ?? (landscape && load.kind === 'loaded' && <NobodyPicked />)}
@@ -568,6 +577,6 @@ const SPACING: ListAndPageSpacing = {
   tabletPortrait: styles.portrait,
   landscape: styles.landscape,
   column: styles.column,
-  listWidth: 300,
-  between: tokens.spaceXxl,
+  listWidth: SETTINGS_LIST_WIDTH,
+  between: 0,
 };
