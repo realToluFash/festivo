@@ -25,3 +25,8 @@ export function menuInModal({
     floor: floor == null ? null : inModal(floor, origin),
   };
 }
+
+/** The most a menu may grow, in its Modal's frame: from its top to its floor, or to `foot` with no floor; never past either, however little room that leaves. */
+export function menuMost({ top, floor }: MenuPlace, foot: number): number {
+  return Math.max((floor ?? foot) - top, 0);
+}
