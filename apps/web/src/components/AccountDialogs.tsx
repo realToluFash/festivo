@@ -14,7 +14,7 @@ import {
   zoneLabel,
 } from '@soirely/domain';
 import { type TFunction } from 'i18next';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -654,6 +654,13 @@ export function VerifyDialog({
         ? words.exhausted
         : null;
   const busy = status.kind === 'verifying' || status.kind === 'verified';
+
+  // The opening may answer spent after the code field took focus: the field goes, and focus with it.
+  useLayoutEffect(() => {
+    if (status.kind !== 'expired' && status.kind !== 'exhausted') return;
+    const held = document.activeElement;
+    if (held == null || held === document.body) resendButton.current?.focus();
+  }, [status.kind]);
 
   async function verify(): Promise<void> {
     if (busy || spent != null) return;
