@@ -1226,7 +1226,7 @@
     "roleKeptWhileSuspended": "A função é mantida enquanto o acesso estiver suspenso. Pode alterá-la depois de o acesso ser reposto.",
     "accessConflict": "Outra pessoa alterou o acesso de {{name}} enquanto esta página estava aberta, por isso a sua alteração não foi aplicada. Esta é a situação atual.",
     "roleMeans": {
-      "owner": "Tudo, incluindo a faturação e a eliminação da organização.",
+      "owner": "Tudo, incluindo a faturação e a eliminação da organização. Pede-lhe que confirme que é você.",
       "administrator": "Tudo exceto a faturação. Vê todos os eventos e gere os membros.",
       "member": "Trabalha nos eventos que lhe são atribuídos e não vê mais nenhum."
     },

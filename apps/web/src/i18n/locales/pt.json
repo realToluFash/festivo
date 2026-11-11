@@ -1523,7 +1523,7 @@
     "emailBlank": "Introduza o endereço de e-mail desta pessoa.",
     "emailShape": "Isso não parece um endereço de e-mail. Confirme que tem um @ e um domínio, como amara.o@gmail.com.",
     "roleMeans": {
-      "owner": "Tudo, incluindo a faturação e a eliminação da organização.",
+      "owner": "Tudo, incluindo a faturação e a eliminação da organização. Pede-lhe que confirme que é você.",
       "administrator": "Tudo exceto a faturação. Vê todos os eventos e gere os membros.",
       "member": "Trabalha nos eventos que lhe são atribuídos e não vê mais nenhum."
     },
