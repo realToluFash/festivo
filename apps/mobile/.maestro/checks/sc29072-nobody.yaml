@@ -2,7 +2,7 @@
 appId: host.exp.Exponent
 ---
 - runFlow: ../sc29072-to-code.yaml
-- hideKeyboard
+- runFlow: ../sc29072-close-code-pad.yaml
 - tapOn: { id: 'twoFactor.lostBoth' }
 - extendedWaitUntil: { visible: { id: 'lostTwoFactor\.(support|send)' }, timeout: 30000 }
 - waitForAnimationToEnd
