@@ -34,31 +34,27 @@ onFlowComplete:
             element:
               id: 'account.email.add'
             timeout: 30000
+            centerElement: true
         - waitForAnimationToEnd
         - runFlow:
             when:
               visible: '${output.email}.*'
             commands:
               - tapOn: '${output.email}.*'
-              - scrollUntilVisible:
-                  element:
-                    id: 'account\..+\.remove'
-                  timeout: 15000
-              - tapOn:
-                  id: 'account\..+\.remove'
+              - runFlow:
+                  file: ../scroll-tap.yaml
+                  env:
+                    ID: 'account\..+\.remove'
 ---
 - evalScript: "${output.email = 'sc35661.' + Date.now() + '@soirely.test'}"
 - openLink: ${METRO_URL}/--/settings/account
 - extendedWaitUntil:
     visible: '{{t:account.title}}'
     timeout: 30000
-- scrollUntilVisible:
-    element:
-      id: 'account.email.add'
-    timeout: 30000
-- waitForAnimationToEnd
-- tapOn:
-    id: 'account.email.add'
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: 'account.email.add'
 - extendedWaitUntil:
     visible:
       id: 'account.email.add.field'
@@ -75,16 +71,14 @@ onFlowComplete:
     element:
       text: '${output.email}.*'
     timeout: 15000
+    centerElement: true
 - waitForAnimationToEnd
 - tapOn:
     text: '${output.email}.*'
-- scrollUntilVisible:
-    element:
-      id: 'account\..+\.send'
-    timeout: 15000
-- waitForAnimationToEnd
-- tapOn:
-    id: 'account\..+\.send'
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: 'account\..+\.send'
 - extendedWaitUntil:
     visible:
       id: 'account.verify.code'
@@ -95,12 +89,10 @@ onFlowComplete:
 - tapOn:
     id: 'account.verify.cancel'
 - waitForAnimationToEnd
-- scrollUntilVisible:
-    element:
-      id: 'account\..+\.remove'
-    timeout: 15000
-- tapOn:
-    id: 'account\..+\.remove'
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: 'account\..+\.remove'
 - extendedWaitUntil:
     notVisible: '${output.email}(\. .*)?'
     timeout: 15000

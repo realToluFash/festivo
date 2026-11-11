@@ -34,18 +34,17 @@ onFlowComplete:
             element:
               id: 'account.phone.add'
             timeout: 30000
+            centerElement: true
         - waitForAnimationToEnd
         - runFlow:
             when:
               visible: ${output.row}
             commands:
               - tapOn: ${output.row}
-              - scrollUntilVisible:
-                  element:
-                    id: 'account\..+\.remove'
-                  timeout: 15000
-              - tapOn:
-                  id: 'account\..+\.remove'
+              - runFlow:
+                  file: ../scroll-tap.yaml
+                  env:
+                    ID: 'account\..+\.remove'
 ---
 - evalScript: '${output.tail = String(Date.now()).slice(-6)}'
 - evalScript: "${output.row = '.*' + output.tail.split('').join(' ?') + '.*'}"
@@ -54,13 +53,10 @@ onFlowComplete:
 - extendedWaitUntil:
     visible: '{{t:account.title}}'
     timeout: 30000
-- scrollUntilVisible:
-    element:
-      id: 'account.phone.add'
-    timeout: 30000
-- waitForAnimationToEnd
-- tapOn:
-    id: 'account.phone.add'
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: 'account.phone.add'
 - extendedWaitUntil:
     visible:
       id: 'account.phone.add.number'
@@ -77,16 +73,14 @@ onFlowComplete:
     element:
       text: ${output.row}
     timeout: 15000
+    centerElement: true
 - waitForAnimationToEnd
 - tapOn:
     text: ${output.row}
-- scrollUntilVisible:
-    element:
-      id: 'account\..+\.send'
-    timeout: 15000
-- waitForAnimationToEnd
-- tapOn:
-    id: 'account\..+\.send'
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: 'account\..+\.send'
 - extendedWaitUntil:
     visible:
       id: 'account.verify.code'
@@ -97,12 +91,10 @@ onFlowComplete:
 - tapOn:
     id: 'account.verify.cancel'
 - waitForAnimationToEnd
-- scrollUntilVisible:
-    element:
-      id: 'account\..+\.remove'
-    timeout: 15000
-- tapOn:
-    id: 'account\..+\.remove'
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: 'account\..+\.remove'
 - extendedWaitUntil:
     notVisible: '${output.title}(\. .*)?'
     timeout: 15000

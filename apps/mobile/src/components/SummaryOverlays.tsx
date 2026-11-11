@@ -53,6 +53,9 @@ const stay = () => {};
 const going = { until: 0 };
 const GOING_MS = SETTLED_MS * 2;
 
+// onShow comes as an Android window starts to slide or fade in, RN's modal animations run config_shortAnimTime, and TalkBack names the window once it has arrived.
+const WINDOW_ARRIVES_MS = 200;
+
 function useClearOfGoing(): boolean {
   const [clear, setClear] = useState(false);
 
@@ -303,7 +306,13 @@ function useTitleTakesFocus(
   focus: TitleFocusing;
 } {
   const heading = useRef<TextHandle>(null);
-  const hidden = useUnnamedWindow(Platform.OS === 'android', onScreen, title);
+  const reduced = useReducedMotion();
+  const hidden = useUnnamedWindow(
+    Platform.OS === 'android',
+    onScreen,
+    title,
+    reduced ? 0 : WINDOW_ARRIVES_MS,
+  );
   const step = onScreen && !hidden ? title : undefined;
   const asked = useRef(covered);
   const [focus] = useState(titleFocusing);
@@ -322,7 +331,8 @@ function useTitleTakesFocus(
     }),
     [focus],
   );
-  const { shown } = useFocusOnAnswer(step, target);
+  // In the gap between the reveal and the move, TalkBack names the window or puts its own focus back, and the title is heard twice.
+  const { shown } = useFocusOnAnswer(step, target, Platform.OS === 'android' ? 0 : SETTLED_MS);
 
   return { heading, shown, hidden, focus };
 }

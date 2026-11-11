@@ -14,6 +14,8 @@ import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 
 import { Text } from './Text.tsx';
 import { useWholeWords } from './Title.tsx';
+import { CAPSULE_LABEL } from '../layout/capsuleFit.ts';
+import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
 import { EventMesh } from './EventMesh.tsx';
@@ -140,10 +142,13 @@ export function Glass({
 export function OrgButton({
   compact = false,
   maxWidth,
+  givesWay = false,
 }: {
   compact?: boolean;
   /** The most it may take, so it stops short of what sits beside it. */
   maxWidth?: number | undefined;
+  /** The tabs beside it took their room first, so it is its tile (sc-40401). */
+  givesWay?: boolean;
 }) {
   const ref = useRef<ViewInstance>(null);
   const org = useTodayShell().useOrgOpener(ref, !compact);
@@ -177,7 +182,7 @@ export function OrgButton({
   const clear = phone ? tokens.spaceXl - 2 * tokens.spaceSm : tokens.space3xl;
   const wrap = phone || large;
 
-  if (tileAlone)
+  if (tileAlone || givesWay)
     return (
       <View style={[styles.orgFit, { marginRight: clear, maxWidth }]}>
         {measure}
@@ -229,7 +234,16 @@ export function BellButton() {
 }
 
 /** iPadOS 26's tab bar, in glass at the top of the cover. */
-export function TabCapsule({ onTab, at = 'Today' }: { onTab: (tab: Tab) => void; at?: Tab }) {
+export function TabCapsule({
+  onTab,
+  at = 'Today',
+  labelSize,
+}: {
+  onTab: (tab: Tab) => void;
+  at?: Tab;
+  /** The one size its labels are drawn at, where the row it sits in chooses it (sc-40401). */
+  labelSize?: number | undefined;
+}) {
   const { t } = useTranslation();
 
   return (
@@ -249,7 +263,14 @@ export function TabCapsule({ onTab, at = 'Today' }: { onTab: (tab: Tab) => void;
             testID={SETTINGS_ID[label]}
           >
             <Glyph name={glyph} ink={ink} />
-            <Text size={15} weight="semibold" accessible={false} style={{ color: ink }}>
+            <Text
+              size={CAPSULE_LABEL}
+              weight="semibold"
+              maxFontSizeMultiplier={capsuleLabelMultiplier(labelSize)}
+              numberOfLines={labelSize == null ? undefined : 1}
+              accessible={false}
+              style={{ color: ink }}
+            >
               {t(`todayScreen.tab.${glyph}`)}
             </Text>
           </Pressable>
@@ -692,6 +713,7 @@ export function TodayCover({
 function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
   const [row, setRow] = useState<number>();
   const [capsule, setCapsule] = useState<number>();
+  const { labelSize, givesWay, measure } = useCapsuleLabels(useTabLabels(), tabletRow(row));
   const room =
     row == null || capsule == null
       ? undefined
@@ -702,16 +724,28 @@ function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
       style={[styles.topTablet, { marginTop: top }]}
       onLayout={(event) => setRow(event.nativeEvent.layout.width)}
     >
-      <OrgButton maxWidth={room} />
+      {measure}
+      <OrgButton maxWidth={room} givesWay={givesWay} />
       <View style={styles.grow} />
       <BellButton />
       <View style={styles.capsuleAt} pointerEvents="box-none">
         <View onLayout={(event) => setCapsule(event.nativeEvent.layout.width)}>
-          <TabCapsule onTab={onTab} />
+          <TabCapsule onTab={onTab} labelSize={labelSize} />
         </View>
       </View>
     </View>
   );
+}
+
+function useTabLabels(): string[] {
+  const { t } = useTranslation();
+
+  return TABS.map(([, glyph]) => t(`todayScreen.tab.${glyph}`));
+}
+
+/** The upright tablet's row from the tile's edge to the bell's, inside its side margins. */
+function tabletRow(width: number | undefined): number {
+  return width == null ? 0 : Math.max(0, width - 2 * tokens.space3xl);
 }
 
 export function Band({
@@ -728,6 +762,8 @@ export function Band({
   const { t } = useTranslation();
   const { now } = moment;
   const phone = layout === 'phone';
+  const [row, setRow] = useState<number>();
+  const { labelSize, measure } = useCapsuleLabels(useTabLabels(), phone ? 0 : tabletRow(row));
 
   return (
     <View style={[styles.band, { height: top + bandBody(moment, layout) }]}>
@@ -741,7 +777,11 @@ export function Band({
       ) : (
         <EventMesh event={now.event} shade="day" />
       )}
-      <View style={[phone ? styles.topPhone : styles.topTablet, { marginTop: top }]}>
+      <View
+        style={[phone ? styles.topPhone : styles.topTablet, { marginTop: top }]}
+        onLayout={(event) => setRow(event.nativeEvent.layout.width)}
+      >
+        {!phone && measure}
         <OrgButton compact />
         <View style={styles.grow} />
         <BellButton />
@@ -751,7 +791,7 @@ export function Band({
               {t('todayScreen.today')}
             </Text>
           ) : (
-            <TabCapsule onTab={onTab} />
+            <TabCapsule onTab={onTab} labelSize={labelSize} />
           )}
         </View>
       </View>
@@ -840,12 +880,15 @@ export function WhiteCapsule<T extends string>({
   at,
   say = (tab) => tab,
   ids,
+  labelSize,
 }: {
   tabs: readonly (readonly [T, GlyphName])[];
   onTab: (tab: T) => void;
   at: T;
   say?: (tab: T, glyph: GlyphName) => string;
   ids?: Partial<Record<T, string>>;
+  /** The one size its labels are drawn at, where the row it sits in chooses it (sc-40401). */
+  labelSize?: number | undefined;
 }) {
   return (
     <View style={styles.whiteCapsule} accessibilityRole="tablist">
@@ -865,7 +908,14 @@ export function WhiteCapsule<T extends string>({
             testID={ids?.[label]}
           >
             <Glyph name={glyph} ink={ink} />
-            <Text size={15} weight="semibold" accessible={false} style={{ color: ink }}>
+            <Text
+              size={CAPSULE_LABEL}
+              weight="semibold"
+              maxFontSizeMultiplier={capsuleLabelMultiplier(labelSize)}
+              numberOfLines={labelSize == null ? undefined : 1}
+              accessible={false}
+              style={{ color: ink }}
+            >
               {say(label, glyph)}
             </Text>
           </Pressable>

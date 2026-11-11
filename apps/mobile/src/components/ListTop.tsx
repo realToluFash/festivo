@@ -6,6 +6,7 @@ import { type LayoutKind } from '../layout/classify.ts';
 import { pillBesideTabs } from '../kit/frameBand.ts';
 import { tokens } from '../theme/tokens.ts';
 import { type TextHandle } from './Text.tsx';
+import { useCapsuleLabels } from './CapsuleLabels.tsx';
 import { Title } from './Title.tsx';
 import { TOP_TITLE, topTitle } from './topTitle.ts';
 import { TopPrimary, type TopPrimaryProps } from './TopPrimary.tsx';
@@ -81,30 +82,36 @@ export function PortraitTop(props: PortraitRowProps) {
 }
 
 type PortraitRowProps = {
-  renderPill: (room: number | undefined) => ReactNode;
+  /** The pill, given the room beside the tabs and whether the tabs need it, when it must be its tile. */
+  renderPill: (room: number | undefined, tileAlone: boolean) => ReactNode;
   bell: ReactNode;
-  tabs: ReactNode;
+  /** The labels the tabs draw, measured to choose their one size. */
+  tabLabels: readonly string[];
+  renderTabs: (labelSize: number) => ReactNode;
   /** False leaves a pill that cannot turn to its tile at its own width. */
   pillFits?: boolean;
   /** Centres the tabs in the row, where a screen out of an event has always had them. */
   tabsCentred?: boolean;
 };
 
-/** The pill, the bell, and the tabs centred 3 above the row's top whatever the pill's height; the pill turns to its tile when its words would not fit beside the tabs. */
+/** The pill, the bell, and the tabs centred 3 above the row's top whatever the pill's height. The tabs' labels take the largest size at which they clear the tile and the bell, and while that is under their own size the pill is its tile (sc-40401); otherwise the pill turns to its tile when its words would not fit beside the tabs. */
 export function PortraitRow({
   renderPill,
   bell,
-  tabs,
+  tabLabels,
+  renderTabs,
   pillFits = true,
   tabsCentred = false,
 }: PortraitRowProps) {
   const [rowWidth, setRowWidth] = useState(0);
   const [tabsWidth, setTabsWidth] = useState(0);
+  const { labelSize, givesWay, measure } = useCapsuleLabels(tabLabels, rowWidth);
   const besideTabs = pillFits ? pillBesideTabs(rowWidth, tabsWidth) : null;
-  const drawn = renderPill(besideTabs?.maxWidth);
+  const drawn = renderPill(besideTabs?.maxWidth, givesWay);
 
   return (
     <View style={styles.row} onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}>
+      {measure}
       {drawn != null && drawn !== false && (
         <View style={[styles.shrink, besideTabs != null && { maxWidth: besideTabs.maxWidth }]}>
           {drawn}
@@ -113,7 +120,9 @@ export function PortraitRow({
       <View style={styles.fill} />
       {bell}
       <View style={tabsCentred ? styles.tabsCentred : styles.tabsAt} pointerEvents="box-none">
-        <View onLayout={(event) => setTabsWidth(event.nativeEvent.layout.width)}>{tabs}</View>
+        <View onLayout={(event) => setTabsWidth(event.nativeEvent.layout.width)}>
+          {renderTabs(labelSize)}
+        </View>
       </View>
     </View>
   );
