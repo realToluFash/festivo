@@ -16,16 +16,14 @@ import { DataTile, useDataNav, useDataOpen } from './DataParts.tsx';
 import { DATA_WORDS } from './DataWords.ts';
 import { demoGroups, managesOrganisation, YOU } from './sample.ts';
 import { type ShellSection, useShell, type Viewer } from '../../components/settingsShell.ts';
-import { Caps } from '../../components/SettingsParts.tsx';
 import {
   ChooseASection,
   PersonCard as ProductPersonCard,
-  SettingsGroup,
   SettingsSignOut,
   rowSide,
-  settingsHomeStyles,
   useSectionRows,
 } from '../../components/SettingsHome.tsx';
+import { SettingsListBody } from '../../components/SettingsList.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { LegalLinks } from '../LegalLinks.tsx';
 import { TOP_TITLE, topTitle } from '../../components/topTitle.ts';
@@ -134,60 +132,49 @@ function useDataRow(dense: boolean) {
   };
 }
 
-/** The product's rows, with Personalisation's ahead of the app. */
-function Group({
-  sections,
-  dense,
-  open,
-  data = false,
-}: {
-  sections: readonly Listed[];
-  dense: boolean;
-  open: ShellSection | null;
-  data?: boolean;
-}) {
+/** The product's rows in the demo's words, Personalisation's tile ahead of the app, and Data and control after the organisation's. */
+function useDemoList(
+  dense: boolean,
+  open: ShellSection | null,
+  onSignOut: () => void,
+  onDemo: () => void,
+) {
   const shell = useShell();
-  const words = useContext(SettingsWordsContext).rows;
+  const words = useContext(SettingsWordsContext);
   const rowOf = useSectionRows(YOU.organisation);
-  const side = rowSide(dense);
-  const rows = sections.map((section) => ({
-    ...(section === 'personalisation'
-      ? { key: section, tile: <HeldTile side={side} /> }
-      : rowOf(section, side)),
-    ...words[section],
-  }));
   const dataRow = useDataRow(dense);
+  const side = rowSide(dense);
+  const groups = groupsFor(shell.viewer, words).map(({ heading, sections, data }) => {
+    const rows = sections.map((section) => ({
+      ...(section === 'personalisation'
+        ? { key: section, tile: <HeldTile side={side} /> }
+        : rowOf(section, side)),
+      ...words.rows[section],
+    }));
 
-  return (
-    <SettingsGroup
-      rows={data ? [...rows, dataRow.row] : rows}
-      dense={dense}
-      open={data && dataRow.lit ? DATA_ROW : open}
-      onOpen={(key) => (key === DATA_ROW ? dataRow.open() : shell.openSection(key as Listed))}
-    />
-  );
-}
+    return { heading, rows: data ? [...rows, dataRow.row] : rows };
+  });
 
-function SignOut({
-  height,
-  onSignOut,
-  legal = true,
-}: {
-  height: number;
-  onSignOut: () => void;
-  /** Terms · Privacy under it; upright with two columns they go under both instead. */
-  legal?: boolean;
-}) {
-  const { signOut } = useContext(SettingsWordsContext);
-
-  return (
-    <SettingsSignOut
-      label={signOut}
-      height={height}
-      onSignOut={onSignOut}
-      under={legal ? <LegalLinks style={styles.legal} /> : undefined}
-    />
-  );
+  return {
+    groups,
+    open: dataRow.lit ? DATA_ROW : open,
+    onOpen: (key: string) => (key === DATA_ROW ? dataRow.open() : shell.openSection(key as Listed)),
+    renderCard: (size: 'phone' | 'portrait' | 'column') => (
+      <PersonCard size={size} open={dense && shell.open === 'account'} />
+    ),
+    renderFoot: (height: number, beside: boolean) => (
+      <>
+        <SettingsDemoRow dense={dense} onDemo={onDemo} />
+        <SettingsSignOut
+          label={words.signOut}
+          height={height}
+          onSignOut={onSignOut}
+          under={beside ? undefined : <LegalLinks style={styles.legal} />}
+        />
+      </>
+    ),
+    under: <LegalLinks style={styles.legalUnder} />,
+  };
 }
 
 /** Settings itself: on a phone one column; upright your account's group beside the organisation's. */
@@ -199,7 +186,7 @@ export function SettingsHome({
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const words = useContext(SettingsWordsContext);
-  const groups = groupsFor(shell.viewer, words);
+  const list = useDemoList(false, null, onSignOut, onDemo);
 
   if (held != null) return <HeldSettings held={held} onSignOut={onSignOut} />;
 
@@ -240,19 +227,7 @@ export function SettingsHome({
             </Text>
           </View>
           <SwitchedNotice style={styles.switched} />
-          <PersonCard size="phone" />
-          {groups.map(({ heading, sections, data }) =>
-            sections.length === 0 ? null : (
-              <View key={heading}>
-                <Caps text={heading} top={26} />
-                <Group sections={sections} dense={false} open={null} data={data} />
-              </View>
-            ),
-          )}
-          <View style={settingsHomeStyles.footPhone}>
-            <SettingsDemoRow dense={false} onDemo={onDemo} />
-            <SignOut height={tokens.sizeHitPhoneHero} onSignOut={onSignOut} />
-          </View>
+          <SettingsListBody size="phone" {...list} />
         </ScrollView>
         <View style={[styles.statusStrip, { height: insets.top }]} pointerEvents="none" />
         <TabBarFade />
@@ -260,26 +235,6 @@ export function SettingsHome({
       </View>
     );
   }
-
-  const [yours, organisation] = groups;
-  const left = (
-    <>
-      {yours != null && yours.sections.length > 0 && (
-        <>
-          <Caps text={yours.heading} top={tokens.space4xl} />
-          <Group sections={yours.sections} dense={false} open={null} />
-        </>
-      )}
-      <View style={settingsHomeStyles.footPhone}>
-        <SettingsDemoRow dense={false} onDemo={onDemo} />
-        <SignOut
-          height={tokens.sizeHitPhoneHero}
-          onSignOut={onSignOut}
-          legal={organisation == null}
-        />
-      </View>
-    </>
-  );
 
   return (
     <View style={styles.page}>
@@ -301,26 +256,7 @@ export function SettingsHome({
           {words.title}
         </Text>
         <SwitchedNotice style={styles.switched} />
-        <PersonCard size="portrait" />
-        {organisation == null ? (
-          <View style={settingsHomeStyles.single}>{left}</View>
-        ) : (
-          <>
-            <View style={settingsHomeStyles.columns}>
-              <View style={styles.grow}>{left}</View>
-              <View style={styles.grow}>
-                <Caps text={organisation.heading} top={tokens.space4xl} />
-                <Group
-                  sections={organisation.sections}
-                  dense={false}
-                  open={null}
-                  data={organisation.data}
-                />
-              </View>
-            </View>
-            <LegalLinks style={styles.legalUnder} />
-          </>
-        )}
+        <SettingsListBody size="portrait" {...list} />
       </ScrollView>
     </View>
   );
@@ -374,41 +310,31 @@ function HeldSettings({ held, onSignOut }: { held: Held; onSignOut: () => void }
 export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
   const shell = useShell();
   const words = useContext(SettingsWordsContext);
-  const groups = groupsFor(shell.viewer, words);
+  const list = useDemoList(true, shell.open, onSignOut, onDemo);
 
   return (
-    <ScrollView
-      contentContainerStyle={settingsHomeStyles.column}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.columnTop}>
-        <Text
-          size={TOP_TITLE}
-          weight="bold"
-          accessibilityRole="header"
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          style={[styles.grow, topTitle]}
-        >
-          {words.title}
-        </Text>
-        <Bell tell={shell.tell} />
-      </View>
-      <SwitchedNotice style={styles.switched} />
-      <PersonCard size="column" open={shell.open === 'account'} />
-      {groups.map(({ heading, sections, data }, index) =>
-        sections.length === 0 ? null : (
-          <View key={heading}>
-            <Caps text={heading} top={index === 0 ? tokens.spaceXxl : tokens.spaceXl} />
-            <Group sections={sections} dense open={shell.open} data={data} />
+    <SettingsListBody
+      size="column"
+      {...list}
+      top={
+        <>
+          <View style={styles.columnTop}>
+            <Text
+              size={TOP_TITLE}
+              weight="bold"
+              accessibilityRole="header"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={[styles.grow, topTitle]}
+            >
+              {words.title}
+            </Text>
+            <Bell tell={shell.tell} />
           </View>
-        ),
-      )}
-      <View style={settingsHomeStyles.footColumn}>
-        <SettingsDemoRow dense onDemo={onDemo} />
-        <SignOut height={tokens.sizeHit} onSignOut={onSignOut} />
-      </View>
-    </ScrollView>
+          <SwitchedNotice style={styles.switched} />
+        </>
+      }
+    />
   );
 }
 
