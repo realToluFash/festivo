@@ -28,7 +28,6 @@ export const W = {
   noMatch: 'No events match',
   searchOffline: 'Search needs a connection.',
   tryAgain: 'Try again',
-  failedLoad: 'Your events did not load. Check your connection and try again.',
   moreFailed: 'More finished events did not load. Check your connection and try again.',
   upcoming: 'Upcoming',
   drafts: 'Drafts',

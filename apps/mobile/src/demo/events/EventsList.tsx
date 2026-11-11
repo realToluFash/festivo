@@ -74,7 +74,7 @@ import {
 } from '../../components/Summary.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { Notice } from '../../components/Notice.tsx';
-import { PrimaryButton } from '../../components/Buttons.tsx';
+import { EventsFailed } from '../../components/Events.tsx';
 import { TOP_TITLE, topTitle } from '../../components/topTitle.ts';
 import { TopPrimary } from '../../components/TopPrimary.tsx';
 
@@ -240,14 +240,7 @@ export function EventsList({
     return (
       <ListFrame offline={null}>
         {top}
-        <View style={styles.failed} accessibilityRole="alert">
-          <Notice tone="broken" mark={tokens.marks.broken.glyph} body={W.failedLoad} announce />
-          <PrimaryButton
-            label={W.tryAgain}
-            onPress={() => setFailed(false)}
-            testID="events.failed.retry"
-          />
-        </View>
+        <EventsFailed onRetry={() => setFailed(false)} testID="events.failed.retry" />
       </ListFrame>
     );
 
@@ -563,7 +556,6 @@ export function OfflineBand({
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   page: { flex: 1, backgroundColor: tokens.colorCard },
-  failed: { gap: tokens.spaceMd },
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
   figures: { fontVariant: ['tabular-nums'] },
