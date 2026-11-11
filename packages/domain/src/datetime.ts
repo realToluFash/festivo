@@ -1,3 +1,5 @@
+import { numberFormat } from './locales.ts';
+
 /** The day and the time are separate because the word between them belongs to the catalogue. */
 export function formatDay(moment: string | Date, locale: string): string {
   const date = asDate(moment);
@@ -157,9 +159,7 @@ export function durationWords(
   locale: string,
 ): { hours: string | null; minutes: string | null } {
   const unit = (amount: number, name: 'hour' | 'minute'): string =>
-    new Intl.NumberFormat(locale, { style: 'unit', unit: name, unitDisplay: 'long' }).format(
-      amount,
-    );
+    numberFormat(locale, { style: 'unit', unit: name, unitDisplay: 'long' }).format(amount);
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
 
