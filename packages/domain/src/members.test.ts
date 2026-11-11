@@ -10,7 +10,11 @@ import {
   memberRowVerb,
   memberStanding,
   memberStatusWord,
+  membersNextAnswer,
   ownRoleLine,
+  recoveryAnswerable,
+  recoveryEndedByRemoval,
+  recoveryShownIn,
 } from './members.ts';
 
 describe('which members a chip lists', () => {
@@ -307,5 +311,40 @@ describe("what a member's row says", () => {
     expect(
       memberRowLine(word, { ...former, history: [asked, turnedDown] }, 'Ìrè', () => '12 Oct'),
     ).toMatch(/^membersScreen\.noRoleYet · /);
+  });
+});
+
+describe('requests to get back in on Members (sc-30189, sc-30894)', () => {
+  const asking = (userId: string, organisationIds: string[], own = false) => ({
+    userId,
+    organisationIds,
+    own,
+  });
+  const kofi = asking('user_kofi', ['org_ire']);
+  const ada = asking('user_ada', ['org_hall']);
+  const julien = asking('user_julien', ['org_ire', 'org_hall'], true);
+  const priya = asking('user_priya', ['org_ire']);
+
+  it('shows only the requests of the organisation Members is showing, in the order sent', () => {
+    expect(recoveryShownIn([kofi, ada, julien], 'org_hall')).toEqual([ada, julien]);
+    expect(recoveryShownIn([kofi, ada, julien], 'org_ire')).toEqual([kofi, julien]);
+  });
+
+  it('never counts your own request, and a removal ends only the removed person’s', () => {
+    expect(recoveryAnswerable([kofi, julien, priya])).toEqual([kofi, priya]);
+    expect(recoveryEndedByRemoval([kofi, priya], 'user_priya')).toEqual([kofi]);
+    expect(recoveryEndedByRemoval([kofi, priya], 'user_lucia')).toEqual([kofi, priya]);
+  });
+
+  it('answers the oldest request to get back in before any request to join, never your own', () => {
+    expect(membersNextAnswer([julien, kofi, priya], ['m_ana'])).toEqual({
+      kind: 'recovery',
+      request: kofi,
+    });
+    expect(membersNextAnswer([julien], ['m_ana', 'm_ben'])).toEqual({
+      kind: 'join',
+      member: 'm_ana',
+    });
+    expect(membersNextAnswer([julien], [])).toBeNull();
   });
 });

@@ -6,27 +6,6 @@ import type { AskProps } from '../components/Summary.tsx';
 import type { MemberFace } from './membersSummary.ts';
 import { toneOf } from './personFace.ts';
 
-/** The requests Members shows for one organisation, oldest first, as the API sends them (sc-30894). */
-export function recoveryShownIn(
-  requests: readonly RecoveryRequest[],
-  organisationId: string,
-): RecoveryRequest[] {
-  return requests.filter((request) => request.organisationIds.includes(organisationId));
-}
-
-/** Your own request is never counted on the card, and its step never answers it. */
-export function recoveryAnswerable(requests: readonly RecoveryRequest[]): RecoveryRequest[] {
-  return requests.filter((request) => !request.own);
-}
-
-/** Removing somebody ends their request on this organisation's Members (pm, Decided 7 Nov). */
-export function recoveryEndedByRemoval(
-  requests: readonly RecoveryRequest[],
-  userId: string,
-): RecoveryRequest[] {
-  return requests.filter((request) => request.userId !== userId);
-}
-
 /** The asker's face, as their row under People draws it. */
 export function recoveryFace(request: RecoveryRequest): MemberFace {
   return { initials: initials(request.name), tone: toneOf(request.userId) };

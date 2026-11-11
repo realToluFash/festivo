@@ -13,6 +13,8 @@ import {
   initials,
   memberHeldNoRole,
   memberIsShown,
+  recoveryEndedByRemoval,
+  recoveryShownIn,
   roleName,
 } from '@soirely/domain';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
@@ -47,7 +49,6 @@ import {
   membersCard,
   type Notice,
   type RecoveryAnswer,
-  recoveriesIn,
   waitingMembers,
 } from './membersCard.ts';
 import { useOwnerClaim } from './MembersClaim.tsx';
@@ -131,7 +132,7 @@ export function Members() {
           kind: 'loaded',
           list,
           roles: catalogue.roles,
-          recoveries: recoveriesIn(recoveries, organisationId),
+          recoveries: recoveryShownIn(recoveries, organisationId),
         });
         if (retrying.current) focusWhenFree(title);
         retrying.current = false;
@@ -458,7 +459,7 @@ function MembersLoaded({
         onChanged={onChange}
         onRemoved={(changed, name) => {
           onChange(changed);
-          onRecoveries(recoveries.filter((one) => one.userId !== person.user.id));
+          onRecoveries(recoveryEndedByRemoval(recoveries, person.user.id));
           setNotice({ kind: 'removed', name });
           back();
         }}

@@ -9,20 +9,14 @@ import {
   OWNER_CLAIM_KEEPS_WORKING,
   type OwnerClaimLine,
   memberIsShown,
+  membersNextAnswer,
   ownerClaimView,
+  recoveryAnswerable,
 } from '@soirely/domain';
 
 type Word = TFunction;
 
 export type RecoveryAnswer = 'approve' | 'turnDown';
-
-/** The requests Members shows: those of this organisation's members, oldest first, as the API sends them (sc-30189). */
-export function recoveriesIn(
-  requests: readonly RecoveryRequest[],
-  organisationId: string,
-): RecoveryRequest[] {
-  return requests.filter((request) => request.organisationIds.includes(organisationId));
-}
 
 /** What the last answer on Members came to, said on its card until something else happens. */
 export type Notice =
@@ -57,35 +51,31 @@ export function waitingMembers(list: MembersList, manages: boolean): Organisatio
   return manages ? list.members.filter((one) => one.status === 'pending_approval') : [];
 }
 
-/** The requests to get back in this viewer can answer: never their own (sc-30189). */
-export function answerableRecoveries(recoveries: readonly RecoveryRequest[]): RecoveryRequest[] {
-  return recoveries.filter((one) => !one.own);
-}
-
-/** The one thing to do next: the oldest request to get back in, since its asker is locked out, then the oldest request to join. */
+/** The one thing to do next, in the order both clients take (`membersNextAnswer`). */
 function firstStep(
   list: MembersList,
   recoveries: readonly RecoveryRequest[],
   manages: boolean,
   t: Word,
 ): CardStep | null {
-  const recovery = manages ? answerableRecoveries(recoveries)[0] : undefined;
-  const asking = waitingMembers(list, manages)[0];
+  const next = manages ? membersNextAnswer(recoveries, waitingMembers(list, manages)) : null;
 
-  if (recovery != null)
-    return {
-      label: t('membersScreen.card.answer', { name: recovery.name }),
-      does: 'recover',
-      request: recovery.id,
-    };
-
-  return asking == null
-    ? null
-    : {
-        label: t('membersScreen.card.answer', { name: asking.user.name }),
-        does: 'answer',
-        member: asking.id,
+  switch (next?.kind) {
+    case 'recovery':
+      return {
+        label: t('membersScreen.card.answer', { name: next.request.name }),
+        does: 'recover',
+        request: next.request.id,
       };
+    case 'join':
+      return {
+        label: t('membersScreen.card.answer', { name: next.member.user.name }),
+        does: 'answer',
+        member: next.member.id,
+      };
+    case undefined:
+      return null;
+  }
 }
 
 /** Members' summary card (sc-29708): how things stand, or what the last answer came to, and its one step. */
@@ -164,7 +154,7 @@ export function membersCard({
 
   const all = list.members.filter((one) => memberIsShown(one.status, 'all'));
   const join = waitingMembers(list, manages).length;
-  const back = manages ? answerableRecoveries(recoveries).length : 0;
+  const back = manages ? recoveryAnswerable(recoveries).length : 0;
   const waiting = back + join;
   const faces = all.slice(0, FACES);
 

@@ -5,6 +5,7 @@ import {
   memberHeldNoRole,
   memberIsShown,
   memberStatusWord,
+  membersNextAnswer,
   ownerClaimView,
   roleName,
 } from '@soirely/domain';
@@ -134,26 +135,28 @@ export interface MembersCard {
   takesFocus: boolean;
 }
 
-/** The card's one step at rest: the oldest request to get back in the viewer can answer, then the oldest request to join. */
+/** The card's one step at rest, in the order both clients take (`membersNextAnswer`). */
 function answerStep(
   t: TFunction,
   back: readonly RecoveryRequest[],
   waiting: readonly OrganisationMember[],
 ): MembersCard['step'] {
-  const recovery = back[0];
-  if (recovery != null)
-    return {
-      label: t('membersScreen.card.answer', { name: recovery.name }),
-      does: { does: 'answerRecovery', request: recovery.id },
-    };
-  const first = waiting[0];
+  const next = membersNextAnswer(back, waiting);
 
-  return first == null
-    ? null
-    : {
-        label: t('membersScreen.card.answer', { name: first.user.name }),
-        does: { does: 'answer', member: first.id },
+  switch (next?.kind) {
+    case 'recovery':
+      return {
+        label: t('membersScreen.card.answer', { name: next.request.name }),
+        does: { does: 'answerRecovery', request: next.request.id },
       };
+    case 'join':
+      return {
+        label: t('membersScreen.card.answer', { name: next.member.user.name }),
+        does: { does: 'answer', member: next.member.id },
+      };
+    case undefined:
+      return null;
+  }
 }
 
 /** The card's second line, only while both kinds wait. */

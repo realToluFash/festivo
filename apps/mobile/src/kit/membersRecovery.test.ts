@@ -6,13 +6,10 @@ import en from '../i18n/locales/en.json';
 
 import {
   ownLine,
-  recoveryAnswerable,
-  recoveryEndedByRemoval,
   recoveryFacts,
   recoveryGone,
   recoveryHeard,
   recoveryQuestion,
-  recoveryShownIn,
 } from './membersRecovery.ts';
 
 beforeAll(() =>
@@ -54,19 +51,6 @@ function refusal(status: number, type: string): ApiError {
 }
 
 describe('requests to get back in on Members (sc-30894)', () => {
-  it('shows only the requests of the organisation Members is showing', () => {
-    const elsewhere = asking('ada', 'Ada Obi', { organisationIds: ['org_hall'] });
-
-    expect(recoveryShownIn([kofi, elsewhere, julien], 'org_hall')).toEqual([elsewhere, julien]);
-    expect(recoveryShownIn([kofi, elsewhere, julien], 'org_ire')).toEqual([kofi, julien]);
-  });
-
-  it('never counts your own request, and a removal ends only the removed person’s', () => {
-    expect(recoveryAnswerable([kofi, julien, priya])).toEqual([kofi, priya]);
-    expect(recoveryEndedByRemoval([kofi, priya], 'user_priya')).toEqual([kofi]);
-    expect(recoveryEndedByRemoval([kofi, priya], 'user_lucia')).toEqual([kofi, priya]);
-  });
-
   it('says how each proved it, theirs or yours', () => {
     expect(recoveryFacts(t, kofi)).toEqual([
       'kofi@ire.events',
