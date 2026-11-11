@@ -1,0 +1,33 @@
+# Release build, signed in: opens Settings › Personalisation › Colours and picks SCHEME, unsaved. sc-30441.
+appId: com.soirely.app
+---
+- runFlow: release-sign-in.yaml
+- tapOn:
+    id: 'home.openSettings'
+- scrollUntilVisible:
+    element:
+      id: 'settings.personalisation'
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: 'settings.personalisation'
+- extendedWaitUntil:
+    visible:
+      id: 'personalisation.choose'
+    timeout: 30000
+- takeScreenshot: personalisation-before
+- tapOn:
+    id: 'personalisation.choose'
+- extendedWaitUntil:
+    visible:
+      id: 'personalisation.colours'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: 'personalisation.swatch.${SCHEME}'
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: 'personalisation.swatch.${SCHEME}'
+- waitForAnimationToEnd
+- takeScreenshot: colours-picked

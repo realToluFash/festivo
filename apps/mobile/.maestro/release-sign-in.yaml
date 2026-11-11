@@ -11,7 +11,7 @@ appId: com.soirely.app
       - tapOn: 'Cancel'
 - extendedWaitUntil:
     visible:
-      id: 'home\.open(SignIn|Settings)'
+      id: '(welcome\.email|home\.openSettings)'
     timeout: 60000
 - runFlow:
     when:
