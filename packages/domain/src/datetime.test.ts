@@ -110,6 +110,12 @@ describe('a two-digit hour, in every language and on every engine', () => {
     expect(hermes.formatTimeOfDay(midnight, 'es')).toBe('00:07');
     expect(hermes.formatEventClock('2026-11-11T01:33:00Z', 'UTC', 'es')).toBe('01:33');
     expect(hermes.formatEventClock('2026-11-11T00:07:00Z', 'UTC', 'es')).toBe('00:07');
+    expect(hermes.formatWallClock('09:00', 'es')).toBe('09:00');
+    expect(hermes.formatEventMoment('2026-11-11T09:00:00Z', 'UTC', 'es')).toContain('09:00');
+    expect(hermes.formatEventDayAndClock('2026-11-11T09:00:00Z', 'UTC', 'es')).toContain('09:00');
+    expect(
+      hermes.formatEventRange('2026-11-11T08:00:00Z', '2026-11-11T09:00:00Z', 'UTC', 'es'),
+    ).toMatch(/ – 09:00$/);
   });
 });
 
