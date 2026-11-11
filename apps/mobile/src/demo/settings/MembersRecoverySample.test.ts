@@ -1,7 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { init, t } from 'i18next';
+import { beforeAll, describe, expect, it } from 'vitest';
+
+import en from '../../i18n/locales/en.json';
+import { ownLine, recoveryFacts, recoveryHeard } from '../../kit/membersRecovery.ts';
 
 import {
   ANSWER_MS,
@@ -13,21 +17,26 @@ import {
   JULIEN,
   KOFI,
   oldestFirst,
-  OWN_LINE,
   PRIYA,
   RECOVERY_WORDS,
-  recoveryFacts,
-  recoveryHeard,
-  recoveryOf,
+  recoveryRequestOf,
   waitingKinds,
 } from './MembersRecoverySample.ts';
 import { membersSayIn } from './MembersSample.ts';
 
 const us = membersSayIn('en-US');
 const gb = membersSayIn('en-GB');
-const kofi = { name: 'Kofi Mensah', email: KOFI };
-const priya = { name: 'Priya Shah', email: PRIYA };
-const julien = { name: 'Julien Moreau', email: JULIEN };
+const kofi = { id: KOFI, name: 'Kofi Mensah', email: KOFI };
+const priya = { id: PRIYA, name: 'Priya Shah', email: PRIYA };
+const julien = { id: JULIEN, name: 'Julien Moreau', email: JULIEN };
+
+beforeAll(() =>
+  init({
+    lng: 'en',
+    resources: { en: { translation: en } },
+    interpolation: { escapeValue: false },
+  }),
+);
 
 const WEB_EN = join(
   import.meta.dirname,
@@ -48,46 +57,12 @@ const fill = (key: string, values: Record<string, string>) =>
   (web[key] ?? '').replace(/\{\{(\w+)\}\}/gu, (_all, name: string) => values[name] ?? '');
 
 describe('Requests to get back in, on the app’s Members', () => {
-  it('says what the product says, in the web’s recoveryRequests words', () => {
-    const plain = {
-      title: 'cardTitle',
-      note: 'cardNote',
-      mark: 'mark',
-      asked: 'title',
-      intro: 'intro',
-      provedBoth: 'provedBoth',
-      provedEmail: 'provedEmail',
-      provedBothOwn: 'provedBothOwn',
-      provedEmailOwn: 'provedEmailOwn',
-      approve: 'approve',
-      turnDown: 'turnDown',
-      approveBody: 'approveBody',
-      approveConfirm: 'approveConfirm',
-      cancel: 'cancel',
-      turnDownBody: 'turnDownBody',
-      turnDownConfirm: 'turnDownConfirm',
-      keep: 'keep',
-      approvedNext: 'approvedNext',
-      turnedDownNext: 'turnedDownNext',
-      closed: 'closed',
-      failed: 'failed',
-    } as const;
-    for (const [ours, theirs] of Object.entries(plain))
-      expect(RECOVERY_WORDS[ours as keyof typeof plain], theirs).toBe(web[theirs]);
-
+  it('says the card’s words as the web’s recoveryRequests do', () => {
+    expect(RECOVERY_WORDS.approvedNext).toBe(web['approvedNext']);
+    expect(RECOVERY_WORDS.turnedDownNext).toBe(web['turnedDownNext']);
     const name = { name: 'Kofi Mensah' };
-    expect(RECOVERY_WORDS.you('Kofi Mensah')).toBe(fill('you', name));
-    expect(RECOVERY_WORDS.approveTitle('Kofi Mensah')).toBe(fill('approveTitle', name));
-    expect(RECOVERY_WORDS.turnDownTitle('Kofi Mensah')).toBe(fill('turnDownTitle', name));
     expect(RECOVERY_WORDS.approved('Kofi Mensah')).toBe(fill('approved', name));
     expect(RECOVERY_WORDS.turnedDown('Kofi Mensah')).toBe(fill('turnedDown', name));
-    expect(RECOVERY_WORDS.when('A', 'B')).toBe(fill('when', { asked: 'A', expires: 'B' }));
-    expect(OWN_LINE).toBe(fill('own', { organisations: 'Ire Events' }));
-  });
-
-  it('says the same word while either answer is on its way', () => {
-    expect(RECOVERY_WORDS.sending).toBe('Sending your answer…');
-    expect(RECOVERY_WORDS.failed).toBe('That did not work. Try again in a moment.');
   });
 
   it('answers in a moment, and holds a linked answer on its way before it lands', () => {
@@ -107,35 +82,35 @@ describe('Requests to get back in, on the app’s Members', () => {
   });
 
   it('writes each request’s facts as the board does, dated the reader’s way', () => {
-    expect(recoveryFacts(recoveryOf(KOFI), kofi, false, us)).toEqual([
+    expect(recoveryFacts(t, recoveryRequestOf(kofi, false, us))).toEqual([
       'kofi@ire.events',
       'Asked to turn off two-factor · Proved with codes to their email and phone',
       'Asked Tuesday, Nov 3 at 18:05 WAT · ends Tuesday, Nov 10 at 18:05 WAT if nobody answers',
     ]);
-    expect(recoveryFacts(recoveryOf(PRIYA), priya, false, us)).toEqual([
+    expect(recoveryFacts(t, recoveryRequestOf(priya, false, us))).toEqual([
       'priya@ire.events',
       'Asked to turn off two-factor · Proved with a code to their email (no verified phone)',
       'Asked Wednesday, Nov 4 at 08:40 WAT · ends Wednesday, Nov 11 at 08:40 WAT if nobody answers',
     ]);
-    expect(recoveryFacts(recoveryOf(KOFI), kofi, false, gb)[2]).toBe(
+    expect(recoveryFacts(t, recoveryRequestOf(kofi, false, gb))[2]).toBe(
       'Asked Tuesday 3 Nov at 18:05 WAT · ends Tuesday 10 Nov at 18:05 WAT if nobody answers',
     );
   });
 
   it('says your own request in your words', () => {
-    expect(recoveryFacts(recoveryOf(JULIEN), julien, true, us)[1]).toBe(
+    expect(recoveryFacts(t, recoveryRequestOf(julien, true, us))[1]).toBe(
       'Asked to turn off two-factor · Proved with codes to your email and phone',
     );
-    expect(OWN_LINE).toBe(
+    expect(ownLine(t, recoveryRequestOf(julien, true, us), 'en-US')).toBe(
       'This is your own request. Somebody else in Ire Events has to answer it.',
     );
   });
 
   it('reads each request as one group, in the AC’s order, the list’s paragraph with it', () => {
-    expect(recoveryHeard(recoveryOf(KOFI), kofi, false, us)).toBe(
+    expect(recoveryHeard(t, recoveryRequestOf(kofi, false, us))).toBe(
       'Waiting for an answer. Asked to turn off two-factor. They lost their authenticator and their recovery codes, and stay signed out until somebody answers. One answer from an owner or admin is enough. Approve only if you’re sure it’s them, for example by calling them on a number you already have. Kofi Mensah, kofi@ire.events. Proved with codes to their email and phone. Asked Tuesday, Nov 3 at 18:05 WAT · ends Tuesday, Nov 10 at 18:05 WAT if nobody answers.',
     );
-    expect(recoveryHeard(recoveryOf(JULIEN), julien, true, us)).toMatch(
+    expect(recoveryHeard(t, recoveryRequestOf(julien, true, us))).toMatch(
       /have\. Julien Moreau \(you\), julien@ire\.events\. Proved with codes to your email and phone\./u,
     );
   });

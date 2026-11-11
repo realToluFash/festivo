@@ -1,8 +1,9 @@
 import type { RecoveryRequest } from '@soirely/api-client';
-import { useContext, useEffect, useRef } from 'react';
+import { type RefObject, useContext, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type ScrollViewInstance, StyleSheet, View, type ViewInstance } from 'react-native';
 
+import type { MemberFace } from '../kit/membersSummary.ts';
 import {
   askerName,
   ownLine,
@@ -29,13 +30,16 @@ export type RecoveryPart = 'box' | 'group' | 'approve' | 'turnDown';
 
 type OnTarget = (id: string, part: RecoveryPart, view: ViewInstance | null) => void;
 
-/** Requests to get back in, under the card (sc-30894): the paragraph once, heard in each request's group instead, then each request as a Members row with its two answers. `lit` comes into view each time `brought` changes. */
+/** Requests to get back in, under the card (sc-30894): the paragraph once, heard in each request's group instead, then each request as a Members row with its two answers. `lit` comes into view each time `brought` changes, its list's head `top` under the screen's scroll, or `scrollRef`'s. */
 export function RecoveryRequests({
   waiting,
   lit,
   brought,
   dense,
   locale,
+  top = tokens.spaceSm,
+  scrollRef,
+  faceOf = recoveryFace,
   onTarget,
   onAnswer,
 }: {
@@ -44,6 +48,9 @@ export function RecoveryRequests({
   brought: number;
   dense: boolean;
   locale: string;
+  top?: number;
+  scrollRef?: RefObject<ScrollViewInstance | null>;
+  faceOf?: (request: RecoveryRequest) => MemberFace;
   onTarget: OnTarget;
   onAnswer: (id: string, answer: RecoveryAnswer) => void;
 }) {
@@ -64,8 +71,8 @@ export function RecoveryRequests({
       bringListUp(
         list.current,
         boxes.current[lit],
-        scroll?.ref.current ?? null,
-        tokens.spaceSm,
+        scrollRef?.current ?? scroll?.ref.current ?? null,
+        top,
         clear,
       ),
     );
@@ -84,6 +91,7 @@ export function RecoveryRequests({
         lit={request.id === lit}
         dense={dense}
         locale={locale}
+        face={faceOf(request)}
         onTarget={target}
         onAnswer={onAnswer}
       />
@@ -116,6 +124,7 @@ function RecoveryRow({
   lit,
   dense,
   locale,
+  face,
   onTarget,
   onAnswer,
 }: {
@@ -123,6 +132,7 @@ function RecoveryRow({
   lit: boolean;
   dense: boolean;
   locale: string;
+  face: MemberFace;
   onTarget: OnTarget;
   onAnswer: (id: string, answer: RecoveryAnswer) => void;
 }) {
@@ -147,7 +157,7 @@ function RecoveryRow({
         accessible
         accessibilityLabel={recoveryHeard(t, request)}
       >
-        <Avatar {...recoveryFace(request)} side={side} />
+        <Avatar {...face} side={side} />
         <View style={styles.words}>
           <View style={styles.titleRow}>
             <Text
