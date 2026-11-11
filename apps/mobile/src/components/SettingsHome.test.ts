@@ -34,3 +34,10 @@ describe('the Settings column on the iPad on its side, lit with Tint and no ring
     expect(home).not.toMatch(/personOpen/u);
   });
 });
+
+describe('the Settings card at twice the text size (sc-37298)', () => {
+  it('drops the 60 tile only on a phone at the accessibility sizes', () => {
+    expect(home).toMatch(/const largest = useAccessibilitySizes\(\);/u);
+    expect(home).toMatch(/const tileShown = size !== 'phone' \|\| !largest;/u);
+  });
+});
