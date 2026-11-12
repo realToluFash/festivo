@@ -64,6 +64,14 @@ class History(unittest.TestCase):
              "actions": [{"changes": {"workflow_state_id": {"old": 2, "new": 1}}}]},
             {"changed_at": "2026-11-12T14:00:00Z",
              "actions": [{"changes": {"workflow_state_id": {"old": 2, "new": 1}}}]},
+            {"changed_at": "2026-11-12T14:10:00Z", "actor_name": "GitHub",
+             "references": [{"entity_type": "branch", "id": 7,
+                             "name": "sc-42420-sq-history"}],
+             "actions": [{"changes": {"workflow_state_id": {"old": 1, "new": 2}}}]},
+            {"changed_at": "2026-11-12T14:20:00Z", "actor_name": "Shortcut",
+             "automation_id": "a-2",
+             "references": [{"entity_type": "commit", "id": 12345, "hash": "abc123"}],
+             "actions": [{"changes": {"workflow_state_id": {"old": 2, "new": 1}}}]},
         ]
         out = io.StringIO()
         with redirect_stdout(out), \
@@ -77,6 +85,8 @@ class History(unittest.TestCase):
             "2026-11-12 13:44 Needs Design → Ready For Dev · by GitHub · PR #2000",
             "2026-11-12 13:52 Ready For Dev → Needs Design · by an automation",
             "2026-11-12 14:00 Ready For Dev → Needs Design",
+            "2026-11-12 14:10 Needs Design → Ready For Dev · by GitHub · branch sc-42420-sq-history",
+            "2026-11-12 14:20 Ready For Dev → Needs Design · by Shortcut (automation) · commit abc123",
         ])
 
 

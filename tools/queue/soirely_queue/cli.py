@@ -446,9 +446,11 @@ VCS_KINDS = {"pull-request": "PR", "branch": "branch", "commit": "commit"}
 def history_source(entry):
     parts = []
     actor = entry.get("actor_name") or entry.get("member_id")
-    if actor:
+    if actor and entry.get("automation_id"):
+        parts.append(f"by {actor} (automation)")
+    elif actor:
         parts.append(f"by {actor}")
-    if entry.get("automation_id"):
+    elif entry.get("automation_id"):
         parts.append("by an automation")
     for thing in [*entry.get("references", []), *entry.get("actions", [])]:
         kind = VCS_KINDS.get(thing.get("entity_type"))
