@@ -226,7 +226,10 @@ export function EventScreen({
         ) : undefined
       }
     >
-      <Screen edges={bodyEdges(kind)} contentStyle={phone ? styles.phone : styles.tablet}>
+      <Screen
+        edges={bodyEdges(kind)}
+        contentStyle={phone ? (untitled ? styles.phoneUntitled : styles.phone) : styles.tablet}
+      >
         {!phone && <BackButton label={backLabel} onPress={back} testID="events.back" />}
         {body}
       </Screen>
@@ -361,6 +364,11 @@ const styles = StyleSheet.create({
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,
+    paddingHorizontal: tokens.spaceXl,
+    paddingBottom: tokens.space3xl,
+  },
+  phoneUntitled: {
+    gap: tokens.spaceLg,
     paddingHorizontal: tokens.spaceXl,
     paddingBottom: tokens.space3xl,
   },
