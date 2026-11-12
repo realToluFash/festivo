@@ -27,7 +27,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import { endCuts, endCutWidth, unbroken } from '../layout/endCut.ts';
+import { endCut, endCuts } from '../layout/endCut.ts';
 import { tokens } from '../theme/tokens.ts';
 import { TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -169,9 +169,7 @@ function PicksLine({
 }) {
   const rest = picks.length - shown;
   const snugs = Platform.OS === 'android' && rest > 0;
-  // Android cuts a line that can break at a space or hyphen there, short of the longest cut the box is sized to (sc-41871).
-  const plain = picksLead(picks, shown);
-  const lead = rest === 0 ? whole : snugs ? unbroken(plain) : plain;
+  const lead = rest === 0 ? whole : picksLead(picks, shown);
   const { fontScale } = useWindowDimensions();
   const drawn = `${room}|${fontScale}|${lead}|${more(rest)}`;
   const [box, setBox] = useState<{ drawn: string; width: number } | null>(null);
@@ -179,9 +177,8 @@ function PicksLine({
   const boxWidth = snugs && box?.drawn === drawn ? box.width : null;
   const widthOf = (text: string) => widths[`${fontScale}|${text}`];
   const overflows = boxWidth != null && (widthOf(lead) ?? 0) > boxWidth;
-  // Android stops a cut line's "…" short of the box it was laid out in, so the box narrows to the longest cut that fits it (sc-41871).
-  const cutWidth = boxWidth == null ? null : endCutWidth(lead, boxWidth, widthOf);
-  const snugWidth = cutWidth == null ? null : Math.ceil(cutWidth);
+  // Android draws its own "…" short of the box it lays the line out in, so the longest cut that fits is drawn as it is and never ellipsized (sc-41871).
+  const cut = boxWidth == null ? null : endCut(lead, boxWidth, widthOf);
 
   return (
     <View style={styles.picks}>
@@ -190,9 +187,9 @@ function PicksLine({
         weight={weight}
         numberOfLines={1}
         accessible={false}
-        style={[styles.shrink, { color: ink }, snugWidth != null && { width: snugWidth }]}
+        style={[styles.shrink, { color: ink }]}
         onLayout={
-          snugs && snugWidth == null
+          snugs && cut == null
             ? (event) => {
                 const width = event.nativeEvent.layout.width;
                 setBox((now) =>
@@ -202,7 +199,7 @@ function PicksLine({
             : undefined
         }
       >
-        {lead}
+        {cut ?? lead}
       </Text>
       {rest > 0 && (
         <Text

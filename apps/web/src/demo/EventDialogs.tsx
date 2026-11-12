@@ -1,4 +1,4 @@
-import { typedNameMatches } from '@soirely/domain';
+import { copyStartRefusal, typedNameMatches } from '@soirely/domain';
 import { useContext, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -135,32 +135,53 @@ function DeleteBox({
 /** Duplicate: the product's body, with the sample's draft kept on Create draft. */
 export function DuplicateDialog({
   event,
+  cleared = false,
   onDismiss,
   onCreated,
 }: {
   event: SampleEvent;
+  cleared?: boolean;
   onDismiss: () => void;
   onCreated: (words: string) => void;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [start, setStart] = useState(() => copyStart(event));
+  const when = useRef<HTMLDivElement>(null);
+  const [start, setStart] = useState(() => (cleared ? { date: '', time: '' } : copyStart(event)));
+  const [error, setError] = useState(() =>
+    cleared ? copyStartRefusal('', '', t)?.message : undefined,
+  );
   const startsAt = instantOf(start.date, start.time, event.timeZone);
 
   return (
     <Dialog
       title={t('eventDuplicate.open')}
       verb={t('eventDuplicate.create')}
-      on={startsAt != null}
       onDismiss={onDismiss}
       onConfirm={() => {
+        const refusal = copyStartRefusal(start.date, start.time, t);
+
+        if (refusal != null) {
+          setError(refusal.message);
+          when.current?.querySelector<HTMLElement>(`input[type="${refusal.focus}"]`)?.focus();
+          return;
+        }
         if (startsAt == null) return;
         const copy = keepCopy(event, startsAt);
         onCreated(W.created);
         void navigate(`/demo/events/${copy.id}`, { state: { told: W.created } });
       }}
     >
-      <DuplicateBody event={event} start={start} onStart={setStart} />
+      <DuplicateBody
+        event={event}
+        start={start}
+        onStart={(next) => {
+          setStart(next);
+          if (next.date !== '' && next.time !== '') setError(undefined);
+        }}
+        error={error}
+        when={when}
+      />
     </Dialog>
   );
 }
