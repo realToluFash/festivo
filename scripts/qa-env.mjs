@@ -1978,22 +1978,45 @@ export const ANDROID_START = [
 // Expo Go's floating Tools button sits over a list's Done, where a tap opens its menu instead.
 export const TOOLS_BUTTON = 'EXDevMenuShowFloatingActionButton';
 
+// After a reboot Expo Go's dev-menu intro covers the app until somebody taps it (sc-41961).
+export const MENU_ONBOARDED = 'EXDevMenuIsOnboardingFinished';
+
 const TOOLS_OFF = "  Expo Go's Tools button is off.";
 const TOOLS_TURNED_OFF = "  Expo Go's Tools button turned off for the batch.";
 const TOOLS_FAILED = "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.";
+const READY = "  Expo Go's Tools button is off and its dev-menu intro is seen.";
+const INTRO_SEEN = "  Expo Go's dev-menu intro marked seen for the batch.";
+const INTRO_FAILED = "  Could not mark Expo Go's dev-menu intro seen: tap through it in Expo Go.";
 
-// What a batch resets on its device before signing in: TalkBack, and Expo Go's Tools button.
-// The button lives in Expo Go's container, which `defaults write host.exp.Exponent` misses.
-export function batchReset(onAndroid, device, { prefs, toolsButton } = {}) {
+// What a batch resets on its device before signing in: TalkBack, Expo Go's Tools button and its
+// dev-menu intro. Both live in Expo Go's container, which `defaults write host.exp.Exponent` misses.
+export function batchReset(onAndroid, device, { prefs, toolsButton, onboarded } = {}) {
   if (onAndroid) return { adb: SCREEN_READER_OFF, say: '  TalkBack is off for the batch.' };
   if (!prefs) return { say: '  Expo Go is not installed: run `ios` first.' };
-  if (toolsButton === '0') return { say: TOOLS_OFF };
-  return {
-    terminate: ['simctl', 'terminate', device, EXPO_GO],
-    write: ['simctl', 'spawn', device, 'defaults', 'write', prefs, TOOLS_BUTTON, '-bool', 'NO'],
-    say: TOOLS_TURNED_OFF,
-    failed: TOOLS_FAILED,
-  };
+  const write = (key, value) => [
+    'simctl',
+    'spawn',
+    device,
+    'defaults',
+    'write',
+    prefs,
+    key,
+    '-bool',
+    value,
+  ];
+  const writes = [];
+  if (toolsButton !== '0') {
+    writes.push({
+      command: write(TOOLS_BUTTON, 'NO'),
+      say: TOOLS_TURNED_OFF,
+      failed: TOOLS_FAILED,
+    });
+  }
+  if (onboarded !== '1') {
+    writes.push({ command: write(MENU_ONBOARDED, 'YES'), say: INTRO_SEEN, failed: INTRO_FAILED });
+  }
+  if (!writes.length) return { say: READY };
+  return { terminate: ['simctl', 'terminate', device, EXPO_GO], writes };
 }
 
 const centre = ([left, top, right, bottom]) => [(left + right) / 2, (top + bottom) / 2];
@@ -2074,13 +2097,19 @@ async function resetForBatch(onAndroid, device) {
   const prefs = onAndroid
     ? null
     : expoGoPrefs(capture('xcrun', ['simctl', 'get_app_container', device, EXPO_GO, 'data']));
-  const toolsButton =
-    prefs && capture('xcrun', ['simctl', 'spawn', device, 'defaults', 'read', prefs, TOOLS_BUTTON]);
-  const reset = batchReset(onAndroid, device, { prefs, toolsButton });
+  const read = (key) =>
+    prefs && capture('xcrun', ['simctl', 'spawn', device, 'defaults', 'read', prefs, key]);
+  const reset = batchReset(onAndroid, device, {
+    prefs,
+    toolsButton: read(TOOLS_BUTTON),
+    onboarded: read(MENU_ONBOARDED),
+  });
   for (const command of reset.adb ?? []) adbOut(androidTools(), command);
   if (reset.terminate) run('xcrun', reset.terminate, { optional: true });
-  const written = !reset.write || run('xcrun', reset.write, { optional: true });
-  console.log(written ? reset.say : reset.failed);
+  if (reset.say) console.log(reset.say);
+  for (const { command, say, failed } of reset.writes ?? []) {
+    console.log(run('xcrun', command, { optional: true }) ? say : failed);
+  }
   if (onAndroid) await androidToolsButtonOff(androidTools());
 }
 

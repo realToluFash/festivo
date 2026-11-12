@@ -49,6 +49,7 @@ import {
   toolsSwitch,
   expoGoPrefs,
   TOOLS_BUTTON,
+  MENU_ONBOARDED,
   SCREEN_READER_OFF,
   driverBuilds,
   driverPids,
@@ -642,41 +643,57 @@ describe('what a batch resets before it signs in', () => {
     expect(batchReset(true, 'emulator-5554').adb).toBe(SCREEN_READER_OFF);
   });
 
-  it("turns Expo Go's Tools button off in its own container, with Expo Go closed first", () => {
-    const { terminate, write, say } = batchReset(false, 'UDID', { prefs, toolsButton: null });
-    expect(terminate).toEqual(['simctl', 'terminate', 'UDID', 'host.exp.Exponent']);
-    expect(write).toEqual([
-      'simctl',
-      'spawn',
-      'UDID',
-      'defaults',
-      'write',
-      prefs,
-      TOOLS_BUTTON,
-      '-bool',
-      'NO',
+  const write = (key, value) => [
+    'simctl',
+    'spawn',
+    'UDID',
+    'defaults',
+    'write',
+    prefs,
+    key,
+    '-bool',
+    value,
+  ];
+  const commands = (reset) => (reset.writes ?? []).map(({ command }) => command);
+
+  it("turns Expo Go's Tools button off and marks its intro seen in its own container, Expo Go closed first", () => {
+    const reset = batchReset(false, 'UDID', { prefs, toolsButton: null, onboarded: null });
+    expect(reset.terminate).toEqual(['simctl', 'terminate', 'UDID', 'host.exp.Exponent']);
+    expect(commands(reset)).toEqual([write(TOOLS_BUTTON, 'NO'), write(MENU_ONBOARDED, 'YES')]);
+    expect(reset.writes.map(({ say }) => say)).toEqual([
+      "  Expo Go's Tools button turned off for the batch.",
+      "  Expo Go's dev-menu intro marked seen for the batch.",
     ]);
-    expect(say).toMatch(/turned off/);
   });
 
-  it("has a line for a write that fails, pointing the tester to Expo Go's menu", () => {
-    expect(batchReset(false, 'UDID', { prefs, toolsButton: null }).failed).toBe(
+  it('has a line for each write that fails, pointing the tester to Expo Go', () => {
+    const reset = batchReset(false, 'UDID', { prefs, toolsButton: null, onboarded: null });
+    expect(reset.writes.map(({ failed }) => failed)).toEqual([
       "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.",
-    );
+      "  Could not mark Expo Go's dev-menu intro seen: tap through it in Expo Go.",
+    ]);
   });
 
-  it('turns the Tools button off when it was left on', () => {
-    expect(batchReset(false, 'UDID', { prefs, toolsButton: '1' }).write).toContain(TOOLS_BUTTON);
+  it('turns the Tools button off when it was left on, and only that', () => {
+    expect(
+      commands(batchReset(false, 'UDID', { prefs, toolsButton: '1', onboarded: '1' })),
+    ).toEqual([write(TOOLS_BUTTON, 'NO')]);
   });
 
-  it('leaves Expo Go alone when its Tools button is already off, and says so', () => {
-    expect(batchReset(false, 'UDID', { prefs, toolsButton: '0' })).toEqual({
-      say: "  Expo Go's Tools button is off.",
+  it('marks the intro seen after a reboot left it unseen, and only that', () => {
+    expect(
+      commands(batchReset(false, 'UDID', { prefs, toolsButton: '0', onboarded: '0' })),
+    ).toEqual([write(MENU_ONBOARDED, 'YES')]);
+  });
+
+  it('leaves Expo Go alone when both are already set, and says so', () => {
+    expect(batchReset(false, 'UDID', { prefs, toolsButton: '0', onboarded: '1' })).toEqual({
+      say: "  Expo Go's Tools button is off and its dev-menu intro is seen.",
     });
   });
 
   it('touches nothing on a simulator without Expo Go', () => {
-    expect(batchReset(false, 'UDID', { prefs: null }).write).toBeUndefined();
+    expect(batchReset(false, 'UDID', { prefs: null }).writes).toBeUndefined();
   });
 
   it("reads Expo Go's preferences from its data container", () => {
