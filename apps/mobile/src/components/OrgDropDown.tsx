@@ -6,6 +6,7 @@ import {
   Animated,
   type LayoutChangeEvent,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   type ScrollViewInstance,
@@ -55,7 +56,7 @@ import {
 } from './Screen.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Pill, TYPE } from './SettingsParts.tsx';
-import { useFocusBack, useWindowTurn } from './Sheet.tsx';
+import { SilentWindowName, useFocusBack, useWindowTurn } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { MeasuredWords } from './Title.tsx';
 
@@ -250,6 +251,7 @@ export function OrgDropDown({
       onRequestClose={onClose}
       onDismiss={gone}
     >
+      {Platform.OS === 'android' && <SilentWindowName />}
       <Pressable
         style={StyleSheet.absoluteFill}
         onPress={onClose}

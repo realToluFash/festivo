@@ -1,4 +1,4 @@
-import { type Ref, useId, useState } from 'react';
+import { type Ref, useId, useRef, useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -21,12 +21,14 @@ import { useLayout } from '../layout/useLayout.ts';
 import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
+import { useReducedMotion } from '../reducedMotion.ts';
 import { useModalOpen } from '../updateRequired.ts';
 import { FocusEdge, focusEdge, useFocusEdge, useHeld, useRefused } from './Field.tsx';
 import { controlTaken } from './focusedField.ts';
 import { LIFT } from './keyboardWatch.ts';
-import { Screen } from './Screen.tsx';
-import { Text } from './Text.tsx';
+import { Screen, useFocusOnAnswer } from './Screen.tsx';
+import { SilentWindowName, WINDOW_ARRIVES_MS, useUnnamedWindow } from './Sheet.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 import { UnseenName } from './UnseenName.tsx';
 
 const CONTROL_TEXT_SIZE = 16;
@@ -75,6 +77,16 @@ export function ListPicker({
   const locale = currentLocale();
   const [open, setOpen] = useState(false);
   const pickerShown = useModalOpen(open);
+  const [onScreen, setOnScreen] = useState(false);
+  if (!pickerShown && onScreen) setOnScreen(false);
+  const reduced = useReducedMotion();
+  const unnamed = useUnnamedWindow(
+    Platform.OS === 'android' && pickerShown,
+    onScreen,
+    null,
+    reduced ? 0 : WINDOW_ARRIVES_MS,
+  );
+  const heading = useRef<TextHandle>(null);
   const [search, setSearch] = useState('');
   const searchNameID = useId();
   const searching = useHeld(false, search, undefined, setSearch);
@@ -84,6 +96,13 @@ export function ListPicker({
   const refused = useRefused(wrong, line);
   const { kind, width, height } = useLayout();
   const beside = searchBesideTitle({ phone: kind === 'phone', width, height });
+
+  // TalkBack otherwise puts its focus on Done, past the title (sc-42690).
+  useFocusOnAnswer(
+    Platform.OS === 'android' && onScreen && !unnamed ? true : undefined,
+    heading,
+    0,
+  );
 
   const chosen = choices.find((choice) => choice.code === value)?.name ?? value;
   const blank = chosen === '';
@@ -151,12 +170,15 @@ export function ListPicker({
         animationType="slide"
         supportedOrientations={TURNS_WITH_THE_APP}
         onRequestClose={() => setOpen(false)}
+        onShow={() => setOnScreen(true)}
       >
+        {Platform.OS === 'android' && <SilentWindowName />}
         {/* A full-screen modal takes the app's view out of the window, so the app's insets stop turning with it. */}
         <SafeAreaProvider>
           <View
             style={styles.fill}
             collapsable={false}
+            importantForAccessibility={unnamed ? 'no-hide-descendants' : 'auto'}
             onAccessibilityEscape={() => setOpen(false)}
           >
             <Screen
@@ -166,6 +188,7 @@ export function ListPicker({
             >
               <View style={styles.sheetHeading}>
                 <Text
+                  ref={heading}
                   size={tokens.typeTitleDialog.size}
                   weight="bold"
                   accessibilityRole="header"

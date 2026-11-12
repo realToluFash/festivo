@@ -2,6 +2,7 @@ import { type ReactNode, type RefObject, useEffect, useState } from 'react';
 import {
   Animated,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,7 +17,7 @@ import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
-import { useFocusBack, useWindowTurn } from './Sheet.tsx';
+import { SilentWindowName, useFocusBack, useWindowTurn } from './Sheet.tsx';
 
 /** An iPad's dialog as the boards draw it: centred, 560 or 600 wide, radius 28, over the dialog scrim; it fades in and out. */
 export function CentredDialog({
@@ -64,6 +65,7 @@ export function CentredDialog({
       onRequestClose={onClose}
       onDismiss={gone}
     >
+      {Platform.OS === 'android' && <SilentWindowName />}
       <View style={[styles.scrim, { paddingVertical: margin }]}>
         <Animated.View
           style={[StyleSheet.absoluteFill, styles.dim, { opacity: fade }]}
