@@ -6,37 +6,26 @@ import {
   type Visit,
   type Words,
   answersClosedByDate,
-  codePath,
   dayOf,
   eventTime,
 } from './guest.ts';
 import { dayWords, hasWhere, mapsLink, placeOf } from './guestDay.ts';
-import { Line, TextAction } from './GuestParts.tsx';
+import { DoorCode, Line, TextAction } from './GuestParts.tsx';
 import { useWakeLock } from './useWakeLock.ts';
 import './guestDay.css';
 
-const CODE = codePath();
-
-/** sc-1301's card under its own heading; the screen stays on while it is in view. */
+/** sc-1301's card under Your code; the screen stays on while it is in view. */
 export function YourCode({ visit, words }: { visit: Visit; words: Words }) {
   const [card, setCard] = useState<HTMLDivElement | null>(null);
   useWakeLock(card);
 
   return (
-    <section className="gp-day-code" aria-labelledby="gp-code-h">
-      <h2 id="gp-code-h" className="gp-h2">
-        {dayWords(visit.lang).code}
-      </h2>
-      <div ref={setCard} className="gp-day-card">
-        <p className="gp-day-door">{words.doorTitle}</p>
-        <div className="gp-day-qr">
-          <svg role="img" aria-label={words.doorCode} width="176" height="176" viewBox="0 0 29 29">
-            <path d={CODE} />
-          </svg>
-        </div>
-        <p className="gp-sub">{words.doorLine(visit.companionsComing)}</p>
-      </div>
-    </section>
+    <DoorCode
+      words={words}
+      companions={visit.companionsComing}
+      heading={dayWords(visit.lang).code}
+      cardRef={setCard}
+    />
   );
 }
 

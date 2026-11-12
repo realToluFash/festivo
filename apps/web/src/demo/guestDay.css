@@ -63,20 +63,9 @@
   overflow-wrap: anywhere;
 }
 
-.gp-day-qr {
-  flex: none;
-  box-sizing: border-box;
-  width: 196px;
-  height: 196px;
-  padding: 10px;
-  border-radius: 12px;
-  background: var(--colorCard);
-  box-shadow: 0 0 0 1px var(--colorBorder);
-}
-
-.gp-day-qr svg {
-  display: block;
-  fill: var(--colorInk);
+.gp-day-card .gp-code {
+  align-self: center;
+  margin-top: 0;
 }
 
 .gp-day-place {
@@ -134,9 +123,9 @@
 }
 
 .gp-day-skel-qr {
-  width: 196px;
-  height: 196px;
-  border-radius: 12px;
+  width: 226px;
+  height: 226px;
+  border-radius: 20px;
 }
 
 .gp-day-skel-line {

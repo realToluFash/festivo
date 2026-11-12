@@ -494,18 +494,48 @@ export function Foot({ words, onTell }: { words: Words; onTell: () => void }) {
 
 const CODE = codePath();
 
-export function DoorCode({ words, companions }: { words: Words; companions: number }) {
+/** sc-1301's one card; on the event's day (sc-24381) it sits under its own heading, its title the card's first line. */
+export function DoorCode({
+  words,
+  companions,
+  heading,
+  cardRef,
+}: {
+  words: Words;
+  companions: number;
+  heading?: string;
+  cardRef?: (card: HTMLDivElement | null) => void;
+}) {
+  const code = (
+    <div className="gp-code">
+      <svg role="img" aria-label={words.doorCode} width="196" height="196" viewBox="0 0 29 29">
+        <path d={CODE} />
+      </svg>
+    </div>
+  );
+
+  if (heading != null) {
+    return (
+      <section className="gp-day-code" aria-labelledby="gp-door">
+        <h2 id="gp-door" className="gp-h2">
+          {heading}
+        </h2>
+        <div ref={cardRef} className="gp-day-card">
+          <p className="gp-day-door">{words.doorTitle}</p>
+          {code}
+          <p className="gp-sub">{words.doorLine(companions)}</p>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="gp-block" aria-labelledby="gp-door">
       <h2 id="gp-door" className="gp-h2 is-19">
         {words.doorTitle}
       </h2>
       <p className="gp-sub">{words.doorLine(companions)}</p>
-      <div className="gp-code">
-        <svg role="img" aria-label={words.doorCode} width="196" height="196" viewBox="0 0 29 29">
-          <path d={CODE} />
-        </svg>
-      </div>
+      {code}
     </section>
   );
 }

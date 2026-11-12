@@ -17,7 +17,7 @@ export interface Place {
 export const DAY_NOTE =
   'Use the side entrance on Marylebone Road. The front doors open at 17:30.\nThere is no parking at The Landmark: the nearest car park is on Old Marylebone Road.';
 
-/** From 00:00 on the start date to the end time, both in the event's timezone, never the reader's. */
+/** The rule the server's day flag follows; the page reads the flag (`Visit.day`), never works the day out itself. */
 export function isTheDay(now: Date, event: Pick<SampleEvent, 'startsAt' | 'endsAt' | 'timeZone'>) {
   return (
     localDay(now, event.timeZone) >= localDay(event.startsAt, event.timeZone) &&
