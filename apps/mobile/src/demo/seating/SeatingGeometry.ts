@@ -149,6 +149,160 @@ export function wordsBox(x: number, y: number, words: string, size: number, star
   return { x: start ? x : x - w / 2, y: y - 10, w, h: 20 };
 }
 
+/** A room word's letters, for telling whether it meets another word or a ring: as wide as its box, as tall as its size and 4 more. */
+export function lettersBox(x: number, y: number, words: string, size: number, start: boolean): Box {
+  const b = wordsBox(x, y, words, size, start);
+  return { ...b, y: y - size / 2 - 2, h: size + 4 };
+}
+
+/** A colleague's ring as drawn: its centre, the outer edge's half-width and half-height (a round one's are its radius), and the stroke's width inward. */
+export interface Ring {
+  cx: number;
+  cy: number;
+  hx: number;
+  hy: number;
+  round: boolean;
+  stroke: number;
+}
+
+function crosses(ring: Ring, b: Box): boolean {
+  const { cx, cy, hx, hy, stroke } = ring;
+  if (ring.round) {
+    const nx = Math.max(b.x, Math.min(cx, b.x + b.w)) - cx;
+    const ny = Math.max(b.y, Math.min(cy, b.y + b.h)) - cy;
+    const fx = Math.max(Math.abs(b.x - cx), Math.abs(b.x + b.w - cx));
+    const fy = Math.max(Math.abs(b.y - cy), Math.abs(b.y + b.h - cy));
+    return Math.hypot(nx, ny) < hx && Math.hypot(fx, fy) > hx - stroke;
+  }
+  const outer = { x: cx - hx, y: cy - hy, w: 2 * hx, h: 2 * hy };
+  const inner = {
+    x: outer.x + stroke,
+    y: outer.y + stroke,
+    w: outer.w - 2 * stroke,
+    h: outer.h - 2 * stroke,
+  };
+  const within =
+    b.x >= inner.x &&
+    b.y >= inner.y &&
+    b.x + b.w <= inner.x + inner.w &&
+    b.y + b.h <= inner.y + inner.h;
+  return meets(b, outer) && !within;
+}
+
+/** A colleague's ring about an item: a round one's radius r, or a square one's half-sides gw and gh, and the half-width and half-height it reaches from the item's centre. */
+export interface RingSize {
+  r: number;
+  gw: number;
+  gh: number;
+  hx: number;
+  hy: number;
+}
+
+/** The half-sizes, in cm, that a lit item's Tint and a colleague's ring go about: from 50% its chairs, below it the table alone, since its chairs are not drawn there and its words sit just under it (sc-31783). */
+export function aboutHalf(it: Item, detail: Detail): Point {
+  if (detail !== 'out') return extent(it);
+  if (it.kind === 'round' || it.kind === 'cocktail') return { x: it.d / 2, y: it.d / 2 };
+  if (it.kind === 'rect' || it.kind === 'head') return { x: it.w / 2, y: it.l / 2 };
+  return extent(it);
+}
+
+export const LIT_PAD = 10;
+
+/** A lit item's Tint in px: a round one's radius, or a square one's half-sides before its turn. */
+export function litAbout(it: Item, s: number, detail: Detail): Point {
+  const half = aboutHalf(it, detail);
+  return { x: half.x * s + LIT_PAD, y: half.y * s + LIT_PAD };
+}
+
+export function ringAbout(it: Item, s: number, detail: Detail, lit: boolean): RingSize {
+  const half = aboutHalf(it, detail);
+  const pad = lit ? LIT_PAD : detail === 'out' ? 0 : 2;
+  if (isCircle(it)) {
+    const r = half.x * s + pad + 3.5;
+    return { r, gw: 0, gh: 0, hx: r + 3, hy: r + 3 };
+  }
+  const gw = half.x * s + pad + 2;
+  const gh = half.y * s + pad + 2;
+  const a = (it.rot * Math.PI) / 180;
+  const c = Math.abs(Math.cos(a));
+  const n = Math.abs(Math.sin(a));
+  return { r: 0, gw, gh, hx: gw * c + gh * n + 3, hy: gw * n + gh * c + 3 };
+}
+
+export function ringAt(it: Item, cx: number, cy: number, size: RingSize): Ring {
+  const round = isCircle(it);
+  return { cx, cy, hx: size.hx, hy: size.hy, round, stroke: round ? 5 : 3 };
+}
+
+export function outWords(
+  it: Item,
+  cx: number,
+  cy: number,
+  s: number,
+  floor: number,
+  clear: number,
+): { name: Point; count: Point | null } {
+  const by = wordsAt(it, cy, s, floor, clear);
+  return { name: { x: cx, y: by }, count: it.kind === 'single' ? null : { x: cx, y: by + 25 } };
+}
+
+export interface Marks {
+  ring?: unknown;
+  lit?: boolean;
+  faint?: boolean;
+}
+
+/** What the room says below 50% (sc-31783): every name and count where none meet each other or a colleague's ring; else the names alone, placed as the iPhone's card places them, a ringed item reaching to its ring, where those sit apart; else none. From 50% it says everything. */
+export type RoomWords =
+  | { says: 'all' }
+  | { says: 'names'; names: { id: string; x: number; y: number }[] }
+  | { says: 'none' };
+
+export function roomWords(
+  items: readonly Item[],
+  marks: Readonly<Record<string, Marks>>,
+  v: View,
+  room: Room,
+  count: (it: Item) => string,
+): RoomWords {
+  const detail = detailOf(v.s);
+  if (detail !== 'out') return { says: 'all' };
+  const floor = v.oy + room.l * v.s;
+  const centre = (it: Item) => ({ x: v.ox + it.x * v.s, y: v.oy + it.y * v.s });
+  const ringed = new Map<string, Ring>();
+  items.forEach((it) => {
+    const mark = marks[it.id];
+    if (mark?.ring == null) return;
+    const c = centre(it);
+    ringed.set(it.id, ringAt(it, c.x, c.y, ringAbout(it, v.s, detail, mark.lit === true)));
+  });
+  const rings = [...ringed.values()];
+  const said = items.filter((it) => marks[it.id]?.faint !== true);
+  const all = said.flatMap((it) => {
+    const c = centre(it);
+    const w = outWords(it, c.x, c.y, v.s, floor, ringed.get(it.id)?.hy ?? 0);
+    const name = lettersBox(w.name.x, w.name.y, it.name, 12, false);
+    return w.count == null
+      ? [name]
+      : [name, lettersBox(w.count.x, w.count.y, count(it), 12, false)];
+  });
+  if (wordsApart(all, rings)) return { says: 'all' };
+  const names = cardNames(items, v, room, ringed);
+  const named = names.flatMap((n) => {
+    const it = said.find((one) => one.id === n.id);
+    return it == null ? [] : [lettersBox(n.x, n.y, it.name, 12, false)];
+  });
+  return wordsApart(named, rings) ? { says: 'names', names } : { says: 'none' };
+}
+
+/** Whether every word in the room sits apart: no two meet, and no colleague's ring runs through one (sc-31783). */
+export function wordsApart(words: readonly Box[], rings: readonly Ring[]): boolean {
+  return words.every(
+    (a, i) =>
+      words.every((b, j) => j <= i || !meets(a, b)) && rings.every((ring) => !crosses(ring, a)),
+  );
+}
+
 function meets(a: Box, b: Box): boolean {
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 }
@@ -313,13 +467,15 @@ export function sideFrom(n: number, reach: number, s: number): number {
 const WORDS_DEPTH = 35;
 const NAME_DEPTH = 10;
 
-/** Where a zoomed-out item's name sits, in px: below it, or above it when its name, bar and count would cross the bottom wall at floor. */
-export function wordsAt(it: Item, cy: number, s: number, floor: number): number {
+/** Where a zoomed-out item's name sits, in px: below it, or above it when its name, bar and count would cross the bottom wall at floor; at least clear px from its centre, so a colleague's ring stays off them. */
+export function wordsAt(it: Item, cy: number, s: number, floor: number, clear = 0): number {
   const e = extent(it);
-  const off =
+  const off = Math.max(
+    clear,
     it.kind === 'rect' || it.kind === 'head'
       ? (it.l / 2) * s
-      : Math.max(e.y, 40) * s * (it.kind === 'row' ? 1 : 0.55);
+      : Math.max(e.y, 40) * s * (it.kind === 'row' ? 1 : 0.55),
+  );
   const depth = it.kind === 'single' ? NAME_DEPTH : WORDS_DEPTH;
   const below = cy + off + 12;
   if (below + depth <= floor - 2) return below;
@@ -489,6 +645,7 @@ export function cardNames(
   items: readonly Item[],
   v: View,
   room: Room,
+  rings: ReadonlyMap<string, Ring> = new Map(),
 ): { id: string; x: number; y: number }[] {
   const inside: Box = { x: v.ox + 1, y: v.oy + 1, w: room.w * v.s - 2, h: room.l * v.s - 2 };
   const grow = (b: Box, n: number): Box => ({
@@ -499,12 +656,12 @@ export function cardNames(
   });
   const bodies = items.map((it) => {
     const b = bounds(it);
-    return {
-      x: v.ox + (it.x - b.x) * v.s,
-      y: v.oy + (it.y - b.y) * v.s,
-      w: 2 * b.x * v.s,
-      h: 2 * b.y * v.s,
-    };
+    const ring = rings.get(it.id);
+    const hx = Math.max(b.x * v.s, ring?.hx ?? 0);
+    const hy = Math.max(b.y * v.s, ring?.hy ?? 0);
+    const cx = v.ox + it.x * v.s;
+    const cy = v.oy + it.y * v.s;
+    return { x: cx - hx, y: cy - hy, w: 2 * hx, h: 2 * hy };
   });
   const sides = (i: number): Box[][] => {
     const it = items[i];

@@ -44,6 +44,10 @@ import {
   nameAt,
   zoomAbout,
   wordsBox,
+  ringAbout,
+  litAbout,
+  outWords,
+  roomWords,
 } from './SeatingGeometry.ts';
 import {
   type Seating,
@@ -138,17 +142,18 @@ function itemShape({
   const e = extent(it);
   const circle = isCircle(it);
   const out: ReactNode[] = [];
+  const lit = litAbout(it, s, detail);
   if (look.lit === true)
     out.push(
       circle ? (
-        <Circle key="lit" cx={cx} cy={cy} r={e.x * s + 10} fill={TINT} />
+        <Circle key="lit" cx={cx} cy={cy} r={lit.x} fill={TINT} />
       ) : (
         <Rect
           key="lit"
-          x={-e.x * s - 10}
-          y={-e.y * s - 10}
-          width={2 * e.x * s + 20}
-          height={2 * e.y * s + 20}
+          x={-lit.x}
+          y={-lit.y}
+          width={2 * lit.x}
+          height={2 * lit.y}
           rx={12}
           fill={TINT}
           transform={`translate(${cx} ${cy}) rotate(${it.rot})`}
@@ -281,16 +286,17 @@ function itemShape({
       {body}
     </G>,
   );
-  if (look.faint !== true) addWords(it, cx, cy, s, v.oy + m.room.l * s, detail, labels);
-  if (look.ring != null) {
-    const pad = look.lit === true ? 10 : 2;
+  const ring = look.ring == null ? null : ringAbout(it, s, detail, look.lit === true);
+  if (look.faint !== true)
+    addWords(it, cx, cy, s, v.oy + m.room.l * s, detail, labels, ring?.hy ?? 0);
+  if (look.ring != null && ring != null) {
     const c = look.ring.colour;
     const words = initials(look.ring.name);
     const badge = (corners: Point[]) => {
       badges.push({ key: `${it.id}.ring`, corners, colour: c, words });
     };
     if (circle) {
-      const rr = e.x * s + pad + 3.5;
+      const rr = ring.r;
       out.push(
         <Circle
           key="gap"
@@ -307,8 +313,7 @@ function itemShape({
       );
       badge(ringPlaces(cx, cy, rr + 1.5, BADGE_W, BADGE_H));
     } else {
-      const gw = e.x * s + pad + 2;
-      const gh = e.y * s + pad + 2;
+      const { gw, gh } = ring;
       out.push(
         <Rect
           key="ring"
@@ -464,16 +469,16 @@ function addWords(
   floor: number,
   detail: Detail,
   labels: Label[],
+  clear: number,
 ) {
   const name = { key: `${it.id}.name`, size: 12, bold: true, ink: tokens.colorInk, words: it.name };
   if (detail === 'out') {
-    const by = wordsAt(it, cy, s, floor);
-    labels.push({ ...name, x: cx, y: by });
-    if (it.kind !== 'single')
+    const at = outWords(it, cx, cy, s, floor, clear);
+    labels.push({ ...name, ...at.name });
+    if (at.count != null)
       labels.push({
         key: `${it.id}.of`,
-        x: cx,
-        y: by + 25,
+        ...at.count,
         words: ofWords(it),
         size: 12,
         bold: false,
@@ -495,15 +500,29 @@ function addWords(
   labels.push({ ...name, x: cx, y: nameAt(it, cy, s, floor) });
 }
 
-function Bars({ v, floor, items }: { v: Shown; floor: number; items: readonly Item[] }) {
+function Bars({
+  v,
+  floor,
+  items,
+  looks,
+}: {
+  v: Shown;
+  floor: number;
+  items: readonly Item[];
+  looks: Record<string, Look>;
+}) {
   if (detailOf(v.s) !== 'out') return null;
+  const clear = (it: Item) => {
+    const look = looks[it.id];
+    return look?.ring == null ? 0 : ringAbout(it, v.s, 'out', look.lit === true).hy;
+  };
   return (
     <>
       {items
         .filter((it) => it.kind !== 'single')
         .map((it) => {
           const cx = v.ox + it.x * v.s;
-          const by = wordsAt(it, v.oy + it.y * v.s, v.s, floor) + 10;
+          const by = wordsAt(it, v.oy + it.y * v.s, v.s, floor, clear(it)) + 10;
           const share = filled(it) / Math.max(1, usable(it));
           return (
             <G key={`bar.${it.id}`}>
@@ -523,7 +542,7 @@ function Bars({ v, floor, items }: { v: Shown; floor: number; items: readonly It
   );
 }
 
-/** The room drawn to scale: a white floor with a 1 m grid (5 m a touch darker), walls 2.5 Ink, then each item, its words laid over it in the app's face. */
+/** The room drawn to scale: a white floor with a 1 m grid (5 m a touch darker), walls 2.5 Ink, then each item, its words laid over it in the app's face. Below 50%, where its words would meet each other or a colleague's ring, it keeps only the names, placed as the iPhone's card places them, and none where even those would meet (sc-31783). */
 export function RoomDrawing({
   m,
   v,
@@ -548,9 +567,6 @@ export function RoomDrawing({
   children?: ReactNode;
 }) {
   const detail = detailOf(v.s);
-  const labels: Label[] = [];
-  const unsaid: Label[] = [];
-  const badges: Badge[] = [];
   const rw = m.room.w * v.s;
   const rl = m.room.l * v.s;
   const lines: ReactNode[] = [];
@@ -580,6 +596,12 @@ export function RoomDrawing({
         />,
       );
   }
+  const words = names == null ? roomWords(items, looks, v, m.room, ofWords) : null;
+  const placed =
+    names ?? (words?.says === 'names' ? words.names : words?.says === 'none' ? [] : null);
+  const labels: Label[] = [];
+  const unsaid: Label[] = [];
+  const badges: Badge[] = [];
   const shapes = items.map((it) => (
     <G key={it.id}>
       {itemShape({
@@ -589,12 +611,12 @@ export function RoomDrawing({
         detail,
         look: looks[it.id] ?? {},
         chosenChair: m.chosen === it.id ? m.chair : null,
-        labels: names == null ? labels : unsaid,
+        labels: placed == null ? labels : unsaid,
         badges,
       })}
     </G>
   ));
-  names?.forEach((n) => {
+  placed?.forEach((n) => {
     const it = items.find((one) => one.id === n.id);
     if (it != null && looks[it.id]?.faint !== true)
       labels.push({
@@ -639,11 +661,12 @@ export function RoomDrawing({
         {lines}
         {shapes}
         {pills}
-        {names == null && (
+        {placed == null && (
           <Bars
             v={v}
             floor={v.oy + rl}
             items={items.filter((it) => looks[it.id]?.faint !== true)}
+            looks={looks}
           />
         )}
         {m.wallAt != null && (
