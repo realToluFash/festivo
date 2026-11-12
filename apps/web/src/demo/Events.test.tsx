@@ -297,6 +297,19 @@ describe('Events in A at a desk (sc-30304)', () => {
         .getAttribute('href'),
     ).toBe('/demo/people');
   });
+
+  it('says Off or On beside Just for you’s switch', SLOW, async () => {
+    open('/demo/events/evt-wed-4');
+    const mute = await screen.findByRole('switch', { name: 'Mute this event' }, WAIT);
+
+    expect(mute.getAttribute('aria-checked')).toBe('false');
+    expect(mute.textContent).toBe('Off');
+
+    fireEvent.click(mute);
+
+    expect(mute.getAttribute('aria-checked')).toBe('true');
+    expect(mute.textContent).toBe('On');
+  });
 });
 
 describe('the guest counts on Events (sc-23284)', () => {

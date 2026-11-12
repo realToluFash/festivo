@@ -401,6 +401,7 @@ function Details({
 
   // Only a self-registered account in no organisation is offered one at its domain (sc-561).
   const [offered, setOffered] = useState<JoinOffers | null>(null);
+  const [offersRead, setOffersRead] = useState(!account.needsOrganisation);
   const [own, setOwn] = useState(false);
   const [askedInstead, setAskedInstead] = useState<object | undefined>(undefined);
   const [unavailable, setUnavailable] = useState<object | null>(null);
@@ -414,10 +415,14 @@ function Details({
     let live = true;
     api.joinOffers().then(
       (found) => {
-        if (live) setOffered(found);
+        if (!live) return;
+        setOffered(found);
+        setOffersRead(true);
       },
       // Without the offers the organisation fields show, as they would with none.
-      () => undefined,
+      () => {
+        if (live) setOffersRead(true);
+      },
     );
 
     return () => {
@@ -576,6 +581,9 @@ function Details({
       </>
     );
   } else if (invited || showOffers) foot = undefined;
+
+  // Organisation name focuses as it mounts, so a step that turns out to list invitations must not mount it first: Android's keys stay bound to it once gone, and swallow Tab (sc-41296).
+  if (!loaded.read || !offersRead) return null;
 
   return (
     <StepScreen nav={nav} foot={foot}>

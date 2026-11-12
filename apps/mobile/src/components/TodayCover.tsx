@@ -882,14 +882,14 @@ export function WhiteCapsule<T extends string>({
   tabs,
   onTab,
   at,
-  say = (tab) => tab,
+  say,
   ids,
   labelSize,
 }: {
   tabs: readonly (readonly [T, GlyphName])[];
   onTab: (tab: T) => void;
   at: T;
-  say?: (tab: T, glyph: GlyphName) => string;
+  say: (tab: T, glyph: GlyphName) => string;
   ids?: Partial<Record<T, string>>;
   /** The one size its labels are drawn at, where the row it sits in chooses it (sc-40401). */
   labelSize?: number | undefined;
