@@ -399,6 +399,7 @@ export function listStart(state: ListState | null): {
 }
 
 export const EVENT_STATES = [
+  'loading',
   'draft',
   'draftPast',
   'live',

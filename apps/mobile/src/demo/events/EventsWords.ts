@@ -6,6 +6,7 @@ import type { AreaKey } from './EventsSample.ts';
 export const W = {
   events: 'Events',
   loading: 'Loading events…',
+  loadingEvent: 'Loading the event…',
   newEvent: 'New event',
   search: 'Search events',
   clearSearch: 'Clear search',

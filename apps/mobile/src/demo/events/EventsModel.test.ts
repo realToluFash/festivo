@@ -409,6 +409,8 @@ describe('the states', () => {
     expect(editOf(eventStateOf('lastHost'))).toBe('hosts');
     expect(editOf(eventStateOf('pause'))).toBeNull();
     expect(editOf(eventStateOf('saved'))).toBeNull();
+    expect(eventStateOf('loading')).toBe('loading');
+    expect(editOf(eventStateOf('loading'))).toBeNull();
   });
 });
 
