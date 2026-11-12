@@ -32,7 +32,6 @@ use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 
-/** An event's guest list and adding to it (sc-1468). */
 final class GuestsTest extends ApiTestCase
 {
     use OnboardsAccounts;

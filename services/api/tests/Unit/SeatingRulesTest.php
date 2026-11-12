@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\Domain\Seating\SectionColourPicker;
-use App\Locale\NameNormaliser;
 use App\Enum\MeasurementSystem;
 use App\Enum\SectionColour;
+use App\Locale\NameNormaliser;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

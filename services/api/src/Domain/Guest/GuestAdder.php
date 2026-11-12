@@ -20,11 +20,7 @@ use App\Repository\GuestRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 
-/**
- * Adds a guest and their companions to an event's list (sc-1468), under a lock on the event so two adds of one name
- * queue and the second hears it is already there. The audit entries hold who and when only: no name or contact
- * outlives the purge or an erasure (GDPR Art. 5(1)(e)).
- */
+/** Locks the event so two adds of one name queue (sc-1468). The audit holds who and when only: no name outlives the purge. */
 final readonly class GuestAdder
 {
     public const string ADDED = 'guest.added';

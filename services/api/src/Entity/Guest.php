@@ -10,10 +10,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Somebody on an event's guest list (sc-1468). A companion is a guest of their own with a `host`,
- * no contact details, no reply and no link: whether they come follows their host's reply.
- */
+/** On an event's list (sc-1468). A companion has a `host` and no contact, reply or link: they come as their host replies. */
 #[ORM\Entity]
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'guests')]

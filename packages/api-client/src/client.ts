@@ -2036,10 +2036,7 @@ export class ApiClient {
     return list;
   }
 
-  /**
-   * Refused `validation_failed` on `fullName`, `email`, `mobile` or `companions[i].fullName`,
-   * and 409 `guest_already_listed` when the name is on the list and `allowDuplicate` is not set.
-   */
+  /** Refused `validation_failed` on each field, and 409 `guest_already_listed` until `allowDuplicate`. */
   async addGuest(eventId: string, guest: NewGuest): Promise<Guest> {
     const body = await this.post<{ guest?: unknown }>(this.guestsPath(eventId), guest);
     const added = asGuest(body?.guest);

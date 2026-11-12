@@ -45,10 +45,7 @@ final readonly class GuestsController
         return new JsonResponse($this->guestSerialiser->list($this->event($eventId)));
     }
 
-    /**
-     * Refused `validation_failed` on `fullName`, `email`, `mobile`, `countryCode`, `companions` or `companions[i].fullName`,
-     * and 409 `guest_already_listed` when the name is on the list already and `allowDuplicate` is not true.
-     */
+    /** Refused `validation_failed` on each field at once, and 409 `guest_already_listed` until `allowDuplicate`. */
     #[Route('/api/events/{eventId}/guests', name: 'guests_add', methods: ['POST'])]
     #[InEvent(Permission::GuestsManage)]
     public function add(Request $request, string $eventId): JsonResponse
