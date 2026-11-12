@@ -44,7 +44,7 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.getByText('96 coming of 142 invited')).toBeDefined();
     expect(
       screen.getByText(
-        '25 haven’t replied (21 guests and 4 of their companions). Replies close tomorrow, Wed, Nov 4.',
+        '25 haven’t replied (21 guests and 4 companions). Replies close tomorrow, Wed, Nov 4.',
       ),
     ).toBeDefined();
     expect(screen.getByRole('searchbox', { name: 'Find a guest' })).toBeDefined();
@@ -53,9 +53,9 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'No reply · 21' })).toBeDefined();
     expect(screen.getByText('Pick a guest to see their details, or add one.')).toBeDefined();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show all 96 coming' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 96' }));
 
-    expect(screen.queryByRole('button', { name: 'Show all 96 coming' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Show all 96' })).toBeNull();
     expect(screen.getByRole('link', { name: /^Temitope Oyelaran, Coming/u })).toBeDefined();
   });
 
@@ -207,6 +207,78 @@ describe('Guests, the list (sc-31781)', () => {
     expect(
       screen.getByRole('link', { name: 'Kofi Asante, Walk-in · Arrived 18:20' }),
     ).toBeDefined();
+  });
+});
+
+describe('Guests, the card’s words and the view in the address (sc-3772)', () => {
+  it.each([
+    ['everyoneReplied', 'Everyone has replied. Replies close tomorrow, Wed, Nov 4.'],
+    ['noCompanionsWaiting', '21 haven’t replied. Replies close tomorrow, Wed, Nov 4.'],
+    ['closesToday', '25 haven’t replied (21 guests and 4 companions). Replies close today.'],
+    [
+      'closesLater',
+      '25 haven’t replied (21 guests and 4 companions). Replies close on Wed, Nov 4.',
+    ],
+    [
+      'repliesClosedLive',
+      '25 haven’t replied (21 guests and 4 companions). Replies closed on Wed, Nov 4.',
+    ],
+  ])('draws %s on the card', SLOW, async (state, line) => {
+    await guests(state);
+
+    expect(screen.getByText(line)).toBeDefined();
+  });
+
+  it('keeps the menu’s choice in the address, and Back undoes it', SLOW, async () => {
+    const router = await guests('inUse');
+
+    fireEvent.click(screen.getByRole('button', { name: 'All · 156' }));
+    fireEvent.click(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Held/u }),
+    );
+
+    expect(router.state.location.search).toBe('?state=inUse&filter=held');
+    expect(screen.getByText('6 of 156 shown')).toBeDefined();
+
+    await act(() => router.navigate(-1));
+
+    expect(screen.getByRole('button', { name: 'All · 156' })).toBeDefined();
+    expect(screen.queryByText('6 of 156 shown')).toBeNull();
+  });
+
+  it('writes the search once typing settles, and Back takes it out', SLOW, async () => {
+    const router = await guests('inUse');
+    const box = screen.getByRole<HTMLInputElement>('searchbox', { name: 'Find a guest' });
+
+    fireEvent.change(box, { target: { value: 'okon' } });
+
+    expect(screen.getByText('2 of 156 shown')).toBeDefined();
+    await waitFor(() => expect(router.state.location.search).toBe('?state=inUse&q=okon'), WAIT);
+
+    await act(() => router.navigate(-1));
+
+    await waitFor(() => expect(box.value).toBe(''), WAIT);
+    expect(screen.queryByText('2 of 156 shown')).toBeNull();
+  });
+
+  it('opens a shared link on its search, a number in its national form', SLOW, async () => {
+    open('/demo/guests?q=0803%20412');
+    await screen.findByRole('heading', { level: 1, name: 'Guests' }, WAIT);
+
+    expect(screen.getByRole<HTMLInputElement>('searchbox', { name: 'Find a guest' }).value).toBe(
+      '0803 412',
+    );
+    expect(screen.getByText('1 of 156 shown')).toBeDefined();
+    expect(screen.getByRole('link', { name: /^Alhaji Musa Bello, Coming/u })).toBeDefined();
+  });
+
+  it('clears the choice and the search together, in one step', SLOW, async () => {
+    const router = await guests('filterNone');
+
+    fireEvent.click(within(main()).getAllByRole('button', { name: 'Clear' })[0] as HTMLElement);
+
+    expect(router.state.location.search).toBe('?state=filterNone&filter=all&q=');
+    expect(screen.getByRole('button', { name: 'All · 156' })).toBeDefined();
   });
 });
 
