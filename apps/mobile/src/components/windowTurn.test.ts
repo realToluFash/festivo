@@ -63,6 +63,12 @@ describe('a sheet whose heading takes focus as it opens (sc-11032)', () => {
     expect(sheet).toContain("importantForAccessibility={unnamed ? 'no-hide-descendants' : 'auto'}");
   });
 
+  it('names its Android window by a text TalkBack speaks as nothing, as a task screen does (#41817)', () => {
+    expect(sheet).toMatch(
+      /onDismiss=\{gone\}\s*>\s*\{Platform\.OS === 'android' && headingTakesFocus && <SilentWindowName \/>\}/,
+    );
+  });
+
   it('counts the hidden time from when Android has put the window up, not from the render', () => {
     expect(sheet).toContain('onShow={() => setOnScreen(true)}');
     expect(sheet).toContain('if (!hides || !onScreen || !waiting) return;');
@@ -98,8 +104,14 @@ describe('a focused screen whose title takes focus with each new step (sc-11032)
     expect(screen).toMatch(
       /onShow=\{\(\) => setOnScreen\(true\)\}\s*>\s*\{Platform\.OS === 'android' && <SilentWindowName \/>\}/,
     );
-    expect(screen).toContain("const SILENT = '\\u200b';");
-    expect(screen).toMatch(/windowName: \{ position: 'absolute', top: -1,/);
+  });
+
+  it('takes that silent name from the sheet, above every other text in the window', () => {
+    const sheet = readFileSync(join(import.meta.dirname, 'Sheet.tsx'), 'utf8');
+
+    expect(screen).toMatch(/import \{ SilentWindowName,[^}]*\} from '\.\/Sheet\.tsx';/);
+    expect(sheet).toContain("const SILENT = '\\u200b';");
+    expect(sheet).toMatch(/windowName: \{ position: 'absolute', top: -1,/);
   });
 
   it('moves focus the way an answer does, through useFocusOnAnswer', () => {
