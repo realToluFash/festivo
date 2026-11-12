@@ -94,6 +94,14 @@ describe('a focused screen whose title takes focus with each new step (sc-11032)
     expect(screen).toMatch(/animationType=\{reduced \? 'none' : slides \? 'slide' : 'fade'\}/);
   });
 
+  it('gives TalkBack an Android window name it speaks as nothing, above every other text in the window (#41817)', () => {
+    expect(screen).toMatch(
+      /onShow=\{\(\) => setOnScreen\(true\)\}\s*>\s*\{Platform\.OS === 'android' && <SilentWindowName \/>\}/,
+    );
+    expect(screen).toContain("const SILENT = '\\u200b';");
+    expect(screen).toMatch(/windowName: \{ position: 'absolute', top: -1,/);
+  });
+
   it('moves focus the way an answer does, through useFocusOnAnswer', () => {
     expect(screen).toMatch(/useFocusOnAnswer\(step, target[,)]/);
   });

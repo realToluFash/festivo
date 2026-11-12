@@ -209,6 +209,7 @@ export function FocusedScreen({
       waitsAway
       onShow={() => setOnScreen(true)}
     >
+      {Platform.OS === 'android' && <SilentWindowName />}
       {/* Whatever the keys take from the bottom stays the screen's white, or the dimmed page on an iPad. */}
       <KeyboardAvoidingView
         style={[styles.fill, phone ? styles.screen : styles.dimmed]}
@@ -267,6 +268,25 @@ export function FocusedScreen({
         </View>
       </KeyboardAvoidingView>
     </Window>
+  );
+}
+
+// U+200B: a name TalkBack speaks as nothing.
+const SILENT = '\u200b';
+
+/** Android names a window by the first text it holds, hidden or not, and TalkBack said that name ("Cancel", "Turn") on its own before focus reached the title (sc-11032). */
+function SilentWindowName() {
+  return (
+    <View
+      style={styles.windowName}
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <Text accessible={false} importantForAccessibility="no">
+        {SILENT}
+      </Text>
+    </View>
   );
 }
 
@@ -595,6 +615,8 @@ function MenuRow<T extends string>({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  // Above everything else in the window, so Android, which orders a window's texts top to bottom, takes it first.
+  windowName: { position: 'absolute', top: -1, left: 0, width: 1, height: 1, opacity: 0 },
   grow: { flex: 1, minWidth: 0 },
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
