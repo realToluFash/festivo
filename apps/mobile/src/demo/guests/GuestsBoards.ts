@@ -61,6 +61,11 @@ const GUESTS: Record<GuestsState, Board> = {
   whatsAppOptedOut: ['WhatsApp, opted out', 'Sophie Laurent: Unsubscribed from WhatsApp on Nov 1'],
   whatsAppNoMobile: ['WhatsApp, no mobile number', 'Inês Duarte: no WhatsApp row'],
   whatsAppViewer: ['WhatsApp, Can view', 'Kwame Mensah: no contact details, no WhatsApp row'],
+  askAgain: [
+    'Not sure yet, asked again',
+    'sc-1363: Lucía Ortega will be asked again Nov 1, Folasade asked again Oct 23',
+  ],
+  askAgainWont: ['Not sure yet, not asked again', 'sc-1363: Lucía Ortega won’t be asked again'],
   edit: ['Edit guest', 'sc-1468’s fields filled in, the keys up'],
   editErrors: ['Edit refused', 'A blank name and an email, under each field'],
   editDuplicate: ['Edit, a name on the list', 'Save anyway or Change the name'],
