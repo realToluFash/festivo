@@ -51,6 +51,35 @@ class States(unittest.TestCase):
         ])
 
 
+class History(unittest.TestCase):
+    def test_each_move_names_who_made_it_and_what_brought_it(self):
+        entries = [
+            {"changed_at": "2026-11-12T12:36:00Z", "member_id": "m-1",
+             "actions": [{"changes": {"workflow_state_id": {"old": 1, "new": 2}}}]},
+            {"changed_at": "2026-11-12T13:44:00Z", "actor_name": "GitHub",
+             "references": [{"entity_type": "pull-request", "id": 9, "number": 2000}],
+             "actions": [{"changes": {"workflow_state_id": {"old": 1, "new": 2}}},
+                         {"entity_type": "pull-request", "id": 9, "number": 2000}]},
+            {"changed_at": "2026-11-12T13:52:00Z", "automation_id": "a-1",
+             "actions": [{"changes": {"workflow_state_id": {"old": 2, "new": 1}}}]},
+            {"changed_at": "2026-11-12T14:00:00Z",
+             "actions": [{"changes": {"workflow_state_id": {"old": 2, "new": 1}}}]},
+        ]
+        out = io.StringIO()
+        with redirect_stdout(out), \
+                mock.patch("soirely_queue.cli.Shortcut") as shortcut, \
+                mock.patch("soirely_queue.store.get_meta",
+                           return_value={"1": "Needs Design", "2": "Ready For Dev"}):
+            shortcut.return_value.history.return_value = entries
+            cli.cmd_history(mock.Mock(), mock.Mock(story="sc-4026", limit=10))
+        self.assertEqual(out.getvalue().splitlines(), [
+            "2026-11-12 12:36 Needs Design → Ready For Dev · by m-1",
+            "2026-11-12 13:44 Needs Design → Ready For Dev · by GitHub · PR #2000",
+            "2026-11-12 13:52 Ready For Dev → Needs Design · by an automation",
+            "2026-11-12 14:00 Ready For Dev → Needs Design",
+        ])
+
+
 class HelpTopic(unittest.TestCase):
     def test_help_names_one_command(self):
         out = io.StringIO()
