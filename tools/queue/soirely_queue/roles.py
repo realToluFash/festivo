@@ -201,9 +201,11 @@ def needs_xcode(story):
 
 def can_take(role, story, has_ios):
     """A tester on a machine with no iOS simulator never takes a story that needs one, and a
-    developer there never takes one whose build needs Xcode. `has_ios` asks the machine, and
-    is called only for such a story."""
-    held = needs_ios(story) if role in TESTERS else role in DEVS and needs_xcode(story)
+    developer there never picks up one whose build needs Xcode from Ready For Dev; a story
+    already claimed stays with whoever holds it. `has_ios` asks the machine, and is called
+    only for such a story."""
+    held = (needs_ios(story) if role in TESTERS
+            else role in DEVS and story.get("state") == "Ready For Dev" and needs_xcode(story))
     return not held or has_ios()
 
 

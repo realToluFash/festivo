@@ -439,6 +439,11 @@ class Queue(unittest.TestCase):
         items = work.queue_items([ready], ios=True)
         self.assertEqual([i["roles"] for i in items], [["dev", "dev2", "dev3", "dev4"]])
 
+    def test_needs_xcode_leaves_a_claimed_story_with_its_developer(self):
+        failed = story(state="Failed QA", labels=["dev2", "needs xcode"])
+        items = work.queue_items([failed], ios=False)
+        self.assertEqual([i["roles"] for i in items], [["dev2"]])
+
     def test_needs_xcode_holds_back_no_tester(self):
         ready = story(state="Ready For QA", labels=["needs xcode"])
         items = work.queue_items([ready], ios=False)
