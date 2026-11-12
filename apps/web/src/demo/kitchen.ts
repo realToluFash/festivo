@@ -4,6 +4,7 @@ import {
   markedMilestones,
   milestoneDistance,
   nextUp,
+  notThisYear,
 } from '@soirely/domain';
 
 import { milestonesOf } from './calendar.ts';
@@ -564,8 +565,8 @@ export function distanceOf(at: string, timeZone: string, now: Date): string {
   }
 }
 
-export function momentOf(at: string, timeZone: string): string {
-  return formatEventMoment(at, timeZone, LOCALE);
+export function momentOf(at: string, timeZone: string, now: Date): string {
+  return formatEventMoment(at, timeZone, LOCALE, notThisYear(timeZone, now, at));
 }
 
 export interface CardMilestone {
@@ -584,7 +585,7 @@ export function cardMilestone(event: SampleEvent, now: Date): CardMilestone | nu
 
   return {
     title: filled(KW.nextUp, { title: next.title }),
-    line: `${momentOf(next.at, event.timeZone)} · ${distanceOf(next.at, event.timeZone, now)}`,
+    line: `${momentOf(next.at, event.timeZone, now)} · ${distanceOf(next.at, event.timeZone, now)}`,
     overdue: Date.parse(next.at) < now.getTime(),
     label: next.action?.label ?? null,
     link: next.action?.link ?? null,
@@ -688,7 +689,7 @@ export function sheetLine(event: SampleEvent, now: Date, allergic = ALLERGIC.len
   return filled(KW.sheetLine, {
     allergic,
     courses: COURSES.length,
-    at: momentOf(now.toISOString(), event.timeZone),
+    at: momentOf(now.toISOString(), event.timeZone, now),
   });
 }
 

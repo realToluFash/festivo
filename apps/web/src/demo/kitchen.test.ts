@@ -14,6 +14,7 @@ import {
   keepKitchen,
   kitchenMilestone,
   madeCopy,
+  momentOf,
   newestFirst,
   picksLine,
   resetKitchen,
@@ -90,6 +91,14 @@ describe('the copies', () => {
       ['Gluten', 1],
       ['Sesame', 1],
     ]);
+  });
+});
+
+describe('a row’s moment on All dates and Next up (sc-30413, 12 Nov)', () => {
+  it('names its year only when it isn’t this year in the event’s zone', () => {
+    expect(momentOf('2026-12-31T17:00:00Z', 'Europe/London', now)).not.toMatch(/2026/);
+    expect(momentOf('2027-01-09T14:00:00Z', 'Europe/London', now)).toMatch(/2027.*14:00/);
+    expect(momentOf('2025-06-14T11:00:00Z', 'Europe/London', now)).toMatch(/2025.*12:00/);
   });
 });
 

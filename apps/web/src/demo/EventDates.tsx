@@ -46,7 +46,9 @@ export function AllDates({ event, now }: { event: SampleEvent; now: Date }) {
                 lines={[
                   <span key="when">
                     {OWNER[milestone.owner].word} ·{' '}
-                    <time dateTime={milestone.at}>{momentOf(milestone.at, event.timeZone)}</time>
+                    <time dateTime={milestone.at}>
+                      {momentOf(milestone.at, event.timeZone, now)}
+                    </time>
                   </span>,
                   ...(milestone.note == null ? [] : [milestone.note]),
                 ]}
