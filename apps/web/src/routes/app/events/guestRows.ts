@@ -7,7 +7,7 @@ import {
   type NewGuest,
   type Violation,
 } from '@soirely/api-client';
-import { compareGuestNames, emailProblem, phoneLengthProblem } from '@soirely/domain';
+import { compareGuestNames, emailProblem, nameKey, phoneLengthProblem } from '@soirely/domain';
 
 export type ReplyWord = Guest['reply'] | Companion['state'];
 
@@ -42,20 +42,11 @@ export function blank(name: string | null): boolean {
   return name == null || name.trim() === '';
 }
 
-function folded(text: string): string {
-  return text
-    .normalize('NFD')
-    .replaceAll(/\p{M}/gu, '')
-    .replaceAll(/\s+/gu, ' ')
-    .trim()
-    .toLowerCase();
-}
-
 /** The same words ignoring case and accents: "José Ávila" is "jose avila". */
 export function listedAs(guests: readonly Guest[], name: string): Guest | null {
-  const wanted = folded(name);
+  const wanted = nameKey(name);
 
-  return guests.find((one) => folded(one.fullName) === wanted) ?? null;
+  return guests.find((one) => nameKey(one.fullName) === wanted) ?? null;
 }
 
 /** In code points, as the API counts them. */
