@@ -59,7 +59,6 @@ import {
   openRequests,
   owedLine,
   ownerLine,
-  people,
   pressSort,
   requestsInOrder,
   roomSeed,
@@ -361,10 +360,7 @@ function SectionCard({ sec, r }: { sec: Section; r: Room }) {
         )}
       </View>
       <View style={[shared.grow, styles.tight]}>
-        <Text
-          size={15}
-          weight="bold"
-        >{`${sectionName(sec.id)} · ${people(sec.people.length)}`}</Text>
+        <Text size={15} weight="bold">{`${sectionName(sec.id)} · ${onItLine(sec)}`}</Text>
         <Text size={13} style={shared.secondary}>
           {tablesWord(sectionTables(r.tables, sec.id).length)}
         </Text>

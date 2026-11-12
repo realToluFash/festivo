@@ -8,7 +8,9 @@ import {
   decline,
   done,
   flaggedSeats,
+  SECTIONS,
   goToTable,
+  onItLine,
   offered,
   openDecline,
   pressSort,
@@ -32,6 +34,12 @@ const t = (n: number) => {
 };
 
 describe('the room (sc-4026)', () => {
+  it('names the people on a section, or says nobody is on it', () => {
+    const line = (id: string) => onItLine(SECTIONS.find((s) => s.id === id) ?? { id, people: [] });
+    expect(line('B')).toBe('Funmi Bakare, Grace Udo');
+    expect(line('C')).toBe('Nobody on it');
+  });
+
   it('gives each table the first word that applies', () => {
     expect(stateWord(t(9))).toBe('Behind · 22 min');
     expect(stateWord(t(2))).toBe('On a tray');

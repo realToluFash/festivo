@@ -31,6 +31,7 @@ describe('/demo/service-room (sc-4026)', () => {
     expect(button(NINE)).toBeTruthy();
     expect(screen.queryByText(/\blate\b/i)).toBeNull();
     expect(screen.getByText('Section C · Nobody on it')).toBeTruthy();
+    expect(screen.getByText('Section B · Funmi Bakare, Grace Udo')).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Alerts' })).toBeTruthy();
   });
 
@@ -55,6 +56,18 @@ describe('/demo/service-room (sc-4026)', () => {
       within(p).getAllByText('Could the blind behind them come down a little?')[0],
     ).toBeTruthy();
     expect(document.activeElement?.id).toBe('sr-panel-title');
+  });
+
+  it('closes the panel on Escape and puts focus back on the table', async () => {
+    await open('populated');
+    const alerts = screen.getByRole('region', { name: 'Alerts' });
+    fireEvent.click(
+      within(alerts).getAllByRole('button', { name: 'Go to table' })[0] as HTMLElement,
+    );
+    const title = within(panel()).getByRole('heading', { level: 2 }).textContent ?? '';
+    fireEvent.keyDown(panel(), { key: 'Escape' });
+    expect(screen.queryByRole('complementary', { name: /^Table/ })).toBeNull();
+    expect(document.activeElement?.getAttribute('data-table')).toBe(title.replace('Table ', ''));
   });
 
   it('sorts the list by Wait, then reverses it, with aria-sort', async () => {
@@ -86,6 +99,9 @@ describe('/demo/service-room (sc-4026)', () => {
       .getByText('A high chair for seat 6, please.')
       .closest('li') as HTMLElement;
     fireEvent.click(within(card).getByRole('button', { name: 'Decline' }));
+    expect(within(card).getByLabelText('Why it can’t be done').getAttribute('maxlength')).toBe(
+      '200',
+    );
     fireEvent.click(within(card).getByRole('button', { name: 'Decline request' }));
     expect(within(card).getByText('Say why it can’t be done')).toBeTruthy();
     expect(document.activeElement?.getAttribute('aria-invalid')).toBe('true');

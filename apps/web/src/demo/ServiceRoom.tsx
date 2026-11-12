@@ -50,9 +50,9 @@ import {
   openDecline,
   openPanel,
   openRequests,
+  REASON_MAX,
   owedLine,
   ownerLine,
-  people,
   pressSort,
   requestsInOrder,
   roomSeed,
@@ -342,7 +342,7 @@ function SectionCard({ sec, r }: { sec: Section; r: Room }) {
       </span>
       <div className="sr-section-words">
         <strong>
-          {sectionName(sec.id)} · {people(sec.people.length)}
+          {sectionName(sec.id)} · {onItLine(sec)}
         </strong>
         <span className="hig-meta">{tablesWord(n)}</span>
         {sectionBehind(r.tables, sec.id) && (
@@ -595,9 +595,22 @@ function Panel({
   const open = requestsInOrder(r, t);
   const closed = closedRequests(t);
   const sec = SECTIONS.find((s) => s.id === t.section);
+  const aside = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const box = aside.current;
+    const press = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      act(closePanel(r), `[data-table="${t.n}"]`);
+    };
+    box?.addEventListener('keydown', press);
+
+    return () => box?.removeEventListener('keydown', press);
+  }, [act, r, t.n]);
 
   return (
-    <aside className="hig-card sr-side sr-panel" aria-labelledby="sr-panel-title">
+    <aside ref={aside} className="hig-card sr-side sr-panel" aria-labelledby="sr-panel-title">
       <div className="sr-panel-head">
         <div className="sr-panel-words">
           <h2 id="sr-panel-title" className="hig-card-title" tabIndex={-1}>
@@ -783,6 +796,7 @@ function RequestCard({
               id={`sr-reason-${q.id}`}
               className={r.reasonWrong ? 'input sr-reason input-wrong' : 'input sr-reason'}
               value={r.reason}
+              maxLength={REASON_MAX}
               aria-invalid={r.reasonWrong || undefined}
               aria-describedby={r.reasonWrong ? `sr-reason-${q.id}-error` : undefined}
               onChange={(e) => act({ ...r, reason: e.target.value })}

@@ -120,11 +120,6 @@ export function sectionName(id: string): string {
   return `Section ${id}`;
 }
 
-export function people(n: number): string {
-  if (n === 0) return 'Nobody on it';
-  return n === 1 ? '1 person' : `${n} people`;
-}
-
 export function onItLine(sec: Section): string {
   return sec.people.length === 0 ? 'Nobody on it' : sec.people.join(', ');
 }
