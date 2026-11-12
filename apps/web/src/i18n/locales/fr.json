@@ -2034,7 +2034,7 @@
     "password": "Votre mot de passe",
     "passwordBlank": "Saisissez votre mot de passe.",
     "passwordWrong": "Ce n’est pas votre mot de passe. Rien n’a été modifié. Réessayez, ou réinitialisez-le par e-mail.",
-    "passwordWhy": "Pour qu’une personne qui prendrait cet appareil ne puisse pas céder {{organisation}}.",
+    "passwordWhy": "Pour qu’une personne qui prendrait cet appareil ne puisse pas transférer {{organisation}}.",
     "code": "Code de votre application d’authentification, ou code de récupération",
     "codeBlank": "Saisissez le code de votre application d’authentification, ou un code de récupération.",
     "bothEmailed": "Un e-mail vous le confirmera, à vous et à {{name}}.",

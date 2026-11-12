@@ -3,7 +3,8 @@
 @import url('./desk.css');
 
 .today,
-.today-page {
+.today-page,
+.today-side-events {
   /* The board's sizes that have no token yet. */
   --todayBanner: 112px;
   --todayDue: 160px;
@@ -39,12 +40,12 @@
   cursor: pointer;
 }
 
-:where(.today, .today-page) :is(h1, h2, h3, p, ul, ol) {
+:where(.today, .today-page, .today-side-events) :is(h1, h2, h3, p, ul, ol) {
   margin: 0;
   padding: 0;
 }
 
-:where(.today, .today-page) :is(ul, ol) {
+:where(.today, .today-page, .today-side-events) :is(ul, ol) {
   list-style: none;
 }
 
@@ -1093,9 +1094,6 @@
 }
 
 .today-event-when {
-  display: flex;
-  flex-wrap: wrap;
-  column-gap: 0.25em;
   margin-top: var(--spaceHair);
   color: var(--colorInkSecondary);
   font: var(--todaySmall);
@@ -1106,20 +1104,19 @@
 }
 
 .today-event-dates,
-.today-event-date {
+.today-event-date,
+.today-event-piece {
+  display: inline-block;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  vertical-align: top;
 }
 
 .today-event-dates.is-range {
+  display: inline;
   white-space: normal;
-}
-
-.today-event-date {
-  display: inline-block;
-  vertical-align: top;
 }
 
 .today-chips {

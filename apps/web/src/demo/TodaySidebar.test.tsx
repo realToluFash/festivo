@@ -55,6 +55,7 @@ describe('the sidebar’s Your events (sc-39290)', () => {
     expect(SIDEBAR_CSS).toMatch(
       /\.today-side-events:has\(> \.today-places > li:nth-child\(4\)\) \{[^}]*min-height: calc\(var\(--spaceXs\) \* 2 \+ 12px \* 1\.2 \+ var\(--sizeHit\) \* 4 \+ var\(--spaceHair\) \* 3\);/u,
     );
+    expect(SIDEBAR_CSS).toMatch(/\.today-side-events > \.today-caps \{\s*margin: 0;\s*\}/u);
   });
 
   it('leaves a list of three or fewer whole, reserving nothing for rows it does not have', () => {

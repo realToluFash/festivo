@@ -5,6 +5,7 @@ import { tokens } from '../theme/tokens.ts';
 import type { FieldAction } from './Field.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { useFocusOnAnswer } from './Screen.tsx';
+import { controlTaken } from './focusedField.ts';
 import { Text } from './Text.tsx';
 import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { useMarkSide } from './markSide.ts';
@@ -172,6 +173,7 @@ export function Notice({
           <Pressable
             style={styles.action}
             onPress={action.onPress}
+            onFocus={controlTaken}
             accessibilityRole="link"
             testID={action.testID}
           >

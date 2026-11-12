@@ -1,5 +1,12 @@
 import { type ReactNode, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  type ViewInstance,
+  useWindowDimensions,
+} from 'react-native';
 import Svg, { Circle, Rect } from 'react-native-svg';
 
 import { Glyph } from '../../components/Glyph.tsx';
@@ -7,6 +14,8 @@ import { ReadOut } from '../../components/ReadOut.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { Ask, CardSays, OnCard, SummaryCard } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
+import { Title } from '../../components/Title.tsx';
+import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { CardBackdrop } from '../../components/EventCard.tsx';
@@ -15,12 +24,13 @@ import type { Shown as EventShown } from '../events/EventsModel.ts';
 import type { AreaKey } from '../events/EventsSample.ts';
 import { Bell } from '../settings/Frame.tsx';
 import type { Action } from './SeatingActs.ts';
-import { fit, free, pct } from './SeatingGeometry.ts';
+import { PAD_FRAME, PAD_UNDER_TOOLS, fit, free, pct } from './SeatingGeometry.ts';
 import {
   type Seating,
   editable,
   isTable,
   itemOf,
+  length,
   partyOf,
   partySize,
   partyWho,
@@ -28,6 +38,7 @@ import {
   sectionOf,
   shapeChoice,
   placedCount,
+  roomLine,
   whatGoes,
   SHAPE_CHOICES,
 } from './SeatingModel.ts';
@@ -127,7 +138,7 @@ function RoundTool({
 }
 
 function Skeleton({ m }: { m: Seating }) {
-  const v = m.size == null ? null : fit(m.size.w, m.size.h, m.room);
+  const v = m.size == null ? null : fit(m.size.w, m.size.h, m.room, m.size.pad);
   if (v == null || m.size == null) return null;
   return (
     <Svg
@@ -156,13 +167,13 @@ function Skeleton({ m }: { m: Seating }) {
   );
 }
 
-function Pop({ m, go }: { m: Seating; go: Go }) {
+function Pop({ m, go, out }: { m: Seating; go: Go; out: boolean }) {
   const pop = m.pop;
   const v = m.shown;
   if (pop == null || v == null || m.size == null) return null;
   if (pop.kind === 'addMenu')
     return (
-      <View style={[styles.menu, styles.addMenu]}>
+      <View style={[styles.menu, styles.addMenu, out && styles.addMenuOut]}>
         {ADD.map(([kind, words]) => (
           <Pressable
             key={kind}
@@ -301,6 +312,140 @@ function Pop({ m, go }: { m: Seating; go: Go }) {
   );
 }
 
+function ViewSwitch({ m, go }: { m: Seating; go: Go }) {
+  return (
+    <Segments
+      items={VIEWS}
+      on={m.view}
+      onPick={(view) => (m.load === 'ready' ? go({ type: 'setView', view }) : undefined)}
+      height={48}
+      glyphs={VIEW_GLYPHS}
+      testID="seating.view"
+    />
+  );
+}
+
+function PrintButton({ go }: { go: Go }) {
+  return (
+    <Pressable
+      onPress={() => go({ type: 'sheet', sheet: { kind: 'print' } })}
+      style={({ pressed }) => [styles.print, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={W.print}
+      testID="seating.print.open"
+    >
+      <SeatIcon name="print" size={17} ink={tokens.colorInk} />
+      <Text size={14} weight="semibold" accessible={false}>
+        {W.print}
+      </Text>
+    </Pressable>
+  );
+}
+
+function Bars({ m, go }: { m: Seating; go: Go }) {
+  if (m.bar == null) return null;
+  return (
+    <MessageBar
+      bar={m.bar}
+      onUndo={() => go({ type: 'undo' })}
+      onCancel={() => go({ type: 'cancelPick' })}
+      onCentre={() => go({ type: 'placeCentre' })}
+      onStop={() => go({ type: 'stopPlacing' })}
+      testID="seating.bar"
+    />
+  );
+}
+
+function AddTools({ m, go }: { m: Seating; go: Go }) {
+  const ink = editable(m) ? tokens.colorInk : tokens.colorInkTertiary;
+  return (
+    <>
+      {m.placing != null && (
+        <Pressable
+          onPress={() => go({ type: 'another' })}
+          style={[styles.pill, styles.another]}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: m.placeAnother }}
+          accessibilityLabel={W.placeAnother}
+          testID="seating.another"
+        >
+          <View style={[styles.check, m.placeAnother && styles.checkOn]}>
+            {m.placeAnother && (
+              <Glyph name="tick" size={14} ink={tokens.colorInkOnDark} weight={3} />
+            )}
+          </View>
+          <Text size={14} weight="semibold" accessible={false}>
+            {W.placeAnother}
+          </Text>
+        </Pressable>
+      )}
+      <View style={[styles.pill, styles.pillWraps]}>
+        <Tool
+          label={W.addTable}
+          on={m.pop?.kind === 'addMenu' || m.placing != null}
+          off={!editable(m)}
+          after
+          onPress={() =>
+            go({ type: 'pop', pop: m.pop?.kind === 'addMenu' ? null : { kind: 'addMenu' } })
+          }
+          testID="seating.addTable"
+        >
+          <SeatIcon name="plus" size={18} ink={ink} weight={2.2} />
+        </Tool>
+        <Tool
+          label={W.addRow}
+          off={!editable(m)}
+          onPress={() => go({ type: 'addRow' })}
+          testID="seating.addRow"
+        >
+          <SeatIcon shape="row" size={18} ink={ink} weight={2.2} />
+        </Tool>
+        <Tool
+          label={W.addSeat}
+          off={!editable(m)}
+          onPress={() => go({ type: 'addSeat' })}
+          testID="seating.addSeat"
+        >
+          <SeatIcon shape="single" size={18} ink={ink} weight={2.2} />
+        </Tool>
+      </View>
+    </>
+  );
+}
+
+function ZoomTools({ go, p }: { go: Go; p: number }) {
+  return (
+    <View style={styles.pill}>
+      <RoundTool
+        label={W.zoomOut}
+        glyph="minus"
+        onPress={() => go({ type: 'zoomStep', up: false })}
+        testID="seating.zoomOut"
+      />
+      <Text
+        size={14}
+        weight="semibold"
+        accessibilityLabel={say.zoom(p)}
+        style={[styles.pct, styles.figures]}
+      >
+        {`${p}%`}
+      </Text>
+      <RoundTool
+        label={W.zoomIn}
+        glyph="plus"
+        onPress={() => go({ type: 'zoomStep', up: true })}
+        testID="seating.zoomIn"
+      />
+      <RoundTool
+        label={W.fitRoom}
+        glyph="fit"
+        onPress={() => go({ type: 'fit' })}
+        testID="seating.fit"
+      />
+    </View>
+  );
+}
+
 /** The room's floating parts: the View switch and Print at its top, the bars under them, Add's bar and the zoom at its foot, the small map from 200%. */
 function RoomOverlays({
   m,
@@ -321,107 +466,19 @@ function RoomOverlays({
         style={styles.topLeft}
         onLayout={(e) => onViews(Math.ceil(e.nativeEvent.layout.x + e.nativeEvent.layout.width))}
       >
-        <Segments
-          items={VIEWS}
-          on={m.view}
-          onPick={(view) => go({ type: 'setView', view })}
-          height={48}
-          glyphs={VIEW_GLYPHS}
-          testID="seating.view"
-        />
+        <ViewSwitch m={m} go={go} />
       </View>
       <View style={styles.topRight} onLayout={(e) => onPrint(Math.floor(e.nativeEvent.layout.x))}>
-        <Pressable
-          onPress={() => go({ type: 'sheet', sheet: { kind: 'print' } })}
-          style={({ pressed }) => [styles.print, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel={W.print}
-          testID="seating.print.open"
-        >
-          <SeatIcon name="print" size={17} ink={tokens.colorInk} />
-          <Text size={14} weight="semibold" accessible={false}>
-            {W.print}
-          </Text>
-        </Pressable>
+        <PrintButton go={go} />
       </View>
       {m.bar != null && (
         <View style={styles.bars}>
-          <MessageBar
-            bar={m.bar}
-            onUndo={() => go({ type: 'undo' })}
-            onCancel={() => go({ type: 'cancelPick' })}
-            onCentre={() => go({ type: 'placeCentre' })}
-            onStop={() => go({ type: 'stopPlacing' })}
-            testID="seating.bar"
-          />
+          <Bars m={m} go={go} />
         </View>
       )}
       {plan && !m.readOnly && (
         <View style={styles.bottomLeft}>
-          {m.placing != null && (
-            <Pressable
-              onPress={() => go({ type: 'another' })}
-              style={[styles.pill, styles.another]}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: m.placeAnother }}
-              accessibilityLabel={W.placeAnother}
-              testID="seating.another"
-            >
-              <View style={[styles.check, m.placeAnother && styles.checkOn]}>
-                {m.placeAnother && (
-                  <Glyph name="tick" size={14} ink={tokens.colorInkOnDark} weight={3} />
-                )}
-              </View>
-              <Text size={14} weight="semibold" accessible={false}>
-                {W.placeAnother}
-              </Text>
-            </Pressable>
-          )}
-          <View style={styles.pill}>
-            <Tool
-              label={W.addTable}
-              on={m.pop?.kind === 'addMenu' || m.placing != null}
-              off={!editable(m)}
-              after
-              onPress={() =>
-                go({ type: 'pop', pop: m.pop?.kind === 'addMenu' ? null : { kind: 'addMenu' } })
-              }
-              testID="seating.addTable"
-            >
-              <SeatIcon
-                name="plus"
-                size={18}
-                ink={editable(m) ? tokens.colorInk : tokens.colorInkTertiary}
-                weight={2.2}
-              />
-            </Tool>
-            <Tool
-              label={W.addRow}
-              off={!editable(m)}
-              onPress={() => go({ type: 'addRow' })}
-              testID="seating.addRow"
-            >
-              <SeatIcon
-                shape="row"
-                size={18}
-                ink={editable(m) ? tokens.colorInk : tokens.colorInkTertiary}
-                weight={2.2}
-              />
-            </Tool>
-            <Tool
-              label={W.addSeat}
-              off={!editable(m)}
-              onPress={() => go({ type: 'addSeat' })}
-              testID="seating.addSeat"
-            >
-              <SeatIcon
-                shape="single"
-                size={18}
-                ink={editable(m) ? tokens.colorInk : tokens.colorInkTertiary}
-                weight={2.2}
-              />
-            </Tool>
-          </View>
+          <AddTools m={m} go={go} />
         </View>
       )}
       {plan && p != null && (
@@ -429,37 +486,82 @@ function RoomOverlays({
           {p >= 200 && m.shown != null && m.size != null && (
             <MiniMap m={m} v={m.shown} width={m.size.w} height={m.size.h} />
           )}
-          <View style={styles.pill}>
-            <RoundTool
-              label={W.zoomOut}
-              glyph="minus"
-              onPress={() => go({ type: 'zoomStep', up: false })}
-              testID="seating.zoomOut"
-            />
-            <Text
-              size={14}
-              weight="semibold"
-              accessibilityLabel={say.zoom(p)}
-              style={[styles.pct, styles.figures]}
-            >
-              {`${p}%`}
-            </Text>
-            <RoundTool
-              label={W.zoomIn}
-              glyph="plus"
-              onPress={() => go({ type: 'zoomStep', up: true })}
-              testID="seating.zoomIn"
-            />
-            <RoundTool
-              label={W.fitRoom}
-              glyph="fit"
-              onPress={() => go({ type: 'fit' })}
-              testID="seating.fit"
-            />
-          </View>
+          <ZoomTools go={go} p={p} />
         </View>
       )}
-      <Pop m={m} go={go} />
+      <Pop m={m} go={go} out={false} />
+    </>
+  );
+}
+
+/** From the accessibility text sizes the room's tools leave the room: the View switch, Print, the room's name and the bars above it, Add and the zoom under it, each wrapping, so none covers a wall or another (sc-31783). */
+function RoomOutside({
+  m,
+  go,
+  inside,
+  onHold,
+}: {
+  m: Seating;
+  go: Go;
+  inside: ReactNode;
+  onHold: (held: boolean) => void;
+}) {
+  const ready = m.load === 'ready';
+  const plan = ready && m.view === 'Floor plan';
+  const p = m.shown == null ? null : pct(m.shown.s);
+  const foot = plan && (!m.readOnly || p != null);
+  return (
+    <>
+      {(ready || m.load === 'loading') && (
+        <View style={styles.strip}>
+          <ViewSwitch m={m} go={go} />
+          {ready && <PrintButton go={go} />}
+        </View>
+      )}
+      {plan && (
+        <Text
+          size={12.5}
+          weight="semibold"
+          accessibilityRole="header"
+          accessibilityLabel={say.roomLabel(m.room.name, length(m, m.room.w), length(m, m.room.l))}
+          style={[styles.secondary, styles.stripLine]}
+        >
+          {roomLine(m)}
+        </Text>
+      )}
+      {ready && m.bar != null && (
+        <View style={styles.stripLine}>
+          <Bars m={m} go={go} />
+        </View>
+      )}
+      <View
+        style={[styles.drawing, m.fields.focus != null && styles.drawingShort]}
+        onTouchStart={() => onHold(true)}
+        onTouchEnd={(e) => onHold(e.nativeEvent.touches.length > 0)}
+        onTouchCancel={() => onHold(false)}
+        onLayout={(e) =>
+          go({
+            type: 'laid',
+            w: e.nativeEvent.layout.width,
+            h: e.nativeEvent.layout.height,
+            pad: PAD_FRAME,
+          })
+        }
+      >
+        {inside}
+        {plan && p != null && p >= 200 && m.shown != null && m.size != null && (
+          <View style={styles.bottomRight}>
+            <MiniMap m={m} v={m.shown} width={m.size.w} height={m.size.h} />
+          </View>
+        )}
+        {ready && <Pop m={m} go={go} out />}
+      </View>
+      {foot && (
+        <View style={styles.strip}>
+          {!m.readOnly && <AddTools m={m} go={go} />}
+          {p != null && <ZoomTools go={go} p={p} />}
+        </View>
+      )}
     </>
   );
 }
@@ -469,15 +571,19 @@ function RoomArea({
   go,
   event,
   style,
+  onHold,
 }: {
   m: Seating;
   go: Go;
   event: EventShown;
   style: object;
+  onHold: (held: boolean) => void;
 }) {
   const size = m.size;
+  const out = atAccessibilitySizes(useWindowDimensions().fontScale);
   const [viewsEnd, setViewsEnd] = useState(0);
   const [printStart, setPrintStart] = useState(0);
+  const viewsTop = out ? tokens.spaceXl : m.bar == null ? 76 : 140;
   let inside: ReactNode;
   if (m.load === 'loading') inside = <Skeleton m={m} />;
   else if (m.load === 'failed') inside = <FailedView onTry={() => go({ type: 'retry' })} />;
@@ -508,9 +614,8 @@ function RoomArea({
         </Text>
       </View>
     );
-  else if (m.view === 'Tables')
-    inside = <TablesView m={m} go={go} top={m.bar == null ? 76 : 140} />;
-  else if (m.view === 'List') inside = <ListView m={m} go={go} top={m.bar == null ? 76 : 140} />;
+  else if (m.view === 'Tables') inside = <TablesView m={m} go={go} top={viewsTop} />;
+  else if (m.view === 'List') inside = <ListView m={m} go={go} top={viewsTop} />;
   else
     inside =
       size == null ? null : (
@@ -521,13 +626,25 @@ function RoomArea({
           height={size.h}
           viewsEnd={viewsEnd}
           printStart={printStart}
+          caption={!out}
         />
       );
+  if (out)
+    return (
+      <View style={[styles.room, style]}>
+        <RoomOutside m={m} go={go} inside={inside} onHold={onHold} />
+      </View>
+    );
   return (
     <View
       style={[styles.room, style]}
       onLayout={(e) =>
-        go({ type: 'laid', w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })
+        go({
+          type: 'laid',
+          w: e.nativeEvent.layout.width,
+          h: e.nativeEvent.layout.height,
+          pad: PAD_UNDER_TOOLS,
+        })
       }
     >
       {inside}
@@ -536,14 +653,7 @@ function RoomArea({
       )}
       {m.load === 'loading' && (
         <View style={styles.topLeft}>
-          <Segments
-            items={VIEWS}
-            on={m.view}
-            onPick={() => undefined}
-            height={48}
-            glyphs={VIEW_GLYPHS}
-            testID="seating.view"
-          />
+          <ViewSwitch m={m} go={go} />
         </View>
       )}
     </View>
@@ -724,7 +834,10 @@ export function SeatingTablet({
   onArea: (area: AreaKey) => void;
 }) {
   const { layout } = useShell();
+  const out = atAccessibilitySizes(useWindowDimensions().fontScale);
+  const [held, setHeld] = useState(false);
   const panel = m.load !== 'failed' && m.load !== 'noPlan';
+  const panelBody = <PanelBody m={m} go={go} />;
   if (layout === 'landscape')
     return (
       <EventFrame
@@ -739,18 +852,29 @@ export function SeatingTablet({
       >
         <View style={styles.side}>
           <View style={styles.head}>
-            <Text
-              size={24}
-              weight="bold"
+            <Title
+              size={out ? SIDE_TITLE_STEPS : 24}
               accessibilityRole="header"
-              style={[styles.grow, styles.title24]}
+              style={[styles.titleGrow, styles.title24]}
             >
               {W.seating}
-            </Text>
+            </Title>
             <HeadParts m={m} go={go} />
           </View>
           <View style={styles.body}>
-            <RoomArea m={m} go={go} event={event} style={styles.grow} />
+            {out ? (
+              <ScrollView
+                style={styles.grow}
+                contentContainerStyle={styles.roomScroll}
+                scrollEnabled={!held}
+                keyboardShouldPersistTaps="handled"
+                testID="seating.roomScroll"
+              >
+                <RoomArea m={m} go={go} event={event} style={styles.roomGrows} onHold={setHeld} />
+              </ScrollView>
+            ) : (
+              <RoomArea m={m} go={go} event={event} style={styles.grow} onHold={setHeld} />
+            )}
             {panel && (
               <ScrollView
                 style={styles.panel}
@@ -758,13 +882,49 @@ export function SeatingTablet({
                 keyboardShouldPersistTaps="handled"
                 automaticallyAdjustKeyboardInsets
               >
-                <PanelBody m={m} go={go} />
+                {panelBody}
               </ScrollView>
             )}
           </View>
         </View>
       </EventFrame>
     );
+  const top = (
+    <>
+      <View style={styles.titleRow}>
+        <Title size={30} accessibilityRole="header" style={[styles.titleGrow, styles.title30]}>
+          {W.seating}
+        </Title>
+        <HeadParts m={m} go={go} />
+      </View>
+      {m.load === 'noPlan' ? (
+        <SummaryCard
+          height={200}
+          backdrop={<CardBackdrop event={event} />}
+          step={{
+            label: W.startPlan,
+            onPress: () => go({ type: 'openStart' }),
+            testID: 'seating.startPlan',
+          }}
+        >
+          <CardSays text={W.noPlan} heading />
+          <OnCard text={W.noPlanLine} />
+        </SummaryCard>
+      ) : (
+        <RoomArea
+          m={m}
+          go={go}
+          event={event}
+          style={
+            out
+              ? styles.uprightGrows
+              : [styles.uprightRoom, m.fields.focus != null && styles.uprightShort]
+          }
+          onHold={setHeld}
+        />
+      )}
+    </>
+  );
   return (
     <EventFrame
       event={event}
@@ -776,53 +936,39 @@ export function SeatingTablet({
       fill
       overlay={<Overlays m={m} go={go} />}
     >
-      <View style={styles.upright}>
-        <View style={styles.titleRow}>
-          <Text
-            size={30}
-            weight="bold"
-            accessibilityRole="header"
-            style={[styles.grow, styles.title30]}
-          >
-            {W.seating}
-          </Text>
-          <HeadParts m={m} go={go} />
+      {out ? (
+        <ScrollView
+          style={styles.upright}
+          contentContainerStyle={[styles.uprightAll, styles.uprightPanel]}
+          scrollEnabled={!held}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+          testID="seating.pageScroll"
+        >
+          {top}
+          {panel && panelBody}
+        </ScrollView>
+      ) : (
+        <View style={[styles.upright, styles.uprightAll]}>
+          {top}
+          {panel && (
+            <ScrollView
+              style={styles.grow}
+              contentContainerStyle={styles.uprightPanel}
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets
+            >
+              {panelBody}
+            </ScrollView>
+          )}
         </View>
-        {m.load === 'noPlan' ? (
-          <SummaryCard
-            height={200}
-            backdrop={<CardBackdrop event={event} />}
-            step={{
-              label: W.startPlan,
-              onPress: () => go({ type: 'openStart' }),
-              testID: 'seating.startPlan',
-            }}
-          >
-            <CardSays text={W.noPlan} heading />
-            <OnCard text={W.noPlanLine} />
-          </SummaryCard>
-        ) : (
-          <RoomArea
-            m={m}
-            go={go}
-            event={event}
-            style={[styles.uprightRoom, m.fields.focus != null && styles.uprightShort]}
-          />
-        )}
-        {panel && (
-          <ScrollView
-            style={styles.grow}
-            contentContainerStyle={styles.uprightPanel}
-            keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets
-          >
-            <PanelBody m={m} go={go} />
-          </ScrollView>
-        )}
-      </View>
+      )}
     </EventFrame>
   );
 }
+
+// From the accessibility sizes the title on its side takes iOS's Title 1 steps, as upright; 24 has none of its own.
+const SIDE_TITLE_STEPS = 30;
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
@@ -838,9 +984,13 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingLeft: tokens.space3xl,
     paddingRight: tokens.spaceXl,
+    paddingVertical: tokens.spaceSm,
+    flexWrap: 'wrap',
+    rowGap: tokens.spaceSm,
     borderBottomWidth: 1,
     borderBottomColor: tokens.colorBorder,
   },
+  titleGrow: { flexGrow: 1 },
   title24: { letterSpacing: 24 * -0.02 },
   title30: { letterSpacing: 30 * -0.02, lineHeight: 34 },
   body: { flex: 1, flexDirection: 'row' },
@@ -849,11 +999,21 @@ const styles = StyleSheet.create({
   panelInside: { padding: tokens.spaceXl, paddingBottom: tokens.space6xl * 2 },
   panelGap: { gap: 14 },
   shape: { borderRadius: tokens.spaceMd, backgroundColor: SUNK },
-  upright: { flex: 1, paddingHorizontal: tokens.space3xl, gap: 14 },
+  upright: { flex: 1 },
+  uprightAll: { paddingHorizontal: tokens.space3xl, gap: 14 },
   uprightPanel: { paddingBottom: tokens.space6xl * 3 },
-  titleRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
+  titleRow: {
+    minHeight: 52,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: tokens.spaceLg,
+  },
   uprightRoom: { height: 560, borderRadius: tokens.spaceXxl },
   uprightShort: { height: 380 },
+  uprightGrows: { borderRadius: tokens.spaceXxl },
+  roomScroll: { flexGrow: 1 },
+  roomGrows: { flexGrow: 1 },
   centred: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: tokens.space3xl },
   noPlan: { width: 420, maxWidth: '100%' },
   hint: { maxWidth: 300, textAlign: 'center', lineHeight: 15 * 1.45 },
@@ -866,6 +1026,18 @@ const styles = StyleSheet.create({
     top: 76,
     maxWidth: 520,
   },
+  strip: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spaceSm,
+    padding: tokens.spaceXl,
+  },
+  stripLine: { paddingHorizontal: tokens.spaceXl, paddingBottom: tokens.spaceSm },
+  drawing: { height: 560, overflow: 'hidden' },
+  drawingShort: { height: 380 },
+  pillWraps: { flexWrap: 'wrap', flexShrink: 1 },
   bottomLeft: {
     position: 'absolute',
     left: tokens.spaceXl,
@@ -937,6 +1109,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   addMenu: { left: tokens.spaceXl, bottom: 84, width: 380 },
+  addMenuOut: { bottom: tokens.spaceXl, maxWidth: '90%' },
   menuRow: {
     minHeight: 52,
     flexDirection: 'row',

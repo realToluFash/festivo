@@ -121,7 +121,12 @@ export function bounds(it: Item): Point {
   };
 }
 
-export function fit(w: number, h: number, room: Room, pad = [72, 16, 76, 16] as const): View {
+/** The room's margins inside its box, top, right, bottom, left: room for the floating tools, or only a frame once they sit outside it. */
+export type Pad = readonly [number, number, number, number];
+export const PAD_UNDER_TOOLS: Pad = [72, 16, 76, 16];
+export const PAD_FRAME: Pad = [16, 16, 16, 16];
+
+export function fit(w: number, h: number, room: Room, pad: Pad = PAD_UNDER_TOOLS): View {
   const [top, right, bottom, left] = pad;
   const s = Math.min((w - left - right) / room.w, (h - top - bottom) / room.l);
   return {
@@ -129,6 +134,34 @@ export function fit(w: number, h: number, room: Room, pad = [72, 16, 76, 16] as 
     ox: left + (w - left - right - room.w * s) / 2,
     oy: top + (h - top - bottom - room.l * s) / 2,
   };
+}
+
+export interface Box {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** A room word's box as drawn: 20 tall about its y, as wide as its words at 0.56 of their size, from x or about it. */
+export function wordsBox(x: number, y: number, words: string, size: number, start: boolean): Box {
+  const w = words.length * size * 0.56;
+  return { x: start ? x : x - w / 2, y: y - 10, w, h: 20 };
+}
+
+function meets(a: Box, b: Box): boolean {
+  return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+}
+
+/** The first corner where a w × h mark covers none of the words, or the first corner when each would. */
+export function clearCorner(
+  corners: readonly Point[],
+  w: number,
+  h: number,
+  words: readonly Box[],
+): Point {
+  const first = corners[0] ?? { x: 0, y: 0 };
+  return corners.find((c) => !words.some((b) => meets({ x: c.x, y: c.y, w, h }, b))) ?? first;
 }
 
 export function pct(s: number): number {

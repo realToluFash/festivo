@@ -1,16 +1,3 @@
-.desk-text.is-wraps {
-  max-width: calc(100% + 2 * var(--spaceSm));
-  padding-block: 11px;
-  line-height: 1.45;
-  text-align: start;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-.wrap-tied {
-  white-space: nowrap;
-}
-
 .wrap-at-320 {
   display: flex;
   flex-direction: column;

@@ -106,6 +106,7 @@ import {
   missingCmdlineTools,
   parseTarget,
   hardwareKeyboardOff,
+  expoGoLinkApproval,
   passwordAutoFillFiles,
   passwordAutoFillOff,
   playImage,
@@ -1012,6 +1013,16 @@ describe('a release build', () => {
       ['-insert', 'restrictedBool', '-dictionary', files[0]],
       ['-insert', 'restrictedBool.allowPasswordAutoFill', '-dictionary', files[0]],
       ['-replace', 'restrictedBool.allowPasswordAutoFill.value', '-bool', 'NO', files[0]],
+    ]);
+  });
+
+  it('lets the simulator hand exp:// links to Expo Go without asking', () => {
+    expect(expoGoLinkApproval('/sims/ABC')).toEqual([
+      'write',
+      '/sims/ABC/data/Library/Preferences/com.apple.launchservices.schemeapproval',
+      'com.apple.CoreSimulator.CoreSimulatorBridge-->exp',
+      '-string',
+      'host.exp.Exponent',
     ]);
   });
 
@@ -2968,6 +2979,9 @@ describe('the flows a batch runs', () => {
         expect(catalogues[code].steps.invitedTitle).not.toMatch(someoneSignedIn);
       }
       const signInForm = readFileSync(join(target, 'batch/sign-in-form.yaml'), 'utf8');
+      expect(signInForm).toMatch(
+        /tapOn:\s+id: 'signIn\.password\.reveal'\s+- retry:[\s\S]*?inputText: \$\{PASSWORD\}\s+- copyTextFrom:\s+id: 'signIn\.password'\s+- assertTrue: \$\{maestro\.copiedText == PASSWORD\}/,
+      );
       const landed = new RegExp(
         `^(?:${signInForm.match(/extendedWaitUntil:\s+visible: '(.*)'\s+timeout: 30000\s+optional: true/)[1].replaceAll("''", "'")})$`,
       );

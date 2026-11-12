@@ -115,6 +115,22 @@ describe('Events in A at a desk, the model (sc-30304)', () => {
     });
   });
 
+  it('names the year on the card’s starts line only when it isn’t this year (sc-30413, 12 Nov)', () => {
+    const line = (one: SampleEvent) => {
+      const step = cardOf(one, CLOCKS.rest).step;
+
+      return step.kind === 'next' ? step.line : null;
+    };
+    const nextYear = {
+      ...event('evt-wed-4'),
+      startsAt: '2027-01-09T14:00:00Z',
+      endsAt: '2027-01-09T22:00:00Z',
+    };
+
+    expect(line(event('evt-wed-4'))).not.toMatch(/2026/);
+    expect(line(nextYear)).toMatch(/2027.*14:00/);
+  });
+
   it('offers Pause while live, Call off before it starts, End now while on, and only Duplicate and Delete once over', () => {
     expect(manageOf(event('evt-wed-4'), CLOCKS.rest)).toEqual([
       'duplicate',

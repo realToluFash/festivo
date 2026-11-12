@@ -14,6 +14,7 @@ import {
   headerForm,
   titleOnItsRow,
 } from '../layout/focusedHeader.ts';
+import { useBoldText } from '../theme/boldText.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Glyph } from './Glyph.tsx';
 import { TurningMark } from './SummaryRows.tsx';
@@ -57,6 +58,8 @@ export function FocusNav({
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
   const size = HEADER_TEXT * fontScale;
+  const bold = useBoldText();
+  const keyOf = (kind: string, text: string) => `${kind}|${size}|${bold}|${text}`;
   const [width, setWidth] = useState(0);
   const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
   const titleWords = title.split(/\s+/u).filter((word) => word !== '');
@@ -72,10 +75,8 @@ export function FocusNav({
   ] as const;
   const known =
     width > 0 &&
-    groups.every(({ kind, texts }) =>
-      texts.every((text) => measured[`${kind}|${size}|${text}`] != null),
-    );
-  const widthOf = (kind: string, text: string) => measured[`${kind}|${size}|${text}`] ?? 0;
+    groups.every(({ kind, texts }) => texts.every((text) => measured[keyOf(kind, text)] != null));
+  const widthOf = (kind: string, text: string) => measured[keyOf(kind, text)] ?? 0;
   const words = titleWords.map((word) => widthOf('b', word));
   const space =
     words.length > 1
@@ -221,15 +222,16 @@ export function FocusNav({
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
       testID={`focus.header.${form}`}
     >
+      {/* Only words not yet measured: Android puts a hidden text's words in its window's events, and TalkBack named a new screen "Turn" by one (sc-11032). */}
       {groups.map(({ kind, weight, texts }) => (
         <MeasuredWords
           key={kind}
-          words={texts}
+          words={texts.filter((text) => measured[keyOf(kind, text)] == null)}
           size={size}
           weight={weight}
           allowFontScaling={false}
           onWidth={(text, value) => {
-            const key = `${kind}|${size}|${text}`;
+            const key = keyOf(kind, text);
             setMeasured((now) => (now[key] === value ? now : { ...now, [key]: value }));
           }}
         />

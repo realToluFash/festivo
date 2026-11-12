@@ -25,6 +25,7 @@ import { Back } from '../../components/SettingsParts.tsx';
 import { Bell as ProductBell } from '../../components/BellButton.tsx';
 import { PortraitTop as ProductPortraitTop } from '../../components/ListTop.tsx';
 import { useSideFrame } from '../../components/listFrame.ts';
+import { usePillFit } from '../../components/usePillFit.tsx';
 
 /** A page whose sample someone else sees: the Settings card, its rows and the sidebar's foot follow them. */
 export function SeenBy({ looking, children }: { looking: Looking; children: ReactNode }) {
@@ -157,14 +158,22 @@ export function Bell({
 }
 
 /** The product's pill, opening the demo's switcher. */
-export function OrgPill() {
+export function OrgPill({
+  room,
+  givesWay = false,
+}: {
+  /** The room beside an upright iPad's tabs, where the pill is cut or turns to its tile as the product's is (sc-38149). */
+  room?: number | undefined;
+  givesWay?: boolean;
+}) {
   const { viewer } = useShell();
   const ref = useRef<ViewInstance>(null);
   const org = useOrgOpener(ref);
+  const { tileAlone, measure } = usePillFit(org.name, org.waiting, room, false);
 
   if (viewer === 'noOrg') return null;
 
-  return (
+  const pill = (
     <ProductOrgPill
       ref={ref}
       id={org.id}
@@ -173,8 +182,18 @@ export function OrgPill() {
       label={org.label}
       expanded={org.expanded}
       onPress={org.onPress}
+      tileAlone={givesWay || tileAlone}
       testID="org.switch"
     />
+  );
+
+  if (room == null) return pill;
+
+  return (
+    <View style={styles.pill}>
+      {measure}
+      {pill}
+    </View>
   );
 }
 
@@ -206,8 +225,7 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
 
   return (
     <ProductPortraitTop
-      renderPill={() => <OrgPill />}
-      pillFits={false}
+      renderPill={(room, givesWay) => <OrgPill room={room} givesWay={givesWay} />}
       bell={<Bell tell={shell.tell} />}
       tabLabels={tabsFor(shell.viewer).map(([tab]) => tab)}
       renderTabs={(labelSize) => (
@@ -223,6 +241,7 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
 }
 
 const styles = StyleSheet.create({
+  pill: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
   grow: { flex: 1, minWidth: 0 },
   page: { flex: 1, backgroundColor: tokens.colorCard },
   title: { letterSpacing: -0.5 },

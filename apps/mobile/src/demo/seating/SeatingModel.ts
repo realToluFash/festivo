@@ -1,4 +1,5 @@
 import {
+  type Pad,
   type Point,
   type Room,
   type View,
@@ -223,7 +224,7 @@ export interface Seating {
   sectionForm: { name: string; colour: ColourName; error: string | null };
   zoom: { s: number; centre: Point } | null;
   shown: View | null;
-  size: { w: number; h: number } | null;
+  size: { w: number; h: number; pad: Pad } | null;
   ghost: Item | null;
   tip: { words: string; at: Point } | null;
   placing: Kind | null;

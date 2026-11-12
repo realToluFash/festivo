@@ -1,4 +1,4 @@
-import { calendarDays, weekLanes } from '@soirely/domain';
+import { calendarDays, eventDayWords, weekLanes } from '@soirely/domain';
 
 import type {
   DayRange,
@@ -76,6 +76,7 @@ export const ROWS: Sample = {
 
 /** Dates as `2026-11-03` and times as `18:00`, written the reader's way. */
 export interface Say {
+  locale: string;
   long(date: string): string;
   day(date: string, withYear?: boolean): string;
   weekday(date: string): string;
@@ -97,6 +98,7 @@ export function sayIn(locale: string, thisYear = 2026): Say {
   const at = (date: string) => new Date(`${date}T00:00Z`);
 
   return {
+    locale,
     long: (date) => long.format(at(date)),
     day: (date, withYear = Number(date.slice(0, 4)) !== thisYear) =>
       (withYear ? dayAndYear : day).format(at(date)),
@@ -285,12 +287,25 @@ function greeting(time: string): string {
   return hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 }
 
-function eventDates(event: SampleEvent, say: Say): string | DayRange {
-  const withYear = event.first.slice(0, 4) !== event.last.slice(0, 4) || undefined;
+/** Events' own words for its days, from the rule Events writes them by (sc-30413, 11 Nov). */
+function eventDates(event: SampleEvent, today: string, say: Say): string | DayRange {
+  const days = eventDayWords(
+    {
+      status: event.draft ? 'draft' : 'live',
+      startsAt: `${event.first}T12:00:00Z`,
+      endsAt: `${event.last}T12:00:00Z`,
+      timeZone: 'UTC',
+      concludedAt: null,
+    },
+    new Date(`${today}T12:00:00Z`),
+    say.locale,
+  );
 
-  return event.first === event.last
-    ? say.day(event.first)
-    : { first: say.day(event.first, withYear), last: say.day(event.last, withYear) };
+  return days.kind === 'days'
+    ? { first: days.first, last: days.last }
+    : days.kind === 'oneDay'
+      ? days.day
+      : days.date;
 }
 
 function card(
@@ -318,7 +333,7 @@ function card(
   return {
     event: shown(key),
     name: event.name,
-    dates: eventDates(event, say),
+    dates: eventDates(event, today, say),
     count,
     live,
     draft: event.draft,

@@ -14,6 +14,7 @@ import {
   formatEventDate,
   formatEventMoment,
   milestoneDistance,
+  notThisYear,
   savedWallClock,
   searching,
   wallDayNumber,
@@ -767,7 +768,8 @@ export type CardDoes = 'makeLive' | 'changeDates' | 'resume' | 'duplicate';
 export function cardOf(event: SampleEvent, now: Date): Card {
   const shown = shownOf(event, now);
   const soon = soonOf(event, now);
-  const moment = (iso: string) => formatEventMoment(iso, event.timeZone, LOCALE);
+  const moment = (iso: string) =>
+    formatEventMoment(iso, event.timeZone, LOCALE, notThisYear(event.timeZone, now, iso));
   const toThen = (iso: string) => {
     const distance = milestoneDistance(iso, event.timeZone, now);
 

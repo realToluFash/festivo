@@ -163,4 +163,17 @@ describe('the country search', () => {
     expect(countrySearch(turkish, 'i', 'tr')).toEqual([{ name: 'İran' }]);
     expect(countrySearch(turkish, 'ı', 'tr')).toEqual([{ name: 'Irak' }]);
   });
+
+  it('sets accents, case and the apostrophe’s shape aside', () => {
+    expect(countrySearch([{ name: 'Nigéria' }, { name: 'Níger' }], 'Nigeria', 'pt')).toEqual([
+      { name: 'Nigéria' },
+    ]);
+    expect(countrySearch([{ name: 'Nigéria' }], 'nigeria', 'pt')).toEqual([{ name: 'Nigéria' }]);
+    expect(countrySearch([{ name: 'Nigéria' }], 'Nigéria', 'pt')).toEqual([{ name: 'Nigéria' }]);
+    expect(countrySearch([{ name: 'México' }], 'Mexico', 'es')).toEqual([{ name: 'México' }]);
+    expect(countrySearch([{ name: 'Pérou' }], 'perou', 'fr')).toEqual([{ name: 'Pérou' }]);
+    expect(countrySearch([{ name: 'Côte d’Ivoire' }], "cote d'ivoire", 'en')).toEqual([
+      { name: 'Côte d’Ivoire' },
+    ]);
+  });
 });

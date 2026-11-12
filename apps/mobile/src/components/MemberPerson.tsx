@@ -255,6 +255,7 @@ export function PersonBody({
             ref={removeRef}
             label={t('membersScreen.removeButtonOpen', { organisation: organisation.name })}
             removes
+            wraps
             off={removeBusy}
             onPress={() => {
               setRefused(null);

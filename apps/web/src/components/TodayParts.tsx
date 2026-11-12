@@ -181,7 +181,7 @@ export function ThisWeek({ moment, open }: { moment: Moment; open: Open }) {
 const FIRST = '\u0001';
 const LAST = '\u0002';
 
-/** The range in its locale's words: each date stays whole, and the row breaks only at the words around them, as late as it fits (sc-39091). */
+/** The range in its locale's words, each date whole (sc-39091): the opening word stays with the first date, and the connector ends the first date's line where it fits there, or starts the last date's. */
 function RangeWords({ range }: { range: DayRange }) {
   const { t } = useTranslation();
   const words = t('events.days', { first: FIRST, last: LAST });
@@ -190,8 +190,10 @@ function RangeWords({ range }: { range: DayRange }) {
 
   return (
     <>
-      {lead}
-      <span className="today-event-date">{range.first}</span>
+      <span className="today-event-piece">
+        {lead}
+        <span className="today-event-date">{range.first}</span>
+      </span>
       {between}
       <span className="today-event-date">{range.last}</span>
       {trail}
@@ -215,7 +217,9 @@ function EventRow({ card, full, open }: { card: EventCard; full: boolean; open: 
           <span className="today-event-name">{card.name}</span>
           <span className="today-event-when">
             {!card.live && !card.draft && (
-              <span className="today-event-count">{`${card.count} ·`}</span>
+              <>
+                <span className="today-event-count">{`${card.count} ·`}</span>{' '}
+              </>
             )}
             {typeof card.dates === 'string' ? (
               <span className="today-event-dates">{card.dates}</span>

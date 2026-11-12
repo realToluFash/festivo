@@ -155,6 +155,7 @@
   min-width: 0;
   min-height: var(--sizeHit);
   padding: var(--spaceMd) var(--spaceXxs);
+  border: 0;
   border-radius: var(--spaceXl);
   background: var(--swFill);
   color: var(--colorInk);

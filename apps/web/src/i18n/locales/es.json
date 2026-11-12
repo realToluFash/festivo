@@ -2034,7 +2034,7 @@
     "password": "Su contraseña",
     "passwordBlank": "Introduzca su contraseña.",
     "passwordWrong": "Esa no es su contraseña. No se ha cambiado nada. Inténtelo de nuevo o restablézcala por correo electrónico.",
-    "passwordWhy": "Así nadie que coja este dispositivo podrá ceder {{organisation}}.",
+    "passwordWhy": "Así nadie que coja este dispositivo podrá transferir {{organisation}}.",
     "code": "Código de su aplicación de autenticación o código de recuperación",
     "codeBlank": "Introduzca el código de su aplicación de autenticación o un código de recuperación.",
     "bothEmailed": "Usted y {{name}} recibirán un correo electrónico que lo confirma.",

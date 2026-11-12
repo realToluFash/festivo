@@ -69,10 +69,10 @@ describe('a sheet whose heading takes focus as it opens (sc-11032)', () => {
   });
 
   it('stays hidden for a share of the settle time, long enough for TalkBack to name the window', () => {
-    const [, delay] =
-      sheet.match(/setTimeout\(\(\) => setAnnounced\(\{ step \}\), ([^)]+)\)/) ?? [];
+    const [, delay] = sheet.match(/const wait = \(opening \? arriving : 0\) \+ ([^;]+);/) ?? [];
 
     expect(delay).toMatch(/^SETTLED_MS( \/ [1-9]\d*)?$/);
+    expect(sheet).toContain('setTimeout(() => setAnnounced({ step }), wait)');
   });
 
   it('is how the language choice opens', () => {
@@ -84,7 +84,14 @@ describe('a focused screen whose title takes focus with each new step (sc-11032)
   const screen = readFileSync(join(import.meta.dirname, 'SummaryOverlays.tsx'), 'utf8');
 
   it('hides on Android through the sheet’s own wait, restarted by each new title', () => {
-    expect(screen).toContain("useUnnamedWindow(Platform.OS === 'android', onScreen, title)");
+    expect(screen).toMatch(
+      /useUnnamedWindow\(\s*Platform\.OS === 'android',\s*onScreen,\s*title,\s*reduced \? 0 : WINDOW_ARRIVES_MS,?\s*\)/,
+    );
+  });
+
+  it('stays hidden as it opens until its slide or fade has ended, so TalkBack has no title to name it by (#40692)', () => {
+    expect(screen).toContain('const WINDOW_ARRIVES_MS = 200;');
+    expect(screen).toMatch(/animationType=\{reduced \? 'none' : slides \? 'slide' : 'fade'\}/);
   });
 
   it('moves focus the way an answer does, through useFocusOnAnswer', () => {

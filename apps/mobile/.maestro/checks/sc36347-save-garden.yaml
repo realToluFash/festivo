@@ -1,0 +1,33 @@
+# sc-36347: Save in Colours, in Expo Go on Android, restarts the app in the new scheme on Personalisation with the Saved line.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/personalisation
+- extendedWaitUntil:
+    visible:
+      id: personalisation.choose
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- takeScreenshot: before
+- tapOn:
+    id: personalisation.choose
+- extendedWaitUntil:
+    visible:
+      id: personalisation.colours
+    timeout: 15000
+- tapOn:
+    id: personalisation.swatch.garden
+- waitForAnimationToEnd
+- tapOn:
+    id: personalisation.save
+- takeScreenshot: saving
+- extendedWaitUntil:
+    visible: 'Saved\. Every screen is in your colours now\.'
+    timeout: 45000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- assertNotVisible: '.*was not saved.*'
+- assertNotVisible: '.*PushNotificationIOS.*'
+- assertNotVisible: '.*native module.*'
+- assertVisible:
+    id: personalisation.card
+- takeScreenshot: restarted-saved

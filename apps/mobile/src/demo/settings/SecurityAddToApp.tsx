@@ -167,7 +167,7 @@ export function DemoTwoFactorScreen({
           </View>
           {ready != null && takesLinks && (
             <SecondaryButton
-              label="Add to my authenticator app"
+              label={t('twoFactorCard.addToApp')}
               stacked
               onPress={() => setHanded(true)}
               testID="security.setup.addToApp"

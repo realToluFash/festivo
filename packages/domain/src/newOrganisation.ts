@@ -118,14 +118,18 @@ export function foundingCurrencyWords(
     : { words: currencyLabel(currency, locale), none: false };
 }
 
-/** The countries whose name includes the search, lowercased by the reader's language so "İ" and "i" meet as they do in it. */
+/** The countries whose name includes the search, lowercased by the reader's language so "İ" and "i" meet as they do in it, with accents and the apostrophe's shape set aside. */
 export function countrySearch<Country extends { name: string }>(
   countries: readonly Country[],
   query: string,
   locale: string,
 ): readonly Country[] {
-  const needle = query.trim().toLocaleLowerCase(locale);
+  const needle = searchFold(query.trim(), locale);
   if (needle === '') return countries;
 
-  return countries.filter((country) => country.name.toLocaleLowerCase(locale).includes(needle));
+  return countries.filter((country) => searchFold(country.name, locale).includes(needle));
+}
+
+function searchFold(text: string, locale: string): string {
+  return text.toLocaleLowerCase(locale).normalize('NFD').replace(/\p{M}/gu, '').replace(/’/g, "'");
 }

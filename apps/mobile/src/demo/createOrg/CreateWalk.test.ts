@@ -17,6 +17,7 @@ import {
   cardNameSize,
   cardWords,
   countries,
+  countryNoMatch,
   factsOf,
   footPlace,
   forward,
@@ -72,6 +73,7 @@ describe('the states', () => {
     expect(focusOf(null, sample('name'))).toBe('name');
     expect(focusOf('name-long', sample('name-long'))).toBe('name');
     expect(focusOf('country-search', sample('country-search'))).toBe('search');
+    expect(focusOf('country-nomatch', sample('country-nomatch'))).toBe('search');
     expect(focusOf('ready', sample('ready'))).toBe('question');
     expect(focusOf('back-name', sample('back-name'))).toBe('question');
   });
@@ -169,6 +171,38 @@ describe('the search', () => {
       'Portugal',
       'Singapore',
     ]);
+  });
+
+  it('finds nothing for the no-match state’s "zzz", in any language', () => {
+    expect(sample('country-nomatch')).toMatchObject({ step: 2, query: 'zzz' });
+    for (const locale of ['en', 'es', 'fr', 'pt']) {
+      expect(countrySearch(countries(locale), 'zzz', locale)).toEqual([]);
+    }
+  });
+
+  it('sets accents, case and the apostrophe’s shape aside, in the reader’s language', () => {
+    const found = (query: string, locale: string): string[] =>
+      countrySearch(countries(locale), query, locale).map((country) => country.name);
+
+    expect(found('Nigeria', 'pt')).toContain('Nigéria');
+    expect(found('nigeria', 'pt')).toContain('Nigéria');
+    expect(found('Nigéria', 'pt')).toContain('Nigéria');
+    expect(found('Mexico', 'es')).toEqual(['México']);
+    expect(found('perou', 'fr')).toEqual(['Pérou']);
+    expect(found("cote d'ivoire", 'en')).toEqual(['Côte d’Ivoire']);
+    expect(found('niger', 'en')).toEqual(['Niger', 'Nigeria']);
+  });
+
+  it('never matches the name in another language', () => {
+    expect(countrySearch(countries('pt'), 'Brazil', 'pt')).toEqual([]);
+  });
+
+  it('says when nothing matches, and only then', () => {
+    const found = (query: string) => countrySearch(countries('en'), query, 'en').length;
+
+    expect(countryNoMatch(' zzz ', found('zzz'), t)).toBe('No country matches “zzz”.');
+    expect(countryNoMatch('niger', found('niger'), t)).toBeNull();
+    expect(countryNoMatch('  ', found('  '), t)).toBeNull();
   });
 
   it('keeps every country for an empty search', () => {

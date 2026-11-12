@@ -113,11 +113,15 @@ function usePicksFit(
   const { t } = useTranslation();
   const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
   const more = (count: number) => t('calendar.moreItems', { count });
-  const read = (shown: number) =>
-    shown === picks.length ? whole : `${picksLead(picks, shown)} ${more(picks.length - shown)}`;
-  const reads = picks.length === 0 ? [whole] : picks.map((_, index) => read(index + 1));
+  const tail = (shown: number) => ` ${more(picks.length - shown)}`;
+  // Measured as the two texts a cut line is drawn as: the line measured as one string comes out narrower on Android.
+  const parts = (shown: number) =>
+    shown === picks.length ? [whole] : [picksLead(picks, shown), tail(shown)];
+  const reads = picks.length === 0 ? [whole] : picks.flatMap((_, index) => parts(index + 1));
   const measured = reads.every((text) => widths[`${look.weight}|${text}`] != null);
   const widthOf = (text: string) => widths[`${look.weight}|${text}`] ?? 0;
+  const widthAt = (shown: number) =>
+    parts(shown).reduce((sum, text) => sum + Math.ceil(widthOf(text)), 0);
 
   return {
     measurer: (
@@ -135,7 +139,7 @@ function usePicksFit(
     shownIn: (room: number | null) =>
       room == null || !measured
         ? picks.length
-        : picksShown(picks.length, (shown) => widthOf(read(shown)) <= room),
+        : picksShown(picks.length, (shown) => widthAt(shown) <= room),
     more,
   };
 }
@@ -177,7 +181,7 @@ function PicksLine({
           weight={weight}
           numberOfLines={1}
           accessible={false}
-          style={{ color: ink }}
+          style={[styles.kept, { color: ink }]}
         >
           {` ${more(rest)}`}
         </Text>
@@ -777,6 +781,7 @@ export function EventsResults({
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   shrink: { flexShrink: 1 },
+  kept: { flexShrink: 0 },
   secondary: { color: tokens.colorInkSecondary },
   figures: { fontVariant: ['tabular-nums'] },
   said: { lineHeight: 14 * 1.45 },

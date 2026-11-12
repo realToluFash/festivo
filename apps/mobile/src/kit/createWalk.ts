@@ -157,6 +157,13 @@ export function countryName(code: string | null, locale: string): string | null 
   return countries(locale).find((country) => country.code === code)?.name ?? code;
 }
 
+/** The line in the list's place when a search finds no country; null for a blank search or one that finds some. */
+export function countryNoMatch(query: string, found: number, t: TFunction): string | null {
+  const text = query.trim();
+
+  return text === '' || found > 0 ? null : t('createOrganisation.noMatch', { text });
+}
+
 export type Currencies = FoundingCurrencies;
 
 export interface Naming {
@@ -316,4 +323,50 @@ export function nameInSight({
   const below = Math.min(margin, Math.max(0, (viewport - field) / 2));
 
   return Math.max(0, Math.min(over, Math.max(top - margin, top + fieldEnd + below - viewport)));
+}
+
+export interface NameScroll {
+  scrollWith: (scrollTo: (y: number) => void) => void;
+  viewport: (height: number) => void;
+  group: (y: number, height: number) => void;
+  row: (y: number, height: number, field: number) => void;
+  /** A scroll while the keys still rise stops short, so it goes again once they are up. */
+  keysUp: () => void;
+  contentSized: () => void;
+}
+
+// Android clamps a scroll to the content height it last measured, and Fabric reports a new content
+// size, then the group's new place, before mounting it; so the content size asks once mounted.
+export function nameScroll(margin: number, nextFrame: (run: () => void) => void): NameScroll {
+  const seen: NameInSight = { viewport: 0, top: 0, fieldEnd: 0, field: 0, bottom: 0, margin };
+  let scrollTo: ((y: number) => void) | null = null;
+  const ask = () => {
+    const y = nameInSight(seen);
+    if (y != null) scrollTo?.(y);
+  };
+
+  return {
+    scrollWith(to) {
+      scrollTo = to;
+      ask();
+    },
+    viewport(height) {
+      seen.viewport = height;
+      ask();
+    },
+    group(y, height) {
+      seen.top = y;
+      seen.bottom = y + height;
+      ask();
+    },
+    row(y, height, field) {
+      seen.fieldEnd = y + height;
+      seen.field = field;
+      ask();
+    },
+    keysUp: ask,
+    contentSized() {
+      nextFrame(ask);
+    },
+  };
 }
