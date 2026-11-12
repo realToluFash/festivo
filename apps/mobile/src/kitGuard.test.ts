@@ -706,8 +706,12 @@ describe('a button or link taking keyboard focus moves on from the landing toast
   };
   const tellsControlTaken = (markup: string) => propValue(markup, 'onFocus') === '{controlTaken}';
 
-  it("in every one of the kit's buttons and the step's top bar", () => {
-    const kit = [...pressables('components/Buttons.tsx'), ...pressables('steps/StepScreen.tsx')];
+  it("in every one of the kit's buttons, a notice's link and the step's top bar", () => {
+    const kit = [
+      ...pressables('components/Buttons.tsx'),
+      ...pressables('components/Notice.tsx'),
+      ...pressables('steps/StepScreen.tsx'),
+    ];
 
     expect(kit.length).toBeGreaterThan(0);
     expect(kit.filter((markup) => !tellsControlTaken(markup))).toEqual([]);
