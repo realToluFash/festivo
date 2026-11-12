@@ -16,7 +16,7 @@ import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { LinkedNotice } from '../../components/LinkedNotice.tsx';
 import { NotificationsBell } from '../../components/NotificationsBell.tsx';
-import { OfflineBand, OfflineProvider } from '../../components/OfflineBand.tsx';
+import { OfflineBand, OfflineBox, OfflineProvider } from '../../components/OfflineBand.tsx';
 import { SignInRulesNotices } from '../../components/SignInRulesNotices.tsx';
 import { AccessPaused } from '../../components/AccessPaused.tsx';
 import { Switched } from '../../components/Switched.tsx';
@@ -41,7 +41,7 @@ import { heldRegistration } from '../../pendingRegistration.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
 import { PHONE_WIDTH, useDeskWidth } from '../../phoneWidth.ts';
-import { DeskTopContext, isBandless } from '../../deskTop.ts';
+import { DeskTopContext, isBandless, takesOfflineBox } from '../../deskTop.ts';
 import { EventNav, useInsideEvent, useShownEventName } from './events/EventNav.tsx';
 
 /**
@@ -128,6 +128,7 @@ function Shell() {
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
   const switchTo = switchOf(location.state);
   const bandless = useDeskWidth() && isBandless(pathname);
+  const boxed = bandless && takesOfflineBox(pathname);
 
   // Before the first paint, so the first signed-in screen is already in the account's language.
   useLayoutEffect(() => {
@@ -341,7 +342,7 @@ function Shell() {
           className={bandless ? 'shell-content is-card' : 'shell-content'}
           inert={menuOpen}
         >
-          <OfflineBand />
+          {!boxed && <OfflineBand />}
           <LinkedNotice />
           {organisation != null && session.pausedIn == null && (
             <SignInRulesNotices key={organisation.id} organisation={organisation} />
@@ -351,7 +352,11 @@ function Shell() {
           <DeskTopContext
             value={
               bandless
-                ? { bell: <NotificationsBell userId={session.userId} desk />, said }
+                ? {
+                    bell: <NotificationsBell userId={session.userId} desk />,
+                    said,
+                    offline: boxed && <OfflineBox />,
+                  }
                 : NO_DESK_TOP
             }
           >
@@ -386,7 +391,7 @@ function Shell() {
   );
 }
 
-const NO_DESK_TOP = { bell: null, said: null };
+const NO_DESK_TOP = { bell: null, said: null, offline: null };
 
 const PLACES: readonly (readonly [string, 'today' | 'events' | 'calendar', GlyphName])[] = [
   ['/app', 'today', 'today'],

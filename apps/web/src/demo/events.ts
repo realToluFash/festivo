@@ -530,26 +530,10 @@ export const EVENT_WORDS = {
   keepIt: 'Keep it',
   delete: 'Delete',
   deleted: (name: string) => `${name} was deleted.`,
-  duplicateTitle: (name: string) => `Duplicate ${name}`,
   duplicateLine:
     'Makes a new draft with the same name. Only your team sees it until you make it live.',
-  createDraft: 'Create draft',
-  copied: 'Copied',
-  copiedItems: [
-    'Name',
-    'Type',
-    'Venue',
-    'Cover and its description',
-    'Time zone',
-    'Currency',
-    'Length',
-  ],
-  notCopied: 'Not copied',
-  notCopiedItems: ['Hosts', 'Guests', 'Replies', 'Anything that happened at the event'],
   starts: 'Starts',
   ends: 'Ends',
-  copyEnds: (end: string, hours: string, zone: string) =>
-    `It ends ${end}, ${hours} later, like the original. Times in ${zone}.`,
   created: 'Draft created. Opening it.',
   guestsPage: 'Guests’ page',
   preview: 'Preview the guests’ page',
@@ -1555,13 +1539,6 @@ export function instantOf(date: string, time: string, timeZone: string): string 
   const instant = guess - offsetAt(guess - offsetAt(guess, timeZone), timeZone);
 
   return new Date(instant).toISOString().replace('.000Z', 'Z');
-}
-
-export function copyStart(event: SampleEvent): Wall {
-  return wallOf(
-    new Date(Date.parse(event.startsAt) + 364 * 86_400_000).toISOString(),
-    event.timeZone,
-  );
 }
 
 export function latestOf(event: SampleEvent): SampleEvent {
