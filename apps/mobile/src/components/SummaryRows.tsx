@@ -1,4 +1,4 @@
-import { type ReactNode, type Ref, useEffect, useState } from 'react';
+import { Fragment, type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
 import {
   type AccessibilityRole,
   type AccessibilityState,
@@ -6,12 +6,15 @@ import {
   Easing,
   Pressable,
   StyleSheet,
+  type StyleProp,
   View,
+  type ViewStyle,
   type ViewInstance,
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Text } from './Text.tsx';
+import { titleAtWidth, UNMEASURED_TITLE } from './titleWidth.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
@@ -46,6 +49,32 @@ export const SELECTED_ROW = {
 
 /** A row title beside its tag: never shrunk, only capped at the row, so a tag with no room goes under it. Shrunk, Android wraps the title after measuring it on one line and drops the last word (sc-30302). */
 export const TITLE_BESIDE_TAG = { flexShrink: 0, maxWidth: '100%' } as const;
+
+/** A title with its tag beside it, going under it when there is no room. Android keeps the width a title measured before the row narrowed, on a rotation, and drops its last word, so the title is measured afresh whenever the row's width changes (sc-40664). */
+export function TitleBesideTag({
+  title,
+  tag,
+  style,
+}: {
+  title: ReactNode;
+  tag?: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const measured = useRef(UNMEASURED_TITLE);
+  const [key, setKey] = useState(UNMEASURED_TITLE.key);
+  return (
+    <View
+      style={[styles.titleRow, style]}
+      onLayout={(event) => {
+        measured.current = titleAtWidth(measured.current, event.nativeEvent.layout.width);
+        setKey(measured.current.key);
+      }}
+    >
+      <Fragment key={key}>{title}</Fragment>
+      {tag}
+    </View>
+  );
+}
 
 const TURN_MS = 900;
 
@@ -239,19 +268,21 @@ export function Row({
     <>
       {lead}
       <View style={styles.words}>
-        <View style={styles.titleRow}>
-          <Text
-            size={16}
-            weight={weight}
-            numberOfLines={titleLines}
-            selectable={selectable}
-            accessible={grouped ? false : undefined}
-            style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
-          >
-            {title}
-          </Text>
-          {tag != null && <Tag kind={tag.kind} word={tag.word} turning={tag.turning} />}
-        </View>
+        <TitleBesideTag
+          title={
+            <Text
+              size={16}
+              weight={weight}
+              numberOfLines={titleLines}
+              selectable={selectable}
+              accessible={grouped ? false : undefined}
+              style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
+            >
+              {title}
+            </Text>
+          }
+          tag={tag != null && <Tag kind={tag.kind} word={tag.word} turning={tag.turning} />}
+        />
         {line != null && (
           <Text
             size={14}

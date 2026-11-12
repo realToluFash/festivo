@@ -23,6 +23,7 @@ import {
   Tag,
   TextAction,
   TITLE_BESIDE_TAG,
+  TitleBesideTag,
   useRowClear,
 } from './Summary.tsx';
 import { Text } from './Text.tsx';
@@ -160,17 +161,19 @@ function RecoveryRow({
       >
         <Avatar {...face} side={side} />
         <View style={styles.words}>
-          <View style={styles.titleRow}>
-            <Text
-              size={16}
-              weight="semibold"
-              accessible={false}
-              style={[styles.name, lit && styles.accent]}
-            >
-              {askerName(t, request)}
-            </Text>
-            <Tag kind="waiting" word={t('recoveryRequests.mark')} wraps />
-          </View>
+          <TitleBesideTag
+            title={
+              <Text
+                size={16}
+                weight="semibold"
+                accessible={false}
+                style={[styles.name, lit && styles.accent]}
+              >
+                {askerName(t, request)}
+              </Text>
+            }
+            tag={<Tag kind="waiting" word={t('recoveryRequests.mark')} wraps />}
+          />
           {recoveryFacts(t, request).map((fact) => (
             <Text
               key={fact}
@@ -244,13 +247,6 @@ const styles = StyleSheet.create({
   litPast: { marginHorizontal: -tokens.spaceMd, paddingHorizontal: tokens.spaceMd },
   group: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceLg },
   words: { flex: 1, minWidth: 0, gap: 3 },
-  titleRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    columnGap: tokens.spaceSm,
-    rowGap: tokens.spaceXxs,
-  },
   name: { ...TITLE_BESIDE_TAG, lineHeight: 16 * 1.3 },
   fact: { lineHeight: 14 * 1.4 },
   answers: { flexDirection: 'row', flexWrap: 'wrap', columnGap: tokens.space3xl, marginTop: 3 },

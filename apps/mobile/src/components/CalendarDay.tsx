@@ -9,7 +9,7 @@ import { EventSquare, YouDot } from './CalendarWeeks.tsx';
 import { EventThumb } from './EventCard.tsx';
 import { eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
-import { Tag, TITLE_BESIDE_TAG } from './SummaryRows.tsx';
+import { Tag, TITLE_BESIDE_TAG, TitleBesideTag } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
 
 const hidden = {
@@ -116,12 +116,15 @@ export function DayRow({
     >
       {lead}
       <View style={styles.words}>
-        <View style={[styles.titleRow, big && styles.titleStack]}>
-          <Text size={16} weight="semibold" accessible={false} style={styles.title}>
-            {rowTitle(item)}
-          </Text>
-          {tag}
-        </View>
+        <TitleBesideTag
+          style={big && styles.titleStack}
+          title={
+            <Text size={16} weight="semibold" accessible={false} style={styles.title}>
+              {rowTitle(item)}
+            </Text>
+          }
+          tag={tag}
+        />
         {children}
       </View>
       <Glyph name="chevron" size={17} ink={tokens.colorInkTertiary} weight={2.3} />
@@ -332,13 +335,6 @@ const styles = StyleSheet.create({
   },
   tint: { opacity: 0.16 },
   words: { flex: 1, minWidth: 0, gap: 3 },
-  titleRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    columnGap: 8,
-    rowGap: 4,
-  },
   titleStack: { flexDirection: 'column', alignItems: 'flex-start' },
   title: { ...TITLE_BESIDE_TAG, lineHeight: 16 * 1.3 },
   line: { lineHeight: 14 * 1.4 },
