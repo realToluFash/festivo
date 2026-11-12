@@ -126,7 +126,7 @@ export function SecurityDesk() {
   const [acting, setActing] = useState(false);
   const [dialog, setDialog] = useState<Opened | null>(() => returnedProof(returned));
   const [opensOnLine] = useState(() => linksOnArrival(returned));
-  const [opensSetup, setOpensSetup] = useState(() => opensOn(location.state) === 'turnOn');
+  const opensSetup = useRef(opensOn(location.state) === 'turnOn');
   const here = useSignOut(() => navigate('/sign-in'));
   const ways = waysOf(session.hasPassword, session.providers);
   const rules = rulesOf(session.organisations);
@@ -151,6 +151,11 @@ export function SecurityDesk() {
         if (!live) return;
         lineHeld.current = saidLine.current != null && document.activeElement === saidLine.current;
         setTwoFactor(now);
+        // A held step elsewhere in Settings opens two-factor's set-up, once the page knows it is off.
+        if (!opensSetup.current) return;
+        opensSetup.current = false;
+        void navigate(location.pathname, { replace: true, state: null });
+        if (!now.on) setDialog({ kind: 'setup' });
       },
       (error: unknown) =>
         live && setTwoFactor((was) => (was != null && keepsWhatLoaded(error) ? was : 'failed')),
@@ -159,7 +164,7 @@ export function SecurityDesk() {
     return () => {
       live = false;
     };
-  }, [factorTry, refresh, watch]);
+  }, [factorTry, refresh, watch, navigate, location.pathname]);
 
   useEffect(() => {
     let live = true;
@@ -177,14 +182,6 @@ export function SecurityDesk() {
   useEffect(() => {
     if (said != null) focusWhenFree(() => saidLine.current);
   }, [said]);
-
-  // A held step elsewhere in Settings opens two-factor's set-up once the page knows it is off.
-  useEffect(() => {
-    if (!opensSetup || status == null) return;
-    setOpensSetup(false);
-    void navigate(location.pathname, { replace: true, state: null });
-    if (!status.on) setDialog({ kind: 'setup' });
-  }, [opensSetup, status, navigate, location.pathname]);
 
   // The alone line unmounts as the card arrives, so its copy in the card takes focus it held.
   useEffect(() => {
