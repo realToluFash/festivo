@@ -7,10 +7,9 @@ import {
   calledOff,
   eventDayWords,
   formatEventDate,
-  formatEventMoment,
   milestoneDistance,
   nextStep,
-  notThisYear,
+  milestoneMoment,
   numberFormat,
   shownDays,
   wallDayNumber,
@@ -265,12 +264,7 @@ export function cardStep(event: Shown, now: Date, locale: string, t: TFunction):
         kind: 'next',
         title: t('events.nextUp', { title: step.milestone.title }),
         line: t('events.dateAway', {
-          date: formatEventMoment(
-            step.milestone.at,
-            event.timeZone,
-            locale,
-            notThisYear(event.timeZone, now, step.milestone.at),
-          ),
+          date: milestoneMoment(step.milestone.at, event.timeZone, now, locale),
           distance: distanceWords(step.milestone.at, event.timeZone, now, t),
         }),
       };

@@ -2,12 +2,11 @@ import { type OrganisationEvent } from '@soirely/api-client';
 import {
   comingUp,
   type EventTimeline as Timeline,
-  formatEventMoment,
   type MarkedMilestone,
   markedMilestones,
   type MilestoneOwner,
   namesZone,
-  notThisYear,
+  milestoneMoment,
   serverClock,
 } from '@soirely/domain';
 import { type RefObject, useEffect, useState } from 'react';
@@ -228,12 +227,7 @@ function MilestoneRow({
 }) {
   const { t } = useTranslation();
   const { milestone, standing, nextUp } = marked;
-  const moment = formatEventMoment(
-    milestone.at,
-    timeZone,
-    dateLocale(),
-    notThisYear(timeZone, now, milestone.at),
-  );
+  const moment = milestoneMoment(milestone.at, timeZone, now, dateLocale());
 
   return (
     <li className={`timeline-row${standing === 'passed' ? ' timeline-row-passed' : ''}`}>
