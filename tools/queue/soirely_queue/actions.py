@@ -360,6 +360,8 @@ def label(c, a):
 STALE_CLAIM_HOURS = 3
 NEEDS_IOS = ("sc-{} needs iOS, and this machine has no Xcode: it is for a tester on the Mac, "
              "pick another")
+NEEDS_XCODE = ("sc-{} needs xcode, and this machine has no Xcode: it is for a developer on the "
+               "Mac. Nothing claimed: pick another")
 
 
 def stack_up(c, story, held=False):
@@ -424,6 +426,8 @@ def claim(c, a):
                 or not R.ROLES[c.role]["filter"](set(story["labels"]), story["state"]):
             raise Refused(f"sc-{story['id']} is {story['state']} "
                           f"({', '.join(story['labels']) or 'no labels'}), not in your queue")
+        if not R.can_take(c.role, story, machine.has_xcode):
+            raise Refused(NEEDS_XCODE.format(story["id"]))
         held = W.held_epic(story, store.get_meta(c.db, "epics"))
         if held:
             raise Refused(f"sc-{story['id']} is in epic {held['name']}, which is "
@@ -455,7 +459,7 @@ def claim(c, a):
                 stack_up(c, story, held=True)
                 c.refresh(story["id"])
                 return None
-            if not R.can_test(c.role, story, machine.has_xcode):
+            if not R.can_take(c.role, story, machine.has_xcode):
                 raise Refused(NEEDS_IOS.format(story["id"]))
             age = time.time() - datetime.datetime.fromisoformat(
                 last["at"].replace("Z", "+00:00")).timestamp() if last else float("inf")
@@ -466,7 +470,7 @@ def claim(c, a):
                 takeover = f", taking over from {R.claimant(last)}'s of {last['at'][11:16]}"
         elif story["state"] != "Ready For QA":
             raise Refused(f"sc-{story['id']} is {story['state']}, not Ready For QA")
-        elif not R.can_test(c.role, story, machine.has_xcode):
+        elif not R.can_take(c.role, story, machine.has_xcode):
             raise Refused(NEEDS_IOS.format(story["id"]))
         else:
             first = W.retester(story)

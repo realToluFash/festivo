@@ -433,6 +433,17 @@ class Queue(unittest.TestCase):
         items = work.queue_items([ready], ios=False)
         self.assertEqual([i["roles"] for i in items], [["dev", "dev2", "dev3", "dev4"]])
 
+    def test_needs_xcode_is_no_developer_s_without_xcode(self):
+        ready = story(state="Ready For Dev", labels=["needs xcode"])
+        self.assertEqual(work.queue_items([ready], ios=False), [])
+        items = work.queue_items([ready], ios=True)
+        self.assertEqual([i["roles"] for i in items], [["dev", "dev2", "dev3", "dev4"]])
+
+    def test_needs_xcode_holds_back_no_tester(self):
+        ready = story(state="Ready For QA", labels=["needs xcode"])
+        items = work.queue_items([ready], ios=False)
+        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3"]])
+
     def test_a_translation_ticket_is_only_the_linguists(self):
         for state in ("To Do", "Ready For Dev", "In Progress", "Failed QA"):
             items = work.queue_items([story(state=state, labels=["translation"])])

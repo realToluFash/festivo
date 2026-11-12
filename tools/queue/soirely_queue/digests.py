@@ -85,7 +85,7 @@ def tester(p, db, stories):
     ready = sorted(untaken(db, p.role, W.queued(p.role, stories)), key=lambda s: s["updated_at"] or "")
     people = machine.manual_testers()
     stuck = [s for s in stories if s["state"] == "In QA" and not s["done"]
-             and R.can_test(p.role, s, machine.has_xcode) and not R.kept_for_person(s, people)]
+             and R.can_take(p.role, s, machine.has_xcode) and not R.kept_for_person(s, people)]
     p.add(f"Ready For QA ({len(ready)}), oldest first:")
     p.add(*[line(s) for s in ready])
     if stuck:
