@@ -495,7 +495,17 @@ function RoomOverlays({
 }
 
 /** From the accessibility text sizes the room's tools leave the room: the View switch, Print, the room's name and the bars above it, Add and the zoom under it, each wrapping, so none covers a wall or another (sc-31783). */
-function RoomOutside({ m, go, inside }: { m: Seating; go: Go; inside: ReactNode }) {
+function RoomOutside({
+  m,
+  go,
+  inside,
+  onHold,
+}: {
+  m: Seating;
+  go: Go;
+  inside: ReactNode;
+  onHold: (held: boolean) => void;
+}) {
   const ready = m.load === 'ready';
   const plan = ready && m.view === 'Floor plan';
   const p = m.shown == null ? null : pct(m.shown.s);
@@ -525,7 +535,10 @@ function RoomOutside({ m, go, inside }: { m: Seating; go: Go; inside: ReactNode 
         </View>
       )}
       <View
-        style={styles.drawing}
+        style={[styles.drawing, m.fields.focus != null && styles.drawingShort]}
+        onTouchStart={() => onHold(true)}
+        onTouchEnd={(e) => onHold(e.nativeEvent.touches.length > 0)}
+        onTouchCancel={() => onHold(false)}
         onLayout={(e) =>
           go({
             type: 'laid',
@@ -558,11 +571,13 @@ function RoomArea({
   go,
   event,
   style,
+  onHold,
 }: {
   m: Seating;
   go: Go;
   event: EventShown;
   style: object;
+  onHold: (held: boolean) => void;
 }) {
   const size = m.size;
   const out = atAccessibilitySizes(useWindowDimensions().fontScale);
@@ -617,7 +632,7 @@ function RoomArea({
   if (out)
     return (
       <View style={[styles.room, style]}>
-        <RoomOutside m={m} go={go} inside={inside} />
+        <RoomOutside m={m} go={go} inside={inside} onHold={onHold} />
       </View>
     );
   return (
@@ -819,7 +834,10 @@ export function SeatingTablet({
   onArea: (area: AreaKey) => void;
 }) {
   const { layout } = useShell();
+  const out = atAccessibilitySizes(useWindowDimensions().fontScale);
+  const [held, setHeld] = useState(false);
   const panel = m.load !== 'failed' && m.load !== 'noPlan';
+  const panelBody = <PanelBody m={m} go={go} />;
   if (layout === 'landscape')
     return (
       <EventFrame
@@ -834,13 +852,29 @@ export function SeatingTablet({
       >
         <View style={styles.side}>
           <View style={styles.head}>
-            <Title size={24} accessibilityRole="header" style={[styles.titleGrow, styles.title24]}>
+            <Title
+              size={out ? SIDE_TITLE_STEPS : 24}
+              accessibilityRole="header"
+              style={[styles.titleGrow, styles.title24]}
+            >
               {W.seating}
             </Title>
             <HeadParts m={m} go={go} />
           </View>
           <View style={styles.body}>
-            <RoomArea m={m} go={go} event={event} style={styles.grow} />
+            {out ? (
+              <ScrollView
+                style={styles.grow}
+                contentContainerStyle={styles.roomScroll}
+                scrollEnabled={!held}
+                keyboardShouldPersistTaps="handled"
+                testID="seating.roomScroll"
+              >
+                <RoomArea m={m} go={go} event={event} style={styles.roomGrows} onHold={setHeld} />
+              </ScrollView>
+            ) : (
+              <RoomArea m={m} go={go} event={event} style={styles.grow} onHold={setHeld} />
+            )}
             {panel && (
               <ScrollView
                 style={styles.panel}
@@ -848,13 +882,49 @@ export function SeatingTablet({
                 keyboardShouldPersistTaps="handled"
                 automaticallyAdjustKeyboardInsets
               >
-                <PanelBody m={m} go={go} />
+                {panelBody}
               </ScrollView>
             )}
           </View>
         </View>
       </EventFrame>
     );
+  const top = (
+    <>
+      <View style={styles.titleRow}>
+        <Title size={30} accessibilityRole="header" style={[styles.titleGrow, styles.title30]}>
+          {W.seating}
+        </Title>
+        <HeadParts m={m} go={go} />
+      </View>
+      {m.load === 'noPlan' ? (
+        <SummaryCard
+          height={200}
+          backdrop={<CardBackdrop event={event} />}
+          step={{
+            label: W.startPlan,
+            onPress: () => go({ type: 'openStart' }),
+            testID: 'seating.startPlan',
+          }}
+        >
+          <CardSays text={W.noPlan} heading />
+          <OnCard text={W.noPlanLine} />
+        </SummaryCard>
+      ) : (
+        <RoomArea
+          m={m}
+          go={go}
+          event={event}
+          style={
+            out
+              ? styles.uprightGrows
+              : [styles.uprightRoom, m.fields.focus != null && styles.uprightShort]
+          }
+          onHold={setHeld}
+        />
+      )}
+    </>
+  );
   return (
     <EventFrame
       event={event}
@@ -866,48 +936,39 @@ export function SeatingTablet({
       fill
       overlay={<Overlays m={m} go={go} />}
     >
-      <View style={styles.upright}>
-        <View style={styles.titleRow}>
-          <Title size={30} accessibilityRole="header" style={[styles.titleGrow, styles.title30]}>
-            {W.seating}
-          </Title>
-          <HeadParts m={m} go={go} />
+      {out ? (
+        <ScrollView
+          style={styles.upright}
+          contentContainerStyle={[styles.uprightAll, styles.uprightPanel]}
+          scrollEnabled={!held}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+          testID="seating.pageScroll"
+        >
+          {top}
+          {panel && panelBody}
+        </ScrollView>
+      ) : (
+        <View style={[styles.upright, styles.uprightAll]}>
+          {top}
+          {panel && (
+            <ScrollView
+              style={styles.grow}
+              contentContainerStyle={styles.uprightPanel}
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets
+            >
+              {panelBody}
+            </ScrollView>
+          )}
         </View>
-        {m.load === 'noPlan' ? (
-          <SummaryCard
-            height={200}
-            backdrop={<CardBackdrop event={event} />}
-            step={{
-              label: W.startPlan,
-              onPress: () => go({ type: 'openStart' }),
-              testID: 'seating.startPlan',
-            }}
-          >
-            <CardSays text={W.noPlan} heading />
-            <OnCard text={W.noPlanLine} />
-          </SummaryCard>
-        ) : (
-          <RoomArea
-            m={m}
-            go={go}
-            event={event}
-            style={[styles.uprightRoom, m.fields.focus != null && styles.uprightShort]}
-          />
-        )}
-        {panel && (
-          <ScrollView
-            style={styles.grow}
-            contentContainerStyle={styles.uprightPanel}
-            keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets
-          >
-            <PanelBody m={m} go={go} />
-          </ScrollView>
-        )}
-      </View>
+      )}
     </EventFrame>
   );
 }
+
+// From the accessibility sizes the title on its side takes iOS's Title 1 steps, as upright; 24 has none of its own.
+const SIDE_TITLE_STEPS = 30;
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
@@ -938,7 +999,8 @@ const styles = StyleSheet.create({
   panelInside: { padding: tokens.spaceXl, paddingBottom: tokens.space6xl * 2 },
   panelGap: { gap: 14 },
   shape: { borderRadius: tokens.spaceMd, backgroundColor: SUNK },
-  upright: { flex: 1, paddingHorizontal: tokens.space3xl, gap: 14 },
+  upright: { flex: 1 },
+  uprightAll: { paddingHorizontal: tokens.space3xl, gap: 14 },
   uprightPanel: { paddingBottom: tokens.space6xl * 3 },
   titleRow: {
     minHeight: 52,
@@ -949,6 +1011,9 @@ const styles = StyleSheet.create({
   },
   uprightRoom: { height: 560, borderRadius: tokens.spaceXxl },
   uprightShort: { height: 380 },
+  uprightGrows: { borderRadius: tokens.spaceXxl },
+  roomScroll: { flexGrow: 1 },
+  roomGrows: { flexGrow: 1 },
   centred: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: tokens.space3xl },
   noPlan: { width: 420, maxWidth: '100%' },
   hint: { maxWidth: 300, textAlign: 'center', lineHeight: 15 * 1.45 },
@@ -970,7 +1035,8 @@ const styles = StyleSheet.create({
     padding: tokens.spaceXl,
   },
   stripLine: { paddingHorizontal: tokens.spaceXl, paddingBottom: tokens.spaceSm },
-  drawing: { flex: 1, overflow: 'hidden' },
+  drawing: { height: 560, overflow: 'hidden' },
+  drawingShort: { height: 380 },
   pillWraps: { flexWrap: 'wrap', flexShrink: 1 },
   bottomLeft: {
     position: 'absolute',

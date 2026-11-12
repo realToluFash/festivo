@@ -127,7 +127,7 @@ function itemShape({
   look: Look;
   chosenChair: number | null;
   labels: Label[];
-  badges?: Badge[];
+  badges: Badge[];
 }) {
   const s = v.s;
   const cx = v.ox + it.x * s;
@@ -285,20 +285,7 @@ function itemShape({
     const c = look.ring.colour;
     const words = initials(look.ring.name);
     const badge = (corners: Point[]) => {
-      const at = corners[0];
-      if (badges != null) badges.push({ key: `${it.id}.ring`, corners, colour: c, words });
-      else if (at != null)
-        out.push(
-          <Rect
-            key="pill"
-            x={at.x}
-            y={at.y}
-            width={BADGE_W}
-            height={BADGE_H}
-            rx={BADGE_H / 2}
-            fill={c}
-          />,
-        );
+      badges.push({ key: `${it.id}.ring`, corners, colour: c, words });
     };
     if (circle) {
       const rr = e.x * s + pad + 3.5;
@@ -1080,7 +1067,16 @@ export function MiniMap({
         <Rect x={0} y={0} width={m.room.w * s} height={m.room.l * s} fill={tokens.colorCard} />
         {m.items.map((it) => (
           <G key={it.id}>
-            {itemShape({ m, it, v: map, detail: 'out', look: {}, chosenChair: null, labels: [] })}
+            {itemShape({
+              m,
+              it,
+              v: map,
+              detail: 'out',
+              look: {},
+              chosenChair: null,
+              labels: [],
+              badges: [],
+            })}
           </G>
         ))}
         <Rect

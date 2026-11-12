@@ -181,14 +181,11 @@ describe('the room to scale', () => {
 
   it('keeps the walls clear of the tools, and fills its box once the tools sit outside it', () => {
     const under = run(pad, { type: 'laid', w: 786, h: 560, pad: PAD_UNDER_TOOLS });
-    expect(under.shown?.oy).toBeGreaterThanOrEqual(PAD_UNDER_TOOLS[0]);
-    const out = run(under, { type: 'laid', w: 786, h: 400, pad: PAD_FRAME });
-    const v = out.shown;
-    expect(v).not.toBeNull();
-    if (v == null) return;
-    expect(v.oy).toBeGreaterThanOrEqual(PAD_FRAME[0]);
-    expect(v.oy + ROOM.l * v.s).toBeLessThanOrEqual(400 - PAD_FRAME[2] + 0.001);
-    expect(run(out, { type: 'fit' }).shown).toEqual(v);
+    expect(under.shown).toEqual(fit(786, 560, ROOM, PAD_UNDER_TOOLS));
+    const out = run(under, { type: 'laid', w: 786, h: 560, pad: PAD_FRAME });
+    expect(out.shown).toEqual(fit(786, 560, ROOM, PAD_FRAME));
+    expect(out.shown?.s ?? 0).toBeGreaterThan(under.shown?.s ?? 0);
+    expect(run(out, { type: 'fit' }).shown).toEqual(out.shown);
   });
 
   it('draws outlines under 50% and each chair a target from 150%', () => {
