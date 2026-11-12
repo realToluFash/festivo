@@ -25,6 +25,7 @@ import {
   codePath,
   offersWhatsApp,
 } from './guest.ts';
+import { guestPlace } from './arrivalNote.ts';
 
 const LINES = {
   map: [
@@ -403,10 +404,16 @@ function Row({ lead, title, line }: { lead: ReactNode; title: ReactNode; line: R
   );
 }
 
-/** When, where and who, as Events A writes them: the value as the title, the label as its line. */
+/** When, where and who, as Events A writes them; the host's arrival note under the Where line, never translated. */
 export function Details({ visit, words, hosts }: { visit: Visit; words: Words; hosts: boolean }) {
   const time = eventTime(visit.lang);
   const zoned = visit.readerZone !== EVENT.timeZone;
+  const { venue, note } = guestPlace(EVENT, visit.note, visit.phase === 'live');
+  const noteLine = note != null && (
+    <p className="gp-note" dir="auto">
+      {note}
+    </p>
+  );
 
   return (
     <div className="gp-details gp-left-after">
@@ -415,17 +422,26 @@ export function Details({ visit, words, hosts }: { visit: Visit; words: Words; h
         title={eventDay(visit.lang)}
         line={zoned ? words.timeInZone(time, EVENT.timeZone) : time}
       />
-      <div className={hosts ? 'gp-where has-rule' : 'gp-where'}>
-        <Row
-          lead={<Glyph name="pin" size={22} />}
-          title={EVENT.venue?.name}
-          line={EVENT.venue?.address}
-        />
-        <a className="gp-text gp-maps" href={mapsLink()} target="_blank" rel="noopener noreferrer">
-          <Line name="map" size={18} weight={2.2} />
-          <span>{words.openInMaps}</span>
-        </a>
-      </div>
+      {venue != null && (
+        <div className={hosts ? 'gp-where has-rule' : 'gp-where'}>
+          <Row lead={<Glyph name="pin" size={22} />} title={venue.name} line={venue.address} />
+          {venue.address != null && (
+            <a
+              className="gp-text gp-maps"
+              href={mapsLink(venue.address)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Line name="map" size={18} weight={2.2} />
+              <span>{words.openInMaps}</span>
+            </a>
+          )}
+          {noteLine}
+        </div>
+      )}
+      {venue == null && noteLine !== false && (
+        <div className={hosts ? 'gp-where has-rule' : 'gp-where'}>{noteLine}</div>
+      )}
       {hosts && (
         <Row lead={<Glyph name="users" size={22} />} title={words.hosts} line={words.hostedBy} />
       )}

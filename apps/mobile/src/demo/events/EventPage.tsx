@@ -53,6 +53,8 @@ import {
   sampleEvent,
 } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
+import { NOTE_WORDS, WIDE_NOTE } from './ArrivalNote.ts';
+import { NoteInset } from './NoteInset.tsx';
 import { datesSaveSays, replyByInTell, replyByRow, replyBySaved } from './ReplyBy.ts';
 import { replyByOf } from '../guests/GuestsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
@@ -113,6 +115,9 @@ function startEvent(
       startsAt: instantOf(CHANGED.start.date, CHANGED.start.time, event.timeZone),
       endsAt: instantOf(CHANGED.end.date, CHANGED.end.time, event.timeZone),
     };
+
+  if (state === 'noteNoVenue') return { ...event, venue: null };
+  if (state === 'noteWide') return { ...event, arrivalNote: WIDE_NOTE };
 
   return state === 'photo' ? { ...event, photo: true } : event;
 }
@@ -610,10 +615,26 @@ function Details({
           part: 'venue',
           title: shown.venue?.name ?? W.venueToBeConfirmed,
           line: shown.venue == null ? W.venue : `${W.venue} · ${shown.venue.address}`,
-          opens: true,
+          opens: shown.venue != null || shown.arrivalNote == null,
           after:
-            shown.venue == null ? undefined : (
-              <TextAction label={W.openInMaps} glyph="globe" onPress={onMaps} testID="event.maps" />
+            shown.venue == null && shown.arrivalNote == null ? undefined : (
+              <>
+                {shown.arrivalNote != null && <NoteInset note={shown.arrivalNote} />}
+                {shown.venue == null ? (
+                  <TextAction
+                    label={NOTE_WORDS.addVenue}
+                    onPress={() => onEdit('venue')}
+                    testID="event.addVenue"
+                  />
+                ) : (
+                  <TextAction
+                    label={W.openInMaps}
+                    glyph="globe"
+                    onPress={onMaps}
+                    testID="event.maps"
+                  />
+                )}
+              </>
             ),
         },
         { part: 'hosts', ...hosts, opens: true },

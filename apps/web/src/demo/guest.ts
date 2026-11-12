@@ -11,6 +11,8 @@ import {
   isGuestKitchenState,
   guestKitchenStarts,
 } from './guestKitchen.ts';
+import type { GuestNote } from './arrivalNote.ts';
+import { guestNoteStarts, isGuestNoteState } from './guestNote.ts';
 import type { DemoLink } from './settings.ts';
 
 /** The guest's own page in A · The cover card (sc-31306), on the boards' sample: main's evt-wed-4 and one guest. */
@@ -188,6 +190,7 @@ export interface Visit {
   whatsApp: WhatsAppConsent;
   ticked: boolean;
   reach: Reach;
+  note: GuestNote;
 }
 
 export const OPEN: View = { kind: 'answer', busy: null, note: null };
@@ -222,6 +225,7 @@ const BASE: Visit = {
   whatsApp: 'none',
   ticked: false,
   reach: { email: true, sms: true, saved: null },
+  note: 'host',
 };
 
 const COMING = { answer: 'coming', on: TODAY } as const;
@@ -539,6 +543,7 @@ export function isGuestState(value: string | null): value is GuestStateName {
 export function startOf(value: string | null): Visit {
   if (isGuestKitchenState(value))
     return { ...BASE, ...guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS }) };
+  if (isGuestNoteState(value)) return { ...BASE, ...guestNoteStarts(value) };
 
   const state = isGuestState(value) ? value : 'open';
 
@@ -780,10 +785,8 @@ export const LANGUAGES: readonly { code: Lang; name: string }[] = LOCALES.map((o
   name: one.nativeName,
 }));
 
-export function mapsLink(): string {
-  const query = [EVENT.venue?.name, EVENT.venue?.address].filter(Boolean).join(', ');
-
-  return `https://www.openstreetmap.org/search?query=${encodeURIComponent(query)}`;
+export function mapsLink(address: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 }
 
 /** The board's English, held in the demo until the product's screen puts it in the four catalogues (SHARED.md, Step three). */

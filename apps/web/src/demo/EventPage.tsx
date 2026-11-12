@@ -41,6 +41,8 @@ import {
   VenuePart,
 } from './EventEdits.tsx';
 import { ReplyByPart } from './EventReplyBy.tsx';
+import { withNote } from './arrivalNote.ts';
+import './arrivalNote.css';
 import {
   REPLY_BY_WORDS,
   datesSaveSays,
@@ -200,7 +202,16 @@ function EventAt({
     const named = messages ? null : eventStateOf(raw);
     const state = event != null && named != null && stateFits(named, event) ? named : null;
 
-    return { event: event != null && state === 'photo' ? { ...event, photo: true } : event, state };
+    const shown =
+      event == null || state == null
+        ? event
+        : state === 'photo'
+          ? { ...event, photo: true }
+          : state === 'noteNoVenue' || state === 'noteWide' || state === 'noteMarkup'
+            ? withNote(event, state)
+            : event;
+
+    return { event: shown, state };
   });
 
   useEffect(() => {
@@ -682,14 +693,21 @@ function Details({
       />
     );
   };
-  const row = (one: Part, lead: ReactNode, title: string, line: string, after?: ReactNode) => (
+  const row = (
+    one: Part,
+    lead: ReactNode,
+    title: string,
+    line: string,
+    after?: ReactNode,
+    plain = false,
+  ) => (
     <PartRow
       key={one}
       lead={lead}
       title={title}
       line={line}
       open={part === one}
-      locked={(one === 'dates' || one === 'replyBy') && locked}
+      locked={((one === 'dates' || one === 'replyBy') && locked) || plain}
       after={after}
       onOpen={() => onOpen(one)}
     >
@@ -727,17 +745,28 @@ function Details({
             <Lead name="pin" />,
             event.venue?.name ?? W.venueToBeConfirmed,
             event.venue?.address == null ? W.venue : `${W.venue} · ${event.venue.address}`,
-            maps == null ? undefined : (
-              <a
-                className="desk-text ev-maps"
-                href={maps}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Glyph name="globe" size={17} weight={2.3} />
-                {W.openInMaps}
-              </a>
+            maps == null && event.arrivalNote == null ? undefined : (
+              <>
+                {event.arrivalNote != null && <p className="ev-note">{event.arrivalNote}</p>}
+                {maps != null && (
+                  <a
+                    className="desk-text ev-maps"
+                    href={maps}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Glyph name="globe" size={17} weight={2.3} />
+                    {W.openInMaps}
+                  </a>
+                )}
+                {event.venue == null && !locked && (
+                  <button type="button" className="desk-text" onClick={() => onOpen('venue')}>
+                    {W.addVenue}
+                  </button>
+                )}
+              </>
             ),
+            event.venue == null && event.arrivalNote != null,
           )}
           {row(
             'hosts',

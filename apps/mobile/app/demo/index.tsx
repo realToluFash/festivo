@@ -1380,6 +1380,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=venueDown',
       },
       {
+        title: 'Venue · arrival note',
+        what: 'The note under Address, its hint (sc-24385)',
+        href: '/demo/events/evt-wed-4?state=venueNote',
+      },
+      {
+        title: 'Venue · a note of 501',
+        what: 'Refused before sending, focus on the box',
+        href: '/demo/events/evt-wed-4?state=venueNoteTooLong',
+      },
+      {
+        title: 'Venue · the note refused (422)',
+        what: 'The server’s words, in the same place',
+        href: '/demo/events/evt-wed-4?state=venueNoteRefused',
+      },
+      {
+        title: 'Venue · a role changed (403)',
+        what: 'Save: nothing was changed',
+        href: '/demo/events/evt-wed-4?state=venueNoteForbidden',
+      },
+      {
+        title: 'Details · a note and no venue',
+        what: 'Venue to be confirmed, the note, Add the venue',
+        href: '/demo/events/evt-wed-4?state=noteNoVenue',
+      },
+      {
+        title: 'Details · a note of 500, no spaces',
+        what: 'Wraps inside the row',
+        href: '/demo/events/evt-wed-4?state=noteWide',
+      },
+      {
         title: 'Hosted by',
         what: 'The hosts, in order',
         href: '/demo/events/evt-wed-4?state=hosts',

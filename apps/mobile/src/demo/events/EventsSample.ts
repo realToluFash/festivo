@@ -2,6 +2,7 @@ import { EVENT_AREAS, type EventArea, type EventState, type EventType } from '@s
 
 import { ORGANISATION } from '../settings/MembersSample.ts';
 import type { EventKey } from '../today.ts';
+import { ARRIVAL_NOTE } from './ArrivalNote.ts';
 
 export { ORGANISATION };
 
@@ -17,6 +18,7 @@ export interface SampleEvent {
   name: string;
   type: EventType;
   venue: SampleVenue | null;
+  arrivalNote: string | null;
   timeZone: string;
   startsAt: string;
   endsAt: string;
@@ -44,6 +46,7 @@ interface Row {
   name: string;
   type: EventType;
   venue: SampleVenue | null;
+  arrivalNote?: string;
   timeZone: string;
   at: readonly [string, string];
   hosts: readonly string[];
@@ -67,6 +70,7 @@ const ROWS: readonly Row[] = [
     name: 'Adaeze & Tunde’s wedding',
     type: 'wedding',
     venue: venue('The Landmark', '222 Marylebone Road, London NW1 6JQ', 'London'),
+    arrivalNote: ARRIVAL_NOTE,
     timeZone: LONDON,
     at: ['2026-11-05T18:00:00Z', '2026-11-07T15:00:00Z'],
     hosts: ['Adaeze Obi', 'Tunde Bakare'],
@@ -313,6 +317,7 @@ export const EVENTS: readonly SampleEvent[] = ROWS.map((row) => ({
   name: row.name,
   type: row.type,
   venue: row.venue,
+  arrivalNote: row.arrivalNote ?? null,
   timeZone: row.timeZone,
   startsAt: row.at[0],
   endsAt: row.at[1],
@@ -329,6 +334,7 @@ export const REUNION: SampleEvent = {
   name: 'Okafor family reunion',
   type: 'other',
   venue: venue('Hampton Manor', 'Shadowbrook Lane, Hampton-in-Arden B92 0EN', 'Solihull'),
+  arrivalNote: null,
   timeZone: LONDON,
   startsAt: '2026-11-28T15:00:00Z',
   endsAt: '2026-12-01T11:00:00Z',
