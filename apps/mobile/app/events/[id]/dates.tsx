@@ -7,6 +7,7 @@ import { AppFrame, BackButton } from '../../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../../src/components/bodyEdges.ts';
 import { Refreshing } from '../../../src/components/Refreshing.tsx';
 import { Screen } from '../../../src/components/Screen.tsx';
+import { useEventRead, useSidebarCard } from '../../../src/components/sidebarCard.ts';
 import { type TextHandle } from '../../../src/components/Text.tsx';
 import { AllDates } from '../../../src/components/Timeline.tsx';
 import { goToArea, goUpToEvent } from '../../../src/kit/upToEvent.ts';
@@ -26,6 +27,7 @@ export default function EventDates() {
   const back = () => goUpToEvent(navigation, router, id);
   const title = useRef<TextHandle>(null);
   const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
+  const card = useSidebarCard(useEventRead(id));
   const refreshing = offline.refreshing ? (
     <Refreshing testID="timeline.allDates.refreshing" />
   ) : null;
@@ -43,6 +45,7 @@ export default function EventDates() {
       inEvent={{
         area: 'overview',
         onArea: (area) => (area === 'overview' ? back() : goToArea(navigation, router, id, area)),
+        card,
       }}
     >
       <Screen edges={bodyEdges(kind)} contentStyle={styles.content}>
