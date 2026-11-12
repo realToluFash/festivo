@@ -233,17 +233,6 @@
   transform: translateX(calc(var(--sizeToggleW) - var(--sizeToggleKnob) - var(--spaceHair) * 2));
 }
 
-.ev-switch-word {
-  min-width: 26px;
-  color: var(--colorInkSecondary);
-  font: var(--typeButton);
-  text-align: start;
-}
-
-.ev-switch[aria-checked='true'] .ev-switch-word {
-  color: var(--colorAccentText);
-}
-
 .ev-area-title {
   font: 700 34px/1.12 var(--fontFamily);
   letter-spacing: -0.02em;
