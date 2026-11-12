@@ -1,5 +1,7 @@
-import { type Ref, useId, useRef, useState } from 'react';
+import { type Ref, useEffect, useId, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   FlatList,
   Modal,
   Platform,
@@ -77,9 +79,9 @@ export function ListPicker({
   const locale = currentLocale();
   const [open, setOpen] = useState(false);
   const pickerShown = useModalOpen(open);
-  const [onScreen, setOnScreen] = useState(false);
-  if (!pickerShown && onScreen) setOnScreen(false);
   const reduced = useReducedMotion();
+  const { windowUp, rise, risen } = usePickerRise(pickerShown, reduced);
+  const onScreen = windowUp && pickerShown;
   const unnamed = useUnnamedWindow(
     Platform.OS === 'android' && pickerShown,
     onScreen,
@@ -95,6 +97,7 @@ export function ListPicker({
   const fieldEdge = useFocusEdge(controlTaken);
   const refused = useRefused(wrong, line);
   const { kind, width, height } = useLayout();
+  const slide = rise.interpolate({ inputRange: [0, 1], outputRange: [height, 0] });
   const beside = searchBesideTitle({ phone: kind === 'phone', width, height });
 
   // TalkBack otherwise puts its focus on Done, past the title (sc-42690).
@@ -166,17 +169,17 @@ export function ListPicker({
       </Pressable>
 
       <Modal
-        visible={pickerShown}
-        animationType="slide"
+        visible={pickerShown || windowUp}
+        animationType={SLIDES_INSIDE ? 'none' : 'slide'}
         supportedOrientations={TURNS_WITH_THE_APP}
         onRequestClose={() => setOpen(false)}
-        onShow={() => setOnScreen(true)}
+        onShow={risen}
       >
         {Platform.OS === 'android' && <SilentWindowName />}
         {/* A full-screen modal takes the app's view out of the window, so the app's insets stop turning with it. */}
         <SafeAreaProvider>
-          <View
-            style={styles.fill}
+          <Animated.View
+            style={[styles.fill, SLIDES_INSIDE && { transform: [{ translateY: slide }] }]}
             collapsable={false}
             importantForAccessibility={unnamed ? 'no-hide-descendants' : 'auto'}
             onAccessibilityEscape={() => setOpen(false)}
@@ -247,11 +250,46 @@ export function ListPicker({
                 )}
               />
             </Screen>
-          </View>
+          </Animated.View>
         </SafeAreaProvider>
       </Modal>
     </>
   );
+}
+
+// TalkBack reads a window still sliding in as a second app on the screen, so on Android the menu slides inside a window already in place (qa #42888).
+const SLIDES_INSIDE = Platform.OS === 'android';
+
+// Android's own window slide: config_shortAnimTime, accelerate-decelerate.
+const RISE_EASING = Easing.inOut(Easing.sin);
+
+/** Whether the menu's window is up, and how far its menu has risen in it, 1 in place; on iOS the window slides itself. */
+function usePickerRise(shown: boolean, reduced: boolean) {
+  const [windowUp, setWindowUp] = useState(false);
+  const [rise] = useState(() => new Animated.Value(SLIDES_INSIDE ? 0 : 1));
+  if (!SLIDES_INSIDE && !shown && windowUp) setWindowUp(false);
+
+  useEffect(() => {
+    if (!SLIDES_INSIDE || !windowUp) return;
+    const duration = reduced ? 0 : WINDOW_ARRIVES_MS;
+    const motion = Animated.timing(rise, {
+      toValue: shown ? 1 : 0,
+      duration,
+      easing: RISE_EASING,
+      useNativeDriver: true,
+    });
+    motion.start();
+    if (shown) return () => motion.stop();
+    // Android can lose a native animation's end, so the window goes on a timer of its own.
+    const gone = setTimeout(() => setWindowUp(false), duration);
+
+    return () => {
+      motion.stop();
+      clearTimeout(gone);
+    };
+  }, [windowUp, shown, reduced, rise]);
+
+  return { windowUp, rise, risen: () => setWindowUp(true) };
 }
 
 function Chevron() {

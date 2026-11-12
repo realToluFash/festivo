@@ -190,13 +190,22 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     const picker = read('ListPicker.tsx');
 
     it('hides on Android through the sheet’s own wait, from when its window is up until it has slid in', () => {
-      expect(picker).toContain('onShow={() => setOnScreen(true)}');
+      expect(picker).toContain('onShow={risen}');
+      expect(picker).toContain('const onScreen = windowUp && pickerShown;');
       expect(picker).toMatch(
         /useUnnamedWindow\(\s*Platform\.OS === 'android' && pickerShown,\s*onScreen,\s*null,\s*reduced \? 0 : WINDOW_ARRIVES_MS,?\s*\)/,
       );
       expect(picker).toContain(
         "importantForAccessibility={unnamed ? 'no-hide-descendants' : 'auto'}",
       );
+    });
+
+    it('slides inside a window already in place on Android, never as a window sliding (qa #42888)', () => {
+      expect(picker).toContain("const SLIDES_INSIDE = Platform.OS === 'android';");
+      expect(picker).toContain("animationType={SLIDES_INSIDE ? 'none' : 'slide'}");
+      expect(picker).toContain('visible={pickerShown || windowUp}');
+      expect(picker).toContain('SLIDES_INSIDE && { transform: [{ translateY: slide }] }');
+      expect(picker).toContain('const gone = setTimeout(() => setWindowUp(false), duration);');
     });
 
     it('moves TalkBack’s focus to its title once revealed, on Android only', () => {
