@@ -1297,7 +1297,7 @@ export const GUESTS_STATES = [
   { key: 'whatsAppNoMobile', name: 'Inês Duarte, no mobile number: no WhatsApp row' },
   { key: 'whatsAppViewer', name: 'Can view (guests.read): no contact details, no WhatsApp row' },
   { key: 'export', name: 'Export: This view and Excel, the defaults' },
-  { key: 'exportNarrowed', name: 'Export from Coming and a search: This view narrowed' },
+  { key: 'exportNarrowed', name: 'Export from Coming and “duarte”: a guest and their companion' },
   { key: 'exportEmpty', name: 'Export from an empty view: This view off, All guests chosen' },
   { key: 'exportCsv', name: 'Export: All guests as CSV' },
   { key: 'exportNoNeeds', name: 'Export without guests.manage: no allergies, diet or access' },
@@ -1565,7 +1565,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'export':
       return { ...start, exporting: {} };
     case 'exportNarrowed':
-      return { ...start, choice: 'coming', q: 'okon', exporting: {} };
+      return { ...start, choice: 'coming', q: 'duarte', exporting: {} };
     case 'exportEmpty':
       return { ...start, choice: 'held', q: 'marta', exporting: {} };
     case 'exportCsv':
