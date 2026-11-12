@@ -971,7 +971,7 @@ export function RoomSurface({
   const caption = beside
     ? {
         left: viewsEnd + tokens.spaceMd,
-        top: tokens.spaceXl + 14,
+        top: tokens.spaceXl + 14 - tokens.spaceXxs,
         maxWidth: (printStart > 0 ? printStart : width) - viewsEnd - 2 * tokens.spaceMd,
       }
     : { left: v.ox, top: v.oy - 26 };
@@ -989,7 +989,7 @@ export function RoomSurface({
               length(m, m.room.l),
             )}
             numberOfLines={1}
-            style={[styles.roomLine, caption]}
+            style={[styles.roomLine, caption, beside && styles.roomLineOver]}
           >
             {roomLine(m)}
           </Text>
@@ -1167,6 +1167,13 @@ const styles = StyleSheet.create({
   },
   figures: { fontVariant: ['tabular-nums'] },
   roomLine: { position: 'absolute', color: tokens.colorInkSecondary },
+  roomLineOver: {
+    paddingHorizontal: tokens.spaceSm,
+    paddingVertical: tokens.spaceXxs,
+    borderRadius: tokens.spaceSm,
+    overflow: 'hidden',
+    backgroundColor: tokens.colorCard,
+  },
   hit: { position: 'absolute' },
   chair: { width: CHAIR_HIT, height: CHAIR_HIT, borderRadius: CHAIR_HIT / 2 },
   tip: {
