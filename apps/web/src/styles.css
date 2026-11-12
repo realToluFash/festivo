@@ -381,6 +381,25 @@ span {
     border-radius: var(--radiusCardLarge);
     box-shadow: var(--deskShadow);
   }
+
+  /* The Calendar fills its card, as its demo does, and only its weeks or agenda scroll. */
+  .shell-content.is-card:has(.cal-page) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .shell-content.is-card > .desk:has(> .cal-page) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .shell-content.is-card .cal-page {
+    flex: 1;
+    height: auto;
+  }
 }
 
 .shell-sidebar :is(a, button):focus-visible {

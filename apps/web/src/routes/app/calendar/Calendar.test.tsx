@@ -406,7 +406,7 @@ describe('Calendar, weeks as lanes (sc-30413)', () => {
     },
   );
 
-  it('shows the Events empty state with New event', SLOW, async () => {
+  it("shows Events' first run, its step Create an event", SLOW, async () => {
     signedIn();
     answering({ org_1: [] });
     at('/app/calendar');
@@ -414,7 +414,7 @@ describe('Calendar, weeks as lanes (sc-30413)', () => {
     expect(
       await screen.findByRole('heading', { name: 'Set up your first event' }, WAIT),
     ).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'New event' }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: 'Create an event' }).getAttribute('href')).toBe(
       '/app/events/new',
     );
     expect(screen.queryByRole('radio', { name: 'View: Agenda' })).toBeNull();
@@ -428,7 +428,7 @@ describe('Calendar, weeks as lanes (sc-30413)', () => {
     expect(
       await screen.findByText(/Ask an owner if you need to create one\./, {}, WAIT),
     ).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'New event' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Create an event' })).toBeNull();
   });
 
   it('says it did not load, with Try again, then loads', SLOW, async () => {

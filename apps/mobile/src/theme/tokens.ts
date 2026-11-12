@@ -453,7 +453,7 @@ const base = {
       "ring": "0"
     },
     "maybe": {
-      "word": "Maybe",
+      "word": "Not sure yet",
       "dot": "#FBF1DC",
       "ring": "3px solid #B7791F"
     },
@@ -591,7 +591,7 @@ export const schemes = {
         "ring": "0"
       },
       "maybe": {
-        "word": "Maybe",
+        "word": "Not sure yet",
         "dot": "#FBF1DC",
         "ring": "3px solid #B7791F"
       },
@@ -736,7 +736,7 @@ export const schemes = {
         "ring": "0"
       },
       "maybe": {
-        "word": "Maybe",
+        "word": "Not sure yet",
         "dot": "#FBF1DC",
         "ring": "3px solid #B7791F"
       },
@@ -881,7 +881,7 @@ export const schemes = {
         "ring": "0"
       },
       "maybe": {
-        "word": "Maybe",
+        "word": "Not sure yet",
         "dot": "#FBF1DC",
         "ring": "3px solid #B7791F"
       },
@@ -1026,7 +1026,7 @@ export const schemes = {
         "ring": "0"
       },
       "maybe": {
-        "word": "Maybe",
+        "word": "Not sure yet",
         "dot": "#FBF1DC",
         "ring": "3px solid #B7791F"
       },
@@ -1171,7 +1171,7 @@ export const schemes = {
         "ring": "0"
       },
       "maybe": {
-        "word": "Maybe",
+        "word": "Not sure yet",
         "dot": "#FBF1DC",
         "ring": "3px solid #B7791F"
       },
@@ -1316,7 +1316,7 @@ export const schemes = {
         "ring": "0"
       },
       "maybe": {
-        "word": "Maybe",
+        "word": "Not sure yet",
         "dot": "#FBF1DC",
         "ring": "3px solid #B7791F"
       },
@@ -1461,7 +1461,7 @@ export const schemes = {
         "ring": "0"
       },
       "maybe": {
-        "word": "Maybe",
+        "word": "Not sure yet",
         "dot": "#FBF1DC",
         "ring": "3px solid #B7791F"
       },
@@ -1606,7 +1606,7 @@ export const schemes = {
         "ring": "0"
       },
       "maybe": {
-        "word": "Maybe",
+        "word": "Not sure yet",
         "dot": "#FBF1DC",
         "ring": "3px solid #B7791F"
       },
