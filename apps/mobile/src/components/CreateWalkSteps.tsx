@@ -92,6 +92,7 @@ function StepScroll({
   scroller,
   onScrolled,
   onLayout,
+  onContentSizeChange,
   children,
 }: {
   look: Look;
@@ -99,6 +100,7 @@ function StepScroll({
   scroller?: Ref<ScrollViewInstance>;
   onScrolled: (scrolled: boolean) => void;
   onLayout?: (event: LayoutChangeEvent) => void;
+  onContentSizeChange?: () => void;
   children: ReactNode;
 }) {
   return (
@@ -110,6 +112,7 @@ function StepScroll({
       scrollEventThrottle={16}
       onScroll={(event) => onScrolled(event.nativeEvent.contentOffset.y > 0)}
       onLayout={onLayout}
+      onContentSizeChange={onContentSizeChange}
     >
       {children}
     </ScrollView>
@@ -160,6 +163,8 @@ function Preview({ name }: { name: string }) {
 
 // Over 100 and at twice the text, the field's reason or help runs under the keys unless the body
 // scrolls to it; a scroll while the keys still rise stops short, so it goes again once they are up.
+// Android clamps a scroll to the content height it last measured, so one asked as the name's row
+// appears above the field stops a row short, and it goes again once the taller content is measured.
 function keepInSight(seen: NameInSight, scroller: RefObject<ScrollViewInstance | null>) {
   const y = nameInSight(seen);
   if (y != null) scroller.current?.scrollTo({ y, animated: true });
@@ -231,6 +236,7 @@ export function NameStep({
         seen.current.viewport = event.nativeEvent.layout.height;
         keepInSight(seen.current, scroller);
       }}
+      onContentSizeChange={() => keepInSight(seen.current, scroller)}
     >
       <StepWords look={look} words={stepWords} />
       <Question ref={question} words={t('createOrganisation.whatTitle')} size={sizes.question} />
