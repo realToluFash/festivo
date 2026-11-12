@@ -34,6 +34,12 @@ describe('titleWithInkRoom', () => {
     expect(titleWithInkRoom('Ada at Thirty', 'android')).toBe('Ada at Thirty ');
   });
 
+  it('leaves a selectable Android title as it is, so a copy of it has no hair space', () => {
+    expect(titleWithInkRoom('v=spf1 include:soirely.com ~all', 'android', true)).toBe(
+      'v=spf1 include:soirely.com ~all',
+    );
+  });
+
   it('leaves the title as it is elsewhere', () => {
     expect(titleWithInkRoom('Ada at Thirty', 'ios')).toBe('Ada at Thirty');
   });

@@ -279,7 +279,7 @@ export function Row({
               accessible={grouped ? false : undefined}
               style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
             >
-              {titleWithInkRoom(title, Platform.OS)}
+              {titleWithInkRoom(title, Platform.OS, selectable)}
             </Text>
           }
           tag={tag != null && <Tag kind={tag.kind} word={tag.word} turning={tag.turning} />}
