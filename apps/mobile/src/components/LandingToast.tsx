@@ -36,7 +36,7 @@ export function sayOnLanding(key: string): void {
   set(key);
 }
 
-/** Over the whole stack; on a phone it clears the tab bar, and on a step it rests on the foot as measured, to whose column a tablet keeps it. On a step it stays while the field it landed on keeps focus, and closes as another control takes it (sc-37519, sc-37983). Where it and the focused field do not both fit above the keys it steps aside, mounted so its 10 seconds run on and it is not read out again (sc-37983). */
+/** Over the whole stack; on a phone it clears the tab bar, and on a step it rests on the foot as measured, and a tablet keeps it to the step's column, foot or no foot (sc-42562). On a step it stays while the field it landed on keeps focus, and closes as another control takes it (sc-37519, sc-37983). Where it and the focused field do not both fit above the keys it steps aside, mounted so its 10 seconds run on and it is not read out again (sc-37983). */
 export function LandingToast() {
   const { t } = useTranslation();
   const key = useSyncExternalStore(subscribe, () => said);
@@ -51,7 +51,7 @@ export function LandingToast() {
   const stepId = step?.id;
   // Its first frame is drawn over the landing, never over the blank before it, so it slides in and is read out once (sc-39703).
   const shown = key != null && frame != null && screen?.landed === true;
-  const column = kind === 'phone' ? null : step?.foot;
+  const column = kind === 'phone' ? null : step?.column;
   // Only its height is measured, which moving it leaves as it is: its top is worked out in the render that moves it, so stepping aside never trails the keys by a layout pass.
   const [height, setHeight] = useState<number | null>(null);
   const bottom =
