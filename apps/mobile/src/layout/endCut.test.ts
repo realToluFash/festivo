@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { endCuts, endCutWidth } from './endCut.ts';
+import { endCuts, endCutWidth, unbroken } from './endCut.ts';
+
+describe('unbroken', () => {
+  it('leaves no space, dash or slash to break the line at', () => {
+    expect(unbroken('Anniversaire de mariage')).toBe('Anniversaire de mariage');
+    expect(unbroken('Adéṣínà-Ọláolúwa')).toBe('Adéṣínà-⁠Ọláolúwa');
+    expect(unbroken('Ade–Obi Obi/Bakare')).toBe('Ade–⁠Obi Obi/⁠Bakare');
+  });
+});
 
 const charWidth = (text: string) => Array.from(text).length * 10;
 
