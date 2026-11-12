@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { titleAtWidth, UNMEASURED_TITLE } from './titleWidth.ts';
+import { titleAtWidth, titleWithInkRoom, UNMEASURED_TITLE } from './titleWidth.ts';
 
 describe('titleAtWidth', () => {
   it('keeps the key on the first layout', () => {
@@ -26,5 +26,21 @@ describe('titleAtWidth', () => {
 
     expect(portrait).toEqual({ width: 600, key: 1 });
     expect(back).toEqual({ width: 900, key: 2 });
+  });
+});
+
+describe('titleWithInkRoom', () => {
+  it('ends an Android title in a hair space', () => {
+    expect(titleWithInkRoom('Ada at Thirty', 'android')).toBe('Ada at Thirty ');
+  });
+
+  it('leaves a selectable Android title as it is, so a copy of it has no hair space', () => {
+    expect(titleWithInkRoom('v=spf1 include:soirely.com ~all', 'android', true)).toBe(
+      'v=spf1 include:soirely.com ~all',
+    );
+  });
+
+  it('leaves the title as it is elsewhere', () => {
+    expect(titleWithInkRoom('Ada at Thirty', 'ios')).toBe('Ada at Thirty');
   });
 });

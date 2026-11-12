@@ -1,5 +1,5 @@
 import { type ComponentType, Fragment, type ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { type Item, dayHeading, isYou, itemKey, rowTitle, rowWhen } from '../kit/calendar.ts';
@@ -10,6 +10,7 @@ import { EventThumb } from './EventThumb.tsx';
 import { eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
 import { Tag, TITLE_BESIDE_TAG, TitleBesideTag } from './SummaryRows.tsx';
+import { titleWithInkRoom } from './titleWidth.ts';
 import { Text } from './Text.tsx';
 
 const hidden = {
@@ -120,7 +121,7 @@ export function DayRow({
           style={big && styles.titleStack}
           title={
             <Text size={16} weight="semibold" accessible={false} style={styles.title}>
-              {rowTitle(item)}
+              {titleWithInkRoom(rowTitle(item), Platform.OS)}
             </Text>
           }
           tag={tag}
