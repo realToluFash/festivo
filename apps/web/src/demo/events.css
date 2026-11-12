@@ -322,13 +322,6 @@
 
 /* ── Duplicate: the guest list as one more tick under Starts, and a copy's refusal in the dialog's place (sc-3656) ── */
 
-.ev-copy-when {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  min-width: 0;
-}
-
 .ev-copy-guests {
   display: flex;
   align-items: flex-start;

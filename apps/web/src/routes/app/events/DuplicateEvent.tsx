@@ -141,6 +141,7 @@ function DuplicateBox({ event, onClose }: { event: OrganisationEvent; onClose: (
           setStart(next);
           if (next.date !== '' && next.time !== '') setError(undefined);
         }}
+        busy={busy}
         failed={status === 'failed'}
         error={error}
         when={when}

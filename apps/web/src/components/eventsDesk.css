@@ -54,6 +54,13 @@
   letter-spacing: -0.015em;
 }
 
+.ev-copy-when {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
 .ev-bullets {
   margin: 0;
   padding-left: 22px;
