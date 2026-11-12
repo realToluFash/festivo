@@ -253,21 +253,26 @@ export function StepScreen({
   const shown = useRef<ReturnType<typeof stepShown> | null>(null);
   const footInPage = useRef(inline);
 
-  // Measured as it slides in, the foot would be placed where it is passing: it is placed only once it has landed.
-  const placeFoot = useCallback(() => {
+  const columnRef = useRef<ViewInstance>(null);
+
+  // Measured as it slides in, the step would be placed where it is passing: it is placed only once it has landed.
+  const placeStep = useCallback(() => {
     if (shown.current == null) return;
-    if (footRef.current == null) shown.current.placed(null);
-    else
-      footRef.current.measureInWindow((x, y, width) =>
-        shown.current?.placed({ x, width, top: footInPage.current ? null : y }),
-      );
+    columnRef.current?.measureInWindow((x, _y, width) => {
+      const column = { x, width };
+      if (footRef.current == null) shown.current?.placed({ column, foot: null });
+      else
+        footRef.current.measureInWindow((_x, y) =>
+          shown.current?.placed({ column, foot: { top: footInPage.current ? null : y } }),
+        );
+    });
   }, []);
 
   useEffect(() => {
     const step = stepShown();
     const landed = setTimeout(() => {
       shown.current = step;
-      placeFoot();
+      placeStep();
     }, SETTLED_MS);
 
     return () => {
@@ -275,12 +280,12 @@ export function StepScreen({
       shown.current = null;
       step.left();
     };
-  }, [placeFoot]);
+  }, [placeStep]);
 
   useEffect(() => {
     footInPage.current = inline;
-    placeFoot();
-  }, [inline, hasFoot, placeFoot]);
+    placeStep();
+  }, [inline, hasFoot, placeStep]);
 
   // The keys move the foot without laying it out again where the page pads for them, or a sheet rises clear of them.
   useEffect(() => {
@@ -289,9 +294,9 @@ export function StepScreen({
     const unwatch = watchKeyboardTop(
       () => 0,
       () => {
-        placeFoot();
+        placeStep();
         clearTimeout(settled);
-        settled = setTimeout(placeFoot, SETTLED_MS);
+        settled = setTimeout(placeStep, SETTLED_MS);
       },
     );
 
@@ -299,7 +304,7 @@ export function StepScreen({
       clearTimeout(settled);
       unwatch();
     };
-  }, [hasFoot, placeFoot]);
+  }, [hasFoot, placeStep]);
 
   useEffect(() => {
     if (!keysUp) return;
@@ -345,10 +350,10 @@ export function StepScreen({
       ]}
       onLayout={(event) => {
         if (!inline) measuredAs('foot')(event);
-        placeFoot();
+        placeStep();
       }}
     >
-      <View ref={footRef} style={[styles.column, styles.footColumn]} onLayout={placeFoot}>
+      <View ref={footRef} style={[styles.column, styles.footColumn]} onLayout={placeStep}>
         {foot}
       </View>
     </View>
@@ -381,7 +386,9 @@ export function StepScreen({
           keyboardDismissMode="interactive"
         >
           <ScreenScroll.Provider value={screenScroll}>
-            <View style={styles.column}>{children}</View>
+            <View ref={columnRef} style={styles.column} onLayout={placeStep}>
+              {children}
+            </View>
             {inline && footView}
           </ScreenScroll.Provider>
         </ScrollView>

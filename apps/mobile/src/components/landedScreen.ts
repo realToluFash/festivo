@@ -1,17 +1,28 @@
 import { useSyncExternalStore } from 'react';
 
-/** Where a step's foot sits in the window once the step has landed: across it, which the landing toast keeps to on a tablet (sc-37519), and its top while docked, which the toast rests on, or null while it has moved into the page (sc-37983). */
-export interface StepFoot {
+/** Where a step's column sits across the window once the step has landed, foot or no foot, which the landing toast keeps to on a tablet (sc-37519, sc-42562). */
+export interface StepColumn {
   x: number;
   width: number;
+}
+
+/** A step's foot: its top in the window while docked, which the landing toast rests on, or null while it has moved into the page (sc-37983). */
+export interface StepFoot {
   top: number | null;
 }
 
-/** A screen the landing toast can be said over: Home, or a step, which has landed once it has slid in, with its foot if it has one. */
+/** Where a landed step's column and foot sit, its foot null with none. */
+export interface StepPlace {
+  column: StepColumn;
+  foot: StepFoot | null;
+}
+
+/** A screen the landing toast can be said over: Home, or a step, which has landed once it has slid in, with its column and its foot if it has one. */
 export interface LandedScreen {
   id: number;
   home: boolean;
   landed: boolean;
+  column: StepColumn | null;
   foot: StepFoot | null;
 }
 
@@ -30,29 +41,35 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-function sameFoot(was: StepFoot | null, foot: StepFoot | null): boolean {
-  if (was == null || foot == null) return was === foot;
+function samePlace(was: LandedScreen, place: StepPlace): boolean {
+  const column = was.column;
+  if (column == null || column.x !== place.column.x || column.width !== place.column.width) {
+    return false;
+  }
+  if (was.foot == null || place.foot == null) return was.foot === place.foot;
 
-  return was.x === foot.x && was.width === foot.width && was.top === foot.top;
+  return was.foot.top === place.foot.top;
 }
 
 function shown(home: boolean): { id: number; left(): void } {
   const id = ++ids;
-  changed([...screens, { id, home, landed: home, foot: null }]);
+  changed([...screens, { id, home, landed: home, column: null, foot: null }]);
 
   return { id, left: () => changed(screens.filter((screen) => screen.id !== id)) };
 }
 
-/** A step is showing; the one mounted last is the one in front. Returns how it says it has landed and where its foot sits, null with no foot, and how it leaves. */
-export function stepShown(): { placed(foot: StepFoot | null): void; left(): void } {
+/** A step is showing; the one mounted last is the one in front. Returns how it says it has landed and where its column and foot sit, and how it leaves. */
+export function stepShown(): { placed(place: StepPlace): void; left(): void } {
   const { id, left } = shown(false);
 
   return {
-    placed: (foot) => {
+    placed: (place) => {
       const was = screens.find((screen) => screen.id === id);
-      if (was == null || (was.landed && sameFoot(was.foot, foot))) return;
+      if (was == null || (was.landed && samePlace(was, place))) return;
       changed(
-        screens.map((screen) => (screen.id === id ? { ...screen, landed: true, foot } : screen)),
+        screens.map((screen) =>
+          screen.id === id ? { ...screen, landed: true, ...place } : screen,
+        ),
       );
     },
     left,

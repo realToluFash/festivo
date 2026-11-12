@@ -61,18 +61,24 @@ describe('the landing toast with no step foot under it (sc-29071, sc-37519)', ()
 describe('what a landed step puts under the toast, read against its frame (sc-37983)', () => {
   it('is no foot on Home, or on a step with none', () => {
     expect(underToast(null, { y: 0, height: 800 })).toBe('noFoot');
-    expect(underToast({ id: 1, home: true, landed: true, foot: null }, { y: 0, height: 800 })).toBe(
-      'noFoot',
-    );
     expect(
-      underToast({ id: 1, home: false, landed: true, foot: null }, { y: 0, height: 800 }),
+      underToast(
+        { id: 1, home: true, landed: true, column: null, foot: null },
+        { y: 0, height: 800 },
+      ),
+    ).toBe('noFoot');
+    expect(
+      underToast(
+        { id: 1, home: false, landed: true, column: null, foot: null },
+        { y: 0, height: 800 },
+      ),
     ).toBe('noFoot');
   });
 
   it('is a foot in the page while the foot has moved off the bottom', () => {
     expect(
       underToast(
-        { id: 1, home: false, landed: true, foot: { x: 24, width: 320, top: null } },
+        { id: 1, home: false, landed: true, column: { x: 24, width: 320 }, foot: { top: null } },
         { y: 0, height: 800 },
       ),
     ).toBe('footInPage');
@@ -81,7 +87,7 @@ describe('what a landed step puts under the toast, read against its frame (sc-37
   it('reaches from the bottom of a frame starting below a status bar up to the docked foot top', () => {
     expect(
       underToast(
-        { id: 1, home: false, landed: true, foot: { x: 24, width: 320, top: 700 } },
+        { id: 1, home: false, landed: true, column: { x: 24, width: 320 }, foot: { top: 700 } },
         { y: 24, height: 776 },
       ),
     ).toEqual({ footReaches: 100 });
