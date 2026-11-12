@@ -168,6 +168,8 @@ describe('when a guest who isn’t sure yet is asked again (sc-1363)', () => {
     await guest('state=maybe_reply_changed');
 
     expect(ask()).toBeNull();
+    expect(screen.getByText(/^You answered Coming on /u)).toBeTruthy();
+    expect(screen.queryByText(/^You answered Not sure yet/u)).toBeNull();
     expect(screen.queryByText(/We’ll ask you on|We won’t ask again/u)).toBeNull();
     expect(focused()?.getAttribute('data-focus')).toBe('greeting');
   });
@@ -251,6 +253,8 @@ describe('when a guest who isn’t sure yet is asked again (sc-1363)', () => {
     await pressSave();
 
     expect(ask()).toBeNull();
+    expect(screen.getByText(/^You answered Coming on /u)).toBeTruthy();
+    expect(screen.queryByText(/^You answered Not sure yet/u)).toBeNull();
     expect(focused()?.getAttribute('data-focus')).toBe('greeting');
   });
 });
