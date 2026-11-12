@@ -48,3 +48,15 @@
   gap: 18px;
   max-width: var(--evWide);
 }
+
+.ev-dialog-title {
+  font: 700 22px/1.15 var(--fontFamily);
+  letter-spacing: -0.015em;
+}
+
+.ev-bullets {
+  margin: 0;
+  padding-left: 22px;
+  color: var(--colorInkSecondary);
+  font: var(--deskLine);
+}

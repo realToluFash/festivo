@@ -10,7 +10,8 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
 
 import { ActionPair } from '../components/ActionPair.tsx';
-import { type SampleEvent, EVENT_WORDS as W, copyStart, instantOf, keepCopy } from './events.ts';
+import { copyStart } from '../copyStart.ts';
+import { type SampleEvent, EVENT_WORDS as W, instantOf, keepCopy } from './events.ts';
 import { DateTime } from '../components/EventPageParts.tsx';
 import { LayersContext, useDeskDialog } from '../layers.ts';
 import { Dialog, Head } from '../components/SettingsParts.tsx';

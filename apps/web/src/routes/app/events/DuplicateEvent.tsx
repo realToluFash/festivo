@@ -1,19 +1,17 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
 import { copyEndsLine, copyStartRefusal, localDateTime, skippedLine } from '@soirely/domain';
-import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { type ReactNode, useContext, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { useDialogKeys } from '../../../dialogFocus.ts';
+import { DateTime } from '../../../components/EventPageParts.tsx';
+import { Glyph } from '../../../components/Glyph.tsx';
+import { Dialog, Head } from '../../../components/SettingsParts.tsx';
+import { copyStart } from '../../../copyStart.ts';
 import { dateLocale } from '../../../i18n/index.ts';
-import { offButton } from '../../../offButton.ts';
-import { focusWhereSent } from '../../../offField.ts';
-import { focusStep } from '../../../stepFocus.ts';
-import { Moment } from './EventFields.tsx';
-import { StatusPill } from './MakeLive.tsx';
-
-const OPENING_AFTER = 700;
+import { LayersContext, useDeskLayers } from '../../../layers.ts';
+import { DUPLICATED } from './duplicated.ts';
 
 /** `Duplicate` (sc-3593): how the event is set up, as a new Draft from a start the organiser chooses. */
 export function DuplicateEvent({
@@ -50,6 +48,7 @@ export function DuplicateEvent({
   );
 }
 
+/** The desk dialog, as the demo draws it (sc-39471): its top bar, then what is copied and what is not, and Starts filled in a year on. */
 export function DuplicateDialog({
   event,
   onClose,
@@ -57,52 +56,63 @@ export function DuplicateDialog({
   event: OrganisationEvent;
   onClose: () => void;
 }) {
+  return (
+    <OwnLayers>
+      <DuplicateBox event={event} onClose={onClose} />
+    </OwnLayers>
+  );
+}
+
+/** A dialog's layers where the page has none to draw it in, as an event's areas other than Overview. */
+function OwnLayers({ children }: { children: ReactNode }) {
+  const outer = useContext(LayersContext);
+  const { layers, setHost } = useDeskLayers();
+
+  if (outer.host != null) return children;
+
+  return (
+    <LayersContext value={layers}>
+      {children}
+      <div className="desk">
+        <div ref={setHost} className="desk-layers" />
+      </div>
+    </LayersContext>
+  );
+}
+
+function DuplicateBox({ event, onClose }: { event: OrganisationEvent; onClose: () => void }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
+  const id = useId();
+  const [start, setStart] = useState(() => copyStart(event));
   const [error, setError] = useState<string | undefined>(undefined);
-  const [status, setStatus] = useState<'editing' | 'creating' | 'failed' | 'created'>('editing');
-  const [created, setCreated] = useState<string | null>(null);
-  const dialog = useRef<HTMLDivElement>(null);
-  const heading = useRef<HTMLHeadingElement>(null);
-  const busy = status === 'creating' || status === 'created';
+  const [status, setStatus] = useState<'editing' | 'creating' | 'failed'>('editing');
+  const when = useRef<HTMLDivElement>(null);
+  const busy = status === 'creating';
   const locale = dateLocale();
+  const skipped = skippedLine(start.date, start.time, event.timeZone, locale, t);
 
-  useLayoutEffect(() => focusStep(heading.current), []);
-  useDialogKeys(dialog, onClose, busy);
+  const focusHalf = (half: 'date' | 'time') =>
+    when.current?.querySelector<HTMLElement>(`input[type="${half}"]`)?.focus();
 
-  useEffect(() => {
-    if (created == null) return;
-
-    const id = window.setTimeout(
-      () => void navigate(`/app/events/${encodeURIComponent(created)}`),
-      OPENING_AFTER,
-    );
-
-    return () => window.clearTimeout(id);
-  }, [created, navigate]);
-
-  async function submit(form: FormEvent<HTMLFormElement>): Promise<void> {
-    form.preventDefault();
+  async function create(): Promise<void> {
     if (busy) return;
 
-    const refusal = copyStartRefusal(date, time, t);
+    const refusal = copyStartRefusal(start.date, start.time, t);
 
     if (refusal != null) {
       setError(refusal.message);
-      document.getElementById(`event-copy-start-${refusal.focus}`)?.focus();
+      focusHalf(refusal.focus);
 
       return;
     }
 
     setStatus('creating');
-    const land = focusWhereSent();
 
     try {
-      const copy = await api.duplicateEvent(event.id, localDateTime(date, time) ?? '');
-      setStatus('created');
-      setCreated(copy.id);
+      const copy = await api.duplicateEvent(event.id, localDateTime(start.date, start.time) ?? '');
+
+      void navigate(`/app/events/${encodeURIComponent(copy.id)}`, { state: DUPLICATED });
     } catch (failure) {
       const refused =
         failure instanceof ApiError && failure.status === 422
@@ -112,7 +122,7 @@ export function DuplicateDialog({
       if (refused != null) {
         setStatus('editing');
         setError(refused);
-        land('event-copy-start-date');
+        focusHalf('date');
         return;
       }
 
@@ -121,100 +131,69 @@ export function DuplicateDialog({
   }
 
   return (
-    <>
-      <div className="dialog-scrim" aria-hidden="true" />
-      <div
-        ref={dialog}
-        className="dialog event-copy-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="event-copy-title"
-        aria-describedby="event-copy-body"
-      >
-        <form className="dialog-form" noValidate onSubmit={(sent) => void submit(sent)}>
-          <div className="dialog-heading">
-            <h2 id="event-copy-title" ref={heading} tabIndex={-1}>
-              {t('eventDuplicate.title', { event: event.name })}
-            </h2>
-            <p id="event-copy-body">{t('eventDuplicate.body')}</p>
-          </div>
-
-          <div className="event-copy-lists">
-            <div>
-              <h3>{t('eventDuplicate.copied')}</h3>
-              <ul>
-                <li>{t('eventDuplicate.copiedName')}</li>
-                <li>{t('eventDuplicate.copiedType')}</li>
-                <li>{t('eventDuplicate.copiedVenue')}</li>
-                <li>{t('eventDuplicate.copiedCover')}</li>
-                <li>{t('eventDuplicate.copiedTimeZone')}</li>
-                <li>{t('eventDuplicate.copiedCurrency')}</li>
-                <li>{t('eventDuplicate.copiedLength')}</li>
-              </ul>
-            </div>
-            <div>
-              <h3>{t('eventDuplicate.notCopied')}</h3>
-              <ul>
-                <li>{t('eventDuplicate.notCopiedHosts')}</li>
-                <li>{t('eventDuplicate.notCopiedGuests')}</li>
-                <li>{t('eventDuplicate.notCopiedReplies')}</li>
-                <li>{t('eventDuplicate.notCopiedHappened')}</li>
-              </ul>
-            </div>
-          </div>
-
-          {status === 'failed' && (
-            <div className="notice notice-broken" role="alert">
-              <span className="mark mark-broken" aria-hidden="true">
-                ✕
-              </span>
-              <p>{t('eventDuplicate.notCreated')}</p>
-            </div>
-          )}
-
-          <Moment
-            id="event-copy-start"
-            legend={t('eventDuplicate.starts')}
-            skipped={skippedLine(date, time, event.timeZone, locale, t)}
-            hint={copyEndsLine(date, time, event, locale, t)}
-            date={date}
-            time={time}
-            error={error}
-            busy={busy}
-            onDate={(chosen) => {
-              setDate(chosen);
-              if (chosen !== '' && time !== '') setError(undefined);
-            }}
-            onTime={(chosen) => {
-              setTime(chosen);
-              if (chosen !== '' && date !== '') setError(undefined);
-            }}
-          />
-
-          <div className="event-copy-created" role="status">
-            {status === 'created' && (
-              <>
-                <StatusPill phase="draft" />
-                <p>{t('eventDuplicate.created')}</p>
-              </>
-            )}
-          </div>
-
-          <div className="dialog-actions actions-confirm">
-            <button
-              type="button"
-              className="button"
-              {...offButton(busy, { dim: false })}
-              onClick={onClose}
-            >
-              {t('eventDuplicate.cancel')}
-            </button>
-            <button className="button button-primary" type="submit" aria-busy={busy}>
-              {t('eventDuplicate.create')}
-            </button>
-          </div>
-        </form>
+    <Dialog
+      title={t('eventDuplicate.open')}
+      verb={t('eventDuplicate.create')}
+      dismiss={t('eventDuplicate.cancel')}
+      locked={busy}
+      onDismiss={onClose}
+      onConfirm={() => void create()}
+    >
+      <h3 className="ev-dialog-title">{t('eventDuplicate.title', { event: event.name })}</h3>
+      <p className="desk-line">{t('eventDuplicate.body')}</p>
+      <div>
+        <Head title={t('eventDuplicate.copied')} level={3} />
+        <ul className="ev-bullets">
+          <li>{t('eventDuplicate.copiedName')}</li>
+          <li>{t('eventDuplicate.copiedType')}</li>
+          <li>{t('eventDuplicate.copiedVenue')}</li>
+          <li>{t('eventDuplicate.copiedCover')}</li>
+          <li>{t('eventDuplicate.copiedTimeZone')}</li>
+          <li>{t('eventDuplicate.copiedCurrency')}</li>
+          <li>{t('eventDuplicate.copiedLength')}</li>
+        </ul>
       </div>
-    </>
+      <div>
+        <Head title={t('eventDuplicate.notCopied')} level={3} />
+        <ul className="ev-bullets">
+          <li>{t('eventDuplicate.notCopiedHosts')}</li>
+          <li>{t('eventDuplicate.notCopiedGuests')}</li>
+          <li>{t('eventDuplicate.notCopiedReplies')}</li>
+          <li>{t('eventDuplicate.notCopiedHappened')}</li>
+        </ul>
+      </div>
+      {status === 'failed' && (
+        <p className="desk-error" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {t('eventDuplicate.notCreated')}
+        </p>
+      )}
+      <div ref={when}>
+        <DateTime
+          legend={t('eventDuplicate.starts')}
+          wall={start}
+          wrong={error != null}
+          told={error != null ? `${id}-wrong` : skipped != null ? `${id}-skip` : `${id}-ends`}
+          onChange={(next) => {
+            setStart(next);
+            if (next.date !== '' && next.time !== '') setError(undefined);
+          }}
+        />
+      </div>
+      {error != null && (
+        <p id={`${id}-wrong`} className="desk-error" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {error}
+        </p>
+      )}
+      {skipped != null && (
+        <p id={`${id}-skip`} className="desk-help">
+          {skipped}
+        </p>
+      )}
+      <p id={`${id}-ends`} className="desk-note" role="status">
+        {copyEndsLine(start.date, start.time, event, locale, t)}
+      </p>
+    </Dialog>
   );
 }

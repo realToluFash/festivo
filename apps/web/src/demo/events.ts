@@ -1526,13 +1526,6 @@ export function instantOf(date: string, time: string, timeZone: string): string 
   return new Date(instant).toISOString().replace('.000Z', 'Z');
 }
 
-export function copyStart(event: SampleEvent): Wall {
-  return wallOf(
-    new Date(Date.parse(event.startsAt) + 364 * 86_400_000).toISOString(),
-    event.timeZone,
-  );
-}
-
 export function latestOf(event: SampleEvent): SampleEvent {
   const later = (moment: string) =>
     new Date(Date.parse(moment) + 3_600_000).toISOString().replace('.000Z', 'Z');
