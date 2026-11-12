@@ -20,6 +20,7 @@ import {
   greetAsLength,
   linesOf,
   phoneShown,
+  placesTo,
   sameName,
   seatedOf,
   valuesOf,
@@ -102,6 +103,7 @@ function CompanionFields({
   onAsk,
   seated,
   focus,
+  refusedStart = false,
 }: {
   host: string;
   values: Values;
@@ -111,9 +113,32 @@ function CompanionFields({
   onAsk?: (at: number, name: string, seat: Seated) => void;
   seated?: (id: string | null) => Seated | null;
   focus: (...keys: string[]) => void;
+  refusedStart?: boolean;
 }) {
   const id = useId();
   const count = values.companions.length;
+  const [refused, setRefused] = useState<number | null>(() =>
+    refusedStart ? values.companions.filter((one) => one.name.trim() !== '').length : null,
+  );
+
+  function toPlaces(places: number): void {
+    const step = placesTo(values.companions, places);
+
+    if ('refused' in step) {
+      setRefused(step.refused);
+      focus('places');
+      return;
+    }
+    const gone = values.companions.findIndex((one) => !step.companions.includes(one));
+    const seat = gone < 0 ? null : (seated?.(values.companions[gone]?.id ?? null) ?? null);
+
+    if (seat != null && onAsk != null) {
+      onAsk(gone, placeholder(gone), seat);
+      return;
+    }
+    setRefused(null);
+    onChange({ companions: step.companions });
+  }
   const placeholder = (at: number) =>
     host === '' ? '' : at === 0 ? GW.guestOf(host) : GW.guestOfNth(host, at + 1);
   const [all, setAll] = useState(false);
@@ -123,9 +148,60 @@ function CompanionFields({
   return (
     <fieldset className="gs-fieldset gs-companions">
       <legend className="gs-legend">{GW.companions}</legend>
-      <p className="gs-count" id={`${id}-count`}>
-        {count === 0 ? GW.noneYet(MOST_COMPANIONS) : GW.ofMost(count, MOST_COMPANIONS)}
-      </p>
+      <div className="gs-places">
+        <label htmlFor={`${id}-places`} className="desk-label gs-label">
+          {GW.placesFor}
+        </label>
+        <div className="gs-places-row">
+          <div className={refused == null ? 'gs-stepper' : 'gs-stepper is-wrong'}>
+            <button
+              type="button"
+              className="gs-step"
+              aria-label={GW.fewerPlaces}
+              {...offButton(count === 0, { dim: true })}
+              onClick={() => toPlaces(count - 1)}
+            >
+              <span aria-hidden="true">−</span>
+            </button>
+            <input
+              id={`${id}-places`}
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={MOST_COMPANIONS}
+              value={count}
+              data-focus="places"
+              aria-invalid={refused != null}
+              aria-describedby={[`${id}-named`, refused == null ? null : `${id}-refused`]
+                .filter(Boolean)
+                .join(' ')}
+              onChange={(event) => {
+                const typed = Number.parseInt(event.target.value, 10);
+
+                if (!Number.isNaN(typed)) toPlaces(typed);
+              }}
+            />
+            <button
+              type="button"
+              className="gs-step"
+              aria-label={GW.morePlaces}
+              {...offButton(count >= MOST_COMPANIONS, { dim: true })}
+              onClick={() => toPlaces(count + 1)}
+            >
+              <Glyph name="plus" size={17} weight={2.3} />
+            </button>
+          </div>
+          <p className="gs-count" id={`${id}-named`}>
+            {GW.namedOf(values.companions.filter((one) => one.name.trim() !== '').length, count)}
+          </p>
+        </div>
+        {refused != null && (
+          <p id={`${id}-refused`} className="desk-error">
+            <Glyph name="alert" size={15} weight={2.2} />
+            {GW.placesRefused(host === '' ? GW.thisGuest : host, refused)}
+          </p>
+        )}
+      </div>
       {values.companions.map((companion, at) => {
         if (!seen(at)) return null;
         const shown =
@@ -145,13 +221,14 @@ function CompanionFields({
                 spellCheck={false}
                 data-focus={`companion-${at}`}
                 aria-label={GW.companionName(at + 1, count)}
-                onChange={(event) =>
+                onChange={(event) => {
+                  setRefused(null);
                   onChange({
                     companions: values.companions.map((each, index) =>
                       index === at ? { ...each, name: event.target.value } : each,
                     ),
-                  })
-                }
+                  });
+                }}
               />
             </div>
             <button
@@ -165,9 +242,10 @@ function CompanionFields({
                   onAsk(at, shown, seat);
                   return;
                 }
+                setRefused(null);
                 onChange(removeCompanion(values, at));
                 onSaid(GW.removed(shown));
-                focus(`companion-${at}`, `companion-${at - 1}`, 'add-companion');
+                focus(`companion-${at}`, `companion-${at - 1}`, 'places');
               }}
             >
               {GW.remove}
@@ -190,22 +268,7 @@ function CompanionFields({
         </button>
       )}
       {said != null && <OkLine>{said}</OkLine>}
-      {count < MOST_COMPANIONS ? (
-        <button
-          type="button"
-          className="desk-text"
-          data-focus="add-companion"
-          onClick={() => {
-            onChange({ companions: [...values.companions, { id: null, name: '' }] });
-            focus(`companion-${count}`);
-          }}
-        >
-          <Glyph name="plus" size={17} weight={2.3} />
-          {GW.addCompanion}
-        </button>
-      ) : (
-        <p className="gs-most">{GW.mostCompanions(MOST_COMPANIONS)}</p>
-      )}
+      {count >= MOST_COMPANIONS && <p className="gs-most">{GW.mostCompanions(MOST_COMPANIONS)}</p>}
     </fieldset>
   );
 }
@@ -409,6 +472,7 @@ export function EditForm({
           onAsk={(at, name, seat) => setRemoving({ at, name, seat })}
           seated={(id) => seatedOf(guest, id)}
           focus={focus}
+          refusedStart={start.placesRefused === true}
         />
       </div>
       {removing != null && (
@@ -424,7 +488,7 @@ export function EditForm({
             setRemoving(null);
             change(removeCompanion(values, at));
             setSaid(GW.removed(name));
-            focus(`companion-${at}`, `companion-${at - 1}`, 'add-companion');
+            focus(`companion-${at}`, `companion-${at - 1}`, 'places');
           }}
         />
       )}
@@ -722,6 +786,7 @@ export function AddForm({
           onChange={change}
           onSaid={setCompanionSaid}
           focus={focus}
+          refusedStart={start.placesRefused === true}
         />
       </div>
       <Pill primary tall label={GW.addGuest} onClick={() => add()} />

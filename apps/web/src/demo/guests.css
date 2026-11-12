@@ -923,3 +923,68 @@
     opacity: 0;
   }
 }
+
+/* sc-3779: Places for companions, a stepper at the top of Companions. */
+.gs-places {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.gs-places-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceLg);
+}
+
+.gs-stepper {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radiusField);
+  box-shadow: inset 0 0 0 1.5px var(--colorFieldBorder);
+}
+
+.gs-stepper.is-wrong {
+  box-shadow: inset 0 0 0 1.5px var(--colorBroken);
+}
+
+.gs-step {
+  display: grid;
+  place-items: center;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--colorInk);
+  font: 700 20px/1 var(--fontFamily);
+  cursor: pointer;
+}
+
+.gs-stepper input {
+  width: 3.5em;
+  height: var(--sizeHit);
+  border: 0;
+  background: none;
+  font: 600 16px/1 var(--fontFamily);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  appearance: textfield;
+}
+
+.gs-step:focus-visible,
+.gs-stepper input:focus-visible {
+  outline: none;
+  box-shadow: var(--deskRing);
+  border-radius: var(--radiusRow);
+}
+
+.gs-named-by {
+  align-self: flex-start;
+  padding: 2px var(--spaceSm);
+  border-radius: var(--radiusPill);
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+  font: 600 12.5px/1.3 var(--fontFamily);
+}

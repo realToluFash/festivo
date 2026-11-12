@@ -66,6 +66,8 @@ export interface Companion {
   /** Their seat and meal pick (epics 31, 32): removing them says what goes first (sc-3773). */
   table?: string;
   meal?: boolean;
+  /** sc-3779: the guest gave this name on their page; the host editing it clears it. */
+  namedBy?: 'guest';
 }
 
 /** sc-3790: a guest's language, en, es, fr or pt; null is Not set. The host's and the guest's own are the AC, not yet built. */
@@ -341,7 +343,10 @@ function wedding(): Guest[] {
       replied: '2026-10-12',
       email: 'sophie.laurent@orange.fr',
       phone: { country: 'FR', number: '6 41 27 88 05' },
-      companions: companions('sophie', ['Marc Laurent'], 'coming'),
+      companions: companions('sophie', ['Marc Laurent'], 'coming').map((one) => ({
+        ...one,
+        namedBy: 'guest' as const,
+      })),
       language: 'fr',
       whatsApp: { kind: 'optedOut', on: '2026-11-01' },
     }),
@@ -696,7 +701,10 @@ function rowOf(person: Person, indent: boolean, mode: 'all' | Choice, replyBy: s
         : replyLine(person.guest, replyBy);
     const many = person.guest.companions.length;
 
-    line = many === 0 ? short : `${short} · ${GW.companionCount(many)}`;
+    line =
+      many === 0
+        ? short
+        : `${short} · ${GW.companionCount(many)} · ${GW.namedOf(namedOf(person.guest), many)}`;
   }
 
   const label = [person.name, line.startsWith(word) ? line : `${word}, ${line}`].join(', ');
@@ -858,6 +866,40 @@ export function linesOf(values: Values): Lines {
   return lines;
 }
 
+export function namedOf(one: Guest): number {
+  return one.companions.filter((companion) => (companion.name ?? '').trim() !== '').length;
+}
+
+export type PlacesStep = { companions: Values['companions'] } | { refused: number };
+
+/** sc-3779: places are companion rows; fewer takes unnamed places only, from the end, and refuses once every place left is named. */
+export function placesTo(companions: Values['companions'], places: number): PlacesStep {
+  const wanted = Math.max(0, Math.min(MOST_COMPANIONS, Math.trunc(places)));
+  const named = companions.filter((one) => one.name.trim() !== '').length;
+
+  if (wanted >= companions.length)
+    return {
+      companions: [
+        ...companions,
+        ...Array.from({ length: wanted - companions.length }, () => ({ id: null, name: '' })),
+      ],
+    };
+  if (wanted < named) return { refused: named };
+  let drop = companions.length - wanted;
+  const kept = [...companions]
+    .reverse()
+    .filter((one) => {
+      if (drop > 0 && one.name.trim() === '') {
+        drop -= 1;
+        return false;
+      }
+      return true;
+    })
+    .reverse();
+
+  return { companions: kept };
+}
+
 export function sameName(
   list: readonly Guest[],
   name: string,
@@ -888,11 +930,21 @@ export function seatedOf(guest: Guest, companionId: string | null): Seated | nul
   return { table: one.table ?? null, meal: one.meal === true };
 }
 
+function hostNamed(one: Companion): Companion {
+  const copy = { ...one };
+
+  delete copy.namedBy;
+
+  return copy;
+}
+
 export function saveGuest(list: readonly Guest[], id: string, values: Values): Guest[] {
   return list.map((one) => {
     if (one.id !== id) return one;
     const kept = values.companions.map((companion, index) => {
-      const was = one.companions.find((each) => each.id === companion.id);
+      const found = one.companions.find((each) => each.id === companion.id);
+      const renamed = found != null && (found.name ?? '') !== companion.name.trim();
+      const was = renamed ? hostNamed(found) : found;
 
       return {
         ...was,
@@ -1138,6 +1190,8 @@ export interface EditStart {
   at?: string;
   /** A seated companion's Remove pressed: the Ask is open for them. */
   removing?: string;
+  /** sc-3779: Fewer places pressed with every place named. */
+  placesRefused?: boolean;
 }
 
 export interface RecordStart {
@@ -1161,6 +1215,7 @@ export interface AddStart {
   notAdded?: boolean;
   added?: string;
   at?: string;
+  placesRefused?: boolean;
 }
 
 export type Pane =
@@ -1280,6 +1335,10 @@ export const GUESTS_STATES = [
   { key: 'greetAsSpaces', name: 'Only spaces saved: their full name' },
   { key: 'greetAsViewer', name: 'Can view: Greet as, no Edit' },
   { key: 'greetAsAdd', name: 'Add guest, Greet as “Auntie Bisi”' },
+  { key: 'places', name: 'Edit guest: Places for companions, 0 of 1 named' },
+  { key: 'placesRefused', name: 'Fewer places with every place named: refused' },
+  { key: 'placesMax', name: 'Add guest: ten places, the most' },
+  { key: 'namedByGuest', name: 'Details: Named by the guest' },
   {
     key: 'whatsAppNone',
     name: 'WhatsApp: Has not agreed to WhatsApp, and The guest agreed to WhatsApp',
@@ -1525,6 +1584,20 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return column(guestPane('bisi'), { choice: 'notYet', role: 'viewer' });
     case 'greetAsAdd':
       return add({ values: { name: 'Olabisi Martins', greetAs: 'Auntie Bisi' }, at: 'greet-as' });
+    case 'places':
+      return { ...edit('musa', { at: 'places' }), choice: 'coming' };
+    case 'placesRefused':
+      return { ...edit('sophie', { placesRefused: true, at: 'places' }), choice: 'coming' };
+    case 'placesMax':
+      return add({
+        values: {
+          name: 'Adaeze Okafor',
+          companions: Array.from({ length: MOST_COMPANIONS }, () => ({ id: null, name: '' })),
+        },
+        at: 'places',
+      });
+    case 'namedByGuest':
+      return column(guestPane('sophie'), { choice: 'coming' });
     case 'whatsAppNone':
       return column(guestPane('kwame'), { choice: 'coming' });
     case 'whatsAppAgree':
@@ -1655,6 +1728,12 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'greetAsSpaces',
     'greetAsViewer',
     'greetAsAdd',
+  ]),
+  group('Places for companions (sc-3779)', [
+    'places',
+    'placesRefused',
+    'placesMax',
+    'namedByGuest',
   ]),
   group('WhatsApp, only to guests who agreed (sc-3950)', [
     'whatsAppNone',

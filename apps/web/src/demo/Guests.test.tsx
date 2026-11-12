@@ -796,6 +796,75 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
   });
 });
 
+describe('Guests, places for companions (sc-3779)', () => {
+  it('adds and takes places with the stepper, saying how many are named', SLOW, async () => {
+    await guests('places');
+
+    const places = screen.getByRole('spinbutton', { name: 'Places for companions' });
+
+    expect((places as HTMLInputElement).value).toBe('1');
+    expect(screen.getByText('0 of 1 named')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'More places' }));
+    fireEvent.click(screen.getByRole('button', { name: 'More places' }));
+
+    expect((places as HTMLInputElement).value).toBe('3');
+    expect(screen.getByText('0 of 3 named')).toBeDefined();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Companion’s full name, 2 of 3' }), {
+      target: { value: 'Hauwa Bello' },
+    });
+    fireEvent.change(places, { target: { value: '1' } });
+
+    expect((places as HTMLInputElement).value).toBe('1');
+    expect(screen.getByText('1 of 1 named')).toBeDefined();
+    expect(
+      (screen.getByRole('textbox', { name: 'Companion’s full name, 1 of 1' }) as HTMLInputElement)
+        .value,
+    ).toBe('Hauwa Bello');
+  });
+
+  it('refuses fewer places once every place left is named', SLOW, async () => {
+    await guests('places');
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Companion’s full name, 1 of 1' }), {
+      target: { value: 'Hauwa Bello' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Fewer places' }));
+
+    const places = screen.getByRole('spinbutton', { name: 'Places for companions' });
+
+    expect(
+      screen.getByText('Alhaji Musa Bello already has 1 named. Remove some first.'),
+    ).toBeDefined();
+    expect(places.getAttribute('aria-invalid')).toBe('true');
+    await waitFor(() => expect(document.activeElement).toBe(places));
+  });
+
+  it('opens the refusal and the most as the boards draw them', SLOW, async () => {
+    await guests('placesRefused');
+
+    expect(
+      screen.getByText('Sophie Laurent already has 1 named. Remove some first.'),
+    ).toBeDefined();
+
+    cleanup();
+    await guests('placesMax');
+
+    expect(screen.getByText('10 companions is the most one guest can bring.')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'More places' }).getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+  });
+
+  it('shows Named by the guest in the details, and the places named', SLOW, async () => {
+    await guests('namedByGuest');
+
+    expect(within(column()).getByText('Named by the guest')).toBeDefined();
+    expect(within(column()).getByText('With 1 companion · 1 of 1 named')).toBeDefined();
+  });
+});
+
 describe('Guests, WhatsApp on a guest’s page (sc-3950)', () => {
   const agreeButton = () =>
     within(column()).getByRole('button', { name: 'The guest agreed to WhatsApp' });
