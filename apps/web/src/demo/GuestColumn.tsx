@@ -303,8 +303,8 @@ function NeedsRows({ needs }: { needs: Needs }) {
 function recorded(needs: Needs | undefined): needs is Needs {
   return (
     needs != null &&
-    (needs.allergens.length > 0 ||
-      needs.diets.length > 0 ||
+    (needs.allergies.length > 0 ||
+      needs.diet.length > 0 ||
       needs.access.length > 0 ||
       needs.note.trim() !== '')
   );

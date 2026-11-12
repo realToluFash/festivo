@@ -16,10 +16,10 @@ export const DIET_PICKS: readonly DietPick[] = [...DIETS, 'other'];
 export const ACCESS_PICKS: readonly AccessPick[] = [...ACCESS, 'other'];
 export { ALLERGENS };
 
-/** sc-3777: needs as codes plus each Other's words, and the hosts' private note; a guest and each companion have their own. */
+/** sc-3777's record, the API's one shape for a guest's or a companion's needs: codes with Other among them, each Other's words, and the hosts' private note. The guest's step (sc-3778) keeps its own answer, `Person`, and `recordOf` maps it onto this. */
 export interface Needs {
-  allergens: readonly Allergen[];
-  diets: readonly DietPick[];
+  allergies: readonly Allergen[];
+  diet: readonly DietPick[];
   access: readonly AccessPick[];
   otherAllergy: string;
   otherDiet: string;
@@ -28,8 +28,8 @@ export interface Needs {
 }
 
 export const NO_NEEDS: Needs = {
-  allergens: [],
-  diets: [],
+  allergies: [],
+  diet: [],
   access: [],
   otherAllergy: '',
   otherDiet: '',
@@ -90,18 +90,29 @@ export interface NeedsLines {
   note?: string;
 }
 
+export type OtherError = 'empty' | 'long' | null;
+
+/** The one rule for an Other's words, on the host's form and the guest's step: a ticked Other needs words, and at most 100 once trimmed. */
+export function otherError(words: string, ticked: boolean): OtherError {
+  if (ticked && words.trim() === '') return 'empty';
+
+  return lengthOf(words) > OTHER_MOST ? 'long' : null;
+}
+
 function otherLine(ticked: boolean, words: string): string | undefined {
   if (!ticked) return undefined;
-  if (words.trim() === '') return NW.sayWhich;
-  if (lengthOf(words) > OTHER_MOST) return NW.otherTooLong;
+  const error = otherError(words, true);
+
+  if (error === 'empty') return NW.sayWhich;
+  if (error === 'long') return NW.otherTooLong;
 
   return undefined;
 }
 
 export function needsLines(needs: Needs): NeedsLines {
   const lines: NeedsLines = {};
-  const allergy = otherLine(needs.allergens.includes('other'), needs.otherAllergy);
-  const diet = otherLine(needs.diets.includes('other'), needs.otherDiet);
+  const allergy = otherLine(needs.allergies.includes('other'), needs.otherAllergy);
+  const diet = otherLine(needs.diet.includes('other'), needs.otherDiet);
   const access = otherLine(needs.access.includes('other'), needs.otherAccess);
 
   if (allergy != null) lines.otherAllergy = allergy;
@@ -115,13 +126,13 @@ export function needsLines(needs: Needs): NeedsLines {
 export const NEEDS_FIELDS = ['otherAllergy', 'otherDiet', 'otherAccess', 'note'] as const;
 
 export function allergyNames(needs: Needs): string[] {
-  return needs.allergens.map((code) =>
+  return needs.allergies.map((code) =>
     code === 'other' ? needs.otherAllergy.trim() : NW.allergen(code),
   );
 }
 
 export function dietNames(needs: Needs): string[] {
-  return needs.diets.map((code) => (code === 'other' ? needs.otherDiet.trim() : NW.dietName(code)));
+  return needs.diet.map((code) => (code === 'other' ? needs.otherDiet.trim() : NW.dietName(code)));
 }
 
 export function accessNames(needs: Needs): string[] {
@@ -132,11 +143,11 @@ export function accessNames(needs: Needs): string[] {
 
 /** The Dietary notes filter: any allergy or diet recorded, never access alone. */
 export function dietary(needs: Needs | undefined): boolean {
-  return needs != null && (needs.allergens.length > 0 || needs.diets.length > 0);
+  return needs != null && (needs.allergies.length > 0 || needs.diet.length > 0);
 }
 
 export function hasAllergy(needs: Needs | undefined): boolean {
-  return needs != null && needs.allergens.length > 0;
+  return needs != null && needs.allergies.length > 0;
 }
 
 export interface NeedChip {
@@ -161,8 +172,8 @@ export function needsChips(needs: Needs): NeedChip[] {
 export function savedNeeds(needs: Needs): Needs {
   return {
     ...needs,
-    otherAllergy: needs.allergens.includes('other') ? needs.otherAllergy.trim() : '',
-    otherDiet: needs.diets.includes('other') ? needs.otherDiet.trim() : '',
+    otherAllergy: needs.allergies.includes('other') ? needs.otherAllergy.trim() : '',
+    otherDiet: needs.diet.includes('other') ? needs.otherDiet.trim() : '',
     otherAccess: needs.access.includes('other') ? needs.otherAccess.trim() : '',
     note: needs.note.trim(),
   };

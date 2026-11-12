@@ -213,28 +213,28 @@ export function NeedsSection({
               hint={NW.allergiesHint}
               first
               codes={ALLERGENS}
-              picked={needs.allergens}
+              picked={needs.allergies}
               nameOf={NW.allergen}
               other={needs.otherAllergy}
               otherKey="otherAllergy"
               otherLabel={NW.whichAllergy}
               error={lines.otherAllergy}
               focusKey={focusKey}
-              onPick={(allergens) => change({ allergens })}
+              onPick={(allergies) => change({ allergies })}
               onOther={(otherAllergy) => change({ otherAllergy })}
             />
             <Group<DietPick>
               legend={NW.diet}
               hint={NW.dietHint}
               codes={DIET_PICKS}
-              picked={needs.diets}
+              picked={needs.diet}
               nameOf={NW.dietName}
               other={needs.otherDiet}
               otherKey="otherDiet"
               otherLabel={NW.whichDiet}
               error={lines.otherDiet}
               focusKey={focusKey}
-              onPick={(diets) => change({ diets })}
+              onPick={(diet) => change({ diet })}
               onOther={(otherDiet) => change({ otherDiet })}
             />
             <Group<AccessPick>

@@ -62,14 +62,12 @@ function needsKey(who: string): string {
   return who === 'guest' ? 'needs' : `needs-${who}`;
 }
 
-function failingCount(lines: Lines): number {
-  const own = [lines.name, lines.greetAs, lines.email, lines.number].filter(Boolean).length;
-  const needs = Object.values(lines.needs ?? {}).reduce(
+/** Only the Needs fields: the contact fields keep sc-1468's refusal, a line beside each and none above. */
+function needsFailing(lines: Lines): number {
+  return Object.values(lines.needs ?? {}).reduce(
     (sum, found) => sum + Object.keys(found).length,
     0,
   );
-
-  return own + needs;
 }
 
 /** sc-3777: which Needs sections are open, `guest` or `c{n}`; a refusal opens every one that failed. */
@@ -97,7 +95,7 @@ function useNeedsOpen(start: readonly string[] | undefined) {
 function NeedsRefused({ lines }: { lines: Lines }) {
   if (lines.needs == null) return null;
 
-  return <Refused>{NW.toFix(failingCount(lines))}</Refused>;
+  return <Refused>{NW.toFix(needsFailing(lines))}</Refused>;
 }
 
 /** The guest's column becomes the form, Cancel and Save at its head (Events A's rule at a desk). */

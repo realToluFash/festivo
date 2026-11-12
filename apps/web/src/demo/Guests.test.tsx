@@ -880,6 +880,26 @@ describe('Guests, needs recorded as facts (sc-3777)', () => {
     expect(await screen.findByText('Olu Bankole added.')).toBeDefined();
   });
 
+  it('counts only the Needs fields in the line above the form', SLOW, async () => {
+    await guests('needsAdd');
+
+    const add = () =>
+      fireEvent.click(
+        within(column()).getAllByRole('button', { name: 'Add guest' }).at(-1) as HTMLElement,
+      );
+
+    fireEvent.change(within(column()).getByRole('textbox', { name: 'Full name' }), {
+      target: { value: '' },
+    });
+    add();
+    expect(screen.queryByText(/needs? fixing/u)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Needs/u }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Other allergy' }));
+    add();
+    expect(screen.getByText('One field needs fixing. Nothing was saved.')).toBeDefined();
+  });
+
   it.each([
     ['needsOtherLong', 'Shorten it to 100 characters or fewer.'],
     ['needsNoteLong', 'Shorten the note to 500 characters or fewer.'],

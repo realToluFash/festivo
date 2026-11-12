@@ -298,7 +298,7 @@ function wedding(): Guest[] {
       email: 'musa.bello@gmail.com',
       phone: { country: 'NG', number: '803 412 7730' },
       companions: companions('musa', 1, 'coming'),
-      needs: needsOf({ diets: ['halal'] }),
+      needs: needsOf({ diet: ['halal'] }),
     }),
     guest('amaka', 'Amaka Eze', 'coming', {
       replied: '2026-10-13',
@@ -324,8 +324,8 @@ function wedding(): Guest[] {
       phone: { country: 'GB', number: '7700 900231' },
       companions: companions('emeka', ['Adanna Nwosu'], 'held'),
       needs: needsOf({
-        allergens: ['peanuts', 'tree_nuts'],
-        diets: ['no_alcohol'],
+        allergies: ['peanuts', 'tree_nuts'],
+        diet: ['no_alcohol'],
         note: 'Carries an adrenaline pen. His sister Adanna knows where it is.',
       }),
     }),
@@ -336,9 +336,9 @@ function wedding(): Guest[] {
         ...one,
         table: 'Table 4',
         meal: true,
-        needs: needsOf({ allergens: ['sesame'] }),
+        needs: needsOf({ allergies: ['sesame'] }),
       })),
-      needs: needsOf({ diets: ['vegetarian'] }),
+      needs: needsOf({ diet: ['vegetarian'] }),
       language: 'es',
       chose: 'pt',
     }),
@@ -1651,9 +1651,9 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'needsEditClosed':
       return edit('emeka');
     case 'needsOtherBlank':
-      return refusedNeeds({ allergens: ['other'] }, 'needs-otherAllergy');
+      return refusedNeeds({ allergies: ['other'] }, 'needs-otherAllergy');
     case 'needsOtherLong':
-      return refusedNeeds({ allergens: ['other'], otherAllergy: OTHER_LONG }, 'needs-otherAllergy');
+      return refusedNeeds({ allergies: ['other'], otherAllergy: OTHER_LONG }, 'needs-otherAllergy');
     case 'needsNoteLong':
       return refusedNeeds({ note: NOTE_LONG }, 'needs-note');
     case 'needsCompanionForm':
@@ -1663,7 +1663,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
         choice: 'coming',
         list: saveGuest(start.list, 'kwame', {
           ...valuesOf(start.list.find((one) => one.id === 'kwame') ?? null),
-          needs: needsOf({ allergens: ['milk'], diets: ['pescatarian'] }),
+          needs: needsOf({ allergies: ['milk'], diet: ['pescatarian'] }),
         }),
         told: GW.saved,
       });

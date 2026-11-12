@@ -5,8 +5,8 @@ import { WEDDING, linesOf, sampleGuests, valuesOf, viewOf } from './guests.ts';
 
 describe('needs recorded as facts (sc-3777)', () => {
   it('refuses an Other ticked with no words, or over 100 after trimming', () => {
-    expect(needsLines(needsOf({ allergens: ['other'] }))).toEqual({ otherAllergy: 'Say which' });
-    expect(needsLines(needsOf({ diets: ['other'], otherDiet: '   ' }))).toEqual({
+    expect(needsLines(needsOf({ allergies: ['other'] }))).toEqual({ otherAllergy: 'Say which' });
+    expect(needsLines(needsOf({ diet: ['other'], otherDiet: '   ' }))).toEqual({
       otherDiet: 'Say which',
     });
     expect(needsLines(needsOf({ access: ['other'], otherAccess: ` ${'a'.repeat(100)} ` }))).toEqual(
@@ -29,9 +29,9 @@ describe('needs recorded as facts (sc-3777)', () => {
     expect(
       needsChips(
         needsOf({
-          allergens: ['peanuts', 'other'],
+          allergies: ['peanuts', 'other'],
           otherAllergy: ' Kiwi ',
-          diets: ['halal'],
+          diet: ['halal'],
           access: ['step_free'],
           note: 'Carries a pen.',
         }),
@@ -47,8 +47,8 @@ describe('needs recorded as facts (sc-3777)', () => {
   });
 
   it('counts a guest under Dietary notes for an allergy or a diet, never access alone', () => {
-    expect(dietary(needsOf({ allergens: ['milk'] }))).toBe(true);
-    expect(dietary(needsOf({ diets: ['vegan'] }))).toBe(true);
+    expect(dietary(needsOf({ allergies: ['milk'] }))).toBe(true);
+    expect(dietary(needsOf({ diet: ['vegan'] }))).toBe(true);
     expect(dietary(needsOf({ access: ['step_free'] }))).toBe(false);
   });
 
@@ -62,7 +62,7 @@ describe('needs recorded as facts (sc-3777)', () => {
         ...values,
         companions: values.companions.map((one) => ({
           ...one,
-          needs: needsOf({ allergens: ['other'] }),
+          needs: needsOf({ allergies: ['other'] }),
         })),
       }).needs,
     ).toEqual({ c0: { otherAllergy: 'Say which' } });
