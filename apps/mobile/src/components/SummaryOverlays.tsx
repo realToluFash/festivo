@@ -29,7 +29,7 @@ import { useTranslation } from 'react-i18next';
 
 import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
-import { useFocusBack, useUnnamedWindow, useWindowTurn } from './Sheet.tsx';
+import { SilentWindowName, useFocusBack, useUnnamedWindow, useWindowTurn } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { Toast } from './Toast.tsx';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
@@ -118,6 +118,7 @@ function Window({
       onShow={onShow}
       onDismiss={gone}
     >
+      {Platform.OS === 'android' && <SilentWindowName />}
       {children}
     </Modal>
   );
