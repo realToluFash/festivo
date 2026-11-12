@@ -418,6 +418,33 @@ describe('two-factor at a desk', () => {
     expect(await screen.findByText('On · every sign-in asks for a code')).toBeDefined();
   });
 
+  it('opens on two-factor’s set-up when a held step sent the person here', async () => {
+    answering({ 'POST /api/auth/two-factor/enrol': () => json(ENROLMENT) });
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, {
+          initialEntries: [{ pathname: '/app/account/security', state: { opens: 'turnOn' } }],
+        })}
+      />,
+    );
+
+    expect(await screen.findByRole('dialog', { name: 'Turn on two-factor' })).toBeDefined();
+  });
+
+  it('opens at rest when a held step sent the person here with two-factor already on', async () => {
+    answering({}, true);
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, {
+          initialEntries: [{ pathname: '/app/account/security', state: { opens: 'turnOn' } }],
+        })}
+      />,
+    );
+
+    expect(await screen.findByText('On · every sign-in asks for a code')).toBeDefined();
+    expect(screen.queryByRole('dialog', { name: 'Turn on two-factor' })).toBeNull();
+  });
+
   it('says a setup code that does not match, and stays off', async () => {
     answering({
       'POST /api/auth/two-factor/enrol': () => json(ENROLMENT),

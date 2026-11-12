@@ -36,6 +36,7 @@ import { can, useSession } from '../../../session.ts';
 import { AddDomainDialog, DetailsDialog } from './GeneralDeskDialogs.tsx';
 import { Ownership } from './GeneralDeskOwnership.tsx';
 import { languageName, rereadOrganisation } from './organisationDetails.ts';
+import { SECURITY, securityOn } from './signInRulesDesk.ts';
 import '../../../components/SettingsParts.css';
 
 type Said = { kind: 'saved'; line: string } | { kind: 'transferred'; to: string };
@@ -183,7 +184,11 @@ function OrganisationCard({
                 { organisation: organisation.name },
               )}
             />
-            <Link className="desk-step" to="/app/account/security">
+            <Link
+              className="desk-step"
+              to={SECURITY}
+              state={securityOn(rule === 'linking' ? 'link' : 'turnOn')}
+            >
               {t(rule === 'linking' ? 'signInRules.unlinkedLink' : 'signInRules.gateTurnOn')}
               <Glyph name="arrow" size={16} weight={2.4} />
             </Link>

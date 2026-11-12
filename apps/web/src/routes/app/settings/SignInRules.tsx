@@ -36,6 +36,7 @@ import {
   type RuleKey,
   type RuleRow,
   SECURITY,
+  securityOn,
   type Step,
   applied,
   changeRows,
@@ -141,7 +142,7 @@ function RulesDesk({ organisation }: { organisation: Membership }) {
     thisYear: new Date().getFullYear(),
   };
   const toSecurity = (step: Step | null) => {
-    if (step != null) void navigate(SECURITY);
+    if (step != null) void navigate(SECURITY, { state: securityOn(step) });
   };
 
   const saved = (page: SignInRulesPage) => {

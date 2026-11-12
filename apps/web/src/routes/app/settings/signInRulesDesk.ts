@@ -20,6 +20,18 @@ type Rules = Required<SignInRulesChanges>;
 
 export const SECURITY = '/app/account/security';
 
+/** The state a move to Security carries, so it opens on the step that ends a hold: two-factor's set-up, or at rest for a way to link. */
+export function securityOn(step: Step): { opens: Step } {
+  return { opens: step };
+}
+
+/** Which step a move to Security was opened on, from the state securityOn gave it. */
+export function opensOn(state: unknown): Step | null {
+  if (typeof state !== 'object' || state == null || !('opens' in state)) return null;
+
+  return state.opens === 'link' || state.opens === 'turnOn' ? state.opens : null;
+}
+
 export interface RuleRow {
   key: RuleKey;
   mark: Mark;
