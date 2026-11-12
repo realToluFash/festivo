@@ -5,7 +5,6 @@ import {
   SCHEME_KEY,
   __resetColourScheme,
   followAccountScheme,
-  followMeAnswers,
   holdScheme,
   keyStep,
   nextScheme,
@@ -88,30 +87,6 @@ describe('the account’s scheme', () => {
 
     expect(root.dataset.scheme).toBe('violet');
     expect(localStorage.getItem(SCHEME_KEY)).toBe('violet');
-  });
-
-  it('follows whatever /me answers, whichever screen asked', async () => {
-    startColourScheme();
-
-    followMeAnswers(
-      'http://api.test/api/auth/me',
-      Promise.resolve(new Response(JSON.stringify({ id: 'u', colourScheme: 'berry' }))),
-    );
-
-    await vi.waitFor(() => expect(root.dataset.scheme).toBe('berry'));
-    expect(localStorage.getItem(SCHEME_KEY)).toBe('berry');
-  });
-
-  it('leaves other answers alone', async () => {
-    startColourScheme();
-
-    followMeAnswers(
-      'http://api.test/api/orgs',
-      Promise.resolve(new Response(JSON.stringify({ colourScheme: 'berry' }))),
-    );
-    await Promise.resolve();
-
-    expect(root.dataset.scheme).toBe('violet');
   });
 
   it('is told to every other open tab on a save, and taken from theirs', () => {

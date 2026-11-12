@@ -124,8 +124,12 @@ describe("with the phone's Bold text on, a weight draws one step heavier (sc-198
     });
   });
 
-  it("leaves the system font's weight to the platform", () => {
-    expect(faceStyle({ fontWeight: '500' }, 'system', true)).toEqual({ fontWeight: '500' });
+  it("leaves the system font's weight to the platform, in a family of its own so iOS makes it afresh", () => {
+    expect(faceStyle({ fontWeight: '500' }, 'system', true)).toEqual({
+      fontWeight: '500',
+      fontFamily: 'system-ui',
+    });
+    expect(faceStyle({ fontWeight: '500' }, 'system', false)).toEqual({ fontWeight: '500' });
   });
 });
 

@@ -7,6 +7,7 @@ import { holdProof } from '../../../recentProof.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
 import { renderInterrupted } from '../../../test-interrupted.tsx';
+import { atPhoneWidth } from '../../../test-widths.ts';
 import { tokens } from '../../../tokens.ts';
 import { routes } from '../../index.tsx';
 
@@ -123,6 +124,7 @@ function backFromGoogle(purpose: unknown): void {
 beforeEach(() => {
   signedInAs({});
   tokens.save({ accessToken: 'live', refreshExpiresAt: '', sessionId: HERE });
+  atPhoneWidth();
 });
 
 afterEach(() => {
@@ -349,7 +351,7 @@ describe('linking a provider', () => {
     ).toBeDefined();
     const cancel = ways().getByRole('button', { name: 'Cancel' });
     const google = ways().getByRole('button', { name: 'Continue with Google' });
-    expect(cancel.compareDocumentPosition(google)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(cancel.compareDocumentPosition(google)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
     fireEvent.click(google);
 
     await waitFor(() => expect(leave).toHaveBeenCalledOnce());

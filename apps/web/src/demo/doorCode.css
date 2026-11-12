@@ -45,6 +45,11 @@
   column-gap: var(--space3xl);
 }
 
+.dc-acts .desk-text,
+.dc-preview-bar .desk-text {
+  min-width: var(--sizeHit);
+}
+
 .dc-acts .desk-text {
   margin-inline: 0;
   padding-inline: 0;
@@ -53,6 +58,10 @@
 .dc-acts.is-held {
   justify-content: center;
   column-gap: var(--space5xl);
+}
+
+.dc-acts.is-held .desk-text {
+  justify-content: center;
 }
 
 .dc-door-lines {

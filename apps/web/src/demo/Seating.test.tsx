@@ -239,9 +239,8 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
       expect(within(panel()).getByText('The room must be between 2 m and 500 m.')).toBeDefined();
       fireEvent.change(within(panel()).getByLabelText('Length'), { target: { value: '18' } });
       fireEvent.click(start);
-      expect(
-        await screen.findByText('Add your first table, row or seat from the bar below.'),
-      ).toBeDefined();
+      const hint = await screen.findByText('Add your first table, row or seat from the bar below.');
+      expect(hint.closest('.st-bar')?.classList.contains('is-floor')).toBe(true);
       expect(
         within(panel()).getByText(
           'No sections yet. A section is a name and a colour on part of the room, such as Terrace.',
@@ -402,6 +401,20 @@ describe('Room settings and sections (sc-3998)', () => {
       await screen.findByRole('button', { name: 'Table 4, round, 8 of 10 seats taken' }),
     ).toBeDefined();
   });
+
+  it(
+    'asks only "Delete {name}?" for a section with a row but no tables (pm, 9 Nov)',
+    SLOW,
+    async () => {
+      await seating('sectionDeleteEmpty');
+      const ask = screen.getByRole('alertdialog', { name: 'Delete Quiet corner?' });
+
+      expect(ask.textContent).not.toContain('stay where they are');
+      expect(ask.querySelector('p')?.textContent).toBe('');
+      fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    },
+  );
 });
 
 describe('tables, rows and seats (sc-4000, sc-4003)', () => {
@@ -831,27 +844,34 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
     },
   );
 
-  it('says an empty table, everyone seated, and a search that matches nobody', SLOW, async () => {
-    await seating('emptyTable');
-    expect(
-      within(panel()).getByText('Nobody here yet. Pick a guest in Seat, then this table.'),
-    ).toBeDefined();
-    await seating('everyoneSeated');
-    expect(
-      within(panel()).getAllByText('Everyone who is coming has a seat.').length,
-    ).toBeGreaterThan(0);
-    await seating('noMatch');
-    expect(within(panel()).getByText('Nobody without a seat matches this search.')).toBeDefined();
-    fireEvent.click(within(panel()).getByRole('button', { name: 'Clear search and group' }));
-    expect(within(panel()).getByRole('button', { name: /^Marta Silva/u })).toBeDefined();
-  });
+  it(
+    'says an empty table, everyone seated, nobody coming yet, and a search that matches nobody',
+    SLOW,
+    async () => {
+      await seating('emptyTable');
+      expect(
+        within(panel()).getByText('Nobody here yet. Pick a guest in Seat, then this table.'),
+      ).toBeDefined();
+      await seating('everyoneSeated');
+      expect(
+        within(panel()).getAllByText('Everyone who is coming has a seat.').length,
+      ).toBeGreaterThan(0);
+      await seating('nobodyComing');
+      expect(within(panel()).getByText('Nobody has said they’re coming yet.')).toBeDefined();
+      expect(within(panel()).queryByText('Everyone who is coming has a seat.')).toBeNull();
+      await seating('noMatch');
+      expect(within(panel()).getByText('Nobody without a seat matches this search.')).toBeDefined();
+      fireEvent.click(within(panel()).getByRole('button', { name: 'Clear search and group' }));
+      expect(within(panel()).getByRole('button', { name: /^Marta Silva/u })).toBeDefined();
+    },
+  );
 
   it(
     'shows Not sure yet and no reply in the guest’s own words when switched on',
     SLOW,
     async () => {
       await seating('notSureYet');
-      expect(within(panel()).getByText('31 more with Not sure yet or no reply')).toBeDefined();
+      expect(within(panel()).getByText('31 more: Not sure yet or No reply')).toBeDefined();
       expect(within(panel()).getByText('Work · Not sure yet')).toBeDefined();
       expect(within(panel()).getAllByText('Friends · No reply').length).toBeGreaterThan(0);
       fireEvent.click(within(panel()).getByRole('checkbox', { name: /^Work/u }));

@@ -333,6 +333,23 @@ describe('Seating at a desk (sc-3998)', () => {
 
   it('asks before deleting a section, naming its tables', async () => {
     signedIn();
+    const terrace = { ...plan([{ id: 's1', name: 'Terrace', colour: 'teal' }]) };
+    terrace.sections = terrace.sections.map((one) => ({ ...one, tables: 3, seats: 24 }));
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'metric', plan: terrace } }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Terrace' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete section…' }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Delete Terrace?' });
+    expect(
+      within(ask).getByText('Its 3 tables stay where they are, with no section.'),
+    ).toBeDefined();
+  });
+
+  it('asks only "Delete {name}?" for a section with no tables, and deletes it', async () => {
+    signedIn();
     const sent = await onSeating({
       'GET /api/events/ev_1/seating-plan': () =>
         json({
@@ -348,9 +365,9 @@ describe('Seating at a desk (sc-3998)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Edit Terrace' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete section…' }));
     const ask = await screen.findByRole('alertdialog', { name: 'Delete Terrace?' });
-    expect(
-      within(ask).getByText('Its 0 tables stay where they are, with no section.'),
-    ).toBeDefined();
+    expect(within(ask).queryByText(/tables? stays?/u)).toBeNull();
+    expect(ask.getAttribute('aria-describedby')).toBeNull();
+    expect(ask.closest('.desk')).not.toBeNull();
     fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));
 
     await waitFor(() => expect(screen.queryByText('Terrace')).toBeNull());
@@ -382,6 +399,24 @@ describe('Seating at a desk (sc-3998)', () => {
     expect(screen.getByLabelText('Name')).toHaveProperty('value', 'Terrace');
   });
 
+  it('takes focus to a panel form’s title as it opens, and back to its opener as it closes', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'metric', plan: plan() } }),
+    });
+
+    const settings = await screen.findByRole('button', { name: 'Room settings' });
+    settings.focus();
+    fireEvent.click(settings);
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-focus')).toBe('title'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Room settings' })),
+    );
+  });
+
   it('is not shown without seating.read', async () => {
     signedIn();
     const fetched = vi
@@ -407,6 +442,7 @@ describe.each([
     least: '6 ft 7 in',
     largest: '1640 ft 5 in',
     shown: '1148 ft 4 in',
+    header: '1,148 ft 4 in',
     typed: '1148 ft 6 in',
   },
   {
@@ -414,72 +450,90 @@ describe.each([
     least: '6 pi 7 po',
     largest: '1640 pi 5 po',
     shown: '1148 pi 4 po',
+    header: '1 148 pi 4 po',
     typed: '1148 pi 6 po',
   },
-])('A room over 1,000 ft, in $locale (sc-3998)', ({ locale, least, largest, shown, typed }) => {
-  const spaced = (text: string) => text.replace(/\s+/gu, ' ');
-  const t = (key: string, values: Record<string, string> = {}) => i18next.t(key, values);
-  const refusalOpening = () =>
-    t('seating.roomRange', { min: '\u0000', max: '' }).split('\u0000')[0] ?? '';
-  const refusalShown = () =>
-    screen.queryByText((text) => text.startsWith(refusalOpening()), { selector: '*' });
+  {
+    locale: 'es',
+    least: '6 ft 7 in',
+    largest: '1640 ft 5 in',
+    shown: '1148 ft 4 in',
+    header: '1148 ft 4 in',
+    typed: '1148 ft 6 in',
+  },
+])(
+  'A room over 1,000 ft, in $locale (sc-3998)',
+  ({ locale, least, largest, shown, header, typed }) => {
+    const spaced = (text: string) => text.replace(/\s+/gu, ' ');
+    const t = (key: string, values: Record<string, string> = {}) => i18next.t(key, values);
+    const refusalOpening = () =>
+      t('seating.roomRange', { min: '\u0000', max: '' }).split('\u0000')[0] ?? '';
+    const refusalShown = () =>
+      screen.queryByText((text) => text.startsWith(refusalOpening()), { selector: '*' });
 
-  afterEach(async () => {
-    await i18next.changeLanguage('en');
-  });
-
-  it('starts at the largest size its refusal names', async () => {
-    await i18next.changeLanguage(locale);
-    signedIn();
-    const sent = await onSeating({
-      'GET /api/events/ev_1/seating-plan': () =>
-        json({ seating: { measurementSystem: 'us', plan: null } }),
-      'POST /api/events/ev_1/seating-plan': () =>
-        json({ seating: { measurementSystem: 'us', plan: { ...plan(), widthCm: 50_000 } } }, 201),
+    afterEach(async () => {
+      await i18next.changeLanguage('en');
     });
 
-    fireEvent.click(await screen.findByRole('button', { name: t('seating.startPlan') }));
-    fireEvent.change(screen.getByLabelText(t('seating.width')), { target: { value: '2000 ft' } });
-    fireEvent.change(screen.getByLabelText(t('seating.length')), { target: { value: '20' } });
-    fireEvent.click(screen.getByRole('button', { name: t('seating.startPlan') }));
-    const refusal = refusalShown()?.textContent ?? '';
-    expect(spaced(refusal)).toBe(spaced(t('seating.roomRange', { min: least, max: largest })));
+    it('starts at the largest size its refusal names', async () => {
+      await i18next.changeLanguage(locale);
+      signedIn();
+      const sent = await onSeating({
+        'GET /api/events/ev_1/seating-plan': () =>
+          json({ seating: { measurementSystem: 'us', plan: null } }),
+        'POST /api/events/ev_1/seating-plan': () =>
+          json({ seating: { measurementSystem: 'us', plan: { ...plan(), widthCm: 50_000 } } }, 201),
+      });
 
-    fireEvent.change(screen.getByLabelText(t('seating.width')), { target: { value: largest } });
-    fireEvent.click(screen.getByRole('button', { name: t('seating.startPlan') }));
+      fireEvent.click(await screen.findByRole('button', { name: t('seating.startPlan') }));
+      fireEvent.change(screen.getByLabelText(t('seating.width')), { target: { value: '2000 ft' } });
+      fireEvent.change(screen.getByLabelText(t('seating.length')), { target: { value: '20' } });
+      fireEvent.click(screen.getByRole('button', { name: t('seating.startPlan') }));
+      const refusal = refusalShown()?.textContent ?? '';
+      expect(spaced(refusal)).toBe(spaced(t('seating.roomRange', { min: least, max: largest })));
 
-    await waitFor(() =>
+      fireEvent.change(screen.getByLabelText(t('seating.width')), { target: { value: largest } });
+      fireEvent.click(screen.getByRole('button', { name: t('seating.startPlan') }));
+
+      await waitFor(() =>
+        expect(
+          sent.find((one) => one.line === 'POST /api/events/ev_1/seating-plan')?.body,
+        ).toMatchObject({ widthCm: 50_000 }),
+      );
+    });
+
+    it('groups the header and takes back the size Room settings shows', async () => {
+      await i18next.changeLanguage(locale);
+      signedIn();
+      const hall = { ...plan(), widthCm: 35_000 };
+      const sent = await onSeating({
+        'GET /api/events/ev_1/seating-plan': () =>
+          json({ seating: { measurementSystem: 'us', plan: hall } }),
+        'PATCH /api/events/ev_1/seating-plan': () =>
+          json({ seating: { measurementSystem: 'us', plan: { ...hall, widthCm: 35_006 } } }),
+      });
+
       expect(
-        sent.find((one) => one.line === 'POST /api/events/ev_1/seating-plan')?.body,
-      ).toMatchObject({ widthCm: 50_000 }),
-    );
-  });
+        await screen.findAllByText((text) => spaced(text).includes(`Main hall · ${header} ×`)),
+      ).toHaveLength(2);
 
-  it('takes back the size Room settings shows, with only the inches changed', async () => {
-    await i18next.changeLanguage(locale);
-    signedIn();
-    const hall = { ...plan(), widthCm: 35_000 };
-    const sent = await onSeating({
-      'GET /api/events/ev_1/seating-plan': () =>
-        json({ seating: { measurementSystem: 'us', plan: hall } }),
-      'PATCH /api/events/ev_1/seating-plan': () =>
-        json({ seating: { measurementSystem: 'us', plan: { ...hall, widthCm: 35_006 } } }),
+      fireEvent.click(screen.getByRole('button', { name: t('seating.roomSettings') }));
+      const width = screen.getByLabelText<HTMLInputElement>(t('seating.width'));
+      expect(spaced(width.value)).toBe(shown);
+      fireEvent.change(width, { target: { value: typed } });
+      fireEvent.blur(width);
+
+      await waitFor(() =>
+        expect(
+          sent.find((one) => one.line === 'PATCH /api/events/ev_1/seating-plan')?.body,
+        ).toEqual({
+          widthCm: 35_006,
+        }),
+      );
+      expect(refusalShown()).toBeNull();
     });
-
-    fireEvent.click(await screen.findByRole('button', { name: t('seating.roomSettings') }));
-    const width = screen.getByLabelText<HTMLInputElement>(t('seating.width'));
-    expect(spaced(width.value)).toBe(shown);
-    fireEvent.change(width, { target: { value: typed } });
-    fireEvent.blur(width);
-
-    await waitFor(() =>
-      expect(sent.find((one) => one.line === 'PATCH /api/events/ev_1/seating-plan')?.body).toEqual({
-        widthCm: 35_006,
-      }),
-    );
-    expect(refusalShown()).toBeNull();
-  });
-});
+  },
+);
 
 describe('Delete the plan’s words (sc-3998)', () => {
   const t = i18next.t.bind(i18next);
@@ -497,7 +551,7 @@ describe('Delete the plan’s words (sc-3998)', () => {
         seatedGuests: 0,
       }),
     ).toBe(
-      'This also deletes 1 section, 2 tables, 1 row, and 4 single seats. The guest list does not change.',
+      'This also deletes 1 section, 2 tables, 1 row and 4 single seats. The guest list does not change.',
     );
   });
 

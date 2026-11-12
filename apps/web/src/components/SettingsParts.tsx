@@ -1,5 +1,6 @@
 import {
   type ReactNode,
+  type Ref,
   type RefObject,
   useContext,
   useEffect,
@@ -11,11 +12,27 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
 import { ActionPair } from './ActionPair.tsx';
+import { useTitleUnder } from '../deskNavForm.ts';
 import { offButton } from '../offButton.ts';
 import { Glyph } from './Glyph.tsx';
-import { LayersContext, useDeskDialog } from '../layers.ts';
+import { LayersContext, useDeskDialog, type useDeskLayers } from '../layers.ts';
 
 export type Tell = (words: string) => void;
+
+/** A product page beside the Settings list, in B: inside the desk's look, with the layers its dialogs take turns on. */
+export function DeskPage({
+  layers,
+  children,
+}: {
+  layers: ReturnType<typeof useDeskLayers>['layers'];
+  children: ReactNode;
+}) {
+  return (
+    <LayersContext value={layers}>
+      <div className="desk">{children}</div>
+    </LayersContext>
+  );
+}
 
 export type MarkKind = 'yes' | 'waiting' | 'paused' | 'ended';
 
@@ -121,9 +138,25 @@ export function OnCard({ children }: { children: ReactNode }) {
   return <p className="desk-on-card">{children}</p>;
 }
 
-export function CardStep({ label, onClick }: { label: string; onClick: () => void }) {
+export function CardStep({
+  ref,
+  label,
+  busy = false,
+  onClick,
+}: {
+  ref?: RefObject<HTMLButtonElement | null> | undefined;
+  label: string;
+  busy?: boolean;
+  onClick: () => void;
+}) {
   return (
-    <button type="button" className="desk-step" onClick={onClick}>
+    <button
+      ref={ref}
+      type="button"
+      className="desk-step"
+      aria-busy={busy || undefined}
+      onClick={busy ? undefined : onClick}
+    >
       {label}
       <Glyph name="arrow" size={16} weight={2.4} />
     </button>
@@ -239,25 +272,63 @@ export function TextAction({
   );
 }
 
+/** `wraps` shows a long label whole, on as many lines as it needs, its last letters and "…" kept on one line. */
 export function RedAction({
   label,
   line,
+  wraps = false,
   onClick,
 }: {
   label: string;
   line: string;
+  wraps?: boolean;
   onClick: () => void;
 }) {
+  const [head, tail] = wraps ? tiedEnd(label) : [label, ''];
+
   return (
     <div className="desk-red">
-      <TextAction label={label} red onClick={onClick} />
+      {wraps ? (
+        <button
+          type="button"
+          className="desk-text is-red is-wraps"
+          aria-label={label}
+          onClick={onClick}
+        >
+          {head}
+          <span className="desk-tied">{tail}</span>
+        </button>
+      ) : (
+        <TextAction label={label} red onClick={onClick} />
+      )}
       <p className="desk-note">{line}</p>
     </div>
   );
 }
 
-export function Note({ children, strong = false }: { children: ReactNode; strong?: boolean }) {
-  return <p className={strong ? 'desk-line is-ink' : 'desk-line'}>{children}</p>;
+export function tiedEnd(label: string): [string, string] {
+  const marks = [...new Intl.Segmenter().segment(label)].map((one) => one.segment);
+  const tail = marks.slice(-3).join('');
+
+  return [label.slice(0, label.length - tail.length), tail];
+}
+
+export function Note({
+  children,
+  strong = false,
+  ref,
+  tabIndex,
+}: {
+  children: ReactNode;
+  strong?: boolean;
+  ref?: Ref<HTMLParagraphElement>;
+  tabIndex?: number | undefined;
+}) {
+  return (
+    <p ref={ref} tabIndex={tabIndex} className={strong ? 'desk-line is-ink' : 'desk-line'}>
+      {children}
+    </p>
+  );
 }
 
 export function Field({
@@ -412,7 +483,8 @@ export function Dialog(props: DialogProps) {
 
 interface DialogProps {
   title: string;
-  verb: string;
+  /** Null while the body holds its own way on, such as Confirm it's you. */
+  verb: string | null;
   dismiss?: string;
   /** False for a dialog that applies each pick at once: Done closes it, and nothing sits at its left. */
   cancel?: boolean;
@@ -443,6 +515,8 @@ function DialogBox({
   const box = useRef<HTMLDivElement>(null);
   const none = useRef<HTMLElement>(null);
   const covered = useDeskDialog(box, first ?? none, onDismiss, locked);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const under = useTitleUnder(heading, title);
   const verbClass = ['desk-nav-verb', red && 'is-red', !on && 'is-off'].filter(Boolean).join(' ');
 
   return (
@@ -458,7 +532,8 @@ function DialogBox({
         inert={covered}
       >
         <ActionPair
-          className="desk-nav"
+          className={under ? 'desk-nav is-under' : 'desk-nav'}
+          stacks={false}
           dismiss={
             cancel ? (
               <button type="button" className="desk-nav-cancel" onClick={onDismiss}>
@@ -471,19 +546,23 @@ function DialogBox({
             )
           }
           between={
-            <h2 id={`${id}-title`} className="desk-nav-title">
+            <h2 ref={heading} id={`${id}-title`} className="desk-nav-title">
               {title}
             </h2>
           }
           confirm={
-            <button
-              type="button"
-              className={verbClass}
-              {...offButton(!on || locked, { dim: false })}
-              onClick={onConfirm}
-            >
-              {verb}
-            </button>
+            verb == null ? (
+              <span className="desk-nav-verb is-none" aria-hidden="true" />
+            ) : (
+              <button
+                type="button"
+                className={verbClass}
+                {...offButton(!on || locked, { dim: false })}
+                onClick={onConfirm}
+              >
+                {verb}
+              </button>
+            )
           }
         />
         <div className="desk-dialog-body">{children}</div>
@@ -494,7 +573,8 @@ function DialogBox({
 
 interface AskProps {
   title: string;
-  line: string;
+  /** None when the title says it all, as "Delete {name}?" does for a section with no tables (pm, 9 Nov 2026). */
+  line?: string | undefined;
   keep: string;
   /** None once nothing is left to decide: the line is an alert, and keep is the one action. */
   go?: string;
@@ -527,7 +607,11 @@ function AskBox(props: AskProps) {
   const [onVerb] = useState(busy != null || failed != null);
   const waits = busy != null;
   const said =
-    go == null ? <AskAlert id={`${id}-line`}>{line}</AskAlert> : <p id={`${id}-line`}>{line}</p>;
+    line == null ? null : go == null ? (
+      <AskAlert id={`${id}-line`}>{line}</AskAlert>
+    ) : (
+      <p id={`${id}-line`}>{line}</p>
+    );
   const alert = failed != null && <AskAlert>{failed}</AskAlert>;
 
   useDeskDialog(box, first ?? (onVerb ? goButton : keepButton), onKeep, waits);
@@ -541,7 +625,7 @@ function AskBox(props: AskProps) {
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={`${id}-title`}
-        aria-describedby={`${id}-line`}
+        aria-describedby={line == null ? undefined : `${id}-line`}
       >
         <h2 id={`${id}-title`}>{title}</h2>
         {children == null ? (
@@ -558,11 +642,12 @@ function AskBox(props: AskProps) {
         )}
         <ActionPair
           className="desk-ask-pair"
+          stacks={false}
           dismiss={
             <button
               ref={keepButton}
               type="button"
-              className={waits ? 'desk-text is-waits' : 'desk-text'}
+              className={waits ? 'desk-text desk-ask-keep is-waits' : 'desk-text desk-ask-keep'}
               {...offButton(waits, { dim: false })}
               onClick={onKeep}
             >

@@ -1,4 +1,4 @@
-import { SIDEBAR_WIDTH, atAccessibilitySizes, sideListWidth } from './textSize.ts';
+import { SIDEBAR_WIDTH, sideListWidth } from './textSize.ts';
 
 /**
  * Which of the three layouts a window is.
@@ -103,7 +103,7 @@ function fitsBeside(window: ScreenWindow, beside: SectionBeside, list: ListBesid
   });
 }
 
-/** On its side at the accessibility sizes, a section's own list takes the Settings list's place where the three would not fit (sc-13496). */
+/** On its side, a section's own list takes the Settings list's column wherever its page keeps its room beside it, as Members' demo draws it (sc-39471), rather than a third column. */
 export function settingsListGivesWay(
   window: ScreenWindow,
   beside: SectionBeside,
@@ -112,8 +112,6 @@ export function settingsListGivesWay(
   return (
     beside === 'settingsList' &&
     classifyLayout(window) === 'tabletLandscape' &&
-    atAccessibilitySizes(window.fontScale) &&
-    !fitsBeside(window, beside, list) &&
     fitsBeside(window, 'nothing', list)
   );
 }

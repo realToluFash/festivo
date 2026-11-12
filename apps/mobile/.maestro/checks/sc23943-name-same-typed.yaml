@@ -7,12 +7,12 @@ appId: host.exp.Exponent
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'nameCard.change'
+      id: 'account.name'
     timeout: 30000
 - tapOn:
-    id: 'nameCard.change'
+    id: 'account.name'
 - tapOn:
-    id: 'nameCard.field'
+    id: 'account.name.field'
 - eraseText: 80
 - inputText: 'QA Tester'
 - takeScreenshot: name-same-typed

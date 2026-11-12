@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -87,7 +87,7 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     fireEvent.click(within(block('Ways to sign in')).getByRole('button', { name: /Apple/ }));
     fireEvent.click(within(block('Ways to sign in')).getByRole('button', { name: 'Link Apple' }));
-    expect(screen.getByRole('dialog', { name: 'Confirm it’s you' })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: "Confirm it's you" })).toBeDefined();
   });
 
   it('holds an admin’s changes until their own two-factor is on', async () => {
@@ -109,7 +109,7 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
     ).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Turn on two-factor' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Security' })).toBeDefined();
-    expect(screen.getByRole('dialog', { name: 'Set up two-factor' })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: 'Turn on two-factor' })).toBeDefined();
   });
 
   it('changes a rule from its row, adds the change at the top and gives focus back', async () => {
@@ -129,8 +129,9 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
       ),
     ).toBeDefined();
     fireEvent.click(save);
+    expect(within(dialog).getByRole('button', { name: 'Saving…' })).toBeDefined();
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(titles('Where you stand')[1]).toBe('Signed out after 7 days unused');
     expect(titles('What changed')[0]).toBe('Signed out after: 7 days unused');
     expect(screen.getByText(/· was 30 days · Folake Adeyemi$/u)).toBeDefined();
@@ -185,13 +186,14 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
     await rules('/demo/settings/sign-in-rules?state=twoFactorEveryone');
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    expect(titles('What changed')[0]).toBe('Two-factor for everyone: on');
+    await waitFor(() => expect(titles('What changed')[0]).toBe('Two-factor for everyone: on'));
     expect(titles('Where you stand')[2]).toBe('Two-factor for everyone');
 
     fireEvent.click(screen.getByRole('button', { name: /Two-factor for everyone/u }));
     fireEvent.click(screen.getByRole('radio', { name: /^Not required/u }));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(titles('What changed').slice(0, 3)).toEqual([
       'Two-factor for managers: off',
       'Two-factor for everyone: off',
@@ -206,6 +208,32 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
     expect(screen.getByText(/^Not on yet. Turn it on by Wednesday, Nov 11/u)).toBeDefined();
     expect(screen.queryByText('Change')).toBeNull();
     expect(screen.queryByText('Managers are owners and admins.')).toBeNull();
+  });
+
+  it('holds the dialog while saving, and says so when a save fails, keeping the pick', async () => {
+    await rules('/demo/settings/sign-in-rules?state=limitSaving');
+    const saving = screen.getByRole('dialog', { name: 'How long a sign-in lasts unused' });
+    expect(within(saving).getByRole('button', { name: 'Saving…' })).toBeDefined();
+
+    cleanup();
+    await rules('/demo/settings/sign-in-rules?state=limitSaveFailed');
+    const dialog = screen.getByRole('dialog', { name: 'How long a sign-in lasts unused' });
+    expect(within(dialog).getByRole('alert').textContent).toBe(
+      'The rules were not saved. Nothing changed. Try again in a moment.',
+    );
+    expect(within(dialog).getByRole('radio', { name: '7 days', checked: true })).toBeDefined();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(titles('Where you stand')[1]).toBe('Signed out after 7 days unused');
+  });
+
+  it('tells a manager how many people still have no two-factor under the rule for everyone', async () => {
+    await rules('/demo/settings/sign-in-rules?state=everyoneWithout');
+
+    expect(
+      screen.getByText(/^3 people don’t have two-factor yet\. Each sees a banner/u),
+    ).toBeDefined();
   });
 
   it('loads, and tries again after failing', async () => {

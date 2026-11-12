@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
-import { type ReactNode, type Ref, useRef } from 'react';
+import { type ReactNode, type Ref, useEffect, useRef } from 'react';
 import {
+  type LayoutChangeEvent,
   Pressable,
   ScrollView,
   type ScrollViewInstance,
@@ -76,6 +77,7 @@ export function EventFrame({
   back: pushed,
   phoneBack,
   without,
+  loading = false,
   children,
 }: {
   event: Shown;
@@ -97,6 +99,8 @@ export function EventFrame({
   phoneBack?: { label: string; onPress: () => void } | undefined;
   /** An area this viewer has no part in, as Budget for Can edit: gone from More, the pills and the sidebar. */
   without?: AreaKey | undefined;
+  /** While the event loads its top is already the loaded page's; only its card in the sidebar waits. */
+  loading?: boolean;
   children: ReactNode;
 }) {
   const shell = useShell();
@@ -127,6 +131,7 @@ export function EventFrame({
             onArea={onArea}
             badge={badge}
             without={without}
+            loading={loading}
           />
         }
         overlay={
@@ -374,9 +379,20 @@ function AreaPills({
   badge: AreaBadge | null;
   without: AreaKey | undefined;
 }) {
+  const strip = useRef<ScrollViewInstance>(null);
+  const starts = useRef<Partial<Record<AreaKey, number>>>({});
+  const reveal = (one: AreaKey) => {
+    const x = starts.current[one];
+    if (x != null)
+      strip.current?.scrollTo({ x: Math.max(0, x - tokens.space3xl), animated: false });
+  };
+  // The chosen area's pill is kept in view, so Budget is never cut to "Bud" at the iPad's edge.
+  useEffect(() => reveal(area), [area]);
+
   return (
     <View style={styles.pillsAt}>
       <ScrollView
+        ref={strip}
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.pillsBar}
@@ -392,6 +408,10 @@ function AreaPills({
             <Pressable
               key={one}
               onPress={() => toArea(one, onArea)}
+              onLayout={(event: LayoutChangeEvent) => {
+                starts.current[one] = event.nativeEvent.layout.x;
+                if (on) reveal(one);
+              }}
               style={[styles.pill, on && styles.pillOn]}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
@@ -428,6 +448,7 @@ function EventSidebar({
   onArea,
   badge,
   without,
+  loading,
 }: {
   event: Shown;
   now: Date;
@@ -435,6 +456,7 @@ function EventSidebar({
   onArea: (area: AreaKey) => void;
   badge: AreaBadge | null;
   without: AreaKey | undefined;
+  loading: boolean;
 }) {
   const shell = useShell();
   const tags = cardTags(event, now).map((tag) => tag.word);
@@ -449,21 +471,31 @@ function EventSidebar({
           onPress={backToEvents}
           testID="event.side.back"
         />
-        <View
-          style={styles.sideCard}
-          accessible
-          accessibilityLabel={`${event.name}. ${tags.join(', ')}`}
-        >
-          <EventThumb event={event} side={40} radius={12} />
-          <View style={styles.grow}>
-            <Text size={14} weight="bold" numberOfLines={2} accessible={false}>
-              {event.name}
-            </Text>
-            <Text size={12.5} weight="medium" accessible={false} style={styles.secondary}>
-              {tags.join(' · ')}
-            </Text>
+        {loading ? (
+          <View style={styles.sideCard} testID="event.side.loading">
+            <View style={styles.sunkThumb} />
+            <View style={[styles.grow, styles.sunkLines]}>
+              <View style={[styles.sunkLine, styles.sunkName]} />
+              <View style={[styles.sunkLine, styles.sunkTags]} />
+            </View>
           </View>
-        </View>
+        ) : (
+          <View
+            style={styles.sideCard}
+            accessible
+            accessibilityLabel={`${event.name}. ${tags.join(', ')}`}
+          >
+            <EventThumb event={event} side={40} radius={12} />
+            <View style={styles.grow}>
+              <Text size={14} weight="bold" numberOfLines={2} accessible={false}>
+                {event.name}
+              </Text>
+              <Text size={12.5} weight="medium" accessible={false} style={styles.secondary}>
+                {tags.join(' · ')}
+              </Text>
+            </View>
+          </View>
+        )}
         <SidebarPlaces>
           {AREAS.filter((one) => one !== without).map((one) =>
             one === 'messages' && badge != null ? (
@@ -671,13 +703,13 @@ const styles = StyleSheet.create({
   pillsAt: { paddingHorizontal: tokens.space5xl, paddingTop: tokens.spaceSm },
   pillsBar: { flexGrow: 0, borderRadius: 26, backgroundColor: tokens.colorInset },
   pills: {
-    height: 52,
+    minHeight: 52,
     alignItems: 'center',
     gap: tokens.spaceHair,
     paddingHorizontal: tokens.spaceXxs,
   },
   pill: {
-    height: tokens.sizeHit,
+    minHeight: tokens.sizeHit,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceSm,
@@ -694,6 +726,11 @@ const styles = StyleSheet.create({
     borderRadius: tokens.spaceXl,
     backgroundColor: tokens.colorCard,
   },
+  sunkThumb: { width: 40, height: 40, borderRadius: 12, backgroundColor: tokens.colorNeutralFill },
+  sunkLines: { gap: tokens.spaceSm },
+  sunkLine: { height: 12, borderRadius: 6, backgroundColor: tokens.colorNeutralFill },
+  sunkName: { width: '70%' },
+  sunkTags: { width: '45%' },
   areaTitle: { lineHeight: 30 * 1.12 },
   strip: {
     minHeight: 64,

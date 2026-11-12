@@ -5,19 +5,21 @@ import { api } from '../api.ts';
 import { announceMute, useMutes } from '../eventMutes.ts';
 import { FieldError } from './FieldError.tsx';
 
-type Mute =
+export type Mute =
   | { status: 'loading' }
   | { status: 'failed' }
   | { status: 'loaded'; muted: boolean; unsaved: boolean };
 
-/** Mute this event (sc-3980), per person: the event page's card and the bell's More share it. */
-export function MuteSwitch({ eventId }: { eventId: string }) {
-  const { t } = useTranslation();
+/** Whether this person has muted an event (sc-3980), kept in step wherever else it is changed. */
+export function useEventMute(eventId: string): {
+  mute: Mute;
+  saving: boolean;
+  change: (next: boolean) => Promise<void>;
+  retry: () => void;
+} {
   const [mute, setMute] = useState<Mute>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
-  const errorId = useId();
-  const unsaved = mute.status === 'loaded' && mute.unsaved;
 
   useMutes((changed, saved) => {
     if (changed === eventId) setMute({ status: 'loaded', muted: saved.muted, unsaved: false });
@@ -55,6 +57,24 @@ export function MuteSwitch({ eventId }: { eventId: string }) {
     }
   }
 
+  return {
+    mute,
+    saving,
+    change,
+    retry: () => {
+      setMute({ status: 'loading' });
+      setAttempt((tries) => tries + 1);
+    },
+  };
+}
+
+/** Mute this event in the bell's More (sc-3980); an event's page has it in Just for you. */
+export function MuteSwitch({ eventId }: { eventId: string }) {
+  const { t } = useTranslation();
+  const { mute, saving, change, retry } = useEventMute(eventId);
+  const errorId = useId();
+  const unsaved = mute.status === 'loaded' && mute.unsaved;
+
   return (
     <>
       <label className="notification-switch">
@@ -75,14 +95,7 @@ export function MuteSwitch({ eventId }: { eventId: string }) {
       </label>
       {mute.status === 'failed' && (
         <FieldError id={`${errorId}-load`} message={t('notifications.muteNotLoaded')}>
-          <button
-            type="button"
-            className="link-button"
-            onClick={() => {
-              setMute({ status: 'loading' });
-              setAttempt((tries) => tries + 1);
-            }}
-          >
+          <button type="button" className="link-button" onClick={retry}>
             {t('notifications.tryAgain')}
           </button>
         </FieldError>

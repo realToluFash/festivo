@@ -6,7 +6,7 @@ import type { DemoLink } from './settings.ts';
 /** Seating · A · The room (page e31, board/seating-a-spec.md): the sample, the room's geometry and the plan's rules; the words are in seatingWords.ts. */
 export { SW };
 
-const WORDS = demoWords(SW, { listLocale: 'en-GB' });
+const WORDS = demoWords(SW);
 
 export const { filled: say, many, listed } = WORDS;
 
@@ -769,7 +769,7 @@ export function leastUsed(sections: readonly Section[]): Colour {
   return COLOURS.reduce((best, colour) => (used(colour) < used(best) ? colour : best), COLOURS[0]!);
 }
 
-function natural(a: string, b: string): number {
+export function natural(a: string, b: string): number {
   return a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' });
 }
 
@@ -1153,6 +1153,11 @@ export const SEATING_STATES = [
   { key: 'sectionLimit', name: 'A 31st section', group: 'The room and its sections' },
   { key: 'sectionEdit', name: 'Edit a section', group: 'The room and its sections' },
   { key: 'sectionDelete', name: 'Delete a section', group: 'The room and its sections' },
+  {
+    key: 'sectionDeleteEmpty',
+    name: 'Delete a section with no tables',
+    group: 'The room and its sections',
+  },
   { key: 'addMenu', name: 'Add table, the four shapes', group: 'Tables, rows and seats' },
   { key: 'placing', name: 'Placing a round table', group: 'Tables, rows and seats' },
   { key: 'placed', name: 'Placed, its fields open', group: 'Tables, rows and seats' },
@@ -1230,6 +1235,7 @@ export const SEATING_STATES = [
   { key: 'moveAll', name: 'Move everyone to…', group: 'Seating guests' },
   { key: 'emptyTable', name: 'An empty table', group: 'Seating guests' },
   { key: 'everyoneSeated', name: 'Everyone coming has a seat', group: 'Seating guests' },
+  { key: 'nobodyComing', name: 'Nobody coming yet', group: 'Seating guests' },
   { key: 'noMatch', name: 'A search that matches nobody', group: 'Seating guests' },
   { key: 'notSureYet', name: 'Not sure yet and no reply too', group: 'Seating guests' },
   { key: 'tables', name: 'The Tables view', group: 'Seating guests' },

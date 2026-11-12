@@ -1,8 +1,9 @@
 import type { ListedEvent } from '@soirely/api-client';
+import { numberFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { listEventOf, rowTag, shownEvent } from './eventsList.ts';
+import { cardStep, dayTiles, daysWords, listEventOf, rowTag, shownEvent } from './eventsList.ts';
 
 const t = ((key: string) => key) as unknown as TFunction;
 
@@ -61,5 +62,187 @@ describe('rowTag', () => {
     expect(rowTag(shown('draft'), true, t)?.word).toBe('eventsScreen.draft');
     expect(rowTag(shown('live'), true, t)?.word).toBe('eventsScreen.live');
     expect(rowTag(shown('finished'), true, t)?.word).toBe('eventsScreen.finished');
+  });
+});
+
+describe('cardStep', () => {
+  const NOW = new Date('2026-11-10T12:00:00Z');
+  const unread = (phase: Parameters<typeof shownEvent>[1]) =>
+    shownEvent({ ...listEventOf(EVENT), milestones: null }, phase);
+
+  it('offers no step for a live event whose milestones are still unread, never Duplicate', () => {
+    expect(cardStep(unread('live'), NOW, 'en', t)).toBeNull();
+    expect(cardStep(unread('happening_now'), NOW, 'en', t)).toBeNull();
+  });
+
+  it('offers Duplicate once a live event has no milestone left', () => {
+    expect(cardStep(shownEvent(listEventOf(EVENT), 'live'), NOW, 'en', t)).toMatchObject({
+      action: 'duplicate',
+    });
+  });
+
+  it("writes next up's day with its year only when it is not this year", () => {
+    const withDate = ((key: string, values?: { date?: string }) =>
+      values?.date ?? key) as unknown as TFunction;
+    const nextUpAt = (at: string) =>
+      shownEvent(
+        {
+          ...listEventOf(EVENT),
+          milestones: [
+            { at, title: 'ends', note: null, owner: 'event' as const, area: 'event', action: null },
+          ],
+        },
+        'live',
+      );
+
+    expect(cardStep(nextUpAt('2028-04-29T17:00:00+02:00'), NOW, 'en-GB', withDate)).toMatchObject({
+      kind: 'next',
+      when: 'Sat, 29 Apr 2028, 17:00',
+    });
+    expect(cardStep(nextUpAt('2026-11-13T17:00:00+01:00'), NOW, 'en-GB', withDate)).toMatchObject({
+      kind: 'next',
+      when: 'Fri 13 Nov, 17:00',
+    });
+  });
+
+  it('does not wait on milestones where the phase alone decides the step', () => {
+    expect(cardStep(unread('draft'), NOW, 'en', t)).toMatchObject({ action: 'makeLive' });
+    expect(cardStep(unread('paused'), NOW, 'en', t)).toMatchObject({ action: 'resume' });
+    expect(cardStep(unread('finished'), NOW, 'en', t)).toMatchObject({ action: 'duplicate' });
+  });
+});
+
+describe('dayTiles', () => {
+  const DAY = 86_400_000;
+  const lasting = (days: number, phase: Parameters<typeof shownEvent>[1]) =>
+    shownEvent(
+      listEventOf({
+        ...EVENT,
+        endsAt: new Date(Date.parse('2026-11-14T22:00:00+01:00') + (days - 1) * DAY).toISOString(),
+      }),
+      phase,
+    );
+  const drawn = (tiles: ReturnType<typeof dayTiles>) =>
+    tiles?.map((tile) => {
+      if (tile.kind === 'gap') return tile.more;
+
+      return tile.today ? `[${tile.day}]` : tile.day;
+    });
+  const before = new Date('2026-11-01T12:00:00+01:00');
+
+  it('keeps a tile a day for up to a week', () => {
+    expect(drawn(dayTiles(lasting(7, 'live'), before, 'en-GB'))).toEqual([
+      '14',
+      '15',
+      '16',
+      '17',
+      '18',
+      '19',
+      '20',
+    ]);
+  });
+
+  it('draws the first and last day of a longer event, with the days between counted', () => {
+    expect(drawn(dayTiles(lasting(8, 'live'), before, 'en-GB'))).toEqual(['14', '+6', '21']);
+    expect(drawn(dayTiles(lasting(547, 'draft'), before, 'en-GB'))).toEqual(['14', '+545', '13']);
+  });
+
+  it('adds today between them only while it is on', () => {
+    const on = new Date('2026-11-18T12:00:00+01:00');
+
+    expect(drawn(dayTiles(lasting(10, 'happening_now'), on, 'en-GB'))).toEqual([
+      '14',
+      '+3',
+      '[18]',
+      '+4',
+      '23',
+    ]);
+    expect(drawn(dayTiles(lasting(10, 'paused'), on, 'en-GB'))).toEqual(['14', '+8', '23']);
+  });
+
+  it("draws a single hidden day's own tile rather than +1", () => {
+    const second = new Date('2026-11-16T12:00:00+01:00');
+
+    expect(drawn(dayTiles(lasting(9, 'happening_now'), second, 'en-GB'))).toEqual([
+      '14',
+      '15',
+      '[16]',
+      '+5',
+      '22',
+    ]);
+  });
+
+  it('marks today on the end it falls on', () => {
+    const last = new Date('2026-11-21T12:00:00+01:00');
+
+    expect(drawn(dayTiles(lasting(8, 'happening_now'), last, 'en-GB'))).toEqual([
+      '14',
+      '+6',
+      '[21]',
+    ]);
+  });
+
+  it.each([
+    ['pt-BR', '+1200'],
+    ['pt', '+1200'],
+    ['es-MX', '+1200'],
+    ['en-US', '+1,200'],
+    ['fr-CA', '+1\u202f200'],
+  ])('counts the days between in the shown language, never %s region', (locale, more) => {
+    expect(drawn(dayTiles(lasting(1202, 'draft'), before, locale))?.[1]).toBe(more);
+  });
+
+  it('groups seven digits with the space its screen-reader label is heard with', () => {
+    expect(drawn(dayTiles(lasting(1_365_247, 'draft'), before, 'pt-BR'))?.[1]).toBe(
+      `+${numberFormat('pt').format(1_365_245)}`,
+    );
+    expect(numberFormat('pt').format(1_365_245)).toMatch(/^1\s365\s245$/u);
+  });
+
+  it('keys each tile by its date, so a day number that repeats a month on is its own', () => {
+    const keys = (dayTiles(lasting(31, 'live'), before, 'en-GB') ?? []).map((tile) => tile.key);
+
+    expect(keys).toEqual(['2026-11-14', 'gap-2026-11-14', '2026-12-14']);
+  });
+});
+
+describe('daysWords', () => {
+  const words = ((key: string, values: Record<string, unknown> = {}) =>
+    `${key} ${JSON.stringify(values)}`) as unknown as TFunction;
+  const now = new Date('2026-11-11T12:00:00+01:00');
+  const day = {
+    status: 'live' as const,
+    startsAt: '2026-11-14T09:00:00+01:00',
+    endsAt: '2026-11-14T23:00:00+01:00',
+    timeZone: 'Europe/Madrid',
+    concludedAt: null,
+  };
+
+  it('writes one day in the event’s zone', () => {
+    expect(daysWords(day, now, 'en-US', true, words)).toBe('Saturday, Nov 14');
+  });
+
+  it('writes a multi-day event as its first and last day', () => {
+    expect(
+      daysWords({ ...day, endsAt: '2026-11-16T12:00:00+01:00' }, now, 'en-US', true, words),
+    ).toBe('eventsScreen.days {"first":"Saturday, Nov 14","last":"Monday, Nov 16"}');
+  });
+
+  it('says in a list when an event was called off', () => {
+    expect(
+      daysWords(
+        { ...day, status: 'ended', concludedAt: '2026-11-10T10:00:00+01:00' },
+        now,
+        'en-US',
+        true,
+        words,
+      ),
+    ).toBe('eventsScreen.calledOffOn {"date":"Nov 10"}');
+  });
+
+  it('names the year on every date when one is not this year', () => {
+    expect(
+      daysWords({ ...day, endsAt: '2027-01-02T12:00:00+01:00' }, now, 'en-US', true, words),
+    ).toBe('eventsScreen.days {"first":"Saturday, Nov 14, 2026","last":"Saturday, Jan 2, 2027"}');
   });
 });

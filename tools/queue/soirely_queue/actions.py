@@ -143,16 +143,13 @@ def set_state(c, story, name, check=True, held=False):
     if moved and moved.get("moved_at"):
         store.mark_move(c.db, story["id"], state, moved["moved_at"], c.role)
         if held:
-            store.mark_move(c.db, story["id"], HELD_AT_MERGE, moved["moved_at"], c.role)
+            store.mark_move(c.db, story["id"], W.HELD_AT_MERGE, moved["moved_at"], c.role)
     return state
-
-
-HELD_AT_MERGE = "In Progress, tasks left at its merge"
 
 
 def held_at_merge(c, story):
     return story["state"] == "In Progress" and \
-        (story["id"], HELD_AT_MERGE, story["moved_at"]) in store.moves(c.db)
+        (story["id"], W.HELD_AT_MERGE, story["moved_at"]) in store.moves(c.db)
 
 
 def set_labels(c, story_id, add=(), remove=()):
@@ -363,6 +360,8 @@ def label(c, a):
 STALE_CLAIM_HOURS = 3
 NEEDS_IOS = ("sc-{} needs iOS, and this machine has no Xcode: it is for a tester on the Mac, "
              "pick another")
+NEEDS_XCODE = ("sc-{} needs xcode, and this machine has no Xcode: it is for a developer on the "
+               "Mac. Nothing claimed: pick another")
 
 
 def stack_up(c, story, held=False):
@@ -386,7 +385,7 @@ SHOWS_NOTHING = re.compile(r"^[\s*_>-]*demo[*_]*:[\s*_]*none(?:\s*[:.]|[\s*_]*$)
 def demo_missing(story):
     """Why a story the designer drew is not ready to build: a pull request its Demo line
     names is still open, or none of them merged. A closed one was superseded. A story with no Design section, or whose Demo line reads `none`, shows nothing,
-    so nothing is missing."""
+    so nothing is missing, whatever numbers the rest of the line cites."""
     design = T.find(story.get("description"), "Design")
     if not design:
         return None
@@ -395,9 +394,9 @@ def demo_missing(story):
         return "its Design section has no Demo: line"
     if NOT_BUILT.search(line):
         return "its Demo: line says the demo is not built"
-    numbers = [int(n) for n in re.findall(r"#(\d+)", line)]
-    if not numbers and SHOWS_NOTHING.match(line):
+    if SHOWS_NOTHING.match(line):
         return None
+    numbers = [int(n) for n in re.findall(r"#(\d+)", line)]
     if not numbers:
         return "its Demo: line names no pull request"
     states = {n: pr_state(n) for n in dict.fromkeys(numbers)}
@@ -427,6 +426,8 @@ def claim(c, a):
                 or not R.ROLES[c.role]["filter"](set(story["labels"]), story["state"]):
             raise Refused(f"sc-{story['id']} is {story['state']} "
                           f"({', '.join(story['labels']) or 'no labels'}), not in your queue")
+        if not R.can_take(c.role, story, machine.has_xcode):
+            raise Refused(NEEDS_XCODE.format(story["id"]))
         held = W.held_epic(story, store.get_meta(c.db, "epics"))
         if held:
             raise Refused(f"sc-{story['id']} is in epic {held['name']}, which is "
@@ -458,7 +459,7 @@ def claim(c, a):
                 stack_up(c, story, held=True)
                 c.refresh(story["id"])
                 return None
-            if not R.can_test(c.role, story, machine.has_xcode):
+            if not R.can_take(c.role, story, machine.has_xcode):
                 raise Refused(NEEDS_IOS.format(story["id"]))
             age = time.time() - datetime.datetime.fromisoformat(
                 last["at"].replace("Z", "+00:00")).timestamp() if last else float("inf")
@@ -469,7 +470,7 @@ def claim(c, a):
                 takeover = f", taking over from {R.claimant(last)}'s of {last['at'][11:16]}"
         elif story["state"] != "Ready For QA":
             raise Refused(f"sc-{story['id']} is {story['state']}, not Ready For QA")
-        elif not R.can_test(c.role, story, machine.has_xcode):
+        elif not R.can_take(c.role, story, machine.has_xcode):
             raise Refused(NEEDS_IOS.format(story["id"]))
         else:
             first = W.retester(story)

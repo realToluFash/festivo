@@ -7,10 +7,17 @@ appId: host.exp.Exponent
 - runFlow:
     when:
       visible:
-        id: 'createOrganisation'
+        id: 'createWalk'
     commands:
       - tapOn:
-          id: 'createOrganisation.cancel'
+          id: 'createWalk.cancel'
+      - runFlow:
+          when:
+            visible:
+              id: 'createWalk.discard'
+          commands:
+            - tapOn:
+                id: 'createWalk.discard'
       - waitForAnimationToEnd
 # The switcher's scrim closes it. A tap on its side margin: the top edge is the status bar, where iOS
 # takes a tap as scroll-to-top. 3% is inside the 20-point padding on a phone, and wider screens stop the

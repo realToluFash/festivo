@@ -52,7 +52,6 @@ const { t } = english;
 const words = en.personalisation;
 
 export const WORDS = {
-  listLine: en.settings.personalisationLine,
   never: words.never,
   chosen: t('personalisation.chosen', { own: kit.nameOf(t, OWN) }),
   saved: words.saved,

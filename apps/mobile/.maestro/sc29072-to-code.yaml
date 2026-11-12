@@ -2,18 +2,4 @@
 appId: host.exp.Exponent
 ---
 - runFlow: sign-out.yaml
-- openLink: ${METRO_URL}/--/sign-in
-- extendedWaitUntil: { visible: { id: 'welcome\.email|signIn\.email' }, timeout: 60000 }
-- runFlow:
-    when: { visible: { id: 'welcome.email' } }
-    commands:
-      - tapOn: { id: 'welcome.email' }
-- tapOn: { id: 'signIn.email' }
-- eraseText: 120
-- inputText: ${EMAIL}
-- tapOn: { id: 'signIn.password' }
-- eraseText: 120
-- inputText: ${PASSWORD}
-- hideKeyboard
-- tapOn: { id: 'signIn.submit' }
-- extendedWaitUntil: { visible: { id: 'twoFactor.code' }, timeout: 30000 }
+- runFlow: sc33828-to-code-signed-out.yaml

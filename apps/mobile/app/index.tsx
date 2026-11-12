@@ -59,9 +59,8 @@ export default function Home() {
           void launchSignedIn().then((loaded) => {
             if (!live || !loaded) return;
             // A restart into new colours comes back where it was asked from (sc-30441).
-            const back = landingAfterRestart();
-            if (back != null) router.replace(back);
-            else setLaunching('signedIn');
+            setLaunching('signedIn');
+            for (const screen of landingAfterRestart()) router.push(screen);
           });
         return;
       }

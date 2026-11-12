@@ -4,11 +4,11 @@ appId: host.exp.Exponent
 - runFlow: ../open-create-organisation.yaml
 - takeScreenshot: create-open
 - tapOn:
-    id: 'createOrganisation.name'
+    id: 'createWalk.name'
 - takeScreenshot: create-keyboard-up
 - inputText: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
 - tapOn:
-    id: 'createOrganisation.create'
+    id: 'createWalk.primary'
 - waitForAnimationToEnd:
     timeout: 5000
 - assertVisible: '(?:That name is 114 characters|Ese nombre tiene 114 caracteres|Ce nom compte 114 caractères|Este nome tem 114 caracteres).*'
@@ -16,7 +16,21 @@ appId: host.exp.Exponent
 - eraseText: 150
 - inputText: 'Limit Org'
 - tapOn:
-    id: 'createOrganisation.create'
+    id: 'createWalk.primary'
+- tapOn:
+    id: 'createWalk.search'
+- inputText: 'Portugal'
+- tapOn:
+    id: 'createWalk.country.PT'
+- hideKeyboard:
+    optional: true
+- tapOn:
+    id: 'createWalk.primary'
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.readyTitle}}'
+    timeout: 10000
+- tapOn:
+    id: 'createWalk.primary'
 - extendedWaitUntil:
     visible: '{{t:createOrganisation.limitedTitle}}'
     timeout: 20000

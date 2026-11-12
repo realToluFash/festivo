@@ -52,7 +52,7 @@ function firstFailing(lines: Lines): string | null {
 }
 
 /** The guest's column becomes the form, Cancel and Save at its head (Events A's rule at a desk). */
-function ColumnHead({ title, children }: { title: string; children: ReactNode }) {
+export function ColumnHead({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="gs-col-head">
       <h2 className="gs-col-title" tabIndex={-1} data-focus="form-heading">
@@ -63,7 +63,7 @@ function ColumnHead({ title, children }: { title: string; children: ReactNode })
   );
 }
 
-function Verb({
+export function Verb({
   label,
   busy = false,
   held = false,

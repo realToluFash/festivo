@@ -16,7 +16,7 @@ import { carryOn } from '../src/unreachable.ts';
 /** No connection, said on the brand; a held session is kept, and the app tries again once the connection is back (sc-29076). */
 export default function Unreachable() {
   const { t } = useTranslation();
-  const { link } = useLocalSearchParams<{ link?: string }>();
+  const { link, to } = useLocalSearchParams<{ link?: string; to?: string }>();
   const { kind } = useLayout();
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [retrying, setRetrying] = useState(false);
@@ -50,8 +50,8 @@ export default function Unreachable() {
       }
     }
 
-    router.replace(carryOn(link));
-  }, [link]);
+    router.replace(carryOn(link, to));
+  }, [link, to]);
 
   useEffect(
     () =>

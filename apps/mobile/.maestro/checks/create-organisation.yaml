@@ -3,6 +3,6 @@ appId: host.exp.Exponent
 ---
 - runFlow: ../open-create-organisation.yaml
 - extendedWaitUntil:
-    visible: '{{t:createOrganisation.title}}'
+    visible: '{{t:createOrganisation.whatTitle}}'
     timeout: 30000
 - takeScreenshot: create-organisation

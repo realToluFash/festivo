@@ -588,22 +588,27 @@ export const CANDIDATES: readonly Candidate[] = samplePeople()
 export type TransferField = 'owner' | 'password' | 'code';
 export type TransferProblems = Partial<Record<TransferField, string>>;
 
+/** The code is checked only once the server has asked for it (sc-18959). */
 export function transferProblems(
   owner: string | null,
   password: string,
-  code: string,
+  code: string | null,
 ): TransferProblems {
   return {
     ...(owner == null && { owner: OWNERSHIP_WORDS.ownerBlank }),
     ...(password === '' && { password: OWNERSHIP_WORDS.passwordBlank }),
-    ...(code.trim() === '' && { code: OWNERSHIP_WORDS.codeBlank }),
+    ...(code != null && code.trim() === '' && { code: OWNERSHIP_WORDS.codeBlank }),
   };
 }
 
-export function transferRefusal(password: string, code: string): TransferProblems {
-  const typed = code.replaceAll(/\s/gu, '').toLowerCase();
-
+/** The sample server: the password first, then, with two-factor on, it asks for a code before it checks one. */
+export function transferRefusal(
+  password: string,
+  code: string | null,
+): TransferProblems | 'codeAsked' {
   if (password !== SAMPLE.password) return { password: OWNERSHIP_WORDS.passwordWrong };
+  if (code == null) return 'codeAsked';
+  const typed = code.replaceAll(/\s/gu, '').toLowerCase();
   if (typed !== SAMPLE.authenticator && typed !== SAMPLE.recovery)
     return { code: OWNERSHIP_WORDS.codeWrong };
 

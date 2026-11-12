@@ -27,11 +27,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { QuietButton } from '../components/Buttons.tsx';
+import { controlTaken } from '../components/focusedField.ts';
 import { keyboardTopNow, useKeysUp, watchKeyboardTop } from '../components/keyboardWatch.ts';
+import { stepShown } from '../components/landedScreen.ts';
 import { moveScreenReaderFocus } from '../components/screenReaderFocus.ts';
 import {
   ScreenScroll,
   SETTLED_MS,
+  useFocusedFieldAboveToast,
   useScreenScrollView,
   useWindowOrigin,
 } from '../components/Screen.tsx';
@@ -83,6 +86,7 @@ export function NavBar({
           accessibilityRole="button"
           accessibilityLabel={left === 'back' ? t('steps.back') : t('steps.close')}
           hitSlop={tokens.spaceXxs}
+          onFocus={controlTaken}
           testID={`${testID}.${left}`}
         >
           <Svg
@@ -223,6 +227,7 @@ export function StepScreen({
   const measured = ANDROID || inSheet;
   const cover = useKeysCover(page, measured, inSheet ? insets.top + SHEET_LIFTED_GAP : 0);
   const { screenScroll, scrollProps } = useScreenScrollView();
+  useFocusedFieldAboveToast(screenScroll);
   const [sizes, setSizes] = useState({ shown: 0, foot: 0, field: 0, group: 0 });
   const measuredAs = (key: 'shown' | 'foot') => (event: LayoutChangeEvent) => {
     const height = event.nativeEvent.layout.height;
@@ -244,6 +249,62 @@ export function StepScreen({
   if (nextInline !== inline) setInline(nextInline);
   const footRef = useRef<ViewInstance>(null);
   const wasInline = useRef(inline);
+  const hasFoot = foot != null;
+  const shown = useRef<ReturnType<typeof stepShown> | null>(null);
+  const footInPage = useRef(inline);
+
+  const columnRef = useRef<ViewInstance>(null);
+
+  // Measured as it slides in, the step would be placed where it is passing: it is placed only once it has landed.
+  const placeStep = useCallback(() => {
+    if (shown.current == null) return;
+    columnRef.current?.measureInWindow((x, _y, width) => {
+      const column = { x, width };
+      if (footRef.current == null) shown.current?.placed({ column, foot: null });
+      else
+        footRef.current.measureInWindow((_x, y) =>
+          shown.current?.placed({ column, foot: { top: footInPage.current ? null : y } }),
+        );
+    });
+  }, []);
+
+  useEffect(() => {
+    const step = stepShown();
+    const landed = setTimeout(() => {
+      shown.current = step;
+      placeStep();
+    }, SETTLED_MS);
+
+    return () => {
+      clearTimeout(landed);
+      shown.current = null;
+      step.left();
+    };
+  }, [placeStep]);
+
+  useEffect(() => {
+    footInPage.current = inline;
+    placeStep();
+  }, [inline, hasFoot, placeStep]);
+
+  // The keys move the foot without laying it out again where the page pads for them, or a sheet rises clear of them.
+  useEffect(() => {
+    if (!hasFoot) return undefined;
+    let settled: ReturnType<typeof setTimeout> | undefined;
+    const unwatch = watchKeyboardTop(
+      () => 0,
+      () => {
+        placeStep();
+        clearTimeout(settled);
+        settled = setTimeout(placeStep, SETTLED_MS);
+      },
+    );
+
+    return () => {
+      clearTimeout(settled);
+      unwatch();
+    };
+  }, [hasFoot, placeStep]);
 
   useEffect(() => {
     if (!keysUp) return;
@@ -270,12 +331,15 @@ export function StepScreen({
   // The foot remounts as it moves, and a press on it that sent the keys down would leave the screen reader on nothing.
   useEffect(() => {
     const docking = wasInline.current && !inline;
+    const undocking = !wasInline.current && inline;
     wasInline.current = inline;
+    // A lift the keys asked for while the bar rested on them was for less room than the scroll now has.
+    if (undocking) screenScroll.settle();
     if (!docking) return;
     void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
       if (on) moveScreenReaderFocus(footRef.current);
     });
-  }, [inline]);
+  }, [inline, screenScroll]);
 
   const footView = (
     <View
@@ -284,9 +348,12 @@ export function StepScreen({
         styles.foot,
         inline ? styles.inlineFoot : { paddingHorizontal: side, paddingBottom: bottom },
       ]}
-      onLayout={inline ? undefined : measuredAs('foot')}
+      onLayout={(event) => {
+        if (!inline) measuredAs('foot')(event);
+        placeStep();
+      }}
     >
-      <View ref={footRef} style={[styles.column, styles.footColumn]}>
+      <View ref={footRef} style={[styles.column, styles.footColumn]} onLayout={placeStep}>
         {foot}
       </View>
     </View>
@@ -319,7 +386,9 @@ export function StepScreen({
           keyboardDismissMode="interactive"
         >
           <ScreenScroll.Provider value={screenScroll}>
-            <View style={styles.column}>{children}</View>
+            <View ref={columnRef} style={styles.column} onLayout={placeStep}>
+              {children}
+            </View>
             {inline && footView}
           </ScreenScroll.Provider>
         </ScrollView>

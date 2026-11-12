@@ -20,6 +20,7 @@ import { DOOR_PAGES } from './doorCode.ts';
 import { NO_ORG_PAGE } from './noOrg.ts';
 import { EventPage } from './EventPage.tsx';
 import { Events } from './Events.tsx';
+import { NewEventTop } from './NewEventTop.tsx';
 import { EVENTS_PAGES } from './events.ts';
 import { ACCOUNT_PAGES } from './account.ts';
 import { DATA_CONTROL_PAGES } from './dataControlPages.ts';
@@ -34,11 +35,25 @@ import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { Guests } from './Guests.tsx';
 import { GUESTS_PAGES } from './guests.ts';
 import { KitchenPage } from './Kitchen.tsx';
-import { CHANGES_PAGES, KITCHEN_PAGES } from './kitchen.ts';
+import { MenuPage } from './MenuServed.tsx';
+import { MENU_PAGES } from './menuServed.ts';
+import { CHANGES_PAGES, KITCHEN_PAGES, PARTS_PAGES } from './kitchen.ts';
 import { LegalPage } from './Legal.tsx';
 import { LEGAL_PAGES } from './legal.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { NOTIFICATIONS_PAGES } from './notifications.ts';
+import { PassPage } from './Pass.tsx';
+import { PASS_PAGES } from './pass.ts';
+import { QueuePage } from './Queue.tsx';
+import { HowItsGoingPage } from './HowItsGoing.tsx';
+import { SERVICE_STATES, SERVICE_STATE_WHAT } from './howItsGoing.ts';
+import { ServiceRoomPage } from './ServiceRoom.tsx';
+import { ROOM_STATES, ROOM_STATE_WHAT } from './serviceRoom.ts';
+import { QUEUE_STATES, type QueueStateName } from './queue.ts';
+import { StationsPage } from './Stations.tsx';
+import { STATIONS_PAGES } from './stations.ts';
+import { TeamPage } from './Team.tsx';
+import { TEAM_STATES, type TeamStateName } from './team.ts';
 import { leave } from './chosenScheme.ts';
 import { PERSONALISATION_PAGES } from './personalisation.ts';
 import { SECURITY_PAGES } from './security.ts';
@@ -92,11 +107,14 @@ type SignInNotice = { title: string; body: string };
 const TODAY_MOMENTS: { key: string; name: string }[] = [
   { key: 'plan', name: 'A planning day' },
   { key: 'plan&invites=none', name: 'A planning day, invitations not sent' },
+  { key: 'plan&starts=later', name: 'A planning day, the event starts later today' },
+  { key: 'plan&week=rows', name: 'A planning day, events sharing days in rows' },
   { key: 'planNow', name: 'A planning day, built now' },
   { key: 'day', name: 'The event day' },
   { key: 'dayNow', name: 'The event day, built now' },
   { key: 'quiet', name: 'A quiet week' },
   { key: 'first', name: 'A first run' },
+  { key: 'firstAsk', name: 'A first run, without Create events' },
 ];
 
 /** `fillsEmail`: the sign-in knew whose it was, so Email arrives filled. */
@@ -170,11 +188,14 @@ export default function Demo() {
       <Route path="signed-in" element={<Navigate to="/demo/today" replace />} />
       <Route path="today" element={<Today />} />
       <Route path="events" element={<Events />} />
+      <Route path="events/new" element={<NewEventTop />} />
       <Route path="events/:id" element={<EventPage />} />
       <Route path="events/:id/dates" element={<EventPage dates />} />
       <Route path="events/:id/messages" element={<EventPage messages />} />
       <Route path="events/:id/seating" element={<SeatingPage />} />
       <Route path="events/:id/kitchen" element={<KitchenPage />} />
+      <Route path="events/:id/menu" element={<MenuPage />} />
+      <Route path="events/:id/staff" element={<StationsPage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -218,6 +239,11 @@ export default function Demo() {
       <Route path="unsubscribe" element={<Unsubscribe />} />
       <Route path="guest" element={<GuestPage />} />
       <Route path="guests" element={<Guests />} />
+      <Route path="pass" element={<PassPage />} />
+      <Route path="queue" element={<QueuePage />} />
+      <Route path="team" element={<TeamPage />} />
+      <Route path="how-its-going" element={<HowItsGoingPage />} />
+      <Route path="service-room" element={<ServiceRoomPage />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -280,6 +306,37 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={KITCHEN_PAGES} />
         <h3>Changes since the kitchen’s last copy, in Guests A · desktop</h3>
         <BoardPages pages={CHANGES_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-32">
+        <h2 id="demo-page-32">32 · Menu</h2>
+        <h3>How a course is served, and a dish’s parts · sc-34230 · desktop</h3>
+        <BoardPages pages={MENU_PAGES} />
+      </section>
+      <section className="demo-home-page" aria-labelledby="demo-page-32-kitchen">
+        <h2 id="demo-page-32-kitchen">32 · Menu · the kitchen sheet’s parts</h2>
+        <h3>Each part of a course, and each table’s platters · sc-34244 · desktop and A4</h3>
+        <BoardPages pages={PARTS_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-34">
+        <h2 id="demo-page-34">34 · Staffing</h2>
+        <h3>Stations and leads, what each station dishes, the walking order (sc-3910) · desktop</h3>
+        <BoardPages pages={STATIONS_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-35">
+        <h2 id="demo-page-35">35 · Service · the pass</h2>
+        <h3>The pass’s print controls, in page 35’s language · desktop, Printing in version B</h3>
+        <BoardPages pages={PASS_PAGES} />
+        <h3>Service · the section’s queue (sc-36033) · desktop</h3>
+        <BoardPages pages={QUEUE_PAGES} />
+        <h3>Service · Team, the floor lead moves someone (sc-36034) · desktop</h3>
+        <BoardPages pages={TEAM_PAGES} />
+        <h3>Service · How it’s going (sc-34107) · desktop</h3>
+        <BoardPages pages={HOW_ITS_GOING_PAGES} />
+        <h3>Service · the whole room as a plan or a list (sc-4026) · desktop</h3>
+        <BoardPages pages={ROOM_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-81">
@@ -398,6 +455,84 @@ function KeepQuery({ to }: { to: string }) {
 
   return <Navigate to={`/demo/${to}${search}`} replace />;
 }
+
+const QUEUE_WHAT: Record<QueueStateName, string> = {
+  populated: 'Section A: Table 10’s owed plate first, Table 5 up next',
+  beforeStart: 'Before Start service: the queue can be set now',
+  moved: 'After Bring forward on Table 4',
+  oneTable: 'Section C has one table: no controls, no Build the queue',
+  noTables: 'Section E has no tables',
+  noManage: 'Viewed without service.manage: no Queue',
+  buildEmpty: 'Building Section D’s queue, nothing placed',
+  buildPartial: 'Building Section D’s queue, four of five placed',
+  buildAll: 'Building Section D’s queue, all five placed',
+  offline: 'Offline, after a press',
+  conflict: 'Saved after Tobi Adeyemi changed Section D: refused with 412',
+  rivalMove: 'Another lead changes the queue before the next press',
+  waiterNotice: 'Table 5 brought forward: Kunle’s next table changed',
+  waiterSame: 'Row C moved up: Kunle’s next table is still Table 5',
+  asWell: 'Kunle is on Section B as well, Table 6 owed since 20:28',
+  asWellTie: 'Kunle is on Section B as well, a tie for first',
+};
+
+const QUEUE_PAGES = [
+  {
+    name: 'The floor lead’s section queue, beside the sections',
+    states: QUEUE_STATES.map((state) => ({
+      to: `/demo/queue?state=${state}`,
+      name: QUEUE_WHAT[state],
+    })),
+  },
+];
+
+const TEAM_WHAT: Record<TeamStateName, string> = {
+  populated: 'Every section, the Pass and each kitchen station, with who is on it',
+  sheetSection: 'Move someone to Section C: only people in Here who can work the floor',
+  sheetChosen: 'Kunle chosen: As well, until the lead picks Instead',
+  sheetInstead: 'Kunle chosen, Instead: leaves Section A with nobody',
+  sheetKitchen: 'Move someone to the Fryer: only people who can work the pass',
+  sheetTwo: 'Bisi is on two stations: Instead only',
+  sheetBlank: 'Put pressed with nobody chosen',
+  movedAsWell: 'Kunle put on Section C as well',
+  movedInstead: 'Kunle put on Section C instead: nobody on Section A',
+  movedKitchen: 'Tayo put on the Fryer as well as the Grill',
+  offline: 'No connection: every Move dashed',
+  offlineTried: 'No connection, a Move pressed: it says why',
+  conflict: 'Tobi Adeyemi moved Grace Udo first: refused with 409',
+  fromAlert: 'Opened from the alert for Section A, left with nobody',
+  empty: 'No sections and no kitchen stations',
+  noManage: 'Viewed without service.manage: no Team tab',
+};
+
+const TEAM_PAGES = [
+  {
+    name: 'The floor lead’s Team, with the Move panel docked',
+    states: TEAM_STATES.map((state) => ({
+      to: `/demo/team?state=${state}`,
+      name: TEAM_WHAT[state],
+    })),
+  },
+];
+
+const ROOM_PAGES = [
+  {
+    name: 'The floor lead sees the whole room',
+    states: ROOM_STATES.map((state) => ({
+      to: `/demo/service-room?state=${state}`,
+      name: ROOM_STATE_WHAT[state],
+    })),
+  },
+];
+
+const HOW_ITS_GOING_PAGES = [
+  {
+    name: 'The floor lead’s view of how service is going',
+    states: SERVICE_STATES.map((state) => ({
+      to: `/demo/how-its-going?state=${state}`,
+      name: SERVICE_STATE_WHAT[state],
+    })),
+  },
+];
 
 function BoardPages({
   pages,

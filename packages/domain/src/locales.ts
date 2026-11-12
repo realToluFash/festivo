@@ -58,6 +58,24 @@ export function pluralLocale(locale: LocaleCode): string {
   return LOCALES.find((l) => l.code === locale)?.plurals ?? locale;
 }
 
+/** A number in the copy's own grouping, from the shown language and never the device region: Portuguese writes «1200» on a Brazilian phone too (sc-39398). */
+export function numberFormat(
+  locale: string | null | undefined,
+  options?: Intl.NumberFormatOptions,
+): Intl.NumberFormat {
+  return new Intl.NumberFormat(pluralLocale(narrowLocale(locale)), options);
+}
+
+/** A list in the copy's own punctuation, from the shown language and never the device region: English copy is British (docs/i18n/en.md), so no serial comma. */
+export function listFormat(
+  locale: string | null | undefined,
+  options: Intl.ListFormatOptions,
+): Intl.ListFormat {
+  const shown = narrowLocale(locale);
+
+  return new Intl.ListFormat(shown === 'en' ? 'en-GB' : pluralLocale(shown), options);
+}
+
 interface PluralResolver {
   getRule(code: string, options?: object): unknown;
 }
@@ -78,7 +96,7 @@ interface Formatter {
 /** i18next writes `{{count, number}}` in the bare language, so each client routes it through pluralLocale too (sc-15361). */
 export function followNumberLocales(formatter: Formatter): void {
   formatter.addCached('number', (lng, options) => {
-    const format = new Intl.NumberFormat(pluralLocale(narrowLocale(lng)), options);
+    const format = numberFormat(lng, options);
 
     return (value) => format.format(value as number);
   });

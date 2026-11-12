@@ -1,19 +1,24 @@
 import type { ListedEvent } from '@soirely/api-client';
-import { type CalendarItem, formatEventClock, shownPhase, today, wallDay } from '@soirely/domain';
+import {
+  type TodayAgendaItem,
+  type TodayCard,
+  type TodayNow,
+  type TodaySub,
+  formatEventClock,
+  notThisYear,
+  todayView,
+} from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import {
-  type AgendaDay,
   type AgendaItem,
-  daysFrom,
   type EventCard,
   meshFor,
   type Moment,
   type Now,
   type ShownEvent,
-  type StripBar,
 } from './today.ts';
-import { eventDatesWords } from './eventsHome.ts';
+import { daysWords } from './eventsList.ts';
 
 export interface Reader {
   timeZone: string;
@@ -31,12 +36,6 @@ export function shownEvent(event: ListedEvent): ShownEvent {
 
 const SHORT_DAY: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
 
-function hourIn(now: Date, timeZone: string): number {
-  return Number(
-    new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone }).format(now),
-  );
-}
-
 /** A wall day, `2026-11-03`, written in the reader's language. */
 function dayWords(day: string, locale: string, options: Intl.DateTimeFormatOptions): string {
   return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(
@@ -44,13 +43,26 @@ function dayWords(day: string, locale: string, options: Intl.DateTimeFormatOptio
   );
 }
 
-function howFar(from: string, to: string, t: TFunction): string {
-  const days = daysFrom(from, to);
+/** An event's day, the wall day of `moment` in its zone, with its year when that is not this year in the event's zone (sc-30413). */
+function dateWords(
+  day: string,
+  moment: string,
+  event: ListedEvent,
+  now: Date,
+  locale: string,
+): string {
+  return dayWords(
+    day,
+    locale,
+    notThisYear(event.timeZone, now, moment) ? { ...SHORT_DAY, year: 'numeric' } : SHORT_DAY,
+  );
+}
 
+function howFar(days: number, t: TFunction): string {
   return days === 1 ? t('todayScreen.tomorrow') : t('todayScreen.inDays', { count: days });
 }
 
-function agendaItem(item: CalendarItem<ListedEvent>, reader: Reader, t: TFunction): AgendaItem {
+function agendaItem(item: TodayAgendaItem<ListedEvent>, reader: Reader, t: TFunction): AgendaItem {
   const { event } = item;
   const clock = (at: string) => formatEventClock(at, event.timeZone, reader.locale);
 
@@ -63,58 +75,50 @@ function agendaItem(item: CalendarItem<ListedEvent>, reader: Reader, t: TFunctio
       note: item.milestone.note ?? '',
     };
 
-  const day = daysFrom(wallDay(event.startsAt, event.timeZone), item.day) + 1;
-  const allDay = !item.first && !item.last;
-  const time = item.first
-    ? clock(event.startsAt)
-    : item.last
-      ? clock(event.endsAt)
-      : t('todayScreen.allDay');
-  const title = item.first
-    ? t('todayScreen.starts', { name: event.name })
-    : item.last
-      ? t('todayScreen.ends', { name: event.name })
-      : t('todayScreen.continues', { name: event.name });
-
   return {
-    time,
-    allDay,
-    title,
+    time:
+      item.kind === 'starts'
+        ? clock(event.startsAt)
+        : item.kind === 'ends'
+          ? clock(event.endsAt)
+          : t('todayScreen.allDay'),
+    allDay: item.kind === 'continues',
+    title: t(`todayScreen.${item.kind}`, { name: event.name }),
     event: shownEvent(event),
-    note: item.multiDay ? t('todayScreen.dayOf', { day, total: event.dayCount }) : '',
+    note: item.multiDay ? t('todayScreen.dayOf', { day: item.day, total: event.dayCount }) : '',
   };
 }
 
-function card(event: ListedEvent, live: boolean, on: string, reader: Reader, t: TFunction) {
-  const until = daysFrom(on, wallDay(event.startsAt, event.timeZone));
-  const draft = event.status === 'draft';
-  const count = draft
-    ? t('todayScreen.draft')
-    : live
-      ? t('todayScreen.dayOfCapital', { day: 1 - until, total: event.dayCount })
-      : until <= 1
-        ? t('todayScreen.tomorrowCapital')
-        : t('todayScreen.inDaysCapital', { count: until });
+function card(one: TodayCard<ListedEvent>, now: Date, reader: Reader, t: TFunction): EventCard {
+  const { event, count } = one;
 
   return {
     event: shownEvent(event),
     name: event.name,
-    dates: eventDatesWords(event, reader.locale, t).days,
-    count,
-    live,
-    draft,
-    stage: !draft && !live && until <= 7 ? t('todayScreen.finalWeek') : null,
+    dates: daysWords(event, now, reader.locale, true, t),
+    count:
+      count.kind === 'draft'
+        ? t('todayScreen.draft')
+        : count.kind === 'dayOf'
+          ? t('todayScreen.dayOfCapital', { day: count.day, total: count.total })
+          : count.kind === 'today'
+            ? t('todayScreen.today')
+            : count.days === 1
+              ? t('todayScreen.tomorrowCapital')
+              : t('todayScreen.inDaysCapital', { count: count.days }),
+    live: one.live,
+    draft: one.draft,
+    stage: one.finalWeek ? t('todayScreen.finalWeek') : null,
     ready: null,
-  } satisfies EventCard;
+  };
 }
 
-function nowOf(event: ListedEvent, on: string, reader: Reader, t: TFunction): Now {
-  const day = daysFrom(wallDay(event.startsAt, event.timeZone), on) + 1;
-  const last = wallDay(event.endsAt, event.timeZone);
+function nowOf(now: TodayNow<ListedEvent>, at: Date, reader: Reader, t: TFunction): Now {
+  const { event } = now;
   const place = event.venue?.name ?? event.venue?.address?.formatted ?? null;
-  const dayLine = t('todayScreen.dayOfCapital', { day, total: event.dayCount });
+  const dayLine = t('todayScreen.dayOfCapital', { day: now.dayToday, total: event.dayCount });
   const ends = {
-    date: dayWords(last, reader.locale, SHORT_DAY),
+    date: dateWords(now.lastDay, event.endsAt, event, at, reader.locale),
     time: formatEventClock(event.endsAt, event.timeZone, reader.locale),
   };
 
@@ -123,9 +127,9 @@ function nowOf(event: ListedEvent, on: string, reader: Reader, t: TFunction): No
     name: event.name,
     live: place == null ? dayLine : t('todayScreen.dayAndPlace', { day: dayLine, place }),
     ends:
-      last === on
+      now.endsIn === 0
         ? t('todayScreen.endsToday', ends)
-        : daysFrom(on, last) === 1
+        : now.endsIn === 1
           ? t('todayScreen.endsTomorrow', ends)
           : t('todayScreen.endsOn', ends),
     // Only the dates are known: what is happening, the rail and arrivals have no source yet, so a moment that is not `full` never draws them.
@@ -140,7 +144,31 @@ function nowOf(event: ListedEvent, on: string, reader: Reader, t: TFunction): No
   };
 }
 
-/** Today from the events the API returns (sc-29090): only what their dates, covers and milestones can say. */
+function subOf(sub: TodaySub<ListedEvent>, now: Date, reader: Reader, t: TFunction): string {
+  switch (sub.kind) {
+    case 'first':
+      return t('todayScreen.firstSub');
+    case 'nothingThisWeek':
+      return t('todayScreen.nothingThisWeek');
+    case 'startsToday':
+      return t('todayScreen.startsTodayAt', {
+        name: sub.event.name,
+        time: formatEventClock(sub.event.startsAt, sub.event.timeZone, reader.locale),
+      });
+    case 'startsOn':
+      return sub.withinWeek
+        ? t('todayScreen.startsOnWeekday', {
+            name: sub.event.name,
+            weekday: dayWords(sub.day, reader.locale, { weekday: 'long' }),
+          })
+        : t('todayScreen.startsOnDate', {
+            name: sub.event.name,
+            date: dateWords(sub.day, sub.event.startsAt, sub.event, now, reader.locale),
+          });
+  }
+}
+
+/** Today from the events the API returns (sc-29090), in words: the domain's `todayView` decides what it shows. */
 export function todayMoment(
   loaded: { events: readonly ListedEvent[]; at: Date },
   now: Date,
@@ -148,105 +176,65 @@ export function todayMoment(
   name: string,
   t: TFunction,
 ): Moment {
-  const shown = today(loaded, now, { ...reader, hour: hourIn(now, reader.timeZone) });
-  const on = wallDay(now, reader.timeZone);
-  const first = loaded.events.length === 0;
-  const empty = shown.week.every(({ items }) => items.length === 0);
-  const kind = first ? 'first' : shown.now != null ? 'day' : empty ? 'quiet' : 'plan';
-  const weekIndex = (day: string) => daysFrom(on, day);
-
-  const bars: StripBar[] = [];
-  for (const { items } of shown.week)
-    for (const item of items) {
-      if (item.kind !== 'event' || !item.multiDay) continue;
-      if (bars.some((bar) => bar.event.id === item.event.id)) continue;
-
-      const start = Math.max(0, weekIndex(wallDay(item.event.startsAt, item.event.timeZone)));
-      const end = Math.min(6, weekIndex(wallDay(item.event.endsAt, item.event.timeZone)));
-      const openLeft = start === 0 && !item.first;
-      const day = daysFrom(wallDay(item.event.startsAt, item.event.timeZone), on) + 1;
-
-      bars.push({
-        event: shownEvent(item.event),
-        start,
-        span: end - start + 1,
-        label: openLeft
-          ? t('todayScreen.dayOf', { day, total: item.event.dayCount })
-          : t('todayScreen.days', { count: item.event.dayCount }),
-        openLeft,
-      });
-    }
-
-  const covered = (id: string, index: number) =>
-    bars.some((bar) => bar.event.id === id && index >= bar.start && index < bar.start + bar.span);
-  const days = shown.week.map(({ day, today: isToday, items }, index) => ({
-    weekday: dayWords(day, reader.locale, { weekday: 'short' }),
-    number: dayWords(day, reader.locale, { day: 'numeric' }),
-    today: isToday,
-    dots: [...new Map(items.map((item) => [item.event.id, item.event])).values()]
-      .filter((event) => !covered(event.id, index))
-      .map(shownEvent),
-  }));
-
+  const view = todayView(loaded, now, reader);
   const shortDay = (day: string) => dayWords(day, reader.locale, SHORT_DAY);
-  const agenda: AgendaDay[] = shown.week
-    .filter(({ today: isToday, items }) => isToday || items.length > 0)
-    .map(({ day, today: isToday, items }) => ({
-      date: day,
-      day: isToday ? t('todayScreen.today') : shortDay(day),
-      when: isToday ? shortDay(day) : howFar(on, day, t),
-      today: isToday,
-      items: items.map((item) => agendaItem(item, reader, t)),
-    }));
-
-  const soonest = shown.events.find((event) => event.status !== 'draft' && event !== shown.now);
-  const soonestDay = soonest == null ? null : wallDay(soonest.startsAt, soonest.timeZone);
-  const sub =
-    kind === 'first'
-      ? t('todayScreen.firstSub')
-      : soonest == null || soonestDay == null
-        ? t('todayScreen.nothingThisWeek')
-        : daysFrom(on, soonestDay) < 7
-          ? t('todayScreen.startsOnWeekday', {
-              name: soonest.name,
-              weekday: dayWords(soonestDay, reader.locale, { weekday: 'long' }),
-            })
-          : t('todayScreen.startsOnDate', { name: soonest.name, date: shortDay(soonestDay) });
-  const greeting = kind === 'first' ? 'welcome' : shown.greeting;
-  const nextDay =
-    shown.nextUp == null ? null : wallDay(shown.nextUp.startsAt, shown.nextUp.timeZone);
 
   return {
-    name: kind === 'day' ? 'dayNow' : kind === 'plan' ? 'planNow' : kind,
-    kind,
+    name: view.kind === 'day' ? 'dayNow' : view.kind === 'plan' ? 'planNow' : view.kind,
+    kind: view.kind,
     full: false,
     time: '',
-    eyebrow: dayWords(on, reader.locale, { weekday: 'long', month: 'long', day: 'numeric' }),
+    eyebrow: dayWords(view.on, reader.locale, { weekday: 'long', month: 'long', day: 'numeric' }),
     hello:
       name === ''
-        ? t(`todayScreen.hello.${greeting}`)
-        : t(`todayScreen.helloName.${greeting}`, { name }),
+        ? t(`todayScreen.hello.${view.greeting}`)
+        : t(`todayScreen.helloName.${view.greeting}`, { name }),
     lead: null,
-    sub,
+    sub: subOf(view.sub, now, reader, t),
     needs: null,
-    days,
-    bars,
-    agenda,
-    nothing: kind === 'day' ? t('todayScreen.nothingElseToday') : t('todayScreen.nothingToday'),
+    days: view.days.map(({ day, today: isToday, dots }) => ({
+      weekday: dayWords(day, reader.locale, { weekday: 'short' }),
+      number: dayWords(day, reader.locale, { day: 'numeric' }),
+      today: isToday,
+      dots: dots.map(shownEvent),
+    })),
+    bars: view.bars.map(({ event, start, span, openLeft, dayToday, lane }) => ({
+      event: shownEvent(event),
+      start,
+      span,
+      label: openLeft
+        ? t('todayScreen.dayOf', { day: dayToday, total: event.dayCount })
+        : t('todayScreen.days', { count: event.dayCount }),
+      openLeft,
+      lane,
+    })),
+    agenda: view.agenda.map(({ day, today: isToday, daysAway, items }) => ({
+      date: day,
+      day: isToday ? t('todayScreen.today') : shortDay(day),
+      when: isToday ? shortDay(day) : howFar(daysAway, t),
+      today: isToday,
+      items: items.map((item) => agendaItem(item, reader, t)),
+    })),
+    nothing:
+      view.kind === 'day' ? t('todayScreen.nothingElseToday') : t('todayScreen.nothingToday'),
     nextUp:
-      shown.nextUp == null || nextDay == null
+      view.nextUp == null
         ? null
         : {
-            event: shownEvent(shown.nextUp),
-            name: shown.nextUp.name,
+            event: shownEvent(view.nextUp.event),
+            name: view.nextUp.event.name,
             when: t('todayScreen.dateAndHowFar', {
-              date: shortDay(nextDay),
-              far: howFar(on, nextDay, t),
+              date: dateWords(
+                view.nextUp.day,
+                view.nextUp.event.startsAt,
+                view.nextUp.event,
+                now,
+                reader.locale,
+              ),
+              far: howFar(view.nextUp.daysAway, t),
             }),
           },
-    events: shown.events.map((event) =>
-      card(event, shownPhase(event, loaded.at, now) === 'happening_now', on, reader, t),
-    ),
-    now: shown.now == null ? null : nowOf(shown.now, on, reader, t),
+    events: view.cards.map((one) => card(one, now, reader, t)),
+    now: view.now == null ? null : nowOf(view.now, now, reader, t),
   };
 }

@@ -44,7 +44,7 @@ export const DOMAIN_WORDS = {
   title: 'Email domains',
   block: 'Domains',
   prove: 'Prove a domain',
-  foot: 'Proving a domain lets nobody join. Company domain joining is its own list, in General.',
+  foot: 'Proving a domain does not let anyone join. Company domain joining is its own list, in General.',
   none: 'No domains yet.',
   proved: 'Proved',
   waiting: 'Waiting for the record',
@@ -68,7 +68,7 @@ export const DOMAIN_WORDS = {
   value: 'Value',
   add: 'Add',
   field: 'Domain',
-  help: 'Like ire.events. A subdomain needs adding on its own.',
+  help: 'For example, ire.events. A subdomain needs adding on its own.',
   blank: 'Enter a domain, like ire.events.',
   shape: 'Enter a domain with a dot and no spaces, like ire.events.',
   publicDomain: 'You cannot use a public email domain.',
@@ -76,7 +76,7 @@ export const DOMAIN_WORDS = {
     'Another organisation has already proved this domain. Contact Soirely support if it is yours.',
   listed: (domain: string) => `${domain} is already on the list.`,
   removed: (domain: string) => `${domain} removed.`,
-  keepAccounts: `Keep its accounts to ${ORG}`,
+  keepAccounts: (domain: string) => `Limit ${domain} accounts to ${ORG}`,
   schedule: 'Schedule it',
   loading: 'Loading Email domains…',
   failedLoad: 'We could not load Email domains.',
@@ -253,7 +253,7 @@ export function domainsCard(
   if (view.plan === 'free')
     return {
       says: 'Available on Enterprise',
-      line: `Prove that ${ORG} owns its domain, then keep the accounts at it to ${ORG}.`,
+      line: `Prove that ${ORG} owns its domain, then limit the accounts at it to ${ORG}.`,
       step: { does: 'contact' },
     };
   if (view.plan === 'left')
@@ -293,8 +293,8 @@ export function domainsCard(
   if (proved != null) return onlyCard(proved, viewer, locale);
 
   return {
-    says: `Prove ${ORG}’ email domain`,
-    line: `Add a DNS record where your domain is managed. Once it is proved, you can keep the accounts at it to ${ORG}.`,
+    says: `Prove the email domain of ${ORG}`,
+    line: `Add a DNS record where your domain is managed. Once it is proved, you can limit the accounts at it to ${ORG}.`,
     step: { does: 'prove' },
   };
 }
@@ -307,7 +307,7 @@ export function confirmWords(
   const starts = plusDays(CLOCK.now, ONLY_DAYS);
 
   return {
-    title: `Keep ${domain} accounts to ${ORG}?`,
+    title: `Limit ${domain} accounts to ${ORG}?`,
     lines: [
       `From ${when(starts, locale, zone)}, ${ONLY_DAYS} days from now, an account whose main email address is at ${domain} can only be a member of ${ORG}.`,
       `Everyone at ${domain} is emailed now. Access to a single event still works. You can cancel until then.`,

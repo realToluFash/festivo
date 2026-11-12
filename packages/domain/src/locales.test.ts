@@ -5,8 +5,59 @@ import {
   followPluralLocales,
   formattingLocale,
   languageChoices,
+  listFormat,
+  numberFormat,
   pluralLocale,
 } from './locales.ts';
+
+describe('numberFormat', () => {
+  it.each([
+    ['en', '1,200'],
+    ['en-GB', '1,200'],
+    ['es', '1200'],
+    ['es-MX', '1200'],
+    ['fr', '1\u202f200'],
+    ['pt', '1200'],
+    ['pt-BR', '1200'],
+  ])('writes 1,200 in %s as the shown language does, whatever the region', (locale, written) => {
+    expect(numberFormat(locale).format(1200)).toBe(written);
+  });
+
+  it("groups Portugal's way, a space from five digits", () => {
+    expect(numberFormat('pt-BR').format(1_365_245)).toBe('1\u00a0365\u00a0245');
+  });
+
+  it('writes a unit as the copy does: the Room heading in US units', () => {
+    expect(
+      numberFormat('pt-BR', { style: 'unit', unit: 'foot', unitDisplay: 'short' }).format(1200),
+    ).toBe('1200 ft');
+  });
+});
+
+describe('listFormat', () => {
+  it('joins English without the serial comma, as British copy does', () => {
+    expect(
+      listFormat('en', { type: 'conjunction' }).format(['members', 'billing', 'security']),
+    ).toBe('members, billing and security');
+    expect(listFormat('en', { type: 'disjunction' }).format(['Apple', 'Google', 'email'])).toBe(
+      'Apple, Google or email',
+    );
+  });
+
+  it.each([
+    ['es', 'a, b y c'],
+    ['fr', 'a, b et c'],
+    ['pt', 'a, b e c'],
+  ])('joins %s with its own word', (locale, joined) => {
+    expect(listFormat(locale, { type: 'conjunction' }).format(['a', 'b', 'c'])).toBe(joined);
+  });
+
+  it('reads no locale as the default language', () => {
+    expect(listFormat(undefined, { type: 'conjunction' }).format(['a', 'b', 'c'])).toBe(
+      'a, b and c',
+    );
+  });
+});
 
 describe('languageChoices', () => {
   it("names each supported language in the reader's language, then once more in its own", () => {

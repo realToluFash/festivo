@@ -1,4 +1,4 @@
-import type { EventCover, ListedEvent } from '@soirely/api-client';
+import type { EventCover, OrganisationEvent } from '@soirely/api-client';
 import {
   type CardStepAction,
   type EventPhase,
@@ -6,14 +6,15 @@ import {
   type EventType,
   type Milestone,
   calledOff,
-  eventDays,
+  eventDayWords,
   formatEventDate,
-  formatEventMoment,
-  formatEventShortDay,
-  formatEventWeekday,
   milestoneDistance,
   nextStep,
-  wallDay,
+  milestoneMoment,
+  numberFormat,
+  shownDays,
+  stepAwaitsMilestones,
+  wallDayNumber,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
@@ -45,7 +46,8 @@ export interface ListEvent {
   /** The list's place: the venue's name, or its address; null until there is a venue. */
   place: string | null;
   photo: CardPhoto | null;
-  milestones: readonly Milestone[];
+  /** Null while they are still being read: an event's page reads them apart from the event. */
+  milestones: readonly Milestone[] | null;
 }
 
 export interface Shown extends ListEvent {
@@ -59,7 +61,7 @@ export function shownEvent(event: ListEvent, phase: EventPhase): Shown {
 }
 
 /** A loaded event as Events draws it: its venue's name or address for the place, and its photo once it has one. */
-export function listEventOf(event: ListedEvent): ListEvent {
+export function listEventOf(event: OrganisationEvent & Pick<ListEvent, 'milestones'>): ListEvent {
   return {
     ...event,
     place: event.venue?.name ?? event.venue?.address?.formatted ?? null,
@@ -67,40 +69,35 @@ export function listEventOf(event: ListedEvent): ListEvent {
   };
 }
 
+/** Its day or its first and last day, with their year unless it is this one; in a `list`, a called-off event's day it was called off. */
 export function daysWords(
   event: Pick<ListEvent, 'status' | 'startsAt' | 'endsAt' | 'timeZone' | 'concludedAt'>,
+  now: Date,
   locale: string,
   list: boolean,
   t: TFunction,
 ): string {
-  const days = eventDays(event);
+  const days = eventDayWords(event, now, locale, !list);
 
-  if (days.kind === 'calledOffOn') {
-    if (list) {
-      return t('eventsScreen.calledOffOn', {
-        date: formatEventShortDay(days.concludedAt, event.timeZone, locale),
-      });
-    }
-
-    return t('eventsScreen.days', {
-      first: formatEventWeekday(event.startsAt, event.timeZone, locale),
-      last: formatEventWeekday(event.endsAt, event.timeZone, locale),
-    });
+  switch (days.kind) {
+    case 'calledOffOn':
+      return t('eventsScreen.calledOffOn', { date: days.date });
+    case 'oneDay':
+      return days.day;
+    case 'days':
+      return t('eventsScreen.days', { first: days.first, last: days.last });
   }
-
-  const first = formatEventWeekday(days.startsAt, event.timeZone, locale);
-
-  return days.kind === 'oneDay'
-    ? first
-    : t('eventsScreen.days', {
-        first,
-        last: formatEventWeekday(days.endsAt, event.timeZone, locale),
-      });
 }
 
-export function rowLine(event: Shown, locale: string, t: TFunction, list = true): string {
+export function rowLine(
+  event: Shown,
+  now: Date,
+  locale: string,
+  t: TFunction,
+  list = true,
+): string {
   return t('todayScreen.dayAndPlace', {
-    day: daysWords(event, locale, list, t),
+    day: daysWords(event, now, locale, list, t),
     place: event.place ?? t('eventPage.venueToBeConfirmed'),
   });
 }
@@ -139,40 +136,51 @@ export function howSoon(event: Shown, now: Date, t: TFunction): string | null {
   return distanceWords(event.startsAt, event.timeZone, now, t);
 }
 
+export function dayCount(event: Pick<ListEvent, 'startsAt' | 'endsAt' | 'timeZone'>): number {
+  return (
+    wallDayNumber(event.endsAt, event.timeZone) - wallDayNumber(event.startsAt, event.timeZone) + 1
+  );
+}
+
+export type DayTile =
+  | { kind: 'day'; key: string; weekday: string; day: string; today: boolean }
+  | { kind: 'gap'; key: string; hidden: number; more: string };
+
 const DAY = 86_400_000;
 
-function dayNumber(moment: string | Date, timeZone: string): number {
-  return Date.parse(`${wallDay(moment, timeZone)}T00:00:00Z`) / DAY;
-}
-
-export function dayCount(event: Pick<ListEvent, 'startsAt' | 'endsAt' | 'timeZone'>): number {
-  return dayNumber(event.endsAt, event.timeZone) - dayNumber(event.startsAt, event.timeZone) + 1;
-}
-
-export interface DayTile {
-  weekday: string;
-  day: string;
-  today: boolean;
-}
-
+/** A tile a day up to a week; past that its first day, today while it is on, and its last, with the days between counted. */
 export function dayTiles(event: Shown, now: Date, locale: string): DayTile[] | null {
   const count = dayCount(event);
 
   if (count < 2 || event.phase === 'finished') return null;
 
-  const first = dayNumber(event.startsAt, event.timeZone);
-  const today = dayNumber(now, event.timeZone);
+  const first = wallDayNumber(event.startsAt, event.timeZone);
+  const today = wallDayNumber(now, event.timeZone);
   const weekday = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' });
   const number = new Intl.DateTimeFormat(locale, { day: 'numeric', timeZone: 'UTC' });
+  const plain = numberFormat(locale);
+  const shown = shownDays({
+    first,
+    last: first + count - 1,
+    today,
+    on: event.phase === 'happening_now',
+  });
 
-  return Array.from({ length: count }, (_, index) => {
-    const day = new Date((first + index) * DAY);
-
-    return {
-      weekday: weekday.format(day),
-      day: number.format(day),
-      today: first + index === today,
+  return shown.flatMap((dayAt, index): DayTile[] => {
+    const date = new Date(dayAt * DAY);
+    const tile: DayTile = {
+      kind: 'day',
+      key: date.toISOString().slice(0, 10),
+      weekday: weekday.format(date),
+      day: number.format(date),
+      today: dayAt === today,
     };
+    const next = shown[index + 1];
+    const hidden = next == null ? 0 : next - dayAt - 1;
+
+    return hidden === 0
+      ? [tile]
+      : [tile, { kind: 'gap', key: `gap-${tile.key}`, hidden, more: `+${plain.format(hidden)}` }];
   });
 }
 
@@ -195,7 +203,8 @@ export function cardTags(event: Shown, now: Date, t: TFunction): CardTag[] {
     case 'paused':
       return [{ word: t('eventsScreen.paused'), mark: 'paused' }, ...soonTag];
     case 'happening_now': {
-      const day = dayNumber(now, event.timeZone) - dayNumber(event.startsAt, event.timeZone) + 1;
+      const day =
+        wallDayNumber(now, event.timeZone) - wallDayNumber(event.startsAt, event.timeZone) + 1;
       const count = dayCount(event);
       const tag = { word: t('eventsScreen.happeningNow'), mark: 'now' } as const;
 
@@ -216,9 +225,11 @@ export type CardStep =
   | { kind: 'button'; line: string; label: string; action: StepAction }
   | { kind: 'next'; title: string; when: string; you: boolean; overdue: boolean };
 
-/** The card's one step, by the domain's nextStep: what the phase asks for, else the next thing that happens; Duplicate once it is over. */
-export function cardStep(event: Shown, now: Date, locale: string, t: TFunction): CardStep {
-  const step = nextStep(event, event.phase, now);
+/** The card's one step, by the domain's nextStep: what the phase asks for, else the next thing that happens; Duplicate once it is over. Null while a live event's milestones are still unread. */
+export function cardStep(event: Shown, now: Date, locale: string, t: TFunction): CardStep | null {
+  if (event.milestones == null && stepAwaitsMilestones(event.phase)) return null;
+
+  const step = nextStep({ ...event, milestones: event.milestones ?? [] }, event.phase, now);
 
   switch (step?.kind) {
     case 'makeLive':
@@ -247,7 +258,7 @@ export function cardStep(event: Shown, now: Date, locale: string, t: TFunction):
         kind: 'next',
         title: t('eventsScreen.nextUp', { title: step.milestone.title }),
         when: t('todayScreen.dateAndHowFar', {
-          date: formatEventMoment(step.milestone.at, event.timeZone, locale),
+          date: milestoneMoment(step.milestone.at, event.timeZone, now, locale),
           far: distanceWords(step.milestone.at, event.timeZone, now, t),
         }),
         you: step.milestone.owner === 'you',

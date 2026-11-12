@@ -8,14 +8,18 @@ export function ActionPair({
   between,
   confirm,
   className,
+  stacks = true,
 }: {
   dismiss: ReactNode;
   /** A third choice, kept between the two whichever way they run. */
   between?: ReactNode;
   confirm: ReactNode;
   className?: string;
+  /** False for a desk dialog shrunk to a narrow window: it keeps its one row, the way back first. */
+  stacks?: boolean;
 }) {
-  const stacked = usePhoneWidth();
+  const phone = usePhoneWidth();
+  const stacked = stacks && phone;
   const box = useRef<HTMLDivElement>(null);
   const held = useRef<HTMLElement | null>(null);
 
@@ -37,7 +41,9 @@ export function ActionPair({
   return (
     <div
       ref={box}
-      className={['actions', 'actions-pair', className].filter(Boolean).join(' ')}
+      className={['actions', 'actions-pair', stacks ? null : 'is-row', className]
+        .filter(Boolean)
+        .join(' ')}
       onFocus={(event) => {
         held.current = event.target;
       }}

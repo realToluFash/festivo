@@ -1,4 +1,4 @@
-# Android only. sc-25667: on an account at its limit, back does nothing while it sends, and once Too many new organisations for now. shows, back closes the sheet.
+# Android only. sc-25667: on an account at its limit, back does nothing while it sends; once Too many new organisations for now. shows, back steps the walk back to Where is it based?, and nothing named Held Back Limited is created.
 appId: host.exp.Exponent
 onFlowComplete:
   - runScript:
@@ -7,22 +7,22 @@ onFlowComplete:
         ASK: /api?to=up
 ---
 - runFlow: ../open-create-organisation.yaml
-- tapOn:
-    id: 'createOrganisation.name'
-- inputText: 'Held Back Limited'
-- hideKeyboard:
-    optional: true
+- runFlow:
+    file: ../walk-to-ready.yaml
+    env:
+      NAME: 'Held Back Limited'
 - runScript:
     file: ../batch/helper.js
     env:
       ASK: /api?to=paused
 - tapOn:
-    id: 'createOrganisation.create'
+    id: 'createWalk.primary'
 - back
 - waitForAnimationToEnd:
     timeout: 3000
 - assertVisible:
-    id: 'createOrganisation'
+    id: 'createWalk'
+- assertVisible: '{{t:createOrganisation.creating}}'
 - takeScreenshot: limited-back-held
 - runScript:
     file: ../batch/helper.js
@@ -33,7 +33,23 @@ onFlowComplete:
     timeout: 30000
 - back
 - extendedWaitUntil:
-    notVisible:
-      id: 'createOrganisation'
+    visible: '{{t:createOrganisation.whereTitle}}'
     timeout: 10000
-- takeScreenshot: limited-back-closed
+- takeScreenshot: limited-back-stepped
+- tapOn:
+    id: 'createWalk.cancel'
+- tapOn:
+    id: 'createWalk.discard'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createWalk'
+    timeout: 10000
+- tapOn:
+    id: 'home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertNotVisible: '.*Held Back Limited.*'
+- takeScreenshot: limited-back-switcher

@@ -25,7 +25,7 @@ const HUB: Record<HubState, readonly [string, string]> = {
 
 const DOMAINS: Record<DomainsState, readonly [string, string]> = {
   domains: ['Email domains', 'ire.events proved, ireevents.com waiting'],
-  ed_empty: ['no domains yet', 'Prove Ire Events’ email domain'],
+  ed_empty: ['no domains yet', 'Prove the email domain of Ire Events'],
   ed_add: ['Prove a domain', 'The field, the keys up'],
   ed_blank: ['Add with nothing', 'Enter a domain, like ire.events.'],
   ed_invalid: ['not a domain', '“ire events”: a dot and no spaces'],
@@ -34,7 +34,7 @@ const DOMAINS: Record<DomainsState, readonly [string, string]> = {
   ed_record: ['the record', 'TXT, Name and Value with Copy; Verify'],
   ed_checking: ['verifying', 'Verifying…, then not found'],
   ed_not_found: ['not found yet', 'DNS changes can take up to 48 hours'],
-  ed_proved: ['proved', 'Both proved; Keep its accounts to Ire Events'],
+  ed_proved: ['proved', 'Both proved; Limit ireevents.com accounts to Ire Events'],
   ed_failed: ['not proved', 'Checks stopped Monday, Oct 12'],
   ed_lapsing: ['record missing', 'Put it back by Saturday, Oct 31'],
   ed_remove: ['Remove ire.events?', 'Keep it or Remove'],

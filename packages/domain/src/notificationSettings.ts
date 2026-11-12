@@ -1,4 +1,6 @@
 import quietHours from '../../../quiet-hours.json' with { type: 'json' };
+import { clockText } from './datetime.ts';
+import { numberFormat } from './locales.ts';
 
 /** The shape `@soirely/api-client` reads as `NotificationSetting`; only what the grid needs. */
 export interface SettingRow {
@@ -51,13 +53,13 @@ export function quietHoursIn(locale: string): { start: string; end: string } {
     minute: '2-digit',
     hourCycle: 'h23',
   });
-  const at = (hour: number) => time.format(new Date(2000, 0, 1, hour));
+  const at = (hour: number) => clockText(time, new Date(2000, 0, 1, hour));
 
   return { start: at(QUIET_HOURS.start), end: at(QUIET_HOURS.end) };
 }
 
 export function usageThresholdsIn(locale: string): { low: string; high: string } {
-  const percent = new Intl.NumberFormat(locale, { style: 'percent' });
+  const percent = numberFormat(locale, { style: 'percent' });
 
   return { low: percent.format(USAGE_THRESHOLDS.low), high: percent.format(USAGE_THRESHOLDS.high) };
 }

@@ -15,7 +15,6 @@ import {
   emptyTabOf,
   eventHref,
   eventStateOf,
-  filterWord,
   homeOf,
   hostNames,
   hostsRow,
@@ -27,7 +26,6 @@ import {
   matchesFilters,
   matchesSearch,
   needsName,
-  noMatchLine,
   resultsOf,
   rowLine,
   rowTag,
@@ -35,7 +33,6 @@ import {
   summaryLine,
   tabWidths,
   wallOf,
-  whenSpan,
   withoutTab,
 } from './EventsModel.ts';
 import { CLOCKS, EVENTS, type SampleEvent, sampleEvent } from './EventsSample.ts';
@@ -240,13 +237,13 @@ describe('the card’s one step, by nextStep', () => {
   });
 
   it('draws a tile per day only for an event over several days that is not over', () => {
-    expect(dayTiles(shown('evt-wed-4'), reader, LOCALE)?.map((tile) => tile.day)).toEqual([
-      '5',
-      '6',
-      '7',
-    ]);
     expect(
-      dayTiles(shown('evt-wed-4', happening), happening, LOCALE)?.map((tile) => tile.today),
+      dayTiles(shown('evt-wed-4'), reader, LOCALE)?.map((tile) => tile.kind === 'day' && tile.day),
+    ).toEqual(['5', '6', '7']);
+    expect(
+      dayTiles(shown('evt-wed-4', happening), happening, LOCALE)?.map(
+        (tile) => tile.kind === 'day' && tile.today,
+      ),
     ).toEqual([false, true, false]);
     expect(dayTiles(shown('evt-ireti-2'), reader, LOCALE)?.length).toBe(2);
     expect(dayTiles(shown('evt-gala-4'), reader, LOCALE)).toBeNull();
@@ -283,7 +280,7 @@ describe('the page', () => {
       line: 'Dates · Europe/Madrid',
     });
     expect(datesRow(shown('evt-wed-4', finished), LOCALE).line).toBe(
-      'Dates · This event is over, so its start, end and time zone can’t be changed.',
+      "Dates · This event is over, so its start, end and time zone can't be changed.",
     );
   });
 
@@ -331,8 +328,6 @@ describe('search and filters (sc-30302)', () => {
   });
 
   it('reads When on the reader’s calendar', () => {
-    expect(whenSpan({ kind: 'week' }, reader)).toEqual({ from: '2026-11-02', to: '2026-11-08' });
-    expect(whenSpan({ kind: 'month' }, reader)).toEqual({ from: '2026-11-01', to: '2026-11-30' });
     expect(
       matchesFilters(event('evt-wed-4'), { ...NO_FILTERS, when: { kind: 'week' } }, reader),
     ).toBe(true);
@@ -350,21 +345,10 @@ describe('search and filters (sc-30302)', () => {
     ]);
   });
 
-  it('says what is chosen, and what matched nothing', () => {
+  it('matches nothing for the no-match board', () => {
     const wedding = { ...NO_FILTERS, types: ['wedding'] as const };
 
-    expect(filterWord(NO_FILTERS, LOCALE)).toBe('All');
-    expect(filterWord({ ...NO_FILTERS, types: ['wedding', 'birthday'] }, LOCALE)).toBe(
-      'Wedding, Birthday',
-    );
     expect(resultsOf(EVENTS, 'garden party', wedding, reader, LOCALE).count).toBe(0);
-    expect(noMatchLine('garden party', wedding, LOCALE)).toBe(
-      'You searched for “garden party” and filtered by Wedding.',
-    );
-    expect(noMatchLine('garden party', NO_FILTERS, LOCALE)).toBe(
-      'You searched for “garden party”.',
-    );
-    expect(noMatchLine('', wedding, LOCALE)).toBe('You filtered by Wedding.');
   });
 
   it('lists every host on the organisation’s events, A to Z', () => {
@@ -381,6 +365,21 @@ describe('the states', () => {
     expect(listStart(listStateOf('search')).typed).toBe('lucia');
     expect(listStart(listStateOf('pastMore'))).toMatchObject({ tab: 'past', pastShown: 20 });
     expect(listStateOf('nonsense')).toBeNull();
+  });
+
+  it.each(['manyFilters', 'manyFiltersOpen', 'longHost'] as const)(
+    'opens %s on results, not on no match',
+    (state) => {
+      const { typed, filters } = listStart(state);
+
+      expect(resultsOf(EVENTS, typed, filters, reader, LOCALE).count).toBeGreaterThan(0);
+    },
+  );
+
+  it('opens loading on Upcoming, with no tab emptied', () => {
+    expect(listStateOf('loading')).toBe('loading');
+    expect(listStart('loading').tab).toBe('upcoming');
+    expect(emptyTabOf('loading')).toBeNull();
   });
 
   it.each([
@@ -410,6 +409,8 @@ describe('the states', () => {
     expect(editOf(eventStateOf('lastHost'))).toBe('hosts');
     expect(editOf(eventStateOf('pause'))).toBeNull();
     expect(editOf(eventStateOf('saved'))).toBeNull();
+    expect(eventStateOf('loading')).toBe('loading');
+    expect(editOf(eventStateOf('loading'))).toBeNull();
   });
 });
 

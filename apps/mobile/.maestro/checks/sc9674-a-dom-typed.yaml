@@ -4,14 +4,20 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
     visible:
-      id: organisation.name
+      id: organisation.card
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: companyDomains.add
+      id: organisation.domain.add
     centerElement: true
 - tapOn:
-    id: companyDomains.domain
+    id: organisation.domain.add
+- extendedWaitUntil:
+    visible:
+      id: organisation.domain.field
+    timeout: 10000
+- tapOn:
+    id: organisation.domain.field
 - eraseText: 80
 - inputText: 'example.org'
 - waitForAnimationToEnd

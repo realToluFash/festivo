@@ -45,3 +45,38 @@ export function watchCheckedField(checked: (field: ViewInstance) => void): () =>
 
   return () => checkWatchers.delete(checked);
 }
+
+const takers = new Set<() => void>();
+
+/** A control other than a field was taken: a picker opening from a tap, or a button or link taking keyboard focus (sc-41296). */
+export function controlTaken(): void {
+  takers.forEach((taken) => taken());
+}
+
+/** Calls `taken` each time a control other than a field is taken. Returns the unsubscribe. */
+export function watchControlTaken(taken: () => void): () => void {
+  takers.add(taken);
+
+  return () => takers.delete(taken);
+}
+
+/** Calls `moved` as focus leaves the field the screen settled on, for another field or a control taken. Anything before `settled` is the screen landing, not moving on (sc-37519). */
+export function watchMovedOn(moved: () => void): { settled(): void; stop(): void } {
+  let landed: ViewInstance | null | undefined;
+  const unwatchFocus = watchFocusedField(() => {
+    if (landed !== undefined && focused !== landed) moved();
+  });
+  const unwatchTaken = watchControlTaken(() => {
+    if (landed !== undefined) moved();
+  });
+
+  return {
+    settled: () => {
+      landed = focused;
+    },
+    stop: () => {
+      unwatchFocus();
+      unwatchTaken();
+    },
+  };
+}

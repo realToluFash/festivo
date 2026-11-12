@@ -1,6 +1,6 @@
 import { DemoBell } from './DemoBell.tsx';
 import { eventPhase, formatEventRange, hostsLine } from '@soirely/domain';
-import { type ComponentType, type ReactNode, useContext, useEffect, useRef, useState } from 'react';
+import { type ComponentType, type ReactNode, useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 
 import {
@@ -50,7 +50,7 @@ import {
 } from './replyBy.ts';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
 import { type NeedsState, readerOf } from './needsYou.ts';
-import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
+import { EventCard, EventsShell, NotBuilt, Thumb } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { AllDates } from './EventDates.tsx';
 import {
@@ -61,8 +61,8 @@ import {
   seedFromEvent,
   timelineOf,
 } from './kitchen.ts';
-import { Glyph, type GlyphName } from '../components/Glyph.tsx';
-import { LayersContext } from '../layers.ts';
+import { MW, menuAt } from './menuServed.ts';
+import { Glyph } from '../components/Glyph.tsx';
 import { BUDGET_EVENT } from './budget.ts';
 import { BudgetEntry } from './BudgetRoutes.tsx';
 import { type NumbersState, guestsAt, hasGuests, numbersStateOf, replyByOf } from './guests.ts';
@@ -83,10 +83,13 @@ import {
 } from './messages.ts';
 import { MessagesPage } from './Messages.tsx';
 import { DOOR_EVENT_ID } from './doorCode.ts';
+import { repliesOpen } from './replyClose.ts';
 import { noOrgStateOf } from './noOrg.ts';
 import { NoOrgEvent } from './NoOrgEvent.tsx';
 import { TellDialog } from './MessagesTell.tsx';
-import { Ask, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
+import { Ask, Head, RowWords } from '../components/SettingsParts.tsx';
+import { Crumb, Lead, ManageItem, ManageList, PartRow } from '../components/EventPageParts.tsx';
+import { JustForYou } from '../components/JustForYou.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
 import { useLeaveAsk } from './useLeaveAsk.ts';
@@ -305,20 +308,9 @@ function EventView({
       {(tell) => (
         <div className="desk-page ev-page">
           <div className="ev-wide">
-            <div className="ev-crumb-row">
-              <nav className="ev-crumb" aria-label={W.crumb}>
-                <ol>
-                  <li className="ev-crumb-part">
-                    <Link to="/demo/events">{W.back}</Link>
-                  </li>
-                  <li className="ev-crumb-part" aria-current="page">
-                    <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                    <span className="ev-crumb-name">{event.name}</span>
-                  </li>
-                </ol>
-              </nav>
+            <Crumb to="/demo/events" back={W.back} name={event.name}>
               <DemoBell tell={tell} />
-            </div>
+            </Crumb>
             {dates ? (
               <AllDates event={event} now={now} />
             ) : area === 'overview' ? (
@@ -399,6 +391,7 @@ function EventView({
                       muted={muted}
                       loaded={muteLoaded}
                       failed={muteFailed}
+                      settings="/demo/settings/notifications"
                       onRetry={() => setMuteLoaded(true)}
                       onChange={(next) => {
                         if (muteFailed) setMuteFailed(false);
@@ -420,14 +413,21 @@ function EventView({
               <>
                 <AreaPage
                   event={event}
+                  now={now}
                   name={AREAS.find((one) => one.area === area)?.name ?? ''}
                   line={COMING[area]}
                 />
                 {area === 'menu' && event.id === KITCHEN_EVENT && (
-                  <Link className="desk-text" to={kitchenAt(event.id)}>
-                    {KW.title}
-                    <Glyph name="chevron" size={16} weight={2.4} />
-                  </Link>
+                  <>
+                    <Link className="desk-text" to={menuAt(event.id)}>
+                      {MW.title}
+                      <Glyph name="chevron" size={16} weight={2.4} />
+                    </Link>
+                    <Link className="desk-text" to={kitchenAt(event.id)}>
+                      {KW.title}
+                      <Glyph name="chevron" size={16} weight={2.4} />
+                    </Link>
+                  </>
                 )}
               </>
             )}
@@ -595,75 +595,6 @@ function Asks({
   }
 }
 
-function Lead({ name }: { name: GlyphName }) {
-  return (
-    <span className="ev-lead" aria-hidden="true">
-      <Glyph name={name} size={22} weight={2} />
-    </span>
-  );
-}
-
-/** A part of the event as a row: its value over its label; at a desk it opens in place under it. */
-function PartRow({
-  lead,
-  title,
-  line,
-  open,
-  locked = false,
-  after,
-  onOpen,
-  children,
-}: {
-  lead: ReactNode;
-  title: string;
-  line: string;
-  open: boolean;
-  locked?: boolean;
-  after?: ReactNode;
-  onOpen: () => void;
-  children?: ReactNode;
-}) {
-  const button = useRef<HTMLButtonElement>(null);
-  const was = useRef(open);
-  const closed = useRef(false);
-  const { stack } = useContext(LayersContext);
-
-  useEffect(() => {
-    if (was.current && !open) closed.current = true;
-    was.current = open;
-    if (!closed.current || stack.length > 0) return;
-
-    closed.current = false;
-    if (document.activeElement == null || document.activeElement === document.body)
-      button.current?.focus();
-  }, [open, stack.length]);
-
-  return (
-    <li className="ev-part">
-      {locked ? (
-        <div className="desk-row ev-detail is-locked">
-          {lead}
-          <RowWords title={title} lines={[line]} />
-        </div>
-      ) : (
-        <button
-          ref={button}
-          type="button"
-          className={open ? 'desk-row ev-detail is-lit' : 'desk-row ev-detail'}
-          aria-expanded={open}
-          onClick={onOpen}
-        >
-          {lead}
-          <RowWords title={title} lines={[line]} />
-          <Chevron />
-        </button>
-      )}
-      {!open && after}
-      {open && children}
-    </li>
-  );
-}
-
 function dayCount(event: SampleEvent): number {
   const first = Date.parse(`${localDay(event.startsAt, event.timeZone)}T00:00:00Z`);
   const last = Date.parse(`${localDay(event.endsAt, event.timeZone)}T00:00:00Z`);
@@ -774,7 +705,11 @@ function Details({
             replyBy == null ? REPLY_BY_WORDS.rowNone : rowDay(replyBy),
             replyBy == null
               ? REPLY_BY_WORDS.replyBy
-              : `${REPLY_BY_WORDS.replyBy} · ${REPLY_BY_WORDS.rowCloses(event.timeZone)}`,
+              : `${REPLY_BY_WORDS.replyBy} · ${
+                  repliesOpen(now, replyBy, event.timeZone)
+                    ? REPLY_BY_WORDS.rowCloses(event.timeZone)
+                    : REPLY_BY_WORDS.rowClosed
+                }`,
           )}
           {row(
             'venue',
@@ -844,47 +779,6 @@ function GuestsPage() {
   );
 }
 
-function JustForYou({
-  muted,
-  loaded,
-  failed,
-  onRetry,
-  onChange,
-}: {
-  muted: boolean;
-  loaded: boolean;
-  failed: boolean;
-  onRetry: () => void;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <section className="desk-block" aria-labelledby="ev-for-you">
-      <Head title={<span id="ev-for-you">{W.justForYou}</span>} />
-      {loaded ? (
-        <>
-          <div className="desk-row">
-            <Lead name="bell" />
-            <RowWords title={<span id="ev-mute">{W.mute}</span>} lines={[W.muteNote]} />
-            <Switch on={muted} label={W.mute} told="ev-mute-note" onChange={onChange} />
-          </div>
-          <span id="ev-mute-note" className="desk-unseen">
-            {W.muteNote}
-          </span>
-          {failed && <Alert>{W.muteNotSaved}</Alert>}
-        </>
-      ) : (
-        <div className="ev-unknown">
-          <p className="desk-line">{W.muteNotLoaded}</p>
-          <TextAction label={W.retry} onClick={onRetry} />
-        </div>
-      )}
-      <Link className="desk-text" to="/demo/settings/notifications">
-        {W.notificationSettings}
-      </Link>
-    </section>
-  );
-}
-
 const MANAGE_WORDS: Record<Manage, readonly [string, string, boolean]> = {
   duplicate: [W.duplicate, W.duplicateLine, false],
   pause: [W.pause, W.pauseLine, false],
@@ -901,35 +795,41 @@ function ManageBlock({
   onPick: (one: Manage) => void;
 }) {
   return (
-    <section className="desk-block" aria-labelledby="ev-manage">
-      <Head title={<span id="ev-manage">{W.manage}</span>} />
-      <ul className="ev-manage">
-        {manage.map((one) => {
-          const [label, line, red] = MANAGE_WORDS[one];
+    <ManageList title={W.manage}>
+      {manage.map((one) => {
+        const [label, line, red] = MANAGE_WORDS[one];
 
-          return (
-            <li key={one} className="ev-manage-item">
+        return (
+          <ManageItem key={one} line={line} red={red}>
+            {({ className, describedBy }) => (
               <button
                 type="button"
-                className={red ? 'ev-manage-do is-red' : 'ev-manage-do'}
-                aria-describedby={`ev-manage-${one}`}
+                className={className}
+                aria-describedby={describedBy}
                 onClick={() => onPick(one)}
               >
                 {label}
               </button>
-              <p id={`ev-manage-${one}`} className="desk-note">
-                {line}
-              </p>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+            )}
+          </ManageItem>
+        );
+      })}
+    </ManageList>
   );
 }
 
 /** An area main has not built: its name, the event, and that it is coming. */
-function AreaPage({ event, name, line }: { event: SampleEvent; name: string; line: string }) {
+function AreaPage({
+  event,
+  now,
+  name,
+  line,
+}: {
+  event: SampleEvent;
+  now: Date;
+  name: string;
+  line: string;
+}) {
   return (
     <>
       <h1 className="ev-area-title" tabIndex={-1}>
@@ -937,7 +837,7 @@ function AreaPage({ event, name, line }: { event: SampleEvent; name: string; lin
       </h1>
       <div className="ev-strip">
         <Thumb event={event} size={40} />
-        <RowWords title={event.name} lines={[lineOf(event)]} />
+        <RowWords title={event.name} lines={[lineOf(event, now)]} />
       </div>
       <div className="ev-coming">
         <h2>{name}</h2>

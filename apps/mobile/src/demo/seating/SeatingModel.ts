@@ -1,4 +1,5 @@
 import {
+  type Pad,
   type Point,
   type Room,
   type View,
@@ -44,6 +45,7 @@ export const SEATING_STATES = [
   'sectionLimit',
   'sectionEdit',
   'sectionDelete',
+  'sectionDeleteEmpty',
   'sparse',
   'addMenu',
   'placing',
@@ -107,6 +109,7 @@ export const SEATING_STATES = [
   'moveAll',
   'emptyTable',
   'everyoneSeated',
+  'nobodyComing',
   'noMatch',
   'notSureYet',
   'tables',
@@ -221,7 +224,7 @@ export interface Seating {
   sectionForm: { name: string; colour: ColourName; error: string | null };
   zoom: { s: number; centre: Point } | null;
   shown: View | null;
-  size: { w: number; h: number } | null;
+  size: { w: number; h: number; pad: Pad } | null;
   ghost: Item | null;
   tip: { words: string; at: Point } | null;
   placing: Kind | null;
@@ -340,6 +343,8 @@ export const seatedCount = (items: readonly Item[]): number =>
 /** Delete the plan's seated guests: a held chair is a person with a place too (pm and ux, 8 Nov 2026). */
 export const placedCount = (items: readonly Item[]): number =>
   items.reduce((n, it) => n + filled(it), 0);
+export const nobodyComing = (m: Seating): boolean =>
+  m.tray.length === 0 && placedCount(m.items) === 0;
 export const freeCount = (items: readonly Item[]): number =>
   items.reduce((n, it) => n + free(it), 0);
 export const tableCount = (items: readonly Item[]): number => items.filter(isTable).length;

@@ -33,6 +33,7 @@ import { GW, HOW_INVITED, type HowInvited, REPLY_WORDS } from './guestsWords.ts'
 import { GUESTS as CONVERSATIONS, MESSAGES_AT } from './messages.ts';
 import { Turning } from './DataControlParts.tsx';
 import { THEIR_WORDS } from './guestRequest.ts';
+import { whatsAppRowOf } from './whatsAppConsent.ts';
 import { CardStep, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 
 export interface GuestActions {
@@ -43,6 +44,7 @@ export interface GuestActions {
   onReplace: () => void;
   onInvite: (invite: Invite | null) => void;
   onMark: (how: HowInvited) => void;
+  onAgree: () => void;
 }
 
 type Step = { label: string; does: () => void } | null;
@@ -85,7 +87,7 @@ export function GuestView({
 
   if (erase === 'erased' && erasedLine != null) line = erasedLine;
   else if (closed && replyBy != null) {
-    line = GW.repliesClosed(weekdayOf(replyBy));
+    line = manages ? GW.repliesClosed(weekdayOf(replyBy)) : GW.closedOn(weekdayOf(replyBy));
     step = { label: GW.letThemChange, does: actions.onReopen };
   } else if (guest.reopened != null) {
     line = GW.reopened(guest.reopened.by ?? '', dayOf(guest.reopened.on));
@@ -144,6 +146,7 @@ export function GuestView({
         erased={erase === 'erased'}
         heading={heading}
         onEdit={actions.onEdit}
+        onAgree={actions.onAgree}
       />
       {acts && !draft && guest.reply !== 'walkIn' && (
         <Invitation
@@ -169,6 +172,7 @@ function Details({
   erased,
   heading,
   onEdit,
+  onAgree,
 }: {
   guest: Guest;
   manages: boolean;
@@ -176,7 +180,14 @@ function Details({
   erased: boolean;
   heading: string;
   onEdit: () => void;
+  onAgree: () => void;
 }) {
+  const whatsApp = whatsAppRowOf(
+    guest.whatsApp,
+    { mobile: guest.phone != null, edits: manages && !erased },
+    dayOf,
+  );
+
   return (
     <section className="desk-block" aria-labelledby={`${heading}-details`}>
       <Head level={3} title={<span id={`${heading}-details`}>{GW.details}</span>}>
@@ -207,6 +218,24 @@ function Details({
                 lines={[GW.mobileNumber]}
               />
             </li>
+            {whatsApp != null && (
+              <li className="desk-row gs-whatsapp" tabIndex={-1} data-focus="whatsapp">
+                <IconLead name="whatsApp" />
+                <div className="gs-row-words">
+                  <RowWords title={whatsApp.title} lines={[whatsApp.note ?? GW.whatsApp]} />
+                  {whatsApp.agree && edits && (
+                    <button
+                      type="button"
+                      className="desk-text gs-agree"
+                      data-focus="whatsapp-agree"
+                      onClick={onAgree}
+                    >
+                      {GW.guestAgreed}
+                    </button>
+                  )}
+                </div>
+              </li>
+            )}
             <li className={guest.language == null ? 'desk-row is-none' : 'desk-row'}>
               <IconLead name="globe" />
               <div className="gs-row-words">

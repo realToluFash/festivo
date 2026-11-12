@@ -2,6 +2,7 @@ import { type Account, type Membership } from '@soirely/api-client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SIGNED_OUT, api } from './api.ts';
+import { SCHEME_KEY, __resetColourScheme, startColourScheme } from './colourScheme.ts';
 import { setLanguage } from './i18n/index.ts';
 import {
   __setSessionState,
@@ -75,6 +76,42 @@ describe('a session the API ended', () => {
   });
 });
 
+describe("the account's colours at sign-in (sc-30441)", () => {
+  afterEach(() => {
+    __resetColourScheme();
+    localStorage.clear();
+  });
+
+  it('takes the scheme the sign-in answered, with no /me read and no reload', async () => {
+    startColourScheme();
+    const me = vi.spyOn(api, 'me');
+
+    await adoptAccount({
+      id: 'acc_1',
+      name: 'Folake',
+      businessName: null,
+      countryCode: null,
+      organisationCountry: null,
+      locale: 'en',
+      timezone: null,
+      verified: false,
+      complete: false,
+      needsOrganisation: false,
+      hasPassword: true,
+      twoFactorSetupPrompt: false,
+      colourScheme: 'garden',
+      waitingFor: null,
+      providers: [],
+      emailAddresses: [],
+      phoneNumbers: [],
+    });
+
+    expect(document.documentElement.dataset.scheme).toBe('garden');
+    expect(localStorage.getItem(SCHEME_KEY)).toBe('garden');
+    expect(me).not.toHaveBeenCalled();
+  });
+});
+
 describe('a sign-out while the account is still being read', () => {
   it('stays signed out when the answer lands afterwards', async () => {
     let answer: (account: Account) => void = () => {};
@@ -99,6 +136,7 @@ describe('a sign-out while the account is still being read', () => {
       needsOrganisation: false,
       hasPassword: true,
       twoFactorSetupPrompt: false,
+      colourScheme: null,
       waitingFor: null,
       providers: [],
       emailAddresses: [],
@@ -156,6 +194,7 @@ describe('the organisations after a language change (sc-9267)', () => {
       needsOrganisation: false,
       hasPassword: true,
       twoFactorSetupPrompt: false,
+      colourScheme: null,
       waitingFor: null,
       providers: [],
       emailAddresses: [],

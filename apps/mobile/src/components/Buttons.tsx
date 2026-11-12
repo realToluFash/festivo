@@ -1,9 +1,9 @@
 import { type ReactNode, type Ref, createContext, useContext, useState } from 'react';
 import { Animated, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 
 import { tokens } from '../theme/tokens.ts';
 import { CONTROL_TEXT_SIZE } from './Field.tsx';
+import { controlTaken } from './focusedField.ts';
 import { Text } from './Text.tsx';
 
 const PressFade = Animated.createAnimatedComponent(Pressable);
@@ -70,6 +70,7 @@ export function PrimaryButton({
       accessibilityHint={accessibilityHint}
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy }}
+      onFocus={controlTaken}
       testID={testID}
     >
       <Text
@@ -131,6 +132,7 @@ export function SecondaryButton({
       accessibilityLabel={accessibilityLabel}
       accessibilityRole={link ? 'link' : 'button'}
       accessibilityState={{ disabled: off }}
+      onFocus={controlTaken}
       testID={testID}
     >
       <Text
@@ -184,6 +186,7 @@ export function DestructiveButton({
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy }}
+      onFocus={controlTaken}
       testID={testID}
     >
       <Text
@@ -222,6 +225,7 @@ export function QuietButton({
       disabled={off}
       accessibilityRole="button"
       accessibilityState={{ disabled: off }}
+      onFocus={controlTaken}
       testID={testID}
     >
       <Text
@@ -232,54 +236,6 @@ export function QuietButton({
         {label}
       </Text>
     </Pressable>
-  );
-}
-
-export interface HeaderPrimaryProps {
-  label: string;
-  onPress: () => void;
-  testID: string;
-}
-
-/** A screen's one primary in the header band, where [fd] puts it: a round + named for screen readers on a phone, the + and its label on a tablet (sc-22103). */
-export function HeaderPrimary({
-  label,
-  onPress,
-  round,
-  testID,
-}: HeaderPrimaryProps & { round: boolean }) {
-  const fade = usePressFade();
-  const mark = round ? 20 : 16;
-
-  return (
-    <PressFade
-      style={[styles.headerPrimary, round && styles.round, { opacity: fade.opacity }]}
-      onPressIn={fade.onPressIn}
-      onPressOut={fade.onPressOut}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      testID={testID}
-    >
-      <Svg
-        width={mark}
-        height={mark}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke={tokens.colorInkOnDark}
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <Path d="M5 12h14" />
-        <Path d="M12 5v14" />
-      </Svg>
-      {!round && (
-        <Text size={tokens.typeBody.size} weight="semibold" style={styles.onAccent}>
-          {label}
-        </Text>
-      )}
-    </PressFade>
   );
 }
 
@@ -343,6 +299,7 @@ export function Footnote({
         style={styles.footnoteAction}
         onPress={onPress}
         accessibilityRole={role}
+        onFocus={controlTaken}
         testID={testID}
       >
         <Text size={tokens.typeBodyPhone.size} weight="semibold" style={styles.accent}>
@@ -369,18 +326,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorAccentHover,
   },
   primaryOff: { backgroundColor: tokens.colorBorder },
-  headerPrimary: {
-    minHeight: tokens.sizeHitPhonePrimary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: tokens.spaceXs,
-    paddingLeft: 14,
-    paddingRight: 18,
-    borderRadius: tokens.sizeHitPhonePrimary / 2,
-    backgroundColor: tokens.colorAccentHover,
-  },
-  round: { width: tokens.sizeHitPhonePrimary, paddingLeft: 0, paddingRight: 0 },
   secondary: {
     alignSelf: 'flex-start',
     minHeight: tokens.sizeHit,

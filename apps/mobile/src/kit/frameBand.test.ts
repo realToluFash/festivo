@@ -20,12 +20,12 @@ describe('phonePillAlone', () => {
 
 describe('pillBesideTabs', () => {
   it('stops the pill 12 short of the centred tabs', () => {
-    expect(pillBesideTabs(1000, 470)).toEqual({ maxWidth: 253, tileAlone: false });
+    expect(pillBesideTabs(1000, 470)).toEqual({ maxWidth: 253 });
   });
 
-  it('leaves the tile alone when under 120 is left, as on an upright iPad mini', () => {
-    expect(pillBesideTabs(712, 470)).toEqual({ maxWidth: 109, tileAlone: true });
-    expect(pillBesideTabs(480, 470)).toEqual({ maxWidth: 0, tileAlone: true });
+  it('leaves under 120 on an upright iPad mini, where the pill is its tile', () => {
+    expect(pillBesideTabs(712, 470)).toEqual({ maxWidth: 109 });
+    expect(pillBesideTabs(480, 470)).toEqual({ maxWidth: 0 });
   });
 
   it('caps nothing until both widths are measured', () => {

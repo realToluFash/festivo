@@ -9,7 +9,7 @@ import {
   needsHost,
   rereadOf,
 } from '@soirely/domain';
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -45,29 +45,25 @@ type Focus = 'host' | 'hostsNow' | 'go';
 
 const HOST_ID = 'make-live-host';
 
-/** A Draft's line for the areas it blocks (Guests so far), with Make live beside it, as `/event-states.json` says. */
-export function DraftRow({
+/** Make live's question and its refusals, asked from whichever button `opener` holds (sc-3584, sc-22143). */
+export function useMakeLive({
   event,
   tag,
-  now,
-  manages,
   heading,
+  opener,
   onChange,
   onMadeLive,
 }: {
   event: OrganisationEvent;
   tag: string;
-  now: Date;
-  manages: boolean;
   heading: RefObject<HTMLHeadingElement | null>;
+  opener: RefObject<HTMLButtonElement | null>;
   onChange: (event: OrganisationEvent, tag: string) => void;
   onMadeLive: () => void;
-}) {
+}): { start: () => void; dialogs: ReactNode } {
   const { t } = useTranslation();
-  const row = makeLiveRow(event, now);
   const [opened, setOpened] = useState<TaggedEvent>({ event, tag });
   const [asking, setAsking] = useState<Confirming | Refused | null>(null);
-  const opener = useRef<HTMLButtonElement>(null);
 
   function close(): void {
     setAsking(null);
@@ -169,43 +165,21 @@ export function DraftRow({
     }
   }
 
-  return (
+  function start(): void {
+    setOpened({ event, tag });
+    setAsking({
+      kind: 'confirm',
+      askHost: needsHost(event),
+      typed: '',
+      error: null,
+      notice: null,
+      pending: false,
+      failed: false,
+    });
+  }
+
+  const dialogs = (
     <>
-      {row != null && (
-        <div className="event-draft-row">
-          <span className="mark mark-off" aria-hidden="true" />
-          <p className="event-draft-line">{t(`eventLive.${row.line}`)}</p>
-          {manages &&
-            (row.makeLive ? (
-              <button
-                ref={opener}
-                type="button"
-                className="button button-primary"
-                onClick={() => {
-                  setOpened({ event, tag });
-                  setAsking({
-                    kind: 'confirm',
-                    askHost: needsHost(event),
-                    typed: '',
-                    error: null,
-                    notice: null,
-                    pending: false,
-                    failed: false,
-                  });
-                }}
-              >
-                {t('eventLive.makeLive')}
-              </button>
-            ) : (
-              <Link
-                className="button button-primary"
-                to={`/app/events/${encodeURIComponent(event.id)}/edit#starts`}
-              >
-                {t('eventLive.changeDates')}
-              </Link>
-            ))}
-        </div>
-      )}
       {asking?.kind === 'refused' && (
         <LifecycleDialog
           id="make-live"
@@ -230,6 +204,62 @@ export function DraftRow({
           onClose={close}
         />
       )}
+    </>
+  );
+
+  return { start, dialogs };
+}
+
+/** A Draft's line for the areas it blocks (Guests so far), with Make live beside it, as `/event-states.json` says. */
+export function DraftRow({
+  event,
+  tag,
+  now,
+  manages,
+  heading,
+  onChange,
+  onMadeLive,
+}: {
+  event: OrganisationEvent;
+  tag: string;
+  now: Date;
+  manages: boolean;
+  heading: RefObject<HTMLHeadingElement | null>;
+  onChange: (event: OrganisationEvent, tag: string) => void;
+  onMadeLive: () => void;
+}) {
+  const { t } = useTranslation();
+  const row = makeLiveRow(event, now);
+  const opener = useRef<HTMLButtonElement>(null);
+  const makeLive = useMakeLive({ event, tag, heading, opener, onChange, onMadeLive });
+
+  return (
+    <>
+      {row != null && (
+        <div className="event-draft-row">
+          <span className="mark mark-off" aria-hidden="true" />
+          <p className="event-draft-line">{t(`eventLive.${row.line}`)}</p>
+          {manages &&
+            (row.makeLive ? (
+              <button
+                ref={opener}
+                type="button"
+                className="button button-primary"
+                onClick={() => makeLive.start()}
+              >
+                {t('eventLive.makeLive')}
+              </button>
+            ) : (
+              <Link
+                className="button button-primary"
+                to={`/app/events/${encodeURIComponent(event.id)}/edit#starts`}
+              >
+                {t('eventLive.changeDates')}
+              </Link>
+            ))}
+        </div>
+      )}
+      {makeLive.dialogs}
     </>
   );
 }

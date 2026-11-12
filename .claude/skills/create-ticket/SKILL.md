@@ -100,6 +100,14 @@ A flat list of `-` bullets, nested one level with four spaces for field-level de
   match" is not.
 - One behaviour per bullet. Do not bundle.
 - Include the unmatched-input case.
+- **A story that moves a screen to its demo has a Checked against the demo bullet that
+  names its rows**: each screen, each layout, each demo state (`?state=` on the web, the
+  demo's linked states in the app), and the top. "Checked against the demo" with nothing
+  named reads as a list of contents to tick, and that is how three screens passed with tops
+  their demos never drew (sc-39535).
+- **A part the screen sits in that another story owns** (the frame, the shell, the band) is
+  either this story's, by a bullet, or named under "Not in this story" with that story's
+  number. A top no story owns is a top nobody checks.
 - Close with a regression bullet naming what must keep working unchanged.
 
 ### Worked example

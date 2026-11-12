@@ -27,7 +27,6 @@ import {
   rereadOrganisation,
 } from './organisationDetails.ts';
 import { OwnershipCard } from './OwnershipCard.tsx';
-import { RecoveryRequestsCard } from './RecoveryRequestsCard.tsx';
 import { RequestLinkCard } from './RequestLinkCard.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
@@ -99,8 +98,6 @@ function PhoneGeneral() {
         <p>{t('orgGeneral.intro')}</p>
       </div>
 
-      <RecoveryRequestsCard />
-
       {refused != null && (
         <div className="notice notice-broken" ref={refusal} tabIndex={-1}>
           <span className="mark mark-broken" aria-hidden="true">
@@ -128,12 +125,12 @@ function PhoneGeneral() {
 
       {can(session, 'members.manage') && (
         <div className="settings-pair">
-          <CompanyDomainsCard key={organisation.id} organisation={organisation} />
-          <RequestLinkCard key={organisation.id} organisation={organisation} />
+          <CompanyDomainsCard key={`domains:${organisation.id}`} organisation={organisation} />
+          <RequestLinkCard key={`link:${organisation.id}`} organisation={organisation} />
         </div>
       )}
 
-      <OwnershipCard key={organisation.id} organisation={organisation} />
+      <OwnershipCard key={`ownership:${organisation.id}`} organisation={organisation} />
     </div>
   );
 }

@@ -2,14 +2,14 @@ import { type OrganisationEvent } from '@soirely/api-client';
 import {
   comingUp,
   type EventTimeline as Timeline,
-  formatEventMoment,
   type MarkedMilestone,
   markedMilestones,
   type MilestoneOwner,
   namesZone,
+  milestoneMoment,
   serverClock,
 } from '@soirely/domain';
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -35,11 +35,18 @@ const OWNER_KEY: Record<MilestoneOwner, string> = {
 };
 
 /** Read again when the event's status moves, so a Call off or End now shows its dates without a reload; judged by a clock no older than the read, so a date it stamped is never still ahead. */
-function useTimeline(
+export interface TimelineRead {
+  load: Load;
+  now: Date;
+  retried: boolean;
+  retry: () => void;
+}
+
+export function useTimeline(
   { id: eventId, status }: OrganisationEvent,
   heading: RefObject<HTMLHeadingElement | null>,
   now: Date,
-): { load: Load; now: Date; retried: boolean; retry: () => void } {
+): TimelineRead {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const land = useFocusOnceShown();
@@ -74,10 +81,17 @@ function readerZone(): string {
 }
 
 /** Event View's panel: the next four, or why there are none, in rows held at one height. */
-export function ComingUp({ event, now: tick }: { event: OrganisationEvent; now: Date }) {
+export function ComingUp({
+  event,
+  timeline: { load, now, retried, retry },
+  heading,
+}: {
+  event: OrganisationEvent;
+  /** Read once for the page, whose card shows its Next up too; `heading` is where its Try again lands. */
+  timeline: TimelineRead;
+  heading: RefObject<HTMLHeadingElement | null>;
+}) {
   const { t } = useTranslation();
-  const heading = useRef<HTMLHeadingElement>(null);
-  const { load, now, retried, retry } = useTimeline(event, heading, tick);
   const shown =
     load.kind === 'loaded' ? comingUp(load.timeline.milestones, now, event.status === 'ended') : [];
 
@@ -213,7 +227,7 @@ function MilestoneRow({
 }) {
   const { t } = useTranslation();
   const { milestone, standing, nextUp } = marked;
-  const moment = formatEventMoment(milestone.at, timeZone, dateLocale());
+  const moment = milestoneMoment(milestone.at, timeZone, now, dateLocale());
 
   return (
     <li className={`timeline-row${standing === 'passed' ? ' timeline-row-passed' : ''}`}>

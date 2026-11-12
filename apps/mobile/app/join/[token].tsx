@@ -65,7 +65,7 @@ export default function RequestToJoin() {
       const me = await meAtLaunch();
 
       if ('error' in me && me.error instanceof ApiUnreachableError) {
-        if (live) router.replace(unreachableFrom(token));
+        if (live) router.replace(unreachableFrom({ kind: 'join', token }));
         return;
       }
 
@@ -75,7 +75,7 @@ export default function RequestToJoin() {
       } catch (error) {
         if (!live) return;
         if (error instanceof ApiError && error.is('request_link_dead')) setView({ kind: 'dead' });
-        else router.replace(unreachableFrom(token));
+        else router.replace(unreachableFrom({ kind: 'join', token }));
       }
     })();
 

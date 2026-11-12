@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  backLabelSize,
   bandPlace,
   breakableEmail,
   capUnderTitle,
@@ -15,6 +14,7 @@ import {
   TITLE_LINE,
   titleSize,
   wordsIn,
+  wordsSlot,
 } from './textSize.ts';
 
 const AX1 = 1.786;
@@ -79,22 +79,6 @@ describe('frameTitleSize', () => {
 
   it('draws it at 43 on a phone at the largest text', () => {
     expect(titleSize(frameTitleSize(false, 402), AX2)).toBe(43);
-  });
-});
-
-describe('backLabelSize', () => {
-  it.each([
-    [1, 15],
-    [1.5, 22.5],
-    [2, 30],
-  ])('grows with the text at %s', (fontScale, size) => {
-    expect(backLabelSize(fontScale)).toBe(size);
-  });
-
-  it('stops at twice its default, so the top two iOS steps draw it alike (sc-23361)', () => {
-    expect(backLabelSize(AX1)).toBe(15 * AX1);
-    expect(backLabelSize(AX2)).toBe(30);
-    expect(backLabelSize(3)).toBe(30);
   });
 });
 
@@ -240,4 +224,58 @@ describe('rowsFloor', () => {
       expect(rowsFloor(1, density)).toBeGreaterThan(rowsFloor(1, null));
     },
   );
+});
+
+describe('the width labels have to fit (sc-37298)', () => {
+  it('keeps a container’s reported width when only the text size changes', () => {
+    const reported = { windowWidth: 360, width: 76 };
+
+    expect(wordsSlot({ wrapped: null, kept: null, reported }, 12, 360)).toBe(76);
+    expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, 360)).toBe(76);
+  });
+
+  it('forgets a reported width once the window changes width', () => {
+    const reported = { windowWidth: 360, width: 76 };
+
+    expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, 412)).toBe(0);
+  });
+
+  it('keeps a wrapped text’s width only for the start it wrapped at', () => {
+    const kept = { key: '20|360', width: 120 };
+
+    expect(wordsSlot({ wrapped: null, kept, reported: null }, 20, 360)).toBe(120);
+    expect(wordsSlot({ wrapped: null, kept, reported: null }, 24, 360)).toBe(0);
+  });
+
+  it('takes the width a text wrapped at over anything kept', () => {
+    const kept = { key: '20|360', width: 120 };
+
+    expect(
+      wordsSlot({ wrapped: 90, kept, reported: { windowWidth: 360, width: 76 } }, 20, 360),
+    ).toBe(90);
+  });
+
+  it('steps the bar’s labels below the cap after a live change with no new layout', () => {
+    const tab = 76;
+    const reported = { windowWidth: 360, width: tab };
+    const widestAt = (start: number) => (start / 12) * 60;
+
+    expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, 360)).toBeGreaterThan(0);
+
+    const before = fitWidest(
+      12,
+      12,
+      widestAt(12),
+      wordsSlot({ wrapped: null, kept: null, reported }, 12, 360),
+    );
+    const after = fitWidest(
+      12,
+      20,
+      widestAt(20),
+      wordsSlot({ wrapped: null, kept: null, reported }, 20, 360),
+    );
+
+    expect(before / 12).toBe(1);
+    expect(after / 12).toBeLessThan(20 / 12);
+  });
 });

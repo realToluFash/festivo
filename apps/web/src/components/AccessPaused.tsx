@@ -5,7 +5,7 @@ import { Link } from 'react-router';
 
 import { pageTitle, usePageTitle } from '../pageTitle.ts';
 import { Notice } from './Notice.tsx';
-import { PausedOwnerClaim } from './OwnerClaimBanner.tsx';
+import { PausedOwnerClaim } from './PausedOwnerClaim.tsx';
 import './desk.css';
 
 type Other = Pick<Membership, 'id' | 'name'>;

@@ -109,7 +109,7 @@ describe('Settings › Data and control at a desk (sc-560)', () => {
   it('says nothing needs you once everything is quiet', async () => {
     await hub(`${HUB}?state=quiet`);
 
-    expect(screen.getByText('Nothing needs you')).toBeDefined();
+    expect(screen.getByText('Nothing needs your attention')).toBeDefined();
     expect(screen.getByText('ire.events is proved. Deleting guest data is off.')).toBeDefined();
     expect(screen.getByText('ire.events proved')).toBeDefined();
     expect(screen.getByText('Off')).toBeDefined();
@@ -125,7 +125,7 @@ describe('Settings › Data and control at a desk (sc-560)', () => {
   });
 
   it.each([
-    ['locked', 'Three of these come with Enterprise'],
+    ['locked', 'These come with Enterprise'],
     ['downgraded', 'Ire Events left Enterprise on Sunday, Oct 18'],
   ])('locks the Enterprise jobs, %s, and still opens them', async (state, says) => {
     await hub(`${HUB}?state=${state}`);

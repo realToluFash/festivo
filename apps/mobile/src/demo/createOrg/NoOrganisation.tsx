@@ -11,7 +11,7 @@ import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { useStartWalk } from '../OrgSwitcher.tsx';
 import { VIEWER } from '../OrgSwitcherModel.ts';
-import { DraftTile } from './WalkParts.tsx';
+import { DraftTile } from '../../components/DraftTile.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { TextAction } from '../../components/SummaryRows.tsx';
 

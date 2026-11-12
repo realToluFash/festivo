@@ -8,8 +8,6 @@ import {
   cardLine,
   contactLine,
   contactsFoot,
-  firstUnverified,
-  primaryFirst,
   promotedWords,
   verifiedWords,
   verifyWords,
@@ -40,10 +38,6 @@ describe('the card under you', () => {
       kind: 'todo',
       text: `${SECOND} is not verified yet.`,
     });
-    expect(firstUnverified(proved(EMAILS), PHONES)).toMatchObject({
-      kind: 'phone',
-      row: { shown: NUMBER },
-    });
   });
 
   it('says what just happened before anything left to do, and nothing once all is verified', () => {
@@ -66,11 +60,6 @@ describe('the card under you', () => {
 });
 
 describe('the rows', () => {
-  it('puts the primary first, then the rest as added', () => {
-    const swapped = EMAILS.map((row) => ({ ...row, primary: !row.primary }));
-    expect(primaryFirst(swapped).map((row) => row.id)).toEqual(['email-2', 'email-1']);
-  });
-
   it('says what each row does, and the zone by its IANA name', () => {
     expect(contactLine('email', EMAILS[0]!, t)).toBe('Primary · signs you in');
     expect(contactLine('email', EMAILS[1]!, t)).toBe('Can reach you, cannot sign you in');

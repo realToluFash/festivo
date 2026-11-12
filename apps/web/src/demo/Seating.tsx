@@ -1755,7 +1755,7 @@ function MessageBar({
 
   return (
     <div
-      className={`${inline ? 'st-bar is-inline' : 'st-float st-bar'} is-${bar.kind}`}
+      className={`${inline ? 'st-bar is-inline' : 'st-float st-bar'} is-${bar.kind}${!inline && bar.at === 'floor' ? ' is-floor' : ''}`}
       role="status"
       aria-live="polite"
     >
@@ -2052,13 +2052,13 @@ function Asking() {
     );
   if (asking.kind === 'deleteSection') {
     const section = ui.plan.sections.find((one) => one.id === asking.id);
-    const n = ui.plan.items.filter((item) => item.sec === asking.id).length;
+    const n = ui.plan.items.filter((item) => item.sec === asking.id && isTable(item)).length;
 
     if (section == null) return null;
     return (
       <Ask
         title={say(SW.deleteNamed, { name: section.name })}
-        line={say(SW.sectionDeleteBody, { n })}
+        line={n === 0 ? '' : many('sectionDeleteBody', n)}
         keep={SW.keepIt}
         go={SW.deleteSection}
         onKeep={keep}

@@ -1,3 +1,5 @@
+import { numberFormat } from './locales.ts';
+
 /** The day and the time are separate because the word between them belongs to the catalogue. */
 export function formatDay(moment: string | Date, locale: string): string {
   const date = asDate(moment);
@@ -12,7 +14,7 @@ export function formatTimeOfDay(moment: string | Date, locale: string): string {
 
   if (date == null) return '';
 
-  return formatsFor(locale).time.format(date);
+  return clockText(formatsFor(locale).time, date);
 }
 
 const formats = new Map<string, { day: Intl.DateTimeFormat; time: Intl.DateTimeFormat }>();
@@ -21,7 +23,7 @@ const formats = new Map<string, { day: Intl.DateTimeFormat; time: Intl.DateTimeF
 function formatsFor(locale: string): { day: Intl.DateTimeFormat; time: Intl.DateTimeFormat } {
   const made = formats.get(locale) ?? {
     day: new Intl.DateTimeFormat(locale, { weekday: 'long', month: 'short', day: 'numeric' }),
-    time: new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hour12: false }),
+    time: new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }),
   };
   formats.set(locale, made);
 
@@ -70,6 +72,14 @@ export function lockLiftsAt(retryAfterSeconds: number, now: Date = new Date()): 
   return new Date(Math.ceil((now.getTime() + retryAfterSeconds * 1000) / minute) * minute);
 }
 
+/** Hermes drops the hour's zero for some locales whatever '2-digit' asks («1:33» in es), so it is put back here. */
+export function clockText(format: Intl.DateTimeFormat, moment: Date): string {
+  return format
+    .formatToParts(moment)
+    .map(({ type, value }) => (type === 'hour' ? value.padStart(2, '0') : value))
+    .join('');
+}
+
 function asDate(moment: string | Date): Date | null {
   const date = typeof moment === 'string' ? new Date(moment) : moment;
 
@@ -114,7 +124,7 @@ export function formatWallClock(time: string, locale: string): string {
 
   if (moment == null) return '';
 
-  return new Intl.DateTimeFormat(locale, { ...EVENT_CLOCK, timeZone: 'UTC' }).format(moment);
+  return clockText(new Intl.DateTimeFormat(locale, { ...EVENT_CLOCK, timeZone: 'UTC' }), moment);
 }
 
 /** In the event's own zone, never the reader's: 16:00 in Lagos is 16:00 to everyone who reads it. */
@@ -126,16 +136,26 @@ export function formatEventDate(moment: string, timeZone: string, locale: string
   return new Intl.DateTimeFormat(locale, { ...EVENT_DAY, timeZone }).format(date);
 }
 
-export function formatEventMoment(moment: string, timeZone: string, locale: string): string {
+/** "Sat 29 Apr, 17:00", or with its year `withYear`. */
+export function formatEventMoment(
+  moment: string,
+  timeZone: string,
+  locale: string,
+  withYear = false,
+): string {
   const date = asDate(moment);
 
   if (date == null) return '';
 
-  return new Intl.DateTimeFormat(locale, {
-    ...EVENT_DAY_WITHOUT_YEAR,
-    ...EVENT_CLOCK,
-    timeZone,
-  }).format(date);
+  return clockText(
+    new Intl.DateTimeFormat(locale, {
+      ...EVENT_DAY_WITHOUT_YEAR,
+      ...(withYear ? { year: 'numeric' } : {}),
+      ...EVENT_CLOCK,
+      timeZone,
+    }),
+    date,
+  );
 }
 
 /** A moment with its weekday, date, year and clock, as the board draws an event's start and end. */
@@ -148,7 +168,10 @@ export function formatEventDayAndClock(
 
   if (date == null) return '';
 
-  return new Intl.DateTimeFormat(locale, { ...EVENT_DAY, ...EVENT_CLOCK, timeZone }).format(date);
+  return clockText(
+    new Intl.DateTimeFormat(locale, { ...EVENT_DAY, ...EVENT_CLOCK, timeZone }),
+    date,
+  );
 }
 
 /** Whole hours and the minutes left, each in the reader's words; a client joins the two through its catalogue. */
@@ -157,9 +180,7 @@ export function durationWords(
   locale: string,
 ): { hours: string | null; minutes: string | null } {
   const unit = (amount: number, name: 'hour' | 'minute'): string =>
-    new Intl.NumberFormat(locale, { style: 'unit', unit: name, unitDisplay: 'long' }).format(
-      amount,
-    );
+    numberFormat(locale, { style: 'unit', unit: name, unitDisplay: 'long' }).format(amount);
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
 
@@ -186,12 +207,17 @@ export function formatEventRange(
   const sameDay = day.format(start) === day.format(end);
 
   return `${formatEventDayAndClock(start, timeZone, locale)} – ${
-    sameDay ? clock.format(end) : formatEventDayAndClock(end, timeZone, locale)
+    sameDay ? clockText(clock, end) : formatEventDayAndClock(end, timeZone, locale)
   }`;
 }
 
-/** An Events Home card's date, "Saturday, Nov 14", in the event's zone (sc-3594). */
-export function formatEventWeekday(moment: string, timeZone: string, locale: string): string {
+/** An Events Home card's date, "Saturday, Nov 14", in the event's zone (sc-3594); "Saturday, Nov 14, 2027" `withYear`. */
+export function formatEventWeekday(
+  moment: string,
+  timeZone: string,
+  locale: string,
+  withYear = false,
+): string {
   const date = asDate(moment);
 
   if (date == null) return '';
@@ -200,17 +226,28 @@ export function formatEventWeekday(moment: string, timeZone: string, locale: str
     weekday: 'long',
     day: 'numeric',
     month: 'short',
+    ...(withYear ? { year: 'numeric' } : {}),
     timeZone,
   }).format(date);
 }
 
-/** "Sep 30", for a day close enough that the year goes without saying. */
-export function formatEventShortDay(moment: string, timeZone: string, locale: string): string {
+/** "Sep 30", or "Sep 30, 2025" `withYear`. */
+export function formatEventShortDay(
+  moment: string,
+  timeZone: string,
+  locale: string,
+  withYear = false,
+): string {
   const date = asDate(moment);
 
   if (date == null) return '';
 
-  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone }).format(date);
+  return new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'short',
+    ...(withYear ? { year: 'numeric' } : {}),
+    timeZone,
+  }).format(date);
 }
 
 export function formatEventClock(moment: string, timeZone: string, locale: string): string {
@@ -218,5 +255,5 @@ export function formatEventClock(moment: string, timeZone: string, locale: strin
 
   if (date == null) return '';
 
-  return new Intl.DateTimeFormat(locale, { ...EVENT_CLOCK, timeZone }).format(date);
+  return clockText(new Intl.DateTimeFormat(locale, { ...EVENT_CLOCK, timeZone }), date);
 }

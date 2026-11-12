@@ -1,8 +1,11 @@
+import * as Linking from 'expo-linking';
 import { Redirect, Stack } from 'expo-router';
+import { useEffect } from 'react';
 
 import { config } from '../../src/config.ts';
 import { useStepsInSheet } from '../../src/demo/DemoScreen.tsx';
 import { demoOpens } from '../../src/demo/gate.ts';
+import { forgetName } from '../../src/demo/settings/savedName.ts';
 import { useReducedMotion } from '../../src/reducedMotion.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -10,6 +13,13 @@ import { tokens } from '../../src/theme/tokens.ts';
 export default function DemoLayout() {
   const reduced = useReducedMotion();
   const sheet = useStepsInSheet();
+
+  useEffect(() => {
+    forgetName();
+    const link = Linking.addEventListener('url', forgetName);
+
+    return () => link.remove();
+  }, []);
 
   if (!demoOpens(config.environment)) return <Redirect href="/" />;
 

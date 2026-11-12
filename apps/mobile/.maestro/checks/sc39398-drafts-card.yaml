@@ -1,0 +1,21 @@
+# sc-39398: the Events tab's Drafts, whose featured card shows the +N tile, in the account's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      text: '(Eventos|Events|Événements)'
+    timeout: 30000
+- tapOn:
+    text: '(Eventos|Events|Événements)'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.drafts'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.drafts'
+- extendedWaitUntil:
+    visible:
+      id: 'events.card'
+    timeout: 30000
+- takeScreenshot: drafts-card

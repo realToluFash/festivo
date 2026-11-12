@@ -179,7 +179,7 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
     states: [
       { to: settingsPath('members', VIEWERS.folake), name: 'Owner, Members open' },
       { to: settingsPath('members', VIEWERS.julien), name: 'Admin, Members open' },
-      { to: settingsPath('members', VIEWERS.ana), name: 'Member, no Members' },
+      { to: settingsPath('members', VIEWERS.ana), name: 'Member, Members refused (Forbidden)' },
     ],
   },
   {
@@ -220,6 +220,7 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
       members('recoveryApproved', 'Kofi’s two-factor is off'),
       members('recoveryTurnedDown', 'Kofi’s request turned down'),
       members('recoveryClosed', 'Kofi’s request answered elsewhere'),
+      members('recoveryClosedLast', 'Kofi’s request answered elsewhere, none left'),
       members('recoverySending', 'Kofi’s answer on its way'),
       members('recoveryFailed', 'Kofi’s answer failed'),
       members('recoveryDone', 'None left'),
@@ -235,6 +236,10 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
       members('role', 'Priya’s role, an admin choosing', VIEWERS.julien),
       members('roleDiscard', 'Priya’s role, cancel after a change'),
       members('removing', 'Removing Priya'),
+      members('longName', 'An 89-character name: Remove from it wraps, whole'),
+      members('oneWordName', 'A 100-character one-word name: it breaks inside the name'),
+      members('longNameAt320', 'The 89-character name in a 320 page’s column'),
+      members('oneWordNameAt320', 'The one-word name in a 320 page’s column'),
       members('self', 'Your own page, an owner'),
       members('self', 'Your own page, an admin', VIEWERS.julien),
       members('folake', 'Julien sees Folake, the only owner', VIEWERS.julien),

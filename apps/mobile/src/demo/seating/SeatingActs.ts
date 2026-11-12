@@ -1,4 +1,5 @@
 import {
+  type Pad,
   type Point,
   type View,
   centreOn,
@@ -47,7 +48,7 @@ import type { Chair, ColourName, Item, Kind, Party } from './SeatingSample.ts';
 import { W, say } from './SeatingWords.ts';
 
 export type Action =
-  | { type: 'laid'; w: number; h: number }
+  | { type: 'laid'; w: number; h: number; pad: Pad }
   | { type: 'view'; view: View }
   | { type: 'fit' }
   | { type: 'zoomStep'; up: boolean }
@@ -708,7 +709,7 @@ function startPlan(m: Seating): Seating {
     room: { name: s.name.trim() === '' ? W.room : s.name.trim(), w, l },
     items: [],
     sections: [],
-    shown: m.size == null ? null : fit(m.size.w, m.size.h, { name: '', w, l }),
+    shown: m.size == null ? null : fit(m.size.w, m.size.h, { name: '', w, l }, m.size.pad),
     zoom: null,
     bar: { kind: 'tint', words: W.firstTable },
     save: 'saving',
@@ -816,15 +817,18 @@ function mark(m: Seating, id: string, chair: number): Seating {
 function act(m: Seating, a: Action): Seating {
   switch (a.type) {
     case 'laid': {
-      if (m.size?.w === a.w && m.size.h === a.h && m.shown != null) return m;
+      if (m.size?.w === a.w && m.size.h === a.h && m.size.pad === a.pad && m.shown != null)
+        return m;
       const shown =
-        m.zoom != null ? centreOn(m.zoom.centre, m.zoom.s, a.w, a.h) : fit(a.w, a.h, m.room);
-      return { ...m, size: { w: a.w, h: a.h }, shown };
+        m.zoom != null ? centreOn(m.zoom.centre, m.zoom.s, a.w, a.h) : fit(a.w, a.h, m.room, a.pad);
+      return { ...m, size: { w: a.w, h: a.h, pad: a.pad }, shown };
     }
     case 'view':
       return { ...m, shown: a.view, zoom: null };
     case 'fit':
-      return m.size == null ? m : { ...m, zoom: null, shown: fit(m.size.w, m.size.h, m.room) };
+      return m.size == null
+        ? m
+        : { ...m, zoom: null, shown: fit(m.size.w, m.size.h, m.room, m.size.pad) };
     case 'zoomStep':
       return m.size == null || m.shown == null
         ? m

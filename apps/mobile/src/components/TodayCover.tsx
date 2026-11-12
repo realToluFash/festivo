@@ -1,23 +1,31 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, type Ref, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
   Pressable,
   type StyleProp,
   StyleSheet,
+  useWindowDimensions,
   View,
+  type ViewInstance,
   type ViewStyle,
 } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { Text } from './Text.tsx';
+import { useWholeWords } from './Title.tsx';
+import { CAPSULE_LABEL } from '../layout/capsuleFit.ts';
+import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
 import { EventMesh } from './EventMesh.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { Moment, Now } from '../kit/today.ts';
-import { Initials } from './Initials.tsx';
+import { useAccessibilitySizes, useLayout, useNameLines } from '../layout/useLayout.ts';
+import { OrgMark } from './OrgMark.tsx';
+import { OPENER, OpenerWords } from './OrgPill.tsx';
 import { useTodayShell } from './todayShell.ts';
+import { usePillFit } from './usePillFit.tsx';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
 
@@ -103,67 +111,102 @@ export const SETTINGS_ID: Partial<Record<Tab, string>> = { Settings: 'home.openS
 export function Glass({
   children,
   height = 40,
+  grows = false,
   style,
+  testID,
 }: {
   children: ReactNode;
   height?: number;
+  /** Taller than `height` when its words wrap, rather than clipped to it. */
+  grows?: boolean;
   style?: StyleProp<ViewStyle>;
+  testID?: string | undefined;
 }) {
   return (
-    <View style={[styles.glass, { height, borderRadius: height / 2 }, style]}>
+    <View
+      testID={testID}
+      style={[
+        styles.glass,
+        grows ? { minHeight: height } : { height },
+        { borderRadius: height / 2 },
+        style,
+      ]}
+    >
       <View style={[StyleSheet.absoluteFill, styles.glassFill]} />
       {children}
     </View>
   );
 }
 
-function OrgTileWhite({ side = 28 }: { side?: number }) {
-  const { organisation } = useTodayShell();
+/** The switcher's opener in glass: the tile alone on the band, the tile, the name and what waits on the cover. */
+export function OrgButton({
+  compact = false,
+  maxWidth,
+  givesWay = false,
+}: {
+  compact?: boolean;
+  /** The most it may take, so it stops short of what sits beside it. */
+  maxWidth?: number | undefined;
+  /** The tabs beside it took their room first, so it is its tile (sc-40401). */
+  givesWay?: boolean;
+}) {
+  const ref = useRef<ViewInstance>(null);
+  const org = useTodayShell().useOrgOpener(ref, !compact);
+  const phone = useLayout().kind === 'phone';
+  const large = useAccessibilitySizes();
+  const lines = useNameLines();
+  const { tileAlone, measure } = usePillFit(org.name, org.waiting, maxWidth, large);
+  const shared = {
+    ref,
+    onPress: org.onPress,
+    accessibilityRole: 'button',
+    accessibilityLabel: org.label,
+    accessibilityState: { expanded: org.expanded },
+    hitSlop: tokens.spaceXxs,
+    testID: 'home.switchOrganisation',
+  } as const;
 
-  return (
-    <View
-      style={[styles.orgTile, { width: side, height: side, borderRadius: Math.round(side * 0.32) }]}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      <Initials
-        name={organisation}
-        size={Math.round(side * 0.4)}
-        weight="bold"
-        style={styles.accent}
-      />
-    </View>
+  const tile = (
+    <Pressable {...shared}>
+      <Glass style={styles.orgCompact}>
+        <OrgMark id={org.id} name={org.name} side={30} glass />
+      </Glass>
+      {org.waiting != null && <View style={styles.tileRing} />}
+    </Pressable>
   );
-}
 
-export function OrgButton({ compact = false }: { compact?: boolean }) {
-  const { t } = useTranslation();
-  const { organisation, open, OrgOpener } = useTodayShell();
+  if (compact) return tile;
 
-  if (OrgOpener != null) return <OrgOpener at={compact ? 'band' : 'cover'} />;
+  const tall = org.waiting != null ? OPENER.waiting : 40;
+  // Clear of the bell by the cover's side margin; the phone's row already sets a gap either side of its spacer.
+  const clear = phone ? tokens.spaceXl - 2 * tokens.spaceSm : tokens.space3xl;
+  const wrap = phone || large;
+
+  if (tileAlone || givesWay)
+    return (
+      <View style={[styles.orgFit, { marginRight: clear, maxWidth }]}>
+        {measure}
+        {tile}
+      </View>
+    );
 
   return (
-    <Pressable
-      onPress={() => open({ to: 'organisation' })}
-      accessibilityRole="button"
-      accessibilityLabel={t('todayScreen.switchOrganisation', { name: organisation })}
-      hitSlop={tokens.spaceXxs}
-      testID="home.switchOrganisation"
-    >
-      {compact ? (
-        <Glass style={styles.orgCompact}>
-          <OrgTileWhite side={30} />
-        </Glass>
-      ) : (
-        <Glass style={styles.orgWide}>
-          <OrgTileWhite />
-          <Text size={15} weight="semibold" accessible={false} style={styles.white}>
-            {organisation}
-          </Text>
+    <View style={[styles.orgFit, { marginRight: clear, maxWidth }]}>
+      {measure}
+      <Pressable {...shared} style={styles.orgWide}>
+        <Glass height={tall} style={[styles.orgGlass, { height: undefined, minHeight: tall }]}>
+          <OrgMark id={org.id} name={org.name} side={28} glass />
+          <OpenerWords
+            name={org.name}
+            waiting={org.waiting}
+            onDark
+            wrap={wrap}
+            lines={wrap ? undefined : lines}
+          />
           <Glyph name="updown" size={14} ink={tokens.colorInkOnDark} />
         </Glass>
-      )}
-    </Pressable>
+      </Pressable>
+    </View>
   );
 }
 
@@ -191,7 +234,16 @@ export function BellButton() {
 }
 
 /** iPadOS 26's tab bar, in glass at the top of the cover. */
-export function TabCapsule({ onTab, at = 'Today' }: { onTab: (tab: Tab) => void; at?: Tab }) {
+export function TabCapsule({
+  onTab,
+  at = 'Today',
+  labelSize,
+}: {
+  onTab: (tab: Tab) => void;
+  at?: Tab;
+  /** The one size its labels are drawn at, where the row it sits in chooses it (sc-40401). */
+  labelSize?: number | undefined;
+}) {
   const { t } = useTranslation();
 
   return (
@@ -211,7 +263,14 @@ export function TabCapsule({ onTab, at = 'Today' }: { onTab: (tab: Tab) => void;
             testID={SETTINGS_ID[label]}
           >
             <Glyph name={glyph} ink={ink} />
-            <Text size={15} weight="semibold" accessible={false} style={{ color: ink }}>
+            <Text
+              size={CAPSULE_LABEL}
+              weight="semibold"
+              maxFontSizeMultiplier={capsuleLabelMultiplier(labelSize)}
+              numberOfLines={labelSize == null ? undefined : 1}
+              accessible={false}
+              style={{ color: ink }}
+            >
               {t(`todayScreen.tab.${glyph}`)}
             </Text>
           </Pressable>
@@ -626,16 +685,15 @@ export function TodayCover({
         shade="foot"
       />
       <Animated.View style={[styles.coverWords, { opacity: words }]}>
-        <View style={[phone ? styles.topPhone : styles.topTablet, { marginTop: top }]}>
-          <OrgButton />
-          <View style={styles.grow} />
-          <BellButton />
-          {!phone && (
-            <View style={styles.capsuleAt} pointerEvents="box-none">
-              <TabCapsule onTab={onTab} />
-            </View>
-          )}
-        </View>
+        {phone ? (
+          <View style={[styles.topPhone, { marginTop: top }]}>
+            <OrgButton />
+            <View style={styles.grow} />
+            <BellButton />
+          </View>
+        ) : (
+          <TabletTop top={top} onTab={onTab} />
+        )}
         <View style={[styles.grow, { minHeight: footClear(moment, phone) }]} />
         <View style={phone ? styles.footPhone : day ? styles.footTabletNow : styles.footTablet}>
           {day ? (
@@ -649,6 +707,45 @@ export function TodayCover({
       </Animated.View>
     </View>
   );
+}
+
+/** The upright iPad's top row: the opener keeps to the left of the centred capsule, its name wrapping rather than running under it. */
+function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
+  const [row, setRow] = useState<number>();
+  const [capsule, setCapsule] = useState<number>();
+  const { labelSize, givesWay, measure } = useCapsuleLabels(useTabLabels(), tabletRow(row));
+  const room =
+    row == null || capsule == null
+      ? undefined
+      : Math.max(0, (row - capsule) / 2 - tokens.space3xl - tokens.spaceSm);
+
+  return (
+    <View
+      style={[styles.topTablet, { marginTop: top }]}
+      onLayout={(event) => setRow(event.nativeEvent.layout.width)}
+    >
+      {measure}
+      <OrgButton maxWidth={room} givesWay={givesWay} />
+      <View style={styles.grow} />
+      <BellButton />
+      <View style={styles.capsuleAt} pointerEvents="box-none">
+        <View onLayout={(event) => setCapsule(event.nativeEvent.layout.width)}>
+          <TabCapsule onTab={onTab} labelSize={labelSize} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function useTabLabels(): string[] {
+  const { t } = useTranslation();
+
+  return TABS.map(([, glyph]) => t(`todayScreen.tab.${glyph}`));
+}
+
+/** The upright tablet's row from the tile's edge to the bell's, inside its side margins. */
+function tabletRow(width: number | undefined): number {
+  return width == null ? 0 : Math.max(0, width - 2 * tokens.space3xl);
 }
 
 export function Band({
@@ -665,6 +762,8 @@ export function Band({
   const { t } = useTranslation();
   const { now } = moment;
   const phone = layout === 'phone';
+  const [row, setRow] = useState<number>();
+  const { labelSize, measure } = useCapsuleLabels(useTabLabels(), phone ? 0 : tabletRow(row));
 
   return (
     <View style={[styles.band, { height: top + bandBody(moment, layout) }]}>
@@ -678,7 +777,11 @@ export function Band({
       ) : (
         <EventMesh event={now.event} shade="day" />
       )}
-      <View style={[phone ? styles.topPhone : styles.topTablet, { marginTop: top }]}>
+      <View
+        style={[phone ? styles.topPhone : styles.topTablet, { marginTop: top }]}
+        onLayout={(event) => setRow(event.nativeEvent.layout.width)}
+      >
+        {!phone && measure}
         <OrgButton compact />
         <View style={styles.grow} />
         <BellButton />
@@ -688,7 +791,7 @@ export function Band({
               {t('todayScreen.today')}
             </Text>
           ) : (
-            <TabCapsule onTab={onTab} />
+            <TabCapsule onTab={onTab} labelSize={labelSize} />
           )}
         </View>
       </View>
@@ -706,6 +809,10 @@ export function Band({
   );
 }
 
+const TAB_LABEL = 12;
+// Past 20 a label's line no longer fits under the glyph in the 54 tab (sc-37298).
+const TAB_LABEL_MOST = 20;
+
 export function TabBar<T extends string>({
   tabs,
   bottom,
@@ -713,6 +820,7 @@ export function TabBar<T extends string>({
   at,
   say = (tab) => tab,
   ids,
+  refs,
 }: {
   tabs: readonly (readonly [T, GlyphName])[];
   bottom: number;
@@ -720,27 +828,43 @@ export function TabBar<T extends string>({
   at: T;
   say?: (tab: T, glyph: GlyphName) => string;
   ids?: Partial<Record<T, string>>;
+  /** A tab that opens something, which hands focus back to it when it closes. */
+  refs?: Partial<Record<T, Ref<ViewInstance>>>;
 }) {
+  const { fontScale } = useWindowDimensions();
+  const words = useWholeWords(
+    TAB_LABEL,
+    Math.min(TAB_LABEL * fontScale, TAB_LABEL_MOST),
+    tabs.map(([label, glyph]) => say(label, glyph)),
+    { weight: 'semibold' },
+  );
+
   return (
     <View style={[styles.tabBar, { bottom }]} accessibilityRole="tablist">
-      {tabs.map(([label, glyph]) => {
+      {words.measure}
+      {tabs.map(([label, glyph], index) => {
         const on = label === at;
         const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
 
         return (
           <Pressable
             key={label}
+            ref={refs?.[label]}
             onPress={() => onTab(label)}
             style={[styles.tab, on && styles.tabOn]}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             accessibilityLabel={say(label, glyph)}
             testID={ids?.[label] ?? `tab-${label.toLowerCase()}`}
+            onLayout={
+              index === 0 ? (event) => words.room(event.nativeEvent.layout.width) : undefined
+            }
           >
             <Glyph name={glyph} size={22} ink={ink} />
             <Text
-              size={12}
+              size={TAB_LABEL}
               weight={on ? 'semibold' : 'medium'}
+              maxFontSizeMultiplier={words.maxFontSizeMultiplier}
               accessible={false}
               style={{ color: ink }}
             >
@@ -758,14 +882,17 @@ export function WhiteCapsule<T extends string>({
   tabs,
   onTab,
   at,
-  say = (tab) => tab,
+  say,
   ids,
+  labelSize,
 }: {
   tabs: readonly (readonly [T, GlyphName])[];
   onTab: (tab: T) => void;
   at: T;
-  say?: (tab: T, glyph: GlyphName) => string;
+  say: (tab: T, glyph: GlyphName) => string;
   ids?: Partial<Record<T, string>>;
+  /** The one size its labels are drawn at, where the row it sits in chooses it (sc-40401). */
+  labelSize?: number | undefined;
 }) {
   return (
     <View style={styles.whiteCapsule} accessibilityRole="tablist">
@@ -785,7 +912,14 @@ export function WhiteCapsule<T extends string>({
             testID={ids?.[label]}
           >
             <Glyph name={glyph} ink={ink} />
-            <Text size={15} weight="semibold" accessible={false} style={{ color: ink }}>
+            <Text
+              size={CAPSULE_LABEL}
+              weight="semibold"
+              maxFontSizeMultiplier={capsuleLabelMultiplier(labelSize)}
+              numberOfLines={labelSize == null ? undefined : 1}
+              accessible={false}
+              style={{ color: ink }}
+            >
               {say(label, glyph)}
             </Text>
           </Pressable>
@@ -818,6 +952,11 @@ export const PHONE_TAB_BAR = 64;
 /** How far the phone's tab bar floats above the screen's foot. */
 export function tabBarFoot(bottomInset: number): number {
   return Math.max(bottomInset - tokens.spaceXxs, tokens.spaceLg);
+}
+
+/** How far the phone's tab bar and its fade reach up from the screen's foot. */
+export function phoneTabBarClearance(bottomInset: number): number {
+  return tabBarFoot(bottomInset) + PHONE_TAB_BAR;
 }
 
 export function PhoneTabBar({
@@ -878,12 +1017,25 @@ const styles = StyleSheet.create({
   gapXl: { gap: 22 },
   glass: { flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
   glassFill: { backgroundColor: tokens.colorInkOnDark, opacity: 0.22 },
-  orgWide: { gap: tokens.spaceSm, paddingLeft: tokens.spaceXs, paddingRight: tokens.spaceLg },
+  orgFit: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
+  orgWide: { flexShrink: 1 },
+  orgGlass: {
+    flexShrink: 1,
+    gap: tokens.spaceSm,
+    paddingVertical: tokens.spaceXs,
+    paddingLeft: tokens.spaceSm,
+    paddingRight: tokens.spacePillEnd,
+  },
   orgCompact: { paddingHorizontal: 5 },
-  orgTile: {
-    backgroundColor: tokens.colorInkOnDark,
-    alignItems: 'center',
-    justifyContent: 'center',
+  tileRing: {
+    position: 'absolute',
+    top: -4,
+    end: -4,
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
+    borderWidth: 2,
+    borderColor: tokens.colorInkOnDark,
   },
   bell: { width: 40, justifyContent: 'center' },
   unread: {

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -227,6 +227,16 @@ describe('Guests, a guest beside the list (sc-3773)', () => {
     expect(
       within(column()).getByText('Companion · Held · comes only if their host accepts'),
     ).toBeDefined();
+  });
+
+  it('shows Can view only that replies closed, with no step', SLOW, async () => {
+    await guests('repliesClosedViewer');
+
+    expect(within(column()).getByText('Replies closed on Wed, Nov 4.')).toBeDefined();
+    expect(within(column()).queryByText(/Record a reply opens again/u)).toBeNull();
+    expect(
+      within(column()).queryByRole('button', { name: 'Let them change their reply' }),
+    ).toBeNull();
   });
 
   it('lets them change their reply once replies have closed', SLOW, async () => {
@@ -770,6 +780,128 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
       await within(column()).findByText('Invited by Folake Adeyemi, WhatsApp, Nov 3'),
     ).toBeDefined();
     expect(within(column()).getByRole('button', { name: 'Record a reply' })).toBeDefined();
+  });
+});
+
+describe('Guests, WhatsApp on a guest’s page (sc-3950)', () => {
+  const agreeButton = () =>
+    within(column()).getByRole('button', { name: 'The guest agreed to WhatsApp' });
+
+  it('refuses Save with nothing picked, then records how they agreed', SLOW, async () => {
+    await guests('whatsAppNone');
+
+    expect(within(column()).getByText('Has not agreed to WhatsApp')).toBeDefined();
+    fireEvent.click(agreeButton());
+
+    expect(
+      await within(column()).findByRole('heading', { name: 'Agreed to WhatsApp' }),
+    ).toBeDefined();
+    expect(
+      screen.getByText('For Kwame Mensah, on +44 7700 900412. It will show as recorded by you.'),
+    ).toBeDefined();
+
+    const group = screen.getByRole('radiogroup', { name: 'How?' });
+    const chips = within(group).getAllByRole('radio');
+
+    expect(chips.map((chip) => chip.closest('label')?.textContent)).toEqual([
+      'In person',
+      'By phone',
+      'In writing',
+    ]);
+    expect(chips.some((chip) => (chip as HTMLInputElement).checked)).toBe(false);
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+
+    expect(screen.getByText('Choose how they agreed.')).toBeDefined();
+    expect(group.getAttribute('aria-invalid')).toBe('true');
+    await waitFor(() => expect(document.activeElement).toBe(chips[0]), WAIT);
+
+    fireEvent.click(within(group).getByRole('radio', { name: 'By phone' }));
+
+    expect(screen.queryByText('Choose how they agreed.')).toBeNull();
+    expect(group.getAttribute('aria-invalid')).toBeNull();
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+
+    expect(
+      await within(column()).findByText(
+        'Agreed to WhatsApp by phone, recorded by Folake Adeyemi on Nov 3',
+        {},
+        WAIT,
+      ),
+    ).toBeDefined();
+    expect(screen.getByText('Saved')).toBeDefined();
+    expect(
+      within(column()).queryByRole('button', { name: 'The guest agreed to WhatsApp' }),
+    ).toBeNull();
+  });
+
+  it('leaves nothing changed on Cancel', SLOW, async () => {
+    await guests('whatsAppAgreePicked');
+
+    expect(screen.getByRole('radio', { name: 'In person' })).toHaveProperty('checked', true);
+    fireEvent.click(within(column()).getByRole('button', { name: 'Cancel' }));
+
+    expect(await within(column()).findByText('Has not agreed to WhatsApp')).toBeDefined();
+    expect(agreeButton()).toBeDefined();
+    expect(screen.queryByText('Saved')).toBeNull();
+  });
+
+  it('draws each state the spec names', SLOW, async () => {
+    await guests('whatsAppAgreeBlank');
+    expect(screen.getByText('Choose how they agreed.')).toBeDefined();
+    cleanup();
+
+    await guests('whatsAppNotSaved');
+    expect(screen.getByText('Not saved. Nothing was changed. Try again.')).toBeDefined();
+    expect(screen.getByRole('radio', { name: 'In person' })).toHaveProperty('checked', true);
+    cleanup();
+
+    await guests('whatsAppRecorded');
+    expect(
+      within(column()).getByText(
+        'Agreed to WhatsApp in person, recorded by Folake Adeyemi on Nov 3',
+      ),
+    ).toBeDefined();
+    cleanup();
+
+    await guests('whatsAppGuestAgreed');
+    expect(within(column()).getByText('Agreed to WhatsApp on Nov 2')).toBeDefined();
+    expect(
+      within(column()).queryByRole('button', { name: 'The guest agreed to WhatsApp' }),
+    ).toBeNull();
+    cleanup();
+
+    await guests('whatsAppOptedOut');
+    expect(within(column()).getByText('Unsubscribed from WhatsApp on Nov 1')).toBeDefined();
+    expect(within(column()).getByText('Only the guest can change this.')).toBeDefined();
+    expect(within(column()).getByText('+33 6 41 27 88 05')).toBeDefined();
+    expect(within(column()).queryByText('WhatsApp')).toBeNull();
+    expect(
+      within(column()).queryByRole('button', { name: 'The guest agreed to WhatsApp' }),
+    ).toBeNull();
+    cleanup();
+
+    await guests('whatsAppNoMobile');
+    expect(within(column()).getByRole('heading', { name: 'Inês Duarte' })).toBeDefined();
+    expect(within(column()).queryByText('WhatsApp')).toBeNull();
+  });
+
+  it('shows a view-only role neither the row nor the action', SLOW, async () => {
+    await guests('whatsAppViewer');
+
+    expect(within(column()).getByRole('heading', { name: 'Kwame Mensah' })).toBeDefined();
+    expect(within(column()).queryByText('+44 7700 900412')).toBeNull();
+    expect(within(column()).queryByText('WhatsApp')).toBeNull();
+    expect(within(column()).queryByText('Has not agreed to WhatsApp')).toBeNull();
+    cleanup();
+
+    await guests('guestViewer');
+
+    expect(within(column()).queryByText('WhatsApp')).toBeNull();
+    expect(
+      within(column()).queryByRole('button', { name: 'The guest agreed to WhatsApp' }),
+    ).toBeNull();
   });
 });
 

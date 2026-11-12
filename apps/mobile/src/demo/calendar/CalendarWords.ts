@@ -1,67 +1,16 @@
-/** The Calendar's words in the demo's English: main's `calendar.*` and `calendarFeed.*`, and the few the boards add. */
+/** The few words the boards add to main's `calendar.*` and `calendarFeed.*`, in the demo's English. */
 export const CW = {
-  title: 'Calendar',
-  previous: 'Previous',
-  next: 'Next',
-  today: 'Today',
-  month: 'Month',
-  agenda: 'Agenda',
-  view: 'View',
-  show: 'Show',
-  showAll: 'Events and milestones',
-  showEvents: 'Events only',
-  close: 'Close',
-  loading: 'Loading the calendar…',
-  failed: 'The calendar did not load. Check your connection, then try again. Nothing has changed.',
-  tryAgain: 'Try again',
-  emptyDay: 'Nothing on this day.',
-  event: 'Event',
-  subscribe: 'Subscribe in your calendar app',
-  feedIntro: (organisation: string) =>
-    `Events and milestones from ${organisation} show in Google Calendar, Apple Calendar or Outlook, and stay up to date when a date moves. Your calendar app checks for changes every few hours.`,
-  linkLabel: 'Your private link',
-  copy: 'Copy link',
-  copied: 'Copied',
-  copiedSaid: 'Link copied.',
-  copyRefused: 'Could not copy here. Press and hold the link to copy it.',
-  openInApp: 'Open in calendar app',
-  private:
-    'Keep this link to yourself. Anyone who has it can see these events’ names, times and venues.',
-  inTitle: 'What’s in it',
-  inFeed: [
-    'Each event’s name and status word',
-    'Its start and end, in its own time zone',
-    'The venue line',
-    'Milestone titles, with a link back to Soirely',
-  ],
-  outTitle: 'Never in it',
-  outFeed: ['Guest names', 'Contact details', 'Dietary notes', 'Amounts of money'],
-  access:
-    'It shows only what you can see in Soirely. If you leave the organisation or lose access, the link stops working.',
-  resetTitle: 'Shared it by mistake?',
-  resetBody: 'Reset the link and the old one stops working straight away.',
-  resetOpen: 'Reset link…',
-  confirmTitle: 'Reset your link?',
-  confirmBody:
-    'The current link stops working at once. Any calendar subscribed with it stops updating, and you’ll need to subscribe again with the new link.',
-  reset: 'Reset link',
-  keep: 'Keep this link',
-  kept: 'Link unchanged.',
-  newLink: 'New link made. The old one has stopped working, so subscribe again with this one.',
+  showNeedsYou: 'Only what needs you',
+  emptyNeedsDay: 'Nothing needs you on this day.',
+  overdue: 'Overdue',
   openApp: 'Your calendar app has its own design.',
 } as const;
 
 export const say = {
-  todayDay: (day: string) => `Today, ${day}`,
-  dayWithItems: (day: string, count: number) =>
-    count === 0 ? day : `${day}, ${count} ${count === 1 ? 'item' : 'items'}`,
-  choiceIn: (group: string, choice: string) => `${group}: ${choice}`,
-  more: (count: number) => `+${count} more`,
-  moreShort: (count: number) => `+${count}`,
-  timeInZone: (time: string, zone: string) => `${time} ${zone}`,
-  range: (from: string, to: string) => `${from} to ${to}`,
-  emptyMonth: (month: string) => `Nothing on the calendar in ${month}.`,
-  barStatusFirst: (status: string, name: string) => `${status} · ${name}`,
-  barStatus: (name: string, status: string) => `${name} · ${status}`,
+  emptyNeedsMonth: (month: string) => `Nothing needs you in ${month}.`,
+  needsRowLabel: (title: string, event: string, time: string) => `${title}, ${event}, ${time}`,
+  needsRowLabelOverdue: (title: string, event: string, time: string) =>
+    `${title}, ${event}, ${time}, overdue`,
+  timeThen: (time: string, word: string) => `${time} · ${word}`,
   calledOff: (name: string) => `${name} called off`,
 };

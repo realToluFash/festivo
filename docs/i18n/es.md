@@ -17,7 +17,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 | English                                | Spanish                               | Notes                                                                                                     |
 | -------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Settings                               | Configuración                         |                                                                                                           |
+| Settings                               | Configuración                         | Web only. The app says «Ajustes»: tab, title, ‹ control (sc-34869)                                        |
 | Organisation                           | Organización                          |                                                                                                           |
 | Sign in                                | Iniciar sesión                        |                                                                                                           |
 | Sign out                               | Cerrar sesión                         |                                                                                                           |
@@ -50,6 +50,25 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **11 nov. 2026. El número y su espera, en una línea** (QA, sc-38929, `web:membersScreen.card.waiting_*`, `mobile:membersScreen.card.waiting_*`). «2 en espera» lleva dos espacios de no separación: a 320 px la línea se cortaba entre «2 en» y «espera». Un número seguido de una locución corta que lo califica no se separa de ella.
+- **11 nov. 2026. Miembros en la web de escritorio, primero el resumen** (sc-38929 para sc-34200 y sc-30189, `web:membersScreen.card.*|waiting*|request*|role*|remove*|…`, `web:ownerClaim.copyPart|partCopied`). Donde el inglés es el de la app, la web repite `mobile:membersScreen.*` y `mobile:ownerClaim.*`. Nuevas: el título del diálogo de rol es «Rol de {{name}}»; «¿Quitar a {{name}} de {{organisation}}?» con «Quitar» como botón; al descartar una invitación, «No se enviará ninguna invitación.», que no concuerda con nadie; «Solicitud de {{name}}»; «Ir a General», sin «›».
+- **11 nov. 2026. Los días ocultos de la tarjeta de un evento** (sc-38573 para sc-30413, `web:events.moreDays_*`, `mobile:eventsScreen.moreDays_*`). La casilla «+N», solo para el lector de pantalla, dice «{{count, number}} días más», tras «Días del evento»; `_many` lleva «de», «1 000 000 de días más». La web y la app dicen lo mismo.
+- **11 nov. 2026. Responder a una solicitud para volver a entrar en la app** (sc-38005 para sc-30894, `mobile:membersScreen.card.toGetBackIn_*|toJoin_*`, `mobile:recoveryRequests.*`). `recoveryRequests.*` repite `web:recoveryRequests.*`. La segunda línea de la tarjeta cuenta personas con un verbo que concuerda: «2 piden volver a entrar · 1 pide unirse», con «pedir» para las dos, como el título «Pide desactivar…», y más corto que «solicitar» en el teléfono; `_many` sin «de», porque no hay sustantivo. «Cerrar» y «Enviando la respuesta…».
+- **11 nov. 2026. Miembros en la app, primero el resumen** (sc-37811 para sc-37693, `mobile:membersScreen.card.*|waiting*|whenWord.*|request.*|role*|makeOwner*|remove*`, `mobile:ownerClaim.*`). "Waiting" es «En espera», también en el recuento, «3 personas · 1 en espera», invariable; `_many` lleva «de» solo ante el nombre, «1 000 000 de personas», no ante «en espera». "Former" es «Antiguos», el filtro: «Aparece en Antiguos.». Un cambio de rol «se aplica en cuanto vuelva a usar Soirely», como `removeBody`, y "Nobody is signed out" es «No se cierra la sesión de nadie.». "Make owner" es «Dar el rol Propietario». `whenWord.*` va bajo la fecha, así que es una etiqueta: «Fecha de la solicitud», «Fecha de salida». `copyNamed` es «Copiar el campo {{label}}», que no concuerda con Tipo, Nombre ni Valor. `stopAskBody` repite `stopBody`, y `theirsUnfound`, `pausedUnfound`.
+- **10 nov. 2026. Ninguna hora del cliente lleva artículo** (sc-37178, web y app: `offline.asOf*`, los bloqueos `*.limitedBody`, `recovery.limitedLine`, `requestToJoin.limited*`, `signIn.locked*`, `twoFactor.pausedBody|tryAgainAt`, `passwordCard.pausedBody`, `devices.dayAtTime|everywhere*`, `domainJoining.asked`). Los clientes solo pasan `{{time}}`, sin `{{hour}}`, y «a las 01:30» falla a la 1:00. Una frase dice «Inténtelo de nuevo a partir de esta hora: {{time}}.», con «a partir de», que es lo que significa el límite; con día, «a partir de esta fecha y hora: {{day}}, {{time}}». Un botón desactivado es «Reintentar · {{time}}», y una pausa, «en pausa hasta esta hora: {{time}}». Una fecha y su hora se unen con coma: «{{day}}, {{time}}», «actualizado: {{time}}». Rechazado «a la hora {{time}}», que no se dice. Lo que llega del API con `{hour}` sigue con el artículo concordado (25 Oct).
+- **10 Nov 2026. El Calendario en la web de escritorio** (sc-36920 para sc-30413, `web:calendar.moreItems_*|chosen|barStatus|barLabel|markLabel`). La pastilla de la casilla del día es «+{{count, number}} más», invariable y sin «de» en `_many`, porque no lleva sustantivo. `chosen`, `barStatus`, `barLabel` y `markLabel` son solo puntuación y huecos, y quedan como en inglés. En la app, `mobile:calendar.moreItems_*` dice lo mismo y `retry` es «Reintentar».
+- **10 nov. 2026. La tarjeta de un evento y su página en la web** (sc-36898 para sc-30413, `web:events.calledOff|today|itsDays|dayOf|nextUp`, `web:eventPage.*`). La etiqueta de fase es «Cancelado», en masculino con «evento»; «Lo próximo: {{title}}» como `timeline.nextUp`. El nombre de las casillas de días para el lector de pantalla es «Días del evento», no «Sus días», que con _usted_ se leería como los días de la persona. La miga es «Ruta de navegación», como `seating.crumb`; «Horas en {{timeZone}}», como `eventDuplicate`. Los rótulos de la página toman las palabras de la app (sc-36555).
+- **10 nov. 2026. Crear una organización en la web de escritorio** (sc-37138 para sc-30412, `web:createOrganisation.*`). Las preguntas, «De este dispositivo», «Todos los países», «Ninguna por ahora» y la hoja de descartar son las de la app (sc-36766). Los botones son «Atrás» / «Continuar», como `web:onboarding`, y la búsqueda «Buscar países», como `generalDesk`. Lo que oye el lector de pantalla al elegir un país sigue el patrón de la tarjeta, etiqueta y valor con coma: «Moneda, {{currency}}. Zona horaria, de este dispositivo, {{zone}}.»
+- **10 nov. 2026. Crear una organización en la app, los tres pasos** (sc-36766 para sc-30412, `mobile:createOrganisation.whatTitle|whereTitle|readyTitle|fromDevice|allCountries|noneYet|discard*`). Cada paso es una pregunta corta sobre la organización, sin dirigirse a la persona: «¿Cómo se llama?», «¿Dónde tiene su sede?», «¿Todo listo para crearla?». «De este dispositivo» no concuerda con nada, porque también lo lee el lector de pantalla tras «Zona horaria». «Ninguna por ahora» concuerda con la moneda. La hoja al salir es «¿Descartar esta organización?» / «Descartar», como `orgGeneral`.
+- **10 Nov 2026. La página de un evento en la app** (sc-36555 para sc-30413, `mobile:eventPage.datesLine*|datesLocked|venueLine|noHosts*|type|currency*|nameAndCover|eventName|cover*|defaultCover|yourPhoto|pauseLine|callOffLine|endLine`). Cada línea bajo un título es «Etiqueta · detalle», con la etiqueta de la web: «Fechas», «Lugar», «Anfitriones», «Portada». `datesLocked` es `web:eventEdit.scheduleLocked` tras «Fechas · », y `noHostsLine` es `eventHosts.none` sin su primera frase. `pauseLine`, `callOffLine` y `endLine` reúnen en una sola línea lo que decían `eventPause.body|nothingLost` y `eventEnd.callOffBody|endBody|final`, con las mismas palabras. `_many` lleva «de», «{{count, number}} de días».
+- **10 Nov 2026. Hoy en la web de escritorio** (sc-36532 para sc-30413, `web:today.*`, `mobile:todayScreen.startsTodayAt`). Las claves de `web:today.*` dicen lo mismo que `mobile:todayScreen.*`, palabra por palabra; si cambia una, cambia la otra. La línea del evento que empieza más tarde hoy es «{{name}} empieza hoy · {{time}}.», con la hora tras «·», sin «a las». La etiqueta del anillo de llegadas, solo para el lector de pantalla, es «Llegadas: {{arrived}} de {{expected}}», un sustantivo que no concuerda en número con la cifra.
+- **10 Nov 2026. El selector de organizaciones de la app** (sc-36382 para sc-30412, `mobile:switcher.asks|canAsk|search|clearSearch|noMatch|matches_*`, `invitations.joining|declining`). La pregunta es «¿Dónde trabaja?», corta para el título del teléfono. Pedir unirse es «Puede solicitar unirse», el «solicitar unirse» de domain joining. La búsqueda sigue la regla «Buscar» y el plural, «Buscar organizaciones»; sin resultados, «Ninguna organización coincide con «{{text}}».», como `timeZone.noneMatch`. Mientras se envía la respuesta, «Uniéndose…», como `web:join.joining`, y «Rechazando…».
+- **10 nov. 2026. Buscar y filtrar Eventos** (sc-37100 para sc-30302, `web:eventsSearch.*`, `mobile:eventsSearch.*`). Filter es el sustantivo «Filtros», no «Filtrar», porque también nombra el menú: «Volver a Filtros», «Filtros: Todos». Host es «Anfitriones»; "Anyone" y "All" son «Todos». La búsqueda es «Buscar eventos»; sin resultados, «Ningún evento coincide», y la línea «Ha buscado «{{q}}» y ha filtrado por {{filters}}.». Las fechas: «Desde» y «Hasta», «Entre fechas…».
+- **10 Nov 2026. El selector de organizaciones de la web** (sc-36903 para sc-30412, `web:switcher.*`). La web repite palabra por palabra `mobile:switcher.*`: quien es miembro lee un solo selector en los dos. La fila actual, para el lector de pantalla, termina en «Actual», como `switcher.current`.
+- **10 Nov 2026. El interruptor del enlace de solicitud** (sc-36700, `web:requestLink.on|off`). En General, el interruptor está en la fila «Enlace de solicitud» y enciende y apaga el enlace, así que concuerda con él: «Activado» / «Desactivado». Sustituye a «Activadas» / «Desactivadas» del 21 Oct, que concordaba con «Solicitudes».
+- **9 Nov 2026. La página Organización de la app** (sc-36126 para sc-30412, `mobile:orgGeneral.*`, `ownership.*`, `companyDomains.*`, `requestLink.lead`). La tarjeta es «Datos», su enlace «Editar datos» y la hoja «Datos», como la tarjeta, que también es la etiqueta de volver de sus selectores («Datos de la organización» se cortaba en el teléfono, QA 10 nov.). La hoja de transferir es «Ceder la propiedad» y su botón «Ceder», porque «Transferir la propiedad» se cortaba; la web, con sitio, puede seguir con «Transferir». Un solo verbo por hoja (QA, 12 nov.): en la app, «Ceder a» y «Elija a quién ceder la propiedad»; en la web, `passwordWhy` dice «transferir». «Defaults for new events» es «Valores para eventos nuevos». Lo que se anuncia tras transferir no concuerda con nadie: «{{name}} tiene ahora el rol Propietario» y «Ahora usted tiene el rol Administrador», «a las dos cuentas», nunca «a ambos». El dominio también verificado por sc-560 lleva «Verificado».
+- **9 Nov 2026. Las normas de inicio de sesión en la app: su situación y qué ha cambiado** (`mobile:signInRules.stand.*`, `readIntro`, `settings.personLabel*`, sc-34925 para sc-30412). La app repite `web:signInRules.*` palabra por palabra; si cambia una, cambia la otra. Las áreas en espera (`stand.area.*`) van sin artículo, «miembros», «facturación», «seguridad», tras «Los cambios en {{areas}}», como en la web, y se unen con «y». La tarjeta de Ajustes, para el lector de pantalla, es «Su cuenta. {{name}}, {{email}}, {{role}} en {{organisation}}».
+- **9 Nov 2026. Las notificaciones en la web de escritorio** (sc-35791 para sc-30411, `web:notificationSettings.*`). Las claves compartidas dicen lo mismo que `mobile:notificationSettings.*`; donde la app dice «dispositivo», la web dice «navegador»: «Bloqueadas en este navegador». La hoja `allow.*` cita las etiquetas de Chrome en España entre «»: «Notificaciones», «Permitir»; la pestaña es «pestaña» y Done, «Listo».
 - **9 Nov 2026. La página Configuración de notificaciones de la app** (sc-34901 para
   sc-30411, `mobile:notificationSettings.*`). La cabecera lleva verbo, «Recibe notificaciones
   push y por correo», «Solo recibe notificaciones push»; las filas no: «Push y correo», «Solo
@@ -59,8 +78,16 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   en este dispositivo» concuerda con las notificaciones push del interruptor. La nota de Cuenta
   y seguridad pierde «El correo electrónico no se puede desactivar.», que ahora es
   `locked.email`, bajo el interruptor.
+- **9 Nov 2026. La página Seguridad en la web de escritorio** (sc-35456 para sc-30411, `web:security.*`). Las claves compartidas dicen lo mismo que `mobile:security.*`. `setupTitle` es «Activar la verificación en dos pasos» aunque el inglés diga aún "Set up", como el 21 Oct. `sendAgain` es «Enviarlo de nuevo», como `mobile:recovery.sendAgain`, y `setupKey`, solo para el lector de pantalla, «Clave de configuración», la «clave» de `twoFactorCard.cantScan`.
 - **9 Nov 2026. La página Seguridad de la app** (sc-34792 para sc-30411, `mobile:security.*`). Sigue los términos de la web: «Vinculada · {{address}}», «Cerrar las demás sesiones», «Listo» para Done, como `countryPicker.close`. `expires` es «Caduca el {{day}}», que vale para todos los días de la semana. `_many` lleva «de», como el 25 Oct.
+- **9 Nov 2026. «Support» es siempre «el servicio de asistencia de Soirely», nunca «el soporte»** (sc-33828, de qa2; `lostTwoFactor.nobodyTitle`, `nobodyIntro`, `twoFactor.turnedDownIntro`, `recovery.nobody_to_approve`, en la app, la web y la API). El título y la introducción decían «el soporte de Soirely» y el botón `emailSoirely`, «servicio de asistencia»: ahora la pantalla nombra el servicio con una sola palabra, y el botón sigue sin «de Soirely» porque el título ya lo nombra.
 - **9 Nov 2026. La página de enlace enviado en la web y la línea de quien lo ha perdido todo** (sc-33788 para sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). `nothingThere` sigue a la app, «¿No le ha llegado nada?…», y el enlace es «envíelo de nuevo». `sentAgain` es «Se lo hemos enviado de nuevo.», sin la segunda frase de la app: la página ya la explica. En `lostBothIntro`, «después de que inicie sesión», sin concordar con la persona, y «el servicio de asistencia de Soirely», del glosario.
+- **9 Nov 2026. The app names Settings one way** (sc-34869, from qa2 on #34621). In the app,
+  the Settings section is «Ajustes» everywhere: the tab, the hub title (`settings.title`, also
+  the ‹ control's label on every settings page), «Abrir Ajustes» on Home and the path «Ajustes >
+  General». A settings page that said «‹ Configuración» above a tab bar saying «Ajustes» named
+  one place two ways. The web keeps «Configuración», where the sidebar has room, and named
+  sub-screens stay «Configuración de la cuenta», «Configuración de notificaciones».
 - **8 Nov 2026. Su cuenta en la app** (sc-34175 para sc-30411, `mobile:account.*`,
   `contacts.promoting`, `removing`). La sección es «Sobre usted». Las líneas de cada fila no
   tienen sujeto, así que nada concuerda con dirección (f.) ni número (m.): «Principal · para
@@ -86,8 +113,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   cerrado la sesión en sus otros dispositivos.», con «cerrar sesión» del glosario.
 - **8 Nov 2026. La pantalla Hoy, a 360 de ancho** (sc-31788, tras #32963). La pestaña
   Settings del teléfono es «Ajustes», la palabra del iPhone y de Android en España, porque
-  «Configuración» no cabe en un cuarto de 360; el título de la pantalla y `frame.settings`
-  siguen siendo «Configuración». La etiqueta de cuenta atrás de las tarjetas es «En 2 días»
+  «Configuración» no cabe en un cuarto de 360. Desde el 9 Nov (sc-34869) el título y el control ‹
+  también son «Ajustes». La etiqueta de cuenta atrás de las tarjetas es «En 2 días»
   (`todayScreen.inDaysCapital`), para que quepa junto a «Última semana»; dentro de una frase
   sigue «dentro de 2 días». «Todo el día» no cabe en la columna de la hora: pedidas al dev dos
   líneas, nunca «Todo el d…».
@@ -129,7 +156,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   separan, «escaleta» es el término del oficio.
 
 - **7 Nov 2026. Las Personas de un evento, y «Admin» en cada mensaje** (`web:eventPeople.*`, `eventNav.people`, `membersScreen.eventsFromPeople`, `ownerMakesOwner`, sc-30138 para sc-29915). La página es «Personas». Los roles del evento son «Responsable», «Puede editar», «Puede ver» y «Puede registrar llegadas» («el registro de llegada», como `eventPause`). Lo que se anuncia empieza por «Ahora», «Ahora {{name}} es responsable de este evento.», con «responsable», que no marca género. La línea de quienes ya ven todo nombra el rol como etiqueta tras dos puntos, «ve todos los eventos por el rol que tiene en {{organisation}}: Propietario y Administrador», así que `managerRole.*` es el nombre del rol en todas las formas y nada concuerda con un género. Un rol dentro de una frase de error va entre comillas, «sigue siendo «Puede ver»». El inglés "owners and admins" es «quienes tienen el rol Propietario o Administrador», y en un título «los roles Propietario y Administrador»; "an admin of" sigue siendo «quien administre». Quien sale del evento es «Esta persona», nunca un «Perderá» que se lee como usted.
+- **10 nov. 2026. «rol» también en `orgGeneral.readOnly`** (web y app, QA de sc-30138). La frase decía «la función Propietario o Administrador»; ahora es «Su rol, {{role}}, …» y «quienes tienen el rol Propietario o Administrador», como el resto. «Su función» queda solo como etiqueta del selector de organización, nunca dentro de una frase que también nombra un rol.
 - **7 Nov 2026. Lo que puede hacer cada rol, en Miembros** (`web:membersScreen.roleMeans.*`, sc-30138). Las frases no tienen sujeto, como `owner`. Los eventos de un Miembro son «los eventos que se le asignan», con «le», que no marca género; nunca «a los que se le añade» ni «invitado». El mismo giro sirve para la app.
+- **10 Nov 2026. Las Personas de un evento en la app** (`mobile:eventPeople.failed*|discard*|addFailed*`, sc-30138 para sc-29914). Miembros, Reglas de inicio de sesión y `discardTitle|discard` toman el texto de la web. El error de carga es el `failed` de la web partido en título y línea. Lo que sigue marcado es «cuya casilla sigue marcada», que no marca género con un nombre; con varias, «las personas que siguen marcadas». El botón es «Añadir», y se «vuelve a pulsar». Descartar sigue a `keepEditing`: «Seguir editando», y «No se añadirá a nadie a este evento.»
 - **7 Nov 2026. Las otras formas de entrar en la app** (`mobile:steps.invited*`, `join`,
   `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119). "You’re
   invited" es «Tiene una invitación», para que nada concuerde con el género de quien lee.
@@ -503,7 +532,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   "You will be its owner" is «Usted tendrá la función Propietario», the role and not
   «su propietario», which assumes a man. The rate limit says what happened, «Por ahora no se
   pueden crear más organizaciones», not «Demasiadas organizaciones nuevas», which reads as a
-  fragment. A path in Settings is «Configuración > General»; «cambiarlas» agrees with moneda,
+  fragment. A path in Settings is «Configuración > General» on the web and «Ajustes > General» in the app (sc-34869); «cambiarlas» agrees with moneda,
   zona horaria and dirección, all feminine.
 
 - **21 Oct 2026. The organisation's language (sc-3311, `orgGeneral.language*`, web and app).**
@@ -604,7 +633,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   among them; "Keep it/them signed in" is «Mantener la sesión» / «Mantener las sesiones».
   "Nothing was signed out" is «No se ha cerrado ninguna sesión», the perfect because it has
   just happened; the result lines keep the preterite of `passwordCard.done_*`. A disabled
-  "Try again at {{time}}" button is «Reintentar a las {{time}}», short where a sentence would
+  "Try again at {{time}}" button is «Reintentar · {{time}}» (since sc-37178), short where a sentence would
   say «Inténtelo de nuevo» (sc-1193).
 
 - **17 Oct 2026. A picker's search field is «Buscar» and the plural noun.** «Buscar
@@ -627,7 +656,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (`home.signedIn`, `home.signedInTo`: «Ha iniciado sesión en {{name}}»). The English
   contraction is warmth; Spanish carries it in the plain perfect, still _usted_, and «en»
   needs no agreement with the organisation's name. "Open Settings" is «Abrir
-  Configuración», with the capital because it names the tab (sc-1420).
+  Ajustes» (sc-34869; was «Abrir Configuración», sc-1420), with the capital because it names the tab.
 
 - **17 Oct 2026. A device's state, not its timing.** Signed-out devices are described as
   done: «Se cerró la sesión en sus otros dispositivos.» with no delay or "hasta 15 minutos",
@@ -718,8 +747,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   la lista de eventos, en masculino con «evento»: Borrador, Publicado, En pausa, Finalizado,
   Cancelado, Eliminado. "Dietary notes" es «Las notas sobre alimentación». El límite concuerda el
   artículo con la hora, como `limits.tries`.
-- **La banda sin conexión** (sc-22586): «Sin conexión · actualizado a las {{time}}», y «… el {{day}}
-  a las {{time}}» cuando la carga fue otro día. «Actualizado» dice de cuándo es lo que se ve, en
+- **La banda sin conexión** (sc-22586, sin artículo desde sc-37178): «Sin conexión · actualizado: {{time}}», y «…
+  actualizado: {{day}}, {{time}}» cuando la carga fue otro día. «Actualizado» dice de cuándo es lo que se ve, en
   vez de calcar «as of». Mientras se reintenta, «Actualizando…», como en la app.
 - **El marco de las páginas sin sesión** (sc-29037): "New to Soirely?" es «¿Aún no tiene cuenta?»,
   antes de «Crear una cuenta»; «¿Es nuevo…?» concuerda con un género. «© {{year}} Soirely» queda
@@ -735,3 +764,26 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   negativa de la API dice «combinaciones de colores». Los ocho nombres: Violeta, Cobalto, Jardín,
   Cítricos, Frutos rojos, Gala (Black tie, el código de vestimenta; «Etiqueta» se leería como
   rótulo), Sorbete y Terracota. Sin conexión es «porque no tiene conexión», como la banda.
+- **9 Nov 2026. Los títulos de las hojas de añadir en la app** (sc-35661, `mobile:contacts.addEmail`,
+  `addPhone`). La misma clave es el enlace junto al título de la sección y el título de la hoja:
+  «Añadir correo» y «Añadir número», sin artículo, como en los ajustes de Android; la sección ya
+  dice de qué. Rechazado «Añadir una dirección de correo electrónico», que se cortaba en un móvil.
+- **10 Nov 2026. El título de la hoja de verificar el número en la app** (sc-35661,
+  `mobile:verifyPhone.title`). «Revise su móvil», como «Revise su correo»: el mismo título sirve
+  al SMS y a WhatsApp, así que no nombra ninguno. Caben unos 16 caracteres entre Cancelar y
+  Verificar en un Android de 360 dp; «Revise sus mensajes» se cortaba.
+- **10 Nov 2026. El título de la hoja de activar la verificación en dos pasos en la app** (sc-34792,
+  `mobile:security.setupTitle`). «Doble factor», el nombre corto que se usa en España, y el botón de
+  la derecha ya dice «Activar». Caben unos 16 caracteres entre Cancelar y Activar en un Android de
+  360 dp: «Verificación en 2 pasos» (9 Nov) se cortaba en «Verificación en 2 p…», y antes «Activar la
+  verificación en dos pasos». Solo en esta cabecera; el texto corrido sigue diciendo «verificación
+  en dos pasos». `web:security.setupTitle` sigue
+  completo, porque el escritorio tiene sitio.
+- **11 Nov 2026. «Otros» va antes del número** (sc-35456, `everywhereLine_*`, `everywhereBody_*`,
+  `everywhereDone_*`, `password.done_*`, web y app). «sus otros {{count}} dispositivos», como
+  «mis otros dos hermanos»; «sus 2 otros dispositivos» suena traducido (QA, 11 Nov). `_many`:
+  «sus otros {{count}} de dispositivos». Vale para cualquier cuenta con «otros».
+- **11 Nov 2026. «Añadir a mi aplicación de autenticación»** (sc-40162, `mobile:twoFactorCard.addToApp`).
+  El botón habla como el miembro, «mi», igual que «He guardado estos códigos…»; el resto del paso
+  dice «su aplicación de autenticación». «Añadir», como `phoneSetupTitle`, nunca «Agregar». En el
+  teléfono puede ocupar dos líneas centradas; en el iPad, una.

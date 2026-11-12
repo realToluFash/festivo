@@ -343,41 +343,6 @@ span {
 
 .shell-sidebar .today-side {
   width: auto;
-
-  /* A scrolling sidebar clips the switcher's menu, which is wider than it (sc-30410). */
-  overflow: visible;
-}
-
-.shell-nav {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceHair);
-}
-
-/* 44px on the desktop too: a laptop has a touchscreen, and a nav item is the
-   most-pressed thing on the page. */
-.shell-nav a {
-  display: flex;
-  align-items: center;
-  min-height: var(--sizeHit);
-  padding: 0 var(--spaceMd);
-  border: 1px solid transparent;
-  border-radius: var(--radiusNav);
-  color: var(--colorInk);
-  text-decoration: none;
-}
-
-.shell-nav a:hover {
-  background: var(--colorInset);
-}
-
-/* Selected is a tint with green ink, not a solid green fill: the fill is for
-   the one primary action on a screen, and a sidebar has no primary action. */
-.shell-nav a.active {
-  background: var(--colorAccentTint);
-  border-color: var(--colorAccentTintBorder);
-  color: var(--colorAccentText);
-  font-weight: 600;
 }
 
 .shell-menu-button {
@@ -777,8 +742,7 @@ span {
     height: auto;
   }
 
-  .shell-sidebar .today-places,
-  .shell-nav {
+  .shell-sidebar .today-places {
     flex-flow: row wrap;
   }
 
@@ -786,7 +750,7 @@ span {
     width: auto;
   }
 
-  .shell-sidebar .today-side-gap {
+  .shell-sidebar :is(.today-side-gap, .today-side-events) {
     display: none;
   }
 
@@ -894,15 +858,6 @@ span {
   display: flex;
   align-items: center;
   min-height: var(--sizeHit);
-}
-
-.shell-menu .shell-nav {
-  flex-direction: column;
-}
-
-.shell-menu .shell-nav a {
-  min-height: var(--sizeHitPhonePrimary);
-  font-size: 16px;
 }
 
 .shell-menu:focus {
@@ -1315,8 +1270,8 @@ span {
   padding: var(--shellBlock) var(--shellInline);
 }
 
-/* The reading column stops at 680, so a wider window leaves the room at the right. */
-.settings-desk .settings-desk-page > * > :not(.account-header) {
+/* The reading column stops at 680, so a wider window leaves the room at the right. A column cap leaves out .dialog and .dialog-scrim, which are fixed to the window. */
+.settings-desk .settings-desk-page > * > :not(.account-header, .toast, .dialog, .dialog-scrim) {
   max-width: 42.5rem;
 }
 
@@ -1341,7 +1296,7 @@ span {
   gap: var(--spaceXxl);
 }
 
-.account > :not(.account-header) {
+.account > :not(.account-header, .dialog, .dialog-scrim) {
   max-width: 47.5rem;
 }
 
@@ -1684,30 +1639,6 @@ span {
   color: var(--colorInkSecondary);
 }
 
-.request-state {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceSm);
-  margin: 0;
-  font: var(--typeButton);
-}
-
-.request-state-attention {
-  color: var(--colorAttentionText);
-}
-
-.request-state-done {
-  color: var(--colorAccentText);
-}
-
-.request-state-broken {
-  color: var(--colorBrokenText);
-}
-
-.request-state-ended {
-  color: var(--colorInkSecondary);
-}
-
 .mark-ended {
   border: var(--borderMark) var(--colorInkSecondary);
   color: var(--colorInkSecondary);
@@ -1715,32 +1646,6 @@ span {
 
 .button-danger {
   color: var(--colorInk);
-}
-
-.request-card-head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXxs);
-  padding-bottom: var(--spaceMd);
-  border-bottom: var(--borderInset);
-}
-
-.request {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXs);
-}
-
-.request h3 {
-  margin: 0;
-}
-
-.request-card-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXs);
-  padding-top: var(--spaceMd);
-  border-top: var(--borderInset);
 }
 
 /* ── A code from an email ─────────────────────────────────────────────────── */
@@ -2079,94 +1984,6 @@ span {
   color: var(--colorInkSecondary);
 }
 
-.org-switcher-menu {
-  position: absolute;
-  top: calc(100% + var(--spaceSm));
-  left: 0;
-  z-index: 5;
-  display: flex;
-  flex-direction: column;
-  width: max(100%, 22rem);
-  max-width: calc(100vw - 2 * var(--spaceLg));
-  padding: var(--spaceSm) 0;
-  background: var(--colorCard);
-  border: var(--borderCard);
-  border-radius: var(--radiusCardDesktop);
-  box-shadow: var(--shadowDialog);
-  animation: rise-in var(--motionBase) var(--motionEase);
-}
-
-.org-switcher-menu ul {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.org-switcher-heading {
-  margin: 0;
-  padding: var(--spaceMd) var(--spaceXl) var(--spaceXs);
-  font: var(--typeLabel);
-  letter-spacing: var(--typeLabelTracking);
-  text-transform: uppercase;
-  color: var(--colorInkSecondary);
-}
-
-.org-switcher-option {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceLg);
-  width: 100%;
-  min-height: var(--sizeListRow);
-  padding: var(--spaceXs) var(--spaceXl);
-  border: 0;
-  background: var(--colorCard);
-  color: var(--colorInk);
-  text-align: left;
-  cursor: pointer;
-}
-
-.org-switcher-option:hover,
-.org-switcher-option-current {
-  background: var(--colorInset);
-}
-
-/* The current row differs in fill and in weight, never by colour alone (1.4.1). */
-.org-switcher-option:not(.org-switcher-option-current) .org-name {
-  font-weight: 500;
-}
-
-.org-switcher-current {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: var(--spaceXs);
-  font: var(--typeButton);
-  color: var(--colorAccentText);
-}
-
-.org-switcher-ring {
-  flex: none;
-  width: var(--spaceMd);
-  height: var(--spaceMd);
-  box-sizing: border-box;
-  border: 2px solid var(--colorInkSecondary);
-  border-radius: var(--radiusPill);
-}
-
-.org-switcher-invitations {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceSm);
-  min-width: 0;
-  margin: var(--spaceXs) var(--spaceXl) var(--spaceSm);
-}
-
-.org-switcher-invitations .org-switcher-heading {
-  padding: var(--spaceXs) 0 0;
-}
-
 .org-tile-invited {
   box-sizing: border-box;
   border: var(--borderMark) var(--colorInkTertiary);
@@ -2292,20 +2109,6 @@ span {
   gap: var(--spaceSm);
 }
 
-.no-organisation-start {
-  padding-top: var(--spaceMd);
-  border-top: var(--borderDivider);
-}
-
-.no-organisation-start .field,
-.no-organisation-start .notice {
-  max-width: 27.5rem;
-}
-
-.no-organisation-start .button {
-  align-self: flex-start;
-}
-
 .no-organisation-footnote {
   justify-content: space-between;
 }
@@ -2316,49 +2119,6 @@ span {
   letter-spacing: var(--typeLabelTracking);
   text-transform: uppercase;
   color: var(--colorInkSecondary);
-}
-
-.org-switcher-note {
-  margin: 0;
-  padding: var(--spaceSm) var(--spaceXl) var(--spaceXs);
-  border-top: var(--borderInset);
-  font: var(--typeSmall);
-  color: var(--colorInkSecondary);
-}
-
-.org-switcher-create {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceLg);
-  width: 100%;
-  min-height: var(--sizeHitPhonePrimary);
-  margin-top: var(--spaceXs);
-  padding: var(--spaceXs) var(--spaceXl);
-  border: 0;
-  border-top: var(--borderInset);
-  background: var(--colorCard);
-  color: var(--colorAccentText);
-  font: var(--typeButton);
-  text-align: left;
-  cursor: pointer;
-}
-
-.org-switcher-create:hover {
-  background: var(--colorInset);
-}
-
-.org-tile-create {
-  box-sizing: border-box;
-  border: var(--borderMark) var(--colorAccentTintBorder);
-  border-style: dashed;
-  background: var(--colorCard);
-}
-
-.org-tile-create svg {
-  fill: none;
-  stroke: var(--colorAccentText);
-  stroke-width: 2.2;
-  stroke-linecap: round;
 }
 
 /* A dialog over the whole shell: centred on a desk, a sheet at phone width. */
@@ -2507,7 +2267,6 @@ span {
 
 @media (prefers-reduced-motion: reduce) {
   .dialog,
-  .org-switcher-menu,
   #content[data-enter] {
     animation-name: fade-in;
     animation-duration: var(--motionBase);
@@ -3587,6 +3346,11 @@ span {
   }
 }
 
+.actions-pair.is-row {
+  flex-direction: row;
+  align-items: center;
+}
+
 /* ── An invitation to join ────────────────────────────────────────────────── */
 
 .join-org {
@@ -3612,42 +3376,7 @@ span {
 
 /* ── Settings > Members ───────────────────────────────────────────────────── */
 
-.members {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceLg);
-}
-
-.members-head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceSm);
-  align-items: flex-start;
-}
-
-@media (width > 40rem) {
-  .members-head {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    column-gap: var(--spaceLg);
-    align-items: center;
-  }
-
-  .members-head > .button {
-    grid-area: 1 / 2 / span 2;
-  }
-}
-
-.members-head h1,
-.members h1 {
-  margin: 0;
-}
-
-.members-back {
-  align-self: flex-start;
-}
-
-/* The banner while an organisation has no active Owner (sc-6640): wraps rather than truncates at every width. */
+/* Who is becoming the owner, on the paused screen (sc-6640): wraps rather than truncates at every width. */
 .owner-claim {
   display: flex;
   flex-direction: column;
@@ -3666,48 +3395,12 @@ span {
   gap: var(--spaceSm);
 }
 
-.owner-claim-skeleton {
-  min-height: calc(var(--sizeHit) * 2);
-  background: var(--colorInset);
-}
-
 .mark-waiting {
   border: var(--borderMark) var(--colorInkSecondary);
   color: var(--colorInkSecondary);
 }
 
-.owner-claim-record {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceSm);
-  margin: 0;
-  padding: var(--spaceLg);
-  background: var(--colorInset);
-  border: var(--borderInset);
-  border-radius: var(--radiusInset);
-}
-
-.owner-claim-record-row dt {
-  color: var(--colorInkSecondary);
-}
-
-.owner-claim-record-row dd {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceSm);
-  margin: 0;
-}
-
-.owner-claim-record-row code {
-  flex: 1;
-  min-width: 0;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
-  word-break: break-all;
-}
-
-/* Withdraw your claim? (sc-8204): the scrim is not a way out, and the sheet stacks its buttons. */
+/* The scrim is not a way out. */
 .dialog-scrim[aria-hidden='true'] {
   cursor: default;
 }
@@ -3723,22 +3416,6 @@ span {
   background: transparent;
   color: var(--colorInkSecondary);
   cursor: pointer;
-}
-
-.owner-claim-withdraw .dialog-actions {
-  justify-content: flex-start;
-}
-
-@media (width <= 40rem) {
-  .owner-claim-withdraw {
-    border-radius: var(--radiusSheet) var(--radiusSheet) 0 0;
-  }
-}
-
-.members-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spaceSm);
 }
 
 .chip {
@@ -3782,60 +3459,9 @@ button.members-row {
   cursor: pointer;
 }
 
-.members-row-text,
-.members-role-text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--spaceXxs);
-  min-width: 0;
-}
-
 .members-row-name {
   font-weight: 600;
   overflow-wrap: anywhere;
-}
-
-.members-row-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceXs) var(--spaceSm);
-}
-
-/* The desktop board's status column: the chip leaves the line under the name for a column of its own. */
-@media (width > 40rem) {
-  .members-list .members-row {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) 15rem auto;
-    column-gap: var(--spaceMd);
-  }
-
-  .members-list .members-row-text,
-  .members-list .members-row-meta {
-    display: contents;
-  }
-
-  .members-list .members-row-name {
-    grid-area: 1 / 2;
-  }
-
-  .members-list .members-row-meta > .muted {
-    grid-area: 2 / 2;
-  }
-
-  .members-list .status-chip {
-    grid-area: 1 / 3 / span 2;
-    justify-self: start;
-  }
-
-  .members-list .person-tile {
-    grid-area: 1 / 1 / span 2;
-  }
-
-  .members-list .members-row > [aria-hidden='true']:last-child {
-    grid-area: 1 / 4 / span 2;
-  }
 }
 
 /* A person's initials: the neutral tile, as the green one is the organisation's alone (sc-23172). */
@@ -3850,44 +3476,6 @@ button.members-row {
   background: var(--colorNeutralFill);
   color: var(--colorInkSecondary);
   font: var(--typeButton);
-}
-
-.members-empty,
-.members-invitation {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXs);
-  align-items: flex-start;
-  padding: var(--spaceSm) 0;
-}
-
-.members-invitation-foot {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spaceMd);
-  align-items: center;
-}
-
-.members-person {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceMd);
-}
-
-.members-history {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceSm);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.members-history li {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: var(--spaceXs) var(--spaceMd);
 }
 
 .members-roles {
@@ -3906,18 +3494,6 @@ button.members-row {
   min-height: var(--sizeHit);
   padding: var(--spaceSm) 0;
   cursor: pointer;
-}
-
-.members-request,
-.members-answer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceSm);
-  padding: var(--spaceSm) 0;
-}
-
-.members-answer h3 {
-  margin: 0;
 }
 
 /* ── Settings > Sign-in rules (sc-69): the rules beside what saving does ─── */
@@ -4208,52 +3784,6 @@ button.members-row {
   min-width: 0;
 }
 
-.org-switcher-offer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceMd);
-  min-width: 0;
-  margin: var(--spaceXs) var(--spaceXl) var(--spaceSm);
-  padding: var(--spaceLg) var(--spaceXl);
-  border: var(--borderInset);
-  border-radius: var(--radiusInset);
-  background: var(--colorInset);
-}
-
-.org-switcher-offer p {
-  margin: 0;
-}
-
-.org-switcher-offer-text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceHair);
-  font: var(--typeSmall);
-  color: var(--colorInkSecondary);
-}
-
-.org-switcher-offer-title {
-  font: var(--typeRowTitle);
-  color: var(--colorInk);
-}
-
-.org-switcher-offer-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spaceSm);
-}
-
-.org-switcher-offer-asked {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceSm);
-  font: var(--typeSmall);
-}
-
-.org-switcher-offer-asked .org-switcher-ring {
-  border-color: var(--colorAttention);
-}
-
 /* ── Events: the list, a new event and an event's page (sc-1486) ────────── */
 
 .events,
@@ -4273,52 +3803,11 @@ button.members-row {
   max-width: 72rem;
 }
 
-.events-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spaceMd);
-}
-
-.events-head h1,
 .event-form-page h1,
 .event-page h1,
 .event-form h2,
-.event-page h2,
-.events-first-run h2 {
+.event-page h2 {
   margin: 0;
-}
-
-.events-title {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXxs);
-  min-width: 0;
-}
-
-.events-summary {
-  margin: 0;
-  color: var(--colorInkSecondary);
-  font: var(--typeBodyPhone);
-}
-
-.events-type-place {
-  color: var(--colorInkSecondary);
-  overflow-wrap: anywhere;
-}
-
-.events-home,
-.events-tabs,
-.events-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space3xl);
-  min-width: 0;
-}
-
-.events-panel {
-  gap: 0;
 }
 
 /* A placeholder keeps the figure's height, so a row of tiles stays level (sc-22103). */
@@ -4372,285 +3861,9 @@ button.members-row {
   text-transform: uppercase;
 }
 
-.events-tile-number {
-  font: var(--typeNumberTile);
-  letter-spacing: var(--typeNumberTileTracking);
-  font-variant-numeric: tabular-nums;
-}
-
 .events-tile .placeholder-soon {
   font-size: 15px;
   line-height: 30px;
-}
-
-.events-now-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXl);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.events-now-card {
-  display: flex;
-  flex-direction: column;
-  border: var(--borderCard);
-  border-radius: var(--radiusCardDesktop);
-  background: var(--colorCard);
-  box-shadow: var(--shadowRaised);
-  color: var(--colorInk);
-  text-decoration: none;
-}
-
-.events-now-card:hover {
-  border-color: var(--colorControlBorder);
-}
-
-.events-now-body {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space5xl);
-  padding: var(--spaceXxl) var(--space3xl);
-}
-
-.events-now-main {
-  display: flex;
-  flex: 1 1 17.5rem;
-  flex-direction: column;
-  gap: var(--spaceSm);
-  min-width: 0;
-}
-
-.events-now-when {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceMd);
-}
-
-.events-now-dates,
-.events-now-next-word,
-.events-row-next-word {
-  color: var(--colorInkSecondary);
-  font: var(--typeLabel);
-  letter-spacing: var(--typeLabelTracking);
-  line-height: 1.4;
-  text-transform: uppercase;
-}
-
-.events-now-name {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXxs);
-}
-
-.events-now-title {
-  font: var(--typeTitleDialog);
-  font-size: 22px;
-  letter-spacing: -0.01em;
-  overflow-wrap: anywhere;
-}
-
-.events-now-name .events-type-place {
-  font: var(--typeBody);
-  line-height: 1.4;
-}
-
-.events-now-figures {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 36px;
-}
-
-.events-now-figures .placeholder {
-  flex-direction: column-reverse;
-  justify-content: flex-end;
-  min-width: 96px;
-}
-
-.events-now-figures .placeholder-soon {
-  font-size: 15px;
-  line-height: 28px;
-}
-
-.events-now-next {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--spaceLg);
-  padding: var(--spaceLg) var(--space3xl);
-  border-top: var(--borderInset);
-  border-radius: 0 0 var(--radiusCardDesktop) var(--radiusCardDesktop);
-  background: var(--colorInset);
-  font: var(--typeBody);
-}
-
-.events-tab-list {
-  display: flex;
-  flex-wrap: wrap;
-  align-self: flex-start;
-  gap: var(--spaceHair);
-  padding: 3px;
-  border-radius: 23px;
-  background: var(--colorBorder);
-}
-
-.events-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spaceSm);
-  min-height: var(--sizeHit);
-  padding-inline: var(--spaceXl);
-  border: 0;
-  border-radius: 22px;
-  background: transparent;
-  color: var(--colorInkSecondary);
-  font: var(--typeButton);
-  cursor: pointer;
-}
-
-.events-tab[aria-selected='true'] {
-  background: var(--colorCard);
-  box-shadow: var(--shadowKnob);
-  color: var(--colorInk);
-}
-
-.events-tab-count {
-  color: var(--colorInkSecondary);
-  font: var(--typeSmallStrong);
-  font-variant-numeric: tabular-nums;
-}
-
-.events-table {
-  container: events-table / inline-size;
-  display: flex;
-  flex-direction: column;
-  margin-top: var(--space3xl);
-  overflow: hidden;
-  border: var(--borderCard);
-  border-radius: var(--radiusCardDesktop);
-  background: var(--colorCard);
-  box-shadow: var(--shadowCard);
-}
-
-.events-table-head,
-.events-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) 170px 130px 104px 104px minmax(0, 1fr);
-  align-items: center;
-  gap: var(--spaceXl);
-  padding: var(--spaceLg) var(--space3xl);
-}
-
-.events-table-head {
-  border-bottom: var(--borderCard);
-  background: var(--colorInset);
-  color: var(--colorInkSecondary);
-  font: var(--typeLabel);
-  letter-spacing: var(--typeLabelTracking);
-  text-transform: uppercase;
-}
-
-.events-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.events-row {
-  min-height: 72px;
-  border-bottom: var(--borderInset);
-  color: var(--colorInk);
-  text-decoration: none;
-}
-
-.events-row:hover {
-  background: var(--colorRowHover);
-}
-
-.events-row-event,
-.events-row-dates {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceHair);
-  min-width: 0;
-}
-
-.events-row-name {
-  font: var(--typeRowTitle);
-  overflow-wrap: anywhere;
-}
-
-.events-row-event .events-type-place,
-.events-row-time {
-  color: var(--colorInkSecondary);
-  font: var(--typeSmall);
-}
-
-/* How soon moves to the next line whole, leaving the separator where the line before ends (sc-25008). */
-.events-soon {
-  display: inline-block;
-  max-width: 100%;
-}
-
-.events-row-dates {
-  font: var(--typeBody);
-  line-height: 1.35;
-}
-
-.events-row .placeholder-soon {
-  font: var(--typeBodyStrong);
-}
-
-.events-row-next {
-  min-width: 0;
-  font: var(--typeBody);
-  line-height: 1.4;
-}
-
-.events-row-next-word {
-  color: var(--colorInk);
-  font: var(--typeBody);
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.events-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spaceXs);
-  padding: 48px var(--space3xl);
-  text-align: center;
-}
-
-.events-empty h3 {
-  margin: 0;
-  font: var(--typeTitleSection);
-}
-
-.events-empty p {
-  max-width: 30rem;
-  margin: 0;
-}
-
-.events-more {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spaceSm);
-  padding: var(--spaceLg) 0 var(--spaceSm);
-}
-
-.events-footer {
-  margin: 0;
-  padding: var(--spaceLg) var(--space3xl);
-  color: var(--colorInkSecondary);
-  font: var(--typeSmall);
-  font-variant-numeric: tabular-nums;
 }
 
 @media (width <= 60rem) {
@@ -4659,27 +3872,6 @@ button.members-row {
   }
 }
 
-/* By the table's own width, not the window's: beside the sidebar at 1024, its two shared columns kept 80 px between them. */
-@container events-table (width < 60rem) {
-  .events-table-head {
-    display: none;
-  }
-
-  .events-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .events-row-event,
-  .events-row-next {
-    grid-column: 1 / -1;
-  }
-
-  .events-row .placeholder {
-    flex-direction: row;
-  }
-}
-
-.events-first-run-create,
 .event-back {
   align-self: flex-start;
 }
@@ -5398,23 +4590,7 @@ button.members-row {
 
 /* ── End now and Call off (sc-3585) ───────────────────────────────────────── */
 
-.event-called-off p {
-  margin: 0;
-}
-
 /* ── Delete an event (sc-3592): under a rule, apart from the actions ───────── */
-
-.event-mute {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--spaceSm);
-  background: var(--colorInset);
-}
-
-.event-mute > * {
-  margin: 0;
-}
 
 .event-delete {
   display: flex;
@@ -7111,8 +6287,7 @@ button.members-row {
 }
 
 .arrives,
-.arrived > :not(h1, h2, .card-heading, .card, .members, .roles, .dialog, .dialog-scrim),
-.arrived > .members > :not(.members-head, .dialog, .dialog-scrim),
+.arrived > :not(h1, h2, .card-heading, .card, .roles, .dialog, .dialog-scrim),
 .arrived > .roles > :not(.roles-list, .dialog, .dialog-scrim),
 .arrived .roles-list > :not(.roles-list-head, .dialog, .dialog-scrim),
 .arrived > .card > :not(h2, .card-heading, .contacts-head, .dialog, .dialog-scrim) {
@@ -7122,8 +6297,7 @@ button.members-row {
 @media (prefers-reduced-motion: reduce) {
   .skeleton-shown .skeleton-blocks,
   .arrives,
-  .arrived > :not(h1, h2, .card-heading, .card, .members, .roles, .dialog, .dialog-scrim),
-  .arrived > .members > :not(.members-head, .dialog, .dialog-scrim),
+  .arrived > :not(h1, h2, .card-heading, .card, .roles, .dialog, .dialog-scrim),
   .arrived > .roles > :not(.roles-list, .dialog, .dialog-scrim),
   .arrived .roles-list > :not(.roles-list-head, .dialog, .dialog-scrim),
   .arrived > .card > :not(h2, .card-heading, .contacts-head, .dialog, .dialog-scrim) {
@@ -7546,12 +6720,6 @@ button.members-row {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spaceSm);
-}
-
-.event-manage .event-mute {
-  padding: var(--spaceXl);
-  border-radius: var(--radiusCardDesktop);
-  box-shadow: none;
 }
 
 /* ── The desktop sign-in (sc-28983), last so its column outranks the shared rules ── */
@@ -8010,7 +7178,7 @@ button.members-row {
   --personalisationGreen: color-mix(in srgb, var(--optionTeal) 70%, var(--colorInk));
 }
 
-.account.personalisation > :not(.account-header) {
+.account.personalisation > :not(.account-header, .dialog, .dialog-scrim) {
   max-width: 680px;
 }
 
@@ -8286,7 +7454,8 @@ button.members-row {
 
 .colours-swatch {
   position: relative;
-  display: block;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border-radius: 18px;
   background: var(--colorCard);
@@ -8340,10 +7509,12 @@ button.members-row {
 
 .colours-swatch-row {
   display: flex;
+  flex: 1;
   align-items: center;
   gap: var(--spaceMd);
-  height: var(--sizeHit);
-  padding: 0 var(--spaceLg);
+  box-sizing: border-box;
+  min-height: var(--sizeHit);
+  padding: var(--spaceSm) var(--spaceLg);
 }
 
 .colours-radio {
@@ -8371,9 +7542,8 @@ button.members-row {
 }
 
 .colours-swatch-name {
-  overflow: hidden;
+  min-width: 0;
   color: var(--colorInk);
   font: 600 15.5px/1.2 var(--fontFamily);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
 }

@@ -24,7 +24,6 @@ import {
 import {
   barFits,
   coveredBy,
-  fieldKeptInSight,
   groupInWindow,
   heightFromFocus,
   keyboardInWindow,
@@ -33,6 +32,8 @@ import {
   settledAnswer,
   keysOver,
   liftNeeded,
+  settleLifts,
+  liftUnderFocus,
   listRoom,
   notesGiveWay,
   offsetAboveKeyboard,
@@ -46,7 +47,6 @@ import {
   shortWhileTyping,
   shownAboveKeys,
   shownEnd,
-  titleScrollsWhileTyping,
 } from './keyboard.ts';
 
 describe('the keyboard lifts the card once', () => {
@@ -119,10 +119,14 @@ describe('the field typed in stays in sight above a group lifted under it (sc-11
     expect(offset).toBeLessThan(offsetAboveKeyboard(card));
   });
 
-  it('lifts the whole group when it fits under the focused field', () => {
+  it('lifts the whole group when it fits under the focused field, only ever taking the scroll back up (sc-35488)', () => {
     const tall = { ...card, keyboardTop: 900 };
+    const lift = offsetAboveKeyboard({ ...tall, focusY: current });
+    const under = { contentY: card.contentY, focusY: current };
 
-    expect(offsetAboveKeyboard({ ...tall, focusY: current })).toBe(offsetAboveKeyboard(tall));
+    expect(lift).toBe(offsetAboveKeyboard(tall));
+    expect(liftUnderFocus(lift, { ...under, offset: 300 })).toBe(lift);
+    expect(liftUnderFocus(lift, { ...under, offset: 0 })).toBe('stays');
   });
 
   it('keeps the group top when the focused field sits inside the group', () => {
@@ -141,6 +145,27 @@ describe('the field typed in stays in sight above a group lifted under it (sc-11
     const check = { shown: 400, group: { y: 150, height: 300 }, scrollTop: 100, margin: 16 };
 
     expect(liftNeeded({ ...check, focusTop: 120 })).toBe(true);
+  });
+});
+
+describe('a bar leaving the keys for the scroll settles the lifts made for less room (sc-35488)', () => {
+  it('lowers the scroll to the most any group needs', () => {
+    expect(settleLifts([120, 'stays', 80], 300)).toBe(120);
+    expect(settleLifts(['stays', 'stays'], 300)).toBe(0);
+  });
+
+  it('leaves the scroll when one group cannot be measured', () => {
+    expect(settleLifts([120, null], 300)).toBeNull();
+    expect(settleLifts([null, null], 300)).toBeNull();
+  });
+
+  it('leaves the scroll when no group can vouch for the focused field', () => {
+    expect(settleLifts([], 300)).toBeNull();
+  });
+
+  it('never raises the scroll', () => {
+    expect(settleLifts([400], 300)).toBeNull();
+    expect(settleLifts([300], 300)).toBeNull();
   });
 });
 
@@ -402,8 +427,8 @@ describe("change password's notes give way while the keys are up (sc-28122)", ()
   });
 });
 
-describe("a list's search moves beside its title on an iPhone on its side (sc-10118)", () => {
-  const onItsSide = { os: 'ios', phone: true, width: 667, height: 375 };
+describe("a list's search moves beside its title on a phone on its side (sc-10118, sc-35256)", () => {
+  const onItsSide = { phone: true, width: 667, height: 375 };
 
   it('on its side', () => {
     expect(searchBesideTitle(onItsSide)).toBe(true);
@@ -413,8 +438,8 @@ describe("a list's search moves beside its title on an iPhone on its side (sc-10
     expect(searchBesideTitle({ ...onItsSide, width: 375, height: 667 })).toBe(false);
   });
 
-  it('not on an Android phone', () => {
-    expect(searchBesideTitle({ ...onItsSide, os: 'android' })).toBe(false);
+  it('on an Android phone too', () => {
+    expect(searchBesideTitle({ ...onItsSide, width: 640, height: 360 })).toBe(true);
   });
 
   it('not on an iPad', () => {
@@ -444,57 +469,6 @@ describe('a short Android phone gives up the help line and back row while typing
 
   it('never on iOS', () => {
     expect(shortWhileTyping({ ...smallAndroid, os: 'ios', height: 667 })).toBe(false);
-  });
-});
-
-describe('an iPhone on its side scrolls the sheet title with its body while typing', () => {
-  const sideways = { os: 'ios', phone: true, width: 844, height: 390, keysUp: true };
-
-  it('on its side with the keys up', () => {
-    expect(titleScrollsWhileTyping(sideways)).toBe(true);
-  });
-
-  it('never in portrait', () => {
-    expect(titleScrollsWhileTyping({ ...sideways, width: 390, height: 844 })).toBe(false);
-  });
-
-  it('never with the keys down', () => {
-    expect(titleScrollsWhileTyping({ ...sideways, keysUp: false })).toBe(false);
-  });
-
-  it('never on a tablet', () => {
-    expect(titleScrollsWhileTyping({ ...sideways, phone: false })).toBe(false);
-  });
-
-  it('never on an Android phone', () => {
-    expect(titleScrollsWhileTyping({ ...sideways, os: 'android' })).toBe(false);
-  });
-});
-
-describe('a sheet keeps its field in sight while typing, and on an iPhone on its side with the keys down (sc-9442)', () => {
-  const sideways = { os: 'ios', phone: true, width: 667, height: 375, keysUp: true };
-
-  it('with the keys up', () => {
-    expect(fieldKeptInSight({ ...sideways, width: 375, height: 667 })).toBe(true);
-    expect(fieldKeptInSight({ ...sideways, os: 'android', width: 360, height: 640 })).toBe(true);
-  });
-
-  it('on an iPhone on its side with the keys down', () => {
-    expect(fieldKeptInSight({ ...sideways, keysUp: false })).toBe(true);
-  });
-
-  it('not with the keys down upright', () => {
-    expect(fieldKeptInSight({ ...sideways, width: 375, height: 667, keysUp: false })).toBe(false);
-  });
-
-  it('not with the keys down on an iPad', () => {
-    expect(
-      fieldKeptInSight({ ...sideways, phone: false, width: 1180, height: 820, keysUp: false }),
-    ).toBe(false);
-  });
-
-  it('not with the keys down on an Android phone on its side', () => {
-    expect(fieldKeptInSight({ ...sideways, os: 'android', keysUp: false })).toBe(false);
   });
 });
 
@@ -533,6 +507,7 @@ describe('every field carries the caret colour', () => {
       expect(props.selectionColor).toBe(tokens.colorInk);
       expect(props.autoCorrect).toBe(false);
       expect(props.spellCheck).toBe(false);
+      expect(props.disableFullscreenUI).toBe(true);
     }
   });
 });
@@ -1041,5 +1016,23 @@ describe('a field named on Android by words it never shows (sc-31323)', () => {
 
     expect(code).not.toMatch(/importantForAccessibility/u);
     expect(code).toMatch(/width: 0, height: 0, overflow: 'hidden'/u);
+  });
+});
+
+describe('a group under the focused field leaves the title in sight (sc-35488)', () => {
+  // Full name focused at 96 under the title; the Password group at 330, lifting to 80 above a docked bar.
+  const under = { contentY: 330, focusY: 96 };
+
+  it('does not take the scroll down past the title on arrival', () => {
+    expect(liftUnderFocus(80, { ...under, offset: 0 })).toBe('stays');
+  });
+
+  it('still takes the scroll back up to a focused field scrolled out of sight', () => {
+    expect(liftUnderFocus(80, { ...under, offset: 300 })).toBe(80);
+  });
+
+  it('lifts as before the group holding the focused field, or with nothing focused', () => {
+    expect(liftUnderFocus(80, { contentY: 330, focusY: 340, offset: 0 })).toBe(80);
+    expect(liftUnderFocus(80, { contentY: 330, offset: 0 })).toBe(80);
   });
 });

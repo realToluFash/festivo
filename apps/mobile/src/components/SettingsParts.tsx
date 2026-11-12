@@ -1,18 +1,30 @@
-import type { ReactElement, ReactNode, Ref } from 'react';
+import { type ReactElement, type ReactNode, type Ref, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Pressable,
   type StyleProp,
   StyleSheet,
+  useWindowDimensions,
   View,
   type ViewInstance,
   type ViewStyle,
 } from 'react-native';
 
-import { Text } from './Text.tsx';
+import { Text, TitleCap } from './Text.tsx';
+import {
+  PILL_ABOVE,
+  PILL_GAP,
+  PILL_GLYPH,
+  PILL_LEFT,
+  PILL_RIGHT,
+  PILL_TEXT,
+  backLeast,
+  backScale,
+} from '../layout/focusedHeader.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ShellSection } from './settingsShell.ts';
+import { TurningMark } from './SummaryRows.tsx';
 import type { CoverLayout } from './TodayCover.tsx';
 
 export const TYPE = {
@@ -97,6 +109,7 @@ export function Pill({
   kind = 'primary',
   onPress,
   glyph,
+  busy = false,
   full = true,
   height = tokens.sizeHitPhoneHero,
   accessibilityLabel,
@@ -107,14 +120,15 @@ export function Pill({
   kind?: PillKind;
   onPress?: () => void;
   glyph?: GlyphName;
+  busy?: boolean;
   full?: boolean;
   height?: number;
   accessibilityLabel?: string;
   testID?: string;
   ref?: Ref<ViewInstance>;
 }) {
-  const look = PILL[kind];
-  const off = kind === 'off';
+  const look = PILL[busy ? 'off' : kind];
+  const off = busy || kind === 'off';
 
   return (
     <Pressable
@@ -135,11 +149,12 @@ export function Pill({
         pressed && styles.pressed,
       ]}
       accessibilityRole="button"
-      accessibilityState={{ disabled: off }}
+      accessibilityState={{ disabled: off, busy }}
       accessibilityLabel={accessibilityLabel ?? label}
       testID={testID}
     >
-      {glyph != null && <Glyph name={glyph} size={18} ink={look.ink} weight={2.1} />}
+      {busy && <TurningMark side={16} />}
+      {!busy && glyph != null && <Glyph name={glyph} size={18} ink={look.ink} weight={2.1} />}
       <Text
         size={height >= tokens.sizeHitPhonePrimary ? 16 : TYPE.body}
         weight="semibold"
@@ -179,19 +194,50 @@ export function Pair({
   );
 }
 
-export function Back({ label, onPress }: { label?: string; onPress: () => void }) {
+/** At least 44, a capsule as tall as its word, the ‹ growing with it; a word wider than its room steps down to fit, never below 15 (sc-37903). */
+export function Back({
+  label,
+  onPress,
+  off = false,
+  testID,
+}: {
+  label?: string;
+  onPress: () => void;
+  off?: boolean | undefined;
+  testID?: string;
+}) {
   const { t } = useTranslation();
+  const { fontScale } = useWindowDimensions();
+  const scale = backScale(fontScale, useContext(TitleCap));
   const place = label ?? t('settings.title');
+  const size = PILL_TEXT * scale;
 
   return (
     <Pressable
       onPress={onPress}
+      disabled={off}
       style={({ pressed }) => [styles.back, pressed && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel={t('frame.backTo', { place })}
+      accessibilityState={{ disabled: off }}
+      testID={testID}
     >
-      <Glyph name="back" size={18} ink={tokens.colorInk} weight={2.4} />
-      <Text size={TYPE.body} weight="semibold" accessible={false}>
+      <Glyph
+        name="back"
+        size={PILL_GLYPH * scale}
+        ink={off ? tokens.colorInkSecondary : tokens.colorInk}
+        weight={2.4}
+      />
+      <Text
+        size={size}
+        weight="semibold"
+        muted={off}
+        allowFontScaling={false}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={backLeast(scale)}
+        accessible={false}
+      >
         {place}
       </Text>
     </Pressable>
@@ -210,7 +256,7 @@ export function RoundButton({
   label: string;
   onPress: () => void;
   dot?: boolean;
-  testID?: string;
+  testID?: string | undefined;
   ref?: Ref<ViewInstance> | undefined;
 }) {
   return (
@@ -229,7 +275,7 @@ export function RoundButton({
   );
 }
 
-type TileOf = Exclude<ShellSection, 'account' | 'personalisation'> | 'roles' | 'demo';
+type TileOf = Exclude<ShellSection, 'account' | 'personalisation'> | 'demo';
 
 const TILES: Record<TileOf, { glyph: GlyphName; fill: string }> = {
   security: { glyph: 'shield', fill: tokens.optionTeal },
@@ -237,7 +283,6 @@ const TILES: Record<TileOf, { glyph: GlyphName; fill: string }> = {
   organisation: { glyph: 'settings', fill: tokens.colorAccent },
   members: { glyph: 'users', fill: tokens.optionBlue },
   signInRules: { glyph: 'lock', fill: tokens.optionPurple },
-  roles: { glyph: 'key', fill: tokens.optionAmber },
   demo: { glyph: 'sparkle', fill: tokens.colorInk },
 };
 
@@ -438,13 +483,16 @@ const styles = StyleSheet.create({
   },
   back: {
     alignSelf: 'flex-start',
-    height: tokens.sizeHit,
+    flexShrink: 1,
+    maxWidth: '100%',
+    minHeight: tokens.sizeHit,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: tokens.spaceXxs,
-    paddingLeft: tokens.spaceMd,
-    paddingRight: tokens.spaceXl,
-    borderRadius: tokens.sizeHit / 2,
+    gap: PILL_GAP,
+    paddingVertical: PILL_ABOVE,
+    paddingLeft: PILL_LEFT,
+    paddingRight: PILL_RIGHT,
+    borderRadius: tokens.radiusPill,
     backgroundColor: tokens.colorInset,
   },
   round: {

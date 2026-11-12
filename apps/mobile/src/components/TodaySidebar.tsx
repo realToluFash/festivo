@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { Brand } from './Brand.tsx';
 import { SIDEBAR_WIDTH } from '../layout/textSize.ts';
@@ -12,6 +12,7 @@ import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ShownEvent } from '../kit/today.ts';
 import { SETTINGS_ID, type Tab } from './TodayCover.tsx';
 import { Initials } from './Initials.tsx';
+import { OrgPill } from './OrgPill.tsx';
 import { type TodayShell, useTodayShell } from './todayShell.ts';
 
 const PLACES: readonly (readonly [Tab, GlyphName])[] = [
@@ -83,38 +84,37 @@ function Place({
   );
 }
 
+/** The sidebar's opener, the switcher's pill at the head of iPad landscape's sidebar. */
+function SidebarOrg() {
+  const ref = useRef<ViewInstance>(null);
+  const org = useTodayShell().useOrgOpener(ref, true);
+
+  return (
+    <OrgPill
+      ref={ref}
+      sidebar
+      id={org.id}
+      name={org.name}
+      waiting={org.waiting}
+      label={org.label}
+      expanded={org.expanded}
+      onPress={org.onPress}
+      testID="home.switchOrganisation"
+    />
+  );
+}
+
 export function SidebarHead({ search, org = true }: { search?: boolean; org?: boolean }) {
   const { t } = useTranslation();
   const shell = useTodayShell();
-  const { organisation, open, OrgOpener } = shell;
+  const { open } = shell;
 
   return (
     <>
       <View style={styles.logo}>
         <Brand lockup height={24} />
       </View>
-      {org && OrgOpener != null && <OrgOpener at="sidebar" />}
-      {org && OrgOpener == null && (
-        <Pressable
-          onPress={() => open({ to: 'organisation' })}
-          style={styles.org}
-          accessibilityRole="button"
-          accessibilityLabel={t('todayScreen.switchOrganisation', { name: organisation })}
-          testID="home.switchOrganisation"
-        >
-          <View
-            style={styles.orgTile}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          >
-            <Initials name={organisation} size={12} weight="bold" style={styles.onAccent} />
-          </View>
-          <Text size={15} weight="semibold" accessible={false} style={styles.grow}>
-            {organisation}
-          </Text>
-          <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
-        </Pressable>
-      )}
+      {org && <SidebarOrg />}
       {(search ?? shell.search) && (
         <Pressable
           onPress={() => open({ to: 'search' })}
@@ -241,40 +241,30 @@ export function SidebarPlaces({ children }: { children: ReactNode }) {
   );
 }
 
-/** iPad landscape's sidebar: the places, your events by colour, and the person at its foot. */
-export function TodaySidebar({
-  events,
-  onTab,
-  at = 'Today',
-  onPerson,
-  org = true,
-}: {
-  events: readonly ShownEvent[];
-  onTab: (tab: Tab) => void;
-  at?: Tab;
-  onPerson?: (() => void) | undefined;
-  org?: boolean;
-}) {
+/** The least the list's region shows before the whole sidebar scrolls instead (sc-39340). */
+const LEAST_ROWS = 4;
+
+/** Your events under the places: no heading over nothing, and a list longer than the sidebar holds scrolls in its own region while the places and the foot stay (sc-39340). */
+export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
   const { t } = useTranslation();
   const { open } = useTodayShell();
 
+  if (events.length === 0) return <View style={styles.grow} />;
+
   return (
-    <View style={styles.side}>
-      <SidebarHead org={org} />
-      <SidebarPlaces>
-        {PLACES.map(([label, glyph]) => (
-          <Place key={label} tab={label} glyph={glyph} onTab={onTab} at={at} />
-        ))}
-      </SidebarPlaces>
-      <View>
-        <Text
-          size={12}
-          weight="semibold"
-          accessibilityRole="header"
-          style={[styles.secondary, styles.caps]}
-        >
-          {t('todayScreen.yourEvents').toLocaleUpperCase()}
-        </Text>
+    <View style={styles.list}>
+      <Text
+        size={12}
+        weight="semibold"
+        accessibilityRole="header"
+        style={[styles.secondary, styles.caps]}
+      >
+        {t('todayScreen.yourEvents').toLocaleUpperCase()}
+      </Text>
+      <ScrollView
+        style={[styles.rows, { minHeight: Math.min(events.length, LEAST_ROWS) * tokens.sizeHit }]}
+        nestedScrollEnabled
+      >
         {events.map((event) => (
           <Pressable
             key={event.id}
@@ -295,10 +285,36 @@ export function TodaySidebar({
             </Text>
           </Pressable>
         ))}
-      </View>
-      <View style={styles.grow} />
-      <SidebarFoot onTab={onTab} at={at} onPerson={onPerson} />
+      </ScrollView>
     </View>
+  );
+}
+
+/** iPad landscape's sidebar: the places, your events by colour, and the person at its foot; with no organisation, Today alone above Settings (sc-29914). */
+export function TodaySidebar({
+  events,
+  onTab,
+  at = 'Today',
+  onPerson,
+  org = true,
+}: {
+  events: readonly ShownEvent[];
+  onTab: (tab: Tab) => void;
+  at?: Tab;
+  onPerson?: (() => void) | undefined;
+  org?: boolean;
+}) {
+  return (
+    <SidebarColumn>
+      <SidebarHead org={org} />
+      <SidebarPlaces>
+        {PLACES.filter(([tab]) => org || tab === 'Today').map(([label, glyph]) => (
+          <Place key={label} tab={label} glyph={glyph} onTab={onTab} at={at} />
+        ))}
+      </SidebarPlaces>
+      <SidebarEvents events={events} />
+      <SidebarFoot onTab={onTab} at={at} onPerson={onPerson} />
+    </SidebarColumn>
   );
 }
 
@@ -362,6 +378,8 @@ const styles = StyleSheet.create({
   backPressed: { opacity: tokens.opacityPressed },
   column: { width: SIDEBAR_WIDTH, flexGrow: 0 },
   fills: { flexGrow: 1 },
+  list: { flexGrow: 1 },
+  rows: { flexGrow: 1, flexBasis: 0 },
   place: {
     height: tokens.sizeHit,
     flexDirection: 'row',

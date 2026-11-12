@@ -7,9 +7,10 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
 import { AnswerHeading } from '../../src/components/AnswerHeading.tsx';
-import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
+import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
+import { LIST_GAP, SETTINGS_PAGE } from '../../src/components/listFrame.ts';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { StandChanges, StandRules } from '../../src/components/SignInRulesStand.tsx';
@@ -41,7 +42,7 @@ import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout
 import { PROVIDER_NAMES } from '../../src/providerSignIn.ts';
 import { markRulesSeen, useRulesSeen } from '../../src/signInRulesSeen.ts';
 import { rereadOrganisations, useSignedIn } from '../../src/signedIn.ts';
-import { tokens } from '../../src/theme/tokens.ts';
+import { PANE_TITLE, paneTitle } from '../../src/components/topTitle.ts';
 
 /** `tapped` when it answers Try again, so focus moves to it (sc-11173). */
 type Load =
@@ -105,17 +106,15 @@ export default function SignInRules() {
     if (organisation != null && seenBefore?.id === organisation.id) markRulesSeen(organisation);
   }, [organisation, seenBefore]);
 
-  // On a phone the frame's title is the page's heading, so Try again's answer lands there.
+  // Wherever the page stands alone the frame's title is its heading, so Try again's answer lands there.
   useEffect(() => {
-    if (kind === 'phone' && load.kind === 'loaded' && load.tapped)
-      moveScreenReaderFocus(heading.current);
-  }, [kind, load]);
+    if (alone && load.kind === 'loaded' && load.tapped) moveScreenReaderFocus(heading.current);
+  }, [alone, load]);
 
   const title = t('settings.signInRules');
   const refreshingWords = refreshing ? <Refreshing testID="signInRules.refreshing" /> : null;
   const locale = dateLocale();
   const now = new Date();
-  const phone = kind === 'phone';
 
   const body = (() => {
     if (load.kind === 'loading' || organisation == null)
@@ -203,27 +202,31 @@ export default function SignInRules() {
   return (
     <AppFrame
       current="settings"
+      top="scrolls"
+      listUnderTabs
       offline={stale}
       besideTitle={alone ? refreshingWords : undefined}
       title={alone ? title : t('settings.title')}
-      titleRef={phone ? heading : undefined}
+      titleRef={alone ? heading : undefined}
       back={alone ? backToSettings(t('settings.title')) : undefined}
     >
       <SettingsSplit open="signInRules">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-          {!phone && (
+          {alone && <FrameTop />}
+          {!alone && (
             <View style={besideRow.row}>
               <View style={styles.shrink}>
                 <AnswerHeading
                   ref={heading}
-                  size={kind === 'tabletLandscape' ? 28 : 30}
+                  size={PANE_TITLE}
                   weight="bold"
+                  style={paneTitle}
                   answer={load.kind === 'loaded' && load.tapped ? load : undefined}
                 >
                   {title}
                 </AnswerHeading>
               </View>
-              {!alone && refreshingWords}
+              {refreshingWords}
             </View>
           )}
           {body}
@@ -235,28 +238,10 @@ export default function SignInRules() {
 
 const styles = StyleSheet.create({
   shrink: { flexShrink: 1, minWidth: 0 },
-  phone: {
-    gap: 18,
-    paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceXxl,
-    paddingBottom: tokens.space6xl * 2,
-  },
-  portrait: {
-    gap: 18,
-    paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.space5xl,
-    paddingBottom: tokens.space6xl * 2,
-  },
-  landscape: {
-    gap: 18,
-    paddingTop: 26,
-    paddingHorizontal: 30,
-    paddingBottom: tokens.space6xl * 2,
-  },
 });
 
-const CONTENT: Record<LayoutKind, object> = {
-  phone: styles.phone,
-  tabletPortrait: styles.portrait,
-  tabletLandscape: styles.landscape,
-};
+const CONTENT = {
+  phone: { ...SETTINGS_PAGE.phone, gap: LIST_GAP },
+  tabletPortrait: { ...SETTINGS_PAGE.tabletPortrait, gap: LIST_GAP },
+  tabletLandscape: { ...SETTINGS_PAGE.tabletLandscape, gap: LIST_GAP },
+} satisfies Record<LayoutKind, object>;

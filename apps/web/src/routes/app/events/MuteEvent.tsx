@@ -1,22 +1,19 @@
-import { useId } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { JustForYou } from '../../../components/JustForYou.tsx';
+import { useEventMute } from '../../../components/MuteSwitch.tsx';
 
-import { MuteSwitch } from '../../../components/MuteSwitch.tsx';
-
-/** `MuteEvent-*` (sc-3980): per person, the same switch as the bell's More, below the page's buttons. */
+/** `MuteEvent-*` (sc-3980): per person, the same mute as the bell's More, as Just for you. */
 export function MuteEvent({ eventId }: { eventId: string }) {
-  const { t } = useTranslation();
-  const heading = useId();
+  const { mute, saving, change, retry } = useEventMute(eventId);
 
   return (
-    <section className="card event-mute" aria-labelledby={heading}>
-      <h2 id={heading}>{t('eventMute.heading')}</h2>
-      <p className="muted">{t('eventMute.note')}</p>
-      <MuteSwitch eventId={eventId} />
-      <Link className="link-button" to="/app/account/notifications">
-        {t('notifications.settings')}
-      </Link>
-    </section>
+    <JustForYou
+      muted={mute.status === 'loaded' && mute.muted}
+      loaded={mute.status !== 'failed'}
+      failed={mute.status === 'loaded' && mute.unsaved}
+      busy={saving || mute.status === 'loading'}
+      settings="/app/account/notifications"
+      onRetry={retry}
+      onChange={(next) => void change(next)}
+    />
   );
 }

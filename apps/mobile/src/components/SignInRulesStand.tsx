@@ -56,6 +56,7 @@ function RuleMark({ mark }: { mark: StandMark }) {
 }
 
 export interface StandChange {
+  key: string;
   at: string;
   title: string;
   line: string;
@@ -78,14 +79,14 @@ export function StandChanges({
   return (
     <RowList
       items={changes.map((change) => ({
-        key: change.at,
+        key: change.key,
         row: (
           <Row
             title={change.title}
             tag={change.isNew ? { kind: 'now', word: newWord } : null}
             line={change.line}
             accessibilityLabel={change.label}
-            testID={`signInRules.change.${change.at}`}
+            testID={`signInRules.change.${change.key}`}
           />
         ),
       }))}

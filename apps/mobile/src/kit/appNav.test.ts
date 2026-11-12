@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -26,7 +26,9 @@ describe('sign-in lands on the signed-in home', () => {
     const launch = source(join(APP, 'index.tsx'));
 
     expect(launch).toMatch(/if \(launching === 'signedIn'\) return <SignedInHome \/>;/u);
-    expect(launch).toMatch(/else setLaunching\('signedIn'\);/u);
+    expect(launch).toMatch(
+      /setLaunching\('signedIn'\);\s+for \(const screen of landingAfterRestart\(\)\)/u,
+    );
     expect(launch).not.toMatch(/href="\/security"|href="\/account"/u);
   });
 });
@@ -41,8 +43,8 @@ describe('the frame shows only what is built', () => {
     ]);
   });
 
-  it('leaves Events out for a role whose Events level is Nothing, and with no organisation (sc-1593)', () => {
-    expect(destinations({ permissions: ['members.read'] })).toEqual(['home', 'settings']);
+  it('gives a Member Events and Calendar, and leaves them out with no organisation (sc-29914)', () => {
+    expect(destinations({ permissions: [] })).toEqual(['home', 'events', 'calendar', 'settings']);
     expect(destinations(null)).toEqual(['home', 'settings']);
   });
 
@@ -117,11 +119,10 @@ describe('the Settings list', () => {
     ]);
   });
 
-  it('shows Roles only to a role that can change them (sc-1931)', () => {
+  it('shows no Roles, even to a role that changes members (sc-29914)', () => {
     expect(
       settingsGroups({ permissions: ['members.read', 'members.manage'] })[1]?.sections,
-    ).toEqual(['organisation', 'members', 'roles', 'signInRules']);
-    expect(settingsGroups({ permissions: ['members.read'] })[1]?.sections).not.toContain('roles');
+    ).toEqual(['organisation', 'members', 'signInRules']);
   });
 
   it('leaves the Organisation rows out while the account is in no organisation', () => {
@@ -136,11 +137,6 @@ describe('the Settings list', () => {
   it('opens the Organisation page under Settings', () => {
     expect(SECTION_HREF.organisation).toBe('/settings/organisation');
     expect(destinationOf(SECTION_HREF.organisation)).toBe('settings');
-  });
-
-  it('opens Roles under Settings (sc-1931)', () => {
-    expect(SECTION_HREF.roles).toBe('/settings/roles');
-    expect(destinationOf(SECTION_HREF.roles)).toBe('settings');
   });
 
   it('opens Members under Settings (sc-3404)', () => {
@@ -165,7 +161,7 @@ describe('Events titles itself once, in the frame header (sc-17559)', () => {
   it('leaves no head row on a tablet on its side when there is nothing to put in it', () => {
     const split = source(join(SRC, 'components', 'ListAndPage.tsx'));
 
-    expect(split).toMatch(/\{landscape && \(heading \|\| besideHeading\) && \(/u);
+    expect(split).toMatch(/\{landscape && !inColumn && \(heading \|\| besideHeading\) && \(/u);
   });
 });
 
@@ -174,8 +170,43 @@ describe("A phone's event page keeps its name out of the header (sc-22871)", () 
     const events = source(join(SRC, 'components', 'EventsScreen.tsx'));
     const page = source(join(SRC, 'components', 'Events.tsx'));
 
-    expect(events).toMatch(/<AppFrame\s+current="events"\s+title=\{t\('eventsScreen\.title'\)\}/u);
+    expect(events).toMatch(
+      /<AppFrame\s+current="events"\s+top="scrolls"\s+title=\{t\('eventsScreen\.title'\)\}/u,
+    );
     expect(page).toMatch(/accessibilityRole="header">\s*\{event\.name\}/u);
+  });
+});
+
+describe('A screen whose top scrolls places it, and the band is gone (sc-39471)', () => {
+  const tsx = (dir: string): string[] =>
+    readdirSync(dir, { recursive: true, encoding: 'utf8' })
+      .filter((path) => path.endsWith('.tsx') && !path.includes('.test.'))
+      .map((path) => join(dir, path));
+  const scrolling = [...tsx(APP), ...tsx(join(SRC, 'components'))].filter((path) =>
+    /top=(?:"scrolls"|\{[^}]*'scrolls')/u.test(source(path)),
+  );
+
+  it('finds the screens it guards', () => {
+    expect(scrolling.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it.each(scrolling)('%s renders its top, directly or through the list that places it', (path) => {
+    expect(source(path)).toMatch(/<(?:FrameTop|ListAndPage|SettingsList)\b/u);
+  });
+
+  it('has the list and the Settings column place the top', () => {
+    expect(source(join(SRC, 'components', 'ListAndPage.tsx'))).toMatch(/<FrameTop\b/u);
+    expect(source(join(SRC, 'components', 'SettingsList.tsx'))).toMatch(/<FrameTop\b/u);
+  });
+
+  it('leaves the body its foot room while a paused or overdue screen stands in for the list', () => {
+    expect(source(join(SRC, 'components', 'AppFrame.tsx'))).toMatch(
+      /const underTabs =\s*floatingTabs && listUnderTabs && standIn == null \?/u,
+    );
+  });
+
+  it('draws no band behind the frame', () => {
+    expect(source(join(SRC, 'components', 'AppFrame.tsx'))).not.toMatch(/colorHeader/u);
   });
 });
 
@@ -328,7 +359,7 @@ describe('The bell in [fd] (sc-23233)', () => {
   it('draws the bell as the demos do: a dot while anything is unread, the count in its name', () => {
     const button = source(join(SRC, 'components', 'BellButton.tsx'));
 
-    expect(button).toMatch(/<RoundButton\s+glyph="bell"/u);
+    expect(button).toMatch(/<RoundButton\s+ref=\{ref\}\s+glyph="bell"/u);
     expect(button).toMatch(/t\('notifications\.bellUnread', \{ count: unread \}\)/u);
     expect(button).toMatch(/dot=\{unread > 0\}/u);
   });

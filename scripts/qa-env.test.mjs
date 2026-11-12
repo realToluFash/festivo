@@ -49,9 +49,12 @@ import {
   toolsSwitch,
   expoGoPrefs,
   TOOLS_BUTTON,
+  MENU_ONBOARDED,
   SCREEN_READER_OFF,
   driverBuilds,
   driverPids,
+  leftDriverSay,
+  clearForBatch,
   bundlerArgs,
   bundlerEnv,
   commitTarget,
@@ -72,6 +75,7 @@ import {
   startHelper,
   membershipChanges,
   keptOwner,
+  madeAccount,
   domainPause,
   STEP_MS,
   totp,
@@ -103,6 +107,8 @@ import {
   missingCmdlineTools,
   parseTarget,
   hardwareKeyboardOff,
+  expoGoLinkApproval,
+  expoGoLinkApproved,
   passwordAutoFillFiles,
   passwordAutoFillOff,
   playImage,
@@ -138,10 +144,12 @@ import {
   releasePlatform,
   simulatorArch,
   staleBuilds,
+  iosBuildEnv,
   iosReleaseBuildArgs,
   xcodeWorkspace,
   renderQaEnv,
   reversedPorts,
+  unreversed,
   simulatorFor,
   TESTERS,
   testerOf,
@@ -635,41 +643,57 @@ describe('what a batch resets before it signs in', () => {
     expect(batchReset(true, 'emulator-5554').adb).toBe(SCREEN_READER_OFF);
   });
 
-  it("turns Expo Go's Tools button off in its own container, with Expo Go closed first", () => {
-    const { terminate, write, say } = batchReset(false, 'UDID', { prefs, toolsButton: null });
-    expect(terminate).toEqual(['simctl', 'terminate', 'UDID', 'host.exp.Exponent']);
-    expect(write).toEqual([
-      'simctl',
-      'spawn',
-      'UDID',
-      'defaults',
-      'write',
-      prefs,
-      TOOLS_BUTTON,
-      '-bool',
-      'NO',
+  const write = (key, value) => [
+    'simctl',
+    'spawn',
+    'UDID',
+    'defaults',
+    'write',
+    prefs,
+    key,
+    '-bool',
+    value,
+  ];
+  const commands = (reset) => (reset.writes ?? []).map(({ command }) => command);
+
+  it("turns Expo Go's Tools button off and marks its intro seen in its own container, Expo Go closed first", () => {
+    const reset = batchReset(false, 'UDID', { prefs, toolsButton: null, onboarded: null });
+    expect(reset.terminate).toEqual(['simctl', 'terminate', 'UDID', 'host.exp.Exponent']);
+    expect(commands(reset)).toEqual([write(TOOLS_BUTTON, 'NO'), write(MENU_ONBOARDED, 'YES')]);
+    expect(reset.writes.map(({ say }) => say)).toEqual([
+      "  Expo Go's Tools button turned off for the batch.",
+      "  Expo Go's dev-menu intro marked seen for the batch.",
     ]);
-    expect(say).toMatch(/turned off/);
   });
 
-  it("has a line for a write that fails, pointing the tester to Expo Go's menu", () => {
-    expect(batchReset(false, 'UDID', { prefs, toolsButton: null }).failed).toBe(
+  it('has a line for each write that fails, pointing the tester to Expo Go', () => {
+    const reset = batchReset(false, 'UDID', { prefs, toolsButton: null, onboarded: null });
+    expect(reset.writes.map(({ failed }) => failed)).toEqual([
       "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.",
-    );
+      "  Could not mark Expo Go's dev-menu intro seen: tap through it in Expo Go.",
+    ]);
   });
 
-  it('turns the Tools button off when it was left on', () => {
-    expect(batchReset(false, 'UDID', { prefs, toolsButton: '1' }).write).toContain(TOOLS_BUTTON);
+  it('turns the Tools button off when it was left on, and only that', () => {
+    expect(
+      commands(batchReset(false, 'UDID', { prefs, toolsButton: '1', onboarded: '1' })),
+    ).toEqual([write(TOOLS_BUTTON, 'NO')]);
   });
 
-  it('leaves Expo Go alone when its Tools button is already off, and says so', () => {
-    expect(batchReset(false, 'UDID', { prefs, toolsButton: '0' })).toEqual({
-      say: "  Expo Go's Tools button is off.",
+  it('marks the intro seen after a reboot left it unseen, and only that', () => {
+    expect(
+      commands(batchReset(false, 'UDID', { prefs, toolsButton: '0', onboarded: '0' })),
+    ).toEqual([write(MENU_ONBOARDED, 'YES')]);
+  });
+
+  it('leaves Expo Go alone when both are already set, and says so', () => {
+    expect(batchReset(false, 'UDID', { prefs, toolsButton: '0', onboarded: '1' })).toEqual({
+      say: "  Expo Go's Tools button is off and its dev-menu intro is seen.",
     });
   });
 
   it('touches nothing on a simulator without Expo Go', () => {
-    expect(batchReset(false, 'UDID', { prefs: null }).write).toBeUndefined();
+    expect(batchReset(false, 'UDID', { prefs: null }).writes).toBeUndefined();
   });
 
   it("reads Expo Go's preferences from its data container", () => {
@@ -792,6 +816,21 @@ describe('the ports an emulator is given', () => {
     const ports = reversedPorts(QA_PORTS);
     expect(ports).not.toContain(QA_PORTS.POSTGRES_PORT);
     expect(ports).not.toContain(QA_PORTS.REDIS_PORT);
+  });
+});
+
+describe('the reversed ports read back', () => {
+  it('names the ports adb does not list', () => {
+    const list = 'emulator-5574 tcp:18081 tcp:18081\nemulator-5574 tcp:18000 tcp:18000';
+    expect(unreversed(list, [18081, 18000, 19000])).toEqual([19000]);
+  });
+
+  it('reads the older (reverse) form', () => {
+    expect(unreversed('(reverse) tcp:18081 tcp:18081', [18081])).toEqual([]);
+  });
+
+  it('counts every port missing when adb answers nothing', () => {
+    expect(unreversed(null, [18081, 18000])).toEqual([18081, 18000]);
   });
 });
 
@@ -995,6 +1034,31 @@ describe('a release build', () => {
     ]);
   });
 
+  it('approves exp:// links for Expo Go inside the booted simulator, and reads it back', () => {
+    const key = 'com.apple.CoreSimulator.CoreSimulatorBridge-->exp';
+    const domain = 'com.apple.launchservices.schemeapproval';
+    expect(expoGoLinkApproval('ABC')).toEqual([
+      'simctl',
+      'spawn',
+      'ABC',
+      'defaults',
+      'write',
+      domain,
+      key,
+      '-string',
+      'host.exp.Exponent',
+    ]);
+    expect(expoGoLinkApproved('ABC')).toEqual([
+      'simctl',
+      'spawn',
+      'ABC',
+      'defaults',
+      'read',
+      domain,
+      key,
+    ]);
+  });
+
   it('turns the hardware keyboard off globally and for each QA simulator', () => {
     expect(hardwareKeyboardOff('/p.plist', ['A-1', 'B-2'])).toEqual([
       ['-replace', 'ConnectHardwareKeyboard', '-bool', 'NO', '/p.plist'],
@@ -1059,6 +1123,14 @@ describe('a release build', () => {
       'Soirely.xcworkspace',
     );
     expect(() => xcodeWorkspace(['Soirely.xcodeproj'])).toThrow(/found 0/);
+  });
+
+  it('builds iOS in a UTF-8 locale whatever the calling shell has, so pod install does not fail', () => {
+    const env = iosBuildEnv({ EXPO_PUBLIC_API_URL: 'http://x', LC_ALL: 'C' });
+    expect(env.LANG).toBe('en_US.UTF-8');
+    expect(env.LC_ALL).toBe('en_US.UTF-8');
+    expect(env.EXPO_PUBLIC_API_URL).toBe('http://x');
+    expect(env.EXPO_PUBLIC_ENVIRONMENT).toBe('qa');
   });
 
   it('signs the release build ad hoc, so the Keychain keeps a session across a cold start', () => {
@@ -1908,6 +1980,37 @@ describe('the app services started', () => {
     ]);
   });
 
+  it('waits out the unhealthy status a pause left before up, which gives up on it at once', () => {
+    const ran = [];
+    let probes = 0;
+    startServices(['api', 'web'], {
+      capture: (args) => {
+        if (args.includes('paused')) return 'api\n';
+        probes += 1;
+        return probes < 3 ? 'api unhealthy\n' : 'api healthy\n';
+      },
+      run: (args) => ran.push(args.join(' ')),
+      sleep: () => ran.push('sleep'),
+    });
+    expect(ran).toEqual(['unpause api', 'sleep', 'sleep', 'up -d --wait --no-recreate api web']);
+  });
+
+  it('still runs up, which names what stays unhealthy, once the time runs out', () => {
+    const ran = [];
+    let clock = 0;
+    startServices(['api'], {
+      capture: (args) => (args.includes('paused') ? 'api\n' : 'api unhealthy\n'),
+      run: (args) => ran.push(args.join(' ')),
+      sleep: (ms) => {
+        clock += ms + 500;
+        ran.push('sleep');
+      },
+      now: () => clock,
+      ms: 3000,
+    });
+    expect(ran).toEqual(['unpause api', 'sleep', 'sleep', 'up -d --wait --no-recreate api']);
+  });
+
   it('goes straight to up when nothing is paused', () => {
     expect(started('')).toEqual(['up -d --wait --no-recreate api web']);
     expect(started(null)).toEqual(['up -d --wait --no-recreate api web']);
@@ -2419,6 +2522,42 @@ describe('the driver a frozen run leaves on the simulator', () => {
       ),
     ).toEqual([4120]);
   });
+
+  const clearing = () => {
+    const calls = [];
+    return {
+      calls,
+      options: {
+        stop: (device, onAndroid, opts) => calls.push(['stop', device, onAndroid, opts]),
+        reset: (onAndroid, device) => calls.push(['reset', onAndroid, device]),
+      },
+    };
+  };
+
+  it('is stopped on the iPhone before a batch resets the app', async () => {
+    const { calls, options } = clearing();
+    await clearForBatch(false, 'SIM-1', options);
+    expect(calls).toEqual([
+      ['stop', 'SIM-1', false, { leftOver: true }],
+      ['reset', false, 'SIM-1'],
+    ]);
+  });
+
+  it('is left alone on Android, where the batch only resets the app', async () => {
+    const { calls, options } = clearing();
+    await clearForBatch(true, 'emulator-5554', options);
+    expect(calls).toEqual([['reset', true, 'emulator-5554']]);
+  });
+
+  it('is named when one is left, and nothing is said when none is', () => {
+    expect(leftDriverSay('SIM-1', { runners: [], builds: [] })).toBeNull();
+    expect(leftDriverSay('SIM-1', { runners: [], builds: [4120] })).toBe(
+      'Stopping the Maestro driver an earlier run left on SIM-1',
+    );
+    expect(leftDriverSay('SIM-1', { runners: [38266], builds: [] })).toBe(
+      'Stopping the Maestro driver an earlier run left on SIM-1',
+    );
+  });
 });
 
 describe('one Maestro run of a batch', () => {
@@ -2809,13 +2948,13 @@ describe('the flows a batch runs', () => {
         onAndroid: false,
       });
       expect(readFileSync(join(target, '_checks/settings.es.yaml'), 'utf8')).toContain(
-        "'Configuración'",
+        localise("'{{t:settings.title}}'", catalogues, 'es'),
       );
       expect(readFileSync(join(target, '_checks/security.es.yaml'), 'utf8')).toContain(
-        "'Seguridad'",
+        localise("'{{t:security.title}}'", catalogues, 'es'),
       );
       expect(readFileSync(join(target, '_checks/sign-in-rules.fr.yaml'), 'utf8')).toContain(
-        "'Règles de connexion'",
+        localise("'{{t:settings.signInRules}}'", catalogues, 'fr'),
       );
       expect(readFileSync(join(target, '_checks/sc23267-start-cold.fr.yaml'), 'utf8')).toContain(
         'file: sc23267-start-cold.fr.sc23267-start-cold-once.flow.yaml',
@@ -2873,6 +3012,9 @@ describe('the flows a batch runs', () => {
         expect(catalogues[code].steps.invitedTitle).not.toMatch(someoneSignedIn);
       }
       const signInForm = readFileSync(join(target, 'batch/sign-in-form.yaml'), 'utf8');
+      expect(signInForm).toMatch(
+        /tapOn:\s+id: 'signIn\.password\.reveal'\s+- retry:[\s\S]*?inputText: \$\{PASSWORD\}\s+- copyTextFrom:\s+id: 'signIn\.password'\s+- assertTrue: \$\{maestro\.copiedText == PASSWORD\}/,
+      );
       const landed = new RegExp(
         `^(?:${signInForm.match(/extendedWaitUntil:\s+visible: '(.*)'\s+timeout: 30000\s+optional: true/)[1].replaceAll("''", "'")})$`,
       );
@@ -2946,6 +3088,19 @@ describe('the flows a batch runs', () => {
         for (const code of ['en', 'es', 'fr', 'pt']) {
           expect(catalogues[code].todayScreen.tab.today).toMatch(toSettings);
         }
+      }
+      const atSettings = new RegExp(
+        `^(?:${readFileSync(join(target, 'batch/to-settings.yaml'), 'utf8')
+          .match(/extendedWaitUntil:\s+visible: '(.*)'/)[1]
+          .replaceAll("''", "'")})$`,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        expect(catalogues[code].signInRules.overdueTitle).toMatch(atSettings);
+        expect(
+          catalogues[code].settings.personLabelWithRole.replace(/\{\{\w+\}\}/g, 'Ada'),
+        ).toMatch(atSettings);
+        expect(catalogues[code].todayScreen.tab.today).not.toMatch(atSettings);
+        expect(catalogues[code].settings.title).not.toMatch(atSettings);
       }
       const upright = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
       expect(upright.indexOf('setOrientation: PORTRAIT')).toBeGreaterThan(-1);
@@ -3724,5 +3879,36 @@ describe('missingCmdlineTools', () => {
     expect(message).toContain('/sdk/cmdline-tools/latest/bin');
     expect(message).toContain('developer.android.com/studio#command-tools');
     expect(message).toContain('run `node scripts/qa-env.mjs setup` again');
+  });
+});
+
+describe('madeAccount', () => {
+  it('reads the account qa-account printed', () => {
+    expect(madeAccount({ status: 0, stdout: '{"email":"a@b.c"}\n', stderr: '' })).toEqual({
+      email: 'a@b.c',
+    });
+  });
+
+  it('names the call and status qa-account failed on', () => {
+    expect(() =>
+      madeAccount({
+        status: 1,
+        stdout: '',
+        stderr: '\n✗ /api/auth/register answered 429: Too Many Requests\n',
+      }),
+    ).toThrow('/api/auth/register answered 429');
+  });
+
+  it('says why when qa-account never ran', () => {
+    expect(() =>
+      madeAccount({ status: null, error: new Error('spawnSync node ENOENT'), stderr: null }),
+    ).toThrow('spawnSync node ENOENT');
+    expect(() => madeAccount({ status: null, signal: 'SIGKILL', stderr: '' })).toThrow(
+      'killed by SIGKILL',
+    );
+  });
+
+  it('falls back to the exit status when qa-account said nothing', () => {
+    expect(() => madeAccount({ status: 2, stdout: '', stderr: '' })).toThrow('exited 2');
   });
 });

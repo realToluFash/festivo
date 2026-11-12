@@ -7,6 +7,7 @@ namespace App\Domain\Organisation;
 use NumberFormatter;
 use Psl\Iter;
 use Psl\Regex;
+use Psl\Vec;
 use ResourceBundle;
 
 /** Countries and timezones as ICU knows them; currencies as ISO 4217 lists them in use today. */
@@ -40,6 +41,15 @@ final class Regions
         return Regex\matches($code, '/^[A-Z]{2}$/')
             && !Iter\contains(self::NOT_COUNTRIES, $code)
             && Iter\contains_key(self::table('ICUDATA-region', 'Countries'), $code);
+    }
+
+    /** @return list<string> Every country code, in ICU's order. */
+    public static function countries(): array
+    {
+        return Vec\filter(
+            Vec\map(Vec\keys(self::table('ICUDATA-region', 'Countries')), static fn (int|string $code): string => (string) $code),
+            self::isCountry(...),
+        );
     }
 
     /** The currency a country uses today, which is what a new organisation starts with: none for a country with no money of its own. */

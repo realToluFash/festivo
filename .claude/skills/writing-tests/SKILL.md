@@ -143,6 +143,25 @@ to discriminate. And `ActorReadableTest` only proved it covered four locales onc
 
 Say in the report which assertion you broke and what it printed.
 
+**A web test of focus after a dialog or an Ask closes has to honour `inert`.** jsdom does
+not: `focus()` on an element inside `[inert]` still moves focus there, so a test that focus
+lands right after a closing layer passes with the fix taken out. The lead found this twice
+in one day (#1841's `SecurityDesk.test.tsx`, #1842's demo `Security.test.tsx`). Make
+`focus()` do nothing inside `[inert]`, as a browser does, then take the fix out and watch
+the test go red:
+
+```ts
+const real = HTMLElement.prototype.focus;
+vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function focusUnlessInert(
+  this: HTMLElement,
+  options?: FocusOptions,
+) {
+  if (this.closest('[inert]') == null) real.call(this, options);
+});
+```
+
+`apps/web/src/demo/General.test.tsx` has it in use.
+
 ## What a green suite does not tell you
 
 - **`lint:container` is the gate after moving or renaming a class.** php-cs-fixer was clean
@@ -176,6 +195,11 @@ Say in the report which assertion you broke and what it printed.
 - **An API test sends an empty body as `{}`, never `Json\encode([])`.** That writes `[]`, a
   list, which `Input::body` refuses whole (sc-9412), so the request never reaches the
   behaviour under test. Encode `[] === $fields ? new stdClass() : $fields`.
+- **A refusal is asserted by its key or its 422 shape, never by its English sentence.**
+  Compare the message with the key's translation (`worded($refusal)`, or the translator's
+  `trans('validation.…', [], null, 'en')`), plus the status and `propertyPath`. A literal
+  sentence breaks the suite whenever the linguist rewords the copy, as two contractions
+  did in sc-30441, and proves nothing the key does not.
 
 ## Four locales, every time
 

@@ -1,12 +1,8 @@
-import type { Membership } from '@soirely/api-client';
-import { router } from 'expo-router';
 import type { RefObject } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { SECTION_HREF } from '../kit/appNav.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
-import { signOutHere } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
@@ -20,11 +16,17 @@ export function TwoFactorOverdue({
   organisation,
   answer,
   headingRef,
+  onTurnOn,
+  onSignOut,
 }: {
-  organisation: Membership;
+  /** The organisation's name. */
+  organisation: string;
   /** A tapped switch into the organisation, which takes screen reader focus to the heading (sc-11032). */
   answer: unknown;
   headingRef?: RefObject<TextHandle | null>;
+  /** Opens Security, to set two-factor up. */
+  onTurnOn: () => void;
+  onSignOut: () => void;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -41,7 +43,7 @@ export function TwoFactorOverdue({
           {t('signInRules.overdueTitle')}
         </AnswerHeading>
         <Text size={tokens.typeBodyPhone.size}>
-          {t('signInRules.overdueBody', { organisation: organisation.name })}
+          {t('signInRules.overdueBody', { organisation })}
         </Text>
         <Text size={tokens.typeBodyPhone.size} muted>
           {t('signInRules.overdueElsewhere')}
@@ -49,13 +51,13 @@ export function TwoFactorOverdue({
         <View style={[styles.actions, kind !== 'phone' && styles.actionsTablet]}>
           <PrimaryButton
             label={t('signInRules.overdueTurnOn')}
-            onPress={() => router.navigate(SECTION_HREF.security)}
+            onPress={onTurnOn}
             paired
             testID="twoFactorOverdue.turnOn"
           />
           <SecondaryButton
             label={t('signInRules.overdueSignOut')}
-            onPress={signOutHere}
+            onPress={onSignOut}
             stacked
             paired
             testID="twoFactorOverdue.signOut"

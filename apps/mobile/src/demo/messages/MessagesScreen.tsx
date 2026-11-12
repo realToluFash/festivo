@@ -89,6 +89,7 @@ import {
   PARKING_TIME,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
+import { waitsCheckOf } from './CheckWaits.ts';
 import { SW, refusalLine } from './ScheduledSave.ts';
 import { outsideToken, tokenText } from './TokenText.ts';
 import { type ReachPerson, fixKindOf, reachViewOf, resendOf } from './Reach.ts';
@@ -99,10 +100,10 @@ const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
 
 function reachedLine(m: Messages, of: ReachedOf, locale: string): string {
   const told = channelsWords(SAMPLE_CHANNELS, locale);
-  if (of === 'parking')
+  if (of === 'parking' || of === 'receipts')
     return [
       W.allGuests,
-      say.onPageTold(told),
+      say.onPageTold(of === 'receipts' ? channelsWords(['email', 'wa'], locale) : told),
       say.dayTime(dayWords(DAYS.parking, locale), PARKING_TIME),
     ].join(' · ');
   if (of === 'invite')
@@ -120,7 +121,7 @@ function reachedLine(m: Messages, of: ReachedOf, locale: string): string {
 }
 
 function reachedTitle(m: Messages, of: ReachedOf): string {
-  if (of === 'parking') return PARKING;
+  if (of === 'parking' || of === 'receipts') return PARKING;
   if (of === 'invite') return W.invitation;
 
   return m.draft == null ? W.newMessage : draftTitle(m.draft, m.thread);
@@ -382,17 +383,19 @@ export function MessagesScreen({
     onCaret: (at) => {
       caret.current = at;
     },
-    onWho: () => dispatch({ type: 'open', open: { kind: 'reached', of: 'parking' } }),
+    onWho: () =>
+      dispatch({
+        type: 'open',
+        open: { kind: 'reached', of: m.receipts ? 'receipts' : 'parking' },
+      }),
     onWhoSent: () => dispatch({ type: 'open', open: { kind: 'reached', of: 'draft' } }),
     onWhoInvited: () => dispatch({ type: 'open', open: { kind: 'reached', of: 'invite' } }),
     onMatch: () => dispatch({ type: 'matching', open: true }),
     onChannel: (key) => {
       dispatch({ type: 'channel', key });
       if (draft?.step !== 'check') return;
-      const check = checkOf({
-        ...draft,
-        channels: { ...draft.channels, [key]: !draft.channels[key] },
-      });
+      const next = { ...draft, channels: { ...draft.channels, [key]: !draft.channels[key] } };
+      const check = waitsCheckOf(next, m.balance, locale)?.check ?? checkOf(next);
       const told = check.told.map((one) => `${CHANNEL_WORD[one.key]} · ${one.count}`);
       readOut([...told, say.cantTell(check.cantTell)].join('. '));
     },

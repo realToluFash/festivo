@@ -167,6 +167,8 @@
 
 .pers-swatch {
   position: relative;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border-radius: 18px;
   background: var(--colorCard);
@@ -232,10 +234,12 @@
 
 .pers-swatch-row {
   display: flex;
+  flex: 1;
   align-items: center;
   gap: var(--spaceMd);
-  height: var(--sizeHit);
-  padding: 0 var(--spaceLg);
+  box-sizing: border-box;
+  min-height: var(--sizeHit);
+  padding: var(--spaceSm) var(--spaceLg);
 }
 
 .pers-radio {
@@ -264,9 +268,8 @@
 }
 
 .pers-swatch-name {
-  overflow: hidden;
+  min-width: 0;
   color: var(--colorInk);
   font: 600 15.5px/1.2 var(--fontFamily);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
 }

@@ -10,6 +10,7 @@ import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
+import { FOCUS_WAITS, onArrival, useFocusOnArrival } from '../src/components/arrivalFocus.ts';
 import { PrimaryButton } from '../src/components/Buttons.tsx';
 import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
 import { AboveKeyboardView } from '../src/components/Screen.tsx';
@@ -46,6 +47,8 @@ export default function Register() {
   const nameField = useRef<TextInputInstance>(null);
   const emailField = useRef<TextInputInstance>(null);
   const passwordField = useRef<TextInputInstance>(null);
+  const opensOnName = params.email == null;
+  const opensOnEmail = params.email != null && params.timedOut == null;
   const long = meetsPasswordLength(password);
   const busy = status.kind === 'submitting';
   const locked = status.kind === 'rateLimited';
@@ -53,6 +56,8 @@ export default function Register() {
   const refused = status.kind === 'refused' ? status.fields : {};
 
   useReadOut(line);
+  useFocusOnArrival(nameField, opensOnName);
+  useFocusOnArrival(emailField, opensOnEmail);
 
   // Back over the email code, this screen is still mounted with the password in it.
   const [timedOutAt, setTimedOutAt] = useState<string | undefined>(undefined);
@@ -72,17 +77,7 @@ export default function Register() {
 
     focusChecked(passwordField);
     // Android ignores a focus on this screen while the email code is still sliding off it (sc-29923).
-    const listeners = [
-      navigation.addListener('transitionEnd', (event) => {
-        if (event.data.closing) return;
-        unlisten();
-        focusChecked(passwordField);
-      }),
-      navigation.addListener('blur', () => unlisten()),
-    ];
-    const unlisten = () => listeners.forEach((remove) => remove());
-
-    return unlisten;
+    return onArrival(navigation, () => focusChecked(passwordField));
   }, [navigation, params.timedOut]);
 
   useEffect(() => {
@@ -197,7 +192,7 @@ export default function Register() {
           returnKeyType="next"
           submitBehavior="submit"
           onSubmitEditing={() => emailField.current?.focus()}
-          autoFocus={params.email == null}
+          autoFocus={!FOCUS_WAITS && opensOnName}
           testID="register.name"
         />
         {said.name != null && <Says words={said.name} />}
@@ -218,7 +213,7 @@ export default function Register() {
           returnKeyType="next"
           submitBehavior="submit"
           onSubmitEditing={() => passwordField.current?.focus()}
-          autoFocus={params.email != null && params.timedOut == null}
+          autoFocus={!FOCUS_WAITS && opensOnEmail}
           testID="register.email"
         />
         {said.email != null && <Says words={said.email} />}

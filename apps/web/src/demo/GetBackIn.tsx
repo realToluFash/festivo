@@ -67,12 +67,12 @@ export function GetBackInBoard() {
       return <Changed key={key} email={reset.email} />;
     case 'code':
       return <CodeFirst key={key} email={reset.email} />;
+    case 'support':
+      return <Support key={key} />;
     case 'link':
-      return state === 'offline' ? (
-        <Unreachable key={key} to={backIn('new')} signedIn={false} />
-      ) : (
-        <DeadLink key={key} state={state} />
-      );
+      if (state === 'offline') return <Unreachable key={key} to={backIn('new')} signedIn={false} />;
+      if (state === 'failed') return <ReadFailed key={key} />;
+      return <DeadLink key={key} state={state} />;
     default:
       return <ResetPassword key={key} state={state} reset={reset} />;
   }
@@ -312,32 +312,94 @@ function Changed({ email }: { email: string }) {
   );
 }
 
+/** The API names no address for a dead token, so the form starts empty. */
 function DeadLink({ state }: { state: string }) {
-  const navigate = useNavigate();
   const dead = DEAD[state] ?? BROKEN;
-  const [busy, after] = useBusy();
 
   return (
     <BoardPage end={null}>
       <Heading title={dead.title}>
         <p className="demo-muted">{dead.body}</p>
       </Heading>
-      <button
+      <Link
         className="button button-primary demo-wide"
-        type="button"
-        aria-busy={busy}
-        onClick={() => {
-          if (!busy) after(() => void navigate(backIn('sent')));
-        }}
+        to={backIn('reset')}
+        state={{ email: '', back: backIn('link', state) } satisfies Reset}
       >
-        {busy ? 'Sending…' : 'Send a new link'}
-      </button>
+        Send a new link
+      </Link>
       <p className="demo-aside">
         <span>Remembered it after all?</span>
         <Link className="link-button demo-link" to="/demo/sign-in">
           Sign in
         </Link>
       </p>
+    </BoardPage>
+  );
+}
+
+const NEXT_READS = [
+  { name: 'fails again', to: null },
+  { name: 'a live link', to: backIn('new') },
+  { name: 'a live link, two-factor on', to: backIn('code') },
+  { name: 'an expired link', to: backIn('link', 'expired') },
+  { name: 'a used link', to: backIn('link', 'used') },
+  { name: 'a link that doesn’t work', to: backIn('link', 'broken') },
+  { name: 'no answer', to: backIn('link', 'offline') },
+];
+
+/** The server answered, but with none of the three refusals, so the link is not called dead. */
+function ReadFailed() {
+  const navigate = useNavigate();
+  const [next, setNext] = useState(0);
+  const [busy, after] = useBusy();
+  const heading = useRef<HTMLDivElement>(null);
+
+  function tryAgain(): void {
+    if (busy) return;
+
+    after(() => {
+      const to = NEXT_READS[next]?.to;
+      if (to == null) {
+        heading.current?.focus();
+        return;
+      }
+
+      void navigate(to, { replace: true, state: { email: SAMPLE.email } });
+    });
+  }
+
+  return (
+    <BoardPage
+      end={null}
+      controls={
+        <label className="demo-switch">
+          Demo: the next read answers
+          <select
+            className="demo-input demo-select"
+            value={next}
+            onChange={(event) => setNext(Number(event.target.value))}
+          >
+            {NEXT_READS.map((read, index) => (
+              <option key={read.name} value={index}>
+                {read.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      }
+    >
+      <Heading title="That did not work" focus={heading}>
+        <p className="demo-muted">Something went wrong on the way. Try again in a moment.</p>
+      </Heading>
+      <button
+        className="button button-primary demo-wide"
+        type="button"
+        aria-busy={busy}
+        onClick={tryAgain}
+      >
+        {busy ? 'Trying again…' : 'Try again'}
+      </button>
     </BoardPage>
   );
 }
@@ -368,10 +430,31 @@ function CodeFirst({ email }: { email: string }) {
         <Link className="link-button demo-link" to={twoFactorAt('recovery')}>
           Use a recovery code instead
         </Link>
-        <Link className="link-button demo-link" to={twoFactorAt('start')}>
+        <Link className="link-button demo-link" to={backIn('support')} state={{ email }}>
           Lost your authenticator and your recovery codes?
         </Link>
       </div>
+    </BoardPage>
+  );
+}
+
+function Support() {
+  const location = useLocation();
+
+  return (
+    <BoardPage end={null} back={{ to: backIn('code'), state: location.state }}>
+      <Heading title="Contact Soirely support">
+        <p className="demo-muted">
+          Your organisation can confirm it’s you only once you’ve signed in with your password. If
+          you’ve lost your password too, contact Soirely support.
+        </p>
+      </Heading>
+      <a className="button button-primary demo-wide" href="mailto:support@soirely.com">
+        Email support@soirely.com
+      </a>
+      <Link className="link-button demo-link" to="/demo/sign-in" state={location.state}>
+        Back to sign in
+      </Link>
     </BoardPage>
   );
 }

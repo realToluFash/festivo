@@ -2,7 +2,7 @@ import { formatWallDay } from '@soirely/domain';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { type EditState, type SampleEvent, EVENT_WORDS as W, localDay } from './events.ts';
-import { Opened } from './EventEdits.tsx';
+import { Opened } from '../components/EventPageParts.tsx';
 import { dayOf, wordsFor } from './guest.ts';
 import {
   REPLY_BY_WORDS as R,

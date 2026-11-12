@@ -4,6 +4,7 @@ import {
   markedMilestones,
   milestoneDistance,
   nextUp,
+  notThisYear,
 } from '@soirely/domain';
 
 import { milestonesOf } from './calendar.ts';
@@ -11,6 +12,7 @@ import { writtenTime } from './clock.ts';
 import { demoWords } from './demoWords.ts';
 import { CLOCKS, type SampleEvent, instantOf, localDay, shownOf } from './events.ts';
 import { CW, type SampleName, cw, linesFor } from './kitchenChanges.ts';
+import type { PartsSample } from './kitchenParts.ts';
 import { heldNeeds, resetNeedsYou, seedNeedsYou } from './needsYou.ts';
 import type { DemoLink } from './settings.ts';
 
@@ -117,6 +119,10 @@ export interface KitchenStart {
   /** guests.manage, apart from menu.manage on the changes states (sc-30692); sc-30812's states keep them together. */
   names?: boolean;
   clock?: Date;
+  /** sc-34244: the Main served in parts or family style, from its own sample room. */
+  parts?: PartsSample;
+  /** The printout on A4 in place of the page. */
+  paper?: boolean;
 }
 
 const FIRST: Copy = { id: 3, at: '2026-11-03T09:41:00Z', by: READER };
@@ -230,6 +236,10 @@ const STATES = {
     name: 'One guest stops coming, one starts',
     starts: { kitchen: changed('person') },
   },
+  changes_swap: {
+    name: 'Without guests.manage: one guest’s Peanuts removed, another’s recorded, never netted',
+    starts: { kitchen: changed('swap'), names: false },
+  },
   changes_erased: {
     name: 'A guest erased since the copy: counts only',
     starts: { kitchen: changed('erased') },
@@ -277,6 +287,46 @@ const STATES = {
   changes_copies: {
     name: 'Download this copy: each as recorded, its changes page included',
     starts: { kitchen: changed('named') },
+  },
+  inParts: {
+    name: 'In parts: each dish’s parts, Served with this course, Plated at the pass',
+    starts: { parts: 'inParts' },
+  },
+  familyStyle: {
+    name: 'Family style: By table, the Top table plated at, No table last',
+    starts: { parts: 'familyStyle' },
+  },
+  allPlated: {
+    name: 'Family style, every guest plated at the pass: no By table',
+    starts: { parts: 'allPlated' },
+  },
+  skipped: {
+    name: 'Two guests skipped the Main: counted nowhere, the numbers drop',
+    starts: { parts: 'skipped' },
+  },
+  platedBuffet: {
+    name: 'Every course Plated or Buffet: the sheet as sc-3911',
+    starts: { parts: 'plated' },
+  },
+  countsOnly: {
+    name: 'Without guests.manage: the parts lines identical',
+    starts: { parts: 'familyStyle', names: false },
+  },
+  print: {
+    name: 'The printout on A4, Family style',
+    starts: { parts: 'familyStyle', paper: true },
+  },
+  printInParts: {
+    name: 'The printout on A4, In parts',
+    starts: { parts: 'inParts', paper: true },
+  },
+  partsMaking: {
+    name: 'Making the PDF, with the parts',
+    starts: { parts: 'familyStyle', kitchen: SET, dialog: 'making' },
+  },
+  partsFailed: {
+    name: 'The PDF could not be made, with the parts',
+    starts: { parts: 'familyStyle', kitchen: SET, dialog: 'failed' },
   },
 } satisfies Record<string, { name: string; starts: Partial<KitchenStart> }>;
 
@@ -515,8 +565,8 @@ export function distanceOf(at: string, timeZone: string, now: Date): string {
   }
 }
 
-export function momentOf(at: string, timeZone: string): string {
-  return formatEventMoment(at, timeZone, LOCALE);
+export function momentOf(at: string, timeZone: string, now: Date): string {
+  return formatEventMoment(at, timeZone, LOCALE, notThisYear(timeZone, now, at));
 }
 
 export interface CardMilestone {
@@ -535,7 +585,7 @@ export function cardMilestone(event: SampleEvent, now: Date): CardMilestone | nu
 
   return {
     title: filled(KW.nextUp, { title: next.title }),
-    line: `${momentOf(next.at, event.timeZone)} · ${distanceOf(next.at, event.timeZone, now)}`,
+    line: `${momentOf(next.at, event.timeZone, now)} · ${distanceOf(next.at, event.timeZone, now)}`,
     overdue: Date.parse(next.at) < now.getTime(),
     label: next.action?.label ?? null,
     link: next.action?.link ?? null,
@@ -639,7 +689,7 @@ export function sheetLine(event: SampleEvent, now: Date, allergic = ALLERGIC.len
   return filled(KW.sheetLine, {
     allergic,
     courses: COURSES.length,
-    at: momentOf(now.toISOString(), event.timeZone),
+    at: momentOf(now.toISOString(), event.timeZone, now),
   });
 }
 
@@ -694,6 +744,20 @@ function dateLink(state: KitchenDatesState, name: string, dates = false): DemoLi
   return { to: `/demo/events/${KITCHEN_EVENT}${dates ? '/dates' : ''}?state=${state}`, name };
 }
 
+/** sc-34244's states: the parts on the Main, on the page and on A4. */
+export const PARTS_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
+  {
+    name: 'The parts on a course, at a desk',
+    states: (
+      ['inParts', 'familyStyle', 'allPlated', 'skipped', 'platedBuffet', 'countsOnly'] as const
+    ).map(link),
+  },
+  {
+    name: 'The printout and the PDF',
+    states: (['print', 'printInParts', 'partsMaking', 'partsFailed'] as const).map(link),
+  },
+];
+
 /** sc-30692's states, beside sc-30812's on the demo's home. */
 export const CHANGES_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
   {
@@ -705,6 +769,7 @@ export const CHANGES_PAGES: readonly { name: string; states: readonly DemoLink[]
         'changes_menu',
         'changes_variant_side',
         'changes_person',
+        'changes_swap',
         'changes_erased',
         'changes_long',
       ] as const

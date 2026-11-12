@@ -1,4 +1,4 @@
-import { zoneLabel } from '@soirely/domain';
+import { firstUnverified, primaryOf, zoneLabel } from '@soirely/domain';
 import { useLocalSearchParams } from 'expo-router';
 import { createRef, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import type { ScrollViewInstance, ViewInstance } from 'react-native';
@@ -21,11 +21,10 @@ import { Ask, bringIntoView, useRowClear } from '../../components/Summary.tsx';
 import type { TextHandle } from '../../components/Text.tsx';
 import {
   cardLine,
+  codeErrors,
   type Contact,
   type ContactKind,
-  firstUnverified,
   KIND_KEYS,
-  primaryOf,
   promotedWords,
   verifiedWords,
   verifyWords,
@@ -46,8 +45,9 @@ import {
   type Verifying,
   WRONG_CODE,
 } from './AccountModel.ts';
-import { useCountdown } from './AccountParts.tsx';
+import { useCountdown, useZoneHeld } from './AccountParts.tsx';
 import { HOME_ZONE, PHONE_COUNTRY, phoneShown, sentCodeProblem, ZONES } from './AccountSample.ts';
+import { saveName, savedName } from './savedName.ts';
 import { SummaryPage } from './SummaryPage.tsx';
 
 export { ACCOUNT_STATES } from './AccountModel.ts';
@@ -68,7 +68,8 @@ function AccountPage({ start }: { start: AccountStart }) {
   const { t } = useTranslation();
   const shell = useShell();
   const clear = useRowClear();
-  const [name, setName] = useState<string>(SAMPLE.name);
+  const yours = shell.viewer !== 'member';
+  const [name, setName] = useState<string>(() => (yours ? savedName() : null) ?? SAMPLE.name);
   const [zone, setZone] = useState(HOME_ZONE);
   const [emails, setEmails] = useState(start.emails);
   const [phones, setPhones] = useState(start.phones);
@@ -78,6 +79,7 @@ function AccountPage({ start }: { start: AccountStart }) {
   const [screen, setScreen] = useState<AccountScreen | null>(start.screen);
   const [verifying, setVerifying] = useState<Verifying | null>(start.verifying);
   const [visit, setVisit] = useState(0);
+  const zoneWaiting = useZoneHeld(start.zoneHeld);
   const scroll = useRef<ScrollViewInstance>(null);
   const blocks = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const [targets] = useState(() => ({
@@ -229,7 +231,7 @@ function AccountPage({ start }: { start: AccountStart }) {
         />
         <AboutSection
           name={name}
-          zone={{ title: zoneLabel(zone), line: zoneLine(zone.id, t) }}
+          zone={zoneWaiting ? 'waiting' : { title: zoneLabel(zone), line: zoneLine(zone.id, t) }}
           nameRef={targets.name}
           zoneRef={targets.zone}
           onName={() => show('name', 'name')}
@@ -280,6 +282,7 @@ function AccountPage({ start }: { start: AccountStart }) {
         onClose={() => setScreen(null)}
         onSave={(next) => {
           setName(next);
+          if (yours) saveName(next);
           done(t('nameCard.saved', { name: next }));
 
           return Promise.resolve(null);
@@ -388,10 +391,11 @@ function SampleVerify({
       title={words.title}
       lead={words.lead}
       codeLabel={words.codeLabel}
+      errors={codeErrors(words, t)}
       spent={expired ? words.expired : null}
       wait={countdown.left}
       prefill={start === 'wrong' ? WRONG_CODE : ''}
-      startError={start === 'wrong' ? words.wrong : null}
+      startError={start === 'wrong' ? 'wrong' : null}
       autoFocus={start === 'entering'}
       opener={opener}
       onClose={onClose}
@@ -401,10 +405,7 @@ function SampleVerify({
           if (row != null) onVerified(row);
           return Promise.resolve(null);
         }
-        const error =
-          problem === 'blank' ? words.blank : problem === 'short' ? words.short : words.wrong;
-
-        return Promise.resolve({ error, checked: problem !== 'wrong' });
+        return Promise.resolve({ error: problem, checked: problem !== 'wrong' });
       }}
       onResend={() => {
         setExpired(false);

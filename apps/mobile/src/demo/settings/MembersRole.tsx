@@ -6,7 +6,7 @@ import { PasswordField } from '../../components/PasswordField.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { SAMPLE } from '../samples.ts';
-import { RoleChoices } from './MembersRequest.tsx';
+import { RoleChoices } from '../../components/RoleChoices.tsx';
 import {
   firstName,
   grantable,
@@ -14,13 +14,14 @@ import {
   ORGANISATION,
   type Person,
   PROOF_MINUTES,
+  ROLE_MEANS,
   proofProblem,
   underRoles,
 } from './MembersSample.ts';
 import { type AskProps, FocusedScreen, Line } from '../../components/Summary.tsx';
 
 export const TAKES_EFFECT = 'Takes effect on their next request. Nobody is signed out.';
-const OWNER_ASKS = 'Asks for your password and a code.';
+const OWNER_ASKS = 'Asks you to confirm it’s you.';
 const PASSWORD_LABEL = 'Your password';
 const CODE_LABEL = 'Code';
 
@@ -179,8 +180,9 @@ export function RoleScreen({
             <RoleChoices
               roles={grantable(viewer)}
               picked={picked}
-              now={person.role}
-              owned={OWNER_ASKS}
+              now={person.role == null ? null : { role: person.role, word: 'Now' }}
+              owned={{ role: 'Owner', line: OWNER_ASKS }}
+              lines={ROLE_MEANS}
               onPick={setPicked}
               testID="members.role"
             />

@@ -6,13 +6,24 @@ import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
 import { BOLD_TEXT_BOARDS } from '../../src/demo/boldText/BoldTextBoards.ts';
 import { BUDGET_BOARDS } from '../../src/demo/budget/BudgetBoards.ts';
+import { PILL_FIT_BOARDS } from '../../src/demo/pillFit/PillFitBoards.ts';
+import { TABLET_TABS_BOARDS } from '../../src/demo/tabletTabs/TabletTabsBoards.ts';
+import { TEXT_SIZE_BOARDS } from '../../src/demo/textSize/TextSizeBoards.ts';
 import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
+import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeaderBoards.ts';
+import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
 import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
 import { GUESTS_BOARDS } from '../../src/demo/guests/GuestsBoards.ts';
+import { PASS_BOARDS } from '../../src/demo/pass/PassBoards.ts';
+import { NEXT_BOARDS, QUEUE_BOARDS } from '../../src/demo/queue/QueueBoards.ts';
+import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowItsGoingBoards.ts';
+import { REQUEST_BOARDS } from '../../src/demo/service/RequestsBoards.ts';
+import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
+import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 interface Board {
@@ -28,6 +39,59 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     boards: BOLD_TEXT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
+    page: 'Focused header · the largest text sizes',
+    boards: FOCUSED_HEADER_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Text size · the phone’s tab bar and Settings card at twice the size (sc-37298)',
+    boards: TEXT_SIZE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Organisation pill · when the words do not fit (sc-38149)',
+    boards: PILL_FIT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Text size · the upright tablet’s tabs at twice the size (sc-40401)',
+    boards: TABLET_TABS_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Sidebar on its side · Your events on every place (sc-39340)',
+    boards: [
+      { title: 'Today', what: 'Your events under the places', href: '/demo/today' },
+      { title: 'Events', what: 'The same list', href: '/demo/events' },
+      { title: 'Calendar', what: 'The same list', href: '/demo/calendar' },
+      { title: 'Settings', what: 'The same list', href: '/demo/settings' },
+      {
+        title: 'No events',
+        what: 'No heading, nothing in its place',
+        href: '/demo/settings?sidebar=none',
+      },
+      {
+        title: 'Today · no events',
+        what: 'No heading over nothing here too',
+        href: '/demo/today?sidebar=none',
+      },
+      {
+        title: 'More than it holds',
+        what: 'Twenty, scrolling under the heading; the foot stays',
+        href: '/demo/events?sidebar=many',
+      },
+      {
+        title: 'Today · more than it holds',
+        what: 'The same scroll on Today',
+        href: '/demo/today?sidebar=many',
+      },
+    ],
+  },
+  {
     page: 'Today · where signing in lands',
     boards: [
       { title: 'A planning day', what: 'Four things need you', href: '/demo/today' },
@@ -35,6 +99,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'A planning day · invitations not sent',
         what: 'The party with nobody invited',
         href: '/demo/today?moment=plan&invites=none',
+      },
+      {
+        title: 'A planning day · the event starts later today',
+        what: 'The party at 19:00, read at 09:41',
+        href: '/demo/today?moment=plan&starts=later',
       },
       {
         title: 'Needs you · every overdue form',
@@ -157,6 +226,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     ],
   },
   {
+    page: 'The switcher · every state',
+    boards: SWITCHER_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
     page: 'Create an organisation · B · A short walk',
     boards: [
       {
@@ -208,6 +281,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Step 2 · searching',
         what: '“bra”: three countries',
         href: '/demo/today?create=country-search',
+      },
+      {
+        title: 'Step 2 · nothing matches',
+        what: '“zzz”: No country matches',
+        href: '/demo/today?create=country-nomatch',
       },
       {
         title: 'Step 2 · another country',
@@ -335,6 +413,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/account?state=zone',
       },
       {
+        title: 'Your account · time zone loading',
+        what: 'The zone list held 3 s: blank, then Loading…',
+        href: '/demo/settings/account?state=zoneWaiting',
+      },
+      {
         title: 'Your account · check your email',
         what: 'The code for the second address',
         href: '/demo/settings/account?state=verifyEmail',
@@ -412,8 +495,38 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'Security · set up two-factor',
-        what: 'The QR, the key, the app’s code',
+        what: 'The QR, the key, Add to my authenticator app, the app’s code',
         href: '/demo/settings/security?state=setup',
+      },
+      {
+        title: 'Security · set up, no authenticator',
+        what: 'No app takes otpauth:// links, so no Add button',
+        href: '/demo/settings/security?state=setupNoAuthenticator',
+      },
+      {
+        title: 'Security · set up, key loading',
+        what: 'No Add button until the key is in',
+        href: '/demo/settings/security?state=setupLoading',
+      },
+      {
+        title: 'Security · set up, did not load',
+        what: 'No Add button; Try again brings it with the key',
+        href: '/demo/settings/security?state=setupFailed',
+      },
+      {
+        title: 'Security · set up, after Try again',
+        what: 'A new key, and the Add button carries it',
+        href: '/demo/settings/security?state=setupRetried',
+      },
+      {
+        title: 'Security · set up, back from the authenticator',
+        what: 'The same key; the code field keeps what it held',
+        href: '/demo/settings/security?state=setupBack',
+      },
+      {
+        title: 'Security · set up, a code from an old entry',
+        what: 'After Cancel and a new key: today’s refusal',
+        href: '/demo/settings/security?state=setupOldEntry',
       },
       {
         title: 'Security · recovery codes',
@@ -449,6 +562,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Security · reset sent',
         what: 'Check your email, Done',
         href: '/demo/settings/security?state=forgotSent',
+      },
+      {
+        title: 'Security · two-factor did not load',
+        what: 'No card; Try again in its section',
+        href: '/demo/settings/security?state=factorFailed',
+      },
+      {
+        title: 'Security · Apple linked, no card',
+        what: 'The done line alone, then the failure',
+        href: '/demo/settings/security?state=factorFailedLinked',
+      },
+      {
+        title: 'Security · signed out, still loading',
+        what: 'The line alone, then back in the card',
+        href: '/demo/settings/security?state=factorLoadingSignedOut',
       },
       {
         title: 'Notifications',
@@ -580,6 +708,111 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Members · the owner claim',
         what: 'Julien claims Ire Events by its domain',
         href: '/demo/settings/members?state=claim',
+      },
+      {
+        title: 'Members · the owner claim withdrawn',
+        what: 'Withdraw your claim? on its screen',
+        href: '/demo/settings/members?state=withdraw',
+      },
+      {
+        title: 'Members · the owner claim found',
+        what: 'Record found, Withdraw my claim',
+        href: '/demo/settings/members?state=claimFound',
+      },
+      {
+        title: 'Members · another admin’s claim',
+        what: 'Julien sees Ana Souza becoming the owner',
+        href: '/demo/settings/members?state=claimTheirs',
+      },
+      {
+        title: 'Members · stop another admin’s claim',
+        what: 'Stop Ana Souza’s claim?',
+        href: '/demo/settings/members?state=claimStop',
+      },
+      {
+        title: 'Members · another admin’s claim found',
+        what: 'Ana’s record is found',
+        href: '/demo/settings/members?state=claimTheirsFound',
+      },
+      {
+        title: 'Members · a claim stopped',
+        what: 'You stopped Ana Souza’s claim',
+        href: '/demo/settings/members?state=claimStopped',
+      },
+      {
+        title: 'Members · no active owner',
+        what: 'A claim was stopped, only support restores',
+        href: '/demo/settings/members?state=claimClosed',
+      },
+      {
+        title: 'Members · the owner claim refused',
+        what: 'Tom, an admin at gmail.com, is refused',
+        href: '/demo/settings/members?state=claimRefused',
+      },
+      {
+        title: 'Members · the domain managed elsewhere',
+        what: 'ire.events is managed by another organisation',
+        href: '/demo/settings/members?state=claimManaged',
+      },
+      {
+        title: 'Members · two requests waiting',
+        what: 'Lucía Gómez and Kwame Asante',
+        href: '/demo/settings/members?state=waitingTwo',
+      },
+      {
+        title: 'Members · approve a request',
+        what: 'Lucía’s request, the role to give',
+        href: '/demo/settings/members?state=approving',
+      },
+      {
+        title: 'Members · turn down a request',
+        what: 'Turn down Lucía Gómez?',
+        href: '/demo/settings/members?state=turningDown',
+      },
+      {
+        title: 'Members · a request approved',
+        what: 'Lucía Gómez is a Member',
+        href: '/demo/settings/members?state=approved',
+      },
+      {
+        title: 'Members · a person',
+        what: 'Priya Shah’s page',
+        href: '/demo/settings/members?state=priya',
+      },
+      {
+        title: 'Members · in other organisations',
+        what: 'Priya is in 2 other organisations',
+        href: '/demo/settings/members?state=alsoMember',
+      },
+      {
+        title: 'Members · a long organisation name',
+        what: 'Remove from it wraps, the whole 89-character name',
+        href: '/demo/settings/members?state=longName',
+      },
+      {
+        title: 'Members · a one-word organisation name',
+        what: 'Remove from it breaks inside the 100-character name',
+        href: '/demo/settings/members?state=oneWordName',
+      },
+      {
+        title: 'Members · removing a person',
+        what: 'Remove Priya Shah from Ire Events?',
+        href: '/demo/settings/members?state=removing',
+      },
+      {
+        title: 'Members · making an owner',
+        what: 'Make Ana an owner, your password and code',
+        href: '/demo/settings/members?state=makingOwner',
+      },
+      {
+        title: 'Members · nobody suspended',
+        what: 'The Suspended filter, empty',
+        href: '/demo/settings/members?state=nobodySuspended',
+      },
+      {
+        title: 'Members · nobody left',
+        what: 'The Former filter, empty',
+        href: '/demo/settings/members?state=nobodyLeft',
       },
       {
         title: 'Members · loading',
@@ -894,6 +1127,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events?state=filterOpen',
       },
       {
+        title: 'Events · many filters',
+        what: 'Three types, This week and two hosts, more than fit on a line',
+        href: '/demo/events?state=manyFilters',
+      },
+      {
+        title: 'Events · many filters, menu open',
+        what: 'The Type and Hosted by rows ending in +N more',
+        href: '/demo/events?state=manyFiltersOpen',
+      },
+      {
+        title: 'Events · one long host',
+        what: 'A host whose name is longer than the line, chosen alone',
+        href: '/demo/events?state=longHost',
+      },
+      {
         title: 'Events · no match',
         what: 'Search and a filter, both to clear',
         href: '/demo/events?state=noMatch',
@@ -902,6 +1150,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Events · offline',
         what: 'As of 09:32, Try again',
         href: '/demo/events?state=offline',
+      },
+      {
+        title: 'Events · loading',
+        what: 'The card and rows as shapes, search and Filter off',
+        href: '/demo/events?state=loading',
       },
       { title: 'Events · a first run', what: 'No events yet', href: '/demo/events?state=first' },
       {
@@ -928,6 +1181,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Events · nobody invited yet',
         what: 'The guest counts at 0',
         href: '/demo/events?state=noGuests',
+      },
+      {
+        title: 'An event · loading',
+        what: 'The loaded page’s top and tabs, the body as shapes',
+        href: '/demo/events/evt-wed-4?state=loading',
       },
       {
         title: 'An event · draft',
@@ -1272,6 +1530,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/people?state=roleFails',
       },
       {
+        title: 'People · some added, one refused',
+        what: 'Tick Kofi then Julien: Kofi goes in, Julien stays ticked',
+        href: '/demo/people?state=addPartial',
+      },
+      {
+        title: 'People · nobody left to add',
+        what: 'Everyone in Ire Events is on it already',
+        href: '/demo/people?state=everyoneOn',
+      },
+      {
         title: 'People · loading',
         what: 'Loading the people on this event',
         href: '/demo/people?state=loading',
@@ -1280,6 +1548,46 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'People · failed',
         what: 'Could not load, Try again',
         href: '/demo/people?state=failed',
+      },
+      {
+        title: 'People card',
+        what: 'On the Overview, after Guests: 5, Priya leads',
+        href: '/demo/events/evt-wed-4',
+      },
+      {
+        title: 'People card · you alone',
+        what: '1 on this event, Lead · You',
+        href: '/demo/events/evt-wed-4?people=one',
+      },
+      {
+        title: 'People card · no Lead',
+        what: '4 on this event, no second line',
+        href: '/demo/events/evt-wed-4?people=noLead',
+      },
+      {
+        title: 'People card · nobody yet',
+        what: 'Nobody is on this event yet, still opens People',
+        href: '/demo/events/evt-wed-4?people=nobody',
+      },
+      {
+        title: 'People card · loading',
+        what: 'The frame, the count held',
+        href: '/demo/events/evt-wed-4?people=loading',
+      },
+      {
+        title: 'People card · failed',
+        what: 'Could not load, Try again',
+        href: '/demo/events/evt-wed-4?people=failed',
+      },
+      {
+        title: 'People card · read only',
+        what: 'Ana sees the same card, People opens read only',
+        href: '/demo/events/evt-wed-4?people=readOnly',
+      },
+      {
+        title: 'People card · a long name',
+        what: 'The Lead line wraps under the count, nothing cut',
+        href: '/demo/events/evt-wed-4?people=long',
       },
     ],
   },
@@ -1298,6 +1606,46 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Seating · A The room',
     boards: SEATING_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the pass’s print controls (sc-4018) · tablet landscape',
+    boards: PASS_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the section’s queue (sc-36033) · phone, tablet portrait and landscape',
+    boards: QUEUE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the waiter’s Next follows the queue (sc-36033) · phone',
+    boards: NEXT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · Team, the floor lead moves someone (sc-36034) · phone and tablet landscape',
+    boards: TEAM_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the moved person’s own screen (sc-36034) · phone',
+    boards: MOVED_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · How it’s going (sc-34107) · phone from 320 px',
+    boards: SERVICE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the waiter’s Next, a tray the lead paused or gave (sc-34107) · phone',
+    boards: SERVICE_NEXT_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Service · guest requests from the table (sc-4023) · phone, tablet portrait and landscape',
+    boards: REQUEST_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the whole room as a plan or a list (sc-4026) · tablet landscape',
+    boards: ROOM_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Guests · A Summary first',
@@ -1375,6 +1723,51 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Calendar · reset your link?',
         what: 'Reset link, or keep it',
         href: '/demo/calendar?state=resetLink',
+      },
+    ],
+  },
+  {
+    page: 'Calendar · Only what needs you',
+    boards: [
+      {
+        title: 'Calendar · the Show menu',
+        what: 'Only what needs you, chosen',
+        href: '/demo/calendar?state=needsMenu',
+      },
+      {
+        title: 'Calendar · only what needs you',
+        what: 'Overdue on Nov 2 and 3, +1 more on Nov 4',
+        href: '/demo/calendar?state=needsMonth',
+      },
+      {
+        title: 'Calendar · today open',
+        what: 'Confirm the cake overdue, then the band',
+        href: '/demo/calendar?state=needsDay',
+      },
+      {
+        title: 'Calendar · Agenda',
+        what: 'Landing on today, Nov 2 overdue above',
+        href: '/demo/calendar?state=needsAgenda',
+      },
+      {
+        title: 'Calendar · a month with nothing for you',
+        what: 'December 2026',
+        href: '/demo/calendar?state=needsEmptyMonth',
+      },
+      {
+        title: 'Calendar · a day with nothing for you',
+        what: 'Sat, Nov 14 open, two events',
+        href: '/demo/calendar?state=needsEmptyDay',
+      },
+      {
+        title: 'Calendar · a reader who can only view',
+        what: 'Nothing needs you in November',
+        href: '/demo/calendar?state=needsReadOnly',
+      },
+      {
+        title: 'Calendar · Agenda, nothing today',
+        what: 'Today lands on Wed, Nov 4',
+        href: '/demo/calendar?state=needsTodayEmpty',
       },
     ],
   },
@@ -1516,6 +1909,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'Soirely could not be reached',
         href: '/demo/waiting?state=notCancelled',
       },
+      {
+        title: 'Waiting · nobody left to confirm',
+        what: 'The approvers left; Email Soirely support',
+        href: '/demo/waiting?state=nobody',
+      },
       { title: 'Two-factor is off', what: 'Confirmed', href: '/demo/ending?kind=approved' },
       { title: 'Turned down', what: 'An ending', href: '/demo/ending?kind=turnedDown' },
       { title: 'Ended', what: 'Nobody answered in 7 days', href: '/demo/ending?kind=ended' },
@@ -1543,6 +1941,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/new-password',
       },
       { title: 'This link has expired', what: 'One button', href: '/demo/link-expired' },
+      {
+        title: 'That did not work',
+        what: 'Reading the link failed: Try again reads it again',
+        href: '/demo/read-failed',
+      },
     ],
   },
   {

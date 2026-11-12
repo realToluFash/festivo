@@ -114,7 +114,7 @@ describe('what arrived with a load (sc-23303)', () => {
     const fade = STYLES.slice(STYLES.indexOf('.arrives,'));
     const selectors = fade.slice(0, fade.indexOf('{')).split(',\n').slice(1);
 
-    expect(selectors).toHaveLength(5);
+    expect(selectors).toHaveLength(4);
     for (const selector of selectors) {
       expect(selector).toMatch(/:not\([^)]*\.dialog, \.dialog-scrim\)/u);
     }

@@ -6,9 +6,10 @@ import { Back } from '../../components/SettingsParts.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { PageToast, type PageToastProps } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
-import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
+import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Bell, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
+import { PAGE_TITLE, PANE_TITLE, pageTitle, paneTitle } from '../../components/topTitle.ts';
+import { Bell, Landscape, OrgPill, PortraitTop, SettingsTabBar } from './Frame.tsx';
 
 /** A section page in B, summary first: back and the bell on top, the title, then the card and the lists. */
 export function SummaryPage({
@@ -40,7 +41,7 @@ export function SummaryPage({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {title != null && <PageTitle text={title} size={28} />}
+          {title != null && <PageTitle text={title} size={PANE_TITLE} look={paneTitle} />}
           {children}
         </ScrollView>
         {toast != null && <PageToast {...toast} bottom={tokens.spaceLg} />}
@@ -78,14 +79,18 @@ export function SummaryPage({
           <View style={styles.grow} />
           {phone && <Bell tell={shell.tell} />}
         </View>
-        {title == null ? <View style={styles.untitled} /> : <PageTitle text={title} size={30} />}
+        {title == null ? (
+          <View style={styles.untitled} />
+        ) : (
+          <PageTitle text={title} size={PAGE_TITLE} look={pageTitle} />
+        )}
         <View style={styles.blocks}>{children}</View>
       </ScrollView>
       {phone && (
         <>
           <View style={[styles.statusStrip, { height: insets.top }]} pointerEvents="none" />
           <TabBarFade />
-          <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Settings" />
+          <SettingsTabBar bottom={foot} />
         </>
       )}
       {toast != null && (
@@ -100,14 +105,17 @@ export function SummaryPage({
   );
 }
 
-function PageTitle({ text, size }: { text: string; size: number }) {
+function PageTitle({
+  text,
+  size,
+  look,
+}: {
+  text: string;
+  size: number;
+  look: { letterSpacing: number };
+}) {
   return (
-    <Text
-      size={size}
-      weight="bold"
-      accessibilityRole="header"
-      style={[styles.title, { letterSpacing: size * -0.02 }]}
-    >
+    <Text size={size} weight="bold" accessibilityRole="header" style={[styles.title, look]}>
       {text}
     </Text>
   );

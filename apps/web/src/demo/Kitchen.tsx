@@ -5,7 +5,7 @@ import { Glyph } from '../components/Glyph.tsx';
 import { Ask, CardStep, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
-import { Opened } from './EventEdits.tsx';
+import { Opened } from '../components/EventPageParts.tsx';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { type SampleEvent, localDay, sampleEvent } from './events.ts';
@@ -28,6 +28,7 @@ import {
   fileName,
   keepKitchen,
   keptKitchen,
+  kitchenAt,
   kw,
   apiRefuses,
   latestCopy,
@@ -50,6 +51,8 @@ import {
   courseRows,
   dietCounts,
 } from './kitchenChanges.ts';
+import { KitchenPaper, PartsBlock } from './KitchenParts.tsx';
+import { PARTS_FIGURES, PARTS_SAMPLES, type PartsSheet } from './kitchenParts.ts';
 import { keptInbox, waitingLine } from './messages.ts';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
@@ -74,6 +77,16 @@ function KitchenAt({ id, raw }: { id: string | undefined; raw: string | null }) 
   if (event == null) return <Navigate to="/demo/events" replace />;
   if (event.id !== KITCHEN_EVENT)
     return <Navigate to={`/demo/events/${event.id}?area=menu`} replace />;
+  if (first.paper === true && first.parts != null)
+    return (
+      <KitchenPaper
+        event={event}
+        figures={PARTS_FIGURES}
+        sheet={PARTS_SAMPLES[first.parts]()}
+        now={first.clock ?? clockOfKitchen()}
+        back={kitchenAt(event.id, first.parts === 'inParts' ? 'inParts' : 'familyStyle')}
+      />
+    );
 
   return (
     <EventsShell
@@ -94,7 +107,9 @@ function KitchenAt({ id, raw }: { id: string | undefined; raw: string | null }) 
   );
 }
 
-function figuresOf(kitchen: KitchenHeld): Figures {
+function figuresOf(kitchen: KitchenHeld, parts: boolean): Figures {
+  if (parts) return PARTS_FIGURES;
+
   return kitchen.sample == null ? BASE : SAMPLES[kitchen.sample].now;
 }
 
@@ -110,7 +125,8 @@ function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEve
   const manage = first.manage;
   const names = first.names ?? manage;
   const copies = newestFirst(kitchen.copies);
-  const figures = figuresOf(kitchen);
+  const [parts] = useState(() => (first.parts == null ? null : PARTS_SAMPLES[first.parts]()));
+  const figures = figuresOf(kitchen, parts != null);
   const started = now.getTime() >= Date.parse(event.startsAt);
 
   function keep(next: typeof kitchen): void {
@@ -215,7 +231,13 @@ function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEve
               give={manage && !started}
               onGive={() => setDialog('rest')}
             />
-            <Sheet figures={figures} names={names} all={all} onAll={() => setAll(true)} />
+            <Sheet
+              figures={figures}
+              parts={parts}
+              names={names}
+              all={all}
+              onAll={() => setAll(true)}
+            />
           </div>
           <div className="ev-right">
             <section className="desk-block" aria-labelledby="kitchen-final">
@@ -526,11 +548,13 @@ function Changes({
 
 function Sheet({
   figures,
+  parts,
   names,
   all,
   onAll,
 }: {
   figures: Figures;
+  parts: PartsSheet | null;
   names: boolean;
   all: boolean;
   onAll: () => void;
@@ -591,26 +615,34 @@ function Sheet({
           ))}
         </ul>
       </section>
-      {figures.courses.map((course) => (
-        <section key={course.id} className="desk-block" aria-labelledby={`kitchen-${course.name}`}>
-          <Head
-            title={
-              <span id={`kitchen-${course.name}`}>
-                {course.name}
-                <span className="kitchen-count"> · {figures.coming}</span>
-              </span>
-            }
-          />
-          <ul className="desk-rows">
-            {courseRows(figures, course.id).map(({ id, name: dish, count }) => (
-              <li key={id} className="desk-row">
-                <RowWords title={dish} />
-                <span className="kitchen-figure">{count}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+      {figures.courses.map((course) =>
+        parts?.course.id === course.id ? (
+          <PartsBlock key={course.id} sheet={parts} coming={figures.coming} />
+        ) : (
+          <section
+            key={course.id}
+            className="desk-block"
+            aria-labelledby={`kitchen-${course.name}`}
+          >
+            <Head
+              title={
+                <span id={`kitchen-${course.name}`}>
+                  {course.name}
+                  <span className="kitchen-count"> · {figures.coming}</span>
+                </span>
+              }
+            />
+            <ul className="desk-rows">
+              {courseRows(figures, course.id).map(({ id, name: dish, count }) => (
+                <li key={id} className="desk-row">
+                  <RowWords title={dish} />
+                  <span className="kitchen-figure">{count}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ),
+      )}
     </>
   );
 }

@@ -37,7 +37,7 @@ describe('sc-3963’s refused saves', () => {
   it('follow sc-3960’s states, each read from ?state= and linked from the demo home', () => {
     const at = MESSAGES_STATES.indexOf('editConflict');
 
-    expect(MESSAGES_STATES.slice(at)).toEqual(REFUSED);
+    expect(MESSAGES_STATES.slice(at, at + REFUSED.length)).toEqual(REFUSED);
     for (const state of REFUSED) {
       expect(messagesStateOf(state)).toBe(state);
       expect(MESSAGES_BOARDS.find((board) => board.state === state)?.href).toBe(

@@ -2,17 +2,15 @@ import type { NotificationCategory, NotificationSetting } from '@soirely/api-cli
 import {
   NOTIFICATION_CATEGORY_ORDER,
   quietHoursIn,
-  type SettingChannel,
   settingFlipped,
   usageThresholdsIn,
 } from '@soirely/domain';
 
+import { type Channel, type Switch } from '../notificationsPage.ts';
 import { type DemoLink, VIEWERS, settingsPath } from './settings.ts';
 
-export type Channel = SettingChannel;
+export type { Channel, Switch };
 export type Category = NotificationCategory;
-
-export const CHANNELS: readonly Channel[] = ['push', 'email'];
 
 export const SAVE_MS = 500;
 export const HOLD_MS = 8000;
@@ -154,17 +152,8 @@ export const SAMPLE_SETTINGS: readonly NotificationSetting[] = NOTIFICATION_CATE
   }),
 );
 
-export interface Switch {
-  category: Category;
-  channel: Channel;
-}
-
 /** The one switch whose save never goes through once a save has failed, so the failure can be seen again. */
 export const NEVER_SAVED: Switch = { category: 'messages', channel: 'email' };
-
-export function keyOf({ category, channel }: Switch): string {
-  return `${category}.${channel}`;
-}
 
 export function sameSwitch(one: Switch | null, other: Switch): boolean {
   return one != null && one.category === other.category && one.channel === other.channel;

@@ -4,16 +4,19 @@ import {
   type HomeEvent,
   type HowSoon,
   cardDate,
+  eventDayWords,
   eventDays,
   eventsHome,
   forgetEventsTab,
   howSoon,
   howSoonPhrase,
   howSoonWords,
+  milestoneMoment,
   nextStep,
   rememberEventsTab,
   rememberTabHolding,
   rememberedEventsTab,
+  stepAwaitsMilestones,
   withPastPage,
 } from './eventsHome.ts';
 
@@ -322,6 +325,19 @@ describe('cardDate', () => {
   });
 });
 
+describe('stepAwaitsMilestones', () => {
+  it('holds the step of a Live or Happening now event, whose step is its next milestone', () => {
+    expect(stepAwaitsMilestones('live')).toBe(true);
+    expect(stepAwaitsMilestones('happening_now')).toBe(true);
+  });
+
+  it('never holds a Draft, Paused or Finished event, whose step does not read its milestones', () => {
+    expect(stepAwaitsMilestones('draft')).toBe(false);
+    expect(stepAwaitsMilestones('paused')).toBe(false);
+    expect(stepAwaitsMilestones('finished')).toBe(false);
+  });
+});
+
 describe('nextStep', () => {
   const NOW = new Date('2026-11-01T12:00:00Z');
   const ends = {
@@ -382,6 +398,142 @@ describe('eventDays', () => {
     expect(
       eventDays({ ...lagos, status: 'ended', concludedAt: '2026-09-30T10:00:00+01:00' }),
     ).toEqual({ kind: 'calledOffOn', concludedAt: '2026-09-30T10:00:00+01:00' });
+  });
+});
+
+describe('eventDayWords', () => {
+  const madrid = {
+    status: 'live' as const,
+    startsAt: '2026-11-16T10:00:00+01:00',
+    endsAt: '2026-11-20T18:00:00+01:00',
+    timeZone: 'Europe/Madrid',
+    concludedAt: null,
+  };
+  const now = new Date('2026-11-11T12:00:00+01:00');
+
+  it('leaves the year out when every date is this year', () => {
+    expect(eventDayWords(madrid, now, 'en-US')).toEqual({
+      kind: 'days',
+      first: 'Monday, Nov 16',
+      last: 'Friday, Nov 20',
+    });
+  });
+
+  it('names the year on every date when one is in another year', () => {
+    const long = {
+      ...madrid,
+      startsAt: '2026-10-31T10:00:00+01:00',
+      endsAt: '2028-04-29T18:00:00+02:00',
+    };
+
+    expect(eventDayWords(long, now, 'en-US')).toEqual({
+      kind: 'days',
+      first: 'Saturday, Oct 31, 2026',
+      last: 'Saturday, Apr 29, 2028',
+    });
+  });
+
+  it('names the year on an event wholly next year', () => {
+    const next = {
+      ...madrid,
+      startsAt: '2027-02-13T10:00:00+01:00',
+      endsAt: '2027-02-15T18:00:00+01:00',
+    };
+
+    expect(eventDayWords(next, now, 'en-US')).toEqual({
+      kind: 'days',
+      first: 'Saturday, Feb 13, 2027',
+      last: 'Monday, Feb 15, 2027',
+    });
+  });
+
+  it('names the year on a one-day event last year', () => {
+    const last = {
+      ...madrid,
+      startsAt: '2025-11-14T18:00:00+01:00',
+      endsAt: '2025-11-14T23:00:00+01:00',
+    };
+
+    expect(eventDayWords(last, now, 'en-US')).toEqual({
+      kind: 'oneDay',
+      day: 'Friday, Nov 14, 2025',
+    });
+  });
+
+  it('names the year on the day an event was called off last year', () => {
+    const off = {
+      ...madrid,
+      status: 'ended' as const,
+      startsAt: '2025-11-14T18:00:00+01:00',
+      endsAt: '2025-11-14T23:00:00+01:00',
+      concludedAt: '2025-11-03T10:00:00+01:00',
+    };
+
+    expect(eventDayWords(off, now, 'en-US')).toEqual({ kind: 'calledOffOn', date: 'Nov 3, 2025' });
+    expect(eventDayWords(off, now, 'en-US', true)).toEqual({
+      kind: 'oneDay',
+      day: 'Friday, Nov 14, 2025',
+    });
+  });
+
+  it('takes this year in the event’s zone, not the reader’s', () => {
+    const newYear = {
+      ...madrid,
+      timeZone: 'Pacific/Kiritimati',
+      startsAt: '2027-01-02T10:00:00+14:00',
+      endsAt: '2027-01-02T12:00:00+14:00',
+    };
+    const lateOnNewYearsEve = new Date('2026-12-31T12:00:00Z');
+
+    expect(eventDayWords(newYear, lateOnNewYearsEve, 'en-US')).toEqual({
+      kind: 'oneDay',
+      day: 'Saturday, Jan 2',
+    });
+  });
+
+  it('writes each locale’s own date with its year', () => {
+    const long = {
+      ...madrid,
+      startsAt: '2026-10-31T10:00:00+01:00',
+      endsAt: '2028-04-29T18:00:00+02:00',
+    };
+    const first = (locale: string) => {
+      const words = eventDayWords(long, now, locale);
+
+      return words.kind === 'days' ? words.first : null;
+    };
+
+    expect(first('en-GB')).toBe('Saturday, 31 Oct 2026');
+    expect(first('es')).toBe('sábado, 31 de oct de 2026');
+    expect(first('fr')).toBe('samedi 31 oct. 2026');
+    expect(first('pt')).toBe('sábado, 31 de out. de 2026');
+  });
+});
+
+describe('milestoneMoment', () => {
+  const zone = 'Europe/Madrid';
+
+  it('leaves the year out of a moment in this year', () => {
+    expect(
+      milestoneMoment('2026-11-16T10:00:00+01:00', zone, new Date('2026-11-11T12:00:00Z'), 'en-US'),
+    ).toBe('Mon, Nov 16, 10:00');
+  });
+
+  it('names the year of a moment in another year', () => {
+    expect(
+      milestoneMoment('2027-01-04T10:00:00+01:00', zone, new Date('2026-11-11T12:00:00Z'), 'en-US'),
+    ).toBe('Mon, Jan 4, 2027, 10:00');
+  });
+
+  it('takes this year in the event’s zone, not in UTC', () => {
+    const newYearInMadrid = new Date('2025-12-31T23:30:00Z');
+
+    expect(milestoneMoment('2026-01-02T10:00:00+01:00', zone, newYearInMadrid, 'en-US')).toBe(
+      'Fri, Jan 2, 10:00',
+    );
+    expect(milestoneMoment('2025-12-31T20:00:00+01:00', zone, newYearInMadrid, 'en-US')).toBe(
+      'Wed, Dec 31, 2025, 20:00',
+    );
   });
 });
 

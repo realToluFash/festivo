@@ -13,8 +13,9 @@ import {
   schemeToFollow,
   useAccountChoice,
 } from '../../src/colourScheme.ts';
-import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
+import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
+import { SETTINGS_PAGE } from '../../src/components/listFrame.ts';
 import { ColoursScreen } from '../../src/components/ColoursScreen.tsx';
 import { useReadOut } from '../../src/components/ReadOut.tsx';
 import { SchemeCard } from '../../src/components/SchemeParts.tsx';
@@ -30,8 +31,9 @@ import {
   refusalOf,
 } from '../../src/kit/personalisation.ts';
 import { schemeOf } from '../../src/kit/schemes.ts';
-import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
+import { settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { schemeAtLaunch, tokens } from '../../src/theme/tokens.ts';
+import { PANE_TITLE, paneTitle } from '../../src/components/topTitle.ts';
 
 type Load = 'loading' | 'loaded' | 'failed';
 
@@ -160,15 +162,18 @@ export default function Personalisation() {
   return (
     <AppFrame
       current="settings"
+      top="scrolls"
+      listUnderTabs
       aboutTheAccount
       title={alone ? t('personalisation.title') : t('settings.title')}
       back={alone ? backToSettings(t('settings.title')) : undefined}
     >
       <SettingsSplit open="personalisation">
-        <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
+        <Screen edges={bodyEdges(kind)} contentStyle={SETTINGS_PAGE[kind]}>
+          {alone && <FrameTop />}
           {!alone && (
             <View style={besideRow.row}>
-              <Text size={tokens.typeTitlePage.size} weight="bold" accessibilityRole="header">
+              <Text size={PANE_TITLE} weight="bold" accessibilityRole="header" style={paneTitle}>
                 {t('personalisation.title')}
               </Text>
             </View>
@@ -218,23 +223,4 @@ const styles = StyleSheet.create({
   sunkCard: { height: 200, borderRadius: 26, backgroundColor: tokens.colorNeutralFill },
   bars: { gap: tokens.spaceMd },
   bar: { height: 13, borderRadius: 7, backgroundColor: tokens.colorNeutralFill },
-  phone: {
-    gap: tokens.spaceLg,
-    paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceXl,
-    paddingBottom: tokens.space3xl,
-  },
-  portrait: { gap: tokens.spaceXl, padding: tokens.space3xl, paddingBottom: tokens.space6xl },
-  landscape: {
-    gap: tokens.spaceXxl,
-    paddingTop: tokens.space4xl,
-    paddingHorizontal: tokens.space5xl,
-    paddingBottom: tokens.space6xl,
-  },
 });
-
-const CONTENT: Record<LayoutKind, object> = {
-  phone: styles.phone,
-  tabletPortrait: styles.portrait,
-  tabletLandscape: styles.landscape,
-};

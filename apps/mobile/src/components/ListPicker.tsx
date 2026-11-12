@@ -14,7 +14,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { currentLocale } from '../i18n/index.ts';
-import { fieldName, refusedHint, withInvalid } from '../kit/fields.ts';
+import { FIELD_DEFAULTS, fieldName, refusedHint, withInvalid } from '../kit/fields.ts';
 import { searchBesideTitle } from '../kit/keyboard.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useLayout } from '../layout/useLayout.ts';
@@ -23,6 +23,7 @@ import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
 import { FocusEdge, focusEdge, useFocusEdge, useHeld, useRefused } from './Field.tsx';
+import { controlTaken } from './focusedField.ts';
 import { LIFT } from './keyboardWatch.ts';
 import { Screen } from './Screen.tsx';
 import { Text } from './Text.tsx';
@@ -79,10 +80,10 @@ export function ListPicker({
   const searching = useHeld(false, search, undefined, setSearch);
   const searchEdge = useFocusEdge();
   const bold = useBoldText();
-  const fieldEdge = useFocusEdge();
+  const fieldEdge = useFocusEdge(controlTaken);
   const refused = useRefused(wrong, line);
   const { kind, width, height } = useLayout();
-  const beside = searchBesideTitle({ os: Platform.OS, phone: kind === 'phone', width, height });
+  const beside = searchBesideTitle({ phone: kind === 'phone', width, height });
 
   const chosen = choices.find((choice) => choice.code === value)?.name ?? value;
   const blank = chosen === '';
@@ -98,15 +99,11 @@ export function ListPicker({
       {/* TalkBack reads no placeholder once the search holds text, so these words name it then. */}
       <UnseenName nativeID={searchNameID}>{searchLabel}</UnseenName>
       <TextInput
+        {...FIELD_DEFAULTS}
         style={inputFaced([styles.search, focusEdge(searchEdge.focused, false)], 'sans', bold)}
         {...searching}
         {...searchEdge.edging}
         placeholder={searchLabel}
-        placeholderTextColor={tokens.colorInkTertiary}
-        cursorColor={tokens.colorInk}
-        selectionColor={tokens.colorInk}
-        autoCorrect={false}
-        spellCheck={false}
         {...fieldName(Platform.OS, searchLabel, {
           placeholder: searchLabel,
           filled: { held: search !== '', nameID: searchNameID },
@@ -126,7 +123,10 @@ export function ListPicker({
           drawn != null && styles.fieldCompact,
           wrong && styles.fieldWrong,
         ]}
-        onPress={() => setOpen(true)}
+        onPress={() => {
+          controlTaken();
+          setOpen(true);
+        }}
         {...fieldEdge.edging}
         disabled={disabled || readOnly}
         accessibilityRole={readOnly ? undefined : 'button'}
@@ -170,6 +170,7 @@ export function ListPicker({
                   weight="bold"
                   accessibilityRole="header"
                   style={beside ? styles.titleBeside : undefined}
+                  numberOfLines={beside ? 1 : undefined}
                 >
                   {label}
                 </Text>

@@ -10,6 +10,7 @@ import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
 import { KW, resetKitchen } from './kitchen.ts';
 import { LONG_NAMES } from './kitchenChanges.ts';
+import { PW } from './kitchenParts.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -341,8 +342,8 @@ describe('Changes since on the kitchen sheet (sc-30692)', () => {
 
       expect(within(changes()).getByRole('heading', { level: 2 }).textContent).toBe(SINCE);
       expect(lines()).toEqual([
-        'New allergy: sesame (Yusuf Ibrahim)',
-        '[New diet: halal (Ngozi Eze)]',
+        'New allergy: Sesame (Yusuf Ibrahim)',
+        'New diet: Halal (Ngozi Eze)',
         '2 more coming',
         'Pepper soup 50 to 52',
         'Jollof rice with chicken 45 to 48',
@@ -372,7 +373,10 @@ describe('Changes since on the kitchen sheet (sc-30692)', () => {
   it('gives counts and no name without guests.manage', SLOW, async () => {
     await kitchen('changes_counts');
 
-    expect(lines().slice(0, 2)).toEqual(['1 more sesame allergy', '[1 more halal diet]']);
+    expect(lines().slice(0, 2)).toEqual([
+      'New allergy: Sesame (1 guest)',
+      'New diet: Halal (1 guest)',
+    ]);
     expect(changes().textContent).not.toContain('Yusuf');
   });
 
@@ -386,10 +390,21 @@ describe('Changes since on the kitchen sheet (sc-30692)', () => {
     );
   });
 
+  it('never nets a count without guests.manage', SLOW, async () => {
+    await kitchen('changes_swap');
+
+    expect(lines()).toEqual([
+      'New allergy: Peanuts (1 guest)',
+      'Allergy removed: Peanuts (1 guest)',
+    ]);
+    expect(changes().textContent).not.toContain('Amaka');
+    expect(within(changes()).getByRole('heading', { level: 2 }).textContent).toBe(SINCE);
+  });
+
   it('counts an erased guest for every reader', SLOW, async () => {
     await kitchen('changes_erased');
 
-    expect(lines()).toContain('[1 fewer shellfish allergy]');
+    expect(lines()).toContain('Allergy removed: Shellfish (1 guest)');
     expect(changes().textContent).not.toContain('Kwame');
   });
 
@@ -476,5 +491,107 @@ describe('Give the changes to the kitchen on the Overview and All dates', () => 
       .find((one) => one.textContent?.includes('Give the changes to the kitchen'));
     expect(row?.textContent).toContain('You · Thu, Nov 5, 18:00');
     expect(within(row!).queryByText(KW.overdue)).toBeNull();
+  });
+});
+
+describe('Each part of a course, and each table’s platters (sc-34244)', () => {
+  function main(): HTMLElement {
+    return screen.getByRole('region', { name: /^Main · 96/u });
+  }
+
+  it(
+    'lists each dish’s parts under it, then Served with and Plated at the pass',
+    SLOW,
+    async () => {
+      await kitchen('inParts');
+
+      const block = main();
+      expect(within(block).getByText(PW.inParts)).toBeDefined();
+      expect(within(block).getByText('Plantain 24 · Salad 11 · Moi moi 6')).toBeDefined();
+      expect(within(block).getByText('Rice · 43')).toBeDefined();
+      expect(within(block).getByText('Fish · 33')).toBeDefined();
+      expect(within(block).getByRole('list', { name: PW.servedWith }).textContent).toBe(
+        'Drink · 96',
+      );
+      expect(within(block).getByText('Plated at the pass · 45')).toBeDefined();
+      expect(within(block).queryByRole('table')).toBeNull();
+    },
+  );
+
+  it('keeps the Starter and Dessert as sc-3911, with no way named', SLOW, async () => {
+    await kitchen('inParts');
+
+    const starter = screen.getByRole('region', { name: /^Starter · 96/u });
+    expect(within(starter).queryByText(PW.servedWith)).toBeNull();
+    expect(within(starter).queryByText(/Plated at the pass/u)).toBeNull();
+  });
+
+  it('gives By table as a real table, natural order, No table last', SLOW, async () => {
+    await kitchen('familyStyle');
+
+    const table = within(main()).getByRole('table', { name: PW.byTable });
+    const heads = within(table)
+      .getAllByRole('rowheader')
+      .map((one) => one.textContent);
+    expect(heads[0]).toBe('Table 1');
+    expect(heads.at(-2)).toBe('Table 10');
+    expect(heads.at(-1)).toBe(PW.noTable);
+    expect(heads).not.toContain('Top table');
+    expect(heads).not.toContain('Table 7');
+  });
+
+  it('shows no By table when everyone is plated at the pass', SLOW, async () => {
+    await kitchen('allPlated');
+
+    expect(within(main()).queryByRole('table')).toBeNull();
+    expect(within(main()).getByText('Plated at the pass · 96')).toBeDefined();
+  });
+
+  it('drops the numbers for guests who skipped, and names nobody', SLOW, async () => {
+    await kitchen('skipped');
+
+    expect(within(main()).getByText('Rice · 41')).toBeDefined();
+    expect(within(main()).getByRole('list', { name: PW.servedWith }).textContent).toBe(
+      'Drink · 94',
+    );
+  });
+
+  it('gives a menu of Plated and Buffet courses the sheet as sc-3911', SLOW, async () => {
+    await kitchen('platedBuffet');
+
+    expect(within(main()).queryByText(/Rice/u)).toBeNull();
+    expect(within(main()).queryByText(PW.servedWith)).toBeNull();
+    expect(within(main()).queryByText(/Plated at the pass/u)).toBeNull();
+  });
+
+  it('gives the same parts lines without guests.manage', SLOW, async () => {
+    await kitchen('countsOnly');
+
+    expect(screen.getByText(KW.namesNeed)).toBeDefined();
+    expect(within(main()).getByRole('table', { name: PW.byTable })).toBeDefined();
+  });
+
+  it('prints on A4 with real headings and tables, the same lines in order', SLOW, async () => {
+    open(`${AT}?state=print`);
+    await screen.findByRole('heading', { level: 1, name: KW.title }, WAIT);
+
+    expect(
+      screen.getByRole('heading', { level: 2, name: /^Main · 96 · Family style/u }),
+    ).toBeDefined();
+    expect(screen.getByRole('heading', { level: 2, name: 'Main · By table' })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 3, name: PW.servedWith })).toBeDefined();
+    expect(screen.getByText('Plated at the pass · 51')).toBeDefined();
+    expect(screen.getAllByText(PW.health)).toHaveLength(4);
+    expect(screen.getByRole('article', { name: 'Page 3 of 4' })).toBeDefined();
+  });
+
+  it('counts three pages on every footer when there is no By table', SLOW, async () => {
+    open(`${AT}?state=printInParts`);
+    await screen.findByRole('heading', { level: 1, name: KW.title }, WAIT);
+
+    expect(screen.queryByRole('heading', { level: 2, name: 'Main · By table' })).toBeNull();
+    expect(screen.getAllByText(PW.health)).toHaveLength(3);
+    expect(screen.getByRole('article', { name: 'Page 3 of 3' })).toBeDefined();
+    expect(screen.queryByRole('article', { name: /of 4$/u })).toBeNull();
   });
 });

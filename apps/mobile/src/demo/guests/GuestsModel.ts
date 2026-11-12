@@ -24,6 +24,7 @@ import {
   replyByOf,
 } from './GuestsSample.ts';
 import { REPLY_WORD, type ReplyKind, W, say } from './GuestsWords.ts';
+import { type HowAgreed, hostAgreed } from './WhatsAppConsent.ts';
 
 export const LIST_STATES = [
   'first',
@@ -56,6 +57,7 @@ export const GUEST_STATES = [
   'guestLoading',
   'notFound',
   'repliesClosed',
+  'repliesClosedViewer',
   'reopened',
   'saved',
   'linkCopied',
@@ -72,6 +74,12 @@ export const GUEST_STATES = [
   'greetAs',
   'greetAsSpaces',
   'greetAsViewer',
+  'whatsAppNone',
+  'whatsAppRecorded',
+  'whatsAppGuestAgreed',
+  'whatsAppOptedOut',
+  'whatsAppNoMobile',
+  'whatsAppViewer',
 ] as const;
 
 export const EDIT_STATES = [
@@ -97,6 +105,14 @@ export const RECORD_STATES = [
   'recordComing',
   'recordReplace',
   'recordNotSaved',
+] as const;
+
+/** sc-3950: the change that records the guest agreed to WhatsApp, open. */
+export const AGREE_STATES = [
+  'whatsAppAgree',
+  'whatsAppAgreeBlank',
+  'whatsAppAgreePicked',
+  'whatsAppNotSaved',
 ] as const;
 
 export const ADD_STATES = [
@@ -161,6 +177,7 @@ export const GUESTS_STATES = [
   ...GUEST_STATES,
   ...EDIT_STATES,
   ...RECORD_STATES,
+  ...AGREE_STATES,
   ...ADD_STATES,
   ...REVIEW_STATES,
   ...OVERVIEW_STATES,
@@ -171,6 +188,7 @@ export type ListState = (typeof LIST_STATES)[number];
 export type OverviewState = (typeof OVERVIEW_STATES)[number];
 export type EditState = (typeof EDIT_STATES)[number];
 export type RecordState = (typeof RECORD_STATES)[number];
+export type AgreeState = (typeof AGREE_STATES)[number];
 export type AddState = (typeof ADD_STATES)[number];
 export type ReviewState = (typeof REVIEW_STATES)[number];
 
@@ -209,8 +227,10 @@ export function roleOf(state: GuestsState | null): Role {
   if (
     state === 'viewer' ||
     state === 'guestViewer' ||
+    state === 'repliesClosedViewer' ||
     state === 'overviewViewer' ||
-    state === 'greetAsViewer'
+    state === 'greetAsViewer' ||
+    state === 'whatsAppViewer'
   )
     return 'viewer';
   if (state === 'staffBefore' || state === 'staffDayBefore' || state === 'staffDoorOpen')
@@ -756,6 +776,11 @@ export function markedInvited(g: SampleGuest, how: string, today: string): Sampl
   return { ...g, kind: 'noreply', invited: { by: READER, how, day: today } };
 }
 
+/** sc-3950: the host's record that the guest agreed to WhatsApp, by the demo's member. */
+export function agreedToWhatsApp(g: SampleGuest, how: HowAgreed, today: string): SampleGuest {
+  return { ...g, whatsApp: hostAgreed(READER, how, today) };
+}
+
 export interface ReviewRow {
   key: string;
   name: string;
@@ -898,6 +923,8 @@ export function guestsAt(state: GuestsState | null): SampleGuest[] {
       return swap('emeka', (g) => recorded(g, 'coming', 'By phone', [true], TODAY));
     case 'marked':
       return swap('bisi', (g) => markedInvited(g, 'WhatsApp', TODAY));
+    case 'whatsAppRecorded':
+      return swap('kwame', (g) => agreedToWhatsApp(g, 'In person', TODAY));
     case 'saved':
       return swap('kwame', (g) => ({ ...g, email: 'kwame@mensah.co.uk' }));
     case 'greetAsSpaces':
@@ -935,7 +962,16 @@ export function guestsOpening(given: GuestsState | null, event: string, locale: 
 }
 
 export type Overlay =
-  'edit' | 'record' | 'add' | 'picker' | 'android' | 'review' | 'mark' | 'replace' | null;
+  | 'edit'
+  | 'record'
+  | 'whatsApp'
+  | 'add'
+  | 'picker'
+  | 'android'
+  | 'review'
+  | 'mark'
+  | 'replace'
+  | null;
 
 export type GuestToastKind = 'saved' | 'copied' | 'manyAdded' | null;
 
@@ -984,6 +1020,7 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'guest':
     case 'recorded':
     case 'repliesClosed':
+    case 'repliesClosedViewer':
     case 'reopened':
     case 'record':
     case 'recordRefused':
@@ -1010,6 +1047,12 @@ export function guestOf(state: GuestsState | null): string | null {
       return 'ines';
     case 'languageSet':
       return 'sophie';
+    case 'whatsAppGuestAgreed':
+      return 'lucia';
+    case 'whatsAppOptedOut':
+      return 'sophie';
+    case 'whatsAppNoMobile':
+      return 'ines';
     case 'greetAs':
     case 'greetAsSpaces':
     case 'greetAsViewer':
@@ -1017,7 +1060,8 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'greetAsLong':
       return 'bisi';
     default:
-      return state != null && (isIn(GUEST_STATES, state) || isIn(EDIT_STATES, state))
+      return state != null &&
+        (isIn(GUEST_STATES, state) || isIn(EDIT_STATES, state) || isIn(AGREE_STATES, state))
         ? 'kwame'
         : null;
   }
@@ -1029,6 +1073,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
 
   if (state != null && isIn(EDIT_STATES, state)) return { ...base, overlay: 'edit' };
   if (state != null && isIn(RECORD_STATES, state)) return { ...base, overlay: 'record' };
+  if (state != null && isIn(AGREE_STATES, state)) return { ...base, overlay: 'whatsApp' };
   if (state === 'picker') return { ...base, overlay: 'picker' };
   if (state === 'androidPick' || state === 'androidNone') return { ...base, overlay: 'android' };
   if (state != null && isIn(ADD_STATES, state)) return { ...base, overlay: 'add' };
@@ -1065,11 +1110,13 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'recorded':
       return { ...base, recorded: true };
     case 'repliesClosed':
+    case 'repliesClosedViewer':
       return { ...base, replies: 'closed' };
     case 'reopened':
       return { ...base, replies: 'reopened' };
     case 'saved':
     case 'greetAsSpaces':
+    case 'whatsAppRecorded':
       return { ...base, toast: 'saved' };
     case 'linkCopied':
       return { ...base, toast: 'copied' };

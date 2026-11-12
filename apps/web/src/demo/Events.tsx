@@ -1,48 +1,63 @@
 import { DemoBell } from './DemoBell.tsx';
-import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
+import { OfflineBox } from './DemoOffline.tsx';
+import { Glyph } from '../components/Glyph.tsx';
+import {
+  type EventsLook,
+  eventsLookOf,
+  eventsLookParams,
+  filtered,
+  firstDayOfWeek,
+  searching,
+  whenSpan,
+} from '@soirely/domain';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import {
-  type Filters,
+  EventsEmptyTab,
+  EventsFirstRun,
+  EventsFooter,
+  EventsLoading,
+  EventsTabs,
+  EventsTop,
+  NewEventWords,
+} from '../components/EventsList.tsx';
+import { type Calendar, EventsResults, EventsSearchRow } from '../components/EventsSearch.tsx';
+import { summaryWords } from '../eventsList.ts';
+import { dateLocale } from '../i18n/index.ts';
+
+import {
   type SampleEvent,
   type Tab,
   CLOCKS,
+  DISTINCT_HOSTS,
   EVENT_WORDS as W,
-  NO_FILTERS,
   PAST_PAGE,
   TABS,
   TODAY_IDS,
-  filtering,
-  filtersOf,
   listStart,
   listStateOf,
   listed,
+  localDay,
   matches,
-  noMatchLine,
-  paramsOf,
   rememberTab,
   rememberedTab,
   resetSample,
   sampleEvents,
-  searching,
   withoutTab,
 } from './events.ts';
 import { DuplicateDialog } from './EventDialogs.tsx';
 import { GUEST_WORDS as G, SAMPLE_GUESTS, figureOf, guestCountsOf } from './guestCounts.ts';
 import { guestLineOf } from './guests.ts';
 import { EventCard, EventRow, EventsShell } from './EventParts.tsx';
-import { FilterMenu } from './EventFilter.tsx';
-import { Glyph } from '../components/Glyph.tsx';
-import { Notice } from '../components/Notice.tsx';
-import { CardStep, Head, TextAction } from '../components/SettingsParts.tsx';
+import { TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { AccessPaused, Switched } from './OrgSwitcher.tsx';
 import { SIDEBAR_EVENTS, VIEWERS } from './settings.ts';
 import type { EventKey } from './today.ts';
 import { isFresh, usePaused, useSwitcherStart, useWhere } from './switcher.ts';
-
-const TAB_WORDS: Record<Tab, string> = { upcoming: W.upcoming, drafts: W.drafts, past: W.past };
 
 /** Events at a desk in A · Summary first (Events-A-Desk, page 29): the list from the Today sidebar, on sample data. */
 export function Events() {
@@ -103,6 +118,7 @@ function sidebarEvents(emptied: Tab | null): EventKey[] {
 }
 
 function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell: Tell }) {
+  const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const now = CLOCKS.rest;
@@ -114,9 +130,20 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
   const [tab, setTab] = useState<Tab>(start.tab ?? rememberedTab());
   const [offline, setOffline] = useState(start.offline);
   const [pastPages, setPastPages] = useState(start.pastPages);
+  const [failed, setFailed] = useState(start.failed);
+  const [moreFailed, setMoreFailed] = useState(start.moreFailed);
   const [copying, setCopying] = useState<SampleEvent | null>(null);
+  const calendar: Calendar = {
+    today: localDay(now, 'Europe/London'),
+    firstDay: firstDayOfWeek(dateLocale()),
+    locale: dateLocale(),
+  };
   const addressed = ['q', 'type', 'from', 'to', 'host'].some((name) => params.has(name));
-  const filters = !addressed && start.filters != null ? start.filters : filtersOf(params);
+  const look =
+    !addressed && start.look != null
+      ? start.look
+      : eventsLookOf(params, calendar.today, calendar.firstDay);
+  const span = whenSpan(look.filters.when, calendar.today, calendar.firstDay);
   const lists = listed(events, now);
   const upcoming = [...lists.happeningNow, ...lists.upcoming];
   const byTab: Record<Tab, SampleEvent[]> = {
@@ -124,13 +151,29 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
     drafts: lists.drafts,
     past: lists.past,
   };
-  const looking = searching(filters) || filtering(filters);
+  const looking = searching(look.q) || filtered(look.filters);
+  const counts: Record<Tab, number> = {
+    upcoming: upcoming.length,
+    drafts: lists.drafts.length,
+    past: lists.past.length,
+  };
+  const summary = summaryWords(
+    {
+      happeningNow: lists.happeningNow.length,
+      upcoming: lists.upcoming.length,
+      drafts: lists.drafts.length,
+    },
+    t,
+  );
   const guests = guestCountsOf(events, start.noGuests ? {} : SAMPLE_GUESTS, now);
   const guestsOf = (event: SampleEvent) => (start.noGuests ? null : guestLineOf(event.id));
   const firstNew = useRef<HTMLUListElement>(null);
 
-  function apply(next: Filters, replace = false): void {
-    setParams(paramsOf(next, params), { replace });
+  function apply(next: EventsLook, replace = false): void {
+    const kept = new URLSearchParams(params);
+
+    kept.delete('state');
+    setParams(eventsLookParams(next, kept, calendar.today, calendar.firstDay), { replace });
   }
 
   function pick(next: Tab): void {
@@ -146,6 +189,50 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
     };
   }
 
+  if (start.loading)
+    return (
+      <div className="desk-page">
+        <div className="ev-column">
+          <ListTop tell={tell} />
+          <Switched />
+          <EventsSearchRow
+            look={look}
+            offline={false}
+            waiting
+            hosts={DISTINCT_HOSTS}
+            calendar={calendar}
+            onLook={apply}
+          />
+          <EventsLoading />
+        </div>
+      </div>
+    );
+
+  if (failed)
+    return (
+      <div className="desk-page">
+        <div className="ev-column">
+          <ListTop tell={tell} />
+          <Switched />
+          <div className="notice notice-broken" role="alert">
+            <span className="mark mark-broken" aria-hidden="true">
+              ✕
+            </span>
+            <div className="notice-body">
+              <p>{t('events.failed')}</p>
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={() => setFailed(false)}
+              >
+                {t('events.retry')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+
   if (events.length === 0)
     return (
       <div className="desk-page">
@@ -160,42 +247,41 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
   return (
     <div className="desk-page">
       <div className="ev-column">
-        {offline && (
-          <div className="ev-offline" role="status">
-            <span className="ev-offline-mark" aria-hidden="true" />
-            <span className="today-grow">{W.offline('09:32')}</span>
-            <TextAction label={W.retry} onClick={() => setOffline(false)} />
-          </div>
-        )}
+        {offline && <OfflineBox onRetry={() => setOffline(false)} />}
         <div>
           <ListTop tell={tell} />
-          <p className="desk-line">{W.summary(upcoming.length, lists.drafts.length)}</p>
+          {summary != null && <p className="desk-line">{summary}</p>}
         </div>
         <GuestTiles counts={guests} />
         <Switched />
-        <SearchRow
-          filters={filters}
+        <EventsSearchRow
+          look={look}
           offline={offline}
+          hosts={DISTINCT_HOSTS}
           menuStart={start.menu}
-          now={now}
-          onFilters={apply}
+          calendar={calendar}
+          onLook={apply}
         />
         {looking ? (
-          <Results
-            filters={filters}
-            groups={TABS.map((one) => [one, byTab[one].filter((event) => matches(event, filters))])}
-            now={now}
-            onFilters={apply}
+          <EventsResults
+            look={look}
+            groups={TABS.map((one) => {
+              const found = byTab[one].filter((event) => matches(event, look, span));
+
+              return {
+                tab: one,
+                count: found.length,
+                rows: found.map((event) => (
+                  <EventRow key={event.id} event={event} now={now} tab="all" />
+                )),
+              };
+            })}
+            calendar={calendar}
+            onLook={apply}
           />
         ) : (
           <>
-            <Tabs tab={tab} counts={byTab} onPick={pick} />
-            <div
-              id={`ev-${tab}`}
-              role="tabpanel"
-              aria-labelledby={`ev-tab-${tab}`}
-              className="ev-panel"
-            >
+            <EventsTabs tab={tab} counts={counts} onPick={pick}>
               {tab !== 'past' && byTab[tab][0] != null && (
                 <EventCard
                   event={byTab[tab][0]}
@@ -206,10 +292,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
                 />
               )}
               {byTab[tab].length === 0 ? (
-                <div className="ev-none">
-                  <h2>{W.emptyTab[tab].title}</h2>
-                  <p className="desk-line">{W.emptyTab[tab].line}</p>
-                </div>
+                <EventsEmptyTab tab={tab} />
               ) : (
                 <ul className="desk-rows ev-rows" ref={firstNew}>
                   {(tab === 'past'
@@ -230,6 +313,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
                 <TextAction
                   label={W.showMore}
                   onClick={() => {
+                    setMoreFailed(false);
                     setPastPages((pages) => pages + 1);
                     window.requestAnimationFrame(() => {
                       const links = firstNew.current?.querySelectorAll<HTMLElement>('a');
@@ -239,13 +323,19 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
                   }}
                 />
               )}
+              {tab === 'past' && moreFailed && (
+                <p className="desk-error" role="alert">
+                  <Glyph name="alert" size={15} weight={2.2} />
+                  {t('events.moreFailed')}
+                </p>
+              )}
               {tab === 'past' && pastPages > 1 && (
                 <p className="desk-note" role="status">
                   {W.moreShown(Math.min(byTab.past.length, PAST_PAGE * pastPages) - PAST_PAGE)}
                 </p>
               )}
-              {byTab[tab].length > 0 && <p className="desk-foot">{W.footer(byTab[tab].length)}</p>}
-            </div>
+              {byTab[tab].length > 0 && <EventsFooter count={byTab[tab].length} />}
+            </EventsTabs>
           </>
         )}
       </div>
@@ -290,238 +380,30 @@ function PausedPage() {
 }
 
 function ListTop({ tell, creates = true }: { tell: Tell; creates?: boolean }) {
+  const navigate = useNavigate();
+
   return (
-    <header className="desk-top ev-top">
-      <h1 className="desk-title ev-title" tabIndex={-1}>
-        {W.title}
-      </h1>
-      {creates && (
-        <button
-          type="button"
-          className="ev-new"
-          onClick={() => tell('Create an event has its own design.')}
-        >
-          <Glyph name="plus" size={18} weight={2.4} />
-          {W.newEvent}
-        </button>
-      )}
+    <EventsTop
+      newEvent={
+        creates && (
+          <button
+            type="button"
+            className="ev-new"
+            onClick={() => void navigate('/demo/events/new')}
+          >
+            <NewEventWords />
+          </button>
+        )
+      }
+    >
       <DemoBell tell={tell} />
-    </header>
+    </EventsTop>
   );
 }
 
+/** The product's first run, its Create telling what it opens, and for a role without Create events the ask-an-owner Notice. */
 export function FirstRun({ tell, asks = false }: { tell: Tell; asks?: boolean }) {
   return (
-    <>
-      <section className="desk-card ev-first">
-        {[1, 2, 3, 4, 5, 6].map((piece) => (
-          <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
-        ))}
-        <div className="desk-card-inner">
-          <h2 className="ev-card-name">{W.firstRunTitle}</h2>
-          {!asks && (
-            <CardStep
-              label={W.firstRunCreate}
-              onClick={() => tell('Create an event has its own design.')}
-            />
-          )}
-        </div>
-      </section>
-      {asks && <Notice kind="quiet">{W.firstRunAsk}</Notice>}
-      <ol className="desk-rows ev-steps">
-        {W.firstRunSteps.map((step, index) => (
-          <li key={step} className="desk-row">
-            <span className="ev-step-number" aria-hidden="true">
-              {index + 1}
-            </span>
-            <span className="desk-row-name">{step}</span>
-          </li>
-        ))}
-      </ol>
-    </>
-  );
-}
-
-function SearchRow({
-  filters,
-  offline,
-  menuStart,
-  now,
-  onFilters,
-}: {
-  filters: Filters;
-  offline: boolean;
-  menuStart: 'top' | 'type' | null;
-  now: Date;
-  onFilters: (next: Filters, replace?: boolean) => void;
-}) {
-  const id = useId();
-  const field = useRef<HTMLInputElement>(null);
-
-  return (
-    <div className="ev-search-row">
-      <div className="ev-search" role="search">
-        <div className={offline ? 'ev-field is-off' : 'ev-field'}>
-          <Glyph name="search" size={18} weight={2.2} />
-          <input
-            ref={field}
-            type="search"
-            aria-label={W.searchEvents}
-            placeholder={W.searchEvents}
-            value={filters.q}
-            readOnly={offline}
-            aria-disabled={offline}
-            aria-describedby={offline ? `${id}-off` : undefined}
-            spellCheck={false}
-            onChange={(event) => onFilters({ ...filters, q: event.target.value }, true)}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape' && filters.q !== '') {
-                event.preventDefault();
-                onFilters({ ...filters, q: '' }, true);
-              }
-            }}
-          />
-          {filters.q !== '' && !offline && (
-            <button
-              type="button"
-              className="ev-clear"
-              aria-label={W.clearSearch}
-              onClick={() => {
-                onFilters({ ...filters, q: '' });
-                field.current?.focus();
-              }}
-            >
-              <span className="ev-clear-disc" aria-hidden="true">
-                <Glyph name="clear" size={12} weight={3} />
-              </span>
-            </button>
-          )}
-        </div>
-        {offline && (
-          <p id={`${id}-off`} className="desk-note">
-            {W.searchOff}
-          </p>
-        )}
-      </div>
-      <FilterMenu
-        filters={filters}
-        off={offline}
-        start={menuStart}
-        now={now}
-        onFilters={onFilters}
-      />
-    </div>
-  );
-}
-
-function Tabs({
-  tab,
-  counts,
-  onPick,
-}: {
-  tab: Tab;
-  counts: Record<Tab, readonly SampleEvent[]>;
-  onPick: (tab: Tab) => void;
-}) {
-  const list = useRef<HTMLDivElement>(null);
-  const keys = (event: KeyboardEvent<HTMLButtonElement>) => {
-    const at = TABS.indexOf(tab);
-    const step =
-      event.key === 'ArrowRight'
-        ? 1
-        : event.key === 'ArrowLeft'
-          ? -1
-          : event.key === 'Home'
-            ? -at
-            : event.key === 'End'
-              ? TABS.length - 1 - at
-              : 0;
-
-    if (step === 0) return;
-    event.preventDefault();
-    const next = TABS[(at + step + TABS.length) % TABS.length] ?? tab;
-    onPick(next);
-    list.current?.querySelector<HTMLElement>(`#ev-tab-${next}`)?.focus();
-  };
-
-  return (
-    <div ref={list} className="ev-tabs" role="tablist" aria-label={W.title}>
-      {TABS.map((one) => (
-        <button
-          key={one}
-          id={`ev-tab-${one}`}
-          type="button"
-          role="tab"
-          className="ev-tab"
-          aria-selected={one === tab}
-          aria-controls={one === tab ? `ev-${one}` : undefined}
-          tabIndex={one === tab ? 0 : -1}
-          onClick={() => onPick(one)}
-          onKeyDown={keys}
-        >
-          {one === tab && <Glyph name="tick" size={14} weight={2.6} />}
-          {TAB_WORDS[one]}
-          <span className="ev-tab-count">{counts[one].length}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function Results({
-  filters,
-  groups,
-  now,
-  onFilters,
-}: {
-  filters: Filters;
-  groups: readonly (readonly [Tab, SampleEvent[]])[];
-  now: Date;
-  onFilters: (next: Filters) => void;
-}) {
-  const count = groups.reduce((total, [, events]) => total + events.length, 0);
-  const clearFilters = () => onFilters({ ...NO_FILTERS, q: filters.q });
-
-  return (
-    <>
-      <div className="ev-count-row">
-        <p className="ev-count" role="status" aria-live="polite">
-          {W.count(count)}
-        </p>
-        {filtering(filters) && count > 0 && (
-          <TextAction label={W.clearFilters} onClick={clearFilters} />
-        )}
-      </div>
-      {count === 0 ? (
-        <div className="ev-none" role="status">
-          <h2>{W.noMatch}</h2>
-          <p className="desk-line">{noMatchLine(filters, now)}</p>
-          <div className="ev-none-actions">
-            {searching(filters) && (
-              <TextAction label={W.clearSearch} onClick={() => onFilters({ ...filters, q: '' })} />
-            )}
-            {filtering(filters) && <TextAction label={W.clearFilters} onClick={clearFilters} />}
-          </div>
-        </div>
-      ) : (
-        <div className="ev-groups">
-          {groups.map(
-            ([tab, events]) =>
-              events.length > 0 && (
-                <section key={tab} aria-label={TAB_WORDS[tab]}>
-                  <Head title={TAB_WORDS[tab]}>
-                    <span className="ev-group-count">{events.length}</span>
-                  </Head>
-                  <ul className="desk-rows ev-rows">
-                    {events.map((event) => (
-                      <EventRow key={event.id} event={event} now={now} tab="all" />
-                    ))}
-                  </ul>
-                </section>
-              ),
-          )}
-        </div>
-      )}
-    </>
+    <EventsFirstRun create={asks ? undefined : () => tell('Create an event has its own design.')} />
   );
 }

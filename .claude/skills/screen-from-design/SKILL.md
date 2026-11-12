@@ -255,6 +255,15 @@ From `CLAUDE.md` and the foundations. Each one is a decision, not a preference:
 - **On the app, a load error's Try again is a move.** Use `CardFailed` or `EventsFailed`,
   which call `rereadOrganisations()` before retrying; a button of your own calls it too,
   or a member suspended while the screen was open sees nothing red (sc-28178).
+- **On the web, a reading-column cap leaves dialogs out.** A cap on a container's
+  children written as `> :not(…)` lists `.dialog` and `.dialog-scrim` among its
+  exceptions. Both are fixed to the window, and a capped scrim dims only the column, as
+  `.settings-desk-page` and `.arrived` once did (sc-36346).
+- **On the web, a desk page renders inside `DeskPage`** (`components/SettingsParts.tsx`).
+  The desk tokens are defined on `.desk`, so a column wrapped in anything else draws
+  unstyled, with no error and nothing red in a test that only finds the
+  text. Its test asserts the card's `.desk` ancestor, as `SecurityDesk` and
+  `NotificationsDesk` do (sc-35456).
 
 ## 7. What the stack cannot express
 
@@ -449,7 +458,11 @@ missing list is ambiguous.
   each.
 - No hex, no untranslated literal, no fixture import left behind.
 - The screen's components are the product's one copy, the demo flow still works, and
-  nothing on the screen is missing from its demo.
+  nothing on the screen differs from its demo, its top and the frame around it included,
+  not only that nothing is missing. A band, title or header another story built is still
+  part of the screen you hand over.
+- The pull request's body lists each layout with a pair of screenshots, the product and
+  the demo's route at the same size, or names the layouts not checked.
 - Every `testID` the change removed or renamed is gone from `apps/mobile/.maestro`.
 - Commits scoped per **making-commits**; never `git add -A`.
 - Say which layouts you checked and how, and name anything still unverified.

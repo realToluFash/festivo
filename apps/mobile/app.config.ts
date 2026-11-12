@@ -1,5 +1,6 @@
 import type { ExpoConfig } from 'expo/config';
 
+import { withAuthenticatorQueried } from './plugins/withAuthenticatorQueried.ts';
 import { withFontScaleKept } from './plugins/withFontScaleKept.ts';
 import { withScheme } from './src/theme/tokens.ts';
 
@@ -46,8 +47,8 @@ const config: ExpoConfig = {
     usesAppleSignIn: true,
     // Event day pushes are time-sensitive, so they break through Focus (sc-13214).
     entitlements: { 'com.apple.developer.usernotifications.time-sensitive': true },
-    // Asked before Open Mail is shown, which iOS answers only for a scheme listed here (sc-29071).
-    infoPlist: { LSApplicationQueriesSchemes: ['message'] },
+    // Asked before Open Mail (sc-29071) and Add to my authenticator app (sc-40025) are shown, which iOS answers only for a scheme listed here.
+    infoPlist: { LSApplicationQueriesSchemes: ['message', 'otpauth'] },
   },
   android: {
     package: 'com.soirely.app',
@@ -133,4 +134,4 @@ const config: ExpoConfig = {
   },
 };
 
-export default withFontScaleKept(config);
+export default withAuthenticatorQueried(withFontScaleKept(config));

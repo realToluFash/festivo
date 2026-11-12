@@ -436,7 +436,31 @@ def cmd_history(s, a):
                 moves.append(f"{states.get(str(change.get('old')), '?')} → "
                              f"{states.get(str(change.get('new')), '?')}")
         if moves:
-            print(f"{entry['changed_at'][:16].replace('T', ' ')} {'; '.join(moves)}")
+            print(f"{entry['changed_at'][:16].replace('T', ' ')} {'; '.join(moves)}"
+                  f"{''.join(f' · {part}' for part in history_source(entry))}")
+
+
+VCS_KINDS = {"pull-request": "PR", "branch": "branch", "commit": "commit"}
+
+
+def history_source(entry):
+    parts = []
+    actor = entry.get("actor_name") or entry.get("member_id")
+    if actor and entry.get("automation_id"):
+        parts.append(f"by {actor} (automation)")
+    elif actor:
+        parts.append(f"by {actor}")
+    elif entry.get("automation_id"):
+        parts.append("by an automation")
+    for thing in [*entry.get("references", []), *entry.get("actions", [])]:
+        kind = VCS_KINDS.get(thing.get("entity_type"))
+        if not kind:
+            continue
+        label = (f"PR #{thing['number']}" if kind == "PR" and thing.get("number")
+                 else f"{kind} {thing.get('name') or thing.get('hash') or thing.get('id')}")
+        if label not in parts:
+            parts.append(label)
+    return parts
 
 
 # Writes

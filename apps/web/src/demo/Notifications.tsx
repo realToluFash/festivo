@@ -1,16 +1,19 @@
 import { DemoBell } from './DemoBell.tsx';
-import type { NotificationSetting } from '@soirely/api-client';
+import { DemoOffline } from './DemoOffline.tsx';
 import { formattingLocale, settingFlipped } from '@soirely/domain';
-import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 
-import { offButton } from '../offButton.ts';
-import { Glyph, type GlyphName } from '../components/Glyph.tsx';
+import {
+  AllowPushDialog,
+  HearingCard,
+  Kind,
+  KindsLoading,
+} from '../components/NotificationParts.tsx';
+import { CHANNELS, keyOf, tagOf } from '../notificationsPage.ts';
 import {
   ALLOW_WORDS as A,
   CATEGORY_NAMES,
-  CHANNELS,
   type Category,
-  type Channel,
   HOLD_MS,
   LOADING_MS,
   NOTIFICATION_WORDS as W,
@@ -19,7 +22,6 @@ import {
   type Switch,
   cardOf,
   coversLine,
-  keyOf,
   notSaved,
   notificationsStart,
   quietHoursLine,
@@ -27,30 +29,8 @@ import {
   sameSwitch,
   switchName,
 } from './notifications.ts';
-import {
-  Card,
-  CardStep,
-  Dialog,
-  Head,
-  OnCard,
-  RowWords,
-  Says,
-  Tag,
-  TextAction,
-  TitleRow,
-} from '../components/SettingsParts.tsx';
+import { Head, TextAction, TitleRow } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
-import './account.css';
-import './notifications.css';
-
-const LEADS: Record<Category, GlyphName> = {
-  guest_replies: 'users',
-  messages: 'message',
-  event_day: 'day',
-  event_changes: 'calendar',
-  money: 'wallet',
-  account_security: 'shield',
-};
 
 /** Notification settings at a desk in B · Summary first (Web-Notifications-*.dc.html): the app's page, the same for every role. */
 export function Notifications({ state, tell }: { state: string; tell: Tell }) {
@@ -127,8 +107,9 @@ export function Notifications({ state, tell }: { state: string; tell: Tell }) {
   return (
     <div className="desk-page">
       <div ref={column} className="desk-column">
+        <DemoOffline />
         <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
-        {load === 'loading' && <Loading />}
+        {load === 'loading' && <KindsLoading label={W.loading} />}
         {load === 'failed' && (
           <div className="desk-failed" role="alert">
             <h2>{W.couldNotLoad}</h2>
@@ -138,38 +119,53 @@ export function Notifications({ state, tell }: { state: string; tell: Tell }) {
         )}
         {load === 'loaded' && (
           <>
-            <Card size="person">
-              <div>
-                <div className="desk-who">
-                  <span className="desk-disc" aria-hidden="true">
-                    <Glyph name={start.blocked ? 'bellOff' : 'bell'} size={29} weight={2.2} />
-                  </span>
-                  <div className="desk-who-words">
-                    <Says>{card.says}</Says>
-                    <OnCard>{card.summary}</OnCard>
-                  </div>
-                </div>
-                {start.blocked && <p className="account-said">{W.blockedLine}</p>}
-              </div>
-              {start.blocked && <CardStep label={W.allow} onClick={() => setAllow(true)} />}
-            </Card>
+            <HearingCard
+              says={card.says}
+              summary={card.summary}
+              blocked={start.blocked ? W.blockedLine : null}
+              step={start.blocked ? { label: W.allow, onClick: () => setAllow(true) } : null}
+            />
             <section className="desk-block">
               <Head title={W.head} />
               <ul className="desk-rows account-rows">
-                {settings.map((setting) => (
-                  <Kind
-                    key={setting.category}
-                    setting={setting}
-                    locale={locale}
-                    on={open === setting.category}
-                    tag={tagOf(setting.category, saving, saved)}
-                    unsaved={unsaved?.category === setting.category ? unsaved.channel : null}
-                    blocked={start.blocked}
-                    busy={saving}
-                    onToggle={() => toggle(setting.category)}
-                    onChange={change}
-                  />
-                ))}
+                {settings.map((setting) => {
+                  const { category } = setting;
+                  const failed = unsaved?.category === category ? unsaved.channel : null;
+
+                  return (
+                    <Kind
+                      key={category}
+                      category={category}
+                      name={CATEGORY_NAMES[category]}
+                      value={rowValue(setting)}
+                      covers={coversLine(setting, locale)}
+                      open={open === category}
+                      tag={tagOf(category, saving, saved)}
+                      failure={failed == null ? null : notSaved(failed)}
+                      switches={CHANNELS.map((channel) => {
+                        const locked = !setting[channel].switchable;
+
+                        return {
+                          channel,
+                          title: channel === 'push' ? W.push : W.email,
+                          label: switchName(category, channel),
+                          line: locked
+                            ? W.locked
+                            : channel === 'push' && start.blocked
+                              ? W.blockedHere
+                              : null,
+                          on: setting[channel].on,
+                          locked,
+                          busy: saving.includes(keyOf({ category, channel })),
+                          failure: failed === channel ? notSaved(channel) : null,
+                        };
+                      })}
+                      words={{ on: W.on, off: W.off, saving: W.saving, saved: W.saved }}
+                      onToggle={() => toggle(category)}
+                      onChange={(channel, on) => change({ category, channel }, on)}
+                    />
+                  );
+                })}
               </ul>
               <p className="desk-foot">{quietHoursLine(locale)}</p>
             </section>
@@ -180,32 +176,19 @@ export function Notifications({ state, tell }: { state: string; tell: Tell }) {
         )}
       </div>
       {allow && (
-        <Dialog
-          title={A.title}
-          verb={A.verb}
-          cancel={false}
-          onDismiss={() => setAllow(false)}
-          onConfirm={() => setAllow(false)}
-        >
-          <p className="desk-line is-ink">{A.intro}</p>
-          <ol className="notif-steps">
-            {A.steps.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ol>
-          <p className="desk-note">{A.elsewhere}</p>
-        </Dialog>
+        <AllowPushDialog
+          words={{
+            title: A.title,
+            verb: A.verb,
+            intro: A.intro,
+            steps: A.steps,
+            elsewhere: A.elsewhere,
+          }}
+          onDone={() => setAllow(false)}
+        />
       )}
     </div>
   );
-}
-
-type RowTag = 'saving' | 'saved' | null;
-
-function tagOf(category: Category, saving: readonly string[], saved: Category | null): RowTag {
-  if (CHANNELS.some((channel) => saving.includes(keyOf({ category, channel })))) return 'saving';
-
-  return saved === category ? 'saved' : null;
 }
 
 function useTimers(): (ms: number, then: () => void) => void {
@@ -224,165 +207,4 @@ function useTimers(): (ms: number, then: () => void) => void {
     }, ms);
     timers.current.add(timer);
   };
-}
-
-function Loading() {
-  return (
-    <div className="desk-loading" role="status" aria-label={W.loading}>
-      <span className="desk-unseen">{W.loading}</span>
-      <span className="desk-sunk is-card" aria-hidden="true" />
-      <ul className="desk-rows account-rows notif-bones" aria-hidden="true">
-        {[1, 2, 3, 1, 2, 3].map((bar, index) => (
-          <li key={index} className="desk-row is-bones">
-            <span className="desk-sunk notif-lead-bone" />
-            <span className="desk-row-words">
-              <span className={`desk-sunk is-title b${bar}`} />
-              <span className={`desk-sunk is-line b${bar}`} />
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function RowTagView({ tag }: { tag: RowTag }) {
-  if (tag === 'saved') return <Tag kind="yes" word={W.saved} />;
-  if (tag !== 'saving') return null;
-
-  return (
-    <span className="desk-tag is-now notif-saving">
-      <span className="notif-spin" aria-hidden="true" />
-      {W.saving}
-    </span>
-  );
-}
-
-function Failure({ channel, id }: { channel: Channel; id?: string }) {
-  return (
-    <p id={id} className="desk-error notif-failed" role="alert">
-      <Glyph name="alert" size={15} weight={2.2} />
-      {notSaved(channel)}
-    </p>
-  );
-}
-
-/** One kind: its value in words, opening in place, under the Violet rule, to its two switches. */
-function Kind({
-  setting,
-  locale,
-  on,
-  tag,
-  unsaved,
-  blocked,
-  busy,
-  onToggle,
-  onChange,
-}: {
-  setting: NotificationSetting;
-  locale: string;
-  on: boolean;
-  tag: RowTag;
-  unsaved: Channel | null;
-  blocked: boolean;
-  busy: readonly string[];
-  onToggle: () => void;
-  onChange: (one: Switch, on: boolean) => void;
-}) {
-  const id = useId();
-  const { category } = setting;
-  const name = CATEGORY_NAMES[category];
-
-  return (
-    <li>
-      <button
-        type="button"
-        className={on ? 'desk-row account-row is-open' : 'desk-row account-row'}
-        aria-expanded={on}
-        aria-controls={on ? id : undefined}
-        onClick={onToggle}
-      >
-        <span className="account-lead" aria-hidden="true">
-          <Glyph name={LEADS[category]} size={22} />
-        </span>
-        <RowWords title={name} tag={<RowTagView tag={tag} />} lines={[rowValue(setting)]} />
-        <Glyph name={on ? 'chevup' : 'chevdown'} size={18} weight={2.4} className="desk-chevron" />
-      </button>
-      {!on && unsaved != null && <Failure channel={unsaved} />}
-      {on && (
-        <div id={id} className="account-open" role="group" aria-label={name}>
-          <p id={`${id}-covers`} className="desk-note notif-covers">
-            {coversLine(setting, locale)}
-          </p>
-          <ul className="notif-switches">
-            {CHANNELS.map((channel) => {
-              const locked = !setting[channel].switchable;
-              const line = locked ? W.locked : channel === 'push' && blocked ? W.blockedHere : null;
-              const failed = unsaved === channel;
-
-              return (
-                <li key={channel}>
-                  <div className="notif-switch-row">
-                    <RowWords
-                      title={channel === 'push' ? W.push : W.email}
-                      lines={line == null ? [] : [line]}
-                    />
-                    <OnOff
-                      on={setting[channel].on}
-                      locked={locked}
-                      busy={busy.includes(keyOf({ category, channel }))}
-                      label={switchName(category, channel)}
-                      told={failed ? `${id}-covers ${id}-${channel}` : `${id}-covers`}
-                      onChange={(next) => onChange({ category, channel }, next)}
-                    />
-                  </div>
-                  {failed && <Failure channel={channel} id={`${id}-${channel}`} />}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-    </li>
-  );
-}
-
-function OnOff({
-  on,
-  locked,
-  busy,
-  label,
-  told,
-  onChange,
-}: {
-  on: boolean;
-  locked: boolean;
-  busy: boolean;
-  label: string;
-  told: string;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      className="notif-switch"
-      aria-checked={on}
-      aria-label={label}
-      aria-describedby={told}
-      aria-busy={busy}
-      {...offButton(locked, { dim: false })}
-      onClick={() => {
-        if (!busy) onChange(!on);
-      }}
-    >
-      {locked && <Glyph name="lock" size={14} weight={2.4} />}
-      <span className="notif-word" aria-hidden="true">
-        {on ? W.on : W.off}
-      </span>
-      <span className="notif-track" aria-hidden="true">
-        <span className="notif-knob" />
-      </span>
-    </button>
-  );
 }

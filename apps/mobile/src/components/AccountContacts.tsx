@@ -1,4 +1,4 @@
-import { contactActions, contactsLeft } from '@soirely/domain';
+import { contactActions, contactsLeft, primaryFirst } from '@soirely/domain';
 import type { Ref } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +9,6 @@ import {
   contactLine,
   contactsFoot,
   KIND_KEYS,
-  primaryFirst,
 } from '../kit/accountPage.ts';
 import { tokens } from '../theme/tokens.ts';
 import { LEAD_INSET, LineIcon } from './AccountCard.tsx';

@@ -2,7 +2,7 @@
 appId: host.exp.Exponent
 ---
 - runFlow: ../sc29072-to-code.yaml
-- hideKeyboard
+- runFlow: ../sc29072-close-code-pad.yaml
 - tapOn: { id: 'twoFactor.lostBoth' }
 - extendedWaitUntil: { visible: { id: 'lostTwoFactor.send' }, timeout: 30000 }
 - waitForAnimationToEnd
@@ -22,7 +22,7 @@ appId: host.exp.Exponent
       - tapOn: { id: 'lostTwoFactor.phoneCode' }
       - inputText: ${output.code}
 - takeScreenshot: ${P}-codes-typed
-- hideKeyboard
+- runFlow: ../sc29072-close-codes-pad.yaml
 - tapOn: { id: 'lostTwoFactor.ask' }
 - extendedWaitUntil: { visible: { id: 'lostTwoFactor.cancel' }, timeout: 30000 }
 - waitForAnimationToEnd

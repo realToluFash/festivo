@@ -433,6 +433,22 @@ class Queue(unittest.TestCase):
         items = work.queue_items([ready], ios=False)
         self.assertEqual([i["roles"] for i in items], [["dev", "dev2", "dev3", "dev4"]])
 
+    def test_needs_xcode_is_no_developer_s_without_xcode(self):
+        ready = story(state="Ready For Dev", labels=["needs xcode"])
+        self.assertEqual(work.queue_items([ready], ios=False), [])
+        items = work.queue_items([ready], ios=True)
+        self.assertEqual([i["roles"] for i in items], [["dev", "dev2", "dev3", "dev4"]])
+
+    def test_needs_xcode_leaves_a_claimed_story_with_its_developer(self):
+        failed = story(state="Failed QA", labels=["dev2", "needs xcode"])
+        items = work.queue_items([failed], ios=False)
+        self.assertEqual([i["roles"] for i in items], [["dev2"]])
+
+    def test_needs_xcode_holds_back_no_tester(self):
+        ready = story(state="Ready For QA", labels=["needs xcode"])
+        items = work.queue_items([ready], ios=False)
+        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3"]])
+
     def test_a_translation_ticket_is_only_the_linguists(self):
         for state in ("To Do", "Ready For Dev", "In Progress", "Failed QA"):
             items = work.queue_items([story(state=state, labels=["translation"])])
@@ -444,6 +460,14 @@ class Queue(unittest.TestCase):
         woken = sorted(r for i in items for r in i["roles"])
         self.assertNotIn("pm", woken)
         self.assertEqual(woken, [])
+
+    def test_a_merge_with_tasks_left_wakes_its_builder_though_it_made_the_move(self):
+        held = story(state="In Progress", labels=["dev2"], moved_at="t1")
+        own = {(1, "In Progress", "t1"): "dev2"}
+        self.assertEqual(work.queue_items([held], own), [])
+        items = work.queue_items(
+            [held], {**own, (1, work.HELD_AT_MERGE, "t1"): "dev2"})
+        self.assertEqual([r for i in items for r in i["roles"]], ["dev2"])
 
     def test_each_state_wakes_its_roles(self):
         for state, woken in (("Backlog", ["bm", "pm"]), ("To Do", ["pm"]),

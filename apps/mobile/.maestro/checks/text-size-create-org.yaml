@@ -1,4 +1,4 @@
-# create-org, top to bottom, at whatever text size the simulator is set to. sc-13281.
+# create-org, each of the walk's steps top to bottom, at whatever text size the simulator is set to. sc-13281.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/
@@ -9,16 +9,41 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'home.switchOrganisation'
 - tapOn:
-    id: 'switcher.create'
+    id: 'switcher.tile.create'
 - extendedWaitUntil:
-    visible: '{{t:createOrganisation.title}}'
+    visible: '{{t:createOrganisation.whatTitle}}'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: create-org-1
-- scroll
+- tapOn:
+    id: 'createWalk.name'
+- inputText: 'Text Size'
+- tapOn:
+    id: 'createWalk.primary'
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.whereTitle}}'
+    timeout: 10000
+- hideKeyboard:
+    optional: true
+- waitForAnimationToEnd
 - takeScreenshot: create-org-2
 - scroll
 - takeScreenshot: create-org-3
-- scroll
+- tapOn:
+    id: 'createWalk.search'
+- inputText: 'Portugal'
+- tapOn:
+    id: 'createWalk.country.PT'
+- hideKeyboard:
+    optional: true
+- tapOn:
+    id: 'createWalk.primary'
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.readyTitle}}'
+    timeout: 10000
+- waitForAnimationToEnd
 - takeScreenshot: create-org-4
+- scroll
+- takeScreenshot: create-org-5
+- runFlow: ../return-home.yaml

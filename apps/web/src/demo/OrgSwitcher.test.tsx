@@ -245,6 +245,36 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
     ).toBeDefined();
   });
 
+  it(
+    'opens a refused answer in place of the buttons, and an answer on its way held',
+    SLOW,
+    async () => {
+      open('/demo/events?switcher=expired');
+      const expired = await screen.findByText('Expired', {}, WAIT);
+      expect(expired.parentElement?.textContent).toContain('Ask Beatriz Lima to send a new one.');
+      expect(screen.queryByRole('button', { name: /^Accept and join/ })).toBeNull();
+      expect(await opener(/1 invitation waiting$/)).toBeDefined();
+      cleanup();
+
+      open('/demo/events?switcher=withdrawn');
+      const withdrawn = await screen.findByText('Withdrawn', {}, WAIT);
+      expect(withdrawn.parentElement?.textContent).toContain(
+        'This invitation was withdrawn by Bluebird Gatherings.',
+      );
+      cleanup();
+
+      open('/demo/events?switcher=busy');
+      const joining = await screen.findByRole(
+        'button',
+        { name: 'Accept and join Bluebird Gatherings' },
+        WAIT,
+      );
+      expect(joining.textContent).toBe('Joining…');
+      expect(joining.getAttribute('aria-busy')).toBe('true');
+      expect(await opener(/2 invitations waiting$/)).toBeDefined();
+    },
+  );
+
   it('asks to join the offer, or puts it away with Not now', SLOW, async () => {
     open('/demo/events?switcher=offer');
     await opener();
@@ -288,6 +318,31 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
       expect(document.activeElement).toBe(screen.getByLabelText('Organisation name')),
     );
   });
+
+  it(
+    'keeps the Settings list while paused, with the stand-in on the organisation’s sections only',
+    SLOW,
+    async () => {
+      open('/demo/settings/sign-in-rules?switcher=paused');
+      await opener();
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+
+      expect(screen.getByRole('link', { name: /Security/ })).toBeDefined();
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: /^Your access to Casa Lumen Eventos is paused/,
+        }),
+      ).toBeDefined();
+
+      cleanup();
+      open('/demo/settings/security?switcher=paused');
+      await opener();
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+
+      expect(screen.getByRole('heading', { level: 1, name: 'Security' })).toBeDefined();
+    },
+  );
 
   it('marks nothing current while access is paused, and switches away from it', SLOW, async () => {
     open('/demo/events?switcher=paused');

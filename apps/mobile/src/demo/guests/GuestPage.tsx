@@ -24,6 +24,7 @@ import {
 } from './GuestsSample.ts';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { MarkSlot } from './ReplyMark.tsx';
+import { type WhatsAppRow, whatsAppRowOf } from './WhatsAppConsent.ts';
 
 const REOPENED_ON = '2026-11-05';
 const ADDED_ON = '2026-09-14';
@@ -34,6 +35,7 @@ export interface GuestActions {
   onCopy: () => void;
   onReplace: () => void;
   onMark: () => void;
+  onAgree: () => void;
   onLetChange: () => void;
   onConversation: () => void;
   onBack: () => void;
@@ -52,7 +54,9 @@ function cardOf(
   const owner = role === 'owner';
   if (replies === 'closed' && replyBy != null)
     return {
-      line: say.closed(dayWords(replyBy, locale, true)),
+      line: owner
+        ? say.closed(dayWords(replyBy, locale, true))
+        : say.closedOn(dayWords(replyBy, locale, true)),
       step: owner ? { label: W.letThemChange, onPress: actions.onLetChange } : null,
     };
   if (replies === 'reopened')
@@ -117,6 +121,9 @@ export function GuestPage({
   const kind = g.kind === 'walkin' ? 'walkin' : g.kind;
   const replied = g.kind === 'coming' || g.kind === 'maybe' || g.kind === 'notcoming';
   const { word, detail } = replyParts(g, locale, replyBy);
+  const whatsApp = whatsAppRowOf(g.whatsApp, { mobile: g.phone != null, edits: owner }, (day) =>
+    dayWords(day, locale),
+  );
 
   return (
     <View style={styles.blocks} testID={`guest.${g.key}`}>
@@ -180,6 +187,22 @@ export function GuestPage({
                     inset: 40,
                     row: <ValueRow value={g.phone} label={W.mobileNumber} icon="phone" />,
                   },
+                  ...(whatsApp != null
+                    ? [
+                        {
+                          key: 'whatsApp',
+                          inset: 40,
+                          row: (
+                            <WhatsAppRows
+                              row={whatsApp}
+                              rowRef={refFor('whatsAppRow')}
+                              agreeRef={refFor('whatsApp')}
+                              onAgree={actions.onAgree}
+                            />
+                          ),
+                        },
+                      ]
+                    : []),
                   { key: 'language', inset: 40, row: <LanguageRow g={g} /> },
                 ]
               : []),
@@ -326,6 +349,42 @@ function ValueRow({
   );
 }
 
+/** sc-3950: the consent as the value, WhatsApp as the label; while nothing is in force, the host's way to record it under it. */
+function WhatsAppRows({
+  row,
+  rowRef,
+  agreeRef,
+  onAgree,
+}: {
+  row: WhatsAppRow;
+  rowRef: Ref<ViewInstance>;
+  agreeRef: Ref<ViewInstance>;
+  onAgree: () => void;
+}) {
+  return (
+    <View>
+      <Row
+        ref={rowRef}
+        title={row.title}
+        line={row.note ?? W.whatsApp}
+        lead={<LineIcon name="chat" />}
+        accessibilityLabel={[W.whatsApp, row.title, row.note].filter(Boolean).join(', ')}
+        testID="guest.whatsApp.row"
+      />
+      {row.agree && (
+        <View style={styles.agree}>
+          <TextAction
+            ref={agreeRef}
+            label={W.guestAgreed}
+            onPress={onAgree}
+            testID="guest.whatsApp.agree"
+          />
+        </View>
+      )}
+    </View>
+  );
+}
+
 /** sc-3790: the host's Language, or what Not set falls back to in Ink 2 as None is; the guest's own choice under it. */
 function LanguageRow({ g }: { g: SampleGuest }) {
   const name = languageName(g.language);
@@ -398,6 +457,7 @@ function NotFound({ onBack }: { onBack: () => void }) {
 const styles = StyleSheet.create({
   blocks: { gap: 18 },
   chose: { paddingLeft: 40, paddingBottom: 12 },
+  agree: { paddingLeft: 40, paddingBottom: tokens.spaceXs, alignItems: 'flex-start' },
   secondary: { color: tokens.colorInkSecondary },
   lines: { lineHeight: 15 * 1.45 },
   sunkCard: { height: 190, borderRadius: 26, backgroundColor: tokens.colorNeutralFill },

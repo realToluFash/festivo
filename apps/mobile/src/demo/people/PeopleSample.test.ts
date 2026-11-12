@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ADD_PROMPT,
   addedToast,
+  addRefusedLine,
   addView,
   firstName,
   listed,
@@ -88,6 +89,16 @@ describe('People on an event in the demo, as one list', () => {
     expect(peopleStart('people').roleFails).toBe(false);
     expect(peopleStart('loading').load).toBe('loading');
     expect(peopleStart('failed').load).toBe('failed');
+  });
+
+  it('opens Add people on arrival with Julien refused, or with nobody left to add', () => {
+    expect(peopleStart('addPartial')).toMatchObject({
+      adding: true,
+      addRefuses: 'julien@ire.events',
+    });
+    const full = peopleStart('everyoneOn');
+    expect(full.adding).toBe(true);
+    expect(addView('', members, full.onEvent)).toEqual({ kind: 'members', offered: [] });
   });
 });
 
@@ -250,6 +261,23 @@ describe('adding people', () => {
     expect(addedToast(['Kofi Mensah'], 'Can view')).toBe('Kofi Mensah can view now.');
     expect(addedToast(['Kofi Mensah', 'Julien Moreau'], 'Lead')).toBe(
       '2 people lead this event now.',
+    );
+  });
+});
+
+describe('Add people refused part way', () => {
+  it('says who went in, then who is still ticked', () => {
+    expect(addRefusedLine('Can view', ['Kofi Mensah'], ['Julien Moreau'])).toBe(
+      'Kofi Mensah can view now. We couldn’t add Julien Moreau, so they’re still ticked. Check your connection and press Add again.',
+    );
+    expect(addRefusedLine('Can view', ['Kofi Mensah', 'Ana Souza'], ['A', 'B', 'C'])).toBe(
+      '2 people can view now. We couldn’t add the 3 still ticked. Check your connection and press Add again.',
+    );
+  });
+
+  it('says only the refusal when nobody went in', () => {
+    expect(addRefusedLine('Lead', [], ['Julien Moreau'])).toBe(
+      'We couldn’t add Julien Moreau, so they’re still ticked. Check your connection and press Add again.',
     );
   });
 });

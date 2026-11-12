@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,7 +14,14 @@ const tested = config();
 const SLOW = { timeout: 20000 };
 const WAIT = { timeout: 8000 };
 const WEDDING = 'Adaeze & Tunde’s wedding';
-const EVENTS_CSS = readFileSync(join(import.meta.dirname, 'events.css'), 'utf8');
+const EVENTS_CSS = [
+  'events.css',
+  '../components/eventsDesk.css',
+  '../components/EventsList.css',
+  '../components/eventPage.css',
+]
+  .map((file) => readFileSync(join(import.meta.dirname, file), 'utf8'))
+  .join('\n');
 
 function cssValue(selector: string, property: string): string | undefined {
   const start = EVENTS_CSS.indexOf(`\n${selector} {`);
@@ -97,7 +104,7 @@ describe('Events in A at a desk (sc-30304)', () => {
       target: { value: 'lucia' },
     });
 
-    expect(router.state.location.search).toBe('?q=lucia');
+    await waitFor(() => expect(router.state.location.search).toBe('?q=lucia'));
     expect(await screen.findByText('3 events')).toBeDefined();
     expect(screen.getByRole('link', { name: /Lucía’s quinceañera/ })).toBeDefined();
 
@@ -290,6 +297,19 @@ describe('Events in A at a desk (sc-30304)', () => {
         .getAttribute('href'),
     ).toBe('/demo/people');
   });
+
+  it('says Off or On beside Just for you’s switch', SLOW, async () => {
+    open('/demo/events/evt-wed-4');
+    const mute = await screen.findByRole('switch', { name: 'Mute this event' }, WAIT);
+
+    expect(mute.getAttribute('aria-checked')).toBe('false');
+    expect(mute.textContent).toBe('Off');
+
+    fireEvent.click(mute);
+
+    expect(mute.getAttribute('aria-checked')).toBe('true');
+    expect(mute.textContent).toBe('On');
+  });
 });
 
 describe('the guest counts on Events (sc-23284)', () => {
@@ -315,6 +335,23 @@ describe('the guest counts on Events (sc-23284)', () => {
     expect(within(tiles).getAllByText('0')).toHaveLength(2);
     expect(within(tiles).getByText('0 coming')).toBeDefined();
     expect(within(tiles).getByText('0 haven’t replied')).toBeDefined();
+  });
+
+  it('draws the list loading as shapes, with search and Filter off', SLOW, async () => {
+    await list('/demo/events?state=loading');
+
+    const status = within(main()).getByRole('status');
+    expect(status.textContent).toBe('Loading events…');
+    expect(status.querySelector('.desk-unseen')?.textContent).toBe('Loading events…');
+    expect(status.querySelectorAll('.desk-row.is-bones')).toHaveLength(3);
+    expect(
+      within(main())
+        .getByRole('searchbox', { name: 'Search events' })
+        .getAttribute('aria-disabled'),
+    ).toBe('true');
+    expect(within(main()).queryByRole('tablist')).toBeNull();
+    expect(within(main()).queryByText('Search needs a connection.')).toBeNull();
+    expect(within(main()).getByRole('button', { name: 'New event' })).toBeDefined();
   });
 
   it('asks a role without Create events to ask an owner', SLOW, async () => {

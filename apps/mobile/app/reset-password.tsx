@@ -1,12 +1,12 @@
-import { ApiError, awaiting } from '@soirely/api-client';
+import { ApiError } from '@soirely/api-client';
 import { PASSWORD_MINIMUM_LENGTH, meetsPasswordLength } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { followAccount } from '../src/accountLanguage.ts';
 import { api } from '../src/api.ts';
+import { nextAfterSignIn } from '../src/challenge.ts';
 import { closeReset } from '../src/closeReset.ts';
 import { PrimaryButton } from '../src/components/Buttons.tsx';
 import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
@@ -14,14 +14,16 @@ import { sayOnLanding } from '../src/components/LandingToast.tsx';
 import { Pending } from '../src/components/Pending.tsx';
 import { SecondFactorStep } from '../src/components/SecondFactorStep.tsx';
 import { ruleRefusal, signInRoute } from '../src/kit/signInRules.ts';
-import { landingFor } from '../src/landing.ts';
+import { deadFrom, readFailure } from '../src/resetLink.ts';
 import { FieldLine, InsideField } from '../src/steps/InsideField.tsx';
 import { Heading, Plain, Says } from '../src/steps/Lines.tsx';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { tokens } from '../src/theme/tokens.ts';
+import { unreachableFrom } from '../src/unreachable.ts';
 
 type Status =
   | { kind: 'checking' }
+  | { kind: 'unread'; failures: number; trying: boolean }
   | { kind: 'ready'; email: string; tapped?: boolean }
   | { kind: 'saving'; email: string }
   | { kind: 'failed'; email: string }
@@ -35,6 +37,7 @@ export default function ResetPassword() {
   const { t } = useTranslation();
   const { token = '' } = useLocalSearchParams<{ token?: string }>();
   const [status, setStatus] = useState<Status>({ kind: 'checking' });
+  const [reads, setReads] = useState(0);
   const [lengthMet, setLengthMet] = useState(false);
   const [short, setShort] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
@@ -47,17 +50,38 @@ export default function ResetPassword() {
     api
       .checkResetLink(token)
       .then(({ email, twoFactor }) => {
+        if (!live) return;
         // With two-factor on the code comes first, and nothing changes until it passes.
-        if (live) setStatus({ kind: twoFactor ? 'code' : 'ready', email });
+        if (twoFactor) setStatus({ kind: 'code', email });
+        else setStatus({ kind: 'ready', email, tapped: reads > 0 });
       })
       .catch((error: unknown) => {
-        if (live) setStatus({ kind: deadFrom(error) ?? 'invalid', tapped: false });
+        if (!live) return;
+        const failure = readFailure(error);
+
+        if (failure === 'unreachable') {
+          router.replace(unreachableFrom({ kind: 'reset', token }));
+        } else if (failure === 'unread') {
+          setStatus((was) => ({
+            kind: 'unread',
+            failures: was.kind === 'unread' ? was.failures + 1 : 0,
+            trying: false,
+          }));
+        } else {
+          setStatus({ kind: failure, tapped: reads > 0 });
+        }
       });
 
     return () => {
       live = false;
     };
-  }, [token]);
+  }, [token, reads]);
+
+  function readAgain(): void {
+    if (status.kind !== 'unread' || status.trying) return;
+    setStatus({ ...status, trying: true });
+    setReads((count) => count + 1);
+  }
 
   async function submit(): Promise<void> {
     if (status.kind !== 'ready' && status.kind !== 'failed') return;
@@ -73,10 +97,9 @@ export default function ResetPassword() {
     setStatus({ kind: 'saving', email });
 
     try {
-      const { account } = await api.resetPassword(token, typed.current);
-      await followAccount(account);
+      const next = await nextAfterSignIn(await api.resetPassword(token, typed.current));
       sayOnLanding('recovery.changed');
-      router.replace(landingFor(awaiting(account)));
+      router.replace(next);
     } catch (error) {
       const dead = deadFrom(error);
       const refusal = error instanceof ApiError ? ruleRefusal(error.problem) : null;
@@ -104,6 +127,28 @@ export default function ResetPassword() {
     return (
       <StepScreen>
         <Pending />
+      </StepScreen>
+    );
+  }
+
+  if (status.kind === 'unread') {
+    return (
+      <StepScreen
+        nav={<NavBar left="close" onLeft={closeReset} testID="recovery" />}
+        foot={
+          <PrimaryButton
+            label={status.trying ? t('session.retrying') : t('status.retry')}
+            onPress={readAgain}
+            busy={status.trying}
+            testID="recovery.tryAgain"
+          />
+        }
+      >
+        <Heading
+          title={t('recovery.failedTitle')}
+          intro={t('recovery.failedBody')}
+          answer={status.failures === 0 ? undefined : status.failures}
+        />
       </StepScreen>
     );
   }
@@ -208,15 +253,6 @@ export default function ResetPassword() {
       <Plain top={tokens.spaceXl}>{t('recovery.signsOut')}</Plain>
     </StepScreen>
   );
-}
-
-function deadFrom(error: unknown): 'used' | 'expired' | 'invalid' | null {
-  if (!(error instanceof ApiError)) return null;
-  if (error.is('reset_link_used')) return 'used';
-  if (error.is('reset_link_expired')) return 'expired';
-  if (error.is('reset_link_invalid')) return 'invalid';
-
-  return null;
 }
 
 const styles = StyleSheet.create({

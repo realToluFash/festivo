@@ -5,6 +5,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
 import { renderInterrupted } from '../../../test-interrupted.tsx';
+import { atPhoneWidth } from '../../../test-widths.ts';
 import { tokens } from '../../../tokens.ts';
 import { routes } from '../../index.tsx';
 import { membership } from '../../../test-memberships.ts';
@@ -117,6 +118,7 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = scrolled;
   __setSessionState({ status: 'signedIn', session: FOLAKE });
   tokens.save({ accessToken: 'live', refreshExpiresAt: '', sessionId: HERE });
+  atPhoneWidth();
 });
 
 afterEach(() => {
@@ -675,14 +677,14 @@ describe('signing out everywhere else', () => {
     expect(document.body.textContent).not.toMatch(/15 minutes|immediate/i);
   });
 
-  it('puts the dismissive button before the confirming one', async () => {
+  it('stacks the confirming button over the dismissive one at a phone width', async () => {
     stub({});
 
     await openCheck();
     const keep = screen.getByRole('button', { name: 'Keep them signed in' });
     const signOut = screen.getByRole('button', { name: 'Sign them out' });
 
-    expect(keep.compareDocumentPosition(signOut)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(keep.compareDocumentPosition(signOut)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
   });
 
   it('keeps every device when the check is declined', async () => {

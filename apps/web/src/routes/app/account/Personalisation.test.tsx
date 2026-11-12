@@ -8,6 +8,7 @@ import {
   followAccountScheme,
   startColourScheme,
 } from '../../../colourScheme.ts';
+import { cssRule } from '../../../test-styles.ts';
 import { Personalisation } from './Personalisation.tsx';
 
 class FakeChannel {
@@ -224,5 +225,11 @@ describe('Personalisation (sc-30441)', () => {
       'Berry was not saved because you are offline. Your colours stay Violet.',
     );
     expect(root.dataset.scheme).toBe('violet');
+  });
+
+  it('wraps a colour name too long for its swatch, and the row grows with it', () => {
+    expect(cssRule('.colours-swatch-name')).toMatch(/overflow-wrap: break-word;/u);
+    expect(cssRule('.colours-swatch-name')).not.toMatch(/ellipsis|nowrap/u);
+    expect(cssRule('.colours-swatch-row')).toMatch(/min-height: var\(--sizeHit\);/u);
   });
 });

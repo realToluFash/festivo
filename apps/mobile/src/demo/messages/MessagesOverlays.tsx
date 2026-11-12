@@ -15,7 +15,7 @@ import { Text } from '../../components/Text.tsx';
 import { Toast } from '../../components/Toast.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { AlertLine, EventField } from '../events/EventEdits.tsx';
-import { MomentBox, type Picking, PickerLayer, pick } from '../events/EventsPick.tsx';
+import { MomentBox, type Picking, PickerLayer, pick } from '../../components/MomentPick.tsx';
 import { Back, Pill } from '../../components/SettingsParts.tsx';
 import {
   type Anchor,

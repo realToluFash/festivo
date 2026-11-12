@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import type { Ref } from 'react';
+import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
@@ -21,7 +22,7 @@ import { Confetti, type Piece } from './Cover.tsx';
 import { EventMesh, eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
 import { CardSays, GlassTag, OnCard, StepButton, SummaryCard } from './Summary.tsx';
-import { Text } from './Text.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 import type { CoverLayout } from './TodayCover.tsx';
 
 type Layout = CoverLayout;
@@ -233,32 +234,48 @@ function DayTiles({ event, now, locale }: { event: Shown; now: Date; locale: str
 
   return (
     <View style={styles.tiles} pointerEvents="none" accessibilityRole="list">
-      {tiles.map((tile) => (
-        <View
-          key={`${tile.weekday}${tile.day}`}
-          style={[styles.tile, tile.today && styles.tileToday]}
-          accessible
-          accessibilityLabel={tile.today ? `${today}, ${tile.day}` : `${tile.weekday} ${tile.day}`}
-        >
-          {!tile.today && <View style={[StyleSheet.absoluteFill, styles.tileGlass]} />}
-          <Text
-            size={12}
-            weight="bold"
-            accessible={false}
-            style={[styles.tileWeekday, tile.today ? styles.accent : styles.white]}
+      {tiles.map((tile) =>
+        tile.kind === 'gap' ? (
+          <View
+            key={tile.key}
+            style={[styles.tile, styles.tileGap]}
+            accessible
+            accessibilityLabel={t('eventsScreen.moreDays', { count: tile.hidden })}
           >
-            {tile.today ? today : tile.weekday}
-          </Text>
-          <Text
-            size={20}
-            weight="bold"
-            accessible={false}
-            style={[styles.tileDay, tile.today ? styles.accent : styles.white]}
+            <View style={[StyleSheet.absoluteFill, styles.tileGlass]} />
+            <Text size={20} weight="bold" accessible={false} style={[styles.tileDay, styles.white]}>
+              {tile.more}
+            </Text>
+          </View>
+        ) : (
+          <View
+            key={tile.key}
+            style={[styles.tile, tile.today && styles.tileToday]}
+            accessible
+            accessibilityLabel={
+              tile.today ? `${today}, ${tile.day}` : `${tile.weekday} ${tile.day}`
+            }
           >
-            {tile.day}
-          </Text>
-        </View>
-      ))}
+            {!tile.today && <View style={[StyleSheet.absoluteFill, styles.tileGlass]} />}
+            <Text
+              size={12}
+              weight="bold"
+              accessible={false}
+              style={[styles.tileWeekday, tile.today ? styles.accent : styles.white]}
+            >
+              {tile.today ? today : tile.weekday}
+            </Text>
+            <Text
+              size={20}
+              weight="bold"
+              accessible={false}
+              style={[styles.tileDay, tile.today ? styles.accent : styles.white]}
+            >
+              {tile.day}
+            </Text>
+          </View>
+        ),
+      )}
     </View>
   );
 }
@@ -267,11 +284,15 @@ function CardFoot({
   step,
   takes,
   onStep,
+  stepRef,
+  sending,
   testID,
 }: {
   step: CardStep;
   takes: (action: StepAction) => boolean;
   onStep: (step: Extract<CardStep, { kind: 'button' }>) => void;
+  stepRef: Ref<ViewInstance> | undefined;
+  sending: string | null;
   testID: string;
 }) {
   const { t } = useTranslation();
@@ -316,7 +337,13 @@ function CardFoot({
         <OnCard text={step.line} />
       </View>
       {takes(step.action) && (
-        <StepButton label={step.label} onPress={() => onStep(step)} testID={`${testID}.step`} />
+        <StepButton
+          ref={stepRef}
+          label={sending ?? step.label}
+          busy={sending != null}
+          onPress={() => onStep(step)}
+          testID={`${testID}.step`}
+        />
       )}
     </View>
   );
@@ -333,6 +360,10 @@ export function EventCard({
   takes,
   onStep,
   guests = null,
+  stepRef,
+  nameRef,
+  sending = null,
+  phaseTestID,
   testID,
   openTestID = `${testID}.open`,
 }: {
@@ -348,11 +379,20 @@ export function EventCard({
   /** Whether the viewer's role can take the step: one it cannot keeps the step's line and loses the button. */
   takes: (action: StepAction) => boolean;
   onStep: (step: Extract<CardStep, { kind: 'button' }>) => void;
+  /** Where focus goes back to when a sheet the step opened closes. */
+  stepRef?: Ref<ViewInstance> | undefined;
+  /** The name, where it is the page's heading and takes screen reader focus. */
+  nameRef?: Ref<TextHandle> | undefined;
+  /** While the step is under way, what its button says instead; it is held until then. */
+  sending?: string | null;
+  /** On the page, the phase tag's id is this followed by the phase. */
+  phaseTestID?: string | undefined;
   testID: string;
   openTestID?: string;
 }) {
   const { t } = useTranslation();
-  const name = <CardSays text={event.name} heading={onOpen == null} />;
+  const name = <CardSays ref={nameRef} text={event.name} heading={onOpen == null} />;
+  const step = cardStep(event, now, locale, t);
 
   return (
     <SummaryCard
@@ -375,6 +415,9 @@ export function EventCard({
             key={tag.word}
             word={tag.word}
             shape={tag.mark == null ? undefined : <PhaseShape mark={tag.mark} />}
+            testID={
+              tag.mark == null || phaseTestID == null ? undefined : `${phaseTestID}.${event.phase}`
+            }
           />
         ))}
       </View>
@@ -391,16 +434,20 @@ export function EventCard({
         </Pressable>
       )}
       <View pointerEvents="none">
-        <OnCard text={rowLine(event, locale, t, false)} />
+        <OnCard text={rowLine(event, now, locale, t, false)} />
         {guests != null && <OnCard text={guests} />}
       </View>
       <DayTiles event={event} now={now} locale={locale} />
-      <CardFoot
-        step={cardStep(event, now, locale, t)}
-        takes={takes}
-        onStep={onStep}
-        testID={testID}
-      />
+      {step != null && (
+        <CardFoot
+          step={step}
+          takes={takes}
+          onStep={onStep}
+          stepRef={stepRef}
+          sending={sending}
+          testID={testID}
+        />
+      )}
     </SummaryCard>
   );
 }
@@ -445,7 +492,13 @@ const styles = StyleSheet.create({
     gap: tokens.spaceHair,
   },
   tileGlass: { backgroundColor: tokens.colorInkOnDark, opacity: 0.22 },
-  tileToday: { backgroundColor: tokens.colorCard },
+  tileToday: {
+    width: 'auto',
+    minWidth: 58,
+    paddingHorizontal: tokens.spaceSm,
+    backgroundColor: tokens.colorCard,
+  },
+  tileGap: { width: 'auto', minWidth: 40, paddingHorizontal: tokens.spaceSm },
   tileWeekday: { textTransform: 'uppercase', letterSpacing: 12 * 0.04 },
   tileDay: { lineHeight: 20, letterSpacing: 20 * -0.02, fontVariant: ['tabular-nums'] },
   foot: { marginTop: 'auto', gap: tokens.spaceSm },

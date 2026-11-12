@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { SAMPLE } from './rules.ts';
 
 const tested = config();
 const WAIT = { timeout: 3000 };
@@ -87,7 +88,7 @@ describe('General at a desk (sc-30063)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Turn on two-factor' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Security' })).toBeDefined();
     expect(router.state.location.search).toBe('?as=julien&state=setup');
-    expect(screen.getByRole('dialog', { name: 'Set up two-factor' })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: 'Turn on two-factor' })).toBeDefined();
   });
 
   it('holds an admin until Google or Apple is linked, the step opening Security on both', async () => {
@@ -103,7 +104,7 @@ describe('General at a desk (sc-30063)', () => {
 
     fireEvent.click(ways.getByRole('button', { name: /Google/ }));
     fireEvent.click(ways.getByRole('button', { name: 'Link Google' }));
-    expect(screen.getByRole('dialog', { name: 'Confirm it’s you' })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: "Confirm it's you" })).toBeDefined();
   });
 
   it('opens a state it does not know as the page with no state', async () => {
@@ -201,9 +202,23 @@ describe('General at a desk (sc-30063)', () => {
     fireEvent.click(within(one).getByRole('button', { name: 'Keep editing' }));
 
     fireEvent.change(within(dialog).getByLabelText('Your password'), { target: { value: 'x' } });
-    fireEvent.change(within(dialog).getByLabelText('Code'), { target: { value: '714302' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     expect(screen.getByRole('alertdialog', { name: 'Discard your changes?' })).toBeDefined();
+  });
+
+  it('shows the code field only once the server asks for it (sc-18959)', async () => {
+    await general('/demo/settings/general');
+    fireEvent.click(screen.getByRole('button', { name: 'Transfer ownership' }));
+    const dialog = screen.getByRole('dialog', { name: 'Transfer ownership' });
+
+    fireEvent.click(within(dialog).getAllByRole('radio')[0] as HTMLElement);
+    expect(within(dialog).queryByLabelText('Code')).toBeNull();
+    fireEvent.change(within(dialog).getByLabelText('Your password'), {
+      target: { value: SAMPLE.password },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Transfer' }));
+
+    expect(await within(dialog).findByLabelText('Code', {}, WAIT)).toBeDefined();
   });
 
   it('adds only a domain the owner’s address is at, after the server says so', async () => {

@@ -27,12 +27,12 @@ describe('the demos’ words', () => {
     expect(many('seats', 122)).toBe('122 seats');
   });
 
-  it('joins a list in the list locale it is given', () => {
+  it('joins English the British way, with no serial comma, and other languages with their own word', () => {
     expect(demoWords(WORDS).listed(['Table 6', 'Table 7', 'Table 8'])).toBe(
-      'Table 6, Table 7, and Table 8',
+      'Table 6, Table 7 and Table 8',
     );
-    expect(
-      demoWords(WORDS, { listLocale: 'en-GB' }).listed(['Table 6', 'Table 7', 'Table 8']),
-    ).toBe('Table 6, Table 7 and Table 8');
+    expect(demoWords(WORDS, { locale: 'fr' }).listed(['Table 6', 'Table 7'])).toBe(
+      'Table 6 et Table 7',
+    );
   });
 });

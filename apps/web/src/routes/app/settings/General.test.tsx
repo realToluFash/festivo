@@ -2,14 +2,14 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
-import { __setSessionState, type Session } from '../../../session.ts';
+import { __setSessionState, switchOrganisation, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 import { atPhoneWidth } from '../../../test-widths.ts';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
-function signedIn(organisation = IRE): void {
+function signedIn(organisation = IRE, others: Session['organisations'] = []): void {
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
@@ -21,7 +21,7 @@ function signedIn(organisation = IRE): void {
     needsOrganisation: false,
     hasPassword: true,
     organisation,
-    organisations: [organisation],
+    organisations: [organisation, ...others],
     organisationCountry: null,
     timezone: null,
     waitingFor: null,
@@ -467,89 +467,104 @@ describe('Settings > General', () => {
   });
 });
 
-describe('Settings > General, a request to get back in', () => {
-  const REQUEST = {
-    id: 'rq_1',
-    name: 'Tope Bello',
-    email: 'tope.bello@ire.events',
-    provedPhone: false,
-    own: false,
-    organisations: ['Ìrè Events'],
-    asked: 'Saturday, Oct 17 at 14:20 WAT',
-    expires: 'Saturday, Oct 24 at 14:20 WAT',
-  };
+describe('Settings > General, cards for one who manages members (sc-38891)', () => {
+  const OSUN = membership({ id: 'org_2', name: 'Ọ̀ṣun Weddings' });
+  const IRE_LINK = 'https://soirely.test/join/' + 'cd'.repeat(16);
+  const OSUN_LINK = 'https://soirely.test/join/' + 'ef'.repeat(16);
 
-  it('shows who asked, what they proved and when it ends, and approves only once confirmed', async () => {
-    const sent = answering(
-      () => new Response(JSON.stringify({ requests: [REQUEST] }), { status: 200 }),
+  function json(body: unknown): Response {
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  function domains(domain: string, ownAddress: string) {
+    return json({ domains: [{ domain, stopped: false }], most: 5, ownAddress });
+  }
+
+  function titles(): (string | null)[] {
+    return [...document.querySelectorAll('section.settings-card h2')].map(
+      (title) => title.textContent,
     );
+  }
+
+  function requestLink(): string {
+    return (screen.getByLabelText('Request link') as HTMLInputElement).value;
+  }
+
+  it('draws each card once, in order, for each organisation switched to and back, with no two siblings sharing a key', async () => {
+    signedIn(IRE, [OSUN]);
+    const osunAnswers: (() => void)[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      if (line === 'GET /api/orgs/org_1/domains') return domains('ire.events', 'folake@ire.events');
+      if (line === 'GET /api/orgs/org_1/request-link') return json({ on: true, url: IRE_LINK });
+      if (line === 'GET /api/orgs/org_2/domains' || line === 'GET /api/orgs/org_2/request-link') {
+        await new Promise<void>((answer) => osunAnswers.push(answer));
+
+        return line.endsWith('/domains')
+          ? domains('osun.weddings', 'folake@osun.weddings')
+          : json({ on: true, url: OSUN_LINK });
+      }
+
+      return new Response(null, { status: 404 });
+    });
+    const warned = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const inOrder = [
+      'Organisation',
+      'Company domain joining',
+      'Requests to join',
+      'Ownership and leaving',
+    ];
     settings();
 
-    expect(await screen.findByText('Tope Bello')).toBeDefined();
-    expect(
-      screen.getByRole('heading', { level: 2, name: 'Requests to get back in' }),
-    ).toBeDefined();
-    expect(document.getElementById('requests')).not.toBeNull();
-    expect(screen.getByText('Proved with a code to their email (no verified phone)')).toBeDefined();
-    expect(
-      screen.getByText(
-        'Asked Saturday, Oct 17 at 14:20 WAT · ends Saturday, Oct 24 at 14:20 WAT if nobody answers',
-      ),
-    ).toBeDefined();
+    expect(await screen.findByText('ire.events')).toBeDefined();
+    await waitFor(() => expect(requestLink()).toBe(IRE_LINK));
+    expect(titles()).toEqual(inOrder);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
-    expect(
-      screen.getByRole('heading', { name: 'Approve, and turn off Tope Bello’s two-factor?' }),
-    ).toBeDefined();
-    expect(sent.some((request) => request.path.endsWith('/approve'))).toBe(false);
+    act(() => switchOrganisation('org_2'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Turn off two-factor' }));
-    expect(await screen.findByText('Tope Bello’s two-factor is off.')).toBeDefined();
-    expect(sent.filter((request) => request.path !== '/api/notifications').at(-1)).toEqual({
-      method: 'POST',
-      path: '/api/auth/recovery-requests/rq_1/approve',
-      body: null,
-    });
-    expect(screen.queryByText('Proved with a code to their email (no verified phone)')).toBeNull();
+    expect(screen.queryByText('ire.events')).toBeNull();
+    expect(screen.queryByLabelText('Request link')).toBeNull();
+    await waitFor(() => expect(osunAnswers).toHaveLength(2));
+    act(() => osunAnswers.forEach((answer) => answer()));
+    expect(await screen.findByText('osun.weddings')).toBeDefined();
+    await waitFor(() => expect(requestLink()).toBe(OSUN_LINK));
+    expect(titles()).toEqual(inOrder);
+
+    act(() => switchOrganisation('org_1'));
+
+    expect(screen.queryByText('osun.weddings')).toBeNull();
+    expect(await screen.findByText('ire.events')).toBeDefined();
+    await waitFor(() => expect(requestLink()).toBe(IRE_LINK));
+    expect(titles()).toEqual(inOrder);
+    expect(
+      warned.mock.calls.some((call) => String(call[0]).includes('two children with the same key')),
+    ).toBe(false);
   });
+});
 
-  it.each([
-    ['Approve', 'Cancel'],
-    ['Turn down', 'Keep the request'],
-  ])('puts focus back on %s for that request after %s (sc-11369)', async (opener, closer) => {
-    answering(
+describe('Settings > General, requests to get back in (sc-30189)', () => {
+  it('has no requests card: they are answered on Members, so General never asks for them', async () => {
+    const sent = answering(
       () =>
         new Response(
           JSON.stringify({
-            requests: [{ ...REQUEST, id: 'rq_0', name: 'Ada Obi' }, REQUEST],
+            requests: [
+              { id: 'rq_1', userId: 'u_tope', name: 'Tope Bello', email: 'tope@ire.events' },
+            ],
           }),
           { status: 200 },
         ),
     );
     settings();
 
-    const request = (await screen.findByText('Tope Bello')).closest('article')!;
-    fireEvent.click(within(request).getByRole('button', { name: opener }));
-    fireEvent.click(within(request).getByRole('button', { name: closer }));
-
-    expect(document.activeElement).toBe(within(request).getByRole('button', { name: opener }));
-  });
-
-  it('never offers an answer to your own request', async () => {
-    answering(
-      () =>
-        new Response(
-          JSON.stringify({ requests: [{ ...REQUEST, own: true, name: 'Folake Adeyemi' }] }),
-          { status: 200 },
-        ),
-    );
-    settings();
-
-    expect(await screen.findByText('Folake Adeyemi (you)')).toBeDefined();
-    expect(
-      screen.getByText('This is your own request. Somebody else in Ìrè Events has to answer it.'),
-    ).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
+    expect(await screen.findByRole('heading', { level: 1, name: 'General' })).toBeDefined();
+    await waitFor(() => expect(sent.length).toBeGreaterThan(0));
+    expect(screen.queryByText('Requests to get back in')).toBeNull();
+    expect(screen.queryByText('Tope Bello')).toBeNull();
+    expect(sent.some((request) => request.path === '/api/auth/recovery-requests')).toBe(false);
   });
 });
 

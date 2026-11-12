@@ -12,6 +12,8 @@ import {
   rereadAfterRefusal,
   zoneLabel,
   zoneValue,
+  firstUnverified,
+  primaryOf,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { createRef, type RefObject, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -23,11 +25,10 @@ import { dateLocale } from '../i18n/index.ts';
 import {
   type CodeLine,
   cardLine,
+  codeErrors,
   type Contact,
   type ContactKind,
-  firstUnverified,
   KIND_KEYS,
-  primaryOf,
   promotedWords,
   verifiedWords,
   verifyWords,
@@ -286,11 +287,14 @@ export function AccountPage({
       />
       <AboutSection
         name={account.name}
-        zone={{
-          title:
-            zone.kind === 'shown' ? zone.name : zone.kind === 'unset' ? t('timeZone.unset') : '',
-          line: zoneLine(zone.kind === 'shown' ? zone.id : null, t),
-        }}
+        zone={
+          zone.kind === 'waiting'
+            ? 'waiting'
+            : {
+                title: zone.kind === 'shown' ? zone.name : t('timeZone.unset'),
+                line: zoneLine(zone.kind === 'shown' ? zone.id : null, t),
+              }
+        }
         nameRef={targets.name}
         zoneRef={targets.zone}
         onName={() => show('name', 'name')}
@@ -545,6 +549,7 @@ function VerifyStep({
       title={words.title}
       lead={words.lead}
       codeLabel={words.codeLabel}
+      errors={codeErrors(words, t)}
       spent={spent}
       wait={cooldown}
       startError={null}
@@ -552,8 +557,7 @@ function VerifyStep({
       onClose={onClose}
       onVerify={async (typed): Promise<CodeSays | null> => {
         const problem = codeProblem(typed);
-        if (problem != null)
-          return { error: problem === 'blank' ? words.blank : words.short, checked: true };
+        if (problem != null) return { error: problem, checked: true };
         setResendFailed(false);
         setStatus({ kind: 'verifying' });
         const checked = await check.verify(cleanCode(typed));
@@ -561,9 +565,8 @@ function VerifyStep({
           await onVerified(checked.primary);
           return null;
         }
-        if (checked.refusal.kind === 'wrong') return { error: words.wrong, checked: false };
-        if (checked.refusal.kind === 'failed')
-          return { error: t('verifyEmail.failedBody'), checked: false };
+        if (checked.refusal.kind === 'wrong' || checked.refusal.kind === 'failed')
+          return { error: checked.refusal.kind, checked: false };
 
         return null;
       }}

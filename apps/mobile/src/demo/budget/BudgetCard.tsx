@@ -2,10 +2,11 @@ import type { ReactNode, Ref } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { useShell } from '../../components/settingsShell.ts';
-import { CardSays, GlassTag, OnCard, SummaryCard } from '../../components/Summary.tsx';
+import { CardSays, OnCard, SummaryCard } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { CardBackdrop } from '../../components/EventCard.tsx';
+import { Glass } from '../../components/TodayCover.tsx';
 import type { Shown } from '../events/EventsModel.ts';
 import type { CeilingState } from './BudgetModel.ts';
 import { CeilingMark, RingMark } from './BudgetParts.tsx';
@@ -23,6 +24,18 @@ function Figure({ text, size }: { text: string; size: number }) {
     >
       {text}
     </Text>
+  );
+}
+
+/** The kit's glass tag, taller when its words wrap at the accessibility sizes rather than cut off at 28. */
+function CardTag({ word, shape }: { word: string; shape?: ReactNode }) {
+  return (
+    <Glass height={28} grows style={styles.tag}>
+      {shape}
+      <Text size={13} weight="semibold" style={styles.tagWord}>
+        {word}
+      </Text>
+    </Glass>
   );
 }
 
@@ -77,13 +90,13 @@ export function BudgetCard({
     <Card event={event} step={says == null ? null : step} testID="budget.card">
       <View style={styles.tags}>
         {state != null && (
-          <GlassTag
+          <CardTag
             word={say.state(state)}
             shape={<CeilingMark state={state} side={13} ink={tokens.colorInkOnDark} />}
           />
         )}
         {notPriced > 0 && (
-          <GlassTag
+          <CardTag
             word={say.notPriced(notPriced)}
             shape={<RingMark dashed side={13} ink={tokens.colorInkOnDark} />}
           />
@@ -120,7 +133,7 @@ export function PayersCard({
   return (
     <Card event={event} testID="budget.payers.card">
       <View style={styles.tags}>
-        <GlassTag word={count} />
+        <CardTag word={count} />
       </View>
       <Figure text={has} size={28} />
       <OnCard text={line} />
@@ -144,7 +157,7 @@ export function PayerCard({
   return (
     <Card event={event} height={180} testID="budget.payer.card">
       <View style={styles.tags}>
-        <GlassTag word={note} />
+        <CardTag word={note} />
       </View>
       <OnCard text={W.theirShare} />
       <Figure text={share} size={28} />
@@ -156,5 +169,14 @@ export function PayerCard({
 
 const styles = StyleSheet.create({
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
+  tag: {
+    alignSelf: 'flex-start',
+    flexShrink: 1,
+    gap: tokens.spaceXs,
+    paddingLeft: 9,
+    paddingRight: 11,
+    paddingVertical: tokens.spaceXxs,
+  },
+  tagWord: { flexShrink: 1, color: tokens.colorInkOnDark },
   figure: { color: tokens.colorInkOnDark, fontVariant: ['tabular-nums'] },
 });

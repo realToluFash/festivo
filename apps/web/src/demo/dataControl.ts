@@ -216,7 +216,7 @@ export function hubCard(
 ): HubCard {
   if (view.plan === 'free')
     return {
-      says: 'Three of these come with Enterprise',
+      says: 'These come with Enterprise',
       line: 'Email domains, the audit log and deleting guest data after an event. Export all data and a guest’s request are on every plan.',
       step: 'contact',
     };
@@ -229,7 +229,7 @@ export function hubCard(
   if (view.setup === 'new')
     return {
       says: 'Nothing is set up yet',
-      line: `Start by proving ${ORG}’ email domain.`,
+      line: `Start by proving the email domain of ${ORG}.`,
       step: 'prove',
     };
 
@@ -237,7 +237,7 @@ export function hubCard(
 
   return (
     ask?.card(locale, zoneFor(viewer)) ?? {
-      says: 'Nothing needs you',
+      says: 'Nothing needs your attention',
       line: `${PROVED_DOMAIN} is proved. Deleting guest data is off.`,
       step: null,
     }
@@ -304,7 +304,7 @@ export function hubRows(
   const domains = left
     ? row('emailDomains', `${PROVED_DOMAIN} kept as it was`, 'ed_downgraded')
     : locked
-      ? row('emailDomains', `Prove your domain and keep its accounts to ${ORG}`, 'ed_locked')
+      ? row('emailDomains', `Prove your domain and limit its accounts to ${ORG}`, 'ed_locked')
       : view.setup === 'new'
         ? row('emailDomains', 'No domains yet', 'ed_empty')
         : view.setup === 'quiet'

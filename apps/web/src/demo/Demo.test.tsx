@@ -619,13 +619,19 @@ describe('the demo gets a password back (sc-29064)', () => {
     ['expired', 'This link has expired'],
     ['used', 'This link has already been used'],
     ['broken', 'This link doesn’t work'],
-  ])('gives a %s link its own title and one button for a new link', async (state, title) => {
-    await page(`?page=link&state=${state}`, title);
+  ])(
+    'gives a %s link its own title, and its new link starts from the form',
+    async (state, title) => {
+      await page(`?page=link&state=${state}`, title);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Send a new link' }));
-    await wait();
-    expect(await screen.findByRole('heading', { name: 'Check your email' })).toBeDefined();
-  });
+      fireEvent.click(screen.getByRole('link', { name: 'Send a new link' }));
+      await screen.findByRole('heading', { name: 'Reset your password' });
+      expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('');
+
+      fireEvent.click(screen.getByRole('link', { name: 'Back' }));
+      expect(await screen.findByRole('heading', { name: title })).toBeDefined();
+    },
+  );
 
   it('shows Cannot reach Soirely while the link is read, until the switch brings it back', async () => {
     await page('?page=link&state=offline', 'Cannot reach Soirely');
@@ -634,6 +640,46 @@ describe('the demo gets a password back (sc-29064)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     await wait();
     expect(await screen.findByRole('heading', { name: 'Set a new password' })).toBeDefined();
+  });
+
+  it('says That did not work with only Try again, and stays there while the read fails', async () => {
+    await page('?page=link&state=failed', 'That did not work');
+    expect(
+      screen.getByText('Something went wrong on the way. Try again in a moment.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Send a new link' })).toBeNull();
+    expect(screen.queryByText(SAMPLE.email)).toBeNull();
+
+    const button = screen.getByRole('button', { name: 'Try again' });
+    fireEvent.click(button);
+    expect(button.textContent).toBe('Trying again…');
+    await act(() => vi.advanceTimersByTimeAsync(500));
+    fireEvent.click(button);
+    await act(() => vi.advanceTimersByTimeAsync(450));
+
+    const heading = screen.getByRole('heading', { name: 'That did not work' });
+    expect(document.activeElement).toBe(heading.parentElement);
+    expect(heading.parentElement?.textContent).toContain('Something went wrong on the way.');
+
+    button.focus();
+    await wait();
+    expect(document.activeElement).toBe(button);
+  });
+
+  it.each([
+    ['a live link', 'Set a new password'],
+    ['a live link, two-factor on', 'Enter your code'],
+    ['an expired link', 'This link has expired'],
+    ['no answer', 'Cannot reach Soirely'],
+  ])('reads the link again on Try again: %s opens %s', async (answer, title) => {
+    await page('?page=link&state=failed', 'That did not work');
+    fireEvent.change(screen.getByLabelText('Demo: the next read answers'), {
+      target: { value: (screen.getByRole('option', { name: answer }) as HTMLOptionElement).value },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await wait();
+
+    expect(await screen.findByRole('heading', { level: 1, name: title })).toBeDefined();
   });
 
   it('asks for the code first, and changes nothing until it passes', async () => {
@@ -656,13 +702,38 @@ describe('the demo gets a password back (sc-29064)', () => {
     expect(await screen.findByRole('heading', { name: 'Set a new password' })).toBeDefined();
   });
 
-  it.each([
-    ['Use a recovery code instead', 'Enter a recovery code'],
-    ['Lost your authenticator and your recovery codes?', 'Get back in without your authenticator'],
-  ])('follows “%s” to the two-factor board’s page', async (link, heading) => {
+  it('follows “Use a recovery code instead” to the two-factor board’s page', async () => {
     await page('?page=code', 'Enter your code');
-    fireEvent.click(screen.getByRole('link', { name: link }));
-    expect(await screen.findByRole('heading', { name: heading })).toBeDefined();
+    fireEvent.click(screen.getByRole('link', { name: 'Use a recovery code instead' }));
+    expect(await screen.findByRole('heading', { name: 'Enter a recovery code' })).toBeDefined();
+  });
+
+  it('sends a lost authenticator to support, starts no recovery, and Back returns to the code', async () => {
+    await page('?page=code', 'Enter your code');
+    fireEvent.click(
+      screen.getByRole('link', { name: 'Lost your authenticator and your recovery codes?' }),
+    );
+
+    await screen.findByRole('heading', { name: 'Contact Soirely support' });
+    expect(
+      screen.getByText(
+        'Your organisation can confirm it’s you only once you’ve signed in with your password. If you’ve lost your password too, contact Soirely support.',
+      ),
+    ).toBeDefined();
+    expect(
+      screen.getByRole('link', { name: 'Email support@soirely.com' }).getAttribute('href'),
+    ).toBe('mailto:support@soirely.com');
+    expect(screen.queryByRole('button', { name: /Send/ })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Back to sign in' }).getAttribute('href')).toBe(
+      '/demo/sign-in',
+    );
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back' }));
+    await screen.findByRole('heading', { name: 'Enter your code' });
+    type('Code', SAMPLE.code);
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to a new password' }));
+    await wait();
+    expect(await screen.findByRole('heading', { name: 'Set a new password' })).toBeDefined();
   });
 });
 
@@ -1500,6 +1571,43 @@ describe('Today at a desk (sc-29092)', () => {
     expect(screen.queryByRole('button', { name: 'Chase, Chase 19 replies' })).toBeNull();
   });
 
+  it('opens an event starting later today as a planning day, from the demo home', async () => {
+    at('/demo');
+    await screen.findByRole('heading', { name: 'Design demo' });
+    expect(
+      screen
+        .getByRole('link', { name: /A planning day, the event starts later today/ })
+        .getAttribute('href'),
+    ).toBe('/demo/today?moment=plan&starts=later');
+
+    await today('plan&starts=later');
+
+    expect(screen.getByText('Ire Events end-of-year party starts today at 19:00.')).toBeDefined();
+    expect(screen.getByText('The party starts')).toBeDefined();
+  });
+
+  it('draws events sharing days in rows, from the demo home (sc-37302)', async () => {
+    at('/demo');
+    await screen.findByRole('heading', { name: 'Design demo' });
+    expect(
+      screen
+        .getByRole('link', { name: /A planning day, events sharing days in rows/ })
+        .getAttribute('href'),
+    ).toBe('/demo/today?moment=plan&week=rows');
+
+    await today('plan&week=rows');
+
+    const week = screen.getByRole('region', { name: 'This week' });
+    const rows = [...week.querySelectorAll('.today-bar-row')].map((row) =>
+      [...row.querySelectorAll('.today-bar-name')].map((name) => name.textContent),
+    );
+    expect(rows).toEqual([
+      ['Adaeze & Tunde’s wedding', 'Ire Events end-of-year party'],
+      ['Ireti at 40'],
+    ]);
+    expect(screen.getByText('The wedding starts today at 18:00.')).toBeDefined();
+  });
+
   it('says what a press opens, and ⌘K opens search', async () => {
     await today('plan');
 
@@ -1558,6 +1666,17 @@ describe('Today at a desk (sc-29092)', () => {
     expect(screen.getByRole('button', { name: 'Start your first event' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'New event' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Your events' })).toBeNull();
+  });
+
+  it('tells a role without Create events why a first run has nothing to start', async () => {
+    await today('firstAsk');
+
+    expect(screen.getByRole('heading', { name: 'Set up your first event' })).toBeDefined();
+    expect(screen.getByText('Make it live')).toBeDefined();
+    expect(screen.getByText(/Ask an owner if you need to create one/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Ana Souza, Member' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Start your first event' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'New event' })).toBeNull();
   });
 
   it('opens a planning day for a moment it does not know', async () => {
@@ -1682,6 +1801,9 @@ describe('Settings at a desk (sc-29708)', () => {
 
     expect(screen.queryByRole('heading', { level: 1, name: 'Members' })).toBeNull();
     expect(screen.queryByText('7 people')).toBeNull();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'You do not have access to this' }),
+    ).toBeDefined();
   });
 
   it('offers an admin Admin and Member, and says only an owner makes an owner', async () => {

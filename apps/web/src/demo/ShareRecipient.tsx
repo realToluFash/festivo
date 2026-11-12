@@ -24,7 +24,7 @@ import { SHARE_WORDS as W } from './shareWords.ts';
 import { sampleEvent } from './events.ts';
 import { BUDGET_EVENT } from './budget.ts';
 import './today.css';
-import './settings.css';
+import '../components/SettingsParts.css';
 import './events.css';
 import './guest.css';
 import './share.css';

@@ -1,4 +1,5 @@
 import { DemoBell } from './DemoBell.tsx';
+import { DemoOffline } from './DemoOffline.tsx';
 import { formattingLocale } from '@soirely/domain';
 import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
@@ -15,6 +16,7 @@ import {
 import { focusWhenFree, useDeskSplit } from '../layers.ts';
 import { ClaimDialog, InviteDialog, RecoveryAsk, RequestDialog } from './MembersDialogs.tsx';
 import { PersonPage, RoleDialog } from './MembersPerson.tsx';
+import { At320 } from './WrapAction.tsx';
 import {
   approvalRoles,
   ALSO_MEMBER,
@@ -37,6 +39,8 @@ import {
   membersCard,
   type MembersDialog,
   membersStart,
+  organisationOf,
+  at320,
   type Notice,
   ORGANISATION,
   type Person,
@@ -85,7 +89,7 @@ const buttonNamed = (label: string) =>
 const requestOf = (id: string) => document.getElementById(`request-${id}`);
 const answerOf = (id: string, answer: RecoveryAnswer) =>
   requestOf(id)?.querySelectorAll<HTMLElement>('.desk-text')[answer === 'approve' ? 0 : 1] ?? null;
-const saysOf = () => document.querySelector<HTMLElement>('.desk-main .desk-says');
+const cardWords = () => document.querySelector<HTMLElement>('.desk-main .desk-said-lines');
 
 /** Members at a desk in B (Web-Members-*.dc.html): the list, a person in its place, and every dialog, on sample data. */
 export function Members({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
@@ -108,7 +112,10 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
   const [leads, setLeads] = useState(start.leads);
   const [handed, setHanded] = useState(start.handed);
   const split = useDeskSplit();
-  const landsOnCard = start.notice?.kind === 'removed' && start.notice.handed != null;
+  const landsOnCard =
+    start.dialog == null &&
+    (start.notice?.kind === 'recovered' ||
+      (start.notice?.kind === 'removed' && start.notice.handed != null));
   const toSays = useRef(landsOnCard);
   const moved = useRef(landsOnCard);
 
@@ -136,8 +143,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
   useEffect(() => {
     if (!moved.current) return;
     moved.current = false;
-    if (toSays.current)
-      focusWhenFree(() => document.querySelector<HTMLElement>('.desk-main .desk-said-lines'));
+    if (toSays.current) focusWhenFree(cardWords);
     else if (!split || open == null) document.querySelector<HTMLElement>('.desk-main h1')?.focus();
     toSays.current = false;
   }, [open, split]);
@@ -213,6 +219,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
       leads={leads}
       recoveries={recoveries}
       proved={proved}
+      organisation={organisationOf(state)}
       say={say}
       tell={tell}
       onClose={close}
@@ -246,15 +253,15 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         setNotice({ kind: 'recovered', id, answer });
         setLit(null);
         close();
-        focusWhenFree(saysOf);
+        focusWhenFree(cardWords);
       }}
       onRecoveryGone={(id) => {
         const next = recoveries.find((one) => one.id !== id);
         setRecoveries((now) => now.filter((one) => one.id !== id));
-        setNotice(null);
+        setNotice((was) => (was?.kind === 'recovered' ? was : null));
         setLit(null);
         close();
-        focusWhenFree(() => (next == null ? saysOf() : requestOf(next.id)));
+        focusWhenFree(() => (next == null ? cardWords() : requestOf(next.id)));
       }}
     />
   );
@@ -262,13 +269,14 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
   if (load !== 'loaded')
     return (
       <Page>
+        <DemoOffline />
         <TitleRow title="Members" bell={<DemoBell tell={tell} />} />
         {load === 'failed' ? <Failed onRetry={() => setLoad('retrying')} /> : <Loading />}
       </Page>
     );
 
   if (person != null) {
-    const page = (
+    const personPage = (
       <PersonPage
         person={person}
         people={people}
@@ -279,6 +287,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         leadsLoad={leadsLoad}
         onLoadLeads={() => setLeadsLoad('retrying')}
         alsoMember={state === 'alsoMember' ? (ALSO_MEMBER[person.id] ?? null) : null}
+        organisation={organisationOf(state)}
         say={say}
         level={split ? 2 : 1}
         tell={tell}
@@ -300,6 +309,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         onHandOver={() => setDialog({ kind: 'handOver', id: person.id })}
       />
     );
+    const page = at320(state) ? <At320>{personPage}</At320> : personPage;
 
     return split ? (
       <>
@@ -308,6 +318,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
           <MembersBlocks {...list} column />
         </Column>
         <Page>
+          <DemoOffline />
           <div className="desk-top is-end">
             <DemoBell tell={tell} />
           </div>
@@ -317,6 +328,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
       </>
     ) : (
       <Page>
+        <DemoOffline />
         <BackRow to="Members" onBack={back} bell={<DemoBell tell={tell} />} />
         {page}
         {dialogs}
@@ -326,6 +338,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
 
   return (
     <Page>
+      <DemoOffline />
       <TitleRow title="Members" action={invite} bell={<DemoBell tell={tell} />} />
       <MembersCardView card={card} onStep={step} />
       {claim === 'found' && (
@@ -689,6 +702,7 @@ interface MembersDialogsProps {
   leads: Leads;
   recoveries: readonly Recovery[];
   proved: boolean;
+  organisation: string;
   say: SettingsSay;
   tell: Tell;
   onClose: () => void;
@@ -711,14 +725,14 @@ interface Then {
 }
 
 function MembersDialogs(props: MembersDialogsProps) {
-  const { dialog, viewer, people, leads, onClose, onPeople } = props;
+  const { dialog, viewer, people, leads, organisation, onClose, onPeople } = props;
   const person =
     dialog != null && 'id' in dialog ? people.find((one) => one.id === dialog.id) : null;
   const events = person == null ? [] : ledBy(leads, person.id);
   const handing = (kind: 'remove' | 'hand', hand = handStart(viewer.id)) =>
     person != null && (
       <HandoverAsk
-        words={handoverAsk(kind, person.name, events.length)}
+        words={handoverAsk(kind, person.name, events.length, organisation)}
         events={events}
         offered={offeredFor(people, person.id)}
         viewer={viewer.id}
@@ -726,7 +740,7 @@ function MembersDialogs(props: MembersDialogsProps) {
         onKeep={() => {
           onClose();
           const opener =
-            kind === 'hand' ? HANDOVER_WORDS.handOverNow : `Remove from ${ORGANISATION}…`;
+            kind === 'hand' ? HANDOVER_WORDS.handOverNow : `Remove from ${organisation}…`;
           focusWhenFree(() => buttonNamed(opener));
         }}
         onDone={(chosen) => {
@@ -786,8 +800,8 @@ function MembersDialogs(props: MembersDialogsProps) {
       return (
         person != null && (
           <Ask
-            {...removeWords(person.name)}
-            line={LOSES}
+            {...removeWords(person.name, organisation)}
+            line={LOSES.replaceAll(ORGANISATION, organisation)}
             onKeep={onClose}
             onGo={() => {
               onClose();
@@ -803,7 +817,7 @@ function MembersDialogs(props: MembersDialogsProps) {
       return (
         person != null && (
           <Ask
-            {...suspendAsk(person.name)}
+            {...suspendAsk(person.name, organisation)}
             keep={`Keep ${firstName(person.name)}`}
             go="Suspend"
             onKeep={onClose}

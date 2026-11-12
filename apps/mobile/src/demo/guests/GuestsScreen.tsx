@@ -29,6 +29,7 @@ import { Ask } from '../../components/Summary.tsx';
 import { AddGuest, ChoosePeople, ReviewList } from './GuestAdd.tsx';
 import { EditGuest, MarkInvited, RecordReply } from './GuestEdit.tsx';
 import { GuestPage } from './GuestPage.tsx';
+import { AgreeWhatsApp } from './GuestWhatsApp.tsx';
 import {
   type Counts,
   type FilterKey,
@@ -37,6 +38,7 @@ import {
   type GuestsState,
   type Person,
   ADD_STATES,
+  AGREE_STATES,
   EDIT_STATES,
   RECORD_STATES,
   REVIEW_STATES,
@@ -295,6 +297,7 @@ export function GuestsScreen({
           },
           onReplace: () => show('replace', 'replace'),
           onMark: () => show('mark', 'mark'),
+          onAgree: () => show('whatsApp', 'whatsApp'),
           onLetChange: () => setReplies('reopened'),
           onConversation: () => onConversation(open ?? ''),
           onBack: closeGuest,
@@ -361,6 +364,20 @@ export function GuestsScreen({
               close();
               setReplies(null);
               setStatus(W.recorded);
+            }}
+          />
+          <AgreeWhatsApp
+            key={`whatsApp:${round}`}
+            open={overlay === 'whatsApp'}
+            guest={guest}
+            start={first != null && isIn(AGREE_STATES, first) ? first : null}
+            opener={opener}
+            onClose={close}
+            onSaved={(next) => {
+              replace(next);
+              from.current = 'whatsAppRow';
+              close();
+              setToast({ words: W.saved });
             }}
           />
           <MarkInvited
@@ -441,7 +458,7 @@ export function GuestsScreen({
     </>
   );
 
-  const band = offline && <OfflineBand onRetry={() => setOffline(false)} testID="guests.offline" />;
+  const band = offline && <OfflineBand onRetry={() => setOffline(false)} />;
 
   if (layout === 'landscape')
     return (

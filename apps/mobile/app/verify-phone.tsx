@@ -6,6 +6,7 @@ import type { TextInputInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
+import { verifyWords } from '../src/kit/accountPage.ts';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import {
   BackToAccount,
@@ -37,7 +38,7 @@ export default function VerifyPhone() {
   const [account, setAccount] = useState<Account | 'none' | null>(null);
   const check = useCodeCheck('phone', alternative);
   const { status, setStatus, cooldown, wording, textingFailed, textedByTap } = check;
-  const [codeError, setCodeError] = useState<string | null>(null);
+  const [codeError, setCodeError] = useState<'blank' | 'short' | null>(null);
   const codeInput = useRef<TextInputInstance>(null);
   // From the verify answer, never the list read before it: the server decides (sc-2244).
   const [madePrimary, setMadePrimary] = useState<boolean | null>(null);
@@ -80,13 +81,7 @@ export default function VerifyPhone() {
     const code = cleanCode(typed);
 
     if (problem != null) {
-      setCodeError(
-        problem === 'short'
-          ? t('verifyPhone.codeShort')
-          : wording.fromWhatsApp
-            ? t('verifyPhone.codeBlankWhatsApp')
-            : t('verifyPhone.codeBlank'),
-      );
+      setCodeError(problem);
       focusChecked(codeInput);
 
       return;
@@ -105,14 +100,10 @@ export default function VerifyPhone() {
     if (alternative != null) void rereadAccount().catch(() => {});
   }
 
-  const wrong = wording.fromWhatsApp ? t('verifyPhone.wrongWhatsApp') : t('verifyPhone.wrong');
-  const fieldError = codeError ?? (status.kind === 'wrong' ? wrong : null);
-  const line = {
-    whatsapp: t('verifyPhone.introWhatsApp', { number }),
-    fallback: t('verifyPhone.introFallback', { number }),
-    chosen: t('verifyPhone.introChosen', { number }),
-    texted: t('verifyPhone.intro', { number }),
-  }[wording.line];
+  const words = verifyWords(wording.line, number, t);
+  const fieldError =
+    codeError != null ? words[codeError] : status.kind === 'wrong' ? words.wrong : null;
+  const line = words.lead;
 
   if (onboarding) {
     const short = account.providers.some(
@@ -140,7 +131,7 @@ export default function VerifyPhone() {
           copy="verifyPhone"
           title={wording.fromWhatsApp ? t('steps.whatsAppTitle') : t('verifyPhone.title')}
           intro={line}
-          wrong={wrong}
+          wrong={words.wrong}
           status={status}
           cooldown={cooldown}
           onCode={(code) => void verify(code)}

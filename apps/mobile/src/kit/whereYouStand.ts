@@ -1,4 +1,5 @@
 import type { SignInRuleChange } from '@soirely/api-client';
+import { listFormat } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
 /** The areas the two-factor rule for managers holds back, as Permission::isAdministrative has them. */
@@ -71,15 +72,6 @@ export function dayIn(
     ...(year(day) === year(now) ? {} : { year: 'numeric' as const }),
     timeZone: zone,
   }).format(day);
-}
-
-function andList(t: TFunction, words: readonly string[]): string {
-  if (words.length < 2) return words.join('');
-
-  return t('signInRules.stand.and', {
-    rest: words.slice(0, -1).join(t('signInRules.stand.listComma')),
-    last: words.at(-1),
-  });
 }
 
 function method(t: TFunction, rules: StandRules, viewer: StandViewer): RuleRow {
@@ -178,8 +170,7 @@ function twoFactor(
       'needs',
       title,
       t('signInRules.stand.managersNotOn', {
-        areas: andList(
-          t,
+        areas: listFormat(locale, { type: 'conjunction' }).format(
           viewer.manages.map((area) => t(`signInRules.stand.area.${area}`)),
         ),
       }),
@@ -245,7 +236,7 @@ export function rulesCard(t: TFunction, rules: readonly RuleRow[], viewer: Stand
   };
 }
 
-export type Change = Pick<SignInRuleChange, 'rule' | 'now' | 'was' | 'at'> & {
+export type Change = Pick<SignInRuleChange, 'entry' | 'rule' | 'now' | 'was' | 'at'> & {
   by: { name: string };
 };
 
@@ -288,6 +279,7 @@ export function wasWords(t: TFunction, change: Change): string {
 }
 
 export interface ChangeRow {
+  key: string;
   at: string;
   title: string;
   line: string;
@@ -315,6 +307,7 @@ export function changeRows(
       const title = changeTitle(t, change);
 
       return {
+        key: `${change.entry}.${change.rule}`,
         at: change.at,
         title,
         line: t('signInRules.stand.changeLine', words),

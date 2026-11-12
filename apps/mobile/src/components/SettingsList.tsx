@@ -6,8 +6,10 @@ import {
   type LayoutRectangle,
   ScrollView,
   type ScrollViewInstance,
+  type StyleProp,
   StyleSheet,
   View,
+  type ViewStyle,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -29,11 +31,14 @@ import {
 } from '../layout/useLayout.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
+import { FrameTop } from './AppFrame.tsx';
+import { SETTINGS_COLUMN } from './listFrame.ts';
 import { Caps } from './SettingsParts.tsx';
 import {
   type ListedSection,
   PersonCard,
   type SettingsPerson,
+  type SettingsRow,
   SettingsGroup,
   SettingsSignOut,
   rowSide,
@@ -68,22 +73,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   const { account, organisation } = useSignedIn();
   const width = useSideListWidth(SETTINGS_LIST_WIDTH);
   const alone = !settingsListBeside(kind);
-  const dense = !alone;
-  const scroll = useRef<ScrollViewInstance>(null);
-  // Each section mounts the list afresh at its top, so the open row is brought into view once.
-  const seen = useRef<{ viewport?: number; row?: LayoutRectangle; revealed?: boolean }>({});
-  const reveal = (next: { viewport?: number; row?: LayoutRectangle }) => {
-    seen.current = { ...seen.current, ...next };
-    const { viewport, row, revealed } = seen.current;
-    if (viewport == null || row == null || revealed === true) return;
-    seen.current.revealed = true;
-    if (row.y + row.height > viewport) {
-      scroll.current?.scrollTo({
-        y: row.y + row.height - viewport + tokens.spaceXl,
-        animated: false,
-      });
-    }
-  };
+  const size = kind === 'phone' ? 'phone' : alone ? 'portrait' : 'column';
   const rowOf = useSectionRows(organisation?.name ?? null);
   const person: SettingsPerson = {
     name: account?.name ?? '',
@@ -105,9 +95,84 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
     heading: t(`settings.${heading}`),
     rows: sections
       .filter((section): section is ListedSection => section !== 'account')
-      .map((section) => rowOf(section, rowSide(dense))),
+      .map((section) => rowOf(section, rowSide(size === 'column'))),
   }));
-  const group = ({ heading, rows }: (typeof groups)[number], top: number) =>
+
+  return (
+    <SettingsListBody
+      size={size}
+      groups={groups}
+      open={open}
+      onOpen={(key) => go(key as SettingsSection)}
+      renderCard={(cardSize) => (
+        <PersonCard
+          person={person}
+          size={cardSize}
+          open={open === 'account'}
+          onPress={() => go('account')}
+        />
+      )}
+      renderFoot={(height) => (
+        <>
+          {demoHere() && (
+            <SettingsDemoRow dense={size === 'column'} onDemo={() => router.push('/demo')} />
+          )}
+          <SettingsSignOut height={height} onSignOut={signOutHere} />
+        </>
+      )}
+      top={<FrameTop rowStyle={styles.columnTop} />}
+      columnStyle={[styles.tabletList, { width }]}
+    />
+  );
+}
+
+export interface SettingsListGroup {
+  heading: string;
+  rows: readonly SettingsRow[];
+}
+
+/** The Settings list under its title, one copy for the app and its demo: your card, the groups and the foot; upright your account's group beside the organisation's, on its side a column that scrolls on its own. */
+export function SettingsListBody({
+  size,
+  groups,
+  open,
+  onOpen,
+  renderCard,
+  renderFoot,
+  under,
+  top,
+  columnStyle,
+}: {
+  size: 'phone' | 'portrait' | 'column';
+  groups: readonly SettingsListGroup[];
+  open: string | null;
+  onOpen: (key: string) => void;
+  renderCard: (size: 'phone' | 'portrait' | 'column') => ReactNode;
+  /** Upright with two columns, `beside` is true: what goes under the foot alone goes under both instead. */
+  renderFoot: (height: number, beside: boolean) => ReactNode;
+  /** Under both columns upright, as the demo's Terms · Privacy. */
+  under?: ReactNode;
+  /** The column's title row on its side. */
+  top?: ReactNode;
+  columnStyle?: StyleProp<ViewStyle>;
+}) {
+  const dense = size === 'column';
+  const scroll = useRef<ScrollViewInstance>(null);
+  // Each section mounts the list afresh at its top, so the open row is brought into view once.
+  const seen = useRef<{ viewport?: number; row?: LayoutRectangle; revealed?: boolean }>({});
+  const reveal = (next: { viewport?: number; row?: LayoutRectangle }) => {
+    seen.current = { ...seen.current, ...next };
+    const { viewport, row, revealed } = seen.current;
+    if (viewport == null || row == null || revealed === true) return;
+    seen.current.revealed = true;
+    if (row.y + row.height > viewport) {
+      scroll.current?.scrollTo({
+        y: row.y + row.height - viewport + tokens.spaceXl,
+        animated: false,
+      });
+    }
+  };
+  const group = ({ heading, rows }: SettingsListGroup, headingTop: number) =>
     rows.length === 0 ? null : (
       <View
         key={heading}
@@ -117,58 +182,47 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
             : undefined
         }
       >
-        <Caps text={heading} top={top} />
-        <SettingsGroup
-          rows={rows}
-          dense={dense}
-          open={open}
-          onOpen={(key) => go(key as SettingsSection)}
-        />
+        <Caps text={heading} top={headingTop} />
+        <SettingsGroup rows={rows} dense={dense} open={open} onOpen={onOpen} />
       </View>
     );
-  const card = (size: 'phone' | 'portrait' | 'column') => (
-    <PersonCard
-      person={person}
-      size={size}
-      open={open === 'account'}
-      onPress={() => go('account')}
-    />
-  );
-  const foot = (height: number) => (
-    <>
-      {demoHere() && <SettingsDemoRow dense={dense} onDemo={() => router.push('/demo')} />}
-      <SettingsSignOut height={height} onSignOut={signOutHere} />
-    </>
-  );
 
-  if (kind === 'phone')
+  if (size === 'phone')
     return (
       <View>
-        {card('phone')}
+        {renderCard('phone')}
         {groups.map((each) => group(each, 26))}
-        <View style={settingsHomeStyles.footPhone}>{foot(tokens.sizeHitPhoneHero)}</View>
+        <View style={settingsHomeStyles.footPhone}>
+          {renderFoot(tokens.sizeHitPhoneHero, false)}
+        </View>
       </View>
     );
 
-  if (alone) {
+  if (size === 'portrait') {
     const [yours, theirs] = groups;
+    const beside = theirs != null;
     const left = (
       <>
         {yours != null && group(yours, tokens.space4xl)}
-        <View style={settingsHomeStyles.footPhone}>{foot(tokens.sizeHitPhoneHero)}</View>
+        <View style={settingsHomeStyles.footPhone}>
+          {renderFoot(tokens.sizeHitPhoneHero, beside)}
+        </View>
       </>
     );
 
     return (
       <View>
-        {card('portrait')}
+        {renderCard('portrait')}
         {theirs == null ? (
           <View style={settingsHomeStyles.single}>{left}</View>
         ) : (
-          <View style={settingsHomeStyles.columns}>
-            <View style={styles.fill}>{left}</View>
-            <View style={styles.fill}>{group(theirs, tokens.space4xl)}</View>
-          </View>
+          <>
+            <View style={settingsHomeStyles.columns}>
+              <View style={styles.fill}>{left}</View>
+              <View style={styles.fill}>{group(theirs, tokens.space4xl)}</View>
+            </View>
+            {under}
+          </>
         )}
       </View>
     );
@@ -177,14 +231,15 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   return (
     <ScrollView
       ref={scroll}
-      style={[styles.tabletList, { width }]}
+      style={columnStyle}
       contentContainerStyle={settingsHomeStyles.column}
       onLayout={(event) => reveal({ viewport: event.nativeEvent.layout.height })}
       showsVerticalScrollIndicator={false}
     >
-      {card('column')}
+      {top}
+      {renderCard('column')}
       {groups.map((each, index) => group(each, index === 0 ? tokens.spaceXxl : tokens.spaceXl))}
-      <View style={settingsHomeStyles.footColumn}>{foot(tokens.sizeHit)}</View>
+      <View style={settingsHomeStyles.footColumn}>{renderFoot(tokens.sizeHit, false)}</View>
     </ScrollView>
   );
 }
@@ -198,17 +253,17 @@ export function useBackToSettings() {
     label,
     onPress: () => router.dismissTo(DESTINATION_HREF.settings),
     systemBack,
+    pill: true,
   });
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1, minWidth: 0 },
   row: { flexDirection: 'row' },
+  columnTop: { minHeight: tokens.sizeHit, marginBottom: tokens.spaceLg },
   tabletList: {
     flexGrow: 0,
     flexShrink: 0,
-    backgroundColor: tokens.colorCard,
-    borderRightWidth: 1,
-    borderRightColor: tokens.colorBorder,
+    ...SETTINGS_COLUMN,
   },
 });

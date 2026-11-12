@@ -26,7 +26,9 @@ import { OrganisationSection } from './Organisation.tsx';
 import { PersonalisationSection } from './Personalisation.tsx';
 import { holdChoice, schemeOf } from './PersonalisationModel.ts';
 import { lookingAs, managesOrganisation, memberLooking, SECTIONS, viewerOf } from './sample.ts';
+import { underSavedName, useSavedName } from './savedName.ts';
 import { SecuritySection } from './Security.tsx';
+import { heldOf } from './Held.tsx';
 import { SettingsColumn, SettingsHome, sectionsFor } from './SettingsHome.tsx';
 import { SignInRulesSection } from './SignInRules.tsx';
 import {
@@ -83,7 +85,12 @@ export function SettingsRoute({
   section: ShellSection | null;
   data?: DataPage | null;
 }) {
-  const params = useLocalSearchParams<{ as?: string; switcher?: string; scheme?: string }>();
+  const params = useLocalSearchParams<{
+    as?: string;
+    switcher?: string;
+    scheme?: string;
+    held?: string;
+  }>();
   const layout = layoutOf(useLayout().kind);
   const [told, setTold] = useState<string>();
   const tell = useCallback<Tell>((words) => setTold(words), []);
@@ -93,6 +100,7 @@ export function SettingsRoute({
   const dataShown = data != null && managesOrganisation(viewer) ? data : null;
   const seed = schemeOf(params.scheme);
   const bold = useBoldTextSwitch();
+  const saved = useSavedName();
 
   useCoverStatusBar('dark', false);
 
@@ -125,7 +133,7 @@ export function SettingsRoute({
   );
   const handlers = useMemo(
     () => ({
-      onSignOut: () => router.replace('/demo/welcome?notice=signedOut'),
+      onSignOut: () => router.replace('/demo/welcome'),
       onDemo: () => router.dismissTo('/demo'),
     }),
     [],
@@ -134,7 +142,7 @@ export function SettingsRoute({
     () => ({
       layout,
       viewer,
-      looking: lookingAs(viewer),
+      looking: underSavedName(lookingAs(viewer), saved),
       open: shown,
       openSection,
       toSettings,
@@ -144,10 +152,10 @@ export function SettingsRoute({
     }),
     // Bold text: the list column is an element held here, so the switch has to make it again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [layout, viewer, shown, openSection, toSettings, tell, onTab, handlers, bold],
+    [layout, viewer, shown, openSection, toSettings, tell, onTab, handlers, bold, saved],
   );
   const Page = dataShown != null ? DATA_PAGES[dataShown] : shown == null ? null : PAGES[shown];
-  const home = <SettingsHome {...handlers} />;
+  const home = <SettingsHome {...handlers} held={heldOf(params.held)} />;
 
   return (
     <ShellContext.Provider value={shell}>

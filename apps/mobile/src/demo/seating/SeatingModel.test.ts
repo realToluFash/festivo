@@ -2,7 +2,21 @@ import { describe, expect, it } from 'vitest';
 
 import { type Action, reduce, tight, readRoom } from './SeatingActs.ts';
 import {
+  CHAIR_HIT,
+  CHAIR_R,
+  HANDLE_HIT,
+  bounds,
+  cardNames,
+  extent,
+  ringPlaces,
+  PAD_FRAME,
+  clearCorner,
+  wordsBox,
+  PAD_UNDER_TOOLS,
+  chairPoints,
   chairSides,
+  handlePoints,
+  handleReach,
   inside,
   detailOf,
   feetInches,
@@ -12,8 +26,18 @@ import {
   metres,
   nearestFree,
   overlapping,
+  overlaps,
   parseMetres,
   pct,
+  reachOf,
+  sideFrom,
+  turn,
+  wordsAt,
+  nameAt,
+  ringAbout,
+  litAbout,
+  roomWords,
+  wordsApart,
 } from './SeatingGeometry.ts';
 import {
   SEATING_STATES,
@@ -22,6 +46,7 @@ import {
   handlesLive,
   itemOf,
   noSectionLine,
+  nobodyComing,
   placedCount,
   roomLine,
   sectionRowLine,
@@ -32,6 +57,7 @@ import {
   trayCount,
   whatGoes,
   withSpace,
+  ofWords,
 } from './SeatingModel.ts';
 import { COMING, ROOM } from './SeatingSample.ts';
 import { blank, startOf } from './SeatingStart.ts';
@@ -53,7 +79,7 @@ const item = (m: Seating, id: string) => {
 
 describe('the states', () => {
   it('are seating-a-spec §6’s, by the names both demos use', () => {
-    expect(SEATING_STATES).toHaveLength(100);
+    expect(SEATING_STATES).toHaveLength(102);
     expect(new Set(SEATING_STATES).size).toBe(SEATING_STATES.length);
     expect(SEATING_STATES.slice(0, 5)).toEqual([
       'plan',
@@ -135,10 +161,239 @@ describe('the sample agrees with Messaging B (142 invited, 96 coming)', () => {
   });
 });
 
+describe("a colleague's initials", () => {
+  const corners = [
+    { x: 100, y: 100 },
+    { x: 200, y: 100 },
+    { x: 100, y: 200 },
+  ];
+
+  it("move to the next corner rather than cover a neighbour's count", () => {
+    const count = wordsBox(115, 111, '10 of 10', 12, false);
+    expect(clearCorner(corners, 30, 22, [count])).toEqual({ x: 200, y: 100 });
+  });
+
+  it('keep the first corner when it is clear, and when every corner is covered', () => {
+    expect(clearCorner(corners, 30, 22, [wordsBox(400, 400, 'Table 2', 12, false)])).toEqual(
+      corners[0],
+    );
+    const everywhere = { x: 0, y: 0, w: 1000, h: 1000 };
+    expect(clearCorner(corners, 30, 22, [everywhere])).toEqual(corners[0]);
+  });
+});
+
+describe('a colleague’s initials on a round table (sc-31783)', () => {
+  const upright = startOf(null, 'portrait');
+  const t7 = upright.items.find((it) => it.id === 't7');
+
+  it('cover no table’s name or count from 40%, Table 2’s "10 of 10" above included', () => {
+    expect(t7).toBeDefined();
+    if (t7 == null) return;
+    [0.2, 0.23, 0.25, 0.335, 0.5, 0.75, 1].forEach((s) => {
+      const floor = upright.room.l * s;
+      const words = upright.items.flatMap((it) => {
+        if (it.kind === 'single') return [];
+        const cx = it.x * s;
+        const cy = it.y * s;
+        if (detailOf(s) === 'out') {
+          const by = wordsAt(it, cy, s, floor);
+          return [
+            wordsBox(cx, by, it.name, 12, false),
+            wordsBox(cx, by + 25, '10 of 10', 12, false),
+          ];
+        }
+        return it.kind === 'row'
+          ? []
+          : [wordsBox(cx, nameAt(it, cy, s, floor), it.name, 12, false)];
+      });
+      const r = extent(t7).x * s + 2 + 5;
+      const at = clearCorner(ringPlaces(t7.x * s, t7.y * s, r, 30, 22), 30, 22, words);
+      const mark = { x: at.x, y: at.y, w: 30, h: 22 };
+      words.forEach((b) =>
+        expect(
+          mark.x < b.x + b.w &&
+            b.x < mark.x + mark.w &&
+            mark.y < b.y + b.h &&
+            b.y < mark.y + mark.h,
+          `at ${pct(s)}%`,
+        ).toBe(false),
+      );
+    });
+  });
+
+  it('take the place that covers least when every place covers a word', () => {
+    const places = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+    ];
+    const words = [
+      { x: 0, y: 0, w: 30, h: 22 },
+      { x: 120, y: 0, w: 30, h: 22 },
+    ];
+    expect(clearCorner(places, 30, 22, words)).toEqual({ x: 100, y: 0 });
+  });
+});
+
+describe('the iPad room’s words below 50% (sc-31783)', () => {
+  const upright = startOf(null, 'portrait');
+  const t7 = upright.items.find((it) => it.id === 't7');
+  const t9 = upright.items.find((it) => it.id === 't9');
+  const marksOf = (m: Seating) => {
+    const marks: Record<string, { ring?: true; lit?: true }> = {};
+    const add = (id: string, mark: { ring?: true; lit?: true }) =>
+      (marks[id] = { ...marks[id], ...mark });
+    [...m.lit, ...(m.chosen == null ? [] : [m.chosen])].forEach((id) => add(id, { lit: true }));
+    Object.entries(m.rings).forEach(([id, person]) => !person.viewer && add(id, { ring: true }));
+    return marks;
+  };
+  const says = (m: Seating, s: number) =>
+    roomWords(m.items, marksOf(m), { s, ox: 0, oy: 0 }, m.room, ofWords).says;
+  const UPRIGHT = [0.229, 0.235, 0.24, 0.249];
+
+  it('say every name and count from the upright iPad’s 46% with Priya’s ring on Table 7', () => {
+    const m = startOf('presenceChose', 'portrait');
+    UPRIGHT.forEach((s) => expect(says(m, s), `at ${pct(s)}%`).toBe('all'));
+  });
+
+  it('keep the names, clear of her ring, where her ring about a lit table reaches the count above it, the 412 refusal included', () => {
+    (['presenceBoth', 'stepRefused'] as const).forEach((state) => {
+      const m = startOf(state, 'portrait');
+      expect(m.chosen != null && m.rings[m.chosen] != null, state).toBe(true);
+      UPRIGHT.forEach((s) => expect(says(m, s), `${state} at ${pct(s)}%`).toBe('names'));
+    });
+  });
+
+  it('keep the names alone where names and counts would meet, as the iPhone card does, and none where even those would', () => {
+    expect(says(upright, 0.229)).toBe('all');
+    const named = roomWords(upright.items, {}, { s: 0.13, ox: 0, oy: 0 }, upright.room, ofWords);
+    expect(named).toEqual({
+      says: 'names',
+      names: cardNames(upright.items, { s: 0.13, ox: 0, oy: 0 }, upright.room),
+    });
+    expect(says(upright, 0.055)).toBe('none');
+  });
+
+  it('say everything from 50%, where the room draws its chairs', () => {
+    expect(says(startOf('presenceBoth', 'portrait'), 0.25)).toBe('all');
+  });
+
+  it('go round the table alone below 50%, where its chairs are not drawn, and round its chairs from 50%', () => {
+    if (t7 == null) return;
+    expect(ringAbout(t7, 0.2, 'out', false).r).toBeCloseTo(90 * 0.2 + 3.5);
+    expect(ringAbout(t7, 0.3, 'fit', false).r).toBeCloseTo(extent(t7).x * 0.3 + 2 + 3.5);
+  });
+
+  it('keep a lit table’s Tint inside its colleague’s ring, the ring hugging it, below 50% and from it', () => {
+    expect(t7).toBeDefined();
+    expect(t9).toBeDefined();
+    if (t7 == null || t9 == null) return;
+    [0.229, 0.3, 0.6].forEach((s) => {
+      const detail = detailOf(s);
+      const lit = litAbout(t7, s, detail);
+      const gapInside = ringAbout(t7, s, detail, true).r - 2;
+      expect(gapInside, `round at ${pct(s)}%`).toBeGreaterThanOrEqual(lit.x);
+      expect(gapInside - lit.x, `round at ${pct(s)}%`).toBeLessThan(2);
+      const square = litAbout(t9, s, detail);
+      const ring = ringAbout(t9, s, detail, true);
+      expect(ring.gw, `square at ${pct(s)}%`).toBeGreaterThanOrEqual(square.x);
+      expect(ring.gh, `square at ${pct(s)}%`).toBeGreaterThanOrEqual(square.y);
+      expect(ring.gw - square.x, `square at ${pct(s)}%`).toBeLessThan(3);
+    });
+    expect(litAbout(t7, 0.229, 'out').x).toBeCloseTo(90 * 0.229 + 10);
+  });
+
+  it('count a ring as running through a word only where its stroke crosses it', () => {
+    const ring = { cx: 100, cy: 100, hx: 30, hy: 30, round: true, stroke: 5 };
+    expect(wordsApart([{ x: 90, y: 90, w: 20, h: 16 }], [ring])).toBe(true);
+    expect(wordsApart([{ x: 90, y: 125, w: 20, h: 16 }], [ring])).toBe(false);
+    expect(wordsApart([{ x: 90, y: 140, w: 20, h: 16 }], [ring])).toBe(true);
+    const square = { ...ring, round: false, stroke: 3 };
+    expect(wordsApart([{ x: 60, y: 92, w: 20, h: 16 }], [square])).toBe(false);
+    expect(
+      wordsApart(
+        [
+          { x: 0, y: 0, w: 20, h: 16 },
+          { x: 10, y: 8, w: 20, h: 16 },
+        ],
+        [],
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('the iPhone room card (sc-31783)', () => {
+  const room = startOf(null, 'phone');
+  const meet = (
+    a: { x: number; y: number; w: number; h: number },
+    b: { x: number; y: number; w: number; h: number },
+  ) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+  it('says each name once, inside the walls, crossing no other name and no other item, from the SE to the Pro Max', () => {
+    [319, 337, 345, 362, 374].forEach((inner) => {
+      const s = (inner - 12) / room.room.w;
+      const v = { s, ox: 6, oy: 6 };
+      const names = cardNames(room.items, v, room.room);
+      expect(names.map((n) => n.id)).toEqual(room.items.map((it) => it.id));
+      const boxes = names.map((n) => {
+        const it = room.items.find((one) => one.id === n.id);
+        const w = wordsBox(0, 0, it?.name ?? '', 12, false).w;
+        return { id: n.id, x: n.x - w / 2, y: n.y - 8, w, h: 16 };
+      });
+      boxes.forEach((b, i) => {
+        const said = `${b.id} at ${inner}`;
+        expect(b.x, said).toBeGreaterThanOrEqual(v.ox);
+        expect(b.y, said).toBeGreaterThanOrEqual(v.oy);
+        expect(b.x + b.w, said).toBeLessThanOrEqual(v.ox + room.room.w * s);
+        expect(b.y + b.h, said).toBeLessThanOrEqual(v.oy + room.room.l * s);
+        boxes.slice(i + 1).forEach((o) => expect(meet(b, o), `${said} and ${o.id}`).toBe(false));
+        room.items
+          .filter((it) => it.id !== b.id)
+          .forEach((it) => {
+            const e = bounds(it);
+            const body = {
+              x: v.ox + (it.x - e.x) * s,
+              y: v.oy + (it.y - e.y) * s,
+              w: 2 * e.x * s,
+              h: 2 * e.y * s,
+            };
+            expect(meet(b, body), `${said} over ${it.id}`).toBe(false);
+          });
+      });
+    });
+  });
+
+  it('keeps a row of tables’ names on one side of the row, at every phone width', () => {
+    for (let inner = 310; inner <= 380; inner += 1) {
+      const s = (inner - 12) / room.room.w;
+      const names = cardNames(room.items, { s, ox: 6, oy: 6 }, room.room);
+      const sides = (ids: string[]) =>
+        new Set(
+          ids.map((id) => {
+            const it = room.items.find((one) => one.id === id);
+            const at = names.find((n) => n.id === id);
+            return it == null || at == null ? 'none' : at.y > 6 + it.y * s ? 'below' : 'above';
+          }),
+        );
+      expect([...sides(['t1', 't2', 't3', 't4', 't5'])], `row 1 at ${inner}`).toHaveLength(1);
+      expect([...sides(['t6', 't7', 't8', 't9', 't10'])], `row 2 at ${inner}`).toHaveLength(1);
+      expect([...sides(['bar1', 'bar2'])], `the bars at ${inner}`).toHaveLength(1);
+    }
+  });
+});
+
 describe('the room to scale', () => {
   it('fits at 50% on its side and 46% upright, as the boards draw', () => {
     expect(pct(fit(632, 730, ROOM).s)).toBe(50);
     expect(pct(fit(786, 560, ROOM).s)).toBe(46);
+  });
+
+  it('keeps the walls clear of the tools, and fills its box once the tools sit outside it', () => {
+    const under = run(pad, { type: 'laid', w: 786, h: 560, pad: PAD_UNDER_TOOLS });
+    expect(under.shown).toEqual(fit(786, 560, ROOM, PAD_UNDER_TOOLS));
+    const out = run(under, { type: 'laid', w: 786, h: 560, pad: PAD_FRAME });
+    expect(out.shown).toEqual(fit(786, 560, ROOM, PAD_FRAME));
+    expect(out.shown?.s ?? 0).toBeGreaterThan(under.shown?.s ?? 0);
+    expect(run(out, { type: 'fit' }).shown).toEqual(out.shown);
   });
 
   it('draws outlines under 50% and each chair a target from 150%', () => {
@@ -307,6 +562,18 @@ describe('seating a party', () => {
   it('everyone seated empties the tray', () => {
     expect(startOf('everyoneSeated', 'landscape').tray).toEqual([]);
     expect(startOf('everyoneSeated', 'phone').tray).toEqual([]);
+    expect(nobodyComing(startOf('everyoneSeated', 'phone'))).toBe(false);
+  });
+
+  it('nobody coming yet empties the tray and every chair', () => {
+    for (const layout of ['landscape', 'phone'] as const) {
+      const m = startOf('nobodyComing', layout);
+      expect(m.tray).toEqual([]);
+      expect(m.items.every((it) => it.chairs.every((c) => c.who === null))).toBe(true);
+      expect(nobodyComing(m)).toBe(true);
+      expect(summaryLine(m, 0)).toBe(say.summary(tableCount(m.items), 0, 0, freeCount(m.items)));
+    }
+    expect(nobodyComing(pad)).toBe(false);
   });
 });
 
@@ -538,6 +805,20 @@ describe('sections', () => {
     expect(m.sections.map((s) => s.key)).toEqual(['garden', 'bar']);
     expect(item(m, 't1').sec).toBeNull();
   });
+
+  it('asks with its tables counted, and with no line when it has none (pm, 9 Nov)', () => {
+    expect(say.sectionDeleteBody(5)).toBe('Its 5 tables stay where they are, with no section.');
+    expect(say.sectionDeleteBody(1)).toBe('Its 1 table stays where it is, with no section.');
+    expect(say.sectionDeleteBody(0)).toBe('');
+  });
+
+  it('asks about Quiet corner, a section holding rows and no tables, with its state', () => {
+    const m = startOf('sectionDeleteEmpty', 'landscape');
+    expect(m.ask).toEqual({ kind: 'deleteSection', key: 'quiet' });
+    expect(m.items.some((it) => it.sec === 'quiet' && it.kind === 'row')).toBe(true);
+    const done = run(m, { type: 'confirm' });
+    expect(done.sections.map((s) => s.key)).not.toContain('quiet');
+  });
 });
 
 describe('the room and the plan', () => {
@@ -670,5 +951,182 @@ describe('free seats', () => {
   it('count usable chairs only', () => {
     expect(free(item(pad, 't3'))).toBe(1);
     expect(free(item(pad, 't7'))).toBe(2);
+  });
+});
+
+describe('the room’s words and handles (qa3, 11 Nov)', () => {
+  const at46 = 0.23;
+
+  it('puts a name, bar and count above an item when below would cross the bottom wall', () => {
+    const bar = item(pad, 'bar1');
+    const cy = bar.y * at46;
+    const top = wordsAt(bar, cy, at46, ROOM.l * at46);
+    expect(top).toBeLessThan(cy);
+    expect(top + 35).toBeLessThan(cy - (bar.d / 2) * at46);
+  });
+
+  it('keeps the words below an item with room under it', () => {
+    const t4 = item(pad, 't4');
+    expect(wordsAt(t4, t4.y * at46, at46, ROOM.l * at46)).toBeGreaterThan(t4.y * at46);
+  });
+
+  const scales = [0.25, 0.335, 0.375, 0.5, 0.75, 1, 1.5, 2];
+
+  it('keeps every name, bar and count inside the bottom wall at every zoom', () => {
+    [pad, phone].forEach((m) =>
+      [0.125, at46, ...scales].forEach((s) =>
+        m.items
+          .filter((it) => it.kind !== 'single' && it.kind !== 'row')
+          .forEach((it) => {
+            const cy = it.y * s;
+            const floor = m.room.l * s;
+            const out = detailOf(s) === 'out';
+            const y = out ? wordsAt(it, cy, s, floor) : nameAt(it, cy, s, floor);
+            const said = `${it.id} at ${pct(s)}%`;
+            expect(y + (out ? 35 : 6), said).toBeLessThanOrEqual(floor);
+            expect(y - 10, said).toBeGreaterThanOrEqual(0);
+          }),
+      ),
+    );
+  });
+  const chosen = (m: Seating) =>
+    m.items.filter((it) => ['round', 'cocktail', 'rect', 'head'].includes(it.kind));
+  const at = (it: Seating['items'][number], s: number, m: Seating) =>
+    handlePoints(it, s, m).map((h) => ({ x: it.x * s + h.x, y: it.y * s + h.y }));
+
+  it('keeps every handle off its own chairs’ targets from 150%', () => {
+    scales
+      .filter((s) => pct(s) >= 150)
+      .forEach((s) =>
+        chosen(pad).forEach((it) => {
+          const chairs = chairPoints(it).map((p) => ({ x: (it.x + p.x) * s, y: (it.y + p.y) * s }));
+          at(it, s, pad).forEach((h) =>
+            chairs.forEach((c) =>
+              expect(
+                Math.max(Math.abs(h.x - c.x), Math.abs(h.y - c.y)),
+                `${it.id} at ${pct(s)}%`,
+              ).toBeGreaterThanOrEqual(HANDLE_HIT / 2 + CHAIR_HIT / 2 - 1e-9),
+            ),
+          );
+        }),
+      );
+  });
+
+  it('keeps a chosen table’s handle targets off every other item’s chairs from 50%', () => {
+    [pad, phone].forEach((m) =>
+      scales.forEach((s) =>
+        chosen(m).forEach((it) =>
+          m.items
+            .filter((o) => o.id !== it.id)
+            .forEach((o) =>
+              chairPoints(o).forEach((p) => {
+                const c = { x: (o.x + p.x) * s, y: (o.y + p.y) * s };
+                at(it, s, m).forEach((h) => {
+                  const dx = Math.max(0, Math.abs(h.x - c.x) - HANDLE_HIT / 2);
+                  const dy = Math.max(0, Math.abs(h.y - c.y) - HANDLE_HIT / 2);
+                  const near = pct(s) >= 150;
+                  expect(
+                    near ? Math.max(dx, dy) : Math.hypot(dx, dy),
+                    `${it.id} on ${o.id} at ${pct(s)}%`,
+                  ).toBeGreaterThanOrEqual(near ? CHAIR_HIT / 2 : CHAIR_R * s);
+                });
+              }),
+            ),
+        ),
+      ),
+    );
+  });
+
+  it('keeps every handle inside the room, the bars by the bottom wall too', () => {
+    [...scales, at46].forEach((s) =>
+      chosen(pad).forEach((it) =>
+        at(it, s, pad).forEach((h) => {
+          expect(h.y + 12, `${it.id} at ${pct(s)}%`).toBeLessThanOrEqual(ROOM.l * s);
+          expect(h.y - 12, `${it.id} at ${pct(s)}%`).toBeGreaterThanOrEqual(0);
+          expect(h.x + 12, `${it.id} at ${pct(s)}%`).toBeLessThanOrEqual(ROOM.w * s);
+          expect(h.x - 12, `${it.id} at ${pct(s)}%`).toBeGreaterThanOrEqual(0);
+        }),
+      ),
+    );
+  });
+
+  const walls = (m: Seating) =>
+    [
+      { x: -1e4, y: null },
+      { x: 1e4, y: null },
+      { x: null, y: -1e4 },
+      { x: null, y: 1e4 },
+      { x: -1e4, y: -1e4 },
+      { x: 1e4, y: -1e4 },
+      { x: -1e4, y: 1e4 },
+      { x: 1e4, y: 1e4 },
+    ].flatMap((w) =>
+      chosen(m).flatMap((it0) => {
+        const it = { ...it0, ...heldInside({ ...it0, x: w.x ?? it0.x, y: w.y ?? it0.y }, m.room) };
+        const others = m.items.filter((o) => o.id !== it.id);
+        if (others.some((o) => overlaps(it, o))) return [];
+        return [{ it, plan: { ...m, items: [...others, it] } }];
+      }),
+    );
+
+  it('keeps every handle inside the walls with a table held against each wall and corner', () => {
+    [pad, phone].forEach((m) => {
+      const held = walls(m);
+      expect(held.length).toBeGreaterThan(20);
+      [...scales, at46].forEach((s) =>
+        held.forEach(({ it, plan }) =>
+          at(it, s, plan).forEach((h) => {
+            const said = `${it.id} at (${it.x}, ${it.y}), ${pct(s)}%`;
+            expect(h.x - 12, said).toBeGreaterThanOrEqual(-1e-9);
+            expect(h.y - 12, said).toBeGreaterThanOrEqual(-1e-9);
+            expect(h.x + 12, said).toBeLessThanOrEqual(m.room.w * s + 1e-9);
+            expect(h.y + 12, said).toBeLessThanOrEqual(m.room.l * s + 1e-9);
+          }),
+        ),
+      );
+    });
+  });
+
+  it('does not resize a table held against a wall when its handle is picked up', () => {
+    [pad, phone].forEach((m) =>
+      [at46, 0.5, 2].forEach((s) =>
+        walls(m).forEach(({ it, plan }) =>
+          handlePoints(it, s, plan).forEach((h, i) => {
+            const r = reachOf(it, s, h);
+            const q = turn(h, -it.rot);
+            const size = (n: number, reach: number) => (2 * (Math.abs(n) - reach)) / s;
+            if (it.kind === 'round' || it.kind === 'cocktail')
+              expect(size(Math.max(Math.abs(q.x), Math.abs(q.y)), Math.max(r.x, r.y))).toBeCloseTo(
+                it.d,
+              );
+            else {
+              if (i % 4 !== 1) expect(size(q.x, r.x), `${it.id} ${i}`).toBeCloseTo(it.w);
+              if (i % 4 !== 3) expect(size(q.y, r.y), `${it.id} ${i}`).toBeCloseTo(it.l);
+            }
+          }),
+        ),
+      ),
+    );
+  });
+
+  it('pulls a chosen table’s handles in only as far as a neighbour needs', () => {
+    const t9 = item(pad, 't9');
+    expect(handleReach(t9, 0.5, pad)).toEqual(handleReach(t9, 0.5));
+    expect(handleReach(t9, 0.25, pad).x).toBeLessThan(handleReach(t9, 0.25).x);
+  });
+
+  it('keeps a placed table’s handles off its body at 46%', () => {
+    const t4 = item(pad, 't4');
+    handlePoints(t4, at46).forEach((h) =>
+      expect(Math.hypot(Math.abs(h.x) - 12, Math.abs(h.y) - 12)).toBeGreaterThan((t4.d / 2) * at46),
+    );
+  });
+
+  it('does not grow a table when a handle is picked up', () => {
+    [at46, 0.25, 1].forEach((s) => {
+      const t4 = item(pad, 't4');
+      const [corner] = handlePoints(t4, s, pad);
+      expect(sideFrom(corner?.x ?? 0, handleReach(t4, s, pad).x, s)).toBe(t4.d);
+    });
   });
 });

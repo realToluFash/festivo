@@ -28,7 +28,7 @@ describe('Data and control › Audit log (sc-611)', () => {
 
     expect(screen.getByText('Who did what in Ire Events')).toBeDefined();
     expect(
-      screen.getByText('Kept for 365 days. An entry can’t be changed or deleted, by anybody.'),
+      screen.getByText('Kept for 365 days. Nobody can change or delete an entry.'),
     ).toBeDefined();
     expect(
       within(document.querySelector<HTMLElement>('.desk-page') ?? document.body)
@@ -139,9 +139,7 @@ describe('Data and control › Audit log (sc-611)', () => {
     expect(within(dialog).getByRole('link', { name: 'Ireti at 40' })).toBeDefined();
     expect(within(dialog).getByText('Events · event.made_live')).toBeDefined();
     expect(within(dialog).getByText('c41e9a7b-2f6d-4b1e-9a53-7d0e6c2b8f14')).toBeDefined();
-    expect(
-      within(dialog).getByText('An entry can’t be changed or deleted, by anybody.'),
-    ).toBeDefined();
+    expect(within(dialog).getByText('Nobody can change or delete an entry.')).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Done' }));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
@@ -177,11 +175,11 @@ describe('Data and control › Audit log (sc-611)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Export' }));
 
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.getByText('Downloading Ire Events’ audit log as JSON Lines.')).toBeDefined();
+    expect(screen.getByText('Downloading the audit log as JSON Lines.')).toBeDefined();
   });
 
   it.each([
-    ['export_small', 'Downloading Ire Events’ audit log as CSV.'],
+    ['export_small', 'Downloading the audit log as CSV.'],
     [
       'export_preparing',
       'We’ll email folake@ire.events a link when it’s ready. It works once, for 24 hours.',

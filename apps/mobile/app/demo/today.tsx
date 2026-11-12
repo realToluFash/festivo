@@ -27,6 +27,7 @@ import {
   withArrived,
 } from '../../src/demo/today/arrived.ts';
 import { NeedsTodayScreen } from '../../src/demo/today/NeedsToday.tsx';
+import { PlanTodayLandscape } from '../../src/demo/today/PlanToday.tsx';
 import { RunTodayScreen } from '../../src/demo/today/RunToday.tsx';
 import { isRunState, withRun } from '../../src/demo/today/runOfShow.ts';
 import type { MomentName } from '../../src/kit/today.ts';
@@ -35,7 +36,7 @@ import type { Tell } from '../../src/components/TodayParts.tsx';
 import { TAB_BAR, TodayScreen } from '../../src/components/TodayScreen.tsx';
 import { TodayShellProvider } from '../../src/components/todayShell.ts';
 import { demoShell } from '../../src/demo/demoShell.ts';
-import { openEvent } from '../../src/demo/events/EventsList.tsx';
+import { openEvent } from '../../src/demo/events/openEvent.ts';
 import { EVENT_OF_KEY } from '../../src/demo/events/EventsSample.ts';
 import { useCoverStatusBar } from '../../src/demo/Welcome.tsx';
 import { tokens } from '../../src/theme/tokens.ts';
@@ -90,6 +91,7 @@ function DemoTodayScreen() {
     numbers?: string;
     invites?: string;
     needs?: string;
+    starts?: string;
   }>();
   const place = useCurrentPlace();
   // An organisation made in the walk has no events yet.
@@ -102,9 +104,10 @@ function DemoTodayScreen() {
   const at = name === 'dayNow' && arrivedState != null ? ARRIVED_AT[arrivedState] : undefined;
   const guests = name === 'plan' && params.invites === 'none' ? INVITES_NOT_SENT : undefined;
   const needing = name === 'plan' && isNeedsState(params.needs) ? params.needs : undefined;
+  const later = name === 'plan' && params.starts === 'later';
   const moment = useMemo(
-    () => momentOf(name, say, i18n.getFixedT('en'), { at, guests, needing }),
-    [name, say, i18n, at, guests, needing],
+    () => momentOf(name, say, i18n.getFixedT('en'), { at, guests, needing, later }),
+    [name, say, i18n, at, guests, needing, later],
   );
   const numbers = useMemo(() => numbersIn(params.numbers), [params.numbers]);
   const live = useLive(arrivedState === 'live');
@@ -186,6 +189,8 @@ function DemoTodayScreen() {
             <ArrivedTodayScreen moment={arrived} onTab={onTab} notices={notices} />
           ) : moment.needs != null ? (
             <NeedsTodayScreen moment={moment} onTab={onTab} notices={notices} />
+          ) : kind === 'tabletLandscape' ? (
+            <PlanTodayLandscape moment={moment} onTab={onTab} notices={notices} />
           ) : (
             <TodayScreen moment={moment} onTab={onTab} notices={notices} />
           )}

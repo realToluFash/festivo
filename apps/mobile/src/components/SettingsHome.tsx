@@ -5,9 +5,11 @@ import { useTranslation } from 'react-i18next';
 
 import type { SettingsSection } from '../kit/appNav.ts';
 import { useAccountChoice } from '../colourScheme.ts';
-import { inUse } from '../kit/personalisation.ts';
+import { type Choice, inUse } from '../kit/personalisation.ts';
 import { schemeOf } from '../kit/schemes.ts';
 import { schemeAtLaunch, tokens } from '../theme/tokens.ts';
+import { breakableEmail } from '../layout/textSize.ts';
+import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { CARD_PIECES, Confetti, Cover } from './Cover.tsx';
 import { Glyph } from './Glyph.tsx';
 import { SchemeTile } from './SchemeParts.tsx';
@@ -73,6 +75,9 @@ export function PersonCard({
 }) {
   const { t } = useTranslation();
   const look = CARD_LOOK[size];
+  // On a phone at the accessibility sizes the tile gives its room to the words (sc-37298).
+  const largest = useAccessibilitySizes();
+  const tileShown = size !== 'phone' || !largest;
   const role =
     person.role == null || person.organisation == null
       ? null
@@ -105,23 +110,25 @@ export function PersonCard({
           <Cover shade="side" pieces={[]} />
           <Confetti pieces={CARD_PIECES} scale={look.scale} />
         </View>
-        <View
-          style={[
-            styles.personAvatar,
-            { width: look.avatar, height: look.avatar, borderRadius: look.avatar / 2 },
-          ]}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          <Text
-            size={Math.round(look.avatar * 0.36)}
-            weight="bold"
-            accessible={false}
-            style={styles.accent}
+        {tileShown && (
+          <View
+            style={[
+              styles.personAvatar,
+              { width: look.avatar, height: look.avatar, borderRadius: look.avatar / 2 },
+            ]}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
           >
-            {person.initials}
-          </Text>
-        </View>
+            <Text
+              size={Math.round(look.avatar * 0.36)}
+              weight="bold"
+              accessible={false}
+              style={styles.accent}
+            >
+              {person.initials}
+            </Text>
+          </View>
+        )}
         <View style={styles.personWords}>
           <Text
             size={look.name}
@@ -132,10 +139,10 @@ export function PersonCard({
             {person.name}
           </Text>
           <Text size={look.mail} weight="medium" accessible={false} style={styles.white}>
-            {person.email}
+            {breakableEmail(person.email)}
           </Text>
           {role != null && (
-            <Glass height={28} style={styles.roleChip}>
+            <Glass height={28} grows style={styles.roleChip}>
               <Text size={13} weight="semibold" accessible={false} style={styles.white}>
                 {t('settings.personRole', role)}
               </Text>
@@ -150,15 +157,15 @@ export function PersonCard({
   );
 }
 
-/** Each listed section's title and line; the organisation's row carries its name. */
-export function useSectionRows(organisation: string | null) {
+/** Each listed section's title and line; the organisation's row carries its name. Personalisation's tile shows `scheme` when one is given, as the demo's held pick is. */
+export function useSectionRows(organisation: string | null, scheme?: Choice) {
   const { t } = useTranslation();
 
   return (section: ListedSection, side: number): SettingsRow => ({
     key: section,
     title: section === 'organisation' ? (organisation ?? '') : t(`settings.${section}`),
     line: t(`settings.${section}Line`),
-    tile: <SectionTile section={section} side={side} organisation={organisation} />,
+    tile: <SectionTile section={section} side={side} organisation={organisation} scheme={scheme} />,
   });
 }
 
@@ -166,12 +173,14 @@ function SectionTile({
   section,
   side,
   organisation,
+  scheme,
 }: {
   section: ListedSection;
   side: number;
   organisation: string | null;
+  scheme: Choice | undefined;
 }) {
-  if (section === 'personalisation') return <PersonTile side={side} />;
+  if (section === 'personalisation') return <PersonTile side={side} scheme={scheme} />;
 
   return (
     <Tile
@@ -185,8 +194,9 @@ function SectionTile({
 }
 
 /** Personalisation's tile: the account's scheme once it has answered, the device's until then. */
-function PersonTile({ side }: { side: number }) {
-  const choice = useAccountChoice();
+function PersonTile({ side, scheme }: { side: number; scheme: Choice | undefined }) {
+  const account = useAccountChoice();
+  const choice = scheme !== undefined ? scheme : account;
 
   return (
     <SchemeTile
@@ -377,7 +387,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInkOnDark,
   },
   personWords: { flex: 1, minWidth: 0, gap: 3, alignItems: 'flex-start' },
-  roleChip: { marginTop: tokens.spaceXs, paddingHorizontal: 11 },
+  roleChip: { marginTop: tokens.spaceXs, paddingHorizontal: 11, paddingVertical: 5 },
   personChevron: { width: 36, justifyContent: 'center' },
   group: {
     borderRadius: tokens.space3xl,

@@ -1,3 +1,5 @@
+import { listFormat } from '@soirely/domain';
+
 import { ORGANISATION, samplePeople } from './members.ts';
 import type { DemoLink } from './settings.ts';
 
@@ -179,9 +181,7 @@ export function sheetLine(person: OnEvent, org: string = ORGANISATION): string {
 }
 
 function andList(words: readonly string[]): string {
-  if (words.length <= 1) return words.join('');
-
-  return `${words.slice(0, -1).join(', ')} and ${words.at(-1) ?? ''}`;
+  return listFormat('en', { style: 'long', type: 'conjunction' }).format(words);
 }
 
 /** The foot everyone on the event reads: the owners and admins by name, who see every event (sc-29915). */

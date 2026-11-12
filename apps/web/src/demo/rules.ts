@@ -233,9 +233,16 @@ export const GET_BACK_IN_PAGES: { name: string; states: { name: string; to: stri
       { name: 'This link has already been used', to: backIn('link', 'used') },
       { name: 'This link doesn’t work', to: backIn('link', 'broken') },
       { name: 'Cannot reach Soirely', to: backIn('link', 'offline') },
+      { name: 'That did not work', to: backIn('link', 'failed') },
     ],
   },
-  { name: 'A code first', states: [{ name: 'Enter your code', to: backIn('code') }] },
+  {
+    name: 'A code first',
+    states: [
+      { name: 'Enter your code', to: backIn('code') },
+      { name: 'Contact Soirely support', to: backIn('support') },
+    ],
+  },
 ];
 
 /** A page of the two-factor board, and one of its states. */

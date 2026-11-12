@@ -14,7 +14,7 @@ import { FocusedScreen, Line, TextAction } from '../../components/Summary.tsx';
 import { type Check, domainFieldProblem, domainRefusal, type ProveOpen } from './DataModel.ts';
 import { StatusLine } from './DataParts.tsx';
 import { type DataSay, DERIVED, type Domain, IRE, RECORD_VALUE, recordName } from './DataSample.ts';
-import { RecordRows, useCopied } from './RecordRows.tsx';
+import { RecordRows, useCopied } from '../../components/RecordRows.tsx';
 import { DOMAINS_WORDS as D } from './DataWords.ts';
 
 const SEND_MS = 600;

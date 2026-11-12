@@ -211,3 +211,48 @@ export function approvalRoles<Role extends { seededAs: string | null }>(
     ...offered.filter((role) => role.seededAs !== 'member'),
   ];
 }
+
+/** What the Members rules read of a request to get back in; `@soirely/api-client`'s `RecoveryRequest` has it. */
+interface RecoveryOnMembers {
+  organisationIds: readonly string[];
+  own: boolean;
+  userId: string;
+}
+
+/** The requests to get back in one organisation's Members shows, oldest first as the API sends them (sc-30189, sc-30894). */
+export function recoveryShownIn<Request extends Pick<RecoveryOnMembers, 'organisationIds'>>(
+  requests: readonly Request[],
+  organisationId: string,
+): Request[] {
+  return requests.filter((request) => request.organisationIds.includes(organisationId));
+}
+
+/** Your own request is never counted on the card, and its step never answers it. */
+export function recoveryAnswerable<Request extends Pick<RecoveryOnMembers, 'own'>>(
+  requests: readonly Request[],
+): Request[] {
+  return requests.filter((request) => !request.own);
+}
+
+/** Removing somebody ends their request on this organisation's Members (pm, Decided 7 Nov). */
+export function recoveryEndedByRemoval<Request extends Pick<RecoveryOnMembers, 'userId'>>(
+  requests: readonly Request[],
+  userId: string,
+): Request[] {
+  return requests.filter((request) => request.userId !== userId);
+}
+
+export type MembersNextAnswer<Request, Member> =
+  { kind: 'recovery'; request: Request } | { kind: 'join'; member: Member };
+
+/** The card's one step at rest: the oldest request to get back in, since its asker is locked out, then the oldest request to join. */
+export function membersNextAnswer<Request extends Pick<RecoveryOnMembers, 'own'>, Member>(
+  recoveries: readonly Request[],
+  joining: readonly Member[],
+): MembersNextAnswer<Request, Member> | null {
+  const recovery = recoveryAnswerable(recoveries)[0];
+  if (recovery != null) return { kind: 'recovery', request: recovery };
+  const member = joining[0];
+
+  return member == null ? null : { kind: 'join', member };
+}

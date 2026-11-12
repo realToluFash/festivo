@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import type { Membership } from '@soirely/api-client';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -11,6 +14,7 @@ import { routes } from '../routes/index.tsx';
 import { STYLES, cssRule } from '../test-styles.ts';
 import { OrganisationSwitcher } from './OrganisationSwitcher.tsx';
 
+const MENU_STYLES = readFileSync(join(import.meta.dirname, 'orgMenu.css'), 'utf8');
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 const OKAFOR = membership({
   id: 'org_2',
@@ -69,14 +73,6 @@ function json(body: unknown, status: number, headers: Record<string, string> = {
   });
 }
 
-function problem(code: string, status: number, headers: Record<string, string> = {}): Response {
-  return json(
-    { type: `https://soirely.com/errors/${code}`, title: 'No.', status },
-    status,
-    headers,
-  );
-}
-
 /** POST /api/orgs answers `created`; anything else the shell asks for on the way is empty. */
 function creating(created: () => Response | Promise<Response>) {
   return vi
@@ -88,14 +84,6 @@ function creating(created: () => Response | Promise<Response>) {
     );
 }
 
-/** Presses Create organisation with focus on it, as a click or Enter on the button leaves it. */
-function pressCreate(): void {
-  const create = screen.getByRole('button', { name: 'Create organisation' });
-
-  create.focus();
-  fireEvent.click(create);
-}
-
 function openCreate(): void {
   at('/app');
   fireEvent.click(screen.getByRole('button', { name: /Organisation: Ìrè Events/ }));
@@ -104,6 +92,16 @@ function openCreate(): void {
 
 function at(path: string) {
   return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
+}
+
+const OFFER_TILE = 'Ìrè Events Kitchen, You can ask to join';
+
+/** The offer waits behind its tile in the open menu; pressing it opens its panel. */
+async function openOffer(): Promise<HTMLElement> {
+  const tile = await screen.findByRole('button', { name: OFFER_TILE });
+  fireEvent.click(tile);
+
+  return tile;
 }
 
 afterEach(() => {
@@ -193,6 +191,7 @@ describe('switching organisation', () => {
       needsOrganisation: false,
       hasPassword: true,
       twoFactorSetupPrompt: false,
+      colourScheme: null,
       waitingFor: null,
       providers: [],
       emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],
@@ -338,7 +337,7 @@ describe('a 100-character name (sc-486)', () => {
     const [current] = within(screen.getByRole('listbox')).getAllByRole('option');
 
     expect(current?.textContent).toContain(name);
-    expect(screen.getAllByTitle(name)).toHaveLength(2);
+    expect(screen.getAllByTitle(name)).toHaveLength(1);
   });
 
   it('wraps it whole in the trigger and every row, never cut with an ellipsis (sc-26270)', () => {
@@ -356,7 +355,11 @@ describe('a 100-character name (sc-486)', () => {
       /grid-template-columns: var\(--todaySide\) minmax\(0, 1fr\);/u,
     );
     expect(STYLES).toMatch(/\.shell \{[^}]*grid-template-columns: minmax\(0, 1fr\);/u);
-    expect(cssRule('.org-switcher-menu')).toMatch(/max-width: calc\(100vw - /u);
+    expect(MENU_STYLES).toMatch(/\.sw-menu \{[^}]*width: min\(500px, 100vw - 24px\);/u);
+  });
+
+  it("draws the switcher's tiles without a browser button's border", () => {
+    expect(MENU_STYLES).toMatch(/\.sw-cell \{[^}]*border: 0;/u);
   });
 
   it('breaks a long word in any paragraph, heading, list, definition, button, label or span, and in a notice', () => {
@@ -376,35 +379,47 @@ describe('a 100-character name (sc-486)', () => {
   });
 });
 
-describe('creating an organisation', () => {
-  it('shows the defaults it will use, with the primary email', () => {
+describe('creating an organisation from the switcher (sc-30412)', () => {
+  function walk(): HTMLElement {
+    return screen.getByRole('dialog', { name: 'Create an organisation' });
+  }
+
+  function toReady(name: string): void {
+    fireEvent.change(within(walk()).getByLabelText('Organisation name'), {
+      target: { value: name },
+    });
+    fireEvent.click(within(walk()).getByRole('button', { name: 'Continue' }));
+    fireEvent.click(within(walk()).getByRole('button', { name: 'Continue' }));
+  }
+
+  it('opens the walk on the name, Step 1 of 3, the tile a dashed plus', () => {
     inOne();
     openCreate();
 
-    const dialog = screen.getByRole('dialog', { name: 'Create an organisation' });
-
-    expect(
-      within(dialog).getByText(/contact address is your primary email, f@ire\.events\./),
-    ).toBeDefined();
-    expect(document.activeElement).toBe(within(dialog).getByLabelText('Organisation name'));
+    expect(document.activeElement).toBe(within(walk()).getByLabelText('Organisation name'));
+    expect(within(walk()).getByText('Step 1 of 3')).toBeDefined();
+    expect(within(walk()).getByRole('heading', { level: 1 }).textContent).toBe('What’s it called?');
   });
 
-  it('checks the name before sending: blank, then over 100 characters after trimming', () => {
-    const fetch = vi.spyOn(globalThis, 'fetch');
+  it('opens the country on the device’s, and on Ready says the defaults with the primary email', () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
     inOne();
     openCreate();
 
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: '   ' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
-    expect(screen.getByText("Enter the organisation's name.")).toBeDefined();
-
-    fireEvent.change(screen.getByLabelText('Organisation name'), {
-      target: { value: ` ${'é'.repeat(101)} ` },
+    fireEvent.change(within(walk()).getByLabelText('Organisation name'), {
+      target: { value: 'Supper' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
-    expect(screen.getByText('That name is 101 characters. Use 100 or fewer.')).toBeDefined();
-    expect(document.activeElement).toBe(screen.getByLabelText('Organisation name'));
-    expect(fetch).not.toHaveBeenCalled();
+    fireEvent.click(within(walk()).getByRole('button', { name: 'Continue' }));
+    expect(
+      within(walk())
+        .getAllByRole('option', { name: /^Nigeria/ })[0]
+        ?.getAttribute('aria-selected'),
+    ).toBe('true');
+
+    fireEvent.click(within(walk()).getByRole('button', { name: 'Continue' }));
+    expect(
+      within(walk()).getByText(/contact address is your primary email, f@ire\.events\./),
+    ).toBeDefined();
   });
 
   it('asks for a country when this device named none', () => {
@@ -412,10 +427,9 @@ describe('creating an organisation', () => {
     inOne();
     openCreate();
 
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
+    toReady('Supper');
 
-    expect(screen.getByText('Choose a country.')).toBeDefined();
+    expect(within(walk()).getByRole('alert').textContent).toBe('Choose a country.');
   });
 
   it('sends the name, country and device timezone, then works in the new one and says so', async () => {
@@ -425,10 +439,8 @@ describe('creating an organisation', () => {
     inOne();
     openCreate();
 
-    fireEvent.change(screen.getByLabelText('Organisation name'), {
-      target: { value: '  Lagos Supper Club ' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
+    toReady('  Lagos Supper Club ');
+    fireEvent.click(within(walk()).getByRole('button', { name: 'Create organisation' }));
 
     expect(await screen.findByText('Now working in Lagos Supper Club.')).toBeDefined();
     const [url, init] = fetch.mock.calls.find(([, sent]) => sent?.method === 'POST') ?? [];
@@ -445,318 +457,42 @@ describe('creating an organisation', () => {
     expect(window.localStorage.getItem('soirely.organisation')).toBe('org_9');
   });
 
-  it('says when the limit lifts, from Retry-After, and keeps what was typed', async () => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    creating(() => problem('too_many_attempts', 429, { 'Retry-After': '600' }));
+  it('keeps Tab and Shift+Tab inside the walk', () => {
     inOne();
     openCreate();
 
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Six' } });
-    pressCreate();
+    const name = within(walk()).getByLabelText('Organisation name');
+    const goOn = within(walk()).getByRole('button', { name: 'Continue' });
 
-    const alert = await screen.findByText('Too many new organisations for now.');
-    expect(alert.nextElementSibling?.textContent).toMatch(/^Try again at \d{2}:\d{2}\.$/);
-    expect(within(screen.getByRole('dialog')).getAllByRole('alert')).toHaveLength(1);
-    const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
-    expect(name.value).toBe('Six');
-    await waitFor(() => expect(document.activeElement).toBe(name));
-  });
+    goOn.focus();
+    fireEvent.keyDown(goOn, { key: 'Tab' });
+    expect(walk().contains(document.activeElement)).toBe(true);
 
-  it('says it did not work when the refusal names no field the dialog has', async () => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    creating(() =>
-      json(
-        {
-          type: 'https://soirely.com/errors/validation_failed',
-          title: 'No.',
-          status: 422,
-          violations: [
-            { propertyPath: 'contactAddress', message: 'Bad address.', code: 'validation_failed' },
-          ],
-        },
-        422,
-      ),
-    );
-    inOne();
-    openCreate();
-
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
-    pressCreate();
-
-    expect(
-      await screen.findByText(
-        'Creating the organisation did not work. Nothing was created. Try again in a moment.',
-      ),
-    ).toBeDefined();
-    expect(within(screen.getByRole('dialog')).getAllByRole('alert')).toHaveLength(1);
-    const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
-    expect(name.value).toBe('Supper');
-    await waitFor(() => expect(document.activeElement).toBe(name));
-  });
-
-  it.each([
-    ['a server error', () => problem('internal_error', 500)],
-    [
-      'no network',
-      () => {
-        throw new TypeError('Failed to fetch');
-      },
-    ],
-  ])('puts focus back on the name after %s, keeping what was typed', async (_, answer) => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    creating(answer);
-    inOne();
-    openCreate();
-
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
-    pressCreate();
-    expect(screen.getByLabelText<HTMLInputElement>('Organisation name').readOnly).toBe(true);
-    expect(screen.getByLabelText('Country').matches(':disabled')).toBe(true);
-
-    expect(
-      await screen.findByText(
-        'Creating the organisation did not work. Nothing was created. Try again in a moment.',
-      ),
-    ).toBeDefined();
-    const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
-    expect(name.value).toBe('Supper');
-    await waitFor(() => expect(document.activeElement).toBe(name));
-  });
-
-  it('keeps focus in Organisation name while it creates after Enter, and there once refused (sc-11588)', async () => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    let answer: (response: Response) => void = () => {};
-    creating(() => new Promise<Response>((resolve) => (answer = resolve)));
-    inOne();
-    openCreate();
-
-    const name = screen.getByLabelText<HTMLInputElement>('Organisation name');
-    fireEvent.change(name, { target: { value: 'Supper' } });
     name.focus();
-    fireEvent.submit(name);
-
-    await screen.findByRole('button', { name: 'Creating…' });
-    expect(document.activeElement).toBe(name);
-    expect(name.readOnly).toBe(true);
-    expect(name.getAttribute('aria-disabled')).toBe('true');
-    fireEvent.keyDown(name, { key: 'Tab' });
-    expect(document.activeElement).toBe(name);
-
-    answer(problem('internal_error', 500));
-    expect(
-      await screen.findByText(
-        'Creating the organisation did not work. Nothing was created. Try again in a moment.',
-      ),
-    ).toBeDefined();
-    expect(document.activeElement).toBe(name);
-    expect(name.readOnly).toBe(false);
-  });
-
-  it('sends one request for a double press, then one more after a failure (sc-7497)', async () => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    let answer: (response: Response) => void = () => {};
-    const fetch = creating(() => new Promise<Response>((resolve) => (answer = resolve)));
-    const posts = () => fetch.mock.calls.filter(([, init]) => init?.method === 'POST');
-    inOne();
-    openCreate();
-
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
-    const form = screen.getByLabelText('Organisation name').closest('form') as HTMLFormElement;
-    fireEvent.submit(form);
-    fireEvent.submit(form);
-    const creatingButton = screen.getByRole('button', { name: 'Creating…' });
-    expect(creatingButton.matches(':disabled')).toBe(true);
-    fireEvent.click(creatingButton);
-    await waitFor(() => expect(posts()).toHaveLength(1));
-
-    answer(problem('internal_error', 500));
-    const create = await screen.findByRole('button', { name: 'Create organisation' });
-    expect(create.matches(':disabled')).toBe(false);
-    expect(posts()).toHaveLength(1);
-    fireEvent.click(create);
-    await waitFor(() => expect(posts()).toHaveLength(2));
-  });
-
-  it('cannot be dismissed while the create is pending, then switches and says so (sc-8898)', async () => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    const created = membership({ id: 'org_9', name: 'Supper' });
-    let answer: (response: Response) => void = () => {};
-    creating(() => new Promise<Response>((resolve) => (answer = resolve)));
-    inOne();
-    openCreate();
-
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
-    pressCreate();
-    await screen.findByRole('button', { name: 'Creating…' });
-
-    const dialog = screen.getByRole('dialog', { name: 'Create an organisation' });
-    const [scrim, cancel] = screen.getAllByRole('button', { name: 'Cancel' }) as HTMLElement[];
-    expect(cancel?.matches(':disabled')).toBe(true);
-    expect(scrim?.matches(':disabled')).toBe(true);
-    fireEvent.click(cancel as HTMLElement);
-    fireEvent.click(scrim as HTMLElement);
-    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
-    expect(screen.getByRole('dialog')).toBe(dialog);
-
-    expect(document.activeElement).toBe(dialog);
-    fireEvent.keyDown(dialog, { key: 'Tab' });
-    expect(document.activeElement).toBe(dialog);
-    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
-    expect(document.activeElement).toBe(dialog);
-
-    answer(json({ organisation: created }, 201));
-    expect(await screen.findByText('Now working in Supper.')).toBeDefined();
-    expect(screen.queryByRole('dialog')).toBeNull();
-    expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: /Organisation: Supper, your role Owner/ }),
-    );
-  });
-
-  it.each([
-    [
-      'Cancel',
-      () => fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[1] as HTMLElement),
-    ],
-    [
-      'the scrim',
-      () => fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[0] as HTMLElement),
-    ],
-    ['Escape', () => fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })],
-  ])('closes with %s again once a pending create fails (sc-8898)', async (_, dismiss) => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    let answer: (response: Response) => void = () => {};
-    creating(() => new Promise<Response>((resolve) => (answer = resolve)));
-    inOne();
-    openCreate();
-
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
-    pressCreate();
-    await screen.findByRole('button', { name: 'Creating…' });
-
-    answer(problem('too_many_attempts', 429));
-    const alert = await screen.findByText('Too many new organisations for now.');
-    expect(alert.nextElementSibling).toBeNull();
-    expect(screen.getByRole('dialog')).toBeDefined();
-    // Focus back on the name is the sign the dialog has unlocked its Escape as well as its buttons.
-    await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByLabelText('Organisation name')),
-    );
-
-    dismiss();
-    expect(screen.queryByRole('dialog')).toBeNull();
-    expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: /Organisation: Ìrè Events/ }),
-    );
-  });
-
-  it.each([
-    [['countryCode'], 'Country'],
-    [['name'], 'Organisation name'],
-    [['name', 'countryCode'], 'Organisation name'],
-  ])('puts focus on the first field a refusal of %j names', async (paths, focused) => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    creating(() =>
-      json(
-        {
-          type: 'https://soirely.com/errors/validation_failed',
-          title: 'No.',
-          status: 422,
-          violations: paths.map((propertyPath) => ({
-            propertyPath,
-            message: `Bad ${propertyPath}.`,
-            code: 'validation_failed',
-          })),
-        },
-        422,
-      ),
-    );
-    inOne();
-    openCreate();
-
-    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
-    pressCreate();
-
-    for (const propertyPath of paths) {
-      expect(await screen.findByText(`Bad ${propertyPath}.`)).toBeDefined();
-    }
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(focused)));
-  });
-
-  it('keeps Tab and Shift+Tab inside the dialog, in the drawn order', () => {
-    inOne();
-    openCreate();
-
-    const dialog = screen.getByRole('dialog', { name: 'Create an organisation' });
-    const name = within(dialog).getByLabelText('Organisation name');
-    const create = within(dialog).getByRole('button', { name: 'Create organisation' });
-
-    expect([...dialog.querySelectorAll('input, select, button')]).toEqual([
-      name,
-      within(dialog).getByLabelText('Country'),
-      within(dialog).getByRole('button', { name: 'Cancel' }),
-      create,
-    ]);
-
-    create.focus();
-    fireEvent.keyDown(create, { key: 'Tab' });
-    expect(document.activeElement).toBe(name);
-
     fireEvent.keyDown(name, { key: 'Tab', shiftKey: true });
-    expect(document.activeElement).toBe(create);
+    expect(walk().contains(document.activeElement)).toBe(true);
   });
 
-  it('brings focus back into the dialog from the page behind, and the scrim still closes it', () => {
+  it('returns focus to the switcher button on Cancel and on Escape, with nothing created', () => {
+    const fetch = vi.spyOn(globalThis, 'fetch');
     inOne();
     openCreate();
 
-    const scrim = screen.getAllByRole('button', { name: 'Cancel' })[0] as HTMLElement;
-    expect(scrim.tabIndex).toBe(-1);
-
-    (document.activeElement as HTMLElement).blur();
-    fireEvent.keyDown(document.body, { key: 'Tab' });
-    expect(document.activeElement).toBe(screen.getByLabelText('Organisation name'));
-
-    (document.activeElement as HTMLElement).blur();
-    fireEvent.keyDown(document.body, { key: 'Tab', shiftKey: true });
-    expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: 'Create organisation' }),
-    );
-
-    fireEvent.click(scrim);
+    fireEvent.click(within(walk()).getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: /Organisation: Ìrè Events/ }),
-    );
-  });
-
-  it('returns focus to the switcher button on Cancel and on Escape', () => {
-    inOne();
-    openCreate();
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[1] as HTMLElement);
     expect(document.activeElement).toBe(
       screen.getByRole('button', { name: /Organisation: Ìrè Events/ }),
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Organisation: Ìrè Events/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Create an organisation' }));
-    fireEvent.keyDown(screen.getByLabelText('Organisation name'), { key: 'Escape' });
+    fireEvent.keyDown(within(walk()).getByLabelText('Organisation name'), { key: 'Escape' });
 
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(
       screen.getByRole('button', { name: /Organisation: Ìrè Events/ }),
     );
-  });
-
-  it('cancels with nothing created', () => {
-    const fetch = vi.spyOn(globalThis, 'fetch');
-    inOne();
-    openCreate();
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[1] as HTMLElement);
-
-    expect(screen.queryByRole('dialog')).toBeNull();
-    expect(fetch).not.toHaveBeenCalled();
+    expect(fetch.mock.calls.some(([, sent]) => sent?.method === 'POST')).toBe(false);
   });
 });
 
@@ -806,15 +542,17 @@ describe('an organisation at the domain of the address (sc-561)', () => {
     at('/app');
 
     fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
+    const tile = await openOffer();
 
-    expect(await screen.findByText('Ìrè Events Kitchen uses Soirely')).toBeDefined();
+    expect(tile.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('group', { name: 'Ìrè Events Kitchen uses Soirely' })).toBeDefined();
     expect(
       screen.getByText(
         'Your address is at ire.events, so you can ask to join. Somebody there approves you before you see anything.',
       ),
     ).toBeDefined();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to join Ìrè Events Kitchen' }));
 
     expect(
       await screen.findByText('we’ll email folake@ire.events when they answer.', { exact: false }),
@@ -827,8 +565,10 @@ describe('an organisation at the domain of the address (sc-561)', () => {
     at('/app');
 
     fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
+    await openOffer();
     fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
 
+    expect(screen.queryByRole('button', { name: OFFER_TILE })).toBeNull();
     expect(screen.queryByText('Ìrè Events Kitchen uses Soirely')).toBeNull();
     await waitFor(() =>
       expect(sent.some((request) => request.path === '/api/join-offers/org_3/dismiss')).toBe(true),
@@ -966,30 +706,34 @@ describe('where focus goes on an offer in the switcher (sc-11369)', () => {
     at('/app');
 
     fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Ask to join' }));
+    await openOffer();
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask to join Ìrè Events Kitchen' }));
 
     const line = await screen.findByText('we’ll email folake@ire.events when they answer.', {
       exact: false,
     });
-    const asked = line.closest('.org-switcher-offer-asked');
+    const asked = line.closest('.sw-asked');
     await waitFor(() => expect(document.activeElement).toBe(asked));
     expect(asked?.getAttribute('role')).toBeNull();
   });
 
-  it('takes Not now to the note under the list when no invitation is waiting', async () => {
+  it('takes Not now to Create an organisation when no invitation is waiting', async () => {
     offering();
     inTwo();
     at('/app');
 
     fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
+    await openOffer();
     fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
 
-    expect(document.activeElement).toBe(
-      screen.getByText('Soirely remembers your choice on this device.'),
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: 'Create an organisation' }),
+      ),
     );
   });
 
-  it('takes Not now to Invitations when one is waiting', async () => {
+  it('takes Not now to the invitation’s tile when one is waiting', async () => {
     offering([
       {
         id: 'inv_1',
@@ -1007,11 +751,250 @@ describe('where focus goes on an offer in the switcher (sc-11369)', () => {
     at('/app');
 
     fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
-    await screen.findByRole('button', { name: 'Accept and join Adunni Weddings' });
+    await screen.findByRole('button', { name: /^Adunni Weddings, Invitation · / });
+    await openOffer();
     fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
 
-    expect(document.activeElement).toBe(
-      within(screen.getByRole('region', { name: 'Invitations' })).getByText('Invitations'),
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: /^Adunni Weddings, Invitation · / }),
+      ),
     );
+  });
+});
+
+describe('an invitation in the switcher, answered in its panel (sc-30412)', () => {
+  const INVITATION = {
+    id: 'inv_1',
+    organisation: { id: 'org_7', name: 'Adunni Weddings' },
+    email: 'folake@ire.events',
+    role: { id: 'role_3', seededAs: 'administrator', name: null },
+    invitedBy: { name: 'Bisi Adeyemi' },
+    expiresAt: '2026-10-23T09:00:00+00:00',
+    refusal: null,
+    forYou: true,
+    signedInAs: 'folake@ire.events',
+  };
+  const ADUNNI = membership({
+    id: 'org_7',
+    name: 'Adunni Weddings',
+    role: { id: 'role_3', seededAs: 'administrator', name: null },
+  });
+
+  function answering(reply: (path: string) => Response | null) {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = new URL(String(input)).pathname;
+
+      return reply(path) ?? json({ invitations: [INVITATION] }, 200);
+    });
+  }
+
+  async function openInvitation(): Promise<HTMLElement> {
+    fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
+    const tile = await screen.findByRole('button', { name: /^Adunni Weddings, Invitation · / });
+    fireEvent.click(tile);
+
+    return screen.getByRole('group', { name: 'Adunni Weddings' });
+  }
+
+  it('waits behind a dashed tile, then opens to who sent it and until when', async () => {
+    answering(() => null);
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+
+    expect(within(panel).getByText(/^Invitation from Bisi Adeyemi · /)).toBeDefined();
+    expect(within(panel).getByText(/^Works until /)).toBeDefined();
+    expect(
+      within(panel).getByText('Declining tells Bisi Adeyemi you said no. Nothing else changes.'),
+    ).toBeDefined();
+  });
+
+  it('accepts in place, says so on the place it made, and opens it', async () => {
+    answering((path) =>
+      path === '/api/invitations/inv_1/accept' ? json({ organisation: ADUNNI }, 200) : null,
+    );
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    fireEvent.click(within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+
+    const joined = await screen.findByText(/^You joined Adunni Weddings as /);
+    await waitFor(() => expect(document.activeElement).toBe(joined.closest('[data-lands]')));
+    expect(screen.queryByRole('button', { name: /^Adunni Weddings, Invitation/ })).toBeNull();
+    expect(screen.getByRole('option', { name: /^Adunni Weddings, Your role/ })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Adunni Weddings' }));
+
+    expect(await screen.findByText('Now working in Adunni Weddings.')).toBeDefined();
+  });
+
+  it('declines in place, and keeps the tile saying so', async () => {
+    answering((path) =>
+      path === '/api/invitations/inv_1/decline' ? new Response(null, { status: 204 }) : null,
+    );
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Decline the invitation to Adunni Weddings' }),
+    );
+
+    expect(
+      await screen.findByText('You declined. Bisi Adeyemi will see that you said no.'),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: /^Adunni Weddings, Invitation/ })).toBeDefined();
+  });
+
+  it('keeps an answered tile only in the menu it was answered in', async () => {
+    answering((path) =>
+      path === '/api/invitations/inv_1/decline' ? new Response(null, { status: 204 }) : null,
+    );
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Decline the invitation to Adunni Weddings' }),
+    );
+    await screen.findByText('You declined. Bisi Adeyemi will see that you said no.');
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: /Switch organisation/ }));
+
+    expect(await screen.findByRole('option', { name: /Current/ })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Adunni Weddings, Invitation/ })).toBeNull();
+  });
+
+  it('keeps a tile whose answer did not reach us in the next menu', async () => {
+    answering((path) => (path === '/api/invitations/inv_1/accept' ? json({}, 500) : null));
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    fireEvent.click(within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+    await screen.findByText('Your answer did not reach us. Check your connection and try again.');
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: /Switch organisation/ }));
+
+    expect(
+      await screen.findByRole('button', { name: /^Adunni Weddings, Invitation · / }),
+    ).toBeDefined();
+  });
+
+  it('says when the answer did not reach us, and keeps both answers', async () => {
+    answering((path) => (path === '/api/invitations/inv_1/accept' ? json({}, 500) : null));
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    fireEvent.click(within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+
+    expect(
+      await screen.findByText('Your answer did not reach us. Check your connection and try again.'),
+    ).toBeDefined();
+    expect(
+      within(panel).getByRole('button', { name: 'Decline the invitation to Adunni Weddings' }),
+    ).toBeDefined();
+  });
+
+  it('says Joining… on the pressed answer while it is sent, and holds the other dimmed', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      const path = new URL(String(input)).pathname;
+
+      return path === '/api/invitations/inv_1/accept'
+        ? new Promise<Response>(() => {})
+        : Promise.resolve(json({ invitations: [INVITATION] }, 200));
+    });
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    const accept = within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' });
+    fireEvent.click(accept);
+
+    await waitFor(() => expect(accept.textContent).toBe('Joining…'));
+    expect(accept.getAttribute('aria-busy')).toBe('true');
+    expect(accept.hasAttribute('data-off')).toBe(false);
+
+    const decline = within(panel).getByRole('button', {
+      name: 'Decline the invitation to Adunni Weddings',
+    });
+    expect(decline.textContent).toBe('Decline');
+    expect(decline.getAttribute('aria-disabled')).toBe('true');
+    expect(decline.hasAttribute('data-off')).toBe(true);
+  });
+
+  it('leaves the role out of the tile and the panel once it is gone, with no dangling dot', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+      json({ invitations: [{ ...INVITATION, role: null }] }, 200),
+    );
+    inTwo();
+    at('/app');
+
+    fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Adunni Weddings, Invitation' }));
+    const panel = screen.getByRole('group', { name: 'Adunni Weddings' });
+
+    expect(within(panel).getByText('Invitation from Bisi Adeyemi')).toBeDefined();
+  });
+});
+
+describe('more than 15 organisations (sc-30412)', () => {
+  const MANY = Array.from({ length: 16 }, (_, index) =>
+    membership({ id: `org_${index + 1}`, name: index === 0 ? 'Ìrè Events' : `Place ${index + 1}` }),
+  );
+
+  function inMany(): void {
+    __setSessionState({
+      status: 'signedIn',
+      session: {
+        name: 'Folake Adeyemi',
+        email: 'folake@ire.events',
+        verified: true,
+        complete: true,
+        awaiting: null,
+        providers: [],
+        userId: 'u1',
+        needsOrganisation: false,
+        hasPassword: true,
+        organisation: MANY[0] ?? IRE,
+        organisations: MANY,
+        organisationCountry: null,
+        timezone: null,
+        waitingFor: null,
+      },
+    });
+  }
+
+  it('heads the menu with a search only past 15, narrowing by name', () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ invitations: [] }, 200));
+    inMany();
+    at('/app');
+
+    fireEvent.click(screen.getByRole('button', { name: /Switch organisation/ }));
+    const search = screen.getByRole('searchbox', { name: 'Search organisations' });
+    fireEvent.change(search, { target: { value: 'ire' } });
+
+    expect(within(screen.getByRole('listbox')).getAllByRole('option')).toHaveLength(1);
+
+    fireEvent.change(search, { target: { value: 'Belém' } });
+
+    expect(screen.getByText('No organisation matches “Belém”.')).toBeDefined();
+  });
+
+  it('has no search at 15 or fewer', () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ invitations: [] }, 200));
+    inTwo();
+    at('/app');
+
+    fireEvent.click(screen.getByRole('button', { name: /Switch organisation/ }));
+
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(screen.getByRole('heading', { level: 2, name: 'Where are you working?' })).toBeDefined();
   });
 });

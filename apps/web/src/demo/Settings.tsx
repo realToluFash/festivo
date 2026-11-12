@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useTranslation } from 'react-i18next';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { Toast } from '../components/Toast.tsx';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
@@ -26,17 +27,19 @@ import { PaymentReminders } from './Payments.tsx';
 import { AccessPaused } from './OrgSwitcher.tsx';
 import { Personalisation } from './Personalisation.tsx';
 import { PersonalTile } from './SchemeArt.tsx';
+import { underSavedName, useSavedNames } from './savedName.ts';
 import { Security } from './Security.tsx';
 import { SignInRules } from './SignInRules.tsx';
 import { StorefrontGlyph, Vendors } from './Vendors.tsx';
 import { vendorsViewerKey } from './vendors.ts';
-import type { Tell } from '../components/SettingsParts.tsx';
+import { TextAction, TitleRow, type Tell } from '../components/SettingsParts.tsx';
+import { DemoBell } from './DemoBell.tsx';
+import { DemoOffline } from './DemoOffline.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { usePaused, useSwitcherStart } from './switcher.ts';
 import './today.css';
 import '../components/SettingsParts.css';
 import '../components/SettingsList.css';
-import './settings.css';
 
 const TILES: Record<
   Exclude<Section, 'account' | 'general' | 'personalisation' | 'vendors' | 'data'>,
@@ -68,6 +71,8 @@ export function Settings({
         ? dataControlViewerKey(page, as, state)
         : as,
   );
+  const names = useSavedNames();
+  const seen = useMemo(() => underSavedName(viewer, names), [viewer, names]);
   useSwitcherStart();
   const paused = usePaused();
   const [told, setTold] = useState<string | null>(null);
@@ -98,85 +103,94 @@ export function Settings({
   return (
     <LayersContext value={layers}>
       <div className="today desk">
-        <TodaySidebar
-          events={SIDEBAR_EVENTS}
-          tell={tell}
-          settings
-          person={viewer}
-          inert={covered}
-        />
+        <TodaySidebar events={SIDEBAR_EVENTS} tell={tell} settings person={seen} inert={covered} />
         <main id="content" className="desk-main" inert={covered}>
-          {paused && open !== 'account' ? (
-            <div className="desk-page">
-              <AccessPaused />
-            </div>
-          ) : (
-            <>
-              <SettingsList
-                open={
-                  (open !== 'members' && open !== 'vendors' && open !== 'data') || viewer.manages
-                    ? open
-                    : null
-                }
+          <>
+            <SettingsList
+              open={
+                (open !== 'members' && open !== 'vendors' && open !== 'data') || viewer.manages
+                  ? open
+                  : null
+              }
+              viewer={seen}
+              tell={tell}
+            />
+            {paused && !YOURS.includes(open) ? (
+              <div className="desk-page">
+                <AccessPaused />
+              </div>
+            ) : open === 'account' ? (
+              <Account key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
+            ) : open === 'security' ? (
+              <Security key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
+            ) : open === 'notifications' ? (
+              <Notifications key={`${viewer.key}:${state}`} state={state} tell={tell} />
+            ) : open === 'personalisation' ? (
+              <Personalisation key={`${viewer.key}:${state}`} state={state} tell={tell} />
+            ) : open === 'general' ? (
+              <General key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
+            ) : open === 'signInRules' ? (
+              <SignInRules
+                key={`${viewer.key}:${state}`}
                 viewer={viewer}
+                state={state}
                 tell={tell}
               />
-              {open === 'account' ? (
-                <Account key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
-              ) : open === 'security' ? (
-                <Security
-                  key={`${viewer.key}:${state}`}
-                  viewer={viewer}
-                  state={state}
-                  tell={tell}
-                />
-              ) : open === 'notifications' ? (
-                <Notifications key={`${viewer.key}:${state}`} state={state} tell={tell} />
-              ) : open === 'personalisation' ? (
-                <Personalisation key={`${viewer.key}:${state}`} state={state} tell={tell} />
-              ) : open === 'general' ? (
-                <General key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
-              ) : open === 'signInRules' ? (
-                <SignInRules
-                  key={`${viewer.key}:${state}`}
-                  viewer={viewer}
-                  state={state}
-                  tell={tell}
-                />
-              ) : open === 'data' && viewer.manages ? (
-                <DataControl
-                  key={`${page}:${viewer.key}:${state}`}
-                  page={page}
-                  viewer={viewer}
-                  state={state}
-                  tell={tell}
-                />
-              ) : open === 'vendors' && reminders ? (
-                <PaymentReminders key={`${viewer.key}:${state}`} viewer={viewer} state={state} />
-              ) : open === 'vendors' ? (
-                <Vendors
-                  key={`${viewer.key}:${state}:${params.get('vendor') ?? ''}`}
-                  viewer={viewer}
-                  state={state}
-                  tell={tell}
-                />
-              ) : viewer.manages ? (
-                <Members
-                  key={`${open}:${viewer.key}:${state}`}
-                  viewer={viewer}
-                  state={state}
-                  tell={tell}
-                />
-              ) : (
-                <div className="desk-page" />
-              )}
-            </>
-          )}
+            ) : open === 'data' && viewer.manages ? (
+              <DataControl
+                key={`${page}:${viewer.key}:${state}`}
+                page={page}
+                viewer={viewer}
+                state={state}
+                tell={tell}
+              />
+            ) : open === 'vendors' && reminders ? (
+              <PaymentReminders key={`${viewer.key}:${state}`} viewer={viewer} state={state} />
+            ) : open === 'vendors' ? (
+              <Vendors
+                key={`${viewer.key}:${state}:${params.get('vendor') ?? ''}`}
+                viewer={viewer}
+                state={state}
+                tell={tell}
+              />
+            ) : viewer.manages ? (
+              <Members
+                key={`${open}:${viewer.key}:${state}`}
+                viewer={viewer}
+                state={state}
+                tell={tell}
+              />
+            ) : open === 'members' ? (
+              <MembersForbidden tell={tell} />
+            ) : (
+              <div className="desk-page" />
+            )}
+          </>
         </main>
         <div ref={setHost} className="desk-layers" />
         {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
       </div>
     </LayersContext>
+  );
+}
+
+/** Your account's own sections: they stay open while access to the organisation is paused, as in the product. */
+const YOURS: readonly Drawn[] = ['account', 'security', 'notifications', 'personalisation'];
+
+/** Members for a role without members.read, as the product refuses it: why as the page's heading, and the way back. */
+function MembersForbidden({ tell }: { tell: Tell }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  return (
+    <div className="desk-page">
+      <div className="desk-column" role="alert">
+        <DemoOffline />
+        <TitleRow title={t('forbidden.title')} bell={<DemoBell tell={tell} />} />
+        <p className="desk-line">{t('forbidden.body')}</p>
+        <TextAction label={t('forbidden.back')} onClick={() => void navigate('/demo/today')} />
+      </div>
+    </div>
   );
 }
 

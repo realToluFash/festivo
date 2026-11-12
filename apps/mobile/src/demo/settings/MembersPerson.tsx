@@ -89,6 +89,7 @@ interface PersonProps {
   leads: Leads;
   viewer: MembersViewer;
   opening: PersonOpening;
+  organisation: string;
   say: MembersSay;
   proved: boolean;
   onProved: () => void;
@@ -105,6 +106,7 @@ function PersonBody({
   leads,
   viewer,
   opening,
+  organisation,
   say,
   proved,
   onProved,
@@ -245,8 +247,9 @@ function PersonBody({
         <View>
           <TextAction
             ref={removeRef}
-            label={`Remove from ${ORGANISATION}…`}
+            label={`Remove from ${organisation}…`}
             removes
+            wraps
             onPress={() => {
               if (standing === 'suspendedOnlyOwner') {
                 setRefused(true);
@@ -255,7 +258,7 @@ function PersonBody({
               setAskVisit((count) => count + 1);
               setRemoving(true);
             }}
-            consequence={`They lose access on their next request. Their events stay with ${ORGANISATION}.`}
+            consequence={`They lose access on their next request. Their events stay with ${organisation}.`}
             testID="members.remove"
           />
           {refused && (
@@ -267,8 +270,8 @@ function PersonBody({
         <Ask
           open={removing}
           opener={removeRef}
-          title={`Remove ${person.name} from ${ORGANISATION}?`}
-          line={`They lose access on their next request. Their events stay with ${ORGANISATION}.`}
+          title={`Remove ${person.name} from ${organisation}?`}
+          line={`They lose access on their next request. Their events stay with ${organisation}.`}
           keep={{ label: `Keep ${whose.first}`, testID: 'members.remove.keep' }}
           confirm={{ label: 'Remove', testID: 'members.remove.confirm', removes: true }}
           onKeep={() => setRemoving(false)}
@@ -288,7 +291,7 @@ function PersonBody({
           offered={offered}
           you={viewer.id}
           words={{
-            title: `Remove ${whose.name} from ${ORGANISATION}?`,
+            title: `Remove ${whose.name} from ${organisation}?`,
             tail: HANDOVER_WORDS.removeTail,
             keep: { label: `Keep ${whose.first}`, testID: 'members.remove.keep' },
             verb: { label: 'Remove', testID: 'members.remove.confirm', removes: true },

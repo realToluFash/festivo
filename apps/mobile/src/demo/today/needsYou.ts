@@ -49,7 +49,33 @@ export function dueOf(
   }
 }
 
-/** The You milestones the reader can act on, earliest first; a tie goes by the event's start, then its name. */
+export interface NeedKey {
+  at: string;
+  title: string;
+  startsAt: string;
+  name: string;
+}
+
+/** Earliest first; a tie goes by the event's start, then its name, then the milestone's title, in the reader's language. Today's Needs you and the Calendar's Only what needs you both order by it. */
+export function needOrder(a: NeedKey, b: NeedKey): number {
+  return (
+    Date.parse(a.at) - Date.parse(b.at) ||
+    Date.parse(a.startsAt) - Date.parse(b.startsAt) ||
+    a.name.localeCompare(b.name) ||
+    a.title.localeCompare(b.title)
+  );
+}
+
+function keyOf({ event, milestone }: { event: YouEvent; milestone: Milestone }): NeedKey {
+  return {
+    at: milestone.at,
+    title: milestone.title,
+    startsAt: event.startsAt,
+    name: event.shown.name,
+  };
+}
+
+/** The You milestones the reader can act on, in needOrder. */
 export function needsOf(
   events: readonly YouEvent[],
   now: Date,
@@ -61,12 +87,7 @@ export function needsOf(
         .filter((milestone) => isYours(milestone, event.permissions))
         .map((milestone) => ({ event, milestone })),
     )
-    .sort(
-      (a, b) =>
-        Date.parse(a.milestone.at) - Date.parse(b.milestone.at) ||
-        Date.parse(a.event.startsAt) - Date.parse(b.event.startsAt) ||
-        a.event.shown.name.localeCompare(b.event.shown.name),
-    )
+    .sort((a, b) => needOrder(keyOf(a), keyOf(b)))
     .map(({ event, milestone }) => {
       const { words, late } = dueOf(milestone.at, event.timeZone, now, day);
 

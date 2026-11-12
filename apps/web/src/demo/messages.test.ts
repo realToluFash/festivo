@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { sampleEvent } from './events.ts';
@@ -11,6 +14,13 @@ import {
   NEW_MESSAGE,
   NOT_REPLIED,
   PARKING_UNREACHED,
+  receiptPeople,
+  rowOf,
+  whatsAppLine,
+  whatsAppOf,
+  whatsAppCredits,
+  whatsAppCreditsFor,
+  TELL,
   ROSEWOOD,
   TICKS,
   changed,
@@ -40,14 +50,17 @@ import {
   waitingLine,
 } from './messages.ts';
 import { BOOK, GROUPS } from './messagesTo.ts';
+import { WAITS_STATES } from './messagesWaits.ts';
 
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
 describe('Messaging B · Conversations, the rules (sc-31371)', () => {
-  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10 and sc-3963’s 4, in order, each linked once from the demo home', () => {
+  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 4 and sc-3950’s 3, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(94);
+    expect(keys).toHaveLength(107);
+    expect(keys.slice(94, 97)).toEqual(['whatsAppLine', 'checkWhatsApp', 'whatsAppRead']);
+    expect(keys.slice(97)).toEqual(WAITS_STATES.map((one) => one.key));
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
     expect(keys.slice(6, 10)).toEqual([
       'channelReply',
@@ -73,7 +86,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'editCancelled',
       'editTooLate',
     ]);
-    expect(new Set(keys).size).toBe(94);
+    expect(new Set(keys).size).toBe(107);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );
@@ -162,9 +175,17 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'No email address · SMS is off',
     ]);
     expect(smsOff.credits).toBe('Email uses no credits.');
-    expect(checkOf(COMING, { ...TICKS, whatsApp: true }, GROUPS).credits).toBe(
-      'Texts and WhatsApp messages use 34 credits. Credits after sending: 1,466.',
+    const both = checkOf(COMING, { ...TICKS, whatsApp: true }, GROUPS);
+
+    expect(both.pills.map((pill) => pill.count)).toEqual([92, 28, 3]);
+    expect(both.credits).toBe(
+      'Texts and WhatsApp messages use 39 credits. Credits after sending: 1,461.',
     );
+    expect(
+      checkOf({ kind: 'all' }, { ...TICKS, whatsApp: true }, GROUPS).pills.map(
+        (pill) => pill.count,
+      ),
+    ).toEqual([124, 35, 4]);
   });
 
   it('counts who it reached per person, grouped as sc-3966 counts them', () => {
@@ -303,7 +324,12 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     expect(sectionsOf(arrived, GROUPS).needs[0]).toMatchObject({
       id: 'lucia',
       when: 'now',
-      arrived: true,
+      fresh: true,
+    });
+    expect(sectionsOf(changed(arrived, { kind: 'settle' }), GROUPS).needs[0]).toMatchObject({
+      id: 'lucia',
+      when: '09:41',
+      fresh: false,
     });
   });
 
@@ -633,5 +659,132 @@ describe('Who it reached, its fixes, the filter and a resend (sc-3966)', () => {
       'Marked as told · 0',
     ]);
     expect(shownOf(who, 'reached').groups[0]).toMatchObject({ count: 140, more: 138 });
+  });
+});
+
+describe('Scheduled for later’s time field', () => {
+  const css = readFileSync(join(import.meta.dirname, 'messages.css'), 'utf8');
+  const start = css.indexOf('\n.mg-when-field.is-time {');
+  const rule = css.slice(start, css.indexOf('}', start));
+
+  it('takes the width its locale’s format needs, so 06:00 PM shows whole', () => {
+    expect(rule).toMatch(/\sflex: 0 0 auto;/u);
+    expect(rule).toMatch(/\smin-width: 120px;/u);
+    expect(rule).not.toMatch(/\swidth:/u);
+  });
+});
+
+describe('Messaging B · WhatsApp only to guests who agreed (sc-3950)', () => {
+  const ALL: Audience = { kind: 'all' };
+  const ALL_TICKED = { email: true, sms: true, whatsApp: true };
+
+  it('says who WhatsApp reaches, then who it can’t, each counted once, a 0 part left out', () => {
+    expect(whatsAppLine(ALL)).toBe(
+      'WhatsApp reaches 4 of 142 · 102 have no mobile number, 2 stopped WhatsApp and 34 haven’t agreed to WhatsApp',
+    );
+    expect(whatsAppLine(COMING)).toBe(
+      'WhatsApp reaches 3 of 96 · 65 have no mobile number, 1 stopped WhatsApp and 27 haven’t agreed to WhatsApp',
+    );
+    expect(whatsAppLine(NOT_REPLIED)).toBe(
+      'WhatsApp reaches 1 of 25 · 16 have no mobile number and 8 haven’t agreed to WhatsApp',
+    );
+    expect(many('noMobile', 1)).toBe('1 has no mobile number');
+    expect(many('notAgreedWhatsApp', 1)).toBe('1 hasn’t agreed to WhatsApp');
+    expect(many('stoppedCount', 2)).toBe('2 stopped WhatsApp');
+  });
+
+  it('sums WhatsApp’s credits by each number’s country, not one a message', () => {
+    expect([ALL, COMING, NOT_REPLIED].map((to) => whatsAppOf(to).credits)).toEqual([13, 11, 2]);
+
+    const check = checkOf(ALL, ALL_TICKED, GROUPS);
+
+    expect(check.pills.map((pill) => pill.count)).toEqual([124, 35, 4]);
+    expect(check.cantTell).toBe(9);
+    expect(check.credits).toBe(
+      'Texts and WhatsApp messages use 48 credits. Credits after sending: 1,452.',
+    );
+    expect(check.whatsApp).toBe(whatsAppLine(ALL));
+    expect(checkOf(ALL, TICKS, GROUPS).whatsApp).toBeNull();
+    expect(checkOf(NOT_REPLIED, { ...TICKS, sms: false, whatsApp: true }, GROUPS).credits).toBe(
+      'Texts and WhatsApp messages use 2 credits. Credits after sending: 1,498.',
+    );
+  });
+
+  it('counts each WhatsApp number at its country’s utility rate (sc-3928)', () => {
+    expect(
+      ['+234 802', '+55 21', '+52 55', '+44 7700', '+33 6', '+34 612', '+49 151', '+1 212'].map(
+        whatsAppCredits,
+      ),
+    ).toEqual([2, 2, 2, 5, 5, 4, 9, 0]);
+    expect(whatsAppCreditsFor(['lucia', 'kwame', 'duboise', 'rafael'])).toBe(13);
+    expect(whatsAppCreditsFor(['ines'])).toBe(0);
+    expect(TELL.credits).toBe(43);
+  });
+
+  it('reads each WhatsApp receipt: Sent, Delivered, Read with its time, then Failed', () => {
+    const whatsApp = receiptPeople().map((one) => {
+      const line = one.lines[1];
+
+      return [line?.word, line?.why].filter((part) => part != null).join(' · ');
+    });
+
+    expect(receiptPeople().map((one) => one.name)).toEqual([
+      'Lucía Ortega',
+      'Duboise Akande',
+      'Kwame Mensah',
+      'Rafael Costa',
+    ]);
+    expect(receiptPeople().every((one) => one.lines[0]?.word === 'Email · Delivered')).toBe(true);
+    expect(whatsApp).toEqual([
+      'WhatsApp · Sent · 18:20',
+      'WhatsApp · Delivered · 18:21',
+      'WhatsApp · Read · 18:24',
+      'WhatsApp · Failed',
+    ]);
+  });
+
+  it('seeds the new message with WhatsApp ticked, and the receipts in Parking’s place', () => {
+    expect(seedOf('whatsAppLine').draft).toMatchObject({ step: 'write', ticks: ALL_TICKED });
+    expect(seedOf('checkWhatsApp').draft).toMatchObject({ step: 'check', ticks: ALL_TICKED });
+
+    const read = seedOf('whatsAppRead');
+
+    expect(read).toMatchObject({ pane: { kind: 'reached', of: 'receipts' } });
+    expect(read.present).toContain('receipts');
+    expect(read.present).not.toContain('parking');
+    expect(rowOf(read, 'receipts', GROUPS)).toMatchObject({
+      title: 'Parking at The Landmark',
+      tag: { word: 'Not reached · 18' },
+    });
+  });
+
+  it('groups the four as WhatsApp · 4, never a filter, and gives WhatsApp’s reasons', () => {
+    const who = whoOf(seedOf('whatsAppRead'), 'receipts', 'receipts', GROUPS);
+
+    expect(who.groups.map((group) => `${group.name} · ${group.count}`)).toEqual([
+      'WhatsApp · 4',
+      'Can’t be told · 18',
+      'Marked as told · 0',
+      'Reached · 124',
+    ]);
+    expect(who.line).toBe('Seen by 87 on their page · 18 can’t be told');
+    expect(showItems(who).map((item) => `${item.word} ${item.count}`)).toEqual([
+      'Everyone 142',
+      'Not reached 18',
+      'Can’t be told 18',
+      'Reached 124',
+      'Marked as told 0',
+    ]);
+    expect(
+      who.groups[1]?.people.map((one) =>
+        one.lines
+          .slice(0, -1)
+          .map((line) => [line.word, line.why].filter((part) => part != null).join(' · ')),
+      ),
+    ).toEqual([
+      ['Email · No email address', 'WhatsApp · Not sent · Has not agreed to WhatsApp'],
+      ['Email · Not sent · Unsubscribed', 'WhatsApp · Not sent · Stopped WhatsApp'],
+    ]);
+    expect(who.waiting).toEqual([]);
   });
 });

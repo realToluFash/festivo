@@ -11,11 +11,10 @@ import {
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { AlertLine } from '../events/EventEdits.tsx';
-import { MomentBox, pick, type Picking, PickerLayer } from '../events/EventsPick.tsx';
+import { MomentBox, pick, type Picking, PickerLayer } from '../../components/MomentPick.tsx';
 import { HELD_MS, ROLE_LINES } from '../people/PeopleSample.ts';
-import { RoleLayer } from '../people/PeopleAdd.tsx';
-import { DoneAction } from '../people/PeopleRole.tsx';
-import { RoleChoices } from '../settings/MembersRequest.tsx';
+import { DoneAction, RoleLayer } from '../../components/PeopleParts.tsx';
+import { RoleChoices } from '../../components/RoleChoices.tsx';
 import {
   FocusedScreen,
   type Layer,
@@ -120,12 +119,12 @@ export function MakeCode({
       : {
           layer: (
             <>
-              <RoleLayer onClose={closeEnds}>
+              <RoleLayer closeLabel="Close" onClose={closeEnds}>
                 <View style={styles.layerHead}>
                   <Text size={18} weight="bold" accessibilityRole="header" style={styles.grow}>
                     {W.ends}
                   </Text>
-                  <DoneAction onPress={closeEnds} testID="door.make.ends.done" />
+                  <DoneAction label="Done" onPress={closeEnds} testID="door.make.ends.done" />
                 </View>
                 <View accessibilityRole="radiogroup">
                   <RowList

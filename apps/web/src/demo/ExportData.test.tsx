@@ -47,7 +47,7 @@ describe('Data and control › Export all data (sc-612)', () => {
   it.each([
     ['ex_ready_other', 'Ire Events’ export is ready'],
     ['ex_expired', 'Your export’s link has ended'],
-    ['ex_failed', 'Your export didn’t finish'],
+    ['ex_failed', 'Your export did not finish'],
     ['not_owner', 'Only an owner exports Ire Events’ data'],
     ['ex_used_link', 'This download has been used. It downloads nothing now.'],
     [

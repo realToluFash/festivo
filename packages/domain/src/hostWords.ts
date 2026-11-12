@@ -1,3 +1,5 @@
+import { ApiError } from '@soirely/api-client';
+
 import { EVENT_FORM_FIELDS, type EventFormField } from './events.ts';
 import { type Translate } from './eventWords.ts';
 import { HOST_NAME_MAXIMUM, hostNameOf, hostProblems } from './hosts.ts';
@@ -138,4 +140,48 @@ export function hostsArrival(rows: readonly HostRow[]): HostFocus {
   const first = rows[0];
 
   return first == null ? 'add' : { key: first.key, control: 'name' };
+}
+
+export type EventSaveRefusal =
+  | { kind: 'changed' }
+  | { kind: 'failed' }
+  | {
+      kind: 'refused';
+      errors: Partial<Record<EventFormField, string>>;
+      hosts: HostErrors;
+      currencyInUse: boolean;
+    };
+
+/** What a refused save of an event says, the same in Edit details and in a part edited in place: `changed` on a 412, else each refusal under the field or host row it names. */
+export function eventSaveRefusal(
+  error: unknown,
+  rows: readonly HostRow[],
+  t: Translate,
+): EventSaveRefusal {
+  if (!(error instanceof ApiError)) return { kind: 'failed' };
+  if (error.status === 412) return { kind: 'changed' };
+  if (error.is('event_concluded'))
+    return refusal({ startsAt: t('eventEdit.scheduleConcluded') }, {});
+  if (error.is('event_currency_in_use'))
+    return { kind: 'refused', errors: {}, hosts: {}, currencyInUse: true };
+
+  const required = error.is('event_host_required') ? hostRequiredOf(rows, t) : null;
+  if (required != null) return refusal({}, required);
+  if (error.status !== 422) return { kind: 'failed' };
+
+  const fields = error.fieldErrors();
+  const errors: Partial<Record<EventFormField, string>> = {};
+  for (const field of EVENT_FORM_FIELDS) if (fields[field] != null) errors[field] = fields[field];
+  const hosts = hostRefusalsOf(fields, rows);
+
+  return Object.keys(errors).length + Object.keys(hosts).length === 0
+    ? { kind: 'failed' }
+    : refusal(errors, hosts);
+}
+
+function refusal(
+  errors: Partial<Record<EventFormField, string>>,
+  hosts: HostErrors,
+): EventSaveRefusal {
+  return { kind: 'refused', errors, hosts, currencyInUse: false };
 }

@@ -38,7 +38,7 @@ screenshot. `shared-flows-chained-*` run them one after another, as a batch woul
 
 `release-sign-in` is the one for a release build (`com.soirely.app`), where there is no
 Expo Go and no `return-home`: it launches the app, signs in as `EMAIL` with `PASSWORD` only if
-Home shows Sign in, and leaves the app on Home. Every `*-release-*` flow that needs a signed-in
+it opens signed out (on Welcome or on Sign in), and leaves the app on Home. Every `*-release-*` flow that needs a signed-in
 phone starts with it.
 
 `switch-organisation`'s `ORG` is the organisation's id, not its name: the switcher's rows are
@@ -155,7 +155,11 @@ held request while it drains. `stopped` to `paused` passes through
 up, and Soirely answers anything asked in those seconds, so on Android the harness takes the
 API's `adb reverse` away for that move and puts it back once the API is held: the app is refused
 throughout, with no network change announced. `qa-env.mjs ios`, `android` and `release` unpause
-a paused API before starting the stack, so a batch killed mid-hold does not block the next run.
+a paused API before starting the stack, so a batch killed mid-hold does not block the next run,
+and wait out the unhealthy status a long pause leaves before `up --wait`, which would give up on
+it. The `sc17675-*` checks turn the device with `${ORIENT}`: pass `ORIENT=PORTRAIT`
+(`LANDSCAPE_LEFT` on a landscape-natural tablet), or Maestro reports the unset value as a driver
+crash.
 A picture at a held moment, which `takeScreenshot` would take only once the screen settles, is
 `ASK: /shot?name=<name>`: the harness screenshots the device at once and saves it with the
 batch's screenshots under the same check-and-language prefix, so `held-1` in an English batch
@@ -248,9 +252,13 @@ link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a
   next field, sends the form where the field's Return sends it, and puts the keyboard away
   where it sends nothing. On Android, Enter can type into the field instead (sc-18648), so
   a flow uses `hideKeyboard` and then the tap. Split the two by platform, as
-  `batch/sign-in-form.yaml` does. The one exception is a check whose outcome is the
+  `batch/sign-in-form.yaml` does. A check whose outcome is what Return does with the keys
+  still up taps the keyboard's own `Done` key on Android instead, since Enter there is a
+  hardware key-up that puts the keys away (sc-30411): `checks/sc13408-change-done-key-up.yaml`
+  is the Android copy of `checks/sc13408-change-return-up.yaml`. The one exception is a check whose outcome is the
   keyboard put away by hand: `checks/sc13408-change-dismiss.yaml`,
-  `checks/sc13408-choose-dismiss.yaml` and `checks/sc22103-edit-keeps-event-nav.yaml`,
+  `checks/sc13408-choose-dismiss.yaml`, `checks/sc22103-edit-keeps-event-nav.yaml` and
+  `checks/sc36766-what-title.yaml`,
   whose outcome is what shows once the keys are down, and the `sc9674-*` checks, whose outcome is what the
   keys do after a refused send: on an iPhone they put the keys away with a tap on blank page,
   `tapOn: point: '2%,45%'`, since `hideKeyboard` hangs there. That point is for a phone only: on a
@@ -269,10 +277,11 @@ link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a
 - **A phone's form has no Cancel of its own.** Its header's back, `frame.back`, is Cancel; a
   tablet shows `eventForm.cancel` instead. A flow that leaves a form taps whichever is visible,
   each in a `runFlow` `when: visible:`, as `checks/sc3595-edit.yaml` does.
-- **On Android, Edit details sits below the fold of an event's page**: scroll to
-  `events.page.edit` before tapping it, and wait on `events.page`, not on the button. Keep
-  that scroll in a `runFlow` `when: platform: Android`: on an iPhone the button is already in
-  view, and `centerElement` pushes it under the page's opaque header.
+- **On Android, the event's name row sits below the fold of an event's page**: scroll to
+  `events.details.name` before tapping it, and wait on `events.page`, not on the row. Keep
+  that scroll in a `runFlow` `when: platform: Android`: on an iPhone the row is already in
+  view, and `centerElement` pushes it under the page's opaque header. The name row opens Edit
+  details at the name; the page's other rows are `events.details.<part>`.
 - **On Android, New event's dates and times are the system's dialogs**, closed with `OK`, not
   the sheet's `eventForm.start.done`. `checks/sc20824-create-android.yaml` is the Android copy of
   `checks/sc20824-create.yaml`.

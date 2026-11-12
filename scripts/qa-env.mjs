@@ -441,6 +441,12 @@ export function reversedPorts(ports) {
   return reached.map((key) => ports[key]);
 }
 
+// `adb reverse --list` prints `<serial> tcp:<device> tcp:<host>`, or `(reverse) …` on older adb.
+export function unreversed(list, ports) {
+  const held = new Set([...(list ?? '').matchAll(/tcp:(\d+)\s+tcp:/g)].map((m) => Number(m[1])));
+  return ports.filter((port) => !held.has(Number(port)));
+}
+
 export function androidSdk(env = process.env, platform = process.platform, home = homedir()) {
   return (
     env.ANDROID_HOME ??
@@ -583,6 +589,17 @@ export function iosBundle(appConfig) {
   const id = /ios:\s*\{[^}]*bundleIdentifier:\s*'([^']+)'/.exec(appConfig)?.[1];
   if (!id) throw new Error('no ios.bundleIdentifier in apps/mobile/app.config.ts');
   return id;
+}
+
+// CocoaPods fails on ASCII-8BIT strings when the calling shell has no UTF-8 locale.
+export function iosBuildEnv(appConfig) {
+  return {
+    ...appConfig,
+    EXPO_PUBLIC_ENVIRONMENT: 'qa',
+    CI: '1',
+    LANG: 'en_US.UTF-8',
+    LC_ALL: 'en_US.UTF-8',
+  };
 }
 
 // Signed ad hoc, never unsigned: an unsigned .app has no application-identifier, so the Keychain
@@ -1272,6 +1289,39 @@ function applyPlistSteps(steps) {
   }
 }
 
+// Without this iOS asks "Open in Expo Go?" first, as Expo CLI also avoids, and Maestro's driver
+// timed out behind the question (sc-41582). It is written inside the booted simulator, through
+// its own cfprefsd: the Mac's defaults, given the plist path, never wrote the file (sc-37204).
+const SCHEME_APPROVAL = 'com.apple.launchservices.schemeapproval';
+const EXPO_GO_LINK = 'com.apple.CoreSimulator.CoreSimulatorBridge-->exp';
+
+export function expoGoLinkApproval(udid) {
+  return [
+    'simctl',
+    'spawn',
+    udid,
+    'defaults',
+    'write',
+    SCHEME_APPROVAL,
+    EXPO_GO_LINK,
+    '-string',
+    EXPO_GO,
+  ];
+}
+
+export function expoGoLinkApproved(udid) {
+  return ['simctl', 'spawn', udid, 'defaults', 'read', SCHEME_APPROVAL, EXPO_GO_LINK];
+}
+
+function approveExpoGoLinks(udid) {
+  run('xcrun', expoGoLinkApproval(udid), { optional: true });
+  if (capture('xcrun', expoGoLinkApproved(udid)) === EXPO_GO) return;
+  console.warn(
+    `  The simulator ${udid} did not keep the exp:// approval, so iOS may still ask` +
+      ' "Open in Expo Go?" and leave Maestro behind it.',
+  );
+}
+
 function withoutPasswordAutoFill(udid) {
   if (passwordAutoFillIsOff(udid)) return;
   const files = deviceFiles(udid);
@@ -1440,6 +1490,7 @@ async function ios(args) {
     uninstallIos(udid, id);
     if (!(await ensureExpoGo(udid, expo)))
       throw new Error(`Expo Go for SDK ${expoSdkMajor(expo)} did not install on the ${key}`);
+    approveExpoGoLinks(udid);
     devices.push(udid);
   }
   withSoftwareKeyboard(qaSimulatorIds());
@@ -1689,6 +1740,21 @@ function unitState(unit) {
   return spawnSync('systemctl', ['--user', 'is-active', unit], { encoding: 'utf8' }).stdout.trim();
 }
 
+// adbd can still be settling once boot completes, and a reverse made then is dropped without an error (sc-35453).
+async function reversePorts(tools) {
+  let missing = reversedPorts(CONFIG.ports);
+  for (let i = 0; i < 10 && missing.length; i++) {
+    if (i) await pause(1000);
+    for (const port of missing) adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
+    missing = unreversed(adbOut(tools, ['reverse', '--list']), reversedPorts(CONFIG.ports));
+  }
+  if (missing.length) {
+    throw new Error(
+      `${emulatorSerial()} still has ${missing.join(', ')} unreversed after ten seconds`,
+    );
+  }
+}
+
 async function stopEmulator(tools) {
   const unit = `${CONFIG.project}-emulator`;
   adbOut(tools, ['emu', 'kill']);
@@ -1875,11 +1941,7 @@ export const ANDROID_START = [
   },
   {
     name: 'ports reversed',
-    run: ({ tools }) => {
-      for (const port of reversedPorts(CONFIG.ports)) {
-        adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
-      }
-    },
+    run: ({ tools }) => reversePorts(tools),
   },
   {
     name: 'Expo Go stopped',
@@ -1916,22 +1978,45 @@ export const ANDROID_START = [
 // Expo Go's floating Tools button sits over a list's Done, where a tap opens its menu instead.
 export const TOOLS_BUTTON = 'EXDevMenuShowFloatingActionButton';
 
+// After a reboot Expo Go's dev-menu intro covers the app until somebody taps it (sc-41961).
+export const MENU_ONBOARDED = 'EXDevMenuIsOnboardingFinished';
+
 const TOOLS_OFF = "  Expo Go's Tools button is off.";
 const TOOLS_TURNED_OFF = "  Expo Go's Tools button turned off for the batch.";
 const TOOLS_FAILED = "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.";
+const READY = "  Expo Go's Tools button is off and its dev-menu intro is seen.";
+const INTRO_SEEN = "  Expo Go's dev-menu intro marked seen for the batch.";
+const INTRO_FAILED = "  Could not mark Expo Go's dev-menu intro seen: tap through it in Expo Go.";
 
-// What a batch resets on its device before signing in: TalkBack, and Expo Go's Tools button.
-// The button lives in Expo Go's container, which `defaults write host.exp.Exponent` misses.
-export function batchReset(onAndroid, device, { prefs, toolsButton } = {}) {
+// What a batch resets on its device before signing in: TalkBack, Expo Go's Tools button and its
+// dev-menu intro. Both live in Expo Go's container, which `defaults write host.exp.Exponent` misses.
+export function batchReset(onAndroid, device, { prefs, toolsButton, onboarded } = {}) {
   if (onAndroid) return { adb: SCREEN_READER_OFF, say: '  TalkBack is off for the batch.' };
   if (!prefs) return { say: '  Expo Go is not installed: run `ios` first.' };
-  if (toolsButton === '0') return { say: TOOLS_OFF };
-  return {
-    terminate: ['simctl', 'terminate', device, EXPO_GO],
-    write: ['simctl', 'spawn', device, 'defaults', 'write', prefs, TOOLS_BUTTON, '-bool', 'NO'],
-    say: TOOLS_TURNED_OFF,
-    failed: TOOLS_FAILED,
-  };
+  const write = (key, value) => [
+    'simctl',
+    'spawn',
+    device,
+    'defaults',
+    'write',
+    prefs,
+    key,
+    '-bool',
+    value,
+  ];
+  const writes = [];
+  if (toolsButton !== '0') {
+    writes.push({
+      command: write(TOOLS_BUTTON, 'NO'),
+      say: TOOLS_TURNED_OFF,
+      failed: TOOLS_FAILED,
+    });
+  }
+  if (onboarded !== '1') {
+    writes.push({ command: write(MENU_ONBOARDED, 'YES'), say: INTRO_SEEN, failed: INTRO_FAILED });
+  }
+  if (!writes.length) return { say: READY };
+  return { terminate: ['simctl', 'terminate', device, EXPO_GO], writes };
 }
 
 const centre = ([left, top, right, bottom]) => [(left + right) / 2, (top + bottom) / 2];
@@ -2012,13 +2097,19 @@ async function resetForBatch(onAndroid, device) {
   const prefs = onAndroid
     ? null
     : expoGoPrefs(capture('xcrun', ['simctl', 'get_app_container', device, EXPO_GO, 'data']));
-  const toolsButton =
-    prefs && capture('xcrun', ['simctl', 'spawn', device, 'defaults', 'read', prefs, TOOLS_BUTTON]);
-  const reset = batchReset(onAndroid, device, { prefs, toolsButton });
+  const read = (key) =>
+    prefs && capture('xcrun', ['simctl', 'spawn', device, 'defaults', 'read', prefs, key]);
+  const reset = batchReset(onAndroid, device, {
+    prefs,
+    toolsButton: read(TOOLS_BUTTON),
+    onboarded: read(MENU_ONBOARDED),
+  });
   for (const command of reset.adb ?? []) adbOut(androidTools(), command);
   if (reset.terminate) run('xcrun', reset.terminate, { optional: true });
-  const written = !reset.write || run('xcrun', reset.write, { optional: true });
-  console.log(written ? reset.say : reset.failed);
+  if (reset.say) console.log(reset.say);
+  for (const { command, say, failed } of reset.writes ?? []) {
+    console.log(run('xcrun', command, { optional: true }) ? say : failed);
+  }
   if (onAndroid) await androidToolsButtonOff(androidTools());
 }
 
@@ -2234,9 +2325,7 @@ async function releaseAndroid(args) {
     adbOut(tools, ['reverse', '--remove-all']);
     await waitOffline(tools);
   } else {
-    for (const port of reversedPorts(CONFIG.ports)) {
-      adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
-    }
+    await reversePorts(tools);
   }
 
   const video = launchVideo(root, sha, 'android', open);
@@ -2266,7 +2355,7 @@ function buildIosRelease(root, app) {
     throw new Error('no CocoaPods on this Mac: brew install cocoapods');
   }
   const mobile = join(root, 'apps/mobile');
-  const env = { ...CONFIG.app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
+  const env = iosBuildEnv(CONFIG.app);
 
   const pkg = join(mobile, 'package.json');
   const scripts = readFileSync(pkg, 'utf8');
@@ -2312,14 +2401,28 @@ function stopAppServices(root) {
   run('docker', ['compose', 'stop', ...APP_SERVICES], { cwd: root });
 }
 
-// Makes what a `down` removed, where `start` fails on a stack with no containers. `up` refuses a
-// paused container, and a batch killed while a check held the API leaves it paused.
-export function startServices(services, { run, capture }) {
-  const paused = (capture(['ps', '--status', 'paused', '--format', '{{.Service}}']) ?? '')
+const lines = (out) =>
+  (out ?? '')
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean);
-  if (paused.length) run(['unpause', ...paused]);
+
+const sleepSync = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+// Makes what a `down` removed, where `start` fails on a stack with no containers. `up` refuses a
+// paused container, and a batch killed while a check held the API leaves it paused, unhealthy
+// until its next probe: `up --wait` gives up on that at once.
+export function startServices(
+  services,
+  { run, capture, sleep = sleepSync, now = Date.now, ms = 90_000 },
+) {
+  const paused = lines(capture(['ps', '--status', 'paused', '--format', '{{.Service}}']));
+  if (paused.length) {
+    run(['unpause', ...paused]);
+    const health = ['ps', '--format', '{{.Service}} {{.Health}}', ...paused];
+    const unhealthy = () => lines(capture(health)).some((line) => line.endsWith(' unhealthy'));
+    for (const deadline = now() + ms; now() < deadline && unhealthy();) sleep(1000);
+  }
   run(['up', '-d', '--wait', '--no-recreate', ...services]);
 }
 
@@ -2960,7 +3063,14 @@ export const DRIVER_GONE_MS = 30_000;
 
 // A frozen driver outlives the Maestro the watchdog stopped, and the next run waits on it.
 // The next Maestro starts only once the old runner and its xcodebuild are gone.
-async function stopDriver(device, onAndroid) {
+// A batch killed or timed out leaves its driver holding the simulator, and the next one's never
+// becomes ready, so a batch starts by stopping whatever an earlier one left.
+export function leftDriverSay(device, { runners, builds }) {
+  if (!runners.length && !builds.length) return null;
+  return `Stopping the Maestro driver an earlier run left on ${device}`;
+}
+
+async function stopDriver(device, onAndroid, { leftOver = false } = {}) {
   if (onAndroid) {
     const stopped = ANDROID_DRIVERS.map(
       (id) => adbOut(androidTools(), ['shell', 'am', 'force-stop', id]) !== null,
@@ -2973,7 +3083,11 @@ async function stopDriver(device, onAndroid) {
     builds: driverBuilds(capture('ps', ['-Ao', 'pid=,command=']) ?? '', device),
   });
   const { runners, builds } = left();
-  if (!runners.length) console.error(`\nNo Maestro driver found on ${device} to stop`);
+  if (leftOver) {
+    const say = leftDriverSay(device, { runners, builds });
+    if (!say) return;
+    console.log(say);
+  } else if (!runners.length) console.error(`\nNo Maestro driver found on ${device} to stop`);
   for (const pid of builds) run('kill', ['-KILL', String(pid)], { optional: true });
   for (const pid of runners) {
     if (!run('kill', ['-KILL', String(pid)], { optional: true }))
@@ -3017,7 +3131,8 @@ export const apiStateOf = (containerState) =>
 // since a killed batch or a half-done move leaves the container in a state nobody recorded.
 // Stopped to paused passes through up, and anything the app asks then is answered, so that move
 // runs inside `unreached`, which keeps the device from the API. A move that ends up returns once
-// `healthy` says the API answers: the api service has no healthcheck for `--wait` to wait on.
+// `healthy` says the API answers: `unpause` has no `--wait`, though the api has a healthcheck,
+// and that check still reads unhealthy for a probe interval after a long pause.
 export function apiControl({
   run,
   read,
@@ -3257,6 +3372,15 @@ function catalogues(root) {
   );
 }
 
+export async function clearForBatch(
+  onAndroid,
+  device,
+  { stop = stopDriver, reset = resetForBatch } = {},
+) {
+  if (!onAndroid) await stop(device, false, { leftOver: true });
+  await reset(onAndroid, device);
+}
+
 async function batch(args) {
   const root = qaWorktree();
   const onAndroid = args.includes('--android');
@@ -3275,7 +3399,7 @@ async function batch(args) {
     );
   }
 
-  await resetForBatch(onAndroid, device);
+  await clearForBatch(onAndroid, device);
 
   const out = join(root, '.qa', name);
   rmSync(out, { recursive: true, force: true });
@@ -3622,13 +3746,23 @@ async function organisationOwner(root, { fresh }) {
   return apiSession(email, password, null);
 }
 
+export function madeAccount({ status, signal, error, stdout, stderr }) {
+  if (status === 0) return JSON.parse(stdout);
+  const why =
+    (stderr ?? '').trim() ||
+    error?.message ||
+    (signal ? `killed by ${signal}` : `exited ${status}`);
+  throw new Error(`scripts/qa-account.mjs registered no account: ${why}`);
+}
+
 async function founder(root, organisationName, args = []) {
-  const made = capture('node', ['scripts/qa-account.mjs', '--json', ...args], {
-    cwd: root,
-    env: { ...process.env, SOIRELY_API_URL: CONFIG.urls.api, MAILPIT_URL: CONFIG.urls.mailpit },
-  });
-  if (made === null) throw new Error('scripts/qa-account.mjs registered no account');
-  const registered = JSON.parse(made);
+  const registered = madeAccount(
+    spawnSync('node', ['scripts/qa-account.mjs', '--json', ...args], {
+      cwd: root,
+      encoding: 'utf8',
+      env: { ...process.env, SOIRELY_API_URL: CONFIG.urls.api, MAILPIT_URL: CONFIG.urls.mailpit },
+    }),
+  );
   await api('/api/auth/complete-profile', {
     method: 'PATCH',
     token: registered.accessToken,

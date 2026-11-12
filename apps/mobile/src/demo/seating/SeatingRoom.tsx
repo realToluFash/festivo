@@ -15,23 +15,39 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import type { Action } from './SeatingActs.ts';
 import {
+  CHAIR_HIT,
   CHAIR_R,
+  HANDLE_DRAWN,
+  HANDLE_HIT,
   type Detail,
   type Point,
   type View as Shown,
   bounds,
   chairPoints,
+  cardNames,
+  clearCorner,
+  ringPlaces,
   detailOf,
   extent,
   filled,
+  handlePoints,
   heldInside,
   isCircle,
   itemAt,
   overlapping,
+  reachOf,
   snapped,
+  sideFrom,
   turn,
   usable,
+  wordsAt,
+  nameAt,
   zoomAbout,
+  wordsBox,
+  ringAbout,
+  litAbout,
+  outWords,
+  roomWords,
 } from './SeatingGeometry.ts';
 import {
   type Seating,
@@ -58,9 +74,6 @@ const hidden = {
 const TINT = tokens.colorAccentTint;
 const VIOLET = tokens.colorAccent;
 const AMBER = tokens.colorAttention;
-const HANDLE_DRAWN = 24;
-const HANDLE_HIT = 48;
-const CHAIR_HIT = 48;
 const VIEWS_BAND = tokens.spaceXl + 48;
 
 export interface Look {
@@ -70,6 +83,17 @@ export interface Look {
   faint?: boolean;
   handles?: number;
 }
+
+/** A colleague's initials on the table they have chosen, placed once every word in the room is known (sc-31783). */
+interface Badge {
+  key: string;
+  corners: Point[];
+  colour: string;
+  words: string;
+}
+
+const BADGE_W = 30;
+const BADGE_H = 22;
 
 interface Label {
   key: string;
@@ -87,30 +111,6 @@ function colourOf(m: Seating, it: Item): string {
   return sec == null ? NO_SECTION_EDGE : hexOf(sec.colour);
 }
 
-function handlePoints(it: Item, s: number): Point[] {
-  if (it.kind === 'round' || it.kind === 'cocktail') {
-    const h = (it.d / 2) * s;
-    return [
-      { x: -h, y: -h },
-      { x: h, y: -h },
-      { x: h, y: h },
-      { x: -h, y: h },
-    ];
-  }
-  const w = (it.w / 2) * s;
-  const l = (it.l / 2) * s;
-  return [
-    { x: -w, y: -l },
-    { x: 0, y: -l },
-    { x: w, y: -l },
-    { x: w, y: 0 },
-    { x: w, y: l },
-    { x: 0, y: l },
-    { x: -w, y: l },
-    { x: -w, y: 0 },
-  ].map((p) => turn(p, it.rot));
-}
-
 export function hasHandles(it: Item): boolean {
   return it.kind === 'round' || it.kind === 'cocktail' || it.kind === 'rect' || it.kind === 'head';
 }
@@ -124,6 +124,7 @@ function itemShape({
   look,
   chosenChair,
   labels,
+  badges,
 }: {
   m: Seating;
   it: Item;
@@ -132,6 +133,7 @@ function itemShape({
   look: Look;
   chosenChair: number | null;
   labels: Label[];
+  badges: Badge[];
 }) {
   const s = v.s;
   const cx = v.ox + it.x * s;
@@ -140,17 +142,18 @@ function itemShape({
   const e = extent(it);
   const circle = isCircle(it);
   const out: ReactNode[] = [];
+  const lit = litAbout(it, s, detail);
   if (look.lit === true)
     out.push(
       circle ? (
-        <Circle key="lit" cx={cx} cy={cy} r={e.x * s + 10} fill={TINT} />
+        <Circle key="lit" cx={cx} cy={cy} r={lit.x} fill={TINT} />
       ) : (
         <Rect
           key="lit"
-          x={-e.x * s - 10}
-          y={-e.y * s - 10}
-          width={2 * e.x * s + 20}
-          height={2 * e.y * s + 20}
+          x={-lit.x}
+          y={-lit.y}
+          width={2 * lit.x}
+          height={2 * lit.y}
           rx={12}
           fill={TINT}
           transform={`translate(${cx} ${cy}) rotate(${it.rot})`}
@@ -283,12 +286,17 @@ function itemShape({
       {body}
     </G>,
   );
-  if (look.faint !== true) addWords(it, cx, cy, s, detail, labels);
-  if (look.ring != null) {
-    const pad = look.lit === true ? 10 : 2;
+  const ring = look.ring == null ? null : ringAbout(it, s, detail, look.lit === true);
+  if (look.faint !== true)
+    addWords(it, cx, cy, s, v.oy + m.room.l * s, detail, labels, ring?.hy ?? 0);
+  if (look.ring != null && ring != null) {
     const c = look.ring.colour;
+    const words = initials(look.ring.name);
+    const badge = (corners: Point[]) => {
+      badges.push({ key: `${it.id}.ring`, corners, colour: c, words });
+    };
     if (circle) {
-      const rr = e.x * s + pad + 3.5;
+      const rr = ring.r;
       out.push(
         <Circle
           key="gap"
@@ -303,29 +311,9 @@ function itemShape({
       out.push(
         <Circle key="ring" cx={cx} cy={cy} r={rr + 1.5} fill="none" stroke={c} strokeWidth={3} />,
       );
-      out.push(
-        <Rect
-          key="pill"
-          x={cx - rr * 0.72 - 4}
-          y={cy - rr * 0.72 - 11}
-          width={30}
-          height={22}
-          rx={11}
-          fill={c}
-        />,
-      );
-      labels.push({
-        key: `${it.id}.ring`,
-        x: cx - rr * 0.72 + 11,
-        y: cy - rr * 0.72,
-        words: initials(look.ring.name),
-        size: 12,
-        bold: true,
-        ink: tokens.colorInkOnDark,
-      });
+      badge(ringPlaces(cx, cy, rr + 1.5, BADGE_W, BADGE_H));
     } else {
-      const gw = e.x * s + pad + 2;
-      const gh = e.y * s + pad + 2;
+      const { gw, gh } = ring;
       out.push(
         <Rect
           key="ring"
@@ -340,26 +328,14 @@ function itemShape({
           transform={`translate(${cx} ${cy}) rotate(${it.rot})`}
         />,
       );
-      out.push(
-        <Rect
-          key="pill"
-          x={cx - gw - 4}
-          y={cy - gh - 11}
-          width={30}
-          height={22}
-          rx={11}
-          fill={c}
-        />,
-      );
-      labels.push({
-        key: `${it.id}.ring`,
-        x: cx - gw + 11,
-        y: cy - gh,
-        words: initials(look.ring.name),
-        size: 12,
-        bold: true,
-        ink: tokens.colorInkOnDark,
-      });
+      badge([
+        { x: cx - gw - 4, y: cy - gh - 11 },
+        { x: cx + gw + 4 - BADGE_W, y: cy - gh - 11 },
+        { x: cx - gw - 4, y: cy + gh - 11 },
+        { x: cx + gw + 4 - BADGE_W, y: cy + gh - 11 },
+        { x: cx + gw + 1.5 - BADGE_W / 2, y: cy - BADGE_H / 2 },
+        { x: cx - gw - 1.5 - BADGE_W / 2, y: cy - BADGE_H / 2 },
+      ]);
     }
   }
   if (look.overlap === true)
@@ -393,22 +369,24 @@ function itemShape({
     );
   if (look.handles != null && hasHandles(it)) {
     const size = look.handles;
+    const points = handlePoints(it, s, m);
     if (it.kind === 'round' || it.kind === 'cocktail') {
-      const h = (it.d / 2) * s;
+      const xs = points.map((p) => p.x);
+      const ys = points.map((p) => p.y);
       out.push(
         <Rect
           key="frame"
-          x={cx - h}
-          y={cy - h}
-          width={2 * h}
-          height={2 * h}
+          x={cx + Math.min(...xs)}
+          y={cy + Math.min(...ys)}
+          width={Math.max(...xs) - Math.min(...xs)}
+          height={Math.max(...ys) - Math.min(...ys)}
           fill="none"
           stroke={VIOLET}
           strokeWidth={1.5}
         />,
       );
     }
-    handlePoints(it, s).forEach((p, i) =>
+    points.forEach((p, i) =>
       out.push(
         <Rect
           key={`h${i}`}
@@ -483,20 +461,24 @@ function ChairShape({
   return shape(tokens.colorCard, EMPTY_EDGE);
 }
 
-function addWords(it: Item, cx: number, cy: number, s: number, detail: Detail, labels: Label[]) {
-  const e = extent(it);
+function addWords(
+  it: Item,
+  cx: number,
+  cy: number,
+  s: number,
+  floor: number,
+  detail: Detail,
+  labels: Label[],
+  clear: number,
+) {
   const name = { key: `${it.id}.name`, size: 12, bold: true, ink: tokens.colorInk, words: it.name };
   if (detail === 'out') {
-    const by =
-      it.kind === 'rect' || it.kind === 'head'
-        ? cy + (it.l / 2) * s + 12
-        : cy + Math.max(e.y, 40) * s * (it.kind === 'row' ? 1 : 0.55) + 12;
-    labels.push({ ...name, x: cx, y: by });
-    if (it.kind !== 'single')
+    const at = outWords(it, cx, cy, s, floor, clear);
+    labels.push({ ...name, ...at.name });
+    if (at.count != null)
       labels.push({
         key: `${it.id}.of`,
-        x: cx,
-        y: by + 25,
+        ...at.count,
         words: ofWords(it),
         size: 12,
         bold: false,
@@ -515,26 +497,32 @@ function addWords(it: Item, cx: number, cy: number, s: number, detail: Detail, l
     return;
   }
   if (it.kind === 'row') return;
-  const bw = (it.kind === 'round' || it.kind === 'cocktail' ? it.d : it.w) * s;
-  const bh = (it.kind === 'round' || it.kind === 'cocktail' ? it.d : it.l) * s;
-  const fits = it.name.length * 12 * 0.56 <= bw - 3 && bh >= 15;
-  labels.push({ ...name, x: cx, y: fits ? cy : cy + e.y * s + 10 });
+  labels.push({ ...name, x: cx, y: nameAt(it, cy, s, floor) });
 }
 
-function Bars({ v, items }: { v: Shown; items: readonly Item[] }) {
+function Bars({
+  v,
+  floor,
+  items,
+  looks,
+}: {
+  v: Shown;
+  floor: number;
+  items: readonly Item[];
+  looks: Record<string, Look>;
+}) {
   if (detailOf(v.s) !== 'out') return null;
+  const clear = (it: Item) => {
+    const look = looks[it.id];
+    return look?.ring == null ? 0 : ringAbout(it, v.s, 'out', look.lit === true).hy;
+  };
   return (
     <>
       {items
         .filter((it) => it.kind !== 'single')
         .map((it) => {
-          const e = extent(it);
           const cx = v.ox + it.x * v.s;
-          const cy = v.oy + it.y * v.s;
-          const by =
-            (it.kind === 'rect' || it.kind === 'head'
-              ? cy + (it.l / 2) * v.s + 12
-              : cy + Math.max(e.y, 40) * v.s * (it.kind === 'row' ? 1 : 0.55) + 12) + 10;
+          const by = wordsAt(it, v.oy + it.y * v.s, v.s, floor, clear(it)) + 10;
           const share = filled(it) / Math.max(1, usable(it));
           return (
             <G key={`bar.${it.id}`}>
@@ -554,7 +542,7 @@ function Bars({ v, items }: { v: Shown; items: readonly Item[] }) {
   );
 }
 
-/** The room drawn to scale: a white floor with a 1 m grid (5 m a touch darker), walls 2.5 Ink, then each item, its words laid over it in the app's face. */
+/** The room drawn to scale: a white floor with a 1 m grid (5 m a touch darker), walls 2.5 Ink, then each item, its words laid over it in the app's face. Below 50%, where its words would meet each other or a colleague's ring, it keeps only the names, placed as the iPhone's card places them, and none where even those would meet (sc-31783). */
 export function RoomDrawing({
   m,
   v,
@@ -564,6 +552,7 @@ export function RoomDrawing({
   looks,
   grid = true,
   floor = true,
+  names,
   children,
 }: {
   m: Seating;
@@ -574,10 +563,10 @@ export function RoomDrawing({
   looks: Record<string, Look>;
   grid?: boolean;
   floor?: boolean;
+  names?: readonly { id: string; x: number; y: number }[];
   children?: ReactNode;
 }) {
   const detail = detailOf(v.s);
-  const labels: Label[] = [];
   const rw = m.room.w * v.s;
   const rl = m.room.l * v.s;
   const lines: ReactNode[] = [];
@@ -607,6 +596,12 @@ export function RoomDrawing({
         />,
       );
   }
+  const words = names == null ? roomWords(items, looks, v, m.room, ofWords) : null;
+  const placed =
+    names ?? (words?.says === 'names' ? words.names : words?.says === 'none' ? [] : null);
+  const labels: Label[] = [];
+  const unsaid: Label[] = [];
+  const badges: Badge[] = [];
   const shapes = items.map((it) => (
     <G key={it.id}>
       {itemShape({
@@ -616,17 +611,64 @@ export function RoomDrawing({
         detail,
         look: looks[it.id] ?? {},
         chosenChair: m.chosen === it.id ? m.chair : null,
-        labels,
+        labels: placed == null ? labels : unsaid,
+        badges,
       })}
     </G>
   ));
+  placed?.forEach((n) => {
+    const it = items.find((one) => one.id === n.id);
+    if (it != null && looks[it.id]?.faint !== true)
+      labels.push({
+        key: `${it.id}.name`,
+        x: n.x,
+        y: n.y,
+        words: it.name,
+        size: 12,
+        bold: true,
+        ink: tokens.colorInk,
+      });
+  });
+  const taken = labels.map((l) => wordsBox(l.x, l.y, l.words, l.size, l.start === true));
+  const pills = badges.map((b) => {
+    const at = clearCorner(b.corners, BADGE_W, BADGE_H, taken);
+    taken.push({ x: at.x, y: at.y, w: BADGE_W, h: BADGE_H });
+    labels.push({
+      key: b.key,
+      x: at.x + BADGE_W / 2,
+      y: at.y + BADGE_H / 2,
+      words: b.words,
+      size: 12,
+      bold: true,
+      ink: tokens.colorInkOnDark,
+    });
+    return (
+      <Rect
+        key={b.key}
+        x={at.x}
+        y={at.y}
+        width={BADGE_W}
+        height={BADGE_H}
+        rx={BADGE_H / 2}
+        fill={b.colour}
+      />
+    );
+  });
   return (
     <>
       <Svg width={width} height={height} style={StyleSheet.absoluteFill} {...hidden}>
         {floor && <Rect x={v.ox} y={v.oy} width={rw} height={rl} fill={tokens.colorCard} />}
         {lines}
         {shapes}
-        <Bars v={v} items={items.filter((it) => looks[it.id]?.faint !== true)} />
+        {pills}
+        {placed == null && (
+          <Bars
+            v={v}
+            floor={v.oy + rl}
+            items={items.filter((it) => looks[it.id]?.faint !== true)}
+            looks={looks}
+          />
+        )}
         {m.wallAt != null && (
           <Line
             x1={v.ox + m.wallAt * v.s}
@@ -763,7 +805,7 @@ function roomGestures(dispatch: (action: Action) => void, show: (live: Live | nu
     if (!hasHandles(it)) return null;
     const cx = view.ox + it.x * view.s;
     const cy = view.oy + it.y * view.s;
-    const i = handlePoints(it, view.s).findIndex(
+    const i = handlePoints(it, view.s, m).findIndex(
       (h) =>
         Math.abs(cx + h.x - p.x) <= HANDLE_HIT / 2 && Math.abs(cy + h.y - p.y) <= HANDLE_HIT / 2,
     );
@@ -850,14 +892,17 @@ function roomGestures(dispatch: (action: Action) => void, show: (live: Live | nu
       { x: p.x - (mm.shown.ox + it.x * s), y: p.y - (mm.shown.oy + it.y * s) },
       -it.rot,
     );
-    const side = (n: number) => Math.max(40, snapped((2 * Math.abs(n)) / s, true));
+    const reach = reachOf(it, s, handlePoints(it, s, mm)[cur.handle] ?? { x: 0, y: 0 });
     const round = it.kind === 'round' || it.kind === 'cocktail';
     const next = round
-      ? { ...it, d: side(Math.max(Math.abs(lp.x), Math.abs(lp.y))) }
+      ? {
+          ...it,
+          d: sideFrom(Math.max(Math.abs(lp.x), Math.abs(lp.y)), Math.max(reach.x, reach.y), s),
+        }
       : {
           ...it,
-          w: cur.handle % 4 === 1 ? it.w : side(lp.x),
-          l: cur.handle % 4 === 3 ? it.l : side(lp.y),
+          w: cur.handle % 4 === 1 ? it.w : sideFrom(lp.x, reach.x, s),
+          l: cur.handle % 4 === 3 ? it.l : sideFrom(lp.y, reach.y, s),
         };
     const across = round ? next.d : next.w;
     setLive({
@@ -916,6 +961,7 @@ export function RoomSurface({
   height,
   viewsEnd = 0,
   printStart = 0,
+  caption: drawCaption = true,
 }: {
   m: Seating;
   dispatch: (action: Action) => void;
@@ -923,6 +969,7 @@ export function RoomSurface({
   height: number;
   viewsEnd?: number;
   printStart?: number;
+  caption?: boolean;
 }) {
   const box = useRef<ViewInstance>(null);
   const [live, setLive] = useState<Live | null>(null);
@@ -947,23 +994,29 @@ export function RoomSurface({
   const caption = beside
     ? {
         left: viewsEnd + tokens.spaceMd,
-        top: tokens.spaceXl + 14,
+        top: tokens.spaceXl + 14 - tokens.spaceXxs,
         maxWidth: (printStart > 0 ? printStart : width) - viewsEnd - 2 * tokens.spaceMd,
       }
     : { left: v.ox, top: v.oy - 26 };
   return (
     <View ref={box} style={styles.fill} onLayout={measure} {...gestures.panHandlers}>
       <RoomDrawing m={m} v={v} width={width} height={height} items={items} looks={looks}>
-        <Text
-          size={12.5}
-          weight="semibold"
-          accessibilityRole="header"
-          accessibilityLabel={say.roomLabel(m.room.name, length(m, m.room.w), length(m, m.room.l))}
-          numberOfLines={1}
-          style={[styles.roomLine, caption]}
-        >
-          {roomLine(m)}
-        </Text>
+        {drawCaption && (
+          <Text
+            size={12.5}
+            weight="semibold"
+            accessibilityRole="header"
+            accessibilityLabel={say.roomLabel(
+              m.room.name,
+              length(m, m.room.w),
+              length(m, m.room.l),
+            )}
+            numberOfLines={1}
+            style={[styles.roomLine, caption, beside && styles.roomLineOver]}
+          >
+            {roomLine(m)}
+          </Text>
+        )}
         {m.items.map((it) => {
           const b = bounds(it);
           const w = Math.max(48, 2 * b.x * v.s);
@@ -1057,7 +1110,16 @@ export function MiniMap({
         <Rect x={0} y={0} width={m.room.w * s} height={m.room.l * s} fill={tokens.colorCard} />
         {m.items.map((it) => (
           <G key={it.id}>
-            {itemShape({ m, it, v: map, detail: 'out', look: {}, chosenChair: null, labels: [] })}
+            {itemShape({
+              m,
+              it,
+              v: map,
+              detail: 'out',
+              look: {},
+              chosenChair: null,
+              labels: [],
+              badges: [],
+            })}
           </G>
         ))}
         <Rect
@@ -1084,7 +1146,7 @@ export function MiniMap({
   );
 }
 
-/** The iPhone's room card: the zoomed-out drawing to find a table, one labelled image to a screen reader (sc-4027). */
+/** The iPhone's room card: the zoomed-out drawing to find a table, its names only and none crossing another (sc-31783), one labelled image to a screen reader (sc-4027). */
 export function RoomCard({ m, lit }: { m: Seating; lit: readonly string[] }) {
   const [width, setWidth] = useState(362);
   const inner = width - 16;
@@ -1110,6 +1172,7 @@ export function RoomCard({ m, lit }: { m: Seating; lit: readonly string[] }) {
           items={m.items}
           looks={looks}
           grid={false}
+          names={cardNames(m.items, { s, ox: 6, oy: 6 }, m.room)}
         />
       </View>
     </View>
@@ -1127,6 +1190,13 @@ const styles = StyleSheet.create({
   },
   figures: { fontVariant: ['tabular-nums'] },
   roomLine: { position: 'absolute', color: tokens.colorInkSecondary },
+  roomLineOver: {
+    paddingHorizontal: tokens.spaceSm,
+    paddingVertical: tokens.spaceXxs,
+    borderRadius: tokens.spaceSm,
+    overflow: 'hidden',
+    backgroundColor: tokens.colorCard,
+  },
   hit: { position: 'absolute' },
   chair: { width: CHAIR_HIT, height: CHAIR_HIT, borderRadius: CHAIR_HIT / 2 },
   tip: {

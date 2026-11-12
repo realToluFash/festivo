@@ -1,4 +1,4 @@
-# sc-11786: membersScreen.loading held with the QA api paused, then membersScreen.failedLoad with it stopped. Holds the api through batch/helper.js, so it runs in a batch, and brings it back up when it ends, passed or failed.
+# sc-11786: membersScreen.loading held with the QA api paused, then membersScreen.failedTitle with it stopped. Holds the api through batch/helper.js, so it runs in a batch, and brings it back up when it ends, passed or failed.
 appId: host.exp.Exponent
 onFlowComplete:
   - runScript:
@@ -27,7 +27,7 @@ onFlowComplete:
     env:
       ASK: /api?to=stopped
 - extendedWaitUntil:
-    visible: '{{t:membersScreen.failedLoad}}'
+    visible: '{{t:membersScreen.failedTitle}}'
     timeout: 90000
 - waitForAnimationToEnd
 - takeScreenshot: members-failed

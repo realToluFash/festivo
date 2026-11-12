@@ -43,6 +43,7 @@ import { useModalOpen } from '../updateRequired.ts';
 import { useKeyboardTop, useKeysUp } from './keyboardWatch.ts';
 import { SETTLED_MS } from './Screen.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { Text } from './Text.tsx';
 
 type SheetProps = {
   open: boolean;
@@ -177,6 +178,7 @@ function SheetFrame({
       onShow={() => setOnScreen(true)}
       onDismiss={gone}
     >
+      {Platform.OS === 'android' && headingTakesFocus && <SilentWindowName />}
       {/* A modal is its own window: iOS never resizes it for the keyboard, Android not with the props above. */}
       <KeyboardAvoidingView
         style={styles.fill}
@@ -458,19 +460,46 @@ export function useWindowTurn(wanted: boolean): { shown: boolean; gone: () => vo
   return { shown, gone };
 }
 
-/** Hidden until TalkBack has announced the window, counted from when Android has put it up, a heading that takes focus is not also read as the window's name. */
-function useUnnamedWindow(hides: boolean, onScreen: boolean): boolean {
-  const [announced, setAnnounced] = useState(false);
-  if (!onScreen && announced) setAnnounced(false);
+/** Hidden until TalkBack has announced the window, counted from when Android has put it up and, as it opens, `arriving` ms more while it slides or fades in, so a heading that takes focus is read once, when focus reaches it; a new `step` in a window that stays up hides it again. Hiding does not stop Android naming the window by its first text: `SilentWindowName` does that (sc-11032). */
+export function useUnnamedWindow(
+  hides: boolean,
+  onScreen: boolean,
+  step: unknown = null,
+  arriving = 0,
+): boolean {
+  const [announced, setAnnounced] = useState<{ step: unknown } | null>(null);
+  if (!onScreen && announced != null) setAnnounced(null);
+  const waiting = announced == null || announced.step !== step;
+  const opening = announced == null;
 
   useEffect(() => {
-    if (!hides || !onScreen) return;
-    const shown = setTimeout(() => setAnnounced(true), SETTLED_MS / 2);
+    if (!hides || !onScreen || !waiting) return;
+    const wait = (opening ? arriving : 0) + SETTLED_MS / 2;
+    const shown = setTimeout(() => setAnnounced({ step }), wait);
 
     return () => clearTimeout(shown);
-  }, [hides, onScreen]);
+  }, [hides, onScreen, waiting, opening, arriving, step]);
 
-  return hides && !announced;
+  return hides && waiting;
+}
+
+// U+200B: a name TalkBack speaks as nothing.
+const SILENT = '\u200b';
+
+/** Android names a window by the first text it holds, hidden or not, and TalkBack said that name ("Cancel", "Turn") on its own before focus reached the title (sc-11032). */
+export function SilentWindowName() {
+  return (
+    <View
+      style={styles.windowName}
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <Text accessible={false} importantForAccessibility="no">
+        {SILENT}
+      </Text>
+    </View>
+  );
 }
 
 const Revealed = createContext(true);
@@ -497,6 +526,8 @@ export function useFocusBack(open: boolean, opener: RefObject<ScreenReaderTarget
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  // Above everything else in the window, so Android, which orders a window's texts top to bottom, takes it first.
+  windowName: { position: 'absolute', top: -1, left: 0, width: 1, height: 1, opacity: 0 },
   scrim: { flex: 1 },
   scrimPhone: { justifyContent: 'flex-end' },
   scrimTablet: {

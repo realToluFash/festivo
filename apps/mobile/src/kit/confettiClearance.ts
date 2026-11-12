@@ -14,6 +14,27 @@ export interface Size {
 
 export type Shape = 'half' | 'bar';
 
+export type Tone = 'sun' | 'white' | 'rose' | 'sky';
+
+export type Piece = readonly [
+  x: number,
+  y: number,
+  shape: Shape,
+  size: number,
+  turn: number,
+  tone: Tone,
+];
+
+/** The Settings card's pieces, by share of a Confetti card: they keep to its right side, clear of the words. */
+export const CARD_PIECES: readonly Piece[] = [
+  [0.67, 0.05, 'half', 22, -18, 'sun'],
+  [0.83, 0.11, 'bar', 26, 24, 'white'],
+  [0.96, 0.2, 'half', 14, 200, 'rose'],
+  [0.81, 0.73, 'half', 20, 32, 'rose'],
+  [0.92, 0.84, 'bar', 24, -40, 'sun'],
+  [0.58, 0.9, 'bar', 16, 62, 'white'],
+];
+
 /** A piece's drawn width and height at a scale: a half disc is half as tall as wide, a bar a quarter and never under 8. */
 export function pieceSize(shape: Shape, size: number, scale: number): Size {
   const n = Math.round(size * scale);
@@ -66,4 +87,18 @@ export function clearOfWords(piece: Box, words: Box): boolean {
     piece.y + piece.height <= words.y - gap ||
     piece.y >= words.y + words.height + gap
   );
+}
+
+/** The pieces a cover of a size keeps at a scale: those clear of every box of words. */
+export function piecesClearOf(
+  pieces: readonly Piece[],
+  cover: Size,
+  scale: number,
+  words: readonly Box[],
+): readonly Piece[] {
+  return pieces.filter(([x, y, shape, size, turn]) => {
+    const bounds = pieceBounds({ x, y, shape, size, turn }, cover, scale);
+
+    return words.every((box) => clearOfWords(bounds, box));
+  });
 }

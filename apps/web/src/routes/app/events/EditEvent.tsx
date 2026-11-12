@@ -6,8 +6,7 @@ import {
   type HostRow,
   firstRefusedOf,
   hostErrorsOf,
-  hostRefusalsOf,
-  hostRequiredOf,
+  eventSaveRefusal,
   hostsChanged,
   hostsSent,
   draftOf,
@@ -20,6 +19,7 @@ import {
   isEventType,
   type VenueDraft,
   venueDraftOf,
+  formatWallClock,
 } from '@soirely/domain';
 import { type FormEvent, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,14 +44,13 @@ import { Choice, FieldError, Moment } from './EventFields.tsx';
 import {
   ADD_HOST_ID,
   type Errors,
-  FIELDS,
   type Field,
   describedBy,
   hostInputId,
   inputFor,
 } from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
-import { useShowEventName } from './EventNav.tsx';
+import { useShowEvent } from './EventNav.tsx';
 import { HostsSection } from './HostsSection.tsx';
 import { useLeaveGuard } from './useLeaveGuard.tsx';
 import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
@@ -264,7 +263,7 @@ function DetailsForm({
   const lockedBy = over ? 'event-schedule-over' : undefined;
 
   usePageTitle(pageTitle(t, [t('eventEdit.title'), saved.name]));
-  useShowEventName(saved.id, saved.name);
+  useShowEvent(saved.id, saved);
   const dirty = Object.keys(changes).length > 0;
   const busy = status === 'saving';
   const currencies = useMemo(
@@ -390,46 +389,24 @@ function DetailsForm({
       await api.updateEvent(saved.id, changes, opened.tag);
       close('saved');
     } catch (error) {
-      if (error instanceof ApiError && error.status === 412) {
+      const refusal = eventSaveRefusal(error, hosts, t);
+
+      if (refusal.kind === 'changed') {
         setStatus('changedElsewhere');
         return;
       }
 
-      if (error instanceof ApiError && error.is('event_concluded')) {
-        setStatus('editing');
-        refuse({ startsAt: t('eventEdit.scheduleConcluded') }, land);
+      if (refusal.kind === 'failed') {
+        setStatus('failed');
         return;
       }
 
-      const hostRequired =
-        error instanceof ApiError && error.is('event_host_required')
-          ? hostRequiredOf(hosts, t)
-          : null;
-      if (hostRequired != null) {
-        setStatus('editing');
-        refuse({}, land, hostRequired);
-        return;
-      }
-
-      if (error instanceof ApiError && error.is('event_currency_in_use')) {
-        setStatus('editing');
-        refuse({ currency: t('eventEdit.currencyInUse') }, land);
-        return;
-      }
-
-      const refused = error instanceof ApiError && error.status === 422 ? error.fieldErrors() : {};
-      const fromServer: Errors = {};
-      for (const field of FIELDS) if (refused[field] != null) fromServer[field] = refused[field];
-
-      const hostsFromServer = hostRefusalsOf(refused, hosts);
-
-      if (Object.keys(fromServer).length + Object.keys(hostsFromServer).length > 0) {
-        setStatus('editing');
-        refuse(fromServer, land, hostsFromServer);
-        return;
-      }
-
-      setStatus('failed');
+      setStatus('editing');
+      refuse(
+        refusal.currencyInUse ? { currency: t('eventEdit.currencyInUse') } : refusal.errors,
+        land,
+        refusal.hosts,
+      );
     }
   }
 
@@ -458,12 +435,7 @@ function DetailsForm({
           day: new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(
             typedStart,
           ),
-          time: new Intl.DateTimeFormat(locale, {
-            hour: '2-digit',
-            minute: '2-digit',
-            hourCycle: 'h23',
-            timeZone: 'UTC',
-          }).format(typedStart),
+          time: formatWallClock(`${draft.startDate}T${draft.startTime}`, locale),
         });
 
   return (

@@ -16,6 +16,9 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
+import { usePhoneWidth } from '../../../phoneWidth.ts';
+import { usePushBlocked } from '../../../pushPermission.ts';
+import { NotificationsDesk } from './NotificationsDesk.tsx';
 
 type Channel = SettingChannel;
 
@@ -24,15 +27,20 @@ type Grid =
   | { status: 'failed' }
   | { status: 'loaded'; settings: NotificationSetting[] };
 
-/** Notification settings (sc-3980): six categories against Push and Email, each switch saved as it changes. */
+/** At a desk, the desk page (sc-30411); in a phone's browser, the grid as it was. */
 export function NotificationSettings() {
+  return usePhoneWidth() ? <PhoneNotificationSettings /> : <NotificationsDesk />;
+}
+
+/** Notification settings (sc-3980): six categories against Push and Email, each switch saved as it changes. */
+function PhoneNotificationSettings() {
   const { t } = useTranslation();
   const [grid, setGrid] = useState<Grid>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [said, setSaid] = useState('');
   const [unsaved, setUnsaved] = useState<{ category: NotificationCategory; channel: Channel }>();
   const [saving, setSaving] = useState<ReadonlySet<string>>(new Set());
-  const blocked = typeof Notification !== 'undefined' && Notification.permission === 'denied';
+  const blocked = usePushBlocked();
   const title = useRef<HTMLHeadingElement>(null);
   const [refresh, setRefresh] = useState(0);
   const { watch, refreshing } = useOffline({
@@ -178,6 +186,7 @@ export function NotificationSettings() {
                           `notificationSettings.note.${category}`,
                           usageThresholdsIn(currentLocale()),
                         )}
+                        {!setting.email.switchable && ' ' + t('notificationSettings.locked.email')}
                       </span>
                       {failed != null && (
                         <FieldError

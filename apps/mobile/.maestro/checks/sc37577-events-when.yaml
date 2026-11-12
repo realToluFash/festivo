@@ -1,0 +1,45 @@
+# sc-37577: Events filter, When, Between dates shows its two dates; This week chosen; closed by a tap outside.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter'
+    timeout: 30000
+- tapOn:
+    id: 'events.filter'
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter.menu'
+    timeout: 10000
+- tapOn:
+    id: 'events.filter.when'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'events.filter.when.between'
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: 'events.filter.when.between'
+- waitForAnimationToEnd
+- takeScreenshot: when-between
+- scrollUntilVisible:
+    element:
+      id: 'events.filter.when.week'
+    direction: UP
+    timeout: 10000
+- tapOn:
+    id: 'events.filter.when.week'
+- waitForAnimationToEnd
+- takeScreenshot: when-week
+- tapOn:
+    id: 'events.filter.back'
+- tapOn:
+    point: '50%,20%'
+    label: 'outside the menu'
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.filter.menu'
+    timeout: 10000
+- takeScreenshot: closed-filtered

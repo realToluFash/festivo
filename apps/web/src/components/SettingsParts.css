@@ -40,6 +40,10 @@
   list-style: none;
 }
 
+:where(.desk) .notice > p {
+  margin-block: 1em;
+}
+
 .desk :is(button, a, input, [tabindex='0']):focus-visible {
   outline: none;
   box-shadow: var(--deskRing);
@@ -628,6 +632,20 @@
   color: var(--colorBroken);
 }
 
+.desk-text.is-wraps {
+  display: block;
+  max-width: calc(100% + 2 * var(--spaceSm));
+  padding-block: 11px;
+  line-height: 1.45;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.desk-tied {
+  white-space: nowrap;
+}
+
 .desk-text:hover {
   text-decoration: underline;
 }
@@ -635,6 +653,15 @@
 .desk-rows > * + * {
   padding-top: 1px;
   background: var(--deskHairline) no-repeat 0 0 / 100% 1px;
+}
+
+.desk-faces {
+  display: flex;
+  align-items: center;
+}
+
+.desk-faces > * + * {
+  margin-left: -9px;
 }
 
 .desk-rows.has-lead > * + * {
@@ -950,6 +977,7 @@
   display: flex;
   flex-direction: column;
   width: var(--deskDialog);
+  max-width: calc(100vw - 2 * var(--spaceXl));
   max-height: calc(100vh - 2 * var(--space6xl));
   overflow: hidden;
   border: 1px solid var(--colorBorder);
@@ -961,7 +989,7 @@
   flex-wrap: nowrap;
   gap: var(--spaceLg);
   box-sizing: border-box;
-  height: 52px;
+  min-height: 52px;
   padding: 0 var(--spaceSm);
   border-bottom: 1px solid var(--colorBorder);
 }
@@ -996,11 +1024,23 @@
 .desk-nav-title {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
+  padding: var(--spaceSm) 0;
   font: 700 17px/1.2 var(--fontFamily);
   text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
+}
+
+.desk-nav.is-under {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  row-gap: 0;
+}
+
+.desk-nav.is-under .desk-nav-title {
+  flex-basis: 100%;
+  order: 1;
+  padding: 0 var(--spaceXxl) var(--spaceSm);
+  text-align: start;
 }
 
 .desk-dialog-body {
@@ -1023,6 +1063,9 @@
   flex-direction: column;
   gap: var(--spaceSm);
   width: var(--deskAsk);
+  max-width: calc(100vw - 2 * var(--spaceXl));
+  max-height: calc(100vh - 2 * var(--space6xl));
+  overflow-y: auto;
   padding: var(--space3xl) var(--space3xl) var(--spaceLg);
   border-radius: var(--space3xl);
 }
@@ -1042,9 +1085,21 @@
 }
 
 .desk-ask-pair.actions-pair {
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 0 var(--space3xl);
   padding-top: var(--spaceXs);
+}
+
+/* The way back can name a person: a long name wraps inside it, centred, as sc-14816 settled for the Roles buttons. */
+.desk-text.desk-ask-keep {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding-block: var(--spaceSm);
+  line-height: 1.3;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .desk-ask-body {
@@ -1210,4 +1265,66 @@
 .desk-error svg {
   flex: none;
   margin-top: 1px;
+}
+
+/* Members' list in a column beside the picked person, from 1536 (sc-29708). */
+.desk-split {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  box-sizing: border-box;
+  width: var(--deskSplit);
+  padding: var(--spaceXxl) var(--spaceXl);
+  overflow-y: auto;
+  border-right: 1px solid var(--colorBorder);
+}
+
+.desk-more {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--colorCard);
+  box-shadow: 0 0 0 2.5px var(--colorInkOnDark);
+  color: var(--colorAccent);
+  font: 700 13px/1 var(--fontFamily);
+}
+
+.desk-split .desk-block {
+  margin: 0 -10px;
+}
+
+.desk-split :is(.desk-head, .desk-foot) {
+  padding-inline: var(--spaceMd);
+}
+
+.desk-split :is(button, label).desk-row {
+  width: 100%;
+  margin: 0;
+  padding: 9px var(--spaceMd);
+}
+
+.desk-split .desk-rows.has-lead > * + * {
+  background-position: 58px 0;
+  background-size: calc(100% - 58px) 1px;
+}
+
+.desk-asker {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-top: var(--spaceXs);
+}
+
+.desk-asker h3 {
+  font: 700 22px/1.15 var(--fontFamily);
+  letter-spacing: -0.015em;
+}
+
+.desk-said:empty {
+  margin-top: calc(-1 * var(--spaceLg));
 }

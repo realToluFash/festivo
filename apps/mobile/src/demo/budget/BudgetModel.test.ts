@@ -188,7 +188,18 @@ describe('payments: Due next, Against plan and the card’s one step', () => {
       paidCount: 3,
       stillToPay: 1309000,
       scheduledCount: 5,
+      notScheduled: 150000,
     });
+  });
+
+  it('says under Still to pay how much of the quotes is not scheduled yet', () => {
+    expect(planOf(ledgerFor('populated')).notScheduled).toBe(150000);
+    expect(planOf(ledgerFor('nothing_due')).notScheduled).toBe(150000);
+    expect(planOf(ledgerFor('early_on')).notScheduled).toBe(1890000);
+    expect(planOf({ ...START_LEDGER, cancelled: ['savour-deposit'] }).notScheduled).toBe(600000);
+    expect(say.notScheduled(money(150000, 'en-GB'))).toBe(
+      '£1,500.00 of the quotes is not scheduled yet',
+    );
   });
 
   it('schedules each quote in full but Savour Kitchen’s £1,500', () => {
@@ -437,8 +448,8 @@ describe('Who is paying (sc-30200): every share adds up', () => {
     const share = obi == null ? { settled: 0, ifAll: 0 } : shareOf(obi);
     expect(
       LONG_NAME.range(money(share.settled, LONG_NAME.locale), money(share.ifAll, LONG_NAME.locale)),
-    ).toBe(`${money(1062000, 'pt-BR')} a ${money(1228500, 'pt-BR')}`);
-    expect(money(1062000, 'pt-BR')).toMatch(/^£\s?10\.620,00$/u);
+    ).toBe(`${money(1062000, LONG_NAME.locale)} a ${money(1228500, LONG_NAME.locale)}`);
+    expect(money(1062000, LONG_NAME.locale)).toMatch(/^10\s620,00\s£$/u);
   });
 
   it('sends: busy, then a link, and never sends offline', () => {

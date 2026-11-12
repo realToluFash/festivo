@@ -1,4 +1,4 @@
-import { CONTACTS_MOST, contactsLeft } from '@soirely/domain';
+import { CONTACTS_MOST, contactsLeft, firstUnverified } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 export type ContactKind = 'email' | 'phone';
@@ -12,26 +12,6 @@ export interface Contact {
 }
 
 export type CardLine = { kind: 'done' | 'todo'; text: string } | null;
-
-export function primaryFirst(rows: readonly Contact[]): Contact[] {
-  return [...rows].sort((a, b) => Number(b.primary) - Number(a.primary));
-}
-
-export function primaryOf(rows: readonly Contact[]): Contact | null {
-  return rows.find((row) => row.primary) ?? null;
-}
-
-/** The card's one step: the first address not verified yet, the primary first, else the first number. */
-export function firstUnverified(
-  emails: readonly Contact[],
-  phones: readonly Contact[],
-): { kind: ContactKind; row: Contact } | null {
-  const email = primaryFirst(emails).find((row) => !row.verified);
-  if (email != null) return { kind: 'email', row: email };
-  const phone = primaryFirst(phones).find((row) => !row.verified);
-
-  return phone == null ? null : { kind: 'phone', row: phone };
-}
 
 /** The one line under you: what just happened until the page is left, else what is not verified yet. */
 export function cardLine(
@@ -126,6 +106,9 @@ export function promotedWords(kind: ContactKind, shown: string, t: TFunction): s
 /** How a code reached the person: by email, or a phone's route as `codeWording` names it. */
 export type CodeLine = 'email' | 'whatsapp' | 'fallback' | 'chosen' | 'texted';
 
+/** Why the code field refuses what was typed or sent. */
+export type CodeError = 'blank' | 'short' | 'wrong' | 'failed';
+
 export interface VerifyWords {
   title: string;
   lead: string;
@@ -167,6 +150,15 @@ export function verifyWords(line: CodeLine, shown: string, t: TFunction): Verify
     wrong: t(whatsApp ? 'verifyPhone.wrongWhatsApp' : 'verifyPhone.wrong'),
     expired: { title: t('verifyPhone.expiredTitle'), line: t('verifyPhone.expiredBody') },
     exhausted: { title: t('verifyPhone.exhaustedTitle'), line: t('verifyPhone.exhaustedBody') },
+  };
+}
+
+export function codeErrors(words: VerifyWords, t: TFunction): Record<CodeError, string> {
+  return {
+    blank: words.blank,
+    short: words.short,
+    wrong: words.wrong,
+    failed: t('verifyEmail.failedBody'),
   };
 }
 

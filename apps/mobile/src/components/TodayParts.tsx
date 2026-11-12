@@ -13,6 +13,7 @@ import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { EventMesh, eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
+import { Notice } from './Notice.tsx';
 import {
   type AgendaDay,
   type EventCard,
@@ -249,6 +250,7 @@ const NAME_ROOM = 64;
 
 function Bar({ bar, wide }: { bar: StripBar; wide: boolean }) {
   const colour = eventColour(bar.event);
+  const height = wide ? 32 : 30;
   const [room, setRoom] = useState<number>();
   const [label, setLabel] = useState<number>();
   // A two-day bar on a phone has room for the name or its length, and the name says whose it is.
@@ -259,9 +261,10 @@ function Bar({ bar, wide }: { bar: StripBar; wide: boolean }) {
       style={[
         styles.bar,
         {
+          top: tokens.spaceXs + (bar.lane ?? 0) * (height + tokens.spaceXs),
           left: `${(bar.start / 7) * 100}%`,
           width: `${(bar.span / 7) * 100}%`,
-          height: wide ? 32 : 30,
+          height,
         },
       ]}
     >
@@ -347,7 +350,16 @@ function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
         ))}
       </View>
       {moment.bars.length > 0 && (
-        <View style={[styles.bars, { height: (wide ? 32 : 30) + tokens.spaceXs }]}>
+        <View
+          style={[
+            styles.bars,
+            {
+              height:
+                (1 + Math.max(...moment.bars.map((bar) => bar.lane ?? 0))) *
+                ((wide ? 32 : 30) + tokens.spaceXs),
+            },
+          ]}
+        >
           {moment.bars.map((bar) => (
             <Bar key={bar.event.id} bar={bar} wide={wide} />
           ))}
@@ -395,7 +407,7 @@ function AgendaDays({
 
                 return (
                   <View
-                    key={`${item.time}${item.title}`}
+                    key={`${item.event.id}${item.time}${item.title}`}
                     style={[styles.item, last && styles.itemLast, last && ruled && styles.ruled]}
                   >
                     <Text
@@ -660,7 +672,7 @@ const STEPS = ['name', 'place', 'live'] as const;
 
 export function FirstRun({ wide }: { wide: boolean }) {
   const { t } = useTranslation();
-  const { open } = useTodayShell();
+  const { open, creates } = useTodayShell();
 
   return (
     <View style={[styles.first, wide && styles.firstWide]}>
@@ -668,6 +680,13 @@ export function FirstRun({ wide }: { wide: boolean }) {
       <Text size={15} weight="medium" style={[styles.secondary, styles.firstIntro]}>
         {t('todayScreen.firstIntro')}
       </Text>
+      {!creates && (
+        <Notice
+          tone="quiet"
+          mark={tokens.marks.info.glyph}
+          body={t('eventsScreen.firstRunAskOwner')}
+        />
+      )}
       <Panel style={styles.list}>
         {STEPS.map((step, index) => (
           <View key={step} style={[styles.step, index < STEPS.length - 1 && styles.ruled]}>
@@ -696,21 +715,23 @@ export function FirstRun({ wide }: { wide: boolean }) {
           </View>
         ))}
       </Panel>
-      <Pressable
-        onPress={() => open({ to: 'create' })}
-        style={({ pressed }) => [
-          styles.create,
-          wide && styles.createWide,
-          pressed && styles.pressed,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={t('todayScreen.startFirst')}
-      >
-        <Glyph name="plus" ink={tokens.colorInkOnDark} />
-        <Text size={TYPE.row} weight="semibold" accessible={false} style={styles.onAccent}>
-          {t('todayScreen.startFirst')}
-        </Text>
-      </Pressable>
+      {creates && (
+        <Pressable
+          onPress={() => open({ to: 'create' })}
+          style={({ pressed }) => [
+            styles.create,
+            wide && styles.createWide,
+            pressed && styles.pressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={t('todayScreen.startFirst')}
+        >
+          <Glyph name="plus" ink={tokens.colorInkOnDark} />
+          <Text size={TYPE.row} weight="semibold" accessible={false} style={styles.onAccent}>
+            {t('todayScreen.startFirst')}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -804,7 +825,7 @@ const styles = StyleSheet.create({
   dots: { height: tokens.spaceXs, flexDirection: 'row', gap: 3 },
   dot: { width: tokens.spaceXs, height: tokens.spaceXs, borderRadius: 3 },
   bars: { position: 'relative' },
-  bar: { position: 'absolute', top: tokens.spaceXs, paddingRight: 3 },
+  bar: { position: 'absolute', paddingRight: 3 },
   barFill: {
     flex: 1,
     flexDirection: 'row',

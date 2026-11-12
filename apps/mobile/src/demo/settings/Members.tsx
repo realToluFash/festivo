@@ -14,27 +14,25 @@ import {
 import { tokens } from '../../theme/tokens.ts';
 
 import { Landscape, SeenBy } from './Frame.tsx';
-import { ClaimScreen, useOwnerClaim } from './MembersClaim.tsx';
+import { ClaimScreen, ClaimUnderCard, useOwnerClaim } from './MembersClaim.tsx';
 import { useLoad } from './MembersLoading.tsx';
 import { MembersCardView, NobodyPicked, People, Waiting } from './MembersParts.tsx';
 import { type PersonOpening, PersonPage } from './MembersPerson.tsx';
-import {
-  bringListUp,
-  RecoveryRequests,
-  type RecoveryPart,
-  recoveryQuestion,
-} from './MembersRecovery.tsx';
+import { RecoveryRequests, type RecoveryPart } from '../../components/MembersRecovery.tsx';
+import { recoveryQuestion } from '../../kit/membersRecovery.ts';
 import {
   answerable,
   answerTakes,
   endedByRemoval,
   type RecoveryAnswer,
   type RecoveryAsk,
+  recoveryRequestOf,
 } from './MembersRecoverySample.ts';
 import { RequestScreen } from './MembersRequest.tsx';
 import {
   approved,
   type CardStep,
+  claimantName,
   counts,
   type Filter,
   handedOver,
@@ -57,13 +55,7 @@ import {
 import { memberLooking } from './sample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { SummaryPage } from './SummaryPage.tsx';
-import {
-  Ask,
-  FailedBlock,
-  LoadingBlock,
-  SummaryColumn,
-  useRowClear,
-} from '../../components/Summary.tsx';
+import { Ask, FailedBlock, LoadingBlock, SummaryColumn } from '../../components/Summary.tsx';
 
 const PLAIN: PersonOpening = {
   step: 'resting',
@@ -95,7 +87,8 @@ function MembersScreen({ start }: { start: MembersStart }) {
   const shell = useShell();
   const landscape = shell.layout === 'landscape';
   const viewer = start.viewer;
-  const say = membersSayIn(formattingLocale('en', getLocales()[0]?.languageTag));
+  const locale = formattingLocale('en', getLocales()[0]?.languageTag);
+  const say = membersSayIn(locale);
   const { load, retry } = useLoad(start.load);
   const [people, setPeople] = useState<Person[]>(start.people);
   const [leads, setLeads] = useState<Leads>(start.leads);
@@ -108,19 +101,17 @@ function MembersScreen({ start }: { start: MembersStart }) {
   const [gone, setGone] = useState<Removal | null>(start.gone);
   const [removals, setRemovals] = useState(0);
   const [provedAt, setProvedAt] = useState<number | null>(null);
-  const owner = useOwnerClaim(start.claim, start.withdrawing);
-  const waitingRow = useRef<ViewInstance>(null);
+  const owner = useOwnerClaim(start);
   const cardStep = useRef<ViewInstance>(null);
   const focusBack = useRef<ScreenReaderTarget | null>(null);
   const insets = useSafeAreaInsets();
-  const clear = useRowClear();
   const [recovery, setRecovery] = useState<string[]>(start.recovery);
   const [recoveryAsk, setRecoveryAsk] = useState<RecoveryAsk | null>(start.recoveryAsk);
   const [recoveryAnswer, setRecoveryAnswer] = useState<RecoveryAnswer | null>(start.recoveryAnswer);
   const [lit, setLit] = useState<string | null>(null);
+  const [brought, setBrought] = useState(0);
   const [sent, setSent] = useState(start.recoveryAsk?.phase === 'sending' ? 1 : 0);
   const listScroll = useRef<ScrollViewInstance>(null);
-  const recoveryList = useRef<ViewInstance>(null);
   const cardSays = useRef<ScreenReaderTarget | null>(null);
   const targets = useRef<Targets>({});
   const lighting = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -138,12 +129,14 @@ function MembersScreen({ start }: { start: MembersStart }) {
     }),
     [],
   );
-  const [askedId] = useState(
+  const [askedId, setAskedId] = useState(
     () => start.people.find((one) => one.status === 'pendingApproval')?.id ?? null,
   );
   const person = open == null ? null : (people.find((one) => one.id === open) ?? null);
   const asked = viewer.manages ? (people.find((one) => one.id === askedId) ?? null) : null;
-  const asking = asked?.status === 'pendingApproval' ? asked : null;
+  const waitingToJoin = viewer.manages
+    ? people.filter((one) => one.status === 'pendingApproval')
+    : [];
   const card = membersCard({
     people,
     viewer,
@@ -190,10 +183,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
     const id = answerable(recovery, viewer.id)[0];
     if (id == null) return;
     setLit(id);
-    const top = (shell.layout === 'phone' ? insets.top : 0) + tokens.spaceSm;
-    requestAnimationFrame(() =>
-      bringListUp(recoveryList.current, targets.current[id]?.box, listScroll.current, top, clear),
-    );
+    setBrought((count) => count + 1);
     clearTimeout(lighting.current);
     lighting.current = setTimeout(
       () => moveScreenReaderFocus(targets.current[id]?.group ?? null),
@@ -268,17 +258,20 @@ function MembersScreen({ start }: { start: MembersStart }) {
     focusBack.current = opener.current;
   }
 
-  function openRequest(opener: RefObject<ViewInstance | null>): void {
-    from(opener);
+  function openRequest(id: string, opener: ViewInstance | null): void {
+    focusBack.current = opener;
+    setAskedId(id);
     setRequestVisit((count) => count + 1);
     setRequest('approving');
   }
 
   function onStep(step: CardStep): void {
     switch (step) {
-      case 'answer':
-        openRequest(cardStep);
+      case 'answer': {
+        const first = waitingToJoin[0];
+        if (first != null) openRequest(first.id, cardStep.current);
         return;
+      }
       case 'answerRecovery':
         lightRecovery();
         return;
@@ -312,28 +305,29 @@ function MembersScreen({ start }: { start: MembersStart }) {
         }}
         onStep={onStep}
       />
+      <ClaimUnderCard owner={owner} claimant={claimantName(people)} cardSays={cardSays} />
       {waitingBack.length > 0 && (
         <RecoveryRequests
-          waiting={waitingBack}
-          you={viewer.id}
+          waiting={waitingBack.map((one) => recoveryRequestOf(one, one.id === viewer.id, say))}
           lit={lit}
+          brought={brought}
           dense={landscape}
-          say={say}
-          listRef={recoveryList}
+          locale={locale}
+          top={(shell.layout === 'phone' ? insets.top : 0) + tokens.spaceSm}
+          scrollRef={listScroll}
+          faceOf={(request) => {
+            const one = waitingBack.find(({ id }) => id === request.id);
+
+            return { initials: one?.initials ?? '', tone: one?.tone ?? 0 };
+          }}
           onTarget={(id, part, view) => {
             targets.current[id] = { ...targets.current[id], [part]: view };
           }}
           onAnswer={askRecovery}
         />
       )}
-      {asking != null && (
-        <Waiting
-          person={asking}
-          dense={landscape}
-          say={say}
-          onOpen={() => openRequest(waitingRow)}
-          rowRef={waitingRow}
-        />
+      {waitingToJoin.length > 0 && (
+        <Waiting waiting={waitingToJoin} dense={landscape} say={say} onOpen={openRequest} />
       )}
       <People
         listed={listed}
@@ -374,7 +368,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
       <Ask
         open={recoveryAsked != null}
         opener={recoveryOpener}
-        {...recoveryQuestion(recoveryAsk, recoveryAsked?.name ?? '')}
+        {...recoveryQuestion(t, recoveryAsk, recoveryAsked?.name ?? '')}
         onKeep={keepRecoveryAsk}
         onConfirm={confirmRecoveryAsk}
         testID="members.recovery.ask"
@@ -420,6 +414,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
           leads={leads}
           viewer={viewer}
           opening={opening}
+          organisation={start.organisation}
           say={say}
           column={column}
           back={

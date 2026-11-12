@@ -19,6 +19,12 @@ import type { ChipKind } from '../../components/SettingsParts.tsx';
 import type { MarkKind } from '../../components/StatusMark.tsx';
 
 export const ORGANISATION = YOU.organisation;
+
+/** sc-40153's names: 89 characters with Yoruba marks, and one word of 100 that has nowhere to break. */
+export const LONG_NAME =
+  'Ẹgbẹ́ Ọ̀rẹ́ Àṣà Ìbílẹ̀ Ọ̀ṣun Òṣogbo àti Ilé-Ifẹ̀, Ọ̀yọ́, Abẹ́òkúta, Ìjẹ̀bú-Òde àti Ẹ̀kìtì';
+export const ONE_WORD_NAME =
+  'TheGrandBallroomWeddingsGalasAndGardenPartiesCompanyOfLagosLisbonMadridMonterreyAndPortoAlegreEvents';
 export const DOMAIN = 'ire.events';
 /** The demo's today, where the sample's dates sit. */
 export const TODAY = '2026-11-04';
@@ -127,7 +133,16 @@ export const DEADLINES = {
   lucia: '2026-11-16T09:12',
   marta: '2026-11-11T10:00',
   claim: '2026-11-11T09:41',
+  kwame: '2026-11-18T14:30',
+  passes: '2026-11-13T09:41',
+  theirsLapses: '2026-11-15T16:20',
+  theirsPasses: '2026-11-12T16:20',
 } as const;
+
+/** Each request to join has its own removal, the API's `removesAt` (sc-392): Lucía's first, Kwame's two days later. */
+export function removesAt(id: string): string {
+  return id === KWAME ? DEADLINES.kwame : DEADLINES.lucia;
+}
 
 function verb(person: Person): string {
   switch (person.status) {
@@ -178,6 +193,17 @@ export function personLine(person: Person, you: string): string {
 
 export function waitingLine(person: Person, say: MembersSay): string {
   return `${person.email} · asked ${say.day(person.when)}`;
+}
+
+/** One request names its removal; more than one name the first to go, and each request's page its own. */
+export function waitingFoot(waiting: readonly Person[], say: MembersSay): string {
+  const first = waiting[0];
+  if (first == null) return '';
+  const when = say.deadline(removesAt(first.id));
+
+  return waiting.length === 1
+    ? `Removed on ${when} if nobody answers.`
+    : `Each request is removed if nobody answers. ${first.name}’s is first, on ${when}.`;
 }
 
 export function whenWord(person: Pick<Person, 'status' | 'gone'>): string {
@@ -326,6 +352,17 @@ export const MEMBERS_STATES = [
   'handoverNowDone',
   'handoverReadOnly',
   'alsoMember',
+  'longName',
+  'oneWordName',
+  'claimFound',
+  'claimTheirs',
+  'claimTheirsFound',
+  'claimStop',
+  'claimStopped',
+  'claimClosed',
+  'claimRefused',
+  'claimManaged',
+  'waitingTwo',
   ...RECOVERY_STATES,
 ] as const;
 
@@ -388,6 +425,8 @@ export interface MembersStart {
   picked: string | null;
   claim: ClaimState | null;
   withdrawing: boolean;
+  stopping: boolean;
+  refusal: ClaimRefusal | null;
   leads: Leads;
   handover: HandoverStart | null;
   /** The work list a suspended member's page waits on. */
@@ -400,9 +439,25 @@ export interface MembersStart {
   answering: Answering;
   /** sc-563: how many other organisations the open person is also a member of, never which. */
   otherOrganisations: number | null;
+  /** sc-40153: the organisation's name on the person's page, long in the states that wrap Remove. */
+  organisation: string;
 }
 
-export type ClaimState = 'unclaimed' | 'open' | 'withdrawn';
+/** Mine: `open` until the record is found, then `found`. Theirs: another admin's claim, seen by an admin who did not start it. */
+export type ClaimState =
+  'unclaimed' | 'open' | 'found' | 'withdrawn' | 'theirs' | 'theirsFound' | 'stopped' | 'closed';
+
+export type ClaimRefusal = 'address' | 'managed';
+
+export const CLAIM_REFUSALS: Record<ClaimRefusal, string> = {
+  address: `To become the owner, your main address must be at ${DOMAIN}.`,
+  managed: `${DOMAIN} is managed by another organisation. Contact Soirely support.`,
+};
+
+export const KEEP_PUBLISHED =
+  'Keep the record published until then. We look it up again at that moment, and ownership passes only if it is still there.';
+
+export const STOP_CONSEQUENCE = 'After a stop, only Soirely support can restore an owner.';
 
 export const KEEPS_WORKING =
   'Events, guests and your permissions keep working. Only Owner actions, such as billing, wait for an owner.';
@@ -513,12 +568,51 @@ export function membersCard({
           step: { label: 'Check record', does: 'checkRecord' },
           readsOut: false,
         };
+      case 'found':
+        return {
+          ...quiet,
+          says: 'Record found',
+          line: `Ownership passes to you on ${say.deadline(DEADLINES.passes)}.`,
+          step: null,
+          readsOut: false,
+        };
       case 'withdrawn':
         return {
           ...quiet,
           says: 'You withdrew your claim',
           line: 'Everybody who was told is emailed.',
           step: become,
+        };
+      case 'theirs':
+        return {
+          ...quiet,
+          says: `${claimantName(people)} is becoming the owner`,
+          line: `Their DNS record has not been found yet. Without it, the claim lapses on ${say.deadline(DEADLINES.theirsLapses)}.`,
+          step: null,
+          readsOut: false,
+        };
+      case 'theirsFound':
+        return {
+          ...quiet,
+          says: `${claimantName(people)} is becoming the owner`,
+          line: `Their record is found. Ownership passes on ${say.deadline(DEADLINES.theirsPasses)}.`,
+          step: null,
+          readsOut: false,
+        };
+      case 'stopped':
+        return {
+          ...quiet,
+          says: `You stopped ${claimantName(people)}’s claim`,
+          line: `Everybody who was told is emailed. Only Soirely support can restore an owner of ${ORGANISATION} now.`,
+          step: null,
+        };
+      case 'closed':
+        return {
+          ...quiet,
+          says: `${ORGANISATION} has no active owner`,
+          line: `A claim was stopped, so only Soirely support can restore an owner. ${KEEPS_WORKING}`,
+          step: null,
+          readsOut: false,
         };
     }
   }
@@ -583,12 +677,41 @@ export function handedOver(leads: Leads, from: string, to: readonly string[]): L
 }
 
 const LUCIA = 'lucia.gomez@outlook.com';
+const KWAME = 'kwame.asante@gmail.com';
 const PRIYA = 'priya@ire.events';
 const ANA = 'ana.souza@ire.events';
 const MARTA = 'marta.silva@ire.events';
 const DANIEL = 'daniel.kim@ire.events';
 const TOM = VIEWERS.tom.id;
 const JULIEN = VIEWERS.julien.id;
+
+/** claimRefused's viewer: Tom as an admin, whose main address is at gmail.com, not the domain. */
+const OFF_DOMAIN_ADMIN: MembersViewer = { ...VIEWERS.tom, role: 'Admin', manages: true };
+
+/** Another admin's claim, as Julien sees it, is Ana Souza's: she is an admin in those states. */
+const CLAIMANT = ANA;
+
+export function claimantName(people: readonly Person[]): string {
+  return people.find((one) => one.id === CLAIMANT)?.name ?? '';
+}
+
+function withKwameWaiting(people: readonly Person[]): Person[] {
+  return [
+    ...people,
+    {
+      name: 'Kwame Asante',
+      initials: 'KA',
+      email: KWAME,
+      id: KWAME,
+      role: null,
+      status: 'pendingApproval',
+      how: 'Asked to join',
+      when: '2026-11-04',
+      tone: people.length,
+      gone: null,
+    },
+  ];
+}
 
 /** Leave's states are Ana Souza's, who leads two events (handover-a-spec.md §6). */
 export const LEAVER = ANA;
@@ -691,6 +814,8 @@ export function membersStart(
     picked: null,
     claim: null,
     withdrawing: false,
+    stopping: false,
+    refusal: null,
     leads: SAMPLE_LEADS,
     handover: null,
     leadsLoad: 'loaded',
@@ -701,6 +826,7 @@ export function membersStart(
     recoveryAnswer: null,
     answering: 'answers',
     otherOrganisations: null,
+    organisation: ORGANISATION,
   };
   const removing: MembersStart = {
     ...base,
@@ -734,6 +860,16 @@ export function membersStart(
     recovery: [PRIYA],
     recoveryAnswer: { id: KOFI, kind },
   });
+
+  const noOwner: MembersStart = {
+    ...base,
+    viewer: VIEWERS.julien,
+    people: people.map((one) => (one.id === YOU.email ? { ...one, status: 'suspended' } : one)),
+  };
+  const claimedByAna: MembersStart = {
+    ...noOwner,
+    people: changedRole(noOwner.people, CLAIMANT, 'Admin'),
+  };
 
   switch (state) {
     case 'list':
@@ -780,6 +916,10 @@ export function membersStart(
       return { ...base, open: PRIYA };
     case 'alsoMember':
       return { ...base, open: PRIYA, otherOrganisations: 2 };
+    case 'longName':
+      return { ...base, open: PRIYA, organisation: LONG_NAME };
+    case 'oneWordName':
+      return { ...base, open: PRIYA, organisation: ONE_WORD_NAME };
     case 'removing':
     case 'handover':
     case 'handoverMenu':
@@ -847,12 +987,33 @@ export function membersStart(
     case 'claim':
     case 'withdraw':
       return {
-        ...base,
-        viewer: VIEWERS.julien,
-        people: people.map((one) => (one.id === YOU.email ? { ...one, status: 'suspended' } : one)),
+        ...noOwner,
         claim: state === 'claim' ? 'unclaimed' : 'open',
         withdrawing: state === 'withdraw',
       };
+    case 'claimFound':
+      return { ...noOwner, claim: 'found' };
+    case 'claimTheirs':
+    case 'claimStop':
+      return { ...claimedByAna, claim: 'theirs', stopping: state === 'claimStop' };
+    case 'claimTheirsFound':
+      return { ...claimedByAna, claim: 'theirsFound' };
+    case 'claimStopped':
+      return { ...claimedByAna, claim: 'stopped' };
+    case 'claimClosed':
+      return { ...claimedByAna, claim: 'closed' };
+    case 'claimRefused':
+      return {
+        ...noOwner,
+        viewer: OFF_DOMAIN_ADMIN,
+        people: changedRole(noOwner.people, TOM, 'Admin'),
+        claim: 'unclaimed',
+        refusal: 'address',
+      };
+    case 'claimManaged':
+      return { ...noOwner, claim: 'unclaimed', refusal: 'managed' };
+    case 'waitingTwo':
+      return { ...base, people: withKwameWaiting(people) };
   }
 }
 

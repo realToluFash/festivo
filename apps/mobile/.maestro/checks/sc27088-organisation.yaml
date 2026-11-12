@@ -12,7 +12,7 @@ onFlowComplete:
       SCREEN: organisation
       REFRESHING: 'organisation.refreshing'
       LOADED_TEXT: '.*'
-      LOADED_ID: 'organisation.name'
+      LOADED_ID: 'organisation.card'
 - assertVisible:
-    id: 'organisation.name'
+    id: 'organisation.card'
 - takeScreenshot: reloaded

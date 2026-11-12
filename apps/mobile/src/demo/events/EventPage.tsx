@@ -5,12 +5,17 @@ import { type ReactNode, type RefObject, useMemo, useReducer, useRef, useState }
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
-import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { LineIcon } from '../../components/AccountCard.tsx';
-import { SwitchTrack } from '../../components/ConfettiSwitch.tsx';
 import { EventCard, EventThumb } from '../../components/EventCard.tsx';
-import { AcPill, AlertLine, CHANGED, EditScreen } from './EventEdits.tsx';
+import { AcPill, CHANGED, EditScreen } from './EventEdits.tsx';
+import {
+  JustForYou,
+  Manage,
+  OverviewColumns,
+  PartsSection,
+  type RefFor,
+} from '../../components/EventOverview.tsx';
 import { AreaPage, EventFrame } from './EventFrame.tsx';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
 import { needsStateOf, readerOf } from './NeedsYouModel.ts';
@@ -50,7 +55,7 @@ import { W, say } from './EventsWords.ts';
 import { datesSaveSays, replyByInTell, replyByRow, replyBySaved } from './ReplyBy.ts';
 import { replyByOf } from '../guests/GuestsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
-import { Row, RowList, Section, TextAction } from '../../components/Summary.tsx';
+import { LoadingBlock, Row, Section, TextAction } from '../../components/Summary.tsx';
 import { type MessagesState, startOf } from '../messages/MessagesModel.ts';
 import { reduceReach } from '../messages/Reach.ts';
 import { TellGuests } from '../messages/MessagesOverlays.tsx';
@@ -61,6 +66,8 @@ import { W as MW, say as sayMessages } from '../messages/MessagesWords.ts';
 import type { SeatingState } from '../seating/SeatingModel.ts';
 import { SeatingScreen } from '../seating/SeatingScreen.tsx';
 import { GuestNumbers } from '../guests/GuestNumbers.tsx';
+import { PeopleCard } from '../people/PeopleCard.tsx';
+import type { CardState } from '../people/PeopleCardModel.ts';
 import {
   type FilterKey,
   GUESTS_ON,
@@ -121,6 +128,7 @@ export function EventScreen({
   seating = null,
   guests = null,
   budget = null,
+  people = null,
   without,
 }: {
   id: string | undefined;
@@ -131,6 +139,8 @@ export function EventScreen({
   /** With Guests' own states, Guests opens on one, or Overview on its counts. */
   guests?: GuestsState | null;
   budget?: BudgetState | null;
+  /** The People card's state on Overview (sc-29914); none is the populated card. */
+  people?: CardState | null;
   without?: AreaKey | undefined;
 }) {
   const shell = useShell();
@@ -283,6 +293,7 @@ export function EventScreen({
     <Details
       shown={shown}
       replyBy={replyBy}
+      now={now}
       locale={locale}
       refFor={refFor}
       onEdit={openEdit}
@@ -310,17 +321,34 @@ export function EventScreen({
       onOpen={openGuests}
     />
   );
+  const peopleCard = <PeopleCard state={people} />;
   const guestsPage = <GuestsPage />;
   const forYou = (
     <JustForYou
-      muted={muted}
-      mute={mute}
+      words={FOR_YOU}
+      mute={
+        mute === 'notLoaded'
+          ? { kind: 'notLoaded' }
+          : { kind: 'shown', muted, notSaved: mute === 'notSaved', busy: false }
+      }
       onToggle={toggleMute}
       onRetry={() => setMute('ok')}
       onSettings={() => shell.openSection('notifications')}
+      testIDs={{ row: 'event.mute', retry: 'event.mute.retry', settings: 'event.notifications' }}
     />
   );
-  const manage = <Manage keys={manageOf(shown, now)} refFor={refFor} onManage={onManage} />;
+  const manage = (
+    <Manage
+      title={W.manage}
+      items={manageOf(shown, now).map((key) => ({
+        key,
+        ...MANAGE[key],
+        testID: `event.manage.${key}`,
+      }))}
+      refFor={refFor}
+      onManage={onManage}
+    />
+  );
   const tellHere = (words: string) => {
     if (at === 'messages') dispatch({ type: 'told', words });
     else setTold(words);
@@ -343,6 +371,22 @@ export function EventScreen({
       before={tellMoved}
     />
   );
+
+  if (state === 'loading')
+    return (
+      <EventFrame
+        event={shown}
+        now={now}
+        area={at}
+        onArea={setAt}
+        more={more}
+        onMore={setMore}
+        without={without}
+        loading
+      >
+        <LoadingBlock words={W.loadingEvent} />
+      </EventFrame>
+    );
 
   if (at === 'seating' && messagesHere)
     return (
@@ -427,37 +471,40 @@ export function EventScreen({
   let page: ReactNode;
   if (at !== 'overview' && at !== 'people')
     page = <AreaPage area={at} event={shown} locale={locale} />;
-  else if (shell.layout === 'landscape')
+  else
     page = (
-      <>
-        {card}
-        <View style={styles.columns}>
-          <View style={styles.left}>
+      <OverviewColumns
+        landscape={shell.layout === 'landscape'}
+        card={card}
+        left={
+          <>
             {details}
             {needsYou}
             {nameCover}
-          </View>
-          <View style={styles.right}>
+          </>
+        }
+        right={
+          <>
             {numbers}
+            {peopleCard}
             {guestsPage}
             {forYou}
             {manage}
-          </View>
-        </View>
-      </>
-    );
-  else
-    page = (
-      <>
-        {card}
-        {numbers}
-        {details}
-        {needsYou}
-        {nameCover}
-        {guestsPage}
-        {forYou}
-        {manage}
-      </>
+          </>
+        }
+        stacked={
+          <>
+            {numbers}
+            {peopleCard}
+            {details}
+            {needsYou}
+            {nameCover}
+            {guestsPage}
+            {forYou}
+            {manage}
+          </>
+        }
+      />
     );
 
   return (
@@ -524,11 +571,10 @@ export function EventScreen({
   );
 }
 
-type RefFor = (key: string) => (node: ViewInstance | null) => void;
-
 function Details({
   shown,
   replyBy,
+  now,
   locale,
   refFor,
   onEdit,
@@ -536,6 +582,7 @@ function Details({
 }: {
   shown: Shown;
   replyBy: string | null;
+  now: Date;
   locale: string;
   refFor: RefFor;
   onEdit: (part: EditPart) => void;
@@ -544,117 +591,32 @@ function Details({
   const dates = datesRow(shown, locale);
   const hosts = hostsRow(shown, locale);
   const locked = scheduleLocked(shown);
-  const reply = replyByRow(replyBy, shown.timeZone, locale);
+  const reply = replyByRow(replyBy, shown.timeZone, locale, now);
 
   return (
-    <Section title={W.details}>
-      <RowList
-        items={[
-          {
-            key: 'dates',
-            inset: 40,
-            row: (
-              <Row
-                ref={refFor('dates')}
-                title={dates.title}
-                line={dates.line}
-                lead={<LineIcon name="calendar" />}
-                opens={!locked}
-                onPress={locked ? undefined : () => onEdit('dates')}
-                testID="event.row.dates"
-              />
+    <PartsSection
+      title={W.details}
+      rowIDs="event.row"
+      refFor={refFor}
+      onEdit={onEdit}
+      rows={[
+        { part: 'dates', ...dates, opens: !locked },
+        { part: 'replyBy', ...reply, opens: !locked },
+        {
+          part: 'venue',
+          title: shown.venue?.name ?? W.venueToBeConfirmed,
+          line: shown.venue == null ? W.venue : `${W.venue} · ${shown.venue.address}`,
+          opens: true,
+          after:
+            shown.venue == null ? undefined : (
+              <TextAction label={W.openInMaps} glyph="globe" onPress={onMaps} testID="event.maps" />
             ),
-          },
-          {
-            key: 'replyBy',
-            inset: 40,
-            row: (
-              <Row
-                ref={refFor('replyBy')}
-                title={reply.title}
-                line={reply.line}
-                lead={<LineIcon name="clock" />}
-                opens={!locked}
-                onPress={locked ? undefined : () => onEdit('replyBy')}
-                testID="event.row.replyBy"
-              />
-            ),
-          },
-          {
-            key: 'venue',
-            inset: 40,
-            row: (
-              <View>
-                <Row
-                  ref={refFor('venue')}
-                  title={shown.venue?.name ?? W.venueToBeConfirmed}
-                  line={shown.venue == null ? W.venue : `${W.venue} · ${shown.venue.address}`}
-                  lead={<LineIcon name="pin" />}
-                  opens
-                  onPress={() => onEdit('venue')}
-                  testID="event.row.venue"
-                />
-                {shown.venue != null && (
-                  <View style={styles.maps}>
-                    <TextAction
-                      label={W.openInMaps}
-                      glyph="globe"
-                      onPress={onMaps}
-                      testID="event.maps"
-                    />
-                  </View>
-                )}
-              </View>
-            ),
-          },
-          {
-            key: 'hosts',
-            inset: 40,
-            row: (
-              <Row
-                ref={refFor('hosts')}
-                title={hosts.title}
-                line={hosts.line}
-                lead={<LineIcon name="users" />}
-                opens
-                onPress={() => onEdit('hosts')}
-                testID="event.row.hosts"
-              />
-            ),
-          },
-          {
-            key: 'type',
-            inset: 40,
-            row: (
-              <Row
-                ref={refFor('type')}
-                title={TYPE_WORDS[shown.type]}
-                line={W.type}
-                lead={<LineIcon name="events" />}
-                opens
-                onPress={() => onEdit('type')}
-                testID="event.row.type"
-              />
-            ),
-          },
-          {
-            key: 'currency',
-            inset: 40,
-            row: (
-              <Row
-                ref={refFor('currency')}
-                title={currencyWords(shown.currency)}
-                line={W.currency}
-                lead={<LineIcon name="wallet" />}
-                opens
-                onPress={() => onEdit('currency')}
-                testID="event.row.currency"
-              />
-            ),
-          },
-        ]}
-      />
-    </Section>
+        },
+        { part: 'hosts', ...hosts, opens: true },
+        { part: 'type', title: TYPE_WORDS[shown.type], line: W.type, opens: true },
+        { part: 'currency', title: currencyWords(shown.currency), line: W.currency, opens: true },
+      ]}
+    />
   );
 }
 
@@ -668,42 +630,22 @@ function NameAndCover({
   onEdit: (part: EditPart) => void;
 }) {
   return (
-    <Section title={W.nameAndCover}>
-      <RowList
-        items={[
-          {
-            key: 'name',
-            inset: 40,
-            row: (
-              <Row
-                ref={refFor('name')}
-                title={shown.name}
-                line={W.eventName}
-                lead={<LineIcon name="edit" />}
-                opens
-                onPress={() => onEdit('name')}
-                testID="event.row.name"
-              />
-            ),
-          },
-          {
-            key: 'cover',
-            inset: 40,
-            row: (
-              <Row
-                ref={refFor('cover')}
-                title={shown.photo ? W.yourPhoto : W.defaultCover}
-                line={shown.photo ? `${W.cover} · ${W.showingMiddle}` : W.cover}
-                lead={<EventThumb event={shown} side={28} radius={8} />}
-                opens
-                onPress={() => onEdit('cover')}
-                testID="event.row.cover"
-              />
-            ),
-          },
-        ]}
-      />
-    </Section>
+    <PartsSection
+      title={W.nameAndCover}
+      rowIDs="event.row"
+      refFor={refFor}
+      onEdit={onEdit}
+      rows={[
+        { part: 'name', title: shown.name, line: W.eventName, opens: true },
+        {
+          part: 'cover',
+          title: shown.photo ? W.yourPhoto : W.defaultCover,
+          line: shown.photo ? `${W.cover} · ${W.showingMiddle}` : W.cover,
+          lead: <EventThumb event={shown} side={28} radius={8} />,
+          opens: true,
+        },
+      ]}
+    />
   );
 }
 
@@ -726,56 +668,15 @@ function GuestsPage() {
   );
 }
 
-function JustForYou({
-  muted,
-  mute,
-  onToggle,
-  onRetry,
-  onSettings,
-}: {
-  muted: boolean;
-  mute: Mute;
-  onToggle: () => void;
-  onRetry: () => void;
-  onSettings: () => void;
-}) {
-  return (
-    <Section title={W.justForYou}>
-      {mute === 'notLoaded' ? (
-        <View style={styles.notLoaded}>
-          <Text size={15} weight="medium">
-            {W.muteNotLoaded}
-          </Text>
-          <TextAction label={W.tryAgain} onPress={onRetry} testID="event.mute.retry" />
-        </View>
-      ) : (
-        <>
-          <Row
-            title={W.mute}
-            line={W.muteNote}
-            lead={<LineIcon name="bell" />}
-            trail={<SwitchTrack on={muted} />}
-            onPress={onToggle}
-            accessibilityRole="switch"
-            accessibilityState={{ checked: muted }}
-            accessibilityLabel={`${W.mute}. ${W.muteNote}`}
-            testID="event.mute"
-          />
-          {mute === 'notSaved' && (
-            <View style={styles.notSaved}>
-              <AlertLine text={W.muteNotSaved} />
-            </View>
-          )}
-        </>
-      )}
-      <TextAction
-        label={W.notificationSettings}
-        onPress={onSettings}
-        testID="event.notifications"
-      />
-    </Section>
-  );
-}
+const FOR_YOU = {
+  title: W.justForYou,
+  mute: W.mute,
+  note: W.muteNote,
+  notLoaded: W.muteNotLoaded,
+  tryAgain: W.tryAgain,
+  notSaved: W.muteNotSaved,
+  settings: W.notificationSettings,
+};
 
 const MANAGE: Record<ManageKey, { label: string; line: string; removes: boolean }> = {
   duplicate: { label: W.duplicate, line: W.duplicateLine, removes: false },
@@ -785,40 +686,7 @@ const MANAGE: Record<ManageKey, { label: string; line: string; removes: boolean 
   delete: { label: W.deleteOpen, line: W.deleteLine, removes: true },
 };
 
-function Manage({
-  keys,
-  refFor,
-  onManage,
-}: {
-  keys: readonly ManageKey[];
-  refFor: RefFor;
-  onManage: (key: ManageKey) => void;
-}) {
-  return (
-    <Section title={W.manage}>
-      <View style={styles.manage}>
-        {keys.map((key) => (
-          <TextAction
-            key={key}
-            ref={refFor(key)}
-            label={MANAGE[key].label}
-            consequence={MANAGE[key].line}
-            removes={MANAGE[key].removes}
-            plain={!MANAGE[key].removes}
-            onPress={() => onManage(key)}
-            testID={`event.manage.${key}`}
-          />
-        ))}
-      </View>
-    </Section>
-  );
-}
-
 const styles = StyleSheet.create({
-  columns: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.space5xl },
-  left: { flex: 1, minWidth: 0, gap: 18 },
-  right: { width: 328, gap: 18 },
-  maps: { paddingLeft: 40, marginTop: -tokens.spaceSm, paddingBottom: tokens.spaceXs },
   dashed: {
     gap: tokens.spaceXs,
     paddingVertical: tokens.spaceLg,
@@ -829,7 +697,4 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   pillAt: { paddingLeft: 40, alignItems: 'flex-start' },
-  notLoaded: { gap: tokens.spaceHair },
-  notSaved: { paddingTop: tokens.spaceXxs },
-  manage: { gap: tokens.spaceSm },
 });

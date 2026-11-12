@@ -78,6 +78,8 @@
     "web:events.columnDates",
     "web:eventPage.dates",
     "mobile:eventPage.dates",
+    "mobile:eventPage.datesLine",
+    "mobile:eventPage.type",
     "web:eventNav.menu",
     "mobile:eventNav.menu",
     "web:eventNav.messages",
@@ -86,6 +88,7 @@
     "mobile:eventNav.budget",
     "web:auth.copyright",
     "mobile:todayScreen.notifications",
+    "web:today.notifications",
     "web:seating.countTables_one",
     "web:seating.countTables_other",
     "web:seating.colours.rose",
@@ -94,7 +97,12 @@
     "web:personalisation.scheme.sorbet",
     "mobile:personalisation.scheme.violet",
     "mobile:personalisation.scheme.cobalt",
-    "mobile:personalisation.scheme.sorbet"
+    "mobile:personalisation.scheme.sorbet",
+    "web:generalDesk.invitations",
+    "mobile:orgGeneral.invitations",
+    "web:invitations.fromNobodyNoRole",
+    "web:eventsSearch.type",
+    "mobile:eventsSearch.type"
   ],
   "pt": [
     "web:nav.menu",

@@ -2,18 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
+import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
+import { SETTINGS_PAGE } from '../../src/components/listFrame.ts';
 import { AccountPage } from '../../src/components/AccountPage.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { Text, type TextHandle } from '../../src/components/Text.tsx';
 import { moveScreenReaderFocus } from '../../src/components/screenReaderFocus.ts';
 import { useOffline } from '../../src/offline.ts';
-import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
+import { settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { reloadSignedIn, rereadAccount, useSignedIn } from '../../src/signedIn.ts';
-import { tokens } from '../../src/theme/tokens.ts';
+import { PANE_TITLE, paneTitle } from '../../src/components/topTitle.ts';
 
 /** Settings > Your account in the app, summary first: you, About you, then the addresses and numbers (sc-30411). */
 export default function Account() {
@@ -50,6 +51,8 @@ export default function Account() {
   return (
     <AppFrame
       current="settings"
+      top="scrolls"
+      listUnderTabs
       aboutTheAccount
       offline={stale}
       besideTitle={alone ? refreshingWords : undefined}
@@ -58,15 +61,17 @@ export default function Account() {
       back={alone ? backToSettings(t('settings.title')) : undefined}
     >
       <SettingsSplit open="account">
-        <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
+        <Screen edges={bodyEdges(kind)} contentStyle={SETTINGS_PAGE[kind]}>
+          {alone && <FrameTop />}
           {!alone && (
             <View style={besideRow.row}>
               <View style={styles.shrink}>
                 <Text
                   ref={title}
-                  size={tokens.typeTitlePage.size}
+                  size={PANE_TITLE}
                   weight="bold"
                   accessibilityRole="header"
+                  style={paneTitle}
                 >
                   {t('account.title')}
                 </Text>
@@ -87,24 +92,5 @@ export default function Account() {
 
 const styles = StyleSheet.create({
   shrink: { flexShrink: 1, minWidth: 0 },
-  phone: {
-    gap: tokens.spaceLg,
-    paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceXl,
-    paddingBottom: tokens.space3xl,
-  },
-  portrait: { gap: tokens.spaceXl, padding: tokens.space3xl, paddingBottom: tokens.space6xl },
-  landscape: {
-    gap: tokens.spaceXxl,
-    paddingTop: tokens.space4xl,
-    paddingHorizontal: tokens.space5xl,
-    paddingBottom: tokens.space6xl,
-  },
   blocks: { gap: 18 },
 });
-
-const CONTENT: Record<LayoutKind, object> = {
-  phone: styles.phone,
-  tabletPortrait: styles.portrait,
-  tabletLandscape: styles.landscape,
-};

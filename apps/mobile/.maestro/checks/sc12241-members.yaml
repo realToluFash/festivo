@@ -6,17 +6,17 @@ appId: host.exp.Exponent
 - runFlow:
     when:
       notVisible:
-        id: 'members.filter.active'
+        id: 'members.card'
     commands:
       - tapOn:
           id: 'frame.back'
       - extendedWaitUntil:
           visible:
-            id: 'members.filter.active'
+            id: 'members.card'
           timeout: 15000
 - extendedWaitUntil:
     visible:
-      id: 'members.filter.active'
+      id: 'members.card'
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: members

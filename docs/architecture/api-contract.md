@@ -238,7 +238,8 @@ is ever in a URL.
   format the emails use too: "Saturday, Oct 24 at 14:20 WAT", or "13:20 UTC" with no zone.
 - `GET /api/auth/recovery-requests` lists what the signed-in person may answer: requests
   from members of an organisation they own (and admin, once sc-66 seeds it), their own
-  included as `own`. `…/{id}/approve` and `…/{id}/turn-down` answer it. One answer closes
+  included as `own`. Each names its asker's `userId`, and in `organisationIds` the
+  organisations whose Members show it to this reader (sc-30894). `…/{id}/approve` and `…/{id}/turn-down` answer it. One answer closes
   it, and any later one is `409 recovery_request_closed`. Your own request is `403`.
 - Approval turns two-factor off, spends every recovery code, ends every session, and sets
   `twoFactorSetupPrompt` on the account until two-factor is on again or

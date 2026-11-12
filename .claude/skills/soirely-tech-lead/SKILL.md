@@ -109,6 +109,14 @@ did not ask for.
    did not ask for. **A screen is its demo:** a product pull request fails, tagged `[ux]`
    on the story, when it builds a screen, state or control no merged demo has, or when its
    screen departs from its demo with no `[ux]` answer on the story saying so (sc-30407).
+   **The whole screen, not only the diff:** for a pull request that builds or moves a
+   screen from a demo, read the screen at the pull request's head from its top to its
+   foot: the frame or shell it sits in, its header, and every part it renders, including
+   code the diff does not touch (a `FrameHeader`, a `header.shell-band`). Compare that with
+   the demo's route. Any difference with no `[ux]` answer on the story is blocking, wherever
+   its code lives. A top nobody touched is still the screen's top, and reading only the
+   diff is how Events, the Calendar and Settings reached review with tops their demos never
+   drew (sc-39535).
 2. **Access and data.** Read `docs/architecture/access-control.md`, and check every new or
    changed route against it: the checks in the order "The order of the checks" sets, and a
    sub-resource loaded through its event, never looked up by bare id. Personal data in logs, responses or

@@ -213,6 +213,14 @@ class Writes(Base):
             actions.claim(self.as_("qa"), args(story="sc-1"))
         self.assertEqual(self.state(1), "In QA")
 
+    def test_a_developer_without_xcode_never_claims_a_story_that_needs_xcode(self):
+        self.fake.add(1, "Ready For Dev", ["needs xcode"])
+        with mock.patch("soirely_queue.machine.has_xcode", return_value=False), \
+                self.assertRaisesRegex(actions.Refused, "needs xcode"):
+            actions.claim(self.as_("dev2"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "Ready For Dev")
+        self.assertEqual(self.fake.comments, [])
+
     def test_a_tester_without_xcode_never_takes_over_a_stale_claim_that_needs_ios(self):
         self.fake.add(1, "In QA", ["needs ios"])
         self.fake.comment(1, "QA claim: qa")
@@ -452,6 +460,12 @@ class DemoFirst(Base):
 
     def test_a_demo_line_reading_a_bare_none_is_claimed(self):
         self.drawn("**Demo:** none.")
+        with mock.patch("soirely_queue.github.live", side_effect=AssertionError):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_demo_line_reading_none_that_cites_numbers_is_claimed_without_asking_github(self):
+        self.drawn("**Demo:** none: nothing new to draw (ux's comments #37514 and #37515 on sc-29071).")
         with mock.patch("soirely_queue.github.live", side_effect=AssertionError):
             actions.claim(self.as_("dev"), args(story="sc-1"))
         self.assertEqual(self.state(1), "In Progress")
@@ -1452,6 +1466,16 @@ class Merging(Base):
             self.assertEqual(len(self.fake.comments), told + 1)
             self.assertEqual(self.fake.comments[-1][1], "(from dev2)\nPR #9 merged as "
                              f"{'m' * 40}. Tasks left: 31 step 1, 32 step 2")
+
+    def test_a_merge_with_tasks_left_wakes_its_builder_for_the_next_task(self):
+        self.fake.add(1, "Passed Code Review", ["dev2"])
+        self.tasks(1, True, False)
+        store.put_pr(self.db, pr("pass"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge"), \
+                mock.patch("soirely_queue.sync.sync_github"):
+            actions.merge(self.as_("dev2"), args(pr=9, text=None))
+        self.assertEqual(self.queue_wakes("dev2"), ["sc-1 moved to In Progress"])
 
     def test_the_next_task_goes_to_review_after_a_merge_with_tasks_left(self):
         self.fake.add(1, "In Review", ["dev2"])

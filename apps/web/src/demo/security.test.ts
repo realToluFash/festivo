@@ -1,3 +1,4 @@
+import { type ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
 import { HOLDS } from './general.ts';
@@ -12,27 +13,28 @@ import {
   RESULT_WORDS,
   SECURITY_PAGES,
   SECURITY_STATES,
-  SHORT_PASSWORD,
   WEB_MOMENTS,
   WRONG_PASSWORD,
   cardOf,
-  changeProblems,
-  chooseRefusal,
   deviceLine,
-  emailedCodeRefusal,
-  forgotRefusal,
   HELD_STEPS,
   heldStepPath,
   keptByRule,
   onlyWayIn,
   proveAsks,
-  proveProblems,
   securityStart,
-  setupRefusal,
   stillLine,
   waysCount,
   yourSecurity,
 } from './security.ts';
+import {
+  sampleActivate,
+  sampleChange,
+  sampleFactor,
+  samplePass,
+  sampleSavePassword,
+  sampleSecurityProof,
+} from './securitySamples.ts';
 import { VIEWERS } from './settings.ts';
 import { REFUSALS } from './signInRules.ts';
 
@@ -124,31 +126,35 @@ describe('Security’s sample (sc-30223)', () => {
     expect(deviceLine(phone, 'en-US')).toBe('Last used Nov 3 at 18:40');
   });
 
-  it('refuses a change of password in the product’s order', () => {
-    expect(changeProblems('', '')).toEqual({
-      current: 'Enter your current password.',
-      next: 'Enter a new password.',
-    });
-    expect(changeProblems(SAMPLE.password, SHORT_PASSWORD).next).toBe(
-      'Use at least 15 characters.',
+  it('refuses a change of password as the server would, so the product says why', async () => {
+    await expect(sampleChange(WRONG_PASSWORD, NEW_PASSWORD, 2)).rejects.toSatisfy((refusal) =>
+      (refusal as ApiError).is('invalid_credentials'),
     );
-    expect(changeProblems(WRONG_PASSWORD, NEW_PASSWORD).current).toMatch(/not your current/);
-    expect(changeProblems(SAMPLE.password, SAMPLE.password).next).toMatch(/already your password/);
-    expect(changeProblems(SAMPLE.password, SAMPLE.breachedPassword).next).toMatch(/breach/);
-    expect(changeProblems(SAMPLE.password, NEW_PASSWORD)).toEqual({});
-    expect(chooseRefusal('')).toBe('Enter a password.');
-    expect(chooseRefusal(NEW_PASSWORD)).toBeNull();
+    await expect(sampleChange(SAMPLE.password, SAMPLE.password, 2)).rejects.toSatisfy(
+      (refusal) => (refusal as ApiError).problem.violations?.[0]?.code === 'password_unchanged',
+    );
+    await expect(sampleSavePassword(SAMPLE.breachedPassword)).rejects.toSatisfy(
+      (refusal) => (refusal as ApiError).problem.violations?.[0]?.code === 'password_breached',
+    );
+    await expect(sampleChange(SAMPLE.password, NEW_PASSWORD, 2)).resolves.toEqual({
+      signedOut: 2,
+    });
   });
 
-  it('checks the emailed code, the authenticator code and the reset address', () => {
-    expect(emailedCodeRefusal('')).not.toBeNull();
-    expect(emailedCodeRefusal('482 170')).toMatch(/did not match/);
-    expect(emailedCodeRefusal(SAMPLE.code)).toBeNull();
-    expect(setupRefusal('714 320')).toMatch(/does not match/);
-    expect(setupRefusal(SAMPLE.authenticator)).toBeNull();
-    expect(forgotRefusal('')).toBe('Enter your email address.');
-    expect(forgotRefusal('folake@ire')).not.toBeNull();
-    expect(forgotRefusal(email)).toBeNull();
+  it('takes only the sample’s emailed code, authenticator code and recovery code', async () => {
+    await expect(samplePass('482 170')).rejects.toSatisfy((refusal) =>
+      (refusal as ApiError).is('verification_code_invalid'),
+    );
+    await expect(samplePass(SAMPLE.code)).resolves.toBe('sample-step-up');
+    await expect(sampleActivate('714 320')).rejects.toSatisfy((refusal) =>
+      (refusal as ApiError).is('two_factor_code_invalid'),
+    );
+    await expect(sampleActivate(SAMPLE.authenticator)).resolves.toEqual([...RECOVERY_CODES]);
+    await expect(sampleFactor(SAMPLE.recovery)).resolves.toBeUndefined();
+    await expect(sampleSecurityProof({ password: SAMPLE.password }, '714 320')).rejects.toSatisfy(
+      (refusal) => (refusal as ApiError).is('two_factor_code_invalid'),
+    );
+    await expect(sampleSecurityProof({ password: SAMPLE.password })).resolves.toBe('sample-proof');
   });
 
   it('asks a proof for what the product asks: a password and a code, or a code alone', () => {
@@ -162,12 +168,6 @@ describe('Security’s sample (sc-30223)', () => {
     );
     expect(off).toMatchObject({ password: false, code: true });
     expect(noPassword).toMatchObject({ password: false, provider: 'Google', code: false });
-    expect(proveProblems(unlink, 'unlink', '', '')).toEqual({
-      password: 'Enter your password.',
-      code: 'Enter a code from your app, or a recovery code.',
-    });
-    expect(proveProblems(off, 'turnOff', '', '714 320').code).toMatch(/unused recovery code/);
-    expect(proveProblems(unlink, 'unlink', SAMPLE.password, SAMPLE.recovery)).toEqual({});
   });
 
   it('makes ten codes each time, the first set starting with the sample’s recovery code', () => {

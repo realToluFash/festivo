@@ -7,7 +7,8 @@ whenever you decide something a second string will need.
 
 British English (en-GB). Plain, warm and direct. No contractions in error bodies: "cannot",
 not "can't". British spelling: organisation, cancelled, colour. Sentence case for every
-label and heading.
+label and heading. No serial comma: "Ana, Ben and Cleo". Join a list through `listFormat`
+from `@soirely/domain`, never `new Intl.ListFormat(locale)`.
 
 The rules every locale shares are in `.claude/skills/locale-parity`.
 
@@ -66,6 +67,41 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **11 Nov 2026. Members in the app, summary first** (sc-37811 for sc-37693, `mobile:membersScreen.card.*|waiting*|whenWord.*|request.*|role*|makeOwner*|remove*`, `mobile:ownerClaim.claimOpen|withdrewCard|copyNamed|copiedNamed|theirs*|stopped*|closedLine|stop*|passesToYou|withdrawFoundBody`). Kept as dev1 wrote it; it matches the design demo word for word. "Waiting" is the requests' section and the card's count, "Former" the filter a turned-down or removed person is listed under. `whenWord.*` is the caption under a person's date, so es, fr and pt write it as a label ("Date de la demande"), not a clause. `stopAskBody` says what `stopBody` says, and `theirsUnfound` what `pausedUnfound` says. The straight apostrophes in `roleScreenTitle`, `request.title` and `request.keepsWaiting` follow the demo's; es, fr and pt never use the possessive there.
+- **10 Nov 2026. An event's People in the app** (sc-30138 for sc-29914, `mobile:eventPeople.failedTitle|failedLine|discard*|addFailedOne|addFailedMany_*|addedThenRefused`). Kept as dev1 wrote it. `failedTitle` and `failedLine` are the web's `eventPeople.failed` split for the app's error card. The discard sheet is the demo's: "Nobody is added to this event." and "Keep editing", since the app's sheet discards any change, not only ticks. `addFailedOne` and `addFailedMany` keep "couldn’t" and "they’re", as `changeFailed` does: they say what is left ticked and what to press, and `kit/eventPeople.test.ts` pins them. "Add" is the sheet's button, `addConfirm`. `addedThenRefused` is two whole sentences, the announcement then the refusal, so each locale keeps the order.
+- **10 Nov 2026. The Calendar on the desktop web** (sc-36920 for sc-30413, `web:calendar.moreItems_*|chosen|barStatus|barLabel|markLabel`). Kept as sc-30413 wrote it. The day cell's chip is "+{{count, number}} more", one word after the figure so it fits a desktop cell in every language. `chosen` is a filter's name and its value for the screen reader, "Show: Events only". `barLabel` and `markLabel` are read aloud, so their parts are joined with commas, never " · ", which `barStatus` keeps on the bar itself.
+- **10 Nov 2026. Creating an organisation in the app, the three-step walk** (sc-36766 for sc-30412, `mobile:createOrganisation.whatTitle|whereTitle|readyTitle|fromDevice|allCountries|noneYet|discard*`). Kept as dev1 wrote it. Each step's title is a short question, and "What’s it called?" keeps its contraction: a warm question, not a refusal. "From this device" is a group heading, a tag on a row and, lowered, a phrase in the screen reader's "Time zone, from this device, …", so it agrees with nothing. "None yet" stands in for a currency.
+- **10 Nov 2026. Today's first run** (sc-37259 for sc-29090, `mobile:todayScreen.firstIntro`, `web:today.firstIntro`). "Give it a name, a date and a place. Your events, and what’s coming, show here." Copy promises only what the screen draws: Needs you is not built (sc-29884), so the line names the host's events and what is coming, never what needs them. When Needs you is drawn on Today, this line can say so again.
+- **10 Nov 2026. An event's page in the app** (sc-36555 for sc-30413, `mobile:eventPage.datesLine*|datesLocked|venueLine|noHosts*|type|currency*|nameAndCover|eventName|cover*|defaultCover|yourPhoto|pauseLine|callOffLine|endLine`). Kept as sc-30413 wrote it. Each line under a row's title is "Label · detail", with the web's label: "Dates", "Venue", "Hosted by", "Cover". `datesLocked` is `web:eventEdit.scheduleLocked` after "Dates · " and keeps its "can't", since it explains; `noHostsLine` is `eventHosts.none` without its first sentence. `pauseLine`, `callOffLine` and `endLine` join on one line what `eventPause.body|nothingLost` and `eventEnd.callOffBody|endBody|final` said, word for word, and keep their contractions: they explain a confirm, they do not refuse.
+- **9 Nov 2026. The app's Organisation page** (sc-36126 for sc-30412, `mobile:orgGeneral.*`, `ownership.*`, `companyDomains.*`, `requestLink.lead`). Kept as dev1 wrote it. `ownership.transferredLine` should read "You are an admin.", lower case in running text per the glossary, but `organisationSave.test.ts` pins "Admin"; [dev] is asked on sc-30412 to change both. `orgGeneral.editTitle` is also the back label of the sheet's pickers, so every locale keeps it short. "Proved" tags a domain also proved under Email domains (sc-560).
+- **9 Nov 2026. The service floor's words** (sc-4005, epic 35 §4, §6, §7; settled in #36036,
+  #36039 and #36042). An order's stages are **To serve** → **Dishing** → **Checked** → **On
+  its way** → **Served**, each its own key, and each count by stage a plural key ("3 checked",
+  "12 to serve"); no client joins a count to a word or changes its case. **Preparing** and
+  **Ready** are an item's at a station only, the kitchen's own words, never the order's, so
+  one word never means two things on one screen. **Dishing** is the tray started along the
+  stations; **Checked** is the tray check passed, never read as checked in, because the door
+  says "Check-in" and a guest not yet arrived reads **Not here yet**. **To serve** replaces
+  Asked for and sits beside **To follow** (an owed item on the next tray) without clashing.
+  The boards' sort reads **Owed plates first**, not "Late plates first", because "late" has
+  left the product's words; its key goes in with the board that draws it. The working words
+  stay as written: "Ready in about {n} min", **Waiting on the kitchen** (a held guest),
+  **What's ready, now**, **Wait for all**, **On**, **Not on**, **Bring after**, **To
+  follow**, **Sent back** with **Wrong dish**, **Not right**, **Dropped** and **Allergy
+  concern**, **Nothing for this course** and **Left**. Rejected: **Dished** (two letters from
+  Dishing on a chip read mid-service), **Tray ready** and **Ready to go** (Ready back in the
+  order's words). Gone: **Asked for**, **Carried**, **Called up** and **Cleared**;
+  **Unavailable** moves to sc-4015.
+- **12 Nov 2026. The floor lead's plan and list** (sc-4026, epic 35; settled in #42289 and
+  #42291). A table where a guest has arrived and no course is fired reads **Not fired yet**:
+  fire is the product's verb (sc-4009's **Fire {course}**, "Fired at {time}"), so the tile
+  agrees with the button that changes it, and it pairs with **Not here yet** without
+  clashing. It never takes a course name before it. Flagged guests show as **{n} flagged**
+  beside the flag icon, a plural key, short because the icon carries "guest". A screen reader
+  reads that count as **{n} flagged guests still to serve**, its own plural key, because the
+  icon is not read (WCAG 2.2 §1.1.1); the spoken text keeps the visible "{n} flagged"
+  (§2.5.3). Neither phrase is joined to the icon's name in code. Rejected: one key for both
+  with the icon's name added in code.
 - **9 Nov 2026. The app's Notification settings page** (sc-34901 for sc-30411,
   `mobile:notificationSettings.*`). Kept as dev1 wrote it. The header says how you hear ("You
   hear by push only"), the rows say it without a verb ("Push only", "Off"), and "Saving…" and
@@ -73,6 +109,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   them on in your device's settings" because the card now carries the "Open device settings"
   step, and keeps "won't", as 29 Oct. `locked.email` takes the "cannot" that Account &
   security's note carried, so the note now lists only what you hear about.
+- **9 Nov 2026. Security on the desktop web** (sc-35456 for sc-30411, `web:security.*`). Kept as dev1 wrote it; the shared keys read as `mobile:security.*`. `setupTitle` stays "Set up two-factor" for now because `SecurityDesk.test.tsx` pins it, though the 19 Oct phrasing and the app say "Turn on two-factor"; es, fr and pt already say turn on, and [dev] is asked to change the English with its test. `setupKey` names the key for a screen reader only. `sendAgain` is the link under "Nothing there?", as on the app's sent page.
 - **9 Nov 2026. The app's Security page** (sc-34792 for sc-30411, `mobile:security.*`). Kept as dev1 wrote it, except `setupTitle`, now "Turn on two-factor", as the 19 Oct phrasing and the web's `twoFactorCard.setupTitle`; "Set up two-factor" stays only after account recovery. Row lines after " · " keep their lower case, as every row line.
 - **9 Nov 2026. The web's reset sent page and the lost-both support line** (sc-33788 for
   sc-29067, `web:recovery.nothingThere`, `sentAgain`, `lostBothIntro`). Kept as dev2 wrote
@@ -937,3 +974,29 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
   keeping the English. The refusal keeps "isn't" for now because
   `AccountColourSchemeTest` pins the English; it should read "That is not one of …", which
   waits on [dev2].
+- **10 Nov 2026. Agreeing to WhatsApp** (sc-3950, settled on #36816 before any key exists).
+  The guest "agrees" to WhatsApp and a host "records" that they did; never "consent" or "opt
+  in" on screen. Under the tick **Send me updates on WhatsApp**: "Soirely sends them on behalf
+  of {{organisation}}. Reply STOP at any time to end them." ("on behalf of" names the business
+  the guest agrees to hear from; "for" reads as "to" in es and pt). The reach line's parts, each
+  a plural family joined through `listFormat`: "{{count}} have no mobile number", "{{count}}
+  stopped WhatsApp" (STOP or the switch, so not "texted STOP" as on SMS), "{{count}} haven't
+  agreed to WhatsApp"; one is "1 has …", "1 stopped …", "1 hasn't …". The host's **WhatsApp**
+  row under **Mobile number**, labels with no full stop: "Has not agreed to WhatsApp"; "Agreed
+  to WhatsApp on {{date}}" (the guest's own); and three whole keys for a host's record, "Agreed
+  to WhatsApp in person, recorded by {{name}} on {{date}}", "… by phone, …", "… in writing, …",
+  {{name}} the host's full name. Opted out, sc-3969's "Unsubscribed from WhatsApp on {date}"
+  and "Only the guest can change this." Under the **WhatsApp** switch in **Your messages**,
+  shown whether it is on or off and recorded when it is turned on: "Soirely sends updates on
+  WhatsApp on behalf of {{organisation}}. Reply STOP at any time to end them." It names
+  "updates on WhatsApp" because the row's label is only **WhatsApp**, so the tick's "them"
+  would point at nothing (settled on #36834). Turning it on saves "WhatsApp messages from {{organisation}} are on.", with no
+  "again": WhatsApp starts off, so the first turn-on and a return read the same; email and texts
+  keep "… are on again." The host's record, over **How?**: "For {{name}}, on {{number}}. It will
+  show as recorded by you." ("will": nothing is recorded until Save). In **Who it reached**, a
+  `not_sent` reason is "Has not agreed to WhatsApp", the details row's words, or "Stopped
+  WhatsApp", with no full stop (settled on #36939).
+- **11 Nov 2026. Add to my authenticator app** (sc-40162 for sc-40025, `mobile:twoFactorCard.addToApp`).
+  The button speaks as the member, "my", like "I have saved these codes somewhere safe"; the lines
+  around it describe the screen, "your authenticator app". Kept as the AC names it. It opens the
+  device's authenticator with the key, so "Add", never "Open" or "Copy".

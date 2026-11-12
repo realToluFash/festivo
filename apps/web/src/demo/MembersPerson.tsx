@@ -63,6 +63,7 @@ export function PersonPage({
   leadsLoad,
   onLoadLeads,
   alsoMember = null,
+  organisation = ORGANISATION,
 }: {
   person: Person;
   people: readonly Person[];
@@ -82,6 +83,7 @@ export function PersonPage({
   onLoadLeads: () => void;
   /** How many other organisations they are also in, when the state shows it. */
   alsoMember?: number | null;
+  organisation?: string;
 }) {
   const view = personView({ person, people, viewer, event, handed, say });
   const tag = tagOf(person);
@@ -160,9 +162,20 @@ export function PersonPage({
           )}
         </div>
       )}
-      {view.suspend && <RedAction label="Suspend…" line={SUSPEND_LINE} onClick={onSuspend} />}
+      {view.suspend && (
+        <RedAction
+          label="Suspend…"
+          line={SUSPEND_LINE.replaceAll(ORGANISATION, organisation)}
+          onClick={onSuspend}
+        />
+      )}
       {view.remove != null && (
-        <RedAction label={`Remove from ${ORGANISATION}…`} line={view.remove} onClick={onRemove} />
+        <RedAction
+          label={`Remove from ${organisation}…`}
+          wraps
+          line={view.remove.replaceAll(ORGANISATION, organisation)}
+          onClick={onRemove}
+        />
       )}
     </>
   );

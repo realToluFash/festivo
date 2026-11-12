@@ -138,11 +138,11 @@
 }
 
 .mg-row.is-on,
-.mg-row.is-arrived {
+.mg-row.is-fresh {
   background: var(--colorAccentTint);
 }
 
-.mg-row.is-arrived:not(.is-on) {
+.mg-row.is-fresh:not(.is-on) {
   animation: mg-arrive 2s ease-out both;
 }
 
@@ -1155,13 +1155,14 @@
   position: relative;
   display: flex;
   align-items: center;
-  padding-bottom: var(--spaceSm);
+  padding-bottom: var(--spaceXxs);
   border-bottom: 1px solid var(--colorBorder);
 }
 
 .mg-subject {
   flex: 1;
   min-width: 0;
+  min-height: var(--sizeHit);
   padding: 0;
   border: 0;
   background: transparent;
@@ -1171,7 +1172,7 @@
 
 .mg-subject-hint {
   position: absolute;
-  inset: 0 auto var(--spaceSm) 0;
+  inset: 0 auto var(--spaceXxs) 0;
   display: flex;
   align-items: center;
   gap: var(--spaceXs);
@@ -1419,6 +1420,20 @@
 
 .mg-credits {
   font: 500 13.5px/1.45 var(--fontFamily);
+}
+
+.mg-wa-reach {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 500 13.5px/1.45 var(--fontFamily);
+}
+
+.mg-wa-reach svg {
+  flex: none;
+  margin-top: var(--spaceHair);
 }
 
 .mg-check-acts {
@@ -1948,9 +1963,9 @@
 }
 
 .mg-rows > li:has(> .is-on),
-.mg-rows > li:has(> .is-arrived),
+.mg-rows > li:has(> .is-fresh),
 .mg-rows > li:has(> .is-on) + li,
-.mg-rows > li:has(> .is-arrived) + li {
+.mg-rows > li:has(> .is-fresh) + li {
   background: none;
 }
 
@@ -2076,6 +2091,7 @@
 
 .mg-search input {
   flex: 1;
+  align-self: stretch;
   min-width: 0;
   border: 0;
   outline: none;
@@ -2157,7 +2173,8 @@
 }
 
 .mg-when-field.is-time {
-  flex: 0 0 120px;
+  flex: 0 0 auto;
+  min-width: 120px;
 }
 
 .mg-when-field:focus {
@@ -2226,7 +2243,7 @@
   .mg-check,
   .mg-pop,
   .mg-bubble.is-arriving,
-  .mg-row.is-arrived:not(.is-on) {
+  .mg-row.is-fresh:not(.is-on) {
     animation: none;
   }
 

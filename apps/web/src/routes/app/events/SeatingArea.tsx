@@ -16,6 +16,7 @@ import {
   leastUsedColour,
   readRoomSide,
   sectionHoldingName,
+  listFormat,
 } from '@soirely/domain';
 import {
   type KeyboardEvent,
@@ -198,7 +199,7 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
 
   if (load.kind === 'loading')
     return (
-      <div className="st">
+      <div className="desk st">
         {crumb}
         <div className="st-main">
           <div className="st-canvas" role="status" aria-label={t('seating.loading')} />
@@ -213,7 +214,7 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
 
   if (load.kind === 'failed')
     return (
-      <div className="st">
+      <div className="desk st">
         {crumb}
         <div className="st-main">
           <div className="st-canvas is-failed">
@@ -238,7 +239,7 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
     );
 
   return (
-    <div className="st">
+    <div className="desk st">
       {crumb}
       <Plan
         event={event}
@@ -281,6 +282,7 @@ function Plan({
   const { t } = useTranslation();
   const { layers, covered, setHost } = useDeskLayers();
   const [panel, setPanel] = useState<Panel | null>(null);
+  const opener = useRef<string | null>(null);
   const [asking, setAsking] = useState<Asking | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [sectionsRefused, setSectionsRefused] = useState(false);
@@ -300,6 +302,21 @@ function Plan({
         : panel;
 
   const open = (next: Panel | null) => {
+    if (next == null) {
+      const back = opener.current;
+
+      opener.current = null;
+      focusWhenFree(
+        () =>
+          [...document.querySelectorAll<HTMLElement>('.st-panel button')].find(
+            (button) => back != null && nameOf(button) === back,
+          ) ?? document.querySelector('.st-top h1'),
+      );
+    } else {
+      if (panel == null && document.activeElement instanceof HTMLElement)
+        opener.current = nameOf(document.activeElement);
+      focusWhenFree(() => document.querySelector('.st-panel [data-focus="title"]'));
+    }
     setPanel(next);
     setNotice(null);
     setSectionsRefused(false);
@@ -479,7 +496,6 @@ function Plan({
                 onClick={() => {
                   setStart({ name: '', width: '', length: '' });
                   open({ kind: 'start' });
-                  focusWhenFree(() => document.querySelector('[data-focus="title"]'));
                 }}
               />
             )}
@@ -553,6 +569,11 @@ function Plan({
       )}
     </LayersContext>
   );
+}
+
+/** A panel's buttons are drawn again as it closes, so the one that opened it is found again by its name. */
+function nameOf(element: HTMLElement): string {
+  return element.getAttribute('aria-label') ?? element.textContent ?? '';
 }
 
 function Line({ children, tone = 'quiet' }: { children: ReactNode; tone?: 'quiet' | 'big' }) {
@@ -1303,7 +1324,7 @@ export function deletePlanWords(
       : t('seating.deletePlanSeated', { count: counts.seatedGuests });
 
   if (parts.length === 0) return guests;
-  const listed = new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(parts);
+  const listed = listFormat(locale, { style: 'long', type: 'conjunction' }).format(parts);
 
   return `${t('seating.deletePlanDeletes', { counts: listed })} ${guests}`;
 }
@@ -1349,7 +1370,9 @@ function AskFor({
   return (
     <Ask
       title={t('seating.deleteNamed', { name: section.name })}
-      line={t('seating.sectionDeleteBody', { count: section.tables })}
+      line={
+        section.tables === 0 ? undefined : t('seating.sectionDeleteBody', { count: section.tables })
+      }
       keep={t('seating.keepIt')}
       go={t('seating.deleteSection')}
       busy={busy ? t('seating.deleteSection') : undefined}

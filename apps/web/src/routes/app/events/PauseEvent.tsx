@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { offButton } from '../../../offButton.ts';
-import { LifecycleDialog } from './LifecycleDialog.tsx';
+import { InManage, LifecycleDialog } from './LifecycleDialog.tsx';
 import { useLifecycleAction } from './useLifecycleAction.ts';
 
 /** `Lifecycle` (tweak: Pause): a secondary button beside Call off or End now, so it is never where a stray tap lands first. */
@@ -13,12 +13,14 @@ export function PauseButton({
   event,
   phase,
   heading,
+  inManage = false,
   onChange,
   onPaused,
 }: {
   event: OrganisationEvent;
   phase: EventPhase;
   heading: RefObject<HTMLHeadingElement | null>;
+  inManage?: boolean;
   onChange: (event: OrganisationEvent, tag: string) => void;
   onPaused: () => void;
 }) {
@@ -33,51 +35,56 @@ export function PauseButton({
   return (
     <>
       {eventAllows(phase, 'pause') && (
-        <button ref={opener} type="button" className="button" onClick={() => ask({})}>
-          {t('eventPause.pause')}
-        </button>
+        <InManage on={inManage} line={`${t('eventPause.body')} ${t('eventPause.nothingLost')}`}>
+          {(look) => (
+            <button
+              ref={opener}
+              type="button"
+              className={look?.className ?? 'button'}
+              aria-describedby={look?.describedBy}
+              onClick={() => ask({})}
+            >
+              {t('eventPause.pause')}
+            </button>
+          )}
+        </InManage>
       )}
       {asking != null && (
-        <LifecycleDialog
-          id="pause-event"
-          asking={asking}
-          title={t('eventPause.title', { name: event.name })}
-          lines={[t('eventPause.body'), t('eventPause.nothingLost')]}
-          failed={t('eventPause.failed')}
-          keep={t('eventPause.keepItLive')}
-          confirm={t('eventPause.pause')}
-          sending={t('eventPause.pausing')}
-          tone="primary"
-          onGo={() => go({}, () => api.pauseEvent(event.id))}
-          onClose={close}
-        />
+        <InManage on={inManage}>
+          <LifecycleDialog
+            id="pause-event"
+            asking={asking}
+            title={t('eventPause.title', { name: event.name })}
+            lines={[t('eventPause.body'), t('eventPause.nothingLost')]}
+            failed={t('eventPause.failed')}
+            keep={t('eventPause.keepItLive')}
+            confirm={t('eventPause.pause')}
+            sending={t('eventPause.pausing')}
+            tone="primary"
+            onGo={() => go({}, () => api.pauseEvent(event.id))}
+            onClose={close}
+          />
+        </InManage>
       )}
     </>
   );
 }
 
-/** `Event View` (tweak: Paused): the amber line and the page's primary Resume, which asks nothing; past the end the phase is Finished and neither shows. A refusal reloads the event, which may then be past Paused: the row stays to say so. */
-export function PausedRow({
+/** Resume, which asks nothing; a refusal reloads the event, and `changed` says it has since moved past Paused. */
+export function useResume({
   event,
-  phase,
-  manages,
   heading,
   onChange,
   onResumed,
 }: {
   event: OrganisationEvent;
-  phase: EventPhase;
-  manages: boolean;
   heading: RefObject<HTMLHeadingElement | null>;
   onChange: (event: OrganisationEvent, tag: string) => void;
   onResumed: () => void;
-}) {
-  const { t } = useTranslation();
+}): { state: 'idle' | 'pending' | 'failed'; changed: boolean; resume: () => void } {
   const [state, setState] = useState<'idle' | 'pending' | 'failed'>('idle');
   const [changedTo, setChangedTo] = useState<EventStatus | null>(null);
   const changed = changedTo === event.status;
-
-  if (phase !== 'paused' && !changed) return null;
 
   const resume = () => {
     setState('pending');
@@ -108,6 +115,30 @@ export function PausedRow({
       },
     );
   };
+
+  return { state, changed, resume };
+}
+
+/** `Event View` (tweak: Paused): the amber line and the page's primary Resume, which asks nothing; past the end the phase is Finished and neither shows. A refusal reloads the event, which may then be past Paused: the row stays to say so. */
+export function PausedRow({
+  event,
+  phase,
+  manages,
+  heading,
+  onChange,
+  onResumed,
+}: {
+  event: OrganisationEvent;
+  phase: EventPhase;
+  manages: boolean;
+  heading: RefObject<HTMLHeadingElement | null>;
+  onChange: (event: OrganisationEvent, tag: string) => void;
+  onResumed: () => void;
+}) {
+  const { t } = useTranslation();
+  const { state, changed, resume } = useResume({ event, heading, onChange, onResumed });
+
+  if (phase !== 'paused' && !changed) return null;
 
   return (
     <div className="notice notice-attention event-paused">

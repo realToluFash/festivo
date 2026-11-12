@@ -1,3 +1,5 @@
+import { listFormat } from '@soirely/domain';
+
 type Slots = Readonly<Record<string, string | number>>;
 
 export type PluralBase<W> = {
@@ -7,11 +9,11 @@ export type PluralBase<W> = {
 /** The demos' one way to say their boards' English: {{slots}} filled, plural families ("_one", "_other") chosen, lists joined, each in the locale given. */
 export function demoWords<W extends Readonly<Record<string, string>>>(
   words: W,
-  { locale = 'en-US', listLocale = locale }: { locale?: string; listLocale?: string } = {},
+  { locale = 'en-US' }: { locale?: string } = {},
 ) {
   const number = new Intl.NumberFormat(locale);
   const plural = new Intl.PluralRules(locale);
-  const list = new Intl.ListFormat(listLocale, { style: 'long', type: 'conjunction' });
+  const list = listFormat(locale, { style: 'long', type: 'conjunction' });
 
   function filled(text: string, slots: Slots = {}): string {
     return text.replaceAll(/\{\{(\w+)(?:, number)?\}\}/gu, (whole, slot: string) => {

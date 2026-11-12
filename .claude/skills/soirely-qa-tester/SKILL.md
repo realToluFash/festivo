@@ -94,10 +94,19 @@ part way, or anything else stops the test, give it back before you finish:
 may take it at once. A story left `In QA` under your claim with no report comes back to
 you as your next work, ahead of anything new: test it, or give it back.
 
+**One exception stays In QA: a side-by-side row whose driver or device would not start,
+with nothing failed** (section 3). Every other row is run and passed; the story stays
+`In QA` under your claim with the unrun rows in a `[ops]` comment, and you do not unclaim it.
+When sq hands it back to you as `held` while that `[ops]` thread is still open, finish the
+run with `sq qa done <id> --note "waiting on [ops] for <rows>"` and leave the claim. Once
+ops answers, re-run only the unrun rows and post the report on the whole story.
+
 **A story stuck in `In QA`** has a winning claim more than three hours old and no report,
 which means its tester's run died. Any tester may take it over with the same
 `sq qa claim sc-55`: it refuses a claim younger than three hours, and on an older one posts
-`QA claim: qa2, taking over from qa3's of 09:14`. A story named in the command
+`QA claim: qa2, taking over from qa3's of 09:14`. A claim waiting on an open `[ops]` thread
+for an unrun side-by-side row is not stuck, whatever its age: leave it until that thread is
+answered, and its tester re-runs only those rows. A story named in the command
 (`/soirely-qa-tester qa2 sc-55`) is claimed the same way.
 
 **A `translation` ticket is tested on `main`**, not on a pull request: the linguist moves
@@ -171,6 +180,30 @@ the AC rarely mentions them.
 - **The keyboard, on a phone**: does it cover the field, or the button under the field.
 - **The design's own rules**: 44px targets, no meaning by colour alone, nothing under 12px,
   no em dashes, 24-hour times.
+
+### A story with a demo: one row per screen, layout and state, beside the demo
+
+When the story's Design section names a **Demo:**, the plan has **a row for each screen ×
+layout × state the story names, the top included**: the band, title or header the screen
+sits under, even when another story built it. A row passes only on **a pair of screenshots
+attached to the report**: the product and the demo's route at the same size, with the same
+kind of data (a long list beside a long list, an empty state beside an empty state), named
+`<screen>-<layout>-<state>-product.png` and `<screen>-<layout>-<state>-demo.png`. Compare
+the pair by eye, from the top of the screen to its foot; any difference with no `[ux]`
+answer on the story is a FAIL naming both files.
+
+A content row ("Upcoming, Drafts and Past are there") never stands in for one of these. It
+checks what the screen lists, not how the screen is drawn, and that is how Events, the
+Calendar and Settings passed with tops their demos never drew (sc-39535).
+
+**A side-by-side row not run is not passed.** Whether its driver did not start, the device
+was missing or the pass stopped early, a story does not go to Passed QA while any of those
+rows is unrun, and never with one under Outstanding items. Either it goes to Failed QA for
+what did fail, naming the rows still unrun, or it stays In QA with the blocker in a
+`sq qa comment sc-N --to ops --files <pairs taken>` naming each unrun row: no report is
+posted on this path, so the `--files` carry the pairs of the rows that did pass, and nobody
+shoots them again after the wait. A story labelled `needs ios` does not
+pass its iPhone or iPad rows from an Android emulator.
 
 ## 4. The environment
 
@@ -438,6 +471,7 @@ Into `~/Projects/soirely-qa<n>/.qa/`, which is gitignored. `xcrun simctl io "Soi
 for a simulator — never `booted`, which is whichever simulator answers first, the driver's own screenshot for a browser.
 
 - **Every failure, always.** A failure with no picture is an opinion.
+- **Every side-by-side row's pair**, product and demo, named as section 3 says.
 - **The main state of each surface that passed**, so the report shows what was looked at.
 - Name them for what they show: `.qa/web-sign-in-refused.png`, not `.qa/shot1.png`.
 
@@ -454,7 +488,8 @@ for a simulator — never `booted`, which is whichever simulator answers first, 
   what happened instead, and where the evidence is.
 - **"Not testable yet" is a real answer.** No screen, no endpoint, a dependency that does
   not exist. Never a pass, never a failure: a line under Outstanding items saying which
-  criterion is unverifiable and why.
+  criterion is unverifiable and why. A side-by-side row against a demo is the exception:
+  unrun, it holds the story back from Passed QA (section 3).
 - **Separate a broken criterion from a doubt.** A criterion that is not met is a FAIL.
   Something that works as specified and is still wrong — a confusing sentence, a state
   nobody designed — is an outstanding item, not a FAIL. Both go in the report.
@@ -522,7 +557,10 @@ is a dead end, then posts the report, moves the story to **Passsed QA** or **Fai
 (three s's — Shortcut's spelling), and sets `qa passed` or `qa failed`, dropping `needs qa`
 on a pass and keeping every other label. A story you claimed always leaves `In QA`,
 whichever way the pass went. Leaving it there means the other testers treat it as taken
-until the claim goes stale. It refuses a story you have not claimed.
+until the claim goes stale. It refuses a story you have not claimed. The one exception is a
+pass whose only gap is a side-by-side row that could not run and nothing failed: post no
+report, leave the story In QA, and tag the blocker `[ops]` with the pairs taken attached
+(sections 2 and 3).
 
 A follow-up pass on a story already passed is not a report: post it with
 `sq qaN comment sc-N --to pm --files …`, which uploads the screenshots the same way.
@@ -667,6 +705,8 @@ and a plan item follows.
 - [ ] Every AC bullet has a line in Test results, or a line under Outstanding items saying
       why it could not be tested.
 - [ ] Every FAIL has a screenshot, and every screenshot named in the comment was uploaded.
+- [ ] On a story with a demo, every screen × layout × state row, top included, has its
+      product and demo pair attached, and none is under Outstanding items on a pass.
 - [ ] Every surface the story touches was actually opened — including each layout.
 - [ ] One non-English locale was looked at.
 - [ ] The environment and the commit are named at the top.

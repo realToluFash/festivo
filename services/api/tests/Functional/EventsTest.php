@@ -309,6 +309,9 @@ final class EventsTest extends ApiTestCase
         yield 'page zero' => ['page=0'];
         yield 'a page that is not a number' => ['page=two'];
         yield 'finished that is not true or false' => ['finished=yes'];
+        yield 'a type there is no such kind of' => ['type=wedding,dinner'];
+        yield 'a from that is not a day' => ['from=2026-13-01'];
+        yield 'a to written another way' => ['to=14/11/2026'];
     }
 
     #[Test]
@@ -319,6 +322,121 @@ final class EventsTest extends ApiTestCase
 
         self::assertSame(422, $this->statusCode(), Json\encode($this->last()));
         self::assertSame(ErrorCode::ValidationFailed->type(), $this->last()['type'] ?? null);
+    }
+
+    #[Test]
+    public function aSearchFindsTheNameOrTheVenueWhateverItsCaseAndAccents(): void
+    {
+        $this->create('Lucía at 30', '2026-11-14T16:00');
+        $atTheVenue = $this->create('Adé at 40', '2026-11-21T16:00');
+        $this->create('Owambe', '2026-11-28T16:00');
+        self::service(Connection::class)->executeStatement("UPDATE events SET venue_name = 'Casa LUCIA' WHERE id = :id", ['id' => $atTheVenue]);
+
+        self::assertSame(['Lucía at 30', 'Adé at 40'], $this->listed('q=lucia'));
+        self::assertSame(['Lucía at 30', 'Adé at 40'], $this->listed('q=' . \rawurlencode('UCÍ')));
+        self::assertSame(['Adé at 40'], $this->listed('q=ade'));
+        self::assertSame(2, self::page($this->as($this->owner, 'GET', $this->path('events?q=lucia')))['total']);
+    }
+
+    #[Test]
+    public function aSearchIgnoresTheMarksOnYorubaLettersAndTheirTones(): void
+    {
+        $atTheVenue = $this->create('Owambe', '2026-11-14T16:00');
+        $this->create('Ọlọ́run Thanksgiving', '2026-11-21T16:00');
+        $this->create('Øre', '2026-11-28T16:00');
+        self::service(Connection::class)->executeStatement("UPDATE events SET venue_name = 'Ẹ̀kọ́ Hall' WHERE id = :id", ['id' => $atTheVenue]);
+
+        self::assertSame(['Ọlọ́run Thanksgiving'], $this->listed('q=olorun'));
+        self::assertSame(['Owambe'], $this->listed('q=eko'));
+        self::assertSame(['Owambe'], $this->listed('q=' . \rawurlencode('Ẹkọ')));
+        self::assertSame(['Øre'], $this->listed('q=ore'));
+    }
+
+    #[Test]
+    public function aSearchUnderTwoLettersIsIgnoredAndItsWildcardsAreLetters(): void
+    {
+        $this->create('Owambe', '2026-11-14T16:00');
+        $this->create('100% Owambe', '2026-11-21T16:00');
+
+        self::assertSame(['Owambe', '100% Owambe'], $this->listed('q=o'));
+        self::assertSame(['100% Owambe'], $this->listed('q=' . \rawurlencode('0% o')));
+        self::assertSame([], $this->listed('q=' . \rawurlencode('%a')));
+        self::assertSame([], $this->listed('q=o_a'));
+    }
+
+    #[Test]
+    public function choicesWithinAFilterWidenAndDifferentFiltersNarrow(): void
+    {
+        $this->hosted($this->create('Wedding with Funmi', '2026-11-14T16:00'), ['Funmi Adeyemi']);
+        $this->hosted($this->create('Wedding with Tunde', '2026-11-15T16:00'), ['Tunde Bakare', 'Ìyábọ̀ Ojo']);
+        $birthday = $this->event($this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'name' => 'Birthday with Funmi', 'type' => 'birthday', 'startsAt' => '2026-11-16T16:00', 'endsAt' => '2026-11-16T16:00']))['id'];
+        $this->hosted($birthday, ['Funmi Adeyemi']);
+        $this->create('A gala', '2026-11-17T16:00');
+
+        self::assertSame(['Wedding with Funmi', 'Wedding with Tunde', 'Birthday with Funmi', 'A gala'], $this->listed('type=wedding,birthday'));
+        self::assertSame(['Wedding with Funmi', 'Birthday with Funmi'], $this->listed('host=' . \rawurlencode('Funmi Adeyemi')));
+        self::assertSame(['Wedding with Funmi', 'Wedding with Tunde', 'Birthday with Funmi'], $this->listed('host[]=' . \rawurlencode('Funmi Adeyemi') . '&host[]=' . \rawurlencode('Ìyábọ̀ Ojo')));
+        self::assertSame(['Birthday with Funmi'], $this->listed('type=birthday&host=' . \rawurlencode('Funmi Adeyemi')));
+    }
+
+    #[Test]
+    public function aHostIsFoundUnderTheSpellingTheFilterOffers(): void
+    {
+        $this->hosted($this->create('One', self::AHEAD), ['funmi adeyemi']);
+        $this->hosted($this->create('Two', self::AHEAD), ['Funmi Adeyemi']);
+        $this->hosted($this->create('Three', self::AHEAD), ['Funmilayo Adeyemi']);
+
+        self::assertSame(['hosts' => ['funmi adeyemi', 'Funmilayo Adeyemi']], $this->as($this->owner, 'GET', $this->path('events/hosts')));
+        self::assertSame(['One', 'Two'], $this->listed('host=' . \rawurlencode('funmi adeyemi')));
+    }
+
+    #[Test]
+    public function anEventIsInARangeWhenAnyOfItsDaysIs(): void
+    {
+        $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'name' => 'Three days', 'startsAt' => '2026-11-14T16:00', 'endsAt' => '2026-11-16T23:00']);
+        self::assertSame(201, $this->statusCode());
+
+        self::assertSame(['Three days'], $this->listed('from=2026-11-16&to=2026-11-20'));
+        self::assertSame(['Three days'], $this->listed('from=2026-11-01&to=2026-11-14'));
+        self::assertSame(['Three days'], $this->listed('from=2026-11-15&to=2026-11-15'));
+        self::assertSame([], $this->listed('from=2026-11-17'));
+        self::assertSame([], $this->listed('to=2026-11-13'));
+    }
+
+    #[Test]
+    public function pagesAreOfTheMatches(): void
+    {
+        foreach (['Gala one', 'Owambe', 'Gala two', 'Gala three'] as $at => $name) {
+            $this->create($name, '2026-11-1' . $at . 'T16:00');
+        }
+
+        $second = self::page($this->as($this->owner, 'GET', $this->path('events?q=gala&page=2&itemsPerPage=2')));
+
+        self::assertSame([['Gala three'], 3], [Vec\map($second['events'], static fn (array $event): string => $event['name']), $second['total']]);
+    }
+
+    #[Test]
+    public function aMemberSearchesAndSeesTheHostsOfOnlyTheEventsTheyHaveARoleOn(): void
+    {
+        $theirs = $this->hosted($this->create('Gala of theirs', self::AHEAD), ['Tunde Bakare']);
+        $this->hosted($this->create('Gala of others', self::AHEAD), ['Funmi Adeyemi']);
+        $member = $this->member('member@ire.events', SeededRole::Member, $theirs, EventRole::CanView);
+
+        $found = self::page($this->as($member, 'GET', $this->path('events?q=gala')));
+        $hosts = $this->as($member, 'GET', $this->path('events/hosts'));
+
+        self::assertSame([['Gala of theirs'], 1], [Vec\map($found['events'], static fn (array $event): string => $event['name']), $found['total']]);
+        self::assertSame(['hosts' => ['Tunde Bakare']], $hosts);
+    }
+
+    #[Test]
+    public function theHostsAreEachNameOnceAlphabetically(): void
+    {
+        $this->hosted($this->create('One', self::AHEAD), ['Tunde Bakare', 'funmi adeyemi']);
+        $this->hosted($this->create('Two', self::AHEAD), ['Funmi Adeyemi', 'Ade Ojo']);
+        $this->create('None', self::AHEAD);
+
+        self::assertSame(['hosts' => ['Ade Ojo', 'funmi adeyemi', 'Tunde Bakare']], $this->as($this->owner, 'GET', $this->path('events/hosts')));
     }
 
     #[Test]
@@ -1690,9 +1808,10 @@ final class EventsTest extends ApiTestCase
     }
 
     /** @return list<string> */
-    private function listed(): array
+    private function listed(string $query = ''): array
     {
-        $body = $this->as($this->owner, 'GET', $this->path('events'));
+        $body = $this->as($this->owner, 'GET', $this->path('events' . ('' === $query ? '' : '?' . $query)));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
 
         return Vec\map(Type\vec(Type\shape(['name' => Type\string()], true))->coerce($body['events']), static fn (array $event): string => $event['name']);
     }

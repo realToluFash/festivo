@@ -8,32 +8,32 @@ onFlowComplete:
 ---
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
-    visible: '{{t:orgGeneral.intro}}'
+    visible: '{{t:orgGeneral.details}}'
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'ownership.delete'
+      id: 'organisation.ownership.delete'
     timeout: 60000
 - runScript:
     file: ../batch/helper.js
     env:
       ASK: /api?to=stopped
 - tapOn:
-    id: 'ownership.delete'
+    id: 'organisation.ownership.delete'
 - extendedWaitUntil:
     visible:
-      id: 'ownership.delete.retry'
+      id: 'organisation.delete.retry'
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: uncounted
 - tapOn:
-    id: 'ownership.delete.name'
+    id: 'organisation.delete.name'
 - inputText: 'QA'
 - waitForAnimationToEnd
 - takeScreenshot: uncounted-keyboard
 - scrollUntilVisible:
     element:
-      id: 'ownership.delete.send'
+      id: 'organisation.delete.send'
     timeout: 20000
 - takeScreenshot: uncounted-keyboard-delete
 - runScript:

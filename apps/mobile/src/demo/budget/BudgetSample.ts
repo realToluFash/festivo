@@ -255,7 +255,7 @@ export const LONG_NAME = {
   note: 'Cobrem o jantar e as bebidas de metade dos convidados, e também o aluguer da sala nos três dias, como combinado com a família na reunião de outubro. Pagam por transferência.',
   share: 'A parte deles',
   shareLine: 'O valor menor está confirmado.',
-  locale: 'pt-BR',
+  locale: 'pt-PT',
   range: (low: string, high: string) => `${low} a ${high}`,
   send: 'Enviar a',
 };

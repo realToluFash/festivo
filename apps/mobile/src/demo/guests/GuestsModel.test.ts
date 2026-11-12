@@ -70,7 +70,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(92);
+    expect(GUESTS_STATES).toHaveLength(103);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -105,6 +105,8 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(roleOf('staffBefore')).toBe('staff');
     expect(roleOf('staffDoorOpen')).toBe('staff');
     expect(roleOf('guestViewer')).toBe('viewer');
+    expect(roleOf('repliesClosedViewer')).toBe('viewer');
+    expect(guestOf('repliesClosedViewer')).toBe('emeka');
     expect(roleOf('inUse')).toBe('owner');
   });
 

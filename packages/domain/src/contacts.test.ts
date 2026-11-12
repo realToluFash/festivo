@@ -4,8 +4,11 @@ import {
   CONTACTS_MOST,
   contactActions,
   contactsLeft,
+  firstUnverified,
   justVerified,
   listedContacts,
+  primaryFirst,
+  primaryOf,
   rereadAfterRefusal,
 } from './contacts.ts';
 
@@ -91,5 +94,29 @@ describe('the row a verify screen came back for', () => {
     expect(justVerified(rows, 'p9')).toBeNull();
     expect(justVerified(rows, 'gone')).toBeNull();
     expect(justVerified(rows, null)).toBeNull();
+  });
+});
+
+describe('the order Your account lists them in', () => {
+  const emails = [
+    { id: 'e1', verified: true, primary: false },
+    { id: 'e2', verified: false, primary: true },
+  ];
+  const phones = [
+    { id: 'p1', verified: true, primary: true },
+    { id: 'p2', verified: false, primary: false },
+  ];
+
+  it('puts the primary first, the rest as added', () => {
+    expect(primaryFirst(emails).map((row) => row.id)).toEqual(['e2', 'e1']);
+    expect(primaryOf(emails)?.id).toBe('e2');
+    expect(primaryOf([{ id: 'e1', verified: true, primary: false }])).toBeNull();
+  });
+
+  it('steps to the first unverified address, the primary first, before any number', () => {
+    expect(firstUnverified(emails, phones)).toEqual({ kind: 'email', row: emails[1] });
+    const proved = emails.map((row) => ({ ...row, verified: true }));
+    expect(firstUnverified(proved, phones)).toEqual({ kind: 'phone', row: phones[1] });
+    expect(firstUnverified(proved, [phones[0]!])).toBeNull();
   });
 });

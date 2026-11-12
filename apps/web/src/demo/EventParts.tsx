@@ -1,29 +1,28 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 
+import { type CardStepAction, type Milestone, eventPhase } from '@soirely/domain';
+
+import { EventCard as ProductCard, EventThumb } from '../components/EventCard.tsx';
+import { EventRow as ProductRow } from '../components/EventsList.tsx';
 import { Toast } from '../components/Toast.tsx';
+import { type Shown, shownEvent } from '../eventsList.ts';
+import { dateLocale } from '../i18n/index.ts';
 import {
-  type Card,
-  type GlassKind,
   type SampleEvent,
-  type Shown,
+  type Shown as DemoShown,
   type Tab,
-  cardOf,
-  lineOf,
-  offRule,
   phaseWord,
-  shownOf,
-  soonOf,
   tagKind,
 } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { type CardMilestone, KW } from './kitchen.ts';
 import { LayersContext } from '../layers.ts';
-import { Chevron, CardStep, RowWords, Tag } from '../components/SettingsParts.tsx';
+import { Tag } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import './today.css';
 import '../components/SettingsParts.css';
-import './settings.css';
+import '../components/eventPage.css';
 import './events.css';
 import './kitchen.css';
 
@@ -76,38 +75,42 @@ export function EventsShell({
   );
 }
 
+const milestoneAt = (at: string, title: string): Milestone => ({
+  at,
+  title,
+  note: null,
+  owner: 'event',
+  area: 'events',
+  action: null,
+});
+
+/** A sample event as the product's list draws one: its place with its city, its start and end as its milestones. */
+export function shownSample(event: SampleEvent, now: Date): Shown {
+  return {
+    ...shownEvent(
+      {
+        ...event,
+        place: event.venue == null ? null : `${event.venue.name}, ${event.venue.city}`,
+        photo: event.photo ? 'standIn' : null,
+        milestones: [
+          milestoneAt(event.startsAt, `${event.name} starts`),
+          milestoneAt(event.endsAt, `${event.name} ends`),
+        ],
+      },
+      eventPhase(event, now),
+    ),
+    mesh: event.mesh,
+  };
+}
+
 /** The event's cover at a size, or its colour from meshFor while it has no photo. */
 export function Thumb({ event, size }: { event: SampleEvent; size: 28 | 40 | 48 }) {
-  return event.photo ? (
-    <span className={`ev-thumb is-${size} is-photo`} aria-hidden="true">
-      <Glyph name="photo" size={Math.round(size / 2)} weight={1.8} />
-    </span>
-  ) : (
-    <span className={`ev-thumb is-${size} today-cover is-${event.mesh}`} aria-hidden="true" />
+  return (
+    <EventThumb event={{ mesh: event.mesh, photo: event.photo ? 'standIn' : null }} size={size} />
   );
 }
 
-function GlassMark({ kind }: { kind: GlassKind }) {
-  switch (kind) {
-    case 'paused':
-      return (
-        <span className="ev-glass-mark is-paused" aria-hidden="true">
-          <span />
-          <span />
-        </span>
-      );
-    case 'finished':
-      return <Glyph name="tick" size={14} weight={2.8} />;
-    case 'calledOff':
-      return <Glyph name="clear" size={14} weight={2.8} />;
-    default:
-      return <span className={`ev-glass-mark is-${kind}`} aria-hidden="true" />;
-  }
-}
-
-const PIECES = [1, 2, 3, 4, 5, 6];
-
-/** The cover card: the phase and how soon on its glass, the name, its days and place, a tile per day, and its one step. */
+/** The product's cover card on a sample event, every step offered, as the owner it is shown to. */
 export function EventCard({
   event,
   now,
@@ -123,108 +126,55 @@ export function EventCard({
   guests?: string | null;
   /** Next up when it is a You milestone with an action, which becomes the card's one step (sc-30812). */
   milestone?: CardMilestone | null;
-  onStep: (does: Extract<Card['step'], { kind: 'button' }>['does']) => void;
+  onStep: (does: CardStepAction) => void;
 }) {
-  const card = cardOf(event, now);
-  const Name = level === 1 ? 'h1' : 'h2';
-  const shown = shownOf(event, now);
-
   return (
-    <section
-      className={`ev-card today-cover ${event.photo ? 'is-photo' : `is-${event.mesh}`}`}
-      aria-label={level === 2 ? event.name : undefined}
-    >
-      <span className="ev-scrim" aria-hidden="true" />
-      {event.photo ? (
-        <span className="ev-card-photo" aria-hidden="true">
-          <Glyph name="photo" size={64} weight={1.6} />
-        </span>
-      ) : (
-        PIECES.map((piece) => (
-          <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
-        ))
-      )}
-      <div className="ev-card-inner">
-        <ul className="desk-glass-tags">
-          {card.tags.map((tag) => (
-            <li key={tag.word} className="desk-glass">
-              {tag.kind != null && <GlassMark kind={tag.kind} />}
-              {tag.word}
-            </li>
-          ))}
-        </ul>
-        <Name className="ev-card-name" tabIndex={level === 1 ? -1 : undefined}>
-          {level === 2 ? (
-            <Link className="ev-card-link" to={`/demo/events/${event.id}`}>
-              {event.name}
-            </Link>
-          ) : (
-            event.name
-          )}
-        </Name>
-        <p className="desk-on-card">{lineOf(event, shown === 'calledOff')}</p>
-        {guests != null && <p className="desk-on-card">{guests}</p>}
-        {card.tiles.length > 0 && (
-          <ul className="ev-tiles" aria-label="Its days">
-            {card.tiles.map((tile) => (
-              <li key={tile.day} className={tile.today ? 'ev-tile is-today' : 'ev-tile'}>
-                <span className="ev-tile-top">{tile.today ? 'Today' : tile.weekday}</span>
-                <span className="ev-tile-day">{tile.day}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="ev-card-foot">
-          {milestone != null && card.step.kind === 'next' ? (
-            <>
-              <ul className="kitchen-glass">
-                <li className="desk-glass">
-                  <Glyph name="user" size={14} weight={2.4} />
-                  {KW.you}
-                </li>
-                {milestone.overdue && (
-                  <li className="desk-glass">
-                    <Glyph name="alert" size={14} weight={2.4} />
-                    {KW.overdue}
-                  </li>
-                )}
-              </ul>
-              <p className="ev-card-next">{milestone.title}</p>
-              <p className="desk-on-card">{milestone.line}</p>
-              {milestone.link != null && (
-                <Link className="desk-step" to={milestone.link}>
-                  {milestone.label}
-                  <Glyph name="arrow" size={16} weight={2.4} />
-                </Link>
-              )}
-            </>
-          ) : card.step.kind === 'next' ? (
-            <>
-              <p className="ev-card-next">{card.step.title}</p>
-              <p className="desk-on-card">{card.step.line}</p>
-            </>
-          ) : (
-            <>
-              <p className="desk-on-card">{card.step.line}</p>
-              <CardStep
-                label={card.step.label}
-                onClick={() => {
-                  if (card.step.kind === 'button') onStep(card.step.does);
-                }}
-              />
-            </>
-          )}
-        </div>
-      </div>
-    </section>
+    <ProductCard
+      event={shownSample(event, now)}
+      now={now}
+      locale={dateLocale()}
+      level={level}
+      {...(level === 2 && { to: `/demo/events/${event.id}` })}
+      guests={guests}
+      nextUp={milestone == null ? null : <MilestoneStep milestone={milestone} />}
+      takes={() => true}
+      onStep={(step) => onStep(step.action)}
+    />
   );
 }
 
-export function PhaseTag({ shown }: { shown: Shown }) {
+function MilestoneStep({ milestone }: { milestone: CardMilestone }) {
+  return (
+    <>
+      <ul className="kitchen-glass">
+        <li className="desk-glass">
+          <Glyph name="user" size={14} weight={2.4} />
+          {KW.you}
+        </li>
+        {milestone.overdue && (
+          <li className="desk-glass">
+            <Glyph name="alert" size={14} weight={2.4} />
+            {KW.overdue}
+          </li>
+        )}
+      </ul>
+      <p className="ev-card-next">{milestone.title}</p>
+      <p className="desk-on-card">{milestone.line}</p>
+      {milestone.link != null && (
+        <Link className="desk-step" to={milestone.link}>
+          {milestone.label}
+          <Glyph name="arrow" size={16} weight={2.4} />
+        </Link>
+      )}
+    </>
+  );
+}
+
+export function PhaseTag({ shown }: { shown: DemoShown }) {
   return <Tag kind={tagKind(shown)} word={phaseWord(shown)} />;
 }
 
-/** An event in the list: its cover or colour, its name, its days and place, how soon, and a tag where it is off its tab's rule. */
+/** The product's row on a sample event; where tabs are mixed every row says its phase. */
 export function EventRow({
   event,
   now,
@@ -236,98 +186,19 @@ export function EventRow({
   tab: Tab | 'all';
   guests?: string | null;
 }) {
-  const shown = shownOf(event, now);
-  const soon = soonOf(event, now);
-  const tagged = tab === 'all' || offRule(shown, tab);
-
   return (
-    <li>
-      <Link className="desk-row ev-row" to={`/demo/events/${event.id}`}>
-        <Thumb event={event} size={48} />
-        <RowWords
-          title={event.name}
-          tag={tagged && <PhaseTag shown={shown} />}
-          lines={guests == null ? [lineOf(event)] : [lineOf(event), guests]}
-        />
-        {soon != null && <span className="ev-soon">{soon}</span>}
-        <Chevron />
-      </Link>
-    </li>
+    <ProductRow
+      event={shownSample(event, now)}
+      now={now}
+      locale={dateLocale()}
+      to={`/demo/events/${event.id}`}
+      everyPhase={tab === 'all'}
+      guests={guests}
+    />
   );
 }
 
 /** Something an AC adds that main has not built: its words in a dashed pill, naming its story. */
 export function NotBuilt({ words }: { words: string }) {
   return <span className="ev-pill">{words}</span>;
-}
-
-export function Alert({ children }: { children: ReactNode }) {
-  return (
-    <p className="desk-error" role="alert">
-      <Glyph name="alert" size={15} weight={2.2} />
-      {children}
-    </p>
-  );
-}
-
-/** The broken notice, with what to do about it under its words. */
-export function Broken({ children, action }: { children: ReactNode; action?: ReactNode }) {
-  return (
-    <div className="notice notice-broken ev-notice" role="alert">
-      <span className="mark mark-broken" aria-hidden="true">
-        ✕
-      </span>
-      <div className="notice-body">
-        <p>{children}</p>
-        {action}
-      </div>
-    </div>
-  );
-}
-
-export function Quiet({ children, action }: { children: ReactNode; action?: ReactNode }) {
-  return (
-    <div className="notice notice-quiet ev-notice" role="status">
-      <span className="mark mark-info" aria-hidden="true">
-        i
-      </span>
-      <div className="notice-body">
-        <p className="notice-title">{children}</p>
-        {action}
-      </div>
-    </div>
-  );
-}
-
-export function Switch({
-  on,
-  label,
-  told,
-  busy = false,
-  onChange,
-}: {
-  on: boolean;
-  label: string;
-  told?: string;
-  busy?: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      className="ev-switch"
-      aria-checked={on}
-      aria-label={label}
-      aria-describedby={told}
-      aria-busy={busy}
-      onClick={() => {
-        if (!busy) onChange(!on);
-      }}
-    >
-      <span className="ev-track" aria-hidden="true">
-        <span className="ev-knob" />
-      </span>
-    </button>
-  );
 }

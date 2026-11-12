@@ -105,8 +105,8 @@ describe('Email domains (sc-560, sc-563)', () => {
       step: { does: 'record', domain: 'ireevents.com' },
     });
     expect(card('ed_empty')).toEqual({
-      says: 'Prove Ire Events’ email domain',
-      line: 'Add a DNS record where your domain is managed. Once it is proved, you can keep the accounts at it to Ire Events.',
+      says: 'Prove the email domain of Ire Events',
+      line: 'Add a DNS record where your domain is managed. Once it is proved, you can limit the accounts at it to Ire Events.',
       step: { does: 'prove' },
     });
     expect(card('ed_failed')).toMatchObject({
@@ -141,7 +141,7 @@ describe('Email domains (sc-560, sc-563)', () => {
 
   it('keeps accounts to Ire Events from 14 days on, cancelled or turned off at once', () => {
     expect(confirmWords('ire.events', LOCALE, LAGOS)).toEqual({
-      title: 'Keep ire.events accounts to Ire Events?',
+      title: 'Limit ire.events accounts to Ire Events?',
       lines: [
         'From Monday, Nov 2 at 10:12 WAT, 14 days from now, an account whose main email address is at ire.events can only be a member of Ire Events.',
         'Everyone at ire.events is emailed now. Access to a single event still works. You can cancel until then.',

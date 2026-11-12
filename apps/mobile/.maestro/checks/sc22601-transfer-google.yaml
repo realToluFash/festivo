@@ -9,19 +9,19 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/settings/organisation
 - scrollUntilVisible:
     element:
-      id: 'ownership.transfer'
+      id: 'organisation.ownership.transfer'
     direction: DOWN
     timeout: 30000
     centerElement: true
 - tapOn:
-    id: 'ownership.transfer'
+    id: 'organisation.ownership.transfer'
 - scrollUntilVisible:
     element:
-      id: 'ownership.transfer.provider'
+      id: 'organisation.transfer.provider'
     direction: DOWN
     timeout: 15000
     centerElement: true
 - takeScreenshot: transfer-google
 - tapOn:
-    id: 'ownership.transfer.provider'
+    id: 'organisation.transfer.provider'
 - takeScreenshot: transfer-nobody-chosen

@@ -4,13 +4,13 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/events/${RESUME_EVENT}
 - extendedWaitUntil:
     visible:
-      id: 'events.resume'
+      id: 'events.card.step'
     timeout: 30000
 - takeScreenshot: open
 - evalScript: "${output.calledOff = http.request(API + '/api/events/' + RESUME_EVENT + '/end', {method: 'POST', headers: {Authorization: 'Bearer ' + B_TOKEN, 'Content-Type': 'application/json'}, body: '{}'}).status}"
 - assertTrue: ${output.calledOff == 200}
 - tapOn:
-    id: 'events.resume'
+    id: 'events.card.step'
 - extendedWaitUntil:
     visible: 'Somebody else changed this event while you had it open.'
     timeout: 15000

@@ -4,7 +4,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/events/${EV_PAST}
 - extendedWaitUntil:
     visible:
-      id: 'events.draftLine'
+      id: 'events.card'
       text: '{{t:eventLive.endPassed}}'
     timeout: 30000
 - takeScreenshot: end-passed

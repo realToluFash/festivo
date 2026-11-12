@@ -61,7 +61,7 @@ describe('todayMoment', () => {
       now: null,
     });
     expect(plan.bars.map(({ event: { id }, ...bar }) => [id, bar])).toEqual([
-      ['Wedding', { start: 3, span: 3, label: '3 days', openLeft: false }],
+      ['Wedding', { start: 3, span: 3, label: '3 days', openLeft: false, lane: 0 }],
     ]);
     expect(
       plan.agenda.map(({ day, when, items }) => [day, when, items.map((item) => item.title)]),
@@ -137,6 +137,50 @@ describe('todayMoment', () => {
     expect(ends('2026-11-06T20:00:00Z')).toBe('Ends Sun 8 Nov at 14:00');
   });
 
+  it('an event day outside this year carries its year: when Now ends, when it starts, and what is next', () => {
+    const long = event('Long run', {
+      phase: 'happening_now',
+      startsAt: '2026-10-31T10:00:00Z',
+      endsAt: '2028-04-29T16:00:00Z',
+      dayCount: 547,
+    });
+    const nextYear = event('New year', {
+      startsAt: '2027-02-13T18:00:00Z',
+      endsAt: '2027-02-13T23:00:00Z',
+      dayCount: 1,
+    });
+
+    expect(moment([long]).now?.ends).toBe('Ends Sat, 29 Apr 2028 at 17:00');
+    expect(moment([nextYear])).toMatchObject({
+      sub: 'New year starts on Sat, 13 Feb 2027.',
+      nextUp: { name: 'New year', when: 'Sat, 13 Feb 2027 · in 102 days' },
+    });
+  });
+
+  it("takes this year from today in the event's zone, not the reader's", () => {
+    const newYearsEve = new Date('2026-12-31T12:00:00Z');
+    const auckland = { timeZone: 'Pacific/Auckland', venue: null };
+    const summer = event('Summer', {
+      ...auckland,
+      phase: 'happening_now',
+      startsAt: '2026-12-30T20:00:00Z',
+      endsAt: '2027-01-04T05:00:00Z',
+      dayCount: 6,
+    });
+    const picnic = event('Picnic', {
+      ...auckland,
+      startsAt: '2027-01-08T23:00:00Z',
+      endsAt: '2027-01-09T04:00:00Z',
+      dayCount: 1,
+    });
+
+    expect(moment([summer], newYearsEve).now?.ends).toBe('Ends Mon 4 Jan at 18:00');
+    expect(moment([picnic], newYearsEve)).toMatchObject({
+      sub: 'Picnic starts on Sat 9 Jan.',
+      nextUp: { when: 'Sat 9 Jan · in 9 days' },
+    });
+  });
+
   it('a quiet week says so and shows what is next', () => {
     const quiet = moment([
       event('Party', {
@@ -157,5 +201,29 @@ describe('todayMoment', () => {
       sub: 'Your first event starts here.',
       events: [],
     });
+  });
+  it('an event later today that has not started counts Today, is not live, and the line under the greeting says when it starts', () => {
+    const tonight = event('Tonight', {
+      startsAt: '2026-11-03T19:00:00Z',
+      endsAt: '2026-11-03T23:00:00Z',
+      dayCount: 1,
+    });
+    const plan = moment([tonight]);
+
+    expect(plan).toMatchObject({ kind: 'plan', now: null, sub: 'Tonight starts today at 19:00.' });
+    expect(plan.events[0]).toMatchObject({ count: 'Today', live: false, stage: null });
+    expect(moment([event('Wedding'), tonight]).sub).toBe('Tonight starts today at 19:00.');
+  });
+
+  it('a draft dated today is a draft, never live', () => {
+    const draft = event('Draft', {
+      status: 'draft',
+      phase: 'draft',
+      startsAt: '2026-11-03T08:00:00Z',
+      endsAt: '2026-11-03T23:00:00Z',
+      dayCount: 1,
+    });
+
+    expect(moment([draft]).events[0]).toMatchObject({ count: 'Draft', draft: true, live: false });
   });
 });

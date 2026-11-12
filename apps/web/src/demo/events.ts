@@ -1,27 +1,30 @@
 import type { NeedsState } from './needsYou.ts';
 import {
-  EVENT_TYPES,
   type EventPhase,
   type EventState,
   type EventType,
+  type EventsFilters,
+  type EventsLook,
+  NO_EVENTS_FILTERS,
   calledOff,
   endLabel,
-  eventDays,
+  eventDayWords,
   eventPhase,
   eventsHome,
   formatEventDate,
   formatEventMoment,
-  formatEventShortDay,
-  formatEventWeekday,
-  hostsLine,
   milestoneDistance,
+  notThisYear,
   savedWallClock,
+  searching,
+  wallDayNumber,
 } from '@soirely/domain';
 
 import type { MarkKind } from '../components/SettingsParts.tsx';
 import type { DemoLink } from './settings.ts';
 import type { EventKey } from './today.ts';
 import { type Mesh, meshFor } from '../mesh.ts';
+import { SIDE_AREAS, type SideArea } from '../components/eventSideAreas.ts';
 
 export interface Venue {
   name: string;
@@ -298,7 +301,7 @@ const SAMPLE_EVENTS: readonly SampleEvent[] = [
     'live',
     ['2026-07-18T15:00:00Z', '2026-07-18T21:00:00Z', 'Africa/Lagos'],
     at('Eko Hotel', 'Lagos'),
-    ['Funmi Ade'],
+    ['Funmilayo Adéṣínà-Ọláolúwa'],
     'NGN',
   ),
   sample(
@@ -408,6 +411,7 @@ export const DISTINCT_HOSTS: readonly string[] = [
 /** The words main has (events, eventPage, eventLive, eventEnd, eventPause, eventDelete, eventDuplicate, eventEdit, eventHosts, eventCover, eventNav, timeline), then the new ones the boards add, for review. */
 export const EVENT_WORDS = {
   title: 'Events',
+  loading: 'Loading events…',
   newEvent: 'New event',
   upcoming: 'Upcoming',
   drafts: 'Drafts',
@@ -486,12 +490,6 @@ export const EVENT_WORDS = {
   eventName: 'Event name',
   cover: 'Cover',
   manage: 'Manage',
-  justForYou: 'Just for you',
-  mute: 'Mute this event',
-  muteNote: 'Nobody else on this event is affected.',
-  muteNotLoaded: 'Could not check whether this event is muted.',
-  muteNotSaved: 'Not saved. Try again.',
-  notificationSettings: 'Notification settings',
   pause: 'Pause',
   pauseLine:
     'Guests can’t reply or change anything until you resume it. Nothing is lost. Check-in and service keep working.',
@@ -656,31 +654,25 @@ export const EVENT_WORDS = {
 
 const W = EVENT_WORDS;
 
-export type Area =
-  | 'overview'
-  | 'guests'
-  | 'menu'
-  | 'seating'
-  | 'messages'
-  | 'schedule'
-  | 'staff'
-  | 'people'
-  | 'budget'
-  | 'reports';
+export type Area = SideArea;
 
-/** main's EVENT_AREAS, with People between Staff and Budget as the web's People branch (sc-29915, #1354) has it. */
-export const AREAS: readonly { area: Area; name: string }[] = [
-  { area: 'overview', name: 'Overview' },
-  { area: 'guests', name: 'Guests' },
-  { area: 'menu', name: 'Menu' },
-  { area: 'seating', name: 'Seating' },
-  { area: 'messages', name: 'Messages' },
-  { area: 'schedule', name: 'Schedule' },
-  { area: 'staff', name: 'Staff' },
-  { area: 'people', name: 'People' },
-  { area: 'budget', name: 'Budget' },
-  { area: 'reports', name: 'Reports' },
-];
+const AREA_NAMES: Record<Area, string> = {
+  overview: 'Overview',
+  guests: 'Guests',
+  menu: 'Menu',
+  seating: 'Seating',
+  messages: 'Messages',
+  schedule: 'Schedule',
+  staff: 'Staff',
+  people: 'People',
+  budget: 'Budget',
+  reports: 'Reports',
+};
+
+export const AREAS: readonly { area: Area; name: string }[] = SIDE_AREAS.map((area) => ({
+  area,
+  name: AREA_NAMES[area],
+}));
 
 export const COMING: Record<Exclude<Area, 'overview' | 'people'>, string> = {
   guests: 'The guest list for this event is coming.',
@@ -707,30 +699,25 @@ export function shownOf(event: SampleEvent, now: Date): Shown {
 
 const LOCALE = 'en-US';
 
-export function rangeOf(event: SampleEvent, keepDays = false): string {
-  const days = eventDays(event);
+export function rangeOf(event: SampleEvent, now: Date, keepDays = false): string {
+  const days = eventDayWords(event, now, LOCALE, keepDays);
 
-  if (days.kind === 'calledOffOn' && !keepDays)
-    return W.calledOffOn(formatEventShortDay(days.concludedAt, event.timeZone, LOCALE));
-  if (days.kind === 'oneDay' || (days.kind === 'calledOffOn' && sameDay(event)))
-    return formatEventWeekday(event.startsAt, event.timeZone, LOCALE);
-
-  return W.days(
-    formatEventWeekday(event.startsAt, event.timeZone, LOCALE),
-    formatEventWeekday(event.endsAt, event.timeZone, LOCALE),
-  );
-}
-
-function sameDay(event: SampleEvent): boolean {
-  return localDay(event.startsAt, event.timeZone) === localDay(event.endsAt, event.timeZone);
+  switch (days.kind) {
+    case 'calledOffOn':
+      return W.calledOffOn(days.date);
+    case 'oneDay':
+      return days.day;
+    case 'days':
+      return W.days(days.first, days.last);
+  }
 }
 
 export function placeOf(event: SampleEvent): string {
   return event.venue == null ? W.venueToBeConfirmed : `${event.venue.name}, ${event.venue.city}`;
 }
 
-export function lineOf(event: SampleEvent, keepDays = false): string {
-  return `${rangeOf(event, keepDays)} · ${placeOf(event)}`;
+export function lineOf(event: SampleEvent, now: Date, keepDays = false): string {
+  return `${rangeOf(event, now, keepDays)} · ${placeOf(event)}`;
 }
 
 export function soonOf(event: SampleEvent, now: Date): string | null {
@@ -756,42 +743,10 @@ export function localTime(moment: string, timeZone: string): string {
   }).format(new Date(moment));
 }
 
-export interface DayTile {
-  weekday: string;
-  day: string;
-  today: boolean;
-}
-
-export function dayTiles(event: SampleEvent, now: Date): DayTile[] {
-  const first = localDay(event.startsAt, event.timeZone);
-  const last = localDay(event.endsAt, event.timeZone);
-  const today = localDay(now, event.timeZone);
-  const tiles: DayTile[] = [];
-
-  for (let day = first; day <= last; day = nextDay(day)) {
-    const noon = new Date(`${day}T12:00:00Z`);
-    tiles.push({
-      weekday: new Intl.DateTimeFormat(LOCALE, { weekday: 'short', timeZone: 'UTC' }).format(noon),
-      day: new Intl.DateTimeFormat(LOCALE, { day: 'numeric', timeZone: 'UTC' }).format(noon),
-      today: day === today,
-    });
-  }
-
-  return tiles.length > 1 ? tiles : [];
-}
-
-export function nextDay(day: string): string {
-  const date = new Date(`${day}T12:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + 1);
-
-  return date.toISOString().slice(0, 10);
-}
-
 export type GlassKind = 'draft' | 'live' | 'now' | 'paused' | 'finished' | 'calledOff';
 
 export interface Card {
   tags: readonly { kind: GlassKind | null; word: string }[];
-  tiles: DayTile[];
   step:
     | { kind: 'next'; title: string; line: string }
     | { kind: 'button'; line: string; label: string; does: CardDoes };
@@ -802,8 +757,8 @@ export type CardDoes = 'makeLive' | 'changeDates' | 'resume' | 'duplicate';
 export function cardOf(event: SampleEvent, now: Date): Card {
   const shown = shownOf(event, now);
   const soon = soonOf(event, now);
-  const tiles = shown === 'finished' || shown === 'calledOff' ? [] : dayTiles(event, now);
-  const moment = (iso: string) => formatEventMoment(iso, event.timeZone, LOCALE);
+  const moment = (iso: string) =>
+    formatEventMoment(iso, event.timeZone, LOCALE, notThisYear(event.timeZone, now, iso));
   const toThen = (iso: string) => {
     const distance = milestoneDistance(iso, event.timeZone, now);
 
@@ -816,7 +771,6 @@ export function cardOf(event: SampleEvent, now: Date): Card {
 
       return {
         tags: [{ kind: 'draft', word: W.phase.draft }, ...soonTag(passed ? null : soon)],
-        tiles,
         step: passed
           ? { kind: 'button', line: W.endPassed, label: W.changeDates, does: 'changeDates' }
           : { kind: 'button', line: W.guestsBlocked, label: W.makeLive, does: 'makeLive' },
@@ -825,7 +779,6 @@ export function cardOf(event: SampleEvent, now: Date): Card {
     case 'live':
       return {
         tags: [{ kind: 'live', word: W.phase.live }, ...soonTag(soon)],
-        tiles,
         step: {
           kind: 'next',
           title: W.nextStarts(event.name),
@@ -833,16 +786,16 @@ export function cardOf(event: SampleEvent, now: Date): Card {
         },
       };
     case 'happening_now': {
-      const lit = tiles.findIndex((tile) => tile.today);
+      const first = wallDayNumber(event.startsAt, event.timeZone);
+      const total = wallDayNumber(event.endsAt, event.timeZone) - first + 1;
 
       return {
         tags: [
           { kind: 'now', word: W.phase.happening_now },
-          ...(tiles.length > 1 && lit >= 0
-            ? [{ kind: null, word: W.dayOf(lit + 1, tiles.length) }]
+          ...(total > 1
+            ? [{ kind: null, word: W.dayOf(wallDayNumber(now, event.timeZone) - first + 1, total) }]
             : []),
         ],
-        tiles,
         step: {
           kind: 'next',
           title: W.nextEnds(event.name),
@@ -853,19 +806,16 @@ export function cardOf(event: SampleEvent, now: Date): Card {
     case 'paused':
       return {
         tags: [{ kind: 'paused', word: W.phase.paused }, ...soonTag(soon)],
-        tiles,
         step: { kind: 'button', line: W.nextResume, label: W.resume, does: 'resume' },
       };
     case 'finished':
       return {
         tags: [{ kind: 'finished', word: W.phase.finished }],
-        tiles,
         step: { kind: 'button', line: W.allPassed, label: W.duplicate, does: 'duplicate' },
       };
     case 'calledOff':
       return {
         tags: [{ kind: 'calledOff', word: W.phase.calledOff }],
-        tiles,
         step: {
           kind: 'button',
           line: W.calledOffNotice(
@@ -985,61 +935,6 @@ export function rememberTab(tab: Tab): void {
   remembered = tab;
 }
 
-export type When = 'any' | 'week' | 'month' | 'quarter' | 'between';
-
-export interface Filters {
-  q: string;
-  types: readonly EventType[];
-  from: string;
-  to: string;
-  hosts: readonly string[];
-}
-
-export const NO_FILTERS: Filters = { q: '', types: [], from: '', to: '', hosts: [] };
-
-const DAY_PATTERN = /^\d{4}-\d\d-\d\d$/;
-
-/** q, type, from, to and host, as the address carries them: several types as `type=wedding,birthday`, each host its own `host=`. */
-export function filtersOf(params: URLSearchParams): Filters {
-  const types = params
-    .getAll('type')
-    .flatMap((value) => value.split(','))
-    .filter((value): value is EventType => (EVENT_TYPES as readonly string[]).includes(value));
-  const day = (value: string | null) => (value != null && DAY_PATTERN.test(value) ? value : '');
-
-  return {
-    q: params.get('q') ?? '',
-    types: EVENT_TYPES.filter((type) => types.includes(type)),
-    from: day(params.get('from')),
-    to: day(params.get('to')),
-    hosts: DISTINCT_HOSTS.filter((host) => params.getAll('host').includes(host)),
-  };
-}
-
-export function paramsOf(filters: Filters, keep: URLSearchParams): URLSearchParams {
-  const next = new URLSearchParams();
-
-  for (const [name, value] of keep)
-    if (!['q', 'type', 'from', 'to', 'host', 'state'].includes(name)) next.append(name, value);
-  if (filters.q !== '') next.set('q', filters.q);
-  if (filters.types.length > 0) next.set('type', filters.types.join(','));
-  if (filters.from !== '') next.set('from', filters.from);
-  if (filters.to !== '') next.set('to', filters.to);
-  for (const host of filters.hosts) next.append('host', host);
-
-  return next;
-}
-
-export function searching(filters: Filters): boolean {
-  return filters.q.trim().length >= 2;
-}
-
-export function filtering(filters: Filters): boolean {
-  return (
-    filters.types.length > 0 || filters.from !== '' || filters.to !== '' || filters.hosts.length > 0
-  );
-}
-
 function folded(text: string): string {
   return text
     .normalize('NFD')
@@ -1048,112 +943,32 @@ function folded(text: string): string {
     .toLowerCase();
 }
 
-export function whenRange(when: Exclude<When, 'any' | 'between'>, now: Date): [string, string] {
-  const today = localDay(now, 'Europe/London');
-  const date = new Date(`${today}T12:00:00Z`);
-  const shift = (days: number) => {
-    const moved = new Date(date);
-    moved.setUTCDate(moved.getUTCDate() + days);
-
-    return moved.toISOString().slice(0, 10);
-  };
-
-  if (when === 'week') {
-    const monday = (date.getUTCDay() + 6) % 7;
-
-    return [shift(-monday), shift(6 - monday)];
-  }
-  if (when === 'month') {
-    const last = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0, 12));
-
-    return [`${today.slice(0, 8)}01`, last.toISOString().slice(0, 10)];
-  }
-
-  const later = new Date(date);
-  later.setUTCMonth(later.getUTCMonth() + 3);
-
-  return [today, later.toISOString().slice(0, 10)];
-}
-
-export function whenOf(filters: Filters, now: Date): When {
-  if (filters.from === '' && filters.to === '') return 'any';
-
-  for (const when of ['week', 'month', 'quarter'] as const) {
-    const [from, to] = whenRange(when, now);
-    if (filters.from === from && filters.to === to) return when;
-  }
-
-  return 'between';
-}
-
-export function whenWord(filters: Filters, now: Date): string {
-  const when = whenOf(filters, now);
-  const day = (value: string) =>
-    new Intl.DateTimeFormat(LOCALE, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      timeZone: 'UTC',
-    }).format(new Date(`${value}T12:00:00Z`));
-
-  switch (when) {
-    case 'any':
-      return W.anyTime;
-    case 'week':
-      return W.thisWeek;
-    case 'month':
-      return W.thisMonth;
-    case 'quarter':
-      return W.nextThreeMonths;
-    case 'between':
-      return filters.from !== '' && filters.to !== ''
-        ? W.days(day(filters.from), day(filters.to))
-        : day(filters.from || filters.to);
-  }
-}
-
-/** Name or venue, any part of a word, case and accents ignored; within a filter any of, across filters all of; a day of it in the range. */
-export function matches(event: SampleEvent, filters: Filters): boolean {
-  const q = folded(filters.q.trim());
+/** The sample's stand-in for the API's search: name or venue, any part of a word, case and accents ignored; within a filter any of, across filters all of; a day of it in `span`. */
+export function matches(
+  event: SampleEvent,
+  look: EventsLook,
+  span: { from: string; to: string } | null,
+): boolean {
+  const q = folded(look.q.trim());
   const named =
-    !searching(filters) ||
+    !searching(look.q) ||
     folded(event.name).includes(q) ||
     (event.venue != null && folded(event.venue.name).includes(q));
-  const typed = filters.types.length === 0 || filters.types.includes(event.type);
+  const typed = look.filters.types.length === 0 || look.filters.types.includes(event.type);
   const hosted =
-    filters.hosts.length === 0 || event.hosts.some((host) => filters.hosts.includes(host));
+    look.filters.hosts.length === 0 ||
+    event.hosts.some((host) => look.filters.hosts.includes(host));
   const first = localDay(event.startsAt, event.timeZone);
   const last = localDay(event.endsAt, event.timeZone);
   const dated =
-    (filters.from === '' || last >= filters.from) && (filters.to === '' || first <= filters.to);
+    span == null ||
+    ((span.from === '' || last >= span.from) && (span.to === '' || first <= span.to));
 
   return named && typed && hosted && dated;
 }
 
-export function filterWord(filters: Filters, now: Date): string {
-  const chosen = chosenWords(filters, now);
-
-  return chosen.length === 0 ? W.all : chosen.join(', ');
-}
-
-function chosenWords(filters: Filters, now: Date): string[] {
-  return [
-    ...filters.types.map((type) => TYPE_WORDS[type]),
-    ...(filters.from === '' && filters.to === '' ? [] : [whenWord(filters, now)]),
-    ...filters.hosts,
-  ];
-}
-
-export function noMatchLine(filters: Filters, now: Date): string {
-  const chosen = hostsLine(chosenWords(filters, now), LOCALE);
-  const q = filters.q.trim();
-
-  if (searching(filters) && filtering(filters)) return W.searchedAndFiltered(q, chosen);
-
-  return searching(filters) ? W.searched(q) : W.filtered(chosen);
-}
-
 export type ListState =
+  | 'loading'
   | 'first'
   | 'firstAsk'
   | 'emptyUpcoming'
@@ -1162,14 +977,20 @@ export type ListState =
   | 'drafts'
   | 'past'
   | 'pastMore'
+  | 'pastFailed'
+  | 'failed'
   | 'offline'
   | 'search'
   | 'filtered'
   | 'filterOpen'
+  | 'manyFilters'
+  | 'manyFiltersOpen'
+  | 'longHost'
   | 'noMatch'
   | 'noGuests';
 
 const LIST_STATES: readonly ListState[] = [
+  'loading',
   'first',
   'firstAsk',
   'emptyUpcoming',
@@ -1178,10 +999,15 @@ const LIST_STATES: readonly ListState[] = [
   'drafts',
   'past',
   'pastMore',
+  'pastFailed',
+  'failed',
   'offline',
   'search',
   'filtered',
   'filterOpen',
+  'manyFilters',
+  'manyFiltersOpen',
+  'longHost',
   'noMatch',
   'noGuests',
 ];
@@ -1194,6 +1020,7 @@ export function listStateOf(value: string | null): ListState | null {
 }
 
 export interface ListStart {
+  loading: boolean;
   tab: Tab | null;
   first: boolean;
   asks: boolean;
@@ -1201,12 +1028,24 @@ export interface ListStart {
   offline: boolean;
   pastPages: number;
   menu: 'top' | 'type' | null;
-  filters: Filters | null;
+  look: EventsLook | null;
   noGuests: boolean;
+  failed: boolean;
+  moreFailed: boolean;
 }
+
+/** More picks than Filter has room for at 1280, and more than the menu's Type and Hosted by rows have; the wedding this week still matches (sc-39348). */
+export const MANY_FILTERS: EventsFilters = {
+  types: ['wedding', 'birthday', 'gala', 'corporate'],
+  when: { kind: 'week' },
+  hosts: ['Adaeze Obi', 'Tunde Bakare', 'The Mensah family'],
+};
+
+export const LONG_HOST = 'Funmilayo Adéṣínà-Ọláolúwa';
 
 export function listStart(state: ListState | null): ListStart {
   const rest: ListStart = {
+    loading: false,
     tab: null,
     first: false,
     asks: false,
@@ -1214,13 +1053,17 @@ export function listStart(state: ListState | null): ListStart {
     offline: false,
     pastPages: 1,
     menu: null,
-    filters: null,
+    look: null,
     noGuests: false,
+    failed: false,
+    moreFailed: false,
   };
 
   switch (state) {
     case null:
       return rest;
+    case 'loading':
+      return { ...rest, loading: true };
     case 'first':
       return { ...rest, first: true };
     case 'firstAsk':
@@ -1237,16 +1080,32 @@ export function listStart(state: ListState | null): ListStart {
       return { ...rest, tab: 'past' };
     case 'pastMore':
       return { ...rest, tab: 'past', pastPages: 2 };
+    case 'pastFailed':
+      return { ...rest, tab: 'past', moreFailed: true };
+    case 'failed':
+      return { ...rest, failed: true };
     case 'offline':
       return { ...rest, offline: true };
     case 'search':
-      return { ...rest, filters: { ...NO_FILTERS, q: 'lucia' } };
+      return { ...rest, look: { q: 'lucia', filters: NO_EVENTS_FILTERS } };
     case 'filtered':
-      return { ...rest, filters: { ...NO_FILTERS, types: ['wedding', 'birthday'] } };
+      return {
+        ...rest,
+        look: { q: '', filters: { ...NO_EVENTS_FILTERS, types: ['wedding', 'birthday'] } },
+      };
     case 'filterOpen':
       return { ...rest, tab: 'upcoming', menu: 'type' };
+    case 'manyFilters':
+      return { ...rest, look: { q: '', filters: MANY_FILTERS } };
+    case 'manyFiltersOpen':
+      return { ...rest, menu: 'top', look: { q: '', filters: MANY_FILTERS } };
+    case 'longHost':
+      return { ...rest, look: { q: '', filters: { ...NO_EVENTS_FILTERS, hosts: [LONG_HOST] } } };
     case 'noMatch':
-      return { ...rest, filters: { ...NO_FILTERS, q: 'garden party', types: ['wedding'] } };
+      return {
+        ...rest,
+        look: { q: 'garden party', filters: { ...NO_EVENTS_FILTERS, types: ['wedding'] } },
+      };
     case 'noGuests':
       return { ...rest, noGuests: true };
   }
@@ -1505,6 +1364,9 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       list('drafts', 'Drafts, the soonest with its dates passed'),
       list('past', 'Past, a page of ten'),
       list('pastMore', 'Past, after Show more'),
+      list('pastFailed', 'Past, More finished events did not load'),
+      list('failed', 'The events did not load'),
+      list('loading', 'Loading, the card and rows as shapes'),
       list('first', 'A first run'),
       list('firstAsk', 'A first run, without Create events'),
       list('emptyUpcoming', 'Nothing on Upcoming'),
@@ -1515,11 +1377,18 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     ],
   },
   {
+    name: 'New event, its top once the band has gone (sc-39509)',
+    states: [{ to: '/demo/events/new', name: 'New event: ‹ Events and the bell, then the title' }],
+  },
+  {
     name: 'Searching and filtering',
     states: [
       { to: '/demo/events?q=lucia', name: 'Searching “lucia”' },
       list('filterOpen', 'The Filter menu, on Type'),
       { to: '/demo/events?type=wedding,birthday', name: 'Filtered by Wedding and Birthday' },
+      list('manyFilters', 'More filters than fit on a line'),
+      list('manyFiltersOpen', 'The Filter menu, its rows ending in +N more'),
+      list('longHost', 'One host longer than the line'),
       { to: '/demo/events?q=garden+party&type=wedding', name: 'No match' },
     ],
   },

@@ -7,6 +7,7 @@ import { type DemoLink, type Viewer, VIEWERS, settingsPath } from './settings.ts
 export const ORGANISATION = 'Ire Events';
 export const MANAGERS_ARE = 'Managers are owners and admins.';
 export const EMAIL_NOTE = 'Everyone affected gets an email saying what changed and why.';
+export const SAVE_FAILED = 'The rules were not saved. Nothing changed. Try again in a moment.';
 
 export type Role = 'Owner' | 'Admin' | 'Member';
 type Area = 'members' | 'billing' | 'security';
@@ -51,6 +52,8 @@ export interface RulesPage extends Rules {
   ownTwoFactor: boolean;
   linked: 'Google' | 'Apple' | null;
   passwordOnly: readonly string[];
+  /** Under two-factor for everyone, who still has none: only a manager is told (sc-609). */
+  withoutTwoFactor: readonly string[];
   seen: string | null;
   changes: readonly Change[];
 }
@@ -68,6 +71,7 @@ export interface RuleRow {
   mark: Mark;
   title: string;
   line: string;
+  more?: string;
   ask: { consequence: string; step: HeldStep } | null;
 }
 
@@ -159,9 +163,19 @@ function twoFactor(page: RulesPage, role: Role, locale: string, thisYear: number
 
   if (page.everyoneNeedsTwoFactor) {
     const by = dayIn(page.twoFactorDeadline, locale, thisYear, true);
+    const without = page.withoutTwoFactor.length;
+    const more =
+      without === 0
+        ? {}
+        : {
+            more:
+              without === 1
+                ? `1 person doesn’t have two-factor yet. They see a banner until their deadline, then can’t open anything in ${ORGANISATION} until they turn it on.`
+                : `${without} people don’t have two-factor yet. Each sees a banner until their deadline, then can’t open anything in ${ORGANISATION} until they turn it on.`,
+          };
 
     return on
-      ? row('met', 'Two-factor for everyone', 'Yours is on.')
+      ? { ...row('met', 'Two-factor for everyone', 'Yours is on.'), ...more }
       : row(
           'needs',
           'Two-factor for everyone',
@@ -486,6 +500,8 @@ export interface Edit {
   key: RuleKey;
   picked: string;
   ask: boolean;
+  saving?: boolean;
+  failed?: boolean;
 }
 
 const CHANGES: readonly Change[] = [
@@ -531,6 +547,7 @@ const RULES: RulesPage = {
   ownTwoFactor: true,
   linked: 'Google',
   passwordOnly: ['Priya Shah', 'Ana Souza'],
+  withoutTwoFactor: [],
   seen: '2026-10-28T15:12',
   changes: CHANGES,
 };
@@ -562,6 +579,9 @@ export const SIGN_IN_RULES_STATES = [
   'twoFactor',
   'twoFactorEveryone',
   'twoFactorRefused',
+  'everyoneWithout',
+  'limitSaving',
+  'limitSaveFailed',
 ] as const;
 
 export interface SignInRulesStart {
@@ -615,6 +635,16 @@ export function signInRulesStart(state: string, by: string, now: string): SignIn
       return start({}, edit('limit', '30 days'));
     case 'limitPicked':
       return start({}, edit('limit', '7 days'));
+    case 'limitSaving':
+      return start({}, { ...edit('limit', '7 days'), saving: true });
+    case 'limitSaveFailed':
+      return start({}, { ...edit('limit', '7 days'), failed: true });
+    case 'everyoneWithout':
+      return start({
+        everyoneNeedsTwoFactor: true,
+        withoutTwoFactor: ['Priya Shah', 'Ana Souza', 'Tunde Bakare'],
+        changes: [EVERYONE, ...CHANGES],
+      });
     case 'limitDiscard':
       return start({}, edit('limit', '7 days', true));
     case 'limitSaved':
@@ -652,6 +682,7 @@ export const SIGN_IN_RULES_PAGES: readonly { name: string; states: readonly Demo
       rules('twoFactorDue', 'Two-factor due, an admin', VIEWERS.julien),
       rules('notYours', 'Two-factor for managers does not apply, a member', VIEWERS.ana),
       rules('everyone', 'Two-factor for everyone, an admin', VIEWERS.julien),
+      rules('everyoneWithout', 'Two-factor for everyone, 3 people without it, an owner'),
       rules('googleOnly', 'Google or Apple only, a member', VIEWERS.ana),
       rules('newChange', 'A change not seen yet, an admin', VIEWERS.julien),
       rules('noChanges', 'No changes yet, an admin', VIEWERS.julien),
@@ -668,6 +699,8 @@ export const SIGN_IN_RULES_PAGES: readonly { name: string; states: readonly Demo
       rules('limit', 'How long a sign-in lasts, just opened'),
       rules('limitPicked', '7 days picked'),
       rules('limitDiscard', 'Cancel after a change'),
+      rules('limitSaving', 'Saving…'),
+      rules('limitSaveFailed', 'Not saved, Save again'),
       rules('limitSaved', 'Saved, the change at the top'),
       rules('twoFactor', 'Two-factor, just opened'),
       rules('twoFactorEveryone', 'For everyone picked'),
