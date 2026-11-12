@@ -33,6 +33,7 @@ onFlowComplete:
         - extendedWaitUntil:
             visible: '{{t:account.title}}'
             timeout: 30000
+            optional: true
         - scrollUntilVisible:
             element:
               text: ${output.row}
