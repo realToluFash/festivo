@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { tied } from './members.ts';
+import { tiedEnd } from '../components/SettingsParts.tsx';
 
 const tested = config();
 const OFF = 'They’re emailed now, and every session they had has ended.';
@@ -453,7 +453,7 @@ describe('Remove from a long-named organisation, wrapped whole (sc-40153)', () =
 
       fireEvent.click(remove);
       expect(screen.getByRole('alertdialog').textContent).toContain(`from ${name}?`);
-      expect(remove.querySelector('.wrap-tied')?.textContent?.endsWith('…')).toBe(true);
+      expect(remove.querySelector('.desk-tied')?.textContent?.endsWith('…')).toBe(true);
     },
   );
 
@@ -471,8 +471,9 @@ describe('Remove from a long-named organisation, wrapped whole (sc-40153)', () =
   );
 
   it('ties the "…" to the name’s last letters, marks and all', () => {
-    expect(tied('Remove from Ẹ̀kìtì…')).toEqual(['Remove from Ẹ̀kì', 'tì…']);
-    expect(tied('Remove from Ire Events…')).toEqual(['Remove from Ire Even', 'ts…']);
+    expect(tiedEnd('Remove from Ẹ̀kìtì…')).toEqual(['Remove from Ẹ̀kì', 'tì…']);
+    expect(tiedEnd('Remove from Ire Events…')).toEqual(['Remove from Ire Even', 'ts…']);
+    expect(tiedEnd('Remove from Ìrè Events…')).toEqual(['Remove from Ìrè Even', 'ts…']);
   });
 
   it('holds the column to a 320 page’s in the At320 states', async () => {

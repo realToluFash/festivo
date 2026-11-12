@@ -35,7 +35,6 @@ import {
 import type { Load } from './RolesSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { SummaryPage } from './SummaryPage.tsx';
-import { WrapRemoveAction } from './WrapAction.tsx';
 import {
   Ask,
   CardFace,
@@ -246,9 +245,11 @@ function PersonBody({
       />
       {acts && (
         <View>
-          <WrapRemoveAction
+          <TextAction
             ref={removeRef}
             label={`Remove from ${organisation}…`}
+            removes
+            wraps
             onPress={() => {
               if (standing === 'suspendedOnlyOwner') {
                 setRefused(true);

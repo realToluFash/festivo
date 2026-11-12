@@ -702,13 +702,6 @@ export const LONG_NAME =
 export const ONE_WORD_NAME =
   'TheGrandBallroomWeddingsGalasAndGardenPartiesCompanyOfLagosLisbonMadridMonterreyAndPortoAlegreEvents';
 
-export function tied(label: string): [string, string] {
-  const marks = [...new Intl.Segmenter().segment(label)].map((one) => one.segment);
-  const tail = marks.slice(-3).join('');
-
-  return [label.slice(0, label.length - tail.length), tail];
-}
-
 export function organisationOf(state: string): string {
   if (state.startsWith('longName')) return LONG_NAME;
   if (state.startsWith('oneWordName')) return ONE_WORD_NAME;

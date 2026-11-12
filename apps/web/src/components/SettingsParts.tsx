@@ -306,7 +306,7 @@ export function RedAction({
   );
 }
 
-function tiedEnd(label: string): [string, string] {
+export function tiedEnd(label: string): [string, string] {
   const marks = [...new Intl.Segmenter().segment(label)].map((one) => one.segment);
   const tail = marks.slice(-3).join('');
 

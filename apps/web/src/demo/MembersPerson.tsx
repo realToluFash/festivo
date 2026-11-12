@@ -27,7 +27,6 @@ import {
 } from './members.ts';
 import type { SettingsSay, Viewer } from './settings.ts';
 import { useProof } from './useProof.ts';
-import { WrapRedAction } from './WrapAction.tsx';
 import {
   Ask,
   Card,
@@ -171,8 +170,9 @@ export function PersonPage({
         />
       )}
       {view.remove != null && (
-        <WrapRedAction
+        <RedAction
           label={`Remove from ${organisation}…`}
+          wraps
           line={view.remove.replaceAll(ORGANISATION, organisation)}
           onClick={onRemove}
         />
