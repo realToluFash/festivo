@@ -948,7 +948,7 @@ function FrameHeader({
   // Inside an event, ‹ in its pill and the bell head the page; on Overview the event's card under them names it (sc-30413).
   if (inEvent && back != null) {
     return (
-      <View style={[styles.phoneHeader, top]}>
+      <View style={[styles.phoneHeader, top, untitled && styles.flushFoot]}>
         <View style={styles.titleRow}>
           <View style={styles.fill}>
             {!backHidden && (
@@ -1430,6 +1430,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.spaceXl,
   },
+  flushFoot: { paddingBottom: 0 },
   portraitHeader: {
     gap: tokens.spaceXl,
     paddingHorizontal: tokens.space4xl,
