@@ -1,0 +1,60 @@
+# Needs an organisation with events hosted by Funmilayo Adéṣínà-Ọláolúwa and The Mensah family.
+# sc-41871: on the Android tablet (whose natural orientation is on its side), Filter with a cut first pick and "+N more" is cut again on turning the tablet on its side and back upright.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.filter'
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible:
+        id: 'events.filter.menu'
+    commands:
+      - tapOn:
+          id: 'events.filter'
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter.menu'
+    timeout: 10000
+- tapOn:
+    id: 'events.filter.hosts'
+- tapOn:
+    id: 'events.filter.host.Funmilayo Adéṣínà-Ọláolúwa'
+- tapOn:
+    id: 'events.filter.host.The Mensah family'
+- tapOn:
+    id: 'events.filter.back'
+- waitForAnimationToEnd
+- takeScreenshot: side-menu
+- tapOn:
+    point: '50%,85%'
+- waitForAnimationToEnd
+- takeScreenshot: side
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter'
+    timeout: 10000
+- takeScreenshot: upright
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter'
+    timeout: 10000
+- takeScreenshot: side-again
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter'
+    timeout: 10000
+- takeScreenshot: upright-again
