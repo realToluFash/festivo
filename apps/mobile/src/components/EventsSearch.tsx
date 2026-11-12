@@ -27,7 +27,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import { endCuts, endCutWidth } from '../layout/endCut.ts';
+import { endCuts, endCutWidth, unbroken } from '../layout/endCut.ts';
 import { tokens } from '../theme/tokens.ts';
 import { TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -168,8 +168,10 @@ function PicksLine({
   ink: string;
 }) {
   const rest = picks.length - shown;
-  const lead = rest > 0 ? picksLead(picks, shown) : whole;
   const snugs = Platform.OS === 'android' && rest > 0;
+  // Android cuts a line that can break at a space or hyphen there, short of the longest cut the box is sized to (sc-41871).
+  const plain = picksLead(picks, shown);
+  const lead = rest === 0 ? whole : snugs ? unbroken(plain) : plain;
   const { fontScale } = useWindowDimensions();
   const drawn = `${room}|${fontScale}|${lead}|${more(rest)}`;
   const [box, setBox] = useState<{ drawn: string; width: number } | null>(null);
