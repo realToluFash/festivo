@@ -11,6 +11,7 @@ import {
   isGuestKitchenState,
   guestKitchenStarts,
 } from './guestKitchen.ts';
+import { type Ask, guestAskStarts, isGuestAskState } from './guestAsk.ts';
 import type { DemoLink } from './settings.ts';
 
 /** The guest's own page in A · The cover card (sc-31306), on the boards' sample: main's evt-wed-4 and one guest. */
@@ -188,6 +189,7 @@ export interface Visit {
   whatsApp: WhatsAppConsent;
   ticked: boolean;
   reach: Reach;
+  ask: Ask | null;
 }
 
 export const OPEN: View = { kind: 'answer', busy: null, note: null };
@@ -222,6 +224,7 @@ const BASE: Visit = {
   whatsApp: 'none',
   ticked: false,
   reach: { email: true, sms: true, saved: null },
+  ask: null,
 };
 
 const COMING = { answer: 'coming', on: TODAY } as const;
@@ -539,6 +542,7 @@ export function isGuestState(value: string | null): value is GuestStateName {
 export function startOf(value: string | null): Visit {
   if (isGuestKitchenState(value))
     return { ...BASE, ...guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS }) };
+  if (isGuestAskState(value)) return { ...BASE, ...guestAskStarts(value) };
 
   const state = isGuestState(value) ? value : 'open';
 

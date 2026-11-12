@@ -61,6 +61,8 @@ import {
   GUEST_KITCHEN_SAVED_ID,
 } from './GuestKitchen.tsx';
 import { type GuestKitchenActions, useGuestKitchen } from './useGuestKitchen.ts';
+import { AskAgain } from './GuestAsk.tsx';
+import { type AskKey, askedAgain, landed, offer } from './guestAsk.ts';
 import { YourMessages } from './GuestMessages.tsx';
 import { switched } from './guestMessages.ts';
 import { useLater } from '../useLater.ts';
@@ -125,7 +127,12 @@ function Visitor({ state }: { state: string | null }) {
 
   const record = useCallback(
     (answer: Answer, fromCheck = false) =>
-      go((was) => sentAnswer(fromCheck ? was : { ...was, ticked: false }, answer), 'greeting'),
+      go((was) => {
+        const sent = sentAnswer(fromCheck ? was : { ...was, ticked: false }, answer);
+        const changed = sent.view?.kind === 'recorded' && !sent.view.same;
+
+        return was.ask != null && changed ? { ...sent, ask: askedAgain(was.ask) } : sent;
+      }, 'greeting'),
     [go],
   );
 
@@ -151,6 +158,7 @@ function Visitor({ state }: { state: string | null }) {
       sending: () => record('coming', true),
       sendingTap: () => record('notComing'),
       loading: () => go(() => ({ page: 'event' })),
+      maybe_saving: () => go((was) => landed(was).change, 'againSaved'),
       replySending: () => go((was) => ({ mine: was.mine.map((one) => ({ ...one, sent: true })) })),
     };
     const land = state == null ? undefined : hold[state];
@@ -188,6 +196,31 @@ function Visitor({ state }: { state: string | null }) {
       was.view.kind === 'check' ? { view: { ...was.view, busy: true, failed: false } } : {},
     );
     later(SEND_MS, () => record('coming', true));
+  }
+
+  function pickAsk(key: AskKey): void {
+    go((was) =>
+      was.ask == null || was.ask.saving
+        ? {}
+        : {
+            ask: { ...was.ask, pick: key, error: was.ask.error === 'empty' ? null : was.ask.error },
+          },
+    );
+  }
+
+  function saveAsk(): void {
+    const ask = visit.ask;
+    if (ask == null || ask.saving) return;
+    if (ask.pick == null) {
+      go(
+        (was) => (was.ask == null ? {} : { ask: { ...was.ask, error: 'empty' } }),
+        `again-${firstAsk(visit)}`,
+      );
+      return;
+    }
+    const { change, want } = landed(visit);
+    go((was) => (was.ask == null ? {} : { ask: { ...was.ask, saving: true } }));
+    later(SEND_MS, () => go(() => change, want));
   }
 
   function tick(): void {
@@ -255,6 +288,8 @@ function Visitor({ state }: { state: string | null }) {
       }
       onDraft={(draft) => go(() => ({ draft }))}
       onSendMessage={sendMessage}
+      onPickAsk={pickAsk}
+      onSaveAsk={saveAsk}
     />
   );
 
@@ -312,6 +347,10 @@ function Visitor({ state }: { state: string | null }) {
       </div>
     </>
   );
+}
+
+function firstAsk(visit: Visit): AskKey {
+  return offer(visit.ask?.today ?? '', visit.replyBy)[0] ?? 'never';
 }
 
 function Body({
@@ -427,10 +466,14 @@ function Under({
   onGoBack,
   onDraft,
   onSendMessage,
+  onPickAsk,
+  onSaveAsk,
 }: {
   visit: Visit;
   words: Words;
   kitchen: GuestKitchenActions;
+  onPickAsk: (key: AskKey) => void;
+  onSaveAsk: () => void;
   onAnswer: (answer: Answer) => void;
   onSend: () => void;
   onBack: () => void;
@@ -462,6 +505,7 @@ function Under({
         onTellThem={onTellThem}
         onGoBack={onGoBack}
       />
+      <AskAgain visit={visit} onPick={onPickAsk} onSave={onSaveAsk} />
       {showsMessages(visit) && (
         <Messages visit={visit} words={words} onDraft={onDraft} onSend={onSendMessage} />
       )}
@@ -581,7 +625,9 @@ function Shown({
           </div>
           <div className="gp-indent">
             {recorded.by == null ? (
-              <p className="gp-sub">{words.answered(recorded.answer, day)}</p>
+              <p className="gp-sub" tabIndex={-1} data-focus="answered">
+                {words.answered(recorded.answer, day)}
+              </p>
             ) : (
               <p className="gp-sub is-recorded">{words.recordedFor(recorded.by, day)}</p>
             )}

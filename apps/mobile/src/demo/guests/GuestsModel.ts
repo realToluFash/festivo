@@ -437,6 +437,12 @@ export function replyParts(
 ): { word: string; detail: string | null } {
   const word = REPLY_WORD[g.kind];
   if (g.kind === 'walkin') return { word, detail: say.arrivedTime(g.arrived ?? '') };
+  const ask = g.kind === 'maybe' ? g.ask : undefined;
+  if (ask?.kind === 'never') return { word, detail: say.wontBeAsked };
+  if (ask?.day != null && ask.kind === 'toSend')
+    return { word, detail: say.willBeAsked(dayWords(ask.day, locale)) };
+  if (ask?.day != null && ask.kind === 'sent')
+    return { word, detail: say.askSent(dayWords(ask.day, locale)) };
   if (g.recorded != null && g.kind !== 'noreply' && g.kind !== 'notyet')
     return {
       word,

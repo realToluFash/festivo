@@ -68,6 +68,8 @@ export interface SampleGuest {
   greetAs?: string | null;
   /** sc-3950: their WhatsApp consent with this organisation; none is Has not agreed to WhatsApp. */
   whatsApp?: WhatsAppConsent;
+  /** sc-1363: when a Not sure yet guest chose to be asked again, and whether it has gone. */
+  ask?: { kind: 'toSend' | 'sent' | 'never' | 'tooLate'; day: string | null };
 }
 
 const SOIRELY: Invited = { by: 'Soirely’s message', how: null, day: '2026-10-12' };
@@ -108,6 +110,7 @@ export const GUESTS: readonly SampleGuest[] = [
     email: 'camille.dubois@free.fr',
   }),
   guest('folasade', 'Chief Mrs Folasade Okonkwo-Williams', 'maybe', {
+    ask: { kind: 'sent', day: '2026-10-26' },
     when: '2026-10-16',
     phone: '+234 802 300 1188',
     companions: [{ name: 'Guest of Chief Mrs Folasade Okonkwo-Williams', kind: 'held' }],
@@ -185,8 +188,15 @@ export const PAUSED_GUESTS: readonly SampleGuest[] = [
     email: 'daniel.okafor@ireevents.com',
   }),
   guest('hana', 'Hana Sato', 'coming', { when: '2026-10-22', email: 'hana.sato@ireevents.com' }),
-  guest('yemi', 'Yemi Coker', 'maybe', { when: '2026-10-25', email: 'yemi.coker@ireevents.com' }),
-  guest('zoe', 'Zoë Clarke', 'maybe', { when: '2026-10-27', email: 'zoe.clarke@ireevents.com' }),
+  guest('yemi', 'Yemi Coker', 'maybe', {
+    when: '2026-10-25',
+    email: 'yemi.coker@ireevents.com',
+    ask: { kind: 'tooLate', day: '2026-11-02' },
+  }),
+  guest('zoe', 'Zoë Clarke', 'maybe', {
+    when: '2026-10-27',
+    email: 'zoe.clarke@ireevents.com',
+  }),
 ];
 
 /** Only the wedding has a Reply by date; the Paused party and the Draft have none (as the web demo). */

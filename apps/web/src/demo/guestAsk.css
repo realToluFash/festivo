@@ -1,0 +1,137 @@
+/* sc-1363: When should we ask you again?, GuestPage.dc.html's maybe_ states (page 30). */
+
+.gp-again {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.gp-again-set {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.gp-again-set > legend {
+  margin-bottom: 10px;
+  padding: 0;
+}
+
+.gp-again-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 8px 16px;
+  border: 1.5px solid var(--colorBorder);
+  border-radius: 14px;
+  background: var(--colorCard);
+  cursor: pointer;
+}
+
+.gp-again-row:has(input:focus-visible) {
+  box-shadow: 0 0 0 3px var(--colorAccent);
+}
+
+.gp-again-row.is-on {
+  border: 2px solid var(--colorAccent);
+  background: var(--colorAccentTint);
+}
+
+.gp-again-set.is-wrong .gp-again-row {
+  border: 2px solid var(--colorBroken);
+}
+
+.gp-again-row input {
+  flex: none;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border: 2px solid var(--colorInkTertiary);
+  border-radius: 50%;
+  background: var(--colorCard);
+  appearance: none;
+}
+
+.gp-again-row input:checked {
+  border-color: var(--colorAccent);
+  background: var(--colorAccent);
+  box-shadow: inset 0 0 0 5px var(--colorCard);
+}
+
+.gp-again-row input:focus-visible {
+  outline: none;
+}
+
+.gp-again-set.is-wrong .gp-again-row input {
+  border-color: var(--colorBroken);
+}
+
+.gp-again-words {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gp-again-name {
+  font: 600 17px/1.35 var(--fontFamily);
+}
+
+.gp-again-date {
+  color: var(--colorInkSecondary);
+  font: 400 15px/1.4 var(--fontFamily);
+}
+
+.gp-again-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--colorBrokenText);
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
+.gp-again-error.is-boxed {
+  padding: 12px 14px;
+  border: 1.5px solid var(--colorBroken);
+  border-radius: 12px;
+}
+
+.gp-again-x,
+.gp-again-i {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border: 1.5px solid currentcolor;
+  border-radius: 50%;
+  font: 700 12px/1 var(--fontFamily);
+}
+
+.gp-again-note,
+.gp-again-saved {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 14px;
+  background: var(--colorInset);
+  font: 400 16px/1.5 var(--fontFamily);
+}
+
+.gp-again-saved svg {
+  flex: none;
+  margin-top: 4px;
+  color: var(--colorAccent);
+}

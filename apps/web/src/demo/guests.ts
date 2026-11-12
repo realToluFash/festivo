@@ -98,6 +98,8 @@ export interface Guest {
   chose: GuestLanguage | null;
   greetAs: string | null;
   whatsApp: WhatsAppConsent;
+  /** sc-1363: when a Not sure yet guest chose to be asked again, and whether it has gone. */
+  ask?: { kind: 'toSend' | 'sent' | 'never' | 'tooLate'; on: string | null };
 }
 
 const ADDED: Said = { by: COLLEAGUE, how: null, on: '2026-09-14' };
@@ -211,6 +213,13 @@ const MORE_COMING: readonly More[] = [
   ['Simone Lefèvre', '10-18', 0],
   ['Tariq Hassan', '10-20', 2],
   ['Temitope Oyelaran', '10-22', 1],
+];
+
+/** sc-1363: Mariana was asked, Mathieu chose not to be, Nnamdi's ask was too late, and Olivia chose nothing. */
+const ASKS: readonly (Guest['ask'] | undefined)[] = [
+  { kind: 'sent', on: '2026-10-26' },
+  { kind: 'never', on: null },
+  { kind: 'tooLate', on: '2026-11-02' },
 ];
 
 const MORE_NOT_SURE: readonly More[] = [
@@ -353,7 +362,11 @@ function wedding(): Guest[] {
       phone: { country: 'NG', number: '805 667 1209' },
     }),
     ...more(MORE_COMING, 'coming', 'coming'),
-    ...more(MORE_NOT_SURE, 'notSure', 'held'),
+    ...more(MORE_NOT_SURE, 'notSure', 'held', (index) => {
+      const ask = ASKS[index];
+
+      return ask == null ? {} : { ask };
+    }),
     ...more(MORE_NO_REPLY, 'noReply', 'held', (index) => ({
       invited: INVITED_BY[index % INVITED_BY.length] ?? BY_MESSAGE,
     })),
@@ -648,6 +661,10 @@ export function replyLine(one: Guest, replyBy: string | null): string {
 }
 
 export function replyTail(one: Guest, replyBy: string | null): string {
+  const ask = one.reply === 'notSure' ? one.ask : undefined;
+  if (ask?.kind === 'never') return GW.wontBeAsked;
+  if (ask?.on != null && ask.kind === 'toSend') return GW.willBeAsked(dayOf(ask.on));
+  if (ask?.on != null && ask.kind === 'sent') return GW.askSent(dayOf(ask.on));
   if (one.recorded != null)
     return GW.recordedOn(
       one.recorded.by ?? READER,

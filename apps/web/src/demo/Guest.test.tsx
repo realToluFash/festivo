@@ -6,6 +6,7 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { GUEST_PAGES, THANK_YOU } from './guest.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
+import { GUEST_ASK_PAGES } from './guestAsk.ts';
 
 const SLOW = { timeout: 15000 };
 
@@ -68,7 +69,11 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
 
     expect(head.textContent).toBe('Guest’s page in A · The cover card · phone, tablet and desk');
     const hrefs = screen.getAllByRole('link').map((one) => one.getAttribute('href'));
-    const kitchen = new Set(GUEST_KITCHEN_PAGES.flatMap((one) => one.states).map((one) => one.to));
+    const kitchen = new Set(
+      [...GUEST_KITCHEN_PAGES, ...GUEST_ASK_PAGES]
+        .flatMap((one) => one.states)
+        .map((one) => one.to),
+    );
     const guestLinks = hrefs.filter(
       (href) => href?.startsWith('/demo/guest?') && !kitchen.has(href),
     );
