@@ -1163,6 +1163,14 @@ export type LifeState =
   | 'deleteMismatch'
   | 'deleteTyped'
   | 'duplicate'
+  | 'duplicateTicked'
+  | 'duplicateNoGuests'
+  | 'duplicateNoManage'
+  | 'duplicateCreating'
+  | 'duplicateNotCreated'
+  | 'duplicateOverPlan'
+  | 'duplicateOverPlanAsk'
+  | 'duplicateOverCeiling'
   | 'muted'
   | 'muteNotLoaded'
   | 'muteNotSaved';
@@ -1218,6 +1226,14 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   deleteMismatch: 'evt-wed-4',
   deleteTyped: 'evt-wed-4',
   duplicate: 'evt-wed-4',
+  duplicateTicked: 'evt-draft-4',
+  duplicateNoGuests: 'evt-cena-4',
+  duplicateNoManage: 'evt-wed-4',
+  duplicateCreating: 'evt-draft-4',
+  duplicateNotCreated: 'evt-draft-4',
+  duplicateOverPlan: 'evt-wed-4',
+  duplicateOverPlanAsk: 'evt-wed-4',
+  duplicateOverCeiling: 'evt-wed-4',
   muted: 'evt-wed-4',
   muteNotLoaded: 'evt-wed-4',
   muteNotSaved: 'evt-wed-4',
@@ -1485,6 +1501,14 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('deleteMismatch', 'Delete, not a match'),
       on('deleteTyped', 'Delete, the name typed'),
       on('duplicate', 'Duplicate'),
+      on('duplicateTicked', 'Duplicate, the guest list ticked'),
+      on('duplicateNoGuests', 'Duplicate, no guests'),
+      on('duplicateNoManage', 'Duplicate, without guests.manage'),
+      on('duplicateCreating', 'Duplicate, creating'),
+      on('duplicateNotCreated', 'Duplicate, not created'),
+      on('duplicateOverPlan', 'Duplicate, the copy over the plan'),
+      on('duplicateOverPlanAsk', 'Duplicate, the copy over the plan, Ask an owner'),
+      on('duplicateOverCeiling', 'Duplicate, the copy over the ceiling'),
       on('muted', 'Muted'),
       on('muteNotLoaded', 'Mute, not loaded'),
       on('muteNotSaved', 'Mute, not saved'),

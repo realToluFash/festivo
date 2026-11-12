@@ -29,7 +29,7 @@ import {
   sampleEvent,
   stateFits,
 } from './events.ts';
-import { DeleteByName, DuplicateDialog } from './EventDialogs.tsx';
+import { type DuplicateStart, DeleteByName, DuplicateDialog } from './EventDialogs.tsx';
 import {
   type PartProps,
   CoverPart,
@@ -140,6 +140,15 @@ function askingOf(state: EventStateName | null): Asking | null {
     case 'deleteDraft':
     case 'duplicate':
       return state;
+    case 'duplicateTicked':
+    case 'duplicateNoGuests':
+    case 'duplicateNoManage':
+    case 'duplicateCreating':
+    case 'duplicateNotCreated':
+    case 'duplicateOverPlan':
+    case 'duplicateOverPlanAsk':
+    case 'duplicateOverCeiling':
+      return 'duplicate';
     case 'delete':
     case 'deleteDraftGuests':
     case 'deleteMismatch':
@@ -600,9 +609,37 @@ function Asks({
         />
       );
     case 'duplicate':
-      return <DuplicateDialog event={event} onDismiss={onKeep} onCreated={onCreated} />;
+      return (
+        <DuplicateDialog
+          event={event}
+          begin={duplicateStartOf(state)}
+          onDismiss={onKeep}
+          onCreated={onCreated}
+        />
+      );
     default:
       return null;
+  }
+}
+
+function duplicateStartOf(state: EventStateName | null): DuplicateStart {
+  switch (state) {
+    case 'duplicateTicked':
+      return 'ticked';
+    case 'duplicateNoManage':
+      return 'noManage';
+    case 'duplicateCreating':
+      return 'creating';
+    case 'duplicateNotCreated':
+      return 'notCreated';
+    case 'duplicateOverPlan':
+      return 'overPlan';
+    case 'duplicateOverPlanAsk':
+      return 'overPlanAsk';
+    case 'duplicateOverCeiling':
+      return 'overCeiling';
+    default:
+      return 'form';
   }
 }
 
