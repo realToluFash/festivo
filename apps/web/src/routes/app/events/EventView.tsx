@@ -26,6 +26,7 @@ import { DraftRow, StatusPill } from './MakeLive.tsx';
 import { PausedRow } from './PauseEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { EventPeople } from './EventPeople.tsx';
+import { GuestsArea } from './GuestsArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
 import { typeLabel } from './eventTypes.ts';
 import { AllDates } from './Timeline.tsx';
@@ -141,6 +142,13 @@ function EventOf({
   if (page === 'seating' && load.kind === 'loaded')
     return canOn(load.event, 'seating.read') ? <SeatingArea event={load.event} /> : <NotFound />;
 
+  if (page === 'guests' && load.kind === 'loaded')
+    return canOn(load.event, 'guests.read') ? (
+      <GuestsArea event={load.event} heading={heading} />
+    ) : (
+      <NotFound />
+    );
+
   const states = (
     <>
       {load.kind === 'loading' &&
@@ -225,7 +233,6 @@ function EventOf({
             heading={heading}
             onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
           />
-          {page === 'guests' && <GuestsComing event={load.event} />}
           {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
           {page === 'people' && <PeoplePage event={load.event} />}
           {isPlaceholderEventArea(page) && page !== 'seating' && (
@@ -347,19 +354,6 @@ function AllDatesPage({
     <section className="card timeline-page" aria-labelledby="all-dates-title">
       <h2 id="all-dates-title">{t('timeline.allDates')}</h2>
       <AllDates event={event} now={now} heading={heading} />
-    </section>
-  );
-}
-
-function GuestsComing({ event }: { event: OrganisationEvent }) {
-  const { t } = useTranslation();
-
-  usePageTitle(pageTitle(t, [t('eventPage.guests'), event.name]));
-
-  return (
-    <section className="card event-area" aria-labelledby="event-area-title">
-      <h2 id="event-area-title">{t('eventPage.guests')}</h2>
-      <p>{t('eventPage.guestsComing')}</p>
     </section>
   );
 }

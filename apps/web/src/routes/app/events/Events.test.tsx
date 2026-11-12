@@ -1762,10 +1762,10 @@ describe("An event's Overview (sc-22103)", () => {
   it('keeps the Top above an area, with the area in a panel under it', async () => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
-    at('/app/events/ev_1/guests');
+    at('/app/events/ev_1/menu');
 
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
-    expect(screen.getByRole('heading', { level: 2, name: 'Guests' })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 2, name: 'Menu' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
     expect(screen.queryByRole('region', { name: 'Details' })).toBeNull();
   });
@@ -1840,7 +1840,7 @@ describe("An event's page", () => {
     expect(within(card).queryByRole('list', { name: 'Its days' })).toBeNull();
   });
 
-  it('opens Guests, which says the guest list is coming', async () => {
+  it('opens Guests', async () => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
     at('/app/events/ev_1');
@@ -1852,12 +1852,12 @@ describe("An event's page", () => {
       }),
     );
 
-    expect(await screen.findByText('The guest list for this event is coming.')).toBeDefined();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Guests' })).toBeDefined();
   });
 
   it.each([
     ['the event', '/app/events/ev_1', 'Adaeze and Tunde'],
-    ['its Guests', '/app/events/ev_1/guests', 'Adaeze and Tunde'],
+    ['its Guests', '/app/events/ev_1/guests', 'Guests'],
   ])(
     'takes focus to the heading of %s once Try again loads it (sc-11369)',
     async (_what, path, heading) => {
