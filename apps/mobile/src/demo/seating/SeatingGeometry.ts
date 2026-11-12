@@ -206,7 +206,6 @@ export function aboutHalf(it: Item, detail: Detail): Point {
   return extent(it);
 }
 
-/** How far a lit item's Tint reaches past what it goes about, in px. */
 export const LIT_PAD = 10;
 
 /** A lit item's Tint in px: a round one's radius, or a square one's half-sides before its turn. */
@@ -230,13 +229,11 @@ export function ringAbout(it: Item, s: number, detail: Detail, lit: boolean): Ri
   return { r: 0, gw, gh, hx: gw * c + gh * n + 3, hy: gw * n + gh * c + 3 };
 }
 
-/** A colleague's ring about an item centred at cx, cy, as drawn. */
 export function ringAt(it: Item, cx: number, cy: number, size: RingSize): Ring {
   const round = isCircle(it);
   return { cx, cy, hx: size.hx, hy: size.hy, round, stroke: round ? 5 : 3 };
 }
 
-/** A zoomed-out item's words in px: its name, and its count 25 px under unless it is a single chair. clear keeps them that far from its centre, off a colleague's ring. */
 export function outWords(
   it: Item,
   cx: number,
@@ -249,7 +246,6 @@ export function outWords(
   return { name: { x: cx, y: by }, count: it.kind === 'single' ? null : { x: cx, y: by + 25 } };
 }
 
-/** What marks an item carries, as far as the room's words are concerned. */
 export interface Marks {
   ring?: unknown;
   lit?: boolean;
