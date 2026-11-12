@@ -1183,6 +1183,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events?state=noGuests',
       },
       {
+        title: 'An event · loading',
+        what: 'The loaded page’s top and tabs, the body as shapes',
+        href: '/demo/events/evt-wed-4?state=loading',
+      },
+      {
         title: 'An event · draft',
         what: 'Make live is the step',
         href: '/demo/events/evt-draft-4?state=draft',

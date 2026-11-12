@@ -55,7 +55,7 @@ import { W, say } from './EventsWords.ts';
 import { datesSaveSays, replyByInTell, replyByRow, replyBySaved } from './ReplyBy.ts';
 import { replyByOf } from '../guests/GuestsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
-import { Row, Section, TextAction } from '../../components/Summary.tsx';
+import { LoadingBlock, Row, Section, TextAction } from '../../components/Summary.tsx';
 import { type MessagesState, startOf } from '../messages/MessagesModel.ts';
 import { reduceReach } from '../messages/Reach.ts';
 import { TellGuests } from '../messages/MessagesOverlays.tsx';
@@ -397,6 +397,22 @@ export function EventScreen({
     });
     setAt('messages');
   };
+
+  if (state === 'loading')
+    return (
+      <EventFrame
+        event={shown}
+        now={now}
+        area={at}
+        onArea={setAt}
+        more={more}
+        onMore={setMore}
+        without={without}
+        loading
+      >
+        <LoadingBlock words={W.loadingEvent} />
+      </EventFrame>
+    );
 
   if (at === 'guests' && (guests != null || GUESTS_ON.includes(event.id)))
     return (
