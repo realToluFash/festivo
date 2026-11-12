@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 
 import { Brand } from '../components/Brand.tsx';
 import { AREAS, type Area, type Card, type SampleEvent, cardOf } from './events.ts';
-import { Thumb } from './EventParts.tsx';
+import { EventSideCard } from '../components/EventSideCard.tsx';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { guestsAt, hasGuests } from './guests.ts';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
@@ -66,13 +66,10 @@ export function EventSidebar({
           <Glyph name="back" size={17} weight={2.4} />
           Events
         </Link>
-        <div className="ev-side-card">
-          <Thumb event={event} size={40} />
-          <span className="today-grow">
-            <span className="ev-side-name">{event.name}</span>
-            <span className="ev-side-when">{whenOf(cardOf(event, now))}</span>
-          </span>
-        </div>
+        <EventSideCard
+          event={{ name: event.name, mesh: event.mesh, photo: event.photo ? 'standIn' : null }}
+          when={whenOf(cardOf(event, now))}
+        />
       </div>
       <ul className="today-places">
         {AREAS.filter((one) => !without.includes(one.area)).map((one) => (

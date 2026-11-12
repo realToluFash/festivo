@@ -50,7 +50,7 @@ import {
 } from './replyBy.ts';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
 import { type NeedsState, readerOf } from './needsYou.ts';
-import { EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
+import { EventCard, EventsShell, NotBuilt, Thumb } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { AllDates } from './EventDates.tsx';
 import {
@@ -87,15 +87,9 @@ import { repliesOpen } from './replyClose.ts';
 import { noOrgStateOf } from './noOrg.ts';
 import { NoOrgEvent } from './NoOrgEvent.tsx';
 import { TellDialog } from './MessagesTell.tsx';
-import { Ask, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
-import {
-  Alert,
-  Crumb,
-  Lead,
-  ManageItem,
-  ManageList,
-  PartRow,
-} from '../components/EventPageParts.tsx';
+import { Ask, Head, RowWords } from '../components/SettingsParts.tsx';
+import { Crumb, Lead, ManageItem, ManageList, PartRow } from '../components/EventPageParts.tsx';
+import { JustForYou } from '../components/JustForYou.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
 import { useLeaveAsk } from './useLeaveAsk.ts';
@@ -397,6 +391,7 @@ function EventView({
                       muted={muted}
                       loaded={muteLoaded}
                       failed={muteFailed}
+                      settings="/demo/settings/notifications"
                       onRetry={() => setMuteLoaded(true)}
                       onChange={(next) => {
                         if (muteFailed) setMuteFailed(false);
@@ -780,47 +775,6 @@ function GuestsPage() {
           <NotBuilt words={W.notBuilt('sc-1439')} />
         </div>
       </div>
-    </section>
-  );
-}
-
-function JustForYou({
-  muted,
-  loaded,
-  failed,
-  onRetry,
-  onChange,
-}: {
-  muted: boolean;
-  loaded: boolean;
-  failed: boolean;
-  onRetry: () => void;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <section className="desk-block" aria-labelledby="ev-for-you">
-      <Head title={<span id="ev-for-you">{W.justForYou}</span>} />
-      {loaded ? (
-        <>
-          <div className="desk-row">
-            <Lead name="bell" />
-            <RowWords title={<span id="ev-mute">{W.mute}</span>} lines={[W.muteNote]} />
-            <Switch on={muted} label={W.mute} told="ev-mute-note" onChange={onChange} />
-          </div>
-          <span id="ev-mute-note" className="desk-unseen">
-            {W.muteNote}
-          </span>
-          {failed && <Alert>{W.muteNotSaved}</Alert>}
-        </>
-      ) : (
-        <div className="ev-unknown">
-          <p className="desk-line">{W.muteNotLoaded}</p>
-          <TextAction label={W.retry} onClick={onRetry} />
-        </div>
-      )}
-      <Link className="desk-text" to="/demo/settings/notifications">
-        {W.notificationSettings}
-      </Link>
     </section>
   );
 }

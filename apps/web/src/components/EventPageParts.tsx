@@ -456,3 +456,37 @@ export function Quiet({ children, action }: { children: ReactNode; action?: Reac
     </div>
   );
 }
+
+/** An on-or-off setting at the end of the row that names it. */
+export function Switch({
+  on,
+  label,
+  told,
+  busy = false,
+  onChange,
+}: {
+  on: boolean;
+  label: string;
+  told?: string;
+  busy?: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      className="ev-switch"
+      aria-checked={on}
+      aria-label={label}
+      aria-describedby={told}
+      aria-busy={busy}
+      onClick={() => {
+        if (!busy) onChange(!on);
+      }}
+    >
+      <span className="ev-track" aria-hidden="true">
+        <span className="ev-knob" />
+      </span>
+    </button>
+  );
+}

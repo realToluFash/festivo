@@ -489,12 +489,6 @@ export const EVENT_WORDS = {
   eventName: 'Event name',
   cover: 'Cover',
   manage: 'Manage',
-  justForYou: 'Just for you',
-  mute: 'Mute this event',
-  muteNote: 'Nobody else on this event is affected.',
-  muteNotLoaded: 'Could not check whether this event is muted.',
-  muteNotSaved: 'Not saved. Try again.',
-  notificationSettings: 'Notification settings',
   pause: 'Pause',
   pauseLine:
     'Guests can’t reply or change anything until you resume it. Nothing is lost. Check-in and service keep working.',

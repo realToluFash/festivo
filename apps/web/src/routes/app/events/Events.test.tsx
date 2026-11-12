@@ -1457,9 +1457,9 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     'Messages',
     'Schedule',
     'Staff',
+    'People',
     'Budget',
     'Reports',
-    'People',
   ];
 
   function eventNav() {
@@ -1480,7 +1480,7 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
       eventNav()
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['‹ Events', ...AREAS]);
+    ).toEqual(['Events', ...AREAS]);
     expect(current()).toBe('Overview');
     expect(screen.queryByRole('link', { name: 'Today' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Calendar' })).toBeNull();
@@ -1553,7 +1553,7 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
 
-    fireEvent.click(eventNav().getByRole('link', { name: '‹ Events' }));
+    fireEvent.click(eventNav().getByRole('link', { name: 'Events' }));
 
     expect(
       (await screen.findByRole('tab', { name: 'Drafts 1' })).getAttribute('aria-selected'),
@@ -2320,7 +2320,10 @@ describe("Editing an event's details (sc-3587)", () => {
     await editing();
 
     fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'Unsaved' } });
-    const sidebarEvents = screen.getByRole('link', { name: '‹ Events' });
+    const sidebarEvents = within(screen.getByRole('navigation', { name: 'Event' })).getByRole(
+      'link',
+      { name: 'Events' },
+    );
     sidebarEvents.focus();
     fireEvent.click(sidebarEvents);
     fireEvent.click(
@@ -2339,7 +2342,10 @@ describe("Editing an event's details (sc-3587)", () => {
     await editing();
 
     fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'Unsaved' } });
-    const sidebarEvents = screen.getByRole('link', { name: '‹ Events' });
+    const sidebarEvents = within(screen.getByRole('navigation', { name: 'Event' })).getByRole(
+      'link',
+      { name: 'Events' },
+    );
     sidebarEvents.focus();
     fireEvent.click(sidebarEvents);
     fireEvent.click(

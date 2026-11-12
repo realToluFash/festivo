@@ -22,6 +22,7 @@ import { Tag } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import './today.css';
 import '../components/SettingsParts.css';
+import '../components/eventPage.css';
 import './events.css';
 import './kitchen.css';
 
@@ -200,37 +201,4 @@ export function EventRow({
 /** Something an AC adds that main has not built: its words in a dashed pill, naming its story. */
 export function NotBuilt({ words }: { words: string }) {
   return <span className="ev-pill">{words}</span>;
-}
-
-export function Switch({
-  on,
-  label,
-  told,
-  busy = false,
-  onChange,
-}: {
-  on: boolean;
-  label: string;
-  told?: string;
-  busy?: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      className="ev-switch"
-      aria-checked={on}
-      aria-label={label}
-      aria-describedby={told}
-      aria-busy={busy}
-      onClick={() => {
-        if (!busy) onChange(!on);
-      }}
-    >
-      <span className="ev-track" aria-hidden="true">
-        <span className="ev-knob" />
-      </span>
-    </button>
-  );
 }
