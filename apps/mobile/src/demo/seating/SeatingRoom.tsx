@@ -24,6 +24,7 @@ import {
   type View as Shown,
   bounds,
   chairPoints,
+  clearCorner,
   detailOf,
   extent,
   filled,
@@ -40,6 +41,7 @@ import {
   wordsAt,
   nameAt,
   zoomAbout,
+  wordsBox,
 } from './SeatingGeometry.ts';
 import {
   type Seating,
@@ -76,6 +78,17 @@ export interface Look {
   handles?: number;
 }
 
+/** A colleague's initials on the table they have chosen, placed once every word in the room is known (sc-31783). */
+interface Badge {
+  key: string;
+  corners: Point[];
+  colour: string;
+  words: string;
+}
+
+const BADGE_W = 30;
+const BADGE_H = 22;
+
 interface Label {
   key: string;
   x: number;
@@ -105,6 +118,7 @@ function itemShape({
   look,
   chosenChair,
   labels,
+  badges,
 }: {
   m: Seating;
   it: Item;
@@ -113,6 +127,7 @@ function itemShape({
   look: Look;
   chosenChair: number | null;
   labels: Label[];
+  badges?: Badge[];
 }) {
   const s = v.s;
   const cx = v.ox + it.x * s;
@@ -268,6 +283,23 @@ function itemShape({
   if (look.ring != null) {
     const pad = look.lit === true ? 10 : 2;
     const c = look.ring.colour;
+    const words = initials(look.ring.name);
+    const badge = (corners: Point[]) => {
+      const at = corners[0];
+      if (badges != null) badges.push({ key: `${it.id}.ring`, corners, colour: c, words });
+      else if (at != null)
+        out.push(
+          <Rect
+            key="pill"
+            x={at.x}
+            y={at.y}
+            width={BADGE_W}
+            height={BADGE_H}
+            rx={BADGE_H / 2}
+            fill={c}
+          />,
+        );
+    };
     if (circle) {
       const rr = e.x * s + pad + 3.5;
       out.push(
@@ -284,26 +316,13 @@ function itemShape({
       out.push(
         <Circle key="ring" cx={cx} cy={cy} r={rr + 1.5} fill="none" stroke={c} strokeWidth={3} />,
       );
-      out.push(
-        <Rect
-          key="pill"
-          x={cx - rr * 0.72 - 4}
-          y={cy - rr * 0.72 - 11}
-          width={30}
-          height={22}
-          rx={11}
-          fill={c}
-        />,
-      );
-      labels.push({
-        key: `${it.id}.ring`,
-        x: cx - rr * 0.72 + 11,
-        y: cy - rr * 0.72,
-        words: initials(look.ring.name),
-        size: 12,
-        bold: true,
-        ink: tokens.colorInkOnDark,
-      });
+      const d = rr * 0.72;
+      badge([
+        { x: cx - d - 4, y: cy - d - 11 },
+        { x: cx + d + 4 - BADGE_W, y: cy - d - 11 },
+        { x: cx - d - 4, y: cy + d - 11 },
+        { x: cx + d + 4 - BADGE_W, y: cy + d - 11 },
+      ]);
     } else {
       const gw = e.x * s + pad + 2;
       const gh = e.y * s + pad + 2;
@@ -321,26 +340,12 @@ function itemShape({
           transform={`translate(${cx} ${cy}) rotate(${it.rot})`}
         />,
       );
-      out.push(
-        <Rect
-          key="pill"
-          x={cx - gw - 4}
-          y={cy - gh - 11}
-          width={30}
-          height={22}
-          rx={11}
-          fill={c}
-        />,
-      );
-      labels.push({
-        key: `${it.id}.ring`,
-        x: cx - gw + 11,
-        y: cy - gh,
-        words: initials(look.ring.name),
-        size: 12,
-        bold: true,
-        ink: tokens.colorInkOnDark,
-      });
+      badge([
+        { x: cx - gw - 4, y: cy - gh - 11 },
+        { x: cx + gw + 4 - BADGE_W, y: cy - gh - 11 },
+        { x: cx - gw - 4, y: cy + gh - 11 },
+        { x: cx + gw + 4 - BADGE_W, y: cy + gh - 11 },
+      ]);
     }
   }
   if (look.overlap === true)
@@ -557,6 +562,7 @@ export function RoomDrawing({
 }) {
   const detail = detailOf(v.s);
   const labels: Label[] = [];
+  const badges: Badge[] = [];
   const rw = m.room.w * v.s;
   const rl = m.room.l * v.s;
   const lines: ReactNode[] = [];
@@ -596,15 +602,42 @@ export function RoomDrawing({
         look: looks[it.id] ?? {},
         chosenChair: m.chosen === it.id ? m.chair : null,
         labels,
+        badges,
       })}
     </G>
   ));
+  const taken = labels.map((l) => wordsBox(l.x, l.y, l.words, l.size, l.start === true));
+  const pills = badges.map((b) => {
+    const at = clearCorner(b.corners, BADGE_W, BADGE_H, taken);
+    taken.push({ x: at.x, y: at.y, w: BADGE_W, h: BADGE_H });
+    labels.push({
+      key: b.key,
+      x: at.x + BADGE_W / 2,
+      y: at.y + BADGE_H / 2,
+      words: b.words,
+      size: 12,
+      bold: true,
+      ink: tokens.colorInkOnDark,
+    });
+    return (
+      <Rect
+        key={b.key}
+        x={at.x}
+        y={at.y}
+        width={BADGE_W}
+        height={BADGE_H}
+        rx={BADGE_H / 2}
+        fill={b.colour}
+      />
+    );
+  });
   return (
     <>
       <Svg width={width} height={height} style={StyleSheet.absoluteFill} {...hidden}>
         {floor && <Rect x={v.ox} y={v.oy} width={rw} height={rl} fill={tokens.colorCard} />}
         {lines}
         {shapes}
+        {pills}
         <Bars v={v} floor={v.oy + rl} items={items.filter((it) => looks[it.id]?.faint !== true)} />
         {m.wallAt != null && (
           <Line
@@ -898,6 +931,7 @@ export function RoomSurface({
   height,
   viewsEnd = 0,
   printStart = 0,
+  caption: drawCaption = true,
 }: {
   m: Seating;
   dispatch: (action: Action) => void;
@@ -905,6 +939,7 @@ export function RoomSurface({
   height: number;
   viewsEnd?: number;
   printStart?: number;
+  caption?: boolean;
 }) {
   const box = useRef<ViewInstance>(null);
   const [live, setLive] = useState<Live | null>(null);
@@ -936,16 +971,22 @@ export function RoomSurface({
   return (
     <View ref={box} style={styles.fill} onLayout={measure} {...gestures.panHandlers}>
       <RoomDrawing m={m} v={v} width={width} height={height} items={items} looks={looks}>
-        <Text
-          size={12.5}
-          weight="semibold"
-          accessibilityRole="header"
-          accessibilityLabel={say.roomLabel(m.room.name, length(m, m.room.w), length(m, m.room.l))}
-          numberOfLines={1}
-          style={[styles.roomLine, caption]}
-        >
-          {roomLine(m)}
-        </Text>
+        {drawCaption && (
+          <Text
+            size={12.5}
+            weight="semibold"
+            accessibilityRole="header"
+            accessibilityLabel={say.roomLabel(
+              m.room.name,
+              length(m, m.room.w),
+              length(m, m.room.l),
+            )}
+            numberOfLines={1}
+            style={[styles.roomLine, caption]}
+          >
+            {roomLine(m)}
+          </Text>
+        )}
         {m.items.map((it) => {
           const b = bounds(it);
           const w = Math.max(48, 2 * b.x * v.s);

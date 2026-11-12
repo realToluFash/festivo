@@ -5,6 +5,10 @@ import {
   CHAIR_HIT,
   CHAIR_R,
   HANDLE_HIT,
+  PAD_FRAME,
+  clearCorner,
+  wordsBox,
+  PAD_UNDER_TOOLS,
   chairPoints,
   chairSides,
   handlePoints,
@@ -148,10 +152,43 @@ describe('the sample agrees with Messaging B (142 invited, 96 coming)', () => {
   });
 });
 
+describe("a colleague's initials", () => {
+  const corners = [
+    { x: 100, y: 100 },
+    { x: 200, y: 100 },
+    { x: 100, y: 200 },
+  ];
+
+  it("move to the next corner rather than cover a neighbour's count", () => {
+    const count = wordsBox(115, 111, '10 of 10', 12, false);
+    expect(clearCorner(corners, 30, 22, [count])).toEqual({ x: 200, y: 100 });
+  });
+
+  it('keep the first corner when it is clear, and when every corner is covered', () => {
+    expect(clearCorner(corners, 30, 22, [wordsBox(400, 400, 'Table 2', 12, false)])).toEqual(
+      corners[0],
+    );
+    const everywhere = { x: 0, y: 0, w: 1000, h: 1000 };
+    expect(clearCorner(corners, 30, 22, [everywhere])).toEqual(corners[0]);
+  });
+});
+
 describe('the room to scale', () => {
   it('fits at 50% on its side and 46% upright, as the boards draw', () => {
     expect(pct(fit(632, 730, ROOM).s)).toBe(50);
     expect(pct(fit(786, 560, ROOM).s)).toBe(46);
+  });
+
+  it('keeps the walls clear of the tools, and fills its box once the tools sit outside it', () => {
+    const under = run(pad, { type: 'laid', w: 786, h: 560, pad: PAD_UNDER_TOOLS });
+    expect(under.shown?.oy).toBeGreaterThanOrEqual(PAD_UNDER_TOOLS[0]);
+    const out = run(under, { type: 'laid', w: 786, h: 400, pad: PAD_FRAME });
+    const v = out.shown;
+    expect(v).not.toBeNull();
+    if (v == null) return;
+    expect(v.oy).toBeGreaterThanOrEqual(PAD_FRAME[0]);
+    expect(v.oy + ROOM.l * v.s).toBeLessThanOrEqual(400 - PAD_FRAME[2] + 0.001);
+    expect(run(out, { type: 'fit' }).shown).toEqual(v);
   });
 
   it('draws outlines under 50% and each chair a target from 150%', () => {
