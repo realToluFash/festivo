@@ -482,6 +482,7 @@ function MembersLoaded({
           <MembersBlocks {...blocks} column />
         </div>
         <div className="members-side">
+          {desk.offline}
           {desk.bell != null && <div className="desk-top is-end">{desk.bell}</div>}
           {page}
         </div>
