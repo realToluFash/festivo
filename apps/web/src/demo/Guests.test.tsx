@@ -134,7 +134,7 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
     expect(screen.queryByText('kwame.mensah@outlook.com')).toBeNull();
     expect(screen.queryByText('+44 7700 900412')).toBeNull();
-    expect(screen.queryByRole('heading', { name: 'Invitation' })).toBeNull();
+    expect(within(column()).getByRole('heading', { name: 'Invitation' })).toBeDefined();
     expect(within(column()).getByText('Coming · replied Oct 2')).toBeDefined();
     expect(within(column()).getByText('Messages greet them by their full name.')).toBeDefined();
     expect(within(column()).queryByText('Added')).toBeNull();
@@ -836,16 +836,23 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
     expect(within(column()).getByRole('button', { name: /Replace link/u })).toBeDefined();
   });
 
-  it('tells someone who can view why nothing can be marked', SLOW, async () => {
-    await guests('guestViewer');
+  it(
+    'shows someone who can view who invited a guest, and why nothing can be marked',
+    SLOW,
+    async () => {
+      await guests('guestViewer');
 
-    expect(
-      within(column()).getByText(
-        'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
-      ),
-    ).toBeDefined();
-    expect(within(column()).queryByRole('heading', { name: 'Invitation' })).toBeNull();
-  });
+      const invitation = within(column()).getByRole('region', { name: 'Invitation' });
+
+      expect(within(invitation).getByText('Invited by Soirely’s message, Oct 12')).toBeDefined();
+      expect(
+        within(invitation).getByText(
+          'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
+        ),
+      ).toBeDefined();
+      expect(within(invitation).queryByRole('button')).toBeNull();
+    },
+  );
 
   it('lists the guests not yet invited from the menu', SLOW, async () => {
     await guests('notYetFilter');

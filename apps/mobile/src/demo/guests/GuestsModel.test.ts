@@ -230,6 +230,13 @@ describe('invited is a fact with a date and a way (sc-3788)', () => {
     expect(invitationWords(byKey('bisi'), EN)).toBeNull();
   });
 
+  it('words the way in the line as the web does: lower case, WhatsApp as it is', () => {
+    expect(invitationWords(byKey('seun'), EN)).toBe('Invited by Ana Souza, text message, Oct 10');
+    expect(invitationWords(markedInvited(byKey('bisi'), 'Other', '2026-11-03'), EN)).toMatch(
+      /^Invited by .+, another way, Nov 3$/u,
+    );
+  });
+
   it('undoes only a mark made by hand, before they reply', () => {
     expect(handMarked(byKey('emeka'))).toBe(true);
     expect(handMarked(byKey('marta'))).toBe(false);

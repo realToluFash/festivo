@@ -221,6 +221,13 @@ export const REPLY_WORD: Record<ReplyKind | 'walkin', string> = {
 
 export const HOW_TOLD = ['By phone', 'In person', 'By message', 'Other'] as const;
 export const HOW_INVITED = ['WhatsApp', 'Text message', 'Email', 'In person', 'Other'] as const;
+
+/** A How did you invite them? answer inside a sentence, as the web's demo words it: "text message", "another way", "WhatsApp". */
+export function midSentence(how: string): string {
+  if (how === 'Other') return 'another way';
+  if (how === 'WhatsApp') return how;
+  return how.charAt(0).toLowerCase() + how.slice(1);
+}
 export const HOW_AGREED = ['In person', 'By phone', 'In writing'] as const;
 
 export const say = {
@@ -271,7 +278,8 @@ export const say = {
     `${name} replied ${reply} themselves on ${date}. Replace it?`,
   recordedBy: (who: string, how: string, date: string) =>
     `recorded by ${who}, ${how.toLowerCase()}, ${date}`,
-  invitedBy: (who: string, how: string, date: string) => `Invited by ${who}, ${how}, ${date}`,
+  invitedBy: (who: string, how: string, date: string) =>
+    `Invited by ${who}, ${midSentence(how)}, ${date}`,
   invitedWhenReplied: (date: string) => `Invited when they replied, ${date}`,
   unmarkRefused: (name: string, reply: string, date: string) =>
     `Not changed. ${name} replied ${reply} on ${date}, so they stay invited.`,

@@ -130,6 +130,13 @@ export function GuestPage({
   const invites = eventAllows(event.phase, 'invite');
   const card = cardOf(g, role, replies, locale, actions, invites, replyBy);
   const invitation = invitationWords(g, locale);
+  const readOnly = (
+    <View style={styles.readOnly} testID="guest.readOnly">
+      <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
+        {W.readOnlyInvited}
+      </Text>
+    </View>
+  );
   const kind = g.kind === 'walkin' ? 'walkin' : g.kind;
   const replied = g.kind === 'coming' || g.kind === 'maybe' || g.kind === 'notcoming';
   const { word, detail } = replyParts(g, locale, replyBy);
@@ -251,14 +258,8 @@ export function GuestPage({
           ]}
         />
       </View>
-      {!owner && (
-        <View style={styles.readOnly} testID="guest.readOnly">
-          <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
-            {W.readOnlyInvited}
-          </Text>
-        </View>
-      )}
-      {owner && event.phase !== 'draft' && (
+      {!owner && event.phase === 'draft' && readOnly}
+      {event.phase !== 'draft' && (
         <View>
           <BlockHead title={W.invitation} />
           <RowList
@@ -275,7 +276,7 @@ export function GuestPage({
                             lead={<LineIcon name="mail" />}
                             testID="guest.invited"
                           />
-                          {handMarked(g) && (
+                          {owner && handMarked(g) && (
                             <View style={styles.agree}>
                               <TextAction
                                 ref={refFor('unmark')}
@@ -305,7 +306,7 @@ export function GuestPage({
                     },
                   ]
                 : []),
-              ...(invites
+              ...(owner && invites
                 ? [
                     {
                       key: 'copy',
@@ -325,23 +326,27 @@ export function GuestPage({
                     },
                   ]
                 : []),
-              {
-                key: 'replace',
-                inset: 40,
-                row: (
-                  <Row
-                    ref={refFor('replace')}
-                    title={W.replaceLink}
-                    line={W.replaceLinkLine}
-                    lead={<LineIcon name="refresh" />}
-                    accent
-                    weight="medium"
-                    onPress={actions.onReplace}
-                    testID="guest.replace"
-                  />
-                ),
-              },
-              ...(g.kind === 'notyet' && invites
+              ...(owner
+                ? [
+                    {
+                      key: 'replace',
+                      inset: 40,
+                      row: (
+                        <Row
+                          ref={refFor('replace')}
+                          title={W.replaceLink}
+                          line={W.replaceLinkLine}
+                          lead={<LineIcon name="refresh" />}
+                          accent
+                          weight="medium"
+                          onPress={actions.onReplace}
+                          testID="guest.replace"
+                        />
+                      ),
+                    },
+                  ]
+                : []),
+              ...(owner && g.kind === 'notyet' && invites
                 ? [
                     {
                       key: 'mark',
@@ -363,6 +368,7 @@ export function GuestPage({
                 : []),
             ]}
           />
+          {!owner && <View style={styles.below}>{readOnly}</View>}
         </View>
       )}
       {owner && (
@@ -518,6 +524,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: tokens.colorInset,
   },
+  below: { marginTop: tokens.spaceSm },
   secondary: { color: tokens.colorInkSecondary },
   lines: { lineHeight: 15 * 1.45 },
   sunkCard: { height: 190, borderRadius: 26, backgroundColor: tokens.colorNeutralFill },
