@@ -1,5 +1,4 @@
-/** Android's end ellipsis. */
-export const ELLIPSIS = '…';
+const ELLIPSIS = '…';
 
 export function endCuts(text: string): string[] {
   const characters = Array.from(text);

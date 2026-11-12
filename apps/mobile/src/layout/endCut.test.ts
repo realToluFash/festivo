@@ -10,7 +10,7 @@ describe('endCuts', () => {
   });
 
   it('never splits a character in two', () => {
-    expect(endCuts('Ọlá')).toEqual(['…', 'Ọ…', 'Ọl…']);
+    expect(endCuts('a😀b')).toEqual(['…', 'a…', 'a😀…']);
   });
 });
 
