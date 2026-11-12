@@ -48,6 +48,9 @@ export const GW = {
 
   repliedOn: (date: string) => `replied ${date}`,
   askedOn: (date: string) => `asked to decide by ${date}`,
+  willBeAskedAgain: (date: string) => `will be asked again ${date}`,
+  askedAgain: (date: string) => `asked again ${date}`,
+  wontBeAskedAgain: 'won’t be asked again',
   recordedOn: (name: string, how: string, date: string) => `recorded by ${name}, ${how}, ${date}`,
   withWord: (word: string, rest: string) => `${word} · ${rest}`,
   invitedBy: (name: string, how: string, date: string) => `Invited by ${name}, ${how}, ${date}`,

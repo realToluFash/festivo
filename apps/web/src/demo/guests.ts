@@ -98,7 +98,11 @@ export interface Guest {
   chose: GuestLanguage | null;
   greetAs: string | null;
   whatsApp: WhatsAppConsent;
+  askAgain: AskAgain | null;
 }
+
+/** sc-1363: when a guest who answered Not sure yet will be, or was, asked again; Not sent: too late reads as nothing chosen. */
+export type AskAgain = { kind: 'will' | 'asked'; on: string } | { kind: 'wont' };
 
 const ADDED: Said = { by: COLLEAGUE, how: null, on: '2026-09-14' };
 const BY_MESSAGE: Said = { by: null, how: null, on: '2026-10-12' };
@@ -122,6 +126,7 @@ function guest(id: string, name: string, reply: Reply, extra: Partial<Guest> = {
     chose: null,
     greetAs: null,
     whatsApp: NO_CONSENT,
+    askAgain: null,
     ...extra,
   };
 }
@@ -654,9 +659,33 @@ export function replyTail(one: Guest, replyBy: string | null): string {
       midSentence(one.recorded.how ?? 'Other'),
       dayOf(one.recorded.on),
     );
+  if (one.reply === 'notSure' && one.askAgain != null) return askTail(one.askAgain);
   if (one.reply === 'notSure' && replyBy != null) return GW.askedOn(dayOf(replyBy));
 
   return GW.repliedOn(dayOf(one.replied ?? ADDED.on));
+}
+
+function askTail(ask: AskAgain): string {
+  switch (ask.kind) {
+    case 'will':
+      return GW.willBeAskedAgain(dayOf(ask.on));
+    case 'asked':
+      return GW.askedAgain(dayOf(ask.on));
+    case 'wont':
+      return GW.wontBeAskedAgain;
+  }
+}
+
+/** On 30 Oct, with Reply by 4 Nov: asked again a week after 16 Oct, three days before answers close, and never. */
+export const ASK_AGAIN_CLOCK = new Date('2026-10-30T09:41:00Z');
+const ASKS: Record<string, AskAgain> = {
+  folasade: { kind: 'asked', on: '2026-10-23' },
+  lucia: { kind: 'will', on: '2026-11-01' },
+  'mariana-lopes': { kind: 'wont' },
+};
+
+function withAsks(list: readonly Guest[]): Guest[] {
+  return list.map((one) => ({ ...one, askAgain: ASKS[one.id] ?? one.askAgain }));
 }
 
 function lowerFirst(text: string): string {
@@ -1239,6 +1268,7 @@ export const GUESTS_STATES = [
   { key: 'repliesClosed', name: 'Replies closed' },
   { key: 'repliesClosedViewer', name: 'Can view: replies closed' },
   { key: 'reopened', name: 'One reply reopened' },
+  { key: 'askAgain', name: 'Not sure yet: when each will be asked again (sc-1363)' },
   { key: 'edit', name: 'Edit guest, in place' },
   { key: 'editErrors', name: 'Save refused before sending' },
   { key: 'editDuplicate', name: 'The name is already on the list' },
@@ -1408,6 +1438,12 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return column(guestPane('emeka'), {
         ...closed,
         list: reopen(start.list, 'emeka', '2026-11-05'),
+      });
+    case 'askAgain':
+      return column(guestPane('folasade'), {
+        choice: 'notSure',
+        clock: ASK_AGAIN_CLOCK,
+        list: withAsks(start.list),
       });
     case 'edit':
       return edit('kwame');
@@ -1618,6 +1654,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'repliesClosed',
     'repliesClosedViewer',
     'reopened',
+    'askAgain',
   ]),
   group('Edit, in place', [
     'edit',
