@@ -11,6 +11,14 @@ import {
   type HowTold,
   midSentence,
 } from './guestsWords.ts';
+import {
+  HAUWA_NEEDS,
+  KWAME_NEEDS,
+  NO_NEEDS,
+  type Needs,
+  OTHER_LONG,
+  keptNeeds,
+} from './guestNeeds.ts';
 import { numberLine } from './rules.ts';
 import { type HowAgreed, NO_CONSENT, type WhatsAppConsent, hostAgreed } from './whatsAppConsent.ts';
 import type { DemoLink } from './settings.ts';
@@ -66,6 +74,8 @@ export interface Companion {
   /** Their seat and meal pick (epics 31, 32): removing them says what goes first (sc-3773). */
   table?: string;
   meal?: boolean;
+  /** sc-3777: their own needs, recorded as facts. */
+  needs?: Needs;
 }
 
 /** sc-3790: a guest's language, en, es, fr or pt; null is Not set. The host's and the guest's own are the AC, not yet built. */
@@ -98,6 +108,8 @@ export interface Guest {
   chose: GuestLanguage | null;
   greetAs: string | null;
   whatsApp: WhatsAppConsent;
+  /** sc-3777: allergies, diet, access and the Private note; only with guests.manage. */
+  needs?: Needs;
 }
 
 const ADDED: Said = { by: COLLEAGUE, how: null, on: '2026-09-14' };
@@ -807,7 +819,8 @@ export interface Values {
   number: string;
   language: GuestLanguage | null;
   greetAs: string;
-  companions: readonly { id: string | null; name: string }[];
+  companions: readonly { id: string | null; name: string; needs?: Needs }[];
+  needs?: Needs;
 }
 
 export function valuesOf(one: Guest | null): Values {
@@ -819,7 +832,12 @@ export function valuesOf(one: Guest | null): Values {
     language: one?.language ?? null,
     greetAs: one?.greetAs ?? '',
     companions:
-      one?.companions.map((companion) => ({ id: companion.id, name: companion.name ?? '' })) ?? [],
+      one?.companions.map((companion) => ({
+        id: companion.id,
+        name: companion.name ?? '',
+        needs: companion.needs ?? NO_NEEDS,
+      })) ?? [],
+    needs: one?.needs ?? NO_NEEDS,
   };
 }
 
@@ -899,6 +917,7 @@ export function saveGuest(list: readonly Guest[], id: string, values: Values): G
         id: was?.id ?? `${id}-n${index + 1}`,
         name: companion.name.trim() === '' ? null : companion.name.trim(),
         reply: was?.reply ?? placeReply(one.reply),
+        needs: keptNeeds(companion.needs ?? NO_NEEDS),
       };
     });
 
@@ -913,6 +932,7 @@ export function saveGuest(list: readonly Guest[], id: string, values: Values): G
       language: values.language,
       greetAs: greetAsOf(values),
       companions: kept,
+      needs: keptNeeds(values.needs ?? NO_NEEDS),
     };
   });
 }
@@ -931,6 +951,7 @@ export function addGuest(list: readonly Guest[], values: Values, on: string): Gu
     language: values.language,
     greetAs: greetAsOf(values),
     added: { by: READER, how: null, on },
+    needs: keptNeeds(values.needs ?? NO_NEEDS),
   });
 
   return [
@@ -941,6 +962,7 @@ export function addGuest(list: readonly Guest[], values: Values, on: string): Gu
         id: `${id}-c${index + 1}`,
         name: companion.name.trim() === '' ? null : companion.name.trim(),
         reply: 'notYet' as const,
+        needs: keptNeeds(companion.needs ?? NO_NEEDS),
       })),
     },
   ];
@@ -1138,7 +1160,11 @@ export interface EditStart {
   at?: string;
   /** A seated companion's Remove pressed: the Ask is open for them. */
   removing?: string;
+  /** sc-3777: the Needs sections open at the start, 'guest' or a companion's place. */
+  needsOpen?: readonly NeedsOpen[];
 }
+
+export type NeedsOpen = 'guest' | number;
 
 export interface RecordStart {
   answer?: Answer;
@@ -1160,7 +1186,10 @@ export interface AddStart {
   duplicate?: boolean;
   notAdded?: boolean;
   added?: string;
+  /** sc-3777: the added line says their needs are on the list. */
+  addedNeeds?: boolean;
   at?: string;
+  needsOpen?: readonly NeedsOpen[];
 }
 
 export type Pane =
@@ -1212,6 +1241,30 @@ const BIMPE: Partial<Values> = {
   number: '7700 900877',
 };
 
+/** sc-3777's samples: Kwame's needs on the list, and Musa's companion's. */
+function withNeeds(
+  list: readonly Guest[],
+  id: string,
+  needs: Needs,
+  companion: Needs | null = null,
+): Guest[] {
+  return list.map((one) =>
+    one.id !== id
+      ? one
+      : {
+          ...one,
+          needs,
+          companions: one.companions.map((each, at) =>
+            at === 0 && companion != null
+              ? { ...each, name: 'Hauwa Bello', needs: companion }
+              : each,
+          ),
+        },
+  );
+}
+
+const NOTE_LONG = Array.from({ length: 9 }, () => KWAME_NEEDS.note).join(' ');
+
 export const GUESTS_STATES = [
   { key: 'first', name: 'First time: No guests yet, and Add guest' },
   { key: 'inUse', name: 'In use, nobody open yet' },
@@ -1259,6 +1312,14 @@ export const GUESTS_STATES = [
   { key: 'addDuplicate', name: 'The name is already on the list' },
   { key: 'added', name: 'Added: the form cleared for the next' },
   { key: 'addNotAdded', name: 'Add guest failed' },
+  { key: 'needsOpen', name: 'Needs: open, nothing ticked' },
+  { key: 'needsFilled', name: 'Needs: recorded, collapsed to its words' },
+  { key: 'needsFilledOpen', name: 'Needs: recorded, open' },
+  { key: 'needsOtherBlank', name: 'Other allergy ticked with no words: Say which' },
+  { key: 'needsOtherLong', name: 'Other allergy over 100 characters' },
+  { key: 'needsNoteLong', name: 'Private note over 500 characters' },
+  { key: 'needsCompanion', name: 'A companion’s own needs' },
+  { key: 'needsAdded', name: 'Added with needs: the form cleared for the next' },
   { key: 'linkCopied', name: 'Link copied, then Mark as invited' },
   { key: 'clipboardRefused', name: 'The browser refused the clipboard' },
   { key: 'replaceAsk', name: 'Replace link…: the Ask' },
@@ -1471,6 +1532,50 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       };
     case 'addNotAdded':
       return add({ values: BIMPE, notAdded: true });
+    case 'needsOpen':
+      return add({ values: { name: 'Bimpe Adeyemi' }, needsOpen: ['guest'] });
+    case 'needsFilled':
+      return { ...edit('kwame'), list: withNeeds(start.list, 'kwame', KWAME_NEEDS) };
+    case 'needsFilledOpen':
+      return {
+        ...edit('kwame', { needsOpen: ['guest'] }),
+        list: withNeeds(start.list, 'kwame', KWAME_NEEDS),
+      };
+    case 'needsOtherBlank':
+      return add({
+        values: {
+          ...BIMPE,
+          needs: {
+            ...NO_NEEDS,
+            allergies: ['peanuts'],
+            other: { ...NO_NEEDS.other, allergies: '' },
+          },
+        },
+        tried: true,
+      });
+    case 'needsOtherLong':
+      return add({
+        values: {
+          ...BIMPE,
+          needs: { ...NO_NEEDS, other: { ...NO_NEEDS.other, allergies: OTHER_LONG } },
+        },
+        tried: true,
+      });
+    case 'needsNoteLong':
+      return {
+        ...edit('kwame', { values: { needs: { ...KWAME_NEEDS, note: NOTE_LONG } }, tried: true }),
+        list: withNeeds(start.list, 'kwame', KWAME_NEEDS),
+      };
+    case 'needsCompanion':
+      return {
+        ...edit('musa', { needsOpen: [0] }),
+        list: withNeeds(start.list, 'musa', NO_NEEDS, HAUWA_NEEDS),
+      };
+    case 'needsAdded':
+      return {
+        ...add({ added: 'Bimpe Adeyemi', addedNeeds: true }),
+        list: addGuest(start.list, { ...valuesOf(null), ...BIMPE, needs: HAUWA_NEEDS }, TODAY),
+      };
     case 'linkCopied':
       return column(guestPane('bisi', { invite: 'copied' }));
     case 'clipboardRefused':
@@ -1639,6 +1744,17 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'recordNotSaved',
   ]),
   group('Add guest, in place', ['add', 'addRefused', 'addDuplicate', 'added', 'addNotAdded']),
+  group('Needs: allergies, diet and access (sc-3777)', [
+    'add',
+    'needsOpen',
+    'needsFilled',
+    'needsFilledOpen',
+    'needsOtherBlank',
+    'needsOtherLong',
+    'needsNoteLong',
+    'needsCompanion',
+    'needsAdded',
+  ]),
   group('The guest’s language (sc-3790)', [
     'add',
     'languageAdd',

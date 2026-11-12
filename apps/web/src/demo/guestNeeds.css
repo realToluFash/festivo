@@ -1,0 +1,168 @@
+/* sc-3777's Needs: a disclosure under the contact fields and under each companion. */
+.gn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  min-width: 0;
+}
+
+.gn-h {
+  margin: 0;
+}
+
+.gn-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--colorInk);
+  text-align: start;
+  cursor: pointer;
+}
+
+.gn-head:focus-visible {
+  border-radius: var(--radiusInset);
+  box-shadow: var(--deskRing);
+  outline: none;
+}
+
+.gn-title {
+  font: 700 15px/1.3 var(--fontFamily);
+}
+
+.gn-noted {
+  flex: 1;
+  color: var(--colorInkSecondary);
+  font: 500 14.5px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.gn-head > svg {
+  flex: none;
+  color: var(--colorInkSecondary);
+}
+
+.gn-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+  min-width: 0;
+}
+
+.gn-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gn-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 32px;
+  padding: var(--spaceXxs) var(--spaceLg);
+  border-radius: 16px;
+  background: var(--colorInsetBorder);
+  color: var(--colorInk);
+  font: 600 14px/1.3 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.gn-chip.is-allergy {
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1.5px var(--colorBroken);
+  color: var(--colorBrokenText);
+}
+
+.gn-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--colorBroken);
+  border-radius: 9px;
+  background: var(--colorCard);
+  color: var(--colorBroken);
+  font: 700 12px/1 var(--fontFamily);
+}
+
+.gn-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceMd);
+  margin-bottom: var(--spaceXxs);
+  padding: 0;
+  font: 700 15px/1.3 var(--fontFamily);
+}
+
+.gn-first {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  padding: 2px var(--spaceMd) 2px var(--spaceSm);
+  border-radius: var(--spaceMd);
+  box-shadow: inset 0 0 0 1.5px var(--colorBroken);
+  color: var(--colorBrokenText);
+  font: 600 12.5px/1.3 var(--fontFamily);
+}
+
+/* Two columns at a desk; a long French or Portuguese name wraps inside its own row. */
+.gn-boxes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--spaceXl);
+}
+
+.gn-tick {
+  min-height: var(--sizeHit);
+  font-weight: 500;
+  font-size: 15px;
+}
+
+.gn-note {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 96px;
+  padding: var(--spaceMd) var(--spaceXl);
+  border: 0;
+  border-radius: var(--radiusInset);
+  outline: none;
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1.5px var(--colorFieldBorder);
+  color: var(--colorInk);
+  font: 500 16px/1.45 var(--fontFamily);
+  resize: vertical;
+}
+
+.gn-note:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}
+
+.gn-note.is-wrong {
+  box-shadow: inset 0 0 0 2px var(--colorBroken);
+}
+
+.gn-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.gs-companion-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding-bottom: var(--spaceMd);
+}
