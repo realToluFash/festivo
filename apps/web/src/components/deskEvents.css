@@ -13,6 +13,10 @@
   min-height: calc(var(--spaceXs) * 2 + 12px * 1.2 + var(--sizeHit) * 4 + var(--spaceHair) * 3);
 }
 
+.today-side-events > .today-caps {
+  margin: 0;
+}
+
 .today-side-events > .today-places {
   min-height: 0;
   overflow-y: auto;
