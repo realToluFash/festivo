@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { QUESTION, afterAnswer, offer, picked, saveFirst, saveSettled } from './guestAsk.ts';
+import {
+  QUESTION,
+  afterAnswer,
+  offer,
+  picked,
+  saveFailed,
+  saveFirst,
+  saveSettled,
+} from './guestAsk.ts';
 
 const START = '2026-11-05';
 const TODAY = '2026-10-06';
@@ -69,5 +77,26 @@ describe('another answer', () => {
   it('keeps it on Not sure yet again, and asks again after another answer', () => {
     expect(afterAnswer(saved, 'notSure', 'notSure')).toBe(saved);
     expect(afterAnswer(null, 'coming', 'notSure')).toBe(QUESTION);
+  });
+});
+
+describe('a Save that fails (sc-1363)', () => {
+  const clock = { today: TODAY, start: START, replyBy: null };
+  const sending = { ...QUESTION, pick: 'week' as const, saving: true };
+
+  it('keeps the choice when it doesn’t reach us', () => {
+    expect(saveFailed(sending, 'net', clock)).toEqual({ ...sending, saving: false, error: 'net' });
+  });
+
+  it('asks again with the choice cleared on the 422 with a date left, and says it is too close with none', () => {
+    expect(saveFailed(sending, 'moved', clock)).toEqual({ ...QUESTION, moved: true });
+    expect(saveFailed(sending, 'moved', { ...clock, today: '2026-11-01' })).toEqual({
+      kind: 'closeNow',
+    });
+    expect(saveFailed(sending, 'close', clock)).toEqual({ kind: 'closeNow' });
+  });
+
+  it('drops the ask on the 409', () => {
+    expect(saveFailed(sending, 'changed', clock)).toBeNull();
   });
 });

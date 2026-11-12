@@ -1,22 +1,23 @@
-/** sc-1363's states on the guest page, on its own clock: `?state=maybe_…`, with `&replyBy=` and `&days=` as the board's Tweaks. */
+/** sc-1363's states on the guest page, on its own clock: `?state=maybe_…`, with `&replyBy=`, `&days=` and `&save=` as the board's Tweaks. */
 
-import { sampleEvent } from './events.ts';
+import { localDay, sampleEvent } from './events.ts';
 import type { Visit } from './guest.ts';
 import {
   type AskClock,
   type AskKey,
   type AskView,
   QUESTION,
+  SAVE_FAILS,
+  type SaveFail,
   askDay,
-  dayIn,
   offer,
-  plusDays,
 } from './guestAsk.ts';
 import type { DemoLink } from './settings.ts';
+import { addDays } from './today.ts';
 
 const EVENT = sampleEvent('evt-wed-4');
 export const ASK_ZONE = EVENT?.timeZone ?? 'Europe/London';
-export const START_DAY = dayIn(EVENT?.startsAt ?? '2026-11-05T18:00:00Z', ASK_ZONE);
+export const START_DAY = localDay(EVENT?.startsAt ?? '2026-11-05T18:00:00Z', ASK_ZONE);
 
 export const REPLY_BY_CHOICES = ['none', 'in12', 'in3', 'reopened', 'passed'] as const;
 export type ReplyByChoice = (typeof REPLY_BY_CHOICES)[number];
@@ -70,7 +71,7 @@ const NEEDS_QUESTION: readonly AskState[] = [
 /** The clock the page offers from: today in the event's zone, and Reply by unless the guest was reopened. */
 export function askClock(visit: Pick<Visit, 'now' | 'replyBy' | 'reopened'>): AskClock {
   return {
-    today: dayIn(visit.now, ASK_ZONE),
+    today: localDay(visit.now, ASK_ZONE),
     start: START_DAY,
     replyBy: visit.reopened ? null : visit.replyBy,
   };
@@ -87,12 +88,12 @@ export function askStarts(
   choice: ReplyByChoice = 'none',
   daysIn = 30,
 ): Partial<Visit> {
-  const today = plusDays(START_DAY, -daysIn);
+  const today = addDays(START_DAY, -daysIn);
   const replyBy =
     choice === 'in12' || choice === 'reopened' || choice === 'passed'
-      ? plusDays(today, 12)
+      ? addDays(today, 12)
       : choice === 'in3'
-        ? plusDays(today, 3)
+        ? addDays(today, 3)
         : null;
   const applies = choice === 'in12' || choice === 'in3' ? replyBy : null;
   const reopened = choice === 'reopened';
@@ -101,7 +102,7 @@ export function askStarts(
   if (choice === 'passed' && replyBy != null) {
     return {
       ...shared,
-      now: at(plusDays(replyBy, 1)),
+      now: at(addDays(replyBy, 1)),
       recorded: { answer: 'notSure', on: today },
       view: { kind: 'closed' },
       ask: null,
@@ -122,9 +123,9 @@ export function askStarts(
   /** The first day, from today on, with no date though the day before had one: where the 422 finds none left. */
   const edge = (): string => {
     for (let ahead = 0; ahead < daysIn; ahead += 1) {
-      const day = plusDays(today, ahead);
+      const day = addDays(today, ahead);
 
-      if (has(plusDays(day, -1)) && !has(day)) return day;
+      if (has(addDays(day, -1)) && !has(day)) return day;
     }
 
     return today;
@@ -138,8 +139,8 @@ export function askStarts(
     ...(want == null ? {} : { want }),
   });
   const closeNow = (day: string): Partial<Visit> =>
-    on(day, { kind: 'closeNow' }, plusDays(day, -1), 'askClose');
-  const asked = has(today) || applies != null ? today : plusDays(START_DAY, -30);
+    on(day, { kind: 'closeNow' }, addDays(day, -1), 'askClose');
+  const asked = has(today) || applies != null ? today : addDays(START_DAY, -30);
 
   if (NEEDS_QUESTION.includes(state) && !has(asked)) return on(today, QUESTION);
 
@@ -147,10 +148,7 @@ export function askStarts(
     case 'maybe_recorded':
       return on(today, QUESTION);
     case 'maybe_too_close':
-      return on(
-        has(today) ? (applies == null ? plusDays(START_DAY, -7) : edge()) : today,
-        QUESTION,
-      );
+      return on(has(today) ? (applies == null ? addDays(START_DAY, -7) : edge()) : today, QUESTION);
     case 'maybe_saving':
       return on(asked, { ...QUESTION, pick: first(asked), saving: true }, asked, 'askSave');
     case 'maybe_save_empty':
@@ -197,18 +195,18 @@ export function askStarts(
       return on(today, { kind: 'none' }, earlier(today));
     case 'maybe_dates_moved': {
       if (applies == null) {
-        const day = plusDays(START_DAY, -11);
+        const day = addDays(START_DAY, -11);
 
-        return on(day, { ...QUESTION, moved: true }, plusDays(day, -1), 'askSave');
+        return on(day, { ...QUESTION, moved: true }, addDays(day, -1), 'askSave');
       }
-      const next = plusDays(today, 1);
+      const next = addDays(today, 1);
 
       if (has(today) && has(next)) return on(next, { ...QUESTION, moved: true }, today, 'askSave');
 
       return closeNow(edge());
     }
     case 'maybe_too_close_now':
-      return closeNow(applies == null ? plusDays(START_DAY, -7) : edge());
+      return closeNow(applies == null ? addDays(START_DAY, -7) : edge());
     case 'maybe_reply_changed':
       return { ...on(asked, null, asked, 'greeting'), recorded: { answer: 'coming', on: asked } };
   }
@@ -216,17 +214,28 @@ export function askStarts(
 
 /** Answered three days before today, and never later than ten days before the start. */
 function earlier(today: string): string {
-  const three = plusDays(today, -3);
-  const ten = plusDays(START_DAY, -10);
+  const three = addDays(today, -3);
+  const ten = addDays(START_DAY, -10);
 
   return three < ten ? three : ten;
 }
+
+const SAVE_NAMES: Record<SaveFail, string> = {
+  net: 'Save doesn’t reach us the first time',
+  moved: 'Save meets the 422 the first time, a date left',
+  close: 'Save meets the 422 the first time, none left',
+  changed: 'Save meets the 409 the first time',
+};
 
 function link(state: AskState, choice: ReplyByChoice = 'none'): DemoLink {
   const query = choice === 'none' ? '' : `&replyBy=${choice}`;
   const name = choice === 'none' ? STATES[state] : `${STATES[state]}, ${REPLY_BY_NAMES[choice]}`;
 
   return { to: `/demo/guest?state=${state}${query}`, name };
+}
+
+function saveLink(fail: SaveFail): DemoLink {
+  return { to: `/demo/guest?state=maybe_recorded&save=${fail}`, name: SAVE_NAMES[fail] };
 }
 
 export const GUEST_ASK_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
@@ -258,6 +267,10 @@ export const GUEST_ASK_PAGES: readonly { name: string; states: readonly DemoLink
         'maybe_reply_changed',
       ] as const
     ).map((state) => link(state)),
+  },
+  {
+    name: 'Save fails the first time, then goes through',
+    states: SAVE_FAILS.map(saveLink),
   },
   {
     name: 'Reply by (sc-3780) bounds the ask',

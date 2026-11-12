@@ -120,4 +120,137 @@ describe('when a guest who isn’t sure yet is asked again (sc-1363)', () => {
       screen.getByText('Not saved. Answers close too soon for us to ask you again.'),
     ).toBeTruthy();
   });
+
+  const focused = () => document.activeElement;
+  const save = () => screen.getByRole('button', { name: 'Save' });
+  const alertText = () =>
+    screen
+      .getAllByRole('alert')
+      .map((one) => one.textContent)
+      .filter((text) => text !== '')
+      .join(' | ');
+
+  it('keeps the choice and Save’s focus when a save doesn’t reach us', SLOW, async () => {
+    await guest('state=maybe_not_saved');
+
+    expect(alertText()).toBe('Not saved. Check your connection and press Save again.');
+    expect(screen.getByRole('radio', { name: /^In a week/u })).toHaveProperty('checked', true);
+    expect(focused()).toBe(save());
+  });
+
+  it(
+    'says the choices changed, clears the choice and keeps focus on Save (422)',
+    SLOW,
+    async () => {
+      await guest('state=maybe_dates_moved');
+
+      expect(alertText()).toBe(
+        'Not saved. The choices have changed since you opened this page. Choose again.',
+      );
+      expect(ask()).not.toBeNull();
+      expect(screen.getAllByRole('radio').some((one) => (one as HTMLInputElement).checked)).toBe(
+        false,
+      );
+      expect(focused()).toBe(save());
+    },
+  );
+
+  it('replaces the question with the 422 line and moves focus to it', SLOW, async () => {
+    await guest('state=maybe_too_close_now');
+    const line = screen.getByText('Not saved. It is now too close to the event to ask you again.');
+
+    expect(ask()).toBeNull();
+    expect(line.closest('[role="status"]')).toBeNull();
+    expect(focused()).toBe(line.closest('[data-focus="askClose"]'));
+  });
+
+  it('drops the ask for the answer made on another device (409)', SLOW, async () => {
+    await guest('state=maybe_reply_changed');
+
+    expect(ask()).toBeNull();
+    expect(screen.queryByText(/We’ll ask you on|We won’t ask again/u)).toBeNull();
+    expect(focused()?.getAttribute('data-focus')).toBe('greeting');
+  });
+
+  it('shows a saved date on coming back, quietly and without the question', SLOW, async () => {
+    await guest('state=maybe_coming_back');
+    const line = screen.getByText(/^We’ll ask you on .+\.$/u);
+
+    expect(ask()).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(focused()).not.toBe(line.closest('p'));
+  });
+
+  it('shows Don’t ask me again on coming back, quietly', SLOW, async () => {
+    await guest('state=maybe_coming_back_wont');
+
+    expect(screen.getByText('We won’t ask again.')).toBeTruthy();
+    expect(ask()).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('asks again on coming back with nothing saved', SLOW, async () => {
+    await guest('state=maybe_coming_back_none');
+
+    expect(ask()).not.toBeNull();
+    expect(
+      screen
+        .queryAllByRole('alert')
+        .map((one) => one.textContent)
+        .join(''),
+    ).toBe('');
+  });
+
+  it('shows nothing of the ask on coming back once it was sent', SLOW, async () => {
+    await guest('state=maybe_coming_back_sent');
+
+    expect(ask()).toBeNull();
+    expect(screen.queryByText(/We’ll ask you on|We won’t ask again|Not saved/u)).toBeNull();
+  });
+
+  async function pressSave() {
+    fireEvent.click(save());
+    await act(() => vi.advanceTimersByTimeAsync(3000));
+  }
+
+  it('fails the first Save live with &save=net, then saves', SLOW, async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('state=maybe_recorded&save=net');
+    fireEvent.click(screen.getByRole('radio', { name: /^In two weeks/u }));
+    await pressSave();
+
+    expect(alertText()).toBe('Not saved. Check your connection and press Save again.');
+    expect(focused()).toBe(save());
+
+    await pressSave();
+    expect(screen.getByRole('status').textContent).toBe('We’ll ask you on Tuesday, October 20.');
+  });
+
+  it('meets the 422 live with &save=moved and &save=close', SLOW, async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('state=maybe_recorded&save=moved');
+    fireEvent.click(screen.getByRole('radio', { name: /^In a week/u }));
+    await pressSave();
+
+    expect(alertText()).toMatch(/^Not saved\. The choices have changed/u);
+    expect(focused()).toBe(save());
+    cleanup();
+
+    await guest('state=maybe_recorded&save=close');
+    fireEvent.click(screen.getByRole('radio', { name: /^In a week/u }));
+    await pressSave();
+
+    expect(ask()).toBeNull();
+    expect(focused()?.getAttribute('data-focus')).toBe('askClose');
+  });
+
+  it('meets the 409 live with &save=changed', SLOW, async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('state=maybe_recorded&save=changed');
+    fireEvent.click(screen.getByRole('radio', { name: /^In a week/u }));
+    await pressSave();
+
+    expect(ask()).toBeNull();
+    expect(focused()?.getAttribute('data-focus')).toBe('greeting');
+  });
 });

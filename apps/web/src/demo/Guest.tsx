@@ -62,8 +62,19 @@ import {
 } from './GuestKitchen.tsx';
 import { type GuestKitchenActions, useGuestKitchen } from './useGuestKitchen.ts';
 import { YourMessages } from './GuestMessages.tsx';
+import { plusDays } from './dataControl.ts';
 import { GuestAsk } from './GuestAsk.tsx';
-import { type AskKey, offer, picked, saveFirst, saveSettled } from './guestAsk.ts';
+import {
+  type AskKey,
+  type AskView,
+  type SaveFail,
+  isSaveFail,
+  offer,
+  picked,
+  saveFailed,
+  saveFirst,
+  saveSettled,
+} from './guestAsk.ts';
 import { askClock, askFocus, DAYS_CHOICES, isReplyByChoice } from './guestAskStates.ts';
 import { switched } from './guestMessages.ts';
 import { useLater } from '../useLater.ts';
@@ -79,6 +90,7 @@ export function GuestPage() {
   const state = params.get('state');
   const replyBy = params.get('replyBy');
   const days = params.get('days');
+  const save = params.get('save');
   const ask = {
     ...(isReplyByChoice(replyBy) ? { replyBy } : {}),
     ...(days != null && (DAYS_CHOICES as readonly string[]).includes(days)
@@ -87,7 +99,12 @@ export function GuestPage() {
   };
 
   return (
-    <Visitor key={`${state ?? 'open'}|${replyBy ?? ''}|${days ?? ''}`} state={state} ask={ask} />
+    <Visitor
+      key={`${state ?? 'open'}|${replyBy ?? ''}|${days ?? ''}|${save ?? ''}`}
+      state={state}
+      ask={ask}
+      saveFails={isSaveFail(save) ? save : null}
+    />
   );
 }
 
@@ -102,8 +119,17 @@ function useLayout() {
 
 type Change = (was: Visit) => Partial<Visit>;
 
-function Visitor({ state, ask }: { state: string | null; ask: Parameters<typeof startOf>[1] }) {
+function Visitor({
+  state,
+  ask,
+  saveFails,
+}: {
+  state: string | null;
+  ask: Parameters<typeof startOf>[1];
+  saveFails: SaveFail | null;
+}) {
   const [visit, setVisit] = useState(() => startOf(state, ask));
+  const [saveFail, setSaveFail] = useState(saveFails);
   const [retrying, setRetrying] = useState(false);
   const [saving, setSaving] = useState(false);
   const layout = useLayout();
@@ -211,12 +237,34 @@ function Visitor({ state, ask }: { state: string | null; ask: Parameters<typeof 
     }
 
     go((was) => (was.ask == null ? {} : { ask: saveFirst(was.ask) }));
+    if (saveFail != null) {
+      setSaveFail(null);
+      later(SEND_MS, () => askFailed(saveFail, view));
+      return;
+    }
     later(SEND_MS, () =>
       go(
         (was) => (was.ask == null ? {} : { ask: saveSettled(was.ask, askClock(was)) }),
         'askSaved',
       ),
     );
+  }
+
+  function askFailed(fail: SaveFail, view: AskView): void {
+    if (fail === 'changed') {
+      go(
+        (was) => ({
+          ask: null,
+          recorded: was.recorded == null ? null : { ...was.recorded, answer: 'coming' },
+        }),
+        'greeting',
+      );
+      return;
+    }
+    const now = fail === 'moved' ? plusDays(visit.now, 1) : visit.now;
+    const ask = saveFailed(view, fail, askClock({ ...visit, now }));
+
+    go(() => ({ now, ask }), ask?.kind === 'closeNow' ? 'askClose' : 'askSave');
   }
 
   useEffect(() => {

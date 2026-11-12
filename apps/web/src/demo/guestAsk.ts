@@ -1,6 +1,7 @@
 /** sc-1363: when a guest who is not sure yet is asked again, on the guest page's sample (AC, not built). */
 
 import type { Lang } from './guest.ts';
+import { addDays } from './today.ts';
 
 export type AskKey = 'week' | 'twoWeeks' | 'weekBefore' | 'beforeClose' | 'never';
 export type AskDateKey = Exclude<AskKey, 'never'>;
@@ -33,31 +34,16 @@ export const QUESTION: Extract<AskView, { kind: 'question' }> = {
   moved: false,
 };
 
-const DAY_MS = 86_400_000;
-
-export function plusDays(day: string, days: number): string {
-  return new Date(Date.parse(`${day}T12:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
-}
-
-export function dayIn(at: string, zone: string): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: zone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date(at));
-}
-
 export function askDay(key: AskDateKey, clock: AskClock): string | null {
   switch (key) {
     case 'week':
-      return plusDays(clock.today, 7);
+      return addDays(clock.today, 7);
     case 'twoWeeks':
-      return plusDays(clock.today, 14);
+      return addDays(clock.today, 14);
     case 'weekBefore':
-      return plusDays(clock.start, -7);
+      return addDays(clock.start, -7);
     case 'beforeClose':
-      return clock.replyBy == null ? null : plusDays(clock.replyBy, -3);
+      return clock.replyBy == null ? null : addDays(clock.replyBy, -3);
   }
 }
 
@@ -67,8 +53,8 @@ export function offer(clock: AskClock): readonly AskKey[] {
     clock.replyBy == null
       ? ['week', 'twoWeeks', 'weekBefore']
       : ['week', 'twoWeeks', 'beforeClose'];
-  const earliest = plusDays(clock.today, 1);
-  const latest = [plusDays(clock.start, -3), clock.replyBy]
+  const earliest = addDays(clock.today, 1);
+  const latest = [addDays(clock.start, -3), clock.replyBy]
     .filter((day): day is string => day != null)
     .sort()[0];
   const dates = keys.filter((key) => {
@@ -106,6 +92,25 @@ export function saveSettled(view: AskView, clock: AskClock): AskView {
   const day = askDay(view.pick, clock);
 
   return day == null ? view : { kind: 'saved', day, live: true };
+}
+
+/** A failed first Save, as the board's Save Tweak plays it: `net` keeps the choice, `moved` and `close` are the 422, `changed` the 409. */
+export type SaveFail = 'net' | 'moved' | 'close' | 'changed';
+
+export const SAVE_FAILS: readonly SaveFail[] = ['net', 'moved', 'close', 'changed'];
+
+export function isSaveFail(value: string | null): value is SaveFail {
+  return value != null && (SAVE_FAILS as readonly string[]).includes(value);
+}
+
+/** The ask after a failed Save; the 409 drops it, since the answer is no longer Not sure yet. */
+export function saveFailed(view: AskView, fail: SaveFail, clock: AskClock): AskView | null {
+  if (view.kind !== 'question') return view;
+  if (fail === 'changed') return null;
+  if (fail === 'net') return { ...view, saving: false, error: 'net' };
+  if (fail === 'close' || offer(clock).length === 0) return { kind: 'closeNow' };
+
+  return { ...QUESTION, moved: true };
 }
 
 /** Another answer cancels the ask; Not sure yet again keeps it; Not sure yet after another answer asks again (sc-1439). */

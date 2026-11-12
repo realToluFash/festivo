@@ -26,22 +26,22 @@ export function GuestAsk({
       const empty = ask.error === 'empty';
 
       return (
-        <div className="gp-ask">
+        <div className="gp-again">
           {ask.moved && (
             <Notice kind="attention" alert>
               {words.moved}
             </Notice>
           )}
           <fieldset
-            className="gp-ask-group"
+            className="gp-again-group"
             aria-invalid={empty || undefined}
-            aria-describedby={empty ? 'gp-ask-empty' : undefined}
+            aria-describedby={empty ? 'gp-again-empty' : undefined}
           >
-            <legend className="gp-h2 gp-ask-legend">{words.q}</legend>
-            <div className="gp-ask-error" role="alert" id="gp-ask-empty">
+            <legend className="gp-h2 gp-again-legend">{words.q}</legend>
+            <div className="gp-again-error" role="alert" id="gp-again-empty">
               {empty && (
                 <>
-                  <span className="gp-ask-error-mark" aria-hidden="true">
+                  <span className="gp-again-error-mark" aria-hidden="true">
                     <Glyph name="clear" size={12} weight={3} />
                   </span>
                   <span>{words.empty}</span>
@@ -55,18 +55,18 @@ export function GuestAsk({
               return (
                 <label
                   key={key}
-                  className={`gp-ask-row${on ? ' is-on' : ''}${empty ? ' is-invalid' : ''}`}
+                  className={`gp-again-row${on ? ' is-on' : ''}${empty ? ' is-invalid' : ''}`}
                 >
                   <input
                     className="desk-radio"
                     type="radio"
-                    name="gp-ask"
+                    name="gp-again"
                     checked={on}
                     data-focus={askFocus(key)}
                     onChange={() => onPick(key)}
                   />
-                  <span className="gp-ask-words">
-                    <span className="gp-ask-name">{words[key]}</span>
+                  <span className="gp-again-words">
+                    <span className="gp-again-name">{words[key]}</span>
                     {day != null && <span className="gp-sub">{dayOf(day, lang)}</span>}
                   </span>
                 </label>
@@ -83,14 +83,14 @@ export function GuestAsk({
     case 'saved':
     case 'wont':
       return (
-        <div className="gp-ask">
+        <div className="gp-again">
           <p
-            className="gp-ask-saved"
+            className="gp-again-saved"
             role={ask.live ? 'status' : undefined}
             tabIndex={ask.live ? -1 : undefined}
             data-focus="askSaved"
           >
-            <span className="gp-ask-saved-mark" aria-hidden="true">
+            <span className="gp-again-saved-mark" aria-hidden="true">
               <Glyph name="tick" size={14} weight={3} />
             </span>
             <span>
@@ -103,7 +103,7 @@ export function GuestAsk({
       );
     case 'closeNow':
       return (
-        <div className="gp-ask">
+        <div className="gp-again">
           <div className="gp-notice is-attention" tabIndex={-1} data-focus="askClose">
             <span className="gp-notice-mark" aria-hidden="true" />
             <p>{clock.replyBy == null ? words.close : words.closeReplyBy}</p>
