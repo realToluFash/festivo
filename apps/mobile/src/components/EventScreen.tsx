@@ -217,7 +217,11 @@ export function EventScreen({
       besideTitle={phone ? undefined : refreshing}
       back={phone ? { label: backLabel, onPress: back } : undefined}
       backInBody
-      inEvent={event == null ? undefined : { area, onArea: chooseArea }}
+      inEvent={
+        opened.kind === 'loaded' || opened.kind === 'loading'
+          ? { area, onArea: chooseArea }
+          : undefined
+      }
       underTitle={
         area === 'people' && event != null ? (
           <Text size={15} weight="medium" style={styles.secondary}>
