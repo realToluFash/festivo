@@ -1104,7 +1104,8 @@
 }
 
 .today-event-dates,
-.today-event-date {
+.today-event-date,
+.today-event-piece {
   display: inline-block;
   max-width: 100%;
   overflow: hidden;
