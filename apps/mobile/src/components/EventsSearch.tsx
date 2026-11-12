@@ -170,7 +170,7 @@ function PicksLine({
   const lead = rest > 0 ? picksLead(picks, shown) : whole;
   const snugs = Platform.OS === 'android' && rest > 0;
   const { fontScale } = useWindowDimensions();
-  const drawn = `${room}|${fontScale}|${lead}`;
+  const drawn = `${room}|${fontScale}|${lead}|${more(rest)}`;
   const [snug, setSnug] = useState<{ drawn: string; width: number } | null>(null);
   // Android stops a cut line's "…" short of the box it was laid out in, so the box narrows to the line it drew (sc-41871).
   const snugWidth = snugs && snug?.drawn === drawn ? snug.width : null;
