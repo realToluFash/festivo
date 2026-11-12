@@ -9,6 +9,7 @@ import { useOrgOpener } from '../OrgSwitcher.tsx';
 import { OrgPill as ProductOrgPill } from '../../components/OrgPill.tsx';
 import { SETTINGS_ID, type Tab, TabBar, TABS, WhiteCapsule } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
+import type { GlyphName } from '../../components/Glyph.tsx';
 import { DemoSidebar } from '../Sidebar.tsx';
 import { SIDEBAR_EVENTS } from '../sideEvents.ts';
 import { TodayShellProvider } from '../../components/todayShell.ts';
@@ -221,20 +222,18 @@ export function SettingsTabBar({ bottom }: { bottom: number }) {
 
 /** The product's upright row: the pill, the tabs and the bell. */
 export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
+  const { t } = useTranslation();
   const shell = useShell();
+  const tabs = tabsFor(shell.viewer);
+  const say = (_: Tab, glyph: GlyphName) => t(`todayScreen.tab.${glyph}`);
 
   return (
     <ProductPortraitTop
       renderPill={(room, givesWay) => <OrgPill room={room} givesWay={givesWay} />}
       bell={<Bell tell={shell.tell} />}
-      tabLabels={tabsFor(shell.viewer).map(([tab]) => tab)}
+      tabLabels={tabs.map(([tab, glyph]) => say(tab, glyph))}
       renderTabs={(labelSize) => (
-        <WhiteCapsule
-          tabs={tabsFor(shell.viewer)}
-          at={at}
-          onTab={shell.onTab}
-          labelSize={labelSize}
-        />
+        <WhiteCapsule tabs={tabs} at={at} onTab={shell.onTab} say={say} labelSize={labelSize} />
       )}
     />
   );
