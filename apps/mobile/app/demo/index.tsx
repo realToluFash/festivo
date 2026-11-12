@@ -20,6 +20,7 @@ import { PASS_BOARDS } from '../../src/demo/pass/PassBoards.ts';
 import { NEXT_BOARDS, QUEUE_BOARDS } from '../../src/demo/queue/QueueBoards.ts';
 import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowItsGoingBoards.ts';
 import { REQUEST_BOARDS } from '../../src/demo/service/RequestsBoards.ts';
+import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
@@ -1636,6 +1637,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Service · guest requests from the table (sc-4023) · phone, tablet portrait and landscape',
     boards: REQUEST_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the whole room as a plan or a list (sc-4026) · tablet landscape',
+    boards: ROOM_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Guests · A Summary first',
