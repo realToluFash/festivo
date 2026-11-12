@@ -1,0 +1,124 @@
+# sc-30413: each product screen beside the app demo's route, for the side-by-side pairs.
+# Each step waits for words only the new screen has, so a slow route never pairs with the last one.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: 'This week'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: today-product
+- openLink: ${METRO_URL}/--/demo/today
+- extendedWaitUntil:
+    visible: 'Good morning.*'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: today-demo
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible: '.*happening now.*'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: events-upcoming-product
+- openLink: ${METRO_URL}/--/demo/events
+- extendedWaitUntil:
+    visible: '4 upcoming.*'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: events-upcoming-demo
+- openLink: ${METRO_URL}/--/events/${E1}
+- extendedWaitUntil:
+    visible: 'Dates.*5 days.*'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: event-live-product
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=live
+- extendedWaitUntil:
+    visible: 'Thu, 5 Nov, 18:00.*'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: event-live-demo
+- openLink: ${METRO_URL}/--/events/${E2}
+- extendedWaitUntil:
+    visible: 'Dates.*547 days.*'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: event-now-product
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=now
+- extendedWaitUntil:
+    visible: 'Day 2 of 3'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: event-now-demo
+- openLink: ${METRO_URL}/--/events/${E3}
+- extendedWaitUntil:
+    visible: 'Dates.*3 days.*'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: event-draft-product
+- openLink: ${METRO_URL}/--/demo/events/evt-draft-4?state=draft
+- extendedWaitUntil:
+    visible: 'Bisi.*'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: event-draft-demo
+- openLink: ${METRO_URL}/--/events/${E4}
+- extendedWaitUntil:
+    visible: 'Dates...Europe/London'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: event-draftPast-product
+- openLink: ${METRO_URL}/--/demo/events/evt-shower-2?state=draftPast
+- extendedWaitUntil:
+    visible: 'Kemi.*'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: event-draftPast-demo
+- openLink: ${METRO_URL}/--/events/${E5}
+- extendedWaitUntil:
+    visible: 'Dates.*2 days.*'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: event-paused-product
+- openLink: ${METRO_URL}/--/demo/events/evt-party-2?state=paused
+- extendedWaitUntil:
+    visible: 'Ire Events end-of-year party'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: event-paused-demo
+- openLink: ${METRO_URL}/--/events/${E6}
+- extendedWaitUntil:
+    visible: 'Fri, 14 Nov 2025.*'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: event-finished-product
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=finished
+- extendedWaitUntil:
+    visible: 'Adaeze.*'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: event-finished-demo
+- openLink: ${METRO_URL}/--/events/${E7}
+- extendedWaitUntil:
+    visible: 'Thu, 20 Nov 2025.*'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: event-calledOff-product
+- openLink: ${METRO_URL}/--/demo/events/evt-off?state=calledOff
+- extendedWaitUntil:
+    visible: 'Team offsite'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: event-calledOff-demo
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible: 'Month'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: calendar-product
+- openLink: ${METRO_URL}/--/demo/calendar
+- extendedWaitUntil:
+    visible: 'Ire Events.*'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: calendar-demo
