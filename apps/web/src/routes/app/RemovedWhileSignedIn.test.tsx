@@ -172,3 +172,47 @@ describe('still in their organisation (sc-16229)', () => {
     expect(screen.getByRole('button', { name: /Organisation: Ìrè Events/ })).toBeDefined();
   });
 });
+
+describe('moved into the other organisation on Settings at a desk (sc-39471)', () => {
+  it('says so above the overdue screen that stands in beside the Settings list', async () => {
+    const overdue = {
+      ...OKAFOR,
+      twoFactorDue: {
+        at: '2020-01-01T00:00:00+00:00',
+        written: 'Wednesday, Jan 1 at 00:00 UTC',
+        overdue: true,
+      },
+    };
+    signedInWith([IRE, overdue]);
+    at('/app/settings');
+    nowIn([overdue]);
+
+    backToTheTab();
+
+    const said = await screen.findByText(/Now working in Okafor Family\./);
+    expect(said.closest('[role="status"]')).not.toBeNull();
+    expect(said.closest('.settings-desk-page')).not.toBeNull();
+  });
+
+  it('says so under the title row of Members refused, with the bell beside its heading', async () => {
+    const viewer = {
+      ...OKAFOR,
+      permissions: OKAFOR.permissions.filter((one) => !one.startsWith('members.')),
+    };
+    signedInWith([IRE, viewer]);
+    at('/app/settings/members');
+    nowIn([viewer]);
+
+    backToTheTab();
+
+    const said = await screen.findByText(/Now working in Okafor Family\./);
+    expect(said.closest('[role="status"]')).not.toBeNull();
+    const heading = screen.getByRole('heading', {
+      level: 1,
+      name: 'You do not have access to this',
+    });
+    const row = heading.closest<HTMLElement>('header.desk-top');
+    expect(row).not.toBeNull();
+    expect(within(row!).getByRole('button', { name: /^Notifications/ })).toBeDefined();
+  });
+});

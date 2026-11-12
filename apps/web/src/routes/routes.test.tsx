@@ -468,6 +468,18 @@ describe('the application tree', () => {
       },
     );
 
+    it.each(['/app/events', '/app/calendar', '/app/settings'])(
+      "puts the bell in the title row beside the page's heading on %s at a desk (sc-39471)",
+      async (place) => {
+        at(place);
+
+        const bell = await screen.findByRole('button', { name: /^Notifications/ });
+        const row = bell.closest('header.desk-top');
+        expect(row?.querySelector('h1')).toBeTruthy();
+        expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+      },
+    );
+
     it("names Today at the sidebar's Today", () => {
       at('/app');
 
