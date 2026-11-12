@@ -23,6 +23,7 @@ import {
   Tag,
   TextAction,
   TITLE_BESIDE_TAG,
+  TitleBesideTag,
   useRowClear,
 } from './Summary.tsx';
 import { Text } from './Text.tsx';
@@ -160,17 +161,20 @@ function RecoveryRow({
       >
         <Avatar {...face} side={side} />
         <View style={styles.words}>
-          <View style={styles.titleRow}>
-            <Text
-              size={16}
-              weight="semibold"
-              accessible={false}
-              style={[styles.name, lit && styles.accent]}
-            >
-              {askerName(t, request)}
-            </Text>
-            <Tag kind="waiting" word={t('recoveryRequests.mark')} wraps />
-          </View>
+          <TitleBesideTag
+            style={styles.titleRow}
+            title={
+              <Text
+                size={16}
+                weight="semibold"
+                accessible={false}
+                style={[styles.name, lit && styles.accent]}
+              >
+                {askerName(t, request)}
+              </Text>
+            }
+            tag={<Tag kind="waiting" word={t('recoveryRequests.mark')} wraps />}
+          />
           {recoveryFacts(t, request).map((fact) => (
             <Text
               key={fact}

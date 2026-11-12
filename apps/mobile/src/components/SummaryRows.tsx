@@ -1,4 +1,4 @@
-import { type ReactNode, type Ref, useEffect, useState } from 'react';
+import { Fragment, type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
 import {
   type AccessibilityRole,
   type AccessibilityState,
@@ -7,8 +7,8 @@ import {
   Pressable,
   StyleSheet,
   type StyleProp,
-  type TextStyle,
   View,
+  type ViewStyle,
   type ViewInstance,
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -48,6 +48,33 @@ export const SELECTED_ROW = {
 
 /** A row title beside its tag: never shrunk, only capped at the row, so a tag with no room goes under it. Shrunk, Android wraps the title after measuring it on one line and drops the last word (sc-30302). */
 export const TITLE_BESIDE_TAG = { flexShrink: 0, maxWidth: '100%' } as const;
+
+/** A title with its tag beside it, going under it when there is no room. Android keeps the width a title measured before the row narrowed, on a rotation, and drops its last word, so the title is measured afresh whenever the row's width changes (sc-40664). */
+export function TitleBesideTag({
+  title,
+  tag,
+  style,
+}: {
+  title: ReactNode;
+  tag?: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const width = useRef<number | null>(null);
+  const [widths, setWidths] = useState(0);
+  return (
+    <View
+      style={[styles.titleRow, style]}
+      onLayout={(event) => {
+        const now = Math.round(event.nativeEvent.layout.width);
+        if (width.current != null && width.current !== now) setWidths((n) => n + 1);
+        width.current = now;
+      }}
+    >
+      <Fragment key={widths}>{title}</Fragment>
+      {tag}
+    </View>
+  );
+}
 
 const TURN_MS = 900;
 
@@ -237,31 +264,25 @@ export function Row({
     },
     selected && styles.rowSelected,
   ];
-  // With no tag the title is not put in the wrapping row: there Android keeps the width it measured before a rotation and drops the last word (sc-40664).
-  const heading = (shape: StyleProp<TextStyle>) => (
-    <Text
-      size={16}
-      weight={weight}
-      numberOfLines={titleLines}
-      selectable={selectable}
-      accessible={grouped ? false : undefined}
-      style={[shape, (accent || selected) && styles.accent, off && styles.off]}
-    >
-      {title}
-    </Text>
-  );
   const words = (
     <>
       {lead}
       <View style={styles.words}>
-        {tag == null ? (
-          heading(styles.titleAlone)
-        ) : (
-          <View style={styles.titleRow}>
-            {heading(styles.title)}
-            <Tag kind={tag.kind} word={tag.word} turning={tag.turning} />
-          </View>
-        )}
+        <TitleBesideTag
+          title={
+            <Text
+              size={16}
+              weight={weight}
+              numberOfLines={titleLines}
+              selectable={selectable}
+              accessible={grouped ? false : undefined}
+              style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
+            >
+              {title}
+            </Text>
+          }
+          tag={tag != null && <Tag kind={tag.kind} word={tag.word} turning={tag.turning} />}
+        />
         {line != null && (
           <Text
             size={14}
@@ -494,7 +515,6 @@ const styles = StyleSheet.create({
     rowGap: 4,
   },
   title: { ...TITLE_BESIDE_TAG, lineHeight: 16 * 1.3 },
-  titleAlone: { lineHeight: 16 * 1.3 },
   line: { lineHeight: 14 * 1.4 },
   consequence: { lineHeight: 14 * 1.45 },
   count: { fontVariant: ['tabular-nums'] },
