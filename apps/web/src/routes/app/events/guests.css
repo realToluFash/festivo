@@ -27,9 +27,19 @@
   outline: none;
 }
 
-.gs-top + .gs-counts-line {
-  margin-top: -8px;
-  font-variant-numeric: tabular-nums;
+.gs-card.is-page {
+  min-height: 150px;
+}
+
+.gs-card .gs-card-inner {
+  gap: var(--spaceMd);
+  padding: 18px var(--space3xl) var(--spaceXxl);
+}
+
+.gs-says {
+  max-width: 80%;
+  font: 700 24px/1.15 var(--fontFamily);
+  letter-spacing: -0.015em;
 }
 
 .gs-cols {

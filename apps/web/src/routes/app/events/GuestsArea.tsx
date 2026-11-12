@@ -36,6 +36,7 @@ import { Skeleton } from '../../../components/Skeleton.tsx';
 import { Card, CardStep, RowWords, Says, TextAction } from '../../../components/SettingsParts.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { focusWhenFree } from '../../../layers.ts';
+import { type Mesh, meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { codeChoice, phoneProblemMessage } from '../../../phoneProblem.ts';
 import { canOn, useSession } from '../../../session.ts';
@@ -55,6 +56,7 @@ import {
   violationProblems,
   withGuest,
 } from './guestRows.ts';
+import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/EventsList.css';
@@ -281,15 +283,6 @@ export function GuestsArea({
             </button>
           )}
         </header>
-        {counts != null && guests.length > 0 && (
-          <p className="desk-line gs-counts-line">
-            {t('guestList.counts', {
-              people: t('guestList.people', { count: counts.people }),
-              guests: t('guestList.guests', { count: counts.guests }),
-              companions: t('guestList.companions', { count: counts.companions }),
-            })}
-          </p>
-        )}
         {load.kind === 'loading' && (
           <Skeleton words={t('pending.loading')} shape="rows" rowHeight={64} />
         )}
@@ -313,6 +306,9 @@ export function GuestsArea({
                 <Says>{t('guestList.noGuests')}</Says>
                 {manages && <CardStep label={t('guestList.addGuest')} onClick={startAdd} />}
               </Card>
+            )}
+            {counts != null && guests.length > 0 && (
+              <OnTheList mesh={meshFor(event.id)} people={counts.people} />
             )}
             {(guests.length > 0 || adding) && (
               <div className="gs-cols">
@@ -346,6 +342,25 @@ export function GuestsArea({
         )}
       </div>
     </div>
+  );
+}
+
+const PIECES = [1, 2, 3, 4, 5, 6];
+
+/** The summary card in the one state this story reaches, nobody invited yet; sc-3772 brings its other lines and steps. */
+function OnTheList({ mesh, people }: { mesh: Mesh; people: number }) {
+  const { t } = useTranslation();
+
+  return (
+    <section className={`ev-card today-cover is-${mesh} gs-card is-page`}>
+      <span className="ev-scrim" aria-hidden="true" />
+      {PIECES.map((piece) => (
+        <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
+      ))}
+      <div className="ev-card-inner gs-card-inner">
+        <p className="gs-says">{t('guestList.onTheList', { count: people })}</p>
+      </div>
+    </section>
   );
 }
 
@@ -400,15 +415,7 @@ function Rows({ rows }: { rows: readonly ListRow[] }) {
           <li key={companion.id} className="is-companion">
             <div className="desk-row gs-row">
               <ReplyMark reply={companion.state} />
-              <RowWords
-                title={name}
-                lines={[
-                  t('guestList.companionLine', {
-                    state: t(REPLY_KEY[companion.state]),
-                    host: host.fullName,
-                  }),
-                ]}
-              />
+              <RowWords title={name} lines={[t(REPLY_KEY[companion.state])]} />
             </div>
           </li>
         );

@@ -162,31 +162,31 @@ afterEach(() => {
 });
 
 describe('Guests (sc-1468)', () => {
-  it('lists every guest by name, each companion under their host, with the header counts', async () => {
+  it('lists every guest by name, each companion under their host, under the card’s count', async () => {
     signedIn();
     await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA])) });
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Guests' })).toBeDefined();
-    expect(await screen.findByText('5 people · 2 guests and 3 companions')).toBeDefined();
+    expect(await screen.findByText('5 on the list')).toBeDefined();
     const rows = within(screen.getByRole('region', { name: 'Guests' })).getAllByRole('listitem');
 
     expect(rows.map((row) => row.textContent)).toEqual([
-      'Chief Amaka ObiMaybe',
+      'Chief Amaka ObiNot sure yet',
       'Ngozi EzeComing · ngozi@example.com · +234 803 555 0142',
-      'Obi EzeComing · Companion of Ngozi Eze',
-      'Guest of Ngozi EzeComing · Companion of Ngozi Eze',
-      'Guest of Ngozi Eze · 2Coming · Companion of Ngozi Eze',
+      'Obi EzeComing',
+      'Guest of Ngozi EzeComing',
+      'Guest of Ngozi Eze · 2Coming',
     ]);
     expect(rows[2]?.className).toBe('is-companion');
   });
 
-  it('says No guests yet with Add guest, and no header line', async () => {
+  it('says No guests yet with Add guest, and no count', async () => {
     signedIn();
     await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf([])) });
 
     expect(await screen.findByText('No guests yet')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Add guest' })).toBeDefined();
-    expect(screen.queryByText(/people ·/u)).toBeNull();
+    expect(screen.queryByText(/on the list/u)).toBeNull();
   });
 
   it('says No guests yet alone without guests.manage', async () => {
@@ -247,10 +247,14 @@ describe('Guests (sc-1468)', () => {
     expect(field('Full name').value).toBe('');
     expect(within(form()).getByText('None yet · 0 of 10')).toBeDefined();
     await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
-    expect(screen.getByText('6 people · 2 guests and 4 companions')).toBeDefined();
+    expect(screen.getByText('6 on the list')).toBeDefined();
     expect(screen.getByText('Bimpe Adeyemi')).toBeDefined();
     expect(screen.getByText('No reply · bimpe@example.com · +44 7700 900123')).toBeDefined();
-    expect(screen.getByText('Held · Companion of Bimpe Adeyemi')).toBeDefined();
+    expect(
+      within(screen.getByRole('region', { name: 'Guests' }))
+        .getAllByRole('listitem')
+        .map((row) => row.textContent),
+    ).toContain('Guest of Bimpe AdeyemiHeld');
   });
 
   it('sends nothing for a blank name and says every problem at once, focus on the first', async () => {
@@ -440,6 +444,6 @@ describe('Guests, live (sc-1468)', () => {
     source.publish(listOf([AMAKA, guest('g_3', 'Tomás Ferreira')]));
 
     expect(await screen.findByText('Tomás Ferreira')).toBeDefined();
-    expect(screen.getByText('2 people · 2 guests and 0 companions')).toBeDefined();
+    expect(screen.getByText('2 on the list')).toBeDefined();
   });
 });
