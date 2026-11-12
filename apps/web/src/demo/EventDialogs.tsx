@@ -1,22 +1,16 @@
-import {
-  clockMinutes,
-  copiedEnd,
-  copyStartRefusal,
-  durationWords,
-  formatEventDayAndClock,
-  typedNameMatches,
-} from '@soirely/domain';
+import { copyStartRefusal, typedNameMatches } from '@soirely/domain';
 import { useContext, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { ActionPair } from '../components/ActionPair.tsx';
-import { type SampleEvent, EVENT_WORDS as W, copyStart, instantOf, keepCopy } from './events.ts';
-import { DateTime } from '../components/EventPageParts.tsx';
+import { DuplicateBody } from '../components/DuplicateBody.tsx';
+import { copyStart } from '../copyStart.ts';
+import { type SampleEvent, EVENT_WORDS as W, instantOf, keepCopy } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { LayersContext, useDeskDialog } from '../layers.ts';
-import { Dialog, Head } from '../components/SettingsParts.tsx';
+import { Dialog } from '../components/SettingsParts.tsx';
 import { figure } from './guestsWords.ts';
 import { NotBuilt } from './EventParts.tsx';
 import {
@@ -28,8 +22,6 @@ import {
   guestsToCopy,
 } from './duplicateGuests.ts';
 import './doorCode.css';
-
-const LOCALE = 'en-US';
 
 /** Delete, once the event has been live or has anybody on its list: the 400 dialog with the name to type; Delete is red once it matches. */
 export function DeleteByName(props: {
@@ -218,9 +210,6 @@ export function DuplicateDialog({
   const [cameBack, setCameBack] = useState(false);
   const timer = useRef<number | null>(null);
   const startsAt = instantOf(start.date, start.time, event.timeZone);
-  const end = copiedEnd(start.date, start.time, event.timeZone, event);
-  const words = durationWords(clockMinutes(event, event.timeZone) ?? 0, LOCALE);
-  const duration = [words.hours, words.minutes].filter(Boolean).join(' ');
   const copying = ticked && guests > 0;
   const busy = phase.at === 'creating';
 
@@ -265,19 +254,11 @@ export function DuplicateDialog({
     );
   }
 
-  const copiedItems = copying ? [...W.copiedItems, DW.copiedGuests(guests)] : W.copiedItems;
-  const notCopiedItems = copying
-    ? [
-        ...W.notCopiedItems.filter((item) => item !== 'Guests' && item !== 'Replies'),
-        DW.notCopiedGuests,
-      ]
-    : W.notCopiedItems;
-
   return (
     <Dialog
       key="form"
-      title={W.duplicate}
-      verb={W.createDraft}
+      title={t('eventDuplicate.open')}
+      verb={t('eventDuplicate.create')}
       on={!busy}
       locked={busy}
       {...(cameBack ? { first: box } : {})}
@@ -294,87 +275,50 @@ export function DuplicateDialog({
         create();
       }}
     >
-      <h3 className="ev-dialog-title">{W.duplicateTitle(event.name)}</h3>
-      <p className="desk-line">{W.duplicateLine}</p>
-      <div>
-        <Head title={W.copied} level={3} />
-        <ul className="ev-bullets">
-          {copiedItems.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </div>
-      <div>
-        <Head title={W.notCopied} level={3} />
-        <ul className="ev-bullets">
-          {notCopiedItems.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </div>
-      <fieldset className="ev-copy-when" disabled={busy}>
-        <div ref={when}>
-          <DateTime
-            legend={W.starts}
-            wall={start}
-            wrong={error != null}
-            told={error != null ? `${id}-wrong` : `${id}-ends`}
-            onChange={(next) => {
-              setStart(next);
-              if (next.date !== '' && next.time !== '') setError(undefined);
-            }}
-          />
-        </div>
-      </fieldset>
-      {error != null && (
-        <p id={`${id}-wrong`} className="desk-error" role="alert">
-          <Glyph name="alert" size={15} weight={2.2} />
-          {error}
-        </p>
-      )}
-      {end != null && (
-        <p id={`${id}-ends`} className="desk-note" role="status">
-          {W.copyEnds(
-            formatEventDayAndClock(end, event.timeZone, LOCALE),
-            duration,
-            event.timeZone,
-          )}
-        </p>
-      )}
-      {guests > 0 && (
-        <label className="ev-copy-guests">
-          <span className="ev-copy-box">
-            <input
-              ref={box}
-              type="checkbox"
-              className="ev-copy-input"
-              checked={ticked}
-              disabled={busy}
-              aria-labelledby={`${id}-copy`}
-              aria-describedby={`${id}-copy-hint`}
-              onChange={() => setTicked((was) => !was)}
-            />
-            {ticked && <Glyph name="tick" size={16} weight={3} className="ev-copy-tick" />}
-          </span>
-          <span className="ev-copy-words">
-            <span id={`${id}-copy`} className="ev-copy-label">
-              {DW.box(guests)}
+      <DuplicateBody
+        event={event}
+        start={start}
+        onStart={(next) => {
+          setStart(next);
+          if (next.date !== '' && next.time !== '') setError(undefined);
+        }}
+        guestList={
+          copying ? { copied: DW.copiedGuests(guests), notCopied: DW.notCopiedGuests } : undefined
+        }
+        busy={busy}
+        failed={phase.at === 'notCreated'}
+        error={error}
+        when={when}
+      >
+        {guests > 0 && (
+          <label className="ev-copy-guests">
+            <span className="ev-copy-box">
+              <input
+                ref={box}
+                type="checkbox"
+                className="ev-copy-input"
+                checked={ticked}
+                disabled={busy}
+                aria-labelledby={`${id}-copy`}
+                aria-describedby={`${id}-copy-hint`}
+                onChange={() => setTicked((was) => !was)}
+              />
+              {ticked && <Glyph name="tick" size={16} weight={3} className="ev-copy-tick" />}
             </span>
-            <span id={`${id}-copy-hint`} className="ev-copy-hint">
-              {DW.hint}
+            <span className="ev-copy-words">
+              <span id={`${id}-copy`} className="ev-copy-label">
+                {DW.box(guests)}
+              </span>
+              <span id={`${id}-copy-hint`} className="ev-copy-hint">
+                {DW.hint}
+              </span>
             </span>
-          </span>
-        </label>
-      )}
-      <p className={busy ? 'desk-unseen dc-making' : 'desk-unseen'} role="status">
-        {busy ? DW.creating : ''}
-      </p>
-      {phase.at === 'notCreated' && (
-        <p className="desk-error" role="alert">
-          <Glyph name="alert" size={15} weight={2.2} />
-          {DW.notCreated}
+          </label>
+        )}
+        <p className={busy ? 'desk-unseen dc-making' : 'desk-unseen'} role="status">
+          {busy ? DW.creating : ''}
         </p>
-      )}
+      </DuplicateBody>
     </Dialog>
   );
 }

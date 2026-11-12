@@ -77,9 +77,10 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ETag: '"1"' } });
 }
 
-function deletion(needsName: boolean): Response {
+function deletion(needsName: boolean, people = 0): Response {
   return json({
     needsName,
+    people,
     restoreClosesAt: '2026-11-25T13:20:00+00:00',
     restoreCloses: 'Wednesday, Nov 25 at 14:20 WAT',
   });
@@ -138,9 +139,10 @@ async function asking(
   shown: ReturnType<typeof event>,
   needsName: boolean,
   answers: Record<string, Answer> = {},
+  people = 0,
 ) {
   const { sent } = await onTheEvent(shown, {
-    'GET /api/events/ev_1/deletion': () => deletion(needsName),
+    'GET /api/events/ev_1/deletion': () => deletion(needsName, people),
     ...answers,
   });
   fireEvent.click(screen.getByRole('button', { name: 'Delete event…' }));
@@ -200,9 +202,12 @@ describe('Delete an event (sc-3592)', () => {
     expect(sent.find(({ line }) => line === 'DELETE /api/events/ev_1')?.body).toEqual({
       name: null,
     });
-    await waitFor(() =>
-      expect(screen.getByRole('status').textContent).toBe('Adaeze and Tunde was deleted.'),
-    );
+    const toast = await screen.findByText('Adaeze and Tunde was deleted.', {
+      selector: '.toast *',
+    });
+    expect(
+      within(toast.closest('.toast') as HTMLElement).getByRole('button', { name: 'Close' }),
+    ).toBeDefined();
   });
 
   it('takes the deleted page out of history, so Back from Events never opens it (sc-22103)', async () => {
@@ -294,6 +299,33 @@ describe('Delete an event (sc-3592)', () => {
         'Type it exactly, capitals included. A straight or curly apostrophe both count.',
       ),
     ).toBeDefined();
+  });
+
+  it('lists the guest list with the number of people on it, guests and companions together', async () => {
+    signedIn();
+    const { dialog } = await asking(live(), true, {}, 1421);
+
+    expect(
+      [...dialog.querySelectorAll('.event-delete-list li')].map((item) => item.textContent),
+    ).toEqual([
+      'the event, its details and its schedule',
+      'its guest list, with the 1,421 people on it',
+    ]);
+  });
+
+  it('says the one person on a list of one', async () => {
+    signedIn();
+    const { dialog } = await asking(live(), true, {}, 1);
+
+    expect(within(dialog).getByText('its guest list, with the 1 person on it')).toBeDefined();
+  });
+
+  it('asks for the name of a Draft with anybody on its list', async () => {
+    signedIn();
+    const { dialog } = await asking(event(), true, {}, 2);
+
+    expect(within(dialog).getByText('its guest list, with the 2 people on it')).toBeDefined();
+    expect(within(dialog).getByLabelText('Type Adaeze and Tunde to delete it')).toBeDefined();
   });
 
   it('sends nothing for a name that does not match, says so under the field and moves focus to it', async () => {

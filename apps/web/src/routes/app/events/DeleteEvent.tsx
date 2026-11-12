@@ -116,7 +116,7 @@ function DeleteDialog({
         (error.problem.violations ?? []).some((one) => one.propertyPath === 'name');
 
       if (refusedName) {
-        // A Draft made live elsewhere since the dialog opened now asks for its name.
+        // A Draft made live, or given a guest, elsewhere since the dialog opened now asks for its name.
         flushSync(() => setNeedsName(true));
         setMismatch(t('eventDelete.mismatch', { event: name }));
         land('event-delete-name');
@@ -149,6 +149,9 @@ function DeleteDialog({
                 <p>{t('eventDelete.removes')}</p>
                 <ul className="event-delete-list">
                   <li>{t('eventDelete.removesEvent')}</li>
+                  {preview.people > 0 && (
+                    <li>{t('eventDelete.removesGuests', { count: preview.people })}</li>
+                  )}
                 </ul>
                 <p>{t('eventDelete.guests')}</p>
                 <p>{t('eventDelete.window', { deadline: preview.restoreCloses })}</p>

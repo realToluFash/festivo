@@ -12,6 +12,13 @@ import {
   guestKitchenStarts,
 } from './guestKitchen.ts';
 import { NO_PLACES, type Party, guestPartyStarts, isGuestPartyState } from './guestCompanions.ts';
+import {
+  type Day,
+  type WhereShown,
+  guestDayStarts,
+  isGuestDayState,
+  leadsWithCode,
+} from './guestDay.ts';
 import type { DemoLink } from './settings.ts';
 
 /** The guest's own page in A · The cover card (sc-31306), on the boards' sample: main's evt-wed-4 and one guest. */
@@ -191,6 +198,9 @@ export interface Visit {
   ticked: boolean;
   reach: Reach;
   party: Party;
+  day: Day;
+  where: WhereShown;
+  dayOrder: boolean;
 }
 
 export const OPEN: View = { kind: 'answer', busy: null, note: null };
@@ -226,6 +236,9 @@ const BASE: Visit = {
   ticked: false,
   reach: { email: true, sms: true, saved: null },
   party: NO_PLACES,
+  day: 'before',
+  where: 'full',
+  dayOrder: false,
 };
 
 const COMING = { answer: 'coming', on: TODAY } as const;
@@ -540,14 +553,19 @@ export function isGuestState(value: string | null): value is GuestStateName {
   return value != null && Object.hasOwn(STATES, value);
 }
 
-export function startOf(value: string | null): Visit {
+function startsOf(value: string | null): Partial<Visit> {
   if (isGuestKitchenState(value))
-    return { ...BASE, ...guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS }) };
-  if (isGuestPartyState(value)) return { ...BASE, ...guestPartyStarts(value) };
+    return guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS });
+  if (isGuestPartyState(value)) return guestPartyStarts(value);
+  if (isGuestDayState(value)) return guestDayStarts(value);
 
-  const state = isGuestState(value) ? value : 'open';
+  return STATES[isGuestState(value) ? value : 'open'].starts as Partial<Visit>;
+}
 
-  return { ...BASE, ...(STATES[state].starts as Partial<Visit>) };
+export function startOf(value: string | null): Visit {
+  const visit: Visit = { ...BASE, ...startsOf(value) };
+
+  return { ...visit, dayOrder: leadsWithCode(visit) };
 }
 
 export function stateName(state: GuestStateName): string {
@@ -784,12 +802,6 @@ export const LANGUAGES: readonly { code: Lang; name: string }[] = LOCALES.map((o
   code: one.code as Lang,
   name: one.nativeName,
 }));
-
-export function mapsLink(): string {
-  const query = [EVENT.venue?.name, EVENT.venue?.address].filter(Boolean).join(', ');
-
-  return `https://www.openstreetmap.org/search?query=${encodeURIComponent(query)}`;
-}
 
 /** The board's English, held in the demo until the product's screen puts it in the four catalogues (SHARED.md, Step three). */
 const BOARD_ENGLISH = {
