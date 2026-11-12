@@ -252,7 +252,10 @@ link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a
   next field, sends the form where the field's Return sends it, and puts the keyboard away
   where it sends nothing. On Android, Enter can type into the field instead (sc-18648), so
   a flow uses `hideKeyboard` and then the tap. Split the two by platform, as
-  `batch/sign-in-form.yaml` does. The one exception is a check whose outcome is the
+  `batch/sign-in-form.yaml` does. A check whose outcome is what Return does with the keys
+  still up taps the keyboard's own `Done` key on Android instead, since Enter there is a
+  hardware key-up that puts the keys away (sc-30411): `checks/sc13408-change-done-key-up.yaml`
+  is the Android copy of `checks/sc13408-change-return-up.yaml`. The one exception is a check whose outcome is the
   keyboard put away by hand: `checks/sc13408-change-dismiss.yaml`,
   `checks/sc13408-choose-dismiss.yaml`, `checks/sc22103-edit-keeps-event-nav.yaml` and
   `checks/sc36766-what-title.yaml`,
