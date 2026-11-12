@@ -8,7 +8,7 @@ import {
   milestoneMoment,
   serverClock,
 } from '@soirely/domain';
-import { type EventStatus } from '@soirely/api-client';
+import { type EventStatus, type OrganisationEvent } from '@soirely/api-client';
 import { type RefObject, useEffect, useState } from 'react';
 import { PixelRatio, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +32,13 @@ import { rereadOrganisations } from '../signedIn.ts';
 type Load =
   | { kind: 'loading' }
   | { kind: 'failed' }
-  | { kind: 'loaded'; timeline: EventTimeline; status: EventStatus; at: Date };
+  | {
+      kind: 'loaded';
+      timeline: EventTimeline;
+      status: EventStatus;
+      event: OrganisationEvent | null;
+      at: Date;
+    };
 
 const OWNER_WORD: Record<MilestoneOwner, string> = {
   event: 'timeline.owner_event',
@@ -78,14 +84,18 @@ export function useTimeline(
 
   useEffect(() => {
     let live = true;
-    const read = Promise.all([
-      api.eventTimeline(eventId),
-      status ?? api.event(eventId).then((event) => event.status),
-    ]);
+    const read = Promise.all([api.eventTimeline(eventId), status ?? api.event(eventId)]);
 
     (watch == null ? read : watch(read)).then(
       ([timeline, standing]) =>
-        live && setLoad({ kind: 'loaded', timeline, status: standing, at: serverClock.now() }),
+        live &&
+        setLoad({
+          kind: 'loaded',
+          timeline,
+          status: typeof standing === 'string' ? standing : standing.status,
+          event: typeof standing === 'string' ? null : standing,
+          at: serverClock.now(),
+        }),
       (error: unknown) =>
         live &&
         setLoad((was) =>
@@ -199,12 +209,14 @@ export function AllDates({
   now: tick,
   heading,
   onOffline,
+  onEvent,
 }: {
   kind: LayoutKind;
   eventId: string;
   now: Date;
   heading: RefObject<TextHandle | null>;
   onOffline: (offline: ScreenOffline) => void;
+  onEvent: (event: OrganisationEvent) => void;
 }) {
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(0);
@@ -219,6 +231,11 @@ export function AllDates({
     refresh,
   });
   if (loaded !== (load.kind === 'loaded')) setLoaded(load.kind === 'loaded');
+  const event = load.kind === 'loaded' ? load.event : null;
+
+  useEffect(() => {
+    if (event != null) onEvent(event);
+  }, [event, onEvent]);
 
   useHandOffline(onOffline, { stale, refreshing });
 
