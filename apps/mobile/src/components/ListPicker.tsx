@@ -81,6 +81,7 @@ export function ListPicker({
   const pickerShown = useModalOpen(open);
   const reduced = useReducedMotion();
   const { windowUp, rise, risen } = usePickerRise(pickerShown, reduced);
+  const windowShown = useModalOpen(open || windowUp);
   const onScreen = windowUp && pickerShown;
   const unnamed = useUnnamedWindow(
     Platform.OS === 'android' && pickerShown,
@@ -169,7 +170,7 @@ export function ListPicker({
       </Pressable>
 
       <Modal
-        visible={pickerShown || windowUp}
+        visible={windowShown}
         animationType={SLIDES_INSIDE ? 'none' : 'slide'}
         supportedOrientations={TURNS_WITH_THE_APP}
         onRequestClose={() => setOpen(false)}

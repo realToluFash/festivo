@@ -203,7 +203,8 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     it('slides inside a window already in place on Android, never as a window sliding (qa #42888)', () => {
       expect(picker).toContain("const SLIDES_INSIDE = Platform.OS === 'android';");
       expect(picker).toContain("animationType={SLIDES_INSIDE ? 'none' : 'slide'}");
-      expect(picker).toContain('visible={pickerShown || windowUp}');
+      expect(picker).toContain('const windowShown = useModalOpen(open || windowUp);');
+      expect(picker).toContain('visible={windowShown}');
       expect(picker).toContain('SLIDES_INSIDE && { transform: [{ translateY: slide }] }');
       expect(picker).toContain('const gone = setTimeout(() => setWindowUp(false), duration);');
     });
