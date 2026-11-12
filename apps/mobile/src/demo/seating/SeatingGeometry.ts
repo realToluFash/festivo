@@ -149,6 +149,81 @@ export function wordsBox(x: number, y: number, words: string, size: number, star
   return { x: start ? x : x - w / 2, y: y - 10, w, h: 20 };
 }
 
+/** A room word's letters, for telling whether it meets another word or a ring: as wide as its box, as tall as its size and 4 more. */
+export function lettersBox(x: number, y: number, words: string, size: number, start: boolean): Box {
+  const b = wordsBox(x, y, words, size, start);
+  return { ...b, y: y - size / 2 - 2, h: size + 4 };
+}
+
+/** A colleague's ring as drawn: its centre, the outer edge's half-width and half-height (a round one's are its radius), and the stroke's width inward. */
+export interface Ring {
+  cx: number;
+  cy: number;
+  hx: number;
+  hy: number;
+  round: boolean;
+  stroke: number;
+}
+
+function crosses(ring: Ring, b: Box): boolean {
+  const { cx, cy, hx, hy, stroke } = ring;
+  if (ring.round) {
+    const nx = Math.max(b.x, Math.min(cx, b.x + b.w)) - cx;
+    const ny = Math.max(b.y, Math.min(cy, b.y + b.h)) - cy;
+    const fx = Math.max(Math.abs(b.x - cx), Math.abs(b.x + b.w - cx));
+    const fy = Math.max(Math.abs(b.y - cy), Math.abs(b.y + b.h - cy));
+    return Math.hypot(nx, ny) < hx && Math.hypot(fx, fy) > hx - stroke;
+  }
+  const outer = { x: cx - hx, y: cy - hy, w: 2 * hx, h: 2 * hy };
+  const inner = {
+    x: outer.x + stroke,
+    y: outer.y + stroke,
+    w: outer.w - 2 * stroke,
+    h: outer.h - 2 * stroke,
+  };
+  const within =
+    b.x >= inner.x &&
+    b.y >= inner.y &&
+    b.x + b.w <= inner.x + inner.w &&
+    b.y + b.h <= inner.y + inner.h;
+  return meets(b, outer) && !within;
+}
+
+/** A colleague's ring about an item: a round one's radius r, or a square one's half-sides gw and gh, and the half-width and half-height it reaches from the item's centre. From 50% it goes about the chairs; below, about the table alone, since its chairs are not drawn there and its words sit just under it (sc-31783). */
+export interface RingSize {
+  r: number;
+  gw: number;
+  gh: number;
+  hx: number;
+  hy: number;
+}
+
+export function ringAbout(it: Item, s: number, detail: Detail, lit: boolean): RingSize {
+  const e = extent(it);
+  const hug = detail === 'out';
+  const pad = lit ? 10 : hug ? 0 : 2;
+  if (isCircle(it)) {
+    const half = hug && (it.kind === 'round' || it.kind === 'cocktail') ? it.d / 2 : e.x;
+    const r = half * s + pad + 3.5;
+    return { r, gw: 0, gh: 0, hx: r + 3, hy: r + 3 };
+  }
+  const half = hug && (it.kind === 'rect' || it.kind === 'head') ? { x: it.w / 2, y: it.l / 2 } : e;
+  const gw = half.x * s + pad + 2;
+  const gh = half.y * s + pad + 2;
+  const a = (it.rot * Math.PI) / 180;
+  const c = Math.abs(Math.cos(a));
+  const n = Math.abs(Math.sin(a));
+  return { r: 0, gw, gh, hx: gw * c + gh * n + 3, hy: gw * n + gh * c + 3 };
+}
+
+/** Whether every word in the room sits apart: no two meet, and no colleague's ring runs through one (sc-31783). */
+export function wordsApart(words: readonly Box[], rings: readonly Ring[]): boolean {
+  return words.every(
+    (a, i) =>
+      words.every((b, j) => j <= i || !meets(a, b)) && rings.every((ring) => !crosses(ring, a)),
+  );
+}
+
 function meets(a: Box, b: Box): boolean {
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 }
@@ -313,13 +388,15 @@ export function sideFrom(n: number, reach: number, s: number): number {
 const WORDS_DEPTH = 35;
 const NAME_DEPTH = 10;
 
-/** Where a zoomed-out item's name sits, in px: below it, or above it when its name, bar and count would cross the bottom wall at floor. */
-export function wordsAt(it: Item, cy: number, s: number, floor: number): number {
+/** Where a zoomed-out item's name sits, in px: below it, or above it when its name, bar and count would cross the bottom wall at floor; at least clear px from its centre, so a colleague's ring stays off them. */
+export function wordsAt(it: Item, cy: number, s: number, floor: number, clear = 0): number {
   const e = extent(it);
-  const off =
+  const off = Math.max(
+    clear,
     it.kind === 'rect' || it.kind === 'head'
       ? (it.l / 2) * s
-      : Math.max(e.y, 40) * s * (it.kind === 'row' ? 1 : 0.55);
+      : Math.max(e.y, 40) * s * (it.kind === 'row' ? 1 : 0.55),
+  );
   const depth = it.kind === 'single' ? NAME_DEPTH : WORDS_DEPTH;
   const below = cy + off + 12;
   if (below + depth <= floor - 2) return below;

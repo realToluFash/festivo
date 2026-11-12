@@ -34,6 +34,9 @@ import {
   turn,
   wordsAt,
   nameAt,
+  lettersBox,
+  ringAbout,
+  wordsApart,
 } from './SeatingGeometry.ts';
 import {
   SEATING_STATES,
@@ -226,6 +229,70 @@ describe('a colleague’s initials on a round table (sc-31783)', () => {
       { x: 120, y: 0, w: 30, h: 22 },
     ];
     expect(clearCorner(places, 30, 22, words)).toEqual({ x: 100, y: 0 });
+  });
+});
+
+describe('the iPad room’s words below 50% (sc-31783)', () => {
+  const upright = startOf(null, 'portrait');
+  const t7 = upright.items.find((it) => it.id === 't7');
+  const words = (s: number, ringed: string | null) =>
+    upright.items.flatMap((it) => {
+      if (it.kind === 'single' || it.kind === 'row') return [];
+      const clear = it.id === ringed ? ringAbout(it, s, 'out', false).hy : 0;
+      const by = wordsAt(it, it.y * s, s, upright.room.l * s, clear);
+      return [
+        lettersBox(it.x * s, by, it.name, 12, false),
+        lettersBox(it.x * s, by + 25, '10 of 10', 12, false),
+      ];
+    });
+
+  it('keep Priya’s ring on Table 7 off every name and count, its own and Table 2’s above, from the upright iPad’s 46%', () => {
+    expect(t7).toBeDefined();
+    if (t7 == null) return;
+    [0.229, 0.235, 0.24, 0.249].forEach((s) => {
+      const r = ringAbout(t7, s, 'out', false);
+      const ring = { cx: t7.x * s, cy: t7.y * s, hx: r.hx, hy: r.hy, round: true, stroke: 5 };
+      expect(wordsApart(words(s, 't7'), [ring]), `at ${pct(s)}%`).toBe(true);
+    });
+  });
+
+  it('go round the table alone below 50%, where its chairs are not drawn, and round its chairs from 50%', () => {
+    if (t7 == null) return;
+    expect(ringAbout(t7, 0.2, 'out', false).r).toBeCloseTo(90 * 0.2 + 3.5);
+    expect(ringAbout(t7, 0.3, 'fit', false).r).toBeCloseTo(extent(t7).x * 0.3 + 2 + 3.5);
+  });
+
+  it('keep the names alone where names and counts would meet, as the iPhone card does, and none where even those would', () => {
+    const named = (s: number) =>
+      wordsApart(
+        cardNames(upright.items, { s, ox: 0, oy: 0 }, upright.room).map((n) =>
+          lettersBox(n.x, n.y, upright.items.find((it) => it.id === n.id)?.name ?? '', 12, false),
+        ),
+        [],
+      );
+    expect(wordsApart(words(0.229, null), [])).toBe(true);
+    expect(wordsApart(words(0.13, null), [])).toBe(false);
+    expect(named(0.13)).toBe(true);
+    expect(wordsApart(words(0.055, null), [])).toBe(false);
+    expect(named(0.055)).toBe(false);
+  });
+
+  it('count a ring as running through a word only where its stroke crosses it', () => {
+    const ring = { cx: 100, cy: 100, hx: 30, hy: 30, round: true, stroke: 5 };
+    expect(wordsApart([{ x: 90, y: 90, w: 20, h: 16 }], [ring])).toBe(true);
+    expect(wordsApart([{ x: 90, y: 125, w: 20, h: 16 }], [ring])).toBe(false);
+    expect(wordsApart([{ x: 90, y: 140, w: 20, h: 16 }], [ring])).toBe(true);
+    const square = { ...ring, round: false, stroke: 3 };
+    expect(wordsApart([{ x: 60, y: 92, w: 20, h: 16 }], [square])).toBe(false);
+    expect(
+      wordsApart(
+        [
+          { x: 0, y: 0, w: 20, h: 16 },
+          { x: 10, y: 8, w: 20, h: 16 },
+        ],
+        [],
+      ),
+    ).toBe(false);
   });
 });
 

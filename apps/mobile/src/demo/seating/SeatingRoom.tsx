@@ -44,6 +44,10 @@ import {
   nameAt,
   zoomAbout,
   wordsBox,
+  lettersBox,
+  wordsApart,
+  ringAbout,
+  type Ring,
 } from './SeatingGeometry.ts';
 import {
   type Seating,
@@ -121,6 +125,7 @@ function itemShape({
   chosenChair,
   labels,
   badges,
+  rings,
 }: {
   m: Seating;
   it: Item;
@@ -130,6 +135,7 @@ function itemShape({
   chosenChair: number | null;
   labels: Label[];
   badges: Badge[];
+  rings: Ring[];
 }) {
   const s = v.s;
   const cx = v.ox + it.x * s;
@@ -281,16 +287,18 @@ function itemShape({
       {body}
     </G>,
   );
-  if (look.faint !== true) addWords(it, cx, cy, s, v.oy + m.room.l * s, detail, labels);
-  if (look.ring != null) {
-    const pad = look.lit === true ? 10 : 2;
+  const ring = look.ring == null ? null : ringAbout(it, s, detail, look.lit === true);
+  if (look.faint !== true)
+    addWords(it, cx, cy, s, v.oy + m.room.l * s, detail, labels, ring?.hy ?? 0);
+  if (look.ring != null && ring != null) {
     const c = look.ring.colour;
     const words = initials(look.ring.name);
     const badge = (corners: Point[]) => {
       badges.push({ key: `${it.id}.ring`, corners, colour: c, words });
     };
+    rings.push({ cx, cy, hx: ring.hx, hy: ring.hy, round: circle, stroke: circle ? 5 : 3 });
     if (circle) {
-      const rr = e.x * s + pad + 3.5;
+      const rr = ring.r;
       out.push(
         <Circle
           key="gap"
@@ -307,8 +315,7 @@ function itemShape({
       );
       badge(ringPlaces(cx, cy, rr + 1.5, BADGE_W, BADGE_H));
     } else {
-      const gw = e.x * s + pad + 2;
-      const gh = e.y * s + pad + 2;
+      const { gw, gh } = ring;
       out.push(
         <Rect
           key="ring"
@@ -464,10 +471,11 @@ function addWords(
   floor: number,
   detail: Detail,
   labels: Label[],
+  clear: number,
 ) {
   const name = { key: `${it.id}.name`, size: 12, bold: true, ink: tokens.colorInk, words: it.name };
   if (detail === 'out') {
-    const by = wordsAt(it, cy, s, floor);
+    const by = wordsAt(it, cy, s, floor, clear);
     labels.push({ ...name, x: cx, y: by });
     if (it.kind !== 'single')
       labels.push({
@@ -495,15 +503,29 @@ function addWords(
   labels.push({ ...name, x: cx, y: nameAt(it, cy, s, floor) });
 }
 
-function Bars({ v, floor, items }: { v: Shown; floor: number; items: readonly Item[] }) {
+function Bars({
+  v,
+  floor,
+  items,
+  looks,
+}: {
+  v: Shown;
+  floor: number;
+  items: readonly Item[];
+  looks: Record<string, Look>;
+}) {
   if (detailOf(v.s) !== 'out') return null;
+  const clear = (it: Item) => {
+    const look = looks[it.id];
+    return look?.ring == null ? 0 : ringAbout(it, v.s, 'out', look.lit === true).hy;
+  };
   return (
     <>
       {items
         .filter((it) => it.kind !== 'single')
         .map((it) => {
           const cx = v.ox + it.x * v.s;
-          const by = wordsAt(it, v.oy + it.y * v.s, v.s, floor) + 10;
+          const by = wordsAt(it, v.oy + it.y * v.s, v.s, floor, clear(it)) + 10;
           const share = filled(it) / Math.max(1, usable(it));
           return (
             <G key={`bar.${it.id}`}>
@@ -523,7 +545,7 @@ function Bars({ v, floor, items }: { v: Shown; floor: number; items: readonly It
   );
 }
 
-/** The room drawn to scale: a white floor with a 1 m grid (5 m a touch darker), walls 2.5 Ink, then each item, its words laid over it in the app's face. */
+/** The room drawn to scale: a white floor with a 1 m grid (5 m a touch darker), walls 2.5 Ink, then each item, its words laid over it in the app's face. Below 50%, where its words would meet each other or a colleague's ring, it keeps only the names, placed as the iPhone's card places them, and none where even those would meet (sc-31783). */
 export function RoomDrawing({
   m,
   v,
@@ -548,9 +570,6 @@ export function RoomDrawing({
   children?: ReactNode;
 }) {
   const detail = detailOf(v.s);
-  const labels: Label[] = [];
-  const unsaid: Label[] = [];
-  const badges: Badge[] = [];
   const rw = m.room.w * v.s;
   const rl = m.room.l * v.s;
   const lines: ReactNode[] = [];
@@ -580,33 +599,49 @@ export function RoomDrawing({
         />,
       );
   }
-  const shapes = items.map((it) => (
-    <G key={it.id}>
-      {itemShape({
-        m,
-        it,
-        v,
-        detail,
-        look: looks[it.id] ?? {},
-        chosenChair: m.chosen === it.id ? m.chair : null,
-        labels: names == null ? labels : unsaid,
-        badges,
-      })}
-    </G>
-  ));
-  names?.forEach((n) => {
-    const it = items.find((one) => one.id === n.id);
-    if (it != null && looks[it.id]?.faint !== true)
-      labels.push({
-        key: `${it.id}.name`,
-        x: n.x,
-        y: n.y,
-        words: it.name,
-        size: 12,
-        bold: true,
-        ink: tokens.colorInk,
-      });
-  });
+  const draw = (placed: typeof names) => {
+    const labels: Label[] = [];
+    const unsaid: Label[] = [];
+    const badges: Badge[] = [];
+    const rings: Ring[] = [];
+    const shapes = items.map((it) => (
+      <G key={it.id}>
+        {itemShape({
+          m,
+          it,
+          v,
+          detail,
+          look: looks[it.id] ?? {},
+          chosenChair: m.chosen === it.id ? m.chair : null,
+          labels: placed == null ? labels : unsaid,
+          badges,
+          rings,
+        })}
+      </G>
+    ));
+    placed?.forEach((n) => {
+      const it = items.find((one) => one.id === n.id);
+      if (it != null && looks[it.id]?.faint !== true)
+        labels.push({
+          key: `${it.id}.name`,
+          x: n.x,
+          y: n.y,
+          words: it.name,
+          size: 12,
+          bold: true,
+          ink: tokens.colorInk,
+        });
+    });
+    const apart = wordsApart(
+      labels.map((l) => lettersBox(l.x, l.y, l.words, l.size, l.start === true)),
+      rings,
+    );
+    return { labels, badges, shapes, placed, apart };
+  };
+  const full = draw(names);
+  const named =
+    full.apart || names != null || detail !== 'out' ? null : draw(cardNames(items, v, m.room));
+  const { labels, badges, shapes, placed } = named == null ? full : named.apart ? named : draw([]);
   const taken = labels.map((l) => wordsBox(l.x, l.y, l.words, l.size, l.start === true));
   const pills = badges.map((b) => {
     const at = clearCorner(b.corners, BADGE_W, BADGE_H, taken);
@@ -639,11 +674,12 @@ export function RoomDrawing({
         {lines}
         {shapes}
         {pills}
-        {names == null && (
+        {placed == null && (
           <Bars
             v={v}
             floor={v.oy + rl}
             items={items.filter((it) => looks[it.id]?.faint !== true)}
+            looks={looks}
           />
         )}
         {m.wallAt != null && (
@@ -1096,6 +1132,7 @@ export function MiniMap({
               chosenChair: null,
               labels: [],
               badges: [],
+              rings: [],
             })}
           </G>
         ))}
