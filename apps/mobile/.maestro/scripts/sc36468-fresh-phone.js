@@ -1,6 +1,5 @@
 /* global http, json, output, EMAIL, PASSWORD, API_URL, SMOCKER_URL, MODE, FAIL -- what Maestro's runScript provides */
 // MODE=alt adds an alternative number (output.phoneId); MODE=primary sets the primary one.
-// It reads Smocker the way scripts/latest-sms-code.js does; a change to one belongs in both.
 // FAIL=1 picks a number Smocker's sc-36468 mock refuses to text (+23480399…), for a failing Text it to me instead.
 var base = { 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:15173' };
 var login = http.post(API_URL + '/api/auth/login', {
@@ -70,6 +69,7 @@ function confirm(phone, code) {
   });
 }
 
+// Reads Smocker as scripts/latest-sms-code.js does; a change to one belongs in both.
 function newestCode(digits) {
   var paths = [
     /^\/2010-04-01\/Accounts\/[^/]+\/Messages\.json$/,
