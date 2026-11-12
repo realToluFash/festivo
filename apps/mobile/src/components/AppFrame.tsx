@@ -22,6 +22,7 @@ import {
 import {
   Pressable,
   ScrollView,
+  type ScrollViewInstance,
   type StyleProp,
   StyleSheet,
   useWindowDimensions,
@@ -219,8 +220,8 @@ const AREA_ICONS: Record<EventPlace, IconPaths> = {
 export interface InsideEvent {
   area: EventPlace;
   onArea: (area: EventPlace) => void;
-  /** The event as the landscape sidebar's card, its event null while it loads (sc-30413). */
-  card?: { event: Shown | null; now: Date } | undefined;
+  /** The event as the landscape sidebar's card on every page under it, its event null while it loads (sc-30413). */
+  card: { event: Shown | null; now: Date };
 }
 
 interface NavEntry {
@@ -275,7 +276,7 @@ export function AppFrame({
   besideBack?: ReactNode;
   /** Inside an event, its areas take the navigation's place. */
   inEvent?: InsideEvent | undefined;
-  /** The body names the page itself, as an event's card on its Overview, so a phone's header has no title (sc-30413). */
+  /** Inside an event, the body names the page itself (an Overview's card, an area's heading upright), so the frame draws no title (sc-30413). */
   untitled?: boolean;
   title: string;
   /** The title on a phone, where it stands for the page's own heading. */
@@ -675,7 +676,7 @@ interface FrameHeaderProps {
   pill: Ref<ViewInstance>;
   /** "Now working in …", under the title of a screen with its own top (sc-39471). */
   switched: ReactNode;
-  /** On a phone, an event's Overview: its card names it, so no title is drawn over it. */
+  /** Inside an event, a page whose body names it (an Overview's card, an area's own heading upright), so the frame draws no title. */
   untitled: boolean;
 }
 
@@ -937,15 +938,27 @@ function FrameHeader({
     );
   }
 
+  // Inside an event upright, the demo's EventFrame top in every phase and while loading: ‹ and the bell in one row, the area pills under it, no organisation pill (sc-30413).
   if (kind === 'tabletPortrait') {
     return (
-      <View style={[styles.portraitHeader, top]}>
-        {organisation != null && (
-          <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
-        )}
-        <Pills entries={entries} scrolls={inEvent} />
-        {backView}
-        {titleRow(<BellButton />)}
+      <View style={[styles.eventPortraitHeader, { paddingTop: insets.top + tokens.spaceMd }]}>
+        <View style={styles.titleRow}>
+          <View style={styles.fill}>
+            {back != null && !backHidden && (
+              <BesideBack beside={besideBack}>
+                <Back
+                  label={back.label}
+                  onPress={back.onPress}
+                  off={back.off}
+                  testID="frame.back"
+                />
+              </BesideBack>
+            )}
+          </View>
+          <BellButton />
+        </View>
+        <Pills entries={entries} scrolls />
+        {!untitled && titleRow()}
       </View>
     );
   }
@@ -1216,10 +1229,25 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
 
 /** The header band's pills in tablet portrait; inside an event they scroll sideways, so no area's name is cut. */
 function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: boolean }) {
+  const strip = useRef<ScrollViewInstance>(null);
+  const starts = useRef<Record<string, number>>({});
+  const chosen = entries.find((entry) => entry.on)?.key;
+  const reveal = (key: string | undefined) => {
+    const x = key == null ? undefined : starts.current[key];
+    if (x != null)
+      strip.current?.scrollTo({ x: Math.max(0, x - tokens.space3xl), animated: false });
+  };
+  // The chosen area's pill is kept in view, as the demo's AreaPills keeps it.
+  useEffect(() => reveal(chosen), [chosen]);
+
   const pills = entries.map((entry) => (
     <Pressable
       key={entry.key}
       style={[styles.pill, entry.on && styles.pillOn]}
+      onLayout={(event) => {
+        starts.current[entry.key] = event.nativeEvent.layout.x;
+        if (entry.on) reveal(entry.key);
+      }}
       onPress={entry.onPress}
       accessibilityRole="tab"
       accessibilityState={{ selected: entry.on }}
@@ -1238,8 +1266,10 @@ function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: bo
 
   return scrolls ? (
     <ScrollView
+      ref={strip}
       horizontal
       showsHorizontalScrollIndicator={false}
+      style={styles.pillsBar}
       contentContainerStyle={styles.pillsInEvent}
       accessibilityRole="tablist"
     >
@@ -1266,7 +1296,7 @@ function FrameSidebar({
   current: Destination;
   entries: readonly NavEntry[];
   inEvent: boolean;
-  card: InsideEvent['card'];
+  card: InsideEvent['card'] | undefined;
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
@@ -1483,7 +1513,19 @@ const styles = StyleSheet.create({
   moreSheet: { gap: tokens.spaceLg, padding: tokens.space3xl },
   // The rows keep their own 12 pt padding, so their icons start on the title's line.
   moreList: { gap: tokens.spaceHair, marginHorizontal: -tokens.spaceLg },
-  pillsInEvent: { flexDirection: 'row', gap: tokens.spaceHair },
+  pillsBar: { flexGrow: 0, borderRadius: 26, backgroundColor: tokens.colorInset },
+  pillsInEvent: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceHair,
+    paddingHorizontal: tokens.spaceXxs,
+  },
+  eventPortraitHeader: {
+    gap: tokens.spaceSm,
+    paddingHorizontal: tokens.space5xl,
+    paddingBottom: tokens.spaceXl,
+  },
   railItem: {
     minHeight: tokens.sizeHit,
     flexDirection: 'row',
