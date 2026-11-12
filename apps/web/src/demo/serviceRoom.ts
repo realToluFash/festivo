@@ -246,7 +246,37 @@ export function ariaSort(sort: Sort, key: SortKey): 'ascending' | 'descending' |
 }
 
 export function sectionTables(tables: readonly RoomTable[], id: string): RoomTable[] {
-  return tables.filter((t) => t.section === id);
+  return tables.filter((t) => t.section === id).sort((a, b) => a.n - b.n);
+}
+
+export function planOrder(tables: readonly RoomTable[]): number[] {
+  return SECTIONS.flatMap((sec) => sectionTables(tables, sec.id).map((t) => t.n));
+}
+
+export function planStop(
+  order: readonly number[],
+  open: number | null,
+  last: number | null,
+): number | null {
+  if (open != null && order.includes(open)) return open;
+  if (last != null && order.includes(last)) return last;
+  return order[0] ?? null;
+}
+
+export function planStep(order: readonly number[], from: number, key: string): number | null {
+  const i = order.indexOf(from);
+  if (i < 0) return null;
+  const end = order.length - 1;
+  const to: Record<string, number> = {
+    ArrowRight: Math.min(i + 1, end),
+    ArrowDown: Math.min(i + 1, end),
+    ArrowLeft: Math.max(i - 1, 0),
+    ArrowUp: Math.max(i - 1, 0),
+    Home: 0,
+    End: end,
+  };
+  const at = to[key];
+  return at == null ? null : (order[at] ?? null);
 }
 
 export function sectionBehind(tables: readonly RoomTable[], id: string): boolean {
@@ -693,6 +723,7 @@ export interface Room {
   loading: boolean;
   sort: Sort;
   open: number | null;
+  last: number | null;
   first: string | null;
   pending: Refusal | null;
   declining: string | null;
@@ -725,6 +756,7 @@ export function roomSeed(name: RoomStateName): Room {
     loading: false,
     sort: { key: 'table', reversed: false },
     open: null,
+    last: null,
     first: null,
     pending: null,
     declining: null,

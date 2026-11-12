@@ -53,6 +53,9 @@ import {
   REASON_MAX,
   owedLine,
   ownerLine,
+  planOrder,
+  planStep,
+  planStop,
   pressSort,
   requestsInOrder,
   roomSeed,
@@ -394,6 +397,14 @@ function Extras({ t }: { t: RoomTable }) {
 }
 
 function Plan({ r, act }: { r: Room; act: (next: Room, focus?: string) => void }) {
+  const order = planOrder(r.tables);
+  const stop = planStop(order, r.open, r.last);
+  const move = (from: number, key: string): boolean => {
+    const to = planStep(order, from, key);
+    if (to == null) return false;
+    act({ ...r, last: to }, `[data-table="${to}"]`);
+    return true;
+  };
   return (
     <section className="hig-card sr-plan" aria-labelledby="sr-plan-heading">
       <h2 id="sr-plan-heading" className="visually-hidden">
@@ -413,7 +424,14 @@ function Plan({ r, act }: { r: Room; act: (next: Room, focus?: string) => void }
                     aria-label={tableLabel(t)}
                     aria-expanded={r.open === t.n}
                     data-table={t.n}
-                    onClick={() => act(openPanel(r, t.n), '#sr-panel-title')}
+                    tabIndex={stop === t.n ? 0 : -1}
+                    onFocus={() => {
+                      if (r.last !== t.n) act({ ...r, last: t.n });
+                    }}
+                    onKeyDown={(event) => {
+                      if (move(t.n, event.key)) event.preventDefault();
+                    }}
+                    onClick={() => act(openPanel({ ...r, last: t.n }, t.n), '#sr-panel-title')}
                   >
                     <span className="sr-tile-head">
                       <strong>Table {t.n}</strong>

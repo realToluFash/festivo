@@ -11,6 +11,9 @@ import {
   goToTable,
   offered,
   openDecline,
+  planOrder,
+  planStep,
+  planStop,
   pressSort,
   requestsInOrder,
   room,
@@ -160,5 +163,32 @@ describe('requests in the panel (sc-4026)', () => {
     expect(take(r, 'chair').refused).toBe(OFFLINE_ACTION);
     expect(done(r, 'blind').refused).toBe(OFFLINE_ACTION);
     expect(openDecline(r, 'chair').refused).toBe(OFFLINE_ACTION);
+  });
+});
+
+describe('the plan’s keyboard (sc-4026)', () => {
+  const order = planOrder(room());
+
+  it('orders the plan section by section, then by table number', () => {
+    expect(order).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18]);
+  });
+
+  it('stops on the open table, else the one focused last, else the first', () => {
+    expect(planStop(order, 9, 3)).toBe(9);
+    expect(planStop(order, null, 3)).toBe(3);
+    expect(planStop(order, null, null)).toBe(1);
+    expect(planStop([], null, null)).toBeNull();
+  });
+
+  it('moves in the plan’s order, reaches both ends, and does not wrap', () => {
+    expect(planStep(order, 11, 'ArrowRight')).toBe(12);
+    expect(planStep(order, 11, 'ArrowDown')).toBe(12);
+    expect(planStep(order, 12, 'ArrowLeft')).toBe(11);
+    expect(planStep(order, 12, 'ArrowUp')).toBe(11);
+    expect(planStep(order, 9, 'Home')).toBe(1);
+    expect(planStep(order, 9, 'End')).toBe(18);
+    expect(planStep(order, 18, 'ArrowRight')).toBe(18);
+    expect(planStep(order, 1, 'ArrowUp')).toBe(1);
+    expect(planStep(order, 9, 'Tab')).toBeNull();
   });
 });

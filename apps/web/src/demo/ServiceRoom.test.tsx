@@ -164,4 +164,40 @@ describe('/demo/service-room (sc-4026)', () => {
       cleanup();
     }
   });
+
+  it('makes the plan one Tab stop that the arrow keys, Home and End move through', async () => {
+    await open('populated');
+    const tile = (n: number) =>
+      document.querySelector<HTMLButtonElement>(
+        `.sr-plan [data-table="${n}"]`,
+      ) as HTMLButtonElement;
+    const stops = [...document.querySelectorAll('.sr-plan button')].filter(
+      (b) => b.getAttribute('tabindex') !== '-1',
+    );
+    expect(stops).toEqual([tile(1)]);
+
+    tile(1).focus();
+    fireEvent.keyDown(tile(1), { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(tile(1));
+    fireEvent.keyDown(tile(1), { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(tile(2));
+    fireEvent.keyDown(tile(2), { key: 'End' });
+    expect(document.activeElement).toBe(tile(18));
+    fireEvent.keyDown(tile(18), { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(tile(18));
+    fireEvent.keyDown(tile(18), { key: 'Home' });
+    expect(document.activeElement).toBe(tile(1));
+    fireEvent.keyDown(tile(1), { key: 'ArrowDown' });
+    fireEvent.keyDown(tile(2), { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(tile(3));
+
+    const alerts = screen.getByRole('region', { name: 'Alerts' });
+    (within(alerts).getAllByRole('button')[0] as HTMLElement).focus();
+    expect(tile(3).getAttribute('tabindex')).toBe('0');
+    expect(tile(1).getAttribute('tabindex')).toBe('-1');
+
+    fireEvent.click(tile(9));
+    expect(tile(9).getAttribute('tabindex')).toBe('0');
+    expect(tile(3).getAttribute('tabindex')).toBe('-1');
+  });
 });
