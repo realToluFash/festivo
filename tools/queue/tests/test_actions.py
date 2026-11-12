@@ -213,6 +213,14 @@ class Writes(Base):
             actions.claim(self.as_("qa"), args(story="sc-1"))
         self.assertEqual(self.state(1), "In QA")
 
+    def test_a_developer_without_xcode_never_claims_a_story_that_needs_xcode(self):
+        self.fake.add(1, "Ready For Dev", ["needs xcode"])
+        with mock.patch("soirely_queue.machine.has_xcode", return_value=False), \
+                self.assertRaisesRegex(actions.Refused, "needs xcode"):
+            actions.claim(self.as_("dev2"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "Ready For Dev")
+        self.assertEqual(self.fake.comments, [])
+
     def test_a_tester_without_xcode_never_takes_over_a_stale_claim_that_needs_ios(self):
         self.fake.add(1, "In QA", ["needs ios"])
         self.fake.comment(1, "QA claim: qa")

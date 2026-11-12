@@ -164,6 +164,12 @@ they are where AC fails:
   Add it at grooming, or when you read the AC of a story already in Ready For QA. A story
   that takes either platform ("an iPhone 17 Pro or, on a host without Xcode, an Android
   phone") gets no label.
+- **Label `needs xcode` a story whose fix only compiles with Xcode**: a native iOS change
+  under `apps/mobile/ios`, a Swift or Objective-C module, a pod. No developer on a machine
+  without Xcode is offered it from Ready For Dev or may claim it there. A story already
+  claimed stays with its developer, so labelling one that a developer without Xcode holds
+  means relabelling it to a Mac developer yourself. `needs ios` holds back only the testers, so
+  a story that needs both carries both.
 - **Label `manual qa` a story only a person can test**: a real phone's camera or
   notifications, a real payment card, a call or text to a real number, or something a
   person has to judge by eye on a real device. It is kept for the people on the QA team

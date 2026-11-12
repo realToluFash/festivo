@@ -192,10 +192,21 @@ def needs_ios(story):
             or bool(IOS_NAME.match(story.get("name") or "")))
 
 
-def can_test(role, story, has_ios):
-    """A tester on a machine with no iOS simulator never takes a story that needs one.
-    `has_ios` asks the machine, and is called only for such a story."""
-    return role not in TESTERS or not needs_ios(story) or has_ios()
+NEEDS_XCODE = "needs xcode"
+
+
+def needs_xcode(story):
+    return NEEDS_XCODE in set(story.get("labels") or [])
+
+
+def can_take(role, story, has_ios):
+    """A tester on a machine with no iOS simulator never takes a story that needs one, and a
+    developer there never picks up one whose build needs Xcode from Ready For Dev; a story
+    already claimed stays with whoever holds it. `has_ios` asks the machine, and is called
+    only for such a story."""
+    held = (needs_ios(story) if role in TESTERS
+            else role in DEVS and story.get("state") == "Ready For Dev" and needs_xcode(story))
+    return not held or has_ios()
 
 
 EVERYONE = tuple(ROLES)

@@ -232,7 +232,7 @@ def queued(role, stories, epics=None, ios=None, testers=None, prs=None):
     return [story for story in stories
             if not story["done"] and story["state"] in config["queue"]
             and config["filter"](set(story["labels"]), story["state"])
-            and R.can_test(role, story, has_ios)
+            and R.can_take(role, story, has_ios)
             and not (role in R.TESTERS and R.kept_for_person(story, testers))
             and not held_epic(story, epics)
             and not (builds(role) and holding(story, by_id))
