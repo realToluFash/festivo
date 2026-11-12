@@ -30,6 +30,7 @@ import {
   stateFits,
 } from './events.ts';
 import { DeleteByName, DuplicateDialog } from './EventDialogs.tsx';
+import { duplicateStart, duplicateStateOf } from './duplicate.ts';
 import {
   type PartProps,
   CoverPart,
@@ -138,7 +139,6 @@ function askingOf(state: EventStateName | null): Asking | null {
     case 'callOff':
     case 'endNow':
     case 'deleteDraft':
-    case 'duplicate':
       return state;
     case 'delete':
     case 'deleteDraftGuests':
@@ -146,7 +146,7 @@ function askingOf(state: EventStateName | null): Asking | null {
     case 'deleteTyped':
       return 'delete';
     default:
-      return null;
+      return duplicateStateOf(state) == null ? null : 'duplicate';
   }
 }
 
@@ -600,7 +600,14 @@ function Asks({
         />
       );
     case 'duplicate':
-      return <DuplicateDialog event={event} onDismiss={onKeep} onCreated={onCreated} />;
+      return (
+        <DuplicateDialog
+          event={event}
+          start={duplicateStart(duplicateStateOf(state), event.id)}
+          onDismiss={onKeep}
+          onCreated={onCreated}
+        />
+      );
     default:
       return null;
   }

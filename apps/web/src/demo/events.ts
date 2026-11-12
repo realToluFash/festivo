@@ -1,4 +1,5 @@
 import type { NeedsState } from './needsYou.ts';
+import type { DuplicateState } from './duplicate.ts';
 import {
   type EventPhase,
   type EventState,
@@ -1162,7 +1163,7 @@ export type LifeState =
   | 'delete'
   | 'deleteMismatch'
   | 'deleteTyped'
-  | 'duplicate'
+  | DuplicateState
   | 'muted'
   | 'muteNotLoaded'
   | 'muteNotSaved';
@@ -1218,6 +1219,16 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   deleteMismatch: 'evt-wed-4',
   deleteTyped: 'evt-wed-4',
   duplicate: 'evt-wed-4',
+  duplicateTicked: 'evt-wed-4',
+  duplicateOne: 'evt-wed-4',
+  duplicateNoGuests: 'evt-off',
+  duplicateViewer: 'evt-wed-4',
+  duplicateCreating: 'evt-wed-4',
+  duplicateCreated: 'evt-wed-4',
+  duplicateNotCreated: 'evt-wed-4',
+  duplicateOverLimit: 'evt-wed-4',
+  duplicateOverLimitAsk: 'evt-wed-4',
+  duplicateCeiling: 'evt-wed-4',
   muted: 'evt-wed-4',
   muteNotLoaded: 'evt-wed-4',
   muteNotSaved: 'evt-wed-4',
@@ -1474,7 +1485,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     ],
   },
   {
-    name: 'Pause, end, delete, duplicate and mute',
+    name: 'Pause, end, delete and mute',
     states: [
       on('pause', 'Pause'),
       on('callOff', 'Call off'),
@@ -1484,10 +1495,25 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('delete', 'Delete, type its name'),
       on('deleteMismatch', 'Delete, not a match'),
       on('deleteTyped', 'Delete, the name typed'),
-      on('duplicate', 'Duplicate'),
       on('muted', 'Muted'),
       on('muteNotLoaded', 'Mute, not loaded'),
       on('muteNotSaved', 'Mute, not saved'),
+    ],
+  },
+  {
+    name: 'Duplicate, also copying the guest list (sc-3656)',
+    states: [
+      on('duplicate', 'Has guests, unticked'),
+      on('duplicateTicked', 'Ticked: the guests copied, replies and the rest not'),
+      on('duplicateOne', 'One guest'),
+      on('duplicateNoGuests', 'No guests: the form unchanged'),
+      on('duplicateViewer', 'Without guests.manage: no checkbox'),
+      on('duplicateCreating', 'Creating'),
+      on('duplicateCreated', 'Created, ticked'),
+      on('duplicateNotCreated', 'Not created'),
+      on('duplicateOverLimit', 'Refused over the plan limit, Change plan (sc-3930)'),
+      on('duplicateOverLimitAsk', 'Refused over the plan limit, Ask an owner (sc-3930)'),
+      on('duplicateCeiling', 'Refused over the ceiling (sc-3930)'),
     ],
   },
   {

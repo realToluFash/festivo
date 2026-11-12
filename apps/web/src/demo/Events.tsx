@@ -48,6 +48,7 @@ import {
   withoutTab,
 } from './events.ts';
 import { DuplicateDialog } from './EventDialogs.tsx';
+import { duplicateStart } from './duplicate.ts';
 import { GUEST_WORDS as G, SAMPLE_GUESTS, figureOf, guestCountsOf } from './guestCounts.ts';
 import { guestLineOf } from './guests.ts';
 import { EventCard, EventRow, EventsShell } from './EventParts.tsx';
@@ -342,6 +343,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
       {copying != null && (
         <DuplicateDialog
           event={copying}
+          start={duplicateStart(null, copying.id)}
           onDismiss={() => setCopying(null)}
           onCreated={(words) => {
             setCopying(null);

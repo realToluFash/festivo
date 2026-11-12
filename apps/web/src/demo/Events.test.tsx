@@ -241,7 +241,10 @@ describe('Events in A at a desk (sc-30304)', () => {
     );
 
     expect(await screen.findByText('Draft created. Opening it.')).toBeDefined();
-    expect(router.state.location.pathname).not.toBe('/demo/events/evt-wed-4');
+    await waitFor(
+      () => expect(router.state.location.pathname).not.toBe('/demo/events/evt-wed-4'),
+      WAIT,
+    );
     expect(screen.queryByRole('alertdialog', { name: 'Discard your change?' })).toBeNull();
     expect(screen.getByRole('heading', { level: 1, name: WEDDING })).toBeDefined();
   });

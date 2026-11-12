@@ -1,0 +1,118 @@
+.ev-plain {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ev-copy-guests {
+  padding-top: var(--spaceXl);
+  border-top: 1px solid var(--colorBorder);
+}
+
+.ev-copy-tick {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceLg);
+  min-height: var(--sizeHit);
+  padding-block: var(--spaceMd);
+  box-sizing: border-box;
+  color: var(--colorInk);
+  font: 600 15px/1.45 var(--fontFamily);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.ev-copy-tick:has(:disabled) {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ev-copy-box {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  accent-color: var(--colorAccent);
+}
+
+.ev-copy-hint {
+  margin: 0;
+  padding-left: 36px;
+  color: var(--colorInkSecondary);
+  font: var(--deskSmall);
+}
+
+.ev-created {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+}
+
+.ev-created:empty {
+  display: none;
+}
+
+.desk-ask.ev-refused {
+  width: 560px;
+  gap: var(--spaceLg);
+}
+
+.ev-refused-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+}
+
+.ev-refused-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--colorBrokenTint);
+  color: var(--colorBroken);
+}
+
+.ev-refused-head h2:focus {
+  outline: none;
+}
+
+.desk-ask p.ev-refused-figure {
+  color: var(--colorInk);
+  font-variant-numeric: tabular-nums;
+}
+
+.desk-ask p.ev-refused-safe {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  padding: var(--spaceLg) var(--spaceXl);
+  border-radius: var(--radiusSmall);
+  background: var(--colorAccentTint);
+  color: var(--colorInk);
+}
+
+.ev-refused-safe svg {
+  flex: none;
+  color: var(--colorAccent);
+}
+
+.desk-ask p.ev-refused-untick {
+  padding: var(--spaceLg) var(--spaceXl);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusSmall);
+  background: var(--colorInset);
+}
+
+.ev-refused-back {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.desk-ask .desk-note:empty {
+  display: none;
+}

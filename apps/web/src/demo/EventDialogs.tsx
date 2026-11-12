@@ -5,7 +5,7 @@ import {
   formatEventDayAndClock,
   typedNameMatches,
 } from '@soirely/domain';
-import { useContext, useId, useRef, useState } from 'react';
+import { type RefObject, useContext, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
 
@@ -15,8 +15,22 @@ import { DateTime } from '../components/EventPageParts.tsx';
 import { LayersContext, useDeskDialog } from '../layers.ts';
 import { Dialog, Head } from '../components/SettingsParts.tsx';
 import { figure } from './guestsWords.ts';
+import {
+  type DuplicatePhase,
+  type DuplicateStart,
+  type Refusal,
+  DUPLICATE_WORDS as D,
+  copiedOf,
+  notCopiedOf,
+  refusalOf,
+} from './duplicate.ts';
+import { NotBuilt, PhaseTag } from './EventParts.tsx';
+import { Glyph } from '../components/Glyph.tsx';
+import './duplicate.css';
 
 const LOCALE = 'en-US';
+const CREATING = 600;
+const OPENING_AFTER = 700;
 
 /** Delete, once the event has been live or has anybody on its list: the 400 dialog with the name to type; Delete is red once it matches. */
 export function DeleteByName(props: {
@@ -138,42 +152,93 @@ function DeleteBox({
   );
 }
 
-/** Duplicate: what is copied and what is not, and when the copy starts; its end follows at the original's length. */
+/** Duplicate: what is copied and what is not, and when the copy starts; its end follows at the original's length. With guests.manage on an original with guests, it can also copy the guest list (sc-3656). */
 export function DuplicateDialog({
   event,
+  start: first,
   onDismiss,
   onCreated,
 }: {
   event: SampleEvent;
+  start: DuplicateStart;
   onDismiss: () => void;
   onCreated: (words: string) => void;
 }) {
   const navigate = useNavigate();
   const [start, setStart] = useState(() => copyStart(event));
+  const [ticked, setTicked] = useState(first.ticked);
+  const [phase, setPhase] = useState<DuplicatePhase>(first.phase);
+  const [failedOnce, setFailedOnce] = useState(false);
+  const [back, setBack] = useState(false);
+  const box = useRef<HTMLInputElement>(null);
+  const timer = useRef<number | undefined>(undefined);
+  const brings = first.brings;
+  const copying = brings != null && ticked;
+  const busy = phase === 'creating' || phase === 'created';
   const startsAt = instantOf(start.date, start.time, event.timeZone);
   const end = copiedEnd(start.date, start.time, event.timeZone, event);
   const words = durationWords(clockMinutes(event, event.timeZone) ?? 0, LOCALE);
   const duration = [words.hours, words.minutes].filter(Boolean).join(' ');
 
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  function later(ms: number, then: () => void): void {
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(then, ms);
+  }
+
+  function create(): void {
+    if (startsAt == null || busy) return;
+
+    setPhase('creating');
+    later(CREATING, () => {
+      if (first.fails && !failedOnce) {
+        setFailedOnce(true);
+        setPhase('failed');
+      } else if (copying && first.refuse != null) setPhase('refused');
+      else {
+        setPhase('created');
+        later(OPENING_AFTER, () => {
+          const copy = keepCopy(event, startsAt);
+          onCreated(W.created);
+          void navigate(`/demo/events/${copy.id}`, {
+            state: { told: copying ? D.success(brings.guests) : W.created },
+          });
+        });
+      }
+    });
+  }
+
+  if (phase === 'refused' && first.refuse != null && brings != null)
+    return (
+      <CopyRefused
+        refusal={refusalOf(first.refuse, brings.people)}
+        billing={first.billing}
+        onBack={() => {
+          setBack(true);
+          setPhase('form');
+        }}
+      />
+    );
+
   return (
     <Dialog
       title={W.duplicate}
-      verb={W.createDraft}
+      verb={phase === 'creating' ? D.creating : W.createDraft}
       on={startsAt != null}
-      onDismiss={onDismiss}
-      onConfirm={() => {
-        if (startsAt == null) return;
-        const copy = keepCopy(event, startsAt);
-        onCreated(W.created);
-        void navigate(`/demo/events/${copy.id}`, { state: { told: W.created } });
+      locked={busy}
+      {...(back && { first: box })}
+      onDismiss={() => {
+        if (!busy) onDismiss();
       }}
+      onConfirm={create}
     >
       <h3 className="ev-dialog-title">{W.duplicateTitle(event.name)}</h3>
       <p className="desk-line">{W.duplicateLine}</p>
       <div>
         <Head title={W.copied} level={3} />
         <ul className="ev-bullets">
-          {W.copiedItems.map((item) => (
+          {copiedOf(W.copiedItems, copying, brings?.guests ?? 0).map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
@@ -181,12 +246,14 @@ export function DuplicateDialog({
       <div>
         <Head title={W.notCopied} level={3} />
         <ul className="ev-bullets">
-          {W.notCopiedItems.map((item) => (
+          {notCopiedOf(W.notCopiedItems, copying).map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
       </div>
-      <DateTime legend={W.starts} wall={start} onChange={setStart} />
+      <fieldset className="ev-plain" disabled={busy}>
+        <DateTime legend={W.starts} wall={start} onChange={setStart} />
+      </fieldset>
       {end != null && (
         <p className="desk-note" role="status">
           {W.copyEnds(
@@ -196,6 +263,140 @@ export function DuplicateDialog({
           )}
         </p>
       )}
+      {brings != null && (
+        <CopyGuests
+          ref={box}
+          guests={brings.guests}
+          ticked={ticked}
+          busy={busy}
+          onTick={setTicked}
+        />
+      )}
+      {phase === 'failed' && (
+        <p className="desk-error" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {D.notCreated}
+        </p>
+      )}
+      <div className="ev-created" role="status">
+        {phase === 'created' && (
+          <>
+            <PhaseTag shown="draft" />
+            <p className="desk-line">{W.created}</p>
+            {copying && <p className="desk-line">{D.success(brings.guests)}</p>}
+          </>
+        )}
+      </div>
     </Dialog>
+  );
+}
+
+function CopyGuests({
+  ref,
+  guests,
+  ticked,
+  busy,
+  onTick,
+}: {
+  ref: RefObject<HTMLInputElement | null>;
+  guests: number;
+  ticked: boolean;
+  busy: boolean;
+  onTick: (ticked: boolean) => void;
+}) {
+  const id = useId();
+
+  return (
+    <div className="ev-copy-guests">
+      <label className="ev-copy-tick">
+        <input
+          ref={ref}
+          type="checkbox"
+          className="ev-copy-box"
+          checked={ticked}
+          disabled={busy}
+          aria-describedby={`${id}-hint`}
+          onChange={(change) => onTick(change.target.checked)}
+        />
+        <span>{D.label(guests)}</span>
+      </label>
+      <p id={`${id}-hint`} className="ev-copy-hint">
+        {D.hint}
+      </p>
+    </div>
+  );
+}
+
+/** sc-3930's refusal of a copy, in the Duplicate dialog's place: no draft is made, and Back to the form keeps the start and the tick. */
+function CopyRefused(props: { refusal: Refusal; billing: boolean; onBack: () => void }) {
+  const { host } = useContext(LayersContext);
+
+  return host == null ? null : createPortal(<CopyRefusedBox {...props} />, host);
+}
+
+function CopyRefusedBox({
+  refusal,
+  billing,
+  onBack,
+}: {
+  refusal: Refusal;
+  billing: boolean;
+  onBack: () => void;
+}) {
+  const id = useId();
+  const box = useRef<HTMLDivElement>(null);
+  const title = useRef<HTMLHeadingElement>(null);
+  const [said, setSaid] = useState<string | null>(null);
+
+  useDeskDialog(box, title, onBack);
+
+  return (
+    <>
+      <div className="dialog-scrim is-over" aria-hidden="true" />
+      <div
+        ref={box}
+        className="desk-ask ev-refused"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={`${id}-title`}
+        aria-describedby={`${id}-what ${id}-figure ${id}-safe`}
+      >
+        <NotBuilt words={D.notBuilt} />
+        <div className="ev-refused-head">
+          <span className="ev-refused-mark" aria-hidden="true">
+            <Glyph name="clear" size={16} weight={2.6} />
+          </span>
+          <h2 ref={title} id={`${id}-title`} tabIndex={-1}>
+            {refusal.title}
+          </h2>
+        </div>
+        <p id={`${id}-what`}>{refusal.what}</p>
+        <p id={`${id}-figure`} className="ev-refused-figure">
+          {refusal.figure}
+        </p>
+        <p id={`${id}-safe`} className="ev-refused-safe">
+          <Glyph name="shield" size={20} weight={2} />
+          {D.safe}
+        </p>
+        <p className="ev-refused-untick">{D.untick}</p>
+        {refusal.plan && (
+          <button
+            type="button"
+            className="desk-text"
+            onClick={() => setSaid(D.elsewhere(billing ? D.changePlan : D.askOwner))}
+          >
+            {billing ? D.changePlan : D.askOwner}
+          </button>
+        )}
+        <p className="desk-note" role="status">
+          {said}
+        </p>
+        <div className="ev-refused-back">
+          <button type="button" className="desk-text" onClick={onBack}>
+            {D.backToForm}
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
