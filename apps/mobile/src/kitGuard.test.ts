@@ -696,6 +696,28 @@ describe('every field reports its focus to the lift (sc-29076)', () => {
   });
 });
 
+describe('a button or link taking keyboard focus moves on from the landing toast (sc-41296)', () => {
+  const pressables = (file: string) => {
+    const text = readFileSync(join(__dirname, file), 'utf8');
+
+    return [...text.matchAll(/<(?:Pressable|PressFade)\b/gu)].map((tag) =>
+      text.slice(tag.index, tagEnd(text, tag.index)),
+    );
+  };
+  const tellsControlTaken = (markup: string) => propValue(markup, 'onFocus') === '{controlTaken}';
+
+  it("in every one of the kit's buttons and the step's top bar", () => {
+    const kit = [...pressables('components/Buttons.tsx'), ...pressables('steps/StepScreen.tsx')];
+
+    expect(kit.length).toBeGreaterThan(0);
+    expect(kit.filter((markup) => !tellsControlTaken(markup))).toEqual([]);
+  });
+
+  it("but not in the toast's own Close", () => {
+    expect(pressables('components/Toast.tsx').filter(tellsControlTaken)).toEqual([]);
+  });
+});
+
 describe('a step lifts inside its own StepScreen (sc-29069)', () => {
   it('in every component that renders a StepScreen', () => {
     const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
