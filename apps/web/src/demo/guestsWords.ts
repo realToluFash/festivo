@@ -20,12 +20,16 @@ export const GW = {
   havent: (count: number) =>
     count === 1 ? '1 hasn’t replied' : `${figure(count)} haven’t replied`,
   whoHavent: (guests: number, companions: number) =>
-    `${guests === 1 ? '1 guest' : `${figure(guests)} guests`} and ${figure(companions)} of their companions`,
+    `${guests === 1 ? '1 guest' : `${figure(guests)} guests`} and ${companions === 1 ? '1 companion' : `${figure(companions)} companions`}`,
+  everyoneReplied: 'Everyone has replied.',
+  closesToday: 'Replies close today.',
   closesTomorrow: (date: string) => `Replies close tomorrow, ${date}.`,
+  closesOn: (date: string) => `Replies close on ${date}.`,
   closedOn: (date: string) => `Replies closed on ${date}.`,
   writeToThem: 'Write to them',
   draftLine: 'Guests can’t be invited until this event is live.',
   pausedLine: 'Guests can’t be invited while this event is paused.',
+  finishedLine: 'This event has finished, so guests can’t be invited.',
   makeLive: 'Make live',
   arrivedOf: (arrived: number, expected: number) => `${figure(arrived)} of ${figure(expected)}`,
   arrived: 'arrived',
@@ -39,7 +43,7 @@ export const GW = {
   clear: 'Clear',
   noMatch: 'No guests match',
   noMatchLine: 'Try a different name, or clear the filters.',
-  showAll: (count: number, word: string) => `Show all ${figure(count)} ${word}`,
+  showAll: (count: number) => `Show all ${figure(count)}`,
   pick: 'Pick a guest to see their details, or add one.',
   loading: 'Loading…',
   loadFailed: 'We could not load the guests.',
@@ -52,6 +56,13 @@ export const GW = {
   withWord: (word: string, rest: string) => `${word} · ${rest}`,
   invitedBy: (name: string, how: string, date: string) => `Invited by ${name}, ${how}, ${date}`,
   invitedByMessage: (date: string) => `Invited by Soirely’s message, ${date}`,
+  invitedWhenReplied: (date: string) => `Invited when they replied, ${date}`,
+  markNotInvited: 'Mark as not invited',
+  unmarked: 'Marked as not invited.',
+  unmarkRefused: (name: string, reply: string, date: string) =>
+    `Not changed. ${name} replied ${reply} on ${date}, so they stay invited.`,
+  readOnlyInvited:
+    'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
   companionCount: (count: number) => (count === 1 ? '1 companion' : `${figure(count)} companions`),
   heldLine: 'Held · comes only if their host accepts',
   guestOf: (host: string) => `Guest of ${host}`,
@@ -231,17 +242,6 @@ export const REPLY_WORDS = {
   held: 'Held',
   notYet: 'Not yet invited',
   walkIn: 'Walk-in',
-} as const;
-
-/** What a group's Show all says after its count. */
-export const SHOW_ALL_WORDS = {
-  coming: 'coming',
-  notSure: 'not sure yet',
-  noReply: 'with no reply',
-  notComing: 'not coming',
-  held: 'held',
-  notYet: 'not yet invited',
-  walkIn: 'walk-ins',
 } as const;
 
 export const CHOICE_WORDS = { all: 'All', invited: 'Invited', ...REPLY_WORDS } as const;

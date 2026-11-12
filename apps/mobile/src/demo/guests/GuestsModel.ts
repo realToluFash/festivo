@@ -68,6 +68,11 @@ export const GUEST_STATES = [
   'markRefused',
   'marked',
   'markNotSaved',
+  'invitedByMessage',
+  'invitedWhenReplied',
+  'unmarked',
+  'unmarkRefused',
+  'finished',
   'languageNotSet',
   'languageSet',
   'languageGuestChose',
@@ -265,6 +270,7 @@ export function clockOf(state: GuestsState | DoorState | null): Date {
     case 'beforeOpen':
       return new Date(CLOCKS.beforeOpen);
     case 'ended':
+    case 'finished':
       return new Date(CLOCKS.ended);
     default:
       return new Date(state != null && isIn(DOOR_STATES, state) ? CLOCKS.onTheDay : CLOCKS.reader);
@@ -426,6 +432,28 @@ export function invitedWords(g: SampleGuest, locale: string): string {
   return g.invited.how == null
     ? `Invited by ${g.invited.by}, ${when}`
     : say.invitedBy(g.invited.by, g.invited.how, when);
+}
+
+/** The Invitation's one line (sc-3788): by hand, by Soirely's message, or from their reply when nothing earlier was recorded. */
+export function invitationWords(g: SampleGuest, locale: string): string | null {
+  if (g.invited != null) return invitedWords(g, locale);
+  if (g.when != null && g.kind !== 'noreply' && g.kind !== 'notyet')
+    return say.invitedWhenReplied(dayWords(g.when, locale));
+  return null;
+}
+
+/** Mark as not invited undoes only a mark made by hand, and only before they reply (sc-3788). */
+export function handMarked(g: SampleGuest): boolean {
+  return g.invited?.how != null && g.kind === 'noreply';
+}
+
+export function markedNotInvited(g: SampleGuest): SampleGuest {
+  return {
+    ...g,
+    kind: 'notyet',
+    invited: null,
+    companions: g.companions.map((c) => ({ ...c, kind: 'notyet' as const })),
+  };
 }
 
 export function joined(parts: readonly (string | null | undefined)[]): string {
@@ -628,6 +656,14 @@ export function cardWords(
         says: say.says(PAUSED_COUNTS.coming, PAUSED_COUNTS.invited),
         count: null,
         line: W.pausedLine,
+        step: null,
+      };
+    case 'finished':
+      return {
+        tags: [{ word: 'Finished', mark: 'finished' }],
+        says,
+        count: null,
+        line: W.finishedLine,
         step: null,
       };
     case 'onTheDay':
@@ -935,6 +971,10 @@ export function guestsAt(state: GuestsState | null): SampleGuest[] {
       return swap('emeka', (g) => recorded(g, 'coming', 'By phone', [true], TODAY));
     case 'marked':
       return swap('bisi', (g) => markedInvited(g, 'WhatsApp', TODAY));
+    case 'unmarked':
+      return swap('emeka', markedNotInvited);
+    case 'unmarkRefused':
+      return swap('seun', (g) => ({ ...g, kind: 'coming', when: TODAY }));
     case 'whatsAppRecorded':
       return swap('kwame', (g) => agreedToWhatsApp(g, 'In person', TODAY));
     case 'saved':
@@ -1002,6 +1042,8 @@ export interface AreaStart {
   replaced: boolean;
   notReplaced: boolean;
   recorded: boolean;
+  /** sc-3788: Mark as not invited landed, or was refused because the guest replied first (409). */
+  unmarked: 'done' | 'refused' | null;
   marked: boolean;
   added: number;
   walkIn: boolean;
@@ -1022,6 +1064,7 @@ const QUIET: AreaStart = {
   replaced: false,
   notReplaced: false,
   recorded: false,
+  unmarked: null,
   marked: false,
   added: 0,
   walkIn: false,
@@ -1042,7 +1085,16 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'notFound':
       return 'emeka';
     case 'recordReplace':
+    case 'invitedWhenReplied':
       return 'ngozi';
+    case 'unmarked':
+      return 'emeka';
+    case 'unmarkRefused':
+      return 'seun';
+    case 'invitedByMessage':
+      return 'marta';
+    case 'finished':
+      return 'bisi';
     case 'notYetInvited':
     case 'linkCopied':
     case 'markAsInvited':
@@ -1144,6 +1196,10 @@ export function areaStart(state: GuestsState | null): AreaStart {
       return { ...base, overlay: 'mark' };
     case 'marked':
       return { ...base, marked: true };
+    case 'unmarked':
+      return { ...base, unmarked: 'done' };
+    case 'unmarkRefused':
+      return { ...base, unmarked: 'refused' };
     default:
       return base;
   }

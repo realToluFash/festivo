@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
+import { SEARCH_SETTLES_MS } from './useGuestsAddress.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -44,7 +45,7 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.getByText('96 coming of 142 invited')).toBeDefined();
     expect(
       screen.getByText(
-        '25 haven’t replied (21 guests and 4 of their companions). Replies close tomorrow, Wed, Nov 4.',
+        '25 haven’t replied (21 guests and 4 companions). Replies close tomorrow, Wed, Nov 4.',
       ),
     ).toBeDefined();
     expect(screen.getByRole('searchbox', { name: 'Find a guest' })).toBeDefined();
@@ -53,9 +54,9 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'No reply · 21' })).toBeDefined();
     expect(screen.getByText('Pick a guest to see their details, or add one.')).toBeDefined();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show all 96 coming' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 96' }));
 
-    expect(screen.queryByRole('button', { name: 'Show all 96 coming' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Show all 96' })).toBeNull();
     expect(screen.getByRole('link', { name: /^Temitope Oyelaran, Coming/u })).toBeDefined();
   });
 
@@ -134,7 +135,7 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
     expect(screen.queryByText('kwame.mensah@outlook.com')).toBeNull();
     expect(screen.queryByText('+44 7700 900412')).toBeNull();
-    expect(screen.queryByRole('heading', { name: 'Invitation' })).toBeNull();
+    expect(within(column()).getByRole('heading', { name: 'Invitation' })).toBeDefined();
     expect(within(column()).getByText('Coming · replied Oct 2')).toBeDefined();
     expect(within(column()).getByText('Messages greet them by their full name.')).toBeDefined();
     expect(within(column()).queryByText('Added')).toBeNull();
@@ -210,6 +211,109 @@ describe('Guests, the list (sc-31781)', () => {
   });
 });
 
+describe('Guests, the card’s words and the view in the address (sc-3772)', () => {
+  it.each([
+    ['everyoneReplied', 'Everyone has replied. Replies close tomorrow, Wed, Nov 4.'],
+    ['noCompanionsWaiting', '21 haven’t replied. Replies close tomorrow, Wed, Nov 4.'],
+    ['closesToday', '25 haven’t replied (21 guests and 4 companions). Replies close today.'],
+    [
+      'closesLater',
+      '25 haven’t replied (21 guests and 4 companions). Replies close on Wed, Nov 4.',
+    ],
+    [
+      'repliesClosedLive',
+      '25 haven’t replied (21 guests and 4 companions). Replies closed on Wed, Nov 4.',
+    ],
+  ])('draws %s on the card', SLOW, async (state, line) => {
+    await guests(state);
+
+    expect(screen.getByText(line)).toBeDefined();
+  });
+
+  it('keeps the menu’s choice in the address, and Back undoes it', SLOW, async () => {
+    const router = await guests('inUse');
+
+    fireEvent.click(screen.getByRole('button', { name: 'All · 156' }));
+    fireEvent.click(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Held/u }),
+    );
+
+    expect(router.state.location.search).toBe('?state=inUse&filter=held');
+    expect(screen.getByText('6 of 156 shown')).toBeDefined();
+
+    await act(() => router.navigate(-1));
+
+    expect(screen.getByRole('button', { name: 'All · 156' })).toBeDefined();
+    expect(screen.queryByText('6 of 156 shown')).toBeNull();
+  });
+
+  it('writes the search once typing settles, and Back takes it out', SLOW, async () => {
+    const router = await guests('inUse');
+    const box = screen.getByRole<HTMLInputElement>('searchbox', { name: 'Find a guest' });
+
+    fireEvent.change(box, { target: { value: 'okon' } });
+
+    expect(screen.getByText('2 of 156 shown')).toBeDefined();
+    await waitFor(() => expect(router.state.location.search).toBe('?state=inUse&q=okon'), WAIT);
+
+    await act(() => router.navigate(-1));
+
+    await waitFor(() => expect(box.value).toBe(''), WAIT);
+    expect(screen.queryByText('2 of 156 shown')).toBeNull();
+  });
+
+  it('writes a search still settling with the choice picked after it', SLOW, async () => {
+    const router = await guests('inUse');
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
+      target: { value: 'okon' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^All/u }));
+    fireEvent.click(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Held/u }),
+    );
+
+    expect(router.state.location.search).toBe('?state=inUse&filter=held&q=okon');
+  });
+
+  it('drops a search still settling when Back moves the address', SLOW, async () => {
+    const router = await guests('inUse');
+    const box = screen.getByRole<HTMLInputElement>('searchbox', { name: 'Find a guest' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'All · 156' }));
+    fireEvent.click(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Held/u }),
+    );
+    fireEvent.change(box, { target: { value: 'okon' } });
+    await act(() => router.navigate(-1));
+    await act(() => new Promise((settled) => setTimeout(settled, SEARCH_SETTLES_MS + 100)));
+
+    expect(router.state.location.search).toBe('?state=inUse');
+    expect(box.value).toBe('');
+    expect(screen.getByRole('button', { name: 'All · 156' })).toBeDefined();
+  });
+
+  it('opens a shared link on its search, a number in its national form', SLOW, async () => {
+    open('/demo/guests?q=0803%20412');
+    await screen.findByRole('heading', { level: 1, name: 'Guests' }, WAIT);
+
+    expect(screen.getByRole<HTMLInputElement>('searchbox', { name: 'Find a guest' }).value).toBe(
+      '0803 412',
+    );
+    expect(screen.getByText('1 of 156 shown')).toBeDefined();
+    expect(screen.getByRole('link', { name: /^Alhaji Musa Bello, Coming/u })).toBeDefined();
+  });
+
+  it('clears the choice and the search together, in one step', SLOW, async () => {
+    const router = await guests('filterNone');
+
+    fireEvent.click(within(main()).getAllByRole('button', { name: 'Clear' })[0] as HTMLElement);
+
+    expect(router.state.location.search).toBe('?state=filterNone&filter=all&q=');
+    expect(screen.getByRole('button', { name: 'All · 156' })).toBeDefined();
+  });
+});
+
 describe('Guests, a guest beside the list (sc-3773)', () => {
   it(
     'opens a guest in the column, focus on their name, and Escape brings it back',
@@ -235,7 +339,9 @@ describe('Guests, a guest beside the list (sc-3773)', () => {
   it('leads a guest with no reply with Record a reply', SLOW, async () => {
     await guests('guest');
 
-    expect(within(column()).getByText('Invited by Folake Adeyemi, WhatsApp, Oct 9')).toBeDefined();
+    expect(
+      within(column()).getAllByText('Invited by Folake Adeyemi, WhatsApp, Oct 9'),
+    ).toHaveLength(2);
     expect(within(column()).getByRole('button', { name: 'Record a reply' })).toBeDefined();
     expect(
       within(column()).getByText('Companion · Held · comes only if their host accepts'),
@@ -790,9 +896,73 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
     );
 
     expect(
-      await within(column()).findByText('Invited by Folake Adeyemi, WhatsApp, Nov 3'),
-    ).toBeDefined();
+      await within(column()).findAllByText('Invited by Folake Adeyemi, WhatsApp, Nov 3'),
+    ).toHaveLength(2);
     expect(within(column()).getByRole('button', { name: 'Record a reply' })).toBeDefined();
+  });
+
+  it('undoes a mark made by hand with Mark as not invited, nothing asked', SLOW, async () => {
+    await guests('guest');
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Mark as not invited' }));
+
+    expect(await within(column()).findByText('Marked as not invited.')).toBeDefined();
+    expect(within(column()).getAllByRole('button', { name: /^Mark as invited/u })).toHaveLength(2);
+    expect(within(column()).queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
+  });
+
+  it.each([
+    ['invitedByMessage', 'Invited by Soirely’s message, Oct 12'],
+    ['invitedWhenReplied', 'Invited when they replied, Oct 2'],
+  ])('offers no undo on %s', SLOW, async (state, line) => {
+    await guests(state);
+
+    expect(within(column()).getByText(line)).toBeDefined();
+    expect(within(column()).queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
+  });
+
+  it('says why the undo was refused when they replied first (409)', SLOW, async () => {
+    await guests('unmarkRefused');
+
+    expect(within(column()).getByRole('alert').textContent).toBe(
+      'Not changed. Oluwaseun Ajayi replied Coming on Nov 3, so they stay invited.',
+    );
+    expect(within(column()).getByText('Invited by Ana Souza, text message, Oct 10')).toBeDefined();
+    expect(within(column()).queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
+  });
+
+  it('offers neither the mark nor the link once the event has finished', SLOW, async () => {
+    await guests('finished');
+
+    expect(screen.getByText('This event has finished, so guests can’t be invited.')).toBeDefined();
+    expect(within(column()).queryByRole('button', { name: /Mark as invited/u })).toBeNull();
+    expect(within(column()).queryByRole('button', { name: /Copy invitation link/u })).toBeNull();
+    expect(within(column()).getByRole('button', { name: /Replace link/u })).toBeDefined();
+  });
+
+  it(
+    'shows someone who can view who invited a guest, and why nothing can be marked',
+    SLOW,
+    async () => {
+      await guests('guestViewer');
+
+      const invitation = within(column()).getByRole('region', { name: 'Invitation' });
+
+      expect(within(invitation).getByText('Invited by Soirely’s message, Oct 12')).toBeDefined();
+      expect(
+        within(invitation).getByText(
+          'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
+        ),
+      ).toBeDefined();
+      expect(within(invitation).queryByRole('button')).toBeNull();
+    },
+  );
+
+  it('lists the guests not yet invited from the menu', SLOW, async () => {
+    await guests('notYetFilter');
+
+    expect(screen.getByRole('button', { name: 'Not yet invited · 14' })).toBeDefined();
+    expect(screen.getByText('14 of 156 shown')).toBeDefined();
   });
 });
 
