@@ -116,15 +116,12 @@ export function EventCard({
   event,
   now,
   level,
-  guests = null,
   milestone = null,
   onStep,
 }: {
   event: SampleEvent;
   now: Date;
   level: 1 | 2;
-  /** Its guests in the tiles' measure, on Events (sc-3786). */
-  guests?: string | null;
   /** Next up when it is a You milestone with an action, which becomes the card's one step (sc-30812). */
   milestone?: CardMilestone | null;
   onStep: (does: CardStepAction) => void;
@@ -136,7 +133,6 @@ export function EventCard({
       locale={dateLocale()}
       level={level}
       {...(level === 2 && { to: `/demo/events/${event.id}` })}
-      guests={guests}
       nextUp={milestone == null ? null : <MilestoneStep milestone={milestone} />}
       takes={() => true}
       onStep={(step) => onStep(step.action)}

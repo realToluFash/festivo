@@ -610,8 +610,8 @@ function GuestTile({
     <Pressable
       style={({ pressed }) => [styles.guest, on && styles.guestOn, pressed && styles.pressed]}
       onPress={onPress}
-      accessibilityRole="button"
-      accessibilityState={{ selected: on }}
+      accessibilityRole="togglebutton"
+      accessibilityState={{ checked: on }}
       accessibilityLabel={`${name}, ${figure}, ${line}, ${G.tileOpens[id]}`}
       testID={`events.guests.${id}`}
     >
