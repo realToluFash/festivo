@@ -3144,9 +3144,9 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(screen.getByText('Called off', { selector: '.desk-glass' })).toBeDefined();
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Finished'));
-    expect(
-      screen.getAllByText(/^Called off on .*Oct 13, 2030, before it started\./).length,
-    ).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^Called off on .*Oct 13, 2030, before it started\./)).toHaveLength(
+      1,
+    );
     expect(screen.queryByRole('button', { name: 'Call off…' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'End now…' })).toBeNull();
     expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/end')).toHaveLength(1);

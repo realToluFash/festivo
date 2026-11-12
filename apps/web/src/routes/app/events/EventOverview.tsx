@@ -43,7 +43,7 @@ import { canOn } from '../../../session.ts';
 import { DeleteEvent } from './DeleteEvent.tsx';
 import { DuplicateDialog, DuplicateEvent } from './DuplicateEvent.tsx';
 import { type EditOutcome } from './EditEvent.tsx';
-import { CalledOffNotice, EndButton } from './EndEvent.tsx';
+import { EndButton } from './EndEvent.tsx';
 import { EventCoverImage } from './EventCoverImage.tsx';
 import {
   type Part,
@@ -240,7 +240,6 @@ export function Overview({
       )}
       {madeLive && <OutcomeLine words={t('eventLive.madeLive')} />}
       {resumed && <OutcomeLine words={t('eventPause.resumed', { name: event.name })} />}
-      <CalledOffNotice event={event} />
       {ended && <OutcomeLine words={t(PHASE_WORD.finished)} />}
       {paused && <OutcomeLine words={t('eventPause.paused', { name: event.name })} />}
       {coverRefused != null && (

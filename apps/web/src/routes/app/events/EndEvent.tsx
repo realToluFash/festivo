@@ -1,10 +1,9 @@
 import { type OrganisationEvent } from '@soirely/api-client';
-import { type EventPhase, calledOff, endLabel, formatEventDate } from '@soirely/domain';
+import { type EventPhase, endLabel } from '@soirely/domain';
 import { type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
-import { dateLocale } from '../../../i18n/index.ts';
 import { InManage, LifecycleDialog } from './LifecycleDialog.tsx';
 import { useLifecycleAction } from './useLifecycleAction.ts';
 
@@ -86,25 +85,5 @@ export function EndButton({
         </InManage>
       )}
     </>
-  );
-}
-
-/** `Event View` (tweak: Called off): the only place a host sees afterwards that the event never happened. */
-export function CalledOffNotice({ event }: { event: OrganisationEvent }) {
-  const { t } = useTranslation();
-
-  if (!calledOff(event) || event.concludedAt == null) return null;
-
-  return (
-    <div className="notice notice-quiet event-called-off">
-      <span className="mark mark-info" aria-hidden="true">
-        i
-      </span>
-      <p>
-        {t('eventEnd.calledOffNotice', {
-          date: formatEventDate(event.concludedAt, event.timeZone, dateLocale()),
-        })}
-      </p>
-    </div>
   );
 }
