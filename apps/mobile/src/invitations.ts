@@ -28,8 +28,9 @@ export function useWaitingInvitations(): WaitingInvitations {
 }
 
 /** Behind the onboarding gate, where the account's organisations cannot be read: the list read once, when `load` is on at first render. */
-export function useInvitationsOnOpen(load: boolean): WaitingInvitations {
+export function useInvitationsOnOpen(load: boolean): WaitingInvitations & { read: boolean } {
   const [loading] = useState(load);
+  const [read, setRead] = useState(!load);
   const [invitations, setInvitations] = useState<readonly InvitationPreview[]>([]);
   const [outcomes, setOutcomes] = useState<Record<string, InvitationOutcome>>({});
 
@@ -40,9 +41,13 @@ export function useInvitationsOnOpen(load: boolean): WaitingInvitations {
 
     api.myInvitations().then(
       (found) => {
-        if (live) setInvitations(found);
+        if (!live) return;
+        setInvitations(found);
+        setRead(true);
       },
-      () => {},
+      () => {
+        if (live) setRead(true);
+      },
     );
 
     return () => {
@@ -55,6 +60,7 @@ export function useInvitationsOnOpen(load: boolean): WaitingInvitations {
 
   return {
     invitations,
+    read,
     outcomes,
     answer: (invitation, choice) => answerInvitation(invitation, choice, settle, () => {}),
   };
