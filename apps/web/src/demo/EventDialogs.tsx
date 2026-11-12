@@ -1,23 +1,16 @@
-import {
-  clockMinutes,
-  copiedEnd,
-  durationWords,
-  formatEventDayAndClock,
-  typedNameMatches,
-} from '@soirely/domain';
+import { typedNameMatches } from '@soirely/domain';
 import { useContext, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { ActionPair } from '../components/ActionPair.tsx';
+import { DuplicateBody } from '../components/DuplicateBody.tsx';
 import { copyStart } from '../copyStart.ts';
 import { type SampleEvent, EVENT_WORDS as W, instantOf, keepCopy } from './events.ts';
-import { DateTime } from '../components/EventPageParts.tsx';
 import { LayersContext, useDeskDialog } from '../layers.ts';
-import { Dialog, Head } from '../components/SettingsParts.tsx';
+import { Dialog } from '../components/SettingsParts.tsx';
 import { figure } from './guestsWords.ts';
-
-const LOCALE = 'en-US';
 
 /** Delete, once the event has been live or has anybody on its list: the 400 dialog with the name to type; Delete is red once it matches. */
 export function DeleteByName(props: {
@@ -139,7 +132,7 @@ function DeleteBox({
   );
 }
 
-/** Duplicate: what is copied and what is not, and when the copy starts; its end follows at the original's length. */
+/** Duplicate: the product's body, with the sample's draft kept on Create draft. */
 export function DuplicateDialog({
   event,
   onDismiss,
@@ -149,17 +142,15 @@ export function DuplicateDialog({
   onDismiss: () => void;
   onCreated: (words: string) => void;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [start, setStart] = useState(() => copyStart(event));
   const startsAt = instantOf(start.date, start.time, event.timeZone);
-  const end = copiedEnd(start.date, start.time, event.timeZone, event);
-  const words = durationWords(clockMinutes(event, event.timeZone) ?? 0, LOCALE);
-  const duration = [words.hours, words.minutes].filter(Boolean).join(' ');
 
   return (
     <Dialog
-      title={W.duplicate}
-      verb={W.createDraft}
+      title={t('eventDuplicate.open')}
+      verb={t('eventDuplicate.create')}
       on={startsAt != null}
       onDismiss={onDismiss}
       onConfirm={() => {
@@ -169,34 +160,7 @@ export function DuplicateDialog({
         void navigate(`/demo/events/${copy.id}`, { state: { told: W.created } });
       }}
     >
-      <h3 className="ev-dialog-title">{W.duplicateTitle(event.name)}</h3>
-      <p className="desk-line">{W.duplicateLine}</p>
-      <div>
-        <Head title={W.copied} level={3} />
-        <ul className="ev-bullets">
-          {W.copiedItems.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </div>
-      <div>
-        <Head title={W.notCopied} level={3} />
-        <ul className="ev-bullets">
-          {W.notCopiedItems.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </div>
-      <DateTime legend={W.starts} wall={start} onChange={setStart} />
-      {end != null && (
-        <p className="desk-note" role="status">
-          {W.copyEnds(
-            formatEventDayAndClock(end, event.timeZone, LOCALE),
-            duration,
-            event.timeZone,
-          )}
-        </p>
-      )}
+      <DuplicateBody event={event} start={start} onStart={setStart} />
     </Dialog>
   );
 }

@@ -1,15 +1,13 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
-import { copyEndsLine, copyStartRefusal, localDateTime, skippedLine } from '@soirely/domain';
-import { type ReactNode, useContext, useId, useRef, useState } from 'react';
+import { copyStartRefusal, localDateTime } from '@soirely/domain';
+import { type ReactNode, useContext, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { DateTime } from '../../../components/EventPageParts.tsx';
-import { Glyph } from '../../../components/Glyph.tsx';
-import { Dialog, Head } from '../../../components/SettingsParts.tsx';
+import { DuplicateBody } from '../../../components/DuplicateBody.tsx';
+import { Dialog } from '../../../components/SettingsParts.tsx';
 import { copyStart } from '../../../copyStart.ts';
-import { dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, useDeskLayers } from '../../../layers.ts';
 import { DUPLICATED } from './duplicated.ts';
 
@@ -83,14 +81,11 @@ function OwnLayers({ children }: { children: ReactNode }) {
 function DuplicateBox({ event, onClose }: { event: OrganisationEvent; onClose: () => void }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const id = useId();
   const [start, setStart] = useState(() => copyStart(event));
   const [error, setError] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<'editing' | 'creating' | 'failed'>('editing');
   const when = useRef<HTMLDivElement>(null);
   const busy = status === 'creating';
-  const locale = dateLocale();
-  const skipped = skippedLine(start.date, start.time, event.timeZone, locale, t);
 
   const focusHalf = (half: 'date' | 'time') =>
     when.current?.querySelector<HTMLElement>(`input[type="${half}"]`)?.focus();
@@ -139,61 +134,17 @@ function DuplicateBox({ event, onClose }: { event: OrganisationEvent; onClose: (
       onDismiss={onClose}
       onConfirm={() => void create()}
     >
-      <h3 className="ev-dialog-title">{t('eventDuplicate.title', { event: event.name })}</h3>
-      <p className="desk-line">{t('eventDuplicate.body')}</p>
-      <div>
-        <Head title={t('eventDuplicate.copied')} level={3} />
-        <ul className="ev-bullets">
-          <li>{t('eventDuplicate.copiedName')}</li>
-          <li>{t('eventDuplicate.copiedType')}</li>
-          <li>{t('eventDuplicate.copiedVenue')}</li>
-          <li>{t('eventDuplicate.copiedCover')}</li>
-          <li>{t('eventDuplicate.copiedTimeZone')}</li>
-          <li>{t('eventDuplicate.copiedCurrency')}</li>
-          <li>{t('eventDuplicate.copiedLength')}</li>
-        </ul>
-      </div>
-      <div>
-        <Head title={t('eventDuplicate.notCopied')} level={3} />
-        <ul className="ev-bullets">
-          <li>{t('eventDuplicate.notCopiedHosts')}</li>
-          <li>{t('eventDuplicate.notCopiedGuests')}</li>
-          <li>{t('eventDuplicate.notCopiedReplies')}</li>
-          <li>{t('eventDuplicate.notCopiedHappened')}</li>
-        </ul>
-      </div>
-      {status === 'failed' && (
-        <p className="desk-error" role="alert">
-          <Glyph name="alert" size={15} weight={2.2} />
-          {t('eventDuplicate.notCreated')}
-        </p>
-      )}
-      <div ref={when}>
-        <DateTime
-          legend={t('eventDuplicate.starts')}
-          wall={start}
-          wrong={error != null}
-          told={error != null ? `${id}-wrong` : skipped != null ? `${id}-skip` : `${id}-ends`}
-          onChange={(next) => {
-            setStart(next);
-            if (next.date !== '' && next.time !== '') setError(undefined);
-          }}
-        />
-      </div>
-      {error != null && (
-        <p id={`${id}-wrong`} className="desk-error" role="alert">
-          <Glyph name="alert" size={15} weight={2.2} />
-          {error}
-        </p>
-      )}
-      {skipped != null && (
-        <p id={`${id}-skip`} className="desk-help">
-          {skipped}
-        </p>
-      )}
-      <p id={`${id}-ends`} className="desk-note" role="status">
-        {copyEndsLine(start.date, start.time, event, locale, t)}
-      </p>
+      <DuplicateBody
+        event={event}
+        start={start}
+        onStart={(next) => {
+          setStart(next);
+          if (next.date !== '' && next.time !== '') setError(undefined);
+        }}
+        failed={status === 'failed'}
+        error={error}
+        when={when}
+      />
     </Dialog>
   );
 }
