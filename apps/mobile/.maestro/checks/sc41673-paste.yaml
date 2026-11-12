@@ -7,14 +7,14 @@ appId: host.exp.Exponent
 - inputText: 'Ibadan Supper Club'
 - longPressOn: { id: 'createWalk.name' }
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
-- tapOn: { text: 'Select all', optional: true }
+- tapOn: { text: '(Select all|Tout sélectionner)', optional: true }
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 600, optional: true }
-- tapOn: { text: 'Cut' }
+- tapOn: { text: '(Cut|Couper)' }
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
 - takeScreenshot: p1-empty
 - longPressOn: { id: 'createWalk.name' }
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
-- tapOn: { text: 'Paste' }
+- tapOn: { text: '(Paste|Coller)' }
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
 - takeScreenshot: p2-pasted
 - tapOn: { id: 'createWalk.cancel', optional: true }
