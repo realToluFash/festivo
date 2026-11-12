@@ -1,6 +1,5 @@
 /* global http, json, output, EMAIL, PASSWORD, API_URL, SMOCKER_URL, MODE, FAIL -- what Maestro's runScript provides */
 // MODE=alt adds an alternative number (output.phoneId); MODE=primary sets the primary one.
-// MODE=alt verifies a primary a MODE=primary run left unverified, so account.step opens the added number.
 // FAIL=1 picks a number Smocker's sc-36468 mock refuses to text (+23480399…), for a failing Text it to me instead.
 var base = { 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:15173' };
 var login = http.post(API_URL + '/api/auth/login', {
