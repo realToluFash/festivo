@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   LayoutAnimation,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   type TextInputInstance,
@@ -23,7 +24,7 @@ import { useKeysUp } from './keyboardWatch.ts';
 import { useSendingWords } from './ReadOut.tsx';
 import { SETTLED_MS } from './Screen.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { useFocusBack, useWindowTurn } from './Sheet.tsx';
+import { SilentWindowName, useFocusBack, useWindowTurn } from './Sheet.tsx';
 import type { TextHandle } from './Text.tsx';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useAccessibilitySizes, useLayout } from '../layout/useLayout.ts';
@@ -436,6 +437,7 @@ export function CreateWalkWindow<Made>({
       onRequestClose={escape}
       onDismiss={gone}
     >
+      {Platform.OS === 'android' && <SilentWindowName />}
       {phone ? (
         <KeyboardAvoidingView behavior="padding" style={[styles.fill, styles.screen]}>
           <View

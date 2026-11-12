@@ -96,7 +96,9 @@ describe('a focused screen whose title takes focus with each new step (sc-11032)
   });
 
   it('stays hidden as it opens until its slide or fade has ended, so TalkBack has no title to name it by (#40692)', () => {
-    expect(screen).toContain('const WINDOW_ARRIVES_MS = 200;');
+    const sheet = readFileSync(join(import.meta.dirname, 'Sheet.tsx'), 'utf8');
+
+    expect(sheet).toContain('export const WINDOW_ARRIVES_MS = 200;');
     expect(screen).toMatch(/animationType=\{reduced \? 'none' : slides \? 'slide' : 'fade'\}/);
   });
 
@@ -110,7 +112,7 @@ describe('a focused screen whose title takes focus with each new step (sc-11032)
   it('takes that silent name from the sheet, above every other text in the window', () => {
     const sheet = readFileSync(join(import.meta.dirname, 'Sheet.tsx'), 'utf8');
 
-    expect(screen).toMatch(/import \{ SilentWindowName,[^}]*\} from '\.\/Sheet\.tsx';/);
+    expect(screen).toMatch(/import \{\s*SilentWindowName,[^}]*\} from '\.\/Sheet\.tsx';/);
     expect(sheet).toContain("const SILENT = '\\u200b';");
     expect(sheet).toMatch(/windowName: \{ position: 'absolute', top: -1,/);
   });
@@ -167,5 +169,41 @@ describe('Create an organisation on Android, where a native animation’s end ca
   it('has fadeAway call gone at most once, and never after its cancel', () => {
     expect(motion).toContain('if (done) return;');
     expect(motion).toMatch(/return \(\) => \{\s+done = true;\s+clearTimeout\(lost\);/);
+  });
+});
+
+describe('a window that opens through a Modal of its own (sc-42690)', () => {
+  const read = (file: string) => readFileSync(join(import.meta.dirname, file), 'utf8');
+
+  it.each(['OrgDropDown.tsx', 'CalendarOverlays.tsx', 'CreateWalkWindow.tsx', 'ListPicker.tsx'])(
+    'in %s, names its Android window by a text TalkBack speaks as nothing, above every other text in it',
+    (file) => {
+      const text = read(file);
+
+      expect(text).toMatch(/import \{\s*SilentWindowName,[^}]*\} from '\.\/Sheet\.tsx';/);
+      expect(text).toMatch(/\n\s*>\s*\{Platform\.OS === 'android' && <SilentWindowName \/>\}/);
+      expect(text.match(/<SilentWindowName \/>/g)).toHaveLength(1);
+    },
+  );
+
+  describe('a list picker’s menu', () => {
+    const picker = read('ListPicker.tsx');
+
+    it('hides on Android through the sheet’s own wait, from when its window is up until it has slid in', () => {
+      expect(picker).toContain('onShow={() => setOnScreen(true)}');
+      expect(picker).toMatch(
+        /useUnnamedWindow\(\s*Platform\.OS === 'android' && pickerShown,\s*onScreen,\s*null,\s*reduced \? 0 : WINDOW_ARRIVES_MS,?\s*\)/,
+      );
+      expect(picker).toContain(
+        "importantForAccessibility={unnamed ? 'no-hide-descendants' : 'auto'}",
+      );
+    });
+
+    it('moves TalkBack’s focus to its title once revealed, on Android only', () => {
+      expect(picker).toContain(
+        "if (Platform.OS === 'android' && onScreen && !unnamed) moveScreenReaderFocus(heading.current);",
+      );
+      expect(picker).toMatch(/<Text\s+ref=\{heading\}[^>]*accessibilityRole="header"/);
+    });
   });
 });
