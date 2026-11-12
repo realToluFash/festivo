@@ -33,7 +33,11 @@ appId: host.exp.Exponent
     timeout: 10000
 - takeScreenshot: day-list-multi
 - tapOn:
+    id: calendar.dayList.close
+- tapOn:
     id: calendar.day.2026-11-25
-- waitForAnimationToEnd:
-    timeout: 3000
+- extendedWaitUntil:
+    visible:
+      id: calendar.dayList
+    timeout: 10000
 - takeScreenshot: day-list-busy
