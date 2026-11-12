@@ -104,7 +104,7 @@ describe('each event’s guest line as links (sc-3786, pm 12 Nov)', () => {
 
   it('names each link by its words and where it leads', () => {
     expect(GUEST_WORDS.notRepliedOpens('Ada & Tunde')).toBe(
-      'opens Ada & Tunde’s guests with no reply',
+      'opens the guests of Ada & Tunde with no reply',
     );
     expect(GUEST_WORDS.tileShown.replied(3, 4)).toBe(
       'Events with guests who haven’t replied · 3 of 4',

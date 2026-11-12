@@ -109,8 +109,8 @@ export const GUEST_WORDS = {
   replied: 'Replies in',
   notReplied: (count: number, locale?: string) =>
     count === 1 ? '1 hasn’t replied' : `${figureOf(count, locale)} haven’t replied`,
-  comingOpens: (event: string) => `opens ${event}’s guests who are coming`,
-  notRepliedOpens: (event: string) => `opens ${event}’s guests with no reply`,
+  comingOpens: (event: string) => `opens the guests coming to ${event}`,
+  notRepliedOpens: (event: string) => `opens the guests of ${event} with no reply`,
   tileOpens: {
     invited: 'shows the events with invited guests',
     replied: 'shows the events with guests who haven’t replied',
