@@ -106,6 +106,7 @@ import {
   missingCmdlineTools,
   parseTarget,
   hardwareKeyboardOff,
+  expoGoLinkApproval,
   passwordAutoFillFiles,
   passwordAutoFillOff,
   playImage,
@@ -1012,6 +1013,16 @@ describe('a release build', () => {
       ['-insert', 'restrictedBool', '-dictionary', files[0]],
       ['-insert', 'restrictedBool.allowPasswordAutoFill', '-dictionary', files[0]],
       ['-replace', 'restrictedBool.allowPasswordAutoFill.value', '-bool', 'NO', files[0]],
+    ]);
+  });
+
+  it('lets the simulator hand exp:// links to Expo Go without asking', () => {
+    expect(expoGoLinkApproval('/sims/ABC')).toEqual([
+      'write',
+      '/sims/ABC/data/Library/Preferences/com.apple.launchservices.schemeapproval',
+      'com.apple.CoreSimulator.CoreSimulatorBridge-->exp',
+      '-string',
+      'host.exp.Exponent',
     ]);
   });
 

@@ -1289,6 +1289,18 @@ function applyPlistSteps(steps) {
   }
 }
 
+// Without this iOS asks "Open in Expo Go?" first, as Expo CLI also avoids, and Maestro's driver
+// timed out behind the question (sc-41582).
+export function expoGoLinkApproval(deviceDir) {
+  return [
+    'write',
+    join(deviceDir, 'data/Library/Preferences/com.apple.launchservices.schemeapproval'),
+    'com.apple.CoreSimulator.CoreSimulatorBridge-->exp',
+    '-string',
+    EXPO_GO,
+  ];
+}
+
 function withoutPasswordAutoFill(udid) {
   if (passwordAutoFillIsOff(udid)) return;
   const files = deviceFiles(udid);
@@ -1457,6 +1469,7 @@ async function ios(args) {
     uninstallIos(udid, id);
     if (!(await ensureExpoGo(udid, expo)))
       throw new Error(`Expo Go for SDK ${expoSdkMajor(expo)} did not install on the ${key}`);
+    run('defaults', expoGoLinkApproval(simulatorDir(udid)), { optional: true });
     devices.push(udid);
   }
   withSoftwareKeyboard(qaSimulatorIds());
