@@ -44,6 +44,9 @@ export const SELECTED_ROW = {
   backgroundColor: tokens.colorAccentTint,
 } as const;
 
+/** A row title beside its tag: never shrunk, only capped at the row, so a tag with no room goes under it. Shrunk, Android wraps the title after measuring it on one line and drops the last word (sc-30302). */
+export const TITLE_BESIDE_TAG = { flexShrink: 0, maxWidth: '100%' } as const;
+
 const TURN_MS = 900;
 
 /** Something being sent: a 12 pt ring with a quarter turning, still where motion is reduced. */
@@ -480,8 +483,7 @@ const styles = StyleSheet.create({
     columnGap: 8,
     rowGap: 4,
   },
-  // Shrunk beside its tag, Android wraps the title after measuring it on one line and drops the last word (sc-30302).
-  title: { flexShrink: 0, maxWidth: '100%', lineHeight: 16 * 1.3 },
+  title: { ...TITLE_BESIDE_TAG, lineHeight: 16 * 1.3 },
   line: { lineHeight: 14 * 1.4 },
   consequence: { lineHeight: 14 * 1.45 },
   count: { fontVariant: ['tabular-nums'] },

@@ -22,6 +22,7 @@ import {
   SELECTED_ROW,
   Tag,
   TextAction,
+  TITLE_BESIDE_TAG,
   useRowClear,
 } from './Summary.tsx';
 import { Text } from './Text.tsx';
@@ -250,7 +251,7 @@ const styles = StyleSheet.create({
     columnGap: tokens.spaceSm,
     rowGap: tokens.spaceXxs,
   },
-  name: { flexShrink: 1, lineHeight: 16 * 1.3 },
+  name: { ...TITLE_BESIDE_TAG, lineHeight: 16 * 1.3 },
   fact: { lineHeight: 14 * 1.4 },
   answers: { flexDirection: 'row', flexWrap: 'wrap', columnGap: tokens.space3xl, marginTop: 3 },
   own: { lineHeight: 14 * 1.4, marginTop: tokens.spaceXs },

@@ -9,7 +9,7 @@ import { EventSquare, YouDot } from './CalendarWeeks.tsx';
 import { EventThumb } from './EventCard.tsx';
 import { eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
-import { Tag } from './SummaryRows.tsx';
+import { Tag, TITLE_BESIDE_TAG } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
 
 const hidden = {
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
     rowGap: 4,
   },
   titleStack: { flexDirection: 'column', alignItems: 'flex-start' },
-  title: { flexShrink: 1, lineHeight: 16 * 1.3 },
+  title: { ...TITLE_BESIDE_TAG, lineHeight: 16 * 1.3 },
   line: { lineHeight: 14 * 1.4 },
   ownerTag: {
     minHeight: 24,

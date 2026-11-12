@@ -47,6 +47,7 @@ export {
   Section,
   SectionHead,
   SELECTED_ROW,
+  TITLE_BESIDE_TAG,
   Tag,
   type TagKind,
   TextAction,
