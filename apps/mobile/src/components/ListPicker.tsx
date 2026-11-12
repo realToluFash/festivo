@@ -1,6 +1,7 @@
-import { type Ref, useEffect, useId, useRef, useState } from 'react';
+import { type RefObject, useEffect, useId, useRef, useState } from 'react';
 import {
   Animated,
+  BackHandler,
   Easing,
   FlatList,
   Modal,
@@ -72,7 +73,7 @@ export function ListPicker({
   /** The line about it, where it sits in no Field whose line that is, as a phone's code beside its number does. */
   line?: string | null | undefined;
   /** For moving screen-reader focus here when it is the field refused first. */
-  pickerRef?: Ref<ViewInstance> | undefined;
+  pickerRef?: RefObject<ViewInstance | null> | undefined;
   testID: string;
 }) {
   const { t } = useTranslation();
@@ -90,6 +91,9 @@ export function ListPicker({
     reduced ? 0 : WINDOW_ARRIVES_MS,
   );
   const heading = useRef<TextHandle>(null);
+  const ownField = useRef<ViewInstance>(null);
+  const field = pickerRef ?? ownField;
+  const [closedEarly, setClosedEarly] = useState<object>();
   const [search, setSearch] = useState('');
   const searchNameID = useId();
   const searching = useHeld(false, search, undefined, setSearch);
@@ -107,6 +111,19 @@ export function ListPicker({
     heading,
     0,
   );
+
+  // Until the menu's window takes Back, Android gives it to the screen beneath, which stepped back or asked to leave (sc-43145).
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !open) return;
+    const listener = BackHandler.addEventListener('hardwareBackPress', () => {
+      setClosedEarly({});
+      setOpen(false);
+      return true;
+    });
+
+    return () => listener.remove();
+  }, [open]);
+  useFocusOnAnswer(windowShown ? undefined : closedEarly, field);
 
   const chosen = choices.find((choice) => choice.code === value)?.name ?? value;
   const blank = chosen === '';
@@ -139,7 +156,7 @@ export function ListPicker({
   return (
     <>
       <Pressable
-        ref={pickerRef}
+        ref={field}
         style={[
           styles.field,
           readOnly && styles.fieldReadOnly,
@@ -148,6 +165,7 @@ export function ListPicker({
         ]}
         onPress={() => {
           controlTaken();
+          setClosedEarly(undefined);
           setOpen(true);
         }}
         {...fieldEdge.edging}
@@ -290,7 +308,14 @@ function usePickerRise(shown: boolean, reduced: boolean) {
     };
   }, [windowUp, shown, reduced, rise]);
 
-  return { windowUp, rise, risen: () => setWindowUp(true) };
+  return {
+    windowUp,
+    rise,
+    // A Back taken before the window showed has closed the menu already (sc-43145).
+    risen: () => {
+      if (shown) setWindowUp(true);
+    },
+  };
 }
 
 function Chevron() {

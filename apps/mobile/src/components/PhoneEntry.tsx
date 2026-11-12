@@ -1,4 +1,4 @@
-import type { Ref } from 'react';
+import type { Ref, RefObject } from 'react';
 import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -32,7 +32,7 @@ export function PhoneEntry({
   /** A submit runs: the picker is off and the number held. */
   submitting: boolean;
   ref?: Ref<TextInputInstance> | undefined;
-  pickerRef?: Ref<ViewInstance> | undefined;
+  pickerRef?: RefObject<ViewInstance | null> | undefined;
   onCountry: (code: string) => void;
   onNumber: (typed: string) => void;
   onSubmit: () => void;
