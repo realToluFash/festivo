@@ -1457,9 +1457,9 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     'Messages',
     'Schedule',
     'Staff',
+    'People',
     'Budget',
     'Reports',
-    'People',
   ];
 
   function eventNav() {
@@ -1480,7 +1480,7 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
       eventNav()
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['‹ Events', ...AREAS]);
+    ).toEqual(['Events', ...AREAS]);
     expect(current()).toBe('Overview');
     expect(screen.queryByRole('link', { name: 'Today' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Calendar' })).toBeNull();
@@ -1518,6 +1518,31 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     expect(current()).toBe(area);
   });
 
+  it.each(['/app/events/ev_1', '/app/events/ev_1/guests', '/app/events/ev_1/menu'])(
+    'heads the menu on %s with the event’s card: its name, its phase and how soon (sc-30413)',
+    async (path) => {
+      signedIn();
+      answering({
+        'GET /api/events/ev_1': () =>
+          json({
+            event: event({
+              status: 'live',
+              phase: 'live',
+              madeLiveAt: '2026-10-21T10:00:00+00:00',
+              startsAt: '2030-06-01T16:00:00+01:00',
+              endsAt: '2030-06-02T02:00:00+01:00',
+              milestones: [],
+            }),
+          }),
+      });
+      at(path);
+
+      const nav = within(await screen.findByRole('navigation', { name: 'Event' }));
+      const card = (await nav.findByText('Adaeze and Tunde')).closest('.ev-side-card')!;
+      expect(card.textContent).toMatch(/^Adaeze and TundeLive · \S/u);
+    },
+  );
+
   it('returns to the page on Overview by Back, however many areas were chosen on the way', async () => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
@@ -1553,7 +1578,7 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
 
-    fireEvent.click(eventNav().getByRole('link', { name: '‹ Events' }));
+    fireEvent.click(eventNav().getByRole('link', { name: 'Events' }));
 
     expect(
       (await screen.findByRole('tab', { name: 'Drafts 1' })).getAttribute('aria-selected'),
@@ -2320,7 +2345,10 @@ describe("Editing an event's details (sc-3587)", () => {
     await editing();
 
     fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'Unsaved' } });
-    const sidebarEvents = screen.getByRole('link', { name: '‹ Events' });
+    const sidebarEvents = within(screen.getByRole('navigation', { name: 'Event' })).getByRole(
+      'link',
+      { name: 'Events' },
+    );
     sidebarEvents.focus();
     fireEvent.click(sidebarEvents);
     fireEvent.click(
@@ -2339,7 +2367,10 @@ describe("Editing an event's details (sc-3587)", () => {
     await editing();
 
     fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'Unsaved' } });
-    const sidebarEvents = screen.getByRole('link', { name: '‹ Events' });
+    const sidebarEvents = within(screen.getByRole('navigation', { name: 'Event' })).getByRole(
+      'link',
+      { name: 'Events' },
+    );
     sidebarEvents.focus();
     fireEvent.click(sidebarEvents);
     fireEvent.click(

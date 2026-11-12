@@ -30,7 +30,7 @@ import { SeatingArea } from './SeatingArea.tsx';
 import { typeLabel } from './eventTypes.ts';
 import { AllDates } from './Timeline.tsx';
 import { EventCrumb, Overview, PhaseChange } from './EventOverview.tsx';
-import { useShowEventName } from './EventNav.tsx';
+import { useShowEvent } from './EventNav.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 import { NotFound } from '../../public/NotFound.tsx';
 
@@ -136,7 +136,7 @@ function EventOf({
       current = false;
     };
   }, [organisationId, eventId, attempt, refresh, watch]);
-  useShowEventName(eventId, load.kind === 'loaded' ? load.event.name : undefined);
+  useShowEvent(eventId, load.kind === 'loaded' ? load.event : undefined);
 
   if (page === 'seating' && load.kind === 'loaded')
     return canOn(load.event, 'seating.read') ? <SeatingArea event={load.event} /> : <NotFound />;

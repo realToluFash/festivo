@@ -22,7 +22,7 @@ import { Confetti, type Piece } from './Cover.tsx';
 import { EventMesh, eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
 import { CardSays, GlassTag, OnCard, StepButton, SummaryCard } from './Summary.tsx';
-import { Text } from './Text.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 import type { CoverLayout } from './TodayCover.tsx';
 
 type Layout = CoverLayout;
@@ -361,6 +361,7 @@ export function EventCard({
   onStep,
   guests = null,
   stepRef,
+  nameRef,
   sending = null,
   phaseTestID,
   testID,
@@ -380,6 +381,8 @@ export function EventCard({
   onStep: (step: Extract<CardStep, { kind: 'button' }>) => void;
   /** Where focus goes back to when a sheet the step opened closes. */
   stepRef?: Ref<ViewInstance> | undefined;
+  /** The name, where it is the page's heading and takes screen reader focus. */
+  nameRef?: Ref<TextHandle> | undefined;
   /** While the step is under way, what its button says instead; it is held until then. */
   sending?: string | null;
   /** On the page, the phase tag's id is this followed by the phase. */
@@ -388,7 +391,7 @@ export function EventCard({
   openTestID?: string;
 }) {
   const { t } = useTranslation();
-  const name = <CardSays text={event.name} heading={onOpen == null} />;
+  const name = <CardSays ref={nameRef} text={event.name} heading={onOpen == null} />;
   const step = cardStep(event, now, locale, t);
 
   return (

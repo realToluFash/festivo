@@ -68,8 +68,10 @@ export function EventScreen({
     null,
   );
   const title = useRef<TextHandle>(null);
+  const cardName = useRef<TextHandle>(null);
+  const untitled = phone && area === 'overview';
   const opened = useOpened(eventId, account != null, organisation, () =>
-    moveScreenReaderFocus(title.current),
+    moveScreenReaderFocus(cardName.current ?? title.current),
   );
   const { reload, freshen, change } = opened;
   const event = opened.kind === 'loaded' ? opened.event : null;
@@ -143,6 +145,7 @@ export function EventScreen({
           <EventPage
             kind={kind}
             event={event}
+            nameRef={untitled ? cardName : undefined}
             manages={manages}
             takes={(action) => takesCardStep(event, action)}
             onChange={change}
@@ -208,6 +211,7 @@ export function EventScreen({
       current="events"
       title={t(`eventNav.${area}`)}
       titleRef={title}
+      untitled={untitled}
       offline={opened.stale}
       besideBack={phone ? refreshing : undefined}
       besideTitle={phone ? undefined : refreshing}

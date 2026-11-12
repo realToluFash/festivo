@@ -2,7 +2,7 @@ import type { OrganisationEvent } from '@soirely/api-client';
 import { changedWords } from '@soirely/domain';
 import { router } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { useEffect, useRef } from 'react';
+import { type Ref, useEffect, useRef } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -42,6 +42,7 @@ import { useMakeLive } from './MakeLive.tsx';
 import { useEventMute } from './MuteEventCard.tsx';
 import { useResume } from './PauseEvent.tsx';
 import { readOut } from './ReadOut.tsx';
+import type { TextHandle } from './Text.tsx';
 import { ComingUp, useTimeline } from './Timeline.tsx';
 
 const EDIT_AT: Record<EventPart, EditAt | undefined> = {
@@ -59,6 +60,7 @@ const EDIT_AT: Record<EventPart, EditAt | undefined> = {
 export function EventPage({
   kind,
   event,
+  nameRef,
   manages,
   takes,
   onChange,
@@ -68,6 +70,8 @@ export function EventPage({
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
+  /** The card's name, where it is the page's only title. */
+  nameRef?: Ref<TextHandle> | undefined;
   manages: boolean;
   /** Whether the viewer's role can take the card's step. */
   takes: (action: StepAction) => boolean;
@@ -157,6 +161,7 @@ export function EventPage({
         takes={takes}
         onStep={onStep}
         stepRef={cardOpener}
+        nameRef={nameRef}
         sending={resume.state === 'pending' ? t('eventPause.resuming') : null}
         phaseTestID="events.phase"
         testID="events.card"

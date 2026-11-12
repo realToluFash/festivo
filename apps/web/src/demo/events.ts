@@ -24,6 +24,7 @@ import type { MarkKind } from '../components/SettingsParts.tsx';
 import type { DemoLink } from './settings.ts';
 import type { EventKey } from './today.ts';
 import { type Mesh, meshFor } from '../mesh.ts';
+import { SIDE_AREAS, type SideArea } from '../components/eventSideAreas.ts';
 
 export interface Venue {
   name: string;
@@ -489,14 +490,6 @@ export const EVENT_WORDS = {
   eventName: 'Event name',
   cover: 'Cover',
   manage: 'Manage',
-  justForYou: 'Just for you',
-  mute: 'Mute this event',
-  muteNote: 'Nobody else on this event is affected.',
-  switchOn: 'On',
-  switchOff: 'Off',
-  muteNotLoaded: 'Could not check whether this event is muted.',
-  muteNotSaved: 'Not saved. Try again.',
-  notificationSettings: 'Notification settings',
   pause: 'Pause',
   pauseLine:
     'Guests can’t reply or change anything until you resume it. Nothing is lost. Check-in and service keep working.',
@@ -661,31 +654,25 @@ export const EVENT_WORDS = {
 
 const W = EVENT_WORDS;
 
-export type Area =
-  | 'overview'
-  | 'guests'
-  | 'menu'
-  | 'seating'
-  | 'messages'
-  | 'schedule'
-  | 'staff'
-  | 'people'
-  | 'budget'
-  | 'reports';
+export type Area = SideArea;
 
-/** main's EVENT_AREAS, with People between Staff and Budget as the web's People branch (sc-29915, #1354) has it. */
-export const AREAS: readonly { area: Area; name: string }[] = [
-  { area: 'overview', name: 'Overview' },
-  { area: 'guests', name: 'Guests' },
-  { area: 'menu', name: 'Menu' },
-  { area: 'seating', name: 'Seating' },
-  { area: 'messages', name: 'Messages' },
-  { area: 'schedule', name: 'Schedule' },
-  { area: 'staff', name: 'Staff' },
-  { area: 'people', name: 'People' },
-  { area: 'budget', name: 'Budget' },
-  { area: 'reports', name: 'Reports' },
-];
+const AREA_NAMES: Record<Area, string> = {
+  overview: 'Overview',
+  guests: 'Guests',
+  menu: 'Menu',
+  seating: 'Seating',
+  messages: 'Messages',
+  schedule: 'Schedule',
+  staff: 'Staff',
+  people: 'People',
+  budget: 'Budget',
+  reports: 'Reports',
+};
+
+export const AREAS: readonly { area: Area; name: string }[] = SIDE_AREAS.map((area) => ({
+  area,
+  name: AREA_NAMES[area],
+}));
 
 export const COMING: Record<Exclude<Area, 'overview' | 'people'>, string> = {
   guests: 'The guest list for this event is coming.',
