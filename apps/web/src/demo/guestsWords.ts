@@ -141,8 +141,6 @@ export const GW = {
   fewerPlaces: 'Fewer places',
   morePlaces: 'More places',
   namedOf: (named: number, places: number) => `${figure(named)} of ${figure(places)} named`,
-  withCompanions: (places: number) =>
-    places === 1 ? 'With 1 companion' : `With ${figure(places)} companions`,
   placesRefused: (name: string, named: number) =>
     `${name} already has ${figure(named)} named. Remove some first.`,
   thisGuest: 'This guest',

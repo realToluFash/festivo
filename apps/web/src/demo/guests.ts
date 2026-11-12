@@ -158,6 +158,20 @@ function emailOf(name: string, index: number, domain?: string): string {
     .replaceAll(' ', '.')}@${domain ?? DOMAINS[index % DOMAINS.length] ?? 'gmail.com'}`;
 }
 
+/** sc-3779's unnamed places with a seat or a meal, for Fewer places to ask about. */
+const SEATED_SAMPLE: Readonly<Record<string, readonly Partial<Companion>[]>> = {
+  'carlos-mendoza': [{}, { table: 'Table 7' }],
+  'daniel-asamoah': [{ table: 'Table 2' }, { meal: true }],
+};
+
+function seatedSample(one: Guest): Guest {
+  const seats = SEATED_SAMPLE[one.id];
+
+  return seats == null
+    ? one
+    : { ...one, companions: one.companions.map((place, at) => ({ ...place, ...seats[at] })) };
+}
+
 type More = readonly [name: string, day: string, places: number | readonly (string | null)[]];
 
 function more(
@@ -368,7 +382,7 @@ function wedding(): Guest[] {
       invited: { by: COLLEAGUE, how: 'Text message', on: '2026-10-10' },
       phone: { country: 'NG', number: '805 667 1209' },
     }),
-    ...more(MORE_COMING, 'coming', 'coming'),
+    ...more(MORE_COMING, 'coming', 'coming').map(seatedSample),
     ...more(MORE_NOT_SURE, 'notSure', 'held'),
     ...more(MORE_NO_REPLY, 'noReply', 'held', (index) => ({
       invited: INVITED_BY[index % INVITED_BY.length] ?? BY_MESSAGE,
@@ -1462,6 +1476,8 @@ export const GUESTS_STATES = [
   { key: 'greetAsViewer', name: 'Can view: Greet as, no Edit' },
   { key: 'greetAsAdd', name: 'Add guest, Greet as “Auntie Bisi”' },
   { key: 'places', name: 'Edit guest: Places for companions, 0 of 1 named' },
+  { key: 'placesSeated', name: 'Fewer places dropping an unnamed place with a seat: asked' },
+  { key: 'placesSeatedTwo', name: 'Fewer places dropping two seated places: asked about each' },
   { key: 'placesRefused', name: 'Fewer places with every place named: refused' },
   { key: 'placesMax', name: 'Add guest: ten places, the most' },
   { key: 'namedByGuest', name: 'Details: Named by the guest' },
@@ -1742,6 +1758,10 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return add({ values: { name: 'Olabisi Martins', greetAs: 'Auntie Bisi' }, at: 'greet-as' });
     case 'places':
       return { ...edit('musa', { at: 'places' }), choice: 'coming' };
+    case 'placesSeated':
+      return { ...edit('carlos-mendoza', { at: 'places' }), choice: 'coming' };
+    case 'placesSeatedTwo':
+      return { ...edit('daniel-asamoah', { at: 'places' }), choice: 'coming' };
     case 'placesRefused':
       return { ...edit('sophie', { placesRefused: true, at: 'places' }), choice: 'coming' };
     case 'placesMax':
@@ -1901,6 +1921,8 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
   ]),
   group('Places for companions (sc-3779)', [
     'places',
+    'placesSeated',
+    'placesSeatedTwo',
     'placesRefused',
     'placesMax',
     'namedByGuest',

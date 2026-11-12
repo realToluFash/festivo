@@ -272,7 +272,7 @@ function Details({
           <li className="desk-row">
             <IconLead name="users" />
             <RowWords
-              title={`${GW.withCompanions(guest.companions.length)} · ${GW.namedOf(namedOf(guest), guest.companions.length)}`}
+              title={`${GW.companionCount(guest.companions.length)} · ${GW.namedOf(namedOf(guest), guest.companions.length)}`}
               lines={[GW.placesFor]}
             />
           </li>

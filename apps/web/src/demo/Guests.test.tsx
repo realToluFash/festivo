@@ -994,6 +994,65 @@ describe('Guests, places for companions (sc-3779)', () => {
     ).toBe('Hauwa Bello');
   });
 
+  it('asks about a seated place behind an unseated one that fewer places drops', SLOW, async () => {
+    await guests('placesSeated');
+
+    const places = screen.getByRole('spinbutton', { name: 'Places for companions' });
+
+    fireEvent.change(places, { target: { value: '0' } });
+    const ask = await screen.findByRole('alertdialog', {
+      name: 'Remove Guest of Carlos Mendoza · 2?',
+    });
+
+    expect(
+      within(ask).getByText(
+        'Guest of Carlos Mendoza · 2 has a seat at Table 7. Removing this companion frees the seat.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect((places as HTMLInputElement).value).toBe('2');
+
+    fireEvent.change(places, { target: { value: '0' } });
+    fireEvent.click(
+      within(
+        await screen.findByRole('alertdialog', { name: 'Remove Guest of Carlos Mendoza · 2?' }),
+      ).getByRole('button', { name: 'Remove' }),
+    );
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect((places as HTMLInputElement).value).toBe('0');
+  });
+
+  it('asks about each seated place fewer places drops, then drops them all', SLOW, async () => {
+    await guests('placesSeatedTwo');
+
+    const places = screen.getByRole('spinbutton', { name: 'Places for companions' });
+
+    fireEvent.change(places, { target: { value: '0' } });
+    fireEvent.click(
+      within(
+        await screen.findByRole('alertdialog', { name: 'Remove Guest of Daniel Asamoah?' }),
+      ).getByRole('button', { name: 'Remove' }),
+    );
+    const meal = await screen.findByRole('alertdialog', {
+      name: 'Remove Guest of Daniel Asamoah · 2?',
+    });
+
+    expect(
+      within(meal).getByText(
+        'Guest of Daniel Asamoah · 2 has a meal chosen. Removing this companion drops the meal.',
+      ),
+    ).toBeDefined();
+    expect((places as HTMLInputElement).value).toBe('2');
+
+    fireEvent.click(within(meal).getByRole('button', { name: 'Remove' }));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect((places as HTMLInputElement).value).toBe('0');
+  });
+
   it('refuses fewer places once every place left is named', SLOW, async () => {
     await guests('places');
 
@@ -1031,7 +1090,7 @@ describe('Guests, places for companions (sc-3779)', () => {
     await guests('namedByGuest');
 
     expect(within(column()).getByText('Named by the guest')).toBeDefined();
-    expect(within(column()).getByText('With 1 companion · 1 of 1 named')).toBeDefined();
+    expect(within(column()).getByText('1 companion · 1 of 1 named')).toBeDefined();
   });
 });
 
