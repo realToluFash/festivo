@@ -5,6 +5,10 @@ import {
   CHAIR_HIT,
   CHAIR_R,
   HANDLE_HIT,
+  bounds,
+  cardNames,
+  extent,
+  ringPlaces,
   PAD_FRAME,
   clearCorner,
   wordsBox,
@@ -170,6 +174,118 @@ describe("a colleague's initials", () => {
     );
     const everywhere = { x: 0, y: 0, w: 1000, h: 1000 };
     expect(clearCorner(corners, 30, 22, [everywhere])).toEqual(corners[0]);
+  });
+});
+
+describe('a colleague’s initials on a round table (sc-31783)', () => {
+  const upright = startOf(null, 'portrait');
+  const t7 = upright.items.find((it) => it.id === 't7');
+
+  it('cover no table’s name or count from 40%, Table 2’s "10 of 10" above included', () => {
+    expect(t7).toBeDefined();
+    if (t7 == null) return;
+    [0.2, 0.23, 0.25, 0.335, 0.5, 0.75, 1].forEach((s) => {
+      const floor = upright.room.l * s;
+      const words = upright.items.flatMap((it) => {
+        if (it.kind === 'single') return [];
+        const cx = it.x * s;
+        const cy = it.y * s;
+        if (detailOf(s) === 'out') {
+          const by = wordsAt(it, cy, s, floor);
+          return [
+            wordsBox(cx, by, it.name, 12, false),
+            wordsBox(cx, by + 25, '10 of 10', 12, false),
+          ];
+        }
+        return it.kind === 'row'
+          ? []
+          : [wordsBox(cx, nameAt(it, cy, s, floor), it.name, 12, false)];
+      });
+      const r = extent(t7).x * s + 2 + 5;
+      const at = clearCorner(ringPlaces(t7.x * s, t7.y * s, r, 30, 22), 30, 22, words);
+      const mark = { x: at.x, y: at.y, w: 30, h: 22 };
+      words.forEach((b) =>
+        expect(
+          mark.x < b.x + b.w &&
+            b.x < mark.x + mark.w &&
+            mark.y < b.y + b.h &&
+            b.y < mark.y + mark.h,
+          `at ${pct(s)}%`,
+        ).toBe(false),
+      );
+    });
+  });
+
+  it('take the place that covers least when every place covers a word', () => {
+    const places = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+    ];
+    const words = [
+      { x: 0, y: 0, w: 30, h: 22 },
+      { x: 120, y: 0, w: 30, h: 22 },
+    ];
+    expect(clearCorner(places, 30, 22, words)).toEqual({ x: 100, y: 0 });
+  });
+});
+
+describe('the iPhone room card (sc-31783)', () => {
+  const room = startOf(null, 'phone');
+  const meet = (
+    a: { x: number; y: number; w: number; h: number },
+    b: { x: number; y: number; w: number; h: number },
+  ) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+  it('says each name once, inside the walls, crossing no other name and no other item, from the SE to the Pro Max', () => {
+    [319, 337, 345, 362, 374].forEach((inner) => {
+      const s = (inner - 12) / room.room.w;
+      const v = { s, ox: 6, oy: 6 };
+      const names = cardNames(room.items, v, room.room);
+      expect(names.map((n) => n.id)).toEqual(room.items.map((it) => it.id));
+      const boxes = names.map((n) => {
+        const it = room.items.find((one) => one.id === n.id);
+        const w = wordsBox(0, 0, it?.name ?? '', 12, false).w;
+        return { id: n.id, x: n.x - w / 2, y: n.y - 8, w, h: 16 };
+      });
+      boxes.forEach((b, i) => {
+        const said = `${b.id} at ${inner}`;
+        expect(b.x, said).toBeGreaterThanOrEqual(v.ox);
+        expect(b.y, said).toBeGreaterThanOrEqual(v.oy);
+        expect(b.x + b.w, said).toBeLessThanOrEqual(v.ox + room.room.w * s);
+        expect(b.y + b.h, said).toBeLessThanOrEqual(v.oy + room.room.l * s);
+        boxes.slice(i + 1).forEach((o) => expect(meet(b, o), `${said} and ${o.id}`).toBe(false));
+        room.items
+          .filter((it) => it.id !== b.id)
+          .forEach((it) => {
+            const e = bounds(it);
+            const body = {
+              x: v.ox + (it.x - e.x) * s,
+              y: v.oy + (it.y - e.y) * s,
+              w: 2 * e.x * s,
+              h: 2 * e.y * s,
+            };
+            expect(meet(b, body), `${said} over ${it.id}`).toBe(false);
+          });
+      });
+    });
+  });
+
+  it('keeps a row of tables’ names on one side of the row, at every phone width', () => {
+    for (let inner = 310; inner <= 380; inner += 1) {
+      const s = (inner - 12) / room.room.w;
+      const names = cardNames(room.items, { s, ox: 6, oy: 6 }, room.room);
+      const sides = (ids: string[]) =>
+        new Set(
+          ids.map((id) => {
+            const it = room.items.find((one) => one.id === id);
+            const at = names.find((n) => n.id === id);
+            return it == null || at == null ? 'none' : at.y > 6 + it.y * s ? 'below' : 'above';
+          }),
+        );
+      expect([...sides(['t1', 't2', 't3', 't4', 't5'])], `row 1 at ${inner}`).toHaveLength(1);
+      expect([...sides(['t6', 't7', 't8', 't9', 't10'])], `row 2 at ${inner}`).toHaveLength(1);
+      expect([...sides(['bar1', 'bar2'])], `the bars at ${inner}`).toHaveLength(1);
+    }
   });
 });
 

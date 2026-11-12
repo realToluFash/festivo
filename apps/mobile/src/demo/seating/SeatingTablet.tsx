@@ -1,15 +1,17 @@
-import { type ReactNode, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
   StyleSheet,
   View,
+  type ScrollViewInstance,
   type ViewInstance,
   useWindowDimensions,
 } from 'react-native';
 import Svg, { Circle, Rect } from 'react-native-svg';
 
 import { Glyph } from '../../components/Glyph.tsx';
+import { useKeyboardTop } from '../../components/keyboardWatch.ts';
 import { ReadOut } from '../../components/ReadOut.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { Ask, CardSays, OnCard, SummaryCard } from '../../components/Summary.tsx';
@@ -838,6 +840,21 @@ export function SeatingTablet({
   const [held, setHeld] = useState(false);
   const panel = m.load !== 'failed' && m.load !== 'noPlan';
   const panelBody = <PanelBody m={m} go={go} />;
+  const keysTop = useKeyboardTop();
+  const roomBox = useRef<ViewInstance>(null);
+  const panelScroll = useRef<ScrollViewInstance>(null);
+  const [roomTop, setRoomTop] = useState(0);
+  const [panelNeed, setPanelNeed] = useState(0);
+  const formUp =
+    keysTop != null &&
+    roomTop > 0 &&
+    (m.load === 'start' || m.arrange === 'sectionAdd' || m.arrange === 'sectionEdit');
+  const roomHeight = formUp
+    ? Math.min(UPRIGHT_ROOM, Math.max(UPRIGHT_ROOM_LEAST, keysTop - roomTop - 14 - panelNeed))
+    : null;
+  useEffect(() => {
+    if (roomHeight != null) panelScroll.current?.scrollTo({ y: 0, animated: true });
+  }, [roomHeight]);
   if (layout === 'landscape')
     return (
       <EventFrame
@@ -911,17 +928,26 @@ export function SeatingTablet({
           <OnCard text={W.noPlanLine} />
         </SummaryCard>
       ) : (
-        <RoomArea
-          m={m}
-          go={go}
-          event={event}
-          style={
-            out
-              ? styles.uprightGrows
-              : [styles.uprightRoom, m.fields.focus != null && styles.uprightShort]
-          }
-          onHold={setHeld}
-        />
+        <View
+          ref={roomBox}
+          onLayout={() => roomBox.current?.measureInWindow((_, y) => setRoomTop(y))}
+        >
+          <RoomArea
+            m={m}
+            go={go}
+            event={event}
+            style={
+              out
+                ? styles.uprightGrows
+                : [
+                    styles.uprightRoom,
+                    m.fields.focus != null && styles.uprightShort,
+                    roomHeight != null && { height: roomHeight },
+                  ]
+            }
+            onHold={setHeld}
+          />
+        </View>
       )}
     </>
   );
@@ -953,10 +979,12 @@ export function SeatingTablet({
           {top}
           {panel && (
             <ScrollView
+              ref={panelScroll}
               style={styles.grow}
               contentContainerStyle={styles.uprightPanel}
               keyboardShouldPersistTaps="handled"
               automaticallyAdjustKeyboardInsets
+              onContentSizeChange={(_, h) => setPanelNeed(h - UPRIGHT_PANEL_END)}
             >
               {panelBody}
             </ScrollView>
@@ -966,6 +994,11 @@ export function SeatingTablet({
     </EventFrame>
   );
 }
+
+// While the keys are up on Start the plan or a section's name, the upright room gives way, to 160 at least, until the whole form and its refusal sit above them (sc-31783).
+const UPRIGHT_ROOM = 560;
+const UPRIGHT_ROOM_LEAST = 160;
+const UPRIGHT_PANEL_END = tokens.space6xl * 3;
 
 // From the accessibility sizes the title on its side takes iOS's Title 1 steps, as upright; 24 has none of its own.
 const SIDE_TITLE_STEPS = 30;
@@ -1001,7 +1034,7 @@ const styles = StyleSheet.create({
   shape: { borderRadius: tokens.spaceMd, backgroundColor: SUNK },
   upright: { flex: 1 },
   uprightAll: { paddingHorizontal: tokens.space3xl, gap: 14 },
-  uprightPanel: { paddingBottom: tokens.space6xl * 3 },
+  uprightPanel: { paddingBottom: UPRIGHT_PANEL_END },
   titleRow: {
     minHeight: 52,
     flexDirection: 'row',
@@ -1009,7 +1042,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceLg,
   },
-  uprightRoom: { height: 560, borderRadius: tokens.spaceXxl },
+  uprightRoom: { height: UPRIGHT_ROOM, borderRadius: tokens.spaceXxl },
   uprightShort: { height: 380 },
   uprightGrows: { borderRadius: tokens.spaceXxl },
   roomScroll: { flexGrow: 1 },

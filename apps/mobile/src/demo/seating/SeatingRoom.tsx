@@ -24,7 +24,9 @@ import {
   type View as Shown,
   bounds,
   chairPoints,
+  cardNames,
   clearCorner,
+  ringPlaces,
   detailOf,
   extent,
   filled,
@@ -303,13 +305,7 @@ function itemShape({
       out.push(
         <Circle key="ring" cx={cx} cy={cy} r={rr + 1.5} fill="none" stroke={c} strokeWidth={3} />,
       );
-      const d = rr * 0.72;
-      badge([
-        { x: cx - d - 4, y: cy - d - 11 },
-        { x: cx + d + 4 - BADGE_W, y: cy - d - 11 },
-        { x: cx - d - 4, y: cy + d - 11 },
-        { x: cx + d + 4 - BADGE_W, y: cy + d - 11 },
-      ]);
+      badge(ringPlaces(cx, cy, rr + 1.5, BADGE_W, BADGE_H));
     } else {
       const gw = e.x * s + pad + 2;
       const gh = e.y * s + pad + 2;
@@ -332,6 +328,8 @@ function itemShape({
         { x: cx + gw + 4 - BADGE_W, y: cy - gh - 11 },
         { x: cx - gw - 4, y: cy + gh - 11 },
         { x: cx + gw + 4 - BADGE_W, y: cy + gh - 11 },
+        { x: cx + gw + 1.5 - BADGE_W / 2, y: cy - BADGE_H / 2 },
+        { x: cx - gw - 1.5 - BADGE_W / 2, y: cy - BADGE_H / 2 },
       ]);
     }
   }
@@ -535,6 +533,7 @@ export function RoomDrawing({
   looks,
   grid = true,
   floor = true,
+  names,
   children,
 }: {
   m: Seating;
@@ -545,10 +544,12 @@ export function RoomDrawing({
   looks: Record<string, Look>;
   grid?: boolean;
   floor?: boolean;
+  names?: readonly { id: string; x: number; y: number }[];
   children?: ReactNode;
 }) {
   const detail = detailOf(v.s);
   const labels: Label[] = [];
+  const unsaid: Label[] = [];
   const badges: Badge[] = [];
   const rw = m.room.w * v.s;
   const rl = m.room.l * v.s;
@@ -588,11 +589,24 @@ export function RoomDrawing({
         detail,
         look: looks[it.id] ?? {},
         chosenChair: m.chosen === it.id ? m.chair : null,
-        labels,
+        labels: names == null ? labels : unsaid,
         badges,
       })}
     </G>
   ));
+  names?.forEach((n) => {
+    const it = items.find((one) => one.id === n.id);
+    if (it != null && looks[it.id]?.faint !== true)
+      labels.push({
+        key: `${it.id}.name`,
+        x: n.x,
+        y: n.y,
+        words: it.name,
+        size: 12,
+        bold: true,
+        ink: tokens.colorInk,
+      });
+  });
   const taken = labels.map((l) => wordsBox(l.x, l.y, l.words, l.size, l.start === true));
   const pills = badges.map((b) => {
     const at = clearCorner(b.corners, BADGE_W, BADGE_H, taken);
@@ -625,7 +639,13 @@ export function RoomDrawing({
         {lines}
         {shapes}
         {pills}
-        <Bars v={v} floor={v.oy + rl} items={items.filter((it) => looks[it.id]?.faint !== true)} />
+        {names == null && (
+          <Bars
+            v={v}
+            floor={v.oy + rl}
+            items={items.filter((it) => looks[it.id]?.faint !== true)}
+          />
+        )}
         {m.wallAt != null && (
           <Line
             x1={v.ox + m.wallAt * v.s}
@@ -951,7 +971,7 @@ export function RoomSurface({
   const caption = beside
     ? {
         left: viewsEnd + tokens.spaceMd,
-        top: tokens.spaceXl + 14,
+        top: tokens.spaceXl + 14 - tokens.spaceXxs,
         maxWidth: (printStart > 0 ? printStart : width) - viewsEnd - 2 * tokens.spaceMd,
       }
     : { left: v.ox, top: v.oy - 26 };
@@ -969,7 +989,7 @@ export function RoomSurface({
               length(m, m.room.l),
             )}
             numberOfLines={1}
-            style={[styles.roomLine, caption]}
+            style={[styles.roomLine, caption, beside && styles.roomLineOver]}
           >
             {roomLine(m)}
           </Text>
@@ -1103,7 +1123,7 @@ export function MiniMap({
   );
 }
 
-/** The iPhone's room card: the zoomed-out drawing to find a table, one labelled image to a screen reader (sc-4027). */
+/** The iPhone's room card: the zoomed-out drawing to find a table, its names only and none crossing another (sc-31783), one labelled image to a screen reader (sc-4027). */
 export function RoomCard({ m, lit }: { m: Seating; lit: readonly string[] }) {
   const [width, setWidth] = useState(362);
   const inner = width - 16;
@@ -1129,6 +1149,7 @@ export function RoomCard({ m, lit }: { m: Seating; lit: readonly string[] }) {
           items={m.items}
           looks={looks}
           grid={false}
+          names={cardNames(m.items, { s, ox: 6, oy: 6 }, m.room)}
         />
       </View>
     </View>
@@ -1146,6 +1167,13 @@ const styles = StyleSheet.create({
   },
   figures: { fontVariant: ['tabular-nums'] },
   roomLine: { position: 'absolute', color: tokens.colorInkSecondary },
+  roomLineOver: {
+    paddingHorizontal: tokens.spaceSm,
+    paddingVertical: tokens.spaceXxs,
+    borderRadius: tokens.spaceSm,
+    overflow: 'hidden',
+    backgroundColor: tokens.colorCard,
+  },
   hit: { position: 'absolute' },
   chair: { width: CHAIR_HIT, height: CHAIR_HIT, borderRadius: CHAIR_HIT / 2 },
   tip: {
