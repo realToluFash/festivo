@@ -336,7 +336,7 @@ export interface NameScroll {
 }
 
 // Android clamps a scroll to the content height it last measured, and Fabric reports a new content
-// size, then the group's new place, before mounting it; so the content size asks on the next frame.
+// size, then the group's new place, before mounting it; so the content size asks once mounted.
 export function nameScroll(margin: number, nextFrame: (run: () => void) => void): NameScroll {
   const seen: NameInSight = { viewport: 0, top: 0, fieldEnd: 0, field: 0, bottom: 0, margin };
   let scrollTo: ((y: number) => void) | null = null;

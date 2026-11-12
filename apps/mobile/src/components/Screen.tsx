@@ -65,6 +65,7 @@ import {
 } from '../kit/focusBack.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { tokens } from '../theme/tokens.ts';
+import { afterMount } from './afterMount.ts';
 import { focusedField, watchCheckedField, watchFocusedField } from './focusedField.ts';
 import { fieldUnderToast, landingToastTop, watchLandingToastTop } from './landingToastTop.ts';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
@@ -437,15 +438,6 @@ function bringIntoView(
     },
     () => measured(),
   );
-}
-
-/** Runs `then` two frames on, once a commit made now has been mounted; returns what cancels it. */
-function afterMount(then: () => void): () => void {
-  let frame = requestAnimationFrame(() => {
-    frame = requestAnimationFrame(then);
-  });
-
-  return () => cancelAnimationFrame(frame);
 }
 
 /** The Field a client check focuses comes wholly into view above the keys, again once they are up and its error has grown it (sc-20721). */

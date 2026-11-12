@@ -29,6 +29,7 @@ import {
   View,
 } from 'react-native';
 
+import { afterMount } from './afterMount.ts';
 import { TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { DraftTile } from './DraftTile.tsx';
@@ -188,7 +189,7 @@ export function NameStep({
   const sizes = sizesOf(look);
   const [focused, setFocused] = useState(false);
   const scroller = useRef<ScrollViewInstance>(null);
-  const [inSight] = useState(() => nameScroll(tokens.spaceLg, requestAnimationFrame));
+  const [inSight] = useState(() => nameScroll(tokens.spaceLg, afterMount));
   const [labelWidth, setLabelWidth] = useState(0);
   const { beside } = nameRow(look);
   const underField = beside ? { marginLeft: labelWidth + tokens.spaceXl } : null;
