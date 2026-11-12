@@ -3,7 +3,7 @@ const NO_BREAK_SPACE = ' ';
 const WORD_JOINER = '⁠';
 
 export function unbroken(text: string): string {
-  return text.replace(/ /g, NO_BREAK_SPACE).replace(/[-‐]/g, `$&${WORD_JOINER}`);
+  return text.replace(/ /g, NO_BREAK_SPACE).replace(/[-‐–—/]/g, `$&${WORD_JOINER}`);
 }
 
 export function endCuts(text: string): string[] {

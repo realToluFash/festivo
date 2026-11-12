@@ -3,9 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { endCuts, endCutWidth, unbroken } from './endCut.ts';
 
 describe('unbroken', () => {
-  it('leaves no space or hyphen to break the line at', () => {
+  it('leaves no space, dash or slash to break the line at', () => {
     expect(unbroken('Anniversaire de mariage')).toBe('Anniversaire de mariage');
     expect(unbroken('Adéṣínà-Ọláolúwa')).toBe('Adéṣínà-⁠Ọláolúwa');
+    expect(unbroken('Ade–Obi Obi/Bakare')).toBe('Ade–⁠Obi Obi/⁠Bakare');
   });
 });
 
