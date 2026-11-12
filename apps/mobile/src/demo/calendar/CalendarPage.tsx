@@ -1,6 +1,5 @@
 import type { CalendarFeedLink } from '@soirely/api-client';
-import { firstDayOfWeek, formattingLocale, wallDay } from '@soirely/domain';
-import { getLocales } from 'expo-localization';
+import { firstDayOfWeek, wallDay } from '@soirely/domain';
 import { type Href, router, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
@@ -49,6 +48,7 @@ import { kindOf, useShell } from '../../components/settingsShell.ts';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { ListTop } from '../../components/ListTop.tsx';
 import { LIST_EDGES } from '../../components/listFrame.ts';
+import { dateLocale } from '../../i18n/index.ts';
 
 /** The demo keeps its own place, so it never moves the real Calendar's. */
 const KEPT = 'soirely.demo.calendar';
@@ -92,11 +92,8 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const phone = shell.layout === 'phone';
-  const { locale, firstDay } = useMemo(() => {
-    const dates = formattingLocale('en', getLocales()[0]?.languageTag);
-
-    return { locale: dates, firstDay: firstDayOfWeek(dates) };
-  }, []);
+  const locale = dateLocale();
+  const firstDay = firstDayOfWeek(locale);
   const start = useMemo(() => startOf(state, TODAY), [state]);
   const events = useMemo(() => calendarEvents(sampleOf(state), NOW, start.needs), [state, start]);
 
