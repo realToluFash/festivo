@@ -61,7 +61,7 @@ describe('check-in in the browser (sc-28230)', () => {
     expect(undo(withKunle, kunle?.id ?? '')).toHaveLength(PEOPLE.length);
   });
 
-  it('goes back to the shift, or for a join code alone to the event by its name', () => {
+  it('goes back to the shift, or for a door code alone to the event by its name', () => {
     expect(backOf('shift')).toEqual({ to: '/demo/check-in/shift', words: 'Your shift' });
     expect(backOf('code').to).toBe('/demo/redeem?state=from-check-in');
   });

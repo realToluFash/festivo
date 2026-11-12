@@ -148,8 +148,8 @@ export const CW = {
   },
   notSignedIn: {
     title: 'Sign in from your link or code',
-    body: 'To check guests in, open the link we sent you, or enter your join code again.',
-    cta: 'Enter a join code',
+    body: 'To check guests in, open the link we sent you, or enter your door code again.',
+    cta: 'Enter a door code',
   },
   shift: {
     only: 'Tonight only · ends 02:00',
@@ -448,17 +448,17 @@ export const CHECK_IN_PAGES: readonly { name: string; states: readonly DemoLink[
     states: [
       { to: '/demo/check-in/shift', name: 'The shift page, Check-in under the clock card' },
       { to: '/demo/check-in/shift?level=view', name: 'The shift page at Can view: no Check-in' },
-      { to: '/demo/redeem?state=browser-in', name: 'You’re in, from a join code: Check-in first' },
+      { to: '/demo/redeem?state=browser-in', name: 'You’re in, from a door code: Check-in first' },
       { to: '/demo/redeem?state=browser-in-view', name: 'You’re in at Can view: no Check-in' },
       { to: '/demo/redeem?state=from-check-in', name: 'You’re in, back from check-in' },
-      at('not_signed_in', 'Not signed in: names nothing, Enter a join code'),
+      at('not_signed_in', 'Not signed in: names nothing, Enter a door code'),
     ],
   },
   {
     name: 'The list',
     states: [
       at('list', 'The list, A to Z, back to Your shift'),
-      at('list', 'The list from a join code: back to the event', 'code'),
+      at('list', 'The list from a door code: back to the event', 'code'),
       at('loading', 'Loading'),
       at('searching', 'Searching “okon ada”'),
       at('companions', 'A guest and a named companion'),

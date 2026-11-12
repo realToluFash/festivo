@@ -412,7 +412,7 @@ function DemoHome({ from }: { from: string }) {
         <h3>The door code’s redeem pages, signed out · phone, tablet and desk</h3>
         <BoardPages pages={REDEEM_PAGES} />
         <h3>
-          Check-in in the browser, from a staff link or a join code (sc-28230) · 390, 320 and desk
+          Check-in in the browser, from a staff link or a door code (sc-28230) · 390, 320 and desk
         </h3>
         <BoardPages pages={CHECK_IN_PAGES} />
       </section>

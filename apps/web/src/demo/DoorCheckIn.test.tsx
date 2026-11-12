@@ -174,11 +174,11 @@ describe('door staff check guests in from a browser (sc-28230)', () => {
     expect(screen.queryByRole('button', { name: /^Undo arrival/ })).toBeNull();
   });
 
-  it('names nothing when not signed in, and offers a join code', SLOW, async () => {
+  it('names nothing when not signed in, and offers a door code', SLOW, async () => {
     await open('/demo/check-in?state=not_signed_in');
 
     expect(screen.getByRole('heading', { name: 'Sign in from your link or code' })).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Enter a join code' })).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Enter a door code' })).toBeDefined();
     expect(screen.queryByText(/Joana|Adaeze|Bisi/)).toBeNull();
   });
 
