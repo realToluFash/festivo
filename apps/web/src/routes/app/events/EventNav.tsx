@@ -1,23 +1,24 @@
 import type { OrganisationEvent } from '@soirely/api-client';
-import { EVENT_AREAS, type EventArea, isPlaceholderEventArea, shownPhase } from '@soirely/domain';
+import { isPlaceholderEventArea, shownPhase } from '@soirely/domain';
 import { type MouseEvent, useEffect, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useMatch, useNavigate } from 'react-router';
 
 import { EventSideCard } from '../../../components/EventSideCard.tsx';
-import { Glyph, type GlyphName } from '../../../components/Glyph.tsx';
+import { Glyph } from '../../../components/Glyph.tsx';
+import { SIDE_AREAS, SIDE_AREA_GLYPHS, type SideArea } from '../../../components/eventSideAreas.ts';
 import { cardTags, listEventOf, shownEvent } from '../../../eventsList.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 
 export interface InsideEvent {
   eventId: string;
   /** People (sc-29915) is the web's own entry after the areas, which both clients share. */
-  area: EventArea | 'people';
+  area: SideArea;
   /** The event's page itself, on Overview: an area chosen from here is the one entry Back returns past. */
   onPage: boolean;
 }
 
-export function eventAreaPath(eventId: string, area: EventArea | 'people'): string {
+export function eventAreaPath(eventId: string, area: SideArea): string {
   const page = `/app/events/${encodeURIComponent(eventId)}`;
 
   return area === 'overview' ? page : `${page}/${area}`;
@@ -83,25 +84,6 @@ export function useInsideEvent(): InsideEvent | null {
   return null;
 }
 
-const AREAS: readonly (EventArea | 'people')[] = [
-  ...EVENT_AREAS.slice(0, EVENT_AREAS.indexOf('staff') + 1),
-  'people',
-  ...EVENT_AREAS.slice(EVENT_AREAS.indexOf('staff') + 1),
-];
-
-const GLYPHS: Record<EventArea | 'people', GlyphName> = {
-  overview: 'overview',
-  guests: 'users',
-  menu: 'menu',
-  seating: 'seating',
-  messages: 'messages',
-  schedule: 'clock',
-  staff: 'staff',
-  people: 'people',
-  budget: 'budget',
-  reports: 'reports',
-};
-
 /** The event's own sidebar, as Events-A-Desk draws it: ‹ Events, the event's card, and its areas. Choosing an area replaces the one showing, so Back from any area returns to the page on Overview. */
 export function EventNav({
   inside,
@@ -134,7 +116,7 @@ export function EventNav({
         {event != null && <SideCard event={event} />}
       </div>
       <ul className="today-places">
-        {AREAS.map((area) => {
+        {SIDE_AREAS.map((area) => {
           const current = area === inside.area;
 
           return (
@@ -147,7 +129,7 @@ export function EventNav({
                 state={inside.onPage || cameFromPage ? { fromEventPage: true } : undefined}
                 onClick={area === 'overview' && !inside.onPage ? backToPage : onFollow}
               >
-                <Glyph name={GLYPHS[area]} />
+                <Glyph name={SIDE_AREA_GLYPHS[area]} />
                 {t(`eventNav.${area}`)}
               </Link>
             </li>

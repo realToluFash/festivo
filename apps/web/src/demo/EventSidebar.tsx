@@ -3,25 +3,13 @@ import { Link } from 'react-router';
 import { Brand } from '../components/Brand.tsx';
 import { AREAS, type Area, type Card, type SampleEvent, cardOf } from './events.ts';
 import { EventSideCard } from '../components/EventSideCard.tsx';
-import { Glyph, type GlyphName } from '../components/Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
+import { SIDE_AREA_GLYPHS } from '../components/eventSideAreas.ts';
 import { guestsAt, hasGuests } from './guests.ts';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
 import { STATIONS_EVENT } from './stations.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
-
-const GLYPHS: Record<Area, GlyphName> = {
-  overview: 'overview',
-  guests: 'users',
-  menu: 'menu',
-  seating: 'seating',
-  messages: 'messages',
-  schedule: 'clock',
-  staff: 'staff',
-  people: 'people',
-  budget: 'budget',
-  reports: 'reports',
-};
 
 function whenOf(card: Card): string {
   return card.tags.map((tag) => tag.word).join(' · ');
@@ -98,7 +86,7 @@ export function EventSidebar({
               aria-current={one.area === area ? 'page' : undefined}
               aria-label={one.area === 'messages' && waiting != null ? waiting.name : undefined}
             >
-              <Glyph name={GLYPHS[one.area]} />
+              <Glyph name={SIDE_AREA_GLYPHS[one.area]} />
               {one.area === 'messages' && waiting != null ? (
                 <span className="ev-side-two">
                   <span>{one.name}</span>
