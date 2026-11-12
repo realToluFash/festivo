@@ -3,11 +3,11 @@ import { useId } from 'react';
 import { Glyph } from '../components/Glyph.tsx';
 import { GUEST, type Visit, type Words } from './guest.ts';
 import {
-  PARTY_WORDS as P,
   added,
   hasStep,
   opened,
   partyLine,
+  partyWords,
   placesLeft,
   renamed,
   renaming,
@@ -28,6 +28,7 @@ export function WithYou({
 }) {
   const id = useId();
   const { party } = visit;
+  const P = partyWords(visit.lang);
   const left = placesLeft(party);
   const busyName = party.tried ? P.typeTheirName : null;
 
@@ -96,7 +97,7 @@ export function WithYou({
               type="button"
               className={one.coming ? 'gp-with-toggle is-on' : 'gp-with-toggle'}
               aria-pressed={one.coming}
-              aria-label={`${one.name} is coming`}
+              aria-label={P.isComing(one.name)}
               onClick={() => actions.change((was) => toggled(was, one.key))}
             >
               {one.coming && <Glyph name="tick" size={16} weight={2.6} />}
@@ -165,12 +166,13 @@ export function PartyCheckRow({
   onChange: () => void;
 }) {
   if (!hasStep(visit.party)) return null;
+  const P = partyWords(visit.lang);
 
   return (
     <div className="gk-row">
       <div className="gk-row-words">
         <p className="gk-label">{P.row}</p>
-        <p className="gk-value">{partyLine(visit.party)}</p>
+        <p className="gk-value">{partyLine(visit.party, visit.lang)}</p>
       </div>
       <TextAction off={busy} onClick={onChange}>
         <span className="visually-hidden">{P.change}</span>

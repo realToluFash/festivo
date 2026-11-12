@@ -60,6 +60,20 @@ function person(key: string, name: string | null, extra: Partial<Person> = {}): 
   };
 }
 
+/** sc-3779: the guest and the companions coming, by name; a person's notes stay with them, and go with whoever left. */
+export function partyPeople(
+  people: readonly Person[],
+  coming: readonly { key: string; name: string }[],
+): Person[] {
+  const kept = (key: string, name: string | null) => {
+    const was = people.find((one) => one.key === key);
+
+    return was == null ? person(key, name) : { ...was, name };
+  };
+
+  return [kept('me', null), ...coming.map((one) => kept(one.key, one.name))];
+}
+
 export function blankParty(companions: number): Person[] {
   return [
     person('me', null),

@@ -7,7 +7,6 @@ import { Glyph } from '../components/Glyph.tsx';
 import {
   type Answer,
   type Channel,
-  COMPANIONS,
   HOLD_MS,
   LAYOUT_MEDIA,
   LEGAL,
@@ -62,7 +61,7 @@ import {
 } from './GuestKitchen.tsx';
 import { type GuestKitchenActions, useGuestKitchen } from './useGuestKitchen.ts';
 import { PartyCheckRow, WithYou } from './GuestCompanions.tsx';
-import { hasStep, partyLine } from './guestCompanions.ts';
+import { hasStep, holdsCompanions, partyLine } from './guestCompanions.ts';
 import { type PartyActions, partyActions, withPartyBack } from './guestPartyActions.ts';
 import { YourMessages } from './GuestMessages.tsx';
 import { switched } from './guestMessages.ts';
@@ -617,9 +616,9 @@ function Shown({
             )}
             {view.same && <p className="gp-sub is-ink">{words.same(recorded.answer)}</p>}
             {recorded.answer === 'coming' && hasStep(visit.party) && (
-              <p className="gp-sub">{partyLine(visit.party)}</p>
+              <p className="gp-sub">{partyLine(visit.party, lang)}</p>
             )}
-            {recorded.answer === 'notSure' && COMPANIONS > 0 && (
+            {recorded.answer === 'notSure' && holdsCompanions(visit) && (
               <p className="gp-sub">{words.companions}</p>
             )}
             <TextAction focus="change" onClick={onChange}>

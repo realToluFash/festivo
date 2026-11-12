@@ -5,7 +5,8 @@ import {
   GUEST_PARTY_PAGES,
   GUEST_PARTY_STATES,
   NO_PLACES,
-  PARTY_WORDS,
+  holdsCompanions,
+  partyWords,
   SAMPLE_PARTY,
   added,
   comingWith,
@@ -45,7 +46,7 @@ describe('who’s coming with the guest (sc-3779)', () => {
 
     expect(blank.people).toHaveLength(1);
     expect(blank.tried).toBe(true);
-    expect(PARTY_WORDS.typeTheirName).toBe('Type their name');
+    expect(partyWords('en').typeTheirName).toBe('Type their name');
   });
 
   it('renames a companion the host named, and keeps a blank rename from saving', () => {
@@ -70,16 +71,34 @@ describe('who’s coming with the guest (sc-3779)', () => {
     expect(startOf('open').party).toEqual(NO_PLACES);
   });
 
-  it('says the places and the people in words', () => {
-    expect(PARTY_WORDS.places('Adaeze and Tunde', 2)).toBe(
+  it('says the places and the people in words, by plural family, in the guest’s language', () => {
+    const en = partyWords('en');
+    const fr = partyWords('fr');
+
+    expect(en.places('Adaeze and Tunde', 2)).toBe(
       'Adaeze and Tunde have saved places for you and up to 2 others.',
     );
-    expect(PARTY_WORDS.add(1)).toBe('Add someone · 1 place left');
-    expect(PARTY_WORDS.add(2)).toBe('Add someone · 2 places left');
-    expect(PARTY_WORDS.people(['Chidi Okonkwo-Williams'])).toBe(
-      'You and Chidi Okonkwo-Williams · 2 people',
+    expect(en.add(1)).toBe('Add someone · 1 place left');
+    expect(en.add(2)).toBe('Add someone · 2 places left');
+    expect(en.people(['Chidi Okonkwo-Williams'])).toBe('You and Chidi Okonkwo-Williams · 2 people');
+    expect(en.people([])).toBe('You · 1 person');
+    expect(fr.add(0)).toBe('[Ajouter quelqu’un · 0 place restante]');
+    expect(fr.people(['Chidi', 'Nneka'])).toBe('[[Vous], Chidi et Nneka · 3 personnes]');
+  });
+
+  it('holds companions only when the guest’s own answer holds them', () => {
+    const held = { ...startOf('heldNotSure') };
+
+    expect(holdsCompanions(held)).toBe(true);
+    expect(holdsCompanions({ ...held, recorded: { answer: 'coming', on: '2026-10-27' } })).toBe(
+      false,
     );
-    expect(PARTY_WORDS.people([])).toBe('You · 1 person');
+    expect(
+      holdsCompanions({
+        ...startOf('withYouNoPlaces'),
+        recorded: { answer: 'notSure', on: '2026-10-27' },
+      }),
+    ).toBe(false);
   });
 
   it('links every state once from the demo home', () => {

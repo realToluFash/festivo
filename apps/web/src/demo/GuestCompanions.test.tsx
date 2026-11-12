@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -32,6 +32,7 @@ afterEach(() => {
   expect(fetching).not.toHaveBeenCalled();
   fetching.mockRestore();
   __setConfig(tested);
+  vi.useRealTimers();
 });
 
 describe('Who’s coming with you? on the guest’s page (sc-3779)', { timeout: 20000 }, () => {
@@ -80,13 +81,32 @@ describe('Who’s coming with you? on the guest’s page (sc-3779)', { timeout: 
     expect(within(step()).getAllByText('Named by you')).toHaveLength(1);
   });
 
-  it('goes on to the kitchen with Next, and Back there returns here', async () => {
+  it('goes on to the kitchen with Next, each person by name, and Back there returns here', async () => {
     await guest('withYou');
+    fireEvent.click(button('Add someone · 1 place left'));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Their name' }), {
+      target: { value: 'Nneka Okonkwo-Williams' },
+    });
+    fireEvent.click(button('Add someone · 1 place left'));
+    fireEvent.click(button('Chidi Okonkwo-Williams is coming'));
     fireEvent.click(button('Next'));
 
-    expect(screen.getByRole('heading', { name: 'Anything the kitchen must know?' })).toBeDefined();
+    const step = screen
+      .getByRole('heading', { name: 'Anything the kitchen must know?' })
+      .closest('section')!;
+    expect(within(step).getAllByText('Nneka Okonkwo-Williams').length).toBeGreaterThan(0);
+    expect(within(step).queryByText('Chidi Okonkwo-Williams')).toBeNull();
+    expect(within(step).queryByText(/^Your (first |)guest/u)).toBeNull();
     fireEvent.click(button('Back'));
     expect(screen.getByRole('heading', { name: 'Who’s coming with you?' })).toBeDefined();
+  });
+
+  it('words the step in the guest’s language', async () => {
+    await guest('withYou');
+    fireEvent.click(button('Language: English'));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));
+
+    expect(screen.getByRole('heading', { name: '[Qui vient avec vous ?]' })).toBeDefined();
   });
 
   it('is reached from Coming, and skipped with no places', async () => {
@@ -101,13 +121,23 @@ describe('Who’s coming with you? on the guest’s page (sc-3779)', { timeout: 
     await guest('checkWithCompanions');
 
     expect(
-      screen.getByText('You, Chidi Okonkwo-Williams, and Nneka Okonkwo-Williams · 3 people'),
+      screen.getByText(/^You, Chidi Okonkwo-Williams,? and Nneka Okonkwo-Williams · 3 people$/u),
     ).toBeDefined();
   });
 
-  it('holds companions while Not sure yet', async () => {
+  it('holds companions while Not sure yet, and says nothing of them with no places', async () => {
     await guest('heldNotSure');
     expect(screen.getByText('Your companions are on hold until you decide.')).toBeDefined();
+  });
+
+  it('has no held line for a guest with no places', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('withYouNoPlaces');
+    fireEvent.click(button(/^I’m not sure yet/u));
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+
+    expect(screen.getByRole('heading', { name: /^Thanks for letting us know/u })).toBeDefined();
+    expect(screen.queryByText('Your companions are on hold until you decide.')).toBeNull();
   });
 
   it('opens on the last choice after Not sure yet', async () => {
