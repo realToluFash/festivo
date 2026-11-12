@@ -12,13 +12,15 @@ export function Switch({
   on,
   label,
   words,
-  busy,
+  told,
+  busy = false,
   onChange,
 }: {
   on: boolean;
   label: string;
   words: { on: string; off: string };
-  busy: boolean;
+  told?: string;
+  busy?: boolean;
   onChange: (next: boolean) => void;
 }) {
   return (
@@ -28,6 +30,7 @@ export function Switch({
       className="general-switch"
       aria-checked={on}
       aria-label={label}
+      aria-describedby={told}
       aria-busy={busy}
       onClick={() => {
         if (!busy) onChange(!on);

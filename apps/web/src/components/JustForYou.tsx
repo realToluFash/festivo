@@ -2,7 +2,8 @@ import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
-import { Alert, Lead, Switch } from './EventPageParts.tsx';
+import { Alert, Lead } from './EventPageParts.tsx';
+import { Switch } from './GeneralParts.tsx';
 import { Head, RowWords, TextAction } from './SettingsParts.tsx';
 
 /** An event's page, Just for you (sc-3980): the bell's row and its Mute switch, on while this person has muted the event. */
@@ -38,6 +39,7 @@ export function JustForYou({
             <Switch
               on={muted}
               label={t('notifications.muteEvent')}
+              words={{ on: t('notificationSettings.on'), off: t('notificationSettings.off') }}
               told={`${id}-note`}
               busy={busy}
               onChange={onChange}

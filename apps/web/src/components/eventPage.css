@@ -369,52 +369,6 @@
   background: var(--evWash);
 }
 
-.ev-switch {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 59px;
-  height: var(--sizeHit);
-  margin-right: -4px;
-  border-radius: var(--radiusPill);
-}
-
-.ev-track {
-  position: relative;
-  width: 51px;
-  height: 31px;
-  border-radius: 16px;
-  background: var(--colorTrack);
-  transition: background var(--motionFast) var(--motionEase);
-}
-
-.ev-knob {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 27px;
-  height: 27px;
-  border-radius: 50%;
-  background: var(--colorCard);
-  box-shadow: 0 2px 4px color-mix(in srgb, var(--colorInk) 18%, transparent);
-  transition: left var(--motionFast) var(--motionEase);
-}
-
-.ev-switch[aria-checked='true'] .ev-track {
-  background: var(--colorAccent);
-}
-
-.ev-switch[aria-checked='true'] .ev-knob {
-  left: 22px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ev-track,
-  .ev-knob {
-    transition: none;
-  }
-}
-
 .ev-unknown {
   display: flex;
   flex-direction: column;
