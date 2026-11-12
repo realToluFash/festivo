@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Notice } from './Notice.tsx';
@@ -181,20 +182,62 @@ export function ThisWeek({ moment, open }: { moment: Moment; open: Open }) {
 const FIRST = '\u0001';
 const LAST = '\u0002';
 
-/** The range in its locale's words: each date stays whole, and the row breaks only at the words around them, as late as it fits (sc-39091). */
+/** The range in its locale's words, each date whole (sc-39091): the first date keeps its connector on its line wherever the two fit on one, and the connector starts the last date's line where they do not. */
 function RangeWords({ range }: { range: DayRange }) {
   const { t } = useTranslation();
   const words = t('events.days', { first: FIRST, last: LAST });
   const [lead = '', afterFirst = ''] = words.split(FIRST);
   const [between = '', trail = ''] = afterFirst.split(LAST);
+  const connector = between.trim();
+  const probe = useRef<HTMLSpanElement>(null);
+  const [split, setSplit] = useState(false);
+
+  useLayoutEffect(() => {
+    const head = probe.current;
+    const line = head?.closest<HTMLElement>('.today-event-when');
+    if (head == null || line == null) return;
+    const measure = () => setSplit(head.offsetWidth > line.clientWidth);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(head);
+    observer.observe(line);
+    return () => observer.disconnect();
+  }, []);
+
+  const first = <span className="today-event-date">{range.first}</span>;
+  const last = <span className="today-event-date">{range.last}</span>;
 
   return (
     <>
-      {lead}
-      <span className="today-event-date">{range.first}</span>
-      {between}
-      <span className="today-event-date">{range.last}</span>
-      {trail}
+      <span ref={probe} className="today-event-probe" aria-hidden="true">
+        {`${lead}${range.first} ${connector}`}
+      </span>
+      {split ? (
+        <>
+          <span className="today-event-piece">
+            {lead}
+            {first}
+          </span>{' '}
+          <span className="today-event-piece">
+            {`${connector} `}
+            {last}
+            {trail}
+          </span>
+        </>
+      ) : (
+        <>
+          <span className="today-event-piece">
+            {lead}
+            {first}
+            {` ${connector}`}
+          </span>{' '}
+          <span className="today-event-piece">
+            {last}
+            {trail}
+          </span>
+        </>
+      )}
     </>
   );
 }

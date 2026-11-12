@@ -1094,6 +1094,8 @@
 }
 
 .today-event-when {
+  position: relative;
+  overflow: clip;
   margin-top: var(--spaceHair);
   color: var(--colorInkSecondary);
   font: var(--todaySmall);
@@ -1116,6 +1118,21 @@
 .today-event-dates.is-range {
   display: inline;
   white-space: normal;
+}
+
+.today-event-piece {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
+}
+
+.today-event-probe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .today-chips {

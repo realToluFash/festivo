@@ -228,11 +228,60 @@ describe('Today at a desk (sc-30413)', () => {
       expect(when.querySelector('.today-event-count')?.textContent).toBe('Amanhã ·');
       expect(dates).toEqual(['quarta-feira, 4 de nov.', 'sexta-feira, 6 de nov.']);
       expect(
+        [...when.querySelectorAll('.today-event-piece')].map((piece) => piece.textContent),
+      ).toEqual(['De quarta-feira, 4 de nov. até', 'sexta-feira, 6 de nov.']);
+      expect(
         screen.getByRole('button', {
           name: 'Casamento Amanhã · De quarta-feira, 4 de nov. até sexta-feira, 6 de nov. Última semana',
         }),
       ).toBe(row);
     } finally {
+      await act(() => i18next.changeLanguage('en'));
+    }
+  });
+
+  it('starts the last date’s line with the connector where the first date and the connector are wider than the line (sc-39091)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-12T09:00:00+01:00'));
+    signedIn(membership({ id: 'org_1' }));
+    serving([
+      event('Casamento', {
+        status: 'live',
+        phase: 'live',
+        startsAt: '2027-04-12T16:00:00+01:00',
+        endsAt: '2027-04-14T23:00:00+01:00',
+        dayCount: 3,
+      }),
+    ]);
+    const offsetWidth = vi
+      .spyOn(HTMLElement.prototype, 'offsetWidth', 'get')
+      .mockImplementation(function (this: HTMLElement) {
+        return this.classList.contains('today-event-probe') ? 235 : 0;
+      });
+    const clientWidth = vi
+      .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+      .mockImplementation(function (this: HTMLElement) {
+        return this.classList.contains('today-event-when') ? 220 : 0;
+      });
+    await act(() => i18next.changeLanguage('pt'));
+
+    try {
+      open();
+
+      const row = await screen.findByRole('button', { name: /^Casamento/u });
+      const when = row.querySelector('.today-event-when') as HTMLElement;
+
+      expect(
+        [...when.querySelectorAll('.today-event-piece')].map((piece) => piece.textContent),
+      ).toEqual(['De segunda-feira, 12 de abr. de 2027', 'até quarta-feira, 14 de abr. de 2027']);
+      expect(
+        screen.getByRole('button', {
+          name: /^Casamento Em \d+ dias · De segunda-feira, 12 de abr\. de 2027 até quarta-feira, 14 de abr\. de 2027/u,
+        }),
+      ).toBe(row);
+    } finally {
+      offsetWidth.mockRestore();
+      clientWidth.mockRestore();
       await act(() => i18next.changeLanguage('en'));
     }
   });
