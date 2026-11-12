@@ -40,6 +40,13 @@ describe('needs recorded as facts (sc-3777)', () => {
     expect(needsChips(NO_NEEDS)).toEqual([]);
   });
 
+  it('shows no chip, mark or tag for an Other ticked with no words', () => {
+    const blank = needsOf({ allergies: ['other'], otherAllergy: '  ' });
+
+    expect(needsChips(blank)).toEqual([]);
+    expect(dietary(blank)).toBe(false);
+  });
+
   it('saves trimmed, dropping the words of an Other unticked', () => {
     expect(savedNeeds(needsOf({ otherDiet: 'Raw food', note: ' Hi ' }))).toEqual(
       needsOf({ note: 'Hi' }),

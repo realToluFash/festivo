@@ -52,7 +52,7 @@ export const NW = {
   diet: 'Diet',
   access: 'Access',
   shownFirst: 'Shown first, everywhere',
-  allergiesHint: 'What they must not eat.',
+  allergiesHint: 'What they must not eat, even a trace.',
   dietHint: 'Choices the kitchen honours.',
   accessHint: 'For the venue, not the kitchen.',
   other: 'Other',
@@ -125,29 +125,37 @@ export function needsLines(needs: Needs): NeedsLines {
 
 export const NEEDS_FIELDS = ['otherAllergy', 'otherDiet', 'otherAccess', 'note'] as const;
 
+function named(words: string[]): string[] {
+  return words.filter((word) => word !== '');
+}
+
 export function allergyNames(needs: Needs): string[] {
-  return needs.allergies.map((code) =>
-    code === 'other' ? needs.otherAllergy.trim() : NW.allergen(code),
+  return named(
+    needs.allergies.map((code) =>
+      code === 'other' ? needs.otherAllergy.trim() : NW.allergen(code),
+    ),
   );
 }
 
 export function dietNames(needs: Needs): string[] {
-  return needs.diet.map((code) => (code === 'other' ? needs.otherDiet.trim() : NW.dietName(code)));
+  return named(
+    needs.diet.map((code) => (code === 'other' ? needs.otherDiet.trim() : NW.dietName(code))),
+  );
 }
 
 export function accessNames(needs: Needs): string[] {
-  return needs.access.map((code) =>
-    code === 'other' ? needs.otherAccess.trim() : NW.accessName(code),
+  return named(
+    needs.access.map((code) => (code === 'other' ? needs.otherAccess.trim() : NW.accessName(code))),
   );
 }
 
 /** The Dietary notes filter: any allergy or diet recorded, never access alone. */
 export function dietary(needs: Needs | undefined): boolean {
-  return needs != null && (needs.allergies.length > 0 || needs.diet.length > 0);
+  return needs != null && (allergyNames(needs).length > 0 || dietNames(needs).length > 0);
 }
 
 export function hasAllergy(needs: Needs | undefined): boolean {
-  return needs != null && needs.allergies.length > 0;
+  return needs != null && allergyNames(needs).length > 0;
 }
 
 export interface NeedChip {
