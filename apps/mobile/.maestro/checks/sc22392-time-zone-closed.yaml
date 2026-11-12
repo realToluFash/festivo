@@ -1,0 +1,15 @@
+# Your account, scrolled to the Time zone row with its screen closed.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'account.zone'
+    timeout: 30000
+    centerElement: true
+- assertNotVisible:
+    id: 'account.zone.screen'
+- takeScreenshot: time-zone-closed

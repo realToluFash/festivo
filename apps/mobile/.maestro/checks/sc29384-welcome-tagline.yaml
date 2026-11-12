@@ -1,0 +1,10 @@
+# Signed out, the welcome screen's tagline: Plan the event. Run the day. Signs out, so runs last.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 30000
+- assertVisible: '.*{{t:welcome.tagline}}.*'
+- takeScreenshot: sc29384-welcome-tagline

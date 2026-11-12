@@ -1,0 +1,8 @@
+# Presses an opened invitation's ANSWER (accept or decline) and screenshots the sending label. Run on a phone left on the opened tile, with the API paused. sc-36382.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'switcher.invitation.01a1c822-0a50-753a-8935-0c0cf9ad25bb.${ANSWER}'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: ${OUT}

@@ -1,0 +1,52 @@
+# sc-40584, Android phone upright: Create an organisation's blank name refused by the keys' action key (Gboard's bottom-right key, tapped where Gboard draws it), then by Continue, keys up each time and the next key landing in the field; then keys down by the back key and Continue, which opens them; then a name and the action key go on to the country step; Search countries' search key puts the keys down; Nigeria, Continue, Create lands on the new organisation's Today.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow: ../open-create-organisation.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: up-01-arrive
+- tapOn: { point: '92%,91%' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: up-02-action-refused
+- inputText: 'Q'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: up-03-action-typed
+- eraseText: 10
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: up-04-continue-refused
+- inputText: 'Q'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: up-05-continue-typed
+- eraseText: 10
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: up-06-keys-down
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: up-07-keys-down-refused
+- inputText: 'Q'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: up-08-keys-down-typed
+- eraseText: 10
+- inputText: ${NAME}
+- tapOn: { point: '92%,91%' }
+- extendedWaitUntil: { visible: { id: 'createWalk.search' }, timeout: 10000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: up-09-country
+- tapOn: { id: 'createWalk.search' }
+- inputText: Nig
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: up-10-search-typed
+- tapOn: { point: '92%,91%' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: up-11-search-key
+- tapOn: { id: 'createWalk.country.NG' }
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { visible: '.*Africa/Lagos.*', timeout: 5000 }
+- takeScreenshot: up-12-ready
+- tapOn: { id: 'createWalk.primary' }
+- extendedWaitUntil: { notVisible: { id: 'createWalk' }, timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- assertVisible: '.*${NAME}.*'
+- takeScreenshot: up-13-landed
