@@ -11,3 +11,8 @@ export function titleAtWidth(last: TitleWidth, laidOut: number): TitleWidth {
   if (last.width == null || last.width === width) return { width, key: last.key };
   return { width, key: last.key + 1 };
 }
+
+/** Android sizes a title by its letters' advance and draws it by their ink, which ends past the advance after a y or a k, so the title breaks inside the width it measured and its last word drops; a hair space after it, which no line keeps, gives the ink that room (sc-41787). */
+export function titleWithInkRoom(title: string, os: string): string {
+  return os === 'android' ? `${title}\u200A` : title;
+}
