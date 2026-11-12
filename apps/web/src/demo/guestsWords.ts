@@ -20,8 +20,11 @@ export const GW = {
   havent: (count: number) =>
     count === 1 ? '1 hasn’t replied' : `${figure(count)} haven’t replied`,
   whoHavent: (guests: number, companions: number) =>
-    `${guests === 1 ? '1 guest' : `${figure(guests)} guests`} and ${figure(companions)} of their companions`,
+    `${guests === 1 ? '1 guest' : `${figure(guests)} guests`} and ${companions === 1 ? '1 companion' : `${figure(companions)} companions`}`,
+  everyoneReplied: 'Everyone has replied.',
+  closesToday: 'Replies close today.',
   closesTomorrow: (date: string) => `Replies close tomorrow, ${date}.`,
+  closesOn: (date: string) => `Replies close on ${date}.`,
   closedOn: (date: string) => `Replies closed on ${date}.`,
   writeToThem: 'Write to them',
   draftLine: 'Guests can’t be invited until this event is live.',
@@ -39,7 +42,7 @@ export const GW = {
   clear: 'Clear',
   noMatch: 'No guests match',
   noMatchLine: 'Try a different name, or clear the filters.',
-  showAll: (count: number, word: string) => `Show all ${figure(count)} ${word}`,
+  showAll: (count: number) => `Show all ${figure(count)}`,
   pick: 'Pick a guest to see their details, or add one.',
   allergy: 'Allergy',
   dietaryNotes: 'Dietary notes',
@@ -233,17 +236,6 @@ export const REPLY_WORDS = {
   held: 'Held',
   notYet: 'Not yet invited',
   walkIn: 'Walk-in',
-} as const;
-
-/** What a group's Show all says after its count. */
-export const SHOW_ALL_WORDS = {
-  coming: 'coming',
-  notSure: 'not sure yet',
-  noReply: 'with no reply',
-  notComing: 'not coming',
-  held: 'held',
-  notYet: 'not yet invited',
-  walkIn: 'walk-ins',
 } as const;
 
 export const CHOICE_WORDS = { all: 'All', invited: 'Invited', ...REPLY_WORDS } as const;
