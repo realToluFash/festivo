@@ -1,0 +1,52 @@
+# sc-30302: Events searched for "lucia", filtered by Wedding and Birthday, the Filter menu open, and no match, one screenshot each, to put beside the demo.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.search'
+    timeout: 30000
+- tapOn:
+    id: 'events.search'
+- inputText: 'lucia'
+- extendedWaitUntil:
+    visible:
+      id: 'events.count'
+    timeout: 10000
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: product-search
+- tapOn:
+    id: 'events.search.clear'
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn:
+    id: 'events.filter'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: product-filterOpen
+- tapOn:
+    id: 'events.filter.type'
+- tapOn:
+    id: 'events.filter.type.wedding'
+- tapOn:
+    id: 'events.filter.type.birthday'
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn:
+    id: 'events.filter.back'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: product-filterOpen-chosen
+- tapOn:
+    point: '50%,17%'
+    label: 'outside the menu'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: product-filtered
+- tapOn:
+    id: 'events.search'
+- inputText: 'garden party'
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: 'events.noMatch'
+    timeout: 10000
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: product-noMatch
