@@ -24,7 +24,7 @@ import { Text } from '../../components/Text.tsx';
 import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { EventThumb } from '../../components/EventCard.tsx';
+import { EventThumb } from '../../components/EventThumb.tsx';
 import { Search } from '../../components/OrgDropDown.tsx';
 import { startsAWord } from '../OrgSwitcherModel.ts';
 import { useShell } from '../../components/settingsShell.ts';

@@ -19,6 +19,7 @@ import { PHONE_TAB_BAR, TabBar, TabBarFade } from '../../components/TodayCover.t
 import {
   SidebarBack,
   SidebarColumn,
+  SidebarEventCard,
   SidebarFoot,
   SidebarHead,
   SidebarPlace,
@@ -29,8 +30,8 @@ import { AREA_GLYPH } from '../../components/areaGlyph.ts';
 import { demoShell } from '../demoShell.ts';
 import { LineIcon } from '../../components/AccountCard.tsx';
 import { Bell, Landscape } from '../settings/Frame.tsx';
-import { EventThumb } from '../../components/EventCard.tsx';
-import { type Shown, cardTags, rowLine } from './EventsModel.ts';
+import { EventThumb } from '../../components/EventThumb.tsx';
+import { type Shown, rowLine } from './EventsModel.ts';
 import { AREAS, type AreaKey, MORE_AREAS, PHONE_TABS } from './EventsSample.ts';
 import { AREA_WORDS, COMING, W } from './EventsWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
@@ -459,8 +460,6 @@ function EventSidebar({
   loading: boolean;
 }) {
   const shell = useShell();
-  const tags = cardTags(event, now).map((tag) => tag.word);
-
   return (
     <TodayShellProvider value={{ ...demoShell(shell.tell), person: shell.looking }}>
       <SidebarColumn>
@@ -471,31 +470,7 @@ function EventSidebar({
           onPress={backToEvents}
           testID="event.side.back"
         />
-        {loading ? (
-          <View style={styles.sideCard} testID="event.side.loading">
-            <View style={styles.sunkThumb} />
-            <View style={[styles.grow, styles.sunkLines]}>
-              <View style={[styles.sunkLine, styles.sunkName]} />
-              <View style={[styles.sunkLine, styles.sunkTags]} />
-            </View>
-          </View>
-        ) : (
-          <View
-            style={styles.sideCard}
-            accessible
-            accessibilityLabel={`${event.name}. ${tags.join(', ')}`}
-          >
-            <EventThumb event={event} side={40} radius={12} />
-            <View style={styles.grow}>
-              <Text size={14} weight="bold" numberOfLines={2} accessible={false}>
-                {event.name}
-              </Text>
-              <Text size={12.5} weight="medium" accessible={false} style={styles.secondary}>
-                {tags.join(' · ')}
-              </Text>
-            </View>
-          </View>
-        )}
+        <SidebarEventCard event={loading ? null : event} now={now} />
         <SidebarPlaces>
           {AREAS.filter((one) => one !== without).map((one) =>
             one === 'messages' && badge != null ? (
@@ -718,19 +693,6 @@ const styles = StyleSheet.create({
     borderRadius: 22,
   },
   pillOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
-  sideCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceMd,
-    padding: tokens.spaceMd,
-    borderRadius: tokens.spaceXl,
-    backgroundColor: tokens.colorCard,
-  },
-  sunkThumb: { width: 40, height: 40, borderRadius: 12, backgroundColor: tokens.colorNeutralFill },
-  sunkLines: { gap: tokens.spaceSm },
-  sunkLine: { height: 12, borderRadius: 6, backgroundColor: tokens.colorNeutralFill },
-  sunkName: { width: '70%' },
-  sunkTags: { width: '45%' },
   areaTitle: { lineHeight: 30 * 1.12 },
   strip: {
     minHeight: 64,

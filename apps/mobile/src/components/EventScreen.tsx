@@ -35,6 +35,10 @@ import { PageToast } from './Summary.tsx';
 import { Arrived, Skeleton } from './Skeleton.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
+import { Title } from './Title.tsx';
+import { PAGE_TITLE, pageTitle } from './topTitle.ts';
+import { useSidebarCard } from './sidebarCard.ts';
+import { eventTop } from '../kit/eventTop.ts';
 import { useEdgeSwipeBack } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
 
@@ -69,17 +73,19 @@ export function EventScreen({
   );
   const title = useRef<TextHandle>(null);
   const cardName = useRef<TextHandle>(null);
-  const untitled = phone && area === 'overview';
   const opened = useOpened(eventId, account != null, organisation, () =>
     moveScreenReaderFocus(cardName.current ?? title.current),
   );
   const { reload, freshen, change } = opened;
+  const top = eventTop(kind, area, opened.kind);
+  const { cardNamed, areaTitled } = top;
   const event = opened.kind === 'loaded' ? opened.event : null;
   const creates = event != null && roleHolds(event, 'events.create');
   const manages = offersEdit(event);
   const deletes = offersDelete(event);
   const now = useServerNow();
   const phase = usePhaseOf(event, now);
+  const card = useSidebarCard(event);
   const original = backToOriginal(eventId, eventId, copiedFrom);
 
   useEffect(() => {
@@ -145,7 +151,7 @@ export function EventScreen({
           <EventPage
             kind={kind}
             event={event}
-            nameRef={untitled ? cardName : undefined}
+            nameRef={cardNamed ? cardName : undefined}
             manages={manages}
             takes={(action) => takesCardStep(event, action)}
             onChange={change}
@@ -205,32 +211,56 @@ export function EventScreen({
     );
 
   const refreshing = opened.refreshing ? <Refreshing testID="events.page.refreshing" /> : null;
+  const underTitle =
+    area === 'people' && event != null ? (
+      <Text size={15} weight="medium" style={styles.secondary}>
+        {event.name}
+      </Text>
+    ) : undefined;
+  const frameBack =
+    top.frameBack === 'area'
+      ? { label: backLabel, onPress: back }
+      : top.frameBack === 'events'
+        ? {
+            label: original != null ? t('timeline.backToEvent') : t('eventsScreen.title'),
+            onPress: leave,
+          }
+        : undefined;
 
   return (
     <AppFrame
       current="events"
       title={t(`eventNav.${area}`)}
       titleRef={title}
-      untitled={untitled}
+      untitled={cardNamed || areaTitled}
       offline={opened.stale}
-      besideBack={phone ? refreshing : undefined}
-      besideTitle={phone ? undefined : refreshing}
-      back={phone ? { label: backLabel, onPress: back } : undefined}
-      backInBody
-      inEvent={event == null ? undefined : { area, onArea: chooseArea }}
-      underTitle={
-        area === 'people' && event != null ? (
-          <Text size={15} weight="medium" style={styles.secondary}>
-            {event.name}
-          </Text>
-        ) : undefined
-      }
+      besideBack={phone || cardNamed ? refreshing : undefined}
+      besideTitle={phone || areaTitled ? undefined : refreshing}
+      back={frameBack}
+      backInBody={top.frameBack == null}
+      inEvent={top.inEvent ? { area, onArea: chooseArea, card } : undefined}
+      underTitle={areaTitled ? undefined : underTitle}
     >
       <Screen
         edges={bodyEdges(kind)}
-        contentStyle={phone ? (untitled ? styles.phoneUntitled : styles.phone) : styles.tablet}
+        contentStyle={phone ? (cardNamed ? styles.phoneUntitled : styles.phone) : styles.tablet}
       >
-        {!phone && <BackButton label={backLabel} onPress={back} testID="events.back" />}
+        {kind === 'tabletLandscape' && (
+          <BackButton label={backLabel} onPress={back} testID="events.back" />
+        )}
+        {areaTitled && (
+          <View style={styles.areaTop}>
+            <View style={styles.titleRow}>
+              <View style={styles.fill}>
+                <Title size={PAGE_TITLE} accessibilityRole="header" ref={title} style={pageTitle}>
+                  {t(`eventNav.${area}`)}
+                </Title>
+              </View>
+              {refreshing}
+            </View>
+            {underTitle}
+          </View>
+        )}
         {body}
       </Screen>
       {toast?.eventId === eventId && area === 'people' && (
@@ -361,6 +391,9 @@ function useOpened(
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
   secondary: { color: tokens.colorInkSecondary },
+  fill: { flex: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  areaTop: { gap: tokens.spaceXxs },
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,

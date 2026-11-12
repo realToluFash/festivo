@@ -26,7 +26,8 @@ import type { LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AlertLine } from './AlertLine.tsx';
 import { useDeleteEvent } from './DeleteEvent.tsx';
-import { EventCard, EventThumb } from './EventCard.tsx';
+import { EventCard } from './EventCard.tsx';
+import { EventThumb } from './EventThumb.tsx';
 import { useManageAsks } from './EventManageAsks.tsx';
 import {
   type EventPart,
