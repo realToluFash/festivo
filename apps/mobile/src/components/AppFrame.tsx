@@ -250,6 +250,7 @@ export function AppFrame({
   bodyTakesSwitch = false,
   ownChrome = false,
   inEvent,
+  untitled = false,
   primary,
   underTitle,
   besideTitle,
@@ -270,6 +271,8 @@ export function AppFrame({
   besideBack?: ReactNode;
   /** Inside an event, its areas take the navigation's place. */
   inEvent?: InsideEvent | undefined;
+  /** The body names the page itself, as an event's card on its Overview, so a phone's header has no title (sc-30413). */
+  untitled?: boolean;
   title: string;
   /** The title on a phone, where it stands for the page's own heading. */
   titleRef?: RefObject<TextHandle | null> | undefined;
@@ -494,7 +497,7 @@ export function AppFrame({
     besideTitle: standIn == null ? besideTitle : undefined,
     besideBack: standIn == null || besideBack === undefined ? besideBack : null,
     switched: ownTop ? switchedNotice : null,
-    untitled: inEvent?.area === 'overview',
+    untitled,
   };
 
   return (
