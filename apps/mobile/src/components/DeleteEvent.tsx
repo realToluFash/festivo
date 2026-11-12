@@ -215,6 +215,21 @@ function Confirm({
                   {t('eventDelete.removesEvent')}
                 </Text>
               </View>
+              {deletion.people > 0 && (
+                <View style={styles.item} testID="event.delete.guests">
+                  <Text
+                    size={tokens.typeBodyPhone.size}
+                    accessible={false}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no"
+                  >
+                    •
+                  </Text>
+                  <Text size={tokens.typeBodyPhone.size} style={styles.itemWords}>
+                    {t('eventDelete.removesGuests', { count: deletion.people })}
+                  </Text>
+                </View>
+              )}
             </View>
             <Text size={tokens.typeBodyPhone.size} muted>
               {t('eventDelete.guests')}

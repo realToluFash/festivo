@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\Domain\Seating\SectionColourPicker;
-use App\Domain\Seating\SectionNameNormaliser;
+use App\Locale\NameNormaliser;
 use App\Enum\MeasurementSystem;
 use App\Enum\SectionColour;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -28,19 +28,19 @@ final class SeatingRulesTest extends TestCase
     #[DataProvider('sameNames')]
     public function twoNamesDifferingOnlyInCaseOrAccentsAreOne(string $one, string $other): void
     {
-        self::assertSame(SectionNameNormaliser::key($one), SectionNameNormaliser::key($other));
+        self::assertSame(NameNormaliser::key($one), NameNormaliser::key($other));
     }
 
     #[Test]
     public function differentLettersAreDifferentNames(): void
     {
-        self::assertNotSame(SectionNameNormaliser::key('Hall A'), SectionNameNormaliser::key('Hall B'));
+        self::assertNotSame(NameNormaliser::key('Hall A'), NameNormaliser::key('Hall B'));
     }
 
     #[Test]
     public function aNameIsKeptAsTypedTrimmed(): void
     {
-        self::assertSame('Terrassé du jardin', SectionNameNormaliser::name("  Terrassé \t du jardin "));
+        self::assertSame('Terrassé du jardin', NameNormaliser::name("  Terrassé \t du jardin "));
     }
 
     #[Test]
