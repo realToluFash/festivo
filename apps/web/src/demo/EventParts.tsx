@@ -205,12 +205,14 @@ export function NotBuilt({ words }: { words: string }) {
 export function Switch({
   on,
   label,
+  words,
   told,
   busy = false,
   onChange,
 }: {
   on: boolean;
   label: string;
+  words: { on: string; off: string };
   told?: string;
   busy?: boolean;
   onChange: (next: boolean) => void;
@@ -230,6 +232,9 @@ export function Switch({
     >
       <span className="ev-track" aria-hidden="true">
         <span className="ev-knob" />
+      </span>
+      <span className="ev-switch-word" aria-hidden="true">
+        {on ? words.on : words.off}
       </span>
     </button>
   );

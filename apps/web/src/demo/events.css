@@ -229,34 +229,35 @@
 }
 
 .ev-switch {
-  display: grid;
+  display: inline-flex;
   flex: none;
-  place-items: center;
-  width: 59px;
-  height: var(--sizeHit);
-  margin-right: -4px;
-  border-radius: var(--radiusPill);
+  align-items: center;
+  gap: var(--spaceSm);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceXxs);
+  border-radius: var(--radiusSmall);
 }
 
 .ev-track {
   position: relative;
-  width: 51px;
-  height: 31px;
-  border-radius: 16px;
+  flex: none;
+  width: var(--sizeToggleW);
+  height: var(--sizeToggleH);
+  border-radius: var(--radiusPill);
   background: var(--colorTrack);
-  transition: background var(--motionFast) var(--motionEase);
+  transition: background var(--motionBase) var(--motionEase);
 }
 
 .ev-knob {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 27px;
-  height: 27px;
-  border-radius: 50%;
+  top: var(--spaceHair);
+  left: var(--spaceHair);
+  width: var(--sizeToggleKnob);
+  height: var(--sizeToggleKnob);
+  border-radius: var(--radiusPill);
   background: var(--colorCard);
-  box-shadow: 0 2px 4px color-mix(in srgb, var(--colorInk) 18%, transparent);
-  transition: left var(--motionFast) var(--motionEase);
+  box-shadow: var(--shadowKnob);
+  transition: transform var(--motionBase) var(--motionEase);
 }
 
 .ev-switch[aria-checked='true'] .ev-track {
@@ -264,7 +265,18 @@
 }
 
 .ev-switch[aria-checked='true'] .ev-knob {
-  left: 22px;
+  transform: translateX(calc(var(--sizeToggleW) - var(--sizeToggleKnob) - var(--spaceHair) * 2));
+}
+
+.ev-switch-word {
+  min-width: 26px;
+  color: var(--colorInkSecondary);
+  font: var(--typeButton);
+  text-align: start;
+}
+
+.ev-switch[aria-checked='true'] .ev-switch-word {
+  color: var(--colorAccentText);
 }
 
 .ev-unknown {

@@ -492,6 +492,8 @@ export const EVENT_WORDS = {
   justForYou: 'Just for you',
   mute: 'Mute this event',
   muteNote: 'Nobody else on this event is affected.',
+  switchOn: 'On',
+  switchOff: 'Off',
   muteNotLoaded: 'Could not check whether this event is muted.',
   muteNotSaved: 'Not saved. Try again.',
   notificationSettings: 'Notification settings',
