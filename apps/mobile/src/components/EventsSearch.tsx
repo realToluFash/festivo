@@ -24,6 +24,7 @@ import {
   type TextInputInstance,
   View,
   type ViewInstance,
+  useWindowDimensions,
 } from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
@@ -168,7 +169,8 @@ function PicksLine({
   const rest = picks.length - shown;
   const lead = rest > 0 ? picksLead(picks, shown) : whole;
   const snugs = Platform.OS === 'android' && rest > 0;
-  const drawn = `${room}|${lead}`;
+  const { fontScale } = useWindowDimensions();
+  const drawn = `${room}|${fontScale}|${lead}`;
   const [snug, setSnug] = useState<{ drawn: string; width: number } | null>(null);
   // Android stops a cut line's "…" short of the box it was laid out in, so the box narrows to the line it drew (sc-41871).
   const snugWidth = snugs && snug?.drawn === drawn ? snug.width : null;
@@ -182,7 +184,7 @@ function PicksLine({
         accessible={false}
         style={[styles.shrink, { color: ink }, snugWidth != null && { width: snugWidth }]}
         onTextLayout={
-          snugs
+          snugs && snugWidth == null
             ? (event) => {
                 const line = event.nativeEvent.lines[0];
                 if (line == null) return;
