@@ -489,11 +489,30 @@ const SAMPLES: Readonly<Record<string, Sample>> = {
 };
 
 export function hasGuests(id: string): boolean {
-  return Object.hasOwn(SAMPLES, id);
+  const from = sampleEvent(id)?.guestsFrom;
+
+  return Object.hasOwn(SAMPLES, id) || (from != null && hasGuests(from));
 }
 
 export function sampleGuests(id: string): Guest[] {
-  return SAMPLES[id]?.list() ?? [];
+  const from = sampleEvent(id)?.guestsFrom;
+
+  return from != null ? copiedGuests(from) : (SAMPLES[id]?.list() ?? []);
+}
+
+/** A ticked Duplicate's draft: the original's guests with their names, contact details and companions only (sc-3656). */
+function copiedGuests(from: string): Guest[] {
+  return sampleGuests(from).map((one) =>
+    guest(one.id, one.name, 'notYet', {
+      email: one.email,
+      phone: one.phone,
+      companions: one.companions.map((place) => ({
+        id: place.id,
+        name: place.name,
+        reply: 'notYet',
+      })),
+    }),
+  );
 }
 
 /** The Guests header's N, guests and companions together, which Delete event's question counts (sc-1468). */

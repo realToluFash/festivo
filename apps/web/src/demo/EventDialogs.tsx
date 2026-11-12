@@ -206,6 +206,7 @@ export function DuplicateDialog({
   );
   const [phase, setPhase] = useState<Phase>(() => phaseOf(begin, event.id));
   const [asked, setAsked] = useState(false);
+  const [cameBack, setCameBack] = useState(false);
   const timer = useRef<number | null>(null);
   const startsAt = instantOf(start.date, start.time, event.timeZone);
   const end = copiedEnd(start.date, start.time, event.timeZone, event);
@@ -232,7 +233,7 @@ export function DuplicateDialog({
         setPhase({ at: 'refused', problem });
         return;
       }
-      const copy = keepCopy(event, startsAt);
+      const copy = keepCopy(event, startsAt, copying);
       const told = copying ? `${W.created} ${DW.copied(guests)}` : W.created;
       onCreated(told);
       void navigate(`/demo/events/${copy.id}`, { state: { told } });
@@ -248,8 +249,8 @@ export function DuplicateDialog({
         asked={asked}
         onAsk={() => setAsked(true)}
         onBack={() => {
+          setCameBack(true);
           setPhase({ at: 'form' });
-          requestAnimationFrame(() => box.current?.focus());
         }}
       />
     );
@@ -270,6 +271,7 @@ export function DuplicateDialog({
       verb={W.createDraft}
       on={startsAt != null && !busy}
       locked={busy}
+      {...(cameBack ? { first: box } : {})}
       onDismiss={() => !busy && onDismiss()}
       onConfirm={create}
     >

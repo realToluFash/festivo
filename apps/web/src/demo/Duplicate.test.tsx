@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -6,7 +6,7 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { DW, copyRefusal, guestsToCopy } from './duplicateGuests.ts';
 import { resetSample } from './events.ts';
-import { peopleOn } from './guests.ts';
+import { hasGuests, peopleOn, sampleGuests } from './guests.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -115,6 +115,27 @@ describe('Duplicate copies the guest list on request (sc-3656)', () => {
       ),
     ).toBeDefined();
     expect(router.state.location.pathname).toBe('/demo/events/evt-draft-4-copy-1');
+
+    const copied = sampleGuests('evt-draft-4-copy-1');
+
+    expect(hasGuests('evt-draft-4-copy-1')).toBe(true);
+    expect(copied.map((one) => one.name)).toEqual(
+      sampleGuests('evt-draft-4').map((one) => one.name),
+    );
+    expect(peopleOn('evt-draft-4-copy-1')).toBe(peopleOn('evt-draft-4'));
+    expect(copied.every((one) => one.reply === 'notYet' && one.invited == null)).toBe(true);
+    expect(copied.flatMap((one) => one.companions).every((place) => place.reply === 'notYet')).toBe(
+      true,
+    );
+  });
+
+  it('gives an unticked copy no guests', SLOW, async () => {
+    await at('duplicate');
+
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Create draft' }));
+
+    expect(await screen.findByText('Draft created. Opening it.', {}, WAIT)).toBeDefined();
+    expect(hasGuests('evt-wed-4-copy-1')).toBe(false);
   });
 
   it('holds the form still while creating, and says Not created when it fails', SLOW, async () => {
@@ -125,8 +146,13 @@ describe('Duplicate copies the guest list on request (sc-3656)', () => {
     expect(within(dialog()).getByText(DW.creating)).toBeDefined();
     cleanup();
 
-    await at('duplicateNotCreated', 'evt-draft-4', ENGAGEMENT);
+    const router = await at('duplicateNotCreated', 'evt-draft-4', ENGAGEMENT);
     expect(within(dialog()).getByRole('alert').textContent).toBe(DW.notCreated);
+
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Create draft' }));
+
+    expect(await screen.findByText(/^Draft created\. Opening it\./, {}, WAIT)).toBeDefined();
+    expect(router.state.location.pathname).toBe('/demo/events/evt-draft-4-copy-1');
   });
 
   it(
@@ -134,6 +160,9 @@ describe('Duplicate copies the guest list on request (sc-3656)', () => {
     SLOW,
     async () => {
       await at('duplicate');
+      const time = (): HTMLInputElement =>
+        dialog().querySelector<HTMLInputElement>('input[type="time"]')!;
+      fireEvent.change(time(), { target: { value: '11:45' } });
       fireEvent.click(within(dialog()).getByRole('checkbox', { name: BOX }));
       fireEvent.click(within(dialog()).getByRole('button', { name: 'Create draft' }));
 
@@ -158,9 +187,13 @@ describe('Duplicate copies the guest list on request (sc-3656)', () => {
 
       fireEvent.click(within(refused).getByRole('button', { name: 'Back to the form' }));
 
-      expect(
-        (within(dialog()).getByRole('checkbox', { name: BOX }) as HTMLInputElement).checked,
-      ).toBe(true);
+      const box = within(dialog()).getByRole('checkbox', { name: BOX }) as HTMLInputElement;
+
+      expect(box.checked).toBe(true);
+      expect(time().value).toBe('11:45');
+      await waitFor(() => expect(document.activeElement).toBe(box), WAIT);
+      await new Promise((done) => setTimeout(done, 100));
+      expect(document.activeElement).toBe(box);
     },
   );
 

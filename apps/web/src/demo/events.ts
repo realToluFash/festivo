@@ -34,6 +34,8 @@ export interface Venue {
 
 export interface SampleEvent {
   id: string;
+  /** A draft duplicated with its guest list ticked: the event its guests come from (sc-3656). */
+  guestsFrom?: string;
   name: string;
   type: EventType;
   status: EventState;
@@ -385,7 +387,7 @@ export function forget(id: string): void {
   changed.set(id, null);
 }
 
-export function keepCopy(of: SampleEvent, startsAt: string): SampleEvent {
+export function keepCopy(of: SampleEvent, startsAt: string, withGuests = false): SampleEvent {
   const length = Date.parse(of.endsAt) - Date.parse(of.startsAt);
   const id = `${of.id}-copy-${copies.length + 1}`;
   const copy: SampleEvent = {
@@ -398,6 +400,8 @@ export function keepCopy(of: SampleEvent, startsAt: string): SampleEvent {
     concludedAt: null,
     hosts: [],
   };
+  if (withGuests) copy.guestsFrom = of.id;
+  else delete copy.guestsFrom;
 
   copies = [...copies, copy];
 
