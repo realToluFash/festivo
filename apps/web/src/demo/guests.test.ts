@@ -12,8 +12,12 @@ import {
   guestLineOf,
   guestsCardOf,
   guestsStart,
+  handMarked,
+  invitationLine,
+  invitesOn,
   linesOf,
   markInvited,
+  markNotInvited,
   recordReply,
   replyByOf,
   sampleGuests,
@@ -223,6 +227,55 @@ describe('the card (spec §4)', () => {
     const list = markInvited(sampleGuests(WEDDING), 'bisi', 'WhatsApp', '2026-11-03');
 
     expect(countsOf(list)).toMatchObject({ invited: 143, noReply: 22, notYet: 13 });
+  });
+});
+
+describe('invited is a fact with a date and a way (sc-3788)', () => {
+  const list = sampleGuests(WEDDING);
+  const find = (id: string) => {
+    const one = list.find((each) => each.id === id);
+
+    if (one == null) throw new Error(id);
+
+    return one;
+  };
+
+  it('reads the Invitation’s one line: by hand, by Soirely’s message, or from their reply', () => {
+    expect(invitationLine(find('emeka'))).toBe('Invited by Folake Adeyemi, WhatsApp, Oct 9');
+    expect(invitationLine(find('marta'))).toBe('Invited by Soirely’s message, Oct 12');
+    expect(invitationLine(find('ngozi'))).toBe('Invited when they replied, Oct 2');
+    expect(invitationLine(find('bisi'))).toBeNull();
+  });
+
+  it('undoes only a mark made by hand, before they reply', () => {
+    expect(handMarked(find('emeka'))).toBe(true);
+    expect(handMarked(find('marta'))).toBe(false);
+    expect(handMarked(find('ngozi'))).toBe(false);
+    expect(handMarked(find('tomas'))).toBe(false);
+  });
+
+  it('takes the guest and their companion back to Not yet invited, and out of the counts', () => {
+    const counts = countsOf(markNotInvited(list, 'emeka'));
+
+    expect(counts).toMatchObject({ invited: 140, noReply: 20, notYet: 16, havent: 23 });
+  });
+
+  it('allows the mark only while the event is live or happening now', () => {
+    const wedding = sampleEvent(WEDDING);
+    const party = sampleEvent(PARTY);
+    const draft = sampleEvent(DRAFT);
+
+    if (wedding == null || party == null || draft == null) throw new Error('samples');
+    expect(invitesOn(wedding, CLOCKS.rest)).toBe(true);
+    expect(invitesOn(wedding, CLOCKS.now)).toBe(true);
+    expect(invitesOn(wedding, CLOCKS.finished)).toBe(false);
+    expect(invitesOn(party, CLOCKS.rest)).toBe(false);
+    expect(invitesOn(draft, CLOCKS.rest)).toBe(false);
+    expect(guestsCardOf(wedding, list, 'live', CLOCKS.finished, true)).toMatchObject({
+      tags: [{ kind: null, word: 'Finished' }],
+      line: 'This event has finished, so guests can’t be invited.',
+      step: null,
+    });
   });
 });
 

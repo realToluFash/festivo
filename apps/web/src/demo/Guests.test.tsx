@@ -235,7 +235,9 @@ describe('Guests, a guest beside the list (sc-3773)', () => {
   it('leads a guest with no reply with Record a reply', SLOW, async () => {
     await guests('guest');
 
-    expect(within(column()).getByText('Invited by Folake Adeyemi, WhatsApp, Oct 9')).toBeDefined();
+    expect(
+      within(column()).getAllByText('Invited by Folake Adeyemi, WhatsApp, Oct 9'),
+    ).toHaveLength(2);
     expect(within(column()).getByRole('button', { name: 'Record a reply' })).toBeDefined();
     expect(
       within(column()).getByText('Companion · Held · comes only if their host accepts'),
@@ -790,9 +792,66 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
     );
 
     expect(
-      await within(column()).findByText('Invited by Folake Adeyemi, WhatsApp, Nov 3'),
-    ).toBeDefined();
+      await within(column()).findAllByText('Invited by Folake Adeyemi, WhatsApp, Nov 3'),
+    ).toHaveLength(2);
     expect(within(column()).getByRole('button', { name: 'Record a reply' })).toBeDefined();
+  });
+
+  it('undoes a mark made by hand with Mark as not invited, nothing asked', SLOW, async () => {
+    await guests('guest');
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Mark as not invited' }));
+
+    expect(await within(column()).findByText('Marked as not invited.')).toBeDefined();
+    expect(within(column()).getAllByRole('button', { name: /^Mark as invited/u })).toHaveLength(2);
+    expect(within(column()).queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
+  });
+
+  it.each([
+    ['invitedByMessage', 'Invited by Soirely’s message, Oct 12'],
+    ['invitedWhenReplied', 'Invited when they replied, Oct 2'],
+  ])('offers no undo on %s', SLOW, async (state, line) => {
+    await guests(state);
+
+    expect(within(column()).getByText(line)).toBeDefined();
+    expect(within(column()).queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
+  });
+
+  it('says why the undo was refused when they replied first (409)', SLOW, async () => {
+    await guests('unmarkRefused');
+
+    expect(within(column()).getByRole('alert').textContent).toBe(
+      'Not changed. Oluwaseun Ajayi replied Coming on Nov 3, so they stay invited.',
+    );
+    expect(within(column()).getByText('Invited by Ana Souza, text message, Oct 10')).toBeDefined();
+    expect(within(column()).queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
+  });
+
+  it('offers neither the mark nor the link once the event has finished', SLOW, async () => {
+    await guests('finished');
+
+    expect(screen.getByText('This event has finished, so guests can’t be invited.')).toBeDefined();
+    expect(within(column()).queryByRole('button', { name: /Mark as invited/u })).toBeNull();
+    expect(within(column()).queryByRole('button', { name: /Copy invitation link/u })).toBeNull();
+    expect(within(column()).getByRole('button', { name: /Replace link/u })).toBeDefined();
+  });
+
+  it('tells someone who can view why nothing can be marked', SLOW, async () => {
+    await guests('guestViewer');
+
+    expect(
+      within(column()).getByText(
+        'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
+      ),
+    ).toBeDefined();
+    expect(within(column()).queryByRole('heading', { name: 'Invitation' })).toBeNull();
+  });
+
+  it('lists the guests not yet invited from the menu', SLOW, async () => {
+    await guests('notYetFilter');
+
+    expect(screen.getByRole('button', { name: 'Not yet invited · 14' })).toBeDefined();
+    expect(screen.getByText('14 of 156 shown')).toBeDefined();
   });
 });
 

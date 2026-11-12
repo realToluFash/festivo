@@ -5,6 +5,7 @@ import type { SampleEvent } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
   type Guest,
+  type GuestNote,
   type Invite,
   LINK,
   ORGANISATION_LANGUAGE,
@@ -12,6 +13,9 @@ import {
   cardLine,
   companionName,
   dayOf,
+  handMarked,
+  invitationLine,
+  invitesOn,
   languageName,
   phoneShown,
   replyByOf,
@@ -44,6 +48,7 @@ export interface GuestActions {
   onReplace: () => void;
   onInvite: (invite: Invite | null) => void;
   onMark: (how: HowInvited) => void;
+  onUnmark: () => void;
   onAgree: () => void;
 }
 
@@ -66,7 +71,7 @@ export function GuestView({
   event: SampleEvent;
   clock: Date;
   manages: boolean;
-  note: 'recorded' | 'notReplaced' | undefined;
+  note: GuestNote | undefined;
   invite: Invite | undefined;
   actions: GuestActions;
   /** sc-30193: while their data is erased nothing changes; once erased, what stays and the line saying so. */
@@ -82,6 +87,7 @@ export function GuestView({
   const replied =
     guest.reply === 'coming' || guest.reply === 'notSure' || guest.reply === 'notComing';
   const draft = event.status === 'draft';
+  const invites = invitesOn(event, clock);
   let line: string | null = draft ? null : cardLine(guest, replyBy);
   let step: Step = null;
 
@@ -93,12 +99,13 @@ export function GuestView({
     line = GW.reopened(guest.reopened.by ?? '', dayOf(guest.reopened.on));
     step = { label: GW.recordReply, does: actions.onRecord };
   } else if (guest.reply === 'noReply') step = { label: GW.recordReply, does: actions.onRecord };
-  else if (guest.reply === 'notYet' && event.status === 'live')
+  else if (guest.reply === 'notYet' && invites)
     step = { label: GW.markAsInvited, does: () => actions.onInvite('mark') };
 
   return (
     <div className="gs-guest">
       {note === 'recorded' && <OkLine>{GW.recorded}</OkLine>}
+      {note === 'unmarked' && <OkLine>{GW.unmarked}</OkLine>}
       <Cover mesh={event.mesh} size="guest" label={heading}>
         <ul className="desk-glass-tags">
           <li className="desk-glass">
@@ -118,6 +125,11 @@ export function GuestView({
       </Cover>
       {erase === 'erasing' && <Turning words={THEIR_WORDS.erasing} />}
       {note === 'notReplaced' && <Refused>{GW.notReplaced}</Refused>}
+      {note === 'unmarkRefused' && guest.replied != null && (
+        <Refused>
+          {GW.unmarkRefused(guest.name, REPLY_WORDS[guest.reply], dayOf(guest.replied))}
+        </Refused>
+      )}
       {replied && (
         <section className="desk-block" aria-labelledby={`${heading}-reply`}>
           <Head level={3} title={<span id={`${heading}-reply`}>{GW.reply}</span>} />
@@ -151,12 +163,13 @@ export function GuestView({
       {acts && !draft && guest.reply !== 'walkIn' && (
         <Invitation
           guest={guest}
-          event={event}
+          invites={invites}
           invite={invite}
           heading={heading}
           actions={actions}
         />
       )}
+      {!manages && <p className="gs-inset gs-read-only">{GW.readOnlyInvited}</p>}
       {manages && invited && event.id === WEDDING && erase !== 'erased' && (
         <Conversation guest={guest} heading={heading} />
       )}
@@ -280,24 +293,43 @@ function Details({
 
 function Invitation({
   guest,
-  event,
+  invites,
   invite,
   heading,
   actions,
 }: {
   guest: Guest;
-  event: SampleEvent;
+  invites: boolean;
   invite: Invite | undefined;
   heading: string;
   actions: GuestActions;
 }) {
   const notYet = guest.reply === 'notYet';
   const marking = invite === 'mark' || invite === 'markRefused' || invite === 'markNotSaved';
+  const line = invitationLine(guest);
 
   return (
     <section className="desk-block" aria-labelledby={`${heading}-invitation`}>
       <Head level={3} title={<span id={`${heading}-invitation`}>{GW.invitation}</span>} />
       <ul className="desk-rows gs-rows">
+        {line != null && (
+          <li className="desk-row">
+            <IconLead name="send" />
+            <div className="gs-row-words">
+              <RowWords title={line} lines={[]} />
+              {handMarked(guest) && (
+                <button
+                  type="button"
+                  className="desk-text gs-agree"
+                  data-focus="unmark"
+                  onClick={actions.onUnmark}
+                >
+                  {GW.markNotInvited}
+                </button>
+              )}
+            </div>
+          </li>
+        )}
         {guest.replaced != null && (
           <li className="desk-row">
             <IconLead name="refresh" />
@@ -307,35 +339,37 @@ function Invitation({
             />
           </li>
         )}
-        <li>
-          <button
-            type="button"
-            className="desk-row gs-do"
-            data-focus="copy"
-            onClick={actions.onCopy}
-          >
-            <IconLead name="link" />
-            <RowWords title={GW.copyLink} lines={[GW.copyLinkLine]} />
-          </button>
-          {invite === 'copied' && (
-            <div className="gs-copied">
-              <p role="status">
-                <Glyph name="tick" size={16} weight={2.6} />
-                {GW.linkCopied}
-              </p>
-              {notYet && event.status === 'live' && (
-                <button
-                  type="button"
-                  className="desk-text is-green"
-                  onClick={() => actions.onInvite('mark')}
-                >
-                  {GW.markAsInvited}
-                </button>
-              )}
-            </div>
-          )}
-          {invite === 'refused' && <CopyByHand />}
-        </li>
+        {invites && (
+          <li>
+            <button
+              type="button"
+              className="desk-row gs-do"
+              data-focus="copy"
+              onClick={actions.onCopy}
+            >
+              <IconLead name="link" />
+              <RowWords title={GW.copyLink} lines={[GW.copyLinkLine]} />
+            </button>
+            {invite === 'copied' && (
+              <div className="gs-copied">
+                <p role="status">
+                  <Glyph name="tick" size={16} weight={2.6} />
+                  {GW.linkCopied}
+                </p>
+                {notYet && (
+                  <button
+                    type="button"
+                    className="desk-text is-green"
+                    onClick={() => actions.onInvite('mark')}
+                  >
+                    {GW.markAsInvited}
+                  </button>
+                )}
+              </div>
+            )}
+            {invite === 'refused' && <CopyByHand />}
+          </li>
+        )}
         <li>
           <button
             type="button"
@@ -347,7 +381,7 @@ function Invitation({
             <RowWords title={GW.replaceLink} lines={[GW.replaceLinkLine]} />
           </button>
         </li>
-        {notYet && event.status === 'live' && (
+        {notYet && invites && (
           <li>
             <button
               type="button"

@@ -1,4 +1,11 @@
-import { LOCALES, callingCode, compareGuestNames, emailProblem } from '@soirely/domain';
+import {
+  LOCALES,
+  callingCode,
+  compareGuestNames,
+  emailProblem,
+  eventAllows,
+  eventPhase,
+} from '@soirely/domain';
 
 import { CLOCKS, type SampleEvent, cardOf, localDay, sampleEvent } from './events.ts';
 import { repliesOpen } from './replyClose.ts';
@@ -336,7 +343,11 @@ function wedding(): Guest[] {
       replied: '2026-10-11',
       email: 'marta.silva@gmail.com',
     }),
-    guest('ngozi', 'Ngozi Eze', 'coming', { replied: '2026-10-02', email: 'ngozi.eze@gmail.com' }),
+    guest('ngozi', 'Ngozi Eze', 'coming', {
+      replied: '2026-10-02',
+      invited: null,
+      email: 'ngozi.eze@gmail.com',
+    }),
     guest('sophie', 'Sophie Laurent', 'coming', {
       replied: '2026-10-12',
       email: 'sophie.laurent@orange.fr',
@@ -630,6 +641,24 @@ function invitedLine(said: Said): string {
   return said.by == null
     ? GW.invitedByMessage(dayOf(said.on))
     : GW.invitedBy(said.by, midSentence(said.how ?? 'Other'), dayOf(said.on));
+}
+
+/** The Invitation's one line (sc-3788): by hand, by Soirely's message, or from their reply when nothing earlier was recorded. */
+export function invitationLine(one: Guest): string | null {
+  if (one.invited != null) return invitedLine(one.invited);
+  if (one.replied != null) return GW.invitedWhenReplied(dayOf(one.replied));
+
+  return null;
+}
+
+/** Mark as not invited undoes only a mark made by hand, and only before they reply (sc-3788). */
+export function handMarked(one: Guest): boolean {
+  return one.invited?.by != null && one.reply === 'noReply';
+}
+
+/** sc-3788: Mark as invited is offered only while the phase allows `invite`: Live and Happening now. */
+export function invitesOn(event: SampleEvent, now: Date): boolean {
+  return eventAllows(eventPhase(event, now), 'invite');
 }
 
 export function replyLine(one: Guest, replyBy: string | null): string {
@@ -995,6 +1024,22 @@ export function markInvited(
   );
 }
 
+export function markNotInvited(list: readonly Guest[], id: string): Guest[] {
+  return list.map((one) =>
+    one.id !== id
+      ? one
+      : {
+          ...one,
+          reply: 'notYet',
+          invited: null,
+          companions: one.companions.map((companion) => ({
+            ...companion,
+            reply: 'notYet' as const,
+          })),
+        },
+  );
+}
+
 /** sc-3950: the host's record that the guest agreed to WhatsApp, by the demo's member, today. */
 export function agreeToWhatsApp(
   list: readonly Guest[],
@@ -1054,6 +1099,14 @@ export function guestsCardOf(
       says: comingOf,
       arrived: null,
       line: GW.pausedLine,
+      step: null,
+    };
+  if (eventPhase(event, now) === 'finished')
+    return {
+      tags: [{ kind: null, word: 'Finished' }],
+      says: comingOf,
+      arrived: null,
+      line: GW.finishedLine,
       step: null,
     };
   if (list.length === 0)
@@ -1125,6 +1178,7 @@ export function guestLineOf(id: string): string | null {
 }
 
 export type Role = 'owner' | 'viewer' | 'staff';
+export type GuestNote = 'recorded' | 'notReplaced' | 'unmarked' | 'unmarkRefused';
 export type Invite = 'copied' | 'refused' | 'mark' | 'markRefused' | 'markNotSaved';
 
 export interface EditStart {
@@ -1165,7 +1219,7 @@ export interface AddStart {
 
 export type Pane =
   | { kind: 'none' }
-  | { kind: 'guest'; id: string; note?: 'recorded' | 'notReplaced'; invite?: Invite }
+  | { kind: 'guest'; id: string; note?: GuestNote; invite?: Invite }
   | { kind: 'loading'; id: string }
   | { kind: 'notFound' }
   | { kind: 'edit'; id: string; start: EditStart }
@@ -1194,6 +1248,11 @@ const CLOCK_DOOR = new Date('2026-11-05T09:41:00Z');
 const CLOCK_DAY1 = new Date('2026-11-05T18:41:00Z');
 const CLOCK_DAY2 = new Date('2026-11-06T10:30:00Z');
 const TODAY = '2026-11-03';
+
+/** The guest's own reply landing before the host's Mark as not invited: the 409's sample (sc-3788). */
+function repliedFirst(list: readonly Guest[], id: string): Guest[] {
+  return list.map((one) => (one.id === id ? { ...one, reply: 'coming', replied: TODAY } : one));
+}
 
 /** sc-3790's Add guest: a guest from Paris, Language set by the host. */
 const LUCAS: Partial<Values> = {
@@ -1268,6 +1327,12 @@ export const GUESTS_STATES = [
   { key: 'markRefused', name: 'Mark as invited with nothing chosen' },
   { key: 'marked', name: 'Marked as invited' },
   { key: 'markNotSaved', name: 'Mark as invited failed' },
+  { key: 'notYetFilter', name: 'Not yet invited, from the menu' },
+  { key: 'invitedByMessage', name: 'Invited by Soirely’s message' },
+  { key: 'invitedWhenReplied', name: 'Invited when they replied' },
+  { key: 'unmarked', name: 'Mark as not invited: Marked as not invited' },
+  { key: 'unmarkRefused', name: 'Mark as not invited refused: they replied first (409)' },
+  { key: 'finished', name: 'A Finished event: nobody can be invited' },
   { key: 'languageAdd', name: 'Add guest, Language: Français' },
   { key: 'languageEdit', name: 'Edit guest, the guest chose their own language' },
   { key: 'languageNotSet', name: 'Details, Language Not set' },
@@ -1491,6 +1556,24 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       });
     case 'markNotSaved':
       return column(guestPane('bisi', { invite: 'markNotSaved' }));
+    case 'notYetFilter':
+      return column(guestPane('bisi'), { choice: 'notYet' });
+    case 'invitedByMessage':
+      return column(guestPane('marta'), { choice: 'coming' });
+    case 'invitedWhenReplied':
+      return column(guestPane('ngozi'), { choice: 'coming' });
+    case 'unmarked':
+      return column(guestPane('emeka', { note: 'unmarked' }), {
+        choice: 'notYet',
+        list: markNotInvited(start.list, 'emeka'),
+      });
+    case 'unmarkRefused':
+      return column(guestPane('seun', { note: 'unmarkRefused' }), {
+        choice: 'coming',
+        list: repliedFirst(start.list, 'seun'),
+      });
+    case 'finished':
+      return column(guestPane('bisi'), { choice: 'notYet', clock: CLOCKS.finished });
     case 'languageAdd':
       return add({ values: LUCAS });
     case 'languageEdit':
@@ -1678,6 +1761,12 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'markRefused',
     'marked',
     'markNotSaved',
+    'notYetFilter',
+    'invitedByMessage',
+    'invitedWhenReplied',
+    'unmarked',
+    'unmarkRefused',
+    'finished',
   ]),
   {
     name: 'The numbers on Overview and Events',
