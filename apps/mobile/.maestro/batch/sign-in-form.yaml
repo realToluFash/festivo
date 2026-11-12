@@ -52,6 +52,9 @@ appId: host.exp.Exponent
             - copyTextFrom:
                 id: 'signIn.password'
             - assertTrue: ${maestro.copiedText == PASSWORD}
+      # Hidden again: sign-in's field keeps it shown after a refusal, and a failure screenshot would carry it.
+      - tapOn:
+          id: 'signIn.password.reveal'
 # On iOS the password field's Go key, not a tap: on an iPad hideKeyboard can scroll the
 # form instead, and the tap lands where the button was (sc-19359). On Android Enter can
 # type into the field instead of submitting (sc-18648), so it taps. No retry.
