@@ -1,7 +1,8 @@
-# sc-40664: the demo's Sign-in rules on a tablet (side), top and scrolled to What changed.
+# sc-40664: the demo's Sign-in rules on a tablet (side), swiping the detail pane, top and scrolled to What changed.
 appId: host.exp.Exponent
 ---
-- setOrientation: LANDSCAPE_LEFT
+# At ${ORIENT}: LANDSCAPE_LEFT, or PORTRAIT on a landscape-native tablet such as Soirely_QA2_Tablet (sc-23471).
+- setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/demo/settings/sign-in-rules
 - extendedWaitUntil:
     visible:
@@ -10,9 +11,14 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 8000
 - takeScreenshot: demo-rules-side
-- scrollUntilVisible:
-    element: '{{t:signInRules.stand.changedTitle}}'
-    direction: DOWN
+- repeat:
+    while:
+      notVisible: '{{t:signInRules.stand.changedTitle}}'
+    times: 10
+    commands:
+      - swipe:
+          start: 85%, 80%
+          end: 85%, 30%
+- assertVisible: '{{t:signInRules.stand.changedTitle}}'
 - waitForAnimationToEnd
 - takeScreenshot: demo-rules-side-changes
-- setOrientation: PORTRAIT

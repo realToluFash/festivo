@@ -1,10 +1,12 @@
 # sc-40664: Sign-in rules on a tablet (upright): Where you stand, then What changed, each title whole.
 appId: host.exp.Exponent
 ---
-- setOrientation: PORTRAIT
+# At ${ORIENT}: PORTRAIT, or LANDSCAPE_LEFT on a landscape-native tablet such as Soirely_QA2_Tablet (sc-23471).
+- setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/settings/sign-in-rules
 - extendedWaitUntil:
-    visible: '{{t:settings.signInRules}}'
+    visible:
+      id: 'signInRules.card'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 8000
@@ -14,4 +16,3 @@ appId: host.exp.Exponent
     direction: DOWN
 - waitForAnimationToEnd
 - takeScreenshot: rules-upright-changes
-- setOrientation: PORTRAIT

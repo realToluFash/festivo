@@ -1,7 +1,8 @@
 # sc-40664: the demo's Sign-in rules on a tablet (upright), top and scrolled to What changed.
 appId: host.exp.Exponent
 ---
-- setOrientation: PORTRAIT
+# At ${ORIENT}: PORTRAIT, or LANDSCAPE_LEFT on a landscape-native tablet such as Soirely_QA2_Tablet (sc-23471).
+- setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/demo/settings/sign-in-rules
 - extendedWaitUntil:
     visible:
@@ -15,4 +16,3 @@ appId: host.exp.Exponent
     direction: DOWN
 - waitForAnimationToEnd
 - takeScreenshot: demo-rules-upright-changes
-- setOrientation: PORTRAIT
