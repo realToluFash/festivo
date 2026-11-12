@@ -372,6 +372,22 @@ export function EventScreen({
     />
   );
 
+  if (state === 'loading')
+    return (
+      <EventFrame
+        event={shown}
+        now={now}
+        area={at}
+        onArea={setAt}
+        more={more}
+        onMore={setMore}
+        without={without}
+        loading
+      >
+        <LoadingBlock words={W.loadingEvent} />
+      </EventFrame>
+    );
+
   if (at === 'seating' && messagesHere)
     return (
       <SeatingScreen
@@ -397,22 +413,6 @@ export function EventScreen({
     });
     setAt('messages');
   };
-
-  if (state === 'loading')
-    return (
-      <EventFrame
-        event={shown}
-        now={now}
-        area={at}
-        onArea={setAt}
-        more={more}
-        onMore={setMore}
-        without={without}
-        loading
-      >
-        <LoadingBlock words={W.loadingEvent} />
-      </EventFrame>
-    );
 
   if (at === 'guests' && (guests != null || GUESTS_ON.includes(event.id)))
     return (
