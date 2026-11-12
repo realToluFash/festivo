@@ -265,6 +265,10 @@ export const say = {
   callOffTitle: (name: string) => `Call off ${name}?`,
   endTitle: (name: string) => `End ${name} now?`,
   deleteTitle: (name: string) => `Delete ${name}?`,
+  removesGuests: (people: string, count: number) =>
+    count === 1
+      ? `its guest list, with the ${people} person on it`
+      : `its guest list, with the ${people} people on it`,
   deleteWindow: (deadline: string) =>
     `If this was a mistake, support can restore it until ${deadline}. After that it’s gone for good.`,
   deleteType: (name: string) => `Type ${name} to delete it`,

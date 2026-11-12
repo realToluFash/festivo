@@ -510,8 +510,13 @@ export const EVENT_WORDS = {
     'Removes the event and everything in it for your whole team. Guests following its link see that it isn’t available.',
   deleteTitle: (name: string) => `Delete ${name}?`,
   draftBody: 'It’s a draft with nobody on its guest list. It will be removed for your whole team.',
-  removes:
-    'This removes, for your whole team: the event, its details and its schedule. Guests following their link will see that it isn’t available.',
+  removes: 'This removes, for your whole team:',
+  removesEvent: 'the event, its details and its schedule',
+  removesGuests: (people: string, count: number) =>
+    count === 1
+      ? `its guest list, with the ${people} person on it`
+      : `its guest list, with the ${people} people on it`,
+  guestsLink: 'Guests following their link will see that it isn’t available.',
   restoreWindow: (deadline: string) =>
     `If this was a mistake, support can restore it until ${deadline}. After that it’s gone for good.`,
   restoreUntil: 'Monday, Nov 16 at 14:20 GMT',
@@ -846,8 +851,9 @@ export function manageOf(event: SampleEvent, now: Date): Manage[] {
   ];
 }
 
-export function needsName(event: SampleEvent): boolean {
-  return event.status !== 'draft';
+/** sc-1468: only a Draft with nobody on its list keeps the plain question; `people` is the Guests header's N, guests and companions together. */
+export function needsName(event: SampleEvent, people: number): boolean {
+  return event.status !== 'draft' || people > 0;
 }
 
 export function phaseWord(shown: Shown): string {
@@ -1152,6 +1158,7 @@ export type LifeState =
   | 'callOff'
   | 'endNow'
   | 'deleteDraft'
+  | 'deleteDraftGuests'
   | 'delete'
   | 'deleteMismatch'
   | 'deleteTyped'
@@ -1205,7 +1212,8 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   pause: 'evt-wed-4',
   callOff: 'evt-party-2',
   endNow: 'evt-wed-4',
-  deleteDraft: 'evt-draft-4',
+  deleteDraft: 'evt-cena-4',
+  deleteDraftGuests: 'evt-draft-4',
   delete: 'evt-wed-4',
   deleteMismatch: 'evt-wed-4',
   deleteTyped: 'evt-wed-4',
@@ -1471,7 +1479,8 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('pause', 'Pause'),
       on('callOff', 'Call off'),
       on('endNow', 'End now'),
-      on('deleteDraft', 'Delete a draft'),
+      on('deleteDraft', 'Delete a draft with nobody on its list'),
+      on('deleteDraftGuests', 'Delete a draft with people on its list, type its name'),
       on('delete', 'Delete, type its name'),
       on('deleteMismatch', 'Delete, not a match'),
       on('deleteTyped', 'Delete, the name typed'),

@@ -273,6 +273,13 @@
   font: var(--deskLine);
 }
 
+.ev-removes {
+  margin: 0;
+  padding-left: var(--spaceLg);
+  color: var(--colorInkSecondary);
+  font: var(--deskLine);
+}
+
 .ev-delete .desk-field {
   margin-top: var(--spaceSm);
 }

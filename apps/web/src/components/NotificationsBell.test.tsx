@@ -46,10 +46,10 @@ function answering(answers: Record<string, () => Response | Promise<Response>>) 
   return sent;
 }
 
-function renderedBell() {
+function renderedBell(desk = false) {
   const router = createMemoryRouter(
     [
-      { path: '/app', element: <NotificationsBell userId="u1" /> },
+      { path: '/app', element: <NotificationsBell userId="u1" desk={desk} /> },
       { path: '/app/events/:id', element: <p>Event page</p> },
     ],
     { initialEntries: ['/app'] },
@@ -64,6 +64,48 @@ function bell() {
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+describe.each([
+  ['in the band', false],
+  ['in the title row at a desk (sc-39471)', true],
+])('the bell %s', (_where, desk) => {
+  it('carries the unread count in its name, and none at 0', async () => {
+    let unread = 3;
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: unread, next: null }),
+      'POST /api/notifications/read-all': () => {
+        unread = 0;
+        return json({ unreadCount: 0 });
+      },
+    });
+    renderedBell(desk);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 3 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
+
+    expect(await screen.findByRole('button', { name: 'Notifications' })).toBeTruthy();
+  });
+
+  it('says it is open, and Escape closes the panel and puts focus back on it', async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+    });
+    renderedBell(desk);
+
+    const bellButton = await screen.findByRole('button', { name: 'Notifications, 1 unread' });
+    expect(bellButton.getAttribute('aria-expanded')).toBe('false');
+
+    fireEvent.click(bellButton);
+    expect(bellButton.getAttribute('aria-expanded')).toBe('true');
+    (await screen.findByRole('button', { name: 'Mark all read' })).focus();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(bellButton.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('button', { name: 'Mark all read' })).toBeNull();
+    expect(document.activeElement).toBe(bellButton);
+  });
 });
 
 describe('the bell (sc-3980)', () => {

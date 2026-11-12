@@ -11,7 +11,7 @@ import {
   KindsLoading,
 } from '../../../components/NotificationParts.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
-import { DeskPage, Head, TextAction } from '../../../components/SettingsParts.tsx';
+import { DeskPage, Head, TextAction, TitleRow } from '../../../components/SettingsParts.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { useDeskLayers } from '../../../layers.ts';
 import {
@@ -164,11 +164,7 @@ export function NotificationsDesk() {
     <DeskPage layers={layers}>
       <div className="desk-column account-desk" inert={covered}>
         {refreshing && <Refreshing />}
-        <header className="desk-top">
-          <h1 ref={title} className="desk-title" tabIndex={-1}>
-            {t('notificationSettings.title')}
-          </h1>
-        </header>
+        <TitleRow title={t('notificationSettings.title')} titleRef={title} />
         {settings == null && <KindsLoading label={t('pending.loading')} />}
         {settings === 'failed' && (
           <div className="desk-failed" role="alert">

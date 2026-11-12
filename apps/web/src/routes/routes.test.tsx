@@ -12,6 +12,7 @@ import { __setSessionState, type Session } from '../session.ts';
 import { routes } from './index.tsx';
 import { membership } from '../test-memberships.ts';
 import { STYLES, cssRule } from '../test-styles.ts';
+import { atStackedWidth } from '../test-widths.ts';
 
 const MEMBERSHIP = membership({ id: 'org_1', name: 'Okonkwo Events' });
 
@@ -454,10 +455,44 @@ describe('the application tree', () => {
     }
 
     it('names the organisation and the page', () => {
-      at('/app/events');
+      at('/app/events/new');
 
       expect(crumb()).toBe('Okonkwo Events / Events');
     });
+
+    it.each(['/app/events', '/app/calendar', '/app/settings', '/app/account'])(
+      'is not above %s at a desk (sc-39471)',
+      (place) => {
+        at(place);
+
+        expect(crumb()).toBeUndefined();
+      },
+    );
+
+    it.each(['/app/events', '/app/calendar', '/app/settings'])(
+      "puts the bell in the title row beside the page's heading on %s at a desk (sc-39471)",
+      async (place) => {
+        at(place);
+
+        const bell = await screen.findByRole('button', { name: /^Notifications/ });
+        const row = bell.closest('header.desk-top');
+        expect(row?.querySelector('h1')).toBeTruthy();
+        expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+      },
+    );
+
+    it.each(['/app/events', '/app/calendar', '/app/settings'])(
+      'stays above %s, with the bell, between a phone and a desk (sc-39471)',
+      async (place) => {
+        atStackedWidth();
+        at(place);
+
+        expect(crumb()).toMatch(/^Okonkwo Events/u);
+        expect(document.querySelector('.shell-content.is-card')).toBeNull();
+        const bell = await screen.findByRole('button', { name: /^Notifications/ });
+        expect(bell.closest('.shell-band')).toBeTruthy();
+      },
+    );
 
     it("names Today at the sidebar's Today", () => {
       at('/app');
@@ -468,7 +503,7 @@ describe('the application tree', () => {
     it('holds only the organisation while the overdue screen stands in', () => {
       __setSessionState({ status: 'signedIn', session: overdueSession() });
 
-      at('/app/events');
+      at('/app');
 
       expect(crumb()).toBe('Okonkwo Events');
     });
@@ -476,7 +511,7 @@ describe('the application tree', () => {
     it('holds only the organisation while a paused one stands in', () => {
       __setSessionState({ status: 'signedIn', session: pausedSession() });
 
-      at('/app/events');
+      at('/app');
 
       expect(crumb()).toBe('Lagos Weddings');
       const person = document.querySelector<HTMLAnchorElement>('a.today-person');

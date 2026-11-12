@@ -6,8 +6,15 @@ export const PHONE_WIDTH = '(width <= 40rem)';
 /** The width `styles.css` sets two columns side by side from: 1280 × 800 and up. */
 export const WIDE_WIDTH = '(width >= 64rem)';
 
+/** The width `styles.css` stacks the sidebar above the page at and under; wider is a desk. */
+export const STACKED_WIDTH = '(width <= 60rem)';
+
 export function usePhoneWidth(): boolean {
   return useMatches(PHONE_WIDTH);
+}
+
+export function useDeskWidth(): boolean {
+  return !useMatches(STACKED_WIDTH);
 }
 
 export function useWideWidth(): boolean {
