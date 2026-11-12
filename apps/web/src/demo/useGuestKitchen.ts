@@ -20,8 +20,10 @@ import {
   type Person,
   blankParty,
   changes,
+  cleared,
   firstError,
   fromRecord,
+  partyPeople,
   recorded,
   ruledOut,
   saved,
@@ -55,12 +57,27 @@ function checkView(from: From): View {
   };
 }
 
-/** A guest recorded as Coming has a record to come back to: the sample `kitchen_returning` opens on. */
-function fresh(from: From, was: Visit): GuestKitchen {
-  const record = was.recorded?.answer === 'coming' ? recorded(was.companionsComing, EARLIER) : null;
+/** A guest recorded as Coming has a record to come back to: the sample `kitchen_returning` opens on, by name after the step. */
+export function freshKitchen(
+  from: From,
+  was: Visit,
+  coming: readonly { key: string; name: string }[] | null = null,
+): GuestKitchen {
+  const count = coming?.length ?? was.companionsComing;
+  const sample = was.recorded?.answer === 'coming' ? recorded(count, EARLIER) : null;
+  const named = (people: readonly Person[]) =>
+    coming == null
+      ? [...people]
+      : partyPeople(
+          people.map((one, at) =>
+            at === 0 ? one : { ...one, key: coming[at - 1]?.key ?? one.key },
+          ),
+          coming,
+        );
+  const record = sample == null ? null : named(sample);
 
   return {
-    people: record == null ? blankParty(was.companionsComing) : fromRecord(record),
+    people: record == null ? named(blankParty(count)) : fromRecord(record),
     record,
     tried: false,
     alert: null,
@@ -159,7 +176,7 @@ export function useGuestKitchen(visit: Visit, state: string | null, go: Go): Gue
           view: { kind: 'kitchen' },
           kitchen:
             was.kitchen == null
-              ? fresh(opened, was)
+              ? freshKitchen(opened, was)
               : { ...was.kitchen, from: opened, alert: null },
         }),
         'kitchenHead',
@@ -226,7 +243,7 @@ export function useGuestKitchen(visit: Visit, state: string | null, go: Go): Gue
                       ...was.kitchen,
                       people:
                         was.kitchen.record == null
-                          ? blankParty(was.kitchen.people.length - 1)
+                          ? cleared(was.kitchen.people)
                           : fromRecord(was.kitchen.record),
                       tried: false,
                       alert: null,

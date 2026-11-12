@@ -74,6 +74,11 @@ export function partyPeople(
   return [kept('me', null), ...coming.map((one) => kept(one.key, one.name))];
 }
 
+/** Skip with nothing recorded: everyone's notes cleared, each person still by name. */
+export function cleared(people: readonly Person[]): Person[] {
+  return people.map((one) => person(one.key, one.name));
+}
+
 export function blankParty(companions: number): Person[] {
   return [
     person('me', null),

@@ -101,6 +101,40 @@ describe('Who’s coming with you? on the guest’s page (sc-3779)', { timeout: 
     expect(screen.getByRole('heading', { name: 'Who’s coming with you?' })).toBeDefined();
   });
 
+  it('keeps a returning guest’s record through the step, each person by name', async () => {
+    await guest('comingWithCompanions');
+    fireEvent.click(button('Change my answer'));
+    fireEvent.click(button(/^Yes, I’ll be there/u));
+    fireEvent.click(button('Next'));
+
+    const you = screen.getByRole('group', { name: 'You' });
+    expect(
+      within(you).getByText(
+        'Last changed by Adaeze Obi and Tunde Bakare on Saturday, October 3. Change anything that is not right.',
+      ),
+    ).toBeDefined();
+    expect(button('Remove Step-free access')).toBeDefined();
+    const chidi = screen.getByRole('group', { name: 'Chidi Okonkwo-Williams' });
+    expect(within(chidi).getByText(/^Last changed by you on /u)).toBeDefined();
+    expect(within(chidi).getByDisplayValue('A seat I can reach without stairs')).toBeDefined();
+    expect(button('Leave it as it is')).toBeDefined();
+  });
+
+  it('keeps the names when the guest has nothing to add', async () => {
+    await guest('withYou');
+    fireEvent.click(button('Add someone · 1 place left'));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Their name' }), {
+      target: { value: 'Nneka Okonkwo-Williams' },
+    });
+    fireEvent.click(button('Add someone · 1 place left'));
+    fireEvent.click(button('Next'));
+    fireEvent.click(button('Nothing to add'));
+    fireEvent.click(button('Change what the kitchen must know'));
+
+    expect(screen.getByRole('group', { name: 'Nneka Okonkwo-Williams' })).toBeDefined();
+    expect(screen.queryByRole('group', { name: /^Your (first |)guest/u })).toBeNull();
+  });
+
   it('words the step in the guest’s language', async () => {
     await guest('withYou');
     fireEvent.click(button('Language: English'));

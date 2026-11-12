@@ -1,7 +1,7 @@
 import { OPEN, type Visit } from './guest.ts';
 import { type Party, comingWith, hasStep } from './guestCompanions.ts';
 import { partyPeople } from './guestKitchen.ts';
-import type { GuestKitchenActions } from './useGuestKitchen.ts';
+import { type GuestKitchenActions, freshKitchen } from './useGuestKitchen.ts';
 
 type Go = (change: (was: Visit) => Partial<Visit>, want?: string) => void;
 
@@ -20,22 +20,19 @@ export function partyActions(go: Go, kitchen: GuestKitchenActions, visit: Visit)
     next: () => {
       go((was) => {
         const coming = comingWith(was.party);
-        const people = partyPeople(was.kitchen?.people ?? [], coming);
+        const kitchen = was.kitchen;
 
         return {
           companionsComing: coming.length,
-          kitchen: {
-            ...(was.kitchen ?? {
-              record: null,
-              tried: false,
-              alert: null,
-              meals: false,
-              refuses: false,
-              saved: false,
-            }),
-            people,
-            from,
-          },
+          kitchen:
+            kitchen == null
+              ? freshKitchen(from, was, coming)
+              : {
+                  ...kitchen,
+                  people: partyPeople(kitchen.people, coming),
+                  record: kitchen.record == null ? null : partyPeople(kitchen.record, coming),
+                  from,
+                },
         };
       });
       kitchen.open(from);
