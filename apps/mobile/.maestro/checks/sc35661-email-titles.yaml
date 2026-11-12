@@ -30,11 +30,15 @@ onFlowComplete:
                   id: 'account.email.add.discard'
               - waitForAnimationToEnd
         - openLink: ${METRO_URL}/--/settings/account
+        - extendedWaitUntil:
+            visible: '{{t:account.title}}'
+            timeout: 30000
         - scrollUntilVisible:
             element:
-              id: 'account.email.add'
-            timeout: 30000
+              text: '${output.email}.*'
+            timeout: 15000
             centerElement: true
+            optional: true
         - waitForAnimationToEnd
         - runFlow:
             when:
