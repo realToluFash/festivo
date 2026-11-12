@@ -34,8 +34,9 @@ import {
   turn,
   wordsAt,
   nameAt,
-  lettersBox,
   ringAbout,
+  litAbout,
+  roomWords,
   wordsApart,
 } from './SeatingGeometry.ts';
 import {
@@ -56,6 +57,7 @@ import {
   trayCount,
   whatGoes,
   withSpace,
+  ofWords,
 } from './SeatingModel.ts';
 import { COMING, ROOM } from './SeatingSample.ts';
 import { blank, startOf } from './SeatingStart.ts';
@@ -235,25 +237,44 @@ describe('a colleague’s initials on a round table (sc-31783)', () => {
 describe('the iPad room’s words below 50% (sc-31783)', () => {
   const upright = startOf(null, 'portrait');
   const t7 = upright.items.find((it) => it.id === 't7');
-  const words = (s: number, ringed: string | null) =>
-    upright.items.flatMap((it) => {
-      if (it.kind === 'single' || it.kind === 'row') return [];
-      const clear = it.id === ringed ? ringAbout(it, s, 'out', false).hy : 0;
-      const by = wordsAt(it, it.y * s, s, upright.room.l * s, clear);
-      return [
-        lettersBox(it.x * s, by, it.name, 12, false),
-        lettersBox(it.x * s, by + 25, '10 of 10', 12, false),
-      ];
-    });
+  const t9 = upright.items.find((it) => it.id === 't9');
+  const marksOf = (m: Seating) => {
+    const marks: Record<string, { ring?: true; lit?: true }> = {};
+    const add = (id: string, mark: { ring?: true; lit?: true }) =>
+      (marks[id] = { ...marks[id], ...mark });
+    [...m.lit, ...(m.chosen == null ? [] : [m.chosen])].forEach((id) => add(id, { lit: true }));
+    Object.entries(m.rings).forEach(([id, person]) => !person.viewer && add(id, { ring: true }));
+    return marks;
+  };
+  const says = (m: Seating, s: number) =>
+    roomWords(m.items, marksOf(m), { s, ox: 0, oy: 0 }, m.room, ofWords).says;
+  const UPRIGHT = [0.229, 0.235, 0.24, 0.249];
 
-  it('keep Priya’s ring on Table 7 off every name and count, its own and Table 2’s above, from the upright iPad’s 46%', () => {
-    expect(t7).toBeDefined();
-    if (t7 == null) return;
-    [0.229, 0.235, 0.24, 0.249].forEach((s) => {
-      const r = ringAbout(t7, s, 'out', false);
-      const ring = { cx: t7.x * s, cy: t7.y * s, hx: r.hx, hy: r.hy, round: true, stroke: 5 };
-      expect(wordsApart(words(s, 't7'), [ring]), `at ${pct(s)}%`).toBe(true);
+  it('say every name and count from the upright iPad’s 46% with Priya’s ring on Table 7', () => {
+    const m = startOf('presenceChose', 'portrait');
+    UPRIGHT.forEach((s) => expect(says(m, s), `at ${pct(s)}%`).toBe('all'));
+  });
+
+  it('keep the names, clear of her ring, where her ring about a lit table reaches the count above it, the 412 refusal included', () => {
+    (['presenceBoth', 'stepRefused'] as const).forEach((state) => {
+      const m = startOf(state, 'portrait');
+      expect(m.chosen != null && m.rings[m.chosen] != null, state).toBe(true);
+      UPRIGHT.forEach((s) => expect(says(m, s), `${state} at ${pct(s)}%`).toBe('names'));
     });
+  });
+
+  it('keep the names alone where names and counts would meet, as the iPhone card does, and none where even those would', () => {
+    expect(says(upright, 0.229)).toBe('all');
+    const named = roomWords(upright.items, {}, { s: 0.13, ox: 0, oy: 0 }, upright.room, ofWords);
+    expect(named).toEqual({
+      says: 'names',
+      names: cardNames(upright.items, { s: 0.13, ox: 0, oy: 0 }, upright.room),
+    });
+    expect(says(upright, 0.055)).toBe('none');
+  });
+
+  it('say everything from 50%, where the room draws its chairs', () => {
+    expect(says(startOf('presenceBoth', 'portrait'), 0.25)).toBe('all');
   });
 
   it('go round the table alone below 50%, where its chairs are not drawn, and round its chairs from 50%', () => {
@@ -262,19 +283,23 @@ describe('the iPad room’s words below 50% (sc-31783)', () => {
     expect(ringAbout(t7, 0.3, 'fit', false).r).toBeCloseTo(extent(t7).x * 0.3 + 2 + 3.5);
   });
 
-  it('keep the names alone where names and counts would meet, as the iPhone card does, and none where even those would', () => {
-    const named = (s: number) =>
-      wordsApart(
-        cardNames(upright.items, { s, ox: 0, oy: 0 }, upright.room).map((n) =>
-          lettersBox(n.x, n.y, upright.items.find((it) => it.id === n.id)?.name ?? '', 12, false),
-        ),
-        [],
-      );
-    expect(wordsApart(words(0.229, null), [])).toBe(true);
-    expect(wordsApart(words(0.13, null), [])).toBe(false);
-    expect(named(0.13)).toBe(true);
-    expect(wordsApart(words(0.055, null), [])).toBe(false);
-    expect(named(0.055)).toBe(false);
+  it('keep a lit table’s Tint inside its colleague’s ring, the ring hugging it, below 50% and from it', () => {
+    expect(t7).toBeDefined();
+    expect(t9).toBeDefined();
+    if (t7 == null || t9 == null) return;
+    [0.229, 0.3, 0.6].forEach((s) => {
+      const detail = detailOf(s);
+      const lit = litAbout(t7, s, detail);
+      const gapInside = ringAbout(t7, s, detail, true).r - 2;
+      expect(gapInside, `round at ${pct(s)}%`).toBeGreaterThanOrEqual(lit.x);
+      expect(gapInside - lit.x, `round at ${pct(s)}%`).toBeLessThan(2);
+      const square = litAbout(t9, s, detail);
+      const ring = ringAbout(t9, s, detail, true);
+      expect(ring.gw, `square at ${pct(s)}%`).toBeGreaterThanOrEqual(square.x);
+      expect(ring.gh, `square at ${pct(s)}%`).toBeGreaterThanOrEqual(square.y);
+      expect(ring.gw - square.x, `square at ${pct(s)}%`).toBeLessThan(3);
+    });
+    expect(litAbout(t7, 0.229, 'out').x).toBeCloseTo(90 * 0.229 + 10);
   });
 
   it('count a ring as running through a word only where its stroke crosses it', () => {
