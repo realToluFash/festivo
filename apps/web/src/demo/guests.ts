@@ -743,20 +743,29 @@ export interface ListGroup {
 
 export type ListView = { kind: 'groups'; groups: ListGroup[] } | { kind: 'rows'; rows: ListRow[] };
 
+/** A number search counts from 3 digits with no letters, typed with or without spaces, its country code or the national 0 (0803 123 4567 finds +234 803 123 4567). */
+export function numberMatches(phone: Phone, q: string): boolean {
+  const digits = q.replaceAll(/\D/gu, '');
+
+  if (/\p{L}/u.test(q) || digits.length < 3) return false;
+  const international = phoneShown(phone).replaceAll(/\D/gu, '');
+  const national = phone.number.replaceAll(/\D/gu, '');
+
+  return (
+    international.includes(digits) ||
+    (digits.startsWith('0') && national.startsWith(digits.slice(1)))
+  );
+}
+
 function matches(person: Person, q: string, contacts: boolean): boolean {
   const typed = folded(q.trim());
-  const digits = q.replaceAll(/\D/gu, '');
 
   if (typed === '') return true;
   if (folded(person.name).includes(typed)) return true;
   if (person.companion != null || !contacts) return false;
   if (person.guest.email != null && folded(person.guest.email).includes(typed)) return true;
 
-  return (
-    digits.length > 0 &&
-    person.guest.phone != null &&
-    phoneShown(person.guest.phone).replaceAll(/\D/gu, '').includes(digits)
-  );
+  return person.guest.phone != null && numberMatches(person.guest.phone, q);
 }
 
 function flatRows(people: readonly Person[], mode: Choice, replyBy: string | null): ListRow[] {
@@ -1140,24 +1149,25 @@ export function guestsCardOf(
   if (counts.invited === 0)
     return { tags: [], says: GW.onList(counts.all), arrived: null, line: null, step: null };
 
-  const who = haventLine(counts);
-  const today = todayOf(now);
-  const close =
-    replyBy == null
-      ? null
-      : replyBy < today
-        ? GW.closedOn(weekdayOf(replyBy))
-        : nextDay(today) === replyBy
-          ? GW.closesTomorrow(weekdayOf(replyBy))
-          : null;
+  const who = counts.havent === 0 ? GW.everyoneReplied : haventLine(counts);
+  const close = replyBy == null ? null : closeLine(replyBy, localDay(now, event.timeZone));
 
   return {
     tags: [],
     says: comingOf,
     arrived: null,
-    line: counts.havent === 0 ? close : [who, close].filter(Boolean).join(' '),
+    line: [who, close].filter(Boolean).join(' '),
     step: manages && counts.havent > 0 ? 'write' : null,
   };
+}
+
+/** One whole sentence per case, the day reckoned in the event's zone as sc-3780 reckons Reply by (l10n, 8 Nov). */
+export function closeLine(replyBy: string, today: string): string {
+  if (replyBy < today) return GW.closedOn(weekdayOf(replyBy));
+  if (replyBy === today) return GW.closesToday;
+  if (replyBy === nextDay(today)) return GW.closesTomorrow(weekdayOf(replyBy));
+
+  return GW.closesOn(weekdayOf(replyBy));
 }
 
 function nextDay(iso: string): string {
@@ -1248,6 +1258,32 @@ const CLOCK_DOOR = new Date('2026-11-05T09:41:00Z');
 const CLOCK_DAY1 = new Date('2026-11-05T18:41:00Z');
 const CLOCK_DAY2 = new Date('2026-11-06T10:30:00Z');
 const TODAY = '2026-11-03';
+const CLOCK_CLOSES = new Date('2026-11-04T09:41:00Z');
+const CLOCK_EARLIER = new Date('2026-11-01T09:41:00Z');
+/** Past Reply by and before 05:00, when the event's day begins for the door (sc-3895). */
+const CLOCK_CLOSED = new Date('2026-11-05T00:30:00Z');
+
+/** Every invited guest has answered: those who had not said Not coming, with the companions held behind them. */
+function everyoneReplied(list: readonly Guest[]): Guest[] {
+  return list.map((one) =>
+    one.reply !== 'noReply'
+      ? one
+      : {
+          ...one,
+          reply: 'notComing',
+          replied: '2026-11-02',
+          companions: one.companions.map((companion) => ({
+            ...companion,
+            reply: 'notComing' as const,
+          })),
+        },
+  );
+}
+
+/** No companion held behind a guest who owes a reply: the card's line loses its bracket. */
+function noCompanionWaiting(list: readonly Guest[]): Guest[] {
+  return list.map((one) => (one.reply === 'noReply' ? { ...one, companions: [] } : one));
+}
 
 /** The guest's own reply landing before the host's Mark as not invited: the 409's sample (sc-3788). */
 function repliedFirst(list: readonly Guest[], id: string): Guest[] {
@@ -1279,6 +1315,12 @@ export const GUESTS_STATES = [
   { key: 'search', name: 'A search: “okon”' },
   { key: 'searchNone', name: 'A search that matches nobody: “kofi”' },
   { key: 'filterNone', name: 'Held and “marta”: nobody in both' },
+  { key: 'searchNumber', name: 'A number in its national form: “0803 412”' },
+  { key: 'everyoneReplied', name: 'Everyone has replied' },
+  { key: 'noCompanionsWaiting', name: 'No companion among those who haven’t replied' },
+  { key: 'closesToday', name: 'Replies close today' },
+  { key: 'closesLater', name: 'Replies close on a later date' },
+  { key: 'repliesClosedLive', name: 'Replies have closed, the event still to come' },
   { key: 'loading', name: 'Loading' },
   { key: 'failed', name: 'Failed, with Try again' },
   { key: 'viewer', name: 'Can view: names and replies only' },
@@ -1366,7 +1408,7 @@ export function guestsStateOf(raw: string | null): GuestsState | null {
   return GUESTS_STATES.find((one) => one.key === raw)?.key ?? null;
 }
 
-function choiceOf(raw: string | null): Choice | null {
+export function choiceOf(raw: string | null): Choice | null {
   return CHOICES.find((one) => one === raw) ?? null;
 }
 
@@ -1439,6 +1481,18 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return { ...start, q: 'kofi' };
     case 'filterNone':
       return { ...start, choice: 'held', q: 'marta' };
+    case 'searchNumber':
+      return { ...start, q: '0803 412' };
+    case 'everyoneReplied':
+      return { ...start, list: everyoneReplied(start.list) };
+    case 'noCompanionsWaiting':
+      return { ...start, list: noCompanionWaiting(start.list) };
+    case 'closesToday':
+      return { ...start, clock: CLOCK_CLOSES };
+    case 'closesLater':
+      return { ...start, clock: CLOCK_EARLIER };
+    case 'repliesClosedLive':
+      return { ...start, clock: CLOCK_CLOSED };
     case 'loading':
       return { ...start, status: 'loading' };
     case 'failed':
@@ -1635,17 +1689,25 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
   }
 }
 
-/** With no state, `?filter=` picks the menu's choice and `?guest=` opens a guest, as Overview's numbers do. */
+/** With no state, `?guest=` opens a guest, as Overview's numbers do; `?filter=` and `?q=` are read by `useGuestsAddress`. */
 function applyParams(start: GuestsStart, params: URLSearchParams): GuestsStart {
-  const choice = choiceOf(params.get('filter'));
   const id = params.get('guest');
   const known = id != null && start.list.some((one) => one.id === id);
 
-  return {
-    ...start,
-    choice: choice ?? start.choice,
-    pane: known ? { kind: 'guest', id } : start.pane,
-  };
+  return { ...start, pane: known ? { kind: 'guest', id } : start.pane };
+}
+
+/** The menu's choice and the search, as the address keeps them. */
+export interface ViewInAddress {
+  choice: Choice;
+  q: string;
+}
+
+/** What a state's list opens on before the address says otherwise. */
+export function viewBase(state: GuestsState | null): ViewInAddress {
+  const opened = guestsStart(state, new URLSearchParams());
+
+  return { choice: opened.choice, q: opened.q };
 }
 
 export const NUMBERS_STATES = [
@@ -1676,8 +1738,14 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'filterOpen',
     'filtered',
     'search',
+    'searchNumber',
     'searchNone',
     'filterNone',
+    'everyoneReplied',
+    'noCompanionsWaiting',
+    'closesToday',
+    'closesLater',
+    'repliesClosedLive',
   ]),
   group('The list’s other states', [
     'loading',
