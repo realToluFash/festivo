@@ -37,6 +37,8 @@ import {
 } from './EventsModel.ts';
 import { CLOCKS, EVENTS, type SampleEvent, sampleEvent } from './EventsSample.ts';
 import { seedFinalNumbers } from './FinalNumbers.ts';
+import { say } from './EventsWords.ts';
+import { peopleOn } from '../guests/GuestsModel.ts';
 
 const LOCALE = 'en-US';
 const reader = new Date(CLOCKS.reader);
@@ -292,9 +294,18 @@ describe('the page', () => {
     });
   });
 
-  it('asks for the name to be typed once an event has been live', () => {
-    expect(needsName(event('evt-draft-4'))).toBe(false);
-    expect(needsName(event('evt-wed-4'))).toBe(true);
+  it('asks for the name to be typed once an event has been live, or has anybody on its list', () => {
+    expect(needsName(event('evt-cena-4'), peopleOn('evt-cena-4'))).toBe(false);
+    expect(needsName(event('evt-draft-4'), peopleOn('evt-draft-4'))).toBe(true);
+    expect(needsName(event('evt-wed-4'), 0)).toBe(true);
+  });
+
+  it('counts the guest list in Delete as the Guests header does, guests and companions together', () => {
+    expect(peopleOn('evt-wed-4')).toBe(156);
+    expect(peopleOn('evt-draft-4')).toBe(12);
+    expect(peopleOn('evt-cena-4')).toBe(0);
+    expect(say.removesGuests('156', 156)).toBe('its guest list, with the 156 people on it');
+    expect(say.removesGuests('1', 1)).toBe('its guest list, with the 1 person on it');
   });
 });
 

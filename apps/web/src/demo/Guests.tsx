@@ -10,11 +10,12 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
-import { type SampleEvent, sampleEvent } from './events.ts';
+import { type SampleEvent, TODAY_IDS, sampleEvent } from './events.ts';
+import { TodaySidebar } from './TodaySidebar.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { AddForm, EditForm, RecordForm } from './GuestForms.tsx';
 import { type GuestActions, GuestView } from './GuestColumn.tsx';
@@ -57,7 +58,7 @@ import {
   theirViewerKey,
 } from './guestRequest.ts';
 import { zoneFor } from './dataControl.ts';
-import { type Viewer, viewerOf } from './settings.ts';
+import { SIDEBAR_EVENTS, type Viewer, viewerOf } from './settings.ts';
 import { TheirData } from './TheirData.tsx';
 import { GW, SHOW_ALL_WORDS, REPLY_WORDS, figure } from './guestsWords.ts';
 import { LayersContext, focusWhenFree } from '../layers.ts';
@@ -124,9 +125,9 @@ function GuestsAt({ params }: { params: URLSearchParams }) {
 
     return their.state === 'erased' ? { ...opened, list: erasedIn(opened.list, EMEKA.id) } : opened;
   });
-  const event = sampleEvent(start.event);
+  const event = params.get('state') === 'eventDeleted' ? null : sampleEvent(start.event);
 
-  if (event == null) return <Navigate to="/demo/events" replace />;
+  if (event == null) return <EventGone id={start.event} />;
 
   return (
     <EventsShell
@@ -136,6 +137,38 @@ function GuestsAt({ params }: { params: URLSearchParams }) {
       )}
     >
       {(tell) => <GuestsPage event={event} start={start} their={their} tell={tell} />}
+    </EventsShell>
+  );
+}
+
+/** sc-1468: a deleted event's Guests answers as an event that never existed does (sc-64), under the organisation's sidebar without it. */
+function EventGone({ id }: { id: string }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => heading.current?.focus(), []);
+
+  return (
+    <EventsShell
+      renderSide={(tell, covered) => (
+        <TodaySidebar
+          events={SIDEBAR_EVENTS.filter(
+            (key) => TODAY_IDS[key] !== id && sampleEvent(TODAY_IDS[key]) != null,
+          )}
+          tell={tell}
+          listing
+          inert={covered}
+        />
+      )}
+    >
+      {() => (
+        <div className="gs">
+          <header className="gs-top">
+            <h1 ref={heading} className="gs-title" tabIndex={-1}>
+              {GW.eventGone}
+            </h1>
+          </header>
+        </div>
+      )}
     </EventsShell>
   );
 }
