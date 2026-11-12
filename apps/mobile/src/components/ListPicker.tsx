@@ -1,4 +1,4 @@
-import { type Ref, useEffect, useId, useRef, useState } from 'react';
+import { type Ref, useId, useRef, useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -26,8 +26,7 @@ import { useModalOpen } from '../updateRequired.ts';
 import { FocusEdge, focusEdge, useFocusEdge, useHeld, useRefused } from './Field.tsx';
 import { controlTaken } from './focusedField.ts';
 import { LIFT } from './keyboardWatch.ts';
-import { Screen } from './Screen.tsx';
-import { moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { Screen, useFocusOnAnswer } from './Screen.tsx';
 import { SilentWindowName, WINDOW_ARRIVES_MS, useUnnamedWindow } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { UnseenName } from './UnseenName.tsx';
@@ -99,9 +98,11 @@ export function ListPicker({
   const beside = searchBesideTitle({ phone: kind === 'phone', width, height });
 
   // TalkBack otherwise puts its focus on Done, past the title (sc-42690).
-  useEffect(() => {
-    if (Platform.OS === 'android' && onScreen && !unnamed) moveScreenReaderFocus(heading.current);
-  }, [onScreen, unnamed]);
+  useFocusOnAnswer(
+    Platform.OS === 'android' && onScreen && !unnamed ? true : undefined,
+    heading,
+    0,
+  );
 
   const chosen = choices.find((choice) => choice.code === value)?.name ?? value;
   const blank = chosen === '';
