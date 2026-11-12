@@ -1163,6 +1163,7 @@ export type LifeState =
   | 'deleteMismatch'
   | 'deleteTyped'
   | 'duplicate'
+  | 'duplicateNoStart'
   | 'muted'
   | 'muteNotLoaded'
   | 'muteNotSaved';
@@ -1218,6 +1219,7 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   deleteMismatch: 'evt-wed-4',
   deleteTyped: 'evt-wed-4',
   duplicate: 'evt-wed-4',
+  duplicateNoStart: 'evt-wed-4',
   muted: 'evt-wed-4',
   muteNotLoaded: 'evt-wed-4',
   muteNotSaved: 'evt-wed-4',
@@ -1485,6 +1487,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('deleteMismatch', 'Delete, not a match'),
       on('deleteTyped', 'Delete, the name typed'),
       on('duplicate', 'Duplicate'),
+      on('duplicateNoStart', 'Duplicate, Starts left empty'),
       on('muted', 'Muted'),
       on('muteNotLoaded', 'Mute, not loaded'),
       on('muteNotSaved', 'Mute, not saved'),

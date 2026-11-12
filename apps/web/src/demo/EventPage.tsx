@@ -140,6 +140,8 @@ function askingOf(state: EventStateName | null): Asking | null {
     case 'deleteDraft':
     case 'duplicate':
       return state;
+    case 'duplicateNoStart':
+      return 'duplicate';
     case 'delete':
     case 'deleteDraftGuests':
     case 'deleteMismatch':
@@ -600,7 +602,14 @@ function Asks({
         />
       );
     case 'duplicate':
-      return <DuplicateDialog event={event} onDismiss={onKeep} onCreated={onCreated} />;
+      return (
+        <DuplicateDialog
+          event={event}
+          cleared={state === 'duplicateNoStart'}
+          onDismiss={onKeep}
+          onCreated={onCreated}
+        />
+      );
     default:
       return null;
   }
