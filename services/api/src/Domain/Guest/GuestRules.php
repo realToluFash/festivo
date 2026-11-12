@@ -10,6 +10,7 @@ use App\Entity\Guest;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
+use Psl\Iter;
 use Psl\Str;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -53,7 +54,7 @@ final readonly class GuestRules
             }
         }
 
-        if (\count($companions) > Guest::COMPANIONS_MAXIMUM) {
+        if (Iter\count($companions) > Guest::COMPANIONS_MAXIMUM) {
             $violations[] = $this->violation('companions', 'validation.guest_companions_too_many');
         }
 
