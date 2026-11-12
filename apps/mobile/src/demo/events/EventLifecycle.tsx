@@ -16,6 +16,7 @@ import {
 } from '../../components/MomentPick.tsx';
 import { RESTORE_UNTIL, type SampleEvent } from './EventsSample.ts';
 import { W, say, t } from './EventsWords.ts';
+import { figureOf } from './GuestCounts.ts';
 import { Ask, type AskProps, FocusedScreen, SectionHead } from '../../components/Summary.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
@@ -90,10 +91,11 @@ function asked(ask: LifeAsk, name: string): Omit<AskProps, 'onKeep' | 'onConfirm
 
 export type DeleteStart = 'delete' | 'deleteMismatch' | 'deleteTyped';
 
-/** Delete by its name, for anything that has been live: Delete stays off until the name matches. */
+/** Delete by its name, for anything that has been live or has anybody on its list: Delete stays off until the name matches. */
 export function DeleteScreen({
   open,
   event,
+  people,
   start,
   opener,
   onClose,
@@ -101,6 +103,7 @@ export function DeleteScreen({
 }: {
   open: boolean;
   event: SampleEvent;
+  people: number;
   start: DeleteStart | null;
   opener: Opener;
   onClose: () => void;
@@ -145,6 +148,11 @@ export function DeleteScreen({
         <Text size={15} weight="medium" style={styles.bullet}>
           {`• ${W.removesEvent}`}
         </Text>
+        {people > 0 && (
+          <Text size={15} weight="medium" style={styles.bullet} testID="event.delete.guests">
+            {`• ${say.removesGuests(figureOf(people), people)}`}
+          </Text>
+        )}
       </View>
       <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
         {W.deleteGuests}

@@ -194,8 +194,9 @@ export function hostsRow(event: Omit<SampleEvent, 'photo'>, locale: string): Row
   return productHostsRow(event.hosts, locale, t);
 }
 
-export function needsName(event: SampleEvent): boolean {
-  return event.status !== 'draft';
+/** sc-1468: only a Draft with nobody on its list keeps the plain question; `people` is the Guests header's N, guests and companions together. */
+export function needsName(event: SampleEvent, people: number): boolean {
+  return event.status !== 'draft' || people > 0;
 }
 
 export type Filters = EventsFilters;
@@ -445,6 +446,7 @@ export const EVENT_STATES = [
   'callOff',
   'endNow',
   'deleteDraft',
+  'deleteDraftGuests',
   'delete',
   'deleteMismatch',
   'deleteTyped',

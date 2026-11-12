@@ -76,6 +76,7 @@ import {
   OVERVIEW_STATES,
   clockOf as guestsClock,
   isIn,
+  peopleOn,
 } from '../guests/GuestsModel.ts';
 import { GuestsScreen } from '../guests/GuestsScreen.tsx';
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
@@ -117,6 +118,7 @@ function startEvent(
 }
 
 function deleteStart(state: EventDemoState | null): DeleteStart | null {
+  if (state === 'deleteDraftGuests') return 'delete';
   return state === 'delete' || state === 'deleteMismatch' || state === 'deleteTyped' ? state : null;
 }
 
@@ -265,7 +267,7 @@ export function EventScreen({
     else if (key === 'pause') setAsk('pause');
     else if (key === 'callOff') setAsk('callOff');
     else if (key === 'endNow') setAsk('endNow');
-    else if (needsName(event)) setDeleting(true);
+    else if (needsName(event, peopleOn(event.id))) setDeleting(true);
     else setAsk('deleteDraft');
   };
   const onAsked = (which: LifeAsk) => {
@@ -548,6 +550,7 @@ export function EventScreen({
           <DeleteScreen
             open={deleting}
             event={event}
+            people={peopleOn(event.id)}
             start={deleteStart(state)}
             opener={opener}
             onClose={() => setDeleting(false)}

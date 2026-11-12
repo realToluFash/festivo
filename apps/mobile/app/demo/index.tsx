@@ -1269,6 +1269,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?area=guests',
       },
       {
+        title: 'An event · Guests, once deleted',
+        what: 'Not found, as an event that never existed',
+        href: '/demo/events/evt-wed-4?area=guests&state=eventDeleted',
+      },
+      {
         title: 'An event · Budget',
         what: 'Budget is coming',
         href: '/demo/events/evt-wed-4?area=budget',
@@ -1447,8 +1452,13 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'Delete the draft?',
-        what: 'The Ask on a draft',
-        href: '/demo/events/evt-draft-4?state=deleteDraft',
+        what: 'The Ask on a draft with nobody on its list',
+        href: '/demo/events/evt-cena-4?state=deleteDraft',
+      },
+      {
+        title: 'Delete a draft with guests',
+        what: 'People on its list: type its name',
+        href: '/demo/events/evt-draft-4?state=deleteDraftGuests',
       },
       { title: 'Delete event', what: 'Type its name', href: '/demo/events/evt-wed-4?state=delete' },
       {

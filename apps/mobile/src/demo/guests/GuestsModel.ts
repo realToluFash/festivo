@@ -880,6 +880,14 @@ export function countAfter(
 
 export const GUESTS_ON: readonly string[] = [WEDDING, ...Object.values(OWN_SAMPLE)];
 
+/** The Guests header's N for an event, guests and companions together, which Delete event's question counts (sc-1468). */
+export function peopleOn(event: string): number {
+  if (event === WEDDING) return COUNTS.list;
+  if (event === OWN_SAMPLE.draft) return DRAFT_COUNTS.list;
+  if (event === OWN_SAMPLE.paused) return PAUSED_COUNTS.list;
+  return 0;
+}
+
 export function startStateOf(state: GuestsState | null, event: string): GuestsState | null {
   return state ?? ownStateOf(event);
 }

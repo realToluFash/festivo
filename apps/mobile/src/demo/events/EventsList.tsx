@@ -369,7 +369,7 @@ export function EventsList({
 }
 
 /** The list in its frame: the tab bar on the phone, the capsule upright, the app's sidebar on its side. */
-function ListFrame({
+export function ListFrame({
   offline,
   overlay,
   children,

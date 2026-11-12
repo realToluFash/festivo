@@ -16,6 +16,7 @@ import { lookingAs } from '../settings/sample.ts';
 import { EventScreen } from './EventPage.tsx';
 import { backToEvents } from './EventFrame.tsx';
 import { EventsList } from './EventsList.tsx';
+import { EventGone } from './EventGone.tsx';
 import { eventStateOf, listStateOf } from './EventsModel.ts';
 import { messagesStateOf } from '../messages/MessagesModel.ts';
 import { seatingStateOf } from '../seating/SeatingModel.ts';
@@ -132,6 +133,13 @@ export function EventRoute() {
   const state = noBudget ? 'more' : eventStateOf(params.state);
   const guests = area === 'guests' ? guestsStateOf(params.state) : null;
   const people = cardStateOf(params.people);
+
+  if (area === 'guests' && params.state === 'eventDeleted')
+    return (
+      <EventsShell switcher={params.switcher}>
+        <EventGone />
+      </EventsShell>
+    );
 
   return (
     <EventsShell switcher={params.switcher}>
