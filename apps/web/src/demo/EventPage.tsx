@@ -148,6 +148,7 @@ function askingOf(state: EventStateName | null): Asking | null {
     case 'duplicateOverPlan':
     case 'duplicateOverPlanAsk':
     case 'duplicateOverCeiling':
+    case 'duplicateNoStart':
       return 'duplicate';
     case 'delete':
     case 'deleteDraftGuests':
@@ -613,6 +614,7 @@ function Asks({
         <DuplicateDialog
           event={event}
           begin={duplicateStartOf(state)}
+          cleared={state === 'duplicateNoStart'}
           onDismiss={onKeep}
           onCreated={onCreated}
         />

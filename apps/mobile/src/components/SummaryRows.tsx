@@ -4,6 +4,7 @@ import {
   type AccessibilityState,
   Animated,
   Easing,
+  Platform,
   Pressable,
   StyleSheet,
   type StyleProp,
@@ -14,7 +15,7 @@ import {
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Text } from './Text.tsx';
-import { titleAtWidth, UNMEASURED_TITLE } from './titleWidth.ts';
+import { titleAtWidth, titleWithInkRoom, UNMEASURED_TITLE } from './titleWidth.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
@@ -278,7 +279,7 @@ export function Row({
               accessible={grouped ? false : undefined}
               style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
             >
-              {title}
+              {titleWithInkRoom(title, Platform.OS, selectable)}
             </Text>
           }
           tag={tag != null && <Tag kind={tag.kind} word={tag.word} turning={tag.turning} />}

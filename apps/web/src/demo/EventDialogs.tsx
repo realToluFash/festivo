@@ -1,21 +1,23 @@
 import {
   clockMinutes,
   copiedEnd,
+  copyStartRefusal,
   durationWords,
   formatEventDayAndClock,
   typedNameMatches,
 } from '@soirely/domain';
 import { useContext, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { ActionPair } from '../components/ActionPair.tsx';
 import { type SampleEvent, EVENT_WORDS as W, copyStart, instantOf, keepCopy } from './events.ts';
 import { DateTime } from '../components/EventPageParts.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import { LayersContext, useDeskDialog } from '../layers.ts';
 import { Dialog, Head } from '../components/SettingsParts.tsx';
 import { figure } from './guestsWords.ts';
-import { Glyph } from '../components/Glyph.tsx';
 import { NotBuilt } from './EventParts.tsx';
 import {
   type CopyRefused,
@@ -188,18 +190,25 @@ function phaseOf(start: DuplicateStart, eventId: string): Phase {
 export function DuplicateDialog({
   event,
   begin = 'form',
+  cleared = false,
   onDismiss,
   onCreated,
 }: {
   event: SampleEvent;
   begin?: DuplicateStart;
+  cleared?: boolean;
   onDismiss: () => void;
   onCreated: (words: string) => void;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const id = useId();
   const box = useRef<HTMLInputElement>(null);
-  const [start, setStart] = useState(() => copyStart(event));
+  const when = useRef<HTMLDivElement>(null);
+  const [start, setStart] = useState(() => (cleared ? { date: '', time: '' } : copyStart(event)));
+  const [error, setError] = useState(() =>
+    cleared ? copyStartRefusal('', '', t)?.message : undefined,
+  );
   const guests = begin === 'noManage' ? 0 : guestsToCopy(event.id);
   const [ticked, setTicked] = useState(
     guests > 0 && begin !== 'form' && begin !== 'noManage' && begin !== 'creating',
@@ -269,11 +278,21 @@ export function DuplicateDialog({
       key="form"
       title={W.duplicate}
       verb={W.createDraft}
-      on={startsAt != null && !busy}
+      on={!busy}
       locked={busy}
       {...(cameBack ? { first: box } : {})}
       onDismiss={() => !busy && onDismiss()}
-      onConfirm={create}
+      onConfirm={() => {
+        if (busy) return;
+        const refusal = copyStartRefusal(start.date, start.time, t);
+
+        if (refusal != null) {
+          setError(refusal.message);
+          when.current?.querySelector<HTMLElement>(`input[type="${refusal.focus}"]`)?.focus();
+          return;
+        }
+        create();
+      }}
     >
       <h3 className="ev-dialog-title">{W.duplicateTitle(event.name)}</h3>
       <p className="desk-line">{W.duplicateLine}</p>
@@ -294,10 +313,27 @@ export function DuplicateDialog({
         </ul>
       </div>
       <fieldset className="ev-copy-when" disabled={busy}>
-        <DateTime legend={W.starts} wall={start} onChange={setStart} />
+        <div ref={when}>
+          <DateTime
+            legend={W.starts}
+            wall={start}
+            wrong={error != null}
+            told={error != null ? `${id}-wrong` : `${id}-ends`}
+            onChange={(next) => {
+              setStart(next);
+              if (next.date !== '' && next.time !== '') setError(undefined);
+            }}
+          />
+        </div>
       </fieldset>
+      {error != null && (
+        <p id={`${id}-wrong`} className="desk-error" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {error}
+        </p>
+      )}
       {end != null && (
-        <p className="desk-note" role="status">
+        <p id={`${id}-ends`} className="desk-note" role="status">
           {W.copyEnds(
             formatEventDayAndClock(end, event.timeZone, LOCALE),
             duration,

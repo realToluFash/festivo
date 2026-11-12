@@ -1175,6 +1175,7 @@ export type LifeState =
   | 'duplicateOverPlan'
   | 'duplicateOverPlanAsk'
   | 'duplicateOverCeiling'
+  | 'duplicateNoStart'
   | 'muted'
   | 'muteNotLoaded'
   | 'muteNotSaved';
@@ -1238,6 +1239,7 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   duplicateOverPlan: 'evt-wed-4',
   duplicateOverPlanAsk: 'evt-wed-4',
   duplicateOverCeiling: 'evt-wed-4',
+  duplicateNoStart: 'evt-wed-4',
   muted: 'evt-wed-4',
   muteNotLoaded: 'evt-wed-4',
   muteNotSaved: 'evt-wed-4',
@@ -1513,6 +1515,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('duplicateOverPlan', 'Duplicate, the copy over the plan'),
       on('duplicateOverPlanAsk', 'Duplicate, the copy over the plan, Ask an owner'),
       on('duplicateOverCeiling', 'Duplicate, the copy over the ceiling'),
+      on('duplicateNoStart', 'Duplicate, Starts left empty'),
       on('muted', 'Muted'),
       on('muteNotLoaded', 'Mute, not loaded'),
       on('muteNotSaved', 'Mute, not saved'),
