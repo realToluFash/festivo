@@ -111,7 +111,7 @@ import { Back } from './SettingsParts.tsx';
 import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text, TitleCap } from './Text.tsx';
-import { Title, useWholeWords } from './Title.tsx';
+import { Title } from './Title.tsx';
 import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 import { TopPrimary, type TopPrimaryProps } from './TopPrimary.tsx';
 import { ListTop, PortraitRow, PortraitTop } from './ListTop.tsx';
@@ -188,7 +188,7 @@ export function useHeaderWithoutBack(hidden: boolean): void {
 
 type IconPaths = readonly [string, string];
 
-const AREA_ICONS: Record<EventPlace | 'more', IconPaths> = {
+const AREA_ICONS: Record<EventPlace, IconPaths> = {
   overview: ['M3 3h7v7H3zM14 3h7v7h-7z', 'M14 14h7v7h-7zM3 14h7v7H3z'],
   guests: [
     'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
@@ -211,7 +211,6 @@ const AREA_ICONS: Record<EventPlace | 'more', IconPaths> = {
     'M3 5v14a2 2 0 0 0 2 2h16v-5M18 12a2 2 0 0 0 0 4h4v-4z',
   ],
   reports: ['M3 3v18h18', 'M8 17v-5M13 17V8M18 17v-9'],
-  more: ['M5 12h.01M12 12h.01', 'M19 12h.01'],
 };
 
 /** Inside an event the navigation is the event's areas, in each layout's own form (sc-22103, #24878). */
@@ -455,6 +454,7 @@ export function AppFrame({
   });
   const framed = !ownChrome || standIn != null;
   const floatingTabs = framed && kind === 'phone' && inEvent == null;
+  const eventTabs = framed && kind === 'phone' && inEvent != null;
   const sidebar = framed && kind === 'tabletLandscape';
   const ownTop = framed && top != null && standIn == null;
   const underTabs =
@@ -494,6 +494,7 @@ export function AppFrame({
     besideTitle: standIn == null ? besideTitle : undefined,
     besideBack: standIn == null || besideBack === undefined ? besideBack : null,
     switched: ownTop ? switchedNotice : null,
+    untitled: inEvent?.area === 'overview',
   };
 
   return (
@@ -521,10 +522,9 @@ export function AppFrame({
           <View
             style={[
               styles.body,
-              floatingTabs &&
-                underTabs === 0 && {
-                  paddingBottom: phoneTabBarClearance(insets.bottom) + tokens.spaceMd,
-                },
+              (eventTabs || (floatingTabs && underTabs === 0)) && {
+                paddingBottom: phoneTabBarClearance(insets.bottom) + tokens.spaceMd,
+              },
             ]}
           >
             {!ownTop && switchedNotice}
@@ -560,9 +560,7 @@ export function AppFrame({
             </OpenSwitcher.Provider>
           </View>
           {floatingTabs && <FrameTabBar current={current} organisation={signedIn.organisation} />}
-          {framed && kind === 'phone' && inEvent != null && (
-            <TabBar entries={entries} inEvent={inEvent} />
-          )}
+          {eventTabs && inEvent != null && <TabBar inEvent={inEvent} />}
         </View>
         {edgeSwipe != null && (
           <View
@@ -669,6 +667,8 @@ interface FrameHeaderProps {
   pill: Ref<ViewInstance>;
   /** "Now working in …", under the title of a screen with its own top (sc-39471). */
   switched: ReactNode;
+  /** On a phone, an event's Overview: its card names it, so no title is drawn over it. */
+  untitled: boolean;
 }
 
 const ScrolledTop = createContext<FrameHeaderProps | null>(null);
@@ -836,6 +836,7 @@ function FrameHeader({
   underTitle,
   besideTitle,
   besideBack,
+  untitled,
 }: FrameHeaderProps) {
   const insets = useSafeAreaInsets();
   const top = kind === 'tabletLandscape' ? undefined : { paddingTop: insets.top + tokens.spaceXxs };
@@ -937,6 +938,30 @@ function FrameHeader({
         <Pills entries={entries} scrolls={inEvent} />
         {backView}
         {titleRow(<BellButton />)}
+      </View>
+    );
+  }
+
+  // Inside an event, ‹ in its pill and the bell head the page; on Overview the event's card under them names it (sc-30413).
+  if (inEvent && back != null) {
+    return (
+      <View style={[styles.phoneHeader, top]}>
+        <View style={styles.titleRow}>
+          <View style={styles.fill}>
+            {!backHidden && (
+              <BesideBack beside={besideBack}>
+                <Back
+                  label={back.label}
+                  onPress={back.onPress}
+                  off={back.off}
+                  testID="frame.back"
+                />
+              </BesideBack>
+            )}
+          </View>
+          <BellButton />
+        </View>
+        {!untitled && titleRow()}
       </View>
     );
   }
@@ -1099,60 +1124,43 @@ function FrameTabBar({
   );
 }
 
-function TabBar({ entries, inEvent }: { entries: readonly NavEntry[]; inEvent: InsideEvent }) {
+type PhoneEventTab = (typeof PHONE_EVENT_TABS)[number] | 'more';
+
+const PHONE_EVENT_BAR: readonly (readonly [PhoneEventTab, GlyphName])[] = [
+  ...PHONE_EVENT_TABS.map((area) => [area, AREA_GLYPH[area]] as const),
+  ['more', 'dots'],
+];
+
+const PHONE_EVENT_IDS: Record<PhoneEventTab, string> = {
+  overview: 'event.nav.overview',
+  guests: 'event.nav.guests',
+  menu: 'event.nav.menu',
+  messages: 'event.nav.messages',
+  more: 'event.nav.more',
+};
+
+/** Inside an event on a phone, the demos' floating bar: four areas and More, whose sheet holds the rest. */
+function TabBar({ inEvent }: { inEvent: InsideEvent }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { fontScale } = useWindowDimensions();
   const [more, setMore] = useState(false);
   const moreTab = useRef<ViewInstance>(null);
-  const underMore = !(PHONE_EVENT_TABS as readonly EventPlace[]).includes(inEvent.area);
-  const shown: readonly NavEntry[] = [
-    ...entries.filter((entry) => (PHONE_EVENT_TABS as readonly string[]).includes(entry.key)),
-    {
-      key: 'more',
-      label: t('eventNav.more'),
-      icon: AREA_ICONS.more,
-      on: underMore,
-      onPress: () => setMore(true),
-      testID: 'event.nav.more',
-    },
-  ];
-  const words = useWholeWords(
-    tokens.typeMeta.size,
-    tokens.typeMeta.size * fontScale,
-    shown.map((entry) => entry.label),
-    { weight: 'bold' },
-  );
+  const at: PhoneEventTab = (PHONE_EVENT_TABS as readonly EventPlace[]).includes(inEvent.area)
+    ? (inEvent.area as PhoneEventTab)
+    : 'more';
 
   return (
-    <View
-      style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, tokens.spaceSm) }]}
-      accessibilityRole="tablist"
-    >
-      {words.measure}
-      {shown.map((entry, index) => (
-        <Pressable
-          key={entry.key}
-          ref={entry.key === 'more' ? moreTab : undefined}
-          style={styles.tab}
-          onPress={entry.onPress}
-          onLayout={index === 0 ? (event) => words.room(event.nativeEvent.layout.width) : undefined}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: entry.on }}
-          testID={entry.testID}
-        >
-          <View style={[styles.tabMark, entry.on && styles.tabMarkOn]} />
-          <Icon paths={entry.icon} on={entry.on} size={tokens.space3xl} />
-          <Text
-            size={tokens.typeMeta.size}
-            weight={entry.on ? 'bold' : 'medium'}
-            style={[styles.centred, entry.on ? styles.ink : styles.secondaryInk]}
-            maxFontSizeMultiplier={words.maxFontSizeMultiplier}
-          >
-            {entry.label}
-          </Text>
-        </Pressable>
-      ))}
+    <>
+      <TabBarFade />
+      <PhoneTabs
+        tabs={PHONE_EVENT_BAR}
+        bottom={tabBarFoot(insets.bottom)}
+        at={at}
+        say={(tab) => t(`eventNav.${tab}`)}
+        ids={PHONE_EVENT_IDS}
+        refs={{ more: moreTab }}
+        onTab={(tab) => (tab === 'more' ? setMore(true) : inEvent.onArea(tab))}
+      />
       <Sheet
         open={more}
         onClose={() => setMore(false)}
@@ -1194,7 +1202,7 @@ function TabBar({ entries, inEvent }: { entries: readonly NavEntry[]; inEvent: I
           </View>
         </View>
       </Sheet>
-    </View>
+    </>
   );
 }
 
@@ -1411,7 +1419,6 @@ const styles = StyleSheet.create({
   shrink: { flexShrink: 1, minWidth: 0 },
   ink: { color: tokens.colorInk },
   secondaryInk: { color: tokens.colorInkSecondary },
-  centred: { textAlign: 'center' },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   topRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   pageRow: { minHeight: 0, paddingTop: 14 },
@@ -1461,28 +1468,6 @@ const styles = StyleSheet.create({
     borderRadius: tokens.sizeHit / 2,
   },
   pillOn: { backgroundColor: tokens.colorCard },
-  tabBar: {
-    flexDirection: 'row',
-    paddingTop: tokens.spaceXs,
-    paddingHorizontal: tokens.spaceSm,
-    backgroundColor: tokens.colorCard,
-    borderTopWidth: 1,
-    borderTopColor: tokens.colorBorder,
-  },
-  tab: {
-    flex: 1,
-    minHeight: tokens.sizeHit,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: tokens.spaceXxs,
-  },
-  tabMark: {
-    width: tokens.space4xl,
-    height: 3,
-    borderRadius: tokens.spaceHair,
-    marginBottom: tokens.spaceHair,
-  },
-  tabMarkOn: { backgroundColor: tokens.colorInk },
   moreSheet: { gap: tokens.spaceLg, padding: tokens.space3xl },
   // The rows keep their own 12 pt padding, so their icons start on the title's line.
   moreList: { gap: tokens.spaceHair, marginHorizontal: -tokens.spaceLg },

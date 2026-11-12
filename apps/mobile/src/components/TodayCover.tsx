@@ -1,4 +1,4 @@
-import { type ReactNode, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
@@ -820,6 +820,7 @@ export function TabBar<T extends string>({
   at,
   say = (tab) => tab,
   ids,
+  refs,
 }: {
   tabs: readonly (readonly [T, GlyphName])[];
   bottom: number;
@@ -827,6 +828,8 @@ export function TabBar<T extends string>({
   at: T;
   say?: (tab: T, glyph: GlyphName) => string;
   ids?: Partial<Record<T, string>>;
+  /** A tab that opens something, which hands focus back to it when it closes. */
+  refs?: Partial<Record<T, Ref<ViewInstance>>>;
 }) {
   const { fontScale } = useWindowDimensions();
   const words = useWholeWords(
@@ -846,6 +849,7 @@ export function TabBar<T extends string>({
         return (
           <Pressable
             key={label}
+            ref={refs?.[label]}
             onPress={() => onTab(label)}
             style={[styles.tab, on && styles.tabOn]}
             accessibilityRole="tab"
