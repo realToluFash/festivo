@@ -244,7 +244,7 @@ describe('the iPhone room card (sc-31783)', () => {
       expect(names.map((n) => n.id)).toEqual(room.items.map((it) => it.id));
       const boxes = names.map((n) => {
         const it = room.items.find((one) => one.id === n.id);
-        const w = (it?.name.length ?? 0) * 12 * 0.56;
+        const w = wordsBox(0, 0, it?.name ?? '', 12, false).w;
         return { id: n.id, x: n.x - w / 2, y: n.y - 8, w, h: 16 };
       });
       boxes.forEach((b, i) => {
@@ -270,13 +270,22 @@ describe('the iPhone room card (sc-31783)', () => {
     });
   });
 
-  it('keeps a row of tables’ names on one side of the row', () => {
-    const s = (337 - 12) / room.room.w;
-    const names = cardNames(room.items, { s, ox: 6, oy: 6 }, room.room);
-    const ys = (ids: string[]) =>
-      new Set(names.filter((n) => ids.includes(n.id)).map((n) => Math.round(n.y)));
-    expect(ys(['t1', 't2', 't3', 't4', 't5']).size).toBe(1);
-    expect(ys(['t6', 't7', 't8', 't10']).size).toBe(1);
+  it('keeps a row of tables’ names on one side of the row, at every phone width', () => {
+    for (let inner = 310; inner <= 380; inner += 1) {
+      const s = (inner - 12) / room.room.w;
+      const names = cardNames(room.items, { s, ox: 6, oy: 6 }, room.room);
+      const sides = (ids: string[]) =>
+        new Set(
+          ids.map((id) => {
+            const it = room.items.find((one) => one.id === id);
+            const at = names.find((n) => n.id === id);
+            return it == null || at == null ? 'none' : at.y > 6 + it.y * s ? 'below' : 'above';
+          }),
+        );
+      expect([...sides(['t1', 't2', 't3', 't4', 't5'])], `row 1 at ${inner}`).toHaveLength(1);
+      expect([...sides(['t6', 't7', 't8', 't9', 't10'])], `row 2 at ${inner}`).toHaveLength(1);
+      expect([...sides(['bar1', 'bar2'])], `the bars at ${inner}`).toHaveLength(1);
+    }
   });
 });
 

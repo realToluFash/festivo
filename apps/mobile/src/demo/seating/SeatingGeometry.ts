@@ -331,7 +331,7 @@ export function nameAt(it: Item, cy: number, s: number, floor: number): number {
   const round = it.kind === 'round' || it.kind === 'cocktail';
   const bw = (round ? it.d : it.w) * s;
   const bh = (round ? it.d : it.l) * s;
-  if (it.name.length * 12 * 0.56 <= bw - 3 && bh >= 15) return cy;
+  if (wordsBox(0, 0, it.name, 12, false).w <= bw - 3 && bh >= 15) return cy;
   const e = extent(it).y * s;
   const below = cy + e + 10;
   if (below + 6 <= floor - 2) return below;
@@ -482,7 +482,9 @@ function overlapArea(a: Box, b: Box): number {
   return w > 0 && h > 0 ? w * h : 0;
 }
 
-/** The iPhone room card's words (sc-31783): each item's name alone, the List carrying the counts. From the bottom of the room up, each name goes below its item, else above (either up to 12 px aside), right or left: the first place inside the walls that keeps 8 px off every other item and 2 px off each name already placed, so a name sits nearer its own item than any other, or else the place that covers least. */
+const ROW_SLACK = 20;
+
+/** The iPhone room card's words (sc-31783): each item's name alone, the List carrying the counts. From the bottom of the room up, each name goes below its item, else above (either up to 12 px aside), right or left: the first place inside the walls that keeps 8 px off every other item and 2 px off each name already placed, so a name sits nearer its own item than any other, or else the place that covers least. Tables whose centres lie within 20 cm of each other's are a row, and a row's names all go below it, else all above, else on whichever side covers least, so no name reads as the next row's. */
 export function cardNames(
   items: readonly Item[],
   v: View,
@@ -504,32 +506,72 @@ export function cardNames(
       h: 2 * b.y * v.s,
     };
   });
-  const placed: Box[] = [];
-  const names = new Map<string, Point>();
-  const order = items.map((_, i) => i).sort((a, b) => (items[b]?.y ?? 0) - (items[a]?.y ?? 0));
-  order.forEach((i) => {
+  const sides = (i: number): Box[][] => {
     const it = items[i];
     const body = bodies[i];
-    if (it == null || body == null) return;
-    const w = it.name.length * 12 * 0.56;
+    if (it == null || body == null) return [];
+    const w = wordsBox(0, 0, it.name, 12, false).w;
     const cx = body.x + body.w / 2;
     const cy = body.y + body.h / 2;
     const nudged = (y: number) =>
       [0, 6, -6, 12, -12].map((dx) => ({ x: cx - w / 2 + dx, y, w, h: CARD_LINE }));
-    const places: Box[] = [
-      ...nudged(body.y + body.h + 1),
-      ...nudged(body.y - 1 - CARD_LINE),
-      { x: body.x + body.w + 3, y: cy - CARD_LINE / 2, w, h: CARD_LINE },
-      { x: body.x - 3 - w, y: cy - CARD_LINE / 2, w, h: CARD_LINE },
+    return [
+      nudged(body.y + body.h + 1),
+      nudged(body.y - 1 - CARD_LINE),
+      [
+        { x: body.x + body.w + 3, y: cy - CARD_LINE / 2, w, h: CARD_LINE },
+        { x: body.x - 3 - w, y: cy - CARD_LINE / 2, w, h: CARD_LINE },
+      ],
     ];
-    const others = bodies.filter((_, j) => j !== i).map((b) => grow(b, 8));
-    const cost = (p: Box) =>
-      p.w * p.h -
-      overlapArea(p, inside) +
-      [...placed.map((b) => grow(b, 2)), ...others].reduce((n, b) => n + overlapArea(p, b), 0);
-    const best = places.reduce((a, b) => (cost(b) < cost(a) ? b : a));
-    placed.push(best);
-    names.set(it.id, { x: best.x + best.w / 2, y: best.y + best.h / 2 });
+  };
+  const cost = (i: number, p: Box, placed: readonly Box[]) =>
+    p.w * p.h -
+    overlapArea(p, inside) +
+    [
+      ...placed.map((b) => grow(b, 2)),
+      ...bodies.filter((_, j) => j !== i).map((b) => grow(b, 8)),
+    ].reduce((n, b) => n + overlapArea(p, b), 0);
+  const settle = (row: readonly number[], places: (i: number) => Box[], placed: readonly Box[]) =>
+    row.reduce<{ boxes: Box[]; cost: number }>(
+      (sum, i) => {
+        const now = [...placed, ...sum.boxes];
+        const best = places(i).reduce((a, b) => (cost(i, b, now) < cost(i, a, now) ? b : a));
+        return { boxes: [...sum.boxes, best], cost: sum.cost + cost(i, best, now) };
+      },
+      { boxes: [], cost: 0 },
+    );
+  const table = (it: Item | undefined) => it != null && it.kind !== 'row' && it.kind !== 'single';
+  const rows: number[][] = [];
+  items
+    .map((_, i) => i)
+    .sort((a, b) => (items[b]?.y ?? 0) - (items[a]?.y ?? 0))
+    .forEach((i) => {
+      const it = items[i];
+      const row = table(it)
+        ? rows.find((r) => {
+            const first = items[r[0] ?? -1];
+            return table(first) && Math.abs((first?.y ?? 0) - (it?.y ?? 0)) <= ROW_SLACK;
+          })
+        : undefined;
+      if (row == null) rows.push([i]);
+      else row.push(i);
+    });
+  const placed: Box[] = [];
+  const names = new Map<string, Point>();
+  rows.forEach((row) => {
+    const tries =
+      row.length === 1
+        ? [settle(row, (i) => sides(i).flat(), placed)]
+        : [0, 1].map((side) => settle(row, (i) => sides(i)[side] ?? [], placed));
+    const pick =
+      tries.find((t) => t.cost === 0) ?? tries.reduce((a, b) => (b.cost < a.cost ? b : a));
+    row.forEach((i, k) => {
+      const it = items[i];
+      const best = pick.boxes[k];
+      if (it == null || best == null) return;
+      placed.push(best);
+      names.set(it.id, { x: best.x + best.w / 2, y: best.y + best.h / 2 });
+    });
   });
   return items.flatMap((it) => {
     const at = names.get(it.id);
