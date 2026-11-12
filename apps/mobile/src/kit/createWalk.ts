@@ -324,3 +324,57 @@ export function nameInSight({
 
   return Math.max(0, Math.min(over, Math.max(top - margin, top + fieldEnd + below - viewport)));
 }
+
+export interface NameScroll {
+  /** The step's scroll view measured. */
+  viewport(height: number): void;
+  /** The name group measured, inside the scroll content. */
+  group(y: number, height: number): void;
+  /** The name's row measured, inside the group, with its field `field` tall. */
+  row(y: number, height: number, field: number): void;
+  /** The keys up: a scroll while they still rise stops short, so it goes again once they are. */
+  keysUp(): void;
+  /** The scroll content measured. */
+  contentSized(): void;
+}
+
+/**
+ * Keeps the name group in sight as the step, the group and the keys are measured: over 100 and at
+ * twice the text, its help or reason runs under the keys unless the step scrolls. Android clamps a
+ * scroll to the content height it last measured, and Fabric reports the content's new size, then
+ * the group's new place, both before that content is mounted, so either ask can stop a row short
+ * as the name's row appears; a new content size asks again on the next frame, once it is mounted,
+ * from the place the group has by then (sc-41673).
+ */
+export function nameScroll(
+  margin: number,
+  scrollTo: (y: number) => void,
+  nextFrame: (run: () => void) => void,
+): NameScroll {
+  const seen: NameInSight = { viewport: 0, top: 0, fieldEnd: 0, field: 0, bottom: 0, margin };
+  const ask = () => {
+    const y = nameInSight(seen);
+    if (y != null) scrollTo(y);
+  };
+
+  return {
+    viewport(height) {
+      seen.viewport = height;
+      ask();
+    },
+    group(y, height) {
+      seen.top = y;
+      seen.bottom = y + height;
+      ask();
+    },
+    row(y, height, field) {
+      seen.fieldEnd = y + height;
+      seen.field = field;
+      ask();
+    },
+    keysUp: ask,
+    contentSized() {
+      nextFrame(ask);
+    },
+  };
+}

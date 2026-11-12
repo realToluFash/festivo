@@ -13,6 +13,7 @@ import {
   freshWalk,
   nameInSight,
   nameRow,
+  nameScroll,
   rowLabel,
   turnEnded,
   turnTo,
@@ -112,6 +113,27 @@ describe('nameInSight', () => {
 
   it('waits for the step to be laid out', () => {
     expect(nameInSight({ ...group, viewport: 0 })).toBeNull();
+  });
+});
+
+describe('nameScroll', () => {
+  it('asks again once the content the first letter grew is mounted, from the group’s new place', () => {
+    const asked: number[] = [];
+    const frames: (() => void)[] = [];
+    const inSight = nameScroll(12, (y) => asked.push(y), (run) => frames.push(run));
+    inSight.viewport(100);
+    inSight.group(200, 120);
+    inSight.row(0, 52, 52);
+    const placed = { viewport: 100, fieldEnd: 52, field: 52, margin: 12 };
+
+    // Fabric's order: the content's new size, then the group a row lower, both before the mount.
+    inSight.contentSized();
+    inSight.group(228, 120);
+    const beforeMount = asked.length;
+    frames.splice(0).forEach((run) => run());
+
+    expect(asked.slice(beforeMount)).toEqual([nameInSight({ ...placed, top: 228, bottom: 348 })]);
+    expect(asked.at(-1)).not.toBe(nameInSight({ ...placed, top: 200, bottom: 320 }));
   });
 });
 
