@@ -835,23 +835,6 @@ function VenueEdit(edit: EditProps) {
           testID="event.edit.venue.address"
         />
       </EventField>
-      <EventField label={NOTE_WORDS.label} optional error={noteError} help={NOTE_WORDS.hint}>
-        <NoteBox
-          ref={noteField}
-          value={note}
-          onChangeText={(typed) => {
-            setNote(typed);
-            setForbidden(false);
-            if (!noteTooLong(typed)) setNoteError(null);
-          }}
-          autoFocus={start === 'venueNote' || refusedNote}
-          wrong={noteError != null}
-          accessibilityLabel={`${NOTE_WORDS.label} · ${W.optional}`}
-          accessibilityHint={NOTE_WORDS.hint}
-          testID="event.edit.venue.note"
-        />
-      </EventField>
-      {forbidden && <AlertLine text={NOTE_WORDS.forbidden} />}
       {down && <AlertLine text={W.venueLookupDown} />}
       {words != null && (
         <>
@@ -903,6 +886,23 @@ function VenueEdit(edit: EditProps) {
           }
         />
       )}
+      <EventField label={NOTE_WORDS.label} optional error={noteError} help={NOTE_WORDS.hint}>
+        <NoteBox
+          ref={noteField}
+          value={note}
+          onChangeText={(typed) => {
+            setNote(typed);
+            setForbidden(false);
+            if (!noteTooLong(typed)) setNoteError(null);
+          }}
+          autoFocus={start === 'venueNote' || refusedNote}
+          wrong={noteError != null}
+          accessibilityLabel={`${NOTE_WORDS.label} · ${W.optional}`}
+          accessibilityHint={NOTE_WORDS.hint}
+          testID="event.edit.venue.note"
+        />
+      </EventField>
+      {forbidden && <AlertLine text={NOTE_WORDS.forbidden} />}
     </EditShell>
   );
 }

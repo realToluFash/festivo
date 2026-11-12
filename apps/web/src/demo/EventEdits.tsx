@@ -474,6 +474,30 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
           </ul>
         )}
       </div>
+      {offer != null && (
+        <Quiet
+          action={
+            <div className="ev-pair">
+              <TextAction
+                label={W.takeZone(offer)}
+                onClick={() => {
+                  setZone(offer);
+                  setOffer(null);
+                  setZoneSaid(W.zoneSet(offer));
+                }}
+              />
+              <TextAction label={W.keepZone(zone)} onClick={() => setOffer(null)} />
+            </div>
+          }
+        >
+          {W.zoneOffer(offer)}
+        </Quiet>
+      )}
+      {zoneSaid != null && (
+        <p className="ev-said" role="status">
+          {zoneSaid}
+        </p>
+      )}
       <div className="desk-field">
         <label htmlFor={`${id}-note`} className="desk-label">
           {NOTE_WORDS.label}
@@ -508,30 +532,6 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
           {NOTE_WORDS.hint}
         </p>
       </div>
-      {offer != null && (
-        <Quiet
-          action={
-            <div className="ev-pair">
-              <TextAction
-                label={W.takeZone(offer)}
-                onClick={() => {
-                  setZone(offer);
-                  setOffer(null);
-                  setZoneSaid(W.zoneSet(offer));
-                }}
-              />
-              <TextAction label={W.keepZone(zone)} onClick={() => setOffer(null)} />
-            </div>
-          }
-        >
-          {W.zoneOffer(offer)}
-        </Quiet>
-      )}
-      {zoneSaid != null && (
-        <p className="ev-said" role="status">
-          {zoneSaid}
-        </p>
-      )}
       {forbidden && <Alert>{NOTE_WORDS.forbidden}</Alert>}
       <p className="visually-hidden" role="status">
         {said}

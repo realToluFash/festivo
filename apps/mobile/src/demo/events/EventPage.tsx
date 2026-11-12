@@ -614,10 +614,10 @@ function Details({
         {
           part: 'venue',
           title: shown.venue?.name ?? W.venueToBeConfirmed,
-          line: shown.venue == null ? W.venue : `${W.venue} · ${shown.venue.address}`,
+          line: shown.venue?.address ? `${W.venue} · ${shown.venue.address}` : W.venue,
           opens: shown.venue != null || shown.arrivalNote == null,
           after:
-            shown.venue == null && shown.arrivalNote == null ? undefined : (
+            shown.arrivalNote == null && !shown.venue?.address ? undefined : (
               <>
                 {shown.arrivalNote != null && <NoteInset note={shown.arrivalNote} />}
                 {shown.venue == null ? (
@@ -626,14 +626,14 @@ function Details({
                     onPress={() => onEdit('venue')}
                     testID="event.addVenue"
                   />
-                ) : (
+                ) : shown.venue.address ? (
                   <TextAction
                     label={W.openInMaps}
                     glyph="globe"
                     onPress={onMaps}
                     testID="event.maps"
                   />
-                )}
+                ) : null}
               </>
             ),
         },

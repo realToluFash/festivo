@@ -22,6 +22,10 @@
   field-sizing: content;
 }
 
+.desk .ev-note-box textarea[style*='height'] {
+  max-height: none;
+}
+
 .desk .ev-note-box textarea:focus-visible {
   box-shadow: none;
 }
