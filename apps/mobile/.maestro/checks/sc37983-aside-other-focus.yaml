@@ -1,4 +1,5 @@
 # sc-37983: In landscape from the start, Set a new password lands on Your organisation with Password changed stepped aside; the keyboard's Enter moves focus on to Country while it is aside, then the keys go down, and it does not come back. Pass METRO_URL and TOKEN_ORG, a reset token for an account with no organisation, invitation or offer.
+# On Android, Enter focuses Cerrar sesión and Password changed comes back until sc-41296, so the last assertion fails there.
 appId: host.exp.Exponent
 ---
 - runFlow: ../sign-out.yaml
