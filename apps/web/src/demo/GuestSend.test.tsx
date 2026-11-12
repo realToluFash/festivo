@@ -215,4 +215,22 @@ describe('Send on WhatsApp, the question (sc-26025)', () => {
 
     expect(within(column()).queryByRole('link', { name: /^Send on WhatsApp/u })).toBeNull();
   });
+
+  it(
+    'is not offered on a Finished event, where Copy invitation link is gone too',
+    SLOW,
+    async () => {
+      await guests('sendFinished');
+
+      expect(within(column()).queryByRole('link', { name: YUSUF })).toBeNull();
+      expect(within(column()).queryByRole('button', { name: /^Copy invitation link/u })).toBeNull();
+    },
+  );
+
+  it('brings an unanswered question back after a reload in the same tab', SLOW, async () => {
+    keepAsked(WEDDING, new Set(['yusuf']));
+    await guests('sendNone');
+
+    expect(question()).not.toBeNull();
+  });
 });

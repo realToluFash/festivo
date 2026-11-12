@@ -5,6 +5,7 @@ import type { SampleEvent } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
   type Guest,
+  type GuestNote,
   type Invite,
   LINK,
   ORGANISATION_LANGUAGE,
@@ -12,6 +13,9 @@ import {
   cardLine,
   companionName,
   dayOf,
+  handMarked,
+  invitationLine,
+  invitesOn,
   languageName,
   phoneShown,
   replyByOf,
@@ -46,6 +50,7 @@ export interface GuestActions {
   onReplace: () => void;
   onInvite: (invite: Invite | null) => void;
   onMark: (how: HowInvited) => void;
+  onUnmark: () => void;
   onAgree: () => void;
   onSend: () => void;
   onNotSent: () => void;
@@ -76,7 +81,7 @@ export function GuestView({
   event: SampleEvent;
   clock: Date;
   manages: boolean;
-  note: 'recorded' | 'notReplaced' | undefined;
+  note: GuestNote | undefined;
   invite: Invite | undefined;
   actions: GuestActions;
   /** sc-30193: while their data is erased nothing changes; once erased, what stays and the line saying so. */
@@ -94,6 +99,8 @@ export function GuestView({
   const replied =
     guest.reply === 'coming' || guest.reply === 'notSure' || guest.reply === 'notComing';
   const draft = event.status === 'draft';
+  const invites = invitesOn(event, clock);
+  const showsInvitation = erase == null && !draft && guest.reply !== 'walkIn';
   let line: string | null = draft ? null : cardLine(guest, replyBy);
   let step: Step = null;
 
@@ -105,12 +112,13 @@ export function GuestView({
     line = GW.reopened(guest.reopened.by ?? '', dayOf(guest.reopened.on));
     step = { label: GW.recordReply, does: actions.onRecord };
   } else if (guest.reply === 'noReply') step = { label: GW.recordReply, does: actions.onRecord };
-  else if (guest.reply === 'notYet' && event.status === 'live' && !asked)
+  else if (guest.reply === 'notYet' && invites && !asked)
     step = { label: GW.markAsInvited, does: () => actions.onInvite('mark') };
 
   return (
     <div className="gs-guest">
       {note === 'recorded' && <OkLine>{GW.recorded}</OkLine>}
+      {note === 'unmarked' && <OkLine>{GW.unmarked}</OkLine>}
       <Cover mesh={event.mesh} size="guest" label={heading}>
         <ul className="desk-glass-tags">
           <li className="desk-glass">
@@ -130,6 +138,11 @@ export function GuestView({
       </Cover>
       {erase === 'erasing' && <Turning words={THEIR_WORDS.erasing} />}
       {note === 'notReplaced' && <Refused>{GW.notReplaced}</Refused>}
+      {note === 'unmarkRefused' && guest.replied != null && (
+        <Refused>
+          {GW.unmarkRefused(guest.name, REPLY_WORDS[guest.reply], dayOf(guest.replied))}
+        </Refused>
+      )}
       {replied && (
         <section className="desk-block" aria-labelledby={`${heading}-reply`}>
           <Head level={3} title={<span id={`${heading}-reply`}>{GW.reply}</span>} />
@@ -160,17 +173,20 @@ export function GuestView({
         onEdit={actions.onEdit}
         onAgree={actions.onAgree}
       />
-      {acts && !draft && guest.reply !== 'walkIn' && (
+      {showsInvitation ? (
         <Invitation
           guest={guest}
-          event={event}
+          acts={acts}
+          invites={acts && invites}
           invite={invite}
           heading={heading}
           actions={actions}
-          manages={manages}
+          send={sendOffered(guest, event, clock, acts) ? whatsAppHref(guest, event, LINK) : null}
           asked={asked}
           askFailed={askFailed}
         />
+      ) : (
+        !manages && <p className="gs-inset gs-read-only">{GW.readOnlyInvited}</p>
       )}
       {manages && invited && event.id === WEDDING && erase !== 'erased' && (
         <Conversation guest={guest} heading={heading} />
@@ -295,121 +311,148 @@ function Details({
 
 function Invitation({
   guest,
-  event,
+  acts,
+  invites,
   invite,
   heading,
   actions,
-  manages,
+  send,
   asked,
   askFailed,
 }: {
   guest: Guest;
-  event: SampleEvent;
+  acts: boolean;
+  invites: boolean;
   invite: Invite | undefined;
   heading: string;
   actions: GuestActions;
-  manages: boolean;
+  send: string | null;
   asked: boolean;
   askFailed: boolean;
 }) {
   const notYet = guest.reply === 'notYet';
-  const send = sendOffered(guest, event, manages) ? whatsAppHref(guest, event, LINK) : null;
   const marking = invite === 'mark' || invite === 'markRefused' || invite === 'markNotSaved';
+  const line = invitationLine(guest);
 
   return (
     <section className="desk-block" aria-labelledby={`${heading}-invitation`}>
       <Head level={3} title={<span id={`${heading}-invitation`}>{GW.invitation}</span>} />
-      <ul className="desk-rows gs-rows">
-        {guest.replaced != null && (
-          <li className="desk-row">
-            <IconLead name="refresh" />
-            <RowWords
-              title={GW.linkReplaced(dayOf(guest.replaced))}
-              lines={[GW.linkReplacedLine]}
-            />
-          </li>
-        )}
-        <li>
-          <button
-            type="button"
-            className="desk-row gs-do"
-            data-focus="copy"
-            onClick={actions.onCopy}
-          >
-            <IconLead name="link" />
-            <RowWords title={GW.copyLink} lines={[GW.copyLinkLine]} />
-          </button>
-          {invite === 'copied' && (
-            <div className="gs-copied">
-              <p role="status">
-                <Glyph name="tick" size={16} weight={2.6} />
-                {GW.linkCopied}
-              </p>
-              {notYet && event.status === 'live' && (
-                <button
-                  type="button"
-                  className="desk-text is-green"
-                  onClick={() => actions.onInvite('mark')}
-                >
-                  {GW.markAsInvited}
-                </button>
-              )}
-            </div>
+      {(acts || line != null || guest.replaced != null) && (
+        <ul className="desk-rows gs-rows">
+          {line != null && (
+            <li className="desk-row">
+              <IconLead name="send" />
+              <div className="gs-row-words">
+                <RowWords title={line} lines={[]} />
+                {acts && handMarked(guest) && (
+                  <button
+                    type="button"
+                    className="desk-text gs-agree"
+                    data-focus="unmark"
+                    onClick={actions.onUnmark}
+                  >
+                    {GW.markNotInvited}
+                  </button>
+                )}
+              </div>
+            </li>
           )}
-          {invite === 'refused' && <CopyByHand />}
-        </li>
-        {send != null && (
-          <li>
-            <a
-              href={send}
-              className="desk-row gs-do"
-              aria-label={GW.sendOnWhatsAppTo(guest.name)}
-              data-focus="send"
-              onClick={(press) => {
-                press.preventDefault();
-                actions.onSend();
-              }}
-            >
-              <IconLead name="whatsApp" />
-              <RowWords title={GW.sendOnWhatsApp} lines={[GW.sendLine]} />
-            </a>
-            {asked && notYet && (
-              <SentQuestion
-                name={guest.name}
-                startFailed={askFailed}
-                onNotSent={actions.onNotSent}
-                onSent={actions.onSent}
+          {guest.replaced != null && (
+            <li className="desk-row">
+              <IconLead name="refresh" />
+              <RowWords
+                title={GW.linkReplaced(dayOf(guest.replaced))}
+                lines={[GW.linkReplacedLine]}
               />
-            )}
-          </li>
-        )}
-        <li>
-          <button
-            type="button"
-            className="desk-row gs-do"
-            data-focus="replace"
-            onClick={actions.onReplace}
-          >
-            <IconLead name="refresh" />
-            <RowWords title={GW.replaceLink} lines={[GW.replaceLinkLine]} />
-          </button>
-        </li>
-        {notYet && event.status === 'live' && !asked && (
-          <li>
-            <button
-              type="button"
-              className="desk-row gs-do"
-              onClick={() => actions.onInvite('mark')}
-            >
-              <IconLead name="tick" />
-              <RowWords title={GW.markAsInvited} lines={[GW.markLine]} />
-            </button>
-          </li>
-        )}
-      </ul>
-      {marking && notYet && (
+            </li>
+          )}
+          {invites && (
+            <li>
+              <button
+                type="button"
+                className="desk-row gs-do"
+                data-focus="copy"
+                onClick={actions.onCopy}
+              >
+                <IconLead name="link" />
+                <RowWords title={GW.copyLink} lines={[GW.copyLinkLine]} />
+              </button>
+              {invite === 'copied' && (
+                <div className="gs-copied">
+                  <p role="status">
+                    <Glyph name="tick" size={16} weight={2.6} />
+                    {GW.linkCopied}
+                  </p>
+                  {notYet && (
+                    <button
+                      type="button"
+                      className="desk-text is-green"
+                      onClick={() => actions.onInvite('mark')}
+                    >
+                      {GW.markAsInvited}
+                    </button>
+                  )}
+                </div>
+              )}
+              {invite === 'refused' && <CopyByHand />}
+            </li>
+          )}
+          {send != null && (
+            <li>
+              <a
+                href={send}
+                className="desk-row gs-do"
+                aria-label={GW.sendOnWhatsAppTo(guest.name)}
+                data-focus="send"
+                onClick={(press) => {
+                  press.preventDefault();
+                  actions.onSend();
+                }}
+              >
+                <IconLead name="whatsApp" />
+                <RowWords title={GW.sendOnWhatsApp} lines={[GW.sendLine]} />
+              </a>
+              {asked && notYet && (
+                <SentQuestion
+                  name={guest.name}
+                  startFailed={askFailed}
+                  onNotSent={actions.onNotSent}
+                  onSent={actions.onSent}
+                />
+              )}
+            </li>
+          )}
+          {acts && (
+            <li>
+              <button
+                type="button"
+                className="desk-row gs-do"
+                data-focus="replace"
+                onClick={actions.onReplace}
+              >
+                <IconLead name="refresh" />
+                <RowWords title={GW.replaceLink} lines={[GW.replaceLinkLine]} />
+              </button>
+            </li>
+          )}
+          {notYet && invites && !asked && (
+            <li>
+              <button
+                type="button"
+                className="desk-row gs-do"
+                onClick={() => actions.onInvite('mark')}
+              >
+                <IconLead name="tick" />
+                <RowWords title={GW.markAsInvited} lines={[GW.markLine]} />
+              </button>
+            </li>
+          )}
+        </ul>
+      )}
+      {acts && marking && notYet && (
         <MarkInset start={invite} onCancel={() => actions.onInvite(null)} onMark={actions.onMark} />
       )}
+      {!acts && <p className="gs-inset gs-read-only">{GW.readOnlyInvited}</p>}
     </section>
   );
 }

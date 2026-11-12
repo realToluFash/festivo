@@ -1,13 +1,14 @@
 import { callingCode } from '@soirely/domain';
 
 import type { SampleEvent } from './events.ts';
-import type { Guest } from './guests.ts';
+import { type Guest, invitesOn } from './guests.ts';
 
 /** sc-26025: the open questions live only in this tab, so a reload keeps them and closing the tab drops them. */
 const KEPT = 'soirely-demo:whatsapp-asked';
 
-export function sendOffered(guest: Guest, event: SampleEvent, manages: boolean): boolean {
-  return manages && guest.phone != null && event.status === 'live';
+/** Offered wherever Copy invitation link is: the same phase rule, for a host who acts here. */
+export function sendOffered(guest: Guest, event: SampleEvent, clock: Date, acts: boolean): boolean {
+  return acts && guest.phone != null && invitesOn(event, clock);
 }
 
 export function digitsOf(guest: Guest): string | null {

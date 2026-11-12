@@ -48,6 +48,7 @@ import {
   groupRows,
   isIn,
   markedInvited,
+  markedNotInvited,
   rowsOf,
 } from './GuestsModel.ts';
 import { GuestsFailed, GuestsLoading, GuestsRows } from './GuestsList.tsx';
@@ -121,6 +122,7 @@ export function GuestsScreen({
   const [replies, setReplies] = useState(start.replies);
   const [replaced, setReplaced] = useState(start.replaced);
   const [notReplaced, setNotReplaced] = useState(start.notReplaced);
+  const [unmarked, setUnmarked] = useState(start.unmarked);
   const [status, setStatus] = useState<string | null>(start.recorded ? W.recorded : null);
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const from = useRef<string>('card');
@@ -159,6 +161,7 @@ export function GuestsScreen({
     from.current = row;
     setStatus(null);
     setNotReplaced(false);
+    setUnmarked(null);
     setReplies(null);
     setReplaced(false);
     setGuestPhase('ok');
@@ -284,8 +287,8 @@ export function GuestsScreen({
         replies={replies}
         replaced={replaced}
         notReplaced={notReplaced}
+        unmarked={unmarked}
         status={status}
-        invites={event.status !== 'draft'}
         nameRef={nameRef}
         refFor={refFor}
         actions={{
@@ -297,6 +300,12 @@ export function GuestsScreen({
           },
           onReplace: () => show('replace', 'replace'),
           onMark: () => show('mark', 'mark'),
+          onUnmark: () => {
+            if (guest == null) return;
+            replace(markedNotInvited(guest));
+            setUnmarked('done');
+            setTimeout(() => moveScreenReaderFocus(nameRef.current), FOCUS_AFTER_MS);
+          },
           onAgree: () => show('whatsApp', 'whatsApp'),
           onLetChange: () => setReplies('reopened'),
           onConversation: () => onConversation(open ?? ''),
@@ -392,6 +401,7 @@ export function GuestsScreen({
             onClose={close}
             onMarked={(how) => {
               replace(markedInvited(guest, how, TODAY));
+              setUnmarked(null);
               close();
             }}
           />
