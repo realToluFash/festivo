@@ -61,6 +61,8 @@ import { Notice } from './parts.tsx';
 import { People } from './People.tsx';
 import { PEOPLE_PAGES } from './people.ts';
 import { Redeem } from './Redeem.tsx';
+import { DoorCheckIn, ShiftPage } from './DoorCheckIn.tsx';
+import { CHECK_IN_PAGES } from './doorCheckIn.ts';
 import { REDEEM_PAGES } from './redeem.ts';
 import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
@@ -234,6 +236,8 @@ export default function Demo() {
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
       <Route path="redeem" element={<Redeem />} />
+      <Route path="check-in" element={<DoorCheckIn />} />
+      <Route path="check-in/shift" element={<ShiftPage />} />
       <Route path="vendors" element={<VendorsMoved />} />
       <Route path="share/:scope" element={<ShareRecipient />} />
       <Route path="unsubscribe" element={<Unsubscribe />} />
@@ -407,6 +411,10 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={[...DOOR_PAGES, NO_ORG_PAGE]} />
         <h3>The door code’s redeem pages, signed out · phone, tablet and desk</h3>
         <BoardPages pages={REDEEM_PAGES} />
+        <h3>
+          Check-in in the browser, from a staff link or a join code (sc-28230) · 390, 320 and desk
+        </h3>
+        <BoardPages pages={CHECK_IN_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">
