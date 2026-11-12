@@ -358,6 +358,10 @@ describe('a 100-character name (sc-486)', () => {
     expect(MENU_STYLES).toMatch(/\.sw-menu \{[^}]*width: min\(500px, 100vw - 24px\);/u);
   });
 
+  it("draws the switcher's tiles without a browser button's border", () => {
+    expect(MENU_STYLES).toMatch(/\.sw-cell \{[^}]*border: 0;/u);
+  });
+
   it('breaks a long word in any paragraph, heading, list, definition, button, label or span, and in a notice', () => {
     expect(BREAKS_ANYWHERE.split(', ')).toEqual([
       'h1',
