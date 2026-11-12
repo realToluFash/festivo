@@ -1,5 +1,5 @@
 # Needs an organisation with events (any).
-# sc-41871: the menu's Type row with types chosen until its first is cut, for the one-space gap on Android.
+# sc-41871 (scrolls to each type, for a phone whose Type list runs below the menu): the menu's Type row with types chosen until its first is cut, for the one-space gap on Android.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events
@@ -32,24 +32,56 @@ appId: host.exp.Exponent
     id: 'events.filter.type.baby_shower'
 - tapOn:
     id: 'events.filter.type.graduation'
+- scrollUntilVisible:
+    element:
+      id: 'events.filter.back'
+    direction: UP
 - tapOn:
     id: 'events.filter.back'
 - waitForAnimationToEnd
 - takeScreenshot: types-four-menu
 - tapOn:
     id: 'events.filter.type'
+- scrollUntilVisible:
+    element:
+      id: 'events.filter.type.memorial'
+    direction: DOWN
 - tapOn:
     id: 'events.filter.type.memorial'
+- scrollUntilVisible:
+    element:
+      id: 'events.filter.type.religious'
+    direction: DOWN
 - tapOn:
     id: 'events.filter.type.religious'
+- scrollUntilVisible:
+    element:
+      id: 'events.filter.type.cultural'
+    direction: DOWN
 - tapOn:
     id: 'events.filter.type.cultural'
+- scrollUntilVisible:
+    element:
+      id: 'events.filter.type.party'
+    direction: DOWN
 - tapOn:
     id: 'events.filter.type.party'
+- scrollUntilVisible:
+    element:
+      id: 'events.filter.type.gala'
+    direction: DOWN
 - tapOn:
     id: 'events.filter.type.gala'
+- scrollUntilVisible:
+    element:
+      id: 'events.filter.type.conference'
+    direction: DOWN
 - tapOn:
     id: 'events.filter.type.conference'
+- scrollUntilVisible:
+    element:
+      id: 'events.filter.back'
+    direction: UP
 - tapOn:
     id: 'events.filter.back'
 - waitForAnimationToEnd
