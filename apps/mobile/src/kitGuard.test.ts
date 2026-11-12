@@ -722,6 +722,16 @@ describe('a button or link taking keyboard focus moves on from the landing toast
   });
 });
 
+describe('Your organisation mounts once it knows whether it lists invitations (sc-41296)', () => {
+  it('so Organisation name never takes focus on a step that then drops it', () => {
+    const text = readFileSync(join('app', 'complete-profile.tsx'), 'utf8');
+    const waits = text.indexOf('if (!loaded.read || !offersRead) return null;');
+
+    expect(waits).toBeGreaterThan(0);
+    expect(waits).toBeLessThan(text.indexOf('<StepScreen nav={nav} foot={foot}>'));
+  });
+});
+
 describe('a step lifts inside its own StepScreen (sc-29069)', () => {
   it('in every component that renders a StepScreen', () => {
     const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
