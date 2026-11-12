@@ -14,6 +14,7 @@ import {
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Text } from './Text.tsx';
+import { titleAtWidth, UNMEASURED_TITLE } from './titleWidth.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
@@ -59,18 +60,17 @@ export function TitleBesideTag({
   tag?: ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
-  const width = useRef<number | null>(null);
-  const [widths, setWidths] = useState(0);
+  const measured = useRef(UNMEASURED_TITLE);
+  const [key, setKey] = useState(UNMEASURED_TITLE.key);
   return (
     <View
       style={[styles.titleRow, style]}
       onLayout={(event) => {
-        const now = Math.round(event.nativeEvent.layout.width);
-        if (width.current != null && width.current !== now) setWidths((n) => n + 1);
-        width.current = now;
+        measured.current = titleAtWidth(measured.current, event.nativeEvent.layout.width);
+        setKey(measured.current.key);
       }}
     >
-      <Fragment key={widths}>{title}</Fragment>
+      <Fragment key={key}>{title}</Fragment>
       {tag}
     </View>
   );
