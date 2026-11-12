@@ -1,8 +1,8 @@
-# sc-42562: on a tablet in landscape, Set a new password lands on the step with Password changed showing; screenshots at landing, keys down, then after 10 seconds. Pass METRO_URL and TOKEN, a reset token for an account owing a step.
+# sc-42562: on a tablet at ${ORIENT}, Set a new password lands with Password changed showing; screenshots at landing, keys down, then after 10 seconds. Pass METRO_URL, ORIENT and TOKEN: a reset token for an account owing a step lands on the step; one for an account owing nothing lands on Home.
 appId: host.exp.Exponent
 ---
 - runFlow: ../batch/sign-out.yaml
-- setOrientation: LANDSCAPE_LEFT
+- setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/reset-password?token=${TOKEN}
 - extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
 - tapOn: { id: 'recovery.password' }
