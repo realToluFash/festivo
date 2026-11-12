@@ -200,8 +200,8 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     });
 
     it('moves TalkBack’s focus to its title once revealed, on Android only', () => {
-      expect(picker).toContain(
-        "if (Platform.OS === 'android' && onScreen && !unnamed) moveScreenReaderFocus(heading.current);",
+      expect(picker).toMatch(
+        /useFocusOnAnswer\(\s*Platform\.OS === 'android' && onScreen && !unnamed \? true : undefined,\s*heading,\s*0,?\s*\)/,
       );
       expect(picker).toMatch(/<Text\s+ref=\{heading\}[^>]*accessibilityRole="header"/);
     });
