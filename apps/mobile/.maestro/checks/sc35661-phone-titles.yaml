@@ -51,6 +51,7 @@ onFlowComplete:
                   env:
                     ID: 'account\..+\.remove'
 ---
+- evalScript: '${output.removed = false}'
 - evalScript: '${output.tail = String(Date.now()).slice(-6)}'
 - evalScript: "${output.row = '.*' + output.tail.split('').join(' ?') + '.*'}"
 - evalScript: "${output.title = '.*' + output.tail.split('').join(' ?')}"
