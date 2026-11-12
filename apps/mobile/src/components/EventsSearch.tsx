@@ -27,6 +27,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
+import { endCuts, endCutWidth } from '../layout/endCut.ts';
 import { tokens } from '../theme/tokens.ts';
 import { TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -171,9 +172,14 @@ function PicksLine({
   const snugs = Platform.OS === 'android' && rest > 0;
   const { fontScale } = useWindowDimensions();
   const drawn = `${room}|${fontScale}|${lead}|${more(rest)}`;
-  const [snug, setSnug] = useState<{ drawn: string; width: number } | null>(null);
-  // Android stops a cut line's "…" short of the box it was laid out in, so the box narrows to the line it drew (sc-41871).
-  const snugWidth = snugs && snug?.drawn === drawn ? snug.width : null;
+  const [box, setBox] = useState<{ drawn: string; width: number } | null>(null);
+  const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
+  const boxWidth = snugs && box?.drawn === drawn ? box.width : null;
+  const widthOf = (text: string) => widths[`${fontScale}|${text}`];
+  const overflows = boxWidth != null && (widthOf(lead) ?? 0) > boxWidth;
+  // Android stops a cut line's "…" short of the box it was laid out in, so the box narrows to the longest cut that fits it (sc-41871).
+  const cutWidth = boxWidth == null ? null : endCutWidth(lead, boxWidth, widthOf);
+  const snugWidth = cutWidth == null ? null : Math.ceil(cutWidth);
 
   return (
     <View style={styles.picks}>
@@ -183,13 +189,11 @@ function PicksLine({
         numberOfLines={1}
         accessible={false}
         style={[styles.shrink, { color: ink }, snugWidth != null && { width: snugWidth }]}
-        onTextLayout={
+        onLayout={
           snugs && snugWidth == null
             ? (event) => {
-                const line = event.nativeEvent.lines[0];
-                if (line == null) return;
-                const width = Math.ceil(line.width);
-                setSnug((now) =>
+                const width = event.nativeEvent.layout.width;
+                setBox((now) =>
                   now?.drawn === drawn && now.width === width ? now : { drawn, width },
                 );
               }
@@ -208,6 +212,17 @@ function PicksLine({
         >
           {` ${more(rest)}`}
         </Text>
+      )}
+      {snugs && (
+        <MeasuredWords
+          words={overflows ? [lead, ...endCuts(lead)] : [lead]}
+          size={size}
+          weight={weight}
+          onWidth={(text, width) => {
+            const key = `${fontScale}|${text}`;
+            setWidths((now) => (now[key] === width ? now : { ...now, [key]: width }));
+          }}
+        />
       )}
     </View>
   );
