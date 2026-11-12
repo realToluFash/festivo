@@ -627,9 +627,9 @@ function dayCount(event: SampleEvent): number {
 function mapsLink(event: SampleEvent): string | null {
   const venue = event.venue;
 
-  if (venue == null) return null;
+  if (venue?.address == null) return null;
 
-  const query = [venue.name, venue.address ?? venue.city].join(', ');
+  const query = [venue.name, venue.address].join(', ');
 
   return `https://www.openstreetmap.org/search?query=${encodeURIComponent(query)}`;
 }
@@ -759,7 +759,7 @@ function Details({
                     {W.openInMaps}
                   </a>
                 )}
-                {event.venue == null && !locked && (
+                {event.venue == null && (
                   <button type="button" className="desk-text" onClick={() => onOpen('venue')}>
                     {W.addVenue}
                   </button>

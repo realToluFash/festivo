@@ -68,6 +68,8 @@ import {
   ZONES,
 } from './EventsSample.ts';
 import { meshFor } from '../../kit/today.ts';
+import { TextField, type TextFieldProps } from '../../components/Field.tsx';
+import { weight } from '../../theme/fonts.ts';
 import { W, say, t } from './EventsWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
@@ -834,7 +836,7 @@ function VenueEdit(edit: EditProps) {
         />
       </EventField>
       <EventField label={NOTE_WORDS.label} optional error={noteError} help={NOTE_WORDS.hint}>
-        <BoxField
+        <NoteBox
           ref={noteField}
           value={note}
           onChangeText={(typed) => {
@@ -842,7 +844,6 @@ function VenueEdit(edit: EditProps) {
             setForbidden(false);
             if (!noteTooLong(typed)) setNoteError(null);
           }}
-          multiline
           autoFocus={start === 'venueNote' || refusedNote}
           wrong={noteError != null}
           accessibilityLabel={`${NOTE_WORDS.label} · ${W.optional}`}
@@ -1331,6 +1332,30 @@ function PositionSlider({
   );
 }
 
+/** The arrival note's box: BoxField's look, four lines tall at first, growing to ten and then scrolling inside. */
+function NoteBox({
+  wrong = false,
+  accessibilityLabel,
+  ...rest
+}: TextFieldProps & { accessibilityLabel: string }) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <TextField
+      {...rest}
+      multiline
+      scrollEnabled
+      accessibilityLabel={accessibilityLabel}
+      wrong={wrong}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      style={[styles.noteBox, (focused || wrong) && styles.noteBoxLit]}
+    />
+  );
+}
+
+const NOTE_LINE = 24;
+
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   searchRow: { flexDirection: 'row' },
@@ -1338,6 +1363,18 @@ const styles = StyleSheet.create({
   pressed: { opacity: tokens.opacityPressed },
   fieldHead: { flexDirection: 'row', flexWrap: 'wrap' },
   figures: { fontVariant: ['tabular-nums'] },
+  noteBox: {
+    minHeight: NOTE_LINE * 4 + tokens.spaceSm * 2,
+    maxHeight: NOTE_LINE * 10 + tokens.spaceSm * 2,
+    paddingLeft: 14.5,
+    paddingRight: 10.5,
+    borderWidth: 1.5,
+    borderRadius: tokens.radiusInset,
+    lineHeight: NOTE_LINE,
+    textAlignVertical: 'top',
+    ...weight('medium'),
+  },
+  noteBoxLit: { paddingLeft: tokens.spacePillEnd, paddingRight: tokens.spaceMd, borderWidth: 2 },
   acPill: {
     minHeight: 26,
     justifyContent: 'center',

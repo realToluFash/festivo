@@ -174,6 +174,29 @@ describe('Details › Venue on the event’s page', () => {
     expect(venue()).toBeDefined();
   });
 
+  it('offers Open in maps on OpenStreetMap, by the venue and its address', SLOW, async () => {
+    await page('live');
+
+    expect(screen.getByRole('link', { name: 'Open in maps' }).getAttribute('href')).toMatch(
+      /^https:\/\/www\.openstreetmap\.org\/search\?query=/u,
+    );
+  });
+
+  it('offers no Open in maps for a venue with no address', SLOW, async () => {
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/demo/events/evt-rafa-2'] })}
+      />,
+    );
+    await screen.findByRole(
+      'heading',
+      { level: 1, name: 'Rafael & Inês’s wedding' },
+      { timeout: 8000 },
+    );
+
+    expect(screen.queryByRole('link', { name: 'Open in maps' })).toBeNull();
+  });
+
   it('shows markup as those characters', SLOW, async () => {
     await page('noteMarkup');
 
@@ -198,6 +221,14 @@ describe('the guest’s page', () => {
 
     expect(screen.getByText(/^Use the side entrance/u)).toBeDefined();
     expect(screen.queryByRole('link', { name: 'Open in maps' })).toBeNull();
+  });
+
+  it('sends Open in maps to OpenStreetMap, as the host’s page does', async () => {
+    await guest('arrivalNote');
+
+    expect(screen.getByRole('link', { name: 'Open in maps' }).getAttribute('href')).toMatch(
+      /^https:\/\/www\.openstreetmap\.org\/search\?query=/u,
+    );
   });
 
   it.each(['arrivalNoteNone', 'arrivalNotePaused'])('%s shows no note', async (state) => {

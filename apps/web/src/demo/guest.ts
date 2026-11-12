@@ -786,7 +786,7 @@ export const LANGUAGES: readonly { code: Lang; name: string }[] = LOCALES.map((o
 }));
 
 export function mapsLink(address: string): string {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+  return `https://www.openstreetmap.org/search?query=${encodeURIComponent(address)}`;
 }
 
 /** The board's English, held in the demo until the product's screen puts it in the four catalogues (SHARED.md, Step three). */
