@@ -237,13 +237,6 @@
   margin-top: var(--spaceSm);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .ev-track,
-  .ev-knob {
-    transition: none;
-  }
-}
-
 .ev-needs-title {
   display: inline-flex;
   align-items: center;

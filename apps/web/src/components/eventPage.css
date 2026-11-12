@@ -408,6 +408,13 @@
   left: 22px;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .ev-track,
+  .ev-knob {
+    transition: none;
+  }
+}
+
 .ev-unknown {
   display: flex;
   flex-direction: column;
