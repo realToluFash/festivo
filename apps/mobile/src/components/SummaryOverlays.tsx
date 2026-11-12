@@ -118,6 +118,7 @@ function Window({
       onShow={onShow}
       onDismiss={gone}
     >
+      {Platform.OS === 'android' && <SilentWindowName />}
       {children}
     </Modal>
   );
@@ -209,7 +210,6 @@ export function FocusedScreen({
       waitsAway
       onShow={() => setOnScreen(true)}
     >
-      {Platform.OS === 'android' && <SilentWindowName />}
       {/* Whatever the keys take from the bottom stays the screen's white, or the dimmed page on an iPad. */}
       <KeyboardAvoidingView
         style={[styles.fill, phone ? styles.screen : styles.dimmed]}

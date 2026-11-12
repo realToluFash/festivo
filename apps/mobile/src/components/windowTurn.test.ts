@@ -100,10 +100,11 @@ describe('a focused screen whose title takes focus with each new step (sc-11032)
     expect(screen).toMatch(/animationType=\{reduced \? 'none' : slides \? 'slide' : 'fade'\}/);
   });
 
-  it('gives TalkBack an Android window name it speaks as nothing, above every other text in the window (#41817)', () => {
+  it('gives every Android window it opens, an ask and a menu too, a name TalkBack speaks as nothing, above every other text in it (#41817)', () => {
     expect(screen).toMatch(
-      /onShow=\{\(\) => setOnScreen\(true\)\}\s*>\s*\{Platform\.OS === 'android' && <SilentWindowName \/>\}/,
+      /onDismiss=\{gone\}\s*>\s*\{Platform\.OS === 'android' && <SilentWindowName \/>\}\s*\{children\}/,
     );
+    expect(screen.match(/<SilentWindowName \/>/g)).toHaveLength(1);
   });
 
   it('takes that silent name from the sheet, above every other text in the window', () => {
