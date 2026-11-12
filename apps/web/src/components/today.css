@@ -1104,7 +1104,8 @@
 }
 
 .today-event-dates,
-.today-event-date {
+.today-event-date,
+.today-event-piece {
   display: inline-block;
   max-width: 100%;
   overflow: hidden;
@@ -1116,10 +1117,6 @@
 .today-event-dates.is-range {
   display: inline;
   white-space: normal;
-}
-
-.today-event-piece {
-  white-space: nowrap;
 }
 
 .today-chips {
