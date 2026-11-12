@@ -1,5 +1,6 @@
 /* global http, json, output, EMAIL, PASSWORD, API_URL, SMOCKER_URL, MODE, FAIL -- what Maestro's runScript provides */
 // MODE=alt adds an alternative number (output.phoneId); MODE=primary sets the primary one.
+// It reads Smocker the way scripts/latest-sms-code.js does; a change to one belongs in both.
 // FAIL=1 picks a number Smocker's sc-36468 mock refuses to text (+23480399…), for a failing Text it to me instead.
 var base = { 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:15173' };
 var login = http.post(API_URL + '/api/auth/login', {
@@ -44,6 +45,32 @@ output.phoneId = (body.phone || body).id;
 
 function verifyPrimary(phone) {
   var digits = String(phone.number).replace(/\D/g, '').slice(-10);
+  var code = newestCode(digits);
+  if (code !== null && confirm(phone, code).ok) return;
+  var resent = http.post(API_URL + '/api/auth/verify/phone/resend', {
+    headers: auth,
+    body: JSON.stringify({ phone: phone.id }),
+  });
+  if (!resent.ok)
+    throw new Error('unverified primary ' + phone.id + ' refused a new code: ' + resent.body);
+  code = newestCode(digits);
+  if (code === null)
+    throw new Error(
+      'unverified primary ' + phone.id + ' has no code in Smocker (' + SMOCKER_URL + ')',
+    );
+  var verified = confirm(phone, code);
+  if (!verified.ok)
+    throw new Error('unverified primary ' + phone.id + ' refused its new code: ' + verified.body);
+}
+
+function confirm(phone, code) {
+  return http.post(API_URL + '/api/auth/verify/phone', {
+    headers: auth,
+    body: JSON.stringify({ code: code, phone: phone.id }),
+  });
+}
+
+function newestCode(digits) {
   var paths = [
     /^\/2010-04-01\/Accounts\/[^/]+\/Messages\.json$/,
     /^\/whatsapp\/v[\d.]+\/[^/]+\/messages$/,
@@ -66,14 +93,5 @@ function verifyPrimary(phone) {
     .filter(function (code) {
       return code !== null;
     });
-  if (codes.length === 0)
-    throw new Error(
-      'unverified primary ' + phone.id + ' has no code in Smocker (' + SMOCKER_URL + ')',
-    );
-  var verified = http.post(API_URL + '/api/auth/verify/phone', {
-    headers: auth,
-    body: JSON.stringify({ code: codes[codes.length - 1][0], phone: phone.id }),
-  });
-  if (!verified.ok)
-    throw new Error('unverified primary ' + phone.id + ' refused its code: ' + verified.body);
+  return codes.length === 0 ? null : codes[codes.length - 1][0];
 }
