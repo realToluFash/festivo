@@ -90,7 +90,7 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
 
     expect(ask.getAttribute('aria-describedby')).not.toBeNull();
     expect(document.getElementById(ask.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
-      '25 haven’t replied (21 guests and 4 of their companions).',
+      '25 haven’t replied (21 guests and 4 companions).',
     );
     expect(
       within(ask).getByText(
@@ -159,7 +159,7 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
         name: 'Close replies sooner, on Tue, Nov 3?',
       });
       expect(document.getElementById(ask.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
-        '25 haven’t replied (21 guests and 4 of their companions).',
+        '25 haven’t replied (21 guests and 4 companions).',
       );
       expect(within(ask).getByRole('button', { name: 'Keep editing' })).toBeDefined();
       fireEvent.click(within(ask).getByRole('button', { name: 'Close replies sooner' }));

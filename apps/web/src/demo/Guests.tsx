@@ -32,6 +32,7 @@ import {
   type ListRow,
   type Pane,
   type Reply,
+  type ViewInAddress,
   addGuest,
   agreeToWhatsApp,
   choiceWord,
@@ -41,14 +42,17 @@ import {
   guestsStart,
   guestsStateOf,
   markInvited,
+  markNotInvited,
   recordReply,
   reopen,
   replaceLink,
   replyByOf,
   saveGuest,
   todayOf,
+  viewBase,
   viewOf,
 } from './guests.ts';
+import { pageKey, useGuestsAddress } from './useGuestsAddress.ts';
 import { GuestBones, GuestsCardView, ListBones, MarkLead } from './GuestsParts.tsx';
 import {
   EMEKA,
@@ -62,7 +66,7 @@ import {
 import { zoneFor } from './dataControl.ts';
 import { SIDEBAR_EVENTS, type Viewer, viewerOf } from './settings.ts';
 import { TheirData } from './TheirData.tsx';
-import { GW, SHOW_ALL_WORDS, REPLY_WORDS, figure } from './guestsWords.ts';
+import { GW, REPLY_WORDS, figure } from './guestsWords.ts';
 import { LayersContext, focusWhenFree } from '../layers.ts';
 import {
   MESSAGES_AT,
@@ -113,7 +117,7 @@ export function Guests() {
   const [params] = useSearchParams();
   useSwitcherStart();
 
-  return <GuestsAt key={params.toString()} params={params} />;
+  return <GuestsAt key={pageKey(params)} params={params} />;
 }
 
 function GuestsAt({ params }: { params: URLSearchParams }) {
@@ -138,7 +142,15 @@ function GuestsAt({ params }: { params: URLSearchParams }) {
         <EventSidebar event={event} area="guests" now={start.clock} tell={tell} inert={covered} />
       )}
     >
-      {(tell) => <GuestsPage event={event} start={start} their={their} tell={tell} />}
+      {(tell) => (
+        <GuestsPage
+          event={event}
+          start={start}
+          base={viewBase(guestsStateOf(params.get('state')))}
+          their={their}
+          tell={tell}
+        />
+      )}
     </EventsShell>
   );
 }
@@ -180,11 +192,13 @@ type Leaving = { then: 'back' } | { then: 'open'; id: string } | { then: 'add' }
 function GuestsPage({
   event,
   start,
+  base,
   their,
   tell,
 }: {
   event: SampleEvent;
   start: GuestsStart;
+  base: ViewInAddress;
   their: { state: TheirState; viewer: Viewer };
   tell: Tell;
 }) {
@@ -199,8 +213,7 @@ function GuestsPage({
   const [, rerender] = useReducer((count: number) => count + 1, 0);
   const [list, setList] = useState<Guest[]>(start.list);
   const [status, setStatus] = useState(start.status);
-  const [choice, setChoice] = useState<Choice>(start.choice);
-  const [q, setQ] = useState(start.q);
+  const { choice, q, setChoice, setQ, clear } = useGuestsAddress(base);
   const [menu, setMenu] = useState(start.menu);
   const [expanded, setExpanded] = useState<ReadonlySet<Reply>>(new Set());
   const [pane, setPane] = useState<Pane>(start.pane);
@@ -321,6 +334,11 @@ function GuestsPage({
     onMark: (how) => {
       setList((was) => markInvited(was, id, how, today));
       invite(id, null);
+    },
+    onUnmark: () => {
+      setList((was) => markNotInvited(was, id));
+      setPane({ kind: 'guest', id, note: 'unmarked' });
+      focus('guest-heading');
     },
     onAgree: () => {
       setPane({ kind: 'whatsApp', id, start: {} });
@@ -453,13 +471,7 @@ function GuestsPage({
                       {looking && (
                         <div className="gs-shown">
                           <p role="status">{GW.shown(shown, counts.all)}</p>
-                          <TextAction
-                            label={GW.clear}
-                            onClick={() => {
-                              setChoice('all');
-                              setQ('');
-                            }}
-                          />
+                          <TextAction label={GW.clear} onClick={clear} />
                         </div>
                       )}
                       {shown === 0 ? (
@@ -469,8 +481,7 @@ function GuestsPage({
                           <TextAction
                             label={GW.clear}
                             onClick={() => {
-                              setChoice('all');
-                              setQ('');
+                              clear();
                               focus('find');
                             }}
                           />
@@ -700,7 +711,9 @@ function SearchRow({
   onMenu: (open: boolean) => void;
 }) {
   const field = useRef<HTMLInputElement>(null);
-  const items = CHOICES.filter((key) => key !== 'walkIn' || counts.walkIn > 0).map((key) => ({
+  const items = CHOICES.filter(
+    (key) => (key !== 'walkIn' && key !== 'notYet') || counts[key] > 0,
+  ).map((key) => ({
     key,
     word: choiceWord(key),
     count: counts[key],
@@ -787,7 +800,7 @@ function Group({
         <span className="gs-group-count"> · {figure(count)}</span>
       </h2>
       <Rows rows={rows} open={open} event={event} onOpen={onOpen} />
-      {collapsed && <TextAction label={GW.showAll(count, SHOW_ALL_WORDS[reply])} onClick={onAll} />}
+      {collapsed && <TextAction label={GW.showAll(count)} onClick={onAll} />}
     </section>
   );
 }

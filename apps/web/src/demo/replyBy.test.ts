@@ -27,11 +27,9 @@ describe('the date to reply by (sc-3780)', () => {
     expect(replyByOf('evt-wed-4')).toBe('2026-11-04');
     expect(replyByOf('evt-draft-4')).toBeNull();
     expect(haventRepliedOf('evt-wed-4')).toBe(
-      `${counts.havent} haven’t replied (${counts.haventGuests} guests and ${counts.haventCompanions} of their companions).`,
+      `${counts.havent} haven’t replied (${counts.haventGuests} guests and ${counts.haventCompanions} companions).`,
     );
-    expect(haventRepliedOf('evt-wed-4')).toBe(
-      '25 haven’t replied (21 guests and 4 of their companions).',
-    );
+    expect(haventRepliedOf('evt-wed-4')).toBe('25 haven’t replied (21 guests and 4 companions).');
   });
 
   it('closes Guests by the same instant (sc-3780, one rule)', () => {
