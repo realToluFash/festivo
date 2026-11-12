@@ -92,6 +92,16 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   Dishing on a chip read mid-service), **Tray ready** and **Ready to go** (Ready back in the
   order's words). Gone: **Asked for**, **Carried**, **Called up** and **Cleared**;
   **Unavailable** moves to sc-4015.
+- **12 Nov 2026. The floor lead's plan and list** (sc-4026, epic 35; settled in #42289 and
+  #42291). A table where a guest has arrived and no course is fired reads **Not fired yet**:
+  fire is the product's verb (sc-4009's **Fire {course}**, "Fired at {time}"), so the tile
+  agrees with the button that changes it, and it pairs with **Not here yet** without
+  clashing. It never takes a course name before it. Flagged guests show as **{n} flagged**
+  beside the flag icon, a plural key, short because the icon carries "guest". A screen reader
+  reads that count as **{n} flagged guests still to serve**, its own plural key, because the
+  icon is not read (WCAG 2.2 §1.1.1); the spoken text keeps the visible "{n} flagged"
+  (§2.5.3). Neither phrase is joined to the icon's name in code. Rejected: one key for both
+  with the icon's name added in code.
 - **9 Nov 2026. The app's Notification settings page** (sc-34901 for sc-30411,
   `mobile:notificationSettings.*`). Kept as dev1 wrote it. The header says how you hear ("You
   hear by push only"), the rows say it without a verb ("Push only", "Off"), and "Saving…" and
