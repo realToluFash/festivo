@@ -18,7 +18,8 @@ import {
 import { useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { EventCard, EventThumb } from './EventCard.tsx';
+import { EventCard } from './EventCard.tsx';
+import { EventThumb } from './EventThumb.tsx';
 import { EventsEmptyTab, EventsSummaryLine, EventsTabs, Said, SaidLine } from './EventsList.tsx';
 import { EventsResults } from './EventsSearch.tsx';
 import { Notice } from './Notice.tsx';

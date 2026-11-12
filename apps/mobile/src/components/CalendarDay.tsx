@@ -6,7 +6,7 @@ import { type Item, dayHeading, isYou, itemKey, rowTitle, rowWhen } from '../kit
 import { rowTag } from '../kit/eventsList.ts';
 import { tokens } from '../theme/tokens.ts';
 import { EventSquare, YouDot } from './CalendarWeeks.tsx';
-import { EventThumb } from './EventCard.tsx';
+import { EventThumb } from './EventThumb.tsx';
 import { eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
 import { Tag, TITLE_BESIDE_TAG, TitleBesideTag } from './SummaryRows.tsx';

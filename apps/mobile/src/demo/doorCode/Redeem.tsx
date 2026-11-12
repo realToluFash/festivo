@@ -21,7 +21,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { Choices } from '../Choices.tsx';
 import { COUNTRIES } from '../countries.ts';
 import { DemoScreen, NavBar } from '../DemoScreen.tsx';
-import { EventThumb } from '../../components/EventCard.tsx';
+import { EventThumb } from '../../components/EventThumb.tsx';
 import { HELD_MS } from '../people/PeopleSample.ts';
 import { SAMPLE } from '../samples.ts';
 import { SelectRow } from '../SelectRow.tsx';

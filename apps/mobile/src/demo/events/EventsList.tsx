@@ -22,7 +22,8 @@ import {
 } from './GuestCounts.ts';
 import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
-import { EventCard, EventThumb } from '../../components/EventCard.tsx';
+import { EventCard } from '../../components/EventCard.tsx';
+import { EventThumb } from '../../components/EventThumb.tsx';
 import {
   EventsEmptyTab,
   EventsFirstRun,

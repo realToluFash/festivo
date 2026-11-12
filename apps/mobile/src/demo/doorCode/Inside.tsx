@@ -26,7 +26,7 @@ import { Brand } from '../../components/Brand.tsx';
 import { Initials } from '../../components/Initials.tsx';
 import { Back } from '../../components/SettingsParts.tsx';
 import { SidebarColumn, SidebarPlace, SidebarPlaces } from '../../components/TodaySidebar.tsx';
-import { EventThumb } from '../../components/EventCard.tsx';
+import { EventThumb } from '../../components/EventThumb.tsx';
 import {
   CardSays,
   Line,

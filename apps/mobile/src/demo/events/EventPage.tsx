@@ -7,7 +7,8 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { LineIcon } from '../../components/AccountCard.tsx';
-import { EventCard, EventThumb } from '../../components/EventCard.tsx';
+import { EventCard } from '../../components/EventCard.tsx';
+import { EventThumb } from '../../components/EventThumb.tsx';
 import { AcPill, CHANGED, EditScreen } from './EventEdits.tsx';
 import {
   JustForYou,

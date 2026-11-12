@@ -8,7 +8,7 @@ import { useNameLines } from '../layout/useLayout.ts';
 import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { EventMesh, eventColour } from './EventMesh.tsx';
-import { EventThumb } from './EventCard.tsx';
+import { EventThumb } from './EventThumb.tsx';
 import { type Shown, cardTags } from '../kit/eventsList.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ShownEvent } from '../kit/today.ts';

@@ -30,7 +30,7 @@ import { AREA_GLYPH } from '../../components/areaGlyph.ts';
 import { demoShell } from '../demoShell.ts';
 import { LineIcon } from '../../components/AccountCard.tsx';
 import { Bell, Landscape } from '../settings/Frame.tsx';
-import { EventThumb } from '../../components/EventCard.tsx';
+import { EventThumb } from '../../components/EventThumb.tsx';
 import { type Shown, rowLine } from './EventsModel.ts';
 import { AREAS, type AreaKey, MORE_AREAS, PHONE_TABS } from './EventsSample.ts';
 import { AREA_WORDS, COMING, W } from './EventsWords.ts';
