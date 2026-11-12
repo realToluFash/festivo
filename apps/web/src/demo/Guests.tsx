@@ -41,6 +41,7 @@ import {
   guestsStart,
   guestsStateOf,
   markInvited,
+  markNotInvited,
   recordReply,
   reopen,
   replaceLink,
@@ -340,6 +341,11 @@ function GuestsPage({
     onMark: (how) => {
       setList((was) => markInvited(was, id, how, today));
       invite(id, null);
+    },
+    onUnmark: () => {
+      setList((was) => markNotInvited(was, id));
+      setPane({ kind: 'guest', id, note: 'unmarked' });
+      focus('guest-heading');
     },
     onAgree: () => {
       setPane({ kind: 'whatsApp', id, start: {} });
