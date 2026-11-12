@@ -272,21 +272,45 @@ export function TextAction({
   );
 }
 
+/** `wraps` shows a long label whole, on as many lines as it needs, its last letters and "…" kept on one line. */
 export function RedAction({
   label,
   line,
+  wraps = false,
   onClick,
 }: {
   label: string;
   line: string;
+  wraps?: boolean;
   onClick: () => void;
 }) {
+  const [head, tail] = wraps ? tiedEnd(label) : [label, ''];
+
   return (
     <div className="desk-red">
-      <TextAction label={label} red onClick={onClick} />
+      {wraps ? (
+        <button
+          type="button"
+          className="desk-text is-red is-wraps"
+          aria-label={label}
+          onClick={onClick}
+        >
+          {head}
+          <span className="desk-tied">{tail}</span>
+        </button>
+      ) : (
+        <TextAction label={label} red onClick={onClick} />
+      )}
       <p className="desk-note">{line}</p>
     </div>
   );
+}
+
+export function tiedEnd(label: string): [string, string] {
+  const marks = [...new Intl.Segmenter().segment(label)].map((one) => one.segment);
+  const tail = marks.slice(-3).join('');
+
+  return [label.slice(0, label.length - tail.length), tail];
 }
 
 export function Note({

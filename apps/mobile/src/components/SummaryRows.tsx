@@ -345,7 +345,7 @@ export function RowList({ items, gutter = 0 }: { items: readonly ListItem[]; gut
   );
 }
 
-/** B's action: Violet text, or red for anything that removes, with what it does on the line under it; `plain` is Ink, as Manage's Duplicate and Pause. */
+/** B's action: Violet text, or red for anything that removes, with what it does on the line under it; `plain` is Ink, as Manage's Duplicate and Pause; `wraps` shows a long label whole, on as many lines as it needs. */
 export function TextAction({
   label,
   onPress,
@@ -357,6 +357,7 @@ export function TextAction({
   glyph,
   renderMark,
   after,
+  wraps = false,
   consequence,
   accessibilityLabel,
   testID,
@@ -372,6 +373,7 @@ export function TextAction({
   glyph?: GlyphName;
   renderMark?: (ink: string) => ReactNode;
   after?: GlyphName;
+  wraps?: boolean;
   consequence?: string;
   accessibilityLabel?: string;
   testID?: string | undefined;
@@ -391,7 +393,7 @@ export function TextAction({
       ref={ref}
       onPress={off ? undefined : onPress}
       disabled={off}
-      style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.action, wraps && styles.wraps, pressed && styles.pressed]}
       accessibilityRole="button"
       accessibilityState={off ? { disabled: true } : undefined}
       accessibilityLabel={accessibilityLabel ?? label}
@@ -403,7 +405,12 @@ export function TextAction({
         size={15}
         weight="semibold"
         accessible={false}
-        style={[{ color: ink }, figures && styles.figures, onFill && styles.onFill]}
+        style={[
+          { color: ink },
+          figures && styles.figures,
+          onFill && styles.onFill,
+          wraps && styles.wrapsLabel,
+        ]}
       >
         {label}
       </Text>
@@ -487,4 +494,6 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     gap: 5,
   },
+  wraps: { maxWidth: '100%', paddingVertical: 11 },
+  wrapsLabel: { flexShrink: 1, lineHeight: 22 },
 });

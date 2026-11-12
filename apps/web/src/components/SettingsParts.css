@@ -632,6 +632,20 @@
   color: var(--colorBroken);
 }
 
+.desk-text.is-wraps {
+  display: block;
+  max-width: calc(100% + 2 * var(--spaceSm));
+  padding-block: 11px;
+  line-height: 1.45;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.desk-tied {
+  white-space: nowrap;
+}
+
 .desk-text:hover {
   text-decoration: underline;
 }
