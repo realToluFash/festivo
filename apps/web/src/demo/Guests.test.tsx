@@ -796,6 +796,125 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
   });
 });
 
+describe('Guests, needs recorded as facts (sc-3777)', () => {
+  it(
+    'shows allergies, diet and the note in Details, and No dietary notes. for none',
+    SLOW,
+    async () => {
+      await guests('needsDetails');
+
+      const needs = within(column()).getByRole('region', { name: 'Needs' });
+
+      expect(within(needs).getByText('Peanuts, Tree nuts')).toBeDefined();
+      expect(within(needs).getByText('Allergy')).toBeDefined();
+      expect(within(needs).getByText('No alcohol')).toBeDefined();
+      expect(
+        within(needs).getByText('Carries an adrenaline pen. His sister Adanna knows where it is.'),
+      ).toBeDefined();
+    },
+  );
+
+  it('says No dietary notes. when nothing is recorded', SLOW, async () => {
+    await guests('needsNone');
+
+    expect(within(column()).getByText('No dietary notes.')).toBeDefined();
+  });
+
+  it('shows a companion’s needs under their own name', SLOW, async () => {
+    await guests('needsCompanion');
+
+    const needs = within(column()).getByRole('region', { name: 'Needs' });
+
+    expect(within(needs).getByText('Vegetarian')).toBeDefined();
+    expect(within(needs).getByRole('heading', { level: 4, name: 'Rui Duarte' })).toBeDefined();
+    expect(within(needs).getByText('Sesame')).toBeDefined();
+  });
+
+  it('narrows the list with the Dietary notes chip, said on in words', SLOW, async () => {
+    await guests('inUse');
+
+    const chip = screen.getByRole('button', { name: 'Dietary notes' });
+
+    expect(chip.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(chip);
+
+    expect(chip.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('4 of 156 shown')).toBeDefined();
+    expect(
+      screen.getByRole('link', { name: /^Rui Duarte, .*Allergy, Dietary notes$/u }),
+    ).toBeDefined();
+  });
+
+  it('shows someone who can view no needs at all', SLOW, async () => {
+    await guests('needsViewer');
+
+    expect(screen.queryByRole('button', { name: 'Dietary notes' })).toBeNull();
+    expect(within(column()).queryByRole('region', { name: 'Needs' })).toBeNull();
+    expect(within(column()).queryByText(/Peanuts/u)).toBeNull();
+  });
+
+  it('opens Needs, refuses Other allergy with no words, then saves it', SLOW, async () => {
+    await guests('needsAdd');
+
+    expect(
+      screen.getByText('None recorded. Open it to note allergies, diet or access needs.'),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /^Needs/u }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Other allergy' }));
+    fireEvent.click(
+      within(column()).getAllByRole('button', { name: 'Add guest' }).at(-1) as HTMLElement,
+    );
+
+    const which = screen.getByRole('textbox', { name: 'Which allergy?' });
+
+    expect(screen.getByText('One field needs fixing. Nothing was saved.')).toBeDefined();
+    expect(screen.getByText('Say which')).toBeDefined();
+    expect(which.getAttribute('aria-invalid')).toBe('true');
+    await waitFor(() => expect(document.activeElement).toBe(which));
+
+    fireEvent.change(which, { target: { value: 'Kiwi' } });
+    fireEvent.click(
+      within(column()).getAllByRole('button', { name: 'Add guest' }).at(-1) as HTMLElement,
+    );
+
+    expect(await screen.findByText('Olu Bankole added.')).toBeDefined();
+  });
+
+  it.each([
+    ['needsOtherLong', 'Shorten it to 100 characters or fewer.'],
+    ['needsNoteLong', 'Shorten the note to 500 characters or fewer.'],
+    ['needsOtherBlank', 'Say which'],
+  ])('refuses %s beside the field', SLOW, async (state, line) => {
+    await guests(state);
+
+    expect(screen.getByText(line)).toBeDefined();
+    expect(screen.getByText('One field needs fixing. Nothing was saved.')).toBeDefined();
+  });
+
+  it('closes Needs to its chips, allergies first and the note by name only', SLOW, async () => {
+    await guests('needsEditClosed');
+
+    const needs = screen.getByRole('button', { name: /^Needs/u });
+
+    expect(needs.getAttribute('aria-expanded')).toBe('false');
+    expect(needs.textContent).toContain('4 noted');
+    expect(screen.getByText('Allergy · Peanuts')).toBeDefined();
+    expect(screen.getByText('Private note')).toBeDefined();
+    expect(screen.queryByText(/adrenaline/u)).toBeNull();
+  });
+
+  it('gives each companion their own needs on Edit', SLOW, async () => {
+    await guests('needsCompanionForm');
+
+    const theirs = screen.getByRole('button', { name: /^Their needs/u });
+
+    expect(theirs.getAttribute('aria-expanded')).toBe('true');
+    expect(
+      (screen.getAllByRole('checkbox', { name: 'Sesame' }).at(-1) as HTMLInputElement).checked,
+    ).toBe(true);
+  });
+});
+
 describe('Guests, WhatsApp on a guest’s page (sc-3950)', () => {
   const agreeButton = () =>
     within(column()).getByRole('button', { name: 'The guest agreed to WhatsApp' });

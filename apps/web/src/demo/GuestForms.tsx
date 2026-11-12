@@ -36,6 +36,8 @@ import {
   ReplyMark,
 } from './GuestsParts.tsx';
 import { GW, HOW_TOLD, type HowTold, REPLY_WORDS } from './guestsWords.ts';
+import { NEEDS_FIELDS, NO_NEEDS, NW } from './guestNeeds.ts';
+import { NeedsSection } from './GuestNeeds.tsx';
 import { useLater } from '../useLater.ts';
 
 const SAVE_MS = 900;
@@ -47,8 +49,55 @@ function firstFailing(lines: Lines): string | null {
   if (lines.greetAs != null) return 'greet-as';
   if (lines.email != null) return 'email';
   if (lines.number != null) return 'number';
+  for (const [who, found] of Object.entries(lines.needs ?? {})) {
+    const field = NEEDS_FIELDS.find((one) => found[one] != null);
+
+    if (field != null) return `${needsKey(who)}-${field}`;
+  }
 
   return null;
+}
+
+function needsKey(who: string): string {
+  return who === 'guest' ? 'needs' : `needs-${who}`;
+}
+
+function failingCount(lines: Lines): number {
+  const own = [lines.name, lines.greetAs, lines.email, lines.number].filter(Boolean).length;
+  const needs = Object.values(lines.needs ?? {}).reduce(
+    (sum, found) => sum + Object.keys(found).length,
+    0,
+  );
+
+  return own + needs;
+}
+
+/** sc-3777: which Needs sections are open, `guest` or `c{n}`; a refusal opens every one that failed. */
+function useNeedsOpen(start: readonly string[] | undefined) {
+  const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set(start));
+
+  return {
+    open,
+    toggle: (who: string, next: boolean) =>
+      setOpen((was) => {
+        const after = new Set(was);
+
+        if (next) after.add(who);
+        else after.delete(who);
+
+        return after;
+      }),
+    openFailing: (lines: Lines) =>
+      setOpen((was) => new Set([...was, ...Object.keys(lines.needs ?? {})])),
+    closeAll: () => setOpen(new Set()),
+  };
+}
+
+/** sc-3777's line above a form a Needs field refused. */
+function NeedsRefused({ lines }: { lines: Lines }) {
+  if (lines.needs == null) return null;
+
+  return <Refused>{NW.toFix(failingCount(lines))}</Refused>;
 }
 
 /** The guest's column becomes the form, Cancel and Save at its head (Events A's rule at a desk). */
@@ -102,6 +151,7 @@ function CompanionFields({
   onAsk,
   seated,
   focus,
+  needs,
 }: {
   host: string;
   values: Values;
@@ -111,6 +161,7 @@ function CompanionFields({
   onAsk?: (at: number, name: string, seat: Seated) => void;
   seated?: (id: string | null) => Seated | null;
   focus: (...keys: string[]) => void;
+  needs: { lines: Lines; open: ReadonlySet<string>; toggle: (who: string, open: boolean) => void };
 }) {
   const id = useId();
   const count = values.companions.length;
@@ -136,42 +187,59 @@ function CompanionFields({
               : placeholder(at);
 
         return (
-          <div key={at} className="gs-companion">
-            <div className="desk-box">
-              <input
-                type="text"
-                value={companion.name}
-                placeholder={placeholder(at)}
-                spellCheck={false}
-                data-focus={`companion-${at}`}
-                aria-label={GW.companionName(at + 1, count)}
-                onChange={(event) =>
-                  onChange({
-                    companions: values.companions.map((each, index) =>
-                      index === at ? { ...each, name: event.target.value } : each,
-                    ),
-                  })
-                }
-              />
-            </div>
-            <button
-              type="button"
-              className="desk-text gs-remove"
-              aria-label={GW.removeNamed(shown)}
-              onClick={() => {
-                const seat = seated?.(companion.id) ?? null;
+          <div key={at} className="gs-companion-block">
+            <div className="gs-companion">
+              <div className="desk-box">
+                <input
+                  type="text"
+                  value={companion.name}
+                  placeholder={placeholder(at)}
+                  spellCheck={false}
+                  data-focus={`companion-${at}`}
+                  aria-label={GW.companionName(at + 1, count)}
+                  onChange={(event) =>
+                    onChange({
+                      companions: values.companions.map((each, index) =>
+                        index === at ? { ...each, name: event.target.value } : each,
+                      ),
+                    })
+                  }
+                />
+              </div>
+              <button
+                type="button"
+                className="desk-text gs-remove"
+                aria-label={GW.removeNamed(shown)}
+                onClick={() => {
+                  const seat = seated?.(companion.id) ?? null;
 
-                if (seat != null && onAsk != null) {
-                  onAsk(at, shown, seat);
-                  return;
-                }
-                onChange(removeCompanion(values, at));
-                onSaid(GW.removed(shown));
-                focus(`companion-${at}`, `companion-${at - 1}`, 'add-companion');
-              }}
-            >
-              {GW.remove}
-            </button>
+                  if (seat != null && onAsk != null) {
+                    onAsk(at, shown, seat);
+                    return;
+                  }
+                  onChange(removeCompanion(values, at));
+                  onSaid(GW.removed(shown));
+                  focus(`companion-${at}`, `companion-${at - 1}`, 'add-companion');
+                }}
+              >
+                {GW.remove}
+              </button>
+            </div>
+            <NeedsSection
+              title={NW.theirNeeds}
+              needs={companion.needs ?? NO_NEEDS}
+              lines={needs.lines.needs?.[`c${at}`] ?? {}}
+              open={needs.open.has(`c${at}`)}
+              focusKey={`needs-c${at}`}
+              onOpen={(open) => needs.toggle(`c${at}`, open)}
+              onChange={(next) =>
+                onChange({
+                  companions: values.companions.map((each, index) =>
+                    index === at ? { ...each, needs: next } : each,
+                  ),
+                })
+              }
+            />
           </div>
         );
       })}
@@ -275,6 +343,7 @@ export function EditForm({
     },
   );
   const [busy, setBusy] = useState(false);
+  const opened = useNeedsOpen(start.needs);
   const lines = tried ? linesOf(values) : {};
   const dirty = JSON.stringify(values) !== JSON.stringify(base) || start.removed != null;
 
@@ -292,6 +361,7 @@ export function EditForm({
 
     if (first != null) {
       setTried(true);
+      opened.openFailing(found);
       focus(first);
       return;
     }
@@ -312,6 +382,7 @@ export function EditForm({
         <Verb label={GW.save} busy={busy} held={conflict} onClick={save} />
       </ColumnHead>
       {failed && <Refused>{GW.notSaved}</Refused>}
+      <NeedsRefused lines={lines} />
       {conflict && (
         <Amber title={GW.conflict} focusKey="conflict">
           <dl className="gs-differ">
@@ -400,6 +471,15 @@ export function EditForm({
           chose={guest.chose}
           onChange={(language) => change({ language })}
         />
+        <NeedsSection
+          title={NW.needs}
+          needs={values.needs}
+          lines={lines.needs?.guest ?? {}}
+          open={opened.open.has('guest')}
+          focusKey="needs"
+          onOpen={(open) => opened.toggle('guest', open)}
+          onChange={(needs) => change({ needs })}
+        />
         <CompanionFields
           host={values.name.trim() === '' ? guest.name : values.name.trim()}
           values={values}
@@ -409,6 +489,7 @@ export function EditForm({
           onAsk={(at, name, seat) => setRemoving({ at, name, seat })}
           seated={(id) => seatedOf(guest, id)}
           focus={focus}
+          needs={{ lines, open: opened.open, toggle: opened.toggle }}
         />
       </div>
       {removing != null && (
@@ -638,6 +719,7 @@ export function AddForm({
     start.added == null ? null : GW.justAdded(start.added),
   );
   const [companionSaid, setCompanionSaid] = useState<string | null>(null);
+  const opened = useNeedsOpen(start.needs);
   const lines = tried ? linesOf(values) : {};
 
   function change(next: Partial<Values>): void {
@@ -646,10 +728,12 @@ export function AddForm({
   }
 
   function add(kept = false): void {
-    const first = firstFailing(linesOf(values));
+    const found = linesOf(values);
+    const first = firstFailing(found);
 
     if (first != null) {
       setTried(true);
+      opened.openFailing(found);
       focus(first);
       return;
     }
@@ -665,6 +749,7 @@ export function AddForm({
     setDuplicate(false);
     setFailed(false);
     setCompanionSaid(null);
+    opened.closeAll();
     focus('name');
   }
 
@@ -675,6 +760,7 @@ export function AddForm({
       </ColumnHead>
       {said != null && <OkLine>{said}</OkLine>}
       {failed && <Refused>{GW.notAdded}</Refused>}
+      <NeedsRefused lines={lines} />
       <div className="desk-fields gs-fields">
         <GuestField
           label={GW.fullName}
@@ -701,6 +787,15 @@ export function AddForm({
           chose={null}
           onChange={(language) => change({ language })}
         />
+        <NeedsSection
+          title={NW.needs}
+          needs={values.needs}
+          lines={lines.needs?.guest ?? {}}
+          open={opened.open.has('guest')}
+          focusKey="needs"
+          onOpen={(open) => opened.toggle('guest', open)}
+          onChange={(needs) => change({ needs })}
+        />
         {duplicate && (
           <Amber title={GW.duplicate(values.name.trim())} focusKey="duplicate">
             <Pair>
@@ -722,6 +817,7 @@ export function AddForm({
           onChange={change}
           onSaid={setCompanionSaid}
           focus={focus}
+          needs={{ lines, open: opened.open, toggle: opened.toggle }}
         />
       </div>
       <Pill primary tall label={GW.addGuest} onClick={() => add()} />

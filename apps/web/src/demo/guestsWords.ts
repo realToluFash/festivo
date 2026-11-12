@@ -41,6 +41,8 @@ export const GW = {
   noMatchLine: 'Try a different name, or clear the filters.',
   showAll: (count: number, word: string) => `Show all ${figure(count)} ${word}`,
   pick: 'Pick a guest to see their details, or add one.',
+  allergy: 'Allergy',
+  dietaryNotes: 'Dietary notes',
   loading: 'Loading…',
   loadFailed: 'We could not load the guests.',
   loadFailedLine: 'Check your connection and try again.',
