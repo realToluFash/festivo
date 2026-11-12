@@ -3,7 +3,9 @@ import { Link, Navigate, useSearchParams } from 'react-router';
 
 import { Brand } from '../components/Brand.tsx';
 import { Glyph } from '../components/Glyph.tsx';
+import { StaleBand } from '../components/OfflineBand.tsx';
 import { Toast } from '../components/Toast.tsx';
+import { useDialogKeys } from '../dialogFocus.ts';
 import { DOOR_EVENT } from './doorCode.ts';
 import {
   type CheckInStart,
@@ -13,7 +15,7 @@ import {
   CW,
   JOB,
   NOW,
-  OFFLINE_AS_OF,
+  OFFLINE_SINCE,
   OPENS_AT,
   OTHER,
   SHIFT_NAME,
@@ -24,6 +26,7 @@ import {
   checkInStateOf,
   countOf,
   holderOf,
+  jobOf,
   meOf,
   nameProblem,
   sameName,
@@ -105,6 +108,7 @@ function CheckInPage({ start, holder }: { start: CheckInStart; holder: Holder })
   const [typed, setTyped] = useState(start.typed);
   const [failed, setFailed] = useState(start.failed);
   const [offline, setOffline] = useState(start.offline);
+  const [unanswered, setUnanswered] = useState(0);
   const [fresh, setFresh] = useState<readonly string[]>(start.fresh);
   const [said, setSaid] = useState(start.said);
   const [toast, setToast] = useState(start.toast);
@@ -150,11 +154,13 @@ function CheckInPage({ start, holder }: { start: CheckInStart; holder: Holder })
     setToast(CW.undone);
   }
 
-  function added(name: string): void {
+  function added(name: string): boolean {
+    if (offline) return false;
     setPeople(addWalkIn(people, name, NOW, me));
     setTyped(name);
     setWalkIn(null);
     setSaid(CW.added(name, NOW));
+    return true;
   }
 
   if (start.loading)
@@ -178,17 +184,19 @@ function CheckInPage({ start, holder }: { start: CheckInStart; holder: Holder })
     <Page
       back={backOf(holder)}
       band={
-        offline && (
-          <div className="ci-band">
-            <Glyph name="cloudOff" size={18} weight={2.2} />
-            <span>{CW.offline(OFFLINE_AS_OF)}</span>
-          </div>
-        )
+        <StaleBand
+          stale={
+            offline
+              ? { at: OFFLINE_SINCE, retry: () => setUnanswered((was) => was + 1), unanswered }
+              : null
+          }
+          className="offline-band ci-band"
+        />
       }
     >
       <div className="ci-head">
         <h1 className="ci-title">{CW.title}</h1>
-        <p className="ci-event">{`${DOOR_EVENT} · ${JOB}`}</p>
+        <p className="ci-event">{`${DOOR_EVENT} · ${jobOf(holder)}`}</p>
         {people.length > 0 && <p className="ci-count">{CW.count(count.arrived, count.expected)}</p>}
       </div>
       {start.phase !== 'open' && (
@@ -410,28 +418,25 @@ function WalkIn({
   people: readonly DoorPerson[];
   onClose: () => void;
   onMark: (one: DoorPerson) => void;
-  onAdd: (name: string) => void;
+  onAdd: (name: string) => boolean;
 }) {
   const id = useId();
+  const sheet = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(start.name);
   const [checked, setChecked] = useState(start.checked);
   const [same, setSame] = useState(start.same);
+  const [refused, setRefused] = useState(false);
   const problem = checked ? nameProblem(name) : null;
   const listed = (typed: string) =>
     people.find((one) => one.name != null && sameName(one.name, typed));
 
-  useEffect(() => {
-    field.current?.focus();
+  useDialogKeys(sheet, onClose, false);
+  useEffect(() => field.current?.focus(), []);
 
-    const keys = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose();
-    };
-
-    document.addEventListener('keydown', keys);
-
-    return () => document.removeEventListener('keydown', keys);
-  }, [onClose]);
+  function add(typed: string): void {
+    setRefused(!onAdd(typed));
+  }
 
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -443,7 +448,7 @@ function WalkIn({
     const found = listed(name);
 
     if (found != null && same == null) setSame(found.name);
-    else onAdd(name.trim());
+    else add(name.trim());
   }
 
   const found = same == null ? null : listed(same);
@@ -452,7 +457,13 @@ function WalkIn({
   return (
     <>
       <div className="ci-scrim" aria-hidden="true" onClick={onClose} />
-      <div className="ci-sheet" role="dialog" aria-modal="true" aria-labelledby={`${id}-title`}>
+      <div
+        ref={sheet}
+        className="ci-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`${id}-title`}
+      >
         <span className="ci-grabber" aria-hidden="true" />
         <h2 id={`${id}-title`}>{CW.addWalkIn}</h2>
         <form className="ci-form" noValidate onSubmit={submit}>
@@ -462,7 +473,7 @@ function WalkIn({
               <button type="button" className="ci-primary" onClick={() => onMark(found)}>
                 {CW.markThem}
               </button>
-              <button type="button" className="ci-secondary" onClick={() => onAdd(name.trim())}>
+              <button type="button" className="ci-secondary" onClick={() => add(name.trim())}>
                 {CW.addNew}
               </button>
             </div>
@@ -482,6 +493,7 @@ function WalkIn({
               onChange={(event) => {
                 setName(event.target.value);
                 setSame(null);
+                setRefused(false);
               }}
             />
           </div>
@@ -494,6 +506,12 @@ function WalkIn({
           <p id={`${id}-hint`} className="ci-hint">
             {CW.walkHint}
           </p>
+          {refused && (
+            <p className="ci-failed" role="alert">
+              <Glyph name="alert" size={16} weight={2.2} />
+              {CW.notRecorded}
+            </p>
+          )}
           {found == null && (
             <button type="submit" className="ci-primary">
               {CW.addMark}

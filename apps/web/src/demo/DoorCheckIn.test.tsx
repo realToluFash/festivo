@@ -42,6 +42,7 @@ describe('door staff check guests in from a browser (sc-28230)', () => {
     expect(screen.getByRole('link', { name: 'Joana & Rui’s wedding' }).getAttribute('href')).toBe(
       '/demo/redeem?state=from-check-in',
     );
+    expect(screen.getByText('Joana & Rui’s wedding · Bar and drinks')).toBeDefined();
   });
 
   it('marks an arrival, says so as a status, and undoes it', SLOW, async () => {
@@ -100,6 +101,44 @@ describe('door staff check guests in from a browser (sc-28230)', () => {
     expect(screen.queryByText('Offline · as of 19:45')).toBeNull();
     expect(screen.getByText('Arrived at 19:46 · Samuel Okafor')).toBeDefined();
   });
+
+  it('adds no walk-in while offline, and the sheet says so', SLOW, async () => {
+    await open('/demo/check-in?state=offline');
+
+    fireEvent.change(screen.getByLabelText('Search by name'), { target: { value: 'Kunle' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add walk-in' }));
+    const sheet = screen.getByRole('dialog', { name: 'Add walk-in' });
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Add and mark arrived' }));
+
+    expect(within(sheet).getByRole('alert').textContent).toBe('Not recorded. Try again.');
+    expect(screen.queryByText('Walk-in')).toBeNull();
+    expect(status()).not.toContain('added as a walk-in');
+  });
+
+  it(
+    'keeps Tab inside the walk-in sheet, and a live arrival leaves focus where it is',
+    SLOW,
+    async () => {
+      await open('/demo/check-in?state=live');
+
+      fireEvent.change(screen.getByLabelText('Search by name'), { target: { value: 'Kunle' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Add walk-in' }));
+      const sheet = screen.getByRole('dialog', { name: 'Add walk-in' });
+      const cancel = within(sheet).getByRole('button', { name: 'Cancel' });
+
+      cancel.focus();
+      fireEvent.keyDown(document, { key: 'Tab' });
+      expect(document.activeElement).toBe(within(sheet).getByLabelText('Full name'));
+
+      cancel.focus();
+      const before = screen.getByText(/^\d+ of \d+ arrived$/).textContent;
+      await waitFor(
+        () => expect(screen.getByText(/^\d+ of \d+ arrived$/).textContent).not.toBe(before),
+        WAIT,
+      );
+      expect(document.activeElement).toBe(cancel);
+    },
+  );
 
   it(
     'lands another device’s arrival without announcing it or touching the search',

@@ -1,4 +1,4 @@
-import { DOOR_EVENT } from './doorCode.ts';
+import { BAR, DOOR_EVENT } from './doorCode.ts';
 import type { Reply } from './guests.ts';
 import { HUGO } from './redeem.ts';
 import type { DemoLink } from './settings.ts';
@@ -60,13 +60,24 @@ export function holderOf(value: string | null): Holder {
 
 export const NAME_MOST = 200;
 export const NOW = '19:42';
-export const OFFLINE_AS_OF = '19:45';
+/** Today at 19:45, so the shared band reads "Offline · as of 19:45". */
+export const OFFLINE_SINCE = (() => {
+  const at = new Date();
+  at.setHours(19, 45, 0, 0);
+
+  return at;
+})();
 export const OPENS_AT = '16:00';
 export const SHIFT_NAME = 'Bisi Adeyemi';
 export const OTHER = 'Samuel Okafor';
 export const JOB = 'Door';
 export const LONG_NAME =
   'Kunle Adeyemi with his driver and the two security men from the Lagos office, who were not on the list, but the host said on the phone at six to let all of them in at the side gate by the car park on Ozumba Mbadiwe Avenue';
+
+/** The job beside the event's name: the shift's, or the label of the code a join-code holder came in on, as "You're in for…" shows it. */
+export function jobOf(holder: Holder): string {
+  return holder === 'code' ? (BAR.label ?? JOB) : JOB;
+}
 
 export function meOf(holder: Holder): string {
   return holder === 'code' ? HUGO.name : SHIFT_NAME;
@@ -116,7 +127,6 @@ export const CW = {
   emptyTitle: 'Nobody is on the list yet',
   emptyLine: 'Anyone who arrives can be added as a walk-in.',
   loading: 'Loading the list',
-  offline: (time: string) => `Offline · as of ${time}`,
   backShift: 'Your shift',
   gone: {
     title: 'This link does not work.',

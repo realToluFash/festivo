@@ -46,19 +46,20 @@
   margin-left: auto;
 }
 
-.ci-band {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceSm);
-  padding: var(--spaceMd) var(--spaceXl);
-  background: var(--colorAttentionTint);
-  color: var(--colorInk);
-  font-weight: 600;
+/* The web's own offline band, under the bar rather than bled into a shell, with check-in's 17 px. */
+.ci-band.offline-band {
+  margin: 0;
+  padding: var(--spaceXxs) var(--spaceXl);
 }
 
-.ci-band svg {
-  flex: none;
-  color: var(--colorAttention);
+.ci-band .offline-band-words {
+  padding-block: calc((var(--sizeHit) - 24px) / 2);
+  font-size: 17px;
+  line-height: 24px;
+}
+
+.ci-band .offline-band-retry {
+  font-size: 17px;
 }
 
 .ci-column {
@@ -220,7 +221,6 @@
   display: flex;
   align-items: center;
   gap: var(--spaceXs);
-  font-size: 15px;
 }
 
 .ci-reply {
