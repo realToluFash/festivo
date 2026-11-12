@@ -378,6 +378,7 @@
 }
 
 .ev-none h2 {
+  margin: 0;
   font: 700 18px/1.25 var(--fontFamily);
   letter-spacing: -0.01em;
 }

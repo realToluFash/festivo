@@ -480,7 +480,8 @@ const styles = StyleSheet.create({
     columnGap: 8,
     rowGap: 4,
   },
-  title: { flexShrink: 1, lineHeight: 16 * 1.3 },
+  // Shrunk beside its tag, Android wraps the title after measuring it on one line and drops the last word (sc-30302).
+  title: { flexShrink: 0, maxWidth: '100%', lineHeight: 16 * 1.3 },
   line: { lineHeight: 14 * 1.4 },
   consequence: { lineHeight: 14 * 1.45 },
   count: { fontVariant: ['tabular-nums'] },
