@@ -20,6 +20,8 @@ import { Glyph } from '../components/Glyph.tsx';
 import { AddForm, EditForm, RecordForm } from './GuestForms.tsx';
 import { type GuestActions, GuestView } from './GuestColumn.tsx';
 import { AgreeForm } from './GuestWhatsApp.tsx';
+import { ExportDialog } from './GuestExport.tsx';
+import { XW, exportDay, narrowing } from './guestExport.ts';
 import {
   CHOICES,
   LINK,
@@ -203,6 +205,7 @@ function GuestsPage({
   const [expanded, setExpanded] = useState<ReadonlySet<Reply>>(new Set());
   const [pane, setPane] = useState<Pane>(start.pane);
   const [asking, setAsking] = useState(start.asking);
+  const [exporting, setExporting] = useState(start.exporting);
   const [dirty, setDirty] = useState(false);
   const [leaving, setLeaving] = useState<Leaving>(
     start.pane.kind === 'edit' && start.pane.start.discard === true ? { then: 'back' } : null,
@@ -367,6 +370,7 @@ function GuestsPage({
   });
 
   const plus = manages && status === 'ready' && list.length > 0;
+  const exports = (manages || start.role === 'member') && status === 'ready' && list.length > 0;
   const columns = list.length > 0 || pane.kind === 'add';
   const stepWord =
     card.step === 'add'
@@ -404,6 +408,16 @@ function GuestsPage({
           <h1 className="gs-title" tabIndex={-1} data-focus="title">
             {GW.title}
           </h1>
+          {exports && (
+            <button
+              type="button"
+              className="gs-pill is-secondary"
+              data-focus="export"
+              onClick={() => setExporting({})}
+            >
+              {XW.export}
+            </button>
+          )}
           {plus && (
             <button type="button" className="ev-new" data-focus="add" onClick={() => startAdd()}>
               <Glyph name="plus" size={18} weight={2.4} />
@@ -613,6 +627,26 @@ function GuestsPage({
           onGo={() => {
             setList((was) => replaceLink(was, paneGuest.id, today));
             setAsking(null);
+          }}
+        />
+      )}
+      {exporting != null && (
+        <ExportDialog
+          start={exporting}
+          event={event.name}
+          day={exportDay(event.id, start.clock)}
+          inView={shown}
+          everyone={counts.all}
+          narrowing={narrowing(choice, q)}
+          needs={manages}
+          onClose={() => {
+            setExporting(null);
+            focus('export');
+          }}
+          onReady={(file) => {
+            setExporting(null);
+            tell(XW.ready(file));
+            focus('export');
           }}
         />
       )}
