@@ -11,7 +11,7 @@ export function Forbidden() {
 
   if (desk.bell != null)
     return (
-      <div className="desk-page">
+      <div className="desk desk-page">
         <div className="desk-column" role="alert">
           <TitleRow title={t('forbidden.title')} />
           <p className="desk-line">{t('forbidden.body')}</p>
