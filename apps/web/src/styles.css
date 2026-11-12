@@ -821,10 +821,6 @@ span {
     border-bottom: var(--borderHeader);
   }
 
-  .shell.is-bandless {
-    grid-template-rows: auto 1fr;
-  }
-
   .public-header {
     padding: var(--spaceXl);
   }

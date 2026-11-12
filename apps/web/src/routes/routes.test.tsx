@@ -12,6 +12,7 @@ import { __setSessionState, type Session } from '../session.ts';
 import { routes } from './index.tsx';
 import { membership } from '../test-memberships.ts';
 import { STYLES, cssRule } from '../test-styles.ts';
+import { atStackedWidth } from '../test-widths.ts';
 
 const MEMBERSHIP = membership({ id: 'org_1', name: 'Okonkwo Events' });
 
@@ -477,6 +478,19 @@ describe('the application tree', () => {
         const row = bell.closest('header.desk-top');
         expect(row?.querySelector('h1')).toBeTruthy();
         expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
+      },
+    );
+
+    it.each(['/app/events', '/app/calendar', '/app/settings'])(
+      'stays above %s, with the bell, between a phone and a desk (sc-39471)',
+      async (place) => {
+        atStackedWidth();
+        at(place);
+
+        expect(crumb()).toMatch(/^Okonkwo Events/u);
+        expect(document.querySelector('.shell-content.is-card')).toBeNull();
+        const bell = await screen.findByRole('button', { name: /^Notifications/ });
+        expect(bell.closest('.shell-band')).toBeTruthy();
       },
     );
 

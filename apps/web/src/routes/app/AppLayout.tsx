@@ -40,7 +40,7 @@ import { NoOrganisation } from './NoOrganisation.tsx';
 import { heldRegistration } from '../../pendingRegistration.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
-import { PHONE_WIDTH, usePhoneWidth } from '../../phoneWidth.ts';
+import { PHONE_WIDTH, useDeskWidth } from '../../phoneWidth.ts';
 import { DeskTopContext, isBandless } from '../../deskTop.ts';
 import { EventNav, useInsideEvent, useShownEventName } from './events/EventNav.tsx';
 
@@ -127,7 +127,7 @@ function Shell() {
   const offer = useDomainOffer();
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
   const switchTo = switchOf(location.state);
-  const bandless = !usePhoneWidth() && isBandless(pathname);
+  const bandless = useDeskWidth() && isBandless(pathname);
 
   // Before the first paint, so the first signed-in screen is already in the account's language.
   useLayoutEffect(() => {
