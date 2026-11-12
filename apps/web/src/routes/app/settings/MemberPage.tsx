@@ -358,6 +358,7 @@ export function MemberPage({
       {canRemove && (
         <RedAction
           label={t('membersScreen.removeButtonOpen', { organisation: organisation.name })}
+          wraps
           line={
             byHand
               ? t('membersScreen.suspendedRemoveBody', named)

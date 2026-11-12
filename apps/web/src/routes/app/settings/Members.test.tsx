@@ -577,6 +577,24 @@ describe('a person at a desk (sc-34200)', () => {
     expect(sent.some((one) => one.line.endsWith('/restore'))).toBe(true);
   });
 
+  it('wraps Remove’s whole label, its last letters held with the “…”, and leaves Suspend on one line', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)),
+      'GET /api/orgs/org_1/roles': () => json(ROLES),
+    });
+    open();
+
+    await openPerson('Bisi Adeyemi');
+    const remove = page().getByRole('button', { name: 'Remove from Ìrè Events…' });
+
+    expect(remove.classList.contains('is-wraps')).toBe(true);
+    expect(remove.querySelector('.desk-tied')?.textContent).toBe('ts…');
+    expect(page().getByRole('button', { name: 'Suspend…' }).classList.contains('is-wraps')).toBe(
+      false,
+    );
+  });
+
   it('removes only once it is confirmed, then says so on the list’s card, which takes the focus', async () => {
     signedIn();
     let list: unknown = listWith(ACTIVE_BISI);
