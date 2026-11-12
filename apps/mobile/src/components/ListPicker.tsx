@@ -1,7 +1,6 @@
 import { type RefObject, useEffect, useId, useRef, useState } from 'react';
 import {
   Animated,
-  BackHandler,
   Easing,
   FlatList,
   Modal,
@@ -33,6 +32,7 @@ import { Screen, useFocusOnAnswer } from './Screen.tsx';
 import { SilentWindowName, WINDOW_ARRIVES_MS, useUnnamedWindow } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { UnseenName } from './UnseenName.tsx';
+import { useSystemBack } from './useSystemBack.ts';
 
 const CONTROL_TEXT_SIZE = 16;
 
@@ -113,16 +113,10 @@ export function ListPicker({
   );
 
   // Until the menu's window takes Back, Android gives it to the screen beneath, which stepped back or asked to leave (sc-43145).
-  useEffect(() => {
-    if (Platform.OS !== 'android' || !open) return;
-    const listener = BackHandler.addEventListener('hardwareBackPress', () => {
-      setClosedEarly({});
-      setOpen(false);
-      return true;
-    });
-
-    return () => listener.remove();
-  }, [open]);
+  useSystemBack(open, () => {
+    setClosedEarly({});
+    setOpen(false);
+  });
   useFocusOnAnswer(windowShown ? undefined : closedEarly, field);
 
   const chosen = choices.find((choice) => choice.code === value)?.name ?? value;
