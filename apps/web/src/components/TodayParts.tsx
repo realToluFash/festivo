@@ -215,7 +215,9 @@ function EventRow({ card, full, open }: { card: EventCard; full: boolean; open: 
           <span className="today-event-name">{card.name}</span>
           <span className="today-event-when">
             {!card.live && !card.draft && (
-              <span className="today-event-count">{`${card.count} ·`}</span>
+              <>
+                <span className="today-event-count">{`${card.count} ·`}</span>{' '}
+              </>
             )}
             {typeof card.dates === 'string' ? (
               <span className="today-event-dates">{card.dates}</span>

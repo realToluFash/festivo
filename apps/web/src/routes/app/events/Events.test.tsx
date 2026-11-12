@@ -6172,6 +6172,58 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     );
   });
 
+  it('names the year on a row whose date is not in the current year (sc-30413)', async () => {
+    clockAt('2025-12-31T22:30:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        json({
+          ...MADRID,
+          milestones: [
+            milestone('2025-12-31T23:45:00+01:00', 'Countdown'),
+            ...MADRID.milestones.slice(1, 3),
+          ],
+        }),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+
+    await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(3));
+    expect(rows(panel)).toEqual([
+      'Wed, Dec 31, 23:45 (Europe/Madrid) · todayCountdownEventNext up',
+      'Sat, Oct 17, 2026, 18:00 (Europe/Madrid) · in 290 daysBoda startsEvent',
+      'Sun, Oct 18, 2026, 09:00 (Europe/Madrid) · in 291 daysBrunchAutomatic',
+    ]);
+  });
+
+  it('takes the current year in the event’s zone, not in UTC (sc-30413)', async () => {
+    clockAt('2025-12-31T23:30:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        json({
+          ...MADRID,
+          milestones: [
+            milestone('2026-01-01T10:00:00+01:00', 'New year brunch'),
+            ...MADRID.milestones.slice(1, 3),
+          ],
+        }),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+
+    await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(3));
+    expect(rows(panel)).toEqual([
+      'Thu, Jan 1, 10:00 (Europe/Madrid) · todayNew year brunchEventNext up',
+      'Sat, Oct 17, 18:00 (Europe/Madrid) · in 289 daysBoda startsEvent',
+      'Sun, Oct 18, 09:00 (Europe/Madrid) · in 290 daysBrunchAutomatic',
+    ]);
+  });
+
   it('says nothing is coming up once everything has passed, and still links All dates', async () => {
     clockAt('2026-11-01T08:00:00Z');
     signedIn();

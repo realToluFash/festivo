@@ -1,11 +1,11 @@
 import {
   comingUp,
   type EventTimeline,
-  formatEventMoment,
   type MarkedMilestone,
   markedMilestones,
   type MilestoneOwner,
   namesZone,
+  milestoneMoment,
   serverClock,
 } from '@soirely/domain';
 import { type EventStatus } from '@soirely/api-client';
@@ -322,7 +322,7 @@ function MilestoneRow({
   const { t } = useTranslation();
   const { milestone, standing, nextUp } = marked;
   const passed = standing === 'passed';
-  const moment = formatEventMoment(milestone.at, timeZone, dateLocale());
+  const moment = milestoneMoment(milestone.at, timeZone, now, dateLocale());
   const when =
     distance && namesZone(timeZone, readerZone())
       ? t('timeline.momentInZone', { moment, timeZone })

@@ -11,6 +11,7 @@ import {
   howSoon,
   howSoonPhrase,
   howSoonWords,
+  milestoneMoment,
   nextStep,
   rememberEventsTab,
   rememberTabHolding,
@@ -506,6 +507,33 @@ describe('eventDayWords', () => {
     expect(first('es')).toBe('sábado, 31 de oct de 2026');
     expect(first('fr')).toBe('samedi 31 oct. 2026');
     expect(first('pt')).toBe('sábado, 31 de out. de 2026');
+  });
+});
+
+describe('milestoneMoment', () => {
+  const zone = 'Europe/Madrid';
+
+  it('leaves the year out of a moment in this year', () => {
+    expect(
+      milestoneMoment('2026-11-16T10:00:00+01:00', zone, new Date('2026-11-11T12:00:00Z'), 'en-US'),
+    ).toBe('Mon, Nov 16, 10:00');
+  });
+
+  it('names the year of a moment in another year', () => {
+    expect(
+      milestoneMoment('2027-01-04T10:00:00+01:00', zone, new Date('2026-11-11T12:00:00Z'), 'en-US'),
+    ).toBe('Mon, Jan 4, 2027, 10:00');
+  });
+
+  it('takes this year in the event’s zone, not in UTC', () => {
+    const newYearInMadrid = new Date('2025-12-31T23:30:00Z');
+
+    expect(milestoneMoment('2026-01-02T10:00:00+01:00', zone, newYearInMadrid, 'en-US')).toBe(
+      'Fri, Jan 2, 10:00',
+    );
+    expect(milestoneMoment('2025-12-31T20:00:00+01:00', zone, newYearInMadrid, 'en-US')).toBe(
+      'Wed, Dec 31, 2025, 20:00',
+    );
   });
 });
 
