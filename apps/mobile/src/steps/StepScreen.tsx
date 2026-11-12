@@ -28,7 +28,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { QuietButton } from '../components/Buttons.tsx';
 import { keyboardTopNow, useKeysUp, watchKeyboardTop } from '../components/keyboardWatch.ts';
-import { stepShown } from '../components/landedStep.ts';
+import { stepShown } from '../components/landedScreen.ts';
 import { moveScreenReaderFocus } from '../components/screenReaderFocus.ts';
 import {
   ScreenScroll,
@@ -252,16 +252,16 @@ export function StepScreen({
   const footInPage = useRef(inline);
 
   // Measured as it slides in, the foot would be placed where it is passing: it is placed only once it has landed.
-  const placeFoot = useCallback(
-    () =>
-      footRef.current?.measureInWindow((x, y, width) =>
+  const placeFoot = useCallback(() => {
+    if (shown.current == null) return;
+    if (footRef.current == null) shown.current.placed(null);
+    else
+      footRef.current.measureInWindow((x, y, width) =>
         shown.current?.placed({ x, width, top: footInPage.current ? null : y }),
-      ),
-    [],
-  );
+      );
+  }, []);
 
   useEffect(() => {
-    if (!hasFoot) return undefined;
     const step = stepShown();
     const landed = setTimeout(() => {
       shown.current = step;
@@ -273,12 +273,12 @@ export function StepScreen({
       shown.current = null;
       step.left();
     };
-  }, [hasFoot, placeFoot]);
+  }, [placeFoot]);
 
   useEffect(() => {
     footInPage.current = inline;
     placeFoot();
-  }, [inline, placeFoot]);
+  }, [inline, hasFoot, placeFoot]);
 
   // The keys move the foot without laying it out again where the page pads for them, or a sheet rises clear of them.
   useEffect(() => {

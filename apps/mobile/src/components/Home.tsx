@@ -1,7 +1,7 @@
 import { type Account, type Membership, primaryEmailAddress } from '@soirely/api-client';
 import { roleName } from '@soirely/domain';
 import { router } from 'expo-router';
-import { type Ref, type RefObject, useMemo, useRef, useState } from 'react';
+import { type Ref, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -18,6 +18,7 @@ import { bodyEdges } from './bodyEdges.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { LinkedNotice } from './LinkedNotice.tsx';
 import { NoOrganisation } from './NoOrganisation.tsx';
+import { homeShown } from './landedScreen.ts';
 import { Screen, useFocusOnAnswer } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { NOTICE_PLACES, type NoticePlace, SignInRulesNotices } from './SignInRulesNotices.tsx';
@@ -31,6 +32,8 @@ export function Home() {
   const { account, organisation } = useSignedIn();
   const today = account != null && organisation != null ? { account, organisation } : null;
   const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
+
+  useEffect(homeShown, []);
 
   return (
     <AppFrame

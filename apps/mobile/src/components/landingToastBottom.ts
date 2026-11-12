@@ -1,6 +1,6 @@
 import { bottomOverKeys } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
-import type { LandedStep } from './landedStep.ts';
+import type { LandedScreen } from './landedScreen.ts';
 import type { FieldInSight } from './landingToastTop.ts';
 
 /** How far over the keys the toast rides where no step's foot is measured, as it did before feet were measured (sc-29071). */
@@ -16,7 +16,7 @@ export interface Frame {
 }
 
 /** What a landed step puts under the toast, its measured foot read against the toast's own frame (sc-29071, sc-37983). */
-export function underToast(step: LandedStep | null, frame: Frame): UnderToast {
+export function underToast(step: LandedScreen | null, frame: Frame): UnderToast {
   if (step?.foot == null) return 'noFoot';
   if (step.foot.top == null) return 'footInPage';
 

@@ -7,7 +7,7 @@ import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { watchMovedOn } from './focusedField.ts';
 import { useKeyboardTop } from './keyboardWatch.ts';
-import { stepsSoFar, useLandedStep } from './landedStep.ts';
+import { shownSoFar, useLandedScreen } from './landedScreen.ts';
 import { type Frame, landingToastBottom, stepsAside, underToast } from './landingToastBottom.ts';
 import { landingToastAt, useFieldUnderToast } from './landingToastTop.ts';
 import { SETTLED_MS } from './Screen.tsx';
@@ -32,7 +32,7 @@ function subscribe(listener: () => void): () => void {
 /** Said over whichever screen a flow lands on, which the flow cannot know in advance: Home, or a step still owed. A key, so the words are in the language the account brings with it, which may arrive after the call (sc-29071). */
 export function sayOnLanding(key: string): void {
   // The step it is said from is still in front as the flow moves on, and is not where it lands.
-  saidOver = stepsSoFar();
+  saidOver = shownSoFar();
   set(key);
 }
 
@@ -46,11 +46,11 @@ export function LandingToast() {
   const frameRef = useRef<ViewInstance>(null);
   const keyboardTop = useKeyboardTop();
   const { kind } = useLayout();
-  const step = useLandedStep(saidOver);
+  const screen = useLandedScreen(saidOver);
+  const step = screen?.home === false ? screen : null;
   const stepId = step?.id;
-  // A step is measured once it has landed; until then nothing says where its foot will rest.
-  const landing = step != null && step.foot == null;
-  const shown = key != null && frame != null && !landing;
+  // Its first frame is drawn over the landing, never over the blank before it, so it slides in and is read out once (sc-39703).
+  const shown = key != null && frame != null && screen?.landed === true;
   const column = kind === 'phone' ? null : step?.foot;
   // Only its height is measured, which moving it leaves as it is: its top is worked out in the render that moves it, so stepping aside never trails the keys by a layout pass.
   const [height, setHeight] = useState<number | null>(null);
