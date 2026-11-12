@@ -1,0 +1,8 @@
+# sc-40584 unchanged (sc-30412, sc-20209): the walk back on its name after the server's refusal, in the design demo, which renders the product's CreateWalkWindow; the keys stay down.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/today?create=name-refused
+- extendedWaitUntil: { visible: { id: 'createWalk.name' }, timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: refused-01-arrive
