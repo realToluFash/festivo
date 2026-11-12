@@ -516,6 +516,7 @@ function GuestLine({
         size={14}
         weight="medium"
         style={styles.secondary}
+        accessible={false}
         accessibilityElementsHidden
         importantForAccessibility="no"
       >
