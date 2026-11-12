@@ -3,7 +3,8 @@
 @import url('./desk.css');
 
 .today,
-.today-page {
+.today-page,
+.today-side-events {
   /* The board's sizes that have no token yet. */
   --todayBanner: 112px;
   --todayDue: 160px;
@@ -39,12 +40,12 @@
   cursor: pointer;
 }
 
-:where(.today, .today-page) :is(h1, h2, h3, p, ul, ol) {
+:where(.today, .today-page, .today-side-events) :is(h1, h2, h3, p, ul, ol) {
   margin: 0;
   padding: 0;
 }
 
-:where(.today, .today-page) :is(ul, ol) {
+:where(.today, .today-page, .today-side-events) :is(ul, ol) {
   list-style: none;
 }
 
