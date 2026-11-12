@@ -1,0 +1,21 @@
+# sc-30413: the Calendar's first month on arrival, loaded, beside the app demo's Calendar.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible: 'Month'
+    timeout: 20000
+- extendedWaitUntil:
+    notVisible: 'Loading the calendar.*'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: calendar-product-loaded
+- openLink: ${METRO_URL}/--/demo/calendar
+- extendedWaitUntil:
+    visible: 'Ire Events.*'
+    timeout: 20000
+- extendedWaitUntil:
+    visible: 'M'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: calendar-demo-loaded
