@@ -12,6 +12,8 @@ import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
 import { type Stale, StaleScreen } from '../offline.ts';
+import { TextAction } from './SettingsParts.tsx';
+import './OfflineBox.css';
 
 export function OfflineProvider({ children }: { children: ReactNode }) {
   const [stale, show] = useState<Stale | null>(null);
@@ -64,14 +66,36 @@ export function OfflineBand() {
   return <StaleBand stale={stale} ref={band} />;
 }
 
-/** The band itself, for a load that keeps its own: the page's, or the bell's feed inside its popover. */
+/** Above the title of a page in its own card at a desk, where the band would be (sc-39471): the same words and Try again, in Events' amber box. */
+export function OfflineBox() {
+  const { stale } = useContext(StaleScreen);
+
+  return <StaleBand stale={stale} box />;
+}
+
+/** The amber box's look, for whatever says it is offline. */
+export function OfflineBoxLook({ words, onRetry }: { words: string; onRetry: () => void }) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="ev-offline">
+      <span className="ev-offline-mark" aria-hidden="true" />
+      <span className="ev-offline-words">{words}</span>
+      <TextAction label={t('events.retry')} onClick={onRetry} />
+    </div>
+  );
+}
+
+/** The band itself, for a load that keeps its own: the page's, or the bell's feed inside its popover. `box` draws it as the amber box instead. */
 export function StaleBand({
   stale,
   className = 'offline-band',
+  box = false,
   ref,
 }: {
   stale: Stale | null;
   className?: string;
+  box?: boolean;
   ref?: Ref<HTMLDivElement>;
 }) {
   const { t } = useTranslation();
@@ -121,11 +145,23 @@ export function StaleBand({
     return () => window.clearTimeout(timer);
   }, [showing, unanswered]);
 
+  const heard = (
+    <div aria-live="polite" aria-atomic="true" className="visually-hidden">
+      {said}
+    </div>
+  );
+
+  if (box)
+    return (
+      <div className="offline-box">
+        {heard}
+        {stale != null && <OfflineBoxLook words={words} onRetry={stale.retry} />}
+      </div>
+    );
+
   return (
     <div ref={ref} className={showing ? className : undefined}>
-      <div aria-live="polite" aria-atomic="true" className="visually-hidden">
-        {said}
-      </div>
+      {heard}
       {stale != null && (
         <>
           <p className="offline-band-words">

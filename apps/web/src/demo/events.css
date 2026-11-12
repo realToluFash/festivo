@@ -37,31 +37,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.ev-offline {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceMd);
-  min-height: 48px;
-  padding: 0 var(--spaceSm) 0 var(--spaceLg);
-  border-radius: var(--radiusInset);
-  background: var(--colorAttentionTint);
-  color: var(--colorAttentionText);
-  font: 600 15px/1.3 var(--fontFamily);
-}
-
-.ev-offline-mark {
-  flex: none;
-  width: 9px;
-  height: 9px;
-  margin: 0 3px;
-  background: var(--colorAttention);
-  transform: rotate(45deg);
-}
-
-.ev-offline .desk-text {
-  margin: 0;
-}
-
 /* Messages with sc-3976's count under it: "3 waiting · 1 not matched". */
 .today-place.has-line {
   height: auto;
@@ -259,18 +234,6 @@
 
 .ev-coming h2 {
   font: 600 17px/1.3 var(--fontFamily);
-}
-
-.ev-dialog-title {
-  font: 700 22px/1.15 var(--fontFamily);
-  letter-spacing: -0.015em;
-}
-
-.ev-bullets {
-  margin: 0;
-  padding-left: 22px;
-  color: var(--colorInkSecondary);
-  font: var(--deskLine);
 }
 
 .ev-removes {
