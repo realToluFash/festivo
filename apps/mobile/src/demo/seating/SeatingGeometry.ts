@@ -153,7 +153,20 @@ function meets(a: Box, b: Box): boolean {
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 }
 
-/** The first corner where a w × h mark covers none of the words, or the first corner when each would. */
+/** Where a w × h mark may sit on a round table's ring of radius r about (cx, cy): its four corners, then the ring's right and left, each as the mark's top left. */
+export function ringPlaces(cx: number, cy: number, r: number, w: number, h: number): Point[] {
+  const d = (r - 1.5) * 0.72;
+  return [
+    { x: cx - d - 4, y: cy - d - h / 2 },
+    { x: cx + d + 4 - w, y: cy - d - h / 2 },
+    { x: cx - d - 4, y: cy + d - h / 2 },
+    { x: cx + d + 4 - w, y: cy + d - h / 2 },
+    { x: cx + r - w / 2, y: cy - h / 2 },
+    { x: cx - r - w / 2, y: cy - h / 2 },
+  ];
+}
+
+/** The first place where a w × h mark covers none of the words, or the one that covers least when each would. */
 export function clearCorner(
   corners: readonly Point[],
   w: number,
@@ -161,7 +174,12 @@ export function clearCorner(
   words: readonly Box[],
 ): Point {
   const first = corners[0] ?? { x: 0, y: 0 };
-  return corners.find((c) => !words.some((b) => meets({ x: c.x, y: c.y, w, h }, b))) ?? first;
+  const covered = (c: Point) =>
+    words.reduce((n, b) => n + overlapArea({ x: c.x, y: c.y, w, h }, b), 0);
+  return (
+    corners.find((c) => !words.some((b) => meets({ x: c.x, y: c.y, w, h }, b))) ??
+    corners.reduce((a, c) => (covered(c) < covered(a) ? c : a), first)
+  );
 }
 
 export function pct(s: number): number {
@@ -454,4 +472,67 @@ export function firstEmpty(it: Item, size: number): number[] {
     .filter(({ chair }) => chair.state === 'empty')
     .slice(0, size)
     .map(({ index }) => index);
+}
+
+const CARD_LINE = 16;
+
+function overlapArea(a: Box, b: Box): number {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  return w > 0 && h > 0 ? w * h : 0;
+}
+
+/** The iPhone room card's words (sc-31783): each item's name alone, the List carrying the counts. From the bottom of the room up, each name goes below its item, else above (either up to 12 px aside), right or left: the first place inside the walls that keeps 8 px off every other item and 2 px off each name already placed, so a name sits nearer its own item than any other, or else the place that covers least. */
+export function cardNames(
+  items: readonly Item[],
+  v: View,
+  room: Room,
+): { id: string; x: number; y: number }[] {
+  const inside: Box = { x: v.ox + 1, y: v.oy + 1, w: room.w * v.s - 2, h: room.l * v.s - 2 };
+  const grow = (b: Box, n: number): Box => ({
+    x: b.x - n,
+    y: b.y - n,
+    w: b.w + 2 * n,
+    h: b.h + 2 * n,
+  });
+  const bodies = items.map((it) => {
+    const b = bounds(it);
+    return {
+      x: v.ox + (it.x - b.x) * v.s,
+      y: v.oy + (it.y - b.y) * v.s,
+      w: 2 * b.x * v.s,
+      h: 2 * b.y * v.s,
+    };
+  });
+  const placed: Box[] = [];
+  const names = new Map<string, Point>();
+  const order = items.map((_, i) => i).sort((a, b) => (items[b]?.y ?? 0) - (items[a]?.y ?? 0));
+  order.forEach((i) => {
+    const it = items[i];
+    const body = bodies[i];
+    if (it == null || body == null) return;
+    const w = it.name.length * 12 * 0.56;
+    const cx = body.x + body.w / 2;
+    const cy = body.y + body.h / 2;
+    const nudged = (y: number) =>
+      [0, 6, -6, 12, -12].map((dx) => ({ x: cx - w / 2 + dx, y, w, h: CARD_LINE }));
+    const places: Box[] = [
+      ...nudged(body.y + body.h + 1),
+      ...nudged(body.y - 1 - CARD_LINE),
+      { x: body.x + body.w + 3, y: cy - CARD_LINE / 2, w, h: CARD_LINE },
+      { x: body.x - 3 - w, y: cy - CARD_LINE / 2, w, h: CARD_LINE },
+    ];
+    const others = bodies.filter((_, j) => j !== i).map((b) => grow(b, 8));
+    const cost = (p: Box) =>
+      p.w * p.h -
+      overlapArea(p, inside) +
+      [...placed.map((b) => grow(b, 2)), ...others].reduce((n, b) => n + overlapArea(p, b), 0);
+    const best = places.reduce((a, b) => (cost(b) < cost(a) ? b : a));
+    placed.push(best);
+    names.set(it.id, { x: best.x + best.w / 2, y: best.y + best.h / 2 });
+  });
+  return items.flatMap((it) => {
+    const at = names.get(it.id);
+    return at == null ? [] : [{ id: it.id, ...at }];
+  });
 }
