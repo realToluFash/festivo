@@ -11,6 +11,7 @@ import {
   isGuestKitchenState,
   guestKitchenStarts,
 } from './guestKitchen.ts';
+import { NO_PLACES, type Party, guestPartyStarts, isGuestPartyState } from './guestCompanions.ts';
 import type { DemoLink } from './settings.ts';
 
 /** The guest's own page in A · The cover card (sc-31306), on the boards' sample: main's evt-wed-4 and one guest. */
@@ -107,6 +108,7 @@ export type View =
   | { kind: 'recorded'; same: boolean }
   | { kind: 'changing'; busy: Answer | null }
   | { kind: 'closed' }
+  | { kind: 'withYou'; from: 'answer' | 'changing' }
   | { kind: 'tellUs'; busy: boolean; result: 'failed' | 'limited' | 'thanks' | null; back: View };
 
 /** An answer on the guest's record; `by` names the member who recorded it for them (sc-3787). */
@@ -188,6 +190,7 @@ export interface Visit {
   whatsApp: WhatsAppConsent;
   ticked: boolean;
   reach: Reach;
+  party: Party;
 }
 
 export const OPEN: View = { kind: 'answer', busy: null, note: null };
@@ -222,6 +225,7 @@ const BASE: Visit = {
   whatsApp: 'none',
   ticked: false,
   reach: { email: true, sms: true, saved: null },
+  party: NO_PLACES,
 };
 
 const COMING = { answer: 'coming', on: TODAY } as const;
@@ -539,6 +543,7 @@ export function isGuestState(value: string | null): value is GuestStateName {
 export function startOf(value: string | null): Visit {
   if (isGuestKitchenState(value))
     return { ...BASE, ...guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS }) };
+  if (isGuestPartyState(value)) return { ...BASE, ...guestPartyStarts(value) };
 
   const state = isGuestState(value) ? value : 'open';
 
@@ -661,7 +666,7 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
 ];
 
 export function shows(visit: Visit): { details: boolean; foot: boolean; hosts: boolean } {
-  const alone = ['check', 'tellUs', 'kitchen'].includes(visit.view.kind);
+  const alone = ['check', 'tellUs', 'kitchen', 'withYou'].includes(visit.view.kind);
 
   return { details: !alone, foot: !alone, hosts: visit.phase !== 'calledOff' };
 }
