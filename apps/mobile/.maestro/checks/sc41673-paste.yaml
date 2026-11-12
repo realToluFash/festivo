@@ -1,0 +1,20 @@
+# sc-41673, Android phone on its side: a fresh Create an organisation; Ibadan Supper Club typed, selected and cut to the clipboard so the field is empty, then pasted in one go from the field's long-press menu; pictured empty and a second after the paste.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- runFlow: ../open-create-organisation.yaml
+- inputText: 'Ibadan Supper Club'
+- longPressOn: { id: 'createWalk.name' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
+- tapOn: { text: 'Select all', optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 600, optional: true }
+- tapOn: { text: 'Cut' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: p1-empty
+- longPressOn: { id: 'createWalk.name' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
+- tapOn: { text: 'Paste' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: p2-pasted
+- tapOn: { id: 'createWalk.cancel', optional: true }
