@@ -4,7 +4,15 @@ import {
   newOrganisationLimit,
   timezoneLabel,
 } from '@soirely/domain';
-import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
@@ -21,6 +29,7 @@ import {
   View,
 } from 'react-native';
 
+import { afterMount } from './afterMount.ts';
 import { TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { DraftTile } from './DraftTile.tsx';
@@ -33,7 +42,6 @@ import { EventNotice } from './EventNotice.tsx';
 import {
   type Country,
   type Naming,
-  type NameInSight,
   type Walk,
   boxWords,
   cardNameSize,
@@ -44,8 +52,8 @@ import {
   NAME_LABEL,
   nameField,
   nameGap,
-  nameInSight,
   nameRow,
+  nameScroll,
   rowLabel,
 } from '../kit/createWalk.ts';
 import { FactLine, Question, Refusal, Tag, TWICE, ZoneLine } from './CreateWalkParts.tsx';
@@ -92,6 +100,7 @@ function StepScroll({
   scroller,
   onScrolled,
   onLayout,
+  onContentSizeChange,
   children,
 }: {
   look: Look;
@@ -99,6 +108,7 @@ function StepScroll({
   scroller?: Ref<ScrollViewInstance>;
   onScrolled: (scrolled: boolean) => void;
   onLayout?: (event: LayoutChangeEvent) => void;
+  onContentSizeChange?: () => void;
   children: ReactNode;
 }) {
   return (
@@ -110,6 +120,7 @@ function StepScroll({
       scrollEventThrottle={16}
       onScroll={(event) => onScrolled(event.nativeEvent.contentOffset.y > 0)}
       onLayout={onLayout}
+      onContentSizeChange={onContentSizeChange}
     >
       {children}
     </ScrollView>
@@ -158,13 +169,6 @@ function Preview({ name }: { name: string }) {
   );
 }
 
-// Over 100 and at twice the text, the field's reason or help runs under the keys unless the body
-// scrolls to it; a scroll while the keys still rise stops short, so it goes again once they are up.
-function keepInSight(seen: NameInSight, scroller: RefObject<ScrollViewInstance | null>) {
-  const y = nameInSight(seen);
-  if (y != null) scroller.current?.scrollTo({ y, animated: true });
-}
-
 export function NameStep({
   walk,
   look,
@@ -185,14 +189,7 @@ export function NameStep({
   const sizes = sizesOf(look);
   const [focused, setFocused] = useState(false);
   const scroller = useRef<ScrollViewInstance>(null);
-  const seen = useRef<NameInSight>({
-    viewport: 0,
-    top: 0,
-    fieldEnd: 0,
-    field: 0,
-    bottom: 0,
-    margin: tokens.spaceLg,
-  });
+  const [inSight] = useState(() => nameScroll(tokens.spaceLg, afterMount));
   const [labelWidth, setLabelWidth] = useState(0);
   const { beside } = nameRow(look);
   const underField = beside ? { marginLeft: labelWidth + tokens.spaceXl } : null;
@@ -202,24 +199,19 @@ export function NameStep({
 
   const reveal = (event: LayoutChangeEvent) => {
     const { y, height } = event.nativeEvent.layout;
-    seen.current.top = y;
-    seen.current.bottom = y + height;
-    keepInSight(seen.current, scroller);
+    inSight.group(y, height);
   };
   const placeField = (event: LayoutChangeEvent) => {
     const { y, height } = event.nativeEvent.layout;
-    seen.current.fieldEnd = y + height;
-    seen.current.field = sizes.field;
-    keepInSight(seen.current, scroller);
+    inSight.row(y, height, sizes.field);
   };
 
-  useEffect(() => {
-    const shown = Keyboard.addListener('keyboardDidShow', () =>
-      keepInSight(seen.current, scroller),
-    );
+  useLayoutEffect(() => {
+    inSight.scrollWith((y) => scroller.current?.scrollTo({ y, animated: true }));
+    const shown = Keyboard.addListener('keyboardDidShow', inSight.keysUp);
 
     return () => shown.remove();
-  }, []);
+  }, [inSight]);
 
   return (
     <StepScroll
@@ -227,10 +219,8 @@ export function NameStep({
       gap={18}
       scroller={scroller}
       onScrolled={onScrolled}
-      onLayout={(event) => {
-        seen.current.viewport = event.nativeEvent.layout.height;
-        keepInSight(seen.current, scroller);
-      }}
+      onLayout={(event) => inSight.viewport(event.nativeEvent.layout.height)}
+      onContentSizeChange={inSight.contentSized}
     >
       <StepWords look={look} words={stepWords} />
       <Question ref={question} words={t('createOrganisation.whatTitle')} size={sizes.question} />
