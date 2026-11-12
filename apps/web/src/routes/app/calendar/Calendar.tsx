@@ -133,6 +133,7 @@ function CalendarOf({
     <DeskPage layers={layers}>
       <CalendarFrameContext value={frame}>
         <div className="ev cal-page" inert={covered}>
+          {desk.offline}
           <CalendarTop
             titleRef={title}
             subscribe={subscribe}
@@ -144,10 +145,7 @@ function CalendarOf({
           {desk.said}
           {load.kind === 'loaded' && events.length === 0 ? (
             <div className="cal-first">
-              <EventsFirstRun
-                create={creates ? '/app/events/new' : undefined}
-                createLabel="events.newEvent"
-              />
+              <EventsFirstRun create={creates ? '/app/events/new' : undefined} />
             </div>
           ) : (
             <CalendarBoard

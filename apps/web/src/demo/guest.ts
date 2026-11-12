@@ -11,6 +11,13 @@ import {
   isGuestKitchenState,
   guestKitchenStarts,
 } from './guestKitchen.ts';
+import {
+  type Day,
+  type WhereShown,
+  guestDayStarts,
+  isGuestDayState,
+  leadsWithCode,
+} from './guestDay.ts';
 import type { DemoLink } from './settings.ts';
 import { type AskView, afterAnswer } from './guestAsk.ts';
 import { type ReplyByChoice, askStarts, isAskState } from './guestAskStates.ts';
@@ -199,6 +206,9 @@ export interface Visit {
   ask: AskView | null;
   /** sc-3780: the host let this guest change their reply, so Reply by does not bound the ask. */
   reopened: boolean;
+  day: Day;
+  where: WhereShown;
+  dayOrder: boolean;
 }
 
 export const OPEN: View = { kind: 'answer', busy: null, note: null };
@@ -235,6 +245,9 @@ const BASE: Visit = {
   reach: { email: true, sms: true, saved: null },
   ask: null,
   reopened: false,
+  day: 'before',
+  where: 'full',
+  dayOrder: false,
 };
 
 const COMING = { answer: 'coming', on: TODAY } as const;
@@ -549,17 +562,25 @@ export function isGuestState(value: string | null): value is GuestStateName {
   return value != null && Object.hasOwn(STATES, value);
 }
 
+function startsOf(
+  value: string | null,
+  ask: { replyBy?: ReplyByChoice; days?: number },
+): Partial<Visit> {
+  if (isAskState(value)) return askStarts(value, ask.replyBy, ask.days);
+  if (isGuestKitchenState(value))
+    return guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS });
+  if (isGuestDayState(value)) return guestDayStarts(value);
+
+  return STATES[isGuestState(value) ? value : 'open'].starts as Partial<Visit>;
+}
+
 export function startOf(
   value: string | null,
   ask: { replyBy?: ReplyByChoice; days?: number } = {},
 ): Visit {
-  if (isAskState(value)) return { ...BASE, ...askStarts(value, ask.replyBy, ask.days) };
-  if (isGuestKitchenState(value))
-    return { ...BASE, ...guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS }) };
+  const visit: Visit = { ...BASE, ...startsOf(value, ask) };
 
-  const state = isGuestState(value) ? value : 'open';
-
-  return { ...BASE, ...(STATES[state].starts as Partial<Visit>) };
+  return { ...visit, dayOrder: leadsWithCode(visit) };
 }
 
 export function stateName(state: GuestStateName): string {
@@ -796,12 +817,6 @@ export const LANGUAGES: readonly { code: Lang; name: string }[] = LOCALES.map((o
   code: one.code as Lang,
   name: one.nativeName,
 }));
-
-export function mapsLink(): string {
-  const query = [EVENT.venue?.name, EVENT.venue?.address].filter(Boolean).join(', ');
-
-  return `https://www.openstreetmap.org/search?query=${encodeURIComponent(query)}`;
-}
 
 /** The board's English, held in the demo until the product's screen puts it in the four catalogues (SHARED.md, Step three). */
 const BOARD_ENGLISH = {

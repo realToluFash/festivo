@@ -21,6 +21,7 @@
   color: var(--colorInkOnDark);
   font: 600 15px/1 var(--fontFamily);
   white-space: nowrap;
+  text-decoration: none;
 }
 
 .ev-new:hover {

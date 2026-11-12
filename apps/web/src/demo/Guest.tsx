@@ -61,6 +61,8 @@ import {
   GUEST_KITCHEN_SAVED_ID,
 } from './GuestKitchen.tsx';
 import { type GuestKitchenActions, useGuestKitchen } from './useGuestKitchen.ts';
+import { DayAnswer, DayWaiting, WhereBlock, YourCode } from './GuestDay.tsx';
+import { inDayOrder } from './guestDay.ts';
 import { YourMessages } from './GuestMessages.tsx';
 import { plusDays } from './dataControl.ts';
 import { GuestAsk } from './GuestAsk.tsx';
@@ -190,6 +192,7 @@ function Visitor({
       sending: () => record('coming', true),
       sendingTap: () => record('notComing'),
       loading: () => go(() => ({ page: 'event' })),
+      onTheDayLoading: () => go(() => ({ page: 'event' })),
       replySending: () => go((was) => ({ mine: was.mine.map((one) => ({ ...one, sent: true })) })),
     };
     const land = state == null ? undefined : hold[state];
@@ -335,6 +338,7 @@ function Visitor({
 
   const closeMenu = useCallback(() => go(() => ({ menuOpen: false })), [go]);
   const two = twoColumns(layout);
+  const band = visit.dayOrder && (layout === 'phone' || layout === 'small');
 
   const under = (
     <Under
@@ -382,6 +386,7 @@ function Visitor({
             visit={visit}
             words={words}
             two={two}
+            band={band}
             under={under}
             retrying={retrying}
             onRetry={retry}
@@ -418,6 +423,7 @@ function Body({
   visit,
   words,
   two,
+  band,
   under,
   retrying,
   onRetry,
@@ -430,6 +436,7 @@ function Body({
   visit: Visit;
   words: Words;
   two: boolean;
+  band: boolean;
   under: ReactNode;
   retrying: boolean;
   onRetry: () => void;
@@ -491,8 +498,14 @@ function Body({
         <p className="visually-hidden" role="status">
           {words.loading}
         </p>
-        <Waiting part="cover" />
-        <Waiting part="under" />
+        {visit.dayOrder ? (
+          <DayWaiting band={band} />
+        ) : (
+          <>
+            <Waiting part="cover" />
+            <Waiting part="under" />
+          </>
+        )}
         {two && <Waiting part="details" />}
       </div>
     );
@@ -505,7 +518,7 @@ function Body({
     <div ref={setBox} className="gp-columns">
       <PhaseNotice phase={visit.phase} words={words} />
       {visit.unsaved && <LanguageUnsaved words={words} busy={saving} onRetry={onSaveAgain} />}
-      <Cover visit={visit} words={words} ended={ended} />
+      <Cover visit={visit} words={words} ended={ended} band={band && inDayOrder(visit)} />
       {under}
       {details && <Details visit={visit} words={words} hosts={hosts} />}
       {foot && <Foot words={words} onTell={onTell} />}
@@ -548,6 +561,25 @@ function Under({
 }) {
   const { view } = visit;
   const thanks = visit.phase === 'finished' && view.kind === 'closed';
+
+  if (inDayOrder(visit)) {
+    return (
+      <div className="gp-under is-day">
+        <YourCode visit={visit} words={words} />
+        <WhereBlock visit={visit} words={words} />
+        <DayAnswer
+          visit={visit}
+          words={words}
+          onChange={onChange}
+          onKitchen={() => kitchen.open('closed')}
+        />
+        {showsMessages(visit) && (
+          <Messages visit={visit} words={words} onDraft={onDraft} onSend={onSendMessage} />
+        )}
+        <AddToCalendar words={words} />
+      </div>
+    );
+  }
 
   return (
     <div className={thanks ? 'gp-under is-thanks' : 'gp-under'}>

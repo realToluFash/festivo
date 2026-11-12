@@ -1,12 +1,4 @@
-/** Same as the API's SectionNameNormaliser: case and accents do not make two names different (sc-3998). */
-export function sectionNameKey(name: string): string {
-  return name
-    .normalize('NFKD')
-    .replace(/\p{Mn}/gu, '')
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/gu, ' ');
-}
+import { nameKey } from './nameKey.ts';
 
 /** The section already holding this name, as the API names it in its refusal. */
 export function sectionHoldingName<S extends { id: string; name: string }>(
@@ -14,9 +6,9 @@ export function sectionHoldingName<S extends { id: string; name: string }>(
   name: string,
   exceptId: string | null,
 ): S | null {
-  const key = sectionNameKey(name);
+  const key = nameKey(name);
 
-  return sections.find((one) => one.id !== exceptId && sectionNameKey(one.name) === key) ?? null;
+  return sections.find((one) => one.id !== exceptId && nameKey(one.name) === key) ?? null;
 }
 
 /** The colour fewest sections wear, the first in the palette's order on a tie. */

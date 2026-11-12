@@ -147,7 +147,9 @@ describe('Duplicate copies the guest list on request (sc-3656)', () => {
     cleanup();
 
     const router = await at('duplicateNotCreated', 'evt-draft-4', ENGAGEMENT);
-    expect(within(dialog()).getByRole('alert').textContent).toBe(DW.notCreated);
+    expect(within(dialog()).getByRole('alert').textContent).toBe(
+      'Not created. Nothing was saved. Try again.',
+    );
 
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Create draft' }));
 
