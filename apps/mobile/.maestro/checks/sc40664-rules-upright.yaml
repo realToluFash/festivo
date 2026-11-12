@@ -1,0 +1,17 @@
+# sc-40664: Sign-in rules on a tablet (upright): Where you stand, then What changed, each title whole.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/settings/sign-in-rules
+- extendedWaitUntil:
+    visible: '{{t:settings.signInRules}}'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: rules-upright
+- scrollUntilVisible:
+    element: '{{t:signInRules.stand.changedTitle}}'
+    direction: DOWN
+- waitForAnimationToEnd
+- takeScreenshot: rules-upright-changes
+- setOrientation: PORTRAIT

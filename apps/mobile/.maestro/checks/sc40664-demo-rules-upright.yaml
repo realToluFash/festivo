@@ -1,0 +1,18 @@
+# sc-40664: the demo's Sign-in rules on a tablet (upright), top and scrolled to What changed.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/settings/sign-in-rules
+- extendedWaitUntil:
+    visible:
+      id: 'signInRules.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-rules-upright
+- scrollUntilVisible:
+    element: '{{t:signInRules.stand.changedTitle}}'
+    direction: DOWN
+- waitForAnimationToEnd
+- takeScreenshot: demo-rules-upright-changes
+- setOrientation: PORTRAIT
