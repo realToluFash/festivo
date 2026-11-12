@@ -62,6 +62,9 @@ import {
 } from './GuestKitchen.tsx';
 import { type GuestKitchenActions, useGuestKitchen } from './useGuestKitchen.ts';
 import { YourMessages } from './GuestMessages.tsx';
+import { GuestAsk } from './GuestAsk.tsx';
+import { type AskKey, offer, picked, saveFirst, saveSettled } from './guestAsk.ts';
+import { askClock, askFocus, DAYS_CHOICES, isReplyByChoice } from './guestAskStates.ts';
 import { switched } from './guestMessages.ts';
 import { useLater } from '../useLater.ts';
 import { legalPath } from './legal.ts';
@@ -74,8 +77,18 @@ import './guest.css';
 export function GuestPage() {
   const [params] = useSearchParams();
   const state = params.get('state');
+  const replyBy = params.get('replyBy');
+  const days = params.get('days');
+  const ask = {
+    ...(isReplyByChoice(replyBy) ? { replyBy } : {}),
+    ...(days != null && (DAYS_CHOICES as readonly string[]).includes(days)
+      ? { days: Number(days) }
+      : {}),
+  };
 
-  return <Visitor key={state ?? 'open'} state={state} />;
+  return (
+    <Visitor key={`${state ?? 'open'}|${replyBy ?? ''}|${days ?? ''}`} state={state} ask={ask} />
+  );
 }
 
 function useLayout() {
@@ -89,8 +102,8 @@ function useLayout() {
 
 type Change = (was: Visit) => Partial<Visit>;
 
-function Visitor({ state }: { state: string | null }) {
-  const [visit, setVisit] = useState(() => startOf(state));
+function Visitor({ state, ask }: { state: string | null; ask: Parameters<typeof startOf>[1] }) {
+  const [visit, setVisit] = useState(() => startOf(state, ask));
   const [retrying, setRetrying] = useState(false);
   const [saving, setSaving] = useState(false);
   const layout = useLayout();
@@ -183,6 +196,43 @@ function Visitor({ state }: { state: string | null }) {
     later(SEND_MS, () => record(chosen));
   }
 
+  function askPick(key: AskKey): void {
+    go((was) => (was.ask == null ? {} : { ask: picked(was.ask, key) }));
+  }
+
+  function askSave(): void {
+    const view = visit.ask;
+
+    if (view?.kind !== 'question' || view.saving) return;
+    if (view.pick == null) {
+      const first = offer(askClock(visit))[0] ?? 'never';
+      go((was) => (was.ask == null ? {} : { ask: saveFirst(was.ask) }), askFocus(first));
+      return;
+    }
+
+    go((was) => (was.ask == null ? {} : { ask: saveFirst(was.ask) }));
+    later(SEND_MS, () =>
+      go(
+        (was) => (was.ask == null ? {} : { ask: saveSettled(was.ask, askClock(was)) }),
+        'askSaved',
+      ),
+    );
+  }
+
+  useEffect(() => {
+    if (state !== 'maybe_saving') return;
+    const timer = setTimeout(
+      () =>
+        go(
+          (was) => (was.ask == null ? {} : { ask: saveSettled(was.ask, askClock(was)) }),
+          'askSaved',
+        ),
+      SEND_MS,
+    );
+
+    return () => clearTimeout(timer);
+  }, [state, go]);
+
   function send(): void {
     go((was) =>
       was.view.kind === 'check' ? { view: { ...was.view, busy: true, failed: false } } : {},
@@ -255,6 +305,8 @@ function Visitor({ state }: { state: string | null }) {
       }
       onDraft={(draft) => go(() => ({ draft }))}
       onSendMessage={sendMessage}
+      onAskPick={askPick}
+      onAskSave={askSave}
     />
   );
 
@@ -427,6 +479,8 @@ function Under({
   onGoBack,
   onDraft,
   onSendMessage,
+  onAskPick,
+  onAskSave,
 }: {
   visit: Visit;
   words: Words;
@@ -441,6 +495,8 @@ function Under({
   onGoBack: () => void;
   onDraft: (words: string) => void;
   onSendMessage: () => void;
+  onAskPick: (key: AskKey) => void;
+  onAskSave: () => void;
 }) {
   const { view } = visit;
   const thanks = visit.phase === 'finished' && view.kind === 'closed';
@@ -462,6 +518,7 @@ function Under({
         onTellThem={onTellThem}
         onGoBack={onGoBack}
       />
+      {view.kind === 'recorded' && <GuestAsk visit={visit} onPick={onAskPick} onSave={onAskSave} />}
       {showsMessages(visit) && (
         <Messages visit={visit} words={words} onDraft={onDraft} onSend={onSendMessage} />
       )}

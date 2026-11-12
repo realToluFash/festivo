@@ -12,6 +12,8 @@ import {
   guestKitchenStarts,
 } from './guestKitchen.ts';
 import type { DemoLink } from './settings.ts';
+import { type AskView, afterAnswer } from './guestAsk.ts';
+import { type ReplyByChoice, askStarts, isAskState } from './guestAskStates.ts';
 
 /** The guest's own page in A · The cover card (sc-31306), on the boards' sample: main's evt-wed-4 and one guest. */
 export const EVENT: SampleEvent = sampleEvent('evt-wed-4') as SampleEvent;
@@ -143,6 +145,11 @@ export function sentAnswer(was: Visit, answer: Answer): Partial<Visit> {
   return {
     recorded: same ? was.recorded : recorded,
     view: { kind: 'recorded', same },
+    ask: afterAnswer(
+      was.ask,
+      was.recorded?.by == null ? (was.recorded?.answer ?? null) : null,
+      answer,
+    ),
     ...(agreed ? { whatsApp: 'agreed' as const } : {}),
   };
 }
@@ -188,6 +195,10 @@ export interface Visit {
   whatsApp: WhatsAppConsent;
   ticked: boolean;
   reach: Reach;
+  /** sc-1363: when to ask a Not sure yet guest again; null with any other answer. */
+  ask: AskView | null;
+  /** sc-3780: the host let this guest change their reply, so Reply by does not bound the ask. */
+  reopened: boolean;
 }
 
 export const OPEN: View = { kind: 'answer', busy: null, note: null };
@@ -222,6 +233,8 @@ const BASE: Visit = {
   whatsApp: 'none',
   ticked: false,
   reach: { email: true, sms: true, saved: null },
+  ask: null,
+  reopened: false,
 };
 
 const COMING = { answer: 'coming', on: TODAY } as const;
@@ -536,7 +549,11 @@ export function isGuestState(value: string | null): value is GuestStateName {
   return value != null && Object.hasOwn(STATES, value);
 }
 
-export function startOf(value: string | null): Visit {
+export function startOf(
+  value: string | null,
+  ask: { replyBy?: ReplyByChoice; days?: number } = {},
+): Visit {
+  if (isAskState(value)) return { ...BASE, ...askStarts(value, ask.replyBy, ask.days) };
   if (isGuestKitchenState(value))
     return { ...BASE, ...guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS }) };
 
