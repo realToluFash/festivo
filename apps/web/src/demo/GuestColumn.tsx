@@ -34,6 +34,8 @@ import { GUESTS as CONVERSATIONS, MESSAGES_AT } from './messages.ts';
 import { Turning } from './DataControlParts.tsx';
 import { THEIR_WORDS } from './guestRequest.ts';
 import { whatsAppRowOf } from './whatsAppConsent.ts';
+import { sendOffered, whatsAppHref } from './whatsAppSend.ts';
+import { useLater } from '../useLater.ts';
 import { CardStep, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 
 export interface GuestActions {
@@ -45,9 +47,15 @@ export interface GuestActions {
   onInvite: (invite: Invite | null) => void;
   onMark: (how: HowInvited) => void;
   onAgree: () => void;
+  onSend: () => void;
+  onNotSent: () => void;
+  /** The mark from the question: false when it was not saved and the question stays. */
+  onSent: () => boolean;
 }
 
 type Step = { label: string; does: () => void } | null;
+
+const SAVE_MS = 900;
 
 /** A guest beside the list (sc-3773): the cover card the guest sees, their reply, Details, Invitation and their conversation. */
 export function GuestView({
@@ -61,6 +69,8 @@ export function GuestView({
   erase = null,
   erasedLine,
   theirData,
+  asked = false,
+  askFailed = false,
 }: {
   guest: Guest;
   event: SampleEvent;
@@ -73,6 +83,8 @@ export function GuestView({
   erase?: 'erasing' | 'erased' | null;
   erasedLine?: string;
   theirData?: ReactNode;
+  asked?: boolean;
+  askFailed?: boolean;
 }) {
   const heading = useId();
   const acts = manages && erase == null;
@@ -93,7 +105,7 @@ export function GuestView({
     line = GW.reopened(guest.reopened.by ?? '', dayOf(guest.reopened.on));
     step = { label: GW.recordReply, does: actions.onRecord };
   } else if (guest.reply === 'noReply') step = { label: GW.recordReply, does: actions.onRecord };
-  else if (guest.reply === 'notYet' && event.status === 'live')
+  else if (guest.reply === 'notYet' && event.status === 'live' && !asked)
     step = { label: GW.markAsInvited, does: () => actions.onInvite('mark') };
 
   return (
@@ -155,6 +167,9 @@ export function GuestView({
           invite={invite}
           heading={heading}
           actions={actions}
+          manages={manages}
+          asked={asked}
+          askFailed={askFailed}
         />
       )}
       {manages && invited && event.id === WEDDING && erase !== 'erased' && (
@@ -284,14 +299,21 @@ function Invitation({
   invite,
   heading,
   actions,
+  manages,
+  asked,
+  askFailed,
 }: {
   guest: Guest;
   event: SampleEvent;
   invite: Invite | undefined;
   heading: string;
   actions: GuestActions;
+  manages: boolean;
+  asked: boolean;
+  askFailed: boolean;
 }) {
   const notYet = guest.reply === 'notYet';
+  const send = sendOffered(guest, event, manages) ? whatsAppHref(guest, event, LINK) : null;
   const marking = invite === 'mark' || invite === 'markRefused' || invite === 'markNotSaved';
 
   return (
@@ -336,6 +358,31 @@ function Invitation({
           )}
           {invite === 'refused' && <CopyByHand />}
         </li>
+        {send != null && (
+          <li>
+            <a
+              href={send}
+              className="desk-row gs-do"
+              aria-label={GW.sendOnWhatsAppTo(guest.name)}
+              data-focus="send"
+              onClick={(press) => {
+                press.preventDefault();
+                actions.onSend();
+              }}
+            >
+              <IconLead name="whatsApp" />
+              <RowWords title={GW.sendOnWhatsApp} lines={[GW.sendLine]} />
+            </a>
+            {asked && notYet && (
+              <SentQuestion
+                name={guest.name}
+                startFailed={askFailed}
+                onNotSent={actions.onNotSent}
+                onSent={actions.onSent}
+              />
+            )}
+          </li>
+        )}
         <li>
           <button
             type="button"
@@ -347,7 +394,7 @@ function Invitation({
             <RowWords title={GW.replaceLink} lines={[GW.replaceLinkLine]} />
           </button>
         </li>
-        {notYet && event.status === 'live' && (
+        {notYet && event.status === 'live' && !asked && (
           <li>
             <button
               type="button"
@@ -465,6 +512,61 @@ function MarkInset({
         />
         <TextAction label={GW.cancel} onClick={onCancel} />
       </div>
+    </div>
+  );
+}
+
+/** sc-26025: asked after the press, answered here; it stays until answered, a failed mark included. */
+function SentQuestion({
+  name,
+  startFailed,
+  onNotSent,
+  onSent,
+}: {
+  name: string;
+  startFailed: boolean;
+  onNotSent: () => void;
+  onSent: () => boolean;
+}) {
+  const id = useId();
+  const later = useLater();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(startFailed);
+
+  return (
+    <div
+      className="gs-inset gs-asked"
+      role="group"
+      aria-labelledby={`${id}-title`}
+      aria-describedby={`${id}-line`}
+      tabIndex={-1}
+      data-focus="send-question"
+    >
+      {failed && <Refused>{GW.markNotSaved}</Refused>}
+      <p id={`${id}-title`} className="gs-inset-title" aria-live="polite">
+        {GW.sentOnWhatsApp(name)}
+      </p>
+      <div className="gs-inset-foot">
+        <TextAction label={GW.notSent} onClick={onNotSent} />
+        <Pill
+          primary
+          busy={busy}
+          label={busy ? GW.saving : GW.markAsInvited}
+          onClick={() => {
+            if (busy) return;
+            setFailed(false);
+            setBusy(true);
+            later(SAVE_MS, () => {
+              if (onSent()) return;
+              setBusy(false);
+              setFailed(true);
+            });
+          }}
+        />
+      </div>
+      <p id={`${id}-line`} className="desk-help">
+        {GW.ifNotOpened}
+      </p>
     </div>
   );
 }
