@@ -147,7 +147,11 @@ export const GUESTS: readonly SampleGuest[] = [
     email: 'marta.silva@gmail.com',
   }),
   guest('nadia', 'Nadia Haddad', 'noreply', { email: 'nadia.haddad@gmail.com' }),
-  guest('ngozi', 'Ngozi Eze', 'coming', { when: '2026-10-02', email: 'ngozi.eze@gmail.com' }),
+  guest('ngozi', 'Ngozi Eze', 'coming', {
+    when: '2026-10-02',
+    email: 'ngozi.eze@gmail.com',
+    invited: null,
+  }),
   guest('seun', 'Oluwaseun Ajayi', 'noreply', {
     phone: '+234 805 667 1209',
     invited: { by: COLLEAGUE, how: 'Text message', day: '2026-10-10' },

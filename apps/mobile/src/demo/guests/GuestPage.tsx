@@ -1,3 +1,4 @@
+import { eventAllows } from '@soirely/domain';
 import type { Ref } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
@@ -10,7 +11,15 @@ import type { Shown } from '../events/EventsModel.ts';
 import { LineIcon } from '../../components/AccountCard.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { Row, RowList, TextAction } from '../../components/Summary.tsx';
-import { type Role, dayWords, invitedWords, replyLine, replyParts } from './GuestsModel.ts';
+import {
+  type Role,
+  dayWords,
+  handMarked,
+  invitationWords,
+  invitedWords,
+  replyLine,
+  replyParts,
+} from './GuestsModel.ts';
 import { GreetAsRow } from './GuestGreetAs.tsx';
 import { ChoseNote } from './GuestLanguage.tsx';
 import { BlockHead, DoneLine, GuestCover, type Layout } from './GuestsParts.tsx';
@@ -35,6 +44,7 @@ export interface GuestActions {
   onCopy: () => void;
   onReplace: () => void;
   onMark: () => void;
+  onUnmark: () => void;
   onAgree: () => void;
   onLetChange: () => void;
   onConversation: () => void;
@@ -88,8 +98,8 @@ export function GuestPage({
   replies,
   replaced,
   notReplaced,
+  unmarked,
   status,
-  invites,
   replyBy,
   nameRef,
   refFor,
@@ -104,9 +114,9 @@ export function GuestPage({
   replies: 'closed' | 'reopened' | null;
   replaced: boolean;
   notReplaced: boolean;
+  /** sc-3788: Mark as not invited landed, or the guest replied first (409). */
+  unmarked: 'done' | 'refused' | null;
   status: string | null;
-  /** A Draft offers no link: nobody is invited until it is live. */
-  invites: boolean;
   /** The event's Reply by date, or none (sc-3780). */
   replyBy: string | null;
   nameRef: Ref<TextHandle>;
@@ -117,7 +127,16 @@ export function GuestPage({
     return phase === 'notFound' ? <NotFound onBack={actions.onBack} /> : <GuestLoading />;
 
   const owner = role === 'owner';
+  const invites = eventAllows(event.phase, 'invite');
   const card = cardOf(g, role, replies, locale, actions, invites, replyBy);
+  const invitation = invitationWords(g, locale);
+  const readOnly = (
+    <View style={styles.readOnly} testID="guest.readOnly">
+      <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
+        {W.readOnlyInvited}
+      </Text>
+    </View>
+  );
   const kind = g.kind === 'walkin' ? 'walkin' : g.kind;
   const replied = g.kind === 'coming' || g.kind === 'maybe' || g.kind === 'notcoming';
   const { word, detail } = replyParts(g, locale, replyBy);
@@ -128,6 +147,7 @@ export function GuestPage({
   return (
     <View style={styles.blocks} testID={`guest.${g.key}`}>
       {status != null && <DoneLine text={status} />}
+      {unmarked === 'done' && <DoneLine text={W.unmarked} />}
       <GuestCover
         event={event}
         kind={kind}
@@ -139,6 +159,9 @@ export function GuestPage({
         nameRef={nameRef}
       />
       {notReplaced && <AlertLine text={W.notReplaced} />}
+      {unmarked === 'refused' && g.when != null && (
+        <AlertLine text={say.unmarkRefused(g.name, REPLY_WORD[kind], dayWords(g.when, locale))} />
+      )}
       {replied && (
         <View>
           <BlockHead title={W.reply} />
@@ -235,11 +258,39 @@ export function GuestPage({
           ]}
         />
       </View>
-      {owner && invites && (
+      {!owner && event.phase === 'draft' && readOnly}
+      {event.phase !== 'draft' && (
         <View>
           <BlockHead title={W.invitation} />
           <RowList
             items={[
+              ...(invitation != null
+                ? [
+                    {
+                      key: 'invited',
+                      inset: 40,
+                      row: (
+                        <View>
+                          <Row
+                            title={invitation}
+                            lead={<LineIcon name="mail" />}
+                            testID="guest.invited"
+                          />
+                          {owner && handMarked(g) && (
+                            <View style={styles.agree}>
+                              <TextAction
+                                ref={refFor('unmark')}
+                                label={W.markNotInvited}
+                                onPress={actions.onUnmark}
+                                testID="guest.unmark"
+                              />
+                            </View>
+                          )}
+                        </View>
+                      ),
+                    },
+                  ]
+                : []),
               ...(replaced
                 ? [
                     {
@@ -255,39 +306,47 @@ export function GuestPage({
                     },
                   ]
                 : []),
-              {
-                key: 'copy',
-                inset: 40,
-                row: (
-                  <Row
-                    ref={refFor('copy')}
-                    title={W.copyLink}
-                    line={W.copyLinkLine}
-                    lead={<LineIcon name="link" />}
-                    accent
-                    weight="medium"
-                    onPress={actions.onCopy}
-                    testID="guest.copy"
-                  />
-                ),
-              },
-              {
-                key: 'replace',
-                inset: 40,
-                row: (
-                  <Row
-                    ref={refFor('replace')}
-                    title={W.replaceLink}
-                    line={W.replaceLinkLine}
-                    lead={<LineIcon name="refresh" />}
-                    accent
-                    weight="medium"
-                    onPress={actions.onReplace}
-                    testID="guest.replace"
-                  />
-                ),
-              },
-              ...(g.kind === 'notyet'
+              ...(owner && invites
+                ? [
+                    {
+                      key: 'copy',
+                      inset: 40,
+                      row: (
+                        <Row
+                          ref={refFor('copy')}
+                          title={W.copyLink}
+                          line={W.copyLinkLine}
+                          lead={<LineIcon name="link" />}
+                          accent
+                          weight="medium"
+                          onPress={actions.onCopy}
+                          testID="guest.copy"
+                        />
+                      ),
+                    },
+                  ]
+                : []),
+              ...(owner
+                ? [
+                    {
+                      key: 'replace',
+                      inset: 40,
+                      row: (
+                        <Row
+                          ref={refFor('replace')}
+                          title={W.replaceLink}
+                          line={W.replaceLinkLine}
+                          lead={<LineIcon name="refresh" />}
+                          accent
+                          weight="medium"
+                          onPress={actions.onReplace}
+                          testID="guest.replace"
+                        />
+                      ),
+                    },
+                  ]
+                : []),
+              ...(owner && g.kind === 'notyet' && invites
                 ? [
                     {
                       key: 'mark',
@@ -309,6 +368,7 @@ export function GuestPage({
                 : []),
             ]}
           />
+          {!owner && <View style={styles.below}>{readOnly}</View>}
         </View>
       )}
       {owner && (
@@ -458,6 +518,13 @@ const styles = StyleSheet.create({
   blocks: { gap: 18 },
   chose: { paddingLeft: 40, paddingBottom: 12 },
   agree: { paddingLeft: 40, paddingBottom: tokens.spaceXs, alignItems: 'flex-start' },
+  readOnly: {
+    paddingVertical: 14,
+    paddingHorizontal: tokens.spaceXl,
+    borderRadius: 18,
+    backgroundColor: tokens.colorInset,
+  },
+  below: { marginTop: tokens.spaceSm },
   secondary: { color: tokens.colorInkSecondary },
   lines: { lineHeight: 15 * 1.45 },
   sunkCard: { height: 190, borderRadius: 26, backgroundColor: tokens.colorNeutralFill },

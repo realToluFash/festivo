@@ -29,6 +29,7 @@ export const GW = {
   writeToThem: 'Write to them',
   draftLine: 'Guests can’t be invited until this event is live.',
   pausedLine: 'Guests can’t be invited while this event is paused.',
+  finishedLine: 'This event has finished, so guests can’t be invited.',
   makeLive: 'Make live',
   arrivedOf: (arrived: number, expected: number) => `${figure(arrived)} of ${figure(expected)}`,
   arrived: 'arrived',
@@ -58,6 +59,13 @@ export const GW = {
   withWord: (word: string, rest: string) => `${word} · ${rest}`,
   invitedBy: (name: string, how: string, date: string) => `Invited by ${name}, ${how}, ${date}`,
   invitedByMessage: (date: string) => `Invited by Soirely’s message, ${date}`,
+  invitedWhenReplied: (date: string) => `Invited when they replied, ${date}`,
+  markNotInvited: 'Mark as not invited',
+  unmarked: 'Marked as not invited.',
+  unmarkRefused: (name: string, reply: string, date: string) =>
+    `Not changed. ${name} replied ${reply} on ${date}, so they stay invited.`,
+  readOnlyInvited:
+    'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
   companionCount: (count: number) => (count === 1 ? '1 companion' : `${figure(count)} companions`),
   heldLine: 'Held · comes only if their host accepts',
   guestOf: (host: string) => `Guest of ${host}`,
