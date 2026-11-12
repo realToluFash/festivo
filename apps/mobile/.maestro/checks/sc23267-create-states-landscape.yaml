@@ -24,10 +24,12 @@ appId: host.exp.Exponent
 - inputText: 'Portugal'
 - tapOn:
     id: 'createWalk.country.PT'
-- hideKeyboard:
-    optional: true
+- waitForAnimationToEnd:
+    timeout: 2000
 - tapOn:
     id: 'createWalk.primary'
+- waitForAnimationToEnd:
+    timeout: 3000
 - extendedWaitUntil:
     visible: '{{t:createOrganisation.readyTitle}}'
     timeout: 10000
