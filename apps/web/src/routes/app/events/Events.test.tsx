@@ -1518,6 +1518,31 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     expect(current()).toBe(area);
   });
 
+  it.each(['/app/events/ev_1', '/app/events/ev_1/guests', '/app/events/ev_1/menu'])(
+    'heads the menu on %s with the event’s card: its name, its phase and how soon (sc-30413)',
+    async (path) => {
+      signedIn();
+      answering({
+        'GET /api/events/ev_1': () =>
+          json({
+            event: event({
+              status: 'live',
+              phase: 'live',
+              madeLiveAt: '2026-10-21T10:00:00+00:00',
+              startsAt: '2030-06-01T16:00:00+01:00',
+              endsAt: '2030-06-02T02:00:00+01:00',
+              milestones: [],
+            }),
+          }),
+      });
+      at(path);
+
+      const nav = within(await screen.findByRole('navigation', { name: 'Event' }));
+      const card = (await nav.findByText('Adaeze and Tunde')).closest('.ev-side-card')!;
+      expect(card.textContent).toMatch(/^Adaeze and TundeLive · \S/u);
+    },
+  );
+
   it('returns to the page on Overview by Back, however many areas were chosen on the way', async () => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
