@@ -242,7 +242,7 @@ function Domains({ start, tell }: { start: GeneralStart; tell: Tell }) {
           title={D.removeTitle(removing)}
           line={D.removeBody(removing)}
           keep={D.keep}
-          go={D.confirmRemove}
+          go={D.removeLabel(removing)}
           onKeep={() => setRemoving(null)}
           onGo={() => {
             setDomains((listed) => listed.filter((other) => other.name !== removing));
