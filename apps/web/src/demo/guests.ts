@@ -496,6 +496,11 @@ export function sampleGuests(id: string): Guest[] {
   return SAMPLES[id]?.list() ?? [];
 }
 
+/** The Guests header's N, guests and companions together, which Delete event's question counts (sc-1468). */
+export function peopleOn(id: string): number {
+  return peopleOf(sampleGuests(id)).length;
+}
+
 export function replyByOf(id: string): string | null {
   return SAMPLES[id]?.replyBy ?? null;
 }
@@ -1221,6 +1226,7 @@ export const GUESTS_STATES = [
   { key: 'staffBefore', name: 'Door staff before the day: read-only' },
   { key: 'draft', name: 'A Draft event' },
   { key: 'paused', name: 'A Paused event' },
+  { key: 'eventDeleted', name: 'The event deleted: not found' },
   { key: 'onTheDay', name: 'On the day: arrivals and a walk-in' },
   { key: 'secondDay', name: 'The event’s second day' },
   { key: 'guest', name: 'Dr Emeka Nwosu, no reply' },
@@ -1355,6 +1361,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'inUse':
     case 'draft':
     case 'paused':
+    case 'eventDeleted':
       return start;
     case 'filterOpen':
       return column(guestPane('emeka'), { menu: true });
@@ -1596,6 +1603,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'staffBefore',
     'draft',
     'paused',
+    'eventDeleted',
     'onTheDay',
     'secondDay',
   ]),

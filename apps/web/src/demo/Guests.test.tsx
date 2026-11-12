@@ -177,6 +177,19 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
   });
 
+  it('answers not-found once the event is deleted (sc-1468)', SLOW, async () => {
+    open('/demo/guests?state=eventDeleted');
+    const gone = await screen.findByRole(
+      'heading',
+      { level: 1, name: 'This event is not available' },
+      WAIT,
+    );
+
+    await waitFor(() => expect(document.activeElement).toBe(gone));
+    expect(screen.queryByRole('heading', { level: 1, name: 'Guests' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Adaeze & Tunde’s wedding' })).toBeNull();
+  });
+
   it('counts arrivals on the day, with a walk-in in the menu after Coming', SLOW, async () => {
     await guests('onTheDay');
 

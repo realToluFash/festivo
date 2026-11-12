@@ -14,12 +14,14 @@ import { type SampleEvent, EVENT_WORDS as W, copyStart, instantOf, keepCopy } fr
 import { DateTime } from '../components/EventPageParts.tsx';
 import { LayersContext, useDeskDialog } from '../layers.ts';
 import { Dialog, Head } from '../components/SettingsParts.tsx';
+import { figure } from './guestsWords.ts';
 
 const LOCALE = 'en-US';
 
-/** Delete, once the event has been live: the 400 dialog with the name to type; Delete is red once it matches. */
+/** Delete, once the event has been live or has anybody on its list: the 400 dialog with the name to type; Delete is red once it matches. */
 export function DeleteByName(props: {
   event: SampleEvent;
+  people: number;
   typed?: string;
   mismatch?: boolean;
   onKeep: () => void;
@@ -32,12 +34,14 @@ export function DeleteByName(props: {
 
 function DeleteBox({
   event,
+  people,
   typed: first = '',
   mismatch = false,
   onKeep,
   onDelete,
 }: {
   event: SampleEvent;
+  people: number;
   typed?: string;
   mismatch?: boolean;
   onKeep: () => void;
@@ -70,10 +74,15 @@ function DeleteBox({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={`${id}-title`}
-        aria-describedby={`${id}-removes ${id}-window`}
+        aria-describedby={`${id}-removes ${id}-what ${id}-link ${id}-window`}
       >
         <h2 id={`${id}-title`}>{W.deleteTitle(event.name)}</h2>
         <p id={`${id}-removes`}>{W.removes}</p>
+        <ul id={`${id}-what`} className="ev-removes">
+          <li>{W.removesEvent}</li>
+          {people > 0 && <li>{W.removesGuests(figure(people), people)}</li>}
+        </ul>
+        <p id={`${id}-link`}>{W.guestsLink}</p>
         <p id={`${id}-window`}>{W.restoreWindow(W.restoreUntil)}</p>
         <div className="desk-field">
           <label htmlFor={`${id}-name`} className="desk-label">

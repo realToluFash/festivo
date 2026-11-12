@@ -1,13 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
+import { peopleOn } from './guests.ts';
 import { KW, kitchenAt, resetKitchen } from './kitchen.ts';
 
 const tested = config();
@@ -284,6 +285,53 @@ describe('Events in A at a desk (sc-30304)', () => {
       expect(router.state.location.pathname).toBe('/demo/events');
       expect(within(main()).queryByRole('link', { name: new RegExp(WEDDING) })).toBeNull();
       expect(within(side()).queryByRole('link', { name: WEDDING })).toBeNull();
+    },
+  );
+
+  it(
+    'counts the guest list among what Delete removes, as the Guests header does',
+    SLOW,
+    async () => {
+      await page('/demo/events/evt-wed-4?state=delete');
+      const ask = screen.getByRole('alertdialog', { name: `Delete ${WEDDING}?` });
+      const people = peopleOn('evt-wed-4');
+
+      expect(people).toBeGreaterThan(1);
+      expect(
+        within(ask)
+          .getAllByRole('listitem')
+          .map((item) => item.textContent),
+      ).toEqual([
+        'the event, its details and its schedule',
+        `its guest list, with the ${people} people on it`,
+      ]);
+    },
+  );
+
+  it(
+    'asks for the name of a Draft with people on its list, and not of one without',
+    SLOW,
+    async () => {
+      const draft = 'Bisi & Kola’s engagement';
+      await page('/demo/events/evt-draft-4?state=deleteDraftGuests', draft);
+      const ask = screen.getByRole('alertdialog', { name: `Delete ${draft}?` });
+
+      expect(
+        within(ask).getByRole('textbox', { name: `Type ${draft} to delete it` }),
+      ).toBeDefined();
+      expect(within(ask).getByText('its guest list, with the 12 people on it')).toBeDefined();
+      cleanup();
+
+      const empty = 'Cena benéfica Fundación Lucía';
+      await page('/demo/events/evt-cena-4?state=deleteDraft', empty);
+      const plain = screen.getByRole('alertdialog', { name: `Delete ${empty}?` });
+
+      expect(within(plain).queryByRole('textbox')).toBeNull();
+      expect(
+        within(plain).getByText(
+          'It’s a draft with nobody on its guest list. It will be removed for your whole team.',
+        ),
+      ).toBeDefined();
     },
   );
 

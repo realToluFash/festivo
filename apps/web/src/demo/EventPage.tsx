@@ -65,7 +65,14 @@ import { MW, menuAt } from './menuServed.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { BUDGET_EVENT } from './budget.ts';
 import { BudgetEntry } from './BudgetRoutes.tsx';
-import { type NumbersState, guestsAt, hasGuests, numbersStateOf, replyByOf } from './guests.ts';
+import {
+  type NumbersState,
+  guestsAt,
+  hasGuests,
+  numbersStateOf,
+  peopleOn,
+  replyByOf,
+} from './guests.ts';
 import { GuestNumbers } from './GuestsParts.tsx';
 import {
   type Told,
@@ -134,6 +141,7 @@ function askingOf(state: EventStateName | null): Asking | null {
     case 'duplicate':
       return state;
     case 'delete':
+    case 'deleteDraftGuests':
     case 'deleteMismatch':
     case 'deleteTyped':
       return 'delete';
@@ -402,7 +410,9 @@ function EventView({
                       manage={manageOf(event, now)}
                       onPick={(one) => {
                         if (one === 'delete')
-                          setAsking(needsName(event) ? 'delete' : 'deleteDraft');
+                          setAsking(
+                            needsName(event, peopleOn(event.id)) ? 'delete' : 'deleteDraft',
+                          );
                         else setAsking(one);
                       }}
                     />
@@ -576,6 +586,7 @@ function Asks({
       return (
         <DeleteByName
           event={event}
+          people={peopleOn(event.id)}
           typed={
             state === 'deleteTyped'
               ? event.name
