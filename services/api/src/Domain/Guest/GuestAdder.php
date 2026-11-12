@@ -6,6 +6,7 @@ namespace App\Domain\Guest;
 
 use App\Audit\Auditor;
 use App\Domain\Guest\Http\GuestSerialiser;
+use App\Domain\Guest\Link\InvitationLinks;
 use App\Domain\Guest\Model\NewGuest;
 use App\Entity\Event;
 use App\Entity\Guest;
@@ -44,7 +45,7 @@ final readonly class GuestAdder
                 throw new ApiException(ErrorCode::GuestAlreadyListed, 'guest.already_listed', parameters: ['{name}' => $new->fullName]);
             }
 
-            $guest = Guest::invited($event, $new->fullName, $new->nameKey, $new->email, $new->mobile, $by);
+            $guest = Guest::invited($event, $new->fullName, $new->nameKey, $new->email, $new->mobile, $by, InvitationLinks::token());
             $this->entityManager->persist($guest);
             $this->audited($guest, $by);
 

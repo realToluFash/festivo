@@ -29,6 +29,14 @@ framework:
             limit: 5
             interval: '1 hour'
 
+        guest_link_wrong_person:
+            # Per guest's link, spent by each "Not {name}? Tell us" (sc-1526): one flag per guest
+            # changes nothing on a second tell, so five an hour is plenty for a person and nothing
+            # for a script (RFC 6585 §4).
+            policy: fixed_window
+            limit: 5
+            interval: '1 hour'
+
         join_request_account:
             # Per account, spent by each request made through a request link (sc-562), across every
             # organisation. Fixed, so the refusal's time holds still.

@@ -79,6 +79,14 @@ final readonly class EventSerialiser
         ];
     }
 
+    /** The cover as the event's page has it, for a page that shows nothing else of the event (sc-1526). @return ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>} */
+    public function coverOf(Event $event): ?array
+    {
+        $cover = $this->eventCoverRepository->findOneForEvent($event);
+
+        return null === $cover ? null : $this->cover($cover);
+    }
+
     /** @return array{position: int, description: ?string, sizes: list<array{width: int, url: string}>} */
     private function cover(EventCover $cover): array
     {

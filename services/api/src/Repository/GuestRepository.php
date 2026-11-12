@@ -10,6 +10,7 @@ use App\Entity\Organisation;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Psl\Type;
+use SensitiveParameter;
 
 /** @extends ServiceEntityRepository<Guest> */
 final class GuestRepository extends ServiceEntityRepository
@@ -65,6 +66,20 @@ final class GuestRepository extends ServiceEntityRepository
             ->setParameter('event', $event->getId(), 'uuid')
             ->setParameter('key', $nameKey)
             ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /** Only through an event that is not deleted, so a deleted event's links answer as unknown ones and a restore brings them back (sc-1526). */
+    public function findOneByLink(#[SensitiveParameter] string $token): ?Guest
+    {
+        /** @var ?Guest */
+        return $this->createQueryBuilder('g')
+            ->innerJoin('g.event', 'e')
+            ->where('g.linkToken = :token')
+            ->andWhere('g.host IS NULL')
+            ->andWhere('e.deletedAt IS NULL')
+            ->setParameter('token', $token)
             ->getQuery()
             ->getOneOrNullResult();
     }
