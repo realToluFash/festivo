@@ -65,6 +65,27 @@ describe('Send on WhatsApp, the address (sc-26025)', () => {
     );
   });
 
+  it('writes the invitation in the language sc-3790 picks for the guest', () => {
+    if (event == null || yusuf == null) throw new Error('sample missing');
+    const sophie = sampleGuests(WEDDING).find((one) => one.id === 'sophie');
+    const ines = sampleGuests(WEDDING).find((one) => one.id === 'ines');
+    if (sophie == null || ines == null) throw new Error('sample missing');
+
+    expect(messageOf(sophie, event, LINK)).toBe(
+      `[Sophie Laurent, Adaeze Obi et Tunde Bakare seraient ravis de vous voir à Adaeze & Tunde’s wedding le 5 novembre 2026. Votre page, pour répondre et voir les détails :] ${LINK}`,
+    );
+    expect(messageOf(ines, event, LINK)).toMatch(
+      /^\[Inês Duarte, Adaeze Obi e Tunde Bakare .* 5 de novembro de 2026\./u,
+    );
+    expect(messageOf({ ...yusuf, language: 'es' }, event, LINK)).toMatch(
+      /^\[Yusuf Ibrahim, a Adaeze Obi y Tunde Bakare .* el 5 de noviembre de 2026\./u,
+    );
+    expect(messageOf({ ...yusuf, language: 'es', greetAs: 'Tío Yusuf' }, event, LINK)).toMatch(
+      /^\[Tío Yusuf, /u,
+    );
+    expect(messageOf(yusuf, event, LINK)).toMatch(/^Yusuf Ibrahim, .* on November 5, 2026\./u);
+  });
+
   it('has no address for a guest with no mobile number', () => {
     if (event == null || yusuf == null) throw new Error('sample missing');
 
