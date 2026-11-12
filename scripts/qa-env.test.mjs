@@ -107,6 +107,7 @@ import {
   parseTarget,
   hardwareKeyboardOff,
   expoGoLinkApproval,
+  expoGoLinkApproved,
   passwordAutoFillFiles,
   passwordAutoFillOff,
   playImage,
@@ -1016,13 +1017,28 @@ describe('a release build', () => {
     ]);
   });
 
-  it('lets the simulator hand exp:// links to Expo Go without asking', () => {
-    expect(expoGoLinkApproval('/sims/ABC')).toEqual([
+  it('approves exp:// links for Expo Go inside the booted simulator, and reads it back', () => {
+    const key = 'com.apple.CoreSimulator.CoreSimulatorBridge-->exp';
+    const domain = 'com.apple.launchservices.schemeapproval';
+    expect(expoGoLinkApproval('ABC')).toEqual([
+      'simctl',
+      'spawn',
+      'ABC',
+      'defaults',
       'write',
-      '/sims/ABC/data/Library/Preferences/com.apple.launchservices.schemeapproval',
-      'com.apple.CoreSimulator.CoreSimulatorBridge-->exp',
+      domain,
+      key,
       '-string',
       'host.exp.Exponent',
+    ]);
+    expect(expoGoLinkApproved('ABC')).toEqual([
+      'simctl',
+      'spawn',
+      'ABC',
+      'defaults',
+      'read',
+      domain,
+      key,
     ]);
   });
 

@@ -1290,15 +1290,36 @@ function applyPlistSteps(steps) {
 }
 
 // Without this iOS asks "Open in Expo Go?" first, as Expo CLI also avoids, and Maestro's driver
-// timed out behind the question (sc-41582).
-export function expoGoLinkApproval(deviceDir) {
+// timed out behind the question (sc-41582). It is written inside the booted simulator, through
+// its own cfprefsd: the Mac's defaults, given the plist path, never wrote the file (sc-37204).
+const SCHEME_APPROVAL = 'com.apple.launchservices.schemeapproval';
+const EXPO_GO_LINK = 'com.apple.CoreSimulator.CoreSimulatorBridge-->exp';
+
+export function expoGoLinkApproval(udid) {
   return [
+    'simctl',
+    'spawn',
+    udid,
+    'defaults',
     'write',
-    join(deviceDir, 'data/Library/Preferences/com.apple.launchservices.schemeapproval'),
-    'com.apple.CoreSimulator.CoreSimulatorBridge-->exp',
+    SCHEME_APPROVAL,
+    EXPO_GO_LINK,
     '-string',
     EXPO_GO,
   ];
+}
+
+export function expoGoLinkApproved(udid) {
+  return ['simctl', 'spawn', udid, 'defaults', 'read', SCHEME_APPROVAL, EXPO_GO_LINK];
+}
+
+function approveExpoGoLinks(udid) {
+  run('xcrun', expoGoLinkApproval(udid), { optional: true });
+  if (capture('xcrun', expoGoLinkApproved(udid)) === EXPO_GO) return;
+  console.warn(
+    `  The simulator ${udid} did not keep the exp:// approval, so iOS may still ask` +
+      ' "Open in Expo Go?" and leave Maestro behind it.',
+  );
 }
 
 function withoutPasswordAutoFill(udid) {
@@ -1469,7 +1490,7 @@ async function ios(args) {
     uninstallIos(udid, id);
     if (!(await ensureExpoGo(udid, expo)))
       throw new Error(`Expo Go for SDK ${expoSdkMajor(expo)} did not install on the ${key}`);
-    run('defaults', expoGoLinkApproval(simulatorDir(udid)), { optional: true });
+    approveExpoGoLinks(udid);
     devices.push(udid);
   }
   withSoftwareKeyboard(qaSimulatorIds());
