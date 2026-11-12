@@ -71,6 +71,8 @@ export function Text({
       maxFontSizeMultiplier={
         cap == null ? maxFontSizeMultiplier : capUnderTitle(cap, size, maxFontSizeMultiplier)
       }
+      // With Android's default, highQuality, a line measured to fit can still break, and its last word drops onto a line the box has no height for, drawn as a gap (sc-41787).
+      textBreakStrategy="simple"
       {...rest}
     />
   );
