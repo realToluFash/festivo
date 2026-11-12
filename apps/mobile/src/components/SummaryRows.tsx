@@ -47,7 +47,7 @@ export const SELECTED_ROW = {
   backgroundColor: tokens.colorAccentTint,
 } as const;
 
-/** A row title beside its tag: never shrunk, only capped at the row, so a tag with no room goes under it. Shrunk, Android wraps the title after measuring it on one line and drops the last word (sc-30302). */
+/** A row title beside its tag: never shrunk, only capped at the row, so a tag with no room goes under it and the title wraps at the row's full width (sc-30302). */
 export const TITLE_BESIDE_TAG = { flexShrink: 0, maxWidth: '100%' } as const;
 
 /** A title with its tag beside it, going under it when there is no room. Android keeps the width a title measured before the row narrowed, on a rotation, and drops its last word, so the title is measured afresh whenever the row's width changes (sc-40664). */
