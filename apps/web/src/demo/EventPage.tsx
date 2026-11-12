@@ -805,7 +805,13 @@ function JustForYou({
           <div className="desk-row">
             <Lead name="bell" />
             <RowWords title={<span id="ev-mute">{W.mute}</span>} lines={[W.muteNote]} />
-            <Switch on={muted} label={W.mute} told="ev-mute-note" onChange={onChange} />
+            <Switch
+              on={muted}
+              label={W.mute}
+              words={{ on: W.switchOn, off: W.switchOff }}
+              told="ev-mute-note"
+              onChange={onChange}
+            />
           </div>
           <span id="ev-mute-note" className="desk-unseen">
             {W.muteNote}
