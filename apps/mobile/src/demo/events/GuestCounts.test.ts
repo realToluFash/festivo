@@ -2,7 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import { TO_FIGURES } from '../messages/MessagesSample.ts';
 import { CLOCKS, EVENTS } from './EventsSample.ts';
-import { GUEST_WORDS, SAMPLE_GUESTS, figureOf, guestCountsOf, rowGuests } from './GuestCounts.ts';
+import {
+  FIGURE_OPENS,
+  GUEST_WORDS,
+  SAMPLE_GUESTS,
+  eventsOfTile,
+  figureOf,
+  guestCountsOf,
+  rowGuests,
+  withReply,
+} from './GuestCounts.ts';
 
 describe('the guest counts on Events (sc-23284)', () => {
   it('adds up the live, happening now and paused events, as the web demo does', () => {
@@ -53,5 +62,52 @@ describe('the guest counts on Events (sc-23284)', () => {
     expect(figureOf(1250, 'en-US')).toBe('1,250');
     expect(GUEST_WORDS.coming(1250, 'en-GB')).toBe('1,250 coming');
     expect(GUEST_WORDS.notReplied(1250)).toBe('1,250 haven’t replied');
+  });
+});
+
+describe('each event’s guest line as links (sc-3786, pm 12 Nov)', () => {
+  const now = new Date(CLOCKS.reader);
+
+  it('opens Guests with Coming, and with No reply for haven’t replied', () => {
+    expect(FIGURE_OPENS).toEqual({ coming: 'coming', notReplied: 'noreply' });
+  });
+
+  it('moves every figure that counts a reply, in place', () => {
+    const after = withReply(SAMPLE_GUESTS, 'evt-wed-4');
+    expect(
+      rowGuests(
+        EVENTS.find((e) => e.id === 'evt-wed-4')!,
+        after,
+        now,
+      ),
+    ).toEqual({
+      coming: 97,
+      notReplied: 24,
+    });
+    const tiles = guestCountsOf(EVENTS, after, now);
+    expect(tiles.coming).toBe(212);
+    expect(tiles.notReplied).toBe(100);
+  });
+
+  it('leaves an event where everyone replied alone', () => {
+    const all = { x: { invited: 2, coming: 1, replied: 2 } };
+    expect(withReply(all, 'x')).toBe(all);
+  });
+
+  it('narrows Events to the events each tile counts', () => {
+    const replied = eventsOfTile('replied', EVENTS, SAMPLE_GUESTS, now).map((e) => e.id);
+    const invited = eventsOfTile('invited', EVENTS, SAMPLE_GUESTS, now).map((e) => e.id);
+    expect(replied.length).toBeGreaterThan(0);
+    expect(invited).toEqual(expect.arrayContaining(replied));
+    expect(eventsOfTile('invited', EVENTS, {}, now)).toEqual([]);
+  });
+
+  it('names each link by its words and where it leads', () => {
+    expect(GUEST_WORDS.notRepliedOpens('Ada & Tunde')).toBe(
+      'opens Ada & Tunde’s guests with no reply',
+    );
+    expect(GUEST_WORDS.tileShown.replied(3, 4)).toBe(
+      'Events with guests who haven’t replied · 3 of 4',
+    );
   });
 });
