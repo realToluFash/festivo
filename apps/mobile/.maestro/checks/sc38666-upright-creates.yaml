@@ -12,6 +12,9 @@ appId: host.exp.Exponent
 - tapOn: { id: 'createWalk.primary' }
 - extendedWaitUntil: { visible: { id: 'createWalk.back' }, timeout: 10000 }
 - takeScreenshot: u38666-03-country
+- tapOn: { id: 'createWalk.search' }
+- inputText: 'Nig'
+- hideKeyboard: { optional: true }
 - scrollUntilVisible: { element: { id: 'createWalk.country.NG' }, direction: DOWN, timeout: 10000 }
 - tapOn: { id: 'createWalk.country.NG' }
 - waitForAnimationToEnd: { timeout: 2000 }
