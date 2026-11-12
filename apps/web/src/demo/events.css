@@ -37,31 +37,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.ev-offline {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceMd);
-  min-height: 48px;
-  padding: 0 var(--spaceSm) 0 var(--spaceLg);
-  border-radius: var(--radiusInset);
-  background: var(--colorAttentionTint);
-  color: var(--colorAttentionText);
-  font: 600 15px/1.3 var(--fontFamily);
-}
-
-.ev-offline-mark {
-  flex: none;
-  width: 9px;
-  height: 9px;
-  margin: 0 3px;
-  background: var(--colorAttention);
-  transform: rotate(45deg);
-}
-
-.ev-offline .desk-text {
-  margin: 0;
-}
-
 /* Messages with sc-3976's count under it: "3 waiting · 1 not matched". */
 .today-place.has-line {
   height: auto;
@@ -261,18 +236,6 @@
   font: 600 17px/1.3 var(--fontFamily);
 }
 
-.ev-dialog-title {
-  font: 700 22px/1.15 var(--fontFamily);
-  letter-spacing: -0.015em;
-}
-
-.ev-bullets {
-  margin: 0;
-  padding-left: 22px;
-  color: var(--colorInkSecondary);
-  font: var(--deskLine);
-}
-
 .ev-removes {
   margin: 0;
   padding-left: var(--spaceLg);
@@ -355,4 +318,108 @@
 .ev-need-due.is-late {
   color: var(--colorBroken);
   font-weight: 600;
+}
+
+/* ── Duplicate: the guest list as one more tick under Starts, and a copy's refusal in the dialog's place (sc-3656) ── */
+
+.ev-copy-guests {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 44px;
+  padding-top: var(--spaceMd);
+  border-top: 1px solid var(--colorBorder);
+  cursor: pointer;
+}
+
+.ev-copy-box {
+  position: relative;
+  display: flex;
+  flex: none;
+  width: 24px;
+  height: 24px;
+}
+
+.ev-copy-input {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border-radius: 6px;
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 2px var(--colorFieldBorder);
+  cursor: pointer;
+  appearance: none;
+}
+
+.ev-copy-input:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.ev-copy-input:checked {
+  background: var(--colorAccent);
+  box-shadow: none;
+}
+
+.ev-copy-input:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 2px var(--colorFieldBorder),
+    var(--deskRing);
+}
+
+.ev-copy-input:checked:focus-visible {
+  box-shadow: var(--deskRing);
+}
+
+.ev-copy-tick {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  color: var(--colorInkOnDark);
+  pointer-events: none;
+}
+
+.ev-copy-words {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ev-copy-label {
+  color: var(--colorInk);
+  font: 600 16px/24px var(--fontFamily);
+}
+
+.ev-copy-hint {
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.4 var(--fontFamily);
+}
+
+.ev-copy-figure {
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.ev-copy-kept {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  padding: 10px var(--spaceMd);
+  border-radius: 10px;
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.ev-copy-untick {
+  padding: 12px var(--spaceMd);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: 10px;
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: var(--deskLine);
 }

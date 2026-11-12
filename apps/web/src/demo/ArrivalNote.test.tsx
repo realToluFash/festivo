@@ -223,11 +223,11 @@ describe('the guest’s page', () => {
     expect(screen.queryByRole('link', { name: 'Open in maps' })).toBeNull();
   });
 
-  it('sends Open in maps to OpenStreetMap, as the host’s page does', async () => {
+  it('sends Open in maps to Google Maps, as the event-change email does (sc-24381)', async () => {
     await guest('arrivalNote');
 
     expect(screen.getByRole('link', { name: 'Open in maps' }).getAttribute('href')).toMatch(
-      /^https:\/\/www\.openstreetmap\.org\/search\?query=/u,
+      /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=/u,
     );
   });
 

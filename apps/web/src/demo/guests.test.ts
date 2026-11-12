@@ -8,18 +8,26 @@ import {
   PARTY,
   WALK_IN,
   WEDDING,
+  closeLine,
   countsOf,
   guestLineOf,
   guestsCardOf,
   guestsStart,
+  handMarked,
+  haventLine,
+  invitationLine,
+  invitesOn,
   linesOf,
   markInvited,
+  markNotInvited,
+  numberMatches,
   recordReply,
   replyByOf,
   sampleGuests,
   saveGuest,
   seatedOf,
   valuesOf,
+  viewBase,
   viewOf,
 } from './guests.ts';
 import { GW } from './guestsWords.ts';
@@ -160,6 +168,92 @@ describe('the list (sc-3772)', () => {
   });
 });
 
+describe('a number, in any form (sc-3772)', () => {
+  const musa = { country: 'NG', number: '803 412 7730' };
+
+  it('matches the national form, the international one, and with or without spaces', () => {
+    expect(numberMatches(musa, '0803 412 7730')).toBe(true);
+    expect(numberMatches(musa, '08034127730')).toBe(true);
+    expect(numberMatches(musa, '+234 803 412')).toBe(true);
+    expect(numberMatches(musa, '412 7730')).toBe(true);
+    expect(numberMatches(musa, '0412 7730')).toBe(false);
+  });
+
+  it('counts only from 3 digits, and never with letters in the box', () => {
+    expect(numberMatches(musa, '80')).toBe(false);
+    expect(numberMatches(musa, 'Table 803')).toBe(false);
+    expect(viewOf(sampleGuests(WEDDING), 'all', '0803 412', NONE, null).shown).toBe(1);
+  });
+});
+
+describe('the card’s words (l10n, 8 Nov)', () => {
+  it('says how many of each have not replied, each number in its own form', () => {
+    const counts = countsOf(sampleGuests(WEDDING));
+
+    expect(haventLine(counts)).toBe('25 haven’t replied (21 guests and 4 companions).');
+    expect(haventLine({ ...counts, havent: 2, haventGuests: 1, haventCompanions: 1 })).toBe(
+      '2 haven’t replied (1 guest and 1 companion).',
+    );
+    expect(haventLine({ ...counts, havent: 1, haventGuests: 1, haventCompanions: 0 })).toBe(
+      '1 hasn’t replied.',
+    );
+  });
+
+  it('says when replies close in one whole sentence per case', () => {
+    expect(closeLine('2026-11-04', '2026-11-04')).toBe('Replies close today.');
+    expect(closeLine('2026-11-04', '2026-11-03')).toBe('Replies close tomorrow, Wed, Nov 4.');
+    expect(closeLine('2026-11-04', '2026-11-01')).toBe('Replies close on Wed, Nov 4.');
+    expect(closeLine('2026-11-04', '2026-11-05')).toBe('Replies closed on Wed, Nov 4.');
+  });
+
+  it('says Everyone has replied at 0, never 0 haven’t replied, and keeps the close line', () => {
+    const wedding = sampleEvent(WEDDING);
+
+    if (wedding == null) throw new Error('wedding');
+    const start = guestsStart('everyoneReplied', new URLSearchParams());
+    const card = guestsCardOf(wedding, start.list, 'live', start.clock, true);
+
+    expect(card).toMatchObject({
+      line: 'Everyone has replied. Replies close tomorrow, Wed, Nov 4.',
+      step: null,
+    });
+  });
+
+  it('opens each close case on the live card', () => {
+    const wedding = sampleEvent(WEDDING);
+
+    if (wedding == null) throw new Error('wedding');
+    const lineOf = (
+      state: 'closesToday' | 'closesLater' | 'repliesClosedLive' | 'noCompanionsWaiting',
+    ) => {
+      const start = guestsStart(state, new URLSearchParams());
+
+      return guestsCardOf(wedding, start.list, start.card, start.clock, true).line;
+    };
+
+    expect(lineOf('closesToday')).toBe(
+      '25 haven’t replied (21 guests and 4 companions). Replies close today.',
+    );
+    expect(lineOf('closesLater')).toBe(
+      '25 haven’t replied (21 guests and 4 companions). Replies close on Wed, Nov 4.',
+    );
+    expect(lineOf('repliesClosedLive')).toBe(
+      '25 haven’t replied (21 guests and 4 companions). Replies closed on Wed, Nov 4.',
+    );
+    expect(lineOf('noCompanionsWaiting')).toBe(
+      '21 haven’t replied. Replies close tomorrow, Wed, Nov 4.',
+    );
+  });
+});
+
+describe('the view in the address (sc-3772)', () => {
+  it('knows what each state opens on before the address says otherwise', () => {
+    expect(viewBase('filtered')).toEqual({ choice: 'noReply', q: '' });
+    expect(viewBase('search')).toEqual({ choice: 'all', q: 'okon' });
+    expect(viewBase(null)).toEqual({ choice: 'all', q: '' });
+  });
+});
+
 describe('a split family (sc-3773, Decided 8 Nov)', () => {
   it('shows each group exactly the people it counts after a recorded reply', () => {
     const list = recordReply(
@@ -194,7 +288,7 @@ describe('the card (spec §4)', () => {
 
     expect(card).toMatchObject({
       says: '96 coming of 142 invited',
-      line: '25 haven’t replied (21 guests and 4 of their companions). Replies close tomorrow, Wed, Nov 4.',
+      line: '25 haven’t replied (21 guests and 4 companions). Replies close tomorrow, Wed, Nov 4.',
       step: 'write',
     });
     expect(guestsCardOf(wedding, [], 'live', CLOCKS.rest, true)).toMatchObject({
@@ -223,6 +317,55 @@ describe('the card (spec §4)', () => {
     const list = markInvited(sampleGuests(WEDDING), 'bisi', 'WhatsApp', '2026-11-03');
 
     expect(countsOf(list)).toMatchObject({ invited: 143, noReply: 22, notYet: 13 });
+  });
+});
+
+describe('invited is a fact with a date and a way (sc-3788)', () => {
+  const list = sampleGuests(WEDDING);
+  const find = (id: string) => {
+    const one = list.find((each) => each.id === id);
+
+    if (one == null) throw new Error(id);
+
+    return one;
+  };
+
+  it('reads the Invitation’s one line: by hand, by Soirely’s message, or from their reply', () => {
+    expect(invitationLine(find('emeka'))).toBe('Invited by Folake Adeyemi, WhatsApp, Oct 9');
+    expect(invitationLine(find('marta'))).toBe('Invited by Soirely’s message, Oct 12');
+    expect(invitationLine(find('ngozi'))).toBe('Invited when they replied, Oct 2');
+    expect(invitationLine(find('bisi'))).toBeNull();
+  });
+
+  it('undoes only a mark made by hand, before they reply', () => {
+    expect(handMarked(find('emeka'))).toBe(true);
+    expect(handMarked(find('marta'))).toBe(false);
+    expect(handMarked(find('ngozi'))).toBe(false);
+    expect(handMarked(find('tomas'))).toBe(false);
+  });
+
+  it('takes the guest and their companion back to Not yet invited, and out of the counts', () => {
+    const counts = countsOf(markNotInvited(list, 'emeka'));
+
+    expect(counts).toMatchObject({ invited: 140, noReply: 20, notYet: 16, havent: 23 });
+  });
+
+  it('allows the mark only while the event is live or happening now', () => {
+    const wedding = sampleEvent(WEDDING);
+    const party = sampleEvent(PARTY);
+    const draft = sampleEvent(DRAFT);
+
+    if (wedding == null || party == null || draft == null) throw new Error('samples');
+    expect(invitesOn(wedding, CLOCKS.rest)).toBe(true);
+    expect(invitesOn(wedding, CLOCKS.now)).toBe(true);
+    expect(invitesOn(wedding, CLOCKS.finished)).toBe(false);
+    expect(invitesOn(party, CLOCKS.rest)).toBe(false);
+    expect(invitesOn(draft, CLOCKS.rest)).toBe(false);
+    expect(guestsCardOf(wedding, list, 'live', CLOCKS.finished, true)).toMatchObject({
+      tags: [{ kind: null, word: 'Finished' }],
+      line: 'This event has finished, so guests can’t be invited.',
+      step: null,
+    });
   });
 });
 

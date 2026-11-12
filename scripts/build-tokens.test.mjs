@@ -245,7 +245,7 @@ describe('settled: the reply states are told apart by shape, not by shades of gr
 
   it('names all five', () => {
     const words = Object.values(tokens.replyStates).map((s) => s.word);
-    expect(words).toEqual(['Coming', 'Maybe', 'Not coming', 'Held', 'No reply']);
+    expect(words).toEqual(['Coming', 'Not sure yet', 'Not coming', 'Held', 'No reply']);
   });
 });
 

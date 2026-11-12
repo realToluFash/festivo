@@ -19,13 +19,13 @@ import {
   characters,
   eventDay,
   eventTime,
-  mapsLink,
   sentWhen,
   shortDay,
   codePath,
   offersWhatsApp,
 } from './guest.ts';
 import { guestPlace } from './arrivalNote.ts';
+import { hasWhere, inDayOrder, mapsLink, placeOf } from './guestDay.ts';
 
 const LINES = {
   map: [
@@ -109,7 +109,17 @@ export function Mark({
 
 const PIECES = [1, 2, 3, 4, 5, 6, 7];
 
-export function Cover({ visit, words, ended }: { visit: Visit; words: Words; ended: boolean }) {
+export function Cover({
+  visit,
+  words,
+  ended,
+  band = false,
+}: {
+  visit: Visit;
+  words: Words;
+  ended: boolean;
+  band?: boolean;
+}) {
   const tagged = visit.recorded != null && !ended && visit.view.kind !== 'check';
   const shown = visit.recorded?.answer;
   const zoned = visit.readerZone !== EVENT.timeZone;
@@ -117,6 +127,38 @@ export function Cover({ visit, words, ended }: { visit: Visit; words: Words; end
   const day = shortDay(EVENT.startsAt, visit.lang, EVENT.timeZone);
   const when = zoned ? words.timeInZone(time, EVENT.timeZone) : time;
   const look = visit.photo ? 'is-photo' : `today-cover is-${EVENT.mesh}`;
+  const place = placeOf(visit.where);
+  const dayOrder = inDayOrder(visit);
+  const line = [day, dayOrder && hasWhere(place) ? null : when, dayOrder ? null : place.name]
+    .filter((part) => part != null)
+    .join(' · ');
+  const head = ended ? (
+    <h1 id="gp-h1" className="gp-cover-name" tabIndex={-1} data-focus="h1">
+      {EVENT.name}
+    </h1>
+  ) : (
+    <>
+      <h1 id="gp-h1" className="gp-cover-h1" tabIndex={-1} data-focus="h1">
+        {words.invited}
+      </h1>
+      <p className="gp-cover-guest">{GUEST}</p>
+      <p className="gp-cover-name">{EVENT.name}</p>
+    </>
+  );
+
+  if (band) {
+    return (
+      <>
+        <span className={`gp-band gp-left ev-card ${look}`} aria-hidden="true">
+          <span className="ev-scrim" />
+        </span>
+        <section className="gp-head" aria-labelledby="gp-h1">
+          {head}
+          <p className="gp-cover-line">{line}</p>
+        </section>
+      </>
+    );
+  }
 
   return (
     <section
@@ -140,20 +182,8 @@ export function Cover({ visit, words, ended }: { visit: Visit; words: Words; end
             {words.answerWord(shown)}
           </p>
         )}
-        {ended ? (
-          <h1 id="gp-h1" className="gp-cover-name" tabIndex={-1} data-focus="h1">
-            {EVENT.name}
-          </h1>
-        ) : (
-          <>
-            <h1 id="gp-h1" className="gp-cover-h1" tabIndex={-1} data-focus="h1">
-              {words.invited}
-            </h1>
-            <p className="gp-cover-guest">{GUEST}</p>
-            <p className="gp-cover-name">{EVENT.name}</p>
-          </>
-        )}
-        <p className="gp-cover-line">{`${day} · ${when} · ${EVENT.venue?.name ?? ''}`}</p>
+        {head}
+        <p className="gp-cover-line">{line}</p>
       </div>
     </section>
   );
@@ -392,28 +422,37 @@ export function AnswerRows({
   );
 }
 
-function Row({ lead, title, line }: { lead: ReactNode; title: ReactNode; line: ReactNode }) {
+function Row({ lead, title, line }: { lead: ReactNode; title: ReactNode; line?: ReactNode }) {
   return (
     <div className="gp-row">
       <span className="gp-lead">{lead}</span>
       <span className="gp-row-words">
         <span className="gp-row-title">{title}</span>
-        <span className="gp-row-line">{line}</span>
+        {line != null && <span className="gp-row-line">{line}</span>}
       </span>
     </div>
   );
 }
 
-/** When, where and who, as Events A writes them; the host's arrival note under the Where line, never translated. */
+/** When, where and who, as Events A writes them; the host's arrival note under the Where line, never translated; on the day a Coming guest reads when and where in Where instead. */
 export function Details({ visit, words, hosts }: { visit: Visit; words: Words; hosts: boolean }) {
   const time = eventTime(visit.lang);
   const zoned = visit.readerZone !== EVENT.timeZone;
   const { venue, note } = guestPlace(EVENT, visit.note, visit.phase === 'live');
+  const place = venue == null ? { name: null, address: null } : placeOf(visit.where);
+  const dayOrder = inDayOrder(visit);
+  const line = place.name != null || place.address != null;
   const noteLine = note != null && (
     <p className="gp-note" dir="auto">
       {note}
     </p>
   );
+  const hostsRow = hosts && (
+    <Row lead={<Glyph name="users" size={22} />} title={words.hosts} line={words.hostedBy} />
+  );
+
+  if (dayOrder)
+    return hostsRow === false ? null : <div className="gp-details gp-left-after">{hostsRow}</div>;
 
   return (
     <div className="gp-details gp-left-after">
@@ -422,13 +461,17 @@ export function Details({ visit, words, hosts }: { visit: Visit; words: Words; h
         title={eventDay(visit.lang)}
         line={zoned ? words.timeInZone(time, EVENT.timeZone) : time}
       />
-      {venue != null && (
+      {line && (
         <div className={hosts ? 'gp-where has-rule' : 'gp-where'}>
-          <Row lead={<Glyph name="pin" size={22} />} title={venue.name} line={venue.address} />
-          {venue.address != null && (
+          <Row
+            lead={<Glyph name="pin" size={22} />}
+            title={place.name ?? place.address}
+            line={place.name == null ? undefined : place.address}
+          />
+          {place.address != null && (
             <a
               className="gp-text gp-maps"
-              href={mapsLink(venue.address)}
+              href={mapsLink(place.address)}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -439,12 +482,10 @@ export function Details({ visit, words, hosts }: { visit: Visit; words: Words; h
           {noteLine}
         </div>
       )}
-      {venue == null && noteLine !== false && (
+      {!line && noteLine !== false && (
         <div className={hosts ? 'gp-where has-rule' : 'gp-where'}>{noteLine}</div>
       )}
-      {hosts && (
-        <Row lead={<Glyph name="users" size={22} />} title={words.hosts} line={words.hostedBy} />
-      )}
+      {hostsRow}
     </div>
   );
 }
@@ -464,18 +505,48 @@ export function Foot({ words, onTell }: { words: Words; onTell: () => void }) {
 
 const CODE = codePath();
 
-export function DoorCode({ words, companions }: { words: Words; companions: number }) {
+/** sc-1301's one card; on the event's day (sc-24381) it sits under its own heading, its title the card's first line. */
+export function DoorCode({
+  words,
+  companions,
+  heading,
+  cardRef,
+}: {
+  words: Words;
+  companions: number;
+  heading?: string;
+  cardRef?: (card: HTMLDivElement | null) => void;
+}) {
+  const code = (
+    <div className="gp-code">
+      <svg role="img" aria-label={words.doorCode} width="196" height="196" viewBox="0 0 29 29">
+        <path d={CODE} />
+      </svg>
+    </div>
+  );
+
+  if (heading != null) {
+    return (
+      <section className="gp-day-code" aria-labelledby="gp-door">
+        <h2 id="gp-door" className="gp-h2">
+          {heading}
+        </h2>
+        <div ref={cardRef} className="gp-day-card">
+          <p className="gp-day-door">{words.doorTitle}</p>
+          {code}
+          <p className="gp-sub">{words.doorLine(companions)}</p>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="gp-block" aria-labelledby="gp-door">
       <h2 id="gp-door" className="gp-h2 is-19">
         {words.doorTitle}
       </h2>
       <p className="gp-sub">{words.doorLine(companions)}</p>
-      <div className="gp-code">
-        <svg role="img" aria-label={words.doorCode} width="196" height="196" viewBox="0 0 29 29">
-          <path d={CODE} />
-        </svg>
-      </div>
+      {code}
     </section>
   );
 }

@@ -35,6 +35,8 @@ export interface Venue {
 
 export interface SampleEvent {
   id: string;
+  /** A draft duplicated with its guest list ticked: the event its guests come from (sc-3656). */
+  guestsFrom?: string;
   name: string;
   type: EventType;
   status: EventState;
@@ -390,7 +392,7 @@ export function forget(id: string): void {
   changed.set(id, null);
 }
 
-export function keepCopy(of: SampleEvent, startsAt: string): SampleEvent {
+export function keepCopy(of: SampleEvent, startsAt: string, withGuests = false): SampleEvent {
   const length = Date.parse(of.endsAt) - Date.parse(of.startsAt);
   const id = `${of.id}-copy-${copies.length + 1}`;
   const copy: SampleEvent = {
@@ -403,6 +405,8 @@ export function keepCopy(of: SampleEvent, startsAt: string): SampleEvent {
     concludedAt: null,
     hosts: [],
   };
+  if (withGuests) copy.guestsFrom = of.id;
+  else delete copy.guestsFrom;
 
   copies = [...copies, copy];
 
@@ -532,26 +536,10 @@ export const EVENT_WORDS = {
   keepIt: 'Keep it',
   delete: 'Delete',
   deleted: (name: string) => `${name} was deleted.`,
-  duplicateTitle: (name: string) => `Duplicate ${name}`,
   duplicateLine:
     'Makes a new draft with the same name. Only your team sees it until you make it live.',
-  createDraft: 'Create draft',
-  copied: 'Copied',
-  copiedItems: [
-    'Name',
-    'Type',
-    'Venue',
-    'Cover and its description',
-    'Time zone',
-    'Currency',
-    'Length',
-  ],
-  notCopied: 'Not copied',
-  notCopiedItems: ['Hosts', 'Guests', 'Replies', 'Anything that happened at the event'],
   starts: 'Starts',
   ends: 'Ends',
-  copyEnds: (end: string, hours: string, zone: string) =>
-    `It ends ${end}, ${hours} later, like the original. Times in ${zone}.`,
   created: 'Draft created. Opening it.',
   guestsPage: 'Guests’ page',
   preview: 'Preview the guests’ page',
@@ -1173,6 +1161,15 @@ export type LifeState =
   | 'deleteMismatch'
   | 'deleteTyped'
   | 'duplicate'
+  | 'duplicateTicked'
+  | 'duplicateNoGuests'
+  | 'duplicateNoManage'
+  | 'duplicateCreating'
+  | 'duplicateNotCreated'
+  | 'duplicateOverPlan'
+  | 'duplicateOverPlanAsk'
+  | 'duplicateOverCeiling'
+  | 'duplicateNoStart'
   | 'muted'
   | 'muteNotLoaded'
   | 'muteNotSaved';
@@ -1237,6 +1234,15 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   deleteMismatch: 'evt-wed-4',
   deleteTyped: 'evt-wed-4',
   duplicate: 'evt-wed-4',
+  duplicateTicked: 'evt-draft-4',
+  duplicateNoGuests: 'evt-cena-4',
+  duplicateNoManage: 'evt-wed-4',
+  duplicateCreating: 'evt-draft-4',
+  duplicateNotCreated: 'evt-draft-4',
+  duplicateOverPlan: 'evt-wed-4',
+  duplicateOverPlanAsk: 'evt-wed-4',
+  duplicateOverCeiling: 'evt-wed-4',
+  duplicateNoStart: 'evt-wed-4',
   muted: 'evt-wed-4',
   muteNotLoaded: 'evt-wed-4',
   muteNotSaved: 'evt-wed-4',
@@ -1520,6 +1526,15 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('deleteMismatch', 'Delete, not a match'),
       on('deleteTyped', 'Delete, the name typed'),
       on('duplicate', 'Duplicate'),
+      on('duplicateTicked', 'Duplicate, the guest list ticked'),
+      on('duplicateNoGuests', 'Duplicate, no guests'),
+      on('duplicateNoManage', 'Duplicate, without guests.manage'),
+      on('duplicateCreating', 'Duplicate, creating'),
+      on('duplicateNotCreated', 'Duplicate, not created'),
+      on('duplicateOverPlan', 'Duplicate, the copy over the plan'),
+      on('duplicateOverPlanAsk', 'Duplicate, the copy over the plan, Ask an owner'),
+      on('duplicateOverCeiling', 'Duplicate, the copy over the ceiling'),
+      on('duplicateNoStart', 'Duplicate, Starts left empty'),
       on('muted', 'Muted'),
       on('muteNotLoaded', 'Mute, not loaded'),
       on('muteNotSaved', 'Mute, not saved'),
@@ -1559,13 +1574,6 @@ export function instantOf(date: string, time: string, timeZone: string): string 
   const instant = guess - offsetAt(guess - offsetAt(guess, timeZone), timeZone);
 
   return new Date(instant).toISOString().replace('.000Z', 'Z');
-}
-
-export function copyStart(event: SampleEvent): Wall {
-  return wallOf(
-    new Date(Date.parse(event.startsAt) + 364 * 86_400_000).toISOString(),
-    event.timeZone,
-  );
 }
 
 export function latestOf(event: SampleEvent): SampleEvent {

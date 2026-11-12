@@ -1,4 +1,4 @@
-# sc-38666 unchanged: Create an organisation upright on a phone, keys up then down (label above, 52 nav, Continue pinned), then a name, the country step and Create, landing on the new organisation's Today.
+# sc-38666 unchanged: Create an organisation upright on a phone, keys up then down (label above, 52 nav, Continue pinned), then a name, Nigeria chosen at the country step and Create, landing on the new organisation's Today.
 appId: host.exp.Exponent
 ---
 - setOrientation: PORTRAIT
@@ -12,6 +12,12 @@ appId: host.exp.Exponent
 - tapOn: { id: 'createWalk.primary' }
 - extendedWaitUntil: { visible: { id: 'createWalk.back' }, timeout: 10000 }
 - takeScreenshot: u38666-03-country
+- tapOn: { id: 'createWalk.search' }
+- inputText: 'Nig'
+- hideKeyboard: { optional: true }
+- scrollUntilVisible: { element: { id: 'createWalk.country.NG' }, direction: DOWN, timeout: 10000 }
+- tapOn: { id: 'createWalk.country.NG' }
+- waitForAnimationToEnd: { timeout: 2000 }
 - tapOn: { id: 'createWalk.primary' }
 - extendedWaitUntil: { visible: '{{t:createOrganisation.readyTitle}}', timeout: 10000 }
 - takeScreenshot: u38666-04-ready

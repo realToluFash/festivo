@@ -150,7 +150,7 @@ export function qaConfig(tester = 1, address = undefined) {
   const avd = label.replace(/ /g, '_');
   const emulators = {
     phone: { name: `${avd}_Phone`, device: 'pixel_8' },
-    tablet: { name: `${avd}_Tablet`, device: 'pixel_tablet' },
+    tablet: { name: `${avd}_Tablet`, device: 'pixel_tablet', ramMb: 4096 },
   };
   // Inside 5554–5584, the only consoles adb finds, and clear of 5554, where one started by hand lands.
   const emulatorPort = 5570 + 2 * slot;
@@ -1052,19 +1052,42 @@ function createEmulators() {
   for (const avd of Object.values(CONFIG.emulators)) {
     if (existing.includes(avd.name)) {
       console.log(`  ${avd.name}: already there`);
-      continue;
+    } else {
+      const created = spawnSync(
+        tools.avdmanager,
+        ['create', 'avd', '-n', avd.name, '-k', image, '-d', avd.device],
+        { input: 'no\n', env: tools.env },
+      );
+      console.log(
+        created.status === 0
+          ? `  ${avd.name}: created on ${image} in ${tools.vars.ANDROID_AVD_HOME}`
+          : `  ${avd.name}: could not create one. Is the image installed? sdkmanager "${image}"`,
+      );
     }
-    const created = spawnSync(
-      tools.avdmanager,
-      ['create', 'avd', '-n', avd.name, '-k', image, '-d', avd.device],
-      { input: 'no\n', env: tools.env },
-    );
-    console.log(
-      created.status === 0
-        ? `  ${avd.name}: created on ${image} in ${tools.vars.ANDROID_AVD_HOME}`
-        : `  ${avd.name}: could not create one. Is the image installed? sdkmanager "${image}"`,
-    );
+    if (avd.ramMb) raiseAvdRam(join(tools.vars.ANDROID_AVD_HOME, `${avd.name}.avd`), avd);
   }
+}
+
+// At avdmanager's 2 GB the Pixel Tablet's launcher and System UI stop answering mid-batch (sc-43225).
+export function withAvdRam(config, mb) {
+  const current = Number(/^hw\.ramSize\s*=\s*(\d+)/m.exec(config)?.[1] ?? 0);
+  if (current >= mb) return config;
+  const line = `hw.ramSize=${mb}`;
+  return /^hw\.ramSize\s*=.*$/m.test(config)
+    ? config.replace(/^hw\.ramSize\s*=.*$/m, line)
+    : `${config.replace(/\n?$/, '\n')}${line}\n`;
+}
+
+function raiseAvdRam(dir, avd) {
+  const file = join(dir, 'config.ini');
+  if (!existsSync(file)) return;
+  const before = readFileSync(file, 'utf8');
+  const after = withAvdRam(before, avd.ramMb);
+  if (after === before) return;
+  writeFileSync(file, after);
+  console.log(
+    `  ${avd.name}: RAM raised to ${avd.ramMb} MB; it takes effect on its next cold boot`,
+  );
 }
 
 function checkout(args) {
