@@ -74,7 +74,7 @@ export const JOB = 'Door';
 export const LONG_NAME =
   'Kunle Adeyemi with his driver and the two security men from the Lagos office, who were not on the list, but the host said on the phone at six to let all of them in at the side gate by the car park on Ozumba Mbadiwe Avenue';
 
-/** The job beside the event's name: the shift's, or the label of the code a join-code holder came in on, as "You're in for…" shows it. */
+/** The job beside the event's name: the shift's, or the label of the code a door-code holder came in on, as "You're in for…" shows it. */
 export function jobOf(holder: Holder): string {
   return holder === 'code' ? (BAR.label ?? JOB) : JOB;
 }

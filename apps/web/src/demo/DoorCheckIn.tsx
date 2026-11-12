@@ -39,7 +39,7 @@ import './doorCheckIn.css';
 
 const LIVE_AFTER = 2500;
 
-/** Check-in in the browser for door staff from a staff link or a join code (sc-28230): signed out of the app, 390 first, one centred 480 column wider. */
+/** Check-in in the browser for door staff from a staff link or a door code (sc-28230): signed out of the app, 390 first, one centred 480 column wider. */
 export function DoorCheckIn() {
   const [params] = useSearchParams();
   const state = checkInStateOf(params.get('state'));
