@@ -15,6 +15,11 @@ export const W = {
   loading: 'Loading…',
   draftLine: 'Guests can’t be invited until this event is live.',
   pausedLine: 'Guests can’t be invited while this event is paused.',
+  finishedLine: 'This event has finished, so guests can’t be invited.',
+  markNotInvited: 'Mark as not invited',
+  unmarked: 'Marked as not invited.',
+  readOnlyInvited:
+    'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
   makeLive: 'Make live',
   openCheckIn: 'Open check-in',
   arrived: 'arrived',
@@ -267,6 +272,9 @@ export const say = {
   recordedBy: (who: string, how: string, date: string) =>
     `recorded by ${who}, ${how.toLowerCase()}, ${date}`,
   invitedBy: (who: string, how: string, date: string) => `Invited by ${who}, ${how}, ${date}`,
+  invitedWhenReplied: (date: string) => `Invited when they replied, ${date}`,
+  unmarkRefused: (name: string, reply: string, date: string) =>
+    `Not changed. ${name} replied ${reply} on ${date}, so they stay invited.`,
   agreedOn: (date: string) => `Agreed to WhatsApp on ${date}`,
   /** Three whole keys, one per How? answer (pm #36836): never built from pieces. */
   agreedHost: {

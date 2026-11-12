@@ -29,8 +29,12 @@ import {
   filtersFor,
   groupRows,
   guestOf,
+  guestsAt,
+  handMarked,
+  invitationWords,
   isIn,
   markedInvited,
+  markedNotInvited,
   OVER_LIMIT_STATES,
   PLAN_STATES,
   nameProblem,
@@ -70,7 +74,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(103);
+    expect(GUESTS_STATES).toHaveLength(108);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -215,6 +219,51 @@ describe('the counts (sc-99), as Messaging B and Events count the wedding', () =
     );
     expect(countsOf(after)).toMatchObject({ list: 156, invited: 143, noreply: 22, notyet: 13 });
     expect(countsOf(GUESTS, 23)).toMatchObject({ list: 179, notyet: 37 });
+  });
+});
+
+describe('invited is a fact with a date and a way (sc-3788)', () => {
+  it('reads the Invitation’s one line: by hand, by Soirely’s message, or from their reply', () => {
+    expect(invitationWords(byKey('emeka'), EN)).toBe('Invited by Folake Adeyemi, WhatsApp, Oct 9');
+    expect(invitationWords(byKey('marta'), EN)).toBe('Invited by Soirely’s message, Oct 12');
+    expect(invitationWords(byKey('ngozi'), EN)).toBe('Invited when they replied, Oct 2');
+    expect(invitationWords(byKey('bisi'), EN)).toBeNull();
+  });
+
+  it('undoes only a mark made by hand, before they reply', () => {
+    expect(handMarked(byKey('emeka'))).toBe(true);
+    expect(handMarked(byKey('marta'))).toBe(false);
+    expect(handMarked(byKey('ngozi'))).toBe(false);
+    expect(handMarked(byKey('nadia'))).toBe(false);
+  });
+
+  it('takes the guest and their companion back to Not yet invited', () => {
+    const after = GUESTS.map((g) => (g.key === 'emeka' ? markedNotInvited(g) : g));
+
+    expect(countsOf(after)).toMatchObject({ invited: 140, noreply: 20, notyet: 16, havent: 23 });
+    expect(guestsAt('unmarked').find((g) => g.key === 'emeka')?.kind).toBe('notyet');
+    expect(guestsAt('unmarkRefused').find((g) => g.key === 'seun')).toMatchObject({
+      kind: 'coming',
+      when: '2026-11-03',
+    });
+  });
+
+  it('opens each state on its guest, with what Mark as not invited said', () => {
+    expect(guestOf('invitedByMessage')).toBe('marta');
+    expect(guestOf('invitedWhenReplied')).toBe('ngozi');
+    expect(areaStart('unmarked')).toMatchObject({ open: 'emeka', unmarked: 'done' });
+    expect(areaStart('unmarkRefused')).toMatchObject({ open: 'seun', unmarked: 'refused' });
+    expect(say.unmarkRefused('Oluwaseun Ajayi', 'Coming', 'Nov 3')).toBe(
+      'Not changed. Oluwaseun Ajayi replied Coming on Nov 3, so they stay invited.',
+    );
+  });
+
+  it('says on a Finished event’s card why nobody can be invited', () => {
+    expect(cardWords('finished', 'owner', countsOf(GUESTS), false, EN, REPLY_BY)).toMatchObject({
+      tags: [{ word: 'Finished', mark: 'finished' }],
+      line: 'This event has finished, so guests can’t be invited.',
+      step: null,
+    });
   });
 });
 
