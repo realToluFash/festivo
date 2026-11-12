@@ -110,16 +110,18 @@ function landed(
   return view === 'agenda' && lens != null ? lens.landing(days, day) : day;
 }
 
-/** The Calendar's title and its way into Subscribe, as the web demo's /demo/calendar draws them. */
+/** The Calendar's title, its way into Subscribe and then the bell, as the web demo's /demo/calendar draws them. */
 export function CalendarTop({
   titleRef,
   subscribe,
   onSubscribe,
+  bell,
   children,
 }: {
   titleRef?: RefObject<HTMLHeadingElement | null>;
   subscribe: RefObject<HTMLButtonElement | null>;
   onSubscribe: () => void;
+  bell?: ReactNode;
   children?: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -134,6 +136,7 @@ export function CalendarTop({
         <Glyph name="calendar" size={18} weight={2.2} />
         {t('calendarFeed.open')}
       </button>
+      {bell}
     </header>
   );
 }

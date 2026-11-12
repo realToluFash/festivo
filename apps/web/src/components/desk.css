@@ -8,6 +8,9 @@
   --swRing:
     0 0 0 2px var(--colorAccent), 0 0 0 5px color-mix(in srgb, var(--colorAccent) 18%, transparent);
   --swButton: 600 15px/1.2 var(--fontFamily);
+  --deskShadow:
+    0 0 0 1px color-mix(in srgb, var(--colorInk) 4%, transparent),
+    0 4px 20px color-mix(in srgb, var(--colorInk) 5%, transparent);
 }
 
 :where(.sw-opener, .today-person, .sw-button) {

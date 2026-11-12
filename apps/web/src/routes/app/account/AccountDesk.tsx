@@ -40,7 +40,7 @@ import {
 import { FieldError } from '../../../components/FieldError.tsx';
 import { Bones } from '../../../components/GeneralParts.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
-import { Ask, DeskPage, Head, TextAction } from '../../../components/SettingsParts.tsx';
+import { Ask, DeskPage, Head, TextAction, TitleRow } from '../../../components/SettingsParts.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { useOffline } from '../../../offline.ts';
@@ -316,11 +316,7 @@ export function AccountDesk() {
     <DeskPage layers={layers}>
       <div className="desk-column account-desk" inert={covered}>
         {refreshing && <Refreshing />}
-        <header className="desk-top">
-          <h1 ref={title} className="desk-title" tabIndex={-1}>
-            {t('account.title')}
-          </h1>
-        </header>
+        <TitleRow title={t('account.title')} titleRef={title} />
         <PersonCard
           initials={initials(name)}
           name={name}

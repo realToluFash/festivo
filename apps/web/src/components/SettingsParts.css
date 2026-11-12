@@ -57,9 +57,7 @@
   overflow: hidden;
   border-radius: var(--radiusCardLarge);
   background: var(--colorCard);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--colorInk) 4%, transparent),
-    0 4px 20px color-mix(in srgb, var(--colorInk) 5%, transparent);
+  box-shadow: var(--deskShadow);
 }
 
 .desk-page {

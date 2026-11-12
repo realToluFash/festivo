@@ -365,6 +365,29 @@ span {
   background: var(--colorCard);
 }
 
+@media (width > 60rem) {
+  /* At a desk Events, the Calendar and Settings have no band (sc-39471): the page is one card 10 from the window's edges, and it scrolls inside the card. */
+  .shell.is-bandless {
+    grid-template-rows: 1fr;
+  }
+
+  .shell-content.is-card {
+    box-sizing: border-box;
+    height: calc(100vh - 2 * var(--spaceMd));
+    margin: var(--spaceMd) var(--spaceMd) var(--spaceMd) 0;
+    padding: var(--space3xl) var(--space6xl) 48px;
+    overflow-y: auto;
+    border: 0;
+    border-radius: var(--radiusCardLarge);
+    box-shadow: var(--deskShadow);
+  }
+}
+
+.shell-sidebar :is(a, button):focus-visible {
+  outline: none;
+  box-shadow: var(--swRing);
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -1268,6 +1291,27 @@ span {
   flex: 1;
   min-width: 0;
   padding: var(--shellBlock) var(--shellInline);
+}
+
+@media (width > 60rem) {
+  /* Settings fills the card: the list stays put and only the open page scrolls. */
+  .shell-content.is-card:has(> .settings-desk) {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .shell-content.is-card > .settings-desk {
+    flex: 1;
+    min-height: 0;
+    margin: 0;
+  }
+
+  .shell-content.is-card .settings-desk-page {
+    padding: var(--space3xl) var(--space6xl) 48px;
+    overflow-y: auto;
+  }
 }
 
 /* The reading column stops at 680, so a wider window leaves the room at the right. A column cap leaves out .dialog and .dialog-scrim, which are fixed to the window. */
@@ -4963,8 +5007,8 @@ button.members-row {
   animation: rise-in var(--motionBase) var(--motionEase);
 }
 
-/* It opens from the header band's end, so it reaches back across the page. */
-.shell-band .notifications-panel {
+/* It opens from the header band's or the title row's end, so it reaches back across the page. */
+:is(.shell-band, .notifications.is-desk) .notifications-panel {
   right: 0;
   left: auto;
 }

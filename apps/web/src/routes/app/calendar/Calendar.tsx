@@ -26,6 +26,7 @@ import {
 } from '../../../components/calendarWeeks.ts';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { DeskPage } from '../../../components/SettingsParts.tsx';
+import { useDeskTop } from '../../../deskTop.ts';
 import { listPhase } from '../../../eventsList.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { useDeskLayers } from '../../../layers.ts';
@@ -65,6 +66,7 @@ function CalendarOf({
   creates: boolean;
 }) {
   const { t } = useTranslation();
+  const desk = useDeskTop();
   const now = useServerNow();
   const zone = readerZone();
   const today = wallDay(now, zone);
@@ -131,9 +133,15 @@ function CalendarOf({
     <DeskPage layers={layers}>
       <CalendarFrameContext value={frame}>
         <div className="ev cal-page" inert={covered}>
-          <CalendarTop titleRef={title} subscribe={subscribe} onSubscribe={() => setFeed(true)}>
+          <CalendarTop
+            titleRef={title}
+            subscribe={subscribe}
+            onSubscribe={() => setFeed(true)}
+            bell={desk.bell}
+          >
             {refreshing && <Refreshing />}
           </CalendarTop>
+          {desk.said}
           {load.kind === 'loaded' && events.length === 0 ? (
             <div className="cal-first">
               <EventsFirstRun
