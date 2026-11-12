@@ -18,6 +18,7 @@ import type { TFunction } from 'i18next';
 import { type ReactNode, type Ref, type RefObject, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   type TextInputInstance,
@@ -149,6 +150,7 @@ function PicksLine({
   picks,
   whole,
   shown,
+  room,
   more,
   size,
   weight,
@@ -157,12 +159,19 @@ function PicksLine({
   picks: readonly string[];
   whole: string;
   shown: number;
+  room: number | null;
   more: (count: number) => string;
   size: number;
   weight: 'semibold' | 'medium';
   ink: string;
 }) {
   const rest = picks.length - shown;
+  const lead = rest > 0 ? picksLead(picks, shown) : whole;
+  const snugs = Platform.OS === 'android' && rest > 0;
+  const drawn = `${room}|${lead}`;
+  const [snug, setSnug] = useState<{ drawn: string; width: number } | null>(null);
+  // Android stops a cut line's "…" short of the box it was laid out in, so the box narrows to the line it drew (sc-41871).
+  const snugWidth = snugs && snug?.drawn === drawn ? snug.width : null;
 
   return (
     <View style={styles.picks}>
@@ -171,9 +180,21 @@ function PicksLine({
         weight={weight}
         numberOfLines={1}
         accessible={false}
-        style={[styles.shrink, { color: ink }]}
+        style={[styles.shrink, { color: ink }, snugWidth != null && { width: snugWidth }]}
+        onTextLayout={
+          snugs
+            ? (event) => {
+                const line = event.nativeEvent.lines[0];
+                if (line == null) return;
+                const width = Math.ceil(line.width);
+                setSnug((now) =>
+                  now?.drawn === drawn && now.width === width ? now : { drawn, width },
+                );
+              }
+            : undefined
+        }
       >
-        {rest > 0 ? picksLead(picks, shown) : whole}
+        {lead}
       </Text>
       {rest > 0 && (
         <Text
@@ -319,6 +340,7 @@ export function FilterButton({
           picks={picks}
           whole={word}
           shown={fit.shownIn(slot == null ? null : slot - FILTER_SIDES)}
+          room={slot}
           more={fit.more}
           size={15}
           weight="semibold"
@@ -539,6 +561,7 @@ function TopRow({
           picks={picks}
           whole={value}
           shown={fit.shownIn(room)}
+          room={room}
           more={fit.more}
           size={15}
           weight="medium"
