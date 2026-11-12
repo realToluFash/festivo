@@ -47,6 +47,8 @@ import { PASS_PAGES } from './pass.ts';
 import { QueuePage } from './Queue.tsx';
 import { HowItsGoingPage } from './HowItsGoing.tsx';
 import { SERVICE_STATES, SERVICE_STATE_WHAT } from './howItsGoing.ts';
+import { ServiceRoomPage } from './ServiceRoom.tsx';
+import { ROOM_STATES, ROOM_STATE_WHAT } from './serviceRoom.ts';
 import { QUEUE_STATES, type QueueStateName } from './queue.ts';
 import { StationsPage } from './Stations.tsx';
 import { STATIONS_PAGES } from './stations.ts';
@@ -241,6 +243,7 @@ export default function Demo() {
       <Route path="queue" element={<QueuePage />} />
       <Route path="team" element={<TeamPage />} />
       <Route path="how-its-going" element={<HowItsGoingPage />} />
+      <Route path="service-room" element={<ServiceRoomPage />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -332,6 +335,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={TEAM_PAGES} />
         <h3>Service · How it’s going (sc-34107) · desktop</h3>
         <BoardPages pages={HOW_ITS_GOING_PAGES} />
+        <h3>Service · the whole room as a plan or a list (sc-4026) · desktop</h3>
+        <BoardPages pages={ROOM_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-81">
@@ -505,6 +510,16 @@ const TEAM_PAGES = [
     states: TEAM_STATES.map((state) => ({
       to: `/demo/team?state=${state}`,
       name: TEAM_WHAT[state],
+    })),
+  },
+];
+
+const ROOM_PAGES = [
+  {
+    name: 'The floor lead sees the whole room',
+    states: ROOM_STATES.map((state) => ({
+      to: `/demo/service-room?state=${state}`,
+      name: ROOM_STATE_WHAT[state],
     })),
   },
 ];

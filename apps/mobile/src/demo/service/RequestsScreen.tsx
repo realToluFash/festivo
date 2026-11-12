@@ -309,7 +309,7 @@ function RequestCard({
   setD: (d: Demo) => void;
   press: (r: GuestRequest, a: Action) => void;
   apply: (d: Demo, aim?: Aim) => void;
-  target: (to: 'done' | 'decline' | 'reason', node: ScreenReaderTarget | null) => void;
+  target: (to: 'done' | 'decline' | 'reason' | 'notice', node: ScreenReaderTarget | null) => void;
 }) {
   const notice = d.notice[r.id];
   const seat = d.table.seats.find((s) => s.n === r.seat);
@@ -327,31 +327,93 @@ function RequestCard({
         </View>
       </View>
     );
-  const buttons = offered(r, d);
-  const declining = d.declining === r.id;
   return (
-    <View style={styles.card} testID={`requests.card.${r.id}`}>
+    <RequestCardView
+      id={r.id}
+      kind={kindLine(r)}
+      words={r.words}
+      plate={r.plate}
+      flags={seat?.flags.map((f) => f.words) ?? []}
+      owner={`${ownerLine(r, d.viewer)}${d.online ? '' : ` · as of ${AS_OF}`}`}
+      notice={notice}
+      declining={d.declining === r.id}
+      reason={d.reason}
+      reasonWrong={d.reasonWrong}
+      buttons={offered(r, d)}
+      onReason={(reason) =>
+        setD({ ...d, reason, reasonWrong: d.reasonWrong && reason.trim() === '' })
+      }
+      onKeep={() => apply({ ...d, declining: null }, { id: r.id, to: 'decline' })}
+      onSend={() => {
+        const next = decline(d);
+        apply(next, next.declining == null ? { id: 'heading' } : { id: r.id, to: 'reason' });
+      }}
+      onPress={(a) => press(r, a)}
+      target={target}
+      testPrefix="requests"
+    />
+  );
+}
+
+export function RequestCardView({
+  id,
+  kind,
+  words,
+  plate,
+  flags,
+  owner,
+  notice,
+  declining,
+  reason,
+  reasonWrong,
+  buttons,
+  onReason,
+  onKeep,
+  onSend,
+  onPress,
+  target,
+  testPrefix,
+}: {
+  id: string;
+  kind: string;
+  words: string;
+  plate: { now: string; next: string } | undefined;
+  flags: readonly string[];
+  owner: string;
+  notice: string | undefined;
+  declining: boolean;
+  reason: string;
+  reasonWrong: boolean;
+  buttons: readonly Action[];
+  onReason: (reason: string) => void;
+  onKeep: () => void;
+  onSend: () => void;
+  onPress: (a: Action) => void;
+  target: (to: 'done' | 'decline' | 'reason' | 'notice', node: ScreenReaderTarget | null) => void;
+  testPrefix: string;
+}) {
+  return (
+    <View style={styles.card} testID={`${testPrefix}.card.${id}`}>
       <Text size={13} weight="semibold" style={styles.kicker}>
-        {kindLine(r)}
+        {kind}
       </Text>
       <Text size={18} weight="bold">
-        {r.words}
+        {words}
       </Text>
-      {r.plate != null && (
+      {plate != null && (
         <View style={styles.plate}>
-          <Text size={14}>{`Now: ${r.plate.now}`}</Text>
-          <Text size={14} weight="semibold">{`New: ${r.plate.next}`}</Text>
-          {seat?.flags.map((f) => (
-            <FlagLine key={f.words} flag={f.words} />
+          <Text size={14}>{`Now: ${plate.now}`}</Text>
+          <Text size={14} weight="semibold">{`New: ${plate.next}`}</Text>
+          {flags.map((f) => (
+            <FlagLine key={f} flag={f} />
           ))}
         </View>
       )}
       <Text size={14} weight="medium" style={shared.secondary}>
-        {ownerLine(r, d.viewer)}
-        {d.online ? '' : ` · as of ${AS_OF}`}
+        {owner}
       </Text>
       {notice != null && (
-        <View accessibilityRole="alert" style={styles.warn}>
+        <View accessibilityRole="alert" style={styles.warn} ref={(n) => target('notice', n)}>
           <Glyph paths={WARN} ink={tokens.colorAttentionText} side={18} />
           <Text size={15} weight="semibold" style={shared.grow}>
             {notice}
@@ -360,35 +422,23 @@ function RequestCard({
       )}
       {declining ? (
         <View style={styles.decline}>
-          <Field label="Why it can’t be done" error={d.reasonWrong ? DECLINE_BLANK : null}>
+          <Field label="Why it can’t be done" error={reasonWrong ? DECLINE_BLANK : null}>
             <TextField
               accessibilityLabel="Why it can’t be done"
               ref={(n) => target('reason', n)}
-              value={d.reason}
-              onChangeText={(reason) =>
-                setD({ ...d, reason, reasonWrong: d.reasonWrong && reason.trim() === '' })
-              }
+              value={reason}
+              onChangeText={onReason}
               maxLength={WORDS_MAX}
-              wrong={d.reasonWrong}
-              testID={`requests.reason.${r.id}`}
+              wrong={reasonWrong}
+              testID={`${testPrefix}.reason.${id}`}
             />
           </Field>
           <View style={styles.buttons}>
-            <QuietButton
-              label="Keep it"
-              onPress={() => apply({ ...d, declining: null }, { id: r.id, to: 'decline' })}
-              testID={`requests.keep.${r.id}`}
-            />
+            <QuietButton label="Keep it" onPress={onKeep} testID={`${testPrefix}.keep.${id}`} />
             <PrimaryButton
               label="Decline request"
-              onPress={() => {
-                const next = decline(d);
-                apply(
-                  next,
-                  next.declining == null ? { id: 'heading' } : { id: r.id, to: 'reason' },
-                );
-              }}
-              testID={`requests.declineSend.${r.id}`}
+              onPress={onSend}
+              testID={`${testPrefix}.declineSend.${id}`}
             />
           </View>
         </View>
@@ -401,8 +451,8 @@ function RequestCard({
                   key={a}
                   label={ACTION_WORD[a]}
                   ref={(n) => target(a === 'done' ? 'done' : 'decline', n)}
-                  onPress={() => press(r, a)}
-                  testID={`requests.${a}.${r.id}`}
+                  onPress={() => onPress(a)}
+                  testID={`${testPrefix}.${a}.${id}`}
                 />
               ) : (
                 <SecondaryButton
@@ -411,8 +461,8 @@ function RequestCard({
                   ref={(n) => {
                     if (a !== 'take') target(a, n);
                   }}
-                  onPress={() => press(r, a)}
-                  testID={`requests.${a}.${r.id}`}
+                  onPress={() => onPress(a)}
+                  testID={`${testPrefix}.${a}.${id}`}
                 />
               ),
             )}
