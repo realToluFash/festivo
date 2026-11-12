@@ -52,6 +52,7 @@ import {
   type RecoveryAnswer,
   waitingMembers,
 } from './membersCard.ts';
+import { MembersLoading } from '../../../components/MembersParts.tsx';
 import { useOwnerClaim } from './MembersClaim.tsx';
 import { InviteDialog, RequestDialog } from './MembersDialogs.tsx';
 import { RecoveryAsk, RecoveryBlock } from './MembersRecovery.tsx';
@@ -169,7 +170,7 @@ export function Members() {
           {load.kind === 'loading' && (
             <Column>
               <TitleRow title={t('membersScreen.title')} />
-              <Loading />
+              <MembersLoading words={t('membersScreen.loading')} />
             </Column>
           )}
           {load.kind === 'failed' && (
@@ -216,30 +217,6 @@ export function Members() {
 
 function Column({ children }: { children: ReactNode }) {
   return <div className="desk-column">{children}</div>;
-}
-
-function Loading() {
-  const { t } = useTranslation();
-
-  return (
-    <div className="desk-loading" role="status" aria-label={t('membersScreen.loading')}>
-      <span className="desk-unseen" data-page-waits>
-        {t('membersScreen.loading')}
-      </span>
-      <span className="desk-sunk is-card" aria-hidden="true" />
-      <ul className="desk-rows has-lead" aria-hidden="true">
-        {[1, 2, 3, 4].map((bar) => (
-          <li key={bar} className="desk-row is-bones">
-            <span className="desk-sunk is-face" />
-            <span className="desk-row-words">
-              <span className={`desk-sunk is-title b${bar}`} />
-              <span className={`desk-sunk is-line b${bar}`} />
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
 }
 
 function MembersLoaded({

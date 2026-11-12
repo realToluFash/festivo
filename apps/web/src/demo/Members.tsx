@@ -79,6 +79,7 @@ import {
   TitleRow,
 } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
+import { MembersLoading } from '../components/MembersParts.tsx';
 
 const RETRY_MS = 1200;
 
@@ -271,7 +272,11 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
       <Page>
         <DemoOffline />
         <TitleRow title="Members" bell={<DemoBell tell={tell} />} />
-        {load === 'failed' ? <Failed onRetry={() => setLoad('retrying')} /> : <Loading />}
+        {load === 'failed' ? (
+          <Failed onRetry={() => setLoad('retrying')} />
+        ) : (
+          <MembersLoading words="Loading members…" />
+        )}
       </Page>
     );
 
@@ -363,26 +368,6 @@ function Column({ title, children }: { title: ReactNode; children: ReactNode }) 
     <div className="desk-split">
       {title}
       {children}
-    </div>
-  );
-}
-
-function Loading() {
-  return (
-    <div className="desk-loading" role="status" aria-label="Loading members…">
-      <span className="desk-unseen">Loading members…</span>
-      <span className="desk-sunk is-card" aria-hidden="true" />
-      <ul className="desk-rows has-lead" aria-hidden="true">
-        {[1, 2, 3, 4].map((bar) => (
-          <li key={bar} className="desk-row is-bones">
-            <span className="desk-sunk is-face" />
-            <span className="desk-row-words">
-              <span className={`desk-sunk is-title b${bar}`} />
-              <span className={`desk-sunk is-line b${bar}`} />
-            </span>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
