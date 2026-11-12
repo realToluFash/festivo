@@ -120,7 +120,8 @@ describe('nameScroll', () => {
   it('asks again once the content the first letter grew is mounted, from the group’s new place', () => {
     const asked: number[] = [];
     const frames: (() => void)[] = [];
-    const inSight = nameScroll(12, (y) => asked.push(y), (run) => frames.push(run));
+    const inSight = nameScroll(12, (run) => frames.push(run));
+    inSight.scrollWith((y) => asked.push(y));
     inSight.viewport(100);
     inSight.group(200, 120);
     inSight.row(0, 52, 52);

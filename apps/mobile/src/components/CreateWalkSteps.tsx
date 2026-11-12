@@ -4,7 +4,15 @@ import {
   newOrganisationLimit,
   timezoneLabel,
 } from '@soirely/domain';
-import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
@@ -180,13 +188,7 @@ export function NameStep({
   const sizes = sizesOf(look);
   const [focused, setFocused] = useState(false);
   const scroller = useRef<ScrollViewInstance>(null);
-  const [inSight] = useState(() =>
-    nameScroll(
-      tokens.spaceLg,
-      (y) => scroller.current?.scrollTo({ y, animated: true }),
-      requestAnimationFrame,
-    ),
-  );
+  const [inSight] = useState(() => nameScroll(tokens.spaceLg, requestAnimationFrame));
   const [labelWidth, setLabelWidth] = useState(0);
   const { beside } = nameRow(look);
   const underField = beside ? { marginLeft: labelWidth + tokens.spaceXl } : null;
@@ -203,7 +205,8 @@ export function NameStep({
     inSight.row(y, height, sizes.field);
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    inSight.scrollWith((y) => scroller.current?.scrollTo({ y, animated: true }));
     const shown = Keyboard.addListener('keyboardDidShow', inSight.keysUp);
 
     return () => shown.remove();
