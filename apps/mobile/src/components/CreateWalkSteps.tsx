@@ -39,6 +39,7 @@ import {
   cardNameSize,
   cardWords,
   countries,
+  countryNoMatch,
   factsOf,
   NAME_LABEL,
   nameField,
@@ -497,7 +498,9 @@ export function CountryStep({
   const items: readonly Item[] = searching
     ? countrySearch(all, walk.query, naming.locale).map((country) => ({ kind: 'country', country }))
     : [HEADING, ...all.map((country): Item => ({ kind: 'country', country }))];
+  const noMatch = countryNoMatch(walk.query, items.length, t);
   const device = all.find((country) => country.code === walk.device.country) ?? null;
+  useReadOut(noMatch, { afterTyping: walk.query, quietAtMount: true });
   const pick = (code: string) => {
     Keyboard.dismiss();
     onPick(code);
@@ -573,6 +576,20 @@ export function CountryStep({
           )
         }
         ListHeaderComponent={header}
+        ListEmptyComponent={
+          noMatch == null ? undefined : (
+            <View style={styles.noMatch}>
+              <Text
+                size={15}
+                weight="medium"
+                style={styles.noMatchWords}
+                testID="createWalk.countries.noMatch"
+              >
+                {noMatch}
+              </Text>
+            </View>
+          )
+        }
         stickyHeaderIndices={searching ? undefined : [1]}
         style={look.phone ? styles.fill : styles.wideList}
         contentContainerStyle={look.phone && styles.phoneList}
@@ -810,6 +827,12 @@ export function WideCard({ walk, email, naming }: { walk: Walk; email: string; n
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   shrink: { flexGrow: 0, flexShrink: 1 },
+  noMatch: { paddingTop: tokens.spaceXxl, paddingHorizontal: tokens.spaceSm },
+  noMatchWords: {
+    textAlign: 'center',
+    lineHeight: 15 * 1.4,
+    color: tokens.colorInkSecondary,
+  },
   phoneBody: { paddingHorizontal: tokens.spaceXxl, paddingVertical: tokens.spaceLg },
   phoneList: { paddingHorizontal: tokens.spaceXxl, paddingBottom: tokens.spaceLg },
   stepWords: { lineHeight: 13 * 1.3 },

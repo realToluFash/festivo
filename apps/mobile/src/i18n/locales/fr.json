@@ -811,6 +811,7 @@
     "readyTitle": "Tout est prêt pour la créer ?",
     "fromDevice": "De cet appareil",
     "allCountries": "Tous les pays",
+    "noMatch": "Aucun pays ne correspond à « {{text}} ».",
     "discardTitle": "Abandonner la création ?",
     "discardBody": "Rien n’est créé et ce que vous avez saisi n’est pas conservé.",
     "discard": "Abandonner",

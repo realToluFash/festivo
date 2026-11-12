@@ -790,6 +790,7 @@
     "readyTitle": "Ready to create it?",
     "fromDevice": "From this device",
     "allCountries": "All countries",
+    "noMatch": "No country matches “{{text}}”.",
     "discardTitle": "Discard this organisation?",
     "discardBody": "Nothing is created, and what you entered is not kept.",
     "discard": "Discard",

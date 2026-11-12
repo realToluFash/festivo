@@ -811,6 +811,7 @@
     "readyTitle": "Tudo pronto para a criar?",
     "fromDevice": "Deste dispositivo",
     "allCountries": "Todos os países",
+    "noMatch": "Nenhum país corresponde a «{{text}}».",
     "discardTitle": "Descartar esta organização?",
     "discardBody": "Nada é criado e o que introduziu não fica guardado.",
     "discard": "Descartar",

@@ -157,6 +157,13 @@ export function countryName(code: string | null, locale: string): string | null 
   return countries(locale).find((country) => country.code === code)?.name ?? code;
 }
 
+/** The line in the list's place when a search finds no country; null for a blank search or one that finds some. */
+export function countryNoMatch(query: string, found: number, t: TFunction): string | null {
+  const text = query.trim();
+
+  return text === '' || found > 0 ? null : t('createOrganisation.noMatch', { text });
+}
+
 export type Currencies = FoundingCurrencies;
 
 export interface Naming {
