@@ -1,0 +1,39 @@
+# sc-36920 on a tablet: the Calendar's Month grid in November 2026 turned to ${O} (PORTRAIT or LANDSCAPE_LEFT), with "+N more" at 1 and many, bars, marks and the day list, in the account's language. Needs sc-36920's seed (see sc36920-calendar-words.yaml).
+appId: host.exp.Exponent
+---
+- setOrientation: ${O}
+- waitForAnimationToEnd:
+    timeout: 4000
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.month
+    timeout: 30000
+- tapOn:
+    id: calendar.view.month
+- tapOn:
+    id: calendar.today
+- extendedWaitUntil:
+    visible:
+      id: calendar.day.2026-11-18
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: month-top
+- scrollUntilVisible:
+    element:
+      id: calendar.day.2026-12-02
+    direction: DOWN
+- takeScreenshot: month-busy
+- tapOn:
+    id: calendar.day.2026-11-27
+- extendedWaitUntil:
+    visible:
+      id: calendar.dayList
+    timeout: 10000
+- takeScreenshot: day-list-multi
+- tapOn:
+    id: calendar.day.2026-11-25
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: day-list-busy
