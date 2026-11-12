@@ -2968,6 +2968,9 @@ describe('the flows a batch runs', () => {
         expect(catalogues[code].steps.invitedTitle).not.toMatch(someoneSignedIn);
       }
       const signInForm = readFileSync(join(target, 'batch/sign-in-form.yaml'), 'utf8');
+      expect(signInForm).toMatch(
+        /tapOn:\s+id: 'signIn\.password\.reveal'\s+- retry:[\s\S]*?inputText: \$\{PASSWORD\}\s+- copyTextFrom:\s+id: 'signIn\.password'\s+- assertTrue: \$\{maestro\.copiedText == PASSWORD\}/,
+      );
       const landed = new RegExp(
         `^(?:${signInForm.match(/extendedWaitUntil:\s+visible: '(.*)'\s+timeout: 30000\s+optional: true/)[1].replaceAll("''", "'")})$`,
       );
