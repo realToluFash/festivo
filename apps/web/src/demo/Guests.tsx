@@ -30,6 +30,7 @@ import {
   type ListRow,
   type Pane,
   type Reply,
+  type ViewInAddress,
   addGuest,
   agreeToWhatsApp,
   choiceWord,
@@ -48,7 +49,7 @@ import {
   viewBase,
   viewOf,
 } from './guests.ts';
-import { type ListView, pageKey, useGuestsAddress } from './useGuestsAddress.ts';
+import { pageKey, useGuestsAddress } from './useGuestsAddress.ts';
 import { GuestBones, GuestsCardView, ListBones, MarkLead } from './GuestsParts.tsx';
 import {
   EMEKA,
@@ -194,7 +195,7 @@ function GuestsPage({
 }: {
   event: SampleEvent;
   start: GuestsStart;
-  base: ListView;
+  base: ViewInAddress;
   their: { state: TheirState; viewer: Viewer };
   tell: Tell;
 }) {

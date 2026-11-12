@@ -243,10 +243,7 @@ describe('the card’s words (l10n, 8 Nov)', () => {
 });
 
 describe('the view in the address (sc-3772)', () => {
-  it('reads ?filter= and ?q= with no state, and knows what each state opens on', () => {
-    const start = guestsStart(null, new URLSearchParams('filter=held&q=marta'));
-
-    expect([start.choice, start.q]).toEqual(['held', 'marta']);
+  it('knows what each state opens on before the address says otherwise', () => {
     expect(viewBase('filtered')).toEqual({ choice: 'noReply', q: '' });
     expect(viewBase('search')).toEqual({ choice: 'all', q: 'okon' });
     expect(viewBase(null)).toEqual({ choice: 'all', q: '' });

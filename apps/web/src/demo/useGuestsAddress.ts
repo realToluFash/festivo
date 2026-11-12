@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useLocation, useSearchParams } from 'react-router';
 
-import { type Choice, choiceOf } from './guests.ts';
+import { type ViewInAddress, choiceOf } from './guests.ts';
 
 export const SEARCH_SETTLES_MS = 300;
 
@@ -16,37 +16,39 @@ export function pageKey(params: URLSearchParams): string {
   return page.toString();
 }
 
-export interface ListView {
-  choice: Choice;
-  q: string;
-}
-
-/** sc-3772: the menu's choice and the search live in the address, each change a step Back undoes; the search is written once typing settles. `base` is what the state opens on with neither key. */
-export function useGuestsAddress(base: ListView) {
+/** sc-3772: the menu's choice and the search live in the address, each change a step Back undoes; the search is written once typing settles, with the next choice if that comes first, and dropped if Back or Forward moves the address under it. `base` is what the state opens on with neither key. */
+export function useGuestsAddress(base: ViewInAddress) {
   const [params, setParams] = useSearchParams();
+  const { key } = useLocation();
   const choice = choiceOf(params.get('filter')) ?? base.choice;
   const addressQ = params.get('q') ?? base.q;
   const [q, setTyped] = useState(addressQ);
   const written = useRef(addressQ);
+  const pending = useRef<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (addressQ === written.current) return;
-    written.current = addressQ;
-    setTyped(addressQ);
-  }, [addressQ]);
-
-  useEffect(
-    () => () => {
-      if (timer.current != null) clearTimeout(timer.current);
-    },
-    [],
-  );
-
-  function write(next: Partial<ListView>): void {
+  function cancel(): void {
     if (timer.current != null) clearTimeout(timer.current);
     timer.current = null;
-    if (next.q !== undefined) written.current = next.q;
+    pending.current = null;
+  }
+
+  useEffect(() => {
+    const waiting = pending.current != null;
+
+    cancel();
+    if (!waiting && addressQ === written.current) return;
+    written.current = addressQ;
+    setTyped(addressQ);
+  }, [key, addressQ]);
+
+  useEffect(() => cancel, []);
+
+  function write(next: Partial<ViewInAddress>): void {
+    const nextQ = next.q ?? pending.current ?? undefined;
+
+    cancel();
+    if (nextQ !== undefined) written.current = nextQ;
     setParams((was) => {
       const at = new URLSearchParams(was);
 
@@ -54,9 +56,9 @@ export function useGuestsAddress(base: ListView) {
         if (next.choice === base.choice) at.delete('filter');
         else at.set('filter', next.choice);
       }
-      if (next.q !== undefined) {
-        if (next.q === base.q) at.delete('q');
-        else at.set('q', next.q);
+      if (nextQ !== undefined) {
+        if (nextQ === base.q) at.delete('q');
+        else at.set('q', nextQ);
       }
 
       return at;
@@ -66,13 +68,14 @@ export function useGuestsAddress(base: ListView) {
   function type(next: string): void {
     setTyped(next);
     if (timer.current != null) clearTimeout(timer.current);
+    pending.current = next;
     timer.current = setTimeout(() => write({ q: next }), SEARCH_SETTLES_MS);
   }
 
   return {
     choice,
     q,
-    setChoice: (next: Choice) => write({ choice: next }),
+    setChoice: (next: ViewInAddress['choice']) => write({ choice: next }),
     setQ: type,
     clear: () => {
       setTyped('');

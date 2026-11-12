@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
+import { SEARCH_SETTLES_MS } from './useGuestsAddress.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -259,6 +260,37 @@ describe('Guests, the card’s words and the view in the address (sc-3772)', () 
 
     await waitFor(() => expect(box.value).toBe(''), WAIT);
     expect(screen.queryByText('2 of 156 shown')).toBeNull();
+  });
+
+  it('writes a search still settling with the choice picked after it', SLOW, async () => {
+    const router = await guests('inUse');
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
+      target: { value: 'okon' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^All/u }));
+    fireEvent.click(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Held/u }),
+    );
+
+    expect(router.state.location.search).toBe('?state=inUse&filter=held&q=okon');
+  });
+
+  it('drops a search still settling when Back moves the address', SLOW, async () => {
+    const router = await guests('inUse');
+    const box = screen.getByRole<HTMLInputElement>('searchbox', { name: 'Find a guest' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'All · 156' }));
+    fireEvent.click(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Held/u }),
+    );
+    fireEvent.change(box, { target: { value: 'okon' } });
+    await act(() => router.navigate(-1));
+    await act(() => new Promise((settled) => setTimeout(settled, SEARCH_SETTLES_MS + 100)));
+
+    expect(router.state.location.search).toBe('?state=inUse');
+    expect(box.value).toBe('');
+    expect(screen.getByRole('button', { name: 'All · 156' })).toBeDefined();
   });
 
   it('opens a shared link on its search, a number in its national form', SLOW, async () => {

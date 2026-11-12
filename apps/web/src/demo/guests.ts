@@ -1606,22 +1606,22 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
   }
 }
 
-/** With no state, `?filter=` picks the menu's choice, `?q=` the search and `?guest=` opens a guest, as Overview's numbers do. */
+/** With no state, `?guest=` opens a guest, as Overview's numbers do; `?filter=` and `?q=` are read by `useGuestsAddress`. */
 function applyParams(start: GuestsStart, params: URLSearchParams): GuestsStart {
-  const choice = choiceOf(params.get('filter'));
   const id = params.get('guest');
   const known = id != null && start.list.some((one) => one.id === id);
 
-  return {
-    ...start,
-    choice: choice ?? start.choice,
-    q: params.get('q') ?? start.q,
-    pane: known ? { kind: 'guest', id } : start.pane,
-  };
+  return { ...start, pane: known ? { kind: 'guest', id } : start.pane };
+}
+
+/** The menu's choice and the search, as the address keeps them. */
+export interface ViewInAddress {
+  choice: Choice;
+  q: string;
 }
 
 /** What a state's list opens on before the address says otherwise. */
-export function viewBase(state: GuestsState | null): { choice: Choice; q: string } {
+export function viewBase(state: GuestsState | null): ViewInAddress {
   const opened = guestsStart(state, new URLSearchParams());
 
   return { choice: opened.choice, q: opened.q };
