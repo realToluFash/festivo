@@ -19,6 +19,7 @@ import {
   isEventType,
   type VenueDraft,
   venueDraftOf,
+  formatWallClock,
 } from '@soirely/domain';
 import { type FormEvent, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -434,12 +435,7 @@ function DetailsForm({
           day: new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(
             typedStart,
           ),
-          time: new Intl.DateTimeFormat(locale, {
-            hour: '2-digit',
-            minute: '2-digit',
-            hourCycle: 'h23',
-            timeZone: 'UTC',
-          }).format(typedStart),
+          time: formatWallClock(`${draft.startDate}T${draft.startTime}`, locale),
         });
 
   return (
