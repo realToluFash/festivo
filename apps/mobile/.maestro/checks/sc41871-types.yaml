@@ -1,0 +1,76 @@
+# Needs an organisation with events (any).
+# sc-41871: the menu's Type row with types chosen until its first is cut, for the one-space gap on Android.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.filter'
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible:
+        id: 'events.filter.menu'
+    commands:
+      - tapOn:
+          id: 'events.filter'
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter.menu'
+    timeout: 10000
+- tapOn:
+    id: 'events.filter.type'
+- tapOn:
+    id: 'events.filter.type.anniversary'
+- tapOn:
+    id: 'events.filter.type.engagement'
+- tapOn:
+    id: 'events.filter.type.baby_shower'
+- tapOn:
+    id: 'events.filter.type.graduation'
+- tapOn:
+    id: 'events.filter.back'
+- waitForAnimationToEnd
+- takeScreenshot: types-four-menu
+- tapOn:
+    id: 'events.filter.type'
+- tapOn:
+    id: 'events.filter.type.memorial'
+- tapOn:
+    id: 'events.filter.type.religious'
+- tapOn:
+    id: 'events.filter.type.cultural'
+- tapOn:
+    id: 'events.filter.type.party'
+- tapOn:
+    id: 'events.filter.type.gala'
+- tapOn:
+    id: 'events.filter.type.conference'
+- tapOn:
+    id: 'events.filter.back'
+- waitForAnimationToEnd
+- takeScreenshot: types-twelve-menu
+- tapOn:
+    point: '50%,85%'
+- waitForAnimationToEnd
+- takeScreenshot: types-twelve
+- tapOn:
+    id: 'events.filter'
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible:
+        id: 'events.filter.menu'
+    commands:
+      - tapOn:
+          id: 'events.filter'
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter.menu'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: types-twelve-reopened
