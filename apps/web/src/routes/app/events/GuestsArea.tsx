@@ -33,7 +33,7 @@ import { api } from '../../../api.ts';
 import { config } from '../../../config.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
-import { Card, CardStep, RowWords, Says, TextAction } from '../../../components/SettingsParts.tsx';
+import { CardStep, RowWords, TextAction } from '../../../components/SettingsParts.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { focusWhenFree } from '../../../layers.ts';
 import { type Mesh, meshFor } from '../../../mesh.ts';
@@ -302,13 +302,17 @@ export function GuestsArea({
         {load.kind === 'loaded' && (
           <>
             {guests.length === 0 && (
-              <Card>
-                <Says>{t('guestList.noGuests')}</Says>
-                {manages && <CardStep label={t('guestList.addGuest')} onClick={startAdd} />}
-              </Card>
+              <GuestsCover
+                mesh={meshFor(event.id)}
+                says={t('guestList.noGuests')}
+                step={manages ? { label: t('guestList.addGuest'), onClick: startAdd } : null}
+              />
             )}
             {counts != null && guests.length > 0 && (
-              <OnTheList mesh={meshFor(event.id)} people={counts.people} />
+              <GuestsCover
+                mesh={meshFor(event.id)}
+                says={t('guestList.onTheList', { count: counts.people })}
+              />
             )}
             {(guests.length > 0 || adding) && (
               <div className="gs-cols">
@@ -347,10 +351,16 @@ export function GuestsArea({
 
 const PIECES = [1, 2, 3, 4, 5, 6];
 
-/** The summary card in the one state this story reaches, nobody invited yet; sc-3772 brings its other lines and steps. */
-function OnTheList({ mesh, people }: { mesh: Mesh; people: number }) {
-  const { t } = useTranslation();
-
+/** The summary card in the two states this story reaches, no guests yet and nobody invited yet; sc-3772 brings its other lines and steps. */
+function GuestsCover({
+  mesh,
+  says,
+  step = null,
+}: {
+  mesh: Mesh;
+  says: string;
+  step?: { label: string; onClick: () => void } | null;
+}) {
   return (
     <section className={`ev-card today-cover is-${mesh} gs-card is-page`}>
       <span className="ev-scrim" aria-hidden="true" />
@@ -358,7 +368,12 @@ function OnTheList({ mesh, people }: { mesh: Mesh; people: number }) {
         <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
       ))}
       <div className="ev-card-inner gs-card-inner">
-        <p className="gs-says">{t('guestList.onTheList', { count: people })}</p>
+        <p className="gs-says">{says}</p>
+        {step != null && (
+          <div className="ev-card-foot">
+            <CardStep label={step.label} onClick={step.onClick} />
+          </div>
+        )}
       </div>
     </section>
   );

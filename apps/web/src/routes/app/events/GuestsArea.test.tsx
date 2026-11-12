@@ -180,12 +180,15 @@ describe('Guests (sc-1468)', () => {
     expect(rows[2]?.className).toBe('is-companion');
   });
 
-  it('says No guests yet with Add guest, and no count', async () => {
+  it('says No guests yet with Add guest on the event’s cover, and no count', async () => {
     signedIn();
     await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf([])) });
 
-    expect(await screen.findByText('No guests yet')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Add guest' })).toBeDefined();
+    const cover = (await screen.findByText('No guests yet')).closest('section') as HTMLElement;
+    expect(cover.className).toMatch(/\bev-card today-cover is-\S+ gs-card is-page\b/u);
+    expect(
+      within(cover).getByRole('button', { name: 'Add guest' }).closest('.ev-card-foot'),
+    ).not.toBeNull();
     expect(screen.queryByText(/on the list/u)).toBeNull();
   });
 
