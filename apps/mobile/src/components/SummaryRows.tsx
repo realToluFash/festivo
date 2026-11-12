@@ -6,6 +6,8 @@ import {
   Easing,
   Pressable,
   StyleSheet,
+  type StyleProp,
+  type TextStyle,
   View,
   type ViewInstance,
 } from 'react-native';
@@ -235,23 +237,31 @@ export function Row({
     },
     selected && styles.rowSelected,
   ];
+  // With no tag the title is not put in the wrapping row: there Android keeps the width it measured before a rotation and drops the last word (sc-40664).
+  const heading = (shape: StyleProp<TextStyle>) => (
+    <Text
+      size={16}
+      weight={weight}
+      numberOfLines={titleLines}
+      selectable={selectable}
+      accessible={grouped ? false : undefined}
+      style={[shape, (accent || selected) && styles.accent, off && styles.off]}
+    >
+      {title}
+    </Text>
+  );
   const words = (
     <>
       {lead}
       <View style={styles.words}>
-        <View style={styles.titleRow}>
-          <Text
-            size={16}
-            weight={weight}
-            numberOfLines={titleLines}
-            selectable={selectable}
-            accessible={grouped ? false : undefined}
-            style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
-          >
-            {title}
-          </Text>
-          {tag != null && <Tag kind={tag.kind} word={tag.word} turning={tag.turning} />}
-        </View>
+        {tag == null ? (
+          heading(styles.titleAlone)
+        ) : (
+          <View style={styles.titleRow}>
+            {heading(styles.title)}
+            <Tag kind={tag.kind} word={tag.word} turning={tag.turning} />
+          </View>
+        )}
         {line != null && (
           <Text
             size={14}
@@ -484,6 +494,7 @@ const styles = StyleSheet.create({
     rowGap: 4,
   },
   title: { ...TITLE_BESIDE_TAG, lineHeight: 16 * 1.3 },
+  titleAlone: { lineHeight: 16 * 1.3 },
   line: { lineHeight: 14 * 1.4 },
   consequence: { lineHeight: 14 * 1.45 },
   count: { fontVariant: ['tabular-nums'] },
