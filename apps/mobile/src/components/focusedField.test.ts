@@ -87,7 +87,7 @@ describe('moving on from the field a screen settled on (sc-37519)', () => {
     expect(moved).toHaveBeenCalledOnce();
   });
 
-  it('moves on as a control with no focus of its own is taken', () => {
+  it('moves on as a control other than a field is taken, a picker or a button (sc-41296)', () => {
     store.fieldFocused(name);
     store.watchMovedOn(moved).settled();
     store.controlTaken();

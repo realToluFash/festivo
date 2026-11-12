@@ -48,12 +48,12 @@ export function watchCheckedField(checked: (field: ViewInstance) => void): () =>
 
 const takers = new Set<() => void>();
 
-/** A control that takes no focus of its own was taken, as a picker opens from a tap. */
+/** A control other than a field was taken: a picker opening from a tap, or a button or link taking keyboard focus (sc-41296). */
 export function controlTaken(): void {
   takers.forEach((taken) => taken());
 }
 
-/** Calls `taken` each time a control with no focus of its own is taken. Returns the unsubscribe. */
+/** Calls `taken` each time a control other than a field is taken. Returns the unsubscribe. */
 export function watchControlTaken(taken: () => void): () => void {
   takers.add(taken);
 

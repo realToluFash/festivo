@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { QuietButton } from '../components/Buttons.tsx';
+import { controlTaken } from '../components/focusedField.ts';
 import { keyboardTopNow, useKeysUp, watchKeyboardTop } from '../components/keyboardWatch.ts';
 import { stepShown } from '../components/landedScreen.ts';
 import { moveScreenReaderFocus } from '../components/screenReaderFocus.ts';
@@ -85,6 +86,7 @@ export function NavBar({
           accessibilityRole="button"
           accessibilityLabel={left === 'back' ? t('steps.back') : t('steps.close')}
           hitSlop={tokens.spaceXxs}
+          onFocus={controlTaken}
           testID={`${testID}.${left}`}
         >
           <Svg

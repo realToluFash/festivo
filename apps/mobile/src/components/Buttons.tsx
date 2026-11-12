@@ -3,6 +3,7 @@ import { Animated, Pressable, StyleSheet, View, type ViewInstance } from 'react-
 
 import { tokens } from '../theme/tokens.ts';
 import { CONTROL_TEXT_SIZE } from './Field.tsx';
+import { controlTaken } from './focusedField.ts';
 import { Text } from './Text.tsx';
 
 const PressFade = Animated.createAnimatedComponent(Pressable);
@@ -69,6 +70,7 @@ export function PrimaryButton({
       accessibilityHint={accessibilityHint}
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy }}
+      onFocus={controlTaken}
       testID={testID}
     >
       <Text
@@ -130,6 +132,7 @@ export function SecondaryButton({
       accessibilityLabel={accessibilityLabel}
       accessibilityRole={link ? 'link' : 'button'}
       accessibilityState={{ disabled: off }}
+      onFocus={controlTaken}
       testID={testID}
     >
       <Text
@@ -183,6 +186,7 @@ export function DestructiveButton({
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy }}
+      onFocus={controlTaken}
       testID={testID}
     >
       <Text
@@ -221,6 +225,7 @@ export function QuietButton({
       disabled={off}
       accessibilityRole="button"
       accessibilityState={{ disabled: off }}
+      onFocus={controlTaken}
       testID={testID}
     >
       <Text
@@ -294,6 +299,7 @@ export function Footnote({
         style={styles.footnoteAction}
         onPress={onPress}
         accessibilityRole={role}
+        onFocus={controlTaken}
         testID={testID}
       >
         <Text size={tokens.typeBodyPhone.size} weight="semibold" style={styles.accent}>
