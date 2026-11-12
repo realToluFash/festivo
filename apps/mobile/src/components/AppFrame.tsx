@@ -89,9 +89,11 @@ import {
 import { OrgPill as WhitePill } from './OrgPill.tsx';
 import { usePillFit } from './usePillFit.tsx';
 import { UnderTabsProvider } from './underTabs.ts';
+import type { Shown } from '../kit/eventsList.ts';
 import {
   SidebarBack,
   SidebarColumn,
+  SidebarEventCard,
   SidebarEvents,
   SidebarFoot,
   SidebarHead,
@@ -217,6 +219,8 @@ const AREA_ICONS: Record<EventPlace, IconPaths> = {
 export interface InsideEvent {
   area: EventPlace;
   onArea: (area: EventPlace) => void;
+  /** The event as the landscape sidebar's card, its event null while it loads (sc-30413). */
+  card?: { event: Shown | null; now: Date } | undefined;
 }
 
 interface NavEntry {
@@ -511,6 +515,7 @@ export function AppFrame({
             current={current}
             entries={entries}
             inEvent={inEvent != null}
+            card={inEvent?.card}
             organisation={signedIn.organisation}
             waiting={count}
             onSwitch={switchFromPill}
@@ -1252,6 +1257,7 @@ function FrameSidebar({
   current,
   entries,
   inEvent,
+  card,
   organisation,
   waiting,
   onSwitch,
@@ -1260,6 +1266,7 @@ function FrameSidebar({
   current: Destination;
   entries: readonly NavEntry[];
   inEvent: boolean;
+  card: InsideEvent['card'];
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
@@ -1332,6 +1339,7 @@ function FrameSidebar({
             testID="frame.side.back"
           />
         )}
+        {inEvent && card != null && <SidebarEventCard event={card.event} now={card.now} />}
         <SidebarPlaces>{places}</SidebarPlaces>
         {inEvent ? <View style={styles.fill} /> : <SidebarEvents events={events} />}
         <SidebarFoot

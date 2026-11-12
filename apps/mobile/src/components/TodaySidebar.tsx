@@ -8,6 +8,8 @@ import { useNameLines } from '../layout/useLayout.ts';
 import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { EventMesh, eventColour } from './EventMesh.tsx';
+import { EventThumb } from './EventCard.tsx';
+import { type Shown, cardTags } from '../kit/eventsList.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ShownEvent } from '../kit/today.ts';
 import { SETTINGS_ID, type Tab } from './TodayCover.tsx';
@@ -221,6 +223,43 @@ export function SidebarBack({
   );
 }
 
+/** The event as a card under the sidebar's way back: its thumb, name and tags, sunk while it loads. */
+export function SidebarEventCard({ event, now }: { event: Shown | null; now: Date }) {
+  const { t } = useTranslation();
+
+  if (event == null)
+    return (
+      <View style={styles.eventCard} testID="event.side.loading">
+        <View style={styles.sunkThumb} />
+        <View style={[styles.grow, styles.sunkLines]}>
+          <View style={[styles.sunkLine, styles.sunkName]} />
+          <View style={[styles.sunkLine, styles.sunkTags]} />
+        </View>
+      </View>
+    );
+
+  const tags = cardTags(event, now, t).map((tag) => tag.word);
+
+  return (
+    <View
+      style={styles.eventCard}
+      accessible
+      accessibilityLabel={`${event.name}. ${tags.join(', ')}`}
+      testID="event.side.card"
+    >
+      <EventThumb event={event} side={40} radius={12} />
+      <View style={styles.grow}>
+        <Text size={14} weight="bold" numberOfLines={2} accessible={false}>
+          {event.name}
+        </Text>
+        <Text size={12.5} weight="medium" accessible={false} style={styles.secondary}>
+          {tags.join(' · ')}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 export function SidebarColumn({ children }: { children: ReactNode }) {
   return (
     <ScrollView
@@ -376,6 +415,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceMd,
   },
   backPressed: { opacity: tokens.opacityPressed },
+  eventCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    padding: tokens.spaceMd,
+    borderRadius: tokens.spaceXl,
+    backgroundColor: tokens.colorCard,
+  },
+  sunkThumb: { width: 40, height: 40, borderRadius: 12, backgroundColor: tokens.colorNeutralFill },
+  sunkLines: { gap: tokens.spaceSm },
+  sunkLine: { height: 12, borderRadius: 6, backgroundColor: tokens.colorNeutralFill },
+  sunkName: { width: '70%' },
+  sunkTags: { width: '45%' },
   column: { width: SIDEBAR_WIDTH, flexGrow: 0 },
   fills: { flexGrow: 1 },
   list: { flexGrow: 1 },

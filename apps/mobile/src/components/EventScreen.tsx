@@ -16,6 +16,7 @@ import { type EditAt, EVENT_AREA, type EventPlace, areaBack } from '../kit/event
 import { markDeleted, takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
 import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
 import { SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
+import { listEventOf, shownEvent } from '../kit/eventsList.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
@@ -80,6 +81,10 @@ export function EventScreen({
   const deletes = offersDelete(event);
   const now = useServerNow();
   const phase = usePhaseOf(event, now);
+  const card =
+    event == null || phase == null
+      ? null
+      : shownEvent(listEventOf({ ...event, milestones: null }), phase);
   const original = backToOriginal(eventId, eventId, copiedFrom);
 
   useEffect(() => {
@@ -219,7 +224,7 @@ export function EventScreen({
       backInBody
       inEvent={
         opened.kind === 'loaded' || opened.kind === 'loading'
-          ? { area, onArea: chooseArea }
+          ? { area, onArea: chooseArea, card: { event: card, now } }
           : undefined
       }
       underTitle={
