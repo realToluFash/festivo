@@ -29,8 +29,7 @@ export function partyActions(go: Go, kitchen: GuestKitchenActions, visit: Visit)
               ? freshKitchen(from, was, coming)
               : {
                   ...kitchen,
-                  people: partyPeople(kitchen.people, coming),
-                  record: kitchen.record == null ? null : partyPeople(kitchen.record, coming),
+                  people: partyPeople(kitchen.people, coming, kitchen.record),
                   from,
                 },
         };

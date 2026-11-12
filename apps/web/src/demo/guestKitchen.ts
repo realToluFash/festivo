@@ -64,9 +64,10 @@ function person(key: string, name: string | null, extra: Partial<Person> = {}): 
 export function partyPeople(
   people: readonly Person[],
   coming: readonly { key: string; name: string }[],
+  record: readonly Person[] | null = null,
 ): Person[] {
   const kept = (key: string, name: string | null) => {
-    const was = people.find((one) => one.key === key);
+    const was = people.find((one) => one.key === key) ?? record?.find((one) => one.key === key);
 
     return was == null ? person(key, name) : { ...was, name };
   };
@@ -195,11 +196,16 @@ function picksOf(one: Person) {
   ]);
 }
 
-export function changes(kitchen: GuestKitchen): boolean {
-  const before = kitchen.record ?? blankParty(kitchen.people.length - 1);
+/** A person's row as last sent, by key; with nothing sent, a blank row. */
+function sentOf(kitchen: GuestKitchen, one: Person): Person | undefined {
+  return kitchen.record == null
+    ? person(one.key, one.name)
+    : kitchen.record.find((each) => each.key === one.key);
+}
 
-  return kitchen.people.some((one, at) => {
-    const was = before[at];
+export function changes(kitchen: GuestKitchen): boolean {
+  return kitchen.people.some((one) => {
+    const was = sentOf(kitchen, one);
 
     return was == null || picksOf(one) !== picksOf(was);
   });
@@ -207,10 +213,8 @@ export function changes(kitchen: GuestKitchen): boolean {
 
 /** What Send records: each changed person's picks, last changed by the guest today; removed rows gone. */
 export function saved(kitchen: GuestKitchen, today: string): Person[] {
-  const before = kitchen.record ?? blankParty(kitchen.people.length - 1);
-
-  return kitchen.people.map((one, at) => {
-    const was = before[at];
+  return kitchen.people.map((one) => {
+    const was = sentOf(kitchen, one);
     const kept = trimmed(one);
     const host = kept.host.filter((code) => !kept.removed.includes(code));
     const same = was != null && picksOf(one) === picksOf(was);

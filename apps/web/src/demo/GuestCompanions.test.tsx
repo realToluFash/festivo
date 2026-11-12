@@ -118,6 +118,19 @@ describe('Who’s coming with you? on the guest’s page (sc-3779)', { timeout: 
     expect(within(chidi).getByText(/^Last changed by you on /u)).toBeDefined();
     expect(within(chidi).getByDisplayValue('A seat I can reach without stairs')).toBeDefined();
     expect(button('Leave it as it is')).toBeDefined();
+
+    fireEvent.click(button('Back'));
+    fireEvent.click(button('Chidi Okonkwo-Williams is coming'));
+    fireEvent.click(button('Next'));
+    expect(screen.queryByRole('group', { name: 'Chidi Okonkwo-Williams' })).toBeNull();
+    fireEvent.click(button('Back'));
+    fireEvent.click(button('Chidi Okonkwo-Williams is coming'));
+    fireEvent.click(button('Next'));
+
+    const back = screen.getByRole('group', { name: 'Chidi Okonkwo-Williams' });
+    expect(within(back).getByText(/^Last changed by you on /u)).toBeDefined();
+    expect(within(back).getByDisplayValue('A seat I can reach without stairs')).toBeDefined();
+    expect(button('Leave it as it is')).toBeDefined();
   });
 
   it('keeps the names when the guest has nothing to add', async () => {
