@@ -5,9 +5,12 @@ import {
   type Segment,
   MW,
   READER,
+  ZONE_SHORT,
   cancelledWords,
+  dayWords,
   toldWords,
 } from './messages.ts';
+import type { SampleEvent } from './events.ts';
 import type { Bit } from './messagesContext.ts';
 
 /** sc-3963's refused save (AC editing bullet; l10n #28795; 'Decided, 7 Nov (pm, on ux's #30726)'). */
@@ -22,6 +25,12 @@ export const SW = {
     'The event was not resumed or restored within {{count, number}} hour of this message’s time.',
   tooLateWhy_other:
     'The event was not resumed or restored within {{count, number}} hours of this message’s time.',
+  pausedWaits_one:
+    'This message is waiting while the event is paused. If the event is live again by this message’s time, it goes then. If not, it goes soon after the event is live again, unless that is more than {{count, number}} hour late.',
+  pausedWaits_other:
+    'This message is waiting while the event is paused. If the event is live again by this message’s time, it goes then. If not, it goes soon after the event is live again, unless that is more than {{count, number}} hours late.',
+  editingPaused: 'Editing.',
+  finishedWhy: 'The event finished before this message was due.',
 };
 
 const { filled, many } = demoWords(SW);
@@ -94,6 +103,19 @@ export function tooLateWhy(): string {
   return many('tooLateWhy', TOO_LATE_HOURS);
 }
 
+/** sc-3963's paused line: one string for both sides of the message's time (l10n #28804), its hours from the API. */
+export function pausedWaits(): string {
+  return many('pausedWaits', TOO_LATE_HOURS);
+}
+
+/** While paused, "Goes …" is gone, so the time it was set for stays under the bubble (pm, 13 Nov). */
+export function pausedBits(sched: Sched): Bit[] {
+  return [
+    { words: MW.scheduled, mark: 'scheduled' },
+    { words: `${dayWords(sched.day)}, ${sched.time} ${ZONE_SHORT}` },
+  ];
+}
+
 export function endedOf(sched: Sched): boolean {
   return sched.cancelledAt != null || sched.outcome != null;
 }
@@ -110,6 +132,7 @@ export function endBits(sched: Sched): Bit[] {
   if (sched.outcome === 'sent')
     return [{ words: MW.onTheirPage }, { words: `${READER} · ${sched.time}` }];
   if (sched.outcome === 'tooLate') return [{ words: MW.notSentTooLate, mark: 'notsent' }];
+  if (sched.paused === true && sched.cancelledAt == null) return pausedBits(sched);
 
   return [];
 }
@@ -119,4 +142,23 @@ export function endLine(sched: Sched): string | null {
   if (sched.outcome === 'tooLate') return tooLateWhy();
 
   return null;
+}
+
+export function endWhy(sched: Sched): string | null {
+  return sched.finished === true ? SW.finishedWhy : null;
+}
+
+/** The event beside these rows, as Messaging-B-Web-More-5 draws it: paused, or called off at 09:30 today. */
+export function eventWhile(state: MessagesState | null, event: SampleEvent): SampleEvent {
+  switch (state) {
+    case 'scheduledPaused':
+    case 'scheduledPausedLate':
+    case 'scheduledPausedEdit':
+    case 'scheduledTooLate':
+      return { ...event, status: 'paused' };
+    case 'scheduledFinished':
+      return { ...event, status: 'ended', concludedAt: '2026-11-03T09:30:00Z' };
+    default:
+      return event;
+  }
 }

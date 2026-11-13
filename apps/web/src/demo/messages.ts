@@ -107,6 +107,11 @@ export const MESSAGE_STATES = [
   { key: 'sendNow', name: 'Send now' },
   { key: 'cancelAsk', name: 'Cancel…, asked' },
   { key: 'scheduledCancelled', name: 'Cancelled, scheduled' },
+  { key: 'scheduledPaused', name: 'Scheduled, the event paused' },
+  { key: 'scheduledPausedLate', name: 'Scheduled, paused past its time' },
+  { key: 'scheduledPausedEdit', name: 'Editing while the event is paused' },
+  { key: 'scheduledFinished', name: 'Cancelled by Soirely, the event finished' },
+  { key: 'scheduledTooLate', name: 'Not sent: too late' },
   { key: 'fixed', name: 'After a fix' },
   { key: 'sentAgain', name: 'Sent again' },
   { key: 'added', name: 'After Add an email address' },
@@ -942,6 +947,7 @@ export function toldWords(ticks: Ticks): string {
 }
 
 export type Delivery =
+  | 'scheduled'
   | 'delivered'
   | 'sent'
   | 'sending'
@@ -2220,6 +2226,10 @@ export interface Sched {
   cancelledAt: string | null;
   cancelledBy?: string;
   outcome?: 'sent' | 'tooLate';
+  /** sc-3963: its event is paused, so it waits whichever side of its time it is. */
+  paused?: boolean;
+  /** sc-3963: Soirely cancelled it because its event finished first. */
+  finished?: boolean;
 }
 
 export interface Answer {
@@ -2314,6 +2324,27 @@ export const SCHEDULED: Sched = {
   time: '09:00',
   cancelledAt: null,
 };
+
+/** sc-3963's waits and endings, as Messaging-B-Phone-More-2 draws them: paused before its time and after it, cancelled when the event finished, and too late 48 hours on. */
+export function schedOf(
+  state:
+    | 'scheduledPaused'
+    | 'scheduledPausedEdit'
+    | 'scheduledPausedLate'
+    | 'scheduledFinished'
+    | 'scheduledTooLate',
+): Sched {
+  switch (state) {
+    case 'scheduledPausedLate':
+      return { ...SCHEDULED, paused: true, day: '2026-11-03', time: '08:00' };
+    case 'scheduledFinished':
+      return { ...SCHEDULED, cancelledAt: '09:30', cancelledBy: 'Soirely', finished: true };
+    case 'scheduledTooLate':
+      return { ...SCHEDULED, day: '2026-10-31', outcome: 'tooLate' };
+    default:
+      return { ...SCHEDULED, paused: true };
+  }
+}
 
 export function isNew(id: ConvoId): boolean {
   return id.startsWith('new');
@@ -2829,6 +2860,12 @@ export function seedOf(state: MessagesState | null): Inbox {
         pane: open('sched'),
         scheds: [{ ...SCHEDULED, cancelledAt: '09:46' }],
       };
+    case 'scheduledPaused':
+    case 'scheduledPausedEdit':
+    case 'scheduledPausedLate':
+    case 'scheduledFinished':
+    case 'scheduledTooLate':
+      return { ...base, pane: open('sched'), scheds: [schedOf(state)] };
     case 'insert':
     case 'previewAs':
     case 'previewGreetAs':
