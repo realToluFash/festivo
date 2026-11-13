@@ -75,7 +75,7 @@ import {
 import { AskLayer } from './AskLayer.tsx';
 
 const GROW_FROM = 0.96;
-// A phone's field focused as the window arrives gives up focus again by about 500 ms after it is shown, and keys raised before that go down with it (qa3 #46182); hidden past it, with reduced motion too, the keys raised as it is shown stay up.
+// Not shorter: on a phone with TalkBack on, keys raised at a 450 ms reveal went down and keys raised at 550 ms stayed up (qa3 #46182). Whether the field's blur follows the clock or the reveal is not yet measured.
 const PHONE_FIELD_SETTLES_MS = 150;
 const PANEL = 760;
 const CARD = 300;
