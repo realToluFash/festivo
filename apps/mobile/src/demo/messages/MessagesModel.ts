@@ -272,6 +272,8 @@ export interface Messages {
   filtering: boolean;
   resending: boolean;
   bell: boolean;
+  /** Mark all read: the bell's items that are not the event's Guest replies, which reads its look (sc-4331). */
+  allRead: boolean;
   told: string | null;
   preview?: Previewing;
   inserting?: boolean;
@@ -376,6 +378,7 @@ const BASE: Messages = {
   filtering: false,
   resending: false,
   bell: false,
+  allRead: false,
   told: null,
   closed: null,
   receipts: false,
@@ -675,6 +678,7 @@ export type Action =
   | { type: 'resending'; open: boolean }
   | { type: 'resent' }
   | { type: 'bell'; open: boolean }
+  | { type: 'allRead' }
   | { type: 'told'; words: string | null }
   | { type: 'previewing'; previewing: Previewing }
   | { type: 'inserting'; open: boolean }
@@ -1023,6 +1027,8 @@ export function reduce(m: Messages, action: Action): Messages {
       return { ...m, resending: false };
     case 'bell':
       return { ...m, bell: action.open };
+    case 'allRead':
+      return { ...m, allRead: true };
     case 'told':
       return { ...m, told: action.words };
     case 'previewing':

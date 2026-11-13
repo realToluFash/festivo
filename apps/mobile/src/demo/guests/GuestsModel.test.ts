@@ -5,7 +5,14 @@ import { describe, expect, it } from 'vitest';
 
 import { TO_FIGURES } from '../messages/MessagesSample.ts';
 import { SAMPLE_GUESTS } from '../events/GuestCounts.ts';
-import { changesSince } from './ChangedSince.ts';
+import {
+  changesSince,
+  lastLooked,
+  markLooked,
+  repliesUnread,
+  seedLook,
+  takeLook,
+} from './ChangedSince.ts';
 import {
   changedRows,
   filterWord,
@@ -693,6 +700,33 @@ describe('Changed since you looked (sc-4331)', () => {
       'en-US',
     );
     expect(row?.line).toBe('Updated dietary needs · Changed Nov 2');
+  });
+
+  it('keeps the bell’s item and the filter on one look: bell, filter, bell', () => {
+    seedLook(null, now);
+    expect(repliesUnread()).toBe(true);
+    expect(changesSince(lastLooked())).toHaveLength(5);
+
+    const since = takeLook(now);
+    expect(changesSince(since)).toHaveLength(5);
+    expect(repliesUnread()).toBe(false);
+    expect(changesSince(lastLooked())).toEqual([]);
+
+    expect(changesSince(takeLook(now))).toEqual([]);
+    expect(repliesUnread()).toBe(false);
+  });
+
+  it('marks the item read with Mark all read, and a state sets the look it opens on', () => {
+    seedLook(null, now);
+    markLooked(now);
+    expect(repliesUnread()).toBe(false);
+
+    seedLook('2026-11-03T08:00:00Z', now);
+    expect(changesSince(lastLooked()).map((one) => one.key)).toEqual(['lucia', 'ines']);
+    expect(repliesUnread()).toBe(true);
+
+    seedLook(undefined, now);
+    expect(repliesUnread()).toBe(false);
   });
 
   it('opens each state as its board draws it', () => {

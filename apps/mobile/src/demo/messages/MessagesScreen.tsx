@@ -95,6 +95,7 @@ import { outsideToken, tokenText } from './TokenText.ts';
 import { type ReachPerson, fixKindOf, reachViewOf, resendOf } from './Reach.ts';
 import { ContactEdit, WhoReached } from './WhoReached.tsx';
 import { type Anchored, InsertMenu, anchorAt } from './WriteItOnce.tsx';
+import { markLooked } from '../guests/ChangedSince.ts';
 
 const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
 
@@ -620,6 +621,11 @@ export function MessagesScreen({
         at={m.bell ? bellAt : null}
         opener={bellRef}
         push={start.push}
+        allRead={m.allRead}
+        onAllRead={() => {
+          dispatch({ type: 'allRead' });
+          markLooked(now);
+        }}
         onClose={() => dispatch({ type: 'bell', open: false })}
         onSettings={() => shell.openSection('notifications')}
         onItem={(key) => {

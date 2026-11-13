@@ -40,6 +40,24 @@ export function resetLooked(): void {
   looked = null;
 }
 
+/** A demo state sets the look it opens on: null is never, a time is then, and by default the state's clock, so nothing has changed since. */
+export function seedLook(at: string | null | undefined, now: Date): void {
+  if (at === null) resetLooked();
+  else markLooked(at === undefined ? now : new Date(at));
+}
+
+/** Opening the bell's item, or choosing the menu's row: the rows count from the look before, and the item is read. */
+export function takeLook(at: Date): string | null {
+  const before = looked;
+  markLooked(at);
+  return before;
+}
+
+/** The bell's Guest replies item is unread while something changed after the last look, so the item and the filter count the same guests. */
+export function repliesUnread(): boolean {
+  return changesSince(looked).length > 0;
+}
+
 const ZONE = 'Europe/London';
 
 /** The row's when, as l10n settled it (sc-4331, English copy): at a time today, on a date before; Changed for a changed reply or anything that is not a reply. */

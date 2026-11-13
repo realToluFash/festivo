@@ -118,13 +118,14 @@ describe('Guests, the list (sc-31781)', () => {
       ).toBeDefined();
 
       fireEvent.click(screen.getByRole('button', { name: 'Changed since you looked · 5' }));
-      expect(
+      fireEvent.click(
         within(screen.getByRole('menu')).getByRole('menuitemradio', {
           name: /^Changed since you looked/u,
           checked: true,
         }),
-      ).toBeDefined();
-      fireEvent.keyDown(document, { key: 'Escape' });
+      );
+      expect(screen.getByRole('button', { name: 'Changed since you looked · 5' })).toBeDefined();
+      expect(screen.getByText('5 of 156 shown')).toBeDefined();
 
       fireEvent.click(within(main()).getByRole('button', { name: 'Clear' }));
       fireEvent.click(screen.getByRole('button', { name: 'All · 156' }));

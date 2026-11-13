@@ -52,7 +52,7 @@ import {
   rowsOf,
   changedRows,
 } from './GuestsModel.ts';
-import { changesSince, lastLooked, markLooked, resetLooked } from './ChangedSince.ts';
+import { changesSince, lastLooked, takeLook } from './ChangedSince.ts';
 import { GuestsFailed, GuestsLoading, GuestsRows } from './GuestsList.tsx';
 import { GuestToast, GuestsCard, GuestsTitle, type Layout } from './GuestsParts.tsx';
 import { type SampleGuest, TODAY, WEDDING } from './GuestsSample.ts';
@@ -106,13 +106,7 @@ export function GuestsScreen({
   const [added, setAdded] = useState(opening.added);
   const [filter, setFilter] = useState<ListFilter>(filterFrom ?? start.filter);
   const [since, setSince] = useState(filterFrom === 'changed' ? sinceFrom : start.since);
-  const [looked, setLooked] = useState(() => {
-    if (filterFrom == null) {
-      if (start.looked === null) resetLooked();
-      else markLooked(start.looked === undefined ? now : new Date(start.looked));
-    }
-    return lastLooked();
-  });
+  const [looked, setLooked] = useState(lastLooked);
   const [typed, setTyped] = useState(start.typed);
   const [searched, setSearched] = useState(start.typed);
   const [phase, setPhase] = useState(start.phase);
@@ -158,7 +152,7 @@ export function GuestsScreen({
   const guest = guests.find((g) => g.key === open) ?? null;
   const looking = filter !== 'all' || searched.trim() !== '';
   const listed = changesSince(since);
-  const unseen = changesSince(looked).length;
+  const unseen = event.id === WEDDING ? changesSince(looked).length : 0;
 
   useEffect(() => {
     if (typed === searched) return;
@@ -204,9 +198,9 @@ export function GuestsScreen({
       router.push(`/demo/guests/check-in?state=${doorFrom(state)}` as Href);
   };
   const chooseFilter = (key: ListFilter) => {
+    if (key === filter) return;
     if (key === 'changed') {
-      setSince(looked);
-      markLooked(now);
+      setSince(takeLook(now));
       setLooked(lastLooked());
     }
     setFilter(key);

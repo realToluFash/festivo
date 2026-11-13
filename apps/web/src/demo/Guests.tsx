@@ -258,6 +258,7 @@ function GuestsPage({
 
   /** sc-4331: the menu's row does what the bell's item does: the rows since the last look, and the item marked read. */
   function choose(next: Filter): void {
+    if (next === choice) return;
     if (next !== 'changed') return setChoice(next);
     setChoice('changed', looked);
     markLooked(start.clock);

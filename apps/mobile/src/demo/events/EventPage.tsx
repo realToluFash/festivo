@@ -77,11 +77,12 @@ import {
   GUESTS_ON,
   type GuestsState,
   OVERVIEW_STATES,
+  areaStart,
   clockOf as guestsClock,
   isIn,
   peopleOn,
 } from '../guests/GuestsModel.ts';
-import { lastLooked, markLooked } from '../guests/ChangedSince.ts';
+import { resetLooked, seedLook, takeLook } from '../guests/ChangedSince.ts';
 import { GuestsScreen } from '../guests/GuestsScreen.tsx';
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 import type { BudgetState } from '../budget/BudgetModel.ts';
@@ -176,6 +177,10 @@ export function EventScreen({
   );
   const [guestsFrom, setGuestsFrom] = useState<ListFilter | null>(figureOpens);
   const [sinceFrom, setSinceFrom] = useState<string | null>(null);
+  useState(() => {
+    if (guests != null && !isIn(OVERVIEW_STATES, guests)) seedLook(areaStart(guests).looked, now);
+    else if (messages === 'bell') resetLooked();
+  });
   const [m, dispatch] = useReducer(reduceReach, null, () => {
     const begun = startOf(messages, shell.layout !== 'phone');
     if (state !== 'datesReplyBySaved') return begun;
@@ -333,8 +338,7 @@ export function EventScreen({
   };
   /** sc-4331: the bell's item counts from the last look, then marks it read. */
   const openChanged = () => {
-    setSinceFrom(lastLooked());
-    markLooked(now);
+    setSinceFrom(takeLook(now));
     setGuestsFrom('changed');
     setAt('guests');
   };

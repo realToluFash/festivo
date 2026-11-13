@@ -43,8 +43,7 @@ import {
   MATCHES,
 } from './MessagesSample.ts';
 import { W, say } from './MessagesWords.ts';
-import { markLooked } from '../guests/ChangedSince.ts';
-import { CLOCKS } from '../guests/GuestsSample.ts';
+import { repliesUnread } from '../guests/ChangedSince.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
@@ -269,11 +268,23 @@ const BELL_ITEMS: readonly BellItem[] = [
   { key: 'change', title: BELL.change, line: say.whereWhen(EVENT, 'Mon, Nov 2'), glyph: 'events' },
 ];
 
-function BellItems({ read, onItem }: { read: boolean; onItem: (key: BellItem['key']) => void }) {
+function unreadOf(key: BellItem['key'], allRead: boolean): boolean {
+  if (key === 'replies') return repliesUnread();
+
+  return key === 'missed' && !allRead;
+}
+
+function BellItems({
+  allRead,
+  onItem,
+}: {
+  allRead: boolean;
+  onItem: (key: BellItem['key']) => void;
+}) {
   return (
     <RowList
       items={BELL_ITEMS.map((item) => {
-        const unread = !read && item.key !== 'change';
+        const unread = unreadOf(item.key, allRead);
 
         return {
           key: item.key,
@@ -332,6 +343,8 @@ export function BellPlace({
   at,
   opener,
   push,
+  allRead,
+  onAllRead,
   onItem,
   onSettings,
   onClose,
@@ -341,16 +354,18 @@ export function BellPlace({
   at: Anchor | null;
   opener: Opener;
   push: boolean;
+  /** Mark all read, kept with the event so it outlives Messages; the replies item reads the look instead (sc-4331). */
+  allRead: boolean;
+  onAllRead: () => void;
   onItem: (key: BellItem['key']) => void;
   onSettings: () => void;
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const [read, setRead] = useState(false);
   const [pushing, setPushing] = useState(push);
+  const read = BELL_ITEMS.every((item) => !unreadOf(item.key, allRead));
   const markAll = () => {
-    setRead(true);
-    markLooked(new Date(CLOCKS.reader));
+    onAllRead();
     readOut(W.allRead);
   };
   const markAllRead = (
@@ -374,7 +389,7 @@ export function BellPlace({
             </Text>
             {markAllRead}
           </View>
-          <BellItems read={read} onItem={onItem} />
+          <BellItems allRead={allRead} onItem={onItem} />
           <TextAction
             label={W.notificationSettings}
             onPress={onSettings}
@@ -401,7 +416,7 @@ export function BellPlace({
         <Text size={30} weight="bold" accessibilityRole="header" style={styles.pageTitle}>
           {W.notifications}
         </Text>
-        <BellItems read={read} onItem={onItem} />
+        <BellItems allRead={allRead} onItem={onItem} />
         <TextAction
           label={W.notificationSettings}
           onPress={onSettings}
