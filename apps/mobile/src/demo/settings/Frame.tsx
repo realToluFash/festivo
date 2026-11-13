@@ -14,6 +14,7 @@ import { DemoSidebar } from '../Sidebar.tsx';
 import { SIDEBAR_EVENTS } from '../sideEvents.ts';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { demoShell } from '../demoShell.ts';
+import { openSearch } from '../search/SearchHeader.tsx';
 import { viewerOfRole } from './sample.ts';
 import { underSavedName, useSavedName } from './savedName.ts';
 import {
@@ -64,7 +65,9 @@ export function Landscape({
   return (
     <View style={[styles.grow, side.chrome]}>
       {sidebar ?? (
-        <TodayShellProvider value={{ ...demoShell(shell.tell), person: shell.looking }}>
+        <TodayShellProvider
+          value={{ ...demoShell(shell.tell, { search: openSearch }), person: shell.looking }}
+        >
           <DemoSidebar
             events={SIDEBAR_EVENTS}
             onTab={shell.onTab}

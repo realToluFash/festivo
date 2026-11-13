@@ -17,6 +17,7 @@ export interface DemoOpens {
   events?: (() => void) | undefined;
   calendar?: (() => void) | undefined;
   event?: ((key: EventKey) => void) | undefined;
+  search?: (() => void) | undefined;
 }
 
 function eventKeyOf(id: string): EventKey | undefined {
@@ -37,6 +38,7 @@ export function demoShell(tell: (words: string) => void, drawn: DemoOpens = {}):
 
       if (opens.to === 'events' && drawn.events != null) drawn.events();
       else if (opens.to === 'calendar' && drawn.calendar != null) drawn.calendar();
+      else if (opens.to === 'search' && drawn.search != null) drawn.search();
       else if (key != null && drawn.event != null) drawn.event(key);
       else tell(opens.to === 'event' ? `${opens.name} has its own design.` : DEMO_WORDS[opens.to]);
     },

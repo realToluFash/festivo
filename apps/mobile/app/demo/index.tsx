@@ -14,6 +14,7 @@ import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeade
 import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
+import { SEARCH_BOARDS } from '../../src/demo/search/searchRules.ts';
 import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
 import { GUESTS_BOARDS } from '../../src/demo/guests/GuestsBoards.ts';
 import { PASS_BOARDS } from '../../src/demo/pass/PassBoards.ts';
@@ -34,6 +35,10 @@ interface Board {
 
 /** Every board in the design artifact, by its page, working on sample data. */
 const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
+  {
+    page: '26 · Foundation · Search in A, a command palette (sc-39534)',
+    boards: SEARCH_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
   {
     page: 'Bold text · the weight map',
     boards: BOLD_TEXT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
