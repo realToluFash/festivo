@@ -308,6 +308,8 @@ export const say = {
       `Agreed to WhatsApp in writing, recorded by ${name} on ${date}`,
   },
   optedOut: (date: string) => `Unsubscribed from WhatsApp on ${date}`,
+  optedOutEmail: (date: string) => `Unsubscribed from email on ${date}`,
+  optedOutTexts: (date: string) => `Unsubscribed from texts on ${date}`,
   onlyTheGuest: 'Only the guest can change this.',
   forAgreed: (name: string, mobile: string) =>
     `For ${name}, on ${mobile}. It will show as recorded by you.`,

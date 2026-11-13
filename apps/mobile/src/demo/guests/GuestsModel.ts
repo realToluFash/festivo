@@ -26,6 +26,7 @@ import {
 } from './GuestsSample.ts';
 import { type Change, changeLabel, changeWhen } from './ChangedSince.ts';
 import { REPLY_WORD, type ReplyKind, W, say } from './GuestsWords.ts';
+import { withOptOuts } from './OptOuts.ts';
 import { type HowAgreed, hostAgreed } from './WhatsAppConsent.ts';
 
 export const LIST_STATES = [
@@ -91,6 +92,12 @@ export const GUEST_STATES = [
   'whatsAppOptedOut',
   'whatsAppNoMobile',
   'whatsAppViewer',
+  'optOutEmail',
+  'optOutTexts',
+  'optOutTextsWhatsApp',
+  'optOutAll',
+  'optOutNoMobile',
+  'optOutViewer',
   'askAgain',
   'askAgainWont',
 ] as const;
@@ -243,7 +250,8 @@ export function roleOf(state: GuestsState | null): Role {
     state === 'repliesClosedViewer' ||
     state === 'overviewViewer' ||
     state === 'greetAsViewer' ||
-    state === 'whatsAppViewer'
+    state === 'whatsAppViewer' ||
+    state === 'optOutViewer'
   )
     return 'viewer';
   if (state === 'staffBefore' || state === 'staffDayBefore' || state === 'staffDoorOpen')
@@ -1047,6 +1055,17 @@ export function guestsAt(state: GuestsState | null): SampleGuest[] {
       return swap('seun', (g) => ({ ...g, kind: 'coming', when: TODAY }));
     case 'whatsAppRecorded':
       return swap('kwame', (g) => agreedToWhatsApp(g, 'In person', TODAY));
+    case 'optOutEmail':
+    case 'optOutViewer':
+      return swap('kwame', (g) => withOptOuts(g, { email: '2026-10-22' }));
+    case 'optOutTexts':
+      return swap('kwame', (g) => withOptOuts(g, { texts: '2026-10-29' }));
+    case 'optOutTextsWhatsApp':
+      return swap('sophie', (g) => withOptOuts(g, { texts: '2026-10-27' }));
+    case 'optOutAll':
+      return swap('sophie', (g) => withOptOuts(g, { email: '2026-10-20', texts: '2026-10-27' }));
+    case 'optOutNoMobile':
+      return swap('ines', (g) => withOptOuts(g, { email: '2026-10-25' }));
     case 'saved':
       return swap('kwame', (g) => ({ ...g, email: 'kwame@mensah.co.uk' }));
     case 'greetAsSpaces':
@@ -1195,8 +1214,11 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'askAgainWont':
       return 'lucia';
     case 'whatsAppOptedOut':
+    case 'optOutTextsWhatsApp':
+    case 'optOutAll':
       return 'sophie';
     case 'whatsAppNoMobile':
+    case 'optOutNoMobile':
       return 'ines';
     case 'greetAs':
     case 'greetAsSpaces':
