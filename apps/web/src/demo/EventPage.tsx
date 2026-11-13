@@ -1,5 +1,5 @@
 import { DemoBell } from './DemoBell.tsx';
-import { eventPhase, formatEventRange, hostsLine } from '@soirely/domain';
+import { calledOff, eventPhase, formatEventRange, hostsLine } from '@soirely/domain';
 import { type ComponentType, type ReactNode, useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 
@@ -848,7 +848,7 @@ function Details({
             <Lead name="calendar" />,
             formatEventRange(event.startsAt, event.endsAt, event.timeZone, LOCALE),
             locked
-              ? `${W.dates} · ${W.scheduleLocked}`
+              ? `${W.dates} · ${calledOff(event) ? W.scheduleCalledOff : W.scheduleLocked}`
               : [W.dates, ...(days > 1 ? [W.dayCount(days)] : []), event.timeZone].join(' · '),
           )}
           {row(
