@@ -41,7 +41,7 @@ import {
   RECEIPTS,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
-import { caseFor, guestOf } from './NoticeStates.ts';
+import { caseFor, guestOf, readsOnly } from './NoticeStates.ts';
 import { NW } from './NoticeWords.ts';
 
 export type { RowId };
@@ -175,7 +175,7 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
   const name =
     id.key === 'unknown' && m.matched != null
       ? m.matched
-      : unmatched && m.notice?.hidden === true
+      : unmatched && readsOnly(m)
         ? NW.unknownSender
         : guest.name;
   const initials =
@@ -366,7 +366,7 @@ export function MessagesList({
         >
           {W.messages}
         </Text>
-        {wide && m.phase !== 'loading' && m.notice?.hidden !== true && (
+        {wide && m.phase !== 'loading' && !readsOnly(m) && (
           <Pill
             label={W.newButton}
             glyph="plus"
