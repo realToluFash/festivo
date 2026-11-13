@@ -110,6 +110,23 @@ export function isGsm7(text: string): boolean {
   return [...text].every((one) => GSM_7.includes(one) || GSM_7_TWICE.includes(one));
 }
 
+const PLAIN_MARKS: Record<string, string> = {
+  '‘': "'",
+  '’': "'",
+  '“': '"',
+  '”': '"',
+  '–': '-',
+  '—': '-',
+  '…': '...',
+};
+
+/** Every text Soirely sends, as sent: typographic punctuation plain; a first text to a number ends on the STOP line. */
+export function asSent(written: string, first: boolean): string {
+  const plain = written.replace(/[‘’“”–—…]/gu, (one) => PLAIN_MARKS[one] ?? one);
+
+  return first ? `${plain}\n${LIVE.smsStop}` : plain;
+}
+
 /** GSM-7 to 160 characters, then 153 a part; any other character makes it UCS-2, 70 then 67. */
 export function smsParts(text: string): number {
   const chars = [...text];
@@ -194,9 +211,9 @@ export function inviteTextOf(event: Invited, greeting: string): { text: string; 
     day: 'numeric',
     timeZone: event.timeZone,
   }).format(new Date(event.startsAt));
-  const text = sayLive.inviteText(hosts, greeting, event.name, date).replaceAll('’', "'");
+  const text = asSent(sayLive.inviteText(hosts, greeting, event.name, date), false);
 
-  return { text, parts: smsParts(`${text}${'x'.repeat(LINK_CHARS)}\n${LIVE.smsStop}`) };
+  return { text, parts: smsParts(asSent(`${text}${'x'.repeat(LINK_CHARS)}`, true)) };
 }
 
 export const OFFER_MOBILES: readonly { name: string; phone: string }[] = DRAFT_GUESTS.flatMap(

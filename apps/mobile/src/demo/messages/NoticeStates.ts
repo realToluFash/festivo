@@ -1,6 +1,5 @@
 import { writtenTime } from '../clock.ts';
-import { LINK_CHARS, isGsm7, smsParts } from '../events/MakeLive.ts';
-import { LIVE } from '../events/EventsWords.ts';
+import { LINK_CHARS, asSent, isGsm7, smsParts } from '../events/MakeLive.ts';
 import { READER_ZONE } from '../events/EventsSample.ts';
 import type { Messages } from './MessagesModel.ts';
 import {
@@ -334,16 +333,6 @@ export function quietLine(by: ChannelKey, time: string): string | null {
   return by === 'email' ? null : sayNotice.waitsUntil(by === 'wa', time);
 }
 
-const PLAIN: Record<string, string> = {
-  '‘': "'",
-  '’': "'",
-  '“': '"',
-  '”': '"',
-  '–': '-',
-  '—': '-',
-  '…': '...',
-};
-
 export type NoticeWords = (hosts: string, event: string, link: string) => string;
 
 /** Soirely's text that the hosts have written (l10n #45754), as sent: typographic punctuation plain, counted with the guest's link as built; a first text to a number ends on the STOP line. */
@@ -353,11 +342,7 @@ export function noticeSmsOf(
   first = false,
   words: NoticeWords = say.noticeSms,
 ): SmsCount & { text: string } {
-  const written = words(hosts, event, PREVIEW.link).replace(
-    /[‘’“”–—…]/gu,
-    (one) => PLAIN[one] ?? one,
-  );
-  const text = first ? `${written}\n${LIVE.smsStop}` : written;
+  const text = asSent(words(hosts, event, PREVIEW.link), first);
   const built = text.replace(PREVIEW.link, 'x'.repeat(LINK_CHARS));
 
   return {
