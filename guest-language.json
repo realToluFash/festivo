@@ -1,0 +1,86 @@
+{
+  "$comment": "Which language a guest reads in (sc-3790): the guest's own choice on their page, then what their browser asks for, then the host's Language for them, then the organisation's. A message has no browser, so it skips that step. packages/domain's guestLanguage and the API's GuestLanguage are both tested against these cases.",
+  "cases": [
+    {
+      "name": "the guest's choice wins over everything",
+      "chosen": "fr",
+      "browser": ["pt-BR", "en"],
+      "host": "es",
+      "organisation": "en",
+      "page": "fr",
+      "message": "fr"
+    },
+    {
+      "name": "a browser asking for pt-BR gets Portuguese",
+      "chosen": null,
+      "browser": ["pt-BR"],
+      "host": "es",
+      "organisation": "en",
+      "page": "pt",
+      "message": "es"
+    },
+    {
+      "name": "the browser's first language Soirely offers",
+      "chosen": null,
+      "browser": ["de-DE", "fr-CA", "en"],
+      "host": null,
+      "organisation": "en",
+      "page": "fr",
+      "message": "en"
+    },
+    {
+      "name": "a browser asking only for de falls through to the host's Language",
+      "chosen": null,
+      "browser": ["de"],
+      "host": "pt",
+      "organisation": "en",
+      "page": "pt",
+      "message": "pt"
+    },
+    {
+      "name": "with no host's Language, the organisation's",
+      "chosen": null,
+      "browser": ["de"],
+      "host": null,
+      "organisation": "es",
+      "page": "es",
+      "message": "es"
+    },
+    {
+      "name": "no browser languages at all",
+      "chosen": null,
+      "browser": [],
+      "host": null,
+      "organisation": "fr",
+      "page": "fr",
+      "message": "fr"
+    },
+    {
+      "name": "a browser asking for English sees English",
+      "chosen": null,
+      "browser": ["en-GB", "en"],
+      "host": "fr",
+      "organisation": "pt",
+      "page": "en",
+      "message": "fr"
+    },
+    {
+      "name": "a choice Soirely does not offer is passed over",
+      "chosen": "de",
+      "browser": ["it"],
+      "host": "fr",
+      "organisation": "en",
+      "page": "fr",
+      "message": "fr"
+    },
+    {
+      "name": "an organisation language Soirely does not offer is English",
+      "chosen": null,
+      "browser": [],
+      "host": null,
+      "organisation": "it",
+      "page": "en",
+      "message": "en"
+    }
+  ]
+}
