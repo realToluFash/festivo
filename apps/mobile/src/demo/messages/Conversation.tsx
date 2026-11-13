@@ -48,8 +48,11 @@ import {
   HOSTS,
   HELD_TOO_LONG,
   RECEIPTS,
+  NOW,
+  TELL,
   OTHER_CHANNELS,
 } from './MessagesSample.ts';
+import { NOTE_SENT, changeTitle } from './TellKinds.ts';
 import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { Preview } from './Preview.tsx';
 import { previewOf } from './PreviewModel.ts';
@@ -969,6 +972,51 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
         ),
       align: own?.align ?? 'end',
       foot: m.resending ? undefined : followUp(W.writeAFollowUp),
+    };
+  }
+  if (key === 'change') {
+    const row = m.changeRow ?? {
+      what: m.change.what,
+      reached: TELL.count - TELL.cannot,
+      of: TELL.count,
+    };
+
+    return {
+      title: changeTitle(row.what),
+      titleLines: 1,
+      line:
+        own?.writing === true
+          ? undefined
+          : `${say.guestsCount(row.of)} · ${channelsWords(['email', 'sms', 'wa'], talk.locale)}`,
+      lead: <GroupTile side={44} />,
+      head: own?.writing === true ? own.head : undefined,
+      bare: own?.bare,
+      stream:
+        own?.bare === true ? (
+          own.stream
+        ) : (
+          <>
+            <DayRule text={W.today} />
+            <SoirelyCard
+              title={say.changedSubject(EVENT)}
+              lines={[...m.change.lines, W.openYourPage]}
+              bits={[{ word: W.soirelysOwn }]}
+            />
+            <HostBubble
+              text={NOTE_SENT}
+              bits={[{ word: W.onTheirPage, where: 'page' }, { word: say.byAt(READER, NOW) }]}
+            />
+            <Receipt
+              reached={row.reached}
+              of={row.of}
+              seen={3}
+              onWho={() => talk.ownDesign(W.whoItReached)}
+            />
+            {own?.stream}
+          </>
+        ),
+      align: own?.align ?? 'end',
+      foot: followUp(W.writeToThem),
     };
   }
   if (key === 'invite')

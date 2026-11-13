@@ -54,15 +54,16 @@ import {
 import { BOOK, GROUPS } from './messagesTo.ts';
 import { INVITE_STATES } from './messagesInvite.ts';
 import { NOTICE_STATES } from './messagesNotice.ts';
+import { TELL_STATES } from './messagesTellStates.ts';
 import { WAITS_STATES } from './messagesWaits.ts';
 
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
 describe('Messaging B · Conversations, the rules (sc-31371)', () => {
-  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 4, sc-3950’s 3, sc-3954’s 6, sc-3976’s 17, sc-3971’s 16, sc-45251’s 14 and sc-3978’s 6, in order, each linked once from the demo home', () => {
+  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 4, sc-3950’s 3, sc-3954’s 6, sc-3976’s 17, sc-3971’s 16, sc-45251’s 14, sc-3978’s 6 and sc-4330’s 39, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(166);
+    expect(keys).toHaveLength(205);
     expect(keys.slice(94, 97)).toEqual(['whatsAppLine', 'checkWhatsApp', 'whatsAppRead']);
     expect(keys.slice(97, 103)).toEqual([
       'channelsWrite',
@@ -75,6 +76,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     expect(keys.slice(103, 113)).toEqual(WAITS_STATES.map((one) => one.key));
     expect(keys.slice(113, 130)).toEqual(NOTICE_STATES.map((one) => one.key));
     expect(keys.slice(130, 146)).toEqual(INVITE_STATES.map((one) => one.key));
+    expect(keys.slice(166)).toEqual(TELL_STATES.map((one) => one.key));
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
     expect(keys.slice(6, 10)).toEqual([
       'channelReply',
@@ -100,7 +102,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'editCancelled',
       'editTooLate',
     ]);
-    expect(new Set(keys).size).toBe(166);
+    expect(new Set(keys).size).toBe(205);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );
@@ -303,25 +305,72 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     });
   });
 
-  it('tells guests what a save changed: the start’s day or time, and the venue', () => {
+  it('tells guests what a save changed: the event’s days, the start time, and the venue', () => {
     const wedding = sampleEvent('evt-wed-4');
 
     if (wedding == null) throw new Error('no sample wedding');
 
     expect(toldOf(wedding, { ...wedding, startsAt: '2026-11-05T17:30:00Z' })).toEqual([
-      { item: 'New start time', line: 'The start time is now 17:30 (was 18:00).' },
+      {
+        field: 'start',
+        item: 'New start time',
+        line: 'The start time is now 17:30 (was 18:00).',
+      },
     ]);
     expect(toldOf(wedding, { ...wedding, startsAt: '2026-11-06T18:00:00Z' })[0]?.line).toBe(
-      'The date is now Fri, Nov 6 (was Thu, Nov 5).',
+      'The dates are now Fri, Nov 6 – Sat, Nov 7 (was Thu, Nov 5 – Sat, Nov 7).',
+    );
+    expect(
+      toldOf(wedding, { ...wedding, endsAt: '2026-11-08T00:00:00Z' }).map((told) => told.line),
+    ).toEqual([]);
+    expect(toldOf(wedding, { ...wedding, endsAt: '2026-11-08T15:00:00Z' })[0]?.line).toBe(
+      'The dates are now Thu, Nov 5 – Sun, Nov 8 (was Thu, Nov 5 – Sat, Nov 7).',
     );
     expect(toldOf(wedding, { ...wedding, venue: ROSEWOOD })).toEqual([
       {
+        field: 'venue',
         item: 'New venue',
         line: 'The venue is now Rosewood London (was The Landmark).',
         venue: true,
       },
     ]);
     expect(toldOf(wedding, wedding)).toEqual([]);
+  });
+
+  it('words a venue added, removed, or moved by its address alone, and never the same on both sides', () => {
+    const wedding = sampleEvent('evt-wed-4');
+
+    if (wedding == null) throw new Error('no sample wedding');
+
+    const named = (address: string | null) => ({
+      ...wedding,
+      venue: { name: 'The Landmark', city: 'London', address },
+    });
+    const lines = (was: typeof wedding, now: typeof wedding) =>
+      toldOf(was, now).map((told) => [told.item, told.line]);
+
+    expect(toldOf({ ...wedding, venue: null }, { ...wedding, venue: ROSEWOOD })).toEqual([
+      {
+        field: 'venue',
+        item: 'New venue',
+        line: 'The venue is now Rosewood London.',
+        venue: true,
+      },
+    ]);
+    expect(lines(wedding, { ...wedding, venue: null })).toEqual([
+      ['Venue to be confirmed', 'The venue is to be confirmed (was The Landmark).'],
+    ]);
+    expect(lines(named('22 Marylebone Road, London NW1 6JQ'), wedding)).toEqual([
+      [
+        'New venue',
+        'The venue is now 222 Marylebone Road, London NW1 6JQ (was 22 Marylebone Road, London NW1 6JQ).',
+      ],
+    ]);
+    expect(lines(named(null), wedding)).toEqual([
+      ['Venue address added', 'The Landmark is at 222 Marylebone Road, London NW1 6JQ.'],
+    ]);
+    expect(lines(wedding, named(null))).toEqual([]);
+    expect(lines({ ...wedding, venue: null }, { ...wedding, venue: null })).toEqual([]);
   });
 
   it('moves a conversation to Done and back, and a reply that arrives to the top', () => {

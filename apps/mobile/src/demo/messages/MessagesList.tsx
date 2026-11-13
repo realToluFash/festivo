@@ -1,3 +1,4 @@
+import { changeTitle } from './TellKinds.ts';
 import { type ReactNode, useEffect, useState } from 'react';
 import { Animated, Easing, StyleSheet, View, type ViewInstance } from 'react-native';
 
@@ -122,6 +123,18 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
     };
   }
   if (id.kind === 'many') {
+    const change = m.changeRow;
+    if (id.key === 'change' && change != null) {
+      const missed = change.of - change.reached;
+
+      return {
+        title: changeTitle(change.what),
+        line: missed > 0 ? say.didntGetIt(missed) : say.reached(change.reached, change.of),
+        time: NOW,
+        lead: <GroupTile />,
+        tag: missed > 0 ? { kind: 'waiting', word: say.notReached(missed) } : undefined,
+      };
+    }
     if (id.key === 'parking')
       return {
         title: PARKING,
@@ -250,12 +263,13 @@ function SectionTitle({ word, count }: { word: string; count?: number }) {
   );
 }
 
-function Untold({
+/** Not told yet (sc-4330): each untold change on its own line, under the cover on Overview and at the head of Messages. */
+export function Untold({
   what,
   onTell,
   onDismiss,
 }: {
-  what: string;
+  what: readonly string[];
   onTell: () => void;
   onDismiss: () => void;
 }) {
@@ -267,9 +281,13 @@ function Untold({
           {W.notTold}
         </Text>
       </View>
-      <Text size={14} weight="medium" style={[styles.secondary, styles.untoldLine]}>
-        {what}
-      </Text>
+      <View style={styles.untoldLine}>
+        {what.map((item) => (
+          <Text key={item} size={14} weight="medium" style={styles.secondary}>
+            {item}
+          </Text>
+        ))}
+      </View>
       <View style={styles.untoldActions}>
         <TextAction label={W.tellThem} onPress={onTell} testID="messages.untold.tell" />
         <TextAction label={W.dismiss} plain onPress={onDismiss} testID="messages.untold.dismiss" />
@@ -396,9 +414,7 @@ export function MessagesList({
   return (
     <View style={styles.list}>
       {title}
-      {m.untold && (
-        <Untold what={m.change.what.join(' · ')} onTell={onTell} onDismiss={onDismiss} />
-      )}
+      {m.untold && <Untold what={m.change.what} onTell={onTell} onDismiss={onDismiss} />}
       {sections.top.length > 0 && (
         <View style={styles.bleed}>
           <RowList items={sections.top.map(item)} gutter={10} />
