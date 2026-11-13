@@ -2,6 +2,24 @@
   "$comment": "Which language a guest reads in (sc-3790): the guest's own choice on their page, then what their browser asks for, then the host's Language for them, then the organisation's. A message has no browser, so it skips that step. packages/domain's guestLanguage and the API's GuestLanguage are both tested against these cases.",
   "cases": [
     {
+      "name": "a message follows the guest, not the organiser who sends it",
+      "chosen": "pt",
+      "browser": [],
+      "host": null,
+      "organisation": "en",
+      "page": "pt",
+      "message": "pt"
+    },
+    {
+      "name": "a guest's choice Soirely does not offer gives way to the organisation's",
+      "chosen": "de",
+      "browser": [],
+      "host": null,
+      "organisation": "es",
+      "page": "es",
+      "message": "es"
+    },
+    {
       "name": "the guest's choice wins over everything",
       "chosen": "fr",
       "browser": ["pt-BR", "en"],
