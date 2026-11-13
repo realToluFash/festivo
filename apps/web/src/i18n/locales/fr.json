@@ -533,7 +533,7 @@
   "guest": {
     "invitationTitle": "Vous avez une invitation",
     "invalidTitle": "Ce lien d’invitation ne fonctionne pas",
-    "invalidBody": "Il a peut-être expiré, été remplacé par un lien plus récent, ou comporte une erreur. Demandez un nouveau lien à la personne qui vous a invité : elle peut vous l’envoyer en un instant.",
+    "invalidBody": "Il a peut-être expiré, été remplacé par un lien plus récent ou été mal saisi. Si vous pensez qu’il devrait fonctionner, adressez-vous à la personne à l’origine de l’invitation.",
     "noAccountNeeded": "Vous n’avez pas besoin de compte pour répondre.",
     "closing": "Cette invitation est pour vous et votre famille. Les autres invités ne peuvent pas voir votre réponse.",
     "tell": "Vous n’êtes pas {{name}} ? Prévenez-nous",
