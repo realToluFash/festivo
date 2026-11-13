@@ -12,7 +12,9 @@ import {
   countryChoices,
   deviceCountry,
   formatPhone,
+  eventAllows,
   phoneScreenCountry,
+  shownPhase,
 } from '@soirely/domain';
 import {
   type ReactNode,
@@ -27,19 +29,22 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { config } from '../../../config.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
-import { CardStep, RowWords, TextAction } from '../../../components/SettingsParts.tsx';
+import { CardStep, Chevron, RowWords, TextAction } from '../../../components/SettingsParts.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
-import { focusWhenFree } from '../../../layers.ts';
+import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { type Mesh, meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { codeChoice, phoneProblemMessage } from '../../../phoneProblem.ts';
+import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
+import { GuestColumn } from './GuestColumn.tsx';
+import { DraftRow } from './MakeLive.tsx';
 import {
   type ListRow,
   MOST_COMPANIONS,
@@ -207,12 +212,21 @@ function useFocusKeys(root: RefObject<HTMLElement | null>) {
 
 export function GuestsArea({
   event,
+  tag,
   heading,
+  onChange,
 }: {
   event: OrganisationEvent;
-  heading?: RefObject<HTMLHeadingElement | null>;
+  tag: string;
+  heading: RefObject<HTMLHeadingElement | null>;
+  onChange: (event: OrganisationEvent, tag: string) => void;
 }) {
   const { t } = useTranslation();
+  const { layers, covered, setHost } = useDeskLayers();
+  const [address, setAddress] = useSearchParams();
+  const now = useServerNow();
+  const phase = shownPhase(event, useLoadedAt(event), now);
+  const invites = eventAllows(phase, 'invite');
   const root = useRef<HTMLDivElement>(null);
   const focus = useFocusKeys(root);
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -249,103 +263,148 @@ export function GuestsArea({
 
   const guests = load.kind === 'loaded' ? load.list.guests : [];
   const counts = load.kind === 'loaded' ? load.list.counts : null;
+  const openId = address.get('guest');
+  const open = adding ? null : (guests.find((guest) => guest.id === openId) ?? null);
+
+  function openGuest(id: string): void {
+    setAdding(false);
+    setAddress({ guest: id });
+    focus('guest-heading');
+  }
 
   return (
-    <div ref={root} className="desk ev gs">
-      <div className="event-page ev-wide gs-page">
-        <div className="ev-crumb-row">
-          <nav className="ev-crumb" aria-label={t('eventPage.crumb')}>
-            <ol>
-              <li className="ev-crumb-part">
-                <Link to="/app/events">{t('events.title')}</Link>
-              </li>
-              <li className="ev-crumb-part">
-                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                <Link className="ev-crumb-name" to={`/app/events/${encodeURIComponent(event.id)}`}>
-                  {event.name}
-                </Link>
-              </li>
-              <li className="ev-crumb-part" aria-current="page">
-                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                <span className="ev-crumb-name">{t('eventPage.guests')}</span>
-              </li>
-            </ol>
-          </nav>
-        </div>
-        <header className="gs-top">
-          <h1 ref={heading} className="gs-title" tabIndex={-1} data-focus="title">
-            {t('eventPage.guests')}
-          </h1>
-          {manages && guests.length > 0 && (
-            <button type="button" className="ev-new" data-focus="add" onClick={startAdd}>
-              <Glyph name="plus" size={18} weight={2.4} />
-              {t('guestList.addGuest')}
-            </button>
-          )}
-        </header>
-        {load.kind === 'loading' && (
-          <Skeleton words={t('pending.loading')} shape="rows" rowHeight={64} />
-        )}
-        {load.kind === 'failed' && (
-          <div className="desk-failed gs-failed" role="alert">
-            <h2>{t('guestList.loadFailed')}</h2>
-            <p className="desk-line">{t('guestList.loadFailedLine')}</p>
-            <TextAction
-              label={t('events.retry')}
-              onClick={() => {
-                setLoad({ kind: 'loading' });
-                setAttempt((n) => n + 1);
-              }}
-            />
+    <LayersContext value={layers}>
+      <div ref={root} className="desk ev gs">
+        <div className="event-page ev-wide gs-page" inert={covered}>
+          <div className="ev-crumb-row">
+            <nav className="ev-crumb" aria-label={t('eventPage.crumb')}>
+              <ol>
+                <li className="ev-crumb-part">
+                  <Link to="/app/events">{t('events.title')}</Link>
+                </li>
+                <li className="ev-crumb-part">
+                  <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                  <Link
+                    className="ev-crumb-name"
+                    to={`/app/events/${encodeURIComponent(event.id)}`}
+                  >
+                    {event.name}
+                  </Link>
+                </li>
+                <li className="ev-crumb-part" aria-current="page">
+                  <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                  <span className="ev-crumb-name">{t('eventPage.guests')}</span>
+                </li>
+              </ol>
+            </nav>
           </div>
-        )}
-        {load.kind === 'loaded' && (
-          <>
-            {guests.length === 0 && (
-              <GuestsCover
-                mesh={meshFor(event.id)}
-                says={t('guestList.noGuests')}
-                step={manages ? { label: t('guestList.addGuest'), onClick: startAdd } : null}
-              />
+          <header className="gs-top">
+            <h1 ref={heading} className="gs-title" tabIndex={-1} data-focus="title">
+              {t('eventPage.guests')}
+            </h1>
+            {manages && guests.length > 0 && (
+              <button type="button" className="ev-new" data-focus="add" onClick={startAdd}>
+                <Glyph name="plus" size={18} weight={2.4} />
+                {t('guestList.addGuest')}
+              </button>
             )}
-            {counts != null && guests.length > 0 && (
-              <GuestsCover
-                mesh={meshFor(event.id)}
-                says={t('guestList.onTheList', { count: counts.people })}
+          </header>
+          <DraftRow
+            event={event}
+            tag={tag}
+            now={now}
+            manages={canOn(event, 'events.manage')}
+            heading={heading}
+            onChange={onChange}
+            onMadeLive={() => undefined}
+          />
+          {(phase === 'paused' || phase === 'finished') && (
+            <p className="desk-line gs-blocked">
+              {t(phase === 'paused' ? 'guestList.pausedLine' : 'guestList.finishedLine')}
+            </p>
+          )}
+          {load.kind === 'loading' && (
+            <Skeleton words={t('pending.loading')} shape="rows" rowHeight={64} />
+          )}
+          {load.kind === 'failed' && (
+            <div className="desk-failed gs-failed" role="alert">
+              <h2>{t('guestList.loadFailed')}</h2>
+              <p className="desk-line">{t('guestList.loadFailedLine')}</p>
+              <TextAction
+                label={t('events.retry')}
+                onClick={() => {
+                  setLoad({ kind: 'loading' });
+                  setAttempt((n) => n + 1);
+                }}
               />
-            )}
-            {(guests.length > 0 || adding) && (
-              <div className="gs-cols">
-                <section className="gs-list" aria-label={t('eventPage.guests')}>
-                  {guests.length > 0 && <Rows rows={rowsOf(guests)} />}
-                </section>
-                {adding && (
-                  <section className="gs-column" aria-label={t('guestList.addGuest')}>
-                    <AddForm
-                      eventId={event.id}
-                      guests={guests}
-                      country={country}
-                      focus={focus}
-                      onAdded={(guest) =>
-                        setLoad((was) =>
-                          was.kind === 'loaded'
-                            ? { kind: 'loaded', list: withGuest(was.list, guest) }
-                            : was,
-                        )
-                      }
-                      onDone={() => {
-                        setAdding(false);
-                        focus('add', 'title');
-                      }}
-                    />
+            </div>
+          )}
+          {load.kind === 'loaded' && (
+            <>
+              {guests.length === 0 && (
+                <GuestsCover
+                  mesh={meshFor(event.id)}
+                  says={t('guestList.noGuests')}
+                  step={manages ? { label: t('guestList.addGuest'), onClick: startAdd } : null}
+                />
+              )}
+              {counts != null && guests.length > 0 && (
+                <GuestsCover
+                  mesh={meshFor(event.id)}
+                  says={t('guestList.onTheList', { count: counts.people })}
+                />
+              )}
+              {(guests.length > 0 || adding) && (
+                <div className="gs-cols">
+                  <section className="gs-list" aria-label={t('eventPage.guests')}>
+                    {guests.length > 0 && (
+                      <Rows rows={rowsOf(guests)} open={open?.id ?? null} onOpen={openGuest} />
+                    )}
                   </section>
-                )}
-              </div>
-            )}
-          </>
-        )}
+                  {open != null && (
+                    <section className="gs-column" aria-label={open.fullName}>
+                      <GuestColumn
+                        key={open.id}
+                        guest={open}
+                        mesh={meshFor(event.id)}
+                        reply={t(REPLY_KEY[open.reply])}
+                        mark={MARK[open.reply]}
+                        manages={manages}
+                        invites={invites}
+                        onCopy={() => api.guestLink(event.id, open.id)}
+                        onReplace={() => api.replaceGuestLink(event.id, open.id)}
+                      />
+                    </section>
+                  )}
+                  {adding && (
+                    <section className="gs-column" aria-label={t('guestList.addGuest')}>
+                      <AddForm
+                        eventId={event.id}
+                        guests={guests}
+                        country={country}
+                        focus={focus}
+                        onAdded={(guest) =>
+                          setLoad((was) =>
+                            was.kind === 'loaded'
+                              ? { kind: 'loaded', list: withGuest(was.list, guest) }
+                              : was,
+                          )
+                        }
+                        onDone={() => {
+                          setAdding(false);
+                          focus('add', 'title');
+                        }}
+                      />
+                    </section>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        <div ref={setHost} className="desk-layers" />
       </div>
-    </div>
+    </LayersContext>
   );
 }
 
@@ -391,7 +450,15 @@ function ReplyMark({ reply }: { reply: ReplyWord }) {
   );
 }
 
-function Rows({ rows }: { rows: readonly ListRow[] }) {
+function Rows({
+  rows,
+  open,
+  onOpen,
+}: {
+  rows: readonly ListRow[];
+  open: string | null;
+  onOpen: (id: string) => void;
+}) {
   const { t } = useTranslation();
 
   return (
@@ -408,13 +475,20 @@ function Rows({ rows }: { rows: readonly ListRow[] }) {
 
           return (
             <li key={guest.id}>
-              <div className="desk-row gs-row">
+              <button
+                type="button"
+                className={guest.id === open ? 'desk-row gs-row is-on' : 'desk-row gs-row'}
+                aria-current={guest.id === open ? 'true' : undefined}
+                data-focus={`row:${guest.id}`}
+                onClick={() => onOpen(guest.id)}
+              >
                 <ReplyMark reply={guest.reply} />
                 <RowWords
                   title={guest.fullName}
                   lines={[contact == null ? reply : t('guestList.line', { reply, contact })]}
                 />
-              </div>
+                <Chevron />
+              </button>
             </li>
           );
         }

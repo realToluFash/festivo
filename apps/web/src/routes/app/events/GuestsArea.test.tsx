@@ -450,3 +450,136 @@ describe('Guests, live (sc-1468)', () => {
     expect(screen.getByText('2 on the list')).toBeDefined();
   });
 });
+
+describe('A guest’s invitation link (sc-1526)', () => {
+  const LINK = 'https://app.soirely.test/i/goJP8j72G8dKsdGysCtB7qA4o2SdVzDrjFodz60tDDc';
+
+  async function openNgozi(
+    answers: Record<string, Answer> = {},
+    event: Record<string, unknown> = {},
+    permissions: string[] = OWNER_PERMISSIONS,
+  ) {
+    signedIn();
+    const sent = await onGuests(
+      {
+        'GET /api/events/ev_1': () => json({ event: { ...EVENT, ...event, permissions } }),
+        'GET /api/events/ev_1/guests': () => json(listOf([NGOZI])),
+        ...answers,
+      },
+      permissions,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: /^Ngozi Eze/u }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Ngozi Eze' }),
+      ),
+    );
+
+    return sent;
+  }
+
+  function writes(outcome: 'takes' | 'refuses'): { written: string[] } {
+    const written: string[] = [];
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: (text: string) => {
+          written.push(text);
+
+          return outcome === 'takes' ? Promise.resolve() : Promise.reject(new Error('denied'));
+        },
+      },
+    });
+
+    return { written };
+  }
+
+  it('copies the whole link from the guest’s Invitation, and says so politely', async () => {
+    const { written } = writes('takes');
+    await openNgozi({ 'GET /api/events/ev_1/guests/g_1/link': () => json({ url: LINK }) });
+
+    fireEvent.click(screen.getByRole('button', { name: /^Copy invitation link/u }));
+
+    expect((await screen.findByText('Link copied')).closest('[role="status"]')).not.toBeNull();
+    expect(written).toEqual([LINK]);
+  });
+
+  it('shows the link selected in a read-only field when the browser keeps the clipboard', async () => {
+    writes('refuses');
+    await openNgozi({ 'GET /api/events/ev_1/guests/g_1/link': () => json({ url: LINK }) });
+
+    fireEvent.click(screen.getByRole('button', { name: /^Copy invitation link/u }));
+
+    const box = (await screen.findByRole('textbox', {
+      name: 'Invitation link',
+    })) as HTMLTextAreaElement;
+    expect([box.value, box.readOnly, document.activeElement]).toEqual([LINK, true, box]);
+  });
+
+  it('asks before replacing, Keep it changes nothing, and Replace link ends the old one', async () => {
+    const sent = await openNgozi({
+      'POST /api/events/ev_1/guests/g_1/link/replace': () => new Response(null, { status: 204 }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^Replace link…/u }));
+    const ask = screen.getByRole('alertdialog', { name: 'Replace Ngozi Eze’s link?' });
+    expect(within(ask).getByText('The old link will stop working straight away.')).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'Keep it' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Replace link…/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace link' }));
+
+    expect(
+      await screen.findByText(
+        'Link replaced. Ngozi Eze’s old link no longer works. Copy the new one and send it.',
+      ),
+    ).toBeDefined();
+    expect(sent.filter(({ line }) => line.includes('/link'))).toEqual([
+      { line: 'POST /api/events/ev_1/guests/g_1/link/replace', body: null },
+    ]);
+  });
+
+  it('says the old link still works when a replace fails', async () => {
+    await openNgozi({
+      'POST /api/events/ev_1/guests/g_1/link/replace': () => problem('internal_error', 500),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^Replace link…/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace link' }));
+
+    expect(
+      await screen.findByText('Not replaced. The old link still works. Try again.'),
+    ).toBeDefined();
+  });
+
+  it('offers no copy on a Draft, says why with Make live, and keeps Replace link…', async () => {
+    await openNgozi({}, { status: 'draft', phase: 'draft', madeLiveAt: null });
+
+    expect(screen.getByText("Guests can't be invited until this event is live.")).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Copy invitation link/u })).toBeNull();
+    expect(screen.getByRole('button', { name: /^Replace link…/u })).toBeDefined();
+  });
+
+  it('offers no copy on a Paused event, and says why in one line', async () => {
+    await openNgozi(
+      {},
+      { status: 'paused', phase: 'paused', pausedAt: '2026-11-01T10:00:00+00:00' },
+    );
+
+    expect(screen.getByText('Guests can’t be invited while this event is paused.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Copy invitation link/u })).toBeNull();
+  });
+
+  it('shows neither control to someone who cannot add guests', async () => {
+    await openNgozi(
+      {},
+      {},
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+
+    expect(screen.queryByRole('button', { name: /^Copy invitation link/u })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Replace link…/u })).toBeNull();
+  });
+});

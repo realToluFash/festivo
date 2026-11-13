@@ -2754,6 +2754,22 @@
     "remove": "Quitar",
     "removeNamed": "Quitar a {{name}}",
     "addCompanion": "Añadir un acompañante",
-    "mostCompanions": "Un invitado puede traer como máximo {{most, number}} acompañantes."
+    "mostCompanions": "Un invitado puede traer como máximo {{most, number}} acompañantes.",
+    "pausedLine": "Guests can’t be invited while this event is paused.",
+    "finishedLine": "This event has finished, so guests can’t be invited.",
+    "invitation": "Invitation",
+    "copyLink": "Copy invitation link",
+    "copyLinkLine": "Their own page, where they reply",
+    "replaceLink": "Replace link…",
+    "replaceLinkLine": "The old link stops working straight away",
+    "linkCopied": "Link copied",
+    "invitationLink": "Invitation link",
+    "clipboardRefused": "Your browser didn’t let Soirely copy it. It is selected: copy it from here.",
+    "replaceTitle": "Replace {{name}}’s link?",
+    "replaceLine": "The old link will stop working straight away.",
+    "keepIt": "Keep it",
+    "replace": "Replace link",
+    "notReplaced": "Not replaced. The old link still works. Try again.",
+    "linkReplaced": "Link replaced. {{name}}’s old link no longer works. Copy the new one and send it."
   }
 }
