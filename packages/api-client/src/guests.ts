@@ -12,7 +12,13 @@ export const GUEST_ANSWERS: readonly GuestAnswer[] = ['coming', 'notComing', 'ma
 export type CompanionState = 'notYetInvited' | 'held' | 'coming';
 
 /** The five ways Mark as invited offers, in its order (sc-3788). */
-export const GUEST_INVITATION_HOWS = ['whatsapp', 'textMessage', 'email', 'inPerson', 'other'] as const;
+export const GUEST_INVITATION_HOWS = [
+  'whatsapp',
+  'textMessage',
+  'email',
+  'inPerson',
+  'other',
+] as const;
 export type GuestInvitationHow = (typeof GUEST_INVITATION_HOWS)[number];
 
 /** `soirelyMessage` once Messaging's invitation has gone, `reply` for a guest nobody marked who replied. */
@@ -169,7 +175,10 @@ function asCompanion(value: unknown): Companion | null {
   if (typeof value !== 'object' || value == null) return null;
   const row = value as Record<string, unknown>;
   const id = text(row.id);
-  if (id == null || (row.state !== 'held' && row.state !== 'coming' && row.state !== 'notYetInvited'))
+  if (
+    id == null ||
+    (row.state !== 'held' && row.state !== 'coming' && row.state !== 'notYetInvited')
+  )
     return null;
 
   return { id, fullName: text(row.fullName), state: row.state };

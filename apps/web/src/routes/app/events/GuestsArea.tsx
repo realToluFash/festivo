@@ -62,13 +62,7 @@ import {
   violationProblems,
   withGuest,
 } from './guestRows.ts';
-import {
-  GuestColumn,
-  REPLY_KEY,
-  ReplyMark,
-  companionShown,
-  guestAddress,
-} from './GuestColumn.tsx';
+import { GuestColumn, REPLY_KEY, ReplyMark, companionShown, guestAddress } from './GuestColumn.tsx';
 import { replyDate } from './guestDates.ts';
 import { CompanionField, GuestField, PhoneField } from './GuestFields.tsx';
 import '../../../components/desk.css';

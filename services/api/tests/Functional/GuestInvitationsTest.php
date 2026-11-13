@@ -399,7 +399,11 @@ final class GuestInvitationsTest extends ApiTestCase
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($who),
             'HTTP_ACCEPT_LANGUAGE' => 'en',
-        ], content: null === $body ? null : Json\encode($body));
+        ], content: match ($body) {
+            null => null,
+            [] => '{}',
+            default => Json\encode($body),
+        });
 
         return $this->last();
     }

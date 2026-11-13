@@ -14,10 +14,7 @@ import { replyDate } from './guestDates.ts';
 import { shownReply } from './guestRows.ts';
 
 export type Copy =
-  | { kind: 'none' }
-  | { kind: 'copied' }
-  | { kind: 'byHand'; url: string }
-  | { kind: 'failed' };
+  { kind: 'none' } | { kind: 'copied' } | { kind: 'byHand'; url: string } | { kind: 'failed' };
 
 /** The guest's one Invitation line (sc-3788): by hand, by Soirely's message, or when they replied; null while Not yet invited. */
 export function invitationLine(t: TFunction, guest: GuestDetails, timeZone: string): string | null {

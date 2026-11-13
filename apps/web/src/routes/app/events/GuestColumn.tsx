@@ -80,7 +80,6 @@ function MarkLead({ reply }: { reply: ReplyWord }) {
   );
 }
 
-
 /** "Guest of Bisi Adewale", numbered after the first unnamed one, as the list names them. */
 export function companionShown(
   t: TFunction,
@@ -436,12 +435,15 @@ function GuestView({
         focus('guest-heading');
       },
       (error: unknown) => {
-        const refused = error instanceof ApiError && error.is('guest_replied') ? error.problem : null;
+        const refused =
+          error instanceof ApiError && error.is('guest_replied') ? error.problem : null;
         const answer = GUEST_ANSWERS.find((known) => known === refused?.reply);
         const at = refused?.repliedAt;
 
         setUnmark(
-          answer != null && at != null ? { kind: 'replied', reply: answer, at } : { kind: 'failed' },
+          answer != null && at != null
+            ? { kind: 'replied', reply: answer, at }
+            : { kind: 'failed' },
         );
       },
     );

@@ -2111,7 +2111,11 @@ export class ApiClient {
   }
 
   /** Refused 409 `event_state_invalid` unless the event's phase allows `invite`; a guest already invited stays as recorded (sc-3788). */
-  async markInvited(eventId: string, guestId: string, how: GuestInvitationHow): Promise<TaggedGuest> {
+  async markInvited(
+    eventId: string,
+    guestId: string,
+    how: GuestInvitationHow,
+  ): Promise<TaggedGuest> {
     return this.taggedGuest(
       await this.exchange<{ guest?: unknown }>(`${this.guestPath(eventId, guestId)}/invitation`, {
         method: 'PUT',

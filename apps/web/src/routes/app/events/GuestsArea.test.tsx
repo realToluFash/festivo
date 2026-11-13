@@ -315,9 +315,7 @@ describe('Guests (sc-1468)', () => {
     await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
     expect(screen.getByText('6 on the list')).toBeDefined();
     expect(screen.getByText('Bimpe Adeyemi')).toBeDefined();
-    expect(
-      screen.getByText('Not yet invited · bimpe@example.com · +44 7700 900123'),
-    ).toBeDefined();
+    expect(screen.getByText('Not yet invited · bimpe@example.com · +44 7700 900123')).toBeDefined();
     expect(
       within(screen.getByRole('region', { name: 'Guests' }))
         .getAllByRole('listitem')
@@ -1626,13 +1624,11 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
       ['In person', false],
       ['Other', false],
     ]);
-    await waitFor(() =>
-      expect(document.activeElement).toBe(within(ways).getAllByRole('radio')[0]),
-    );
+    await waitFor(() => expect(document.activeElement).toBe(within(ways).getAllByRole('radio')[0]));
 
     fireEvent.click(within(invitation()).getByRole('button', { name: 'Mark as invited' }));
     expect(within(invitation()).getByText('Choose how you invited them.')).toBeDefined();
-    expect(sent.filter(({ line }) => line.includes('/invitation'))).toEqual([]);
+    expect(sent.filter(({ line }) => line.includes('/guests/g_4/invitation'))).toEqual([]);
 
     fireEvent.click(within(ways).getByRole('radio', { name: 'WhatsApp' }));
     fireEvent.click(within(invitation()).getByRole('button', { name: 'Mark as invited' }));
@@ -1640,7 +1636,7 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
     expect(
       await within(invitation()).findByText(/^Invited by Folake Adeyemi, WhatsApp, Nov 13$/u),
     ).toBeDefined();
-    expect(sent.filter(({ line }) => line.includes('/invitation'))).toEqual([
+    expect(sent.filter(({ line }) => line.includes('/guests/g_4/invitation'))).toEqual([
       { line: 'PUT /api/events/ev_1/guests/g_4/invitation', body: { how: 'whatsapp' } },
     ]);
     expect(screen.queryByRole('group', { name: 'How did you invite them?' })).toBeNull();
@@ -1689,7 +1685,7 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
     fireEvent.click(within(invitation()).getByRole('button', { name: 'Mark as not invited' }));
 
     expect(await screen.findByText('Marked as not invited.')).toBeDefined();
-    expect(sent.filter(({ line }) => line.includes('/invitation'))).toEqual([
+    expect(sent.filter(({ line }) => line.includes('/guests/g_4/invitation'))).toEqual([
       { line: 'DELETE /api/events/ev_1/guests/g_4/invitation', body: null },
     ]);
     expect(within(invitation()).queryByText(/^Invited by/u)).toBeNull();
@@ -1735,7 +1731,10 @@ describe('Not yet invited, and Mark as invited (sc-3788)', () => {
   });
 
   it('offers no Mark as invited on a Paused event, and says why', async () => {
-    await openBisi({}, { status: 'paused', phase: 'paused', pausedAt: '2026-11-01T10:00:00+00:00' });
+    await openBisi(
+      {},
+      { status: 'paused', phase: 'paused', pausedAt: '2026-11-01T10:00:00+00:00' },
+    );
 
     expect(screen.getByText('Guests can’t be invited while this event is paused.')).toBeDefined();
     expect(screen.queryByRole('button', { name: /^Mark as invited/u })).toBeNull();
