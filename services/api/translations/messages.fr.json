@@ -133,7 +133,7 @@
     "guest.event_paused": "Les réponses sont closes tant que l’événement est en pause. Tout ce que vous avez envoyé est conservé.",
     "guest.event_concluded": "Les réponses sont closes.",
     "validation.guest_answer_unknown": "Choisissez « Je viens », « Je ne viens pas » ou « À confirmer ».",
-    "validation.guest_language_unknown": "Choose English, Español, Français or Português, or leave Language Not set.",
+    "validation.guest_language_unknown": "Choose English, Español, Français or Português, or leave it as Not set.",
     "event.currency_in_use": "La devise ne peut plus changer une fois que des montants sont enregistrés pour cet événement.",
     "event.state_invalid": "L’état actuel de cet événement ne le permet pas.",
     "event.concluded": "Cet événement est déjà terminé, il ne peut donc pas être publié. Modifiez d’abord ses dates.",

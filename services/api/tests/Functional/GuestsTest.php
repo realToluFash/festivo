@@ -109,7 +109,7 @@ final class GuestsTest extends ApiTestCase
         yield 'not an email address' => [['fullName' => 'Bisi', 'email' => 'bisi.example.com'], ['email' => 'That does not look like an email address. Check it has an @ and a domain.']];
         yield 'a number too short' => [['fullName' => 'Bisi', 'mobile' => ['countryCode' => 'NG', 'number' => '0803']], ['mobile' => 'That number looks too short for Nigeria. Check it and try again.']];
         yield 'a companion named too long' => [['fullName' => 'Bisi', 'companions' => [['fullName' => 'Obi'], ['fullName' => Str\repeat('b', 201)]]], ['companions[1].fullName' => 'Shorten the name to 200 characters or fewer.']];
-        yield 'a language Soirely does not offer' => [['fullName' => 'Bisi', 'language' => 'de'], ['language' => 'Choose English, Español, Français or Português, or leave Language Not set.']];
+        yield 'a language Soirely does not offer' => [['fullName' => 'Bisi', 'language' => 'de'], ['language' => 'Choose English, Español, Français or Português, or leave it as Not set.']];
         yield 'eleven companions' => [['fullName' => 'Bisi', 'companions' => Vec\fill(11, [])], ['companions' => '10 companions is the most one guest can bring.']];
         yield 'everything at once' => [['fullName' => '', 'email' => 'nope', 'mobile' => ['countryCode' => 'NG', 'number' => '0803']], [
             'fullName' => 'Enter their full name.',
