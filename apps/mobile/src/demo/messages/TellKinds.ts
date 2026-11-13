@@ -161,7 +161,6 @@ const STARTS_LATER: readonly string[] = [
   'figuresFailed',
 ];
 
-/** The page behind the sheet: Pause leaves it Paused, Call off and End now leave it over. */
 export function eventBehind(state: string | null, event: SampleEvent, now: Date): SampleEvent {
   if (state === 'tellPause' || state === 'untoldPaused') return { ...event, status: 'paused' };
   if (state === 'tellCallOff' || state === 'tellEndNow')
