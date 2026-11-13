@@ -101,6 +101,9 @@ describe('send invitations from the composer, the rules (sc-3971)', () => {
       cantNames: [],
       cantAll: [],
       credits: 'Texts use 124 credits. Credits after sending: 1,376.',
+      whatsApp: null,
+      instead: null,
+      waits: null,
     });
   });
 

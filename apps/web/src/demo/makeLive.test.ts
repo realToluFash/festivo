@@ -55,6 +55,8 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
       'makeLiveOfferOne',
       'makeLiveOfferWaits',
       'makeLiveOfferPart',
+      'makeLiveOfferWhatsApp',
+      'makeLiveOfferWhatsAppOnly',
       'makeLiveOfferSending',
       'makeLiveOfferSent',
       'makeLiveOfferNotYet',
@@ -75,7 +77,7 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
         key,
       ).toHaveLength(1);
     }
-    expect(MAKE_LIVE_STATES).toHaveLength(22);
+    expect(MAKE_LIVE_STATES).toHaveLength(24);
     expect(isMakeLive('makeLiveOfferRefused')).toBe(true);
     expect(isMakeLive('draft')).toBe(false);
   });
@@ -115,6 +117,8 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
       texts: [124, 18, 4],
       emails: 10,
       balance: 250,
+      whatsApp: 0,
+      whatsAppCredits: 0,
     });
     expect(lw.many('offerTitle', offer.count)).toBe('Send invitations to 11 guests now?');
     expect(lw.many('queued', offer.reached)).toBe('Invitations queued. Sending to 10 guests now.');
@@ -137,7 +141,17 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
       either: 'Email goes either way.',
       waits: '3 SMS messages will wait for credits.',
     });
-    expect(costOf({ count: 1, reached: 1, texts: [], emails: 1, balance: 0 })).toEqual({
+    expect(
+      costOf({
+        count: 1,
+        reached: 1,
+        texts: [],
+        emails: 1,
+        balance: 0,
+        whatsApp: 0,
+        whatsAppCredits: 0,
+      }),
+    ).toEqual({
       credits: null,
       either: null,
       waits: null,
@@ -147,7 +161,15 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
   it('offers the whole list by email with no cost line when nobody is texted', () => {
     const email = offered('makeLiveOfferEmail');
 
-    expect(email).toEqual({ count: 11, reached: 10, texts: [], emails: 10, balance: 250 });
+    expect(email).toEqual({
+      count: 11,
+      reached: 10,
+      texts: [],
+      emails: 10,
+      balance: 250,
+      whatsApp: 0,
+      whatsAppCredits: 0,
+    });
     expect(costOf(email)).toEqual({ credits: null, either: null, waits: null });
     expect(phaseOf('makeLiveOfferEmail')).toEqual({ at: 'offer', failed: false });
   });
@@ -187,5 +209,34 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
     expect(phaseOf('makeLiveOfferSent')).toBeNull();
     expect(phaseOf('makeLiveOfferNotYet')).toBeNull();
     expect(phaseOf('madeLive')).toBeNull();
+  });
+});
+
+describe('Make live sends WhatsApp in place of the text (sc-45251)', () => {
+  it('counts texts and WhatsApp messages together at marketing, each at its own country’s rate', () => {
+    const offer = offered('makeLiveOfferWhatsApp');
+
+    expect(offer).toMatchObject({ texts: [4], whatsApp: 2, whatsAppCredits: 22 });
+    expect(costOf(offer).credits).toBe(
+      'Texts and WhatsApp messages use 26 credits. Credits after sending: 224.',
+    );
+  });
+
+  it('says WhatsApp messages alone when nobody is texted, at utility', () => {
+    const offer = offered('makeLiveOfferWhatsAppOnly');
+
+    expect(offer).toMatchObject({ texts: [], whatsApp: 3, whatsAppCredits: 8 });
+    expect(costOf(offer).credits).toBe(
+      'WhatsApp messages use 8 credits. Credits after sending: 242.',
+    );
+    expect(phaseOf('makeLiveOfferWhatsAppOnly')).toEqual({ at: 'offer', failed: false });
+  });
+
+  it('holds the WhatsApp invitations in sc-3963’s lines when credits are short, email going either way', () => {
+    expect(costOf({ ...offered('makeLiveOfferWhatsApp'), balance: 0 })).toEqual({
+      credits: null,
+      either: 'Email goes either way.',
+      waits: '2 WhatsApp messages will wait for credits. 1 SMS message will wait for credits.',
+    });
   });
 });
