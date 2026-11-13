@@ -37,8 +37,9 @@ export function useDeleteEvent({
   const [pending, setPending] = useState(false);
   const [round, setRound] = useState(0);
   const [failed, setFailed] = useState<string | null>(null);
+  const [named, setNamed] = useState(event.name);
 
-  const open = () => {
+  const open = (name = event.name) => {
     setOpening(true);
     setOpenFailed(null);
     api.eventDeletion(event.id).then(
@@ -46,6 +47,7 @@ export function useDeleteEvent({
         setOpening(false);
         setFailed(null);
         setDeletion(asked);
+        setNamed(name);
         setRound((was) => was + 1);
         setAsking({ kind: asked.needsName ? 'named' : 'plain' });
       },
@@ -59,10 +61,10 @@ export function useDeleteEvent({
     if (pending) return;
     setAsking(null);
   };
-  const deleted = () => {
+  const deleted = (name: string) => {
     setAsking(null);
     setDeletion(null);
-    onDeleted(event);
+    onDeleted({ ...event, name });
   };
 
   const plain = async () => {
@@ -71,8 +73,8 @@ export function useDeleteEvent({
     setFailed(null);
     const answered = await deleteEvent(api, event, false, '');
     setPending(false);
-    if (answered.kind === 'deleted') deleted();
-    else if (answered.kind === 'mismatch') open();
+    if (answered.kind === 'deleted') deleted(event.name);
+    else if (answered.kind === 'mismatch') open(answered.current);
     else setFailed(refusalTitle(answered.error, t('eventDelete.failed')));
   };
 
@@ -101,6 +103,7 @@ export function useDeleteEvent({
           key={round}
           open={asking?.kind === 'named'}
           event={event}
+          named={named}
           deletion={deletion}
           pending={pending}
           onPending={setPending}
@@ -112,13 +115,14 @@ export function useDeleteEvent({
     </>
   );
 
-  return { open, opening, openFailed, sheet };
+  return { open: () => open(), opening, openFailed, sheet };
 }
 
 /** The typed-name question, for an event that has been live or has anybody on its list: its own screen, Delete off until the name matches. */
 function NamedDelete({
   open,
   event,
+  named,
   deletion,
   pending,
   onPending,
@@ -128,15 +132,16 @@ function NamedDelete({
 }: {
   open: boolean;
   event: OrganisationEvent;
+  named: string;
   deletion: EventDeletion;
   pending: boolean;
   onPending: (pending: boolean) => void;
   opener: RefObject<ScreenReaderTarget | null>;
   onCancel: () => void;
-  onDeleted: () => void;
+  onDeleted: (name: string) => void;
 }) {
   const { t } = useTranslation();
-  const name = event.name;
+  const [name, setName] = useState(named);
   useSendingWords(pending ? t('eventDelete.deleting') : undefined);
   const input = useRef<TextInputInstance>(null);
   const [typed, setTyped] = useState('');
@@ -157,17 +162,18 @@ function NamedDelete({
       setFailed(null);
     }
 
-    const answered = await deleteEvent(api, event, true, typed);
+    const answered = await deleteEvent(api, { id: event.id, name }, true, typed);
     onPending(false);
 
     if (answered.kind === 'deleted') {
-      onDeleted();
+      onDeleted(name);
       return;
     }
     if (answered.kind === 'failed') {
       setFailed(refusalTitle(answered.error, t('eventDelete.failed')));
       return;
     }
+    if (answered.current != null) setName(answered.current);
     setLeft(true);
     setRefused(sends);
     if (sends) focusRefused(input);
