@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { callingCode } from '@soirely/domain';
 
 import { Brand } from '../components/Brand.tsx';
@@ -134,10 +134,10 @@ function RedeemPage({ state }: { state: RedeemState }) {
         );
       return;
     }
-    if (step.kind === 'joinAs') go({ kind: 'in', name });
+    if (step.kind === 'joinAs') go({ kind: 'in', name, checks: true });
     if (step.kind === 'code') {
       if (rightPhoneCode(step.digits)) {
-        go({ kind: 'in', name });
+        go({ kind: 'in', name, checks: true });
         return;
       }
       const wrongs = step.wrongs + 1;
@@ -299,7 +299,22 @@ function RedeemPage({ state }: { state: RedeemState }) {
             <Tile />
             <Title titleRef={title}>{R.inTitle}</Title>
             <p className="rd-intro">{R.endsLine}</p>
-            <Primary onClick={() => setTold(R.eventLater)}>{R.openEvent}</Primary>
+            {step.checks ? (
+              <div className="rd-pair">
+                <Link className="rd-primary" to="/demo/check-in?state=list&holder=code">
+                  {R.checkIn}
+                </Link>
+                <button
+                  type="button"
+                  className="rd-secondary"
+                  onClick={() => setTold(R.eventLater)}
+                >
+                  {R.openEvent}
+                </button>
+              </div>
+            ) : (
+              <Primary onClick={() => setTold(R.eventLater)}>{R.openEvent}</Primary>
+            )}
             <div className="rd-you">
               <p className="rd-you-name">{R.signedInAs(step.name)}</p>
               <p className="rd-you-line">{R.signedOutAt}</p>
