@@ -34,6 +34,7 @@ import {
   SCHEDULED_BODY,
   SCHEDULE_AT,
   SENT_AGAIN_AT,
+  SMS,
   SMS_ONLY,
   SUBJECT,
   TELL,
@@ -50,7 +51,14 @@ import { BRACED_BODY, DATED_BODY, PLAIN_BODY } from './PreviewSample.ts';
 import { type Refusal, TYPED_EDIT, refusalOf, reloaded } from './ScheduledSave.ts';
 import { EDGE } from './TokenText.ts';
 import { WAITS_STARTS, type Waits } from './CheckWaits.ts';
-import { STOP_STATES, type Stopping, isStopState, stopStart, stoppingOf } from './StopWriting.ts';
+import {
+  NO_STOPS,
+  STOP_STATES,
+  type Stopping,
+  isStopState,
+  stopStart,
+  stoppingOf,
+} from './StopWriting.ts';
 import {
   RUN,
   TELL_KINDS,
@@ -73,9 +81,11 @@ import {
   noticeStart,
   notSentWhy,
   quietLine,
+  readsOnly,
   stampOf,
 } from './NoticeStates.ts';
 import { sayNotice } from './NoticeWords.ts';
+import { SMS_STATES, smsStart } from './Sms.ts';
 import { TAP_STATES, type TapCase, isTapState, tapStart } from './TapStates.ts';
 
 /** Every state of Messaging B, each a `?state=` in both demos (spec §7 and §7b), in the spec's order. */
@@ -138,6 +148,9 @@ export const MESSAGES_STATES = [
   'longMessage',
   'closedDraft',
   'closedEnded',
+  'noManage',
+  'noManageDraft',
+  'noManageEnded',
   'forbidden',
   'insert',
   'previewAs',
@@ -168,6 +181,7 @@ export const MESSAGES_STATES = [
   ...NOTICE_STATES,
   ...TAP_STATES,
   ...STOP_STATES,
+  ...SMS_STATES,
   ...TELL_KINDS,
 ] as const;
 
@@ -342,11 +356,16 @@ export interface Messages {
   refusedSave?: Refusal;
   waits?: Waits;
   stopping?: Stopping;
+  /** The instant the check reads as now for quiet hours (sc-3946); without it, every number is inside hours. */
+  clock?: string;
+  smsFailed?: boolean;
   closed: Closed | null;
   /** WhatsApp's receipts (sc-3950): Parking told by email and WhatsApp stands in Parking's place. */
   receipts: boolean;
   /** Without messages.read: the area opens the refusal, with no list and no count. */
   forbidden: boolean;
+  /** messages.read alone (sc-32077): no New, no To, no composer; sc-3957's line where the composer would be. */
+  noManage: boolean;
   /** sc-3976: the open state's facts about one guest's notice and conversation, and who reads it when not the owner. */
   notice?: NoticeCase;
   reader?: string;
@@ -452,6 +471,7 @@ const BASE: Messages = {
   closed: null,
   receipts: false,
   forbidden: false,
+  noManage: false,
 };
 
 const ALL_CHANNELS = { email: true, sms: true, wa: true };
@@ -485,12 +505,30 @@ const DRAFTED: Partial<Record<MessagesState, Draft>> = {
   longMessage: { ...sampleDraft('write'), body: LONG_BODY, over: ['body'] },
   whatsAppLine: { ...sampleDraft('write'), to: 'all', channels: ALL_CHANNELS },
   checkWhatsApp: { ...sampleDraft('check'), to: 'all', channels: ALL_CHANNELS },
+  smsLine: { ...sampleDraft('write'), to: 'all' },
+  checkQuiet: sampleDraft('check'),
+  checkQuietBoth: { ...sampleDraft('check'), channels: ALL_CHANNELS },
+  checkNow: sampleDraft('check'),
+  previewFirstText: sampleDraft('preview'),
 };
 
 const CLOSED: Partial<Record<MessagesState, Closed>> = {
   closedDraft: 'draft',
   closedEnded: 'ended',
 };
+
+/** messages.read alone on a live, a Draft and a long-finished event: the event's reason is never shown beside the line. */
+const NO_MANAGE: Partial<Record<MessagesState, Closed | 'live'>> = {
+  noManage: 'live',
+  noManageDraft: 'draft',
+  noManageEnded: 'ended',
+};
+
+export const NO_MANAGE_READER = 'Kofi Mensah';
+
+function closedStart(closed: Closed): Messages {
+  return { ...BASE, closed, kept: [], ...(closed === 'draft' ? { phase: 'first' } : {}) };
+}
 
 const SCHEDULED_AS: Partial<Record<MessagesState, Partial<Draft>>> = {
   scheduled: {},
@@ -551,6 +589,7 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       draft: drafted,
       told: state === 'cancelled' && !wide ? W.cancelled : null,
       ...previewStart(state),
+      ...smsStart(state),
     };
   const waited = state == null ? undefined : WAITS_STARTS[state];
   if (waited != null)
@@ -569,8 +608,15 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       refusedSave: refused,
     };
   const closed = state == null ? undefined : CLOSED[state];
-  if (closed != null)
-    return { ...BASE, closed, kept: [], ...(closed === 'draft' ? { phase: 'first' } : {}) };
+  if (closed != null) return closedStart(closed);
+  const reading = state == null ? undefined : NO_MANAGE[state];
+  if (reading != null)
+    return {
+      ...(reading === 'live' ? BASE : closedStart(reading)),
+      noManage: true,
+      reader: NO_MANAGE_READER,
+      stopping: { ...NO_STOPS, manage: false },
+    };
   const scheduled = state == null ? undefined : SCHEDULED_AS[state];
   if (scheduled != null) return scheduledStart(scheduled);
   if (isStopState(state))
@@ -683,11 +729,13 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
     case 'invitedReached':
       return { ...BASE, open: { kind: 'reached', of: 'invite' } };
     case 'sentReached':
+    case 'reachedSmsFailed':
       return {
         ...BASE,
         thread: NEW_THREAD,
         draft: sampleDraft('sending'),
         open: { kind: 'reached', of: 'draft' },
+        ...smsStart(state),
       };
     case 'resend':
       return { ...BASE, open: { kind: 'many', key: 'parking' }, resending: true };
@@ -936,6 +984,7 @@ export function reduce(m: Messages, action: Action): Messages {
     case 'back':
       return opened(m, back(m.open));
     case 'newMessage': {
+      if (readsOnly(m)) return m;
       const draft = m.draft;
       const keep =
         m.thread?.base == null &&
@@ -947,7 +996,7 @@ export function reduce(m: Messages, action: Action): Messages {
       return { ...next, open: { kind: 'draft' }, picking: false };
     }
     case 'followUp':
-      return followedUp(m, action.base);
+      return readsOnly(m) ? m : followedUp(m, action.base);
     case 'openThread': {
       const next = m.thread?.id === action.id ? m : activate(m, (kept) => kept.id === action.id);
 
@@ -972,7 +1021,14 @@ export function reduce(m: Messages, action: Action): Messages {
       return stepped(m, ['preview'], 'write');
     case 'send': {
       const draft = m.draft;
-      if (m.closed != null || draft == null || !canSend(draft) || matchesNobody(draft)) return m;
+      if (
+        m.closed != null ||
+        readsOnly(m) ||
+        draft == null ||
+        !canSend(draft) ||
+        matchesNobody(draft)
+      )
+        return m;
       const over = overOf(draft);
       if (over.length > 0) return { ...m, draft: { ...draft, step: 'write', over } };
 
@@ -1018,25 +1074,29 @@ export function reduce(m: Messages, action: Action): Messages {
         when: false,
       };
     case 'editScheduled':
+      if (readsOnly(m)) return m;
       return withDraft(m, (draft) =>
         draft.step === 'scheduled'
           ? { ...draft, step: 'write', was: { subject: draft.subject, body: draft.body } }
           : draft,
       );
     case 'saveScheduled':
-      if (m.refusedSave != null) return m;
+      if (m.refusedSave != null || readsOnly(m)) return m;
       return withDraft(m, (draft) =>
         draft.was != null && canSend(draft) ? { ...draft, step: 'scheduled', was: null } : draft,
       );
     case 'sendNow':
+      if (readsOnly(m)) return m;
       return stepped(m, ['scheduled'], 'check');
     case 'keepScheduled':
       return withDraft(m, (draft) =>
         draft.step === 'check' && draft.at != null ? { ...draft, step: 'scheduled' } : draft,
       );
     case 'askCancel':
+      if (readsOnly(m)) return m;
       return withDraft(m, (draft) => ({ ...draft, asking: action.open }));
     case 'cancelScheduled':
+      if (readsOnly(m)) return m;
       return withDraft(m, (draft) => ({
         ...draft,
         step: 'cancelled',
@@ -1049,7 +1109,7 @@ export function reduce(m: Messages, action: Action): Messages {
     case 'match':
       return { ...m, matched: action.name, matching: false };
     case 'answer': {
-      if (m.closed != null) return m;
+      if (m.closed != null || readsOnly(m)) return m;
       const by = tellingBy(m, action.key);
       const kase = caseFor(m, action.key);
       const block = kase?.blocks?.[by];
@@ -1115,7 +1175,7 @@ export function reduce(m: Messages, action: Action): Messages {
         told: W.saved,
       };
     case 'sendAgain': {
-      if (m.closed != null) return m;
+      if (m.closed != null || readsOnly(m)) return m;
       const at = personAt(reachedOf(m), action.key);
 
       return {
@@ -1145,7 +1205,7 @@ export function reduce(m: Messages, action: Action): Messages {
     case 'filtering':
       return { ...m, filtering: action.open };
     case 'resending':
-      return { ...m, resending: action.open && m.closed == null };
+      return { ...m, resending: action.open && m.closed == null && !readsOnly(m) };
     case 'resent':
       return { ...m, resending: false };
     case 'bell':
@@ -1292,6 +1352,8 @@ export interface Check {
   whatsApp: boolean;
   /** WhatsApp's reach line, only while it is ticked. */
   reach?: string;
+  smsReach?: string;
+  instead?: string;
 }
 
 export interface WhatsAppReach {
@@ -1335,6 +1397,28 @@ export function whatsAppLine(to: ToGroup): string {
   ].join(' · ');
 }
 
+export function smsLine(to: ToGroup): string {
+  const { reaches, noMobile, stopped } = SMS[to];
+  const cant = [
+    ...(noMobile > 0 ? [say.noMobile(noMobile)] : []),
+    ...(stopped > 0 ? [say.stoppedTexts(stopped)] : []),
+  ];
+
+  return [
+    say.smsReaches(reaches, reaches + noMobile + stopped),
+    ...(cant.length > 0
+      ? [listFormat('en-US', { style: 'long', type: 'conjunction' }).format(cant)]
+      : []),
+  ].join(' · ');
+}
+
+/** With SMS and WhatsApp both ticked, whoever WhatsApp reaches gets it there and not by SMS (sc-3954). */
+export function insteadOf(draft: Pick<Draft, 'to' | 'channels'>): string | null {
+  const reaches = whatsAppOf(draft.to).reaches;
+
+  return draft.channels.sms && draft.channels.wa && reaches > 0 ? say.insteadOfSms(reaches) : null;
+}
+
 export function countOf(to: ToGroup, zero: readonly ToGroup[] = []): number {
   return zero.includes(to) ? 0 : TO_FIGURES[to].count;
 }
@@ -1353,6 +1437,7 @@ export function checkOf(draft: Draft): Check {
   const smsOff = draft.channels.sms ? 0 : SMS_ONLY[draft.to].length;
   const names = (smsOff > 0 ? SMS_ONLY[draft.to] : CANT_TELL[draft.to]).slice(0, 2);
   const cantTell = figures.cantTell + smsOff;
+  const instead = nobody ? null : insteadOf(draft);
 
   return {
     count: figures.count,
@@ -1364,7 +1449,9 @@ export function checkOf(draft: Draft): Check {
     credits,
     after: formatCount(BALANCE - credits),
     whatsApp: draft.channels.wa,
+    ...(draft.channels.sms && !nobody ? { smsReach: smsLine(draft.to) } : {}),
     ...(draft.channels.wa ? { reach: whatsAppLine(draft.to) } : {}),
+    ...(instead == null ? {} : { instead }),
   };
 }
 

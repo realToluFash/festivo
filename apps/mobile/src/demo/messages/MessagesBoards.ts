@@ -67,6 +67,15 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   longMessage: ['a message too long', 'Shorten the message to 10,000 characters or fewer'],
   closedDraft: ['new unavailable, a draft', 'This event is a draft; New is off'],
   closedEnded: ['new unavailable, long finished', 'Finished more than 30 days ago; New is off'],
+  noManage: [
+    'reading without sending',
+    'Kofi Mensah, Read-only: no New, no To; Only someone who can change Messages can send.',
+  ],
+  noManageDraft: ['reading without sending, a draft', 'The line alone, not the draft’s reason'],
+  noManageEnded: [
+    'reading without sending, long finished',
+    'The line alone, not the finished event’s reason',
+  ],
   forbidden: ['no access', 'Without messages.read: the refusal, no list, no count'],
   insert: ['Insert', 'A menu on the iPad, a sheet on the phone: four tokens, each with its line'],
   previewAs: ['Preview as', 'Open on the five people in To, A to Z'],
@@ -211,6 +220,30 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   stoppedNoManage: [
     'stopped, without messages.manage',
     'No More actions; the inset without Let them write again',
+  ],
+  smsLine: [
+    'SMS ticked: who it reaches',
+    'To All guests · 142: SMS reaches 39 of 142, under the chips',
+  ],
+  checkQuiet: [
+    'the check, texts waiting for morning',
+    'Coming · 96 by email and SMS: Texts to 4 people wait until 09:00, their time',
+  ],
+  checkQuietBoth: [
+    'the check, texts and WhatsApp waiting',
+    'Email · 92, SMS · 28, WhatsApp · 3; texts and WhatsApp messages to 4 people wait',
+  ],
+  checkNow: [
+    'happening now at 23:00: nothing waits',
+    'Thu, Nov 5 at 23:00 while the wedding is on: no wait line',
+  ],
+  reachedSmsFailed: [
+    'who it reached, texts that failed',
+    'Six reached by email whose text failed, each with its reason',
+  ],
+  previewFirstText: [
+    'preview: a first text',
+    'Amaka Eze: SMS · 2 parts · GSM-7 · 177 characters, ending Reply STOP to opt out.',
   ],
   tellDates: [
     'tell guests, the dates',

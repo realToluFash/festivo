@@ -1,6 +1,5 @@
 import { writtenTime } from '../clock.ts';
-import { LINK_CHARS, smsParts } from '../events/MakeLive.ts';
-import { LIVE } from '../events/EventsWords.ts';
+import { LINK_CHARS, asSent, isGsm7, smsParts } from '../events/MakeLive.ts';
 import { READER_ZONE } from '../events/EventsSample.ts';
 import type { Messages } from './MessagesModel.ts';
 import {
@@ -15,6 +14,7 @@ import {
 } from './MessagesSample.ts';
 import { type ChannelKey, W, say } from './MessagesWords.ts';
 import { NW, sayNotice } from './NoticeWords.ts';
+import type { SmsCount } from './Sms.ts';
 import { NO_STOPS } from './StopWriting.ts';
 
 export const NOTICE_STATES = [
@@ -233,13 +233,22 @@ export function guestOf(m: Pick<Messages, 'notice'>, key: GuestKey): SampleGuest
   };
 }
 
+/** messages.read alone: the Read-only member in a conversation (sc-3960), or reading the list (sc-32077's noManage). */
+export function readsOnly(m: Pick<Messages, 'notice' | 'noManage'>): boolean {
+  return m.noManage || m.notice?.hidden === true;
+}
+
 /** Without guests.manage no conversation's head shows an address, only the guest's language (AC 36). */
-export function headLineOf(m: Pick<Messages, 'notice'>, key: GuestKey, locale = 'en'): string {
+export function headLineOf(
+  m: Pick<Messages, 'notice' | 'noManage'>,
+  key: GuestKey,
+  locale = 'en',
+): string {
   const shared = caseFor(m, key)?.shared;
 
   if (shared != null) return sayNotice.sharedBy(shared.number, shared.count);
 
-  return m.notice?.hidden === true ? languageOf(key, locale) : guestOf(m, key).head;
+  return readsOnly(m) ? languageOf(key, locale) : guestOf(m, key).head;
 }
 
 /** The guest's language named in the reader's own (l10n #45417). */
@@ -291,7 +300,7 @@ export function notSentWhy(block: Block, language: string): string {
     case 'noTemplate':
       return sayNotice.unavailableIn(language);
     case 'textedStop':
-      return W.textedStop;
+      return W.stoppedTexts;
     default:
       return reasonOf(block, language);
   }
@@ -333,17 +342,24 @@ export function quietLine(by: ChannelKey, time: string): string | null {
   return by === 'email' ? null : sayNotice.waitsUntil(by === 'wa', time);
 }
 
-/** Soirely's text that the hosts have written (l10n #45754), counted with the guest's link as built; a first text to a number ends on the STOP line. */
+export type NoticeWords = (hosts: string, event: string, link: string) => string;
+
+/** Soirely's text that the hosts have written (l10n #45754), as sent: typographic punctuation plain, counted with the guest's link as built; a first text to a number ends on the STOP line. */
 export function noticeSmsOf(
   hosts: string,
   event: string,
   first = false,
-): { text: string; chars: number; parts: number } {
-  const words = say.noticeSms(hosts, event, PREVIEW.link).replaceAll('’', "'");
-  const text = first ? `${words}\n${LIVE.smsStop}` : words;
+  words: NoticeWords = say.noticeSms,
+): SmsCount & { text: string } {
+  const text = asSent(words(hosts, event, PREVIEW.link), first);
   const built = text.replace(PREVIEW.link, 'x'.repeat(LINK_CHARS));
 
-  return { text, chars: [...built].length, parts: smsParts(built) };
+  return {
+    text,
+    chars: [...built].length,
+    parts: smsParts(built),
+    encoding: isGsm7(built) ? 'gsm7' : 'unicode',
+  };
 }
 
 export function noticeCredits(by: ChannelKey, perPart: number, parts: number): number {

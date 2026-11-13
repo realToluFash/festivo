@@ -19,6 +19,7 @@ import {
   PARKING_GROUPS,
   PARKING_REACH,
   PARKING_REACHED,
+  NOW,
   READER,
   RESEND,
   type ReachGroup,
@@ -26,9 +27,12 @@ import {
   type ReachPart,
   SENDING_GROUPS,
   SENDING_REACH,
+  SMS_FAILED,
   receiptPeople,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
+import { readsOnly } from './NoticeStates.ts';
+import { failedReason } from './Sms.ts';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 
@@ -159,7 +163,28 @@ interface Base {
   counts?: Partial<Record<GroupKey, number>>;
 }
 
-function baseOf(of: ReachedOf): Base {
+/** Reached by email, their text failed: they stay reached, and the counts do not change (sc-3946). */
+export function smsFailedPeople(): readonly NotReached[] {
+  return SMS_FAILED.map(([key, initials, name, code, seen]) => ({
+    key,
+    initials,
+    name,
+    lines: [
+      { mark: 'delivered', word: say.where(CHANNEL_WORD.email, W.delivered), reason: NOW },
+      {
+        mark: 'bounced',
+        word: say.where(CHANNEL_WORD.sms, W.failedReceipt),
+        reason: failedReason(code),
+      },
+      seen == null
+        ? { mark: 'none', word: W.theirPage, reason: W.notSeenYet }
+        : { mark: 'delivered', word: W.theirPage, reason: say.seenAt(seen) },
+    ],
+    fixes: [],
+  }));
+}
+
+function baseOf(of: ReachedOf, smsFailed = false): Base {
   if (of === 'receipts')
     return {
       reached: RECEIPTS.reached,
@@ -182,7 +207,10 @@ function baseOf(of: ReachedOf): Base {
       reached: SENDING_REACH.reached,
       of: SENDING_REACH.of,
       groups: SENDING_GROUPS.filter((group) => group.key !== 'reached'),
-      reachedRows: SENDING_GROUPS.find((group) => group.key === 'reached')?.people ?? [],
+      reachedRows: [
+        ...(SENDING_GROUPS.find((group) => group.key === 'reached')?.people ?? []),
+        ...(smsFailed ? smsFailedPeople() : []),
+      ],
       progress: SENDING_REACH.inProgress,
     };
 
@@ -204,7 +232,7 @@ interface Counted {
 }
 
 function counted(m: Messages, of: ReachedOf): Counted {
-  const base = baseOf(of);
+  const base = baseOf(of, m.smsFailed === true);
   const going: ReachPerson[] = [];
   const told: ReachPerson[] = [];
   const groups = base.groups.map((group) => {
@@ -299,6 +327,14 @@ function shownGroups(c: Counted, filter: ReachFilter): readonly GroupView[] {
   }
 }
 
+/** messages.read alone: every status and reason, and nothing to act on (sc-32077; sc-3966, Decided 13 Nov, point 2). */
+function readOnlyGroup(group: GroupView): GroupView {
+  return {
+    ...group,
+    people: group.people.map((person) => ({ ...person, fixes: [], offer: false })),
+  };
+}
+
 const ALWAYS: readonly ReachFilter[] = ['everyone', 'notReached', 'reached', 'told'];
 
 /** The filters offered whatever their count say so in their own words when nobody is in them; Everyone always has someone. */
@@ -329,8 +365,10 @@ export function reachViewOf(m: Messages, of: ReachedOf): ReachView {
     { key: 'told', word: W.markedAsTold, count: c.told.count },
   ];
   const chosen = options.find((option) => option.key === filterOn) ?? options[1];
+  const reading = readsOnly(m);
   const shown = shownGroups(c, filterOn);
-  const groups = of === 'receipts' && filterOn === 'everyone' ? [whatsAppGroup(), ...shown] : shown;
+  const listed = of === 'receipts' && filterOn === 'everyone' ? [whatsAppGroup(), ...shown] : shown;
+  const groups = reading ? listed.map(readOnlyGroup) : listed;
   const count = (key: GroupKey) => c.notReached.find((group) => group.key === key)?.count ?? 0;
   const counts = c.notReached.flatMap((group) => {
     const words = COUNT_WORDS[group.key as GroupKey];
@@ -378,7 +416,7 @@ export function reachViewOf(m: Messages, of: ReachedOf): ReachView {
     groups,
     empty: groups.length === 0 ? (EMPTY_LINE[filterOn] ?? null) : null,
     resend:
-      of === 'receipts'
+      of === 'receipts' || reading
         ? 0
         : c.notReached
             .filter((group) => group.key !== 'inProgress')

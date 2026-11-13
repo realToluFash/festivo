@@ -86,7 +86,7 @@ const FIGURES = {
 /** See who's people, A to Z, each with the email's reason then the phone's (pm, 13 Nov, #45227). */
 export const UNREACHABLE = [
   { name: 'Joaquín Ruiz', why: `${W.noEmail} · ${W.noPhone}` },
-  { name: 'Sophie Laurent', why: `${W.unsubscribed} · ${W.textedStop}` },
+  { name: 'Sophie Laurent', why: `${W.unsubscribed} · ${W.stoppedTexts}` },
 ] as const;
 
 export const NOTE_TYPED = 'Dinner is still at 20:00.';

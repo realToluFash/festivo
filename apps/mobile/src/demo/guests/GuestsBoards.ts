@@ -70,6 +70,18 @@ const GUESTS: Record<GuestsState, Board> = {
   whatsAppOptedOut: ['WhatsApp, opted out', 'Sophie Laurent: Unsubscribed from WhatsApp on Nov 1'],
   whatsAppNoMobile: ['WhatsApp, no mobile number', 'Inês Duarte: no WhatsApp row'],
   whatsAppViewer: ['WhatsApp, Can view', 'Kwame Mensah: no contact details, no WhatsApp row'],
+  optOutEmail: ['Opt-outs, email', 'Kwame Mensah: Unsubscribed from email on Oct 22'],
+  optOutTexts: [
+    'Opt-outs, texts',
+    'Kwame Mensah: Unsubscribed from texts on Oct 29, then the WhatsApp row',
+  ],
+  optOutTextsWhatsApp: [
+    'Opt-outs, texts and WhatsApp',
+    'Sophie Laurent: two lines, one closing sentence',
+  ],
+  optOutAll: ['Opt-outs, all three', 'Sophie Laurent: email, texts and WhatsApp'],
+  optOutNoMobile: ['Opt-outs, no mobile number', 'Inês Duarte: the email’s line only'],
+  optOutViewer: ['Opt-outs, Can view', 'Kwame Mensah: no contact details, no opt-out line'],
   askAgain: [
     'Not sure yet, asked again',
     'sc-1363: Lucía Ortega will be asked again Nov 1, Folasade asked again Oct 23',
