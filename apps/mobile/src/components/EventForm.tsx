@@ -79,6 +79,7 @@ import {
   Field,
   FieldError,
   FocusEdge,
+  LinesInSummary,
   TextField,
   focusChecked,
   useFocusEdge,
@@ -135,6 +136,7 @@ export function EventForm({
   const [unsent, setUnsent] = useState<{ count: number } | null>(null);
   const [status, setStatus] = useState<Status>('editing');
   const readerOn = useScreenReaderOn();
+  const [linesInSummary, setLinesInSummary] = useState(false);
   const [asking, setAsking] = useState<Asking>(null);
   const [fetchingLatest, setFetchingLatest] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -176,10 +178,14 @@ export function EventForm({
   useEffect(() => {
     if (focusOn == null) return;
     const field = focusOn.field;
-    const typedIn = { name: nameInput, venueName: venueNameInput, venueAddress: venueAddressInput };
+    const typedIns = {
+      name: nameInput,
+      venueName: venueNameInput,
+      venueAddress: venueAddressInput,
+    };
 
-    if (field === 'name' || field === 'venueName' || field === 'venueAddress') {
-      focusChecked(typedIn[field]);
+    if (typedIn(field)) {
+      focusChecked(typedIns[field]);
       return;
     }
 
@@ -322,20 +328,26 @@ export function EventForm({
     setErrors(found);
     setHostErrors(hostFound);
     const first = firstRefusedOf(found, hostFound, hosts);
-    setFocusOn(first != null && 'field' in first ? { field: first.field, saidFirst } : null);
+    const onField = first != null && 'field' in first ? first.field : null;
+    setLinesInSummary(saidFirst != null && onField != null && !typedIn(onField));
+    setFocusOn(onField != null ? { field: onField, saidFirst } : null);
     setFocusHost(first != null && 'host' in first ? { key: first.host } : null);
   }
 
   function editHosts(rows: HostRow[], touched: number | null): void {
     setTyped((previous) => ({ ...previous, hosts: rows }));
     if (touched != null) setHostErrors((previous) => ({ ...previous, [touched]: undefined }));
-    else if (hostsChecked) setHostErrors(hostErrorsOf(checkedOf(rows), t));
+    else if (hostsChecked) {
+      setLinesInSummary(false);
+      setHostErrors(hostErrorsOf(checkedOf(rows), t));
+    }
     if (status === 'failed') setStatus('editing');
   }
 
   /** After the first Save or Create event, each host is checked again as its field is left. */
   function leaveHost(row: HostRow): void {
     if (!hostsChecked) return;
+    setLinesInSummary(false);
     setHostErrors((previous) => ({
       ...previous,
       [row.key]: hostErrorsOf(checkedOf(hosts), t)[row.key],
@@ -423,7 +435,7 @@ export function EventForm({
   const problems = unsent == null ? null : t('eventForm.problems', { count: unsent.count });
 
   return (
-    <>
+    <LinesInSummary.Provider value={linesInSummary}>
       {status === 'created' && (
         <ReadOut words={t('eventForm.created')} interrupts>
           <Notice tone="done" mark={tokens.marks.done.glyph} body={t('eventForm.created')} />
@@ -643,8 +655,15 @@ export function EventForm({
         onKeep={() => setAsking(null)}
         testID="eventForm.latest"
       />
-    </>
+    </LinesInSummary.Provider>
   );
+}
+
+const TYPED_IN = ['name', 'venueName', 'venueAddress'] as const;
+
+/** A field typed in, which takes input focus, where the rest are pickers the screen reader is moved to. */
+function typedIn(field: EventFormField): field is (typeof TYPED_IN)[number] {
+  return (TYPED_IN as readonly string[]).includes(field);
 }
 
 const ARRIVE_AT: Record<Exclude<EditAt, 'hosts'>, EventFormField> = {

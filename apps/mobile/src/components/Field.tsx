@@ -200,6 +200,9 @@ export interface FieldAction {
   testID: string;
 }
 
+/** A refusal whose summary is said in place of each Field's line: each line is read as its control takes focus, and one said as well would queue behind the summary and be said again there (sc-43907). Read as an error mounts, so the form clears it before any other check can mount one. */
+export const LinesInSummary = createContext(false);
+
 /** The red mark and its sentence, and any way out of the refusal under it. */
 export function FieldError({
   message,
@@ -212,7 +215,9 @@ export function FieldError({
   answer?: unknown;
 }) {
   const markSide = useMarkSide(tokens.sizeMark);
-  useReadOut(answer === undefined ? message : null);
+  useReadOut(answer === undefined ? message : null, {
+    quietAtMount: useContext(LinesInSummary),
+  });
   const { shown, read } = useFocusOnAnswer<TextHandle>(answer);
 
   return (
