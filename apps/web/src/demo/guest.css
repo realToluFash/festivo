@@ -1429,6 +1429,7 @@
 }
 
 .gp-main.is-two .gp-columns {
+  display: block;
   position: relative;
   width: calc(var(--gpLeft) + var(--gpGap) + var(--gpRight));
   min-height: calc(var(--gpCoverH, var(--gpMin)) + var(--gpLeftGap) + var(--gpDetailsH, 0px));
@@ -1482,6 +1483,7 @@
   left: 0;
   width: var(--gpLeft);
   margin-left: 0;
+  margin-top: 0;
 }
 
 .is-two .gp-columns > .gp-left {

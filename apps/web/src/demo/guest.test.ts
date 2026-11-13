@@ -97,7 +97,16 @@ describe('the guest’s page states (sc-31306)', () => {
   it('drops the details and the foot for Check and send and Tell us, and the hosts when called off', () => {
     expect(shows(startOf('check'))).toMatchObject({ details: false, foot: false });
     expect(shows(startOf('tellUs'))).toMatchObject({ details: false, foot: false });
-    expect(shows(startOf('open'))).toEqual({ details: true, foot: true, hosts: true });
+    expect(shows(startOf('open'))).toEqual({
+      details: true,
+      foot: true,
+      hosts: true,
+      noAccount: true,
+    });
+    expect(shows(startOf('closed')).noAccount).toBe(false);
+    expect(shows(startOf('replyByClosed')).noAccount).toBe(false);
+    expect(shows(startOf('paused')).noAccount).toBe(false);
+    expect(shows(startOf('calledOff')).noAccount).toBe(false);
     expect(shows(startOf('calledOff')).hosts).toBe(false);
   });
 

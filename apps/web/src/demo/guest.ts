@@ -708,10 +708,21 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
   },
 ];
 
-export function shows(visit: Visit): { details: boolean; foot: boolean; hosts: boolean } {
+/** The foot's "no account" line only while the guest can still answer (ux, 13 Nov, from qa2's #44255). */
+export function shows(visit: Visit): {
+  details: boolean;
+  foot: boolean;
+  hosts: boolean;
+  noAccount: boolean;
+} {
   const alone = ['check', 'tellUs', 'kitchen', 'withYou'].includes(visit.view.kind);
 
-  return { details: !alone, foot: !alone, hosts: visit.phase !== 'calledOff' };
+  return {
+    details: !alone,
+    foot: !alone,
+    hosts: visit.phase !== 'calledOff',
+    noAccount: visit.phase === 'live' && visit.view.kind !== 'closed',
+  };
 }
 
 /** After the date to answer by: the 23:59:59 instant in the event's zone, the rule Guests uses too (sc-3780). */
@@ -861,9 +872,9 @@ const BOARD_ENGLISH = {
   answerLine: 'Your answer: {{answer}}',
   changeShort: 'Change',
   send: 'Send my answer',
-  nothingSent: 'Nothing is sent until you press Send my answer.',
-  notSent: 'Your answer wasn’t sent. Everything you chose is still here. Try again.',
-  notSentTap: 'Your answer wasn’t sent. Check your connection and tap it again.',
+  nothingSent: 'Nothing is sent until you select Send my answer.',
+  notSent: 'Your answer was not sent. Everything you chose is still here. Try again.',
+  notSentTap: 'Your answer was not sent. Check your connection and choose it again.',
   same: 'You’re already down as {{answer}}. Nothing has changed.',
   unsent: 'You haven’t sent your answer yet.',
   closedBy: 'Answers closed on {{date}}. Contact your host if something has changed.',

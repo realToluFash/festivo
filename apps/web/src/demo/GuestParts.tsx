@@ -489,11 +489,23 @@ export function Details({ visit, words, hosts }: { visit: Visit; words: Words; h
   );
 }
 
-export function Foot({ words, onTell }: { words: Words; onTell: () => void }) {
+export function Foot({
+  words,
+  noAccount,
+  onTell,
+}: {
+  words: Words;
+  noAccount: boolean;
+  onTell: () => void;
+}) {
   return (
     <div className="gp-foot">
-      <p>{words.noAccount}</p>
-      <hr />
+      {noAccount && (
+        <>
+          <p>{words.noAccount}</p>
+          <hr />
+        </>
+      )}
       <p>{words.closing}</p>
       <TextAction focus="tell" onClick={onTell}>
         {words.tell}
