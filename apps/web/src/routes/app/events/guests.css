@@ -475,6 +475,20 @@
   color: var(--colorInkSecondary);
 }
 
+.gs-do {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gs-do .desk-row-name {
+  color: var(--colorAccent);
+  font-weight: 500;
+}
+
 .desk-row.is-none .desk-row-name {
   color: var(--colorInkSecondary);
 }
@@ -523,11 +537,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.gs-amber-line {
-  color: var(--colorInkSecondary);
-  font: 500 14px/1.45 var(--fontFamily);
-}
-
 .gs-differ {
   margin: 0;
 }
@@ -559,20 +568,6 @@
   width: 52px;
   color: var(--colorInkSecondary);
   font-weight: 600;
-}
-
-.gs-do {
-  width: 100%;
-  border: 0;
-  background: none;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.gs-do .desk-row-name {
-  color: var(--colorAccent);
-  font-weight: 500;
 }
 
 .gs-copied {
