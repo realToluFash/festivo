@@ -62,7 +62,7 @@ import {
   turnTo,
   typed,
 } from '../kit/createWalk.ts';
-import { Bars, NavAction, Progress, WalkButton } from './CreateWalkParts.tsx';
+import { Bars, NavAction, Progress, WalkButton, takingFocus } from './CreateWalkParts.tsx';
 import {
   Brings,
   type CardFrame,
@@ -554,6 +554,7 @@ export function CreateWalkWindow<Made>({
             <Pressable
               style={StyleSheet.absoluteFill}
               onPress={cancel}
+              {...takingFocus(!talkBack, creating ? undefined : cancel)}
               disabled={creating}
               accessibilityRole="button"
               accessibilityLabel={t('createOrganisation.cancel')}
