@@ -105,7 +105,8 @@
     "web:invitations.fromNobodyNoRole",
     "web:eventsSearch.type",
     "mobile:eventsSearch.type",
-    "web:guestList.invitation"
+    "web:guestList.invitation",
+    "web:guest.calendarApple"
   ],
   "pt": [
     "web:nav.menu",
