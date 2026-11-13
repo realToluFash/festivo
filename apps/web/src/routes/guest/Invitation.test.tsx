@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import i18next from 'i18next';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { act } from 'react';
@@ -21,6 +21,7 @@ function json({ status, body }: Answer): Response {
 
 const PAGE = {
   guest: { fullName: ADAEZE, reply: null, companions: 0 },
+  language: { chosen: null, host: null, organisation: 'en' },
   event: {
     id: '0193f5a8-0000-7000-8000-000000000001',
     name: "Amara & Tobi's wedding",
@@ -78,7 +79,8 @@ function open(token = TOKEN) {
   );
 }
 
-afterEach(() => {
+afterEach(async () => {
+  await i18next.changeLanguage('en');
   vi.useRealTimers();
   vi.restoreAllMocks();
   localStorage.clear();
@@ -913,5 +915,100 @@ describe('a page left open (sc-3591)', () => {
     expect(
       await screen.findByRole('heading', { name: 'This invitation link does not work' }),
     ).toBeDefined();
+  });
+});
+
+describe("the guest's language (sc-3790)", () => {
+  function browser(...languages: string[]): void {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(languages);
+  }
+
+  function language(chosen: string | null, host: string | null, organisation = 'en') {
+    return { ...PAGE, language: { chosen, host, organisation } };
+  }
+
+  it('opens in Portuguese for a browser asking for pt-BR, with <html lang> following', async () => {
+    browser('pt-BR');
+    api({ '/api/guest-links/page': [{ status: 200, body: language(null, 'fr') }] });
+    open();
+
+    expect(await screen.findByRole('button', { name: /Português/u })).toBeDefined();
+    expect(document.documentElement.lang).toBe('pt');
+  });
+
+  it('falls through a browser asking only for de to the host’s Language, then the organisation’s', async () => {
+    browser('de');
+    api({ '/api/guest-links/page': [{ status: 200, body: language(null, 'fr') }] });
+    const first = open();
+
+    expect(await screen.findByRole('button', { name: /Français/u })).toBeDefined();
+    first.unmount();
+
+    api({ '/api/guest-links/page': [{ status: 200, body: language(null, null, 'es') }] });
+    open();
+
+    expect(await screen.findByRole('button', { name: /Español/u })).toBeDefined();
+  });
+
+  it('opens in what the guest chose, whatever the browser asks for', async () => {
+    browser('en-GB', 'en');
+    api({ '/api/guest-links/page': [{ status: 200, body: language('fr', 'pt') }] });
+    open();
+
+    expect(await screen.findByRole('button', { name: /Français/u })).toBeDefined();
+  });
+
+  it('opens exactly as before in English for a guest with nothing set on an English browser', async () => {
+    browser('en-US', 'en');
+    api({ '/api/guest-links/page': [{ status: 200, body: PAGE }] });
+    open();
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'You are invited' })).toBeDefined();
+    expect(document.documentElement.lang).toBe('en');
+  });
+
+  it('switches at once, says so once, and keeps the choice on the guest and never on this device', async () => {
+    browser('en');
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: PAGE }],
+      '/api/guest-links/language': [{ status: 204 }],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Language: English' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));
+
+    await waitFor(() => expect(document.documentElement.lang).toBe('fr'));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /Français/u }));
+    expect(screen.getByText(i18next.t('guest.languageSwitched'))).toBeDefined();
+    await waitFor(() =>
+      expect(sent).toContainEqual({
+        path: '/api/guest-links/language',
+        body: { token: TOKEN, language: 'fr' },
+      }),
+    );
+    expect(localStorage.getItem('soirely:language')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('says the language was not saved, as an alert with Try again, and clears it once saved', async () => {
+    browser('en');
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: PAGE }],
+      '/api/guest-links/language': [{ status: 500, body: BROKEN }, { status: 204 }],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Language: English' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Português' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain(i18next.t('guest.languageNotSaved'));
+    expect(document.documentElement.lang).toBe('pt');
+
+    fireEvent.click(within(alert).getByRole('button', { name: i18next.t('error.retry') }));
+
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    expect(sent.filter((one) => one.path === '/api/guest-links/language')).toHaveLength(2);
   });
 });

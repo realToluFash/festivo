@@ -608,6 +608,25 @@
   border: 3px solid var(--colorAttentionText);
 }
 
+:where(.guest-page) .gp-notice.gp-unsaved {
+  margin-bottom: 16px;
+  padding-bottom: 4px;
+}
+
+:where(.guest-page) .gp-unsaved-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+@media (width >= 64rem) {
+  :where(.guest-page) .gp-notice.gp-unsaved {
+    margin-bottom: 20px;
+  }
+}
+
 /* ── A link that does not work, and Soirely out of reach: alone on the page ── */
 
 :where(.guest-page) .gp-alone {
