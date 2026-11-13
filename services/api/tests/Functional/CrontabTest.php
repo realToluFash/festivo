@@ -14,7 +14,7 @@ use Psl\Vec;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Command\Command;
 
-final class PruneScheduleTest extends FunctionalTestCase
+final class CrontabTest extends FunctionalTestCase
 {
     #[Test]
     public function everyPruneRunsOnceADay(): void
@@ -35,5 +35,14 @@ final class PruneScheduleTest extends FunctionalTestCase
 
         self::assertNotEmpty($prunes);
         self::assertSame($prunes, $scheduled);
+    }
+
+    #[Test]
+    public function theMailRateCheckRunsEveryHour(): void
+    {
+        self::assertContains(
+            '15 * * * * php /app/bin/console app:mail:check-rates --no-interaction',
+            Str\split(File\read(__DIR__ . '/../../config/crontab'), "\n"),
+        );
     }
 }
