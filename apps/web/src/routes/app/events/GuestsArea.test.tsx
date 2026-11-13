@@ -879,6 +879,53 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     });
   });
 
+  it('on a second 412 from Keep mine, the panel lists what this host changed and Keep mine sends its Yours', async () => {
+    let reads = 0;
+    let saves = 0;
+    const first = { ...DETAILS, email: 'ngozi.eze@example.com' };
+    const second = { ...DETAILS, email: 'other@example.com' };
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        if (reads === 1) return tagged(DETAILS, '"1"');
+        return reads === 2 ? tagged(first, '"2"') : tagged(second, '"3"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => {
+        saves += 1;
+        return saves < 3
+          ? problem('precondition_failed', 412)
+          : tagged(
+              { ...second, fullName: 'Ngozi Eze-Okafor', email: 'ngozi.eze@example.com' },
+              '"4"',
+            );
+      },
+    });
+
+    type('Full name', 'Ngozi Eze-Okafor');
+    type(EMAIL, 'ngozi.eze@example.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    const terms = (panel: HTMLElement) =>
+      within(panel)
+        .getAllByRole('term')
+        .map((one) => one.textContent);
+    const panel = await screen.findByRole('alert');
+    expect(terms(panel)).toEqual(['Full name']);
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Keep mine' }));
+    await waitFor(() => expect(puts(sent)).toHaveLength(2));
+    const again = await screen.findByRole('alert');
+    await waitFor(() => expect(terms(again)).toEqual(['Full name', 'Email address']));
+    expect(within(again).getByText('ngozi.eze@example.com')).toBeDefined();
+
+    fireEvent.click(within(again).getByRole('button', { name: 'Keep mine' }));
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect(puts(sent)[2]?.body).toMatchObject({
+      fullName: 'Ngozi Eze-Okafor',
+      email: 'ngozi.eze@example.com',
+    });
+  });
+
   it('sends nothing on a 412 when their version already holds every change, and shows it', async () => {
     let reads = 0;
     const theirs = { ...DETAILS, email: 'ngozi.eze@example.com' };

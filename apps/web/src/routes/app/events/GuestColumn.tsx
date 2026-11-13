@@ -642,12 +642,12 @@ function kept(values: Values): string {
   return JSON.stringify(keptOf(values));
 }
 
-/** The fields this host changed against the version they opened or took with Use theirs. */
-function changedOf(values: Values, base: Values): readonly Field[] {
+/** The fields this host changed against the version they opened or took with Use theirs, with those held through a Keep mine. */
+function changedOf(values: Values, base: Values, held: readonly Field[] = []): readonly Field[] {
   const now = keptOf(values);
   const was = keptOf(base);
 
-  return FIELDS.filter((field) => now[field] !== was[field]);
+  return FIELDS.filter((field) => held.includes(field) || now[field] !== was[field]);
 }
 
 /** Their version with only this host's changed fields taken from the form, so Keep mine overwrites nothing a colleague changed. */
@@ -695,7 +695,13 @@ function EditForm({
   const [tried, setTried] = useState(false);
   const [refused, setRefused] = useState<Problems>({});
   const [duplicate, setDuplicate] = useState<'asked' | 'kept' | null>(null);
-  const [conflict, setConflict] = useState<{ theirs: TaggedGuest; differs: Differs } | null>(null);
+  const [held, setHeld] = useState<readonly Field[]>([]);
+  const [conflict, setConflict] = useState<{
+    theirs: TaggedGuest;
+    differs: Differs;
+    sent: Values;
+    changed: readonly Field[];
+  } | null>(null);
   const [failed, setFailed] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -749,8 +755,8 @@ function EditForm({
     );
   }
 
-  function differs(theirs: GuestDetails): Differs {
-    const mine = newGuestOf(typed, false);
+  function differs(theirs: GuestDetails, sent: Values, changed: readonly Field[]): Differs {
+    const mine = newGuestOf(typedOf(sent), false);
     const theirNames = theirs.companions.map((one, at) =>
       companionShown(
         t,
@@ -759,16 +765,16 @@ function EditForm({
         at,
       ),
     );
-    const myNames = values.companions.map((_, at) =>
+    const myNames = sent.companions.map((_, at) =>
       companionShown(
         t,
         mine.fullName,
-        values.companions.map((c) => c.name),
+        sent.companions.map((c) => c.name),
         at,
       ),
     );
     const none = t('guestList.none');
-    const mobile = mobileOf(values);
+    const mobile = mobileOf(sent);
     const rows: Differs = [
       {
         key: 'fullName',
@@ -795,12 +801,16 @@ function EditForm({
         yours: myNames.join(', ') || none,
       },
     ];
-    const changed = changedOf(values, base);
 
     return rows.filter((row) => changed.includes(row.key) && row.theirs !== row.yours);
   }
 
-  async function send(allowDuplicate: boolean, against: string, sending = values): Promise<void> {
+  async function send(
+    allowDuplicate: boolean,
+    against: string,
+    sending = values,
+    changed = changedOf(values, base, held),
+  ): Promise<void> {
     setBusy(true);
     setFailed(false);
     try {
@@ -824,11 +834,11 @@ function EditForm({
       else if (error instanceof ApiError && error.status === 412) {
         try {
           const theirs = await api.guest(eventId, host.id);
-          const rows = differs(theirs.guest);
+          const rows = differs(theirs.guest, sending, changed);
 
           if (rows.length === 0) onSaved(theirs, false);
           else {
-            setConflict({ theirs, differs: rows });
+            setConflict({ theirs, differs: rows, sent: sending, changed });
             focus('conflict');
           }
         } catch (again) {
@@ -934,6 +944,7 @@ function EditForm({
                 setHost(conflict.theirs.guest);
                 setBase(theirs);
                 setValues(theirs);
+                setHeld([]);
                 setTag(conflict.theirs.tag);
                 setConflict(null);
                 setDuplicate(null);
@@ -951,14 +962,15 @@ function EditForm({
               onClick={() => {
                 const against = conflict.theirs.tag;
                 const theirs = valuesOf(conflict.theirs.guest, country);
-                const sending = mergedOf(values, theirs, changedOf(values, base));
+                const sending = mergedOf(conflict.sent, theirs, conflict.changed);
 
                 setHost(conflict.theirs.guest);
                 setBase(theirs);
+                setHeld(conflict.changed);
                 setValues(sending);
                 setTag(against);
                 setConflict(null);
-                void send(duplicate === 'kept', against, sending);
+                void send(duplicate === 'kept', against, sending, conflict.changed);
               }}
             >
               {t('guestList.keepMine')}
