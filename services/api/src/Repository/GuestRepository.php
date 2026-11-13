@@ -7,17 +7,29 @@ namespace App\Repository;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\Organisation;
+use App\Http\Access\Interfaces\EventScopedRepositoryInterface;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Psl\Type;
 use SensitiveParameter;
+use Symfony\Component\Uid\Uuid;
 
 /** @extends ServiceEntityRepository<Guest> */
-final class GuestRepository extends ServiceEntityRepository
+final class GuestRepository extends ServiceEntityRepository implements EventScopedRepositoryInterface
 {
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, Guest::class);
+    }
+
+    public function loads(): string
+    {
+        return Guest::class;
+    }
+
+    public function findOneInEvent(Uuid $eventId, Uuid $id): ?Guest
+    {
+        return $this->findOneBy(['event' => $eventId, 'id' => $id]);
     }
 
     /** @return list<Guest> hosts and companions alike, each companion in its place */

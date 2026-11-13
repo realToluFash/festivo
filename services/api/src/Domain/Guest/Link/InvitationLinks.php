@@ -21,7 +21,6 @@ use Psl\Str;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
-use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** One current link per guest (sc-1526): issued when they are added, copied only while the event may invite, replaced at any time. */
@@ -49,14 +48,10 @@ final readonly class InvitationLinks
         return Base64\encode(SecureRandom\bytes(32), Base64\Variant::UrlSafe, padding: false);
     }
 
-    /** A companion, or a guest of another event, is the same 404 as one that does not exist. */
-    public function guestOn(Event $event, string $guestId): Guest
+    /** A companion has no link of their own: the same 404 as a guest who does not exist. */
+    public function linked(Guest $guest): Guest
     {
-        $guest = Uuid::isValid($guestId) ? $this->guestRepository->find($guestId) : null;
-
-        return null !== $guest && null === $guest->getHost() && $guest->getEvent()->getId()->equals($event->getId())
-            ? $guest
-            : throw ApiException::notFound('access.not_found');
+        return null === $guest->getHost() ? $guest : throw ApiException::notFound('access.not_found');
     }
 
     /** Refused 409 `event_state_invalid` unless the event's phase allows `invite`. */

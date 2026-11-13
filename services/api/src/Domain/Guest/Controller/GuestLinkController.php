@@ -6,9 +6,11 @@ namespace App\Domain\Guest\Controller;
 
 use App\Domain\Guest\Link\InvitationLinks;
 use App\Entity\Event;
+use App\Entity\Guest;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
+use App\Http\Access\InThisEvent;
 use App\Http\Access\Policy\InEvent;
 use App\Http\Exception\ApiException;
 use App\Repository\EventRepository;
@@ -30,11 +32,9 @@ final readonly class GuestLinkController
     /** Refused 409 `event_state_invalid` unless the event's phase allows `invite`. */
     #[Route('/api/events/{eventId}/guests/{guestId}/link', name: 'guests_link', methods: ['GET'])]
     #[InEvent(Permission::GuestsManage)]
-    public function link(string $eventId, string $guestId): JsonResponse
+    public function link(#[InThisEvent('guestId')] Guest $guest): JsonResponse
     {
-        $guest = $this->invitationLinks->guestOn($this->event($eventId), $guestId);
-
-        return new JsonResponse(['url' => $this->invitationLinks->linkOf($guest)], headers: ['Cache-Control' => 'no-store']);
+        return new JsonResponse(['url' => $this->invitationLinks->linkOf($this->invitationLinks->linked($guest))], headers: ['Cache-Control' => 'no-store']);
     }
 
     /** The guests whose link may have reached the wrong person, in any phase; never in the list, which Can view reads and the hub publishes. */
@@ -48,9 +48,9 @@ final readonly class GuestLinkController
     /** In any phase; the old link answers as an unknown one from now on. */
     #[Route('/api/events/{eventId}/guests/{guestId}/link/replace', name: 'guests_link_replace', methods: ['POST'])]
     #[InEvent(Permission::GuestsManage)]
-    public function replace(string $eventId, string $guestId): Response
+    public function replace(#[InThisEvent('guestId')] Guest $guest): Response
     {
-        $this->invitationLinks->replace($this->invitationLinks->guestOn($this->event($eventId), $guestId), $this->user());
+        $this->invitationLinks->replace($this->invitationLinks->linked($guest), $this->user());
 
         return new Response(status: Response::HTTP_NO_CONTENT);
     }
