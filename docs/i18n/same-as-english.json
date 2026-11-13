@@ -16,7 +16,9 @@
     "mobile:notificationSettings.push",
     "web:calendar.agenda",
     "mobile:calendar.agenda",
-    "web:auth.copyright"
+    "web:auth.copyright",
+    "web:guest.calendarApple",
+    "web:guest.calendarGoogle"
   ],
   "fr": [
     "web:nav.menu",
