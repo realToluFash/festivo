@@ -73,7 +73,7 @@ export function GuestsCanWrite({ state }: { state: string | null }) {
           {note}
         </p>
       )}
-      {write.failed && <Alert>{t('notifications.muteNotSaved')}</Alert>}
+      {write.failed && <Alert>{W.guestsCanWriteNotSaved}</Alert>}
     </>
   );
 }

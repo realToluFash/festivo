@@ -12,6 +12,7 @@ import {
   chooseItem,
   closeActions,
   hasActions,
+  headOf,
   itemLabel,
   keepWriting,
   openActions,
@@ -50,6 +51,15 @@ describe('the conversation’s actions', () => {
     expect(hasActions(NO_STOPS, 'ines')).toBe(true);
     expect(hasActions(NO_STOPS, 'unknown')).toBe(false);
     expect(hasActions({ ...NO_STOPS, manage: false }, 'ines')).toBe(false);
+  });
+
+  it('leave the head with no Done and no More actions without messages.manage', () => {
+    const readOnly = start('stoppedNoManage').stopping;
+    expect(readOnly?.manage).toBe(false);
+    expect(headOf(stoppingOf({ stopping: readOnly }), 'ines')).toBe('none');
+    expect(headOf(stoppingOf({ stopping: readOnly }), 'unknown')).toBe('none');
+    expect(headOf(NO_STOPS, 'ines')).toBe('doneAndMore');
+    expect(headOf(NO_STOPS, 'unknown')).toBe('done');
   });
 
   it('name the stop with an ellipsis, and Let them write again once stopped', () => {

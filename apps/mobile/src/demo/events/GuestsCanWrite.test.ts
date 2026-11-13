@@ -34,7 +34,7 @@ describe('Guests can write from their page', () => {
     const failed = writeSettled(pressWrite(writeSwitchOf(null)), false);
     expect(failed).toMatchObject({ on: true, saving: false, failed: true });
     expect(writeLines(failed)).toEqual({ note: null, alert: 'Not saved. Try again.' });
-    expect(writeLines(failed).alert).toBe(W.muteNotSaved);
+    expect(writeLines(failed).alert).toBe(W.guestsCanWriteNotSaved);
     expect(pressWrite(failed)).toMatchObject({ failed: false, saving: true });
   });
 

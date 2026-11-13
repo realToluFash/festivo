@@ -9,7 +9,7 @@ import {
   type ScreenReaderTarget,
   moveScreenReaderFocus,
 } from '../../components/screenReaderFocus.ts';
-import { Pair } from '../../components/SettingsParts.tsx';
+import { Pair, Pill } from '../../components/SettingsParts.tsx';
 import { Sheet } from '../../components/Sheet.tsx';
 import {
   type Anchor,
@@ -205,45 +205,6 @@ export function StopActions({
   );
 }
 
-function ConfirmButton({
-  label,
-  busy,
-  phone,
-  onPress,
-}: {
-  label: string;
-  busy: boolean;
-  phone: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={busy ? undefined : onPress}
-      disabled={busy}
-      style={({ pressed }) => [
-        styles.confirm,
-        phone ? styles.confirmPhone : styles.confirmTablet,
-        busy && styles.confirmBusy,
-        pressed && styles.pressed,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ busy, disabled: busy }}
-      testID="messages.stopAsk.confirm"
-    >
-      {busy && <TurningMark side={16} />}
-      <Text
-        size={16}
-        weight="semibold"
-        accessible={false}
-        style={[styles.confirmWords, busy ? styles.secondary : styles.onAccent]}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 /** Asked once: a bottom sheet on the phone, a centred card on the iPad; Escape, the scrim and Back keep them writing. */
 export function StopAsk({
   open,
@@ -313,7 +274,14 @@ export function StopAsk({
               </View>
             }
             confirm={
-              <ConfirmButton label={STOP.stop} busy={saving} phone={phone} onPress={onConfirm} />
+              <Pill
+                label={STOP.stop}
+                busy={saving}
+                full={phone}
+                height={phone ? tokens.sizeHitPhoneHero : tokens.sizeHit}
+                onPress={onConfirm}
+                testID="messages.stopAsk.confirm"
+              />
             }
           />
         </View>
@@ -325,7 +293,6 @@ export function StopAsk({
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   secondary: { color: tokens.colorInkSecondary },
-  onAccent: { color: tokens.colorInkOnDark },
   pressed: { opacity: tokens.opacityPressed },
   more: {
     width: tokens.sizeHit,
@@ -366,25 +333,4 @@ const styles = StyleSheet.create({
   askLine: { lineHeight: 15 * 1.45 },
   askActions: { paddingTop: tokens.spaceXs },
   dismissPhone: { alignItems: 'center' },
-  confirm: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: tokens.spaceSm,
-    paddingVertical: tokens.spaceMd,
-    backgroundColor: tokens.colorAccent,
-  },
-  confirmPhone: {
-    alignSelf: 'stretch',
-    minHeight: tokens.sizeHitPhoneHero,
-    borderRadius: tokens.sizeHitPhoneHero / 2,
-    paddingHorizontal: tokens.spaceXxl,
-  },
-  confirmTablet: {
-    minHeight: tokens.sizeHit,
-    borderRadius: tokens.sizeHit / 2,
-    paddingHorizontal: 22,
-  },
-  confirmBusy: { backgroundColor: tokens.colorNeutralFill },
-  confirmWords: { flexShrink: 1, textAlign: 'center', lineHeight: 16 * 1.3 },
 });

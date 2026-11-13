@@ -53,7 +53,7 @@ import { Preview } from './Preview.tsx';
 import { previewOf } from './PreviewModel.ts';
 import { RefusedSave } from './RefusedSave.tsx';
 import { SW } from './ScheduledSave.ts';
-import { type Stopping, hasActions, stoppedLine } from './StopWriting.ts';
+import { type Stopping, headOf, stoppedLine } from './StopWriting.ts';
 import { MoreActions, StoppedInset } from './StopWritingParts.tsx';
 import {
   type Bit,
@@ -189,7 +189,7 @@ function unknownParts(talk: Talk): Parts {
         ? say.where(CHANNEL_WORD.email, W.notMatched)
         : say.where(guest.head, W.matchedByHand),
     right:
-      matched == null ? (
+      headOf(talk.stop, 'unknown') === 'none' ? undefined : matched == null ? (
         doneOrWaiting
       ) : (
         <View style={styles.rights}>
@@ -365,14 +365,16 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
   );
   const { stop } = talk;
   const stopped = stop.stopped[key];
-  const right = hasActions(stop, key) ? (
-    <View style={styles.withMore}>
-      {doneOrWaiting}
-      <MoreActions open={stop.menu} onPress={talk.onActions} buttonRef={talk.moreRef} />
-    </View>
-  ) : (
-    doneOrWaiting
-  );
+  const head = headOf(stop, key);
+  const right =
+    head === 'none' ? undefined : head === 'doneAndMore' ? (
+      <View style={styles.withMore}>
+        {doneOrWaiting}
+        <MoreActions open={stop.menu} onPress={talk.onActions} buttonRef={talk.moreRef} />
+      </View>
+    ) : (
+      doneOrWaiting
+    );
 
   return {
     title: guest.name,

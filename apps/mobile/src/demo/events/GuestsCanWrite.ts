@@ -49,7 +49,7 @@ export function writeSettled(s: WriteSwitch, ok: boolean): WriteSwitch {
 
 export function writeLines(s: WriteSwitch): { note: string | null; alert: string | null } {
   if (!s.canChange) return { note: W.guestsCanWriteReadOnly, alert: null };
-  if (s.failed) return { note: null, alert: W.muteNotSaved };
+  if (s.failed) return { note: null, alert: W.guestsCanWriteNotSaved };
 
   return { note: null, alert: null };
 }

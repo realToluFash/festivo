@@ -73,6 +73,12 @@ export function hasActions(s: Stopping, key: GuestKey): boolean {
   return s.manage && key !== 'unknown';
 }
 
+/** What a conversation's head offers: without messages.manage, neither Done nor More actions. */
+export function headOf(s: Stopping, key: GuestKey): 'none' | 'done' | 'doneAndMore' {
+  if (!s.manage) return 'none';
+  return hasActions(s, key) ? 'doneAndMore' : 'done';
+}
+
 export function itemLabel(s: Stopping, key: GuestKey, name: string): string {
   return s.stopped[key] == null ? sayStop.item(name) : STOP.letThemWriteAgain;
 }

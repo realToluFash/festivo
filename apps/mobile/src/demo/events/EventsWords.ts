@@ -82,6 +82,7 @@ export const W = {
   guestsCanWrite: 'Guests can write from their page',
   guestsCanWriteLine: 'Changes it for everyone on this event. Texts and emails still arrive.',
   guestsCanWriteReadOnly: 'Only members who manage messages can change this.',
+  guestsCanWriteNotSaved: 'Not saved. Try again.',
   on: 'On',
   off: 'Off',
   notificationSettings: 'Notification settings',

@@ -548,6 +548,7 @@ export const EVENT_WORDS = {
   guestsCanWrite: 'Guests can write from their page',
   guestsCanWriteLine: 'Changes it for everyone on this event. Texts and emails still arrive.',
   guestsCanWriteReadOnly: 'Only members who manage messages can change this.',
+  guestsCanWriteNotSaved: 'Not saved. Try again.',
   notBuilt: (story: string) => `AC, not yet built · ${story}`,
   cancel: 'Cancel',
   save: 'Save',
