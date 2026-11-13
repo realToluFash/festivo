@@ -62,6 +62,7 @@ export const CHOICES: readonly Choice[] = [
 export const WEDDING = 'evt-wed-4';
 export const PARTY = 'evt-party-2';
 export const DRAFT = 'evt-draft-4';
+export const DRAFT_PAST = 'evt-shower-2';
 export const READER = 'Folake Adeyemi';
 const COLLEAGUE = 'Ana Souza';
 export const MOST_COMPANIONS = 10;
@@ -1353,7 +1354,7 @@ export function reopen(list: readonly Guest[], id: string, on: string): Guest[] 
 }
 
 export type CardKind = 'live' | 'beforeDoor' | 'day1' | 'day2';
-export type CardStepDoes = 'add' | 'write' | 'makeLive';
+export type CardStepDoes = 'add' | 'write' | 'makeLive' | 'changeDates';
 
 export interface GuestsCard {
   tags: readonly { kind: 'draft' | 'live' | 'now' | 'paused' | null; word: string }[];
@@ -1375,14 +1376,18 @@ export function guestsCardOf(
   const replyBy = replyByOf(event.id);
   const comingOf = GW.comingOf(counts.coming, counts.invited);
 
-  if (event.status === 'draft')
+  if (event.status === 'draft') {
+    const { step } = cardOf(event, now);
+    const passed = step.kind === 'button' && step.does === 'changeDates';
+
     return {
       tags: [{ kind: 'draft', word: 'Draft' }],
       says: GW.onList(counts.all),
       arrived: null,
-      line: GW.draftLine,
-      step: manages ? 'makeLive' : null,
+      line: passed ? step.line : GW.draftLine,
+      step: manages ? (passed ? 'changeDates' : 'makeLive') : null,
     };
+  }
   if (event.status === 'paused')
     return {
       tags: [{ kind: 'paused', word: 'Paused' }],
@@ -1627,6 +1632,7 @@ export const GUESTS_STATES = [
   { key: 'viewer', name: 'Can view: names and replies only' },
   { key: 'staffBefore', name: 'Door staff before the day: read-only' },
   { key: 'draft', name: 'A Draft event' },
+  { key: 'draftPast', name: 'A Draft whose end has passed: Change dates' },
   { key: 'paused', name: 'A Paused event' },
   { key: 'eventDeleted', name: 'The event deleted: not found' },
   { key: 'onTheDay', name: 'On the day: arrivals and a walk-in' },
@@ -1790,15 +1796,17 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
   const event =
     state === 'draft' || state === 'draftGuest'
       ? DRAFT
-      : state === 'paused'
-        ? PARTY
-        : asked != null && hasGuests(asked)
-          ? asked
-          : WEDDING;
+      : state === 'draftPast'
+        ? DRAFT_PAST
+        : state === 'paused'
+          ? PARTY
+          : asked != null && hasGuests(asked)
+            ? asked
+            : WEDDING;
   const start: GuestsStart = {
     event,
     role: 'owner',
-    list: sampleGuests(event),
+    list: sampleGuests(event === DRAFT_PAST ? DRAFT : event),
     status: 'ready',
     card: 'live',
     clock: CLOCKS.rest,
@@ -1855,6 +1863,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'inUse':
     case 'inviteList':
     case 'draft':
+    case 'draftPast':
     case 'paused':
     case 'eventDeleted':
       return start;
@@ -2339,6 +2348,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'viewer',
     'staffBefore',
     'draft',
+    'draftPast',
     'paused',
     'eventDeleted',
     'onTheDay',
