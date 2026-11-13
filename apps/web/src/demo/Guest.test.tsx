@@ -108,6 +108,13 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
     expect(screen.getByText('You do not need an account to answer.')).toBeDefined();
   });
 
+  it('keeps the foot but drops the account line once answers have closed (#44255)', async () => {
+    await guest('closed');
+
+    expect(screen.getByText('© 2026 Soirely')).toBeDefined();
+    expect(screen.queryByText('You do not need an account to answer.')).toBeNull();
+  });
+
   it('answers as three full-width rows, Yes leading on', async () => {
     await guest();
     const rows = within(screen.getByRole('heading', { name: 'Your answer' }).closest('section')!)
