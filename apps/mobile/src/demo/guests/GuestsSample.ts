@@ -180,11 +180,20 @@ export const FIRST_ROWS: Readonly<
 
 export const DRAFT_GUESTS: readonly SampleGuest[] = [
   guest('funke', 'Funke Bello', 'notyet', {
-    phone: '+44 7700 900655',
+    email: 'funke.bello@gmail.com',
     companions: [{ name: 'Guest of Funke Bello', kind: 'notyet' }],
   }),
   guest('leila', 'Leila Mansour', 'notyet', { email: 'leila.mansour@gmail.com' }),
   guest('tobi', 'Tobi Ojo', 'notyet', { email: 'tobi.ojo@gmail.com' }),
+  guest('tola', 'Tola Bakare', 'notyet', {
+    email: 'tola.bakare@gmail.com',
+    phone: '+234 803 618 2204',
+  }),
+  guest('grace', 'Grace Mensah', 'notyet', {
+    email: 'grace.mensah@gmail.com',
+    phone: '+44 7700 900874',
+  }),
+  guest('ryan', 'Ryan Cole', 'notyet', { email: 'ryan.cole@gmail.com', phone: '+1 202 555 0148' }),
 ];
 
 export const PAUSED_GUESTS: readonly SampleGuest[] = [
