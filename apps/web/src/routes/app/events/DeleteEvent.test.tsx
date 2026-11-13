@@ -311,6 +311,22 @@ describe('Delete an event (sc-3592)', () => {
     ).toBeDefined();
   });
 
+  it('is described by what it removes, the guest link and the restore window, as the demo is', async () => {
+    signedIn();
+    const { dialog } = await asking(live(), true, {}, 2);
+
+    expect(
+      (dialog.getAttribute('aria-describedby') ?? '')
+        .split(' ')
+        .map((id) => spaced(document.getElementById(id)?.textContent)),
+    ).toEqual([
+      'This removes, for your whole team:',
+      'the event, its details and its scheduleits guest list, with the 2 people on it',
+      "Guests following their link will see that it isn't available.",
+      "If this was a mistake, support can restore it until Wednesday, Nov 25 at 14:20 WAT. After that it's gone for good.",
+    ]);
+  });
+
   it('lists the guest list with the number of people on it, guests and companions together', async () => {
     signedIn();
     const { dialog } = await asking(live(), true, {}, 1421);

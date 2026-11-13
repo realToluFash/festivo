@@ -1,6 +1,6 @@
 import { ApiError, type EventDeletion, type OrganisationEvent } from '@soirely/api-client';
 import { typedNameMatches } from '@soirely/domain';
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -84,6 +84,7 @@ function DeleteDialog({
   const [mismatch, setMismatch] = useState(false);
   const [failed, setFailed] = useState<string | undefined>(undefined);
   const field = useRef<HTMLInputElement>(null);
+  const body = useId();
   const name = event.name;
   const matched = typedNameMatches(typed, name);
 
@@ -137,13 +138,19 @@ function DeleteDialog({
   if (!needsName) return <Ask {...ask} line={t('eventDelete.draftBody')} />;
 
   return (
-    <Ask {...ask} line={t('eventDelete.removes')} off={!matched} first={field}>
-      <ul className="ev-removes">
+    <Ask
+      {...ask}
+      line={t('eventDelete.removes')}
+      describedBy={`${body}-what ${body}-link ${body}-window`}
+      off={!matched}
+      first={field}
+    >
+      <ul id={`${body}-what`} className="ev-removes">
         <li>{t('eventDelete.removesEvent')}</li>
         {preview.people > 0 && <li>{t('eventDelete.removesGuests', { count: preview.people })}</li>}
       </ul>
-      <p>{t('eventDelete.guests')}</p>
-      <p>{t('eventDelete.window', { deadline: preview.restoreCloses })}</p>
+      <p id={`${body}-link`}>{t('eventDelete.guests')}</p>
+      <p id={`${body}-window`}>{t('eventDelete.window', { deadline: preview.restoreCloses })}</p>
       <div className="desk-field ev-delete-name">
         <label htmlFor="event-delete-name" className="desk-label">
           {t('eventDelete.type', { event: name })}

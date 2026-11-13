@@ -610,6 +610,8 @@ interface AskProps {
   first?: RefObject<HTMLElement | null> | undefined;
   /** More of the body under the line, which stays its description. */
   children?: ReactNode;
+  /** Ids in that body that describe the dialog too, after the line, as Delete event's list and restore window do. */
+  describedBy?: string | undefined;
   onKeep: () => void;
   onGo?: () => void;
 }
@@ -633,6 +635,7 @@ function AskBox(props: AskProps) {
     failed,
     first,
     children,
+    describedBy,
     onKeep,
     onGo,
   } = props;
@@ -661,7 +664,9 @@ function AskBox(props: AskProps) {
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={`${id}-title`}
-        aria-describedby={line == null ? undefined : `${id}-line`}
+        aria-describedby={
+          [line == null ? null : `${id}-line`, describedBy].filter(Boolean).join(' ') || undefined
+        }
       >
         <h2 id={`${id}-title`}>{title}</h2>
         {children == null ? (
