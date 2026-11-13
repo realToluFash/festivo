@@ -124,6 +124,18 @@ describe('the invitation by WhatsApp (sc-45251)', () => {
     expect(catarina.lines[0]).toBe('Olá, Catarina Reis.');
     expect(catarina.lines[1]).toContain('da parte de Adaeze Obi e Tunde Bakare');
     expect(catarina.button).toBe('Responder na sua página');
+
+    const noor = whatsAppInvitationOf(personNamed('noor-rahman'), false);
+    const dami = whatsAppInvitationOf(personNamed('dami-oladipo'), false);
+
+    expect(noor.lang).toBe('es');
+    expect(noor.lines[0]).toBe('Hola, Noor Rahman:');
+    expect(noor.lines[1]).toContain('de Adaeze Obi y Tunde Bakare');
+    expect(noor.button).toBe('Responder en su página');
+    expect(dami.lang).toBe('fr');
+    expect(dami.lines[0]).toBe('Bonjour Dami Oladipo,');
+    expect(dami.lines[1]).toContain('de la part de Adaeze Obi et Tunde Bakare');
+    expect(dami.button).toBe('Répondre sur votre page');
   });
 
   it('counts Who it reached: Sent is in progress, Failed its own group, a US row offered Try SMS instead only when nothing reached them', () => {
@@ -150,8 +162,8 @@ describe('the invitation by WhatsApp (sc-45251)', () => {
     expect(kenji?.lines.map((line) => line.why)).toContain('Has a US number');
   });
 
-  it('links its twelve states in their own group', () => {
+  it('links its fourteen states in their own group', () => {
     for (const { key } of WA_INVITE_STATES) expect(seedOf(key), key).toBeDefined();
-    expect(WA_INVITE_STATES).toHaveLength(12);
+    expect(WA_INVITE_STATES).toHaveLength(14);
   });
 });

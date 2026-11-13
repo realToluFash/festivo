@@ -11,6 +11,7 @@ import {
   EVENT_NAME,
   HOSTS,
   INVITE,
+  creditsLine,
   reachWords,
   whatsAppCreditsIn,
 } from './messages.ts';
@@ -90,10 +91,10 @@ interface WaSample {
 
 const WA_SAMPLE: Readonly<Record<string, WaSample>> = {
   'chuka-nwankwo': { country: 'NG', consent: 'agreed' },
-  'dami-oladipo': { country: 'NG', consent: 'agreed' },
+  'dami-oladipo': { country: 'NG', consent: 'agreed', language: 'fr' },
   'femi-ogundipe': { country: 'NG', consent: 'agreed' },
   'catarina-reis': { country: 'BR', consent: 'agreed', noEmail: true, language: 'pt' },
-  'noor-rahman': { country: 'GB', consent: 'agreed' },
+  'noor-rahman': { country: 'GB', consent: 'agreed', language: 'es' },
   'kenji-watanabe': { country: 'US', consent: 'agreed' },
   'lina-saleh': { country: 'US', consent: 'agreed' },
   yusuf: { country: 'NG', consent: 'none' },
@@ -368,18 +369,6 @@ export function inviteReachOf(
   return reachOf(membersOf(audience, groups, wa).fresh, ticks, wa);
 }
 
-function creditsLine(texts: number, whatsApp: number, balance: number): string {
-  const credits = texts + whatsApp;
-  const uses =
-    whatsApp === 0
-      ? mw.many('textsUse', credits)
-      : texts === 0
-        ? mw.many('whatsAppUse', credits)
-        : mw.many('textsAndWhatsAppUse', credits);
-
-  return `${uses} ${mw.filled(MW.creditsAfter, { count: balance - credits })}`;
-}
-
 /** The check before an invitation goes, or why it cannot: the note first, then reach (sc-3971). */
 export function inviteCheckOf(
   audience: Audience,
@@ -617,6 +606,10 @@ export function inviteSeedOf(state: string | null): InviteSeed | null {
       return ticked('preview', { ...wa, previewAs: 'chuka-nwankwo', noReplyBy: true }, ALL_THREE);
     case 'invitePreviewWhatsAppPt':
       return ticked('preview', { ...wa, previewAs: 'catarina-reis' }, ALL_THREE);
+    case 'invitePreviewWhatsAppEs':
+      return ticked('preview', { ...wa, previewAs: 'noor-rahman' }, ALL_THREE);
+    case 'invitePreviewWhatsAppFr':
+      return ticked('preview', { ...wa, previewAs: 'dami-oladipo' }, ALL_THREE);
     case 'invitedReachedWhatsApp':
       return { kind: 'reached', of: 'whatsAppInvite' };
     case 'invitedReachedWhatsAppNoSms':

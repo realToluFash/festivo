@@ -5,6 +5,7 @@ import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { useLater } from '../useLater.ts';
 import {
+  type Category,
   type Draft,
   type Untellable,
   EVENT_NAME,
@@ -605,8 +606,12 @@ function InviteCard({ draft, invite }: { draft: Draft; invite: InviteDraft }) {
   );
 }
 
-function optionWords(guest: OneGuest): string {
-  return filled(PW.option, { name: guest.name, language: 'English' });
+const LANGUAGE_NAMES = new Intl.DisplayNames(['en'], { type: 'language' });
+
+function optionWords(guest: OneGuest, wa: Category | undefined): string {
+  const lang = wa == null ? 'en' : whatsAppInvitationOf(guest, false).lang;
+
+  return filled(PW.option, { name: guest.name, language: LANGUAGE_NAMES.of(lang) ?? lang });
 }
 
 /** The invitation as one guest of the audience gets it: their page with the note, if any, and Soirely's own email and text. */
@@ -640,7 +645,7 @@ function InvitePreview({ draft, invite }: { draft: Draft; invite: InviteDraft })
         <h3 className="mg-preview-heading">{filled(MW.previewAs, { name: person.name })}</h3>
         <PreviewAs
           who={person.id}
-          options={people.map((one) => ({ id: one.id, words: optionWords(one) }))}
+          options={people.map((one) => ({ id: one.id, words: optionWords(one, invite.wa) }))}
           first={false}
           onPick={pick}
         />

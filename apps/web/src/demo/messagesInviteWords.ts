@@ -44,6 +44,8 @@ export const WA_INVITE_STATES = [
   { key: 'invitePreviewWhatsApp', name: 'The preview, by WhatsApp' },
   { key: 'invitePreviewWhatsAppNoDate', name: 'The preview, no reply-by date' },
   { key: 'invitePreviewWhatsAppPt', name: 'The preview, by WhatsApp in Portuguese' },
+  { key: 'invitePreviewWhatsAppEs', name: 'The preview, by WhatsApp in Spanish' },
+  { key: 'invitePreviewWhatsAppFr', name: 'The preview, by WhatsApp in French' },
   { key: 'invitedReachedWhatsApp', name: 'Who it reached, by WhatsApp' },
   { key: 'invitedReachedWhatsAppNoSms', name: 'Who it reached, SMS not ticked: Try SMS instead' },
 ] as const;

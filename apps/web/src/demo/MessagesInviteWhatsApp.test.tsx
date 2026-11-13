@@ -83,6 +83,35 @@ describe('the invitation by WhatsApp, at a desk (sc-45251)', () => {
     },
   );
 
+  it.each([
+    [
+      'invitePreviewWhatsAppPt',
+      'Catarina Reis · Portuguese',
+      'Olá, Catarina Reis.',
+      'Responder na sua página',
+    ],
+    [
+      'invitePreviewWhatsAppEs',
+      'Noor Rahman · Spanish',
+      'Hola, Noor Rahman:',
+      'Responder en su página',
+    ],
+    [
+      'invitePreviewWhatsAppFr',
+      'Dami Oladipo · French',
+      'Bonjour Dami Oladipo,',
+      'Répondre sur votre page',
+    ],
+  ])('previews the template card in %s', SLOW, async (state, option, dear, button) => {
+    await messages(state);
+
+    const card = screen.getByText(button).parentElement;
+
+    if (card == null) throw new Error('no template card');
+    expect(within(card).getByText(dear)).toBeTruthy();
+    expect(screen.getByText(option)).toBeTruthy();
+  });
+
   it('opens Who it reached with Failed as its own group and Try SMS instead', SLOW, async () => {
     await messages('invitedReachedWhatsAppNoSms');
 
