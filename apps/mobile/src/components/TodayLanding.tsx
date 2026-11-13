@@ -19,7 +19,7 @@ import { useUnread } from '../notificationsUnread.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { afterFailedLoad } from '../offlineLoad.ts';
 import { tokens } from '../theme/tokens.ts';
-import { useFrameOrgOpener } from './AppFrame.tsx';
+import { FrameBodySwitched, useFrameOrgOpener } from './AppFrame.tsx';
 import { EventsFailed } from './Events.tsx';
 import { Pending } from './Pending.tsx';
 import { Refreshing } from './Refreshing.tsx';
@@ -134,13 +134,16 @@ export function TodayLanding({
         {load.kind === 'loading' ? (
           <Pending after={SKELETON_AFTER_MS} stacked />
         ) : (
-          <EventsFailed
-            onRetry={() => {
-              setLoad({ kind: 'loading' });
-              setAttempt((n) => n + 1);
-            }}
-            testID="today.retry"
-          />
+          <>
+            <FrameBodySwitched />
+            <EventsFailed
+              onRetry={() => {
+                setLoad({ kind: 'loading' });
+                setAttempt((n) => n + 1);
+              }}
+              testID="today.retry"
+            />
+          </>
         )}
       </View>
     );
