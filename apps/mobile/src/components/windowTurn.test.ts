@@ -215,5 +215,34 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
       );
       expect(picker).toMatch(/<Text\s+ref=\{heading\}[^>]*accessibilityRole="header"/);
     });
+
+    it('draws only the rows in sight until its title has taken focus, under TalkBack on Android (qa2 #43597)', () => {
+      expect(picker).toMatch(
+        /useListFilling\(\s*Platform\.OS === 'android' && readerOn,\s*windowShown,\s*onScreen && !unnamed,?\s*\)/,
+      );
+      expect(picker).toContain('windowSize={listFilling ? 1 : undefined}');
+      expect(picker).toContain('const fill = setTimeout(() => setFilled(true), SETTLED_MS);');
+    });
+  });
+
+  it('opens the switcher from TalkBack’s double tap without a click, on Android only (qa2 #43597)', () => {
+    const pill = read('OrgPill.tsx');
+
+    expect(pill).toContain('{...quietTap(onPress, expanded)}');
+    expect(pill).toContain(
+      "if (Platform.OS !== 'android' || onPress == null || expanded == null) return {};",
+    );
+    expect(pill).toContain("if (event.nativeEvent.actionName === 'activate') onPress();");
+  });
+
+  it('has Create an organisation’s first field take TalkBack’s focus before the keys (qa2 #43597)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+    const focus = read('screenReaderFocus.ts');
+
+    expect(walk).toContain("if (opening.focus === 'search') keys = focusReadOnce(search);");
+    expect(walk).toContain("else if (opening.focus === 'name') keys = focusReadOnce(field);");
+    expect(focus).toMatch(
+      /moveScreenReaderFocus\(input\.current\);\s+keys = setTimeout\(\(\) => input\.current\?\.focus\(\), HOVER_LANDS_MS\);/,
+    );
   });
 });

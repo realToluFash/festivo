@@ -27,8 +27,9 @@ import { useReducedMotion } from '../reducedMotion.ts';
 import { useModalOpen } from '../updateRequired.ts';
 import { FocusEdge, focusEdge, useFocusEdge, useHeld, useRefused } from './Field.tsx';
 import { controlTaken } from './focusedField.ts';
+import { useScreenReaderOn } from './screenReaderFocus.ts';
 import { LIFT } from './keyboardWatch.ts';
-import { Screen, useFocusOnAnswer } from './Screen.tsx';
+import { SETTLED_MS, Screen, useFocusOnAnswer } from './Screen.tsx';
 import { SilentWindowName, WINDOW_ARRIVES_MS, useUnnamedWindow } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { UnseenName } from './UnseenName.tsx';
@@ -89,6 +90,12 @@ export function ListPicker({
     onScreen,
     null,
     reduced ? 0 : WINDOW_ARRIVES_MS,
+  );
+  const readerOn = useScreenReaderOn();
+  const listFilling = useListFilling(
+    Platform.OS === 'android' && readerOn,
+    windowShown,
+    onScreen && !unnamed,
   );
   const heading = useRef<TextHandle>(null);
   const ownField = useRef<ViewInstance>(null);
@@ -229,6 +236,7 @@ export function ListPicker({
               <FlatList
                 data={shown}
                 keyExtractor={(choice) => choice.code}
+                windowSize={listFilling ? 1 : undefined}
                 keyboardShouldPersistTaps="handled"
                 // The modal is its own window, so on iOS only the list's own inset lifts its last row above the keys.
                 automaticallyAdjustKeyboardInsets={LIFT.adjustScrollInsets}
@@ -310,6 +318,21 @@ function usePickerRise(shown: boolean, reduced: boolean) {
       if (shown) setWindowUp(true);
     },
   };
+}
+
+/** While the menu opens under TalkBack, the list draws only the rows in sight: Country, still adding rows below as focus moved to its title, had TalkBack draw its focus there and say nothing (qa2 #43597). Rows out of sight follow `SETTLED_MS` after the title takes focus. */
+function useListFilling(reader: boolean, up: boolean, revealed: boolean): boolean {
+  const [filled, setFilled] = useState(false);
+  if (!up && filled) setFilled(false);
+
+  useEffect(() => {
+    if (!reader || !revealed || filled) return;
+    const fill = setTimeout(() => setFilled(true), SETTLED_MS);
+
+    return () => clearTimeout(fill);
+  }, [reader, revealed, filled]);
+
+  return reader && !filled;
 }
 
 function Chevron() {
