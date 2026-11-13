@@ -250,14 +250,23 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     expect(pill).toContain("if (event.nativeEvent.actionName === 'activate') onPress();");
   });
 
-  it('has Create an organisation’s first field take TalkBack’s focus before the keys (qa2 #43597)', () => {
-    const walk = read('CreateWalkWindow.tsx');
-    const focus = read('screenReaderFocus.ts');
+  it('gives Today’s own opener the same quiet double tap (qa2 #44464)', () => {
+    expect(read('TodayCover.tsx')).toContain('...quietTap(org.onPress, org.expanded),');
+  });
 
-    expect(walk).toContain("if (opening.focus === 'search') cancelKeys = focusReadOnce(search);");
-    expect(walk).toContain("else if (opening.focus === 'name') cancelKeys = focusReadOnce(field);");
-    expect(focus).toMatch(
-      /moveScreenReaderFocus\(input\.current\);\s+keys = setTimeout\(\(\) => input\.current\?\.focus\(\), HOVER_LANDS_MS\);/,
+  it('has Create an organisation take the keys while hidden, then TalkBack’s focus on its field (qa2 #44464)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+
+    expect(walk).toContain(
+      "const unnamed = useUnnamedWindow(Platform.OS === 'android' && shown, onScreen, null, arriving);",
+    );
+    expect(walk).toContain('onShow={() => setOnScreen(true)}');
+    expect(walk).toMatch(/const behind = walk\.asking \|\| unnamed \?/);
+    expect(walk).toMatch(
+      /!onScreen \|\| !unnamed \|\| opening\.walk\.asking\) return;\s+const keys = setTimeout/,
+    );
+    expect(walk).toMatch(
+      /!onScreen \|\| unnamed \|\| opening\.walk\.asking\) return;\s+if \(opening\.focus === 'search'\) moveScreenReaderFocus\(search\.current\);\s+else if \(opening\.focus === 'name'\) moveScreenReaderFocus\(field\.current\);/,
     );
   });
 });

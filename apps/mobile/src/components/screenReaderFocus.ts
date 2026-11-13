@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AccessibilityInfo,
   findNodeHandle,
@@ -42,32 +42,4 @@ export function useScreenReaderOn(): boolean {
   }, []);
 
   return on;
-}
-
-// TalkBack has put its focus on a hovered view well inside this.
-const HOVER_LANDS_MS = 100;
-
-/** Raises the keys on `input`; on Android with TalkBack on, its focus goes there first, so the field is read once, as focus reaches it, and not also as it takes the keys (sc-42690). Returns what cancels the call still to come. */
-export function focusReadOnce(input: RefObject<TextInputInstance | null>): () => void {
-  if (Platform.OS !== 'android') {
-    input.current?.focus();
-    return () => {};
-  }
-
-  let gone = false;
-  let keys: ReturnType<typeof setTimeout> | undefined;
-  void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
-    if (gone) return;
-    if (!on) {
-      input.current?.focus();
-      return;
-    }
-    moveScreenReaderFocus(input.current);
-    keys = setTimeout(() => input.current?.focus(), HOVER_LANDS_MS);
-  });
-
-  return () => {
-    gone = true;
-    clearTimeout(keys);
-  };
 }
