@@ -955,7 +955,6 @@
   width: 66px;
   font: var(--todayFigure);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
 .today-item-bar {
