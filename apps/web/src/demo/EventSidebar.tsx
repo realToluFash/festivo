@@ -10,6 +10,7 @@ import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
 import { STATIONS_EVENT } from './stations.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
+import { SearchRow } from './Search.tsx';
 
 function whenOf(card: Card): string {
   return card.tags.map((tag) => tag.word).join(' · ');
@@ -39,16 +40,7 @@ export function EventSidebar({
         <Brand lockup />
       </div>
       <OrgSwitcher tell={tell} toast />
-      <button
-        type="button"
-        className="today-search"
-        aria-keyshortcuts="Meta+K Control+K"
-        onClick={() => tell('Search has its own design.')}
-      >
-        <Glyph name="search" size={16} />
-        <span className="today-grow">Search</span>
-        <kbd className="today-key">⌘K</kbd>
-      </button>
+      <SearchRow />
       <div className="ev-side-event">
         <Link className="today-place ev-side-back" to="/demo/events">
           <Glyph name="back" size={17} weight={2.4} />

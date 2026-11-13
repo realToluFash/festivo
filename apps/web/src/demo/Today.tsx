@@ -1,5 +1,5 @@
 import { formattingLocale } from '@soirely/domain';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { Toast } from '../components/Toast.tsx';
@@ -15,6 +15,9 @@ import { Banner, type BannerActions, NowBanner } from '../components/TodayBanner
 import { FirstRun, ThisWeek, YourEvents } from '../components/TodayParts.tsx';
 import { NeedsYou } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
+import { DeskSearch } from './Search.tsx';
+import type { SearchStart } from './search.ts';
+import type { DeskPerson } from '../components/DeskSidebar.tsx';
 import './today.css';
 
 /** The demo's bell, with its sample's three unread. */
@@ -24,8 +27,10 @@ function isMoment(name: string | null): name is MomentName {
   return MOMENTS.some((moment) => moment === name);
 }
 
-/** Where signing in lands at a desk (Today-B-Web.dc.html, page 29), on sample data. */
-export function Today() {
+const KEMI: DeskPerson = { name: 'Kemi Adebayo', initials: 'KA', role: 'Member' };
+
+/** Where signing in lands at a desk (Today-B-Web.dc.html, page 29), on sample data; `search` opens with the palette over it. */
+export function Today({ search = null }: { search?: SearchStart | null }) {
   useSwitcherStart();
   const where = useWhere();
   const [params] = useSearchParams();
@@ -69,59 +74,48 @@ export function Today() {
   const page = useRef<HTMLElement>(null);
   const { layers, covered, setHost } = useDeskLayers();
 
-  useEffect(() => {
-    const search = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== 'k' || !(event.metaKey || event.ctrlKey)) return;
-
-      event.preventDefault();
-      tell('Search has its own design.');
-    };
-
-    window.addEventListener('keydown', search);
-
-    return () => window.removeEventListener('keydown', search);
-  }, [tell]);
-
   if (inNone(where)) return <NoOrganisation />;
 
   return (
     <LayersContext value={layers}>
       <div className="today">
-        <TodaySidebar
-          events={moment.events.map(({ event }) => keyOf(event.id))}
-          person={asks ? VIEWERS.ana : undefined}
-          tell={tell}
-          onToday={() => page.current?.scrollTo({ top: 0 })}
-          inert={covered}
-        />
-        <main id="content" ref={page} className="today-main" inert={covered}>
-          <Switched />
-          {where.paused ? (
-            <AccessPaused />
-          ) : (
-            <>
-              {moment.now != null ? (
-                <NowBanner now={moment.now} full={moment.full} actions={ACTIONS} open={open} />
-              ) : (
-                <Banner moment={moment} actions={ACTIONS} open={open} />
-              )}
-              {moment.kind === 'first' ? (
-                <FirstRun open={open} create={!asks} />
-              ) : (
-                <div className="today-columns">
-                  <div className="today-left">
-                    <NeedsYou moment={moment} tell={tell} />
-                    <ThisWeek moment={moment} open={open} />
+        <DeskSearch first={search} tell={tell}>
+          <TodaySidebar
+            events={moment.events.map(({ event }) => keyOf(event.id))}
+            person={asks ? VIEWERS.ana : search?.guests === false ? KEMI : undefined}
+            tell={tell}
+            onToday={() => page.current?.scrollTo({ top: 0 })}
+            inert={covered}
+          />
+          <main id="content" ref={page} className="today-main" inert={covered}>
+            <Switched />
+            {where.paused ? (
+              <AccessPaused />
+            ) : (
+              <>
+                {moment.now != null ? (
+                  <NowBanner now={moment.now} full={moment.full} actions={ACTIONS} open={open} />
+                ) : (
+                  <Banner moment={moment} actions={ACTIONS} open={open} />
+                )}
+                {moment.kind === 'first' ? (
+                  <FirstRun open={open} create={!asks} />
+                ) : (
+                  <div className="today-columns">
+                    <div className="today-left">
+                      <NeedsYou moment={moment} tell={tell} />
+                      <ThisWeek moment={moment} open={open} />
+                    </div>
+                    <div className="today-right">
+                      <YourEvents moment={moment} open={open} />
+                    </div>
                   </div>
-                  <div className="today-right">
-                    <YourEvents moment={moment} open={open} />
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </main>
-        <div ref={setHost} className="desk desk-layers" />
+                )}
+              </>
+            )}
+          </main>
+          <div ref={setHost} className="desk desk-layers" />
+        </DeskSearch>
         {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
       </div>
     </LayersContext>

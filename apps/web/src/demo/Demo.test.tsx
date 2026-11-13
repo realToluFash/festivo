@@ -1617,7 +1617,7 @@ describe('Today at a desk (sc-29092)', () => {
     ).toBeDefined();
 
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
-    expect(screen.getByText('Search has its own design.')).toBeDefined();
+    expect(screen.getByRole('dialog', { name: 'Search' })).toBeDefined();
   });
 
   it('shows only what the product can say, built now', async () => {

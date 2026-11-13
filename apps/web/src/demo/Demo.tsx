@@ -82,6 +82,7 @@ import { SHARE_PAGES } from './share.ts';
 import { ShareRecipient } from './ShareRecipient.tsx';
 import { TEMPLATES_PAGES } from './templates.ts';
 import { Today } from './Today.tsx';
+import { SEARCH_PAGES, searchStart, searchStateOf } from './search.ts';
 import { TwoFactorBoard } from './TwoFactor.tsx';
 import { Unsubscribe } from './Unsubscribe.tsx';
 import { UNSUBSCRIBE_PAGES } from './unsubscribe.ts';
@@ -193,6 +194,7 @@ export default function Demo() {
       {/* Kept so a link to /demo/signed-in opens Today rather than the not-found page. */}
       <Route path="signed-in" element={<Navigate to="/demo/today" replace />} />
       <Route path="today" element={<Today />} />
+      <Route path="search" element={<SearchBoard />} />
       <Route path="events" element={<Events />} />
       <Route path="events/new" element={<NewEventTop />} />
       <Route path="events/:id" element={<EventPage />} />
@@ -278,6 +280,12 @@ function DemoHome({ from }: { from: string }) {
         <strong>{SAMPLE.authenticator}</strong>, a recovery code <strong>{SAMPLE.recovery}</strong>,
         and <strong>{SAMPLE.usedRecovery}</strong> one used already.
       </p>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-26">
+        <h2 id="demo-page-26">26 · Foundation</h2>
+        <h3>Search in A · Command palette (sc-39534) · desktop</h3>
+        <BoardPages pages={SEARCH_PAGES} />
+      </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-29">
         <h2 id="demo-page-29">29 · Today · where signing in lands</h2>
@@ -576,6 +584,13 @@ function BoardPages({
       </ul>
     </div>
   ));
+}
+
+function SearchBoard() {
+  const [params] = useSearchParams();
+  const state = searchStateOf(params.get('state')) ?? 'idle';
+
+  return <Today key={state} search={searchStart(state)} />;
 }
 
 function SignInBoard() {
