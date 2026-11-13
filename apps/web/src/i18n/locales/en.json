@@ -393,7 +393,15 @@
     "cancel": "Cancel",
     "create": "Create draft",
     "notCreated": "Not created. Nothing was saved. Try again.",
-    "created": "Draft created. Opening it."
+    "created": "Draft created. Opening it.",
+    "copyGuests_one": "Also copy the guest list ({{count, number}} guest)",
+    "copyGuests_other": "Also copy the guest list ({{count, number}} guests)",
+    "copyGuestsHint": "Replies are not copied, and nobody is invited or contacted.",
+    "copiedGuests_one": "{{count, number}} guest: name, contact details and companions",
+    "copiedGuests_other": "{{count, number}} guests: names, contact details and companions",
+    "notCopiedGuestList": "Replies, invitations, invitation links, check-ins, meal choices, seating, messages and history",
+    "guestsCopied_one": "{{count, number}} guest copied. Nobody was invited or contacted.",
+    "guestsCopied_other": "{{count, number}} guests copied. Nobody was invited or contacted."
   },
   "eventEdit": {
     "open": "Edit details",

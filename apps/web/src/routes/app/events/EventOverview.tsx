@@ -21,6 +21,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
 
@@ -42,7 +43,7 @@ import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn } from '../../../session.ts';
 import { DeleteEvent } from './DeleteEvent.tsx';
 import { DuplicateDialog, DuplicateEvent } from './DuplicateEvent.tsx';
-import { wasDuplicated } from './duplicated.ts';
+import { guestsCopied, wasDuplicated } from './duplicated.ts';
 import { type EditOutcome } from './EditEvent.tsx';
 import { EndButton } from './EndEvent.tsx';
 import { EventCoverImage } from './EventCoverImage.tsx';
@@ -134,7 +135,7 @@ export function Overview({
   const [dirty, setDirty] = useState(false);
   const [leaving, setLeaving] = useState<{ to: Part | null } | null>(null);
   const [toast, setToast] = useState<string | null>(() =>
-    wasDuplicated(location.state) ? t('eventDuplicate.created') : null,
+    wasDuplicated(location.state) ? createdLine(guestsCopied(location.state), t) : null,
   );
   const [shown, setShown] = useState(0);
   const now = useServerNow();
@@ -509,4 +510,13 @@ function editOutcome(state: unknown): EditOutcome | null {
   const edit = typeof state === 'object' && state != null && 'edit' in state ? state.edit : null;
 
   return edit === 'saved' || edit === 'unchanged' ? edit : null;
+}
+
+/** The copy's toast, with how many guests came when the guest list did (sc-3656). */
+function createdLine(guests: number | null, t: TFunction): string {
+  const created = t('eventDuplicate.created');
+
+  return guests == null
+    ? created
+    : `${created} ${t('eventDuplicate.guestsCopied', { count: guests })}`;
 }

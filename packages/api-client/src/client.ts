@@ -1843,6 +1843,25 @@ export class ApiClient {
     );
   }
 
+  /** As `duplicateEvent`, bringing the guest list too, with no replies and nobody invited (sc-3656). Refused 403 `permission_required` without guests.manage. */
+  async duplicateEventWithGuests(
+    eventId: string,
+    startsAt: string,
+  ): Promise<{ event: OrganisationEvent; guestsCopied: number }> {
+    const body = await this.post<{ event?: unknown; guestsCopied?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/duplicate`,
+      { startsAt, copyGuests: true },
+    );
+
+    if (typeof body.guestsCopied !== 'number') {
+      throw new Error(
+        'The API answered a copied guest list without its count. Check the events controller in services/api.',
+      );
+    }
+
+    return { event: this.organisationEvent(body), guestsCopied: body.guestsCopied };
+  }
+
   /** Empty under three characters, with nothing asked. Refused 503 when the lookup is down. */
   async addressSuggestions(query: string): Promise<AddressSuggestion[]> {
     if (query.trim().length < 3) return [];

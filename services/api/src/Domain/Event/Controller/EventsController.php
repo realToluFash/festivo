@@ -161,18 +161,28 @@ final readonly class EventsController
         return $this->tagged($this->eventEditor->edit($event, $request->headers->get('If-Match'), $this->user(), $body));
     }
 
-    /** A Draft from `startsAt`, local to the original's zone, in any phase (sc-3593). Needs Create events, since it creates one. */
+    /** A Draft from `startsAt`, local to the original's zone, in any phase (sc-3593). Needs Create events, since it creates one, and guests.manage as well to bring the guest list (sc-3656). */
     #[Route('/api/events/{eventId}/duplicate', name: 'events_duplicate', methods: ['POST'])]
     #[InEvent(Permission::EventsCreate)]
     public function duplicate(Request $request, string $eventId): JsonResponse
     {
         $body = Input::body($request, Type\shape([
             'startsAt' => Type\optional(Type\nullable(Type\string())),
+            'copyGuests' => Type\optional(Type\bool()),
         ]));
+        $original = $this->event($eventId);
+        $copyGuests = $body['copyGuests'] ?? false;
 
-        $copy = $this->eventDuplicator->duplicate($this->event($eventId), $this->user(), $body['startsAt'] ?? null);
+        if ($copyGuests) {
+            $this->grantsOn($original)->require(Permission::GuestsManage);
+        }
 
-        return new JsonResponse(['event' => $this->eventSerialiser->event($copy, $this->grantsOn($copy))], Response::HTTP_CREATED);
+        $duplicate = $this->eventDuplicator->duplicate($original, $this->user(), $body['startsAt'] ?? null, $copyGuests);
+
+        return new JsonResponse([
+            'event' => $this->eventSerialiser->event($duplicate->copy, $this->grantsOn($duplicate->copy)),
+            ...(null === $duplicate->guestsCopied ? [] : ['guestsCopied' => $duplicate->guestsCopied]),
+        ], Response::HTTP_CREATED);
     }
 
     /** Refused 409 `event_state_invalid` unless it is a Draft, 409 `event_concluded` once its end has passed, 409 `event_host_required` with no host (sc-6713), and 403 `plan_limit` (sc-3584). */
