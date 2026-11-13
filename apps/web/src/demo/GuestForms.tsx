@@ -298,7 +298,13 @@ function CompanionFields({
               <button
                 type="button"
                 className="desk-text gs-remove"
-                aria-label={GW.removeNamed(shown)}
+                aria-label={
+                  companion.name.trim() !== '' || host === ''
+                    ? GW.removeNamed(shown)
+                    : at === 0
+                      ? GW.removeCompanionOf(host)
+                      : GW.removeCompanionOfNth(host, at + 1)
+                }
                 onClick={() => {
                   const seat = seated?.(companion.id) ?? null;
 
