@@ -9,8 +9,10 @@ import {
   countOf,
   folded,
   groupsFor,
+  reachOfParam,
   reachOfRole,
   saidOf,
+  searchHref,
   searchStart,
   searchStateOf,
   stopsOf,
@@ -190,5 +192,22 @@ describe('the demo’s states', () => {
       ...SEARCH_STATES.map((state) => `/demo/search?state=${state.key}`),
       '/demo/search-header',
     ]);
+  });
+});
+
+describe('Search as the person a screen shows', () => {
+  it('carries a Member to the route, and searches events and guests only', () => {
+    expect(searchHref('Member')).toBe('/demo/search?as=member');
+    expect(reachOfParam('member')).toEqual(REACHES.member);
+    expect(SEARCH_WORDS.placeholder(searchStart(null, reachOfParam('member')).reach)).toBe(
+      'Search events and guests',
+    );
+  });
+
+  it('opens an owner’s Search for an owner, an admin or nobody named', () => {
+    expect(searchHref('Owner')).toBe('/demo/search');
+    expect(searchHref('Admin')).toBe('/demo/search');
+    expect(searchHref(null)).toBe('/demo/search');
+    expect(reachOfParam(null)).toEqual(REACHES.owner);
   });
 });

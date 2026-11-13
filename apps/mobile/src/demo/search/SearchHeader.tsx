@@ -12,16 +12,21 @@ import { Toast } from '../../components/Toast.tsx';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { SAMPLE } from '../samples.ts';
-import { SEARCH_WORDS as W } from './searchRules.ts';
+import { SEARCH_WORDS as W, searchHref } from './searchRules.ts';
 
-export function openSearch(): void {
-  router.push('/demo/search' as Href);
+export function openSearch(role: string | null = null): void {
+  router.push(searchHref(role) as Href);
 }
 
 /** The 44 search button the header gains, left of the bell. */
 export function SearchButton() {
   return (
-    <RoundButton glyph="search" label={W.search} onPress={openSearch} testID="demo.search.open" />
+    <RoundButton
+      glyph="search"
+      label={W.search}
+      onPress={() => openSearch()}
+      testID="demo.search.open"
+    />
   );
 }
 

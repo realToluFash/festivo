@@ -66,7 +66,10 @@ export function Landscape({
     <View style={[styles.grow, side.chrome]}>
       {sidebar ?? (
         <TodayShellProvider
-          value={{ ...demoShell(shell.tell, { search: openSearch }), person: shell.looking }}
+          value={{
+            ...demoShell(shell.tell, { search: () => openSearch(shell.looking.role) }),
+            person: shell.looking,
+          }}
         >
           <DemoSidebar
             events={SIDEBAR_EVENTS}

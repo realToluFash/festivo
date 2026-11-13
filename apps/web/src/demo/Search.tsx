@@ -166,7 +166,7 @@ export function SearchPalette({
     onClose();
     if (row.kind === 'event') {
       if (sampleEvent(row.id) != null) void navigate(`/demo/events/${row.id}`);
-      else tell(`${row.name} has its own design.`);
+      else tell(W.ownDesign(row.name));
     } else if (row.kind === 'guest') {
       if (row.guest != null) void navigate(`/demo/guests?event=${row.event}&guest=${row.guest}`);
       else if (hasGuests(row.event)) void navigate(`/demo/guests?event=${row.event}`);

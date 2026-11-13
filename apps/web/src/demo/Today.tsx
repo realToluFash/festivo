@@ -16,7 +16,7 @@ import { FirstRun, ThisWeek, YourEvents } from '../components/TodayParts.tsx';
 import { NeedsYou } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { DeskSearch } from './Search.tsx';
-import { REACHES, type SearchStart } from './search.ts';
+import { REACHES, reachOfRole, type SearchStart } from './search.ts';
 import type { DeskPerson } from '../components/DeskSidebar.tsx';
 import './today.css';
 
@@ -84,7 +84,11 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
   return (
     <LayersContext value={layers}>
       <div className="today">
-        <DeskSearch first={search} tell={tell}>
+        <DeskSearch
+          first={search}
+          reach={asks ? reachOfRole(VIEWERS.ana.role) : REACHES.owner}
+          tell={tell}
+        >
           <TodaySidebar
             events={moment.events.map(({ event }) => keyOf(event.id))}
             person={asks ? VIEWERS.ana : search == null ? undefined : SEARCHERS.get(search.reach)}

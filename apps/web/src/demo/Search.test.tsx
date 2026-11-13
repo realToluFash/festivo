@@ -184,6 +184,15 @@ describe('Search as a command palette (sc-39534)', () => {
     },
   );
 
+  it('searches as the Member a first run without Create events shows', SLOW, async () => {
+    at('/demo/today?moment=firstAsk');
+    await screen.findByRole('navigation', { name: 'Soirely' }, WAIT);
+
+    fireEvent.keyDown(window, { key: 'k', metaKey: true });
+    const dialog = screen.getByRole('dialog', { name: 'Search' });
+    expect(field(dialog).getAttribute('placeholder')).toBe('Search events and guests');
+  });
+
   it('draws one guest on two events as two rows', SLOW, async () => {
     const dialog = await board('two-events');
 

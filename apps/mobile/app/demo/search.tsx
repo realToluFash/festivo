@@ -1,11 +1,16 @@
 import { useLocalSearchParams } from 'expo-router';
 
 import { SearchScreen } from '../../src/demo/search/SearchScreen.tsx';
-import { searchStart, searchStateOf } from '../../src/demo/search/searchRules.ts';
+import { reachOfParam, searchStart, searchStateOf } from '../../src/demo/search/searchRules.ts';
 
 export default function DemoSearch() {
-  const { state } = useLocalSearchParams<{ state?: string }>();
+  const { state, as } = useLocalSearchParams<{ state?: string; as?: string }>();
   const name = searchStateOf(state ?? null);
 
-  return <SearchScreen key={name ?? ''} start={searchStart(name)} />;
+  return (
+    <SearchScreen
+      key={`${name ?? ''}:${as ?? ''}`}
+      start={searchStart(name, reachOfParam(as ?? null))}
+    />
+  );
 }

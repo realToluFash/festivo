@@ -35,6 +35,15 @@ export function reachOfRole(role: 'Owner' | 'Admin' | 'Member'): Reach {
   return role === 'Member' ? REACHES.member : REACHES.owner;
 }
 
+/** Search as the person a screen shows: `?as=member` carries a Member's reach to the route. */
+export function searchHref(role: string | null): string {
+  return role === 'Member' ? '/demo/search?as=member' : '/demo/search';
+}
+
+export function reachOfParam(as: string | null): Reach {
+  return reachOfRole(as === 'member' ? 'Member' : 'Owner');
+}
+
 export type Standing = 'Invited' | 'Awaiting approval' | 'Suspended';
 
 export const SHOWN_IN_GROUP = 5;
