@@ -188,6 +188,7 @@ function useStartingCountry(asks: boolean): string {
 /** Focus asked for by `data-focus` key, given once the next render has drawn it. */
 function useFocusKeys(root: RefObject<HTMLElement | null>) {
   const pending = useRef<string[]>([]);
+  const latest = useRef(0);
   const [, rerender] = useReducer((count: number) => count + 1, 0);
 
   useEffect(() => {
@@ -195,7 +196,11 @@ function useFocusKeys(root: RefObject<HTMLElement | null>) {
 
     if (keys.length === 0) return;
     pending.current = [];
+    const turn = ++latest.current;
+
+    // A request still retrying for its target must not take the focus from a later one.
     focusWhenFree(() => {
+      if (turn !== latest.current) return null;
       for (const key of keys) {
         const at = root.current?.querySelector<HTMLElement>(`[data-focus="${key}"]`);
 
