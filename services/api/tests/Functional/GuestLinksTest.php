@@ -129,7 +129,7 @@ final class GuestLinksTest extends ApiTestCase
         self::assertSame(200, $this->statusCode());
         self::assertSame([
             'guest' => ['fullName' => self::ADAEZE],
-            'event' => ['name' => "Amara & Tobi's wedding", 'type' => 'wedding', 'cover' => null, 'hosts' => ['Funmi Adeyemi']],
+            'event' => ['id' => $this->eventId, 'name' => "Amara & Tobi's wedding", 'type' => 'wedding', 'cover' => null, 'hosts' => ['Funmi Adeyemi']],
         ], $page);
         self::assertSame('no-store, private', $this->client->getResponse()->headers->get('Cache-Control'));
         self::assertSame($audited, $this->auditRows());

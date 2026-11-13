@@ -515,10 +515,20 @@
   },
   "guest": {
     "invitationTitle": "You are invited",
-    "invitationBody": "No account is needed. This page is yours for this event.",
     "invalidTitle": "This invitation link does not work",
     "invalidBody": "It may have expired, been replaced by a newer one, or been mistyped. Ask whoever invited you for a fresh link — they can send one in a moment.",
-    "noAccountNeeded": "You do not need an account to reply."
+    "noAccountNeeded": "You do not need an account to reply.",
+    "closing": "This invitation is for you and your family. Other guests cannot see your answer.",
+    "tell": "Not {{name}}? Tell us",
+    "tellQuestion": "Tell {{hosts}} this link reached the wrong person?",
+    "tellLine_one": "They will see a note on {{name}}’s invitation and can send a new link. This does not answer the invitation or change anything on it.",
+    "tellLine_other": "They will see a note on {{name}}’s invitation and can send a new link. This does not answer the invitation or change anything on it.",
+    "tellThem": "Tell them",
+    "goBack": "Go back",
+    "tellFailed": "Not sent. Check your connection and try again.",
+    "tellLimited": "Too many tries from this link. Try again later.",
+    "tellThanks_one": "Thank you. {{hosts}} has been told and will look into it. You can close this page.",
+    "tellThanks_other": "Thank you. {{hosts}} have been told and will look into it. You can close this page."
   },
   "signIn": {
     "title": "Sign in",

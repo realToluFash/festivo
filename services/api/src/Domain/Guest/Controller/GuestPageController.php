@@ -38,6 +38,7 @@ final readonly class GuestPageController
         return new JsonResponse([
             'guest' => ['fullName' => $guest->getFullName()],
             'event' => [
+                'id' => $event->getId()->toRfc4122(),
                 'name' => $event->getName(),
                 'type' => $event->getType()->value,
                 'cover' => $this->eventSerialiser->coverOf($event),

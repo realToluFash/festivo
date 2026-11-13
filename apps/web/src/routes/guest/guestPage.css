@@ -1,0 +1,543 @@
+/* The guest's own page, measured as the web demo draws A · The cover card (apps/web/src/demo/guest.css, sc-31306). */
+
+.gp {
+  --gpGut: 20px;
+  --gpHead: 60px;
+  --gpHeadPad: 0 10px 0 var(--gpGut);
+  --gpLockup: 24px;
+  --gpMainPad: 8px 0 36px;
+  --gpCoverR: 26px;
+  --gpPad: 20px;
+  --gpMin: 236px;
+  --gpTop: 44px;
+  --gpH1: 15px;
+  --gpGuest: 20px;
+  --gpName: 30px;
+  --gpLeft: 520px;
+  --gpRight: 440px;
+  --gpGap: 48px;
+  --gpEase: cubic-bezier(0.2, 0, 0, 1);
+
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--colorPage);
+  color: var(--colorInk);
+  font-family: var(--fontFamily);
+}
+
+@media (width < 22.5rem) {
+  .gp {
+    --gpGut: 16px;
+    --gpCoverR: 22px;
+    --gpPad: 18px;
+    --gpMin: 220px;
+    --gpTop: 40px;
+    --gpH1: 14px;
+    --gpGuest: 18px;
+    --gpName: 26px;
+  }
+}
+
+@media (width > 40rem) {
+  .gp {
+    --gpHead: 72px;
+    --gpHeadPad: 0 24px 0 32px;
+    --gpLockup: 28px;
+    --gpCoverR: 28px;
+    --gpMainPad: 32px 0 44px;
+    --gpPad: 26px;
+    --gpMin: 300px;
+    --gpTop: 56px;
+    --gpH1: 16px;
+    --gpGuest: 22px;
+    --gpName: 38px;
+  }
+}
+
+@media (width >= 64rem) {
+  .gp {
+    --gpMainPad: 36px 0 48px;
+    --gpPad: 28px;
+    --gpMin: 340px;
+    --gpTop: 64px;
+    --gpH1: 17px;
+    --gpGuest: 24px;
+    --gpName: 40px;
+  }
+}
+
+@media (width >= 80rem) {
+  .gp {
+    --gpName: 42px;
+    --gpLeft: 560px;
+    --gpGap: 64px;
+    --gpHeadPad: 0 32px 0 40px;
+  }
+}
+
+.gp :where(p, h1, h2) {
+  margin: 0;
+}
+
+.gp :where(h1, h2, p):focus {
+  outline: none;
+}
+
+.gp-header {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--gpHead);
+  padding: var(--gpHeadPad);
+}
+
+.gp-lockup {
+  display: block;
+  width: auto;
+  height: var(--gpLockup);
+}
+
+.gp-main {
+  flex: 1 0 auto;
+  padding: var(--gpMainPad);
+}
+
+/* ── One column up to 64rem, 600 wide and centred from 641; from it the cover sits left and the card's words right ── */
+
+.gp-columns,
+.gp-alone-wrap {
+  display: flex;
+  flex-direction: column;
+  width: min(600px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+@media (width <= 40rem) {
+  .gp-columns,
+  .gp-alone-wrap {
+    width: auto;
+    margin: 0 var(--gpGut);
+  }
+}
+
+.gp-alone-wrap {
+  padding-top: 48px;
+}
+
+.gp-under {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  margin-top: 24px;
+}
+
+.gp-under > * {
+  animation: gp-fade 200ms var(--gpEase);
+}
+
+@media (width >= 64rem) {
+  .gp-columns {
+    display: grid;
+    grid-template-columns: var(--gpLeft) var(--gpRight);
+    align-items: start;
+    gap: var(--gpGap);
+    width: auto;
+    margin: 0 auto;
+    justify-content: center;
+  }
+
+  .gp-under {
+    margin-top: 0;
+  }
+
+  .gp-alone-wrap {
+    width: 560px;
+    padding: 36px 0 16px;
+  }
+}
+
+/* ── The cover: the organiser's photo, or the event's Confetti from meshFor, under Events A's scrim ── */
+
+.gp .gp-cover {
+  flex: none;
+  min-height: var(--gpMin);
+  border-radius: var(--gpCoverR);
+}
+
+.gp-piece {
+  position: absolute;
+  z-index: 1;
+  display: block;
+  height: 8px;
+  border-radius: var(--radiusPill);
+}
+
+.gp-piece.p1 {
+  top: 8px;
+  right: 103px;
+  width: 22px;
+  height: 11px;
+  border-radius: 11px 11px 0 0;
+  background: var(--optionAmber);
+  transform: rotate(-18deg);
+}
+
+.gp-piece.p2 {
+  top: 16px;
+  right: 47px;
+  width: 26px;
+  background: var(--deskWhite);
+  transform: rotate(24deg);
+}
+
+.gp-piece.p3 {
+  top: 30px;
+  right: 7px;
+  width: 14px;
+  height: 7px;
+  border-radius: 7px 7px 0 0;
+  background: var(--deskOrange);
+  transform: rotate(200deg);
+}
+
+.gp-piece.p4 {
+  top: 108px;
+  right: 58px;
+  width: 20px;
+  height: 10px;
+  border-radius: 10px 10px 0 0;
+  background: color-mix(in srgb, var(--optionRose) 55%, var(--colorInkOnDark));
+  transform: rotate(32deg);
+}
+
+.gp-piece.p5 {
+  top: 122px;
+  right: 16px;
+  width: 24px;
+  background: var(--optionAmber);
+  transform: rotate(-40deg);
+}
+
+.gp-piece.p6 {
+  top: 130px;
+  right: 142px;
+  width: 16px;
+  background: var(--deskWhite);
+  transform: rotate(62deg);
+}
+
+.gp-piece.p7 {
+  top: 104px;
+  right: 3px;
+  width: 14px;
+  background: var(--deskWhite);
+  transform: rotate(-60deg);
+}
+
+.gp-cover-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: calc(var(--gpPad) + var(--gpTop)) var(--gpPad) 22px;
+}
+
+.gp .gp-cover-h1 {
+  color: var(--deskWhite);
+  font: 600 var(--gpH1) / 1.3 var(--fontFamily);
+  letter-spacing: 0;
+  text-wrap: wrap;
+}
+
+.gp .gp-cover-guest {
+  margin-top: 4px;
+  font: 600 var(--gpGuest) / 1.25 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.gp .gp-cover-name {
+  margin-top: 12px;
+  font: 700 var(--gpName) / 1.08 var(--fontFamily);
+  letter-spacing: -0.02em;
+  text-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ── The foot, Not {full name}? Tell us, and its question ── */
+
+.gp-h2 {
+  color: var(--colorInk);
+  font: 700 20px/1.2 var(--fontFamily);
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+
+.gp-sub {
+  color: var(--colorInkSecondary);
+  font: 400 15px/1.45 var(--fontFamily);
+}
+
+.gp-foot,
+.gp-tell {
+  display: flex;
+  flex-direction: column;
+}
+
+.gp-foot p {
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+.gp-foot hr {
+  width: 100%;
+  height: 1px;
+  margin: 14px 0;
+  border: 0;
+  background: var(--colorBorder);
+}
+
+.gp-text {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  min-height: 44px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--colorAccent);
+  font: 600 16px/1.3 var(--fontFamily);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.gp-text:hover span {
+  text-decoration: underline;
+}
+
+.gp-foot .gp-text {
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+.gp-filled,
+.gp-outlined {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 24px;
+  font: 600 16px/1 var(--fontFamily);
+  cursor: pointer;
+  transition: opacity 120ms var(--gpEase);
+}
+
+.gp-filled {
+  background: var(--colorAccent);
+  color: var(--colorInkOnDark);
+  white-space: nowrap;
+}
+
+.gp-filled.is-narrow {
+  width: min(100%, 240px);
+}
+
+.gp-outlined {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--colorControlBorder);
+  color: var(--colorInk);
+}
+
+.gp :is(.gp-filled, .gp-outlined, .gp-text):active {
+  opacity: 0.85;
+}
+
+.gp-alone .gp-filled {
+  margin-top: 22px;
+}
+
+.gp-tell > .gp-sub {
+  margin-top: 8px;
+}
+
+.gp-tell > .gp-sub + * {
+  margin-top: 20px;
+}
+
+.gp-tell > .gp-notice + .gp-filled {
+  margin-top: 14px;
+}
+
+.gp-tell > .gp-outlined {
+  margin-top: 10px;
+}
+
+.gp-told {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.gp-told p {
+  flex: 1;
+  min-width: 0;
+  font: 600 17px/1.4 var(--fontFamily);
+}
+
+.gp-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--deskGreen);
+  color: var(--colorInkOnDark);
+}
+
+.gp-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, currentcolor 35%, transparent);
+  border-top-color: currentcolor;
+  border-radius: 50%;
+  animation: gp-turn 700ms linear infinite;
+}
+
+.gp-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  animation: gp-drop 120ms var(--gpEase);
+}
+
+.gp-notice p {
+  flex: 1;
+  min-width: 0;
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.gp-notice-mark {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+.gp-notice.is-broken {
+  border: 1px solid color-mix(in srgb, var(--colorBroken) 22%, var(--colorCard));
+  background: var(--colorBrokenTint);
+}
+
+.gp-notice.is-broken .gp-notice-mark {
+  background: var(--colorBroken);
+  color: var(--colorInkOnDark);
+}
+
+.gp-notice.is-attention {
+  background: var(--colorAttentionTint);
+}
+
+.gp-notice.is-attention .gp-notice-mark {
+  border: 3px solid var(--colorAttentionText);
+}
+
+/* ── A link that does not work, and Soirely out of reach: alone on the page ── */
+
+.gp-alone {
+  display: flex;
+  flex-direction: column;
+}
+
+.gp-alone-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+}
+
+.gp-line {
+  display: block;
+  flex: none;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.gp .gp-alone-title {
+  margin-top: 20px;
+  font: 700 26px/1.15 var(--fontFamily);
+  letter-spacing: -0.02em;
+  text-wrap: wrap;
+}
+
+.gp .gp-alone p {
+  margin-top: 10px;
+  color: var(--colorInkSecondary);
+  font: 400 16px/1.5 var(--fontFamily);
+}
+
+.gp-waiting {
+  min-height: var(--gpMin);
+  border-radius: var(--gpCoverR);
+  background: var(--colorInset);
+  animation: gp-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes gp-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes gp-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes gp-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes gp-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gp-under > *,
+  .gp-notice,
+  .gp-waiting,
+  .gp-spinner {
+    animation: none;
+  }
+}
