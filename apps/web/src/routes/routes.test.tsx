@@ -804,6 +804,7 @@ describe('the guest tree', () => {
       new Response(
         JSON.stringify({
           guest: { fullName: 'Bisi Adewale', reply: null, companions: 0 },
+          language: { chosen: null, host: null, organisation: 'en' },
           event: {
             id: 'e1',
             name: 'Owambe',
