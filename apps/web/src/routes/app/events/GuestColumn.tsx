@@ -620,19 +620,50 @@ function mobileOf(values: Values): string | null {
     : (phoneE164(number, values.country) ?? `${values.country} ${number}`);
 }
 
-/** What the API would keep, so a save that changes nothing sends nothing. */
-function kept(values: Values): string {
+type Field = 'fullName' | 'email' | 'mobile' | 'companions';
+
+const FIELDS: readonly Field[] = ['fullName', 'email', 'mobile', 'companions'];
+
+/** What the API would keep of each field, so a save that changes nothing sends nothing. */
+function keptOf(values: Values): Record<Field, string> {
   const sent = newGuestOf(typedOf(values), false);
 
-  return JSON.stringify([
-    sent.fullName,
-    sent.email,
-    mobileOf(values),
-    values.companions.map((one, at) => [one.id, sent.companions?.[at]?.fullName ?? null]),
-  ]);
+  return {
+    fullName: sent.fullName,
+    email: JSON.stringify(sent.email),
+    mobile: JSON.stringify(mobileOf(values)),
+    companions: JSON.stringify(
+      values.companions.map((one, at) => [one.id, sent.companions?.[at]?.fullName ?? null]),
+    ),
+  };
 }
 
-type Differs = readonly { field: string; theirs: string; yours: string }[];
+function kept(values: Values): string {
+  return JSON.stringify(keptOf(values));
+}
+
+/** The fields this host changed against the version they opened or took with Use theirs. */
+function changedOf(values: Values, base: Values): readonly Field[] {
+  const now = keptOf(values);
+  const was = keptOf(base);
+
+  return FIELDS.filter((field) => now[field] !== was[field]);
+}
+
+/** Their version with only this host's changed fields taken from the form, so Keep mine overwrites nothing a colleague changed. */
+function mergedOf(values: Values, theirs: Values, changed: readonly Field[]): Values {
+  const mine = (field: Field) => changed.includes(field);
+
+  return {
+    fullName: mine('fullName') ? values.fullName : theirs.fullName,
+    email: mine('email') ? values.email : theirs.email,
+    country: mine('mobile') ? values.country : theirs.country,
+    number: mine('mobile') ? values.number : theirs.number,
+    companions: mine('companions') ? values.companions : theirs.companions,
+  };
+}
+
+type Differs = readonly { key: Field; field: string; theirs: string; yours: string }[];
 
 /** Edit (sc-3773), in place in the guest's column: refused before sending, a duplicate asked about, a colleague's change (412) held at the top. */
 function EditForm({
@@ -738,39 +769,48 @@ function EditForm({
     );
     const none = t('guestList.none');
     const mobile = mobileOf(values);
-    const rows = [
-      { field: t('account.fullName'), theirs: theirs.fullName, yours: mine.fullName },
+    const rows: Differs = [
       {
+        key: 'fullName',
+        field: t('account.fullName'),
+        theirs: theirs.fullName,
+        yours: mine.fullName,
+      },
+      {
+        key: 'email',
         field: t('guestList.emailAddress'),
         theirs: theirs.email ?? none,
         yours: mine.email ?? none,
       },
       {
+        key: 'mobile',
         field: t('guestList.mobileNumber'),
         theirs: theirs.mobile == null ? none : formatPhone(theirs.mobile),
         yours: mobile == null ? none : formatPhone(mobile),
       },
       {
+        key: 'companions',
         field: t('guestList.companionsTitle'),
         theirs: theirNames.join(', ') || none,
         yours: myNames.join(', ') || none,
       },
     ];
+    const changed = changedOf(values, base);
 
-    return rows.filter((row) => row.theirs !== row.yours);
+    return rows.filter((row) => changed.includes(row.key) && row.theirs !== row.yours);
   }
 
-  async function send(allowDuplicate: boolean, against: string): Promise<void> {
+  async function send(allowDuplicate: boolean, against: string, sending = values): Promise<void> {
     setBusy(true);
     setFailed(false);
     try {
-      const sent = newGuestOf(typed, allowDuplicate);
+      const sent = newGuestOf(typedOf(sending), allowDuplicate);
       const saved = await api.updateGuest(
         eventId,
         host.id,
         {
           ...sent,
-          companions: values.companions.map((one, at) => ({
+          companions: sending.companions.map((one, at) => ({
             id: one.id,
             fullName: sent.companions?.[at]?.fullName ?? null,
           })),
@@ -784,9 +824,13 @@ function EditForm({
       else if (error instanceof ApiError && error.status === 412) {
         try {
           const theirs = await api.guest(eventId, host.id);
+          const rows = differs(theirs.guest);
 
-          setConflict({ theirs, differs: differs(theirs.guest) });
-          focus('conflict');
+          if (rows.length === 0) onSaved(theirs, false);
+          else {
+            setConflict({ theirs, differs: rows });
+            focus('conflict');
+          }
         } catch (again) {
           if (again instanceof ApiError && again.status === 404) onGone();
           else setFailed(true);
@@ -906,10 +950,15 @@ function EditForm({
               aria-busy={busy || undefined}
               onClick={() => {
                 const against = conflict.theirs.tag;
+                const sending = mergedOf(
+                  values,
+                  valuesOf(conflict.theirs.guest, country),
+                  changedOf(values, base),
+                );
 
                 setTag(against);
                 setConflict(null);
-                void send(duplicate === 'kept', against);
+                void send(duplicate === 'kept', against, sending);
               }}
             >
               {t('guestList.keepMine')}

@@ -789,7 +789,7 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(puts(sent)).toHaveLength(0);
   });
 
-  it('shows a colleague’s change on a 412, only the fields that differ, and holds Save until one is chosen', async () => {
+  it('shows on a 412 only the fields this host changed, holds Save, and Keep mine keeps the colleague’s other change', async () => {
     let reads = 0;
     let saves = 0;
     const theirs = { ...DETAILS, mobile: '+2348035550199' };
@@ -824,7 +824,7 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
       within(panel)
         .getAllByRole('term')
         .map((one) => one.textContent),
-    ).toEqual(['Email address', 'Mobile number']);
+    ).toEqual(['Email address']);
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(puts(sent)).toHaveLength(1);
 
@@ -833,6 +833,32 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(await screen.findByText('Saved')).toBeDefined();
     expect(puts(sent)).toHaveLength(2);
     expect(ifMatches).toEqual(['"1"', '"2"']);
+    expect(puts(sent)[1]?.body).toMatchObject({
+      email: 'ngozi.eze@example.com',
+      mobile: { countryCode: 'NG', number: '0803 555 0199' },
+    });
+  });
+
+  it('sends nothing on a 412 when their version already holds every change, and shows it', async () => {
+    let reads = 0;
+    const theirs = { ...DETAILS, email: 'ngozi.eze@example.com' };
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        return reads === 1 ? tagged(DETAILS, '"1"') : tagged(theirs, '"2"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => problem('precondition_failed', 412),
+    });
+
+    type(EMAIL, 'ngozi.eze@example.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('ngozi.eze@example.com')).toBeDefined();
+    expect(
+      screen.queryByText('Someone else changed this guest. Here is their version.'),
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Keep mine' })).toBeNull();
+    expect(puts(sent)).toHaveLength(1);
   });
 
   it('keeps everything typed when the save fails, and says so', async () => {
