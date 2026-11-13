@@ -12,7 +12,13 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { Bones, Switch } from '../../../components/GeneralParts.tsx';
+import {
+  Bones,
+  CardLock,
+  DetailsBlock,
+  OrganisationWho,
+  Switch,
+} from '../../../components/GeneralParts.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import {
@@ -148,15 +154,11 @@ function OrganisationCard({
     <Card size="person">
       <div aria-live="polite">
         {said == null ? (
-          <div className="desk-who">
-            <span className="desk-disc general-tile" aria-hidden="true">
-              {initials(organisation.name)}
-            </span>
-            <div className="desk-who-words">
-              <p className="desk-name">{organisation.name}</p>
-              <OnCard>{organisation.contactAddress}</OnCard>
-            </div>
-          </div>
+          <OrganisationWho
+            tile={initials(organisation.name)}
+            name={organisation.name}
+            line={organisation.contactAddress}
+          />
         ) : said.kind === 'saved' ? (
           <>
             <Says>{t('generalDesk.savedSays')}</Says>
@@ -172,11 +174,11 @@ function OrganisationCard({
       {manages ? (
         <CardStep label={t('generalDesk.edit')} onClick={onEdit} />
       ) : rules.length === 0 ? (
-        <Lock line={t('orgGeneral.readOnly', { role: roleName(t, organisation.role) })} />
+        <CardLock line={t('orgGeneral.readOnly', { role: roleName(t, organisation.role) })} />
       ) : (
         rules.map((rule) => (
           <div key={rule} className="general-held">
-            <Lock
+            <CardLock
               line={t(
                 rule === 'linking'
                   ? 'orgGeneral.readOnlyUntilLinked'
@@ -199,15 +201,6 @@ function OrganisationCard({
   );
 }
 
-function Lock({ line }: { line: string }) {
-  return (
-    <div className="general-lock">
-      <Glyph name="lock" size={16} weight={2.2} />
-      <OnCard>{line}</OnCard>
-    </div>
-  );
-}
-
 function Details({ organisation }: { organisation: Membership }) {
   const { t } = useTranslation();
   const locale = currentLocale();
@@ -227,17 +220,11 @@ function Details({ organisation }: { organisation: Membership }) {
   ];
 
   return (
-    <section className="desk-block">
-      <Head title={t('generalDesk.details')} />
-      <ul className="desk-rows">
-        {rows.map((row) => (
-          <li key={row.label} className="desk-row is-plain">
-            <RowWords title={row.value} lines={[row.label]} />
-          </li>
-        ))}
-      </ul>
-      <p className="desk-foot">{t('orgGeneral.defaultsNote')}</p>
-    </section>
+    <DetailsBlock
+      title={t('generalDesk.details')}
+      rows={rows}
+      note={t('orgGeneral.defaultsNote')}
+    />
   );
 }
 

@@ -35,7 +35,13 @@ import {
   requestLink,
 } from './general.ts';
 import { AddDomainDialog, DeleteDialog, DetailsDialog, TransferDialog } from './GeneralDialogs.tsx';
-import { Bones, Switch } from '../components/GeneralParts.tsx';
+import {
+  Bones,
+  CardLock,
+  DetailsBlock,
+  OrganisationWho,
+  Switch,
+} from '../components/GeneralParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { HandoverAsk } from './Handover.tsx';
 import { handStart, ledBy, offeredFor } from './handover.ts';
@@ -92,17 +98,14 @@ export function General({ viewer, state, tell }: { viewer: Viewer; state: string
             setEditing(true);
           }}
         />
-        <section className="desk-block">
-          <Head title={W.details} />
-          <ul className="desk-rows">
-            {DETAIL_ROWS.map((field) => (
-              <li key={field} className="desk-row is-plain">
-                <RowWords title={choiceName(field, details[field])} lines={[W[field]]} />
-              </li>
-            ))}
-          </ul>
-          <p className="desk-foot">{W.defaultsNote}</p>
-        </section>
+        <DetailsBlock
+          title={W.details}
+          rows={DETAIL_ROWS.map((field) => ({
+            label: W[field],
+            value: choiceName(field, details[field]),
+          }))}
+          note={W.defaultsNote}
+        />
         {changes && <Domains start={start} tell={tell} />}
         {changes && <RequestLink start={start} tell={tell} />}
         <Ownership
@@ -143,23 +146,10 @@ function OrganisationCard({ words, onStep }: { words: CardWords; onStep: () => v
             <OnCard>{words.line}</OnCard>
           </>
         ) : (
-          <div className="desk-who">
-            <span className="desk-disc general-tile" aria-hidden="true">
-              IE
-            </span>
-            <div className="desk-who-words">
-              <p className="desk-name">{words.says}</p>
-              <OnCard>{words.line}</OnCard>
-            </div>
-          </div>
+          <OrganisationWho tile="IE" name={words.says} line={words.line} />
         )}
       </div>
-      {words.lock != null && (
-        <div className="general-lock">
-          <Glyph name="lock" size={16} weight={2.2} />
-          <OnCard>{words.lock}</OnCard>
-        </div>
-      )}
+      {words.lock != null && <CardLock line={words.lock} />}
       {words.step != null && <CardStep label={words.step} onClick={onStep} />}
     </Card>
   );
