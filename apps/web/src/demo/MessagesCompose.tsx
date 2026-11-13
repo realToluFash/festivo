@@ -707,7 +707,7 @@ export function ResendCard() {
   const none = check.count === 0;
 
   function back(): void {
-    act({ kind: 'reached', of: reachedOfThread(thread), thread });
+    act({ kind: 'reached', of: reachedOfThread(thread, inbox), thread });
     focus('resend');
   }
 

@@ -40,6 +40,20 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   sendNow: ['send now', 'The check set to now, or Keep it scheduled'],
   cancelAsk: ['cancel…, asked', 'Keep it first; Cancel message'],
   scheduledCancelled: ['cancelled, scheduled', 'Greyed; its row in Done reads Cancelled'],
+  scheduledPaused: [
+    'scheduled, the event paused',
+    'The paused line where Goes… was; Edit, Send now, Cancel… stay',
+  ],
+  scheduledPausedLate: [
+    'paused past its time',
+    'Set for 08:00 today, still paused: the same line, no Goes…',
+  ],
+  scheduledPausedEdit: ['editing while paused', 'Editing., with no time'],
+  scheduledFinished: [
+    'cancelled by Soirely',
+    'The event finished before this message was due; in Done',
+  ],
+  scheduledTooLate: ['not sent: too late', 'Not resumed or restored within 48 hours; in Done'],
   fixed: ['after a fix', 'Bounced kept; Updated · not sent yet, and Send to Tomás Ferreira again'],
   sentAgain: ['sent again', 'Sent to Tomás Ferreira; Resend to the 10 not reached'],
   checkAll: ['the check, all guests', 'Sending to 142 people; 9 can’t be told'],
@@ -166,7 +180,7 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   sharedNumber: ['a number two guests share', '+44 7700 900412 · shared by 2 guests; Change guest'],
   readOnly: [
     'a Read-only member',
-    'Kofi Mensah, Read-only: Only someone who can change Messages can send.',
+    'Kofi Mensah, Read-only: Only someone who can change Messages can send; Who it reached without actions',
   ],
   stopAction: [
     'the conversation’s actions, open',
@@ -182,6 +196,28 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   stoppedNoManage: [
     'stopped, without messages.manage',
     'No More actions; the inset without Let them write again',
+  ],
+  reasons: [
+    'every reason',
+    'Parking by Email only: Bounced, Failed, Opted out, Skipped; Try SMS instead by the person',
+  ],
+  trySms: ['try SMS instead', 'Olumide Bello: SMS · 1 part · GSM-7; 62 credits, 1,438 after'],
+  trySmsQuiet: [
+    'try SMS instead, at night for them',
+    'Rafael Costa at 06:41: This text waits until 09:00, their time.',
+  ],
+  trySmsShort: [
+    'try SMS instead, too few credits',
+    'Yuki Tanaka: 1 SMS message will wait for credits.',
+  ],
+  trySmsSent: ['then send by SMS', 'Sent to Olumide Bello; Bounced · 1, Resend to the 8'],
+  closedReached: [
+    'who it reached, the sends off',
+    'Finished more than 30 days ago: Try SMS instead, Send again and Resend off',
+  ],
+  reachedQuiet: [
+    'a text waiting for the morning',
+    'Valentina Restrepo: SMS · Waiting until 09:00, their time; In progress',
   ],
   smsLine: [
     'SMS ticked: who it reaches',

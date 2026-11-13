@@ -196,6 +196,9 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
       members('inviteBlank', 'Invite, nothing typed'),
       members('inviteShape', 'Invite, not an address'),
       members('sent', 'Invitation sent'),
+      members('notDelivered', 'Invitations not delivered'),
+      members('notDeliveredInvited', 'Invited, not delivered'),
+      members('notDeliveredAgain', 'Invited again, still not delivered'),
     ],
   },
   {

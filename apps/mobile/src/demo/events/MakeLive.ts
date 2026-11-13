@@ -110,6 +110,11 @@ export function isGsm7(text: string): boolean {
   return [...text].every((one) => GSM_7.includes(one) || GSM_7_TWICE.includes(one));
 }
 
+/** A text is sent in GSM-7 when every character is in its alphabet, else in UCS-2. */
+export function smsEncoding(text: string): 'GSM-7' | 'UCS-2' {
+  return isGsm7(text) ? 'GSM-7' : 'UCS-2';
+}
+
 const PLAIN_MARKS: Record<string, string> = {
   '‘': "'",
   '’': "'",

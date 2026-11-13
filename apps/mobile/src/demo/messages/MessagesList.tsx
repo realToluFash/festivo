@@ -33,7 +33,6 @@ import {
 import {
   NOW,
   PARKING,
-  PARKING_REACH,
   READER,
   SAMPLE_EVENT_ID,
   DAYS,
@@ -41,6 +40,7 @@ import {
   RECEIPTS,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
+import { parkingReachOf } from './ReasonsSample.ts';
 import { caseFor, guestOf, readsOnly } from './NoticeStates.ts';
 import { NW } from './NoticeWords.ts';
 
@@ -117,7 +117,8 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
       title: own == null ? W.newMessage : draftTitle(own.draft, own.thread),
       titleLines: 1,
       line: own == null ? '' : draftLine(own.draft, own.thread, locale),
-      time: draft == null || isScheduled(draft) ? '' : draft.time || NOW,
+      time:
+        draft == null || isScheduled(draft) || draft.outcome === 'tooLate' ? '' : draft.time || NOW,
       lead: <GroupTile />,
       tag,
     };
@@ -138,10 +139,10 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
     if (id.key === 'parking')
       return {
         title: PARKING,
-        line: `${W.toAllGuests} · ${say.didntGetIt(PARKING_REACH.notReached)}`,
+        line: `${W.toAllGuests} · ${say.didntGetIt(parkingReachOf(m.sample).notReached)}`,
         time: rowDay(DAYS.parking, '', locale),
         lead: <GroupTile />,
-        tag: { kind: 'waiting', word: say.notReached(PARKING_REACH.notReached) },
+        tag: { kind: 'waiting', word: say.notReached(parkingReachOf(m.sample).notReached) },
       };
     if (id.key === 'receipts')
       return {

@@ -8,6 +8,8 @@ import {
   BALANCE,
   BODY,
   CANCELLED_AT,
+  FINISHED_AT,
+  SOIRELY,
   CANT_TELL,
   DAYS,
   EVENT,
@@ -85,7 +87,15 @@ import {
   stampOf,
 } from './NoticeStates.ts';
 import { sayNotice } from './NoticeWords.ts';
+import { reasonPerson } from './ReasonsSample.ts';
 import { SMS_STATES, smsStart } from './Sms.ts';
+import {
+  REASON_STATES,
+  type ReachSample,
+  type Texted,
+  balanceAfterText,
+  textedOf,
+} from './TrySms.ts';
 
 /** Every state of Messaging B, each a `?state=` in both demos (spec §7 and §7b), in the spec's order. */
 export const MESSAGES_STATES = [
@@ -180,6 +190,12 @@ export const MESSAGES_STATES = [
   ...NOTICE_STATES,
   ...STOP_STATES,
   ...SMS_STATES,
+  'scheduledPaused',
+  'scheduledPausedLate',
+  'scheduledPausedEdit',
+  'scheduledFinished',
+  'scheduledTooLate',
+  ...REASON_STATES,
   ...TELL_KINDS,
 ] as const;
 
@@ -251,6 +267,10 @@ export interface Draft {
   soFar: number | null;
   outcome?: 'sent' | 'tooLate';
   cancelledBy?: string;
+  /** sc-3963: its event is paused, so it waits whichever side of its time it is. */
+  paused?: boolean;
+  /** sc-3963: Soirely cancelled it because its event finished first. */
+  finished?: boolean;
   /** The To choices that match nobody in this sample. */
   zero: readonly ToGroup[];
   /** The fields over their limit at the last Send, kept until each is short enough. */
@@ -367,6 +387,11 @@ export interface Messages {
   /** sc-3976: the open state's facts about one guest's notice and conversation, and who reads it when not the owner. */
   notice?: NoticeCase;
   reader?: string;
+  /** sc-3966: Parking told by Email only, or the just-sent message with a text waiting for the morning. */
+  sample?: ReachSample;
+  /** The person whose Try SMS instead is open, and what Send by SMS did, by message. */
+  trying?: string | null;
+  texted?: Partial<Record<string, Texted>>;
 }
 
 export function blankDraft(): Draft {
@@ -533,6 +558,21 @@ const SCHEDULED_AS: Partial<Record<MessagesState, Partial<Draft>>> = {
   sendNow: { step: 'check' },
   cancelAsk: { asking: true },
   scheduledCancelled: { step: 'cancelled', cancelledAt: CANCELLED_AT, time: CANCELLED_AT },
+  scheduledPaused: { paused: true },
+  scheduledPausedLate: { paused: true, at: { date: DAYS.today, time: '08:00' } },
+  scheduledPausedEdit: {
+    paused: true,
+    step: 'write',
+    was: { subject: SCHEDULED, body: SCHEDULED_BODY },
+  },
+  scheduledFinished: {
+    step: 'cancelled',
+    cancelledAt: FINISHED_AT,
+    time: FINISHED_AT,
+    cancelledBy: SOIRELY,
+    finished: true,
+  },
+  scheduledTooLate: { outcome: 'tooLate', at: { date: DAYS.tooLate, time: '09:00' } },
 };
 
 function scheduledStart(change: Partial<Draft>): Messages {
@@ -774,6 +814,47 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       return { ...BASE, bell: true, open: wide ? ines : null };
     case 'forbidden':
       return { ...BASE, forbidden: true };
+    case 'reasons':
+      return { ...BASE, open: parking, sample: 'reasons', filter: 'everyone' };
+    case 'trySms':
+      return {
+        ...BASE,
+        open: parking,
+        sample: 'reasons',
+        filter: 'bounced',
+        trying: 'parking.olumide',
+      };
+    case 'trySmsQuiet':
+      return {
+        ...BASE,
+        open: parking,
+        sample: 'reasons',
+        filter: 'failed',
+        trying: 'parking.rafael',
+      };
+    case 'trySmsShort':
+      return {
+        ...BASE,
+        open: parking,
+        sample: 'reasons',
+        filter: 'skipped',
+        balance: 0,
+        trying: 'parking.yuki',
+      };
+    case 'trySmsSent':
+      return reduce(startOf('trySms', wide), { type: 'sendBySms', key: 'olumide' });
+    case 'closedReached':
+      return {
+        ...BASE,
+        open: parking,
+        sample: 'reasons',
+        closed: 'ended',
+        kept: [],
+        filter: 'bounced',
+        fixed: { tomas: FIXED_ADDRESS },
+      };
+    case 'reachedQuiet':
+      return { ...startOf('sentReached', wide), sample: 'nightText' };
     default:
       return BASE;
   }
@@ -827,6 +908,9 @@ export type Action =
   | { type: 'filter'; filter: ReachFilter }
   | { type: 'filtering'; open: boolean }
   | { type: 'sendAgain'; key: PersonKey }
+  | { type: 'trySms'; key: PersonKey }
+  | { type: 'cancelTrySms' }
+  | { type: 'sendBySms'; key: PersonKey }
   | { type: 'resending'; open: boolean }
   | { type: 'resent' }
   | { type: 'bell'; open: boolean }
@@ -1178,6 +1262,23 @@ export function reduce(m: Messages, action: Action): Messages {
         ...m,
         again: { ...m.again, [at]: SENT_AGAIN_AT },
         waiting: m.waiting.filter((one) => one !== at),
+        said: at,
+      };
+    }
+    case 'trySms':
+      return m.closed == null ? { ...m, trying: personAt(reachedOf(m), action.key) } : m;
+    case 'cancelTrySms':
+      return { ...m, trying: null };
+    case 'sendBySms': {
+      const mobile = reasonPerson(action.key)?.mobile;
+      if (m.closed != null || mobile == null) return m;
+      const at = personAt(reachedOf(m), action.key);
+
+      return {
+        ...m,
+        texted: { ...m.texted, [at]: textedOf(mobile, m.balance) },
+        balance: balanceAfterText(mobile, m.balance),
+        trying: null,
         said: at,
       };
     }

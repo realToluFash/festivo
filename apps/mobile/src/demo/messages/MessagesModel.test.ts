@@ -51,6 +51,7 @@ import { filledAs } from './PreviewModel.ts';
 import { PREVIEW_PEOPLE } from './PreviewSample.ts';
 import { tellChange } from './TellChange.ts';
 import { keepWhole, outsideToken, tokenText } from './TokenText.ts';
+import { REASON_STATES } from './TrySms.ts';
 
 const run = (m: Messages, ...actions: Action[]) => actions.reduce(reduce, m);
 
@@ -64,8 +65,10 @@ beforeAll(() =>
 const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
-  it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s nine, sc-3960’s, sc-3963’s, sc-3976’s 17, sc-3978’s, sc-3946’s and sc-4330’s, by both demos’ names', () => {
-    expect(MESSAGES_STATES).toHaveLength(156);
+  it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s nine, sc-3960’s, sc-3963’s, sc-3976’s 17, sc-3978’s, sc-3946’s, sc-3966’s seven and sc-4330’s, by both demos’ names', () => {
+    expect(MESSAGES_STATES).toHaveLength(168);
+    const reasonsAt = MESSAGES_STATES.indexOf('reasons');
+    expect(MESSAGES_STATES.slice(reasonsAt, reasonsAt + 7)).toEqual([...REASON_STATES]);
     expect(MESSAGES_STATES.slice(MESSAGES_STATES.indexOf('sendWithout') + 1).slice(0, 17)).toEqual([
       ...NOTICE_STATES,
     ]);

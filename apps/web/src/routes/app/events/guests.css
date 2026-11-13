@@ -437,10 +437,6 @@
   background: var(--colorAccentTint);
 }
 
-.gs-blocked {
-  margin-bottom: var(--spaceLg);
-}
-
 /* A guest's column loading (sc-3773): the cover card's place, then three detail rows. */
 .gs-bone-guest {
   height: 170px;
@@ -481,6 +477,18 @@
   outline: none;
 }
 
+.gs-none {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+}
+
+.gs-none h2 {
+  font: 700 18px/1.3 var(--fontFamily);
+  letter-spacing: -0.01em;
+}
+
 .gs-gone {
   display: flex;
   flex-direction: column;
@@ -494,6 +502,7 @@
   letter-spacing: -0.01em;
 }
 
+.gs-none h2:focus,
 .gs-gone h2:focus {
   outline: none;
 }
@@ -726,4 +735,52 @@
 
 .gs-inset-foot .desk-text {
   margin-inline: 0;
+}
+
+/* sc-3772: Find a guest with the filter menu beside it, the groups on All, and the line a search or a choice brings. */
+.gs-search-row {
+  align-items: center;
+}
+
+.gs-search-row .ev-search {
+  flex: 1;
+}
+
+.gs-menu .desk-menu {
+  width: 240px;
+  border-radius: var(--spaceXl);
+}
+
+.gs-shown {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  min-height: var(--sizeHit);
+  margin-bottom: -8px;
+}
+
+.gs-shown p {
+  flex: 1;
+  font: 600 15px/1.3 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.gs-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.gs-group-head {
+  display: flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+  font: 700 18px/1.25 var(--fontFamily);
+  letter-spacing: -0.01em;
+}
+
+.gs-group-count {
+  color: var(--colorInkSecondary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
 }

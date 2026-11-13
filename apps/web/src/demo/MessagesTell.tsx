@@ -12,6 +12,7 @@ import {
   channelWord,
   filled,
   many,
+  reachedOfThread,
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
 import {
@@ -314,7 +315,7 @@ interface Item {
 
 /** The bell at a desk: sc-4331's batched replies, a message that missed people, and a change. */
 export function MessagesBell() {
-  const { act, focus, say, bell } = useInbox();
+  const { act, focus, say, bell, inbox } = useInbox();
   const navigate = useNavigate();
   const [open, setOpen] = useState(bell.takeFirst);
   const box = useRef<HTMLDivElement>(null);
@@ -373,7 +374,7 @@ export function MessagesBell() {
   function pick(key: string): void {
     setOpen(false);
     if (key === 'missed') {
-      act({ kind: 'reached', of: 'parking', thread: 'parking' });
+      act({ kind: 'reached', of: reachedOfThread('parking', inbox), thread: 'parking' });
       focus('heading');
     } else if (key === 'replies') {
       const since = lastLooked();

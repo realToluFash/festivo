@@ -19,6 +19,7 @@ export const DAYS = {
   today: '2026-11-03',
   sched: '2026-11-05',
   ends: '2026-11-07',
+  tooLate: '2026-10-31',
 };
 
 export type Where = 'page' | ChannelKey;
@@ -41,7 +42,10 @@ export type PersonKey =
   | 'lucia'
   | 'duboise'
   | 'rafael'
+  | 'olumide'
   | 'chidi'
+  | 'kemi'
+  | 'valentina'
   | 'ana'
   | 'hana'
   | 'mateo'
@@ -252,6 +256,13 @@ export interface ReachLine {
   reason?: string;
 }
 
+/** A mobile number on record: what a part costs to its country (sc-3928), and the time it is there now. */
+export interface Mobile {
+  perPart: number;
+  theirTime: string;
+  stopped?: boolean;
+}
+
 export interface NotReached {
   key: PersonKey;
   bounced?: string;
@@ -261,9 +272,10 @@ export interface NotReached {
   fixes: readonly string[];
   updated?: string;
   tellable?: boolean;
+  mobile?: Mobile;
 }
 
-const PAGE_LINE: ReachLine = { mark: 'none', word: W.theirPage, reason: W.notSeenYet };
+export const PAGE_LINE: ReachLine = { mark: 'none', word: W.theirPage, reason: W.notSeenYet };
 
 const bounced = (reason: string): readonly ReachLine[] => [
   { mark: 'bounced', word: say.where(CHANNEL_WORD.email, W.bounced), reason },
@@ -275,12 +287,12 @@ const UNCONFIRMED: readonly ReachLine[] = [
   { mark: 'none', word: CHANNEL_WORD.email, reason: W.noEmail },
   PAGE_LINE,
 ];
-const NEITHER: readonly ReachLine[] = [
+export const NEITHER: readonly ReachLine[] = [
   { mark: 'none', word: W.noEmail },
   { mark: 'none', word: W.noPhone },
   PAGE_LINE,
 ];
-const EMAIL_OUT: ReachLine = {
+export const EMAIL_OUT: ReachLine = {
   mark: 'optout',
   word: say.where(CHANNEL_WORD.email, W.notSent),
   reason: W.unsubscribed,
@@ -292,7 +304,16 @@ const SMS_OUT: ReachLine = {
 };
 
 export type GroupKey =
-  'inProgress' | 'bounced' | 'notConfirmed' | 'optedOut' | 'none' | 'cant' | 'reached';
+  | 'inProgress'
+  | 'held'
+  | 'bounced'
+  | 'failed'
+  | 'notConfirmed'
+  | 'optedOut'
+  | 'skipped'
+  | 'none'
+  | 'cant'
+  | 'reached';
 
 export interface ReachGroup {
   key: GroupKey;
@@ -492,13 +513,13 @@ export const SMS: Record<ToGroup, { reaches: number; noMobile: number; stopped: 
   notReplied: { reaches: 9, noMobile: 16, stopped: 0 },
 };
 
-export interface Mobile {
+export interface GuestMobile {
   name: string;
   phone: string;
   whatsApp: boolean;
 }
 
-const COMING_MOBILES: readonly Mobile[] = [
+const COMING_MOBILES: readonly GuestMobile[] = [
   { name: 'Valentina Restrepo', phone: '+57 310 555 0187', whatsApp: false },
   { name: 'Andrés Mejía', phone: '+57 300 555 0123', whatsApp: false },
   { name: 'Sofía Cárdenas', phone: '+57 315 555 0164', whatsApp: false },
@@ -508,14 +529,14 @@ const COMING_MOBILES: readonly Mobile[] = [
   { name: 'Amaka Eze', phone: '+44 7700 900318', whatsApp: false },
   { name: 'Priyanka Nair', phone: '+44 7700 900577', whatsApp: false },
 ];
-const DUBOISE: Mobile = {
+const DUBOISE: GuestMobile = {
   name: 'Duboise Akande',
   phone: WHATSAPP_NUMBERS.duboise ?? '',
   whatsApp: true,
 };
 
 /** Quiet hours' sample (sc-3946): the mobiles outside 09:00 to 20:00 at 09:41 London time, and a few inside; the rest are inside. */
-export const MOBILES: Record<ToGroup, readonly Mobile[]> = {
+export const MOBILES: Record<ToGroup, readonly GuestMobile[]> = {
   all: [...COMING_MOBILES, DUBOISE],
   coming: COMING_MOBILES,
   notReplied: [DUBOISE],
@@ -764,6 +785,9 @@ export const SCHEDULE_AT = { date: DAYS.sched, time: '09:00' };
 export const EVENT_ENDS = { at: '2026-11-07T15:00:00Z', date: DAYS.ends, time: '15:00' };
 export const READER_NOW = '2026-11-03T09:41:00Z';
 export const CANCELLED_AT = '09:46';
+/** sc-3963: when the event was called off, so Soirely cancelled the scheduled message. */
+export const FINISHED_AT = '09:30';
+export const SOIRELY = 'Soirely';
 export const FOLLOW_UP = 'Also: the car park closes at 23:30, so plan your way home.';
 
 export const FIXED_ADDRESS = 'tomas.ferreira@gmail.com';

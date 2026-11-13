@@ -17,6 +17,7 @@ import { focusWhenFree, useDeskSplit } from '../layers.ts';
 import { ClaimDialog, InviteDialog, RecoveryAsk, RequestDialog } from './MembersDialogs.tsx';
 import { PersonPage, RoleDialog } from './MembersPerson.tsx';
 import { At320 } from './WrapAction.tsx';
+import './members.css';
 import {
   approvalRoles,
   ALSO_MEMBER,
@@ -39,6 +40,7 @@ import {
   membersCard,
   type MembersDialog,
   membersStart,
+  NOT_DELIVERED,
   organisationOf,
   at320,
   type Notice,
@@ -68,13 +70,13 @@ import {
   BackRow,
   Head,
   Menu,
+  RowWords,
   Tag,
   TextAction,
   TitleRow,
 } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import {
-  InvitationLine,
   MemberRow,
   MembersCardView,
   MembersEmpty,
@@ -639,22 +641,43 @@ function InvitationRows({ invitations, people, viewer, say, onRevoke, onAgain }:
         const row = invitationRow(invitation, people, viewer, say);
 
         return (
-          <InvitationLine
-            key={invitation.email}
-            email={invitation.email}
-            ended={row.tag ?? undefined}
-            lines={[row.line, row.dates]}
-          >
+          <li key={invitation.email} className="desk-row">
+            <RowWords
+              title={invitation.email}
+              tag={row.tag == null ? undefined : <Tag kind="ended" word={row.tag} />}
+              lines={[
+                row.line,
+                row.notDelivered ? (
+                  <NotDeliveredDates ended={row.ended} />
+                ) : (
+                  `${row.sent} · ${row.ended}`
+                ),
+              ]}
+            />
             {viewer.manages &&
               (invitation.status === 'pending' ? (
                 <TextAction label="Revoke" red onClick={() => onRevoke(invitation.email)} />
               ) : (
                 <TextAction label="Invite again" onClick={() => onAgain(invitation)} />
               ))}
-          </InvitationLine>
+          </li>
         );
       })}
     </ul>
+  );
+}
+
+/** The broken mark before Not delivered, as a field error has it, so the reading is a shape with its word (sc-46109). */
+function NotDeliveredDates({ ended }: { ended: string }) {
+  return (
+    <span className="not-delivered">
+      <span className="mark mark-broken" aria-hidden="true">
+        ✕
+      </span>
+      <span>
+        <span className="not-delivered-word">{NOT_DELIVERED}</span> · {ended}
+      </span>
+    </span>
   );
 }
 
