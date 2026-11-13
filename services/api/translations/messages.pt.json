@@ -127,7 +127,7 @@
     "validation.guest_companions_too_many": "Um convidado pode trazer no máximo 10 acompanhantes.",
     "guest.already_listed": "{name} já está na lista",
     "guest.replies_closed": "O prazo de resposta terminou. Se algo mudou, contacte quem organiza o evento.",
-    "validation.guest_answer_unknown": "Escolha \"Vem\", \"Não vem\" ou \"Por confirmar\".",
+    "validation.guest_answer_unknown": "Escolha «Vem», «Não vem» ou «Por confirmar».",
     "event.currency_in_use": "A moeda não pode ser alterada depois de haver montantes registados neste evento.",
     "event.state_invalid": "O estado atual deste evento não o permite.",
     "event.concluded": "Este evento já terminou, por isso não pode ser publicado. Altere primeiro as datas.",
