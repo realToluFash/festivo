@@ -17,6 +17,16 @@ export function settleMs(os: string): number {
   return os === 'android' ? TALKBACK_SETTLE_MS : 0;
 }
 
+// TalkBack's default rate says about fifteen characters a second, in each of the four languages; this errs slow.
+const SPOKEN_MS_PER_CHARACTER = 70;
+
+/** How long after it is shown a message is said in full on `os`: TalkBack cuts off what it is saying as its focus moves, so a move that follows the message waits this long (sc-43907). */
+export function saidInFullMs(os: string, words: string): number {
+  if (os !== 'android') return 0;
+
+  return TALKBACK_SETTLE_MS + words.length * SPOKEN_MS_PER_CHARACTER;
+}
+
 export interface HandOver {
   words: string;
   /** VoiceOver waits for what it is saying to finish; TalkBack has no queue to choose. */
