@@ -183,17 +183,17 @@ describe('the words and dates', () => {
     expect(en.messageCount(1042)).toBe('1,042 of 1,000 characters');
   });
 
-  it('writes French as the board does: main’s, #5535’s, and the bracketed proposals', () => {
+  it('writes French as the product does, and the bracketed proposals where it has none', () => {
     const fr = wordsFor('fr');
 
     expect(fr.invited).toBe('Vous avez une invitation');
     expect(wordsFor('es').invited).toBe('Tiene una invitación');
     expect(wordsFor('pt').invited).toBe('Tem um convite');
-    expect(fr.yourAnswer).toBe('[Votre réponse]');
+    expect(fr.yourAnswer).toBe('Votre réponse');
     expect(fr.replyBy(dayOf('2026-10-30', 'fr'))).toBe(
       '[Merci de répondre avant le vendredi 30 octobre. Vous pourrez modifier votre réponse d’ici là.]',
     );
-    expect(fr.tell).toBe('Vous n’êtes pas Maria Fernanda Albuquerque Santos ? Dites-le-nous');
+    expect(fr.tell).toBe('Vous n’êtes pas Maria Fernanda Albuquerque Santos ? Prévenez-nous');
     expect(fr.hosts).toBe('Adaeze Obi et Tunde Bakare');
     expect(fr.languageCurrent('Français')).toMatch(/^Langue\s:\sFrançais$/u);
   });
@@ -215,7 +215,7 @@ describe('the words and dates', () => {
     expect(en.answered('coming', day)).toBe('You answered Coming on Tuesday, October 27.');
     expect(en.answered('notComing', day)).toBe('You answered Not coming on Tuesday, October 27.');
     expect(wordsFor('fr').answered('notComing', dayOf('2026-10-27', 'fr'))).toBe(
-      '[Vous avez répondu Absent le mardi 27 octobre.]',
+      'Vous avez répondu « Je ne viens pas » le mardi 27 octobre.',
     );
   });
 

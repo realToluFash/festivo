@@ -3,14 +3,20 @@ import { INVITATION_NOTE, LONG_NOTE } from './guest.ts';
 import { type Guest, WEDDING, dayOf, inChoice, sampleGuests } from './guests.ts';
 import { GW } from './guestsWords.ts';
 import {
+  type Category,
   type Channel,
   type Ticks,
   type Untellable,
+  type WhatsAppInviteOf,
   EVENT_NAME,
   HOSTS,
   INVITE,
+  creditsLine,
+  reachWords,
+  whatsAppCreditsIn,
 } from './messages.ts';
-import { IW } from './messagesInviteWords.ts';
+import { IW, WA_INVITATION, WA_INVITE_STATES } from './messagesInviteWords.ts';
+import { type Waits, waitsOf } from './messagesWaits.ts';
 import {
   type Audience,
   type Condition,
@@ -21,7 +27,7 @@ import {
   whoMatches,
 } from './messagesTo.ts';
 import { MW } from './messagesWords.ts';
-import { type SmsAbout, REPLY_BY, inviteSmsOf, oneGuestOf } from './inviteSms.ts';
+import { type SmsAbout, REPLY_BY, greetingOf, inviteSmsOf, oneGuestOf } from './inviteSms.ts';
 import { type Text, textsCredits } from './smsCredits.ts';
 
 /** Send invitations from the composer (sc-3971): who an invitation goes to, who already has one, who it cannot reach, and the note. */
@@ -49,6 +55,13 @@ const COLLATOR = new Intl.Collator('en', { sensitivity: 'base' });
 export const NOTE_MOST = 10_000;
 export const INVITE_TICKS: Ticks = { email: true, sms: true, whatsApp: false };
 export const INVITE_CHANNELS = ['email', 'sms'] as const;
+const WA_CHANNELS = ['email', 'sms', 'whatsApp'] as const;
+
+export function inviteChannelsOf(wa: Category | undefined): readonly InviteChannel[] {
+  return wa == null ? INVITE_CHANNELS : WA_CHANNELS;
+}
+
+export type InviteChannel = (typeof WA_CHANNELS)[number];
 export const NOTE = INVITATION_NOTE.words;
 export const TOO_LONG_NOTE = Array<string>(Math.ceil(NOTE_MOST / LONG_NOTE.words.length) + 1)
   .fill(LONG_NOTE.words)
@@ -65,6 +78,45 @@ function weddingGuest(id: string): OneGuest {
   if (found == null) throw new Error(`No guest ${id} on the wedding`);
 
   return oneGuestOf(found);
+}
+
+type Consent = 'agreed' | 'none' | 'stopped';
+
+interface WaSample {
+  country: string;
+  consent: Consent;
+  noEmail?: true;
+  language?: string;
+}
+
+const WA_SAMPLE: Readonly<Record<string, WaSample>> = {
+  'chuka-nwankwo': { country: 'NG', consent: 'agreed' },
+  'dami-oladipo': { country: 'NG', consent: 'agreed', language: 'fr' },
+  'femi-ogundipe': { country: 'NG', consent: 'agreed' },
+  'catarina-reis': { country: 'BR', consent: 'agreed', noEmail: true, language: 'pt' },
+  'noor-rahman': { country: 'GB', consent: 'agreed', language: 'es' },
+  'kenji-watanabe': { country: 'US', consent: 'agreed' },
+  'lina-saleh': { country: 'US', consent: 'agreed' },
+  yusuf: { country: 'NG', consent: 'none' },
+  'patrice-leroy': { country: 'FR', consent: 'none' },
+  'elif-kaya': { country: 'GB', consent: 'stopped' },
+};
+
+function waSampleOf(guest: OneGuest, wa: Category | undefined): WaSample | null {
+  return wa == null ? null : (WA_SAMPLE[guest.id] ?? null);
+}
+
+/** The guest as the WhatsApp states have them: a mobile number, and Catarina reached by it alone. */
+function withWhatsApp(guest: OneGuest, wa: Category | undefined): OneGuest {
+  const sample = waSampleOf(guest, wa);
+
+  return sample == null
+    ? guest
+    : { ...guest, mobile: true, email: guest.email && sample.noEmail !== true };
+}
+
+function overlaid(guests: readonly OneGuest[], wa: Category | undefined): readonly OneGuest[] {
+  return wa == null ? guests : guests.map((guest) => withWhatsApp(guest, wa));
 }
 
 const INVITED_GUESTS: readonly OneGuest[] = WEDDING_GUESTS.filter((guest) =>
@@ -113,10 +165,15 @@ export function noteRefusal(note: string): string | null {
   return noteTooLong(note) ? iw.filled(IW.noteTooLong, { count: NOTE_MOST }) : null;
 }
 
-export function previewPeople(audience: Audience, groups: readonly Group[]): readonly OneGuest[] {
+export function previewPeople(
+  audience: Audience,
+  groups: readonly Group[],
+  wa?: Category,
+): readonly OneGuest[] {
   if (audience.kind === 'guest') return [audience.guest];
-  if (audience.kind === 'all') return [oneGuestOf(WEDDING_GUESTS[0] as Guest), ...FOURTEEN];
-  if (onlyNotInvited(audience.conditions)) return FOURTEEN;
+  if (audience.kind === 'all')
+    return [oneGuestOf(WEDDING_GUESTS[0] as Guest), ...overlaid(FOURTEEN, wa)];
+  if (onlyNotInvited(audience.conditions)) return overlaid(FOURTEEN, wa);
 
   return whoMatches(audience.conditions, groups).slice(0, 5).map(sampleOne);
 }
@@ -136,8 +193,10 @@ function sampleOne(guest: SampleGuest): OneGuest {
   };
 }
 
-function weddingText(guest: OneGuest): Text {
-  const country = WEDDING_GUESTS.find((one) => one.id === guest.id)?.phone?.country;
+function weddingText(guest: OneGuest, wa: Category | undefined): Text {
+  const country =
+    waSampleOf(guest, wa)?.country ??
+    WEDDING_GUESTS.find((one) => one.id === guest.id)?.phone?.country;
 
   if (country == null) throw new Error(`No number for ${guest.name} on the wedding`);
 
@@ -152,7 +211,15 @@ interface Members {
   counted: boolean;
 }
 
-function membersOf(audience: Audience, groups: readonly Group[]): Members {
+function membersOf(audience: Audience, groups: readonly Group[], wa?: Category): Members {
+  const members = ownMembers(audience, groups);
+
+  return wa == null
+    ? members
+    : { ...members, fresh: overlaid(members.fresh, wa), invited: overlaid(members.invited, wa) };
+}
+
+function ownMembers(audience: Audience, groups: readonly Group[]): Members {
   if (audience.kind === 'guest') {
     const invited = audience.guest.invited != null;
 
@@ -197,11 +264,16 @@ export interface InviteCheck {
   named: readonly Untellable[];
   alreadyAll: readonly Untellable[];
   choose: boolean;
-  pills: readonly { channel: 'email' | 'sms'; count: number }[];
+  pills: readonly { channel: InviteChannel; count: number }[];
   cant: number;
   cantNames: readonly Untellable[];
   cantAll: readonly Untellable[];
   credits: string | null;
+  /** sc-3950's reach line and sc-3954's instead line, while WhatsApp is ticked (sc-45251). */
+  whatsApp: string | null;
+  instead: string | null;
+  /** Too few credits for the WhatsApp invitations (sc-3963): what waits, and email going either way. */
+  waits: Waits | null;
 }
 
 export interface InviteRefusal {
@@ -214,15 +286,87 @@ export interface InviteRefusal {
   cantAll: readonly Untellable[];
 }
 
-function whyNot(guest: OneGuest, ticks: Ticks): string[] {
+/** WhatsApp's own reason it cannot go to them; US numbers only while the template is marketing (pm #45460). */
+function notByWhatsApp(guest: OneGuest, wa: Category): string | null {
+  const sample = waSampleOf(guest, wa);
+
+  if (!guest.mobile) return null;
+  if (sample == null || sample.consent === 'none') return MW.hasNotAgreedWhatsApp;
+  if (sample.consent === 'stopped') return MW.stoppedWhatsApp;
+
+  return wa === 'marketing' && sample.country === 'US' ? MW.hasUsNumber : null;
+}
+
+/** How each channel goes to one guest: WhatsApp in place of a text, never both. */
+function byOf(
+  guest: OneGuest,
+  ticks: Ticks,
+  wa: Category | undefined,
+): Record<InviteChannel, boolean> {
+  const whatsApp = wa != null && ticks.whatsApp && guest.mobile && notByWhatsApp(guest, wa) == null;
+
+  return {
+    email: ticks.email && guest.email,
+    sms: ticks.sms && guest.mobile && !whatsApp,
+    whatsApp,
+  };
+}
+
+export function goesByWhatsApp(guest: OneGuest, ticks: Ticks, wa?: Category): boolean {
+  return byOf(guest, ticks, wa).whatsApp;
+}
+
+export function goesBySms(guest: OneGuest, ticks: Ticks, wa?: Category): boolean {
+  return byOf(guest, ticks, wa).sms;
+}
+
+function whyNot(guest: OneGuest, ticks: Ticks, wa?: Category): string[] {
+  const notWa = wa != null && ticks.whatsApp ? notByWhatsApp(guest, wa) : null;
+
   return [
     ...(guest.email ? [] : [MW.noEmail]),
     ...(guest.mobile ? (ticks.sms ? [] : [MW.smsIsOff]) : [MW.noPhone]),
+    ...(notWa == null ? [] : [notWa]),
   ];
 }
 
-function reaches(guest: OneGuest, ticks: Ticks): boolean {
-  return (guest.email && ticks.email) || (guest.mobile && ticks.sms);
+function reaches(guest: OneGuest, ticks: Ticks, wa?: Category): boolean {
+  const by = byOf(guest, ticks, wa);
+
+  return by.email || by.sms || by.whatsApp;
+}
+
+export interface InviteReach {
+  whatsApp: string | null;
+  instead: string | null;
+}
+
+function reachOf(people: readonly OneGuest[], ticks: Ticks, wa: Category | undefined): InviteReach {
+  if (wa == null || !ticks.whatsApp) return { whatsApp: null, instead: null };
+
+  const why = (word: string) => people.filter((one) => notByWhatsApp(one, wa) === word).length;
+  const by = people.filter((one) => byOf(one, ticks, wa).whatsApp).length;
+
+  return {
+    whatsApp: reachWords({
+      reaches: by,
+      of: people.length,
+      noMobile: people.filter((one) => !one.mobile).length,
+      stopped: why(MW.stoppedWhatsApp),
+      notAgreed: why(MW.hasNotAgreedWhatsApp),
+      usNumbers: why(MW.hasUsNumber),
+    }),
+    instead: ticks.sms && by > 0 ? mw.many('insteadOfSms', by) : null,
+  };
+}
+
+export function inviteReachOf(
+  audience: Audience,
+  wa: Category | undefined,
+  ticks: Ticks,
+  groups: readonly Group[] = [],
+): InviteReach {
+  return reachOf(membersOf(audience, groups, wa).fresh, ticks, wa);
 }
 
 /** The check before an invitation goes, or why it cannot: the note first, then reach (sc-3971). */
@@ -233,21 +377,22 @@ export function inviteCheckOf(
   counted: Counted,
   balance: number,
   groups: readonly Group[] = [],
+  wa?: Category,
 ): InviteCheck | InviteRefusal {
-  const members = membersOf(audience, groups);
+  const members = membersOf(audience, groups, wa);
   const everyone = again || members.fresh.length === 0;
   const individuals =
     everyone && !members.counted ? [...members.invited, ...members.fresh] : members.fresh;
   const base = everyone && members.counted && members.already > 0 ? counted : null;
   const count = (everyone ? members.already : 0) + members.fresh.length;
-  const on = INVITE_CHANNELS.filter((channel) => ticks[channel]);
-  const people = (channel: 'email' | 'sms') =>
-    individuals.filter((guest) => (channel === 'email' ? guest.email : guest.mobile)).length +
+  const on = inviteChannelsOf(wa).filter((channel) => ticks[channel]);
+  const people = (channel: InviteChannel) =>
+    individuals.filter((guest) => byOf(guest, ticks, wa)[channel]).length +
     (base?.counts[channel] ?? 0);
-  const cantPeople = individuals.filter((guest) => !reaches(guest, ticks));
+  const cantPeople = individuals.filter((guest) => !reaches(guest, ticks, wa));
   const cantAll = [
     ...(base?.names ?? []),
-    ...cantPeople.map((guest) => ({ name: guest.name, why: whyNot(guest, ticks) })),
+    ...cantPeople.map((guest) => ({ name: guest.name, why: whyNot(guest, ticks, wa) })),
   ];
   const cantNames = cantAll.slice(0, 2);
   const alreadyAll = members.invited.map((guest) => ({
@@ -267,12 +412,23 @@ export function inviteCheckOf(
       cantAll,
     };
 
-  const texted = individuals.filter((guest) => guest.mobile);
+  const texted = individuals.filter((guest) => byOf(guest, ticks, wa).sms);
   const credits = !ticks.sms
     ? 0
     : members.counted
       ? texted.length + (base?.counts.sms ?? 0)
-      : textsCredits(texted.map(weddingText));
+      : textsCredits(texted.map((guest) => weddingText(guest, wa)));
+  const messages =
+    wa == null
+      ? 0
+      : individuals
+          .filter((guest) => byOf(guest, ticks, wa).whatsApp)
+          .reduce(
+            (sum, guest) => sum + whatsAppCreditsIn(waSampleOf(guest, wa)?.country ?? '', wa),
+            0,
+          );
+  const pills = on.map((channel) => ({ channel, count: people(channel) }));
+  const short = messages > 0 && credits + messages > balance;
 
   return {
     kind: 'check',
@@ -281,16 +437,18 @@ export function inviteCheckOf(
     named: alreadyAll.slice(0, 2),
     alreadyAll,
     choose: members.already > 0 && members.fresh.length > 0,
-    pills: on.map((channel) => ({ channel, count: people(channel) })),
+    pills,
     cant: on.length === 0 ? 0 : cant,
     cantNames: on.length === 0 ? [] : cantNames,
     cantAll: on.length === 0 ? [] : cantAll,
     credits:
-      on.length === 0
+      on.length === 0 || short
         ? null
-        : credits === 0
+        : credits + messages === 0
           ? MW.emailNoCredits
-          : `${mw.many('textsUse', credits)} ${mw.filled(MW.creditsAfter, { count: balance - credits })}`,
+          : creditsLine(credits, messages, balance),
+    ...reachOf(individuals, ticks, wa),
+    waits: short ? waitsOf({ pills }, ticks) : null,
   };
 }
 
@@ -303,6 +461,9 @@ export interface InviteDraft {
   pressed: boolean;
   previewAs?: string;
   seeAll?: 'already' | 'cant';
+  /** sc-45251: WhatsApp is offered, Soirely's template approved in this category. */
+  wa?: Category;
+  noReplyBy?: boolean;
 }
 
 export interface InviteOut {
@@ -334,10 +495,45 @@ export const INVITE_STATES = [
   { key: 'inviteSent', name: 'Where it lands: its own Invitation conversation' },
 ] as const;
 
-export type InviteState = (typeof INVITE_STATES)[number]['key'];
+export type InviteState =
+  (typeof INVITE_STATES)[number]['key'] | (typeof WA_INVITE_STATES)[number]['key'];
 
 export function isInviteState(key: string): key is InviteState {
-  return INVITE_STATES.some((one) => one.key === key);
+  return [...INVITE_STATES, ...WA_INVITE_STATES].some((one) => one.key === key);
+}
+
+const EVENT_DAY = '2026-11-05T12:00:00Z';
+const REPLY_DAY = '2026-11-04T12:00:00Z';
+const WA_LOCALES = { en: 'en-GB', es: 'es-ES', fr: 'fr-FR', pt: 'pt-PT' } as const;
+
+type WaLanguage = keyof typeof WA_INVITATION;
+
+function isWaLanguage(code: string): code is WaLanguage {
+  return code in WA_INVITATION;
+}
+
+/** Soirely's WhatsApp template for one guest, in their language: Intl's long dates and the hosts joined as that language joins them. */
+export function whatsAppInvitationOf(
+  guest: OneGuest,
+  noReplyBy: boolean,
+): { lang: WaLanguage; lines: readonly string[]; button: string } {
+  const code = WA_SAMPLE[guest.id]?.language ?? 'en';
+  const lang = isWaLanguage(code) ? code : 'en';
+  const words = WA_INVITATION[lang];
+  const locale = WA_LOCALES[lang];
+  const long = (iso: string) =>
+    new Intl.DateTimeFormat(locale, { dateStyle: 'full', timeZone: 'UTC' }).format(new Date(iso));
+  const hosts = new Intl.ListFormat(locale, { type: 'conjunction' }).format(HOSTS.split(' and '));
+
+  return {
+    lang,
+    lines: [
+      mw.filled(words.dear, { greeting: greetingOf(guest) }),
+      mw.filled(words.invitation, { hosts, event: EVENT_NAME, date: long(EVENT_DAY) }),
+      noReplyBy ? words.noDate : mw.filled(words.replyBy, { replyBy: long(REPLY_DAY) }),
+    ],
+    button: words.button,
+  };
 }
 
 export type InviteSeed =
@@ -347,7 +543,10 @@ export type InviteSeed =
       step: 'write' | 'preview' | 'check';
       openTo: boolean;
       invite: InviteDraft;
+      ticks?: Ticks;
+      balance?: number;
     }
+  | { kind: 'reached'; of: WhatsAppInviteOf }
   | {
       kind: 'out';
       to: Audience;
@@ -358,6 +557,8 @@ export type InviteSeed =
 
 const NO_NOTE: InviteDraft = { note: '', again: false, wrong: false, pressed: false };
 const WITH_NOTE: InviteDraft = { ...NO_NOTE, note: NOTE };
+const ALL_THREE: Ticks = { email: true, sms: true, whatsApp: true };
+const NO_SMS: Ticks = { email: true, sms: false, whatsApp: true };
 
 export function inviteSeedOf(state: string | null): InviteSeed | null {
   const draft = (
@@ -367,7 +568,52 @@ export function inviteSeedOf(state: string | null): InviteSeed | null {
     openTo = false,
   ): InviteSeed => ({ kind: 'draft', to, step, openTo, invite });
 
+  const wa: InviteDraft = { ...NO_NOTE, wa: 'marketing' };
+  const utility: InviteDraft = { ...NO_NOTE, wa: 'utility' };
+  const ticked = (
+    step: 'write' | 'preview' | 'check',
+    invite: InviteDraft,
+    ticks: Ticks,
+    balance?: number,
+  ): InviteSeed => ({
+    kind: 'draft',
+    to: NOT_YET_INVITED,
+    step,
+    openTo: false,
+    invite,
+    ticks,
+    ...(balance == null ? {} : { balance }),
+  });
+
   switch (state) {
+    case 'inviteWhatsAppOffered':
+      return draft(NOT_YET_INVITED, 'write', wa);
+    case 'inviteWhatsApp':
+      return ticked('write', wa, NO_SMS);
+    case 'inviteWhatsAppUtility':
+      return ticked('write', utility, NO_SMS);
+    case 'inviteWhatsAppSms':
+      return ticked('write', wa, ALL_THREE);
+    case 'inviteCheckWhatsApp':
+      return ticked('check', wa, ALL_THREE);
+    case 'inviteCheckWhatsAppUtility':
+      return ticked('check', utility, ALL_THREE);
+    case 'inviteCheckWhatsAppWaits':
+      return ticked('check', wa, NO_SMS, 0);
+    case 'invitePreviewWhatsApp':
+      return ticked('preview', { ...wa, previewAs: 'chuka-nwankwo' }, ALL_THREE);
+    case 'invitePreviewWhatsAppNoDate':
+      return ticked('preview', { ...wa, previewAs: 'chuka-nwankwo', noReplyBy: true }, ALL_THREE);
+    case 'invitePreviewWhatsAppPt':
+      return ticked('preview', { ...wa, previewAs: 'catarina-reis' }, ALL_THREE);
+    case 'invitePreviewWhatsAppEs':
+      return ticked('preview', { ...wa, previewAs: 'noor-rahman' }, ALL_THREE);
+    case 'invitePreviewWhatsAppFr':
+      return ticked('preview', { ...wa, previewAs: 'dami-oladipo' }, ALL_THREE);
+    case 'invitedReachedWhatsApp':
+      return { kind: 'reached', of: 'whatsAppInvite' };
+    case 'invitedReachedWhatsAppNoSms':
+      return { kind: 'reached', of: 'whatsAppInviteNoSms' };
     case 'inviteWrite':
       return draft(NOT_YET_INVITED, 'write');
     case 'inviteTo':
@@ -389,6 +635,12 @@ export function inviteSeedOf(state: string | null): InviteSeed | null {
       return draft(NOT_YET_INVITED, 'preview', { ...WITH_NOTE, previewAs: 'bisi' });
     case 'invitePreviewSms':
       return draft(NOT_YET_INVITED, 'preview', { ...WITH_NOTE, previewAs: 'yusuf' });
+    case 'invitePreviewUnicode':
+      return draft(guestAudience('lucia'), 'preview', {
+        ...NO_NOTE,
+        again: true,
+        previewAs: 'lucia',
+      });
     case 'inviteCheck':
       return draft(NOT_YET_INVITED, 'check', WITH_NOTE);
     case 'inviteCheckSome':

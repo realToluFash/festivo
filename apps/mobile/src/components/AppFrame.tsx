@@ -470,21 +470,24 @@ export function AppFrame({
   const underTabs =
     floatingTabs && listUnderTabs && standIn == null ? phoneTabBarClearance(insets.bottom) : 0;
   const switchedRead = created?.takesFocus !== true;
+  // A body with its own top, as Today, draws it where its demo does, under its cover, while the frame says it once whatever the body shows (sc-44087, sc-46032).
+  const inBody = !framed;
+  // Today shows once its events have loaded, so the notice there takes focus as it shows, not as the walk closes (sc-46032).
+  const focusInBody = inBody && !switchedRead;
   const switchedWords =
     switched == null ? null : (
       <Notice
         tone="done"
         mark={tokens.marks.done.glyph}
         body={switched}
-        wordsRef={switchedRead ? undefined : createdWords}
+        wordsRef={switchedRead || inBody ? undefined : createdWords}
+        {...(focusInBody ? { answer: created, takesFocus: true, readMs: SETTLED_MS * 2 } : {})}
       />
     );
   const switchedStyle = ownTop ? styles.switchedUnderTitle : styles.created;
-  // A body with its own top, as Today, draws it where its demo does, while the frame says it once whatever the body shows (sc-44087).
-  const inBody = !framed && switchedRead;
   const switchedNotice =
     switched == null ? null : inBody ? (
-      <ReadOut words={switched} />
+      switchedRead && <ReadOut words={switched} />
     ) : switchedRead ? (
       <ReadOut style={switchedStyle} words={switched}>
         {switchedWords}
@@ -619,7 +622,10 @@ export function AppFrame({
             onPick={(id) => {
               closeSwitcher();
               if (id !== signedIn.organisation?.id || signedIn.pausedIn != null) {
-                switchOrganisation(id);
+                const name = signedIn.organisations.find((known) => known.id === id)?.name;
+                switchOrganisation(id, () => {
+                  if (name != null) setCreated({ name, takesFocus: false });
+                });
               }
             }}
             onCreate={() => {

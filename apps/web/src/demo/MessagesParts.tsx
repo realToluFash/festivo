@@ -79,11 +79,31 @@ export function Meta({ bits, end = false }: { bits: readonly Bit[]; end?: boolea
           <span className="mg-bit">
             {bit.where != null && <WhereGlyph where={bit.where} />}
             {bit.mark != null && <DeliveryMark kind={bit.mark} />}
+            {bit.clip === true && <Paperclip />}
             {bit.words}
           </span>
         </Fragment>
       ))}
     </p>
+  );
+}
+
+function Paperclip() {
+  return (
+    <svg
+      className="mg-clip"
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m21 11-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9" />
+    </svg>
   );
 }
 
@@ -255,7 +275,10 @@ export function ReachBar({ reach, size = 'small' }: { reach: Reach; size?: 'smal
 const BAR: Record<'reached' | Kind, string> = {
   reached: 'reached',
   inProgress: 'in-progress',
+  held: 'in-progress',
+  skipped: 'not-sent',
   bounced: 'bounced',
+  failed: 'bounced',
   notSent: 'not-sent',
   notConfirmed: 'not-confirmed',
   optedOut: 'opted-out',
@@ -266,7 +289,10 @@ const BAR: Record<'reached' | Kind, string> = {
 const LEGEND_MARK: Record<'reached' | Kind, Delivery> = {
   reached: 'delivered',
   inProgress: 'sending',
+  held: 'held',
+  skipped: 'notsent',
   bounced: 'bounced',
+  failed: 'bounced',
   notSent: 'notsent',
   notConfirmed: 'unconfirmed',
   optedOut: 'optout',

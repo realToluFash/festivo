@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { currentLocale } from '../i18n/index.ts';
 import { saidInFullMs } from '../kit/readOut.ts';
 import { fieldChecked, watchMovedOn } from './focusedField.ts';
+import { holdFocus } from './heldFocus.ts';
 import { ListPicker } from './ListPicker.tsx';
 import { SETTLED_MS } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
@@ -75,31 +76,45 @@ function flag(country: string): string {
   return String.fromCodePoint(...[...country].map((letter) => 0x1f1a5 + letter.charCodeAt(0)));
 }
 
-/** A refused Country is no text field: the keyboard closes and the screen reader lands on the picker. With `field`, that Field comes wholly into view: on New event that is any refusal the form focuses, a server's as well as a client check's, and the screen reader's move waits for the scroll to land. With `saidFirst`, the words read out with the refusal, it waits until they are said too, as TalkBack's move would cut them off (sc-43907). A field focused or a control taken meanwhile cancels the move, as does what this returns. */
+/** A refused Country is no text field: the keyboard closes and the screen reader lands on the picker. With `field`, that Field comes wholly into view: on New event that is any refusal the form focuses, a server's as well as a client check's, and the screen reader's move waits for the scroll to land. With `saidFirst`, the words read out with the refusal, on Android with a screen reader on the scroll waits until they are said: TalkBack's focus follows the scroll off the button onto whatever it lands on and reads that instead, and its move to the picker drops what was still queued (sc-43907). The move comes as the scroll lands, so TalkBack has no time to rest on what it lands on, or once it has settled when no Screen brings the Field, and is made again over the next second: TalkBack's own follow of the scroll can come after it and take its focus off the picker, and a move onto the picker it already holds says nothing. On iOS the Field scrolls at once and the move waits for both the scroll and the words, as VoiceOver keeps what it queued. A field focused or a control taken meanwhile cancels the scroll and the move, as does what this returns. */
 export function focusPicker(
   picker: RefObject<ViewInstance | null>,
   field?: RefObject<ViewInstance | null>,
   saidFirst?: string,
 ): () => void {
   Keyboard.dismiss();
-  if (field != null) fieldChecked(true, field.current);
-  const waitMs = Math.max(
-    field == null ? 0 : SETTLED_MS,
-    saidFirst == null ? 0 : saidInFullMs(Platform.OS, saidFirst),
-  );
-  if (waitMs === 0) {
+  if (field == null) {
     moveScreenReaderFocus(picker.current);
     return () => {};
   }
 
+  const saidMs = saidFirst == null ? 0 : saidInFullMs(Platform.OS, saidFirst);
   const watch = watchMovedOn(() => cancel());
   watch.settled();
-  const later = setTimeout(() => {
-    watch.stop();
+  let later: ReturnType<typeof setTimeout> | undefined;
+  let moved = false;
+  const held = holdFocus(() => moveScreenReaderFocus(picker.current), cancel);
+  const move = () => {
+    if (moved) return;
+    cancel();
     moveScreenReaderFocus(picker.current);
-  }, waitMs);
+  };
+  if (Platform.OS !== 'android') {
+    fieldChecked(true, field.current);
+    later = setTimeout(move, Math.max(SETTLED_MS, saidMs));
+    return cancel;
+  }
+
+  const scroll = () => {
+    later = setTimeout(held.hold, SETTLED_MS);
+    fieldChecked(true, field.current, held.hold);
+  };
+  if (saidMs === 0) scroll();
+  else later = setTimeout(scroll, saidMs);
   function cancel(): void {
+    moved = true;
     clearTimeout(later);
+    held.stop();
     watch.stop();
   }
 

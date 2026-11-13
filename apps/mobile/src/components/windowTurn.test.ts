@@ -244,10 +244,11 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     const pill = read('OrgPill.tsx');
 
     expect(pill).toContain('{...quietTap(onPress, expanded)}');
-    expect(pill).toContain(
-      "if (Platform.OS !== 'android' || onPress == null || expanded == null) return {};",
+    expect(pill).toContain("if (Platform.OS !== 'android' || expanded == null) return {};");
+    expect(pill).toContain('return pressOnDoubleTap(onPress);');
+    expect(read('screenReaderFocus.ts')).toContain(
+      "if (event.nativeEvent.actionName === 'activate') onPress();",
     );
-    expect(pill).toContain("if (event.nativeEvent.actionName === 'activate') onPress();");
   });
 
   it('gives Today’s own opener the same quiet double tap (qa2 #44464)', () => {
@@ -258,8 +259,8 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     const walk = read('CreateWalkWindow.tsx');
 
     expect(walk).toContain("const talkBack = Platform.OS === 'android' && readerOn;");
-    expect(walk).toContain(
-      'const unnamed = useUnnamedWindow(talkBack && shown, onScreen, null, arriving);',
+    expect(walk).toMatch(
+      /const unnamed = useUnnamedWindow\(\s*talkBack && shown,\s*onScreen,\s*null,\s*phone \? WINDOW_ARRIVES_MS : arriving,\s*\);/,
     );
     expect(walk).toContain('onShow={() => setOnScreen(true)}');
     expect(walk).toMatch(/const behind = walk\.asking \|\| unnamed \?/);
@@ -274,6 +275,23 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
   it('raises the keys on Create an organisation’s field once shown, moving TalkBack’s focus only onto a field still focused (qa3 #45182)', () => {
     expect(read('CreateWalkWindow.tsx')).toMatch(
       /\/\/ .*\s+if \(input\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+raiseKeysOn\(input\);\s+\}, \[talkBack, onScreen, unnamed, opening\]\);/,
+    );
+  });
+
+  it('with TalkBack on, gives Create an organisation’s buttons and the tablet’s scrim no input focus to take from its field as it is revealed (qa2 #46600)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+    const parts = read('CreateWalkParts.tsx');
+
+    expect(walk.match(/<NavAction\s+takesFocus=\{!talkBack\}/g)).toHaveLength(3);
+    expect(walk.match(/<WalkButton\s+takesFocus=\{!talkBack\}/g)).toHaveLength(3);
+    expect(walk.match(/<(NavAction|WalkButton)\b/g)).toHaveLength(6);
+    expect(parts.match(/\{\.\.\.takingFocus\(takesFocus, /g)).toHaveLength(2);
+    expect(walk).toContain('{...takingFocus(!talkBack, creating ? undefined : cancel)}');
+  });
+
+  it('presses a button left without input focus from TalkBack’s double tap, which its click no longer reaches (lead, PR #2155)', () => {
+    expect(read('CreateWalkParts.tsx')).toContain(
+      'return { focusable: false, ...pressOnDoubleTap(onPress) };',
     );
   });
 

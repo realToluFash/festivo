@@ -25,6 +25,7 @@ export interface Bit {
   word: string;
   mark?: MarkKey;
   where?: Where;
+  clip?: boolean;
 }
 
 /** Under a bubble: where it is, who and when, and its state as a mark and a word. */
@@ -44,6 +45,7 @@ export function MetaLine({ bits, end = false }: { bits: readonly Bit[]; end?: bo
           )}
           {bit.where != null && <WhereMark where={bit.where} ink={INK2} />}
           {bit.mark != null && <DeliveryMark mark={bit.mark} side={13} />}
+          {bit.clip === true && <MessageGlyph name="clip" size={13} ink={INK2} />}
           <Text
             size={13}
             weight="medium"
@@ -70,7 +72,17 @@ export function DayRule({ text }: { text: string }) {
   );
 }
 
-export function GuestBubble({ text, where, when }: { text: string; where: Where; when: string }) {
+export function GuestBubble({
+  text,
+  where,
+  when,
+  more = [],
+}: {
+  text: string;
+  where: Where;
+  when: string;
+  more?: readonly Bit[];
+}) {
   const word =
     where === 'page' ? W.onTheirPage : { email: 'Email', sms: 'SMS', wa: 'WhatsApp' }[where];
 
@@ -83,7 +95,7 @@ export function GuestBubble({ text, where, when }: { text: string; where: Where;
           </Text>
         </View>
       </View>
-      <MetaLine bits={[{ word, where }, { word: when }]} />
+      <MetaLine bits={[{ word, where }, { word: when }, ...more]} />
     </View>
   );
 }

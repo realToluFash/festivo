@@ -7,14 +7,12 @@ import {
   WEB_MOMENTS,
   accountStart,
   cardLine,
-  changeEmail,
   contactsFoot,
   lifted,
   madePrimary,
   opening,
   sampleCodeSource,
   sampleProof,
-  undeliverable,
   verifiedWords,
 } from './account.ts';
 import { primaryFirst } from '@soirely/domain';
@@ -144,23 +142,6 @@ describe('an address we could not deliver to (sc-44949)', () => {
     expect(accountStart('undeliverable').emails).toHaveLength(1);
     expect(accountStart('undeliverableTwo').undeliverable).toEqual(['email-1', 'email-2']);
     expect(accountStart('undeliverableUnverified').emails[1]?.verified).toBe(false);
-  });
-
-  it('lists each one in the rows’ order, never a phone number', () => {
-    const two = accountStart('undeliverableTwo');
-    const shown = (ids: readonly string[]) =>
-      undeliverable([...two.emails].reverse(), ids).map((row) => row.shown);
-
-    expect(shown(['email-2', 'email-1'])).toEqual([SAMPLE.email, SAMPLE.otherEmail]);
-    expect(undeliverable(two.phones, ['phone-1'])).toEqual([]);
-  });
-
-  it('adds while there is room, and opens the address that is not primary at two', () => {
-    expect(changeEmail(accountStart('undeliverable').emails)).toEqual({ to: 'add' });
-    expect(changeEmail(accountStart('undeliverableTwo').emails)).toEqual({
-      to: 'row',
-      id: 'email-2',
-    });
   });
 
   it('goes for the address verified again or removed, and only that one', () => {

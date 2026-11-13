@@ -1,6 +1,7 @@
 import { LOCALES } from '@soirely/domain';
 
 import type { ReplyKind } from './GuestsWords.ts';
+import type { OptOuts } from './OptOuts.ts';
 import type { WhatsAppConsent } from './WhatsAppConsent.ts';
 
 /** The boards' sample (guests-a-spec.md §17), not spec: the wedding counted as Messaging B counts it. */
@@ -68,6 +69,7 @@ export interface SampleGuest {
   greetAs?: string | null;
   /** sc-3950: their WhatsApp consent with this organisation; none is Has not agreed to WhatsApp. */
   whatsApp?: WhatsAppConsent;
+  optOuts?: OptOuts;
   /** sc-1363: when a guest who answered Not sure yet will be, or was, asked again; Not sent: too late is none. */
   askAgain?: AskAgain | null;
 }

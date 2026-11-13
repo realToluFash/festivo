@@ -105,27 +105,8 @@ final readonly class AccessListener
             throw new ApiException(ErrorCode::OAuthOnlyUnlinked, 'access.provider_only_unlinked');
         }
 
-        if (null !== $permission && $grants->withholds($permission)) {
-            throw new ApiException(
-                ErrorCode::OrganisationTwoFactorRequired,
-                'access.two_factor_required',
-                [],
-                null,
-                [],
-                ['permission' => $permission->value],
-            );
-        }
-
-        if (null !== $permission && !$grants->holds($permission)) {
-            throw new ApiException(
-                ErrorCode::PermissionRequired,
-                'access.permission_required',
-                [],
-                null,
-                [],
-                ['permission' => $permission->value],
-                ['{permission}' => $permission->value],
-            );
+        if (null !== $permission) {
+            $grants->require($permission);
         }
     }
 

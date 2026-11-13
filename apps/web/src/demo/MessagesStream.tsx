@@ -20,6 +20,7 @@ import {
   outReach,
   outsIn,
   reachFrom,
+  reachedOfThread,
 } from './messages.ts';
 import { type Bit, useInbox } from './messagesContext.ts';
 import { IW, REPLY_BY } from './messagesInvite.ts';
@@ -110,6 +111,7 @@ function OutItem({ out, compact }: { out: Out; compact: boolean }) {
   const { act, focus, to } = useInbox();
   const reach = outReach(out, to.book.groups);
   const note = out.invite?.note.trim() ?? '';
+  const bare = (out.invite != null && note === '') || (out.change != null && out.body.length === 0);
 
   return (
     <>
@@ -125,12 +127,19 @@ function OutItem({ out, compact }: { out: Out; compact: boolean }) {
           bits={[{ words: MW.soirelysOwn }]}
         />
       )}
+      {out.change != null && (
+        <SoirelyCard
+          title={filled(MW.changedEvent, { event: EVENT_NAME })}
+          lines={[...out.change.lines, MW.openYourPage]}
+          bits={[{ words: MW.soirelysOwn }]}
+        />
+      )}
       <HostBubble
         subject={out.invite == null ? out.subject : filled(IW.noteFrom, { hosts: HOSTS })}
         body={out.invite == null ? <Words body={out.body} /> : note}
-        bits={out.invite != null && note === '' ? [] : stageBits(out, compact, to.book.groups)}
+        bits={bare ? [] : stageBits(out, compact, to.book.groups)}
         look={out.stage === 'failed' ? 'faded' : out.stage === 'countdown' ? 'arriving' : 'sent'}
-        bare={out.invite != null && note === ''}
+        bare={bare}
       >
         {out.stage === 'countdown' && (
           <Countdown
@@ -253,7 +262,7 @@ export function StreamItems({ thread }: { thread: ConvoId }) {
             <Receipt
               reach={reachFrom(PARKING_OF, PARKING_SEEN, inbox.unreached)}
               onWho={() => {
-                act({ kind: 'reached', of: 'parking', thread: 'parking' });
+                act({ kind: 'reached', of: reachedOfThread('parking', inbox), thread: 'parking' });
                 focus('heading');
               }}
             />

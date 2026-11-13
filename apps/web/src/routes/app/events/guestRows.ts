@@ -7,28 +7,9 @@ import {
   type NewGuest,
   type Violation,
 } from '@soirely/api-client';
-import { compareGuestNames, emailProblem, nameKey, phoneLengthProblem } from '@soirely/domain';
+import { emailProblem, nameKey, phoneLengthProblem } from '@soirely/domain';
 
 export type ReplyWord = Guest['reply'] | Companion['state'];
-
-export type ListRow =
-  | { kind: 'guest'; guest: Guest }
-  | { kind: 'companion'; host: Guest; companion: Companion; at: number };
-
-/** Guests by their whole name, each with their companions straight under them in the API's order. */
-export function rowsOf(guests: readonly Guest[]): ListRow[] {
-  return [...guests]
-    .sort((a, b) => compareGuestNames({ name: a.fullName }, { name: b.fullName }))
-    .flatMap((guest) => [
-      { kind: 'guest' as const, guest },
-      ...guest.companions.map((companion, at) => ({
-        kind: 'companion' as const,
-        host: guest,
-        companion,
-        at,
-      })),
-    ]);
-}
 
 export function blank(name: string | null): boolean {
   return name == null || name.trim() === '';

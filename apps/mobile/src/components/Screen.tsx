@@ -93,6 +93,8 @@ interface ScreenScrollView {
   origin: { current: number };
   /** The offset the native scroll view last reported. */
   offset: RefObject<number>;
+  /** Called with each offset the native scroll view reports. */
+  scrolled: Set<(y: number) => void>;
   /** Keeps the content at least its height now and `more`, until a scroll, a drag or TalkBack's own, brings the view's end back inside the content's real end, or, once no step is closing, the keys come up again or a field takes focus. */
   hold(more: number): void;
   /** Scrolls to `y` without letting the hold go, as a scroll a close makes for itself (sc-22357). */
@@ -397,13 +399,13 @@ function bringIntoView(
   line: ScreenReaderTarget | null,
   animated: boolean,
   { when = 'wholly', aboveKeys = false, keep = null, holding = false }: Sight = {},
-  measured: () => void = () => {},
+  measured: (found: { to: number | null } | null) => void = () => {},
 ): void {
   const view = scroll?.ref.current;
   const content = view?.getInnerViewRef();
   const scrollHost = view?.getNativeScrollRef();
   if (scroll == null || view == null || content == null || scrollHost == null || line == null)
-    return measured();
+    return measured(null);
 
   const kept = (then: (at: InContent | null) => void) =>
     keep == null
@@ -432,11 +434,11 @@ function bringIntoView(
           const to = settledOffsetKeeping(at, when, keptAt);
           if (to != null && holding) scroll.scrollHolding(to);
           else if (to != null) view.scrollTo({ y: to, animated });
-          measured();
+          measured({ to });
         }),
       );
     },
-    () => measured(),
+    () => measured(null),
   );
 }
 
@@ -444,9 +446,9 @@ function bringIntoView(
 function useCheckedFieldInView(scroll: ScreenScrollView): void {
   useEffect(() => {
     let cancel = () => {};
-    const unwatch = watchCheckedField((field) => {
+    const unwatch = watchCheckedField((field, inView) => {
       cancel();
-      cancel = followIntoView(scroll, () => field);
+      cancel = followIntoView(scroll, () => field, { inView });
     });
 
     return () => {
@@ -456,17 +458,47 @@ function useCheckedFieldInView(scroll: ScreenScrollView): void {
   }, [scroll]);
 }
 
-/** Brings `shown` wholly into sight above the keys now and once it has settled, and again as the keys rise (and fall, with `alsoOnHide`) or the scroll view resizes, until two settles have passed; says so through `answering` as settledAnswer does and returns what stops it sooner. */
+/** Calls `then` once the scroll has reached `to`, at once when there is no scroll to make; returns what stops waiting. */
+function whenLanded(scroll: ScreenScrollView, to: number | null, then: () => void): () => void {
+  if (to == null || scrollAsked(to, scroll.offset.current)) {
+    then();
+    return () => {};
+  }
+  const landing = (y: number) => {
+    if (!scrollAsked(to, y)) return;
+    stop();
+    then();
+  };
+  const stop = () => scroll.scrolled.delete(landing);
+  scroll.scrolled.add(landing);
+
+  return stop;
+}
+
+/** Brings `shown` wholly into sight above the keys now and once it has settled, and again as the keys rise (and fall, with `alsoOnHide`) or the scroll view resizes, until two settles have passed; says so through `answering` as settledAnswer does, calls `inView` as the first scroll lands, and returns what stops it sooner. */
 function followIntoView(
   scroll: ScreenScrollView,
   shown: () => ScreenReaderTarget | null,
   {
     alsoOnHide = false,
     answering = () => {},
-  }: { alsoOnHide?: boolean; answering?: (on: boolean) => void } = {},
+    inView,
+  }: {
+    alsoOnHide?: boolean;
+    answering?: (on: boolean) => void;
+    inView?: (() => void) | undefined;
+  } = {},
 ): () => void {
   const sight = { aboveKeys: true };
-  const bring = () => bringIntoView(scroll, shown(), true, sight);
+  let landing = inView;
+  let stopLanding = () => {};
+  const bring = () => {
+    const then = landing;
+    landing = undefined;
+    bringIntoView(scroll, shown(), true, sight, (found) => {
+      if (then != null && found != null) stopLanding = whenLanded(scroll, found.to, then);
+    });
+  };
   // Keys that rise, and Android's avoiding view shrinking under them, cover it afresh.
   const keys = [Keyboard.addListener('keyboardDidShow', bring)];
   if (alsoOnHide) keys.push(Keyboard.addListener('keyboardDidHide', bring));
@@ -478,7 +510,9 @@ function followIntoView(
 
   return settledAnswer(bring, SETTLED_MS, (on) => {
     answering(on);
-    if (!on) unwatch();
+    if (on) return;
+    unwatch();
+    stopLanding();
   });
 }
 
@@ -1047,6 +1081,7 @@ export function useScreenScrollView() {
     focusedGroup: new Set(),
     origin,
     offset,
+    scrolled: new Set(),
     answering: (on) => {
       answers.current += on ? 1 : -1;
     },
@@ -1087,6 +1122,7 @@ export function useScreenScrollView() {
   const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, layoutMeasurement } = event.nativeEvent;
     offset.current = contentOffset.y;
+    screenScroll.scrolled.forEach((scrolled) => scrolled(contentOffset.y));
     const asked = scrollAsked(askedTo.current, contentOffset.y);
     if (asked) askedTo.current = null;
     if (

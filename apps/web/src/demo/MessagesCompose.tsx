@@ -35,6 +35,7 @@ import {
   tokenWord,
   byName,
   insteadOf,
+  sampleOf,
   whatsAppLine,
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
@@ -45,6 +46,8 @@ import { Preview } from './MessagesPreview.tsx';
 import { PW } from './messagesPreviewWords.ts';
 import { StreamItems } from './MessagesStream.tsx';
 import { ToPopover } from './MessagesTo.tsx';
+import { SmsClock, SmsReach, SmsWait } from './MessagesSms.tsx';
+import { smsReachLine } from './messagesSms.ts';
 import { WaitBlock } from './MessagesWaits.tsx';
 import { waitsCheckOf, waitsOf } from './messagesWaits.ts';
 
@@ -149,6 +152,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
               ))}
             </div>
           </div>
+          <SmsReach line={draft.ticks.sms ? smsReachLine(sampleOf(draft.to)) : null} />
           {draft.ticks.whatsApp && <WhatsAppReach line={whatsAppLine(draft.to)} />}
           <Instead line={insteadOf(draft.to, draft.ticks)} />
         </header>
@@ -523,7 +527,7 @@ export function CheckCard({
   onLater: () => void;
 }) {
   const { inbox, act, focus, to } = useInbox();
-  const counted = checkOf(draft.to, draft.ticks, to.book.groups);
+  const counted = checkOf(draft.to, draft.ticks, to.book.groups, draft.hour);
   const check = inbox.balance === 0 ? waitsCheckOf(counted, draft.to, draft.ticks) : counted;
   const waits = inbox.balance === 0 ? waitsOf(check, draft.ticks) : null;
   const sentenceId = useId();
@@ -548,6 +552,7 @@ export function CheckCard({
           focus('send');
         }}
       />
+      <SmsClock hour={draft.hour} />
       <p id={sentenceId} className="mg-check-sentence" tabIndex={-1} data-focus="check">
         {many('cannotUndo', check.count)}
       </p>
@@ -660,6 +665,7 @@ function CheckBody({
           ))}
         </ul>
       )}
+      <SmsReach line={check.sms} />
       {check.whatsApp != null && <WhatsAppReach line={check.whatsApp} />}
       <Instead line={check.instead} />
       {check.smsOff != null && <p className="mg-cant-head">{check.smsOff}</p>}
@@ -682,6 +688,7 @@ function CheckBody({
         </div>
       )}
       {check.credits != null && <p className="mg-credits">{check.credits}</p>}
+      <SmsWait line={check.wait} />
       {waits != null && <WaitBlock waits={waits} />}
     </>
   );
@@ -700,7 +707,7 @@ export function ResendCard() {
   const none = check.count === 0;
 
   function back(): void {
-    act({ kind: 'reached', of: reachedOfThread(thread), thread });
+    act({ kind: 'reached', of: reachedOfThread(thread, inbox), thread });
     focus('resend');
   }
 

@@ -18,6 +18,8 @@ export const MAKE_LIVE_STATES = [
   'makeLiveOfferOne',
   'makeLiveOfferWaits',
   'makeLiveOfferPart',
+  'makeLiveOfferWhatsApp',
+  'makeLiveOfferWhatsAppOnly',
   'makeLiveOfferSending',
   'makeLiveOfferSent',
   'makeLiveOfferNotYet',
@@ -62,6 +64,8 @@ const SEEDS: Record<MakeLiveState, LiveSeed> = {
   makeLiveOfferOne: HOSTED_LIVE,
   makeLiveOfferWaits: HOSTED_LIVE,
   makeLiveOfferPart: HOSTED_LIVE,
+  makeLiveOfferWhatsApp: HOSTED_LIVE,
+  makeLiveOfferWhatsAppOnly: HOSTED_LIVE,
   makeLiveOfferSending: HOSTED_LIVE,
   makeLiveOfferSent: HOSTED_LIVE,
   makeLiveOfferNotYet: HOSTED_LIVE,
@@ -92,6 +96,8 @@ export interface Reach {
   texts: readonly number[];
   balance: number;
   maySend: boolean;
+  /** Each WhatsApp invitation sent in place of a text (sc-45251), at its number's country's rate. */
+  whatsApp: readonly number[];
 }
 
 const GSM_7 =
@@ -100,12 +106,37 @@ const GSM_7_TWICE = '^{}\\[~]|€';
 /** sc-1526's link as built: the address and a 256-bit token (#45622). */
 export const LINK_CHARS = 'https://soirely.com/i/'.length + Math.ceil(256 / 6);
 
+export function isGsm7(text: string): boolean {
+  return [...text].every((one) => GSM_7.includes(one) || GSM_7_TWICE.includes(one));
+}
+
+/** A text is sent in GSM-7 when every character is in its alphabet, else in UCS-2. */
+export function smsEncoding(text: string): 'GSM-7' | 'UCS-2' {
+  return isGsm7(text) ? 'GSM-7' : 'UCS-2';
+}
+
+const PLAIN_MARKS: Record<string, string> = {
+  '‘': "'",
+  '’': "'",
+  '“': '"',
+  '”': '"',
+  '–': '-',
+  '—': '-',
+  '…': '...',
+};
+
+/** Every text Soirely sends, as sent: typographic punctuation plain; a first text to a number ends on the STOP line. */
+export function asSent(written: string, first: boolean): string {
+  const plain = written.replace(/[‘’“”–—…]/gu, (one) => PLAIN_MARKS[one] ?? one);
+
+  return first ? `${plain}\n${LIVE.smsStop}` : plain;
+}
+
 /** GSM-7 to 160 characters, then 153 a part; any other character makes it UCS-2, 70 then 67. */
 export function smsParts(text: string): number {
   const chars = [...text];
-  const gsm = chars.every((one) => GSM_7.includes(one) || GSM_7_TWICE.includes(one));
 
-  if (!gsm) return chars.length <= 70 ? 1 : Math.ceil(chars.length / 67);
+  if (!isGsm7(text)) return chars.length <= 70 ? 1 : Math.ceil(chars.length / 67);
 
   const length = chars.reduce((sum, one) => sum + (GSM_7_TWICE.includes(one) ? 2 : 1), 0);
 
@@ -152,6 +183,22 @@ export function textCost({ phone, parts }: PricedText): number {
   return parts * PART_CREDITS[country];
 }
 
+export type Category = 'utility' | 'marketing';
+
+/** A sample of sc-3928's WhatsApp rates by the number's country; Meta's marketing rate does not reach US numbers. */
+const WHATSAPP_CREDITS: Partial<Record<PartCountry, Record<Category, number | null>>> = {
+  NG: { utility: 2, marketing: 10 },
+  BR: { utility: 2, marketing: 12 },
+  GB: { utility: 5, marketing: 12 },
+  US: { utility: 1, marketing: null },
+};
+
+export function whatsAppCost(phone: string, category: Category): number | null {
+  const country = countryOf(phone);
+
+  return country == null ? null : (WHATSAPP_CREDITS[country]?.[category] ?? null);
+}
+
 export function priceOf(texts: readonly PricedText[]): number {
   return texts.reduce((sum, one) => sum + textCost(one), 0);
 }
@@ -169,9 +216,9 @@ export function inviteTextOf(event: Invited, greeting: string): { text: string; 
     day: 'numeric',
     timeZone: event.timeZone,
   }).format(new Date(event.startsAt));
-  const text = sayLive.inviteText(hosts, greeting, event.name, date).replaceAll('’', "'");
+  const text = asSent(sayLive.inviteText(hosts, greeting, event.name, date), false);
 
-  return { text, parts: smsParts(`${text}${'x'.repeat(LINK_CHARS)}\n${LIVE.smsStop}`) };
+  return { text, parts: smsParts(asSent(`${text}${'x'.repeat(LINK_CHARS)}`, true)) };
 }
 
 export const OFFER_MOBILES: readonly { name: string; phone: string }[] = DRAFT_GUESTS.flatMap(
@@ -179,11 +226,27 @@ export const OFFER_MOBILES: readonly { name: string; phone: string }[] = DRAFT_G
 );
 export const OFFER_BALANCE = 250;
 
-/** The engagement's offer: Guests' Not yet invited less the companions, those no channel reaches, and the three mobiles in the order they are taken. */
-export function sampleReach(event: Invited): Reach {
+export interface WhatsAppAgreed {
+  category: Category;
+  agreed: readonly string[];
+}
+
+/** Who agreed to WhatsApp in the states that send it, and the category Meta approved the template in (sc-45251). */
+const WHATSAPP: Partial<Record<MakeLiveState, WhatsAppAgreed>> = {
+  makeLiveOfferWhatsApp: { category: 'marketing', agreed: ['Tola Bakare', 'Grace Mensah'] },
+  makeLiveOfferWhatsAppOnly: {
+    category: 'utility',
+    agreed: ['Tola Bakare', 'Grace Mensah', 'Ryan Cole'],
+  },
+};
+
+/** The engagement's offer: Guests' Not yet invited less the companions, those no channel reaches, and the three mobiles in the order they are taken, each by WhatsApp in place of the text where they agreed. */
+export function sampleReach(event: Invited, wa: WhatsAppAgreed | null = null): Reach {
   const companions = DRAFT_GUESTS.reduce((sum, one) => sum + one.companions.length, 0);
   const unreachable = DRAFT_GUESTS.filter((one) => one.email == null && one.phone == null).length;
-  const texts = OFFER_MOBILES.map(({ name, phone }) =>
+  const byWhatsApp = ({ name, phone }: { name: string; phone: string }) =>
+    wa != null && wa.agreed.includes(name) ? whatsAppCost(phone, wa.category) : null;
+  const texts = OFFER_MOBILES.filter((one) => byWhatsApp(one) == null).map(({ name, phone }) =>
     textCost({ phone, parts: inviteTextOf(event, name).parts }),
   );
 
@@ -193,6 +256,7 @@ export function sampleReach(event: Invited): Reach {
     texts,
     balance: OFFER_BALANCE,
     maySend: true,
+    whatsApp: OFFER_MOBILES.flatMap((one) => byWhatsApp(one) ?? []),
   };
 }
 
@@ -202,13 +266,15 @@ const NOBODY_ON_LIST: Reach = {
   texts: [],
   balance: OFFER_BALANCE,
   maySend: true,
+  whatsApp: [],
 };
 
 export function reachOf(state: string | null, event: SampleEvent): Reach {
   if (event.id !== MAKE_LIVE_EVENT) return NOBODY_ON_LIST;
-  const reach = sampleReach(event);
+  const live = makeLiveStateOf(state);
+  const reach = sampleReach(event, live == null ? null : (WHATSAPP[live] ?? null));
 
-  switch (makeLiveStateOf(state)) {
+  switch (live) {
     case 'makeLiveOfferEmail':
       return { ...reach, texts: [] };
     case 'makeLiveOfferOne':
@@ -236,8 +302,24 @@ export interface Credits {
   waiting: number;
 }
 
+/** The credits line's three forms (sc-45251): texts, texts and WhatsApp messages, or WhatsApp messages. */
+function usesKey(texts: number, whatsApp: number) {
+  if (whatsApp === 0) return 'textsUse' as const;
+
+  return texts === 0 ? ('whatsAppUse' as const) : ('textsAndWhatsAppUse' as const);
+}
+
 /** A text goes only when its whole cost fits in what is left; the rest wait, in sc-3963's lines. */
 export function creditsOf(reach: Reach): Credits {
+  const texts = reach.texts.reduce((sum, cost) => sum + cost, 0);
+  const whatsApp = reach.whatsApp.reduce((sum, cost) => sum + cost, 0);
+
+  if (whatsApp > 0 && reach.balance >= texts + whatsApp)
+    return {
+      line: `${liveCounted(usesKey(texts, whatsApp), texts + whatsApp)} ${sayLive.creditsAfter(formatCount(reach.balance - texts - whatsApp))}`,
+      waiting: 0,
+    };
+
   let left = reach.balance;
   const going = reach.texts.filter((cost) => {
     if (cost > left) return false;
@@ -295,6 +377,8 @@ const STARTS: Record<MakeLiveState, MakeLive> = {
   makeLiveOfferOne: LIVE_NOW(OFFER),
   makeLiveOfferWaits: LIVE_NOW(OFFER),
   makeLiveOfferPart: LIVE_NOW(OFFER),
+  makeLiveOfferWhatsApp: LIVE_NOW(OFFER),
+  makeLiveOfferWhatsAppOnly: LIVE_NOW(OFFER),
   makeLiveOfferSending: LIVE_NOW({ ...OFFER, sending: true }),
   makeLiveOfferSent: { turn: CLOSED, live: true, toast: 'queued' },
   makeLiveOfferNotYet: LIVE_NOW(CLOSED),

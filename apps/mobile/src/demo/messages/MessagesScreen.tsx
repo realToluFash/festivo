@@ -55,7 +55,7 @@ import {
   type ReachedOf,
   type RowId,
   anyOnItsWay,
-  badgeOf,
+  badgeShown,
   blankDraft,
   channelsWords,
   checkOf,
@@ -92,8 +92,8 @@ import { CHANNEL_WORD, type ChannelKey, W, say, sayStop } from './MessagesWords.
 import { waitsCheckOf } from './CheckWaits.ts';
 import { SW, refusalLine } from './ScheduledSave.ts';
 import { outsideToken, tokenText } from './TokenText.ts';
-import { type ReachPerson, fixKindOf, reachViewOf, resendOf } from './Reach.ts';
-import { ContactEdit, WhoReached } from './WhoReached.tsx';
+import { type ReachPerson, emailBounced, fixKindOf, reachViewOf, resendOf } from './Reach.ts';
+import { ContactEdit, type RowActions, WhoReached } from './WhoReached.tsx';
 import { type Anchored, InsertMenu, anchorAt } from './WriteItOnce.tsx';
 import {
   STOP_MS,
@@ -108,6 +108,8 @@ import {
   settled,
   stoppingOf,
 } from './StopWriting.ts';
+import { SHARED_NUMBER, readsOnly } from './NoticeStates.ts';
+import { NoManageCard } from './NoticeParts.tsx';
 import { StopActions, StopAsk } from './StopWritingParts.tsx';
 import { markLooked } from '../guests/ChangedSince.ts';
 
@@ -117,7 +119,7 @@ const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
 const ASK_AFTER_MS = 800;
 
 function reachedLine(m: Messages, of: ReachedOf, locale: string): string {
-  const told = channelsWords(SAMPLE_CHANNELS, locale);
+  const told = channelsWords(m.sample === 'reasons' ? ['email'] : SAMPLE_CHANNELS, locale);
   if (of === 'parking' || of === 'receipts')
     return [
       W.allGuests,
@@ -151,16 +153,13 @@ const CLOSED_WORDS: Record<Closed, string> = {
 };
 
 export function badgeFor(m: Messages): AreaBadge | null {
-  const badge = badgeOf(m);
-
-  return badge == null
-    ? null
-    : {
-        count: badge.total,
-        name: say.badgeName(badge.waiting, badge.notMatched),
-        words: say.counts(badge.waiting, badge.notMatched),
-      };
+  return badgeShown(m);
 }
+
+const SHARERS = [
+  { name: 'Kwame Mensah', line: SHARED_NUMBER },
+  { name: 'Abena Mensah', line: SHARED_NUMBER },
+] as const;
 
 /** Messages B in the event: the list and a conversation pushed over it on the phone, the two side by side on the iPad. */
 export function MessagesScreen({
@@ -225,7 +224,8 @@ export function MessagesScreen({
   const caret = useRef<number | null>(null);
   const focusBody = useRef(start.keys);
   const focusOver = useRef(m.draft?.over[0] ?? null);
-  const closed = m.closed == null ? null : CLOSED_WORDS[m.closed];
+  const reading = readsOnly(m);
+  const closed = m.closed == null || reading ? null : CLOSED_WORDS[m.closed];
   const [typed, setTyped] = useState<Partial<Record<GuestKey, string>>>(m.typed);
   const [toAt, setToAt] = useState<Anchor | null>(null);
   const [insertAt, setInsertAt] = useState<Anchored | null>(null);
@@ -238,7 +238,8 @@ export function MessagesScreen({
       key: person?.key ?? ('tomas' as const),
       how: 'fixEmail' as FixKind,
       name: person?.name ?? '',
-      bounced: person?.bounced ?? '',
+      was: person?.bounced ?? '',
+      bounced: person == null ? false : emailBounced(person),
       start: start.fix ? FIXED_ADDRESS : (person?.bounced ?? ''),
     };
   });
@@ -384,7 +385,7 @@ export function MessagesScreen({
     else dispatch({ type: 'open', open: id });
   };
   const onNew = (picking: boolean) => {
-    if (m.closed != null) return;
+    if (m.closed != null || reading) return;
     dispatch({ type: 'newMessage' });
     focusBody.current = !picking;
     if (picking) dispatch({ type: 'picking', open: true });
@@ -581,7 +582,10 @@ export function MessagesScreen({
         onNew(false);
       }}
       onTell={() => dispatch({ type: 'telling', open: true })}
-      onDismiss={() => dispatch({ type: 'dismissUntold' })}
+      onDismiss={() => {
+        dispatch({ type: 'dismissUntold' });
+        dispatch({ type: 'told', words: W.dismissed });
+      }}
       closed={closed}
     />
   );
@@ -595,6 +599,25 @@ export function MessagesScreen({
     dispatch({ type: 'notNowFor', key: person.key });
     focusPerson(person);
   };
+  const focusRef = (key: string) =>
+    setTimeout(() => moveScreenReaderFocus(refs.current[key] ?? null), 350);
+  const rowActions: RowActions = {
+    onFix: (person, fixing) => fixPerson(person, fixing),
+    onSendAgain: sendAgain,
+    onNotNow: notNow,
+    onTrySms: (person) => {
+      dispatch({ type: 'trySms', key: person.key });
+      focusRef(`${person.key}.trySmsOpen`);
+    },
+    onSendBySms: (person) => {
+      dispatch({ type: 'sendBySms', key: person.key });
+      setTimeout(() => moveScreenReaderFocus(reachedHeadRef.current), 350);
+    },
+    onCancelSms: (person) => {
+      dispatch({ type: 'cancelTrySms' });
+      focusRef(`${person.key}.trySms`);
+    },
+  };
   const fixPerson = (person: ReachPerson, fixing: string) => {
     from(`${person.key}.${fixing}`);
     const how = fixKindOf(fixing);
@@ -603,7 +626,8 @@ export function MessagesScreen({
         key: person.key,
         how,
         name: person.name,
-        bounced: person.bounced ?? '',
+        was: person.bounced ?? '',
+        bounced: emailBounced(person),
         start: how === 'fixEmail' ? (person.bounced ?? '') : '',
       });
       dispatch({ type: 'fixing', open: true });
@@ -633,8 +657,7 @@ export function MessagesScreen({
     <WhoReached
       view={reachViewOf(m, of)}
       headRef={reachedHeadRef}
-      onSendAgain={sendAgain}
-      onNotNow={notNow}
+      actions={rowActions}
       closed={closed}
       head={
         <>
@@ -644,7 +667,6 @@ export function MessagesScreen({
       }
       refFor={refFor}
       bottom={bottom}
-      onFix={fixPerson}
       onFilter={openFilter}
       onShowNotReached={() => dispatch({ type: 'filter', filter: 'notReached' })}
       onResend={() => resendFrom(of)}
@@ -691,6 +713,7 @@ export function MessagesScreen({
         open={m.fixing}
         how={fix.how}
         name={fix.name}
+        was={fix.was}
         bounced={fix.bounced}
         start={fix.start}
         opener={openerRef}
@@ -728,9 +751,18 @@ export function MessagesScreen({
         phone={phone}
         address={GUESTS.unknown.head}
         opener={openerRef}
+        {...(m.notice?.shared == null
+          ? {}
+          : {
+              picks: SHARERS,
+              first: { search: 'Mensah', picked: GUESTS[m.notice.key].name },
+              hinted: false,
+            })}
         onClose={() => dispatch({ type: 'matching', open: false })}
         onMatch={(name) => {
-          dispatch({ type: 'match', name });
+          dispatch(
+            m.notice?.shared == null ? { type: 'match', name } : { type: 'matching', open: false },
+          );
           readOut(say.matchedSaid(name));
           setTimeout(() => moveScreenReaderFocus(headRef.current), 500);
         }}
@@ -835,7 +867,11 @@ export function MessagesScreen({
           </>
         }
       >
-        {m.forbidden ? <Refusal /> : <PhoneList list={list} onNew={onNew} closed={closed} />}
+        {m.forbidden ? (
+          <Refusal />
+        ) : (
+          <PhoneList list={list} onNew={onNew} closed={closed} readOnly={reading} />
+        )}
       </EventFrame>
     );
 
@@ -848,15 +884,23 @@ export function MessagesScreen({
       <View style={styles.fill}>
         <View style={styles.centred}>
           <Text size={14.5} weight="medium" style={[styles.secondary, styles.middle]}>
-            {m.phase === 'first' ? W.noneLine : closed == null ? W.pickOne : W.pickOneClosed}
+            {m.phase === 'first'
+              ? W.noneLine
+              : closed == null && !reading
+                ? W.pickOne
+                : W.pickOneClosed}
           </Text>
         </View>
-        <MiniComposer
-          to={toChip('all')}
-          placeholder={W.writeToGuests}
-          reason={closed}
-          onOpen={onNew}
-        />
+        {reading ? (
+          <NoManageCard />
+        ) : (
+          <MiniComposer
+            to={toChip('all')}
+            placeholder={W.writeToGuests}
+            reason={closed}
+            onOpen={onNew}
+          />
+        )}
       </View>
     );
   else if (m.open.kind === 'reached')
@@ -935,10 +979,12 @@ function PhoneList({
   list,
   onNew,
   closed,
+  readOnly,
 }: {
   list: ReactNode;
   onNew: (picking: boolean) => void;
   closed: string | null;
+  readOnly: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
@@ -961,12 +1007,16 @@ function PhoneList({
         style={[styles.pinned, { bottom: pinned }]}
         onLayout={(event) => setComposer(event.nativeEvent.layout.height)}
       >
-        <MiniComposer
-          to={toChip('all')}
-          placeholder={W.writeToGuests}
-          reason={closed}
-          onOpen={onNew}
-        />
+        {readOnly ? (
+          <NoManageCard />
+        ) : (
+          <MiniComposer
+            to={toChip('all')}
+            placeholder={W.writeToGuests}
+            reason={closed}
+            onOpen={onNew}
+          />
+        )}
       </View>
     </View>
   );

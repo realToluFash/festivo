@@ -98,7 +98,7 @@ export const W = {
   endLine: 'It will be over for everybody. You can’t undo this.',
   deleteOpen: 'Delete event…',
   deleteLine:
-    'Removes the event and everything in it for your whole team. Guests following its link see that it isn’t available.',
+    "Removes the event and everything in it for your whole team. Guests following its link see that it isn't available.",
   more: 'More',
   closeMore: 'Close More',
   backToEvents: 'Events',
@@ -179,10 +179,10 @@ export const W = {
   keepIt: 'Keep it',
   delete: 'Delete',
   deleteEvent: 'Delete event',
-  draftBody: 'It’s a draft with nobody on its guest list. It will be removed for your whole team.',
+  draftBody: "It's a draft with nobody on its guest list. It will be removed for your whole team.",
   removes: 'This removes, for your whole team:',
   removesEvent: 'the event, its details and its schedule',
-  deleteGuests: 'Guests following their link will see that it isn’t available.',
+  deleteGuests: "Guests following their link will see that it isn't available.",
   typeHint: 'Type it exactly, capitals included. A straight or curly apostrophe both count.',
   createDraft: 'Create draft',
   copied: 'Copied',
@@ -282,7 +282,7 @@ export const say = {
       ? `its guest list, with the ${people} person on it`
       : `its guest list, with the ${people} people on it`,
   deleteWindow: (deadline: string) =>
-    `If this was a mistake, support can restore it until ${deadline}. After that it’s gone for good.`,
+    `If this was a mistake, support can restore it until ${deadline}. After that it's gone for good.`,
   deleteType: (name: string) => `Type ${name} to delete it`,
   deleteMismatch: (name: string) => `Type ${name} exactly as shown to delete it.`,
   deleted: (name: string) => `${name} was deleted.`,
@@ -363,6 +363,10 @@ const LIVE_COUNTED = {
   later_other: 'You can send the invitations later from Guests in Soirely on the web.',
   textsUse_one: 'Texts use 1 credit.',
   textsUse_other: 'Texts use {{count}} credits.',
+  whatsAppUse_one: 'WhatsApp messages use 1 credit.',
+  whatsAppUse_other: 'WhatsApp messages use {{count}} credits.',
+  textsAndWhatsAppUse_one: 'Texts and WhatsApp messages use 1 credit.',
+  textsAndWhatsAppUse_other: 'Texts and WhatsApp messages use {{count}} credits.',
   nobody_one:
     'This guest cannot be reached. Add an email address or a mobile number for them in Guests.',
   nobody_other:

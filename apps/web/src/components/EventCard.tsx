@@ -91,7 +91,7 @@ export function EventThumb({
   );
 }
 
-function GlassMark({ mark }: { mark: PhaseMark }) {
+export function GlassMark({ mark }: { mark: PhaseMark }) {
   switch (mark) {
     case 'paused':
       return (

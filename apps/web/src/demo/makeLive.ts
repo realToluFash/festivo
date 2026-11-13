@@ -4,6 +4,7 @@ import { demoWords } from './demoWords.ts';
 import type { SampleEvent } from './events.ts';
 import { type Guest, notYetInvited, replyByOf, sampleGuests } from './guests.ts';
 import { LW } from './makeLiveWords.ts';
+import { type Category, creditsLine, whatsAppCreditsIn } from './messages.ts';
 import { MW } from './messagesWords.ts';
 import { inviteSmsOf, oneGuestOf } from './inviteSms.ts';
 import { WW } from './messagesWaitsWords.ts';
@@ -31,6 +32,8 @@ const LIVE_BEHIND: readonly MakeLiveState[] = [
   'makeLiveOfferOne',
   'makeLiveOfferWaits',
   'makeLiveOfferPart',
+  'makeLiveOfferWhatsApp',
+  'makeLiveOfferWhatsAppOnly',
   'makeLiveOfferSending',
   'makeLiveOfferSent',
   'makeLiveOfferNotYet',
@@ -91,6 +94,8 @@ export function phaseOf(state: MakeLiveState | null): Phase | null {
     case 'makeLiveOfferOne':
     case 'makeLiveOfferWaits':
     case 'makeLiveOfferPart':
+    case 'makeLiveOfferWhatsApp':
+    case 'makeLiveOfferWhatsAppOnly':
       return { at: 'offer', failed: false };
     case 'makeLiveOfferNotSent':
       return { at: 'offer', failed: true };
@@ -126,7 +131,17 @@ export interface Offer {
   texts: readonly number[];
   emails: number;
   balance: number;
+  /** WhatsApp invitations in place of texts (sc-45251), and their credits at each guest's own country's rate. */
+  whatsApp: number;
+  whatsAppCredits: number;
 }
+
+/** Who has agreed to WhatsApp in the states that send it, and the category Meta approved the template in. */
+const WHATSAPP: Partial<Record<MakeLiveState, { category: Category; agreed: readonly string[] }>> =
+  {
+    makeLiveOfferWhatsApp: { category: 'marketing', agreed: ['tola', 'grace'] },
+    makeLiveOfferWhatsAppOnly: { category: 'utility', agreed: ['tola', 'grace', 'ryan'] },
+  };
 
 function waitingOn(id: string, state: MakeLiveState | null): Guest[] {
   const waiting = notYetInvited(sampleGuests(id));
@@ -166,11 +181,19 @@ export function offerOf(event: SampleEvent, state: MakeLiveState | null): Offer 
     replyBy: replyByOf(event.id),
   };
 
+  const wa = state == null ? undefined : WHATSAPP[state];
+  const byWhatsApp = (one: Guest) =>
+    wa != null &&
+    one.phone != null &&
+    wa.agreed.includes(one.id) &&
+    !(wa.category === 'marketing' && one.phone.country === 'US');
+  const sentWhatsApp = guests.filter(byWhatsApp);
+
   return {
     count: guests.length,
     reached: guests.filter((one) => one.email != null || one.phone != null).length,
     texts: guests.flatMap((one) =>
-      one.phone == null
+      one.phone == null || byWhatsApp(one)
         ? []
         : [
             textCredits({
@@ -181,6 +204,14 @@ export function offerOf(event: SampleEvent, state: MakeLiveState | null): Offer 
     ),
     emails: guests.filter((one) => one.email != null).length,
     balance: (state == null ? undefined : BALANCES[state]) ?? BALANCE,
+    whatsApp: sentWhatsApp.length,
+    whatsAppCredits:
+      wa == null
+        ? 0
+        : sentWhatsApp.reduce(
+            (sum, one) => sum + whatsAppCreditsIn(one.phone?.country ?? '', wa.category),
+            0,
+          ),
   };
 }
 
@@ -192,15 +223,25 @@ export interface Cost {
 
 /** Messaging B's credits line when the balance covers every text; sc-3963's wait lines in Credits after sending's place when it does not, a text going only when its whole cost is covered. */
 export function costOf(offer: Offer): Cost {
-  const { texts, balance } = offer;
-  const needs = texts.reduce((sum, credits) => sum + credits, 0);
+  const { texts, balance, whatsAppCredits } = offer;
+  const textCost = texts.reduce((sum, credits) => sum + credits, 0);
+  const needs = textCost + whatsAppCredits;
 
   if (needs === 0) return { credits: null, either: null, waits: null };
   if (balance >= needs)
     return {
-      credits: `${mw.many('textsUse', needs)} ${mw.filled(MW.creditsAfter, { count: balance - needs })}`,
+      credits: creditsLine(textCost, whatsAppCredits, balance),
       either: null,
       waits: null,
+    };
+  if (whatsAppCredits > 0)
+    return {
+      credits: null,
+      either: offer.emails > 0 ? WW.eitherWay : null,
+      waits: [
+        mw.many('whatsAppWaits', offer.whatsApp),
+        ...(texts.length > 0 ? [mw.many('smsWaits', texts.length)] : []),
+      ].join(' '),
     };
 
   let left = balance;

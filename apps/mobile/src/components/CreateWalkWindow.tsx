@@ -62,7 +62,7 @@ import {
   turnTo,
   typed,
 } from '../kit/createWalk.ts';
-import { Bars, NavAction, Progress, WalkButton } from './CreateWalkParts.tsx';
+import { Bars, NavAction, Progress, WalkButton, takingFocus } from './CreateWalkParts.tsx';
 import {
   Brings,
   type CardFrame,
@@ -161,7 +161,12 @@ export function CreateWalkWindow<Made>({
   const talkBack = Platform.OS === 'android' && readerOn;
   const arriving = reduced ? 0 : phone ? WINDOW_ARRIVES_MS : tokens.motionBase;
   // With TalkBack on, hidden while the window arrives, so its focus lands on nothing, Cancel included (sc-42690).
-  const unnamed = useUnnamedWindow(talkBack && shown, onScreen, null, arriving);
+  const unnamed = useUnnamedWindow(
+    talkBack && shown,
+    onScreen,
+    null,
+    phone ? WINDOW_ARRIVES_MS : arriving,
+  );
   const [fade] = useState(() => new Animated.Value(0));
   const [grow] = useState(() => new Animated.Value(GROW_FROM));
   const [frame, setFrame] = useState({ panel: 0, stage: 0 });
@@ -373,6 +378,7 @@ export function CreateWalkWindow<Made>({
         <Brings walk={walk} naming={naming} />
       )}
       <WalkButton
+        takesFocus={!talkBack}
         label={primaryLabel}
         busy={creating}
         reduced={reduced}
@@ -459,11 +465,22 @@ export function CreateWalkWindow<Made>({
   const refusal = (
     <View style={[styles.refusal, phone && styles.refusalPhone]}>{managedBanner}</View>
   );
+  // With TalkBack on, its focus landing on a button as the window is revealed took input focus from the field, and the app put the keys down (qa2 #46600).
   const closeAction = (
-    <NavAction label={t('switcher.close')} onPress={onCancel} testID="createWalk.close" />
+    <NavAction
+      takesFocus={!talkBack}
+      label={t('switcher.close')}
+      onPress={onCancel}
+      testID="createWalk.close"
+    />
   );
   const cancelAction = (
-    <NavAction label={t('createOrganisation.cancel')} onPress={cancel} testID="createWalk.cancel" />
+    <NavAction
+      takesFocus={!talkBack}
+      label={t('createOrganisation.cancel')}
+      onPress={cancel}
+      testID="createWalk.cancel"
+    />
   );
   const fills = walk.step === 2 && !searching;
 
@@ -504,6 +521,7 @@ export function CreateWalkWindow<Made>({
                       cancelAction
                     ) : (
                       <NavAction
+                        takesFocus={!talkBack}
                         label={t('steps.back')}
                         back
                         onPress={goBack}
@@ -536,6 +554,7 @@ export function CreateWalkWindow<Made>({
             <Pressable
               style={StyleSheet.absoluteFill}
               onPress={cancel}
+              {...takingFocus(!talkBack, creating ? undefined : cancel)}
               disabled={creating}
               accessibilityRole="button"
               accessibilityLabel={t('createOrganisation.cancel')}
@@ -598,6 +617,7 @@ export function CreateWalkWindow<Made>({
                     <View style={[styles.wideFoot, managed && styles.hidden]}>
                       {!creating && walk.step > 1 && (
                         <WalkButton
+                          takesFocus={!talkBack}
                           label={t('steps.back')}
                           kind="secondary"
                           reduced={reduced}
@@ -609,6 +629,7 @@ export function CreateWalkWindow<Made>({
                         />
                       )}
                       <WalkButton
+                        takesFocus={!talkBack}
                         label={primaryLabel}
                         busy={creating}
                         reduced={reduced}

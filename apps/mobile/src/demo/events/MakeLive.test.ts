@@ -18,6 +18,7 @@ import {
   countryOf,
   creditsOf,
   inviteTextOf,
+  isGsm7,
   liveAlertOf,
   liveToastOf,
   makeLiveStart,
@@ -57,7 +58,7 @@ function run(
 const MAKE: readonly LiveAction[] = [{ type: 'confirm', hostError: null }, { type: 'made' }];
 
 describe('Make live’s states (sc-3971)', () => {
-  it('are the board’s twenty-two, in its order, all on the event’s page', () => {
+  it('are the board’s twenty-two and sc-45251’s two, in its order, all on the event’s page', () => {
     expect(MAKE_LIVE_STATES).toEqual([
       'makeLive',
       'makeLiveMaking',
@@ -71,6 +72,8 @@ describe('Make live’s states (sc-3971)', () => {
       'makeLiveOfferOne',
       'makeLiveOfferWaits',
       'makeLiveOfferPart',
+      'makeLiveOfferWhatsApp',
+      'makeLiveOfferWhatsAppOnly',
       'makeLiveOfferSending',
       'makeLiveOfferSent',
       'makeLiveOfferNotYet',
@@ -82,7 +85,7 @@ describe('Make live’s states (sc-3971)', () => {
       'makeLiveNoOffer',
       'madeLive',
     ]);
-    expect(MAKE_LIVE_STATES).toHaveLength(22);
+    expect(MAKE_LIVE_STATES).toHaveLength(24);
     for (const state of MAKE_LIVE_STATES) expect(EVENT_STATES).toContain(state);
   });
 
@@ -105,6 +108,19 @@ describe('Make live’s states (sc-3971)', () => {
     expect(eventIn('makeLiveNoOffer', 'evt-cena-4').hosts).toEqual(['Fundación Lucía']);
     expect(eventIn('madeLive', 'evt-cena-4').status).toBe('live');
     expect(eventIn('makeLiveEndPassed', 'evt-shower-2').hosts).toEqual(['Kemi Adebayo']);
+  });
+
+  it('counts WhatsApp in place of the text: with texts at marketing, alone at utility (sc-45251)', () => {
+    expect(creditsOf(reachOf('makeLiveOfferWhatsApp', eventIn('makeLiveOfferWhatsApp')))).toEqual({
+      line: 'Texts and WhatsApp messages use 26 credits. Credits after sending: 224.',
+      waiting: 0,
+    });
+    expect(
+      creditsOf(reachOf('makeLiveOfferWhatsAppOnly', eventIn('makeLiveOfferWhatsAppOnly'))),
+    ).toEqual({
+      line: 'WhatsApp messages use 8 credits. Credits after sending: 242.',
+      waiting: 0,
+    });
   });
 });
 
@@ -134,6 +150,13 @@ describe('the offer’s figures, from the sample', () => {
     );
     expect(texts.map(({ parts }) => parts)).toEqual([2, 2, 2]);
     expect(reach.texts).toEqual([124, 18, 4]);
+  });
+
+  it('sends a greeting in curly quotes as GSM-7, its quotes plain', () => {
+    const invite = inviteTextOf(eventIn('makeLiveOffer'), '“Auntie Bisi”');
+    expect(invite.text).toContain('"Auntie Bisi", you\'re invited');
+    expect(isGsm7(invite.text)).toBe(true);
+    expect(invite.parts).toBe(2);
   });
 
   it('prices each text by its number’s country, from the rate table', () => {
@@ -186,7 +209,8 @@ describe('the offer’s figures, from the sample', () => {
 
   it('says one credit in the singular', () => {
     expect(
-      creditsOf({ guests: 1, unreachable: 0, texts: [1], balance: 10, maySend: true }).line,
+      creditsOf({ guests: 1, unreachable: 0, texts: [1], balance: 10, maySend: true, whatsApp: [] })
+        .line,
     ).toBe('Texts use 1 credit. Credits after sending: 9.');
   });
 });

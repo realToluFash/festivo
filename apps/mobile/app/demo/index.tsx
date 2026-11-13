@@ -23,7 +23,9 @@ import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowI
 import { REQUEST_BOARDS } from '../../src/demo/service/RequestsBoards.ts';
 import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
+import { isSmsState } from '../../src/demo/messages/Sms.ts';
 import { isStopState } from '../../src/demo/messages/StopWriting.ts';
+import { isReasonState } from '../../src/demo/messages/TrySms.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
@@ -1299,6 +1301,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-draft-4?state=makeLiveOfferPart',
       },
       {
+        title: 'Make live · the offer, texts and WhatsApp (sc-45251)',
+        what: 'Template at marketing: Texts and WhatsApp messages use 26 credits',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferWhatsApp',
+      },
+      {
+        title: 'Make live · the offer, WhatsApp only (sc-45251)',
+        what: 'Template at utility: WhatsApp messages use 8 credits',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferWhatsAppOnly',
+      },
+      {
         title: 'Make live · sending',
         what: 'Sending…, Not yet waits',
         href: '/demo/events/evt-draft-4?state=makeLiveOfferSending',
@@ -1932,7 +1944,19 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   },
   {
     page: 'Messages · B Conversations',
-    boards: MESSAGES_BOARDS.filter(({ state }) => !isStopState(state)).map(
+    boards: MESSAGES_BOARDS.filter(
+      ({ state }) => !isStopState(state) && !isReasonState(state) && !isSmsState(state),
+    ).map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Who it reached: every reason, Try SMS instead (sc-3966)',
+    boards: MESSAGES_BOARDS.filter(({ state }) => isReasonState(state)).map(
+      ({ title, what, href }) => ({ title, what, href: href as Href }),
+    ),
+  },
+  {
+    page: 'SMS (sc-3946)',
+    boards: MESSAGES_BOARDS.filter(({ state }) => isSmsState(state)).map(
       ({ title, what, href }) => ({ title, what, href: href as Href }),
     ),
   },

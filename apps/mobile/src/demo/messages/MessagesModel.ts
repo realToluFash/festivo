@@ -10,19 +10,22 @@ import {
   CANCELLED_AT,
   CANT_TELL,
   DAYS,
+  EVENT,
   EVENT_ENDS,
   FIXED_ADDRESS,
   FOLLOW_UP,
-  GUESTS,
   type GroupKey,
   type GuestKey,
+  HOSTS,
   LONG_BODY,
   LONG_SUBJECT,
   LOW_BALANCE,
   type ManyKey,
+  type MarkKey,
   NOTICE_CREDITS,
   NOW,
   OTHER_CHANNELS,
+  PARKING_TIME,
   PLACE,
   type PersonKey,
   READER,
@@ -31,6 +34,7 @@ import {
   SCHEDULED_BODY,
   SCHEDULE_AT,
   SENT_AGAIN_AT,
+  SMS,
   SMS_ONLY,
   SUBJECT,
   TELL,
@@ -47,7 +51,49 @@ import { BRACED_BODY, DATED_BODY, PLAIN_BODY } from './PreviewSample.ts';
 import { type Refusal, TYPED_EDIT, refusalOf, reloaded } from './ScheduledSave.ts';
 import { EDGE } from './TokenText.ts';
 import { WAITS_STARTS, type Waits } from './CheckWaits.ts';
-import { STOP_STATES, type Stopping, isStopState, stopStart, stoppingOf } from './StopWriting.ts';
+import {
+  NO_STOPS,
+  STOP_STATES,
+  type Stopping,
+  isStopState,
+  stopStart,
+  stoppingOf,
+} from './StopWriting.ts';
+import {
+  RUN,
+  TELL_KINDS,
+  type TellFigures,
+  type TellKind,
+  type TellRun,
+  isTellKind,
+  runOf,
+} from './TellKinds.ts';
+import {
+  NOTICE_STATES,
+  type NoticeCase,
+  caseFor,
+  guestOf,
+  isNoticeState,
+  languageOf,
+  markOf,
+  noticeCredits,
+  noticeSmsOf,
+  noticeStart,
+  notSentWhy,
+  quietLine,
+  readsOnly,
+  stampOf,
+} from './NoticeStates.ts';
+import { sayNotice } from './NoticeWords.ts';
+import { reasonPerson } from './ReasonsSample.ts';
+import { SMS_STATES, smsStart } from './Sms.ts';
+import {
+  REASON_STATES,
+  type ReachSample,
+  type Texted,
+  balanceAfterText,
+  textedOf,
+} from './TrySms.ts';
 
 /** Every state of Messaging B, each a `?state=` in both demos (spec §7 and §7b), in the spec's order. */
 export const MESSAGES_STATES = [
@@ -109,6 +155,9 @@ export const MESSAGES_STATES = [
   'longMessage',
   'closedDraft',
   'closedEnded',
+  'noManage',
+  'noManageDraft',
+  'noManageEnded',
   'forbidden',
   'insert',
   'previewAs',
@@ -136,7 +185,11 @@ export const MESSAGES_STATES = [
   'askSentOne',
   'askFailed',
   'sendWithout',
+  ...NOTICE_STATES,
   ...STOP_STATES,
+  ...SMS_STATES,
+  ...REASON_STATES,
+  ...TELL_KINDS,
 ] as const;
 
 export type MessagesState = (typeof MESSAGES_STATES)[number];
@@ -224,10 +277,33 @@ export interface Kept extends Thread {
   draft: Draft;
 }
 
+export interface TellPart {
+  item: string;
+  lines: readonly string[];
+  who: string;
+}
+
 export interface TellChange {
   lines: readonly string[];
   what: readonly string[];
   address?: boolean;
+  /** Who it goes to; null drops the line (Replace link, and several audiences under Message). */
+  who?: string | null;
+  /** Changes for different guests, each under its banner item with its own audience (pm, 13 Nov, #45229). */
+  parts?: readonly TellPart[];
+  tables?: boolean;
+  /** Exactly one guest: the title names them (l10n, 13 Nov, #45245). */
+  name?: string;
+  figures?: TellFigures;
+  held?: number;
+  quiet?: { count: number; time: string };
+}
+
+/** The row Send leaves in Messages (pm, 7 Nov, #32026): Needs you while anyone is unreached, Done once all are. */
+export interface ChangeRow {
+  what: readonly string[];
+  reached: number;
+  of: number;
 }
 
 /** How Soirely's notice of an answer went: told, held for credits (sc-3932), or held 48 hours and not sent (sc-3950). */
@@ -239,6 +315,9 @@ export interface Answer {
   seen: string | null;
   by: ChannelKey;
   notice: Notice;
+  /** sc-3976: the notice refused on its channel with Who it reached's reason, or waiting for quiet hours to end. */
+  refused?: { reason: string; mark: MarkKey };
+  waits?: string;
 }
 
 export interface Messages {
@@ -263,6 +342,8 @@ export interface Messages {
   untold: boolean;
   telling: boolean;
   change: TellChange;
+  tell: TellRun;
+  changeRow: ChangeRow | null;
   fixing: boolean;
   fixed: Partial<Record<PersonKey, string>>;
   how: Partial<Record<PersonKey, FixKind>>;
@@ -282,11 +363,24 @@ export interface Messages {
   refusedSave?: Refusal;
   waits?: Waits;
   stopping?: Stopping;
+  /** The instant the check reads as now for quiet hours (sc-3946); without it, every number is inside hours. */
+  clock?: string;
+  smsFailed?: boolean;
   closed: Closed | null;
   /** WhatsApp's receipts (sc-3950): Parking told by email and WhatsApp stands in Parking's place. */
   receipts: boolean;
   /** Without messages.read: the area opens the refusal, with no list and no count. */
   forbidden: boolean;
+  /** messages.read alone (sc-32077): no New, no To, no composer; sc-3957's line where the composer would be. */
+  noManage: boolean;
+  /** sc-3976: the open state's facts about one guest's notice and conversation, and who reads it when not the owner. */
+  notice?: NoticeCase;
+  reader?: string;
+  /** sc-3966: Parking told by Email only, or the just-sent message with a text waiting for the morning. */
+  sample?: ReachSample;
+  /** The person whose Try SMS instead is open, and what Send by SMS did, by message. */
+  trying?: string | null;
+  texted?: Partial<Record<string, Texted>>;
 }
 
 export function blankDraft(): Draft {
@@ -370,6 +464,8 @@ const BASE: Messages = {
   untold: false,
   telling: false,
   change: { lines: [say.startMoved(TELL.now, TELL.was)], what: [W.newStartTime] },
+  tell: RUN,
+  changeRow: null,
   fixing: false,
   fixed: {},
   how: {},
@@ -386,6 +482,7 @@ const BASE: Messages = {
   closed: null,
   receipts: false,
   forbidden: false,
+  noManage: false,
 };
 
 const ALL_CHANNELS = { email: true, sms: true, wa: true };
@@ -419,12 +516,30 @@ const DRAFTED: Partial<Record<MessagesState, Draft>> = {
   longMessage: { ...sampleDraft('write'), body: LONG_BODY, over: ['body'] },
   whatsAppLine: { ...sampleDraft('write'), to: 'all', channels: ALL_CHANNELS },
   checkWhatsApp: { ...sampleDraft('check'), to: 'all', channels: ALL_CHANNELS },
+  smsLine: { ...sampleDraft('write'), to: 'all' },
+  checkQuiet: sampleDraft('check'),
+  checkQuietBoth: { ...sampleDraft('check'), channels: ALL_CHANNELS },
+  checkNow: sampleDraft('check'),
+  previewFirstText: sampleDraft('preview'),
 };
 
 const CLOSED: Partial<Record<MessagesState, Closed>> = {
   closedDraft: 'draft',
   closedEnded: 'ended',
 };
+
+/** messages.read alone on a live, a Draft and a long-finished event: the event's reason is never shown beside the line. */
+const NO_MANAGE: Partial<Record<MessagesState, Closed | 'live'>> = {
+  noManage: 'live',
+  noManageDraft: 'draft',
+  noManageEnded: 'ended',
+};
+
+export const NO_MANAGE_READER = 'Kofi Mensah';
+
+function closedStart(closed: Closed): Messages {
+  return { ...BASE, closed, kept: [], ...(closed === 'draft' ? { phase: 'first' } : {}) };
+}
 
 const SCHEDULED_AS: Partial<Record<MessagesState, Partial<Draft>>> = {
   scheduled: {},
@@ -441,6 +556,38 @@ function scheduledStart(change: Partial<Draft>): Messages {
 }
 
 /** Where a `?state=` opens; `wide` is the iPad, where a conversation stays open beside the list. */
+const START_ROW: ChangeRow = {
+  what: [W.newStartTime],
+  reached: TELL.count - TELL.cannot,
+  of: TELL.count,
+};
+
+/** sc-4330's states: the sheet open, the banner waiting, or what Send left; a field state's lines are the page's. */
+function tellStart(state: TellKind, open: Open): Messages {
+  switch (state) {
+    case 'untoldEvent':
+    case 'untoldPaused':
+      return { ...BASE, untold: true };
+    case 'untoldMerged':
+      return { ...BASE, untold: true, open };
+    case 'untoldDismissed':
+      return { ...BASE, open, told: W.dismissed };
+    case 'changeSending':
+    case 'allTold':
+      return { ...BASE, changeRow: START_ROW };
+    case 'changeRow':
+      return { ...BASE, changeRow: START_ROW, open };
+    case 'changeSent':
+      return { ...BASE, changeRow: START_ROW, open: { kind: 'many', key: 'change' } };
+    case 'changeMerged':
+      return { ...BASE, changeRow: { ...START_ROW, what: [W.newStartTime, W.newVenue] }, open };
+    case 'changeDone':
+      return { ...BASE, changeRow: { what: [W.menuAgain], reached: 6, of: 6 }, open };
+    default:
+      return { ...BASE, telling: true, tell: runOf(state) };
+  }
+}
+
 export function startOf(state: MessagesState | null, wide: boolean): Messages {
   const drafted = state == null ? undefined : DRAFTED[state];
   if (drafted != null)
@@ -453,6 +600,7 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       draft: drafted,
       told: state === 'cancelled' && !wide ? W.cancelled : null,
       ...previewStart(state),
+      ...smsStart(state),
     };
   const waited = state == null ? undefined : WAITS_STARTS[state];
   if (waited != null)
@@ -471,15 +619,24 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       refusedSave: refused,
     };
   const closed = state == null ? undefined : CLOSED[state];
-  if (closed != null)
-    return { ...BASE, closed, kept: [], ...(closed === 'draft' ? { phase: 'first' } : {}) };
+  if (closed != null) return closedStart(closed);
+  const reading = state == null ? undefined : NO_MANAGE[state];
+  if (reading != null)
+    return {
+      ...(reading === 'live' ? BASE : closedStart(reading)),
+      noManage: true,
+      reader: NO_MANAGE_READER,
+      stopping: { ...NO_STOPS, manage: false },
+    };
   const scheduled = state == null ? undefined : SCHEDULED_AS[state];
   if (scheduled != null) return scheduledStart(scheduled);
   if (isStopState(state))
     return { ...BASE, open: { kind: 'guest', key: 'ines' }, ...stopStart(state) };
+  if (isNoticeState(state)) return { ...BASE, ...noticeStart(state) };
   if (state === 'whatsAppRead')
     return { ...BASE, receipts: true, open: { kind: 'reached', of: 'receipts' } };
   const ines: Open = { kind: 'guest', key: 'ines' };
+  if (isTellKind(state)) return tellStart(state, wide ? ines : null);
   const unknown: Open = { kind: 'guest', key: 'unknown' };
   const lucia: Open = { kind: 'guest', key: 'lucia' };
   const parking: Open = { kind: 'reached', of: 'parking' };
@@ -582,11 +739,13 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
     case 'invitedReached':
       return { ...BASE, open: { kind: 'reached', of: 'invite' } };
     case 'sentReached':
+    case 'reachedSmsFailed':
       return {
         ...BASE,
         thread: NEW_THREAD,
         draft: sampleDraft('sending'),
         open: { kind: 'reached', of: 'draft' },
+        ...smsStart(state),
       };
     case 'resend':
       return { ...BASE, open: { kind: 'many', key: 'parking' }, resending: true };
@@ -629,6 +788,47 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       return { ...BASE, bell: true, open: wide ? ines : null };
     case 'forbidden':
       return { ...BASE, forbidden: true };
+    case 'reasons':
+      return { ...BASE, open: parking, sample: 'reasons', filter: 'everyone' };
+    case 'trySms':
+      return {
+        ...BASE,
+        open: parking,
+        sample: 'reasons',
+        filter: 'bounced',
+        trying: 'parking.olumide',
+      };
+    case 'trySmsQuiet':
+      return {
+        ...BASE,
+        open: parking,
+        sample: 'reasons',
+        filter: 'failed',
+        trying: 'parking.rafael',
+      };
+    case 'trySmsShort':
+      return {
+        ...BASE,
+        open: parking,
+        sample: 'reasons',
+        filter: 'skipped',
+        balance: 0,
+        trying: 'parking.yuki',
+      };
+    case 'trySmsSent':
+      return reduce(startOf('trySms', wide), { type: 'sendBySms', key: 'olumide' });
+    case 'closedReached':
+      return {
+        ...BASE,
+        open: parking,
+        sample: 'reasons',
+        closed: 'ended',
+        kept: [],
+        filter: 'bounced',
+        fixed: { tomas: FIXED_ADDRESS },
+      };
+    case 'reachedQuiet':
+      return { ...startOf('sentReached', wide), sample: 'nightText' };
     default:
       return BASE;
   }
@@ -671,6 +871,8 @@ export type Action =
   | { type: 'offerTell'; change: TellChange }
   | { type: 'notNow' }
   | { type: 'tellSent' }
+  | { type: 'tellRun'; run: TellRun }
+  | { type: 'tellAllTold' }
   | { type: 'dismissUntold' }
   | { type: 'fixing'; open: boolean }
   | { type: 'fixed'; key: PersonKey; address: string; how?: FixKind }
@@ -680,6 +882,9 @@ export type Action =
   | { type: 'filter'; filter: ReachFilter }
   | { type: 'filtering'; open: boolean }
   | { type: 'sendAgain'; key: PersonKey }
+  | { type: 'trySms'; key: PersonKey }
+  | { type: 'cancelTrySms' }
+  | { type: 'sendBySms'; key: PersonKey }
   | { type: 'resending'; open: boolean }
   | { type: 'resent' }
   | { type: 'bell'; open: boolean }
@@ -768,7 +973,7 @@ export function reachedOf(m: Pick<Messages, 'open'>): ReachedOf {
   const open = m.open;
   if (open?.kind === 'reached') return open.of;
   if (open?.kind === 'draft') return 'draft';
-  if (open?.kind === 'many' && open.key !== 'parking') return open.key;
+  if (open?.kind === 'many' && open.key !== 'parking' && open.key !== 'change') return open.key;
 
   return 'parking';
 }
@@ -833,6 +1038,7 @@ export function reduce(m: Messages, action: Action): Messages {
     case 'back':
       return opened(m, back(m.open));
     case 'newMessage': {
+      if (readsOnly(m)) return m;
       const draft = m.draft;
       const keep =
         m.thread?.base == null &&
@@ -844,7 +1050,7 @@ export function reduce(m: Messages, action: Action): Messages {
       return { ...next, open: { kind: 'draft' }, picking: false };
     }
     case 'followUp':
-      return followedUp(m, action.base);
+      return readsOnly(m) ? m : followedUp(m, action.base);
     case 'openThread': {
       const next = m.thread?.id === action.id ? m : activate(m, (kept) => kept.id === action.id);
 
@@ -869,7 +1075,14 @@ export function reduce(m: Messages, action: Action): Messages {
       return stepped(m, ['preview'], 'write');
     case 'send': {
       const draft = m.draft;
-      if (m.closed != null || draft == null || !canSend(draft) || matchesNobody(draft)) return m;
+      if (
+        m.closed != null ||
+        readsOnly(m) ||
+        draft == null ||
+        !canSend(draft) ||
+        matchesNobody(draft)
+      )
+        return m;
       const over = overOf(draft);
       if (over.length > 0) return { ...m, draft: { ...draft, step: 'write', over } };
 
@@ -915,25 +1128,29 @@ export function reduce(m: Messages, action: Action): Messages {
         when: false,
       };
     case 'editScheduled':
+      if (readsOnly(m)) return m;
       return withDraft(m, (draft) =>
         draft.step === 'scheduled'
           ? { ...draft, step: 'write', was: { subject: draft.subject, body: draft.body } }
           : draft,
       );
     case 'saveScheduled':
-      if (m.refusedSave != null) return m;
+      if (m.refusedSave != null || readsOnly(m)) return m;
       return withDraft(m, (draft) =>
         draft.was != null && canSend(draft) ? { ...draft, step: 'scheduled', was: null } : draft,
       );
     case 'sendNow':
+      if (readsOnly(m)) return m;
       return stepped(m, ['scheduled'], 'check');
     case 'keepScheduled':
       return withDraft(m, (draft) =>
         draft.step === 'check' && draft.at != null ? { ...draft, step: 'scheduled' } : draft,
       );
     case 'askCancel':
+      if (readsOnly(m)) return m;
       return withDraft(m, (draft) => ({ ...draft, asking: action.open }));
     case 'cancelScheduled':
+      if (readsOnly(m)) return m;
       return withDraft(m, (draft) => ({
         ...draft,
         step: 'cancelled',
@@ -946,9 +1163,13 @@ export function reduce(m: Messages, action: Action): Messages {
     case 'match':
       return { ...m, matched: action.name, matching: false };
     case 'answer': {
-      if (m.closed != null) return m;
+      if (m.closed != null || readsOnly(m)) return m;
       const by = tellingBy(m, action.key);
-      const cost = noticeCostOf(m, action.key);
+      const kase = caseFor(m, action.key);
+      const block = kase?.blocks?.[by];
+      const cost = block == null ? noticeCostOf(m, action.key) : null;
+      const quiet = kase?.quiet == null ? null : quietLine(by, kase.quiet);
+      const language = languageOf(action.key);
 
       return {
         ...m,
@@ -960,10 +1181,17 @@ export function reduce(m: Messages, action: Action): Messages {
             seen: null,
             by,
             notice: cost?.waits === true ? 'held' : 'told',
+            ...(block == null
+              ? {}
+              : { refused: { reason: notSentWhy(block, language), mark: markOf(block) } }),
+            ...(block != null || quiet == null || kase?.quiet == null
+              ? {}
+              : { waits: sayNotice.waitingUntil(kase.quiet) }),
           },
         },
         typed: { ...m.typed, [action.key]: '' },
         balance: cost == null || cost.waits ? m.balance : cost.after,
+        ...(kase?.windowClosed === true ? { notice: { ...kase, windowClosed: false } } : {}),
       };
     }
     case 'tellBy':
@@ -981,9 +1209,12 @@ export function reduce(m: Messages, action: Action): Messages {
     case 'offerTell':
       return { ...m, telling: true, change: action.change };
     case 'notNow':
-      return { ...m, telling: false, untold: true };
+      return { ...m, telling: false, untold: true, tell: RUN };
     case 'tellSent':
-      return { ...m, telling: false, untold: false };
+    case 'tellAllTold':
+      return { ...m, telling: false, untold: false, tell: RUN, changeRow: rowOf(m.change) };
+    case 'tellRun':
+      return { ...m, tell: action.run };
     case 'dismissUntold':
       return { ...m, untold: false };
     case 'fixing':
@@ -998,13 +1229,30 @@ export function reduce(m: Messages, action: Action): Messages {
         told: W.saved,
       };
     case 'sendAgain': {
-      if (m.closed != null) return m;
+      if (m.closed != null || readsOnly(m)) return m;
       const at = personAt(reachedOf(m), action.key);
 
       return {
         ...m,
         again: { ...m.again, [at]: SENT_AGAIN_AT },
         waiting: m.waiting.filter((one) => one !== at),
+        said: at,
+      };
+    }
+    case 'trySms':
+      return m.closed == null ? { ...m, trying: personAt(reachedOf(m), action.key) } : m;
+    case 'cancelTrySms':
+      return { ...m, trying: null };
+    case 'sendBySms': {
+      const mobile = reasonPerson(action.key)?.mobile;
+      if (m.closed != null || mobile == null) return m;
+      const at = personAt(reachedOf(m), action.key);
+
+      return {
+        ...m,
+        texted: { ...m.texted, [at]: textedOf(mobile, m.balance) },
+        balance: balanceAfterText(mobile, m.balance),
+        trying: null,
         said: at,
       };
     }
@@ -1028,7 +1276,7 @@ export function reduce(m: Messages, action: Action): Messages {
     case 'filtering':
       return { ...m, filtering: action.open };
     case 'resending':
-      return { ...m, resending: action.open && m.closed == null };
+      return { ...m, resending: action.open && m.closed == null && !readsOnly(m) };
     case 'resent':
       return { ...m, resending: false };
     case 'bell':
@@ -1091,19 +1339,45 @@ const many = (key: ManyKey): RowId => ({ kind: 'many', key });
 const own = (one: Own): RowId => ({ kind: 'draft', id: one.id });
 
 /** Own messages at the top, then Needs you, Scheduled and Done; a guest marked done moves to the top of Done. */
+function askedAt(m: Messages, id: RowId): string {
+  if (id.kind !== 'guest') return stampOf(DAYS.parking, PARKING_TIME);
+  const later = caseFor(m, id.key)?.extras?.find((one) => one.kind === 'later');
+  const asked = guestOf(m, id.key).asked;
+
+  return later?.kind === 'later' ? stampOf(DAYS.today, later.time) : stampOf(asked.day, asked.time);
+}
+
+/** The guests whose questions wait in the open state: the sample's three, and sc-3976's Valentina in hers. */
+export function waitingGuests(m: Pick<Messages, 'notice'>): GuestKey[] {
+  return m.notice?.key === 'valentina'
+    ? ['ines', 'lucia', 'kwame', 'valentina']
+    : ['ines', 'lucia', 'kwame'];
+}
+
 export function sectionsOf(m: Messages): Sections {
-  const waiting: GuestKey[] = m.arrived ? ['lucia', 'ines', 'kwame'] : ['ines', 'lucia', 'kwame'];
+  const first = m.arrived && !m.done.includes('lucia') ? [guest('lucia')] : [];
+  const rest: RowId[] = [
+    ...waitingGuests(m)
+      .filter((key) => !m.done.includes(key) && !(m.arrived && key === 'lucia'))
+      .map(guest),
+    ...(m.done.includes('unknown') ? [] : [guest('unknown')]),
+    many(m.receipts ? 'receipts' : 'parking'),
+  ];
   const mine = ownThreads(m);
+  const change = m.changeRow;
+  const changeNeeds = change != null && change.reached < change.of ? [many('change')] : [];
+  const changeDone = change != null && change.reached >= change.of ? [many('change')] : [];
 
   return {
     top: mine.filter((one) => !isScheduled(one.draft) && !ended(one.draft)).map(own),
     needs: [
-      ...waiting.filter((key) => !m.done.includes(key)).map(guest),
-      ...(m.done.includes('unknown') ? [] : [guest('unknown')]),
-      many(m.receipts ? 'receipts' : 'parking'),
+      ...changeNeeds,
+      ...first,
+      ...rest.sort((one, two) => askedAt(m, two).localeCompare(askedAt(m, one))),
     ],
     scheduled: mine.filter((one) => isScheduled(one.draft)).map(own),
     done: [
+      ...changeDone,
       ...mine.filter((one) => ended(one.draft)).map(own),
       ...m.done.filter((key) => key !== 'marta').map(guest),
       guest('marta'),
@@ -1117,11 +1391,24 @@ export function badgeOf(
 ): { waiting: number; notMatched: number; total: number } | null {
   if (m.phase !== 'list' || m.forbidden) return null;
   const guests: GuestKey[] =
-    m.matched == null ? ['ines', 'lucia', 'kwame'] : ['ines', 'lucia', 'kwame', 'unknown'];
+    m.matched == null ? waitingGuests(m) : [...waitingGuests(m), 'unknown'];
   const waiting = guests.filter((key) => !m.done.includes(key)).length + (m.arrived ? 1 : 0);
   const notMatched = m.matched == null && !m.done.includes('unknown') ? 1 : 0;
 
   return { waiting, notMatched, total: waiting + notMatched };
+}
+
+/** The tab's badge: no badge, and no words, when nothing waits (pm, call 6). */
+export function badgeShown(m: Messages): { count: number; name: string; words: string } | null {
+  const badge = badgeOf(m);
+
+  return badge == null || badge.total === 0
+    ? null
+    : {
+        count: badge.total,
+        name: say.badgeName(badge.waiting, badge.notMatched),
+        words: say.counts(badge.waiting, badge.notMatched),
+      };
 }
 
 export interface Check {
@@ -1136,6 +1423,8 @@ export interface Check {
   whatsApp: boolean;
   /** WhatsApp's reach line, only while it is ticked. */
   reach?: string;
+  smsReach?: string;
+  instead?: string;
 }
 
 export interface WhatsAppReach {
@@ -1179,6 +1468,28 @@ export function whatsAppLine(to: ToGroup): string {
   ].join(' · ');
 }
 
+export function smsLine(to: ToGroup): string {
+  const { reaches, noMobile, stopped } = SMS[to];
+  const cant = [
+    ...(noMobile > 0 ? [say.noMobile(noMobile)] : []),
+    ...(stopped > 0 ? [say.stoppedTexts(stopped)] : []),
+  ];
+
+  return [
+    say.smsReaches(reaches, reaches + noMobile + stopped),
+    ...(cant.length > 0
+      ? [listFormat('en-US', { style: 'long', type: 'conjunction' }).format(cant)]
+      : []),
+  ].join(' · ');
+}
+
+/** With SMS and WhatsApp both ticked, whoever WhatsApp reaches gets it there and not by SMS (sc-3954). */
+export function insteadOf(draft: Pick<Draft, 'to' | 'channels'>): string | null {
+  const reaches = whatsAppOf(draft.to).reaches;
+
+  return draft.channels.sms && draft.channels.wa && reaches > 0 ? say.insteadOfSms(reaches) : null;
+}
+
 export function countOf(to: ToGroup, zero: readonly ToGroup[] = []): number {
   return zero.includes(to) ? 0 : TO_FIGURES[to].count;
 }
@@ -1197,6 +1508,7 @@ export function checkOf(draft: Draft): Check {
   const smsOff = draft.channels.sms ? 0 : SMS_ONLY[draft.to].length;
   const names = (smsOff > 0 ? SMS_ONLY[draft.to] : CANT_TELL[draft.to]).slice(0, 2);
   const cantTell = figures.cantTell + smsOff;
+  const instead = nobody ? null : insteadOf(draft);
 
   return {
     count: figures.count,
@@ -1208,7 +1520,9 @@ export function checkOf(draft: Draft): Check {
     credits,
     after: formatCount(BALANCE - credits),
     whatsApp: draft.channels.wa,
+    ...(draft.channels.sms && !nobody ? { smsReach: smsLine(draft.to) } : {}),
     ...(draft.channels.wa ? { reach: whatsAppLine(draft.to) } : {}),
+    ...(instead == null ? {} : { instead }),
   };
 }
 
@@ -1343,23 +1657,38 @@ export function noticeCost(
 
 /** The channel Soirely tells this guest by: their latest message's, unless the host picked another. */
 export function tellingBy(m: Messages, key: GuestKey): ChannelKey {
-  return m.tellBy[key] ?? GUESTS[key].channel;
+  return m.tellBy[key] ?? guestOf(m, key).channel;
+}
+
+/** A notice's credits: an SMS costs its parts, counted with the link as built, × the credits a part for the number's country. */
+export function noticeCreditsOf(key: GuestKey, channel: ChannelKey): number {
+  return noticeCredits(
+    channel,
+    NOTICE_CREDITS[key]?.[channel] ?? 0,
+    noticeSmsOf(HOSTS, EVENT).parts,
+  );
 }
 
 export function noticeCostOf(m: Messages, key: GuestKey): NoticeCost | null {
   if (m.closed != null) return null;
   const channel = tellingBy(m, key);
 
-  return noticeCost(channel, NOTICE_CREDITS[key]?.[channel] ?? 0, m.balance);
+  return noticeCost(channel, noticeCreditsOf(key, channel), m.balance);
 }
 
 /** When the notice would wait: the guest's other channels that can tell them now, email first, a paid one only if covered. */
 export function tellNowBy(m: Messages, key: GuestKey): readonly ChannelKey[] {
   const by = tellingBy(m, key);
 
-  return (OTHER_CHANNELS[key] ?? []).filter(
+  return (caseFor(m, key)?.others ?? OTHER_CHANNELS[key] ?? []).filter(
     (channel) =>
       channel !== by &&
-      noticeCost(channel, NOTICE_CREDITS[key]?.[channel] ?? 0, m.balance)?.waits !== true,
+      noticeCost(channel, noticeCreditsOf(key, channel), m.balance)?.waits !== true,
   );
+}
+
+function rowOf(change: TellChange): ChangeRow {
+  const figures = change.figures ?? { count: TELL.count, cannot: TELL.cannot };
+
+  return { what: change.what, reached: figures.count - figures.cannot, of: figures.count };
 }

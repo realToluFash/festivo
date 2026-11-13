@@ -10,3 +10,4 @@
 * * * * * php /app/bin/console app:join-requests:run --no-interaction
 * * * * * php /app/bin/console app:owner-claims:run --no-interaction
 * * * * * php /app/bin/console app:notifications:check --no-interaction
+15 * * * * php /app/bin/console app:mail:check-rates --no-interaction
