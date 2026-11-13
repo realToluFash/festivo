@@ -481,9 +481,7 @@ export function AppFrame({
         mark={tokens.marks.done.glyph}
         body={switched}
         wordsRef={switchedRead || inBody ? undefined : createdWords}
-        answer={focusInBody ? created : undefined}
-        takesFocus={focusInBody}
-        readMs={focusInBody ? SETTLED_MS * 2 : undefined}
+        {...(focusInBody ? { answer: created, takesFocus: true, readMs: SETTLED_MS * 2 } : {})}
       />
     );
   const switchedStyle = ownTop ? styles.switchedUnderTitle : styles.created;
