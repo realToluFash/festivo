@@ -28,6 +28,7 @@ import {
   type GuestList,
   type GuestPage,
   GUEST_ANSWERS,
+  GUEST_PAGE_PHASES,
   type NewGuest,
 } from './guests.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
@@ -2107,7 +2108,7 @@ export class ApiClient {
     );
   }
 
-  /** The token is a credential, so it travels in the body. Refused `not_found` alike for an unknown, replaced or deleted event's token. Records nothing. */
+  /** The token is a credential, so it travels in the body. Refused `not_found` alike for an unknown or replaced token, a deleted event's and a Draft's. Records nothing. */
   async guestPage(token: string): Promise<GuestPage> {
     return this.guestPageOf(
       await this.post<unknown>('/api/guest-links/page', { token }, { anonymous: true }),
@@ -2115,7 +2116,7 @@ export class ApiClient {
     );
   }
 
-  /** Records the guest's answer and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, 409 `replies_closed` from the start, and `not_found` as the page is. */
+  /** Records the guest's answer and answers the page as it now stands (sc-1439). Refused 422 for an answer the page does not offer, 409 `event_paused` or `event_concluded` by the event's phase, 409 `replies_closed` from the start, and `not_found` as the page is. */
   async sendGuestAnswer(token: string, answer: GuestAnswer): Promise<GuestPage> {
     return this.guestPageOf(
       await this.post<unknown>('/api/guest-links/reply', { token, answer }, { anonymous: true }),
@@ -3553,7 +3554,8 @@ function asEventCover(raw: unknown): EventCover | undefined {
 
 function asGuestPage(raw: unknown): GuestPage | null {
   if (typeof raw !== 'object' || raw == null) return null;
-  const { guest, event, answersOpen } = raw as Record<string, unknown>;
+  const { guest, event, phase, started, answersOpen } = raw as Record<string, unknown>;
+  const shown = GUEST_PAGE_PHASES.find((known) => known === phase);
   if (typeof guest !== 'object' || guest == null || typeof event !== 'object' || event == null)
     return null;
   const who = guest as Record<string, unknown>;
@@ -3571,6 +3573,8 @@ function asGuestPage(raw: unknown): GuestPage | null {
     typeof what.type !== 'string' ||
     typeof what.startsAt !== 'string' ||
     typeof what.timeZone !== 'string' ||
+    shown == null ||
+    typeof started !== 'boolean' ||
     typeof answersOpen !== 'boolean'
   )
     return null;
@@ -3599,6 +3603,8 @@ function asGuestPage(raw: unknown): GuestPage | null {
               address: typeof venue.address === 'string' ? venue.address : null,
             },
     },
+    phase: shown,
+    started,
     answersOpen,
   };
 }

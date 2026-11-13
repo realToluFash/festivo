@@ -75,9 +75,16 @@ export interface GuestPage {
     /** The address as the host entered it. */
     venue: { name: string | null; address: string | null } | null;
   };
-  /** False from the start, in the event's zone. */
+  /** As the guest reads it (sc-3591): Paused, Called off and Finished each close answers with a notice. */
+  phase: GuestPagePhase;
+  /** From the start, in the event's zone. */
+  started: boolean;
+  /** False from the start, in the event's zone, and whenever the event is not Live. */
   answersOpen: boolean;
 }
+
+export const GUEST_PAGE_PHASES = ['live', 'paused', 'calledOff', 'finished'] as const;
+export type GuestPagePhase = (typeof GUEST_PAGE_PHASES)[number];
 
 /** The API's Guest limits, which the form checks before sending. */
 export const GUEST_NAME_MAXIMUM = 200;

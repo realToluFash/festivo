@@ -4,6 +4,7 @@ import {
   GUEST_ANSWERS,
   type GuestAnswer,
   type GuestPage,
+  type GuestPagePhase,
 } from '@soirely/api-client';
 import { formatEventClock, hostsLine } from '@soirely/domain';
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -15,6 +16,7 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
 import { offButton } from '../../offButton.ts';
+import { useWideWidth } from '../../phoneWidth.ts';
 import { InvalidInvitation } from './InvalidInvitation.tsx';
 import { forgetStarted, markStarted, wasStarted } from './started.ts';
 
@@ -26,7 +28,13 @@ type Load =
 
 type View =
   | { kind: 'answer'; busy: GuestAnswer | null; note: 'unsent' | 'notSentTap' | null }
-  | { kind: 'check'; busy: boolean; failed: boolean; from: 'answer' | 'changing' }
+  | {
+      kind: 'check';
+      busy: boolean;
+      failed: boolean;
+      refused?: boolean;
+      from: 'answer' | 'changing';
+    }
   | { kind: 'recorded'; same: boolean }
   | { kind: 'changing'; busy: GuestAnswer | null; failed: boolean }
   | { kind: 'closed' };
@@ -55,6 +63,27 @@ const GREETING = {
 const KEBAB = { coming: 'coming', notComing: 'not-coming', maybe: 'not-sure' } as const;
 
 const PIECES = [1, 2, 3, 4, 5, 6, 7];
+
+/** A page left open hears a pause, a resume or the end within a minute (sc-3591). */
+const REFRESH_MS = 30_000;
+
+const REFUSED = ['event_paused', 'event_concluded'] as const;
+
+function ended(phase: GuestPagePhase): boolean {
+  return phase === 'calledOff' || phase === 'finished';
+}
+
+function standing(page: GuestPage): string {
+  return `${page.phase}:${String(page.started)}:${String(page.answersOpen)}`;
+}
+
+/** The control that had focus before an update, so focus can follow it or fall to the h1 (sc-3591). */
+function focused(): { on: string | null; was: Element } | null {
+  const was = document.activeElement;
+  if (was == null || was.closest('.gp-columns') == null) return null;
+
+  return { on: was.getAttribute('data-focus'), was };
+}
 
 /** The guest's own page in A · The cover card (sc-1526). Opening it records nothing; only an answer sent does (sc-1439). */
 export function Invitation() {
@@ -145,6 +174,9 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   const [tell, setTell] = useState<Tell>({ kind: 'card' });
   const [want, setWant] = useState<{ on: string } | null>(null);
   const [gone, setGone] = useState(false);
+  const [held, setHeld] = useState<ReturnType<typeof focused>>(null);
+  const seen = useRef(standing(first));
+  const wide = useWideWidth();
   const { guest, event } = page;
   const hosts = hostsLine(event.hosts, currentLocale());
   const count = Math.max(event.hosts.length, 1);
@@ -154,7 +186,35 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
     document.querySelector<HTMLElement>(`.gp [data-focus="${want.on}"]`)?.focus();
   }, [want]);
 
+  useEffect(() => {
+    if (held == null || held.was.isConnected) return;
+    const same =
+      held.on == null ? null : document.querySelector<HTMLElement>(`.gp [data-focus="${held.on}"]`);
+    (same ?? document.querySelector<HTMLElement>('.gp [data-focus="h1"]'))?.focus();
+  }, [held]);
+
   const focus = (on: string) => setWant({ on });
+
+  function refreshed(next: GuestPage): void {
+    const had = focused();
+    setPage(next);
+    if (standing(next) === seen.current) return;
+
+    seen.current = standing(next);
+    setView(opening(next, token));
+    setHeld(had);
+  }
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      api.guestPage(token).then(refreshed, (error: unknown) => {
+        if (error instanceof ApiError && error.status === 404) setGone(true);
+      });
+    }, REFRESH_MS);
+
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshed reads only setters and refs
+  }, [token]);
 
   function send(answer: GuestAnswer, onFail: () => void): void {
     api.sendGuestAnswer(token, answer).then(
@@ -167,12 +227,37 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
         focus('greeting');
       },
       (error: unknown) => {
-        if (error instanceof ApiError && error.is('replies_closed')) {
+        if (error instanceof ApiError && REFUSED.some((code) => error.is(code))) {
+          refuse();
+        } else if (error instanceof ApiError && error.is('replies_closed')) {
           setPage((was) => ({ ...was, answersOpen: false }));
           setView({ kind: 'closed' });
           focus('closedHead');
         } else if (error instanceof ApiError && error.status === 404) setGone(true);
         else onFail();
+      },
+    );
+  }
+
+  /** Paused or over while sending: Check and send stays with what was chosen; a one-tap answer gives way to the page as it now stands. */
+  function refuse(): void {
+    const had = focused();
+    const checking = view.kind === 'check';
+    api.guestPage(token).then(
+      (next) => {
+        seen.current = standing(next);
+        setPage(next);
+        if (checking) {
+          setView({ kind: 'check', busy: false, failed: false, refused: true, from: 'answer' });
+          focus('checkHead');
+        } else {
+          setView(opening(next, token));
+          setHeld(had);
+        }
+      },
+      (error: unknown) => {
+        if (error instanceof ApiError && error.status === 404) setGone(true);
+        else setView({ kind: 'closed' });
       },
     );
   }
@@ -246,8 +331,10 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
 
   return (
     <div className="gp-columns">
-      <Cover page={page} tagged={tagged} />
+      {!wide && <PhaseNotice phase={page.phase} />}
+      <Cover page={page} tagged={tagged && !ended(page.phase)} />
       <div className="gp-under">
+        {wide && <PhaseNotice phase={page.phase} />}
         {tell.kind === 'card' && (
           <Shown
             view={view}
@@ -362,9 +449,13 @@ function Shown({
     case 'check':
       return (
         <section className="gp-check" aria-labelledby="gp-check-h">
-          <TextAction ink icon={<Glyph name="back" size={18} weight={2.2} />} onClick={onBack}>
-            {t('guest.back')}
-          </TextAction>
+          {view.refused === true ? (
+            <Notice kind="broken">{t('guest.refused')}</Notice>
+          ) : (
+            <TextAction ink icon={<Glyph name="back" size={18} weight={2.2} />} onClick={onBack}>
+              {t('guest.back')}
+            </TextAction>
+          )}
           <h2 id="gp-check-h" className="gp-h2 is-24" tabIndex={-1} data-focus="checkHead">
             {t('guest.check')}
           </h2>
@@ -375,13 +466,19 @@ function Shown({
             <span className="gp-answer-words">
               {t('guest.answerLine', { answer: t(WORD.coming) })}
             </span>
-            <TextAction onClick={onBack}>{t('guest.changeShort')}</TextAction>
+            {view.refused !== true && (
+              <TextAction onClick={onBack}>{t('guest.changeShort')}</TextAction>
+            )}
           </div>
           {view.failed && <Notice kind="broken">{t('guest.notSent')}</Notice>}
-          <Filled busy={view.busy} focus="send" onClick={onSend}>
-            {t('guest.send')}
-          </Filled>
-          <p className="gp-small">{t('guest.nothingSent')}</p>
+          {view.refused !== true && (
+            <>
+              <Filled busy={view.busy} focus="send" onClick={onSend}>
+                {t('guest.send')}
+              </Filled>
+              <p className="gp-small">{t('guest.nothingSent')}</p>
+            </>
+          )}
         </section>
       );
     case 'recorded':
@@ -426,15 +523,38 @@ function Shown({
           </TextAction>
         </section>
       );
-    case 'closed':
+    case 'closed': {
+      const said =
+        reply == null ? t('guest.didNotAnswer') : t(ANSWERED[reply.answer], { date: day });
+
+      if (page.phase === 'calledOff') return null;
+      if (page.phase === 'finished') {
+        return (
+          <div className="gp-ended">
+            <p className="gp-sub">{said}</p>
+          </div>
+        );
+      }
+
       return (
         <section className="gp-closed" aria-labelledby="gp-closed-h">
           <h2 id="gp-closed-h" className="gp-h2 is-19" tabIndex={-1} data-focus="closedHead">
-            {reply == null ? t('guest.didNotAnswer') : t(ANSWERED[reply.answer], { date: day })}
+            {said}
           </h2>
-          <p className="gp-sub">{t('guest.closed')}</p>
+          {page.phase === 'live' && <p className="gp-sub">{t('guest.closed')}</p>}
+          {page.phase === 'paused' && !page.started && (
+            <>
+              <TextAction off focus="change" describedBy="gp-reason">
+                {t('guest.change')}
+              </TextAction>
+              <p id="gp-reason" className="gp-sub">
+                {t('guest.pausedReason')}
+              </p>
+            </>
+          )}
         </section>
       );
+    }
   }
 }
 
@@ -514,22 +634,28 @@ function Mark({
 
 function TextAction({
   children,
+  off = false,
   ink = false,
   icon,
   focus,
+  describedBy,
   onClick,
 }: {
   children: ReactNode;
+  off?: boolean;
   ink?: boolean;
   icon?: ReactNode;
   focus?: string;
-  onClick: () => void;
+  describedBy?: string;
+  onClick?: () => void;
 }) {
   return (
     <button
-      className={`gp-text${ink ? ' is-ink' : ''}`}
+      className={`gp-text${ink ? ' is-ink' : ''}${off ? ' is-off' : ''}`}
       type="button"
       data-focus={focus}
+      aria-describedby={describedBy}
+      {...offButton(off, { dim: false })}
       onClick={onClick}
     >
       {icon}
@@ -561,6 +687,43 @@ function Filled({
       {busy && <span className="gp-spinner" aria-hidden="true" />}
       {children}
     </button>
+  );
+}
+
+/** One notice at the top, a status region, told apart by its chip's shape as well as its colour (WCAG 2.2 §1.4.1, §4.1.3). */
+function PhaseNotice({ phase }: { phase: GuestPagePhase }) {
+  const { t } = useTranslation();
+  if (phase === 'live') return null;
+
+  const paused = phase === 'paused';
+  const chip = paused
+    ? t('events.paused')
+    : phase === 'calledOff'
+      ? t('events.calledOff')
+      : t('events.finished');
+  const sentence = paused
+    ? t('guest.pausedNotice')
+    : phase === 'calledOff'
+      ? t('guest.calledOffNotice')
+      : t('guest.finishedNotice');
+
+  return (
+    <div className="gp-phase" role="status" aria-live="polite" aria-atomic="true">
+      <span className={`gp-chip is-${paused ? 'paused' : 'ended'}`}>
+        <span className="gp-chip-mark" aria-hidden="true">
+          {paused ? (
+            <>
+              <span />
+              <span />
+            </>
+          ) : (
+            <Glyph name="tick" size={9} weight={3.2} />
+          )}
+        </span>
+        {chip}
+      </span>
+      <p>{sentence}</p>
+    </div>
   );
 }
 
@@ -618,6 +781,7 @@ function Details({ page, hosts }: { page: GuestPage; hosts: string }) {
   const name = event.venue?.name ?? null;
   const address = event.venue?.address ?? null;
   const where = name != null || address != null;
+  const named = event.hosts.length > 0 && page.phase !== 'calledOff';
 
   return (
     <div className="gp-details">
@@ -632,7 +796,7 @@ function Details({ page, hosts }: { page: GuestPage; hosts: string }) {
         line={when}
       />
       {where && (
-        <div className={event.hosts.length > 0 ? 'gp-where has-rule' : 'gp-where'}>
+        <div className={named ? 'gp-where has-rule' : 'gp-where'}>
           <Row
             lead={<Glyph name="pin" size={22} />}
             title={name ?? address}
@@ -651,7 +815,7 @@ function Details({ page, hosts }: { page: GuestPage; hosts: string }) {
           )}
         </div>
       )}
-      {event.hosts.length > 0 && (
+      {named && (
         <Row lead={<Glyph name="users" size={22} />} title={hosts} line={t('eventHosts.heading')} />
       )}
     </div>
@@ -675,6 +839,7 @@ function Cover({ page, tagged }: { page: GuestPage; tagged: boolean }) {
   const { t } = useTranslation();
   const [failed, setFailed] = useState(false);
   const { event, guest } = page;
+  const over = ended(page.phase);
   const photo = event.cover != null && !failed ? event.cover : null;
   const when = useWhen(event);
   const line = [
@@ -687,7 +852,7 @@ function Cover({ page, tagged }: { page: GuestPage; tagged: boolean }) {
 
   return (
     <section
-      className={`gp-cover ev-card today-cover ${photo == null ? `is-${meshFor(event.id)}` : 'is-photo'}`}
+      className={`gp-cover ev-card today-cover ${photo == null ? `is-${meshFor(event.id)}` : 'is-photo'}${page.phase === 'calledOff' ? ' is-grey' : ''}`}
       aria-labelledby="gp-h1"
     >
       {photo != null && <Photo cover={photo} onFail={() => setFailed(true)} />}
@@ -703,11 +868,19 @@ function Cover({ page, tagged }: { page: GuestPage; tagged: boolean }) {
             {t(WORD[guest.reply.answer])}
           </p>
         )}
-        <h1 id="gp-h1" className="gp-cover-h1">
-          {t('guest.invitationTitle')}
-        </h1>
-        <p className="gp-cover-guest">{guest.fullName}</p>
-        <p className="gp-cover-name">{event.name}</p>
+        {over ? (
+          <h1 id="gp-h1" className="gp-cover-name" tabIndex={-1} data-focus="h1">
+            {event.name}
+          </h1>
+        ) : (
+          <>
+            <h1 id="gp-h1" className="gp-cover-h1" tabIndex={-1} data-focus="h1">
+              {t('guest.invitationTitle')}
+            </h1>
+            <p className="gp-cover-guest">{guest.fullName}</p>
+            <p className="gp-cover-name">{event.name}</p>
+          </>
+        )}
         <p className="gp-cover-line">{line}</p>
       </div>
     </section>
