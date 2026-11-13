@@ -3818,8 +3818,8 @@ async function accountAlone(root) {
   const { email, password } = await keptAccount(root, 'qa-alone.json', {
     signIn: async (account) => {
       const { accessToken: token } = await signIn(account.email, account.password, null);
-      const { organisations } = await api('/api/orgs', { method: 'GET', token });
-      return organisations.length === 0;
+      const { organisations, paused } = await api('/api/orgs', { method: 'GET', token });
+      return organisations.length === 0 && paused.length === 0;
     },
     register: async () => {
       const made = await founder(root, ACCOUNT_ORGANISATION);
