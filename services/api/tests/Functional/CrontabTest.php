@@ -40,6 +40,9 @@ final class CrontabTest extends FunctionalTestCase
     #[Test]
     public function theMailRateCheckRunsEveryHour(): void
     {
+        $application = new Application(self::$kernel ?? throw new LogicException('No kernel.'));
+
+        self::assertTrue($application->has('app:mail:check-rates'));
         self::assertContains(
             '15 * * * * php /app/bin/console app:mail:check-rates --no-interaction',
             Str\split(File\read(__DIR__ . '/../../config/crontab'), "\n"),
