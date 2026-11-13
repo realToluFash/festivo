@@ -666,6 +666,45 @@ describe('Finding a guest (sc-3772)', () => {
     expect(screen.getByText('4 haven’t replied (3 guests and 1 companion).')).toBeDefined();
   });
 
+  async function cardOn(event: Record<string, unknown>): Promise<HTMLElement> {
+    signedIn();
+    await onGuests({
+      'GET /api/events/ev_1/guests': () => json(listOf(EVERYONE)),
+      'GET /api/events/ev_1': () =>
+        json({ event: { ...EVENT, ...event, permissions: OWNER_PERMISSIONS } }),
+    });
+
+    return (await screen.findByText(/^(4 coming of 9 invited|\d+ on the list)$/u)).closest(
+      'section',
+    )!;
+  }
+
+  it('says Paused on the card, with its line and no step, as the demo draws it', async () => {
+    const card = await cardOn({
+      status: 'paused',
+      phase: 'paused',
+      pausedAt: '2026-11-01T10:00:00+00:00',
+    });
+
+    expect(within(card).getByText('Paused')).toBeDefined();
+    expect(
+      within(card).getByText('Guests can’t be invited while this event is paused.'),
+    ).toBeDefined();
+    expect(within(card).queryByRole('button')).toBeNull();
+  });
+
+  it('says Draft on the card, with its line and Make live as its step', async () => {
+    const card = await cardOn({ status: 'draft', phase: 'draft', madeLiveAt: null });
+
+    expect(within(card).getByText('Draft')).toBeDefined();
+    expect(
+      within(card).getByText("Guests can't be invited until this event is live."),
+    ).toBeDefined();
+    fireEvent.click(within(card).getByRole('button', { name: 'Make live' }));
+
+    expect(await screen.findByRole('dialog')).toBeDefined();
+  });
+
   it('groups All by reply, each with its first rows and Show all', async () => {
     await shown();
 
@@ -693,6 +732,34 @@ describe('Finding a guest (sc-3772)', () => {
     expect(screen.getByText('Held · comes only if their host accepts')).toBeDefined();
     expect(screen.getByText('1 of 9 shown')).toBeDefined();
     expect(shownRouter?.state.location.search).toBe('?filter=held');
+  });
+
+  it('steps Back through each change, the search once typing settles, then the choice', async () => {
+    await shown();
+    fireEvent.click(screen.getByRole('button', { name: 'All · 9' }));
+    fireEvent.click(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Held/u }),
+    );
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
+      target: { value: 'zz' },
+    });
+    await waitFor(() => expect(shownRouter?.state.location.search).toBe('?filter=held&q=zz'));
+    expect(screen.getByRole('heading', { name: 'No guests match' })).toBeDefined();
+
+    await act(() => shownRouter?.navigate(-1));
+
+    expect(shownRouter?.state.location.search).toBe('?filter=held');
+    expect(screen.getByRole<HTMLInputElement>('searchbox', { name: 'Find a guest' }).value).toBe(
+      '',
+    );
+    expect(names()).toEqual(['Rui Ávila']);
+
+    await act(() => shownRouter?.navigate(-1));
+
+    expect(shownRouter?.state.location.pathname).toBe('/app/events/ev_1/guests');
+    expect(shownRouter?.state.location.search).toBe('');
+    expect(screen.getByRole('button', { name: 'All · 9' })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 2, name: 'Coming · 4' })).toBeDefined();
   });
 
   it('finds a name ignoring accents, and a number typed the national way, then keeps the search', async () => {

@@ -11,6 +11,7 @@ import {
   deviceCountry,
   formatPhone,
   eventAllows,
+  makeLiveRow,
   phoneScreenCountry,
   shownPhase,
 } from '@soirely/domain';
@@ -27,11 +28,13 @@ import {
 } from 'react';
 import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { Link, useBlocker, useSearchParams } from 'react-router';
+import { Link, useBlocker, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { config } from '../../../config.ts';
+import { GlassMark } from '../../../components/EventCard.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
+import { SearchField } from '../../../components/SearchField.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import {
   Ask,
@@ -48,7 +51,7 @@ import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
-import { DraftRow } from './MakeLive.tsx';
+import { useMakeLive } from './MakeLive.tsx';
 import {
   MOST_COMPANIONS,
   type Problem,
@@ -280,6 +283,16 @@ export function GuestsArea({
   const manages = canOn(event, 'guests.manage');
   const country = useStartingCountry(manages);
   const away = useBlocker(dirty);
+  const navigate = useNavigate();
+  const opener = useRef<HTMLButtonElement>(null);
+  const makeLive = useMakeLive({
+    event,
+    tag,
+    heading,
+    opener,
+    onChange,
+    onMadeLive: () => undefined,
+  });
 
   useEffect(() => {
     if (!dirty) return;
@@ -416,6 +429,51 @@ export function GuestsArea({
       : viewOf(guests, counts, choice, q, expanded);
   const looking = choice !== 'all' || q.trim() !== '';
 
+  /** The card as `/demo/guests` draws it: a Draft, Paused or Finished event says so on the card, in place of its counts' step. */
+  function cover(counts: Counts): Cover {
+    const comingOf =
+      counts.invited === 0
+        ? t('guestList.onTheList', { count: counts.all })
+        : t('guestList.comingOf', {
+            comingWords: t('guestList.countComing', { count: counts.coming }),
+            invitedWords: t('guestList.countInvited', { count: counts.invited }),
+          });
+    const draft = phase === 'draft' ? makeLiveRow(event, now) : null;
+
+    if (draft != null) {
+      const changes = canOn(event, 'events.manage');
+
+      return {
+        tag: { mark: 'draft', word: t('events.draft') },
+        says: t('guestList.onTheList', { count: counts.all }),
+        line: t(`eventLive.${draft.line}`),
+        step: !changes ? null : draft.makeLive ? 'makeLive' : 'changeDates',
+      };
+    }
+    if (phase === 'paused' || phase === 'finished')
+      return {
+        tag:
+          phase === 'paused'
+            ? { mark: 'paused', word: t('events.paused') }
+            : { mark: null, word: t('events.finished') },
+        says: comingOf,
+        line: t(phase === 'paused' ? 'guestList.pausedLine' : 'guestList.finishedLine'),
+      };
+    if (guests.length === 0)
+      return {
+        says: t('guestList.noGuests'),
+        step: manages ? 'add' : null,
+      };
+
+    return { says: comingOf, line: counts.invited === 0 ? null : haventLine(t, counts) };
+  }
+
+  function onStep(step: CoverStep): void {
+    if (step === 'add') startAdd();
+    else if (step === 'makeLive') makeLive.start();
+    else void navigate(`/app/events/${encodeURIComponent(event.id)}/edit#starts`);
+  }
+
   function clearView(): void {
     clear();
     focus('find');
@@ -458,20 +516,6 @@ export function GuestsArea({
               </button>
             )}
           </header>
-          <DraftRow
-            event={event}
-            tag={tag}
-            now={now}
-            manages={canOn(event, 'events.manage')}
-            heading={heading}
-            onChange={onChange}
-            onMadeLive={() => undefined}
-          />
-          {(phase === 'paused' || phase === 'finished') && (
-            <p className="desk-line gs-blocked">
-              {t(phase === 'paused' ? 'guestList.pausedLine' : 'guestList.finishedLine')}
-            </p>
-          )}
           {shows === 'loading' && (
             <Skeleton words={t('pending.loading')} shape="rows" rowHeight={64} field />
           )}
@@ -491,25 +535,12 @@ export function GuestsArea({
           )}
           {shows === 'loaded' && (
             <>
-              {guests.length === 0 && (
+              {counts != null && (
                 <GuestsCover
                   mesh={meshFor(event.id)}
-                  says={t('guestList.noGuests')}
-                  step={manages ? { label: t('guestList.addGuest'), onClick: startAdd } : null}
-                />
-              )}
-              {counts != null && guests.length > 0 && (
-                <GuestsCover
-                  mesh={meshFor(event.id)}
-                  says={
-                    counts.invited === 0
-                      ? t('guestList.onTheList', { count: counts.all })
-                      : t('guestList.comingOf', {
-                          comingWords: t('guestList.countComing', { count: counts.coming }),
-                          invitedWords: t('guestList.countInvited', { count: counts.invited }),
-                        })
-                  }
-                  line={counts.invited === 0 ? null : haventLine(t, counts)}
+                  cover={cover(counts)}
+                  stepRef={opener}
+                  onStep={onStep}
                 />
               )}
               {(guests.length > 0 || adding) && (
@@ -526,16 +557,16 @@ export function GuestsArea({
                           onChoice={setChoice}
                           onMenu={setMenu}
                         />
-                        {looking && (
-                          <div className="gs-shown">
-                            <p role="status">
-                              {t('guestList.shown', { shown, total: counts.all })}
-                            </p>
+                        <div className={looking ? 'gs-shown' : 'visually-hidden'}>
+                          <p role="status">
+                            {looking ? t('guestList.shown', { shown, total: counts.all }) : ''}
+                          </p>
+                          {looking && (
                             <TextAction label={t('guestList.clear')} onClick={clearView} />
-                          </div>
-                        )}
+                          )}
+                        </div>
                         {shown === 0 ? (
-                          <div className="gs-none" role="status">
+                          <div className="gs-none">
                             <h2 tabIndex={-1} data-focus="none-heading">
                               {t('guestList.noMatch')}
                             </h2>
@@ -702,6 +733,7 @@ export function GuestsArea({
             }}
           />
         )}
+        {makeLive.dialogs}
         {saved && <Toast words={t('guestList.saved')} onClose={() => setSaved(false)} />}
         <div ref={setHost} className="desk-layers" />
       </div>
@@ -725,18 +757,35 @@ function haventLine(t: TFunction, counts: Counts): string {
       });
 }
 
+type CoverStep = 'add' | 'makeLive' | 'changeDates';
+
+interface Cover {
+  tag?: { mark: 'draft' | 'paused' | null; word: string } | null;
+  says: string;
+  line?: string | null;
+  step?: CoverStep | null;
+}
+
+const STEP_KEY: Record<CoverStep, string> = {
+  add: 'guestList.addGuest',
+  makeLive: 'eventLive.makeLive',
+  changeDates: 'eventLive.changeDates',
+};
+
 /** How the room stands, in the event's colours, with the one step this page can take. */
 function GuestsCover({
   mesh,
-  says,
-  line = null,
-  step = null,
+  cover: { tag = null, says, line = null, step = null },
+  stepRef,
+  onStep,
 }: {
   mesh: Mesh;
-  says: string;
-  line?: string | null;
-  step?: { label: string; onClick: () => void } | null;
+  cover: Cover;
+  stepRef: RefObject<HTMLButtonElement | null>;
+  onStep: (step: CoverStep) => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <section className={`ev-card today-cover is-${mesh} gs-card is-page`}>
       <span className="ev-scrim" aria-hidden="true" />
@@ -744,11 +793,19 @@ function GuestsCover({
         <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
       ))}
       <div className="ev-card-inner gs-card-inner">
+        {tag != null && (
+          <ul className="desk-glass-tags">
+            <li className="desk-glass">
+              {tag.mark != null && <GlassMark mark={tag.mark} />}
+              {tag.word}
+            </li>
+          </ul>
+        )}
         <p className="gs-says">{says}</p>
         {line != null && <p className="desk-on-card">{line}</p>}
         {step != null && (
           <div className="ev-card-foot">
-            <CardStep label={step.label} onClick={step.onClick} />
+            <CardStep ref={stepRef} label={t(STEP_KEY[step])} onClick={() => onStep(step)} />
           </div>
         )}
       </div>
@@ -784,46 +841,19 @@ function SearchRow({
   onMenu: (open: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const field = useRef<HTMLInputElement>(null);
   const onClose = useCallback(() => onMenu(false), [onMenu]);
 
   return (
     <div className="ev-search-row gs-search-row">
       <div className="ev-search" role="search">
-        <div className="ev-field">
-          <Glyph name="search" size={18} weight={2.2} />
-          <input
-            ref={field}
-            type="search"
-            aria-label={t('guestList.find')}
-            placeholder={t('guestList.find')}
-            value={q}
-            spellCheck={false}
-            data-focus="find"
-            onChange={(typed) => onQ(typed.target.value)}
-            onKeyDown={(key) => {
-              if (key.key === 'Escape' && q !== '') {
-                key.preventDefault();
-                onQ('');
-              }
-            }}
-          />
-          {q !== '' && (
-            <button
-              type="button"
-              className="ev-clear"
-              aria-label={t('guestList.clearSearch')}
-              onClick={() => {
-                onQ('');
-                field.current?.focus();
-              }}
-            >
-              <span className="ev-clear-disc" aria-hidden="true">
-                <Glyph name="clear" size={12} weight={3} />
-              </span>
-            </button>
-          )}
-        </div>
+        <SearchField
+          label={t('guestList.find')}
+          clearLabel={t('guestList.clearSearch')}
+          value={q}
+          focusKey="find"
+          onChange={onQ}
+          onClear={() => onQ('')}
+        />
       </div>
       <div className="gs-menu">
         <Menu

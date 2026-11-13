@@ -433,10 +433,6 @@
   background: var(--colorAccentTint);
 }
 
-.gs-blocked {
-  margin-bottom: var(--spaceLg);
-}
-
 /* A guest's column loading (sc-3773): the cover card's place, then three detail rows. */
 .gs-bone-guest {
   height: 170px;
