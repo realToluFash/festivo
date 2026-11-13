@@ -73,7 +73,7 @@ describe('marking many', () => {
     expect(done.list.find((one) => one.id === keep?.id)).toEqual(keep);
     expect(lineWords(done.line)).toEqual([
       '2 marked as invited, WhatsApp.',
-      '1 already invited, left as it was.',
+      '1 already invited, kept as recorded.',
     ]);
   });
 
@@ -95,7 +95,7 @@ describe('marking many', () => {
     expect(done.list.some((one) => one.id === gone?.id)).toBe(false);
     expect(lineWords(done.line)).toEqual([
       '1 marked as invited, email.',
-      '1 already invited, left as it was.',
+      '1 already invited, kept as recorded.',
       '1 not changed: someone else removed them.',
     ]);
   });

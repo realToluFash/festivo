@@ -58,7 +58,7 @@ describe('Mark as invited from the selection bar (sc-46880)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Mark as invited' }));
 
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(said()).toBe('9 marked as invited, in person.3 already invited, left as it was.');
+    expect(said()).toBe('9 marked as invited, in person.3 already invited, kept as recorded.');
     expect(screen.queryByRole('region', { name: 'Selected guests' })).toBeNull();
   });
 
@@ -94,7 +94,7 @@ describe('Mark as invited from the selection bar (sc-46880)', () => {
 
       expect(said()).toContain('Nothing changed. We could not reach Soirely.');
       fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-      expect(said()).toBe('9 marked as invited, WhatsApp.3 already invited, left as it was.');
+      expect(said()).toBe('9 marked as invited, WhatsApp.3 already invited, kept as recorded.');
     },
   );
 

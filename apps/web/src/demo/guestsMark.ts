@@ -39,7 +39,7 @@ export const MW = {
   nothingToMark: (count: number) => `${figure(count)} already invited. Nothing to mark.`,
   marked: (count: number, how: HowInvited) =>
     `${figure(count)} marked as invited, ${midSentence(how)}.`,
-  leftAsItWas: (count: number) => `${figure(count)} already invited, left as it was.`,
+  keptAsRecorded: (count: number) => `${figure(count)} already invited, kept as recorded.`,
   removedMeanwhile: (count: number) => `${figure(count)} not changed: someone else removed them.`,
   failed: 'Nothing changed. We could not reach Soirely.',
   tryAgain: 'Try again',
@@ -149,7 +149,7 @@ export function lineWords(line: Line): string[] {
 
   return [
     MW.marked(line.marked, line.how),
-    ...(line.already > 0 ? [MW.leftAsItWas(line.already)] : []),
+    ...(line.already > 0 ? [MW.keptAsRecorded(line.already)] : []),
     ...(line.removed > 0 ? [MW.removedMeanwhile(line.removed)] : []),
   ];
 }
