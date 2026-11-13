@@ -761,6 +761,29 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(puts(sent)).toHaveLength(0);
   });
 
+  it('focuses the guest’s name once they load, however long the read takes (#45708)', async () => {
+    let answer: (response: Response) => void = () => undefined;
+    signedIn();
+    await onGuests({
+      'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA])),
+      'GET /api/events/ev_1/guests/g_1': () =>
+        new Promise<Response>((resolve) => {
+          answer = resolve;
+        }),
+    });
+    fireEvent.click(await screen.findByRole('link', { name: /^Ngozi Eze/u }));
+    await within(column()).findByRole('status');
+    await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+
+    act(() => answer(tagged(DETAILS, '"1"')));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Ngozi Eze' }),
+      ),
+    );
+  });
+
   it('saves against the version it read, and says Saved', async () => {
     const saved = { ...DETAILS, fullName: 'Ngozi Eze-Okafor' };
     const sent = await editNgozi({
