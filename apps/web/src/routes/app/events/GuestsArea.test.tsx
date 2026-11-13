@@ -183,6 +183,30 @@ describe('Guests (sc-1468)', () => {
     expect(rows[2]?.className).toBe('is-companion');
   });
 
+  it('dates a reply by the event’s day, not the browser’s (sc-1439)', async () => {
+    const zone = process.env.TZ;
+    process.env.TZ = 'Europe/London';
+    try {
+      signedIn();
+      await onGuests({
+        'GET /api/events/ev_1/guests': () =>
+          json(
+            listOf([
+              guest('g_2', 'Chief Amaka Obi', {
+                reply: 'coming',
+                repliedAt: '2030-11-13T23:30:00+00:00',
+              }),
+            ]),
+          ),
+      });
+
+      expect(await screen.findByText('Coming · replied Nov 14')).toBeDefined();
+    } finally {
+      if (zone == null) delete process.env.TZ;
+      else process.env.TZ = zone;
+    }
+  });
+
   it('says No guests yet with Add guest on the event’s cover, and no count', async () => {
     signedIn();
     await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf([])) });

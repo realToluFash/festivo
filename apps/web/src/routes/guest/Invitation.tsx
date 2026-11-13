@@ -1,4 +1,10 @@
-import { ApiError, type EventCover, type GuestAnswer, type GuestPage } from '@soirely/api-client';
+import {
+  ApiError,
+  type EventCover,
+  GUEST_ANSWERS,
+  type GuestAnswer,
+  type GuestPage,
+} from '@soirely/api-client';
 import { formatEventClock, hostsLine } from '@soirely/domain';
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,8 +36,6 @@ type Tell =
   | { kind: 'asking'; busy: boolean; result: 'failed' | 'limited' | null }
   | { kind: 'told' };
 
-const ANSWERS: readonly GuestAnswer[] = ['coming', 'notComing', 'maybe'];
-
 const CHOICE = { coming: 'guest.yes', notComing: 'guest.no', maybe: 'guest.maybe' } as const;
 const WORD = {
   coming: 'guest.coming',
@@ -51,12 +55,6 @@ const GREETING = {
 const KEBAB = { coming: 'coming', notComing: 'not-coming', maybe: 'not-sure' } as const;
 
 const PIECES = [1, 2, 3, 4, 5, 6, 7];
-
-const MAP = [
-  'M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z',
-  'M15 5.764v15',
-  'M9 3.236v15',
-];
 
 /** The guest's own page in A · The cover card (sc-1526). Opening it records nothing; only an answer sent does (sc-1439). */
 export function Invitation() {
@@ -455,7 +453,7 @@ function AnswerRows({
 
   return (
     <div className="gp-answers">
-      {ANSWERS.map((answer) => (
+      {GUEST_ANSWERS.map((answer) => (
         <button
           key={answer}
           className={`gp-answer${current === answer ? ' is-lit' : ''}`}
@@ -647,19 +645,7 @@ function Details({ page, hosts }: { page: GuestPage; hosts: string }) {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <svg
-                className="gp-line"
-                width={18}
-                height={18}
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-                focusable="false"
-                strokeWidth={2.2}
-              >
-                {MAP.map((d) => (
-                  <path key={d} d={d} />
-                ))}
-              </svg>
+              <Glyph name="map" weight={2.2} />
               <span>{t('eventPage.openInMaps')}</span>
             </a>
           )}

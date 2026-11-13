@@ -558,7 +558,6 @@
     "notSentTap": "Your answer wasn’t sent. Check your connection and tap it again.",
     "same": "You’re already down as {{answer}}. Nothing has changed.",
     "unsent": "You haven’t sent your answer yet.",
-    "refused": "Answers closed before this was sent. Everything you chose is still here.",
     "closed": "Answers have closed. Contact your host if something has changed.",
     "didNotAnswer": "You didn’t answer."
   },
