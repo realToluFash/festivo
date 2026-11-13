@@ -1,15 +1,22 @@
-import { ApiError, type EventCover, type GuestPage } from '@soirely/api-client';
-import { hostsLine } from '@soirely/domain';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  ApiError,
+  type EventCover,
+  GUEST_ANSWERS,
+  type GuestAnswer,
+  type GuestPage,
+} from '@soirely/api-client';
+import { formatEventClock, hostsLine } from '@soirely/domain';
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOutletContext } from 'react-router';
 
 import { api } from '../../api.ts';
 import { Glyph } from '../../components/Glyph.tsx';
-import { currentLocale } from '../../i18n/index.ts';
+import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
 import { offButton } from '../../offButton.ts';
 import { InvalidInvitation } from './InvalidInvitation.tsx';
+import { forgetStarted, markStarted, wasStarted } from './started.ts';
 
 type Load =
   | { kind: 'loading' }
@@ -17,14 +24,39 @@ type Load =
   | { kind: 'unreachable' }
   | { kind: 'loaded'; page: GuestPage };
 
+type View =
+  | { kind: 'answer'; busy: GuestAnswer | null; note: 'unsent' | 'notSentTap' | null }
+  | { kind: 'check'; busy: boolean; failed: boolean; from: 'answer' | 'changing' }
+  | { kind: 'recorded'; same: boolean }
+  | { kind: 'changing'; busy: GuestAnswer | null; failed: boolean }
+  | { kind: 'closed' };
+
 type Tell =
   | { kind: 'card' }
   | { kind: 'asking'; busy: boolean; result: 'failed' | 'limited' | null }
   | { kind: 'told' };
 
+const CHOICE = { coming: 'guest.yes', notComing: 'guest.no', maybe: 'guest.maybe' } as const;
+const WORD = {
+  coming: 'guest.coming',
+  notComing: 'guest.notComing',
+  maybe: 'guest.notSure',
+} as const;
+const ANSWERED = {
+  coming: 'guest.answeredComing',
+  notComing: 'guest.answeredNotComing',
+  maybe: 'guest.answeredNotSure',
+} as const;
+const GREETING = {
+  coming: 'guest.greetComing',
+  notComing: 'guest.greetNotComing',
+  maybe: 'guest.greetNotSure',
+} as const;
+const KEBAB = { coming: 'coming', notComing: 'not-coming', maybe: 'not-sure' } as const;
+
 const PIECES = [1, 2, 3, 4, 5, 6, 7];
 
-/** The guest's own page in A · The cover card (sc-1526). Opening it records nothing; sc-1439 adds the date and the answers. */
+/** The guest's own page in A · The cover card (sc-1526). Opening it records nothing; only an answer sent does (sc-1439). */
 export function Invitation() {
   const { t } = useTranslation();
   const token = useOutletContext<string>();
@@ -93,34 +125,110 @@ export function Invitation() {
     );
   }
 
-  return <Card token={token} page={load.page} />;
+  return <Card token={token} first={load.page} />;
 }
 
-function Card({ token, page }: { token: string; page: GuestPage }) {
+function opening(page: GuestPage, token: string): View {
+  if (!page.answersOpen) return { kind: 'closed' };
+  if (page.guest.reply != null) {
+    forgetStarted(token);
+    return { kind: 'recorded', same: false };
+  }
+
+  return { kind: 'answer', busy: null, note: wasStarted(token) ? 'unsent' : null };
+}
+
+function Card({ token, first }: { token: string; first: GuestPage }) {
   const { t } = useTranslation();
+  const [page, setPage] = useState(first);
+  const [view, setView] = useState<View>(() => opening(first, token));
   const [tell, setTell] = useState<Tell>({ kind: 'card' });
-  const focusOn = useRef<'question' | 'told' | 'tell' | null>(null);
-  const question = useRef<HTMLHeadingElement>(null);
-  const told = useRef<HTMLParagraphElement>(null);
-  const tellLink = useRef<HTMLButtonElement>(null);
+  const [want, setWant] = useState<{ on: string } | null>(null);
+  const [gone, setGone] = useState(false);
   const { guest, event } = page;
   const hosts = hostsLine(event.hosts, currentLocale());
   const count = Math.max(event.hosts.length, 1);
 
   useEffect(() => {
-    const want = focusOn.current;
-    focusOn.current = null;
-    if (want === 'question') question.current?.focus();
-    if (want === 'told') told.current?.focus();
-    if (want === 'tell') tellLink.current?.focus();
-  }, [tell.kind]);
+    if (want == null) return;
+    document.querySelector<HTMLElement>(`.gp [data-focus="${want.on}"]`)?.focus();
+  }, [want]);
+
+  const focus = (on: string) => setWant({ on });
+
+  function send(answer: GuestAnswer, onFail: () => void): void {
+    api.sendGuestAnswer(token, answer).then(
+      (next) => {
+        forgetStarted(token);
+        const same =
+          page.guest.reply?.answer === answer && next.guest.reply?.at === page.guest.reply.at;
+        setPage(next);
+        setView({ kind: 'recorded', same });
+        focus('greeting');
+      },
+      (error: unknown) => {
+        if (error instanceof ApiError && error.is('replies_closed')) {
+          setPage((was) => ({ ...was, answersOpen: false }));
+          setView({ kind: 'closed' });
+          focus('closedHead');
+        } else if (error instanceof ApiError && error.status === 404) setGone(true);
+        else onFail();
+      },
+    );
+  }
+
+  function choose(answer: GuestAnswer): void {
+    if (view.kind !== 'answer' && view.kind !== 'changing') return;
+    if (view.busy != null) return;
+    const from = view.kind;
+
+    if (answer === 'coming') {
+      if (from === 'answer') markStarted(token);
+      setView({ kind: 'check', busy: false, failed: false, from });
+      focus('checkHead');
+      return;
+    }
+
+    setView(
+      from === 'answer'
+        ? { kind: 'answer', busy: answer, note: null }
+        : { kind: 'changing', busy: answer, failed: false },
+    );
+    send(answer, () => {
+      setView(
+        from === 'answer'
+          ? { kind: 'answer', busy: null, note: 'notSentTap' }
+          : { kind: 'changing', busy: null, failed: true },
+      );
+      focus(`row-${answer}`);
+    });
+  }
+
+  function sendComing(): void {
+    if (view.kind !== 'check' || view.busy) return;
+    setView({ ...view, busy: true, failed: false });
+    send('coming', () => {
+      setView({ ...view, busy: false, failed: true });
+      focus('send');
+    });
+  }
+
+  function back(): void {
+    if (view.kind !== 'check') return;
+    setView(
+      view.from === 'changing'
+        ? { kind: 'changing', busy: null, failed: false }
+        : { kind: 'answer', busy: null, note: null },
+    );
+    focus('row-coming');
+  }
 
   function tellThem(): void {
     setTell({ kind: 'asking', busy: true, result: null });
     api.tellWrongPerson(token).then(
       () => {
-        focusOn.current = 'told';
         setTell({ kind: 'told' });
+        focus('thanks');
       },
       (error: unknown) =>
         setTell({
@@ -131,64 +239,53 @@ function Card({ token, page }: { token: string; page: GuestPage }) {
     );
   }
 
+  if (gone) return <InvalidInvitation />;
+
+  const alone = tell.kind !== 'card' || view.kind === 'check';
+  const tagged = guest.reply != null && view.kind !== 'check';
+
   return (
     <div className="gp-columns">
-      <Cover event={event} guest={guest.fullName} />
+      <Cover page={page} tagged={tagged} />
       <div className="gp-under">
         {tell.kind === 'card' && (
-          <div className="gp-foot">
-            <p>{t('guest.noAccountNeeded')}</p>
-            <hr />
-            <p>{t('guest.closing')}</p>
-            <button
-              ref={tellLink}
-              className="gp-text"
-              type="button"
-              onClick={() => {
-                focusOn.current = 'question';
-                setTell({ kind: 'asking', busy: false, result: null });
-              }}
-            >
-              <span>{t('guest.tell', { name: guest.fullName })}</span>
-            </button>
-          </div>
+          <Shown
+            view={view}
+            page={page}
+            onChoose={choose}
+            onSend={sendComing}
+            onBack={back}
+            onChange={() => {
+              setView({ kind: 'changing', busy: null, failed: false });
+              focus('newHead');
+            }}
+            onKeep={() => {
+              setView({ kind: 'recorded', same: false });
+              focus('change');
+            }}
+          />
         )}
         {tell.kind === 'asking' && (
           <section className="gp-tell" aria-labelledby="gp-tell-h">
-            <h2 ref={question} id="gp-tell-h" className="gp-h2" tabIndex={-1}>
+            <h2 id="gp-tell-h" className="gp-h2" tabIndex={-1} data-focus="tellHead">
               {t('guest.tellQuestion', { hosts })}
             </h2>
             <p className="gp-sub">{t('guest.tellLine', { name: guest.fullName, count })}</p>
-            {tell.result === 'failed' && (
-              <div className="gp-notice is-broken" role="alert">
-                <span className="gp-notice-mark" aria-hidden="true">
-                  <Glyph name="clear" size={14} weight={3} />
-                </span>
-                <p>{t('guest.tellFailed')}</p>
-              </div>
-            )}
+            {tell.result === 'failed' && <Notice kind="broken">{t('guest.tellFailed')}</Notice>}
             {tell.result === 'limited' && (
-              <div className="gp-notice is-attention" role="alert">
-                <span className="gp-notice-mark" aria-hidden="true" />
-                <p>{t('guest.tellLimited')}</p>
-              </div>
+              <Notice kind="attention" alert>
+                {t('guest.tellLimited')}
+              </Notice>
             )}
-            <button
-              className="gp-filled"
-              type="button"
-              aria-busy={tell.busy}
-              {...offButton(tell.busy, { dim: false })}
-              onClick={tellThem}
-            >
-              {tell.busy && <span className="gp-spinner" aria-hidden="true" />}
+            <Filled busy={tell.busy} onClick={tellThem}>
               {t('guest.tellThem')}
-            </button>
+            </Filled>
             <button
               className="gp-outlined"
               type="button"
               onClick={() => {
-                focusOn.current = 'tell';
                 setTell({ kind: 'card' });
+                focus('tell');
               }}
             >
               {t('guest.goBack')}
@@ -197,24 +294,396 @@ function Card({ token, page }: { token: string; page: GuestPage }) {
         )}
         {tell.kind === 'told' && (
           <div className="gp-told" role="status" aria-live="polite">
-            <span className="gp-mark" aria-hidden="true">
+            <span className="gp-mark is-coming" aria-hidden="true">
               <Glyph name="tick" size={17} weight={3} />
             </span>
-            <p ref={told} tabIndex={-1}>
+            <p tabIndex={-1} data-focus="thanks">
               {t('guest.tellThanks', { hosts, count })}
             </p>
           </div>
         )}
+        {!alone && (
+          <div className="gp-foot">
+            <p>{t('guest.noAccountNeeded')}</p>
+            <hr />
+            <p>{t('guest.closing')}</p>
+            <button
+              className="gp-text"
+              type="button"
+              data-focus="tell"
+              onClick={() => {
+                setTell({ kind: 'asking', busy: false, result: null });
+                focus('tellHead');
+              }}
+            >
+              <span>{t('guest.tell', { name: guest.fullName })}</span>
+            </button>
+          </div>
+        )}
       </div>
+      {!alone && <Details page={page} hosts={hosts} />}
     </div>
   );
 }
 
-/** The cover the event's page shows: the organiser's photo, or its colour from meshFor, under the scrim. */
-function Cover({ event, guest }: { event: GuestPage['event']; guest: string }) {
+function Shown({
+  view,
+  page,
+  onChoose,
+  onSend,
+  onBack,
+  onChange,
+  onKeep,
+}: {
+  view: View;
+  page: GuestPage;
+  onChoose: (answer: GuestAnswer) => void;
+  onSend: () => void;
+  onBack: () => void;
+  onChange: () => void;
+  onKeep: () => void;
+}) {
+  const { t } = useTranslation();
+  const { reply, fullName, companions } = page.guest;
+  const day = reply == null ? '' : dayOf(reply.at, page.event.timeZone);
+
+  switch (view.kind) {
+    case 'answer':
+      return (
+        <section className="gp-ask" aria-labelledby="gp-answer-h">
+          <h2 id="gp-answer-h" className="gp-h2">
+            {t('guest.yourAnswer')}
+          </h2>
+          {view.note === 'unsent' && <Notice kind="attention">{t('guest.unsent')}</Notice>}
+          {view.note === 'notSentTap' && <Notice kind="broken">{t('guest.notSentTap')}</Notice>}
+          <AnswerRows busy={view.busy} onChoose={onChoose} />
+        </section>
+      );
+    case 'check':
+      return (
+        <section className="gp-check" aria-labelledby="gp-check-h">
+          <TextAction ink icon={<Glyph name="back" size={18} weight={2.2} />} onClick={onBack}>
+            {t('guest.back')}
+          </TextAction>
+          <h2 id="gp-check-h" className="gp-h2 is-24" tabIndex={-1} data-focus="checkHead">
+            {t('guest.check')}
+          </h2>
+          <div className="gp-row gp-check-row">
+            <span className="gp-lead">
+              <Mark answer="coming" />
+            </span>
+            <span className="gp-answer-words">
+              {t('guest.answerLine', { answer: t(WORD.coming) })}
+            </span>
+            <TextAction onClick={onBack}>{t('guest.changeShort')}</TextAction>
+          </div>
+          {view.failed && <Notice kind="broken">{t('guest.notSent')}</Notice>}
+          <Filled busy={view.busy} focus="send" onClick={onSend}>
+            {t('guest.send')}
+          </Filled>
+          <p className="gp-small">{t('guest.nothingSent')}</p>
+        </section>
+      );
+    case 'recorded':
+      if (reply == null) return null;
+
+      return (
+        <section className="gp-recorded" aria-labelledby="gp-greeting">
+          <div className="gp-greet">
+            <Mark answer={reply.answer} />
+            <h2 id="gp-greeting" className="gp-h2" tabIndex={-1} data-focus="greeting">
+              {t(GREETING[reply.answer], { name: fullName })}
+            </h2>
+          </div>
+          <div className="gp-indent">
+            <p className="gp-sub">{t(ANSWERED[reply.answer], { date: day })}</p>
+            {view.same && (
+              <p className="gp-sub is-ink">{t('guest.same', { answer: t(WORD[reply.answer]) })}</p>
+            )}
+            {companions > 0 && reply.answer === 'notComing' && (
+              <p className="gp-sub">{t('guest.companionsNotComing')}</p>
+            )}
+            {companions > 0 && reply.answer === 'maybe' && (
+              <p className="gp-sub">{t('guest.companionsOnHold')}</p>
+            )}
+            <TextAction focus="change" onClick={onChange}>
+              {t('guest.change')}
+            </TextAction>
+          </div>
+        </section>
+      );
+    case 'changing':
+      return (
+        <section className="gp-changing" aria-labelledby="gp-new-h">
+          {reply != null && <p className="gp-sub">{t(ANSWERED[reply.answer], { date: day })}</p>}
+          <h2 id="gp-new-h" className="gp-h2" tabIndex={-1} data-focus="newHead">
+            {t('guest.newAnswer')}
+          </h2>
+          {view.failed && <Notice kind="broken">{t('guest.notSentTap')}</Notice>}
+          <AnswerRows current={reply?.answer ?? null} busy={view.busy} onChoose={onChoose} />
+          <TextAction focus="keep" onClick={onKeep}>
+            {t('guest.keep')}
+          </TextAction>
+        </section>
+      );
+    case 'closed':
+      return (
+        <section className="gp-closed" aria-labelledby="gp-closed-h">
+          <h2 id="gp-closed-h" className="gp-h2 is-19" tabIndex={-1} data-focus="closedHead">
+            {reply == null ? t('guest.didNotAnswer') : t(ANSWERED[reply.answer], { date: day })}
+          </h2>
+          <p className="gp-sub">{t('guest.closed')}</p>
+        </section>
+      );
+  }
+}
+
+/** The three answers, full-width rows of 56: Yes leads on to Check and send; the other two record in one tap. */
+function AnswerRows({
+  current = null,
+  busy,
+  onChoose,
+}: {
+  current?: GuestAnswer | null;
+  busy: GuestAnswer | null;
+  onChoose: (answer: GuestAnswer) => void;
+}) {
+  const { t } = useTranslation();
+  const changing = current != null;
+
+  return (
+    <div className="gp-answers">
+      {GUEST_ANSWERS.map((answer) => (
+        <button
+          key={answer}
+          className={`gp-answer${current === answer ? ' is-lit' : ''}`}
+          type="button"
+          data-focus={`row-${answer}`}
+          aria-pressed={changing ? current === answer : undefined}
+          aria-busy={busy === answer || undefined}
+          {...offButton(busy != null, { dim: false })}
+          onClick={() => onChoose(answer)}
+        >
+          <span className="gp-lead">
+            {busy === answer ? (
+              <span className="gp-spin" aria-hidden="true" />
+            ) : (
+              <Mark answer={answer} />
+            )}
+          </span>
+          <span className="gp-answer-words">{t(CHOICE[answer])}</span>
+          {current === answer ? (
+            <span className="gp-now">
+              <Glyph name="tick" size={14} weight={3} />
+              {t('guest.answerNow')}
+            </span>
+          ) : (
+            answer === 'coming' && (
+              <span className="gp-chev" aria-hidden="true">
+                <Glyph name="chevron" size={18} weight={2.2} />
+              </span>
+            )
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** The answer's mark (replyStates): a tick on a disc, a bar on a grey disc, a question in a ring; beside its words, so hidden. */
+function Mark({
+  answer,
+  size = 28,
+  cover = false,
+}: {
+  answer: GuestAnswer;
+  size?: 20 | 28;
+  cover?: boolean;
+}) {
+  return (
+    <span
+      className={`gp-mark is-${KEBAB[answer]} is-${size}${cover ? ' on-cover' : ''}`}
+      aria-hidden="true"
+    >
+      {answer === 'coming' && <Glyph name="tick" size={Math.round(size * 0.6)} weight={3} />}
+      {answer === 'notComing' && <span className="gp-bar" />}
+      {answer === 'maybe' && '?'}
+    </span>
+  );
+}
+
+function TextAction({
+  children,
+  ink = false,
+  icon,
+  focus,
+  onClick,
+}: {
+  children: ReactNode;
+  ink?: boolean;
+  icon?: ReactNode;
+  focus?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className={`gp-text${ink ? ' is-ink' : ''}`}
+      type="button"
+      data-focus={focus}
+      onClick={onClick}
+    >
+      {icon}
+      <span>{children}</span>
+    </button>
+  );
+}
+
+function Filled({
+  children,
+  busy,
+  focus,
+  onClick,
+}: {
+  children: ReactNode;
+  busy: boolean;
+  focus?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className="gp-filled"
+      type="button"
+      data-focus={focus}
+      aria-busy={busy}
+      {...offButton(busy, { dim: false })}
+      onClick={onClick}
+    >
+      {busy && <span className="gp-spinner" aria-hidden="true" />}
+      {children}
+    </button>
+  );
+}
+
+function Notice({
+  kind,
+  alert = kind === 'broken',
+  children,
+}: {
+  kind: 'broken' | 'attention';
+  alert?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className={`gp-notice is-${kind}`} role={alert ? 'alert' : 'status'}>
+      <span className="gp-notice-mark" aria-hidden="true">
+        {kind === 'broken' && <Glyph name="clear" size={14} weight={3} />}
+      </span>
+      <p>{children}</p>
+    </div>
+  );
+}
+
+function readerZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return undefined;
+  }
+}
+
+function format(at: string, timeZone: string, options: Intl.DateTimeFormatOptions): string {
+  return new Intl.DateTimeFormat(dateLocale(), { timeZone, ...options }).format(new Date(at));
+}
+
+/** The day an answer was given, in the event's zone, written for the reader's locale. */
+function dayOf(at: string, timeZone: string): string {
+  return format(at, timeZone, { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+/** The start's time in the event's zone, naming the zone when the reader's browser is in another. */
+function useWhen(event: GuestPage['event']): string {
+  const { t } = useTranslation();
+  const time = formatEventClock(event.startsAt, event.timeZone, dateLocale());
+
+  return readerZone() === event.timeZone
+    ? time
+    : t('calendar.timeInZone', { time, timeZone: event.timeZone });
+}
+
+/** When, where and who, as Events A writes them. */
+function Details({ page, hosts }: { page: GuestPage; hosts: string }) {
+  const { t } = useTranslation();
+  const { event } = page;
+  const when = useWhen(event);
+  const name = event.venue?.name ?? null;
+  const address = event.venue?.address ?? null;
+  const where = name != null || address != null;
+
+  return (
+    <div className="gp-details">
+      <Row
+        lead={<Glyph name="calendar" size={22} />}
+        title={format(event.startsAt, event.timeZone, {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+        })}
+        line={when}
+      />
+      {where && (
+        <div className={event.hosts.length > 0 ? 'gp-where has-rule' : 'gp-where'}>
+          <Row
+            lead={<Glyph name="pin" size={22} />}
+            title={name ?? address}
+            line={name == null ? null : address}
+          />
+          {address != null && (
+            <a
+              className="gp-text gp-maps"
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Glyph name="map" weight={2.2} />
+              <span>{t('eventPage.openInMaps')}</span>
+            </a>
+          )}
+        </div>
+      )}
+      {event.hosts.length > 0 && (
+        <Row lead={<Glyph name="users" size={22} />} title={hosts} line={t('eventHosts.heading')} />
+      )}
+    </div>
+  );
+}
+
+function Row({ lead, title, line }: { lead: ReactNode; title: ReactNode; line?: ReactNode }) {
+  return (
+    <div className="gp-row">
+      <span className="gp-lead">{lead}</span>
+      <span className="gp-row-words">
+        <span className="gp-row-title">{title}</span>
+        {line != null && <span className="gp-row-line">{line}</span>}
+      </span>
+    </div>
+  );
+}
+
+/** The cover the event's page shows: the organiser's photo, or its colour from meshFor, under the scrim; the answer as a tag once given. */
+function Cover({ page, tagged }: { page: GuestPage; tagged: boolean }) {
   const { t } = useTranslation();
   const [failed, setFailed] = useState(false);
+  const { event, guest } = page;
   const photo = event.cover != null && !failed ? event.cover : null;
+  const when = useWhen(event);
+  const line = [
+    format(event.startsAt, event.timeZone, { weekday: 'short', month: 'short', day: 'numeric' }),
+    when,
+    event.venue?.name,
+  ]
+    .filter((part) => part != null)
+    .join(' · ');
 
   return (
     <section
@@ -227,12 +696,19 @@ function Cover({ event, guest }: { event: GuestPage['event']; guest: string }) {
         PIECES.map((piece) => (
           <span key={piece} className={`gp-piece p${piece}`} aria-hidden="true" />
         ))}
-      <div className="gp-cover-inner">
+      <div className={tagged ? 'gp-cover-inner has-tag' : 'gp-cover-inner'}>
+        {tagged && guest.reply != null && (
+          <p className="gp-tag">
+            <Mark answer={guest.reply.answer} size={20} cover />
+            {t(WORD[guest.reply.answer])}
+          </p>
+        )}
         <h1 id="gp-h1" className="gp-cover-h1">
           {t('guest.invitationTitle')}
         </h1>
-        <p className="gp-cover-guest">{guest}</p>
+        <p className="gp-cover-guest">{guest.fullName}</p>
         <p className="gp-cover-name">{event.name}</p>
+        <p className="gp-cover-line">{line}</p>
       </div>
     </section>
   );
