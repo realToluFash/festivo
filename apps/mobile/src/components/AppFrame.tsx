@@ -470,18 +470,23 @@ export function AppFrame({
   const underTabs =
     floatingTabs && listUnderTabs && standIn == null ? phoneTabBarClearance(insets.bottom) : 0;
   const switchedRead = created?.takesFocus !== true;
+  // A body with its own top, as Today, draws it where its demo does, under its cover, while the frame says it once whatever the body shows (sc-44087, sc-46032).
+  const inBody = !framed;
+  // Today shows once its events have loaded, so the notice there takes focus as it shows, not as the walk closes (sc-46032).
+  const focusInBody = inBody && !switchedRead;
   const switchedWords =
     switched == null ? null : (
       <Notice
         tone="done"
         mark={tokens.marks.done.glyph}
         body={switched}
-        wordsRef={switchedRead ? undefined : createdWords}
+        wordsRef={switchedRead || inBody ? undefined : createdWords}
+        answer={focusInBody ? created : undefined}
+        takesFocus={focusInBody}
+        readMs={focusInBody ? SETTLED_MS * 2 : undefined}
       />
     );
   const switchedStyle = ownTop ? styles.switchedUnderTitle : styles.created;
-  // A body with its own top, as Today, draws it where its demo does, under its cover, while the frame says it once whatever the body shows (sc-44087, sc-46032).
-  const inBody = !framed;
   const switchedNotice =
     switched == null ? null : inBody ? (
       switchedRead && <ReadOut words={switched} />
@@ -492,22 +497,10 @@ export function AppFrame({
     ) : (
       <View style={switchedStyle}>{switchedWords}</View>
     );
-  // Today shows once its events have loaded, so the notice there takes focus as it shows, not as the walk closes (sc-46032).
   const bodySwitched =
     inBody && switched != null ? (
       <View style={kind === 'tabletLandscape' ? undefined : styles.switchedInBody}>
-        {switchedRead ? (
-          switchedWords
-        ) : (
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            body={switched}
-            answer={created}
-            takesFocus
-            readMs={SETTLED_MS * 2}
-          />
-        )}
+        {switchedWords}
       </View>
     ) : null;
   const header: FrameHeaderProps = {
