@@ -40,6 +40,7 @@ import { Turning } from './DataControlParts.tsx';
 import { THEIR_WORDS } from './guestRequest.ts';
 import { type Needs, NW, accessNames, allergyNames, dietNames } from './guestNeeds.ts';
 import { AllergyMark } from './GuestNeeds.tsx';
+import { type OptOutRow, optOutRowsOf } from './optOuts.ts';
 import { whatsAppRowOf } from './whatsAppConsent.ts';
 import { sendOffered, whatsAppHref } from './whatsAppSend.ts';
 import { useLater } from '../useLater.ts';
@@ -251,6 +252,7 @@ function Details({
     { mobile: guest.phone != null, edits: manages && !erased },
     dayOf,
   );
+  const optOuts = optOutRowsOf(guest, { edits: manages && !erased }, dayOf);
 
   return (
     <section className="desk-block" aria-labelledby={`${heading}-details`}>
@@ -275,6 +277,7 @@ function Details({
               <IconLead name="mail" />
               <RowWords title={guest.email ?? GW.none} lines={[GW.emailAddress]} />
             </li>
+            {optOuts.email != null && <OptOutLine row={optOuts.email} />}
             <li className={guest.phone == null ? 'desk-row is-none' : 'desk-row'}>
               <IconLead name="phone" />
               <RowWords
@@ -282,6 +285,7 @@ function Details({
                 lines={[GW.mobileNumber]}
               />
             </li>
+            {optOuts.texts != null && <OptOutLine row={optOuts.texts} />}
             {whatsApp != null && (
               <li className="desk-row gs-whatsapp" tabIndex={-1} data-focus="whatsapp">
                 <IconLead name="whatsApp" />
@@ -353,6 +357,15 @@ function Details({
         )}
       </ul>
     </section>
+  );
+}
+
+function OptOutLine({ row }: { row: OptOutRow }) {
+  return (
+    <li className="desk-row">
+      <IconLead name="slash" />
+      <RowWords title={row.title} lines={row.note == null ? [] : [row.note]} />
+    </li>
   );
 }
 
