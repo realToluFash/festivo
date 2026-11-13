@@ -25,6 +25,7 @@ import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
 import { isSmsState } from '../../src/demo/messages/Sms.ts';
 import { isStopState } from '../../src/demo/messages/StopWriting.ts';
+import { isReasonState } from '../../src/demo/messages/TrySms.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
@@ -1943,7 +1944,13 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   },
   {
     page: 'Messages · B Conversations',
-    boards: MESSAGES_BOARDS.filter(({ state }) => !isStopState(state) && !isSmsState(state)).map(
+    boards: MESSAGES_BOARDS.filter(
+      ({ state }) => !isStopState(state) && !isReasonState(state) && !isSmsState(state),
+    ).map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Who it reached: every reason, Try SMS instead (sc-3966)',
+    boards: MESSAGES_BOARDS.filter(({ state }) => isReasonState(state)).map(
       ({ title, what, href }) => ({ title, what, href: href as Href }),
     ),
   },

@@ -279,6 +279,8 @@ export function ReachBar({ reach, size = 'small' }: { reach: Reach; size?: 'smal
 const BAR: Record<'reached' | Kind, string> = {
   reached: 'reached',
   inProgress: 'in-progress',
+  held: 'in-progress',
+  skipped: 'not-sent',
   bounced: 'bounced',
   failed: 'bounced',
   notSent: 'not-sent',
@@ -291,6 +293,8 @@ const BAR: Record<'reached' | Kind, string> = {
 const LEGEND_MARK: Record<'reached' | Kind, Delivery> = {
   reached: 'delivered',
   inProgress: 'sending',
+  held: 'held',
+  skipped: 'notsent',
   bounced: 'bounced',
   failed: 'bounced',
   notSent: 'notsent',

@@ -6282,6 +6282,13 @@ button.members-row {
   border-radius: var(--radiusRow);
 }
 
+/* A list's search field, where it will stand above the rows (sc-3772). */
+.skeleton-find {
+  height: 48px;
+  margin-bottom: 18px;
+  border-radius: var(--radiusInset);
+}
+
 .skeleton-option {
   height: 52px;
 }
