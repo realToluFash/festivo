@@ -30,6 +30,7 @@ import {
 import { numberLine } from './rules.ts';
 import { type HowAgreed, NO_CONSENT, type WhatsAppConsent, hostAgreed } from './whatsAppConsent.ts';
 import type { DemoLink } from './settings.ts';
+import { type ExportStart, XW, exportDay, fileName } from './guestExport.ts';
 
 /** Guests in A · Summary first (page e30, board/guests-a-spec.md): the sample, its counts and the states; the words are in guestsWords.ts. */
 export { GW };
@@ -1377,7 +1378,8 @@ function nextDay(iso: string): string {
   return at.toISOString().slice(0, 10);
 }
 
-export type Role = 'owner' | 'viewer' | 'staff';
+/** member: a member without guests.manage (sc-3784), who exports without the needs columns. */
+export type Role = 'owner' | 'member' | 'viewer' | 'staff';
 export type GuestNote = 'recorded' | 'notReplaced' | 'linkReplaced' | 'unmarked' | 'unmarkRefused';
 export type Invite = 'copied' | 'refused' | 'mark' | 'markRefused' | 'markNotSaved';
 
@@ -1448,6 +1450,7 @@ export interface GuestsStart {
   pane: Pane;
   asking: 'replace' | null;
   told: string | null;
+  exporting: ExportStart | null;
   /** sc-26025: the guests whose Sent on WhatsApp? question is open, and how the next mark from it ends. */
   asked: string[] | null;
   askFailed: boolean;
@@ -1636,6 +1639,15 @@ export const GUESTS_STATES = [
   { key: 'whatsAppOptedOut', name: 'Sophie Laurent unsubscribed: only the guest can change it' },
   { key: 'whatsAppNoMobile', name: 'Inês Duarte, no mobile number: no WhatsApp row' },
   { key: 'whatsAppViewer', name: 'Can view (guests.read): no contact details, no WhatsApp row' },
+  { key: 'export', name: 'Export: This view and Excel, the defaults' },
+  { key: 'exportNarrowed', name: 'Export from Coming and “duarte”: a guest and their companion' },
+  { key: 'exportEmpty', name: 'Export from an empty view: This view off, All guests chosen' },
+  { key: 'exportCsv', name: 'Export: All guests as CSV' },
+  { key: 'exportNoNeeds', name: 'Export without guests.manage: no allergies, diet or access' },
+  { key: 'exportPreparing', name: 'Preparing the file…' },
+  { key: 'exportFailed', name: 'The file couldn’t be made: Try again' },
+  { key: 'exportReady', name: 'Your file is ready: the dialog closed' },
+  { key: 'exportGrantView', name: 'Can view or Can check guests in: no Export' },
   { key: 'sendNone', name: 'Yusuf Ibrahim: Send on WhatsApp, nothing pressed' },
   { key: 'sendQuestion', name: 'Pressed: Sent to Yusuf Ibrahim on WhatsApp?' },
   { key: 'sendTwo', name: 'Two questions open: Yusuf Ibrahim and Chuka Nwankwo' },
@@ -1685,6 +1697,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     pane: { kind: 'none' },
     asking: null,
     told: null,
+    exporting: null,
     asked: null,
     askFailed: false,
     markEnds: 'saved',
@@ -2069,6 +2082,33 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return column(guestPane('ines'), { choice: 'coming' });
     case 'whatsAppViewer':
       return column(guestPane('kwame'), { choice: 'coming', role: 'viewer' });
+    case 'export':
+      return { ...start, exporting: {} };
+    case 'exportNarrowed':
+      return { ...start, choice: 'coming', q: 'duarte', exporting: {} };
+    case 'exportEmpty':
+      return { ...start, choice: 'held', q: 'marta', exporting: {} };
+    case 'exportCsv':
+      return { ...start, exporting: { scope: 'all', format: 'csv' } };
+    case 'exportNoNeeds':
+      return { ...start, role: 'member', exporting: {} };
+    case 'exportPreparing':
+      return { ...start, exporting: { making: 'preparing' } };
+    case 'exportFailed':
+      return { ...start, exporting: { making: 'failed' } };
+    case 'exportReady':
+      return {
+        ...start,
+        told: XW.ready(
+          fileName(
+            sampleEvent(start.event)?.name ?? '',
+            exportDay(start.event, start.clock),
+            'xlsx',
+          ),
+        ),
+      };
+    case 'exportGrantView':
+      return { ...start, role: 'viewer' };
   }
 }
 
@@ -2226,6 +2266,17 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'whatsAppOptedOut',
     'whatsAppNoMobile',
     'whatsAppViewer',
+  ]),
+  group('Export (sc-3784)', [
+    'export',
+    'exportNarrowed',
+    'exportEmpty',
+    'exportCsv',
+    'exportNoNeeds',
+    'exportPreparing',
+    'exportFailed',
+    'exportReady',
+    'exportGrantView',
   ]),
   group('Send on WhatsApp (sc-26025)', [
     'sendNone',
