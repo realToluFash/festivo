@@ -166,19 +166,12 @@ export function TellDialog({
         <div className="mg-tell-part">
           <p className="mg-tell-label">{MW.message}</p>
           {sheet.parts == null ? (
-            <p className="mg-tell-box">
-              {sheet.lines.map((line, index) => (
-                <span key={line}>
-                  {index > 0 && <br />}
-                  {line}
-                </span>
-              ))}
-            </p>
+            <TellBox lines={sheet.lines} />
           ) : (
             sheet.parts.map((part) => (
               <div key={part.heading} className="mg-tell-change">
                 <p className="mg-tell-head">{part.heading}</p>
-                <p className="mg-tell-box">{part.lines.join(' ')}</p>
+                <TellBox lines={part.lines} />
                 <p className="mg-tell-hint">{part.who}</p>
               </div>
             ))
@@ -455,5 +448,18 @@ export function MessagesBell() {
         </div>
       )}
     </div>
+  );
+}
+
+function TellBox({ lines }: { lines: readonly string[] }) {
+  return (
+    <p className="mg-tell-box">
+      {lines.map((line, index) => (
+        <span key={line}>
+          {index > 0 && <br />}
+          {line}
+        </span>
+      ))}
+    </p>
   );
 }
