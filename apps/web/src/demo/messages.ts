@@ -122,6 +122,12 @@ export const MESSAGE_STATES = [
   { key: 'whatsAppLine', name: 'WhatsApp ticked: who it reaches' },
   { key: 'checkWhatsApp', name: 'The check, with WhatsApp' },
   { key: 'whatsAppRead', name: 'WhatsApp’s receipts' },
+  { key: 'channelsWrite', name: 'SMS and WhatsApp ticked' },
+  { key: 'channelsCheck', name: 'The check, SMS and WhatsApp' },
+  { key: 'channelsCant', name: 'Can’t be told, two shown' },
+  { key: 'channelsSeeAll', name: 'See all, open' },
+  { key: 'channelsMany', name: 'See all, 93 names' },
+  { key: 'channelsNone', name: 'Nothing ticked' },
   ...WAITS_STATES,
 ] as const;
 
@@ -417,18 +423,159 @@ export interface Untellable {
   why: readonly string[];
 }
 
-const TOMAS: Untellable = { name: 'Tomás Ferreira', why: [MW.addressBouncing, MW.noPhone] };
-const JOAQUIN: Untellable = { name: 'Joaquín Ruiz', why: [MW.noEmail, MW.noPhone] };
-const SOPHIE: Untellable = { name: 'Sophie Laurent', why: [MW.unsubscribed, MW.textedStop] };
-const MEI: Untellable = { name: 'Mei Lin Chen', why: [MW.noEmail, MW.noPhone] };
-const SMS_ONLY: readonly Untellable[] = [
-  { name: 'Amaka Eze', why: [MW.noEmail, MW.smsIsOff] },
-  { name: 'Priyanka Nair', why: [MW.noEmail, MW.smsIsOff] },
-];
+/** Why each channel can't reach a guest, or null where it can. */
+type Reasons = { name: string } & Record<Channel, string | null>;
+
+function reasons(
+  name: string,
+  email: string | null,
+  sms: string | null,
+  whatsApp: string | null,
+): Reasons {
+  return { name, email, sms, whatsApp };
+}
+
+const AMAKA = reasons('Amaka Eze', MW.noEmail, null, MW.hasNotAgreedWhatsApp);
+const PRIYANKA = reasons('Priyanka Nair', MW.noEmail, null, MW.hasNotAgreedWhatsApp);
+const TOMAS = reasons('Tomás Ferreira', MW.addressBouncing, MW.noPhone, MW.noPhone);
+const JOAQUIN = reasons('Joaquín Ruiz', MW.noEmail, MW.noPhone, MW.noPhone);
+const MEI = reasons('Mei Lin Chen', MW.noEmail, MW.noPhone, MW.noPhone);
 
 export type Ticks = Record<Channel, boolean>;
 
 type Sample = 'all' | 'coming' | 'notReplied';
+
+/** The guests some channel can't reach, by name, in the order the check names them (Web-1, Web-4, Web-Channels). */
+const NAMED: Record<Sample, readonly Reasons[]> = {
+  all: [
+    AMAKA,
+    PRIYANKA,
+    TOMAS,
+    reasons('Sophie Laurent', MW.unsubscribed, MW.textedStop, MW.hasNotAgreedWhatsApp),
+    reasons('Yuki Tanaka', MW.addressBouncing, MW.noPhone, MW.noPhone),
+    reasons('Oluwaseun Adebayo', MW.addressBouncing, MW.noPhone, MW.noPhone),
+    reasons('Lars Johansson', MW.unsubscribed, MW.noPhone, MW.noPhone),
+    reasons('Fatima Zahra El Idrissi', MW.noEmail, MW.textedStop, MW.hasNotAgreedWhatsApp),
+    reasons('Diego Herrera', MW.unsubscribed, MW.textedStop, MW.hasNotAgreedWhatsApp),
+    JOAQUIN,
+    MEI,
+  ],
+  coming: [AMAKA, PRIYANKA, TOMAS, JOAQUIN],
+  notReplied: [MEI],
+};
+
+/** Each sample's notices per channel with SMS alone, before WhatsApp takes its phones. */
+const REACH: Record<Sample, Record<Channel, number>> = {
+  all: { email: 124, sms: 39, whatsApp: 4 },
+  coming: { email: 92, sms: 31, whatsApp: 3 },
+  notReplied: { email: 23, sms: 9, whatsApp: 1 },
+};
+
+const FIRST = [
+  'Ana',
+  'Chidi',
+  'Léa',
+  'João',
+  'Hana',
+  'Mateo',
+  'Zainab',
+  'Lukas',
+  'Sofia',
+  'Kofi',
+  'Inés',
+  'Arjun',
+  'Chloé',
+  'Tiago',
+  'Aisha',
+  'Emil',
+  'Valentina',
+  'Femi',
+  'Camila',
+  'Hugo',
+  'Ngozi',
+  'Pedro',
+  'Yara',
+  'Olu',
+];
+const LAST = [
+  'Silva',
+  'Okonkwo',
+  'Moreau',
+  'Santos',
+  'Kim',
+  'García',
+  'Bello',
+  'Schmidt',
+  'Rossi',
+  'Boateng',
+  'Navarro',
+  'Patel',
+  'Lefèvre',
+  'Almeida',
+  'Owusu',
+  'Larsen',
+  'Romero',
+  'Adeleke',
+  'Torres',
+  'Bernard',
+  'Nnamdi',
+  'Pereira',
+  'Haddad',
+  'Nwosu',
+];
+
+/** The sample's unnamed guests, each name once for the first 576. */
+function crowdName(index: number): string {
+  const first = index % FIRST.length;
+  const last = (first + 5 * Math.floor(index / FIRST.length)) % LAST.length;
+
+  return `${FIRST[first] ?? ''} ${LAST[last] ?? ''}`;
+}
+
+function whyOf(one: Reasons, ticks: Ticks): string[] {
+  const told = CHANNELS.flatMap((channel) => {
+    const reason = one[channel];
+
+    return ticks[channel] && reason != null ? [reason] : [];
+  });
+  const off = !ticks.sms && one.sms == null ? [MW.smsIsOff] : [];
+
+  return [...new Set([...told, ...off])];
+}
+
+/** Everyone no ticked channel can reach, with why: the named, then, with Email off, the sample's guests with no address it knows. */
+export function untoldOf(audience: Audience, ticks: Ticks): readonly Untellable[] {
+  const on = CHANNELS.filter((channel) => ticks[channel]);
+
+  if (on.length === 0) return [];
+
+  const sample = sampleOf(audience);
+  const named = NAMED[sample].filter((one) => on.every((channel) => one[channel] != null));
+  const people = named.map((one) => ({ name: one.name, why: whyOf(one, ticks) }));
+
+  if (ticks.email) return people;
+
+  const wa = whatsAppOf(audience);
+  const left = (why: string, of: number) =>
+    Math.max(0, of - named.filter((one) => one.whatsApp === why).length);
+  const parts: readonly (readonly [number, readonly string[]])[] = ticks.sms
+    ? [[wa.of - REACH[sample].sms - named.length, [MW.noPhone]]]
+    : [
+        [left(MW.noPhone, wa.noMobile), [MW.noPhone]],
+        [left(MW.stoppedWhatsApp, wa.stopped), [MW.stoppedWhatsApp, MW.smsIsOff]],
+        [left(MW.hasNotAgreedWhatsApp, wa.notAgreed), [MW.hasNotAgreedWhatsApp, MW.smsIsOff]],
+      ];
+  const crowd = parts.flatMap(([count, why]) => Array.from({ length: count }, () => why));
+
+  return [...people, ...crowd.map((why, index) => ({ name: crowdName(index), why }))];
+}
+
+/** The check's See all: everyone, by name, in the reader's language's order. */
+export function byName(people: readonly Untellable[], locale: string): Untellable[] {
+  const order = new Intl.Collator(locale);
+
+  return [...people].sort((one, other) => order.compare(one.name, other.name));
+}
 
 /** Which of the boards' three samples an audience counts as: All guests, Hasn't replied alone, or Coming (every other). */
 function sampleOf(audience: Audience): Sample {
@@ -531,22 +678,20 @@ export function figuresOf(
   names: readonly Untellable[];
   smsOff: number;
 } {
-  const sample = sampleOf(audience);
-  const base =
-    sample === 'all'
-      ? { counts: { email: 124, sms: 39, whatsApp: 4 }, cantTell: 9, names: [TOMAS, SOPHIE] }
-      : sample === 'notReplied'
-        ? { counts: { email: 23, sms: 9, whatsApp: 1 }, cantTell: 1, names: [MEI] }
-        : { counts: { email: 92, sms: 31, whatsApp: 3 }, cantTell: 2, names: [TOMAS, JOAQUIN] };
-  const notReplied = audience.kind === 'who' && audience.conditions[0] === 'notReplied';
-  const smsOff = !ticks.sms && ticks.email && !notReplied ? SMS_ONLY.length : 0;
-  const { sms, whatsApp } = base.counts;
-  const counts =
-    ticks.sms && ticks.whatsApp ? { ...base.counts, sms: sms - whatsApp } : base.counts;
+  const base = REACH[sampleOf(audience)];
+  const counts = ticks.sms && ticks.whatsApp ? { ...base, sms: base.sms - base.whatsApp } : base;
+  const names = untoldOf(audience, ticks);
+  const smsOff =
+    ticks.email && !ticks.sms ? names.filter((one) => one.why.includes(MW.smsIsOff)).length : 0;
 
-  if (smsOff === 0) return { ...base, counts, smsOff: 0 };
+  return { counts, cantTell: names.length, names, smsOff };
+}
 
-  return { ...base, counts, cantTell: base.cantTell + smsOff, names: SMS_ONLY, smsOff };
+/** With SMS and WhatsApp both ticked, whoever WhatsApp reaches gets it there and not by SMS. */
+export function insteadOf(audience: Audience, ticks: Ticks): string | null {
+  const reaches = whatsAppOf(audience).reaches;
+
+  return ticks.sms && ticks.whatsApp && reaches > 0 ? many('insteadOfSms', reaches) : null;
 }
 
 export const CHANNELS: readonly Channel[] = ['email', 'sms', 'whatsApp'];
@@ -562,8 +707,10 @@ export interface Check {
   smsOff: string | null;
   cantTell: number;
   cant: readonly Untellable[];
+  untold: readonly Untellable[];
   credits: string | null;
   whatsApp: string | null;
+  instead: string | null;
 }
 
 /** The check before it goes (sc-3942, sc-3963): who is told and how, who cannot be, and the credits. */
@@ -581,10 +728,11 @@ export function checkOf(audience: Audience, ticks: Ticks, groups: readonly Group
   return {
     count,
     pills: on.map((channel) => ({ channel, count: counts[channel] })),
-    told: on.length === 0 ? null : filled(MW.toldThere, { channels: listed(by) }),
+    told: on.length === 0 ? MW.nobodyTold : filled(MW.toldThere, { channels: listed(by) }),
     smsOff: smsOff > 0 ? many('smsOff', smsOff) : null,
-    cantTell: on.length === 0 ? 0 : cantTell,
-    cant: on.length === 0 ? [] : names.slice(0, Math.min(2, cantTell)),
+    cantTell,
+    cant: names.slice(0, 2),
+    untold: names,
     credits:
       on.length === 0
         ? null
@@ -592,6 +740,7 @@ export function checkOf(audience: Audience, ticks: Ticks, groups: readonly Group
           ? MW.emailNoCredits
           : `${ticks.whatsApp ? many('textsAndWhatsAppUse', credits) : many('textsUse', credits)} ${after}`,
     whatsApp: ticks.whatsApp ? whatsAppLine(audience) : null,
+    instead: insteadOf(audience, ticks),
   };
 }
 
@@ -1432,6 +1581,7 @@ export interface Draft {
   openTo?: boolean;
   opens?: 'insert' | 'previewAs' | 'filling' | undefined;
   previewAs?: PersonId;
+  seeAll?: boolean;
 }
 
 export interface Sched {
@@ -1671,7 +1821,23 @@ export function seedOf(state: MessagesState | null): Inbox {
 
   const allTicked: Ticks = { email: true, sms: true, whatsApp: true };
 
+  const seeAll = (inbox: Inbox): Inbox =>
+    inbox.draft == null ? inbox : { ...inbox, draft: { ...inbox.draft, seeAll: true } };
+  const none: Ticks = { email: false, sms: false, whatsApp: false };
+
   switch (state) {
+    case 'channelsWrite':
+      return compose(base, COMING, 'write', allTicked);
+    case 'channelsCheck':
+      return compose(base, COMING, 'check', allTicked);
+    case 'channelsCant':
+      return compose(base, { kind: 'all' }, 'check', allTicked);
+    case 'channelsSeeAll':
+      return seeAll(compose(base, { kind: 'all' }, 'check', allTicked));
+    case 'channelsMany':
+      return seeAll(compose(base, COMING, 'check', { ...none, whatsApp: true }));
+    case 'channelsNone':
+      return compose(base, COMING, 'check', none);
     case 'whatsAppLine':
       return compose(base, { kind: 'all' }, 'write', allTicked);
     case 'checkWhatsApp':

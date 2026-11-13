@@ -16,6 +16,7 @@ import {
   PARKING_UNREACHED,
   receiptPeople,
   rowOf,
+  untoldOf,
   whatsAppLine,
   whatsAppOf,
   whatsAppCredits,
@@ -24,6 +25,7 @@ import {
   ROSEWOOD,
   TICKS,
   changed,
+  byName,
   checkOf,
   chipWords,
   countOf,
@@ -55,12 +57,20 @@ import { WAITS_STATES } from './messagesWaits.ts';
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
 describe('Messaging B · Conversations, the rules (sc-31371)', () => {
-  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 4 and sc-3950’s 3, in order, each linked once from the demo home', () => {
+  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 4, sc-3950’s 3 and sc-3954’s 6, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(107);
+    expect(keys).toHaveLength(113);
     expect(keys.slice(94, 97)).toEqual(['whatsAppLine', 'checkWhatsApp', 'whatsAppRead']);
-    expect(keys.slice(97)).toEqual(WAITS_STATES.map((one) => one.key));
+    expect(keys.slice(97, 103)).toEqual([
+      'channelsWrite',
+      'channelsCheck',
+      'channelsCant',
+      'channelsSeeAll',
+      'channelsMany',
+      'channelsNone',
+    ]);
+    expect(keys.slice(103)).toEqual(WAITS_STATES.map((one) => one.key));
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
     expect(keys.slice(6, 10)).toEqual([
       'channelReply',
@@ -86,7 +96,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'editCancelled',
       'editTooLate',
     ]);
-    expect(new Set(keys).size).toBe(107);
+    expect(new Set(keys).size).toBe(113);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );
@@ -708,6 +718,42 @@ describe('Messaging B · WhatsApp only to guests who agreed (sc-3950)', () => {
     expect(checkOf(NOT_REPLIED, { ...TICKS, sms: false, whatsApp: true }, GROUPS).credits).toBe(
       'Texts and WhatsApp messages use 2 credits. Credits after sending: 1,498.',
     );
+  });
+
+  it('tells each guest on every ticked channel that reaches them, and nobody with none (sc-3954)', () => {
+    const none = { email: false, sms: false, whatsApp: false };
+    const nothing = checkOf(COMING, none, GROUPS);
+
+    expect(nothing.told).toBe(
+      'Soirely tells nobody it is there. Guests see it only if they open their page.',
+    );
+    expect([nothing.pills, nothing.cantTell, nothing.credits, nothing.instead]).toEqual([
+      [],
+      0,
+      null,
+      null,
+    ]);
+    expect(checkOf(COMING, ALL_TICKED, GROUPS).instead).toBe('3 by WhatsApp instead of SMS');
+    expect(checkOf(NOT_REPLIED, ALL_TICKED, GROUPS).instead).toBe('1 by WhatsApp instead of SMS');
+    expect(checkOf(COMING, { ...none, whatsApp: true }, GROUPS).instead).toBeNull();
+    expect(
+      [
+        { ...none, sms: true },
+        { ...none, whatsApp: true },
+        { ...none, sms: true, whatsApp: true },
+      ].flatMap((ticks) => [COMING, ALL, NOT_REPLIED].map((to) => untoldOf(to, ticks).length)),
+    ).toEqual([65, 103, 16, 93, 138, 24, 65, 103, 16]);
+    expect(untoldOf(ALL, { ...none, whatsApp: true }).slice(0, 2)).toEqual([
+      { name: 'Amaka Eze', why: ['Has not agreed to WhatsApp', 'SMS is off'] },
+      { name: 'Priyanka Nair', why: ['Has not agreed to WhatsApp', 'SMS is off'] },
+    ]);
+    const names = untoldOf(ALL, { ...none, whatsApp: true }).map((one) => one.name);
+
+    expect(new Set(names).size).toBe(138);
+    expect(byName(untoldOf(COMING, TICKS), 'en').map((one) => one.name)).toEqual([
+      'Joaquín Ruiz',
+      'Tomás Ferreira',
+    ]);
   });
 
   it('counts each WhatsApp number at its country’s utility rate (sc-3928)', () => {

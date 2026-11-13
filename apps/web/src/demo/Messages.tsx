@@ -87,7 +87,15 @@ function firstFocus(state: MessagesState | null): string | null {
     case 'checkAll':
     case 'checkNotReplied':
     case 'checkChannels':
+    case 'channelsCheck':
+    case 'channelsCant':
+    case 'channelsNone':
       return 'check';
+    case 'channelsSeeAll':
+    case 'channelsMany':
+      return 'see-all';
+    case 'channelsWrite':
+      return 'body';
     case 'cancelAsk':
       return 'keep';
     case 'fixed':
