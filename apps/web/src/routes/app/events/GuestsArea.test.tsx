@@ -1434,3 +1434,11 @@ describe('a companion field (sc-43267)', () => {
     );
   });
 });
+
+describe('a guest’s column at 320 (sc-3773)', () => {
+  it('shrinks below its widest field row, so the phone row never pushes the form past the screen', () => {
+    expect(readFileSync(join(import.meta.dirname, 'guests.css'), 'utf8')).toMatch(
+      /\.gs-column \{\s*flex: 1 1 var\(--gsGuest\);\s*box-sizing: border-box;\s*min-width: 0;/u,
+    );
+  });
+});

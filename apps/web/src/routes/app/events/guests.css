@@ -61,8 +61,9 @@
 
 .gs-column {
   flex: 1 1 var(--gsGuest);
-  max-width: var(--gsGuest);
   box-sizing: border-box;
+  min-width: 0;
+  max-width: var(--gsGuest);
 }
 
 .gs-list,
