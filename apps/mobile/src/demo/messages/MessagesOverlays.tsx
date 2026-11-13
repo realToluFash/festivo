@@ -674,15 +674,19 @@ export function TellGuests({
         (run.line.alert ? (
           <AlertLine key={run.tries} text={run.line.words} />
         ) : (
-          <Text
-            size={14}
-            weight="medium"
+          <View
+            style={[styles.info, styles.status]}
+            accessible
             accessibilityLiveRegion="polite"
-            style={[styles.line14, styles.secondary]}
             testID="messages.tell.status"
           >
-            {run.line.words}
-          </Text>
+            <View style={styles.markTop}>
+              <Glyph name="info" size={15} ink={tokens.colorInkSecondary} weight={2.2} />
+            </View>
+            <Text size={14} weight="medium" style={[styles.grow, styles.line14]}>
+              {run.line.words}
+            </Text>
+          </View>
         ))}
     </>
   );
@@ -866,6 +870,12 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   note: { minHeight: 52, maxHeight: 120 },
+  status: {
+    paddingVertical: 10,
+    paddingHorizontal: tokens.spaceMd,
+    borderRadius: 14,
+    backgroundColor: tokens.colorInset,
+  },
   seeWho: {
     minHeight: tokens.sizeHit,
     flexDirection: 'row',
