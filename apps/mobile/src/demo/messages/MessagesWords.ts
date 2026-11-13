@@ -86,8 +86,7 @@ export const W = {
   ownLanguage: 'Each guest gets this in their own language.',
   noteForGuests: 'Note for your guests',
   optional: 'Optional',
-  noteOnPage:
-    'Shown on each guest’s page, under the change. Never sent by email, text or WhatsApp.',
+  noteOnPage: 'Shown on each guest’s page, in Messages. Never sent by email, text or WhatsApp.',
   send: 'Send',
   notNow: 'Not now',
   notTold: 'Guests have not been told yet',

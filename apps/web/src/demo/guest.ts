@@ -79,6 +79,28 @@ export const MESSAGES: readonly Message[] = [
   },
 ];
 
+/** A note sent with an invitation: an entry in Messages, by time (pm, 13 Nov, on ux's #44753). */
+export const INVITATION_NOTE: Message = {
+  id: 'n-invitation',
+  at: '2026-10-20T09:00:00Z',
+  words:
+    'We would love you there with us. Children are very welcome, and there is a quiet room by the cloakroom for little ones who need a rest.\n\nAdaeze & Tunde',
+};
+
+export const LONG_NOTE: Message = {
+  id: 'n-long',
+  at: '2026-10-20T09:00:00Z',
+  words: [
+    'We are so happy to invite you, and we wanted to tell you a little about the day before it comes.',
+    'The ceremony is in the Grand Hall on the ground floor, with step-free access from Marylebone Road. Doors open at 17:30, and we will start at 18:00 sharp, so please give yourselves time for the traffic on a Thursday evening. There is a cloakroom by the main doors, and the staff there will hold bags and coats all night.',
+    'After the ceremony there are drinks in the Winter Garden while the hall is set for dinner. Dinner is at 20:00, and you will find your table on your own page here once we have shared the tables. If anything you eat needs care, tell the kitchen on this page, and we will make sure they know.',
+    'The dress code is formal, and colour is welcome. Bring comfortable shoes for the dancing, which starts at 21:30 and goes on until 01:00. There will be taxis at the front from 23:00, and the nearest stations are Marylebone and Baker Street, both a few minutes away on foot.',
+    'Children are very welcome. There is a quiet room by the cloakroom with books and a sofa for little ones who need a rest, and the kitchen will make them their own dinner.',
+    'If you are travelling from far away, The Landmark has kept rooms for our guests until 1 November; write to us here and we will send you the details.',
+    'We cannot wait to see you.\n\nAdaeze & Tunde',
+  ].join('\n\n'),
+};
+
 export const MINE = 'Thank you! Is there a cloakroom at The Landmark?';
 export const MINE_AT = '2026-11-03T09:41:00Z';
 
@@ -190,6 +212,7 @@ export interface Visit {
   menuOpen: boolean;
   readerZone: string;
   messages: number;
+  notes: readonly Message[];
   mine: readonly Mine[];
   draft: string;
   draftFailed: boolean;
@@ -237,6 +260,7 @@ const BASE: Visit = {
   menuOpen: false,
   readerZone: READER_ZONE,
   messages: 0,
+  notes: [],
   mine: [],
   draft: '',
   draftFailed: false,
@@ -521,6 +545,18 @@ const STATES = {
     name: 'A message over 1,000 characters',
     starts: { ...MESSAGED, draft: LONG_MESSAGE, draftTried: true, want: 'box' },
   },
+  noteInvitation: {
+    name: 'The invitation’s note, opening Messages before an answer',
+    starts: { notes: [INVITATION_NOTE] },
+  },
+  noteAmongMessages: {
+    name: 'The invitation’s note among the hosts’ messages',
+    starts: { ...MESSAGED, notes: [INVITATION_NOTE] },
+  },
+  noteLong: {
+    name: 'A long note',
+    starts: { notes: [LONG_NOTE] },
+  },
   calledOffMessages: {
     name: 'Called off, with the hosts’ messages',
     starts: { phase: 'calledOff', recorded: COMING, view: CLOSED, messages: 3 },
@@ -708,6 +744,10 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
     ).map(link),
   },
   {
+    name: 'The hosts’ notes, entries in Messages (sc-3971)',
+    states: (['noteInvitation', 'noteAmongMessages', 'noteLong'] as const).map(link),
+  },
+  {
     name: 'Your messages, opened from the guest’s page (sc-3969, sc-3950)',
     states: (
       [
@@ -754,9 +794,24 @@ export function forTheDay(visit: Visit): boolean {
   );
 }
 
+export interface HostEntry {
+  message: Message;
+  note: boolean;
+}
+
+/** The hosts' messages and their notes, newest last; a window of none is none. */
+export function hostEntries(visit: Visit): readonly HostEntry[] {
+  const messages = visit.messages === 0 ? [] : MESSAGES.slice(-visit.messages);
+
+  return [
+    ...messages.map((message) => ({ message, note: false })),
+    ...visit.notes.map((message) => ({ message, note: true })),
+  ].sort((a, b) => Date.parse(a.message.at) - Date.parse(b.message.at));
+}
+
 export function showsMessages(visit: Visit): boolean {
   return (
-    visit.messages > 0 &&
+    (visit.messages > 0 || visit.notes.length > 0) &&
     (visit.view.kind === 'answer' || visit.view.kind === 'recorded' || visit.view.kind === 'closed')
   );
 }
@@ -928,6 +983,7 @@ const BOARD_ENGLISH = {
   calendarApple: 'Apple / Outlook',
   calendarGoogle: 'Google Calendar',
   messages: 'Messages',
+  noteFrom: 'A note from {{hosts}}',
   writeTo: 'Write to {{hosts}}',
   sendMessage: 'Send',
   sent: 'Sent',
@@ -1093,6 +1149,7 @@ export function wordsFor(lang: Lang) {
     calendarApple: board('calendarApple'),
     calendarGoogle: board('calendarGoogle'),
     messages: board('messages'),
+    noteFrom: board('noteFrom', { hosts }),
     writeTo: board('writeTo', { hosts }),
     sendMessage: board('sendMessage'),
     messageCount: (count: number) => board('messageCount', { count, most: MESSAGE_MOST }),
