@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { GUEST_PAGES, LONG_NOTE, THANK_YOU } from './guest.ts';
+import { GUEST_PAGES, HOLD_MS, LONG_NOTE, SEND_MS, THANK_YOU } from './guest.ts';
 import { GUEST_ASK_PAGES } from './guestAskStates.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
@@ -90,7 +90,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
     );
 
     expect(guestLinks).toEqual(GUEST_PAGES.flatMap((one) => one.states).map((one) => one.to));
-    expect(guestLinks).toHaveLength(75);
+    expect(guestLinks).toHaveLength(91);
   });
 
   it('opens on the cover card: the invitation, the guest, the event, when and where', async () => {
@@ -134,6 +134,22 @@ const UPDATES =
   'Soirely sends updates on WhatsApp on behalf of Ire Events. Reply STOP at any time to end them.';
 const TURNED_ON = 'WhatsApp messages from Ire Events are on.';
 const OFF = 'WhatsApp messages from Ire Events are off.';
+const STOP = 'Stop emails from Ire Events';
+const STOPPED = 'You won’t get emails from Ire Events any more.';
+const ON_AGAIN = 'Emails from Ire Events are on again.';
+const EMAILS_OFF = 'Emails from Ire Events are off.';
+const TEXTS_OFF = 'Texts from Ire Events are off.';
+const FAILED = 'Saving did not work. Nothing has changed.';
+const NO_EMAIL = 'Ire Events has no email address for you.';
+const NO_PHONE = 'Ire Events has no phone number for you.';
+const BROKEN = 'This link does not work';
+const BROKEN_BODY =
+  'Nothing has changed. Open the link again from the most recent email you were sent.';
+const WAY_IN = 'Choose how Ire Events can reach you';
+
+const email = () => screen.getByRole<HTMLInputElement>('switch', { name: 'Email' });
+const sms = () => screen.getByRole<HTMLInputElement>('switch', { name: 'Text messages' });
+const said = () => document.querySelector('.gp-yours [role="status"][aria-live="polite"]');
 
 const SAYS: [string, () => void][] = [
   ['open', () => screen.getByText(/^Please answer by Friday, October 30\./u)],
@@ -292,6 +308,40 @@ const SAYS: [string, () => void][] = [
     'messagesNoMobile',
     () => expect(screen.getAllByText('Ire Events has no phone number for you.')).toHaveLength(2),
   ],
+  ['messagesTextsOff', () => screen.getByText(TEXTS_OFF, { selector: 'span' })],
+  ['messagesSwitchSaving', () => expect(sms().getAttribute('aria-busy')).toBe('true')],
+  ['messagesSwitchFailed', () => expect(screen.getByRole('alert').textContent).toBe(FAILED)],
+  [
+    'messagesTwoOff',
+    () =>
+      expect(screen.getAllByRole<HTMLInputElement>('switch').map((one) => one.checked)).toEqual([
+        false,
+        false,
+        true,
+      ]),
+  ],
+  ['messagesNoEmail', () => screen.getByText(NO_EMAIL)],
+  ['messagesNothing', () => expect(screen.queryAllByRole('switch')).toHaveLength(0)],
+  ['messagesFromEmail', () => screen.getByRole('button', { name: STOP })],
+  [
+    'messagesStopSaving',
+    () => expect(screen.getByRole('button', { name: STOP }).getAttribute('aria-busy')).toBe('true'),
+  ],
+  ['messagesStopFailed', () => expect(screen.getByRole('alert').textContent).toContain(FAILED)],
+  ['messagesStopped', () => screen.getByText(STOPPED)],
+  [
+    'messagesUndoSaving',
+    () =>
+      expect(screen.getByRole('button', { name: 'Undo' }).getAttribute('aria-busy')).toBe('true'),
+  ],
+  ['messagesUndoFailed', () => expect(screen.getByRole('alert').textContent).toContain(FAILED)],
+  ['messagesUndone', () => screen.getByText(ON_AGAIN)],
+  ['messagesEmailOff', () => expect(email().checked).toBe(false)],
+  [
+    'messagesLoading',
+    () => expect(document.querySelector('.gp-yours [aria-busy="true"]')).not.toBeNull(),
+  ],
+  ['messagesLinkBroken', () => screen.getByRole('heading', { level: 1, name: BROKEN })],
 ];
 
 describe('every state, deep-linked by ?state=', () => {
@@ -462,6 +512,376 @@ describe('Your messages, opened from the guest’s page (sc-3969, sc-3950)', () 
     expect(document.activeElement).toBe(
       screen.getByRole('heading', { level: 1, name: 'You are invited' }),
     );
+  });
+});
+
+/** A control as a person presses it: focused first, as a click or a key leaves it. */
+function press(control: HTMLElement): HTMLElement {
+  control.focus();
+  fireEvent.click(control);
+
+  return control;
+}
+
+const content = () => document.getElementById('content') as HTMLElement;
+
+describe('Your messages from an email’s link: the button and Undo (sc-3969)', () => {
+  it('leads with the button between the intro and the rows, with no Back', async () => {
+    await guest('messagesFromEmail');
+    const parts = [...document.querySelectorAll('.gp-yours > *:not(.visually-hidden)')];
+
+    expect(parts.map((part) => part.className)).toEqual([
+      'gp-yours-title',
+      'gp-sub',
+      'gp-yours-lead',
+      'gp-yours-rows',
+      'gp-small',
+    ]);
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+    expect(screen.getByRole('button', { name: STOP }).className).toBe('gp-filled is-wraps');
+    expect(email().checked).toBe(true);
+    expect(document.head.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe(
+      'noindex',
+    );
+    expect(document.head.querySelector('meta[name="referrer"]')?.getAttribute('content')).toBe(
+      'no-referrer',
+    );
+  });
+
+  it('saves on a press with its words, width and colour kept, then puts the words in its place', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('messagesFromEmail');
+
+    const button = press(screen.getByRole('button', { name: STOP }));
+    expect(button.getAttribute('aria-busy')).toBe('true');
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(button.hasAttribute('disabled')).toBe(false);
+    expect(button.hasAttribute('data-off')).toBe(false);
+    expect(button.textContent).toBe(STOP);
+    expect(button.querySelector('.gp-spin')?.getAttribute('aria-hidden')).toBe('true');
+    expect(said()?.textContent).toBe('Saving…');
+    expect(email().checked).toBe(true);
+    expect(document.activeElement).toBe(button);
+
+    fireEvent.click(button);
+    await wait(SEND_MS);
+
+    const words = screen.getByText(STOPPED);
+    expect(document.activeElement).toBe(words);
+    expect(words.hasAttribute('role')).toBe(false);
+    expect(screen.queryByRole('button', { name: STOP })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
+    expect(email().checked).toBe(false);
+    expect(document.querySelector('.gp-yours-row .is-saved')).toBeNull();
+    expect(said()?.textContent).toBe('');
+  });
+
+  it('Undo saves the same way and turns emails back on, with no Undo after it', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('messagesStopped');
+
+    expect(document.activeElement).toBe(screen.getByText(STOPPED));
+    const undo = press(screen.getByRole('button', { name: 'Undo' }));
+    expect(undo.getAttribute('aria-busy')).toBe('true');
+    expect(undo.getAttribute('aria-disabled')).toBe('true');
+    expect(undo.className).toBe('gp-text');
+    expect(undo.textContent).toBe('Undo');
+    expect(said()?.textContent).toBe('Saving…');
+    expect(screen.getByText(STOPPED)).toBeDefined();
+    expect(email().checked).toBe(false);
+
+    await wait(SEND_MS);
+    const again = screen.getByText(ON_AGAIN);
+    expect(document.activeElement).toBe(again);
+    expect(again.closest('[role="status"]')).toBeNull();
+    expect(said()?.textContent).toBe('');
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    expect(email().checked).toBe(true);
+  });
+
+  it('a failed press shows no words, keeps Email on and focus on the button; Try again sends it again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('messagesStopFailed');
+    const button = screen.getByRole('button', { name: STOP });
+    const alert = screen.getByRole('alert');
+
+    expect(document.activeElement).toBe(button);
+    expect(alert.textContent).toBe(`${FAILED}Try again`);
+    expect(alert.className).toBe('gp-notice is-broken gp-yours-alert');
+    expect(button.nextElementSibling).toBe(alert);
+    expect(screen.queryByText(STOPPED)).toBeNull();
+    expect(email().checked).toBe(true);
+
+    const retry = press(within(alert).getByRole('button', { name: 'Try again' }));
+    expect(retry.getAttribute('aria-busy')).toBe('true');
+    expect(button.getAttribute('aria-busy')).toBe('false');
+    expect(said()?.textContent).toBe('Saving…');
+
+    await wait(SEND_MS);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByText(STOPPED));
+    expect(email().checked).toBe(false);
+  });
+
+  it('a failed Undo keeps its words and Email off, the alert under them; Try again sends Undo again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('messagesUndoFailed');
+    const undo = screen.getByRole('button', { name: 'Undo' });
+
+    expect(document.activeElement).toBe(undo);
+    expect(screen.getByText(STOPPED)).toBeDefined();
+    expect(email().checked).toBe(false);
+    expect(document.querySelector('.gp-yours-done + .gp-yours-alert')).not.toBeNull();
+
+    press(screen.getByRole('button', { name: 'Try again' }));
+    await wait(SEND_MS);
+    expect(document.activeElement).toBe(screen.getByText(ON_AGAIN));
+    expect(email().checked).toBe(true);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('opened mid-save, holds the button busy, then lands', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('messagesStopSaving');
+    const button = screen.getByRole('button', { name: STOP });
+
+    expect(document.activeElement).toBe(button);
+    expect(said()?.textContent).toBe('Saving…');
+    expect(email().checked).toBe(true);
+    await wait(HOLD_MS);
+    expect(document.activeElement).toBe(screen.getByText(STOPPED));
+  });
+
+  it('turning Email by hand removes the button, or the words, and the row’s line takes over', async () => {
+    await guest('messagesFromEmail');
+
+    fireEvent.click(email());
+    expect(screen.queryByRole('button', { name: STOP })).toBeNull();
+    expect(screen.getByText(EMAILS_OFF, { selector: 'span' })).toBeDefined();
+    fireEvent.click(email());
+    expect(screen.queryByRole('button', { name: STOP })).toBeNull();
+    expect(screen.getByText(ON_AGAIN, { selector: 'span' })).toBeDefined();
+  });
+
+  it('from the words, Email by hand removes them and Undo with them', async () => {
+    await guest('messagesStopped');
+
+    fireEvent.click(email());
+    expect(screen.queryByText(STOPPED)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    expect(email().checked).toBe(true);
+  });
+
+  it('opened while emails are already off: the Email switch off, no button and no words', async () => {
+    await guest('messagesEmailOff');
+
+    expect(email().checked).toBe(false);
+    expect(document.querySelector('.gp-yours-lead')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+  });
+});
+
+describe('Your messages: a switch saving and failing, and nothing on record (sc-3969)', () => {
+  it('holds a switch where it was pressed, at full colour, Saving… in its word, and ignores a second press', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('messagesSwitchSaving');
+    const switchSms = sms();
+    const label = switchSms.closest('label') as HTMLElement;
+
+    expect(document.activeElement).toBe(switchSms);
+    expect(switchSms.checked).toBe(false);
+    expect(switchSms.getAttribute('aria-busy')).toBe('true');
+    expect(switchSms.hasAttribute('disabled')).toBe(false);
+    expect(switchSms.hasAttribute('aria-disabled')).toBe(false);
+    expect(label.querySelector('.gp-switch-say.is-shown')?.textContent).toBe('Saving…');
+    expect([...label.querySelectorAll('.gp-switch-say')].map((one) => one.textContent)).toEqual([
+      'On',
+      'Off',
+      'Saving…',
+    ]);
+    expect(label.querySelector('.gp-switch-knob.is-saving .gp-spin')).not.toBeNull();
+
+    fireEvent.click(switchSms);
+    expect(switchSms.checked).toBe(false);
+    expect(screen.queryByText(TEXTS_OFF)).toBeNull();
+
+    await wait(HOLD_MS);
+    expect(switchSms.checked).toBe(false);
+    expect(switchSms.hasAttribute('aria-busy')).toBe(false);
+    expect(screen.getByText(TEXTS_OFF, { selector: 'span' })).toBeDefined();
+    expect(label.querySelector('.gp-switch-say.is-shown')?.textContent).toBe('Off');
+  });
+
+  it('a switch that did not save is back where it was, the line under its name; Try again sends the same change', async () => {
+    await guest('messagesSwitchFailed');
+    const switchSms = sms();
+    const line = screen.getByRole('alert');
+
+    expect(document.activeElement).toBe(switchSms);
+    expect(switchSms.checked).toBe(true);
+    expect(line.textContent).toBe(FAILED);
+    expect(line.id).toBe('gp-sms-failed');
+    expect(switchSms.getAttribute('aria-describedby')).toBe('gp-sms-failed');
+    expect(line.previousElementSibling?.textContent).toBe('Text messages');
+
+    press(screen.getByRole('button', { name: 'Try again' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(switchSms.checked).toBe(false);
+    expect(document.activeElement).toBe(switchSms);
+    expect(said()?.textContent).toBe(TEXTS_OFF);
+  });
+
+  it('any other change removes the failed line', async () => {
+    await guest('messagesSwitchFailed');
+
+    fireEvent.click(email());
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(sms().checked).toBe(true);
+  });
+
+  it('a switch saved: its line under the channel, the only line on the page', async () => {
+    await guest('messagesTextsOff');
+
+    expect(sms().checked).toBe(false);
+    expect(document.querySelectorAll('.gp-yours-line.is-saved')).toHaveLength(1);
+    fireEvent.click(screen.getByRole('switch', { name: 'WhatsApp' }));
+    expect(screen.queryByText(TEXTS_OFF)).toBeNull();
+    expect(document.querySelectorAll('.gp-yours-line.is-saved')).toHaveLength(1);
+  });
+
+  it('the three rows sit in one group, each switch’s word before its track', async () => {
+    await guest('messagesTextsOff');
+    const group = screen.getByRole('group', { name: 'Your messages' });
+    const labels = [...group.querySelectorAll('label.gp-switch')];
+
+    expect(document.querySelectorAll('.gp-yours-rows')).toHaveLength(1);
+    expect([...group.children].map((row) => row.className)).toEqual([
+      'gp-yours-row',
+      'gp-yours-row',
+      'gp-yours-row',
+    ]);
+    expect(labels).toHaveLength(3);
+    for (const label of labels) {
+      expect([...label.children].map((part) => part.className)).toEqual([
+        'gp-switch-word',
+        'gp-switch-track',
+      ]);
+    }
+  });
+
+  it('no email address: Email keeps its row with no switch and says so', async () => {
+    await guest('messagesNoEmail');
+
+    expect(screen.queryByRole('switch', { name: 'Email' })).toBeNull();
+    expect(screen.getAllByRole('switch')).toHaveLength(2);
+    expect(screen.getByText(NO_EMAIL).closest('.gp-yours-words')?.textContent).toBe(
+      `Email${NO_EMAIL}`,
+    );
+  });
+
+  it('nothing on record: three rows, three lines, no switch', async () => {
+    await guest('messagesNothing');
+
+    expect(document.querySelectorAll('.gp-yours-row')).toHaveLength(3);
+    expect(screen.getByText(NO_EMAIL)).toBeDefined();
+    expect(screen.getAllByText(NO_PHONE)).toHaveLength(2);
+    expect(screen.queryAllByRole('switch')).toHaveLength(0);
+    expect(screen.getByRole('button', { name: 'Back' })).toBeDefined();
+  });
+});
+
+describe('Your messages loading, and its bad link (sc-3969)', () => {
+  it('shows the title at once; the intro, the rows and the footnote wait as shapes, the group busy', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('messagesLoading');
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Your messages' })).toBeDefined();
+    expect(screen.getByRole('group', { name: 'Your messages' }).getAttribute('aria-busy')).toBe(
+      'true',
+    );
+    expect(document.querySelectorAll('.gp-yours-rows > .gp-yours-row.is-waiting')).toHaveLength(3);
+    expect(content().textContent).toBe('Your messagesLoading…');
+    expect(screen.queryByRole('switch')).toBeNull();
+
+    await wait(HOLD_MS);
+    expect(screen.getByRole('button', { name: STOP })).toBeDefined();
+    expect(screen.getAllByRole('switch')).toHaveLength(3);
+  });
+
+  it('a link that does not work: the heading and the body, and nothing else', async () => {
+    await guest('messagesLinkBroken');
+    const alert = screen.getByRole('alert');
+
+    expect(within(alert).getByRole('heading', { level: 1, name: BROKEN })).toBeDefined();
+    expect(within(alert).getByText(BROKEN_BODY)).toBeDefined();
+    expect(content().textContent).toBe(`${BROKEN}${BROKEN_BODY}`);
+    expect(within(content()).queryAllByRole('button')).toHaveLength(0);
+    expect(screen.queryByRole('switch')).toBeNull();
+    expect(document.head.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe(
+      'noindex',
+    );
+  });
+
+  it.each(
+    GUEST_PAGES.flatMap((one) => one.states)
+      .map((one) => /state=(messages[A-Z]\w+)/u.exec(one.to)?.[1])
+      .filter((state) => state != null),
+  )('%s never shows a name, an address, a number, a date or a count', async (state) => {
+    await guest(state);
+
+    expect(content().textContent).not.toContain(NAME);
+    expect(content().textContent).not.toMatch(/[@\d]/u);
+  });
+});
+
+describe('the way in to Your messages, on the guest’s page (sc-3969)', () => {
+  it('sits after the account line and before the rule and the closing line, in a 44 target', async () => {
+    await guest('coming');
+    const link = screen.getByRole('link', { name: WAY_IN });
+    const foot = link.closest('.gp-foot') as HTMLElement;
+
+    expect([...foot.children].map((one) => one.tagName)).toEqual(['P', 'A', 'HR', 'P', 'BUTTON']);
+    expect(link.previousElementSibling?.textContent).toBe('You do not need an account to answer.');
+    expect(link.className).toBe('gp-text');
+    expect(link.getAttribute('href')).toBe('/demo/guest?state=messagesNoMobile');
+  });
+
+  it('opens Your messages with the switches alone, and Back returns to the page as it was', async () => {
+    await guest('coming');
+
+    press(screen.getByRole('link', { name: WAY_IN }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'Your messages' }),
+    );
+    expect(screen.getByRole('button', { name: 'Back' })).toBeDefined();
+    expect(document.querySelector('.gp-yours-lead')).toBeNull();
+    expect(document.querySelector('.gp-cover')).toBeNull();
+
+    fireEvent.click(email());
+    expect(screen.getByText(EMAILS_OFF, { selector: 'span' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'You are invited' }),
+    );
+    expect(screen.getByText(`See you there, ${NAME}.`)).toBeDefined();
+
+    press(screen.getByRole('link', { name: WAY_IN }));
+    expect(email().checked).toBe(false);
+    expect(screen.queryByText(EMAILS_OFF)).toBeNull();
+  });
+
+  it('is on the page before an answer and on the event’s day, and not where the foot has no account line', async () => {
+    await guest('open');
+    expect(screen.getByRole('link', { name: WAY_IN })).toBeDefined();
+    cleanup();
+
+    await guest('onTheDay');
+    expect(screen.getByRole('link', { name: WAY_IN })).toBeDefined();
+    cleanup();
+
+    await guest('closed');
+    expect(screen.queryByRole('link', { name: WAY_IN })).toBeNull();
   });
 });
 
