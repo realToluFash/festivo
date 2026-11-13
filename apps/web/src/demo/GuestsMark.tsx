@@ -1,7 +1,7 @@
 import { useEffect, useId, useReducer, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
-import { Glyph } from '../components/Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { Dialog, RowWords, type Tell, TextAction } from '../components/SettingsParts.tsx';
 import { focusWhenFree } from '../layers.ts';
 import { DemoBell } from './DemoBell.tsx';
@@ -33,6 +33,20 @@ import { MarkLead } from './GuestsParts.tsx';
 import { GW, HOW_INVITED, type HowInvited, REPLY_WORDS, figure } from './guestsWords.ts';
 import './guests.css';
 import './guestsMark.css';
+
+const LINE_TONE: Record<Line['kind'], 'done' | 'quiet' | 'held'> = {
+  done: 'done',
+  nothing: 'quiet',
+  failed: 'held',
+  notLive: 'held',
+};
+
+const LINE_GLYPH: Record<Line['kind'], GlyphName> = {
+  done: 'tick',
+  nothing: 'info',
+  failed: 'alert',
+  notLive: 'alert',
+};
 
 const EVERY_REPLY: ReadonlySet<Reply> = new Set<Reply>([
   'coming',
@@ -189,8 +203,8 @@ function MarkPage({ event, start, tell }: { event: SampleEvent; start: MarkStart
           <div className="gm-dock">
             <div className="gm-said" role="status" data-focus="line" tabIndex={-1}>
               {shown && (
-                <div className={line.kind === 'done' ? 'gm-line is-done' : 'gm-line is-held'}>
-                  <Glyph name={line.kind === 'done' ? 'tick' : 'alert'} size={18} weight={2.4} />
+                <div className={`gm-line is-${LINE_TONE[line.kind]}`}>
+                  <Glyph name={LINE_GLYPH[line.kind]} size={18} weight={2.4} />
                   <p>
                     {lineWords(line).map((words) => (
                       <span key={words}>{words}</span>

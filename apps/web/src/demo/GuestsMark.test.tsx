@@ -83,6 +83,7 @@ describe('Mark as invited from the selection bar (sc-46880)', () => {
     await open('nothing');
 
     expect(said()).toBe('4 already invited. Nothing to mark.');
+    expect(document.querySelector('.gm-line')?.className).toContain('is-quiet');
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 

@@ -74,6 +74,10 @@
   color: var(--deskGreen);
 }
 
+.gm-line.is-quiet > svg {
+  color: var(--colorInkSecondary);
+}
+
 .gm-line.is-held > svg {
   color: var(--colorBroken);
 }
