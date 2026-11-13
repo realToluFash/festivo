@@ -126,7 +126,7 @@ export function Cover({
   const day = shortDay(EVENT.startsAt, visit.lang, EVENT.timeZone);
   const when = zoned ? words.timeInZone(time, EVENT.timeZone) : time;
   const look = visit.photo ? 'is-photo' : `today-cover is-${EVENT.mesh}`;
-  const place = placeOf(visit.where);
+  const place = placeOf(visit);
   const dayOrder = inDayOrder(visit);
   const line = [day, dayOrder && hasWhere(place) ? null : when, dayOrder ? null : place.name]
     .filter((part) => part != null)
@@ -433,13 +433,19 @@ function Row({ lead, title, line }: { lead: ReactNode; title: ReactNode; line?: 
   );
 }
 
-/** When, where and who, as Events A writes them; on the day a Coming guest reads when and where in Where instead. */
+/** When, where and who, as Events A writes them; the host's arrival note under the Where line, never translated; on the day a Coming guest reads when and where in Where instead. */
 export function Details({ visit, words, hosts }: { visit: Visit; words: Words; hosts: boolean }) {
   const time = eventTime(visit.lang);
   const zoned = visit.readerZone !== EVENT.timeZone;
-  const place = placeOf(visit.where);
+  const place = placeOf(visit);
+  const { note } = place;
   const dayOrder = inDayOrder(visit);
   const line = place.name != null || place.address != null;
+  const noteLine = note != null && (
+    <p className="gp-note" dir="auto">
+      {note}
+    </p>
+  );
   const hostsRow = hosts && (
     <Row lead={<Glyph name="users" size={22} />} title={words.hosts} line={words.hostedBy} />
   );
@@ -472,7 +478,11 @@ export function Details({ visit, words, hosts }: { visit: Visit; words: Words; h
               <span>{words.openInMaps}</span>
             </a>
           )}
+          {noteLine}
         </div>
+      )}
+      {!line && noteLine !== false && (
+        <div className={hosts ? 'gp-where has-rule' : 'gp-where'}>{noteLine}</div>
       )}
       {hostsRow}
     </div>

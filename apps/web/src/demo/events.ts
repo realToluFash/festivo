@@ -25,6 +25,7 @@ import type { DemoLink } from './settings.ts';
 import type { EventKey } from './today.ts';
 import { type Mesh, meshFor } from '../mesh.ts';
 import { SIDE_AREAS, type SideArea } from '../components/eventSideAreas.ts';
+import { ARRIVAL_NOTE } from './arrivalNote.ts';
 
 export interface Venue {
   name: string;
@@ -44,6 +45,8 @@ export interface SampleEvent {
   timeZone: string;
   concludedAt: string | null;
   venue: Venue | null;
+  /** sc-24385: the host's own words, beside the venue and never inside it, so a note can stand without one. */
+  arrivalNote: string | null;
   hosts: readonly string[];
   currency: Currency;
   mesh: Mesh;
@@ -134,6 +137,7 @@ function sample(
     timeZone,
     concludedAt: null,
     venue,
+    arrivalNote: null,
     hosts,
     currency,
     mesh: meshFor(id),
@@ -153,6 +157,7 @@ const SAMPLE_EVENTS: readonly SampleEvent[] = [
     at('The Landmark', 'London', '222 Marylebone Road, London NW1 6JQ'),
     ['Adaeze Obi', 'Tunde Bakare'],
     'GBP',
+    { arrivalNote: ARRIVAL_NOTE },
   ),
   sample(
     'evt-ireti-2',
@@ -485,6 +490,7 @@ export const EVENT_WORDS = {
   scheduleLocked: 'This event is over, so its start, end and time zone can’t be changed.',
   venue: 'Venue',
   openInMaps: 'Open in maps',
+  addVenue: 'Add the venue',
   hostedBy: 'Hosted by',
   noHosts: 'No hosts yet',
   noHostsLine: 'The event can be made live once it has at least one.',
@@ -1145,6 +1151,10 @@ export type EditState =
   | 'venueSuggestions'
   | 'venueZone'
   | 'venueDown'
+  | 'venueNote'
+  | 'venueNoteTooLong'
+  | 'venueNoteRefused'
+  | 'venueNoteForbidden'
   | 'hosts'
   | 'hostsDuplicate'
   | 'hostsSix'
@@ -1188,7 +1198,9 @@ export type LifeState =
   | 'muteNotLoaded'
   | 'muteNotSaved';
 
-export type EventStateName = PhaseState | EditState | LifeState | NeedsState;
+export type NoteState = 'noteNoVenue' | 'noteWide' | 'noteMarkup';
+
+export type EventStateName = PhaseState | EditState | LifeState | NeedsState | NoteState;
 
 export const EVENT_STATES: Record<EventStateName, string> = {
   draft: 'evt-draft-4',
@@ -1211,6 +1223,13 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   venueSuggestions: 'evt-wed-4',
   venueZone: 'evt-wed-4',
   venueDown: 'evt-wed-4',
+  venueNote: 'evt-wed-4',
+  venueNoteTooLong: 'evt-wed-4',
+  venueNoteRefused: 'evt-wed-4',
+  venueNoteForbidden: 'evt-wed-4',
+  noteNoVenue: 'evt-wed-4',
+  noteWide: 'evt-wed-4',
+  noteMarkup: 'evt-wed-4',
   hosts: 'evt-wed-4',
   hostsDuplicate: 'evt-wed-4',
   hostsSix: 'evt-wed-4',
@@ -1288,6 +1307,10 @@ export function partOf(state: EventStateName | null): Part | null {
     case 'venueSuggestions':
     case 'venueZone':
     case 'venueDown':
+    case 'venueNote':
+    case 'venueNoteTooLong':
+    case 'venueNoteRefused':
+    case 'venueNoteForbidden':
       return 'venue';
     case 'hosts':
     case 'hostsDuplicate':
@@ -1476,6 +1499,18 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('venueSuggestions', 'Venue, suggestions'),
       on('venueZone', 'Venue, in another time zone'),
       on('venueDown', 'Venue, the lookup down'),
+    ],
+  },
+  {
+    name: 'The arrival note (sc-24385)',
+    states: [
+      on('venueNote', 'Venue, the arrival note under Address'),
+      on('venueNoteTooLong', 'Venue, a note of 501 characters: refused before sending'),
+      on('venueNoteRefused', 'Venue, the note refused by the server (422)'),
+      on('venueNoteForbidden', 'Venue, a role changed while open (403)'),
+      on('noteNoVenue', 'Details, Venue to be confirmed with a note'),
+      on('noteWide', 'Details, a note of 500 characters with no spaces'),
+      on('noteMarkup', 'Details, markup typed as text'),
     ],
   },
   {

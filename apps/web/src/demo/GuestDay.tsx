@@ -30,7 +30,7 @@ export function YourCode({ visit, words }: { visit: Visit; words: Words }) {
 }
 
 export function WhereBlock({ visit, words }: { visit: Visit; words: Words }) {
-  const place = placeOf(visit.where);
+  const place = placeOf(visit);
   const zoned = visit.readerZone !== EVENT.timeZone;
   const time = eventTime(visit.lang);
 
