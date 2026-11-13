@@ -827,10 +827,10 @@ describe('the guest tree', () => {
     ).toBeDefined();
   });
 
-  it('tells them what to do about it', () => {
+  it('tells them who to ask about it', () => {
     at('/i/nope');
 
-    expect(screen.getByRole('alert').textContent).toMatch(/fresh link/);
+    expect(screen.getByRole('alert').textContent).toMatch(/invited you/);
   });
 });
 
