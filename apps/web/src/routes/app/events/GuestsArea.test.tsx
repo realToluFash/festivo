@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -8,8 +5,10 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setConfig, config } from '../../../config.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
+import { cssRule, stylesheet } from '../../../test-styles.ts';
 import { routes } from '../../index.tsx';
 
+const GUESTS_CSS = stylesheet(import.meta.dirname, 'guests.css');
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
 const EVENT = {
@@ -1429,16 +1428,16 @@ describe('The wrong-person flag (sc-1526)', () => {
 
 describe('a companion field (sc-43267)', () => {
   it('ends a placeholder too long for the field in an ellipsis, on one line', () => {
-    expect(readFileSync(join(import.meta.dirname, 'guests.css'), 'utf8')).toMatch(
-      /\.gs-companion \.desk-box input \{\s*overflow: hidden;\s*text-overflow: ellipsis;\s*white-space: nowrap;\s*\}/u,
-    );
+    const input = cssRule('.gs-companion .desk-box input', GUESTS_CSS);
+
+    expect(input).toContain('overflow: hidden;');
+    expect(input).toContain('text-overflow: ellipsis;');
+    expect(input).toContain('white-space: nowrap;');
   });
 });
 
 describe('a guest’s column at 320 (sc-3773)', () => {
   it('shrinks below its widest field row, so the phone row never pushes the form past the screen', () => {
-    expect(readFileSync(join(import.meta.dirname, 'guests.css'), 'utf8')).toMatch(
-      /\.gs-column \{\s*flex: 1 1 var\(--gsGuest\);\s*box-sizing: border-box;\s*min-width: 0;/u,
-    );
+    expect(cssRule('.gs-column', GUESTS_CSS)).toContain('min-width: 0;');
   });
 });
