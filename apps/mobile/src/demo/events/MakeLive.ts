@@ -10,6 +10,8 @@ export const MAKE_LIVE_STATES = [
   'makeLiveOffer',
   'makeLiveOfferPart',
   'makeLiveOfferWaits',
+  'makeLiveOfferWhatsApp',
+  'makeLiveOfferWhatsAppOnly',
   'makeLiveOfferOne',
   'makeLiveOfferSending',
   'makeLiveOfferNotSent',
@@ -40,6 +42,9 @@ export interface Reach {
   unreachable: number;
   companions: number;
   balance: number;
+  /** Of withPhone, those sent the WhatsApp invitation in place of the text (sc-45251), and its credits at each guest's own country's rate. */
+  byWhatsApp: number;
+  whatsAppCredits: number;
 }
 
 const COVERED: Reach = {
@@ -49,6 +54,8 @@ const COVERED: Reach = {
   unreachable: 1,
   companions: 1,
   balance: 250,
+  byWhatsApp: 0,
+  whatsAppCredits: 0,
 };
 const NOBODY_ON_LIST: Reach = {
   guests: 0,
@@ -57,9 +64,14 @@ const NOBODY_ON_LIST: Reach = {
   unreachable: 0,
   companions: 0,
   balance: 250,
+  byWhatsApp: 0,
+  whatsAppCredits: 0,
 };
 
+/** The web demo's sample: Funke Bello (UK) and Wumi Lawal (Nigeria) agreed, at marketing 12 and 10; with Toyin Fashola (UK) too, at utility 5, 5 and 2. */
 const REACH: Partial<Record<MakeLiveState, Reach>> = {
+  makeLiveOfferWhatsApp: { ...COVERED, byWhatsApp: 2, whatsAppCredits: 22 },
+  makeLiveOfferWhatsAppOnly: { ...COVERED, byWhatsApp: 3, whatsAppCredits: 12 },
   makeLiveOfferEmail: { ...COVERED, emailOnly: 10, withPhone: 0 },
   makeLiveOfferPart: { ...COVERED, balance: 1 },
   makeLiveOfferWaits: { ...COVERED, balance: 0 },
@@ -86,13 +98,20 @@ export interface Credits {
 
 /** B's credits line when the balance covers every text; otherwise what does go now, then the wait block. */
 export function creditsOf(reach: Reach): Credits {
-  const texts = reach.withPhone;
-  if (texts === 0) return { line: null, waiting: 0 };
-  if (reach.balance >= texts)
+  const texts = reach.withPhone - reach.byWhatsApp;
+  const credits = texts + reach.whatsAppCredits;
+  if (credits === 0) return { line: null, waiting: 0 };
+  if (reach.balance >= credits) {
+    const after = formatCount(reach.balance - credits);
+
     return {
-      line: sayMessages.credits(texts, formatCount(reach.balance - texts), false),
+      line:
+        texts === 0
+          ? sayLive.whatsAppCredits(credits, after)
+          : sayMessages.credits(credits, after, reach.byWhatsApp > 0),
       waiting: 0,
     };
+  }
 
   return {
     line: reach.balance > 0 ? liveCounted('textsUse', reach.balance) : null,
@@ -124,6 +143,8 @@ const STARTS: Record<MakeLiveState, MakeLive> = {
   makeLiveOffer: { turn: OFFER, live: true, toast: null },
   makeLiveOfferPart: { turn: OFFER, live: true, toast: null },
   makeLiveOfferWaits: { turn: OFFER, live: true, toast: null },
+  makeLiveOfferWhatsApp: { turn: OFFER, live: true, toast: null },
+  makeLiveOfferWhatsAppOnly: { turn: OFFER, live: true, toast: null },
   makeLiveOfferOne: { turn: OFFER, live: true, toast: null },
   makeLiveOfferSending: { turn: { ...OFFER, sending: true }, live: true, toast: null },
   makeLiveOfferNotSent: { turn: { ...OFFER, failed: true }, live: true, toast: null },

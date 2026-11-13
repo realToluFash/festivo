@@ -74,6 +74,17 @@ describe('the credits line, B’s words built once', () => {
     });
     expect(liveCounted('textsUse', 2)).toBe('Texts use 2 credits.');
   });
+
+  it('counts WhatsApp in place of the text: with texts at marketing, alone at utility (sc-45251)', () => {
+    expect(creditsOf(reachOf('makeLiveOfferWhatsApp', ENGAGEMENT))).toEqual({
+      line: 'Texts and WhatsApp messages use 23 credits. Credits after sending: 227.',
+      waiting: 0,
+    });
+    expect(creditsOf(reachOf('makeLiveOfferWhatsAppOnly', ENGAGEMENT))).toEqual({
+      line: 'WhatsApp messages use 12 credits. Credits after sending: 238.',
+      waiting: 0,
+    });
+  });
 });
 
 describe('the alert at each state', () => {

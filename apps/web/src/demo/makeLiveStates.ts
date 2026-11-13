@@ -7,6 +7,8 @@ export const MAKE_LIVE_STATES = [
   { key: 'makeLiveOffer', name: 'The offer, the texts covered' },
   { key: 'makeLiveOfferPart', name: 'The offer, credits for one text of three' },
   { key: 'makeLiveOfferWaits', name: 'The offer, no credits: every text waits' },
+  { key: 'makeLiveOfferWhatsApp', name: 'The offer, texts and WhatsApp at marketing (sc-45251)' },
+  { key: 'makeLiveOfferWhatsAppOnly', name: 'The offer, WhatsApp only, at utility (sc-45251)' },
   { key: 'makeLiveOfferOne', name: 'The offer, one guest' },
   { key: 'makeLiveOfferSending', name: 'Sending…' },
   { key: 'makeLiveOfferNotSent', name: 'Not sent' },

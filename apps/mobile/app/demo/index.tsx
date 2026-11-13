@@ -1274,6 +1274,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-draft-4?state=makeLiveOfferWaits',
       },
       {
+        title: 'Make live · the offer, texts and WhatsApp (sc-45251)',
+        what: 'Template at marketing: Texts and WhatsApp messages use 23 credits',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferWhatsApp',
+      },
+      {
+        title: 'Make live · the offer, WhatsApp only (sc-45251)',
+        what: 'Template at utility: WhatsApp messages use 12 credits',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferWhatsAppOnly',
+      },
+      {
         title: 'Make live · the offer, one guest',
         what: 'Send the invitation to 1 guest now? and Send it',
         href: '/demo/events/evt-draft-4?state=makeLiveOfferOne',

@@ -1,6 +1,7 @@
 import { demoWords } from './demoWords.ts';
 import { type Guest, sampleGuests } from './guests.ts';
 import { LW } from './makeLiveWords.ts';
+import { type Category, whatsAppCreditsIn } from './messages.ts';
 import { MW } from './messagesWords.ts';
 import { WW } from './messagesWaitsWords.ts';
 import { type MakeLiveState, MAKE_LIVE_STATES } from './makeLiveStates.ts';
@@ -42,6 +43,8 @@ export function phaseOf(state: MakeLiveState | null): Phase | null {
     case 'makeLiveOffer':
     case 'makeLiveOfferPart':
     case 'makeLiveOfferWaits':
+    case 'makeLiveOfferWhatsApp':
+    case 'makeLiveOfferWhatsAppOnly':
     case 'makeLiveOfferOne':
       return { at: 'offer', failed: false };
     case 'makeLiveOfferNotSent':
@@ -72,7 +75,20 @@ export interface Offer {
   texts: number;
   emails: number;
   balance: number;
+  /** WhatsApp invitations in place of texts (sc-45251), and their credits at each guest's own country's rate. */
+  whatsApp: number;
+  whatsAppCredits: number;
 }
+
+/** Who has agreed to WhatsApp in the states that send it, and the category Meta approved the template in. */
+const WHATSAPP: Partial<Record<MakeLiveState, { category: Category; agreed: readonly string[] }>> =
+  {
+    makeLiveOfferWhatsApp: { category: 'marketing', agreed: ['funke', 'wumi-lawal'] },
+    makeLiveOfferWhatsAppOnly: {
+      category: 'utility',
+      agreed: ['funke', 'toyin-fashola', 'wumi-lawal'],
+    },
+  };
 
 const BALANCE: Partial<Record<MakeLiveState, number>> = {
   makeLiveOfferPart: 1,
@@ -101,12 +117,29 @@ export function offerOf(id: string, state: MakeLiveState | null): Offer | null {
 
   if (guests.length === 0) return null;
 
+  const wa = state == null ? undefined : WHATSAPP[state];
+  const phones = guests.filter((one) => one.phone != null);
+  const byWhatsApp = phones.filter(
+    (one) =>
+      wa != null &&
+      wa.agreed.includes(one.id) &&
+      !(wa.category === 'marketing' && one.phone?.country === 'US'),
+  );
+
   return {
     count: guests.length,
     reached: guests.filter((one) => one.email != null || one.phone != null).length,
-    texts: guests.filter((one) => one.phone != null).length,
+    texts: phones.length - byWhatsApp.length,
     emails: guests.filter((one) => one.email != null).length,
     balance: (state == null ? undefined : BALANCE[state]) ?? 250,
+    whatsApp: byWhatsApp.length,
+    whatsAppCredits:
+      wa == null
+        ? 0
+        : byWhatsApp.reduce(
+            (sum, one) => sum + whatsAppCreditsIn(one.phone?.country ?? '', wa.category),
+            0,
+          ),
   };
 }
 
@@ -122,16 +155,33 @@ export interface Cost {
   waits: string | null;
 }
 
+/** The credits line's three forms (sc-45251): texts, texts and WhatsApp messages, or WhatsApp messages. */
+function usesKey(texts: number, whatsApp: number) {
+  if (whatsApp === 0) return 'textsUse' as const;
+
+  return texts === 0 ? ('whatsAppUse' as const) : ('textsAndWhatsAppUse' as const);
+}
+
 /** Messaging B's credits line when the texts are covered; sc-3963's wait part when they are not, after what goes now. */
 export function costOf(offer: Offer): Cost {
-  const { texts, balance } = offer;
+  const { texts, balance, whatsAppCredits } = offer;
+  const credits = texts + whatsAppCredits;
 
-  if (texts === 0) return { credits: null, either: null, waits: null };
-  if (balance >= texts)
+  if (credits === 0) return { credits: null, either: null, waits: null };
+  if (balance >= credits)
     return {
-      credits: `${mw.many('textsUse', texts)} ${mw.filled(MW.creditsAfter, { count: balance - texts })}`,
+      credits: `${mw.many(usesKey(texts, whatsAppCredits), credits)} ${mw.filled(MW.creditsAfter, { count: balance - credits })}`,
       either: null,
       waits: null,
+    };
+  if (whatsAppCredits > 0)
+    return {
+      credits: null,
+      either: offer.emails > 0 ? WW.eitherWay : null,
+      waits: [
+        mw.many('whatsAppWaits', offer.whatsApp),
+        ...(texts > 0 ? [mw.many('smsWaits', texts)] : []),
+      ].join(' '),
     };
 
   return {

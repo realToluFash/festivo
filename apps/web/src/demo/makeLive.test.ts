@@ -35,7 +35,7 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
         key,
       ).toHaveLength(1);
     }
-    expect(MAKE_LIVE_STATES).toHaveLength(17);
+    expect(MAKE_LIVE_STATES).toHaveLength(19);
     expect(isMakeLive('makeLiveOfferWaits')).toBe(true);
     expect(isMakeLive('makeLiveOfferNone')).toBe(false);
   });
@@ -43,7 +43,15 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
   it('counts 11 Not yet invited, 10 of them reachable, 3 texts: 247 credits after', () => {
     const offer = offered('makeLiveOffer');
 
-    expect(offer).toEqual({ count: 11, reached: 10, texts: 3, emails: 10, balance: 250 });
+    expect(offer).toEqual({
+      count: 11,
+      reached: 10,
+      texts: 3,
+      emails: 10,
+      balance: 250,
+      whatsApp: 0,
+      whatsAppCredits: 0,
+    });
     expect(reachedIds('evt-draft-4', 'makeLiveOffer')).toHaveLength(10);
     expect(reachedIds('evt-draft-4', 'makeLiveOffer')).not.toContain('tomas-os');
     expect(lw.many('offerTitle', 11)).toBe('Send invitations to 11 guests now?');
@@ -102,5 +110,26 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
     expect(liveIn('makeLiveOfferNotYet')).toBe(true);
     expect(liveIn('madeLive')).toBe(true);
     expect(liveIn('makeLiveNoOffer')).toBe(false);
+  });
+});
+
+describe('Make live sends WhatsApp in place of the text (sc-45251)', () => {
+  it('counts texts and WhatsApp messages together at marketing, each at its own country’s rate', () => {
+    const offer = offered('makeLiveOfferWhatsApp');
+
+    expect(offer).toMatchObject({ texts: 1, whatsApp: 2, whatsAppCredits: 22 });
+    expect(costOf(offer).credits).toBe(
+      'Texts and WhatsApp messages use 23 credits. Credits after sending: 227.',
+    );
+  });
+
+  it('says WhatsApp messages alone when nobody is texted, at utility', () => {
+    const offer = offered('makeLiveOfferWhatsAppOnly');
+
+    expect(offer).toMatchObject({ texts: 0, whatsApp: 3, whatsAppCredits: 12 });
+    expect(costOf(offer).credits).toBe(
+      'WhatsApp messages use 12 credits. Credits after sending: 238.',
+    );
+    expect(phaseOf('makeLiveOfferWhatsAppOnly')).toEqual({ at: 'offer', failed: false });
   });
 });

@@ -351,6 +351,8 @@ const LIVE_COUNTED = {
   later_other: 'You can send the invitations later from Guests in Soirely on the web.',
   textsUse_one: 'Texts use 1 credit.',
   textsUse_other: 'Texts use {{count}} credits.',
+  whatsAppUse_one: 'WhatsApp messages use 1 credit.',
+  whatsAppUse_other: 'WhatsApp messages use {{count}} credits.',
   nobody_one:
     'This guest cannot be reached. Add an email address or a mobile number for them in Guests.',
   nobody_other:
@@ -369,4 +371,6 @@ export function liveCounted(key: Counted, count: number, locale = 'en-US'): stri
 export const sayLive = {
   confirmTitle: (name: string) => `Make ${name} live?`,
   isLive: (name: string) => `${name} is live.`,
+  whatsAppCredits: (count: number, after: string) =>
+    `${liveCounted('whatsAppUse', count)} Credits after sending: ${after}.`,
 };

@@ -19,24 +19,42 @@ import {
   type InvitePerson,
   IW,
   emailLines,
+  goesBySms,
+  goesByWhatsApp,
   inviteAudienceOf,
   inviteChipWords,
   inviteCheckOf,
   inviteGoing,
   inviteLines,
+  inviteReachOf,
   iw,
   noteProblem,
   refusalLine,
   refusalTitle,
   smsOf,
+  whatsAppInvitationOf,
 } from './messagesInvite.ts';
-import { WhereGlyph } from './MessagesParts.tsx';
+import { WhatsAppReach, WhereGlyph } from './MessagesParts.tsx';
 import { PreviewAs } from './MessagesPreview.tsx';
 import { PW } from './messagesPreviewWords.ts';
 import { ToPopover } from './MessagesTo.tsx';
+import { WaitBlock } from './MessagesWaits.tsx';
 import './messagesInvite.css';
 
-const INVITE_CHANNELS = ['email', 'sms'] as const;
+/** Email and SMS (sc-3971), and WhatsApp once its template is approved (sc-45251). */
+function channelsFor(invite: Invite) {
+  return invite.wa == null ? (['email', 'sms'] as const) : (['email', 'sms', 'whatsApp'] as const);
+}
+
+/** sc-3950's reach line and sc-3954's instead line, whenever WhatsApp is ticked. */
+function ReachLines({ whatsApp, instead }: { whatsApp: string | null; instead: string | null }) {
+  return (
+    <>
+      {whatsApp != null && <WhatsAppReach line={whatsApp} />}
+      {instead != null && <p className="mg-instead">{instead}</p>}
+    </>
+  );
+}
 const LANGUAGES = new Intl.DisplayNames(['en'], { type: 'language' });
 
 function sendKeys(event: KeyboardEvent, then: () => void): void {
@@ -105,7 +123,14 @@ export function InviteCompose({ opening }: { opening: boolean }) {
                   onPick={(to) =>
                     act({
                       kind: 'draft',
-                      draft: { to, invite: { note: invite.note, again: invite.again } },
+                      draft: {
+                        to,
+                        invite: {
+                          note: invite.note,
+                          again: invite.again,
+                          ...(invite.wa == null ? {} : { wa: invite.wa }),
+                        },
+                      },
                     })
                   }
                   onClose={(back) => {
@@ -120,8 +145,11 @@ export function InviteCompose({ opening }: { opening: boolean }) {
             <span id={byId} className="mg-by-label">
               {MW.letThemKnowBy}
             </span>
-            <InviteTicks draft={draft} />
+            <InviteTicks draft={draft} invite={invite} />
           </div>
+          {draft.step === 'write' && (
+            <ReachLines {...inviteReachOf(draft.to, invite, draft.ticks, groups)} />
+          )}
         </header>
       )}
       <div className={draft.step === 'preview' ? 'mg-compose-body is-top' : 'mg-compose-body'}>
@@ -176,12 +204,12 @@ export function InviteCompose({ opening }: { opening: boolean }) {
   );
 }
 
-function InviteTicks({ draft }: { draft: Draft }) {
+function InviteTicks({ draft, invite }: { draft: Draft; invite: Invite }) {
   const { act } = useInbox();
 
   return (
     <div className="mg-ticks">
-      {INVITE_CHANNELS.map((channel) => (
+      {channelsFor(invite).map((channel) => (
         <TickChip
           key={channel}
           word={channelWord(channel)}
@@ -282,7 +310,7 @@ function NoteBox({
             {MW.preview}
           </button>
           <span id={hintId} className="mg-goes-page mi-hint">
-            {IW.noteHint}
+            {invite.wa == null ? IW.noteHint : MW.noteHint}
           </span>
           <button
             type="submit"
@@ -374,7 +402,7 @@ function InviteCheck({
             <Glyph name="alert" size={15} weight={2.2} />
             {refusalLine(check.count)}
           </p>
-          <InviteTicks draft={draft} />
+          <InviteTicks draft={draft} invite={invite} />
           {cant}
           <div className="mg-check-acts">{change}</div>
         </>
@@ -424,7 +452,7 @@ function InviteCheck({
                   ))}
                 </fieldset>
               )}
-              <InviteTicks draft={draft} />
+              <InviteTicks draft={draft} invite={invite} />
               {check.pills.length > 0 && (
                 <ul className="mg-pills">
                   {check.pills.map((pill) => (
@@ -435,8 +463,10 @@ function InviteCheck({
                   ))}
                 </ul>
               )}
+              <ReachLines whatsApp={check.whatsApp} instead={check.instead} />
               {cant}
               {check.credits != null && <p className="mg-credits">{check.credits}</p>}
+              {check.waits != null && <WaitBlock waits={check.waits} />}
             </>
           )}
           <div className="mg-check-acts">
@@ -528,7 +558,9 @@ function InvitePreview({
   const sms = smsOf(person.greet);
   const words = inviteLines(person.greet);
   const shownEmail = draft.ticks.email && person.email;
-  const shownSms = draft.ticks.sms && person.mobile;
+  const shownSms = goesBySms(person, draft.ticks, invite.wa);
+  const shownWa = goesByWhatsApp(person, draft.ticks, invite.wa);
+  const wa = whatsAppInvitationOf(person, invite.noReplyBy === true);
 
   return (
     <div className="mg-preview">
@@ -563,7 +595,7 @@ function InvitePreview({
             </figure>
           </div>
         )}
-        {(shownEmail || shownSms) && (
+        {(shownEmail || shownSms || shownWa) && (
           <section className="mg-sends" aria-labelledby={sendsId}>
             <h3 id={sendsId}>{MW.whatSoirelySends}</h3>
             {shownEmail && (
@@ -599,6 +631,23 @@ function InvitePreview({
                   {many('smsParts', sms.parts)}
                 </p>
                 <p className="mg-notice-bubble">{sms.text}</p>
+              </div>
+            )}
+            {shownWa && (
+              <div className="mg-notice">
+                <p className="mg-notice-head">
+                  <WhereGlyph where="whatsApp" />
+                  {MW.whatsAppTemplate}
+                </p>
+                <div
+                  className="mg-notice-bubble is-wa mi-wa"
+                  lang={wa.lang === 'en' ? undefined : wa.lang}
+                >
+                  {wa.lines.map((line) => (
+                    <p key={line}>{line}</p>
+                  ))}
+                  <span>{wa.button}</span>
+                </div>
               </div>
             )}
           </section>
