@@ -131,6 +131,15 @@ describe('Who’s coming with you? on the guest’s page (sc-3779)', { timeout: 
     expect(within(back).getByText(/^Last changed by you on /u)).toBeDefined();
     expect(within(back).getByDisplayValue('A seat I can reach without stairs')).toBeDefined();
     expect(button('Leave it as it is')).toBeDefined();
+
+    fireEvent.click(button('Back'));
+    fireEvent.click(button('Chidi Okonkwo-Williams is coming'));
+    fireEvent.click(button('Next'));
+    fireEvent.click(button('Leave it as it is'));
+
+    expect(screen.getByText(/^You and Nneka Okonkwo-Williams · 2 people$/u)).toBeDefined();
+    expect(screen.queryByText('Chidi Okonkwo-Williams')).toBeNull();
+    expect(screen.queryByText(/A seat I can reach without stairs/u)).toBeNull();
   });
 
   it('keeps the names when the guest has nothing to add', async () => {

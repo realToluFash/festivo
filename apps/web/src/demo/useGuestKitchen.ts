@@ -25,6 +25,7 @@ import {
   fromRecord,
   partyPeople,
   recorded,
+  restored,
   ruledOut,
   saved,
   toggled,
@@ -244,7 +245,7 @@ export function useGuestKitchen(visit: Visit, state: string | null, go: Go): Gue
                       people:
                         was.kitchen.record == null
                           ? cleared(was.kitchen.people)
-                          : fromRecord(was.kitchen.record),
+                          : restored(was.kitchen.people, was.kitchen.record),
                       tried: false,
                       alert: null,
                     },

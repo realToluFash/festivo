@@ -96,6 +96,15 @@ export function whoOf(one: Person, people: readonly Person[], words: GuestKitche
   return companions.length === 1 ? words.say('yourGuest') : words.nth(companions.indexOf(one) + 1);
 }
 
+/** Skip with a record: the people coming, each from the record by key or blank (sc-3779). */
+export function restored(people: readonly Person[], record: readonly Person[]): Person[] {
+  return people.map((one) => {
+    const was = record.find((each) => each.key === one.key);
+
+    return was == null ? person(one.key, one.name) : { ...was, name: one.name, removed: [] };
+  });
+}
+
 export function fromRecord(record: readonly Person[]): Person[] {
   return record.map((one) => ({ ...one, removed: [] }));
 }
