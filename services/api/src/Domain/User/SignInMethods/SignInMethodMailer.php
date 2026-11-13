@@ -6,6 +6,7 @@ namespace App\Domain\User\SignInMethods;
 
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\User;
+use App\Enum\AccountMail;
 use App\Enum\IdentityProvider;
 use DateTimeImmutable;
 use Psl\Str;
@@ -46,7 +47,7 @@ final readonly class SignInMethodMailer
 
         foreach ($user->getEmailAddresses() as $address) {
             if ($address->isVerified()) {
-                $this->userMailer->send($address->getAddress(), $locale, $key . '.subject', $paragraphs, $name);
+                $this->userMailer->send(AccountMail::SignInMethod, $address->getAddress(), $locale, $key . '.subject', $paragraphs, $name);
             }
         }
     }

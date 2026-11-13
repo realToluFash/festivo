@@ -9,7 +9,6 @@ use App\Domain\Organisation\DomainJoining\DomainSuspender;
 use App\Domain\User\EmailAddressNormaliser;
 use App\Domain\User\Phone\ParsedPhone;
 use App\Domain\User\SignInMethods\RecentProof;
-use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Domain\User\Verification\VerificationCodeSender;
 use App\Entity\EmailAddress;
 use App\Entity\PhoneNumber;
@@ -38,7 +37,6 @@ final readonly class LinkedContacts
     public function __construct(
         private EmailAddressRepository $emailAddressRepository,
         private PhoneNumberRepository $phoneNumberRepository,
-        private VerificationCodeIssuer $verificationCodeIssuer,
         private VerificationCodeSender $verificationCodeSender,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
@@ -158,11 +156,13 @@ final readonly class LinkedContacts
             throw $this->refusal(ErrorCode::LastVerifiedAddress, 'contacts.last_verified_email');
         }
 
-        $user->removeEmailAddress($address);
-        $this->entityManager->remove($address);
-        $this->record($user, 'email.removed', 'email', $address->getAddress(), null);
-        $this->domainSuspender->addressChanged($user);
-        $this->entityManager->flush();
+        $this->entityManager->wrapInTransaction(function () use ($user, $address): void {
+            $user->removeEmailAddress($address);
+            $this->entityManager->remove($address);
+            $this->record($user, 'email.removed', 'email', $address->getAddress(), null);
+            $this->domainSuspender->addressChanged($user);
+            $this->entityManager->flush();
+        });
     }
 
     public function removePhone(User $user, Uuid $id): void
@@ -211,9 +211,7 @@ final readonly class LinkedContacts
             throw $added;
         }
 
-        $issued = $this->verificationCodeIssuer->issueFor($added);
-        $this->entityManager->flush();
-        $this->verificationCodeSender->send($added, $issued);
+        $this->verificationCodeSender->issue($added);
 
         return $added;
     }

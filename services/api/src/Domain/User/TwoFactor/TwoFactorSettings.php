@@ -8,7 +8,6 @@ use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\ErrorCode;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\RecoveryCodeRepository;
 use App\Repository\TwoFactorFactorRepository;
@@ -32,7 +31,6 @@ final readonly class TwoFactorSettings
         private AuthenticatorCodes $authenticatorCodes,
         private SecretBox $secretBox,
         private TwoFactorMailer $twoFactorMailer,
-        private AfterResponse $afterResponse,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
         private SignInRules $signInRules,
@@ -85,15 +83,17 @@ final readonly class TwoFactorSettings
         }
 
         $this->secondFactorCheck->passCode($factor, $code);
-        $factor->activate($this->clock->now());
-        $user->setTwoFactorSetupPrompt(false);
-        $codes = $this->recoveryCodes->issueFor($user);
-        $this->entityManager->flush();
 
-        $now = $this->clock->now();
-        $this->afterResponse->defer(fn () => $this->twoFactorMailer->sendTurnedOn($user, $now, $asked));
+        return $this->entityManager->wrapInTransaction(function () use ($user, $factor, $asked): array {
+            $now = $this->clock->now();
+            $factor->activate($now);
+            $user->setTwoFactorSetupPrompt(false);
+            $codes = $this->recoveryCodes->issueFor($user);
+            $this->entityManager->flush();
+            $this->twoFactorMailer->sendTurnedOn($user, $now, $asked);
 
-        return $codes;
+            return $codes;
+        });
     }
 
     /**
@@ -128,11 +128,12 @@ final readonly class TwoFactorSettings
 
         $this->secondFactorCheck->passEither($factor, $typed);
 
-        $this->recoveryCodeRepository->deleteAllFor($user);
-        $this->entityManager->remove($factor);
-        $this->entityManager->flush();
-
-        $this->twoFactorMailer->sendTurnedOff($user, $this->clock->now());
+        $this->entityManager->wrapInTransaction(function () use ($user, $factor): void {
+            $this->recoveryCodeRepository->deleteAllFor($user);
+            $this->entityManager->remove($factor);
+            $this->entityManager->flush();
+            $this->twoFactorMailer->sendTurnedOff($user, $this->clock->now());
+        });
     }
 
     private function active(User $user): TwoFactorFactor

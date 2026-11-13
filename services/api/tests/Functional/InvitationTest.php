@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Organisation\Invitations\InvitationDeliveries;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\User\TokenIssuer;
 use App\Entity\EmailAddress;
@@ -13,10 +14,10 @@ use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\ErrorCode;
-use App\Enum\InvitationDelivery;
 use App\Enum\InvitationStatus;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
+use App\Enum\NotificationDeliveryStatus;
 use App\Enum\SeededRole;
 use App\Repository\EmailAddressRepository;
 use App\Tests\ApiTestCase;
@@ -582,9 +583,14 @@ final class InvitationTest extends ApiTestCase
         $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Member);
 
         $invitation = Type\instance_of(Invitation::class)->coerce(self::em()->getRepository(Invitation::class)->findOneBy(['email' => 'kemi@example.com']));
-        self::em()->refresh($invitation);
-        self::assertSame(InvitationDelivery::Sent, $invitation->getDelivery());
-        self::assertNotNull($invitation->getSentAt());
+        $deliveries = self::service(InvitationDeliveries::class);
+        self::assertSame(NotificationDeliveryStatus::Pending, $deliveries->latest([$invitation])[$invitation->getId()->toRfc4122()]['status'] ?? null, 'queued, not sent from the request');
+        self::assertSame([], $deliveries->sentAt([$invitation]));
+
+        self::drainNotifications();
+
+        self::assertSame(NotificationDeliveryStatus::Sent, $deliveries->latest([$invitation])[$invitation->getId()->toRfc4122()]['status'] ?? null);
+        self::assertArrayHasKey($invitation->getId()->toRfc4122(), $deliveries->sentAt([$invitation]));
     }
 
     #[Test]
