@@ -93,6 +93,7 @@ export function Invitation() {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [retrying, setRetrying] = useState(false);
+  const wide = useWideWidth();
 
   useEffect(() => {
     let current = true;
@@ -162,7 +163,7 @@ export function Invitation() {
             </span>
           ))}
         </div>
-        <span className="gp-skel gp-skel-details gp-left-after" aria-hidden="true" />
+        {wide && <span className="gp-skel gp-skel-details gp-left-after" aria-hidden="true" />}
       </div>
     );
   }

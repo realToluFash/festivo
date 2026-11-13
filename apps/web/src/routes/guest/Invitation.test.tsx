@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { atPhoneWidth, atWideWidth } from '../../test-widths.ts';
 import { routes } from '../index.tsx';
 
 const TOKEN = 'goJP8j72G8dKsdGysCtB7qA4o2SdVzDrjFodz60tDDc';
@@ -122,13 +123,25 @@ describe("a guest's own link", () => {
     expect(after(where, foot)).toBeTruthy();
   });
 
-  it('draws the cover, the answer and three rows while it loads', async () => {
+  it('draws only the cover, the answer and three rows while it loads at a phone', async () => {
+    atPhoneWidth();
     vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
     const { container } = open();
 
     await screen.findByRole('status');
     expect(container.querySelector('.gp-skel-cover')).not.toBeNull();
     expect(container.querySelectorAll('.gp-skel-row')).toHaveLength(3);
+    expect(container.querySelector('.gp-skel-details')).toBeNull();
+  });
+
+  it('adds the details beside the answer while it loads in two columns', async () => {
+    atWideWidth();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
+    const { container } = open();
+
+    await screen.findByRole('status');
+    expect(container.querySelectorAll('.gp-skel-row')).toHaveLength(3);
+    expect(container.querySelector('.gp-skel-details')).not.toBeNull();
   });
 
   it('names the language shown on a button that opens the four in their own names', async () => {
@@ -148,6 +161,12 @@ describe("a guest's own link", () => {
     ]);
     expect(items[0]?.getAttribute('aria-checked')).toBe('true');
     expect(items[2]?.getAttribute('lang')).toBe('fr');
+    expect(screen.queryByText('Your language follows you to every device.')).toBeNull();
+
+    fireEvent.keyDown(items[0] as HTMLElement, { key: 'End' });
+    expect(document.activeElement).toBe(items[3]);
+    fireEvent.keyDown(items[3] as HTMLElement, { key: 'Home' });
+    expect(document.activeElement).toBe(items[0]);
   });
 
   it('is marked not to be indexed and to send no referrer', async () => {
