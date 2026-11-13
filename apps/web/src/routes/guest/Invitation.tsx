@@ -223,7 +223,6 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   const [held, setHeld] = useState<ReturnType<typeof focused>>(null);
   const seen = useRef(standing(first));
   const sends = useRef(0);
-  const wide = useWideWidth();
   const { guest, event } = page;
   const hosts = hostsLine(event.hosts, currentLocale());
   const count = Math.max(event.hosts.length, 1);
@@ -387,10 +386,9 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
 
   return (
     <div ref={columns} className="gp-columns">
-      {!wide && <PhaseNotice phase={page.phase} />}
+      <PhaseNotice phase={page.phase} />
       <Cover page={page} tagged={tagged && !ended(page.phase)} />
       <div className="gp-under">
-        {wide && <PhaseNotice phase={page.phase} />}
         {tell.kind === 'card' && (
           <Shown
             view={view}

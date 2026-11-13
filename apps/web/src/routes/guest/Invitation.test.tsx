@@ -612,6 +612,19 @@ describe('when the event is paused, called off or over (sc-3591)', () => {
     expect(screen.queryByText(/Answers have closed/)).toBeNull();
   });
 
+  it('reads the notice before the cover card at a desk, where the columns sit side by side', async () => {
+    atWideWidth();
+    api({
+      '/api/guest-links/page': [{ status: 200, body: at('paused', false, answered('coming')) }],
+    });
+    open();
+
+    const notice = (await screen.findByText(PAUSED_NOTICE)).closest('[role="status"]');
+    const h1 = screen.getByRole('heading', { level: 1 });
+    expect(notice?.parentElement?.classList.contains('gp-columns')).toBe(true);
+    expect(notice?.compareDocumentPosition(h1)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it('says You didn’t answer, paused before the start, and offers no answer', async () => {
     api({ '/api/guest-links/page': [{ status: 200, body: at('paused', false) }] });
     open();
@@ -677,6 +690,25 @@ describe('when the event is paused, called off or over (sc-3591)', () => {
     expect(screen.queryByText('You are invited')).toBeNull();
     expect(screen.getByRole('button', { name: `Not ${ADAEZE}? Tell us` })).toBeDefined();
   });
+
+  it.each([
+    ['paused before the start', 'paused', false],
+    ['paused after the start', 'paused', true],
+    ['called off', 'calledOff', false],
+    ['finished', 'finished', true],
+  ])(
+    'drops the account line from the foot when %s, keeping the closing line and Tell us',
+    async (_, phase, started) => {
+      api({
+        '/api/guest-links/page': [{ status: 200, body: at(phase, started, answered('coming')) }],
+      });
+      open();
+
+      expect(await screen.findByText(i18next.t('guest.closing'))).toBeDefined();
+      expect(screen.getByRole('button', { name: `Not ${ADAEZE}? Tell us` })).toBeDefined();
+      expect(screen.queryByText('You do not need an account to answer.')).toBeNull();
+    },
+  );
 
   it('keeps Check and send with what was chosen when a send is refused 409 event_paused', async () => {
     api({
@@ -789,6 +821,7 @@ describe('a page left open (sc-3591)', () => {
     await later();
 
     expect(await screen.findByRole('button', { name: 'Sorry, I can’t' })).toBeDefined();
+    expect(screen.getByText('You do not need an account to answer.')).toBeDefined();
     const h1 = screen.getByRole('heading', { level: 1, name: 'You are invited' });
     await waitFor(() => expect(document.activeElement).toBe(h1));
   });

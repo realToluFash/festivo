@@ -20,7 +20,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { focusChecked, focusRefused } from './Field.tsx';
-import { useKeysUp } from './keyboardWatch.ts';
+import { raiseKeysOn, useKeysUp } from './keyboardWatch.ts';
 import { useSendingWords } from './ReadOut.tsx';
 import { SETTLED_MS } from './Screen.tsx';
 import {
@@ -75,6 +75,8 @@ import {
 import { AskLayer } from './AskLayer.tsx';
 
 const GROW_FROM = 0.96;
+// TalkBack has put its focus on the field well inside this.
+const HOVER_LANDS_MS = 100;
 const PANEL = 760;
 const CARD = 300;
 const SIDE_PADDING = 32;
@@ -228,9 +230,17 @@ export function CreateWalkWindow<Made>({
 
   useEffect(() => {
     if (!talkBack || !onScreen || unnamed || opening.walk.asking) return;
-    if (opening.focus === 'search') moveScreenReaderFocus(search.current);
-    else if (opening.focus === 'name') moveScreenReaderFocus(field.current);
-    else moveScreenReaderFocus(question.current);
+    const input =
+      opening.focus === 'search' ? search.current : opening.focus === 'name' ? field.current : null;
+    if (input == null) {
+      moveScreenReaderFocus(question.current);
+      return;
+    }
+    moveScreenReaderFocus(input);
+    // Keys taken while hidden go down as the window is shown; raised again on the focused field, they stay up and nothing is read twice (qa3 #45108).
+    const keys = setTimeout(() => raiseKeysOn(input), HOVER_LANDS_MS);
+
+    return () => clearTimeout(keys);
   }, [talkBack, onScreen, unnamed, opening]);
 
   useEffect(

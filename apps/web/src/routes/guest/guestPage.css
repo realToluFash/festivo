@@ -296,12 +296,8 @@
     top: calc(var(--gpCoverH, var(--gpMin)) + var(--gpLeftGap));
   }
 
-  :where(.guest-page) .gp-under > .gp-phase-live > .gp-phase {
-    margin-bottom: -8px;
-  }
-
-  :where(.guest-page) .gp-under > .gp-phase-live:empty {
-    margin-bottom: -28px;
+  :where(.guest-page) .gp-columns > .gp-phase-live > .gp-phase {
+    margin-bottom: 20px;
   }
 
   :where(.guest-page) .gp-alone-wrap {

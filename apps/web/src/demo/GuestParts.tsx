@@ -1,4 +1,5 @@
 import { type KeyboardEvent, type ReactNode, useEffect, useRef } from 'react';
+import { Link } from 'react-router';
 
 import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
@@ -46,6 +47,7 @@ const LINES = {
     'M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z',
   ],
   send: ['M12 19V5', 'm5 12 7-7 7 7'],
+  ringCross: ['M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0', 'm15 9-6 6', 'm9 9 6 6'],
 } as const;
 
 /** The boards' strokes Today's set lacks, drawn the same way: beside words, so hidden. */
@@ -192,6 +194,7 @@ export function Cover({
 export function TextAction({
   children,
   off = false,
+  busy = false,
   ink = false,
   icon,
   focus,
@@ -200,6 +203,7 @@ export function TextAction({
 }: {
   children: ReactNode;
   off?: boolean;
+  busy?: boolean;
   ink?: boolean;
   icon?: ReactNode;
   focus?: string;
@@ -212,10 +216,11 @@ export function TextAction({
       type="button"
       data-focus={focus}
       aria-describedby={describedBy}
-      {...offButton(off, { dim: false })}
+      aria-busy={busy || undefined}
+      {...offButton(off || busy, { dim: false })}
       onClick={onClick}
     >
-      {icon}
+      {busy ? <Spinner size={13} /> : icon}
       <span>{children}</span>
     </button>
   );
@@ -226,17 +231,19 @@ export function Filled({
   busy = false,
   focus,
   narrow = false,
+  wraps = false,
   onClick,
 }: {
   children: ReactNode;
   busy?: boolean;
   focus?: string;
   narrow?: boolean;
+  wraps?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
-      className={`gp-filled${narrow ? ' is-narrow' : ''}`}
+      className={`gp-filled${narrow ? ' is-narrow' : ''}${wraps ? ' is-wraps' : ''}`}
       type="button"
       data-focus={focus}
       aria-busy={busy}
@@ -294,15 +301,20 @@ export function Notice({
   kind,
   alert = kind === 'broken',
   action,
+  className,
   children,
 }: {
   kind: 'broken' | 'attention';
   alert?: boolean;
   action?: ReactNode;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <div className={`gp-notice is-${kind}`} role={alert ? 'alert' : 'status'}>
+    <div
+      className={`gp-notice is-${kind}${className == null ? '' : ` ${className}`}`}
+      role={alert ? 'alert' : 'status'}
+    >
       <span className="gp-notice-mark" aria-hidden="true">
         {kind === 'broken' && <Glyph name="clear" size={14} weight={3} />}
       </span>
@@ -493,10 +505,14 @@ export function Details({ visit, words, hosts }: { visit: Visit; words: Words; h
 export function Foot({
   words,
   noAccount,
+  wayIn,
+  onYourMessages,
   onTell,
 }: {
   words: Words;
   noAccount: boolean;
+  wayIn: string;
+  onYourMessages: () => void;
   onTell: () => void;
 }) {
   return (
@@ -504,6 +520,16 @@ export function Foot({
       {noAccount && (
         <>
           <p>{words.noAccount}</p>
+          <Link
+            className="gp-text"
+            to={wayIn}
+            onClick={(event) => {
+              event.preventDefault();
+              onYourMessages();
+            }}
+          >
+            <span>{words.wayIn}</span>
+          </Link>
           <hr />
         </>
       )}
@@ -717,14 +743,14 @@ export function Messages({
   );
 }
 
-export function Gone({ words }: { words: Words }) {
+export function Gone({ title, body }: { title: string; body: string }) {
   return (
     <div className="gp-alone" role="alert">
       <span className="gp-alone-mark" aria-hidden="true">
         <Line name="broken" size={26} />
       </span>
-      <h1 className="gp-alone-title">{words.gone}</h1>
-      <p>{words.goneBody}</p>
+      <h1 className="gp-alone-title">{title}</h1>
+      <p>{body}</p>
     </div>
   );
 }
