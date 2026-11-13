@@ -1056,25 +1056,29 @@ export function reduce(m: Messages, action: Action): Messages {
         when: false,
       };
     case 'editScheduled':
+      if (readsOnly(m)) return m;
       return withDraft(m, (draft) =>
         draft.step === 'scheduled'
           ? { ...draft, step: 'write', was: { subject: draft.subject, body: draft.body } }
           : draft,
       );
     case 'saveScheduled':
-      if (m.refusedSave != null) return m;
+      if (m.refusedSave != null || readsOnly(m)) return m;
       return withDraft(m, (draft) =>
         draft.was != null && canSend(draft) ? { ...draft, step: 'scheduled', was: null } : draft,
       );
     case 'sendNow':
+      if (readsOnly(m)) return m;
       return stepped(m, ['scheduled'], 'check');
     case 'keepScheduled':
       return withDraft(m, (draft) =>
         draft.step === 'check' && draft.at != null ? { ...draft, step: 'scheduled' } : draft,
       );
     case 'askCancel':
+      if (readsOnly(m)) return m;
       return withDraft(m, (draft) => ({ ...draft, asking: action.open }));
     case 'cancelScheduled':
+      if (readsOnly(m)) return m;
       return withDraft(m, (draft) => ({
         ...draft,
         step: 'cancelled',

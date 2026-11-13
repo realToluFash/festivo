@@ -838,6 +838,12 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
         onCancel={talk.onCancelScheduled}
       />
     );
+  else if (readsOnly(talk.m))
+    rest = (
+      <Text size={13.5} weight="medium" style={styles.goes}>
+        {say.goesAt(say.inZone(day, at.time, W.londonTime))}
+      </Text>
+    );
   else
     rest = (
       <>

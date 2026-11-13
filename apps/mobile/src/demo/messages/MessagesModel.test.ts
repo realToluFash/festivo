@@ -920,6 +920,16 @@ describe('sc-32077’s four states', () => {
     expect(run(writing, { type: 'send' }).draft?.step).toBe('write');
   });
 
+  it('leaves a scheduled message as it is for a member who only reads', () => {
+    const scheduled = { ...startOf('scheduled', false), noManage: true };
+    expect(run(scheduled, { type: 'sendNow' })).toEqual(scheduled);
+    expect(run(scheduled, { type: 'editScheduled' })).toEqual(scheduled);
+    expect(run(scheduled, { type: 'askCancel', open: true })).toEqual(scheduled);
+    expect(run(scheduled, { type: 'cancelScheduled' })).toEqual(scheduled);
+    const editing = { ...startOf('scheduledEdit', false), noManage: true };
+    expect(run(editing, { type: 'saveScheduled' })).toEqual(editing);
+  });
+
   it('refuses without messages.read: no count', () => {
     const m = startOf('forbidden', true);
     expect(m.forbidden).toBe(true);
