@@ -17,6 +17,12 @@
   --gpLeft: 520px;
   --gpRight: 440px;
   --gpGap: 48px;
+  --gpLeftGap: 28px;
+  --gpLang: 44px;
+  --gpLangFont: 15px;
+  --gpLangR: 10px;
+  --gpItem: 48px;
+  --gpItemFont: 16px;
   --gpEase: cubic-bezier(0.2, 0, 0, 1);
 
   display: flex;
@@ -78,6 +84,25 @@
     --gpLeft: 560px;
     --gpGap: 64px;
     --gpHeadPad: 0 32px 0 40px;
+    --gpLangFont: 13px;
+    --gpLangR: 8px;
+    --gpItem: 44px;
+    --gpItemFont: 14px;
+  }
+
+  .gp-lang-globe {
+    width: 15px;
+    height: 15px;
+  }
+
+  .gp-lang-chev {
+    width: 12px;
+    height: 12px;
+  }
+
+  .gp-menu {
+    top: calc(100% + 12px);
+    right: -4px;
   }
 }
 
@@ -111,7 +136,97 @@
   padding: var(--gpMainPad);
 }
 
-/* ── One column up to 64rem, 600 wide and centred from 641; from it the cover sits left and the card's words right ── */
+/* ── The language button at the header's right end, and its menu ── */
+
+.gp-lang-wrap {
+  position: relative;
+}
+
+.gp-lang {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--gpLang);
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--gpLangR);
+  background: none;
+  color: var(--colorInkSecondary);
+  font: 500 var(--gpLangFont) / 1 var(--fontFamily);
+  cursor: pointer;
+}
+
+.gp-lang.is-open {
+  background: var(--colorInset);
+}
+
+.gp-menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  padding: 6px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 16px;
+  background: var(--colorCard);
+  box-shadow:
+    0 2px 4px color-mix(in srgb, var(--colorInk) 5%, transparent),
+    0 20px 50px color-mix(in srgb, var(--colorInk) 20%, transparent);
+}
+
+.gp-menu-title {
+  padding: 8px 12px 6px;
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.2 var(--fontFamily);
+}
+
+.gp-menu [role='menu'] {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gp-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: var(--gpItem);
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--colorInk);
+  font: 500 var(--gpItemFont) / 1 var(--fontFamily);
+  text-align: left;
+  cursor: pointer;
+}
+
+.gp-menu-item span {
+  flex: 1;
+}
+
+.gp-menu-item:hover {
+  background: var(--colorInset);
+}
+
+.gp-menu-item[aria-checked='true'] {
+  background: var(--colorAccentTint);
+  font-weight: 600;
+}
+
+.gp-menu-item svg {
+  color: var(--colorAccent);
+}
+
+.gp .gp-menu-item:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}
+
+/* ── One column up to 64rem, 600 wide and centred from 641; from it the cover and details sit left, measured, beside the answer and the foot ── */
 
 .gp-columns,
 .gp-alone-wrap {
@@ -146,30 +261,39 @@
 
 @media (width >= 64rem) {
   .gp-columns {
-    display: grid;
-    grid-template-rows: auto 1fr;
-    grid-template-columns: var(--gpLeft) var(--gpRight);
-    align-items: start;
-    gap: 0 var(--gpGap);
-    width: auto;
+    display: block;
+    position: relative;
+    width: calc(var(--gpLeft) + var(--gpGap) + var(--gpRight));
+    min-height: calc(var(--gpCoverH, var(--gpMin)) + var(--gpLeftGap) + var(--gpDetailsH, 0px));
     margin: 0 auto;
-    justify-content: center;
+  }
+
+  .gp-columns:not(:has(> .gp-left-after)) {
+    min-height: var(--gpCoverH, var(--gpMin));
+  }
+
+  .gp-columns > * {
+    margin-left: calc(var(--gpLeft) + var(--gpGap));
   }
 
   .gp-under {
     margin-top: 0;
   }
 
-  .gp-columns > .gp-cover {
-    grid-area: 1 / 1;
+  .gp-columns > .gp-left,
+  .gp-columns > .gp-left-after {
+    position: absolute;
+    left: 0;
+    width: var(--gpLeft);
+    margin-left: 0;
   }
 
-  .gp-columns > .gp-details {
-    grid-area: 2 / 1;
+  .gp-columns > .gp-left {
+    top: 0;
   }
 
-  .gp-columns > .gp-under {
-    grid-area: 1 / 2 / span 2;
+  .gp-columns > .gp-left-after {
+    top: calc(var(--gpCoverH, var(--gpMin)) + var(--gpLeftGap));
   }
 
   .gp-alone-wrap {
@@ -520,11 +644,69 @@
   font: 400 16px/1.5 var(--fontFamily);
 }
 
-.gp-waiting {
-  min-height: var(--gpMin);
-  border-radius: var(--gpCoverR);
+.gp-skel {
+  display: block;
+  border-radius: 8px;
   background: var(--colorInset);
-  animation: gp-pulse 1.4s ease-in-out infinite;
+  animation: gp-pulse 1400ms ease-in-out 3;
+}
+
+.gp-skel-cover {
+  width: 100%;
+  height: var(--gpMin);
+  border-radius: var(--gpCoverR);
+}
+
+.gp-skel-details {
+  width: 100%;
+  height: 180px;
+  border-radius: 14px;
+}
+
+.gp-skel-under {
+  display: flex;
+  flex-direction: column;
+  margin-top: 24px;
+}
+
+.gp-skel.is-head {
+  width: 140px;
+  height: 22px;
+}
+
+.gp-skel.is-line {
+  width: 100%;
+  height: 16px;
+  margin-top: 10px;
+}
+
+.gp-skel.is-short {
+  width: 70%;
+  height: 16px;
+  margin-top: 6px;
+}
+
+.gp-skel-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  margin-bottom: 1px;
+}
+
+.gp-skel.is-short + .gp-skel-row {
+  margin-top: 18px;
+}
+
+.gp-skel.is-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+}
+
+.gp-skel.is-bar {
+  width: min(200px, calc(100% - 60px));
+  height: 18px;
 }
 
 @keyframes gp-turn {
@@ -555,7 +737,7 @@
 @media (prefers-reduced-motion: reduce) {
   .gp-under > *,
   .gp-notice,
-  .gp-waiting,
+  .gp-skel,
   .gp-spinner {
     animation: none;
   }
@@ -844,6 +1026,20 @@
   margin-top: 6px;
 }
 
-.gp-columns > .gp-details {
+/* ── Under the answer: when, where and who, then the foot; at 64rem the details move left and the foot follows the answer ── */
+
+.gp-columns > .gp-details,
+.gp-columns > .gp-foot {
   margin-top: 28px;
+}
+
+@media (width >= 64rem) {
+  .gp-skel-under,
+  .gp-columns > .gp-details {
+    margin-top: 0;
+  }
+
+  .gp-columns > .gp-foot {
+    margin-top: 32px;
+  }
 }

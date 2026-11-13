@@ -4,8 +4,8 @@ import { Outlet, useParams } from 'react-router';
 
 import lockupUrl from '../../brand/lockup.svg';
 import { holdScheme } from '../../colourScheme.ts';
-import { LanguagePicker } from '../../components/LanguagePicker.tsx';
 import { config } from '../../config.ts';
+import { GuestLanguage } from './GuestLanguage.tsx';
 import { InvalidInvitation } from './InvalidInvitation.tsx';
 import '../../components/desk.css';
 import '../../components/eventsDesk.css';
@@ -27,7 +27,7 @@ export function GuestLayout() {
       <meta name="referrer" content="no-referrer" />
       <header className="gp-header">
         <img className="gp-lockup" src={lockupUrl} alt={t('app.name')} />
-        <LanguagePicker />
+        <GuestLanguage />
       </header>
       <main id="content" className="gp-main">
         {token == null || !TOKEN_SHAPE.test(token) ? (

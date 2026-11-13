@@ -104,6 +104,48 @@ describe("a guest's own link", () => {
     expect(screen.queryByText(/This page is yours for this event/)).toBeNull();
   });
 
+  it('reads cover, answers, when, where and who, then the foot', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: PAGE }] });
+    open();
+
+    const answers = await screen.findByRole('heading', { name: 'Your answer' });
+    const where = screen.getByText('The Civic Centre');
+    const foot = screen.getByText('You do not need an account to answer.');
+    const after = (first: Node, second: Node) =>
+      first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(after(screen.getByRole('heading', { level: 1 }), answers)).toBeTruthy();
+    expect(after(answers, where)).toBeTruthy();
+    expect(after(where, foot)).toBeTruthy();
+  });
+
+  it('draws the cover, the answer and three rows while it loads', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
+    const { container } = open();
+
+    await screen.findByRole('status');
+    expect(container.querySelector('.gp-skel-cover')).not.toBeNull();
+    expect(container.querySelectorAll('.gp-skel-row')).toHaveLength(3);
+  });
+
+  it('names the language shown on a button that opens the four in their own names', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: PAGE }] });
+    open();
+
+    const button = await screen.findByRole('button', { name: 'Language: English' });
+    expect(screen.queryByRole('combobox')).toBeNull();
+    fireEvent.click(button);
+
+    const items = screen.getAllByRole('menuitemradio');
+    expect(items.map((item) => item.textContent)).toEqual([
+      'English',
+      'Español',
+      'Français',
+      'Português',
+    ]);
+    expect(items[0]?.getAttribute('aria-checked')).toBe('true');
+    expect(items[2]?.getAttribute('lang')).toBe('fr');
+  });
+
   it('is marked not to be indexed and to send no referrer', async () => {
     api({ '/api/guest-links/page': [{ status: 200, body: PAGE }] });
     open();
@@ -477,6 +519,18 @@ describe('when answers have closed', () => {
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Change my answer' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Yes, I’ll be there' })).toBeNull();
+  });
+
+  it('keeps the closing line and Not {name}? in the foot, without the line about answering', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: { ...PAGE, answersOpen: false } }] });
+    open();
+
+    expect(
+      await screen.findByText(
+        'This invitation is for you and your family. Other guests cannot see your answer.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText('You do not need an account to answer.')).toBeNull();
   });
 
   it('says You didn’t answer to a guest who never did', async () => {

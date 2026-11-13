@@ -55,6 +55,7 @@ const GREETING = {
 const KEBAB = { coming: 'coming', notComing: 'not-coming', maybe: 'not-sure' } as const;
 
 const PIECES = [1, 2, 3, 4, 5, 6, 7];
+const ROWS = [1, 2, 3];
 
 /** The guest's own page in A · The cover card (sc-1526). Opening it records nothing; only an answer sent does (sc-1439). */
 export function Invitation() {
@@ -120,12 +121,55 @@ export function Invitation() {
         <p className="visually-hidden" role="status">
           {t('pending.loading')}
         </p>
-        <span className="gp-waiting" aria-hidden="true" />
+        <span className="gp-skel gp-skel-cover gp-left" aria-hidden="true" />
+        <div className="gp-skel-under" aria-hidden="true">
+          <span className="gp-skel is-head" />
+          <span className="gp-skel is-line" />
+          <span className="gp-skel is-short" />
+          {ROWS.map((row) => (
+            <span key={row} className="gp-skel-row">
+              <span className="gp-skel is-dot" />
+              <span className="gp-skel is-bar" />
+            </span>
+          ))}
+        </div>
+        <span className="gp-skel gp-skel-details gp-left-after" aria-hidden="true" />
       </div>
     );
   }
 
   return <Card token={token} first={load.page} />;
+}
+
+/** From 64rem the cover and its details sit left, placed by their measured heights, so the page reads cover, answer, details, foot at every width. */
+function useColumns(): (box: HTMLDivElement | null) => void {
+  const [box, setBox] = useState<HTMLDivElement | null>(null);
+
+  useLayoutEffect(() => {
+    if (box == null) return;
+    const height = (part: string) =>
+      box.querySelector<HTMLElement>(`:scope > ${part}`)?.offsetHeight ?? 0;
+    const place = () => {
+      box.style.setProperty('--gpCoverH', `${height('.gp-left')}px`);
+      box.style.setProperty('--gpDetailsH', `${height('.gp-left-after')}px`);
+    };
+    const sizes = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(place);
+    const watch = () => {
+      sizes?.disconnect();
+      for (const child of box.children) sizes?.observe(child);
+      place();
+    };
+    const children = new MutationObserver(watch);
+    children.observe(box, { childList: true });
+    watch();
+
+    return () => {
+      sizes?.disconnect();
+      children.disconnect();
+    };
+  }, [box]);
+
+  return setBox;
 }
 
 function opening(page: GuestPage, token: string): View {
@@ -145,6 +189,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   const [tell, setTell] = useState<Tell>({ kind: 'card' });
   const [want, setWant] = useState<{ on: string } | null>(null);
   const [gone, setGone] = useState(false);
+  const columns = useColumns();
   const { guest, event } = page;
   const hosts = hostsLine(event.hosts, currentLocale());
   const count = Math.max(event.hosts.length, 1);
@@ -245,7 +290,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   const tagged = guest.reply != null && view.kind !== 'check';
 
   return (
-    <div className="gp-columns">
+    <div ref={columns} className="gp-columns">
       <Cover page={page} tagged={tagged} />
       <div className="gp-under">
         {tell.kind === 'card' && (
@@ -302,26 +347,30 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
             </p>
           </div>
         )}
-        {!alone && (
-          <div className="gp-foot">
-            <p>{t('guest.noAccountNeeded')}</p>
-            <hr />
-            <p>{t('guest.closing')}</p>
-            <button
-              className="gp-text"
-              type="button"
-              data-focus="tell"
-              onClick={() => {
-                setTell({ kind: 'asking', busy: false, result: null });
-                focus('tellHead');
-              }}
-            >
-              <span>{t('guest.tell', { name: guest.fullName })}</span>
-            </button>
-          </div>
-        )}
       </div>
       {!alone && <Details page={page} hosts={hosts} />}
+      {!alone && (
+        <div className="gp-foot">
+          {page.answersOpen && (
+            <>
+              <p>{t('guest.noAccountNeeded')}</p>
+              <hr />
+            </>
+          )}
+          <p>{t('guest.closing')}</p>
+          <button
+            className="gp-text"
+            type="button"
+            data-focus="tell"
+            onClick={() => {
+              setTell({ kind: 'asking', busy: false, result: null });
+              focus('tellHead');
+            }}
+          >
+            <span>{t('guest.tell', { name: guest.fullName })}</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -620,7 +669,7 @@ function Details({ page, hosts }: { page: GuestPage; hosts: string }) {
   const where = name != null || address != null;
 
   return (
-    <div className="gp-details">
+    <div className="gp-details gp-left-after">
       <Row
         lead={<Glyph name="calendar" size={22} />}
         title={format(event.startsAt, event.timeZone, {
@@ -687,7 +736,7 @@ function Cover({ page, tagged }: { page: GuestPage; tagged: boolean }) {
 
   return (
     <section
-      className={`gp-cover ev-card today-cover ${photo == null ? `is-${meshFor(event.id)}` : 'is-photo'}`}
+      className={`gp-cover gp-left ev-card today-cover ${photo == null ? `is-${meshFor(event.id)}` : 'is-photo'}`}
       aria-labelledby="gp-h1"
     >
       {photo != null && <Photo cover={photo} onFail={() => setFailed(true)} />}
