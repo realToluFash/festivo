@@ -12,7 +12,11 @@ use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
 
-/** An event's guest list, each companion under their host; the clients sort it by name (sc-1468). */
+/**
+ * An event's guest list, each companion under their host; the clients sort it by name (sc-1468).
+ *
+ * Email address and mobile number go only to people who manage guests: for anyone else both keys are left out, not sent empty (sc-3773).
+ */
 final readonly class GuestSerialiser
 {
     public function __construct(
@@ -21,7 +25,7 @@ final readonly class GuestSerialiser
     }
 
     /** @return array{guests: list<array<string, mixed>>, counts: array{people: int, guests: int, companions: int}} */
-    public function list(Event $event): array
+    public function list(Event $event, bool $contacts): array
     {
         $everybody = $this->guestRepository->findOnList($event);
         $hosts = Vec\filter($everybody, static fn (Guest $guest): bool => null === $guest->getHost());
@@ -31,7 +35,7 @@ final readonly class GuestSerialiser
         );
 
         return [
-            'guests' => Vec\map($hosts, static fn (Guest $host): array => self::guest($host, $companions[$host->getId()->toRfc4122()] ?? [])),
+            'guests' => Vec\map($hosts, static fn (Guest $host): array => self::guest($host, $companions[$host->getId()->toRfc4122()] ?? [], $contacts)),
             'counts' => [
                 'people' => Iter\count($everybody),
                 'guests' => Iter\count($hosts),
@@ -45,21 +49,36 @@ final readonly class GuestSerialiser
      *
      * @return array<string, mixed>
      */
-    public static function guest(Guest $host, array $companions): array
+    public static function guest(Guest $host, array $companions, bool $contacts): array
     {
         $reply = $host->getReply() ?? GuestReply::NoReply;
 
         return [
             'id' => $host->getId()->toRfc4122(),
             'fullName' => $host->getFullName(),
-            'email' => $host->getEmail(),
-            'mobile' => $host->getMobile(),
+            ...$contacts ? ['email' => $host->getEmail(), 'mobile' => $host->getMobile()] : [],
             'reply' => $reply->value,
             'companions' => Vec\map($companions, static fn (Guest $companion): array => [
                 'id' => $companion->getId()->toRfc4122(),
                 'fullName' => $companion->getFullName(),
                 'state' => GuestReply::Coming === $reply ? 'coming' : 'held',
             ]),
+        ];
+    }
+
+    /**
+     * One guest's details: the row's fields, and when and by whom they were added.
+     *
+     * @return array<string, mixed>
+     */
+    public function details(Guest $host, bool $contacts): array
+    {
+        return [
+            ...self::guest($host, $this->guestRepository->findCompanionsOf($host), $contacts),
+            'added' => [
+                'at' => $host->getCreatedAt()->format(\DATE_ATOM),
+                'by' => $host->getAddedBy()?->getName(),
+            ],
         ];
     }
 }

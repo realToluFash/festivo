@@ -60,6 +60,10 @@ class Guest
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $addedBy;
 
+    /** A host's ETag (sc-3773): GuestEditor raises it on each saved change, their companions' included. */
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     private function __construct(Event $event, ?Guest $host, ?string $fullName, ?string $nameKey, ?string $email, ?string $mobile, ?GuestReply $reply, int $position, ?User $addedBy)
     {
         $this->id = Uuid::v7();
@@ -132,5 +136,36 @@ class Guest
     public function getAddedBy(): ?User
     {
         return $this->addedBy;
+    }
+
+    public function setFullName(?string $fullName, ?string $nameKey): void
+    {
+        $this->fullName = $fullName;
+        $this->nameKey = $nameKey;
+    }
+
+    public function setEmail(?string $email): void
+    {
+        $this->email = $email;
+    }
+
+    public function setMobile(?string $mobile): void
+    {
+        $this->mobile = $mobile;
+    }
+
+    public function setPosition(int $position): void
+    {
+        $this->position = $position;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
+    }
+
+    public function setVersion(int $version): void
+    {
+        $this->version = $version;
     }
 }
