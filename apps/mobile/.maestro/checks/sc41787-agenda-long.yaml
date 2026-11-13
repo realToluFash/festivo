@@ -1,0 +1,66 @@
+# sc-41787: the Calendar's Agenda turned to ${O}, screenshotted over 24 pages, for a ladder too long for sc41787-agenda (32 stepped events with their milestones).
+appId: host.exp.Exponent
+---
+- setOrientation: ${O}
+- waitForAnimationToEnd:
+    timeout: 4000
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.agenda
+    timeout: 30000
+- tapOn:
+    id: calendar.view.agenda
+- extendedWaitUntil:
+    visible:
+      id: calendar.agenda
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: agenda-1
+- scroll
+- takeScreenshot: agenda-2
+- scroll
+- takeScreenshot: agenda-3
+- scroll
+- takeScreenshot: agenda-4
+- scroll
+- takeScreenshot: agenda-5
+- scroll
+- takeScreenshot: agenda-6
+- scroll
+- takeScreenshot: agenda-7
+- scroll
+- takeScreenshot: agenda-8
+- scroll
+- takeScreenshot: agenda-9
+- scroll
+- takeScreenshot: agenda-10
+- scroll
+- takeScreenshot: agenda-11
+- scroll
+- takeScreenshot: agenda-12
+- scroll
+- takeScreenshot: agenda-13
+- scroll
+- takeScreenshot: agenda-14
+- scroll
+- takeScreenshot: agenda-15
+- scroll
+- takeScreenshot: agenda-16
+- scroll
+- takeScreenshot: agenda-17
+- scroll
+- takeScreenshot: agenda-18
+- scroll
+- takeScreenshot: agenda-19
+- scroll
+- takeScreenshot: agenda-20
+- scroll
+- takeScreenshot: agenda-21
+- scroll
+- takeScreenshot: agenda-22
+- scroll
+- takeScreenshot: agenda-23
+- scroll
+- takeScreenshot: agenda-24

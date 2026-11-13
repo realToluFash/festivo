@@ -1,0 +1,13 @@
+# On Waiting for your organisation: opens Cancel your request? and leaves the sheet open. sc-30737.
+appId: host.exp.Exponent
+---
+- scrollUntilVisible:
+    element:
+      id: 'lostTwoFactor.cancel'
+- tapOn:
+    id: 'lostTwoFactor.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'lostTwoFactor.cancelYes'
+    timeout: 10000
+- takeScreenshot: ${SHOT}-sheet

@@ -1,0 +1,45 @@
+# Settings > Account > Add a phone number: short and long lines edge the number, not Code; the Code list opens and chooses. sc-30447.
+# On Android, the edits after the first refusal are done by hand: the second edit drops typed text there.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'contacts.phone.add'
+    timeout: 30000
+- tapOn:
+    id: 'contacts.phone.add'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'contacts.phone.field.number'
+- inputText: '74'
+- hideKeyboard
+- takeScreenshot: add-at-rest
+- tapOn:
+    id: 'contacts.phone.send'
+- waitForAnimationToEnd
+- assertVisible: '{{t:verifyPhone.tooShort}}'
+- takeScreenshot: add-number-short
+- longPressOn:
+    id: 'contacts.phone.field.number'
+- eraseText: 60
+- inputText: '7400123456789012'
+- hideKeyboard
+- tapOn:
+    id: 'contacts.phone.send'
+- waitForAnimationToEnd
+- assertVisible: '{{t:verifyPhone.tooLong}}'
+- takeScreenshot: add-number-long
+- tapOn:
+    id: 'contacts.phone.field.country'
+- tapOn:
+    id: 'contacts.phone.field.country.search'
+- inputText: '+233'
+- takeScreenshot: add-code-search
+- tapOn:
+    id: 'contacts.phone.field.country.GH'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'contacts.phone.field.number'
+- assertNotVisible: '{{t:verifyPhone.tooLong}}'
+- takeScreenshot: add-code-chosen

@@ -1,0 +1,33 @@
+# sc-40153: a member's page, Remove from ‹organisation›… wrapped whole; its confirm opens from a press.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'members.row.${MEMBER}'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'members.row.${MEMBER}'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'members.remove'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: member-remove
+- tapOn:
+    id: 'members.remove'
+- extendedWaitUntil:
+    visible:
+      id: 'members.remove.ask'
+    timeout: 10000
+- takeScreenshot: member-remove-confirm
+- tapOn:
+    id: 'members.remove.keep'

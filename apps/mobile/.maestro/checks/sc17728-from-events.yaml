@@ -1,0 +1,36 @@
+# sc-17728: on a tablet (ORIENT), ${EV}'s All dates opened from Events (a draft): ‹ Event at the top of the page, and ‹ Event back to the event. Pass ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd:
+    timeout: 5000
+- openLink: ${METRO_URL}/--/events
+- tapOn:
+    id: 'events.tab.drafts'
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EV}'
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${EV}'
+- scrollUntilVisible:
+    element:
+      id: 'timeline.allDates'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'timeline.allDates'
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.row'
+    timeout: 15000
+- assertVisible:
+    id: 'timeline.allDates.back'
+- takeScreenshot: all-dates
+- tapOn:
+    id: 'timeline.allDates.back'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 15000
+- takeScreenshot: back

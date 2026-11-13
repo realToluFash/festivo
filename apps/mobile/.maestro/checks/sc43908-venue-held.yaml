@@ -1,0 +1,28 @@
+# New event with a venue name typed and its cursor left in Venue name, scrolled to Time zone and left at rest, for a TalkBack pass. sc-43908. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- repeat:
+    while:
+      notVisible:
+        id: 'eventForm.venueName'
+    times: 8
+    commands:
+      - swipe:
+          start: 3%, 75%
+          end: 3%, 35%
+- tapOn:
+    id: 'eventForm.venueName'
+- inputText: 'Held venue hall'
+- hideKeyboard
+- swipe:
+    start: 3%, 70%
+    end: 3%, 45%
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'eventForm.venueName'
+- takeScreenshot: venue-held
