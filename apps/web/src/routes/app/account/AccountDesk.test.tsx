@@ -510,7 +510,7 @@ describe('an address we could not deliver to, at a desk (sc-44949)', () => {
       screen.getByRole('button', { name: 'Change email, instead of folake@ire.events' }),
     );
 
-    const row = screen.getByRole('button', { name: /folake\.adeyemi@gmail\.com/ });
+    const row = screen.getByRole('button', { name: /^folake\.adeyemi@gmail\.com/ });
     expect(row.getAttribute('aria-expanded')).toBe('true');
     await waitFor(() => expect(document.activeElement).toBe(row));
     expect(screen.queryByRole('dialog')).toBeNull();
