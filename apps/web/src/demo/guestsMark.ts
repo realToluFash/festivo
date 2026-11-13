@@ -70,6 +70,7 @@ export interface MarkStart {
   pretend: number | null;
   dialog: { how: HowInvited | null; tried: boolean } | null;
   line: Line | null;
+  stopped: boolean;
   meanwhile: Meanwhile;
 }
 
@@ -164,6 +165,7 @@ export const MARK_STATES = [
   { key: 'nothing', name: 'Everyone selected already invited: nothing to mark' },
   { key: 'failed', name: 'Not saved: Nothing changed, with Try again' },
   { key: 'notLive', name: 'Refused: the event is no longer live (409)' },
+  { key: 'notLiveBar', name: 'After the 409: the bar without Mark as invited' },
   { key: 'over', name: 'Over 2,000 selected: the narrowing line' },
   { key: 'paused', name: 'A paused event: no Mark as invited in the bar' },
 ] as const;
@@ -204,6 +206,7 @@ export function markStart(state: MarkState): MarkStart {
     pretend: null,
     dialog: null,
     line: null,
+    stopped: false,
     meanwhile: NO_ONE,
   };
   const asking = { how: null, tried: false };
@@ -235,7 +238,9 @@ export function markStart(state: MarkState): MarkStart {
     case 'failed':
       return { ...start, line: { kind: 'failed', how: 'WhatsApp' } };
     case 'notLive':
-      return { ...start, line: { kind: 'notLive' } };
+      return { ...start, line: { kind: 'notLive' }, stopped: true };
+    case 'notLiveBar':
+      return { ...start, stopped: true };
     case 'over':
       return { ...start, selected: pick(list, 12, 140), pretend: 2140 };
     case 'paused':

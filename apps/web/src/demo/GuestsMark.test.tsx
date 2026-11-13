@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -21,6 +21,10 @@ async function open(state: string) {
 
 function bar(): HTMLElement {
   return screen.getByRole('region', { name: 'Selected guests' });
+}
+
+function markButton(): HTMLElement {
+  return within(bar()).getByRole('button', { name: 'Mark as invited' });
 }
 
 function said(): string {
@@ -46,7 +50,7 @@ describe('Mark as invited from the selection bar (sc-46880)', () => {
 
   it('asks how, refuses a blank press, and marks the Not yet invited', SLOW, async () => {
     await open('selected');
-    fireEvent.click(within(bar()).getByRole('button', { name: 'Mark as invited' }));
+    fireEvent.click(markButton());
 
     const dialog = await screen.findByRole('dialog', { name: 'Mark 9 guests as invited' });
 
@@ -70,6 +74,18 @@ describe('Mark as invited from the selection bar (sc-46880)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(bar().textContent).toContain('6 selected');
+    await waitFor(() => expect(document.activeElement).toBe(markButton()), WAIT);
+  });
+
+  it('Escape closes the dialog and puts focus back on Mark as invited', SLOW, async () => {
+    await open('selected');
+    fireEvent.click(markButton());
+    await screen.findByRole('dialog', { name: 'Mark 9 guests as invited' });
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(bar().textContent).toContain('12 selected');
+    await waitFor(() => expect(document.activeElement).toBe(markButton()), WAIT);
   });
 
   it('names five already invited, then the rest as a count', SLOW, async () => {
@@ -85,6 +101,23 @@ describe('Mark as invited from the selection bar (sc-46880)', () => {
     expect(said()).toBe('4 already invited. Nothing to mark.');
     expect(document.querySelector('.gm-line')?.className).toContain('is-quiet');
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('pressing Mark as invited with only the already invited opens nothing', SLOW, async () => {
+    await open('nothing');
+    const ticked = screen
+      .getAllByRole('checkbox')
+      .find((box) => (box as HTMLInputElement).checked) as HTMLElement;
+
+    fireEvent.click(ticked);
+    fireEvent.click(ticked);
+    expect(said()).toBe('');
+    expect(bar().textContent).toContain('4 selected');
+
+    fireEvent.click(markButton());
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(said()).toBe('4 already invited. Nothing to mark.');
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('status')), WAIT);
   });
 
   it(
@@ -109,11 +142,20 @@ describe('Mark as invited from the selection bar (sc-46880)', () => {
     expect(within(bar()).queryByRole('button', { name: 'Mark as invited' })).toBeNull();
   });
 
+  it('opens straight on the bar after the 409, without Mark as invited', SLOW, async () => {
+    await open('notLiveBar');
+
+    expect(said()).toBe('');
+    expect(bar().textContent).toContain('12 selected');
+    expect(within(bar()).queryByRole('button', { name: 'Mark as invited' })).toBeNull();
+    expect(within(bar()).getByRole('button', { name: 'Add to group' })).toBeTruthy();
+  });
+
   it('opens nothing over 2,000, and says how to narrow', SLOW, async () => {
     await open('over');
 
     expect(bar().textContent).toContain('You can act on up to 2,000 guests at once.');
-    fireEvent.click(within(bar()).getByRole('button', { name: 'Mark as invited' }));
+    fireEvent.click(markButton());
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 

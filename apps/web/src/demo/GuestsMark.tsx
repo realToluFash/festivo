@@ -21,6 +21,7 @@ import {
   type Line,
   type MarkStart,
   MW,
+  MOST_AT_ONCE,
   type MarkState,
   companionsWith,
   lineWords,
@@ -92,10 +93,10 @@ function MarkPage({ event, start, tell }: { event: SampleEvent; start: MarkStart
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set(start.selected));
   const [pretend, setPretend] = useState(start.pretend);
   const [line, setLine] = useState<Line | null>(start.line);
-  const stopped = start.line?.kind === 'notLive';
   const [dialog, setDialog] = useState(start.dialog);
   const today = todayOf(CLOCKS.rest);
-  const marks = invitesOn(event, CLOCKS.rest) && !stopped;
+  const marks = invitesOn(event, CLOCKS.rest) && !start.stopped;
+  const companions = companionsWith(list, selected);
   const count = pretend ?? selected.size;
   const { view } = viewOf(list, 'all', '', EVERY_REPLY, replyByOf(event.id), true);
   const groups = view.kind === 'groups' ? view.groups : [];
@@ -220,11 +221,9 @@ function MarkPage({ event, start, tell }: { event: SampleEvent; start: MarkStart
               <section className="gm-bar" aria-label={MW.bar}>
                 <p className="gm-count">
                   <strong>{MW.selected(count)}</strong>
-                  {companionsWith(list, selected) > 0 && (
-                    <span>{MW.withCompanions(companionsWith(list, selected))}</span>
-                  )}
+                  {companions > 0 && <span>{MW.withCompanions(companions)}</span>}
                 </p>
-                {count > 2000 && <p className="desk-line gm-narrow">{MW.narrowing}</p>}
+                {count > MOST_AT_ONCE && <p className="desk-line gm-narrow">{MW.narrowing}</p>}
                 {pretend != null && <p className="desk-note gm-pretend">{MW.pretend(pretend)}</p>}
                 <div className="gm-actions">
                   {marks && (
