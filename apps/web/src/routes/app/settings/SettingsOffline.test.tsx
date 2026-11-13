@@ -289,4 +289,27 @@ describe('Settings offline at a desk, where the band has gone (sc-39471)', () =>
     boxAbove(page.querySelector('h1')!);
     expect(page.firstElementChild?.classList.contains('offline-box')).toBe(true);
   });
+
+  it('keeps Members, for a role that cannot read it, to the desk page with Back to /app', async () => {
+    const coordinator = membership({
+      ...IRE,
+      role: { id: 'role_2', seededAs: 'coordinator', name: null },
+      permissions: OWNER_PERMISSIONS.filter((p) => !p.startsWith('members.')),
+    });
+    signedIn({ organisation: coordinator, organisations: [coordinator] });
+    serving({ reachable: true });
+    const router = createMemoryRouter(routes, { initialEntries: ['/app/settings/members'] });
+    render(<RouterProvider router={router} />);
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: 'You do not have access to this',
+    });
+
+    expect(document.querySelector('.panel[role="alert"]')).toBeNull();
+    goOffline();
+    boxAbove(heading);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the dashboard' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
+  });
 });
