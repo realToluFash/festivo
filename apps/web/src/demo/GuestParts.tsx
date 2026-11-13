@@ -1,4 +1,5 @@
 import { type KeyboardEvent, type ReactNode, useEffect, useRef } from 'react';
+import { Link } from 'react-router';
 
 import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
@@ -503,10 +504,14 @@ export function Details({ visit, words, hosts }: { visit: Visit; words: Words; h
 export function Foot({
   words,
   noAccount,
+  wayIn,
+  onYourMessages,
   onTell,
 }: {
   words: Words;
   noAccount: boolean;
+  wayIn: string;
+  onYourMessages: () => void;
   onTell: () => void;
 }) {
   return (
@@ -514,6 +519,16 @@ export function Foot({
       {noAccount && (
         <>
           <p>{words.noAccount}</p>
+          <Link
+            className="gp-text"
+            to={wayIn}
+            onClick={(event) => {
+              event.preventDefault();
+              onYourMessages();
+            }}
+          >
+            <span>{words.wayIn}</span>
+          </Link>
           <hr />
         </>
       )}

@@ -6,10 +6,12 @@ import {
   focusAfter,
   landed,
   notSaved,
+  openedFromPage,
   saved,
   saving,
   switchPressed,
   switched,
+  wayInState,
   whatsAppOn,
 } from './guestMessages.ts';
 
@@ -220,6 +222,19 @@ describe('Your messages, what a press turns it into (sc-3969)', () => {
     ]);
   });
 
+  it('opens from the guest’s way in with the switches alone and no line from before', () => {
+    const was = { ...startOf('coming'), ...saved(startOf('messagesStopped'), 'sms') };
+
+    expect(openedFromPage(was)).toMatchObject({
+      page: 'messages',
+      reach: { saved: null },
+      yours: { from: 'page', lead: null, busy: null, failed: null },
+    });
+    expect(wayInState(startOf('coming'))).toBe('messagesNoMobile');
+    expect(wayInState(startOf('comingWhatsApp'))).toBe('messagesWhatsAppOn');
+    expect(wayInState(startOf('checkWhatsApp'))).toBe('messagesWhatsAppOff');
+  });
+
   it('writes the story’s settled words', () => {
     const words = wordsFor('en');
 
@@ -238,5 +253,6 @@ describe('Your messages, what a press turns it into (sc-3969)', () => {
     expect(words.linkBrokenBody).toBe(
       'Nothing has changed. Open the link again from the most recent email you were sent.',
     );
+    expect(words.wayIn).toBe('Choose how Ire Events can reach you');
   });
 });

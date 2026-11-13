@@ -79,6 +79,7 @@ import {
   saveSettled,
 } from './guestAsk.ts';
 import { askClock, askFocus, DAYS_CHOICES, isReplyByChoice } from './guestAskStates.ts';
+import { wayInState } from './guestMessages.ts';
 import { type YourMessagesActions, useYourMessages } from './useYourMessages.ts';
 import { useLater } from '../useLater.ts';
 import { legalPath } from './legal.ts';
@@ -548,7 +549,15 @@ function Body({
       <Cover visit={visit} words={words} ended={ended} band={band && inDayOrder(visit)} />
       {under}
       {details && <Details visit={visit} words={words} hosts={hosts} />}
-      {foot && <Foot words={words} noAccount={noAccount} onTell={onTell} />}
+      {foot && (
+        <Foot
+          words={words}
+          noAccount={noAccount}
+          wayIn={`/demo/guest?state=${wayInState(visit)}`}
+          onYourMessages={yours.open}
+          onTell={onTell}
+        />
+      )}
     </div>
   );
 }

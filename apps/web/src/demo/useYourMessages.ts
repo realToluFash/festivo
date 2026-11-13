@@ -2,7 +2,14 @@ import { useEffect } from 'react';
 
 import { useLater } from '../useLater.ts';
 import { type Channel, HOLD_MS, type Press, SEND_MS, type Visit, startOf } from './guest.ts';
-import { focusAfter, landed, saved, saving, switchPressed } from './guestMessages.ts';
+import {
+  focusAfter,
+  landed,
+  openedFromPage,
+  saved,
+  saving,
+  switchPressed,
+} from './guestMessages.ts';
 
 type Go = (change: (was: Visit) => Partial<Visit>, want?: string) => void;
 
@@ -10,6 +17,7 @@ export interface YourMessagesActions {
   press: (press: 'stop' | 'undo') => void;
   toggle: (channel: Channel) => void;
   retry: () => void;
+  open: () => void;
   back: () => void;
 }
 
@@ -53,6 +61,7 @@ export function useYourMessages(visit: Visit, state: string | null, go: Go): You
     retry: () => {
       if (yours.failed != null) send(yours.failed, true);
     },
+    open: () => go(openedFromPage, 'yoursHead'),
     back: () => go(() => ({ page: 'event' }), 'h1'),
   };
 }

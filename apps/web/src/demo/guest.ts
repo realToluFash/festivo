@@ -1080,6 +1080,7 @@ const BOARD_ENGLISH = {
   linkBroken: U.unknownTitle,
   linkBrokenBody:
     'Nothing has changed. Open the link again from the most recent email you were sent.',
+  wayIn: 'Choose how {{organisation}} can reach you',
   switched: 'This page is now in English.',
   notSaved:
     'Your language was not saved. This page stays in English on this device, but it may open in another language on other devices.',
@@ -1250,6 +1251,7 @@ export function wordsFor(lang: Lang) {
     saveFailed: board('saveFailed'),
     linkBroken: board('linkBroken'),
     linkBrokenBody: board('linkBrokenBody'),
+    wayIn: board('wayIn', { organisation: ORGANISATION }),
     switched: board('switched'),
     notSaved: board('notSaved'),
   };

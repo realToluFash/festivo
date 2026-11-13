@@ -143,6 +143,7 @@ const NO_PHONE = 'Ire Events has no phone number for you.';
 const BROKEN = 'This link does not work';
 const BROKEN_BODY =
   'Nothing has changed. Open the link again from the most recent email you were sent.';
+const WAY_IN = 'Choose how Ire Events can reach you';
 
 const email = () => screen.getByRole<HTMLInputElement>('switch', { name: 'Email' });
 const sms = () => screen.getByRole<HTMLInputElement>('switch', { name: 'Text messages' });
@@ -792,6 +793,57 @@ describe('Your messages loading, and its bad link (sc-3969)', () => {
 
     expect(content().textContent).not.toContain(NAME);
     expect(content().textContent).not.toMatch(/[@\d]/u);
+  });
+});
+
+describe('the way in to Your messages, on the guest’s page (sc-3969)', () => {
+  it('sits after the account line and before the rule and the closing line, in a 44 target', async () => {
+    await guest('coming');
+    const link = screen.getByRole('link', { name: WAY_IN });
+    const foot = link.closest('.gp-foot') as HTMLElement;
+
+    expect([...foot.children].map((one) => one.tagName)).toEqual(['P', 'A', 'HR', 'P', 'BUTTON']);
+    expect(link.previousElementSibling?.textContent).toBe('You do not need an account to answer.');
+    expect(link.className).toBe('gp-text');
+    expect(link.getAttribute('href')).toBe('/demo/guest?state=messagesNoMobile');
+  });
+
+  it('opens Your messages with the switches alone, and Back returns to the page as it was', async () => {
+    await guest('coming');
+
+    press(screen.getByRole('link', { name: WAY_IN }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'Your messages' }),
+    );
+    expect(screen.getByRole('button', { name: 'Back' })).toBeDefined();
+    expect(document.querySelector('.gp-yours-lead')).toBeNull();
+    expect(document.querySelector('.gp-cover')).toBeNull();
+
+    fireEvent.click(email());
+    expect(screen.getByText(EMAILS_OFF, { selector: 'span' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'You are invited' }),
+    );
+    expect(screen.getByText(`See you there, ${NAME}.`)).toBeDefined();
+
+    press(screen.getByRole('link', { name: WAY_IN }));
+    expect(email().checked).toBe(false);
+    expect(screen.queryByText(EMAILS_OFF)).toBeNull();
+  });
+
+  it('is on the page before an answer and on the event’s day, and not where the foot has no account line', async () => {
+    await guest('open');
+    expect(screen.getByRole('link', { name: WAY_IN })).toBeDefined();
+    cleanup();
+
+    await guest('onTheDay');
+    expect(screen.getByRole('link', { name: WAY_IN })).toBeDefined();
+    cleanup();
+
+    await guest('closed');
+    expect(screen.queryByRole('link', { name: WAY_IN })).toBeNull();
   });
 });
 

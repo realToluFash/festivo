@@ -113,3 +113,26 @@ export function switchPressed(visit: Reached, channel: Channel): Partial<Visit> 
 export function focusAfter(press: Press): string {
   return press === 'stop' || press === 'undo' ? 'yoursLead' : `switch-${press}`;
 }
+
+export function openedFromPage(visit: Pick<Visit, 'reach' | 'yours'>): Partial<Visit> {
+  return {
+    page: 'messages',
+    reach: { ...visit.reach, saved: null },
+    yours: {
+      ...visit.yours,
+      from: 'page',
+      opening: 'open',
+      lead: null,
+      busy: null,
+      retrying: false,
+      failed: null,
+    },
+  };
+}
+
+/** The way in's address in the demo: the state that draws this guest's record from the guest's page. */
+export function wayInState(visit: Pick<Visit, 'mobile' | 'whatsApp'>): string {
+  if (!visit.mobile) return 'messagesNoMobile';
+
+  return whatsAppOn(visit.whatsApp) ? 'messagesWhatsAppOn' : 'messagesWhatsAppOff';
+}
