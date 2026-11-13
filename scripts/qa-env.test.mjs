@@ -35,6 +35,7 @@ import {
   batchRuns,
   afterRun,
   assertBundler,
+  bundlerAnswers,
   bundlerCommand,
   coldBatch,
   batchSummary,
@@ -2448,6 +2449,32 @@ describe('a batch with no bundler', () => {
     await expect(
       assertBundler({ port: 18081, command: 'ios' }, async () => true),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe('whether the bundler answers', () => {
+  const replying = (body) => async () => ({ text: body });
+
+  it('is yes when Metro says it is running', async () => {
+    expect(
+      await bundlerAnswers(
+        18081,
+        replying(async () => 'packager-status:running'),
+      ),
+    ).toBe(true);
+  });
+
+  it('is no, not a crash, when Metro sends its headers and the body times out', async () => {
+    const late = replying(async () => {
+      throw new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+    });
+    expect(await bundlerAnswers(18081, late)).toBe(false);
+  });
+
+  it('is no when nothing listens', async () => {
+    expect(
+      await bundlerAnswers(18081, async () => Promise.reject(new TypeError('fetch failed'))),
+    ).toBe(false);
   });
 });
 
