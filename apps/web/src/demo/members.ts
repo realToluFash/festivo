@@ -164,9 +164,11 @@ export interface Invitation {
   email: string;
   role: string;
   by: string;
-  status: 'pending' | 'expired' | 'revoked' | 'declined';
+  status: 'pending' | 'expired' | 'revoked' | 'declined' | 'accepted';
   sent: string;
   ended: string;
+  /** Its latest send failed, was held back for a suppressed address, or hard-bounced (sc-46109); the field's name is dev's. */
+  notDelivered?: boolean;
 }
 
 export function sampleInvitations(): Invitation[] {
@@ -197,6 +199,72 @@ export function sampleInvitations(): Invitation[] {
     },
   ];
 }
+
+/** Every reading of an invitation whose email never arrived (sc-46109), after one that did. */
+export function undeliveredInvitations(): Invitation[] {
+  return [
+    {
+      email: 'nnamdi.eze@ire.events',
+      role: 'Member',
+      by: FOLAKE,
+      status: 'pending',
+      sent: '2026-11-02',
+      ended: '2026-11-09',
+    },
+    {
+      email: 'ada.obi@ire.events',
+      role: 'Member',
+      by: JULIEN,
+      status: 'pending',
+      sent: '2026-11-04',
+      ended: '2026-11-11',
+      notDelivered: true,
+    },
+    {
+      email: 'ines.duarte@gmail.com',
+      role: 'Member',
+      by: FOLAKE,
+      status: 'expired',
+      sent: '2026-10-14',
+      ended: '2026-10-21',
+      notDelivered: true,
+    },
+    {
+      email: 'lena.vogel@web.de',
+      role: 'Admin',
+      by: FOLAKE,
+      status: 'revoked',
+      sent: '2026-10-28',
+      ended: '2026-11-03',
+      notDelivered: true,
+    },
+    {
+      email: 'yusuf.bello@outlook.com',
+      role: 'Member',
+      by: JULIEN,
+      status: 'declined',
+      sent: '2026-10-01',
+      ended: '2026-10-03',
+      notDelivered: true,
+    },
+    {
+      email: 'tunde.bakare@ire.events',
+      role: 'Member',
+      by: FOLAKE,
+      status: 'accepted',
+      sent: '2026-10-20',
+      ended: '2026-10-21',
+      notDelivered: true,
+    },
+  ];
+}
+
+/** The sample's addresses that sc-4332 still holds back, so inviting one again is not delivered either. */
+export const SUPPRESSED: ReadonlySet<string> = new Set([
+  'ada.obi@ire.events',
+  'ines.duarte@gmail.com',
+  'lena.vogel@web.de',
+]);
 
 export type Filter = 'all' | 'active' | 'invited' | 'waiting' | 'suspended' | 'former';
 
@@ -343,19 +411,27 @@ const ENDED_WORDS = {
   declined: 'declined',
 } as const;
 
+export const NOT_DELIVERED = 'Not delivered';
+
 export function invitationRow(
   invitation: Invitation,
   people: readonly Person[],
   viewer: Pick<Viewer, 'id'>,
   say: SettingsSay,
-): { tag: string | null; line: string; dates: string } {
+): { tag: string | null; line: string; dates: string; notDelivered: boolean } {
   const by = invitation.by === viewer.id ? 'you' : nameOf(people, invitation.by);
   const status = invitation.status;
+  const notDelivered = invitation.notDelivered === true;
+  const sent = notDelivered ? NOT_DELIVERED : `Sent ${say.date(invitation.sent)}`;
 
   return {
     tag: status === 'pending' ? null : `${status.charAt(0).toUpperCase()}${status.slice(1)}`,
     line: `${invitation.role} · invited by ${by}`,
-    dates: `Sent ${say.date(invitation.sent)} · ${ENDED_WORDS[status]} ${say.date(invitation.ended)}`,
+    dates:
+      status === 'accepted'
+        ? sent
+        : `${sent} · ${ENDED_WORDS[status]} ${say.date(invitation.ended)}`,
+    notDelivered,
   };
 }
 
@@ -963,9 +1039,17 @@ export function invited(
   by: string,
 ): Invitation[] {
   const address = email.trim();
+  const fresh: Invitation = {
+    email: address,
+    role,
+    by,
+    status: 'pending',
+    sent: TODAY,
+    ended: '2026-11-11',
+  };
 
   return [
-    { email: address, role, by, status: 'pending', sent: TODAY, ended: '2026-11-11' },
+    SUPPRESSED.has(address) ? { ...fresh, notDelivered: true } : fresh,
     ...invitations.filter((one) => one.email !== address),
   ];
 }
@@ -1059,6 +1143,9 @@ export const MEMBERS_STATES = [
   'inviteBlank',
   'inviteShape',
   'sent',
+  'notDelivered',
+  'notDeliveredInvited',
+  'notDeliveredAgain',
   'request',
   'turningDown',
   'requestDiscard',
@@ -1450,6 +1537,8 @@ function noticeOf(state: MembersState): Notice | null {
   switch (state) {
     case 'sent':
       return { kind: 'sent', email: 'chidi.okafor@ire.events' };
+    case 'notDeliveredAgain':
+      return { kind: 'sent', email: 'ines.duarte@gmail.com' };
     case 'approved':
       return { kind: 'approved', id: LUCIA, role: 'Member' };
     case 'turnedDown':
@@ -1467,8 +1556,25 @@ const FILTERS: Partial<Record<MembersState, Filter>> = {
   nobodyLeft: 'former',
   invited: 'invited',
   revoked: 'invited',
+  notDeliveredInvited: 'invited',
   former: 'former',
 };
+
+function invitationsOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Invitation[] {
+  switch (state) {
+    case 'revoked':
+      return revoked(sampleInvitations(), 'nnamdi.eze@ire.events');
+    case 'sent':
+      return invited(sampleInvitations(), 'chidi.okafor@ire.events', 'Member', viewer.id);
+    case 'notDelivered':
+    case 'notDeliveredInvited':
+      return undeliveredInvitations();
+    case 'notDeliveredAgain':
+      return invited(undeliveredInvitations(), 'ines.duarte@gmail.com', 'Member', viewer.id);
+    default:
+      return sampleInvitations();
+  }
+}
 
 const EVENTS: Partial<Record<MembersState, PersonEvent>> = {
   justSuspended: 'justSuspended',
@@ -1508,12 +1614,7 @@ export function membersStart(name: string, viewer: Pick<Viewer, 'id' | 'manages'
     leadsLoad:
       state === 'martaLoading' ? 'loading' : state === 'martaLoadFailed' ? 'failed' : 'loaded',
     people: peopleOf(state, viewer),
-    invitations:
-      state === 'revoked'
-        ? revoked(invitations, 'nnamdi.eze@ire.events')
-        : state === 'sent'
-          ? invited(invitations, 'chidi.okafor@ire.events', 'Member', viewer.id)
-          : invitations,
+    invitations: invitationsOf(state, viewer),
     filter: FILTERS[state] ?? 'all',
     menu: state === 'menu',
     open: openOf(state, viewer),

@@ -17,6 +17,7 @@ import { focusWhenFree, useDeskSplit } from '../layers.ts';
 import { ClaimDialog, InviteDialog, RecoveryAsk, RequestDialog } from './MembersDialogs.tsx';
 import { PersonPage, RoleDialog } from './MembersPerson.tsx';
 import { At320 } from './WrapAction.tsx';
+import './members.css';
 import {
   approvalRoles,
   ALSO_MEMBER,
@@ -39,6 +40,7 @@ import {
   membersCard,
   type MembersDialog,
   membersStart,
+  NOT_DELIVERED,
   organisationOf,
   at320,
   type Notice,
@@ -68,13 +70,13 @@ import {
   BackRow,
   Head,
   Menu,
+  RowWords,
   Tag,
   TextAction,
   TitleRow,
 } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import {
-  InvitationLine,
   MemberRow,
   MembersCardView,
   MembersEmpty,
@@ -421,7 +423,8 @@ interface BlocksProps {
 
 /** Requests to get back in, then Waiting, People with its filter, and the invitations: the list's blocks under the card. */
 function MembersBlocks(props: BlocksProps) {
-  const { viewer, people, invitations, filter, menu, say, column, onMenu, onFilter } = props;
+  const { viewer, people, filter, menu, say, column, onMenu, onFilter } = props;
+  const invitations = props.invitations.filter((one) => one.status !== 'accepted');
   const waiting = viewer.manages ? people.filter((one) => one.status === 'pendingApproval') : [];
   const shown = people.filter((one) => isShown(one.status, filter));
   const numbers = counts(people, invitations);
@@ -462,7 +465,7 @@ function MembersBlocks(props: BlocksProps) {
         </Head>
         {filter === 'invited' && invitations.length > 0 ? (
           <>
-            <InvitationRows {...props} />
+            <InvitationRows {...props} invitations={invitations} />
             <p className="desk-foot">{INVITATIONS_NOTE}</p>
           </>
         ) : filter !== 'invited' && shown.length > 0 ? (
@@ -480,7 +483,7 @@ function MembersBlocks(props: BlocksProps) {
       {filter === 'all' && !column && invitations.length > 0 && (
         <section className="desk-block">
           <Head title="Invitations" />
-          <InvitationRows {...props} />
+          <InvitationRows {...props} invitations={invitations} />
           <p className="desk-foot">{INVITATIONS_NOTE}</p>
         </section>
       )}
@@ -639,22 +642,40 @@ function InvitationRows({ invitations, people, viewer, say, onRevoke, onAgain }:
         const row = invitationRow(invitation, people, viewer, say);
 
         return (
-          <InvitationLine
-            key={invitation.email}
-            email={invitation.email}
-            ended={row.tag ?? undefined}
-            lines={[row.line, row.dates]}
-          >
+          <li key={invitation.email} className="desk-row">
+            <RowWords
+              title={invitation.email}
+              tag={row.tag == null ? undefined : <Tag kind="ended" word={row.tag} />}
+              lines={[
+                row.line,
+                row.notDelivered ? <NotDeliveredDates dates={row.dates} /> : row.dates,
+              ]}
+            />
             {viewer.manages &&
               (invitation.status === 'pending' ? (
                 <TextAction label="Revoke" red onClick={() => onRevoke(invitation.email)} />
               ) : (
                 <TextAction label="Invite again" onClick={() => onAgain(invitation)} />
               ))}
-          </InvitationLine>
+          </li>
         );
       })}
     </ul>
+  );
+}
+
+/** The broken mark before Not delivered, as a field error has it, so the reading is a shape with its word (sc-46109). */
+function NotDeliveredDates({ dates }: { dates: string }) {
+  return (
+    <span className="not-delivered">
+      <span className="mark mark-broken" aria-hidden="true">
+        ✕
+      </span>
+      <span>
+        <span className="not-delivered-word">{NOT_DELIVERED}</span>
+        {dates.slice(NOT_DELIVERED.length)}
+      </span>
+    </span>
   );
 }
 

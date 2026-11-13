@@ -488,3 +488,84 @@ describe('Remove from a long-named organisation, wrapped whole (sc-40153)', () =
     expect(screen.getByRole('button', { name: 'Remove from Ire Events…' })).toBeDefined();
   });
 });
+
+describe('An invitation whose email never arrived (sc-46109)', () => {
+  beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+  afterEach(() => cleanup());
+
+  function row(email: string): HTMLElement {
+    const name = screen.getAllByText(email).find((one) => one.closest('li') != null);
+    const line = name?.closest('li');
+    if (line == null) throw new Error(`no row for ${email}`);
+
+    return line;
+  }
+
+  it('says Not delivered with the broken mark where Sent was, beside one that arrived', async () => {
+    await members('/demo/settings/members?state=notDelivered');
+
+    expect(row('nnamdi.eze@ire.events').textContent).toContain(
+      'Sent Nov 2, 2026 · expires Nov 9, 2026',
+    );
+    expect(row('nnamdi.eze@ire.events').querySelector('.mark-broken')).toBeNull();
+
+    const ada = row('ada.obi@ire.events');
+    expect(ada.textContent).toContain('Not delivered · expires Nov 11, 2026');
+    expect(ada.querySelector('.mark-broken')?.getAttribute('aria-hidden')).toBe('true');
+    expect(within(ada).getByRole('button', { name: 'Revoke' })).toBeDefined();
+
+    for (const [email, dates] of [
+      [
+        'ines.duarte@gmail.com',
+        'ExpiredMember · invited by you✕Not delivered · expired Oct 21, 2026',
+      ],
+      ['lena.vogel@web.de', 'RevokedAdmin · invited by you✕Not delivered · revoked Nov 3, 2026'],
+      [
+        'yusuf.bello@outlook.com',
+        'DeclinedMember · invited by Julien Moreau✕Not delivered · declined Oct 3, 2026',
+      ],
+    ] as const) {
+      expect(row(email).textContent).toContain(dates);
+      expect(within(row(email)).getByRole('button', { name: 'Invite again' })).toBeDefined();
+    }
+    expect(screen.queryByText('tunde.bakare@ire.events')).toBeNull();
+  });
+
+  it('lists the same rows on the Invited filter, counting the pending ones', async () => {
+    await members('/demo/settings/members?state=notDeliveredInvited');
+
+    expect(row('ada.obi@ire.events').textContent).toContain('Not delivered · expires Nov 11, 2026');
+    expect(screen.getByRole('button', { name: /Invited · 2/u })).toBeDefined();
+  });
+
+  it('reads Not delivered again after Invite again to an address still held back', async () => {
+    await members('/demo/settings/members?state=notDelivered');
+
+    fireEvent.click(
+      within(row('ines.duarte@gmail.com')).getByRole('button', { name: 'Invite again' }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Send invitation' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByText('Invitation sent to ines.duarte@gmail.com').length,
+      ).toBeGreaterThan(0),
+    );
+    expect(row('ines.duarte@gmail.com').textContent).toContain(
+      'Not delivered · expires Nov 11, 2026',
+    );
+  });
+
+  it('opens notDeliveredAgain with the notice unchanged and the row not delivered', async () => {
+    await members('/demo/settings/members?state=notDeliveredAgain');
+
+    expect(screen.getAllByText('Invitation sent to ines.duarte@gmail.com').length).toBeGreaterThan(
+      0,
+    );
+    expect(row('ines.duarte@gmail.com').textContent).toContain(
+      'Not delivered · expires Nov 11, 2026',
+    );
+  });
+});

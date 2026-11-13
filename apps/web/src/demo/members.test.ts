@@ -7,6 +7,7 @@ import {
   filtersFor,
   grantable,
   invitationRow,
+  invited,
   inviteProblem,
   KOFI,
   LONG_NAME,
@@ -27,6 +28,7 @@ import {
   sampleRecoveries,
   tagOf,
   TOM,
+  undeliveredInvitations,
 } from './members.ts';
 import { SAMPLE } from './rules.ts';
 import { SETTINGS_PAGES, settingsSayIn, VIEWERS } from './settings.ts';
@@ -156,8 +158,35 @@ describe('Members at a desk (sc-29708)', () => {
       tag: null,
       line: 'Member · invited by you',
       dates: 'Sent Nov 2, 2026 · expires Nov 9, 2026',
+      notDelivered: false,
     });
     expect(invitationRow(expired, samplePeople(), VIEWERS.folake, say).tag).toBe('Expired');
+  });
+
+  it('says Not delivered where Sent was, keeping the end and the tag, and nothing more once accepted (sc-46109)', () => {
+    const rows = undeliveredInvitations().map((one) =>
+      invitationRow(one, samplePeople(), VIEWERS.folake, say),
+    );
+
+    expect(rows.map((row) => [row.tag, row.dates, row.notDelivered])).toEqual([
+      [null, 'Sent Nov 2, 2026 · expires Nov 9, 2026', false],
+      [null, 'Not delivered · expires Nov 11, 2026', true],
+      ['Expired', 'Not delivered · expired Oct 21, 2026', true],
+      ['Revoked', 'Not delivered · revoked Nov 3, 2026', true],
+      ['Declined', 'Not delivered · declined Oct 3, 2026', true],
+      ['Accepted', 'Not delivered', true],
+    ]);
+  });
+
+  it('is not delivered again when the address is still held back, and sent when it is not (sc-46109)', () => {
+    const again = (email: string) =>
+      invited(undeliveredInvitations(), email, 'Member', VIEWERS.folake.id).find(
+        (one) => one.email === email,
+      );
+
+    expect(again('ines.duarte@gmail.com')).toMatchObject({ status: 'pending', notDelivered: true });
+    expect(again('yusuf.bello@outlook.com')?.notDelivered).toBeUndefined();
+    expect(card('notDeliveredAgain').says).toBe('Invitation sent to ines.duarte@gmail.com');
   });
 
   it('asks for an address that looks like one', () => {
