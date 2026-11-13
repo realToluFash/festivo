@@ -18,6 +18,7 @@ export function LifecycleDialog<C>({
   confirm,
   sending,
   tone,
+  children,
   onGo,
   onClose,
 }: {
@@ -30,6 +31,8 @@ export function LifecycleDialog<C>({
   confirm: string;
   sending: string;
   tone: 'primary' | 'danger';
+  /** Under the lines while it asks, as End now's thank-you (sc-6476). */
+  children?: ReactNode;
   onGo: () => void;
   onClose: () => void;
 }) {
@@ -64,6 +67,7 @@ export function LifecycleDialog<C>({
               <p key={line}>{line}</p>
             ))}
           </div>
+          {asking.kind === 'confirm' && children}
         </div>
         <div className="dialog-actions">
           {asking.kind === 'confirm' ? (

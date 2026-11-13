@@ -348,6 +348,23 @@
     "callingOff": "Cancelando…",
     "ending": "Finalizando…"
   },
+  "thankYou": {
+    "title": "A thank-you for your guests",
+    "optional": "Optional",
+    "hint": "Every guest sees it on their page, signed with the hosts’ names.",
+    "removeHint": "Save it empty to remove it.",
+    "placeholder": "Thank your guests in your own words.",
+    "add": "Add a thank-you",
+    "edit": "Edit thank-you",
+    "count": "{{length, number}}/{{max, number}}",
+    "tooLong": "A thank-you can be at most {{max, number}} characters.",
+    "notSaved": "Not saved. Check your connection and try again. Your text is still here.",
+    "notEnded": "Not ended. Check your connection and try again. Your thank-you is still here.",
+    "saved": "Thank-you saved.",
+    "removed": "Thank-you removed.",
+    "onEveryPage": "Your thank-you is on every guest’s page.",
+    "signed": "{{hosts}}"
+  },
   "eventPause": {
     "pause": "Pausar",
     "title": "¿Pausar {{name}}?",

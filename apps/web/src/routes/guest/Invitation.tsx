@@ -14,6 +14,7 @@ import { useOutletContext } from 'react-router';
 
 import { api } from '../../api.ts';
 import { Glyph } from '../../components/Glyph.tsx';
+import { Thanks } from '../../components/Thanks.tsx';
 import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
 import { offButton } from '../../offButton.ts';
@@ -650,6 +651,13 @@ function Shown({
       if (page.phase === 'finished') {
         return (
           <div className="gp-ended">
+            {page.event.thankYou != null && (
+              <Thanks
+                line={page.event.thankYou}
+                hosts={page.event.hosts}
+                locale={currentLocale()}
+              />
+            )}
             <p className="gp-sub">{said}</p>
           </div>
         );

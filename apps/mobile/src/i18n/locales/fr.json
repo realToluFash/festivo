@@ -1804,6 +1804,26 @@
     "ending": "Fin en cours…",
     "callOffFailed": "Non annulé. Réessayez dans un instant."
   },
+  "thankYou": {
+    "title": "A thank-you for your guests",
+    "hint": "Every guest sees it on their page, signed with the hosts’ names.",
+    "add": "Add a thank-you",
+    "edit": "Edit thank-you",
+    "placeholder": "Thank your guests in your own words.",
+    "remove": "Save it empty to remove it.",
+    "count": "{{count, number}}/{{max, number}}",
+    "tooLong": "A thank-you can be at most {{max, number}} characters.",
+    "signed": "{{hosts}}",
+    "save": "Save",
+    "notSaved": "Not saved. Check your connection and try again. Your text is still here.",
+    "notEnded": "Not ended. Check your connection and try again. Your thank-you is still here.",
+    "saved": "Thank-you saved.",
+    "removed": "Thank-you removed.",
+    "done": "Your thank-you is on every guest’s page.",
+    "discardTitle": "Discard your change?",
+    "discardLine": "What you changed here is not saved.",
+    "discard": "Discard"
+  },
   "eventPause": {
     "pause": "Mettre en pause",
     "title": "Mettre {{name}} en pause ?",
