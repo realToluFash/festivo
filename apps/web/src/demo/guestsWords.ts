@@ -103,6 +103,11 @@ export const GW = {
   linkReplaced: (date: string) => `Link replaced ${date}`,
   linkReplacedLine: 'They still hold the old one until you send the new link.',
   notReplaced: 'Not replaced. The old link still works. Try again.',
+  linkReplacedNote: (name: string) =>
+    `Link replaced. ${name}’s old link no longer works. Copy the new one and send it.`,
+  flaggedTitle: 'Their link may have reached the wrong person',
+  flaggedLine: (name: string) =>
+    `Someone who opened ${name}’s link told us it was not meant for them. The reply is unchanged. Replace the link so the old one stops working, then send ${name} the new one.`,
   howInvited: 'How did you invite them?',
   howInvitedBlank: 'Choose how you invited them.',
   markNotSaved: 'Not saved. They are still Not yet invited. Try again.',
