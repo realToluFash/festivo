@@ -188,10 +188,12 @@ export function Stub({
 /** One of Soirely's own fixed messages, outlined and never Violet, so it never reads as the hosts' words. */
 export function SoirelyCard({
   title,
+  mark,
   lines,
   bits,
 }: {
-  title: string;
+  title?: string;
+  mark?: MarkName;
   lines: readonly string[];
   bits: readonly Bit[];
 }) {
@@ -199,12 +201,18 @@ export function SoirelyCard({
     <View style={styles.right}>
       <View style={[styles.hostAt, styles.soirely]}>
         <View style={styles.markTop}>
-          <Glyph name="mail" size={16} ink={INK2} />
+          {mark == null ? (
+            <Glyph name="mail" size={16} ink={INK2} />
+          ) : (
+            <MessageGlyph name={mark} size={16} ink={INK2} />
+          )}
         </View>
         <View style={[styles.grow, styles.soirelyWords]}>
-          <Text size={15} weight="semibold" style={styles.soirelyTitle}>
-            {title}
-          </Text>
+          {title != null && title !== '' && (
+            <Text size={15} weight="semibold" style={styles.soirelyTitle}>
+              {title}
+            </Text>
+          )}
           {lines.map((line) => (
             <Text key={line} size={14} weight="medium" style={[styles.secondary, styles.body14]}>
               {line}

@@ -76,6 +76,8 @@ import {
   refusalOf as noticeRefusal,
 } from './NoticeStates.ts';
 import { NW } from './NoticeWords.ts';
+import { tapParts } from './TapParts.tsx';
+import { tapFor, tapItemsOf } from './TapStates.ts';
 import { MoreActions, StoppedInset } from './StopWritingParts.tsx';
 import {
   type Bit,
@@ -379,12 +381,16 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
     );
   if (key === 'marta') history.push(<DayRule key="d1" text={dayWords(DAYS.marta, talk.locale)} />);
 
+  const doneLine = m.done.includes(key) && at != null;
+  const tap = tapFor(m, key);
+  const taps = tap == null ? null : tapParts(tapItemsOf(tap));
   const stream = (
     <>
       {history}
       {kase?.askedFirst !== true && asked}
       {key === 'kwame' && kase == null && <SystemLine text={W.cameBySms} mark="sms" />}
       {kase?.extras != null && noticeExtras(kase.extras, guest.name)}
+      {!doneLine && taps}
       {answer != null && (
         <HostBubble
           text={answer.text}
@@ -397,9 +403,8 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
           ]}
         />
       )}
-      {m.done.includes(key) && at != null && (
-        <SystemLine text={say.doneBy(reader, at)} glyph="tick" />
-      )}
+      {doneLine && at != null && <SystemLine text={say.doneBy(reader, at)} glyph="tick" />}
+      {doneLine && taps}
     </>
   );
   const doneOrWaiting = done ? (

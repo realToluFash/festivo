@@ -159,6 +159,44 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
     'a Read-only member',
     'Kofi Mensah, Read-only: Only someone who can change Messages can send.',
   ],
+  tapNotComing: [
+    'A tap: Not coming, with companions',
+    'Kwame Mensah answered Not coming by WhatsApp. · 08:20; WhatsApp · Read; in Done',
+  ],
+  tapNotSure: [
+    'A tap: Not sure yet',
+    'Kwame Mensah answered Not sure yet by WhatsApp. · 08:20; WhatsApp · Delivered',
+  ],
+  tapNeedsYou: [
+    'A tap under a question that waits',
+    'Lucía Ortega answered Not sure yet; the message in Spanish; still in Needs you',
+  ],
+  tapFailed: ['A tap: the message failed', 'Kwame Mensah answered Not coming; WhatsApp · Failed'],
+  tapNoCredits: [
+    'A tap: too few credits',
+    'Kwame Mensah answered Not coming; Not sent · Too few credits',
+  ],
+  tapStopped: [
+    'A tap after stopping WhatsApp',
+    'Lucía Ortega answered Not coming; Not sent · Stopped WhatsApp',
+  ],
+  tapComing: [
+    'A Coming guest’s tap',
+    'Kwame Mensah tapped Not coming in WhatsApp. Nothing changed.; WhatsApp · Read',
+  ],
+  tapComingNotSent: [
+    'A Coming guest’s tap, too few credits',
+    'Kwame Mensah tapped Not coming; Not sent · Too few credits',
+  ],
+  tapRepeat: [
+    'A repeat tap, the first in 24 hours',
+    'Not sure yet at 08:20, then tapped again at 08:31; WhatsApp · Delivered',
+  ],
+  tapRepeatAgain: ['A further repeat: no line', 'The conversation as the first repeat left it'],
+  tapClosed: [
+    'A tap after answers closed',
+    'Kwame Mensah tapped Not sure yet; Answers closed on 2 November 2026.',
+  ],
   stopAction: [
     'the conversation’s actions, open',
     'Inês Duarte’s conversation, the menu or action sheet open',

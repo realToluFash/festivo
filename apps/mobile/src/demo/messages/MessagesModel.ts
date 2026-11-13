@@ -76,6 +76,7 @@ import {
   stampOf,
 } from './NoticeStates.ts';
 import { sayNotice } from './NoticeWords.ts';
+import { TAP_STATES, type TapCase, isTapState, tapStart } from './TapStates.ts';
 
 /** Every state of Messaging B, each a `?state=` in both demos (spec §7 and §7b), in the spec's order. */
 export const MESSAGES_STATES = [
@@ -165,6 +166,7 @@ export const MESSAGES_STATES = [
   'askFailed',
   'sendWithout',
   ...NOTICE_STATES,
+  ...TAP_STATES,
   ...STOP_STATES,
   ...TELL_KINDS,
 ] as const;
@@ -348,6 +350,7 @@ export interface Messages {
   /** sc-3976: the open state's facts about one guest's notice and conversation, and who reads it when not the owner. */
   notice?: NoticeCase;
   reader?: string;
+  tap?: TapCase;
 }
 
 export function blankDraft(): Draft {
@@ -573,6 +576,7 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
   if (isStopState(state))
     return { ...BASE, open: { kind: 'guest', key: 'ines' }, ...stopStart(state) };
   if (isNoticeState(state)) return { ...BASE, ...noticeStart(state) };
+  if (isTapState(state)) return { ...BASE, ...tapStart(state) };
   if (state === 'whatsAppRead')
     return { ...BASE, receipts: true, open: { kind: 'reached', of: 'receipts' } };
   const ines: Open = { kind: 'guest', key: 'ines' };
