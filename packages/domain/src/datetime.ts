@@ -107,15 +107,16 @@ const EVENT_CLOCK: Intl.DateTimeFormatOptions = {
   hourCycle: 'h23',
 };
 
-/** A wall-clock day, `2027-03-28`, as the event's page writes it. */
-export function formatWallDay(date: string, locale: string): string {
+/** A wall-clock day, `2027-03-28`, as the event's page writes it; with its year `withYear`. */
+export function formatWallDay(date: string, locale: string, withYear = false): string {
   const day = asDate(`${date}T00:00Z`);
 
   if (day == null) return '';
 
-  return new Intl.DateTimeFormat(locale, { ...EVENT_DAY_WITHOUT_YEAR, timeZone: 'UTC' }).format(
-    day,
-  );
+  return new Intl.DateTimeFormat(locale, {
+    ...(withYear ? EVENT_DAY : EVENT_DAY_WITHOUT_YEAR),
+    timeZone: 'UTC',
+  }).format(day);
 }
 
 /** A wall-clock time, `02:30` or `2027-03-28T03:30`, as the event's page writes it. */

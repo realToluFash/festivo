@@ -8,7 +8,7 @@ import {
   agendaDays,
   dayDate,
   formatEventClock,
-  formatWallDay,
+  formatWallDays,
   inMonth,
   monthGrid,
   monthOfDay,
@@ -391,23 +391,20 @@ export function timeOf(
     : time;
 }
 
-export function daysOf(t: TFunction, item: EventItem, locale: string): string {
+export function daysOf(t: TFunction, item: EventItem, locale: string, now: Date): string {
   const first = wallDay(item.event.startsAt, item.event.timeZone);
+  const days = item.multiDay ? [first, addDays(first, item.event.dayCount - 1)] : [first];
+  const [from = '', to = ''] = formatWallDays(days, item.event.timeZone, now, locale);
 
-  return item.multiDay
-    ? t('calendar.range', {
-        from: formatWallDay(first, locale),
-        to: formatWallDay(addDays(first, item.event.dayCount - 1), locale),
-      })
-    : formatWallDay(first, locale);
+  return item.multiDay ? t('calendar.range', { from, to }) : from;
 }
 
-export function rowLine(t: TFunction, item: Item, zone: string, locale: string): string {
+export function rowLine(t: TFunction, item: Item, zone: string, locale: string, now: Date): string {
   if (item.kind === 'milestone') return timeOf(t, item.event, item.milestone.at, zone, locale);
 
   const time = timeOf(t, item.event, item.event.startsAt, zone, locale);
 
-  return item.multiDay ? `${time} · ${daysOf(t, item, locale)}` : time;
+  return item.multiDay ? `${time} · ${daysOf(t, item, locale, now)}` : time;
 }
 
 /** Live is the rule: every other status is a word on the bar and a mark before it. */
@@ -421,12 +418,18 @@ export function barWords(t: TFunction, event: CalEvent): string {
     : event.name;
 }
 
-export function barLabel(t: TFunction, item: EventItem, zone: string, locale: string): string {
+export function barLabel(
+  t: TFunction,
+  item: EventItem,
+  zone: string,
+  locale: string,
+  now: Date,
+): string {
   return t('calendar.barLabel', {
     name: item.event.name,
     status: phaseTag(item.event.shown, t).word,
     time: timeOf(t, item.event, item.event.startsAt, zone, locale),
-    dates: daysOf(t, item, locale),
+    dates: daysOf(t, item, locale, now),
   });
 }
 
@@ -458,14 +461,16 @@ export function eased(progress: number): number {
   return curve((low + high) / 2, 0, 1);
 }
 
-/** Where the Calendar is read from: today and the reader's zone, and where an item opens. */
+/** Where the Calendar is read from: now, today and the reader's zone, and where an item opens. */
 export interface CalendarFrame {
+  now: Date;
   today: string;
   zone: string;
   linkOf: (item: Item) => string;
 }
 
 export const CalendarFrameContext = createContext<CalendarFrame>({
+  now: new Date(0),
   today: '',
   zone: 'UTC',
   linkOf: () => '',
