@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { ActionPair } from '../components/ActionPair.tsx';
-import { DuplicateBody } from '../components/DuplicateBody.tsx';
+import { CopyGuestsBox, DuplicateBody } from '../components/DuplicateBody.tsx';
 import { copyStart } from '../copyStart.ts';
 import { type SampleEvent, EVENT_WORDS as W, instantOf, keepCopy } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
@@ -194,7 +194,6 @@ export function DuplicateDialog({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const id = useId();
   const box = useRef<HTMLInputElement>(null);
   const when = useRef<HTMLDivElement>(null);
   const [start, setStart] = useState(() => (cleared ? { date: '', time: '' } : copyStart(event)));
@@ -291,29 +290,14 @@ export function DuplicateDialog({
         when={when}
       >
         {guests > 0 && (
-          <label className="ev-copy-guests">
-            <span className="ev-copy-box">
-              <input
-                ref={box}
-                type="checkbox"
-                className="ev-copy-input"
-                checked={ticked}
-                disabled={busy}
-                aria-labelledby={`${id}-copy`}
-                aria-describedby={`${id}-copy-hint`}
-                onChange={() => setTicked((was) => !was)}
-              />
-              {ticked && <Glyph name="tick" size={16} weight={3} className="ev-copy-tick" />}
-            </span>
-            <span className="ev-copy-words">
-              <span id={`${id}-copy`} className="ev-copy-label">
-                {DW.box(guests)}
-              </span>
-              <span id={`${id}-copy-hint`} className="ev-copy-hint">
-                {DW.hint}
-              </span>
-            </span>
-          </label>
+          <CopyGuestsBox
+            label={DW.box(guests)}
+            hint={DW.hint}
+            ticked={ticked}
+            busy={busy}
+            onTick={() => setTicked((was) => !was)}
+            box={box}
+          />
         )}
         <p className={busy ? 'desk-unseen dc-making' : 'desk-unseen'} role="status">
           {busy ? DW.creating : ''}

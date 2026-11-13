@@ -304,3 +304,100 @@ describe('Duplicate an event (sc-3593)', () => {
     );
   });
 });
+
+describe('Duplicate can also copy the guest list (sc-3656)', () => {
+  const listed = (guests: number) => () =>
+    json({ guests: [], counts: { people: guests + 24, guests, companions: 24 } });
+
+  function list(dialog: HTMLElement, heading: string): string[] {
+    let around: HTMLElement | null = within(dialog).getByRole('heading', {
+      level: 3,
+      name: heading,
+    });
+    while (around != null && around.querySelector('ul') == null) around = around.parentElement;
+
+    return [...(around?.querySelector('ul')?.querySelectorAll('li') ?? [])].map(
+      (item) => item.textContent ?? '',
+    );
+  }
+
+  it('offers the tick off, with its hint, and leaves the lists as they were', async () => {
+    signedIn();
+    const { dialog } = await opened(event(), { 'GET /api/events/ev_1/guests': listed(1180) });
+
+    const box = await within(dialog).findByRole('checkbox', {
+      name: 'Also copy the guest list (1,180 guests)',
+    });
+
+    expect((box as HTMLInputElement).checked).toBe(false);
+    expect(document.getElementById(box.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
+      'Replies are not copied, and nobody is invited or contacted.',
+    );
+    expect(list(dialog, 'Not copied')).toEqual(expect.arrayContaining(['Guests', 'Replies']));
+  });
+
+  it('moves the guests to Copied and replies to what is never copied once ticked', async () => {
+    signedIn();
+    const { dialog } = await opened(event(), { 'GET /api/events/ev_1/guests': listed(1) });
+
+    fireEvent.click(
+      await within(dialog).findByRole('checkbox', { name: 'Also copy the guest list (1 guest)' }),
+    );
+
+    expect(list(dialog, 'Copied')).toContain('1 guest: name, contact details and companions');
+    expect(list(dialog, 'Not copied')).not.toContain('Guests');
+    expect(list(dialog, 'Not copied')).not.toContain('Replies');
+    expect(list(dialog, 'Not copied')).toContain(
+      'Replies, invitations, invitation links, check-ins, meal choices, seating, messages and history',
+    );
+  });
+
+  it('shows no tick on an event with no guests', async () => {
+    signedIn();
+    const { sent, dialog } = await opened(event(), { 'GET /api/events/ev_1/guests': listed(0) });
+
+    await waitFor(() =>
+      expect(sent.some(({ line }) => line === 'GET /api/events/ev_1/guests')).toBe(true),
+    );
+    expect(within(dialog).queryByRole('checkbox')).toBeNull();
+  });
+
+  it('shows no tick, and asks for no list, without guests.manage', async () => {
+    signedIn();
+    const { sent, dialog } = await opened(
+      event({
+        permissions: OWNER_PERMISSIONS.filter((permission) => permission !== 'guests.manage'),
+      }),
+      { 'GET /api/events/ev_1/guests': listed(3) },
+    );
+
+    expect(within(dialog).queryByRole('checkbox')).toBeNull();
+    expect(sent.some(({ line }) => line === 'GET /api/events/ev_1/guests')).toBe(false);
+  });
+
+  it('sends the tick and says on the copy how many guests came and that nobody was contacted', async () => {
+    signedIn();
+    const copy = event({ id: 'ev_2', startsAt: '2027-05-15T16:00:00+01:00' });
+    const { sent, dialog } = await opened(live(), {
+      'GET /api/events/ev_1/guests': listed(118),
+      'POST /api/events/ev_1/duplicate': () => json({ event: copy, guestsCopied: 118 }, 201),
+      'GET /api/events/ev_2': () => json({ event: copy }),
+    });
+
+    start(dialog, '2027-05-15', '16:00');
+    fireEvent.click(await within(dialog).findByRole('checkbox'));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create draft' }));
+
+    expect(
+      (
+        await screen.findByText(
+          'Draft created. Opening it. 118 guests copied. Nobody was invited or contacted.',
+        )
+      ).closest('.toast'),
+    ).not.toBeNull();
+    expect(sent.find(({ line }) => line === 'POST /api/events/ev_1/duplicate')?.body).toEqual({
+      startsAt: '2027-05-15T16:00',
+      copyGuests: true,
+    });
+  });
+});
