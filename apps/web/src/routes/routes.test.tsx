@@ -814,6 +814,8 @@ describe('the guest tree', () => {
             timeZone: 'Africa/Lagos',
             venue: null,
           },
+          phase: 'live',
+          started: false,
           answersOpen: true,
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
