@@ -14,7 +14,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
-import { type SampleEvent, TODAY_IDS, localDay, sampleEvent } from './events.ts';
+import { EVENT_WORDS, type SampleEvent, TODAY_IDS, localDay, sampleEvent } from './events.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { AddForm, EditForm, RecordForm } from './GuestForms.tsx';
@@ -489,6 +489,8 @@ function GuestsPage({
   function onStep(): void {
     if (card.step === 'add') startAdd();
     else if (card.step === 'write') writeToThem();
+    else if (card.step === 'changeDates')
+      void navigate(`/demo/events/${event.id}`, { state: { open: 'dates' } });
     else tell('Make live has its own design.');
   }
 
@@ -530,7 +532,9 @@ function GuestsPage({
         ? GW.writeToThem
         : card.step === 'makeLive'
           ? GW.makeLive
-          : null;
+          : card.step === 'changeDates'
+            ? EVENT_WORDS.changeDates
+            : null;
 
   return (
     <div ref={root} className="desk-page ev-page gs">
