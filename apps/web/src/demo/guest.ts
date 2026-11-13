@@ -1178,18 +1178,28 @@ export const LEGAL: Record<Lang, { terms: string; privacy: string }> = {
 
 type Slots = Record<string, string | number>;
 
+/** The guest page's own words in this language, once l10n has written them (sc-1439). */
+function productWord(lang: Exclude<Lang, 'en'>, key: BoardKey): string | undefined {
+  const word: unknown = i18next.getResource(lang, 'translation', `guest.${key}`);
+
+  return typeof word === 'string' &&
+    word !== i18next.getResource('en', 'translation', `guest.${key}`)
+    ? word
+    : undefined;
+}
+
 export function wordsFor(lang: Lang) {
   const t = i18next.getFixedT(lang);
   const numbers = new Intl.NumberFormat(TAGS[lang]);
   const board = (key: BoardKey, slots: Slots = {}): string =>
-    ((lang === 'en' ? undefined : BOARD_SAMPLES[lang][key]) ?? BOARD_ENGLISH[key]).replaceAll(
-      /\{\{(\w+)\}\}/gu,
-      (whole, slot: string) => {
-        const value = slots[slot];
+    (
+      (lang === 'en' ? undefined : (productWord(lang, key) ?? BOARD_SAMPLES[lang][key])) ??
+      BOARD_ENGLISH[key]
+    ).replaceAll(/\{\{(\w+)\}\}/gu, (whole, slot: string) => {
+      const value = slots[slot];
 
-        return value == null ? whole : typeof value === 'number' ? numbers.format(value) : value;
-      },
-    );
+      return value == null ? whole : typeof value === 'number' ? numbers.format(value) : value;
+    });
   const hosts = hostsOf(lang);
   const one = new Intl.PluralRules('en').select(EVENT.hosts.length) === 'one';
   const answerWord = (answer: Answer): string => board(answer);

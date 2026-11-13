@@ -189,7 +189,7 @@ describe('the guest’s page on the event’s day (sc-24381)', () => {
   it('reads in French, the host’s words untranslated', async () => {
     await guest('onTheDayFrench');
 
-    expect(headings()).toEqual(['[Votre code]', '[Où]', '[Votre réponse]']);
+    expect(headings()).toEqual(['[Votre code]', '[Où]', 'Votre réponse']);
   });
 });
 
