@@ -846,7 +846,7 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     type('Full name', 'Ngozi Okafor');
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    expect(await screen.findByText('This guest isn’t on this list')).toBeDefined();
+    expect(await screen.findByText('This guest is not on this list')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Back to guests' })).toBeDefined();
   });
 
