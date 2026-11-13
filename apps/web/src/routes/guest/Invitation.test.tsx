@@ -612,7 +612,8 @@ describe('when the event is paused, called off or over (sc-3591)', () => {
     expect(screen.queryByText(/Answers have closed/)).toBeNull();
   });
 
-  it('reads the notice before the cover card at every width', async () => {
+  it('reads the notice before the cover card at a desk, where the columns sit side by side', async () => {
+    atWideWidth();
     api({
       '/api/guest-links/page': [{ status: 200, body: at('paused', false, answered('coming')) }],
     });
@@ -820,6 +821,7 @@ describe('a page left open (sc-3591)', () => {
     await later();
 
     expect(await screen.findByRole('button', { name: 'Sorry, I can’t' })).toBeDefined();
+    expect(screen.getByText('You do not need an account to answer.')).toBeDefined();
     const h1 = screen.getByRole('heading', { level: 1, name: 'You are invited' });
     await waitFor(() => expect(document.activeElement).toBe(h1));
   });
