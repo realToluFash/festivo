@@ -35,6 +35,7 @@ import {
   batchRuns,
   afterRun,
   assertBundler,
+  bundlerAnswers,
   bundlerCommand,
   coldBatch,
   batchSummary,
@@ -51,6 +52,7 @@ import {
   TOOLS_BUTTON,
   MENU_ONBOARDED,
   SCREEN_READER_OFF,
+  STYLUS_HANDWRITING_OFF,
   driverBuilds,
   driverPids,
   leftDriverSay,
@@ -633,6 +635,18 @@ describe('the screen reader on an emulator android opens', () => {
 
   it('says so, so a tester turns it on again', () => {
     expect(ANDROID_START[off].say).toMatch(/TalkBack is off/);
+  });
+});
+
+describe('stylus handwriting on an emulator android opens', () => {
+  const at = (name) => ANDROID_START.findIndex((part) => part.name === name);
+
+  it('is switched off before Expo Go is launched', () => {
+    expect(ANDROID_START[at('stylus handwriting off')].adb).toBe(STYLUS_HANDWRITING_OFF);
+    expect(STYLUS_HANDWRITING_OFF).toEqual([
+      ['shell', 'settings', 'put', 'secure', 'stylus_handwriting_enabled', '0'],
+    ]);
+    expect(at('stylus handwriting off')).toBeLessThan(at('Expo Go launched'));
   });
 });
 
@@ -2448,6 +2462,32 @@ describe('a batch with no bundler', () => {
     await expect(
       assertBundler({ port: 18081, command: 'ios' }, async () => true),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe('whether the bundler answers', () => {
+  const replying = (body) => async () => ({ text: body });
+
+  it('is yes when Metro says it is running', async () => {
+    expect(
+      await bundlerAnswers(
+        18081,
+        replying(async () => 'packager-status:running'),
+      ),
+    ).toBe(true);
+  });
+
+  it('is no, not a crash, when Metro sends its headers and the body times out', async () => {
+    const late = replying(async () => {
+      throw new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+    });
+    expect(await bundlerAnswers(18081, late)).toBe(false);
+  });
+
+  it('is no when nothing listens', async () => {
+    expect(
+      await bundlerAnswers(18081, async () => Promise.reject(new TypeError('fetch failed'))),
+    ).toBe(false);
   });
 });
 

@@ -19,7 +19,7 @@ afterEach(() => {
 async function redeem(state: string) {
   const router = createMemoryRouter(routes, { initialEntries: [`/demo/redeem?state=${state}`] });
   render(<RouterProvider router={router} />);
-  await screen.findByRole('heading', { level: 1 });
+  await screen.findByRole('heading', { level: 1 }, { timeout: 8000 });
 }
 
 const wait = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms));

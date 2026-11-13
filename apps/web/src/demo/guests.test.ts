@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { CLOCKS, sampleEvent } from './events.ts';
@@ -10,7 +13,6 @@ import {
   WEDDING,
   closeLine,
   countsOf,
-  guestLineOf,
   guestsCardOf,
   guestsStart,
   handMarked,
@@ -20,7 +22,9 @@ import {
   linesOf,
   markInvited,
   markNotInvited,
+  namedOf,
   numberMatches,
+  placesTo,
   recordReply,
   replyByOf,
   sampleGuests,
@@ -107,12 +111,12 @@ describe('the list (sc-3772)', () => {
       ['notYet', 14, true],
     ]);
     expect(view.groups[0]?.rows.map((row) => [row.person.name, row.indent, row.line])).toEqual([
-      ['Alhaji Musa Bello', false, 'Coming · replied Oct 14 · 1 companion'],
+      ['Alhaji Musa Bello', false, 'Coming · replied Oct 14 · 1 companion · 0 of 1 named'],
       ['Guest of Alhaji Musa Bello', true, 'Coming'],
       ['Amaka Eze', false, 'Coming · replied Oct 13'],
     ]);
     expect(view.groups[1]?.rows.map((row) => row.line)).toEqual([
-      'Not sure yet · asked to decide by Nov 4 · 1 companion',
+      'Not sure yet · asked to decide by Nov 4 · 1 companion · 0 of 1 named',
       'Held · comes only if their host accepts',
       'Not sure yet · asked to decide by Nov 4',
     ]);
@@ -370,16 +374,6 @@ describe('invited is a fact with a date and a way (sc-3788)', () => {
   });
 });
 
-describe('the numbers on Events (sc-23284, sc-3786)', () => {
-  it('reads each event in the tiles’ measure, so the rows add up to the tile', () => {
-    expect(guestLineOf(WEDDING)).toBe('96 coming · 25 haven’t replied');
-    expect(guestLineOf('evt-ireti-2')).toBe('31 coming · 22 haven’t replied');
-    expect(guestLineOf('evt-gala-4')).toBe('64 coming · 35 haven’t replied');
-    expect(guestLineOf(PARTY)).toBe('20 coming · 19 haven’t replied');
-    expect(guestLineOf(DRAFT)).toBeNull();
-  });
-});
-
 describe('refused before sending (sc-1468)', () => {
   it('says what is wrong with each field, in main’s words', () => {
     expect(
@@ -390,6 +384,49 @@ describe('refused before sending (sc-1468)', () => {
       number: 'That number looks too short for United Kingdom. Check it and try again.',
     });
     expect(linesOf({ ...valuesOf(null), name: 'Bimpe Adeyemi' })).toEqual({});
+  });
+});
+
+describe('places for companions, the host’s side (sc-3779)', () => {
+  const rows = (names: readonly string[]) =>
+    names.map((name, at) => ({ id: name === '' ? null : `c${at}`, name }));
+
+  it('adds unnamed places up to ten, never more', () => {
+    expect(placesTo(rows(['Marc Laurent']), 3)).toEqual({
+      companions: [...rows(['Marc Laurent']), { id: null, name: '' }, { id: null, name: '' }],
+    });
+    expect(placesTo([], 14)).toMatchObject({ companions: { length: 10 } });
+  });
+
+  it('takes unnamed places only, from the end, and refuses once every place left is named', () => {
+    expect(placesTo(rows(['', 'Hauwa Bello', '']), 2)).toEqual({
+      companions: rows(['', 'Hauwa Bello']),
+    });
+    expect(placesTo(rows(['', 'Hauwa Bello', '']), 1)).toEqual({
+      companions: [{ id: 'c1', name: 'Hauwa Bello' }],
+    });
+    expect(placesTo(rows(['Marc Laurent']), 0)).toEqual({ refused: 1 });
+    expect(GW.placesRefused('Sophie Laurent', 1)).toBe(
+      'Sophie Laurent already has 1 named. Remove some first.',
+    );
+  });
+
+  it('counts the places named, and clears Named by the guest once the host edits that name', () => {
+    const list = sampleGuests(WEDDING);
+    const sophie = list.find((one) => one.id === 'sophie');
+
+    if (sophie == null) throw new Error('sophie');
+    expect(namedOf(sophie)).toBe(1);
+    expect(sophie.companions[0]?.namedBy).toBe('guest');
+
+    const kept = saveGuest(list, 'sophie', { ...valuesOf(sophie), email: 'sophie@orange.fr' });
+    const renamed = saveGuest(list, 'sophie', {
+      ...valuesOf(sophie),
+      companions: [{ id: 'sophie-c1', name: 'Marc-Antoine Laurent' }],
+    });
+
+    expect(kept.find((one) => one.id === 'sophie')?.companions[0]?.namedBy).toBe('guest');
+    expect(renamed.find((one) => one.id === 'sophie')?.companions[0]).not.toHaveProperty('namedBy');
   });
 });
 
@@ -430,5 +467,13 @@ describe('every state (spec §15)', () => {
       expect(start.event).toMatch(/^evt-/u);
       expect(JSON.stringify(start)).not.toMatch(/\b(AM|PM)\b/u);
     }
+  });
+});
+
+describe('a companion field (sc-43267)', () => {
+  it('ends a placeholder too long for the field in an ellipsis, on one line', () => {
+    expect(readFileSync(join(import.meta.dirname, 'guests.css'), 'utf8')).toMatch(
+      /\.desk \.gs-companion \.desk-box input \{\s*overflow: hidden;\s*text-overflow: ellipsis;\s*white-space: nowrap;\s*\}/u,
+    );
   });
 });

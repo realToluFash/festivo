@@ -1,4 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { type CardStepAction, type Milestone, eventPhase } from '@soirely/domain';
@@ -6,7 +7,7 @@ import { type CardStepAction, type Milestone, eventPhase } from '@soirely/domain
 import { EventCard as ProductCard, EventThumb } from '../components/EventCard.tsx';
 import { EventRow as ProductRow } from '../components/EventsList.tsx';
 import { Toast } from '../components/Toast.tsx';
-import { type Shown, shownEvent } from '../eventsList.ts';
+import { type Shown, howSoon, rowLine, rowTag, shownEvent } from '../eventsList.ts';
 import { dateLocale } from '../i18n/index.ts';
 import {
   type SampleEvent,
@@ -18,7 +19,7 @@ import {
 import { Glyph } from '../components/Glyph.tsx';
 import { type CardMilestone, KW } from './kitchen.ts';
 import { LayersContext } from '../layers.ts';
-import { Tag } from '../components/SettingsParts.tsx';
+import { Chevron, RowWords, Tag } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import './today.css';
 import '../components/SettingsParts.css';
@@ -115,15 +116,12 @@ export function EventCard({
   event,
   now,
   level,
-  guests = null,
   milestone = null,
   onStep,
 }: {
   event: SampleEvent;
   now: Date;
   level: 1 | 2;
-  /** Its guests in the tiles' measure, on Events (sc-3786). */
-  guests?: string | null;
   /** Next up when it is a You milestone with an action, which becomes the card's one step (sc-30812). */
   milestone?: CardMilestone | null;
   onStep: (does: CardStepAction) => void;
@@ -135,7 +133,6 @@ export function EventCard({
       locale={dateLocale()}
       level={level}
       {...(level === 2 && { to: `/demo/events/${event.id}` })}
-      guests={guests}
       nextUp={milestone == null ? null : <MilestoneStep milestone={milestone} />}
       takes={() => true}
       onStep={(step) => onStep(step.action)}
@@ -174,27 +171,61 @@ export function PhaseTag({ shown }: { shown: DemoShown }) {
   return <Tag kind={tagKind(shown)} word={phaseWord(shown)} />;
 }
 
-/** The product's row on a sample event; where tabs are mixed every row says its phase. */
+/** The product's row on a sample event; where tabs are mixed every row says its phase. With `figures`, the event's guest line sits under the row's link, beside it and never inside it (sc-3786). */
 export function EventRow({
   event,
   now,
   tab,
-  guests = null,
+  figures = null,
 }: {
   event: SampleEvent;
   now: Date;
   tab: Tab | 'all';
-  guests?: string | null;
+  figures?: ReactNode;
 }) {
+  const shown = shownSample(event, now);
+  const to = `/demo/events/${event.id}`;
+  const everyPhase = tab === 'all';
+
+  if (figures == null)
+    return (
+      <ProductRow event={shown} now={now} locale={dateLocale()} to={to} everyPhase={everyPhase} />
+    );
+
+  return <FiguredRow shown={shown} now={now} to={to} everyPhase={everyPhase} figures={figures} />;
+}
+
+function FiguredRow({
+  shown,
+  now,
+  to,
+  everyPhase,
+  figures,
+}: {
+  shown: Shown;
+  now: Date;
+  to: string;
+  everyPhase: boolean;
+  figures: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const tag = rowTag(shown, everyPhase, t);
+  const soon = howSoon(shown, now, t);
+
   return (
-    <ProductRow
-      event={shownSample(event, now)}
-      now={now}
-      locale={dateLocale()}
-      to={`/demo/events/${event.id}`}
-      everyPhase={tab === 'all'}
-      guests={guests}
-    />
+    <li className="ev-figured">
+      <Link className="desk-row ev-row" to={to}>
+        <EventThumb event={shown} size={48} />
+        <RowWords
+          title={shown.name}
+          tag={tag != null && <Tag kind={tag.kind} word={tag.word} />}
+          lines={[rowLine(shown, now, dateLocale(), t)]}
+        />
+        {soon != null && <span className="ev-soon">{soon}</span>}
+        <Chevron />
+      </Link>
+      {figures}
+    </li>
   );
 }
 

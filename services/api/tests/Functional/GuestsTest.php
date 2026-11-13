@@ -148,13 +148,17 @@ final class GuestsTest extends ApiTestCase
     }
 
     #[Test]
-    public function aCompanionsNameIsNotAGuestsAlreadyOnTheList(): void
+    public function aNamedCompanionIsAlreadyOnTheList(): void
     {
-        $this->add(['fullName' => 'Bisi', 'companions' => [['fullName' => 'Tunde Bakare']]]);
+        $this->add(['fullName' => 'Bisi', 'companions' => [['fullName' => 'Kemi Olatunji'], []]]);
 
-        $this->add(['fullName' => 'Tunde Bakare']);
-
+        $this->as($this->owner, 'POST', $this->guests(), ['fullName' => 'KEMI OLATUNJI']);
+        self::assertSame(409, $this->statusCode());
+        self::assertSame('KEMI OLATUNJI is already on the list', $this->last()['detail'] ?? null);
         self::assertSame(3, $this->people());
+
+        $this->add(['fullName' => 'KEMI OLATUNJI', 'allowDuplicate' => true]);
+        self::assertSame(4, $this->people());
     }
 
     #[Test]

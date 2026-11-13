@@ -8,6 +8,11 @@
   --gsAmberRing: color-mix(in srgb, var(--colorAttention) 45%, var(--colorAttentionTint));
 }
 
+.gs-page h1,
+.gs-page h2 {
+  margin: 0;
+}
+
 .gs-top {
   display: flex;
   align-items: center;
@@ -233,6 +238,12 @@
 .gs-companion .desk-box {
   flex: 1;
   min-width: 0;
+}
+
+.gs-companion .desk-box input {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gs-phone {

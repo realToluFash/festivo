@@ -27,7 +27,7 @@ import {
   type Typed,
   blank,
   firstProblem,
-  listedAs,
+  isListed,
   newGuestOf,
   problemsOf,
   violationProblems,
@@ -472,6 +472,7 @@ function EditForm({
     const problem: Problem | undefined = problems[key];
 
     if (problem == null) return undefined;
+    if (typeof problem === 'object') return problem.refused;
     if (problem === 'blank') return t('guestList.blankName');
     if (problem === 'tooLong') return t('guestList.nameTooLong', { most: GUEST_NAME_MAXIMUM });
     if (problem === 'emailShape') return t('forms.emailShape');
@@ -598,7 +599,7 @@ function EditForm({
     const renamed = newGuestOf(typed, false).fullName !== host.fullName;
     const others = guests.filter((one) => one.id !== host.id);
 
-    if (renamed && duplicate !== 'kept' && listedAs(others, values.fullName) != null) {
+    if (renamed && duplicate !== 'kept' && isListed(others, values.fullName)) {
       setDuplicate('asked');
       focus('duplicate');
       return;
@@ -823,7 +824,13 @@ function EditCompanions({
             at={at}
             name={companion.name}
             label={label}
-            shown={shown}
+            remove={
+              companion.name.trim() !== ''
+                ? t('guestList.removeNamed', { name: companion.name.trim() })
+                : at === 0
+                  ? t('guestList.removeCompanionOf', { host })
+                  : t('guestList.removeCompanionOfNth', { host, nth: at + 1 })
+            }
             placeholder={placeholder(at)}
             error={words(`companion-${at}`)}
             onChange={(name) =>

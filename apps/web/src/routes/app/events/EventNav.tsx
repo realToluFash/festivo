@@ -63,8 +63,42 @@ export function useShownEventName(eventId: string | undefined): string | undefin
   return useShownEvent(eventId)?.name;
 }
 
-/** Inside an event: its page, an area, All dates, its Guests page and Edit details (sc-22103). */
+let gone: string | null = null;
+
+/** An event its page found deleted or never there: the shell shows the organisation's sidebar instead of the event's (sc-1468). */
+export function useGoneEvent(eventId: string, isGone: boolean): void {
+  useEffect(() => {
+    if (!isGone) return;
+    gone = eventId;
+    told();
+
+    return () => {
+      if (gone !== eventId) return;
+      gone = null;
+      told();
+    };
+  }, [eventId, isGone]);
+}
+
+function useGone(): string | null {
+  return useSyncExternalStore(
+    (listener) => {
+      heard.add(listener);
+      return () => heard.delete(listener);
+    },
+    () => gone,
+  );
+}
+
+/** Inside an event: its page, an area, All dates, its Guests page and Edit details (sc-22103); not one found gone. */
 export function useInsideEvent(): InsideEvent | null {
+  const inside = useRoutedEvent();
+  const goneId = useGone();
+
+  return inside != null && inside.eventId === goneId ? null : inside;
+}
+
+function useRoutedEvent(): InsideEvent | null {
   const page = useMatch('/app/events/:eventId');
   const part = useMatch('/app/events/:eventId/:part');
 

@@ -10,7 +10,7 @@ export function CompanionField({
   at,
   name,
   label,
-  shown,
+  remove,
   placeholder,
   error,
   onChange,
@@ -19,7 +19,7 @@ export function CompanionField({
   at: number;
   name: string;
   label: string;
-  shown: string;
+  remove: string;
   placeholder: string;
   error: string | undefined;
   onChange: (name: string) => void;
@@ -48,7 +48,7 @@ export function CompanionField({
         <button
           type="button"
           className="desk-text gs-remove"
-          aria-label={t('guestList.removeNamed', { name: shown })}
+          aria-label={remove}
           onClick={onRemove}
         >
           {t('guestList.remove')}

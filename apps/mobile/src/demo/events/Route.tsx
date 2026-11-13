@@ -20,7 +20,7 @@ import { EventGone } from './EventGone.tsx';
 import { eventStateOf, listStateOf } from './EventsModel.ts';
 import { messagesStateOf } from '../messages/MessagesModel.ts';
 import { seatingStateOf } from '../seating/SeatingModel.ts';
-import { guestsStateOf } from '../guests/GuestsModel.ts';
+import { guestsFromOf, guestsStateOf } from '../guests/GuestsModel.ts';
 import { budgetStateOf } from '../budget/BudgetModel.ts';
 import { cardStateOf } from '../people/PeopleCardModel.ts';
 import { areaOf, sampleEvent } from './EventsSample.ts';
@@ -123,8 +123,10 @@ export function EventRoute() {
     switcher?: string;
     as?: string;
     people?: string;
+    filter?: string;
   }>();
   const area = areaOf(params.area);
+  const from = area === 'guests' ? guestsFromOf(params.filter) : null;
   const messages = area === 'messages' ? messagesStateOf(params.state) : null;
   const seating = area === 'seating' ? seatingStateOf(params.state) : null;
   const budget = area === 'budget' ? budgetStateOf(params.state) : null;
@@ -144,7 +146,7 @@ export function EventRoute() {
   return (
     <EventsShell switcher={params.switcher}>
       <EventScreen
-        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}:${people ?? ''}`}
+        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}:${people ?? ''}:${from ?? ''}`}
         id={params.id}
         state={state}
         area={noBudget ? null : area}
@@ -153,6 +155,7 @@ export function EventRoute() {
         guests={guests}
         budget={budget}
         people={people}
+        guestsFrom={from}
         without={noBudget ? 'budget' : undefined}
       />
     </EventsShell>
