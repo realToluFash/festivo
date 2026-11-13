@@ -15,8 +15,10 @@ export interface GuestLanguageState {
 const START: GuestLanguageState = { said: 0, unsaved: null, saving: false };
 
 let state = START;
-/** The last language picked, so an older save that answers late changes nothing. */
+/** The last language picked: a save that is no longer it is skipped, and one that answers late changes nothing. */
 let latest: string | null = null;
+/** Each save waits for the one before, so the server records the picks in the order the guest made them. */
+let saving: Promise<void> = Promise.resolve();
 const listeners = new Set<() => void>();
 
 function set(next: Partial<GuestLanguageState>): void {
@@ -70,7 +72,14 @@ export async function saveAgain(token: string): Promise<void> {
   await save(token, state.unsaved);
 }
 
-async function save(token: string, code: string): Promise<void> {
+function save(token: string, code: string): Promise<void> {
+  saving = saving.then(() => send(token, code));
+
+  return saving;
+}
+
+async function send(token: string, code: string): Promise<void> {
+  if (code !== latest) return;
   set({ saving: true });
   let saved = true;
   try {
@@ -85,5 +94,6 @@ async function save(token: string, code: string): Promise<void> {
 export function leaveGuestPage(): void {
   state = START;
   latest = null;
+  saving = Promise.resolve();
   void showLanguage(null);
 }
