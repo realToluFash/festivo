@@ -227,7 +227,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   const hosts = hostsLine(event.hosts, currentLocale());
   const count = Math.max(event.hosts.length, 1);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (want == null) return;
     document.querySelector<HTMLElement>(`.guest-page [data-focus="${want.on}"]`)?.focus();
   }, [want]);
