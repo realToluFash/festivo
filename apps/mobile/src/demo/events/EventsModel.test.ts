@@ -416,6 +416,16 @@ describe('the states', () => {
     expect(clockOf(eventStateOf('now')).toISOString()).toBe('2026-11-06T16:10:00.000Z');
     expect(clockOf(eventStateOf('finished')).toISOString()).toBe('2026-11-11T09:41:00.000Z');
     expect(clockOf(eventStateOf('nonsense')).toISOString()).toBe('2026-11-03T09:41:00.000Z');
+    expect(clockOf(eventStateOf('deleteRefusedStarted')).toISOString()).toBe(
+      '2026-11-06T16:10:00.000Z',
+    );
+    expect(clockOf(eventStateOf('deleteRefusedStartedRead')).toISOString()).toBe(
+      '2026-11-06T16:10:00.000Z',
+    );
+    expect(clockOf(eventStateOf('deleteRefusedRead')).toISOString()).toBe(
+      '2026-11-03T09:41:00.000Z',
+    );
+    expect(clockOf(eventStateOf('deleteRace')).toISOString()).toBe('2026-11-03T09:41:00.000Z');
     expect(editOf(eventStateOf('showLatest'))).toBe('dates');
     expect(editOf(eventStateOf('lastHost'))).toBe('hosts');
     expect(editOf(eventStateOf('pause'))).toBeNull();

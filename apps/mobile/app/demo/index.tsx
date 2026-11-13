@@ -1532,6 +1532,31 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=deleteTyped',
       },
       {
+        title: 'Delete event · refused',
+        what: 'Guests invited: call it off first',
+        href: '/demo/events/evt-wed-4?state=deleteRefused',
+      },
+      {
+        title: 'Delete event · refused, from the start',
+        what: 'Guests invited: end it first',
+        href: '/demo/events/evt-wed-4?state=deleteRefusedStarted',
+      },
+      {
+        title: 'Delete event · refused, without Change',
+        what: 'Who can call it off, and Keep it alone',
+        href: '/demo/events/evt-wed-4?state=deleteRefusedRead',
+      },
+      {
+        title: 'Delete event · refused, without Change, from the start',
+        what: 'Who can end it, and Keep it alone',
+        href: '/demo/events/evt-wed-4?state=deleteRefusedStartedRead',
+      },
+      {
+        title: 'Delete event · the race',
+        what: 'A guest invited while the name is typed: press Delete',
+        href: '/demo/events/evt-wed-4?state=deleteRace',
+      },
+      {
         title: 'Duplicate',
         what: 'What is copied, and when it starts',
         href: '/demo/events/evt-wed-4?state=duplicate',
