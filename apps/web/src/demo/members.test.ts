@@ -163,7 +163,7 @@ describe('Members at a desk (sc-29708)', () => {
     expect(invitationRow(expired, samplePeople(), VIEWERS.folake, say).tag).toBe('Expired');
   });
 
-  it('says Not delivered where Sent was, keeping the end and the tag, and nothing more once accepted (sc-46109)', () => {
+  it('says Not delivered where Sent was, keeping the end and the tag (sc-46109)', () => {
     const rows = undeliveredInvitations().map((one) =>
       invitationRow(one, samplePeople(), VIEWERS.folake, say),
     );
@@ -174,7 +174,6 @@ describe('Members at a desk (sc-29708)', () => {
       ['Expired', 'Not delivered · expired Oct 21, 2026', true],
       ['Revoked', 'Not delivered · revoked Nov 3, 2026', true],
       ['Declined', 'Not delivered · declined Oct 3, 2026', true],
-      ['Accepted', 'Not delivered', true],
     ]);
   });
 

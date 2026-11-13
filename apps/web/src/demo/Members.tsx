@@ -423,8 +423,7 @@ interface BlocksProps {
 
 /** Requests to get back in, then Waiting, People with its filter, and the invitations: the list's blocks under the card. */
 function MembersBlocks(props: BlocksProps) {
-  const { viewer, people, filter, menu, say, column, onMenu, onFilter } = props;
-  const invitations = props.invitations.filter((one) => one.status !== 'accepted');
+  const { viewer, people, invitations, filter, menu, say, column, onMenu, onFilter } = props;
   const waiting = viewer.manages ? people.filter((one) => one.status === 'pendingApproval') : [];
   const shown = people.filter((one) => isShown(one.status, filter));
   const numbers = counts(people, invitations);

@@ -164,7 +164,7 @@ export interface Invitation {
   email: string;
   role: string;
   by: string;
-  status: 'pending' | 'expired' | 'revoked' | 'declined' | 'accepted';
+  status: 'pending' | 'expired' | 'revoked' | 'declined';
   sent: string;
   ended: string;
   /** Its latest send failed, was held back for a suppressed address, or hard-bounced (sc-46109); the field's name is dev's. */
@@ -245,15 +245,6 @@ export function undeliveredInvitations(): Invitation[] {
       status: 'declined',
       sent: '2026-10-01',
       ended: '2026-10-03',
-      notDelivered: true,
-    },
-    {
-      email: 'tunde.bakare@ire.events',
-      role: 'Member',
-      by: FOLAKE,
-      status: 'accepted',
-      sent: '2026-10-20',
-      ended: '2026-10-21',
       notDelivered: true,
     },
   ];
@@ -427,10 +418,7 @@ export function invitationRow(
   return {
     tag: status === 'pending' ? null : `${status.charAt(0).toUpperCase()}${status.slice(1)}`,
     line: `${invitation.role} · invited by ${by}`,
-    dates:
-      status === 'accepted'
-        ? sent
-        : `${sent} · ${ENDED_WORDS[status]} ${say.date(invitation.ended)}`,
+    dates: `${sent} · ${ENDED_WORDS[status]} ${say.date(invitation.ended)}`,
     notDelivered,
   };
 }

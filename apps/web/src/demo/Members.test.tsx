@@ -528,7 +528,6 @@ describe('An invitation whose email never arrived (sc-46109)', () => {
       expect(row(email).textContent).toContain(dates);
       expect(within(row(email)).getByRole('button', { name: 'Invite again' })).toBeDefined();
     }
-    expect(screen.queryByText('tunde.bakare@ire.events')).toBeNull();
   });
 
   it('lists the same rows on the Invited filter, counting the pending ones', async () => {
