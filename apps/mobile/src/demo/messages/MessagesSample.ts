@@ -19,6 +19,7 @@ export const DAYS = {
   today: '2026-11-03',
   sched: '2026-11-05',
   ends: '2026-11-07',
+  tooLate: '2026-10-31',
 };
 
 export type Where = 'page' | ChannelKey;
@@ -694,6 +695,9 @@ export const SCHEDULE_AT = { date: DAYS.sched, time: '09:00' };
 export const EVENT_ENDS = { at: '2026-11-07T15:00:00Z', date: DAYS.ends, time: '15:00' };
 export const READER_NOW = '2026-11-03T09:41:00Z';
 export const CANCELLED_AT = '09:46';
+/** sc-3963: when the event was called off, so Soirely cancelled the scheduled message. */
+export const FINISHED_AT = '09:30';
+export const SOIRELY = 'Soirely';
 export const FOLLOW_UP = 'Also: the car park closes at 23:30, so plan your way home.';
 
 export const FIXED_ADDRESS = 'tomas.ferreira@gmail.com';

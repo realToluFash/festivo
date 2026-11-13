@@ -116,7 +116,8 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
       title: own == null ? W.newMessage : draftTitle(own.draft, own.thread),
       titleLines: 1,
       line: own == null ? '' : draftLine(own.draft, own.thread, locale),
-      time: draft == null || isScheduled(draft) ? '' : draft.time || NOW,
+      time:
+        draft == null || isScheduled(draft) || draft.outcome === 'tooLate' ? '' : draft.time || NOW,
       lead: <GroupTile />,
       tag,
     };
