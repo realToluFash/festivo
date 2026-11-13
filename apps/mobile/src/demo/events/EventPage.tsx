@@ -94,6 +94,7 @@ import { LONG_FINISHED, PLACE, SAMPLE_EVENT_ID, TELL } from '../messages/Message
 import { tellChange } from '../messages/TellChange.ts';
 import {
   type TellRun,
+  dayStillToCome,
   eventBehind,
   fieldEvents,
   isTellKind,
@@ -389,12 +390,20 @@ export function EventScreen({
       setRefused(true);
     }
   };
+  const tellOf = (kind: 'tellPause' | 'tellCallOff' | 'tellEndNow' | 'tellResume') => {
+    if (!messagesHere) return;
+    const change = sheetOf(kind, null);
+
+    setTimeout(() => dispatch({ type: 'offerTell', change }), TELL_AFTER_MS);
+  };
   const onStep = (step: Extract<CardStep, { kind: 'button' }>) => {
     from.current = 'card';
     if (step.action === 'makeLive') live.open(event.hosts.length === 0);
     else if (step.action === 'changeDates') openEdit('dates');
-    else if (step.action === 'resume') setEvent({ ...event, status: 'live' });
-    else setDuplicating(true);
+    else if (step.action === 'resume') {
+      setEvent({ ...event, status: 'live' });
+      if (!(m.untold && m.change.what.includes(MW.pausedItem))) tellOf('tellResume');
+    } else setDuplicating(true);
   };
   const onManage = (key: ManageKey) => {
     from.current = key;
@@ -410,9 +419,14 @@ export function EventScreen({
   };
   const onAsked = (which: LifeAsk) => {
     setAsk(null);
-    if (which === 'pause') setEvent({ ...event, status: 'paused' });
-    else if (which === 'deleteDraft') deleteIt();
-    else setEvent({ ...event, status: 'ended', concludedAt: now.toISOString() });
+    if (which === 'pause') {
+      setEvent({ ...event, status: 'paused' });
+      tellOf('tellPause');
+    } else if (which === 'deleteDraft') deleteIt();
+    else {
+      setEvent({ ...event, status: 'ended', concludedAt: now.toISOString() });
+      tellOf('tellCallOff');
+    }
   };
   const toggleMute = () => {
     setMute('ok');
@@ -789,6 +803,7 @@ export function EventScreen({
               setEvent({ ...event, status: 'ended', concludedAt: now.toISOString() });
               setThanks(cardOf(null, line));
               if (line !== '') setTold(TY_WORDS.done);
+              if (dayStillToCome(event, now)) tellOf('tellEndNow');
             }}
           />
           <LifecycleAsk

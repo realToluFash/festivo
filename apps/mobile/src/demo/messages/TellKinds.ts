@@ -170,6 +170,14 @@ export function eventBehind(state: string | null, event: SampleEvent, now: Date)
   return event;
 }
 
+/** End now opens Tell guests only while a later day of the event was still to come. */
+export function dayStillToCome(event: SampleEvent, now: Date): boolean {
+  const day = (at: Date) =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: event.timeZone }).format(at);
+
+  return day(now) < day(new Date(event.endsAt));
+}
+
 const one = (line: string, item: string): TellChange => ({ lines: [line], what: [item] });
 
 export function sheetOf(state: TellKind, fields: TellChange | null): TellChange {
