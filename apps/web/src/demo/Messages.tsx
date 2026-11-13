@@ -55,6 +55,7 @@ import { type Group, useTo } from './messagesTo.ts';
 import { LeadMark, WhyNot } from './MessagesParts.tsx';
 import { UntoldBanner } from './MessagesTell.tsx';
 import { MESSAGES_WORD } from './messagesWords.ts';
+import { resetLooked } from './changedSince.ts';
 import { offButton } from '../offButton.ts';
 import { Tag } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
@@ -138,6 +139,7 @@ export function MessagesPage({
   const [params] = useSearchParams();
   const [inbox, act] = useReducer(changed, null, () => {
     const start = state != null ? seedOf(state) : keptInbox();
+    if (state === 'bell') resetLooked();
     const asked = params.get('c') as ConvoId | null;
 
     return asked != null && start.present.includes(asked)

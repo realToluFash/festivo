@@ -137,6 +137,19 @@ describe('Guests, the list (sc-31781)', () => {
     },
   );
 
+  it('counts no changes on an event other than the wedding (sc-4331)', SLOW, async () => {
+    await guests('changedRow');
+    cleanup();
+    open('/demo/guests?event=evt-party-2');
+    fireEvent.click(await screen.findByRole('button', { name: /^All · 48$/u }, WAIT));
+
+    expect(
+      within(screen.getByRole('menu')).queryByRole('menuitemradio', {
+        name: /^Changed since you looked/u,
+      }),
+    ).toBeNull();
+  });
+
   it('says when nothing has changed since the last look (sc-4331)', SLOW, async () => {
     await guests('changedNone');
 

@@ -14,7 +14,7 @@ import {
   many,
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
-import { lastLooked, markLooked } from './changedSince.ts';
+import { lastLooked, markLooked, repliesUnread } from './changedSince.ts';
 import { CLOCKS } from './events.ts';
 import { guestsAt } from './guests.ts';
 import { WhereGlyph } from './MessagesParts.tsx';
@@ -193,7 +193,7 @@ export function MessagesBell() {
       title: filled(MW.repliesBatch, { coming: 3, notComing: 1, changed: 1 }),
       line: where(filled(NOTIFICATIONS.atTime, { time: '09:31' })),
       glyph: 'users',
-      unread: !bell.read,
+      unread: repliesUnread(),
     },
     {
       key: 'missed',
@@ -245,7 +245,6 @@ export function MessagesBell() {
       const since = lastLooked();
 
       markLooked(CLOCKS.rest);
-      bell.markRead();
       void navigate(
         guestsAt(SAMPLE_EVENT, { filter: 'changed', ...(since == null ? {} : { since }) }),
       );
@@ -278,8 +277,8 @@ export function MessagesBell() {
               type="button"
               className="desk-text"
               onClick={() => {
-                bell.markRead();
                 markLooked(CLOCKS.rest);
+                bell.markRead();
                 say(NOTIFICATIONS.allRead);
               }}
             >

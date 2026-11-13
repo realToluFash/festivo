@@ -1234,6 +1234,34 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
   });
 
   it(
+    'reads the replies item once it is opened, and the missed one stays unread (sc-4331)',
+    SLOW,
+    async () => {
+      const router = await messages('bell');
+      const replies = /^3 coming, 1 not coming, 1 changed their reply/u;
+
+      fireEvent.click(
+        within(screen.getByRole('dialog', { name: 'Notifications' })).getByRole('button', {
+          name: replies,
+        }),
+      );
+      await screen.findByRole('button', { name: 'Changed since you looked · 5' }, WAIT);
+
+      await act(() => router.navigate(AT));
+      await screen.findByRole('heading', { level: 1, name: 'Messages' }, WAIT);
+      fireEvent.click(screen.getByRole('button', { name: /^Notifications/u }));
+      const bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+      expect(within(bell).getByRole('button', { name: replies }).textContent).not.toContain(
+        'Unread',
+      );
+      expect(
+        within(bell).getByRole('button', { name: /11 people didn’t get it/u }).textContent,
+      ).toContain('Unread');
+    },
+  );
+
+  it(
     'shows invitations as Soirely’s own card, its reach and who is now Invited',
     SLOW,
     async () => {

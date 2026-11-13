@@ -188,8 +188,11 @@ export function EventScreen({
     [state, guests],
   );
   const [event, setEvent] = useState(() => startEvent(id, state, messages));
-  const [at, setAt] = useState<AreaKey>(
-    figureOpens != null
+  const [at, setAt] = useState<AreaKey>(() => {
+    if (guests != null && !isIn(OVERVIEW_STATES, guests)) seedLook(areaStart(guests).looked, now);
+    else if (messages === 'bell') resetLooked();
+
+    return figureOpens != null
       ? 'guests'
       : guests != null
         ? isIn(OVERVIEW_STATES, guests)
@@ -197,14 +200,10 @@ export function EventScreen({
           : 'guests'
         : area == null || area === 'people' || messages === 'tell' || messages === 'tellPlace'
           ? 'overview'
-          : area,
-  );
+          : area;
+  });
   const [guestsFrom, setGuestsFrom] = useState<ListFilter | null>(figureOpens);
   const [sinceFrom, setSinceFrom] = useState<string | null>(null);
-  useState(() => {
-    if (guests != null && !isIn(OVERVIEW_STATES, guests)) seedLook(areaStart(guests).looked, now);
-    else if (messages === 'bell') resetLooked();
-  });
   const [m, dispatch] = useReducer(reduceReach, null, () => {
     const begun = startOf(messages, shell.layout !== 'phone');
     if (state !== 'datesReplyBySaved') return begun;

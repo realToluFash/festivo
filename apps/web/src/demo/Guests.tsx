@@ -55,7 +55,13 @@ import {
   viewOf,
 } from './guests.ts';
 import { pageKey, useGuestsAddress } from './useGuestsAddress.ts';
-import { changesSince, lastLooked, markLooked, resetLooked } from './changedSince.ts';
+import {
+  CHANGES_EVENT,
+  changesSince,
+  lastLooked,
+  markLooked,
+  resetLooked,
+} from './changedSince.ts';
 import { GuestBones, GuestsCardView, ListBones, MarkLead } from './GuestsParts.tsx';
 import {
   EMEKA,
@@ -247,8 +253,9 @@ function GuestsPage({
   const today = todayOf(start.clock);
   const counts = countsOf(list);
   const card = guestsCardOf(event, list, start.card, start.clock, manages);
-  const listed = changesSince(since);
-  const unseen = changesSince(looked).length;
+  const changes = sample.id === CHANGES_EVENT;
+  const listed = changes ? changesSince(since) : [];
+  const unseen = changes ? changesSince(looked).length : 0;
   const { view, shown } =
     choice === 'changed'
       ? changedView(list, listed, q, start.clock, manages)

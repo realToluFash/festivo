@@ -9,6 +9,9 @@ export interface Change {
   at: string;
 }
 
+/** The event the changes belong to; every other event's list has none. */
+export const CHANGES_EVENT = 'evt-wed-4';
+
 export const CHANGES: readonly Change[] = [
   { id: 'lucia', kind: 'changed', at: '2026-11-03T09:31:00Z' },
   { id: 'ines', kind: 'replied', at: '2026-11-03T08:40:00Z' },
@@ -37,6 +40,11 @@ export function markLooked(at: Date): void {
 
 export function resetLooked(): void {
   looked = null;
+}
+
+/** The bell's Guest replies item is unread while something changed after the last look, so the item and the filter count the same guests. */
+export function repliesUnread(): boolean {
+  return changesSince(looked).length > 0;
 }
 
 const TIME = new Intl.DateTimeFormat('en-GB', {
