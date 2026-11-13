@@ -505,8 +505,8 @@ export function GuestsArea({
                     counts.invited === 0
                       ? t('guestList.onTheList', { count: counts.all })
                       : t('guestList.comingOf', {
-                          coming: t('guestList.countComing', { count: counts.coming }),
-                          invited: t('guestList.countInvited', { count: counts.invited }),
+                          comingWords: t('guestList.countComing', { count: counts.coming }),
+                          invitedWords: t('guestList.countInvited', { count: counts.invited }),
                         })
                   }
                   line={counts.invited === 0 ? null : haventLine(t, counts)}

@@ -2777,7 +2777,7 @@
     "flaggedTitle": "Their link may have reached the wrong person",
     "flaggedLine": "Someone who opened {{name}}’s link told us it was not meant for them. The reply is unchanged. Replace the link so the old one stops working, then send {{name}} the new one.",
     "all": "All",
-    "comingOf": "{{coming}} of {{invited}}",
+    "comingOf": "{{comingWords}} of {{invitedWords}}",
     "countComing_one": "{{count, number}} coming",
     "countComing_other": "{{count, number}} coming",
     "countInvited_one": "{{count, number}} invited",

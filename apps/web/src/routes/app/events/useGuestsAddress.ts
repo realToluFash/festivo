@@ -5,7 +5,7 @@ import { type Choice, choiceOf } from './guestView.ts';
 
 export const SEARCH_SETTLES_MS = 300;
 
-/** The menu's choice and the search live in the address, each change a step Back undoes (sc-3772); the search is written once typing settles, and dropped if Back or Forward moves the address under it. */
+/** The menu's choice and the search live in the address, each change a step Back undoes (sc-3772); the search is written once typing settles, and dropped if Back or Forward moves the address under it, but not when its own write lands after more typing. */
 export function useGuestsAddress() {
   const [params, setParams] = useSearchParams();
   const { key } = useLocation();
@@ -15,6 +15,7 @@ export function useGuestsAddress() {
   const written = useRef(addressQ);
   const pending = useRef<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const landing = useRef(false);
 
   function cancel(): void {
     if (timer.current != null) clearTimeout(timer.current);
@@ -23,6 +24,10 @@ export function useGuestsAddress() {
   }
 
   useEffect(() => {
+    if (landing.current) {
+      landing.current = false;
+      return;
+    }
     const waiting = pending.current != null;
 
     cancel();
@@ -38,6 +43,7 @@ export function useGuestsAddress() {
 
     cancel();
     if (nextQ !== undefined) written.current = nextQ;
+    landing.current = true;
     setParams((was) => {
       const at = new URLSearchParams(was);
 
