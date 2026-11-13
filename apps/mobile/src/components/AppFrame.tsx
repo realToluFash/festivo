@@ -222,6 +222,8 @@ export interface InsideEvent {
   onArea: (area: EventPlace) => void;
   /** The event as the landscape sidebar's card on every page under it, its event null while it loads (sc-30413). */
   card: { event: Shown | null; now: Date };
+  /** The landscape sidebar's ‹ when it goes somewhere other than Events, as a copy's ‹ Event up to its original. */
+  up?: { label: string; onPress: () => void } | undefined;
 }
 
 interface NavEntry {
@@ -517,6 +519,7 @@ export function AppFrame({
             entries={entries}
             inEvent={inEvent != null}
             card={inEvent?.card}
+            up={inEvent?.up}
             organisation={signedIn.organisation}
             waiting={count}
             onSwitch={switchFromPill}
@@ -1301,6 +1304,7 @@ function FrameSidebar({
   entries,
   inEvent,
   card,
+  up,
   organisation,
   waiting,
   onSwitch,
@@ -1310,6 +1314,7 @@ function FrameSidebar({
   entries: readonly NavEntry[];
   inEvent: boolean;
   card: InsideEvent['card'] | undefined;
+  up: InsideEvent['up'];
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
@@ -1376,9 +1381,9 @@ function FrameSidebar({
         )}
         {inEvent && (
           <SidebarBack
-            label={t('todayScreen.tab.events')}
-            heard={t('eventsScreen.backToEvents')}
-            onPress={() => goTo('events')}
+            label={up?.label ?? t('todayScreen.tab.events')}
+            heard={up?.label ?? t('eventsScreen.backToEvents')}
+            onPress={up?.onPress ?? (() => goTo('events'))}
             testID="frame.side.back"
           />
         )}

@@ -233,12 +233,30 @@ export function EventScreen({
       besideTitle={phone || areaTitled ? undefined : refreshing}
       back={frameBack}
       backInBody={top.frameBack == null}
-      inEvent={top.inEvent ? { area, onArea: chooseArea, card } : undefined}
+      inEvent={
+        top.inEvent
+          ? {
+              area,
+              onArea: chooseArea,
+              card,
+              up:
+                original != null ? { label: t('timeline.backToEvent'), onPress: leave } : undefined,
+            }
+          : undefined
+      }
       underTitle={areaTitled ? undefined : underTitle}
     >
       <Screen
         edges={bodyEdges(kind)}
-        contentStyle={phone ? (cardNamed ? styles.phoneUntitled : styles.phone) : styles.tablet}
+        contentStyle={
+          phone
+            ? cardNamed
+              ? styles.phoneUntitled
+              : styles.phone
+            : kind === 'tabletLandscape' && cardNamed
+              ? styles.landscapeUntitled
+              : styles.tablet
+        }
       >
         {kind === 'tabletLandscape' &&
           (cardNamed ? (
@@ -403,6 +421,12 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingHorizontal: tokens.spaceXl,
     paddingBottom: tokens.space3xl,
+  },
+  landscapeUntitled: {
+    gap: 18,
+    paddingTop: 26,
+    paddingHorizontal: 30,
+    paddingBottom: tokens.space6xl * 2,
   },
   tablet: {
     gap: tokens.spaceLg,
