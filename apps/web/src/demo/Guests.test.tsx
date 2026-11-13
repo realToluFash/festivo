@@ -1530,6 +1530,144 @@ describe('Guests, WhatsApp on a guest’s page (sc-3950)', () => {
   });
 });
 
+describe('Guests, a guest’s opt-outs (sc-3969)', () => {
+  const ONLY = 'Only the guest can change this.';
+
+  function detailRows(): string[][] {
+    const details = within(column()).getByRole('region', { name: 'Details' });
+
+    return [...details.querySelectorAll('.desk-rows > li')].map((row) =>
+      [...row.querySelectorAll('.desk-row-name, .desk-row-line')].map(
+        (words) => words.textContent ?? '',
+      ),
+    );
+  }
+
+  async function rowsOf(state: string): Promise<string[][]> {
+    await guests(state);
+    const rows = detailRows();
+    cleanup();
+
+    return rows;
+  }
+
+  const isOptOut = (row: readonly string[]) =>
+    /^Unsubscribed from (email|texts) /u.test(row[0] ?? '');
+
+  it('puts each line under its contact row, the rest as sc-3950’s state has it', SLOW, async () => {
+    const pairs = [
+      ['optOutEmail', 'whatsAppNone'],
+      ['optOutTexts', 'whatsAppNone'],
+      ['optOutTextsWhatsApp', 'whatsAppOptedOut'],
+      ['optOutAll', 'whatsAppOptedOut'],
+      ['optOutNoMobile', 'whatsAppNoMobile'],
+    ] as const;
+    const read: Record<string, string[][]> = {};
+
+    for (const [state, plain] of pairs) {
+      read[state] = await rowsOf(state);
+      expect(read[state].filter((row) => !isOptOut(row))).toEqual(await rowsOf(plain));
+    }
+
+    const contact = (state: string) => {
+      const rows = read[state] ?? [];
+
+      return rows.slice(
+        rows.findIndex((row) => row[1] === 'Email address'),
+        rows.findIndex((row) => row[1] === 'Language'),
+      );
+    };
+
+    expect(contact('optOutEmail')).toEqual([
+      ['kwame.mensah@outlook.com', 'Email address'],
+      ['Unsubscribed from email on Oct 22', ONLY],
+      ['+44 7700 900412', 'Mobile number'],
+      ['Has not agreed to WhatsApp', 'WhatsApp'],
+    ]);
+    expect(contact('optOutTexts')).toEqual([
+      ['kwame.mensah@outlook.com', 'Email address'],
+      ['+44 7700 900412', 'Mobile number'],
+      ['Unsubscribed from texts on Oct 29', ONLY],
+      ['Has not agreed to WhatsApp', 'WhatsApp'],
+    ]);
+    expect(contact('optOutTextsWhatsApp')).toEqual([
+      ['sophie.laurent@orange.fr', 'Email address'],
+      ['+33 6 41 27 88 05', 'Mobile number'],
+      ['Unsubscribed from texts on Oct 27'],
+      ['Unsubscribed from WhatsApp on Nov 1', ONLY],
+    ]);
+    expect(contact('optOutAll')).toEqual([
+      ['sophie.laurent@orange.fr', 'Email address'],
+      ['Unsubscribed from email on Oct 20', ONLY],
+      ['+33 6 41 27 88 05', 'Mobile number'],
+      ['Unsubscribed from texts on Oct 27'],
+      ['Unsubscribed from WhatsApp on Nov 1', ONLY],
+    ]);
+    expect(contact('optOutNoMobile')).toEqual([
+      ['ines.duarte@sapo.pt', 'Email address'],
+      ['Unsubscribed from email on Oct 25', ONLY],
+      ['None', 'Mobile number'],
+    ]);
+  });
+
+  it('draws a line as a row with the opted-out mark, not a control', SLOW, async () => {
+    await guests('optOutAll');
+    const line = within(column()).getByText('Unsubscribed from email on Oct 20').closest('li');
+
+    expect(line?.querySelector('.gs-lead[aria-hidden="true"] svg')).not.toBeNull();
+    expect(line?.querySelectorAll('button, a, [tabindex]')).toHaveLength(0);
+    expect(line?.getAttribute('tabindex')).toBeNull();
+    expect(within(column()).getAllByText(ONLY)).toHaveLength(2);
+  });
+
+  it('shows a view-only role exactly what whatsAppViewer shows', SLOW, async () => {
+    await guests('whatsAppViewer');
+    const plain = column().textContent;
+    cleanup();
+
+    await guests('optOutViewer');
+
+    expect(column().textContent).toBe(plain);
+    expect(within(column()).queryByText(/^Unsubscribed from/u)).toBeNull();
+    expect(within(column()).queryByText(ONLY)).toBeNull();
+  });
+
+  it('keeps the lines through The guest agreed to WhatsApp', SLOW, async () => {
+    await guests('optOutTexts');
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'The guest agreed to WhatsApp' }));
+    fireEvent.click(await screen.findByRole('radio', { name: 'In person' }));
+    fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+
+    expect(
+      await within(column()).findByText(
+        'Agreed to WhatsApp in person, recorded by Folake Adeyemi on Nov 3',
+        {},
+        WAIT,
+      ),
+    ).toBeDefined();
+    expect(within(column()).getByText('Unsubscribed from texts on Oct 29')).toBeDefined();
+    expect(within(column()).getByText(ONLY)).toBeDefined();
+  });
+
+  it('drops a line once Edit puts another address on its row', SLOW, async () => {
+    await guests('optOutAll');
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Edit' }));
+    fireEvent.change(await screen.findByRole('textbox', { name: /Email address/u }), {
+      target: { value: 'sophie@laurent.fr' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /Mobile number/u }), {
+      target: { value: '' },
+    });
+    fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+
+    expect(await within(column()).findByText('sophie@laurent.fr', {}, WAIT)).toBeDefined();
+    expect(within(column()).queryByText(/^Unsubscribed from/u)).toBeNull();
+    expect(within(column()).queryByText(ONLY)).toBeNull();
+  });
+});
+
 describe('Guests on sample data (sc-31781)', () => {
   it('sends nothing to the API', SLOW, async () => {
     const fetched = vi.spyOn(globalThis, 'fetch');
