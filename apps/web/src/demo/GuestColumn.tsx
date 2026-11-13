@@ -33,7 +33,6 @@ import {
   Pill,
   Refused,
   ReplyMark,
-  Triangle,
 } from './GuestsParts.tsx';
 import { GW, HOW_INVITED, type HowInvited, REPLY_WORDS } from './guestsWords.ts';
 import { GUESTS as CONVERSATIONS, MESSAGES_AT } from './messages.ts';
@@ -218,7 +217,7 @@ function WrongPerson({
   return (
     <section className="gs-amber" aria-labelledby={`${heading}-flag`}>
       <h3 id={`${heading}-flag`} className="gs-amber-head">
-        <Triangle size={17} />
+        <Glyph name="warn" size={17} weight={2.2} />
         {GW.flaggedTitle}
       </h3>
       <p className="gs-amber-line">{GW.flaggedLine(name)}</p>
