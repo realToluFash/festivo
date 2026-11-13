@@ -10,7 +10,7 @@ use App\Entity\Guest;
 final class GuestLanguage
 {
     /** @param list<string> $browser the browser's languages, most wanted first */
-    public static function page(?string $chosen, array $browser, ?string $host, string $organisation): string
+    public static function pageLanguage(?string $chosen, array $browser, ?string $host, string $organisation): string
     {
         foreach ([$chosen, ...$browser, $host] as $tag) {
             if (SupportedLocales::supports($tag)) {
@@ -22,13 +22,13 @@ final class GuestLanguage
     }
 
     /** A message has no browser to ask. */
-    public static function message(?string $chosen, ?string $host, string $organisation): string
+    public static function messageLanguage(?string $chosen, ?string $host, string $organisation): string
     {
-        return self::page($chosen, [], $host, $organisation);
+        return self::pageLanguage($chosen, [], $host, $organisation);
     }
 
     public static function forMessage(Guest $guest): string
     {
-        return self::message($guest->getChosenLanguage(), $guest->getLanguage(), $guest->getEvent()->getOrganisation()->getLocale());
+        return self::messageLanguage($guest->getChosenLanguage(), $guest->getLanguage(), $guest->getEvent()->getOrganisation()->getLocale());
     }
 }

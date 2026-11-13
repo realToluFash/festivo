@@ -21,8 +21,8 @@ final class GuestLanguageTest extends TestCase
     #[DataProvider('cases')]
     public function eachCaseOpensInItsLanguage(?string $chosen, array $browser, ?string $host, string $organisation, string $page, string $message): void
     {
-        self::assertSame($page, GuestLanguage::page($chosen, $browser, $host, $organisation));
-        self::assertSame($message, GuestLanguage::message($chosen, $host, $organisation));
+        self::assertSame($page, GuestLanguage::pageLanguage($chosen, $browser, $host, $organisation));
+        self::assertSame($message, GuestLanguage::messageLanguage($chosen, $host, $organisation));
     }
 
     #[Test]
