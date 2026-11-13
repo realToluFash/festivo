@@ -4,7 +4,7 @@ import { demoWords } from './demoWords.ts';
 import type { SampleEvent } from './events.ts';
 import { type Guest, notYetInvited, replyByOf, sampleGuests } from './guests.ts';
 import { LW } from './makeLiveWords.ts';
-import { type Category, whatsAppCreditsIn } from './messages.ts';
+import { type Category, creditsLine, whatsAppCreditsIn } from './messages.ts';
 import { MW } from './messagesWords.ts';
 import { inviteSmsOf, oneGuestOf } from './inviteSms.ts';
 import { WW } from './messagesWaitsWords.ts';
@@ -221,13 +221,6 @@ export interface Cost {
   waits: string | null;
 }
 
-/** The credits line's three forms (sc-45251): texts, texts and WhatsApp messages, or WhatsApp messages. */
-function usesKey(texts: number, whatsApp: number) {
-  if (whatsApp === 0) return 'textsUse' as const;
-
-  return texts === 0 ? ('whatsAppUse' as const) : ('textsAndWhatsAppUse' as const);
-}
-
 /** Messaging B's credits line when the balance covers every text; sc-3963's wait lines in Credits after sending's place when it does not, a text going only when its whole cost is covered. */
 export function costOf(offer: Offer): Cost {
   const { texts, balance, whatsAppCredits } = offer;
@@ -237,7 +230,7 @@ export function costOf(offer: Offer): Cost {
   if (needs === 0) return { credits: null, either: null, waits: null };
   if (balance >= needs)
     return {
-      credits: `${mw.many(usesKey(textCost, whatsAppCredits), needs)} ${mw.filled(MW.creditsAfter, { count: balance - needs })}`,
+      credits: creditsLine(textCost, whatsAppCredits, balance),
       either: null,
       waits: null,
     };

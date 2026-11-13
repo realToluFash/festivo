@@ -682,11 +682,19 @@ function rateOf(rate: Rate | undefined, category: Category): number {
   return (category === 'marketing' ? rate?.marketing : rate?.utility) ?? 0;
 }
 
-export function whatsAppCredits(number: string, category: Category = 'utility'): number {
+export function whatsAppCredits(number: string): number {
   return rateOf(
     WHATSAPP_RATES.find((one) => number.startsWith(`${one.code} `)),
-    category,
+    'utility',
   );
+}
+
+/** The credits line's three forms, one home for the Make live offer and the invitation's check (sc-45251). */
+export function creditsLine(texts: number, whatsApp: number, balance: number): string {
+  const credits = texts + whatsApp;
+  const uses = whatsApp === 0 ? 'textsUse' : texts === 0 ? 'whatsAppUse' : 'textsAndWhatsAppUse';
+
+  return `${many(uses, credits)} ${filled(MW.creditsAfter, { count: balance - credits })}`;
 }
 
 /** One guest's message at their own country's rate, never one country's rate times the count. */
