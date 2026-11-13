@@ -1,5 +1,4 @@
-import { writtenTime } from './clock.ts';
-import { type SampleEvent, CLOCKS } from './events.ts';
+import { type SampleEvent, CLOCKS, sampleEvent } from './events.ts';
 import {
   type ConvoId,
   type Out,
@@ -8,11 +7,13 @@ import {
   MW,
   NEW_PLACE,
   ROSEWOOD,
+  SAMPLE_EVENT,
   STARTS_LATER,
   TELL,
   changeOutOf,
   filled,
   many,
+  toldOf,
 } from './messages.ts';
 import type { TellState } from './messagesTellStates.ts';
 
@@ -354,82 +355,11 @@ export interface TellSeed {
   said?: string;
 }
 
-const date = (now: string, old: string): Told => ({
-  field: 'date',
-  item: MW.newDate,
-  line: filled(MW.dateMoved, { new: now, old }),
-});
 const START = STARTS_LATER;
 const PLACE = NEW_PLACE;
-const LANDMARK = '222 Marylebone Road, London NW1 6JQ';
 const NOTE = 'Dinner is still at 20:00.';
-const RANGE = 'Thu, Nov 5 – Sat, Nov 7';
 
 const SEEDS: Partial<Record<TellState, TellSeed>> = {
-  tellDates: {
-    page: 'dates',
-    changes: [
-      {
-        field: 'date',
-        item: MW.newDates,
-        line: filled(MW.datesMoved, { new: 'Thu, Nov 5 – Sun, Nov 8', old: RANGE }),
-      },
-    ],
-  },
-  tellDateTime: {
-    page: 'dateTime',
-    changes: [
-      date('Fri, Nov 6', RANGE),
-      {
-        ...START,
-        line: filled(MW.startMoved, {
-          new: writtenTime('17:00', 'en'),
-          old: writtenTime('18:00', 'en'),
-        }),
-      },
-    ],
-  },
-  tellVenueAdded: {
-    page: 'venueAdded',
-    changes: [
-      {
-        field: 'venue',
-        item: MW.newVenue,
-        line: filled(MW.venueAdded, { new: ROSEWOOD.name }),
-        venue: true,
-      },
-    ],
-  },
-  tellVenueGone: {
-    page: 'venueGone',
-    changes: [
-      {
-        field: 'venue',
-        item: MW.venueToConfirm,
-        line: filled(MW.venueGone, { old: 'The Landmark' }),
-      },
-    ],
-  },
-  tellAddress: {
-    page: 'address',
-    changes: [
-      {
-        field: 'venue',
-        item: MW.newAddress,
-        line: filled(MW.venueMoved, { new: LANDMARK, old: '22 Marylebone Road, London NW1 6JQ' }),
-      },
-    ],
-  },
-  tellAddressAdded: {
-    page: 'addressAdded',
-    changes: [
-      {
-        field: 'venue',
-        item: MW.itemAddressAdded,
-        line: filled(MW.venueAt, { name: 'The Landmark', address: LANDMARK }),
-      },
-    ],
-  },
   tellPause: { page: 'paused', changes: [toldOfKind('pause')] },
   tellCallOff: { page: 'calledOff', changes: [toldOfKind('callOff')] },
   tellResume: { page: 'base', changes: [toldOfKind('resume')] },
@@ -475,8 +405,36 @@ const SEEDS: Partial<Record<TellState, TellSeed>> = {
   },
 };
 
+const LANDMARK = { name: 'The Landmark', city: 'London' };
+
+/** The field states, each worded by `toldOf` from what guests were told to the page behind it, as a live save is. */
+const FIELD_SEEDS: Partial<
+  Record<TellState, { page: Page; told: (event: SampleEvent) => SampleEvent }>
+> = {
+  tellDates: { page: 'dates', told: (event) => event },
+  tellDateTime: { page: 'dateTime', told: (event) => event },
+  tellVenueAdded: { page: 'venueAdded', told: (event) => ({ ...event, venue: null }) },
+  tellVenueGone: { page: 'venueGone', told: (event) => event },
+  tellAddress: {
+    page: 'address',
+    told: (event) => ({
+      ...event,
+      venue: { ...LANDMARK, address: '22 Marylebone Road, London NW1 6JQ' },
+    }),
+  },
+  tellAddressAdded: {
+    page: 'addressAdded',
+    told: (event) => ({ ...event, venue: { ...LANDMARK, address: null } }),
+  },
+};
+
 export function tellSeedOf(state: TellState): TellSeed | null {
-  return SEEDS[state] ?? null;
+  const field = FIELD_SEEDS[state];
+  const base = sampleEvent(SAMPLE_EVENT);
+
+  if (field == null || base == null) return SEEDS[state] ?? null;
+
+  return { page: field.page, changes: toldOf(field.told(base), pageEvent(field.page, base)) };
 }
 
 /** A sheet sent or put off answers for what it holds: every field when it has one, each other kind by itself, and a pause once resumed. */

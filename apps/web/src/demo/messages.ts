@@ -1901,32 +1901,80 @@ function wall(iso: string, timeZone: string, parts: Intl.DateTimeFormatOptions):
   return new Intl.DateTimeFormat('en-US', { timeZone, ...parts }).format(new Date(iso));
 }
 
-/** What a save changed that guests rely on (sc-4330): the start's day or time, and the venue. */
+function placeName(venue: SampleEvent['venue']): string {
+  return venue == null ? '' : venue.name || (venue.address ?? '');
+}
+
+function venueTold(was: SampleEvent['venue'], now: SampleEvent['venue']): Told | null {
+  const old = placeName(was);
+  const is = placeName(now);
+
+  if (old === '' && is === '') return null;
+  if (old === '')
+    return { field: 'venue', item: MW.newVenue, line: filled(MW.venueAdded, { new: is }) };
+  if (is === '')
+    return { field: 'venue', item: MW.venueToConfirm, line: filled(MW.venueGone, { old }) };
+  if (was != null && now != null && was.name !== '' && was.name === now.name) {
+    const address = now.address ?? '';
+
+    if (address === '' || address === (was.address ?? '')) return null;
+    if ((was.address ?? '') === '')
+      return {
+        field: 'venue',
+        item: MW.itemAddressAdded,
+        line: filled(MW.venueAt, { name: now.name, address }),
+      };
+
+    return {
+      field: 'venue',
+      item: MW.newAddress,
+      line: filled(MW.venueMoved, { new: address, old: was.address ?? '' }),
+    };
+  }
+
+  return old === is
+    ? null
+    : { field: 'venue', item: MW.newVenue, line: filled(MW.venueMoved, { new: is, old }) };
+}
+
+/** What a save changed that guests rely on (sc-4330): the event's days, the start time and the venue, each from what guests were last told. */
 export function toldOf(was: SampleEvent, now: SampleEvent): Told[] {
   const day = (iso: string) =>
     wall(iso, now.timeZone, { weekday: 'short', month: 'short', day: 'numeric' });
+  const days = (event: SampleEvent) => {
+    const first = day(event.startsAt);
+    const last = day(new Date(Date.parse(event.endsAt) - 1).toISOString());
+
+    return first === last
+      ? { words: first, several: false }
+      : { words: `${first} – ${last}`, several: true };
+  };
   const time = (iso: string) => writtenTime(iso, 'en-US', now.timeZone);
   const told: Told[] = [];
+  const daysWere = days(was);
+  const daysAre = days(now);
 
-  if (day(was.startsAt) !== day(now.startsAt))
+  if (daysWere.words !== daysAre.words)
     told.push({
       field: 'date',
-      item: MW.newDate,
-      line: filled(MW.dateMoved, { new: day(now.startsAt), old: day(was.startsAt) }),
+      item: daysAre.several ? MW.newDates : MW.newDate,
+      line: filled(daysAre.several ? MW.datesMoved : MW.dateMoved, {
+        new: daysAre.words,
+        old: daysWere.words,
+      }),
     });
-  else if (time(was.startsAt) !== time(now.startsAt))
+  if (time(was.startsAt) !== time(now.startsAt))
     told.push({
       field: 'start',
       item: MW.newStartTime,
       line: filled(MW.startMoved, { new: time(now.startsAt), old: time(was.startsAt) }),
     });
-  if ((was.venue?.name ?? '') !== (now.venue?.name ?? '') && now.venue != null)
-    told.push({
-      field: 'venue',
-      item: MW.newVenue,
-      line: filled(MW.venueMoved, { new: now.venue.name, old: was.venue?.name ?? '' }),
-      venue: true,
-    });
+
+  const venue = venueTold(was.venue, now.venue);
+  const address = now.venue?.address ?? '';
+
+  if (venue != null)
+    told.push(address !== '' && !venue.line.includes(address) ? { ...venue, venue: true } : venue);
 
   return told;
 }

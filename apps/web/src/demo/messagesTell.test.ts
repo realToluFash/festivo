@@ -17,7 +17,7 @@ import {
   toldOfKind,
   withoutTold,
 } from './messagesTell.ts';
-import { TELL_STATES } from './messagesTellStates.ts';
+import { type TellState, TELL_STATES } from './messagesTellStates.ts';
 
 describe('Tell guests, every kind (sc-4330)', () => {
   it('writes the fields as one message in the copy’s order, with no headings', () => {
@@ -129,6 +129,26 @@ describe('Tell guests, every kind (sc-4330)', () => {
     expect(tellSeedOf('tellHeld')?.figures?.held).toBe(14);
     expect(tellSeedOf('sendOffline')?.note).toBe('Dinner is still at 20:00.');
     expect(tellSeedOf('untoldEvent')?.changes).toBeNull();
+  });
+
+  it('words the field states as a live save does, from what guests were told', () => {
+    const lines = (state: TellState) => tellSeedOf(state)?.changes?.map((told) => told.line);
+
+    expect(lines('tellDates')).toEqual([
+      'The dates are now Thu, Nov 5 – Sun, Nov 8 (was Thu, Nov 5 – Sat, Nov 7).',
+    ]);
+    expect(lines('tellDateTime')).toEqual([
+      'The date is now Fri, Nov 6 (was Thu, Nov 5 – Sat, Nov 7).',
+      'The start time is now 17:00 (was 18:00).',
+    ]);
+    expect(lines('tellVenueAdded')).toEqual(['The venue is now Rosewood London.']);
+    expect(lines('tellVenueGone')).toEqual(['The venue is to be confirmed (was The Landmark).']);
+    expect(lines('tellAddress')).toEqual([
+      'The venue is now 222 Marylebone Road, London NW1 6JQ (was 22 Marylebone Road, London NW1 6JQ).',
+    ]);
+    expect(lines('tellAddressAdded')).toEqual([
+      'The Landmark is at 222 Marylebone Road, London NW1 6JQ.',
+    ]);
   });
 
   it('puts a change at the head of Needs you while anyone is unreached, and in Done once all are', () => {
