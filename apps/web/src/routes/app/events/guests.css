@@ -1,0 +1,396 @@
+/* An event's Guests (sc-1468), measured as the web demo's Guests draws them (apps/web/src/demo/guests.css). */
+
+.gs {
+  --gsList: 520px;
+  --gsGuest: 380px;
+  --gsGap: 38px;
+  --gsGrey: var(--replyNotComingDot);
+  --gsAmberRing: color-mix(in srgb, var(--colorAttention) 45%, var(--colorAttentionTint));
+}
+
+.gs-top {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  min-height: var(--sizeHit);
+}
+
+.gs-title {
+  flex: 1;
+  min-width: 0;
+  font: 700 28px/1.12 var(--fontFamily);
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.gs-title:focus {
+  outline: none;
+}
+
+.gs-card.is-page {
+  min-height: 150px;
+}
+
+.gs-card .gs-card-inner {
+  gap: var(--spaceMd);
+  padding: 18px var(--space3xl) var(--spaceXxl);
+}
+
+.gs-says {
+  max-width: 80%;
+  font: 700 24px/1.15 var(--fontFamily);
+  letter-spacing: -0.015em;
+}
+
+.gs-cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gsGap);
+  align-items: flex-start;
+}
+
+.gs-list {
+  flex: 1 1 var(--gsList);
+  max-width: var(--gsList);
+}
+
+.gs-column {
+  flex: 1 1 var(--gsGuest);
+  max-width: var(--gsGuest);
+  box-sizing: border-box;
+}
+
+.gs-list,
+.gs-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.gs-form {
+  gap: var(--spaceXl);
+}
+
+/* The form stays in view while the list scrolls, only when the two sit side by side. */
+@media (width > 60rem) {
+  .gs-column {
+    position: sticky;
+    top: 0;
+    max-height: calc(100vh - 2 * var(--spaceMd));
+    margin: 0 calc(-1 * var(--spaceLg));
+    padding: var(--spaceXxs) var(--spaceLg) var(--space5xl);
+    overflow-y: auto;
+  }
+}
+
+.gs-failed {
+  align-items: flex-start;
+}
+
+/* Dividers start at the words, 40 in; a companion's at theirs, 80 in. */
+.gs-rows > * + * {
+  background-position: 40px 0;
+  background-size: calc(100% - 40px) 1px;
+}
+
+.gs-rows > .is-companion {
+  background-position: 80px 0;
+  background-size: calc(100% - 80px) 1px;
+}
+
+.gs-row {
+  gap: var(--spaceLg);
+}
+
+.gs-rows > .is-companion > .gs-row {
+  min-height: 52px;
+  padding-block: var(--spaceSm);
+  padding-left: 40px;
+}
+
+.gs-lead {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+}
+
+/* The reply marks (replyStates): a shape for each, always beside its word. */
+.gs-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--colorInkOnDark);
+}
+
+.gs-mark.is-coming {
+  background: var(--replyComingDot);
+}
+
+.gs-mark.is-maybe {
+  border: var(--replyMaybeRing);
+  background: var(--replyMaybeDot);
+  color: var(--colorAttentionText);
+}
+
+.gs-mark.is-not-coming {
+  background: var(--gsGrey);
+}
+
+.gs-bar {
+  width: 50%;
+  height: 2.5px;
+  border-radius: 2px;
+  background: currentcolor;
+}
+
+.gs-mark.is-held {
+  border: var(--replyHeldRing);
+  background: linear-gradient(90deg, var(--gsGrey) 50%, var(--colorCard) 50%);
+}
+
+.gs-mark.is-no-reply {
+  border: var(--replyNoReplyRing);
+}
+
+.gs-ok {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  color: var(--deskGreen);
+  font: 600 15px/1.4 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.gs-ok svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.gs-col-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  min-height: var(--sizeHit);
+}
+
+.gs-col-title {
+  flex: 1;
+  min-width: 0;
+  font: 700 20px/1.2 var(--fontFamily);
+  letter-spacing: -0.01em;
+}
+
+.gs-col-title:focus {
+  outline: none;
+}
+
+.gs-col-actions {
+  display: flex;
+  gap: 18px;
+}
+
+.gs-fields {
+  padding-top: 0;
+}
+
+.gs-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.gs-optional {
+  flex: none;
+  padding: 2px var(--spaceSm);
+  border-radius: var(--spaceMd);
+  background: var(--colorInsetBorder);
+  color: var(--colorInkSecondary);
+  font: 600 12.5px/1.3 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.gs-companion-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.gs-companion {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
+.gs-companion .desk-box {
+  flex: 1;
+  min-width: 0;
+}
+
+.gs-phone {
+  display: flex;
+  gap: var(--spaceSm);
+}
+
+.gs-phone > .desk-box:last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.desk-box.gs-country {
+  position: relative;
+  flex: none;
+  gap: var(--spaceXs);
+  padding: 0 var(--spaceMd) 0 var(--spacePillEnd);
+  color: var(--colorInk);
+  font: 500 16px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.gs-country > svg {
+  color: var(--colorInkSecondary);
+}
+
+.gs-country select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.gs-fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.gs-legend {
+  margin-bottom: var(--spaceXs);
+  padding: 0;
+  font: 700 15px/1.3 var(--fontFamily);
+}
+
+.gs-count {
+  color: var(--colorInkSecondary);
+  font: 500 14.5px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.gs .gs-remove {
+  flex: none;
+  margin-inline: 0;
+  color: var(--colorInkSecondary);
+}
+
+.gs-most {
+  font: 600 14.5px/1.45 var(--fontFamily);
+}
+
+.gs-amber {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: 14px var(--spaceXl);
+  border-radius: 18px;
+  background: var(--colorAttentionTint);
+  box-shadow: inset 0 0 0 1.5px var(--gsAmberRing);
+}
+
+.gs-amber-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  font: 700 15.5px/1.35 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.gs-amber-head:focus {
+  outline: none;
+}
+
+.gs-amber-head svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--colorAttentionText);
+}
+
+.gs-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd);
+}
+
+.gs-pill {
+  display: inline-flex;
+  flex: none;
+  align-self: flex-start;
+  align-items: center;
+  justify-content: center;
+  height: var(--sizeHit);
+  padding: 0 18px;
+  border-radius: var(--radiusPill);
+  font: 600 15px/1 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.gs-pill.is-primary {
+  background: var(--colorAccent);
+  color: var(--colorInkOnDark);
+}
+
+.gs-pill.is-primary:hover {
+  background: var(--colorAccentHover);
+}
+
+.gs-pill.is-secondary {
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1.5px var(--colorControlBorder);
+  color: var(--colorInk);
+}
+
+.gs-pill.is-secondary:hover {
+  background: var(--colorInset);
+}
+
+.gs-pill.is-tall {
+  height: 48px;
+  padding: 0 22px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gs-amber,
+  .gs-refused {
+    animation: gs-drop 120ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .gs-column > * {
+    animation: gs-fade 200ms cubic-bezier(0.2, 0, 0, 1);
+  }
+}
+
+@keyframes gs-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes gs-fade {
+  from {
+    opacity: 0;
+  }
+}

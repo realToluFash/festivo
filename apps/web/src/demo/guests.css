@@ -942,3 +942,158 @@
     opacity: 0;
   }
 }
+
+/* sc-3777: Needs on the forms, their chips, the details and the row's tags. */
+.gs-needs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.gs-needs-head {
+  margin: 0;
+  font: inherit;
+}
+
+.gs-disclose {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--colorInk);
+  font: 700 15px/1.3 var(--fontFamily);
+  text-align: start;
+  cursor: pointer;
+}
+
+.gs-disclose:focus-visible {
+  outline: none;
+  box-shadow: var(--deskRing);
+  border-radius: var(--radiusRow);
+}
+
+.gs-disclose-title {
+  flex: 1;
+}
+
+.gs-disclose-count {
+  color: var(--colorInkSecondary);
+  font-weight: 500;
+}
+
+.gs-need-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gs-need-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXxs);
+  padding: 4px var(--spaceSm);
+  border-radius: var(--radiusPill);
+  background: var(--colorInset);
+  font: 600 13.5px/1.3 var(--fontFamily);
+}
+
+.gs-need-chip.is-allergy,
+.gs-allergy {
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1.5px var(--colorBroken);
+  color: var(--colorBrokenText);
+}
+
+.gs-allergy {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--spaceXxs);
+  padding: 2px var(--spaceSm);
+  border-radius: var(--radiusPill);
+  font: 700 12.5px/1.3 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.gs-needs-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+}
+
+.gs-needs-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.gs-first {
+  padding: 2px var(--spaceSm);
+  border-radius: var(--radiusPill);
+  box-shadow: inset 0 0 0 1.5px var(--colorBroken);
+  color: var(--colorBrokenText);
+  font: 600 12.5px/1.3 var(--fontFamily);
+}
+
+.gs-needs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  column-gap: var(--spaceLg);
+}
+
+.gs-need {
+  min-height: var(--sizeHit);
+  font-size: 14.5px;
+}
+
+.gs-note {
+  width: 100%;
+  min-height: 72px;
+  border: 0;
+  background: none;
+  font: inherit;
+  resize: vertical;
+}
+
+.gs-companion-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.gs-their-needs {
+  margin-top: var(--spaceSm);
+}
+
+.gs-their-head {
+  margin: 0;
+  font: 700 14.5px/1.3 var(--fontFamily);
+}
+
+.gs-filters {
+  margin-top: var(--spaceSm);
+}
+
+.gs-row-tags {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spaceXs);
+}
+
+.gs-tag {
+  padding: 2px var(--spaceSm);
+  border-radius: var(--radiusPill);
+  background: var(--colorNeutralFill);
+  color: var(--colorInkSecondary);
+  font: 600 12.5px/1.3 var(--fontFamily);
+  white-space: nowrap;
+}

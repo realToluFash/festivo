@@ -9,6 +9,7 @@ use App\Entity\SeatingSection;
 use App\Enum\ErrorCode;
 use App\Enum\MeasurementSystem;
 use App\Http\Exception\ApiException;
+use App\Locale\NameNormaliser;
 use Psl\Str;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -24,7 +25,7 @@ final readonly class SeatingRules
     public function room(?string $roomName, ?int $widthCm, ?int $lengthCm, MeasurementSystem $system): array
     {
         $violations = [];
-        $name = null === $roomName ? '' : SectionNameNormaliser::name($roomName);
+        $name = null === $roomName ? '' : NameNormaliser::name($roomName);
 
         if (Str\length($name) > SeatingPlan::ROOM_NAME_MAXIMUM) {
             $violations[] = $this->violation('roomName', 'validation.seating_room_name_too_long', ['{count}' => (string) SeatingPlan::ROOM_NAME_MAXIMUM]);
@@ -55,8 +56,8 @@ final readonly class SeatingRules
      */
     public function sectionName(string $typed, array $others): array
     {
-        $name = SectionNameNormaliser::name($typed);
-        $key = SectionNameNormaliser::key($name);
+        $name = NameNormaliser::name($typed);
+        $key = NameNormaliser::key($name);
 
         if ('' === $name) {
             throw ApiException::validation([$this->violation('name', 'validation.seating_section_name_required')]);

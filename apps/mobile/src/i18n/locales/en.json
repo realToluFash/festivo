@@ -1765,6 +1765,8 @@
     "draftBody": "It's a draft with nobody on its guest list. It will be removed for your whole team.",
     "removes": "This removes, for your whole team:",
     "removesEvent": "the event, its details and its schedule",
+    "removesGuests_one": "its guest list, with the {{count, number}} person on it",
+    "removesGuests_other": "its guest list, with the {{count, number}} people on it",
     "guests": "Guests following their link will see that it isn't available.",
     "window": "If this was a mistake, support can restore it until {{deadline}}. After that it's gone for good.",
     "type": "Type {{event}} to delete it",

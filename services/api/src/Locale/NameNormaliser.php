@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\Seating;
+namespace App\Locale;
 
 use Normalizer;
 use Psl\Regex;
 use Psl\Str;
 
-/** What makes two section names one: case and accents do not count (sc-3998), so "Terrasse" and "TERRASSÉ" clash. */
-final class SectionNameNormaliser
+/** What makes two names one: case and accents do not count, so "Terrasse" and "TERRASSÉ" clash (sc-3998), and "Adaézé" is already on a list holding "ADAEZE" (sc-1468). */
+final class NameNormaliser
 {
     /** As typed, trimmed, with each run of whitespace one space. */
     public static function name(string $typed): string

@@ -20,6 +20,7 @@ import {
   serverClock,
 } from '@soirely/domain';
 
+import { asGuest, asGuestList, type Guest, type GuestList, type NewGuest } from './guests.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 import {
   asSeating,
@@ -757,9 +758,11 @@ export interface OrganisationDeletion {
   restoreCloses: string;
 }
 
-/** What an event's delete asks for: its name typed unless it is a Draft, and until when support can restore it (sc-3592). */
+/** What an event's delete asks for: its name typed unless it is a Draft with nobody on its list, and until when support can restore it (sc-3592). */
 export interface EventDeletion {
   needsName: boolean;
+  /** The Guests header's N, guests and companions together (sc-1468). */
+  people: number;
   restoreClosesAt: string;
   restoreCloses: string;
 }
@@ -2021,6 +2024,48 @@ export class ApiClient {
     };
   }
 
+  async guests(eventId: string): Promise<GuestList> {
+    const list = asGuestList(await this.get<unknown>(this.guestsPath(eventId)));
+
+    if (list == null) {
+      throw new Error(
+        'The API answered the guest list in a shape this client does not know. Check GuestSerialiser in services/api.',
+      );
+    }
+
+    return list;
+  }
+
+  /** Refused `validation_failed` on each field, and 409 `guest_already_listed` until `allowDuplicate`. */
+  async addGuest(eventId: string, guest: NewGuest): Promise<Guest> {
+    const body = await this.post<{ guest?: unknown }>(this.guestsPath(eventId), guest);
+    const added = asGuest(body?.guest);
+
+    if (added == null) {
+      throw new Error(
+        'The API answered an added guest in a shape this client does not know. Check GuestSerialiser in services/api.',
+      );
+    }
+
+    return added;
+  }
+
+  /** A hub token for this event's guest list; each change is published there as the whole list. */
+  async guestsSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.guestsPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private guestsPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/guests`;
+  }
+
   private seatingPath(eventId: string): string {
     return `/api/events/${encodeURIComponent(eventId)}/seating-plan`;
   }
@@ -2174,6 +2219,7 @@ export class ApiClient {
 
     if (
       typeof body.needsName !== 'boolean' ||
+      typeof body.people !== 'number' ||
       typeof body.restoreClosesAt !== 'string' ||
       typeof body.restoreCloses !== 'string'
     ) {
@@ -2184,6 +2230,7 @@ export class ApiClient {
 
     return {
       needsName: body.needsName,
+      people: body.people,
       restoreClosesAt: body.restoreClosesAt,
       restoreCloses: body.restoreCloses,
     };

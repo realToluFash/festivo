@@ -111,12 +111,20 @@ async function opened(shown: ReturnType<typeof event>, answers: Record<string, A
   const sent = await onTheEvent(shown, answers);
   fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
 
-  return { sent, dialog: await screen.findByRole('dialog', { name: `Duplicate ${shown.name}` }) };
+  return { sent, dialog: await screen.findByRole('dialog', { name: 'Duplicate' }) };
 }
 
-function start(dialog: HTMLElement, date: string, time: string): void {
-  fireEvent.change(within(dialog).getByLabelText('Date'), { target: { value: date } });
-  fireEvent.change(within(dialog).getByLabelText('Time'), { target: { value: time } });
+function date(dialog: HTMLElement): HTMLInputElement {
+  return within(dialog).getByLabelText<HTMLInputElement>('Starts, Date');
+}
+
+function time(dialog: HTMLElement): HTMLInputElement {
+  return within(dialog).getByLabelText<HTMLInputElement>('Starts, Time');
+}
+
+function start(dialog: HTMLElement, day: string, clock: string): void {
+  fireEvent.change(date(dialog), { target: { value: day } });
+  fireEvent.change(time(dialog), { target: { value: clock } });
 }
 
 function duplicates(sent: { line: string }[]): boolean {
@@ -143,19 +151,23 @@ describe('Duplicate an event (sc-3593)', () => {
     expect(screen.queryByRole('button', { name: 'Duplicate' })).toBeNull();
   });
 
-  it('opens on its title with what is copied and works out the end as the start is chosen', async () => {
+  it('opens as the desk dialog, its start filled in 52 weeks on, and works out the end as the start is chosen', async () => {
     signedIn();
     const { dialog } = await opened(event());
 
-    expect(document.activeElement).toBe(
+    expect(document.activeElement).toBe(dialog);
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDefined();
+    expect(
       within(dialog).getByRole('heading', { name: 'Duplicate Adaeze and Tunde' }),
-    );
+    ).toBeDefined();
     expect(within(dialog).getByText('Cover and its description')).toBeDefined();
     expect(within(dialog).getByText('Anything that happened at the event')).toBeDefined();
     expect(within(dialog).getByText('Hosts')).toBeDefined();
+    expect(date(dialog).value).toBe('2031-11-13');
+    expect(time(dialog).value).toBe('16:00');
     expect(
       within(dialog).getByText(
-        'It ends 10 hours after it starts, like the original. Times in Africa/Lagos.',
+        'It ends Fri, Nov 14, 2031, 02:00, 10 hours later, like the original. Times in Africa/Lagos.',
       ),
     ).toBeDefined();
 
@@ -171,6 +183,8 @@ describe('Duplicate an event (sc-3593)', () => {
   it('gives a length that is not whole hours in hours and minutes', async () => {
     signedIn();
     const { dialog } = await opened(event({ endsAt: '2030-11-14T18:20:00+01:00' }));
+
+    fireEvent.change(time(dialog), { target: { value: '' } });
 
     expect(
       within(dialog).getByText(
@@ -221,20 +235,21 @@ describe('Duplicate an event (sc-3593)', () => {
     signedIn();
     const { sent, dialog } = await opened(event());
 
+    start(dialog, '', '');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create draft' }));
 
     expect(within(dialog).getByText('Choose when the copy starts.')).toBeDefined();
-    expect(document.activeElement).toBe(within(dialog).getByLabelText('Date'));
+    expect(document.activeElement).toBe(date(dialog));
 
-    fireEvent.change(within(dialog).getByLabelText('Date'), { target: { value: '2027-05-15' } });
+    fireEvent.change(date(dialog), { target: { value: '2027-05-15' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create draft' }));
 
     expect(within(dialog).getByText('Choose the time the copy starts.')).toBeDefined();
-    expect(document.activeElement).toBe(within(dialog).getByLabelText('Time'));
+    expect(document.activeElement).toBe(time(dialog));
     expect(duplicates(sent)).toBe(false);
   });
 
-  it('creates the draft from the start typed and lands on its page', async () => {
+  it('creates the draft from the start typed and lands on its page, which says so in a toast', async () => {
     signedIn();
     const copy = event({
       id: 'ev_2',
@@ -249,10 +264,12 @@ describe('Duplicate an event (sc-3593)', () => {
     start(dialog, '2027-05-15', '16:00');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create draft' }));
 
-    expect(await within(dialog).findByText('Draft created. Opening it.')).toBeDefined();
     await waitFor(() =>
       expect(sent.some(({ line }) => line === 'GET /api/events/ev_2')).toBe(true),
     );
+    expect(
+      (await screen.findByText('Draft created. Opening it.')).closest('.toast'),
+    ).not.toBeNull();
     expect(sent.find(({ line }) => line === 'POST /api/events/ev_1/duplicate')?.body).toEqual({
       startsAt: '2027-05-15T16:00',
     });
@@ -271,8 +288,8 @@ describe('Duplicate an event (sc-3593)', () => {
     expect((await within(dialog).findByRole('alert')).textContent).toContain(
       'Not created. Nothing was saved. Try again.',
     );
-    expect(within(dialog).getByLabelText<HTMLInputElement>('Date').value).toBe('2027-05-15');
-    expect(within(dialog).getByLabelText<HTMLInputElement>('Time').value).toBe('16:00');
+    expect(date(dialog).value).toBe('2027-05-15');
+    expect(time(dialog).value).toBe('16:00');
   });
 
   it('closes on Escape and gives focus back to Duplicate', async () => {

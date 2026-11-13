@@ -105,6 +105,7 @@ import {
   runHeld,
   maestroTarget,
   missingCmdlineTools,
+  withAvdRam,
   parseTarget,
   hardwareKeyboardOff,
   expoGoLinkApproval,
@@ -3910,5 +3911,20 @@ describe('madeAccount', () => {
 
   it('falls back to the exit status when qa-account said nothing', () => {
     expect(() => madeAccount({ status: 2, stdout: '', stderr: '' })).toThrow('exited 2');
+  });
+});
+
+describe('withAvdRam', () => {
+  it('raises a lower hw.ramSize', () => {
+    expect(withAvdRam('a=1\nhw.ramSize=2048\nb=2\n', 4096)).toBe('a=1\nhw.ramSize=4096\nb=2\n');
+  });
+
+  it('leaves an equal or higher one alone', () => {
+    expect(withAvdRam('hw.ramSize=4096\n', 4096)).toBe('hw.ramSize=4096\n');
+    expect(withAvdRam('hw.ramSize=8192\n', 4096)).toBe('hw.ramSize=8192\n');
+  });
+
+  it('adds the line when the config has none', () => {
+    expect(withAvdRam('a=1', 4096)).toBe('a=1\nhw.ramSize=4096\n');
   });
 });

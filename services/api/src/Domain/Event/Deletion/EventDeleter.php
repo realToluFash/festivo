@@ -13,6 +13,7 @@ use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\EventStatus;
 use App\Http\Exception\ApiException;
+use App\Repository\GuestRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
@@ -29,18 +30,25 @@ final readonly class EventDeleter
         private TranslatorInterface $translator,
         private ClockInterface $clock,
         private EventChangeRecorder $eventChangeRecorder,
+        private GuestRepository $guestRepository,
     ) {
     }
 
-    /** A Draft loses nothing anybody else has seen, so only the others ask for the name typed. */
-    public static function needsName(Event $event): bool
+    /** A Draft with nobody on its list loses nothing anybody else has seen, so only it skips the name typed (sc-1468). */
+    public function needsName(Event $event): bool
     {
-        return EventStatus::Draft !== $event->getStatus();
+        return EventStatus::Draft !== $event->getStatus() || $this->people($event) > 0;
+    }
+
+    /** What its list loses: the Guests header's N, guests and companions together. */
+    public function people(Event $event): int
+    {
+        return $this->guestRepository->countPeople($event);
     }
 
     public function delete(Event $event, User $by, ?string $typedName): DateTimeImmutable
     {
-        if (self::needsName($event) && !TypedName::matches($typedName ?? '', $event->getName())) {
+        if ($this->needsName($event) && !TypedName::matches($typedName ?? '', $event->getName())) {
             throw ApiException::validation([[
                 'propertyPath' => 'name',
                 'message' => $this->translator->trans('event.delete_name_mismatch', ['{name}' => $event->getName()]),
