@@ -329,6 +329,7 @@ ops work of its own kind, `machine`, in the queue `ops@<machine>`:
 | free disk under `minFreeGb`                             | urgent: free space so workers can start                                                                  |
 | Docker's build cache over 20 GB (read every 30 minutes) | urgent: `just prune-build-cache`                                                                         |
 | once a day                                              | the sweep: disk, Docker, the stacks, the manager                                                         |
+| Docker Desktop's socket not answering, on a Mac         | no work: the tick runs `open -a Docker` itself, at most every 5 minutes, and says so in the journal      |
 | free disk under twice `minFreeGb`                       | not urgent: the five largest workspace folders, the simulators and `~/.android/avd`, measured once a day |
 
 - **Testers' `.qa/` is cleared once a day, with no model.** In each `soirely-qa<n>` here,
@@ -338,6 +339,10 @@ ops work of its own kind, `machine`, in the queue `ops@<machine>`:
   each sweep freed and where. An entry whose stories have all passed QA or are Done goes
   at the next sweep, whatever its age; so does a merged story's clean, pushed worktree
   (`README.md`, Guards and alerts).
+- **No Claude run starts Docker Desktop.** An app a run opens is quit when the run ends, so a
+  Docker started with `open -a Docker` from a run stops seconds after it (sc-46912). The
+  minute tick runs outside every session and starts it instead; a run that finds Docker
+  down waits a tick or two.
 - **This machine's ops takes its machine work whoever holds the ops lease.** A machine
   without the lease runs ops for `ops@<machine>` items only.
 - **A full disk holds every other role, but not this.** The disk guard is the one hold

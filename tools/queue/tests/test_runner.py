@@ -98,7 +98,8 @@ class Run(unittest.TestCase):
                       mock.patch("soirely_queue.cli.refresh_work"),
                       mock.patch("soirely_queue.update.check", return_value=False),
                       mock.patch("soirely_queue.machine.free_gb", return_value=100.0),
-                      mock.patch("soirely_queue.local.build_cache_gb", return_value=1.0)):
+                      mock.patch("soirely_queue.local.build_cache_gb", return_value=1.0),
+                      mock.patch("soirely_queue.local.open_docker")):
             patch.start()
             self.addCleanup(patch.stop)
         runner.set_started(self.db, ["ops", "dev2", "lead"], True)
