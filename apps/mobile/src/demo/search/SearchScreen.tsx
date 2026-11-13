@@ -16,6 +16,7 @@ import { Initials } from '../../components/Initials.tsx';
 import { useKeyboardTop } from '../../components/keyboardWatch.ts';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { RowShapes, TextAction } from '../../components/Summary.tsx';
+import { Tag } from '../../components/SummaryRows.tsx';
 import { Text } from '../../components/Text.tsx';
 import { Toast } from '../../components/Toast.tsx';
 import { useLayout } from '../../layout/useLayout.ts';
@@ -24,11 +25,12 @@ import { EVENTS } from '../events/EventsSample.ts';
 import { openEvent } from '../events/openEvent.ts';
 import {
   type Found,
-  type GroupKey,
   type Phase,
   SEARCH_WORDS as W,
   type SearchStart,
+  type Standing,
   TYPING_PAUSE_MS,
+  eventName,
   groupsFor,
   phaseOf,
   saidOf,
@@ -52,11 +54,10 @@ export function SearchScreen({ start }: { start: SearchStart }) {
   const [typed, setTyped] = useState(start.term);
   const [term, setTerm] = useState(start.term);
   const [phase, setPhase] = useState<Phase>(start.phase);
-  const [opened, setOpened] = useState<readonly GroupKey[]>(start.opened);
   const [told, setTold] = useState<string | null>(null);
   const groups = useMemo(
-    () => (phase === 'found' ? groupsFor(term, start.guests) : []),
-    [phase, term, start.guests],
+    () => (phase === 'found' ? groupsFor(term, start.reach) : []),
+    [phase, term, start.reach],
   );
 
   useEffect(() => {
@@ -71,7 +72,6 @@ export function SearchScreen({ start }: { start: SearchStart }) {
     const wait = setTimeout(() => {
       setTerm(typed);
       setPhase(phaseOf(typed));
-      setOpened([]);
     }, TYPING_PAUSE_MS);
 
     return () => clearTimeout(wait);
@@ -82,8 +82,13 @@ export function SearchScreen({ start }: { start: SearchStart }) {
   });
 
   function go(row: Found): void {
-    if (row.kind === 'event' && !EVENTS.some((one) => one.id === row.id)) {
-      setTold(`${row.name} has its own design.`);
+    const known = (id: string) => EVENTS.some((one) => one.id === id);
+    if (row.kind === 'event' && !known(row.id)) {
+      setTold(W.ownDesign(row.name));
+      return;
+    }
+    if (row.kind === 'guest' && !known(row.event)) {
+      setTold(W.ownDesign(eventName(row.event)));
       return;
     }
     if (!phone) close();
@@ -94,19 +99,31 @@ export function SearchScreen({ start }: { start: SearchStart }) {
       );
   }
 
+  function showAll(): void {
+    if (!phone) close();
+    router.push('/demo/events' as Href);
+  }
+
+  function clear(): void {
+    setTyped('');
+    setTerm('');
+    setPhase('idle');
+    field.current?.focus();
+  }
+
   const searchField = (
     <SearchField
       ref={field}
       typed={typed}
       off={false}
       width={null}
-      label={W.placeholder(start.guests)}
+      label={W.placeholder(start.reach)}
       onTyped={setTyped}
       onSearch={() => {
         setTerm(typed);
         setPhase(phaseOf(typed));
       }}
-      onClear={() => setTyped('')}
+      onClear={clear}
       testID="demo.search.field"
     />
   );
@@ -114,12 +131,11 @@ export function SearchScreen({ start }: { start: SearchStart }) {
     <Results
       phase={phase}
       term={term}
-      guests={start.guests}
+      hint={W.idle(start.reach)}
       groups={groups}
-      opened={opened}
-      onOpen={(group) => setOpened((now) => [...now, group])}
+      onShowAll={showAll}
       onRow={go}
-      onRetry={() => setPhase(phaseOf(term))}
+      onClear={clear}
     />
   );
   const toast = told != null && (
@@ -224,32 +240,29 @@ function Palette({
 function Results({
   phase,
   term,
-  guests,
+  hint,
   groups,
-  opened,
-  onOpen,
+  onShowAll,
   onRow,
-  onRetry,
+  onClear,
 }: {
   phase: Phase;
   term: string;
-  guests: boolean;
+  hint: string | null;
   groups: ReturnType<typeof groupsFor>;
-  opened: readonly GroupKey[];
-  onOpen: (group: GroupKey) => void;
+  onShowAll: () => void;
   onRow: (row: Found) => void;
-  onRetry: () => void;
+  onClear: () => void;
 }) {
-  if (phase === 'idle') return <Said words={W.idle(guests)} />;
+  if (phase === 'idle') return hint == null ? null : <Said words={hint} />;
   if (phase === 'short') return <Said words={W.short} />;
   if (phase === 'loading') return <RowShapes count={3} words={W.searching} />;
   if (phase === 'offline')
     return (
       <View style={styles.said}>
         <Text size={16} weight="semibold">
-          {W.notLoaded}
+          {W.offline}
         </Text>
-        <TextAction label={W.tryAgain} onPress={onRetry} testID="demo.search.retry" />
       </View>
     );
   if (groups.length === 0)
@@ -258,13 +271,11 @@ function Results({
         <Text size={16} weight="semibold">
           {W.nothing(term.trim())}
         </Text>
-        <Text size={15} style={styles.secondary}>
-          {W.nothingLine}
-        </Text>
+        <TextAction label={W.clear} onPress={onClear} testID="demo.search.clear" />
       </View>
     );
 
-  const stops = stopsOf(groups, opened);
+  const stops = stopsOf(groups);
 
   return groups.map((group) => {
     const shown = stops.filter((stop) => stop.group === group.key);
@@ -278,8 +289,8 @@ function Results({
           stop.kind === 'more' ? (
             <TextAction
               key={`${group.key}-more`}
-              label={W.showAll(group.rows.length)}
-              onPress={() => onOpen(group.key)}
+              label={W.showAll}
+              onPress={onShowAll}
               testID={`demo.search.more.${group.key}`}
             />
           ) : (
@@ -301,13 +312,21 @@ function Said({ words }: { words: string }) {
   );
 }
 
+const STANDING_MARKS: Record<Standing, 'waiting' | 'paused'> = {
+  Invited: 'waiting',
+  'Awaiting approval': 'waiting',
+  Suspended: 'paused',
+};
+
 function SearchRow({ row, onPress }: { row: Found; onPress: () => void }) {
+  const standing = row.kind === 'member' ? row.standing : null;
+
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
       accessibilityRole="button"
-      accessibilityLabel={`${row.name}, ${row.line}`}
+      accessibilityLabel={[row.name, row.line, standing].filter(Boolean).join(', ')}
       testID={`demo.search.row.${row.id}`}
     >
       {row.kind === 'event' ? (
@@ -329,6 +348,7 @@ function SearchRow({ row, onPress }: { row: Found; onPress: () => void }) {
           {row.line}
         </Text>
       </View>
+      {standing != null && <Tag kind={STANDING_MARKS[standing]} word={standing} />}
     </Pressable>
   );
 }

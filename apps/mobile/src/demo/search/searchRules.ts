@@ -1,13 +1,14 @@
 import { SEARCH_LEAST } from '@soirely/domain';
 
 import { type MeshKey as Mesh, meshFor } from '../../kit/today.ts';
+import { W as EVENTS_WORDS } from '../events/EventsWords.ts';
 
 export type GroupKey = 'events' | 'guests' | 'members';
 
 export type Found =
   | { kind: 'event'; id: string; name: string; line: string; mesh: Mesh }
-  | { kind: 'guest'; id: string; name: string; line: string; event: string }
-  | { kind: 'member'; id: string; name: string; line: string };
+  | { kind: 'guest'; id: string; name: string; line: string; event: string; guest?: string }
+  | { kind: 'member'; id: string; name: string; line: string; standing: Standing | null };
 
 export interface Group {
   key: GroupKey;
@@ -15,29 +16,66 @@ export interface Group {
   rows: readonly Found[];
 }
 
+/** What a person may find: events.read, guests.read on at least one event, members.read, and members.manage for Awaiting approval. */
+export interface Reach {
+  events: boolean;
+  guests: boolean;
+  members: boolean;
+  manage: boolean;
+}
+
+export const REACHES = {
+  owner: { events: true, guests: true, members: true, manage: true },
+  member: { events: true, guests: true, members: false, manage: false },
+  planner: { events: true, guests: false, members: true, manage: false },
+  nobody: { events: false, guests: false, members: false, manage: false },
+} as const satisfies Record<string, Reach>;
+
+export function reachOfRole(role: 'Owner' | 'Admin' | 'Member'): Reach {
+  return role === 'Member' ? REACHES.member : REACHES.owner;
+}
+
+export type Standing = 'Invited' | 'Awaiting approval' | 'Suspended';
+
 export const SHOWN_IN_GROUP = 5;
 
 export const TYPING_PAUSE_MS = 250;
 
 export const SEARCH_WORDS = {
   search: 'Search',
-  placeholder: (guests: boolean) =>
-    guests ? 'Search events, guests and members' : 'Search events and members',
-  idle: (guests: boolean) =>
-    guests ? 'Find an event, a guest or a member' : 'Find an event or a member',
+  placeholder: (reach: Reach) => FIELD_WORDS[kindsOf(reach)][0],
+  idle: (reach: Reach) => FIELD_WORDS[kindsOf(reach)][1],
   short: 'Type at least 2 characters.',
   searching: 'Searching…',
-  showAll: (count: number) => `Show all ${count}`,
-  nothing: (term: string) => `Nothing matches “${term}”`,
-  nothingLine: 'Search finds events by name or venue, and guests and members by name.',
-  notLoaded: 'Not loaded.',
-  tryAgain: 'Try again',
+  showAll: 'Show all in Events',
+  nothing: (term: string) => `Nothing matches “${term}”.`,
+  clear: 'Clear search',
+  offline: EVENTS_WORDS.searchOffline,
   cancel: 'Cancel',
   close: 'Close',
   results: 'Results',
   matches: (count: number) => (count === 1 ? '1 match' : `${count} matches`),
   headings: { events: 'Events', guests: 'Guests', members: 'Members' } as Record<GroupKey, string>,
+  ownDesign: (name: string) => `${name} has its own design.`,
 };
+
+type Kinds = '' | 'e' | 'g' | 'm' | 'eg' | 'em' | 'gm' | 'egm';
+
+/** One whole sentence for each combination of kinds, never assembled from words; nothing to find is "Search" and no hint. */
+const FIELD_WORDS: Record<Kinds, readonly [string, string | null]> = {
+  egm: ['Search events, guests and members', 'Find an event, a guest or a member.'],
+  eg: ['Search events and guests', 'Find an event or a guest.'],
+  em: ['Search events and members', 'Find an event or a member.'],
+  gm: ['Search guests and members', 'Find a guest or a member.'],
+  e: ['Search events', 'Find an event.'],
+  g: ['Search guests', 'Find a guest.'],
+  m: ['Search members', 'Find a member.'],
+  '': ['Search', null],
+};
+
+function kindsOf(reach: Reach): Kinds {
+  return `${reach.events ? 'e' : ''}${reach.guests ? 'g' : ''}${reach.members ? 'm' : ''}` as Kinds;
+}
 
 const event = (id: string, name: string, line: string, venue: string | null) => ({
   id,
@@ -96,6 +134,18 @@ export const SEARCH_EVENTS = [
     'Sat, May 22, 2027 · Quinta da Regaleira, Sintra',
     'Quinta da Regaleira',
   ),
+  event(
+    'evt-fado',
+    'Quintas de fado no jardim',
+    'Thu, Nov 19 · Casa do Jardim, Lisbon',
+    'Casa do Jardim',
+  ),
+  event(
+    'evt-vindima',
+    'Vindima weekend',
+    'Sat, Sep 11, 2027 · Quinta do Crasto, Douro',
+    'Quinta do Crasto',
+  ),
 ] as const;
 
 const FIRST_DAYS: Record<string, string> = {
@@ -107,23 +157,38 @@ const FIRST_DAYS: Record<string, string> = {
   'evt-party-2': 'Thu, Dec 3',
 };
 
-export const SEARCH_GUESTS: readonly { name: string; event: string }[] = [
-  { name: 'Inês Duarte', event: 'evt-wed-4' },
+/** `guest` is the guest's id where the Guests demo has them on that event. */
+export const SEARCH_GUESTS: readonly { name: string; event: string; guest?: string }[] = [
+  { name: 'Inês Duarte', event: 'evt-wed-4', guest: 'ines' },
   { name: 'Inês Duarte', event: 'evt-rafa-2' },
   { name: 'Inès Laurent', event: 'evt-gala-4' },
   { name: 'Inés García', event: 'evt-gala-4' },
   { name: 'Ines Okafor', event: 'evt-ireti-2' },
   { name: 'Inês Almeida', event: 'evt-off' },
   { name: 'Agnes Inesi', event: 'evt-party-2' },
-  { name: 'Kwame Mensah', event: 'evt-wed-4' },
-  { name: 'Lucía Ortega', event: 'evt-wed-4' },
+  { name: 'Kwame Mensah', event: 'evt-wed-4', guest: 'kwame' },
+  { name: 'Lucía Ortega', event: 'evt-wed-4', guest: 'lucia' },
 ];
 
-export const SEARCH_MEMBERS: readonly { name: string; role: string; email: string }[] = [
-  { name: 'Folake Adeyemi', role: 'Owner', email: 'folake@ire-events.com' },
-  { name: 'Inês Santos', role: 'Admin', email: 'ines.santos@ire-events.com' },
-  { name: 'Julien Moreau', role: 'Admin', email: 'julien@ire-events.com' },
-  { name: 'Kemi Adebayo', role: 'Member', email: 'kemi@ire-events.com' },
+/** Members as Settings › Members lists them; an Invited person has no name yet. */
+export const SEARCH_MEMBERS: readonly {
+  name: string | null;
+  role: string;
+  email: string;
+  standing: Standing | null;
+}[] = [
+  { name: 'Folake Adeyemi', role: 'Owner', email: 'folake@ire-events.com', standing: null },
+  { name: 'Inês Santos', role: 'Admin', email: 'ines.santos@ire-events.com', standing: null },
+  { name: 'Inês Santos', role: 'Member', email: 'ines.s@gmail.com', standing: 'Suspended' },
+  { name: null, role: 'Member', email: 'ines.moura@gmail.com', standing: 'Invited' },
+  {
+    name: 'Inês Rocha',
+    role: 'Member',
+    email: 'ines.rocha@outlook.com',
+    standing: 'Awaiting approval',
+  },
+  { name: 'Julien Moreau', role: 'Admin', email: 'julien@ire-events.com', standing: null },
+  { name: 'Kemi Adebayo', role: 'Member', email: 'kemi@ire-events.com', standing: null },
 ];
 
 export function folded(text: string): string {
@@ -139,35 +204,64 @@ export function longEnough(term: string): boolean {
   return term.trim().length >= SEARCH_LEAST;
 }
 
-function eventName(id: string): string {
+export function eventName(id: string): string {
   return SEARCH_EVENTS.find((one) => one.id === id)?.name ?? '';
 }
 
-/** Events, Guests and Members in that order, an empty group left out, and no Guests at all for a role that cannot open an event's guests. */
-export function groupsFor(term: string, guests: boolean): Group[] {
+const collator = new Intl.Collator('en', { sensitivity: 'base' });
+
+/** Names that begin with the typed text first, then those that only contain it, each part alphabetical. */
+export function ranked(rows: readonly Found[], term: string): Found[] {
+  const q = folded(term);
+  const rank = (row: Found) => (folded(row.name).startsWith(q) ? 0 : 1);
+
+  return [...rows].sort(
+    (a, b) => rank(a) - rank(b) || collator.compare(a.name, b.name) || collator.compare(a.id, b.id),
+  );
+}
+
+/** Events, Guests and Members in that order, each only for a person who may open it, and an empty group left out. */
+export function groupsFor(term: string, reach: Reach): Group[] {
   if (!longEnough(term)) return [];
 
   const q = folded(term);
   const has = (text: string | null) => text != null && folded(text).includes(q);
-  const events: Found[] = SEARCH_EVENTS.filter((one) => has(one.name) || has(one.venue)).map(
-    (one) => ({ kind: 'event', id: one.id, name: one.name, line: one.line, mesh: meshFor(one.id) }),
-  );
-  const people: Found[] = guests
+  const events: Found[] = reach.events
+    ? SEARCH_EVENTS.filter((one) => has(one.name) || has(one.venue)).map((one) => ({
+        kind: 'event',
+        id: one.id,
+        name: one.name,
+        line: one.line,
+        mesh: meshFor(one.id),
+      }))
+    : [];
+  const people: Found[] = reach.guests
     ? SEARCH_GUESTS.filter((one) => has(one.name)).map((one) => ({
         kind: 'guest',
-        id: `${one.event}:${one.name}`,
+        id: `${one.event}:${one.guest ?? one.name}`,
         name: one.name,
         line: `${eventName(one.event)} · ${FIRST_DAYS[one.event] ?? ''}`,
         event: one.event,
+        ...(one.guest == null ? {} : { guest: one.guest }),
       }))
     : [];
-  const members: Found[] = SEARCH_MEMBERS.filter((one) => has(one.name) || has(one.email)).map(
-    (one) => ({ kind: 'member', id: one.email, name: one.name, line: one.role }),
-  );
+  const members: Found[] = reach.members
+    ? SEARCH_MEMBERS.filter(
+        (one) =>
+          (reach.manage || one.standing !== 'Awaiting approval') &&
+          (has(one.name) || has(one.email)),
+      ).map((one) => ({
+        kind: 'member',
+        id: one.email,
+        name: one.name ?? one.email,
+        line: one.name == null ? one.role : `${one.email} · ${one.role}`,
+        standing: one.standing,
+      }))
+    : [];
   const groups: Group[] = [
-    { key: 'events', heading: SEARCH_WORDS.headings.events, rows: events },
-    { key: 'guests', heading: SEARCH_WORDS.headings.guests, rows: people },
-    { key: 'members', heading: SEARCH_WORDS.headings.members, rows: members },
+    { key: 'events', heading: SEARCH_WORDS.headings.events, rows: ranked(events, term) },
+    { key: 'guests', heading: SEARCH_WORDS.headings.guests, rows: ranked(people, term) },
+    { key: 'members', heading: SEARCH_WORDS.headings.members, rows: ranked(members, term) },
   ];
 
   return groups.filter((group) => group.rows.length > 0);
@@ -175,15 +269,16 @@ export function groupsFor(term: string, guests: boolean): Group[] {
 
 export type Stop = { kind: 'row'; row: Found; group: GroupKey } | { kind: 'more'; group: GroupKey };
 
-/** Each group's first five, or all of it once opened, then its Show all: the stops ↑ and ↓ move through. */
-export function stopsOf(groups: readonly Group[], opened: readonly GroupKey[]): Stop[] {
+/** Each group's first five; past five, Events alone adds Show all in Events, since more typing narrows the others. */
+export function stopsOf(groups: readonly Group[]): Stop[] {
   return groups.flatMap((group): Stop[] => {
-    const all = opened.includes(group.key) || group.rows.length <= SHOWN_IN_GROUP;
-    const rows = all ? group.rows : group.rows.slice(0, SHOWN_IN_GROUP);
+    const more = group.key === 'events' && group.rows.length > SHOWN_IN_GROUP;
 
     return [
-      ...rows.map((row): Stop => ({ kind: 'row', row, group: group.key })),
-      ...(all ? [] : [{ kind: 'more', group: group.key } as const]),
+      ...group.rows
+        .slice(0, SHOWN_IN_GROUP)
+        .map((row): Stop => ({ kind: 'row', row, group: group.key })),
+      ...(more ? [{ kind: 'more', group: group.key } as const] : []),
     ];
   });
 }
@@ -201,17 +296,26 @@ export function saidOf(term: string, groups: readonly Group[]): string {
 export type Phase = 'idle' | 'short' | 'loading' | 'found' | 'offline';
 
 export const SEARCH_STATES = [
-  { key: 'idle', term: '', name: 'Idle: Find an event, a guest or a member' },
+  { key: 'idle', term: '', name: 'Idle, an owner: Find an event, a guest or a member.' },
   { key: 'short', term: 'i', name: 'Under 2 characters: “i”' },
   { key: 'loading', term: 'ine', name: 'Loading: three skeleton rows' },
-  { key: 'mixed', term: 'ines', name: '“ines”: Events 1, Guests 7 with Show all 7, Members 1' },
-  { key: 'all', term: 'ines', name: '“ines”, Show all 7 pressed' },
+  {
+    key: 'mixed',
+    term: 'ines',
+    name: '“ines”, an owner: Events 1, Guests 7 with 5 shown, Members 4 with their standing',
+  },
   { key: 'one', term: 'landmark', name: '“landmark”: one event, by its venue' },
-  { key: 'none', term: 'garden party', name: 'No match: “garden party”' },
-  { key: 'no-guests', term: 'ines', name: 'Kemi Adebayo, Member, without guest access' },
+  { key: 'none', term: 'garden party', name: 'No match: “garden party”, with Clear search' },
+  { key: 'member', term: 'ines', name: 'Kemi Adebayo, a Member: events and guests, no Members' },
+  {
+    key: 'no-guests',
+    term: 'ines',
+    name: 'A custom role with events and members, no guests and no members.manage',
+  },
+  { key: 'nothing-to-find', term: '', name: 'A role that can find nothing: “Search”, no hint' },
   { key: 'two-events', term: 'duarte', name: '“duarte”: one guest on two events, two rows' },
-  { key: 'long', term: 'quinta', name: '“quinta”: four events, a long name on one line' },
-  { key: 'offline', term: 'ines', name: 'Offline: Not loaded. with Try again' },
+  { key: 'long', term: 'quinta', name: '“quinta”: Events 6 with Show all in Events, a long name' },
+  { key: 'offline', term: 'ines', name: 'Offline: Search needs a connection.' },
 ] as const;
 
 export type SearchStateName = (typeof SEARCH_STATES)[number]['key'];
@@ -219,8 +323,7 @@ export type SearchStateName = (typeof SEARCH_STATES)[number]['key'];
 export interface SearchStart {
   term: string;
   phase: Phase;
-  guests: boolean;
-  opened: readonly GroupKey[];
+  reach: Reach;
 }
 
 export function searchStateOf(raw: string | null): SearchStateName | null {
@@ -233,15 +336,23 @@ export function phaseOf(term: string): Phase {
   return longEnough(term) ? 'found' : 'short';
 }
 
-export function searchStart(state: SearchStateName | null): SearchStart {
+const STATE_REACH: Partial<Record<SearchStateName, Reach>> = {
+  member: REACHES.member,
+  'no-guests': REACHES.planner,
+  'nothing-to-find': REACHES.nobody,
+};
+
+export function searchStart(
+  state: SearchStateName | null,
+  reach: Reach = REACHES.owner,
+): SearchStart {
   const term = SEARCH_STATES.find((one) => one.key === state)?.term ?? '';
   const phase = state === 'loading' ? 'loading' : state === 'offline' ? 'offline' : phaseOf(term);
 
   return {
     term,
     phase,
-    guests: state !== 'no-guests',
-    opened: state === 'all' ? ['guests'] : [],
+    reach: (state == null ? undefined : STATE_REACH[state]) ?? reach,
   };
 }
 
