@@ -87,6 +87,7 @@ import {
 } from './messagesScheduled.ts';
 import { useStopWriting } from './MessagesStop.tsx';
 import { StreamItems } from './MessagesStream.tsx';
+import { TapLines } from './MessagesTap.tsx';
 import { MessagesBell } from './MessagesTell.tsx';
 import { AskOwner } from './MessagesWaits.tsx';
 
@@ -512,6 +513,9 @@ function GuestThread({
         ))}
         {done && doneAt != null && (
           <SystemLine glyph="tick">{filled(MW.doneBy, { name: reader, time: doneAt })}</SystemLine>
+        )}
+        {inbox.tap?.id === id && (
+          <TapLines kase={inbox.tap} name={name} ruled={guest?.day !== 'Today'} />
         )}
       </ol>
       {(guest != null || match != null) && (

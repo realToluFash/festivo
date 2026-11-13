@@ -1,0 +1,82 @@
+import { describe, expect, it } from 'vitest';
+
+import { messagesStateOf, sectionsOf, seedOf } from './messages.ts';
+import { GROUPS } from './messagesTo.ts';
+import {
+  TAP_STATES,
+  notSentBit,
+  receiptBit,
+  tapCaseOf,
+  tapLine,
+  tapMessage,
+} from './messagesTap.ts';
+
+const HOSTS = 'Adaeze Obi and Tunde Bakare';
+
+function seeded(state: string) {
+  return seedOf(messagesStateOf(state));
+}
+
+describe('a guest’s tap on the WhatsApp invitation (sc-46343)', () => {
+  it('opens every tap state on a guest’s conversation', () => {
+    for (const { key } of TAP_STATES) {
+      const inbox = seeded(key);
+
+      expect(inbox.tap).toBeDefined();
+      expect(inbox.pane).toEqual({ kind: 'convo', id: inbox.tap?.id });
+    }
+  });
+
+  it('says what was recorded, or that nothing changed', () => {
+    expect(tapLine({ answer: 'notComing', kind: 'recorded', at: '08:20' }, 'Kwame Mensah')).toBe(
+      'Kwame Mensah answered Not coming by WhatsApp.',
+    );
+    expect(tapLine({ answer: 'notSure', kind: 'coming', at: '08:20' }, 'Kwame Mensah')).toBe(
+      'Kwame Mensah tapped Not sure yet in WhatsApp. Nothing changed.',
+    );
+  });
+
+  it('writes Soirely’s message in the guest’s language, the companions line in the middle', () => {
+    expect(
+      tapMessage(
+        { answer: 'notSure', kind: 'recorded', at: '08:20', companions: true },
+        'es',
+        HOSTS,
+      ),
+    ).toEqual([
+      'Gracias. Hemos avisado a Adaeze Obi y Tunde Bakare de que aún no lo sabe.',
+      'Sus acompañantes quedan en espera hasta que usted decida.',
+      'Si cambia de opinión, los botones de la invitación siguen funcionando.',
+    ]);
+    expect(tapMessage({ answer: 'notSure', kind: 'repeat', at: '08:31' }, 'en', HOSTS)).toEqual([
+      'You’re already down as Not sure yet. Nothing has changed.',
+    ]);
+    expect(tapMessage({ answer: 'notSure', kind: 'closed', at: '08:20' }, 'en', HOSTS)).toEqual([
+      'Answers closed on 2 November 2026. Contact your host if something has changed.',
+    ]);
+  });
+
+  it('draws Read as delivered, and nothing sent with its own mark', () => {
+    expect(receiptBit('read')).toEqual({ words: 'WhatsApp · Read', mark: 'delivered' });
+    expect(receiptBit('failed')).toEqual({ words: 'WhatsApp · Failed', mark: 'bounced' });
+    expect(notSentBit('credits')).toEqual({ words: 'Not sent · Too few credits', mark: 'notsent' });
+    expect(notSentBit('stopped')).toEqual({ words: 'Not sent · Stopped WhatsApp', mark: 'optout' });
+  });
+
+  it('keeps each conversation in its section, with the tap as its row line', () => {
+    const kwame = sectionsOf(seeded('tapNotComing'), GROUPS);
+    const lucia = sectionsOf(seeded('tapNeedsYou'), GROUPS);
+
+    expect(kwame.done.find((row) => row.id === 'kwame')).toMatchObject({
+      line: 'Kwame Mensah answered Not coming by WhatsApp.',
+      when: '08:20',
+    });
+    expect(lucia.needs.find((row) => row.id === 'lucia')?.line).toBe(
+      'Lucía Ortega answered Not sure yet by WhatsApp.',
+    );
+  });
+
+  it('adds nothing for a further repeat', () => {
+    expect(tapCaseOf('tapRepeatAgain')).toEqual(tapCaseOf('tapRepeat'));
+  });
+});

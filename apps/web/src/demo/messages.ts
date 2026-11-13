@@ -26,7 +26,16 @@ import {
   STOP_STATES,
   isStopState,
 } from './messagesStop.ts';
-import { WA_INVITE_GROUP, WA_INVITE_STATES } from './messagesInviteWords.ts';
+import { WA_ANSWER_STATES, WA_INVITE_GROUP, WA_INVITE_STATES } from './messagesInviteWords.ts';
+import {
+  type TapCase,
+  DONE_AT,
+  TAP_GROUP,
+  TAP_STATES,
+  isTapState,
+  tapCaseOf,
+  tapRow,
+} from './messagesTap.ts';
 import {
   type InviteDraft,
   type InviteOut,
@@ -168,6 +177,8 @@ export const MESSAGE_STATES = [
   ...WA_INVITE_STATES,
   ...STOP_STATES,
   ...TELL_STATES,
+  ...WA_ANSWER_STATES,
+  ...TAP_STATES,
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -195,7 +206,11 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: 'Messages',
     states: MESSAGE_STATES.filter(
-      (one) => !isStopState(one.key) && !isInviteState(one.key) && !isTellState(one.key),
+      (one) =>
+        !isStopState(one.key) &&
+        !isInviteState(one.key) &&
+        !isTellState(one.key) &&
+        !isTapState(one.key),
     ).map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
   {
@@ -216,6 +231,13 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: TELL_GROUP,
     states: TELL_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
+  },
+  {
+    name: TAP_GROUP,
+    states: [...WA_ANSWER_STATES, ...TAP_STATES].map((one) => ({
+      to: `${MESSAGES_AT}?state=${one.key}`,
+      name: one.name,
+    })),
   },
 ];
 
@@ -1961,6 +1983,8 @@ export interface Inbox {
   stopped?: Partial<Record<GuestId, Stop>>;
   /** sc-3976: the open state's facts about one guest's notice and conversation. */
   notice?: NoticeCase;
+  /** sc-46343: one guest's taps on the WhatsApp invitation's answer buttons. */
+  tap?: TapCase;
 }
 
 export const TICKS: Ticks = { email: true, sms: true, whatsApp: false };
@@ -2479,6 +2503,10 @@ export function seedOf(state: MessagesState | null): Inbox {
 
       if (notice != null) return noticeSeed(base, notice);
 
+      const tap = tapCaseOf(state);
+
+      if (tap != null) return tapSeed(base, tap);
+
       const invite = inviteSeedOf(state);
 
       if (invite?.kind === 'draft') {
@@ -2558,6 +2586,24 @@ function noticeSeed(base: Inbox, notice: NoticeCase): Inbox {
   return seeded;
 }
 
+function tapSeed(base: Inbox, tap: TapCase): Inbox {
+  const seeded: Inbox = {
+    ...base,
+    tap,
+    notice: {
+      id: tap.id,
+      turn: tap.turn,
+      ...(tap.extras == null ? {} : { extras: tap.extras }),
+      ...(tap.blocks == null ? {} : { blocks: tap.blocks }),
+    },
+    pane: { kind: 'convo', id: tap.id },
+  };
+
+  return tap.done
+    ? { ...seeded, done: [...base.done, tap.id], doneAt: { ...base.doneAt, [tap.id]: DONE_AT } }
+    : seeded;
+}
+
 export type Lead =
   { kind: 'guest'; initials: string; unread: boolean } | { kind: 'unknown' } | { kind: 'many' };
 
@@ -2605,12 +2651,13 @@ function guestRow(inbox: Inbox, id: GuestId): Row {
     said,
     ...(done && answer == null ? [filled(MW.doneByShort, { name: READER })] : []),
   ].join(' · ');
+  const tapped = inbox.tap?.id === id ? tapRow(inbox.tap, guest.name) : null;
 
   return {
     id,
     title: guest.name,
-    line,
-    when: fresh ? MW.now : (answer?.at ?? (arrived ? NOW : guest.row)),
+    line: tapped?.line ?? line,
+    when: tapped?.when ?? (fresh ? MW.now : (answer?.at ?? (arrived ? NOW : guest.row))),
     lead: { kind: 'guest', initials: guest.initials, unread: !done },
     tag: null,
     fresh,
