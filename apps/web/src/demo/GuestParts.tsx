@@ -25,6 +25,7 @@ import {
   offersWhatsApp,
 } from './guest.ts';
 import { hasWhere, inDayOrder, mapsLink, placeOf } from './guestDay.ts';
+import { ChangeLines } from './GuestChange.tsx';
 
 const LINES = {
   map: [
@@ -640,8 +641,9 @@ export function Messages({
       </h2>
       {shown.map(({ message, note }) => (
         <article key={message.id} id={message.id} className="gp-message">
+          {note != null && <ChangeLines note={note} visit={visit} words={words} />}
           <p className="gp-meta">
-            {`${note ? words.noteFrom : words.hosts} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
+            {`${note == null ? words.hosts : words.noteFrom} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
           </p>
           <p className="gp-bubble" dir="auto">
             {message.words}

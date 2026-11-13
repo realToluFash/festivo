@@ -37,7 +37,9 @@ import {
   DuplicateScreen,
   type LifeAsk,
   LifecycleAsk,
+  RefusedAsk,
 } from './EventLifecycle.tsx';
+import { invitedOf, refusalOf, refusedStartOf, usableManage } from './DeleteRefusal.ts';
 import {
   type CardStep,
   type EditPart,
@@ -97,6 +99,7 @@ import {
   type GuestsState,
   OVERVIEW_STATES,
   clockOf as guestsClock,
+  invitedOn,
   isIn,
   peopleOn,
 } from '../guests/GuestsModel.ts';
@@ -144,6 +147,7 @@ function startEvent(
 
 function deleteStart(state: EventDemoState | null): DeleteStart | null {
   if (state === 'deleteDraftGuests') return 'delete';
+  if (state === 'deleteRace' || state === 'deleteRaceRead') return 'deleteTyped';
   return state === 'delete' || state === 'deleteMismatch' || state === 'deleteTyped' ? state : null;
 }
 
@@ -210,6 +214,16 @@ export function EventScreen({
   const [part, setPart] = useState<EditPart>(editOf(state) ?? 'dates');
   const [ask, setAsk] = useState<LifeAsk | null>(state == null ? null : (ASKS[state] ?? null));
   const [deleting, setDeleting] = useState(deleteStart(state) != null);
+  const refusedStart = refusedStartOf(state);
+  const canChange = refusedStart?.canChange ?? true;
+  const [pressed, setPressed] = useState(false);
+  const refusal = refusalOf(
+    event,
+    now,
+    invitedOf(state, refusedStart, invitedOn(event.id), pressed),
+    canChange,
+  );
+  const [refused, setRefused] = useState(refusedStart != null && !refusedStart.race);
   const [duplicating, setDuplicating] = useState(state === 'duplicate');
   const [muted, setMuted] = useState(state === 'muted');
   const [mute, setMute] = useState<Mute>(
@@ -245,7 +259,7 @@ export function EventScreen({
       : null,
   );
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
-  const from = useRef('card');
+  const from = useRef(refusedStart == null ? 'card' : 'delete');
   const opener = useMemo<RefObject<ScreenReaderTarget | null>>(
     () => ({
       get current() {
@@ -292,6 +306,21 @@ export function EventScreen({
     setDeleting(false);
     router.dismissTo(`/demo/events?deleted=${event.id}` as Href);
   };
+  const pressDelete = () => {
+    const answer = refusalOf(
+      event,
+      now,
+      invitedOf(state, refusedStart, invitedOn(event.id), true),
+      canChange,
+    );
+
+    if (answer == null) deleteIt();
+    else {
+      setPressed(true);
+      setDeleting(false);
+      setRefused(true);
+    }
+  };
   const onStep = (step: Extract<CardStep, { kind: 'button' }>) => {
     from.current = 'card';
     if (step.action === 'makeLive') shell.tell(say.ownDesign(W.makeLive));
@@ -305,6 +334,7 @@ export function EventScreen({
     else if (key === 'pause') setAsk('pause');
     else if (key === 'callOff') setAsk('callOff');
     else if (key === 'endNow') setAsk('endNow');
+    else if (refusal != null) setRefused(true);
     else if (needsName(event, peopleOn(event.id))) setDeleting(true);
     else setAsk('deleteDraft');
   };
@@ -390,7 +420,7 @@ export function EventScreen({
   const manage = (
     <Manage
       title={W.manage}
-      items={manageOf(shown, now).map((key) => ({
+      items={usableManage(manageOf(shown, now), canChange).map((key) => ({
         key,
         ...MANAGE[key],
         testID: `event.manage.${key}`,
@@ -594,6 +624,19 @@ export function EventScreen({
             onKeep={() => setAsk(null)}
             onConfirm={onAsked}
           />
+          {refusal != null && (
+            <RefusedAsk
+              open={refused}
+              refusal={refusal}
+              name={event.name}
+              opener={opener}
+              onKeep={() => setRefused(false)}
+              onVerb={(verb) => {
+                setRefused(false);
+                setAsk(verb);
+              }}
+            />
+          )}
           <DeleteScreen
             open={deleting}
             event={event}
@@ -601,7 +644,7 @@ export function EventScreen({
             start={deleteStart(state)}
             opener={opener}
             onClose={() => setDeleting(false)}
-            onDeleted={deleteIt}
+            onDeleted={pressDelete}
           />
           <DuplicateScreen
             open={duplicating}

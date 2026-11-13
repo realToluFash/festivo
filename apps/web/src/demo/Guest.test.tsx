@@ -9,6 +9,7 @@ import { GUEST_ASK_PAGES } from './guestAskStates.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { GUEST_NOTE_PAGES } from './guestNote.ts';
+import { GUEST_CHANGE_PAGES } from './guestChange.ts';
 import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
 
 const SLOW = { timeout: 15000 };
@@ -79,6 +80,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
         ...GUEST_ASK_PAGES,
         ...GUEST_DAY_PAGES,
         ...GUEST_NOTE_PAGES,
+        ...GUEST_CHANGE_PAGES,
       ]
         .flatMap((one) => one.states)
         .map((one) => one.to),

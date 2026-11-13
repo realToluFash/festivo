@@ -29,7 +29,16 @@ import {
   sampleEvent,
   stateFits,
 } from './events.ts';
-import { type DuplicateStart, DeleteByName, DuplicateDialog } from './EventDialogs.tsx';
+import { type DuplicateStart, DeleteByName, DuplicateDialog, RefusedAsk } from './EventDialogs.tsx';
+import {
+  AT_READ,
+  type Refusal,
+  type RefusedVerb,
+  invitedOf,
+  refusalOf,
+  refusedStartOf,
+  usableManage,
+} from './deleteRefusal.ts';
 import {
   type PartProps,
   CoverPart,
@@ -71,6 +80,7 @@ import {
   type NumbersState,
   guestsAt,
   hasGuests,
+  invitedOn,
   numbersStateOf,
   peopleOn,
   replyByOf,
@@ -111,7 +121,7 @@ interface Arrival {
   told?: string;
 }
 
-type Asking = 'pause' | 'callOff' | 'endNow' | 'deleteDraft' | 'delete' | 'duplicate';
+type Asking = 'pause' | 'callOff' | 'endNow' | 'deleteDraft' | 'delete' | 'refused' | 'duplicate';
 
 const PARTS: Record<Exclude<Part, 'replyBy'>, ComponentType<PartProps>> = {
   dates: DatesPart,
@@ -157,7 +167,15 @@ function askingOf(state: EventStateName | null): Asking | null {
     case 'deleteDraftGuests':
     case 'deleteMismatch':
     case 'deleteTyped':
+    case 'deleteRace':
+    case 'deleteRaceRead':
       return 'delete';
+    case 'deleteRefused':
+    case 'deleteRefusedStarted':
+    case 'deleteRefusedRead':
+    case 'deleteRefusedStartedRead':
+    case 'deleteRefusedPaused':
+      return 'refused';
     default:
       return null;
   }
@@ -288,6 +306,16 @@ function EventView({
   const [dirty, setDirty] = useState(false);
   const [leaving, setLeaving] = useState<{ to: Part | null } | null>(null);
   const [asking, setAsking] = useState<Asking | null>(askingOf(state));
+  const refusedStart = refusedStartOf(state);
+  const canChange = refusedStart?.canChange ?? true;
+  const [pressed, setPressed] = useState(false);
+  const [turned, setTurned] = useState(false);
+  const refusal = refusalOf(
+    event,
+    now,
+    invitedOf(state, refusedStart, invitedOn(event.id), pressed),
+    canChange,
+  );
   const [muted, setMuted] = useState(state === 'muted');
   const [muteLoaded, setMuteLoaded] = useState(state !== 'muteNotLoaded');
   const [muteFailed, setMuteFailed] = useState(state === 'muteNotSaved');
@@ -332,6 +360,7 @@ function EventView({
           tell={tell}
           inert={covered}
           waiting={event.id === SAMPLE_EVENT ? waitingLine(keptInbox()) : null}
+          {...(canChange ? {} : { reader: AT_READ })}
         />
       )}
     >
@@ -429,13 +458,14 @@ function EventView({
                       }}
                     />
                     <ManageBlock
-                      manage={manageOf(event, now)}
+                      manage={usableManage(manageOf(event, now), canChange)}
                       onPick={(one) => {
-                        if (one === 'delete')
+                        if (one !== 'delete') setAsking(one);
+                        else if (refusal != null) setAsking('refused');
+                        else
                           setAsking(
                             needsName(event, peopleOn(event.id)) ? 'delete' : 'deleteDraft',
                           );
-                        else setAsking(one);
                       }}
                     />
                   </div>
@@ -497,13 +527,34 @@ function EventView({
             event={event}
             now={now}
             state={state}
-            onKeep={() => setAsking(null)}
+            refusal={refusal}
+            turned={turned}
+            onKeep={() => {
+              setAsking(null);
+              setTurned(false);
+            }}
+            onVerb={(verb) => {
+              setTurned(false);
+              setAsking(verb);
+            }}
             onDone={(next, words) => {
               setAsking(null);
               kept(next);
               if (words != null) tell(words);
             }}
-            onDeleted={() => {
+            onDelete={() => {
+              const answer = refusalOf(
+                event,
+                now,
+                invitedOf(state, refusedStart, invitedOn(event.id), true),
+                canChange,
+              );
+
+              if (answer != null) {
+                setPressed(true);
+                setTurned(true);
+                return;
+              }
               away.release();
               forget(event.id);
               void navigate('/demo/events', { state: { told: W.deleted(event.name) } });
@@ -544,18 +595,24 @@ function Asks({
   event,
   now,
   state,
+  refusal,
+  turned,
   onKeep,
+  onVerb,
   onDone,
-  onDeleted,
+  onDelete,
   onCreated,
 }: {
   asking: Asking | null;
   event: SampleEvent;
   now: Date;
   state: EventStateName | null;
+  refusal: Refusal | null;
+  turned: boolean;
   onKeep: () => void;
+  onVerb: (verb: RefusedVerb) => void;
   onDone: (next: SampleEvent, words: string | null) => void;
-  onDeleted: () => void;
+  onDelete: () => void;
   onCreated: Tell;
 }) {
   switch (asking) {
@@ -601,7 +658,7 @@ function Asks({
           keep={W.keepIt}
           go={W.delete}
           onKeep={onKeep}
-          onGo={onDeleted}
+          onGo={onDelete}
         />
       );
     case 'delete':
@@ -610,16 +667,24 @@ function Asks({
           event={event}
           people={peopleOn(event.id)}
           typed={
-            state === 'deleteTyped'
+            state === 'deleteTyped' || state === 'deleteRace' || state === 'deleteRaceRead'
               ? event.name
               : state === 'deleteMismatch'
                 ? 'Adaeze and Tunde'
                 : ''
           }
           mismatch={state === 'deleteMismatch'}
+          refused={turned ? refusal : null}
           onKeep={onKeep}
-          onDelete={onDeleted}
+          onDelete={onDelete}
+          onVerb={onVerb}
         />
+      );
+    case 'refused':
+      return (
+        refusal != null && (
+          <RefusedAsk event={event} refusal={refusal} onKeep={onKeep} onVerb={onVerb} />
+        )
       );
     case 'duplicate':
       return (

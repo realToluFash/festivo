@@ -581,6 +581,11 @@ export function peopleOn(id: string): number {
   return peopleOf(sampleGuests(id)).length;
 }
 
+/** The people on an event's list who are Invited (sc-3788), which a refused delete counts (sc-14445). */
+export function invitedOn(id: string): number {
+  return countsOf(sampleGuests(id)).invited;
+}
+
 export function replyByOf(id: string): string | null {
   return SAMPLES[id]?.replyBy ?? null;
 }
