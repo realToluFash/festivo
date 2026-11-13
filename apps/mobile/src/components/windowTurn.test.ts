@@ -267,7 +267,13 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
       /!talkBack \|\| !onScreen \|\| !unnamed \|\| opening\.walk\.asking\) return;\s+const keys = setTimeout/,
     );
     expect(walk).toMatch(
-      /!talkBack \|\| !onScreen \|\| unnamed \|\| opening\.walk\.asking\) return;\s+if \(opening\.focus === 'search'\) moveScreenReaderFocus\(search\.current\);\s+else if \(opening\.focus === 'name'\) moveScreenReaderFocus\(field\.current\);/,
+      /!talkBack \|\| !onScreen \|\| unnamed \|\| opening\.walk\.asking\) return;\s+const input =\s+opening\.focus === 'search' \? search\.current : opening\.focus === 'name' \? field\.current : null;/,
+    );
+  });
+
+  it('raises the keys again on Create an organisation’s field once TalkBack’s focus is on it (qa3 #45108)', () => {
+    expect(read('CreateWalkWindow.tsx')).toMatch(
+      /moveScreenReaderFocus\(input\);\s+\/\/ .*\s+const keys = setTimeout\(\(\) => raiseKeysOn\(input\), HOVER_LANDS_MS\);/,
     );
   });
 
