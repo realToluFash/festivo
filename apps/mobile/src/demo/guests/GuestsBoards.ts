@@ -30,7 +30,7 @@ const GUESTS: Record<GuestsState, Board> = {
   notYetInvited: ['a guest not yet invited', 'Bisi Adewale: Mark as invited'],
   guestViewer: ['a guest, Can view', 'Names and replies, nothing else'],
   guestLoading: ['a guest loading', 'The card and rows in Sunk'],
-  notFound: ['a guest no longer there', 'This guest isn’t on this list'],
+  notFound: ['a guest no longer there', 'This guest is not on this list'],
   repliesClosed: ['replies closed', 'Let them change their reply is the step'],
   repliesClosedViewer: ['replies closed, Can view', 'Replies closed on Wed, Nov 4, and no step'],
   reopened: ['one reply reopened', 'They can answer until the event starts'],
