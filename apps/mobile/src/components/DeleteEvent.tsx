@@ -234,6 +234,7 @@ function NamedDelete({
           onChangeText={(value) => {
             setTyped(value);
             setRefused(false);
+            if (typedNameMatches(value, name)) setLeft(false);
           }}
           onBlur={() => setLeft(true)}
           accessibilityLabel={t('eventDelete.type', { event: name })}
