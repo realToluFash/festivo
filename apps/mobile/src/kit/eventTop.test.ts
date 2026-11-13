@@ -51,7 +51,19 @@ describe("an event's page top", () => {
     });
   });
 
-  it("on its side, keeps the body's back and the frame's title", () => {
+  it("on its side, opens Overview on the event's card with no title and no second ‹", () => {
+    expect(eventTop('tabletLandscape', 'overview', 'loading')).toEqual({
+      inEvent: true,
+      cardNamed: true,
+      areaTitled: false,
+      frameBack: null,
+    });
+    expect(eventTop('tabletLandscape', 'overview', 'loaded').cardNamed).toBe(true);
+    expect(eventTop('tabletLandscape', 'overview', 'failed').cardNamed).toBe(false);
+    expect(eventTop('tabletLandscape', 'overview', 'notFound').cardNamed).toBe(false);
+  });
+
+  it("on its side, keeps the body's back and the frame's title on every other area", () => {
     expect(eventTop('tabletLandscape', 'budget', 'loaded')).toEqual({
       inEvent: true,
       cardNamed: false,

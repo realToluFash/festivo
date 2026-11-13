@@ -10,7 +10,6 @@ import {
   WEDDING,
   closeLine,
   countsOf,
-  guestLineOf,
   guestsCardOf,
   guestsStart,
   handMarked,
@@ -369,16 +368,6 @@ describe('invited is a fact with a date and a way (sc-3788)', () => {
       line: 'This event has finished, so guests can’t be invited.',
       step: null,
     });
-  });
-});
-
-describe('the numbers on Events (sc-23284, sc-3786)', () => {
-  it('reads each event in the tiles’ measure, so the rows add up to the tile', () => {
-    expect(guestLineOf(WEDDING)).toBe('96 coming · 25 haven’t replied');
-    expect(guestLineOf('evt-ireti-2')).toBe('31 coming · 22 haven’t replied');
-    expect(guestLineOf('evt-gala-4')).toBe('64 coming · 35 haven’t replied');
-    expect(guestLineOf(PARTY)).toBe('20 coming · 19 haven’t replied');
-    expect(guestLineOf(DRAFT)).toBeNull();
   });
 });
 

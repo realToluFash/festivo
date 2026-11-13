@@ -1424,8 +1424,37 @@ describe('the numbers on Overview and Events (sc-3786, sc-23284)', () => {
     open('/demo/events?state=events');
     await screen.findByRole('heading', { level: 1, name: 'Events' }, WAIT);
 
-    expect(screen.getByText('96 coming · 25 haven’t replied')).toBeDefined();
-    expect(screen.getByText('31 coming · 22 haven’t replied')).toBeDefined();
+    const coming = screen.getByRole('link', {
+      name: '96 coming, opens the guests coming to Adaeze & Tunde’s wedding',
+    });
+    const owed = screen.getByRole('link', {
+      name: '25 haven’t replied, opens the guests of Adaeze & Tunde’s wedding with no reply',
+    });
+
+    expect(coming.getAttribute('href')).toBe('/demo/guests?filter=coming');
+    expect(owed.getAttribute('href')).toBe('/demo/guests?filter=noReply');
+    expect(coming.parentElement?.closest('a')).toBeNull();
+    expect(screen.getByRole('link', { name: /^22 haven’t replied/ })).toBeDefined();
+  });
+
+  it('opens the events each tile counts, and Clear brings the tabs back', SLOW, async () => {
+    open('/demo/events?state=events');
+    await screen.findByRole('heading', { level: 1, name: 'Events' }, WAIT);
+    const tile = screen.getByRole('button', { name: /^Replies in/ });
+
+    fireEvent.click(tile);
+    expect(tile.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText(/^Events with guests who haven’t replied · \d+ of \d+$/)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(tile.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('shows no guest numbers without guests.read', SLOW, async () => {
+    open('/demo/events?state=noGuestsRead');
+    await screen.findByRole('heading', { level: 1, name: 'Events' }, WAIT);
+
+    expect(screen.queryByRole('button', { name: /^Guests invited/ })).toBeNull();
+    expect(screen.queryByText(/haven’t replied/)).toBeNull();
   });
 
   it('opens the wedding’s Guests from its sidebar', SLOW, async () => {

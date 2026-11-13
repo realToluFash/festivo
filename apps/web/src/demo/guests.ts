@@ -19,7 +19,6 @@ import {
   savedNeeds,
 } from './guestNeeds.ts';
 import { repliesOpen } from './replyClose.ts';
-import { GUEST_WORDS, SAMPLE_GUESTS } from './guestCounts.ts';
 import {
   CHOICE_WORDS,
   GW,
@@ -119,8 +118,12 @@ export interface Guest {
   chose: GuestLanguage | null;
   greetAs: string | null;
   whatsApp: WhatsAppConsent;
+  askAgain: AskAgain | null;
   needs: Needs;
 }
+
+/** sc-1363: when a guest who answered Not sure yet will be, or was, asked again; Not sent: too late reads as nothing chosen. */
+export type AskAgain = { kind: 'will' | 'asked'; on: string } | { kind: 'wont' };
 
 const ADDED: Said = { by: COLLEAGUE, how: null, on: '2026-09-14' };
 const BY_MESSAGE: Said = { by: null, how: null, on: '2026-10-12' };
@@ -144,6 +147,7 @@ function guest(id: string, name: string, reply: Reply, extra: Partial<Guest> = {
     chose: null,
     greetAs: null,
     whatsApp: NO_CONSENT,
+    askAgain: null,
     needs: NO_NEEDS,
     ...extra,
   };
@@ -744,9 +748,33 @@ export function replyTail(one: Guest, replyBy: string | null): string {
       midSentence(one.recorded.how ?? 'Other'),
       dayOf(one.recorded.on),
     );
+  if (one.reply === 'notSure' && one.askAgain != null) return askTail(one.askAgain);
   if (one.reply === 'notSure' && replyBy != null) return GW.askedOn(dayOf(replyBy));
 
   return GW.repliedOn(dayOf(one.replied ?? ADDED.on));
+}
+
+function askTail(ask: AskAgain): string {
+  switch (ask.kind) {
+    case 'will':
+      return GW.willBeAskedAgain(dayOf(ask.on));
+    case 'asked':
+      return GW.askedAgain(dayOf(ask.on));
+    case 'wont':
+      return GW.wontBeAskedAgain;
+  }
+}
+
+/** On 30 Oct, with Reply by 4 Nov: asked again a week after 16 Oct, three days before answers close, and never. */
+export const ASK_AGAIN_CLOCK = new Date('2026-10-30T09:41:00Z');
+const ASKS: Record<string, AskAgain> = {
+  folasade: { kind: 'asked', on: '2026-10-23' },
+  lucia: { kind: 'will', on: '2026-11-01' },
+  'mariana-lopes': { kind: 'wont' },
+};
+
+function withAsks(list: readonly Guest[]): Guest[] {
+  return list.map((one) => ({ ...one, askAgain: ASKS[one.id] ?? one.askAgain }));
 }
 
 function lowerFirst(text: string): string {
@@ -1341,15 +1369,6 @@ function nextDay(iso: string): string {
   return at.toISOString().slice(0, 10);
 }
 
-/** Each event's row on Events, in the tiles' measure so the rows add up to the tile (sc-3786, amended). */
-export function guestLineOf(id: string): string | null {
-  const one = SAMPLE_GUESTS[id];
-
-  if (one == null) return null;
-
-  return `${GUEST_WORDS.coming(one.coming)} · ${GUEST_WORDS.notReplied(one.invited - one.replied)}`;
-}
-
 export type Role = 'owner' | 'viewer' | 'staff';
 export type GuestNote = 'recorded' | 'notReplaced' | 'unmarked' | 'unmarkRefused';
 export type Invite = 'copied' | 'refused' | 'mark' | 'markRefused' | 'markNotSaved';
@@ -1421,6 +1440,11 @@ export interface GuestsStart {
   pane: Pane;
   asking: 'replace' | null;
   told: string | null;
+  /** sc-26025: the guests whose Sent on WhatsApp? question is open, and how the next mark from it ends. */
+  asked: string[] | null;
+  askFailed: boolean;
+  markEnds: 'saved' | 'fails' | 'refused';
+  paused: boolean;
 }
 
 export const THEIRS = { email: 'kwame.mensha@outlook.com', number: '7700 900518' } as const;
@@ -1429,6 +1453,7 @@ const CLOCK_DOOR = new Date('2026-11-05T09:41:00Z');
 const CLOCK_DAY1 = new Date('2026-11-05T18:41:00Z');
 const CLOCK_DAY2 = new Date('2026-11-06T10:30:00Z');
 const TODAY = '2026-11-03';
+const CHUKA: Phone = { country: 'NG', number: '806 114 2290' };
 const CLOCK_CLOSES = new Date('2026-11-04T09:41:00Z');
 const CLOCK_EARLIER = new Date('2026-11-01T09:41:00Z');
 /** Past Reply by and before 05:00, when the event's day begins for the door (sc-3895). */
@@ -1516,6 +1541,7 @@ export const GUESTS_STATES = [
   { key: 'repliesClosed', name: 'Replies closed' },
   { key: 'repliesClosedViewer', name: 'Can view: replies closed' },
   { key: 'reopened', name: 'One reply reopened' },
+  { key: 'askAgain', name: 'Not sure yet: when each will be asked again (sc-1363)' },
   { key: 'edit', name: 'Edit guest, in place' },
   { key: 'editErrors', name: 'Save refused before sending' },
   { key: 'editDuplicate', name: 'The name is already on the list' },
@@ -1596,6 +1622,18 @@ export const GUESTS_STATES = [
   { key: 'whatsAppOptedOut', name: 'Sophie Laurent unsubscribed: only the guest can change it' },
   { key: 'whatsAppNoMobile', name: 'Inês Duarte, no mobile number: no WhatsApp row' },
   { key: 'whatsAppViewer', name: 'Can view (guests.read): no contact details, no WhatsApp row' },
+  { key: 'sendNone', name: 'Yusuf Ibrahim: Send on WhatsApp, nothing pressed' },
+  { key: 'sendQuestion', name: 'Pressed: Sent to Yusuf Ibrahim on WhatsApp?' },
+  { key: 'sendTwo', name: 'Two questions open: Yusuf Ibrahim and Chuka Nwankwo' },
+  { key: 'sendNotSaved', name: 'Mark as invited from the question failed' },
+  { key: 'sendFails', name: 'The next mark fails, the one after goes through' },
+  { key: 'sendRefused', name: 'The next mark is refused: the event was paused (409)' },
+  { key: 'sendLeftLive', name: 'The event left Live before the answer: no question' },
+  { key: 'sendLastOne', name: 'Not yet invited: the last one marked, the list empties' },
+  { key: 'sendBecameInvited', name: 'A colleague marked them meanwhile: the question goes' },
+  { key: 'sendInvited', name: 'Already invited: a press asks nothing' },
+  { key: 'sendNoMobile', name: 'Bisi Adewale, no mobile number: not offered' },
+  { key: 'sendFinished', name: 'A Finished event: Yusuf Ibrahim is not offered Send' },
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number]['key'];
@@ -1633,6 +1671,10 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     pane: { kind: 'none' },
     asking: null,
     told: null,
+    asked: null,
+    askFailed: false,
+    markEnds: 'saved',
+    paused: false,
   };
   const column = (pane: Pane, more: Partial<GuestsStart> = {}): GuestsStart => ({
     ...start,
@@ -1654,6 +1696,8 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     choice: 'coming',
   });
   const add = (from: AddStart = {}): GuestsStart => column({ kind: 'add', start: from });
+  const send = (more: Partial<GuestsStart> = {}): GuestsStart =>
+    column(guestPane('yusuf'), { choice: 'notYet', ...more });
   const refusedNeeds = (needs: Partial<Needs>, at: string): GuestsStart => ({
     ...edit('kwame', { values: { needs: needsOf(needs) }, tried: true, needs: ['guest'], at }),
     choice: 'coming',
@@ -1728,6 +1772,12 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return column(guestPane('emeka'), {
         ...closed,
         list: reopen(start.list, 'emeka', '2026-11-05'),
+      });
+    case 'askAgain':
+      return column(guestPane('folasade'), {
+        choice: 'notSure',
+        clock: ASK_AGAIN_CLOCK,
+        list: withAsks(start.list),
       });
     case 'edit':
       return edit('kwame');
@@ -1811,6 +1861,50 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       });
     case 'markNotSaved':
       return column(guestPane('bisi', { invite: 'markNotSaved' }));
+    case 'sendNone':
+      return send();
+    case 'sendQuestion':
+      return send({ asked: ['yusuf'] });
+    case 'sendTwo':
+      return send({
+        asked: ['yusuf', 'chuka-nwankwo'],
+        list: start.list.map((one) =>
+          one.id === 'chuka-nwankwo' ? { ...one, phone: CHUKA } : one,
+        ),
+      });
+    case 'sendNotSaved':
+      return send({ asked: ['yusuf'], askFailed: true });
+    case 'sendFails':
+      return send({ asked: ['yusuf'], markEnds: 'fails' });
+    case 'sendRefused':
+      return send({ asked: ['yusuf'], markEnds: 'refused' });
+    case 'sendLeftLive':
+      return send({ asked: ['yusuf'], paused: true });
+    case 'sendLastOne':
+      return send({
+        asked: ['yusuf'],
+        list: start.list.filter((one) => one.reply !== 'notYet' || one.id === 'yusuf'),
+      });
+    case 'sendBecameInvited':
+      return send({
+        asked: ['yusuf'],
+        list: start.list.map((one) =>
+          one.id === 'yusuf'
+            ? {
+                ...one,
+                reply: 'noReply' as const,
+                invited: { by: 'Tunde Bakare', how: 'WhatsApp' as const, on: TODAY },
+              }
+            : one,
+        ),
+        choice: 'all',
+      });
+    case 'sendInvited':
+      return column(guestPane('amaka'), { choice: 'coming' });
+    case 'sendNoMobile':
+      return send({ pane: guestPane('bisi') });
+    case 'sendFinished':
+      return send({ clock: CLOCKS.finished });
     case 'notYetFilter':
       return column(guestPane('bisi'), { choice: 'notYet' });
     case 'invitedByMessage':
@@ -2023,6 +2117,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'repliesClosed',
     'repliesClosedViewer',
     'reopened',
+    'askAgain',
   ]),
   group('Edit, in place', [
     'edit',
@@ -2096,6 +2191,20 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'whatsAppOptedOut',
     'whatsAppNoMobile',
     'whatsAppViewer',
+  ]),
+  group('Send on WhatsApp (sc-26025)', [
+    'sendNone',
+    'sendQuestion',
+    'sendTwo',
+    'sendNotSaved',
+    'sendFails',
+    'sendRefused',
+    'sendLeftLive',
+    'sendLastOne',
+    'sendBecameInvited',
+    'sendInvited',
+    'sendNoMobile',
+    'sendFinished',
   ]),
   group('The link and Mark as invited', [
     'linkCopied',
