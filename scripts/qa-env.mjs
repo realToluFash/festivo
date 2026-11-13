@@ -1939,6 +1939,11 @@ export const SCREEN_READER_OFF = [
   ['shell', 'settings', 'put', 'secure', 'accessibility_enabled', '0'],
 ];
 
+// Console-sent touches open Gboard's stylus tryout over the app (sc-43614).
+export const STYLUS_HANDWRITING_OFF = [
+  ['shell', 'settings', 'put', 'secure', 'stylus_handwriting_enabled', '0'],
+];
+
 // Expo Go keeps the JS it already has until it is stopped.
 export const iosExpoGoStops = (args, devices) =>
   args.includes('--clear') ? devices.map((udid) => ['simctl', 'terminate', udid, EXPO_GO]) : [];
@@ -1956,6 +1961,7 @@ export const ANDROID_START = [
     adb: SCREEN_READER_OFF,
     say: '  TalkBack is off: turn it on again in Settings for a screen-reader pass.',
   },
+  { name: 'stylus handwriting off', adb: STYLUS_HANDWRITING_OFF },
   {
     name: 'Expo Go installed',
     run: async (s) => {
