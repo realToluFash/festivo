@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TextField } from '../../components/Field.tsx';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { RadioMark } from '../../components/RadioMark.tsx';
-import { readOut } from '../../components/ReadOut.tsx';
+import { ReadOut, readOut } from '../../components/ReadOut.tsx';
 import {
   type ScreenReaderTarget,
   moveScreenReaderFocus,
@@ -674,10 +674,11 @@ export function TellGuests({
         (run.line.alert ? (
           <AlertLine key={run.tries} text={run.line.words} />
         ) : (
-          <View
+          <ReadOut
+            words={run.line.words}
+            answer={run.tries}
             style={[styles.info, styles.status]}
             accessible
-            accessibilityLiveRegion="polite"
             testID="messages.tell.status"
           >
             <View style={styles.markTop}>
@@ -686,7 +687,7 @@ export function TellGuests({
             <Text size={14} weight="medium" style={[styles.grow, styles.line14]}>
               {run.line.words}
             </Text>
-          </View>
+          </ReadOut>
         ))}
     </>
   );
