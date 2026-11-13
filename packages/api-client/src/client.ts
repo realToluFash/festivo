@@ -2162,7 +2162,7 @@ export class ApiClient {
 
     if (feed == null) return page;
 
-    const webcal = this.url(feed).replace(/^https?:/, 'webcal:');
+    const webcal = this.webcalOf(feed);
 
     return {
       ...page,
@@ -2730,9 +2730,11 @@ export class ApiClient {
       );
     }
 
-    const url = this.url(path);
+    return { url: this.url(path), webcal: this.webcalOf(path) };
+  }
 
-    return { url, webcal: url.replace(/^https?:/, 'webcal:') };
+  private webcalOf(path: string): string {
+    return this.url(path).replace(/^https?:/, 'webcal:');
   }
 
   async joinOffers(): Promise<JoinOffers> {
