@@ -1064,7 +1064,7 @@
   cursor: pointer;
 }
 
-.desk .gs-places .gs-stepper input {
+.gs-stepper input {
   width: 3.5em;
   height: var(--sizeHit);
   border: 0;
@@ -1076,7 +1076,7 @@
 }
 
 .gs-step:focus-visible,
-.desk .gs-places .gs-stepper input:focus-visible {
+.gs-stepper input:focus-visible {
   outline: none;
   box-shadow: var(--deskRing);
   border-radius: var(--radiusRow);
