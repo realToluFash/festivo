@@ -20,7 +20,6 @@ import {
   eventTime,
   hostEntries,
   sentWhen,
-  timeIn,
   shortDay,
   codePath,
   offersWhatsApp,
@@ -643,21 +642,10 @@ export function Messages({
         <article
           key={message.id}
           id={message.id}
-          className={note == null ? 'gp-message' : 'gp-message is-note'}
+          className={note ? 'gp-message is-note' : 'gp-message'}
         >
-          {note?.wasStart != null && (
-            <p className="gp-change">
-              <Glyph name="clock" size={16} weight={2.2} />
-              <span>
-                {words.startTimeNow(
-                  eventTime(visit.lang),
-                  timeIn(note.wasStart, visit.lang, EVENT.timeZone),
-                )}
-              </span>
-            </p>
-          )}
           <p className="gp-meta">
-            {`${note == null ? words.hosts : words.noteFrom} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
+            {`${note ? words.noteFrom : words.hosts} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
           </p>
           <p className="gp-bubble" dir="auto">
             {message.words}

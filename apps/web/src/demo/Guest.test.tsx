@@ -88,7 +88,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
     );
 
     expect(guestLinks).toEqual(GUEST_PAGES.flatMap((one) => one.states).map((one) => one.to));
-    expect(guestLinks).toHaveLength(74);
+    expect(guestLinks).toHaveLength(73);
   });
 
   it('opens on the cover card: the invitation, the guest, the event, when and where', async () => {
@@ -265,7 +265,6 @@ const SAYS: [string, () => void][] = [
   ['finishedMessages', () => screen.getByText(THANK_YOU)],
   ['noteInvitation', () => screen.getByText(/^We would love you there with us\./u)],
   ['noteAmongMessages', () => screen.getByText(/^We would love you there with us\./u)],
-  ['noteChange', () => screen.getByText('The start time is now 18:00 (was 17:30).')],
   ['noteLong', () => screen.getByText(/^We are so happy to invite you/u)],
   [
     'messagesWhatsAppOff',
@@ -760,20 +759,15 @@ describe('the hosts’ notes, entries in Messages (pm, 13 Nov, on ux’s #44753)
     expect(screen.getByLabelText('Write to Adaeze Obi and Tunde Bakare')).toBeDefined();
   });
 
-  it('a change’s note sits by time among the messages, Soirely’s line above it', async () => {
-    await guest('noteChange');
+  it('the invitation’s note sits by time among the hosts’ messages, under the same kind of header', async () => {
+    await guest('noteAmongMessages');
 
     expect(metas()).toEqual([
       'A note from Adaeze Obi and Tunde Bakare · Tue, Oct 20 · 10:00',
-      'A note from Adaeze Obi and Tunde Bakare · Thu, Oct 29 · 16:20',
       'Adaeze Obi and Tunde Bakare · Sat, Oct 31 · 10:05',
       'Adaeze Obi and Tunde Bakare · Mon, Nov 2 · 21:14',
       'Adaeze Obi and Tunde Bakare · Tue, Nov 3 · 08:30',
     ]);
-    expect(document.querySelectorAll('.gp-change')).toHaveLength(1);
-    expect(document.querySelector('.gp-change')?.textContent).toBe(
-      'The start time is now 18:00 (was 17:30).',
-    );
   });
 
   it('a page with no notes and no messages has no Messages', async () => {
