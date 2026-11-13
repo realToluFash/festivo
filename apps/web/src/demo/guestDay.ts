@@ -1,3 +1,4 @@
+import { guestPlace } from './arrivalNote.ts';
 import type { Lang, Visit } from './guest.ts';
 import { type SampleEvent, localDay, sampleEvent } from './events.ts';
 import type { DemoLink } from './settings.ts';
@@ -6,16 +7,13 @@ const WEDDING = sampleEvent('evt-wed-4') as SampleEvent;
 
 export type Day = 'before' | 'onTheDay' | 'after';
 
-export type WhereShown = 'full' | 'nameOnly' | 'addressOnly' | 'noteOnly' | 'none';
+export type WhereShown = 'full' | 'nameOnly' | 'addressOnly' | 'none';
 
 export interface Place {
   name: string | null;
   address: string | null;
   note: string | null;
 }
-
-export const DAY_NOTE =
-  'Use the side entrance on Marylebone Road. The front doors open at 17:30.\nThere is no parking at The Landmark: the nearest car park is on Old Marylebone Road.';
 
 /** The rule the server's day flag follows; the page reads the flag (`Visit.day`), never works the day out itself. */
 export function isTheDay(now: Date, event: Pick<SampleEvent, 'startsAt' | 'endsAt' | 'timeZone'>) {
@@ -34,18 +32,22 @@ export function dayAt(
   return isTheDay(now, event) ? 'onTheDay' : 'before';
 }
 
-export function placeOf(where: WhereShown, venue = WEDDING.venue): Place {
+/** The page's one reading of the place: the venue as `where` shows it, and the host's arrival note from sc-24385. */
+export function placeOf(
+  visit: Pick<Visit, 'where' | 'note' | 'phase'>,
+  event: SampleEvent = WEDDING,
+): Place {
+  const { venue, note } = guestPlace(event, visit.note, visit.phase === 'live');
   const name = venue?.name ?? null;
   const address = venue?.address ?? null;
-  const shown: Record<WhereShown, Place> = {
-    full: { name, address, note: null },
-    nameOnly: { name, address: null, note: null },
-    addressOnly: { name: null, address, note: null },
-    noteOnly: { name: null, address: null, note: DAY_NOTE },
-    none: { name: null, address: null, note: null },
+  const shown: Record<WhereShown, Omit<Place, 'note'>> = {
+    full: { name, address },
+    nameOnly: { name, address: null },
+    addressOnly: { name: null, address },
+    none: { name: null, address: null },
   };
 
-  return shown[where];
+  return { ...shown[visit.where], note };
 }
 
 export function hasWhere(place: Place): boolean {
@@ -116,11 +118,11 @@ export const GUEST_DAY_STATES = {
   },
   onTheDayNoteOnly: {
     name: 'On the day, an arrival note and no venue',
-    starts: { ...ON_THE_DAY, ...COMING, ...RECORDED, where: 'noteOnly' },
+    starts: { ...ON_THE_DAY, ...COMING, ...RECORDED, note: 'alone' },
   },
   onTheDayNoWhere: {
     name: 'On the day, no venue and no note: no Where block, the time stays at the head',
-    starts: { ...ON_THE_DAY, ...COMING, ...RECORDED, where: 'none' },
+    starts: { ...ON_THE_DAY, ...COMING, ...RECORDED, where: 'none', note: 'none' },
   },
   onTheDayLoading: {
     name: 'On the day, loading: the code card’s box held at its size',

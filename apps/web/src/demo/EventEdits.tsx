@@ -36,6 +36,8 @@ import {
   wallOf,
 } from './events.ts';
 import { writtenTime } from './clock.ts';
+import { ARRIVAL_NOTE, LONG_NOTE, NOTE_WORDS, noteTooLong, savedNote } from './arrivalNote.ts';
+import './arrivalNote.css';
 import {
   REPLY_BY_WORDS,
   datesAsk,
@@ -320,16 +322,36 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
   const [zoneSaid, setZoneSaid] = useState<string | null>(null);
   const down = state === 'venueDown';
   const field = useRef<HTMLInputElement>(null);
+  const noteBox = useRef<HTMLTextAreaElement>(null);
+  const refusedNote = state === 'venueNoteTooLong' || state === 'venueNoteRefused';
+  const [note, setNote] = useState(
+    refusedNote
+      ? LONG_NOTE
+      : state === 'venueNoteForbidden'
+        ? `${ARRIVAL_NOTE}\nDoors close at 23:00.`
+        : (event.arrivalNote ?? ''),
+  );
+  const [noteError, setNoteError] = useState<string | null>(
+    refusedNote ? NOTE_WORDS.tooLong : null,
+  );
+  const [said, setSaid] = useState<string | null>(
+    state === 'venueNoteTooLong' ? NOTE_WORDS.oneField : null,
+  );
+  const [forbidden, setForbidden] = useState(false);
   const shown = down || !listOpen ? [] : suggestionsFor(address);
   const changed =
     name !== (event.venue?.name ?? '') ||
     address !== (event.venue?.address ?? '') ||
+    note !== (event.arrivalNote ?? '') ||
     zone !== event.timeZone;
 
   useDirty(changed, onDirty);
   useEffect(() => {
     if (typing) field.current?.focus();
   }, [typing]);
+  useEffect(() => {
+    if (state === 'venueNote' || refusedNote) noteBox.current?.focus();
+  }, [state, refusedNote]);
 
   function choose(one: SampleVenue): void {
     setPicked(one);
@@ -349,8 +371,20 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
         const city = picked?.city ?? address.split(',').at(-1)?.trim() ?? event.venue?.city ?? '';
         const title = name.trim() || address.trim();
 
+        if (noteTooLong(note)) {
+          setNoteError(NOTE_WORDS.tooLong);
+          setSaid(NOTE_WORDS.oneField);
+          noteBox.current?.focus();
+          return;
+        }
+        if (state === 'venueNoteForbidden') {
+          setForbidden(true);
+          return;
+        }
+
         onSave({
           ...event,
+          arrivalNote: savedNote(note),
           timeZone: zone,
           venue:
             title === ''
@@ -464,6 +498,44 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
           {zoneSaid}
         </p>
       )}
+      <div className="desk-field">
+        <label htmlFor={`${id}-note`} className="desk-label">
+          {NOTE_WORDS.label}
+          <span className="ev-optional">{` · ${W.optional}`}</span>
+        </label>
+        <div
+          className={noteError == null ? 'desk-box ev-note-box' : 'desk-box ev-note-box is-wrong'}
+        >
+          <textarea
+            ref={noteBox}
+            id={`${id}-note`}
+            rows={4}
+            value={note}
+            aria-invalid={noteError != null}
+            aria-describedby={
+              noteError == null ? `${id}-note-help` : `${id}-note-error ${id}-note-help`
+            }
+            onChange={(change) => {
+              setNote(change.target.value);
+              setForbidden(false);
+              if (!noteTooLong(change.target.value)) setNoteError(null);
+            }}
+          />
+        </div>
+        {noteError != null && (
+          <p id={`${id}-note-error`} className="desk-error">
+            <Glyph name="alert" size={15} weight={2.2} />
+            {noteError}
+          </p>
+        )}
+        <p id={`${id}-note-help`} className="desk-help">
+          {NOTE_WORDS.hint}
+        </p>
+      </div>
+      {forbidden && <Alert>{NOTE_WORDS.forbidden}</Alert>}
+      <p className="visually-hidden" role="status">
+        {said}
+      </p>
       <OnceSaved />
     </Opened>
   );

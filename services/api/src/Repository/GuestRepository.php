@@ -60,7 +60,6 @@ final class GuestRepository extends ServiceEntityRepository
         /** @var ?Guest */
         return $this->createQueryBuilder('g')
             ->where('g.event = :event')
-            ->andWhere('g.host IS NULL')
             ->andWhere('g.nameKey = :key')
             ->setParameter('event', $event->getId(), 'uuid')
             ->setParameter('key', $nameKey)

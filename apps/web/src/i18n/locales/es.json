@@ -2741,6 +2741,8 @@
     "companionName": "Nombre completo del acompañante, {{nth, number}} de {{total, number}}",
     "remove": "Quitar",
     "removeNamed": "Quitar a {{name}}",
+    "removeCompanionOf": "Remove {{host}}’s guest",
+    "removeCompanionOfNth": "Remove {{host}}’s guest · {{nth, number}}",
     "addCompanion": "Añadir un acompañante",
     "mostCompanions": "Un invitado puede traer como máximo {{most, number}} acompañantes."
   }

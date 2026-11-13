@@ -4674,18 +4674,6 @@ button.members-row {
   flex-basis: 100%;
 }
 
-.event-delete-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceSm);
-}
-
-.event-delete-list {
-  margin: 0;
-  padding-left: var(--spaceXl);
-  color: var(--colorInkSecondary);
-}
-
 /* ── Duplicate an event (sc-3593) ─────────────────────────────────────────── */
 
 .event-copy-lists {

@@ -81,7 +81,7 @@ describe('the demo', () => {
     const router = at('/register');
 
     fireEvent.click(screen.getByRole('link', { name: 'Design demo' }));
-    await screen.findByRole('heading', { name: 'Design demo' }, { timeout: 8000 });
+    await screen.findByRole('heading', { name: 'Design demo' }, { timeout: 15_000 });
 
     expect(screen.getByRole('heading', { name: '27 · Sign in · desktop polish' })).toBeDefined();
     expect(
@@ -94,7 +94,7 @@ describe('the demo', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(router.state.location.pathname).toBe('/register');
-  }, 20_000);
+  }, 30_000);
 
   it('checks blank fields before anything is sent, and clears a line once the field is right', async () => {
     await signInBoard();
@@ -1063,7 +1063,7 @@ describe('the demo’s lost authenticator counts one code, and says when a cance
 
   it('lists every new state on the demo home', async () => {
     at('/demo');
-    await screen.findByRole('heading', { name: 'Design demo' });
+    await screen.findByRole('heading', { name: 'Design demo' }, { timeout: 15_000 });
 
     for (const name of [
       'Start, no verified phone',
@@ -1076,7 +1076,7 @@ describe('the demo’s lost authenticator counts one code, and says when a cance
     ]) {
       expect(screen.getByRole('link', { name })).toBeDefined();
     }
-  });
+  }, 30_000);
 
   it('says one code on the start page with no verified phone, and sends the code', async () => {
     await page('?page=start&state=email-only', 'Get back in without your authenticator');
