@@ -32,6 +32,7 @@ import {
   toChip,
 } from './MessagesModel.ts';
 import { resendOf } from './Reach.ts';
+import { parkingReachOf } from './ReasonsSample.ts';
 import {
   GUESTS,
   type GuestKey,
@@ -39,7 +40,6 @@ import {
   type ManyKey,
   PARKING,
   PARKING_BODY,
-  PARKING_REACH,
   READER,
   SCHEDULE_AT,
   DAYS,
@@ -157,6 +157,7 @@ export interface Parts {
 
 const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
 const HELD_CHANNELS: readonly ChannelKey[] = ['email', 'wa'];
+const EMAIL_ONLY: readonly ChannelKey[] = ['email'];
 
 function many(locale: string, channels = SAMPLE_CHANNELS): string {
   return say.onPageTold(channelsWords(channels, locale));
@@ -952,7 +953,8 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
 
   if (key === 'parking' || key === 'receipts') {
     const held = key === 'receipts';
-    const reach = held ? RECEIPTS : PARKING_REACH;
+    const reach = held ? RECEIPTS : parkingReachOf(m.sample);
+    const told = held ? HELD_CHANNELS : m.sample === 'reasons' ? EMAIL_ONLY : undefined;
 
     return {
       title: PARKING,
@@ -962,7 +964,7 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
           ? undefined
           : m.resending && !talk.wide
             ? `${W.toAllGuests} · ${ALL} · ${dayWords(DAYS.parking, talk.locale)}`
-            : `${W.toAllGuests} · ${ALL} · ${many(talk.locale, held ? HELD_CHANNELS : undefined)}`,
+            : `${W.toAllGuests} · ${ALL} · ${many(talk.locale, told)}`,
       lead: <GroupTile side={44} />,
       head: own?.writing === true ? own.head : undefined,
       bare: own?.bare,

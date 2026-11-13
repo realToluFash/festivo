@@ -20,6 +20,7 @@ import {
   outReach,
   outsIn,
   reachFrom,
+  reachedOfThread,
 } from './messages.ts';
 import { type Bit, useInbox } from './messagesContext.ts';
 import { IW, REPLY_BY } from './messagesInvite.ts';
@@ -261,7 +262,7 @@ export function StreamItems({ thread }: { thread: ConvoId }) {
             <Receipt
               reach={reachFrom(PARKING_OF, PARKING_SEEN, inbox.unreached)}
               onWho={() => {
-                act({ kind: 'reached', of: 'parking', thread: 'parking' });
+                act({ kind: 'reached', of: reachedOfThread('parking', inbox), thread: 'parking' });
                 focus('heading');
               }}
             />

@@ -2059,6 +2059,26 @@
   margin-top: var(--spaceSm);
 }
 
+.mg .mg-again.is-inline {
+  width: auto;
+  margin-top: 0;
+  padding: 0 22px;
+}
+
+.mg-try-sms {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.mg .mg-try-sms-wait {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--colorInk);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
 .mg-ask {
   display: flex;
   flex-direction: column;
