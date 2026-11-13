@@ -1052,6 +1052,17 @@
   margin-top: 2px;
 }
 
+/* sc-4330: one line per field changed, each its own key */
+.gp-change-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gp .gp-change-lines > p {
+  margin: 0;
+}
+
 .gp-compose {
   display: flex;
   flex-direction: column;

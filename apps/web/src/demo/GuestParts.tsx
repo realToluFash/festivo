@@ -20,12 +20,12 @@ import {
   eventTime,
   hostEntries,
   sentWhen,
-  timeIn,
   shortDay,
   codePath,
   offersWhatsApp,
 } from './guest.ts';
 import { hasWhere, inDayOrder, mapsLink, placeOf } from './guestDay.ts';
+import { ChangeLines } from './GuestChange.tsx';
 
 const LINES = {
   map: [
@@ -645,17 +645,7 @@ export function Messages({
           id={message.id}
           className={note == null ? 'gp-message' : 'gp-message is-note'}
         >
-          {note?.wasStart != null && (
-            <p className="gp-change">
-              <Glyph name="clock" size={16} weight={2.2} />
-              <span>
-                {words.startTimeNow(
-                  eventTime(visit.lang),
-                  timeIn(note.wasStart, visit.lang, EVENT.timeZone),
-                )}
-              </span>
-            </p>
-          )}
+          {note != null && <ChangeLines note={note} visit={visit} words={words} />}
           <p className="gp-meta">
             {`${note == null ? words.hosts : words.noteFrom} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
           </p>

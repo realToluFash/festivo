@@ -13,6 +13,7 @@ import {
 } from './guestKitchen.ts';
 import type { GuestNote } from './arrivalNote.ts';
 import { guestNoteStarts, isGuestNoteState } from './guestNote.ts';
+import { type ChangeLine, guestChangeStarts, isGuestChangeState } from './guestChange.ts';
 import { NO_PLACES, type Party, guestPartyStarts, isGuestPartyState } from './guestCompanions.ts';
 import {
   type Day,
@@ -81,30 +82,22 @@ export const MESSAGES: readonly Message[] = [
 
 /** A note sent with an invitation or a change: an entry in Messages, by time (pm, 13 Nov, on ux's #44753). */
 export interface HostNote extends Message {
-  /** sc-4330: the start guests were told before, for Soirely's prepared line; null on an invitation's note. */
-  wasStart: string | null;
+  /** sc-4330: Soirely's prepared lines above a change's note, with the values this guest was sent; none on an invitation's. */
+  lines: readonly ChangeLine[];
 }
 
 export const INVITATION_NOTE: HostNote = {
   id: 'n-invitation',
   at: '2026-10-20T09:00:00Z',
-  wasStart: null,
+  lines: [],
   words:
     'We would love you there with us. Children are very welcome, and there is a quiet room by the cloakroom for little ones who need a rest.\n\nAdaeze & Tunde',
-};
-
-export const CHANGE_NOTE: HostNote = {
-  id: 'n-change',
-  at: '2026-10-29T16:20:00Z',
-  wasStart: '2026-11-05T17:30:00Z',
-  words:
-    'We have moved the start back half an hour, so everyone coming from the airport has time. Dinner is still at 20:00.',
 };
 
 export const LONG_NOTE: HostNote = {
   id: 'n-long',
   at: '2026-10-20T09:00:00Z',
-  wasStart: null,
+  lines: [],
   words: [
     'We are so happy to invite you, and we wanted to tell you a little about the day before it comes.',
     'The ceremony is in the Grand Hall on the ground floor, with step-free access from Marylebone Road. Doors open at 17:30, and we will start at 18:00 sharp, so please give yourselves time for the traffic on a Thursday evening. There is a cloakroom by the main doors, and the staff there will hold bags and coats all night.',
@@ -565,10 +558,6 @@ const STATES = {
     name: 'The invitation’s note among the hosts’ messages',
     starts: { ...MESSAGED, notes: [INVITATION_NOTE] },
   },
-  noteChange: {
-    name: 'A change sent with a note (sc-4330)',
-    starts: { ...MESSAGED, notes: [INVITATION_NOTE, CHANGE_NOTE] },
-  },
   noteLong: {
     name: 'A long note',
     starts: { notes: [LONG_NOTE] },
@@ -633,6 +622,7 @@ function startsOf(
   if (isGuestKitchenState(value))
     return guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS });
   if (isGuestNoteState(value)) return guestNoteStarts(value);
+  if (isGuestChangeState(value)) return guestChangeStarts(value);
   if (isGuestPartyState(value)) return guestPartyStarts(value);
   if (isGuestDayState(value)) return guestDayStarts(value);
 
@@ -750,8 +740,8 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
     ).map(link),
   },
   {
-    name: 'The hosts’ notes, entries in Messages (sc-3971, sc-4330)',
-    states: (['noteInvitation', 'noteAmongMessages', 'noteChange', 'noteLong'] as const).map(link),
+    name: 'The hosts’ notes, entries in Messages (sc-3971)',
+    states: (['noteInvitation', 'noteAmongMessages', 'noteLong'] as const).map(link),
   },
   {
     name: 'Your messages, opened from the guest’s page (sc-3969, sc-3950)',
@@ -990,7 +980,9 @@ const BOARD_ENGLISH = {
   calendarGoogle: 'Google Calendar',
   messages: 'Messages',
   noteFrom: 'A note from {{hosts}}',
-  startTimeNow: 'The start time is now {{now}} (was {{was}}).',
+  changeStartTime: 'The start time is now {{new}} (was {{old}}).',
+  changeVenue: 'The venue is now {{new}} (was {{old}}).',
+  changeCalledOff: '{{event}} has been called off. It won’t go ahead.',
   writeTo: 'Write to {{hosts}}',
   sendMessage: 'Send',
   sent: 'Sent',
@@ -1157,7 +1149,17 @@ export function wordsFor(lang: Lang) {
     calendarGoogle: board('calendarGoogle'),
     messages: board('messages'),
     noteFrom: board('noteFrom', { hosts }),
-    startTimeNow: (now: string, was: string) => board('startTimeNow', { now, was }),
+    changeLine: (line: ChangeLine, slots: Slots): string =>
+      board(
+        (
+          {
+            startTime: 'changeStartTime',
+            venue: 'changeVenue',
+            calledOff: 'changeCalledOff',
+          } as const
+        )[line],
+        slots,
+      ),
     writeTo: board('writeTo', { hosts }),
     sendMessage: board('sendMessage'),
     messageCount: (count: number) => board('messageCount', { count, most: MESSAGE_MOST }),
