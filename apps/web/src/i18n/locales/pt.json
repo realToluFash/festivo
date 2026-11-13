@@ -2822,7 +2822,7 @@
     "saveAnyway": "Guardar mesmo assim",
     "changeName": "Alterar o nome",
     "conflict": "Outra pessoa alterou os dados deste convidado. Esta é a versão guardada.",
-    "theirs": "Versão guardada",
+    "theirs": "Guardada",
     "yours": "A sua versão",
     "conflictLine": "«Usar a guardada» preenche o formulário com a versão guardada e descarta as suas alterações. «Manter a minha» guarda as suas alterações em vez da outra versão.",
     "useTheirs": "Usar a guardada",
