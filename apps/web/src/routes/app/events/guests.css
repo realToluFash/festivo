@@ -8,6 +8,11 @@
   --gsAmberRing: color-mix(in srgb, var(--colorAttention) 45%, var(--colorAttentionTint));
 }
 
+.gs-page h1,
+.gs-page h2 {
+  margin: 0;
+}
+
 .gs-top {
   display: flex;
   align-items: center;

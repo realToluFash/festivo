@@ -316,6 +316,62 @@ describe('Guests (sc-1468)', () => {
     });
   });
 
+  it('asks about a name a companion already has, never an unnamed one (Decided, 13 Nov)', async () => {
+    const sent = await opened({});
+
+    type('Full name', 'OBI EZE');
+    fireEvent.click(addButton());
+
+    expect(
+      await within(form()).findByRole('heading', { name: 'OBI EZE is already on the list' }),
+    ).toBeDefined();
+    expect(sent.some((one) => one.line === 'POST /api/events/ev_1/guests')).toBe(false);
+  });
+
+  it('says a number the server refuses as not a mobile in the server’s words, not as too short', async () => {
+    await opened({
+      'POST /api/events/ev_1/guests': () =>
+        problem('validation_failed', 422, {
+          violations: [
+            {
+              propertyPath: 'mobile',
+              message: 'That is not a mobile number for United Kingdom. Check it and try again.',
+              code: 'phone_invalid',
+            },
+          ],
+        }),
+    });
+
+    type('Full name', 'Kwame Mensah');
+    fireEvent.change(screen.getByRole('combobox', { name: 'Country' }), {
+      target: { value: 'GB' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /^Mobile number/u }), {
+      target: { value: '07700900123' },
+    });
+    fireEvent.click(addButton());
+
+    expect(
+      await within(form()).findByText(
+        'That is not a mobile number for United Kingdom. Check it and try again.',
+      ),
+    ).toBeDefined();
+    expect(within(form()).queryByText(/too short/u)).toBeNull();
+  });
+
+  it('answers a deleted event as one that never existed, under the organisation’s sidebar', async () => {
+    signedIn();
+    await onGuests({ 'GET /api/events/ev_1': () => problem('not_found', 404) });
+
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: 'This event is not available',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(screen.queryByRole('navigation', { name: 'Event' })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Event$/u })).toBeNull();
+  });
+
   it('asks the same when the server answers guest_already_listed', async () => {
     await opened({
       'POST /api/events/ev_1/guests': () => problem('guest_already_listed', 409),

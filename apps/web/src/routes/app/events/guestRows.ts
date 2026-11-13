@@ -42,11 +42,17 @@ export function blank(name: string | null): boolean {
   return name == null || name.trim() === '';
 }
 
-/** The same words ignoring case and accents: "José Ávila" is "jose avila". */
-export function listedAs(guests: readonly Guest[], name: string): Guest | null {
+/** A guest or a named companion with the same words, ignoring case and accents: "José Ávila" is "jose avila". */
+export function isListed(guests: readonly Guest[], name: string): boolean {
   const wanted = nameKey(name);
 
-  return guests.find((one) => nameKey(one.fullName) === wanted) ?? null;
+  return guests.some(
+    (one) =>
+      nameKey(one.fullName) === wanted ||
+      one.companions.some(
+        (companion) => !blank(companion.fullName) && nameKey(companion.fullName ?? '') === wanted,
+      ),
+  );
 }
 
 /** In code points, as the API counts them. */
@@ -63,7 +69,14 @@ export interface Typed {
 }
 
 export type Problem =
-  'blank' | 'tooLong' | 'emailShape' | 'phoneTooShort' | 'phoneTooLong' | 'noCountry';
+  | 'blank'
+  | 'tooLong'
+  | 'emailShape'
+  | 'phoneTooShort'
+  | 'phoneTooLong'
+  | 'noCountry'
+  // A number of a length its country uses that the API still refuses, in the API's words.
+  | { refused: string };
 
 /** Field keys in the form's order: fullName, email, mobile, then companion-0 and on. */
 export type Problems = Readonly<Record<string, Problem>>;
@@ -103,7 +116,7 @@ export function violationProblems(violations: readonly Violation[], typed: Typed
     else if (key === 'email') found.email = 'emailShape';
     else if (key === 'mobile')
       found.mobile =
-        one.propertyPath === 'countryCode' ? 'noCountry' : (own.mobile ?? 'phoneTooShort');
+        one.propertyPath === 'countryCode' ? 'noCountry' : (own.mobile ?? { refused: one.message });
     else if (key.startsWith('companion-')) found[key] = 'tooLong';
   }
 
