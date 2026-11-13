@@ -38,6 +38,8 @@ import { GW, HOW_INVITED, type HowInvited, REPLY_WORDS } from './guestsWords.ts'
 import { GUESTS as CONVERSATIONS, MESSAGES_AT } from './messages.ts';
 import { Turning } from './DataControlParts.tsx';
 import { THEIR_WORDS } from './guestRequest.ts';
+import { type Needs, NW, accessNames, allergyNames, dietNames } from './guestNeeds.ts';
+import { AllergyMark } from './GuestNeeds.tsx';
 import { whatsAppRowOf } from './whatsAppConsent.ts';
 import { CardStep, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 
@@ -162,6 +164,7 @@ export function GuestView({
         onEdit={actions.onEdit}
         onAgree={actions.onAgree}
       />
+      {manages && erase !== 'erased' && <NeedsBlock guest={guest} heading={heading} />}
       {showsInvitation ? (
         <Invitation
           guest={guest}
@@ -305,6 +308,68 @@ function Details({
           </li>
         )}
       </ul>
+    </section>
+  );
+}
+
+function NeedsRows({ needs }: { needs: Needs }) {
+  const rows = [
+    { key: 'allergies', title: allergyNames(needs).join(', '), label: NW.allergies },
+    { key: 'diet', title: dietNames(needs).join(', '), label: NW.diet },
+    { key: 'access', title: accessNames(needs).join(', '), label: NW.access },
+    { key: 'note', title: needs.note, label: NW.privateNote },
+  ].filter((row) => row.title !== '');
+
+  return rows.map((row) => (
+    <li key={row.key} className="desk-row">
+      <IconLead name={row.key === 'allergies' ? 'alert' : row.key === 'note' ? 'lock' : 'info'} />
+      <div className="gs-row-words">
+        <RowWords title={row.title} lines={[row.label]} />
+        {row.key === 'allergies' && <AllergyMark />}
+      </div>
+    </li>
+  ));
+}
+
+function recorded(needs: Needs | undefined): needs is Needs {
+  return (
+    needs != null &&
+    (needs.allergies.length > 0 ||
+      needs.diet.length > 0 ||
+      needs.access.length > 0 ||
+      needs.note.trim() !== '')
+  );
+}
+
+/** sc-3777: allergies, diet and access under their own headings, the guest's then each companion's; for people who manage guests only. */
+function NeedsBlock({ guest, heading }: { guest: Guest; heading: string }) {
+  const companions = guest.companions.flatMap((one) =>
+    recorded(one.needs) ? [{ one, needs: one.needs }] : [],
+  );
+  const none = !recorded(guest.needs) && companions.length === 0;
+
+  return (
+    <section className="desk-block" aria-labelledby={`${heading}-needs`}>
+      <Head level={3} title={<span id={`${heading}-needs`}>{NW.needs}</span>} />
+      {none ? (
+        <p className="desk-line">{NW.noDietary}</p>
+      ) : (
+        <>
+          {recorded(guest.needs) && (
+            <ul className="desk-rows gs-rows">
+              <NeedsRows needs={guest.needs} />
+            </ul>
+          )}
+          {companions.map(({ one, needs }) => (
+            <div key={one.id} className="gs-their-needs">
+              <h4 className="gs-their-head">{companionName(guest, one)}</h4>
+              <ul className="desk-rows gs-rows">
+                <NeedsRows needs={needs} />
+              </ul>
+            </div>
+          ))}
+        </>
+      )}
     </section>
   );
 }

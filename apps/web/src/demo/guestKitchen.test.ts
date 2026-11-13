@@ -13,6 +13,7 @@ import {
   guestKitchenLines,
   guestKitchenStarts,
   mealRows,
+  recordOf,
   ruledOut,
   saved,
   whoOf,
@@ -189,6 +190,32 @@ describe('the free texts and the 100 characters', () => {
     expect(errorsOf(party({ words: 'x'.repeat(101) }).people[0]!).words).toBe('long');
     expect(errorsOf(party({ access: 'é'.repeat(101) }).people[0]!).access).toBe('long');
     expect(errorsOf(party({ other: 'x'.repeat(200) }).people[0]!).other).toBeNull();
+  });
+
+  it('records the guest’s words as Diet · Other and the access line as Access · Other (sc-3777’s shape)', () => {
+    const one = party({
+      allergies: ['sesame', 'other'],
+      other: ' Kiwi ',
+      diet: ['halal'],
+      words: ' No raw onion ',
+      access: 'A seat by the door',
+      host: ['step_free', 'near_exit'],
+      removed: ['near_exit'],
+    }).people[0]!;
+
+    expect(recordOf(one)).toEqual({
+      allergies: ['sesame', 'other'],
+      otherAllergy: 'Kiwi',
+      diet: ['halal', 'other'],
+      otherDiet: 'No raw onion',
+      access: ['step_free', 'other'],
+      otherAccess: 'A seat by the door',
+    });
+    expect(recordOf(party({ diet: ['vegan'], words: '   ' }).people[0]!)).toMatchObject({
+      diet: ['vegan'],
+      otherDiet: '',
+      access: [],
+    });
   });
 
   it('sends focus to the first failing field, card by card', () => {

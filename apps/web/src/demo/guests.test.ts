@@ -135,7 +135,8 @@ describe('the list (sc-3772)', () => {
     if (view.kind !== 'rows') throw new Error('rows');
     expect(view.rows[0]).toMatchObject({
       line: 'Invited by Folake Adeyemi, WhatsApp, Oct 9',
-      label: 'Dr Emeka Nwosu, No reply, Invited by Folake Adeyemi, WhatsApp, Oct 9',
+      label:
+        'Dr Emeka Nwosu, No reply, Invited by Folake Adeyemi, WhatsApp, Oct 9, Allergy, Dietary notes',
     });
     expect(view.rows.slice(0, 5).map((row) => row.person.name)).toEqual([
       'Dr Emeka Nwosu',
