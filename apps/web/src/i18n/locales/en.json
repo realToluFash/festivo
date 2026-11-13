@@ -2713,7 +2713,7 @@
     "heldCompanion": "Companion · Held · comes only if their host accepts",
     "added": "Added",
     "addedBy": "{{date}} by {{name}}",
-    "notFound": "This guest isn’t on this list",
+    "notFound": "This guest is not on this list",
     "notFoundLine": "They may have been removed from the list since you opened it.",
     "backToGuests": "Back to guests",
     "editGuest": "Edit guest",
