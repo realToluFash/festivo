@@ -155,6 +155,43 @@ describe('Send on WhatsApp, the question (sc-26025)', () => {
     },
   );
 
+  it('records the guest as invited on WhatsApp', SLOW, async () => {
+    await guests('sendQuestion');
+    markFromQuestion();
+    await waitFor(
+      () => expect(screen.queryByRole('link', { name: /^Yusuf Ibrahim/u })).toBeNull(),
+      WAIT,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /^Not yet invited · /u }));
+    fireEvent.click(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Invited/u }),
+    );
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
+      target: { value: 'yusuf' },
+    });
+    fireEvent.click(await screen.findByRole('link', { name: /^Yusuf Ibrahim/u }, WAIT));
+
+    expect(
+      await within(column()).findAllByText(/^Invited by .+, WhatsApp, /u, {}, WAIT),
+    ).not.toHaveLength(0);
+  });
+
+  it('asks nothing again once a guest marked meanwhile is marked not invited', SLOW, async () => {
+    await guests('sendBecameInvited');
+    fireEvent.click(within(column()).getByRole('button', { name: 'Mark as not invited' }));
+
+    await waitFor(
+      () =>
+        expect(within(column()).getAllByRole('button', { name: /^Mark as invited/u })).toHaveLength(
+          2,
+        ),
+      WAIT,
+    );
+    expect(question()).toBeNull();
+    expect(keptAsked(WEDDING)).toEqual([]);
+  });
+
   it('sends the focus to the list’s heading when the last one leaves', SLOW, async () => {
     await guests('sendLastOne');
     markFromQuestion();

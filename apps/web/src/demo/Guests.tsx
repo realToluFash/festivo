@@ -377,10 +377,12 @@ function GuestsPage({
     onInvite: (next) => invite(id, next),
     onMark: (how) => {
       setList((was) => markInvited(was, id, how, today));
+      ask(id, false);
       invite(id, null);
     },
     onUnmark: () => {
       setList((was) => markNotInvited(was, id));
+      ask(id, false);
       setPane({ kind: 'guest', id, note: 'unmarked' });
       focus('guest-heading');
     },
