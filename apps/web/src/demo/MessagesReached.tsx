@@ -30,6 +30,7 @@ import {
   TICKS,
   changed,
   closedOf,
+  emailBounced,
   filled,
   fixWord,
   many,
@@ -645,7 +646,7 @@ function FixForm({
           autoComplete="off"
           {...(fixing.fix === 'fixEmail'
             ? {
-                help: filled(person.kind === 'bounced' ? MW.wasBounced : MW.wasAddress, {
+                help: filled(emailBounced(person) ? MW.wasBounced : MW.wasAddress, {
                   address: person.address ?? '',
                 }),
               }

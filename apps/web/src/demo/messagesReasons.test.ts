@@ -5,6 +5,7 @@ import {
   type Unreached,
   REASONS_UNREACHED,
   changed,
+  emailBounced,
   isQuiet,
   resendOf,
   seedOf,
@@ -80,6 +81,26 @@ describe('Who it reached, every reason and Try SMS instead (sc-3966)', () => {
     expect(olumide && trySmsOffered(textedPerson(olumide, 'sent'))).toBe(false);
     expect(olumide && trySmsOffered({ ...olumide, kind: 'inProgress' })).toBe(false);
     expect(olumide && trySmsOffered({ ...olumide, kind: 'held' })).toBe(false);
+  });
+
+  it('never offers it once a channel was too late to send', () => {
+    const chidi = REASONS_UNREACHED.find((one) => one.id === 'chidi');
+    const late = chidi && {
+      ...chidi,
+      lines: [...chidi.lines, { mark: 'notsent' as const, word: 'WhatsApp · Not sent: too late' }],
+    };
+
+    expect(chidi && trySmsOffered(chidi)).toBe(true);
+    expect(late && trySmsOffered(late)).toBe(false);
+  });
+
+  it('leaves only Mark as told in person once a text went, and keeps the bounce by the line', () => {
+    const olumide = REASONS_UNREACHED.find((one) => one.id === 'olumide');
+    const texted = olumide && textedPerson(olumide, 'sent');
+
+    expect(texted?.fixes).toEqual(['toldInPerson']);
+    expect(texted?.kind).toBe('inProgress');
+    expect(texted && emailBounced(texted)).toBe(true);
   });
 
   it('never offers it to someone marked as told', () => {

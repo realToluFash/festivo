@@ -82,6 +82,11 @@ describe('Who it reached: every reason and Try SMS instead at a desk (sc-3966)',
     expect(await screen.findByRole('region', { name: 'In progress · 1' })).toBeDefined();
     expect(rowOf('Olumide Bello').getByText('SMS · Sent')).toBeDefined();
     expect(rowOf('Olumide Bello').queryByRole('button', { name: 'Try SMS instead' })).toBeNull();
+    expect(
+      rowOf('Olumide Bello')
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Mark as told in person']);
     expect(screen.getByRole('button', { name: 'Resend to the 8 not reached' })).toBeDefined();
     expect(said()).toContain('Sent to Olumide Bello.');
   });

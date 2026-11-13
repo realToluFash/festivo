@@ -52,6 +52,7 @@ import {
   type Extra,
   type NoticeCase,
   NOTICE_STATES,
+  QUIET_UNTIL,
   noticeCaseOf,
   noticeCredits,
   noticeSmsOf,
@@ -1040,6 +1041,10 @@ function person(
   return { id, initials, name, kind, lines: [...lines, last], fixes };
 }
 
+export function emailBounced(one: Unreached): boolean {
+  return one.lines.some((line) => line.word === `${MW.email} · ${MW.bounced}`);
+}
+
 const bounced = (why: string): Line => ({
   mark: 'bounced',
   word: `${MW.email} · ${MW.bounced}`,
@@ -1240,7 +1245,6 @@ const REASONS_REACHED: readonly Unreached[] = [
 ];
 
 const QUIET_FROM = '20:00';
-const QUIET_UNTIL = '09:00';
 
 /** Quiet hours (sc-3946): a text waits while it is before 09:00 or from 20:00 in the guest's own time. */
 export function isQuiet(theirTime: string): boolean {
@@ -1254,7 +1258,12 @@ export function trySmsOffered(one: Unreached): boolean {
     one.phone.stopped !== true &&
     one.kind !== 'inProgress' &&
     one.kind !== 'held' &&
-    !one.lines.some((line) => line.word.startsWith(MW.sms) || line.mark === 'held')
+    !one.lines.some(
+      (line) =>
+        line.word.startsWith(MW.sms) ||
+        line.mark === 'held' ||
+        line.word.endsWith(MW.notSentTooLate),
+    )
   );
 }
 
@@ -1304,6 +1313,7 @@ export function textedPerson(one: Unreached, texted: Texted | undefined): Unreac
     ...one,
     kind: texted === 'held' ? 'held' : 'inProgress',
     lines: [...one.lines.slice(0, -1), TEXTED_LINE[texted], ...one.lines.slice(-1)],
+    fixes: ['toldInPerson'],
   };
 }
 
