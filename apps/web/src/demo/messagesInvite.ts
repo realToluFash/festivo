@@ -56,7 +56,6 @@ export const INVITE_TICKS: Ticks = { email: true, sms: true, whatsApp: false };
 export const INVITE_CHANNELS = ['email', 'sms'] as const;
 const WA_CHANNELS = ['email', 'sms', 'whatsApp'] as const;
 
-/** Email and SMS (sc-3971), and WhatsApp once Soirely's template is approved (sc-45251). */
 export function inviteChannelsOf(wa: Category | undefined): readonly InviteChannel[] {
   return wa == null ? INVITE_CHANNELS : WA_CHANNELS;
 }
@@ -89,7 +88,6 @@ interface WaSample {
   language?: string;
 }
 
-/** sc-45251's sample on the wedding's Not yet invited: each mobile number's country and WhatsApp consent. */
 const WA_SAMPLE: Readonly<Record<string, WaSample>> = {
   'chuka-nwankwo': { country: 'NG', consent: 'agreed' },
   'dami-oladipo': { country: 'NG', consent: 'agreed' },
@@ -361,7 +359,6 @@ function reachOf(people: readonly OneGuest[], ticks: Ticks, wa: Category | undef
   };
 }
 
-/** The reach line under Let them know by, while the invitation is written. */
 export function inviteReachOf(
   audience: Audience,
   wa: Category | undefined,
@@ -371,7 +368,6 @@ export function inviteReachOf(
   return reachOf(membersOf(audience, groups, wa).fresh, ticks, wa);
 }
 
-/** The credits line's three forms (sc-45251): texts, texts and WhatsApp messages, or WhatsApp messages. */
 function creditsLine(texts: number, whatsApp: number, balance: number): string {
   const credits = texts + whatsApp;
   const uses =
