@@ -1,5 +1,6 @@
 import { type Account, ApiError, type TimeZoneOption } from '@soirely/api-client';
 import {
+  changeEmail,
   confirmWith,
   contactActions,
   contactsLeft,
@@ -11,6 +12,7 @@ import {
   zoneValue,
   firstUnverified,
   primaryOf,
+  undeliverableAddresses,
 } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +38,7 @@ import {
   ContactsBlock,
   PersonCard,
   RowOffers,
+  UndeliverableLines,
 } from '../../../components/AccountParts.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { Bones } from '../../../components/GeneralParts.tsx';
@@ -79,6 +82,8 @@ export function AccountDesk() {
   const [refresh, setRefresh] = useState(0);
   const [said, setSaid] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState(0);
+  const emailBlock = useRef<HTMLDivElement>(null);
   const [rowError, setRowError] = useState<{
     id: string;
     kind: ContactKind;
@@ -153,6 +158,12 @@ export function AccountDesk() {
     if (said != null) saidLine.current?.focus();
   }, [said]);
 
+  // Focus brings the opened row into view, after the render that opened it.
+  useEffect(() => {
+    if (revealed > 0)
+      emailBlock.current?.querySelector<HTMLElement>('.account-row.is-open')?.focus();
+  }, [revealed]);
+
   async function reread(): Promise<void> {
     const me = await api.me();
     setAccount(me);
@@ -165,6 +176,7 @@ export function AccountDesk() {
         shown: held.address,
         verified: held.verified,
         primary: held.primary,
+        undeliverable: held.undeliverable === true,
       }))
     : [];
   const phones: ContactRow[] = loaded
@@ -230,6 +242,19 @@ export function AccountDesk() {
     } finally {
       setActing(false);
     }
+  }
+
+  /** While there is room, the add flow; at the most an account holds, the address that is not primary, opened in place. */
+  function changeTo(): void {
+    const goes = changeEmail(emails);
+    if (goes.to === 'add') {
+      setDialog({ kind: 'addEmail' });
+      return;
+    }
+    setRowError(null);
+    setAsk(null);
+    setOpen(goes.id);
+    setRevealed((count) => count + 1);
   }
 
   function promoteEmail(row: ContactRow): void {
@@ -355,7 +380,13 @@ export function AccountDesk() {
           </ul>
         </section>
         {loaded
-          ? (['email', 'phone'] as const).map(contacts)
+          ? [
+              <div key="email" ref={emailBlock}>
+                {contacts('email')}
+                <UndeliverableLines rows={undeliverableAddresses(emails)} onChange={changeTo} />
+              </div>,
+              contacts('phone'),
+            ]
           : (['email', 'phone'] as const).map((kind) => (
               <section key={kind} className="desk-block">
                 <Head title={t(KIND_KEYS[kind].section)} />

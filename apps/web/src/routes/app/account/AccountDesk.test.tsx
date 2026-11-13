@@ -457,6 +457,68 @@ describe('Your account at a desk, summary first (sc-30411)', () => {
   });
 });
 
+describe('an address we could not deliver to, at a desk (sc-44949)', () => {
+  it('shows nothing while every address takes our mail', async () => {
+    answering({
+      'GET /api/auth/me': () =>
+        json({ ...ME, emailAddresses: [{ ...PRIMARY, undeliverable: false }, OTHER] }),
+    });
+    open();
+
+    expect(await screen.findByText('folake.adeyemi@gmail.com')).toBeDefined();
+    expect(screen.queryByTestId('account.undeliverable')).toBeNull();
+  });
+
+  it('names the address with Change email, which opens Add an email address while there is room', async () => {
+    answering({
+      'GET /api/auth/me': () =>
+        json({ ...ME, emailAddresses: [{ ...PRIMARY, undeliverable: true }] }),
+    });
+    open();
+
+    expect(
+      await screen.findByText('We couldn’t deliver email to folake@ire.events.'),
+    ).toBeDefined();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Change email, instead of folake@ire.events' }),
+    );
+    expect(within(dialog()).getByRole('textbox')).toBeDefined();
+  });
+
+  it('at the most an account holds, one line each, and Change email opens the address that is not primary', async () => {
+    answering({
+      'GET /api/auth/me': () =>
+        json({
+          ...ME,
+          emailAddresses: [
+            { ...OTHER, undeliverable: true },
+            { ...PRIMARY, undeliverable: true },
+          ],
+        }),
+    });
+    open();
+
+    const lines = within(await screen.findByTestId('account.undeliverable')).getAllByRole(
+      'listitem',
+    );
+    expect(lines.map((line) => line.querySelector('p')?.textContent)).toEqual([
+      'We couldn’t deliver email to folake@ire.events.',
+      'We couldn’t deliver email to folake.adeyemi@gmail.com.',
+    ]);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Change email, instead of folake@ire.events' }),
+    );
+
+    const row = screen.getByRole('button', { name: /folake\.adeyemi@gmail\.com/ });
+    expect(row.getAttribute('aria-expanded')).toBe('true');
+    await waitFor(() => expect(document.activeElement).toBe(row));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    const offers = screen.getByRole('group', { name: 'folake.adeyemi@gmail.com' });
+    expect(within(offers).getByRole('button', { name: 'Remove…' })).toBeDefined();
+  });
+});
+
 const NEW_PHONE = {
   id: 'p2',
   number: '+2348035550199',
