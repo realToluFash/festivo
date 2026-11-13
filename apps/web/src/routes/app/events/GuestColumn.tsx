@@ -45,6 +45,12 @@ export const REPLY_KEY: Record<ReplyWord, string> = {
   held: 'guestList.reply.held',
 };
 
+export function replyDate(repliedAt: string, timeZone: string): string {
+  return new Intl.DateTimeFormat(dateLocale(), { month: 'short', day: 'numeric', timeZone }).format(
+    new Date(repliedAt),
+  );
+}
+
 const MARK: Record<ReplyWord, string> = {
   coming: 'is-coming',
   maybe: 'is-maybe',
@@ -342,14 +348,7 @@ function GuestView({
     day: 'numeric',
   }).format(new Date(guest.added.at));
   const names = guest.companions.map((one) => one.fullName);
-  const replied =
-    guest.repliedAt == null
-      ? null
-      : new Intl.DateTimeFormat(dateLocale(), {
-          month: 'short',
-          day: 'numeric',
-          timeZone,
-        }).format(new Date(guest.repliedAt));
+  const replied = guest.repliedAt == null ? null : replyDate(guest.repliedAt, timeZone);
 
   return (
     <div className="gs-guest">

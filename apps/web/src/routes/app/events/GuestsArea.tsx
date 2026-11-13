@@ -39,7 +39,6 @@ import {
   TextAction,
 } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
-import { dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { type Mesh, meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
@@ -61,7 +60,14 @@ import {
   violationProblems,
   withGuest,
 } from './guestRows.ts';
-import { GuestColumn, REPLY_KEY, ReplyMark, companionShown, guestAddress } from './GuestColumn.tsx';
+import {
+  GuestColumn,
+  REPLY_KEY,
+  ReplyMark,
+  companionShown,
+  guestAddress,
+  replyDate,
+} from './GuestColumn.tsx';
 import { CompanionField, GuestField, PhoneField } from './GuestFields.tsx';
 import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
@@ -630,11 +636,7 @@ function Rows({
               ? word
               : t('guestList.replied', {
                   reply: word,
-                  date: new Intl.DateTimeFormat(dateLocale(), {
-                    month: 'short',
-                    day: 'numeric',
-                    timeZone,
-                  }).format(new Date(guest.repliedAt)),
+                  date: replyDate(guest.repliedAt, timeZone),
                 });
           const mobile = guest.mobile == null ? null : formatPhone(guest.mobile);
           const contact =
