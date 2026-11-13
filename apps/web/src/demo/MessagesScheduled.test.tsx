@@ -132,3 +132,89 @@ describe('A scheduled message’s refused save (sc-3963)', () => {
     ).toBeDefined();
   });
 });
+
+const PAUSED =
+  'This message is waiting while the event is paused. If the event is live again by this message’s time, it goes then. If not, it goes soon after the event is live again, unless that is more than 48 hours late.';
+
+function section(name: string): HTMLElement {
+  const head = within(list()).getByRole('heading', { level: 2, name: new RegExp(`^${name}`, 'u') });
+
+  return head.closest('.mg-section') as HTMLElement;
+}
+
+describe('A scheduled message while its event is paused, finished, or too late (sc-3963)', () => {
+  beforeEach(() => {
+    __setConfig({ ...tested, environment: 'development' });
+    resetSample();
+    resetInbox();
+  });
+
+  it.each([
+    ['scheduledPaused', 'Thu, Nov 5', '09:00'],
+    ['scheduledPausedLate', 'Tue, Nov 3', '08:00'],
+  ])(
+    '%s: the paused line where Goes… was, the time kept under it',
+    SLOW,
+    async (state, day, time) => {
+      await messages(state);
+
+      expect(within(pane()).getByText(PAUSED)).toBeDefined();
+      expect(within(pane()).queryByText(/^Goes /u)).toBeNull();
+      expect(within(pane()).getByText(`${day}, ${time} London time`)).toBeDefined();
+      for (const name of ['Edit', 'Send now', 'Cancel…'])
+        expect(within(pane()).getByRole('button', { name })).toBeDefined();
+      expect(
+        within(section('Scheduled')).getByRole('link', {
+          name: `${SUBJECT}, To Guests who… Is coming · ${day}, ${time}, Scheduled`,
+        }),
+      ).toBeDefined();
+    },
+  );
+
+  it('reads Editing. with no time while paused, and keeps the paused line', SLOW, async () => {
+    await messages('scheduledPausedEdit');
+
+    expect(within(pane()).getByText('Editing.')).toBeDefined();
+    expect(within(pane()).queryByText(/^Editing\. It still goes/u)).toBeNull();
+    expect(within(pane()).getByText(PAUSED)).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(within(pane()).getByText(PAUSED)).toBeDefined();
+    expect(within(pane()).queryByText(/^Goes /u)).toBeNull();
+  });
+
+  it('reads Cancelled by Soirely with the reason, no actions, in Done', SLOW, async () => {
+    await messages('scheduledFinished');
+
+    noActions();
+    expect(
+      within(pane()).getByText(/^Cancelled by Soirely at 09:30\. It was not sent\./u),
+    ).toBeDefined();
+    expect(
+      within(pane()).getByText('The event finished before this message was due.'),
+    ).toBeDefined();
+    expect(within(list()).queryByRole('heading', { name: /^Scheduled/u })).toBeNull();
+    expect(
+      within(section('Done')).getByRole('link', {
+        name: `${SUBJECT}, Cancelled by Soirely at 09:30, 09:30, Cancelled`,
+      }),
+    ).toBeDefined();
+  });
+
+  it('reads Not sent: too late with the reason, no actions, in Done', SLOW, async () => {
+    await messages('scheduledTooLate');
+
+    noActions();
+    expect(within(pane()).getAllByText('Not sent: too late').length).toBeGreaterThan(0);
+    expect(
+      within(pane()).getByText(
+        'The event was not resumed or restored within 48 hours of this message’s time.',
+      ),
+    ).toBeDefined();
+    expect(
+      within(section('Done')).getByRole('link', {
+        name: `${SUBJECT}, To Guests who… Is coming · Sat, Oct 31, 09:00, Not sent: too late`,
+      }),
+    ).toBeDefined();
+  });
+});
