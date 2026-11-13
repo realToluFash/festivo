@@ -73,6 +73,7 @@ import { PeopleCard } from '../people/PeopleCard.tsx';
 import type { CardState } from '../people/PeopleCardModel.ts';
 import {
   type FilterKey,
+  type ListFilter,
   GUESTS_ON,
   type GuestsState,
   OVERVIEW_STATES,
@@ -80,6 +81,7 @@ import {
   isIn,
   peopleOn,
 } from '../guests/GuestsModel.ts';
+import { lastLooked, markLooked } from '../guests/ChangedSince.ts';
 import { GuestsScreen } from '../guests/GuestsScreen.tsx';
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 import type { BudgetState } from '../budget/BudgetModel.ts';
@@ -172,7 +174,8 @@ export function EventScreen({
           ? 'overview'
           : area,
   );
-  const [guestsFrom, setGuestsFrom] = useState<FilterKey | null>(figureOpens);
+  const [guestsFrom, setGuestsFrom] = useState<ListFilter | null>(figureOpens);
+  const [sinceFrom, setSinceFrom] = useState<string | null>(null);
   const [m, dispatch] = useReducer(reduceReach, null, () => {
     const begun = startOf(messages, shell.layout !== 'phone');
     if (state !== 'datesReplyBySaved') return begun;
@@ -328,6 +331,13 @@ export function EventScreen({
     setGuestsFrom(filter);
     setAt('guests');
   };
+  /** sc-4331: the bell's item counts from the last look, then marks it read. */
+  const openChanged = () => {
+    setSinceFrom(lastLooked());
+    markLooked(now);
+    setGuestsFrom('changed');
+    setAt('guests');
+  };
   const numbers = (
     <GuestNumbers
       state={guests != null && isIn(OVERVIEW_STATES, guests) ? guests : 'overview'}
@@ -439,6 +449,7 @@ export function EventScreen({
         onArea={setAt}
         badge={messagesHere && messagesSeen ? badgeFor(m) : null}
         filterFrom={guestsFrom}
+        sinceFrom={sinceFrom}
         onWrite={writeToThem}
         onConversation={theirConversation}
         onMakeLive={() => shell.tell(say.ownDesign(W.makeLive))}
@@ -468,6 +479,7 @@ export function EventScreen({
         more={more}
         onMore={setMore}
         onArea={setAt}
+        onChanged={openChanged}
         start={{
           fix: messages === 'fix',
           push: messages === 'bell',

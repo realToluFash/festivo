@@ -23,7 +23,7 @@ import {
 } from '../../components/Summary.tsx';
 import {
   type Counts,
-  type FilterKey,
+  type ListFilter,
   GROUPS,
   type GroupKey,
   type Person,
@@ -42,20 +42,24 @@ const MENU_AFTER_MS = 700;
 function FilterChoice({
   filter,
   counts,
+  changed,
   start,
   off,
   onChoose,
 }: {
-  filter: FilterKey;
+  filter: ListFilter;
   counts: Counts;
+  changed: number;
   start: boolean;
   off: boolean;
-  onChoose: (key: FilterKey) => void;
+  onChoose: (key: ListFilter) => void;
 }) {
   const trigger = useRef<ViewInstance>(null);
   const [at, setAt] = useState<Anchor | null>(null);
   const word = filterWord(filter);
-  const count = filterCount(filter, counts);
+  const count = filter === 'changed' ? changed : filterCount(filter, counts);
+  const apart = changed > 0 || filter === 'changed';
+  const keys: ListFilter[] = [...(apart ? ['changed' as const] : []), ...filtersFor(counts)];
 
   useEffect(() => {
     if (!start) return;
@@ -79,12 +83,12 @@ function FilterChoice({
         at={at}
         onClose={() => setAt(null)}
         opener={trigger}
-        width={230}
+        width={apart ? 300 : 230}
         testID="guests.filter.menu"
       >
-        {filtersFor(counts).map((key) => {
+        {keys.map((key) => {
           const on = key === filter;
-          const n = filterCount(key, counts);
+          const n = key === 'changed' ? changed : filterCount(key, counts);
           return (
             <Pressable
               key={key}
@@ -92,7 +96,11 @@ function FilterChoice({
                 setAt(null);
                 onChoose(key);
               }}
-              style={({ pressed }) => [styles.menuRow, pressed && styles.menuPressed]}
+              style={({ pressed }) => [
+                styles.menuRow,
+                key === 'changed' && styles.menuApart,
+                pressed && styles.menuPressed,
+              ]}
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
               accessibilityLabel={`${filterWord(key)}, ${n}`}
@@ -160,8 +168,10 @@ export interface ListProps {
   layout: Layout;
   counts: Counts;
   total: number;
-  filter: FilterKey;
-  onFilter: (key: FilterKey) => void;
+  filter: ListFilter;
+  /** sc-4331: the guests Changed since you looked would list; its menu row shows while above 0 or in use. */
+  changed: number;
+  onFilter: (key: ListFilter) => void;
   typed: string;
   onTyped: (typed: string) => void;
   searched: string;
@@ -184,6 +194,7 @@ export function GuestsRows({
   counts,
   total,
   filter,
+  changed,
   onFilter,
   typed,
   onTyped,
@@ -224,6 +235,7 @@ export function GuestsRows({
         <FilterChoice
           filter={filter}
           counts={{ ...counts, list: total }}
+          changed={changed}
           start={menu}
           off={false}
           onChoose={onFilter}
@@ -235,14 +247,16 @@ export function GuestsRows({
             shown={
               rows.length === 0
                 ? 0
-                : searched.trim() === ''
+                : searched.trim() === '' && filter !== 'changed'
                   ? filterCount(filter, counts)
                   : rows.length
             }
             total={total}
             onClear={clear}
           />
-          {rows.length === 0 ? (
+          {filter === 'changed' && changed === 0 ? (
+            <NothingChanged onShowAll={clear} />
+          ) : rows.length === 0 ? (
             <NoMatch onClear={clear} />
           ) : (
             <View style={wide && styles.reach}>
@@ -293,6 +307,20 @@ export function GuestsRows({
         </>
       )}
     </>
+  );
+}
+
+/** sc-4331: nothing changed since the last look, and Show all guests, which does what Clear does. */
+function NothingChanged({ onShowAll }: { onShowAll: () => void }) {
+  useReadOut(W.nothingChanged);
+
+  return (
+    <View style={styles.noMatch} testID="guests.nothingChanged">
+      <Text size={18} weight="bold" accessibilityRole="header" style={styles.noMatchTitle}>
+        {W.nothingChanged}
+      </Text>
+      <TextAction label={W.showAllGuests} onPress={onShowAll} testID="guests.nothingChanged.all" />
+    </View>
   );
 }
 
@@ -375,6 +403,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceLg,
   },
   menuPressed: { backgroundColor: tokens.colorInset },
+  menuApart: {
+    marginBottom: tokens.spaceXs,
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colorBorder,
+  },
   menuTick: { width: 18, alignItems: 'center' },
   noMatch: { gap: 6, paddingTop: tokens.spaceXs },
   noMatchTitle: { lineHeight: 18 * 1.3 },

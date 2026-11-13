@@ -5,7 +5,10 @@ import { describe, expect, it } from 'vitest';
 
 import { TO_FIGURES } from '../messages/MessagesSample.ts';
 import { SAMPLE_GUESTS } from '../events/GuestCounts.ts';
+import { changesSince } from './ChangedSince.ts';
 import {
+  changedRows,
+  filterWord,
   DOOR_STATES,
   countAfter,
   addedGuest,
@@ -48,6 +51,7 @@ import {
   sameNameAs,
 } from './GuestsModel.ts';
 import {
+  CLOCKS,
   DRAFT_GUESTS,
   GUESTS,
   GUEST_LANGUAGES,
@@ -74,7 +78,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(110);
+    expect(GUESTS_STATES).toHaveLength(114);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -656,5 +660,45 @@ describe('the door’s count, one rule for Check-in and the scanner (sc-1454, 5 
       arrived: 41,
       expected: 98,
     });
+  });
+});
+
+describe('Changed since you looked (sc-4331)', () => {
+  const now = new Date(CLOCKS.reader);
+
+  it('lists the bell item’s guests newest first, the answer and when', () => {
+    expect(
+      changedRows(GUESTS, changesSince(null), '', now, 'en-US').map((p) => `${p.name}: ${p.line}`),
+    ).toEqual([
+      'Lucía Ortega: Not sure yet · Changed at 09:31',
+      'Inês Duarte: Coming · Replied at 08:40',
+      'Amaka Eze: Coming · Replied at 07:52',
+      'Camille Dubois: Not coming · Replied Nov 2',
+      'Alhaji Musa Bello: Coming · Replied Nov 2',
+    ]);
+  });
+
+  it('counts what changed after the last look, and a search narrows it', () => {
+    expect(changesSince('2026-11-03T08:00:00Z').map((one) => one.key)).toEqual(['lucia', 'ines']);
+    expect(changesSince(now.toISOString())).toEqual([]);
+    expect(changedRows(GUESTS, changesSince(null), 'eze', now, 'en-US')).toHaveLength(1);
+  });
+
+  it('shows the bell’s label for a change that is not a reply', () => {
+    const [row] = changedRows(
+      GUESTS,
+      [{ key: 'kwame', kind: 'needs', at: '2026-11-02T10:00:00Z' }],
+      '',
+      now,
+      'en-US',
+    );
+    expect(row?.line).toBe('Updated dietary needs · Changed Nov 2');
+  });
+
+  it('opens each state as its board draws it', () => {
+    expect(areaStart('changed')).toMatchObject({ filter: 'changed', since: null });
+    expect(areaStart('changedRow')).toMatchObject({ filter: 'all', menu: true, looked: null });
+    expect(areaStart('changedNone')).toMatchObject({ filter: 'changed', since: CLOCKS.reader });
+    expect(filterWord('changed')).toBe('Changed since you looked');
   });
 });

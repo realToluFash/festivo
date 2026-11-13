@@ -153,6 +153,7 @@ export function MessagesScreen({
   more,
   onMore,
   onArea,
+  onChanged,
   start,
   extra,
 }: {
@@ -163,6 +164,8 @@ export function MessagesScreen({
   more: boolean;
   onMore: (open: boolean) => void;
   onArea: (area: AreaKey) => void;
+  /** sc-4331: the bell's Guest replies item opens the guest list on Changed since you looked. */
+  onChanged?: () => void;
   start: { fix: boolean; push: boolean; keys: boolean };
   extra?: ReactNode;
 }) {
@@ -624,6 +627,7 @@ export function MessagesScreen({
           if (key === 'missed')
             dispatch({ type: 'open', open: { kind: 'reached', of: 'parking' } });
           else if (key === 'change') onArea('overview');
+          else if (onChanged != null) onChanged();
           else if (phone) dispatch({ type: 'open', open: null });
         }}
       />

@@ -43,6 +43,8 @@ import {
   MATCHES,
 } from './MessagesSample.ts';
 import { W, say } from './MessagesWords.ts';
+import { markLooked } from '../guests/ChangedSince.ts';
+import { CLOCKS } from '../guests/GuestsSample.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
@@ -348,6 +350,7 @@ export function BellPlace({
   const [pushing, setPushing] = useState(push);
   const markAll = () => {
     setRead(true);
+    markLooked(new Date(CLOCKS.reader));
     readOut(W.allRead);
   };
   const markAllRead = (
