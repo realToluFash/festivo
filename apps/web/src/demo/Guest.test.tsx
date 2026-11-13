@@ -749,6 +749,26 @@ describe('Your messages: a switch saving and failing, and nothing on record (sc-
     expect(document.querySelectorAll('.gp-yours-line.is-saved')).toHaveLength(1);
   });
 
+  it('the three rows sit in one group, each switch’s word before its track', async () => {
+    await guest('messagesTextsOff');
+    const group = screen.getByRole('group', { name: 'Your messages' });
+    const labels = [...group.querySelectorAll('label.gp-switch')];
+
+    expect(document.querySelectorAll('.gp-yours-rows')).toHaveLength(1);
+    expect([...group.children].map((row) => row.className)).toEqual([
+      'gp-yours-row',
+      'gp-yours-row',
+      'gp-yours-row',
+    ]);
+    expect(labels).toHaveLength(3);
+    for (const label of labels) {
+      expect([...label.children].map((part) => part.className)).toEqual([
+        'gp-switch-word',
+        'gp-switch-track',
+      ]);
+    }
+  });
+
   it('no email address: Email keeps its row with no switch and says so', async () => {
     await guest('messagesNoEmail');
 
@@ -779,7 +799,7 @@ describe('Your messages loading, and its bad link (sc-3969)', () => {
     expect(screen.getByRole('group', { name: 'Your messages' }).getAttribute('aria-busy')).toBe(
       'true',
     );
-    expect(document.querySelectorAll('.gp-yours-row.is-waiting')).toHaveLength(3);
+    expect(document.querySelectorAll('.gp-yours-rows > .gp-yours-row.is-waiting')).toHaveLength(3);
     expect(content().textContent).toBe('Your messagesLoading…');
     expect(screen.queryByRole('switch')).toBeNull();
 

@@ -192,6 +192,13 @@ function Row({
       </div>
       {row.has && (
         <label className="gp-switch">
+          <span className="gp-switch-word" aria-hidden="true">
+            {(['on', 'off', 'saving'] as const).map((one) => (
+              <span key={one} className={one === word ? 'gp-switch-say is-shown' : 'gp-switch-say'}>
+                {one === 'saving' ? words.saving : words.switchWord(one === 'on')}
+              </span>
+            ))}
+          </span>
           <span className="gp-switch-track">
             <input
               type="checkbox"
@@ -210,13 +217,6 @@ function Row({
             >
               {row.saving && <Spinner size={16} on={row.shown ? 'fill' : 'card'} />}
             </span>
-          </span>
-          <span className="gp-switch-word" aria-hidden="true">
-            {(['on', 'off', 'saving'] as const).map((one) => (
-              <span key={one} className={one === word ? 'gp-switch-say is-shown' : 'gp-switch-say'}>
-                {one === 'saving' ? words.saving : words.switchWord(one === 'on')}
-              </span>
-            ))}
           </span>
         </label>
       )}
