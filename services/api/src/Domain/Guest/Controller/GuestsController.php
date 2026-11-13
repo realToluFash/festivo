@@ -134,7 +134,7 @@ final readonly class GuestsController
         );
     }
 
-    /** A hub token for this event's guest list alone; each add and edit publishes the whole list there, without contacts, so a manager reads them again. */
+    /** A hub token for this event's guest list and its headcount; each add and edit publishes the whole list there, without contacts, so a manager reads them again. */
     #[Route('/api/events/{eventId}/guests/subscriptions', name: 'guests_subscribe', methods: ['POST'])]
     #[InEvent(Permission::GuestsRead)]
     public function subscribe(string $eventId): JsonResponse

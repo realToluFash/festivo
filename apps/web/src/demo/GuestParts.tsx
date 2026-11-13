@@ -13,7 +13,6 @@ import {
   MESSAGE_COUNT_FROM,
   MESSAGE_MOST,
   type Mine,
-  THANK_YOU,
   type Visit,
   type Words,
   characters,
@@ -613,16 +612,6 @@ export function AddToCalendar({ words }: { words: Words }) {
         {row(words.calendarGoogle)}
       </div>
     </section>
-  );
-}
-
-/** sc-6476: the hosts' own words, never translated or linked, signed with their names, outside the notice. */
-export function Thanks({ words }: { words: Words }) {
-  return (
-    <figure className="gp-thanks">
-      <blockquote dir="auto">{THANK_YOU}</blockquote>
-      <figcaption>{words.hosts}</figcaption>
-    </figure>
   );
 }
 

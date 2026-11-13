@@ -144,6 +144,7 @@ export function GuestColumn({
   onDirty,
   onAsk,
   onSaved,
+  onShown,
   onClose,
 }: {
   eventId: string;
@@ -166,19 +167,31 @@ export function GuestColumn({
   /** Asks "Discard your changes?" and runs `then` only on Discard. */
   onAsk: (then: () => void) => void;
   onSaved: (guest: GuestDetails) => void;
+  /** Once the guest, or why they cannot be shown, first replaces the loading bones. */
+  onShown: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const [pane, setPane] = useState<Pane>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const editing = useRef(false);
+  const missed = useRef(false);
+  const shown = pane.kind !== 'loading';
+  const showing = useEffectEvent(onShown);
 
   useEffect(() => {
     editing.current = pane.kind === 'edit';
   });
 
   useEffect(() => {
-    if (editing.current) return;
+    if (shown) showing();
+  }, [shown]);
+
+  useEffect(() => {
+    if (editing.current) {
+      missed.current = true;
+      return;
+    }
     let current = true;
 
     api.guest(eventId, guestId).then(
@@ -255,6 +268,15 @@ export function GuestColumn({
   }
 
   if (pane.kind === 'edit') {
+    const leave = (tagged: TaggedGuest): void => {
+      onDirty(false);
+      setPane({ kind: 'guest', tagged });
+      if (missed.current) {
+        missed.current = false;
+        setAttempt((n) => n + 1);
+      }
+    };
+
     return (
       <EditForm
         eventId={eventId}
@@ -265,8 +287,7 @@ export function GuestColumn({
         onDirty={onDirty}
         onCancel={(dirty) => {
           const back = () => {
-            onDirty(false);
-            setPane({ kind: 'guest', tagged: pane.tagged });
+            leave(pane.tagged);
             focus('edit');
           };
 
@@ -279,8 +300,7 @@ export function GuestColumn({
           focus('guest-heading');
         }}
         onSaved={(tagged, changed) => {
-          onDirty(false);
-          setPane({ kind: 'guest', tagged });
+          leave(tagged);
           if (changed) onSaved(tagged.guest);
           focus('edit');
         }}

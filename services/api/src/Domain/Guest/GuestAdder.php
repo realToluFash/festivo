@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Guest;
 
 use App\Audit\Auditor;
-use App\Domain\Guest\Http\GuestSerialiser;
 use App\Domain\Guest\Link\InvitationLinks;
 use App\Domain\Guest\Model\NewGuest;
 use App\Entity\Event;
@@ -13,10 +12,8 @@ use App\Entity\Guest;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
-use App\Enum\RealtimeTopic;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
-use App\Realtime\RealtimePublisher;
 use App\Repository\GuestRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
@@ -28,10 +25,9 @@ final readonly class GuestAdder
 
     public function __construct(
         private GuestRepository $guestRepository,
-        private GuestSerialiser $guestSerialiser,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
-        private RealtimePublisher $realtimePublisher,
+        private GuestListPublisher $guestListPublisher,
     ) {
     }
 
@@ -61,7 +57,7 @@ final readonly class GuestAdder
             return $guest;
         });
 
-        $this->realtimePublisher->publish(RealtimeTopic::EventGuests, $event->getId()->toRfc4122(), $this->guestSerialiser->list($event, contacts: false));
+        $this->guestListPublisher->publish($event);
 
         return $guest;
     }

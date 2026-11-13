@@ -762,6 +762,62 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(puts(sent)).toHaveLength(0);
   });
 
+  it('focuses the guest’s name once they load, however long the read takes (#45708)', async () => {
+    let answer: (response: Response) => void = () => undefined;
+    signedIn();
+    await onGuests({
+      'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA])),
+      'GET /api/events/ev_1/guests/g_1': () =>
+        new Promise<Response>((resolve) => {
+          answer = resolve;
+        }),
+    });
+    fireEvent.click(await screen.findByRole('link', { name: /^Ngozi Eze/u }));
+    await within(column()).findByRole('status');
+    await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+
+    act(() => answer(tagged(DETAILS, '"1"')));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Ngozi Eze' }),
+      ),
+    );
+  });
+
+  it.each(['Save', 'Cancel'])(
+    'shows a colleague’s save that landed mid-edit after %s with nothing changed (#45708)',
+    async (leave) => {
+      const before = config();
+      __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+      StubSource.made = [];
+      vi.stubGlobal('EventSource', StubSource);
+      const hub = () =>
+        json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
+      let details = DETAILS;
+
+      try {
+        await editNgozi({
+          'GET /api/events/ev_1/guests/g_1': () => tagged(details, '"1"'),
+          'POST /api/events/ev_1/guests/subscriptions': hub,
+          'POST /api/realtime/subscriptions': hub,
+        });
+        const source = StubSource.made.find((one) => one.url.includes('guests'))!;
+        details = { ...DETAILS, fullName: 'Ngozi Okafor' };
+        source.publish(listOf([{ ...NGOZI, fullName: 'Ngozi Okafor' }, AMAKA]));
+
+        fireEvent.click(within(column()).getByRole('button', { name: leave }));
+
+        expect(
+          await screen.findByRole('heading', { level: 2, name: 'Ngozi Okafor' }),
+        ).toBeDefined();
+      } finally {
+        __setConfig(before);
+        vi.unstubAllGlobals();
+      }
+    },
+  );
+
   it('saves against the version it read, and says Saved', async () => {
     const saved = { ...DETAILS, fullName: 'Ngozi Eze-Okafor' };
     const sent = await editNgozi({
@@ -1355,7 +1411,11 @@ describe('The wrong-person flag (sc-1526)', () => {
       permissions,
     );
     fireEvent.click(await screen.findByRole('link', { name: /^Ngozi Eze/u }));
-    await screen.findByRole('heading', { level: 2, name: 'Ngozi Eze' });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Ngozi Eze' }),
+      ),
+    );
 
     return sent;
   }

@@ -7,6 +7,7 @@ namespace App\Domain\Guest\Http;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Enum\GuestReply;
+use App\Enum\GuestStanding;
 use App\Locale\GuestLanguage;
 use App\Locale\SupportedLocales;
 use App\Repository\GuestRepository;
@@ -68,7 +69,7 @@ final readonly class GuestSerialiser
             'companions' => Vec\map($companions, static fn (Guest $companion): array => [
                 'id' => $companion->getId()->toRfc4122(),
                 'fullName' => $companion->getFullName(),
-                'state' => GuestReply::Coming === $reply ? 'coming' : 'held',
+                'state' => GuestStanding::of($reply, companion: true)->isHeld() ? 'held' : 'coming',
             ]),
         ];
     }

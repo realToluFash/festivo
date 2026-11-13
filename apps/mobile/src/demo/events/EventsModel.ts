@@ -39,6 +39,7 @@ import { CLOCKS, READER_ZONE, type SampleEvent } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { CHANGES_STATES, FINAL_NUMBERS_STATES, kitchenOwed, othersOwed } from './FinalNumbers.ts';
 import { WRITE_STATES } from './GuestsCanWrite.ts';
+import { CARD_STATES, END_STATES, isCardState, isEndState } from './ThankYou.ts';
 
 export type {
   CardStep,
@@ -472,6 +473,8 @@ export const EVENT_STATES = [
   'muteNotLoaded',
   'muteNotSaved',
   ...WRITE_STATES,
+  ...CARD_STATES,
+  ...END_STATES,
   'more',
   'needsYou',
   'needsYouOne',
@@ -491,9 +494,14 @@ export function eventStateOf(value: string | undefined): EventDemoState | null {
 
 /** Happening now, and a refusal from the start, is the wedding's second day; Finished the week after it; every other state reads the reader's clock. */
 export function clockOf(state: EventDemoState | null): Date {
-  if (state === 'now' || state === 'endNow' || refusedStartOf(state)?.started === true)
+  if (
+    state === 'now' ||
+    state === 'endNow' ||
+    isEndState(state) ||
+    refusedStartOf(state)?.started === true
+  )
     return new Date(CLOCKS.happening);
-  if (state === 'finished') return new Date(CLOCKS.finished);
+  if (state === 'finished' || isCardState(state)) return new Date(CLOCKS.finished);
 
   return new Date(CLOCKS.reader);
 }
