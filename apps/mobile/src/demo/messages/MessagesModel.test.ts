@@ -63,7 +63,7 @@ const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
   it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s six, sc-3960’s, sc-3963’s and sc-3978’s, by both demos’ names', () => {
-    expect(MESSAGES_STATES).toHaveLength(91);
+    expect(MESSAGES_STATES).toHaveLength(130);
     expect(MESSAGES_STATES.slice(72, 75)).toEqual([
       'whatsAppLine',
       'checkWhatsApp',
@@ -694,7 +694,7 @@ describe('Tell guests after a change', () => {
     };
     const change = tellChange(wedding, moved, 'en-US');
 
-    expect(change.what).toEqual(['New dates', 'New venue']);
+    expect(change.what).toEqual(['New date', 'New venue']);
     expect(change.lines[0]).toMatch(/^The dates are now .+ \(was .+\)\.$/u);
     expect(change.lines[1]).toBe('The venue is now Oslo Hall (was The Landmark).');
   });

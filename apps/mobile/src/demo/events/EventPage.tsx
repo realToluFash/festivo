@@ -89,10 +89,20 @@ import { LoadingBlock, Row, Section, TextAction } from '../../components/Summary
 import { type MessagesState, startOf } from '../messages/MessagesModel.ts';
 import { reduceReach } from '../messages/Reach.ts';
 import { TellGuests } from '../messages/MessagesOverlays.tsx';
+import { Untold } from '../messages/MessagesList.tsx';
 import { LONG_FINISHED, PLACE, SAMPLE_EVENT_ID, TELL } from '../messages/MessagesSample.ts';
 import { tellChange } from '../messages/TellChange.ts';
+import {
+  type TellRun,
+  eventBehind,
+  fieldEvents,
+  isTellKind,
+  pressSend,
+  sendingWords,
+  sheetOf,
+} from '../messages/TellKinds.ts';
 import { MessagesScreen, badgeFor } from '../messages/MessagesScreen.tsx';
-import { W as MW, say as sayMessages } from '../messages/MessagesWords.ts';
+import { W as MW } from '../messages/MessagesWords.ts';
 import type { SeatingState } from '../seating/SeatingModel.ts';
 import { SeatingScreen } from '../seating/SeatingScreen.tsx';
 import { GuestNumbers } from '../guests/GuestNumbers.tsx';
@@ -129,14 +139,27 @@ const ASKS: Partial<Record<EventDemoState, LifeAsk>> = {
   deleteDraft: 'deleteDraft',
 };
 
+/** Where sc-4330's states open: Messages for its list and rows, Overview under every sheet and its banner. */
+const TELL_IN_MESSAGES: readonly string[] = [
+  'untoldMerged',
+  'untoldDismissed',
+  'changeRow',
+  'changeSent',
+  'changeMerged',
+  'changeDone',
+];
+
 function startEvent(
   id: string | undefined,
   state: EventDemoState | null,
   messages: MessagesState | null,
+  now: Date,
 ): SampleEvent {
   const event = sampleEvent(id) ?? sampleEvent('evt-wed-4');
   if (event == null) throw new Error('The sample has the wedding.');
   seedFinalNumbers(state);
+  if (isTellKind(messages))
+    return eventBehind(messages, fieldEvents(messages, event)?.now ?? event, now);
   const live = makeLiveStateOf(state);
   if (live != null) return seededEvent(event, live);
   if (messages === 'tell' || messages === 'untold') return { ...event, startsAt: TELL.startsAt };
@@ -195,7 +218,7 @@ export function EventScreen({
     () => (guests == null ? clockOf(state) : guestsClock(guests)),
     [state, guests],
   );
-  const [event, setEvent] = useState(() => startEvent(id, state, messages));
+  const [event, setEvent] = useState(() => startEvent(id, state, messages, now));
   const reach = useMemo(() => reachOf(state, event), [state, event]);
   const live = useMakeLive(state, reach, (host) =>
     setEvent((now) => ({ ...now, hosts: host == null ? now.hosts : [host], status: 'live' })),
@@ -210,7 +233,11 @@ export function EventScreen({
         ? isIn(OVERVIEW_STATES, guests)
           ? 'overview'
           : 'guests'
-        : area == null || area === 'people' || messages === 'tell' || messages === 'tellPlace'
+        : area == null ||
+            area === 'people' ||
+            messages === 'tell' ||
+            messages === 'tellPlace' ||
+            (isTellKind(messages) && !TELL_IN_MESSAGES.includes(messages))
           ? 'overview'
           : area;
   });
@@ -218,15 +245,26 @@ export function EventScreen({
   const [sinceFrom, setSinceFrom] = useState<string | null>(null);
   const [m, dispatch] = useReducer(reduceReach, null, () => {
     const begun = startOf(messages, shell.layout !== 'phone');
+    if (isTellKind(messages)) {
+      const fields = fieldEvents(messages, sampleEvent(id) ?? event);
+      const lines = fields == null ? null : tellChange(fields.told, fields.now, locale);
+
+      return { ...begun, change: sheetOf(messages, lines) };
+    }
     if (state !== 'datesReplyBySaved') return begun;
     const change = tellChange(sampleEvent(id) ?? event, event, locale);
 
     return reduceReach(begun, { type: 'offerTell', change });
   });
+  const onTellRun = useCallback((run: TellRun) => dispatch({ type: 'tellRun', run }), []);
   const [messagesSeen, setMessagesSeen] = useState(messages != null || at === 'messages');
   if (at === 'messages' && !messagesSeen) setMessagesSeen(true);
   const messagesHere = event.id === SAMPLE_EVENT_ID;
-  const [toldEvent, setToldEvent] = useState(() => sampleEvent(id) ?? event);
+  const [toldEvent, setToldEvent] = useState(() => {
+    const sample = sampleEvent(id) ?? event;
+
+    return (isTellKind(messages) ? fieldEvents(messages, sample)?.told : null) ?? sample;
+  });
   const [more, setMore] = useState(state === 'more');
   const [edit, setEdit] = useState<EditPart | null>(editOf(state));
   const [round, setRound] = useState(0);
@@ -270,11 +308,15 @@ export function EventScreen({
           : replyByOf(event.id),
   );
   const [told, setTold] = useState<string | null>(() =>
-    state === 'saved'
-      ? W.saved
-      : state === 'replyBySaved' || state === 'replyByRemoved'
-        ? replyBySaved(replyBy, event.timeZone, locale, now)
-        : null,
+    messages === 'changeSending'
+      ? sendingWords(m.change)
+      : messages === 'allTold'
+        ? MW.allTold
+        : state === 'saved'
+          ? W.saved
+          : state === 'replyBySaved' || state === 'replyByRemoved'
+            ? replyBySaved(replyBy, event.timeZone, locale, now)
+            : null,
   );
   const [tellMoved, setTellMoved] = useState<string | null>(() =>
     state === 'datesReplyBySaved' && replyBy != null
@@ -481,21 +523,36 @@ export function EventScreen({
     else setTold(words);
   };
   const tellSent = () => {
-    dispatch({ type: 'tellSent' });
+    const pressed = pressSend(m.tell);
+    if (pressed.kind === 'run') {
+      dispatch({ type: 'tellRun', run: pressed.run });
+      return;
+    }
+    dispatch({ type: pressed.told === 'sent' ? 'tellSent' : 'tellAllTold' });
     setToldEvent(event);
-    tellHere(sayMessages.queued(TELL.count));
+    tellHere(pressed.told === 'sent' ? sendingWords(m.change) : MW.allTold);
   };
   const tell = messagesHere && (
     <TellGuests
       open={m.telling}
-      lines={m.change.lines}
-      address={m.change.address === true}
+      change={m.change}
+      run={m.tell}
       phone={shell.layout === 'phone'}
       opener={opener}
       onSend={tellSent}
       onNotNow={() => dispatch({ type: 'notNow' })}
-      onSeeWho={() => tellHere(sayMessages.ownDesign(MW.seeWho))}
+      onRun={onTellRun}
       before={tellMoved}
+    />
+  );
+  const banner = messagesHere && m.untold && m.change.what.length > 0 && (
+    <Untold
+      what={m.change.what}
+      onTell={() => dispatch({ type: 'telling', open: true })}
+      onDismiss={() => {
+        dispatch({ type: 'dismissUntold' });
+        setTold(MW.dismissed);
+      }}
     />
   );
 
@@ -646,6 +703,7 @@ export function EventScreen({
         card={card}
         left={
           <>
+            {banner}
             {demoNote}
             {thankYou}
             {details}
@@ -664,6 +722,7 @@ export function EventScreen({
         }
         stacked={
           <>
+            {banner}
             {demoNote}
             {thankYou}
             {numbers}
