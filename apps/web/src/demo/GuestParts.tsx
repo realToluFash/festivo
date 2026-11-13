@@ -25,6 +25,8 @@ import {
   offersWhatsApp,
 } from './guest.ts';
 import { hasWhere, inDayOrder, mapsLink, placeOf } from './guestDay.ts';
+import { inTimeOrder } from './guestChange.ts';
+import { ChangeEntry } from './GuestChange.tsx';
 
 const LINES = {
   map: [
@@ -611,7 +613,10 @@ export function Messages({
   onSend: () => void;
 }) {
   const box = useRef<HTMLTextAreaElement>(null);
-  const shown = MESSAGES.slice(-visit.messages);
+  const shown = inTimeOrder([
+    ...(visit.messages > 0 ? MESSAGES.slice(-visit.messages) : []),
+    ...(visit.change == null ? [] : [{ id: 'change', at: visit.change.at, words: '' }]),
+  ]);
   const live = visit.draft.trim() !== '';
   const length = characters(visit.draft);
   const tooLong = visit.draftTried && length > MESSAGE_MOST;
@@ -638,16 +643,20 @@ export function Messages({
       <h2 id="gp-messages-h" className="gp-h2">
         {words.messages}
       </h2>
-      {shown.map((message) => (
-        <article key={message.id} id={message.id} className="gp-message">
-          <p className="gp-meta">
-            {`${words.hosts} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
-          </p>
-          <p className="gp-bubble" dir="auto">
-            {message.words}
-          </p>
-        </article>
-      ))}
+      {shown.map((message) =>
+        message.id === 'change' && visit.change != null ? (
+          <ChangeEntry key="change" change={visit.change} visit={visit} words={words} />
+        ) : (
+          <article key={message.id} id={message.id} className="gp-message">
+            <p className="gp-meta">
+              {`${words.hosts} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
+            </p>
+            <p className="gp-bubble" dir="auto">
+              {message.words}
+            </p>
+          </article>
+        ),
+      )}
       {visit.mine.map((mine: Mine, index) => (
         <article key={index} className="gp-message is-mine">
           <p className="gp-bubble" dir="auto">

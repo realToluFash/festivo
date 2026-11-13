@@ -13,6 +13,12 @@ import {
 } from './guestKitchen.ts';
 import type { GuestNote } from './arrivalNote.ts';
 import { guestNoteStarts, isGuestNoteState } from './guestNote.ts';
+import {
+  type ChangeLine,
+  type ChangeSent,
+  guestChangeStarts,
+  isGuestChangeState,
+} from './guestChange.ts';
 import { NO_PLACES, type Party, guestPartyStarts, isGuestPartyState } from './guestCompanions.ts';
 import {
   type Day,
@@ -190,6 +196,8 @@ export interface Visit {
   menuOpen: boolean;
   readerZone: string;
   messages: number;
+  /** sc-4330: a change sent with a note, an entry in Messages; null when none was or it had no note. */
+  change: ChangeSent | null;
   mine: readonly Mine[];
   draft: string;
   draftFailed: boolean;
@@ -235,6 +243,7 @@ const BASE: Visit = {
   menuOpen: false,
   readerZone: READER_ZONE,
   messages: 0,
+  change: null,
   mine: [],
   draft: '',
   draftFailed: false,
@@ -578,6 +587,7 @@ function startsOf(
   if (isGuestKitchenState(value))
     return guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS });
   if (isGuestNoteState(value)) return guestNoteStarts(value);
+  if (isGuestChangeState(value)) return guestChangeStarts(value);
   if (isGuestPartyState(value)) return guestPartyStarts(value);
   if (isGuestDayState(value)) return guestDayStarts(value);
 
@@ -743,7 +753,7 @@ export function forTheDay(visit: Visit): boolean {
 
 export function showsMessages(visit: Visit): boolean {
   return (
-    visit.messages > 0 &&
+    (visit.messages > 0 || visit.change != null) &&
     (visit.view.kind === 'answer' || visit.view.kind === 'recorded' || visit.view.kind === 'closed')
   );
 }
@@ -921,6 +931,10 @@ const BOARD_ENGLISH = {
   messageFailed: 'Your message wasn’t sent. Your words are still here. Try again.',
   messageCount: '{{count}} of {{most}} characters',
   messageTooLong: 'Shorten your message to {{most}} characters or fewer.',
+  changeStartTime: 'The start time is now {{new}} (was {{old}}).',
+  changeVenue: 'The venue is now {{new}} (was {{old}}).',
+  changeCalledOff: '{{event}} has been called off. It won’t go ahead.',
+  noteFrom: 'A note from {{hosts}}',
   whatsAppBox: 'Send me updates on WhatsApp',
   whatsAppHint:
     'Soirely sends them on behalf of {{organisation}}. Reply STOP at any time to end them.',
@@ -1084,6 +1098,18 @@ export function wordsFor(lang: Lang) {
     sendMessage: board('sendMessage'),
     messageCount: (count: number) => board('messageCount', { count, most: MESSAGE_MOST }),
     messageTooLong: board('messageTooLong', { most: MESSAGE_MOST }),
+    changeLine: (line: ChangeLine, slots: Slots): string =>
+      board(
+        (
+          {
+            startTime: 'changeStartTime',
+            venue: 'changeVenue',
+            calledOff: 'changeCalledOff',
+          } as const
+        )[line],
+        slots,
+      ),
+    noteFrom: board('noteFrom', { hosts }),
     sent: board('sent'),
     messageFailed: board('messageFailed'),
     whatsAppBox: board('whatsAppBox'),
