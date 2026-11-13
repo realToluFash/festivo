@@ -27,10 +27,7 @@ appId: host.exp.Exponent
     id: 'noOrganisation'
 - takeScreenshot: settings
 - pressKey: Home
-- runScript:
-    file: ../batch/helper.js
-    env:
-      ASK: /open?path=/--/settings
+- openLink: ${METRO_URL}/--/settings
 - extendedWaitUntil:
     visible:
       id: 'never.there'

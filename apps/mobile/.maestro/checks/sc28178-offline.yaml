@@ -30,15 +30,11 @@ onFlowComplete:
     env:
       ASK: /api?to=stopped
 - pressKey: Home
-- runScript:
-    file: ../batch/helper.js
-    env:
-      ASK: /open?path=/--/calendar
+- openLink: ${METRO_URL}/--/calendar
 - extendedWaitUntil:
     visible:
       id: 'offline.band'
     timeout: 30000
-    optional: true
 - assertNotVisible: '{{t:switcher.switched}}'
 - takeScreenshot: offline-calendar
 - tapOn:

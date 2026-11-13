@@ -20,10 +20,7 @@ appId: host.exp.Exponent
     file: ../batch/helper.js
     env:
       ASK: /membership?change=remove&org=Alpha
-- runScript:
-    file: ../batch/helper.js
-    env:
-      ASK: /open?path=/--/calendar
+- openLink: ${METRO_URL}/--/calendar
 - extendedWaitUntil:
     visible: '{{t:switcher.switched}}'
     timeout: 20000
