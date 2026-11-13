@@ -1,3 +1,4 @@
+import { writtenTime } from '../clock.ts';
 import { LINK_CHARS, smsParts } from '../events/MakeLive.ts';
 import { LIVE } from '../events/EventsWords.ts';
 import { READER_ZONE } from '../events/EventsSample.ts';
@@ -249,12 +250,7 @@ function stopWhen(locale: string): { date: string; time: string } {
       day: 'numeric',
       timeZone: READER_ZONE,
     }).format(at),
-    time: new Intl.DateTimeFormat(locale, {
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-      timeZone: READER_ZONE,
-    }).format(at),
+    time: writtenTime(at, locale, READER_ZONE),
   };
 }
 
