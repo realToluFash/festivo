@@ -62,8 +62,8 @@ beforeAll(() =>
 const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
-  it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s six and sc-3960’s and sc-3963’s, by both demos’ names', () => {
-    expect(MESSAGES_STATES).toHaveLength(85);
+  it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s six, sc-3960’s, sc-3963’s and sc-3978’s, by both demos’ names', () => {
+    expect(MESSAGES_STATES).toHaveLength(91);
     expect(MESSAGES_STATES.slice(72, 75)).toEqual([
       'whatsAppLine',
       'checkWhatsApp',

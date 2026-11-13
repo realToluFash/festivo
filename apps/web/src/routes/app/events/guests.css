@@ -437,6 +437,19 @@
   margin-bottom: var(--spaceLg);
 }
 
+/* A guest's column loading (sc-3773): the cover card's place, then three detail rows. */
+.gs-bone-guest {
+  height: 170px;
+  border-radius: var(--deskCard);
+}
+
+.gs-bone-icon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--spaceSm);
+}
+
 /* A guest's column (sc-3773): the cover card the guest sees, then Details; Edit in place. */
 .gs-guest {
   display: flex;

@@ -86,8 +86,7 @@ export const W = {
   ownLanguage: 'Each guest gets this in their own language.',
   noteForGuests: 'Note for your guests',
   optional: 'Optional',
-  noteOnPage:
-    'Shown on each guest’s page, under the change. Never sent by email, text or WhatsApp.',
+  noteOnPage: 'Shown on each guest’s page, in Messages. Never sent by email, text or WhatsApp.',
   send: 'Send',
   notNow: 'Not now',
   notTold: 'Guests have not been told yet',
@@ -362,4 +361,23 @@ export const say = {
   subjectTooLong: (most: string) => `Shorten the subject to ${most} characters or fewer.`,
   messageTooLong: (most: string) => `Shorten the message to ${most} characters or fewer.`,
   ownDesign: (what: string) => `${what.replace(/…$/u, '')} has its own design.`,
+};
+
+/** sc-3978's stop in a guest's conversation, in l10n's English (#44809). */
+export const STOP = {
+  moreActions: 'More actions',
+  letThemWriteAgain: 'Let them write again',
+  line: 'The box to write to you leaves their page. Their texts, emails and WhatsApp messages still reach you here, and they are not told.',
+  stop: 'Stop',
+  notSaved: 'Not saved. Try again.',
+  cancel: 'Cancel',
+} as const;
+
+export const sayStop = {
+  item: (guest: string) => `Stop ${guest} writing from their page…`,
+  title: (guest: string) => `Stop ${guest} writing from their page?`,
+  stopped: (member: string, date: string) =>
+    `${member} stopped them writing from their page on ${date}.`,
+  youStopped: (date: string) => `You stopped them writing from their page on ${date}.`,
+  writesAgain: (guest: string) => `${guest} can write from their page again.`,
 };

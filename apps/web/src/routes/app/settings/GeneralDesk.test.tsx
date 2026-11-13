@@ -213,6 +213,8 @@ describe('Settings > General at a desk (sc-30191)', () => {
     signedIn(held());
     answering();
     const router = settings();
+    const arrivals: unknown[] = [];
+    router.subscribe((state) => arrivals.push(state.location.state));
 
     const hold = await screen.findByText(
       'Ìrè Events asks its owners and admins to use two-factor. Until you turn it on, you can see these but not change them.',
@@ -226,6 +228,7 @@ describe('Settings > General at a desk (sc-30191)', () => {
     );
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/app/account/security'));
+    expect(arrivals).toContainEqual({ opens: 'turnOn' });
   });
 
   it('saves only what changed, and says so on the card', async () => {

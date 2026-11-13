@@ -985,6 +985,13 @@ export function peopleOn(event: string): number {
   return 0;
 }
 
+/** The guests on an event's list who are Invited (sc-3788), which a refused delete counts (sc-14445). */
+export function invitedOn(event: string): number {
+  if (event === WEDDING) return COUNTS.invited;
+  if (event === OWN_SAMPLE.paused) return PAUSED_COUNTS.invited;
+  return 0;
+}
+
 export function startStateOf(state: GuestsState | null, event: string): GuestsState | null {
   return state ?? ownStateOf(event);
 }

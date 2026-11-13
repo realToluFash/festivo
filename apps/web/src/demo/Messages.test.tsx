@@ -1085,7 +1085,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       expect(within(dialog).getByText('Note for your guests')).toBeDefined();
       expect(
         within(dialog).getByText(
-          'Shown on each guest’s page, under the change. Never sent by email, text or WhatsApp.',
+          'Shown on each guest’s page, in Messages. Never sent by email, text or WhatsApp.',
         ),
       ).toBeDefined();
       fireEvent.click(within(dialog).getByRole('button', { name: 'Not now' }));

@@ -59,7 +59,7 @@ export const W = {
   recordReply: 'Record a reply',
   letThemChange: 'Let them change their reply',
   copyFirst: 'Copying their link does not mark them. Mark them once you have sent it.',
-  notFound: 'This guest isn’t on this list',
+  notFound: 'This guest is not on this list',
   notFoundLine: 'They may have been removed from the list since you opened it.',
   backToGuests: 'Back to guests',
   linkCopied: 'Link copied',

@@ -47,6 +47,7 @@ import { BRACED_BODY, DATED_BODY, PLAIN_BODY } from './PreviewSample.ts';
 import { type Refusal, TYPED_EDIT, refusalOf, reloaded } from './ScheduledSave.ts';
 import { EDGE } from './TokenText.ts';
 import { WAITS_STARTS, type Waits } from './CheckWaits.ts';
+import { STOP_STATES, type Stopping, isStopState, stopStart, stoppingOf } from './StopWriting.ts';
 
 /** Every state of Messaging B, each a `?state=` in both demos (spec §7 and §7b), in the spec's order. */
 export const MESSAGES_STATES = [
@@ -135,6 +136,7 @@ export const MESSAGES_STATES = [
   'askSentOne',
   'askFailed',
   'sendWithout',
+  ...STOP_STATES,
 ] as const;
 
 export type MessagesState = (typeof MESSAGES_STATES)[number];
@@ -279,6 +281,7 @@ export interface Messages {
   inserting?: boolean;
   refusedSave?: Refusal;
   waits?: Waits;
+  stopping?: Stopping;
   closed: Closed | null;
   /** WhatsApp's receipts (sc-3950): Parking told by email and WhatsApp stands in Parking's place. */
   receipts: boolean;
@@ -472,6 +475,8 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
     return { ...BASE, closed, kept: [], ...(closed === 'draft' ? { phase: 'first' } : {}) };
   const scheduled = state == null ? undefined : SCHEDULED_AS[state];
   if (scheduled != null) return scheduledStart(scheduled);
+  if (isStopState(state))
+    return { ...BASE, open: { kind: 'guest', key: 'ines' }, ...stopStart(state) };
   if (state === 'whatsAppRead')
     return { ...BASE, receipts: true, open: { kind: 'reached', of: 'receipts' } };
   const ines: Open = { kind: 'guest', key: 'ines' };
@@ -682,6 +687,7 @@ export type Action =
   | { type: 'told'; words: string | null }
   | { type: 'previewing'; previewing: Previewing }
   | { type: 'inserting'; open: boolean }
+  | { type: 'stopping'; change: (now: Stopping) => Stopping }
   | { type: 'reload' };
 
 function withDraft(m: Messages, change: (draft: Draft) => Draft): Messages {
@@ -1035,6 +1041,8 @@ export function reduce(m: Messages, action: Action): Messages {
       return { ...m, preview: action.previewing };
     case 'inserting':
       return { ...m, inserting: action.open };
+    case 'stopping':
+      return { ...m, stopping: action.change(stoppingOf(m)) };
     case 'reload': {
       const { refusedSave, ...rest } = m;
       if (refusedSave == null) return m;

@@ -13,6 +13,7 @@ import {
 } from './guestKitchen.ts';
 import type { GuestNote } from './arrivalNote.ts';
 import { guestNoteStarts, isGuestNoteState } from './guestNote.ts';
+import { type ChangeLine, guestChangeStarts, isGuestChangeState } from './guestChange.ts';
 import { NO_PLACES, type Party, guestPartyStarts, isGuestPartyState } from './guestCompanions.ts';
 import {
   type Day,
@@ -78,6 +79,35 @@ export const MESSAGES: readonly Message[] = [
     words: 'If you have any questions before Thursday, write to us here.',
   },
 ];
+
+/** A note sent with an invitation or a change: an entry in Messages, by time (pm, 13 Nov, on ux's #44753). */
+export interface HostNote extends Message {
+  /** sc-4330: Soirely's prepared lines above a change's note, with the values this guest was sent; none on an invitation's. */
+  lines: readonly ChangeLine[];
+}
+
+export const INVITATION_NOTE: HostNote = {
+  id: 'n-invitation',
+  at: '2026-10-20T09:00:00Z',
+  lines: [],
+  words:
+    'We would love you there with us. Children are very welcome, and there is a quiet room by the cloakroom for little ones who need a rest.\n\nAdaeze & Tunde',
+};
+
+export const LONG_NOTE: HostNote = {
+  id: 'n-long',
+  at: '2026-10-20T09:00:00Z',
+  lines: [],
+  words: [
+    'We are so happy to invite you, and we wanted to tell you a little about the day before it comes.',
+    'The ceremony is in the Grand Hall on the ground floor, with step-free access from Marylebone Road. Doors open at 17:30, and we will start at 18:00 sharp, so please give yourselves time for the traffic on a Thursday evening. There is a cloakroom by the main doors, and the staff there will hold bags and coats all night.',
+    'After the ceremony there are drinks in the Winter Garden while the hall is set for dinner. Dinner is at 20:00, and you will find your table on your own page here once we have shared the tables. If anything you eat needs care, tell the kitchen on this page, and we will make sure they know.',
+    'The dress code is formal, and colour is welcome. Bring comfortable shoes for the dancing, which starts at 21:30 and goes on until 01:00. There will be taxis at the front from 23:00, and the nearest stations are Marylebone and Baker Street, both a few minutes away on foot.',
+    'Children are very welcome. There is a quiet room by the cloakroom with books and a sofa for little ones who need a rest, and the kitchen will make them their own dinner.',
+    'If you are travelling from far away, The Landmark has kept rooms for our guests until 1 November; write to us here and we will send you the details.',
+    'We cannot wait to see you.\n\nAdaeze & Tunde',
+  ].join('\n\n'),
+};
 
 export const MINE = 'Thank you! Is there a cloakroom at The Landmark?';
 export const MINE_AT = '2026-11-03T09:41:00Z';
@@ -190,10 +220,13 @@ export interface Visit {
   menuOpen: boolean;
   readerZone: string;
   messages: number;
+  notes: readonly HostNote[];
   mine: readonly Mine[];
   draft: string;
   draftFailed: boolean;
   draftTried: boolean;
+  /** sc-3978: the box to write to the hosts, gone once stopped or switched off, refused on a page already open. */
+  box: 'open' | 'none' | 'refused';
   arrival: boolean;
   /** sc-3790: the switch said once in the new language, and a choice the guest's record did not take. */
   said: number;
@@ -235,10 +268,12 @@ const BASE: Visit = {
   menuOpen: false,
   readerZone: READER_ZONE,
   messages: 0,
+  notes: [],
   mine: [],
   draft: '',
   draftFailed: false,
   draftTried: false,
+  box: 'open',
   arrival: false,
   said: 0,
   unsaved: false,
@@ -518,6 +553,18 @@ const STATES = {
     name: 'A message over 1,000 characters',
     starts: { ...MESSAGED, draft: LONG_MESSAGE, draftTried: true, want: 'box' },
   },
+  noteInvitation: {
+    name: 'The invitation’s note, opening Messages before an answer',
+    starts: { notes: [INVITATION_NOTE] },
+  },
+  noteAmongMessages: {
+    name: 'The invitation’s note among the hosts’ messages',
+    starts: { ...MESSAGED, notes: [INVITATION_NOTE] },
+  },
+  noteLong: {
+    name: 'A long note',
+    starts: { notes: [LONG_NOTE] },
+  },
   calledOffMessages: {
     name: 'Called off, with the hosts’ messages',
     starts: { phase: 'calledOff', recorded: COMING, view: CLOSED, messages: 3 },
@@ -529,6 +576,14 @@ const STATES = {
   replyFailed: {
     name: 'A message that failed',
     starts: { ...MESSAGED, draft: MINE, draftFailed: true, want: 'sendMessage' },
+  },
+  noBox: {
+    name: 'No box: stopped, or guests can’t write',
+    starts: { ...MESSAGED, box: 'none' },
+  },
+  noBoxOpen: {
+    name: 'A page already open: the send fails',
+    starts: { ...MESSAGED, box: 'refused', draft: MINE, draftFailed: true, want: 'sendMessage' },
   },
   messagesWhatsAppOff: {
     name: 'Your messages: WhatsApp off, never agreed',
@@ -578,6 +633,7 @@ function startsOf(
   if (isGuestKitchenState(value))
     return guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS });
   if (isGuestNoteState(value)) return guestNoteStarts(value);
+  if (isGuestChangeState(value)) return guestChangeStarts(value);
   if (isGuestPartyState(value)) return guestPartyStarts(value);
   if (isGuestDayState(value)) return guestDayStarts(value);
 
@@ -691,8 +747,14 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'replyFailed',
         'calledOffMessages',
         'finishedMessages',
+        'noBox',
+        'noBoxOpen',
       ] as const
     ).map(link),
+  },
+  {
+    name: 'The hosts’ notes, entries in Messages (sc-3971)',
+    states: (['noteInvitation', 'noteAmongMessages', 'noteLong'] as const).map(link),
   },
   {
     name: 'Your messages, opened from the guest’s page (sc-3969, sc-3950)',
@@ -741,9 +803,24 @@ export function forTheDay(visit: Visit): boolean {
   );
 }
 
+export interface HostEntry {
+  message: Message;
+  note: HostNote | null;
+}
+
+/** The hosts' messages and their notes, newest last; a window of none is none. */
+export function hostEntries(visit: Visit): readonly HostEntry[] {
+  const messages = visit.messages === 0 ? [] : MESSAGES.slice(-visit.messages);
+
+  return [
+    ...messages.map((message) => ({ message, note: null })),
+    ...visit.notes.map((note) => ({ message: note, note })),
+  ].sort((a, b) => Date.parse(a.message.at) - Date.parse(b.message.at));
+}
+
 export function showsMessages(visit: Visit): boolean {
   return (
-    visit.messages > 0 &&
+    (visit.messages > 0 || visit.notes.length > 0) &&
     (visit.view.kind === 'answer' || visit.view.kind === 'recorded' || visit.view.kind === 'closed')
   );
 }
@@ -915,6 +992,10 @@ const BOARD_ENGLISH = {
   calendarApple: 'Apple / Outlook',
   calendarGoogle: 'Google Calendar',
   messages: 'Messages',
+  noteFrom: 'A note from {{hosts}}',
+  changeStartTime: 'The start time is now {{new}} (was {{old}}).',
+  changeVenue: 'The venue is now {{new}} (was {{old}}).',
+  changeCalledOff: '{{event}} has been called off. It won’t go ahead.',
   writeTo: 'Write to {{hosts}}',
   sendMessage: 'Send',
   sent: 'Sent',
@@ -1080,6 +1161,18 @@ export function wordsFor(lang: Lang) {
     calendarApple: board('calendarApple'),
     calendarGoogle: board('calendarGoogle'),
     messages: board('messages'),
+    noteFrom: board('noteFrom', { hosts }),
+    changeLine: (line: ChangeLine, slots: Slots): string =>
+      board(
+        (
+          {
+            startTime: 'changeStartTime',
+            venue: 'changeVenue',
+            calledOff: 'changeCalledOff',
+          } as const
+        )[line],
+        slots,
+      ),
     writeTo: board('writeTo', { hosts }),
     sendMessage: board('sendMessage'),
     messageCount: (count: number) => board('messageCount', { count, most: MESSAGE_MOST }),

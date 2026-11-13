@@ -4,11 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { GUEST_PAGES, THANK_YOU } from './guest.ts';
+import { GUEST_PAGES, LONG_NOTE, THANK_YOU } from './guest.ts';
 import { GUEST_ASK_PAGES } from './guestAskStates.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { GUEST_NOTE_PAGES } from './guestNote.ts';
+import { GUEST_CHANGE_PAGES } from './guestChange.ts';
 import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
 
 const SLOW = { timeout: 15000 };
@@ -79,6 +80,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
         ...GUEST_ASK_PAGES,
         ...GUEST_DAY_PAGES,
         ...GUEST_NOTE_PAGES,
+        ...GUEST_CHANGE_PAGES,
       ]
         .flatMap((one) => one.states)
         .map((one) => one.to),
@@ -88,7 +90,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
     );
 
     expect(guestLinks).toEqual(GUEST_PAGES.flatMap((one) => one.states).map((one) => one.to));
-    expect(guestLinks).toHaveLength(70);
+    expect(guestLinks).toHaveLength(75);
   });
 
   it('opens on the cover card: the invitation, the guest, the event, when and where', async () => {
@@ -263,6 +265,19 @@ const SAYS: [string, () => void][] = [
   ['replyFailed', () => screen.getByText(/^Your message wasn’t sent\./u)],
   ['calledOffMessages', () => expect(screen.getAllByRole('article')).toHaveLength(3)],
   ['finishedMessages', () => screen.getByText(THANK_YOU)],
+  ['noBox', () => expect(screen.queryByRole('textbox')).toBeNull()],
+  ['noBoxOpen', () => screen.getByText(/^Your message wasn’t sent\./u)],
+  ['noteInvitation', () => screen.getByText(/^We would love you there with us\./u)],
+  ['noteAmongMessages', () => screen.getByText(/^We would love you there with us\./u)],
+  [
+    'noteLong',
+    () =>
+      expect(
+        screen
+          .getAllByRole('article')
+          .map((entry) => entry.querySelector('.gp-bubble')?.textContent),
+      ).toContain(LONG_NOTE.words),
+  ],
   [
     'messagesWhatsAppOff',
     () => expect(screen.getByRole('switch', { name: 'WhatsApp' })).toHaveProperty('checked', false),
@@ -742,6 +757,38 @@ describe('the door code’s two lines (sc-1301, pm #31418)', () => {
   });
 });
 
+describe('the hosts’ notes, entries in Messages (pm, 13 Nov, on ux’s #44753)', () => {
+  function metas(): string[] {
+    return screen
+      .getAllByRole('article')
+      .map((one) => one.querySelector('.gp-meta')?.textContent?.replace(/\s/gu, ' ') ?? '');
+  }
+
+  it('the invitation’s note opens Messages before an answer, headed A note from the hosts', async () => {
+    await guest('noteInvitation');
+
+    expect(metas()).toEqual(['A note from Adaeze Obi and Tunde Bakare · Tue, Oct 20 · 10:00']);
+    expect(screen.getByLabelText('Write to Adaeze Obi and Tunde Bakare')).toBeDefined();
+  });
+
+  it('the invitation’s note sits by time among the hosts’ messages, under the same kind of header', async () => {
+    await guest('noteAmongMessages');
+
+    expect(metas()).toEqual([
+      'A note from Adaeze Obi and Tunde Bakare · Tue, Oct 20 · 10:00',
+      'Adaeze Obi and Tunde Bakare · Sat, Oct 31 · 10:05',
+      'Adaeze Obi and Tunde Bakare · Mon, Nov 2 · 21:14',
+      'Adaeze Obi and Tunde Bakare · Tue, Nov 3 · 08:30',
+    ]);
+  });
+
+  it('a page with no notes and no messages has no Messages', async () => {
+    await guest();
+
+    expect(document.querySelector('.gp-messages')).toBeNull();
+  });
+});
+
 describe('the hosts’ messages in an ended phase (Settled, 7 Nov (pm))', () => {
   it('called off: the messages and the box sit under the greyed cover, with no answer and no hosts row', async () => {
     await guest('calledOffMessages');
@@ -1082,6 +1129,37 @@ describe('the hosts’ messages and the guest’s own (§4a)', () => {
     expect(count.querySelector('svg')).not.toBeNull();
     expect(box.getAttribute('aria-describedby')).toBe('gp-box-error gp-box-count');
     expect(screen.getAllByRole('article')).toHaveLength(3);
+  });
+
+  it('noBox: the hosts’ messages newest last, and no label, box or Send, nothing said', async () => {
+    await guest('noBox');
+    const messages = screen.getByRole('region', { name: 'Messages' });
+
+    expect(within(messages).getAllByRole('article')).toHaveLength(3);
+    expect(within(messages).queryByRole('textbox')).toBeNull();
+    expect(within(messages).queryByRole('button', { name: 'Send' })).toBeNull();
+    expect(screen.queryByText(/^Write to /u)).toBeNull();
+    expect(within(messages).queryByRole('alert')).toBeNull();
+    expect(within(messages).queryByRole('status')).toBeNull();
+  });
+
+  it('noBoxOpen: the words kept with the failed send, and Send fails again the same way', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('noBoxOpen');
+    const send = screen.getByRole('button', { name: 'Send' });
+    const failed = 'Your message wasn’t sent. Your words are still here. Try again.';
+
+    expect(screen.getByRole('alert').textContent).toBe(failed);
+    fireEvent.click(send);
+    expect(screen.queryByRole('alert')).toBeNull();
+    await wait();
+    expect(screen.getByRole('alert').textContent).toBe(failed);
+    expect(screen.getByLabelText('Write to Adaeze Obi and Tunde Bakare')).toHaveProperty(
+      'value',
+      'Thank you! Is there a cloakroom at The Landmark?',
+    );
+    expect(screen.getAllByRole('article')).toHaveLength(3);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Send' }));
   });
 
   it('sits under the answer and above the door code', async () => {

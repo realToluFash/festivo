@@ -246,7 +246,7 @@ describe('General at a desk (sc-30063)', () => {
     await general('/demo/settings/general?state=removeDomain');
 
     const ask = screen.getByRole('alertdialog', { name: 'Remove ire.events?' });
-    fireEvent.click(within(ask).getByRole('button', { name: 'Remove' }));
+    fireEvent.click(within(ask).getByRole('button', { name: 'Remove ire.events' }));
 
     expect(screen.getByText('ire.events removed.')).toBeDefined();
     expect(screen.getByText('It is off until you add a domain.')).toBeDefined();
@@ -344,7 +344,7 @@ describe('General at a desk (sc-30063)', () => {
 
   it('deletes only once the name is typed exactly', async () => {
     const router = await general('/demo/settings/general?state=delete');
-    const dialog = screen.getByRole('dialog', { name: 'Delete Ire Events' });
+    const dialog = screen.getByRole('dialog', { name: 'Delete Ire Events?' });
 
     expect(
       within(dialog).getByText('Type Ire Events exactly as shown to delete it.'),
@@ -360,7 +360,7 @@ describe('General at a desk (sc-30063)', () => {
 
   it('says deleting still takes everything when it could not count, and counts again', async () => {
     await general('/demo/settings/general?state=deleteUncounted');
-    const dialog = screen.getByRole('dialog', { name: 'Delete Ire Events' });
+    const dialog = screen.getByRole('dialog', { name: 'Delete Ire Events?' });
 
     expect(within(dialog).getByRole('alert').textContent).toContain(
       'We could not count what it holds.',

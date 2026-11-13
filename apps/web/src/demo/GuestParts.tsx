@@ -9,7 +9,6 @@ import {
   GUEST,
   LANGUAGES,
   type Lang,
-  MESSAGES,
   MESSAGE_COUNT_FROM,
   MESSAGE_MOST,
   type Mine,
@@ -19,12 +18,14 @@ import {
   characters,
   eventDay,
   eventTime,
+  hostEntries,
   sentWhen,
   shortDay,
   codePath,
   offersWhatsApp,
 } from './guest.ts';
 import { hasWhere, inDayOrder, mapsLink, placeOf } from './guestDay.ts';
+import { ChangeLines } from './GuestChange.tsx';
 
 const LINES = {
   map: [
@@ -611,7 +612,7 @@ export function Messages({
   onSend: () => void;
 }) {
   const box = useRef<HTMLTextAreaElement>(null);
-  const shown = MESSAGES.slice(-visit.messages);
+  const shown = hostEntries(visit);
   const live = visit.draft.trim() !== '';
   const length = characters(visit.draft);
   const tooLong = visit.draftTried && length > MESSAGE_MOST;
@@ -638,10 +639,11 @@ export function Messages({
       <h2 id="gp-messages-h" className="gp-h2">
         {words.messages}
       </h2>
-      {shown.map((message) => (
+      {shown.map(({ message, note }) => (
         <article key={message.id} id={message.id} className="gp-message">
+          {note != null && <ChangeLines note={note} visit={visit} words={words} />}
           <p className="gp-meta">
-            {`${words.hosts} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
+            {`${note == null ? words.hosts : words.noteFrom} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
           </p>
           <p className="gp-bubble" dir="auto">
             {message.words}
@@ -668,47 +670,49 @@ export function Messages({
           </p>
         </article>
       ))}
-      <div className="gp-compose">
-        <label htmlFor="gp-box">{words.writeTo}</label>
-        {visit.draftFailed && <Notice kind="broken">{words.messageFailed}</Notice>}
-        <div className={tooLong ? 'gp-compose-row is-wrong' : 'gp-compose-row'}>
-          <textarea
-            ref={box}
-            id="gp-box"
-            className="gp-box"
-            rows={1}
-            value={visit.draft}
-            data-focus="box"
-            aria-invalid={tooLong}
-            aria-describedby={
-              tooLong ? 'gp-box-error gp-box-count' : counting ? 'gp-box-count' : undefined
-            }
-            onChange={(event) => onDraft(event.target.value)}
-          />
-          <button
-            className={live ? 'gp-send is-live' : 'gp-send'}
-            type="button"
-            aria-label={words.sendMessage}
-            data-focus="sendMessage"
-            {...offButton(!live, { dim: false })}
-            onClick={onSend}
-          >
-            <Line name="send" size={20} weight={2.6} />
-          </button>
+      {visit.box !== 'none' && (
+        <div className="gp-compose">
+          <label htmlFor="gp-box">{words.writeTo}</label>
+          {visit.draftFailed && <Notice kind="broken">{words.messageFailed}</Notice>}
+          <div className={tooLong ? 'gp-compose-row is-wrong' : 'gp-compose-row'}>
+            <textarea
+              ref={box}
+              id="gp-box"
+              className="gp-box"
+              rows={1}
+              value={visit.draft}
+              data-focus="box"
+              aria-invalid={tooLong}
+              aria-describedby={
+                tooLong ? 'gp-box-error gp-box-count' : counting ? 'gp-box-count' : undefined
+              }
+              onChange={(event) => onDraft(event.target.value)}
+            />
+            <button
+              className={live ? 'gp-send is-live' : 'gp-send'}
+              type="button"
+              aria-label={words.sendMessage}
+              data-focus="sendMessage"
+              {...offButton(!live, { dim: false })}
+              onClick={onSend}
+            >
+              <Line name="send" size={20} weight={2.6} />
+            </button>
+          </div>
+          {counting && (
+            <p id="gp-box-count" className={tooLong ? 'gp-count is-over' : 'gp-count'}>
+              {tooLong && <Glyph name="alert" size={14} weight={2.4} />}
+              {words.messageCount(length)}
+            </p>
+          )}
+          {tooLong && (
+            <p id="gp-box-error" className="gp-error">
+              <Glyph name="alert" size={15} weight={2.2} />
+              {words.messageTooLong}
+            </p>
+          )}
         </div>
-        {counting && (
-          <p id="gp-box-count" className={tooLong ? 'gp-count is-over' : 'gp-count'}>
-            {tooLong && <Glyph name="alert" size={14} weight={2.4} />}
-            {words.messageCount(length)}
-          </p>
-        )}
-        {tooLong && (
-          <p id="gp-box-error" className="gp-error">
-            <Glyph name="alert" size={15} weight={2.2} />
-            {words.messageTooLong}
-          </p>
-        )}
-      </div>
+      )}
     </section>
   );
 }
