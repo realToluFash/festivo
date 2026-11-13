@@ -13,6 +13,7 @@ import {
 } from './guestKitchen.ts';
 import type { GuestNote } from './arrivalNote.ts';
 import { guestNoteStarts, isGuestNoteState } from './guestNote.ts';
+import { type ChangeLine, guestChangeStarts, isGuestChangeState } from './guestChange.ts';
 import { NO_PLACES, type Party, guestPartyStarts, isGuestPartyState } from './guestCompanions.ts';
 import {
   type Day,
@@ -79,17 +80,24 @@ export const MESSAGES: readonly Message[] = [
   },
 ];
 
-/** A note sent with an invitation: an entry in Messages, by time (pm, 13 Nov, on ux's #44753). */
-export const INVITATION_NOTE: Message = {
+/** A note sent with an invitation or a change: an entry in Messages, by time (pm, 13 Nov, on ux's #44753). */
+export interface HostNote extends Message {
+  /** sc-4330: Soirely's prepared lines above a change's note, with the values this guest was sent; none on an invitation's. */
+  lines: readonly ChangeLine[];
+}
+
+export const INVITATION_NOTE: HostNote = {
   id: 'n-invitation',
   at: '2026-10-20T09:00:00Z',
+  lines: [],
   words:
     'We would love you there with us. Children are very welcome, and there is a quiet room by the cloakroom for little ones who need a rest.\n\nAdaeze & Tunde',
 };
 
-export const LONG_NOTE: Message = {
+export const LONG_NOTE: HostNote = {
   id: 'n-long',
   at: '2026-10-20T09:00:00Z',
+  lines: [],
   words: [
     'We are so happy to invite you, and we wanted to tell you a little about the day before it comes.',
     'The ceremony is in the Grand Hall on the ground floor, with step-free access from Marylebone Road. Doors open at 17:30, and we will start at 18:00 sharp, so please give yourselves time for the traffic on a Thursday evening. There is a cloakroom by the main doors, and the staff there will hold bags and coats all night.',
@@ -212,7 +220,7 @@ export interface Visit {
   menuOpen: boolean;
   readerZone: string;
   messages: number;
-  notes: readonly Message[];
+  notes: readonly HostNote[];
   mine: readonly Mine[];
   draft: string;
   draftFailed: boolean;
@@ -614,6 +622,7 @@ function startsOf(
   if (isGuestKitchenState(value))
     return guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS });
   if (isGuestNoteState(value)) return guestNoteStarts(value);
+  if (isGuestChangeState(value)) return guestChangeStarts(value);
   if (isGuestPartyState(value)) return guestPartyStarts(value);
   if (isGuestDayState(value)) return guestDayStarts(value);
 
@@ -783,7 +792,7 @@ export function forTheDay(visit: Visit): boolean {
 
 export interface HostEntry {
   message: Message;
-  note: boolean;
+  note: HostNote | null;
 }
 
 /** The hosts' messages and their notes, newest last; a window of none is none. */
@@ -791,8 +800,8 @@ export function hostEntries(visit: Visit): readonly HostEntry[] {
   const messages = visit.messages === 0 ? [] : MESSAGES.slice(-visit.messages);
 
   return [
-    ...messages.map((message) => ({ message, note: false })),
-    ...visit.notes.map((message) => ({ message, note: true })),
+    ...messages.map((message) => ({ message, note: null })),
+    ...visit.notes.map((note) => ({ message: note, note })),
   ].sort((a, b) => Date.parse(a.message.at) - Date.parse(b.message.at));
 }
 
@@ -971,6 +980,9 @@ const BOARD_ENGLISH = {
   calendarGoogle: 'Google Calendar',
   messages: 'Messages',
   noteFrom: 'A note from {{hosts}}',
+  changeStartTime: 'The start time is now {{new}} (was {{old}}).',
+  changeVenue: 'The venue is now {{new}} (was {{old}}).',
+  changeCalledOff: '{{event}} has been called off. It won’t go ahead.',
   writeTo: 'Write to {{hosts}}',
   sendMessage: 'Send',
   sent: 'Sent',
@@ -1137,6 +1149,17 @@ export function wordsFor(lang: Lang) {
     calendarGoogle: board('calendarGoogle'),
     messages: board('messages'),
     noteFrom: board('noteFrom', { hosts }),
+    changeLine: (line: ChangeLine, slots: Slots): string =>
+      board(
+        (
+          {
+            startTime: 'changeStartTime',
+            venue: 'changeVenue',
+            calledOff: 'changeCalledOff',
+          } as const
+        )[line],
+        slots,
+      ),
     writeTo: board('writeTo', { hosts }),
     sendMessage: board('sendMessage'),
     messageCount: (count: number) => board('messageCount', { count, most: MESSAGE_MOST }),
