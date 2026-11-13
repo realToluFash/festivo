@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { atPhoneWidth, atWideWidth } from '../../test-widths.ts';
 import { routes } from '../index.tsx';
 
 const TOKEN = 'goJP8j72G8dKsdGysCtB7qA4o2SdVzDrjFodz60tDDc';
@@ -106,6 +107,66 @@ describe("a guest's own link", () => {
       account.compareDocumentPosition(closing) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(screen.queryByText(/This page is yours for this event/)).toBeNull();
+  });
+
+  it('reads cover, answers, when, where and who, then the foot', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: PAGE }] });
+    open();
+
+    const answers = await screen.findByRole('heading', { name: 'Your answer' });
+    const where = screen.getByText('The Civic Centre');
+    const foot = screen.getByText('You do not need an account to answer.');
+    const after = (first: Node, second: Node) =>
+      first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(after(screen.getByRole('heading', { level: 1 }), answers)).toBeTruthy();
+    expect(after(answers, where)).toBeTruthy();
+    expect(after(where, foot)).toBeTruthy();
+  });
+
+  it('draws only the cover, the answer and three rows while it loads at a phone', async () => {
+    atPhoneWidth();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
+    const { container } = open();
+
+    await screen.findByRole('status');
+    expect(container.querySelector('.gp-skel-cover')).not.toBeNull();
+    expect(container.querySelectorAll('.gp-skel-row')).toHaveLength(3);
+    expect(container.querySelector('.gp-skel-details')).toBeNull();
+  });
+
+  it('adds the details beside the answer while it loads in two columns', async () => {
+    atWideWidth();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
+    const { container } = open();
+
+    await screen.findByRole('status');
+    expect(container.querySelectorAll('.gp-skel-row')).toHaveLength(3);
+    expect(container.querySelector('.gp-skel-details')).not.toBeNull();
+  });
+
+  it('names the language shown on a button that opens the four in their own names', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: PAGE }] });
+    open();
+
+    const button = await screen.findByRole('button', { name: 'Language: English' });
+    expect(screen.queryByRole('combobox')).toBeNull();
+    fireEvent.click(button);
+
+    const items = screen.getAllByRole('menuitemradio');
+    expect(items.map((item) => item.textContent)).toEqual([
+      'English',
+      'Español',
+      'Français',
+      'Português',
+    ]);
+    expect(items[0]?.getAttribute('aria-checked')).toBe('true');
+    expect(items[2]?.getAttribute('lang')).toBe('fr');
+    expect(screen.queryByText('Your language follows you to every device.')).toBeNull();
+
+    fireEvent.keyDown(items[0] as HTMLElement, { key: 'End' });
+    expect(document.activeElement).toBe(items[3]);
+    fireEvent.keyDown(items[3] as HTMLElement, { key: 'Home' });
+    expect(document.activeElement).toBe(items[0]);
   });
 
   it('is marked not to be indexed and to send no referrer', async () => {
@@ -483,6 +544,18 @@ describe('when answers have closed', () => {
     expect(screen.queryByRole('button', { name: 'Yes, I’ll be there' })).toBeNull();
   });
 
+  it('keeps the closing line and Not {name}? in the foot, without the line about answering', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: { ...PAGE, answersOpen: false } }] });
+    open();
+
+    expect(
+      await screen.findByText(
+        'This invitation is for you and your family. Other guests cannot see your answer.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText('You do not need an account to answer.')).toBeNull();
+  });
+
   it('says You didn’t answer to a guest who never did', async () => {
     api({ '/api/guest-links/page': [{ status: 200, body: { ...PAGE, answersOpen: false } }] });
     open();
@@ -584,7 +657,7 @@ describe('when the event is paused, called off or over (sc-3591)', () => {
     expect(screen.queryByText('Coming')).toBeNull();
     expect(screen.queryByText(ADAEZE)).toBeNull();
     expect(screen.getByRole('button', { name: `Not ${ADAEZE}? Tell us` })).toBeDefined();
-    expect(screen.getByText('You do not need an account to answer.')).toBeDefined();
+    expect(screen.queryByText('You do not need an account to answer.')).toBeNull();
   });
 
   it('keeps the answer read-only once finished, under the event’s name', async () => {
