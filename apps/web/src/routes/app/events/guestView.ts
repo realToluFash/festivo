@@ -9,7 +9,7 @@ export const CHOICES = ['all', 'coming', 'maybe', 'noReply', 'held', 'notComing'
 export type Choice = (typeof CHOICES)[number];
 
 /** On All, the groups in the menu's order. A held companion is always under their guest, so Held has no group. */
-const GROUPS: readonly Standing[] = ['coming', 'maybe', 'noReply', 'notComing'];
+const GROUPS: readonly (Standing & Choice)[] = ['coming', 'maybe', 'noReply', 'notComing'];
 
 export const FIRST_ROWS = 2;
 
