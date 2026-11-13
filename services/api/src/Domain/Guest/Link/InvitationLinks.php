@@ -18,6 +18,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psl\Encoding\Base64;
 use Psl\SecureRandom;
 use Psl\Str;
+use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Component\Uid\Uuid;
@@ -95,6 +96,12 @@ final readonly class InvitationLinks
         $guest->flagLink();
         $this->auditor->record(self::FLAGGED, 'Guest', $guest->getId());
         $this->entityManager->flush();
+    }
+
+    /** @return list<string> */
+    public function flaggedOn(Event $event): array
+    {
+        return Vec\map($this->guestRepository->findFlagged($event), static fn (Guest $guest): string => $guest->getId()->toRfc4122());
     }
 
     private function url(Guest $guest): string

@@ -83,4 +83,17 @@ final class GuestRepository extends ServiceEntityRepository
             ->getQuery()
             ->getOneOrNullResult();
     }
+
+    /** The guests whose link someone said reached the wrong person, for the hosts' notice (sc-1526). @return list<Guest> */
+    public function findFlagged(Event $event): array
+    {
+        /** @var list<Guest> */
+        return $this->createQueryBuilder('g')
+            ->where('g.event = :event')
+            ->andWhere('g.linkFlagged = true')
+            ->setParameter('event', $event->getId(), 'uuid')
+            ->orderBy('g.position', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

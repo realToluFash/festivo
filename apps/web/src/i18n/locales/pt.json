@@ -2770,6 +2770,8 @@
     "keepIt": "Keep it",
     "replace": "Replace link",
     "notReplaced": "Not replaced. The old link still works. Try again.",
-    "linkReplaced": "Link replaced. {{name}}’s old link no longer works. Copy the new one and send it."
+    "linkReplaced": "Link replaced. {{name}}’s old link no longer works. Copy the new one and send it.",
+    "flaggedTitle": "Their link may have reached the wrong person",
+    "flaggedLine": "Someone who opened {{name}}’s link told us it was not meant for them. The reply is unchanged. Replace the link so the old one stops working, then send {{name}} the new one."
   }
 }

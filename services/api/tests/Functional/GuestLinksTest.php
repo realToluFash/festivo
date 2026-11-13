@@ -203,7 +203,9 @@ final class GuestLinksTest extends ApiTestCase
     public function tellingUsFlagsTheGuestOnceAndAReplaceClearsIt(): void
     {
         $guest = $this->add('Bisi Adewale');
+        $this->add(self::ADAEZE);
         $token = $this->token($guest);
+        self::assertSame(['guests' => []], $this->as($this->owner, 'GET', $this->guests() . '/flagged'));
 
         $this->anonymous('/api/guest-links/wrong-person', $token);
         self::assertSame(204, $this->statusCode());
@@ -211,11 +213,17 @@ final class GuestLinksTest extends ApiTestCase
         self::assertSame(204, $this->statusCode());
 
         self::assertTrue($this->flagged($guest));
+        self::assertSame(['guests' => [$guest]], $this->as($this->owner, 'GET', $this->guests() . '/flagged'));
+        self::assertArrayNotHasKey('linkFlagged', $this->as($this->owner, 'GET', $this->guests())['guests'][0] ?? []);
         self::assertCount(1, self::em()->getRepository(AuditEntry::class)->findBy(['action' => InvitationLinks::FLAGGED]));
         self::assertSame('noReply', Type\shape(['reply' => Type\string()], true)->coerce($this->as($this->owner, 'GET', $this->guests())['guests'][0] ?? null)['reply']);
 
         $this->as($this->owner, 'POST', $this->guests() . '/' . $guest . '/link/replace');
         self::assertFalse($this->flagged($guest));
+        self::assertSame(['guests' => []], $this->as($this->owner, 'GET', $this->guests() . '/flagged'));
+
+        $this->anonymous('/api/guest-links/wrong-person', $this->token($guest));
+        self::assertSame(['guests' => [$guest]], $this->as($this->owner, 'GET', $this->guests() . '/flagged'));
     }
 
     /** The configured pool is tagged `kernel.reset`, so its budget is full again on every request: a spent one is swapped in, and the numbers are the test below. */
@@ -255,11 +263,16 @@ final class GuestLinksTest extends ApiTestCase
 
     #[Test]
     #[DataProvider('rolesThatCannotAdd')]
-    public function onlyThoseWhoAddGuestsCopyOrReplace(EventRole $role): void
+    public function onlyThoseWhoAddGuestsCopyReplaceOrSeeTheFlag(EventRole $role): void
     {
         $guest = $this->add('Bisi Adewale');
         $token = $this->token($guest);
+        $this->anonymous('/api/guest-links/wrong-person', $token);
         $viewer = $this->member('ada@ire.events', SeededRole::Member, $role);
+
+        $this->as($viewer, 'GET', $this->guests() . '/flagged');
+        self::assertSame(403, $this->statusCode());
+        self::assertArrayNotHasKey('linkFlagged', $this->as($viewer, 'GET', $this->guests())['guests'][0] ?? []);
 
         $this->as($viewer, 'GET', $this->guests() . '/' . $guest . '/link');
         self::assertSame(403, $this->statusCode());
