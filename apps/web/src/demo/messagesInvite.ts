@@ -15,7 +15,13 @@ import {
   reachWords,
   whatsAppCreditsIn,
 } from './messages.ts';
-import { IW, WA_INVITATION, WA_INVITE_STATES } from './messagesInviteWords.ts';
+import {
+  IW,
+  WA_ANSWERS,
+  WA_ANSWER_STATES,
+  WA_INVITATION,
+  WA_INVITE_STATES,
+} from './messagesInviteWords.ts';
 import { type Waits, waitsOf } from './messagesWaits.ts';
 import {
   type Audience,
@@ -464,6 +470,8 @@ export interface InviteDraft {
   /** sc-45251: WhatsApp is offered, Soirely's template approved in this category. */
   wa?: Category;
   noReplyBy?: boolean;
+  /** sc-46343: the languages the invitation with answers is approved in and not paused. */
+  answers?: readonly WaLanguage[];
 }
 
 export interface InviteOut {
@@ -496,17 +504,27 @@ export const INVITE_STATES = [
 ] as const;
 
 export type InviteState =
-  (typeof INVITE_STATES)[number]['key'] | (typeof WA_INVITE_STATES)[number]['key'];
+  | (typeof INVITE_STATES)[number]['key']
+  | (typeof WA_INVITE_STATES)[number]['key']
+  | (typeof WA_ANSWER_STATES)[number]['key'];
 
 export function isInviteState(key: string): key is InviteState {
-  return [...INVITE_STATES, ...WA_INVITE_STATES].some((one) => one.key === key);
+  return [...INVITE_STATES, ...WA_INVITE_STATES, ...WA_ANSWER_STATES].some(
+    (one) => one.key === key,
+  );
 }
 
 const EVENT_DAY = '2026-11-05T12:00:00Z';
 const REPLY_DAY = '2026-11-04T12:00:00Z';
 const WA_LOCALES = { en: 'en-GB', es: 'es-ES', fr: 'fr-FR', pt: 'pt-PT' } as const;
 
-type WaLanguage = keyof typeof WA_INVITATION;
+export type WaLanguage = keyof typeof WA_INVITATION;
+
+export interface WaButtons {
+  yes: string;
+  no: string;
+  maybe: string;
+}
 
 function isWaLanguage(code: string): code is WaLanguage {
   return code in WA_INVITATION;
@@ -516,10 +534,12 @@ function isWaLanguage(code: string): code is WaLanguage {
 export function whatsAppInvitationOf(
   guest: OneGuest,
   noReplyBy: boolean,
-): { lang: WaLanguage; lines: readonly string[]; button: string } {
+  approved: readonly WaLanguage[] = [],
+): { lang: WaLanguage; lines: readonly string[]; button: string; answers: WaButtons | null } {
   const code = WA_SAMPLE[guest.id]?.language ?? 'en';
   const lang = isWaLanguage(code) ? code : 'en';
-  const words = WA_INVITATION[lang];
+  const answers = approved.includes(lang) ? WA_ANSWERS[lang] : null;
+  const words = answers == null ? WA_INVITATION[lang] : { ...WA_INVITATION[lang], ...answers };
   const locale = WA_LOCALES[lang];
   const long = (iso: string) =>
     new Intl.DateTimeFormat(locale, { dateStyle: 'full', timeZone: 'UTC' }).format(new Date(iso));
@@ -533,6 +553,7 @@ export function whatsAppInvitationOf(
       noReplyBy ? words.noDate : mw.filled(words.replyBy, { replyBy: long(REPLY_DAY) }),
     ],
     button: words.button,
+    answers: answers == null ? null : { yes: answers.yes, no: answers.no, maybe: answers.maybe },
   };
 }
 
@@ -559,6 +580,8 @@ const NO_NOTE: InviteDraft = { note: '', again: false, wrong: false, pressed: fa
 const WITH_NOTE: InviteDraft = { ...NO_NOTE, note: NOTE };
 const ALL_THREE: Ticks = { email: true, sms: true, whatsApp: true };
 const NO_SMS: Ticks = { email: true, sms: false, whatsApp: true };
+const EVERY_LANGUAGE: readonly WaLanguage[] = ['en', 'es', 'fr', 'pt'];
+const NOT_PT: readonly WaLanguage[] = ['en', 'es', 'fr'];
 
 export function inviteSeedOf(state: string | null): InviteSeed | null {
   const draft = (
@@ -570,6 +593,7 @@ export function inviteSeedOf(state: string | null): InviteSeed | null {
 
   const wa: InviteDraft = { ...NO_NOTE, wa: 'marketing' };
   const utility: InviteDraft = { ...NO_NOTE, wa: 'utility' };
+  const answering: InviteDraft = { ...wa, answers: EVERY_LANGUAGE };
   const ticked = (
     step: 'write' | 'preview' | 'check',
     invite: InviteDraft,
@@ -610,6 +634,28 @@ export function inviteSeedOf(state: string | null): InviteSeed | null {
       return ticked('preview', { ...wa, previewAs: 'noor-rahman' }, ALL_THREE);
     case 'invitePreviewWhatsAppFr':
       return ticked('preview', { ...wa, previewAs: 'dami-oladipo' }, ALL_THREE);
+    case 'invitePreviewAnswers':
+      return ticked('preview', { ...answering, previewAs: 'chuka-nwankwo' }, ALL_THREE);
+    case 'invitePreviewAnswersNoDate':
+      return ticked(
+        'preview',
+        { ...answering, previewAs: 'chuka-nwankwo', noReplyBy: true },
+        ALL_THREE,
+      );
+    case 'invitePreviewAnswersEs':
+      return ticked('preview', { ...answering, previewAs: 'noor-rahman' }, ALL_THREE);
+    case 'invitePreviewAnswersFr':
+      return ticked('preview', { ...answering, previewAs: 'dami-oladipo' }, ALL_THREE);
+    case 'invitePreviewAnswersPt':
+      return ticked('preview', { ...answering, previewAs: 'catarina-reis' }, ALL_THREE);
+    case 'invitePreviewAnswersMixed':
+      return ticked(
+        'preview',
+        { ...answering, answers: NOT_PT, previewAs: 'catarina-reis' },
+        ALL_THREE,
+      );
+    case 'invitePreviewAnswersPaused':
+      return ticked('preview', { ...wa, answers: [], previewAs: 'chuka-nwankwo' }, ALL_THREE);
     case 'invitedReachedWhatsApp':
       return { kind: 'reached', of: 'whatsAppInvite' };
     case 'invitedReachedWhatsAppNoSms':
