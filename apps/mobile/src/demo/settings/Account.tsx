@@ -236,6 +236,11 @@ function AccountPage({ start }: { start: AccountStart }) {
     from.current = 'change';
     setOpened(goes.id);
     bringIntoView(blocks.current[goes.id], scroll.current, clear, true);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(
+      () => moveScreenReaderFocus(blocks.current[goes.id] ?? null),
+      SETTLED_MS,
+    );
   }
 
   const openedKind: ContactKind = emails.some((row) => row.id === opened) ? 'email' : 'phone';
