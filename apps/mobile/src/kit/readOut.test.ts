@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   howToReadOut,
   newWords,
+  saidInFullMs,
   settleMs,
   shownAtMount,
   shownBeforeAnswer,
@@ -280,5 +281,22 @@ describe('the settle before words are handed over', () => {
   it('is TalkBack’s alone', () => {
     expect(settleMs('android')).toBe(TALKBACK_SETTLE_MS);
     expect(settleMs('ios')).toBe(0);
+  });
+});
+
+describe('a refusal’s words, said in full before focus moves on (sc-43907)', () => {
+  const summary = '3 fields need fixing, so nothing was sent.';
+  const longer = '3 campos precisam de correção, então nada foi enviado.';
+
+  it('wait for TalkBack to settle and then to say every word', () => {
+    expect(saidInFullMs('android', summary)).toBeGreaterThan(TALKBACK_SETTLE_MS + 2500);
+  });
+
+  it('wait longer as the words grow', () => {
+    expect(saidInFullMs('android', longer)).toBeGreaterThan(saidInFullMs('android', summary));
+  });
+
+  it('leave iOS as it was', () => {
+    expect(saidInFullMs('ios', summary)).toBe(0);
   });
 });
