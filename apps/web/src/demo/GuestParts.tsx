@@ -9,7 +9,6 @@ import {
   GUEST,
   LANGUAGES,
   type Lang,
-  MESSAGES,
   MESSAGE_COUNT_FROM,
   MESSAGE_MOST,
   type Mine,
@@ -19,6 +18,7 @@ import {
   characters,
   eventDay,
   eventTime,
+  hostEntries,
   sentWhen,
   shortDay,
   codePath,
@@ -611,7 +611,7 @@ export function Messages({
   onSend: () => void;
 }) {
   const box = useRef<HTMLTextAreaElement>(null);
-  const shown = MESSAGES.slice(-visit.messages);
+  const shown = hostEntries(visit);
   const live = visit.draft.trim() !== '';
   const length = characters(visit.draft);
   const tooLong = visit.draftTried && length > MESSAGE_MOST;
@@ -638,10 +638,10 @@ export function Messages({
       <h2 id="gp-messages-h" className="gp-h2">
         {words.messages}
       </h2>
-      {shown.map((message) => (
+      {shown.map(({ message, note }) => (
         <article key={message.id} id={message.id} className="gp-message">
           <p className="gp-meta">
-            {`${words.hosts} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
+            {`${note ? words.noteFrom : words.hosts} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
           </p>
           <p className="gp-bubble" dir="auto">
             {message.words}

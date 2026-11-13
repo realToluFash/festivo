@@ -13,19 +13,35 @@
   margin: 0;
 }
 
+/* At 320 the title keeps its words whole and Add guest drops beneath it (ux, sc-3773 #44604). */
 .gs-top {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--spaceLg);
+  gap: var(--spaceMd) var(--spaceLg);
   min-height: var(--sizeHit);
 }
 
 .gs-title {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 auto;
   font: 700 28px/1.12 var(--fontFamily);
   letter-spacing: -0.02em;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+}
+
+/* The crumbs are the way back, so they wrap at word breaks rather than truncate. */
+.gs .ev-crumb ol {
+  flex-wrap: wrap;
+}
+
+.gs .ev-crumb-part {
+  min-width: auto;
+  overflow-wrap: break-word;
+}
+
+.gs .ev-crumb-name {
+  overflow: visible;
+  white-space: normal;
 }
 
 .gs-title:focus {
@@ -61,8 +77,9 @@
 
 .gs-column {
   flex: 1 1 var(--gsGuest);
-  max-width: var(--gsGuest);
   box-sizing: border-box;
+  min-width: 0;
+  max-width: var(--gsGuest);
 }
 
 .gs-list,
