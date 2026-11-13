@@ -91,9 +91,24 @@ export function refusedStartOf(state: EventStateName | null): RefusedStart | nul
   }
 }
 
-/** The sample's Invited guests in this story's states; none in the others, whose delete boards (sc-3592, sc-1468) came before the rule. */
-export function invitedOf(start: RefusedStart | null, sample: number, pressed: boolean): number {
-  return start == null || (start.race && !pressed) ? 0 : sample;
+/** sc-3592's and sc-1468's delete boards, drawn before the rule, keep deleting by name on a sample nobody was Invited to. */
+export const NAMED_DELETE_STATES = [
+  'delete',
+  'deleteMismatch',
+  'deleteTyped',
+  'deleteDraftGuests',
+] as const;
+
+/** The sample's Invited guests everywhere but those boards, so the plain page refuses as the product will. */
+export function invitedOf(
+  state: EventStateName | null,
+  start: RefusedStart | null,
+  sample: number,
+  pressed: boolean,
+): number {
+  if ((NAMED_DELETE_STATES as readonly (string | null)[]).includes(state)) return 0;
+
+  return start?.race === true && !pressed ? 0 : sample;
 }
 
 /** The board's reader without Events at Change: a custom role with Create events and Events at Read. */

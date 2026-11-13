@@ -312,7 +312,7 @@ function EventView({
   const refusal = refusalOf(
     event,
     now,
-    invitedOf(refusedStart, invitedOn(event.id), pressed),
+    invitedOf(state, refusedStart, invitedOn(event.id), pressed),
     canChange,
   );
   const [muted, setMuted] = useState(state === 'muted');
@@ -545,7 +545,7 @@ function EventView({
               const answer = refusalOf(
                 event,
                 now,
-                invitedOf(refusedStart, invitedOn(event.id), true),
+                invitedOf(state, refusedStart, invitedOn(event.id), true),
                 canChange,
               );
 

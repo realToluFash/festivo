@@ -279,19 +279,21 @@ describe('Events in A at a desk (sc-30304)', () => {
   );
 
   it('leaves without a second ask once Delete is confirmed by name', SLOW, async () => {
-    const router = await page('/demo/events/evt-wed-4?state=name');
+    const router = await page('/demo/events/evt-ireti-2', 'Ireti at 40');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Ireti at 40\s*Event name/ }));
     const part = screen.getByRole('group', { name: 'Event name' });
     const manage = screen.getByRole('region', { name: 'Manage' });
 
     fireEvent.change(within(part).getByRole('textbox'), { target: { value: 'Our big day' } });
     fireEvent.click(within(manage).getByRole('button', { name: 'Delete event…' }));
 
-    const ask = await screen.findByRole('alertdialog', { name: `Delete ${WEDDING}?` });
+    const ask = await screen.findByRole('alertdialog', { name: 'Delete Ireti at 40?' });
 
-    fireEvent.change(within(ask).getByRole('textbox'), { target: { value: WEDDING } });
+    fireEvent.change(within(ask).getByRole('textbox'), { target: { value: 'Ireti at 40' } });
     fireEvent.click(within(ask).getByRole('button', { name: 'Delete' }));
 
-    expect(await screen.findByText(`${WEDDING} was deleted.`)).toBeDefined();
+    expect(await screen.findByText('Ireti at 40 was deleted.')).toBeDefined();
     expect(router.state.location.pathname).toBe('/demo/events');
     expect(screen.queryByRole('alertdialog', { name: 'Discard your change?' })).toBeNull();
   });
