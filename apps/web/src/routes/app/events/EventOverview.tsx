@@ -12,6 +12,7 @@ import {
   shownPhase,
   stepAwaitsMilestones,
   takesCardStep,
+  takesThankYou,
   wallDay,
 } from '@soirely/domain';
 import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
@@ -62,6 +63,7 @@ import { GuestNumbers } from './GuestNumbers.tsx';
 import { MuteEvent } from './MuteEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { PauseButton, useResume } from './PauseEvent.tsx';
+import { ThankYouCard } from './ThankYou.tsx';
 import { ComingUp, useTimeline } from './Timeline.tsx';
 import { useLeaveGuard } from './useLeaveGuard.tsx';
 
@@ -278,6 +280,9 @@ export function Overview({
       )}
       <div className="ev-columns">
         <div className="ev-left">
+          {takesThankYou(event, phase) && (
+            <ThankYouCard event={event} manages={manages} onChange={onChange} onSaid={setToast} />
+          )}
           <Details
             event={event}
             phase={phase}
@@ -320,7 +325,10 @@ export function Overview({
                     inManage
                     askRef={askEnd}
                     onChange={onChange}
-                    onEnded={() => setEnded(true)}
+                    onEnded={(thanked) => {
+                      setEnded(true);
+                      if (thanked) setToast(t('thankYou.onEveryPage'));
+                    }}
                   />
                 </>
               )}
