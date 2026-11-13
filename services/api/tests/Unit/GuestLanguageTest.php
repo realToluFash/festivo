@@ -10,6 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psl\File;
 use Psl\Json;
+use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 
@@ -28,7 +29,7 @@ final class GuestLanguageTest extends TestCase
     #[Test]
     public function theTableHoldsTheCasesTheStoryNames(): void
     {
-        $browsers = Vec\map(self::cases(), static fn (array $row): string => \implode(',', $row[1]));
+        $browsers = Vec\map(self::cases(), static fn (array $row): string => Str\join($row[1], ','));
 
         self::assertContains('pt-BR', $browsers);
         self::assertContains('de', $browsers);

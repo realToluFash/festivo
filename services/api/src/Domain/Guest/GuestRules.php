@@ -72,7 +72,7 @@ final readonly class GuestRules
             $named[] = '' === $companion ? null : $companion;
         }
 
-        if (null !== $language && !\in_array($language, SupportedLocales::ALL, true)) {
+        if (null !== $language && !Iter\contains(SupportedLocales::ALL, $language)) {
             $violations[] = $this->violation('language', 'validation.guest_language_unknown');
         }
 

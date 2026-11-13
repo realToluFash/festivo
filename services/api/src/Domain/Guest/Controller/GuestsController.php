@@ -124,7 +124,7 @@ final readonly class GuestsController
             $body['email'] ?? null,
             $body['mobile'] ?? null,
             Vec\map($companions, static fn (array $companion): ?string => $companion['fullName'] ?? null),
-            \array_key_exists('language', $body) ? $body['language'] : $guest->getLanguage(),
+            Iter\contains_key($body, 'language') ? $body['language'] : $guest->getLanguage(),
         );
         $ids = Vec\map($companions, static fn (array $companion): ?string => $companion['id'] ?? null);
 

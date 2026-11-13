@@ -18,6 +18,7 @@ use App\Locale\SupportedLocales;
 use App\Repository\GuestRepository;
 use DateTimeZone;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Iter;
 use Psl\Type;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -116,7 +117,7 @@ final readonly class GuestPageController
         $body = Input::body($request, Type\shape(['token' => Type\string(), 'language' => Type\string()]));
         $guest = $this->invitationLinks->guestFor($body['token']) ?? throw ApiException::notFound('access.not_found');
 
-        if (!\in_array($body['language'], SupportedLocales::ALL, true)) {
+        if (!Iter\contains(SupportedLocales::ALL, $body['language'])) {
             throw ApiException::validation([[
                 'propertyPath' => 'language',
                 'message' => $this->translator->trans('validation.guest_language_unknown'),
