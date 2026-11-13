@@ -1665,6 +1665,17 @@ describe('Guests, a guest’s opt-outs (sc-3969)', () => {
     expect(await within(column()).findByText('sophie@laurent.fr', {}, WAIT)).toBeDefined();
     expect(within(column()).queryByText(/^Unsubscribed from/u)).toBeNull();
     expect(within(column()).queryByText(ONLY)).toBeNull();
+    cleanup();
+
+    await guests('optOutTexts');
+    fireEvent.click(within(column()).getByRole('button', { name: 'Edit' }));
+    fireEvent.change(await screen.findByRole('textbox', { name: /Mobile number/u }), {
+      target: { value: '7700900412' },
+    });
+    fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+
+    expect(await within(column()).findByText('+44 7700900412', {}, WAIT)).toBeDefined();
+    expect(within(column()).getByText('Unsubscribed from texts on Oct 29')).toBeDefined();
   });
 });
 

@@ -111,6 +111,17 @@ describe('the opt-out rows (sc-3969)', () => {
     expect(rowsAfter({ number: '7700 900999' }).texts).toBeNull();
     expect(rowsAfter({ number: '' }).texts).toBeNull();
   });
+
+  it('takes the same number typed with or without its spaces as the same number', () => {
+    const [both] = recordOptOuts([kwame], 'kwame', { email: '2026-10-22', texts: '2026-10-29' });
+    const typed = (number: string) =>
+      optOutRowsOf({ ...(both as Guest), phone: { country: 'GB', number } }, EDITS, dayOf).texts;
+
+    expect(both?.phone).toEqual({ country: 'GB', number: '7700 900412' });
+    expect(typed('7700900412')).not.toBeNull();
+    expect(typed(' 7700  900 412 ')).not.toBeNull();
+    expect(typed('7700900999')).toBeNull();
+  });
 });
 
 describe('the opt-out states (sc-3969)', () => {

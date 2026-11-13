@@ -27,7 +27,7 @@ function sameAddress(a: string, b: string): boolean {
 }
 
 function samePhone(a: Phone, b: Phone): boolean {
-  return a.country === b.country && a.number.trim() === b.number.trim();
+  return a.country === b.country && a.number.replace(/\s+/gu, '') === b.number.replace(/\s+/gu, '');
 }
 
 /** Only for someone who can edit guests, under the address it was recorded on; an opted-out WhatsApp row carries the texts' closing sentence. */
