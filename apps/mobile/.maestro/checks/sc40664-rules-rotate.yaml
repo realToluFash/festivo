@@ -23,5 +23,6 @@ appId: host.exp.Exponent
       - swipe:
           start: 85%, 80%
           end: 85%, 30%
+- assertVisible: '{{t:signInRules.stand.changedTitle}}'
 - waitForAnimationToEnd
 - takeScreenshot: rotate-then-changes
