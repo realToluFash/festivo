@@ -1590,13 +1590,13 @@ async function bundlerUp(seconds = 120) {
   return false;
 }
 
-export async function bundlerAnswers(port = CONFIG.ports.METRO_PORT) {
-  const answer = await fetch(`http://127.0.0.1:${port}/status`, {
+// The timeout also covers reading the body, which a Metro busy bundling sends late.
+export async function bundlerAnswers(port = CONFIG.ports.METRO_PORT, get = fetch) {
+  const answer = await get(`http://127.0.0.1:${port}/status`, {
     signal: AbortSignal.timeout(3000),
-  }).then(
-    (r) => r.text(),
-    () => '',
-  );
+  })
+    .then((r) => r.text())
+    .catch(() => '');
   return answer.includes('running');
 }
 
