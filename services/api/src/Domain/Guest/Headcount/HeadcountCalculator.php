@@ -13,8 +13,6 @@ use Psl\Iter;
 use Psl\Vec;
 
 /**
- * How many are coming, the one answer every count in the product reads (sc-99). Computed from the list on each read, never kept as a counter.
- *
  * @phpstan-type Counts array{onList: int, notYetInvited: int, invited: int, accepted: int, maybe: int, awaitingReply: int, held: int, heldBy: array{hostNoReply: int, hostMaybe: int, hostNotComing: int}, declined: int}
  * @phpstan-type Headcount array{counts: Counts, byGroup: list<array{group: null, counts: Counts}>, byDietaryNeed: array{addsUp: false, needs: list<never>}}
  */
@@ -28,19 +26,13 @@ final readonly class HeadcountCalculator
     /** @return Headcount */
     public function forEvent(Event $event): array
     {
-        return self::headcount(Vec\map($this->guestRepository->findOnList($event), self::standing(...)));
+        return self::headcount(...Vec\map($this->guestRepository->findOnList($event), self::standing(...)));
     }
 
-    /**
-     * Everyone is in No group until groups exist (sc-3775), and no need is counted until dietary needs do (sc-3777); a person with two needs counts under each, so those rows never add up.
-     *
-     * @param list<GuestStanding> $standings
-     *
-     * @return Headcount
-     */
-    public static function headcount(array $standings): array
+    /** @return Headcount */
+    public static function headcount(GuestStanding ...$standings): array
     {
-        $counts = self::counts($standings);
+        $counts = self::counts(...$standings);
 
         return [
             'counts' => $counts,
@@ -49,14 +41,8 @@ final readonly class HeadcountCalculator
         ];
     }
 
-    /**
-     * Everyone on the list is invited until invitations exist (sc-3788).
-     *
-     * @param list<GuestStanding> $standings
-     *
-     * @return Counts
-     */
-    public static function counts(array $standings): array
+    /** @return Counts */
+    public static function counts(GuestStanding ...$standings): array
     {
         $count = static fn (GuestStanding ...$any): int => Iter\count(Vec\filter($standings, static fn (GuestStanding $standing): bool => Iter\contains($any, $standing)));
         $heldBy = [

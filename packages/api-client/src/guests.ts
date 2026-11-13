@@ -176,10 +176,7 @@ const HEADCOUNT_COUNTS = [
   'declined',
 ] as const;
 
-/**
- * People, companions included (sc-99). accepted + maybe + awaitingReply + held + declined = invited, and invited + notYetInvited = onList.
- * `accepted` is the settled figure: an optimistic one adds maybe, awaitingReply and held but not `heldBy.hostNotComing`.
- */
+/** People (sc-99). `accepted` is the settled figure; an optimistic one adds maybe, awaitingReply and held, never `heldBy.hostNotComing`. */
 export type HeadcountCounts = Record<(typeof HEADCOUNT_COUNTS)[number], number> & {
   heldBy: { hostNoReply: number; hostMaybe: number; hostNotComing: number };
 };

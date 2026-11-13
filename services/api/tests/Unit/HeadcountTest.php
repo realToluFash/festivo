@@ -39,7 +39,7 @@ final class HeadcountTest extends TestCase
     {
         $everyone = Vec\concat(GuestStanding::cases(), GuestStanding::cases());
 
-        $counts = HeadcountCalculator::counts($everyone);
+        $counts = HeadcountCalculator::counts(...$everyone);
 
         self::assertSame(14, $counts['onList']);
         self::assertSame($counts['invited'], $counts['accepted'] + $counts['maybe'] + $counts['awaitingReply'] + $counts['held'] + $counts['declined']);
