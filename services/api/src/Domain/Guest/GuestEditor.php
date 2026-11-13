@@ -73,6 +73,7 @@ final readonly class GuestEditor
             $guest->setFullName($new->fullName, $new->nameKey);
             $guest->setEmail($new->email);
             $guest->setMobile($new->mobile);
+            $guest->setLanguage($new->language);
             $guest->raiseVersion();
 
             foreach ($companions as $companion) {
@@ -167,6 +168,7 @@ final readonly class GuestEditor
             'fullName' => $guest->getFullName() !== $new->fullName,
             'email' => $guest->getEmail() !== $new->email,
             'mobile' => $guest->getMobile() !== $new->mobile,
+            'language' => $guest->getLanguage() !== $new->language,
             'companions' => $before !== $after,
         ]));
     }

@@ -10,6 +10,7 @@ use App\Entity\Guest;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
+use App\Locale\SupportedLocales;
 use Psl\Iter;
 use Psl\Str;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -26,8 +27,9 @@ final readonly class GuestRules
     /**
      * @param ?array{countryCode: string, number: string} $mobile
      * @param list<?string>                               $companions each companion's name as typed, blank for none
+     * @param ?string                                     $language   the host's Language, null for Not set
      */
-    public function guest(string $fullName, ?string $email, ?array $mobile, array $companions): NewGuest
+    public function guest(string $fullName, ?string $email, ?array $mobile, array $companions, ?string $language = null): NewGuest
     {
         $violations = [];
         $name = Str\trim($fullName);
@@ -70,11 +72,15 @@ final readonly class GuestRules
             $named[] = '' === $companion ? null : $companion;
         }
 
+        if (null !== $language && !\in_array($language, SupportedLocales::ALL, true)) {
+            $violations[] = $this->violation('language', 'validation.guest_language_unknown');
+        }
+
         if ([] !== $violations) {
             throw ApiException::validation($violations);
         }
 
-        return new NewGuest($name, NameNormaliser::key($name), '' === $email ? null : $email, $e164, $named);
+        return new NewGuest($name, NameNormaliser::key($name), '' === $email ? null : $email, $e164, $named, $language);
     }
 
     /** @return array{propertyPath: string, message: string, code: string} */

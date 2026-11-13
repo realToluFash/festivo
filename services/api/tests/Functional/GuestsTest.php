@@ -109,6 +109,7 @@ final class GuestsTest extends ApiTestCase
         yield 'not an email address' => [['fullName' => 'Bisi', 'email' => 'bisi.example.com'], ['email' => 'That does not look like an email address. Check it has an @ and a domain.']];
         yield 'a number too short' => [['fullName' => 'Bisi', 'mobile' => ['countryCode' => 'NG', 'number' => '0803']], ['mobile' => 'That number looks too short for Nigeria. Check it and try again.']];
         yield 'a companion named too long' => [['fullName' => 'Bisi', 'companions' => [['fullName' => 'Obi'], ['fullName' => Str\repeat('b', 201)]]], ['companions[1].fullName' => 'Shorten the name to 200 characters or fewer.']];
+        yield 'a language Soirely does not offer' => [['fullName' => 'Bisi', 'language' => 'de'], ['language' => 'Choose English, Español, Français or Português, or leave Language Not set.']];
         yield 'eleven companions' => [['fullName' => 'Bisi', 'companions' => Vec\fill(11, [])], ['companions' => '10 companions is the most one guest can bring.']];
         yield 'everything at once' => [['fullName' => '', 'email' => 'nope', 'mobile' => ['countryCode' => 'NG', 'number' => '0803']], [
             'fullName' => 'Enter their full name.',
@@ -276,6 +277,9 @@ final class GuestsTest extends ApiTestCase
             foreach ([$row, $details] as $answer) {
                 self::assertArrayNotHasKey('email', $answer);
                 self::assertArrayNotHasKey('mobile', $answer);
+                self::assertArrayNotHasKey('language', $answer);
+                self::assertArrayNotHasKey('chosenLanguage', $answer);
+                self::assertArrayNotHasKey('messageLanguage', $answer);
                 self::assertSame('Bisi', $answer['fullName'] ?? null);
             }
         }
@@ -303,6 +307,22 @@ final class GuestsTest extends ApiTestCase
         self::assertSame([$unnamed, $tunde], [$companions[0]['id'], $companions[1]['id']]);
         self::assertSame(4, $this->people());
         self::assertSame($this->details($body), $this->details($this->as($this->owner, 'GET', $this->guest($guest))));
+    }
+
+    #[Test]
+    public function theHostsLanguageIsKeptOnAddAndSaveAndASaveWithoutItLeavesItAsItWas(): void
+    {
+        $added = $this->add(['fullName' => 'Inês Duarte', 'language' => 'pt']);
+        self::assertSame(['pt', null, 'pt'], [$added['language'], $added['chosenLanguage'], $added['messageLanguage']]);
+
+        $this->as($this->owner, 'PUT', $this->guest($added), ['fullName' => 'Inês Duarte Silva'], '"1"');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('pt', $this->details($this->last())['language']);
+
+        $this->as($this->owner, 'PUT', $this->guest($added), ['fullName' => 'Inês Duarte Silva', 'language' => null], '"2"');
+        $details = $this->details($this->last());
+        self::assertSame([null, 'en'], [$details['language'], $details['messageLanguage']]);
+        self::assertSame('"3"', $this->client->getResponse()->headers->get('ETag'));
     }
 
     #[Test]

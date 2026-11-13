@@ -2162,6 +2162,15 @@ export class ApiClient {
     return page;
   }
 
+  /** The guest's own language menu (sc-3790): kept on the guest, never on an account. Refused 422 for a language Soirely does not offer, and `not_found` as the page is. */
+  async chooseGuestLanguage(token: string, language: string): Promise<void> {
+    await this.post<undefined>(
+      '/api/guest-links/language',
+      { token, language },
+      { anonymous: true },
+    );
+  }
+
   /** "Not {name}? Tell us". Refused `too_many_attempts` after five an hour on one link. */
   async tellWrongPerson(token: string): Promise<void> {
     await this.post<undefined>('/api/guest-links/wrong-person', { token }, { anonymous: true });
@@ -3603,7 +3612,7 @@ function asEventCover(raw: unknown): EventCover | undefined {
 
 function asGuestPage(raw: unknown): GuestPage | null {
   if (typeof raw !== 'object' || raw == null) return null;
-  const { guest, event, phase, started, answersOpen } = raw as Record<string, unknown>;
+  const { guest, event, phase, started, answersOpen, language } = raw as Record<string, unknown>;
   const shown = GUEST_PAGE_PHASES.find((known) => known === phase);
   if (typeof guest !== 'object' || guest == null || typeof event !== 'object' || event == null)
     return null;
@@ -3612,8 +3621,10 @@ function asGuestPage(raw: unknown): GuestPage | null {
   const reply = who.reply as Record<string, unknown> | null | undefined;
   const answer = GUEST_ANSWERS.find((known) => known === reply?.answer);
   const venue = what.venue as Record<string, unknown> | null | undefined;
+  const languages = (language ?? {}) as Record<string, unknown>;
 
   if (
+    typeof languages.organisation !== 'string' ||
     typeof who.fullName !== 'string' ||
     typeof who.companions !== 'number' ||
     (reply != null && (answer == null || typeof reply.at !== 'string')) ||
@@ -3633,6 +3644,11 @@ function asGuestPage(raw: unknown): GuestPage | null {
       fullName: who.fullName,
       reply: reply == null || answer == null ? null : { answer, at: reply.at as string },
       companions: who.companions,
+    },
+    language: {
+      chosen: typeof languages.chosen === 'string' ? languages.chosen : null,
+      host: typeof languages.host === 'string' ? languages.host : null,
+      organisation: languages.organisation,
     },
     event: {
       id: what.id,
