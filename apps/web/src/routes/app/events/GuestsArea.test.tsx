@@ -702,6 +702,21 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(details.getByRole('button', { name: 'Edit' })).toBeDefined();
   });
 
+  it('holds the cover card’s place and three detail rows while the guest loads, heard as Loading…', async () => {
+    signedIn();
+    await onGuests({
+      'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA])),
+      'GET /api/events/ev_1/guests/g_1': () => new Promise<Response>(() => {}),
+    });
+    fireEvent.click(await screen.findByRole('link', { name: /^Ngozi Eze/u }));
+
+    const loading = await within(column()).findByRole('status');
+    expect(loading.textContent).toBe('Loading…');
+    expect(loading.querySelectorAll('.gs-bone-guest')).toHaveLength(1);
+    expect(loading.querySelectorAll('.desk-row.is-bones')).toHaveLength(3);
+    expect(cssRule('.gs-bone-guest', GUESTS_CSS)).toContain('height: 170px;');
+  });
+
   it('shows no contact details and no Edit with guests.read alone', async () => {
     const { email: _email, mobile: _mobile, ...withoutContacts } = DETAILS;
     await openNgozi(

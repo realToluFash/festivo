@@ -13,7 +13,6 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../../api.ts';
 import { Glyph, type GlyphName } from '../../../components/Glyph.tsx';
 import { Ask, Head, RowWords } from '../../../components/SettingsParts.tsx';
-import { Skeleton } from '../../../components/Skeleton.tsx';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree } from '../../../layers.ts';
 import { type Mesh } from '../../../mesh.ts';
@@ -195,8 +194,20 @@ export function GuestColumn({
 
   if (pane.kind === 'loading') {
     return (
-      <div aria-busy="true">
-        <Skeleton words={t('pending.loading')} shape="rows" rowHeight={64} />
+      <div className="desk-loading gs-bones" role="status" aria-busy="true">
+        <span className="desk-unseen">{t('pending.loading')}</span>
+        <span className="desk-sunk gs-bone-guest" aria-hidden="true" />
+        <ul className="desk-rows gs-rows" aria-hidden="true">
+          {[1, 2, 3].map((bone) => (
+            <li key={bone} className="desk-row is-bones">
+              <span className="desk-sunk gs-bone-icon" />
+              <span className="desk-row-words">
+                <span className={`desk-sunk is-title b${bone}`} />
+                <span className={`desk-sunk is-line b${bone}`} />
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
     );
   }
