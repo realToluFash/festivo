@@ -92,7 +92,7 @@ import { CHANNEL_WORD, type ChannelKey, W, say, sayStop } from './MessagesWords.
 import { waitsCheckOf } from './CheckWaits.ts';
 import { SW, refusalLine } from './ScheduledSave.ts';
 import { outsideToken, tokenText } from './TokenText.ts';
-import { type ReachPerson, fixKindOf, reachViewOf, resendOf } from './Reach.ts';
+import { type ReachPerson, emailBounced, fixKindOf, reachViewOf, resendOf } from './Reach.ts';
 import { ContactEdit, type RowActions, WhoReached } from './WhoReached.tsx';
 import { type Anchored, InsertMenu, anchorAt } from './WriteItOnce.tsx';
 import {
@@ -237,7 +237,8 @@ export function MessagesScreen({
       key: person?.key ?? ('tomas' as const),
       how: 'fixEmail' as FixKind,
       name: person?.name ?? '',
-      bounced: person?.bounced ?? '',
+      was: person?.bounced ?? '',
+      bounced: person == null ? false : emailBounced(person),
       start: start.fix ? FIXED_ADDRESS : (person?.bounced ?? ''),
     };
   });
@@ -624,7 +625,8 @@ export function MessagesScreen({
         key: person.key,
         how,
         name: person.name,
-        bounced: person.bounced ?? '',
+        was: person.bounced ?? '',
+        bounced: emailBounced(person),
         start: how === 'fixEmail' ? (person.bounced ?? '') : '',
       });
       dispatch({ type: 'fixing', open: true });
@@ -710,6 +712,7 @@ export function MessagesScreen({
         open={m.fixing}
         how={fix.how}
         name={fix.name}
+        was={fix.was}
         bounced={fix.bounced}
         start={fix.start}
         opener={openerRef}

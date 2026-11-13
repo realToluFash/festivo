@@ -183,7 +183,8 @@ export const MW = {
   resend_other: 'Resend to the {{count, number}} not reached',
   emailAddress: 'Email address',
   save: 'Save',
-  wasAddress: 'Was {{address}}, which bounced.',
+  wasBounced: 'Was {{address}}, which bounced.',
+  wasAddress: 'Was {{address}}.',
   sendAgain: 'Send to {{name}} again',
   alreadyOnPage: 'The message is already on their page. Soirely tells them again by:',
   notConfirmedIncluded_one:

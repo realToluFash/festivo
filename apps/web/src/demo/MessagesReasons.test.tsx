@@ -140,4 +140,20 @@ describe('Who it reached: every reason and Try SMS instead at a desk (sc-3966)',
       expect(screen.queryByRole('button', { name: 'Send to Tomás Ferreira again' })).toBeNull();
     },
   );
+
+  it('says which bounced under Fix email address only when the email bounced', SLOW, async () => {
+    await messages('reasons');
+
+    for (const [name, line] of [
+      ['Olumide Bello', 'Was olumide.bello@outlook.com, which bounced.'],
+      ['Chidi Okeke', 'Was chidi.okeke@gmail.com.'],
+      ['Rafael Costa', 'Was rafael.costa@uol.com.br.'],
+      ['Yuki Tanaka', 'Was yuki.tanaka@icloud.com.'],
+    ] as const) {
+      fireEvent.click(rowOf(name).getByRole('button', { name: 'Fix email address' }));
+      await screen.findByRole('textbox', { name: 'Email address' });
+      expect(screen.getByText(line)).toBeDefined();
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    }
+  });
 });

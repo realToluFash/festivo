@@ -2,7 +2,17 @@ import { describe, expect, it } from 'vitest';
 
 import { type Action, type Messages, startOf } from './MessagesModel.ts';
 import type { PersonKey } from './MessagesSample.ts';
-import { EMPTY_LINE, isEmail, isPhone, reachViewOf, reduceReach, resendOf } from './Reach.ts';
+import { say } from './MessagesWords.ts';
+import {
+  EMPTY_LINE,
+  emailBounced,
+  isEmail,
+  isPhone,
+  reachViewOf,
+  reduceReach,
+  resendOf,
+} from './Reach.ts';
+import { REASON_GROUPS } from './ReasonsSample.ts';
 
 const run = (m: Messages, ...actions: Action[]) => actions.reduce(reduceReach, m);
 const ELEVEN = [
@@ -40,6 +50,20 @@ describe('the address checks', () => {
     expect(isPhone('+46 70 123 45 67')).toBe(true);
     expect(isPhone('070 123 45 67')).toBe(false);
     expect(isPhone('+44 12')).toBe(false);
+  });
+});
+
+describe('Fix email address', () => {
+  it('says which bounced only when the email line reads Bounced', () => {
+    const lineOf = (key: string) => {
+      const person = REASON_GROUPS.flatMap((group) => group.people).find((one) => one.key === key);
+      return person == null ? null : say.wasAddress(person.bounced ?? '', emailBounced(person));
+    };
+
+    expect(lineOf('tomas')).toBe('Was tomas.ferreira@gmial.com, which bounced.');
+    expect(lineOf('chidi')).toBe('Was chidi.okeke@gmail.com.');
+    expect(lineOf('rafael')).toBe('Was rafael.costa@uol.com.br.');
+    expect(lineOf('yuki')).toBe('Was yuki.tanaka@icloud.com.');
   });
 });
 

@@ -319,7 +319,8 @@ export const say = {
   seenBy: (count: number) => `seen by ${count} on their page`,
   seenByStart: (count: number) => `Seen by ${count} on their page`,
   resend: (count: number) => `Resend to the ${count} not reached`,
-  wasBounced: (address: string) => `Was ${address}, which bounced.`,
+  wasAddress: (address: string, bounced: boolean) =>
+    bounced ? `Was ${address}, which bounced.` : `Was ${address}.`,
   includesUnconfirmed: (count: number) =>
     count === 1
       ? 'Includes one guest whose delivery was not confirmed. They may already have this message.'

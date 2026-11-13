@@ -467,6 +467,7 @@ export function ContactEdit({
   open,
   how,
   name,
+  was,
   bounced,
   start,
   opener,
@@ -476,7 +477,8 @@ export function ContactEdit({
   open: boolean;
   how: FixKind;
   name: string;
-  bounced: string;
+  was: string;
+  bounced: boolean;
   start: string;
   opener: RefObject<ScreenReaderTarget | null>;
   onCancel: () => void;
@@ -513,7 +515,7 @@ export function ContactEdit({
       <EventField
         label={label}
         error={wrong ? (phone ? W.phoneShape : W.emailShape) : null}
-        help={how === 'fixEmail' ? say.wasBounced(bounced) : undefined}
+        help={how === 'fixEmail' ? say.wasAddress(was, bounced) : undefined}
       >
         <TextField
           ref={field}

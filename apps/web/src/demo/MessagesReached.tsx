@@ -644,7 +644,11 @@ function FixForm({
           inputMode="email"
           autoComplete="off"
           {...(fixing.fix === 'fixEmail'
-            ? { help: filled(MW.wasAddress, { address: person.address ?? '' }) }
+            ? {
+                help: filled(person.kind === 'bounced' ? MW.wasBounced : MW.wasAddress, {
+                  address: person.address ?? '',
+                }),
+              }
             : {})}
           error={wrong}
         />

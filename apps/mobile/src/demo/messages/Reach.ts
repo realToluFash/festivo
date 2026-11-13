@@ -55,6 +55,12 @@ export function fixKindOf(word: string): FixKind | null {
   return (Object.keys(FIX_WORD) as FixKind[]).find((kind) => FIX_WORD[kind] === word) ?? null;
 }
 
+/** Fix email address says "which bounced" only when the email line reads Bounced (pm on ux's #46677). */
+export function emailBounced(person: NotReached): boolean {
+  const bounced = say.where(CHANNEL_WORD.email, W.bounced);
+  return person.lines.some((line) => line.word === bounced);
+}
+
 /** The line under Updated · not sent yet, one per action (sc-3966, settled on l10n's #31603). */
 export const SINCE: Record<FixKind, string> = {
   fixEmail: W.emailChangedSince,
