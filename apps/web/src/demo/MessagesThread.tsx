@@ -43,7 +43,9 @@ import {
 } from './messages.ts';
 import { Composer, ComposePane, ResendCard } from './MessagesCompose.tsx';
 import { NoManage, SentToThread } from './MessagesSentTo.tsx';
-import { isSentTo } from './messagesTo.ts';
+import { INVITE_WORLD } from './messagesInvite.ts';
+import { InviteCompose } from './MessagesInvite.tsx';
+import { type World, MESSAGES_WORLD, isSentTo } from './messagesTo.ts';
 import { TW } from './messagesToWords.ts';
 import { type Bit, useInbox, whereBits } from './messagesContext.ts';
 import { LaterDialog, MatchPicker } from './MessagesDialogs.tsx';
@@ -94,7 +96,9 @@ export function ConversationPane({
 
   return (
     <section className="mg-pane">
-      {pane.kind === 'compose' ? (
+      {pane.kind === 'compose' && inbox.draft?.invite != null ? (
+        <InviteCompose />
+      ) : pane.kind === 'compose' ? (
         <ComposePane opening={state === 'to'} later={state === 'later'} />
       ) : pane.kind === 'reached' ? (
         <ReachedView key={pane.thread} of={pane.of} thread={pane.thread} state={state} />
@@ -125,10 +129,12 @@ export function MiniComposer({
   to,
   placeholder,
   thread,
+  world,
 }: {
   to: Audience;
   placeholder: string;
   thread: ConvoId;
+  world?: World;
 }) {
   const { act, focus, inbox, whyOff, to: event } = useInbox();
 
@@ -160,7 +166,7 @@ export function MiniComposer({
           onClick={() => open('', true)}
           {...offButton(whyOff != null)}
         >
-          {chipWords(to, event.book)}
+          {chipWords(to, event.book, world)}
           <Glyph name="chevdown" size={14} weight={2.6} />
         </button>
       </div>
@@ -590,6 +596,7 @@ function ManyThread({ id }: { id: ConvoId }) {
   const resending = inbox.resend?.thread === id;
   const fixed = id === 'parking' || id === 'invite' || id === 'receipts';
   const to: Audience = fixed ? { kind: 'all' } : (first?.to ?? { kind: 'all' });
+  const world = first?.invite == null ? MESSAGES_WORLD : INVITE_WORLD;
   const title = fixed
     ? id === 'invite'
       ? MW.invitation
@@ -599,7 +606,7 @@ function ManyThread({ id }: { id: ConvoId }) {
       : outTitle(first);
   const line = [
     toLine(to, event.book.groups),
-    countOf(to, event.book.groups),
+    countOf(to, event.book.groups, world),
     id === 'invite'
       ? listed([MW.email, MW.sms])
       : toldWords(id === 'receipts' ? RECEIPTS.ticks : (first?.ticks ?? TICKS)),
@@ -621,8 +628,9 @@ function ManyThread({ id }: { id: ConvoId }) {
       {!resending && (
         <MiniComposer
           to={to}
-          placeholder={id === 'invite' ? MW.writeToThem : MW.writeFollowUp}
+          placeholder={id === 'invite' || first?.invite != null ? MW.writeToThem : MW.writeFollowUp}
           thread={id}
+          world={world}
         />
       )}
     </div>

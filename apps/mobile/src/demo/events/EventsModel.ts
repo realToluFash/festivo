@@ -39,6 +39,7 @@ import { CLOCKS, READER_ZONE, type SampleEvent } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { CHANGES_STATES, FINAL_NUMBERS_STATES, kitchenOwed, othersOwed } from './FinalNumbers.ts';
 import { WRITE_STATES } from './GuestsCanWrite.ts';
+import { MAKE_LIVE_STATES } from './MakeLive.ts';
 import { CARD_STATES, END_STATES, isCardState, isEndState } from './ThankYou.ts';
 
 export type {
@@ -485,6 +486,7 @@ export const EVENT_STATES = [
   'needsYouFailed',
   ...FINAL_NUMBERS_STATES,
   ...CHANGES_STATES,
+  ...MAKE_LIVE_STATES,
 ] as const;
 export type EventDemoState = (typeof EVENT_STATES)[number];
 

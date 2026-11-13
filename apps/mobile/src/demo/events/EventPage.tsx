@@ -4,6 +4,7 @@ import { type Href, router } from 'expo-router';
 import {
   type ReactNode,
   type RefObject,
+  useCallback,
   useEffect,
   useMemo,
   useReducer,
@@ -28,7 +29,9 @@ import {
   PartsSection,
   type RefFor,
 } from '../../components/EventOverview.tsx';
-import { AreaPage, EventFrame } from './EventFrame.tsx';
+import { AreaPage, EventFrame, type EventToast } from './EventFrame.tsx';
+import { INVITATION_HREF, liveToastOf, makeLiveStateOf, reachOf, seededEvent } from './MakeLive.ts';
+import { MakeLiveAsk, useMakeLive } from './MakeLiveAsk.tsx';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
 import { needsStateOf, readerOf } from './NeedsYouModel.ts';
 import {
@@ -65,7 +68,7 @@ import {
   currencyWords,
   sampleEvent,
 } from './EventsSample.ts';
-import { W, say } from './EventsWords.ts';
+import { LIVE, W, say } from './EventsWords.ts';
 import { NOTE_WORDS, WIDE_NOTE } from './ArrivalNote.ts';
 import { NoteInset } from './NoteInset.tsx';
 import {
@@ -109,6 +112,7 @@ import {
 } from '../guests/GuestsModel.ts';
 import { resetLooked, seedLook, takeLook } from '../guests/ChangedSince.ts';
 import { GuestsScreen } from '../guests/GuestsScreen.tsx';
+import { DemoOnly } from '../../steps/Lines.tsx';
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 import type { BudgetState } from '../budget/BudgetModel.ts';
 import { BudgetScreen } from '../budget/BudgetScreen.tsx';
@@ -133,6 +137,8 @@ function startEvent(
   const event = sampleEvent(id) ?? sampleEvent('evt-wed-4');
   if (event == null) throw new Error('The sample has the wedding.');
   seedFinalNumbers(state);
+  const live = makeLiveStateOf(state);
+  if (live != null) return seededEvent(event, live);
   if (messages === 'tell' || messages === 'untold') return { ...event, startsAt: TELL.startsAt };
   if (messages === 'tellPlace') return { ...event, venue: PLACE };
   if (messages === 'closedDraft') return { ...event, status: 'draft' };
@@ -190,6 +196,10 @@ export function EventScreen({
     [state, guests],
   );
   const [event, setEvent] = useState(() => startEvent(id, state, messages));
+  const reach = useMemo(() => reachOf(state, event), [state, event]);
+  const live = useMakeLive(state, reach, (host) =>
+    setEvent((now) => ({ ...now, hosts: host == null ? now.hosts : [host], status: 'live' })),
+  );
   const [at, setAt] = useState<AreaKey>(() => {
     if (guests != null && !isIn(OVERVIEW_STATES, guests)) seedLook(areaStart(guests).looked, now);
     else if (messages === 'bell') resetLooked();
@@ -286,6 +296,9 @@ export function EventScreen({
   const refFor = (key: string) => (node: ViewInstance | null) => {
     refs.current[key] = node;
   };
+  const cardStep = useCallback((node: ViewInstance | null) => {
+    refs.current.card = node;
+  }, []);
   const openEdit = (which: EditPart) => {
     from.current = which;
     setPart(which);
@@ -336,7 +349,7 @@ export function EventScreen({
   };
   const onStep = (step: Extract<CardStep, { kind: 'button' }>) => {
     from.current = 'card';
-    if (step.action === 'makeLive') shell.tell(say.ownDesign(W.makeLive));
+    if (step.action === 'makeLive') live.open(event.hosts.length === 0);
     else if (step.action === 'changeDates') openEdit('dates');
     else if (step.action === 'resume') setEvent({ ...event, status: 'live' });
     else setDuplicating(true);
@@ -372,6 +385,7 @@ export function EventScreen({
       wide={shell.layout !== 'phone'}
       takes={() => true}
       onStep={onStep}
+      stepRef={cardStep}
       testID="event.card"
     />
   );
@@ -485,6 +499,45 @@ export function EventScreen({
     />
   );
 
+  const makeLive = (
+    <MakeLiveAsk
+      live={live.s}
+      reach={reach}
+      name={event.name}
+      opener={opener}
+      onKeep={live.keep}
+      onConfirm={live.confirm}
+      onTyped={live.typed}
+      onSend={live.send}
+      onChangeDates={() => {
+        live.keep();
+        openEdit('dates');
+      }}
+    />
+  );
+  const liveSaid = liveToastOf(live.s, reach);
+  const demoNote = live.s.toast === 'queued' && (
+    <DemoOnly title={LIVE.demoMessages}>{null}</DemoOnly>
+  );
+  const liveToast: EventToast | null =
+    liveSaid == null
+      ? null
+      : {
+          words: liveSaid,
+          onClose: live.closeToast,
+          action:
+            live.s.toast === 'queued'
+              ? {
+                  label: LIVE.messages,
+                  testID: 'event.toast.messages',
+                  onPress: () => {
+                    live.closeToast();
+                    router.push(INVITATION_HREF as Href);
+                  },
+                }
+              : null,
+        };
+
   if (state === 'loading')
     return (
       <EventFrame
@@ -593,6 +646,7 @@ export function EventScreen({
         card={card}
         left={
           <>
+            {demoNote}
             {thankYou}
             {details}
             {needsYou}
@@ -610,6 +664,7 @@ export function EventScreen({
         }
         stacked={
           <>
+            {demoNote}
             {thankYou}
             {numbers}
             {peopleCard}
@@ -634,7 +689,7 @@ export function EventScreen({
       onMore={setMore}
       badge={messagesHere && messagesSeen ? badgeFor(m) : null}
       without={without}
-      toast={told == null ? null : { words: told, onClose: () => setTold(null) }}
+      toast={liveToast ?? (told == null ? null : { words: told, onClose: () => setTold(null) })}
       overlay={
         <>
           {tell}
@@ -654,6 +709,7 @@ export function EventScreen({
               onReplyBy={savedReplyBy}
             />
           ) : null}
+          {makeLive}
           <ThankYouScreen
             card={thanks}
             locale={locale}

@@ -317,8 +317,71 @@ const KEYED: Record<string, (values: Record<string, string | number>) => string>
     `It ends ${String(v.end)}, ${String(v.duration)} later, like the original. Times in ${String(v.timeZone)}.`,
   'eventDuplicate.endsUnchosen': (v) =>
     `It ends ${String(v.duration)} after it starts, like the original. Times in ${String(v.timeZone)}.`,
+  'eventLive.hostEmpty': () => 'Enter who is hosting to make this event live.',
+  'eventHosts.tooLong': (v) =>
+    `A host’s name can be at most ${String(v.most)} characters. This one has ${String(v.length)}.`,
 };
 
 /** The few of main's keys the domain's word helpers ask for, in English. */
 export const t: Translate = (key: string, values: Record<string, string | number> = {}) =>
   KEYED[key]?.(values) ?? key;
+
+/** sc-3971: Make live in main's eventLive.* English, the offer in the story's copy as pm and l10n settled it (#45231, #45271, #45310). */
+export const LIVE = {
+  makeLive: 'Make live',
+  notYet: 'Not yet',
+  making: 'Making live…',
+  confirmLine: 'Guests can be invited, and they can see it. It can’t go back to being a draft.',
+  failed: 'Not made live. Try again in a moment.',
+  madeLive: '✓ Live',
+  close: 'Close',
+  sending: 'Sending…',
+  notSent: 'Not sent. Try again in a moment.',
+  forbidden: 'Your role no longer includes sending messages, so nothing was sent.',
+  messages: 'Messages',
+  notMadeLive: 'Not made live.',
+  changedTitle: 'Somebody else changed this event while you had it open.',
+  nowLive: 'It’s live now. The page shows what it is now.',
+  hostLabel: 'Host 1',
+  smsStop: 'Reply STOP to opt out.',
+  hostExplainer:
+    'Guests read this name on their invitation and their page. Write it the way you want guests to see it.',
+  demoMessages:
+    'The engagement has no Messages sample, so the toast’s Messages opens the wedding’s Invitation conversation, and nothing is sent.',
+} as const;
+
+const LIVE_COUNTED = {
+  offerTitle_one: 'Send the invitation to 1 guest now?',
+  offerTitle_other: 'Send invitations to {{count}} guests now?',
+  send_one: 'Send it',
+  send_other: 'Send them',
+  queued_one: 'Invitation queued. Sending to 1 guest now.',
+  queued_other: 'Invitations queued. Sending to {{count}} guests now.',
+  cannotTitle_one: 'The invitation cannot be sent yet.',
+  cannotTitle_other: 'The invitations cannot be sent yet.',
+  later_one: 'You can send the invitation later from Guests in Soirely on the web.',
+  later_other: 'You can send the invitations later from Guests in Soirely on the web.',
+  textsUse_one: 'Texts use 1 credit.',
+  textsUse_other: 'Texts use {{count}} credits.',
+  nobody_one:
+    'This guest cannot be reached. Add an email address or a mobile number for them in Guests.',
+  nobody_other:
+    'None of the {{count}} guests can be reached. Add an email address or a mobile number for them in Guests.',
+} as const;
+
+type Counted = keyof typeof LIVE_COUNTED extends `${infer Key}_${'one' | 'other'}` ? Key : never;
+
+/** One of the _one/_other families, its count written as a number in the reader's locale. */
+export function liveCounted(key: Counted, count: number, locale = 'en-US'): string {
+  const words = count === 1 ? LIVE_COUNTED[`${key}_one`] : LIVE_COUNTED[`${key}_other`];
+
+  return words.replace('{{count}}', new Intl.NumberFormat(locale).format(count));
+}
+
+export const sayLive = {
+  confirmTitle: (name: string) => `Make ${name} live?`,
+  isLive: (name: string) => `${name} is live.`,
+  creditsAfter: (after: string) => `Credits after sending: ${after}.`,
+  inviteText: (hosts: string, greeting: string, event: string, date: string) =>
+    `${hosts}: ${greeting}, you're invited to ${event} on ${date}. Please reply at `,
+};

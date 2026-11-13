@@ -1239,6 +1239,116 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-draft-4?state=draft',
       },
       {
+        title: 'Make live?',
+        what: 'A’s alert: Not yet, then Make live',
+        href: '/demo/events/evt-draft-4?state=makeLive',
+      },
+      {
+        title: 'Make live · making live',
+        what: 'Making live…, Not yet waits',
+        href: '/demo/events/evt-draft-4?state=makeLiveMaking',
+      },
+      {
+        title: 'Make live · not made live',
+        what: 'Not made live. Try again in a moment.',
+        href: '/demo/events/evt-draft-4?state=makeLiveNotMade',
+      },
+      {
+        title: 'Make live · Host 1',
+        what: 'No host yet: Host 1 in the alert',
+        href: '/demo/events/evt-draft-4?state=makeLiveHost',
+      },
+      {
+        title: 'Make live · Host 1 empty',
+        what: 'Enter who is hosting to make this event live.',
+        href: '/demo/events/evt-draft-4?state=makeLiveHostBlank',
+      },
+      {
+        title: 'Make live · changed elsewhere',
+        what: 'Somebody else made it live: Close alone',
+        href: '/demo/events/evt-draft-4?state=makeLiveChanged',
+      },
+      {
+        title: 'Make live · cannot send messages',
+        what: 'A member without Messages: Make live ends with ✓ Live',
+        href: '/demo/events/evt-draft-4?state=makeLiveCannotSend',
+      },
+      {
+        title: 'Make live · the offer',
+        what: 'Send invitations to 11 guests now? Texts use 146 credits',
+        href: '/demo/events/evt-draft-4?state=makeLiveOffer',
+      },
+      {
+        title: 'Make live · the offer, everyone by email',
+        what: 'Send invitations to 11 guests now? No texts, so no cost line',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferEmail',
+      },
+      {
+        title: 'Make live · the offer, one guest',
+        what: 'Send the invitation to 1 guest now? and Send it',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferOne',
+      },
+      {
+        title: 'Make live · the offer, every text waits',
+        what: 'At 0 credits: Email goes either way, 3 SMS messages will wait',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferWaits',
+      },
+      {
+        title: 'Make live · the offer, credits for some texts',
+        what: 'Texts use 22 credits, then 1 SMS message will wait',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferPart',
+      },
+      {
+        title: 'Make live · sending',
+        what: 'Sending…, Not yet waits',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferSending',
+      },
+      {
+        title: 'Make live · invitations queued',
+        what: 'The toast, and Messages opens the Invitation',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferSent',
+      },
+      {
+        title: 'Make live · Not yet on the offer',
+        what: 'Live, no toast',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferNotYet',
+      },
+      {
+        title: 'Make live · not sent',
+        what: 'Not sent. Try again in a moment. The offer stays',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferNotSent',
+      },
+      {
+        title: 'Make live · nobody can be reached',
+        what: 'No offer: why, and Close alone',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferNobody',
+      },
+      {
+        title: 'Make live · refused after Send them',
+        what: 'The same refusal in the offer’s place: why, and Close alone',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferRefused',
+      },
+      {
+        title: 'Make live · no longer allowed to send',
+        what: '403 after Send them: why, and Close alone',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferForbidden',
+      },
+      {
+        title: 'Make live · end has passed',
+        what: 'Not made live: Close, or Change dates',
+        href: '/demo/events/evt-shower-2?state=makeLiveEndPassed',
+      },
+      {
+        title: 'Make live · nobody on the list',
+        what: 'No offer: Make live ends with ✓ Live',
+        href: '/demo/events/evt-cena-4?state=makeLiveNoOffer',
+      },
+      {
+        title: 'Make live · made live',
+        what: 'Live, with ✓ Live',
+        href: '/demo/events/evt-cena-4?state=madeLive',
+      },
+      {
         title: 'An event · draft, dates gone',
         what: 'Change the dates',
         href: '/demo/events/evt-shower-2?state=draftPast',

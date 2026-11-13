@@ -25,9 +25,23 @@ export type Plain =
   | 'hasEmail'
   | 'hasMobile';
 export type Condition = Plain | `group:${string}`;
-export type ToPick = 'coming' | 'notReplied' | 'who' | `saved:${string}`;
+export type Quick = 'coming' | 'notReplied' | 'notInvited';
+export type ToPick = Quick | 'who' | `saved:${string}` | `guest:${string}`;
+
+/** One named guest (sc-3971: Send invitation on a guest), with what Guests knows of them. */
+export interface OneGuest {
+  id: string;
+  name: string;
+  greetAs: string | null;
+  email: boolean;
+  mobile: boolean;
+  invited: string | null;
+}
+
 export type Audience =
-  { kind: 'all' } | { kind: 'who'; conditions: readonly Condition[]; pick?: ToPick };
+  | { kind: 'all' }
+  | { kind: 'who'; conditions: readonly Condition[]; pick?: ToPick }
+  | { kind: 'guest'; guest: OneGuest };
 
 export interface Group {
   id: string;
@@ -227,6 +241,12 @@ function populated(): SampleGuest[] {
 /** The wedding's 142 guests, each with their reply, invitation, group and channels. */
 export const POPULATION: readonly SampleGuest[] = populated();
 
+/** Who To counts from: Messages' own 142, or an invitation's 156 (sc-3971). */
+export interface World {
+  all: number;
+  matches: (conditions: readonly Condition[], groups: readonly Group[]) => SampleGuest[];
+}
+
 const PLAIN: Record<Plain, { word: string; line: string }> = {
   replied: { word: TW.hasReplied, line: TW.hasRepliedLine },
   notReplied: { word: MW.hasntReplied, line: TW.hasntRepliedLine },
@@ -348,12 +368,24 @@ export function whoMatches(
   ).sort((a, b) => COLLATOR.compare(a.name, b.name));
 }
 
-export function countIn(conditions: readonly Condition[], groups: readonly Group[]): number | null {
-  return conditions.length === 0 ? null : whoMatches(conditions, groups).length;
+export const MESSAGES_WORLD: World = { all: POPULATION.length, matches: whoMatches };
+
+export function countIn(
+  conditions: readonly Condition[],
+  groups: readonly Group[],
+  world: World = MESSAGES_WORLD,
+): number | null {
+  return conditions.length === 0 ? null : world.matches(conditions, groups).length;
 }
 
-export function countOf(audience: Audience, groups: readonly Group[]): number | null {
-  return audience.kind === 'all' ? POPULATION.length : countIn(audience.conditions, groups);
+export function countOf(
+  audience: Audience,
+  groups: readonly Group[],
+  world: World = MESSAGES_WORLD,
+): number | null {
+  if (audience.kind === 'guest') return 1;
+
+  return audience.kind === 'all' ? world.all : countIn(audience.conditions, groups, world);
 }
 
 export function channelsOf(guest: SampleGuest): string {
@@ -380,25 +412,30 @@ export function savedOf(book: Book, pick: ToPick | 'all'): Saved | null {
 
 export function pickOf(audience: Audience, book: Book): ToPick | 'all' {
   if (audience.kind === 'all') return 'all';
+  if (audience.kind === 'guest') return `guest:${audience.guest.id}`;
 
   const pick = audience.pick ?? 'who';
 
   return pick.startsWith('saved:') && savedOf(book, pick) == null ? 'who' : pick;
 }
 
-export function quickWord(pick: 'coming' | 'notReplied'): string {
-  return pick === 'coming' ? TW.coming : MW.hasntReplied;
+export function isQuick(pick: ToPick | 'all'): pick is Quick {
+  return pick === 'coming' || pick === 'notReplied' || pick === 'notInvited';
+}
+
+export function quickWord(pick: Quick): string {
+  return pick === 'coming' ? TW.coming : pick === 'notReplied' ? MW.hasntReplied : TW.notYetInvited;
 }
 
 function pickConditions(pick: ToPick | 'all', book: Book): readonly Condition[] | null {
-  if (pick === 'coming' || pick === 'notReplied') return [pick];
+  if (isQuick(pick)) return [pick];
 
   return savedOf(book, pick)?.conditions ?? null;
 }
 
 /** The message's own copy of its conditions differs from where it was picked: this message only. */
 export function changedFrom(audience: Audience, book: Book): boolean {
-  if (audience.kind === 'all') return false;
+  if (audience.kind !== 'who') return false;
 
   const from = pickConditions(pickOf(audience, book), book);
 
@@ -411,6 +448,7 @@ export function changedFrom(audience: Audience, book: Book): boolean {
 
 export function audienceWords(audience: Audience, groups: readonly Group[]): string {
   if (audience.kind === 'all') return MW.allGuests;
+  if (audience.kind === 'guest') return audience.guest.name;
 
   return [MW.guestsWho, audience.conditions.map((one) => conditionWord(one, groups)).join(' · ')]
     .filter(Boolean)
@@ -423,31 +461,35 @@ export function toLine(audience: Audience, groups: readonly Group[]): string {
     : mw.filled(MW.toAudience, { audience: audienceWords(audience, groups) });
 }
 
-/** The To chip: a quick pick as "Coming · 96", a saved audience by its name, else Guests who… with its count. */
-export function chipWords(audience: Audience, book: Book): string {
-  if (audience.kind === 'all') return `${MW.allGuests} · ${NUMBER.format(POPULATION.length)}`;
+/** The To chip: a quick pick as "Coming · 96", a saved audience by its name, one guest by theirs, else Guests who… with its count. */
+export function chipWords(audience: Audience, book: Book, world: World = MESSAGES_WORLD): string {
+  if (audience.kind === 'all') return `${MW.allGuests} · ${NUMBER.format(world.all)}`;
+  if (audience.kind === 'guest') return audience.guest.name;
 
-  const count = countIn(audience.conditions, book.groups);
+  const count = countIn(audience.conditions, book.groups, world);
   const pick = pickOf(audience, book);
   const kept = !changedFrom(audience, book);
 
-  if (kept && (pick === 'coming' || pick === 'notReplied'))
-    return `${quickWord(pick)} · ${NUMBER.format(count ?? 0)}`;
+  if (kept && isQuick(pick)) return `${quickWord(pick)} · ${NUMBER.format(count ?? 0)}`;
 
   const lead = (kept ? savedOf(book, pick)?.name : null) ?? MW.guestsWho;
 
   return count == null ? lead : `${lead} · ${countWords(count)}`;
 }
 
-export function refusalOf(audience: Audience, groups: readonly Group[]): string | null {
-  if (audience.kind === 'all') return null;
+export function refusalOf(
+  audience: Audience,
+  groups: readonly Group[],
+  world: World = MESSAGES_WORLD,
+): string | null {
+  if (audience.kind !== 'who') return null;
   if (audience.conditions.length === 0) return MW.noCondition;
 
   const gone = deletedIn(audience.conditions, groups)[0];
 
   if (gone != null) return tw.filled(TW.deletedSend, { group: gone.name });
 
-  return countIn(audience.conditions, groups) === 0 ? MW.nobodyLine : null;
+  return countIn(audience.conditions, groups, world) === 0 ? MW.nobodyLine : null;
 }
 
 export function nameLength(name: string): number {

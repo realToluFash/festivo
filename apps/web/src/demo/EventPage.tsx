@@ -116,6 +116,22 @@ import { GuestsCanWrite } from './GuestsCanWrite.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
 import { useLeaveAsk } from './useLeaveAsk.ts';
+import { MakeLiveAsk } from './EventMakeLive.tsx';
+import type { Told as ShellTold } from './ActionToast.tsx';
+import {
+  type MakeLiveState,
+  type Offer,
+  type Phase,
+  ASK,
+  INVITED_AT,
+  LW,
+  isMakeLive,
+  lw,
+  maySend,
+  offerOf,
+  phaseOf,
+  seededEvent,
+} from './makeLive.ts';
 
 const LOCALE = 'en-US';
 
@@ -247,7 +263,9 @@ function EventAt({
           ? { ...event, photo: true }
           : state === 'noteNoVenue' || state === 'noteWide' || state === 'noteMarkup'
             ? withNote(event, state)
-            : event;
+            : isMakeLive(state)
+              ? seededEvent(event, state)
+              : event;
 
     return { event: shown, state };
   });
@@ -331,6 +349,9 @@ function EventView({
   const [muteLoaded, setMuteLoaded] = useState(state !== 'muteNotLoaded');
   const [muteFailed, setMuteFailed] = useState(state === 'muteNotSaved');
   const away = useLeaveAsk(dirty);
+  const live = isMakeLive(state) ? state : null;
+  const [making, setMaking] = useState<Phase | null>(() => phaseOf(live));
+  const [sent, setSent] = useState(live === 'makeLiveOfferSent');
 
   if (area === 'people') return <Navigate to="/demo/people" replace />;
   if (area === 'budget' && initial.id === BUDGET_EVENT) return <BudgetEntry event={initial} />;
@@ -361,7 +382,7 @@ function EventView({
         arrival.told ??
         (state === 'replyBySaved' || state === 'replyByRemoved'
           ? replyBySays(replyBy, now, event.timeZone).toast
-          : null)
+          : liveToldOf(event, live))
       }
       renderSide={(tell, covered) => (
         <EventSidebar
@@ -371,11 +392,11 @@ function EventView({
           tell={tell}
           inert={covered}
           waiting={event.id === SAMPLE_EVENT ? waitingLine(keptInbox()) : null}
-          {...(canChange ? {} : { reader: AT_READ })}
+          {...(canChange && maySend(live) ? {} : { reader: AT_READ })}
         />
       )}
     >
-      {(tell) => (
+      {(tell, show) => (
         <div className="desk-page ev-page">
           <div className="ev-wide">
             <Crumb to="/demo/events" back={W.back} name={event.name}>
@@ -391,7 +412,7 @@ function EventView({
                   level={1}
                   milestone={cardMilestone(event, now)}
                   onStep={(does: CardDoes) => {
-                    if (does === 'makeLive') tell('Make live has its own design.');
+                    if (does === 'makeLive') setMaking(ASK);
                     else if (does === 'changeDates') {
                       if (part !== 'dates') open('dates');
                     } else if (does === 'resume') {
@@ -400,6 +421,7 @@ function EventView({
                     } else setAsking('duplicate');
                   }}
                 />
+                {sent && <p className="ml-demo-only">{LW.demoMessages}</p>}
                 <div className="ev-columns">
                   <div className="ev-left">
                     {shownOf(event, now) === 'finished' && cardShown(card) && (
@@ -587,6 +609,30 @@ function EventView({
               tell(words);
             }}
           />
+          {making != null && (
+            <MakeLiveAsk
+              event={event}
+              phase={making}
+              offer={maySend(live) ? offerOf(event, live) : null}
+              onLive={(host) =>
+                kept({ ...event, status: 'live', hosts: host == null ? event.hosts : [host] })
+              }
+              onClose={() => setMaking(null)}
+              onMadeLive={() => {
+                setMaking(null);
+                tell(LW.madeLive);
+              }}
+              onSent={(offer) => {
+                setMaking(null);
+                setSent(true);
+                show(sentTold(offer));
+              }}
+              onChangeDates={() => {
+                setMaking(null);
+                if (part !== 'dates') open('dates');
+              }}
+            />
+          )}
           {telling != null && (
             <TellDialog
               tell={tell}
@@ -611,6 +657,20 @@ function EventView({
       )}
     </EventsShell>
   );
+}
+
+function sentTold(offer: Offer): ShellTold {
+  return { words: lw.many('queued', offer.reached), action: { word: LW.messages, to: INVITED_AT } };
+}
+
+/** What a Make live state's page says as it opens: the toast after Send them, or ✓ Live. */
+function liveToldOf(event: SampleEvent, state: MakeLiveState | null): ShellTold | string | null {
+  if (state === 'madeLive') return LW.madeLive;
+  if (state !== 'makeLiveOfferSent') return null;
+
+  const offer = offerOf(event, state);
+
+  return offer == null ? null : sentTold(offer);
 }
 
 function Asks({

@@ -156,7 +156,9 @@ export function EventRoute() {
   return (
     <EventsShell
       switcher={params.switcher}
-      {...(refusedStartOf(state)?.canChange === false ? { looking: AT_READ } : {})}
+      {...(refusedStartOf(state)?.canChange === false || state === 'makeLiveCannotSend'
+        ? { looking: AT_READ }
+        : {})}
     >
       <EventScreen
         key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}:${people ?? ''}:${from ?? ''}`}
