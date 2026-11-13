@@ -221,7 +221,15 @@ export function asHeadcount(value: unknown): Headcount | null {
   ) {
     return null;
   }
-  if (!Array.isArray(needs.needs)) return null;
+  if (
+    !Array.isArray(needs.needs) ||
+    needs.needs.some((row: unknown) => {
+      const need = row as { need?: unknown; people?: unknown } | null;
+      return typeof need?.need !== 'string' || typeof need.people !== 'number';
+    })
+  ) {
+    return null;
+  }
   const byGroup = body.byGroup.map((row: unknown) => {
     const group = (row as { group?: unknown } | null)?.group;
     const rowCounts = asHeadcountCounts((row as { counts?: unknown } | null)?.counts);
