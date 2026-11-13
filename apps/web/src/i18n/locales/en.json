@@ -518,7 +518,7 @@
     "invalidTitle": "This invitation link does not work",
     "invalidBody": "It may have expired, been replaced by a newer one, or been mistyped. Ask whoever invited you for a fresh link — they can send one in a moment.",
     "noAccountNeeded": "You do not need an account to reply.",
-    "closing": "This invitation is for you and your family. Other guests cannot see your reply.",
+    "closing": "This invitation is for you and your family. Other guests cannot see your answer.",
     "tell": "Not {{name}}? Tell us",
     "tellQuestion": "Tell {{hosts}} this link reached the wrong person?",
     "tellLine_one": "They will see a note on {{name}}’s invitation and can send a new link. This does not answer the invitation or change anything on it.",
