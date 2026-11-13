@@ -20,7 +20,8 @@ export default defineConfig({
     testTimeout: 10000,
     // One Mac runs many worktrees' suites at once; an uncapped pool per run
     // starved Docker and the iOS simulators (sc-30334). CI keeps the default.
-    ...(process.env.CI ? {} : { maxWorkers: process.env.VITEST_MAX_WORKERS ?? '25%' }),
+    // VITEST_MAX_WORKERS still overrides it, as a count, not a percentage.
+    ...(process.env.CI ? {} : { maxWorkers: '25%' }),
     // schemeTokens.ts reads tokens.css?raw, which vitest otherwise hands over empty.
     css: { include: [/tokens\.css/] },
   },
