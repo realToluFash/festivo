@@ -201,7 +201,7 @@ export const MW = {
   eachLanguage: 'Each guest gets this in their own language.',
   noteForGuests: 'Note for your guests',
   optional: 'Optional',
-  noteHint: 'Shown on each guest’s page, under the change. Never sent by email, text or WhatsApp.',
+  noteHint: 'Shown on each guest’s page, in Messages. Never sent by email, text or WhatsApp.',
   balanceAfter_one: 'Balance after sending: {{count, number}} credit.',
   balanceAfter_other: 'Balance after sending: {{count, number}} credits.',
   notNow: 'Not now',
