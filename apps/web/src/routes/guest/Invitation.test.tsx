@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import i18next from 'i18next';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -351,7 +352,7 @@ describe('answering', () => {
 
     open();
 
-    expect(await screen.findByText('You haven’t sent your answer yet.')).toBeDefined();
+    expect(await screen.findByText(i18next.t('guest.unsent'))).toBeDefined();
     expect(screen.getByRole('button', { name: 'Yes, I’ll be there' })).toBeDefined();
   });
 
@@ -372,7 +373,7 @@ describe('answering', () => {
     expect(
       await screen.findByRole('heading', { name: `Thanks for letting us know, ${ADAEZE}.` }),
     ).toBeDefined();
-    expect(screen.queryByText('You haven’t sent your answer yet.')).toBeNull();
+    expect(screen.queryByText(i18next.t('guest.unsent'))).toBeNull();
   });
 
   it('keeps Check and send as it was when the answer could not be sent, and sends again', async () => {
@@ -387,9 +388,7 @@ describe('answering', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
     fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe(
-      'Your answer wasn’t sent. Everything you chose is still here. Try again.',
-    );
+    expect((await screen.findByRole('alert')).textContent).toBe(i18next.t('guest.notSent'));
     expect(screen.queryByText(/See you there/)).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
@@ -404,9 +403,7 @@ describe('answering', () => {
     open();
     fireEvent.click(await screen.findByRole('button', { name: 'I’m not sure yet' }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe(
-      'Your answer wasn’t sent. Check your connection and tap it again.',
-    );
+    expect((await screen.findByRole('alert')).textContent).toBe(i18next.t('guest.notSentTap'));
     expect(screen.queryByText(/Thanks for letting us know/)).toBeNull();
   });
 });
@@ -486,7 +483,9 @@ describe('when answers have closed', () => {
     api({ '/api/guest-links/page': [{ status: 200, body: { ...PAGE, answersOpen: false } }] });
     open();
 
-    expect(await screen.findByRole('heading', { name: 'You didn’t answer.' })).toBeDefined();
+    expect(
+      await screen.findByRole('heading', { name: i18next.t('guest.didNotAnswer') }),
+    ).toBeDefined();
   });
 
   it('switches to the closed view when a send is refused 409 replies_closed', async () => {
@@ -497,7 +496,9 @@ describe('when answers have closed', () => {
     open();
     fireEvent.click(await screen.findByRole('button', { name: 'Sorry, I can’t' }));
 
-    expect(await screen.findByRole('heading', { name: 'You didn’t answer.' })).toBeDefined();
+    expect(
+      await screen.findByRole('heading', { name: i18next.t('guest.didNotAnswer') }),
+    ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Sorry, I can’t' })).toBeNull();
   });
 });
