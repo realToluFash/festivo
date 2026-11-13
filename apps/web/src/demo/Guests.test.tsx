@@ -930,6 +930,12 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
       ),
     ).toBeDefined();
     expect(within(column()).queryByRole('region', { name: title })).toBeNull();
+    const invitation = within(column()).getByRole('region', { name: 'Invitation' });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(invitation).getByRole('button', { name: /^Replace link…/ }),
+      ),
+    );
   });
 
   it('keeps the notice when the replace fails', SLOW, async () => {
