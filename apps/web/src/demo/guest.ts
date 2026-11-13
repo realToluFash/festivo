@@ -194,6 +194,8 @@ export interface Visit {
   draft: string;
   draftFailed: boolean;
   draftTried: boolean;
+  /** sc-3978: the box to write to the hosts, gone once stopped or switched off, refused on a page already open. */
+  box: 'open' | 'none' | 'refused';
   arrival: boolean;
   /** sc-3790: the switch said once in the new language, and a choice the guest's record did not take. */
   said: number;
@@ -239,6 +241,7 @@ const BASE: Visit = {
   draft: '',
   draftFailed: false,
   draftTried: false,
+  box: 'open',
   arrival: false,
   said: 0,
   unsaved: false,
@@ -530,6 +533,14 @@ const STATES = {
     name: 'A message that failed',
     starts: { ...MESSAGED, draft: MINE, draftFailed: true, want: 'sendMessage' },
   },
+  noBox: {
+    name: 'No box: stopped, or guests can’t write',
+    starts: { ...MESSAGED, box: 'none' },
+  },
+  noBoxOpen: {
+    name: 'A page already open: the send fails',
+    starts: { ...MESSAGED, box: 'refused', draft: MINE, draftFailed: true, want: 'sendMessage' },
+  },
   messagesWhatsAppOff: {
     name: 'Your messages: WhatsApp off, never agreed',
     starts: { page: 'messages', mobile: true },
@@ -691,6 +702,8 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'replyFailed',
         'calledOffMessages',
         'finishedMessages',
+        'noBox',
+        'noBoxOpen',
       ] as const
     ).map(link),
   },

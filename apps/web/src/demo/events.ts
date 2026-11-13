@@ -1,4 +1,5 @@
 import type { NeedsState } from './needsYou.ts';
+import type { WriteState } from './guestsWrite.ts';
 import {
   type EventPhase,
   type EventState,
@@ -544,6 +545,10 @@ export const EVENT_WORDS = {
   guestsPage: 'Guests’ page',
   preview: 'Preview the guests’ page',
   previewLine: 'What somebody you invite sees, before they reply',
+  guestsCanWrite: 'Guests can write to you',
+  guestsCanWriteLine: 'A box on each guest’s page. What they write lands in Messages.',
+  guestsCanWriteOff: 'What guests already sent stays in Messages, and you can still answer it.',
+  guestsCanWriteReadOnly: 'Only members who manage messages can change this.',
   notBuilt: (story: string) => `AC, not yet built · ${story}`,
   cancel: 'Cancel',
   save: 'Save',
@@ -1196,7 +1201,8 @@ export type LifeState =
   | 'duplicateNoStart'
   | 'muted'
   | 'muteNotLoaded'
-  | 'muteNotSaved';
+  | 'muteNotSaved'
+  | WriteState;
 
 export type NoteState = 'noteNoVenue' | 'noteWide' | 'noteMarkup';
 
@@ -1270,6 +1276,10 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   muted: 'evt-wed-4',
   muteNotLoaded: 'evt-wed-4',
   muteNotSaved: 'evt-wed-4',
+  guestsCanWriteOff: 'evt-wed-4',
+  guestsCanWriteSaving: 'evt-wed-4',
+  guestsCanWriteFailed: 'evt-wed-4',
+  guestsCanWriteReadOnly: 'evt-wed-4',
   needsYou: 'evt-wed-4',
   needsYouOne: 'evt-wed-4',
   needsYouOverdue: 'evt-wed-4',
@@ -1566,6 +1576,16 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('muted', 'Muted'),
       on('muteNotLoaded', 'Mute, not loaded'),
       on('muteNotSaved', 'Mute, not saved'),
+    ],
+  },
+  {
+    name: 'Guests can write to you (sc-3978)',
+    states: [
+      { to: '/demo/events/evt-wed-4', name: 'Guests can write to you, on' },
+      on('guestsCanWriteOff', 'Guests can write to you, off'),
+      on('guestsCanWriteSaving', 'Guests can write to you, saving'),
+      on('guestsCanWriteFailed', 'Guests can write to you, not saved'),
+      on('guestsCanWriteReadOnly', 'Guests can write to you, without messages.manage'),
     ],
   },
   {

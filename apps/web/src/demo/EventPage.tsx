@@ -99,6 +99,7 @@ import { TellDialog } from './MessagesTell.tsx';
 import { Ask, Head, RowWords } from '../components/SettingsParts.tsx';
 import { Crumb, Lead, ManageItem, ManageList, PartRow } from '../components/EventPageParts.tsx';
 import { JustForYou } from '../components/JustForYou.tsx';
+import { GuestsCanWrite } from './GuestsCanWrite.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
 import { useLeaveAsk } from './useLeaveAsk.ts';
@@ -415,7 +416,7 @@ function EventView({
                   </div>
                   <div className="ev-right">
                     {hasGuests(event.id) && <GuestNumbers eventId={event.id} state={numbers} />}
-                    <GuestsPage />
+                    <GuestsPage state={state} />
                     <JustForYou
                       muted={muted}
                       loaded={muteLoaded}
@@ -841,7 +842,7 @@ function Details({
   );
 }
 
-function GuestsPage() {
+function GuestsPage({ state }: { state: EventStateName | null }) {
   return (
     <section className="desk-block" aria-labelledby="ev-guests-page">
       <Head title={<span id="ev-guests-page">{W.guestsPage}</span>} />
@@ -854,6 +855,7 @@ function GuestsPage() {
           <NotBuilt words={W.notBuilt('sc-1439')} />
         </div>
       </div>
+      <GuestsCanWrite state={state} />
     </section>
   );
 }

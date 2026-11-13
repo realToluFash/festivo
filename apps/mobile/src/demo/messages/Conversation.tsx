@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from 'react';
+import type { ReactNode, Ref, RefObject } from 'react';
 import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 
 import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
@@ -53,6 +53,8 @@ import { Preview } from './Preview.tsx';
 import { previewOf } from './PreviewModel.ts';
 import { RefusedSave } from './RefusedSave.tsx';
 import { SW } from './ScheduledSave.ts';
+import { type Stopping, hasActions, stoppedLine } from './StopWriting.ts';
+import { MoreActions, StoppedInset } from './StopWritingParts.tsx';
 import {
   type Bit,
   CountdownLine,
@@ -106,6 +108,11 @@ export interface Talk {
   onSaveScheduled: () => void;
   onCancelScheduled: () => void;
   ownDesign: (what: string) => void;
+  stop: Stopping;
+  moreRef: Ref<ViewInstance>;
+  insetRef: Ref<TextHandle>;
+  onActions: () => void;
+  onLetAgain: (key: GuestKey) => void;
 }
 
 export interface Parts {
@@ -115,6 +122,7 @@ export interface Parts {
   right?: ReactNode;
   lead?: ReactNode;
   head?: ReactNode;
+  under?: ReactNode;
   stream: ReactNode;
   align: 'end' | 'start';
   bare?: boolean | undefined;
@@ -341,7 +349,7 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
       )}
     </>
   );
-  const right = done ? (
+  const doneOrWaiting = done ? (
     <TextAction
       label={W.markAsWaiting}
       onPress={() => talk.dispatch({ type: 'markWaiting', key })}
@@ -355,12 +363,33 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
       testID="messages.done"
     />
   );
+  const { stop } = talk;
+  const stopped = stop.stopped[key];
+  const right = hasActions(stop, key) ? (
+    <View style={styles.withMore}>
+      {doneOrWaiting}
+      <MoreActions open={stop.menu} onPress={talk.onActions} buttonRef={talk.moreRef} />
+    </View>
+  ) : (
+    doneOrWaiting
+  );
 
   return {
     title: guest.name,
     line: guest.head,
     right,
     lead: <Avatar initials={guest.initials} side={44} tone={0} />,
+    under:
+      stopped == null ? undefined : (
+        <StoppedInset
+          line={stoppedLine(stopped, talk.locale)}
+          manage={stop.manage}
+          saving={stop.saving === 'letAgain'}
+          failed={stop.failed === 'letAgain'}
+          lineRef={talk.insetRef}
+          onLetAgain={() => talk.onLetAgain(key)}
+        />
+      ),
     stream,
     align: 'end',
     foot: (
@@ -897,6 +926,7 @@ const styles = StyleSheet.create({
     color: tokens.colorInkSecondary,
     lineHeight: 13.5 * 1.45,
   },
+  withMore: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
   rights: {
     flexDirection: 'row',
     flexWrap: 'wrap',

@@ -41,8 +41,8 @@ describe('the guest’s page states (sc-31306)', () => {
       'The hosts’ messages and the guest’s own',
       'Your messages, opened from the guest’s page (sc-3969, sc-3950)',
     ]);
-    expect(STATES).toHaveLength(70);
-    expect(new Set(STATES).size).toBe(70);
+    expect(STATES).toHaveLength(72);
+    expect(new Set(STATES).size).toBe(72);
     expect(STATES.every(isGuestState)).toBe(true);
     expect(LINKED.find((one) => one.to.includes('messageArrival'))?.to).toBe(
       '/demo/guest?state=messageArrival#m-3',
@@ -64,6 +64,8 @@ describe('the guest’s page states (sc-31306)', () => {
     expect(startOf('zone').readerZone).not.toBe(EVENT.timeZone);
     expect(startOf('french')).toMatchObject({ lang: 'fr', menuOpen: true });
     expect(startOf('replyFailed')).toMatchObject({ draftFailed: true, want: 'sendMessage' });
+    expect(startOf('noBox')).toMatchObject({ box: 'none', messages: 3 });
+    expect(startOf('noBoxOpen')).toMatchObject({ box: 'refused', draftFailed: true });
     expect(startOf('gone').page).toBe('gone');
   });
 

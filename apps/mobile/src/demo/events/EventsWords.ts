@@ -79,6 +79,12 @@ export const W = {
   muteNote: 'Nobody else on this event is affected.',
   muteNotLoaded: 'Could not check whether this event is muted.',
   muteNotSaved: 'Not saved. Try again.',
+  guestsCanWrite: 'Guests can write to you',
+  guestsCanWriteLine: 'A box on each guest’s page. What they write lands in Messages.',
+  guestsCanWriteOffNote: 'What guests already sent stays in Messages, and you can still answer it.',
+  guestsCanWriteReadOnly: 'Only members who manage messages can change this.',
+  on: 'On',
+  off: 'Off',
   notificationSettings: 'Notification settings',
   manage: 'Manage',
   duplicateLine:
