@@ -11,6 +11,11 @@ import { compareGuestNames, emailProblem, nameKey, phoneLengthProblem } from '@s
 
 export type ReplyWord = Guest['reply'] | Companion['state'];
 
+/** Not yet invited stands where the reply goes until somebody invites them (sc-3788). */
+export function shownReply(guest: Guest): ReplyWord {
+  return guest.invitation == null && guest.reply === 'noReply' ? 'notYetInvited' : guest.reply;
+}
+
 export type ListRow =
   | { kind: 'guest'; guest: Guest }
   | { kind: 'companion'; host: Guest; companion: Companion; at: number };

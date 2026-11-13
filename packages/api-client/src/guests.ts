@@ -8,8 +8,23 @@ export type GuestReply = 'noReply' | 'coming' | 'maybe' | 'notComing';
 export type GuestAnswer = Exclude<GuestReply, 'noReply'>;
 export const GUEST_ANSWERS: readonly GuestAnswer[] = ['coming', 'notComing', 'maybe'];
 
-/** Derived from the host's reply and never stored: Held until the host is Coming. */
-export type CompanionState = 'held' | 'coming';
+/** Derived from the host's reply and invitation and never stored: Not yet invited with their host, then Held until the host is Coming. */
+export type CompanionState = 'notYetInvited' | 'held' | 'coming';
+
+/** The five ways Mark as invited offers, in its order (sc-3788). */
+export const GUEST_INVITATION_HOWS = ['whatsapp', 'textMessage', 'email', 'inPerson', 'other'] as const;
+export type GuestInvitationHow = (typeof GUEST_INVITATION_HOWS)[number];
+
+/** `soirelyMessage` once Messaging's invitation has gone, `reply` for a guest nobody marked who replied. */
+export type GuestInvitationMethod = GuestInvitationHow | 'soirelyMessage' | 'reply';
+
+export interface GuestInvitation {
+  /** In the event's zone. */
+  at: string;
+  how: GuestInvitationMethod;
+  /** Who marked them by hand; null for the other methods and once their account is gone. */
+  by: string | null;
+}
 
 export interface Companion {
   id: string;
@@ -28,7 +43,18 @@ export interface Guest {
   reply: GuestReply;
   /** When the current reply was given, in the event's zone; null with no reply. */
   repliedAt: string | null;
+  /** Null while Not yet invited (sc-3788). */
+  invitation: GuestInvitation | null;
   companions: Companion[];
+}
+
+/** Mark as not invited is offered only on a mark made by hand on a guest who has not replied. */
+export function canMarkNotInvited(guest: Guest): boolean {
+  return (
+    guest.invitation != null &&
+    (GUEST_INVITATION_HOWS as readonly string[]).includes(guest.invitation.how) &&
+    guest.reply === 'noReply'
+  );
 }
 
 /** `people` counts guests and companions together. */
@@ -121,11 +147,30 @@ function text(value: unknown): string | null {
   return typeof value === 'string' ? value : null;
 }
 
+const INVITATION_METHODS: readonly GuestInvitationMethod[] = [
+  ...GUEST_INVITATION_HOWS,
+  'soirelyMessage',
+  'reply',
+];
+
+/** Undefined for a shape this client does not know, so the guest is refused rather than shown as Not yet invited. */
+function asInvitation(value: unknown): GuestInvitation | null | undefined {
+  if (value == null) return null;
+  if (typeof value !== 'object') return undefined;
+  const row = value as Record<string, unknown>;
+  const at = text(row.at);
+  const how = INVITATION_METHODS.find((known) => known === row.how);
+  if (at == null || how == null) return undefined;
+
+  return { at, how, by: text(row.by) };
+}
+
 function asCompanion(value: unknown): Companion | null {
   if (typeof value !== 'object' || value == null) return null;
   const row = value as Record<string, unknown>;
   const id = text(row.id);
-  if (id == null || (row.state !== 'held' && row.state !== 'coming')) return null;
+  if (id == null || (row.state !== 'held' && row.state !== 'coming' && row.state !== 'notYetInvited'))
+    return null;
 
   return { id, fullName: text(row.fullName), state: row.state };
 }
@@ -140,6 +185,8 @@ export function asGuest(value: unknown): Guest | null {
     return null;
   const companions = row.companions.map(asCompanion);
   if (companions.some((companion) => companion == null)) return null;
+  const invitation = asInvitation(row.invitation);
+  if (invitation === undefined) return null;
 
   return {
     id,
@@ -148,6 +195,7 @@ export function asGuest(value: unknown): Guest | null {
     mobile: text(row.mobile),
     reply,
     repliedAt: reply === 'noReply' ? null : text(row.repliedAt),
+    invitation,
     companions: companions as Companion[],
   };
 }

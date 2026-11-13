@@ -1,8 +1,11 @@
 import {
   ApiError,
+  GUEST_ANSWERS,
   GUEST_NAME_MAXIMUM,
   type Guest,
+  type GuestAnswer,
   type GuestDetails,
+  type GuestInvitationHow,
   type TaggedGuest,
 } from '@soirely/api-client';
 import { formatPhone, phoneE164, phoneFields } from '@soirely/domain';
@@ -11,14 +14,16 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
-import { Glyph, type GlyphName } from '../../../components/Glyph.tsx';
-import { Ask, Head, RowWords } from '../../../components/SettingsParts.tsx';
+import { Glyph } from '../../../components/Glyph.tsx';
+import { Ask, CardStep, Head, RowWords } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree } from '../../../layers.ts';
 import { type Mesh } from '../../../mesh.ts';
 import { offButton } from '../../../offButton.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import { CompanionField, GuestField, PhoneField } from './GuestFields.tsx';
+import { type Copy, IconLead, Invitation, invitationLine } from './GuestInvitation.tsx';
+import { replyDate } from './guestDates.ts';
 import {
   MOST_COMPANIONS,
   type Problem,
@@ -30,6 +35,7 @@ import {
   isListed,
   newGuestOf,
   problemsOf,
+  shownReply,
   violationProblems,
 } from './guestRows.ts';
 
@@ -42,13 +48,8 @@ export const REPLY_KEY: Record<ReplyWord, string> = {
   notComing: 'guestList.reply.notComing',
   noReply: 'guestList.reply.noReply',
   held: 'guestList.reply.held',
+  notYetInvited: 'guestList.reply.notYetInvited',
 };
-
-export function replyDate(repliedAt: string, timeZone: string): string {
-  return new Intl.DateTimeFormat(dateLocale(), { month: 'short', day: 'numeric', timeZone }).format(
-    new Date(repliedAt),
-  );
-}
 
 const MARK: Record<ReplyWord, string> = {
   coming: 'is-coming',
@@ -56,6 +57,7 @@ const MARK: Record<ReplyWord, string> = {
   notComing: 'is-not-coming',
   noReply: 'is-no-reply',
   held: 'is-held',
+  notYetInvited: 'is-not-yet',
 };
 
 export function ReplyMark({ reply, cover = false }: { reply: ReplyWord; cover?: boolean }) {
@@ -78,13 +80,6 @@ function MarkLead({ reply }: { reply: ReplyWord }) {
   );
 }
 
-function IconLead({ name }: { name: GlyphName }) {
-  return (
-    <span className="gs-lead is-icon" aria-hidden="true">
-      <Glyph name={name} size={20} weight={2} />
-    </span>
-  );
-}
 
 /** "Guest of Bisi Adewale", numbered after the first unnamed one, as the list names them. */
 export function companionShown(
@@ -113,11 +108,14 @@ type Pane =
   | { kind: 'guest'; tagged: TaggedGuest }
   | { kind: 'edit'; tagged: TaggedGuest };
 
-type Copy =
-  { kind: 'none' } | { kind: 'copied' } | { kind: 'byHand'; url: string } | { kind: 'failed' };
-
 type Replace =
   { kind: 'none' } | { kind: 'asking'; busy: boolean } | { kind: 'failed' } | { kind: 'replaced' };
+
+type Unmark =
+  | { kind: 'none' }
+  | { kind: 'unmarked' }
+  | { kind: 'replied'; reply: GuestAnswer; at: string }
+  | { kind: 'failed' };
 
 /** The guest beside the list: their card, the wrong-person notice (sc-1526), Details (sc-3773), then Invitation for those who can add guests (sc-1526); or Edit in their place. */
 export function GuestColumn({
@@ -130,13 +128,17 @@ export function GuestColumn({
   country,
   stamp,
   invites,
+  draft,
   flagged,
   onCopy,
   onReplace,
+  onMark,
+  onUnmark,
   focus,
   onDirty,
   onAsk,
   onSaved,
+  onChanged,
   onShown,
   onClose,
 }: {
@@ -150,16 +152,23 @@ export function GuestColumn({
   /** Raised on each change published to the list; the guest is read again unless being edited. */
   stamp: number;
   invites: boolean;
+  /** On a Draft, somebody who cannot add guests sees only why the marks are not theirs (sc-3788). */
+  draft: boolean;
   /** Someone who opened this guest's link pressed Tell them; only ever true for those who can add guests. */
   flagged: boolean;
   /** The whole link; refused 409 on a phase that does not invite. */
   onCopy: () => Promise<string>;
   onReplace: () => Promise<void>;
+  /** Mark as invited (sc-3788); refused 409 on a phase that does not invite. */
+  onMark: (how: GuestInvitationHow) => Promise<TaggedGuest>;
+  onUnmark: () => Promise<TaggedGuest>;
   focus: (...keys: string[]) => void;
   onDirty: (dirty: boolean) => void;
   /** Asks "Discard your changes?" and runs `then` only on Discard. */
   onAsk: (then: () => void) => void;
   onSaved: (guest: GuestDetails) => void;
+  /** A change made from the details, not by Save: the list shows it with no Saved. */
+  onChanged: (guest: GuestDetails) => void;
   /** Once the guest, or why they cannot be shown, first replaces the loading bones. */
   onShown: () => void;
   onClose: () => void;
@@ -308,9 +317,29 @@ export function GuestColumn({
       mesh={mesh}
       manages={manages}
       invites={invites}
+      draft={draft}
       flagged={flagged}
       onCopy={onCopy}
       onReplace={onReplace}
+      onMark={(how) =>
+        onMark(how).then((tagged) => {
+          setPane({ kind: 'guest', tagged });
+          onChanged(tagged.guest);
+        })
+      }
+      onUnmark={() =>
+        onUnmark().then(
+          (tagged) => {
+            setPane({ kind: 'guest', tagged });
+            onChanged(tagged.guest);
+          },
+          (error: unknown) => {
+            setAttempt((n) => n + 1);
+            throw error;
+          },
+        )
+      }
+      focus={focus}
       onEdit={() => {
         setPane({ kind: 'edit', tagged: pane.tagged });
         focus('fullName');
@@ -325,9 +354,13 @@ function GuestView({
   mesh,
   manages,
   invites,
+  draft,
   flagged,
   onCopy,
   onReplace,
+  onMark,
+  onUnmark,
+  focus,
   onEdit,
 }: {
   guest: GuestDetails;
@@ -335,15 +368,22 @@ function GuestView({
   mesh: Mesh;
   manages: boolean;
   invites: boolean;
+  draft: boolean;
   flagged: boolean;
   onCopy: () => Promise<string>;
   onReplace: () => Promise<void>;
+  onMark: (how: GuestInvitationHow) => Promise<void>;
+  onUnmark: () => Promise<void>;
+  focus: (...keys: string[]) => void;
   onEdit: () => void;
 }) {
   const { t } = useTranslation();
   const heading = useId();
   const [copy, setCopy] = useState<Copy>({ kind: 'none' });
   const [replace, setReplace] = useState<Replace>({ kind: 'none' });
+  const [marking, setMarking] = useState(false);
+  const [markFailed, setMarkFailed] = useState(false);
+  const [unmark, setUnmark] = useState<Unmark>({ kind: 'none' });
   const replaceButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -373,6 +413,40 @@ function GuestView({
     );
   }
 
+  function marked(how: GuestInvitationHow): void {
+    setMarkFailed(false);
+    setUnmark({ kind: 'none' });
+    onMark(how).then(
+      () => {
+        setMarking(false);
+        setCopy({ kind: 'none' });
+        focus('guest-heading');
+      },
+      (error: unknown) => {
+        if (error instanceof ApiError && error.is('event_state_invalid')) setMarking(false);
+        else setMarkFailed(true);
+      },
+    );
+  }
+
+  function unmarked(): void {
+    onUnmark().then(
+      () => {
+        setUnmark({ kind: 'unmarked' });
+        focus('guest-heading');
+      },
+      (error: unknown) => {
+        const refused = error instanceof ApiError && error.is('guest_replied') ? error.problem : null;
+        const answer = GUEST_ANSWERS.find((known) => known === refused?.reply);
+        const at = refused?.repliedAt;
+
+        setUnmark(
+          answer != null && at != null ? { kind: 'replied', reply: answer, at } : { kind: 'failed' },
+        );
+      },
+    );
+  }
+
   const ask = () => setReplace({ kind: 'asking', busy: false });
   const added = new Intl.DateTimeFormat(dateLocale(), {
     month: 'short',
@@ -380,6 +454,16 @@ function GuestView({
   }).format(new Date(guest.added.at));
   const names = guest.companions.map((one) => one.fullName);
   const replied = guest.repliedAt == null ? null : replyDate(guest.repliedAt, timeZone);
+  const reply = shownReply(guest);
+  const notYet = reply === 'notYetInvited';
+  const cardLine =
+    replied != null
+      ? t('guestList.replied', { reply: t(REPLY_KEY[guest.reply]), date: replied })
+      : notYet
+        ? manages && invites
+          ? t('guestList.copyFirst')
+          : null
+        : invitationLine(t, guest, timeZone);
 
   return (
     <div className="gs-guest">
@@ -387,6 +471,12 @@ function GuestView({
         <p className="gs-ok" role="status">
           <Glyph name="tick" size={17} weight={2.6} />
           {t('guestList.linkReplaced', { name: guest.fullName })}
+        </p>
+      )}
+      {unmark.kind === 'unmarked' && (
+        <p className="gs-ok" role="status">
+          <Glyph name="tick" size={17} weight={2.6} />
+          {t('guestList.unmarked')}
         </p>
       )}
       <section
@@ -400,17 +490,18 @@ function GuestView({
         <div className="ev-card-inner gs-card-inner">
           <ul className="desk-glass-tags">
             <li className="desk-glass">
-              <ReplyMark reply={guest.reply} cover />
-              {t(REPLY_KEY[guest.reply])}
+              <ReplyMark reply={reply} cover />
+              {t(REPLY_KEY[reply])}
             </li>
           </ul>
           <h2 id={heading} className="gs-name" tabIndex={-1} data-focus="guest-heading">
             {guest.fullName}
           </h2>
-          {replied != null && (
-            <p className="desk-on-card">
-              {t('guestList.replied', { reply: t(REPLY_KEY[guest.reply]), date: replied })}
-            </p>
+          {cardLine != null && <p className="desk-on-card">{cardLine}</p>}
+          {manages && invites && notYet && (
+            <div className="ev-card-foot" data-focus="step">
+              <CardStep label={t('guestList.markAsInvited')} onClick={() => setMarking(true)} />
+            </div>
           )}
         </div>
       </section>
@@ -421,6 +512,22 @@ function GuestView({
         <p className="desk-error gs-refused" role="alert">
           <Glyph name="alert" size={15} weight={2.2} />
           {t('guestList.notReplaced')}
+        </p>
+      )}
+      {unmark.kind === 'replied' && (
+        <p className="desk-error gs-refused" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {t('guestList.unmarkRefused', {
+            name: guest.fullName,
+            reply: t(REPLY_KEY[unmark.reply]),
+            date: replyDate(unmark.at, timeZone),
+          })}
+        </p>
+      )}
+      {unmark.kind === 'failed' && (
+        <p className="desk-error gs-refused" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {t('guestList.loadFailedLine')}
         </p>
       )}
       {replied != null && (
@@ -497,52 +604,30 @@ function GuestView({
           </ul>
         </section>
       )}
-      {manages && (
-        <section className="desk-block" aria-labelledby={`${heading}-invitation`}>
-          <Head
-            level={3}
-            title={<span id={`${heading}-invitation`}>{t('guestList.invitation')}</span>}
-          />
-          <ul className="desk-rows gs-rows">
-            {invites && (
-              <li>
-                <button type="button" className="desk-row gs-do" data-focus="copy" onClick={copied}>
-                  <IconLead name="link" />
-                  <RowWords title={t('guestList.copyLink')} lines={[t('guestList.copyLinkLine')]} />
-                </button>
-                <p className="gs-copied" role="status">
-                  {copy.kind === 'copied' && (
-                    <span>
-                      <Glyph name="tick" size={16} weight={2.6} />
-                      {t('guestList.linkCopied')}
-                    </span>
-                  )}
-                </p>
-                {copy.kind === 'byHand' && <CopyByHand url={copy.url} />}
-                {copy.kind === 'failed' && (
-                  <p className="gs-refused" role="alert">
-                    {t('guestList.loadFailedLine')}
-                  </p>
-                )}
-              </li>
-            )}
-            <li>
-              <button
-                ref={replaceButton}
-                type="button"
-                className="desk-row gs-do"
-                data-focus="replace"
-                onClick={ask}
-              >
-                <IconLead name="refresh" />
-                <RowWords
-                  title={t('guestList.replaceLink')}
-                  lines={[t('guestList.replaceLinkLine')]}
-                />
-              </button>
-            </li>
-          </ul>
-        </section>
+      {manages || !draft ? (
+        <Invitation
+          guest={guest}
+          timeZone={timeZone}
+          heading={heading}
+          manages={manages}
+          invites={invites}
+          copy={copy}
+          copyByHand={copy.kind === 'byHand' && <CopyByHand url={copy.url} />}
+          marking={marking}
+          markFailed={markFailed}
+          replaceButton={replaceButton}
+          onCopy={copied}
+          onReplace={ask}
+          onMarking={(on) => {
+            setMarkFailed(false);
+            setMarking(on);
+            if (!on) focus('mark');
+          }}
+          onMark={marked}
+          onUnmark={unmarked}
+        />
+      ) : (
+        <p className="gs-inset gs-read-only">{t('guestList.readOnlyInvited')}</p>
       )}
       {replace.kind === 'asking' && (
         <Ask

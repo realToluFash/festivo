@@ -2785,7 +2785,8 @@
       "maybe": "Por confirmar",
       "notComing": "Não vem",
       "noReply": "Sem resposta",
-      "held": "Em espera"
+      "held": "Em espera",
+      "notYetInvited": "Not yet invited"
     },
     "replied": "{{reply}} · respondeu no dia {{date}}",
     "repliedOn": "respondeu no dia {{date}}",
@@ -2866,6 +2867,34 @@
     "notReplaced": "Não foi possível substituir. A ligação antiga continua a funcionar. Tente novamente.",
     "linkReplaced": "Ligação substituída. A ligação antiga de {{name}} já não funciona. Copie a nova e envie-a.",
     "flaggedTitle": "A ligação pode ter chegado a outra pessoa",
-    "flaggedLine": "Alguém que abriu a ligação de {{name}} avisou-nos de que lhe chegou por engano. A resposta não mudou. Substitua a ligação para que a antiga deixe de funcionar e envie a nova a {{name}}."
+    "flaggedLine": "Alguém que abriu a ligação de {{name}} avisou-nos de que lhe chegou por engano. A resposta não mudou. Substitua a ligação para que a antiga deixe de funcionar e envie a nova a {{name}}.",
+    "invitedBy": "Invited by {{name}}, {{how}}, {{date}}",
+    "invitedHow": "Invited {{how}}, {{date}}",
+    "invitedByMessage": "Invited by Soirely’s message, {{date}}",
+    "invitedWhenReplied": "Invited when they replied, {{date}}",
+    "copyFirst": "Copying their link does not mark them. Mark them once you have sent it.",
+    "markAsInvited": "Mark as invited",
+    "markLine": "How you invited them, so they count as invited",
+    "howInvited": "How did you invite them?",
+    "howInvitedBlank": "Choose how you invited them.",
+    "markNotSaved": "Not saved. They are still Not yet invited. Try again.",
+    "how": {
+      "whatsapp": "WhatsApp",
+      "textMessage": "Text message",
+      "email": "Email",
+      "inPerson": "In person",
+      "other": "Other"
+    },
+    "howMid": {
+      "whatsapp": "WhatsApp",
+      "textMessage": "text message",
+      "email": "email",
+      "inPerson": "in person",
+      "other": "another way"
+    },
+    "markNotInvited": "Mark as not invited",
+    "unmarked": "Marked as not invited.",
+    "unmarkRefused": "Not changed. {{name}} replied {{reply}} on {{date}}, so they stay invited.",
+    "readOnlyInvited": "You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role."
   }
 }
