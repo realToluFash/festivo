@@ -2,6 +2,7 @@ import {
   type EventsFilters,
   type Milestone,
   NO_EVENTS_FILTERS,
+  calledOff,
   eventPhase,
   eventsHome,
   searching,
@@ -188,8 +189,11 @@ export function scheduleLocked(event: Shown): boolean {
   return productScheduleLocked(event.phase);
 }
 
+/** sc-45141: a called-off event's locked dates say it was called off, in proposed English until the linguist settles it. */
 export function datesRow(event: Shown, locale: string): RowWords {
-  return productDatesRow(event, event.phase, locale, t);
+  const row = productDatesRow(event, event.phase, locale, t);
+
+  return scheduleLocked(event) && calledOff(event) ? { ...row, line: W.datesCalledOff } : row;
 }
 
 export function hostsRow(event: Omit<SampleEvent, 'photo'>, locale: string): RowWords {

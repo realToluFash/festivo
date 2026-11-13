@@ -284,6 +284,9 @@ describe('the page', () => {
     expect(datesRow(shown('evt-wed-4', finished), LOCALE).line).toBe(
       "Dates · This event is over, so its start, end and time zone can't be changed.",
     );
+    expect(datesRow(shown('evt-off'), LOCALE).line).toBe(
+      'Dates · This event was called off, so its start, end and time zone can’t be changed.',
+    );
   });
 
   it('names the hosts, or says what having none waits for', () => {

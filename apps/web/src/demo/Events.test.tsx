@@ -138,6 +138,10 @@ describe('Events in A at a desk (sc-30304)', () => {
     await page('/demo/events/evt-off?state=calledOff', 'Team offsite');
 
     expect(screen.getByText(/Called off on Fri, Oct 30, 2026, before it started/)).toBeDefined();
+    expect(
+      screen.getByText(/This event was called off, so its start, end and time zone/),
+    ).toBeDefined();
+    expect(screen.queryByText(/This event is over/)).toBeNull();
     expect(screen.queryByRole('button', { name: /Thu, Nov 12, 2026/ })).toBeNull();
     expect(screen.getAllByRole('button', { name: /Duplicate/ }).length).toBeGreaterThan(0);
   });
