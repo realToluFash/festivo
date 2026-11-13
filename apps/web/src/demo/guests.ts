@@ -82,6 +82,8 @@ export interface Companion {
   /** Their seat and meal pick (epics 31, 32): removing them says what goes first (sc-3773). */
   table?: string;
   meal?: boolean;
+  /** sc-3779: the guest gave this name on their page; the host editing it clears it. */
+  namedBy?: 'guest';
   /** sc-3777: their own needs, as the guest's are. */
   needs?: Needs;
 }
@@ -111,6 +113,8 @@ export interface Guest {
   companions: readonly Companion[];
   added: Said;
   replaced: string | null;
+  /** sc-1526: someone who opened their link pressed Tell them; a replace clears it. */
+  flagged: boolean;
   arrived: string | null;
   language: GuestLanguage | null;
   chose: GuestLanguage | null;
@@ -140,6 +144,7 @@ function guest(id: string, name: string, reply: Reply, extra: Partial<Guest> = {
     companions: [],
     added: ADDED,
     replaced: null,
+    flagged: false,
     arrived: null,
     language: null,
     chose: null,
@@ -172,6 +177,20 @@ function emailOf(name: string, index: number, domain?: string): string {
     .replaceAll(/[^a-z ]/gu, '')
     .trim()
     .replaceAll(' ', '.')}@${domain ?? DOMAINS[index % DOMAINS.length] ?? 'gmail.com'}`;
+}
+
+/** sc-3779's unnamed places with a seat or a meal, for Fewer places to ask about. */
+const SEATED_SAMPLE: Readonly<Record<string, readonly Partial<Companion>[]>> = {
+  'carlos-mendoza': [{}, { table: 'Table 7' }],
+  'daniel-asamoah': [{ table: 'Table 2' }, { meal: true }],
+};
+
+function seatedSample(one: Guest): Guest {
+  const seats = SEATED_SAMPLE[one.id];
+
+  return seats == null
+    ? one
+    : { ...one, companions: one.companions.map((place, at) => ({ ...place, ...seats[at] })) };
 }
 
 type More = readonly [name: string, day: string, places: number | readonly (string | null)[]];
@@ -379,7 +398,10 @@ function wedding(): Guest[] {
       replied: '2026-10-12',
       email: 'sophie.laurent@orange.fr',
       phone: { country: 'FR', number: '6 41 27 88 05' },
-      companions: companions('sophie', ['Marc Laurent'], 'coming'),
+      companions: companions('sophie', ['Marc Laurent'], 'coming').map((one) => ({
+        ...one,
+        namedBy: 'guest' as const,
+      })),
       language: 'fr',
       whatsApp: { kind: 'optedOut', on: '2026-11-01' },
     }),
@@ -390,7 +412,7 @@ function wedding(): Guest[] {
       invited: { by: COLLEAGUE, how: 'Text message', on: '2026-10-10' },
       phone: { country: 'NG', number: '805 667 1209' },
     }),
-    ...more(MORE_COMING, 'coming', 'coming'),
+    ...more(MORE_COMING, 'coming', 'coming').map(seatedSample),
     ...more(MORE_NOT_SURE, 'notSure', 'held'),
     ...more(MORE_NO_REPLY, 'noReply', 'held', (index) => ({
       invited: INVITED_BY[index % INVITED_BY.length] ?? BY_MESSAGE,
@@ -808,7 +830,10 @@ function rowOf(
         : replyLine(person.guest, replyBy);
     const many = person.guest.companions.length;
 
-    line = many === 0 ? short : `${short} · ${GW.companionCount(many)}`;
+    line =
+      many === 0
+        ? short
+        : `${short} · ${GW.companionCount(many)} · ${GW.namedOf(namedOf(person.guest), many)}`;
   }
 
   const needs = contacts ? needsOfPerson(person) : undefined;
@@ -1017,6 +1042,40 @@ export function linesOf(values: Values): Lines {
   return lines;
 }
 
+export function namedOf(one: Guest): number {
+  return one.companions.filter((companion) => (companion.name ?? '').trim() !== '').length;
+}
+
+export type PlacesStep = { companions: Values['companions'] } | { refused: number };
+
+/** sc-3779: places are companion rows; fewer takes unnamed places only, from the end, and refuses once every place left is named. */
+export function placesTo(companions: Values['companions'], places: number): PlacesStep {
+  const wanted = Math.max(0, Math.min(MOST_COMPANIONS, Math.trunc(places)));
+  const named = companions.filter((one) => one.name.trim() !== '').length;
+
+  if (wanted >= companions.length)
+    return {
+      companions: [
+        ...companions,
+        ...Array.from({ length: wanted - companions.length }, () => ({ id: null, name: '' })),
+      ],
+    };
+  if (wanted < named) return { refused: named };
+  let drop = companions.length - wanted;
+  const kept = [...companions]
+    .reverse()
+    .filter((one) => {
+      if (drop > 0 && one.name.trim() === '') {
+        drop -= 1;
+        return false;
+      }
+      return true;
+    })
+    .reverse();
+
+  return { companions: kept };
+}
+
 export function sameName(
   list: readonly Guest[],
   name: string,
@@ -1047,11 +1106,21 @@ export function seatedOf(guest: Guest, companionId: string | null): Seated | nul
   return { table: one.table ?? null, meal: one.meal === true };
 }
 
+function hostNamed(one: Companion): Companion {
+  const copy = { ...one };
+
+  delete copy.namedBy;
+
+  return copy;
+}
+
 export function saveGuest(list: readonly Guest[], id: string, values: Values): Guest[] {
   return list.map((one) => {
     if (one.id !== id) return one;
     const kept = values.companions.map((companion, index) => {
-      const was = one.companions.find((each) => each.id === companion.id);
+      const found = one.companions.find((each) => each.id === companion.id);
+      const renamed = found != null && (found.name ?? '') !== companion.name.trim();
+      const was = renamed ? hostNamed(found) : found;
 
       return {
         ...was,
@@ -1187,7 +1256,12 @@ export function agreeToWhatsApp(
 }
 
 export function replaceLink(list: readonly Guest[], id: string, on: string): Guest[] {
-  return list.map((one) => (one.id === id ? { ...one, replaced: on } : one));
+  return list.map((one) => (one.id === id ? { ...one, replaced: on, flagged: false } : one));
+}
+
+/** sc-1526: Tell them, pressed on the guest's own page; pressed again it is still one flag. */
+export function flagLink(list: readonly Guest[], id: string): Guest[] {
+  return list.map((one) => (one.id === id ? { ...one, flagged: true } : one));
 }
 
 export function reopen(list: readonly Guest[], id: string, on: string): Guest[] {
@@ -1304,7 +1378,7 @@ function nextDay(iso: string): string {
 }
 
 export type Role = 'owner' | 'viewer' | 'staff';
-export type GuestNote = 'recorded' | 'notReplaced' | 'unmarked' | 'unmarkRefused';
+export type GuestNote = 'recorded' | 'notReplaced' | 'linkReplaced' | 'unmarked' | 'unmarkRefused';
 export type Invite = 'copied' | 'refused' | 'mark' | 'markRefused' | 'markNotSaved';
 
 export interface EditStart {
@@ -1318,6 +1392,8 @@ export interface EditStart {
   at?: string;
   /** A seated companion's Remove pressed: the Ask is open for them. */
   removing?: string;
+  /** sc-3779: Fewer places pressed with every place named. */
+  placesRefused?: boolean;
   /** sc-3777: the Needs sections open, `guest` or `c{n}`. */
   needs?: string[];
 }
@@ -1343,6 +1419,7 @@ export interface AddStart {
   notAdded?: boolean;
   added?: string;
   at?: string;
+  placesRefused?: boolean;
   needs?: string[];
 }
 
@@ -1498,6 +1575,12 @@ export const GUESTS_STATES = [
   { key: 'replaceAsk', name: 'Replace link…: the Ask' },
   { key: 'replaced', name: 'The link replaced' },
   { key: 'notReplaced', name: 'Replace link failed' },
+  { key: 'flagged', name: 'Their link may have reached the wrong person' },
+  { key: 'flaggedAsk', name: 'Replace link… from the notice: the Ask' },
+  { key: 'flaggedReplaced', name: 'Replaced from the notice: the notice gone' },
+  { key: 'flaggedNotReplaced', name: 'Replace from the notice failed: the notice stays' },
+  { key: 'flaggedViewer', name: 'Can view: a flagged guest, no notice' },
+  { key: 'draftGuest', name: 'A Draft: no Copy, Replace link… stays' },
   { key: 'markAsInvited', name: 'Mark as invited: how?' },
   { key: 'markRefused', name: 'Mark as invited with nothing chosen' },
   { key: 'marked', name: 'Marked as invited' },
@@ -1520,6 +1603,12 @@ export const GUESTS_STATES = [
   { key: 'greetAsSpaces', name: 'Only spaces saved: their full name' },
   { key: 'greetAsViewer', name: 'Can view: Greet as, no Edit' },
   { key: 'greetAsAdd', name: 'Add guest, Greet as “Auntie Bisi”' },
+  { key: 'places', name: 'Edit guest: Places for companions, 0 of 1 named' },
+  { key: 'placesSeated', name: 'Fewer places dropping an unnamed place with a seat: asked' },
+  { key: 'placesSeatedTwo', name: 'Fewer places dropping two seated places: asked about each' },
+  { key: 'placesRefused', name: 'Fewer places with every place named: refused' },
+  { key: 'placesMax', name: 'Add guest: ten places, the most' },
+  { key: 'namedByGuest', name: 'Details: Named by the guest' },
   { key: 'needsDetails', name: 'Details: Dr Emeka Nwosu’s allergies, diet and note' },
   { key: 'needsNone', name: 'Details: No dietary notes.' },
   { key: 'needsCompanion', name: 'Details: Inês Duarte’s diet, Rui Duarte’s allergy' },
@@ -1575,7 +1664,7 @@ export function choiceOf(raw: string | null): Choice | null {
 export function guestsStart(state: GuestsState | null, params: URLSearchParams): GuestsStart {
   const asked = params.get('event');
   const event =
-    state === 'draft'
+    state === 'draft' || state === 'draftGuest'
       ? DRAFT
       : state === 'paused'
         ? PARTY
@@ -1773,9 +1862,30 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'replaceAsk':
       return column(guestPane('kwame'), { asking: 'replace' });
     case 'replaced':
-      return column(guestPane('kwame'), { list: replaceLink(start.list, 'kwame', TODAY) });
+      return column(guestPane('kwame', { note: 'linkReplaced' }), {
+        list: replaceLink(start.list, 'kwame', TODAY),
+      });
     case 'notReplaced':
       return column(guestPane('kwame', { note: 'notReplaced' }));
+    case 'flagged':
+      return column(guestPane('emeka'), { list: flagLink(start.list, 'emeka') });
+    case 'flaggedAsk':
+      return column(guestPane('emeka'), {
+        list: flagLink(start.list, 'emeka'),
+        asking: 'replace',
+      });
+    case 'flaggedReplaced':
+      return column(guestPane('emeka', { note: 'linkReplaced' }), {
+        list: replaceLink(flagLink(start.list, 'emeka'), 'emeka', TODAY),
+      });
+    case 'flaggedNotReplaced':
+      return column(guestPane('emeka', { note: 'notReplaced' }), {
+        list: flagLink(start.list, 'emeka'),
+      });
+    case 'flaggedViewer':
+      return column(guestPane('emeka'), { list: flagLink(start.list, 'emeka'), role: 'viewer' });
+    case 'draftGuest':
+      return { ...start, pane: guestPane('leila') };
     case 'markAsInvited':
       return column(guestPane('bisi', { invite: 'mark' }));
     case 'markRefused':
@@ -1882,6 +1992,24 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return column(guestPane('bisi'), { choice: 'notYet', role: 'viewer' });
     case 'greetAsAdd':
       return add({ values: { name: 'Olabisi Martins', greetAs: 'Auntie Bisi' }, at: 'greet-as' });
+    case 'places':
+      return { ...edit('musa', { at: 'places' }), choice: 'coming' };
+    case 'placesSeated':
+      return { ...edit('carlos-mendoza', { at: 'places' }), choice: 'coming' };
+    case 'placesSeatedTwo':
+      return { ...edit('daniel-asamoah', { at: 'places' }), choice: 'coming' };
+    case 'placesRefused':
+      return { ...edit('sophie', { placesRefused: true, at: 'places' }), choice: 'coming' };
+    case 'placesMax':
+      return add({
+        values: {
+          name: 'Adaeze Okafor',
+          companions: Array.from({ length: MOST_COMPANIONS }, () => ({ id: null, name: '' })),
+        },
+        at: 'places',
+      });
+    case 'namedByGuest':
+      return column(guestPane('sophie'), { choice: 'coming' });
     case 'needsDetails':
       return column(guestPane('emeka'));
     case 'needsNone':
@@ -2063,6 +2191,14 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'greetAsViewer',
     'greetAsAdd',
   ]),
+  group('Places for companions (sc-3779)', [
+    'places',
+    'placesSeated',
+    'placesSeatedTwo',
+    'placesRefused',
+    'placesMax',
+    'namedByGuest',
+  ]),
   group('Needs (sc-3777)', [
     'needsDetails',
     'needsNone',
@@ -2105,12 +2241,20 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'sendNoMobile',
     'sendFinished',
   ]),
+  group('Their link may have reached the wrong person (sc-1526)', [
+    'flagged',
+    'flaggedAsk',
+    'flaggedReplaced',
+    'flaggedNotReplaced',
+    'flaggedViewer',
+  ]),
   group('The link and Mark as invited', [
     'linkCopied',
     'clipboardRefused',
     'replaceAsk',
     'replaced',
     'notReplaced',
+    'draftGuest',
     'markAsInvited',
     'markRefused',
     'marked',

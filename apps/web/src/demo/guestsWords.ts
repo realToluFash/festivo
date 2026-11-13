@@ -103,6 +103,11 @@ export const GW = {
   linkReplaced: (date: string) => `Link replaced ${date}`,
   linkReplacedLine: 'They still hold the old one until you send the new link.',
   notReplaced: 'Not replaced. The old link still works. Try again.',
+  linkReplacedNote: (name: string) =>
+    `Link replaced. ${name}’s old link no longer works. Copy the new one and send it.`,
+  flaggedTitle: 'Their link may have reached the wrong person',
+  flaggedLine: (name: string) =>
+    `Someone who opened ${name}’s link told us it was not meant for them. The reply is unchanged. Replace the link so the old one stops working, then send ${name} the new one.`,
   howInvited: 'How did you invite them?',
   howInvitedBlank: 'Choose how you invited them.',
   markNotSaved: 'Not saved. They are still Not yet invited. Try again.',
@@ -148,11 +153,17 @@ export const GW = {
   country: 'Country',
   keepsLink: 'Changing the email address or mobile number keeps their invitation link as it is.',
   companions: 'Companions',
-  noneYet: (most: number) => `None yet · 0 of ${figure(most)}`,
+  placesFor: 'Places for companions',
+  fewerPlaces: 'Fewer places',
+  morePlaces: 'More places',
+  namedOf: (named: number, places: number) => `${figure(named)} of ${figure(places)} named`,
+  placesRefused: (name: string, named: number) =>
+    `${name} already has ${figure(named)} named. Remove some first.`,
+  thisGuest: 'This guest',
+  namedByGuest: 'Named by the guest',
   ofMost: (count: number, most: number) => `${figure(count)} of ${figure(most)}`,
   companionName: (nth: number, count: number) =>
     `Companion’s full name, ${figure(nth)} of ${figure(count)}`,
-  addCompanion: 'Add a companion',
   remove: 'Remove',
   removeNamed: (name: string) => `Remove ${name}`,
   removed: (name: string) => `${name} removed. Save to keep the change.`,
