@@ -901,16 +901,8 @@ function CompanionFields({
             key={at}
             at={at}
             name={name}
+            host={host}
             label={label}
-            remove={
-              name.trim() !== ''
-                ? t('guestList.removeNamed', { name: name.trim() })
-                : host === ''
-                  ? t('guestList.removeNamed', { name: label })
-                  : at === 0
-                    ? t('guestList.removeCompanionOf', { host })
-                    : t('guestList.removeCompanionOfNth', { host, nth: at + 1 })
-            }
             placeholder={placeholder}
             error={error}
             onChange={(typed) =>

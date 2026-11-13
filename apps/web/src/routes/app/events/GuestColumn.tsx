@@ -823,14 +823,8 @@ function EditCompanions({
             key={companion.id ?? `new-${at}`}
             at={at}
             name={companion.name}
+            host={host}
             label={label}
-            remove={
-              companion.name.trim() !== ''
-                ? t('guestList.removeNamed', { name: companion.name.trim() })
-                : at === 0
-                  ? t('guestList.removeCompanionOf', { host })
-                  : t('guestList.removeCompanionOfNth', { host, nth: at + 1 })
-            }
             placeholder={placeholder(at)}
             error={words(`companion-${at}`)}
             onChange={(name) =>

@@ -912,6 +912,15 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(await screen.findByText('Obi Eze removed. Save to keep the change.')).toBeDefined();
     expect(screen.getByText('None yet · 0 of 10')).toBeDefined();
   });
+
+  it('names an unnamed companion’s Remove as the guest’s guest, as the add form does (sc-43267)', async () => {
+    await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged({ ...DETAILS, companions: [{ id: 'c_1', fullName: null, state: 'coming' }] }, '"1"'),
+    });
+
+    expect(screen.getByRole('button', { name: 'Remove Ngozi Eze’s guest' })).toBeDefined();
+  });
 });
 
 describe('a companion field (sc-43267)', () => {

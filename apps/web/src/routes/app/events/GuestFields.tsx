@@ -9,8 +9,8 @@ import { codeChoice } from '../../../phoneProblem.ts';
 export function CompanionField({
   at,
   name,
+  host,
   label,
-  remove,
   placeholder,
   error,
   onChange,
@@ -18,8 +18,8 @@ export function CompanionField({
 }: {
   at: number;
   name: string;
+  host: string;
   label: string;
-  remove: string;
   placeholder: string;
   error: string | undefined;
   onChange: (name: string) => void;
@@ -27,6 +27,14 @@ export function CompanionField({
 }) {
   const { t } = useTranslation();
   const id = useId();
+  const remove =
+    name.trim() !== ''
+      ? t('guestList.removeNamed', { name: name.trim() })
+      : host === ''
+        ? t('guestList.removeNamed', { name: label })
+        : at === 0
+          ? t('guestList.removeCompanionOf', { host })
+          : t('guestList.removeCompanionOfNth', { host, nth: at + 1 });
 
   return (
     <div className="gs-companion-field">
