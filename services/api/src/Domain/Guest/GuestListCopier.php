@@ -8,7 +8,6 @@ use App\Audit\Auditor;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
-use App\Enum\Actor;
 use App\Repository\GuestRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -51,7 +50,7 @@ final readonly class GuestListCopier
     private function added(Guest $guest, User $by): Guest
     {
         $this->entityManager->persist($guest);
-        $this->auditor->record(GuestAdder::ADDED, 'Guest', $guest->getId(), Actor::User, $by->getId(), $by->getName());
+        GuestAdder::recordAdded($this->auditor, $guest, $by);
 
         return $guest;
     }
