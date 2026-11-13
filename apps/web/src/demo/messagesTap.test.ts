@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { countsOf, messagesStateOf, sectionsOf, seedOf } from './messages.ts';
+import { HOST_NAMES, countsOf, messagesStateOf, sectionsOf, seedOf } from './messages.ts';
 import { GROUPS } from './messagesTo.ts';
 import {
   TAP_STATES,
@@ -10,8 +10,6 @@ import {
   tapLine,
   tapMessage,
 } from './messagesTap.ts';
-
-const HOSTS = 'Adaeze Obi and Tunde Bakare';
 
 function seeded(state: string) {
   return seedOf(messagesStateOf(state));
@@ -41,19 +39,29 @@ describe('a guest’s tap on the WhatsApp invitation (sc-46343)', () => {
       tapMessage(
         { answer: 'notSure', kind: 'recorded', at: '08:20', companions: true },
         'es',
-        HOSTS,
+        HOST_NAMES,
       ),
     ).toEqual([
       'Gracias. Hemos avisado a Adaeze Obi y Tunde Bakare de que aún no lo sabe.',
       'Sus acompañantes quedan en espera hasta que usted decida.',
       'Si cambia de opinión, los botones de la invitación siguen funcionando.',
     ]);
-    expect(tapMessage({ answer: 'notSure', kind: 'repeat', at: '08:31' }, 'en', HOSTS)).toEqual([
-      'You’re already down as Not sure yet. Nothing has changed.',
-    ]);
-    expect(tapMessage({ answer: 'notSure', kind: 'closed', at: '08:20' }, 'en', HOSTS)).toEqual([
-      'Answers closed on 2 November 2026. Contact your host if something has changed.',
-    ]);
+    expect(
+      tapMessage({ answer: 'notSure', kind: 'repeat', at: '08:31' }, 'en', HOST_NAMES),
+    ).toEqual(['You’re already down as Not sure yet. Nothing has changed.']);
+    expect(
+      tapMessage({ answer: 'notSure', kind: 'closed', at: '08:20' }, 'en', HOST_NAMES),
+    ).toEqual(['Answers closed on 2 November 2026. Contact your host if something has changed.']);
+  });
+
+  it('joins any number of hosts in the guest’s language', () => {
+    expect(
+      tapMessage({ answer: 'notComing', kind: 'recorded', at: '08:20' }, 'es', [
+        'Adaeze Obi',
+        'Tunde Bakare',
+        'Kemi Ade',
+      ])[0],
+    ).toBe('Gracias. Hemos avisado a Adaeze Obi, Tunde Bakare y Kemi Ade de que no viene.');
   });
 
   it('draws Read as delivered, and nothing sent with its own mark', () => {

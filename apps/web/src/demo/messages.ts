@@ -258,7 +258,8 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
 
 export const READER = 'Folake Adeyemi';
 export const NOW = '09:41';
-export const HOSTS = 'Adaeze Obi and Tunde Bakare';
+export const HOST_NAMES: readonly string[] = ['Adaeze Obi', 'Tunde Bakare'];
+export const HOSTS = new Intl.ListFormat('en', { type: 'conjunction' }).format(HOST_NAMES);
 export const EVENT_NAME = 'Adaeze & Tunde’s wedding';
 export const ORGANISATION = 'Ire Events';
 export const GUESTS_N = 142;

@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 
 import { Glyph } from '../components/Glyph.tsx';
-import { HOSTS } from './messages.ts';
+import { HOST_NAMES } from './messages.ts';
 import type { WaButtons } from './messagesInvite.ts';
 import {
   type TapCase,
@@ -75,7 +75,7 @@ export function TapLines({ kase, name, ruled }: { kase: TapCase; name: string; r
           {tap.notSent == null ? (
             <SoirelyCard
               glyph="whatsApp"
-              lines={tapMessage(tap, kase.language, HOSTS)}
+              lines={tapMessage(tap, kase.language, HOST_NAMES)}
               bits={tap.receipt == null ? [] : [receiptBit(tap.receipt)]}
               {...(kase.language === 'en' ? {} : { lang: kase.language })}
             />

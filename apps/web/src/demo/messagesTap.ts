@@ -196,7 +196,11 @@ export function tapLine(tap: Tap, name: string): string {
 }
 
 /** Soirely's one message, line by line, in the guest's language; it says why nothing changed, so the line does not. */
-export function tapMessage(tap: Tap, language: Language, hosts: string): readonly string[] {
+export function tapMessage(
+  tap: Tap,
+  language: Language,
+  hosts: readonly string[],
+): readonly string[] {
   const words = GUEST_WORDS[language];
   const locale = LOCALES[language];
   const fill = demoWords(words).filled;
@@ -219,9 +223,7 @@ export function tapMessage(tap: Tap, language: Language, hosts: string): readonl
         }),
       ];
     default: {
-      const joined = new Intl.ListFormat(locale, { type: 'conjunction' }).format(
-        hosts.split(' and '),
-      );
+      const joined = new Intl.ListFormat(locale, { type: 'conjunction' }).format(hosts);
       const notComing = tap.answer === 'notComing';
 
       return [
