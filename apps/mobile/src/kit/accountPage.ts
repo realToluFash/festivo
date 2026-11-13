@@ -9,6 +9,8 @@ export interface Contact {
   shown: string;
   verified: boolean;
   primary: boolean;
+  /** An address Soirely stopped sending to (sc-4332); never a number. */
+  undeliverable?: boolean;
 }
 
 export type CardLine = { kind: 'done' | 'todo'; text: string } | null;
