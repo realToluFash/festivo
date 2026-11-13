@@ -109,6 +109,21 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   askSentOne: ['ask an owner, one owner', 'The owner has been sent the link to Plan and billing'],
   askFailed: ['ask an owner, not sent', 'Not sent. Try again in a moment.'],
   sendWithout: ['after Send without SMS', 'The ten seconds, told by Email only'],
+  stopAction: [
+    'the conversation’s actions, open',
+    'Inês Duarte’s conversation, the menu or action sheet open',
+  ],
+  stopAsk: ['stop writing from their page, asked', 'Stop Inês Duarte writing from their page?'],
+  stopFailed: ['stop writing, not saved', 'The confirm stays open: Not saved. Try again.'],
+  stopped: [
+    'stopped writing from their page',
+    'Tunde Bakare stopped them writing from their page on Mon, Nov 2.',
+  ],
+  letAgainFailed: ['let them write again, not saved', 'The inset stays: Not saved. Try again.'],
+  stoppedNoManage: [
+    'stopped, without messages.manage',
+    'No More actions; the inset without Let them write again',
+  ],
 };
 
 export const MESSAGES_BOARDS = MESSAGES_STATES.map((state) => ({

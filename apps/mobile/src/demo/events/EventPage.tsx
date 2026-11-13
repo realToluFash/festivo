@@ -1,12 +1,23 @@
 import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { type Href, router } from 'expo-router';
-import { type ReactNode, type RefObject, useMemo, useReducer, useRef, useState } from 'react';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
+import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { LineIcon } from '../../components/AccountCard.tsx';
+import { AlertLine } from '../../components/AlertLine.tsx';
+import { SwitchTrack } from '../../components/ConfettiSwitch.tsx';
+import { Text } from '../../components/Text.tsx';
 import { EventCard } from '../../components/EventCard.tsx';
 import { EventThumb } from '../../components/EventThumb.tsx';
 import { AcPill, CHANGED, EditScreen } from './EventEdits.tsx';
@@ -57,6 +68,15 @@ import {
 import { W, say } from './EventsWords.ts';
 import { NOTE_WORDS, WIDE_NOTE } from './ArrivalNote.ts';
 import { NoteInset } from './NoteInset.tsx';
+import {
+  WRITE_MS,
+  type WriteSwitch,
+  pressWrite,
+  writeLines,
+  writeSettled,
+  writeSwitchOf,
+  writeWord,
+} from './GuestsCanWrite.ts';
 import { datesSaveSays, replyByInTell, replyByRow, replyBySaved } from './ReplyBy.ts';
 import { replyByOf } from '../guests/GuestsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
@@ -209,6 +229,14 @@ export function EventScreen({
   const [mute, setMute] = useState<Mute>(
     state === 'muteNotLoaded' ? 'notLoaded' : state === 'muteNotSaved' ? 'notSaved' : 'ok',
   );
+  const [write, setWrite] = useState(() => writeSwitchOf(state));
+  const [writePressed, setWritePressed] = useState(0);
+  useEffect(() => {
+    if (writePressed === 0) return undefined;
+    const later = setTimeout(() => setWrite((now) => writeSettled(now, true)), WRITE_MS);
+
+    return () => clearTimeout(later);
+  }, [writePressed]);
   const [replyBy, setReplyBy] = useState<string | null>(() =>
     state === 'replyBySaved'
       ? '2026-11-03'
@@ -365,7 +393,16 @@ export function EventScreen({
     />
   );
   const peopleCard = <PeopleCard state={people} />;
-  const guestsPage = <GuestsPage />;
+  const guestsPage = (
+    <GuestsPage
+      write={write}
+      onWrite={() => {
+        if (write.saving || !write.canChange) return;
+        setWrite(pressWrite);
+        setWritePressed((count) => count + 1);
+      }}
+    />
+  );
   const forYou = (
     <JustForYou
       words={FOR_YOU}
@@ -722,8 +759,11 @@ function NameAndCover({
   );
 }
 
-/** sc-1439's page is not built: dashed, in Ink 2, with nothing to press. */
-function GuestsPage() {
+/** sc-1439's page is not built: dashed, in Ink 2, with nothing to press; sc-3978's switch under it saves at once, as Mute does. */
+function GuestsPage({ write, onWrite }: { write: WriteSwitch; onWrite: () => void }) {
+  const lines = writeLines(write);
+  const fixed = write.saving || !write.canChange;
+
   return (
     <Section title={W.guestsPage}>
       <View style={styles.dashed} testID="event.guestsPage">
@@ -737,6 +777,45 @@ function GuestsPage() {
           <AcPill words={W.previewPill} />
         </View>
       </View>
+      <Pressable
+        onPress={fixed ? undefined : onWrite}
+        disabled={fixed}
+        style={({ pressed }) => [styles.writeRow, pressed && styles.pressed]}
+        accessibilityRole="switch"
+        accessibilityLabel={`${W.guestsCanWrite}. ${W.guestsCanWriteLine}`}
+        accessibilityState={{ checked: write.on, busy: write.saving, disabled: fixed }}
+        testID="event.guestsCanWrite"
+      >
+        <Row
+          title={W.guestsCanWrite}
+          line={W.guestsCanWriteLine}
+          lead={<LineIcon name="chat" />}
+          off={write.saving}
+          trail={
+            <View style={styles.switchAt}>
+              <SwitchTrack on={write.on} />
+              <Text
+                size={13.5}
+                weight="semibold"
+                accessible={false}
+                style={[styles.switchWord, write.on ? styles.wordOn : styles.wordOff]}
+              >
+                {writeWord(write)}
+              </Text>
+            </View>
+          }
+        />
+      </Pressable>
+      {lines.note != null && (
+        <Text size={14} weight="medium" style={styles.writeNote}>
+          {lines.note}
+        </Text>
+      )}
+      {lines.alert != null && (
+        <View style={styles.writeAlert}>
+          <AlertLine text={lines.alert} />
+        </View>
+      )}
     </Section>
   );
 }
@@ -770,4 +849,12 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   pillAt: { paddingLeft: 40, alignItems: 'flex-start' },
+  writeRow: { marginTop: tokens.spaceSm },
+  pressed: { opacity: tokens.opacityPressed },
+  switchAt: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  switchWord: { minWidth: 26 },
+  wordOn: { color: tokens.colorAccentText },
+  wordOff: { color: tokens.colorInkSecondary },
+  writeNote: { paddingLeft: 40, color: tokens.colorInkSecondary, lineHeight: 14 * 1.45 },
+  writeAlert: { paddingLeft: 40, paddingTop: tokens.spaceXxs },
 });

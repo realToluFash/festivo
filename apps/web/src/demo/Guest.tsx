@@ -187,7 +187,17 @@ function Visitor({
       draftTried: false,
     }));
     laterMessage(SEND_MS, () =>
-      go((was) => ({ mine: was.mine.map((one) => ({ ...one, sent: true })) })),
+      go((was) =>
+        was.box === 'refused'
+          ? {
+              mine: was.mine.slice(0, -1),
+              draft: was.mine.at(-1)?.words ?? '',
+              draftFailed: true,
+              want: 'sendMessage',
+              wantId: was.wantId + 1,
+            }
+          : { mine: was.mine.map((one) => ({ ...one, sent: true })) },
+      ),
     );
   }
 

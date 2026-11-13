@@ -23,6 +23,7 @@ import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowI
 import { REQUEST_BOARDS } from '../../src/demo/service/RequestsBoards.ts';
 import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
+import { isStopState } from '../../src/demo/messages/StopWriting.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
@@ -1583,6 +1584,26 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=muteNotSaved',
       },
       {
+        title: 'Guests can write from their page · off',
+        what: 'Off, and the guests’ pages lose the box',
+        href: '/demo/events/evt-wed-4?state=guestsCanWriteOff',
+      },
+      {
+        title: 'Guests can write from their page · saving',
+        what: 'The pressed value, busy',
+        href: '/demo/events/evt-wed-4?state=guestsCanWriteSaving',
+      },
+      {
+        title: 'Guests can write from their page · not saved',
+        what: 'Back to On, Not saved. Try again.',
+        href: '/demo/events/evt-wed-4?state=guestsCanWriteFailed',
+      },
+      {
+        title: 'Guests can write from their page · read only',
+        what: 'Without messages.manage: On, not changeable',
+        href: '/demo/events/evt-wed-4?state=guestsCanWriteReadOnly',
+      },
+      {
         title: 'Final numbers due · Next up',
         what: 'Marked You, no action in the app',
         href: '/demo/events/evt-wed-4?state=finalNumbers',
@@ -1706,7 +1727,15 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   },
   {
     page: 'Messages · B Conversations',
-    boards: MESSAGES_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+    boards: MESSAGES_BOARDS.filter(({ state }) => !isStopState(state)).map(
+      ({ title, what, href }) => ({ title, what, href: href as Href }),
+    ),
+  },
+  {
+    page: 'Stop writing from their page (sc-3978)',
+    boards: MESSAGES_BOARDS.filter(({ state }) => isStopState(state)).map(
+      ({ title, what, href }) => ({ title, what, href: href as Href }),
+    ),
   },
   {
     page: 'Seating · A The room',
