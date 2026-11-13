@@ -317,6 +317,9 @@ const KEYED: Record<string, (values: Record<string, string | number>) => string>
     `It ends ${String(v.end)}, ${String(v.duration)} later, like the original. Times in ${String(v.timeZone)}.`,
   'eventDuplicate.endsUnchosen': (v) =>
     `It ends ${String(v.duration)} after it starts, like the original. Times in ${String(v.timeZone)}.`,
+  'eventLive.hostEmpty': () => 'Enter who is hosting to make this event live.',
+  'eventHosts.tooLong': (v) =>
+    `A host’s name can be at most ${String(v.most)} characters. This one has ${String(v.length)}.`,
 };
 
 /** The few of main's keys the domain's word helpers ask for, in English. */
@@ -336,6 +339,15 @@ export const LIVE = {
   notSent: 'Not sent. Try again in a moment.',
   forbidden: 'Your role no longer includes sending messages, so nothing was sent.',
   messages: 'Messages',
+  notMadeLive: 'Not made live.',
+  changedTitle: 'Somebody else changed this event while you had it open.',
+  nowLive: 'It’s live now. The page shows what it is now.',
+  hostLabel: 'Host 1',
+  smsStop: 'Reply STOP to opt out.',
+  hostExplainer:
+    'Guests read this name on their invitation and their page. Write it the way you want guests to see it.',
+  demoMessages:
+    'The engagement has no Messages sample, so the toast’s Messages opens the wedding’s Invitation conversation, and nothing is sent.',
 } as const;
 
 const LIVE_COUNTED = {
@@ -353,6 +365,8 @@ const LIVE_COUNTED = {
   textsUse_other: 'Texts use {{count}} credits.',
   whatsAppUse_one: 'WhatsApp messages use 1 credit.',
   whatsAppUse_other: 'WhatsApp messages use {{count}} credits.',
+  textsAndWhatsAppUse_one: 'Texts and WhatsApp messages use 1 credit.',
+  textsAndWhatsAppUse_other: 'Texts and WhatsApp messages use {{count}} credits.',
   nobody_one:
     'This guest cannot be reached. Add an email address or a mobile number for them in Guests.',
   nobody_other:
@@ -371,6 +385,7 @@ export function liveCounted(key: Counted, count: number, locale = 'en-US'): stri
 export const sayLive = {
   confirmTitle: (name: string) => `Make ${name} live?`,
   isLive: (name: string) => `${name} is live.`,
-  whatsAppCredits: (count: number, after: string) =>
-    `${liveCounted('whatsAppUse', count)} Credits after sending: ${after}.`,
+  creditsAfter: (after: string) => `Credits after sending: ${after}.`,
+  inviteText: (hosts: string, greeting: string, event: string, date: string) =>
+    `${hosts}: ${greeting}, you're invited to ${event} on ${date}. Please reply at `,
 };

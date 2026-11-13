@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\Guest\Controller;
 
+use App\Domain\Event\CalendarFeed\FeedLinkIssuer;
 use App\Domain\Event\EventVenue;
 use App\Domain\Event\Http\EventSerialiser;
 use App\Domain\Guest\Link\InvitationLinks;
 use App\Domain\Guest\Reply\GuestAnswers;
 use App\Entity\Guest;
 use App\Enum\ErrorCode;
+use App\Enum\GuestPagePhase;
 use App\Enum\GuestReply;
 use App\Http\Access\Policy\PublicAccess;
 use App\Http\Exception\ApiException;
@@ -97,7 +99,18 @@ final readonly class GuestPageController
             'phase' => $this->guestAnswers->phase($guest)->value,
             'started' => $this->guestAnswers->started($guest),
             'answersOpen' => $this->guestAnswers->open($guest),
+            'calendarFeed' => $this->calendarFeed($guest),
         ], headers: ['Cache-Control' => 'no-store']);
+    }
+
+    /** Add to calendar's feed, the path on this API, as each client puts its own API address in front: only for Coming while the event is Live (sc-3627). */
+    private function calendarFeed(Guest $guest): ?string
+    {
+        $token = $guest->getLinkToken();
+
+        return null === $token || GuestReply::Coming !== $guest->getReply() || GuestPagePhase::Live !== $this->guestAnswers->phase($guest)
+            ? null
+            : GuestCalendarFeedController::PATH . $token . FeedLinkIssuer::SUFFIX;
     }
 
     /** "Not {full name}? Tell us": flags the guest for the hosts and changes nothing else. Refused 429 after 5 an hour on one link, so a replaced link's budget never reaches the new one. */

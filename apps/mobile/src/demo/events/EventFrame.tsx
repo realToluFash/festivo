@@ -37,7 +37,7 @@ import { AREA_WORDS, COMING, W } from './EventsWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Back } from '../../components/SettingsParts.tsx';
 import { PageToast, Row, RowList } from '../../components/Summary.tsx';
-import { GuestToast } from '../guests/GuestsParts.tsx';
+import { ActionToast } from './ActionToast.tsx';
 
 const PHONE_BAR: readonly (readonly [string, GlyphName])[] = [
   ...PHONE_TABS.map((area) => [AREA_WORDS[area], AREA_GLYPH[area]] as const),
@@ -57,7 +57,7 @@ export function backToEvents(): void {
 export interface EventToast {
   words: string;
   onClose: () => void;
-  action?: { label: string; onPress: () => void } | null;
+  action?: { label: string; onPress: () => void; testID?: string } | null;
 }
 
 /** Messages' count, on its tab, its pill and its place in the sidebar, named in words (sc-3976). */
@@ -123,7 +123,7 @@ export function EventFrame({
     toast == null ? null : toast.action == null ? (
       <PageToast words={toast.words} onClose={toast.onClose} bottom={toastBottom} />
     ) : (
-      <GuestToast
+      <ActionToast
         words={toast.words}
         action={toast.action}
         onClose={toast.onClose}

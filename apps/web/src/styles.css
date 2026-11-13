@@ -386,6 +386,7 @@ span {
   .shell-content.is-card:has(.cal-page) {
     display: flex;
     flex-direction: column;
+    padding-bottom: var(--space3xl);
     overflow: hidden;
   }
 

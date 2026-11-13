@@ -35,7 +35,7 @@ import {
 import { PW, STAND_INS } from './messagesPreviewWords.ts';
 import './messagesPreview.css';
 
-const FILL_MS = 900;
+export const FILL_MS = 900;
 const EVENT_DAY = new Date('2026-11-05T12:00:00Z');
 const HOST_NAMES = ['Adaeze Obi', 'Tunde Bakare'];
 const LANGUAGE_NAMES = new Intl.DisplayNames(['en'], { type: 'language' });
@@ -183,8 +183,8 @@ export function Preview({ draft }: { draft: Draft }) {
       <div className="mg-preview-top">
         <h3 className="mg-preview-heading">{filled(MW.previewAs, { name: person.name })}</h3>
         <PreviewAs
-          options={PEOPLE.map((one) => ({ id: one.id, words: optionWords(one) }))}
           who={who}
+          options={PEOPLE.map((one) => ({ id: one.id, words: optionWords(one) }))}
           first={first}
           onPick={(id) => pick(id as PersonId)}
         />
@@ -270,7 +270,7 @@ export function Preview({ draft }: { draft: Draft }) {
 }
 
 /** While the preview fills for another guest: the words, and the page and its notices as Sunk shapes. */
-function PreviewBones({ name }: { name: string }) {
+export function PreviewBones({ name }: { name: string }) {
   return (
     <div className="mg-preview-bones" aria-hidden="true">
       <p className="mg-preview-filling">{filled(PW.filling, { name })}</p>
@@ -298,13 +298,13 @@ function optionsIn(list: HTMLElement | null): HTMLElement[] {
 
 /** Preview as: a button that drops the people in To as a listbox (WAI-ARIA APG), the chosen one ticked. */
 export function PreviewAs({
-  options,
   who,
+  options,
   first,
   onPick,
 }: {
-  options: readonly { id: string; words: string }[];
   who: string;
+  options: readonly { id: string; words: string }[];
   first: boolean;
   onPick: (id: string) => void;
 }) {

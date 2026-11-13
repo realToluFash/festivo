@@ -64,7 +64,7 @@ describe('the invitation by WhatsApp, at a desk (sc-45251)', () => {
     expect(within(check).getByText(/^WhatsApp · 5$/u)).toBeTruthy();
     expect(
       within(check).getByText(
-        'Texts and WhatsApp messages use 64 credits. Credits after sending: 1,436.',
+        'Texts and WhatsApp messages use 230 credits. Credits after sending: 1,270.',
       ),
     ).toBeTruthy();
   });
@@ -75,8 +75,10 @@ describe('the invitation by WhatsApp, at a desk (sc-45251)', () => {
     async () => {
       await messages('invitePreviewWhatsApp');
 
-      expect(screen.getByText('Dear Chuka Nwankwo,')).toBeTruthy();
-      expect(screen.getByText('Reply on your page')).toBeTruthy();
+      const card = screen.getByText('Reply on your page').parentElement;
+
+      if (card == null) throw new Error('no template card');
+      expect(within(card).getByText('Dear Chuka Nwankwo,')).toBeTruthy();
       expect(screen.queryByText(/^Adaeze Obi and Tunde Bakare: /u)).toBeNull();
     },
   );

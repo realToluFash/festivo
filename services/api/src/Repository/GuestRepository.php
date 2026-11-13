@@ -143,6 +143,35 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
             ->getOneOrNullResult();
     }
 
+    /** As findOneByLink, and also on a deleted event, which the guest's calendar shows as cancelled until its restore window closes (sc-3627). */
+    public function findOneForCalendar(#[SensitiveParameter] string $token): ?Guest
+    {
+        $filters = $this->getEntityManager()->getFilters();
+        $filtered = $filters->isEnabled('soft_delete');
+
+        if ($filtered) {
+            $filters->disable('soft_delete');
+        }
+
+        try {
+            /** @var ?Guest */
+            return $this->createQueryBuilder('g')
+                ->innerJoin('g.event', 'e')
+                ->addSelect('e')
+                ->where('g.linkToken = :token')
+                ->andWhere('g.host IS NULL')
+                ->andWhere('e.status != :draft')
+                ->setParameter('token', $token)
+                ->setParameter('draft', EventStatus::Draft->value)
+                ->getQuery()
+                ->getOneOrNullResult();
+        } finally {
+            if ($filtered) {
+                $filters->enable('soft_delete');
+            }
+        }
+    }
+
     /** The guests whose link someone said reached the wrong person, for the hosts' notice (sc-1526). @return list<Guest> */
     public function findFlagged(Event $event): array
     {

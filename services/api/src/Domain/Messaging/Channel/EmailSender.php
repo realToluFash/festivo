@@ -39,6 +39,8 @@ final readonly class EmailSender implements ChannelSenderInterface
             ->subject($notification->subject)
             ->text($notification->body);
         $email->getHeaders()->addIdHeader('Message-ID', $messageId);
+        // Postmark returns X-PM-Metadata-* in its webhooks, which is how a report finds its delivery (MailWebhook).
+        $email->getHeaders()->addTextHeader('X-PM-Metadata-delivery', $deliveryId->toRfc4122());
 
         $this->mailer->send($email);
 

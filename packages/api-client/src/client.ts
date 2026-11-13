@@ -24,11 +24,13 @@ import {
   asGuest,
   asGuestDetails,
   asGuestList,
+  asHeadcount,
   type Guest,
   type GuestEdit,
   type GuestAnswer,
   type GuestList,
   type GuestPage,
+  type Headcount,
   GUEST_ANSWERS,
   GUEST_PAGE_PHASES,
   type NewGuest,
@@ -2086,7 +2088,23 @@ export class ApiClient {
     );
   }
 
-  /** A hub token for this event's guest list; each change is published there as the whole list, with no email address or mobile number. */
+  /** Needs guests.read on the event (sc-99). */
+  async headcount(eventId: string): Promise<Headcount> {
+    const body = await this.get<{ headcount?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/headcount`,
+    );
+    const headcount = asHeadcount(body?.headcount);
+
+    if (headcount == null) {
+      throw new Error(
+        'The API answered the headcount in a shape this client does not know. Check HeadcountCalculator in services/api.',
+      );
+    }
+
+    return headcount;
+  }
+
+  /** A hub token for this event's guest list and its headcount; each change publishes the whole list, with no email address or mobile number, then the headcount. */
   async guestsSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       `${this.guestsPath(eventId)}/subscriptions`,
@@ -2152,14 +2170,25 @@ export class ApiClient {
 
   private guestPageOf(raw: unknown, route: string): GuestPage {
     const page = asGuestPage(raw);
+    const feed = (raw as Record<string, unknown> | null)?.calendarFeed;
 
-    if (page == null) {
+    if (page == null || (feed != null && (typeof feed !== 'string' || !feed.startsWith('/')))) {
       throw new Error(
         `The API answered ${route} in a shape this client does not know. Check GuestPageController in services/api.`,
       );
     }
 
-    return page;
+    if (feed == null) return page;
+
+    const webcal = this.webcalOf(feed);
+
+    return {
+      ...page,
+      calendar: {
+        webcal,
+        google: `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}`,
+      },
+    };
   }
 
   /** "Not {name}? Tell us". Refused `too_many_attempts` after five an hour on one link. */
@@ -2719,9 +2748,11 @@ export class ApiClient {
       );
     }
 
-    const url = this.url(path);
+    return { url: this.url(path), webcal: this.webcalOf(path) };
+  }
 
-    return { url, webcal: url.replace(/^https?:/, 'webcal:') };
+  private webcalOf(path: string): string {
+    return this.url(path).replace(/^https?:/, 'webcal:');
   }
 
   async joinOffers(): Promise<JoinOffers> {
@@ -3655,6 +3686,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
     phase: shown,
     started,
     answersOpen,
+    calendar: null,
   };
 }
 

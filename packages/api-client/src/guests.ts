@@ -69,6 +69,12 @@ export interface TaggedGuest {
   tag: string;
 }
 
+/** A guest's subscription, as Apple and Outlook open it (webcal) and as Google Calendar adds it by URL. */
+export interface GuestCalendarLink {
+  webcal: string;
+  google: string;
+}
+
 /** What a guest's own link opens (sc-1526): their name as the host typed it, their answer (sc-1439), and the event behind it. */
 export interface GuestPage {
   guest: {
@@ -98,6 +104,8 @@ export interface GuestPage {
   started: boolean;
   /** False from the start, in the event's zone, and whenever the event is not Live. */
   answersOpen: boolean;
+  /** The guest's own calendar feed for Add to calendar (sc-3627): only for Coming while the event is Live. */
+  calendar: GuestCalendarLink | null;
 }
 
 export const GUEST_PAGE_PHASES = ['live', 'paused', 'calledOff', 'finished'] as const;
@@ -162,6 +170,88 @@ export function asGuestList(value: unknown): GuestList | null {
   return {
     guests: guests as Guest[],
     counts: { people: counts.people, guests: counts.guests, companions: counts.companions },
+  };
+}
+
+const HEADCOUNT_COUNTS = [
+  'onList',
+  'notYetInvited',
+  'invited',
+  'accepted',
+  'maybe',
+  'awaitingReply',
+  'held',
+  'declined',
+] as const;
+
+/** People (sc-99). `accepted` is the settled figure; an optimistic one adds maybe, awaitingReply and held, never `heldBy.hostNotComing`. */
+export type HeadcountCounts = Record<(typeof HEADCOUNT_COUNTS)[number], number> & {
+  heldBy: { hostNoReply: number; hostMaybe: number; hostNotComing: number };
+};
+
+/** The one answer to how many are coming: read it, never count the list. Published on the `EventHeadcount` topic. */
+export interface Headcount {
+  counts: HeadcountCounts;
+  /** `group` is null for No group; the rows add up to `counts`. */
+  byGroup: { group: string | null; counts: HeadcountCounts }[];
+  /** A person counts under each need they have, so these rows do not add up. */
+  byDietaryNeed: { addsUp: false; needs: { need: string; people: number }[] };
+}
+
+function asHeadcountCounts(value: unknown): HeadcountCounts | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const counts = value as Record<string, unknown>;
+  const heldBy = counts.heldBy as Record<string, unknown> | null | undefined;
+  if (HEADCOUNT_COUNTS.some((key) => typeof counts[key] !== 'number')) return null;
+  if (
+    typeof heldBy !== 'object' ||
+    heldBy == null ||
+    typeof heldBy.hostNoReply !== 'number' ||
+    typeof heldBy.hostMaybe !== 'number' ||
+    typeof heldBy.hostNotComing !== 'number'
+  ) {
+    return null;
+  }
+
+  return counts as HeadcountCounts;
+}
+
+export function asHeadcount(value: unknown): Headcount | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const body = value as Record<string, unknown>;
+  const counts = asHeadcountCounts(body.counts);
+  const needs = body.byDietaryNeed as Record<string, unknown> | null | undefined;
+  if (
+    counts == null ||
+    !Array.isArray(body.byGroup) ||
+    typeof needs !== 'object' ||
+    needs == null
+  ) {
+    return null;
+  }
+  if (
+    !Array.isArray(needs.needs) ||
+    needs.needs.some((row: unknown) => {
+      const need = row as { need?: unknown; people?: unknown } | null;
+      return typeof need?.need !== 'string' || typeof need.people !== 'number';
+    })
+  ) {
+    return null;
+  }
+  const byGroup = body.byGroup.map((row: unknown) => {
+    const group = (row as { group?: unknown } | null)?.group;
+    const rowCounts = asHeadcountCounts((row as { counts?: unknown } | null)?.counts);
+
+    return rowCounts == null || (group !== null && typeof group !== 'string')
+      ? null
+      : { group, counts: rowCounts };
+  });
+  if (byGroup.some((row) => row == null)) return null;
+
+  return {
+    counts,
+    byGroup: byGroup as Headcount['byGroup'],
+    byDietaryNeed: { addsUp: false, needs: needs.needs as Headcount['byDietaryNeed']['needs'] },
   };
 }
 

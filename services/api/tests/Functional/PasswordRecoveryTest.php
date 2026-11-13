@@ -198,6 +198,7 @@ final class PasswordRecoveryTest extends ApiTestCase
             self::service(CodeField::class),
         );
         $sent = self::serviceById('mailer.message_logger_listener', MessageLoggerListener::class);
+        self::drainNotifications();
         $before = Iter\count($sent->getEvents()->getMessages());
 
         $response = $controller->forgot(Request::create('/api/auth/password/forgot', 'POST', content: Json\encode(['email' => 'folake@example.com'])));
@@ -207,6 +208,7 @@ final class PasswordRecoveryTest extends ApiTestCase
         self::assertSame(0, self::service(PasswordResetTokenRepository::class)->count([]), 'nor is a link made');
 
         self::service(AfterResponse::class)->run();
+        self::drainNotifications();
 
         self::assertCount($before + 1, $sent->getEvents()->getMessages(), 'the link goes once the answer has');
     }

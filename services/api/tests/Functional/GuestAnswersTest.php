@@ -24,6 +24,7 @@ use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
@@ -93,17 +94,18 @@ final class GuestAnswersTest extends ApiTestCase
         self::assertSame(['name' => 'The Civic Centre', 'address' => 'Ozumba Mbadiwe Ave, Victoria Island, Lagos'], $page['event']['venue'] ?? null);
     }
 
-    /** @return iterable<string, array{string, string}> */
+    /** @return iterable<string, array{string, string, array<string, int>}> */
     public static function answers(): iterable
     {
-        yield 'Coming' => ['coming', 'coming'];
-        yield 'Not coming' => ['notComing', 'held'];
-        yield 'Not sure yet' => ['maybe', 'held'];
+        yield 'Coming' => ['coming', 'coming', ['accepted' => 2, 'maybe' => 0, 'held' => 0, 'declined' => 0]];
+        yield 'Not coming' => ['notComing', 'held', ['accepted' => 0, 'maybe' => 0, 'held' => 1, 'declined' => 1]];
+        yield 'Not sure yet' => ['maybe', 'held', ['accepted' => 0, 'maybe' => 1, 'held' => 1, 'declined' => 0]];
     }
 
+    /** @param array<string, int> $headcount */
     #[Test]
     #[DataProvider('answers')]
-    public function eachAnswerIsRecordedWithItsDateAndWhereItWasGiven(string $answer, string $companion): void
+    public function eachAnswerIsRecordedWithItsDateAndWhereItWasGiven(string $answer, string $companion, array $headcount): void
     {
         $guest = $this->add(self::ADAEZE, ['Obi Okonkwo']);
 
@@ -114,6 +116,8 @@ final class GuestAnswersTest extends ApiTestCase
         $row = $this->row($guest);
         self::assertSame([$answer, '2026-10-17T14:20:00+01:00', 'guestPage'], [$row['reply'], $row['repliedAt'], $row['replySource']]);
         self::assertSame([$companion], Vec\map(Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($row['companions']), static fn (array $one): mixed => $one['state']));
+        $counts = Type\dict(Type\string(), Type\mixed())->coerce($this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/headcount')['headcount']['counts'] ?? null);
+        self::assertSame($headcount, Dict\select_keys($counts, Vec\keys($headcount)));
     }
 
     #[Test]
@@ -345,7 +349,7 @@ final class GuestAnswersTest extends ApiTestCase
 
         $this->reply($this->token($guest), 'coming');
 
-        $update = Iter\last(self::service(RecordingHub::class)->published) ?? self::fail('nothing published');
+        $update = self::service(RecordingHub::class)->lastOn('events/' . $this->eventId . '/guests') ?? self::fail('nothing published');
         self::assertSame(['events/' . $this->eventId . '/guests'], $update->getTopics());
         self::assertTrue($update->isPrivate());
         $viewer = $this->member('ada@ire.events', SeededRole::Member, EventRole::CanView);

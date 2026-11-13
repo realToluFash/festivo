@@ -253,6 +253,7 @@ export function GuestsArea({
   const [saved, setSaved] = useState(false);
   const lastRow = useRef<string | null>(open);
   const addAfter = useRef(false);
+  const headingOwed = useRef(false);
   const column = useRef<HTMLElement>(null);
   const manages = canOn(event, 'guests.manage');
   const country = useStartingCountry(manages);
@@ -330,6 +331,7 @@ export function GuestsArea({
   function openGuest(id: string): void {
     setAdding(false);
     setParams({ guest: id });
+    headingOwed.current = id !== open;
     focus('guest-heading');
   }
 
@@ -498,6 +500,11 @@ export function GuestsArea({
                           onDirty={setDirty}
                           onAsk={(then) => setAsking(() => then)}
                           onClose={close}
+                          onShown={() => {
+                            if (!headingOwed.current) return;
+                            headingOwed.current = false;
+                            focus('guest-heading');
+                          }}
                           onSaved={(guest) => {
                             setSaved(true);
                             setLoad((was) =>

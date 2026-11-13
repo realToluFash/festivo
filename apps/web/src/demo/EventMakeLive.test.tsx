@@ -65,7 +65,7 @@ describe('Make live, then the offer to send invitations, at a desk (sc-3971)', (
       await waitFor(() => expect(document.activeElement).toBe(heading), WAIT);
       expect(within(offer).getByText('Bisi & Kola’s engagement is live.')).toBeDefined();
       expect(
-        within(offer).getByText('Texts use 3 credits. Credits after sending: 247.'),
+        within(offer).getByText('Texts use 146 credits. Credits after sending: 104.'),
       ).toBeDefined();
       expect(buttons(offer)).toEqual(['Not yet', 'Send them']);
       fireEvent.click(within(offer).getByRole('button', { name: 'Send them' }));
@@ -79,6 +79,7 @@ describe('Make live, then the offer to send invitations, at a desk (sc-3971)', (
       expect(within(said).getByRole('link', { name: 'Messages' }).getAttribute('href')).toBe(
         '/demo/events/evt-wed-4/messages?state=invited',
       );
+      expect(screen.getByText(/^Demo only: the engagement has no messages here/u)).toBeDefined();
     },
   );
 
@@ -108,15 +109,56 @@ describe('Make live, then the offer to send invitations, at a desk (sc-3971)', (
       open('makeLiveOfferPart');
       const part = await alert(OFFER);
 
-      expect(within(part).getByText('Texts use 1 credit.')).toBeDefined();
+      expect(within(part).getByText('Texts use 22 credits.')).toBeDefined();
       expect(within(part).getByText('Email goes either way.')).toBeDefined();
-      expect(within(part).getByText('2 SMS messages will wait for credits.')).toBeDefined();
+      expect(within(part).getByText('1 SMS message will wait for credits.')).toBeDefined();
 
       cleanup();
       open('makeLiveOfferOne');
       const one = await alert('Send the invitation to 1 guest now?');
 
       expect(buttons(one)).toEqual(['Not yet', 'Send it']);
+    },
+  );
+
+  it(
+    'offers the whole list by email with no cost line, and toasts the guests reached',
+    SLOW,
+    async () => {
+      open('makeLiveOfferEmail');
+      const offer = await alert(OFFER);
+
+      expect(within(offer).getByText('Bisi & Kola’s engagement is live.')).toBeDefined();
+      expect(within(offer).queryByText(/^Texts use/u)).toBeNull();
+      expect(within(offer).queryByText('Email goes either way.')).toBeNull();
+      expect(buttons(offer)).toEqual(['Not yet', 'Send them']);
+      fireEvent.click(within(offer).getByRole('button', { name: 'Send them' }));
+
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull(), WAIT);
+      expect(
+        within(toast() as HTMLElement).getByText('Invitations queued. Sending to 10 guests now.'),
+      ).toBeDefined();
+    },
+  );
+
+  it(
+    'puts the refusal after Send them in the offer’s place, Close alone, the event Live behind',
+    SLOW,
+    async () => {
+      open('makeLiveOfferRefused');
+      const refused = await alert('The invitations cannot be sent yet.');
+
+      expect(within(refused).getByText('Bisi & Kola’s engagement is live.')).toBeDefined();
+      expect(within(refused).getByRole('alert').textContent).toBe(
+        'None of the 11 guests can be reached. Add an email address or a mobile number for them in Guests.',
+      );
+      expect(buttons(refused)).toEqual(['Close']);
+      expect(
+        screen.getAllByText('Next up: Bisi & Kola’s engagement starts').length,
+      ).toBeGreaterThan(0);
+      fireEvent.click(within(refused).getByRole('button', { name: 'Close' }));
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull(), WAIT);
+      expect(toast()).toBeNull();
     },
   );
 
@@ -154,6 +196,84 @@ describe('Make live, then the offer to send invitations, at a desk (sc-3971)', (
       cleanup();
       open('makeLiveNoOffer', 'evt-cena-4');
       const box = await screen.findByRole('alertdialog', {}, WAIT);
+
+      fireEvent.click(within(box).getByRole('button', { name: 'Make live' }));
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull(), WAIT);
+      expect(toast()?.textContent).toContain('✓ Live');
+    },
+  );
+
+  it(
+    'asks for Host 1 on a draft with no host, refuses it empty, and makes it live once typed',
+    SLOW,
+    async () => {
+      open('makeLiveHost');
+      const box = await alert(QUESTION);
+      const field = within(box).getByLabelText('Host 1');
+
+      await waitFor(() => expect(document.activeElement).toBe(field), WAIT);
+      expect(
+        within(box).getByText(/^Guests read this name on their invitation and their page\./u),
+      ).toBeDefined();
+      fireEvent.click(within(box).getByRole('button', { name: 'Make live' }));
+      expect(within(box).getByRole('alert').textContent).toBe(
+        'Enter who is hosting to make this event live.',
+      );
+      expect(field.getAttribute('aria-invalid')).toBe('true');
+      fireEvent.change(field, { target: { value: 'Bisi Akindele' } });
+      expect(within(box).queryByRole('alert')).toBeNull();
+      fireEvent.keyDown(field, { key: 'Enter' });
+
+      await alert(OFFER);
+      expect(screen.getAllByText(/Bisi Akindele/u).length).toBeGreaterThan(0);
+
+      cleanup();
+      open('makeLiveHostBlank');
+      const blank = await alert(QUESTION);
+
+      expect(within(blank).getByRole('alert').textContent).toBe(
+        'Enter who is hosting to make this event live.',
+      );
+    },
+  );
+
+  it(
+    'says an ended draft cannot be made live, with Change dates opening Dates, and that somebody else made it live with Close alone',
+    SLOW,
+    async () => {
+      open('makeLiveEndPassed', 'evt-shower-2');
+      const ended = await alert('Not made live.');
+
+      expect(within(ended).getByRole('alert').textContent).toBe(
+        'This event’s end has passed, so it cannot be made live. Change its dates first.',
+      );
+      expect(buttons(ended)).toEqual(['Close', 'Change dates']);
+      fireEvent.click(within(ended).getByRole('button', { name: 'Change dates' }));
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull(), WAIT);
+      expect(document.querySelector('.ev-detail[aria-expanded="true"]')?.textContent).toContain(
+        'Dates',
+      );
+
+      cleanup();
+      open('makeLiveChanged');
+      const changed = await alert('Somebody else changed this event while you had it open.');
+
+      expect(within(changed).getByRole('alert').textContent).toBe(
+        'It’s live now. The page shows what it is now.',
+      );
+      expect(buttons(changed)).toEqual(['Close']);
+      fireEvent.click(within(changed).getByRole('button', { name: 'Close' }));
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull(), WAIT);
+      expect(toast()).toBeNull();
+    },
+  );
+
+  it(
+    'makes it live with no offer for a member who cannot send, and says ✓ Live',
+    SLOW,
+    async () => {
+      open('makeLiveCannotSend');
+      const box = await alert(QUESTION);
 
       fireEvent.click(within(box).getByRole('button', { name: 'Make live' }));
       await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull(), WAIT);

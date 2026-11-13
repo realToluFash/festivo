@@ -8,6 +8,15 @@ export const LW = {
   failed: 'Not made live. Try again in a moment.',
   madeLive: '✓ Live',
   close: 'Close',
+  host: 'Host 1',
+  hostExplainer:
+    'Guests read this name on their invitation and their page. Write it the way you want guests to see it.',
+  hostEmpty: 'Enter who is hosting to make this event live.',
+  notMadeLive: 'Not made live.',
+  endPassed: 'This event’s end has passed, so it cannot be made live. Change its dates first.',
+  changeDates: 'Change dates',
+  changedElsewhere: 'Somebody else changed this event while you had it open.',
+  nowLive: 'It’s live now. The page shows what it is now.',
   offerTitle_one: 'Send the invitation to {{count, number}} guest now?',
   offerTitle_other: 'Send invitations to {{count, number}} guests now?',
   isLive: '{{name}} is live.',
@@ -25,4 +34,6 @@ export const LW = {
   queued_one: 'Invitation queued. Sending to {{count, number}} guest now.',
   queued_other: 'Invitations queued. Sending to {{count, number}} guests now.',
   messages: 'Messages',
+  demoMessages:
+    'Demo only: the engagement has no messages here, so Messages in the toast opens the wedding’s Invitation conversation.',
 } as const;

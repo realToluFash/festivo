@@ -1,32 +1,50 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { resetSent } from './invitesSent.ts';
-import { type Inbox, type Ticks, seedOf, whatsAppCreditsIn, whoOf } from './messages.ts';
 import {
-  NOT_INVITED,
-  inviteAudienceOf,
+  type Category,
+  type Inbox,
+  type Ticks,
+  BALANCE,
+  seedOf,
+  whatsAppCreditsIn,
+  whoOf,
+} from './messages.ts';
+import {
+  type Counted,
+  type InviteCheck,
+  NOT_YET_INVITED,
   inviteCheckOf,
   inviteReachOf,
+  previewPeople,
   whatsAppInvitationOf,
 } from './messagesInvite.ts';
 import { WA_INVITE_STATES } from './messagesInviteWords.ts';
 
 const ALL_THREE: Ticks = { email: true, sms: true, whatsApp: true };
 const NO_SMS: Ticks = { email: true, sms: false, whatsApp: true };
+const NOBODY_COUNTED: Counted = {
+  counts: { email: 0, sms: 0, whatsApp: 0 },
+  cantTell: 0,
+  names: [],
+};
 
 function personNamed(id: string) {
-  const one = inviteAudienceOf(NOT_INVITED, { wa: 'marketing' }, []).everyone.find(
-    (person) => person.id === id,
-  );
+  const one = previewPeople(NOT_YET_INVITED, [], 'marketing').find((person) => person.id === id);
 
   if (one == null) throw new Error(`no ${id}`);
 
   return one;
 }
 
-describe('the invitation by WhatsApp (sc-45251)', () => {
-  beforeEach(() => resetSent());
+function checked(wa: Category, ticks: Ticks, balance = BALANCE): InviteCheck {
+  const check = inviteCheckOf(NOT_YET_INVITED, ticks, false, NOBODY_COUNTED, balance, [], wa);
 
+  if (check.kind !== 'check') throw new Error('refused');
+
+  return check;
+}
+
+describe('the invitation by WhatsApp (sc-45251)', () => {
   it('counts each guest at their own country’s rate, never one country’s times the count', () => {
     expect(whatsAppCreditsIn('NG', 'marketing')).toBe(10);
     expect(whatsAppCreditsIn('NG', 'utility')).toBe(2);
@@ -35,14 +53,9 @@ describe('the invitation by WhatsApp (sc-45251)', () => {
   });
 
   it('offers WhatsApp unticked, and its reach line has the US part only at marketing', () => {
-    const offered = inviteReachOf(
-      NOT_INVITED,
-      { wa: 'marketing' },
-      { ...ALL_THREE, whatsApp: false },
-      [],
-    );
-    const marketing = inviteReachOf(NOT_INVITED, { wa: 'marketing' }, NO_SMS, []);
-    const utility = inviteReachOf(NOT_INVITED, { wa: 'utility' }, NO_SMS, []);
+    const offered = inviteReachOf(NOT_YET_INVITED, 'marketing', { ...ALL_THREE, whatsApp: false });
+    const marketing = inviteReachOf(NOT_YET_INVITED, 'marketing', NO_SMS);
+    const utility = inviteReachOf(NOT_YET_INVITED, 'utility', NO_SMS);
 
     expect(offered).toEqual({ whatsApp: null, instead: null });
     expect(marketing.whatsApp).toBe(
@@ -51,13 +64,13 @@ describe('the invitation by WhatsApp (sc-45251)', () => {
     expect(utility.whatsApp).toBe(
       'WhatsApp reaches 7 of 14 · 4 have no mobile number, 1 stopped WhatsApp and 2 haven’t agreed to WhatsApp',
     );
-    expect(inviteReachOf(NOT_INVITED, { wa: 'marketing' }, ALL_THREE, []).instead).toBe(
+    expect(inviteReachOf(NOT_YET_INVITED, 'marketing', ALL_THREE).instead).toBe(
       '5 by WhatsApp instead of SMS',
     );
   });
 
-  it('checks texts and WhatsApp together at marketing: US numbers texted, 64 credits', () => {
-    const check = inviteCheckOf(NOT_INVITED, { again: false, wa: 'marketing' }, ALL_THREE, []);
+  it('checks texts and WhatsApp together at marketing: US numbers texted, 230 credits', () => {
+    const check = checked('marketing', ALL_THREE);
 
     expect(check.pills).toEqual([
       { channel: 'email', count: 12 },
@@ -66,28 +79,23 @@ describe('the invitation by WhatsApp (sc-45251)', () => {
     ]);
     expect(check.cant).toBe(0);
     expect(check.credits).toBe(
-      'Texts and WhatsApp messages use 64 credits. Credits after sending: 1,436.',
+      'Texts and WhatsApp messages use 230 credits. Credits after sending: 1,270.',
     );
     expect(check.waits).toBeNull();
   });
 
-  it('sends US numbers WhatsApp at utility: 21 credits', () => {
-    const check = inviteCheckOf(NOT_INVITED, { again: false, wa: 'utility' }, ALL_THREE, []);
+  it('sends US numbers WhatsApp at utility: 183 credits', () => {
+    const check = checked('utility', ALL_THREE);
 
     expect(check.pills.find((pill) => pill.channel === 'whatsApp')?.count).toBe(7);
     expect(check.credits).toBe(
-      'Texts and WhatsApp messages use 21 credits. Credits after sending: 1,479.',
+      'Texts and WhatsApp messages use 183 credits. Credits after sending: 1,317.',
     );
   });
 
   it('says WhatsApp messages alone, and holds them when credits are short while email goes', () => {
-    const only = inviteCheckOf(
-      NOT_INVITED,
-      { again: false, wa: 'marketing' },
-      { email: false, sms: false, whatsApp: true },
-      [],
-    );
-    const short = inviteCheckOf(NOT_INVITED, { again: false, wa: 'marketing' }, NO_SMS, [], 0);
+    const only = checked('marketing', { email: false, sms: false, whatsApp: true });
+    const short = checked('marketing', NO_SMS, 0);
 
     expect(only.credits).toBe('WhatsApp messages use 54 credits. Credits after sending: 1,446.');
     expect(short.credits).toBeNull();
@@ -96,7 +104,7 @@ describe('the invitation by WhatsApp (sc-45251)', () => {
       lines: ['5 WhatsApp messages will wait for credits.'],
       way: { word: 'Send without WhatsApp' },
     });
-    expect(short.cantNamed[0]).toEqual({
+    expect(short.cantNames[0]).toEqual({
       name: 'Yusuf Ibrahim',
       why: ['No email address', 'SMS is off', 'Has not agreed to WhatsApp'],
     });

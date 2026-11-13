@@ -6,6 +6,7 @@ namespace App\Domain\Messaging;
 
 use App\Domain\Messaging\Exception\UnregisteredNotificationType;
 use App\Domain\Messaging\Interfaces\ChannelSenderInterface;
+use App\Domain\Messaging\Interfaces\NotificationTypeFamilyInterface;
 use App\Domain\Messaging\Interfaces\NotificationTypeInterface;
 use LogicException;
 use Psl\Str;
@@ -22,18 +23,32 @@ final readonly class NotificationRegistry
     private array $senders;
 
     /**
-     * @param iterable<NotificationTypeInterface> $types
-     * @param iterable<ChannelSenderInterface>    $senders
+     * @param iterable<NotificationTypeInterface>       $types
+     * @param iterable<ChannelSenderInterface>          $senders
+     * @param iterable<NotificationTypeFamilyInterface> $families
      */
     public function __construct(
         #[AutowireIterator(NotificationTypeInterface::TAG)]
         iterable $types,
         #[AutowireIterator(ChannelSenderInterface::TAG)]
         iterable $senders,
+        #[AutowireIterator(NotificationTypeFamilyInterface::TAG)]
+        iterable $families = [],
     ) {
         $byName = [];
+        $all = [];
 
         foreach ($types as $type) {
+            $all[] = $type;
+        }
+
+        foreach ($families as $family) {
+            foreach ($family->types() as $type) {
+                $all[] = $type;
+            }
+        }
+
+        foreach ($all as $type) {
             if (isset($byName[$type->name()])) {
                 throw new LogicException(Str\format('Two notification types are named "%s".', $type->name()));
             }
@@ -66,6 +81,12 @@ final readonly class NotificationRegistry
     public function types(): array
     {
         return Vec\values($this->types);
+    }
+
+    /** @return list<string> the types whose payload holds a code or a link's token, cleared once their send is over */
+    public function codeTypes(): array
+    {
+        return Vec\values(Vec\map(Vec\filter($this->types, static fn (NotificationTypeInterface $type): bool => $type->carriesCode()), static fn (NotificationTypeInterface $type): string => $type->name()));
     }
 
     public function sender(\App\Enum\NotificationChannel $channel): ?ChannelSenderInterface

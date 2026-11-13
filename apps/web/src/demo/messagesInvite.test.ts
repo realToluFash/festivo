@@ -1,141 +1,296 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { resetSent } from './invitesSent.ts';
-import { type Draft, type Inbox, TICKS, changed, seedOf } from './messages.ts';
 import {
+  BALANCE,
+  MESSAGES_PAGES,
+  MESSAGE_STATES,
+  inviteCheck,
+  inviteDraftOf,
+  rowOf,
+  seedOf,
+} from './messages.ts';
+import {
+  FOURTEEN,
+  INVITE_GROUP,
   INVITE_STATES,
-  LONG_NOTE,
+  INVITE_TICKS,
+  INVITE_WORLD,
+  IW,
   NOTE,
-  NOT_INVITED,
-  inviteAudienceOf,
-  inviteCheckOf,
-  inviteChipWords,
-  inviteGoing,
-  iw,
-  noteProblem,
-  smsOf,
+  NOTE_MOST,
+  NOT_YET_INVITED,
+  REPLY_BY,
+  TOO_LONG_NOTE,
+  firstOf,
+  greetingOf,
+  guestAudience,
+  inviteSeedOf,
+  inviteSmsOf,
+  noteRefusal,
+  noteTooLong,
+  previewPeople,
+  smsParts,
+  weddingAbout,
 } from './messagesInvite.ts';
+import { GROUPS, chipWords, countIn, countOf, refusalOf, toLine, BOOK } from './messagesTo.ts';
 
-const TICKED = { ...TICKS, whatsApp: false };
+const ALL = { kind: 'all' } as const;
+const check = (to: Parameters<typeof inviteDraftOf>[0], again = false, ticks = INVITE_TICKS) =>
+  inviteCheck(
+    { to, ticks, invite: { note: '', again, wrong: false, pressed: false } },
+    BALANCE,
+    GROUPS,
+  );
 
-function draftIn(inbox: Inbox): Draft {
-  if (inbox.draft == null) throw new Error('no draft');
+describe('send invitations from the composer, the rules (sc-3971)', () => {
+  it('takes the Guests demo’s fourteen Not yet invited, A to Z: Email 13, SMS 1', () => {
+    expect(FOURTEEN).toHaveLength(14);
+    expect(FOURTEEN[0]).toMatchObject({
+      name: 'Bisi Adewale',
+      greetAs: 'Auntie Bisi',
+      mobile: false,
+    });
+    expect(FOURTEEN.at(-1)).toMatchObject({ name: 'Yusuf Ibrahim', email: false, mobile: true });
+    expect(FOURTEEN.filter((one) => one.email)).toHaveLength(13);
+    expect(FOURTEEN.filter((one) => one.mobile)).toHaveLength(1);
+    expect(REPLY_BY).toBe('Wednesday, Nov 4');
+  });
 
-  return inbox.draft;
-}
+  it('counts To on an invitation as the Guests demo’s 101 main guests and its Not yet invited as 14, every other row as Messages does', () => {
+    expect(countOf(ALL, GROUPS, INVITE_WORLD)).toBe(101);
+    expect(countIn(['notInvited'], GROUPS, INVITE_WORLD)).toBe(14);
+    expect(countIn(['notInvited'], GROUPS)).toBe(2);
+    expect(countIn(['coming'], GROUPS, INVITE_WORLD)).toBe(countIn(['coming'], GROUPS));
+    expect(chipWords(NOT_YET_INVITED, BOOK, INVITE_WORLD)).toBe('Not yet invited · 14');
+    expect(chipWords(ALL, BOOK, INVITE_WORLD)).toBe('All guests · 101');
+    expect(toLine(NOT_YET_INVITED, GROUPS)).toBe('To Guests who… Not yet invited');
+  });
 
-describe('the invitation in New message (sc-3971)', () => {
-  beforeEach(() => resetSent());
+  it('holds one named guest: their name on the chip and the row, one person, never refused by To', () => {
+    const bisi = guestAudience('bisi');
 
-  it('opens on the 14 Not yet invited, filled in for Bisi Adewale, the first A to Z', () => {
-    const audience = inviteAudienceOf(NOT_INVITED, {}, []);
+    expect(chipWords(bisi, BOOK, INVITE_WORLD)).toBe('Bisi Adewale');
+    expect(toLine(bisi, GROUPS)).toBe('To Bisi Adewale');
+    expect(countOf(bisi, GROUPS)).toBe(1);
+    expect(refusalOf(bisi, GROUPS)).toBeNull();
+  });
 
-    expect(audience.fresh).toHaveLength(14);
-    expect(audience.already).toHaveLength(0);
-    expect(audience.everyone[0]?.name).toBe('Bisi Adewale');
-    expect(audience.everyone[0]?.greet).toBe('Auntie Bisi');
-    expect(inviteChipWords(NOT_INVITED, {}, audience)).toBe('Guests who… Not yet invited · 14');
+  it('refuses a note over 10,000 characters once trimmed, and only then', () => {
+    expect(noteTooLong(NOTE)).toBe(false);
+    expect(TOO_LONG_NOTE.startsWith('We are so happy to invite you')).toBe(true);
+    expect(noteTooLong(TOO_LONG_NOTE)).toBe(true);
+    expect(noteTooLong(`  ${'a'.repeat(NOTE_MOST)}\n\n`)).toBe(false);
+    expect(noteTooLong('a'.repeat(NOTE_MOST + 1))).toBe(true);
+    expect(noteRefusal(TOO_LONG_NOTE)).toBe('Shorten the note to 10,000 characters or fewer.');
+    expect(noteRefusal('')).toBeNull();
+  });
+
+  it('checks the fourteen: nobody already invited, Yusuf’s two parts at Nigeria’s 62 a part', () => {
+    expect(check(NOT_YET_INVITED)).toEqual({
+      kind: 'check',
+      count: 14,
+      already: 0,
+      named: [],
+      alreadyAll: [],
+      choose: false,
+      pills: [
+        { channel: 'email', count: 13 },
+        { channel: 'sms', count: 1 },
+      ],
+      cant: 0,
+      cantNames: [],
+      cantAll: [],
+      credits: 'Texts use 124 credits. Credits after sending: 1,376.',
+      whatsApp: null,
+      instead: null,
+      waits: null,
+    });
+  });
+
+  it('lists every one of the 87 already invited under See all, and everyone out of reach', () => {
+    const some = check(ALL);
+    const again = check(ALL, true);
+
+    if (some.kind !== 'check' || again.kind !== 'check') throw new Error('refused');
+    expect(some.already).toBe(87);
+    expect(some.alreadyAll).toHaveLength(87);
+    expect(some.alreadyAll.slice(0, 6).map((one) => one.name)).toEqual([
+      'Alhaji Musa Bello',
+      'Amaka Eze',
+      'Beatriz Almeida',
+      'Benedict Osei',
+      'Bolanle Adisa',
+      'Camille Dubois',
+    ]);
+    expect(some.alreadyAll.find((one) => one.name === 'Dr Emeka Nwosu')?.why).toEqual([
+      'Invited by Folake Adeyemi, WhatsApp, Oct 9',
+    ]);
+    expect(some.cantAll).toEqual([]);
+    expect(again.cantAll).toEqual(again.cantNames);
+    const byText = check(ALL, true, { email: false, sms: true, whatsApp: false });
+
+    if (byText.kind !== 'check') throw new Error('refused');
+    expect(byText.cant).toBe(92);
+    expect(byText.cantAll).toHaveLength(92);
+    expect(byText.cantAll.slice(0, 2)).toEqual(byText.cantNames);
+  });
+
+  it('leaves the 87 already invited out of All guests, or sends again to all 101, main guests only', () => {
+    expect(check(ALL)).toMatchObject({
+      count: 14,
+      already: 87,
+      choose: true,
+      named: [
+        { name: 'Alhaji Musa Bello', why: ['Invited by Soirely’s message, Oct 12'] },
+        { name: 'Amaka Eze', why: ['Invited by Soirely’s message, Oct 12'] },
+      ],
+      pills: [
+        { channel: 'email', count: 13 },
+        { channel: 'sms', count: 1 },
+      ],
+      cant: 0,
+    });
+    expect(check(ALL, true)).toMatchObject({
+      count: 101,
+      choose: true,
+      pills: [
+        { channel: 'email', count: 95 },
+        { channel: 'sms', count: 9 },
+      ],
+      cant: 1,
+      cantNames: [{ name: 'Joaquín Ruiz', why: ['No email address', 'No phone number'] }],
+      credits: 'Texts use 738 credits. Credits after sending: 762.',
+    });
+  });
+
+  it('sends again to a guest who already has theirs, with no choice to make', () => {
+    expect(check(guestAudience('emeka'))).toMatchObject({
+      count: 1,
+      already: 1,
+      choose: false,
+      named: [{ name: 'Dr Emeka Nwosu', why: ['Invited by Folake Adeyemi, WhatsApp, Oct 9'] }],
+      pills: [
+        { channel: 'email', count: 1 },
+        { channel: 'sms', count: 1 },
+      ],
+      credits: 'Texts use 18 credits. Credits after sending: 1,482.',
+    });
+  });
+
+  it('counts the text with sc-1526’s 65-character link: 208 with a reply-by date, 188 without, 231 with the first text’s STOP line, two parts each', () => {
+    const yusuf = FOURTEEN.find((one) => one.id === 'yusuf');
+
+    if (yusuf == null) throw new Error('Yusuf');
+    const first = inviteSmsOf(yusuf, weddingAbout());
+
+    expect(first.text.endsWith('at [their own link]\nReply STOP to opt out.')).toBe(true);
+    expect([first.chars, first.parts]).toEqual([231, 2]);
+    expect(inviteSmsOf(yusuf, weddingAbout(), false)).toMatchObject({ chars: 208, parts: 2 });
+    expect(inviteSmsOf(yusuf, { ...weddingAbout(), replyBy: null }, false)).toMatchObject({
+      chars: 188,
+      parts: 2,
+    });
     expect(
-      inviteChipWords(
-        NOT_INVITED,
-        { one: 'bisi' },
-        inviteAudienceOf(NOT_INVITED, { one: 'bisi' }, []),
-      ),
-    ).toBe('Bisi Adewale');
+      inviteSmsOf({ ...yusuf, id: 'lucia', name: 'Lucía Ortega' }, weddingAbout(), false).parts,
+    ).toBe(4);
   });
 
-  it('checks 14 by Email 13 and SMS 1, two parts a text: 1,498 credits after', () => {
-    const check = inviteCheckOf(NOT_INVITED, { again: false }, TICKED, []);
-
-    expect(check).toMatchObject({ count: 14, already: 0, choice: false, cant: 0, refused: false });
-    expect(check.pills).toEqual([
-      { channel: 'email', count: 13 },
-      { channel: 'sms', count: 1 },
-    ]);
-    expect(check.credits).toBe('Texts use 2 credits. Credits after sending: 1,498.');
+  it('sends a text in parts: GSM-7 to 160 then 153 a part, anything else 70 then 67', () => {
+    expect([
+      smsParts('a'.repeat(160)),
+      smsParts('a'.repeat(161)),
+      smsParts('a'.repeat(307)),
+    ]).toEqual([1, 2, 3]);
+    expect(smsParts('€'.repeat(80))).toBe(1);
+    expect(smsParts('€'.repeat(81))).toBe(2);
+    expect([smsParts('ł'.repeat(70)), smsParts('ł'.repeat(71))]).toEqual([1, 2]);
   });
 
-  it('names who already have it on All guests, leaves them out by default and sends to 156 again', () => {
-    const left = inviteCheckOf({ kind: 'all' }, { again: false }, TICKED, []);
-    const again = inviteCheckOf({ kind: 'all' }, { again: true }, TICKED, []);
-
-    expect(inviteChipWords({ kind: 'all' }, {}, inviteAudienceOf({ kind: 'all' }, {}, []))).toBe(
-      'All guests · 156',
-    );
-    expect(left).toMatchObject({ count: 14, already: 142, choice: true });
-    expect(iw.many('already', left.already)).toBe('142 already have their invitation');
-    expect(left.named.map((one) => `${one.name} · ${one.line}`)).toEqual([
-      'Alhaji Musa Bello · Invited by Soirely’s message, Oct 12',
-      'Amaka Eze · Invited by Soirely’s message, Oct 12',
-    ]);
-    expect(again.count).toBe(156);
-    expect(again.pills).toEqual([
-      { channel: 'email', count: 137 },
-      { channel: 'sms', count: 40 },
-    ]);
-    expect(again.cant).toBe(9);
-    expect(iw.many('cantBeReached', again.cant)).toBe('9 can’t be reached');
-    expect(again.cantNamed.map((one) => [one.name, ...one.why].join(' · '))).toEqual([
-      'Tomás Ferreira · Address is bouncing · No phone number',
-      'Sophie Laurent · Unsubscribed · Texted STOP',
-    ]);
-    expect(again.credits).toBe('Texts use 80 credits. Credits after sending: 1,420.');
-  });
-
-  it('sends again with no choice when everyone in To has it, and refuses when nobody can be reached', () => {
-    const emeka = inviteCheckOf(NOT_INVITED, { again: false, one: 'emeka' }, TICKED, []);
-    const joaquin = inviteCheckOf(NOT_INVITED, { again: false, one: 'joaquin' }, TICKED, []);
-
-    expect(emeka).toMatchObject({ count: 1, already: 1, choice: false, refused: false });
-    expect(iw.many('already', 1)).toBe('1 already has their invitation');
-    expect(emeka.named[0]?.line).toBe('Invited by Folake Adeyemi, WhatsApp, Oct 9');
-    expect(joaquin).toMatchObject({ count: 1, refused: true });
-    expect(joaquin.cantNamed).toEqual([
-      { name: 'Joaquín Ruiz', why: ['No email address', 'No phone number'] },
-    ]);
+  it('refuses when nobody can be reached, in Make live’s words, one or many', () => {
+    expect(check(guestAudience('joaquin'))).toEqual({
+      kind: 'refused',
+      count: 1,
+      title: 'The invitation cannot be sent yet.',
+      reason:
+        'This guest cannot be reached. Add an email address or a mobile number for them in Guests.',
+      cant: 1,
+      cantNames: [{ name: 'Joaquín Ruiz', why: ['No email address', 'No phone number'] }],
+      cantAll: [{ name: 'Joaquín Ruiz', why: ['No email address', 'No phone number'] }],
+    });
     expect(
-      inviteCheckOf(NOT_INVITED, { again: false }, { ...TICKED, email: false, sms: false }, []),
-    ).toMatchObject({ refused: true, credits: null });
+      check(NOT_YET_INVITED, false, { email: false, sms: false, whatsApp: false }),
+    ).toMatchObject({
+      kind: 'refused',
+      title: 'The invitations cannot be sent yet.',
+      reason:
+        'None of the 14 guests can be reached. Add an email address or a mobile number for them in Guests.',
+    });
   });
 
-  it('refuses a note over 10,000 characters after trimming, and keeps the shorter one', () => {
-    expect(noteProblem(NOTE)).toBeNull();
-    expect(noteProblem(`  ${'a'.repeat(10000)}  `)).toBeNull();
-    expect(noteProblem('a'.repeat(10001))).toBe('Shorten the note to 10,000 characters or fewer.');
-    expect(noteProblem(LONG_NOTE)).not.toBeNull();
+  it('turns a refusal into the check once a ticked channel reaches somebody', () => {
+    const yusuf = guestAudience('yusuf');
+
+    expect(check(yusuf, false, { email: true, sms: false, whatsApp: false }).kind).toBe('refused');
+    expect(check(yusuf).kind).toBe('check');
   });
 
-  it('texts Yusuf Ibrahim in plain punctuation, 173 characters in two parts', () => {
-    const sms = smsOf('Yusuf Ibrahim');
+  it('names whom an unticked SMS leaves out, and charges nothing for email', () => {
+    expect(
+      check(NOT_YET_INVITED, false, { email: true, sms: false, whatsApp: false }),
+    ).toMatchObject({
+      count: 14,
+      pills: [{ channel: 'email', count: 13 }],
+      cant: 1,
+      cantNames: [{ name: 'Yusuf Ibrahim', why: ['No email address', 'SMS is off'] }],
+      credits: 'Email uses no credits.',
+    });
+  });
 
-    expect(sms.text).toBe(
-      "Adaeze Obi and Tunde Bakare: Yusuf Ibrahim, you're invited to Adaeze & Tunde's wedding on Thursday, Nov 5. Please reply by Wednesday, Nov 4 at [their own link]",
+  it('greets the audience’s first guest, A to Z, by their Greet as', () => {
+    expect(greetingOf(firstOf(NOT_YET_INVITED, GROUPS) ?? FOURTEEN[1]!)).toBe('Auntie Bisi');
+    expect(firstOf(ALL, GROUPS)?.name).toBe('Alhaji Musa Bello');
+    expect(previewPeople(guestAudience('emeka'), GROUPS).map((one) => one.name)).toEqual([
+      'Dr Emeka Nwosu',
+    ]);
+  });
+
+  it('lists its sixteen states in their own group, each with a seed', () => {
+    const keys = MESSAGE_STATES.map((one) => one.key);
+    const group = MESSAGES_PAGES.find((page) => page.name === INVITE_GROUP);
+    const at = keys.indexOf('inviteWrite');
+
+    expect(keys.slice(at, at + INVITE_STATES.length)).toEqual(INVITE_STATES.map((one) => one.key));
+    expect(group?.states.map((one) => one.to)).toEqual(
+      INVITE_STATES.map((one) => `/demo/events/evt-wed-4/messages?state=${one.key}`),
     );
-    expect(sms.chars).toBe(173);
-    expect(sms.parts).toBe(2);
+    for (const { key } of INVITE_STATES) expect(inviteSeedOf(key), key).not.toBeNull();
+    expect(inviteSeedOf('inviteCheckSeeAll')).toMatchObject({
+      to: ALL,
+      step: 'check',
+      invite: { seeAll: 'already', again: false },
+    });
   });
 
-  it('seeds every state, counts down as its own Invitation and gives the note back on Cancel', () => {
-    for (const { key } of INVITE_STATES) expect(seedOf(key).pane.kind, key).not.toBe('idle');
-
-    const write = seedOf('inviteNote');
-    const going = inviteGoing({ ...draftIn(write), step: 'check' }, []);
-
-    expect(going).toMatchObject({ note: NOTE, count: 14, reached: 14 });
-
-    const counting = changed(
-      { ...write, draft: { ...draftIn(write), step: 'check' } },
-      {
-        kind: 'go',
-        invite: going,
-      },
+  it('lists a draft as Invitation, not sent yet, then the send by its reach', () => {
+    expect(rowOf(seedOf('inviteWrite'), 'new', GROUPS)).toMatchObject({
+      title: 'Invitation',
+      line: 'To Guests who… Not yet invited · not sent yet',
+    });
+    expect(rowOf(seedOf('inviteWriteOne'), 'new', GROUPS).line).toBe(
+      'To Bisi Adewale · not sent yet',
     );
+    expect(rowOf(seedOf('inviteCountdown'), 'new', GROUPS)).toMatchObject({
+      title: 'Invitation',
+      line: 'Sending in 7…',
+    });
+    expect(rowOf(seedOf('inviteSent'), 'new', GROUPS).line).toBe('Reached 14 of 14');
+  });
 
-    expect(counting.outs.at(-1)?.invite?.count).toBe(14);
-
-    const back = changed(counting, { kind: 'cancel' });
-
-    expect(back.draft?.invite?.note).toBe(NOTE);
-    expect(back.cancelled).toBe(true);
+  it('keeps l10n’s English, every plural with its one and its other', () => {
+    for (const [key, words] of Object.entries(IW)) {
+      expect(words.trim(), key).not.toBe('');
+      if (key.endsWith('_one')) expect(IW, key).toHaveProperty(key.replace(/_one$/u, '_other'));
+      if (key.endsWith('_other')) expect(IW, key).toHaveProperty(key.replace(/_other$/u, '_one'));
+    }
   });
 });

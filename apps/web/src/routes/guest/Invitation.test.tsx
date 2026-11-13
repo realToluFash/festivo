@@ -915,3 +915,92 @@ describe('a page left open (sc-3591)', () => {
     ).toBeDefined();
   });
 });
+
+describe('Add to calendar (sc-3627)', () => {
+  const FEED = '/api/guest-calendars/abc.ics';
+  const coming = (extra: Record<string, unknown> = {}) => ({
+    ...answered('coming'),
+    calendarFeed: FEED,
+    ...extra,
+  });
+
+  it('offers Apple / Outlook by webcal and Google Calendar by URL after Coming, each read with the line', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: coming() }] });
+    open();
+
+    const heading = await screen.findByRole('heading', { level: 2, name: 'Add to calendar' });
+    const apple = screen.getByRole('link', { name: 'Apple / Outlook' });
+    const google = screen.getByRole('link', { name: 'Google Calendar' });
+    const line = screen.getByText(
+      'Your calendar updates by itself if the date, time or place changes.',
+    );
+
+    expect(heading).toBeDefined();
+    expect(apple.getAttribute('href')).toMatch(/^webcal:\/\/.+\/api\/guest-calendars\/abc\.ics$/);
+    expect(google.getAttribute('href')).toMatch(
+      /^https:\/\/calendar\.google\.com\/calendar\/r\?cid=webcal%3A%2F%2F.+abc\.ics$/,
+    );
+    expect(google.getAttribute('target')).toBe('_blank');
+    for (const link of [apple, google]) {
+      expect(link.getAttribute('aria-describedby')).toBe(line.id);
+    }
+  });
+
+  it('stays with Coming once answers have closed, during Happening now', async () => {
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: coming({ answersOpen: false, started: true }) },
+      ],
+    });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Add to calendar' })).toBeDefined();
+  });
+
+  it('is not there without a feed: another answer, or a paused, called-off or finished event', async () => {
+    for (const body of [
+      { ...answered('notComing'), calendarFeed: null },
+      { ...answered('maybe'), calendarFeed: null },
+      { ...answered('coming'), phase: 'paused', answersOpen: false, calendarFeed: null },
+      { ...answered('coming'), phase: 'calledOff', answersOpen: false, calendarFeed: null },
+      { ...answered('coming'), phase: 'finished', answersOpen: false, calendarFeed: null },
+    ]) {
+      api({ '/api/guest-links/page': [{ status: 200, body }] });
+      const { unmount } = open();
+
+      expect(await screen.findAllByRole('heading', { level: 1 })).toBeDefined();
+      expect(screen.queryByRole('heading', { name: 'Add to calendar' })).toBeNull();
+      unmount();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('leaves while the answer is being changed, and comes back on keeping it', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: coming() }] });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change my answer' }));
+    expect(screen.queryByRole('heading', { name: 'Add to calendar' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep my answer' }));
+    expect(screen.getByRole('heading', { name: 'Add to calendar' })).toBeDefined();
+  });
+
+  it('leaves when Coming changes to Sorry, I can’t', async () => {
+    api({
+      '/api/guest-links/page': [{ status: 200, body: coming() }],
+      '/api/guest-links/reply': [
+        { status: 200, body: { ...answered('notComing'), calendarFeed: null } },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change my answer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sorry, I can’t' }));
+
+    expect(
+      await screen.findByRole('heading', { name: `We’ll miss you, ${ADAEZE}.` }),
+    ).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Add to calendar' })).toBeNull();
+  });
+});

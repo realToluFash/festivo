@@ -49,10 +49,9 @@ import {
   litOf,
 } from './messages.ts';
 import { ConversationPane } from './MessagesThread.tsx';
+import { demoWords } from './demoWords.ts';
+import { IW } from './messagesInvite.ts';
 import { waitsTicksOf } from './messagesWaits.ts';
-import { WEDDING } from './guests.ts';
-import { markSent } from './invitesSent.ts';
-import { SENT_ON, iw } from './messagesInvite.ts';
 import { InboxContext, type InboxApi } from './messagesContext.ts';
 import { type Group, useTo } from './messagesTo.ts';
 import { LeadMark, WhyNot } from './MessagesParts.tsx';
@@ -64,6 +63,7 @@ import { Tag } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import './messages.css';
 
+const iw = demoWords(IW);
 const ARRIVES_MS = 1200;
 const WASH_MS = 2000;
 const SENDING_MS = 3000;
@@ -128,11 +128,17 @@ function firstFocus(state: MessagesState | null): string | null {
       return 'refused';
     case 'sendWithout':
       return 'cancel';
+    case 'stopAction':
+      return 'stop-item';
+    case 'letAgainFailed':
+      return 'let-again';
     case 'inviteWrite':
     case 'inviteWriteOne':
     case 'inviteNote':
     case 'inviteNoteLong':
-      return 'note';
+      return 'body';
+    case 'inviteTo':
+      return 'to-pick';
     case 'invitePreview':
     case 'invitePreviewNote':
     case 'invitePreviewSms':
@@ -144,13 +150,9 @@ function firstFocus(state: MessagesState | null): string | null {
     case 'inviteRefused':
       return 'check';
     case 'inviteCheckSeeAll':
-      return 'back-check';
+      return 'see-all';
     case 'inviteCountdown':
       return 'cancel';
-    case 'stopAction':
-      return 'stop-item';
-    case 'letAgainFailed':
-      return 'let-again';
     default:
       return waitsTicksOf(state) == null ? null : 'check';
   }
@@ -273,12 +275,6 @@ function Messages({
 
     return () => window.clearInterval(timer);
   }, [counting]);
-
-  useEffect(() => {
-    for (const out of inbox.outs)
-      if (out.invite != null && out.stage !== 'countdown')
-        markSent(WEDDING, out.invite.ids, SENT_ON);
-  }, [inbox.outs]);
 
   useEffect(() => {
     if (!sending) return;

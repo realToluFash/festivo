@@ -12,7 +12,6 @@ import {
   useState,
 } from 'react';
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { tokens } from '../../theme/tokens.ts';
@@ -31,15 +30,7 @@ import {
   type RefFor,
 } from '../../components/EventOverview.tsx';
 import { AreaPage, EventFrame, type EventToast } from './EventFrame.tsx';
-import {
-  INVITATION_HREF,
-  MAKE_LIVE_EVENT,
-  MAKE_LIVE_HOST,
-  liveToastOf,
-  makeLiveStart,
-  makeLiveStateOf,
-  reachOf,
-} from './MakeLive.ts';
+import { INVITATION_HREF, liveToastOf, makeLiveStateOf, reachOf, seededEvent } from './MakeLive.ts';
 import { MakeLiveAsk, useMakeLive } from './MakeLiveAsk.tsx';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
 import { needsStateOf, readerOf } from './NeedsYouModel.ts';
@@ -77,7 +68,7 @@ import {
   currencyWords,
   sampleEvent,
 } from './EventsSample.ts';
-import { LIVE, W } from './EventsWords.ts';
+import { LIVE, W, say } from './EventsWords.ts';
 import { NOTE_WORDS, WIDE_NOTE } from './ArrivalNote.ts';
 import { NoteInset } from './NoteInset.tsx';
 import {
@@ -121,8 +112,7 @@ import {
 } from '../guests/GuestsModel.ts';
 import { resetLooked, seedLook, takeLook } from '../guests/ChangedSince.ts';
 import { GuestsScreen } from '../guests/GuestsScreen.tsx';
-import { GuestToast } from '../guests/GuestsParts.tsx';
-import { PHONE_TAB_BAR } from '../../components/TodayCover.tsx';
+import { DemoOnly } from '../../steps/Lines.tsx';
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 import type { BudgetState } from '../budget/BudgetModel.ts';
 import { BudgetScreen } from '../budget/BudgetScreen.tsx';
@@ -147,10 +137,8 @@ function startEvent(
   const event = sampleEvent(id) ?? sampleEvent('evt-wed-4');
   if (event == null) throw new Error('The sample has the wedding.');
   seedFinalNumbers(state);
-  if (makeLiveStateOf(state) != null) {
-    const hosted = event.id === MAKE_LIVE_EVENT ? { ...event, hosts: [MAKE_LIVE_HOST] } : event;
-    return makeLiveStart(state).live ? { ...hosted, status: 'live' } : hosted;
-  }
+  const live = makeLiveStateOf(state);
+  if (live != null) return seededEvent(event, live);
   if (messages === 'tell' || messages === 'untold') return { ...event, startsAt: TELL.startsAt };
   if (messages === 'tellPlace') return { ...event, venue: PLACE };
   if (messages === 'closedDraft') return { ...event, status: 'draft' };
@@ -208,9 +196,10 @@ export function EventScreen({
     [state, guests],
   );
   const [event, setEvent] = useState(() => startEvent(id, state, messages));
-  const insets = useSafeAreaInsets();
-  const reach = useMemo(() => reachOf(state, event.id), [state, event.id]);
-  const live = useMakeLive(state, reach, () => setEvent((now) => ({ ...now, status: 'live' })));
+  const reach = useMemo(() => reachOf(state, event), [state, event]);
+  const live = useMakeLive(state, reach, (host) =>
+    setEvent((now) => ({ ...now, hosts: host == null ? now.hosts : [host], status: 'live' })),
+  );
   const [at, setAt] = useState<AreaKey>(() => {
     if (guests != null && !isIn(OVERVIEW_STATES, guests)) seedLook(areaStart(guests).looked, now);
     else if (messages === 'bell') resetLooked();
@@ -360,7 +349,7 @@ export function EventScreen({
   };
   const onStep = (step: Extract<CardStep, { kind: 'button' }>) => {
     from.current = 'card';
-    if (step.action === 'makeLive') live.open();
+    if (step.action === 'makeLive') live.open(event.hosts.length === 0);
     else if (step.action === 'changeDates') openEdit('dates');
     else if (step.action === 'resume') setEvent({ ...event, status: 'live' });
     else setDuplicating(true);
@@ -518,10 +507,18 @@ export function EventScreen({
       opener={opener}
       onKeep={live.keep}
       onConfirm={live.confirm}
+      onTyped={live.typed}
       onSend={live.send}
+      onChangeDates={() => {
+        live.keep();
+        openEdit('dates');
+      }}
     />
   );
   const liveSaid = liveToastOf(live.s, reach);
+  const demoNote = live.s.toast === 'queued' && (
+    <DemoOnly title={LIVE.demoMessages}>{null}</DemoOnly>
+  );
   const liveToast: EventToast | null =
     liveSaid == null
       ? null
@@ -532,6 +529,7 @@ export function EventScreen({
             live.s.toast === 'queued'
               ? {
                   label: LIVE.messages,
+                  testID: 'event.toast.messages',
                   onPress: () => {
                     live.closeToast();
                     router.push(INVITATION_HREF as Href);
@@ -584,38 +582,21 @@ export function EventScreen({
 
   if (at === 'guests' && (guests != null || GUESTS_ON.includes(event.id)))
     return (
-      <>
-        <GuestsScreen
-          key={guestsFrom ?? ''}
-          state={guests != null && !isIn(OVERVIEW_STATES, guests) ? guests : null}
-          event={shown}
-          now={now}
-          more={more}
-          onMore={setMore}
-          onArea={setAt}
-          badge={messagesHere && messagesSeen ? badgeFor(m) : null}
-          filterFrom={guestsFrom}
-          sinceFrom={sinceFrom}
-          onWrite={writeToThem}
-          onConversation={theirConversation}
-          onMakeLive={live.open}
-        />
-        {makeLive}
-        {liveToast != null && (
-          <GuestToast
-            words={liveToast.words}
-            action={liveToast.action ?? null}
-            onClose={liveToast.onClose}
-            bottom={
-              shell.layout === 'phone'
-                ? Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg) +
-                  PHONE_TAB_BAR +
-                  tokens.spaceXl
-                : Math.max(insets.bottom, tokens.spaceLg)
-            }
-          />
-        )}
-      </>
+      <GuestsScreen
+        key={guestsFrom ?? ''}
+        state={guests != null && !isIn(OVERVIEW_STATES, guests) ? guests : null}
+        event={shown}
+        now={now}
+        more={more}
+        onMore={setMore}
+        onArea={setAt}
+        badge={messagesHere && messagesSeen ? badgeFor(m) : null}
+        filterFrom={guestsFrom}
+        sinceFrom={sinceFrom}
+        onWrite={writeToThem}
+        onConversation={theirConversation}
+        onMakeLive={() => shell.tell(say.ownDesign(W.makeLive))}
+      />
     );
 
   if (at === 'budget' && messagesHere)
@@ -665,6 +646,7 @@ export function EventScreen({
         card={card}
         left={
           <>
+            {demoNote}
             {thankYou}
             {details}
             {needsYou}
@@ -682,6 +664,7 @@ export function EventScreen({
         }
         stacked={
           <>
+            {demoNote}
             {thankYou}
             {numbers}
             {peopleCard}
