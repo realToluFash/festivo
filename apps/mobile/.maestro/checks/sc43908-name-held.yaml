@@ -16,4 +16,6 @@ appId: host.exp.Exponent
     direction: DOWN
     centerElement: true
 - waitForAnimationToEnd
+- assertVisible:
+    id: 'eventForm.type'
 - takeScreenshot: name-held

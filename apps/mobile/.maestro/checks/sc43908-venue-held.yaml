@@ -23,4 +23,6 @@ appId: host.exp.Exponent
     start: 3%, 70%
     end: 3%, 45%
 - waitForAnimationToEnd
+- assertVisible:
+    id: 'eventForm.venueName'
 - takeScreenshot: venue-held
