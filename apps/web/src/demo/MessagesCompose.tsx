@@ -41,6 +41,7 @@ import { Preview } from './MessagesPreview.tsx';
 import { PW } from './messagesPreviewWords.ts';
 import { StreamItems } from './MessagesStream.tsx';
 import { ToPopover } from './MessagesTo.tsx';
+import { InviteCompose } from './MessagesInvite.tsx';
 import { WaitBlock } from './MessagesWaits.tsx';
 import { waitsCheckOf, waitsOf } from './messagesWaits.ts';
 
@@ -65,6 +66,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
   useEffect(() => viewed(), [viewed]);
 
   if (draft == null) return null;
+  if (draft.invite != null) return <InviteCompose opening={opening} />;
 
   const current = draft;
   const following = !isNew(draft.thread) || outsIn(inbox, draft.thread).length > 0;
@@ -722,7 +724,7 @@ export function ResendCard() {
   );
 }
 
-function OnEscape({ then }: { then: () => void }) {
+export function OnEscape({ then }: { then: () => void }) {
   const escape = useEffectEvent(then);
 
   useEffect(() => {

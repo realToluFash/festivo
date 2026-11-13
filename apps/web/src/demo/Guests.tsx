@@ -43,6 +43,7 @@ import {
   guestsCardOf,
   guestsStart,
   guestsStateOf,
+  invitesOn,
   markInvited,
   markNotInvited,
   recordReply,
@@ -53,7 +54,10 @@ import {
   todayOf,
   viewBase,
   viewOf,
+  WEDDING,
 } from './guests.ts';
+import { inviteDraftOf } from './messagesInvite.ts';
+import { IW } from './messagesInviteWords.ts';
 import { pageKey, useGuestsAddress } from './useGuestsAddress.ts';
 import {
   CHANGES_EVENT,
@@ -383,7 +387,9 @@ function GuestsPage({
     if (next == null) focus('guest-heading');
   }
 
+  const sends = manages && event.id === WEDDING && invitesOn(event, start.clock);
   const actions = (id: string): GuestActions => ({
+    onInvitation: sends ? () => writeInvitation(id) : undefined,
     onRecord: () => {
       setPane({ kind: 'record', id, start: {} });
       focus('answer-coming');
@@ -457,6 +463,16 @@ function GuestsPage({
         kind: 'compose',
         draft: draftOf(NOT_REPLIED, 'write', false, freshId(inbox)),
       }),
+    );
+    void navigate(MESSAGES_AT);
+  }
+
+  function writeInvitation(one?: string): void {
+    const inbox = keptInbox();
+    const invite = one == null ? { note: '', again: false } : { note: '', again: false, one };
+
+    keepInbox(
+      changed(inbox, { kind: 'compose', draft: inviteDraftOf(invite, 'write', freshId(inbox)) }),
     );
     void navigate(MESSAGES_AT);
   }
@@ -537,6 +553,16 @@ function GuestsPage({
               onClick={() => setExporting({})}
             >
               {XW.export}
+            </button>
+          )}
+          {sends && status === 'ready' && counts.notYet > 0 && (
+            <button
+              type="button"
+              className="gs-pill is-secondary"
+              data-focus="send-invitations"
+              onClick={() => writeInvitation()}
+            >
+              {IW.sendInvitations}
             </button>
           )}
           {plus && (

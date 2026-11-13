@@ -26,6 +26,14 @@ import {
   isStopState,
 } from './messagesStop.ts';
 import type { DemoLink } from './settings.ts';
+import { INVITE_GROUP, INVITE_STATES } from './messagesInviteWords.ts';
+import {
+  type Invite,
+  type InviteOut,
+  inviteSeedOf,
+  inviteToLine,
+  isInviteState,
+} from './messagesInvite.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
 export { MW };
@@ -132,6 +140,7 @@ export const MESSAGE_STATES = [
   { key: 'whatsAppRead', name: 'WhatsApp’s receipts' },
   ...WAITS_STATES,
   ...STOP_STATES,
+  ...INVITE_STATES,
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -158,7 +167,9 @@ export const MESSAGES_AT = `/demo/events/${SAMPLE_EVENT}/messages`;
 export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
   {
     name: 'Messages',
-    states: MESSAGE_STATES.filter((one) => !isStopState(one.key)).map((one) => ({
+    states: MESSAGE_STATES.filter(
+      (one) => !isStopState(one.key) && !INVITE_STATES.some((invite) => invite.key === one.key),
+    ).map((one) => ({
       to: `${MESSAGES_AT}?state=${one.key}`,
       name: one.name,
     })),
@@ -166,6 +177,10 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: STOP_GROUP,
     states: STOP_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
+  },
+  {
+    name: INVITE_GROUP,
+    states: INVITE_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
 ];
 
@@ -1432,6 +1447,7 @@ export interface Out {
   at: string;
   seen: number;
   soFar?: number;
+  invite?: InviteOut;
 }
 
 export interface Draft {
@@ -1445,6 +1461,7 @@ export interface Draft {
   openTo?: boolean;
   opens?: 'insert' | 'previewAs' | 'filling' | undefined;
   previewAs?: PersonId;
+  invite?: Invite;
 }
 
 export interface Sched {
@@ -1860,6 +1877,8 @@ export function seedOf(state: MessagesState | null): Inbox {
         outs: [outOf('countdown', { ticks: EMAIL_ONLY })],
       };
     default: {
+      if (isInviteState(state)) return inviteSeedOf(state, base);
+
       const waits = waitsTicksOf(state);
 
       if (waits != null) return { ...compose(base, COMING, 'check', waits), balance: 0 };
@@ -1972,7 +1991,10 @@ export function outReach(
   soFar: number;
   seen: number;
 } {
-  const count = countOf(out.to, groups) ?? 0;
+  const count = out.invite?.count ?? countOf(out.to, groups) ?? 0;
+
+  if (out.invite != null)
+    return { count, reached: out.invite.reached, soFar: out.soFar ?? count, seen: out.seen };
 
   return {
     count,
@@ -2119,12 +2141,25 @@ function threadRow(inbox: Inbox, id: ConvoId, groups: readonly Group[]): Row {
 
   if (first == null || last == null) {
     const to = inbox.draft?.to ?? { kind: 'all' };
+    const invite = inbox.draft?.invite;
+
+    if (invite != null)
+      return manyRow(
+        id,
+        MW.invitation,
+        `${inviteToLine(to, invite.one, groups)} · ${MW.notSentYet}`,
+        NOW,
+        null,
+      );
 
     return manyRow(id, MW.newMessage, `${toLine(to, groups)} · ${MW.notSentYet}`, NOW, null);
   }
 
   const title = outTitle(first);
-  const missed = figuresOf(last.to, last.ticks).cantTell;
+  const missed =
+    last.invite == null
+      ? figuresOf(last.to, last.ticks).cantTell
+      : last.invite.count - last.invite.reached;
 
   if (last.stage === 'sent' && litOf(inbox) !== id && missed > 0)
     return manyRow(
@@ -2277,7 +2312,7 @@ export type Change =
   | { kind: 'told'; id: GuestId | 'unknown' }
   | { kind: 'compose'; draft: Draft }
   | { kind: 'draft'; draft: Partial<Draft> }
-  | { kind: 'go' }
+  | { kind: 'go'; invite?: InviteOut | undefined }
   | { kind: 'tick' }
   | { kind: 'cancel' }
   | { kind: 'stage'; from: Stage; to: Stage }
@@ -2403,7 +2438,10 @@ export function changed(inbox: Inbox, change: Change): Inbox {
 
       return {
         ...inbox,
-        outs: [...inbox.outs, going(draft)],
+        outs: [
+          ...inbox.outs,
+          { ...going(draft), ...(change.invite == null ? {} : { invite: change.invite }) },
+        ],
         draft: null,
         cancelled: false,
         pane: { kind: 'convo', id: draft.thread },
@@ -2441,6 +2479,15 @@ export function changed(inbox: Inbox, change: Change): Inbox {
           body: out.body,
           step: 'write',
           seed: (inbox.draft?.seed ?? 0) + 1,
+          ...(out.invite == null
+            ? {}
+            : {
+                invite: {
+                  note: out.invite.note,
+                  again: out.invite.again,
+                  ...(out.invite.one == null ? {} : { one: out.invite.one }),
+                },
+              }),
         },
       };
     }

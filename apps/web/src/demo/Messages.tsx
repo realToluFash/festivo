@@ -50,6 +50,9 @@ import {
 } from './messages.ts';
 import { ConversationPane } from './MessagesThread.tsx';
 import { waitsTicksOf } from './messagesWaits.ts';
+import { WEDDING } from './guests.ts';
+import { markSent } from './invitesSent.ts';
+import { SENT_ON, iw } from './messagesInvite.ts';
 import { InboxContext, type InboxApi } from './messagesContext.ts';
 import { type Group, useTo } from './messagesTo.ts';
 import { LeadMark, WhyNot } from './MessagesParts.tsx';
@@ -116,6 +119,25 @@ function firstFocus(state: MessagesState | null): string | null {
     case 'whoNoneSend':
       return 'refused';
     case 'sendWithout':
+      return 'cancel';
+    case 'inviteWrite':
+    case 'inviteWriteOne':
+    case 'inviteNote':
+    case 'inviteNoteLong':
+      return 'note';
+    case 'invitePreview':
+    case 'invitePreviewNote':
+    case 'invitePreviewSms':
+      return 'preview-edit';
+    case 'inviteCheck':
+    case 'inviteCheckSome':
+    case 'inviteCheckAgain':
+    case 'inviteCheckAll':
+    case 'inviteRefused':
+      return 'check';
+    case 'inviteCheckSeeAll':
+      return 'back-check';
+    case 'inviteCountdown':
       return 'cancel';
     case 'stopAction':
       return 'stop-item';
@@ -243,6 +265,12 @@ function Messages({
 
     return () => window.clearInterval(timer);
   }, [counting]);
+
+  useEffect(() => {
+    for (const out of inbox.outs)
+      if (out.invite != null && out.stage !== 'countdown')
+        markSent(WEDDING, out.invite.ids, SENT_ON);
+  }, [inbox.outs]);
 
   useEffect(() => {
     if (!sending) return;
@@ -528,7 +556,7 @@ function sendingSaid(inbox: Inbox, groups: readonly Group[]): string {
     case 'countdown':
       return filled(MW.sendingIn, { count: out.left > 5 ? 10 : 5 });
     case 'sending':
-      return many('queued', reach.count);
+      return out.invite == null ? many('queued', reach.count) : iw.many('queued', reach.count);
     case 'sent':
       return filled(MW.reached, { count: reach.reached, total: reach.count });
     default:

@@ -27,6 +27,8 @@ import type { EventKey } from './today.ts';
 import { type Mesh, meshFor } from '../mesh.ts';
 import { SIDE_AREAS, type SideArea } from '../components/eventSideAreas.ts';
 import { ARRIVAL_NOTE } from './arrivalNote.ts';
+import { type MakeLiveState, MAKE_LIVE_EVENTS, MAKE_LIVE_STATES } from './makeLiveStates.ts';
+import { resetSent } from './invitesSent.ts';
 
 export interface Venue {
   name: string;
@@ -373,6 +375,7 @@ let copies: SampleEvent[] = [];
 export function resetSample(): void {
   changed = new Map();
   copies = [];
+  resetSent();
 }
 
 export function sampleEvents(): SampleEvent[] {
@@ -1223,7 +1226,8 @@ export type LifeState =
 
 export type NoteState = 'noteNoVenue' | 'noteWide' | 'noteMarkup';
 
-export type EventStateName = PhaseState | EditState | LifeState | NeedsState | NoteState;
+export type EventStateName =
+  PhaseState | EditState | LifeState | NeedsState | NoteState | MakeLiveState;
 
 export const EVENT_STATES: Record<EventStateName, string> = {
   draft: 'evt-draft-4',
@@ -1311,6 +1315,7 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   needsYouReadOnly: 'evt-wed-4',
   needsYouLoading: 'evt-wed-4',
   needsYouFailed: 'evt-wed-4',
+  ...MAKE_LIVE_EVENTS,
 };
 
 export function eventStateOf(value: string | null): EventStateName | null {
@@ -1624,6 +1629,10 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('guestsCanWriteFailed', 'Guests can write from their page, not saved'),
       on('guestsCanWriteReadOnly', 'Guests can write from their page, without messages.manage'),
     ],
+  },
+  {
+    name: 'Make live, and the offer to send invitations (sc-3971)',
+    states: MAKE_LIVE_STATES.map((one) => on(one.key, one.name)),
   },
   {
     name: 'The event’s areas',

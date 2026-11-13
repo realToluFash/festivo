@@ -113,6 +113,23 @@ import { GuestsCanWrite } from './GuestsCanWrite.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
 import { useLeaveAsk } from './useLeaveAsk.ts';
+import { MakeLiveAsk } from './EventMakeLive.tsx';
+import type { Told as ShellTold } from './ActionToast.tsx';
+import {
+  type MakeLiveState,
+  type Offer,
+  type Phase,
+  HOSTS_FOR,
+  INVITED_AT,
+  LW,
+  isMakeLive,
+  liveIn,
+  lw,
+  offerOf,
+  phaseOf,
+  reachedIds,
+} from './makeLive.ts';
+import { markSent } from './invitesSent.ts';
 
 const LOCALE = 'en-US';
 
@@ -238,7 +255,13 @@ function EventAt({
           ? { ...event, photo: true }
           : state === 'noteNoVenue' || state === 'noteWide' || state === 'noteMarkup'
             ? withNote(event, state)
-            : event;
+            : isMakeLive(state)
+              ? {
+                  ...event,
+                  hosts: [HOSTS_FOR[event.id] ?? ''],
+                  status: liveIn(state) ? ('live' as const) : event.status,
+                }
+              : event;
 
     return { event: shown, state };
   });
@@ -320,6 +343,8 @@ function EventView({
   const [muteLoaded, setMuteLoaded] = useState(state !== 'muteNotLoaded');
   const [muteFailed, setMuteFailed] = useState(state === 'muteNotSaved');
   const away = useLeaveAsk(dirty);
+  const live = isMakeLive(state) ? state : null;
+  const [making, setMaking] = useState<Phase | null>(() => phaseOf(live));
 
   if (area === 'people') return <Navigate to="/demo/people" replace />;
   if (area === 'budget' && initial.id === BUDGET_EVENT) return <BudgetEntry event={initial} />;
@@ -350,7 +375,7 @@ function EventView({
         arrival.told ??
         (state === 'replyBySaved' || state === 'replyByRemoved'
           ? replyBySays(replyBy, now, event.timeZone).toast
-          : null)
+          : liveToldOf(event.id, live))
       }
       renderSide={(tell, covered) => (
         <EventSidebar
@@ -364,7 +389,7 @@ function EventView({
         />
       )}
     >
-      {(tell) => (
+      {(tell, show) => (
         <div className="desk-page ev-page">
           <div className="ev-wide">
             <Crumb to="/demo/events" back={W.back} name={event.name}>
@@ -380,7 +405,7 @@ function EventView({
                   level={1}
                   milestone={cardMilestone(event, now)}
                   onStep={(does: CardDoes) => {
-                    if (does === 'makeLive') tell('Make live has its own design.');
+                    if (does === 'makeLive') setMaking({ at: 'ask', failed: false });
                     else if (does === 'changeDates') {
                       if (part !== 'dates') open('dates');
                     } else if (does === 'resume') {
@@ -564,6 +589,24 @@ function EventView({
               tell(words);
             }}
           />
+          {making != null && (
+            <MakeLiveAsk
+              event={event}
+              phase={making}
+              offer={offerOf(event.id, live)}
+              onLive={() => kept({ ...event, status: 'live' })}
+              onClose={() => setMaking(null)}
+              onMadeLive={() => {
+                setMaking(null);
+                tell(LW.madeLive);
+              }}
+              onSent={(offer) => {
+                setMaking(null);
+                markSent(event.id, reachedIds(event.id, live), localDay(now, event.timeZone));
+                show(sentTold(offer));
+              }}
+            />
+          )}
           {telling != null && (
             <TellDialog
               tell={tell}
@@ -588,6 +631,20 @@ function EventView({
       )}
     </EventsShell>
   );
+}
+
+function sentTold(offer: Offer): ShellTold {
+  return { words: lw.many('queued', offer.reached), action: { word: LW.messages, to: INVITED_AT } };
+}
+
+/** What a Make live state's page says as it opens: the toast after Send them, or ✓ Live. */
+function liveToldOf(id: string, state: MakeLiveState | null): ShellTold | string | null {
+  if (state === 'madeLive') return LW.madeLive;
+  if (state !== 'makeLiveOfferSent') return null;
+
+  const offer = offerOf(id, state);
+
+  return offer == null ? null : sentTold(offer);
 }
 
 function Asks({

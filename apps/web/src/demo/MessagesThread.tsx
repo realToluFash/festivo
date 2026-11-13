@@ -46,6 +46,7 @@ import { NoManage, SentToThread } from './MessagesSentTo.tsx';
 import { isSentTo } from './messagesTo.ts';
 import { TW } from './messagesToWords.ts';
 import { type Bit, useInbox, whereBits } from './messagesContext.ts';
+import { inviteToLine } from './messagesInvite.ts';
 import { LaterDialog, MatchPicker } from './MessagesDialogs.tsx';
 import {
   DayRule,
@@ -598,10 +599,18 @@ function ManyThread({ id }: { id: ConvoId }) {
       ? MW.newMessage
       : outTitle(first);
   const line = [
-    toLine(to, event.book.groups),
-    countOf(to, event.book.groups),
-    id === 'invite'
-      ? listed([MW.email, MW.sms])
+    first?.invite == null
+      ? toLine(to, event.book.groups)
+      : inviteToLine(to, first.invite.one, event.book.groups),
+    first?.invite == null ? countOf(to, event.book.groups) : first.invite.count,
+    id === 'invite' || first?.invite != null
+      ? listed(
+          first?.invite == null
+            ? [MW.email, MW.sms]
+            : [MW.email, MW.sms].filter((_, at) =>
+                at === 0 ? first.ticks.email : first.ticks.sms,
+              ),
+        )
       : toldWords(id === 'receipts' ? RECEIPTS.ticks : (first?.ticks ?? TICKS)),
   ]
     .filter((part) => part != null && part !== '')
@@ -621,7 +630,7 @@ function ManyThread({ id }: { id: ConvoId }) {
       {!resending && (
         <MiniComposer
           to={to}
-          placeholder={id === 'invite' ? MW.writeToThem : MW.writeFollowUp}
+          placeholder={id === 'invite' || first?.invite != null ? MW.writeToThem : MW.writeFollowUp}
           thread={id}
         />
       )}

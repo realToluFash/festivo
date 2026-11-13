@@ -32,6 +32,7 @@ import { type HowAgreed, NO_CONSENT, type WhatsAppConsent, hostAgreed } from './
 import type { DemoLink } from './settings.ts';
 import { type ExportStart, XW, exportDay, fileName } from './guestExport.ts';
 import { type Change, changeLabel, changeWhen } from './changedSince.ts';
+import { sentOn } from './invitesSent.ts';
 
 /** Guests in A · Summary first (page e30, board/guests-a-spec.md): the sample, its counts and the states; the words are in guestsWords.ts. */
 export { GW };
@@ -514,6 +515,7 @@ function party(): Guest[] {
 function draft(): Guest[] {
   return [
     guest('funke', 'Funke Bello', 'notYet', {
+      email: 'funke.bello@gmail.com',
       phone: { country: 'GB', number: '7700 900655' },
       companions: companions('funke', 1, 'notYet'),
     }),
@@ -528,11 +530,17 @@ function draft(): Guest[] {
         ['Wumi Lawal', '', 0],
         ['Yemisi Ilori', '', 0],
         ['Yinka Balogun', '', 0],
-        ['Zara Ilesanmi', '', 0],
       ],
       'notYet',
       'notYet',
+      (index) =>
+        index === 1
+          ? { phone: { country: 'GB', number: '7700 900731' } }
+          : index === 4
+            ? { phone: { country: 'NG', number: '806 552 1907' } }
+            : {},
     ),
+    guest('tomas-os', 'Tomás Okonkwo-Silva', 'notYet'),
   ];
 }
 
@@ -714,7 +722,7 @@ export function countsOf(list: readonly Guest[]): Counts {
   };
 }
 
-function invitedLine(said: Said): string {
+export function invitedLine(said: Said): string {
   return said.by == null
     ? GW.invitedByMessage(dayOf(said.on))
     : GW.invitedBy(said.by, midSentence(said.how ?? 'Other'), dayOf(said.on));
@@ -1267,6 +1275,37 @@ export function markInvited(
   );
 }
 
+/** Soirely's invitation reached them (sc-3971): Invited by Soirely's message, that day. */
+export function sentInvitation(
+  list: readonly Guest[],
+  ids: readonly string[],
+  on: string,
+): Guest[] {
+  return list.map((one) =>
+    one.reply !== 'notYet' || !ids.includes(one.id)
+      ? one
+      : {
+          ...one,
+          reply: 'noReply',
+          invited: { by: null, how: null, on },
+          companions: one.companions.map((companion) => ({ ...companion, reply: 'held' as const })),
+        },
+  );
+}
+
+/** An event's list as this visit has it: the sample, with whoever Soirely's invitation reached marked. */
+export function guestsNow(event: string): Guest[] {
+  return withSent(event, sampleGuests(event));
+}
+
+function withSent(event: string, list: readonly Guest[]): Guest[] {
+  return list.map((one) => {
+    const on = sentOn(event, one.id);
+
+    return on == null ? one : (sentInvitation([one], [one.id], on)[0] ?? one);
+  });
+}
+
 export function markNotInvited(list: readonly Guest[], id: string): Guest[] {
   return list.map((one) =>
     one.id !== id
@@ -1707,6 +1746,11 @@ export const GUESTS_STATES = [
   { key: 'sendInvited', name: 'Already invited: a press asks nothing' },
   { key: 'sendNoMobile', name: 'Bisi Adewale, no mobile number: not offered' },
   { key: 'sendFinished', name: 'A Finished event: Yusuf Ibrahim is not offered Send' },
+  { key: 'inviteList', name: 'Send invitations, in the header' },
+  { key: 'inviteNoneLeft', name: 'After the send, nobody left: no Send invitations' },
+  { key: 'inviteGuest', name: 'Send invitation: Bisi Adewale, not yet invited' },
+  { key: 'inviteGuestMobile', name: 'Send invitation beside Send on WhatsApp: Yusuf Ibrahim' },
+  { key: 'inviteGuestInvited', name: 'Send invitation for a guest already invited' },
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number]['key'];
@@ -1782,7 +1826,25 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
 
   switch (state) {
     case null:
-      return picked;
+      return { ...picked, list: withSent(event, picked.list) };
+    case 'inviteList':
+      return start;
+    case 'inviteNoneLeft':
+      return {
+        ...start,
+        choice: 'noReply',
+        list: sentInvitation(
+          start.list,
+          start.list.filter((one) => one.reply === 'notYet').map((one) => one.id),
+          TODAY,
+        ),
+      };
+    case 'inviteGuest':
+      return column(guestPane('bisi'), { choice: 'notYet' });
+    case 'inviteGuestMobile':
+      return column(guestPane('yusuf'), { choice: 'notYet' });
+    case 'inviteGuestInvited':
+      return column(guestPane('emeka'));
     case 'first':
       return { ...start, list: [] };
     case 'inUse':
@@ -2357,6 +2419,16 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'sendInvited',
     'sendNoMobile',
     'sendFinished',
+  ]),
+  group('Send invitations and Send invitation (sc-3971)', [
+    'inviteList',
+    'inviteNoneLeft',
+    'inviteGuest',
+    'inviteGuestMobile',
+    'inviteGuestInvited',
+    'draft',
+    'paused',
+    'finished',
   ]),
   group('Their link may have reached the wrong person (sc-1526)', [
     'flagged',
