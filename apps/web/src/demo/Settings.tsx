@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
@@ -36,6 +36,8 @@ import { TextAction, TitleRow, type Tell } from '../components/SettingsParts.tsx
 import { DemoBell } from './DemoBell.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
+import { DeskSearch } from './Search.tsx';
+import { reachOfRole } from './search.ts';
 import { usePaused, useSwitcherStart } from './switcher.ts';
 import './today.css';
 import '../components/SettingsParts.css';
@@ -87,87 +89,87 @@ export function Settings({
   const layers = useMemo(() => ({ stack, push, pop, host }), [stack, push, pop, host]);
   const covered = stack.length > 0;
 
-  useEffect(() => {
-    const search = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== 'k' || !(event.metaKey || event.ctrlKey)) return;
-
-      event.preventDefault();
-      tell('Search has its own design.');
-    };
-
-    window.addEventListener('keydown', search);
-
-    return () => window.removeEventListener('keydown', search);
-  }, [tell]);
-
   return (
     <LayersContext value={layers}>
       <div className="today desk">
-        <TodaySidebar events={SIDEBAR_EVENTS} tell={tell} settings person={seen} inert={covered} />
-        <main id="content" className="desk-main" inert={covered}>
-          <>
-            <SettingsList
-              open={
-                (open !== 'members' && open !== 'vendors' && open !== 'data') || viewer.manages
-                  ? open
-                  : null
-              }
-              viewer={seen}
-              tell={tell}
-            />
-            {paused && !YOURS.includes(open) ? (
-              <div className="desk-page">
-                <AccessPaused />
-              </div>
-            ) : open === 'account' ? (
-              <Account key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
-            ) : open === 'security' ? (
-              <Security key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
-            ) : open === 'notifications' ? (
-              <Notifications key={`${viewer.key}:${state}`} state={state} tell={tell} />
-            ) : open === 'personalisation' ? (
-              <Personalisation key={`${viewer.key}:${state}`} state={state} tell={tell} />
-            ) : open === 'general' ? (
-              <General key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
-            ) : open === 'signInRules' ? (
-              <SignInRules
-                key={`${viewer.key}:${state}`}
-                viewer={viewer}
-                state={state}
+        <DeskSearch reach={reachOfRole(viewer.role)} tell={tell}>
+          <TodaySidebar
+            events={SIDEBAR_EVENTS}
+            tell={tell}
+            settings
+            person={seen}
+            inert={covered}
+          />
+          <main id="content" className="desk-main" inert={covered}>
+            <>
+              <SettingsList
+                open={
+                  (open !== 'members' && open !== 'vendors' && open !== 'data') || viewer.manages
+                    ? open
+                    : null
+                }
+                viewer={seen}
                 tell={tell}
               />
-            ) : open === 'data' && viewer.manages ? (
-              <DataControl
-                key={`${page}:${viewer.key}:${state}`}
-                page={page}
-                viewer={viewer}
-                state={state}
-                tell={tell}
-              />
-            ) : open === 'vendors' && reminders ? (
-              <PaymentReminders key={`${viewer.key}:${state}`} viewer={viewer} state={state} />
-            ) : open === 'vendors' ? (
-              <Vendors
-                key={`${viewer.key}:${state}:${params.get('vendor') ?? ''}`}
-                viewer={viewer}
-                state={state}
-                tell={tell}
-              />
-            ) : viewer.manages ? (
-              <Members
-                key={`${open}:${viewer.key}:${state}`}
-                viewer={viewer}
-                state={state}
-                tell={tell}
-              />
-            ) : open === 'members' ? (
-              <MembersForbidden tell={tell} />
-            ) : (
-              <div className="desk-page" />
-            )}
-          </>
-        </main>
-        <div ref={setHost} className="desk-layers" />
+              {paused && !YOURS.includes(open) ? (
+                <div className="desk-page">
+                  <AccessPaused />
+                </div>
+              ) : open === 'account' ? (
+                <Account key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
+              ) : open === 'security' ? (
+                <Security
+                  key={`${viewer.key}:${state}`}
+                  viewer={viewer}
+                  state={state}
+                  tell={tell}
+                />
+              ) : open === 'notifications' ? (
+                <Notifications key={`${viewer.key}:${state}`} state={state} tell={tell} />
+              ) : open === 'personalisation' ? (
+                <Personalisation key={`${viewer.key}:${state}`} state={state} tell={tell} />
+              ) : open === 'general' ? (
+                <General key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
+              ) : open === 'signInRules' ? (
+                <SignInRules
+                  key={`${viewer.key}:${state}`}
+                  viewer={viewer}
+                  state={state}
+                  tell={tell}
+                />
+              ) : open === 'data' && viewer.manages ? (
+                <DataControl
+                  key={`${page}:${viewer.key}:${state}`}
+                  page={page}
+                  viewer={viewer}
+                  state={state}
+                  tell={tell}
+                />
+              ) : open === 'vendors' && reminders ? (
+                <PaymentReminders key={`${viewer.key}:${state}`} viewer={viewer} state={state} />
+              ) : open === 'vendors' ? (
+                <Vendors
+                  key={`${viewer.key}:${state}:${params.get('vendor') ?? ''}`}
+                  viewer={viewer}
+                  state={state}
+                  tell={tell}
+                />
+              ) : viewer.manages ? (
+                <Members
+                  key={`${open}:${viewer.key}:${state}`}
+                  viewer={viewer}
+                  state={state}
+                  tell={tell}
+                />
+              ) : open === 'members' ? (
+                <MembersForbidden tell={tell} />
+              ) : (
+                <div className="desk-page" />
+              )}
+            </>
+          </main>
+          <div ref={setHost} className="desk-layers" />
+        </DeskSearch>
         {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
       </div>
     </LayersContext>
