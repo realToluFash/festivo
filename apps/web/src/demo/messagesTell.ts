@@ -504,12 +504,12 @@ export function clockOfPage(page: Page): Date | null {
   return page === 'finished' ? CLOCKS.now : null;
 }
 
-/** End now opens Tell guests only while a later day of the event was still to come. */
+/** End now opens Tell guests only while a later day of the event was still to come; an end at midnight belongs to the day before. */
 export function dayStillToCome(event: SampleEvent, now: Date): boolean {
   const day = (at: Date) =>
     new Intl.DateTimeFormat('en-CA', { timeZone: event.timeZone }).format(at);
 
-  return day(now) < day(new Date(event.endsAt));
+  return day(now) < day(new Date(Date.parse(event.endsAt) - 1));
 }
 
 export function linkFigures(name: string): Figures {

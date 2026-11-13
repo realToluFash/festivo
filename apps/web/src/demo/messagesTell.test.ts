@@ -120,6 +120,12 @@ describe('Tell guests, every kind (sc-4330)', () => {
 
     expect(dayStillToCome(wedding, new Date('2026-11-06T16:10:00Z'))).toBe(true);
     expect(dayStillToCome(wedding, new Date('2026-11-07T10:00:00Z'))).toBe(false);
+    expect(
+      dayStillToCome(
+        { ...wedding, endsAt: '2026-11-07T00:00:00Z' },
+        new Date('2026-11-06T16:10:00Z'),
+      ),
+    ).toBe(false);
   });
 
   it('seeds every state that opens a sheet with its changes', () => {

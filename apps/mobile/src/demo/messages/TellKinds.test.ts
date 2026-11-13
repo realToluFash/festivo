@@ -12,6 +12,7 @@ import {
   RUN,
   TELL_KINDS,
   changeTitle,
+  dayStillToCome,
   eventBehind,
   fieldEvents,
   figuresArrive,
@@ -143,5 +144,16 @@ describe('sc-4330: tell guests about a change', () => {
     const now = new Date('2026-11-03T09:41:00Z');
     expect(eventBehind('tellPause', wedding, now).status).toBe('paused');
     expect(eventBehind('tellCallOff', wedding, now).status).toBe('ended');
+  });
+
+  it('End now offers Tell guests only while a later day of the event was still to come', () => {
+    expect(dayStillToCome(wedding, new Date('2026-11-05T22:00:00Z'))).toBe(true);
+    expect(dayStillToCome(wedding, new Date('2026-11-07T12:00:00Z'))).toBe(false);
+    expect(
+      dayStillToCome(
+        { ...wedding, endsAt: '2026-11-06T00:00:00Z' },
+        new Date('2026-11-05T22:00:00Z'),
+      ),
+    ).toBe(false);
   });
 });
