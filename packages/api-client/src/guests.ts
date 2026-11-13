@@ -1,3 +1,5 @@
+import type { EventCover } from './client.ts';
+
 /** An event's guest list as the API answers it (sc-1468). A companion is a guest of their own, listed under their host. */
 
 export type GuestReply = 'noReply' | 'coming' | 'maybe' | 'notComing';
@@ -42,6 +44,21 @@ export interface NewGuest {
   companions?: { fullName?: string | null }[];
   /** Sent once the host pressed Add anyway on "<name> is already on the list". */
   allowDuplicate?: boolean;
+}
+
+/** What a guest's own link opens (sc-1526): their name as the host typed it, and the event behind it. */
+export interface GuestPage {
+  guest: { fullName: string };
+  event: {
+    /** For its colour (meshFor) until it has a photo, as its event page has it. */
+    id: string;
+    name: string;
+    type: string;
+    /** Null for the default cover of the event's type. */
+    cover: EventCover | null;
+    /** The names guests read, in order (sc-6713). */
+    hosts: string[];
+  };
 }
 
 /** The API's Guest limits, which the form checks before sending. */

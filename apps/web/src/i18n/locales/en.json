@@ -515,10 +515,20 @@
   },
   "guest": {
     "invitationTitle": "You are invited",
-    "invitationBody": "No account is needed. This page is yours for this event.",
     "invalidTitle": "This invitation link does not work",
     "invalidBody": "It may have expired, been replaced by a newer one, or been mistyped. Ask whoever invited you for a fresh link — they can send one in a moment.",
-    "noAccountNeeded": "You do not need an account to reply."
+    "noAccountNeeded": "You do not need an account to reply.",
+    "closing": "This invitation is for you and your family. Other guests cannot see your answer.",
+    "tell": "Not {{name}}? Tell us",
+    "tellQuestion": "Tell {{hosts}} this link reached the wrong person?",
+    "tellLine_one": "They will see a note on {{name}}’s invitation and can send a new link. This does not answer the invitation or change anything on it.",
+    "tellLine_other": "They will see a note on {{name}}’s invitation and can send a new link. This does not answer the invitation or change anything on it.",
+    "tellThem": "Tell them",
+    "goBack": "Go back",
+    "tellFailed": "Not sent. Check your connection and try again.",
+    "tellLimited": "Too many tries from this link. Try again later.",
+    "tellThanks_one": "Thank you. {{hosts}} has been told and will look into it. You can close this page.",
+    "tellThanks_other": "Thank you. {{hosts}} have been told and will look into it. You can close this page."
   },
   "signIn": {
     "title": "Sign in",
@@ -2659,6 +2669,24 @@
     "removeCompanionOf": "Remove {{host}}’s guest",
     "removeCompanionOfNth": "Remove {{host}}’s guest · {{nth, number}}",
     "addCompanion": "Add a companion",
-    "mostCompanions": "{{most, number}} companions is the most one guest can bring."
+    "mostCompanions": "{{most, number}} companions is the most one guest can bring.",
+    "pausedLine": "Guests can’t be invited while this event is paused.",
+    "finishedLine": "This event has finished, so guests can’t be invited.",
+    "invitation": "Invitation",
+    "copyLink": "Copy invitation link",
+    "copyLinkLine": "Their own page, where they reply",
+    "replaceLink": "Replace link…",
+    "replaceLinkLine": "The old link stops working straight away",
+    "linkCopied": "Link copied",
+    "invitationLink": "Invitation link",
+    "clipboardRefused": "Your browser didn’t let Soirely copy it. It is selected: copy it from here.",
+    "replaceTitle": "Replace {{name}}’s link?",
+    "replaceLine": "The old link will stop working straight away.",
+    "keepIt": "Keep it",
+    "replace": "Replace link",
+    "notReplaced": "Not replaced. The old link still works. Try again.",
+    "linkReplaced": "Link replaced. {{name}}’s old link no longer works. Copy the new one and send it.",
+    "flaggedTitle": "Their link may have reached the wrong person",
+    "flaggedLine": "Someone who opened {{name}}’s link told us it was not meant for them. The reply is unchanged. Replace the link so the old one stops working, then send {{name}} the new one."
   }
 }

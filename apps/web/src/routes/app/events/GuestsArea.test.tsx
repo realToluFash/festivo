@@ -550,6 +550,279 @@ describe('Guests, live (sc-1468)', () => {
   });
 });
 
+describe('A guest’s invitation link (sc-1526)', () => {
+  const LINK = 'https://app.soirely.test/i/goJP8j72G8dKsdGysCtB7qA4o2SdVzDrjFodz60tDDc';
+
+  async function openNgozi(
+    answers: Record<string, Answer> = {},
+    event: Record<string, unknown> = {},
+    permissions: string[] = OWNER_PERMISSIONS,
+  ) {
+    signedIn();
+    const sent = await onGuests(
+      {
+        'GET /api/events/ev_1': () => json({ event: { ...EVENT, ...event, permissions } }),
+        'GET /api/events/ev_1/guests': () => json(listOf([NGOZI])),
+        ...answers,
+      },
+      permissions,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: /^Ngozi Eze/u }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Ngozi Eze' }),
+      ),
+    );
+
+    return sent;
+  }
+
+  function writes(outcome: 'takes' | 'refuses'): { written: string[] } {
+    const written: string[] = [];
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: (text: string) => {
+          written.push(text);
+
+          return outcome === 'takes' ? Promise.resolve() : Promise.reject(new Error('denied'));
+        },
+      },
+    });
+
+    return { written };
+  }
+
+  it('copies the whole link from the guest’s Invitation, and says so politely', async () => {
+    const { written } = writes('takes');
+    await openNgozi({ 'GET /api/events/ev_1/guests/g_1/link': () => json({ url: LINK }) });
+
+    fireEvent.click(screen.getByRole('button', { name: /^Copy invitation link/u }));
+
+    expect((await screen.findByText('Link copied')).closest('[role="status"]')).not.toBeNull();
+    expect(written).toEqual([LINK]);
+  });
+
+  it('shows the link selected in a read-only field when the browser keeps the clipboard', async () => {
+    writes('refuses');
+    await openNgozi({ 'GET /api/events/ev_1/guests/g_1/link': () => json({ url: LINK }) });
+
+    fireEvent.click(screen.getByRole('button', { name: /^Copy invitation link/u }));
+
+    const box = (await screen.findByRole('textbox', {
+      name: 'Invitation link',
+    })) as HTMLTextAreaElement;
+    await waitFor(() =>
+      expect([box.value, box.readOnly, document.activeElement]).toEqual([LINK, true, box]),
+    );
+  });
+
+  it('asks before replacing, Keep it changes nothing, and Replace link ends the old one', async () => {
+    const sent = await openNgozi({
+      'POST /api/events/ev_1/guests/g_1/link/replace': () => new Response(null, { status: 204 }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^Replace link…/u }));
+    const ask = screen.getByRole('alertdialog', { name: 'Replace Ngozi Eze’s link?' });
+    expect(within(ask).getByText('The old link will stop working straight away.')).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'Keep it' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Replace link…/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace link' }));
+
+    expect(
+      await screen.findByText(
+        'Link replaced. Ngozi Eze’s old link no longer works. Copy the new one and send it.',
+      ),
+    ).toBeDefined();
+    expect(sent.filter(({ line }) => line.includes('/link'))).toEqual([
+      { line: 'POST /api/events/ev_1/guests/g_1/link/replace', body: null },
+    ]);
+  });
+
+  it('re-reads an event paused elsewhere when a copy is refused, and says why, not the connection', async () => {
+    let reads = 0;
+    await openNgozi({
+      'GET /api/events/ev_1': () => {
+        reads += 1;
+
+        return json({
+          event: {
+            ...EVENT,
+            ...(reads > 1
+              ? { status: 'paused', phase: 'paused', pausedAt: '2026-11-01T10:00:00+00:00' }
+              : {}),
+            permissions: OWNER_PERMISSIONS,
+          },
+        });
+      },
+      'GET /api/events/ev_1/guests/g_1/link': () => problem('event_state_invalid', 409),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^Copy invitation link/u }));
+
+    expect(
+      await screen.findByText('Guests can’t be invited while this event is paused.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Copy invitation link/u })).toBeNull();
+    expect(screen.queryByText('Check your connection and try again.')).toBeNull();
+  });
+
+  it('says the old link still works when a replace fails', async () => {
+    await openNgozi({
+      'POST /api/events/ev_1/guests/g_1/link/replace': () => problem('internal_error', 500),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^Replace link…/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace link' }));
+
+    expect(
+      await screen.findByText('Not replaced. The old link still works. Try again.'),
+    ).toBeDefined();
+  });
+
+  it('offers no copy on a Draft, says why with Make live, and keeps Replace link…', async () => {
+    await openNgozi({}, { status: 'draft', phase: 'draft', madeLiveAt: null });
+
+    expect(screen.getByText("Guests can't be invited until this event is live.")).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Copy invitation link/u })).toBeNull();
+    expect(screen.getByRole('button', { name: /^Replace link…/u })).toBeDefined();
+  });
+
+  it('offers no copy on a Paused event, and says why in one line', async () => {
+    await openNgozi(
+      {},
+      { status: 'paused', phase: 'paused', pausedAt: '2026-11-01T10:00:00+00:00' },
+    );
+
+    expect(screen.getByText('Guests can’t be invited while this event is paused.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Copy invitation link/u })).toBeNull();
+  });
+
+  it('shows neither control to someone who cannot add guests', async () => {
+    await openNgozi(
+      {},
+      {},
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+
+    expect(screen.queryByRole('button', { name: /^Copy invitation link/u })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Replace link…/u })).toBeNull();
+  });
+});
+
+describe('The wrong-person flag (sc-1526)', () => {
+  const TITLE = 'Their link may have reached the wrong person';
+  const FLAGGED = { 'GET /api/events/ev_1/guests/flagged': () => json({ guests: ['g_1'] }) };
+
+  async function openFlagged(
+    answers: Record<string, Answer> = {},
+    permissions: string[] = OWNER_PERMISSIONS,
+  ) {
+    signedIn();
+    const sent = await onGuests(
+      {
+        'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA])),
+        ...FLAGGED,
+        ...answers,
+      },
+      permissions,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: /^Ngozi Eze/u }));
+    await screen.findByRole('heading', { level: 2, name: 'Ngozi Eze' });
+
+    return sent;
+  }
+
+  function guestColumn(): HTMLElement {
+    return screen.getAllByRole('region', { name: 'Ngozi Eze' })[0]!;
+  }
+
+  it('puts the notice under the card and before Invitation, with its triangle and words', async () => {
+    await openFlagged();
+
+    const notice = await within(guestColumn()).findByRole('region', { name: TITLE });
+    const invitation = within(guestColumn()).getByRole('region', { name: 'Invitation' });
+
+    expect(within(notice).getByRole('heading', { level: 3 }).querySelector('svg')).not.toBeNull();
+    expect(notice.textContent).toContain(
+      'Someone who opened Ngozi Eze’s link told us it was not meant for them. The reply is unchanged. Replace the link so the old one stops working, then send Ngozi Eze the new one.',
+    );
+    expect(
+      notice.compareDocumentPosition(invitation) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.queryAllByText(TITLE)).toHaveLength(1);
+  });
+
+  it('marks nobody else, and no row', async () => {
+    await openFlagged();
+    await within(guestColumn()).findByRole('region', { name: TITLE });
+
+    expect(within(screen.getByRole('region', { name: 'Guests' })).queryByText(TITLE)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /^Chief Amaka Obi/u }));
+    await screen.findByRole('heading', { level: 2, name: 'Chief Amaka Obi' });
+    expect(screen.queryByText(TITLE)).toBeNull();
+  });
+
+  it('keeps the notice on Keep it, and a replace from it clears it, focus on Replace link…', async () => {
+    await openFlagged({
+      'POST /api/events/ev_1/guests/g_1/link/replace': () => new Response(null, { status: 204 }),
+    });
+    const notice = await within(guestColumn()).findByRole('region', { name: TITLE });
+
+    fireEvent.click(within(notice).getByRole('button', { name: 'Replace link…' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog', { name: 'Replace Ngozi Eze’s link?' })).getByRole(
+        'button',
+        { name: 'Keep it' },
+      ),
+    );
+    expect(within(guestColumn()).getByRole('region', { name: TITLE })).toBeDefined();
+
+    fireEvent.click(within(notice).getByRole('button', { name: 'Replace link…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace link' }));
+
+    const done = await within(guestColumn()).findByText(
+      'Link replaced. Ngozi Eze’s old link no longer works. Copy the new one and send it.',
+    );
+    expect(done.closest('[role="status"]')).not.toBeNull();
+    expect(within(guestColumn()).queryByRole('region', { name: TITLE })).toBeNull();
+    const invitation = within(guestColumn()).getByRole('region', { name: 'Invitation' });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(invitation).getByRole('button', { name: /^Replace link…/u }),
+      ),
+    );
+  });
+
+  it('keeps the notice when the replace fails, and says the old link still works', async () => {
+    await openFlagged({
+      'POST /api/events/ev_1/guests/g_1/link/replace': () => problem('internal_error', 500),
+    });
+    const notice = await within(guestColumn()).findByRole('region', { name: TITLE });
+
+    fireEvent.click(within(notice).getByRole('button', { name: 'Replace link…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace link' }));
+
+    expect((await within(guestColumn()).findByRole('alert')).textContent).toBe(
+      'Not replaced. The old link still works. Try again.',
+    );
+    expect(within(guestColumn()).getByRole('region', { name: TITLE })).toBeDefined();
+  });
+
+  it('neither asks for nor shows the flag to someone who cannot add guests', async () => {
+    const sent = await openFlagged(
+      {},
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+
+    expect(screen.queryByText(TITLE)).toBeNull();
+    expect(sent.some(({ line }) => line.endsWith('/flagged'))).toBe(false);
+  });
+});
+
 describe('a companion field (sc-43267)', () => {
   it('ends a placeholder too long for the field in an ellipsis, on one line', () => {
     expect(readFileSync(join(import.meta.dirname, 'guests.css'), 'utf8')).toMatch(
