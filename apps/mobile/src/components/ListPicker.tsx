@@ -120,7 +120,11 @@ export function ListPicker({
   );
 
   // Android hands TalkBack's focus to whichever field holds input focus, not to the picker that opened the menu (sc-43908).
+  useEffect(() => {
+    trace(testID, 'state', { open, pickerShown, windowUp, windowShown });
+  }, [testID, open, pickerShown, windowUp, windowShown]);
   const close = () => {
+    trace(testID, 'close', { open, windowUp });
     if (Platform.OS === 'android') setClosed({});
     setOpen(false);
   };
@@ -167,6 +171,7 @@ export function ListPicker({
           wrong && styles.fieldWrong,
         ]}
         onPress={() => {
+          trace(testID, 'tap', {});
           controlTaken();
           setClosed(undefined);
           setOpen(true);
@@ -195,7 +200,10 @@ export function ListPicker({
         animationType={SLIDES_INSIDE ? 'none' : 'slide'}
         supportedOrientations={TURNS_WITH_THE_APP}
         onRequestClose={close}
-        onShow={risen}
+        onShow={() => {
+          trace(testID, 'onShow', { open, pickerShown, windowUp });
+          risen();
+        }}
       >
         {Platform.OS === 'android' && <SilentWindowName />}
         {/* A full-screen modal takes the app's view out of the window, so the app's insets stop turning with it. */}
@@ -287,6 +295,11 @@ const SLIDES_INSIDE = Platform.OS === 'android';
 const RISE_EASING = Easing.inOut(Easing.sin);
 
 /** Whether the menu's window is up, and how far its menu has risen in it, 1 in place; on iOS the window slides itself. */
+// sc-44486: a device trace of the menu's show and close, to reproduce the early-Back window before fixing it.
+function trace(testID: string, what: string, state: object) {
+  if (__DEV__) console.log(`[sc-44486] ${Date.now()} ${testID} ${what} ${JSON.stringify(state)}`);
+}
+
 function usePickerRise(shown: boolean, reduced: boolean) {
   const [windowUp, setWindowUp] = useState(false);
   const [rise] = useState(() => new Animated.Value(SLIDES_INSIDE ? 0 : 1));
