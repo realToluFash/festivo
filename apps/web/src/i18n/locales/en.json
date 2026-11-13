@@ -2666,6 +2666,8 @@
     "companionName": "Companion’s full name, {{nth, number}} of {{total, number}}",
     "remove": "Remove",
     "removeNamed": "Remove {{name}}",
+    "removeCompanionOf": "Remove {{host}}’s guest",
+    "removeCompanionOfNth": "Remove {{host}}’s guest · {{nth, number}}",
     "addCompanion": "Add a companion",
     "mostCompanions": "{{most, number}} companions is the most one guest can bring.",
     "pausedLine": "Guests can’t be invited while this event is paused.",

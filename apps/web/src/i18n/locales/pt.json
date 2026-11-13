@@ -2753,6 +2753,8 @@
     "companionName": "Nome completo do acompanhante, {{nth, number}} de {{total, number}}",
     "remove": "Remover",
     "removeNamed": "Remover {{name}}",
+    "removeCompanionOf": "Remove {{host}}’s guest",
+    "removeCompanionOfNth": "Remove {{host}}’s guest · {{nth, number}}",
     "addCompanion": "Adicionar um acompanhante",
     "mostCompanions": "Um convidado pode trazer no máximo {{most, number}} acompanhantes.",
     "pausedLine": "Guests can’t be invited while this event is paused.",

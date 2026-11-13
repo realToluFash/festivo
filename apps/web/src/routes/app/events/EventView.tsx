@@ -26,12 +26,12 @@ import { DraftRow, StatusPill } from './MakeLive.tsx';
 import { PausedRow } from './PauseEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { EventPeople } from './EventPeople.tsx';
-import { GuestsArea } from './GuestsArea.tsx';
+import { GuestsArea, GuestsGone } from './GuestsArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
 import { typeLabel } from './eventTypes.ts';
 import { AllDates } from './Timeline.tsx';
 import { EventCrumb, Overview, PhaseChange } from './EventOverview.tsx';
-import { useShowEvent } from './EventNav.tsx';
+import { useGoneEvent, useShowEvent } from './EventNav.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 import { NotFound } from '../../public/NotFound.tsx';
 
@@ -138,6 +138,9 @@ function EventOf({
     };
   }, [organisationId, eventId, attempt, refresh, watch]);
   useShowEvent(eventId, load.kind === 'loaded' ? load.event : undefined);
+  useGoneEvent(eventId, page === 'guests' && load.kind === 'notFound');
+
+  if (page === 'guests' && load.kind === 'notFound') return <GuestsGone heading={heading} />;
 
   if (page === 'seating' && load.kind === 'loaded')
     return canOn(load.event, 'seating.read') ? <SeatingArea event={load.event} /> : <NotFound />;

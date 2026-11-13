@@ -54,7 +54,7 @@ import {
   type Typed,
   blank,
   firstProblem,
-  listedAs,
+  isListed,
   newGuestOf,
   problemsOf,
   rowsOf,
@@ -210,6 +210,26 @@ function useFocusKeys(root: RefObject<HTMLElement | null>) {
   }, []);
 }
 
+/** A deleted event's Guests answers as an event that never existed does, its heading focused (sc-1468). */
+export function GuestsGone({ heading }: { heading: RefObject<HTMLHeadingElement | null> }) {
+  const { t } = useTranslation();
+
+  usePageTitle(pageTitle(t, [t('eventPage.notFound')]));
+  useEffect(() => heading.current?.focus(), [heading]);
+
+  return (
+    <div className="desk ev gs">
+      <div className="ev-wide gs-page">
+        <header className="gs-top">
+          <h1 ref={heading} className="gs-title" tabIndex={-1}>
+            {t('eventPage.notFound')}
+          </h1>
+        </header>
+      </div>
+    </div>
+  );
+}
+
 export function GuestsArea({
   event,
   tag,
@@ -295,7 +315,7 @@ export function GuestsArea({
   return (
     <LayersContext value={layers}>
       <div ref={root} className="desk ev gs">
-        <div className="event-page ev-wide gs-page" inert={covered}>
+        <div className="ev-wide gs-page" inert={covered}>
           <div className="ev-crumb-row">
             <nav className="ev-crumb" aria-label={t('eventPage.crumb')}>
               <ol>
@@ -585,6 +605,7 @@ function AddForm({
     const problem: Problem | undefined = problems[key];
 
     if (problem == null) return undefined;
+    if (typeof problem === 'object') return problem.refused;
     if (problem === 'blank') return t('guestList.blankName');
     if (problem === 'tooLong') return t('guestList.nameTooLong', { most: GUEST_NAME_MAXIMUM });
     if (problem === 'emailShape') return t('forms.emailShape');
@@ -612,7 +633,7 @@ function AddForm({
       focus(fieldOf(first, problemsOf(values)));
       return;
     }
-    if (!allowDuplicate && listedAs(guests, values.fullName) != null) {
+    if (!allowDuplicate && isListed(guests, values.fullName)) {
       setDuplicate(true);
       focus('duplicate');
       return;
@@ -802,7 +823,15 @@ function CompanionFields({
             at={at}
             name={name}
             label={label}
-            shown={name.trim() === '' ? placeholder || label : name.trim()}
+            remove={
+              name.trim() !== ''
+                ? t('guestList.removeNamed', { name: name.trim() })
+                : host === ''
+                  ? t('guestList.removeNamed', { name: label })
+                  : at === 0
+                    ? t('guestList.removeCompanionOf', { host })
+                    : t('guestList.removeCompanionOfNth', { host, nth: at + 1 })
+            }
             placeholder={placeholder}
             error={error}
             onChange={(typed) =>
@@ -839,7 +868,7 @@ function CompanionField({
   at,
   name,
   label,
-  shown,
+  remove,
   placeholder,
   error,
   onChange,
@@ -848,7 +877,7 @@ function CompanionField({
   at: number;
   name: string;
   label: string;
-  shown: string;
+  remove: string;
   placeholder: string;
   error: string | undefined;
   onChange: (name: string) => void;
@@ -877,7 +906,7 @@ function CompanionField({
         <button
           type="button"
           className="desk-text gs-remove"
-          aria-label={t('guestList.removeNamed', { name: shown })}
+          aria-label={remove}
           onClick={onRemove}
         >
           {t('guestList.remove')}
