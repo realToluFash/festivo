@@ -1409,7 +1409,11 @@ describe('The wrong-person flag (sc-1526)', () => {
       permissions,
     );
     fireEvent.click(await screen.findByRole('link', { name: /^Ngozi Eze/u }));
-    await screen.findByRole('heading', { level: 2, name: 'Ngozi Eze' });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Ngozi Eze' }),
+      ),
+    );
 
     return sent;
   }
