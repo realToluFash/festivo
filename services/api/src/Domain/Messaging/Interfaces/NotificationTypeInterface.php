@@ -41,6 +41,15 @@ interface NotificationTypeInterface
     /** After this it is recorded Not sent: too late, never sent late. Null when it is never too late. */
     public function tooLateAt(DateTimeImmutable $dueAt, ?EventTimes $event): ?DateTimeImmutable;
 
+    /** Its send_by is the code's expiry: one that runs out is recorded Failed with "code expired" (sc-4332). */
+    public function carriesCode(): bool;
+
+    /** A newer one for the same person supersedes one of its type that has not gone (sc-4332). */
+    public function supersedesEarlier(): bool;
+
+    /** Still emailed to an address a hard bounce or complaint suppressed: security mail, which the person may need to get back in. */
+    public function reachesSuppressed(): bool;
+
     /** Due rows sharing a key, for one person on one channel, go out as one message. Null never collapses. */
     public function collapseKey(): ?string;
 

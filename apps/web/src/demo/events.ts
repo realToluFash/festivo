@@ -1,5 +1,6 @@
 import type { NeedsState } from './needsYou.ts';
 import type { WriteState } from './guestsWrite.ts';
+import { type ThankYouState, isCardState, isEndState } from './thankYou.ts';
 import {
   type EventPhase,
   type EventState,
@@ -27,6 +28,7 @@ import type { EventKey } from './today.ts';
 import { type Mesh, meshFor } from '../mesh.ts';
 import { SIDE_AREAS, type SideArea } from '../components/eventSideAreas.ts';
 import { ARRIVAL_NOTE } from './arrivalNote.ts';
+import { type MakeLiveState, MAKE_LIVE_EVENTS, MAKE_LIVE_STATES } from './makeLiveStates.ts';
 
 export interface Venue {
   name: string;
@@ -1220,11 +1222,13 @@ export type LifeState =
   | 'muted'
   | 'muteNotLoaded'
   | 'muteNotSaved'
-  | WriteState;
+  | WriteState
+  | ThankYouState;
 
 export type NoteState = 'noteNoVenue' | 'noteWide' | 'noteMarkup';
 
-export type EventStateName = PhaseState | EditState | LifeState | NeedsState | NoteState;
+export type EventStateName =
+  PhaseState | EditState | LifeState | NeedsState | NoteState | MakeLiveState;
 
 export const EVENT_STATES: Record<EventStateName, string> = {
   draft: 'evt-draft-4',
@@ -1305,6 +1309,20 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   guestsCanWriteSaving: 'evt-wed-4',
   guestsCanWriteFailed: 'evt-wed-4',
   guestsCanWriteReadOnly: 'evt-wed-4',
+  thankYouLine: 'evt-wed-4',
+  thankYouAdding: 'evt-wed-4',
+  thankYouEditing: 'evt-wed-4',
+  thankYouSaving: 'evt-wed-4',
+  thankYouNotSaved: 'evt-wed-4',
+  thankYouOver: 'evt-wed-4',
+  thankYouLong: 'evt-wed-4',
+  thankYouReadOnly: 'evt-wed-4',
+  thankYouReadOnlyNone: 'evt-wed-4',
+  endNowThankYou: 'evt-wed-4',
+  endNowLong: 'evt-wed-4',
+  endNowOver: 'evt-wed-4',
+  endNowEnding: 'evt-wed-4',
+  endNowNotEnded: 'evt-wed-4',
   needsYou: 'evt-wed-4',
   needsYouOne: 'evt-wed-4',
   needsYouOverdue: 'evt-wed-4',
@@ -1312,6 +1330,7 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   needsYouReadOnly: 'evt-wed-4',
   needsYouLoading: 'evt-wed-4',
   needsYouFailed: 'evt-wed-4',
+  ...MAKE_LIVE_EVENTS,
 };
 
 export function eventStateOf(value: string | null): EventStateName | null {
@@ -1322,11 +1341,12 @@ export function clockOf(state: EventStateName | null): Date {
   if (
     state === 'now' ||
     state === 'endNow' ||
+    isEndState(state) ||
     state === 'deleteRefusedStarted' ||
     state === 'deleteRefusedStartedRead'
   )
     return CLOCKS.now;
-  if (state === 'finished') return CLOCKS.finished;
+  if (state === 'finished' || isCardState(state)) return CLOCKS.finished;
 
   return CLOCKS.rest;
 }
@@ -1391,7 +1411,8 @@ export function stateFits(state: EventStateName, event: SampleEvent): boolean {
 
   if (state === 'pause') return manage.includes('pause');
   if (state === 'callOff') return manage.includes('callOff');
-  if (state === 'endNow') return manage.includes('endNow');
+  if (state === 'endNow' || isEndState(state)) return manage.includes('endNow');
+  if (isCardState(state)) return shownOf(event, now) === 'finished';
   const part = partOf(state);
   if (part === 'dates' || part === 'replyBy') return !locked;
 
@@ -1624,6 +1645,31 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('guestsCanWriteSaving', 'Guests can write from their page, saving'),
       on('guestsCanWriteFailed', 'Guests can write from their page, not saved'),
       on('guestsCanWriteReadOnly', 'Guests can write from their page, without messages.manage'),
+    ],
+  },
+  {
+    name: 'Make live, and the offer to send invitations (sc-3971)',
+    states: MAKE_LIVE_STATES.map((one) => on(one.key, one.name)),
+  },
+  {
+    name: 'A thank-you for your guests (sc-6476)',
+    states: [
+      on('finished', 'Finished, Add a thank-you'),
+      on('thankYouAdding', 'The field open, empty'),
+      on('thankYouLine', 'The line, signed with the hosts, and Edit thank-you'),
+      on('thankYouEditing', 'Edit thank-you, the field holds the line'),
+      on('thankYouSaving', 'Saving…'),
+      on('thankYouNotSaved', 'Not saved, the text kept'),
+      on('thankYouOver', 'Over 280, Save pressed: nothing sent'),
+      on('thankYouLong', 'A 280-character line'),
+      on('thankYouReadOnly', 'Without the permission to end it: the line, read-only'),
+      on('thankYouReadOnlyNone', 'Without the permission to end it, no line: no card'),
+      on('endNow', 'End now, the field left empty'),
+      on('endNowThankYou', 'End now, with a thank-you'),
+      on('endNowLong', 'End now, 280 characters'),
+      on('endNowOver', 'End now, over 280: nothing sent'),
+      on('endNowEnding', 'End now, Ending…'),
+      on('endNowNotEnded', 'End now, not ended, the thank-you kept'),
     ],
   },
   {

@@ -75,8 +75,6 @@ import {
 import { AskLayer } from './AskLayer.tsx';
 
 const GROW_FROM = 0.96;
-// TalkBack has put its focus on the field well inside this.
-const HOVER_LANDS_MS = 100;
 const PANEL = 760;
 const CARD = 300;
 const SIDE_PADDING = 32;
@@ -236,11 +234,9 @@ export function CreateWalkWindow<Made>({
       moveScreenReaderFocus(question.current);
       return;
     }
-    moveScreenReaderFocus(input);
-    // Keys taken while hidden go down as the window is shown; raised again on the focused field, they stay up and nothing is read twice (qa3 #45108).
-    const keys = setTimeout(() => raiseKeysOn(input), HOVER_LANDS_MS);
-
-    return () => clearTimeout(keys);
+    // On the phone the field gives up the focus it took while hidden as the window is shown, and taking it back after a hover reads it twice (qa3 #45182): taken back alone, TalkBack's focus follows it and reads it once.
+    if (input.isFocused()) moveScreenReaderFocus(input);
+    raiseKeysOn(input);
   }, [talkBack, onScreen, unnamed, opening]);
 
   useEffect(

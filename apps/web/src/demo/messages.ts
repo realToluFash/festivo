@@ -7,6 +7,7 @@ import {
   type Group,
   type SentToId,
   COMING,
+  GROUPS,
   NOT_REPLIED,
   SENT_TO,
   countOf,
@@ -25,6 +26,18 @@ import {
   STOP_STATES,
   isStopState,
 } from './messagesStop.ts';
+import {
+  type InviteDraft,
+  type InviteOut,
+  INVITE_GROUP,
+  INVITE_STATES,
+  INVITE_TICKS,
+  firstOf,
+  greetingOf,
+  inviteCheckOf,
+  inviteSeedOf,
+  isInviteState,
+} from './messagesInvite.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
@@ -137,6 +150,7 @@ export const MESSAGE_STATES = [
   { key: 'channelsMany', name: 'See all, 93 names' },
   { key: 'channelsNone', name: 'Nothing ticked' },
   ...WAITS_STATES,
+  ...INVITE_STATES,
   ...STOP_STATES,
 ] as const;
 
@@ -164,10 +178,13 @@ export const MESSAGES_AT = `/demo/events/${SAMPLE_EVENT}/messages`;
 export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
   {
     name: 'Messages',
-    states: MESSAGE_STATES.filter((one) => !isStopState(one.key)).map((one) => ({
-      to: `${MESSAGES_AT}?state=${one.key}`,
-      name: one.name,
-    })),
+    states: MESSAGE_STATES.filter((one) => !isStopState(one.key) && !isInviteState(one.key)).map(
+      (one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name }),
+    ),
+  },
+  {
+    name: INVITE_GROUP,
+    states: INVITE_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
   {
     name: STOP_GROUP,
@@ -182,7 +199,7 @@ export const EVENT_NAME = 'Adaeze & Tunde’s wedding';
 export const ORGANISATION = 'Ire Events';
 export const GUESTS_N = 142;
 export const BALANCE = 1500;
-export const THEIR_LINK = '[their own link]';
+export { THEIR_LINK } from './inviteSms.ts';
 export const PAGE_WHEN = `Thu, Nov 5 · ${writtenTime('18:00', 'en')} · The Landmark`;
 export const ZONE = 'London time (GMT)';
 export const ZONE_SHORT = 'London time';
@@ -623,7 +640,7 @@ export function byName(people: readonly Untellable[], locale: string): Untellabl
 
 /** Which of the boards' three samples an audience counts as: All guests, Hasn't replied alone, or Coming (every other). */
 function sampleOf(audience: Audience): Sample {
-  if (audience.kind === 'all') return 'all';
+  if (audience.kind !== 'who') return 'all';
 
   return audience.conditions[0] === 'notReplied' && audience.conditions.length === 1
     ? 'notReplied'
@@ -1612,6 +1629,8 @@ export interface Out {
   at: string;
   seen: number;
   soFar?: number;
+  /** An invitation from the composer (sc-3971): Soirely's card, the hosts' note, and whom it went to. */
+  invite?: InviteOut;
 }
 
 export interface Draft {
@@ -1626,6 +1645,7 @@ export interface Draft {
   opens?: 'insert' | 'previewAs' | 'filling' | undefined;
   previewAs?: PersonId;
   seeAll?: boolean;
+  invite?: InviteDraft;
 }
 
 export interface Sched {
@@ -1766,6 +1786,31 @@ export function draftOf(
     step,
     seed: 0,
   };
+}
+
+/** An invitation on the composer (sc-3971): Soirely's own words, a note for their page, Email and SMS. */
+export function inviteDraftOf(to: Audience, thread: ConvoId = 'new'): Draft {
+  return {
+    ...draftOf(to, 'write', false, thread),
+    ticks: INVITE_TICKS,
+    invite: { note: '', again: false, wrong: false, pressed: false },
+  };
+}
+
+/** The invitation's check, with Messages' own figures for whoever only it counts. */
+export function inviteCheck(
+  draft: Pick<Draft, 'to' | 'ticks' | 'invite'>,
+  balance: number,
+  groups: readonly Group[],
+) {
+  return inviteCheckOf(
+    draft.to,
+    draft.ticks,
+    draft.invite?.again === true,
+    figuresOf(draft.to, draft.ticks),
+    balance,
+    groups,
+  );
 }
 
 function outOf(stage: Stage, extra: Partial<Out> = {}): Out {
@@ -2057,6 +2102,44 @@ export function seedOf(state: MessagesState | null): Inbox {
         outs: [outOf('countdown', { ticks: EMAIL_ONLY })],
       };
     default: {
+      const invite = inviteSeedOf(state);
+
+      if (invite?.kind === 'draft')
+        return {
+          ...base,
+          pane: { kind: 'compose' },
+          draft: {
+            ...inviteDraftOf(invite.to),
+            step: invite.step,
+            openTo: invite.openTo,
+            invite: invite.invite,
+          },
+        };
+      if (invite?.kind === 'out') {
+        const draft = inviteDraftOf(invite.to);
+        const check = inviteCheck(draft, BALANCE, GROUPS);
+        const count = check.count;
+
+        return {
+          ...base,
+          pane: open('new'),
+          outs: [
+            {
+              ...going({ ...draft, subject: MW.invitation }),
+              stage: invite.stage,
+              left: invite.left,
+              invite: {
+                note: invite.invite.note,
+                again: false,
+                count,
+                reached: count - check.cant,
+                greeting: firstGreeting(invite.to),
+              },
+            },
+          ],
+        };
+      }
+
       const waits = waitsTicksOf(state);
 
       if (waits != null) return { ...compose(base, COMING, 'check', waits), balance: 0 };
@@ -2169,11 +2252,11 @@ export function outReach(
   soFar: number;
   seen: number;
 } {
-  const count = countOf(out.to, groups) ?? 0;
+  const count = out.invite?.count ?? countOf(out.to, groups) ?? 0;
 
   return {
     count,
-    reached: count - figuresOf(out.to, out.ticks).cantTell,
+    reached: out.invite?.reached ?? count - figuresOf(out.to, out.ticks).cantTell,
     soFar: out.soFar ?? Math.round(count * 0.4),
     seen: out.seen,
   };
@@ -2316,12 +2399,16 @@ function threadRow(inbox: Inbox, id: ConvoId, groups: readonly Group[]): Row {
 
   if (first == null || last == null) {
     const to = inbox.draft?.to ?? { kind: 'all' };
+    const title = inbox.draft?.invite == null ? MW.newMessage : MW.invitation;
 
-    return manyRow(id, MW.newMessage, `${toLine(to, groups)} · ${MW.notSentYet}`, NOW, null);
+    return manyRow(id, title, `${toLine(to, groups)} · ${MW.notSentYet}`, NOW, null);
   }
 
   const title = outTitle(first);
-  const missed = figuresOf(last.to, last.ticks).cantTell;
+  const missed =
+    last.invite == null
+      ? figuresOf(last.to, last.ticks).cantTell
+      : last.invite.count - last.invite.reached;
 
   if (last.stage === 'sent' && litOf(inbox) !== id && missed > 0)
     return manyRow(
@@ -2521,6 +2608,27 @@ function going(draft: Pick<Draft, 'thread' | 'subject' | 'body' | 'to' | 'ticks'
   };
 }
 
+function firstGreeting(to: Audience): string {
+  const first = firstOf(to, GROUPS);
+
+  return first == null ? '' : greetingOf(first);
+}
+
+function invitationOut(draft: Draft, inbox: Inbox): Out {
+  const check = inviteCheck(draft, inbox.balance, GROUPS);
+
+  return {
+    ...going({ ...draft, subject: MW.invitation }),
+    invite: {
+      note: draft.invite?.note.trim() ?? '',
+      again: draft.invite?.again === true,
+      count: check.count,
+      reached: check.count - check.cant,
+      greeting: firstGreeting(draft.to),
+    },
+  };
+}
+
 export function changed(inbox: Inbox, change: Change): Inbox {
   switch (change.kind) {
     case 'stop':
@@ -2600,7 +2708,7 @@ export function changed(inbox: Inbox, change: Change): Inbox {
 
       return {
         ...inbox,
-        outs: [...inbox.outs, going(draft)],
+        outs: [...inbox.outs, draft.invite == null ? going(draft) : invitationOut(draft, inbox)],
         draft: null,
         cancelled: false,
         pane: { kind: 'convo', id: draft.thread },
@@ -2634,10 +2742,20 @@ export function changed(inbox: Inbox, change: Change): Inbox {
           thread: out.thread,
           to: out.to,
           ticks: out.ticks,
-          subject: out.subject,
+          subject: out.invite == null ? out.subject : '',
           body: out.body,
           step: 'write',
           seed: (inbox.draft?.seed ?? 0) + 1,
+          ...(out.invite == null
+            ? {}
+            : {
+                invite: {
+                  note: out.invite.note,
+                  again: out.invite.again,
+                  wrong: false,
+                  pressed: false,
+                },
+              }),
         },
       };
     }

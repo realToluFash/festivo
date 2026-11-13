@@ -395,6 +395,7 @@ final class MemberActionsTest extends ApiTestCase
         $token = $this->token($chidi);
         $this->bearing($token, 'GET', $this->path('/permissions'));
         self::assertSame(200, $this->statusCode());
+        self::drainNotifications();
 
         $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($chidi) . '/suspend'));
         self::assertSame(204, $this->statusCode());

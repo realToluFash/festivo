@@ -22,6 +22,7 @@ use App\Repository\EventMuteRepository;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
 use LogicException;
@@ -56,6 +57,7 @@ final class NotificationWorker
         private readonly ChannelSelector $channelSelector,
         private readonly EventMuteRepository $eventMuteRepository,
         private readonly NotificationPreferencesInterface $notificationPreferences,
+        private readonly EmailSuppressions $emailSuppressions,
         private readonly ClockInterface $clock,
         private readonly LoggerInterface $logger,
         #[AutowireIterator(AudienceResolverInterface::TAG)]
@@ -335,6 +337,13 @@ final class NotificationWorker
         }
 
         $channel = NotificationChannel::from(Type\string()->coerce($row['channel']));
+
+        if (NotificationChannel::Email === $channel && !$type->reachesSuppressed() && null !== $recipient->emailAddress && $this->emailSuppressions->isSuppressed($recipient->emailAddress)) {
+            $this->finishDelivery($id, NotificationDeliveryStatus::Cancelled, 'address suppressed');
+
+            return;
+        }
+
         $sender = $this->notificationRegistry->sender($channel);
 
         if (null === $sender) {
@@ -390,7 +399,9 @@ final class NotificationWorker
         $sendBy = self::moment($row['send_by']);
 
         if (null !== $sendBy && $sendBy < $now) {
-            $this->finishDelivery($id, NotificationDeliveryStatus::TooLate, 'too late');
+            $type->carriesCode()
+                ? $this->finishDelivery($id, NotificationDeliveryStatus::Failed, 'code expired')
+                : $this->finishDelivery($id, NotificationDeliveryStatus::TooLate, 'too late');
 
             return EventVerdict::Cancel;
         }
@@ -695,6 +706,17 @@ final class NotificationWorker
                 'id' => $id,
             ],
             ['now' => Types::DATETIME_IMMUTABLE],
+        );
+
+        // The database keeps only a code's hash: its words go once the send is over, not when the rows are pruned.
+        $this->connection->executeStatement(
+            <<<'SQL'
+                UPDATE scheduled_notifications s SET payload = '{}'
+                FROM notification_deliveries d
+                WHERE d.id = :id AND s.id = d.scheduled_notification_id AND s.type IN (:codeTypes)
+                SQL,
+            ['id' => $id, 'codeTypes' => $this->notificationRegistry->codeTypes()],
+            ['codeTypes' => ArrayParameterType::STRING],
         );
     }
 

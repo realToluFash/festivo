@@ -96,6 +96,9 @@ export const GW = {
   added: 'Added',
   addedBy: (date: string, name: string) => `${date} by ${name}`,
   invitation: 'Invitation',
+  sendInvitations: 'Send invitations',
+  sendInvitation: 'Send invitation',
+  sendInvitationLine: 'Soirely sends it to them by email or text.',
   copyLink: 'Copy invitation link',
   copyLinkLine: 'Their own page, where they reply',
   replaceLink: 'Replace link…',
@@ -202,7 +205,7 @@ export const GW = {
   theirs: 'Theirs',
   yours: 'Yours',
   conflictLine:
-    'Use theirs puts their version in the form and drops yours. Keep mine saves yours over theirs.',
+    'Use theirs fills the form with their version and drops your changes. Keep mine saves your changes over theirs.',
   useTheirs: 'Use theirs',
   keepMine: 'Keep mine',
   discardTitle: 'Discard your changes?',

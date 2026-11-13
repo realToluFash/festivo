@@ -5,15 +5,13 @@ declare(strict_types=1);
 namespace App\Domain\Guest\Reply;
 
 use App\Audit\Auditor;
-use App\Domain\Guest\Http\GuestSerialiser;
+use App\Domain\Guest\GuestListPublisher;
 use App\Entity\Guest;
 use App\Enum\ErrorCode;
 use App\Enum\GuestPagePhase;
 use App\Enum\GuestReply;
 use App\Enum\GuestReplySource;
-use App\Enum\RealtimeTopic;
 use App\Http\Exception\ApiException;
-use App\Realtime\RealtimePublisher;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
@@ -25,9 +23,8 @@ final readonly class GuestAnswers
 
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private GuestSerialiser $guestSerialiser,
         private Auditor $auditor,
-        private RealtimePublisher $realtimePublisher,
+        private GuestListPublisher $guestListPublisher,
         private ClockInterface $clock,
     ) {
     }
@@ -78,7 +75,7 @@ final readonly class GuestAnswers
 
         if ($changed) {
             $event = $guest->getEvent();
-            $this->realtimePublisher->publish(RealtimeTopic::EventGuests, $event->getId()->toRfc4122(), $this->guestSerialiser->list($event, contacts: false));
+            $this->guestListPublisher->publish($event);
         }
     }
 }

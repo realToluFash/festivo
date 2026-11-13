@@ -22,10 +22,13 @@ import {
   reachFrom,
 } from './messages.ts';
 import { type Bit, useInbox } from './messagesContext.ts';
+import { IW, REPLY_BY } from './messagesInvite.ts';
 import type { Group } from './messagesTo.ts';
+import { demoWords } from './demoWords.ts';
 import { DayRule, HostBubble, ReachBar, SoirelyCard, SystemLine, Words } from './MessagesParts.tsx';
 
 const RING = 2 * Math.PI * 12.5;
+const iw = demoWords(IW);
 
 /** Ten seconds on the message (sc-3963): said at 10, 5 and 0 only, by the page's status line. */
 export function Countdown({ left, onCancel }: { left: number; onCancel: () => void }) {
@@ -106,14 +109,28 @@ function stageBits(out: Out, compact: boolean, groups: readonly Group[]): Bit[] 
 function OutItem({ out, compact }: { out: Out; compact: boolean }) {
   const { act, focus, to } = useInbox();
   const reach = outReach(out, to.book.groups);
+  const note = out.invite?.note.trim() ?? '';
 
   return (
     <>
+      {out.invite != null && (
+        <SoirelyCard
+          title={filled(MW.inviteSubject, { event: EVENT_NAME, hosts: HOSTS })}
+          lines={[
+            filled(MW.dear, { greeting: out.invite.greeting }),
+            filled(MW.invitedOn, { event: EVENT_NAME, date: INVITE.date }),
+            filled(MW.willYou, { replyBy: REPLY_BY }),
+            [MW.replyYes, MW.replyNo, MW.replyNotSure].join(' · '),
+          ]}
+          bits={[{ words: MW.soirelysOwn }]}
+        />
+      )}
       <HostBubble
-        subject={out.subject}
-        body={<Words body={out.body} />}
-        bits={stageBits(out, compact, to.book.groups)}
+        subject={out.invite == null ? out.subject : filled(IW.noteFrom, { hosts: HOSTS })}
+        body={out.invite == null ? <Words body={out.body} /> : note}
+        bits={out.invite != null && note === '' ? [] : stageBits(out, compact, to.book.groups)}
         look={out.stage === 'failed' ? 'faded' : out.stage === 'countdown' ? 'arriving' : 'sent'}
+        bare={out.invite != null && note === ''}
       >
         {out.stage === 'countdown' && (
           <Countdown
@@ -168,8 +185,11 @@ function OutItem({ out, compact }: { out: Out; compact: boolean }) {
       {out.stage === 'sending' && !compact && (
         <li className="mg-status">
           <Glyph name="info" size={15} weight={2.2} />
-          <p>{many('queued', reach.count)}</p>
+          <p>{out.invite == null ? many('queued', reach.count) : iw.many('queued', reach.count)}</p>
         </li>
+      )}
+      {out.invite != null && out.stage === 'sent' && (
+        <SystemLine glyph="tick">{many('nowInvited', out.invite.reached)}</SystemLine>
       )}
     </>
   );

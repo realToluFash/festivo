@@ -180,7 +180,7 @@ final class GuestsTest extends ApiTestCase
     {
         $this->add(['fullName' => 'Bisi']);
 
-        $update = Iter\last(self::service(RecordingHub::class)->published) ?? self::fail('nothing published');
+        $update = self::service(RecordingHub::class)->lastOn('events/' . $this->eventId . '/guests') ?? self::fail('nothing published');
         self::assertSame(['events/' . $this->eventId . '/guests'], $update->getTopics());
         self::assertTrue($update->isPrivate());
         $viewer = $this->member('ada@ire.events', SeededRole::Member, EventRole::CanView);
@@ -188,14 +188,14 @@ final class GuestsTest extends ApiTestCase
     }
 
     #[Test]
-    public function aSubscriptionNamesThisEventsListAlone(): void
+    public function aSubscriptionNamesThisEventsListAndHeadcountAlone(): void
     {
         $body = $this->as($this->owner, 'POST', $this->guests() . '/subscriptions');
 
         self::assertSame(200, $this->statusCode());
         $token = new Parser(new JoseEncoder())->parse(Type\non_empty_string()->coerce($body['token'] ?? null));
         self::assertInstanceOf(UnencryptedToken::class, $token);
-        self::assertSame(['subscribe' => ['events/' . $this->eventId . '/guests']], $token->claims()->get('mercure'));
+        self::assertSame(['subscribe' => ['events/' . $this->eventId . '/guests', 'events/' . $this->eventId . '/headcount']], $token->claims()->get('mercure'));
     }
 
     /** @return iterable<string, array{EventRole}> */
@@ -447,9 +447,9 @@ final class GuestsTest extends ApiTestCase
 
         $this->as($this->owner, 'PUT', $this->guest($guest), ['fullName' => 'Bisi Adewale', 'email' => 'bisi@example.com'], '"1"');
 
-        $hub = self::service(RecordingHub::class)->published;
-        self::assertCount($published + 1, $hub);
-        $update = Iter\last($hub) ?? self::fail('nothing published');
+        $hub = self::service(RecordingHub::class);
+        self::assertCount($published + 2, $hub->published);
+        $update = $hub->lastOn('events/' . $this->eventId . '/guests') ?? self::fail('nothing published');
         self::assertStringNotContainsString('bisi@example.com', $update->getData());
         self::assertStringContainsString('Bisi Adewale', $update->getData());
     }

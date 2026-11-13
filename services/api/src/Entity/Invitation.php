@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
-use App\Enum\InvitationDelivery;
 use App\Enum\InvitationStatus;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
@@ -69,12 +68,6 @@ class Invitation
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $revokedAt = null;
-
-    #[ORM\Column(type: Types::STRING, length: 20, enumType: InvitationDelivery::class)]
-    private InvitationDelivery $delivery = InvitationDelivery::Queued;
-
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
-    private ?DateTimeImmutable $sentAt = null;
 
     public function __construct(Organisation $organisation, string $email, Role $role, User $invitedBy, string $tokenHash, DateTimeImmutable $expiresAt)
     {
@@ -208,25 +201,5 @@ class Invitation
     public function setRevokedAt(?DateTimeImmutable $revokedAt): void
     {
         $this->revokedAt = $revokedAt;
-    }
-
-    public function getDelivery(): InvitationDelivery
-    {
-        return $this->delivery;
-    }
-
-    public function setDelivery(InvitationDelivery $delivery): void
-    {
-        $this->delivery = $delivery;
-    }
-
-    public function getSentAt(): ?DateTimeImmutable
-    {
-        return $this->sentAt;
-    }
-
-    public function setSentAt(?DateTimeImmutable $sentAt): void
-    {
-        $this->sentAt = $sentAt;
     }
 }

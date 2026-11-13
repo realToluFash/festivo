@@ -1333,7 +1333,7 @@ function PositionSlider({
 }
 
 /** The arrival note's box: BoxField's look, four lines tall at first, growing to ten and then scrolling inside. */
-function NoteBox({
+export function NoteBox({
   wrong = false,
   accessibilityLabel,
   ...rest

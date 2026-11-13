@@ -24,11 +24,13 @@ import {
   asGuest,
   asGuestDetails,
   asGuestList,
+  asHeadcount,
   type Guest,
   type GuestEdit,
   type GuestAnswer,
   type GuestList,
   type GuestPage,
+  type Headcount,
   GUEST_ANSWERS,
   GUEST_PAGE_PHASES,
   type NewGuest,
@@ -2086,7 +2088,23 @@ export class ApiClient {
     );
   }
 
-  /** A hub token for this event's guest list; each change is published there as the whole list, with no email address or mobile number. */
+  /** Needs guests.read on the event (sc-99). */
+  async headcount(eventId: string): Promise<Headcount> {
+    const body = await this.get<{ headcount?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/headcount`,
+    );
+    const headcount = asHeadcount(body?.headcount);
+
+    if (headcount == null) {
+      throw new Error(
+        'The API answered the headcount in a shape this client does not know. Check HeadcountCalculator in services/api.',
+      );
+    }
+
+    return headcount;
+  }
+
+  /** A hub token for this event's guest list and its headcount; each change publishes the whole list, with no email address or mobile number, then the headcount. */
   async guestsSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       `${this.guestsPath(eventId)}/subscriptions`,

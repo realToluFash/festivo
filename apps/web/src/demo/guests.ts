@@ -514,25 +514,34 @@ function party(): Guest[] {
 function draft(): Guest[] {
   return [
     guest('funke', 'Funke Bello', 'notYet', {
-      phone: { country: 'GB', number: '7700 900655' },
+      email: 'funke.bello@gmail.com',
       companions: companions('funke', 1, 'notYet'),
     }),
     guest('leila', 'Leila Mansour', 'notYet', { email: 'leila.mansour@gmail.com' }),
     guest('tobi', 'Tobi Ojo', 'notYet', { email: 'tobi.ojo@gmail.com' }),
+    guest('tola', 'Tola Bakare', 'notYet', {
+      email: 'tola.bakare@gmail.com',
+      phone: { country: 'NG', number: '803 618 2204' },
+    }),
+    guest('grace', 'Grace Mensah', 'notYet', {
+      email: 'grace.mensah@gmail.com',
+      phone: { country: 'GB', number: '7700 900874' },
+    }),
+    guest('ryan', 'Ryan Cole', 'notYet', {
+      email: 'ryan.cole@gmail.com',
+      phone: { country: 'US', number: '202 555 0148' },
+    }),
     ...more(
       [
         ['Tolani Ademola', '', 0],
         ['Toyin Fashola', '', 0],
         ['Uche Nwafor', '', 0],
         ['Vivian Eze', '', 0],
-        ['Wumi Lawal', '', 0],
-        ['Yemisi Ilori', '', 0],
-        ['Yinka Balogun', '', 0],
-        ['Zara Ilesanmi', '', 0],
       ],
       'notYet',
       'notYet',
     ),
+    guest('tomas-os', 'Tomás Okonkwo-Silva', 'notYet'),
   ];
 }
 
@@ -674,6 +683,11 @@ export function peopleOf(list: readonly Guest[]): Person[] {
       companion,
     })),
   ]);
+}
+
+/** The guests Not yet invited, never a companion: Send invitations' audience and the offer's {count} (sc-3971). */
+export function notYetInvited(list: readonly Guest[]): Guest[] {
+  return list.filter((one) => one.reply === 'notYet');
 }
 
 export function inChoice(reply: Reply, choice: Choice): boolean {
@@ -1707,6 +1721,11 @@ export const GUESTS_STATES = [
   { key: 'sendInvited', name: 'Already invited: a press asks nothing' },
   { key: 'sendNoMobile', name: 'Bisi Adewale, no mobile number: not offered' },
   { key: 'sendFinished', name: 'A Finished event: Yusuf Ibrahim is not offered Send' },
+  { key: 'inviteList', name: 'Send invitations in the header' },
+  { key: 'inviteGuest', name: 'Send invitation, first in a guest’s Invitation' },
+  { key: 'inviteGuestMobile', name: 'Send invitation beside Send on WhatsApp' },
+  { key: 'inviteGuestInvited', name: 'Send invitation on a guest already invited' },
+  { key: 'inviteNoneLeft', name: 'After the send, nobody left to invite' },
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number]['key'];
@@ -1786,6 +1805,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'first':
       return { ...start, list: [] };
     case 'inUse':
+    case 'inviteList':
     case 'draft':
     case 'paused':
     case 'eventDeleted':
@@ -1794,7 +1814,22 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return column(guestPane('emeka'), { menu: true });
     case 'filtered':
     case 'guest':
+    case 'inviteGuestInvited':
       return column(guestPane('emeka'));
+    case 'inviteNoneLeft':
+      return {
+        ...start,
+        choice: 'noReply',
+        list: start.list.map((one) =>
+          one.reply === 'notYet'
+            ? {
+                ...one,
+                reply: 'noReply' as const,
+                invited: { by: null, how: null, on: TODAY },
+              }
+            : one,
+        ),
+      };
     case 'search':
       return { ...start, q: 'okon' };
     case 'searchNone':
@@ -1971,6 +2006,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'markNotSaved':
       return column(guestPane('bisi', { invite: 'markNotSaved' }));
     case 'sendNone':
+    case 'inviteGuestMobile':
       return send();
     case 'sendQuestion':
       return send({ asked: ['yusuf'] });
@@ -2015,6 +2051,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'sendFinished':
       return send({ clock: CLOCKS.finished });
     case 'notYetFilter':
+    case 'inviteGuest':
       return column(guestPane('bisi'), { choice: 'notYet' });
     case 'invitedByMessage':
       return column(guestPane('marta'), { choice: 'coming' });
@@ -2343,6 +2380,13 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'exportFailed',
     'exportReady',
     'exportGrantView',
+  ]),
+  group('Send invitations (sc-3971)', [
+    'inviteList',
+    'inviteGuest',
+    'inviteGuestMobile',
+    'inviteGuestInvited',
+    'inviteNoneLeft',
   ]),
   group('Send on WhatsApp (sc-26025)', [
     'sendNone',
