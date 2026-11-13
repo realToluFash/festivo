@@ -1815,7 +1815,7 @@
   },
   "eventDelete": {
     "open": "Supprimer l’événement…",
-    "screen": "Delete event",
+    "screen": "Supprimer l’événement",
     "note": "Supprime l’événement et tout son contenu pour toute votre équipe. Les invités qui ouvrent leur lien voient qu’il n’est plus disponible.",
     "title": "Supprimer {{event}} ?",
     "draftBody": "C’est un brouillon dont la liste d’invités est vide. Il sera supprimé pour toute votre équipe.",
