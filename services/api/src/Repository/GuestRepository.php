@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\Organisation;
+use App\Enum\EventStatus;
 use App\Http\Access\Interfaces\EventScopedRepositoryInterface;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -91,7 +92,7 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
             ->getOneOrNullResult();
     }
 
-    /** Only through an event that is not deleted, so a deleted event's links answer as unknown ones and a restore brings them back (sc-1526). */
+    /** Only through an event that is neither deleted nor a Draft, so their links answer as unknown ones and a restore brings them back (sc-1526, sc-3591). */
     public function findOneByLink(#[SensitiveParameter] string $token): ?Guest
     {
         /** @var ?Guest */
@@ -100,7 +101,9 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
             ->where('g.linkToken = :token')
             ->andWhere('g.host IS NULL')
             ->andWhere('e.deletedAt IS NULL')
+            ->andWhere('e.status != :draft')
             ->setParameter('token', $token)
+            ->setParameter('draft', EventStatus::Draft->value)
             ->getQuery()
             ->getOneOrNullResult();
     }
