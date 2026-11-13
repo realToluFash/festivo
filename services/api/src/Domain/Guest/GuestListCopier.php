@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Guest;
 
 use App\Audit\Auditor;
+use App\Domain\Guest\Link\InvitationLinks;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
@@ -31,7 +32,7 @@ final readonly class GuestListCopier
             $host = $guest->getHost();
 
             if (null === $host) {
-                $hosts[$guest->getId()->toRfc4122()] = $this->added(Guest::invited($copy, (string) $guest->getFullName(), (string) $guest->getNameKey(), $guest->getEmail(), $guest->getMobile(), $by), $by);
+                $hosts[$guest->getId()->toRfc4122()] = $this->added(Guest::invited($copy, (string) $guest->getFullName(), (string) $guest->getNameKey(), $guest->getEmail(), $guest->getMobile(), $by, InvitationLinks::token()), $by);
                 ++$copied;
 
                 continue;
