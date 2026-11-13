@@ -244,6 +244,22 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
   });
 
+  it('offers Change dates on a Draft whose end has passed, opening its dates', SLOW, async () => {
+    const router = await guests('draftPast');
+
+    expect(
+      screen.getByText(
+        'This event’s end has passed, so it cannot be made live. Change its dates first.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Change dates' }));
+    await waitFor(
+      () => expect(router.state.location.pathname).toBe('/demo/events/evt-shower-2'),
+      WAIT,
+    );
+  });
+
   it('answers not-found once the event is deleted (sc-1468)', SLOW, async () => {
     open('/demo/guests?state=eventDeleted');
     const gone = await screen.findByRole(
