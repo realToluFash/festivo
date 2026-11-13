@@ -176,6 +176,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   const [gone, setGone] = useState(false);
   const [held, setHeld] = useState<ReturnType<typeof focused>>(null);
   const seen = useRef(standing(first));
+  const sends = useRef(0);
   const wide = useWideWidth();
   const { guest, event } = page;
   const hosts = hostsLine(event.hosts, currentLocale());
@@ -207,9 +208,15 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      api.guestPage(token).then(refreshed, (error: unknown) => {
-        if (error instanceof ApiError && error.status === 404) setGone(true);
-      });
+      const asked = sends.current;
+      api.guestPage(token).then(
+        (next) => {
+          if (asked === sends.current) refreshed(next);
+        },
+        (error: unknown) => {
+          if (error instanceof ApiError && error.status === 404) setGone(true);
+        },
+      );
     }, REFRESH_MS);
 
     return () => clearInterval(timer);
@@ -217,6 +224,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   }, [token]);
 
   function send(answer: GuestAnswer, onFail: () => void): void {
+    sends.current += 1;
     api.sendGuestAnswer(token, answer).then(
       (next) => {
         forgetStarted(token);

@@ -736,6 +736,39 @@ describe('a page left open (sc-3591)', () => {
     await waitFor(() => expect(document.activeElement).toBe(h1));
   });
 
+  it('keeps the answer just sent when a poll asked before it lands after it', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    let land: (response: Response) => void = () => undefined;
+    const pages = [
+      Promise.resolve(json({ status: 200, body: PAGE })),
+      new Promise<Response>((resolve) => {
+        land = resolve;
+      }),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = new URL(typeof input === 'string' ? input : (input as Request).url).pathname;
+      if (path === '/api/guest-links/reply') {
+        return json({ status: 200, body: answered('notComing') });
+      }
+      const next = pages.shift();
+      if (next == null) throw new TypeError('Failed to fetch');
+
+      return next;
+    });
+    open();
+    await screen.findByRole('heading', { level: 1 });
+
+    await later();
+    fireEvent.click(screen.getByRole('button', { name: 'Sorry, I can’t' }));
+    const greeting = await screen.findByRole('heading', { name: `We’ll miss you, ${ADAEZE}.` });
+    await act(async () => {
+      land(json({ status: 200, body: PAGE }));
+    });
+
+    expect(greeting.isConnected).toBe(true);
+    expect(screen.getByRole('button', { name: 'Change my answer' })).toBeDefined();
+  });
+
   it('leaves focus where it was when nothing it held goes away', async () => {
     await leftOpen(PAGE, { ...PAGE, phase: 'paused', answersOpen: false });
     const tell = screen.getByRole('button', { name: `Not ${ADAEZE}? Tell us` });
