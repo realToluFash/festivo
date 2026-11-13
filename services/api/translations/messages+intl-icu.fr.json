@@ -31,6 +31,7 @@
     "validation.seating_room_name_too_long": "Raccourcissez le nom de la salle à {count, number, ::group-auto} caractères maximum.",
     "validation.seating_section_name_taken": "Ce plan a déjà une zone nommée {name}.",
     "validation.event_host_too_long": "Le nom d’un hôte ne peut pas dépasser {count, number, ::group-auto} caractères. Celui-ci en compte {length, number, ::group-auto}.",
+    "validation.event_thank_you_too_long": "A thank-you can be at most {count, number, ::group-auto} characters.",
     "validation.event_hosts_too_many": "Un événement peut avoir {count, number, ::group-auto} hôtes au maximum.",
     "eventChanges.title.made_live": "{name} a publié l’événement",
     "eventChanges.title.paused": "{name} a mis l’événement en pause",

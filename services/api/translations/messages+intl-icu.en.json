@@ -31,6 +31,7 @@
     "validation.seating_room_name_too_long": "Shorten the room name to {count, number, ::group-auto} characters or fewer.",
     "validation.seating_section_name_taken": "This plan already has a section called {name}.",
     "validation.event_host_too_long": "A host's name can be at most {count, number, ::group-auto} characters. This one has {length, number, ::group-auto}.",
+    "validation.event_thank_you_too_long": "A thank-you can be at most {count, number, ::group-auto} characters.",
     "validation.event_hosts_too_many": "An event can have at most {count, number, ::group-auto} hosts.",
     "eventChanges.title.made_live": "{name} made the event live",
     "eventChanges.title.paused": "{name} paused the event",

@@ -43,6 +43,7 @@ final readonly class EventLifecycle
         private ClockInterface $clock,
         private TranslatorInterface $translator,
         private EventChangeRecorder $eventChangeRecorder,
+        private ThankYouEditor $thankYouEditor,
     ) {
     }
 
@@ -51,10 +52,23 @@ final readonly class EventLifecycle
         return $this->move($event, EventAction::MakeLive, self::MADE_LIVE, $by, static fn (Event $event, DateTimeImmutable $now) => $event->makeLive($now));
     }
 
-    /** Before the start this calls the event off, and after it ends it early: one action, refused once the end has passed (sc-3585). */
-    public function end(Event $event, User $by): Event
+    /** Before the start this calls the event off, and after it ends it early: one action, refused once the end has passed (sc-3585); a call-off takes no thank-you. */
+    public function end(Event $event, User $by, ?string $thankYou = null): Event
     {
-        return $this->move($event, EventAction::End, self::ENDED, $by, static fn (Event $event, DateTimeImmutable $now) => $event->end($now));
+        $line = $this->thankYouEditor->clean($thankYou);
+
+        return $this->move($event, EventAction::End, self::ENDED, $by, function (Event $event, DateTimeImmutable $now) use ($line, $by): void {
+            if (null !== $line && EventPhase::calledOff($now, $event->getStartsAt())) {
+                throw $this->stateInvalid($event, $now);
+            }
+
+            $event->end($now);
+
+            if (null !== $line) {
+                $event->setThankYou($line);
+                $this->auditor->record(ThankYouEditor::SAVED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), []);
+            }
+        });
     }
 
     /** Refused while it is Finished, as Resume is: a pause stops guests and keeps everything (sc-3586). */

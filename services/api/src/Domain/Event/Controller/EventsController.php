@@ -10,6 +10,7 @@ use App\Domain\Event\EventEditor;
 use App\Domain\Event\EventLifecycle;
 use App\Domain\Event\Http\EventSerialiser;
 use App\Domain\Event\Http\MilestoneSerialiser;
+use App\Domain\Event\ThankYouEditor;
 use App\Entity\Event;
 use App\Entity\Organisation;
 use App\Entity\User;
@@ -58,6 +59,7 @@ final readonly class EventsController
         private MilestoneSerialiser $milestoneSerialiser,
         private ClockInterface $clock,
         private EventDuplicator $eventDuplicator,
+        private ThankYouEditor $thankYouEditor,
     ) {
     }
 
@@ -193,12 +195,26 @@ final readonly class EventsController
         return $this->tagged($this->eventLifecycle->makeLive($this->event($eventId), $this->user()));
     }
 
-    /** Calls the event off before its start and ends it early after: refused 409 `event_state_invalid` unless Live or Paused, and 409 `event_concluded` once its end has passed (sc-3585). */
+    /** Calls the event off before its start and ends it early after: refused 409 `event_state_invalid` unless Live or Paused, or on a call-off with a `thankYou`, and 409 `event_concluded` once its end has passed. */
     #[Route('/api/events/{eventId}/end', name: 'events_end', methods: ['POST'])]
     #[InEvent(Permission::EventsManage)]
-    public function end(string $eventId): JsonResponse
+    public function end(Request $request, string $eventId): JsonResponse
     {
-        return $this->tagged($this->eventLifecycle->end($this->event($eventId), $this->user()));
+        $body = '' === Str\trim($request->getContent()) ? [] : Input::body($request, Type\shape([
+            'thankYou' => Type\optional(Type\nullable(Type\string())),
+        ]));
+
+        return $this->tagged($this->eventLifecycle->end($this->event($eventId), $this->user(), $body['thankYou'] ?? null));
+    }
+
+    /** Saved empty, the line is removed. Refused 409 `event_state_invalid` unless the event is Finished and was not called off, and 422 over 280 characters (sc-6476). */
+    #[Route('/api/events/{eventId}/thank-you', name: 'events_thank_you', methods: ['PUT'])]
+    #[InEvent(Permission::EventsManage)]
+    public function thankYou(Request $request, string $eventId): JsonResponse
+    {
+        $body = Input::body($request, Type\shape(['thankYou' => Type\nullable(Type\string())]));
+
+        return $this->tagged($this->thankYouEditor->save($this->event($eventId), $body['thankYou'], $this->user()));
     }
 
     /** Refused 409 `event_state_invalid` unless it is Live and not yet Finished (sc-3586). */

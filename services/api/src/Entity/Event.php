@@ -34,6 +34,8 @@ class Event implements SoftDeletableInterface
 
     public const int HOSTS_MAXIMUM = 6;
 
+    public const int THANK_YOU_MAXIMUM = 280;
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -121,6 +123,9 @@ class Event implements SoftDeletableInterface
     /** @var list<string> the hosts' names as guests read them, in order (sc-6713) */
     #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
     private array $hosts = [];
+
+    #[ORM\Column(type: Types::STRING, length: self::THANK_YOU_MAXIMUM, nullable: true)]
+    private ?string $thankYou = null;
 
     /** Moved by CalendarChangeListener only when what a guest's calendar shows changes, so a pause leaves a subscribed calendar as it was (sc-3627). */
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
@@ -298,6 +303,17 @@ class Event implements SoftDeletableInterface
     {
         $this->status = EventStatus::Live;
         $this->pausedAt = null;
+    }
+
+    public function getThankYou(): ?string
+    {
+        return $this->thankYou;
+    }
+
+    /** Only ThankYouEditor calls this, once the event is Finished and the line is cleaned (sc-6476). */
+    public function setThankYou(?string $thankYou): void
+    {
+        $this->thankYou = $thankYou;
     }
 
     public function getCalendarSequence(): int

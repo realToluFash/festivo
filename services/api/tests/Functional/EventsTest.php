@@ -1763,7 +1763,7 @@ final class EventsTest extends ApiTestCase
     /**
      * Made live while its end is ahead, then moved to `$startsAt` and `$endsAt` in the database, as time would.
      *
-     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>}
+     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, hosts: list<string>, thankYou: ?string, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>}
      */
     private function live(string $startsAt, string $endsAt): array
     {
@@ -1819,7 +1819,7 @@ final class EventsTest extends ApiTestCase
     /**
      * @param array<string, mixed> $body
      *
-     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>}
+     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, hosts: list<string>, thankYou: ?string, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>}
      */
     private function event(array $body): array
     {
@@ -1837,6 +1837,7 @@ final class EventsTest extends ApiTestCase
             'cover' => Type\null(),
             'venue' => Type\mixed(),
             'hosts' => Type\vec(Type\string()),
+            'thankYou' => Type\nullable(Type\string()),
             'madeLiveAt' => Type\nullable(Type\string()),
             'pausedAt' => Type\nullable(Type\string()),
             'phase' => Type\string(),

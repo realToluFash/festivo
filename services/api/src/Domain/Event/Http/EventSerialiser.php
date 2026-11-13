@@ -30,7 +30,7 @@ final readonly class EventSerialiser
     ) {
     }
 
-    /** @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>} */
+    /** @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, hosts: list<string>, thankYou: ?string, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>} */
     public function event(Event $event, Grants $grants): array
     {
         return $this->serialise($event, $this->eventCoverRepository->findOneForEvent($event), $grants);
@@ -39,7 +39,7 @@ final readonly class EventSerialiser
     /**
      * @param list<Event> $events
      *
-     * @return list<array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>}>
+     * @return list<array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, hosts: list<string>, thankYou: ?string, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>}>
      */
     public function events(array $events, EventScope $scope): array
     {
@@ -48,7 +48,7 @@ final readonly class EventSerialiser
         return Vec\map($events, fn (Event $event): array => $this->serialise($event, $covers[$event->getId()->toRfc4122()] ?? null, $scope->on($event->getId()) ?? Grants::only([])));
     }
 
-    /** @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>} */
+    /** @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, hosts: list<string>, thankYou: ?string, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>} */
     private function serialise(Event $event, ?EventCover $cover, Grants $grants): array
     {
         $venue = EventVenue::of($event);
@@ -69,6 +69,7 @@ final readonly class EventSerialiser
             'cover' => null === $cover ? null : $this->cover($cover),
             'venue' => null === $venue ? null : ['name' => $venue->name, 'address' => null === $venue->address ? null : $this->address($venue->address)],
             'hosts' => $event->getHosts(),
+            'thankYou' => $event->getThankYou(),
             'madeLiveAt' => $event->getMadeLiveAt()?->format(\DATE_ATOM),
             'pausedAt' => EventPhase::Paused === $phase ? $event->getPausedAt()?->format(\DATE_ATOM) : null,
             'phase' => $phase->value,

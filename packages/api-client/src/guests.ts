@@ -92,6 +92,8 @@ export interface GuestPage {
     cover: EventCover | null;
     /** The names guests read, in order (sc-6713). */
     hosts: string[];
+    /** The hosts' own words, never translated; only once it is Finished (sc-6476). */
+    thankYou: string | null;
     /** With the event's own offset. */
     startsAt: string;
     timeZone: string;

@@ -130,7 +130,7 @@ final class GuestLinksTest extends ApiTestCase
         self::assertSame(200, $this->statusCode());
         self::assertSame([
             'guest' => ['fullName' => self::ADAEZE, 'reply' => null, 'companions' => 0],
-            'event' => ['id' => $this->eventId, 'name' => "Amara & Tobi's wedding", 'type' => 'wedding', 'cover' => null, 'hosts' => ['Funmi Adeyemi'], 'startsAt' => '2030-11-14T16:00:00+01:00', 'timeZone' => 'Africa/Lagos', 'venue' => null],
+            'event' => ['id' => $this->eventId, 'name' => "Amara & Tobi's wedding", 'type' => 'wedding', 'cover' => null, 'hosts' => ['Funmi Adeyemi'], 'thankYou' => null, 'startsAt' => '2030-11-14T16:00:00+01:00', 'timeZone' => 'Africa/Lagos', 'venue' => null],
             'phase' => 'live',
             'started' => false,
             'answersOpen' => true,
