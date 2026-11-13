@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { writePressed, writeSettled, writeSwitchOf } from './guestsWrite.ts';
 
-describe('Guests can write to you, the switch (sc-3978)', () => {
+describe('Guests can write from their page, the switch (sc-3978)', () => {
   it('opens on, and each state where it is drawn', () => {
     expect(writeSwitchOf(null)).toEqual({
       saved: true,

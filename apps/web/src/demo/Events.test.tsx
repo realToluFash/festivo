@@ -392,9 +392,8 @@ describe('Events in A at a desk (sc-30304)', () => {
   });
 });
 
-describe('Guests can write to you, on the Overview (sc-3978)', () => {
-  const NAME = 'Guests can write to you';
-  const OFF = 'What guests already sent stays in Messages, and you can still answer it.';
+describe('Guests can write from their page, on the Overview (sc-3978)', () => {
+  const NAME = 'Guests can write from their page';
 
   beforeEach(() => {
     __setConfig({ ...tested, environment: 'development' });
@@ -419,7 +418,7 @@ describe('Guests can write to you, on the Overview (sc-3978)', () => {
       expect(block.querySelector('.ev-dashed')).not.toBeNull();
       expect(
         within(block).getAllByText(
-          'A box on each guest’s page. What they write lands in Messages.',
+          'Changes it for everyone on this event. Texts and emails still arrive.',
         ),
       ).toHaveLength(2);
       expect(write.getAttribute('aria-checked')).toBe('true');
@@ -433,15 +432,14 @@ describe('Guests can write to you, on the Overview (sc-3978)', () => {
 
       await waitFor(() => expect(write.getAttribute('aria-busy')).toBe('false'), WAIT);
       expect(write.textContent).toBe('Off');
-      expect(screen.getByText(OFF)).toBeDefined();
     },
   );
 
-  it('opens Off with its line, Saving busy, and Not saved back On', SLOW, async () => {
+  it('opens Off, Saving busy, and Not saved back On', SLOW, async () => {
     const off = await guestsSwitch('guestsCanWriteOff');
 
     expect(off.getAttribute('aria-checked')).toBe('false');
-    expect(screen.getByText(OFF)).toBeDefined();
+    expect(off.textContent).toBe('Off');
     cleanup();
 
     const saving = await guestsSwitch('guestsCanWriteSaving');

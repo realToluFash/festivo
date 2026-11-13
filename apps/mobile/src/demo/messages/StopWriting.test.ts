@@ -28,21 +28,19 @@ function start(state: (typeof STOP_STATES)[number]) {
 }
 
 describe('the stopped line', () => {
-  it('names who stopped them, the short weekday date and the 24-hour time', () => {
+  it('names the member who stopped them and the short weekday date', () => {
     expect(stoppedLine(SEEDED_STOP)).toBe(
-      'Folake Adeyemi stopped them writing from their page on Mon, Nov 2 at 20:15.',
+      'Tunde Bakare stopped them writing from their page on Mon, Nov 2.',
     );
   });
 
-  it('a live stop reads the demo’s clock', () => {
-    expect(stoppedLine(LIVE_STOP)).toBe(
-      'Folake Adeyemi stopped them writing from their page on Tue, Nov 3 at 09:41.',
-    );
+  it('says You to the member who stopped them, on the demo’s clock', () => {
+    expect(stoppedLine(LIVE_STOP)).toBe('You stopped them writing from their page on Tue, Nov 3.');
   });
 
-  it('follows the locale’s date, and keeps the 24-hour clock', () => {
+  it('follows the locale’s date', () => {
     expect(stoppedLine(SEEDED_STOP, 'en-GB')).toBe(
-      'Folake Adeyemi stopped them writing from their page on Mon 2 Nov at 20:15.',
+      'Tunde Bakare stopped them writing from their page on Mon 2 Nov.',
     );
   });
 });
@@ -108,7 +106,7 @@ describe('the stop’s save', () => {
     expect(failed).toMatchObject({ failed: 'letAgain', stopped: { ines: SEEDED_STOP } });
   });
 
-  it('Let them keep writing closes the ask and its alert', () => {
+  it('Cancel closes the ask and its alert', () => {
     expect(keepWriting({ ...NO_STOPS, asking: true, failed: 'stop' })).toMatchObject({
       asking: false,
       failed: null,

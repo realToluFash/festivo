@@ -13,9 +13,9 @@ const WAIT = { timeout: 8000 };
 const AT = '/demo/events/evt-wed-4/messages';
 const ITEM = 'Stop Inês Duarte writing from their page…';
 const TITLE = 'Stop Inês Duarte writing from their page?';
-const GO = 'Stop Inês Duarte writing from their page';
-const SEEDED = 'Folake Adeyemi stopped them writing from their page on Mon, Nov 2 at 20:15.';
-const LIVE = 'Folake Adeyemi stopped them writing from their page on Tue, Nov 3 at 09:41.';
+const GO = 'Stop';
+const SEEDED = 'Tunde Bakare stopped them writing from their page on Mon, Nov 2.';
+const LIVE = 'You stopped them writing from their page on Tue, Nov 3.';
 
 async function messages(state: string): Promise<void> {
   const router = createMemoryRouter(routes, { initialEntries: [`${AT}?state=${state}`] });
@@ -63,8 +63,8 @@ describe('stop writing from their page, at a desk (sc-3978)', () => {
     const buttons = within(ask).getAllByRole('button');
 
     expect(screen.queryByRole('menu')).toBeNull();
-    expect(within(ask).getByText(/^Their page loses the box to write to you/u)).toBeDefined();
-    expect(buttons.map((one) => one.textContent)).toEqual(['Let them keep writing', GO]);
+    expect(within(ask).getByText(/^The box to write to you leaves their page/u)).toBeDefined();
+    expect(buttons.map((one) => one.textContent)).toEqual(['Cancel', GO]);
     expect(buttons[1]?.classList.contains('is-red')).toBe(false);
     fireEvent.click(buttons[1] as HTMLElement);
     expect(within(ask).getByRole('button', { name: GO }).getAttribute('aria-busy')).toBe('true');
@@ -110,11 +110,11 @@ describe('stop writing from their page, at a desk (sc-3978)', () => {
     },
   );
 
-  it('opens stopAsk asked, and Let them keep writing changes nothing', SLOW, async () => {
+  it('opens stopAsk asked, and Cancel changes nothing', SLOW, async () => {
     await messages('stopAsk');
     const ask = screen.getByRole('alertdialog', { name: TITLE });
 
-    fireEvent.click(within(ask).getByRole('button', { name: 'Let them keep writing' }));
+    fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(document.querySelector('.mgs-inset')).toBeNull();
   });

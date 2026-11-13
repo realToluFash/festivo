@@ -1549,22 +1549,22 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=muteNotSaved',
       },
       {
-        title: 'Guests can write to you · off',
-        what: 'What guests already sent stays in Messages',
+        title: 'Guests can write from their page · off',
+        what: 'Off, and the guests’ pages lose the box',
         href: '/demo/events/evt-wed-4?state=guestsCanWriteOff',
       },
       {
-        title: 'Guests can write to you · saving',
+        title: 'Guests can write from their page · saving',
         what: 'The pressed value, busy',
         href: '/demo/events/evt-wed-4?state=guestsCanWriteSaving',
       },
       {
-        title: 'Guests can write to you · not saved',
+        title: 'Guests can write from their page · not saved',
         what: 'Back to On, Not saved. Try again.',
         href: '/demo/events/evt-wed-4?state=guestsCanWriteFailed',
       },
       {
-        title: 'Guests can write to you · read only',
+        title: 'Guests can write from their page · read only',
         what: 'Without messages.manage: On, not changeable',
         href: '/demo/events/evt-wed-4?state=guestsCanWriteReadOnly',
       },

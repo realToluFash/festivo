@@ -3,7 +3,7 @@ export const WRITE_MS = 600;
 export type WriteState =
   'guestsCanWriteOff' | 'guestsCanWriteSaving' | 'guestsCanWriteFailed' | 'guestsCanWriteReadOnly';
 
-/** Guests can write to you (sc-3978): what is saved, what the switch shows, and whether this member may change it. */
+/** Guests can write from their page (sc-3978): what is saved, what the switch shows, and whether this member may change it. */
 export interface WriteSwitch {
   saved: boolean;
   shown: boolean;

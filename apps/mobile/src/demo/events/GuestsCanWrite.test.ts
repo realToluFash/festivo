@@ -11,7 +11,7 @@ import {
   writeWord,
 } from './GuestsCanWrite.ts';
 
-describe('Guests can write to you', () => {
+describe('Guests can write from their page', () => {
   it('is On as the event opens, with nothing under it', () => {
     const on = writeSwitchOf(null);
     expect(on).toMatchObject({ on: true, saving: false, canChange: true });
@@ -27,9 +27,7 @@ describe('Guests can write to you', () => {
     const off = writeSettled(busy, true);
     expect(off).toMatchObject({ on: false, saved: false, saving: false });
     expect(writeWord(off)).toBe('Off');
-    expect(writeLines(off).note).toBe(
-      'What guests already sent stays in Messages, and you can still answer it.',
-    );
+    expect(writeLines(off)).toEqual({ note: null, alert: null });
   });
 
   it('a failed save goes back to what was saved, with Mute’s alert words', () => {

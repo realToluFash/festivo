@@ -1,4 +1,3 @@
-import { writtenTime } from './clock.ts';
 import { demoWords } from './demoWords.ts';
 import { SW } from './messagesStopWords.ts';
 
@@ -21,6 +20,7 @@ export type StopState = (typeof STOP_STATES)[number]['key'];
 
 export const STOP_MS = 600;
 export const STOPPED_AT = '2026-11-02T20:15:00Z';
+export const OTHER_MEMBER = 'Tunde Bakare';
 export const STOP_ZONE = 'Europe/London';
 
 export interface Stop {
@@ -32,7 +32,12 @@ export function isStopState(state: string | null): state is StopState {
   return STOP_STATES.some((one) => one.key === state);
 }
 
-export function stoppedLine(stop: Stop, locale = 'en-US', timeZone = STOP_ZONE): string {
+export function stoppedLine(
+  stop: Stop,
+  reader: string,
+  locale = 'en-US',
+  timeZone = STOP_ZONE,
+): string {
   const date = new Intl.DateTimeFormat(locale, {
     weekday: 'short',
     month: 'short',
@@ -40,11 +45,9 @@ export function stoppedLine(stop: Stop, locale = 'en-US', timeZone = STOP_ZONE):
     timeZone,
   }).format(new Date(stop.at));
 
-  return sw.filled(SW.stoppedLine, {
-    member: stop.by,
-    date,
-    time: writtenTime(stop.at, locale, timeZone),
-  });
+  return stop.by === reader
+    ? sw.filled(SW.youStoppedLine, { date })
+    : sw.filled(SW.stoppedLine, { member: stop.by, date });
 }
 
 export function stopItem(guest: string, stopped: boolean): string {
@@ -52,7 +55,6 @@ export function stopItem(guest: string, stopped: boolean): string {
 }
 
 export const stopTitle = (guest: string): string => sw.filled(SW.stopTitle, { guest });
-export const stopGo = (guest: string): string => sw.filled(SW.stopGo, { guest });
 export const letAgainSaid = (guest: string): string => sw.filled(SW.letAgainSaid, { guest });
 
 export type Saving = 'idle' | 'busy' | 'failed';

@@ -364,12 +364,12 @@ export const say = {
   ownDesign: (what: string) => `${what.replace(/…$/u, '')} has its own design.`,
 };
 
-/** sc-3978's stop in a guest's conversation, in the spec's English (pm #44757). */
+/** sc-3978's stop in a guest's conversation, in l10n's English (#44809). */
 export const STOP = {
   moreActions: 'More actions',
   letThemWriteAgain: 'Let them write again',
-  keepWriting: 'Let them keep writing',
-  line: 'Their page loses the box to write to you, and they aren’t told. Their emails, texts and WhatsApp messages still land here.',
+  line: 'The box to write to you leaves their page. Their texts, emails and WhatsApp messages still reach you here, and they are not told.',
+  stop: 'Stop',
   notSaved: 'Not saved. Try again.',
   cancel: 'Cancel',
 } as const;
@@ -377,8 +377,8 @@ export const STOP = {
 export const sayStop = {
   item: (guest: string) => `Stop ${guest} writing from their page…`,
   title: (guest: string) => `Stop ${guest} writing from their page?`,
-  confirm: (guest: string) => `Stop ${guest} writing from their page`,
-  stopped: (member: string, date: string, time: string) =>
-    `${member} stopped them writing from their page on ${date} at ${time}.`,
+  stopped: (member: string, date: string) =>
+    `${member} stopped them writing from their page on ${date}.`,
+  youStopped: (date: string) => `You stopped them writing from their page on ${date}.`,
   writesAgain: (guest: string) => `${guest} can write from their page again.`,
 };

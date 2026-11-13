@@ -14,7 +14,6 @@ import {
   letAgainSaid,
   stopFlowAfter,
   stopFlowOf,
-  stopGo,
   stopItem,
   stopTitle,
   stoppedLine,
@@ -167,7 +166,7 @@ export function useStopWriting(
       <Glyph name="slash" size={18} weight={2.2} className="mgs-inset-mark" />
       <div className="mgs-inset-words">
         <p className="mgs-inset-line" tabIndex={-1} data-focus="stop-line">
-          {stoppedLine(stop)}
+          {stoppedLine(stop, READER)}
         </p>
         {to.manage && (
           <button
@@ -192,9 +191,9 @@ export function useStopWriting(
       title={stopTitle(name)}
       line={SW.stopLine}
       keep={SW.stopKeep}
-      go={stopGo(name)}
+      go={SW.stopGo}
       red={false}
-      busy={asking ? stopGo(name) : undefined}
+      busy={asking ? SW.stopGo : undefined}
       failed={flow.ask === 'failed' ? SW.notSaved : undefined}
       onKeep={() => {
         step('keep');

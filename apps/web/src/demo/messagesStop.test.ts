@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { CLOCK, MESSAGES_PAGES, MESSAGE_STATES, READER, changed, seedOf } from './messages.ts';
 import {
   IDLE,
+  OTHER_MEMBER,
   STOPPED_AT,
   STOP_GROUP,
   STOP_STATES,
   letAgainSaid,
   stopFlowAfter,
   stopFlowOf,
-  stopGo,
   stopItem,
   stopTitle,
   stoppedLine,
@@ -29,24 +29,25 @@ describe('stop writing from their page, the rules (sc-3978)', () => {
     expect(MESSAGES_PAGES[0]?.states.some((one) => one.to.includes('stopped'))).toBe(false);
   });
 
-  it('says who stopped them and when: the locale’s short weekday date, the 24-hour clock', () => {
-    expect(stoppedLine({ by: READER, at: STOPPED_AT })).toBe(
-      'Folake Adeyemi stopped them writing from their page on Mon, Nov 2 at 20:15.',
+  it('says who stopped them, or You to that member, and the locale’s short weekday date', () => {
+    expect(stoppedLine({ by: OTHER_MEMBER, at: STOPPED_AT }, READER)).toBe(
+      'Tunde Bakare stopped them writing from their page on Mon, Nov 2.',
     );
-    expect(stoppedLine({ by: READER, at: CLOCK })).toBe(
-      'Folake Adeyemi stopped them writing from their page on Tue, Nov 3 at 09:41.',
+    expect(stoppedLine({ by: READER, at: CLOCK }, READER)).toBe(
+      'You stopped them writing from their page on Tue, Nov 3.',
     );
-    expect(stoppedLine({ by: READER, at: STOPPED_AT }, 'en-GB')).toContain('Mon 2 Nov at 20:15');
+    expect(stoppedLine({ by: OTHER_MEMBER, at: STOPPED_AT }, READER, 'en-GB')).toContain(
+      'on Mon 2 Nov.',
+    );
     expect(
-      stoppedLine({ by: READER, at: '2026-11-02T23:30:00Z' }, 'en-US', 'Asia/Tokyo'),
-    ).toContain('Tue, Nov 3 at 08:30');
+      stoppedLine({ by: OTHER_MEMBER, at: '2026-11-02T23:30:00Z' }, READER, 'en-US', 'Asia/Tokyo'),
+    ).toContain('on Tue, Nov 3.');
   });
 
-  it('names the guest in the item, the title and the verb; the item turns once they are stopped', () => {
+  it('names the guest in the item and the title; the item turns once they are stopped', () => {
     expect(stopItem(INES, false)).toBe('Stop Inês Duarte writing from their page…');
     expect(stopItem(INES, true)).toBe('Let them write again');
     expect(stopTitle(INES)).toBe('Stop Inês Duarte writing from their page?');
-    expect(stopGo(INES)).toBe('Stop Inês Duarte writing from their page');
     expect(letAgainSaid(INES)).toBe('Inês Duarte can write from their page again.');
   });
 
@@ -56,7 +57,7 @@ describe('stop writing from their page, the rules (sc-3978)', () => {
     expect(stopFlowOf('stopFailed')).toEqual({ ...IDLE, ask: 'failed' });
     expect(stopFlowOf('letAgainFailed')).toEqual({ ...IDLE, letting: 'failed' });
     expect(stopFlowOf('stopped')).toEqual(IDLE);
-    expect(seedOf('stopped').stopped?.ines).toEqual({ by: READER, at: STOPPED_AT });
+    expect(seedOf('stopped').stopped?.ines).toEqual({ by: OTHER_MEMBER, at: STOPPED_AT });
     expect(seedOf('stoppedNoManage').stopped?.ines).toBeDefined();
     expect(seedOf('stopAsk').stopped?.ines).toBeUndefined();
     expect(seedOf('stopAsk').pane).toEqual({ kind: 'convo', id: 'ines' });

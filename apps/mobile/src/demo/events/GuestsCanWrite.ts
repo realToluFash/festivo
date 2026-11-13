@@ -51,7 +51,7 @@ export function writeLines(s: WriteSwitch): { note: string | null; alert: string
   if (!s.canChange) return { note: W.guestsCanWriteReadOnly, alert: null };
   if (s.failed) return { note: null, alert: W.muteNotSaved };
 
-  return { note: s.on || s.saving ? null : W.guestsCanWriteOffNote, alert: null };
+  return { note: null, alert: null };
 }
 
 export function writeWord(s: WriteSwitch): string {

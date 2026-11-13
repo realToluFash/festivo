@@ -16,11 +16,7 @@ export function GuestsCanWrite({ state }: { state: string | null }) {
   const [write, setWrite] = useState(() => writeSwitchOf(state));
   const timer = useRef<number | null>(null);
   const words = { on: t('notificationSettings.on'), off: t('notificationSettings.off') };
-  const note = !write.canChange
-    ? W.guestsCanWriteReadOnly
-    : !write.saved && !write.busy
-      ? W.guestsCanWriteOff
-      : null;
+  const note = write.canChange ? null : W.guestsCanWriteReadOnly;
   const told = [`${id}-line`, note == null ? null : `${id}-note`].filter(Boolean).join(' ');
 
   useEffect(

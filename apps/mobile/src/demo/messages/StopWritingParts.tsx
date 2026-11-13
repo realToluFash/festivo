@@ -279,7 +279,7 @@ export function StopAsk({
     <Sheet
       open={open}
       onClose={onKeep}
-      scrimLabel={STOP.keepWriting}
+      scrimLabel={STOP.cancel}
       held={saving}
       opener={opener}
       headingTakesFocus
@@ -305,7 +305,7 @@ export function StopAsk({
             dismiss={
               <View style={phone ? styles.dismissPhone : undefined}>
                 <TextAction
-                  label={STOP.keepWriting}
+                  label={STOP.cancel}
                   onPress={onKeep}
                   off={saving}
                   testID="messages.stopAsk.keep"
@@ -313,12 +313,7 @@ export function StopAsk({
               </View>
             }
             confirm={
-              <ConfirmButton
-                label={sayStop.confirm(name)}
-                busy={saving}
-                phone={phone}
-                onPress={onConfirm}
-              />
+              <ConfirmButton label={STOP.stop} busy={saving} phone={phone} onPress={onConfirm} />
             }
           />
         </View>

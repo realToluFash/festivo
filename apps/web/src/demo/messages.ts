@@ -17,7 +17,14 @@ import {
 } from './messagesTo.ts';
 import { type PersonId, previewDraftOf } from './messagesPreviewSample.ts';
 import { EMAIL_ONLY, WAITS_STATES, waitsTicksOf } from './messagesWaits.ts';
-import { type Stop, STOPPED_AT, STOP_GROUP, STOP_STATES, isStopState } from './messagesStop.ts';
+import {
+  OTHER_MEMBER,
+  type Stop,
+  STOPPED_AT,
+  STOP_GROUP,
+  STOP_STATES,
+  isStopState,
+} from './messagesStop.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
@@ -1706,7 +1713,11 @@ export function seedOf(state: MessagesState | null): Inbox {
     case 'stopped':
     case 'letAgainFailed':
     case 'stoppedNoManage':
-      return { ...base, pane: open('ines'), stopped: { ines: { by: READER, at: STOPPED_AT } } };
+      return {
+        ...base,
+        pane: open('ines'),
+        stopped: { ines: { by: OTHER_MEMBER, at: STOPPED_AT } },
+      };
     case 'replyArrived':
       return { ...base, present: ALL.filter((id) => id !== 'lucia'), pane: open('ines') };
     case 'answered':

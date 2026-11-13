@@ -1,4 +1,3 @@
-import { writtenTime } from '../clock.ts';
 import { READER_ZONE } from '../events/EventsSample.ts';
 import { type GuestKey, READER, READER_NOW } from './MessagesSample.ts';
 import { STOP, sayStop } from './MessagesWords.ts';
@@ -21,7 +20,9 @@ export interface Stopping {
 
 export const STOP_MS = 600;
 
-export const SEEDED_STOP: StopMark = { by: READER, at: '2026-11-02T20:15:00Z' };
+export const OTHER_MEMBER = 'Tunde Bakare';
+
+export const SEEDED_STOP: StopMark = { by: OTHER_MEMBER, at: '2026-11-02T20:15:00Z' };
 export const LIVE_STOP: StopMark = { by: READER, at: READER_NOW };
 
 export const STOP_STATES = [
@@ -135,5 +136,5 @@ export function stoppedLine(
     timeZone,
   }).format(at);
 
-  return sayStop.stopped(mark.by, date, writtenTime(mark.at, locale, timeZone));
+  return mark.by === READER ? sayStop.youStopped(date) : sayStop.stopped(mark.by, date);
 }

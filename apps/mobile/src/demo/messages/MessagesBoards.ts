@@ -117,7 +117,7 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   stopFailed: ['stop writing, not saved', 'The confirm stays open: Not saved. Try again.'],
   stopped: [
     'stopped writing from their page',
-    'Folake Adeyemi stopped them on Mon, Nov 2 at 20:15',
+    'Tunde Bakare stopped them writing from their page on Mon, Nov 2.',
   ],
   letAgainFailed: ['let them write again, not saved', 'The inset stays: Not saved. Try again.'],
   stoppedNoManage: [
