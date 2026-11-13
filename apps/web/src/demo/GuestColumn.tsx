@@ -32,6 +32,7 @@ import {
   Pill,
   Refused,
   ReplyMark,
+  Triangle,
 } from './GuestsParts.tsx';
 import { GW, HOW_INVITED, type HowInvited, REPLY_WORDS } from './guestsWords.ts';
 import { GUESTS as CONVERSATIONS, MESSAGES_AT } from './messages.ts';
@@ -102,7 +103,7 @@ export function GuestView({
     guest.reply === 'coming' || guest.reply === 'notSure' || guest.reply === 'notComing';
   const draft = event.status === 'draft';
   const invites = invitesOn(event, clock);
-  const showsInvitation = erase == null && !draft && guest.reply !== 'walkIn';
+  const showsInvitation = erase == null && (!draft || acts) && guest.reply !== 'walkIn';
   let line: string | null = draft ? null : cardLine(guest, replyBy);
   let step: Step = null;
 
@@ -121,6 +122,7 @@ export function GuestView({
     <div className="gs-guest">
       {note === 'recorded' && <OkLine>{GW.recorded}</OkLine>}
       {note === 'unmarked' && <OkLine>{GW.unmarked}</OkLine>}
+      {note === 'linkReplaced' && <OkLine>{GW.linkReplacedNote(guest.name)}</OkLine>}
       <Cover mesh={event.mesh} size="guest" label={heading}>
         <ul className="desk-glass-tags">
           <li className="desk-glass">
@@ -138,6 +140,9 @@ export function GuestView({
           </div>
         )}
       </Cover>
+      {acts && guest.flagged && (
+        <WrongPerson name={guest.name} heading={heading} onReplace={actions.onReplace} />
+      )}
       {erase === 'erasing' && <Turning words={THEIR_WORDS.erasing} />}
       {note === 'notReplaced' && <Refused>{GW.notReplaced}</Refused>}
       {note === 'unmarkRefused' && guest.replied != null && (
@@ -196,6 +201,30 @@ export function GuestView({
       )}
       {theirData}
     </div>
+  );
+}
+
+/** sc-1526: Tell them was pressed on the guest's own page; marked by the triangle and the words, not the amber alone. */
+function WrongPerson({
+  name,
+  heading,
+  onReplace,
+}: {
+  name: string;
+  heading: string;
+  onReplace: () => void;
+}) {
+  return (
+    <section className="gs-amber" aria-labelledby={`${heading}-flag`}>
+      <h3 id={`${heading}-flag`} className="gs-amber-head">
+        <Triangle size={17} />
+        {GW.flaggedTitle}
+      </h3>
+      <p className="gs-amber-line">{GW.flaggedLine(name)}</p>
+      <button type="button" className="desk-text" data-focus="flag-replace" onClick={onReplace}>
+        {GW.replaceLink}
+      </button>
+    </section>
   );
 }
 
