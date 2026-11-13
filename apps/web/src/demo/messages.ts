@@ -38,6 +38,16 @@ import {
   inviteSeedOf,
   isInviteState,
 } from './messagesInvite.ts';
+import {
+  type Extra,
+  type NoticeCase,
+  NOTICE_STATES,
+  noticeCaseOf,
+  noticeCredits,
+  noticeSmsOf,
+  stampOf,
+} from './messagesNotice.ts';
+import { NW } from './messagesNoticeWords.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
@@ -150,6 +160,7 @@ export const MESSAGE_STATES = [
   { key: 'channelsMany', name: 'See all, 93 names' },
   { key: 'channelsNone', name: 'Nothing ticked' },
   ...WAITS_STATES,
+  ...NOTICE_STATES,
   ...INVITE_STATES,
   ...STOP_STATES,
 ] as const;
@@ -208,7 +219,7 @@ export const CLOCK = '2026-11-03T09:41:00Z';
 
 export type Channel = 'email' | 'sms' | 'whatsApp';
 export type Where = 'page' | Channel;
-export type GuestId = 'ines' | 'lucia' | 'kwame' | 'marta';
+export type GuestId = 'ines' | 'lucia' | 'kwame' | 'marta' | 'valentina';
 export type ConvoId =
   | GuestId
   | 'unknown'
@@ -282,7 +293,26 @@ export const GUESTS: Record<GuestId, SampleGuest> = {
     toldBy: 'email',
     canAlso: [],
   },
+  valentina: {
+    initials: 'VR',
+    name: 'Valentina Restrepo',
+    contact: '+57 310 555 0142',
+    asked: 'Is there a shuttle from the hotel on Thursday?',
+    where: 'whatsApp',
+    day: 'Mon, Nov 2',
+    at: '23:52',
+    row: 'Mon',
+    toldBy: 'whatsApp',
+    canAlso: [],
+  },
 };
+
+/** A guest as the open state has them: sc-3976's states change one fact of the sample, such as the channel they wrote by. */
+export function guestOf(inbox: Pick<Inbox, 'notice'>, id: GuestId): SampleGuest {
+  const turn = inbox.notice?.id === id ? inbox.notice.turn : undefined;
+
+  return turn == null ? GUESTS[id] : { ...GUESTS[id], ...turn };
+}
 
 export const UNKNOWN = {
   address: 'm.dubois@orange.fr',
@@ -302,14 +332,16 @@ export const ANSWERS: Partial<Record<GuestId, string>> = {
   ines: 'Of course. We will set a place for your son at your table.',
   kwame: 'Formal: suits and long dresses are welcome.',
   lucia: 'Yes: free parking under the hotel, entrance on Calle Mayor.',
+  valentina: 'Yes. It leaves the hotel at 17:00 and again at 17:30.',
 };
 
-/** What Soirely's notice costs per guest's number (sc-3928's utility credits for their number's country, one SMS part; the app's `NOTICE_CREDITS`), as sc-3929's preview would give it. */
+/** What Soirely's notice costs per guest's number (sc-3928's utility credits for their number's country, and an SMS part's; the app's `NOTICE_CREDITS`), as sc-3929's preview would give it. */
 const NOTICE_PRICE: Record<GuestId | 'unknown', Partial<Record<Channel, number>>> = {
   ines: {},
   lucia: { whatsApp: 4, sms: 14 },
   kwame: { sms: 9 },
   marta: {},
+  valentina: { whatsApp: 2 },
   unknown: {},
 };
 
@@ -323,7 +355,7 @@ export const HELD_TOO_LONG = {
 };
 
 export function noticePrice(id: GuestId | 'unknown', by: Channel): number {
-  return by === 'email' ? 0 : (NOTICE_PRICE[id][by] ?? 0);
+  return noticeCredits(by, NOTICE_PRICE[id][by] ?? 0, noticeSmsOf(HOSTS, EVENT_NAME).parts);
 }
 
 export interface Notice {
@@ -1670,6 +1702,9 @@ export interface Answer {
   by?: Channel;
   /** A notice held for credits, or one that waited and could not go. */
   notice?: 'held' | 'tooLate';
+  /** sc-3976: the notice refused on its channel, with Who it reached's reason, or waiting for quiet hours to end. */
+  refused?: { reason: string; mark: Delivery };
+  waits?: string;
 }
 
 export type ReachedOf = 'parking' | 'invite' | 'receipts' | 'new';
@@ -1712,6 +1747,8 @@ export interface Inbox {
   untold: readonly Told[];
   /** sc-3978: who stopped each guest writing from their page, and when. */
   stopped?: Partial<Record<GuestId, Stop>>;
+  /** sc-3976: the open state's facts about one guest's notice and conversation. */
+  notice?: NoticeCase;
 }
 
 export const TICKS: Ticks = { email: true, sms: true, whatsApp: false };
@@ -2102,6 +2139,10 @@ export function seedOf(state: MessagesState | null): Inbox {
         outs: [outOf('countdown', { ticks: EMAIL_ONLY })],
       };
     default: {
+      const notice = noticeCaseOf(state);
+
+      if (notice != null) return noticeSeed(base, notice);
+
       const invite = inviteSeedOf(state);
 
       if (invite?.kind === 'draft')
@@ -2165,6 +2206,16 @@ export function seedOf(state: MessagesState | null): Inbox {
   }
 }
 
+function noticeSeed(base: Inbox, notice: NoticeCase): Inbox {
+  const seeded: Inbox = { ...base, notice, pane: { kind: 'convo', id: notice.id } };
+
+  if (notice.ask != null) return { ...seeded, balance: 2 };
+  if (notice.id === 'valentina') return { ...seeded, present: [...ALL, 'valentina'] };
+  if (notice.id === 'unknown') return { ...seeded, matched: MATCHES[0]?.name ?? null };
+
+  return seeded;
+}
+
 export type Lead =
   { kind: 'guest'; initials: string; unread: boolean } | { kind: 'unknown' } | { kind: 'many' };
 
@@ -2190,7 +2241,7 @@ export interface Sections {
   done: readonly Row[];
 }
 
-const GUEST_IDS: readonly GuestId[] = ['ines', 'lucia', 'kwame', 'marta'];
+const GUEST_IDS: readonly GuestId[] = ['ines', 'lucia', 'kwame', 'marta', 'valentina'];
 
 export function isGuest(id: ConvoId): id is GuestId {
   return (GUEST_IDS as readonly string[]).includes(id);
@@ -2201,7 +2252,7 @@ export function whereWord(where: Where): string {
 }
 
 function guestRow(inbox: Inbox, id: GuestId): Row {
-  const guest = GUESTS[id];
+  const guest = guestOf(inbox, id);
   const done = inbox.done.includes(id);
   const answer = inbox.answers[id]?.at(-1);
   const arrived = inbox.arrived === id;
@@ -2224,16 +2275,26 @@ function guestRow(inbox: Inbox, id: GuestId): Row {
   };
 }
 
+function laterOf(inbox: Inbox, id: GuestId | 'unknown') {
+  const extras = inbox.notice?.id === id ? (inbox.notice.extras ?? []) : [];
+
+  return [...extras]
+    .reverse()
+    .find((one): one is Extract<Extra, { kind: 'later' }> => one.kind === 'later');
+}
+
 function unknownRow(inbox: Inbox): Row {
   const answer = inbox.answers.unknown?.at(-1);
-  const said = answer == null ? UNKNOWN.text : filled(MW.you, { text: answer.text });
+  const later = laterOf(inbox, 'unknown');
+  const said =
+    answer == null ? (later?.text ?? UNKNOWN.text) : filled(MW.you, { text: answer.text });
   const match = MATCHES.find((one) => one.name === inbox.matched);
 
   return {
     id: 'unknown',
-    title: match?.name ?? UNKNOWN.address,
+    title: match?.name ?? (inbox.notice?.hidden === true ? NW.unknownSender : UNKNOWN.address),
     line: `${MW.email} · ${said}`,
-    when: answer?.at ?? UNKNOWN.row,
+    when: answer?.at ?? later?.at ?? UNKNOWN.row,
     lead:
       match == null
         ? { kind: 'unknown' }
@@ -2485,16 +2546,18 @@ export function sectionsOf(inbox: Inbox, groups: readonly Group[]): Sections {
     else done.push(row);
   }
 
-  const waiting: ConvoId[] = ['ines', 'lucia', 'kwame', 'unknown'];
   const arrived = inbox.arrived;
+  const waiting = [
+    ...(['ines', 'lucia', 'valentina', 'kwame', 'unknown'] as const).filter(
+      (id) => id !== arrived && here(id) && !inbox.done.includes(id),
+    ),
+    ...(here('parking') && inbox.unreached.length > 0 ? (['parking'] as const) : []),
+    ...(here('receipts') ? (['receipts'] as const) : []),
+  ].sort((one, two) => askedAt(inbox, two).localeCompare(askedAt(inbox, one)));
 
   if (arrived != null && here(arrived) && !inbox.done.includes(arrived))
     needs.push(rowOf(inbox, arrived, groups));
-  for (const id of waiting)
-    if (id !== arrived && here(id) && !inbox.done.includes(id))
-      needs.push(rowOf(inbox, id, groups));
-  if (here('parking') && inbox.unreached.length > 0) needs.push(rowOf(inbox, 'parking', groups));
-  if (here('receipts')) needs.push(rowOf(inbox, 'receipts', groups));
+  for (const id of waiting) needs.push(rowOf(inbox, id, groups));
 
   const scheds = inbox.scheds.filter(
     (one) => (one.id !== 'sched' || here('sched')) && outsIn(inbox, one.id).length === 0,
@@ -2524,13 +2587,27 @@ export function sectionsOf(inbox: Inbox, groups: readonly Group[]): Sections {
   };
 }
 
+function askedAt(inbox: Inbox, id: ConvoId): string {
+  if (isGuest(id)) {
+    const guest = guestOf(inbox, id);
+
+    return stampOf(guest.day, guest.at);
+  }
+
+  if (id !== 'unknown') return stampOf(PARKING.day, PARKING.at);
+
+  const later = laterOf(inbox, id);
+
+  return later == null ? stampOf(UNKNOWN.day, UNKNOWN.at) : stampOf(NW.today, later.at);
+}
+
 export function rowsInOrder(sections: Sections): readonly Row[] {
   return [...sections.top, ...sections.needs, ...sections.scheduled, ...sections.done];
 }
 
 export function countsOf(inbox: Inbox): { waiting: number; notMatched: number } {
   const open = (id: ConvoId) => inbox.present.includes(id) && !inbox.done.includes(id);
-  const guests = (['ines', 'lucia', 'kwame'] as const).filter(open).length;
+  const guests = (['ines', 'lucia', 'kwame', 'valentina'] as const).filter(open).length;
 
   return {
     waiting: guests + (inbox.matched != null && open('unknown') ? 1 : 0),
@@ -2557,7 +2634,14 @@ export type Change =
   | { kind: 'settle' }
   | { kind: 'done'; id: ConvoId; at: string }
   | { kind: 'waiting'; id: ConvoId }
-  | { kind: 'answer'; id: GuestId | 'unknown'; text: string; by?: Channel }
+  | {
+      kind: 'answer';
+      id: GuestId | 'unknown';
+      text: string;
+      by?: Channel;
+      refused?: Answer['refused'];
+      waits?: string;
+    }
   | { kind: 'told'; id: GuestId | 'unknown' }
   | { kind: 'compose'; draft: Draft }
   | { kind: 'draft'; draft: Partial<Draft> }
@@ -2670,15 +2754,18 @@ export function changed(inbox: Inbox, change: Change): Inbox {
     case 'waiting':
       return { ...inbox, done: inbox.done.filter((id) => id !== change.id) };
     case 'answer': {
-      const by = change.by ?? (change.id === 'unknown' ? 'email' : GUESTS[change.id].toldBy);
-      const credits = noticePrice(change.id, by);
+      const by =
+        change.by ?? (change.id === 'unknown' ? 'email' : guestOf(inbox, change.id).toldBy);
+      const credits = change.refused == null ? noticePrice(change.id, by) : 0;
       const held = credits > inbox.balance;
       const answer: Answer = {
         text: change.text,
         at: NOW,
-        stage: 'sending',
+        stage: change.refused == null && change.waits == null ? 'sending' : 'told',
         ...(change.by != null ? { by } : {}),
         ...(held ? { notice: 'held' as const } : {}),
+        ...(change.refused == null ? {} : { refused: change.refused }),
+        ...(change.waits == null ? {} : { waits: change.waits }),
       };
 
       return {
