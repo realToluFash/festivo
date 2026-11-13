@@ -82,6 +82,8 @@ export interface Companion {
   /** Their seat and meal pick (epics 31, 32): removing them says what goes first (sc-3773). */
   table?: string;
   meal?: boolean;
+  /** sc-3779: the guest gave this name on their page; the host editing it clears it. */
+  namedBy?: 'guest';
   /** sc-3777: their own needs, as the guest's are. */
   needs?: Needs;
 }
@@ -111,13 +113,19 @@ export interface Guest {
   companions: readonly Companion[];
   added: Said;
   replaced: string | null;
+  /** sc-1526: someone who opened their link pressed Tell them; a replace clears it. */
+  flagged: boolean;
   arrived: string | null;
   language: GuestLanguage | null;
   chose: GuestLanguage | null;
   greetAs: string | null;
   whatsApp: WhatsAppConsent;
+  askAgain: AskAgain | null;
   needs: Needs;
 }
+
+/** sc-1363: when a guest who answered Not sure yet will be, or was, asked again; Not sent: too late reads as nothing chosen. */
+export type AskAgain = { kind: 'will' | 'asked'; on: string } | { kind: 'wont' };
 
 const ADDED: Said = { by: COLLEAGUE, how: null, on: '2026-09-14' };
 const BY_MESSAGE: Said = { by: null, how: null, on: '2026-10-12' };
@@ -136,11 +144,13 @@ function guest(id: string, name: string, reply: Reply, extra: Partial<Guest> = {
     companions: [],
     added: ADDED,
     replaced: null,
+    flagged: false,
     arrived: null,
     language: null,
     chose: null,
     greetAs: null,
     whatsApp: NO_CONSENT,
+    askAgain: null,
     needs: NO_NEEDS,
     ...extra,
   };
@@ -167,6 +177,20 @@ function emailOf(name: string, index: number, domain?: string): string {
     .replaceAll(/[^a-z ]/gu, '')
     .trim()
     .replaceAll(' ', '.')}@${domain ?? DOMAINS[index % DOMAINS.length] ?? 'gmail.com'}`;
+}
+
+/** sc-3779's unnamed places with a seat or a meal, for Fewer places to ask about. */
+const SEATED_SAMPLE: Readonly<Record<string, readonly Partial<Companion>[]>> = {
+  'carlos-mendoza': [{}, { table: 'Table 7' }],
+  'daniel-asamoah': [{ table: 'Table 2' }, { meal: true }],
+};
+
+function seatedSample(one: Guest): Guest {
+  const seats = SEATED_SAMPLE[one.id];
+
+  return seats == null
+    ? one
+    : { ...one, companions: one.companions.map((place, at) => ({ ...place, ...seats[at] })) };
 }
 
 type More = readonly [name: string, day: string, places: number | readonly (string | null)[]];
@@ -374,7 +398,10 @@ function wedding(): Guest[] {
       replied: '2026-10-12',
       email: 'sophie.laurent@orange.fr',
       phone: { country: 'FR', number: '6 41 27 88 05' },
-      companions: companions('sophie', ['Marc Laurent'], 'coming'),
+      companions: companions('sophie', ['Marc Laurent'], 'coming').map((one) => ({
+        ...one,
+        namedBy: 'guest' as const,
+      })),
       language: 'fr',
       whatsApp: { kind: 'optedOut', on: '2026-11-01' },
     }),
@@ -385,7 +412,7 @@ function wedding(): Guest[] {
       invited: { by: COLLEAGUE, how: 'Text message', on: '2026-10-10' },
       phone: { country: 'NG', number: '805 667 1209' },
     }),
-    ...more(MORE_COMING, 'coming', 'coming'),
+    ...more(MORE_COMING, 'coming', 'coming').map(seatedSample),
     ...more(MORE_NOT_SURE, 'notSure', 'held'),
     ...more(MORE_NO_REPLY, 'noReply', 'held', (index) => ({
       invited: INVITED_BY[index % INVITED_BY.length] ?? BY_MESSAGE,
@@ -724,9 +751,33 @@ export function replyTail(one: Guest, replyBy: string | null): string {
       midSentence(one.recorded.how ?? 'Other'),
       dayOf(one.recorded.on),
     );
+  if (one.reply === 'notSure' && one.askAgain != null) return askTail(one.askAgain);
   if (one.reply === 'notSure' && replyBy != null) return GW.askedOn(dayOf(replyBy));
 
   return GW.repliedOn(dayOf(one.replied ?? ADDED.on));
+}
+
+function askTail(ask: AskAgain): string {
+  switch (ask.kind) {
+    case 'will':
+      return GW.willBeAskedAgain(dayOf(ask.on));
+    case 'asked':
+      return GW.askedAgain(dayOf(ask.on));
+    case 'wont':
+      return GW.wontBeAskedAgain;
+  }
+}
+
+/** On 30 Oct, with Reply by 4 Nov: asked again a week after 16 Oct, three days before answers close, and never. */
+export const ASK_AGAIN_CLOCK = new Date('2026-10-30T09:41:00Z');
+const ASKS: Record<string, AskAgain> = {
+  folasade: { kind: 'asked', on: '2026-10-23' },
+  lucia: { kind: 'will', on: '2026-11-01' },
+  'mariana-lopes': { kind: 'wont' },
+};
+
+function withAsks(list: readonly Guest[]): Guest[] {
+  return list.map((one) => ({ ...one, askAgain: ASKS[one.id] ?? one.askAgain }));
 }
 
 function lowerFirst(text: string): string {
@@ -779,7 +830,10 @@ function rowOf(
         : replyLine(person.guest, replyBy);
     const many = person.guest.companions.length;
 
-    line = many === 0 ? short : `${short} · ${GW.companionCount(many)}`;
+    line =
+      many === 0
+        ? short
+        : `${short} · ${GW.companionCount(many)} · ${GW.namedOf(namedOf(person.guest), many)}`;
   }
 
   const needs = contacts ? needsOfPerson(person) : undefined;
@@ -988,6 +1042,40 @@ export function linesOf(values: Values): Lines {
   return lines;
 }
 
+export function namedOf(one: Guest): number {
+  return one.companions.filter((companion) => (companion.name ?? '').trim() !== '').length;
+}
+
+export type PlacesStep = { companions: Values['companions'] } | { refused: number };
+
+/** sc-3779: places are companion rows; fewer takes unnamed places only, from the end, and refuses once every place left is named. */
+export function placesTo(companions: Values['companions'], places: number): PlacesStep {
+  const wanted = Math.max(0, Math.min(MOST_COMPANIONS, Math.trunc(places)));
+  const named = companions.filter((one) => one.name.trim() !== '').length;
+
+  if (wanted >= companions.length)
+    return {
+      companions: [
+        ...companions,
+        ...Array.from({ length: wanted - companions.length }, () => ({ id: null, name: '' })),
+      ],
+    };
+  if (wanted < named) return { refused: named };
+  let drop = companions.length - wanted;
+  const kept = [...companions]
+    .reverse()
+    .filter((one) => {
+      if (drop > 0 && one.name.trim() === '') {
+        drop -= 1;
+        return false;
+      }
+      return true;
+    })
+    .reverse();
+
+  return { companions: kept };
+}
+
 export function sameName(
   list: readonly Guest[],
   name: string,
@@ -1018,11 +1106,21 @@ export function seatedOf(guest: Guest, companionId: string | null): Seated | nul
   return { table: one.table ?? null, meal: one.meal === true };
 }
 
+function hostNamed(one: Companion): Companion {
+  const copy = { ...one };
+
+  delete copy.namedBy;
+
+  return copy;
+}
+
 export function saveGuest(list: readonly Guest[], id: string, values: Values): Guest[] {
   return list.map((one) => {
     if (one.id !== id) return one;
     const kept = values.companions.map((companion, index) => {
-      const was = one.companions.find((each) => each.id === companion.id);
+      const found = one.companions.find((each) => each.id === companion.id);
+      const renamed = found != null && (found.name ?? '') !== companion.name.trim();
+      const was = renamed ? hostNamed(found) : found;
 
       return {
         ...was,
@@ -1158,7 +1256,12 @@ export function agreeToWhatsApp(
 }
 
 export function replaceLink(list: readonly Guest[], id: string, on: string): Guest[] {
-  return list.map((one) => (one.id === id ? { ...one, replaced: on } : one));
+  return list.map((one) => (one.id === id ? { ...one, replaced: on, flagged: false } : one));
+}
+
+/** sc-1526: Tell them, pressed on the guest's own page; pressed again it is still one flag. */
+export function flagLink(list: readonly Guest[], id: string): Guest[] {
+  return list.map((one) => (one.id === id ? { ...one, flagged: true } : one));
 }
 
 export function reopen(list: readonly Guest[], id: string, on: string): Guest[] {
@@ -1275,7 +1378,7 @@ function nextDay(iso: string): string {
 }
 
 export type Role = 'owner' | 'viewer' | 'staff';
-export type GuestNote = 'recorded' | 'notReplaced' | 'unmarked' | 'unmarkRefused';
+export type GuestNote = 'recorded' | 'notReplaced' | 'linkReplaced' | 'unmarked' | 'unmarkRefused';
 export type Invite = 'copied' | 'refused' | 'mark' | 'markRefused' | 'markNotSaved';
 
 export interface EditStart {
@@ -1289,6 +1392,8 @@ export interface EditStart {
   at?: string;
   /** A seated companion's Remove pressed: the Ask is open for them. */
   removing?: string;
+  /** sc-3779: Fewer places pressed with every place named. */
+  placesRefused?: boolean;
   /** sc-3777: the Needs sections open, `guest` or `c{n}`. */
   needs?: string[];
 }
@@ -1314,6 +1419,7 @@ export interface AddStart {
   notAdded?: boolean;
   added?: string;
   at?: string;
+  placesRefused?: boolean;
   needs?: string[];
 }
 
@@ -1342,6 +1448,11 @@ export interface GuestsStart {
   pane: Pane;
   asking: 'replace' | null;
   told: string | null;
+  /** sc-26025: the guests whose Sent on WhatsApp? question is open, and how the next mark from it ends. */
+  asked: string[] | null;
+  askFailed: boolean;
+  markEnds: 'saved' | 'fails' | 'refused';
+  paused: boolean;
 }
 
 export const THEIRS = { email: 'kwame.mensha@outlook.com', number: '7700 900518' } as const;
@@ -1350,6 +1461,7 @@ const CLOCK_DOOR = new Date('2026-11-05T09:41:00Z');
 const CLOCK_DAY1 = new Date('2026-11-05T18:41:00Z');
 const CLOCK_DAY2 = new Date('2026-11-06T10:30:00Z');
 const TODAY = '2026-11-03';
+const CHUKA: Phone = { country: 'NG', number: '806 114 2290' };
 const CLOCK_CLOSES = new Date('2026-11-04T09:41:00Z');
 const CLOCK_EARLIER = new Date('2026-11-01T09:41:00Z');
 /** Past Reply by and before 05:00, when the event's day begins for the door (sc-3895). */
@@ -1437,6 +1549,7 @@ export const GUESTS_STATES = [
   { key: 'repliesClosed', name: 'Replies closed' },
   { key: 'repliesClosedViewer', name: 'Can view: replies closed' },
   { key: 'reopened', name: 'One reply reopened' },
+  { key: 'askAgain', name: 'Not sure yet: when each will be asked again (sc-1363)' },
   { key: 'edit', name: 'Edit guest, in place' },
   { key: 'editErrors', name: 'Save refused before sending' },
   { key: 'editDuplicate', name: 'The name is already on the list' },
@@ -1462,6 +1575,12 @@ export const GUESTS_STATES = [
   { key: 'replaceAsk', name: 'Replace link…: the Ask' },
   { key: 'replaced', name: 'The link replaced' },
   { key: 'notReplaced', name: 'Replace link failed' },
+  { key: 'flagged', name: 'Their link may have reached the wrong person' },
+  { key: 'flaggedAsk', name: 'Replace link… from the notice: the Ask' },
+  { key: 'flaggedReplaced', name: 'Replaced from the notice: the notice gone' },
+  { key: 'flaggedNotReplaced', name: 'Replace from the notice failed: the notice stays' },
+  { key: 'flaggedViewer', name: 'Can view: a flagged guest, no notice' },
+  { key: 'draftGuest', name: 'A Draft: no Copy, Replace link… stays' },
   { key: 'markAsInvited', name: 'Mark as invited: how?' },
   { key: 'markRefused', name: 'Mark as invited with nothing chosen' },
   { key: 'marked', name: 'Marked as invited' },
@@ -1484,6 +1603,12 @@ export const GUESTS_STATES = [
   { key: 'greetAsSpaces', name: 'Only spaces saved: their full name' },
   { key: 'greetAsViewer', name: 'Can view: Greet as, no Edit' },
   { key: 'greetAsAdd', name: 'Add guest, Greet as “Auntie Bisi”' },
+  { key: 'places', name: 'Edit guest: Places for companions, 0 of 1 named' },
+  { key: 'placesSeated', name: 'Fewer places dropping an unnamed place with a seat: asked' },
+  { key: 'placesSeatedTwo', name: 'Fewer places dropping two seated places: asked about each' },
+  { key: 'placesRefused', name: 'Fewer places with every place named: refused' },
+  { key: 'placesMax', name: 'Add guest: ten places, the most' },
+  { key: 'namedByGuest', name: 'Details: Named by the guest' },
   { key: 'needsDetails', name: 'Details: Dr Emeka Nwosu’s allergies, diet and note' },
   { key: 'needsNone', name: 'Details: No dietary notes.' },
   { key: 'needsCompanion', name: 'Details: Inês Duarte’s diet, Rui Duarte’s allergy' },
@@ -1511,6 +1636,18 @@ export const GUESTS_STATES = [
   { key: 'whatsAppOptedOut', name: 'Sophie Laurent unsubscribed: only the guest can change it' },
   { key: 'whatsAppNoMobile', name: 'Inês Duarte, no mobile number: no WhatsApp row' },
   { key: 'whatsAppViewer', name: 'Can view (guests.read): no contact details, no WhatsApp row' },
+  { key: 'sendNone', name: 'Yusuf Ibrahim: Send on WhatsApp, nothing pressed' },
+  { key: 'sendQuestion', name: 'Pressed: Sent to Yusuf Ibrahim on WhatsApp?' },
+  { key: 'sendTwo', name: 'Two questions open: Yusuf Ibrahim and Chuka Nwankwo' },
+  { key: 'sendNotSaved', name: 'Mark as invited from the question failed' },
+  { key: 'sendFails', name: 'The next mark fails, the one after goes through' },
+  { key: 'sendRefused', name: 'The next mark is refused: the event was paused (409)' },
+  { key: 'sendLeftLive', name: 'The event left Live before the answer: no question' },
+  { key: 'sendLastOne', name: 'Not yet invited: the last one marked, the list empties' },
+  { key: 'sendBecameInvited', name: 'A colleague marked them meanwhile: the question goes' },
+  { key: 'sendInvited', name: 'Already invited: a press asks nothing' },
+  { key: 'sendNoMobile', name: 'Bisi Adewale, no mobile number: not offered' },
+  { key: 'sendFinished', name: 'A Finished event: Yusuf Ibrahim is not offered Send' },
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number]['key'];
@@ -1527,7 +1664,7 @@ export function choiceOf(raw: string | null): Choice | null {
 export function guestsStart(state: GuestsState | null, params: URLSearchParams): GuestsStart {
   const asked = params.get('event');
   const event =
-    state === 'draft'
+    state === 'draft' || state === 'draftGuest'
       ? DRAFT
       : state === 'paused'
         ? PARTY
@@ -1548,6 +1685,10 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     pane: { kind: 'none' },
     asking: null,
     told: null,
+    asked: null,
+    askFailed: false,
+    markEnds: 'saved',
+    paused: false,
   };
   const column = (pane: Pane, more: Partial<GuestsStart> = {}): GuestsStart => ({
     ...start,
@@ -1569,6 +1710,8 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     choice: 'coming',
   });
   const add = (from: AddStart = {}): GuestsStart => column({ kind: 'add', start: from });
+  const send = (more: Partial<GuestsStart> = {}): GuestsStart =>
+    column(guestPane('yusuf'), { choice: 'notYet', ...more });
   const refusedNeeds = (needs: Partial<Needs>, at: string): GuestsStart => ({
     ...edit('kwame', { values: { needs: needsOf(needs) }, tried: true, needs: ['guest'], at }),
     choice: 'coming',
@@ -1644,6 +1787,12 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
         ...closed,
         list: reopen(start.list, 'emeka', '2026-11-05'),
       });
+    case 'askAgain':
+      return column(guestPane('folasade'), {
+        choice: 'notSure',
+        clock: ASK_AGAIN_CLOCK,
+        list: withAsks(start.list),
+      });
     case 'edit':
       return edit('kwame');
     case 'editErrors':
@@ -1713,9 +1862,30 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'replaceAsk':
       return column(guestPane('kwame'), { asking: 'replace' });
     case 'replaced':
-      return column(guestPane('kwame'), { list: replaceLink(start.list, 'kwame', TODAY) });
+      return column(guestPane('kwame', { note: 'linkReplaced' }), {
+        list: replaceLink(start.list, 'kwame', TODAY),
+      });
     case 'notReplaced':
       return column(guestPane('kwame', { note: 'notReplaced' }));
+    case 'flagged':
+      return column(guestPane('emeka'), { list: flagLink(start.list, 'emeka') });
+    case 'flaggedAsk':
+      return column(guestPane('emeka'), {
+        list: flagLink(start.list, 'emeka'),
+        asking: 'replace',
+      });
+    case 'flaggedReplaced':
+      return column(guestPane('emeka', { note: 'linkReplaced' }), {
+        list: replaceLink(flagLink(start.list, 'emeka'), 'emeka', TODAY),
+      });
+    case 'flaggedNotReplaced':
+      return column(guestPane('emeka', { note: 'notReplaced' }), {
+        list: flagLink(start.list, 'emeka'),
+      });
+    case 'flaggedViewer':
+      return column(guestPane('emeka'), { list: flagLink(start.list, 'emeka'), role: 'viewer' });
+    case 'draftGuest':
+      return { ...start, pane: guestPane('leila') };
     case 'markAsInvited':
       return column(guestPane('bisi', { invite: 'mark' }));
     case 'markRefused':
@@ -1726,6 +1896,50 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       });
     case 'markNotSaved':
       return column(guestPane('bisi', { invite: 'markNotSaved' }));
+    case 'sendNone':
+      return send();
+    case 'sendQuestion':
+      return send({ asked: ['yusuf'] });
+    case 'sendTwo':
+      return send({
+        asked: ['yusuf', 'chuka-nwankwo'],
+        list: start.list.map((one) =>
+          one.id === 'chuka-nwankwo' ? { ...one, phone: CHUKA } : one,
+        ),
+      });
+    case 'sendNotSaved':
+      return send({ asked: ['yusuf'], askFailed: true });
+    case 'sendFails':
+      return send({ asked: ['yusuf'], markEnds: 'fails' });
+    case 'sendRefused':
+      return send({ asked: ['yusuf'], markEnds: 'refused' });
+    case 'sendLeftLive':
+      return send({ asked: ['yusuf'], paused: true });
+    case 'sendLastOne':
+      return send({
+        asked: ['yusuf'],
+        list: start.list.filter((one) => one.reply !== 'notYet' || one.id === 'yusuf'),
+      });
+    case 'sendBecameInvited':
+      return send({
+        asked: ['yusuf'],
+        list: start.list.map((one) =>
+          one.id === 'yusuf'
+            ? {
+                ...one,
+                reply: 'noReply' as const,
+                invited: { by: 'Tunde Bakare', how: 'WhatsApp' as const, on: TODAY },
+              }
+            : one,
+        ),
+        choice: 'all',
+      });
+    case 'sendInvited':
+      return column(guestPane('amaka'), { choice: 'coming' });
+    case 'sendNoMobile':
+      return send({ pane: guestPane('bisi') });
+    case 'sendFinished':
+      return send({ clock: CLOCKS.finished });
     case 'notYetFilter':
       return column(guestPane('bisi'), { choice: 'notYet' });
     case 'invitedByMessage':
@@ -1778,6 +1992,24 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return column(guestPane('bisi'), { choice: 'notYet', role: 'viewer' });
     case 'greetAsAdd':
       return add({ values: { name: 'Olabisi Martins', greetAs: 'Auntie Bisi' }, at: 'greet-as' });
+    case 'places':
+      return { ...edit('musa', { at: 'places' }), choice: 'coming' };
+    case 'placesSeated':
+      return { ...edit('carlos-mendoza', { at: 'places' }), choice: 'coming' };
+    case 'placesSeatedTwo':
+      return { ...edit('daniel-asamoah', { at: 'places' }), choice: 'coming' };
+    case 'placesRefused':
+      return { ...edit('sophie', { placesRefused: true, at: 'places' }), choice: 'coming' };
+    case 'placesMax':
+      return add({
+        values: {
+          name: 'Adaeze Okafor',
+          companions: Array.from({ length: MOST_COMPANIONS }, () => ({ id: null, name: '' })),
+        },
+        at: 'places',
+      });
+    case 'namedByGuest':
+      return column(guestPane('sophie'), { choice: 'coming' });
     case 'needsDetails':
       return column(guestPane('emeka'));
     case 'needsNone':
@@ -1920,6 +2152,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'repliesClosed',
     'repliesClosedViewer',
     'reopened',
+    'askAgain',
   ]),
   group('Edit, in place', [
     'edit',
@@ -1958,6 +2191,14 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'greetAsViewer',
     'greetAsAdd',
   ]),
+  group('Places for companions (sc-3779)', [
+    'places',
+    'placesSeated',
+    'placesSeatedTwo',
+    'placesRefused',
+    'placesMax',
+    'namedByGuest',
+  ]),
   group('Needs (sc-3777)', [
     'needsDetails',
     'needsNone',
@@ -1986,12 +2227,34 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'whatsAppNoMobile',
     'whatsAppViewer',
   ]),
+  group('Send on WhatsApp (sc-26025)', [
+    'sendNone',
+    'sendQuestion',
+    'sendTwo',
+    'sendNotSaved',
+    'sendFails',
+    'sendRefused',
+    'sendLeftLive',
+    'sendLastOne',
+    'sendBecameInvited',
+    'sendInvited',
+    'sendNoMobile',
+    'sendFinished',
+  ]),
+  group('Their link may have reached the wrong person (sc-1526)', [
+    'flagged',
+    'flaggedAsk',
+    'flaggedReplaced',
+    'flaggedNotReplaced',
+    'flaggedViewer',
+  ]),
   group('The link and Mark as invited', [
     'linkCopied',
     'clipboardRefused',
     'replaceAsk',
     'replaced',
     'notReplaced',
+    'draftGuest',
     'markAsInvited',
     'markRefused',
     'marked',

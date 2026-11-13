@@ -17,6 +17,7 @@ import {
   READER,
   TODAY,
   WALK_IN,
+  type AskAgain,
   type Companion,
   type GuestLanguage,
   type SampleGuest,
@@ -85,6 +86,8 @@ export const GUEST_STATES = [
   'whatsAppOptedOut',
   'whatsAppNoMobile',
   'whatsAppViewer',
+  'askAgain',
+  'askAgainWont',
 ] as const;
 
 export const EDIT_STATES = [
@@ -272,6 +275,9 @@ export function clockOf(state: GuestsState | DoorState | null): Date {
     case 'ended':
     case 'finished':
       return new Date(CLOCKS.ended);
+    case 'askAgain':
+    case 'askAgainWont':
+      return new Date(CLOCKS.askAgain);
     default:
       return new Date(state != null && isIn(DOOR_STATES, state) ? CLOCKS.onTheDay : CLOCKS.reader);
   }
@@ -477,9 +483,22 @@ export function replyParts(
   if (g.kind === 'noreply')
     return { word, detail: short ? null : lowerFirst(invitedWords(g, locale)) };
   if (g.kind === 'notyet') return { word, detail: null };
+  if (g.kind === 'maybe' && g.askAgain != null)
+    return { word, detail: askTail(g.askAgain, locale) };
   if (g.kind === 'maybe' && replyBy != null)
     return { word, detail: say.askedBy(dayWords(replyBy, locale)) };
   return { word, detail: g.when == null ? null : say.repliedOn(dayWords(g.when, locale)) };
+}
+
+function askTail(ask: AskAgain, locale: string): string {
+  switch (ask.kind) {
+    case 'will':
+      return say.willBeAskedAgain(dayWords(ask.day, locale));
+    case 'asked':
+      return say.askedAgain(dayWords(ask.day, locale));
+    case 'wont':
+      return say.wontBeAskedAgain;
+  }
 }
 
 export function replyLine(
@@ -634,7 +653,11 @@ export function cardWords(
   const says = say.says(counts.coming, counts.invited);
   const havent = [
     say.havent(counts.havent, counts.noreply, counts.havent - counts.noreply),
-    replyBy == null ? null : say.closesTomorrow(dayWords(replyBy, locale, true)),
+    replyBy == null
+      ? null
+      : state === 'askAgain' || state === 'askAgainWont'
+        ? say.closesOn(dayWords(replyBy, locale, true))
+        : say.closesTomorrow(dayWords(replyBy, locale, true)),
   ]
     .filter((part) => part != null)
     .join(' ');
@@ -955,6 +978,12 @@ export const DRAFT: Counts = {
   walkin: 0,
 };
 
+/** On 30 Oct, with Reply by 4 Nov: asked again a week after 16 Oct, and three days before answers close. */
+const ASKS_ON_30_OCT: Readonly<Record<string, AskAgain>> = {
+  folasade: { kind: 'asked', day: '2026-10-23' },
+  lucia: { kind: 'will', day: '2026-11-01' },
+};
+
 export function guestsAt(state: GuestsState | null): SampleGuest[] {
   const swap = (key: string, change: (g: SampleGuest) => SampleGuest) =>
     GUESTS.map((g) => (g.key === key ? change(g) : g));
@@ -981,6 +1010,10 @@ export function guestsAt(state: GuestsState | null): SampleGuest[] {
       return swap('kwame', (g) => ({ ...g, email: 'kwame@mensah.co.uk' }));
     case 'greetAsSpaces':
       return swap('bisi', (g) => ({ ...g, greetAs: greetAsSaved('   ') }));
+    case 'askAgain':
+      return GUESTS.map((g) => ({ ...g, askAgain: ASKS_ON_30_OCT[g.key] ?? null }));
+    case 'askAgainWont':
+      return swap('lucia', (g) => ({ ...g, askAgain: { kind: 'wont' } }));
     case 'onTheDay':
     case 'secondDay':
       return [...GUESTS, WALK_IN].sort((a, b) => a.name.localeCompare(b.name));
@@ -1112,6 +1145,8 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'languageSet':
       return 'sophie';
     case 'whatsAppGuestAgreed':
+    case 'askAgain':
+    case 'askAgainWont':
       return 'lucia';
     case 'whatsAppOptedOut':
       return 'sophie';

@@ -31,8 +31,8 @@ import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { Refreshing } from './Refreshing.tsx';
 import { Screen, useScrolledToTop } from './Screen.tsx';
-import { PageToast } from './Summary.tsx';
-import { Arrived, Skeleton } from './Skeleton.tsx';
+import { LoadingBlock, PageToast } from './Summary.tsx';
+import { Arrived } from './Skeleton.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
 import { Title } from './Title.tsx';
@@ -202,12 +202,7 @@ export function EventScreen({
     ) : opened.kind === 'failed' ? (
       <EventsFailed onRetry={opened.retry} testID="events.page.retry" />
     ) : (
-      <Skeleton
-        words={t('eventsScreen.loadingEvent')}
-        shape="cards"
-        titled
-        cards={[{ lines: 2 }, { lines: 3 }, { lines: 2 }]}
-      />
+      <LoadingBlock words={t('eventsScreen.loadingEvent')} />
     );
 
   const refreshing = opened.refreshing ? <Refreshing testID="events.page.refreshing" /> : null;
@@ -238,16 +233,37 @@ export function EventScreen({
       besideTitle={phone || areaTitled ? undefined : refreshing}
       back={frameBack}
       backInBody={top.frameBack == null}
-      inEvent={top.inEvent ? { area, onArea: chooseArea, card } : undefined}
+      inEvent={
+        top.inEvent
+          ? {
+              area,
+              onArea: chooseArea,
+              card,
+              up:
+                original != null ? { label: t('timeline.backToEvent'), onPress: leave } : undefined,
+            }
+          : undefined
+      }
       underTitle={areaTitled ? undefined : underTitle}
     >
       <Screen
         edges={bodyEdges(kind)}
-        contentStyle={phone ? (cardNamed ? styles.phoneUntitled : styles.phone) : styles.tablet}
+        contentStyle={
+          phone
+            ? cardNamed
+              ? styles.phoneUntitled
+              : styles.phone
+            : kind === 'tabletLandscape' && cardNamed
+              ? styles.landscapeUntitled
+              : styles.tablet
+        }
       >
-        {kind === 'tabletLandscape' && (
-          <BackButton label={backLabel} onPress={back} testID="events.back" />
-        )}
+        {kind === 'tabletLandscape' &&
+          (cardNamed ? (
+            refreshing
+          ) : (
+            <BackButton label={backLabel} onPress={back} testID="events.back" />
+          ))}
         {areaTitled && (
           <View style={styles.areaTop}>
             <View style={styles.titleRow}>
@@ -402,8 +418,15 @@ const styles = StyleSheet.create({
   },
   phoneUntitled: {
     gap: tokens.spaceLg,
+    paddingTop: 0,
     paddingHorizontal: tokens.spaceXl,
     paddingBottom: tokens.space3xl,
+  },
+  landscapeUntitled: {
+    gap: 18,
+    paddingTop: 26,
+    paddingHorizontal: 30,
+    paddingBottom: tokens.space6xl * 2,
   },
   tablet: {
     gap: tokens.spaceLg,

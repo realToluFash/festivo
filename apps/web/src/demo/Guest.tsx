@@ -7,7 +7,6 @@ import { Glyph } from '../components/Glyph.tsx';
 import {
   type Answer,
   type Channel,
-  COMPANIONS,
   HOLD_MS,
   LAYOUT_MEDIA,
   LEGAL,
@@ -61,9 +60,26 @@ import {
   GUEST_KITCHEN_SAVED_ID,
 } from './GuestKitchen.tsx';
 import { type GuestKitchenActions, useGuestKitchen } from './useGuestKitchen.ts';
+import { PartyCheckRow, WithYou } from './GuestCompanions.tsx';
+import { hasStep, holdsCompanions, partyLine } from './guestCompanions.ts';
+import { type PartyActions, partyActions, withPartyBack } from './guestPartyActions.ts';
 import { DayAnswer, DayWaiting, WhereBlock, YourCode } from './GuestDay.tsx';
 import { inDayOrder } from './guestDay.ts';
 import { YourMessages } from './GuestMessages.tsx';
+import { plusDays } from './dataControl.ts';
+import { GuestAsk } from './GuestAsk.tsx';
+import {
+  type AskKey,
+  type AskView,
+  type SaveFail,
+  isSaveFail,
+  offer,
+  picked,
+  saveFailed,
+  saveFirst,
+  saveSettled,
+} from './guestAsk.ts';
+import { askClock, askFocus, DAYS_CHOICES, isReplyByChoice } from './guestAskStates.ts';
 import { switched } from './guestMessages.ts';
 import { useLater } from '../useLater.ts';
 import { legalPath } from './legal.ts';
@@ -76,8 +92,24 @@ import './guest.css';
 export function GuestPage() {
   const [params] = useSearchParams();
   const state = params.get('state');
+  const replyBy = params.get('replyBy');
+  const days = params.get('days');
+  const save = params.get('save');
+  const ask = {
+    ...(isReplyByChoice(replyBy) ? { replyBy } : {}),
+    ...(days != null && (DAYS_CHOICES as readonly string[]).includes(days)
+      ? { days: Number(days) }
+      : {}),
+  };
 
-  return <Visitor key={state ?? 'open'} state={state} />;
+  return (
+    <Visitor
+      key={`${state ?? 'open'}|${replyBy ?? ''}|${days ?? ''}|${save ?? ''}`}
+      state={state}
+      ask={ask}
+      saveFails={isSaveFail(save) ? save : null}
+    />
+  );
 }
 
 function useLayout() {
@@ -91,8 +123,17 @@ function useLayout() {
 
 type Change = (was: Visit) => Partial<Visit>;
 
-function Visitor({ state }: { state: string | null }) {
-  const [visit, setVisit] = useState(() => startOf(state));
+function Visitor({
+  state,
+  ask,
+  saveFails,
+}: {
+  state: string | null;
+  ask: Parameters<typeof startOf>[1];
+  saveFails: SaveFail | null;
+}) {
+  const [visit, setVisit] = useState(() => startOf(state, ask));
+  const [saveFail, setSaveFail] = useState(saveFails);
   const [retrying, setRetrying] = useState(false);
   const [saving, setSaving] = useState(false);
   const layout = useLayout();
@@ -123,7 +164,9 @@ function Visitor({ state }: { state: string | null }) {
     document.querySelector<HTMLElement>(`.gp [data-focus="${visit.want}"]`)?.focus();
   }, [visit.want, visit.wantId]);
 
-  const kitchen = useGuestKitchen(visit, state, go);
+  const steps = useGuestKitchen(visit, state, go);
+  const party = partyActions(go, steps, visit);
+  const kitchen = withPartyBack(steps, visit, party);
 
   const record = useCallback(
     (answer: Answer, fromCheck = false) =>
@@ -174,6 +217,15 @@ function Visitor({ state }: { state: string | null }) {
     const { view } = visit;
 
     if (view.kind !== 'answer' && view.kind !== 'changing') return;
+    if (chosen === 'coming' && hasStep(visit.party)) {
+      go(
+        () => ({
+          view: { kind: 'withYou', from: view.kind === 'changing' ? 'changing' : 'answer' },
+        }),
+        'withYouHead',
+      );
+      return;
+    }
     if (chosen === 'coming') {
       kitchen.open(view.kind === 'changing' ? 'changing' : 'answer');
       return;
@@ -185,6 +237,65 @@ function Visitor({ state }: { state: string | null }) {
     }));
     later(SEND_MS, () => record(chosen));
   }
+
+  function askPick(key: AskKey): void {
+    go((was) => (was.ask == null ? {} : { ask: picked(was.ask, key) }));
+  }
+
+  function askSave(): void {
+    const view = visit.ask;
+
+    if (view?.kind !== 'question' || view.saving) return;
+    if (view.pick == null) {
+      const first = offer(askClock(visit))[0] ?? 'never';
+      go((was) => (was.ask == null ? {} : { ask: saveFirst(was.ask) }), askFocus(first));
+      return;
+    }
+
+    go((was) => (was.ask == null ? {} : { ask: saveFirst(was.ask) }));
+    if (saveFail != null) {
+      setSaveFail(null);
+      later(SEND_MS, () => askFailed(saveFail, view));
+      return;
+    }
+    later(SEND_MS, () =>
+      go(
+        (was) => (was.ask == null ? {} : { ask: saveSettled(was.ask, askClock(was)) }),
+        'askSaved',
+      ),
+    );
+  }
+
+  function askFailed(fail: SaveFail, view: AskView): void {
+    if (fail === 'changed') {
+      go(
+        (was) => ({
+          ask: null,
+          recorded: was.recorded == null ? null : { ...was.recorded, answer: 'coming' },
+        }),
+        'greeting',
+      );
+      return;
+    }
+    const now = fail === 'moved' ? plusDays(visit.now, 1) : visit.now;
+    const ask = saveFailed(view, fail, askClock({ ...visit, now }));
+
+    go(() => ({ now, ask }), ask?.kind === 'closeNow' ? 'askClose' : 'askSave');
+  }
+
+  useEffect(() => {
+    if (state !== 'maybe_saving') return;
+    const timer = setTimeout(
+      () =>
+        go(
+          (was) => (was.ask == null ? {} : { ask: saveSettled(was.ask, askClock(was)) }),
+          'askSaved',
+        ),
+      SEND_MS,
+    );
+
+    return () => clearTimeout(timer);
+  }, [state, go]);
 
   function send(): void {
     go((was) =>
@@ -247,6 +358,7 @@ function Visitor({ state }: { state: string | null }) {
       visit={visit}
       words={words}
       kitchen={kitchen}
+      party={party}
       onAnswer={answer}
       onSend={send}
       onBack={back}
@@ -259,6 +371,8 @@ function Visitor({ state }: { state: string | null }) {
       }
       onDraft={(draft) => go(() => ({ draft }))}
       onSendMessage={sendMessage}
+      onAskPick={askPick}
+      onAskSave={askSave}
     />
   );
 
@@ -430,6 +544,7 @@ function Under({
   visit,
   words,
   kitchen,
+  party,
   onAnswer,
   onSend,
   onBack,
@@ -440,10 +555,13 @@ function Under({
   onGoBack,
   onDraft,
   onSendMessage,
+  onAskPick,
+  onAskSave,
 }: {
   visit: Visit;
   words: Words;
   kitchen: GuestKitchenActions;
+  party: PartyActions;
   onAnswer: (answer: Answer) => void;
   onSend: () => void;
   onBack: () => void;
@@ -454,6 +572,8 @@ function Under({
   onGoBack: () => void;
   onDraft: (words: string) => void;
   onSendMessage: () => void;
+  onAskPick: (key: AskKey) => void;
+  onAskSave: () => void;
 }) {
   const { view } = visit;
   const thanks = visit.phase === 'finished' && view.kind === 'closed';
@@ -485,6 +605,7 @@ function Under({
         visit={visit}
         words={words}
         kitchen={kitchen}
+        party={party}
         onAnswer={onAnswer}
         onSend={onSend}
         onBack={onBack}
@@ -494,6 +615,7 @@ function Under({
         onTellThem={onTellThem}
         onGoBack={onGoBack}
       />
+      {view.kind === 'recorded' && <GuestAsk visit={visit} onPick={onAskPick} onSave={onAskSave} />}
       {showsMessages(visit) && (
         <Messages visit={visit} words={words} onDraft={onDraft} onSend={onSendMessage} />
       )}
@@ -512,6 +634,7 @@ function Shown({
   visit,
   words,
   kitchen,
+  party,
   onAnswer,
   onSend,
   onBack,
@@ -525,6 +648,7 @@ function Shown({
   visit: Visit;
   words: Words;
   kitchen: GuestKitchenActions;
+  party: PartyActions;
   onAnswer: (answer: Answer) => void;
   onSend: () => void;
   onBack: () => void;
@@ -551,6 +675,8 @@ function Shown({
           <AnswerRows words={words} busy={view.busy} onAnswer={onAnswer} />
         </section>
       );
+    case 'withYou':
+      return <WithYou visit={visit} words={words} actions={party} />;
     case 'kitchen':
       return <GuestKitchenStep visit={visit} words={words} actions={kitchen} />;
     case 'check':
@@ -561,6 +687,9 @@ function Shown({
             words={words}
             actions={kitchen}
             box={<WhatsAppBox visit={visit} words={words} busy={view.busy} onTick={onTick} />}
+            party={
+              <PartyCheckRow visit={visit} words={words} busy={view.busy} onChange={party.edit} />
+            }
           />
         );
 
@@ -583,6 +712,11 @@ function Shown({
             <span className="gp-answer-words">{words.answerLine('coming')}</span>
             {!view.refused && <TextAction onClick={onBack}>{words.changeShort}</TextAction>}
           </div>
+          {hasStep(visit.party) && (
+            <div className="gk-rows">
+              <PartyCheckRow visit={visit} words={words} busy={view.busy} onChange={party.edit} />
+            </div>
+          )}
           {!view.refused && (
             <WhatsAppBox visit={visit} words={words} busy={view.busy} onTick={onTick} />
           )}
@@ -618,7 +752,10 @@ function Shown({
               <p className="gp-sub is-recorded">{words.recordedFor(recorded.by, day)}</p>
             )}
             {view.same && <p className="gp-sub is-ink">{words.same(recorded.answer)}</p>}
-            {recorded.answer === 'notSure' && COMPANIONS > 0 && (
+            {recorded.answer === 'coming' && hasStep(visit.party) && (
+              <p className="gp-sub">{partyLine(visit.party, lang)}</p>
+            )}
+            {recorded.answer === 'notSure' && holdsCompanions(visit) && (
               <p className="gp-sub">{words.companions}</p>
             )}
             <TextAction focus="change" onClick={onChange}>
