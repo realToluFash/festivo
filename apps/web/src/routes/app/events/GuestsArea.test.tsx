@@ -705,6 +705,38 @@ describe('Finding a guest (sc-3772)', () => {
     expect(await screen.findByRole('dialog')).toBeDefined();
   });
 
+  it('says a Draft whose end has passed cannot be made live, with Change dates as its step', async () => {
+    const card = await cardOn({
+      status: 'draft',
+      phase: 'draft',
+      madeLiveAt: null,
+      startsAt: '2026-10-24T12:00:00+01:00',
+      endsAt: '2026-10-24T18:00:00+01:00',
+    });
+
+    expect(within(card).getByText('Draft')).toBeDefined();
+    expect(
+      within(card).getByText(
+        "This event's end has passed, so it cannot be made live. Change its dates first.",
+      ),
+    ).toBeDefined();
+    expect(within(card).queryByRole('button', { name: 'Make live' })).toBeNull();
+    fireEvent.click(within(card).getByRole('button', { name: 'Change dates' }));
+
+    await waitFor(() => expect(shownRouter?.state.location.pathname).toBe('/app/events/ev_1/edit'));
+  });
+
+  it('says Finished on the card, with its line, its counts and no step', async () => {
+    const card = await cardOn({ status: 'live', phase: 'finished' });
+
+    expect(within(card).getByText('Finished')).toBeDefined();
+    expect(within(card).getByText('4 coming of 9 invited')).toBeDefined();
+    expect(
+      within(card).getByText('This event has finished, so guests can’t be invited.'),
+    ).toBeDefined();
+    expect(within(card).queryByRole('button')).toBeNull();
+  });
+
   it('groups All by reply, each with its first rows and Show all', async () => {
     await shown();
 
