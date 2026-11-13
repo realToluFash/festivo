@@ -1095,6 +1095,45 @@ describe("the guest's language (sc-3790)", () => {
     await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
     expect(sent.filter((one) => one.path === '/api/guest-links/language')).toHaveLength(2);
   });
+
+  it('saves only the last of quick picks, once the save before it has answered', async () => {
+    browser('en');
+    let answerFirst: (response: Response) => void = () => {};
+    const saves: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = new URL(typeof input === 'string' ? input : (input as Request).url).pathname;
+      if (path === '/api/guest-links/page') return json({ status: 200, body: PAGE });
+      saves.push((JSON.parse(String(init?.body)) as { language: string }).language);
+      if (saves.length > 1) return json({ status: 204 });
+
+      return new Promise<Response>((resolve) => {
+        answerFirst = resolve;
+      });
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Language: English' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));
+    await waitFor(() => expect(saves).toEqual(['fr']));
+
+    fireEvent.click(screen.getByRole('button', { name: /Français/u }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Español' }));
+    await waitFor(() => expect(document.documentElement.lang).toBe('es'));
+    fireEvent.click(screen.getByRole('button', { name: /Español/u }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Português' }));
+    await waitFor(() => expect(document.documentElement.lang).toBe('pt'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(saves).toEqual(['fr']);
+
+    await act(async () => {
+      answerFirst(json({ status: 204 }));
+    });
+
+    await waitFor(() => expect(saves).toEqual(['fr', 'pt']));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
 });
 
 describe('Add to calendar (sc-3627)', () => {
