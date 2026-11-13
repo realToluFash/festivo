@@ -11,7 +11,7 @@ import { setLanguage } from '../i18n/index.ts';
 import { __setSessionState, type Session } from '../session.ts';
 import { routes } from './index.tsx';
 import { membership } from '../test-memberships.ts';
-import { STYLES, cssRule } from '../test-styles.ts';
+import { STYLES, cssRule, stylesheet } from '../test-styles.ts';
 import { atStackedWidth } from '../test-widths.ts';
 
 const MEMBERSHIP = membership({ id: 'org_1', name: 'Okonkwo Events' });
@@ -772,6 +772,15 @@ describe('the application tree', () => {
         /max-width: calc\(47\.5rem \+ 2 \* var\(--space5xl\) \+ 17rem\);/u,
       );
     });
+  });
+
+  it("sets desk titles and the Calendar's foot where their demos do (sc-39471)", () => {
+    expect(
+      cssRule('.desk-title', stylesheet(import.meta.dirname, '../components/SettingsParts.css')),
+    ).toMatch(/margin: 0;/u);
+    expect(cssRule('.shell-content.is-card:has(.cal-page)')).toMatch(
+      /padding-bottom: var\(--space3xl\);/u,
+    );
   });
 
   it('keeps the shell usable when a screen throws', () => {
