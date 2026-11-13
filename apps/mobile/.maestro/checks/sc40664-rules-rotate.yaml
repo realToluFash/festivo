@@ -1,0 +1,27 @@
+# sc-40664: Sign-in rules on a tablet, opened upright and then turned on its side with the page mounted: each title whole.
+appId: host.exp.Exponent
+---
+# ${ROUTE}: settings/sign-in-rules or demo/settings/sign-in-rules. ${FIRST} then ${THEN}: PORTRAIT then LANDSCAPE_LEFT, or the reverse.
+- setOrientation: ${FIRST}
+- openLink: ${METRO_URL}/--/${ROUTE}
+- extendedWaitUntil:
+    visible:
+      id: 'signInRules.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: rotate-first
+- setOrientation: ${THEN}
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: rotate-then
+- repeat:
+    while:
+      notVisible: '{{t:signInRules.stand.changedTitle}}'
+    times: 10
+    commands:
+      - swipe:
+          start: 85%, 80%
+          end: 85%, 30%
+- waitForAnimationToEnd
+- takeScreenshot: rotate-then-changes
