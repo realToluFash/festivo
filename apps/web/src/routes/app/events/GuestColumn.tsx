@@ -18,7 +18,13 @@ import { focusWhenFree } from '../../../layers.ts';
 import { type Mesh } from '../../../mesh.ts';
 import { offButton } from '../../../offButton.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
-import { CompanionField, GuestField, PhoneField } from './GuestFields.tsx';
+import {
+  ChoseNote,
+  CompanionField,
+  GuestField,
+  LanguageField,
+  PhoneField,
+} from './GuestFields.tsx';
 import {
   MOST_COMPANIONS,
   type Problem,
@@ -29,6 +35,7 @@ import {
   firstProblem,
   isListed,
   newGuestOf,
+  ownName,
   problemsOf,
   violationProblems,
 } from './guestRows.ts';
@@ -446,6 +453,21 @@ function GuestView({
                     lines={[t('guestList.mobileNumber')]}
                   />
                 </li>
+                <li className={guest.language == null ? 'desk-row is-none' : 'desk-row'}>
+                  <IconLead name="globe" />
+                  <div className="gs-row-words">
+                    <RowWords
+                      title={
+                        ownName(guest.language) ??
+                        t('guestList.languageNotSetLine', {
+                          language: t(`languageNames.${guest.organisationLanguage ?? 'en'}`),
+                        })
+                      }
+                      lines={[t('language.label')]}
+                    />
+                    {guest.chosenLanguage != null && <ChoseNote chose={guest.chosenLanguage} />}
+                  </div>
+                </li>
               </>
             )}
             {guest.companions.map((companion, at) => (
@@ -605,6 +627,7 @@ interface Values {
   country: string;
   number: string;
   companions: readonly { id: string | null; name: string }[];
+  language: string | null;
 }
 
 function valuesOf(guest: GuestDetails, country: string): Values {
@@ -616,6 +639,7 @@ function valuesOf(guest: GuestDetails, country: string): Values {
     country: phone?.country ?? country,
     number: phone?.number ?? guest.mobile ?? '',
     companions: guest.companions.map((one) => ({ id: one.id, name: one.fullName ?? '' })),
+    language: guest.language,
   };
 }
 
@@ -631,9 +655,9 @@ function mobileOf(values: Values): string | null {
     : (phoneE164(number, values.country) ?? `${values.country} ${number}`);
 }
 
-type Field = 'fullName' | 'email' | 'mobile' | 'companions';
+type Field = 'fullName' | 'email' | 'mobile' | 'language' | 'companions';
 
-const FIELDS: readonly Field[] = ['fullName', 'email', 'mobile', 'companions'];
+const FIELDS: readonly Field[] = ['fullName', 'email', 'mobile', 'language', 'companions'];
 
 /** What the API would keep of each field, so a save that changes nothing sends nothing. */
 function keptOf(values: Values): Record<Field, string> {
@@ -643,6 +667,7 @@ function keptOf(values: Values): Record<Field, string> {
     fullName: sent.fullName,
     email: JSON.stringify(sent.email),
     mobile: JSON.stringify(mobileOf(values)),
+    language: JSON.stringify(values.language),
     companions: JSON.stringify(
       values.companions.map((one, at) => [one.id, sent.companions?.[at]?.fullName ?? null]),
     ),
@@ -671,6 +696,7 @@ function mergedOf(values: Values, theirs: Values, changed: readonly Field[]): Va
     email: mine('email') ? values.email : theirs.email,
     country: mine('mobile') ? values.country : theirs.country,
     number: mine('mobile') ? values.number : theirs.number,
+    language: mine('language') ? values.language : theirs.language,
     companions: mine('companions')
       ? values.companions.map((one) => (held.has(one.id) ? one : { ...one, id: null }))
       : theirs.companions,
@@ -807,6 +833,12 @@ function EditForm({
         field: t('guestList.mobileNumber'),
         theirs: theirs.mobile == null ? none : formatPhone(theirs.mobile),
         yours: mobile == null ? none : formatPhone(mobile),
+      },
+      {
+        key: 'language',
+        field: t('language.label'),
+        theirs: ownName(theirs.language) ?? t('guestList.languageNotSet'),
+        yours: ownName(sent.language) ?? t('guestList.languageNotSet'),
       },
       {
         key: 'companions',
@@ -1047,6 +1079,11 @@ function EditForm({
           help={t('guestList.keepsLink')}
           onCountry={(code) => change({ country: code })}
           onNumber={(number) => change({ number })}
+        />
+        <LanguageField
+          value={values.language}
+          chose={host.chosenLanguage}
+          onChange={(language) => change({ language })}
         />
         <EditCompanions
           host={values.fullName.trim() === '' ? host.fullName : values.fullName.trim()}

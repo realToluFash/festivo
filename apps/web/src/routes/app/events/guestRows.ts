@@ -7,7 +7,13 @@ import {
   type NewGuest,
   type Violation,
 } from '@soirely/api-client';
-import { compareGuestNames, emailProblem, nameKey, phoneLengthProblem } from '@soirely/domain';
+import {
+  LOCALES,
+  compareGuestNames,
+  emailProblem,
+  nameKey,
+  phoneLengthProblem,
+} from '@soirely/domain';
 
 export type ReplyWord = Guest['reply'] | Companion['state'];
 
@@ -28,6 +34,11 @@ export function rowsOf(guests: readonly Guest[]): ListRow[] {
         at,
       })),
     ]);
+}
+
+/** A language in its own name, as the guest's page menu names it (sc-3790). */
+export function ownName(code: string | null): string | null {
+  return LOCALES.find((one) => one.code === code)?.nativeName ?? null;
 }
 
 export function blank(name: string | null): boolean {
@@ -58,6 +69,8 @@ export interface Typed {
   country: string;
   number: string;
   companions: readonly string[];
+  /** The host's Language for them, null for Not set (sc-3790). */
+  language: string | null;
 }
 
 export type Problem =
@@ -137,6 +150,7 @@ export function newGuestOf(typed: Typed, allowDuplicate: boolean): NewGuest {
     companions: typed.companions.map((name) => ({
       fullName: name.trim() === '' ? null : name.trim(),
     })),
+    language: typed.language,
     ...(allowDuplicate ? { allowDuplicate: true } : {}),
   };
 }

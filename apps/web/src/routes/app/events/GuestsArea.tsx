@@ -68,7 +68,7 @@ import {
   guestAddress,
   replyDate,
 } from './GuestColumn.tsx';
-import { CompanionField, GuestField, PhoneField } from './GuestFields.tsx';
+import { CompanionField, GuestField, LanguageField, PhoneField } from './GuestFields.tsx';
 import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
@@ -733,7 +733,13 @@ function fieldOf(key: string, problems: Problems): string {
   return key === 'mobile' && problems.mobile === 'noCountry' ? 'country' : key;
 }
 
-const EMPTY: Omit<Typed, 'country'> = { fullName: '', email: '', number: '', companions: [] };
+const EMPTY: Omit<Typed, 'country'> = {
+  fullName: '',
+  email: '',
+  number: '',
+  companions: [],
+  language: null,
+};
 
 /** Add guest in place beside the list: it stays open after each guest, cleared, focus back on Full name. */
 function AddForm({
@@ -903,6 +909,11 @@ function AddForm({
             setRefused({});
           }}
           onNumber={(number) => change({ number })}
+        />
+        <LanguageField
+          value={typed.language}
+          chose={null}
+          onChange={(language) => change({ language })}
         />
         {duplicate && (
           <div className="gs-amber" role="alert">
