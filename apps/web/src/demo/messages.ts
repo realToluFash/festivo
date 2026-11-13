@@ -40,6 +40,15 @@ import {
   isInviteState,
 } from './messagesInvite.ts';
 import {
+  type Hour,
+  SMS_GROUP,
+  SMS_STATES,
+  failedWhy,
+  isSmsState,
+  smsReachLine,
+  waitLine,
+} from './messagesSms.ts';
+import {
   type Extra,
   type NoticeCase,
   NOTICE_STATES,
@@ -173,6 +182,7 @@ export const MESSAGE_STATES = [
   ...WAITS_STATES,
   ...NOTICE_STATES,
   ...INVITE_STATES,
+  ...SMS_STATES,
   ...WA_INVITE_STATES,
   ...STOP_STATES,
   ...TELL_STATES,
@@ -204,12 +214,20 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: 'Messages',
     states: MESSAGE_STATES.filter(
-      (one) => !isStopState(one.key) && !isInviteState(one.key) && !isTellState(one.key),
+      (one) =>
+        !isStopState(one.key) &&
+        !isInviteState(one.key) &&
+        !isSmsState(one.key) &&
+        !isTellState(one.key),
     ).map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
   {
     name: INVITE_GROUP,
     states: INVITE_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
+  },
+  {
+    name: SMS_GROUP,
+    states: SMS_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
   {
     name: WA_INVITE_GROUP,
@@ -558,7 +576,7 @@ const NAMED: Record<Sample, readonly Reasons[]> = {
     {
       name: 'Sophie Laurent',
       email: MW.unsubscribed,
-      sms: MW.textedStop,
+      sms: MW.stoppedTexts,
       whatsApp: MW.hasNotAgreedWhatsApp,
     },
     { name: 'Yuki Tanaka', email: MW.addressBouncing, sms: MW.noPhone, whatsApp: MW.noPhone },
@@ -567,13 +585,13 @@ const NAMED: Record<Sample, readonly Reasons[]> = {
     {
       name: 'Fatima Zahra El Idrissi',
       email: MW.noEmail,
-      sms: MW.textedStop,
+      sms: MW.stoppedTexts,
       whatsApp: MW.hasNotAgreedWhatsApp,
     },
     {
       name: 'Diego Herrera',
       email: MW.unsubscribed,
-      sms: MW.textedStop,
+      sms: MW.stoppedTexts,
       whatsApp: MW.hasNotAgreedWhatsApp,
     },
     JOAQUIN,
@@ -697,7 +715,7 @@ export function byName(people: readonly Untellable[], locale: string): Untellabl
 }
 
 /** Which of the boards' three samples an audience counts as: All guests, Hasn't replied alone, or Coming (every other). */
-function sampleOf(audience: Audience): Sample {
+export function sampleOf(audience: Audience): Sample {
   if (audience.kind !== 'who') return 'all';
 
   return audience.conditions[0] === 'notReplied' && audience.conditions.length === 1
@@ -869,12 +887,19 @@ export interface Check {
   cant: readonly Untellable[];
   untold: readonly Untellable[];
   credits: string | null;
+  sms: string | null;
   whatsApp: string | null;
   instead: string | null;
+  wait: string | null;
 }
 
 /** The check before it goes (sc-3942, sc-3963): who is told and how, who cannot be, and the credits. */
-export function checkOf(audience: Audience, ticks: Ticks, groups: readonly Group[]): Check {
+export function checkOf(
+  audience: Audience,
+  ticks: Ticks,
+  groups: readonly Group[],
+  hour?: Hour,
+): Check {
   const count = countOf(audience, groups) ?? 0;
   const { counts, cantTell, names, smsOff } = figuresOf(audience, ticks);
   const on = CHANNELS.filter((channel) => ticks[channel]);
@@ -899,8 +924,10 @@ export function checkOf(audience: Audience, ticks: Ticks, groups: readonly Group
         : credits === 0
           ? MW.emailNoCredits
           : `${ticks.whatsApp ? many('textsAndWhatsAppUse', credits) : many('textsUse', credits)} ${after}`,
+    sms: ticks.sms ? smsReachLine(sampleOf(audience)) : null,
     whatsApp: ticks.whatsApp ? whatsAppLine(audience) : null,
     instead: insteadOf(audience, ticks),
+    wait: waitLine(ticks, hour),
   };
 }
 
@@ -1298,6 +1325,31 @@ export const INVITE_UNREACHED: readonly Unreached[] = [
     NOT_INVITED,
   ),
   person('mei', 'Mei Lin Chen', 'none', NOTHING, ['addEmail', 'addPhone', 'copyLink'], NOT_INVITED),
+];
+
+const smsFailed = (id: string, name: string, why: string, seenAt?: string): Unreached =>
+  person(
+    id,
+    name,
+    'none',
+    [
+      { mark: 'delivered', word: `${MW.email} · ${MW.delivered}`, why: NOW },
+      { mark: 'bounced', word: `${MW.sms} · ${MW.failedReceipt}`, why },
+    ],
+    [],
+    seenAt == null
+      ? undefined
+      : { mark: 'delivered', word: MW.theirPage, why: filled(MW.seen, { time: seenAt }) },
+  );
+
+/** `reachedSmsFailed`: reached by email, their text failed, one of each provider reason (sc-3946, l10n #45569). */
+export const SMS_FAILED: readonly Unreached[] = [
+  smsFailed('chidi', 'Chidi Okonkwo', failedWhy('30005'), '09:42'),
+  smsFailed('ana', 'Ana Pereira', failedWhy('30006')),
+  smsFailed('hana', 'Hana Sato', failedWhy('30003')),
+  smsFailed('mateo', 'Mateo García', failedWhy('30007')),
+  smsFailed('lea', 'Léa Martin', failedWhy('other', '30008')),
+  smsFailed('joao', 'João Santos', failedWhy('none')),
 ];
 
 /** Who a message just sent reached so far (sentReached): two in progress drawn, the rest counted. */
@@ -1891,6 +1943,7 @@ export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: read
   const waiting = people.filter((one) => one.kind !== 'inProgress' && one.kind !== 'held');
 
   if (of === 'new') {
+    const reachedDone = inbox.smsFailed === true ? [...SMS_FAILED, ...SO_FAR.done] : SO_FAR.done;
     const sent = people.filter((one) => one.kind === 'inProgress');
     const left = drawnProgress.filter((one) => !marks.includes(one.id));
     const progress = [...left, ...sent];
@@ -1927,9 +1980,9 @@ export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: read
         {
           key: 'reached',
           name: MW.legendReached,
-          people: SO_FAR.done,
+          people: reachedDone,
           count: SO_FAR.reached,
-          more: SO_FAR.reached - SO_FAR.done.length,
+          more: SO_FAR.reached - reachedDone.length,
         },
       ],
       waiting,
@@ -2142,6 +2195,7 @@ export interface Draft {
   opens?: 'insert' | 'previewAs' | 'filling' | undefined;
   previewAs?: PersonId;
   seeAll?: boolean;
+  hour?: Hour;
   invite?: InviteDraft;
 }
 
@@ -2215,6 +2269,8 @@ export interface Inbox {
   toldAs?: SampleEvent | null;
   /** sc-3978: who stopped each guest writing from their page, and when. */
   stopped?: Partial<Record<GuestId, Stop>>;
+  /** `reachedSmsFailed`: the just-sent message's texts that failed, each with its provider's reason (sc-3946). */
+  smsFailed?: boolean;
   /** sc-3976: the open state's facts about one guest's notice and conversation. */
   notice?: NoticeCase;
   /** Parking told by Email only, with every reason sc-3942 words (sc-3966's `reasons`). */
@@ -2550,6 +2606,30 @@ export function seedOf(state: MessagesState | null): Inbox {
       return compose(base, COMING, 'check', none);
     case 'whatsAppLine':
       return compose(base, { kind: 'all' }, 'write', allTicked);
+    case 'smsLine':
+      return compose(base, { kind: 'all' }, 'write');
+    case 'checkQuiet':
+    case 'checkQuietBoth':
+    case 'checkNow': {
+      const at = compose(base, COMING, 'check', state === 'checkQuietBoth' ? allTicked : TICKS);
+
+      return at.draft == null
+        ? at
+        : { ...at, draft: { ...at.draft, hour: state === 'checkNow' ? 'live' : 'quiet' } };
+    }
+    case 'reachedSmsFailed':
+      return {
+        ...base,
+        pane: { kind: 'reached', of: 'new', thread: 'new' },
+        outs: [outOf('sent')],
+        smsFailed: true,
+      };
+    case 'previewFirstText':
+      return {
+        ...base,
+        pane: { kind: 'compose' },
+        draft: { ...draftOf(COMING), step: 'preview', previewAs: 'amaka' },
+      };
     case 'checkWhatsApp':
       return compose(base, { kind: 'all' }, 'check', allTicked);
     case 'whatsAppRead':

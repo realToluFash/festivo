@@ -8,6 +8,7 @@ import { DAYS, EVENT, HOSTS, type Token } from './MessagesSample.ts';
 import { W, say } from './MessagesWords.ts';
 import { FRENCH, PREVIEW_PEOPLE, type PreviewKey, type PreviewPerson } from './PreviewSample.ts';
 import { PW, sayPreview } from './PreviewWords.ts';
+import type { NoticeWords } from './NoticeStates.ts';
 import { TOKEN_RUN } from './TokenText.ts';
 
 /** Who the preview is for, whether Preview as is open, and whether it is still being filled in (`held`: as a board, it stays). */
@@ -39,6 +40,7 @@ const STARTS: Partial<Record<string, Partial<Previewing>>> = {
   previewChose: { who: 'camille' },
   previewLoading: { who: 'camille', filling: true, held: true },
   previewMarkup: { who: 'kemi' },
+  previewFirstText: { who: 'amaka' },
 };
 
 /** What a `?state=` of sc-3960 adds to Messages: Insert open, or the person previewed. */
@@ -161,4 +163,9 @@ export function noticeFor(person: PreviewPerson): {
     body: say.noticeBody(HOSTS, EVENT),
     button: W.readOnYourPage,
   };
+}
+
+/** Outside English, the bracketed stand-in. */
+export function noticeWordsIn(language: string): NoticeWords {
+  return language === 'fr' ? (_hosts, _event, link) => FRENCH.noticeSms(link) : say.noticeSms;
 }

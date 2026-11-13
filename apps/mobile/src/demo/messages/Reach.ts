@@ -19,6 +19,7 @@ import {
   PARKING_GROUPS,
   PARKING_REACH,
   PARKING_REACHED,
+  NOW,
   READER,
   RESEND,
   type ReachGroup,
@@ -26,10 +27,12 @@ import {
   type ReachPart,
   SENDING_GROUPS,
   SENDING_REACH,
+  SMS_FAILED,
   receiptPeople,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
 import { NIGHT_TEXT, REASONS_REACH, REASONS_REACHED, REASON_GROUPS } from './ReasonsSample.ts';
+import { failedReason } from './Sms.ts';
 import { type TrySmsView, offersTrySms, textedGroup, textedLines, trySmsOf } from './TrySms.ts';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
@@ -178,6 +181,27 @@ interface Base {
   counts?: Partial<Record<GroupKey, number>>;
 }
 
+/** Reached by email, their text failed: they stay reached, and the counts do not change (sc-3946). */
+export function smsFailedPeople(): readonly NotReached[] {
+  return SMS_FAILED.map(([key, initials, name, code, seen]) => ({
+    key,
+    initials,
+    name,
+    lines: [
+      { mark: 'delivered', word: say.where(CHANNEL_WORD.email, W.delivered), reason: NOW },
+      {
+        mark: 'bounced',
+        word: say.where(CHANNEL_WORD.sms, W.failedReceipt),
+        reason: failedReason(code),
+      },
+      seen == null
+        ? { mark: 'none', word: W.theirPage, reason: W.notSeenYet }
+        : { mark: 'delivered', word: W.theirPage, reason: say.seenAt(seen) },
+    ],
+    fixes: [],
+  }));
+}
+
 function baseOf(m: Messages, of: ReachedOf): Base {
   if (of === 'receipts')
     return {
@@ -205,7 +229,10 @@ function baseOf(m: Messages, of: ReachedOf): Base {
           ? { ...group, people: [NIGHT_TEXT, ...group.people] }
           : group,
       ),
-      reachedRows: SENDING_GROUPS.find((group) => group.key === 'reached')?.people ?? [],
+      reachedRows: [
+        ...(SENDING_GROUPS.find((group) => group.key === 'reached')?.people ?? []),
+        ...(m.smsFailed === true ? smsFailedPeople() : []),
+      ],
       progress: SENDING_REACH.inProgress,
     };
   if (m.sample === 'reasons')

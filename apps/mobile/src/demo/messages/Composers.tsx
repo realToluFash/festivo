@@ -27,13 +27,15 @@ import {
   MESSAGE_MOST,
   type NoticeCost,
   SUBJECT_MOST,
+  insteadOf,
   matchesNobody,
+  smsLine,
   toChip,
   whatsAppLine,
 } from './MessagesModel.ts';
 import { formatCount, piecesOf } from './MessagesSample.ts';
 import { keepWhole, outsideToken, tokenText } from './TokenText.ts';
-import { WhatsAppReach } from './WhatsAppParts.tsx';
+import { ChannelReach, InsteadLine } from './WhatsAppParts.tsx';
 import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 
 const INK2 = tokens.colorInkSecondary;
@@ -158,6 +160,8 @@ export function ToHead({
   onTo: () => void;
   onChannel: (key: ChannelKey) => void;
 }) {
+  const instead = matchesNobody(draft) ? null : insteadOf(draft);
+
   return (
     <View style={styles.head}>
       <View style={styles.headRow}>
@@ -211,7 +215,11 @@ export function ToHead({
           ))}
         </View>
       </View>
-      {draft.channels.wa && <WhatsAppReach line={whatsAppLine(draft.to)} />}
+      {draft.channels.sms && !matchesNobody(draft) && (
+        <ChannelReach channel="sms" line={smsLine(draft.to)} />
+      )}
+      {draft.channels.wa && <ChannelReach channel="wa" line={whatsAppLine(draft.to)} />}
+      {instead != null && <InsteadLine line={instead} />}
     </View>
   );
 }

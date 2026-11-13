@@ -38,21 +38,20 @@ const GSM_7 =
   '@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&\'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà';
 const GSM_7_TWICE = '^{}\\[~]|€';
 
-function isGsm(chars: readonly string[]): boolean {
-  return chars.every((one) => GSM_7.includes(one) || GSM_7_TWICE.includes(one));
+export function isGsm7(text: string): boolean {
+  return [...text].every((one) => GSM_7.includes(one) || GSM_7_TWICE.includes(one));
 }
 
 /** The encoding a text goes in, as sc-3946's count names it. */
 export function smsEncoding(text: string): 'GSM-7' | 'UCS-2' {
-  return isGsm([...text]) ? 'GSM-7' : 'UCS-2';
+  return isGsm7(text) ? 'GSM-7' : 'UCS-2';
 }
 
 /** How many parts a text is sent in: GSM-7 to 160 characters, then 153 a part; any other character makes it UCS-2, 70 then 67. */
 export function smsParts(text: string): number {
   const chars = [...text];
-  const gsm = isGsm(chars);
 
-  if (!gsm) return chars.length <= 70 ? 1 : Math.ceil(chars.length / 67);
+  if (!isGsm7(text)) return chars.length <= 70 ? 1 : Math.ceil(chars.length / 67);
 
   const length = chars.reduce((sum, one) => sum + (GSM_7_TWICE.includes(one) ? 2 : 1), 0);
 
@@ -71,17 +70,34 @@ export interface InviteSms {
   /** Its length with the link as built. */
   chars: number;
   parts: number;
+  unicode: boolean;
 }
 
-/** The invitation's text to one guest, in plain punctuation, its first text to a number ending on the STOP line; counted with their link as built. */
+/** The invitation's text to one guest, as sent. */
 export function inviteSmsOf(guest: OneGuest, about: SmsAbout, first = true): InviteSms {
   const { replyBy, ...rest } = about;
   const values = { ...rest, greeting: greetingOf(guest), link: THEIR_LINK };
-  const words = (
-    replyBy == null ? iw.filled(IW.smsNoDate, values) : iw.filled(IW.sms, { ...values, replyBy })
-  ).replaceAll('’', "'");
-  const text = first ? `${words}\n${IW.smsStop}` : words;
+  const words =
+    replyBy == null ? iw.filled(IW.smsNoDate, values) : iw.filled(IW.sms, { ...values, replyBy });
+
+  return asSent(words, first);
+}
+
+const PLAIN: Record<string, string> = {
+  '‘': "'",
+  '’': "'",
+  '“': '"',
+  '”': '"',
+  '–': '-',
+  '—': '-',
+  '…': '...',
+};
+
+/** Every text Soirely sends, as sent (sc-3946): typographic punctuation plain, a first text to a number ending on the STOP line, counted with the guest's link as built. */
+export function asSent(words: string, first = false): InviteSms {
+  const plain = words.replace(/[‘’“”–—…]/gu, (one) => PLAIN[one] ?? one);
+  const text = first ? `${plain}\n${IW.smsStop}` : plain;
   const built = text.replace(THEIR_LINK, 'x'.repeat(LINK_CHARS));
 
-  return { text, chars: [...built].length, parts: smsParts(built) };
+  return { text, chars: [...built].length, parts: smsParts(built), unicode: !isGsm7(built) };
 }

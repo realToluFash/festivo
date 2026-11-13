@@ -18,6 +18,7 @@ import {
   countryOf,
   creditsOf,
   inviteTextOf,
+  isGsm7,
   liveAlertOf,
   liveToastOf,
   makeLiveStart,
@@ -149,6 +150,13 @@ describe('the offer’s figures, from the sample', () => {
     );
     expect(texts.map(({ parts }) => parts)).toEqual([2, 2, 2]);
     expect(reach.texts).toEqual([124, 18, 4]);
+  });
+
+  it('sends a greeting in curly quotes as GSM-7, its quotes plain', () => {
+    const invite = inviteTextOf(eventIn('makeLiveOffer'), '“Auntie Bisi”');
+    expect(invite.text).toContain('"Auntie Bisi", you\'re invited');
+    expect(isGsm7(invite.text)).toBe(true);
+    expect(invite.parts).toBe(2);
   });
 
   it('prices each text by its number’s country, from the rate table', () => {

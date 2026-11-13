@@ -138,7 +138,7 @@ describe('Tell guests, every kind and after Send (sc-4330)', () => {
         .slice(-2),
     ).toEqual([
       'Joaquín RuizNo email address · No phone number',
-      'Sophie LaurentUnsubscribed · Texted STOP',
+      'Sophie LaurentUnsubscribed · Stopped texts',
     ]);
     fireEvent.click(who);
     expect(who.getAttribute('aria-expanded')).toBe('false');

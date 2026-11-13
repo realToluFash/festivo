@@ -196,6 +196,30 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
     'a text waiting for the morning',
     'Valentina Restrepo: SMS · Waiting until 09:00, their time; In progress',
   ],
+  smsLine: [
+    'SMS ticked: who it reaches',
+    'To All guests · 142: SMS reaches 39 of 142, under the chips',
+  ],
+  checkQuiet: [
+    'the check, texts waiting for morning',
+    'Coming · 96 by email and SMS: Texts to 4 people wait until 09:00, their time',
+  ],
+  checkQuietBoth: [
+    'the check, texts and WhatsApp waiting',
+    'Email · 92, SMS · 28, WhatsApp · 3; texts and WhatsApp messages to 4 people wait',
+  ],
+  checkNow: [
+    'happening now at 23:00: nothing waits',
+    'Thu, Nov 5 at 23:00 while the wedding is on: no wait line',
+  ],
+  reachedSmsFailed: [
+    'who it reached, texts that failed',
+    'Six reached by email whose text failed, each with its reason',
+  ],
+  previewFirstText: [
+    'preview: a first text',
+    'Amaka Eze: SMS · 2 parts · GSM-7 · 177 characters, ending Reply STOP to opt out.',
+  ],
   tellDates: [
     'tell guests, the dates',
     'The end moved to Sunday: the dates line, each side a range',

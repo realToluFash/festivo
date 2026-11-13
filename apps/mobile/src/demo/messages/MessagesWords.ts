@@ -67,7 +67,6 @@ export const W = {
   doesntExist: 'This address doesn’t exist (5.1.1)',
   notConfirmed: 'Delivery not confirmed',
   unsubscribed: 'Unsubscribed',
-  textedStop: 'Texted STOP',
   stoppedTexts: 'Stopped texts',
   fixEmail: 'Fix email address',
   addEmail: 'Add an email address',
@@ -299,7 +298,6 @@ export const say = {
   noticeSms: (hosts: string, event: string, link: string) =>
     `${hosts}: a new message about ${event}. Read it here: ${link}`,
   emailFrom: (org: string) => `Email · from ${org} via Soirely`,
-  smsParts: (parts: number) => (parts === 1 ? 'SMS · 1 part' : `SMS · ${parts} parts`),
   whatsAppTemplate: 'WhatsApp · the approved template',
   stopEmails: (org: string) => `Stop emails from ${org}`,
   cannotUndo: (count: number) =>
@@ -431,6 +429,9 @@ export const say = {
     count === 1 ? '1 hasn’t agreed to WhatsApp' : `${count} haven’t agreed to WhatsApp`,
   noMobile: (count: number) =>
     count === 1 ? '1 has no mobile number' : `${count} have no mobile number`,
+  smsReaches: (count: number, of: number) => `SMS reaches ${count} of ${of}`,
+  stoppedTexts: (count: number) => `${count} stopped texts`,
+  insteadOfSms: (count: number) => `${count} by WhatsApp instead of SMS`,
   inZone: (day: string, time: string, zone: string) => `${day}, ${time} ${zone}`,
   dayTime: (day: string, time: string) => `${day}, ${time}`,
   subjectTooLong: (most: string) => `Shorten the subject to ${most} characters or fewer.`,

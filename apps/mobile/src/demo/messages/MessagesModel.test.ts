@@ -37,6 +37,7 @@ import {
   overOf,
 } from './MessagesModel.ts';
 import { MESSAGES_BOARDS } from './MessagesBoards.ts';
+import { SMS_STATES } from './Sms.ts';
 import { sampleEvent } from '../events/EventsSample.ts';
 import {
   NOT_REACHED,
@@ -64,13 +65,14 @@ beforeAll(() =>
 const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
-  it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s six, sc-3960’s, sc-3963’s, sc-3976’s 17, sc-3978’s, sc-3966’s seven and sc-4330’s, by both demos’ names', () => {
-    expect(MESSAGES_STATES).toHaveLength(154);
+  it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s six, sc-3960’s, sc-3963’s, sc-3976’s 17, sc-3978’s, sc-3946’s, sc-3966’s seven and sc-4330’s, by both demos’ names', () => {
+    expect(MESSAGES_STATES).toHaveLength(160);
     const reasonsAt = MESSAGES_STATES.indexOf('reasons');
     expect(MESSAGES_STATES.slice(reasonsAt, reasonsAt + 7)).toEqual([...REASON_STATES]);
     expect(MESSAGES_STATES.slice(MESSAGES_STATES.indexOf('sendWithout') + 1).slice(0, 17)).toEqual([
       ...NOTICE_STATES,
     ]);
+    expect(MESSAGES_STATES.slice(108, 114)).toEqual([...SMS_STATES]);
     expect(MESSAGES_STATES.slice(72, 75)).toEqual([
       'whatsAppLine',
       'checkWhatsApp',
@@ -263,6 +265,7 @@ describe('the check', () => {
       credits: 31,
       after: '1,469',
       whatsApp: false,
+      smsReach: 'SMS reaches 31 of 96 · 65 have no mobile number',
     });
   });
 

@@ -1,6 +1,6 @@
 import type { Channel, Draft, MessagesState, Segment } from './messages.ts';
 
-export type PersonId = 'bisi' | 'camille' | 'kemi' | 'kwame' | 'lucia';
+export type PersonId = 'amaka' | 'bisi' | 'camille' | 'kemi' | 'kwame' | 'lucia';
 export type Language = 'en' | 'fr' | 'es';
 
 /** sc-3790's three steps: chosen on their page, set by the host, or the organisation's. */
@@ -13,10 +13,21 @@ export interface Person {
   language: Language;
   from: LanguageFrom;
   has: readonly Channel[];
+  /** Ire Events has never texted their number, so the text ends on the STOP line (sc-3946). */
+  firstText?: boolean;
 }
 
 /** The people in To (Coming) that Preview as offers, A to Z (STATES.md, sc-3960). */
 export const PEOPLE: readonly Person[] = [
+  {
+    id: 'amaka',
+    name: 'Amaka Eze',
+    greetAs: null,
+    language: 'en',
+    from: 'organisation',
+    has: ['sms'],
+    firstText: true,
+  },
   {
     id: 'bisi',
     name: 'Bisi Adewale',
