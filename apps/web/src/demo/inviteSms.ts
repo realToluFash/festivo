@@ -13,9 +13,9 @@ const WEEKDAY = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
 });
 
-/** sc-1526's link as built: the address and a 256-bit token in base64url. */
 /** Where each guest's own link goes in a message's words. */
 export const THEIR_LINK = '[their own link]';
+/** sc-1526's link as built: the address and a 256-bit token in base64url. */
 export const LINK_CHARS = 'https://soirely.com/i/'.length + Math.ceil(256 / 6);
 export const REPLY_BY = WEEKDAY.format(new Date(`${replyByOf(WEDDING) ?? '2026-11-04'}T12:00:00Z`));
 

@@ -14,6 +14,7 @@ export const MAKE_LIVE_STATES = [
   'makeLiveChanged',
   'makeLiveCannotSend',
   'makeLiveOffer',
+  'makeLiveOfferEmail',
   'makeLiveOfferOne',
   'makeLiveOfferWaits',
   'makeLiveOfferPart',
@@ -22,6 +23,7 @@ export const MAKE_LIVE_STATES = [
   'makeLiveOfferNotYet',
   'makeLiveOfferNotSent',
   'makeLiveOfferNobody',
+  'makeLiveOfferRefused',
   'makeLiveOfferForbidden',
   'makeLiveEndPassed',
   'makeLiveNoOffer',
@@ -56,6 +58,7 @@ const SEEDS: Record<MakeLiveState, LiveSeed> = {
   makeLiveChanged: HOSTED_LIVE,
   makeLiveCannotSend: HOSTED,
   makeLiveOffer: HOSTED_LIVE,
+  makeLiveOfferEmail: HOSTED_LIVE,
   makeLiveOfferOne: HOSTED_LIVE,
   makeLiveOfferWaits: HOSTED_LIVE,
   makeLiveOfferPart: HOSTED_LIVE,
@@ -64,6 +67,7 @@ const SEEDS: Record<MakeLiveState, LiveSeed> = {
   makeLiveOfferNotYet: HOSTED_LIVE,
   makeLiveOfferNotSent: HOSTED_LIVE,
   makeLiveOfferNobody: HOSTED_LIVE,
+  makeLiveOfferRefused: HOSTED_LIVE,
   makeLiveOfferForbidden: HOSTED_LIVE,
   makeLiveEndPassed: { event: PASSED_EVENT, hosts: null, live: false },
   makeLiveNoOffer: NO_OFFER,
@@ -175,16 +179,17 @@ export const OFFER_MOBILES: readonly { name: string; phone: string }[] = DRAFT_G
 );
 export const OFFER_BALANCE = 250;
 
-/** The engagement's offer: Guests' Not yet invited less the companions, and the three mobiles in the order they are taken. */
+/** The engagement's offer: Guests' Not yet invited less the companions, those no channel reaches, and the three mobiles in the order they are taken. */
 export function sampleReach(event: Invited): Reach {
   const companions = DRAFT_GUESTS.reduce((sum, one) => sum + one.companions.length, 0);
+  const unreachable = DRAFT_GUESTS.filter((one) => one.email == null && one.phone == null).length;
   const texts = OFFER_MOBILES.map(({ name, phone }) =>
     textCost({ phone, parts: inviteTextOf(event, name).parts }),
   );
 
   return {
     guests: DRAFT_COUNTS.notyet - companions,
-    unreachable: 0,
+    unreachable,
     texts,
     balance: OFFER_BALANCE,
     maySend: true,
@@ -204,6 +209,8 @@ export function reachOf(state: string | null, event: SampleEvent): Reach {
   const reach = sampleReach(event);
 
   switch (makeLiveStateOf(state)) {
+    case 'makeLiveOfferEmail':
+      return { ...reach, texts: [] };
     case 'makeLiveOfferOne':
       return { ...reach, guests: 1, unreachable: 0, texts: [] };
     case 'makeLiveOfferWaits':
@@ -211,6 +218,7 @@ export function reachOf(state: string | null, event: SampleEvent): Reach {
     case 'makeLiveOfferPart':
       return { ...reach, balance: 100 };
     case 'makeLiveOfferNobody':
+    case 'makeLiveOfferRefused':
       return { ...reach, unreachable: reach.guests, texts: [] };
     case 'makeLiveCannotSend':
       return { ...reach, maySend: false };
@@ -283,6 +291,7 @@ const STARTS: Record<MakeLiveState, MakeLive> = {
   makeLiveChanged: LIVE_NOW({ at: 'told', why: 'changed' }),
   makeLiveCannotSend: DRAFT(QUESTION),
   makeLiveOffer: LIVE_NOW(OFFER),
+  makeLiveOfferEmail: LIVE_NOW(OFFER),
   makeLiveOfferOne: LIVE_NOW(OFFER),
   makeLiveOfferWaits: LIVE_NOW(OFFER),
   makeLiveOfferPart: LIVE_NOW(OFFER),
@@ -291,6 +300,7 @@ const STARTS: Record<MakeLiveState, MakeLive> = {
   makeLiveOfferNotYet: LIVE_NOW(CLOSED),
   makeLiveOfferNotSent: LIVE_NOW({ ...OFFER, failed: true }),
   makeLiveOfferNobody: LIVE_NOW({ at: 'stopped', why: 'nobody' }),
+  makeLiveOfferRefused: LIVE_NOW({ at: 'stopped', why: 'nobody' }),
   makeLiveOfferForbidden: LIVE_NOW({ at: 'stopped', why: 'forbidden' }),
   makeLiveEndPassed: DRAFT({ at: 'told', why: 'endPassed' }),
   makeLiveNoOffer: DRAFT(QUESTION),

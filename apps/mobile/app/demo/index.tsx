@@ -1279,6 +1279,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-draft-4?state=makeLiveOffer',
       },
       {
+        title: 'Make live · the offer, everyone by email',
+        what: 'Send invitations to 11 guests now? No texts, so no cost line',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferEmail',
+      },
+      {
         title: 'Make live · the offer, one guest',
         what: 'Send the invitation to 1 guest now? and Send it',
         href: '/demo/events/evt-draft-4?state=makeLiveOfferOne',
@@ -1317,6 +1322,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Make live · nobody can be reached',
         what: 'No offer: why, and Close alone',
         href: '/demo/events/evt-draft-4?state=makeLiveOfferNobody',
+      },
+      {
+        title: 'Make live · refused after Send them',
+        what: 'The same refusal in the offer’s place: why, and Close alone',
+        href: '/demo/events/evt-draft-4?state=makeLiveOfferRefused',
       },
       {
         title: 'Make live · no longer allowed to send',

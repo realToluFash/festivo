@@ -51,6 +51,7 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
       'makeLiveChanged',
       'makeLiveCannotSend',
       'makeLiveOffer',
+      'makeLiveOfferEmail',
       'makeLiveOfferOne',
       'makeLiveOfferWaits',
       'makeLiveOfferPart',
@@ -59,6 +60,7 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
       'makeLiveOfferNotYet',
       'makeLiveOfferNotSent',
       'makeLiveOfferNobody',
+      'makeLiveOfferRefused',
       'makeLiveOfferForbidden',
       'makeLiveEndPassed',
       'makeLiveNoOffer',
@@ -73,8 +75,9 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
         key,
       ).toHaveLength(1);
     }
-    expect(isMakeLive('makeLiveOfferWaits')).toBe(true);
-    expect(isMakeLive('makeLiveOfferRefused')).toBe(false);
+    expect(MAKE_LIVE_STATES).toHaveLength(22);
+    expect(isMakeLive('makeLiveOfferRefused')).toBe(true);
+    expect(isMakeLive('draft')).toBe(false);
   });
 
   it('names the host unless the state asks for one, and is Live from the offer on', () => {
@@ -84,6 +87,8 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
     expect(seeded('makeLiveChanged').status).toBe('live');
     expect(seeded('makeLiveOffer').status).toBe('live');
     expect(seeded('makeLiveOfferNotYet').status).toBe('live');
+    expect(seeded('makeLiveOfferEmail').status).toBe('live');
+    expect(seeded('makeLiveOfferRefused').status).toBe('live');
     expect(seeded('madeLive')).toMatchObject({ hosts: ['Fundación Lucía'], status: 'live' });
     expect(seeded('makeLiveNoOffer')).toMatchObject({
       hosts: ['Fundación Lucía'],
@@ -101,18 +106,18 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
     expect(hostTyped(' \n ')).toBeNull();
   });
 
-  it('counts 11 Not yet invited, every one reachable, and prices the three texts by their numbers: 2 × (62 + 9 + 2)', () => {
+  it('offers to the 11 Not yet invited, the one nobody reaches among them, toasts the 10 reached, and prices the three texts by their numbers: 2 × (62 + 9 + 2)', () => {
     const offer = offered('makeLiveOffer');
 
     expect(offer).toEqual({
       count: 11,
-      reached: 11,
+      reached: 10,
       texts: [124, 18, 4],
-      emails: 11,
+      emails: 10,
       balance: 250,
     });
-    expect(lw.many('offerTitle', 11)).toBe('Send invitations to 11 guests now?');
-    expect(lw.many('queued', 11)).toBe('Invitations queued. Sending to 11 guests now.');
+    expect(lw.many('offerTitle', offer.count)).toBe('Send invitations to 11 guests now?');
+    expect(lw.many('queued', offer.reached)).toBe('Invitations queued. Sending to 10 guests now.');
     expect(costOf(offer)).toEqual({
       credits: 'Texts use 146 credits. Credits after sending: 104.',
       either: null,
@@ -137,6 +142,19 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
       either: null,
       waits: null,
     });
+  });
+
+  it('offers the whole list by email with no cost line when nobody is texted', () => {
+    const email = offered('makeLiveOfferEmail');
+
+    expect(email).toEqual({ count: 11, reached: 10, texts: [], emails: 10, balance: 250 });
+    expect(costOf(email)).toEqual({ credits: null, either: null, waits: null });
+    expect(phaseOf('makeLiveOfferEmail')).toEqual({ at: 'offer', failed: false });
+  });
+
+  it('puts the refusal after Send them in the offer’s place, as nobody reachable does', () => {
+    expect(offered('makeLiveOfferRefused')).toMatchObject({ count: 11, reached: 0, texts: [] });
+    expect(phaseOf('makeLiveOfferRefused')).toEqual(phaseOf('makeLiveOfferNobody'));
   });
 
   it('offers one guest in the singular, nobody reachable as the refusal, and nothing on a list with nobody Not yet invited', () => {

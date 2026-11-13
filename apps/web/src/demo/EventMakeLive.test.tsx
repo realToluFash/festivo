@@ -75,7 +75,7 @@ describe('Make live, then the offer to send invitations, at a desk (sc-3971)', (
       const said = toast() as HTMLElement;
 
       expect(said.getAttribute('role')).toBe('status');
-      expect(within(said).getByText('Invitations queued. Sending to 11 guests now.')).toBeDefined();
+      expect(within(said).getByText('Invitations queued. Sending to 10 guests now.')).toBeDefined();
       expect(within(said).getByRole('link', { name: 'Messages' }).getAttribute('href')).toBe(
         '/demo/events/evt-wed-4/messages?state=invited',
       );
@@ -118,6 +118,47 @@ describe('Make live, then the offer to send invitations, at a desk (sc-3971)', (
       const one = await alert('Send the invitation to 1 guest now?');
 
       expect(buttons(one)).toEqual(['Not yet', 'Send it']);
+    },
+  );
+
+  it(
+    'offers the whole list by email with no cost line, and toasts the guests reached',
+    SLOW,
+    async () => {
+      open('makeLiveOfferEmail');
+      const offer = await alert(OFFER);
+
+      expect(within(offer).getByText('Bisi & Kola’s engagement is live.')).toBeDefined();
+      expect(within(offer).queryByText(/^Texts use/u)).toBeNull();
+      expect(within(offer).queryByText('Email goes either way.')).toBeNull();
+      expect(buttons(offer)).toEqual(['Not yet', 'Send them']);
+      fireEvent.click(within(offer).getByRole('button', { name: 'Send them' }));
+
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull(), WAIT);
+      expect(
+        within(toast() as HTMLElement).getByText('Invitations queued. Sending to 10 guests now.'),
+      ).toBeDefined();
+    },
+  );
+
+  it(
+    'puts the refusal after Send them in the offer’s place, Close alone, the event Live behind',
+    SLOW,
+    async () => {
+      open('makeLiveOfferRefused');
+      const refused = await alert('The invitations cannot be sent yet.');
+
+      expect(within(refused).getByText('Bisi & Kola’s engagement is live.')).toBeDefined();
+      expect(within(refused).getByRole('alert').textContent).toBe(
+        'None of the 11 guests can be reached. Add an email address or a mobile number for them in Guests.',
+      );
+      expect(buttons(refused)).toEqual(['Close']);
+      expect(
+        screen.getAllByText('Next up: Bisi & Kola’s engagement starts').length,
+      ).toBeGreaterThan(0);
+      fireEvent.click(within(refused).getByRole('button', { name: 'Close' }));
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull(), WAIT);
+      expect(toast()).toBeNull();
     },
   );
 

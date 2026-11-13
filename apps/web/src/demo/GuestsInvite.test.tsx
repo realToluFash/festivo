@@ -1,11 +1,42 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
+import type * as GuestsSample from './guests.ts';
 import { resetInbox } from './messages.ts';
+
+const seed = vi.hoisted(() => ({ companionAlone: false }));
+
+vi.mock('./guests.ts', async (importOriginal) => {
+  const real = await importOriginal<typeof GuestsSample>();
+
+  return {
+    ...real,
+    guestsStart: (...args: Parameters<typeof real.guestsStart>) => {
+      const start = real.guestsStart(...args);
+      const [first, ...rest] = start.list;
+
+      return seed.companionAlone && first != null
+        ? {
+            ...start,
+            list: [
+              {
+                ...first,
+                companions: [
+                  ...first.companions,
+                  { id: `${first.id}-alone`, name: null, reply: 'notYet' as const },
+                ],
+              },
+              ...rest,
+            ],
+          }
+        : start;
+    },
+  };
+});
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -42,6 +73,7 @@ async function composer(chip: RegExp): Promise<void> {
 }
 
 beforeEach(() => {
+  seed.companionAlone = false;
   __setConfig({ ...tested, environment: 'development' });
   resetSample();
   resetInbox();
@@ -112,6 +144,18 @@ describe('Guests, Send invitations (sc-3971)', () => {
     expect(screen.getByText('96 coming of 156 invited')).toBeDefined();
     expect(screen.getByRole('button', { name: 'No reply · 35' })).toBeDefined();
     expect(screen.getAllByText('Invited by Soirely’s message, Nov 3')).toHaveLength(14);
+  });
+
+  it('does not count a companion alone as somebody left to invite', SLOW, async () => {
+    seed.companionAlone = true;
+    await guests('inviteNoneLeft');
+
+    expect(header()).toEqual(['Export', 'Add guest']);
+    fireEvent.click(screen.getByRole('button', { name: /^No reply · /u }));
+    expect(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Not yet invited/u })
+        .textContent,
+    ).toBe('Not yet invited1');
   });
 
   it.each(['draft', 'draftGuest', 'paused', 'finished', 'exportGrantView'])(

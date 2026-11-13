@@ -194,6 +194,11 @@ export const DRAFT_GUESTS: readonly SampleGuest[] = [
     phone: '+44 7700 900874',
   }),
   guest('ryan', 'Ryan Cole', 'notyet', { email: 'ryan.cole@gmail.com', phone: '+1 202 555 0148' }),
+  guest('tolani-ademola', 'Tolani Ademola', 'notyet', { email: 'tolani.ademola@gmail.com' }),
+  guest('toyin-fashola', 'Toyin Fashola', 'notyet', { email: 'toyin.fashola@outlook.com' }),
+  guest('uche-nwafor', 'Uche Nwafor', 'notyet', { email: 'uche.nwafor@yahoo.com' }),
+  guest('vivian-eze', 'Vivian Eze', 'notyet', { email: 'vivian.eze@icloud.com' }),
+  guest('tomas-os', 'Tomás Okonkwo-Silva', 'notyet'),
 ];
 
 export const PAUSED_GUESTS: readonly SampleGuest[] = [

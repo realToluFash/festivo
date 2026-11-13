@@ -537,11 +537,11 @@ function draft(): Guest[] {
         ['Toyin Fashola', '', 0],
         ['Uche Nwafor', '', 0],
         ['Vivian Eze', '', 0],
-        ['Wumi Lawal', '', 0],
       ],
       'notYet',
       'notYet',
     ),
+    guest('tomas-os', 'Tomás Okonkwo-Silva', 'notYet'),
   ];
 }
 
@@ -683,6 +683,11 @@ export function peopleOf(list: readonly Guest[]): Person[] {
       companion,
     })),
   ]);
+}
+
+/** The guests Not yet invited, never a companion: Send invitations' audience and the offer's {count} (sc-3971). */
+export function notYetInvited(list: readonly Guest[]): Guest[] {
+  return list.filter((one) => one.reply === 'notYet');
 }
 
 export function inChoice(reply: Reply, choice: Choice): boolean {

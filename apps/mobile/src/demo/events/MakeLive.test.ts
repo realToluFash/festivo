@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { DRAFT_COUNTS, DRAFT_GUESTS } from '../guests/GuestsSample.ts';
@@ -54,7 +57,7 @@ function run(
 const MAKE: readonly LiveAction[] = [{ type: 'confirm', hostError: null }, { type: 'made' }];
 
 describe('Make live’s states (sc-3971)', () => {
-  it('are the board’s twenty, in its order, all on the event’s page', () => {
+  it('are the board’s twenty-two, in its order, all on the event’s page', () => {
     expect(MAKE_LIVE_STATES).toEqual([
       'makeLive',
       'makeLiveMaking',
@@ -64,6 +67,7 @@ describe('Make live’s states (sc-3971)', () => {
       'makeLiveChanged',
       'makeLiveCannotSend',
       'makeLiveOffer',
+      'makeLiveOfferEmail',
       'makeLiveOfferOne',
       'makeLiveOfferWaits',
       'makeLiveOfferPart',
@@ -72,12 +76,23 @@ describe('Make live’s states (sc-3971)', () => {
       'makeLiveOfferNotYet',
       'makeLiveOfferNotSent',
       'makeLiveOfferNobody',
+      'makeLiveOfferRefused',
       'makeLiveOfferForbidden',
       'makeLiveEndPassed',
       'makeLiveNoOffer',
       'madeLive',
     ]);
+    expect(MAKE_LIVE_STATES).toHaveLength(22);
     for (const state of MAKE_LIVE_STATES) expect(EVENT_STATES).toContain(state);
+  });
+
+  it('are listed once each in the demo index, in the same order', () => {
+    const index = readFileSync(
+      join(import.meta.dirname, '..', '..', '..', 'app', 'demo', 'index.tsx'),
+      'utf8',
+    );
+    const listed = [...index.matchAll(/\?state=(makeLive\w*|madeLive)'/gu)].map((one) => one[1]);
+    expect(listed).toEqual([...MAKE_LIVE_STATES]);
   });
 
   it('seed the host where a state names one, and none in Host 1’s', () => {
@@ -85,6 +100,8 @@ describe('Make live’s states (sc-3971)', () => {
     expect(eventIn('makeLive').status).toBe('draft');
     expect(eventIn('makeLiveHost').hosts).toEqual([]);
     expect(eventIn('makeLiveOffer').status).toBe('live');
+    expect(eventIn('makeLiveOfferEmail').status).toBe('live');
+    expect(eventIn('makeLiveOfferRefused').status).toBe('live');
     expect(eventIn('makeLiveNoOffer', 'evt-cena-4').hosts).toEqual(['Fundación Lucía']);
     expect(eventIn('madeLive', 'evt-cena-4').status).toBe('live');
     expect(eventIn('makeLiveEndPassed', 'evt-shower-2').hosts).toEqual(['Kemi Adebayo']);
@@ -94,11 +111,20 @@ describe('Make live’s states (sc-3971)', () => {
 describe('the offer’s figures, from the sample', () => {
   const reach = reachOf('makeLiveOffer', eventIn('makeLiveOffer'));
 
-  it('counts the guests Not yet invited, a companion left out, and reaches every one', () => {
+  it('counts every guest Not yet invited, a companion left out, and reaches all but the one with neither address', () => {
     const companions = DRAFT_GUESTS.reduce((sum, one) => sum + one.companions.length, 0);
+    const neither = DRAFT_GUESTS.filter((one) => one.email == null && one.phone == null);
     expect(reach.guests).toBe(DRAFT_COUNTS.notyet - companions);
     expect(reach.guests).toBe(11);
-    expect(reachedOf(reach)).toBe(11);
+    expect(neither.map((one) => one.name)).toEqual(['Tomás Okonkwo-Silva']);
+    expect(reach.unreachable).toBe(1);
+    expect(reachedOf(reach)).toBe(10);
+    expect(DRAFT_GUESTS.filter((one) => one.email != null)).toHaveLength(10);
+    expect(OFFER_MOBILES.map((one) => one.name)).toEqual([
+      'Tola Bakare',
+      'Grace Mensah',
+      'Ryan Cole',
+    ]);
   });
 
   it('sends three texts of two parts each, the first to each number ending on STOP', () => {
@@ -154,6 +180,7 @@ describe('the offer’s figures, from the sample', () => {
     expect(credits('makeLiveOfferPart')).toEqual({ line: 'Texts use 22 credits.', waiting: 1 });
     expect(credits('makeLiveOfferWaits')).toEqual({ line: null, waiting: 3 });
     expect(credits('makeLiveOfferOne')).toEqual({ line: null, waiting: 0 });
+    expect(credits('makeLiveOfferEmail')).toEqual({ line: null, waiting: 0 });
     expect(credits('makeLiveOfferNobody')).toEqual({ line: null, waiting: 0 });
   });
 
@@ -208,6 +235,14 @@ describe('the alerts', () => {
       failedLast: null,
       confirm: { label: 'Send them' },
     });
+    expect(alertIn('makeLiveOfferEmail')).toMatchObject({
+      title: 'Send invitations to 11 guests now?',
+      line: 'Bisi & Kola’s engagement is live.',
+      later: LATER,
+      credits: { line: null, waiting: 0 },
+      failedLast: null,
+      confirm: { label: 'Send them' },
+    });
     expect(alertIn('makeLiveOfferOne')).toMatchObject({
       title: 'Send the invitation to 1 guest now?',
       later: 'You can send the invitation later from Guests in Soirely on the web.',
@@ -233,6 +268,12 @@ describe('the alerts', () => {
       later: LATER,
       keep: { label: 'Close' },
       confirm: null,
+    });
+    expect(alertIn('makeLiveOfferRefused')).toEqual(alertIn('makeLiveOfferNobody'));
+    expect(makeLiveStart('makeLiveOfferRefused')).toEqual({
+      turn: { at: 'stopped', why: 'nobody' },
+      live: true,
+      toast: null,
     });
     expect(alertIn('makeLiveOfferForbidden')).toMatchObject({
       title: 'The invitations cannot be sent yet.',
@@ -307,7 +348,11 @@ describe('each branch', () => {
     const s = run('makeLiveOffer', [{ type: 'send' }, { type: 'sent' }]);
     expect(s).toEqual({ turn: { at: 'closed' }, live: true, toast: 'queued' });
     expect(liveToastOf(s, reachOf('makeLiveOffer', eventIn('makeLiveOffer')))).toBe(
-      'Invitations queued. Sending to 11 guests now.',
+      'Invitations queued. Sending to 10 guests now.',
+    );
+    const email = run('makeLiveOfferEmail', [{ type: 'send' }, { type: 'sent' }]);
+    expect(liveToastOf(email, reachOf('makeLiveOfferEmail', eventIn('makeLiveOfferEmail')))).toBe(
+      'Invitations queued. Sending to 10 guests now.',
     );
     expect(
       liveToastOf(
@@ -322,6 +367,11 @@ describe('each branch', () => {
   it('closes with no toast after Not yet or Close', () => {
     expect(run('makeLiveOffer', [{ type: 'keep' }]).toast).toBeNull();
     expect(run('makeLiveOfferNobody', [{ type: 'keep' }]).toast).toBeNull();
+    expect(run('makeLiveOfferRefused', [{ type: 'keep' }])).toEqual({
+      turn: { at: 'closed' },
+      live: true,
+      toast: null,
+    });
     expect(run('makeLive', [{ type: 'keep' }])).toEqual({
       turn: { at: 'closed' },
       live: false,

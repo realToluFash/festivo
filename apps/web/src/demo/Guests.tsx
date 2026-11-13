@@ -46,6 +46,7 @@ import {
   invitesOn,
   markInvited,
   markNotInvited,
+  notYetInvited,
   recordReply,
   reopen,
   replaceLink,
@@ -509,7 +510,10 @@ function GuestsPage({
   const plus = manages && status === 'ready' && list.length > 0;
   const exports = (manages || start.role === 'member') && status === 'ready' && list.length > 0;
   const inviting =
-    manages && status === 'ready' && invitesOn(event, start.clock) && counts.notYet > 0;
+    manages &&
+    status === 'ready' &&
+    invitesOn(event, start.clock) &&
+    notYetInvited(list).length > 0;
   const columns = list.length > 0 || pane.kind === 'add';
   const stepWord =
     card.step === 'add'

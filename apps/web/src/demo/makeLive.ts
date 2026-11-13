@@ -2,7 +2,7 @@ import { hostsLine } from '@soirely/domain';
 
 import { demoWords } from './demoWords.ts';
 import type { SampleEvent } from './events.ts';
-import { type Guest, replyByOf, sampleGuests } from './guests.ts';
+import { type Guest, notYetInvited, replyByOf, sampleGuests } from './guests.ts';
 import { LW } from './makeLiveWords.ts';
 import { MW } from './messagesWords.ts';
 import { inviteSmsOf, oneGuestOf } from './inviteSms.ts';
@@ -27,6 +27,7 @@ const AS_IT_IS: readonly MakeLiveState[] = [
 const LIVE_BEHIND: readonly MakeLiveState[] = [
   'makeLiveChanged',
   'makeLiveOffer',
+  'makeLiveOfferEmail',
   'makeLiveOfferOne',
   'makeLiveOfferWaits',
   'makeLiveOfferPart',
@@ -35,6 +36,7 @@ const LIVE_BEHIND: readonly MakeLiveState[] = [
   'makeLiveOfferNotYet',
   'makeLiveOfferNotSent',
   'makeLiveOfferNobody',
+  'makeLiveOfferRefused',
   'makeLiveOfferForbidden',
   'madeLive',
 ];
@@ -85,6 +87,7 @@ export function phaseOf(state: MakeLiveState | null): Phase | null {
     case 'makeLiveMaking':
       return { at: 'making' };
     case 'makeLiveOffer':
+    case 'makeLiveOfferEmail':
     case 'makeLiveOfferOne':
     case 'makeLiveOfferWaits':
     case 'makeLiveOfferPart':
@@ -94,6 +97,7 @@ export function phaseOf(state: MakeLiveState | null): Phase | null {
     case 'makeLiveOfferSending':
       return { at: 'sending' };
     case 'makeLiveOfferNobody':
+    case 'makeLiveOfferRefused':
       return { at: 'cannot', why: 'nobody' };
     case 'makeLiveOfferForbidden':
       return { at: 'cannot', why: 'forbidden' };
@@ -125,12 +129,15 @@ export interface Offer {
 }
 
 function waitingOn(id: string, state: MakeLiveState | null): Guest[] {
-  const waiting = sampleGuests(id).filter((one) => one.reply === 'notYet');
+  const waiting = notYetInvited(sampleGuests(id));
 
   switch (state) {
+    case 'makeLiveOfferEmail':
+      return waiting.map((one) => ({ ...one, phone: null }));
     case 'makeLiveOfferOne':
       return waiting.filter((one) => one.email != null && one.phone == null).slice(0, 1);
     case 'makeLiveOfferNobody':
+    case 'makeLiveOfferRefused':
       return waiting.map((one) => ({ ...one, email: null, phone: null }));
     default:
       return waiting;
