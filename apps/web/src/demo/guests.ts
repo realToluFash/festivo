@@ -515,11 +515,22 @@ function draft(): Guest[] {
   return [
     guest('funke', 'Funke Bello', 'notYet', {
       email: 'funke.bello@gmail.com',
-      phone: { country: 'GB', number: '7700 900655' },
       companions: companions('funke', 1, 'notYet'),
     }),
     guest('leila', 'Leila Mansour', 'notYet', { email: 'leila.mansour@gmail.com' }),
     guest('tobi', 'Tobi Ojo', 'notYet', { email: 'tobi.ojo@gmail.com' }),
+    guest('tola', 'Tola Bakare', 'notYet', {
+      email: 'tola.bakare@gmail.com',
+      phone: { country: 'NG', number: '803 618 2204' },
+    }),
+    guest('grace', 'Grace Mensah', 'notYet', {
+      email: 'grace.mensah@gmail.com',
+      phone: { country: 'GB', number: '7700 900874' },
+    }),
+    guest('ryan', 'Ryan Cole', 'notYet', {
+      email: 'ryan.cole@gmail.com',
+      phone: { country: 'US', number: '202 555 0148' },
+    }),
     ...more(
       [
         ['Tolani Ademola', '', 0],
@@ -527,19 +538,10 @@ function draft(): Guest[] {
         ['Uche Nwafor', '', 0],
         ['Vivian Eze', '', 0],
         ['Wumi Lawal', '', 0],
-        ['Yemisi Ilori', '', 0],
-        ['Yinka Balogun', '', 0],
       ],
       'notYet',
       'notYet',
-      (index) =>
-        index === 1
-          ? { phone: { country: 'GB', number: '7700 900731' } }
-          : index === 4
-            ? { phone: { country: 'NG', number: '806 552 1907' } }
-            : {},
     ),
-    guest('tomas-os', 'Tomás Okonkwo-Silva', 'notYet'),
   ];
 }
 

@@ -29,7 +29,6 @@ import { type Mesh, meshFor } from '../mesh.ts';
 import { SIDE_AREAS, type SideArea } from '../components/eventSideAreas.ts';
 import { ARRIVAL_NOTE } from './arrivalNote.ts';
 import { type MakeLiveState, MAKE_LIVE_EVENTS, MAKE_LIVE_STATES } from './makeLiveStates.ts';
-import { resetSent } from './invitesSent.ts';
 
 export interface Venue {
   name: string;
@@ -376,7 +375,6 @@ let copies: SampleEvent[] = [];
 export function resetSample(): void {
   changed = new Map();
   copies = [];
-  resetSent();
 }
 
 export function sampleEvents(): SampleEvent[] {

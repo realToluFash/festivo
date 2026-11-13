@@ -24,3 +24,12 @@
   display: inline-flex;
   align-items: center;
 }
+
+.ml-demo-only {
+  margin: 0;
+  padding: var(--spaceLg);
+  border: var(--borderAdd);
+  border-radius: var(--radiusRow);
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}

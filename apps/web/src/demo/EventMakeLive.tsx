@@ -6,7 +6,7 @@ import { Glyph } from '../components/Glyph.tsx';
 import { LayersContext, useDeskDialog } from '../layers.ts';
 import { offButton } from '../offButton.ts';
 import type { SampleEvent } from './events.ts';
-import { type Offer, type Phase, LW, costOf, lw } from './makeLive.ts';
+import { type Offer, type Phase, LW, costOf, hostTyped, lw } from './makeLive.ts';
 import './messagesWaits.css';
 import './makeLive.css';
 
@@ -17,10 +17,12 @@ export interface MakeLiveProps {
   phase: Phase;
   /** What the offer counts once the event is live; null makes no offer. */
   offer: Offer | null;
-  onLive: () => void;
+  /** Called as the event turns Live, with Host 1 as typed when it was asked. */
+  onLive: (host: string | null) => void;
   onClose: () => void;
   onMadeLive: () => void;
   onSent: (offer: Offer) => void;
+  onChangeDates: () => void;
 }
 
 /** Make live in A's 400 dialog (sc-3971): the question, then, once the event is live, the same dialog turned into the offer to send the invitations. */
@@ -38,18 +40,24 @@ function MakeLiveBox({
   onClose,
   onMadeLive,
   onSent,
+  onChangeDates,
 }: MakeLiveProps) {
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const keep = useRef<HTMLButtonElement>(null);
+  const field = useRef<HTMLInputElement>(null);
   const timer = useRef<number | undefined>(undefined);
   const [phase, setPhase] = useState<Phase>(first);
+  const [asksHost] = useState(event.hosts.length === 0);
+  const [typed, setTyped] = useState('');
+  const [blank, setBlank] = useState(first.at === 'ask' && first.blank);
   const asking = phase.at === 'ask' || phase.at === 'making';
+  const told = phase.at === 'told' ? phase.why : null;
   const busy = phase.at === 'making' || phase.at === 'sending';
-  const turned = !asking;
+  const turned = !asking && told == null;
 
-  useDeskDialog(box, turned ? heading : keep, onClose, busy);
+  useDeskDialog(box, turned ? heading : asksHost && asking ? field : keep, onClose, busy);
 
   useEffect(() => {
     if (turned) heading.current?.focus();
@@ -59,9 +67,17 @@ function MakeLiveBox({
 
   function makeLive(): void {
     if (busy) return;
+
+    const host = asksHost ? hostTyped(typed) : null;
+
+    if (asksHost && host == null) {
+      setBlank(true);
+      field.current?.focus();
+      return;
+    }
     setPhase({ at: 'making' });
     timer.current = window.setTimeout(() => {
-      onLive();
+      onLive(host);
       if (offer == null) onMadeLive();
       else
         setPhase(
@@ -77,15 +93,26 @@ function MakeLiveBox({
   }
 
   const count = offer?.count ?? 0;
-  const title = asking
-    ? lw.filled(LW.confirmTitle, { name: event.name })
-    : phase.at === 'cannot'
-      ? lw.many('cannotTitle', count)
-      : lw.many('offerTitle', count);
+  const title =
+    told === 'endPassed'
+      ? LW.notMadeLive
+      : told === 'changed'
+        ? LW.changedElsewhere
+        : asking
+          ? lw.filled(LW.confirmTitle, { name: event.name })
+          : phase.at === 'cannot'
+            ? lw.many('cannotTitle', count)
+            : lw.many('offerTitle', count);
   const cost = offer == null ? null : costOf(offer);
   const failed = (phase.at === 'ask' || phase.at === 'offer') && phase.failed;
-  const verb = asking ? LW.makeLive : lw.many('sendThem', count);
+  const verb =
+    told === 'endPassed' ? LW.changeDates : asking ? LW.makeLive : lw.many('sendThem', count);
   const busyWord = phase.at === 'making' ? LW.making : LW.sending;
+  const closes = phase.at === 'cannot' || told != null;
+  const confirms = phase.at !== 'cannot' && told !== 'changed';
+  const describedBy = [`${id}-line`, asksHost && asking ? `${id}-help` : null]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <>
@@ -96,14 +123,52 @@ function MakeLiveBox({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={`${id}-title`}
-        aria-describedby={`${id}-line`}
+        aria-describedby={describedBy}
       >
         <h2 ref={heading} id={`${id}-title`} tabIndex={turned ? -1 : undefined}>
           {title}
         </h2>
-        {asking ? (
+        {told != null ? (
+          <Alert id={`${id}-line`}>{told === 'endPassed' ? LW.endPassed : LW.nowLive}</Alert>
+        ) : asking ? (
           <>
             <p id={`${id}-line`}>{LW.confirmLine}</p>
+            {asksHost && (
+              <div className="desk-field">
+                <label htmlFor={`${id}-host`} className="desk-label">
+                  {LW.host}
+                </label>
+                <div className={blank ? 'desk-box is-wrong' : 'desk-box'}>
+                  <input
+                    ref={field}
+                    id={`${id}-host`}
+                    type="text"
+                    value={typed}
+                    autoComplete="off"
+                    aria-invalid={blank}
+                    aria-describedby={`${id}-help`}
+                    readOnly={busy}
+                    onChange={(change) => {
+                      setTyped(change.target.value.replaceAll(/[\r\n]+/gu, ' '));
+                      setBlank(false);
+                    }}
+                    onKeyDown={(key) => {
+                      if (key.key === 'Enter') makeLive();
+                    }}
+                  />
+                </div>
+                {blank ? (
+                  <p id={`${id}-help`} className="desk-error" role="alert">
+                    <Glyph name="alert" size={18} weight={2.2} />
+                    {LW.hostEmpty}
+                  </p>
+                ) : (
+                  <p id={`${id}-help`} className="desk-help">
+                    {LW.hostExplainer}
+                  </p>
+                )}
+              </div>
+            )}
             {failed && <Alert>{LW.failed}</Alert>}
           </>
         ) : (
@@ -144,17 +209,17 @@ function MakeLiveBox({
               {...offButton(busy, { dim: false })}
               onClick={onClose}
             >
-              {phase.at === 'cannot' ? LW.close : LW.notYet}
+              {closes ? LW.close : LW.notYet}
             </button>
           }
           confirm={
-            phase.at !== 'cannot' && (
+            confirms && (
               <button
                 type="button"
                 className={busy ? 'desk-text is-busy' : 'desk-text'}
                 aria-busy={busy || undefined}
                 {...offButton(busy, { dim: false })}
-                onClick={asking ? makeLive : send}
+                onClick={told === 'endPassed' ? onChangeDates : asking ? makeLive : send}
               >
                 {busy && <span className="pending-spinner desk-turning" aria-hidden="true" />}
                 {busy ? busyWord : verb}
@@ -167,9 +232,9 @@ function MakeLiveBox({
   );
 }
 
-function Alert({ children }: { children: string }) {
+function Alert({ id, children }: { id?: string; children: string }) {
   return (
-    <p className="desk-ask-alert" role="alert">
+    <p id={id} className="desk-ask-alert" role="alert">
       <Glyph name="alert" size={18} weight={2.2} />
       {children}
     </p>

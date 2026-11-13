@@ -1,21 +1,37 @@
 import { describe, expect, it } from 'vitest';
 
-import { EVENT_STATES, EVENTS_PAGES } from './events.ts';
+import { EVENT_STATES, EVENTS_PAGES, sampleEvent } from './events.ts';
 import {
   type MakeLiveState,
   type Offer,
+  ASK,
   MAKE_LIVE_STATES,
   costOf,
+  hostTyped,
   isMakeLive,
-  liveIn,
   lw,
+  maySend,
   offerOf,
   phaseOf,
-  reachedIds,
+  seededEvent,
 } from './makeLive.ts';
 
+const OWN: Partial<Record<MakeLiveState, string>> = {
+  makeLiveEndPassed: 'evt-shower-2',
+  makeLiveNoOffer: 'evt-cena-4',
+  madeLive: 'evt-cena-4',
+};
+
+function seeded(state: MakeLiveState) {
+  const event = sampleEvent(EVENT_STATES[state] ?? '');
+
+  if (event == null) throw new Error(`no event for ${state}`);
+
+  return seededEvent(event, state);
+}
+
 function offered(state: MakeLiveState): Offer {
-  const offer = offerOf('evt-draft-4', state);
+  const offer = offerOf(seeded(state), state);
 
   if (offer == null) throw new Error(`no offer in ${state}`);
 
@@ -23,11 +39,33 @@ function offered(state: MakeLiveState): Offer {
 }
 
 describe('Make live and the offer to send invitations (sc-3971)', () => {
-  it('links every state once, on Bisi & Kola’s engagement, and the no-offer one on a list with nobody Not yet invited', () => {
+  it('links every state once, each on the event the brief names', () => {
     const links = EVENTS_PAGES.flatMap((page) => page.states.map((one) => one.to));
 
+    expect(MAKE_LIVE_STATES.map((one) => one.key)).toEqual([
+      'makeLive',
+      'makeLiveMaking',
+      'makeLiveNotMade',
+      'makeLiveHost',
+      'makeLiveHostBlank',
+      'makeLiveChanged',
+      'makeLiveCannotSend',
+      'makeLiveOffer',
+      'makeLiveOfferOne',
+      'makeLiveOfferWaits',
+      'makeLiveOfferPart',
+      'makeLiveOfferSending',
+      'makeLiveOfferSent',
+      'makeLiveOfferNotYet',
+      'makeLiveOfferNotSent',
+      'makeLiveOfferNobody',
+      'makeLiveOfferForbidden',
+      'makeLiveEndPassed',
+      'makeLiveNoOffer',
+      'madeLive',
+    ]);
     for (const { key } of MAKE_LIVE_STATES) {
-      const id = key === 'makeLiveNoOffer' ? 'evt-cena-4' : 'evt-draft-4';
+      const id = OWN[key] ?? 'evt-draft-4';
 
       expect(EVENT_STATES[key], key).toBe(id);
       expect(
@@ -35,38 +73,66 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
         key,
       ).toHaveLength(1);
     }
-    expect(MAKE_LIVE_STATES).toHaveLength(17);
     expect(isMakeLive('makeLiveOfferWaits')).toBe(true);
-    expect(isMakeLive('makeLiveOfferNone')).toBe(false);
+    expect(isMakeLive('makeLiveOfferRefused')).toBe(false);
   });
 
-  it('counts 11 Not yet invited, 10 of them reachable, 3 texts: 247 credits after', () => {
+  it('names the host unless the state asks for one, and is Live from the offer on', () => {
+    expect(seeded('makeLive')).toMatchObject({ hosts: ['Bisi Akindele'], status: 'draft' });
+    expect(seeded('makeLiveHost').hosts).toEqual([]);
+    expect(seeded('makeLiveHostBlank').hosts).toEqual([]);
+    expect(seeded('makeLiveChanged').status).toBe('live');
+    expect(seeded('makeLiveOffer').status).toBe('live');
+    expect(seeded('makeLiveOfferNotYet').status).toBe('live');
+    expect(seeded('madeLive')).toMatchObject({ hosts: ['Fundación Lucía'], status: 'live' });
+    expect(seeded('makeLiveNoOffer')).toMatchObject({
+      hosts: ['Fundación Lucía'],
+      status: 'draft',
+    });
+    expect(seeded('makeLiveEndPassed').status).toBe('draft');
+    expect(maySend('makeLiveCannotSend')).toBe(false);
+    expect(maySend('makeLive')).toBe(true);
+    expect(maySend(null)).toBe(true);
+  });
+
+  it('takes Host 1 as typed, a line break as a space, and nothing as empty', () => {
+    expect(hostTyped('  Bisi\nAkindele ')).toBe('Bisi Akindele');
+    expect(hostTyped('Bisi\r\n\r\nAkindele')).toBe('Bisi Akindele');
+    expect(hostTyped(' \n ')).toBeNull();
+  });
+
+  it('counts 11 Not yet invited, every one reachable, and prices the three texts by their numbers: 2 × (62 + 9 + 2)', () => {
     const offer = offered('makeLiveOffer');
 
-    expect(offer).toEqual({ count: 11, reached: 10, texts: 3, emails: 10, balance: 250 });
-    expect(reachedIds('evt-draft-4', 'makeLiveOffer')).toHaveLength(10);
-    expect(reachedIds('evt-draft-4', 'makeLiveOffer')).not.toContain('tomas-os');
+    expect(offer).toEqual({
+      count: 11,
+      reached: 11,
+      texts: [124, 18, 4],
+      emails: 11,
+      balance: 250,
+    });
     expect(lw.many('offerTitle', 11)).toBe('Send invitations to 11 guests now?');
-    expect(lw.many('queued', 10)).toBe('Invitations queued. Sending to 10 guests now.');
+    expect(lw.many('queued', 11)).toBe('Invitations queued. Sending to 11 guests now.');
     expect(costOf(offer)).toEqual({
-      credits: 'Texts use 3 credits. Credits after sending: 247.',
+      credits: 'Texts use 146 credits. Credits after sending: 104.',
       either: null,
       waits: null,
     });
   });
 
-  it('says what waits for credits with sc-3963’s own lines when the balance is short', () => {
+  it('sends only the texts whose whole cost is covered, and says what waits in sc-3963’s lines', () => {
+    expect(offered('makeLiveOfferPart').balance).toBe(100);
     expect(costOf(offered('makeLiveOfferPart'))).toEqual({
-      credits: 'Texts use 1 credit.',
+      credits: 'Texts use 22 credits.',
       either: 'Email goes either way.',
-      waits: '2 SMS messages will wait for credits.',
+      waits: '1 SMS message will wait for credits.',
     });
     expect(costOf(offered('makeLiveOfferWaits'))).toEqual({
       credits: null,
       either: 'Email goes either way.',
       waits: '3 SMS messages will wait for credits.',
     });
-    expect(costOf(offered('makeLiveOfferEmail'))).toEqual({
+    expect(costOf({ count: 1, reached: 1, texts: [], emails: 1, balance: 0 })).toEqual({
       credits: null,
       either: null,
       waits: null,
@@ -74,10 +140,10 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
   });
 
   it('offers one guest in the singular, nobody reachable as the refusal, and nothing on a list with nobody Not yet invited', () => {
-    const one = offerOf('evt-draft-4', 'makeLiveOfferOne');
-    const nobody = offerOf('evt-draft-4', 'makeLiveOfferNobody');
+    const one = offered('makeLiveOfferOne');
+    const nobody = offered('makeLiveOfferNobody');
 
-    expect(one).toMatchObject({ count: 1, reached: 1, texts: 0 });
+    expect(one).toMatchObject({ count: 1, reached: 1, texts: [] });
     expect(lw.many('offerTitle', 1)).toBe('Send the invitation to 1 guest now?');
     expect(lw.many('sendThem', 1)).toBe('Send it');
     expect(nobody).toMatchObject({ count: 11, reached: 0 });
@@ -85,22 +151,23 @@ describe('Make live and the offer to send invitations (sc-3971)', () => {
     expect(lw.many('nobody', 11)).toBe(
       'None of the 11 guests can be reached. Add an email address or a mobile number for them in Guests.',
     );
-    expect(offerOf('evt-cena-4', 'makeLiveNoOffer')).toBeNull();
+    expect(offerOf(seeded('makeLiveNoOffer'), 'makeLiveNoOffer')).toBeNull();
   });
 
-  it('opens the alert where each state draws it, with the event Live from the offer on', () => {
-    expect(phaseOf('makeLive')).toEqual({ at: 'ask', failed: false });
-    expect(phaseOf('makeLiveNotMade')).toEqual({ at: 'ask', failed: true });
+  it('opens the alert where each state draws it', () => {
+    expect(phaseOf('makeLive')).toEqual(ASK);
+    expect(phaseOf('makeLiveHost')).toEqual(ASK);
+    expect(phaseOf('makeLiveHostBlank')).toEqual({ ...ASK, blank: true });
+    expect(phaseOf('makeLiveNotMade')).toEqual({ ...ASK, failed: true });
+    expect(phaseOf('makeLiveCannotSend')).toEqual(ASK);
+    expect(phaseOf('makeLiveEndPassed')).toEqual({ at: 'told', why: 'endPassed' });
+    expect(phaseOf('makeLiveChanged')).toEqual({ at: 'told', why: 'changed' });
+    expect(phaseOf('makeLiveOfferPart')).toEqual({ at: 'offer', failed: false });
     expect(phaseOf('makeLiveOfferNotSent')).toEqual({ at: 'offer', failed: true });
-    expect(phaseOf('makeLiveOfferRefused')).toEqual({ at: 'cannot', why: 'nobody' });
+    expect(phaseOf('makeLiveOfferNobody')).toEqual({ at: 'cannot', why: 'nobody' });
     expect(phaseOf('makeLiveOfferForbidden')).toEqual({ at: 'cannot', why: 'forbidden' });
     expect(phaseOf('makeLiveOfferSent')).toBeNull();
+    expect(phaseOf('makeLiveOfferNotYet')).toBeNull();
     expect(phaseOf('madeLive')).toBeNull();
-    expect(liveIn('makeLive')).toBe(false);
-    expect(liveIn('makeLiveMaking')).toBe(false);
-    expect(liveIn('makeLiveOffer')).toBe(true);
-    expect(liveIn('makeLiveOfferNotYet')).toBe(true);
-    expect(liveIn('madeLive')).toBe(true);
-    expect(liveIn('makeLiveNoOffer')).toBe(false);
   });
 });
