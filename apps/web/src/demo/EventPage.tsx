@@ -167,11 +167,13 @@ function askingOf(state: EventStateName | null): Asking | null {
     case 'deleteMismatch':
     case 'deleteTyped':
     case 'deleteRace':
+    case 'deleteRaceRead':
       return 'delete';
     case 'deleteRefused':
     case 'deleteRefusedStarted':
     case 'deleteRefusedRead':
     case 'deleteRefusedStartedRead':
+    case 'deleteRefusedPaused':
       return 'refused';
     default:
       return null;
@@ -664,7 +666,7 @@ function Asks({
           event={event}
           people={peopleOn(event.id)}
           typed={
-            state === 'deleteTyped' || state === 'deleteRace'
+            state === 'deleteTyped' || state === 'deleteRace' || state === 'deleteRaceRead'
               ? event.name
               : state === 'deleteMismatch'
                 ? 'Adaeze and Tunde'

@@ -529,6 +529,64 @@ describe('Delete refused while a guest is Invited (sc-14445)', () => {
       expect(screen.queryByText(`${WEDDING} was deleted.`)).toBeNull();
     },
   );
+
+  it(
+    'turns the name screen into who can, with Keep it alone, for a reader at Read',
+    SLOW,
+    async () => {
+      const router = await page('/demo/events/evt-wed-4?state=deleteRaceRead');
+      const ask = screen.getByRole('alertdialog', { name: `Delete ${WEDDING}?` });
+
+      expect((within(ask).getByRole('textbox') as HTMLInputElement).value).toBe(WEDDING);
+      expect(
+        within(screen.getByRole('navigation', { name: WEDDING })).getByRole('button', {
+          name: 'Ana Souza, Coordinator',
+        }),
+      ).toBeDefined();
+      fireEvent.click(within(ask).getByRole('button', { name: 'Delete' }));
+
+      const refused = await screen.findByRole('alertdialog', {
+        name: `Call off ${WEDDING} first?`,
+      });
+
+      expect(within(refused).queryByRole('textbox')).toBeNull();
+      expect(
+        within(refused).getByText(
+          'Ask someone who can change Events in Ire Events to call it off.',
+        ),
+      ).toBeDefined();
+      expect(
+        within(refused)
+          .getAllByRole('button')
+          .map((one) => one.textContent),
+      ).toEqual(['Keep it']);
+      expect(router.state.location.pathname).toBe('/demo/events/evt-wed-4');
+      expect(screen.queryByText(`${WEDDING} was deleted.`)).toBeNull();
+    },
+  );
+
+  it('refuses the Paused party as a Live event, and Call off calls it off', SLOW, async () => {
+    const party = 'Ire Events end-of-year party';
+    const router = await page('/demo/events/evt-party-2?state=deleteRefusedPaused', party);
+    const ask = screen.getByRole('alertdialog', { name: `Call off ${party} first?` });
+
+    expect(within(ask).queryByRole('textbox')).toBeNull();
+    expect(
+      within(ask)
+        .getAllByRole('button')
+        .map((one) => one.textContent),
+    ).toEqual(['Keep it', 'Call off']);
+    fireEvent.click(within(ask).getByRole('button', { name: 'Call off' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog', { name: `Call off ${party}?` })).getByRole(
+        'button',
+        { name: 'Call off' },
+      ),
+    );
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(router.state.location.pathname).toBe('/demo/events/evt-party-2');
+  });
 });
 
 describe('the guest counts on Events (sc-23284)', () => {

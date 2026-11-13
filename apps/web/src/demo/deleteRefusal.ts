@@ -59,6 +59,8 @@ export const REFUSED_STATES = [
   'deleteRefusedRead',
   'deleteRefusedStartedRead',
   'deleteRace',
+  'deleteRaceRead',
+  'deleteRefusedPaused',
 ] as const satisfies readonly EventStateName[];
 
 export interface RefusedStart {
@@ -80,6 +82,10 @@ export function refusedStartOf(state: EventStateName | null): RefusedStart | nul
       return { canChange: false, started: true, race: false };
     case 'deleteRace':
       return { canChange: true, started: false, race: true };
+    case 'deleteRaceRead':
+      return { canChange: false, started: false, race: true };
+    case 'deleteRefusedPaused':
+      return { canChange: true, started: false, race: false };
     default:
       return null;
   }

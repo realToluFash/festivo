@@ -8,7 +8,7 @@ import {
   refusedStartOf,
   usableManage,
 } from './deleteRefusal.ts';
-import { CLOCKS, type SampleEvent, clockOf, sampleEvent } from './events.ts';
+import { CLOCKS, EVENT_STATES, type SampleEvent, clockOf, sampleEvent } from './events.ts';
 import { invitedOn } from './guests.ts';
 
 const WEDDING = 'Adaeze & Tunde’s wedding';
@@ -115,6 +115,8 @@ describe('the demo’s states', () => {
       { canChange: false, started: false, race: false },
       { canChange: false, started: true, race: false },
       { canChange: true, started: false, race: true },
+      { canChange: false, started: false, race: true },
+      { canChange: true, started: false, race: false },
     ]);
     for (const state of REFUSED_STATES)
       expect(clockOf(state), state).toBe(
@@ -125,14 +127,14 @@ describe('the demo’s states', () => {
   });
 
   it('refuses as the dialog opens, except in the race, which refuses once Delete is pressed', () => {
-    const wedding = event('evt-wed-4');
     const opens = (state: (typeof REFUSED_STATES)[number], pressed: boolean) => {
       const start = refusedStartOf(state);
+      const id = EVENT_STATES[state];
 
       return refusalOf(
-        wedding,
+        event(id),
         clockOf(state),
-        invitedOf(start, invitedOn(wedding.id), pressed),
+        invitedOf(start, invitedOn(id), pressed),
         start?.canChange ?? true,
       );
     };
@@ -143,6 +145,15 @@ describe('the demo’s states', () => {
     expect(opens('deleteRefusedStartedRead', false)).toEqual({ verb: 'endNow', canChange: false });
     expect(opens('deleteRace', false)).toBeNull();
     expect(opens('deleteRace', true)).toEqual({ verb: 'callOff', canChange: true });
+    expect(opens('deleteRaceRead', false)).toBeNull();
+    expect(opens('deleteRaceRead', true)).toEqual({ verb: 'callOff', canChange: false });
+    expect(opens('deleteRefusedPaused', false)).toEqual({ verb: 'callOff', canChange: true });
+  });
+
+  it('opens the Paused refusal on the Paused party, and the rest on the wedding', () => {
+    expect(event(EVENT_STATES.deleteRefusedPaused).status).toBe('paused');
+    for (const state of REFUSED_STATES.filter((one) => one !== 'deleteRefusedPaused'))
+      expect(EVENT_STATES[state], state).toBe('evt-wed-4');
   });
 
   it('leaves sc-3592’s delete states deleting by name, as they were drawn', () => {

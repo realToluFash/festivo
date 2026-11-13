@@ -1199,6 +1199,8 @@ export type LifeState =
   | 'deleteRefusedRead'
   | 'deleteRefusedStartedRead'
   | 'deleteRace'
+  | 'deleteRaceRead'
+  | 'deleteRefusedPaused'
   | 'duplicate'
   | 'duplicateTicked'
   | 'duplicateNoGuests'
@@ -1277,6 +1279,8 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   deleteRefusedRead: 'evt-wed-4',
   deleteRefusedStartedRead: 'evt-wed-4',
   deleteRace: 'evt-wed-4',
+  deleteRaceRead: 'evt-wed-4',
+  deleteRefusedPaused: 'evt-party-2',
   duplicate: 'evt-wed-4',
   duplicateTicked: 'evt-draft-4',
   duplicateNoGuests: 'evt-cena-4',
@@ -1584,6 +1588,8 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('deleteRefusedRead', 'Delete, refused without Events at Change'),
       on('deleteRefusedStartedRead', 'Delete, refused without Events at Change, from the start'),
       on('deleteRace', 'Delete, a guest invited while the name is typed'),
+      on('deleteRaceRead', 'Delete, the same race without Events at Change'),
+      on('deleteRefusedPaused', 'Delete, refused on the Paused party: call it off first'),
       on('duplicate', 'Duplicate'),
       on('duplicateTicked', 'Duplicate, the guest list ticked'),
       on('duplicateNoGuests', 'Duplicate, no guests'),
