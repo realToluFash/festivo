@@ -6,7 +6,6 @@ import { useMatches } from '../phoneWidth.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
   type Answer,
-  type Channel,
   HOLD_MS,
   LAYOUT_MEDIA,
   LEGAL,
@@ -65,7 +64,7 @@ import { hasStep, holdsCompanions, partyLine } from './guestCompanions.ts';
 import { type PartyActions, partyActions, withPartyBack } from './guestPartyActions.ts';
 import { DayAnswer, DayWaiting, WhereBlock, YourCode } from './GuestDay.tsx';
 import { inDayOrder } from './guestDay.ts';
-import { YourMessages } from './GuestMessages.tsx';
+import { KeptOut, YourMessages } from './GuestMessages.tsx';
 import { plusDays } from './dataControl.ts';
 import { GuestAsk } from './GuestAsk.tsx';
 import {
@@ -80,7 +79,7 @@ import {
   saveSettled,
 } from './guestAsk.ts';
 import { askClock, askFocus, DAYS_CHOICES, isReplyByChoice } from './guestAskStates.ts';
-import { switched } from './guestMessages.ts';
+import { type YourMessagesActions, useYourMessages } from './useYourMessages.ts';
 import { useLater } from '../useLater.ts';
 import { legalPath } from './legal.ts';
 import './today.css';
@@ -167,6 +166,7 @@ function Visitor({
   const steps = useGuestKitchen(visit, state, go);
   const party = partyActions(go, steps, visit);
   const kitchen = withPartyBack(steps, visit, party);
+  const yours = useYourMessages(visit, state, go);
 
   const record = useCallback(
     (answer: Answer, fromCheck = false) =>
@@ -406,8 +406,7 @@ function Visitor({
             onRetry={retry}
             saving={saving}
             onSaveAgain={saveAgain}
-            onSwitch={(channel) => go((was) => switched(was, channel))}
-            onLeaveMessages={() => go(() => ({ page: 'event', view: OPEN }), 'h1')}
+            yours={yours}
             onTell={() =>
               go(
                 (was) => ({ view: { kind: 'tellUs', busy: false, result: null, back: was.view } }),
@@ -443,8 +442,7 @@ function Body({
   onRetry,
   saving,
   onSaveAgain,
-  onSwitch,
-  onLeaveMessages,
+  yours,
   onTell,
 }: {
   visit: Visit;
@@ -456,8 +454,7 @@ function Body({
   onRetry: () => void;
   saving: boolean;
   onSaveAgain: () => void;
-  onSwitch: (channel: Channel) => void;
-  onLeaveMessages: () => void;
+  yours: YourMessagesActions;
   onTell: () => void;
 }) {
   const [box, setBox] = useState<HTMLDivElement | null>(null);
@@ -490,7 +487,7 @@ function Body({
     return (
       <div className="gp-alone-wrap">
         {visit.page === 'gone' ? (
-          <Gone words={words} />
+          <Gone title={words.gone} body={words.goneBody} />
         ) : (
           <Unreachable words={words} busy={retrying} onRetry={onRetry} />
         )}
@@ -498,10 +495,26 @@ function Body({
     );
   }
 
+  if (visit.page === 'messages' && visit.yours.opening === 'broken') {
+    return (
+      <div className="gp-alone-wrap">
+        <KeptOut />
+        <Gone title={words.linkBroken} body={words.linkBrokenBody} />
+      </div>
+    );
+  }
+
   if (visit.page === 'messages') {
     return (
       <div className="gp-alone-wrap gp-yours-wrap">
-        <YourMessages visit={visit} words={words} onSwitch={onSwitch} onBack={onLeaveMessages} />
+        <YourMessages
+          visit={visit}
+          words={words}
+          onPress={yours.press}
+          onSwitch={yours.toggle}
+          onRetry={yours.retry}
+          onBack={yours.back}
+        />
       </div>
     );
   }

@@ -22,6 +22,7 @@ import {
   leadsWithCode,
 } from './guestDay.ts';
 import type { DemoLink } from './settings.ts';
+import { U } from './unsubscribe.ts';
 import { type AskView, afterAnswer } from './guestAsk.ts';
 import { type ReplyByChoice, askStarts, isAskState } from './guestAskStates.ts';
 
@@ -110,6 +111,20 @@ export interface Reach {
   email: boolean;
   sms: boolean;
   saved: Channel | null;
+}
+
+/** What a press on Your messages sends: the lead button's Email off, Undo's Email on, or one switch. */
+export type Press = 'stop' | 'undo' | Channel;
+
+/** sc-3969's page as an email's link or the guest's page opens it; `lead` is the button or the words in its place. */
+export interface Yours {
+  from: 'email' | 'page';
+  opening: 'loading' | 'open' | 'broken';
+  emailAddress: boolean;
+  lead: 'button' | 'stopped' | 'undone' | null;
+  busy: Press | null;
+  retrying: boolean;
+  failed: Press | null;
 }
 
 export type View =
@@ -206,6 +221,7 @@ export interface Visit {
   whatsApp: WhatsAppConsent;
   ticked: boolean;
   reach: Reach;
+  yours: Yours;
   note: GuestNote;
   party: Party;
   /** sc-1363: when to ask a Not sure yet guest again; null with any other answer. */
@@ -220,6 +236,16 @@ export interface Visit {
 export const OPEN: View = { kind: 'answer', busy: null, note: null };
 const RECORDED: View = { kind: 'recorded', same: false };
 const CLOSED: View = { kind: 'closed' };
+
+export const FROM_PAGE: Yours = {
+  from: 'page',
+  opening: 'open',
+  emailAddress: true,
+  lead: null,
+  busy: null,
+  retrying: false,
+  failed: null,
+};
 
 const BASE: Visit = {
   page: 'event',
@@ -249,6 +275,7 @@ const BASE: Visit = {
   whatsApp: 'none',
   ticked: false,
   reach: { email: true, sms: true, saved: null },
+  yours: FROM_PAGE,
   note: 'host',
   party: NO_PLACES,
   ask: null,
@@ -261,6 +288,14 @@ const BASE: Visit = {
 const COMING = { answer: 'coming', on: TODAY } as const;
 const MESSAGED: Partial<Visit> = { recorded: COMING, view: RECORDED, messages: 3 };
 const SENT_MINE: Mine = { words: MINE, at: MINE_AT, sent: true };
+
+function yourMessages(yours: Partial<Yours>, rest: Partial<Visit> = {}): Partial<Visit> {
+  return { page: 'messages', mobile: true, yours: { ...FROM_PAGE, ...yours }, ...rest };
+}
+
+const EMAIL_LINK: Partial<Yours> = { from: 'email', lead: 'button' };
+const STOPPED: Partial<Yours> = { from: 'email', lead: 'stopped' };
+const EMAIL_OFF: Partial<Visit> = { reach: { email: false, sms: true, saved: null } };
 
 function check(extra: Partial<Extract<View, { kind: 'check' }>> = {}): View {
   return { kind: 'check', busy: false, failed: false, refused: false, from: 'answer', ...extra };
@@ -562,6 +597,76 @@ const STATES = {
     name: 'Your messages: no mobile number on record',
     starts: { page: 'messages' },
   },
+  messagesTextsOff: {
+    name: 'Your messages: Text messages turned off, saved',
+    starts: yourMessages(
+      {},
+      { reach: { email: true, sms: false, saved: 'sms' }, want: 'switch-sms' },
+    ),
+  },
+  messagesSwitchSaving: {
+    name: 'Your messages: saving, on a switch',
+    starts: yourMessages({ busy: 'sms' }, { want: 'switch-sms' }),
+  },
+  messagesSwitchFailed: {
+    name: 'Your messages: a switch that did not save',
+    starts: yourMessages({ failed: 'sms' }, { want: 'switch-sms' }),
+  },
+  messagesTwoOff: {
+    name: 'Your messages: two channels off',
+    starts: yourMessages(
+      {},
+      { reach: { email: false, sms: false, saved: null }, whatsApp: 'agreed' },
+    ),
+  },
+  messagesNoEmail: {
+    name: 'Your messages: no email address on record',
+    starts: yourMessages({ emailAddress: false }),
+  },
+  messagesNothing: {
+    name: 'Your messages: nothing on record',
+    starts: yourMessages({ emailAddress: false }, { mobile: false }),
+  },
+  messagesFromEmail: {
+    name: 'Your messages from an email’s link, before the tap',
+    starts: yourMessages(EMAIL_LINK),
+  },
+  messagesStopSaving: {
+    name: 'Your messages: saving, the button',
+    starts: yourMessages({ ...EMAIL_LINK, busy: 'stop' }, { want: 'stop' }),
+  },
+  messagesStopFailed: {
+    name: 'Your messages: a save that failed, the button',
+    starts: yourMessages({ ...EMAIL_LINK, failed: 'stop' }, { want: 'stop' }),
+  },
+  messagesStopped: {
+    name: 'Your messages: emails turned off',
+    starts: yourMessages(STOPPED, { ...EMAIL_OFF, want: 'yoursLead' }),
+  },
+  messagesUndoSaving: {
+    name: 'Your messages: saving, Undo',
+    starts: yourMessages({ ...STOPPED, busy: 'undo' }, { ...EMAIL_OFF, want: 'undo' }),
+  },
+  messagesUndoFailed: {
+    name: 'Your messages: Undo that failed',
+    starts: yourMessages({ ...STOPPED, failed: 'undo' }, { ...EMAIL_OFF, want: 'undo' }),
+  },
+  messagesUndone: {
+    name: 'Your messages: Undo done',
+    starts: yourMessages({ from: 'email', lead: 'undone' }, { want: 'yoursLead' }),
+  },
+  messagesEmailOff: {
+    name: 'Your messages from an email’s link, already off',
+    starts: yourMessages({ from: 'email' }, EMAIL_OFF),
+  },
+  messagesLoading: {
+    name: 'Your messages: loading, as an email’s link opens it',
+    starts: yourMessages({ ...EMAIL_LINK, opening: 'loading' }),
+  },
+  messagesLinkBroken: {
+    name: 'Your messages: this link does not work',
+    starts: yourMessages({ from: 'email', opening: 'broken' }),
+  },
 } satisfies Record<string, { name: string; starts: Partial<Visit> }>;
 
 export type GuestStateName = keyof typeof STATES;
@@ -703,6 +808,29 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'messagesWhatsAppOn',
         'messagesWhatsAppTurnedOff',
         'messagesNoMobile',
+        'messagesTextsOff',
+        'messagesSwitchSaving',
+        'messagesSwitchFailed',
+        'messagesTwoOff',
+        'messagesNoEmail',
+        'messagesNothing',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'Your messages, from an email’s link (sc-3969)',
+    states: (
+      [
+        'messagesFromEmail',
+        'messagesStopSaving',
+        'messagesStopFailed',
+        'messagesStopped',
+        'messagesUndoSaving',
+        'messagesUndoFailed',
+        'messagesUndone',
+        'messagesEmailOff',
+        'messagesLoading',
+        'messagesLinkBroken',
       ] as const
     ).map(link),
   },
@@ -943,6 +1071,15 @@ const BOARD_ENGLISH = {
   whatsAppOff: 'WhatsApp messages from {{organisation}} are off.',
   yourMessagesFoot:
     'Only you can turn these back on. {{organisation}} can see which you have turned off, and when.',
+  noEmail: '{{organisation}} has no email address for you.',
+  stopEmails: 'Stop emails from {{organisation}}',
+  stopped: 'You won’t get emails from {{organisation}} any more.',
+  undo: 'Undo',
+  saving: U.saving,
+  saveFailed: U.failed,
+  linkBroken: U.unknownTitle,
+  linkBrokenBody:
+    'Nothing has changed. Open the link again from the most recent email you were sent.',
   switched: 'This page is now in English.',
   notSaved:
     'Your language was not saved. This page stays in English on this device, but it may open in another language on other devices.',
@@ -1102,6 +1239,17 @@ export function wordsFor(lang: Lang) {
     savedLine: (channel: Channel, on: boolean): string =>
       board(`${channel}${on ? 'On' : 'Off'}`, { organisation: ORGANISATION }),
     yourMessagesFoot: board('yourMessagesFoot', { organisation: ORGANISATION }),
+    noEmail: board('noEmail', { organisation: ORGANISATION }),
+    stopEmails: board('stopEmails', { organisation: ORGANISATION }),
+    lead: (lead: 'stopped' | 'undone'): string =>
+      lead === 'stopped'
+        ? board('stopped', { organisation: ORGANISATION })
+        : board('emailOn', { organisation: ORGANISATION }),
+    undo: board('undo'),
+    saving: board('saving'),
+    saveFailed: board('saveFailed'),
+    linkBroken: board('linkBroken'),
+    linkBrokenBody: board('linkBrokenBody'),
     switched: board('switched'),
     notSaved: board('notSaved'),
   };
