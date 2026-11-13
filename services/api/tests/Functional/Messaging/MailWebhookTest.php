@@ -13,6 +13,7 @@ use App\Tests\ApiTestCase;
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
+use Psl\Str;
 use Psl\Type;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -103,7 +104,7 @@ final class MailWebhookTest extends ApiTestCase
 
         foreach ([['', self::RANGES], [self::secret(), ''], ['', '']] as [$secret, $ranges]) {
             $request = Request::create('/api/webhooks/mail', 'POST', server: ['REMOTE_ADDR' => '127.0.0.1', 'PHP_AUTH_USER' => 'postmark', 'PHP_AUTH_PW' => ''], content: $bounce);
-            $response = new MailWebhookController(self::service(MailWebhook::class), $secret, $ranges)->report($request);
+            $response = new MailWebhookController(self::service(MailWebhook::class), $secret, $ranges, 'test')->report($request);
             self::assertSame(401, $response->getStatusCode());
         }
 
@@ -111,9 +112,25 @@ final class MailWebhookTest extends ApiTestCase
         self::assertFalse(self::service(EmailSuppressions::class)->isSuppressed('ada@example.test'));
     }
 
+    #[Test]
+    public function plainHttpIsRefusedOutsideDevelopmentAndTests(): void
+    {
+        $delivery = $this->sentTo('ada@example.test');
+        $bounce = Json\encode(['RecordType' => 'Bounce', 'Type' => 'HardBounce', 'Email' => 'ada@example.test', 'Metadata' => ['delivery' => $delivery]]);
+        [$user, $password] = Str\split(self::secret(), ':', 2);
+        $controller = new MailWebhookController(self::service(MailWebhook::class), self::secret(), self::RANGES, 'prod');
+        $at = static fn (string $scheme): Request => Request::create($scheme . '://api.example.test/api/webhooks/mail', 'POST', server: ['REMOTE_ADDR' => '127.0.0.1', 'PHP_AUTH_USER' => $user, 'PHP_AUTH_PW' => $password], content: $bounce);
+
+        self::assertSame(401, $controller->report($at('http'))->getStatusCode());
+        self::assertSame(['sent', null], $this->state($delivery));
+
+        self::assertSame(200, $controller->report($at('https'))->getStatusCode());
+        self::assertSame(['sent', 'bounced'], $this->state($delivery));
+    }
+
     private function sentTo(string $address): string
     {
-        self::service(UserMailer::class)->send(AccountMail::Ownership, $address, 'en', 'ownershipTransferred.subject', ['Body.']);
+        self::connection()->transactional(static fn () => self::service(UserMailer::class)->send(AccountMail::Ownership, $address, 'en', 'ownershipTransferred.subject', ['Body.']));
         self::drainNotifications();
 
         return Type\string()->coerce(self::connection()->fetchOne("SELECT id FROM notification_deliveries WHERE status = 'sent' ORDER BY created_at DESC LIMIT 1"));

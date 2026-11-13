@@ -14,8 +14,13 @@ use App\Enum\NotificationCategory;
 use App\Enum\NotificationChannel;
 use App\Enum\NotificationEventRule;
 use App\Enum\NotificationPriority;
+use App\Enum\NotificationDeliveryStatus;
+use DateInterval;
 use DateTimeImmutable;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Types\Types;
 use Psl\Type;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Exclude;
 use Symfony\Component\Uid\Uuid;
 
@@ -25,6 +30,8 @@ final readonly class AccountMailType implements NotificationTypeInterface
 {
     public function __construct(
         private AccountMail $mail,
+        private Connection $connection,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -73,6 +80,11 @@ final readonly class AccountMailType implements NotificationTypeInterface
         return $this->mail->carriesCode();
     }
 
+    public function supersedesEarlier(): bool
+    {
+        return $this->mail->supersedesEarlier();
+    }
+
     public function reachesSuppressed(): bool
     {
         return $this->mail->isSecurity();
@@ -85,7 +97,27 @@ final readonly class AccountMailType implements NotificationTypeInterface
 
     public function isStillDue(array $payload, ?Uuid $recipient = null): bool
     {
-        return true;
+        $window = $this->mail->onceIn();
+
+        if (null === $window || null === $recipient) {
+            return true;
+        }
+
+        return false === $this->connection->fetchOne(
+            <<<'SQL'
+                SELECT 1 FROM notification_deliveries
+                WHERE type = :type AND recipient_kind = :kind AND recipient_id = :recipient AND status = :sent AND finished_at >= :since
+                LIMIT 1
+                SQL,
+            [
+                'type' => $this->name(),
+                'kind' => NotificationAudienceKind::Person->value,
+                'recipient' => $recipient->toRfc4122(),
+                'sent' => NotificationDeliveryStatus::Sent->value,
+                'since' => $this->clock->now()->sub(new DateInterval($window)),
+            ],
+            ['since' => Types::DATETIME_IMMUTABLE],
+        );
     }
 
     public function thread(array $payload): ?string

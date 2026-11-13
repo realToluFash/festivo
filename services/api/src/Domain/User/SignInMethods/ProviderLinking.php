@@ -84,6 +84,7 @@ final readonly class ProviderLinking
             $this->record($user, 'provider.linked', [null, $provider->value]);
             $this->entityManager->flush();
             $this->carryOn($user, $caller, $provider);
+            $this->tell($user, $provider, $identity->getEmail(), $request, linked: true);
             $connection->commit();
         } catch (UniqueConstraintViolationException $e) {
             $connection->rollBack();
@@ -94,8 +95,6 @@ final readonly class ProviderLinking
 
             throw $e;
         }
-
-        $this->tell($user, $provider, $identity->getEmail(), $request, linked: true);
 
         return $identity;
     }
@@ -152,14 +151,13 @@ final readonly class ProviderLinking
             $this->record($user, 'provider.unlinked', [$provider->value, null]);
             $this->entityManager->flush();
             $ended = $this->tokenIssuer->revokeSignedInWith($user, $provider);
+            $this->tell($user, $provider, Iter\first($removed)->getEmail(), $request, linked: false);
             $connection->commit();
         } catch (Throwable $e) {
             $connection->rollBack();
 
             throw $e;
         }
-
-        $this->tell($user, $provider, Iter\first($removed)?->getEmail(), $request, linked: false);
 
         // The session the caller holds, never one it names (sessions.md); no chain cannot be told it stays in.
         return [

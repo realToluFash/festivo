@@ -67,6 +67,12 @@ final readonly class InvitationSender
 
         $token = \bin2hex(SecureRandom\bytes(self::TOKEN_BYTES));
         $expiresAt = new DateTimeImmutable()->modify(Str\format('+%d days', Invitation::LIFETIME_DAYS));
+
+        return $this->entityManager->wrapInTransaction(fn (): Invitation => $this->write($organisation, $address, $role, $by, $token, $expiresAt, $request));
+    }
+
+    private function write(Organisation $organisation, string $address, Role $role, User $by, #[SensitiveParameter] string $token, DateTimeImmutable $expiresAt, ?Request $request): Invitation
+    {
         $invitation = $this->invitationRepository->findPending($organisation, $address);
 
         if (null === $invitation) {

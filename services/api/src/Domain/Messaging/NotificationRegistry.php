@@ -83,6 +83,12 @@ final readonly class NotificationRegistry
         return Vec\values($this->types);
     }
 
+    /** @return list<string> the types whose payload holds a code or a link's token, cleared once their send is over */
+    public function codeTypes(): array
+    {
+        return Vec\values(Vec\map(Vec\filter($this->types, static fn (NotificationTypeInterface $type): bool => $type->carriesCode()), static fn (NotificationTypeInterface $type): string => $type->name()));
+    }
+
     public function sender(\App\Enum\NotificationChannel $channel): ?ChannelSenderInterface
     {
         return $this->senders[$channel->value] ?? null;

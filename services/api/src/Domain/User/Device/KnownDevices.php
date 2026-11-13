@@ -29,17 +29,15 @@ final readonly class KnownDevices
     /** A sign-in: a device not seen on this account before is remembered, and the person told, within the cap. */
     public function signedIn(User $user, Request $request): void
     {
-        $device = $this->remember($user, $request);
+        $this->entityManager->wrapInTransaction(function () use ($user, $request): void {
+            $device = $this->remember($user, $request);
 
-        if (null === $device || !$this->claimNotice($user, $device)) {
-            return;
-        }
+            if (null === $device || !$this->claimNotice($user, $device)) {
+                return;
+            }
 
-        $at = $this->clock->now();
-        $userAgent = $request->headers->get('User-Agent');
-        $ipAddress = $request->getClientIp();
-        $asked = $request->getLocale();
-        $this->newDeviceMailer->send($user, $at, $userAgent, $ipAddress, $asked);
+            $this->newDeviceMailer->send($user, $this->clock->now(), $request->headers->get('User-Agent'), $request->getClientIp(), $request->getLocale());
+        });
     }
 
     /**

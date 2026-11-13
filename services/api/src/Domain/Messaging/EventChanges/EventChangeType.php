@@ -66,6 +66,11 @@ abstract readonly class EventChangeType implements NotificationTypeInterface
         return false;
     }
 
+    public function supersedesEarlier(): bool
+    {
+        return false;
+    }
+
     public function reachesSuppressed(): bool
     {
         return false;

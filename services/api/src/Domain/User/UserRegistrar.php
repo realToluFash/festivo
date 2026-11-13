@@ -11,8 +11,7 @@ use App\Domain\User\Model\RegistrationResult;
 use App\Domain\User\Password\NewPasswordRules;
 use App\Domain\User\Password\PasswordResolver;
 use App\Domain\User\TimeZone\AccountTimeZone;
-use App\Domain\User\Verification\VerificationCodeIssuer;
-use App\Domain\User\Verification\VerificationCodeMailer;
+use App\Domain\User\Verification\VerificationCodeSender;
 use App\Entity\EmailAddress;
 use App\Entity\Invitation;
 use App\Entity\User;
@@ -39,8 +38,7 @@ final readonly class UserRegistrar
         private NewPasswordRules $newPasswordRules,
         private TokenIssuer $tokenIssuer,
         private KnownDevices $knownDevices,
-        private VerificationCodeIssuer $verificationCodeIssuer,
-        private VerificationCodeMailer $verificationCodeMailer,
+        private VerificationCodeSender $verificationCodeSender,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
         private AccountName $accountName,
@@ -193,9 +191,7 @@ final readonly class UserRegistrar
         }
 
         if (null !== $address && !$address->isVerified()) {
-            $code = $this->verificationCodeIssuer->issueFor($address);
-            $this->entityManager->flush();
-            $this->verificationCodeMailer->send($address, $code->code);
+            $this->verificationCodeSender->issue($address);
         }
 
         return new RegistrationResult($user, $tokens);

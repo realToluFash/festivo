@@ -153,12 +153,12 @@ final readonly class OwnerClaimHandler
 
             $this->entityManager->flush();
 
+            if ($foundNow) {
+                $this->ownerClaimMailer->sendStarted($claim);
+            }
+
             return [$claim, $foundNow];
         });
-
-        if ($foundNow) {
-            $this->ownerClaimMailer->sendStarted($claim);
-        }
 
         return $claim;
     }
@@ -184,11 +184,10 @@ final readonly class OwnerClaimHandler
             $claim->setStoppedBy($by);
             $this->record(self::STOPPED, $claim, $by, ['outcome' => [null, OwnerClaimOutcome::Stopped->value]]);
             $this->entityManager->flush();
+            $this->ownerClaimMailer->sendStopped($claim, $by);
 
             return $claim;
         });
-
-        $this->ownerClaimMailer->sendStopped($claim, $by);
 
         return $claim;
     }
@@ -214,15 +213,15 @@ final readonly class OwnerClaimHandler
             $this->record(self::WITHDRAWN, $claim, $by, ['outcome' => [null, OwnerClaimOutcome::Withdrawn->value]]);
             $this->entityManager->flush();
 
+            if (null !== $claim->getFoundAt()) {
+                $this->ownerClaimMailer->sendWithdrawn($claim);
+            }
+
             return $claim;
         });
 
         if ($claim instanceof ApiException) {
             throw $claim;
-        }
-
-        if (null !== $claim->getFoundAt()) {
-            $this->ownerClaimMailer->sendWithdrawn($claim);
         }
 
         return $claim;
@@ -249,15 +248,15 @@ final readonly class OwnerClaimHandler
                 $moment = $claim->isOpen() ? $this->settle($claim) : null;
                 $this->entityManager->flush();
 
+                match ($moment) {
+                    OwnerClaimMoment::Found => $this->ownerClaimMailer->sendStarted($claim),
+                    OwnerClaimMoment::Passed => $this->ownerClaimMailer->sendGranted($claim),
+                    OwnerClaimMoment::Lapsed => $this->ownerClaimMailer->sendLapsed($claim),
+                    OwnerClaimMoment::Ended, null => null,
+                };
+
                 return $moment;
             });
-
-            match ($moment) {
-                OwnerClaimMoment::Found => $this->ownerClaimMailer->sendStarted($claim),
-                OwnerClaimMoment::Passed => $this->ownerClaimMailer->sendGranted($claim),
-                OwnerClaimMoment::Lapsed => $this->ownerClaimMailer->sendLapsed($claim),
-                OwnerClaimMoment::Ended, null => null,
-            };
             $moved += null === $moment ? 0 : 1;
         }
 

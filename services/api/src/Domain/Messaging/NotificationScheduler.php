@@ -19,6 +19,7 @@ use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
 use InvalidArgumentException;
+use LogicException;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
@@ -82,7 +83,7 @@ final readonly class NotificationScheduler
     }
 
     /**
-     * To one person, fixed now (sc-4332): the delivery is written with the row, so nothing resolves the audience later. A code's send supersedes the person's earlier one of its type that has not gone.
+     * To one person, fixed now (sc-4332): the delivery is written with the row, so nothing resolves the audience later. A type that supersedes replaces the person's earlier one that has not gone.
      *
      * @param array<string, mixed> $payload
      * @param ?DateTimeImmutable   $sendBy  a code's expiry, after which it is never sent
@@ -98,22 +99,32 @@ final readonly class NotificationScheduler
             throw new InvalidArgumentException(Str\format('"%s" is not sent to one person.', $type));
         }
 
+        if (!$this->connection->isTransactionActive()) {
+            throw new LogicException(Str\format('"%s" is written in the transaction of the change it tells of, so the two commit together.', $type));
+        }
+
         $now = $this->clock->now();
         $id = Uuid::v7();
         $types = ['due' => Types::DATETIME_IMMUTABLE, 'sendBy' => Types::DATETIME_IMMUTABLE, 'now' => Types::DATETIME_IMMUTABLE];
 
         return $this->connection->transactional(function () use ($id, $type, $sourceId, $audience, $payload, $sendBy, $definition, $recipient, $now, $types): bool {
-            if ($definition->carriesCode()) {
+            if ($definition->supersedesEarlier()) {
                 $this->connection->executeStatement(
                     <<<'SQL'
-                        UPDATE notification_deliveries
-                        SET status = :superseded, finished_at = :now, claimed_until = NULL
-                        WHERE type = :type AND recipient_kind = :kind AND recipient_id = :recipient
-                          AND source_id <> :source
-                          AND status = :pending
-                          AND (claimed_until IS NULL OR claimed_until < :now)
+                        WITH superseded AS (
+                            UPDATE notification_deliveries
+                            SET status = :superseded, finished_at = :now, claimed_until = NULL
+                            WHERE type = :type AND recipient_kind = :kind AND recipient_id = :recipient
+                              AND source_id <> :source
+                              AND status = :pending
+                              AND (claimed_until IS NULL OR claimed_until < :now)
+                            RETURNING scheduled_notification_id
+                        )
+                        UPDATE scheduled_notifications SET payload = '{}'
+                        WHERE :forget AND id IN (SELECT scheduled_notification_id FROM superseded)
                         SQL,
                     [
+                        'forget' => $definition->carriesCode(),
                         'superseded' => NotificationDeliveryStatus::Superseded->value,
                         'now' => $now,
                         'type' => $type,
@@ -122,7 +133,7 @@ final readonly class NotificationScheduler
                         'source' => $sourceId,
                         'pending' => NotificationDeliveryStatus::Pending->value,
                     ],
-                    ['now' => Types::DATETIME_IMMUTABLE],
+                    ['now' => Types::DATETIME_IMMUTABLE, 'forget' => Types::BOOLEAN],
                 );
             }
 

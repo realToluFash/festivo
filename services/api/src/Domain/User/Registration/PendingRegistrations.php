@@ -50,7 +50,6 @@ final readonly class PendingRegistrations
         $pending = new PendingRegistration(TokenIssuer::hash($handle), $address, Str\trim($name), $taken ? null : $passwordHash, $locale, $taken, $now);
         $this->entityManager->persist($pending);
         $this->sendCode($pending);
-        $this->entityManager->flush();
 
         return $handle;
     }
@@ -112,30 +111,25 @@ final readonly class PendingRegistrations
         }
 
         $this->sendCode($pending);
-        $this->entityManager->flush();
 
         return null;
     }
 
-    /** One rule for both: a new code; the address hears it, or, when taken, hears it already has an account. */
+    /**
+     * One rule for both, with the same writes: a new code, and an email queued with it. The address
+     * hears the code or, when taken, that it already has an account; the worker keeps that one to once an hour.
+     */
     private function sendCode(PendingRegistration $pending): void
     {
-        $now = $this->clock->now();
-        $code = VerificationCodeIssuer::generate();
-        $pending->newCode(VerificationCodeIssuer::hash($code), $now);
+        $this->entityManager->wrapInTransaction(function () use ($pending): void {
+            $code = VerificationCodeIssuer::generate();
+            $pending->newCode(VerificationCodeIssuer::hash($code), $this->clock->now());
+            $this->entityManager->flush();
 
-        if (!$pending->isForTakenAddress()) {
-            $this->registrationMail->code($pending->getEmail(), $pending->getLocale(), $code);
-
-            return;
-        }
-
-        $since = $now->modify('-' . PendingRegistration::ALREADY_REGISTERED_EMAIL_MINUTES . ' minutes');
-
-        if (!$this->pendingRegistrationRepository->alreadyRegisteredEmailedSince($pending->getEmail(), $since)) {
-            $pending->alreadyRegisteredEmailed($now);
-            $this->registrationMail->alreadyRegistered($pending->getEmail(), $pending->getLocale());
-        }
+            $pending->isForTakenAddress()
+                ? $this->registrationMail->alreadyRegistered($pending->getEmail(), $pending->getLocale())
+                : $this->registrationMail->code($pending->getEmail(), $pending->getLocale(), $code);
+        });
     }
 
     /** sc-56's rules, word for word, so a taken address's answers cannot be told from a real one's. */

@@ -83,15 +83,17 @@ final readonly class TwoFactorSettings
         }
 
         $this->secondFactorCheck->passCode($factor, $code);
-        $factor->activate($this->clock->now());
-        $user->setTwoFactorSetupPrompt(false);
-        $codes = $this->recoveryCodes->issueFor($user);
-        $this->entityManager->flush();
 
-        $now = $this->clock->now();
-        $this->twoFactorMailer->sendTurnedOn($user, $now, $asked);
+        return $this->entityManager->wrapInTransaction(function () use ($user, $factor, $asked): array {
+            $now = $this->clock->now();
+            $factor->activate($now);
+            $user->setTwoFactorSetupPrompt(false);
+            $codes = $this->recoveryCodes->issueFor($user);
+            $this->entityManager->flush();
+            $this->twoFactorMailer->sendTurnedOn($user, $now, $asked);
 
-        return $codes;
+            return $codes;
+        });
     }
 
     /**
@@ -126,11 +128,12 @@ final readonly class TwoFactorSettings
 
         $this->secondFactorCheck->passEither($factor, $typed);
 
-        $this->recoveryCodeRepository->deleteAllFor($user);
-        $this->entityManager->remove($factor);
-        $this->entityManager->flush();
-
-        $this->twoFactorMailer->sendTurnedOff($user, $this->clock->now());
+        $this->entityManager->wrapInTransaction(function () use ($user, $factor): void {
+            $this->recoveryCodeRepository->deleteAllFor($user);
+            $this->entityManager->remove($factor);
+            $this->entityManager->flush();
+            $this->twoFactorMailer->sendTurnedOff($user, $this->clock->now());
+        });
     }
 
     private function active(User $user): TwoFactorFactor

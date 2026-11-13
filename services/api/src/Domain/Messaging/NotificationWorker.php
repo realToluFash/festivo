@@ -22,6 +22,7 @@ use App\Repository\EventMuteRepository;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
 use LogicException;
@@ -705,6 +706,17 @@ final class NotificationWorker
                 'id' => $id,
             ],
             ['now' => Types::DATETIME_IMMUTABLE],
+        );
+
+        // The database keeps only a code's hash: its words go once the send is over, not when the rows are pruned.
+        $this->connection->executeStatement(
+            <<<'SQL'
+                UPDATE scheduled_notifications s SET payload = '{}'
+                FROM notification_deliveries d
+                WHERE d.id = :id AND s.id = d.scheduled_notification_id AND s.type IN (:codeTypes)
+                SQL,
+            ['id' => $id, 'codeTypes' => $this->notificationRegistry->codeTypes()],
+            ['codeTypes' => ArrayParameterType::STRING],
         );
     }
 

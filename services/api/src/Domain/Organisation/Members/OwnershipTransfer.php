@@ -47,16 +47,20 @@ final readonly class OwnershipTransfer
 
         $previous = $this->membershipRepository->findActive($by, $organisation->getId()) ?? throw ApiException::notFound('access.not_found');
         $before = $to->getRole();
-        $this->roleAssignment->assign($to, $this->role($organisation, SeededRole::Owner));
-        $this->entityManager->flush();
-        $this->roleAssignment->assign($previous, $this->role($organisation, SeededRole::Admin));
-        $this->auditor->record(self::TRANSFERRED, 'Organisation', $organisation->getId(), Actor::User, $by->getId(), $by->getName(), [
-            'owner' => [$by->getId()->toRfc4122(), $to->getUser()->getId()->toRfc4122()],
-            'newOwnerRoleId' => [$before->getId()->toRfc4122(), $to->getRole()->getId()->toRfc4122()],
-        ]);
-        $this->entityManager->flush();
+        $owner = $this->role($organisation, SeededRole::Owner);
+        $admin = $this->role($organisation, SeededRole::Admin);
 
-        $this->ownershipTransferMailer->sendTransferred($organisation, $by, $to->getUser(), $asked);
+        $this->entityManager->wrapInTransaction(function () use ($organisation, $by, $to, $previous, $before, $owner, $admin, $asked): void {
+            $this->roleAssignment->assign($to, $owner);
+            $this->entityManager->flush();
+            $this->roleAssignment->assign($previous, $admin);
+            $this->auditor->record(self::TRANSFERRED, 'Organisation', $organisation->getId(), Actor::User, $by->getId(), $by->getName(), [
+                'owner' => [$by->getId()->toRfc4122(), $to->getUser()->getId()->toRfc4122()],
+                'newOwnerRoleId' => [$before->getId()->toRfc4122(), $to->getRole()->getId()->toRfc4122()],
+            ]);
+            $this->entityManager->flush();
+            $this->ownershipTransferMailer->sendTransferred($organisation, $by, $to->getUser(), $asked);
+        });
 
         return $to;
     }

@@ -6,6 +6,7 @@ namespace App\Domain\Messaging\Controller;
 
 use App\Domain\Messaging\Webhook\MailWebhook;
 use App\Http\Access\Policy\PublicAccess;
+use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
@@ -17,7 +18,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Throwable;
 
-/** Postmark signs nothing: a report needs the basic-auth credentials and an address in the ranges, and an unset secret or unset ranges refuse every one. */
+/** Postmark signs nothing: a report needs HTTPS, the basic-auth credentials and an address in the ranges, and an unset secret or unset ranges refuse every one. */
 #[PublicAccess]
 final readonly class MailWebhookController
 {
@@ -26,6 +27,7 @@ final readonly class MailWebhookController
         #[SensitiveParameter]
         private string $secret,
         private string $allowedRanges,
+        private string $appEnv,
     ) {
     }
 
@@ -51,7 +53,8 @@ final readonly class MailWebhookController
         $ranges = Vec\filter(Vec\map(Str\split($this->allowedRanges, ','), Str\trim(...)), static fn (string $range): bool => '' !== $range);
         $address = $request->getClientIp();
 
-        return '' !== $this->secret
+        return ($request->isSecure() || Iter\contains(['dev', 'test'], $this->appEnv))
+            && '' !== $this->secret
             && \hash_equals($this->secret, ($request->getUser() ?? '') . ':' . ($request->getPassword() ?? ''))
             && [] !== $ranges
             && null !== $address

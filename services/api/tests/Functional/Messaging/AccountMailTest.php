@@ -10,10 +10,12 @@ use App\Domain\Messaging\NotificationRegistry;
 use App\Domain\Organisation\Deletion\OrganisationDeleter;
 use App\Domain\User\Mail\MailCode;
 use App\Domain\User\Mail\UserMailer;
+use App\Domain\User\Registration\PendingRegistrations;
 use App\Enum\AccountMail;
 use App\Enum\MailProviderReport;
 use App\Enum\NotificationPriority;
 use App\Enum\SeededRole;
+use Doctrine\DBAL\Exception\CheckConstraintViolationException;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Type;
 use Psl\Vec;
@@ -38,7 +40,7 @@ final class AccountMailTest extends MessagingTestCase
     #[Test]
     public function aMailIsQueuedWithItsWordsAndSentOnlyByTheWorker(): void
     {
-        self::mailer()->send(AccountMail::NewDevice, 'ada@example.test', 'fr', 'newDevice.subject', ['First.', 'Second.']);
+        self::queue(AccountMail::NewDevice, 'ada@example.test', 'fr', 'newDevice.subject', ['First.', 'Second.']);
 
         self::assertSame([], self::sender()->sent, 'nothing goes from the request');
         self::assertSame('pending', self::scalar("SELECT status FROM notification_deliveries WHERE type = 'mail.new_device'"));
@@ -72,7 +74,7 @@ final class AccountMailTest extends MessagingTestCase
     public function aSendThatKeepsFailingIsRecordedFailedWithTheProvidersReasonAfterFiveAttempts(): void
     {
         self::sender()->failuresLeft = 5;
-        self::mailer()->send(AccountMail::Ownership, 'kemi@example.test', 'en', 'ownershipTransferred.subject', ['Body.']);
+        self::queue(AccountMail::Ownership, 'kemi@example.test', 'en', 'ownershipTransferred.subject', ['Body.']);
 
         for ($attempt = 1; $attempt <= 5; ++$attempt) {
             self::runUntilIdle();
@@ -88,7 +90,7 @@ final class AccountMailTest extends MessagingTestCase
     public function aCodeIsNeverRetriedPastItsExpiry(): void
     {
         self::sender()->failuresLeft = 1;
-        self::mailer()->send(AccountMail::VerificationCode, 'ada@example.test', 'en', 'verification.subject', ['123456'], code: new MailCode('123456', 10));
+        self::queue(AccountMail::VerificationCode, 'ada@example.test', 'en', 'verification.subject', ['123456'], code: new MailCode('123456', 10));
 
         self::runUntilIdle();
         self::assertSame('pending', self::scalar('SELECT status FROM notification_deliveries'), 'the first attempt failed and waits for its retry');
@@ -104,13 +106,13 @@ final class AccountMailTest extends MessagingTestCase
     #[Test]
     public function aNewerCodeSupersedesTheOneNotYetSentAndAResendIsANewSend(): void
     {
-        self::mailer()->send(AccountMail::VerificationCode, 'ada@example.test', 'en', 'verification.subject', ['111111'], code: new MailCode('111111', 10));
-        self::mailer()->send(AccountMail::VerificationCode, 'Ada@Example.test', 'en', 'verification.subject', ['222222'], code: new MailCode('222222', 10));
+        self::queue(AccountMail::VerificationCode, 'ada@example.test', 'en', 'verification.subject', ['111111'], code: new MailCode('111111', 10));
+        self::queue(AccountMail::VerificationCode, 'Ada@Example.test', 'en', 'verification.subject', ['222222'], code: new MailCode('222222', 10));
 
         self::assertSame(['superseded', 'pending'], self::statuses());
 
         self::runUntilIdle();
-        self::mailer()->send(AccountMail::VerificationCode, 'ada@example.test', 'en', 'verification.subject', ['333333'], code: new MailCode('333333', 10));
+        self::queue(AccountMail::VerificationCode, 'ada@example.test', 'en', 'verification.subject', ['333333'], code: new MailCode('333333', 10));
         self::runUntilIdle();
 
         self::assertSame(['superseded', 'sent', 'sent'], self::statuses(), 'a sent code is not superseded, and the resend goes');
@@ -120,10 +122,10 @@ final class AccountMailTest extends MessagingTestCase
     #[Test]
     public function theSameSendQueuedTwiceGoesOnce(): void
     {
-        self::mailer()->send(AccountMail::VerificationCode, 'ada@example.test', 'en', 'verification.subject', ['123456'], code: new MailCode('123456', 10));
-        self::mailer()->send(AccountMail::VerificationCode, 'ada@example.test', 'en', 'verification.subject', ['123456'], code: new MailCode('123456', 10));
-        self::mailer()->send(AccountMail::Invitation, 'kemi@example.test', 'en', 'invitation.subject', ['Join.'], source: 'invitation-1:send-1');
-        self::mailer()->send(AccountMail::Invitation, 'kemi@example.test', 'en', 'invitation.subject', ['Join.'], source: 'invitation-1:send-1');
+        self::queue(AccountMail::VerificationCode, 'ada@example.test', 'en', 'verification.subject', ['123456'], code: new MailCode('123456', 10));
+        self::queue(AccountMail::VerificationCode, 'ada@example.test', 'en', 'verification.subject', ['123456'], code: new MailCode('123456', 10));
+        self::queue(AccountMail::Invitation, 'kemi@example.test', 'en', 'invitation.subject', ['Join.'], source: 'invitation-1:send-1');
+        self::queue(AccountMail::Invitation, 'kemi@example.test', 'en', 'invitation.subject', ['Join.'], source: 'invitation-1:send-1');
 
         self::runUntilIdle();
         self::runUntilIdle();
@@ -138,9 +140,9 @@ final class AccountMailTest extends MessagingTestCase
     {
         self::service(EmailSuppressions::class)->suppress('Ada@Example.test', MailProviderReport::Bounced);
 
-        self::mailer()->send(AccountMail::Ownership, 'ada@example.test', 'en', 'ownershipTransferred.subject', ['Ownership.']);
-        self::mailer()->send(AccountMail::NewDevice, 'ada@example.test', 'en', 'newDevice.subject', ['Device.']);
-        self::mailer()->send(AccountMail::RecoveryLink, 'ada@example.test', 'en', 'recovery.link.subject', ['Link.'], code: new MailCode('token', 60));
+        self::queue(AccountMail::Ownership, 'ada@example.test', 'en', 'ownershipTransferred.subject', ['Ownership.']);
+        self::queue(AccountMail::NewDevice, 'ada@example.test', 'en', 'newDevice.subject', ['Device.']);
+        self::queue(AccountMail::RecoveryLink, 'ada@example.test', 'en', 'recovery.link.subject', ['Link.'], code: new MailCode('token', 60));
         self::runUntilIdle();
 
         self::assertSame(['Device.', 'Link.'], Vec\map(self::sender()->sent, static fn (array $sent): string => $sent['notification']->body));
@@ -169,6 +171,100 @@ final class AccountMailTest extends MessagingTestCase
         self::assertCount(1, $logged);
         self::assertStringContainsString('complaints are at 0.09%', $logged[0]);
         self::assertStringContainsString('0.08% threshold', $logged[0]);
+    }
+
+    #[Test]
+    public function aSendOutsideATransactionIsRefused(): void
+    {
+        $this->expectExceptionMessage('is written in the transaction of the change it tells of');
+
+        self::mailer()->send(AccountMail::NewDevice, 'ada@example.test', 'en', 'newDevice.subject', ['Device.']);
+    }
+
+    #[Test]
+    public function aChangeWhoseEmailCannotBeQueuedIsRolledBack(): void
+    {
+        self::connection()->executeStatement("ALTER TABLE scheduled_notifications ADD CONSTRAINT refuse_deletion_mail CHECK (type <> 'mail.organisation_deleted')");
+
+        try {
+            self::service(OrganisationDeleter::class)->delete($this->organisation, $this->owner, $this->organisation->getName());
+            self::fail('the queue write was refused');
+        } catch (CheckConstraintViolationException) {
+        }
+
+        self::assertNull(self::scalar('SELECT deleted_at FROM organisations WHERE id = :id', ['id' => $this->organisation->getId()->toRfc4122()]), 'the delete went back with its email');
+        self::assertSame(0, self::rowCount("SELECT COUNT(*) FROM audit_entries WHERE action = 'organisation.deleted'"));
+    }
+
+    #[Test]
+    public function aSignUpForATakenAddressWritesWhatAFreshOneDoes(): void
+    {
+        $taken = Type\string()->coerce($this->owner->getPrimaryEmailAddress()?->getAddress());
+        $registrations = self::service(PendingRegistrations::class);
+        $writes = [];
+
+        foreach (['fresh' => 'new.person@example.test', 'taken' => $taken] as $path => $address) {
+            foreach ([1, 2] as $attempt) {
+                $before = self::writes();
+                $registrations->start($address, 'Ada', 'correct horse battery staple', 'en');
+                $writes[$path][] = Vec\map(self::writes(), static fn (int $count, int $i): int => $count - $before[$i]);
+            }
+        }
+
+        self::assertSame($writes['fresh'], $writes['taken']);
+        self::assertSame([[1, 1, 0], [1, 1, 1]], $writes['fresh'], 'each queues one, and the second supersedes the first');
+    }
+
+    #[Test]
+    public function theAlreadyRegisteredEmailGoesOnceAnHourAndTheRestAreRecordedCancelled(): void
+    {
+        self::queue(AccountMail::AlreadyRegistered, 'ada@example.test', 'en', 'alreadyRegistered.subject', ['You have an account.']);
+        self::runUntilIdle();
+        self::queue(AccountMail::AlreadyRegistered, 'ada@example.test', 'en', 'alreadyRegistered.subject', ['You have an account.']);
+        self::runUntilIdle();
+
+        self::assertSame(['sent', 'cancelled'], self::statuses());
+        self::assertSame('no longer due', self::scalar("SELECT last_error FROM notification_deliveries WHERE status = 'cancelled'"));
+
+        self::connection()->executeStatement("UPDATE notification_deliveries SET finished_at = finished_at - INTERVAL '61 minutes'");
+        self::queue(AccountMail::AlreadyRegistered, 'ada@example.test', 'en', 'alreadyRegistered.subject', ['You have an account.']);
+        self::runUntilIdle();
+
+        self::assertSame(['sent', 'cancelled', 'sent'], self::statuses());
+        self::assertSame(2, self::sender()->calls);
+    }
+
+    #[Test]
+    public function aCodesWordsAreClearedOnceItsSendIsOver(): void
+    {
+        self::queue(AccountMail::VerificationCode, 'ada@example.test', 'en', 'verification.subject', ['111111'], code: new MailCode('111111', 10));
+        self::queue(AccountMail::VerificationCode, 'ada@example.test', 'en', 'verification.subject', ['222222'], code: new MailCode('222222', 10));
+        self::queue(AccountMail::RecoveryLink, 'kemi@example.test', 'en', 'recovery.link.subject', ['https://example.test/reset/token'], code: new MailCode('token', 60));
+        self::queue(AccountMail::NewDevice, 'ada@example.test', 'en', 'newDevice.subject', ['Device.']);
+
+        self::assertSame(1, self::rowCount("SELECT COUNT(*) FROM scheduled_notifications WHERE payload::text LIKE '%222222%'"), 'kept while it waits');
+        self::assertSame(0, self::rowCount("SELECT COUNT(*) FROM scheduled_notifications WHERE payload::text LIKE '%111111%'"), 'a superseded code goes at once');
+
+        self::runUntilIdle();
+
+        self::assertSame(0, self::rowCount("SELECT COUNT(*) FROM scheduled_notifications WHERE payload::text LIKE '%222222%' OR payload::text LIKE '%token%'"));
+        self::assertSame(1, self::rowCount("SELECT COUNT(*) FROM scheduled_notifications WHERE payload::text LIKE '%Device.%'"), 'mail with no code keeps its words');
+    }
+
+    /** @param mixed ...$arguments UserMailer::send's, named as it names them */
+    private static function queue(mixed ...$arguments): void
+    {
+        self::connection()->transactional(static fn () => self::mailer()->send(...$arguments));
+    }
+
+    /** @return list<int> scheduled rows, delivery rows and superseded deliveries */
+    private static function writes(): array
+    {
+        return [
+            self::rowCount('SELECT COUNT(*) FROM scheduled_notifications'),
+            self::rowCount('SELECT COUNT(*) FROM notification_deliveries'),
+            self::rowCount("SELECT COUNT(*) FROM notification_deliveries WHERE status = 'superseded'"),
+        ];
     }
 
     private static function mailer(): UserMailer

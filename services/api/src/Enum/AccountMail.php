@@ -35,13 +35,25 @@ enum AccountMail: string
         return 'mail.' . $this->value;
     }
 
-    /** Stops at the code's expiry, and gives way to a newer code for the same address. */
+    /** Stops at the code's expiry. */
     public function carriesCode(): bool
     {
         return match ($this) {
             self::VerificationCode, self::SignUpCode, self::PasswordCode, self::RecoveryLink, self::TwoFactorRecoveryCode => true,
             default => false,
         };
+    }
+
+    /** Gives way to a newer one for the same address: a code, and the sign-up's answer to a taken address, which writes what a code does (sc-4332). */
+    public function supersedesEarlier(): bool
+    {
+        return $this->carriesCode() || self::AlreadyRegistered === $this;
+    }
+
+    /** Sent at most once in this long to one address, the rest recorded Cancelled; the worker decides, so the request does the same work either way. */
+    public function onceIn(): ?string
+    {
+        return self::AlreadyRegistered === $this ? 'PT1H' : null;
     }
 
     /** Sent to a suppressed address all the same: the person may be trying to get back in. */
