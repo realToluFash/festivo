@@ -164,8 +164,8 @@ class Guest
         return $this->version;
     }
 
-    public function setVersion(int $version): void
+    public function raiseVersion(): void
     {
-        $this->version = $version;
+        ++$this->version;
     }
 }

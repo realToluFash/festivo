@@ -73,7 +73,7 @@ final readonly class GuestEditor
             $guest->setFullName($new->fullName, $new->nameKey);
             $guest->setEmail($new->email);
             $guest->setMobile($new->mobile);
-            $guest->setVersion($guest->getVersion() + 1);
+            $guest->raiseVersion();
 
             foreach ($companions as $companion) {
                 if (!Iter\contains_key($kept, $companion->getId()->toRfc4122())) {
