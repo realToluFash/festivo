@@ -14,7 +14,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
-import { type SampleEvent, TODAY_IDS, sampleEvent } from './events.ts';
+import { type SampleEvent, TODAY_IDS, localDay, sampleEvent } from './events.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { AddForm, EditForm, RecordForm } from './GuestForms.tsx';
@@ -22,7 +22,7 @@ import { AllergyMark } from './GuestNeeds.tsx';
 import { type GuestActions, GuestView } from './GuestColumn.tsx';
 import { AgreeForm } from './GuestWhatsApp.tsx';
 import { ExportDialog } from './GuestExport.tsx';
-import { XW, exportDay, narrowing } from './guestExport.ts';
+import { XW, narrowing } from './guestExport.ts';
 import {
   CHOICES,
   LINK,
@@ -747,7 +747,7 @@ function GuestsPage({
         <ExportDialog
           start={exporting}
           event={event.name}
-          day={exportDay(event.id, start.clock)}
+          day={localDay(start.clock, event.timeZone)}
           inView={shown}
           everyone={counts.all}
           narrowing={narrowing(choice, q)}

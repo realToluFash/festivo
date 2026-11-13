@@ -48,7 +48,7 @@ describe('Guests, Export at a desk (sc-3784)', () => {
     ).toBe(true);
     expect(within(box).getByRole('radio', { name: /^All guests \(156 people\)/u })).toBeDefined();
     expect(within(box).getByText('Filter: All')).toBeDefined();
-    expect(within(box).getByText(/ – guests – 2026-11-0\d\.xlsx$/u)).toBeDefined();
+    expect(within(box).getByText(/ – guests – 2026-11-03\.xlsx$/u)).toBeDefined();
     expect(within(box).getByText('Allergies')).toBeDefined();
   });
 
@@ -87,7 +87,7 @@ describe('Guests, Export at a desk (sc-3784)', () => {
 
     fireEvent.click(within(dialog()).getByRole('radio', { name: /^CSV/u }));
 
-    expect(within(dialog()).getByText(/ – guests – 2026-11-0\d\.csv$/u)).toBeDefined();
+    expect(within(dialog()).getByText(/ – guests – 2026-11-03\.csv$/u)).toBeDefined();
   });
 
   it('leaves allergies, diet and access out without guests.manage', SLOW, async () => {
@@ -130,6 +130,11 @@ describe('Guests, Export at a desk (sc-3784)', () => {
 
   it('shows no Export to Can view or Can check guests in', SLOW, async () => {
     await guests('exportGrantView');
+
+    expect(screen.queryByRole('button', { name: 'Export' })).toBeNull();
+
+    cleanup();
+    await guests('staffBefore');
 
     expect(screen.queryByRole('button', { name: 'Export' })).toBeNull();
   });

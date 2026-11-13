@@ -36,11 +36,9 @@ export function columnsFor(needs: boolean): readonly string[] {
   return needs ? COLUMNS : COLUMNS.filter((one) => !NEEDS.includes(one));
 }
 
-const EXTENSIONS: Record<Format, string> = { xlsx: 'xlsx', csv: 'csv' };
-
 /** "{event name} – guests – {YYYY-MM-DD}.xlsx", the date today in the event's zone (ISO 8601). */
 export function fileName(event: string, day: string, format: Format): string {
-  return `${event} – guests – ${day}.${EXTENSIONS[format]}`;
+  return `${event} – guests – ${day}.${format}`;
 }
 
 /** Today in the event's own zone, as the file name's date. */

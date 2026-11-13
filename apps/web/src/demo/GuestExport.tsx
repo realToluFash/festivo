@@ -90,6 +90,7 @@ export function ExportDialog({
         ]}
         picked={scope}
         first={first}
+        className="gs-x-who"
         onPick={setAsked}
       />
       <Radios
@@ -136,18 +137,20 @@ function Radios<Key extends string>({
   options,
   picked,
   first,
+  className,
   onPick,
 }: {
   legend: string;
   options: readonly Option<Key>[];
   picked: Key;
   first?: RefObject<HTMLInputElement | null>;
+  className?: string;
   onPick: (key: Key) => void;
 }) {
   const name = useId();
 
   return (
-    <fieldset className="desk-choices">
+    <fieldset className={className == null ? 'desk-choices' : `desk-choices ${className}`}>
       <legend className="desk-legend">{legend}</legend>
       <ul className="desk-rows">
         {options.map((option) => {

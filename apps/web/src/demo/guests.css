@@ -958,6 +958,10 @@
   color: var(--colorBroken);
 }
 
+.gs-x-who .desk-row .desk-row-name {
+  font-variant-numeric: tabular-nums;
+}
+
 .desk-row.gs-x-off {
   cursor: default;
 }
