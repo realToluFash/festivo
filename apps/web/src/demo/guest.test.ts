@@ -39,11 +39,12 @@ describe('the guest’s page states (sc-31306)', () => {
       'Over, gone, and the rest',
       'In the guest’s own language (sc-3790)',
       'The hosts’ messages and the guest’s own',
+      'The hosts’ notes, entries in Messages (sc-3971)',
       'Your messages, opened from the guest’s page (sc-3969, sc-3950)',
       'Your messages, from an email’s link (sc-3969)',
     ]);
-    expect(STATES).toHaveLength(86);
-    expect(new Set(STATES).size).toBe(86);
+    expect(STATES).toHaveLength(89);
+    expect(new Set(STATES).size).toBe(89);
     expect(STATES.every(isGuestState)).toBe(true);
     expect(LINKED.find((one) => one.to.includes('messageArrival'))?.to).toBe(
       '/demo/guest?state=messageArrival#m-3',

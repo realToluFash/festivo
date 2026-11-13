@@ -125,7 +125,7 @@ export const GW = {
   letThemChange: 'Let them change their reply',
   reopened: (name: string, date: string) =>
     `Reply reopened by ${name}, ${date}. They can answer until the event starts.`,
-  notFound: 'This guest isn’t on this list',
+  notFound: 'This guest is not on this list',
   eventGone: 'This event is not available',
   notFoundLine: 'They may have been removed from the list since you opened it.',
   backToGuests: 'Back to guests',
