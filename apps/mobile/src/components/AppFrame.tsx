@@ -222,6 +222,8 @@ export interface InsideEvent {
   onArea: (area: EventPlace) => void;
   /** The event as the landscape sidebar's card on every page under it, its event null while it loads (sc-30413). */
   card: { event: Shown | null; now: Date };
+  /** The landscape sidebar's ‹ when it goes somewhere other than Events, as a copy's ‹ Event up to its original. */
+  up?: { label: string; onPress: () => void } | undefined;
 }
 
 interface NavEntry {
@@ -517,6 +519,7 @@ export function AppFrame({
             entries={entries}
             inEvent={inEvent != null}
             card={inEvent?.card}
+            up={inEvent?.up}
             organisation={signedIn.organisation}
             waiting={count}
             onSwitch={switchFromPill}
@@ -856,6 +859,8 @@ function FrameHeader({
   const tabs = useFrameTabs(current, organisation);
 
   if (kind === 'tabletLandscape') {
+    if (untitled) return null;
+
     return (
       <View style={[styles.landscapeHeader, large && styles.stacked]}>
         <View style={[styles.titled, !large && styles.fill]}>
@@ -941,7 +946,13 @@ function FrameHeader({
   // Inside an event upright, the demo's EventFrame top in every phase and while loading: ‹ and the bell in one row, the area pills under it, no organisation pill (sc-30413).
   if (kind === 'tabletPortrait') {
     return (
-      <View style={[styles.eventPortraitHeader, { paddingTop: insets.top + tokens.spaceMd }]}>
+      <View
+        style={[
+          styles.eventPortraitHeader,
+          { paddingTop: insets.top + tokens.spaceMd },
+          untitled && styles.flushFoot,
+        ]}
+      >
         <View style={styles.titleRow}>
           <View style={styles.fill}>
             {back != null && !backHidden && (
@@ -1253,11 +1264,16 @@ function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: bo
       accessibilityState={{ selected: entry.on }}
       testID={entry.testID}
     >
-      <Icon paths={entry.icon} on={entry.on} size={tokens.sizeMark} />
+      <Icon
+        paths={entry.icon}
+        on={entry.on}
+        onInk={tokens.colorAccentText}
+        size={tokens.sizeMark}
+      />
       <Text
         size={tokens.typeBody.size}
-        weight={entry.on ? 'semibold' : 'medium'}
-        style={entry.on ? styles.ink : styles.secondaryInk}
+        weight="semibold"
+        style={entry.on ? styles.accentInk : styles.secondaryInk}
       >
         {entry.label}
       </Text>
@@ -1288,6 +1304,7 @@ function FrameSidebar({
   entries,
   inEvent,
   card,
+  up,
   organisation,
   waiting,
   onSwitch,
@@ -1297,6 +1314,7 @@ function FrameSidebar({
   entries: readonly NavEntry[];
   inEvent: boolean;
   card: InsideEvent['card'] | undefined;
+  up: InsideEvent['up'];
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
@@ -1363,9 +1381,9 @@ function FrameSidebar({
         )}
         {inEvent && (
           <SidebarBack
-            label={t('todayScreen.tab.events')}
-            heard={t('eventsScreen.backToEvents')}
-            onPress={() => goTo('events')}
+            label={up?.label ?? t('todayScreen.tab.events')}
+            heard={up?.label ?? t('eventsScreen.backToEvents')}
+            onPress={up?.onPress ?? (() => goTo('events'))}
             testID="frame.side.back"
           />
         )}
@@ -1439,8 +1457,18 @@ function OrgPill({
 
 const STROKE = { strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
-function Icon({ paths, on, size }: { paths: IconPaths; on: boolean; size: number }) {
-  const stroke = on ? tokens.colorInk : tokens.colorInkSecondary;
+function Icon({
+  paths,
+  on,
+  onInk = tokens.colorInk,
+  size,
+}: {
+  paths: IconPaths;
+  on: boolean;
+  onInk?: string;
+  size: number;
+}) {
+  const stroke = on ? onInk : tokens.colorInkSecondary;
 
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -1460,6 +1488,7 @@ const styles = StyleSheet.create({
   shrink: { flexShrink: 1, minWidth: 0 },
   ink: { color: tokens.colorInk },
   secondaryInk: { color: tokens.colorInkSecondary },
+  accentInk: { color: tokens.colorAccentText },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   topRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   pageRow: { minHeight: 0, paddingTop: 14 },
