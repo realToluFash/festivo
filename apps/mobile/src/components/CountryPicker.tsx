@@ -75,29 +75,31 @@ function flag(country: string): string {
   return String.fromCodePoint(...[...country].map((letter) => 0x1f1a5 + letter.charCodeAt(0)));
 }
 
-/** A refused Country is no text field: the keyboard closes and the screen reader lands on the picker. With `field`, that Field comes wholly into view: on New event that is any refusal the form focuses, a server's as well as a client check's, and the screen reader's move waits for the scroll to land. With `saidFirst`, the words read out with the refusal, it waits until they are said too, as TalkBack's move would cut them off (sc-43907). A field focused or a control taken meanwhile cancels the move, as does what this returns. */
+/** A refused Country is no text field: the keyboard closes and the screen reader lands on the picker. With `field`, that Field comes wholly into view: on New event that is any refusal the form focuses, a server's as well as a client check's, and the screen reader's move waits for the scroll to land. With `saidFirst`, the words read out with the refusal while a screen reader is on, the scroll waits until they are said: TalkBack's focus follows the scroll off the button onto whatever it lands on and reads that instead, and its move to the picker drops what was still queued (sc-43907). A field focused or a control taken meanwhile cancels the scroll and the move, as does what this returns. */
 export function focusPicker(
   picker: RefObject<ViewInstance | null>,
   field?: RefObject<ViewInstance | null>,
   saidFirst?: string,
 ): () => void {
   Keyboard.dismiss();
-  if (field != null) fieldChecked(true, field.current);
-  const waitMs = Math.max(
-    field == null ? 0 : SETTLED_MS,
-    saidFirst == null ? 0 : saidInFullMs(Platform.OS, saidFirst),
-  );
-  if (waitMs === 0) {
+  if (field == null) {
     moveScreenReaderFocus(picker.current);
     return () => {};
   }
 
+  const heldMs = saidFirst == null ? 0 : saidInFullMs(Platform.OS, saidFirst);
   const watch = watchMovedOn(() => cancel());
   watch.settled();
-  const later = setTimeout(() => {
-    watch.stop();
-    moveScreenReaderFocus(picker.current);
-  }, waitMs);
+  let later: ReturnType<typeof setTimeout> | undefined;
+  const scroll = () => {
+    fieldChecked(true, field.current);
+    later = setTimeout(() => {
+      watch.stop();
+      moveScreenReaderFocus(picker.current);
+    }, SETTLED_MS);
+  };
+  if (heldMs === 0) scroll();
+  else later = setTimeout(scroll, heldMs);
   function cancel(): void {
     clearTimeout(later);
     watch.stop();

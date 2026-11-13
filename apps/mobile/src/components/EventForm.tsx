@@ -89,6 +89,7 @@ import { ListPicker } from './ListPicker.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut, readOut } from './ReadOut.tsx';
 import { useBroughtIntoView } from './Screen.tsx';
+import { useScreenReaderOn } from './screenReaderFocus.ts';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 import { VenueFields } from './VenueFields.tsx';
@@ -133,6 +134,7 @@ export function EventForm({
   const [focusHost, setFocusHost] = useState<{ key: number } | null>(null);
   const [unsent, setUnsent] = useState<{ count: number } | null>(null);
   const [status, setStatus] = useState<Status>('editing');
+  const readerOn = useScreenReaderOn();
   const [asking, setAsking] = useState<Asking>(null);
   const [fetchingLatest, setFetchingLatest] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -352,7 +354,7 @@ export function EventForm({
     if (count > 0) {
       setUnsent({ count });
       setStatus('editing');
-      refuse(found, hostFound, t('eventForm.problems', { count }));
+      refuse(found, hostFound, readerOn ? t('eventForm.problems', { count }) : undefined);
       return;
     }
 
