@@ -839,6 +839,46 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     });
   });
 
+  it('after Keep mine fails, Save sends the merged form against their version, not the colleague’s old field', async () => {
+    let reads = 0;
+    let saves = 0;
+    const theirs = { ...DETAILS, mobile: '+2348035550199' };
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        return reads === 1 ? tagged(DETAILS, '"1"') : tagged(theirs, '"2"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => {
+        saves += 1;
+        if (saves === 1) return problem('precondition_failed', 412);
+        if (saves === 2) return problem('server_error', 500);
+        return tagged({ ...theirs, email: 'ngozi.eze@example.com' }, '"3"');
+      },
+    });
+    const ifMatches: (string | null)[] = [];
+    const fetch = vi.mocked(globalThis.fetch);
+    const answer = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (input, init) => {
+      if (init?.method === 'PUT') ifMatches.push(new Headers(init.headers).get('If-Match'));
+      return answer(input, init);
+    });
+
+    type(EMAIL, 'ngozi.eze@example.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    const panel = await screen.findByRole('alert');
+    fireEvent.click(within(panel).getByRole('button', { name: 'Keep mine' }));
+
+    expect(await screen.findByText('Not saved. Nothing was changed. Try again.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect(ifMatches).toEqual(['"1"', '"2"', '"2"']);
+    expect(puts(sent)[2]?.body).toMatchObject({
+      email: 'ngozi.eze@example.com',
+      mobile: { countryCode: 'NG', number: '0803 555 0199' },
+    });
+  });
+
   it('sends nothing on a 412 when their version already holds every change, and shows it', async () => {
     let reads = 0;
     const theirs = { ...DETAILS, email: 'ngozi.eze@example.com' };

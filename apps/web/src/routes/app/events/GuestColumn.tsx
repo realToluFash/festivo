@@ -839,8 +839,8 @@ function EditForm({
         setDuplicate('asked');
         focus('duplicate');
       } else if (error instanceof ApiError && error.status === 422) {
-        const found = violationProblems(error.problem.violations ?? [], typed);
-        const at = firstProblem(found, values.companions.length);
+        const found = violationProblems(error.problem.violations ?? [], typedOf(sending));
+        const at = firstProblem(found, sending.companions.length);
 
         if (at == null) setFailed(true);
         else {
@@ -950,12 +950,12 @@ function EditForm({
               aria-busy={busy || undefined}
               onClick={() => {
                 const against = conflict.theirs.tag;
-                const sending = mergedOf(
-                  values,
-                  valuesOf(conflict.theirs.guest, country),
-                  changedOf(values, base),
-                );
+                const theirs = valuesOf(conflict.theirs.guest, country);
+                const sending = mergedOf(values, theirs, changedOf(values, base));
 
+                setHost(conflict.theirs.guest);
+                setBase(theirs);
+                setValues(sending);
                 setTag(against);
                 setConflict(null);
                 void send(duplicate === 'kept', against, sending);
