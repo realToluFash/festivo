@@ -579,11 +579,11 @@
     "unsent": "Aún no ha enviado su respuesta.",
     "closed": "El plazo para responder ha terminado. Si algo ha cambiado, contacte con quien organiza el evento.",
     "didNotAnswer": "No llegó a responder.",
-    "pausedNotice": "This event is paused. Answers are closed. Nothing you sent has been lost, and this page will update if the event resumes.",
-    "pausedReason": "Answers are closed while the event is paused. Anything you sent is kept.",
-    "calledOffNotice": "This event has been called off. It will not go ahead. There is nothing you need to do.",
-    "finishedNotice": "This event has taken place. This page stays here as a keepsake.",
-    "refused": "Answers closed before this was sent. Everything you chose is still here."
+    "pausedNotice": "Este evento está en pausa. No se pueden enviar respuestas. No se ha perdido nada de lo que envió, y esta página se actualizará si el evento se reanuda.",
+    "pausedReason": "No se pueden enviar respuestas mientras el evento está en pausa. Lo que ya envió se conserva.",
+    "calledOffNotice": "Este evento se ha cancelado. No se celebrará. No tiene que hacer nada.",
+    "finishedNotice": "Este evento ya se ha celebrado. Esta página se queda aquí como recuerdo.",
+    "refused": "No se ha enviado: las respuestas se cerraron antes de que llegara. Todo lo que eligió sigue aquí."
   },
   "signIn": {
     "title": "Iniciar sesión",
