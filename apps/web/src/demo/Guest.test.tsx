@@ -9,6 +9,7 @@ import { GUEST_ASK_PAGES } from './guestAskStates.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { GUEST_NOTE_PAGES } from './guestNote.ts';
+import { GUEST_CHANGE_PAGES } from './guestChange.ts';
 import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
 
 const SLOW = { timeout: 15000 };
@@ -79,6 +80,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
         ...GUEST_ASK_PAGES,
         ...GUEST_DAY_PAGES,
         ...GUEST_NOTE_PAGES,
+        ...GUEST_CHANGE_PAGES,
       ]
         .flatMap((one) => one.states)
         .map((one) => one.to),
@@ -88,7 +90,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
     );
 
     expect(guestLinks).toEqual(GUEST_PAGES.flatMap((one) => one.states).map((one) => one.to));
-    expect(guestLinks).toHaveLength(89);
+    expect(guestLinks).toHaveLength(91);
   });
 
   it('opens on the cover card: the invitation, the guest, the event, when and where', async () => {
@@ -279,6 +281,8 @@ const SAYS: [string, () => void][] = [
   ['replyFailed', () => screen.getByText(/^Your message wasn’t sent\./u)],
   ['calledOffMessages', () => expect(screen.getAllByRole('article')).toHaveLength(3)],
   ['finishedMessages', () => screen.getByText(THANK_YOU)],
+  ['noBox', () => expect(screen.queryByRole('textbox')).toBeNull()],
+  ['noBoxOpen', () => screen.getByText(/^Your message wasn’t sent\./u)],
   ['noteInvitation', () => screen.getByText(/^We would love you there with us\./u)],
   ['noteAmongMessages', () => screen.getByText(/^We would love you there with us\./u)],
   [
@@ -1525,6 +1529,37 @@ describe('the hosts’ messages and the guest’s own (§4a)', () => {
     expect(count.querySelector('svg')).not.toBeNull();
     expect(box.getAttribute('aria-describedby')).toBe('gp-box-error gp-box-count');
     expect(screen.getAllByRole('article')).toHaveLength(3);
+  });
+
+  it('noBox: the hosts’ messages newest last, and no label, box or Send, nothing said', async () => {
+    await guest('noBox');
+    const messages = screen.getByRole('region', { name: 'Messages' });
+
+    expect(within(messages).getAllByRole('article')).toHaveLength(3);
+    expect(within(messages).queryByRole('textbox')).toBeNull();
+    expect(within(messages).queryByRole('button', { name: 'Send' })).toBeNull();
+    expect(screen.queryByText(/^Write to /u)).toBeNull();
+    expect(within(messages).queryByRole('alert')).toBeNull();
+    expect(within(messages).queryByRole('status')).toBeNull();
+  });
+
+  it('noBoxOpen: the words kept with the failed send, and Send fails again the same way', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('noBoxOpen');
+    const send = screen.getByRole('button', { name: 'Send' });
+    const failed = 'Your message wasn’t sent. Your words are still here. Try again.';
+
+    expect(screen.getByRole('alert').textContent).toBe(failed);
+    fireEvent.click(send);
+    expect(screen.queryByRole('alert')).toBeNull();
+    await wait();
+    expect(screen.getByRole('alert').textContent).toBe(failed);
+    expect(screen.getByLabelText('Write to Adaeze Obi and Tunde Bakare')).toHaveProperty(
+      'value',
+      'Thank you! Is there a cloakroom at The Landmark?',
+    );
+    expect(screen.getAllByRole('article')).toHaveLength(3);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Send' }));
   });
 
   it('sits under the answer and above the door code', async () => {

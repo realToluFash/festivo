@@ -41,7 +41,7 @@ import { heldRegistration } from '../../pendingRegistration.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
 import { PHONE_WIDTH, useDeskWidth } from '../../phoneWidth.ts';
-import { DeskTopContext, isBandless, takesOfflineBox } from '../../deskTop.ts';
+import { DeskTopContext, isBandless } from '../../deskTop.ts';
 import { EventNav, useInsideEvent, useShownEventName } from './events/EventNav.tsx';
 
 /**
@@ -128,7 +128,6 @@ function Shell() {
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
   const switchTo = switchOf(location.state);
   const bandless = useDeskWidth() && isBandless(pathname);
-  const boxed = bandless && takesOfflineBox(pathname);
 
   // Before the first paint, so the first signed-in screen is already in the account's language.
   useLayoutEffect(() => {
@@ -342,7 +341,7 @@ function Shell() {
           className={bandless ? 'shell-content is-card' : 'shell-content'}
           inert={menuOpen}
         >
-          {!boxed && <OfflineBand />}
+          {!bandless && <OfflineBand />}
           <LinkedNotice />
           {organisation != null && session.pausedIn == null && (
             <SignInRulesNotices key={organisation.id} organisation={organisation} />
@@ -355,7 +354,7 @@ function Shell() {
                 ? {
                     bell: <NotificationsBell userId={session.userId} desk />,
                     said,
-                    offline: boxed && <OfflineBox />,
+                    offline: <OfflineBox />,
                   }
                 : NO_DESK_TOP
             }
@@ -363,7 +362,12 @@ function Shell() {
             <ErrorBoundary>
               {standIn != null && !atSettings ? (
                 <>
-                  {bandless && said}
+                  {bandless && (
+                    <>
+                      <OfflineBox />
+                      {said}
+                    </>
+                  )}
                   {standIn}
                 </>
               ) : (

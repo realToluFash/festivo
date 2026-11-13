@@ -17,6 +17,14 @@ import {
 } from './messagesTo.ts';
 import { type PersonId, previewDraftOf } from './messagesPreviewSample.ts';
 import { EMAIL_ONLY, WAITS_STATES, waitsTicksOf } from './messagesWaits.ts';
+import {
+  OTHER_MEMBER,
+  type Stop,
+  STOPPED_AT,
+  STOP_GROUP,
+  STOP_STATES,
+  isStopState,
+} from './messagesStop.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
@@ -123,6 +131,7 @@ export const MESSAGE_STATES = [
   { key: 'checkWhatsApp', name: 'The check, with WhatsApp' },
   { key: 'whatsAppRead', name: 'WhatsApp’s receipts' },
   ...WAITS_STATES,
+  ...STOP_STATES,
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -149,10 +158,14 @@ export const MESSAGES_AT = `/demo/events/${SAMPLE_EVENT}/messages`;
 export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
   {
     name: 'Messages',
-    states: MESSAGE_STATES.map((one) => ({
+    states: MESSAGE_STATES.filter((one) => !isStopState(one.key)).map((one) => ({
       to: `${MESSAGES_AT}?state=${one.key}`,
       name: one.name,
     })),
+  },
+  {
+    name: STOP_GROUP,
+    states: STOP_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
 ];
 
@@ -1496,6 +1509,8 @@ export interface Inbox {
   marked: Readonly<Partial<Record<ConvoId, readonly string[]>>>;
   resend: { thread: ConvoId; ticks: Ticks } | null;
   untold: readonly Told[];
+  /** sc-3978: who stopped each guest writing from their page, and when. */
+  stopped?: Partial<Record<GuestId, Stop>>;
 }
 
 export const TICKS: Ticks = { email: true, sms: true, whatsApp: false };
@@ -1691,7 +1706,18 @@ export function seedOf(state: MessagesState | null): Inbox {
       return { ...base, loading: true };
     case 'conversation':
     case 'bell':
+    case 'stopAction':
+    case 'stopAsk':
+    case 'stopFailed':
       return { ...base, pane: open('ines') };
+    case 'stopped':
+    case 'letAgainFailed':
+    case 'stoppedNoManage':
+      return {
+        ...base,
+        pane: open('ines'),
+        stopped: { ines: { by: OTHER_MEMBER, at: STOPPED_AT } },
+      };
     case 'replyArrived':
       return { ...base, present: ALL.filter((id) => id !== 'lucia'), pane: open('ines') };
     case 'answered':
@@ -2266,7 +2292,9 @@ export type Change =
   | { kind: 'match'; name: string }
   | { kind: 'schedule'; day: string; time: string }
   | { kind: 'resched'; id: ConvoId; sched: Partial<Sched> }
-  | { kind: 'sendNow'; id: ConvoId };
+  | { kind: 'sendNow'; id: ConvoId }
+  | { kind: 'stop'; id: GuestId; stop: Stop }
+  | { kind: 'letWrite'; id: GuestId };
 
 function lastAt(outs: readonly Out[], stage: Stage): number {
   for (let at = outs.length - 1; at >= 0; at -= 1) if (outs[at]?.stage === stage) return at;
@@ -2298,6 +2326,15 @@ function going(draft: Pick<Draft, 'thread' | 'subject' | 'body' | 'to' | 'ticks'
 
 export function changed(inbox: Inbox, change: Change): Inbox {
   switch (change.kind) {
+    case 'stop':
+      return { ...inbox, stopped: { ...inbox.stopped, [change.id]: change.stop } };
+    case 'letWrite':
+      return {
+        ...inbox,
+        stopped: Object.fromEntries(
+          Object.entries(inbox.stopped ?? {}).filter(([id]) => id !== change.id),
+        ),
+      };
     case 'open':
       return {
         ...inbox,

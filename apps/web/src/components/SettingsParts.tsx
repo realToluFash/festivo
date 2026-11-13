@@ -86,6 +86,7 @@ export function TitleRow({
 
   return (
     <>
+      {!compact && desk.offline}
       <header className={compact ? 'desk-top is-compact' : 'desk-top'}>
         <h1 ref={titleRef} className="desk-title" tabIndex={-1}>
           {title}
@@ -108,15 +109,20 @@ export function BackRow({
   onBack: () => void;
   bell?: ReactNode;
 }) {
+  const desk = useDeskTop();
+
   return (
-    <div className="desk-top">
-      <button type="button" className="desk-back" onClick={onBack}>
-        <Glyph name="back" size={17} weight={2.4} />
-        {to}
-      </button>
-      <span className="today-grow" />
-      {bell}
-    </div>
+    <>
+      {desk.offline}
+      <div className="desk-top">
+        <button type="button" className="desk-back" onClick={onBack}>
+          <Glyph name="back" size={17} weight={2.4} />
+          {to}
+        </button>
+        <span className="today-grow" />
+        {bell}
+      </div>
+    </>
   );
 }
 

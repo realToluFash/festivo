@@ -66,19 +66,21 @@ import {
   Ask,
   Avatar,
   BackRow,
-  Card,
-  CardStep as Step,
-  Chevron,
   Head,
   Menu,
-  OnCard,
-  RowWords,
-  Says,
   Tag,
   TextAction,
   TitleRow,
 } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
+import {
+  InvitationLine,
+  MemberRow,
+  MembersCardView,
+  MembersEmpty,
+  MembersFailed,
+  MembersLoading,
+} from '../components/MembersParts.tsx';
 
 const RETRY_MS = 1200;
 
@@ -271,7 +273,11 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
       <Page>
         <DemoOffline />
         <TitleRow title="Members" bell={<DemoBell tell={tell} />} />
-        {load === 'failed' ? <Failed onRetry={() => setLoad('retrying')} /> : <Loading />}
+        {load === 'failed' ? (
+          <MembersFailed onRetry={() => setLoad('retrying')} />
+        ) : (
+          <MembersLoading words="Loading members…" />
+        )}
       </Page>
     );
 
@@ -314,7 +320,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
     return split ? (
       <>
         <Column title={<TitleRow title="Members" action={invite} compact />}>
-          <MembersCardView card={card} size="column" onStep={step} />
+          <MembersCard card={card} size="column" onStep={step} />
           <MembersBlocks {...list} column />
         </Column>
         <Page>
@@ -340,7 +346,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
     <Page>
       <DemoOffline />
       <TitleRow title="Members" action={invite} bell={<DemoBell tell={tell} />} />
-      <MembersCardView card={card} onStep={step} />
+      <MembersCard card={card} onStep={step} />
       {claim === 'found' && (
         <TextAction label="Withdraw my claim" onClick={() => setDialog({ kind: 'withdraw' })} />
       )}
@@ -367,37 +373,7 @@ function Column({ title, children }: { title: ReactNode; children: ReactNode }) 
   );
 }
 
-function Loading() {
-  return (
-    <div className="desk-loading" role="status" aria-label="Loading members…">
-      <span className="desk-unseen">Loading members…</span>
-      <span className="desk-sunk is-card" aria-hidden="true" />
-      <ul className="desk-rows has-lead" aria-hidden="true">
-        {[1, 2, 3, 4].map((bar) => (
-          <li key={bar} className="desk-row is-bones">
-            <span className="desk-sunk is-face" />
-            <span className="desk-row-words">
-              <span className={`desk-sunk is-title b${bar}`} />
-              <span className={`desk-sunk is-line b${bar}`} />
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function Failed({ onRetry }: { onRetry: () => void }) {
-  return (
-    <div className="desk-failed" role="alert">
-      <h2>We could not load the members.</h2>
-      <p className="desk-line">Check your connection and try again.</p>
-      <TextAction label="Try again" onClick={onRetry} />
-    </div>
-  );
-}
-
-function MembersCardView({
+function MembersCard({
   card,
   size = 'page',
   onStep,
@@ -407,25 +383,18 @@ function MembersCardView({
   onStep: (step: CardStep) => void;
 }) {
   return (
-    <Card size={size}>
-      <div className="desk-said-lines" tabIndex={-1}>
-        <Says focusable>{card.says}</Says>
-        {card.lines.map((line) => (
-          <OnCard key={line}>{line}</OnCard>
-        ))}
-      </div>
-      {card.faces.length > 0 && (
-        <div className="desk-faces" aria-hidden="true">
-          {card.faces.map((face) => (
-            <Avatar key={face.id} initials={face.initials} tone={face.tone} size="face" />
-          ))}
-          {card.more > 0 && <span className="desk-more">+{card.more}</span>}
-        </div>
-      )}
-      {card.step != null && (
-        <Step label={card.step.label} onClick={() => card.step != null && onStep(card.step)} />
-      )}
-    </Card>
+    <MembersCardView
+      card={{
+        ...card,
+        faces: card.faces.map((face) => ({
+          key: face.id,
+          initials: face.initials,
+          tone: face.tone,
+        })),
+      }}
+      size={size}
+      onStep={onStep}
+    />
   );
 }
 
@@ -500,11 +469,11 @@ function MembersBlocks(props: BlocksProps) {
           <PeopleRows {...props} shown={shown} />
         ) : (
           empty != null && (
-            <div className="desk-empty">
-              <p className="desk-empty-title">{empty.title}</p>
-              {empty.line != null && <p className="desk-line">{empty.line}</p>}
-              <TextAction label="Show everyone" onClick={() => onFilter('all')} />
-            </div>
+            <MembersEmpty
+              title={empty.title}
+              line={empty.line ?? undefined}
+              onEveryone={() => onFilter('all')}
+            />
           )
         )}
       </section>
@@ -613,15 +582,14 @@ function WaitingRow({
   onAnswer: (id: string) => void;
 }) {
   return (
-    <button type="button" className="desk-row" onClick={() => onAnswer(person.id)}>
-      <Avatar initials={person.initials} tone={person.tone} />
-      <RowWords
-        title={person.name}
-        tag={<Tag {...tagOf(person)} />}
-        lines={[waitingLine(person, say)]}
-      />
-      <Chevron />
-    </button>
+    <MemberRow
+      initials={person.initials}
+      tone={person.tone}
+      name={person.name}
+      tag={<Tag {...tagOf(person)} />}
+      line={waitingLine(person, say)}
+      onPress={() => onAnswer(person.id)}
+    />
   );
 }
 
@@ -644,22 +612,17 @@ function PeopleRows({
           <li key={one.id}>
             {one.status === 'pendingApproval' ? (
               <WaitingRow person={one} say={say} onAnswer={onAnswer} />
-            ) : one.status === 'former' ? (
-              <div className="desk-row">
-                <Avatar initials={one.initials} tone={one.tone} />
-                <RowWords title={one.name} tag={tag} lines={[rowLine(one, viewer)]} />
-              </div>
             ) : (
-              <button
-                type="button"
-                className={on ? 'desk-row is-on' : 'desk-row'}
-                aria-current={on || undefined}
-                onClick={() => onPerson(one.id)}
-              >
-                <Avatar initials={one.initials} tone={one.tone} size={column ? 'small' : 'row'} />
-                <RowWords title={one.name} tag={tag} lines={[rowLine(one, viewer)]} />
-                <Chevron />
-              </button>
+              <MemberRow
+                initials={one.initials}
+                tone={one.tone}
+                name={one.name}
+                tag={tag}
+                line={rowLine(one, viewer)}
+                {...(one.status === 'former'
+                  ? {}
+                  : { size: column ? 'small' : 'row', on, onPress: () => onPerson(one.id) })}
+              />
             )}
           </li>
         );
@@ -676,19 +639,19 @@ function InvitationRows({ invitations, people, viewer, say, onRevoke, onAgain }:
         const row = invitationRow(invitation, people, viewer, say);
 
         return (
-          <li key={invitation.email} className="desk-row">
-            <RowWords
-              title={invitation.email}
-              tag={row.tag == null ? undefined : <Tag kind="ended" word={row.tag} />}
-              lines={[row.line, row.dates]}
-            />
+          <InvitationLine
+            key={invitation.email}
+            email={invitation.email}
+            ended={row.tag ?? undefined}
+            lines={[row.line, row.dates]}
+          >
             {viewer.manages &&
               (invitation.status === 'pending' ? (
                 <TextAction label="Revoke" red onClick={() => onRevoke(invitation.email)} />
               ) : (
                 <TextAction label="Invite again" onClick={() => onAgain(invitation)} />
               ))}
-          </li>
+          </InvitationLine>
         );
       })}
     </ul>

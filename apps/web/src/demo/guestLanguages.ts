@@ -48,6 +48,10 @@ const FRENCH: Samples = {
   switched: '[Cette page est maintenant en français.]',
   notSaved:
     '[Votre langue n’a pas été enregistrée. Cette page reste en français sur cet appareil, mais un autre appareil peut l’ouvrir dans une autre langue.]',
+  changeStartTime: 'Nouvelle heure de début : {{new}} (avant : {{old}}).',
+  changeVenue: 'Nouveau lieu : {{new}} (avant : {{old}}).',
+  changeCalledOff: '[Événement annulé : {{event}}. Il n’aura pas lieu.]',
+  noteFrom: '[Un mot de {{hosts}}]',
 };
 
 /** Portuguese (Portugal) as samples in [brackets] until l10n writes them. */
@@ -96,6 +100,10 @@ const PORTUGUESE: Samples = {
   switched: '[Esta página está agora em português.]',
   notSaved:
     '[O seu idioma não foi guardado. Esta página continua em português neste dispositivo, mas outro dispositivo pode abri-la noutro idioma.]',
+  changeStartTime: 'Nova hora de início: {{new}} (antes: {{old}}).',
+  changeVenue: 'Novo local: {{new}} (antes: {{old}}).',
+  changeCalledOff: '[Evento cancelado: {{event}}. Não se vai realizar.]',
+  noteFrom: '[Uma nota de {{hosts}}]',
 };
 
 /** Spanish (Spain) as samples in [brackets] until l10n writes them. */
@@ -143,6 +151,10 @@ const SPANISH: Samples = {
   switched: '[Esta página está ahora en español.]',
   notSaved:
     '[Su idioma no se ha guardado. Esta página sigue en español en este dispositivo, pero otro dispositivo puede abrirla en otro idioma.]',
+  changeStartTime: 'Nueva hora de inicio: {{new}} (antes: {{old}}).',
+  changeVenue: 'Nuevo lugar: {{new}} (antes: {{old}}).',
+  changeCalledOff: '[Evento cancelado: {{event}}. No se celebrará.]',
+  noteFrom: '[Una nota de {{hosts}}]',
 };
 
 export const BOARD_SAMPLES: Record<Exclude<Lang, 'en'>, Samples> = {

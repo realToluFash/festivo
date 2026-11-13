@@ -79,6 +79,12 @@ export const W = {
   muteNote: 'Nobody else on this event is affected.',
   muteNotLoaded: 'Could not check whether this event is muted.',
   muteNotSaved: 'Not saved. Try again.',
+  guestsCanWrite: 'Guests can write from their page',
+  guestsCanWriteLine: 'Changes it for everyone on this event. Texts and emails still arrive.',
+  guestsCanWriteReadOnly: 'Only members who manage messages can change this.',
+  guestsCanWriteNotSaved: 'Not saved. Try again.',
+  on: 'On',
+  off: 'Off',
   notificationSettings: 'Notification settings',
   manage: 'Manage',
   duplicateLine:
@@ -196,6 +202,10 @@ export const W = {
     'Guests can’t reply or change anything until you resume it. Nothing is lost. Check-in and service keep working.',
   callOffBody: 'It won’t go ahead. Guests following their link will be told. You can’t undo this.',
   endBody: 'It will be over for everybody. You can’t undo this.',
+  callOffFirstBody:
+    'Guests have been invited to this event, or staff briefed for it, so it can be deleted only once it is finished. Calling it off is how they hear it will not go ahead.',
+  endFirstBody:
+    'Guests have been invited to this event, or staff briefed for it, so it can be deleted only once it is finished. End it first: it will then be over for everybody.',
 } as const;
 
 export const AREA_WORDS: Record<AreaKey, string> = {
@@ -274,6 +284,12 @@ export const say = {
   deleteType: (name: string) => `Type ${name} to delete it`,
   deleteMismatch: (name: string) => `Type ${name} exactly as shown to delete it.`,
   deleted: (name: string) => `${name} was deleted.`,
+  callOffFirst: (name: string) => `Call off ${name} first?`,
+  endFirst: (name: string) => `End ${name} first?`,
+  askToCallOff: (area: string, organisation: string) =>
+    `Ask someone who can change ${area} in ${organisation} to call it off.`,
+  askToEnd: (area: string, organisation: string) =>
+    `Ask someone who can change ${area} in ${organisation} to end it.`,
   duplicateTitle: (name: string) => `Duplicate ${name}`,
   ownDesign: (what: string) => `${what} has its own design.`,
   repliesCloseAt: (time: string, zone: string) => `Replies close at ${time}, ${zone} time.`,
