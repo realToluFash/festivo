@@ -22,24 +22,178 @@ import { WhyNot } from './Composers.tsx';
 import { DeliveryMark, MessageGlyph } from './MessageMarks.tsx';
 import type { FixKind } from './MessagesModel.ts';
 import { type ReachView, type ReachPerson, isEmail, isPhone } from './Reach.ts';
+import type { TrySmsView } from './TrySms.ts';
 import { W, say } from './MessagesWords.ts';
 import { Legend, ReachBar } from './Stream.tsx';
+
+/** The accent pill a row sends with: Send to {name} again, Send by SMS; off with the reason read out. */
+function SendPill({
+  label,
+  why,
+  onPress,
+  ref,
+  testID,
+}: {
+  label: string;
+  why: string | null;
+  onPress: () => void;
+  ref: (node: ViewInstance | null) => void;
+  testID: string;
+}) {
+  const off = why != null;
+
+  return (
+    <Pressable
+      ref={ref}
+      onPress={off ? undefined : onPress}
+      disabled={off}
+      style={({ pressed }) => [styles.againPill, off && styles.againOff, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={off ? `${label}, ${why}` : label}
+      accessibilityState={{ disabled: off }}
+      testID={testID}
+    >
+      <MessageGlyph
+        name="send"
+        size={17}
+        ink={off ? tokens.colorInkSecondary : tokens.colorInkOnDark}
+        weight={2.4}
+      />
+      <Text
+        size={15}
+        weight="semibold"
+        accessible={false}
+        style={off ? styles.secondary : styles.onAccent}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** Try SMS instead, pressed: the text's count and credits, either wait, then Send by SMS or Cancel; nothing is sent yet. */
+function TrySmsOpen({
+  person,
+  trying,
+  refFor,
+  onSend,
+  onCancel,
+}: {
+  person: ReachPerson;
+  trying: TrySmsView;
+  refFor: (key: string) => (node: ViewInstance | null) => void;
+  onSend: (person: ReachPerson) => void;
+  onCancel: (person: ReachPerson) => void;
+}) {
+  const said = [
+    trying.count,
+    trying.uses,
+    trying.quiet,
+    trying.waits,
+    trying.waits && W.creditsNotInApp,
+  ];
+
+  return (
+    <View style={styles.trying} testID={`messages.trySms.open.${person.key}`}>
+      <View
+        ref={refFor(`${person.key}.trySmsOpen`)}
+        style={styles.tryingWords}
+        accessible
+        accessibilityLabel={said.filter(Boolean).join(' ')}
+      >
+        <Text
+          size={14}
+          weight="semibold"
+          accessible={false}
+          style={[styles.lineText, styles.figures]}
+        >
+          {trying.count}
+        </Text>
+        <Text
+          size={14}
+          weight="medium"
+          accessible={false}
+          style={[styles.secondary, styles.lineText, styles.figures]}
+        >
+          {trying.uses}
+        </Text>
+        {trying.quiet != null && (
+          <View style={styles.reachLine} testID={`messages.trySms.quiet.${person.key}`}>
+            <View style={styles.markAt}>
+              <DeliveryMark mark="sending" side={15} />
+            </View>
+            <Text
+              size={14}
+              weight="semibold"
+              accessible={false}
+              style={[styles.grow, styles.lineText]}
+            >
+              {trying.quiet}
+            </Text>
+          </View>
+        )}
+        {trying.waits != null && (
+          <View style={styles.reachLine} testID={`messages.trySms.waits.${person.key}`}>
+            <View style={styles.markAt}>
+              <DeliveryMark mark="sending" side={15} />
+            </View>
+            <View style={styles.grow}>
+              <Text size={14} weight="semibold" accessible={false} style={styles.lineText}>
+                {trying.waits}
+              </Text>
+              <Text
+                size={14}
+                weight="medium"
+                accessible={false}
+                style={[styles.secondary, styles.lineText]}
+              >
+                {W.creditsNotInApp}
+              </Text>
+            </View>
+          </View>
+        )}
+      </View>
+      <View style={styles.again}>
+        <SendPill
+          ref={refFor(`${person.key}.sendBySms`)}
+          label={W.sendBySms}
+          why={null}
+          onPress={() => onSend(person)}
+          testID={`messages.sendBySms.${person.key}`}
+        />
+        <TextAction
+          ref={refFor(`${person.key}.cancelSms`)}
+          label={W.cancel}
+          accessibilityLabel={`${W.cancel}, ${W.trySmsInstead}, ${person.name}`}
+          onPress={() => onCancel(person)}
+          testID={`messages.cancelSms.${person.key}`}
+        />
+      </View>
+    </View>
+  );
+}
+
+export interface RowActions {
+  onFix: (person: ReachPerson, fix: string) => void;
+  onSendAgain: (person: ReachPerson) => void;
+  onNotNow: (person: ReachPerson) => void;
+  onTrySms: (person: ReachPerson) => void;
+  onSendBySms: (person: ReachPerson) => void;
+  onCancelSms: (person: ReachPerson) => void;
+}
 
 function Person({
   person,
   closed,
   refFor,
-  onFix,
-  onSendAgain,
-  onNotNow,
+  actions,
 }: {
   person: ReachPerson;
   closed: string | null;
   refFor: (key: string) => (node: ViewInstance | null) => void;
-  onFix: (person: ReachPerson, fix: string) => void;
-  onSendAgain: (person: ReachPerson) => void;
-  onNotNow: (person: ReachPerson) => void;
+  actions: RowActions;
 }) {
+  const { onFix, onSendAgain, onNotNow } = actions;
   return (
     <View style={styles.person} ref={refFor(`person.${person.key}`)}>
       <Avatar initials={person.initials} side={40} tone={4} />
@@ -103,39 +257,13 @@ function Person({
         )}
         {person.offer && (
           <View style={styles.again}>
-            <Pressable
+            <SendPill
               ref={refFor(`${person.key}.again`)}
-              onPress={closed == null ? () => onSendAgain(person) : undefined}
-              disabled={closed != null}
-              style={({ pressed }) => [
-                styles.againPill,
-                closed != null && styles.againOff,
-                pressed && styles.pressed,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={
-                closed == null
-                  ? say.sendAgain(person.name)
-                  : `${say.sendAgain(person.name)}, ${closed}`
-              }
-              accessibilityState={{ disabled: closed != null }}
+              label={say.sendAgain(person.name)}
+              why={closed}
+              onPress={() => onSendAgain(person)}
               testID={`messages.again.${person.key}`}
-            >
-              <MessageGlyph
-                name="send"
-                size={17}
-                ink={closed == null ? tokens.colorInkOnDark : tokens.colorInkSecondary}
-                weight={2.4}
-              />
-              <Text
-                size={15}
-                weight="semibold"
-                accessible={false}
-                style={closed == null ? styles.onAccent : styles.secondary}
-              >
-                {say.sendAgain(person.name)}
-              </Text>
-            </Pressable>
+            />
             <TextAction
               ref={refFor(`${person.key}.notNow`)}
               label={W.notNow}
@@ -145,18 +273,40 @@ function Person({
             />
           </View>
         )}
-        <View style={styles.fixes}>
-          {person.fixes.map((fix) => (
-            <TextAction
-              key={fix}
-              ref={refFor(`${person.key}.${fix}`)}
-              label={fix}
-              accessibilityLabel={`${fix}, ${person.name}`}
-              onPress={() => onFix(person, fix)}
-              testID={`messages.fix.${person.key}.${fix}`}
-            />
-          ))}
-        </View>
+        {person.trying != null ? (
+          <TrySmsOpen
+            person={person}
+            trying={person.trying}
+            refFor={refFor}
+            onSend={actions.onSendBySms}
+            onCancel={actions.onCancelSms}
+          />
+        ) : (
+          <View style={styles.fixes}>
+            {person.trySms === true && (
+              <TextAction
+                ref={refFor(`${person.key}.trySms`)}
+                label={W.trySmsInstead}
+                off={closed != null}
+                accessibilityLabel={[W.trySmsInstead, person.name, closed]
+                  .filter(Boolean)
+                  .join(', ')}
+                onPress={() => actions.onTrySms(person)}
+                testID={`messages.trySms.${person.key}`}
+              />
+            )}
+            {person.fixes.map((fix) => (
+              <TextAction
+                key={fix}
+                ref={refFor(`${person.key}.${fix}`)}
+                label={fix}
+                accessibilityLabel={`${fix}, ${person.name}`}
+                onPress={() => onFix(person, fix)}
+                testID={`messages.fix.${person.key}.${fix}`}
+              />
+            ))}
+          </View>
+        )}
       </View>
     </View>
   );
@@ -191,12 +341,10 @@ export function WhoReached({
   head,
   headRef,
   refFor,
-  onFix,
+  actions,
   onFilter,
   onShowNotReached,
   onResend,
-  onSendAgain,
-  onNotNow,
   closed,
   bottom,
 }: {
@@ -204,12 +352,10 @@ export function WhoReached({
   head: ReactNode;
   headRef: Ref<TextHandle>;
   refFor: (key: string) => (node: ViewInstance | null) => void;
-  onFix: (person: ReachPerson, fix: string) => void;
+  actions: RowActions;
   onFilter: () => void;
   onShowNotReached: () => void;
   onResend: () => void;
-  onSendAgain: (person: ReachPerson) => void;
-  onNotNow: (person: ReachPerson) => void;
   closed: string | null;
   bottom: number;
 }) {
@@ -289,14 +435,7 @@ export function WhoReached({
               {group.people.map((person, index) => (
                 <View key={person.key}>
                   {index > 0 && <View style={styles.hairline} />}
-                  <Person
-                    person={person}
-                    closed={closed}
-                    refFor={refFor}
-                    onFix={onFix}
-                    onSendAgain={onSendAgain}
-                    onNotNow={onNotNow}
-                  />
+                  <Person person={person} closed={closed} refFor={refFor} actions={actions} />
                 </View>
               ))}
               {group.more != null && (
@@ -449,6 +588,8 @@ const styles = StyleSheet.create({
     marginTop: tokens.spaceSm,
   },
   empty: { alignItems: 'flex-start', gap: tokens.spaceXs, paddingVertical: tokens.spaceLg },
+  trying: { gap: tokens.spaceXs, marginTop: tokens.spaceSm },
+  tryingWords: { gap: tokens.spaceXxs },
   againOff: { backgroundColor: tokens.colorInsetBorder },
   againPill: {
     minHeight: tokens.sizeHit,

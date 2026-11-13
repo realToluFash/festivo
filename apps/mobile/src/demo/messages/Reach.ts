@@ -29,6 +29,8 @@ import {
   receiptPeople,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
+import { NIGHT_TEXT, REASONS_REACH, REASONS_REACHED, REASON_GROUPS } from './ReasonsSample.ts';
+import { type TrySmsView, offersTrySms, textedGroup, textedLines, trySmsOf } from './TrySms.ts';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 
@@ -62,6 +64,9 @@ export const SINCE: Record<FixKind, string> = {
 
 export interface ReachPerson extends NotReached {
   offer: boolean;
+  /** Try SMS instead: offered beside the fixes, or open in their place. */
+  trySms?: boolean;
+  trying?: TrySmsView;
 }
 
 function isChannel(line: ReachLine, how: FixKind): boolean {
@@ -73,6 +78,14 @@ function isChannel(line: ReachLine, how: FixKind): boolean {
 
 /** After a fix or an add: the channel lines keep what happened, and the row reads Updated · not sent yet until Send again, then the new channel reads Sent. */
 function shownPerson(m: Messages, of: ReachedOf, person: NotReached): ReachPerson {
+  const texted = m.texted?.[personAt(of, person.key)];
+  if (texted != null)
+    return {
+      ...person,
+      lines: textedLines(person.lines, texted),
+      fixes: [W.toldInPerson],
+      offer: false,
+    };
   const address = m.fixed[person.key];
   if (address == null) return { ...person, offer: false };
 
@@ -159,7 +172,7 @@ interface Base {
   counts?: Partial<Record<GroupKey, number>>;
 }
 
-function baseOf(of: ReachedOf): Base {
+function baseOf(m: Messages, of: ReachedOf): Base {
   if (of === 'receipts')
     return {
       reached: RECEIPTS.reached,
@@ -181,9 +194,21 @@ function baseOf(of: ReachedOf): Base {
     return {
       reached: SENDING_REACH.reached,
       of: SENDING_REACH.of,
-      groups: SENDING_GROUPS.filter((group) => group.key !== 'reached'),
+      groups: SENDING_GROUPS.filter((group) => group.key !== 'reached').map((group) =>
+        m.sample === 'nightText' && group.key === 'inProgress'
+          ? { ...group, people: [NIGHT_TEXT, ...group.people] }
+          : group,
+      ),
       reachedRows: SENDING_GROUPS.find((group) => group.key === 'reached')?.people ?? [],
       progress: SENDING_REACH.inProgress,
+    };
+  if (m.sample === 'reasons')
+    return {
+      reached: REASONS_REACH.reached,
+      of: REASONS_REACH.of,
+      groups: REASON_GROUPS,
+      reachedRows: REASONS_REACHED,
+      progress: 0,
     };
 
   return {
@@ -203,9 +228,30 @@ interface Counted {
   reachedCount: number;
 }
 
+/** The Read-only role (messages.read alone): every status and reason, and no action on any row. */
+function readOnly(m: Messages): boolean {
+  return m.notice?.hidden === true;
+}
+
+function withActions(
+  m: Messages,
+  of: ReachedOf,
+  group: GroupKey,
+  person: ReachPerson,
+): ReachPerson {
+  if (readOnly(m)) return { ...person, fixes: [], offer: false };
+  const trySms =
+    !person.offer &&
+    offersTrySms({ group, told: false, mobile: person.mobile, lines: person.lines });
+  const open = trySms && m.trying === personAt(of, person.key) ? person.mobile : undefined;
+
+  return { ...person, trySms, ...(open == null ? {} : { trying: trySmsOf(open, m.balance) }) };
+}
+
 function counted(m: Messages, of: ReachedOf): Counted {
-  const base = baseOf(of);
+  const base = baseOf(m, of);
   const going: ReachPerson[] = [];
+  const held: ReachPerson[] = [];
   const told: ReachPerson[] = [];
   const groups = base.groups.map((group) => {
     const people = group.people.flatMap((person) => {
@@ -214,6 +260,11 @@ function counted(m: Messages, of: ReachedOf): Counted {
       const toldAt = m.toldIn[at];
       if (toldAt != null) {
         told.push(toldPerson(shown, toldAt));
+        return [];
+      }
+      const texted = m.texted?.[at];
+      if (texted != null && group.key !== textedGroup(texted)) {
+        (textedGroup(texted) === 'held' ? held : going).push(shown);
         return [];
       }
       if (m.again[at] != null && group.key !== 'inProgress') {
@@ -238,6 +289,13 @@ function counted(m: Messages, of: ReachedOf): Counted {
       ? { more: say.andMore(progress - progressLeft.length) }
       : {}),
   };
+  const heldGroup: GroupView & { key: GroupKey } = {
+    key: 'held',
+    mark: 'sending',
+    word: W.held,
+    count: held.length,
+    people: held,
+  };
   const rest: (GroupView & { key: GroupKey })[] = groups
     .filter((group) => group.key !== 'inProgress')
     .map((group) => {
@@ -256,13 +314,18 @@ function counted(m: Messages, of: ReachedOf): Counted {
 
   return {
     base,
-    notReached: [inProgress, ...rest].filter((group) => group.count > 0),
+    notReached: [inProgress, heldGroup, ...rest]
+      .filter((group) => group.count > 0)
+      .map((group) => ({
+        ...group,
+        people: group.people.map((person) => withActions(m, of, group.key, person)),
+      })),
     told: {
       key: 'told',
       mark: 'delivered',
       word: W.markedAsTold,
       count: told.length,
-      people: told,
+      people: readOnly(m) ? told.map((person) => ({ ...person, fixes: [] })) : told,
     },
     reached: {
       key: 'reached',
@@ -274,6 +337,15 @@ function counted(m: Messages, of: ReachedOf): Counted {
     },
     reachedCount,
   };
+}
+
+/** Resend leaves out whoever is already on their way: in progress, or held for credits. */
+const ON_THEIR_WAY: readonly GroupKey[] = ['inProgress', 'held'];
+
+function resendCount(c: Counted): number {
+  return c.notReached
+    .filter((group) => !ON_THEIR_WAY.includes(group.key))
+    .reduce((sum, group) => sum + group.count, 0);
 }
 
 /** The receipts' WhatsApp, its own group above the rest: not a filter, and not counted as not reached. */
@@ -313,6 +385,9 @@ const COUNT_WORDS: Partial<Record<GroupKey, (count: number) => string>> = {
   bounced: say.bouncedCount,
   notConfirmed: say.notConfirmedCount,
   optedOut: say.optedOutCount,
+  held: say.heldCount,
+  failed: say.failedCount,
+  skipped: say.skippedCount,
   none: say.noEmailOrPhoneCount,
   cant: say.cantBeToldCount,
 };
@@ -377,12 +452,7 @@ export function reachViewOf(m: Messages, of: ReachedOf): ReachView {
     options,
     groups,
     empty: groups.length === 0 ? (EMPTY_LINE[filterOn] ?? null) : null,
-    resend:
-      of === 'receipts'
-        ? 0
-        : c.notReached
-            .filter((group) => group.key !== 'inProgress')
-            .reduce((sum, group) => sum + group.count, 0),
+    resend: of === 'receipts' || readOnly(m) ? 0 : resendCount(c),
   };
 }
 
@@ -406,11 +476,9 @@ function whyNot(person: NotReached): string {
 export function resendOf(m: Messages, of: ReachedOf): ResendView {
   const c = counted(m, of);
   const people = c.notReached
-    .filter((group) => group.key !== 'inProgress')
+    .filter((group) => !ON_THEIR_WAY.includes(group.key))
     .flatMap((group) => group.people);
-  const n = c.notReached
-    .filter((group) => group.key !== 'inProgress')
-    .reduce((sum, group) => sum + group.count, 0);
+  const n = resendCount(c);
   const count = people.filter((person) => person.tellable === true).length;
   const cant = people.filter((person) => person.tellable !== true);
   const sample = cant.filter((person) => person.key === 'joaquin' || person.key === 'sophie');
@@ -420,7 +488,10 @@ export function resendOf(m: Messages, of: ReachedOf): ResendView {
     count,
     unconfirmed: c.notReached.find((group) => group.key === 'notConfirmed')?.count ?? 0,
     still: n - count,
-    names: of === 'parking' && sample.length === 2 ? RESEND.names : cant.slice(0, 2).map(whyNot),
+    names:
+      of === 'parking' && m.sample == null && sample.length === 2
+        ? RESEND.names
+        : cant.slice(0, 2).map(whyNot),
   };
 }
 
