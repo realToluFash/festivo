@@ -606,7 +606,9 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       expect(
         within(check).getByText('9 can’t be told · it is on their page if they open it'),
       ).toBeDefined();
-      expect(within(check).getByText('Sophie Laurent · Unsubscribed · Texted STOP')).toBeDefined();
+      expect(
+        within(check).getByText('Sophie Laurent · Unsubscribed · Stopped texts'),
+      ).toBeDefined();
       expect(within(check).getByRole('button', { name: 'See all 9' })).toBeDefined();
       expect(
         within(check).getByText('Texts use 39 credits. Credits after sending: 1,461.'),

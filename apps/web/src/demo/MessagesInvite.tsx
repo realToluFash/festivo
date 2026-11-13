@@ -40,6 +40,8 @@ import type { OneGuest } from './messagesTo.ts';
 import { chipWords } from './messagesTo.ts';
 import { OnEscape, TickChip } from './MessagesCompose.tsx';
 import { WhereGlyph } from './MessagesParts.tsx';
+import { counterOf, countText, firstTextLine } from './messagesSms.ts';
+import './messagesSms.css';
 import { FILL_MS, PreviewAs, PreviewBones } from './MessagesPreview.tsx';
 import { PW } from './messagesPreviewWords.ts';
 import { ToPopover } from './MessagesTo.tsx';
@@ -604,6 +606,8 @@ function InvitePreview({ draft, invite }: { draft: Draft; invite: InviteDraft })
   const words = invitationLines(person);
   const email = draft.ticks.email && person.email;
   const sms = draft.ticks.sms && person.mobile;
+  const firstText = person.invited == null;
+  const text = inviteSmsOf(person, weddingAbout(), firstText);
 
   function pick(id: string): void {
     setWho(id);
@@ -686,11 +690,10 @@ function InvitePreview({ draft, invite }: { draft: Draft; invite: InviteDraft })
                   <div className="mg-notice">
                     <p className="mg-notice-head">
                       <WhereGlyph where="sms" />
-                      {many('smsParts', inviteSmsOf(person, weddingAbout()).parts)}
+                      {counterOf(countText(text.text))}
                     </p>
-                    <p className="mg-notice-bubble mgi-sms">
-                      {inviteSmsOf(person, weddingAbout()).text}
-                    </p>
+                    <p className="mg-notice-bubble mgi-sms">{text.text}</p>
+                    {firstText && <p className="mg-sms-first">{firstTextLine(ORGANISATION)}</p>}
                   </div>
                 )}
               </section>
