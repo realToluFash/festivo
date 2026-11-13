@@ -1,0 +1,10 @@
+# sc-1468: the app demo's Delete event, state deleteDraftGuests, for the side-by-side pair. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-draft-4?state=deleteDraftGuests
+- extendedWaitUntil:
+    visible:
+      id: 'event.delete.confirm'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: confirm
