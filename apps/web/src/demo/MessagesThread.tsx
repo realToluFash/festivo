@@ -24,6 +24,7 @@ import {
   UNKNOWN,
   ZONE_SHORT,
   checkOf,
+  changeTitle,
   channelWord,
   chipWords,
   countOf,
@@ -603,16 +604,21 @@ function ManyThread({ id }: { id: ConvoId }) {
       : PARKING.subject
     : first == null
       ? MW.newMessage
-      : outTitle(first);
-  const line = [
-    toLine(to, event.book.groups),
-    countOf(to, event.book.groups, world),
-    id === 'invite'
-      ? listed([MW.email, MW.sms])
-      : toldWords(id === 'receipts' ? RECEIPTS.ticks : (first?.ticks ?? TICKS)),
-  ]
-    .filter((part) => part != null && part !== '')
-    .join(' · ');
+      : first.change == null
+        ? outTitle(first)
+        : changeTitle(first.change);
+  const line =
+    first?.change == null
+      ? [
+          toLine(to, event.book.groups),
+          countOf(to, event.book.groups, world),
+          id === 'invite'
+            ? listed([MW.email, MW.sms])
+            : toldWords(id === 'receipts' ? RECEIPTS.ticks : (first?.ticks ?? TICKS)),
+        ]
+          .filter((part) => part != null && part !== '')
+          .join(' · ')
+      : `${many('guests', first.change.count)} · ${listed(first.change.channels.map(channelWord))}`;
 
   return (
     <div className="mg-in">
