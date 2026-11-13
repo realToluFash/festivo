@@ -164,7 +164,7 @@ describe('Notification settings at a desk (sc-30243)', () => {
     await notifications('/demo/settings/notifications?state=pushBlocked');
 
     expect(
-      screen.getByText("Push is off in this browser, so pushes won't reach you here."),
+      screen.getByText('Push is off in this browser, so pushes will not reach you here.'),
     ).toBeDefined();
     fireEvent.click(row(/^Event day/));
     expect(

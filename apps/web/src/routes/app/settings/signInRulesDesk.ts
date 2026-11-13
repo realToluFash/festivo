@@ -20,6 +20,16 @@ type Rules = Required<SignInRulesChanges>;
 
 export const SECURITY = '/app/account/security';
 
+/** The state a move to Security carries: two-factor's set-up opens on arrival, and a way to link lands at rest with none. */
+export function securityOn(step: Step): { opens: 'turnOn' } | null {
+  return step === 'turnOn' ? { opens: step } : null;
+}
+
+/** Whether a move to Security asked for two-factor's set-up, from the state securityOn gave it. */
+export function opensSetUp(state: unknown): boolean {
+  return typeof state === 'object' && state != null && 'opens' in state && state.opens === 'turnOn';
+}
+
 export interface RuleRow {
   key: RuleKey;
   mark: Mark;

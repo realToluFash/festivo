@@ -191,6 +191,8 @@ describe('Sign-in rules at a desk, summary first (sc-30192)', () => {
     );
     answering({ ...PAGE, ownTwoFactor: false });
     const router = open();
+    const arrivals: unknown[] = [];
+    router.subscribe((state) => arrivals.push(state.location.state));
 
     expect(await screen.findByText('1 rule needs you')).toBeDefined();
     expect(
@@ -211,6 +213,7 @@ describe('Sign-in rules at a desk, summary first (sc-30192)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Turn on two-factor' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/app/account/security'));
+    expect(arrivals).toContainEqual({ opens: 'turnOn' });
   });
 
   it('under Google or Apple only, a member with none linked gets the step, and the hold says why', async () => {
