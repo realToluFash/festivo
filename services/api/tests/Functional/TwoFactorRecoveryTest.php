@@ -79,6 +79,7 @@ final class TwoFactorRecoveryTest extends ApiTestCase
     #[Test]
     public function anEmailCodeAloneProvesItWhenThereIsNoVerifiedPhone(): void
     {
+        self::drainNotifications();
         $opening = $this->call('POST', '/api/auth/two-factor/recovery/opening', ['challenge' => $this->challenge()]);
         self::assertSame([self::ADDRESS, null, ['Ìrè Events'], false], [$opening['email'], $opening['phone'], $opening['organisations'], $opening['nobody']]);
         self::assertNull($opening['recovery'], 'nothing open yet, and nothing sent');
@@ -284,6 +285,7 @@ final class TwoFactorRecoveryTest extends ApiTestCase
     {
         $this->leaves($this->approver);
         $challenge = $this->challenge();
+        self::drainNotifications();
 
         self::assertTrue($this->call('POST', '/api/auth/two-factor/recovery/opening', ['challenge' => $challenge])['nobody']);
         self::assertSame('support@soirely.com', $this->last()['supportAddress']);

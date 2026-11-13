@@ -107,6 +107,22 @@ between is handled as they are then.
   still asks again when the row goes. So somebody who joins mid-window hears nothing from
   before they joined, and every change costs about a dozen statements per member before
   the request returns. The in-app items are still one row per change, resolved when sent.
+- **One person** (`Audience::person`) is the other exception: every account and security
+  email (`AccountMail`, sc-4332) goes to the address it was written to when it was queued.
+  `UserMailer::send` writes the scheduled row and its one email delivery together, in the
+  caller's transaction, with the subject and body already in the person's language, so the
+  organisation deletion email still reaches every member after the organisation has gone.
+  The scheduler refuses a send with no transaction open: the change it tells of is written
+  in the same one, so a queue write that fails takes the change back with it. Each type is
+  urgent and cannot be switched off. A code's delivery carries the code's expiry as
+  `send_by`: past it, it is recorded Failed with `code expired`, and a newer code to the
+  same address records the older pending one Superseded. Its scheduled row's payload, which
+  holds the code or the link's token, is emptied once its delivery is over, sent or not.
+  The idempotency key's source is the code's issue for a code, so the same code queued
+  twice sends once and a resend is a new send. The sign-up's "you already have an account"
+  email is queued on every sign-up for a taken address, superseding like a code, and the
+  worker records it Cancelled when one went to the address in the last hour, so a taken
+  address costs the request exactly what a fresh one does.
 - **Channels** come from `ChannelSelector`, the one place that applies a member's
   preferences (sc-3980's store; epic 36's product defaults until then). In-app always goes;
   push only rides along with another channel and is never the only way somebody hears.
@@ -227,6 +243,23 @@ pause or a delete, not a retry's backoff, not a claim in progress.
 - **Failing**: more than 5% of the last hour's sends ended Failed, in an hour of at least 20.
 
 The local stack runs no scheduler, so run it by hand there. sc-1612 routes the lines.
+
+`app:mail:check-rates` does the same for email over 24 hours: a `critical` line when hard
+bounces exceed 2% or complaints 0.08% of the emails sent, both from the provider's reports.
+
+## The mail provider's webhook
+
+`POST /api/webhooks/mail` takes the provider's reports (sc-4332). Postmark signs nothing, so
+the request needs the basic-auth credentials in `MAIL_WEBHOOK_SECRET` (`user:password`) and
+a client address inside `MAIL_WEBHOOK_ALLOWED_RANGES` (CIDRs, commas); either unset refuses
+every report with a 401. The email carries its delivery id as `X-PM-Metadata-delivery`,
+which Postmark returns as `Metadata.delivery`. Delivered, Bounced (hard bounces only) and
+Complained go on the delivery's `provider_report`, whose status stays Sent, and a milder
+report never replaces a worse one. A hard bounce or a complaint adds the address to
+`email_suppressions`: from then on a non-security email to it is recorded Cancelled with
+`address suppressed` and never handed to the provider, while security mail (codes,
+recovery, new device, two-factor) still goes. Locally, POST Postmark's JSON with the
+stack's credentials to stand in for the provider.
 
 ## Deleted events
 
