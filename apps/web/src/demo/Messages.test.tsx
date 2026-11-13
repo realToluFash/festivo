@@ -7,6 +7,7 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
 import { resetInbox } from './messages.ts';
+import { lastLooked, resetLooked } from './changedSince.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -1214,6 +1215,22 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     expect(
       await screen.findByRole('heading', { level: 2, name: 'Reached 131 of 142' }),
     ).toBeDefined();
+  });
+
+  it('opens the guest list on Changed since you looked from the bell (sc-4331)', SLOW, async () => {
+    resetLooked();
+    const router = await messages('bell');
+    const bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+    fireEvent.click(
+      within(bell).getByRole('button', { name: /^3 coming, 1 not coming, 1 changed their reply/u }),
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'Changed since you looked · 5' }, WAIT),
+    ).toBeDefined();
+    expect(router.state.location.search).toBe('?filter=changed');
+    expect(lastLooked()).toBe('2026-11-03T09:41:00.000Z');
   });
 
   it(

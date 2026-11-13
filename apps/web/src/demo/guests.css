@@ -125,6 +125,17 @@
   border-radius: var(--spaceXl);
 }
 
+/* sc-4331: Changed since you looked is the menu's first row, set apart from the reply choices. */
+.gs-menu.has-apart .desk-menu {
+  width: 320px;
+}
+
+.gs-menu.has-apart .desk-menu > li:first-child {
+  margin-bottom: var(--spaceXs);
+  padding-bottom: var(--spaceXs);
+  border-bottom: 1px solid var(--colorBorder);
+}
+
 .gs-shown {
   display: flex;
   align-items: center;

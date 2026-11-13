@@ -96,6 +96,58 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.getByRole('button', { name: 'All · 156' })).toBeDefined();
   });
 
+  it(
+    'puts Changed since you looked first in the menu while something changed (sc-4331)',
+    SLOW,
+    async () => {
+      const router = await guests('changedRow');
+      const menu = screen.getByRole('menu');
+      const items = within(menu).getAllByRole('menuitemradio');
+
+      expect(items.slice(0, 2).map((item) => item.textContent)).toEqual([
+        'Changed since you looked5',
+        'All156',
+      ]);
+      fireEvent.click(items[0] as HTMLElement);
+
+      expect(screen.getByRole('button', { name: 'Changed since you looked · 5' })).toBeDefined();
+      expect(screen.getByText('5 of 156 shown')).toBeDefined();
+      expect(router.state.location.search).toContain('filter=changed');
+      expect(
+        screen.getByRole('link', { name: 'Lucía Ortega, Not sure yet · Changed at 09:31' }),
+      ).toBeDefined();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Changed since you looked · 5' }));
+      expect(
+        within(screen.getByRole('menu')).getByRole('menuitemradio', {
+          name: /^Changed since you looked/u,
+          checked: true,
+        }),
+      ).toBeDefined();
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      fireEvent.click(within(main()).getByRole('button', { name: 'Clear' }));
+      fireEvent.click(screen.getByRole('button', { name: 'All · 156' }));
+      expect(
+        within(screen.getByRole('menu')).queryByRole('menuitemradio', {
+          name: /^Changed since you looked/u,
+        }),
+      ).toBeNull();
+    },
+  );
+
+  it('says when nothing has changed since the last look (sc-4331)', SLOW, async () => {
+    await guests('changedNone');
+
+    expect(screen.getByRole('button', { name: 'Changed since you looked · 0' })).toBeDefined();
+    expect(
+      screen.getByRole('heading', { name: 'Nothing has changed since you last looked.' }),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Show all guests' }));
+
+    expect(screen.getByRole('button', { name: 'All · 156' })).toBeDefined();
+  });
+
   it('finds a guest and their companion as one types', SLOW, async () => {
     await guests('search');
 

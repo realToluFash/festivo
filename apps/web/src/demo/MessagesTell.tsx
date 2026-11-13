@@ -14,6 +14,9 @@ import {
   many,
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
+import { lastLooked, markLooked } from './changedSince.ts';
+import { CLOCKS } from './events.ts';
+import { guestsAt } from './guests.ts';
 import { WhereGlyph } from './MessagesParts.tsx';
 import { BELL_WORDS } from './messagesWords.ts';
 import { Dialog } from '../components/SettingsParts.tsx';
@@ -238,8 +241,15 @@ export function MessagesBell() {
     if (key === 'missed') {
       act({ kind: 'reached', of: 'parking', thread: 'parking' });
       focus('heading');
-    } else if (key === 'replies') void navigate(`/demo/events/${SAMPLE_EVENT}?area=guests`);
-    else void navigate(`/demo/events/${SAMPLE_EVENT}`);
+    } else if (key === 'replies') {
+      const since = lastLooked();
+
+      markLooked(CLOCKS.rest);
+      bell.markRead();
+      void navigate(
+        guestsAt(SAMPLE_EVENT, { filter: 'changed', ...(since == null ? {} : { since }) }),
+      );
+    } else void navigate(`/demo/events/${SAMPLE_EVENT}`);
   }
 
   return (
@@ -269,6 +279,7 @@ export function MessagesBell() {
               className="desk-text"
               onClick={() => {
                 bell.markRead();
+                markLooked(CLOCKS.rest);
                 say(NOTIFICATIONS.allRead);
               }}
             >
