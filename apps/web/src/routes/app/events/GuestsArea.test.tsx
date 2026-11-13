@@ -207,6 +207,37 @@ describe('Guests (sc-1468)', () => {
     }
   });
 
+  it('dates the reply in a replied guest’s details by the event’s day too (sc-3773)', async () => {
+    const zone = process.env.TZ;
+    process.env.TZ = 'Europe/London';
+    try {
+      const amaka = guest('g_2', 'Chief Amaka Obi', {
+        reply: 'coming',
+        repliedAt: '2030-11-13T23:30:00+00:00',
+      });
+      signedIn();
+      await onGuests({
+        'GET /api/events/ev_1/guests': () => json(listOf([amaka])),
+        'GET /api/events/ev_1/guests/g_2': () =>
+          tagged({ ...amaka, added: { at: '2030-11-01T10:00:00+00:00', by: null } }, '"1"'),
+      });
+      fireEvent.click(await screen.findByRole('link', { name: /^Chief Amaka Obi/u }));
+
+      const reply = await screen.findByRole('region', { name: 'Reply' });
+      expect(within(reply).getByText('Coming')).toBeDefined();
+      expect(within(reply).getByText('replied Nov 14')).toBeDefined();
+    } finally {
+      if (zone == null) delete process.env.TZ;
+      else process.env.TZ = zone;
+    }
+  });
+
+  it('shows no Reply in the details of a guest who has not replied (sc-3773)', async () => {
+    await openNgozi();
+
+    expect(within(column()).queryByRole('region', { name: 'Reply' })).toBeNull();
+  });
+
   it('says No guests yet with Add guest on the event’s cover, and no count', async () => {
     signedIn();
     await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf([])) });
@@ -552,25 +583,398 @@ describe('Guests, live (sc-1468)', () => {
     vi.unstubAllGlobals();
   });
 
-  it('shows a guest another session added, from the list published on the event’s topic', async () => {
+  const hub = () =>
+    json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
+
+  async function live(list: () => unknown, permissions?: string[]) {
     signedIn();
-    const hub = () =>
-      json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
-    await onGuests({
-      'GET /api/events/ev_1/guests': () => json(listOf([AMAKA])),
-      'POST /api/events/ev_1/guests/subscriptions': hub,
-      'POST /api/realtime/subscriptions': hub,
-    });
+    const sent = await onGuests(
+      {
+        'GET /api/events/ev_1/guests': () => json(list()),
+        'POST /api/events/ev_1/guests/subscriptions': hub,
+        'POST /api/realtime/subscriptions': hub,
+      },
+      permissions,
+    );
     await screen.findByText('Chief Amaka Obi');
     const guests = () => StubSource.made.filter((one) => one.url.includes('guests'));
     await waitFor(() => expect(guests()).toHaveLength(1));
-    const source = guests()[0]!;
+
+    return { sent, source: guests()[0]! };
+  }
+
+  it('shows a guest another session added, from the list published on the event’s topic', async () => {
+    const { source } = await live(
+      () => listOf([AMAKA]),
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
 
     expect(source.url).toContain('topic=events%2Fev_1%2Fguests');
     source.publish(listOf([AMAKA, guest('g_3', 'Tomás Ferreira')]));
 
     expect(await screen.findByText('Tomás Ferreira')).toBeDefined();
     expect(screen.getByText('2 on the list')).toBeDefined();
+  });
+
+  it('reads the list again for someone who manages guests, since the published one has no contacts (sc-3773)', async () => {
+    let list = listOf([AMAKA]);
+    const { sent, source } = await live(() => list);
+    const reads = () => sent.filter((one) => one.line === 'GET /api/events/ev_1/guests').length;
+    const before = reads();
+
+    list = listOf([AMAKA, guest('g_3', 'Tomás Ferreira', { email: 'tomas@example.com' })]);
+    source.publish(listOf([AMAKA, guest('g_3', 'Tomás Ferreira')]));
+
+    expect(await screen.findByText('No reply · tomas@example.com')).toBeDefined();
+    expect(reads()).toBe(before + 1);
+  });
+});
+
+function tagged(body: unknown, tag: string, status = 200): Response {
+  return new Response(JSON.stringify({ guest: body }), {
+    status,
+    headers: { ETag: tag, 'Content-Type': 'application/json' },
+  });
+}
+
+const DETAILS = {
+  ...NGOZI,
+  companions: [{ id: 'c_1', fullName: 'Obi Eze', state: 'coming' }],
+  added: { at: '2026-09-14T10:00:00+00:00', by: 'Kemi Bankole' },
+};
+
+function column(): HTMLElement {
+  return screen
+    .getAllByRole('region', { name: 'Ngozi Eze' })
+    .find((one) => one.classList.contains('gs-column'))!;
+}
+
+async function openNgozi(answers: Record<string, Answer> = {}, permissions?: string[]) {
+  signedIn();
+  const sent = await onGuests(
+    {
+      'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA])),
+      'GET /api/events/ev_1/guests/g_1': () => tagged(DETAILS, '"1"'),
+      ...answers,
+    },
+    permissions,
+  );
+  fireEvent.click(await screen.findByRole('link', { name: /^Ngozi Eze/u }));
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 2, name: 'Ngozi Eze' }),
+    ),
+  );
+
+  return sent;
+}
+
+async function editNgozi(answers: Record<string, Answer> = {}) {
+  const sent = await openNgozi(answers);
+  fireEvent.click(within(column()).getByRole('button', { name: 'Edit' }));
+  await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+
+  return sent;
+}
+
+function puts(sent: { line: string; body: unknown }[]) {
+  return sent.filter((one) => one.line === 'PUT /api/events/ev_1/guests/g_1');
+}
+
+describe('A guest’s details, and correcting them (sc-3773)', () => {
+  it('opens a guest beside the list: their reply, contacts, companions and who added them', async () => {
+    await openNgozi();
+
+    const row = screen.getByRole('link', { name: /^Ngozi Eze/u });
+    expect(row.getAttribute('aria-current')).toBe('true');
+    expect(row.getAttribute('href')).toBe('/app/events/ev_1/guests?guest=g_1');
+    const details = within(column());
+    expect(details.getByText('Coming')).toBeDefined();
+    expect(details.getByText('ngozi@example.com')).toBeDefined();
+    expect(details.getByText('+234 803 555 0142')).toBeDefined();
+    expect(details.getByText('Obi Eze')).toBeDefined();
+    expect(details.getByText('Companion · Coming')).toBeDefined();
+    expect(details.getByText('Sep 14 by Kemi Bankole')).toBeDefined();
+    expect(details.getByRole('button', { name: 'Edit' })).toBeDefined();
+  });
+
+  it('shows no contact details and no Edit with guests.read alone', async () => {
+    const { email: _email, mobile: _mobile, ...withoutContacts } = DETAILS;
+    await openNgozi(
+      { 'GET /api/events/ev_1/guests/g_1': () => tagged(withoutContacts, '"1"') },
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+
+    const details = within(column());
+    expect(details.queryByText('Email address')).toBeNull();
+    expect(details.queryByText('Mobile number')).toBeNull();
+    expect(details.queryByText('Added')).toBeNull();
+    expect(details.queryByRole('button', { name: 'Edit' })).toBeNull();
+    expect(details.getByText('Obi Eze')).toBeDefined();
+  });
+
+  it('closes on Escape and gives the focus back to the guest’s row', async () => {
+    await openNgozi();
+
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('link', { name: /^Ngozi Eze/u })),
+    );
+    expect(screen.getByText('Pick a guest to see their details, or add one.')).toBeDefined();
+  });
+
+  it('sends nothing when Save changes nothing, and goes back to the details', async () => {
+    const sent = await editNgozi();
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(column()).getByRole('button', { name: 'Edit' })),
+    );
+    expect(puts(sent)).toHaveLength(0);
+  });
+
+  it('saves against the version it read, and says Saved', async () => {
+    const saved = { ...DETAILS, fullName: 'Ngozi Eze-Okafor' };
+    const sent = await editNgozi({
+      'PUT /api/events/ev_1/guests/g_1': () => tagged(saved, '"2"'),
+    });
+    let ifMatch: string | null = null;
+    const fetch = vi.mocked(globalThis.fetch);
+    const answer = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (input, init) => {
+      if (init?.method === 'PUT') ifMatch = new Headers(init.headers).get('If-Match');
+      return answer(input, init);
+    });
+
+    type('Full name', 'Ngozi Eze-Okafor');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect(ifMatch).toBe('"1"');
+    expect(puts(sent)[0]?.body).toEqual({
+      fullName: 'Ngozi Eze-Okafor',
+      email: 'ngozi@example.com',
+      mobile: { countryCode: 'NG', number: '0803 555 0142' },
+      companions: [{ id: 'c_1', fullName: 'Obi Eze' }],
+    });
+    expect(screen.getByRole('heading', { level: 2, name: 'Ngozi Eze-Okafor' })).toBeDefined();
+  });
+
+  it('refuses a blank name before sending, as Add guest does', async () => {
+    const sent = await editNgozi();
+
+    type('Full name', '  ');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Enter their full name.')).toBeDefined();
+    expect(document.activeElement).toBe(field('Full name'));
+    expect(puts(sent)).toHaveLength(0);
+  });
+
+  it('asks before saving a name already on the list', async () => {
+    const sent = await editNgozi();
+
+    type('Full name', 'chief amaka obi');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('chief amaka obi is already on the list')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Save anyway' })).toBeDefined();
+    expect(puts(sent)).toHaveLength(0);
+  });
+
+  it('shows a colleague’s change on a 412, only the fields that differ, and holds Save until one is chosen', async () => {
+    let reads = 0;
+    let saves = 0;
+    const theirs = { ...DETAILS, mobile: '+2348035550199' };
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        return reads === 1 ? tagged(DETAILS, '"1"') : tagged(theirs, '"2"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => {
+        saves += 1;
+        return saves === 1
+          ? problem('precondition_failed', 412)
+          : tagged({ ...theirs, email: 'ngozi.eze@example.com' }, '"3"');
+      },
+    });
+    const ifMatches: (string | null)[] = [];
+    const fetch = vi.mocked(globalThis.fetch);
+    const answer = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (input, init) => {
+      if (init?.method === 'PUT') ifMatches.push(new Headers(init.headers).get('If-Match'));
+      return answer(input, init);
+    });
+
+    type(EMAIL, 'ngozi.eze@example.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText('Someone else changed this guest. Here is their version.'),
+    ).toBeDefined();
+    const panel = screen.getByRole('alert');
+    expect(
+      within(panel)
+        .getAllByRole('term')
+        .map((one) => one.textContent),
+    ).toEqual(['Email address', 'Mobile number']);
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(puts(sent)).toHaveLength(1);
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Keep mine' }));
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect(puts(sent)).toHaveLength(2);
+    expect(ifMatches).toEqual(['"1"', '"2"']);
+  });
+
+  it('keeps everything typed when the save fails, and says so', async () => {
+    await editNgozi({ 'PUT /api/events/ev_1/guests/g_1': () => problem('server_error', 500) });
+
+    type('Full name', 'Ngozi Okafor');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Not saved. Nothing was changed. Try again.')).toBeDefined();
+    expect(field('Full name').value).toBe('Ngozi Okafor');
+  });
+
+  it('says the guest is not on this list when they were removed before the save', async () => {
+    await editNgozi({ 'PUT /api/events/ev_1/guests/g_1': () => problem('not_found', 404) });
+
+    type('Full name', 'Ngozi Okafor');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('This guest is not on this list')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Back to guests' })).toBeDefined();
+  });
+
+  it('asks before Cancel drops a change', async () => {
+    await editNgozi();
+
+    type('Full name', 'Ngozi Okafor');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(await screen.findByRole('alertdialog', { name: 'Discard your changes?' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(column()).getByRole('button', { name: 'Edit' })),
+    );
+    expect(screen.getByRole('heading', { level: 2, name: 'Ngozi Eze' })).toBeDefined();
+  });
+
+  it('asks before Add guest drops a change, and keeps the edit on Keep editing', async () => {
+    await editNgozi();
+
+    type('Full name', 'Ngozi Okafor');
+    fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
+
+    expect(await screen.findByRole('alertdialog', { name: 'Discard your changes?' })).toBeDefined();
+    expect(field('Full name').value).toBe('Ngozi Okafor');
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('alertdialog', { name: 'Discard your changes?' })).toBeNull(),
+    );
+    expect(within(column()).getByRole('heading', { level: 2, name: 'Edit guest' })).toBeDefined();
+    expect(field('Full name').value).toBe('Ngozi Okafor');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Discard changes' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+    expect(form()).toBeDefined();
+    expect(field('Full name').value).toBe('');
+    fireEvent.click(screen.getByRole('link', { name: /^Chief Amaka Obi/u }));
+    expect(screen.queryByRole('alertdialog', { name: 'Discard your changes?' })).toBeNull();
+  });
+
+  it('asks before another row drops a change, and opens that guest on Discard', async () => {
+    await editNgozi();
+
+    type('Full name', 'Ngozi Okafor');
+    fireEvent.click(screen.getByRole('link', { name: /^Chief Amaka Obi/u }));
+
+    expect(await screen.findByRole('alertdialog', { name: 'Discard your changes?' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('alertdialog', { name: 'Discard your changes?' })).toBeNull(),
+    );
+    expect(field('Full name').value).toBe('Ngozi Okafor');
+
+    fireEvent.click(screen.getByRole('link', { name: /^Chief Amaka Obi/u }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Discard changes' }));
+
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole('region', { name: 'Chief Amaka Obi' })
+          .some((one) => one.classList.contains('gs-column')),
+      ).toBe(true),
+    );
+  });
+
+  it('goes back to the details on Escape from Edit, asking first when something changed', async () => {
+    await editNgozi();
+
+    fireEvent.keyDown(field('Full name'), { key: 'Escape' });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(column()).getByRole('button', { name: 'Edit' })),
+    );
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Edit' }));
+    await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+    type('Full name', 'Ngozi Okafor');
+    fireEvent.keyDown(field('Full name'), { key: 'Escape' });
+
+    expect(await screen.findByRole('alertdialog', { name: 'Discard your changes?' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(column()).getByRole('button', { name: 'Edit' })),
+    );
+    expect(screen.getByRole('heading', { level: 2, name: 'Ngozi Eze' })).toBeDefined();
+  });
+
+  it('counts the form unchanged after Use theirs, so Cancel asks nothing', async () => {
+    const theirs = { ...DETAILS, mobile: '+2348035550199' };
+    let reads = 0;
+    await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        return reads === 1 ? tagged(DETAILS, '"1"') : tagged(theirs, '"2"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => problem('precondition_failed', 412),
+    });
+
+    type(EMAIL, 'ngozi.eze@example.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Use theirs' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(column()).getByRole('button', { name: 'Edit' })),
+    );
+    expect(screen.queryByRole('alertdialog', { name: 'Discard your changes?' })).toBeNull();
+  });
+
+  it('removes a companion at once and says to save', async () => {
+    await editNgozi();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Obi Eze' }));
+
+    expect(await screen.findByText('Obi Eze removed. Save to keep the change.')).toBeDefined();
+    expect(screen.getByText('None yet · 0 of 10')).toBeDefined();
+  });
+
+  it('names an unnamed companion’s Remove as the guest’s guest, as the add form does (sc-43267)', async () => {
+    await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged({ ...DETAILS, companions: [{ id: 'c_1', fullName: null, state: 'coming' }] }, '"1"'),
+    });
+
+    expect(screen.getByRole('button', { name: 'Remove Ngozi Eze’s guest' })).toBeDefined();
   });
 });
 
@@ -587,11 +991,12 @@ describe('A guest’s invitation link (sc-1526)', () => {
       {
         'GET /api/events/ev_1': () => json({ event: { ...EVENT, ...event, permissions } }),
         'GET /api/events/ev_1/guests': () => json(listOf([NGOZI])),
+        'GET /api/events/ev_1/guests/g_1': () => tagged(DETAILS, '"1"'),
         ...answers,
       },
       permissions,
     );
-    fireEvent.click(await screen.findByRole('button', { name: /^Ngozi Eze/u }));
+    fireEvent.click(await screen.findByRole('link', { name: /^Ngozi Eze/u }));
     await waitFor(() =>
       expect(document.activeElement).toBe(
         screen.getByRole('heading', { level: 2, name: 'Ngozi Eze' }),
@@ -749,12 +1154,13 @@ describe('The wrong-person flag (sc-1526)', () => {
     const sent = await onGuests(
       {
         'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA])),
+        'GET /api/events/ev_1/guests/g_1': () => tagged(DETAILS, '"1"'),
         ...FLAGGED,
         ...answers,
       },
       permissions,
     );
-    fireEvent.click(await screen.findByRole('button', { name: /^Ngozi Eze/u }));
+    fireEvent.click(await screen.findByRole('link', { name: /^Ngozi Eze/u }));
     await screen.findByRole('heading', { level: 2, name: 'Ngozi Eze' });
 
     return sent;
@@ -781,11 +1187,14 @@ describe('The wrong-person flag (sc-1526)', () => {
   });
 
   it('marks nobody else, and no row', async () => {
-    await openFlagged();
+    await openFlagged({
+      'GET /api/events/ev_1/guests/g_2': () =>
+        tagged({ ...AMAKA, added: { at: '2026-09-14T10:00:00+00:00', by: null } }, '"1"'),
+    });
     await within(guestColumn()).findByRole('region', { name: TITLE });
 
     expect(within(screen.getByRole('region', { name: 'Guests' })).queryByText(TITLE)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: /^Chief Amaka Obi/u }));
+    fireEvent.click(screen.getByRole('link', { name: /^Chief Amaka Obi/u }));
     await screen.findByRole('heading', { level: 2, name: 'Chief Amaka Obi' });
     expect(screen.queryByText(TITLE)).toBeNull();
   });

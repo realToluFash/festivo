@@ -8,6 +8,8 @@ appId: host.exp.Exponent
     file: helper.js
     env:
       ASK: /membership?change=clear
+# A check that signed in as another account leaves it signed in. sc-44086.
+- evalScript: ${output.away = output.helper.away === true}
 # A check that turned the iPad and failed before turning it back leaves it turned.
 - setOrientation: PORTRAIT
 # A check that went offline and failed before coming back leaves the phone offline.
@@ -57,3 +59,7 @@ appId: host.exp.Exponent
     timeout: 30000
 # A check that signed out leaves the checks after it on Home, signed back in. sc-32521.
 - runFlow: signed-out.yaml
+- runFlow:
+    when:
+      true: ${output.away}
+    file: session.yaml

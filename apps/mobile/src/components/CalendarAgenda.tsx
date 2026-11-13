@@ -40,6 +40,7 @@ const AgendaRow = memo(function AgendaRow({
   Row,
   locale,
   readerZone,
+  now,
   big,
   lead,
   onOpen,
@@ -52,6 +53,7 @@ const AgendaRow = memo(function AgendaRow({
   Row: ComponentType<RowProps> | undefined;
   locale: string;
   readerZone: string;
+  now: Date;
   big: boolean;
   lead: number;
   onOpen: (item: Item) => void;
@@ -128,6 +130,7 @@ const AgendaRow = memo(function AgendaRow({
             Row={Row}
             locale={locale}
             readerZone={readerZone}
+            now={now}
             big={big}
             onOpen={onOpen}
           />
@@ -146,6 +149,7 @@ export function Agenda({
   Row,
   locale,
   readerZone,
+  now,
   big,
   lead,
   maxWidth,
@@ -164,6 +168,7 @@ export function Agenda({
   Row?: ComponentType<RowProps> | undefined;
   locale: string;
   readerZone: string;
+  now: Date;
   big: boolean;
   lead: number;
   maxWidth: number | null;
@@ -208,6 +213,7 @@ export function Agenda({
           Row={Row}
           locale={locale}
           readerZone={readerZone}
+          now={now}
           big={big}
           lead={lead}
           onOpen={onOpen}

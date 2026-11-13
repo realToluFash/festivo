@@ -250,7 +250,7 @@ function BarLink({
   onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
 }) {
   const { t } = useTranslation();
-  const { zone, linkOf } = useContext(CalendarFrameContext);
+  const { now, zone, linkOf } = useContext(CalendarFrameContext);
   const { event } = bar.item;
 
   return (
@@ -266,7 +266,7 @@ function BarLink({
         .join(' ')}
       data-piece={bar.key}
       data-shown={event.shown}
-      aria-label={barLabel(t, bar.item, zone, locale)}
+      aria-label={barLabel(t, bar.item, zone, locale, now)}
       tabIndex={-1}
       onKeyDown={onKeyDown}
     >
@@ -338,7 +338,7 @@ function ItemRow({
   tabIndex?: number | undefined;
 }) {
   const { t } = useTranslation();
-  const { zone, linkOf } = useContext(CalendarFrameContext);
+  const { now, zone, linkOf } = useContext(CalendarFrameContext);
 
   if (item.kind === 'event')
     return (
@@ -346,14 +346,14 @@ function ItemRow({
         <Link
           className="desk-row cal-row"
           to={linkOf(item)}
-          aria-label={barLabel(t, item, zone, locale)}
+          aria-label={barLabel(t, item, zone, locale, now)}
           tabIndex={tabIndex}
         >
           <EventThumb event={item.event} size={40} />
           <RowWords
             title={item.event.name}
             tag={<Tag {...phaseTag(item.event.shown, t)} />}
-            lines={[rowLine(t, item, zone, locale)]}
+            lines={[rowLine(t, item, zone, locale, now)]}
           />
           <Chevron />
         </Link>
@@ -389,7 +389,7 @@ function ItemRow({
               </span>
             )
           }
-          lines={lens == null ? [rowLine(t, item, zone, locale)] : lens.lines(item)}
+          lines={lens == null ? [rowLine(t, item, zone, locale, now)] : lens.lines(item)}
         />
         <Chevron />
       </Link>

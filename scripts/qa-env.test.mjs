@@ -3053,7 +3053,8 @@ describe('the flows a batch runs', () => {
         expect(catalogues[code].steps.invitedTitle).not.toMatch(someoneSignedIn);
       }
       const signInForm = readFileSync(join(target, 'batch/sign-in-form.yaml'), 'utf8');
-      expect(signInForm).toMatch(
+      expect(signInForm).toContain('- runFlow: sign-in-typed.yaml');
+      expect(readFileSync(join(target, 'batch/sign-in-typed.yaml'), 'utf8')).toMatch(
         /tapOn:\s+id: 'signIn\.password\.reveal'\s+- retry:[\s\S]*?inputText: \$\{PASSWORD\}\s+- copyTextFrom:\s+id: 'signIn\.password'\s+- assertTrue: \$\{maestro\.copiedText == PASSWORD\}/,
       );
       const landed = new RegExp(
@@ -3170,7 +3171,12 @@ describe('the flows a batch runs', () => {
         /ASK: \/reload(?:\s|#.*)+- runFlow:\s+when:\s+true: \$\{!output\.helper\.reloaded\}\s+file: reopen\.yaml[\s\S]*openLink: \$\{METRO_URL\}\/--\//,
       );
       expect(reset).not.toMatch(/when:\s+(not)?[vV]isible/);
-      expect(reset.trimEnd().endsWith('- runFlow: signed-out.yaml')).toBe(true);
+      expect(reset).toMatch(
+        /ASK: \/membership\?change=clear\s+(?:#.*\s+)*- evalScript: \$\{output\.away = output\.helper\.away === true\}/,
+      );
+      expect(reset.trimEnd()).toMatch(
+        /- runFlow: signed-out\.yaml\s+- runFlow:\s+when:\s+true: \$\{output\.away\}\s+file: session\.yaml$/,
+      );
       for (const code of ['en', 'es', 'fr', 'pt']) {
         expect(catalogues[code].welcome.withEmail).toMatch(resetSettled);
         expect(catalogues[code].signIn.title).toMatch(resetSettled);
@@ -3623,7 +3629,8 @@ describe('the API taken from the device', () => {
 
 describe('a membership change a check asks for', () => {
   const MEMBERSHIP = '01a1ae45-86aa-7b0a-b43c-1524b2b5e0ab';
-  const changesFor = () => {
+  const ALONE = '02b2bf56-97bb-7c1b-a54d-2635c3c6f1bc';
+  const changesFor = ({ alone } = {}) => {
     const calls = [];
     const statements = [];
     let made = 0;
@@ -3660,6 +3667,7 @@ describe('a membership change a check asks for', () => {
             members: [
               { id: 'other', user: { email: 'owner@soirely.test' } },
               { id: MEMBERSHIP, user: { email: 'qa@soirely.test' } },
+              { id: ALONE, user: { email: 'alone@soirely.test' } },
             ],
           };
         }
@@ -3674,6 +3682,7 @@ describe('a membership change a check asks for', () => {
         return ownerNumbered(owners);
       },
       sql: async (statement) => statements.push(statement),
+      alone,
     });
     const refuseNextCreate = () => {
       refusing = true;
@@ -3767,6 +3776,84 @@ describe('a membership change a check asks for', () => {
     expect(calls).toEqual(['owner DELETE /api/orgs/org-1', 'owner DELETE /api/orgs/org-2']);
   });
 
+  const aloneAccount = () => {
+    const made = [];
+    const alone = async () => {
+      made.push(true);
+      return {
+        email: 'alone@soirely.test',
+        password: 'alone-pass',
+        session: async (path) => made.push(`alone ${path}`),
+      };
+    };
+    return { alone, made };
+  };
+
+  it('joins a second account alone, an administrator rather than the owner, and hands it over', async () => {
+    const { alone, made } = aloneAccount();
+    const { change, calls, invited } = changesFor({ alone });
+    expect(await change('alone', 'Alpha')).toEqual({
+      membership: 'alone',
+      org: 'Alpha',
+      id: 'org-1',
+      email: 'alone@soirely.test',
+      password: 'alone-pass',
+    });
+    expect(invited).toEqual(['r-administrator']);
+    expect(calls.some((call) => call.startsWith('member'))).toBe(false);
+    expect(made).toEqual([true, 'alone /api/invitations/inv-1/accept']);
+  });
+
+  it('suspends, removes and deletes the second account, joined again before each', async () => {
+    const { alone } = aloneAccount();
+    const { change, calls } = changesFor({ alone });
+    for (const what of ['suspend', 'remove', 'delete']) {
+      await change('alone', 'Alpha');
+      await change(what, 'Alpha');
+    }
+    expect(calls.filter((call) => !call.includes('GET') && !call.includes('invite'))).toEqual([
+      'owner POST /api/orgs',
+      `owner POST /api/orgs/org-1/members/${ALONE}/suspend`,
+      'owner DELETE /api/orgs/org-1',
+      'owner POST /api/orgs',
+      `owner DELETE /api/orgs/org-2/members/${ALONE}`,
+      'owner DELETE /api/orgs/org-2',
+      'owner POST /api/orgs',
+      'owner DELETE /api/orgs/org-3',
+    ]);
+  });
+
+  it('asks for the second account once a batch, and again after it could not make one', async () => {
+    let tries = 0;
+    const alone = async () => {
+      tries += 1;
+      if (tries === 1) throw new Error('Too many sign-ups from this address');
+      return { email: 'alone@soirely.test', password: 'p', session: async () => {} };
+    };
+    const { change } = changesFor({ alone });
+    await expect(change('alone', 'Alpha')).rejects.toThrow(
+      'no account in no organisation: Too many sign-ups from this address',
+    );
+    await change('alone', 'Alpha');
+    await change('alone', 'Alpha');
+    expect(tries).toBe(2);
+  });
+
+  it('says on the clear after it that the second account may be signed in, once', async () => {
+    const { alone } = aloneAccount();
+    const { change, calls } = changesFor({ alone });
+    await change('alone', 'Alpha');
+    calls.length = 0;
+    expect(await change('clear')).toEqual({ membership: 'clear', away: true });
+    expect(calls).toEqual(['owner DELETE /api/orgs/org-1']);
+    expect(await change('clear')).toEqual({ membership: 'clear' });
+  });
+
+  it('refuses alone in a batch with no second account', async () => {
+    const { change } = changesFor();
+    await expect(change('alone', 'Alpha')).rejects.toThrow('no second account');
+  });
+
   it('refuses a change it does not know, or one with no organisation', async () => {
     const { change } = changesFor();
     await expect(change('wipe', 'Alpha Hall')).rejects.toThrow('no membership change wipe');
@@ -3819,6 +3906,11 @@ describe('the owner a batch makes organisations as', () => {
       },
     });
     expect((await gone.asOwner(false)).email).toBe('owner-1@soirely.test');
+  });
+
+  it('is registered when the kept one signs in but is no longer usable', async () => {
+    const unusable = ownerWith({ kept, signIn: async () => false });
+    expect((await unusable.asOwner(false)).email).toBe('owner-1@soirely.test');
   });
 
   it('is a new one when the batch asks for fresh, and an unreachable API is no reason to register', async () => {

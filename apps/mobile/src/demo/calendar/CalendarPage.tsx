@@ -189,6 +189,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
       layout={shell.layout}
       today={TODAY}
       readerZone={READER_ZONE}
+      now={NOW}
       locale={locale}
       firstDay={firstDay}
       kept={KEPT}

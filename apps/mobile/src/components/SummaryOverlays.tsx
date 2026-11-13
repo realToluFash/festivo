@@ -127,6 +127,8 @@ function Window({
   );
 }
 
+export const ASK_WIDTH = 340;
+
 /** An Ask from a page: a dialog in a window of its own, and `over` it a menu it opens, in the same window. */
 export function Ask({
   open,

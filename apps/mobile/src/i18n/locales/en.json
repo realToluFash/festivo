@@ -1760,6 +1760,7 @@
   },
   "eventDelete": {
     "open": "Delete event…",
+    "screen": "Delete event",
     "note": "Removes the event and everything in it for your whole team. Guests following its link see that it isn't available.",
     "title": "Delete {{event}}?",
     "draftBody": "It's a draft with nobody on its guest list. It will be removed for your whole team.",

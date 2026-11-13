@@ -56,12 +56,12 @@ const t = i18next.t.bind(i18next);
 const dayLabel = (day: string, count: number, locale: string) =>
   dayLabelIn(t, day, TODAY, count, locale);
 const barLabel = (item: Parameters<typeof barLabelIn>[1], locale: string) =>
-  barLabelIn(t, item, READER_ZONE, locale);
+  barLabelIn(t, item, READER_ZONE, locale, CLOCKS.rest);
 const barWords = (event: Parameters<typeof barWordsIn>[1]) => barWordsIn(t, event);
 const markLabel = (item: Parameters<typeof markLabelIn>[1], locale: string) =>
   markLabelIn(t, item, READER_ZONE, locale);
 const rowLine = (item: Parameters<typeof rowLineIn>[1], locale: string) =>
-  rowLineIn(t, item, READER_ZONE, locale);
+  rowLineIn(t, item, READER_ZONE, locale, CLOCKS.rest);
 const NOVEMBER = { year: 2026, month: 11 };
 const listed = listedOf(sampleEvents(), CLOCKS.rest);
 const all = calendarDays(listed, 'all');
@@ -226,6 +226,9 @@ describe('the Calendar in B · A · Weeks as lanes (sc-30329)', () => {
     expect(barLabel(barOf(week, 'evt-ireti-2').item, EN)).toBe(
       'Ireti at 40, Live, 19:00, Fri, Nov 13 to Sat, Nov 14',
     );
+    expect(
+      barLabelIn(t, barOf(week, 'evt-ireti-2').item, READER_ZONE, EN, new Date('2025-06-01')),
+    ).toBe('Ireti at 40, Live, 19:00, Fri, Nov 13, 2026 to Sat, Nov 14, 2026');
     expect(barLabel(barOf(week, 'evt-gala-4').item, EN)).toBe(
       'Gala Fundación Lucía, Live, 19:30 Europe/Madrid, Sat, Nov 14',
     );

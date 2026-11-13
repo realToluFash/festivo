@@ -49,7 +49,12 @@ import { SIDEBAR_EVENTS } from './settings.ts';
 import { usePaused, useSwitcherStart, useWhere } from './switcher.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
 
-const FRAME: CalendarFrame = { today: TODAY, zone: READER_ZONE, linkOf: itemLink };
+const FRAME: CalendarFrame = {
+  now: CLOCKS.rest,
+  today: TODAY,
+  zone: READER_ZONE,
+  linkOf: itemLink,
+};
 
 /** The Calendar at a desk in B · A · Weeks as lanes (calendar-lanes-spec): the product's weeks as one scroll, on the demo's sample. */
 export function Calendar() {

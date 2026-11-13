@@ -9,7 +9,7 @@ import {
   agendaDays,
   dayDate,
   formatEventClock,
-  formatWallDay,
+  formatWallDays,
   monthGrid,
   monthOfDay,
   namesZone,
@@ -303,7 +303,13 @@ export function markWords(item: MilestoneItem, wide: boolean, locale: string) {
   return wide ? `${time} ${item.milestone.title}` : time;
 }
 
-export function rowWhen(item: Item, locale: string, readerZone: string, t: TFunction): string {
+export function rowWhen(
+  item: Item,
+  locale: string,
+  readerZone: string,
+  now: Date,
+  t: TFunction,
+): string {
   const time = clockOf(item, locale);
   const when = namesZone(item.event.timeZone, readerZone)
     ? t('calendar.timeInZone', { time, timeZone: item.event.timeZone })
@@ -312,10 +318,13 @@ export function rowWhen(item: Item, locale: string, readerZone: string, t: TFunc
   if (item.kind !== 'event' || !item.multiDay) return when;
 
   const first = wallDay(item.event.startsAt, item.event.timeZone);
-  const range = t('calendar.range', {
-    from: formatWallDay(first, locale),
-    to: formatWallDay(addDays(first, item.event.dayCount - 1), locale),
-  });
+  const [from, to] = formatWallDays(
+    [first, addDays(first, item.event.dayCount - 1)],
+    item.event.timeZone,
+    now,
+    locale,
+  );
+  const range = t('calendar.range', { from, to });
 
   return t('calendar.timeAndRange', { time: when, range });
 }

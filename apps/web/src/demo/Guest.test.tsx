@@ -108,6 +108,13 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
     expect(screen.getByText('You do not need an account to answer.')).toBeDefined();
   });
 
+  it('keeps the foot but drops the account line once answers have closed (#44255)', async () => {
+    await guest('closed');
+
+    expect(screen.getByText('© 2026 Soirely')).toBeDefined();
+    expect(screen.queryByText('You do not need an account to answer.')).toBeNull();
+  });
+
   it('answers as three full-width rows, Yes leading on', async () => {
     await guest();
     const rows = within(screen.getByRole('heading', { name: 'Your answer' }).closest('section')!)
@@ -132,7 +139,7 @@ const SAYS: [string, () => void][] = [
   [
     'check',
     () => {
-      screen.getByText('Nothing is sent until you press Send my answer.');
+      screen.getByText('Nothing is sent until you select Send my answer.');
       expect(screen.queryByRole('checkbox')).toBeNull();
     },
   ],
@@ -159,7 +166,7 @@ const SAYS: [string, () => void][] = [
         'true',
       ),
   ],
-  ['notSentTap', () => screen.getByText(/Check your connection and tap it again\.$/u)],
+  ['notSentTap', () => screen.getByText(/Check your connection and choose it again\.$/u)],
   ['coming', () => screen.getByRole('heading', { name: `See you there, ${NAME}.` })],
   ['comingWhatsApp', () => screen.getByRole('heading', { name: `See you there, ${NAME}.` })],
   ['comingAlone', () => screen.getByText('A screenshot works too.')],
@@ -632,7 +639,7 @@ describe('answering, by keyboard and pointer, on sample data', () => {
     const send = screen.getByRole('button', { name: 'Send my answer' });
 
     expect(screen.getByRole('alert').textContent).toBe(
-      'Your answer wasn’t sent. Everything you chose is still here. Try again.',
+      'Your answer was not sent. Everything you chose is still here. Try again.',
     );
     expect(document.activeElement).toBe(send);
     fireEvent.click(send);

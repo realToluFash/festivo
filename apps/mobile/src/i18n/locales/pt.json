@@ -1815,6 +1815,7 @@
   },
   "eventDelete": {
     "open": "Eliminar o evento…",
+    "screen": "Eliminar o evento",
     "note": "Elimina o evento e tudo o que contém para toda a equipa. Os convidados que abrirem a sua ligação veem que já não está disponível.",
     "title": "Eliminar {{event}}?",
     "draftBody": "É um rascunho sem ninguém na lista de convidados. Vai ser eliminado para toda a equipa.",
