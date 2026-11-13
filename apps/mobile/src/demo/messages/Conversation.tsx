@@ -2,6 +2,7 @@ import type { ReactNode, Ref, RefObject } from 'react';
 import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 
 import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
+import { DemoOnly } from '../../steps/Lines.tsx';
 import { Text, type TextHandle } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Avatar } from '../../components/SettingsParts.tsx';
@@ -53,6 +54,8 @@ import { Preview } from './Preview.tsx';
 import { previewOf } from './PreviewModel.ts';
 import { RefusedSave } from './RefusedSave.tsx';
 import { SW } from './ScheduledSave.ts';
+import { clockNote } from './Sms.ts';
+import { SMSW } from './SmsWords.ts';
 import { type Stopping, headOf, stoppedLine } from './StopWriting.ts';
 import { MoreActions, StoppedInset } from './StopWritingParts.tsx';
 import {
@@ -582,6 +585,7 @@ function ownParts(talk: Talk, followUp: string): Own {
       ),
       writing: true,
     };
+  const note = clockNote(m.clock);
   if (draft.step === 'check')
     return {
       head: talk.wide ? head : undefined,
@@ -602,10 +606,18 @@ function ownParts(talk: Talk, followUp: string): Own {
             onSeeAll={(count) => talk.ownDesign(say.seeAll(count))}
             balance={m.balance}
             waits={m.waits}
+            clock={m.clock}
             onWithout={(drops) => {
               for (const action of sendWithout(drops)) dispatch(action);
             }}
           />
+          {note != null && (
+            <DemoOnly title={SMSW.demoTitle}>
+              <Text size={13.5} weight="medium" style={styles.note}>
+                {note}
+              </Text>
+            </DemoOnly>
+          )}
         </>
       ),
       align: 'end',
@@ -929,6 +941,7 @@ const styles = StyleSheet.create({
     lineHeight: 13.5 * 1.45,
   },
   withMore: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  note: { lineHeight: 13.5 * 1.45 },
   rights: {
     flexDirection: 'row',
     flexWrap: 'wrap',

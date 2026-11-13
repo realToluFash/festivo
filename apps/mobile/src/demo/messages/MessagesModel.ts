@@ -31,6 +31,7 @@ import {
   SCHEDULED_BODY,
   SCHEDULE_AT,
   SENT_AGAIN_AT,
+  SMS,
   SMS_ONLY,
   SUBJECT,
   TELL,
@@ -48,6 +49,7 @@ import { type Refusal, TYPED_EDIT, refusalOf, reloaded } from './ScheduledSave.t
 import { EDGE } from './TokenText.ts';
 import { WAITS_STARTS, type Waits } from './CheckWaits.ts';
 import { STOP_STATES, type Stopping, isStopState, stopStart, stoppingOf } from './StopWriting.ts';
+import { SMS_STATES, smsStart } from './Sms.ts';
 
 /** Every state of Messaging B, each a `?state=` in both demos (spec §7 and §7b), in the spec's order. */
 export const MESSAGES_STATES = [
@@ -137,6 +139,7 @@ export const MESSAGES_STATES = [
   'askFailed',
   'sendWithout',
   ...STOP_STATES,
+  ...SMS_STATES,
 ] as const;
 
 export type MessagesState = (typeof MESSAGES_STATES)[number];
@@ -282,6 +285,9 @@ export interface Messages {
   refusedSave?: Refusal;
   waits?: Waits;
   stopping?: Stopping;
+  /** The instant the check reads as now for quiet hours (sc-3946); without it, every number is inside hours. */
+  clock?: string;
+  smsFailed?: boolean;
   closed: Closed | null;
   /** WhatsApp's receipts (sc-3950): Parking told by email and WhatsApp stands in Parking's place. */
   receipts: boolean;
@@ -419,6 +425,11 @@ const DRAFTED: Partial<Record<MessagesState, Draft>> = {
   longMessage: { ...sampleDraft('write'), body: LONG_BODY, over: ['body'] },
   whatsAppLine: { ...sampleDraft('write'), to: 'all', channels: ALL_CHANNELS },
   checkWhatsApp: { ...sampleDraft('check'), to: 'all', channels: ALL_CHANNELS },
+  smsLine: { ...sampleDraft('write'), to: 'all' },
+  checkQuiet: sampleDraft('check'),
+  checkQuietBoth: { ...sampleDraft('check'), channels: ALL_CHANNELS },
+  checkNow: sampleDraft('check'),
+  previewFirstText: sampleDraft('preview'),
 };
 
 const CLOSED: Partial<Record<MessagesState, Closed>> = {
@@ -453,6 +464,7 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       draft: drafted,
       told: state === 'cancelled' && !wide ? W.cancelled : null,
       ...previewStart(state),
+      ...smsStart(state),
     };
   const waited = state == null ? undefined : WAITS_STARTS[state];
   if (waited != null)
@@ -582,11 +594,13 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
     case 'invitedReached':
       return { ...BASE, open: { kind: 'reached', of: 'invite' } };
     case 'sentReached':
+    case 'reachedSmsFailed':
       return {
         ...BASE,
         thread: NEW_THREAD,
         draft: sampleDraft('sending'),
         open: { kind: 'reached', of: 'draft' },
+        ...smsStart(state),
       };
     case 'resend':
       return { ...BASE, open: { kind: 'many', key: 'parking' }, resending: true };
@@ -1136,6 +1150,8 @@ export interface Check {
   whatsApp: boolean;
   /** WhatsApp's reach line, only while it is ticked. */
   reach?: string;
+  smsReach?: string;
+  instead?: string;
 }
 
 export interface WhatsAppReach {
@@ -1179,6 +1195,28 @@ export function whatsAppLine(to: ToGroup): string {
   ].join(' · ');
 }
 
+export function smsLine(to: ToGroup): string {
+  const { reaches, noMobile, stopped } = SMS[to];
+  const cant = [
+    ...(noMobile > 0 ? [say.noMobile(noMobile)] : []),
+    ...(stopped > 0 ? [say.stoppedTexts(stopped)] : []),
+  ];
+
+  return [
+    say.smsReaches(reaches, reaches + noMobile + stopped),
+    ...(cant.length > 0
+      ? [listFormat('en-US', { style: 'long', type: 'conjunction' }).format(cant)]
+      : []),
+  ].join(' · ');
+}
+
+/** With SMS and WhatsApp both ticked, whoever WhatsApp reaches gets it there and not by SMS (sc-3954). */
+export function insteadOf(draft: Pick<Draft, 'to' | 'channels'>): string | null {
+  const reaches = whatsAppOf(draft.to).reaches;
+
+  return draft.channels.sms && draft.channels.wa && reaches > 0 ? say.insteadOfSms(reaches) : null;
+}
+
 export function countOf(to: ToGroup, zero: readonly ToGroup[] = []): number {
   return zero.includes(to) ? 0 : TO_FIGURES[to].count;
 }
@@ -1197,6 +1235,7 @@ export function checkOf(draft: Draft): Check {
   const smsOff = draft.channels.sms ? 0 : SMS_ONLY[draft.to].length;
   const names = (smsOff > 0 ? SMS_ONLY[draft.to] : CANT_TELL[draft.to]).slice(0, 2);
   const cantTell = figures.cantTell + smsOff;
+  const instead = nobody ? null : insteadOf(draft);
 
   return {
     count: figures.count,
@@ -1208,7 +1247,9 @@ export function checkOf(draft: Draft): Check {
     credits,
     after: formatCount(BALANCE - credits),
     whatsApp: draft.channels.wa,
+    ...(draft.channels.sms && !nobody ? { smsReach: smsLine(draft.to) } : {}),
     ...(draft.channels.wa ? { reach: whatsAppLine(draft.to) } : {}),
+    ...(instead == null ? {} : { instead }),
   };
 }
 

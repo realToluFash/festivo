@@ -4,10 +4,11 @@ import {
   LANGUAGE_NAMES_FR,
   LANGUAGE_NAMES_IN_SENTENCE,
 } from '../settings/OrganisationWords.ts';
-import { DAYS, EVENT, HOSTS, type Token } from './MessagesSample.ts';
+import { DAYS, EVENT, HOSTS, PREVIEW, type Token } from './MessagesSample.ts';
 import { W, say } from './MessagesWords.ts';
 import { FRENCH, PREVIEW_PEOPLE, type PreviewKey, type PreviewPerson } from './PreviewSample.ts';
 import { PW, sayPreview } from './PreviewWords.ts';
+import { type SmsCount, plainPunctuation, smsCountOf, withStop } from './Sms.ts';
 import { TOKEN_RUN } from './TokenText.ts';
 
 /** Who the preview is for, whether Preview as is open, and whether it is still being filled in (`held`: as a board, it stays). */
@@ -39,6 +40,7 @@ const STARTS: Partial<Record<string, Partial<Previewing>>> = {
   previewChose: { who: 'camille' },
   previewLoading: { who: 'camille', filling: true, held: true },
   previewMarkup: { who: 'kemi' },
+  previewFirstText: { who: 'amaka' },
 };
 
 /** What a `?state=` of sc-3960 adds to Messages: Insert open, or the person previewed. */
@@ -161,4 +163,21 @@ export function noticeFor(person: PreviewPerson): {
     body: say.noticeBody(HOSTS, EVENT),
     button: W.readOnYourPage,
   };
+}
+
+export interface SmsNotice {
+  text: string;
+  count: SmsCount;
+  first: boolean;
+}
+
+/** Outside English the bracketed stand-in; either way its punctuation goes plain, as Soirely sends it. */
+export function smsNoticeFor(person: PreviewPerson): SmsNotice {
+  const notice =
+    person.language === 'fr'
+      ? plainPunctuation(FRENCH.noticeSms(PREVIEW.link))
+      : say.noticeSms(plainPunctuation(HOSTS), plainPunctuation(EVENT), PREVIEW.link);
+  const text = withStop(notice, person.firstText);
+
+  return { text, count: smsCountOf(text, PREVIEW.link), first: person.firstText };
 }

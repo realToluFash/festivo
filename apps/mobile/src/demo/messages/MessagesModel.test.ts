@@ -36,6 +36,7 @@ import {
   overOf,
 } from './MessagesModel.ts';
 import { MESSAGES_BOARDS } from './MessagesBoards.ts';
+import { SMS_STATES } from './Sms.ts';
 import { sampleEvent } from '../events/EventsSample.ts';
 import {
   NOT_REACHED,
@@ -62,8 +63,9 @@ beforeAll(() =>
 const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
-  it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s six, sc-3960’s, sc-3963’s and sc-3978’s, by both demos’ names', () => {
-    expect(MESSAGES_STATES).toHaveLength(91);
+  it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s six, sc-3960’s, sc-3963’s, sc-3978’s and sc-3946’s, by both demos’ names', () => {
+    expect(MESSAGES_STATES).toHaveLength(97);
+    expect(MESSAGES_STATES.slice(91)).toEqual([...SMS_STATES]);
     expect(MESSAGES_STATES.slice(72, 75)).toEqual([
       'whatsAppLine',
       'checkWhatsApp',
@@ -256,6 +258,7 @@ describe('the check', () => {
       credits: 31,
       after: '1,469',
       whatsApp: false,
+      smsReach: 'SMS reaches 31 of 96 · 65 have no mobile number',
     });
   });
 

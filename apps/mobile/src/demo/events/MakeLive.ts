@@ -100,12 +100,15 @@ const GSM_7_TWICE = '^{}\\[~]|€';
 /** sc-1526's link as built: the address and a 256-bit token (#45622). */
 export const LINK_CHARS = 'https://soirely.com/i/'.length + Math.ceil(256 / 6);
 
+export function isGsm7(text: string): boolean {
+  return [...text].every((one) => GSM_7.includes(one) || GSM_7_TWICE.includes(one));
+}
+
 /** GSM-7 to 160 characters, then 153 a part; any other character makes it UCS-2, 70 then 67. */
 export function smsParts(text: string): number {
   const chars = [...text];
-  const gsm = chars.every((one) => GSM_7.includes(one) || GSM_7_TWICE.includes(one));
 
-  if (!gsm) return chars.length <= 70 ? 1 : Math.ceil(chars.length / 67);
+  if (!isGsm7(text)) return chars.length <= 70 ? 1 : Math.ceil(chars.length / 67);
 
   const length = chars.reduce((sum, one) => sum + (GSM_7_TWICE.includes(one) ? 2 : 1), 0);
 
