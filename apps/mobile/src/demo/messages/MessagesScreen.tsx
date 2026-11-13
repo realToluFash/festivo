@@ -55,7 +55,7 @@ import {
   type ReachedOf,
   type RowId,
   anyOnItsWay,
-  badgeOf,
+  badgeShown,
   blankDraft,
   channelsWords,
   checkOf,
@@ -108,6 +108,8 @@ import {
   settled,
   stoppingOf,
 } from './StopWriting.ts';
+import { SHARED_NUMBER } from './NoticeStates.ts';
+import { NoManageCard } from './NoticeParts.tsx';
 import { StopActions, StopAsk } from './StopWritingParts.tsx';
 import { markLooked } from '../guests/ChangedSince.ts';
 
@@ -151,16 +153,13 @@ const CLOSED_WORDS: Record<Closed, string> = {
 };
 
 export function badgeFor(m: Messages): AreaBadge | null {
-  const badge = badgeOf(m);
-
-  return badge == null
-    ? null
-    : {
-        count: badge.total,
-        name: say.badgeName(badge.waiting, badge.notMatched),
-        words: say.counts(badge.waiting, badge.notMatched),
-      };
+  return badgeShown(m);
 }
+
+const SHARERS = [
+  { name: 'Kwame Mensah', line: SHARED_NUMBER },
+  { name: 'Abena Mensah', line: SHARED_NUMBER },
+] as const;
 
 /** Messages B in the event: the list and a conversation pushed over it on the phone, the two side by side on the iPad. */
 export function MessagesScreen({
@@ -728,9 +727,18 @@ export function MessagesScreen({
         phone={phone}
         address={GUESTS.unknown.head}
         opener={openerRef}
+        {...(m.notice?.shared == null
+          ? {}
+          : {
+              picks: SHARERS,
+              first: { search: 'Mensah', picked: GUESTS[m.notice.key].name },
+              hinted: false,
+            })}
         onClose={() => dispatch({ type: 'matching', open: false })}
         onMatch={(name) => {
-          dispatch({ type: 'match', name });
+          dispatch(
+            m.notice?.shared == null ? { type: 'match', name } : { type: 'matching', open: false },
+          );
           readOut(say.matchedSaid(name));
           setTimeout(() => moveScreenReaderFocus(headRef.current), 500);
         }}
@@ -835,7 +843,16 @@ export function MessagesScreen({
           </>
         }
       >
-        {m.forbidden ? <Refusal /> : <PhoneList list={list} onNew={onNew} closed={closed} />}
+        {m.forbidden ? (
+          <Refusal />
+        ) : (
+          <PhoneList
+            list={list}
+            onNew={onNew}
+            closed={closed}
+            readOnly={m.notice?.hidden === true}
+          />
+        )}
       </EventFrame>
     );
 
@@ -851,12 +868,16 @@ export function MessagesScreen({
             {m.phase === 'first' ? W.noneLine : closed == null ? W.pickOne : W.pickOneClosed}
           </Text>
         </View>
-        <MiniComposer
-          to={toChip('all')}
-          placeholder={W.writeToGuests}
-          reason={closed}
-          onOpen={onNew}
-        />
+        {m.notice?.hidden === true ? (
+          <NoManageCard />
+        ) : (
+          <MiniComposer
+            to={toChip('all')}
+            placeholder={W.writeToGuests}
+            reason={closed}
+            onOpen={onNew}
+          />
+        )}
       </View>
     );
   else if (m.open.kind === 'reached')
@@ -935,10 +956,12 @@ function PhoneList({
   list,
   onNew,
   closed,
+  readOnly,
 }: {
   list: ReactNode;
   onNew: (picking: boolean) => void;
   closed: string | null;
+  readOnly: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
@@ -961,12 +984,16 @@ function PhoneList({
         style={[styles.pinned, { bottom: pinned }]}
         onLayout={(event) => setComposer(event.nativeEvent.layout.height)}
       >
-        <MiniComposer
-          to={toChip('all')}
-          placeholder={W.writeToGuests}
-          reason={closed}
-          onOpen={onNew}
-        />
+        {readOnly ? (
+          <NoManageCard />
+        ) : (
+          <MiniComposer
+            to={toChip('all')}
+            placeholder={W.writeToGuests}
+            reason={closed}
+            onOpen={onNew}
+          />
+        )}
       </View>
     </View>
   );

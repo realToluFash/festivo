@@ -1,4 +1,12 @@
-import { type Ref, type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -434,9 +442,12 @@ export function AnswerBox({
   onChange,
   onTellBy,
   onSend,
+  notice = {},
 }: {
   name: string;
   channel: ChannelKey;
+  /** sc-3976: the 24 hours closed over the line, a refusal in its place, a quiet-hours wait under the cost, and Ask an owner for the app's line. */
+  notice?: { closed?: ReactNode; refused?: ReactNode; quiet?: string | null; ask?: ReactNode };
   cost?: NoticeCost | null;
   others?: readonly ChannelKey[];
   value: string;
@@ -454,26 +465,39 @@ export function AnswerBox({
   return (
     <View style={styles.answer}>
       {closed && <WhyNot words={reason} />}
-      <View style={styles.answerLine}>
-        <View style={styles.markTop}>
-          <MessageGlyph name="page" size={15} ink={INK2} />
-        </View>
-        <View style={[styles.grow, styles.lines]}>
-          <Text size={13.5} weight="medium" style={[styles.secondary, styles.line]}>
-            {say.answerLine(name, CHANNEL_IN_LINE[channel])}
-          </Text>
-          {cost != null && !cost.waits && (
-            <Text
-              size={13.5}
-              weight="medium"
-              style={[styles.secondary, styles.line]}
-              testID="messages.answer.cost"
-            >
-              {say.noticeCost(cost.channel, cost.credits, formatCount(cost.after))}
+      {notice.closed}
+      {notice.refused ?? (
+        <View style={styles.answerLine}>
+          <View style={styles.markTop}>
+            <MessageGlyph name="page" size={15} ink={INK2} />
+          </View>
+          <View style={[styles.grow, styles.lines]}>
+            <Text size={13.5} weight="medium" style={[styles.secondary, styles.line]}>
+              {say.answerLine(name, CHANNEL_IN_LINE[channel])}
             </Text>
-          )}
+            {cost != null && !cost.waits && (
+              <Text
+                size={13.5}
+                weight="medium"
+                style={[styles.secondary, styles.line]}
+                testID="messages.answer.cost"
+              >
+                {say.noticeCost(cost.channel, cost.credits, formatCount(cost.after))}
+              </Text>
+            )}
+          </View>
         </View>
-      </View>
+      )}
+      {notice.quiet != null && (
+        <View style={[styles.answerLine, styles.quiet]} testID="messages.answer.quiet">
+          <View style={styles.markTop}>
+            <DeliveryMark mark="sending" side={15} />
+          </View>
+          <Text size={14} weight="semibold" style={[styles.grow, styles.line]}>
+            {notice.quiet}
+          </Text>
+        </View>
+      )}
       {cost?.waits === true && (
         <View style={styles.waits} testID="messages.answer.waits">
           <View style={styles.answerLine}>
@@ -484,9 +508,11 @@ export function AnswerBox({
               <Text size={14} weight="semibold" style={styles.line}>
                 {say.noticeWaits(cost.channel)}
               </Text>
-              <Text size={13.5} weight="medium" style={[styles.secondary, styles.line]}>
-                {W.creditsNotInApp}
-              </Text>
+              {notice.ask ?? (
+                <Text size={13.5} weight="medium" style={[styles.secondary, styles.line]}>
+                  {W.creditsNotInApp}
+                </Text>
+              )}
             </View>
           </View>
           {others.length > 0 && onTellBy != null && (
@@ -686,6 +712,7 @@ const styles = StyleSheet.create({
   subjectRow: { borderBottomWidth: 1, borderBottomColor: tokens.colorBorder },
   bodyError: { paddingBottom: tokens.spaceXs },
   whyNot: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
+  quiet: { paddingLeft: 23 },
   whyMark: { paddingTop: 2 },
   whyWords: { flex: 1, lineHeight: 14 * 1.4 },
   nobody: {

@@ -845,7 +845,7 @@ export function useTo(state: MessagesState | null): ToApi {
     state,
     book,
     setBook,
-    manage: state !== 'noManage' && state !== 'stoppedNoManage',
+    manage: state !== 'noManage' && state !== 'stoppedNoManage' && state !== 'readOnly',
     view,
     refused,
     viewed,
