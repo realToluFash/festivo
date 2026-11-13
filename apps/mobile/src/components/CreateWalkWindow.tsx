@@ -75,8 +75,6 @@ import {
 import { AskLayer } from './AskLayer.tsx';
 
 const GROW_FROM = 0.96;
-// Not shorter: on a phone with TalkBack on, keys raised at a 450 ms reveal went down and keys raised at 550 ms stayed up (qa3 #46182). Whether the field's blur follows the clock or the reveal is not yet measured.
-const PHONE_FIELD_SETTLES_MS = 150;
 const PANEL = 760;
 const CARD = 300;
 const SIDE_PADDING = 32;
@@ -167,7 +165,7 @@ export function CreateWalkWindow<Made>({
     talkBack && shown,
     onScreen,
     null,
-    phone ? WINDOW_ARRIVES_MS + PHONE_FIELD_SETTLES_MS : arriving,
+    phone ? WINDOW_ARRIVES_MS : arriving,
   );
   const [fade] = useState(() => new Animated.Value(0));
   const [grow] = useState(() => new Animated.Value(GROW_FROM));
@@ -380,6 +378,7 @@ export function CreateWalkWindow<Made>({
         <Brings walk={walk} naming={naming} />
       )}
       <WalkButton
+        takesFocus={!talkBack}
         label={primaryLabel}
         busy={creating}
         reduced={reduced}
@@ -466,11 +465,22 @@ export function CreateWalkWindow<Made>({
   const refusal = (
     <View style={[styles.refusal, phone && styles.refusalPhone]}>{managedBanner}</View>
   );
+  // With TalkBack on, its focus landing on a button as the window is revealed took input focus from the field, and the app put the keys down (qa2 #46600).
   const closeAction = (
-    <NavAction label={t('switcher.close')} onPress={onCancel} testID="createWalk.close" />
+    <NavAction
+      takesFocus={!talkBack}
+      label={t('switcher.close')}
+      onPress={onCancel}
+      testID="createWalk.close"
+    />
   );
   const cancelAction = (
-    <NavAction label={t('createOrganisation.cancel')} onPress={cancel} testID="createWalk.cancel" />
+    <NavAction
+      takesFocus={!talkBack}
+      label={t('createOrganisation.cancel')}
+      onPress={cancel}
+      testID="createWalk.cancel"
+    />
   );
   const fills = walk.step === 2 && !searching;
 
@@ -511,6 +521,7 @@ export function CreateWalkWindow<Made>({
                       cancelAction
                     ) : (
                       <NavAction
+                        takesFocus={!talkBack}
                         label={t('steps.back')}
                         back
                         onPress={goBack}
@@ -605,6 +616,7 @@ export function CreateWalkWindow<Made>({
                     <View style={[styles.wideFoot, managed && styles.hidden]}>
                       {!creating && walk.step > 1 && (
                         <WalkButton
+                          takesFocus={!talkBack}
                           label={t('steps.back')}
                           kind="secondary"
                           reduced={reduced}
@@ -616,6 +628,7 @@ export function CreateWalkWindow<Made>({
                         />
                       )}
                       <WalkButton
+                        takesFocus={!talkBack}
                         label={primaryLabel}
                         busy={creating}
                         reduced={reduced}

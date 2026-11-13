@@ -105,17 +105,20 @@ function Bar({
 export function NavAction({
   label,
   back = false,
+  takesFocus = true,
   onPress,
   testID,
 }: {
   label: string;
   back?: boolean;
+  takesFocus?: boolean;
   onPress: () => void;
   testID: string;
 }) {
   return (
     <Pressable
       onPress={onPress}
+      focusable={takesFocus}
       hitSlop={tokens.spaceXxs}
       style={({ pressed }) => [styles.nav, back && styles.navBack, pressed && styles.pressed]}
       accessibilityRole="button"
@@ -187,6 +190,7 @@ export function WalkButton({
   height,
   size,
   full = true,
+  takesFocus = true,
   onPress,
   ref,
   testID,
@@ -198,6 +202,7 @@ export function WalkButton({
   height: number;
   size: number;
   full?: boolean;
+  takesFocus?: boolean;
   onPress: () => void;
   ref?: Ref<ViewInstance>;
   testID: string;
@@ -208,6 +213,7 @@ export function WalkButton({
     <Pressable
       ref={ref}
       onPress={busy ? undefined : onPress}
+      focusable={takesFocus}
       style={({ pressed }) => [
         styles.button,
         primary ? styles.primary : styles.secondary,
