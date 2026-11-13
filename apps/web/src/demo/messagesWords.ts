@@ -114,7 +114,7 @@ export const MW = {
   dear: 'Dear {{greeting}},',
   noticeBody: '{{hosts}} sent you a message about {{event}}. It is on your page.',
   readOnPage: 'Read it on your page',
-  noticeSms: '{{hosts}}: you have a new message about {{event}}. Read it on your page: {{link}}',
+  noticeSms: '{{hosts}}: a new message about {{event}}. Read it here: {{link}}',
   smsParts_one: 'SMS · {{count, number}} part',
   smsParts_other: 'SMS · {{count, number}} parts',
   whatsAppTemplate: 'WhatsApp · the approved template',

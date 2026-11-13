@@ -1,4 +1,10 @@
-import { firstUnverified, primaryOf, zoneLabel } from '@soirely/domain';
+import {
+  changeEmail,
+  firstUnverified,
+  primaryOf,
+  undeliverableAddresses,
+  zoneLabel,
+} from '@soirely/domain';
 import { useLocalSearchParams } from 'expo-router';
 import { createRef, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { type ScrollViewInstance, View, type ViewInstance } from 'react-native';
@@ -8,6 +14,7 @@ import { AddScreen } from '../../components/AccountAdd.tsx';
 import { AboutSection, YouCard } from '../../components/AccountCard.tsx';
 import { ConfirmScreen } from '../../components/AccountConfirm.tsx';
 import { ContactsSection } from '../../components/AccountContacts.tsx';
+import { UndeliverableLines } from '../../components/AccountUndeliverable.tsx';
 import { NameScreen } from '../../components/AccountName.tsx';
 import { VerifyScreen } from '../../components/AccountVerify.tsx';
 import { ZoneScreen } from '../../components/AccountZone.tsx';
@@ -49,8 +56,6 @@ import { useCountdown, useZoneHeld } from './AccountParts.tsx';
 import { HOME_ZONE, PHONE_COUNTRY, phoneShown, sentCodeProblem, ZONES } from './AccountSample.ts';
 import { saveName, savedName } from './savedName.ts';
 import { SummaryPage } from './SummaryPage.tsx';
-import { changeEmail, lifted, undeliverable } from './Undeliverable.ts';
-import { UndeliverableLines } from './UndeliverableLines.tsx';
 
 export { ACCOUNT_STATES } from './AccountModel.ts';
 
@@ -187,7 +192,7 @@ function AccountPage({ start }: { start: AccountStart }) {
   function remove(kind: ContactKind, row: Contact, atOnce: boolean): void {
     const [rows, setRows] = rowsOf(kind);
     setRows(rows.filter((each) => each.id !== row.id));
-    setSuppressed((ids) => lifted(ids, row.id));
+    setSuppressed((ids) => ids.filter((id) => id !== row.id));
     const words = t('contacts.removed', { address: row.shown });
     if (atOnce) doneAtOnce(words);
     else done(words);
@@ -277,7 +282,9 @@ function AccountPage({ start }: { start: AccountStart }) {
         <View>
           {contacts('email')}
           <UndeliverableLines
-            rows={undeliverable(emails, suppressed)}
+            rows={undeliverableAddresses(
+              emails.map((row) => ({ ...row, undeliverable: suppressed.includes(row.id) })),
+            )}
             onChange={change}
             onAction={(id, action) => {
               changes.current[id] = action;
@@ -397,7 +404,7 @@ function AccountPage({ start }: { start: AccountStart }) {
           onVerified={(row) => {
             const [rows, setRows] = rowsOf(verifying.kind);
             setRows(rows.map((each) => (each.id === row.id ? { ...each, verified: true } : each)));
-            setSuppressed((ids) => lifted(ids, row.id));
+            setSuppressed((ids) => ids.filter((id) => id !== row.id));
             done(verifiedWords(row, verifying.kind, t));
           }}
         />
