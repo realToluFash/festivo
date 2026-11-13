@@ -646,6 +646,13 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
           : tagged({ ...theirs, email: 'ngozi.eze@example.com' }, '"3"');
       },
     });
+    const ifMatches: (string | null)[] = [];
+    const fetch = vi.mocked(globalThis.fetch);
+    const answer = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (input, init) => {
+      if (init?.method === 'PUT') ifMatches.push(new Headers(init.headers).get('If-Match'));
+      return answer(input, init);
+    });
 
     type(EMAIL, 'ngozi.eze@example.com');
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -666,6 +673,7 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
 
     expect(await screen.findByText('Saved')).toBeDefined();
     expect(puts(sent)).toHaveLength(2);
+    expect(ifMatches).toEqual(['"1"', '"2"']);
   });
 
   it('keeps everything typed when the save fails, and says so', async () => {
