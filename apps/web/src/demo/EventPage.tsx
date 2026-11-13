@@ -27,8 +27,11 @@ import {
   partOf,
   resetSample,
   sampleEvent,
+  shownOf,
   stateFits,
 } from './events.ts';
+import { EndNowAsk, ThankYouCard } from './ThankYou.tsx';
+import { TY_WORDS, cardOf, cardShown, endFieldOf } from './thankYou.ts';
 import { type DuplicateStart, DeleteByName, DuplicateDialog, RefusedAsk } from './EventDialogs.tsx';
 import {
   AT_READ,
@@ -147,6 +150,12 @@ function needsStateOf(state: EventStateName | null): NeedsState | null {
 
 function askingOf(state: EventStateName | null): Asking | null {
   switch (state) {
+    case 'endNowThankYou':
+    case 'endNowLong':
+    case 'endNowOver':
+    case 'endNowEnding':
+    case 'endNowNotEnded':
+      return 'endNow';
     case 'pause':
     case 'callOff':
     case 'endNow':
@@ -316,6 +325,7 @@ function EventView({
     invitedOf(state, refusedStart, invitedOn(event.id), pressed),
     canChange,
   );
+  const [card, setCard] = useState(() => cardOf(state));
   const [muted, setMuted] = useState(state === 'muted');
   const [muteLoaded, setMuteLoaded] = useState(state !== 'muteNotLoaded');
   const [muteFailed, setMuteFailed] = useState(state === 'muteNotSaved');
@@ -391,6 +401,9 @@ function EventView({
                 />
                 <div className="ev-columns">
                   <div className="ev-left">
+                    {shownOf(event, now) === 'finished' && cardShown(card) && (
+                      <ThankYouCard event={event} card={card} onCard={setCard} onSaid={tell} />
+                    )}
                     <Details
                       event={event}
                       now={now}
@@ -542,6 +555,12 @@ function EventView({
               kept(next);
               if (words != null) tell(words);
             }}
+            onEnded={(line) => {
+              setAsking(null);
+              kept({ ...event, status: 'ended', concludedAt: now.toISOString() });
+              setCard(cardOf(null, line));
+              if (line !== '') tell(TY_WORDS.done);
+            }}
             onDelete={() => {
               const answer = refusalOf(
                 event,
@@ -600,6 +619,7 @@ function Asks({
   onKeep,
   onVerb,
   onDone,
+  onEnded,
   onDelete,
   onCreated,
 }: {
@@ -612,6 +632,7 @@ function Asks({
   onKeep: () => void;
   onVerb: (verb: RefusedVerb) => void;
   onDone: (next: SampleEvent, words: string | null) => void;
+  onEnded: (line: string) => void;
   onDelete: () => void;
   onCreated: Tell;
 }) {
@@ -641,14 +662,7 @@ function Asks({
       );
     case 'endNow':
       return (
-        <Ask
-          title={W.endTitle(event.name)}
-          line={W.endLine}
-          keep={W.keepItOn}
-          go={W.endNow}
-          onKeep={onKeep}
-          onGo={() => onDone({ ...event, status: 'ended', concludedAt: now.toISOString() }, null)}
-        />
+        <EndNowAsk event={event} start={endFieldOf(state)} onKeep={onKeep} onEnded={onEnded} />
       );
     case 'deleteDraft':
       return (

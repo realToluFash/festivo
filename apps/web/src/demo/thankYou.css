@@ -1,0 +1,54 @@
+/* sc-6476: the hosts' thank-you on a Finished event's Overview and in End now. The line reads as the guest's page shows it (.gp-thanks). */
+
+.ty-line {
+  margin: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: 16px;
+  background: var(--colorInset);
+}
+
+.ty-line blockquote {
+  margin: 0;
+  color: var(--colorInk);
+  font: 500 16px/1.5 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.ty-line figcaption {
+  margin-top: 8px;
+  color: var(--colorInkSecondary);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.ty-action {
+  display: flex;
+  margin-top: 4px;
+}
+
+.ty-under {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceLg);
+}
+
+.ty-under .desk-help:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.ty-count {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.ty-count.is-over {
+  color: var(--colorBrokenText);
+  font-weight: 700;
+}
+
+.ty .ev-opened {
+  margin: 0;
+  padding: 0;
+  border-left: 0;
+}
