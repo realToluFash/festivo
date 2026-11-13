@@ -392,6 +392,145 @@ describe('Events in A at a desk (sc-30304)', () => {
   });
 });
 
+describe('Delete refused while a guest is Invited (sc-14445)', () => {
+  beforeEach(() => {
+    __setConfig({ ...tested, environment: 'development' });
+    resetSample();
+  });
+
+  it(
+    'says to call it off first, asks for no name, and Call off asks as the page does',
+    SLOW,
+    async () => {
+      const router = await page('/demo/events/evt-wed-4?state=deleteRefused');
+      const ask = screen.getByRole('alertdialog', { name: `Call off ${WEDDING} first?` });
+
+      expect(within(ask).queryByRole('textbox')).toBeNull();
+      expect(within(ask).getByRole('button', { name: 'Keep it' })).toBeDefined();
+      fireEvent.click(within(ask).getByRole('button', { name: 'Call off' }));
+
+      const callOff = await screen.findByRole('alertdialog', { name: `Call off ${WEDDING}?` });
+
+      expect(screen.queryByRole('alertdialog', { name: `Call off ${WEDDING} first?` })).toBeNull();
+      fireEvent.click(within(callOff).getByRole('button', { name: 'Call off' }));
+
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+      expect(router.state.location.pathname).toBe('/demo/events/evt-wed-4');
+      fireEvent.click(
+        within(screen.getByRole('region', { name: 'Manage' })).getByRole('button', {
+          name: 'Delete event…',
+        }),
+      );
+      expect(
+        within(await screen.findByRole('alertdialog', { name: `Delete ${WEDDING}?` })).getByRole(
+          'textbox',
+        ),
+      ).toBeDefined();
+    },
+  );
+
+  it(
+    'says to end it first once it has started, and End now asks as the page does',
+    SLOW,
+    async () => {
+      await page('/demo/events/evt-wed-4?state=deleteRefusedStarted');
+      const ask = screen.getByRole('alertdialog', { name: `End ${WEDDING} first?` });
+
+      expect(within(ask).queryByRole('textbox')).toBeNull();
+      fireEvent.click(within(ask).getByRole('button', { name: 'End now' }));
+
+      expect(await screen.findByRole('alertdialog', { name: `End ${WEDDING} now?` })).toBeDefined();
+    },
+  );
+
+  it('closes on Keep it and refuses again from Delete event…', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=deleteRefused');
+
+    fireEvent.click(
+      within(screen.getByRole('alertdialog', { name: `Call off ${WEDDING} first?` })).getByRole(
+        'button',
+        { name: 'Keep it' },
+      ),
+    );
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+
+    fireEvent.click(
+      within(screen.getByRole('region', { name: 'Manage' })).getByRole('button', {
+        name: 'Delete event…',
+      }),
+    );
+    expect(
+      await screen.findByRole('alertdialog', { name: `Call off ${WEDDING} first?` }),
+    ).toBeDefined();
+  });
+
+  it(
+    'says who can, and offers only Keep it, to a reader without Events at Change',
+    SLOW,
+    async () => {
+      for (const [state, title, who] of [
+        [
+          'deleteRefusedRead',
+          `Call off ${WEDDING} first?`,
+          'Ask someone who can change Events in Ire Events to call it off.',
+        ],
+        [
+          'deleteRefusedStartedRead',
+          `End ${WEDDING} first?`,
+          'Ask someone who can change Events in Ire Events to end it.',
+        ],
+      ] as const) {
+        await page(`/demo/events/evt-wed-4?state=${state}`);
+        const ask = screen.getByRole('alertdialog', { name: title });
+        const manage = screen.getByRole('region', { name: 'Manage' });
+
+        expect(within(ask).getByText(who)).toBeDefined();
+        expect(
+          within(ask)
+            .getAllByRole('button')
+            .map((one) => one.textContent),
+        ).toEqual(['Keep it']);
+        expect(within(manage).queryByRole('button', { name: /^Pause/ })).toBeNull();
+        expect(within(manage).queryByRole('button', { name: /^Call off/ })).toBeNull();
+        expect(within(manage).queryByRole('button', { name: /^End now/ })).toBeNull();
+        expect(within(manage).getByRole('button', { name: 'Delete event…' })).toBeDefined();
+        expect(
+          within(screen.getByRole('navigation', { name: WEDDING })).getByRole('button', {
+            name: 'Ana Souza, Coordinator',
+          }),
+        ).toBeDefined();
+        cleanup();
+      }
+    },
+  );
+
+  it(
+    'turns the name screen into the refusal when a guest was invited before Delete',
+    SLOW,
+    async () => {
+      const router = await page('/demo/events/evt-wed-4?state=deleteRace');
+      const ask = screen.getByRole('alertdialog', { name: `Delete ${WEDDING}?` });
+
+      expect((within(ask).getByRole('textbox') as HTMLInputElement).value).toBe(WEDDING);
+      fireEvent.click(within(ask).getByRole('button', { name: 'Delete' }));
+
+      const refused = await screen.findByRole('alertdialog', {
+        name: `Call off ${WEDDING} first?`,
+      });
+
+      expect(within(refused).queryByRole('textbox')).toBeNull();
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          within(refused).getByRole('heading', { name: `Call off ${WEDDING} first?` }),
+        ),
+      );
+      expect(within(refused).getByRole('button', { name: 'Call off' })).toBeDefined();
+      expect(router.state.location.pathname).toBe('/demo/events/evt-wed-4');
+      expect(screen.queryByText(`${WEDDING} was deleted.`)).toBeNull();
+    },
+  );
+});
+
 describe('the guest counts on Events (sc-23284)', () => {
   beforeEach(() => {
     __setConfig({ ...tested, environment: 'development' });
