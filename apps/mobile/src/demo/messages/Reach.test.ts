@@ -298,6 +298,24 @@ describe('on an event that can’t send (?state=closedEnded)', () => {
   });
 });
 
+describe('read without sending (?state=noManage)', () => {
+  it('shows every status and reason, with no fix, no mark, no Send again and no Resend', () => {
+    const m = run(startOf('noManage', false), {
+      type: 'open',
+      open: { kind: 'reached', of: 'parking' },
+    });
+    const view = reachViewOf(m, 'parking');
+    const people = view.groups.flatMap((group) => group.people);
+
+    expect(view.title).toBe('Reached 131 of 142');
+    expect(people.length).toBeGreaterThan(0);
+    expect(people.every((person) => person.fixes.length === 0 && !person.offer)).toBe(true);
+    expect(people.some((person) => person.lines.length > 0)).toBe(true);
+    expect(view.resend).toBe(0);
+    expect(run(m, { type: 'sendAgain', key: 'tomas' }).again).toEqual({});
+  });
+});
+
 describe('texts that failed (?state=reachedSmsFailed)', () => {
   it('lists six more in Reached, email delivered and SMS failed with its reason, the counts unchanged', () => {
     const failed = reachViewOf(startOf('reachedSmsFailed', false), 'draft');

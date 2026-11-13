@@ -67,6 +67,15 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   longMessage: ['a message too long', 'Shorten the message to 10,000 characters or fewer'],
   closedDraft: ['new unavailable, a draft', 'This event is a draft; New is off'],
   closedEnded: ['new unavailable, long finished', 'Finished more than 30 days ago; New is off'],
+  noManage: [
+    'reading without sending',
+    'Kofi Mensah, Read-only: no New, no To; Only someone who can change Messages can send.',
+  ],
+  noManageDraft: ['reading without sending, a draft', 'The line alone, not the draft’s reason'],
+  noManageEnded: [
+    'reading without sending, long finished',
+    'The line alone, not the finished event’s reason',
+  ],
   forbidden: ['no access', 'Without messages.read: the refusal, no list, no count'],
   insert: ['Insert', 'A menu on the iPad, a sheet on the phone: four tokens, each with its line'],
   previewAs: ['Preview as', 'Open on the five people in To, A to Z'],
