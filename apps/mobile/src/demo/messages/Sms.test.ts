@@ -2,20 +2,19 @@ import { describe, expect, it } from 'vitest';
 
 import { MESSAGES_BOARDS } from './MessagesBoards.ts';
 import { type Draft, checkOf, reduce, startOf } from './MessagesModel.ts';
-import { HAPPENING_NOW, MOBILES, PREVIEW, QUIET_NOW } from './MessagesSample.ts';
+import { EVENT, HAPPENING_NOW, HOSTS, MOBILES, QUIET_NOW } from './MessagesSample.ts';
 import type { ChannelKey } from './MessagesWords.ts';
-import { PREVIEW_AS, previewOf, smsNoticeFor } from './PreviewModel.ts';
-import { PREVIEW_PEOPLE } from './PreviewSample.ts';
+import { noticeSmsOf } from './NoticeStates.ts';
+import { PREVIEW_AS, noticeWordsIn, previewOf } from './PreviewModel.ts';
+import { PREVIEW_PEOPLE, type PreviewPerson } from './PreviewSample.ts';
 import {
   SMS_STATES,
   clockNote,
   failedReason,
   isQuiet,
   isSmsState,
-  plainPunctuation,
   quietLineOf,
   quietWaitOf,
-  smsCountOf,
   smsHead,
   wallTime,
   zoneOf,
@@ -27,7 +26,9 @@ const ticks = (...on: readonly ChannelKey[]): Record<ChannelKey, boolean> => ({
   sms: on.includes('sms'),
   wa: on.includes('wa'),
 });
-const head = (text: string) => smsHead(smsCountOf(text, PREVIEW.link));
+const head = (text: string) => smsHead(noticeSmsOf('', '', false, () => text));
+const noticeTo = (person: PreviewPerson) =>
+  noticeSmsOf(HOSTS, EVENT, person.firstText, noticeWordsIn(person.language));
 const quietOf = (draft: Draft | null, clock: string | undefined) =>
   draft == null ? null : quietLineOf(MOBILES[draft.to], draft.channels, clock);
 
@@ -181,33 +182,34 @@ describe('the SMS card’s counter', () => {
   });
 
   it('counts the shown link at the built link’s 65 characters', () => {
-    expect(smsCountOf(`Read it here: ${PREVIEW.link}`, PREVIEW.link).chars).toBe(14 + 65);
+    expect(noticeSmsOf('', '', false, (_h, _e, link) => `Read it here: ${link}`).chars).toBe(
+      14 + 65,
+    );
   });
 
-  it('sends filled-in values with plain punctuation', () => {
-    expect(plainPunctuation('Adaeze & Tunde’s “wedding” – soon…')).toBe(
-      'Adaeze & Tunde\'s "wedding" - soon...',
-    );
+  it('sends filled-in values with plain punctuation, so the head and the credits count GSM-7', () => {
+    const notice = noticeSmsOf('Auntie Bisi', 'Adaeze & Tunde’s “wedding” – soon…');
+
+    expect(notice.text).toContain('Adaeze & Tunde\'s "wedding" - soon...');
+    expect([notice.encoding, notice.parts]).toEqual(['gsm7', 1]);
   });
 });
 
 describe('the preview’s SMS', () => {
   it('to Kwame Mensah, texted before: one part, no STOP line', () => {
-    const notice = smsNoticeFor(PREVIEW_PEOPLE.kwame);
+    const notice = noticeTo(PREVIEW_PEOPLE.kwame);
 
     expect(notice.text).toBe(
       "Adaeze Obi and Tunde Bakare: a new message about Adaeze & Tunde's wedding. Read it here: [their own link]",
     );
-    expect(smsHead(notice.count)).toBe('SMS · 1 part · GSM-7 · 154 characters');
-    expect(notice.first).toBe(false);
+    expect(smsHead(notice)).toBe('SMS · 1 part · GSM-7 · 154 characters');
   });
 
   it('to Amaka Eze, a first text: the STOP line on its own, two parts', () => {
-    const notice = smsNoticeFor(PREVIEW_PEOPLE.amaka);
+    const notice = noticeTo(PREVIEW_PEOPLE.amaka);
 
     expect(notice.text.endsWith('[their own link]\nReply STOP to opt out.')).toBe(true);
-    expect(smsHead(notice.count)).toBe('SMS · 2 parts · GSM-7 · 177 characters');
-    expect(notice.first).toBe(true);
+    expect(smsHead(notice)).toBe('SMS · 2 parts · GSM-7 · 177 characters');
     expect(saySms.firstText('Ire Events')).toBe(
       'Their first text from Ire Events, so it ends with how to stop texts.',
     );
@@ -222,11 +224,11 @@ describe('the preview’s SMS', () => {
   });
 
   it('in French keeps the bracketed stand-in, its apostrophe sent plain, so it stays GSM-7', () => {
-    const notice = smsNoticeFor(PREVIEW_PEOPLE.camille);
+    const notice = noticeTo(PREVIEW_PEOPLE.camille);
 
     expect(notice.text.startsWith('[Adaeze Obi et Tunde Bakare')).toBe(true);
     expect(notice.text).not.toContain('’');
-    expect(notice.count.encoding).toBe('gsm7');
+    expect(notice.encoding).toBe('gsm7');
   });
 });
 

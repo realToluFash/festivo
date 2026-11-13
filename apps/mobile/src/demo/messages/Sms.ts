@@ -1,6 +1,6 @@
-import { LINK_CHARS, isGsm7, smsParts } from '../events/MakeLive.ts';
 import { EVENT_ON, HAPPENING_NOW, type Mobile, PHONE_ZONES, QUIET_NOW } from './MessagesSample.ts';
 import type { ChannelKey } from './MessagesWords.ts';
+import { QUIET_UNTIL } from './NoticeStates.ts';
 import { FAILED_REASON, type Quiet, SMSW, saySms } from './SmsWords.ts';
 
 export const SMS_STATES = [
@@ -43,38 +43,8 @@ export interface SmsCount {
   chars: number;
 }
 
-/** The shown link is counted at the built link's length (sc-1526). */
-export function smsCountOf(text: string, link: string): SmsCount {
-  const built = text.replace(link, 'x'.repeat(LINK_CHARS));
-
-  return {
-    parts: smsParts(built),
-    encoding: isGsm7(built) ? 'gsm7' : 'unicode',
-    chars: [...built].length,
-  };
-}
-
 export function smsHead(count: SmsCount): string {
   return saySms.head(count.parts, count.encoding, count.chars);
-}
-
-const PLAIN: Record<string, string> = {
-  '‘': "'",
-  '’': "'",
-  '“': '"',
-  '”': '"',
-  '–': '-',
-  '—': '-',
-  '…': '...',
-};
-
-/** A curly apostrophe in a filled-in value would make the whole text Unicode. */
-export function plainPunctuation(text: string): string {
-  return text.replace(/[‘’“”–—…]/gu, (one) => PLAIN[one] ?? one);
-}
-
-export function withStop(text: string, first: boolean): string {
-  return first ? `${text}\n${SMSW.stopLine}` : text;
 }
 
 export function failedReason(code: string | null): string {
@@ -85,7 +55,6 @@ export function failedReason(code: string | null): string {
 }
 
 export const QUIET_FROM = '20:00';
-export const QUIET_UNTIL = '09:00';
 
 function minutesOf(time: string): number {
   const [hours = 0, minutes = 0] = time.split(':').map(Number);

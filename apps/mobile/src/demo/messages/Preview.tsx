@@ -20,10 +20,11 @@ import {
   greetingFor,
   noticeFor,
   previewLines,
-  smsNoticeFor,
+  noticeWordsIn,
 } from './PreviewModel.ts';
 import { PREVIEW_PEOPLE, type PreviewPerson } from './PreviewSample.ts';
 import { sayPreview } from './PreviewWords.ts';
+import { noticeSmsOf } from './NoticeStates.ts';
 import { smsHead } from './Sms.ts';
 import { saySms } from './SmsWords.ts';
 import { type Anchored, PreviewAsChooser, PreviewAsControl, anchorAt } from './WriteItOnce.tsx';
@@ -107,14 +108,14 @@ function EmailNotice({ person }: { person: PreviewPerson }) {
 }
 
 function SmsNotice({ person }: { person: PreviewPerson }) {
-  const notice = smsNoticeFor(person);
+  const notice = noticeSmsOf(HOSTS, EVENT, person.firstText, noticeWordsIn(person.language));
 
   return (
     <View style={styles.sms}>
       <View style={styles.from}>
         <MessageGlyph name="sms" size={14} ink={tokens.colorInkSecondary} />
         <Text size={13} weight="semibold" style={[styles.secondary, styles.figures]}>
-          {smsHead(notice.count)}
+          {smsHead(notice)}
         </Text>
       </View>
       <View style={styles.smsBubble}>
@@ -122,7 +123,7 @@ function SmsNotice({ person }: { person: PreviewPerson }) {
           {notice.text}
         </Text>
       </View>
-      {notice.first && (
+      {person.firstText && (
         <Text size={13} weight="medium" style={[styles.secondary, styles.small, styles.under]}>
           {saySms.firstText(ORG)}
         </Text>

@@ -2,7 +2,6 @@ import type { Encoding } from './Sms.ts';
 
 /** sc-3946's English, settled by pm and l10n on 13 Nov. */
 export const SMSW = {
-  stopLine: 'Reply STOP to opt out.',
   noReason: 'No reason given',
   demoTitle: 'Demo only: the time it is',
   happeningNow:

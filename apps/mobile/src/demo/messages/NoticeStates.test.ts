@@ -12,7 +12,7 @@ import {
   tellNowBy,
   tellingBy,
 } from './MessagesModel.ts';
-import { EVENT, HOSTS, PREVIEW } from './MessagesSample.ts';
+import { EVENT, HOSTS } from './MessagesSample.ts';
 import { say } from './MessagesWords.ts';
 import {
   NOTICE_STATES,
@@ -27,7 +27,7 @@ import {
   refusalOf,
 } from './NoticeStates.ts';
 import { sayNotice } from './NoticeWords.ts';
-import { smsCountOf, smsHead } from './Sms.ts';
+import { smsHead } from './Sms.ts';
 import { stoppingOf } from './StopWriting.ts';
 
 const opened = (m: Messages) => (m.open?.kind === 'guest' ? m.open.key : null);
@@ -72,9 +72,7 @@ describe('a guest’s conversation, its refusals and waits (sc-3976)', () => {
     expect([later.chars, later.parts]).toEqual([154, 1]);
     expect(first.text.endsWith('\nReply STOP to opt out.')).toBe(true);
     expect([first.chars, first.parts]).toEqual([177, 2]);
-    expect(smsHead(smsCountOf(later.text, PREVIEW.link))).toBe(
-      'SMS · 1 part · GSM-7 · 154 characters',
-    );
+    expect(smsHead(later)).toBe('SMS · 1 part · GSM-7 · 154 characters');
   });
 
   it('prices a text by its parts and a WhatsApp message by the number’s country', () => {

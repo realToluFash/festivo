@@ -1,5 +1,5 @@
 import { writtenTime } from '../clock.ts';
-import { LINK_CHARS, smsParts } from '../events/MakeLive.ts';
+import { LINK_CHARS, isGsm7, smsParts } from '../events/MakeLive.ts';
 import { LIVE } from '../events/EventsWords.ts';
 import { READER_ZONE } from '../events/EventsSample.ts';
 import type { Messages } from './MessagesModel.ts';
@@ -15,6 +15,7 @@ import {
 } from './MessagesSample.ts';
 import { type ChannelKey, W, say } from './MessagesWords.ts';
 import { NW, sayNotice } from './NoticeWords.ts';
+import type { SmsCount } from './Sms.ts';
 import { NO_STOPS } from './StopWriting.ts';
 
 export const NOTICE_STATES = [
@@ -333,17 +334,38 @@ export function quietLine(by: ChannelKey, time: string): string | null {
   return by === 'email' ? null : sayNotice.waitsUntil(by === 'wa', time);
 }
 
-/** Soirely's text that the hosts have written (l10n #45754), counted with the guest's link as built; a first text to a number ends on the STOP line. */
+const PLAIN: Record<string, string> = {
+  '‘': "'",
+  '’': "'",
+  '“': '"',
+  '”': '"',
+  '–': '-',
+  '—': '-',
+  '…': '...',
+};
+
+export type NoticeWords = (hosts: string, event: string, link: string) => string;
+
+/** Soirely's text that the hosts have written (l10n #45754), as sent: typographic punctuation plain, counted with the guest's link as built; a first text to a number ends on the STOP line. */
 export function noticeSmsOf(
   hosts: string,
   event: string,
   first = false,
-): { text: string; chars: number; parts: number } {
-  const words = say.noticeSms(hosts, event, PREVIEW.link).replaceAll('’', "'");
-  const text = first ? `${words}\n${LIVE.smsStop}` : words;
+  words: NoticeWords = say.noticeSms,
+): SmsCount & { text: string } {
+  const written = words(hosts, event, PREVIEW.link).replace(
+    /[‘’“”–—…]/gu,
+    (one) => PLAIN[one] ?? one,
+  );
+  const text = first ? `${written}\n${LIVE.smsStop}` : written;
   const built = text.replace(PREVIEW.link, 'x'.repeat(LINK_CHARS));
 
-  return { text, chars: [...built].length, parts: smsParts(built) };
+  return {
+    text,
+    chars: [...built].length,
+    parts: smsParts(built),
+    encoding: isGsm7(built) ? 'gsm7' : 'unicode',
+  };
 }
 
 export function noticeCredits(by: ChannelKey, perPart: number, parts: number): number {
