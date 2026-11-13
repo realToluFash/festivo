@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { invitedOn } from '../guests/GuestsModel.ts';
 import {
+  AT_READ,
   REFUSED_STATES,
   invitedOf,
   refusalOf,
@@ -114,23 +115,51 @@ describe('the demo’s states', () => {
       { canChange: false, started: false, race: false },
       { canChange: false, started: true, race: false },
       { canChange: true, started: false, race: true },
+      { canChange: false, started: false, race: true },
+      { canChange: true, started: false, race: false },
     ]);
     expect(refusedStartOf('delete')).toBeNull();
     expect(refusedStartOf(null)).toBeNull();
   });
 
   it('refuses as the dialog opens, except in the race, which refuses once Delete is pressed', () => {
-    const wedding = event('evt-wed-4');
-    const opens = (state: string, pressed: boolean) => {
+    const opens = (state: string, pressed: boolean, id = 'evt-wed-4') => {
       const start = refusedStartOf(state);
 
-      return refusalOf(wedding, before, invitedOf(start, 142, pressed), start?.canChange ?? true);
+      return refusalOf(
+        event(id),
+        before,
+        invitedOf(start, invitedOn(id), pressed),
+        start?.canChange ?? true,
+      );
     };
 
     expect(opens('deleteRefused', false)).toEqual({ verb: 'callOff', canChange: true });
     expect(opens('deleteRefusedRead', false)).toEqual({ verb: 'callOff', canChange: false });
     expect(opens('deleteRace', false)).toBeNull();
     expect(opens('deleteRace', true)).toEqual({ verb: 'callOff', canChange: true });
+    expect(opens('deleteRaceRead', false)).toBeNull();
+    expect(opens('deleteRaceRead', true)).toEqual({ verb: 'callOff', canChange: false });
+    expect(opens('deleteRefusedPaused', false, 'evt-party-2')).toEqual({
+      verb: 'callOff',
+      canChange: true,
+    });
+  });
+
+  it('gives the race at Read the words a reader at Read opens on: who can, and no verb', () => {
+    const start = refusedStartOf('deleteRaceRead');
+    const refusal = refusalOf(event('evt-wed-4'), before, invitedOf(start, 142, true), false);
+
+    expect(refusal == null ? null : refusalWords(refusal, WEDDING, 'Ire Events')).toEqual({
+      title: `Call off ${WEDDING} first?`,
+      line: 'Guests have been invited to this event, or staff briefed for it, so it can be deleted only once it is finished. Calling it off is how they hear it will not go ahead.',
+      who: 'Ask someone who can change Events in Ire Events to call it off.',
+      verb: null,
+    });
+  });
+
+  it('names the reader at Read as the board does', () => {
+    expect(AT_READ).toMatchObject({ name: 'Ana Souza', initials: 'AS', role: 'Coordinator' });
   });
 
   it('leaves sc-3592’s delete states deleting by name, as they were drawn', () => {

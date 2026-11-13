@@ -1,5 +1,6 @@
 import { type EventState, endLabel, eventPhase } from '@soirely/domain';
 
+import type { Looking } from '../../components/settingsShell.ts';
 import type { ManageKey } from '../../kit/eventOverview.ts';
 import { W, say } from './EventsWords.ts';
 
@@ -60,6 +61,8 @@ export const REFUSED_STATES = [
   'deleteRefusedRead',
   'deleteRefusedStartedRead',
   'deleteRace',
+  'deleteRaceRead',
+  'deleteRefusedPaused',
 ] as const;
 export type RefusedState = (typeof REFUSED_STATES)[number];
 
@@ -82,6 +85,10 @@ export function refusedStartOf(state: string | null): RefusedStart | null {
       return { canChange: false, started: true, race: false };
     case 'deleteRace':
       return { canChange: true, started: false, race: true };
+    case 'deleteRaceRead':
+      return { canChange: false, started: false, race: true };
+    case 'deleteRefusedPaused':
+      return { canChange: true, started: false, race: false };
     default:
       return null;
   }
@@ -91,3 +98,11 @@ export function refusedStartOf(state: string | null): RefusedStart | null {
 export function invitedOf(start: RefusedStart | null, sample: number, pressed: boolean): number {
   return start == null || (start.race && !pressed) ? 0 : sample;
 }
+
+/** The board's reader without Events at Change: a custom role with Create events and Events at Read. */
+export const AT_READ: Looking = {
+  name: 'Ana Souza',
+  initials: 'AS',
+  email: 'ana.souza@ire.events',
+  role: 'Coordinator',
+};

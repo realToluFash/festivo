@@ -127,7 +127,7 @@ function startEvent(
 
 function deleteStart(state: EventDemoState | null): DeleteStart | null {
   if (state === 'deleteDraftGuests') return 'delete';
-  if (state === 'deleteRace') return 'deleteTyped';
+  if (state === 'deleteRace' || state === 'deleteRaceRead') return 'deleteTyped';
   return state === 'delete' || state === 'deleteMismatch' || state === 'deleteTyped' ? state : null;
 }
 

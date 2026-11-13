@@ -1557,6 +1557,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=deleteRace',
       },
       {
+        title: 'Delete event · the race, without Change',
+        what: 'Press Delete: who can call it off, and Keep it alone',
+        href: '/demo/events/evt-wed-4?state=deleteRaceRead',
+      },
+      {
+        title: 'Delete event · refused, Paused',
+        what: 'The Paused party: call it off first',
+        href: '/demo/events/evt-party-2?state=deleteRefusedPaused',
+      },
+      {
         title: 'Duplicate',
         what: 'What is copied, and when it starts',
         href: '/demo/events/evt-wed-4?state=duplicate',
