@@ -13,6 +13,7 @@ import {
 } from './guestKitchen.ts';
 import type { GuestNote } from './arrivalNote.ts';
 import { guestNoteStarts, isGuestNoteState } from './guestNote.ts';
+import { NO_PLACES, type Party, guestPartyStarts, isGuestPartyState } from './guestCompanions.ts';
 import {
   type Day,
   type WhereShown,
@@ -118,6 +119,7 @@ export type View =
   | { kind: 'recorded'; same: boolean }
   | { kind: 'changing'; busy: Answer | null }
   | { kind: 'closed' }
+  | { kind: 'withYou'; from: 'answer' | 'changing' }
   | { kind: 'tellUs'; busy: boolean; result: 'failed' | 'limited' | 'thanks' | null; back: View };
 
 /** An answer on the guest's record; `by` names the member who recorded it for them (sc-3787). */
@@ -205,6 +207,7 @@ export interface Visit {
   ticked: boolean;
   reach: Reach;
   note: GuestNote;
+  party: Party;
   /** sc-1363: when to ask a Not sure yet guest again; null with any other answer. */
   ask: AskView | null;
   /** sc-3780: the host let this guest change their reply, so Reply by does not bound the ask. */
@@ -247,6 +250,7 @@ const BASE: Visit = {
   ticked: false,
   reach: { email: true, sms: true, saved: null },
   note: 'host',
+  party: NO_PLACES,
   ask: null,
   reopened: false,
   day: 'before',
@@ -574,6 +578,7 @@ function startsOf(
   if (isGuestKitchenState(value))
     return guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS });
   if (isGuestNoteState(value)) return guestNoteStarts(value);
+  if (isGuestPartyState(value)) return guestPartyStarts(value);
   if (isGuestDayState(value)) return guestDayStarts(value);
 
   return STATES[isGuestState(value) ? value : 'open'].starts as Partial<Visit>;
@@ -704,7 +709,7 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
 ];
 
 export function shows(visit: Visit): { details: boolean; foot: boolean; hosts: boolean } {
-  const alone = ['check', 'tellUs', 'kitchen'].includes(visit.view.kind);
+  const alone = ['check', 'tellUs', 'kitchen', 'withYou'].includes(visit.view.kind);
 
   return { details: !alone, foot: !alone, hosts: visit.phase !== 'calledOff' };
 }

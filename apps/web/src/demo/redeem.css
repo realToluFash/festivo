@@ -237,6 +237,23 @@
   animation: spin 0.8s linear infinite;
 }
 
+.rd-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--sizeHitPhonePrimary);
+  border: 1px solid var(--colorFieldBorder);
+  border-radius: var(--radiusPill);
+  color: var(--colorInk);
+  font: 600 17px/1 var(--fontFamily);
+}
+
+a.rd-primary {
+  text-decoration: none;
+}
+
 .rd-pair {
   display: flex;
   flex-direction: column;
@@ -311,6 +328,7 @@
 
 .rd-primary:focus-visible,
 .rd-quiet:focus-visible,
+.rd-secondary:focus-visible,
 .rd-out:focus-visible {
   outline: 2px solid var(--colorAccent);
   outline-offset: 2px;
