@@ -484,6 +484,16 @@ export function AppFrame({
         <Notice tone="done" mark={tokens.marks.done.glyph} body={switched} />
       </ReadOut>
     );
+  // A body with its own top, as Today, says it where its demo draws it, in its notices (sc-44087).
+  const bodySwitched =
+    !framed && switched != null && created?.takesFocus !== true ? (
+      <ReadOut
+        style={kind === 'tabletLandscape' ? undefined : styles.switchedInBody}
+        words={switched}
+      >
+        <Notice tone="done" mark={tokens.marks.done.glyph} body={switched} />
+      </ReadOut>
+    ) : null;
   const header: FrameHeaderProps = {
     current,
     kind,
@@ -539,7 +549,7 @@ export function AppFrame({
               },
             ]}
           >
-            {!ownTop && switchedNotice}
+            {!ownTop && bodySwitched == null && switchedNotice}
             <OpenSwitcher.Provider value={openSwitcher}>
               <StartOrganisation.Provider value={startOrganisation}>
                 <HideBack.Provider value={backRow.hide}>
@@ -562,7 +572,9 @@ export function AppFrame({
                     ) : (
                       <FrameSwitch.Provider value={switchAnswer}>
                         <ScrolledTop.Provider value={ownTop && top === 'scrolls' ? header : null}>
-                          <UnderTabsProvider value={underTabs}>{children}</UnderTabsProvider>
+                          <BodySwitched.Provider value={bodySwitched}>
+                            <UnderTabsProvider value={underTabs}>{children}</UnderTabsProvider>
+                          </BodySwitched.Provider>
                         </ScrolledTop.Provider>
                       </FrameSwitch.Provider>
                     )}
@@ -699,6 +711,13 @@ export function FrameTop({
   if (top == null) return null;
 
   return <ScreenTop {...top} style={style} rowStyle={rowStyle} />;
+}
+
+const BodySwitched = createContext<ReactNode>(null);
+
+/** "Now working in …" in the notices of a body that draws its own top, as Today does, where its demo draws it (sc-44087). */
+export function FrameBodySwitched() {
+  return useContext(BodySwitched);
 }
 
 /** "Now working in …" for a heading in the body that stands in for the frame's top, as Members' in the Settings column on its side; nothing on a screen whose frame draws its top (sc-39471). */
@@ -1567,6 +1586,7 @@ const styles = StyleSheet.create({
   whitePill: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
   created: { paddingTop: tokens.spaceLg, paddingHorizontal: tokens.spaceXl },
   switchedUnderTitle: { marginTop: 18 },
+  switchedInBody: { marginBottom: tokens.spaceXl },
 });
 
 let currenciesRead: Currencies | null = null;
