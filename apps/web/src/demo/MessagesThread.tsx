@@ -487,7 +487,7 @@ function GuestThread({
                 />
               </>
             )}
-            {kase?.askedFirst !== true && (
+            {kase?.askedFirst !== true && inbox.tap?.first !== true && (
               <>
                 {(id !== 'kwame' || guest.day !== PARKING.day) && <DayRule>{guest.day}</DayRule>}
                 <GuestBubble

@@ -84,4 +84,22 @@ describe('answers in one tap in WhatsApp, at a desk (sc-46343)', () => {
     ).toBeTruthy();
     expect(within(log).getByText(/^You’re down as Coming/u)).toBeTruthy();
   });
+
+  it(
+    'opens a first conversation with the invitation, then the tap, and no question',
+    SLOW,
+    async () => {
+      await messages('tapFirst');
+
+      const log = screen.getByRole('log', { name: 'Valentina Restrepo' });
+
+      expect(within(log).getByText('Invitation')).toBeTruthy();
+      expect(
+        within(log).getByText(/Valentina Restrepo answered Not coming by WhatsApp\. · 08:20/u),
+      ).toBeTruthy();
+      expect(within(log).getByText(/^Gracias\. Hemos avisado/u)).toBeTruthy();
+      expect(within(log).queryByText(/shuttle/u)).toBeNull();
+      expect(within(log).queryByText(/^Done by/u)).toBeNull();
+    },
+  );
 });

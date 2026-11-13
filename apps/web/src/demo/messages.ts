@@ -2676,6 +2676,9 @@ function tapSeed(base: Inbox, tap: TapCase): Inbox {
     pane: { kind: 'convo', id: tap.id },
   };
 
+  if (tap.first === true)
+    return { ...seeded, present: [...base.present, tap.id], done: [tap.id, ...base.done] };
+
   return tap.done
     ? { ...seeded, done: [...base.done, tap.id], doneAt: { ...base.doneAt, [tap.id]: DONE_AT } }
     : seeded;

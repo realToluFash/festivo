@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { messagesStateOf, sectionsOf, seedOf } from './messages.ts';
+import { countsOf, messagesStateOf, sectionsOf, seedOf } from './messages.ts';
 import { GROUPS } from './messagesTo.ts';
 import {
   TAP_STATES,
@@ -77,6 +77,22 @@ describe('a guest’s tap on the WhatsApp invitation (sc-46343)', () => {
     expect(lucia.needs.find((row) => row.id === 'lucia')?.line).toBe(
       'Lucía Ortega answered Not sure yet by WhatsApp.',
     );
+  });
+
+  it('starts a conversation in Done, first and not unread, for a guest who had written nothing', () => {
+    const before = seedOf(null);
+    const inbox = seeded('tapFirst');
+    const sections = sectionsOf(inbox, GROUPS);
+
+    expect(sections.needs.find((row) => row.id === 'valentina')).toBeUndefined();
+    expect(sections.done[0]).toMatchObject({
+      id: 'valentina',
+      line: 'Valentina Restrepo answered Not coming by WhatsApp.',
+      when: '08:20',
+      lead: { kind: 'guest', unread: false },
+    });
+    expect(inbox.doneAt.valentina).toBeUndefined();
+    expect(countsOf(inbox)).toEqual(countsOf(before));
   });
 
   it('adds nothing for a further repeat', () => {

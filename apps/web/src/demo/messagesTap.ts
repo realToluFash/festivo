@@ -64,6 +64,7 @@ export const TAP_STATES = [
   { key: 'tapRepeat', name: 'A repeat tap, the first in 24 hours' },
   { key: 'tapRepeatAgain', name: 'A further repeat: no line' },
   { key: 'tapClosed', name: 'A tap after answers closed' },
+  { key: 'tapFirst', name: 'A tap from a guest with no conversation: one starts in Done' },
 ] as const;
 
 export type TapState = (typeof TAP_STATES)[number]['key'];
@@ -88,9 +89,11 @@ export interface Tap {
 }
 
 export interface TapCase {
-  id: 'kwame' | 'lucia';
+  id: 'kwame' | 'lucia' | 'valentina';
   language: Language;
   done: boolean;
+  /** pm's (3) on #46799: the guest had written nothing, so the tap starts their conversation, in Done and not unread. */
+  first?: boolean;
   taps: readonly Tap[];
   turn: Partial<SampleGuest>;
   extras?: readonly Extra[];
@@ -101,6 +104,7 @@ export const TAPPED_AT = '08:20';
 export const REPEAT_AT = '08:31';
 export const DONE_AT = '21:30';
 export const CLOSED_ON = '2026-11-02T12:00:00Z';
+export const INVITED_ON = 'Oct 12';
 
 const KWAME: Pick<TapCase, 'id' | 'language' | 'done' | 'turn'> = {
   id: 'kwame',
@@ -165,6 +169,15 @@ export function tapCaseOf(state: string | null): TapCase | null {
       return { ...KWAME, taps: REPEATED };
     case 'tapClosed':
       return { ...KWAME, taps: one({ answer: 'notSure', kind: 'closed', receipt: 'delivered' }) };
+    case 'tapFirst':
+      return {
+        id: 'valentina',
+        language: 'es',
+        done: true,
+        first: true,
+        turn: {},
+        taps: one({ answer: 'notComing', kind: 'recorded', receipt: 'read' }),
+      };
     default:
       return null;
   }

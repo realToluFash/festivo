@@ -3,8 +3,16 @@ import { Fragment } from 'react';
 import { Glyph } from '../components/Glyph.tsx';
 import { HOSTS } from './messages.ts';
 import type { WaButtons } from './messagesInvite.ts';
-import { type TapCase, notSentBit, receiptBit, tapLine, tapMessage } from './messagesTap.ts';
-import { DayRule, Meta, SoirelyCard, SystemLine } from './MessagesParts.tsx';
+import {
+  type TapCase,
+  INVITED_ON,
+  notSentBit,
+  receiptBit,
+  tapLine,
+  tapMessage,
+} from './messagesTap.ts';
+import { MW } from './messagesWords.ts';
+import { DayRule, Meta, SoirelyCard, Stub, SystemLine } from './MessagesParts.tsx';
 import './messagesTap.css';
 
 function OpensLink() {
@@ -48,11 +56,17 @@ export function WaAnswers({ answers }: { answers: WaButtons }) {
   );
 }
 
-/** A tap's line, then Soirely's one message, or why it did not go; a further repeat has neither. */
+/** A tap's line, then Soirely's one message, or why it did not go; a further repeat has neither. A first conversation opens with the invitation Soirely sent. */
 export function TapLines({ kase, name, ruled }: { kase: TapCase; name: string; ruled: boolean }) {
   return (
     <>
-      {ruled && <DayRule>Today</DayRule>}
+      {kase.first === true && (
+        <>
+          <DayRule>{INVITED_ON}</DayRule>
+          <Stub title={MW.invitation} glyph="whatsApp" bits={[receiptBit('read')]} />
+        </>
+      )}
+      {(ruled || kase.first === true) && <DayRule>Today</DayRule>}
       {kase.taps.map((tap) => (
         <Fragment key={tap.at}>
           <SystemLine glyph="whatsApp">
