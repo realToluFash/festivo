@@ -151,8 +151,8 @@ export function OrgPill({
 
 const ACTIVATE: AccessibilityActionInfo[] = [{ name: 'activate' }];
 
-/** On Android, TalkBack's double tap opens the switcher without the click that had TalkBack say the pill's state, "collapsed", before the switcher's title (sc-42690). */
-function quietTap(onPress: (() => void) | undefined, expanded: boolean | undefined) {
+/** On Android, TalkBack's double tap opens the switcher without the click that had TalkBack say the opener's state, "collapsed", before the switcher's title (sc-42690). Every switcher opener takes it. */
+export function quietTap(onPress: (() => void) | undefined, expanded: boolean | undefined) {
   if (Platform.OS !== 'android' || onPress == null || expanded == null) return {};
 
   return {
