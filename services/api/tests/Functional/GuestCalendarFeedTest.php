@@ -16,6 +16,7 @@ use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Monolog\Handler\TestHandler;
 use Monolog\Level;
 use Monolog\Logger;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
 use Psl\Str;
@@ -101,21 +102,46 @@ final class GuestCalendarFeedTest extends ApiTestCase
         }
     }
 
+    /** @param array<string, mixed> $change */
     #[Test]
-    public function aMovedTimeUpdatesInPlaceUnderTheSameUidWithAHigherSequence(): void
+    #[DataProvider('shownChanges')]
+    public function aShownChangeUpdatesInPlaceUnderTheSameUidWithAHigherSequence(array $change, string $property, string $shown): void
     {
         $path = $this->feedOf($this->reply($this->token($this->add('Adaeze Okonkwo')), 'coming'));
         $before = $this->only($this->parse($this->fetch($path)));
 
         $this->as($this->owner, 'GET', '/api/events/' . $this->eventId);
         $tag = (string) $this->client->getResponse()->headers->get('ETag');
-        $this->as($this->owner, 'PATCH', '/api/events/' . $this->eventId, ['startsAt' => '2030-11-21T16:00', 'endsAt' => '2030-11-22T02:00'], ['HTTP_IF_MATCH' => $tag]);
+        $this->as($this->owner, 'PATCH', '/api/events/' . $this->eventId, $change, ['HTTP_IF_MATCH' => $tag]);
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         $after = $this->only($this->parse($this->fetch($path)));
 
         self::assertSame(self::value($before, 'UID'), self::value($after, 'UID'));
-        self::assertSame('20301121T160000', self::value($after, 'DTSTART'));
+        self::assertSame($shown, self::value($after, $property));
         self::assertGreaterThan((int) self::value($before, 'SEQUENCE'), (int) self::value($after, 'SEQUENCE'));
+    }
+
+    /** @return iterable<string, array{array<string, mixed>, string, string}> */
+    public static function shownChanges(): iterable
+    {
+        yield 'time' => [['startsAt' => '2030-11-21T16:00', 'endsAt' => '2030-11-22T02:00'], 'DTSTART', '20301121T160000'];
+        yield 'name' => [['name' => "Amara & Tobi's reception"], 'SUMMARY', "Amara & Tobi's reception"];
+        yield 'venue' => [['venue' => ['name' => 'The Civic Centre', 'address' => 'Ozumba Mbadiwe Ave, Lagos']], 'LOCATION', 'The Civic Centre, Ozumba Mbadiwe Ave, Lagos'];
+    }
+
+    #[Test]
+    public function thePageKeepsTheFeedWhileTheEventIsHappeningAndDropsItOnceFinished(): void
+    {
+        $token = $this->token($this->add('Adaeze Okonkwo'));
+        $path = $this->feedOf($this->reply($token, 'coming'));
+
+        self::mockTime(new DateTimeImmutable('2030-11-14T15:30:00+00:00'));
+        self::assertSame($path, $this->open($token)['calendarFeed'] ?? null);
+
+        self::mockTime(new DateTimeImmutable('2030-11-15T01:30:00+00:00'));
+        $page = $this->open($token);
+        self::assertSame('finished', $page['phase'] ?? null, Json\encode($page));
+        self::assertNull($page['calendarFeed'] ?? null);
     }
 
     #[Test]
