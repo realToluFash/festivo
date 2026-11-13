@@ -1012,6 +1012,12 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
         await screen.findByRole('alertdialog', { name: 'Replace Dr Emeka Nwosu’s link?' }),
       ).getByRole('button', { name: 'Replace link' }),
     );
+    fireEvent.click(
+      within(await screen.findByRole('dialog', { name: 'Tell Dr Emeka Nwosu?' })).getByRole(
+        'button',
+        { name: 'Not now' },
+      ),
+    );
 
     expect(
       await within(column()).findByText(
