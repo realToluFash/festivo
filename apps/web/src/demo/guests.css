@@ -408,12 +408,6 @@
   min-width: 0;
 }
 
-.desk .gs-companion .desk-box input {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .gs-phone {
   display: flex;
   gap: var(--spaceSm);
@@ -1003,6 +997,12 @@
   outline: none;
   box-shadow: var(--deskRing);
   border-radius: var(--radiusRow);
+}
+
+.desk .gs-companion .desk-box input {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gs-named-by {
