@@ -25,10 +25,16 @@ import { useSendingWords } from './ReadOut.tsx';
 import { SETTLED_MS } from './Screen.tsx';
 import {
   type ScreenReaderTarget,
-  focusReadOnce,
   moveScreenReaderFocus,
+  useScreenReaderOn,
 } from './screenReaderFocus.ts';
-import { SilentWindowName, useFocusBack, useWindowTurn } from './Sheet.tsx';
+import {
+  SilentWindowName,
+  WINDOW_ARRIVES_MS,
+  useFocusBack,
+  useUnnamedWindow,
+  useWindowTurn,
+} from './Sheet.tsx';
 import type { TextHandle } from './Text.tsx';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useAccessibilitySizes, useLayout } from '../layout/useLayout.ts';
@@ -149,6 +155,13 @@ export function CreateWalkWindow<Made>({
   if (open && !present) setPresent(true);
   const wanted = phone ? open : present;
   const { shown, gone } = useWindowTurn(useModalOpen(wanted && here));
+  const [onScreen, setOnScreen] = useState(false);
+  if (!shown && onScreen) setOnScreen(false);
+  const readerOn = useScreenReaderOn();
+  const talkBack = Platform.OS === 'android' && readerOn;
+  const arriving = reduced ? 0 : phone ? WINDOW_ARRIVES_MS : tokens.motionBase;
+  // With TalkBack on, hidden while the window arrives, so its focus lands on nothing, Cancel included (sc-42690).
+  const unnamed = useUnnamedWindow(talkBack && shown, onScreen, null, arriving);
   const [fade] = useState(() => new Animated.Value(0));
   const [grow] = useState(() => new Animated.Value(GROW_FROM));
   const [frame, setFrame] = useState({ panel: 0, stage: 0 });
@@ -192,19 +205,33 @@ export function CreateWalkWindow<Made>({
   }, [phone, open, present, fade]);
 
   useEffect(() => {
-    if (!shown || opening.walk.asking) return;
-    let cancelKeys = () => {};
+    if (talkBack || !shown || opening.walk.asking) return;
     const wait = setTimeout(() => {
-      if (opening.focus === 'search') cancelKeys = focusReadOnce(search);
-      else if (opening.focus === 'name') cancelKeys = focusReadOnce(field);
+      if (opening.focus === 'search') search.current?.focus();
+      else if (opening.focus === 'name') field.current?.focus();
       else moveScreenReaderFocus(question.current);
     }, SETTLED_MS);
 
-    return () => {
-      clearTimeout(wait);
-      cancelKeys();
-    };
-  }, [shown, opening]);
+    return () => clearTimeout(wait);
+  }, [talkBack, shown, opening]);
+
+  // The field takes the keys while the window is still hidden, so TalkBack says nothing as it does; once shown, its focus reads the field once (sc-42690).
+  useEffect(() => {
+    if (!talkBack || !onScreen || !unnamed || opening.walk.asking) return;
+    const keys = setTimeout(() => {
+      if (opening.focus === 'search') search.current?.focus();
+      else if (opening.focus === 'name') field.current?.focus();
+    }, arriving);
+
+    return () => clearTimeout(keys);
+  }, [talkBack, onScreen, unnamed, arriving, opening]);
+
+  useEffect(() => {
+    if (!talkBack || !onScreen || unnamed || opening.walk.asking) return;
+    if (opening.focus === 'search') moveScreenReaderFocus(search.current);
+    else if (opening.focus === 'name') moveScreenReaderFocus(field.current);
+    else moveScreenReaderFocus(question.current);
+  }, [talkBack, onScreen, unnamed, opening]);
 
   useEffect(
     () => () => {
@@ -421,7 +448,7 @@ export function CreateWalkWindow<Made>({
         </Animated.View>
       );
     });
-  const behind = walk.asking ? ('no-hide-descendants' as const) : ('auto' as const);
+  const behind = walk.asking || unnamed ? ('no-hide-descendants' as const) : ('auto' as const);
   const managed = walk.managed;
   const refusal = (
     <View style={[styles.refusal, phone && styles.refusalPhone]}>{managedBanner}</View>
@@ -443,6 +470,7 @@ export function CreateWalkWindow<Made>({
       statusBarTranslucent
       navigationBarTranslucent
       onRequestClose={escape}
+      onShow={() => setOnScreen(true)}
       onDismiss={gone}
     >
       {Platform.OS === 'android' && <SilentWindowName />}
@@ -506,6 +534,7 @@ export function CreateWalkWindow<Made>({
               accessibilityRole="button"
               accessibilityLabel={t('createOrganisation.cancel')}
               accessibilityState={{ disabled: creating }}
+              importantForAccessibility={unnamed ? 'no-hide-descendants' : 'auto'}
               testID="createWalk.scrim"
             />
           </Animated.View>
