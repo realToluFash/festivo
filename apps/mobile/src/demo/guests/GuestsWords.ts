@@ -93,7 +93,7 @@ export const W = {
   changeName: 'Change the name',
   conflict: 'Someone else changed this guest. Here is their version.',
   conflictLine:
-    'Use theirs puts their version in the form and drops yours. Keep mine saves yours over theirs.',
+    'Use theirs fills the form with their version and drops your changes. Keep mine saves your changes over theirs.',
   theirs: 'Theirs',
   yours: 'Yours',
   useTheirs: 'Use theirs',
