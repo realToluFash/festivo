@@ -129,6 +129,8 @@
     "guest.already_listed": "{name} ya está en la lista",
     "guest.version_required": "Send the version you are changing, as If-Match.",
     "guest.changed_since": "Someone else changed this guest since you opened it. Your change was not saved.",
+    "guest.replies_closed": "Answers have closed. Contact your host if something has changed.",
+    "validation.guest_answer_unknown": "Choose Coming, Not coming or Not sure yet.",
     "event.currency_in_use": "La moneda no puede cambiar una vez que hay importes registrados en este evento.",
     "event.state_invalid": "El estado actual de este evento no lo permite.",
     "event.concluded": "Este evento ya ha terminado, así que no se puede publicar. Cambie antes sus fechas.",

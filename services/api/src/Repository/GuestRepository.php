@@ -56,6 +56,16 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
             ->getSingleScalarResult());
     }
 
+    public function countCompanions(Guest $host): int
+    {
+        return Type\int()->coerce($this->createQueryBuilder('g')
+            ->select('COUNT(g.id)')
+            ->where('g.host = :host')
+            ->setParameter('host', $host->getId(), 'uuid')
+            ->getQuery()
+            ->getSingleScalarResult());
+    }
+
     /** Guests and companions on every event the organisation still has. */
     public function countInOrganisation(Organisation $organisation): int
     {

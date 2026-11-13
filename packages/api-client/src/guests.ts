@@ -4,6 +4,10 @@ import type { EventCover } from './client.ts';
 
 export type GuestReply = 'noReply' | 'coming' | 'maybe' | 'notComing';
 
+/** What a guest can send from their own page (sc-1439); `maybe` is the guest's "Not sure yet". */
+export type GuestAnswer = Exclude<GuestReply, 'noReply'>;
+export const GUEST_ANSWERS: readonly GuestAnswer[] = ['coming', 'notComing', 'maybe'];
+
 /** Derived from the host's reply and never stored: Held until the host is Coming. */
 export type CompanionState = 'held' | 'coming';
 
@@ -22,6 +26,8 @@ export interface Guest {
   /** E.164; null as `email` is. */
   mobile: string | null;
   reply: GuestReply;
+  /** When the current reply was given, in the event's zone; null with no reply. */
+  repliedAt: string | null;
   companions: Companion[];
 }
 
@@ -63,9 +69,14 @@ export interface TaggedGuest {
   tag: string;
 }
 
-/** What a guest's own link opens (sc-1526): their name as the host typed it, and the event behind it. */
+/** What a guest's own link opens (sc-1526): their name as the host typed it, their answer (sc-1439), and the event behind it. */
 export interface GuestPage {
-  guest: { fullName: string };
+  guest: {
+    fullName: string;
+    /** `at` is in the event's zone. */
+    reply: { answer: GuestAnswer; at: string } | null;
+    companions: number;
+  };
   event: {
     /** For its colour (meshFor) until it has a photo, as its event page has it. */
     id: string;
@@ -75,7 +86,14 @@ export interface GuestPage {
     cover: EventCover | null;
     /** The names guests read, in order (sc-6713). */
     hosts: string[];
+    /** With the event's own offset. */
+    startsAt: string;
+    timeZone: string;
+    /** The address as the host entered it. */
+    venue: { name: string | null; address: string | null } | null;
   };
+  /** False from the start, in the event's zone. */
+  answersOpen: boolean;
 }
 
 /** The API's Guest limits, which the form checks before sending. */
@@ -114,6 +132,7 @@ export function asGuest(value: unknown): Guest | null {
     email: text(row.email),
     mobile: text(row.mobile),
     reply,
+    repliedAt: reply === 'noReply' ? null : text(row.repliedAt),
     companions: companions as Companion[],
   };
 }

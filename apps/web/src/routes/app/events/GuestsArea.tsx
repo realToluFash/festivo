@@ -39,6 +39,7 @@ import {
   TextAction,
 } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
+import { dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { type Mesh, meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
@@ -438,6 +439,7 @@ export function GuestsArea({
                       <Rows
                         rows={rowsOf(guests)}
                         eventId={event.id}
+                        timeZone={event.timeZone}
                         open={open}
                         onOpen={openGuest}
                       />
@@ -603,11 +605,14 @@ function GuestsCover({
 function Rows({
   rows,
   eventId,
+  timeZone,
   open,
   onOpen,
 }: {
   rows: readonly ListRow[];
   eventId: string;
+  /** The event's: a reply's date is the day it was in the event's zone. */
+  timeZone: string;
   open: string | null;
   onOpen: (id: string) => void;
 }) {
@@ -618,7 +623,18 @@ function Rows({
       {rows.map((row) => {
         if (row.kind === 'guest') {
           const { guest } = row;
-          const reply = t(REPLY_KEY[guest.reply]);
+          const word = t(REPLY_KEY[guest.reply]);
+          const reply =
+            guest.repliedAt == null
+              ? word
+              : t('guestList.replied', {
+                  reply: word,
+                  date: new Intl.DateTimeFormat(dateLocale(), {
+                    month: 'short',
+                    day: 'numeric',
+                    timeZone,
+                  }).format(new Date(guest.repliedAt)),
+                });
           const mobile = guest.mobile == null ? null : formatPhone(guest.mobile);
           const contact =
             guest.email != null && mobile != null

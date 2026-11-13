@@ -1,5 +1,13 @@
 import type { Ref } from 'react';
-import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  type AccessibilityActionEvent,
+  type AccessibilityActionInfo,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+  type ViewInstance,
+} from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
 import { Glyph } from './Glyph.tsx';
@@ -116,6 +124,7 @@ export function OrgPill({
       accessibilityRole={onPress == null ? 'text' : 'button'}
       accessibilityLabel={label}
       accessibilityState={onPress == null || expanded == null ? undefined : { expanded }}
+      {...quietTap(onPress, expanded)}
       testID={testID}
     >
       {tileAlone ? (
@@ -138,6 +147,20 @@ export function OrgPill({
       )}
     </Pressable>
   );
+}
+
+const ACTIVATE: AccessibilityActionInfo[] = [{ name: 'activate' }];
+
+/** On Android, TalkBack's double tap opens the switcher without the click that had TalkBack say the pill's state, "collapsed", before the switcher's title (sc-42690). */
+function quietTap(onPress: (() => void) | undefined, expanded: boolean | undefined) {
+  if (Platform.OS !== 'android' || onPress == null || expanded == null) return {};
+
+  return {
+    accessibilityActions: ACTIVATE,
+    onAccessibilityAction: (event: AccessibilityActionEvent) => {
+      if (event.nativeEvent.actionName === 'activate') onPress();
+    },
+  };
 }
 
 const styles = StyleSheet.create({
