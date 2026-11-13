@@ -27,6 +27,7 @@ import {
   type Guest,
   type GuestEdit,
   type GuestList,
+  type GuestPage,
   type NewGuest,
   type TaggedGuest,
 } from './guests.ts';
@@ -2092,6 +2093,82 @@ export class ApiClient {
       token: typeof body.token === 'string' ? body.token : '',
       expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
     };
+  }
+
+  /** A guest's whole link, for those who can add guests. Refused 409 `event_state_invalid` unless the event's phase allows `invite` (sc-1526). */
+  async guestLink(eventId: string, guestId: string): Promise<string> {
+    const body = await this.get<{ url?: unknown }>(
+      `${this.guestsPath(eventId)}/${encodeURIComponent(guestId)}/link`,
+    );
+
+    if (typeof body?.url !== 'string') {
+      throw new Error(
+        'The API answered a guest link in a shape this client does not know. Check GuestLinkController in services/api.',
+      );
+    }
+
+    return body.url;
+  }
+
+  /** The ids of the guests whose link may have reached the wrong person, for those who can add guests (sc-1526). */
+  async flaggedGuests(eventId: string): Promise<readonly string[]> {
+    const body = await this.get<{ guests?: unknown }>(`${this.guestsPath(eventId)}/flagged`);
+    const ids = body?.guests;
+
+    if (!Array.isArray(ids) || !ids.every((id): id is string => typeof id === 'string')) {
+      throw new Error(
+        'The API answered the flagged guests in a shape this client does not know. Check GuestLinkController in services/api.',
+      );
+    }
+
+    return ids;
+  }
+
+  /** Ends the guest's old link at once, in any phase. */
+  async replaceGuestLink(eventId: string, guestId: string): Promise<void> {
+    await this.post<undefined>(
+      `${this.guestsPath(eventId)}/${encodeURIComponent(guestId)}/link/replace`,
+    );
+  }
+
+  /** The token is a credential, so it travels in the body. Refused `not_found` alike for an unknown, replaced or deleted event's token. */
+  async guestPage(token: string): Promise<GuestPage> {
+    const raw = await this.post<Record<string, unknown>>(
+      '/api/guest-links/page',
+      { token },
+      { anonymous: true },
+    );
+    const guest = raw?.guest as Record<string, unknown> | null | undefined;
+    const event = raw?.event as Record<string, unknown> | null | undefined;
+
+    if (
+      typeof guest?.fullName !== 'string' ||
+      typeof event?.id !== 'string' ||
+      typeof event.name !== 'string' ||
+      typeof event.type !== 'string'
+    ) {
+      throw new Error(
+        'The API answered POST /api/guest-links/page in a shape this client does not know. Check GuestPageController in services/api.',
+      );
+    }
+
+    return {
+      guest: { fullName: guest.fullName },
+      event: {
+        id: event.id,
+        name: event.name,
+        type: event.type,
+        cover: asEventCover(event.cover) ?? null,
+        hosts: Array.isArray(event.hosts)
+          ? event.hosts.filter((host): host is string => typeof host === 'string')
+          : [],
+      },
+    };
+  }
+
+  /** "Not {name}? Tell us". Refused `too_many_attempts` after five an hour on one link. */
+  async tellWrongPerson(token: string): Promise<void> {
+    await this.post<undefined>('/api/guest-links/wrong-person', { token }, { anonymous: true });
   }
 
   private guestsPath(eventId: string): string {

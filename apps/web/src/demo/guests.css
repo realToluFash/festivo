@@ -943,6 +943,89 @@
   }
 }
 
+/* sc-3784, Export: the failure at the dialog's top, the file and its columns inset, and the safety note held directly above Download while the body scrolls. */
+.gs-x-failed {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  color: var(--colorInk);
+  font: var(--deskLine);
+}
+
+.gs-x-failed svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+  color: var(--colorBroken);
+}
+
+.gs-x-who .desk-row .desk-row-name {
+  font-variant-numeric: tabular-nums;
+}
+
+.desk-row.gs-x-off {
+  cursor: default;
+}
+
+.desk-row.gs-x-off .desk-row-name {
+  color: var(--colorInkTertiary);
+}
+
+.gs-x-file {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  padding: var(--spaceLg);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.gs-x-name {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  color: var(--colorInk);
+  font: 600 15px/1.35 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.gs-x-name svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+  color: var(--colorInkSecondary);
+}
+
+.gs-x-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXs) var(--spaceSm);
+  color: var(--colorInk);
+  font: var(--deskSmall);
+}
+
+.gs-x-columns li:not(:last-child)::after {
+  content: ' ·';
+  color: var(--colorInkSecondary);
+}
+
+.gs-x-foot {
+  position: sticky;
+  bottom: calc(-1 * var(--space5xl));
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin: 0 calc(-1 * var(--spaceXxl)) calc(-1 * var(--space5xl));
+  padding: var(--spaceLg) var(--spaceXxl) var(--spaceXl);
+  border-top: 1px solid var(--colorBorder);
+  background: var(--colorCard);
+}
+
+.gs-pill.gs-x-go {
+  align-self: stretch;
+  gap: var(--spaceXs);
+}
+
 /* sc-3779: Places for companions, a stepper at the top of Companions. */
 .gs-places {
   display: flex;

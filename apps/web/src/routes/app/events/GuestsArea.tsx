@@ -7,7 +7,13 @@ import {
   asGuestList,
   realtimeTopic,
 } from '@soirely/api-client';
-import { deviceCountry, formatPhone, phoneScreenCountry } from '@soirely/domain';
+import {
+  deviceCountry,
+  formatPhone,
+  eventAllows,
+  phoneScreenCountry,
+  shownPhase,
+} from '@soirely/domain';
 import {
   type ReactNode,
   type RefObject,
@@ -37,7 +43,9 @@ import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts'
 import { type Mesh, meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
+import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
+import { DraftRow } from './MakeLive.tsx';
 import {
   type ListRow,
   MOST_COMPANIONS,
@@ -209,17 +217,26 @@ export function GuestsGone({ heading }: { heading: RefObject<HTMLHeadingElement 
 
 export function GuestsArea({
   event,
+  tag,
   heading,
+  onChange,
 }: {
   event: OrganisationEvent;
-  heading?: RefObject<HTMLHeadingElement | null>;
+  tag: string;
+  heading: RefObject<HTMLHeadingElement | null>;
+  onChange: (event: OrganisationEvent, tag: string) => void;
 }) {
   const { t } = useTranslation();
-  const root = useRef<HTMLDivElement>(null);
   const { layers, covered, setHost } = useDeskLayers();
+  const now = useServerNow();
+  const phase = shownPhase(event, useLoadedAt(event), now);
+  const invites = eventAllows(phase, 'invite');
+  const root = useRef<HTMLDivElement>(null);
   const focus = useFocusKeys(root);
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [heard, setHeard] = useState(0);
+  const [flagged, setFlagged] = useState<ReadonlySet<string>>(new Set());
   const [adding, setAdding] = useState(false);
   const [params, setParams] = useSearchParams();
   const open = adding ? null : params.get('guest');
@@ -262,10 +279,26 @@ export function GuestsArea({
     };
   }, [event.id, attempt]);
 
+  useEffect(() => {
+    let current = true;
+
+    if (manages) {
+      api.flaggedGuests(event.id).then(
+        (ids) => current && setFlagged(new Set(ids)),
+        () => undefined,
+      );
+    }
+
+    return () => {
+      current = false;
+    };
+  }, [event.id, manages, attempt, heard]);
+
   useLiveGuests(
     event.id,
     (list) => {
       setStamp((n) => n + 1);
+      setHeard((n) => n + 1);
       if (manages) setAttempt((n) => n + 1);
       else setLoad({ kind: 'loaded', list });
     },
@@ -353,6 +386,20 @@ export function GuestsArea({
               </button>
             )}
           </header>
+          <DraftRow
+            event={event}
+            tag={tag}
+            now={now}
+            manages={canOn(event, 'events.manage')}
+            heading={heading}
+            onChange={onChange}
+            onMadeLive={() => undefined}
+          />
+          {(phase === 'paused' || phase === 'finished') && (
+            <p className="desk-line gs-blocked">
+              {t(phase === 'paused' ? 'guestList.pausedLine' : 'guestList.finishedLine')}
+            </p>
+          )}
           {load.kind === 'loading' && (
             <Skeleton words={t('pending.loading')} shape="rows" rowHeight={64} />
           )}
@@ -414,6 +461,30 @@ export function GuestsArea({
                           guests={guests}
                           country={country}
                           stamp={stamp}
+                          invites={invites}
+                          flagged={flagged.has(open)}
+                          onCopy={() =>
+                            api.guestLink(event.id, open).catch((error: unknown) => {
+                              if (error instanceof ApiError && error.is('event_state_invalid')) {
+                                void api.taggedEvent(event.id).then(
+                                  (latest) => {
+                                    onChange(latest.event, latest.tag);
+                                    window.setTimeout(() => heading.current?.focus(), 0);
+                                  },
+                                  () => undefined,
+                                );
+                              }
+
+                              throw error;
+                            })
+                          }
+                          onReplace={() =>
+                            api
+                              .replaceGuestLink(event.id, open)
+                              .then(() =>
+                                setFlagged((was) => new Set([...was].filter((id) => id !== open))),
+                              )
+                          }
                           focus={focus}
                           onDirty={setDirty}
                           onAsk={(then) => setAsking(() => then)}

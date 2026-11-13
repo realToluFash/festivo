@@ -339,6 +339,11 @@
   color: var(--colorAttentionText);
 }
 
+.gs-amber-line {
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
 .gs-pair {
   display: flex;
   flex-wrap: wrap;
@@ -404,6 +409,15 @@
   from {
     opacity: 0;
   }
+}
+
+/* A guest beside the list (sc-1526), measured as the web demo's guest column draws it (apps/web/src/demo/guests.css). */
+.gs-row.is-on {
+  background: var(--colorAccentTint);
+}
+
+.gs-blocked {
+  margin-bottom: var(--spaceLg);
 }
 
 /* A guest's column (sc-3773): the cover card the guest sees, then Details; Edit in place. */
@@ -545,4 +559,63 @@
   width: 52px;
   color: var(--colorInkSecondary);
   font-weight: 600;
+}
+
+.gs-do {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gs-do .desk-row-name {
+  color: var(--colorAccent);
+  font-weight: 500;
+}
+
+.gs-copied {
+  display: flex;
+  align-items: center;
+  padding-left: 40px;
+}
+
+.gs-copied span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-height: var(--sizeHit);
+  color: var(--deskGreen);
+  font: 600 15px/1.3 var(--fontFamily);
+}
+
+.gs-refused {
+  padding-left: 40px;
+  color: var(--colorBroken);
+  font: 600 15px/1.3 var(--fontFamily);
+}
+
+.gs-by-hand {
+  padding: var(--spaceXs) 0 var(--spaceMd);
+}
+
+.gs-link {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 52px;
+  padding: var(--spaceLg) var(--spacePillEnd);
+  border: 0;
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+  color: var(--colorInk);
+  font: 500 15px/1.45 var(--fontFamily);
+  overflow-wrap: anywhere;
+  resize: none;
+}
+
+.gs .gs-link:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
 }

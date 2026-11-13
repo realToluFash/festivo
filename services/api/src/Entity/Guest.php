@@ -8,6 +8,7 @@ use App\Doctrine\Traits\Timestampable;
 use App\Enum\GuestReply;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use SensitiveParameter;
 use Symfony\Component\Uid\Uuid;
 
 /** On an event's list (sc-1468). A companion has a `host` and no contact, reply or link: they come as their host replies. */
@@ -64,7 +65,15 @@ class Guest
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
     private int $version = 1;
 
-    private function __construct(Event $event, ?Guest $host, ?string $fullName, ?string $nameKey, ?string $email, ?string $mobile, ?GuestReply $reply, int $position, ?User $addedBy)
+    /** What `/i/<token>` carries (sc-1526); null for a companion, who has no link. */
+    #[ORM\Column(type: Types::STRING, length: 43, unique: true, nullable: true)]
+    private ?string $linkToken;
+
+    /** Somebody holding the link said it reached the wrong person; replacing the link clears it. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $linkFlagged = false;
+
+    private function __construct(Event $event, ?Guest $host, ?string $fullName, ?string $nameKey, ?string $email, ?string $mobile, ?GuestReply $reply, int $position, ?User $addedBy, #[SensitiveParameter] ?string $linkToken)
     {
         $this->id = Uuid::v7();
         $this->event = $event;
@@ -76,16 +85,17 @@ class Guest
         $this->reply = $reply;
         $this->position = $position;
         $this->addedBy = $addedBy;
+        $this->linkToken = $linkToken;
     }
 
-    public static function invited(Event $event, string $fullName, string $nameKey, ?string $email, ?string $mobile, ?User $addedBy): self
+    public static function invited(Event $event, string $fullName, string $nameKey, ?string $email, ?string $mobile, ?User $addedBy, #[SensitiveParameter] string $linkToken): self
     {
-        return new self($event, null, $fullName, $nameKey, $email, $mobile, GuestReply::NoReply, 0, $addedBy);
+        return new self($event, null, $fullName, $nameKey, $email, $mobile, GuestReply::NoReply, 0, $addedBy, $linkToken);
     }
 
     public static function companionOf(self $host, ?string $fullName, ?string $nameKey, int $position, ?User $addedBy): self
     {
-        return new self($host->event, $host, $fullName, $nameKey, null, null, null, $position, $addedBy);
+        return new self($host->event, $host, $fullName, $nameKey, null, null, null, $position, $addedBy, null);
     }
 
     public function getId(): Uuid
@@ -167,5 +177,27 @@ class Guest
     public function raiseVersion(): void
     {
         ++$this->version;
+    }
+
+    public function getLinkToken(): ?string
+    {
+        return $this->linkToken;
+    }
+
+    /** Ends the old link at once and clears the wrong-person flag. */
+    public function replaceLink(#[SensitiveParameter] string $linkToken): void
+    {
+        $this->linkToken = $linkToken;
+        $this->linkFlagged = false;
+    }
+
+    public function isLinkFlagged(): bool
+    {
+        return $this->linkFlagged;
+    }
+
+    public function flagLink(): void
+    {
+        $this->linkFlagged = true;
     }
 }

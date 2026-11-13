@@ -147,7 +147,12 @@ function EventOf({
 
   if (page === 'guests' && load.kind === 'loaded')
     return canOn(load.event, 'guests.read') ? (
-      <GuestsArea event={load.event} heading={heading} />
+      <GuestsArea
+        event={load.event}
+        tag={load.tag}
+        heading={heading}
+        onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
+      />
     ) : (
       <NotFound />
     );

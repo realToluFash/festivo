@@ -12,9 +12,10 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { Glyph, type GlyphName } from '../../../components/Glyph.tsx';
-import { Head, RowWords } from '../../../components/SettingsParts.tsx';
+import { Ask, Head, RowWords } from '../../../components/SettingsParts.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
+import { focusWhenFree } from '../../../layers.ts';
 import { type Mesh } from '../../../mesh.ts';
 import { offButton } from '../../../offButton.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
@@ -107,7 +108,13 @@ type Pane =
   | { kind: 'guest'; tagged: TaggedGuest }
   | { kind: 'edit'; tagged: TaggedGuest };
 
-/** The guest beside the list (sc-3773): their card and Details, or Edit in their place. */
+type Copy =
+  { kind: 'none' } | { kind: 'copied' } | { kind: 'byHand'; url: string } | { kind: 'failed' };
+
+type Replace =
+  { kind: 'none' } | { kind: 'asking'; busy: boolean } | { kind: 'failed' } | { kind: 'replaced' };
+
+/** The guest beside the list: their card, the wrong-person notice (sc-1526), Details (sc-3773), then Invitation for those who can add guests (sc-1526); or Edit in their place. */
 export function GuestColumn({
   eventId,
   guestId,
@@ -116,6 +123,10 @@ export function GuestColumn({
   guests,
   country,
   stamp,
+  invites,
+  flagged,
+  onCopy,
+  onReplace,
   focus,
   onDirty,
   onAsk,
@@ -130,6 +141,12 @@ export function GuestColumn({
   country: string;
   /** Raised on each change published to the list; the guest is read again unless being edited. */
   stamp: number;
+  invites: boolean;
+  /** Someone who opened this guest's link pressed Tell them; only ever true for those who can add guests. */
+  flagged: boolean;
+  /** The whole link; refused 409 on a phase that does not invite. */
+  onCopy: () => Promise<string>;
+  onReplace: () => Promise<void>;
   focus: (...keys: string[]) => void;
   onDirty: (dirty: boolean) => void;
   /** Asks "Discard your changes?" and runs `then` only on Discard. */
@@ -250,6 +267,10 @@ export function GuestColumn({
       guest={pane.tagged.guest}
       mesh={mesh}
       manages={manages}
+      invites={invites}
+      flagged={flagged}
+      onCopy={onCopy}
+      onReplace={onReplace}
       onEdit={() => {
         setPane({ kind: 'edit', tagged: pane.tagged });
         focus('fullName');
@@ -262,15 +283,55 @@ function GuestView({
   guest,
   mesh,
   manages,
+  invites,
+  flagged,
+  onCopy,
+  onReplace,
   onEdit,
 }: {
   guest: GuestDetails;
   mesh: Mesh;
   manages: boolean;
+  invites: boolean;
+  flagged: boolean;
+  onCopy: () => Promise<string>;
+  onReplace: () => Promise<void>;
   onEdit: () => void;
 }) {
   const { t } = useTranslation();
   const heading = useId();
+  const [copy, setCopy] = useState<Copy>({ kind: 'none' });
+  const [replace, setReplace] = useState<Replace>({ kind: 'none' });
+  const replaceButton = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (replace.kind === 'replaced') focusWhenFree(() => replaceButton.current);
+  }, [replace.kind]);
+
+  function copied(): void {
+    onCopy().then(
+      (url) => {
+        const byHand = () => setCopy({ kind: 'byHand', url });
+
+        if (navigator.clipboard == null) byHand();
+        else navigator.clipboard.writeText(url).then(() => setCopy({ kind: 'copied' }), byHand);
+      },
+      () => setCopy({ kind: 'failed' }),
+    );
+  }
+
+  function replaced(): void {
+    setReplace({ kind: 'asking', busy: true });
+    onReplace().then(
+      () => {
+        setCopy({ kind: 'none' });
+        setReplace({ kind: 'replaced' });
+      },
+      () => setReplace({ kind: 'failed' }),
+    );
+  }
+
+  const ask = () => setReplace({ kind: 'asking', busy: false });
   const added = new Intl.DateTimeFormat(currentLocale(), {
     month: 'short',
     day: 'numeric',
@@ -279,6 +340,12 @@ function GuestView({
 
   return (
     <div className="gs-guest">
+      {replace.kind === 'replaced' && (
+        <p className="gs-ok" role="status">
+          <Glyph name="tick" size={17} weight={2.6} />
+          {t('guestList.linkReplaced', { name: guest.fullName })}
+        </p>
+      )}
       <section
         className={`ev-card today-cover is-${mesh} gs-card is-guest`}
         aria-labelledby={heading}
@@ -299,6 +366,15 @@ function GuestView({
           </h2>
         </div>
       </section>
+      {manages && flagged && (
+        <WrongPerson name={guest.fullName} heading={heading} onReplace={ask} />
+      )}
+      {replace.kind === 'failed' && (
+        <p className="desk-error gs-refused" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {t('guestList.notReplaced')}
+        </p>
+      )}
       {(manages || guest.companions.length > 0) && (
         <section className="desk-block" aria-labelledby={`${heading}-details`}>
           <Head level={3} title={<span id={`${heading}-details`}>{t('guestList.details')}</span>}>
@@ -356,6 +432,124 @@ function GuestView({
           </ul>
         </section>
       )}
+      {manages && (
+        <section className="desk-block" aria-labelledby={`${heading}-invitation`}>
+          <Head
+            level={3}
+            title={<span id={`${heading}-invitation`}>{t('guestList.invitation')}</span>}
+          />
+          <ul className="desk-rows gs-rows">
+            {invites && (
+              <li>
+                <button type="button" className="desk-row gs-do" data-focus="copy" onClick={copied}>
+                  <IconLead name="link" />
+                  <RowWords title={t('guestList.copyLink')} lines={[t('guestList.copyLinkLine')]} />
+                </button>
+                <p className="gs-copied" role="status">
+                  {copy.kind === 'copied' && (
+                    <span>
+                      <Glyph name="tick" size={16} weight={2.6} />
+                      {t('guestList.linkCopied')}
+                    </span>
+                  )}
+                </p>
+                {copy.kind === 'byHand' && <CopyByHand url={copy.url} />}
+                {copy.kind === 'failed' && (
+                  <p className="gs-refused" role="alert">
+                    {t('guestList.loadFailedLine')}
+                  </p>
+                )}
+              </li>
+            )}
+            <li>
+              <button
+                ref={replaceButton}
+                type="button"
+                className="desk-row gs-do"
+                data-focus="replace"
+                onClick={ask}
+              >
+                <IconLead name="refresh" />
+                <RowWords
+                  title={t('guestList.replaceLink')}
+                  lines={[t('guestList.replaceLinkLine')]}
+                />
+              </button>
+            </li>
+          </ul>
+        </section>
+      )}
+      {replace.kind === 'asking' && (
+        <Ask
+          title={t('guestList.replaceTitle', { name: guest.fullName })}
+          line={t('guestList.replaceLine')}
+          keep={t('guestList.keepIt')}
+          go={t('guestList.replace')}
+          red={false}
+          busy={replace.busy ? t('guestList.replace') : undefined}
+          onKeep={() => setReplace({ kind: 'none' })}
+          onGo={replaced}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Marked by the triangle and the words, not the amber alone; there when the page opens, so a region, not an alert. */
+function WrongPerson({
+  name,
+  heading,
+  onReplace,
+}: {
+  name: string;
+  heading: string;
+  onReplace: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <section className="gs-amber" aria-labelledby={`${heading}-flag`}>
+      <h3 id={`${heading}-flag`} className="gs-amber-head">
+        <Glyph name="warn" size={17} weight={2.2} />
+        {t('guestList.flaggedTitle')}
+      </h3>
+      <p className="gs-amber-line">{t('guestList.flaggedLine', { name })}</p>
+      <button type="button" className="desk-text" data-focus="flag-replace" onClick={onReplace}>
+        {t('guestList.replaceLink')}
+      </button>
+    </section>
+  );
+}
+
+/** The browser kept the clipboard, so the link is selected to copy by hand. */
+function CopyByHand({ url }: { url: string }) {
+  const { t } = useTranslation();
+  const id = useId();
+  const field = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    field.current?.focus();
+    field.current?.select();
+  }, []);
+
+  return (
+    <div className="desk-field gs-by-hand">
+      <label htmlFor={id} className="desk-label">
+        {t('guestList.invitationLink')}
+      </label>
+      <textarea
+        ref={field}
+        id={id}
+        className="gs-link"
+        readOnly
+        rows={2}
+        value={url}
+        aria-describedby={`${id}-help`}
+        onFocus={(event) => event.target.select()}
+      />
+      <p id={`${id}-help`} className="desk-help">
+        {t('guestList.clipboardRefused')}
+      </p>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { ARRIVAL_NOTE } from './arrivalNote.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
 
 const SLOW = { timeout: 15000 };
@@ -102,6 +103,18 @@ describe('the guest’s page on the event’s day (sc-24381)', () => {
     );
     expect(maps.getAttribute('rel')).toBe('noopener noreferrer');
     expect(screen.getAllByRole('link', { name: 'Open in maps' })).toHaveLength(1);
+  });
+
+  it('shows the host’s arrival note in Where, under the place, the same note as before the day', async () => {
+    await guest('onTheDay');
+    const where = screen.getByRole('heading', { name: 'Where' }).closest('section')!;
+    const note = within(where).getByText(/^Use the side entrance on Marylebone Road/u);
+
+    expect(note.textContent).toBe(ARRIVAL_NOTE);
+    expect(screen.getAllByText(/^Use the side entrance/u)).toHaveLength(1);
+    expect(where.textContent?.indexOf('Open in maps')).toBeLessThan(
+      where.textContent?.indexOf('Use the side entrance') ?? 0,
+    );
   });
 
   it('shows the closed view under Your answer from the start', async () => {

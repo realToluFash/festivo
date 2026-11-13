@@ -14,13 +14,15 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
-import { type SampleEvent, TODAY_IDS, sampleEvent } from './events.ts';
+import { type SampleEvent, TODAY_IDS, localDay, sampleEvent } from './events.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { AddForm, EditForm, RecordForm } from './GuestForms.tsx';
 import { AllergyMark } from './GuestNeeds.tsx';
 import { type GuestActions, GuestView } from './GuestColumn.tsx';
 import { AgreeForm } from './GuestWhatsApp.tsx';
+import { ExportDialog } from './GuestExport.tsx';
+import { XW, narrowing } from './guestExport.ts';
 import {
   CHOICES,
   LINK,
@@ -219,6 +221,7 @@ function GuestsPage({
   const [expanded, setExpanded] = useState<ReadonlySet<Reply>>(new Set());
   const [pane, setPane] = useState<Pane>(start.pane);
   const [asking, setAsking] = useState(start.asking);
+  const [exporting, setExporting] = useState(start.exporting);
   const [paused, setPaused] = useState(start.paused);
   const event: SampleEvent = paused ? { ...sample, status: 'paused' } : sample;
   const [asked, setAsked] = useState<ReadonlySet<string>>(
@@ -462,6 +465,7 @@ function GuestsPage({
   });
 
   const plus = manages && status === 'ready' && list.length > 0;
+  const exports = (manages || start.role === 'member') && status === 'ready' && list.length > 0;
   const columns = list.length > 0 || pane.kind === 'add';
   const stepWord =
     card.step === 'add'
@@ -499,6 +503,16 @@ function GuestsPage({
           <h1 className="gs-title" tabIndex={-1} data-focus="title">
             {GW.title}
           </h1>
+          {exports && (
+            <button
+              type="button"
+              className="gs-pill is-secondary"
+              data-focus="export"
+              onClick={() => setExporting({})}
+            >
+              {XW.export}
+            </button>
+          )}
           {plus && (
             <button type="button" className="ev-new" data-focus="add" onClick={() => startAdd()}>
               <Glyph name="plus" size={18} weight={2.4} />
@@ -728,6 +742,26 @@ function GuestsPage({
             setAsking(null);
             setPane({ kind: 'guest', id: paneGuest.id, note: 'linkReplaced' });
             focus('replace');
+          }}
+        />
+      )}
+      {exporting != null && (
+        <ExportDialog
+          start={exporting}
+          event={event.name}
+          day={localDay(start.clock, event.timeZone)}
+          inView={shown}
+          everyone={counts.all}
+          narrowing={narrowing(choice, q)}
+          needs={manages}
+          onClose={() => {
+            setExporting(null);
+            focus('export');
+          }}
+          onReady={(file) => {
+            setExporting(null);
+            tell(XW.ready(file));
+            focus('export');
           }}
         />
       )}

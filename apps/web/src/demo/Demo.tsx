@@ -35,6 +35,7 @@ import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
 import { GUEST_ASK_PAGES } from './guestAskStates.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
+import { GUEST_NOTE_PAGES } from './guestNote.ts';
 import { Guests } from './Guests.tsx';
 import { GUESTS_PAGES } from './guests.ts';
 import { KitchenPage } from './Kitchen.tsx';
@@ -303,6 +304,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={GUEST_PAGES} />
         <h3>The kitchen step on the guest’s page · sc-3778 · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_KITCHEN_PAGES} />
+        <h3>The host’s arrival note on the guest’s page · sc-24385 · phone, tablet and desk</h3>
+        <BoardPages pages={GUEST_NOTE_PAGES} />
         <h3>Who’s coming with you, on the guest’s page · sc-3779 · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_PARTY_PAGES} />
         <h3>
