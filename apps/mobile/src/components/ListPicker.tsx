@@ -100,7 +100,7 @@ export function ListPicker({
   const heading = useRef<TextHandle>(null);
   const ownField = useRef<ViewInstance>(null);
   const field = pickerRef ?? ownField;
-  const [closedEarly, setClosedEarly] = useState<object>();
+  const [closed, setClosed] = useState<object>();
   const [search, setSearch] = useState('');
   const searchNameID = useId();
   const searching = useHeld(false, search, undefined, setSearch);
@@ -119,12 +119,14 @@ export function ListPicker({
     0,
   );
 
-  // Until the menu's window takes Back, Android gives it to the screen beneath, which stepped back or asked to leave (sc-43145).
-  useSystemBack(open, () => {
-    setClosedEarly({});
+  // Android hands TalkBack's focus to whichever field holds input focus, not to the picker that opened the menu (sc-43908).
+  const close = () => {
+    if (Platform.OS === 'android') setClosed({});
     setOpen(false);
-  });
-  useFocusOnAnswer(windowShown ? undefined : closedEarly, field);
+  };
+  // Until the menu's window takes Back, Android gives it to the screen beneath, which stepped back or asked to leave (sc-43145).
+  useSystemBack(open, close);
+  useFocusOnAnswer(windowShown ? undefined : closed, field);
 
   const chosen = choices.find((choice) => choice.code === value)?.name ?? value;
   const blank = chosen === '';
@@ -166,7 +168,7 @@ export function ListPicker({
         ]}
         onPress={() => {
           controlTaken();
-          setClosedEarly(undefined);
+          setClosed(undefined);
           setOpen(true);
         }}
         {...fieldEdge.edging}
@@ -192,7 +194,7 @@ export function ListPicker({
         visible={windowShown}
         animationType={SLIDES_INSIDE ? 'none' : 'slide'}
         supportedOrientations={TURNS_WITH_THE_APP}
-        onRequestClose={() => setOpen(false)}
+        onRequestClose={close}
         onShow={risen}
       >
         {Platform.OS === 'android' && <SilentWindowName />}
@@ -202,7 +204,7 @@ export function ListPicker({
             style={[styles.fill, SLIDES_INSIDE && { transform: [{ translateY: slide }] }]}
             collapsable={false}
             importantForAccessibility={unnamed ? 'no-hide-descendants' : 'auto'}
-            onAccessibilityEscape={() => setOpen(false)}
+            onAccessibilityEscape={close}
           >
             <Screen
               style={styles.page}
@@ -223,7 +225,7 @@ export function ListPicker({
                 {beside && searchField}
                 <Pressable
                   style={styles.close}
-                  onPress={() => setOpen(false)}
+                  onPress={close}
                   accessibilityRole="button"
                   testID={`${testID}.close`}
                 >
@@ -246,7 +248,7 @@ export function ListPicker({
                     onPress={() => {
                       onChange(item.code);
                       setSearch('');
-                      setOpen(false);
+                      close();
                     }}
                     accessibilityRole="button"
                     accessibilityState={{ selected: item.code === value }}
