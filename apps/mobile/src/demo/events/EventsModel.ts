@@ -33,6 +33,7 @@ import {
   manageOf as productManageOf,
   scheduleLocked as productScheduleLocked,
 } from '../../kit/eventOverview.ts';
+import { REFUSED_STATES, refusedStartOf } from './DeleteRefusal.ts';
 import { CLOCKS, READER_ZONE, type SampleEvent } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { CHANGES_STATES, FINAL_NUMBERS_STATES, kitchenOwed, othersOwed } from './FinalNumbers.ts';
@@ -460,6 +461,7 @@ export const EVENT_STATES = [
   'delete',
   'deleteMismatch',
   'deleteTyped',
+  ...REFUSED_STATES,
   'duplicate',
   'muted',
   'muteNotLoaded',
@@ -481,9 +483,10 @@ export function eventStateOf(value: string | undefined): EventDemoState | null {
   return EVENT_STATES.find((state) => state === value) ?? null;
 }
 
-/** Happening now is the wedding's second day; Finished the week after it; every other state reads the reader's clock. */
+/** Happening now, and a refusal from the start, is the wedding's second day; Finished the week after it; every other state reads the reader's clock. */
 export function clockOf(state: EventDemoState | null): Date {
-  if (state === 'now' || state === 'endNow') return new Date(CLOCKS.happening);
+  if (state === 'now' || state === 'endNow' || refusedStartOf(state)?.started === true)
+    return new Date(CLOCKS.happening);
   if (state === 'finished') return new Date(CLOCKS.finished);
 
   return new Date(CLOCKS.reader);
