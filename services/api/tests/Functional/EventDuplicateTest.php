@@ -315,6 +315,22 @@ final class EventDuplicateTest extends ApiTestCase
     }
 
     #[Test]
+    public function aCopiedGuestHasALinkOfItsOwn(): void
+    {
+        $id = $this->original();
+        $this->addGuest($id, ['fullName' => 'Adaeze Okonkwo']);
+
+        $body = $this->as($this->owner, 'POST', '/api/events/' . $id . '/duplicate', ['startsAt' => '2027-05-15T16:00', 'copyGuests' => true]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        $copy = Type\shape(['id' => Type\string()], true)->coerce($body['event'] ?? null)['id'];
+        $token = static fn (string $eventId): ?string => Type\nullable(Type\string())->coerce(self::service(Connection::class)->fetchOne('SELECT link_token FROM guests WHERE event_id = :id AND host_id IS NULL', ['id' => $eventId]));
+        $copied = $token($copy);
+        self::assertNotNull($copied);
+        self::assertNotSame($token($id), $copied);
+    }
+
+    #[Test]
     public function aTickedCopyLeavesTheOriginalsListAsItWas(): void
     {
         $id = $this->original();
