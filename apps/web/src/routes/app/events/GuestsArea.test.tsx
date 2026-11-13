@@ -316,7 +316,7 @@ describe('Guests (sc-1468)', () => {
     });
   });
 
-  it('asks about a name a companion already has, never an unnamed one (Decided, 13 Nov)', async () => {
+  it('asks about a name a companion already has (Decided, 13 Nov)', async () => {
     const sent = await opened({});
 
     type('Full name', 'OBI EZE');
@@ -326,6 +326,22 @@ describe('Guests (sc-1468)', () => {
       await within(form()).findByRole('heading', { name: 'OBI EZE is already on the list' }),
     ).toBeDefined();
     expect(sent.some((one) => one.line === 'POST /api/events/ev_1/guests')).toBe(false);
+  });
+
+  it('never takes an unnamed companion for a name that keys to nothing (Decided, 13 Nov)', async () => {
+    const sent = await opened({
+      'POST /api/events/ev_1/guests': () => json({ guest: guest('g_9', '\u0301') }, 201),
+    });
+
+    type('Full name', '\u0301');
+    fireEvent.click(addButton());
+
+    await waitFor(() =>
+      expect(sent.find((one) => one.line === 'POST /api/events/ev_1/guests')?.body).toEqual(
+        expect.not.objectContaining({ allowDuplicate: true }),
+      ),
+    );
+    expect(within(form()).queryByRole('heading', { name: /is already on the list$/u })).toBeNull();
   });
 
   it('says a number the server refuses as not a mobile in the server’s words, not as too short', async () => {
