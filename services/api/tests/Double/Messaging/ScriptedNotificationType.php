@@ -77,6 +77,16 @@ final readonly class ScriptedNotificationType implements NotificationTypeInterfa
         return null === $this->tooLateAfter ? null : $dueAt->add(new DateInterval($this->tooLateAfter));
     }
 
+    public function carriesCode(): bool
+    {
+        return false;
+    }
+
+    public function reachesSuppressed(): bool
+    {
+        return false;
+    }
+
     public function collapseKey(): ?string
     {
         return $this->collapseKey;

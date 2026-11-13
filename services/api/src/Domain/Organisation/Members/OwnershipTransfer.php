@@ -14,7 +14,6 @@ use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\SeededRole;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -34,7 +33,6 @@ final readonly class OwnershipTransfer
         private RoleAssignment $roleAssignment,
         private Auditor $auditor,
         private EntityManagerInterface $entityManager,
-        private AfterResponse $afterResponse,
         private OwnershipTransferMailer $ownershipTransferMailer,
         private TranslatorInterface $translator,
     ) {
@@ -58,7 +56,7 @@ final readonly class OwnershipTransfer
         ]);
         $this->entityManager->flush();
 
-        $this->afterResponse->defer(fn () => $this->ownershipTransferMailer->sendTransferred($organisation, $by, $to->getUser(), $asked));
+        $this->ownershipTransferMailer->sendTransferred($organisation, $by, $to->getUser(), $asked);
 
         return $to;
     }

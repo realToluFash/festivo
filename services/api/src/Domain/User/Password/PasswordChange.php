@@ -10,7 +10,6 @@ use App\Domain\User\TokenIssuer;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\PasswordFailure;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
@@ -30,7 +29,6 @@ final readonly class PasswordChange
         private NewPasswordRules $newPasswordRules,
         private TokenIssuer $tokenIssuer,
         private PasswordChangeMailer $passwordChangeMailer,
-        private AfterResponse $afterResponse,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
@@ -70,7 +68,7 @@ final readonly class PasswordChange
         $userAgent = $request?->headers->get('User-Agent');
         $ipAddress = $request?->getClientIp();
         $asked = $request?->getLocale();
-        $this->afterResponse->defer(fn () => $this->passwordChangeMailer->sendChanged($user, $at, $userAgent, $ipAddress, $asked));
+        $this->passwordChangeMailer->sendChanged($user, $at, $userAgent, $ipAddress, $asked);
 
         return $signedOut;
     }

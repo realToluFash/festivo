@@ -20,7 +20,6 @@ use App\Enum\ErrorCode;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\Suspension;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use Doctrine\DBAL\LockMode;
@@ -49,7 +48,6 @@ final readonly class MemberActions
         private ClockInterface $clock,
         private OwnerClaimHandler $ownerClaimHandler,
         private TeamSeats $teamSeats,
-        private AfterResponse $afterResponse,
         private MemberAccessMailer $memberAccessMailer,
         private RecentProof $recentProof,
     ) {
@@ -92,13 +90,7 @@ final readonly class MemberActions
                 'suspension' => [null, Suspension::Manual->value],
             ]);
             $this->entityManager->flush();
-        });
-
-        $at = $this->clock->now();
-        $this->afterResponse->defer(function () use ($membership, $at): void {
-            if ($this->membershipRepository->isSuspendedInStore($membership->getId())) {
-                $this->memberAccessMailer->sendSuspended($membership, $at);
-            }
+            $this->memberAccessMailer->sendSuspended($membership, $this->clock->now());
         });
     }
 
@@ -186,7 +178,7 @@ final readonly class MemberActions
 
         if (Suspension::Manual === $suspension) {
             $at = $this->clock->now();
-            $this->afterResponse->defer(fn () => $this->memberAccessMailer->sendRestored($membership, $at));
+            $this->memberAccessMailer->sendRestored($membership, $at);
         }
     }
 

@@ -6,7 +6,6 @@ namespace App\Domain\User\Device;
 
 use App\Domain\User\TokenIssuer;
 use App\Entity\User;
-use App\Http\AfterResponse;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
@@ -23,7 +22,6 @@ final readonly class KnownDevices
     public function __construct(
         private EntityManagerInterface $entityManager,
         private NewDeviceMailer $newDeviceMailer,
-        private AfterResponse $afterResponse,
         private ClockInterface $clock,
     ) {
     }
@@ -41,7 +39,7 @@ final readonly class KnownDevices
         $userAgent = $request->headers->get('User-Agent');
         $ipAddress = $request->getClientIp();
         $asked = $request->getLocale();
-        $this->afterResponse->defer(fn () => $this->newDeviceMailer->send($user, $at, $userAgent, $ipAddress, $asked));
+        $this->newDeviceMailer->send($user, $at, $userAgent, $ipAddress, $asked);
     }
 
     /**

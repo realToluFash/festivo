@@ -21,7 +21,6 @@ use App\Enum\MembershipStatus;
 use App\Enum\OwnerClaimMoment;
 use App\Enum\OwnerClaimOutcome;
 use App\Enum\SeededRole;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use App\Repository\OrganisationDomainRepository;
@@ -36,7 +35,6 @@ use Psl\SecureRandom;
 use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
-use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** An organisation whose only Owner is suspended gets one back (sc-6640): fresh DNS proof, then 72 hours anyone may stop. */
@@ -69,8 +67,6 @@ final readonly class OwnerClaimHandler
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
-        private AfterResponse $afterResponse,
-        private RequestStack $requestStack,
     ) {
     }
 
@@ -161,7 +157,7 @@ final readonly class OwnerClaimHandler
         });
 
         if ($foundNow) {
-            $this->mail(fn () => $this->ownerClaimMailer->sendStarted($claim));
+            $this->ownerClaimMailer->sendStarted($claim);
         }
 
         return $claim;
@@ -192,7 +188,7 @@ final readonly class OwnerClaimHandler
             return $claim;
         });
 
-        $this->mail(fn () => $this->ownerClaimMailer->sendStopped($claim, $by));
+        $this->ownerClaimMailer->sendStopped($claim, $by);
 
         return $claim;
     }
@@ -226,7 +222,7 @@ final readonly class OwnerClaimHandler
         }
 
         if (null !== $claim->getFoundAt()) {
-            $this->mail(fn () => $this->ownerClaimMailer->sendWithdrawn($claim));
+            $this->ownerClaimMailer->sendWithdrawn($claim);
         }
 
         return $claim;
@@ -257,9 +253,9 @@ final readonly class OwnerClaimHandler
             });
 
             match ($moment) {
-                OwnerClaimMoment::Found => $this->mail(fn () => $this->ownerClaimMailer->sendStarted($claim)),
-                OwnerClaimMoment::Passed => $this->mail(fn () => $this->ownerClaimMailer->sendGranted($claim)),
-                OwnerClaimMoment::Lapsed => $this->mail(fn () => $this->ownerClaimMailer->sendLapsed($claim)),
+                OwnerClaimMoment::Found => $this->ownerClaimMailer->sendStarted($claim),
+                OwnerClaimMoment::Passed => $this->ownerClaimMailer->sendGranted($claim),
+                OwnerClaimMoment::Lapsed => $this->ownerClaimMailer->sendLapsed($claim),
                 OwnerClaimMoment::Ended, null => null,
             };
             $moved += null === $moment ? 0 : 1;
@@ -451,17 +447,5 @@ final readonly class OwnerClaimHandler
     private function record(string $action, OwnerClaim $claim, ?User $by, array $changes): void
     {
         $this->auditor->record($action, self::SUBJECT, $claim->getId(), null === $by ? Actor::System : Actor::User, $by?->getId(), $by?->getName(), $changes);
-    }
-
-    /** After the response in a request; at once from the console, where no response ever ends. */
-    private function mail(callable $send): void
-    {
-        if (null === $this->requestStack->getCurrentRequest()) {
-            $send();
-
-            return;
-        }
-
-        $this->afterResponse->defer($send);
     }
 }

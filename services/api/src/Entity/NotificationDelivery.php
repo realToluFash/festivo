@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\MailProviderReport;
 use App\Enum\NotificationAudienceKind;
 use App\Enum\NotificationChannel;
 use App\Enum\NotificationDeliveryStatus;
@@ -94,6 +95,13 @@ class NotificationDelivery
 
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $providerMessageId = null;
+
+    /** The mail provider's webhook on a sent email (sc-4332): its status stays Sent, as sc-104 counts it. */
+    #[ORM\Column(type: Types::STRING, length: 20, nullable: true, enumType: MailProviderReport::class)]
+    private ?MailProviderReport $providerReport = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $providerReportedAt = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $createdAt;
@@ -190,6 +198,16 @@ class NotificationDelivery
     public function getProviderMessageId(): ?string
     {
         return $this->providerMessageId;
+    }
+
+    public function getProviderReport(): ?MailProviderReport
+    {
+        return $this->providerReport;
+    }
+
+    public function getProviderReportedAt(): ?DateTimeImmutable
+    {
+        return $this->providerReportedAt;
     }
 
     public function getFinishedAt(): ?DateTimeImmutable

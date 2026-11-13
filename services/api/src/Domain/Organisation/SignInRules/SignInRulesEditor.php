@@ -10,7 +10,6 @@ use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use DateInterval;
@@ -32,7 +31,6 @@ final readonly class SignInRulesEditor
         private MembershipRepository $membershipRepository,
         private SignInRulesMailer $signInRulesMailer,
         private Auditor $auditor,
-        private AfterResponse $afterResponse,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
         private SignInRules $signInRules,
@@ -104,10 +102,8 @@ final readonly class SignInRulesEditor
             $members = Vec\filter($members, static fn (User $member): bool => !Iter\any($due, static fn (User $user): bool => $user->getId()->equals($member->getId())));
         }
 
-        $this->afterResponse->defer(function () use ($organisation, $by, $changes, $members, $stranded, $due, $at, $locale): void {
-            $this->signInRulesMailer->sendChanged($organisation, $by, $changes, $members, $stranded, $at, $locale);
-            $this->signInRulesMailer->sendTwoFactorDue($organisation, $due, $at->add(new DateInterval(SignInRules::TWO_FACTOR_GRACE)));
-        });
+        $this->signInRulesMailer->sendChanged($organisation, $by, $changes, $members, $stranded, $at, $locale);
+        $this->signInRulesMailer->sendTwoFactorDue($organisation, $due, $at->add(new DateInterval(SignInRules::TWO_FACTOR_GRACE)));
     }
 
     /** @return array{providerOnly: bool, inactivityTimeoutDays: ?int, administratorsNeedTwoFactor: bool, everyoneNeedsTwoFactor: bool} */

@@ -8,6 +8,7 @@ use App\Domain\User\Mail\UserMailer;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\User;
+use App\Enum\AccountMail;
 use DateTimeImmutable;
 use Psl\Iter;
 use Psl\Str;
@@ -51,7 +52,7 @@ final readonly class JoinRequestMailer
             $locale = $this->userMailer->localeFor($decider);
             $named = ['{organisation}' => $organisation->getName()];
 
-            $this->userMailer->send($address, $locale, 'joinRequest.waiting.subject', [
+            $this->userMailer->send(AccountMail::JoinRequest, $address, $locale, 'joinRequest.waiting.subject', [
                 $this->userMailer->line('joinRequest.waiting.body', $locale, [...$named, 'count' => Iter\count($requests)]),
                 ...Vec\map($requests, fn (Membership $request): string => '- ' . $this->userMailer->line('joinRequest.waiting.person', $locale, [
                     '{name}' => $request->getUser()->getName(),
@@ -78,7 +79,7 @@ final readonly class JoinRequestMailer
         $locale = $this->userMailer->localeFor($user);
         $named = ['{organisation}' => $membership->getOrganisation()->getName()];
 
-        $this->userMailer->send($address, $locale, 'joinRequest.' . $ending . '.subject', [
+        $this->userMailer->send(AccountMail::JoinRequest, $address, $locale, 'joinRequest.' . $ending . '.subject', [
             $this->userMailer->line('joinRequest.' . $ending . '.body', $locale, [...$named, ...$parameters]),
             $this->userMailer->line('joinRequest.askAgain', $locale, $named),
         ], $named);

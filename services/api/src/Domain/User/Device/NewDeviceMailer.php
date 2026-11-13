@@ -6,6 +6,7 @@ namespace App\Domain\User\Device;
 
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\User;
+use App\Enum\AccountMail;
 use DateTimeImmutable;
 use Psl\Str;
 
@@ -28,7 +29,7 @@ final readonly class NewDeviceMailer
             ...(null === $ipAddress || '' === $ipAddress ? [] : [$this->userMailer->line('newDevice.address', $locale, ['{address}' => $ipAddress])]),
         ];
 
-        $this->userMailer->sendTo($user, 'newDevice.subject', [
+        $this->userMailer->sendTo(AccountMail::NewDevice, $user, 'newDevice.subject', [
             $this->userMailer->line('newDevice.body', $locale),
             Str\join($facts, "\n"),
             $this->userMailer->line('newDevice.review', $locale) . ' ' . Str\trim_right($this->webOrigin, '/') . '/app/account/security',

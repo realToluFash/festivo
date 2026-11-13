@@ -9,10 +9,12 @@ use App\Domain\Messaging\Model\EventAnchor;
 use App\Domain\Messaging\Model\EventTimes;
 use App\Domain\Messaging\Model\Trigger;
 use App\Entity\Event;
+use App\Enum\NotificationAudienceKind;
 use App\Enum\NotificationChannel;
 use App\Enum\NotificationDeliveryStatus;
 use App\Enum\NotificationPriority;
 use App\Enum\ScheduledNotificationStatus;
+use DateTimeImmutable;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
@@ -77,6 +79,112 @@ final readonly class NotificationScheduler
         });
 
         return $id;
+    }
+
+    /**
+     * To one person, fixed now (sc-4332): the delivery is written with the row, so nothing resolves the audience later. A code's send supersedes the person's earlier one of its type that has not gone.
+     *
+     * @param array<string, mixed> $payload
+     * @param ?DateTimeImmutable   $sendBy  a code's expiry, after which it is never sent
+     *
+     * @return bool false when the same send was already queued
+     */
+    public function scheduleForPerson(string $type, string $sourceId, Audience $audience, array $payload, ?DateTimeImmutable $sendBy = null): bool
+    {
+        $definition = $this->notificationRegistry->type($type);
+        $recipient = $audience->only[0] ?? null;
+
+        if (NotificationAudienceKind::Person !== $definition->audienceKind() || NotificationAudienceKind::Person !== $audience->kind || null === $recipient) {
+            throw new InvalidArgumentException(Str\format('"%s" is not sent to one person.', $type));
+        }
+
+        $now = $this->clock->now();
+        $id = Uuid::v7();
+        $types = ['due' => Types::DATETIME_IMMUTABLE, 'sendBy' => Types::DATETIME_IMMUTABLE, 'now' => Types::DATETIME_IMMUTABLE];
+
+        return $this->connection->transactional(function () use ($id, $type, $sourceId, $audience, $payload, $sendBy, $definition, $recipient, $now, $types): bool {
+            if ($definition->carriesCode()) {
+                $this->connection->executeStatement(
+                    <<<'SQL'
+                        UPDATE notification_deliveries
+                        SET status = :superseded, finished_at = :now, claimed_until = NULL
+                        WHERE type = :type AND recipient_kind = :kind AND recipient_id = :recipient
+                          AND source_id <> :source
+                          AND status = :pending
+                          AND (claimed_until IS NULL OR claimed_until < :now)
+                        SQL,
+                    [
+                        'superseded' => NotificationDeliveryStatus::Superseded->value,
+                        'now' => $now,
+                        'type' => $type,
+                        'kind' => NotificationAudienceKind::Person->value,
+                        'recipient' => $recipient->toRfc4122(),
+                        'source' => $sourceId,
+                        'pending' => NotificationDeliveryStatus::Pending->value,
+                    ],
+                    ['now' => Types::DATETIME_IMMUTABLE],
+                );
+            }
+
+            $this->connection->executeStatement(
+                <<<'SQL'
+                    INSERT INTO scheduled_notifications (
+                        id, type, cancellation_key, source_id, trigger, due_at, send_by, audience, payload, priority, status, created_at, finished_at
+                    ) VALUES (
+                        :id, :type, :key, :source, :trigger, :due, :sendBy, :audience, :payload, :priority, :fannedOut, :now, :now
+                    )
+                    SQL,
+                [
+                    'id' => $id->toRfc4122(),
+                    'type' => $type,
+                    'key' => 'person:' . $id->toRfc4122(),
+                    'source' => $sourceId,
+                    'trigger' => Json\encode(Trigger::at($now)->toArray()),
+                    'due' => $now,
+                    'sendBy' => $sendBy,
+                    'audience' => Json\encode($audience->toArray()),
+                    'payload' => Json\encode([] === $payload ? new stdClass() : $payload),
+                    'priority' => $definition->priority()->value,
+                    'fannedOut' => ScheduledNotificationStatus::FannedOut->value,
+                    'now' => $now,
+                ],
+                $types,
+            );
+
+            $written = 0 < $this->connection->executeStatement(
+                <<<'SQL'
+                    INSERT INTO notification_deliveries (
+                        id, scheduled_notification_id, type, source_id, recipient_kind, recipient_id, channel,
+                        priority, status, due_at, next_attempt_at, send_by, attempts, created_at
+                    ) VALUES (
+                        :id, :scheduled, :type, :source, :kind, :recipient, :channel,
+                        :priority, :pending, :due, :due, :sendBy, 0, :now
+                    )
+                    ON CONFLICT (type, source_id, recipient_kind, recipient_id, channel) DO NOTHING
+                    SQL,
+                [
+                    'id' => Uuid::v7()->toRfc4122(),
+                    'scheduled' => $id->toRfc4122(),
+                    'type' => $type,
+                    'source' => $sourceId,
+                    'kind' => NotificationAudienceKind::Person->value,
+                    'recipient' => $recipient->toRfc4122(),
+                    'channel' => NotificationChannel::Email->value,
+                    'priority' => $definition->priority()->value,
+                    'pending' => NotificationDeliveryStatus::Pending->value,
+                    'due' => $now,
+                    'sendBy' => $sendBy,
+                    'now' => $now,
+                ],
+                $types,
+            );
+
+            if (!$written) {
+                $this->connection->executeStatement('DELETE FROM scheduled_notifications WHERE id = :id', ['id' => $id->toRfc4122()]);
+            }
+
+            return $written;
+        });
     }
 
     /** @return int how many pending rows the key had, scheduled and fanned out */

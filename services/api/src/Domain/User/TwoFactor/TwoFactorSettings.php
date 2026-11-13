@@ -8,7 +8,6 @@ use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\ErrorCode;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\RecoveryCodeRepository;
 use App\Repository\TwoFactorFactorRepository;
@@ -32,7 +31,6 @@ final readonly class TwoFactorSettings
         private AuthenticatorCodes $authenticatorCodes,
         private SecretBox $secretBox,
         private TwoFactorMailer $twoFactorMailer,
-        private AfterResponse $afterResponse,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
         private SignInRules $signInRules,
@@ -91,7 +89,7 @@ final readonly class TwoFactorSettings
         $this->entityManager->flush();
 
         $now = $this->clock->now();
-        $this->afterResponse->defer(fn () => $this->twoFactorMailer->sendTurnedOn($user, $now, $asked));
+        $this->twoFactorMailer->sendTurnedOn($user, $now, $asked);
 
         return $codes;
     }

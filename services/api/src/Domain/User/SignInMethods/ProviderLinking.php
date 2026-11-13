@@ -13,7 +13,6 @@ use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
-use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\ProviderIdentityRepository;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -36,7 +35,6 @@ final readonly class ProviderLinking
         private TokenIssuer $tokenIssuer,
         private Auditor $auditor,
         private SignInMethodMailer $signInMethodMailer,
-        private AfterResponse $afterResponse,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
         private SignInRules $signInRules,
@@ -195,9 +193,9 @@ final readonly class ProviderLinking
         $ipAddress = $request?->getClientIp();
         $asked = $request?->getLocale();
 
-        $this->afterResponse->defer($linked
-            ? fn () => $this->signInMethodMailer->sendLinked($user, $provider, $vouchedFor, $at, $userAgent, $ipAddress, $asked)
-            : fn () => $this->signInMethodMailer->sendUnlinked($user, $provider, $vouchedFor, $at, $userAgent, $ipAddress, $asked));
+        $linked
+            ? $this->signInMethodMailer->sendLinked($user, $provider, $vouchedFor, $at, $userAgent, $ipAddress, $asked)
+            : $this->signInMethodMailer->sendUnlinked($user, $provider, $vouchedFor, $at, $userAgent, $ipAddress, $asked);
     }
 
     private static function taken(IdentityProvider $provider, ?Throwable $previous = null): ApiException
