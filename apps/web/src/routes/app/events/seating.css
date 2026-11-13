@@ -88,6 +88,10 @@
   border-bottom: 1px solid var(--colorBorder);
 }
 
+.st-top > .notifications {
+  margin-inline-start: auto;
+}
+
 .st-crumb {
   flex: 1;
   min-width: 0;

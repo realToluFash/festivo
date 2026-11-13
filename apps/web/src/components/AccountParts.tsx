@@ -1,9 +1,12 @@
-import { primaryFirst } from '@soirely/domain';
-import { type ReactNode, useId } from 'react';
+import { LOCALES, primaryFirst } from '@soirely/domain';
+import { type ReactNode, useId, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { type ContactKind, type ContactRow } from '../accountPage.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
-import { Card, CardStep, Chevron, Head, OnCard, RowWords } from './SettingsParts.tsx';
+import { chooseLanguage } from '../accountLanguage.ts';
+import { currentLocale } from '../i18n/index.ts';
+import { Card, CardStep, Chevron, Choices, Head, OnCard, RowWords } from './SettingsParts.tsx';
 import './AccountParts.css';
 
 const ICONS: Record<ContactKind, GlyphName> = { email: 'mail', phone: 'phone' };
@@ -206,5 +209,33 @@ export function ExpiredCode({ title, line }: { title: string; line: string }) {
       <p className="account-expired-title">{title}</p>
       <p className="desk-line">{line}</p>
     </div>
+  );
+}
+
+/** The account's language, each named in its own: a pick redraws the page in it and saves it to the account, as the pill did (sc-39509). */
+export function LanguageBlock({ onChosen }: { onChosen: (name: string) => void }) {
+  const { t } = useTranslation();
+  const [picked, setPicked] = useState(currentLocale);
+
+  return (
+    <section className="desk-block">
+      <Head title={t('language.label')} />
+      <Choices
+        legend={t('language.label')}
+        hideLegend
+        choices={LOCALES.map((locale) => ({
+          id: locale.code,
+          name: locale.nativeName,
+          lang: locale.code,
+        }))}
+        picked={picked}
+        onPick={(code) => {
+          setPicked(code);
+          onChosen(LOCALES.find((locale) => locale.code === code)?.nativeName ?? code);
+          void chooseLanguage(code, true);
+        }}
+        foot={t('account.languageFoot')}
+      />
+    </section>
   );
 }

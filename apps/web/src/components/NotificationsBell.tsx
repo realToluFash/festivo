@@ -27,6 +27,7 @@ import { subscribeWebPush } from '../webPush.ts';
 import { MuteSwitch } from './MuteSwitch.tsx';
 import { Refreshing, StaleBand } from './OfflineBand.tsx';
 import { Bell } from './SettingsParts.tsx';
+import { BannerBell } from './TodayBanner.tsx';
 import './SettingsParts.css';
 import './today.css';
 
@@ -35,8 +36,14 @@ type Feed =
   | { status: 'failed' }
   | { status: 'loaded'; items: NotificationItem[]; unread: number; next: string | null };
 
-/** The bell and its feed (sc-3980), a popover at every width. `desk` is the title row's bell, as the desk demos draw it: round and grey, a red dot for unread, the panel reaching back across the page. */
-export function NotificationsBell({ userId, desk = false }: { userId: string; desk?: boolean }) {
+/** The bell and its feed (sc-3980), a popover at every width. `desk` is the title row's bell, as the desk demos draw it: round and grey, a red dot for unread, the panel reaching back across the page; `banner` is Today's, glass on its banner. */
+export function NotificationsBell({
+  userId,
+  look = 'band',
+}: {
+  userId: string;
+  look?: 'band' | 'desk' | 'banner';
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [feed, setFeed] = useState<Feed>({ status: 'loading' });
@@ -305,9 +312,11 @@ export function NotificationsBell({ userId, desk = false }: { userId: string; de
   }
 
   return (
-    <div className={desk ? 'notifications is-desk' : 'notifications'} ref={container}>
-      {desk ? (
+    <div className={look === 'band' ? 'notifications' : 'notifications is-desk'} ref={container}>
+      {look === 'desk' ? (
         <Bell ref={button} unread={unread} expanded={open} onOpen={openBell} />
+      ) : look === 'banner' ? (
+        <BannerBell ref={button} unread={unread} expanded={open} onOpen={openBell} />
       ) : (
         <button
           ref={button}

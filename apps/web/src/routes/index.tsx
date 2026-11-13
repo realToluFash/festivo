@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router';
+import { Navigate, createBrowserRouter } from 'react-router';
 
 import { PageArrival } from '../components/PageArrival.tsx';
 import { DemoRoute } from '../demo/DemoEntry.tsx';
@@ -9,7 +9,6 @@ import { NotificationSettings } from './app/account/NotificationSettings.tsx';
 import { Personalisation } from './app/account/Personalisation.tsx';
 import { AppLayout } from './app/AppLayout.tsx';
 import { Calendar } from './app/calendar/Calendar.tsx';
-import { Dashboard } from './app/Dashboard.tsx';
 import { EditEvent } from './app/events/EditEvent.tsx';
 import {
   EventAreaPage,
@@ -57,9 +56,8 @@ import { Status } from './public/Status.tsx';
  * guest route under `/app` would inherit a shell built for an organisation
  * member and would look authenticated.
  *
- * `/app/guests` resolves to the dashboard for now. The screens
- * belong to the scopes that own them; what belongs here is that the navigation
- * does not lead anywhere blank.
+ * `/app/guests` opens Today until the Guests epic gives the web a page of its
+ * own (sc-39509): an old link still lands somewhere.
  */
 export const routes = [
   {
@@ -96,7 +94,7 @@ export const routes = [
           { path: 'events/:eventId/people', element: <EventPeoplePage /> },
           { path: 'events/:eventId/:area', element: <EventAreaPage /> },
           { path: 'calendar', element: <Calendar /> },
-          { path: 'guests', element: <Dashboard /> },
+          { path: 'guests', element: <Navigate to="/app" replace /> },
           {
             element: <SettingsDesk />,
             children: [

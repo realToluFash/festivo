@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useBlocker, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { useDeskTop } from '../../../deskTop.ts';
 import { config } from '../../../config.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
@@ -234,6 +235,7 @@ export function GuestsArea({
   onChange: (event: OrganisationEvent, tag: string) => void;
 }) {
   const { t } = useTranslation();
+  const desk = useDeskTop();
   const { layers, covered, setHost } = useDeskLayers();
   const now = useServerNow();
   const phase = shownPhase(event, useLoadedAt(event), now);
@@ -381,6 +383,7 @@ export function GuestsArea({
                 </li>
               </ol>
             </nav>
+            {desk.bell}
           </div>
           <header className="gs-top">
             <h1 ref={heading} className="gs-title" tabIndex={-1} data-focus="title">

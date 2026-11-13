@@ -301,7 +301,7 @@ span {
   background: var(--colorNeutralFill);
 }
 
-/* Page 29's header band: the crumb, the bell and the language (sc-26270). */
+/* Below a desk, page 29's header band: the crumb and the bell (sc-26270); at a desk each page's own top has the bell (sc-39509). */
 .shell-band {
   display: flex;
   align-items: center;
@@ -366,7 +366,7 @@ span {
 }
 
 @media (width > 60rem) {
-  /* At a desk Events, the Calendar and Settings have no band (sc-39471): the page is one card 10 from the window's edges, and it scrolls inside the card. */
+  /* At a desk no page has the band (sc-39471, sc-39509): the page is one card 10 from the window's edges, and it scrolls inside the card. */
   .shell.is-bandless {
     grid-template-rows: 1fr;
   }
@@ -815,7 +815,7 @@ span {
 /* ── A phone: one bar, its links behind Menu (sc-13413) ───────────────────── */
 
 @media (width <= 40rem) {
-  /* The bar keeps the bell at its end; the crumb and the language go (the picker is in Menu's sheet). */
+  /* The bar keeps the bell at its end; the crumb goes (the language picker is in Menu's sheet). */
   .shell {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: auto 1fr;
@@ -827,8 +827,7 @@ span {
     border-bottom: var(--borderCard);
   }
 
-  .shell-crumb,
-  .shell-band .language-pill {
+  .shell-crumb {
     display: none;
   }
 
@@ -3944,6 +3943,11 @@ button.members-row {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--spaceXl);
+}
+
+/* At a desk the bell ends the row (sc-39509). */
+.event-crumbs > .notifications {
+  margin-inline-start: auto;
 }
 
 .event-form {

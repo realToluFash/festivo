@@ -34,6 +34,7 @@ import { apiCodeSource } from '../../../codeCheck.ts';
 import {
   AboutRow,
   ContactsBlock,
+  LanguageBlock,
   PersonCard,
   RowOffers,
 } from '../../../components/AccountParts.tsx';
@@ -78,6 +79,8 @@ export function AccountDesk() {
   const [attempt, setAttempt] = useState(0);
   const [refresh, setRefresh] = useState(0);
   const [said, setSaid] = useState<string | null>(null);
+  // The language just chosen, said in the page's language once it has redrawn; focus stays on the choice.
+  const [chosen, setChosen] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [rowError, setRowError] = useState<{
     id: string;
@@ -186,6 +189,7 @@ export function AccountDesk() {
 
   function done(words: string): void {
     setSaid(words);
+    setChosen(null);
     setOpen(null);
     setRowError(null);
     setAsk(null);
@@ -321,7 +325,12 @@ export function AccountDesk() {
           initials={initials(name)}
           name={name}
           address={primaryEmail}
-          said={cardLine(emails, phones, said, t)}
+          said={cardLine(
+            emails,
+            phones,
+            said ?? (chosen == null ? null : t('account.languageSaved', { language: chosen })),
+            t,
+          )}
           saidRef={(line) => {
             saidLine.current = line;
           }}
@@ -354,6 +363,12 @@ export function AccountDesk() {
             />
           </ul>
         </section>
+        <LanguageBlock
+          onChosen={(language) => {
+            setSaid(null);
+            setChosen(language);
+          }}
+        />
         {loaded
           ? (['email', 'phone'] as const).map(contacts)
           : (['email', 'phone'] as const).map((kind) => (

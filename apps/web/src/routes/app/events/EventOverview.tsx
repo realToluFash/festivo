@@ -36,6 +36,7 @@ import { Glyph } from '../../../components/Glyph.tsx';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { Ask, Head } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
+import { useDeskTop } from '../../../deskTop.ts';
 import { listEventOf, shownEvent } from '../../../eventsList.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
@@ -69,13 +70,15 @@ import { useLeaveGuard } from './useLeaveGuard.tsx';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventPage.css';
 
-/** The crumb an event's page starts with at a desk: Events, then where you are. */
+/** The crumb an event's page starts with at a desk: Events, then where you are, and the bell at its end. */
 export function EventCrumb({ name, children }: { name: string | null; children?: ReactNode }) {
   const { t } = useTranslation();
+  const { bell } = useDeskTop();
 
   return (
     <Crumb to="/app/events" back={t('events.title')} name={name}>
       {children}
+      {bell}
     </Crumb>
   );
 }

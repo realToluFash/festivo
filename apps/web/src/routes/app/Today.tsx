@@ -5,12 +5,14 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
+import { NotificationsBell } from '../../components/NotificationsBell.tsx';
 import { Refreshing } from '../../components/OfflineBand.tsx';
 import { ArrivalNotice } from '../../components/PageArrival.tsx';
 import { Skeleton } from '../../components/Skeleton.tsx';
 import type { Open } from '../../components/today.ts';
 import { Banner, type BannerActions, NowBanner } from '../../components/TodayBanner.tsx';
 import { FirstRun, ThisWeek, YourEvents } from '../../components/TodayParts.tsx';
+import { useDeskTop } from '../../deskTop.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import { keepsWhatLoaded, useOffline } from '../../offline.ts';
 import { useServerNow } from '../../serverNow.ts';
@@ -38,6 +40,7 @@ function Today({ organisationId }: { organisationId: string }) {
   const { t } = useTranslation();
   const session = useSession();
   const navigate = useNavigate();
+  const desk = useDeskTop();
   const now = useServerNow();
   const creates = can(session, 'events.create');
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -129,8 +132,11 @@ function Today({ organisationId }: { organisationId: string }) {
     firstName(session.name),
     t,
   );
-  // The bell is the frame's, in the band above the page, so the banner carries only New event.
-  const actions: BannerActions = { create: creates, unread: null };
+  // Below a desk the bell is the Menu bar's, so the banner carries only New event there.
+  const actions: BannerActions = {
+    create: creates,
+    bell: desk.bell == null ? null : <NotificationsBell userId={session.userId} look="banner" />,
+  };
 
   return (
     <div className="today-page">

@@ -24,7 +24,7 @@ import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
-import { BackControl } from '../../../components/BackControl.tsx';
+import { TitleRow } from '../../../components/SettingsParts.tsx';
 import { api } from '../../../api.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
@@ -35,6 +35,7 @@ import { CoverSection } from './CoverSection.tsx';
 import { discardCoverUpload, refusalOf } from './coverPhoto.ts';
 import type { CoverPhoto } from './EventCoverImage.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
+import { EventCrumb } from './EventOverview.tsx';
 import {
   type Errors,
   FIELDS,
@@ -261,8 +262,8 @@ function EventForm({ organisation }: { organisation: Membership }) {
 
   return (
     <div className="event-form-page">
-      <BackControl className="event-back" label={t('events.title')} to="/app/events" />
-      <h1>{t('eventForm.title')}</h1>
+      <EventCrumb name={null} />
+      <TitleRow title={t('eventForm.title')} compact />
 
       <form className="event-form" noValidate onSubmit={(event) => void create(event)}>
         {status === 'failed' && (

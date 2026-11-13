@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router';
 
 import { BackControl } from '../../../components/BackControl.tsx';
+import { useDeskTop } from '../../../deskTop.ts';
 import { api } from '../../../api.ts';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { useOffline } from '../../../offline.ts';
@@ -90,6 +91,7 @@ export function EditEvent() {
 
 function EditOf({ organisationId, eventId }: { organisationId: string; eventId: string }) {
   const { t } = useTranslation();
+  const desk = useDeskTop();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [refresh, setRefresh] = useState(0);
@@ -140,6 +142,7 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
       <div className="event-crumbs">
         <BackControl className="event-back" label={t('eventPage.backToEvent')} to={eventPath} />
         {refreshing && <Refreshing />}
+        {desk.bell}
       </div>
 
       {'kind' in load && load.kind === 'loading' && (
