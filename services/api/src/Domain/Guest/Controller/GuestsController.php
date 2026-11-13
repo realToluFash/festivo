@@ -86,7 +86,6 @@ final readonly class GuestsController
         return new JsonResponse(['guest' => $added], Response::HTTP_CREATED);
     }
 
-    /** With an ETag to send back as If-Match on an edit; a companion's id, or another event's guest, is not found. */
     #[Route('/api/events/{eventId}/guests/{guestId}', name: 'guests_show', methods: ['GET'])]
     #[InEvent(Permission::GuestsRead)]
     public function show(string $eventId, string $guestId): JsonResponse
@@ -96,11 +95,7 @@ final readonly class GuestsController
         return $this->tagged($this->guest($event, $guestId), $this->seesContacts($event));
     }
 
-    /**
-     * The whole guest as the form has them: each companion with the `id` it keeps, none for one added, and one left out removed.
-     *
-     * Needs If-Match with the ETag it read: 428 without it, 412 once somebody else has saved. Refused as adding is: 422 on each field, 409 `guest_already_listed` until `allowDuplicate`.
-     */
+    /** The whole guest: a companion without an `id` is added and one left out removed. Needs If-Match (sc-3587). */
     #[Route('/api/events/{eventId}/guests/{guestId}', name: 'guests_update', methods: ['PUT'])]
     #[InEvent(Permission::GuestsManage)]
     public function update(Request $request, string $eventId, string $guestId): JsonResponse
@@ -158,7 +153,6 @@ final readonly class GuestsController
         return $this->guestRepository->findHostOn($event, $id) ?? throw ApiException::notFound('access.not_found');
     }
 
-    /** Email address and mobile number are for people who manage guests (sc-3773); anyone else's answers leave both out. */
     private function seesContacts(Event $event): bool
     {
         return $this->membershipDirectory->grantsOnEvent($this->user(), $event->getOrganisation()->getId(), $event->getId())?->holds(Permission::GuestsManage) ?? false;

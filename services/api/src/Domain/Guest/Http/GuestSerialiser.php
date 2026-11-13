@@ -12,11 +12,7 @@ use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
 
-/**
- * An event's guest list, each companion under their host; the clients sort it by name (sc-1468).
- *
- * Email address and mobile number go only to people who manage guests: for anyone else both keys are left out, not sent empty (sc-3773).
- */
+/** An event's guest list, each companion under their host; the clients sort it by name (sc-1468). Without `contacts` both keys are left out, not sent empty. */
 final readonly class GuestSerialiser
 {
     public function __construct(
@@ -66,11 +62,7 @@ final readonly class GuestSerialiser
         ];
     }
 
-    /**
-     * One guest's details: the row's fields, and when and by whom they were added.
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function details(Guest $host, bool $contacts): array
     {
         return [

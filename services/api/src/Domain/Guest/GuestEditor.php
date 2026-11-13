@@ -25,12 +25,7 @@ use Psl\Str;
 use Psl\Vec;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/**
- * Corrects who a guest is, never what they said (sc-3773): their reply is not an edit.
- *
- * Checked against the version the host saw, so a colleague's change is never overwritten unseen. The audit names the
- * fields changed and holds none of their values, so no name or contact outlives the purge (sc-1468) or an erasure.
- */
+/** The audit names the fields changed and holds none of their values: no name or contact may outlive the purge (sc-1468). */
 final readonly class GuestEditor
 {
     public const string UPDATED = 'guest.updated';
@@ -45,13 +40,7 @@ final readonly class GuestEditor
     ) {
     }
 
-    /**
-     * `companionIds` runs beside `$new->companions`: the companion each place keeps, or null for one added. A companion left out is removed.
-     *
-     * Refused 428 without If-Match, 412 once somebody else has saved, and 409 `guest_already_listed` for a new name already on the list unless `allowDuplicate`.
-     *
-     * @param list<?string> $companionIds
-     */
+    /** @param list<?string> $companionIds beside `$new->companions`: the companion each place keeps, null for one added; one left out is removed */
     public function edit(Guest $guest, ?string $ifMatch, NewGuest $new, array $companionIds, User $by, bool $allowDuplicate): Guest
     {
         if (null === $ifMatch || '*' === Str\trim($ifMatch)) {
@@ -128,8 +117,6 @@ final readonly class GuestEditor
     }
 
     /**
-     * Each companion an id names, by id; refused when an id is not one of this guest's, or names one twice.
-     *
      * @param list<Guest>   $companions
      * @param list<?string> $ids
      *
@@ -166,8 +153,6 @@ final readonly class GuestEditor
     }
 
     /**
-     * The fields a save changes, by the form's names: `fullName`, `email`, `mobile` and `companions`.
-     *
      * @param list<Guest>   $companions
      * @param list<?string> $ids
      *
