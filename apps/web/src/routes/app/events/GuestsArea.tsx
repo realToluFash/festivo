@@ -44,7 +44,6 @@ import {
   type Problem,
   type Problems,
   type Typed,
-  blank,
   firstProblem,
   listedAs,
   newGuestOf,
@@ -53,7 +52,7 @@ import {
   violationProblems,
   withGuest,
 } from './guestRows.ts';
-import { GuestColumn, REPLY_KEY, ReplyMark, guestAddress } from './GuestColumn.tsx';
+import { GuestColumn, REPLY_KEY, ReplyMark, companionShown, guestAddress } from './GuestColumn.tsx';
 import { CompanionField, GuestField, PhoneField } from './GuestFields.tsx';
 import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
@@ -209,6 +208,7 @@ export function GuestsArea({
   const [asking, setAsking] = useState<(() => void) | null>(null);
   const [saved, setSaved] = useState(false);
   const lastRow = useRef<string | null>(open);
+  const addAfter = useRef(false);
   const column = useRef<HTMLElement>(null);
   const manages = canOn(event, 'guests.manage');
   const country = useStartingCountry(manages);
@@ -253,7 +253,16 @@ export function GuestsArea({
   );
 
   function startAdd(): void {
+    if (dirty) {
+      addAfter.current = true;
+      setParams({}, { replace: true });
+      return;
+    }
     if (open != null) setParams({}, { replace: true });
+    showAdd();
+  }
+
+  function showAdd(): void {
     setAdding(true);
     focus('fullName');
   }
@@ -444,6 +453,7 @@ export function GuestsArea({
             keep={t('guestList.keepEditing')}
             go={t('guestList.discard')}
             onKeep={() => {
+              addAfter.current = false;
               setAsking(null);
               away.reset?.();
             }}
@@ -454,6 +464,10 @@ export function GuestsArea({
               setDirty(false);
               if (then != null) then();
               else away.proceed?.();
+              if (addAfter.current) {
+                addAfter.current = false;
+                showAdd();
+              }
             }}
           />
         )}
@@ -541,12 +555,13 @@ function Rows({
           );
         }
 
-        const { host, companion, nth } = row;
-        const name = blank(companion.fullName)
-          ? nth == null
-            ? t('guestList.guestOf', { host: host.fullName })
-            : t('guestList.guestOfNth', { host: host.fullName, nth })
-          : (companion.fullName ?? '');
+        const { host, companion, at } = row;
+        const name = companionShown(
+          t,
+          host.fullName,
+          host.companions.map((one) => one.fullName),
+          at,
+        );
 
         return (
           <li key={companion.id} className="is-companion">

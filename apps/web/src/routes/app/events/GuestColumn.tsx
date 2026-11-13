@@ -6,7 +6,7 @@ import {
   type TaggedGuest,
 } from '@soirely/api-client';
 import { formatPhone, phoneE164, phoneFields } from '@soirely/domain';
-import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
@@ -429,8 +429,8 @@ function EditForm({
   onSaved: (tagged: TaggedGuest, changed: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const host = tagged.guest;
-  const [base] = useState(() => valuesOf(host, country));
+  const [host, setHost] = useState(tagged.guest);
+  const [base, setBase] = useState(() => valuesOf(tagged.guest, country));
   const [values, setValues] = useState<Values>(base);
   const [tag, setTag] = useState(tagged.tag);
   const [tried, setTried] = useState(false);
@@ -440,11 +440,27 @@ function EditForm({
   const [failed, setFailed] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const form = useRef<HTMLDivElement>(null);
   const typed = typedOf(values);
   const problems: Problems = { ...(tried ? problemsOf(typed) : {}), ...refused };
   const dirty = kept(values) !== kept(base);
 
   useEffect(() => onDirty(dirty), [dirty, onDirty]);
+
+  const onEscape = useEffectEvent((key: globalThis.KeyboardEvent) => {
+    if (key.key !== 'Escape' || key.defaultPrevented) return;
+    key.preventDefault();
+    onCancel(dirty);
+  });
+
+  useEffect(() => {
+    const at = form.current;
+    const listen = (key: globalThis.KeyboardEvent) => onEscape(key);
+
+    at?.addEventListener('keydown', listen);
+
+    return () => at?.removeEventListener('keydown', listen);
+  });
 
   function change(next: Partial<Values>): void {
     setValues((was) => ({ ...was, ...next }));
@@ -591,7 +607,7 @@ function EditForm({
   }
 
   return (
-    <div className="gs-form">
+    <div ref={form} className="gs-form">
       <div className="gs-col-head">
         <h2 className="gs-col-title" tabIndex={-1} data-focus="form-heading">
           {t('guestList.editGuest')}
@@ -640,7 +656,11 @@ function EditForm({
               type="button"
               className="gs-pill is-secondary"
               onClick={() => {
-                setValues(valuesOf(conflict.theirs.guest, country));
+                const theirs = valuesOf(conflict.theirs.guest, country);
+
+                setHost(conflict.theirs.guest);
+                setBase(theirs);
+                setValues(theirs);
                 setTag(conflict.theirs.tag);
                 setConflict(null);
                 setDuplicate(null);

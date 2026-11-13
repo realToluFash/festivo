@@ -703,6 +703,100 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Ngozi Eze' })).toBeDefined();
   });
 
+  it('asks before Add guest drops a change, and keeps the edit on Keep editing', async () => {
+    await editNgozi();
+
+    type('Full name', 'Ngozi Okafor');
+    fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
+
+    expect(await screen.findByRole('alertdialog', { name: 'Discard your changes?' })).toBeDefined();
+    expect(field('Full name').value).toBe('Ngozi Okafor');
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('alertdialog', { name: 'Discard your changes?' })).toBeNull(),
+    );
+    expect(within(column()).getByRole('heading', { level: 2, name: 'Edit guest' })).toBeDefined();
+    expect(field('Full name').value).toBe('Ngozi Okafor');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Discard changes' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+    expect(form()).toBeDefined();
+    expect(field('Full name').value).toBe('');
+    fireEvent.click(screen.getByRole('link', { name: /^Chief Amaka Obi/u }));
+    expect(screen.queryByRole('alertdialog', { name: 'Discard your changes?' })).toBeNull();
+  });
+
+  it('asks before another row drops a change, and opens that guest on Discard', async () => {
+    await editNgozi();
+
+    type('Full name', 'Ngozi Okafor');
+    fireEvent.click(screen.getByRole('link', { name: /^Chief Amaka Obi/u }));
+
+    expect(await screen.findByRole('alertdialog', { name: 'Discard your changes?' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('alertdialog', { name: 'Discard your changes?' })).toBeNull(),
+    );
+    expect(field('Full name').value).toBe('Ngozi Okafor');
+
+    fireEvent.click(screen.getByRole('link', { name: /^Chief Amaka Obi/u }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Discard changes' }));
+
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole('region', { name: 'Chief Amaka Obi' })
+          .some((one) => one.classList.contains('gs-column')),
+      ).toBe(true),
+    );
+  });
+
+  it('goes back to the details on Escape from Edit, asking first when something changed', async () => {
+    await editNgozi();
+
+    fireEvent.keyDown(field('Full name'), { key: 'Escape' });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(column()).getByRole('button', { name: 'Edit' })),
+    );
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Edit' }));
+    await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+    type('Full name', 'Ngozi Okafor');
+    fireEvent.keyDown(field('Full name'), { key: 'Escape' });
+
+    expect(await screen.findByRole('alertdialog', { name: 'Discard your changes?' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(column()).getByRole('button', { name: 'Edit' })),
+    );
+    expect(screen.getByRole('heading', { level: 2, name: 'Ngozi Eze' })).toBeDefined();
+  });
+
+  it('counts the form unchanged after Use theirs, so Cancel asks nothing', async () => {
+    const theirs = { ...DETAILS, mobile: '+2348035550199' };
+    let reads = 0;
+    await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        return reads === 1 ? tagged(DETAILS, '"1"') : tagged(theirs, '"2"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => problem('precondition_failed', 412),
+    });
+
+    type(EMAIL, 'ngozi.eze@example.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Use theirs' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(column()).getByRole('button', { name: 'Edit' })),
+    );
+    expect(screen.queryByRole('alertdialog', { name: 'Discard your changes?' })).toBeNull();
+  });
+
   it('removes a companion at once and says to save', async () => {
     await editNgozi();
 
