@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -316,6 +319,78 @@ describe('Guests (sc-1468)', () => {
     });
   });
 
+  it('asks about a name a companion already has (Decided, 13 Nov)', async () => {
+    const sent = await opened({});
+
+    type('Full name', 'OBI EZE');
+    fireEvent.click(addButton());
+
+    expect(
+      await within(form()).findByRole('heading', { name: 'OBI EZE is already on the list' }),
+    ).toBeDefined();
+    expect(sent.some((one) => one.line === 'POST /api/events/ev_1/guests')).toBe(false);
+  });
+
+  it('never takes an unnamed companion for a name that keys to nothing (Decided, 13 Nov)', async () => {
+    const sent = await opened({
+      'POST /api/events/ev_1/guests': () => json({ guest: guest('g_9', '\u0301') }, 201),
+    });
+
+    type('Full name', '\u0301');
+    fireEvent.click(addButton());
+
+    await waitFor(() =>
+      expect(sent.find((one) => one.line === 'POST /api/events/ev_1/guests')?.body).toEqual(
+        expect.not.objectContaining({ allowDuplicate: true }),
+      ),
+    );
+    expect(within(form()).queryByRole('heading', { name: /is already on the list$/u })).toBeNull();
+  });
+
+  it('says a number the server refuses as not a mobile in the server’s words, not as too short', async () => {
+    await opened({
+      'POST /api/events/ev_1/guests': () =>
+        problem('validation_failed', 422, {
+          violations: [
+            {
+              propertyPath: 'mobile',
+              message: 'That is not a mobile number for United Kingdom. Check it and try again.',
+              code: 'phone_invalid',
+            },
+          ],
+        }),
+    });
+
+    type('Full name', 'Kwame Mensah');
+    fireEvent.change(screen.getByRole('combobox', { name: 'Country' }), {
+      target: { value: 'GB' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /^Mobile number/u }), {
+      target: { value: '07700900123' },
+    });
+    fireEvent.click(addButton());
+
+    expect(
+      await within(form()).findByText(
+        'That is not a mobile number for United Kingdom. Check it and try again.',
+      ),
+    ).toBeDefined();
+    expect(within(form()).queryByText(/too short/u)).toBeNull();
+  });
+
+  it('answers a deleted event as one that never existed, under the organisation’s sidebar', async () => {
+    signedIn();
+    await onGuests({ 'GET /api/events/ev_1': () => problem('not_found', 404) });
+
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: 'This event is not available',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(screen.queryByRole('navigation', { name: 'Event' })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Event$/u })).toBeNull();
+  });
+
   it('asks the same when the server answers guest_already_listed', async () => {
     await opened({
       'POST /api/events/ev_1/guests': () => problem('guest_already_listed', 409),
@@ -374,6 +449,30 @@ describe('Guests (sc-1468)', () => {
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Add guest' })),
     );
+  });
+
+  it('names each Remove by the companion, or as the host’s guest while it has no name (sc-43267)', async () => {
+    await opened({});
+
+    fireEvent.click(within(form()).getByRole('button', { name: 'Add a companion' }));
+    expect(
+      within(form()).getByRole('button', { name: 'Remove Companion’s full name, 1 of 1' }),
+    ).toBeDefined();
+
+    type('Full name', 'Ifeoluwa Bankole');
+    fireEvent.click(within(form()).getByRole('button', { name: 'Add a companion' }));
+    fireEvent.click(within(form()).getByRole('button', { name: 'Add a companion' }));
+    type('Companion’s full name, 3 of 3', 'Tolu Bankole');
+
+    expect(
+      within(form())
+        .getAllByRole('button', { name: /^Remove /u })
+        .map((button) => button.getAttribute('aria-label')),
+    ).toEqual([
+      'Remove Ifeoluwa Bankole’s guest',
+      'Remove Ifeoluwa Bankole’s guest · 2',
+      'Remove Tolu Bankole',
+    ]);
   });
 
   it('stops at 10 companions', async () => {
@@ -448,5 +547,13 @@ describe('Guests, live (sc-1468)', () => {
 
     expect(await screen.findByText('Tomás Ferreira')).toBeDefined();
     expect(screen.getByText('2 on the list')).toBeDefined();
+  });
+});
+
+describe('a companion field (sc-43267)', () => {
+  it('ends a placeholder too long for the field in an ellipsis, on one line', () => {
+    expect(readFileSync(join(import.meta.dirname, 'guests.css'), 'utf8')).toMatch(
+      /\.gs-companion \.desk-box input \{\s*overflow: hidden;\s*text-overflow: ellipsis;\s*white-space: nowrap;\s*\}/u,
+    );
   });
 });
