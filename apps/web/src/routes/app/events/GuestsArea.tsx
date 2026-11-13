@@ -412,7 +412,21 @@ export function GuestsArea({
                         manages={manages}
                         invites={invites}
                         flagged={flagged.has(open.id)}
-                        onCopy={() => api.guestLink(event.id, open.id)}
+                        onCopy={() =>
+                          api.guestLink(event.id, open.id).catch((error: unknown) => {
+                            if (error instanceof ApiError && error.is('event_state_invalid')) {
+                              void api.taggedEvent(event.id).then(
+                                (latest) => {
+                                  onChange(latest.event, latest.tag);
+                                  window.setTimeout(() => heading.current?.focus(), 0);
+                                },
+                                () => undefined,
+                              );
+                            }
+
+                            throw error;
+                          })
+                        }
                         onReplace={() =>
                           api
                             .replaceGuestLink(event.id, open.id)

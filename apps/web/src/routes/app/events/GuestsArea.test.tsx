@@ -641,6 +641,34 @@ describe('A guest’s invitation link (sc-1526)', () => {
     ]);
   });
 
+  it('re-reads an event paused elsewhere when a copy is refused, and says why, not the connection', async () => {
+    let reads = 0;
+    await openNgozi({
+      'GET /api/events/ev_1': () => {
+        reads += 1;
+
+        return json({
+          event: {
+            ...EVENT,
+            ...(reads > 1
+              ? { status: 'paused', phase: 'paused', pausedAt: '2026-11-01T10:00:00+00:00' }
+              : {}),
+            permissions: OWNER_PERMISSIONS,
+          },
+        });
+      },
+      'GET /api/events/ev_1/guests/g_1/link': () => problem('event_state_invalid', 409),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^Copy invitation link/u }));
+
+    expect(
+      await screen.findByText('Guests can’t be invited while this event is paused.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Copy invitation link/u })).toBeNull();
+    expect(screen.queryByText('Check your connection and try again.')).toBeNull();
+  });
+
   it('says the old link still works when a replace fails', async () => {
     await openNgozi({
       'POST /api/events/ev_1/guests/g_1/link/replace': () => problem('internal_error', 500),
