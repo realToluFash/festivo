@@ -513,7 +513,9 @@ describe('A guest’s invitation link (sc-1526)', () => {
     const box = (await screen.findByRole('textbox', {
       name: 'Invitation link',
     })) as HTMLTextAreaElement;
-    expect([box.value, box.readOnly, document.activeElement]).toEqual([LINK, true, box]);
+    await waitFor(() =>
+      expect([box.value, box.readOnly, document.activeElement]).toEqual([LINK, true, box]),
+    );
   });
 
   it('asks before replacing, Keep it changes nothing, and Replace link ends the old one', async () => {
