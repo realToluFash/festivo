@@ -122,6 +122,13 @@ class Event implements SoftDeletableInterface
     #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
     private array $hosts = [];
 
+    /** Moved by CalendarChangeListener only when what a guest's calendar shows changes, so a pause leaves a subscribed calendar as it was (sc-3627). */
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $calendarSequence = 0;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $calendarChangedAt = null;
+
     /** Moved by Doctrine on every update; the resource's ETag (sc-3587). */
     #[ORM\Version]
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
@@ -291,6 +298,22 @@ class Event implements SoftDeletableInterface
     {
         $this->status = EventStatus::Live;
         $this->pausedAt = null;
+    }
+
+    public function getCalendarSequence(): int
+    {
+        return $this->calendarSequence;
+    }
+
+    public function getCalendarChangedAt(): DateTimeImmutable
+    {
+        return $this->calendarChangedAt ?? $this->getCreatedAt();
+    }
+
+    public function calendarChanged(DateTimeImmutable $at): void
+    {
+        ++$this->calendarSequence;
+        $this->calendarChangedAt = $at->setTimezone(new DateTimeZone('UTC'));
     }
 
     public function setName(string $name): void

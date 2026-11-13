@@ -197,6 +197,9 @@ services:
     App\Domain\Event\CalendarFeed\FeedLinkIssuer:
         arguments:
             $secret: '%kernel.secret%'
+    App\Domain\Guest\Calendar\GuestCalendarWriter:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\Event\CalendarFeed\CalendarFeedWriter:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
