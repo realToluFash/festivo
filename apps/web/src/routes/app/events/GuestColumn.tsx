@@ -136,7 +136,6 @@ export function GuestColumn({
 }: {
   eventId: string;
   guestId: string;
-  /** The event's: a reply's date is the day it was in the event's zone. */
   timeZone: string;
   mesh: Mesh;
   manages: boolean;
