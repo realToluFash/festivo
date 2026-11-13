@@ -50,7 +50,14 @@ import { BRACED_BODY, DATED_BODY, PLAIN_BODY } from './PreviewSample.ts';
 import { type Refusal, TYPED_EDIT, refusalOf, reloaded } from './ScheduledSave.ts';
 import { EDGE } from './TokenText.ts';
 import { WAITS_STARTS, type Waits } from './CheckWaits.ts';
-import { STOP_STATES, type Stopping, isStopState, stopStart, stoppingOf } from './StopWriting.ts';
+import {
+  NO_STOPS,
+  STOP_STATES,
+  type Stopping,
+  isStopState,
+  stopStart,
+  stoppingOf,
+} from './StopWriting.ts';
 import {
   RUN,
   TELL_KINDS,
@@ -73,6 +80,7 @@ import {
   noticeStart,
   notSentWhy,
   quietLine,
+  readsOnly,
   stampOf,
 } from './NoticeStates.ts';
 import { sayNotice } from './NoticeWords.ts';
@@ -137,6 +145,9 @@ export const MESSAGES_STATES = [
   'longMessage',
   'closedDraft',
   'closedEnded',
+  'noManage',
+  'noManageDraft',
+  'noManageEnded',
   'forbidden',
   'insert',
   'previewAs',
@@ -345,6 +356,8 @@ export interface Messages {
   receipts: boolean;
   /** Without messages.read: the area opens the refusal, with no list and no count. */
   forbidden: boolean;
+  /** messages.read alone (sc-32077): no New, no To, no composer; sc-3957's line where the composer would be. */
+  noManage: boolean;
   /** sc-3976: the open state's facts about one guest's notice and conversation, and who reads it when not the owner. */
   notice?: NoticeCase;
   reader?: string;
@@ -449,6 +462,7 @@ const BASE: Messages = {
   closed: null,
   receipts: false,
   forbidden: false,
+  noManage: false,
 };
 
 const ALL_CHANNELS = { email: true, sms: true, wa: true };
@@ -488,6 +502,19 @@ const CLOSED: Partial<Record<MessagesState, Closed>> = {
   closedDraft: 'draft',
   closedEnded: 'ended',
 };
+
+/** messages.read alone on a live, a Draft and a long-finished event: the event's reason is never shown beside the line. */
+const NO_MANAGE: Partial<Record<MessagesState, Closed | 'live'>> = {
+  noManage: 'live',
+  noManageDraft: 'draft',
+  noManageEnded: 'ended',
+};
+
+export const NO_MANAGE_READER = 'Kofi Mensah';
+
+function closedStart(closed: Closed): Messages {
+  return { ...BASE, closed, kept: [], ...(closed === 'draft' ? { phase: 'first' } : {}) };
+}
 
 const SCHEDULED_AS: Partial<Record<MessagesState, Partial<Draft>>> = {
   scheduled: {},
@@ -566,8 +593,15 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       refusedSave: refused,
     };
   const closed = state == null ? undefined : CLOSED[state];
-  if (closed != null)
-    return { ...BASE, closed, kept: [], ...(closed === 'draft' ? { phase: 'first' } : {}) };
+  if (closed != null) return closedStart(closed);
+  const reading = state == null ? undefined : NO_MANAGE[state];
+  if (reading != null)
+    return {
+      ...(reading === 'live' ? BASE : closedStart(reading)),
+      noManage: true,
+      reader: NO_MANAGE_READER,
+      stopping: { ...NO_STOPS, manage: false },
+    };
   const scheduled = state == null ? undefined : SCHEDULED_AS[state];
   if (scheduled != null) return scheduledStart(scheduled);
   if (isStopState(state))
@@ -932,6 +966,7 @@ export function reduce(m: Messages, action: Action): Messages {
     case 'back':
       return opened(m, back(m.open));
     case 'newMessage': {
+      if (readsOnly(m)) return m;
       const draft = m.draft;
       const keep =
         m.thread?.base == null &&
@@ -943,7 +978,7 @@ export function reduce(m: Messages, action: Action): Messages {
       return { ...next, open: { kind: 'draft' }, picking: false };
     }
     case 'followUp':
-      return followedUp(m, action.base);
+      return readsOnly(m) ? m : followedUp(m, action.base);
     case 'openThread': {
       const next = m.thread?.id === action.id ? m : activate(m, (kept) => kept.id === action.id);
 
@@ -968,7 +1003,14 @@ export function reduce(m: Messages, action: Action): Messages {
       return stepped(m, ['preview'], 'write');
     case 'send': {
       const draft = m.draft;
-      if (m.closed != null || draft == null || !canSend(draft) || matchesNobody(draft)) return m;
+      if (
+        m.closed != null ||
+        readsOnly(m) ||
+        draft == null ||
+        !canSend(draft) ||
+        matchesNobody(draft)
+      )
+        return m;
       const over = overOf(draft);
       if (over.length > 0) return { ...m, draft: { ...draft, step: 'write', over } };
 
@@ -1045,7 +1087,7 @@ export function reduce(m: Messages, action: Action): Messages {
     case 'match':
       return { ...m, matched: action.name, matching: false };
     case 'answer': {
-      if (m.closed != null) return m;
+      if (m.closed != null || readsOnly(m)) return m;
       const by = tellingBy(m, action.key);
       const kase = caseFor(m, action.key);
       const block = kase?.blocks?.[by];
@@ -1111,7 +1153,7 @@ export function reduce(m: Messages, action: Action): Messages {
         told: W.saved,
       };
     case 'sendAgain': {
-      if (m.closed != null) return m;
+      if (m.closed != null || readsOnly(m)) return m;
       const at = personAt(reachedOf(m), action.key);
 
       return {
@@ -1141,7 +1183,7 @@ export function reduce(m: Messages, action: Action): Messages {
     case 'filtering':
       return { ...m, filtering: action.open };
     case 'resending':
-      return { ...m, resending: action.open && m.closed == null };
+      return { ...m, resending: action.open && m.closed == null && !readsOnly(m) };
     case 'resent':
       return { ...m, resending: false };
     case 'bell':

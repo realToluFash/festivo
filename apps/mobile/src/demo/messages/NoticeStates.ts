@@ -233,13 +233,22 @@ export function guestOf(m: Pick<Messages, 'notice'>, key: GuestKey): SampleGuest
   };
 }
 
+/** messages.read alone: the Read-only member in a conversation (sc-3960), or reading the list (sc-32077's noManage). */
+export function readsOnly(m: Pick<Messages, 'notice' | 'noManage'>): boolean {
+  return m.noManage || m.notice?.hidden === true;
+}
+
 /** Without guests.manage no conversation's head shows an address, only the guest's language (AC 36). */
-export function headLineOf(m: Pick<Messages, 'notice'>, key: GuestKey, locale = 'en'): string {
+export function headLineOf(
+  m: Pick<Messages, 'notice' | 'noManage'>,
+  key: GuestKey,
+  locale = 'en',
+): string {
   const shared = caseFor(m, key)?.shared;
 
   if (shared != null) return sayNotice.sharedBy(shared.number, shared.count);
 
-  return m.notice?.hidden === true ? languageOf(key, locale) : guestOf(m, key).head;
+  return readsOnly(m) ? languageOf(key, locale) : guestOf(m, key).head;
 }
 
 /** The guest's language named in the reader's own (l10n #45417). */

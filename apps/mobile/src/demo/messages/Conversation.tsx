@@ -73,6 +73,7 @@ import {
   headLineOf,
   languageOf,
   quietLine,
+  readsOnly,
   refusalOf as noticeRefusal,
 } from './NoticeStates.ts';
 import { NW } from './NoticeWords.ts';
@@ -197,7 +198,7 @@ function unknownParts(talk: Talk): Parts {
   const matched = m.matched;
   const answer = m.answers.unknown;
   const kase = caseFor(m, 'unknown');
-  const hidden = m.notice?.hidden === true;
+  const hidden = readsOnly(m);
   const reader = m.reader ?? READER;
   const doneOrWaiting = m.done.includes('unknown') ? (
     <TextAction
@@ -971,7 +972,7 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
           </>
         ),
       align: own?.align ?? 'end',
-      foot: m.resending ? undefined : followUp(W.writeAFollowUp),
+      foot: m.resending || readsOnly(m) ? undefined : followUp(W.writeAFollowUp),
     };
   }
   if (key === 'change') {
@@ -1016,7 +1017,7 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
           </>
         ),
       align: own?.align ?? 'end',
-      foot: followUp(W.writeToThem),
+      foot: readsOnly(m) ? undefined : followUp(W.writeToThem),
     };
   }
   if (key === 'invite')
@@ -1057,7 +1058,7 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
           </>
         ),
       align: own?.align ?? 'end',
-      foot: m.resending ? undefined : followUp(W.writeToThem),
+      foot: m.resending || readsOnly(m) ? undefined : followUp(W.writeToThem),
     };
   return { title: W.invitation, stream: null, align: 'end' };
 }

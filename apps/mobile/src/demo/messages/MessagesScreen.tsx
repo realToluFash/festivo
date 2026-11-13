@@ -108,7 +108,7 @@ import {
   settled,
   stoppingOf,
 } from './StopWriting.ts';
-import { SHARED_NUMBER } from './NoticeStates.ts';
+import { SHARED_NUMBER, readsOnly } from './NoticeStates.ts';
 import { NoManageCard } from './NoticeParts.tsx';
 import { StopActions, StopAsk } from './StopWritingParts.tsx';
 import { markLooked } from '../guests/ChangedSince.ts';
@@ -224,7 +224,8 @@ export function MessagesScreen({
   const caret = useRef<number | null>(null);
   const focusBody = useRef(start.keys);
   const focusOver = useRef(m.draft?.over[0] ?? null);
-  const closed = m.closed == null ? null : CLOSED_WORDS[m.closed];
+  const reading = readsOnly(m);
+  const closed = m.closed == null || reading ? null : CLOSED_WORDS[m.closed];
   const [typed, setTyped] = useState<Partial<Record<GuestKey, string>>>(m.typed);
   const [toAt, setToAt] = useState<Anchor | null>(null);
   const [insertAt, setInsertAt] = useState<Anchored | null>(null);
@@ -383,7 +384,7 @@ export function MessagesScreen({
     else dispatch({ type: 'open', open: id });
   };
   const onNew = (picking: boolean) => {
-    if (m.closed != null) return;
+    if (m.closed != null || reading) return;
     dispatch({ type: 'newMessage' });
     focusBody.current = !picking;
     if (picking) dispatch({ type: 'picking', open: true });
@@ -849,12 +850,7 @@ export function MessagesScreen({
         {m.forbidden ? (
           <Refusal />
         ) : (
-          <PhoneList
-            list={list}
-            onNew={onNew}
-            closed={closed}
-            readOnly={m.notice?.hidden === true}
-          />
+          <PhoneList list={list} onNew={onNew} closed={closed} readOnly={reading} />
         )}
       </EventFrame>
     );
@@ -868,10 +864,14 @@ export function MessagesScreen({
       <View style={styles.fill}>
         <View style={styles.centred}>
           <Text size={14.5} weight="medium" style={[styles.secondary, styles.middle]}>
-            {m.phase === 'first' ? W.noneLine : closed == null ? W.pickOne : W.pickOneClosed}
+            {m.phase === 'first'
+              ? W.noneLine
+              : closed == null && !reading
+                ? W.pickOne
+                : W.pickOneClosed}
           </Text>
         </View>
-        {m.notice?.hidden === true ? (
+        {reading ? (
           <NoManageCard />
         ) : (
           <MiniComposer
