@@ -78,6 +78,8 @@ import {
   writeWord,
 } from './GuestsCanWrite.ts';
 import { datesSaveSays, replyByInTell, replyByRow, replyBySaved } from './ReplyBy.ts';
+import { TY_WORDS, cardOf, cardShown, endFieldOf, isEndState, opened } from './ThankYou.ts';
+import { EndNowAsk, ThankYouCard, ThankYouScreen } from './ThankYouParts.tsx';
 import { replyByOf } from '../guests/GuestsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { LoadingBlock, Row, Section, TextAction } from '../../components/Summary.tsx';
@@ -212,7 +214,11 @@ export function EventScreen({
   const [edit, setEdit] = useState<EditPart | null>(editOf(state));
   const [round, setRound] = useState(0);
   const [part, setPart] = useState<EditPart>(editOf(state) ?? 'dates');
-  const [ask, setAsk] = useState<LifeAsk | null>(state == null ? null : (ASKS[state] ?? null));
+  const [ask, setAsk] = useState<LifeAsk | null>(
+    state == null ? null : isEndState(state) ? 'endNow' : (ASKS[state] ?? null),
+  );
+  const [ending, setEnding] = useState(0);
+  const [thanks, setThanks] = useState(() => cardOf(state));
   const [deleting, setDeleting] = useState(deleteStart(state) != null);
   const refusedStart = refusedStartOf(state);
   const canChange = refusedStart?.canChange ?? true;
@@ -333,8 +339,10 @@ export function EventScreen({
     if (key === 'duplicate') setDuplicating(true);
     else if (key === 'pause') setAsk('pause');
     else if (key === 'callOff') setAsk('callOff');
-    else if (key === 'endNow') setAsk('endNow');
-    else if (refusal != null) setRefused(true);
+    else if (key === 'endNow') {
+      setEnding((count) => count + 1);
+      setAsk('endNow');
+    } else if (refusal != null) setRefused(true);
     else if (needsName(event, peopleOn(event.id))) setDeleting(true);
     else setAsk('deleteDraft');
   };
@@ -379,6 +387,18 @@ export function EventScreen({
       now={now}
       timeZone={event.timeZone}
       locale={locale}
+    />
+  );
+  const thankYou = shown.phase === 'finished' && !shown.calledOff && cardShown(thanks) && (
+    <ThankYouCard
+      event={shown}
+      card={thanks}
+      locale={locale}
+      refFor={refFor}
+      onOpen={() => {
+        from.current = 'thankYou';
+        setThanks(opened(thanks));
+      }}
     />
   );
   const nameCover = <NameAndCover shown={shown} refFor={refFor} onEdit={openEdit} />;
@@ -558,6 +578,7 @@ export function EventScreen({
         card={card}
         left={
           <>
+            {thankYou}
             {details}
             {needsYou}
             {nameCover}
@@ -574,6 +595,7 @@ export function EventScreen({
         }
         stacked={
           <>
+            {thankYou}
             {numbers}
             {peopleCard}
             {details}
@@ -617,8 +639,30 @@ export function EventScreen({
               onReplyBy={savedReplyBy}
             />
           ) : null}
+          <ThankYouScreen
+            card={thanks}
+            locale={locale}
+            opener={opener}
+            onCard={setThanks}
+            onSaid={setTold}
+          />
+          <EndNowAsk
+            key={ending}
+            open={ask === 'endNow'}
+            name={event.name}
+            start={endFieldOf(ending === 0 ? state : null)}
+            locale={locale}
+            opener={opener}
+            onKeep={() => setAsk(null)}
+            onEnded={(line) => {
+              setAsk(null);
+              setEvent({ ...event, status: 'ended', concludedAt: now.toISOString() });
+              setThanks(cardOf(null, line));
+              if (line !== '') setTold(TY_WORDS.done);
+            }}
+          />
           <LifecycleAsk
-            ask={ask}
+            ask={ask === 'endNow' ? null : ask}
             name={event.name}
             opener={opener}
             onKeep={() => setAsk(null)}
