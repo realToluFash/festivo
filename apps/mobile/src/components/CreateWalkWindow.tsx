@@ -75,6 +75,8 @@ import {
 import { AskLayer } from './AskLayer.tsx';
 
 const GROW_FROM = 0.96;
+// A phone's field focused as the window arrives gives up focus again by about 500 ms after it is shown, and keys raised before that go down with it (qa3 #46182); hidden past it, with reduced motion too, the keys raised as it is shown stay up.
+const PHONE_FIELD_SETTLES_MS = 150;
 const PANEL = 760;
 const CARD = 300;
 const SIDE_PADDING = 32;
@@ -161,7 +163,12 @@ export function CreateWalkWindow<Made>({
   const talkBack = Platform.OS === 'android' && readerOn;
   const arriving = reduced ? 0 : phone ? WINDOW_ARRIVES_MS : tokens.motionBase;
   // With TalkBack on, hidden while the window arrives, so its focus lands on nothing, Cancel included (sc-42690).
-  const unnamed = useUnnamedWindow(talkBack && shown, onScreen, null, arriving);
+  const unnamed = useUnnamedWindow(
+    talkBack && shown,
+    onScreen,
+    null,
+    phone ? WINDOW_ARRIVES_MS + PHONE_FIELD_SETTLES_MS : arriving,
+  );
   const [fade] = useState(() => new Animated.Value(0));
   const [grow] = useState(() => new Animated.Value(GROW_FROM));
   const [frame, setFrame] = useState({ panel: 0, stage: 0 });

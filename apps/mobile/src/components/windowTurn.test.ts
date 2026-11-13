@@ -258,8 +258,8 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     const walk = read('CreateWalkWindow.tsx');
 
     expect(walk).toContain("const talkBack = Platform.OS === 'android' && readerOn;");
-    expect(walk).toContain(
-      'const unnamed = useUnnamedWindow(talkBack && shown, onScreen, null, arriving);',
+    expect(walk).toMatch(
+      /const unnamed = useUnnamedWindow\(\s*talkBack && shown,\s*onScreen,\s*null,\s*phone \? WINDOW_ARRIVES_MS \+ PHONE_FIELD_SETTLES_MS : arriving,\s*\);/,
     );
     expect(walk).toContain('onShow={() => setOnScreen(true)}');
     expect(walk).toMatch(/const behind = walk\.asking \|\| unnamed \?/);
@@ -275,6 +275,10 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     expect(read('CreateWalkWindow.tsx')).toMatch(
       /\/\/ .*\s+if \(input\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+raiseKeysOn\(input\);\s+\}, \[talkBack, onScreen, unnamed, opening\]\);/,
     );
+  });
+
+  it('keeps the phone’s window hidden from TalkBack until its field has given up the focus it took while hidden (qa3 #46182)', () => {
+    expect(read('CreateWalkWindow.tsx')).toContain('const PHONE_FIELD_SETTLES_MS = 150;');
   });
 
   it('keeps main’s keys after the window settles with TalkBack off, on the phone and the tablet (lead, PR #2098)', () => {
