@@ -149,7 +149,7 @@ async function asking(
 
   return {
     sent,
-    dialog: await screen.findByRole('dialog', { name: `Delete ${shown.name}?` }),
+    dialog: await screen.findByRole('alertdialog', { name: `Delete ${shown.name}?` }),
   };
 }
 
@@ -186,8 +186,8 @@ describe('Delete an event (sc-3592)', () => {
     signedIn();
     const { sent, dialog } = await asking(event(), false);
 
-    expect(document.activeElement).toBe(
-      within(dialog).getByRole('heading', { name: 'Delete Adaeze and Tunde?' }),
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Keep it' })),
     );
     expect(
       within(dialog).getByText(
@@ -218,7 +218,7 @@ describe('Delete an event (sc-3592)', () => {
       ['/app/events', '/app/events/ev_1'],
     );
     fireEvent.click(screen.getByRole('button', { name: 'Delete event…' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Delete Adaeze and Tunde?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Delete Adaeze and Tunde?' });
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
     await screen.findByRole('heading', { level: 1, name: 'Events' });
@@ -235,7 +235,7 @@ describe('Delete an event (sc-3592)', () => {
       ['/app/events', '/app/events/ev_1'],
     );
     fireEvent.click(screen.getByRole('button', { name: 'Delete event…' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Delete Adaeze and Tunde?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Delete Adaeze and Tunde?' });
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
     await screen.findByText('Adaeze and Tunde was deleted.');
@@ -285,15 +285,25 @@ describe('Delete an event (sc-3592)', () => {
     signedIn();
     const { dialog } = await asking(live(), true);
 
-    expect(spaced(dialog.querySelector('#event-delete-body')?.textContent)).toBe(
-      [
-        'This removes, for your whole team:',
-        'the event, its details and its schedule',
-        "Guests following their link will see that it isn't available.",
-        "If this was a mistake, support can restore it until Wednesday, Nov 25 at 14:20 WAT. After that it's gone for good.",
-      ].join(''),
-    );
-    expect(within(dialog).getByLabelText('Type Adaeze and Tunde to delete it')).toBeDefined();
+    expect(
+      [...dialog.querySelectorAll('.desk-ask-body > p, .desk-ask-body li')].map((part) =>
+        spaced(part.textContent),
+      ),
+    ).toEqual([
+      'This removes, for your whole team:',
+      'the event, its details and its schedule',
+      "Guests following their link will see that it isn't available.",
+      "If this was a mistake, support can restore it until Wednesday, Nov 25 at 14:20 WAT. After that it's gone for good.",
+    ]);
+    const field = within(dialog).getByLabelText('Type Adaeze and Tunde to delete it');
+    await waitFor(() => expect(document.activeElement).toBe(field));
+    expect(
+      within(dialog).getByRole('button', { name: 'Delete' }).getAttribute('aria-disabled'),
+    ).toBe('true');
+    fireEvent.change(field, { target: { value: 'Adaeze and Tunde' } });
+    expect(
+      within(dialog).getByRole('button', { name: 'Delete' }).getAttribute('aria-disabled'),
+    ).toBe('false');
     expect(
       within(dialog).getByText(
         'Type it exactly, capitals included. A straight or curly apostrophe both count.',
@@ -305,9 +315,7 @@ describe('Delete an event (sc-3592)', () => {
     signedIn();
     const { dialog } = await asking(live(), true, {}, 1421);
 
-    expect(
-      [...dialog.querySelectorAll('.event-delete-list li')].map((item) => item.textContent),
-    ).toEqual([
+    expect([...dialog.querySelectorAll('.ev-removes li')].map((item) => item.textContent)).toEqual([
       'the event, its details and its schedule',
       'its guest list, with the 1,421 people on it',
     ]);
@@ -338,7 +346,7 @@ describe('Delete an event (sc-3592)', () => {
     fireEvent.change(field, { target: { value: 'Adaeze' } });
     fireEvent.click(button);
 
-    expect(within(dialog).getByRole('alert').querySelector('p')?.textContent).toBe(
+    expect(within(dialog).getByRole('alert').textContent).toBe(
       'Type Adaeze and Tunde exactly as shown to delete it.',
     );
     expect(document.activeElement).toBe(field);
@@ -401,11 +409,11 @@ describe('Delete an event (sc-3592)', () => {
     fireEvent.change(field, { target: { value: 'Adaeze and Tunde' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
-    expect((await within(dialog).findByRole('alert')).querySelector('p')?.textContent).toBe(
+    expect((await within(dialog).findByRole('alert')).textContent).toBe(
       'That did not go through. Nothing was changed. Try again in a moment.',
     );
     expect((field as HTMLInputElement).value).toBe('Adaeze and Tunde');
-    expect(screen.getByRole('dialog', { name: 'Delete Adaeze and Tunde?' })).toBeDefined();
+    expect(screen.getByRole('alertdialog', { name: 'Delete Adaeze and Tunde?' })).toBeDefined();
   });
 
   it.each([
@@ -421,7 +429,7 @@ describe('Delete an event (sc-3592)', () => {
 
     close(dialog);
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Delete event…' })),
     );

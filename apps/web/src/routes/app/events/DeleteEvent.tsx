@@ -1,16 +1,14 @@
 import { ApiError, type EventDeletion, type OrganisationEvent } from '@soirely/api-client';
 import { typedNameMatches } from '@soirely/domain';
-import { type FormEvent, useLayoutEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
-import { useDialogKeys } from '../../../dialogFocus.ts';
+import { Ask } from '../../../components/SettingsParts.tsx';
 import { offButton } from '../../../offButton.ts';
-import { focusWhereSent, offField } from '../../../offField.ts';
-import { focusStep } from '../../../stepFocus.ts';
 
 /** `Event View` (sc-3592): at the foot of the page, apart from the actions that change the event. */
 export function DeleteEvent({
@@ -68,6 +66,7 @@ export function DeleteEvent({
   );
 }
 
+/** As the demo asks (sc-1468): B's confirm for a Draft with nobody on its list, else the name to type, focused, with Delete grey until it matches. */
 function DeleteDialog({
   event,
   preview,
@@ -82,29 +81,24 @@ function DeleteDialog({
   const [needsName, setNeedsName] = useState(preview.needsName);
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
-  const [mismatch, setMismatch] = useState<string | null>(null);
-  const [failed, setFailed] = useState<string | null>(null);
-  const dialog = useRef<HTMLDivElement>(null);
-  const heading = useRef<HTMLHeadingElement>(null);
+  const [mismatch, setMismatch] = useState(false);
+  const [failed, setFailed] = useState<string | undefined>(undefined);
+  const field = useRef<HTMLInputElement>(null);
   const name = event.name;
+  const matched = typedNameMatches(typed, name);
 
-  useLayoutEffect(() => focusStep(heading.current), []);
-  useDialogKeys(dialog, onKeep, busy);
-
-  async function submit(form: FormEvent<HTMLFormElement>): Promise<void> {
-    form.preventDefault();
+  async function go(): Promise<void> {
     if (busy) return;
 
-    if (needsName && !typedNameMatches(typed, name)) {
-      document.getElementById('event-delete-name')?.focus();
-      setMismatch(t('eventDelete.mismatch', { event: name }));
+    if (needsName && !matched) {
+      setMismatch(true);
+      field.current?.focus();
 
       return;
     }
 
     setBusy(true);
-    setFailed(null);
-    const land = focusWhereSent();
+    setFailed(undefined);
 
     try {
       await api.deleteEvent(event.id, needsName ? typed : undefined);
@@ -117,9 +111,11 @@ function DeleteDialog({
 
       if (refusedName) {
         // A Draft made live, or given a guest, elsewhere since the dialog opened now asks for its name.
-        flushSync(() => setNeedsName(true));
-        setMismatch(t('eventDelete.mismatch', { event: name }));
-        land('event-delete-name');
+        flushSync(() => {
+          setNeedsName(true);
+          setMismatch(true);
+        });
+        field.current?.focus();
       } else {
         setFailed(
           error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'),
@@ -128,98 +124,65 @@ function DeleteDialog({
     }
   }
 
+  const ask = {
+    title: t('eventDelete.title', { event: name }),
+    keep: t('eventDelete.keep'),
+    go: t('eventDelete.delete'),
+    busy: busy ? t('eventDelete.deleting') : undefined,
+    failed,
+    onKeep,
+    onGo: () => void go(),
+  };
+
+  if (!needsName) return <Ask {...ask} line={t('eventDelete.draftBody')} />;
+
   return (
-    <>
-      <div className="dialog-scrim" aria-hidden="true" />
-      <div
-        ref={dialog}
-        className="dialog event-delete-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="event-delete-title"
-        aria-describedby="event-delete-body"
-      >
-        <form className="dialog-form" noValidate onSubmit={(sent) => void submit(sent)}>
-          <div className="dialog-heading">
-            <h2 id="event-delete-title" ref={heading} tabIndex={-1}>
-              {t('eventDelete.title', { event: name })}
-            </h2>
-            {needsName ? (
-              <div id="event-delete-body" className="event-delete-body">
-                <p>{t('eventDelete.removes')}</p>
-                <ul className="event-delete-list">
-                  <li>{t('eventDelete.removesEvent')}</li>
-                  {preview.people > 0 && (
-                    <li>{t('eventDelete.removesGuests', { count: preview.people })}</li>
-                  )}
-                </ul>
-                <p>{t('eventDelete.guests')}</p>
-                <p>{t('eventDelete.window', { deadline: preview.restoreCloses })}</p>
-              </div>
-            ) : (
-              <div id="event-delete-body" className="event-delete-body">
-                <p>{t('eventDelete.draftBody')}</p>
-              </div>
-            )}
-          </div>
-
-          {failed != null && (
-            <div className="notice notice-broken" role="alert">
-              <span className="mark mark-broken" aria-hidden="true">
-                ✕
-              </span>
-              <p>{failed}</p>
-            </div>
-          )}
-
-          {needsName && (
-            <div className="field">
-              <label htmlFor="event-delete-name">{t('eventDelete.type', { event: name })}</label>
-              <input
-                className={mismatch != null ? 'input input-wrong' : 'input'}
-                id="event-delete-name"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                value={typed}
-                {...offField(busy)}
-                aria-invalid={mismatch != null}
-                aria-describedby={
-                  mismatch != null ? 'event-delete-name-error' : 'event-delete-name-hint'
-                }
-                onChange={(change) => {
-                  setTyped(change.target.value);
-                  if (typedNameMatches(change.target.value, name)) setMismatch(null);
-                }}
-              />
-              {mismatch != null && <FieldError id="event-delete-name-error" message={mismatch} />}
-              <p className="muted" id="event-delete-name-hint">
-                {t('eventDelete.typeHint')}
-              </p>
-            </div>
-          )}
-
-          <div className="dialog-actions actions-confirm">
-            <button
-              type="button"
-              className="link-button"
-              {...offButton(busy, { dim: false })}
-              onClick={onKeep}
-            >
-              {t('eventDelete.keep')}
-            </button>
-            <button className="button button-danger" type="submit" aria-busy={busy}>
-              {busy ? t('eventDelete.deleting') : t('eventDelete.delete')}
-            </button>
-            {busy && (
-              <p className="visually-hidden" role="status">
-                {t('eventDelete.deleting')}
-              </p>
-            )}
-          </div>
-        </form>
+    <Ask {...ask} line={t('eventDelete.removes')} off={!matched} first={field}>
+      <ul className="ev-removes">
+        <li>{t('eventDelete.removesEvent')}</li>
+        {preview.people > 0 && <li>{t('eventDelete.removesGuests', { count: preview.people })}</li>}
+      </ul>
+      <p>{t('eventDelete.guests')}</p>
+      <p>{t('eventDelete.window', { deadline: preview.restoreCloses })}</p>
+      <div className="desk-field ev-delete-name">
+        <label htmlFor="event-delete-name" className="desk-label">
+          {t('eventDelete.type', { event: name })}
+        </label>
+        <div className={mismatch ? 'desk-box is-wrong' : 'desk-box'}>
+          <input
+            ref={field}
+            id="event-delete-name"
+            type="text"
+            value={typed}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            readOnly={busy}
+            aria-invalid={mismatch}
+            aria-describedby="event-delete-name-help"
+            onChange={(change) => {
+              setTyped(change.target.value);
+              if (typedNameMatches(change.target.value, name)) setMismatch(false);
+            }}
+            onBlur={() => setMismatch(typed !== '' && !matched)}
+            onKeyDown={(key) => {
+              if (key.key !== 'Enter') return;
+              key.preventDefault();
+              void go();
+            }}
+          />
+        </div>
+        {mismatch ? (
+          <p id="event-delete-name-help" className="desk-error" role="alert">
+            {t('eventDelete.mismatch', { event: name })}
+          </p>
+        ) : (
+          <p id="event-delete-name-help" className="desk-help">
+            {t('eventDelete.typeHint')}
+          </p>
+        )}
       </div>
-    </>
+    </Ask>
   );
 }

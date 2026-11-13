@@ -600,6 +600,8 @@ interface AskProps {
   /** None once nothing is left to decide: the line is an alert, and keep is the one action. */
   go?: string;
   red?: boolean;
+  /** Grey until what the verb needs is there, as Delete is before the name matches; pressing it still calls onGo, to say what is missing. */
+  off?: boolean;
   /** The verb's words while its answer is on its way: it turns and is off, and the way back and Escape wait. */
   busy?: string | undefined;
   /** Why the answer did not go, under the line and any body; the verb tries again. */
@@ -620,7 +622,20 @@ export function Ask(props: AskProps) {
 }
 
 function AskBox(props: AskProps) {
-  const { title, line, keep, go, red = true, busy, failed, first, children, onKeep, onGo } = props;
+  const {
+    title,
+    line,
+    keep,
+    go,
+    red = true,
+    off = false,
+    busy,
+    failed,
+    first,
+    children,
+    onKeep,
+    onGo,
+  } = props;
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
   const keepButton = useRef<HTMLButtonElement>(null);
@@ -680,9 +695,18 @@ function AskBox(props: AskProps) {
               <button
                 ref={goButton}
                 type="button"
-                className={waits ? 'desk-text is-busy' : red ? 'desk-text is-red' : 'desk-text'}
+                className={
+                  waits
+                    ? 'desk-text is-busy'
+                    : off
+                      ? 'desk-text is-off'
+                      : red
+                        ? 'desk-text is-red'
+                        : 'desk-text'
+                }
                 aria-busy={waits || undefined}
                 {...offButton(waits, { dim: false })}
+                aria-disabled={waits || off}
                 onClick={onGo}
               >
                 {waits && <span className="pending-spinner desk-turning" aria-hidden="true" />}

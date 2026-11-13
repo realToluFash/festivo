@@ -49,6 +49,17 @@
   max-width: var(--evWide);
 }
 
+.ev-removes {
+  margin: 0;
+  padding-left: var(--spaceLg);
+  color: var(--colorInkSecondary);
+  font: var(--deskLine);
+}
+
+.ev-delete-name {
+  margin-top: var(--spaceSm);
+}
+
 .ev-dialog-title {
   font: 700 22px/1.15 var(--fontFamily);
   letter-spacing: -0.015em;
