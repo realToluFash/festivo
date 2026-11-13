@@ -4,7 +4,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/demo/events/evt-cena-4?state=deleteDraft
 - extendedWaitUntil:
     visible:
-      id: 'event.delete.confirm'
+      id: 'event.ask.deleteDraft.confirm'
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: confirm
