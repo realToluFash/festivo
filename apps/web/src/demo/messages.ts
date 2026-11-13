@@ -26,6 +26,7 @@ import {
   STOP_STATES,
   isStopState,
 } from './messagesStop.ts';
+import { WA_INVITE_GROUP, WA_INVITE_STATES } from './messagesInviteWords.ts';
 import {
   type InviteDraft,
   type InviteOut,
@@ -162,6 +163,7 @@ export const MESSAGE_STATES = [
   ...WAITS_STATES,
   ...NOTICE_STATES,
   ...INVITE_STATES,
+  ...WA_INVITE_STATES,
   ...STOP_STATES,
 ] as const;
 
@@ -196,6 +198,13 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: INVITE_GROUP,
     states: INVITE_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
+  },
+  {
+    name: WA_INVITE_GROUP,
+    states: WA_INVITE_STATES.map((one) => ({
+      to: `${MESSAGES_AT}?state=${one.key}`,
+      name: one.name,
+    })),
   },
   {
     name: STOP_GROUP,
@@ -679,19 +688,53 @@ function sampleOf(audience: Audience): Sample {
     : 'coming';
 }
 
-/** sc-3928's utility credits for one WhatsApp message, by the number's calling code. */
-const UTILITY_CREDITS: readonly { code: string; country: string; credits: number }[] = [
-  { code: '+234', country: 'Nigeria', credits: 2 },
-  { code: '+55', country: 'Brazil', credits: 2 },
-  { code: '+52', country: 'Mexico', credits: 2 },
-  { code: '+44', country: 'United Kingdom', credits: 5 },
-  { code: '+33', country: 'France', credits: 5 },
-  { code: '+34', country: 'Spain', credits: 4 },
-  { code: '+49', country: 'Germany', credits: 9 },
+/** The category Meta approved Soirely's template in; the invitation is quoted at marketing (sc-45251). */
+export type Category = 'utility' | 'marketing';
+
+/** sc-3928's credits for one WhatsApp message, by the number's country; marketing is computed for three countries only. */
+const WHATSAPP_RATES: readonly {
+  country: string;
+  code: string;
+  utility: number;
+  marketing: number | null;
+}[] = [
+  { country: 'NG', code: '+234', utility: 2, marketing: 10 },
+  { country: 'BR', code: '+55', utility: 2, marketing: 12 },
+  { country: 'MX', code: '+52', utility: 2, marketing: null },
+  { country: 'GB', code: '+44', utility: 5, marketing: 12 },
+  { country: 'FR', code: '+33', utility: 5, marketing: null },
+  { country: 'ES', code: '+34', utility: 4, marketing: null },
+  { country: 'DE', code: '+49', utility: 9, marketing: null },
+  { country: 'US', code: '+1', utility: 1, marketing: null },
 ];
 
+type Rate = (typeof WHATSAPP_RATES)[number];
+
+function rateOf(rate: Rate | undefined, category: Category): number {
+  return (category === 'marketing' ? rate?.marketing : rate?.utility) ?? 0;
+}
+
 export function whatsAppCredits(number: string): number {
-  return UTILITY_CREDITS.find((one) => number.startsWith(`${one.code} `))?.credits ?? 0;
+  return rateOf(
+    WHATSAPP_RATES.find((one) => number.startsWith(`${one.code} `)),
+    'utility',
+  );
+}
+
+/** The credits line's three forms, one home for the Make live offer and the invitation's check (sc-45251). */
+export function creditsLine(texts: number, whatsApp: number, balance: number): string {
+  const credits = texts + whatsApp;
+  const uses = whatsApp === 0 ? 'textsUse' : texts === 0 ? 'whatsAppUse' : 'textsAndWhatsAppUse';
+
+  return `${many(uses, credits)} ${filled(MW.creditsAfter, { count: balance - credits })}`;
+}
+
+/** One guest's message at their own country's rate, never one country's rate times the count. */
+export function whatsAppCreditsIn(country: string, category: Category): number {
+  return rateOf(
+    WHATSAPP_RATES.find((one) => one.country === country),
+    category,
+  );
 }
 
 export const WHATSAPP_NUMBERS: Readonly<Record<string, string>> = {
@@ -730,6 +773,8 @@ export interface WhatsAppReach {
   noMobile: number;
   stopped: number;
   notAgreed: number;
+  /** While the template is marketing, guests with US numbers are outside its reach (pm #45460). */
+  usNumbers: number;
   credits: number;
 }
 
@@ -742,17 +787,22 @@ export function whatsAppOf(audience: Audience): WhatsAppReach {
     noMobile,
     stopped,
     notAgreed,
+    usNumbers: 0,
     credits: whatsAppCreditsFor(reaches),
   };
 }
 
 export function whatsAppLine(audience: Audience): string {
-  const reach = whatsAppOf(audience);
+  return reachWords(whatsAppOf(audience));
+}
 
+/** WhatsApp reaches {n} of {total}, then who it can't, the US part last. */
+export function reachWords(reach: Omit<WhatsAppReach, 'credits'>): string {
   const cant = [
     ...(reach.noMobile > 0 ? [many('noMobile', reach.noMobile)] : []),
     ...(reach.stopped > 0 ? [many('stoppedCount', reach.stopped)] : []),
     ...(reach.notAgreed > 0 ? [many('notAgreedWhatsApp', reach.notAgreed)] : []),
+    ...(reach.usNumbers > 0 ? [many('usNumbers', reach.usNumbers)] : []),
   ];
 
   return [
@@ -857,9 +907,9 @@ export type Delivery =
   | 'optout'
   | 'none';
 export type Kind =
-  'inProgress' | 'bounced' | 'notSent' | 'notConfirmed' | 'optedOut' | 'none' | 'cant';
+  'inProgress' | 'bounced' | 'failed' | 'notSent' | 'notConfirmed' | 'optedOut' | 'none' | 'cant';
 export type AddressFix = 'fixEmail' | 'addEmail' | 'addPhone';
-export type Fix = AddressFix | 'toldInPerson' | 'copyLink';
+export type Fix = AddressFix | 'toldInPerson' | 'copyLink' | 'trySms';
 
 export interface Line {
   mark: Delivery;
@@ -1130,6 +1180,8 @@ export function fixWord(fix: Fix): string {
       return MW.addPhone;
     case 'copyLink':
       return MW.copyLink;
+    case 'trySms':
+      return MW.trySmsInstead;
     default:
       return MW.toldInPerson;
   }
@@ -1145,6 +1197,7 @@ export interface Reach {
 export const KIND_ORDER: readonly Kind[] = [
   'inProgress',
   'bounced',
+  'failed',
   'notSent',
   'notConfirmed',
   'optedOut',
@@ -1174,6 +1227,8 @@ export function legendWord(kind: 'reached' | Kind): string {
       return MW.legendInProgress;
     case 'bounced':
       return MW.legendBounced;
+    case 'failed':
+      return MW.failedReceipt;
     case 'notConfirmed':
       return MW.legendNotConfirmed;
     case 'optedOut':
@@ -1197,6 +1252,8 @@ export function reachLine(
         return [many('inProgressCount', part.count)];
       case 'bounced':
         return [many('bouncedCount', part.count)];
+      case 'failed':
+        return [many('failedCount', part.count)];
       case 'notSent':
         return [many('notSentCount', part.count)];
       case 'notConfirmed':
@@ -1384,6 +1441,139 @@ function receiptsWho(): Who {
   };
 }
 
+/** The invitation by WhatsApp (sc-45251): Who it reached with SMS ticked, or with only email and WhatsApp. */
+export type WhatsAppInviteOf = 'whatsAppInvite' | 'whatsAppInviteNoSms';
+
+const WA_SENT_ON = 'Nov 3';
+const viaWhatsApp = (word: string, mark: Delivery, why?: string): Line => ({
+  mark,
+  word: `${MW.whatsApp} · ${word}`,
+  ...(why == null ? {} : { why }),
+});
+const emailDelivered: Line = {
+  mark: 'delivered',
+  word: `${MW.email} · ${MW.delivered}`,
+  why: '10:01',
+};
+const smsDelivered: Line = { mark: 'delivered', word: `${MW.sms} · ${MW.delivered}`, why: '10:01' };
+const nowInvited: Line = {
+  mark: 'delivered',
+  word: MW.theirInvitation,
+  why: filled(MW.bySoirelysMessage, { date: WA_SENT_ON }),
+};
+const usNumber = viaWhatsApp(MW.notSent, 'notsent', MW.hasUsNumber);
+const notAgreed = viaWhatsApp(MW.notSent, 'notsent', MW.hasNotAgreedWhatsApp);
+const TRY_SMS: readonly Fix[] = ['trySms', 'copyLink'];
+
+/** The wedding's fourteen Not yet invited, sent at marketing by email, WhatsApp and SMS, or without SMS: Delivered or Read is Invited, Sent is not yet. */
+function whatsAppInviteWho(sms: boolean): Who {
+  const femi = person(
+    'femi-ogundipe',
+    'Femi Ogundipe',
+    'inProgress',
+    [
+      { mark: 'sent', word: `${MW.email} · ${MW.sent}`, why: '10:01' },
+      viaWhatsApp(MW.sent, 'sent', '10:02'),
+    ],
+    [],
+    NOT_INVITED,
+  );
+  const catarina = person(
+    'catarina-reis',
+    'Catarina Reis',
+    'failed',
+    [NO_EMAIL, viaWhatsApp(MW.failedReceipt, 'bounced')],
+    TRY_SMS,
+    NOT_INVITED,
+  );
+  const chuka = person(
+    'chuka-nwankwo',
+    'Chuka Nwankwo',
+    'none',
+    [emailDelivered, viaWhatsApp(MW.delivered, 'delivered', '10:02')],
+    [],
+    nowInvited,
+  );
+  const dami = person(
+    'dami-oladipo',
+    'Dami Oladipo',
+    'none',
+    [emailDelivered, viaWhatsApp(MW.read, 'delivered', '10:06')],
+    [],
+    nowInvited,
+  );
+  const unreached = sms
+    ? [femi, catarina]
+    : [
+        femi,
+        person(
+          'kenji-watanabe',
+          'Kenji Watanabe',
+          'bounced',
+          [
+            {
+              mark: 'bounced',
+              word: `${MW.email} · ${MW.bounced}`,
+              why: `${MW.doesntExist} (5.1.1)`,
+            },
+            usNumber,
+          ],
+          TRY_SMS,
+          NOT_INVITED,
+        ),
+        catarina,
+        person('yusuf', 'Yusuf Ibrahim', 'cant', [NO_EMAIL, notAgreed], TRY_SMS, NOT_INVITED),
+      ];
+  const drawn = sms
+    ? [
+        chuka,
+        dami,
+        person(
+          'kenji-watanabe',
+          'Kenji Watanabe',
+          'none',
+          [emailDelivered, smsDelivered, usNumber],
+          [],
+          nowInvited,
+        ),
+        person(
+          'yusuf',
+          'Yusuf Ibrahim',
+          'none',
+          [NO_EMAIL, smsDelivered, notAgreed],
+          [],
+          nowInvited,
+        ),
+      ]
+    : [
+        chuka,
+        dami,
+        person('lina-saleh', 'Lina Saleh', 'none', [emailDelivered, usNumber], [], nowInvited),
+      ];
+  const reach = reachFrom(14, 0, unreached);
+
+  return {
+    reach,
+    line: reachLine(reach, many('nowInvitedCount', reach.reached)),
+    groups: [
+      ...KIND_ORDER.map((kind) => {
+        const these = unreached.filter((one) => one.kind === kind);
+
+        return { key: kind, name: legendWord(kind), people: these, count: these.length, more: 0 };
+      }),
+      { key: 'told', name: MW.markedAsTold, people: [], count: 0, more: 0 },
+      {
+        key: 'reached',
+        name: MW.legendReached,
+        people: drawn,
+        count: reach.reached,
+        more: reach.reached - drawn.length,
+      },
+    ],
+    waiting: unreached.filter((one) => one.kind !== 'inProgress'),
+  };
+}
+
 export type Show = 'everyone' | 'notReached' | 'reached' | 'told' | Kind;
 
 export interface ReachGroup {
@@ -1409,6 +1599,8 @@ function baseOf(of: ReachedOf): readonly Unreached[] {
 /** Who it reached for one message: its summary, its groups in Everyone's order, and who a resend is for; `groups` are the event's own. */
 export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: readonly Group[]): Who {
   if (of === 'receipts') return receiptsWho();
+  if (of === 'whatsAppInvite' || of === 'whatsAppInviteNoSms')
+    return whatsAppInviteWho(of === 'whatsAppInvite');
 
   const marks = inbox.marked[thread] ?? [];
   const mine = (one: Unreached) => updatedPerson(one, savedOn(inbox, one.id, thread));
@@ -1707,7 +1899,7 @@ export interface Answer {
   waits?: string;
 }
 
-export type ReachedOf = 'parking' | 'invite' | 'receipts' | 'new';
+export type ReachedOf = 'parking' | 'invite' | 'receipts' | 'new' | WhatsAppInviteOf;
 
 export type Pane =
   | { kind: 'idle' }
@@ -1847,6 +2039,7 @@ export function inviteCheck(
     figuresOf(draft.to, draft.ticks),
     balance,
     groups,
+    draft.invite?.wa,
   );
 }
 
@@ -2145,8 +2338,8 @@ export function seedOf(state: MessagesState | null): Inbox {
 
       const invite = inviteSeedOf(state);
 
-      if (invite?.kind === 'draft')
-        return {
+      if (invite?.kind === 'draft') {
+        const seeded: Inbox = {
           ...base,
           pane: { kind: 'compose' },
           draft: {
@@ -2154,8 +2347,14 @@ export function seedOf(state: MessagesState | null): Inbox {
             step: invite.step,
             openTo: invite.openTo,
             invite: invite.invite,
+            ...(invite.ticks == null ? {} : { ticks: invite.ticks }),
           },
         };
+
+        return invite.balance == null ? seeded : { ...seeded, balance: invite.balance };
+      }
+      if (invite?.kind === 'reached')
+        return { ...base, pane: { kind: 'reached', of: invite.of, thread: 'invite' } };
       if (invite?.kind === 'out') {
         const draft = inviteDraftOf(invite.to);
         const check = inviteCheck(draft, BALANCE, GROUPS);

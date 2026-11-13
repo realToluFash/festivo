@@ -5,6 +5,7 @@ import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { useLater } from '../useLater.ts';
 import {
+  type Category,
   type Draft,
   type Untellable,
   EVENT_NAME,
@@ -24,29 +25,44 @@ import { useInbox } from './messagesContext.ts';
 import {
   type InviteDraft,
   type InviteRefusal,
-  INVITE_CHANNELS,
   INVITE_WORLD,
   IW,
   REPLY_BY,
   firstOf,
+  goesBySms,
+  goesByWhatsApp,
   greetingOf,
+  inviteChannelsOf,
+  inviteReachOf,
   inviteSmsOf,
   noteRefusal,
   noteTooLong,
   previewPeople,
   weddingAbout,
+  whatsAppInvitationOf,
 } from './messagesInvite.ts';
 import type { OneGuest } from './messagesTo.ts';
 import { chipWords } from './messagesTo.ts';
 import { OnEscape, TickChip } from './MessagesCompose.tsx';
-import { WhereGlyph } from './MessagesParts.tsx';
+import { WhatsAppReach, WhereGlyph } from './MessagesParts.tsx';
 import { FILL_MS, PreviewAs, PreviewBones } from './MessagesPreview.tsx';
 import { PW } from './messagesPreviewWords.ts';
 import { ToPopover } from './MessagesTo.tsx';
+import { WaitBlock } from './MessagesWaits.tsx';
 import { demoWords } from './demoWords.ts';
 import './messagesInvite.css';
 
 const iw = demoWords(IW);
+
+/** sc-3950's reach line and sc-3954's instead line, whenever WhatsApp is ticked (sc-45251). */
+function ReachLines({ whatsApp, instead }: { whatsApp: string | null; instead: string | null }) {
+  return (
+    <>
+      {whatsApp != null && <WhatsAppReach line={whatsApp} />}
+      {instead != null && <p className="mg-instead">{instead}</p>}
+    </>
+  );
+}
 const ANSWERS = [MW.replyYes, MW.replyNo, MW.replyNotSure];
 
 function invitationLines(guest: OneGuest): { subject: string; lines: string[] } {
@@ -152,6 +168,9 @@ export function InviteCompose() {
             </span>
             <InviteTicks draft={draft} />
           </div>
+          {draft.step === 'write' && (
+            <ReachLines {...inviteReachOf(draft.to, invite.wa, draft.ticks, groups)} />
+          )}
         </header>
       )}
       {draft.step === 'preview' ? (
@@ -204,13 +223,13 @@ export function InviteCompose() {
   );
 }
 
-/** Email and SMS only: an invitation has no WhatsApp yet (pm, 13 Nov; sc-45251). */
+/** Email and SMS, and WhatsApp once Soirely's template is approved (sc-45251). */
 function InviteTicks({ draft }: { draft: Draft }) {
   const { act } = useInbox();
 
   return (
     <div className="mg-ticks">
-      {INVITE_CHANNELS.map((channel) => (
+      {inviteChannelsOf(draft.invite?.wa).map((channel) => (
         <TickChip
           key={channel}
           word={channelWord(channel)}
@@ -327,7 +346,7 @@ function NoteBox({
       )}
       {held ? (
         <p id={hintId} className="mg-tell-hint">
-          {IW.noteHint}
+          {invite.wa == null ? IW.noteHint : MW.noteHint}
         </p>
       ) : (
         <div className="mg-tools">
@@ -343,7 +362,7 @@ function NoteBox({
             {MW.preview}
           </button>
           <span id={hintId} className="mg-goes-page">
-            {IW.noteHint}
+            {invite.wa == null ? IW.noteHint : MW.noteHint}
           </span>
           <button
             type="submit"
@@ -562,7 +581,9 @@ function InviteCard({ draft, invite }: { draft: Draft; invite: InviteDraft }) {
               onSeeAll={() => seeAll('cant')}
             />
           )}
+          <ReachLines whatsApp={result.whatsApp} instead={result.instead} />
           {result.credits != null && <p className="mg-credits">{result.credits}</p>}
+          {result.waits != null && <WaitBlock waits={result.waits} />}
         </>
       )}
       <div className="mg-check-acts">
@@ -585,15 +606,19 @@ function InviteCard({ draft, invite }: { draft: Draft; invite: InviteDraft }) {
   );
 }
 
-function optionWords(guest: OneGuest): string {
-  return filled(PW.option, { name: guest.name, language: 'English' });
+const LANGUAGE_NAMES = new Intl.DisplayNames(['en'], { type: 'language' });
+
+function optionWords(guest: OneGuest, wa: Category | undefined): string {
+  const lang = wa == null ? 'en' : whatsAppInvitationOf(guest, false).lang;
+
+  return filled(PW.option, { name: guest.name, language: LANGUAGE_NAMES.of(lang) ?? lang });
 }
 
 /** The invitation as one guest of the audience gets it: their page with the note, if any, and Soirely's own email and text. */
 function InvitePreview({ draft, invite }: { draft: Draft; invite: InviteDraft }) {
   const { act, mesh, to } = useInbox();
   const later = useLater();
-  const people = previewPeople(draft.to, to.book.groups);
+  const people = previewPeople(draft.to, to.book.groups, invite.wa);
   const [who, setWho] = useState(invite.previewAs ?? people[0]?.id ?? '');
   const [filling, setFilling] = useState(false);
   const person = people.find((one) => one.id === who) ?? people[0];
@@ -603,7 +628,9 @@ function InvitePreview({ draft, invite }: { draft: Draft; invite: InviteDraft })
   const note = invite.note.trim();
   const words = invitationLines(person);
   const email = draft.ticks.email && person.email;
-  const sms = draft.ticks.sms && person.mobile;
+  const sms = goesBySms(person, draft.ticks, invite.wa);
+  const shownWa = goesByWhatsApp(person, draft.ticks, invite.wa);
+  const wa = whatsAppInvitationOf(person, invite.noReplyBy === true);
 
   function pick(id: string): void {
     setWho(id);
@@ -618,7 +645,7 @@ function InvitePreview({ draft, invite }: { draft: Draft; invite: InviteDraft })
         <h3 className="mg-preview-heading">{filled(MW.previewAs, { name: person.name })}</h3>
         <PreviewAs
           who={person.id}
-          options={people.map((one) => ({ id: one.id, words: optionWords(one) }))}
+          options={people.map((one) => ({ id: one.id, words: optionWords(one, invite.wa) }))}
           first={false}
           onPick={pick}
         />
@@ -650,7 +677,7 @@ function InvitePreview({ draft, invite }: { draft: Draft; invite: InviteDraft })
                 </div>
               </section>
             )}
-            {(email || sms) && (
+            {(email || sms || shownWa) && (
               <section className="mg-sends" aria-label={MW.whatSoirelySends}>
                 <h3>{MW.whatSoirelySends}</h3>
                 {email && (
@@ -691,6 +718,23 @@ function InvitePreview({ draft, invite }: { draft: Draft; invite: InviteDraft })
                     <p className="mg-notice-bubble mgi-sms">
                       {inviteSmsOf(person, weddingAbout()).text}
                     </p>
+                  </div>
+                )}
+                {shownWa && (
+                  <div className="mg-notice">
+                    <p className="mg-notice-head">
+                      <WhereGlyph where="whatsApp" />
+                      {MW.whatsAppTemplate}
+                    </p>
+                    <div
+                      className="mg-notice-bubble is-wa mi-wa"
+                      lang={wa.lang === 'en' ? undefined : wa.lang}
+                    >
+                      {wa.lines.map((line) => (
+                        <p key={line}>{line}</p>
+                      ))}
+                      <span>{wa.button}</span>
+                    </div>
                   </div>
                 )}
               </section>

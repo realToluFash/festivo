@@ -12,6 +12,8 @@ export const MAKE_LIVE_STATES = [
   { key: 'makeLiveOfferOne', name: 'The offer, one guest by email' },
   { key: 'makeLiveOfferWaits', name: 'The offer, too few credits' },
   { key: 'makeLiveOfferPart', name: 'The offer, credits for some texts' },
+  { key: 'makeLiveOfferWhatsApp', name: 'The offer, texts and WhatsApp at marketing (sc-45251)' },
+  { key: 'makeLiveOfferWhatsAppOnly', name: 'The offer, WhatsApp only, at utility (sc-45251)' },
   { key: 'makeLiveOfferSending', name: 'Sending…' },
   { key: 'makeLiveOfferSent', name: 'After Send them: the toast and Messages' },
   { key: 'makeLiveOfferNotYet', name: 'After Not yet: Live, no toast' },

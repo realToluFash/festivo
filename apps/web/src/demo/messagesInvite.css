@@ -114,3 +114,7 @@
 .mg-notice-bubble.mgi-sms {
   white-space: pre-line;
 }
+
+.mg-notice-bubble.is-wa.mi-wa p + p {
+  padding-top: 0;
+}

@@ -363,6 +363,10 @@ const LIVE_COUNTED = {
   later_other: 'You can send the invitations later from Guests in Soirely on the web.',
   textsUse_one: 'Texts use 1 credit.',
   textsUse_other: 'Texts use {{count}} credits.',
+  whatsAppUse_one: 'WhatsApp messages use 1 credit.',
+  whatsAppUse_other: 'WhatsApp messages use {{count}} credits.',
+  textsAndWhatsAppUse_one: 'Texts and WhatsApp messages use 1 credit.',
+  textsAndWhatsAppUse_other: 'Texts and WhatsApp messages use {{count}} credits.',
   nobody_one:
     'This guest cannot be reached. Add an email address or a mobile number for them in Guests.',
   nobody_other:

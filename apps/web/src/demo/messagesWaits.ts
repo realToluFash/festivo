@@ -126,7 +126,7 @@ export interface Waits {
 }
 
 /** What waits for credits, WhatsApp first, and the one way past that still leaves something to send. */
-export function waitsOf(check: Check, ticks: Ticks): Waits | null {
+export function waitsOf(check: Pick<Check, 'pills'>, ticks: Ticks): Waits | null {
   const count = (channel: Channel) =>
     check.pills.find((pill) => pill.channel === channel)?.count ?? 0;
   const wa = ticks.whatsApp ? count('whatsApp') : 0;
