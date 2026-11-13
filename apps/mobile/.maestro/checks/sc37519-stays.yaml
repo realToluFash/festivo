@@ -1,7 +1,8 @@
-# Password changed stays while Organisation name keeps focus and is typed in; lowering the keys moves it above Continue. sc-37519.
+# On a tablet at ${ORIENT}, Password changed stays while Organisation name keeps focus and is typed in; lowering the keys moves it above Continue. sc-37519, sc-42562.
 appId: host.exp.Exponent
 ---
-- runFlow: ../sign-out.yaml
+- runFlow: ../batch/sign-out.yaml
+- setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_STEP}
 - extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
 - tapOn: { id: 'recovery.password' }
