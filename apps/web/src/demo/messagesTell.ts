@@ -553,3 +553,7 @@ export function dayStillToCome(event: SampleEvent, now: Date): boolean {
 
   return day(now) < day(new Date(event.endsAt));
 }
+
+export function linkFigures(name: string): Figures {
+  return { ...FIGURES.link, name };
+}

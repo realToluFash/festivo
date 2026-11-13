@@ -183,6 +183,7 @@ export function MessagesPage({
 
   return (
     <EventsShell
+      told={state === 'untoldDismissed' ? MW.dismissed : null}
       renderSide={(tell, covered) => (
         <EventSidebar
           event={event}

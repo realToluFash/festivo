@@ -86,11 +86,15 @@ import {
   changed,
   draftOf,
   freshId,
+  SAMPLE_EVENT,
+  changeId,
   inviteDraftOf,
   keepInbox,
   keptInbox,
 } from './messages.ts';
 import { NOT_YET_INVITED, oneGuestOf } from './messagesInvite.ts';
+import { changeFor, linkFigures, toldOfKind } from './messagesTell.ts';
+import { TellDialog } from './MessagesTell.tsx';
 import {
   Ask,
   Chevron,
@@ -169,6 +173,7 @@ function GuestsAt({ params }: { params: URLSearchParams }) {
           base={viewBase(guestsStateOf(params.get('state')))}
           their={their}
           tell={tell}
+          tellLink={params.get('tell') === 'link'}
         />
       )}
     </EventsShell>
@@ -215,13 +220,16 @@ function GuestsPage({
   base,
   their,
   tell,
+  tellLink,
 }: {
   event: SampleEvent;
   start: GuestsStart;
   base: ViewInAddress;
   their: { state: TheirState; viewer: Viewer };
   tell: Tell;
+  tellLink: boolean;
 }) {
+  const [linkTold, setLinkTold] = useState<string | null>(tellLink ? 'Kwame Mensah' : null);
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
   const [erase, setErase] = useState<'erasing' | 'erased' | null>(
     their.state === 'erasing' || their.state === 'erased' ? their.state : null,
@@ -815,6 +823,26 @@ function GuestsPage({
             setAsking(null);
             setPane({ kind: 'guest', id: paneGuest.id, note: 'linkReplaced' });
             focus('replace');
+            if (sample.id === SAMPLE_EVENT) setLinkTold(paneGuest.name);
+          }}
+        />
+      )}
+      {linkTold != null && (
+        <TellDialog
+          tell={tell}
+          changes={[toldOfKind('link', linkTold)]}
+          figures={linkFigures(linkTold)}
+          onNotNow={() => setLinkTold(null)}
+          onSent={(sent) => {
+            const was = keptInbox();
+            const told = [toldOfKind('link', linkTold)];
+
+            setLinkTold(null);
+            if (!sent.allTold)
+              keepInbox({
+                ...was,
+                outs: [...was.outs, changeFor(told, sent.figures, sent.note, changeId(was))],
+              });
           }}
         />
       )}
