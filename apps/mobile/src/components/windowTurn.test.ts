@@ -222,6 +222,7 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
       );
       expect(picker).toContain('windowSize={listFilling ? 1 : undefined}');
       expect(picker).toContain('const fill = setTimeout(() => setFilled(true), SETTLED_MS);');
+      expect(picker).toContain('if (!up && filled) setFilled(false);');
     });
   });
 
@@ -239,8 +240,8 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     const walk = read('CreateWalkWindow.tsx');
     const focus = read('screenReaderFocus.ts');
 
-    expect(walk).toContain("if (opening.focus === 'search') keys = focusReadOnce(search);");
-    expect(walk).toContain("else if (opening.focus === 'name') keys = focusReadOnce(field);");
+    expect(walk).toContain("if (opening.focus === 'search') cancelKeys = focusReadOnce(search);");
+    expect(walk).toContain("else if (opening.focus === 'name') cancelKeys = focusReadOnce(field);");
     expect(focus).toMatch(
       /moveScreenReaderFocus\(input\.current\);\s+keys = setTimeout\(\(\) => input\.current\?\.focus\(\), HOVER_LANDS_MS\);/,
     );
