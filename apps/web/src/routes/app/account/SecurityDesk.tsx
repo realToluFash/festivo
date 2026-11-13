@@ -76,7 +76,7 @@ import {
   waysOf,
 } from '../../../securityPage.ts';
 import { wayRefusal, wayRefusalLine } from '../../../securityRefusals.ts';
-import { opensOn } from '../settings/signInRulesDesk.ts';
+import { opensSetUp } from '../settings/signInRulesDesk.ts';
 import { forgetSession, refreshAccount, rereadCredentials, useSession } from '../../../session.ts';
 import { useSignOut } from '../../../signOut.ts';
 import { currentSessionId } from '../../../tokens.ts';
@@ -126,7 +126,7 @@ export function SecurityDesk() {
   const [acting, setActing] = useState(false);
   const [dialog, setDialog] = useState<Opened | null>(() => returnedProof(returned));
   const [opensOnLine] = useState(() => linksOnArrival(returned));
-  const opensSetup = useRef(opensOn(location.state) === 'turnOn');
+  const opensSetup = useRef(opensSetUp(location.state));
   const here = useSignOut(() => navigate('/sign-in'));
   const ways = waysOf(session.hasPassword, session.providers);
   const rules = rulesOf(session.organisations);
