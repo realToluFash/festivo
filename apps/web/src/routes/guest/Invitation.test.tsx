@@ -539,6 +539,18 @@ describe('when the event is paused, called off or over (sc-3591)', () => {
     expect(screen.queryByText(/Answers have closed/)).toBeNull();
   });
 
+  it('reads the notice before the cover card at every width', async () => {
+    api({
+      '/api/guest-links/page': [{ status: 200, body: at('paused', false, answered('coming')) }],
+    });
+    open();
+
+    const notice = (await screen.findByText(PAUSED_NOTICE)).closest('[role="status"]');
+    const h1 = screen.getByRole('heading', { level: 1 });
+    expect(notice?.parentElement?.classList.contains('gp-columns')).toBe(true);
+    expect(notice?.compareDocumentPosition(h1)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it('says You didn’t answer, paused before the start, and offers no answer', async () => {
     api({ '/api/guest-links/page': [{ status: 200, body: at('paused', false) }] });
     open();

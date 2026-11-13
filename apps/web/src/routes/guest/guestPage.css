@@ -147,7 +147,7 @@
 @media (width >= 64rem) {
   .gp-columns {
     display: grid;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto auto 1fr;
     grid-template-columns: var(--gpLeft) var(--gpRight);
     align-items: start;
     gap: 0 var(--gpGap);
@@ -160,24 +160,24 @@
     margin-top: 0;
   }
 
+  .gp-columns > .gp-phase-live {
+    grid-area: 1 / 2;
+  }
+
   .gp-columns > .gp-cover {
-    grid-area: 1 / 1;
+    grid-area: 1 / 1 / span 2;
   }
 
   .gp-columns > .gp-details {
-    grid-area: 2 / 1;
+    grid-area: 3 / 1;
   }
 
   .gp-columns > .gp-under {
-    grid-area: 1 / 2 / span 2;
+    grid-area: 2 / 2 / span 2;
   }
 
-  .gp-under > .gp-phase-live > .gp-phase {
-    margin-bottom: -8px;
-  }
-
-  .gp-under > .gp-phase-live:empty {
-    margin-bottom: -28px;
+  .gp-phase-live > .gp-phase {
+    margin-bottom: 20px;
   }
 
   .gp-alone-wrap {
