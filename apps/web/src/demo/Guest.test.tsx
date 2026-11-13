@@ -564,7 +564,7 @@ describe('Your messages from an email’s link: the button and Undo (sc-3969)', 
 
     const words = screen.getByText(STOPPED);
     expect(document.activeElement).toBe(words);
-    expect(words.getAttribute('role')).toBe('status');
+    expect(words.hasAttribute('role')).toBe(false);
     expect(screen.queryByRole('button', { name: STOP })).toBeNull();
     expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
     expect(email().checked).toBe(false);
@@ -587,7 +587,10 @@ describe('Your messages from an email’s link: the button and Undo (sc-3969)', 
     expect(email().checked).toBe(false);
 
     await wait(SEND_MS);
-    expect(document.activeElement).toBe(screen.getByText(ON_AGAIN));
+    const again = screen.getByText(ON_AGAIN);
+    expect(document.activeElement).toBe(again);
+    expect(again.closest('[role="status"]')).toBeNull();
+    expect(said()?.textContent).toBe('');
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
     expect(email().checked).toBe(true);
   });

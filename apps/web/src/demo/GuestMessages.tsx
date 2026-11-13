@@ -104,7 +104,7 @@ function Lead({
         <div className="gp-yours-done">
           <Mark answer="coming" />
           <div className="gp-yours-done-words">
-            <p role="status" tabIndex={-1} data-focus="yoursLead">
+            <p tabIndex={-1} data-focus="yoursLead">
               {words.lead(yours.lead)}
             </p>
             {yours.lead === 'stopped' && (
