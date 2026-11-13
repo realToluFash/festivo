@@ -24,7 +24,6 @@ import {
   codePath,
   offersWhatsApp,
 } from './guest.ts';
-import { guestPlace } from './arrivalNote.ts';
 import { hasWhere, inDayOrder, mapsLink, placeOf } from './guestDay.ts';
 
 const LINES = {
@@ -127,7 +126,7 @@ export function Cover({
   const day = shortDay(EVENT.startsAt, visit.lang, EVENT.timeZone);
   const when = zoned ? words.timeInZone(time, EVENT.timeZone) : time;
   const look = visit.photo ? 'is-photo' : `today-cover is-${EVENT.mesh}`;
-  const place = placeOf(visit.where);
+  const place = placeOf(visit);
   const dayOrder = inDayOrder(visit);
   const line = [day, dayOrder && hasWhere(place) ? null : when, dayOrder ? null : place.name]
     .filter((part) => part != null)
@@ -438,8 +437,8 @@ function Row({ lead, title, line }: { lead: ReactNode; title: ReactNode; line?: 
 export function Details({ visit, words, hosts }: { visit: Visit; words: Words; hosts: boolean }) {
   const time = eventTime(visit.lang);
   const zoned = visit.readerZone !== EVENT.timeZone;
-  const { venue, note } = guestPlace(EVENT, visit.note, visit.phase === 'live');
-  const place = venue == null ? { name: null, address: null } : placeOf(visit.where);
+  const place = placeOf(visit);
+  const { note } = place;
   const dayOrder = inDayOrder(visit);
   const line = place.name != null || place.address != null;
   const noteLine = note != null && (
