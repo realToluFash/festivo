@@ -25,6 +25,7 @@ import {
   draftTitle,
   messageName,
   noticeCostOf,
+  noticeCreditsOf,
   resultOf,
   tellNowBy,
   tellingBy,
@@ -48,6 +49,7 @@ import {
   HOSTS,
   HELD_TOO_LONG,
   RECEIPTS,
+  OTHER_CHANNELS,
 } from './MessagesSample.ts';
 import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { Preview } from './Preview.tsx';
@@ -57,6 +59,23 @@ import { SW } from './ScheduledSave.ts';
 import { clockNote } from './Sms.ts';
 import { SMSW } from './SmsWords.ts';
 import { type Stopping, headOf, stoppedLine } from './StopWriting.ts';
+import {
+  NoManageCard,
+  NoticeAsk,
+  RefusedLines,
+  WindowClosed,
+  noticeExtras,
+} from './NoticeParts.tsx';
+import {
+  type NoticeCase,
+  caseFor,
+  guestOf,
+  headLineOf,
+  languageOf,
+  quietLine,
+  refusalOf as noticeRefusal,
+} from './NoticeStates.ts';
+import { NW } from './NoticeWords.ts';
 import { MoreActions, StoppedInset } from './StopWritingParts.tsx';
 import {
   type Bit,
@@ -153,7 +172,14 @@ function told(channel: keyof typeof CHANNEL_IN_LINE): string {
 }
 
 /** How the notice of an answer went, as a mark and a word: told, held for credits, or held too long and not sent. */
-function noticeBit(answer: Pick<Answer, 'by' | 'notice'>): Bit {
+function noticeBit(answer: Pick<Answer, 'by' | 'notice' | 'refused' | 'waits'>): Bit {
+  if (answer.refused != null)
+    return {
+      word: say.where(CHANNEL_WORD[answer.by], `${W.notSent} · ${answer.refused.reason}`),
+      mark: answer.refused.mark,
+    };
+  if (answer.waits != null)
+    return { word: say.where(CHANNEL_WORD[answer.by], answer.waits), mark: 'sending' };
   switch (answer.notice) {
     case 'held':
       return { word: say.where(CHANNEL_WORD[answer.by], W.heldForCredits), mark: 'sending' };
@@ -170,6 +196,9 @@ function unknownParts(talk: Talk): Parts {
   const guest = GUESTS.unknown;
   const matched = m.matched;
   const answer = m.answers.unknown;
+  const kase = caseFor(m, 'unknown');
+  const hidden = m.notice?.hidden === true;
+  const reader = m.reader ?? READER;
   const doneOrWaiting = m.done.includes('unknown') ? (
     <TextAction
       label={W.markAsWaiting}
@@ -186,7 +215,7 @@ function unknownParts(talk: Talk): Parts {
   );
 
   return {
-    title: matched ?? guest.name,
+    title: matched ?? (hidden ? NW.unknownSender : guest.name),
     line:
       matched == null
         ? say.where(CHANNEL_WORD.email, W.notMatched)
@@ -208,20 +237,27 @@ function unknownParts(talk: Talk): Parts {
         {matched == null ? (
           <View style={styles.unmatched}>
             <Text size={14.5} weight="medium" style={styles.unmatchedLine}>
-              {say.couldntMatch(guest.head)}
+              {hidden ? NW.couldNotMatch : say.couldntMatch(guest.head)}
             </Text>
-            <BigButton label={W.chooseGuest} onPress={talk.onMatch} testID="messages.chooseGuest" />
+            {talk.stop.manage && (
+              <BigButton
+                label={W.chooseGuest}
+                onPress={talk.onMatch}
+                testID="messages.chooseGuest"
+              />
+            )}
           </View>
         ) : (
           <SystemLine text={say.matchedLine(matched, READER, guest.head)} glyph="tick" />
         )}
+        {matched != null && kase?.extras != null && noticeExtras(kase.extras, matched)}
         {answer != null && (
           <HostBubble
             text={answer.text}
             settles={answer.seen == null}
             bits={[
               { word: W.onTheirPage, where: 'page' },
-              { word: say.byAt(READER, answer.time) },
+              { word: say.byAt(reader, answer.time) },
               { word: told('email'), mark: 'delivered' },
               { word: W.notSeenYet },
             ]}
@@ -230,18 +266,19 @@ function unknownParts(talk: Talk): Parts {
       </>
     ),
     align: 'end',
-    foot:
-      matched == null ? undefined : (
-        <AnswerBox
-          name={matched}
-          channel="email"
-          value={talk.typed}
-          reason={talk.closed}
-          fieldRef={talk.answerRef}
-          onChange={talk.onTyped}
-          onSend={() => talk.onAnswer('unknown')}
-        />
-      ),
+    foot: !talk.stop.manage ? (
+      <NoManageCard />
+    ) : matched == null ? undefined : (
+      <AnswerBox
+        name={matched}
+        channel="email"
+        value={talk.typed}
+        reason={talk.closed}
+        fieldRef={talk.answerRef}
+        onChange={talk.onTyped}
+        onSend={() => talk.onAnswer('unknown')}
+      />
+    ),
   };
 }
 
@@ -256,11 +293,24 @@ function initialsOf(name: string): string {
 function guestParts(talk: Talk, key: GuestKey): Parts {
   const { m } = talk;
   if (key === 'unknown') return unknownParts(talk);
-  const guest = GUESTS[key];
+  const guest = guestOf(m, key);
+  const kase = caseFor(m, key);
+  const reader = m.reader ?? READER;
   const answer = m.answers[key];
   const done = m.done.includes(key) || key === 'marta';
   const at = m.doneAt[key];
   const history: ReactNode[] = [];
+  const asked = (
+    <GuestBubble
+      key="asked"
+      text={guest.asked.text}
+      where={guest.asked.where}
+      when={guest.asked.time || rowDay(guest.asked.day, '', talk.locale)}
+    />
+  );
+
+  if (kase?.askedFirst === true)
+    history.push(<DayRule key="d0" text={dayWords(guest.asked.day, talk.locale)} />, asked);
 
   if (key === 'ines')
     history.push(
@@ -279,16 +329,13 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
         key="park"
         title={PARKING}
         mark="group"
-        bits={[
-          { word: W.onTheirPage },
-          { word: told('email'), mark: 'delivered' },
-          { word: say.seenAt('19:02') },
-        ]}
+        bits={[{ word: W.onTheirPage }, parkingBit(kase), { word: say.seenAt('19:02') }]}
       />,
       <DayRule key="d3" text={W.today} />,
     );
   if (key === 'kwame') {
-    if (talk.wide) history.push(<DayRule key="d1" text={dayWords(DAYS.parking, talk.locale)} />);
+    if (talk.wide || kase?.askedFirst === true)
+      history.push(<DayRule key="d1" text={dayWords(DAYS.parking, talk.locale)} />);
     history.push(
       <Stub
         key="park"
@@ -323,32 +370,35 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
         ]}
       />,
     );
-  if (key === 'lucia') history.push(<DayRule key="d1" text={W.today} />);
+  if (key === 'lucia' || key === 'valentina')
+    history.push(
+      <DayRule
+        key="d1"
+        text={guest.asked.day === DAYS.today ? W.today : dayWords(guest.asked.day, talk.locale)}
+      />,
+    );
   if (key === 'marta') history.push(<DayRule key="d1" text={dayWords(DAYS.marta, talk.locale)} />);
 
   const stream = (
     <>
       {history}
-      <GuestBubble
-        text={guest.asked.text}
-        where={guest.asked.where}
-        when={guest.asked.time || rowDay(guest.asked.day, '', talk.locale)}
-      />
-      {key === 'kwame' && <SystemLine text={W.cameBySms} mark="sms" />}
+      {kase?.askedFirst !== true && asked}
+      {key === 'kwame' && kase == null && <SystemLine text={W.cameBySms} mark="sms" />}
+      {kase?.extras != null && noticeExtras(kase.extras, guest.name)}
       {answer != null && (
         <HostBubble
           text={answer.text}
           settles={answer.seen == null}
           bits={[
             { word: W.onTheirPage, where: 'page' },
-            { word: say.byAt(READER, answer.time) },
+            { word: say.byAt(reader, answer.time) },
             noticeBit(answer),
             { word: answer.seen == null ? W.notSeenYet : say.seenAt(answer.seen) },
           ]}
         />
       )}
       {m.done.includes(key) && at != null && (
-        <SystemLine text={say.doneBy(READER, at)} glyph="tick" />
+        <SystemLine text={say.doneBy(reader, at)} glyph="tick" />
       )}
     </>
   );
@@ -369,9 +419,13 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
   const { stop } = talk;
   const stopped = stop.stopped[key];
   const head = headOf(stop, key);
+  const change = kase?.shared != null && (
+    <TextAction label={W.changeGuest} onPress={talk.onMatch} testID="messages.changeGuest" />
+  );
   const right =
     head === 'none' ? undefined : head === 'doneAndMore' ? (
       <View style={styles.withMore}>
+        {change}
         {doneOrWaiting}
         <MoreActions open={stop.menu} onPress={talk.onActions} buttonRef={talk.moreRef} />
       </View>
@@ -381,7 +435,7 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
 
   return {
     title: guest.name,
-    line: guest.head,
+    line: headLineOf(m, key, talk.locale),
     right,
     lead: <Avatar initials={guest.initials} side={44} tone={0} />,
     under:
@@ -397,7 +451,9 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
       ),
     stream,
     align: 'end',
-    foot: (
+    foot: !stop.manage ? (
+      <NoManageCard />
+    ) : (
       <AnswerBox
         name={guest.name}
         channel={tellingBy(m, key)}
@@ -406,13 +462,58 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
         value={talk.typed}
         reason={talk.closed}
         fieldRef={talk.answerRef}
-        autoFocus={key === 'kwame' && talk.typed !== ''}
+        autoFocus={(key === 'kwame' || kase != null) && talk.typed !== ''}
         onChange={talk.onTyped}
         onTellBy={(channel) => talk.dispatch({ type: 'tellBy', key, channel })}
         onSend={() => talk.onAnswer(key)}
+        notice={kase == null ? {} : noticeOf(talk, key, kase)}
       />
     ),
   };
+}
+
+function parkingBit(kase: NoticeCase | null): Bit {
+  if (kase?.parking === 'bounced')
+    return { word: say.where(CHANNEL_WORD.email, W.bounced), mark: 'bounced' };
+  if (kase?.parking === 'spam')
+    return { word: say.where(CHANNEL_WORD.email, NW.reportedAsSpam), mark: 'delivered' };
+
+  return { word: told('email'), mark: 'delivered' };
+}
+
+/** sc-3976's lines in the answer box: the 24 hours closed, the refusal, the quiet-hours wait, Ask an owner. */
+function noticeOf(talk: Talk, key: GuestKey, kase: NoticeCase) {
+  const { m } = talk;
+  const by = tellingBy(m, key);
+  const refusal =
+    kase.blocks == null
+      ? null
+      : noticeRefusal(
+          by,
+          kase.blocks,
+          othersOf(key, kase),
+          languageOf(key, talk.locale),
+          (one) => noticeCreditsOf(key, one) <= m.balance,
+        );
+
+  return {
+    closed: kase.windowClosed === true ? <WindowClosed again={refusal == null} /> : undefined,
+    refused:
+      refusal == null ? undefined : (
+        <RefusedLines
+          refusal={refusal}
+          name={guestOf(m, key).name}
+          channel={by}
+          onTellBy={(channel) => talk.dispatch({ type: 'tellBy', key, channel })}
+        />
+      ),
+    quiet: refusal == null && kase.quiet != null ? quietLine(by, kase.quiet) : null,
+    ask: kase.ask == null ? undefined : <NoticeAsk start={kase.ask} />,
+  };
+}
+
+function othersOf(key: GuestKey, kase: NoticeCase): readonly ChannelKey[] {
+  return kase.others ?? OTHER_CHANNELS[key] ?? [];
 }
 
 /** The resend's check, in the conversation of the message whose Who it reached asked for it. */

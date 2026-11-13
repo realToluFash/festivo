@@ -212,6 +212,13 @@ function waits(paid: 'sms' | 'wa', count: number): string {
     : `${count} ${name} messages will wait for credits.`;
 }
 
+function countParts(waiting: number, notMatched: number): string[] {
+  return [
+    ...(waiting > 0 ? [`${waiting} waiting`] : []),
+    ...(notMatched > 0 ? [`${notMatched} not matched`] : []),
+  ];
+}
+
 export const say = {
   section: (word: string, count: number) => `${word} · ${count}`,
   where: (where: string, text: string) => `${where} · ${text}`,
@@ -221,11 +228,8 @@ export const say = {
     `Done by ${name} at ${time}. It comes back to Needs you if they write again.`,
   doneByShort: (name: string) => `Done by ${name}`,
   badgeName: (waiting: number, notMatched: number) =>
-    notMatched === 0
-      ? `Messages, ${waiting} waiting`
-      : `Messages, ${waiting} waiting, ${notMatched} not matched`,
-  counts: (waiting: number, notMatched: number) =>
-    notMatched === 0 ? `${waiting} waiting` : `${waiting} waiting · ${notMatched} not matched`,
+    ['Messages', ...countParts(waiting, notMatched)].join(', '),
+  counts: (waiting: number, notMatched: number) => countParts(waiting, notMatched).join(' · '),
   arrived: (name: string) => `${name} answered on their page.`,
   answerLine: (name: string, channel: string) =>
     `Your answer goes on ${name}’s page. Soirely tells them by ${channel}.`,

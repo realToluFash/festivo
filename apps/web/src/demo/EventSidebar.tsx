@@ -42,7 +42,7 @@ export function EventSidebar({
   inert: boolean;
   waiting?: { line: string; name: string } | null;
   without?: readonly Area[];
-  reader?: Reader;
+  reader?: Reader | undefined;
 }) {
   return (
     <nav className="today-side ev-side" aria-label={event.name} inert={inert}>
