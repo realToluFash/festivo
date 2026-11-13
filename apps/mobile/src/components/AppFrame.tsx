@@ -469,30 +469,34 @@ export function AppFrame({
   const ownTop = framed && top != null && standIn == null;
   const underTabs =
     floatingTabs && listUnderTabs && standIn == null ? phoneTabBarClearance(insets.bottom) : 0;
-  const switchedNotice =
-    switched == null ? null : created?.takesFocus === true ? (
-      <View style={ownTop ? styles.switchedUnderTitle : styles.created}>
-        <Notice
-          tone="done"
-          mark={tokens.marks.done.glyph}
-          body={switched}
-          wordsRef={createdWords}
-        />
-      </View>
-    ) : (
-      <ReadOut style={ownTop ? styles.switchedUnderTitle : styles.created} words={switched}>
-        <Notice tone="done" mark={tokens.marks.done.glyph} body={switched} />
-      </ReadOut>
+  const switchedRead = created?.takesFocus !== true;
+  const switchedWords =
+    switched == null ? null : (
+      <Notice
+        tone="done"
+        mark={tokens.marks.done.glyph}
+        body={switched}
+        wordsRef={switchedRead ? undefined : createdWords}
+      />
     );
-  // A body with its own top, as Today, says it where its demo draws it, in its notices (sc-44087).
-  const bodySwitched =
-    !framed && switched != null && created?.takesFocus !== true ? (
-      <ReadOut
-        style={kind === 'tabletLandscape' ? undefined : styles.switchedInBody}
-        words={switched}
-      >
-        <Notice tone="done" mark={tokens.marks.done.glyph} body={switched} />
+  const switchedStyle = ownTop ? styles.switchedUnderTitle : styles.created;
+  // A body with its own top, as Today, draws it where its demo does, while the frame says it once whatever the body shows (sc-44087).
+  const inBody = !framed && switchedRead;
+  const switchedNotice =
+    switched == null ? null : inBody ? (
+      <ReadOut words={switched} />
+    ) : switchedRead ? (
+      <ReadOut style={switchedStyle} words={switched}>
+        {switchedWords}
       </ReadOut>
+    ) : (
+      <View style={switchedStyle}>{switchedWords}</View>
+    );
+  const bodySwitched =
+    inBody && switched != null ? (
+      <View style={kind === 'tabletLandscape' ? undefined : styles.switchedInBody}>
+        {switchedWords}
+      </View>
     ) : null;
   const header: FrameHeaderProps = {
     current,
@@ -549,7 +553,7 @@ export function AppFrame({
               },
             ]}
           >
-            {!ownTop && bodySwitched == null && switchedNotice}
+            {!ownTop && switchedNotice}
             <OpenSwitcher.Provider value={openSwitcher}>
               <StartOrganisation.Provider value={startOrganisation}>
                 <HideBack.Provider value={backRow.hide}>
@@ -1586,7 +1590,7 @@ const styles = StyleSheet.create({
   whitePill: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
   created: { paddingTop: tokens.spaceLg, paddingHorizontal: tokens.spaceXl },
   switchedUnderTitle: { marginTop: 18 },
-  switchedInBody: { marginBottom: tokens.spaceXl },
+  switchedInBody: { alignSelf: 'stretch', marginBottom: tokens.spaceXl },
 });
 
 let currenciesRead: Currencies | null = null;
