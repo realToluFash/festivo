@@ -31,12 +31,15 @@ import { numberLine } from './rules.ts';
 import { type HowAgreed, NO_CONSENT, type WhatsAppConsent, hostAgreed } from './whatsAppConsent.ts';
 import type { DemoLink } from './settings.ts';
 import { type ExportStart, XW, exportDay, fileName } from './guestExport.ts';
+import { type Change, changeLabel, changeWhen } from './changedSince.ts';
 
 /** Guests in A · Summary first (page e30, board/guests-a-spec.md): the sample, its counts and the states; the words are in guestsWords.ts. */
 export { GW };
 
 export type Reply = 'coming' | 'notSure' | 'noReply' | 'notComing' | 'held' | 'notYet' | 'walkIn';
 export type Choice = 'all' | 'invited' | Reply;
+/** sc-4331: Changed since you looked sits apart from the reply choices and outside their add-up-to-All rule. */
+export type Filter = Choice | 'changed';
 export type Answer = 'coming' | 'notComing' | 'notSure';
 
 export const ANSWERS: readonly Answer[] = ['coming', 'notComing', 'notSure'];
@@ -971,8 +974,39 @@ export function viewOf(
   };
 }
 
-export function choiceWord(choice: Choice): string {
-  return CHOICE_WORDS[choice];
+export function choiceWord(choice: Filter): string {
+  return choice === 'changed' ? GW.changedSince : CHOICE_WORDS[choice];
+}
+
+/** sc-4331: one row per guest the bell's item counts, newest first: the answer, or the bell's label for a change that is not a reply, and when. */
+export function changedView(
+  list: readonly Guest[],
+  changes: readonly Change[],
+  q: string,
+  clock: Date,
+  contacts = true,
+): { view: ListView; shown: number } {
+  const people = peopleOf(list);
+  const rows = changes.flatMap((change): ListRow[] => {
+    const person = people.find((one) => one.companion == null && one.guest.id === change.id);
+
+    if (person == null || !matches(person, q, contacts)) return [];
+    const answer = changeLabel(change.kind) ?? REPLY_WORDS[person.reply];
+    const line = `${answer} · ${changeWhen(change, clock)}`;
+
+    return [
+      {
+        person,
+        indent: false,
+        line,
+        label: `${person.name}, ${line}`,
+        dietary: false,
+        allergy: false,
+      },
+    ];
+  });
+
+  return { view: { kind: 'rows', rows }, shown: rows.length };
 }
 
 export interface Values {
@@ -1447,8 +1481,12 @@ export interface GuestsStart {
   status: 'ready' | 'loading' | 'failed';
   card: CardKind;
   clock: Date;
-  choice: Choice;
+  choice: Filter;
   q: string;
+  /** sc-4331: the last look the Changed since you looked filter counts from, kept in the address; null counts every change. */
+  since: string | null;
+  /** sc-4331: when the event's Guest replies item was last marked read, as the state opens: null is never, and by default it is the state's clock, so nothing has changed since. */
+  looked?: string | null;
   /** sc-3777's Dietary notes chip. */
   dietary: boolean;
   menu: boolean;
@@ -1532,6 +1570,10 @@ export const GUESTS_STATES = [
   { key: 'search', name: 'A search: “okon”' },
   { key: 'searchNone', name: 'A search that matches nobody: “kofi”' },
   { key: 'filterNone', name: 'Held and “marta”: nobody in both' },
+  { key: 'changedRow', name: 'The filter menu with Changed since you looked first' },
+  { key: 'changed', name: 'Changed since you looked, from the bell' },
+  { key: 'changedMenu', name: 'Changed since you looked, the menu open on it' },
+  { key: 'changedNone', name: 'Changed since you looked: nothing since' },
   { key: 'searchNumber', name: 'A number in its national form: “0803 412”' },
   { key: 'everyoneReplied', name: 'Everyone has replied' },
   { key: 'noCompanionsWaiting', name: 'No companion among those who haven’t replied' },
@@ -1697,6 +1739,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     clock: CLOCKS.rest,
     choice: 'all',
     q: '',
+    since: null,
     dietary: false,
     menu: false,
     pane: { kind: 'none' },
@@ -1758,6 +1801,19 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return { ...start, q: 'kofi' };
     case 'filterNone':
       return { ...start, choice: 'held', q: 'marta' };
+    case 'changed':
+      return { ...start, choice: 'changed', looked: start.clock.toISOString() };
+    case 'changedMenu':
+      return { ...start, choice: 'changed', menu: true, looked: start.clock.toISOString() };
+    case 'changedRow':
+      return { ...start, menu: true, looked: null };
+    case 'changedNone':
+      return {
+        ...start,
+        choice: 'changed',
+        since: start.clock.toISOString(),
+        looked: start.clock.toISOString(),
+      };
     case 'searchNumber':
       return { ...start, q: '0803 412' };
     case 'everyoneReplied':
@@ -2127,15 +2183,20 @@ function applyParams(start: GuestsStart, params: URLSearchParams): GuestsStart {
 
 /** The menu's choice and the search, as the address keeps them. */
 export interface ViewInAddress {
-  choice: Choice;
+  choice: Filter;
   q: string;
+  since: string | null;
+}
+
+export function filterOf(raw: string | null): Filter | null {
+  return raw === 'changed' ? 'changed' : choiceOf(raw);
 }
 
 /** What a state's list opens on before the address says otherwise. */
 export function viewBase(state: GuestsState | null): ViewInAddress {
   const opened = guestsStart(state, new URLSearchParams());
 
-  return { choice: opened.choice, q: opened.q };
+  return { choice: opened.choice, q: opened.q, since: opened.since };
 }
 
 export const NUMBERS_STATES = [
