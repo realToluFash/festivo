@@ -257,16 +257,28 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
   it('has Create an organisation take the keys while hidden, then TalkBack’s focus on its field (qa2 #44464)', () => {
     const walk = read('CreateWalkWindow.tsx');
 
+    expect(walk).toContain("const talkBack = Platform.OS === 'android' && readerOn;");
     expect(walk).toContain(
-      "const unnamed = useUnnamedWindow(Platform.OS === 'android' && shown, onScreen, null, arriving);",
+      'const unnamed = useUnnamedWindow(talkBack && shown, onScreen, null, arriving);',
     );
     expect(walk).toContain('onShow={() => setOnScreen(true)}');
     expect(walk).toMatch(/const behind = walk\.asking \|\| unnamed \?/);
     expect(walk).toMatch(
-      /!onScreen \|\| !unnamed \|\| opening\.walk\.asking\) return;\s+const keys = setTimeout/,
+      /!talkBack \|\| !onScreen \|\| !unnamed \|\| opening\.walk\.asking\) return;\s+const keys = setTimeout/,
     );
     expect(walk).toMatch(
-      /!onScreen \|\| unnamed \|\| opening\.walk\.asking\) return;\s+if \(opening\.focus === 'search'\) moveScreenReaderFocus\(search\.current\);\s+else if \(opening\.focus === 'name'\) moveScreenReaderFocus\(field\.current\);/,
+      /!talkBack \|\| !onScreen \|\| unnamed \|\| opening\.walk\.asking\) return;\s+if \(opening\.focus === 'search'\) moveScreenReaderFocus\(search\.current\);\s+else if \(opening\.focus === 'name'\) moveScreenReaderFocus\(field\.current\);/,
+    );
+  });
+
+  it('keeps main’s keys after the window settles with TalkBack off, on the phone and the tablet (lead, PR #2098)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+
+    expect(walk).toMatch(
+      /if \(talkBack \|\| !shown \|\| opening\.walk\.asking\) return;\s+const wait = setTimeout\(\(\) => \{\s+if \(opening\.focus === 'search'\) search\.current\?\.focus\(\);\s+else if \(opening\.focus === 'name'\) field\.current\?\.focus\(\);\s+else moveScreenReaderFocus\(question\.current\);\s+\}, SETTLED_MS\);/,
+    );
+    expect(walk).toContain(
+      'const arriving = reduced ? 0 : phone ? WINDOW_ARRIVES_MS : tokens.motionBase;',
     );
   });
 });

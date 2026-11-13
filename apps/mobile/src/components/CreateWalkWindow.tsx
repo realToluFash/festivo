@@ -23,7 +23,11 @@ import { focusChecked, focusRefused } from './Field.tsx';
 import { useKeysUp } from './keyboardWatch.ts';
 import { useSendingWords } from './ReadOut.tsx';
 import { SETTLED_MS } from './Screen.tsx';
-import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
+import {
+  type ScreenReaderTarget,
+  moveScreenReaderFocus,
+  useScreenReaderOn,
+} from './screenReaderFocus.ts';
 import {
   SilentWindowName,
   WINDOW_ARRIVES_MS,
@@ -153,9 +157,11 @@ export function CreateWalkWindow<Made>({
   const { shown, gone } = useWindowTurn(useModalOpen(wanted && here));
   const [onScreen, setOnScreen] = useState(false);
   if (!shown && onScreen) setOnScreen(false);
-  const arriving = phone && !reduced ? WINDOW_ARRIVES_MS : 0;
-  // Hidden while the window arrives, so TalkBack puts its focus on nothing, Cancel included (sc-42690).
-  const unnamed = useUnnamedWindow(Platform.OS === 'android' && shown, onScreen, null, arriving);
+  const readerOn = useScreenReaderOn();
+  const talkBack = Platform.OS === 'android' && readerOn;
+  const arriving = reduced ? 0 : phone ? WINDOW_ARRIVES_MS : tokens.motionBase;
+  // With TalkBack on, hidden while the window arrives, so its focus lands on nothing, Cancel included (sc-42690).
+  const unnamed = useUnnamedWindow(talkBack && shown, onScreen, null, arriving);
   const [fade] = useState(() => new Animated.Value(0));
   const [grow] = useState(() => new Animated.Value(GROW_FROM));
   const [frame, setFrame] = useState({ panel: 0, stage: 0 });
@@ -199,7 +205,7 @@ export function CreateWalkWindow<Made>({
   }, [phone, open, present, fade]);
 
   useEffect(() => {
-    if (Platform.OS === 'android' || !shown || opening.walk.asking) return;
+    if (talkBack || !shown || opening.walk.asking) return;
     const wait = setTimeout(() => {
       if (opening.focus === 'search') search.current?.focus();
       else if (opening.focus === 'name') field.current?.focus();
@@ -207,25 +213,25 @@ export function CreateWalkWindow<Made>({
     }, SETTLED_MS);
 
     return () => clearTimeout(wait);
-  }, [shown, opening]);
+  }, [talkBack, shown, opening]);
 
   // The field takes the keys while the window is still hidden, so TalkBack says nothing as it does; once shown, its focus reads the field once (sc-42690).
   useEffect(() => {
-    if (Platform.OS !== 'android' || !onScreen || !unnamed || opening.walk.asking) return;
+    if (!talkBack || !onScreen || !unnamed || opening.walk.asking) return;
     const keys = setTimeout(() => {
       if (opening.focus === 'search') search.current?.focus();
       else if (opening.focus === 'name') field.current?.focus();
     }, arriving);
 
     return () => clearTimeout(keys);
-  }, [onScreen, unnamed, arriving, opening]);
+  }, [talkBack, onScreen, unnamed, arriving, opening]);
 
   useEffect(() => {
-    if (Platform.OS !== 'android' || !onScreen || unnamed || opening.walk.asking) return;
+    if (!talkBack || !onScreen || unnamed || opening.walk.asking) return;
     if (opening.focus === 'search') moveScreenReaderFocus(search.current);
     else if (opening.focus === 'name') moveScreenReaderFocus(field.current);
     else moveScreenReaderFocus(question.current);
-  }, [onScreen, unnamed, opening]);
+  }, [talkBack, onScreen, unnamed, opening]);
 
   useEffect(
     () => () => {
