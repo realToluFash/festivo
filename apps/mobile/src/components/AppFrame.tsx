@@ -480,11 +480,11 @@ export function AppFrame({
       />
     );
   const switchedStyle = ownTop ? styles.switchedUnderTitle : styles.created;
-  // A body with its own top, as Today, draws it where its demo does, while the frame says it once whatever the body shows (sc-44087).
-  const inBody = !framed && switchedRead;
+  // A body with its own top, as Today, draws it where its demo does, under its cover, while the frame says it once whatever the body shows (sc-44087, sc-46032).
+  const inBody = !framed;
   const switchedNotice =
     switched == null ? null : inBody ? (
-      <ReadOut words={switched} />
+      switchedRead && <ReadOut words={switched} />
     ) : switchedRead ? (
       <ReadOut style={switchedStyle} words={switched}>
         {switchedWords}
@@ -492,10 +492,22 @@ export function AppFrame({
     ) : (
       <View style={switchedStyle}>{switchedWords}</View>
     );
+  // Today shows once its events have loaded, so the notice there takes focus as it shows, not as the walk closes (sc-46032).
   const bodySwitched =
     inBody && switched != null ? (
       <View style={kind === 'tabletLandscape' ? undefined : styles.switchedInBody}>
-        {switchedWords}
+        {switchedRead ? (
+          switchedWords
+        ) : (
+          <Notice
+            tone="done"
+            mark={tokens.marks.done.glyph}
+            body={switched}
+            answer={created}
+            takesFocus
+            readMs={SETTLED_MS * 2}
+          />
+        )}
       </View>
     ) : null;
   const header: FrameHeaderProps = {
@@ -619,7 +631,10 @@ export function AppFrame({
             onPick={(id) => {
               closeSwitcher();
               if (id !== signedIn.organisation?.id || signedIn.pausedIn != null) {
-                switchOrganisation(id);
+                const name = signedIn.organisations.find((known) => known.id === id)?.name;
+                switchOrganisation(id, () => {
+                  if (name != null) setCreated({ name, takesFocus: false });
+                });
               }
             }}
             onCreate={() => {
