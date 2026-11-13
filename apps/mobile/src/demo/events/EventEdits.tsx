@@ -68,7 +68,7 @@ import {
   ZONES,
 } from './EventsSample.ts';
 import { meshFor } from '../../kit/today.ts';
-import { TextField, type TextFieldProps } from '../../components/Field.tsx';
+import { FieldError, TextField, type TextFieldProps } from '../../components/Field.tsx';
 import { weight } from '../../theme/fonts.ts';
 import { W, say, t } from './EventsWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
@@ -208,7 +208,6 @@ export function EventField({
   children: ReactNode;
 }) {
   const field = useRef<ViewInstance>(null);
-  useReadOut(error);
   useEffect(() => {
     const mounted = field.current;
 
@@ -238,7 +237,7 @@ export function EventField({
       </View>
       {children}
       {error != null ? (
-        <AlertLine text={error} small />
+        <FieldError message={error} />
       ) : (
         help != null && (
           <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>

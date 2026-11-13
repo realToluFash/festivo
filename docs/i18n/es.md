@@ -750,6 +750,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   la lista de eventos, en masculino con «evento»: Borrador, Publicado, En pausa, Finalizado,
   Cancelado, Eliminado. "Dietary notes" es «Las notas sobre alimentación». El límite concuerda el
   artículo con la hora, como `limits.tries`.
+- **13 nov 2026. Añadir al calendario en la página del invitado** (sc-45546 para sc-3627,
+  `web:guest.calendar*`). El título es «Añadir a su calendario», con «su» para que no se lea como
+  el Calendario de la organización. La línea empieza por la condición, «Si cambian la fecha, la
+  hora o el lugar, su calendario se actualiza automáticamente.»: «se actualiza solo si…» se lee
+  como «únicamente si». Los botones nombran las aplicaciones, «Apple / Outlook» y
+  «Google Calendar», iguales al inglés (`same-as-english.json`).
 - **La banda sin conexión** (sc-22586, sin artículo desde sc-37178): «Sin conexión · actualizado: {{time}}», y «…
   actualizado: {{day}}, {{time}}» cuando la carga fue otro día. «Actualizado» dice de cuándo es lo que se ve, en
   vez de calcar «as of». Mientras se reintenta, «Actualizando…», como en la app.
