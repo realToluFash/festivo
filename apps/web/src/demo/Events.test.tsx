@@ -636,6 +636,22 @@ describe('A thank-you for your guests, on a Finished event (sc-6476)', () => {
     );
     expect((within(ask).getByRole('textbox') as HTMLTextAreaElement).value).not.toBe('');
   });
+
+  it('opens End now a second time empty, as the app does', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=endNowNotEnded');
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Keep it on' }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('region', { name: 'Manage' })).getByRole('button', {
+        name: 'End now…',
+      }),
+    );
+    const again = await screen.findByRole('alertdialog');
+
+    expect((within(again).getByRole('textbox') as HTMLTextAreaElement).value).toBe('');
+    expect(within(again).queryByRole('alert')).toBeNull();
+  });
 });
 
 describe('Delete refused while a guest is Invited (sc-14445)', () => {

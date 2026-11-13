@@ -813,26 +813,6 @@
   margin-top: 6px;
 }
 
-.gp-thanks {
-  margin: 0;
-  padding: 18px 20px;
-  border: 1px solid var(--colorInsetBorder);
-  border-radius: 18px;
-  background: var(--colorInset);
-}
-
-.gp-thanks blockquote {
-  margin: 0;
-  font: 500 17px/1.45 var(--fontFamily);
-  overflow-wrap: anywhere;
-}
-
-.gp-thanks figcaption {
-  margin-top: 10px;
-  color: var(--colorInkSecondary);
-  font: 600 15px/1.4 var(--fontFamily);
-}
-
 .gp-foot {
   display: flex;
   flex-direction: column;

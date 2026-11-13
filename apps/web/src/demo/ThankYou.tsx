@@ -5,6 +5,7 @@ import { Alert, Opened } from '../components/EventPageParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Ask, Head } from '../components/SettingsParts.tsx';
 import { type SampleEvent, EVENT_WORDS as W } from './events.ts';
+import { Thanks } from './Thanks.tsx';
 import {
   type Card,
   type EndField,
@@ -86,16 +87,6 @@ function ThankYouField({
         </p>
       </div>
     </div>
-  );
-}
-
-/** The hosts' line as every guest reads it: plain text, signed with the event's hosts, never the member who wrote it. */
-function Line({ event, line }: { event: SampleEvent; line: string }) {
-  return (
-    <figure className="ty-line">
-      <blockquote dir="auto">{line}</blockquote>
-      <figcaption>{hostsLine(event.hosts, LOCALE)}</figcaption>
-    </figure>
   );
 }
 
@@ -188,7 +179,7 @@ export function ThankYouCard({
         </>
       ) : (
         <>
-          <Line event={event} line={card.line} />
+          <Thanks line={card.line} hosts={hostsLine(event.hosts, LOCALE)} small />
           {card.canEnd && (
             <ActionButton
               button={action}

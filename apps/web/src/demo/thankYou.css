@@ -1,25 +1,4 @@
-/* sc-6476: the hosts' thank-you on a Finished event's Overview and in End now. The line reads as the guest's page shows it (.gp-thanks). */
-
-.ty-line {
-  margin: 0;
-  padding: 16px 18px;
-  border: 1px solid var(--colorInsetBorder);
-  border-radius: 16px;
-  background: var(--colorInset);
-}
-
-.ty-line blockquote {
-  margin: 0;
-  color: var(--colorInk);
-  font: 500 16px/1.5 var(--fontFamily);
-  overflow-wrap: anywhere;
-}
-
-.ty-line figcaption {
-  margin-top: 8px;
-  color: var(--colorInkSecondary);
-  font: 600 14px/1.4 var(--fontFamily);
-}
+/* sc-6476: the hosts' thank-you on a Finished event's Overview and in End now. The line is the guest page's own (Thanks.tsx). */
 
 .ty-action {
   display: flex;

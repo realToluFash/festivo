@@ -31,7 +31,7 @@ import {
   stateFits,
 } from './events.ts';
 import { EndNowAsk, ThankYouCard } from './ThankYou.tsx';
-import { TY_WORDS, cardOf, cardShown, endFieldOf } from './thankYou.ts';
+import { TY_WORDS, cardOf, cardShown, endFieldOf, type EndField } from './thankYou.ts';
 import { type DuplicateStart, DeleteByName, DuplicateDialog, RefusedAsk } from './EventDialogs.tsx';
 import {
   AT_READ,
@@ -315,6 +315,7 @@ function EventView({
   const [dirty, setDirty] = useState(false);
   const [leaving, setLeaving] = useState<{ to: Part | null } | null>(null);
   const [asking, setAsking] = useState<Asking | null>(askingOf(state));
+  const [ending, setEnding] = useState(0);
   const refusedStart = refusedStartOf(state);
   const canChange = refusedStart?.canChange ?? true;
   const [pressed, setPressed] = useState(false);
@@ -540,9 +541,11 @@ function EventView({
             event={event}
             now={now}
             state={state}
+            endStart={endFieldOf(ending === 0 ? state : null)}
             refusal={refusal}
             turned={turned}
             onKeep={() => {
+              if (asking === 'endNow') setEnding((count) => count + 1);
               setAsking(null);
               setTurned(false);
             }}
@@ -556,6 +559,7 @@ function EventView({
               if (words != null) tell(words);
             }}
             onEnded={(line) => {
+              setEnding((count) => count + 1);
               setAsking(null);
               kept({ ...event, status: 'ended', concludedAt: now.toISOString() });
               setCard(cardOf(null, line));
@@ -614,6 +618,7 @@ function Asks({
   event,
   now,
   state,
+  endStart,
   refusal,
   turned,
   onKeep,
@@ -627,6 +632,7 @@ function Asks({
   event: SampleEvent;
   now: Date;
   state: EventStateName | null;
+  endStart: EndField;
   refusal: Refusal | null;
   turned: boolean;
   onKeep: () => void;
@@ -661,9 +667,7 @@ function Asks({
         />
       );
     case 'endNow':
-      return (
-        <EndNowAsk event={event} start={endFieldOf(state)} onKeep={onKeep} onEnded={onEnded} />
-      );
+      return <EndNowAsk event={event} start={endStart} onKeep={onKeep} onEnded={onEnded} />;
     case 'deleteDraft':
       return (
         <Ask
