@@ -89,6 +89,7 @@ import {
 import { sayNotice } from './NoticeWords.ts';
 import { reasonPerson } from './ReasonsSample.ts';
 import { SMS_STATES, smsStart } from './Sms.ts';
+import { TAP_STATES, type TapCase, isTapState, tapStart } from './TapStates.ts';
 import {
   REASON_STATES,
   type ReachSample,
@@ -188,6 +189,7 @@ export const MESSAGES_STATES = [
   'askFailed',
   'sendWithout',
   ...NOTICE_STATES,
+  ...TAP_STATES,
   ...STOP_STATES,
   ...SMS_STATES,
   'scheduledPaused',
@@ -387,6 +389,7 @@ export interface Messages {
   /** sc-3976: the open state's facts about one guest's notice and conversation, and who reads it when not the owner. */
   notice?: NoticeCase;
   reader?: string;
+  tap?: TapCase;
   /** sc-3966: Parking told by Email only, or the just-sent message with a text waiting for the morning. */
   sample?: ReachSample;
   /** The person whose Try SMS instead is open, and what Send by SMS did, by message. */
@@ -659,6 +662,7 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
   if (isStopState(state))
     return { ...BASE, open: { kind: 'guest', key: 'ines' }, ...stopStart(state) };
   if (isNoticeState(state)) return { ...BASE, ...noticeStart(state) };
+  if (isTapState(state)) return { ...BASE, ...tapStart(state) };
   if (state === 'whatsAppRead')
     return { ...BASE, receipts: true, open: { kind: 'reached', of: 'receipts' } };
   const ines: Open = { kind: 'guest', key: 'ines' };
