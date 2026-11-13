@@ -702,6 +702,13 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(details.getByRole('button', { name: 'Edit' })).toBeDefined();
   });
 
+  it('writes the Added date in the browser’s date order, as the reply’s (sc-3773, #44910)', async () => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('en-GB');
+    await openNgozi();
+
+    expect(within(column()).getByText('14 Sep by Kemi Bankole')).toBeDefined();
+  });
+
   it('holds the cover card’s place and three detail rows while the guest loads, heard as Loading…', async () => {
     signedIn();
     await onGuests({

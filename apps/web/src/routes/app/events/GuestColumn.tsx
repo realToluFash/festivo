@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../../api.ts';
 import { Glyph, type GlyphName } from '../../../components/Glyph.tsx';
 import { Ask, Head, RowWords } from '../../../components/SettingsParts.tsx';
-import { currentLocale, dateLocale } from '../../../i18n/index.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree } from '../../../layers.ts';
 import { type Mesh } from '../../../mesh.ts';
 import { offButton } from '../../../offButton.ts';
@@ -354,7 +354,7 @@ function GuestView({
   }
 
   const ask = () => setReplace({ kind: 'asking', busy: false });
-  const added = new Intl.DateTimeFormat(currentLocale(), {
+  const added = new Intl.DateTimeFormat(dateLocale(), {
     month: 'short',
     day: 'numeric',
   }).format(new Date(guest.added.at));
