@@ -8,6 +8,8 @@ import {
   BALANCE,
   BODY,
   CANCELLED_AT,
+  FINISHED_AT,
+  SOIRELY,
   CANT_TELL,
   DAYS,
   EVENT,
@@ -190,6 +192,11 @@ export const MESSAGES_STATES = [
   ...TAP_STATES,
   ...STOP_STATES,
   ...SMS_STATES,
+  'scheduledPaused',
+  'scheduledPausedLate',
+  'scheduledPausedEdit',
+  'scheduledFinished',
+  'scheduledTooLate',
   ...REASON_STATES,
   ...TELL_KINDS,
 ] as const;
@@ -262,6 +269,10 @@ export interface Draft {
   soFar: number | null;
   outcome?: 'sent' | 'tooLate';
   cancelledBy?: string;
+  /** sc-3963: its event is paused, so it waits whichever side of its time it is. */
+  paused?: boolean;
+  /** sc-3963: Soirely cancelled it because its event finished first. */
+  finished?: boolean;
   /** The To choices that match nobody in this sample. */
   zero: readonly ToGroup[];
   /** The fields over their limit at the last Send, kept until each is short enough. */
@@ -550,6 +561,21 @@ const SCHEDULED_AS: Partial<Record<MessagesState, Partial<Draft>>> = {
   sendNow: { step: 'check' },
   cancelAsk: { asking: true },
   scheduledCancelled: { step: 'cancelled', cancelledAt: CANCELLED_AT, time: CANCELLED_AT },
+  scheduledPaused: { paused: true },
+  scheduledPausedLate: { paused: true, at: { date: DAYS.today, time: '08:00' } },
+  scheduledPausedEdit: {
+    paused: true,
+    step: 'write',
+    was: { subject: SCHEDULED, body: SCHEDULED_BODY },
+  },
+  scheduledFinished: {
+    step: 'cancelled',
+    cancelledAt: FINISHED_AT,
+    time: FINISHED_AT,
+    cancelledBy: SOIRELY,
+    finished: true,
+  },
+  scheduledTooLate: { outcome: 'tooLate', at: { date: DAYS.tooLate, time: '09:00' } },
 };
 
 function scheduledStart(change: Partial<Draft>): Messages {

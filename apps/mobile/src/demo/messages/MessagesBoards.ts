@@ -40,6 +40,20 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   sendNow: ['send now', 'The check set to now, or Keep it scheduled'],
   cancelAsk: ['cancel…, asked', 'Keep it first; Cancel message'],
   scheduledCancelled: ['cancelled, scheduled', 'Greyed; its row in Done reads Cancelled'],
+  scheduledPaused: [
+    'scheduled, the event paused',
+    'The paused line where Goes… was; Edit, Send now, Cancel… stay',
+  ],
+  scheduledPausedLate: [
+    'paused past its time',
+    'Set for 08:00 today, still paused: the same line, no Goes…',
+  ],
+  scheduledPausedEdit: ['editing while paused', 'Editing., with no time'],
+  scheduledFinished: [
+    'cancelled by Soirely',
+    'The event finished before this message was due; in Done',
+  ],
+  scheduledTooLate: ['not sent: too late', 'Not resumed or restored within 48 hours; in Done'],
   fixed: ['after a fix', 'Bounced kept; Updated · not sent yet, and Send to Tomás Ferreira again'],
   sentAgain: ['sent again', 'Sent to Tomás Ferreira; Resend to the 10 not reached'],
   checkAll: ['the check, all guests', 'Sending to 142 people; 9 can’t be told'],

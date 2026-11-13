@@ -31,6 +31,7 @@ import {
   stateFits,
 } from './events.ts';
 import { EndNowAsk, ThankYouCard } from './ThankYou.tsx';
+import { eventWhile } from './messagesScheduled.ts';
 import { TY_WORDS, cardOf, cardShown, endFieldOf, type EndField } from './thankYou.ts';
 import { type DuplicateStart, DeleteByName, DuplicateDialog, RefusedAsk } from './EventDialogs.tsx';
 import {
@@ -313,7 +314,7 @@ function EventAt({
   const telling = said === 'tell' || said === 'tellPlace' || seed != null;
 
   if (messages && first.event.id === SAMPLE_EVENT && !telling)
-    return <MessagesPage event={first.event} state={said} now={clockOf(null)} />;
+    return <MessagesPage event={eventWhile(said, first.event)} state={said} now={clockOf(null)} />;
 
   return (
     <EventView

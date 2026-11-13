@@ -58,7 +58,7 @@ import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './Messag
 import { Preview } from './Preview.tsx';
 import { previewOf } from './PreviewModel.ts';
 import { RefusedSave } from './RefusedSave.tsx';
-import { SW } from './ScheduledSave.ts';
+import { SW, pausedWaits } from './ScheduledSave.ts';
 import { clockNote } from './Sms.ts';
 import { SMSW } from './SmsWords.ts';
 import { type Stopping, headOf, stoppedLine } from './StopWriting.ts';
@@ -90,6 +90,7 @@ import {
   FailedLine,
   GuestBubble,
   HostBubble,
+  PausedLine,
   Receipt,
   SendingLine,
   SoirelyCard,
@@ -778,11 +779,14 @@ function scheduledWord(draft: Draft, locale: string): string {
   return draft.outcome === 'tooLate' ? W.tooLate : W.scheduled;
 }
 
-function endBits(draft: Draft): Bit[] {
+function endBits(draft: Draft, when: string): Bit[] {
   if (draft.outcome === 'sent')
     return [{ word: W.onTheirPage, where: 'page' }, { word: say.byAt(READER, draft.time) }];
+  if (draft.outcome === 'tooLate') return [{ word: W.tooLate, mark: 'notsent' }];
 
-  return draft.outcome === 'tooLate' ? [{ word: W.tooLate, mark: 'notsent' }] : [];
+  return draft.paused === true && draft.step === 'scheduled'
+    ? [{ word: W.scheduled, ring: true }, { word: when }]
+    : [];
 }
 
 /** A scheduled message (sc-3963): dashed until it goes, with Edit, Send now and Cancel…, each drawn on Messaging-B-Phone-3. */
@@ -791,13 +795,14 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
   const at = draft.at ?? SCHEDULE_AT;
   const day = dayWords(at.date, talk.locale);
   const cancelled = draft.step === 'cancelled';
+  const paused = draft.paused === true && !cancelled && draft.outcome == null;
   const refused = talk.m.refusedSave;
   const shown = draft.was ?? { subject: draft.subject, body: draft.body };
   const bubble = (
     <HostBubble
       subject={shown.subject}
       text={shown.body}
-      bits={endBits(draft)}
+      bits={endBits(draft, say.inZone(day, at.time, W.londonTime))}
       dashed={!cancelled && draft.outcome == null}
       greyed={cancelled || draft.outcome === 'tooLate'}
       faded={draft.was != null}
@@ -810,6 +815,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
     rest = (
       <SystemLine
         text={say.cancelledBy(draft.cancelledBy ?? READER, draft.cancelledAt ?? '')}
+        {...(draft.finished === true ? { more: SW.finishedWhy } : {})}
         glyph="x"
       />
     );
@@ -818,9 +824,12 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
   else if (draft.was != null) {
     rest =
       refused == null ? (
-        <Text size={13.5} weight="medium" style={styles.goes}>
-          {say.editing(day, at.time)}
-        </Text>
+        <>
+          {paused && talk.wide && <PausedLine text={pausedWaits()} />}
+          <Text size={13.5} weight="medium" style={styles.goes}>
+            {paused ? SW.editingPaused : say.editing(day, at.time)}
+          </Text>
+        </>
       ) : (
         <RefusedSave
           refusal={refused}
@@ -868,7 +877,9 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
       />
     );
   else if (readsOnly(talk.m))
-    rest = (
+    rest = paused ? (
+      <PausedLine text={pausedWaits()} />
+    ) : (
       <Text size={13.5} weight="medium" style={styles.goes}>
         {say.goesAt(say.inZone(day, at.time, W.londonTime))}
       </Text>
@@ -876,9 +887,13 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
   else
     rest = (
       <>
-        <Text size={13.5} weight="medium" style={styles.goes}>
-          {say.goesAt(say.inZone(day, at.time, W.londonTime))}
-        </Text>
+        {paused ? (
+          <PausedLine text={pausedWaits()} />
+        ) : (
+          <Text size={13.5} weight="medium" style={styles.goes}>
+            {say.goesAt(say.inZone(day, at.time, W.londonTime))}
+          </Text>
+        )}
         <View style={styles.scheduledActions}>
           <TextAction
             ref={talk.refFor('schedEdit')}
@@ -912,7 +927,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
     lead: <GroupTile side={44} />,
     stream: (
       <>
-        <DayRule text={day} />
+        <DayRule text={at.date === DAYS.today ? W.today : day} />
         {bubble}
         {rest}
       </>
