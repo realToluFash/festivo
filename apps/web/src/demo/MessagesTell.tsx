@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
@@ -72,16 +72,21 @@ export function TellDialog({
   const [flow, setFlow] = useState(flowFirst);
   const [seeing, setSeeing] = useState(false);
   const body = useRef<HTMLDivElement>(null);
-  const send = useRef<HTMLElement | null>(null);
+  const send = useMemo<RefObject<HTMLElement | null>>(
+    () => ({
+      get current() {
+        return (
+          body.current?.closest('.desk-dialog')?.querySelector<HTMLElement>('.desk-nav-verb') ??
+          null
+        );
+      },
+    }),
+    [],
+  );
   const sheet = sheetOf(changes, figures);
   const shown = flow.figures === 'shown';
   const of = sheet.figures;
   const after = of.balance - of.credits;
-
-  useLayoutEffect(() => {
-    send.current =
-      body.current?.closest('.desk-dialog')?.querySelector<HTMLElement>('.desk-nav-verb') ?? null;
-  }, []);
 
   useEffect(() => {
     if (flow.figures !== 'loading') return;
