@@ -1,0 +1,14 @@
+# Today at its cover, not scrolled, left there for the cover pill's hierarchy and screen-reader label. sc-40298.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: cover

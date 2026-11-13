@@ -1,0 +1,20 @@
+# sc-34175: Remove asked for the verified row ROW, left open.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'account.${ROW}'
+    timeout: 30000
+    centerElement: true
+- waitForAnimationToEnd
+- tapOn:
+    id: 'account.${ROW}'
+- tapOn:
+    id: 'account.${ROW}.remove'
+- extendedWaitUntil:
+    visible:
+      id: 'account.remove.confirm'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: remove-ask

@@ -1,0 +1,383 @@
+/** Messaging B's English, as board/messaging-b-spec.md §9 lists it with its sources, and pm's 7 Nov calls (Hasn’t replied, Mark as done). */
+export const W = {
+  messages: 'Messages',
+  needsYou: 'Needs you',
+  scheduled: 'Scheduled',
+  done: 'Done',
+  noneYet: 'No conversations yet',
+  noneLine:
+    'What you write appears on each guest’s own page. Each guest who answers gets a conversation here.',
+  pickOne: 'Pick a conversation, or write to your guests below.',
+  pickOneClosed: 'Pick a conversation.',
+  writeToGuests: 'Write to your guests',
+  onTheirPage: 'On their page',
+  theirPage: 'Their page',
+  notMatched: 'Not matched',
+  newButton: 'New',
+  newMessage: 'New message',
+  loading: 'Loading messages…',
+  markAsDone: 'Mark as done',
+  markAsWaiting: 'Mark as waiting',
+  doneSaid: 'Done.',
+  writeYourAnswer: 'Write your answer',
+  creditsNotInApp: 'Credits cannot be added in the app.',
+  tellNowBy: 'Or tell them now by:',
+  heldForCredits: 'Held: waiting for credits',
+  tooLate: 'Not sent: too late',
+  cameBySms:
+    'This came by SMS, in answer to the text. Your answer goes on their page, and Soirely texts them that it is there.',
+  notSeenYet: 'Not seen yet',
+  delivered: 'Delivered',
+  sent: 'Sent',
+  bounced: 'Bounced',
+  notSent: 'Not sent',
+  to: 'To',
+  closeTo: 'Close To',
+  allGuests: 'All guests',
+  coming: 'Coming',
+  hasntReplied: 'Hasn’t replied',
+  letThemKnowBy: 'Let them know by',
+  subject: 'Subject',
+  message: 'Message',
+  insert: 'Insert',
+  preview: 'Preview',
+  previewOn: 'Preview on',
+  edit: 'Edit',
+  goesOnTheirPage: 'Goes on their page',
+  onlyOurs:
+    'Only Soirely’s own words are translated. Yours show on their page exactly as you wrote them.',
+  whatSoirelySends: 'What Soirely sends',
+  readOnYourPage: 'Read it on your page',
+  toldHow: 'Your message goes on their page. Soirely tells them it is there by email and text.',
+  checkName: 'Check it before it goes',
+  addressBouncing: 'Address is bouncing',
+  noEmail: 'No email address',
+  noPhone: 'No phone number',
+  later: 'Later…',
+  changeIt: 'Change it',
+  cancel: 'Cancel',
+  cancelled: 'Cancelled. Nothing was sent; your message is back in the box.',
+  sending: 'Sending…',
+  whoItReached: 'Who it reached',
+  failed: 'Nothing was sent. There is no connection; your message is still here.',
+  nothingWasSent: 'Nothing was sent',
+  tryAgain: 'Try again',
+  writeAFollowUp: 'Write a follow-up',
+  writeToThem: 'Write to them',
+  doesntExist: 'This address doesn’t exist (5.1.1)',
+  notConfirmed: 'Delivery not confirmed',
+  unsubscribed: 'Unsubscribed',
+  textedStop: 'Texted STOP',
+  fixEmail: 'Fix email address',
+  addEmail: 'Add an email address',
+  addPhone: 'Add a phone number',
+  toldInPerson: 'Mark as told in person',
+  emailAddress: 'Email address',
+  emailShape: 'That does not look like an email address. Check it has an @ and a domain.',
+  save: 'Save',
+  saved: 'Saved',
+  alreadyOnPage: 'The message is already on their page. Soirely tells them again by:',
+  filter: 'Filter',
+  closeFilter: 'Close Filter',
+  back: 'Back',
+  tellWho: 'Invited guests, except those not coming.',
+  sentBy: 'Sent by',
+  seeWho: 'See who',
+  ownLanguage: 'Each guest gets this in their own language.',
+  noteForGuests: 'Note for your guests',
+  optional: 'Optional',
+  noteOnPage: 'Shown on each guest’s page, in Messages. Never sent by email, text or WhatsApp.',
+  send: 'Send',
+  notNow: 'Not now',
+  notTold: 'Guests have not been told yet',
+  newStartTime: 'New start time',
+  newDate: 'New date',
+  newDates: 'New dates',
+  newVenue: 'New venue',
+  tellThem: 'Tell them',
+  dismiss: 'Dismiss',
+  invitation: 'Invitation',
+  invitationReplies: 'Yes, I’ll be there · Sorry, I can’t · I’m not sure yet',
+  soirelysOwn: 'Soirely’s own words, in each guest’s language, with their own link',
+  sendNow: 'Send now',
+  cancelAsks: 'Cancel…',
+  notifications: 'Notifications',
+  markAllRead: 'Mark all read',
+  allRead: 'All read.',
+  unread: 'Unread',
+  notificationSettings: 'Notification settings',
+  bellReplies: '3 coming, 1 not coming, 1 changed their reply',
+  today: 'Today',
+  reachedWord: 'Reached',
+  toAllGuests: 'To all guests',
+  londonTime: 'London time',
+  chooseGuest: 'Choose the guest',
+  whoIsThis: 'Who is this?',
+  searchGuests: 'Search guests',
+  changeGuest: 'Change guest',
+  matchedByHand: 'matched by hand',
+  whenItGoes: 'When it goes',
+  now: 'Now',
+  laterChoice: 'Later',
+  dateAndTime: 'Date and time',
+  zone: 'London time (GMT), the event’s time zone',
+  date: 'Date',
+  time: 'Time',
+  schedule: 'Schedule',
+  laterEstimate: 'Who gets it and the credits are worked out again when it goes.',
+  changeWhen: 'Change when',
+  keepScheduled: 'Keep it scheduled',
+  cancelLine: 'It will not be sent, and this cannot be undone.',
+  cancelMessage: 'Cancel message',
+  keepIt: 'Keep it',
+  cancelledTag: 'Cancelled',
+  cancelledSaid: 'Cancelled.',
+  savedSaid: 'Saved.',
+  updatedNotSent: 'Updated · not sent yet',
+  emailChangedSince: 'Their email address has changed since. Nothing has been sent to it yet.',
+  emailAddedSince: 'An email address has been added since. Nothing has been sent to it yet.',
+  phoneAddedSince: 'A phone number has been added since. Nothing has been sent to it yet.',
+  mobileNumber: 'Mobile number',
+  phoneShape: 'That does not look like a phone number. Start with + and the country code.',
+  toldInPersonLine: 'Told in person',
+  undo: 'Undo',
+  markedAsTold: 'Marked as told',
+  noneTold: 'Nobody is marked as told yet.',
+  noneLeft: 'Nobody is left to reach.',
+  noneReached: 'Nobody has been reached yet.',
+  showNotReached: 'Show not reached',
+  notReachedWord: 'Not reached',
+  noneCanBeToldLine:
+    'Add an email address or a phone number first, or mark them as told in person.',
+  backToWho: 'Back to Who it reached',
+  copyLink: 'Copy their link',
+  notYetInvited: 'Not yet invited',
+  theirInvitation: 'Their invitation',
+  inProgress: 'In progress',
+  everyone: 'Everyone',
+  cantBeTold: 'Can’t be told',
+  inboxFull: 'The inbox is full (4.2.2)',
+  serviceRefused: 'Their mail service refused it (5.7.1)',
+  emailFree: 'Email uses no credits.',
+  smsOff: 'SMS is off',
+  followUp: 'Follow-up',
+  addressAdded: 'The email adds the new address, with Open in maps.',
+  bounced3: 'Bounced',
+  notConfirmed2: 'Not confirmed',
+  optedOut: 'Opted out',
+  noEmailOrPhone: 'No email or phone',
+  nobodyMatches: 'Nobody matches',
+  closedDraft: 'This event is a draft. Make it live to write to your guests.',
+  closedEnded:
+    'This event finished more than 30 days ago, so you can no longer write to its guests.',
+  hasNotAgreedWhatsApp: 'Has not agreed to WhatsApp',
+  stoppedWhatsApp: 'Stopped WhatsApp',
+  read: 'Read',
+  failedReceipt: 'Failed',
+  forbiddenTitle: 'You do not have access to this',
+  forbiddenBody:
+    'Your account does not have permission for this page. If you believe it should, ask an admin of this organisation.',
+} as const;
+
+export type ChannelKey = 'email' | 'sms' | 'wa';
+
+export const CHANNEL_WORD: Record<ChannelKey, string> = {
+  email: 'Email',
+  sms: 'SMS',
+  wa: 'WhatsApp',
+};
+
+/** "Soirely tells them by email", "Told by SMS": the channel inside a sentence. */
+export const CHANNEL_IN_LINE: Record<ChannelKey, string> = {
+  email: 'email',
+  sms: 'SMS',
+  wa: 'WhatsApp',
+};
+
+/** sc-3963's too-few-credits branch of the check, in the AC's English (l10n #23662, #23680). */
+export const WW = {
+  either: 'Email goes either way.',
+  withoutWa: 'Send without WhatsApp',
+  withoutSms: 'Send without SMS',
+  emailOnly: 'Send by email only',
+  askOwner: 'Ask an owner',
+  askFailed: 'Not sent. Try again in a moment.',
+} as const;
+
+function waits(paid: 'sms' | 'wa', count: number): string {
+  const name = paid === 'wa' ? 'WhatsApp' : 'SMS';
+
+  return count === 1
+    ? `1 ${name} message will wait for credits.`
+    : `${count} ${name} messages will wait for credits.`;
+}
+
+export const say = {
+  section: (word: string, count: number) => `${word} · ${count}`,
+  where: (where: string, text: string) => `${where} · ${text}`,
+  notReached: (count: number) => `Not reached · ${count}`,
+  didntGetIt: (count: number) => `${count} people didn’t get it`,
+  doneBy: (name: string, time: string) =>
+    `Done by ${name} at ${time}. It comes back to Needs you if they write again.`,
+  doneByShort: (name: string) => `Done by ${name}`,
+  badgeName: (waiting: number, notMatched: number) =>
+    notMatched === 0
+      ? `Messages, ${waiting} waiting`
+      : `Messages, ${waiting} waiting, ${notMatched} not matched`,
+  counts: (waiting: number, notMatched: number) =>
+    notMatched === 0 ? `${waiting} waiting` : `${waiting} waiting · ${notMatched} not matched`,
+  arrived: (name: string) => `${name} answered on their page.`,
+  answerLine: (name: string, channel: string) =>
+    `Your answer goes on ${name}’s page. Soirely tells them by ${channel}.`,
+  toldBy: (channel: string) => `Told by ${channel}`,
+  noticeCost: (paid: 'sms' | 'wa', credits: number, after: string) =>
+    `This ${paid === 'wa' ? 'WhatsApp message' : 'text'} uses ${credits} ${credits === 1 ? 'credit' : 'credits'}. Credits after sending: ${after}.`,
+  waits,
+  noticeWaits: (paid: 'sms' | 'wa') => waits(paid, 1),
+  ownersAsked: (owners: number) =>
+    owners === 1
+      ? 'The owner has been sent the link to Plan and billing.'
+      : 'The owners have been sent the link to Plan and billing.',
+  toldHowBy: (channels: string) =>
+    `Your message goes on their page. Soirely tells them it is there by ${channels}.`,
+  tellNowAs: (channel: string) => `Tell them now by ${channel}`,
+  seenAt: (time: string) => `Seen ${time}`,
+  you: (text: string) => `You: ${text}`,
+  byAt: (name: string, time: string) => `${name} · ${time}`,
+  toGroup: (group: string) => `To ${group}`,
+  chip: (group: string, count: number) => `${group} · ${count}`,
+  notSentYet: (group: string) => `To ${group} · not sent yet`,
+  tokenName: (token: string) => `${token}, filled in for each guest`,
+  previewAs: (name: string) => `As ${name} will see it`,
+  greetedAs: (name: string) => `Greeted as ${name}, their full name. They have no Greet as.`,
+  inLanguage: (language: string) => `In ${language}, the language you set for them.`,
+  pageAs: (name: string) => `On ${name}’s page`,
+  noticeSubject: (event: string, hosts: string) => `${event}: a message from ${hosts}`,
+  dear: (greeting: string) => `Dear ${greeting},`,
+  noticeBody: (hosts: string, event: string) =>
+    `${hosts} sent you a message about ${event}. It is on your page.`,
+  noticeSms: (hosts: string, event: string, link: string) =>
+    `${hosts}: you have a new message about ${event}. Read it on your page: ${link}`,
+  emailFrom: (org: string) => `Email · from ${org} via Soirely`,
+  smsParts: (parts: number) => (parts === 1 ? 'SMS · 1 part' : `SMS · ${parts} parts`),
+  whatsAppTemplate: 'WhatsApp · the approved template',
+  stopEmails: (org: string) => `Stop emails from ${org}`,
+  cannotUndo: (count: number) =>
+    count === 1
+      ? 'Sending to 1 person cannot be undone.'
+      : `Sending to ${count} people cannot be undone.`,
+  cantTell: (count: number) => `${count} can’t be told · it is on their page if they open it`,
+  credits: (count: number, after: string, whatsApp: boolean) =>
+    whatsApp
+      ? `Texts and WhatsApp messages use ${count} credits. Credits after sending: ${after}.`
+      : `Texts use ${count} credits. Credits after sending: ${after}.`,
+  sendTo: (count: number) => (count === 1 ? 'Send to 1 person' : `Send to ${count} people`),
+  sendingIn: (seconds: number) => `Sending in ${seconds}…`,
+  soFar: (reached: number, of: number) => `Reached ${reached} of ${of} so far`,
+  queued: (count: number) => `Message queued. Sending to ${count} people now.`,
+  reached: (reached: number, of: number) => `Reached ${reached} of ${of}`,
+  seenBy: (count: number) => `seen by ${count} on their page`,
+  seenByStart: (count: number) => `Seen by ${count} on their page`,
+  resend: (count: number) => `Resend to the ${count} not reached`,
+  wasBounced: (address: string) => `Was ${address}, which bounced.`,
+  includesUnconfirmed: (count: number) =>
+    count === 1
+      ? 'Includes one guest whose delivery was not confirmed. They may already have this message.'
+      : `Includes ${count} guests whose delivery was not confirmed. They may already have this message.`,
+  noneCanBeTold: (count: number) =>
+    count === 1 ? 'They can’t be told yet' : `None of the ${count} can be told yet`,
+  markedBy: (name: string, time: string) => `Marked by ${name} at ${time}`,
+  markedTold: (name: string) => `${name} is marked as told in person.`,
+  unmarkedTold: (name: string) => `${name} is no longer marked as told.`,
+  filterItem: (word: string, count: number) => `${word} · ${count}`,
+  moreReached: (count: number) => `and ${count} more`,
+  stillCantTell: (count: number) => `Still can’t be told · ${count}`,
+  seeAll: (count: number) => `See all ${count}`,
+  tell: (count: number) => `Tell ${count} guests?`,
+  cannotBeReached: (count: number) => `${count} guests cannot be reached.`,
+  tellCredits: (count: number) => `Texts and WhatsApp messages use ${count} credits.`,
+  balanceAfter: (after: string) => `Balance after sending: ${after} credits.`,
+  startMoved: (now: string, was: string) => `The start time is now ${now} (was ${was}).`,
+  dateMoved: (now: string, was: string) => `The date is now ${now} (was ${was}).`,
+  datesMoved: (now: string, was: string) => `The dates are now ${now} (was ${was}).`,
+  venueMoved: (now: string, was: string) => `The venue is now ${now} (was ${was}).`,
+  venueAdded: (now: string) => `The venue is now ${now}.`,
+  venueGone: (was: string) => `The venue is now to be confirmed (was ${was}).`,
+  inviteTitle: (event: string, hosts: string) => `${event}: an invitation from ${hosts}`,
+  invitedTo: (event: string, date: string) => `You are invited to ${event} on ${date}.`,
+  replyBy: (date: string) => `Will you be there? Please reply by ${date}.`,
+  sentWhenLive: (name: string) => `Sent when ${name} made the event live and chose Send them.`,
+  nowInvited: (count: number) => `${count} guests are now Invited, by Soirely’s message.`,
+  goesAt: (when: string) =>
+    `Goes ${when}. Who gets it and the credits are worked out again when it goes.`,
+  newReplies: (count: number) => `${count} new replies`,
+  bellMissed: (subject: string, count: number) => `${subject}: ${count} people didn’t get it`,
+  whereWhen: (event: string, when: string) => `${event} · ${when}`,
+  atTime: (time: string) => `at ${time}`,
+  thisIs: (guest: string) => `This is ${guest}`,
+  couldntMatch: (address: string) =>
+    `Soirely could not match ${address} to a guest. Choose the guest to answer them.`,
+  matchHint: (address: string, guest: string) =>
+    `Later emails from ${address} land on ${guest} in this event. Their own contact details don’t change.`,
+  matchedLine: (guest: string, name: string, address: string) =>
+    `Matched to ${guest} by ${name}. Later emails from ${address} land here.`,
+  matchedSaid: (guest: string) => `Matched to ${guest}.`,
+  laterRule: (day: string, time: string) =>
+    `At least 5 minutes from now, and before the event ends on ${day} at ${time}.`,
+  scheduleFor: (day: string, time: string) => `Schedule for ${day}, ${time}`,
+  scheduledSaid: (day: string, time: string) => `Scheduled for ${day} at ${time}.`,
+  editing: (day: string, time: string) =>
+    `Editing. It still goes ${day} at ${time} unless you change when.`,
+  instead: (day: string, time: string) =>
+    `It was scheduled for ${day} at ${time}. It goes now instead.`,
+  cancelAsk: (subject: string) => `Cancel “${subject}”?`,
+  cancelledBy: (name: string, time: string) => `Cancelled by ${name} at ${time}. It was not sent.`,
+  cancelledRow: (name: string, time: string) => `Cancelled by ${name} at ${time}`,
+  sendAgain: (name: string) => `Send to ${name} again`,
+  sentTo: (name: string) => `Sent to ${name}.`,
+  nowInvitedShort: (count: number) => `${count} now Invited`,
+  inProgressCount: (count: number) => `${count} in progress`,
+  andMore: (count: number) => `and ${count} more, filling in as their deliveries come back`,
+  smsOff: (count: number) => `SMS is off, so ${count} more can’t be told.`,
+  followUpLine: (count: number) =>
+    `A follow-up goes to the same ${count} guests, under the first message on their page.`,
+  followUpRow: (line: string) => `Follow-up · ${line}`,
+  onPageTold: (channels: string) => `on their page · told by ${channels}`,
+  onPage: 'on their page',
+  bouncedCount: (count: number) => `${count} bounced`,
+  notConfirmedCount: (count: number) => `${count} not confirmed`,
+  optedOutCount: (count: number) => `${count} opted out`,
+  noEmailOrPhoneCount: (count: number) => `${count} no email or phone`,
+  cantBeToldCount: (count: number) => `${count} can’t be told`,
+  whatsAppReaches: (count: number, of: number) => `WhatsApp reaches ${count} of ${of}`,
+  stoppedWhatsApp: (count: number) =>
+    count === 1 ? '1 stopped WhatsApp' : `${count} stopped WhatsApp`,
+  notAgreedWhatsApp: (count: number) =>
+    count === 1 ? '1 hasn’t agreed to WhatsApp' : `${count} haven’t agreed to WhatsApp`,
+  noMobile: (count: number) =>
+    count === 1 ? '1 has no mobile number' : `${count} have no mobile number`,
+  inZone: (day: string, time: string, zone: string) => `${day}, ${time} ${zone}`,
+  dayTime: (day: string, time: string) => `${day}, ${time}`,
+  subjectTooLong: (most: string) => `Shorten the subject to ${most} characters or fewer.`,
+  messageTooLong: (most: string) => `Shorten the message to ${most} characters or fewer.`,
+  ownDesign: (what: string) => `${what.replace(/…$/u, '')} has its own design.`,
+};
+
+/** sc-3978's stop in a guest's conversation, in l10n's English (#44809). */
+export const STOP = {
+  moreActions: 'More actions',
+  letThemWriteAgain: 'Let them write again',
+  line: 'The box to write to you leaves their page. Their texts, emails and WhatsApp messages still reach you here, and they are not told.',
+  stop: 'Stop',
+  notSaved: 'Not saved. Try again.',
+  cancel: 'Cancel',
+} as const;
+
+export const sayStop = {
+  item: (guest: string) => `Stop ${guest} writing from their page…`,
+  title: (guest: string) => `Stop ${guest} writing from their page?`,
+  stopped: (member: string, date: string) =>
+    `${member} stopped them writing from their page on ${date}.`,
+  youStopped: (date: string) => `You stopped them writing from their page on ${date}.`,
+  writesAgain: (guest: string) => `${guest} can write from their page again.`,
+};

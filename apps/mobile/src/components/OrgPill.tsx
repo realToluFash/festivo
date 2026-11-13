@@ -1,0 +1,210 @@
+import type { Ref } from 'react';
+import {
+  type AccessibilityActionEvent,
+  type AccessibilityActionInfo,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+  type ViewInstance,
+} from 'react-native';
+
+import { tokens } from '../theme/tokens.ts';
+import { Glyph } from './Glyph.tsx';
+import { OrgMark } from './OrgMark.tsx';
+import { Text } from './Text.tsx';
+
+export const OPENER = { rest: tokens.sizeHit, waiting: 56 } as const;
+
+/** The opener's words: the name, and under it a ring and how many invitations wait. */
+export function OpenerWords({
+  name,
+  waiting,
+  onDark = false,
+  grow = false,
+  wrap = false,
+  lines,
+}: {
+  name: string;
+  /** How many invitations wait, in words, or null when none do. */
+  waiting: string | null;
+  onDark?: boolean;
+  grow?: boolean;
+  wrap?: boolean;
+  /** The most lines the name takes before its ellipsis; without it, one line, or no limit when it wraps. */
+  lines?: number | undefined;
+}) {
+  const ink = { color: onDark ? tokens.colorInkOnDark : tokens.colorInk };
+
+  return (
+    <View style={[styles.words, grow && styles.grow]}>
+      <Text
+        size={15}
+        weight="semibold"
+        numberOfLines={lines ?? (wrap ? undefined : 1)}
+        accessible={false}
+        style={[styles.name, ink]}
+      >
+        {name}
+      </Text>
+      {waiting != null && (
+        <View style={styles.waitingLine}>
+          <View
+            style={[
+              styles.waitingRing,
+              { borderColor: onDark ? tokens.colorInkOnDark : tokens.colorInk },
+            ]}
+          />
+          <Text
+            size={12.5}
+            weight="semibold"
+            numberOfLines={wrap ? undefined : 1}
+            accessible={false}
+            style={[styles.waitingWords, ink]}
+          >
+            {waiting}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+/** The organisation switcher on white, at the top of every top-level page, or at the head of iPad landscape's sidebar; without `onPress` it only names the organisation. */
+export function OrgPill({
+  id,
+  name,
+  waiting,
+  label,
+  expanded,
+  onPress,
+  bare = false,
+  wrap = false,
+  sidebar = false,
+  tileAlone = false,
+  lines,
+  testID,
+  ref,
+}: {
+  id: string;
+  name: string;
+  waiting: string | null;
+  label: string;
+  expanded?: boolean;
+  onPress?: (() => void) | undefined;
+  /** At the largest text sizes the tile gives its room to the name. */
+  bare?: boolean;
+  wrap?: boolean;
+  sidebar?: boolean;
+  /** Where the room runs out the pill is its tile, its name kept for the screen reader and the switcher. */
+  tileAlone?: boolean;
+  lines?: number | undefined;
+  testID?: string;
+  ref?: Ref<ViewInstance> | undefined;
+}) {
+  return (
+    <Pressable
+      ref={ref}
+      onPress={onPress}
+      disabled={onPress == null}
+      style={({ pressed }) =>
+        sidebar
+          ? [
+              styles.side,
+              (waiting != null || wrap) && styles.sideWaiting,
+              (expanded === true || pressed) && styles.sideOpen,
+            ]
+          : [
+              styles.org,
+              (waiting != null || wrap) && styles.orgWaiting,
+              tileAlone && styles.orgTile,
+              pressed && styles.orgPressed,
+            ]
+      }
+      accessibilityRole={onPress == null ? 'text' : 'button'}
+      accessibilityLabel={label}
+      accessibilityState={onPress == null || expanded == null ? undefined : { expanded }}
+      {...quietTap(onPress, expanded)}
+      testID={testID}
+    >
+      {tileAlone ? (
+        <View>
+          <OrgMark id={id} name={name} side={28} />
+          {waiting != null && (
+            <View style={styles.tileRingHalo}>
+              <View style={[styles.waitingRing, { borderColor: tokens.colorInk }]} />
+            </View>
+          )}
+        </View>
+      ) : (
+        !bare && <OrgMark id={id} name={name} side={28} />
+      )}
+      {!tileAlone && (
+        <OpenerWords name={name} waiting={waiting} wrap={wrap} lines={lines} grow={sidebar} />
+      )}
+      {onPress != null && !tileAlone && (
+        <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
+      )}
+    </Pressable>
+  );
+}
+
+const ACTIVATE: AccessibilityActionInfo[] = [{ name: 'activate' }];
+
+/** On Android, TalkBack's double tap opens the switcher without the click that had TalkBack say the opener's state, "collapsed", before the switcher's title (sc-42690). Every switcher opener takes it. */
+export function quietTap(onPress: (() => void) | undefined, expanded: boolean | undefined) {
+  if (Platform.OS !== 'android' || onPress == null || expanded == null) return {};
+
+  return {
+    accessibilityActions: ACTIVATE,
+    onAccessibilityAction: (event: AccessibilityActionEvent) => {
+      if (event.nativeEvent.actionName === 'activate') onPress();
+    },
+  };
+}
+
+const styles = StyleSheet.create({
+  grow: { flex: 1, minWidth: 0 },
+  words: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
+  name: { lineHeight: 15 * 1.25 },
+  waitingLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  waitingRing: { width: 11, height: 11, borderRadius: 5.5, borderWidth: 2 },
+  tileRingHalo: {
+    position: 'absolute',
+    top: -10,
+    end: -10,
+    padding: 2,
+    borderRadius: 7.5,
+    backgroundColor: tokens.colorInset,
+  },
+  waitingWords: { lineHeight: 12.5 * 1.3 },
+  org: {
+    minHeight: OPENER.rest,
+    flexShrink: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+    paddingLeft: tokens.spaceSm,
+    paddingRight: tokens.spacePillEnd,
+    borderRadius: OPENER.rest / 2,
+    backgroundColor: tokens.colorInset,
+  },
+  orgWaiting: { minHeight: OPENER.waiting, borderRadius: OPENER.waiting / 2 },
+  orgTile: { minHeight: OPENER.rest, paddingRight: tokens.spaceSm, borderRadius: OPENER.rest / 2 },
+  orgPressed: { backgroundColor: tokens.colorNeutralFill },
+  side: {
+    minHeight: OPENER.rest,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    paddingLeft: tokens.spaceSm,
+    paddingRight: tokens.spaceMd,
+    borderRadius: tokens.radiusRow,
+  },
+  sideWaiting: { minHeight: OPENER.waiting },
+  sideOpen: {
+    backgroundColor: tokens.colorCard,
+    ...tokens.elevationNative.card.ios,
+    elevation: tokens.elevationNative.card.android.elevation,
+  },
+});

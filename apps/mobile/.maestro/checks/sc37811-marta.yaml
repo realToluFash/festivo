@@ -1,0 +1,18 @@
+# sc-37811: a suspended person's page. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'members.row.75507dd9-e327-4aa2-9bf8-2bb4d943c0f4'
+- tapOn:
+    id: 'members.row.75507dd9-e327-4aa2-9bf8-2bb4d943c0f4'
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: marta
