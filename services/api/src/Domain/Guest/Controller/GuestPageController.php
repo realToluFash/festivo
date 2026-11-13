@@ -47,13 +47,14 @@ final readonly class GuestPageController
         ], headers: ['Cache-Control' => 'no-store']);
     }
 
-    /** "Not {full name}? Tell us": flags the guest for the hosts and changes nothing else. Refused 429 after 5 an hour on one link. */
+    /** "Not {full name}? Tell us": flags the guest for the hosts and changes nothing else. Refused 429 after 5 an hour on one link, so a replaced link's budget never reaches the new one. */
     #[Route('/api/guest-links/wrong-person', name: 'guest_links_wrong_person', methods: ['POST'])]
     #[PublicAccess]
     public function wrongPerson(Request $request): Response
     {
-        $guest = $this->guest($request);
-        $limit = $this->guestLinkWrongPersonLimiter->create($guest->getId()->toRfc4122())->consume();
+        $token = $this->token($request);
+        $guest = $this->invitationLinks->guestFor($token) ?? throw ApiException::notFound('access.not_found');
+        $limit = $this->guestLinkWrongPersonLimiter->create(\hash('sha256', $token))->consume();
 
         if (!$limit->isAccepted()) {
             throw ApiException::tooManyAttempts('limits.tries', $limit->getRetryAfter());
@@ -66,8 +67,11 @@ final readonly class GuestPageController
 
     private function guest(Request $request): Guest
     {
-        $body = Input::body($request, Type\shape(['token' => Type\string()]));
+        return $this->invitationLinks->guestFor($this->token($request)) ?? throw ApiException::notFound('access.not_found');
+    }
 
-        return $this->invitationLinks->guestFor($body['token']) ?? throw ApiException::notFound('access.not_found');
+    private function token(Request $request): string
+    {
+        return Input::body($request, Type\shape(['token' => Type\string()]))['token'];
     }
 }

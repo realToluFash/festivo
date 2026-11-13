@@ -30,9 +30,9 @@ framework:
             interval: '1 hour'
 
         guest_link_wrong_person:
-            # Per guest's link, spent by each "Not {name}? Tell us" (sc-1526): one flag per guest
-            # changes nothing on a second tell, so five an hour is plenty for a person and nothing
-            # for a script (RFC 6585 §4).
+            # Per link, keyed by its token's hash so a replace starts afresh, spent by each
+            # "Not {name}? Tell us" (sc-1526): one flag per guest changes nothing on a second tell,
+            # so five an hour is plenty for a person and nothing for a script (RFC 6585 §4).
             policy: fixed_window
             limit: 5
             interval: '1 hour'

@@ -34,6 +34,7 @@ use Psl\Vec;
 use SensitiveParameter;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
+use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 use Symfony\Component\Uid\Uuid;
 
 final class GuestLinksTest extends ApiTestCase
@@ -239,6 +240,25 @@ final class GuestLinksTest extends ApiTestCase
         self::assertSame([429, ErrorCode::TooManyAttempts->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
         self::assertGreaterThan(0, (int) $this->client->getResponse()->headers->get('Retry-After'));
         self::assertFalse($this->flagged($guest));
+    }
+
+    #[Test]
+    public function aReplacedLinksSpentBudgetLeavesTheNewLinkItsOwn(): void
+    {
+        $this->client->disableReboot();
+        self::getContainer()->set('limiter.guest_link_wrong_person', new RateLimiterFactory(['id' => 'guest_link_wrong_person', 'policy' => 'fixed_window', 'limit' => 5, 'interval' => '1 hour'], new InMemoryStorage()));
+        $guest = $this->add('Bisi Adewale');
+        $old = $this->token($guest);
+
+        $answers = [];
+        foreach (Vec\range(1, 6) as $_) {
+            $this->anonymous('/api/guest-links/wrong-person', $old);
+            $answers[] = $this->statusCode();
+        }
+        $this->as($this->owner, 'POST', $this->guests() . '/' . $guest . '/link/replace');
+        $this->anonymous('/api/guest-links/wrong-person', $this->token($guest));
+
+        self::assertSame([...Vec\fill(5, 204), 429, 204], [...$answers, $this->statusCode()]);
     }
 
     #[Test]
