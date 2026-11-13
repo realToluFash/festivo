@@ -132,7 +132,7 @@ const SAYS: [string, () => void][] = [
   [
     'check',
     () => {
-      screen.getByText('Nothing is sent until you press Send my answer.');
+      screen.getByText('Nothing is sent until you select Send my answer.');
       expect(screen.queryByRole('checkbox')).toBeNull();
     },
   ],
@@ -159,7 +159,7 @@ const SAYS: [string, () => void][] = [
         'true',
       ),
   ],
-  ['notSentTap', () => screen.getByText(/Check your connection and tap it again\.$/u)],
+  ['notSentTap', () => screen.getByText(/Check your connection and choose it again\.$/u)],
   ['coming', () => screen.getByRole('heading', { name: `See you there, ${NAME}.` })],
   ['comingWhatsApp', () => screen.getByRole('heading', { name: `See you there, ${NAME}.` })],
   ['comingAlone', () => screen.getByText('A screenshot works too.')],
@@ -632,7 +632,7 @@ describe('answering, by keyboard and pointer, on sample data', () => {
     const send = screen.getByRole('button', { name: 'Send my answer' });
 
     expect(screen.getByRole('alert').textContent).toBe(
-      'Your answer wasn’t sent. Everything you chose is still here. Try again.',
+      'Your answer was not sent. Everything you chose is still here. Try again.',
     );
     expect(document.activeElement).toBe(send);
     fireEvent.click(send);

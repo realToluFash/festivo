@@ -526,7 +526,7 @@ function Body({
   }
 
   const ended = visit.phase === 'calledOff' || visit.phase === 'over' || visit.phase === 'finished';
-  const { details, foot, hosts } = shows(visit);
+  const { details, foot, hosts, noAccount } = shows(visit);
 
   return (
     <div ref={setBox} className="gp-columns">
@@ -535,7 +535,7 @@ function Body({
       <Cover visit={visit} words={words} ended={ended} band={band && inDayOrder(visit)} />
       {under}
       {details && <Details visit={visit} words={words} hosts={hosts} />}
-      {foot && <Foot words={words} onTell={onTell} />}
+      {foot && <Foot words={words} noAccount={noAccount} onTell={onTell} />}
     </div>
   );
 }
