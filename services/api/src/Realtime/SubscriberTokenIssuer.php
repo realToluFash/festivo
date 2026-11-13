@@ -38,6 +38,12 @@ final readonly class SubscriberTokenIssuer
         return $this->issue([RealtimeTopic::EventSeating->for($eventId->toRfc4122())]);
     }
 
+    /** One event's guest list, for someone the route has already found holds guests.read on it (sc-1468). */
+    public function issueForEventGuests(Uuid $eventId): IssuedSubscriberToken
+    {
+        return $this->issue([RealtimeTopic::EventGuests->for($eventId->toRfc4122())]);
+    }
+
     /** @param list<string> $topics */
     private function issue(array $topics): IssuedSubscriberToken
     {

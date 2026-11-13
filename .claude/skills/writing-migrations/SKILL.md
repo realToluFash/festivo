@@ -155,6 +155,30 @@ the same definition, because it compares the string rather than the predicate. `
 diff-database` shows that immediately: an identical `DROP INDEX` / `CREATE INDEX` pair is
 this, not a real difference.
 
+## A table beneath an event cascades from it
+
+Deleting an event marks only its own row (`deleted_at`), and support's restore clears that
+mark, so nothing beneath it is soft-deleted one by one: it comes back as it was because it
+never left. The purge then removes the event's row with one `DELETE`. So every table that
+belongs to an event — guests, seating, and whatever epics 31–35 add — reaches `events`
+through foreign keys declared `ON DELETE CASCADE`, directly or through its parent (a
+companion through their host, a section through its plan):
+
+```php
+#[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+private Event $event;
+```
+
+```sql
+ALTER TABLE guests ADD CONSTRAINT FK_4D11BCB271F7E88B FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE NOT DEFERRABLE
+```
+
+A `SET NULL` or a missing `ON DELETE` there either leaves personal data behind the purge
+(GDPR Art. 5(1)(e)) or makes the purge's `DELETE` fail on the constraint. The lead holds a
+migration to it in review (sc-3592, sc-1468). A reference to a user (`added_by_id`,
+`changed_by_id`) is the exception: it is `SET NULL`, because the row is the event's, not
+theirs.
+
 ## Editing a migration that has already run
 
 While a migration is unreleased — not merged, not deployed — editing it in place is right.

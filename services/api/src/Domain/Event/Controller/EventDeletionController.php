@@ -36,7 +36,7 @@ final readonly class EventDeletionController
     ) {
     }
 
-    /** The deadline a deletion sent now would get, written in the caller's zone. */
+    /** The deadline a deletion sent now would get, written in the caller's zone, and how many people its guest list loses. */
     #[Route('/api/events/{eventId}/deletion', name: 'events_deletion', methods: ['GET'])]
     #[InEvent(Permission::EventsCreate)]
     public function preview(string $eventId): JsonResponse
@@ -44,12 +44,13 @@ final readonly class EventDeletionController
         $event = $this->event($eventId);
 
         return new JsonResponse([
-            'needsName' => EventDeleter::needsName($event),
+            'needsName' => $this->eventDeleter->needsName($event),
+            'people' => $this->eventDeleter->people($event),
             ...$this->window(RestoreWindow::toTheSecond($this->clock->now())),
         ]);
     }
 
-    /** `name` is the event's name as typed, needed unless it is a Draft, which may send no body: 422 `event_name_mismatch` when it does not match. */
+    /** `name` is the event's name as typed, needed unless it is a Draft with nobody on its list, which may send no body: 422 `event_name_mismatch` when it does not match. */
     #[Route('/api/events/{eventId}', name: 'events_delete', methods: ['DELETE'])]
     #[InEvent(Permission::EventsCreate)]
     public function delete(Request $request, string $eventId): JsonResponse

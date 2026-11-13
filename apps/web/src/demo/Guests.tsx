@@ -18,6 +18,7 @@ import { type SampleEvent, TODAY_IDS, sampleEvent } from './events.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { AddForm, EditForm, RecordForm } from './GuestForms.tsx';
+import { AllergyMark } from './GuestNeeds.tsx';
 import { type GuestActions, GuestView } from './GuestColumn.tsx';
 import { AgreeForm } from './GuestWhatsApp.tsx';
 import { ExportDialog } from './GuestExport.tsx';
@@ -214,6 +215,7 @@ function GuestsPage({
   const [list, setList] = useState<Guest[]>(start.list);
   const [status, setStatus] = useState(start.status);
   const { choice, q, setChoice, setQ, clear } = useGuestsAddress(base);
+  const [dietaryOnly, setDietary] = useState(start.dietary);
   const [menu, setMenu] = useState(start.menu);
   const [expanded, setExpanded] = useState<ReadonlySet<Reply>>(new Set());
   const [pane, setPane] = useState<Pane>(start.pane);
@@ -230,8 +232,16 @@ function GuestsPage({
   const today = todayOf(start.clock);
   const counts = countsOf(list);
   const card = guestsCardOf(event, list, start.card, start.clock, manages);
-  const { view, shown } = viewOf(list, choice, q, expanded, replyByOf(event.id), manages);
-  const looking = choice !== 'all' || q.trim() !== '';
+  const { view, shown } = viewOf(
+    list,
+    choice,
+    q,
+    expanded,
+    replyByOf(event.id),
+    manages,
+    dietaryOnly,
+  );
+  const looking = choice !== 'all' || q.trim() !== '' || (manages && dietaryOnly);
   const open = pane.kind === 'guest' ? pane.id : null;
   const paneGuest = 'id' in pane ? (list.find((one) => one.id === pane.id) ?? null) : null;
 
@@ -468,10 +478,30 @@ function GuestsPage({
                         onChoice={setChoice}
                         onMenu={setMenu}
                       />
+                      {manages && (
+                        <div className="gs-chips gs-filters">
+                          <button
+                            type="button"
+                            className={dietaryOnly ? 'gs-chip is-on' : 'gs-chip'}
+                            aria-pressed={dietaryOnly}
+                            data-focus="dietary"
+                            onClick={() => setDietary((was) => !was)}
+                          >
+                            {dietaryOnly && <Glyph name="tick" size={16} weight={2.6} />}
+                            {GW.dietaryNotes}
+                          </button>
+                        </div>
+                      )}
                       {looking && (
                         <div className="gs-shown">
                           <p role="status">{GW.shown(shown, counts.all)}</p>
-                          <TextAction label={GW.clear} onClick={clear} />
+                          <TextAction
+                            label={GW.clear}
+                            onClick={() => {
+                              clear();
+                              setDietary(false);
+                            }}
+                          />
                         </div>
                       )}
                       {shown === 0 ? (
@@ -482,6 +512,7 @@ function GuestsPage({
                             label={GW.clear}
                             onClick={() => {
                               clear();
+                              setDietary(false);
                               focus('find');
                             }}
                           />
@@ -837,6 +868,12 @@ function Rows({
             >
               <MarkLead reply={row.person.reply} />
               <RowWords title={row.person.name} lines={[row.line]} />
+              {(row.allergy || row.dietary) && (
+                <span className="gs-row-tags" aria-hidden="true">
+                  {row.allergy && <AllergyMark />}
+                  {row.dietary && <span className="gs-tag">{GW.dietaryNotes}</span>}
+                </span>
+              )}
               <Chevron />
             </a>
           </li>

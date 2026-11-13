@@ -42,6 +42,7 @@ import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn } from '../../../session.ts';
 import { DeleteEvent } from './DeleteEvent.tsx';
 import { DuplicateDialog, DuplicateEvent } from './DuplicateEvent.tsx';
+import { wasDuplicated } from './duplicated.ts';
 import { type EditOutcome } from './EditEvent.tsx';
 import { EndButton } from './EndEvent.tsx';
 import { EventCoverImage } from './EventCoverImage.tsx';
@@ -132,7 +133,9 @@ export function Overview({
   const [part, setPart] = useState<Part | null>(null);
   const [dirty, setDirty] = useState(false);
   const [leaving, setLeaving] = useState<{ to: Part | null } | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(() =>
+    wasDuplicated(location.state) ? t('eventDuplicate.created') : null,
+  );
   const [shown, setShown] = useState(0);
   const now = useServerNow();
   const loadedAt = useLoadedAt(event);
@@ -161,7 +164,12 @@ export function Overview({
   useEffect(() => rememberTabHolding(event.organisationId, phase), [event.organisationId, phase]);
 
   useEffect(() => {
-    if (editOutcome(location.state) == null && coverRefusal(location.state) == null) return;
+    if (
+      editOutcome(location.state) == null &&
+      coverRefusal(location.state) == null &&
+      !wasDuplicated(location.state)
+    )
+      return;
 
     void navigate(
       { pathname: location.pathname, search: location.search, hash: location.hash },

@@ -2794,10 +2794,11 @@ describe('invitations and members', () => {
     expect(sent[0]).toEqual({ line: 'DELETE /api/orgs/org_1', body: { name: 'Ìrè Events' } });
   });
 
-  test('an event deletion preview says whether the name is asked for and until when it can be restored', async () => {
+  test('an event deletion preview says whether the name is asked for, how many people its list loses, and until when it can be restored', async () => {
     const { api, sent } = client(
       json({
         needsName: true,
+        people: 421,
         restoreClosesAt: '2026-11-16T13:20:00+00:00',
         restoreCloses: 'Monday 16 Nov at 14:20 WAT',
       }),
@@ -2805,6 +2806,7 @@ describe('invitations and members', () => {
 
     expect(await api.eventDeletion('event_1')).toEqual({
       needsName: true,
+      people: 421,
       restoreClosesAt: '2026-11-16T13:20:00+00:00',
       restoreCloses: 'Monday 16 Nov at 14:20 WAT',
     });

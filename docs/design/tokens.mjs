@@ -313,7 +313,7 @@ export const tokens = {
   // makes, and because Held stops being a shade away from No reply.
   replyStates: {
     coming: { word: 'Coming', dot: '#1E9A64', ring: '0' }, // solid green
-    maybe: { word: 'Maybe', dot: '#FBF1DC', ring: '3px solid #B7791F' }, // amber ring
+    maybe: { word: 'Not sure yet', dot: '#FBF1DC', ring: '3px solid #B7791F' }, // amber ring
     notComing: { word: 'Not coming', dot: '#6B7280', ring: '0' }, // solid grey
     held: { word: 'Held', dot: 'half #6B7280 / #FFFFFF', ring: '1px solid #6B7280' }, // half grey · web: linear-gradient 90deg 50%; native: two Views
     noReply: { word: 'No reply', dot: 'transparent', ring: '1.5px solid #6B7280' }, // empty grey ring
