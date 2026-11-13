@@ -60,7 +60,7 @@ final readonly class GuestAdder
             return $guest;
         });
 
-        $this->realtimePublisher->publish(RealtimeTopic::EventGuests, $event->getId()->toRfc4122(), $this->guestSerialiser->list($event));
+        $this->realtimePublisher->publish(RealtimeTopic::EventGuests, $event->getId()->toRfc4122(), $this->guestSerialiser->list($event, contacts: false));
 
         return $guest;
     }

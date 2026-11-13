@@ -78,17 +78,52 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
             ->getSingleScalarResult());
     }
 
-    public function findOneNamed(Event $event, string $nameKey): ?Guest
+    public function findOneNamed(Event $event, string $nameKey, ?Guest $other = null): ?Guest
     {
-        /** @var ?Guest */
-        return $this->createQueryBuilder('g')
+        $query = $this->createQueryBuilder('g')
             ->where('g.event = :event')
             ->andWhere('g.nameKey = :key')
             ->setParameter('event', $event->getId(), 'uuid')
             ->setParameter('key', $nameKey)
-            ->setMaxResults(1)
+            ->setMaxResults(1);
+
+        if (null !== $other) {
+            $query->andWhere('g.id <> :other')->setParameter('other', $other->getId(), 'uuid');
+        }
+
+        /** @var ?Guest */
+        return $query->getQuery()->getOneOrNullResult();
+    }
+
+    /** A guest on the list, not a companion, and only on this event: anything else is not found. */
+    public function findHostOn(Event $event, string $id): ?Guest
+    {
+        if (!Uuid::isValid($id)) {
+            return null;
+        }
+
+        /** @var ?Guest */
+        return $this->createQueryBuilder('g')
+            ->where('g.event = :event')
+            ->andWhere('g.host IS NULL')
+            ->andWhere('g.id = :id')
+            ->setParameter('event', $event->getId(), 'uuid')
+            ->setParameter('id', Uuid::fromString($id), 'uuid')
             ->getQuery()
             ->getOneOrNullResult();
+    }
+
+    /** @return list<Guest> in their places under the host */
+    public function findCompanionsOf(Guest $host): array
+    {
+        /** @var list<Guest> */
+        return $this->createQueryBuilder('g')
+            ->where('g.host = :host')
+            ->setParameter('host', $host->getId(), 'uuid')
+            ->orderBy('g.position', 'ASC')
+            ->addOrderBy('g.id', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 
     /** Only through an event that is not deleted, so a deleted event's links answer as unknown ones and a restore brings them back (sc-1526). */
