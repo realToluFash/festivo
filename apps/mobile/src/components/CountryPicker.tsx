@@ -1,5 +1,5 @@
 import { callingCode, countryChoices } from '@soirely/domain';
-import { type Ref, type RefObject, useMemo } from 'react';
+import { type RefObject, useMemo } from 'react';
 import { Keyboard, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -33,7 +33,7 @@ export function CountryPicker({
   /** The line about it, where it sits in no Field whose line that is. */
   line?: string | null | undefined;
   /** For moving screen-reader focus here when it is the field refused first. */
-  pickerRef?: Ref<ViewInstance> | undefined;
+  pickerRef?: RefObject<ViewInstance | null> | undefined;
   testID: string;
 }) {
   const { t } = useTranslation();
