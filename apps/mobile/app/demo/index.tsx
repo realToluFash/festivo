@@ -1651,6 +1651,86 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     ],
   },
   {
+    page: 'A thank-you for your guests (sc-6476)',
+    boards: [
+      {
+        title: 'A thank-you · Add',
+        what: 'Finished: first on the Overview, with Add a thank-you',
+        href: '/demo/events/evt-wed-4?state=finished',
+      },
+      {
+        title: 'A thank-you · the field, empty',
+        what: 'Add a thank-you opened, with its count',
+        href: '/demo/events/evt-wed-4?state=thankYouAdding',
+      },
+      {
+        title: 'A thank-you · the line',
+        what: 'Signed with the hosts, and Edit thank-you',
+        href: '/demo/events/evt-wed-4?state=thankYouLine',
+      },
+      {
+        title: 'A thank-you · editing',
+        what: 'The field holds the line; save it empty to remove it',
+        href: '/demo/events/evt-wed-4?state=thankYouEditing',
+      },
+      {
+        title: 'A thank-you · saving',
+        what: 'Saving…, Cancel waits',
+        href: '/demo/events/evt-wed-4?state=thankYouSaving',
+      },
+      {
+        title: 'A thank-you · not saved',
+        what: 'The text kept, Save goes again',
+        href: '/demo/events/evt-wed-4?state=thankYouNotSaved',
+      },
+      {
+        title: 'A thank-you · over 280',
+        what: 'Save pressed: nothing sent, the limit named',
+        href: '/demo/events/evt-wed-4?state=thankYouOver',
+      },
+      {
+        title: 'A thank-you · 280 characters',
+        what: 'The longest line, no scroll sideways',
+        href: '/demo/events/evt-wed-4?state=thankYouLong',
+      },
+      {
+        title: 'A thank-you · read only',
+        what: 'Without the permission to end it: no Edit',
+        href: '/demo/events/evt-wed-4?state=thankYouReadOnly',
+      },
+      {
+        title: 'A thank-you · read only, no line',
+        what: 'No card',
+        href: '/demo/events/evt-wed-4?state=thankYouReadOnlyNone',
+      },
+      {
+        title: 'End now? · with a thank-you',
+        what: 'The optional field, filled',
+        href: '/demo/events/evt-wed-4?state=endNowThankYou',
+      },
+      {
+        title: 'End now? · 280 characters',
+        what: 'The longest line',
+        href: '/demo/events/evt-wed-4?state=endNowLong',
+      },
+      {
+        title: 'End now? · over 280',
+        what: 'Nothing sent, the limit named',
+        href: '/demo/events/evt-wed-4?state=endNowOver',
+      },
+      {
+        title: 'End now? · ending',
+        what: 'Ending…, Keep it on waits',
+        href: '/demo/events/evt-wed-4?state=endNowEnding',
+      },
+      {
+        title: 'End now? · not ended',
+        what: 'The thank-you kept',
+        href: '/demo/events/evt-wed-4?state=endNowNotEnded',
+      },
+    ],
+  },
+  {
     page: 'People on an event',
     boards: [
       { title: 'People', what: 'One list, the role in a sheet', href: '/demo/people' },
