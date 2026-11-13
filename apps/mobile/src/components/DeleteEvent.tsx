@@ -14,10 +14,8 @@ import { Notice } from './Notice.tsx';
 import { ReadOut, useSendingWords } from './ReadOut.tsx';
 import { type ScreenReaderTarget } from './screenReaderFocus.ts';
 import { useShellLayout } from './settingsShell.ts';
-import { Ask, FocusedScreen } from './Summary.tsx';
+import { Ask, ASK_WIDTH, FocusedScreen } from './Summary.tsx';
 import { Text } from './Text.tsx';
-
-const ASK_WIDTH = 340;
 
 type Asking = { kind: 'plain' } | { kind: 'named' };
 
@@ -74,7 +72,7 @@ export function useDeleteEvent({
     const answered = await deleteEvent(api, event, false, '');
     setPending(false);
     if (answered.kind === 'deleted') deleted();
-    else if (answered.kind === 'mismatch') setAsking({ kind: 'named' });
+    else if (answered.kind === 'mismatch') open();
     else setFailed(refusalTitle(answered.error, t('eventDelete.failed')));
   };
 
@@ -233,6 +231,9 @@ function NamedDelete({
           onChangeText={(value) => {
             setTyped(value);
             if (typedNameMatches(value, name)) setMismatch(false);
+          }}
+          onBlur={() => {
+            if (typed !== '' && !matches) setMismatch(true);
           }}
           accessibilityLabel={t('eventDelete.type', { event: name })}
           testID="events.deleteName"
