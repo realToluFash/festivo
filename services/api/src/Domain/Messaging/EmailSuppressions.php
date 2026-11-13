@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Domain\Messaging;
 
 use App\Enum\MailProviderReport;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
 use Psl\Str;
+use Psl\Type;
+use Psl\Vec;
 use Psr\Clock\ClockInterface;
 
 /** The addresses that take security mail only, after a hard bounce or a complaint. */
@@ -22,6 +25,30 @@ final readonly class EmailSuppressions
     public function isSuppressed(string $address): bool
     {
         return false !== $this->connection->fetchOne('SELECT 1 FROM email_suppressions WHERE address = :address', ['address' => self::key($address)]);
+    }
+
+    /**
+     * @param list<string> $addresses
+     *
+     * @return list<string> those of them suppressed, lowercased
+     */
+    public function suppressedAmong(array $addresses): array
+    {
+        if ([] === $addresses) {
+            return [];
+        }
+
+        return Type\vec(Type\string())->coerce($this->connection->fetchFirstColumn(
+            'SELECT address FROM email_suppressions WHERE address IN (:addresses)',
+            ['addresses' => Vec\map($addresses, self::key(...))],
+            ['addresses' => ArrayParameterType::STRING],
+        ));
+    }
+
+    /** A code typed for the address proves the mailbox works and that its owner wants mail there (sc-44949). */
+    public function lift(string $address): void
+    {
+        $this->connection->executeStatement('DELETE FROM email_suppressions WHERE address = :address', ['address' => self::key($address)]);
     }
 
     /** A complaint after a bounce is kept as the complaint. */
