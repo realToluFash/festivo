@@ -202,9 +202,12 @@ describe('Delete an event (sc-3592)', () => {
     expect(sent.find(({ line }) => line === 'DELETE /api/events/ev_1')?.body).toEqual({
       name: null,
     });
-    await waitFor(() =>
-      expect(screen.getByRole('status').textContent).toBe('Adaeze and Tunde was deleted.'),
-    );
+    const toast = await screen.findByText('Adaeze and Tunde was deleted.', {
+      selector: '.toast *',
+    });
+    expect(
+      within(toast.closest('.toast') as HTMLElement).getByRole('button', { name: 'Close' }),
+    ).toBeDefined();
   });
 
   it('takes the deleted page out of history, so Back from Events never opens it (sc-22103)', async () => {

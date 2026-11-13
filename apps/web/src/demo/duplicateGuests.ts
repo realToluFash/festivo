@@ -60,7 +60,6 @@ export const DW = {
       `${figure(count)} guests copied. Nobody was invited or contacted.`,
     ),
   creating: 'Creating the draft',
-  notCreated: 'Not created. Nothing was saved. Try again.',
   planTitle: (limit: number) =>
     one(
       limit,

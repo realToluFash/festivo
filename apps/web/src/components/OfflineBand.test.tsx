@@ -77,7 +77,7 @@ function serving(state: { soirely: Soirely; name: string }) {
 }
 
 function band(): HTMLElement | null {
-  return document.querySelector('.offline-band');
+  return document.querySelector('.offline-band, .ev-offline');
 }
 
 function goOffline(): void {
@@ -123,10 +123,32 @@ describe('the offline band (sc-22586)', () => {
     expect(screen.getByText('Adaeze and Tunde', { selector: '#content *' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeDefined();
     await waitFor(() =>
-      expect(document.querySelector('.offline-band > [aria-live="polite"]')?.textContent).toBe(
-        'Offline · as of 20:09',
-      ),
+      expect(
+        document.querySelector(':is(.offline-band, .offline-box) > [aria-live="polite"]')
+          ?.textContent,
+      ).toBe('Offline · as of 20:09'),
     );
+  });
+
+  it('is the amber box above the title at a desk, where Events has no band (sc-39471)', async () => {
+    signedIn();
+    const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
+    serving(state);
+    await onEvents();
+
+    state.soirely = 'unreachable';
+    goOffline();
+
+    const box = await waitFor(() => {
+      const found = document.querySelector('.ev-offline');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    const title = screen.getByRole('heading', { level: 1, name: 'Events' });
+
+    expect(document.querySelector('.offline-band')).toBeNull();
+    expect(box.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(box).getByRole('button', { name: 'Try again' })).toBeDefined();
   });
 
   it('loads again when the network returns, goes once Soirely answers, and shows what changed meanwhile', async () => {
@@ -182,7 +204,7 @@ describe('the offline band (sc-22586)', () => {
     await waitFor(() => expect(band()).not.toBeNull());
     fetched.mockImplementation(() => new Promise<Response>(() => {}));
     const asked = fetched.mock.calls.length;
-    const said = document.querySelector('.offline-band [aria-live]');
+    const said = document.querySelector(':is(.offline-band, .offline-box) [aria-live]');
 
     act(() => screen.getByRole('button', { name: 'Try again' }).click());
     await screen.findByText('Refreshing…');
@@ -340,7 +362,8 @@ describe('the offline band (sc-22586)', () => {
       return events;
     }
 
-    const eventsBand = () => document.querySelector('.offline-band:not(.notifications-band)');
+    const eventsBand = () =>
+      document.querySelector('.offline-band:not(.notifications-band), .ev-offline');
     const feedBand = () => document.querySelector('.notifications-band');
     const panel = () => document.querySelector<HTMLElement>('.notifications-panel')!;
     const asked = (fetched: ReturnType<typeof serving>, path: string) =>
