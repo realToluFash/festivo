@@ -16,7 +16,7 @@ import { FirstRun, ThisWeek, YourEvents } from '../components/TodayParts.tsx';
 import { NeedsYou } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { DeskSearch } from './Search.tsx';
-import type { SearchStart } from './search.ts';
+import { REACHES, type SearchStart } from './search.ts';
 import type { DeskPerson } from '../components/DeskSidebar.tsx';
 import './today.css';
 
@@ -27,7 +27,12 @@ function isMoment(name: string | null): name is MomentName {
   return MOMENTS.some((moment) => moment === name);
 }
 
-const KEMI: DeskPerson = { name: 'Kemi Adebayo', initials: 'KA', role: 'Member' };
+/** Who is searching in the states drawn for a role other than an owner's: a Member, a custom role without guests, and one that can find nothing. */
+const SEARCHERS = new Map<SearchStart['reach'], DeskPerson>([
+  [REACHES.member, { name: 'Kemi Adebayo', initials: 'KA', role: 'Member' }],
+  [REACHES.planner, { name: 'Ngozi Eze', initials: 'NE', role: 'Planner' }],
+  [REACHES.nobody, { name: 'Tobi Bello', initials: 'TB', role: 'Front desk' }],
+]);
 
 /** Where signing in lands at a desk (Today-B-Web.dc.html, page 29), on sample data; `search` opens with the palette over it. */
 export function Today({ search = null }: { search?: SearchStart | null }) {
@@ -82,7 +87,7 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
         <DeskSearch first={search} tell={tell}>
           <TodaySidebar
             events={moment.events.map(({ event }) => keyOf(event.id))}
-            person={asks ? VIEWERS.ana : search?.guests === false ? KEMI : undefined}
+            person={asks ? VIEWERS.ana : search == null ? undefined : SEARCHERS.get(search.reach)}
             tell={tell}
             onToday={() => page.current?.scrollTo({ top: 0 })}
             inert={covered}

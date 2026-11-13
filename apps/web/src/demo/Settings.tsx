@@ -37,6 +37,7 @@ import { DemoBell } from './DemoBell.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { DeskSearch } from './Search.tsx';
+import { reachOfRole } from './search.ts';
 import { usePaused, useSwitcherStart } from './switcher.ts';
 import './today.css';
 import '../components/SettingsParts.css';
@@ -91,7 +92,7 @@ export function Settings({
   return (
     <LayersContext value={layers}>
       <div className="today desk">
-        <DeskSearch tell={tell}>
+        <DeskSearch reach={reachOfRole(viewer.role)} tell={tell}>
           <TodaySidebar
             events={SIDEBAR_EVENTS}
             tell={tell}

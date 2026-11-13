@@ -14,18 +14,22 @@ import {
 import { useNavigate } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
-import { type Tell, TextAction } from '../components/SettingsParts.tsx';
+import { Tag, type Tell, TextAction } from '../components/SettingsParts.tsx';
 import { useDeskDialog } from '../layers.ts';
 import { sampleEvent } from './events.ts';
+import { hasGuests } from './guests.ts';
 import {
   type Found,
-  type GroupKey,
   type Phase,
+  REACHES,
+  type Reach,
   SEARCH_WORDS as W,
+  type Standing,
   type SearchStart,
   type Stop,
   TYPING_PAUSE_MS,
   browserPlatform,
+  eventName,
   groupsFor,
   keyHint,
   moved,
@@ -39,14 +43,16 @@ import './search.css';
 const SearchOpen = createContext<(() => void) | null>(null);
 
 /** The palette a page holds: opened by the sidebar's row, and opened or closed by ⌘K or Ctrl+K anywhere on it. */
-function useDeskSearch(first: SearchStart | null = null): {
+function useDeskSearch(
+  first: SearchStart | null,
+  reach: Reach,
+): {
   shown: SearchStart | null;
   open: () => void;
   close: () => void;
 } {
-  const guests = first?.guests ?? true;
   const [shown, setShown] = useState<SearchStart | null>(first);
-  const fresh = useCallback(() => ({ ...searchStart(null), guests }), [guests]);
+  const fresh = useCallback(() => searchStart(null, reach), [reach]);
   const open = useCallback(() => setShown((now) => now ?? fresh()), [fresh]);
   const close = useCallback(() => setShown(null), []);
 
@@ -66,17 +72,19 @@ function useDeskSearch(first: SearchStart | null = null): {
   return { shown, open, close };
 }
 
-/** A page's search: the palette over it while open, and the opener its sidebar's row reaches. */
+/** A page's search: the palette over it while open, and the opener its sidebar's row reaches. `reach` is what the person looking may find. */
 export function DeskSearch({
   first = null,
+  reach = REACHES.owner,
   tell,
   children,
 }: {
   first?: SearchStart | null;
+  reach?: Reach;
   tell: Tell;
   children: ReactNode;
 }) {
-  const { shown, open, close } = useDeskSearch(first);
+  const { shown, open, close } = useDeskSearch(first, reach);
 
   return (
     <SearchOpen value={open}>
@@ -127,13 +135,13 @@ export function SearchPalette({
   const [typed, setTyped] = useState(start.term);
   const [term, setTerm] = useState(start.term);
   const [phase, setPhase] = useState<Phase>(start.phase);
-  const [opened, setOpened] = useState<readonly GroupKey[]>(start.opened);
   const [lit, setLit] = useState(0);
   const groups = useMemo(
-    () => (phase === 'found' ? groupsFor(term, start.guests) : []),
-    [phase, term, start.guests],
+    () => (phase === 'found' ? groupsFor(term, start.reach) : []),
+    [phase, term, start.reach],
   );
-  const stops = useMemo(() => stopsOf(groups, opened), [groups, opened]);
+  const stops = useMemo(() => stopsOf(groups), [groups]);
+  const hint = W.idle(start.reach);
   const litAt = Math.min(lit, stops.length - 1);
   const optionId = (index: number) => `${id}-option-${index}`;
 
@@ -143,7 +151,6 @@ export function SearchPalette({
     const wait = window.setTimeout(() => {
       setTerm(typed);
       setPhase(phaseOf(typed));
-      setOpened([]);
       setLit(0);
     }, TYPING_PAUSE_MS);
 
@@ -160,13 +167,26 @@ export function SearchPalette({
     if (row.kind === 'event') {
       if (sampleEvent(row.id) != null) void navigate(`/demo/events/${row.id}`);
       else tell(`${row.name} has its own design.`);
-    } else if (row.kind === 'guest') void navigate('/demo/guests?state=guest');
-    else void navigate('/demo/settings/members');
+    } else if (row.kind === 'guest') {
+      if (row.guest != null) void navigate(`/demo/guests?event=${row.event}&guest=${row.guest}`);
+      else if (hasGuests(row.event)) void navigate(`/demo/guests?event=${row.event}`);
+      else tell(W.ownDesign(eventName(row.event)));
+    } else void navigate('/demo/settings/members');
   }
 
   function choose(stop: Stop): void {
-    if (stop.kind === 'more') setOpened((now) => [...now, stop.group]);
-    else go(stop.row);
+    if (stop.kind === 'more') {
+      onClose();
+      void navigate(`/demo/events?q=${encodeURIComponent(term.trim())}`);
+    } else go(stop.row);
+  }
+
+  function clear(): void {
+    setTyped('');
+    setTerm('');
+    setPhase('idle');
+    setLit(0);
+    field.current?.focus();
   }
 
   function keys(event: KeyboardEvent<HTMLInputElement>): void {
@@ -207,7 +227,7 @@ export function SearchPalette({
             type="text"
             role="combobox"
             aria-label={W.search}
-            placeholder={W.placeholder(start.guests)}
+            placeholder={W.placeholder(start.reach)}
             value={typed}
             autoComplete="off"
             spellCheck={false}
@@ -220,7 +240,7 @@ export function SearchPalette({
           />
         </div>
         <div className="search-body">
-          {phase === 'idle' && <p className="search-said">{W.idle(start.guests)}</p>}
+          {phase === 'idle' && hint != null && <p className="search-said">{hint}</p>}
           {phase === 'short' && <p className="search-said">{W.short}</p>}
           {phase === 'loading' && (
             <div className="search-bones" aria-hidden="true">
@@ -235,16 +255,13 @@ export function SearchPalette({
               ))}
             </div>
           )}
-          {phase === 'offline' && (
-            <div className="search-said">
-              <p>{W.notLoaded}</p>
-              <TextAction label={W.tryAgain} onClick={() => setPhase(phaseOf(term))} />
-            </div>
-          )}
+          {phase === 'offline' && <p className="search-said search-nothing">{W.offline}</p>}
           {phase === 'found' && groups.length === 0 && (
-            <div className="search-said" aria-hidden="true">
-              <p className="search-nothing">{W.nothing(term.trim())}</p>
-              <p>{W.nothingLine}</p>
+            <div className="search-said">
+              <p className="search-nothing" aria-hidden="true">
+                {W.nothing(term.trim())}
+              </p>
+              <TextAction label={W.clear} onClick={clear} />
             </div>
           )}
           <div
@@ -275,7 +292,6 @@ export function SearchPalette({
                         key={stop.kind === 'row' ? stop.row.id : `${group.key}-more`}
                         id={optionId(at)}
                         stop={stop}
-                        total={group.rows.length}
                         lit={at === litAt}
                         onChoose={() => {
                           setLit(at);
@@ -301,18 +317,18 @@ export function SearchPalette({
 function Option({
   id,
   stop,
-  total,
   lit,
   onChoose,
 }: {
   id: string;
   stop: Stop;
-  total: number;
   lit: boolean;
   onChoose: () => void;
 }) {
   const row = stop.kind === 'row' ? stop.row : null;
   const kind = row == null ? 'search-more' : 'search-row';
+  const standing = row?.kind === 'member' ? row.standing : null;
+  const said = row == null ? undefined : [row.name, row.line, standing].filter(Boolean).join(', ');
 
   return (
     <div
@@ -320,7 +336,7 @@ function Option({
       role="option"
       tabIndex={-1}
       aria-selected={lit}
-      aria-label={row == null ? undefined : `${row.name}, ${row.line}`}
+      aria-label={said}
       title={row == null ? undefined : `${row.name}\n${row.line}`}
       className={lit ? `${kind} is-lit` : kind}
       onPointerDown={(pointer) => pointer.preventDefault()}
@@ -330,7 +346,7 @@ function Option({
       }}
     >
       {row == null ? (
-        W.showAll(total)
+        W.showAll
       ) : (
         <>
           {row.kind === 'event' ? (
@@ -347,8 +363,15 @@ function Option({
             <span className="search-name">{row.name}</span>
             <span className="search-line">{row.line}</span>
           </span>
+          {standing != null && <Tag kind={STANDING_MARKS[standing]} word={standing} />}
         </>
       )}
     </div>
   );
 }
+
+const STANDING_MARKS: Record<Standing, 'waiting' | 'paused'> = {
+  Invited: 'waiting',
+  'Awaiting approval': 'waiting',
+  Suspended: 'paused',
+};
