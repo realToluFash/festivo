@@ -720,6 +720,22 @@ describe('a page left open (sc-3591)', () => {
     await waitFor(() => expect(document.activeElement).toBe(h1));
   });
 
+  it('moves focus from the switched-off Change my answer to the h1 when the start passes while paused', async () => {
+    await leftOpen(
+      { ...answered('coming'), phase: 'paused', answersOpen: false },
+      { ...answered('coming'), phase: 'paused', started: true, answersOpen: false },
+    );
+    screen.getByRole('button', { name: 'Change my answer' }).focus();
+
+    await later();
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Change my answer' })).toBeNull(),
+    );
+    const h1 = screen.getByRole('heading', { level: 1, name: 'You are invited' });
+    await waitFor(() => expect(document.activeElement).toBe(h1));
+  });
+
   it('leaves focus where it was when nothing it held goes away', async () => {
     await leftOpen(PAGE, { ...PAGE, phase: 'paused', answersOpen: false });
     const tell = screen.getByRole('button', { name: `Not ${ADAEZE}? Tell us` });
