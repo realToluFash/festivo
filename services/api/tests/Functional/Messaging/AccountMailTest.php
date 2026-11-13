@@ -15,7 +15,7 @@ use App\Enum\AccountMail;
 use App\Enum\MailProviderReport;
 use App\Enum\NotificationPriority;
 use App\Enum\SeededRole;
-use Doctrine\DBAL\Exception\CheckConstraintViolationException;
+use Doctrine\DBAL\Exception\DriverException;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Type;
 use Psl\Vec;
@@ -189,7 +189,7 @@ final class AccountMailTest extends MessagingTestCase
         try {
             self::service(OrganisationDeleter::class)->delete($this->organisation, $this->owner, $this->organisation->getName());
             self::fail('the queue write was refused');
-        } catch (CheckConstraintViolationException) {
+        } catch (DriverException) {
         }
 
         self::assertNull(self::scalar('SELECT deleted_at FROM organisations WHERE id = :id', ['id' => $this->organisation->getId()->toRfc4122()]), 'the delete went back with its email');
@@ -207,7 +207,8 @@ final class AccountMailTest extends MessagingTestCase
             foreach ([1, 2] as $attempt) {
                 $before = self::writes();
                 $registrations->start($address, 'Ada', 'correct horse battery staple', 'en');
-                $writes[$path][] = Vec\map(self::writes(), static fn (int $count, int $i): int => $count - $before[$i]);
+                $after = self::writes();
+                $writes[$path][] = [$after[0] - $before[0], $after[1] - $before[1], $after[2] - $before[2]];
             }
         }
 
@@ -251,13 +252,13 @@ final class AccountMailTest extends MessagingTestCase
         self::assertSame(1, self::rowCount("SELECT COUNT(*) FROM scheduled_notifications WHERE payload::text LIKE '%Device.%'"), 'mail with no code keeps its words');
     }
 
-    /** @param mixed ...$arguments UserMailer::send's, named as it names them */
-    private static function queue(mixed ...$arguments): void
+    /** @param list<string> $paragraphs */
+    private static function queue(AccountMail $mail, string $address, string $locale, string $subjectKey, array $paragraphs, ?MailCode $code = null, ?string $source = null): void
     {
-        self::connection()->transactional(static fn () => self::mailer()->send(...$arguments));
+        self::connection()->transactional(static fn () => self::mailer()->send($mail, $address, $locale, $subjectKey, $paragraphs, code: $code, source: $source));
     }
 
-    /** @return list<int> scheduled rows, delivery rows and superseded deliveries */
+    /** @return array{int, int, int} scheduled rows, delivery rows and superseded deliveries */
     private static function writes(): array
     {
         return [

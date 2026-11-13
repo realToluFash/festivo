@@ -112,11 +112,17 @@ between is handled as they are then.
   `UserMailer::send` writes the scheduled row and its one email delivery together, in the
   caller's transaction, with the subject and body already in the person's language, so the
   organisation deletion email still reaches every member after the organisation has gone.
-  Each type is urgent and cannot be switched off. A code's delivery carries the code's
-  expiry as `send_by`: past it, it is recorded Failed with `code expired`, and a newer code
-  to the same address records the older pending one Superseded. The idempotency key's
-  source is the code's issue for a code, so the same code queued twice sends once and a
-  resend is a new send.
+  The scheduler refuses a send with no transaction open: the change it tells of is written
+  in the same one, so a queue write that fails takes the change back with it. Each type is
+  urgent and cannot be switched off. A code's delivery carries the code's expiry as
+  `send_by`: past it, it is recorded Failed with `code expired`, and a newer code to the
+  same address records the older pending one Superseded. Its scheduled row's payload, which
+  holds the code or the link's token, is emptied once its delivery is over, sent or not.
+  The idempotency key's source is the code's issue for a code, so the same code queued
+  twice sends once and a resend is a new send. The sign-up's "you already have an account"
+  email is queued on every sign-up for a taken address, superseding like a code, and the
+  worker records it Cancelled when one went to the address in the last hour, so a taken
+  address costs the request exactly what a fresh one does.
 - **Channels** come from `ChannelSelector`, the one place that applies a member's
   preferences (sc-3980's store; epic 36's product defaults until then). In-app always goes;
   push only rides along with another channel and is never the only way somebody hears.

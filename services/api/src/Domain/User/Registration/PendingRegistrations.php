@@ -115,10 +115,7 @@ final readonly class PendingRegistrations
         return null;
     }
 
-    /**
-     * One rule for both, with the same writes: a new code, and an email queued with it. The address
-     * hears the code or, when taken, that it already has an account; the worker keeps that one to once an hour.
-     */
+    /** Both paths write the same rows, so the time taken says nothing about the address; the worker keeps the taken one's email to once an hour. */
     private function sendCode(PendingRegistration $pending): void
     {
         $this->entityManager->wrapInTransaction(function () use ($pending): void {

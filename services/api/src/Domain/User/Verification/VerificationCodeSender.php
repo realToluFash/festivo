@@ -24,11 +24,7 @@ final readonly class VerificationCodeSender
     public function issue(EmailAddress|PhoneNumber $contact): void
     {
         if ($contact instanceof EmailAddress) {
-            $this->entityManager->wrapInTransaction(function () use ($contact): void {
-                $issued = $this->verificationCodeIssuer->issueFor($contact);
-                $this->entityManager->flush();
-                $this->verificationCodeMailer->send($contact, $issued->code);
-            });
+            $this->verificationCodeMailer->issue($contact);
 
             return;
         }

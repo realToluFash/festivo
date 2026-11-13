@@ -47,7 +47,7 @@ final readonly class PasswordChange
         ?Uuid $keepSession = null,
         ?Request $request = null,
     ): int {
-        $signedOut = $this->guardedAttempt->attempt(
+        return $this->guardedAttempt->attempt(
             fn () => $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE),
             fn (): array => [$this->passwordChangeAccountLimiter->create($user->getId()->toRfc4122())],
             function () use ($user, $current, $new, $keepSession, $request): int|WrongSecret {
@@ -65,8 +65,6 @@ final readonly class PasswordChange
             },
             'limits.tries',
         );
-
-        return $signedOut;
     }
 
     private function refuseUnfit(User $user, #[SensitiveParameter] string $new): void

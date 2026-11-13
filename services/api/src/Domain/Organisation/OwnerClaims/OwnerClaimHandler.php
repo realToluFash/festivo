@@ -177,7 +177,7 @@ final readonly class OwnerClaimHandler
             throw new ApiException(ErrorCode::OwnerClaimOwn, $this->translator->trans('owner_claims.own'));
         }
 
-        $claim = $this->entityManager->wrapInTransaction(function () use ($organisation, $by): OwnerClaim {
+        return $this->entityManager->wrapInTransaction(function () use ($organisation, $by): OwnerClaim {
             $claim = $this->lockedOpen($organisation)
                 ?? throw new ApiException(ErrorCode::OwnerClaimEnded, $this->translator->trans('owner_claims.nothing_to_stop'));
             $claim->setOutcome(OwnerClaimOutcome::Stopped, $this->clock->now());
@@ -188,8 +188,6 @@ final readonly class OwnerClaimHandler
 
             return $claim;
         });
-
-        return $claim;
     }
 
     /** The claimant changing their mind (sc-8204): nobody objected, so unlike a stop it leaves the way open. */

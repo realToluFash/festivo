@@ -9,12 +9,25 @@ use App\Domain\User\Mail\UserMailer;
 use App\Entity\EmailAddress;
 use App\Entity\VerificationChallenge;
 use App\Enum\AccountMail;
+use Doctrine\ORM\EntityManagerInterface;
 
 final readonly class VerificationCodeMailer
 {
     public function __construct(
         private UserMailer $userMailer,
+        private VerificationCodeIssuer $verificationCodeIssuer,
+        private EntityManagerInterface $entityManager,
     ) {
+    }
+
+    /** A new code for the address, and its email, committed together. */
+    public function issue(EmailAddress $address): void
+    {
+        $this->entityManager->wrapInTransaction(function () use ($address): void {
+            $issued = $this->verificationCodeIssuer->issueFor($address);
+            $this->entityManager->flush();
+            $this->send($address, $issued->code);
+        });
     }
 
     public function send(EmailAddress $address, string $code): void

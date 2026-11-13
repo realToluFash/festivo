@@ -174,12 +174,11 @@ final readonly class MemberActions
             }
 
             $this->entityManager->flush();
-        });
 
-        if (Suspension::Manual === $suspension) {
-            $at = $this->clock->now();
-            $this->memberAccessMailer->sendRestored($membership, $at);
-        }
+            if (Suspension::Manual === $suspension) {
+                $this->memberAccessMailer->sendRestored($membership, $this->clock->now());
+            }
+        });
     }
 
     public function leave(Organisation $organisation, User $user): void

@@ -12,6 +12,7 @@ use App\Repository\UserRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
+use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -90,7 +91,7 @@ final class AccountLanguageTest extends ApiTestCase
         self::assertSame('fr', $user->storedLanguage(), 'the language it was started in, not the one the code came from');
 
         // No request behind it at all: the account's language is all there is to go on.
-        self::service(TwoFactorMailer::class)->sendTurnedOff($user, new DateTimeImmutable());
+        self::service(EntityManagerInterface::class)->wrapInTransaction(static fn () => self::service(TwoFactorMailer::class)->sendTurnedOff($user, new DateTimeImmutable()));
         self::assertStringContainsString('désactivée', (string) $this->lastMail()->getSubject());
     }
 
