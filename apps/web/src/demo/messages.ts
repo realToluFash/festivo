@@ -26,6 +26,7 @@ import {
   STOP_STATES,
   isStopState,
 } from './messagesStop.ts';
+import { WA_INVITE_GROUP, WA_INVITE_STATES } from './messagesInviteWords.ts';
 import {
   type InviteDraft,
   type InviteOut,
@@ -38,6 +39,16 @@ import {
   inviteSeedOf,
   isInviteState,
 } from './messagesInvite.ts';
+import {
+  type Extra,
+  type NoticeCase,
+  NOTICE_STATES,
+  noticeCaseOf,
+  noticeCredits,
+  noticeSmsOf,
+  stampOf,
+} from './messagesNotice.ts';
+import { NW } from './messagesNoticeWords.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
@@ -150,7 +161,9 @@ export const MESSAGE_STATES = [
   { key: 'channelsMany', name: 'See all, 93 names' },
   { key: 'channelsNone', name: 'Nothing ticked' },
   ...WAITS_STATES,
+  ...NOTICE_STATES,
   ...INVITE_STATES,
+  ...WA_INVITE_STATES,
   ...STOP_STATES,
 ] as const;
 
@@ -187,6 +200,13 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
     states: INVITE_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
   {
+    name: WA_INVITE_GROUP,
+    states: WA_INVITE_STATES.map((one) => ({
+      to: `${MESSAGES_AT}?state=${one.key}`,
+      name: one.name,
+    })),
+  },
+  {
     name: STOP_GROUP,
     states: STOP_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
@@ -208,7 +228,7 @@ export const CLOCK = '2026-11-03T09:41:00Z';
 
 export type Channel = 'email' | 'sms' | 'whatsApp';
 export type Where = 'page' | Channel;
-export type GuestId = 'ines' | 'lucia' | 'kwame' | 'marta';
+export type GuestId = 'ines' | 'lucia' | 'kwame' | 'marta' | 'valentina';
 export type ConvoId =
   | GuestId
   | 'unknown'
@@ -282,7 +302,26 @@ export const GUESTS: Record<GuestId, SampleGuest> = {
     toldBy: 'email',
     canAlso: [],
   },
+  valentina: {
+    initials: 'VR',
+    name: 'Valentina Restrepo',
+    contact: '+57 310 555 0142',
+    asked: 'Is there a shuttle from the hotel on Thursday?',
+    where: 'whatsApp',
+    day: 'Mon, Nov 2',
+    at: '23:52',
+    row: 'Mon',
+    toldBy: 'whatsApp',
+    canAlso: [],
+  },
 };
+
+/** A guest as the open state has them: sc-3976's states change one fact of the sample, such as the channel they wrote by. */
+export function guestOf(inbox: Pick<Inbox, 'notice'>, id: GuestId): SampleGuest {
+  const turn = inbox.notice?.id === id ? inbox.notice.turn : undefined;
+
+  return turn == null ? GUESTS[id] : { ...GUESTS[id], ...turn };
+}
 
 export const UNKNOWN = {
   address: 'm.dubois@orange.fr',
@@ -302,14 +341,16 @@ export const ANSWERS: Partial<Record<GuestId, string>> = {
   ines: 'Of course. We will set a place for your son at your table.',
   kwame: 'Formal: suits and long dresses are welcome.',
   lucia: 'Yes: free parking under the hotel, entrance on Calle Mayor.',
+  valentina: 'Yes. It leaves the hotel at 17:00 and again at 17:30.',
 };
 
-/** What Soirely's notice costs per guest's number (sc-3928's utility credits for their number's country, one SMS part; the app's `NOTICE_CREDITS`), as sc-3929's preview would give it. */
+/** What Soirely's notice costs per guest's number (sc-3928's utility credits for their number's country, and an SMS part's; the app's `NOTICE_CREDITS`), as sc-3929's preview would give it. */
 const NOTICE_PRICE: Record<GuestId | 'unknown', Partial<Record<Channel, number>>> = {
   ines: {},
   lucia: { whatsApp: 4, sms: 14 },
   kwame: { sms: 9 },
   marta: {},
+  valentina: { whatsApp: 2 },
   unknown: {},
 };
 
@@ -323,7 +364,7 @@ export const HELD_TOO_LONG = {
 };
 
 export function noticePrice(id: GuestId | 'unknown', by: Channel): number {
-  return by === 'email' ? 0 : (NOTICE_PRICE[id][by] ?? 0);
+  return noticeCredits(by, NOTICE_PRICE[id][by] ?? 0, noticeSmsOf(HOSTS, EVENT_NAME).parts);
 }
 
 export interface Notice {
@@ -647,19 +688,53 @@ function sampleOf(audience: Audience): Sample {
     : 'coming';
 }
 
-/** sc-3928's utility credits for one WhatsApp message, by the number's calling code. */
-const UTILITY_CREDITS: readonly { code: string; country: string; credits: number }[] = [
-  { code: '+234', country: 'Nigeria', credits: 2 },
-  { code: '+55', country: 'Brazil', credits: 2 },
-  { code: '+52', country: 'Mexico', credits: 2 },
-  { code: '+44', country: 'United Kingdom', credits: 5 },
-  { code: '+33', country: 'France', credits: 5 },
-  { code: '+34', country: 'Spain', credits: 4 },
-  { code: '+49', country: 'Germany', credits: 9 },
+/** The category Meta approved Soirely's template in; the invitation is quoted at marketing (sc-45251). */
+export type Category = 'utility' | 'marketing';
+
+/** sc-3928's credits for one WhatsApp message, by the number's country; marketing is computed for three countries only. */
+const WHATSAPP_RATES: readonly {
+  country: string;
+  code: string;
+  utility: number;
+  marketing: number | null;
+}[] = [
+  { country: 'NG', code: '+234', utility: 2, marketing: 10 },
+  { country: 'BR', code: '+55', utility: 2, marketing: 12 },
+  { country: 'MX', code: '+52', utility: 2, marketing: null },
+  { country: 'GB', code: '+44', utility: 5, marketing: 12 },
+  { country: 'FR', code: '+33', utility: 5, marketing: null },
+  { country: 'ES', code: '+34', utility: 4, marketing: null },
+  { country: 'DE', code: '+49', utility: 9, marketing: null },
+  { country: 'US', code: '+1', utility: 1, marketing: null },
 ];
 
+type Rate = (typeof WHATSAPP_RATES)[number];
+
+function rateOf(rate: Rate | undefined, category: Category): number {
+  return (category === 'marketing' ? rate?.marketing : rate?.utility) ?? 0;
+}
+
 export function whatsAppCredits(number: string): number {
-  return UTILITY_CREDITS.find((one) => number.startsWith(`${one.code} `))?.credits ?? 0;
+  return rateOf(
+    WHATSAPP_RATES.find((one) => number.startsWith(`${one.code} `)),
+    'utility',
+  );
+}
+
+/** The credits line's three forms, one home for the Make live offer and the invitation's check (sc-45251). */
+export function creditsLine(texts: number, whatsApp: number, balance: number): string {
+  const credits = texts + whatsApp;
+  const uses = whatsApp === 0 ? 'textsUse' : texts === 0 ? 'whatsAppUse' : 'textsAndWhatsAppUse';
+
+  return `${many(uses, credits)} ${filled(MW.creditsAfter, { count: balance - credits })}`;
+}
+
+/** One guest's message at their own country's rate, never one country's rate times the count. */
+export function whatsAppCreditsIn(country: string, category: Category): number {
+  return rateOf(
+    WHATSAPP_RATES.find((one) => one.country === country),
+    category,
+  );
 }
 
 export const WHATSAPP_NUMBERS: Readonly<Record<string, string>> = {
@@ -698,6 +773,8 @@ export interface WhatsAppReach {
   noMobile: number;
   stopped: number;
   notAgreed: number;
+  /** While the template is marketing, guests with US numbers are outside its reach (pm #45460). */
+  usNumbers: number;
   credits: number;
 }
 
@@ -710,17 +787,22 @@ export function whatsAppOf(audience: Audience): WhatsAppReach {
     noMobile,
     stopped,
     notAgreed,
+    usNumbers: 0,
     credits: whatsAppCreditsFor(reaches),
   };
 }
 
 export function whatsAppLine(audience: Audience): string {
-  const reach = whatsAppOf(audience);
+  return reachWords(whatsAppOf(audience));
+}
 
+/** WhatsApp reaches {n} of {total}, then who it can't, the US part last. */
+export function reachWords(reach: Omit<WhatsAppReach, 'credits'>): string {
   const cant = [
     ...(reach.noMobile > 0 ? [many('noMobile', reach.noMobile)] : []),
     ...(reach.stopped > 0 ? [many('stoppedCount', reach.stopped)] : []),
     ...(reach.notAgreed > 0 ? [many('notAgreedWhatsApp', reach.notAgreed)] : []),
+    ...(reach.usNumbers > 0 ? [many('usNumbers', reach.usNumbers)] : []),
   ];
 
   return [
@@ -825,9 +907,9 @@ export type Delivery =
   | 'optout'
   | 'none';
 export type Kind =
-  'inProgress' | 'bounced' | 'notSent' | 'notConfirmed' | 'optedOut' | 'none' | 'cant';
+  'inProgress' | 'bounced' | 'failed' | 'notSent' | 'notConfirmed' | 'optedOut' | 'none' | 'cant';
 export type AddressFix = 'fixEmail' | 'addEmail' | 'addPhone';
-export type Fix = AddressFix | 'toldInPerson' | 'copyLink';
+export type Fix = AddressFix | 'toldInPerson' | 'copyLink' | 'trySms';
 
 export interface Line {
   mark: Delivery;
@@ -1098,6 +1180,8 @@ export function fixWord(fix: Fix): string {
       return MW.addPhone;
     case 'copyLink':
       return MW.copyLink;
+    case 'trySms':
+      return MW.trySmsInstead;
     default:
       return MW.toldInPerson;
   }
@@ -1113,6 +1197,7 @@ export interface Reach {
 export const KIND_ORDER: readonly Kind[] = [
   'inProgress',
   'bounced',
+  'failed',
   'notSent',
   'notConfirmed',
   'optedOut',
@@ -1142,6 +1227,8 @@ export function legendWord(kind: 'reached' | Kind): string {
       return MW.legendInProgress;
     case 'bounced':
       return MW.legendBounced;
+    case 'failed':
+      return MW.failedReceipt;
     case 'notConfirmed':
       return MW.legendNotConfirmed;
     case 'optedOut':
@@ -1165,6 +1252,8 @@ export function reachLine(
         return [many('inProgressCount', part.count)];
       case 'bounced':
         return [many('bouncedCount', part.count)];
+      case 'failed':
+        return [many('failedCount', part.count)];
       case 'notSent':
         return [many('notSentCount', part.count)];
       case 'notConfirmed':
@@ -1352,6 +1441,139 @@ function receiptsWho(): Who {
   };
 }
 
+/** The invitation by WhatsApp (sc-45251): Who it reached with SMS ticked, or with only email and WhatsApp. */
+export type WhatsAppInviteOf = 'whatsAppInvite' | 'whatsAppInviteNoSms';
+
+const WA_SENT_ON = 'Nov 3';
+const viaWhatsApp = (word: string, mark: Delivery, why?: string): Line => ({
+  mark,
+  word: `${MW.whatsApp} · ${word}`,
+  ...(why == null ? {} : { why }),
+});
+const emailDelivered: Line = {
+  mark: 'delivered',
+  word: `${MW.email} · ${MW.delivered}`,
+  why: '10:01',
+};
+const smsDelivered: Line = { mark: 'delivered', word: `${MW.sms} · ${MW.delivered}`, why: '10:01' };
+const nowInvited: Line = {
+  mark: 'delivered',
+  word: MW.theirInvitation,
+  why: filled(MW.bySoirelysMessage, { date: WA_SENT_ON }),
+};
+const usNumber = viaWhatsApp(MW.notSent, 'notsent', MW.hasUsNumber);
+const notAgreed = viaWhatsApp(MW.notSent, 'notsent', MW.hasNotAgreedWhatsApp);
+const TRY_SMS: readonly Fix[] = ['trySms', 'copyLink'];
+
+/** The wedding's fourteen Not yet invited, sent at marketing by email, WhatsApp and SMS, or without SMS: Delivered or Read is Invited, Sent is not yet. */
+function whatsAppInviteWho(sms: boolean): Who {
+  const femi = person(
+    'femi-ogundipe',
+    'Femi Ogundipe',
+    'inProgress',
+    [
+      { mark: 'sent', word: `${MW.email} · ${MW.sent}`, why: '10:01' },
+      viaWhatsApp(MW.sent, 'sent', '10:02'),
+    ],
+    [],
+    NOT_INVITED,
+  );
+  const catarina = person(
+    'catarina-reis',
+    'Catarina Reis',
+    'failed',
+    [NO_EMAIL, viaWhatsApp(MW.failedReceipt, 'bounced')],
+    TRY_SMS,
+    NOT_INVITED,
+  );
+  const chuka = person(
+    'chuka-nwankwo',
+    'Chuka Nwankwo',
+    'none',
+    [emailDelivered, viaWhatsApp(MW.delivered, 'delivered', '10:02')],
+    [],
+    nowInvited,
+  );
+  const dami = person(
+    'dami-oladipo',
+    'Dami Oladipo',
+    'none',
+    [emailDelivered, viaWhatsApp(MW.read, 'delivered', '10:06')],
+    [],
+    nowInvited,
+  );
+  const unreached = sms
+    ? [femi, catarina]
+    : [
+        femi,
+        person(
+          'kenji-watanabe',
+          'Kenji Watanabe',
+          'bounced',
+          [
+            {
+              mark: 'bounced',
+              word: `${MW.email} · ${MW.bounced}`,
+              why: `${MW.doesntExist} (5.1.1)`,
+            },
+            usNumber,
+          ],
+          TRY_SMS,
+          NOT_INVITED,
+        ),
+        catarina,
+        person('yusuf', 'Yusuf Ibrahim', 'cant', [NO_EMAIL, notAgreed], TRY_SMS, NOT_INVITED),
+      ];
+  const drawn = sms
+    ? [
+        chuka,
+        dami,
+        person(
+          'kenji-watanabe',
+          'Kenji Watanabe',
+          'none',
+          [emailDelivered, smsDelivered, usNumber],
+          [],
+          nowInvited,
+        ),
+        person(
+          'yusuf',
+          'Yusuf Ibrahim',
+          'none',
+          [NO_EMAIL, smsDelivered, notAgreed],
+          [],
+          nowInvited,
+        ),
+      ]
+    : [
+        chuka,
+        dami,
+        person('lina-saleh', 'Lina Saleh', 'none', [emailDelivered, usNumber], [], nowInvited),
+      ];
+  const reach = reachFrom(14, 0, unreached);
+
+  return {
+    reach,
+    line: reachLine(reach, many('nowInvitedCount', reach.reached)),
+    groups: [
+      ...KIND_ORDER.map((kind) => {
+        const these = unreached.filter((one) => one.kind === kind);
+
+        return { key: kind, name: legendWord(kind), people: these, count: these.length, more: 0 };
+      }),
+      { key: 'told', name: MW.markedAsTold, people: [], count: 0, more: 0 },
+      {
+        key: 'reached',
+        name: MW.legendReached,
+        people: drawn,
+        count: reach.reached,
+        more: reach.reached - drawn.length,
+      },
+    ],
+    waiting: unreached.filter((one) => one.kind !== 'inProgress'),
+  };
+}
+
 export type Show = 'everyone' | 'notReached' | 'reached' | 'told' | Kind;
 
 export interface ReachGroup {
@@ -1377,6 +1599,8 @@ function baseOf(of: ReachedOf): readonly Unreached[] {
 /** Who it reached for one message: its summary, its groups in Everyone's order, and who a resend is for; `groups` are the event's own. */
 export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: readonly Group[]): Who {
   if (of === 'receipts') return receiptsWho();
+  if (of === 'whatsAppInvite' || of === 'whatsAppInviteNoSms')
+    return whatsAppInviteWho(of === 'whatsAppInvite');
 
   const marks = inbox.marked[thread] ?? [];
   const mine = (one: Unreached) => updatedPerson(one, savedOn(inbox, one.id, thread));
@@ -1670,9 +1894,12 @@ export interface Answer {
   by?: Channel;
   /** A notice held for credits, or one that waited and could not go. */
   notice?: 'held' | 'tooLate';
+  /** sc-3976: the notice refused on its channel, with Who it reached's reason, or waiting for quiet hours to end. */
+  refused?: { reason: string; mark: Delivery };
+  waits?: string;
 }
 
-export type ReachedOf = 'parking' | 'invite' | 'receipts' | 'new';
+export type ReachedOf = 'parking' | 'invite' | 'receipts' | 'new' | WhatsAppInviteOf;
 
 export type Pane =
   | { kind: 'idle' }
@@ -1712,6 +1939,8 @@ export interface Inbox {
   untold: readonly Told[];
   /** sc-3978: who stopped each guest writing from their page, and when. */
   stopped?: Partial<Record<GuestId, Stop>>;
+  /** sc-3976: the open state's facts about one guest's notice and conversation. */
+  notice?: NoticeCase;
 }
 
 export const TICKS: Ticks = { email: true, sms: true, whatsApp: false };
@@ -1810,6 +2039,7 @@ export function inviteCheck(
     figuresOf(draft.to, draft.ticks),
     balance,
     groups,
+    draft.invite?.wa,
   );
 }
 
@@ -2102,10 +2332,14 @@ export function seedOf(state: MessagesState | null): Inbox {
         outs: [outOf('countdown', { ticks: EMAIL_ONLY })],
       };
     default: {
+      const notice = noticeCaseOf(state);
+
+      if (notice != null) return noticeSeed(base, notice);
+
       const invite = inviteSeedOf(state);
 
-      if (invite?.kind === 'draft')
-        return {
+      if (invite?.kind === 'draft') {
+        const seeded: Inbox = {
           ...base,
           pane: { kind: 'compose' },
           draft: {
@@ -2113,8 +2347,14 @@ export function seedOf(state: MessagesState | null): Inbox {
             step: invite.step,
             openTo: invite.openTo,
             invite: invite.invite,
+            ...(invite.ticks == null ? {} : { ticks: invite.ticks }),
           },
         };
+
+        return invite.balance == null ? seeded : { ...seeded, balance: invite.balance };
+      }
+      if (invite?.kind === 'reached')
+        return { ...base, pane: { kind: 'reached', of: invite.of, thread: 'invite' } };
       if (invite?.kind === 'out') {
         const draft = inviteDraftOf(invite.to);
         const check = inviteCheck(draft, BALANCE, GROUPS);
@@ -2165,6 +2405,16 @@ export function seedOf(state: MessagesState | null): Inbox {
   }
 }
 
+function noticeSeed(base: Inbox, notice: NoticeCase): Inbox {
+  const seeded: Inbox = { ...base, notice, pane: { kind: 'convo', id: notice.id } };
+
+  if (notice.ask != null) return { ...seeded, balance: 2 };
+  if (notice.id === 'valentina') return { ...seeded, present: [...ALL, 'valentina'] };
+  if (notice.id === 'unknown') return { ...seeded, matched: MATCHES[0]?.name ?? null };
+
+  return seeded;
+}
+
 export type Lead =
   { kind: 'guest'; initials: string; unread: boolean } | { kind: 'unknown' } | { kind: 'many' };
 
@@ -2190,7 +2440,7 @@ export interface Sections {
   done: readonly Row[];
 }
 
-const GUEST_IDS: readonly GuestId[] = ['ines', 'lucia', 'kwame', 'marta'];
+const GUEST_IDS: readonly GuestId[] = ['ines', 'lucia', 'kwame', 'marta', 'valentina'];
 
 export function isGuest(id: ConvoId): id is GuestId {
   return (GUEST_IDS as readonly string[]).includes(id);
@@ -2201,7 +2451,7 @@ export function whereWord(where: Where): string {
 }
 
 function guestRow(inbox: Inbox, id: GuestId): Row {
-  const guest = GUESTS[id];
+  const guest = guestOf(inbox, id);
   const done = inbox.done.includes(id);
   const answer = inbox.answers[id]?.at(-1);
   const arrived = inbox.arrived === id;
@@ -2224,16 +2474,26 @@ function guestRow(inbox: Inbox, id: GuestId): Row {
   };
 }
 
+function laterOf(inbox: Inbox, id: GuestId | 'unknown') {
+  const extras = inbox.notice?.id === id ? (inbox.notice.extras ?? []) : [];
+
+  return [...extras]
+    .reverse()
+    .find((one): one is Extract<Extra, { kind: 'later' }> => one.kind === 'later');
+}
+
 function unknownRow(inbox: Inbox): Row {
   const answer = inbox.answers.unknown?.at(-1);
-  const said = answer == null ? UNKNOWN.text : filled(MW.you, { text: answer.text });
+  const later = laterOf(inbox, 'unknown');
+  const said =
+    answer == null ? (later?.text ?? UNKNOWN.text) : filled(MW.you, { text: answer.text });
   const match = MATCHES.find((one) => one.name === inbox.matched);
 
   return {
     id: 'unknown',
-    title: match?.name ?? UNKNOWN.address,
+    title: match?.name ?? (inbox.notice?.hidden === true ? NW.unknownSender : UNKNOWN.address),
     line: `${MW.email} · ${said}`,
-    when: answer?.at ?? UNKNOWN.row,
+    when: answer?.at ?? later?.at ?? UNKNOWN.row,
     lead:
       match == null
         ? { kind: 'unknown' }
@@ -2485,16 +2745,18 @@ export function sectionsOf(inbox: Inbox, groups: readonly Group[]): Sections {
     else done.push(row);
   }
 
-  const waiting: ConvoId[] = ['ines', 'lucia', 'kwame', 'unknown'];
   const arrived = inbox.arrived;
+  const waiting = [
+    ...(['ines', 'lucia', 'valentina', 'kwame', 'unknown'] as const).filter(
+      (id) => id !== arrived && here(id) && !inbox.done.includes(id),
+    ),
+    ...(here('parking') && inbox.unreached.length > 0 ? (['parking'] as const) : []),
+    ...(here('receipts') ? (['receipts'] as const) : []),
+  ].sort((one, two) => askedAt(inbox, two).localeCompare(askedAt(inbox, one)));
 
   if (arrived != null && here(arrived) && !inbox.done.includes(arrived))
     needs.push(rowOf(inbox, arrived, groups));
-  for (const id of waiting)
-    if (id !== arrived && here(id) && !inbox.done.includes(id))
-      needs.push(rowOf(inbox, id, groups));
-  if (here('parking') && inbox.unreached.length > 0) needs.push(rowOf(inbox, 'parking', groups));
-  if (here('receipts')) needs.push(rowOf(inbox, 'receipts', groups));
+  for (const id of waiting) needs.push(rowOf(inbox, id, groups));
 
   const scheds = inbox.scheds.filter(
     (one) => (one.id !== 'sched' || here('sched')) && outsIn(inbox, one.id).length === 0,
@@ -2524,13 +2786,27 @@ export function sectionsOf(inbox: Inbox, groups: readonly Group[]): Sections {
   };
 }
 
+function askedAt(inbox: Inbox, id: ConvoId): string {
+  if (isGuest(id)) {
+    const guest = guestOf(inbox, id);
+
+    return stampOf(guest.day, guest.at);
+  }
+
+  if (id !== 'unknown') return stampOf(PARKING.day, PARKING.at);
+
+  const later = laterOf(inbox, id);
+
+  return later == null ? stampOf(UNKNOWN.day, UNKNOWN.at) : stampOf(NW.today, later.at);
+}
+
 export function rowsInOrder(sections: Sections): readonly Row[] {
   return [...sections.top, ...sections.needs, ...sections.scheduled, ...sections.done];
 }
 
 export function countsOf(inbox: Inbox): { waiting: number; notMatched: number } {
   const open = (id: ConvoId) => inbox.present.includes(id) && !inbox.done.includes(id);
-  const guests = (['ines', 'lucia', 'kwame'] as const).filter(open).length;
+  const guests = (['ines', 'lucia', 'kwame', 'valentina'] as const).filter(open).length;
 
   return {
     waiting: guests + (inbox.matched != null && open('unknown') ? 1 : 0),
@@ -2557,7 +2833,14 @@ export type Change =
   | { kind: 'settle' }
   | { kind: 'done'; id: ConvoId; at: string }
   | { kind: 'waiting'; id: ConvoId }
-  | { kind: 'answer'; id: GuestId | 'unknown'; text: string; by?: Channel }
+  | {
+      kind: 'answer';
+      id: GuestId | 'unknown';
+      text: string;
+      by?: Channel;
+      refused?: Answer['refused'];
+      waits?: string;
+    }
   | { kind: 'told'; id: GuestId | 'unknown' }
   | { kind: 'compose'; draft: Draft }
   | { kind: 'draft'; draft: Partial<Draft> }
@@ -2670,15 +2953,18 @@ export function changed(inbox: Inbox, change: Change): Inbox {
     case 'waiting':
       return { ...inbox, done: inbox.done.filter((id) => id !== change.id) };
     case 'answer': {
-      const by = change.by ?? (change.id === 'unknown' ? 'email' : GUESTS[change.id].toldBy);
-      const credits = noticePrice(change.id, by);
+      const by =
+        change.by ?? (change.id === 'unknown' ? 'email' : guestOf(inbox, change.id).toldBy);
+      const credits = change.refused == null ? noticePrice(change.id, by) : 0;
       const held = credits > inbox.balance;
       const answer: Answer = {
         text: change.text,
         at: NOW,
-        stage: 'sending',
+        stage: change.refused == null && change.waits == null ? 'sending' : 'told',
         ...(change.by != null ? { by } : {}),
         ...(held ? { notice: 'held' as const } : {}),
+        ...(change.refused == null ? {} : { refused: change.refused }),
+        ...(change.waits == null ? {} : { waits: change.waits }),
       };
 
       return {

@@ -1,5 +1,6 @@
 import { primaryFirst } from '@soirely/domain';
 import { type ReactNode, useId } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { type ContactKind, type ContactRow } from '../accountPage.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
@@ -186,6 +187,51 @@ export function ContactsBlock<Row extends ContactRow>({
       </ul>
       <p className="desk-foot">{foot}</p>
     </section>
+  );
+}
+
+/** Closing Email addresses: one line per address Soirely stopped sending to (sc-44949), each with Change email. */
+export function UndeliverableLines({
+  rows,
+  onChange,
+}: {
+  rows: readonly ContactRow[];
+  onChange: (row: ContactRow) => void;
+}) {
+  const { t } = useTranslation();
+
+  if (rows.length === 0) return null;
+
+  return (
+    <ul className="undeliverable-lines" data-testid="account.undeliverable">
+      {rows.map((row) => (
+        <li key={row.id} className="undeliverable-line">
+          <span className="undeliverable-lead" aria-hidden="true">
+            <span className="undeliverable-mark">
+              <svg width="10" height="10" viewBox="0 0 10 10">
+                <path
+                  d="M2.2 2.2l5.6 5.6M7.8 2.2l-5.6 5.6"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+          </span>
+          <div className="undeliverable-words">
+            <p>{t('account.undeliverable', { address: row.shown })}</p>
+            <button
+              type="button"
+              className="desk-text"
+              aria-label={t('account.changeEmailFor', { address: row.shown })}
+              onClick={() => onChange(row)}
+            >
+              {t('account.changeEmail')}
+            </button>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 

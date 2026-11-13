@@ -1331,7 +1331,7 @@ describe('the language menu in the header (sc-3790)', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: 'Vous avez une invitation' }),
     ).toBeDefined();
-    expect(screen.getByRole('button', { name: '[Oui, je serai là]' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Oui, je serai là' })).toBeDefined();
   });
 
   it('moves with the arrows, closes on Escape, and switches at once on a choice, focus back on the button', async () => {
@@ -1368,7 +1368,7 @@ describe('the page in the guest’s own language (sc-3790)', () => {
     expect(page().getAttribute('lang')).toBe('pt');
     expect(screen.getByRole('heading', { level: 1, name: 'Tem um convite' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Idioma: Português' })).toBeDefined();
-    expect(screen.getByRole('button', { name: '[Sim, vou estar presente]' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Sim, lá estarei' })).toBeDefined();
     expect(screen.getByText('quinta-feira, 5 de novembro de 2026')).toBeDefined();
     expect(screen.getByText(NAME)).toBeDefined();
     expect(screen.getByText('Adaeze & Tunde’s wedding')).toBeDefined();

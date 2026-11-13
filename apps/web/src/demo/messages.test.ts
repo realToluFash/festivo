@@ -53,15 +53,16 @@ import {
 } from './messages.ts';
 import { BOOK, GROUPS } from './messagesTo.ts';
 import { INVITE_STATES } from './messagesInvite.ts';
+import { NOTICE_STATES } from './messagesNotice.ts';
 import { WAITS_STATES } from './messagesWaits.ts';
 
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
 describe('Messaging B · Conversations, the rules (sc-31371)', () => {
-  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 4, sc-3950’s 3, sc-3954’s 6, sc-3971’s 16 and sc-3978’s 6, in order, each linked once from the demo home', () => {
+  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 4, sc-3950’s 3, sc-3954’s 6, sc-3976’s 17, sc-3971’s 16, sc-45251’s 14 and sc-3978’s 6, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(135);
+    expect(keys).toHaveLength(166);
     expect(keys.slice(94, 97)).toEqual(['whatsAppLine', 'checkWhatsApp', 'whatsAppRead']);
     expect(keys.slice(97, 103)).toEqual([
       'channelsWrite',
@@ -72,7 +73,8 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'channelsNone',
     ]);
     expect(keys.slice(103, 113)).toEqual(WAITS_STATES.map((one) => one.key));
-    expect(keys.slice(113, 129)).toEqual(INVITE_STATES.map((one) => one.key));
+    expect(keys.slice(113, 130)).toEqual(NOTICE_STATES.map((one) => one.key));
+    expect(keys.slice(130, 146)).toEqual(INVITE_STATES.map((one) => one.key));
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
     expect(keys.slice(6, 10)).toEqual([
       'channelReply',
@@ -98,7 +100,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'editCancelled',
       'editTooLate',
     ]);
-    expect(new Set(keys).size).toBe(135);
+    expect(new Set(keys).size).toBe(166);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );
@@ -761,9 +763,9 @@ describe('Messaging B · WhatsApp only to guests who agreed (sc-3950)', () => {
   it('counts each WhatsApp number at its country’s utility rate (sc-3928)', () => {
     expect(
       ['+234 802', '+55 21', '+52 55', '+44 7700', '+33 6', '+34 612', '+49 151', '+1 212'].map(
-        whatsAppCredits,
+        (number) => whatsAppCredits(number),
       ),
-    ).toEqual([2, 2, 2, 5, 5, 4, 9, 0]);
+    ).toEqual([2, 2, 2, 5, 5, 4, 9, 1]);
     expect(whatsAppCreditsFor(['lucia', 'kwame', 'duboise', 'rafael'])).toBe(13);
     expect(whatsAppCreditsFor(['ines'])).toBe(0);
     expect(TELL.credits).toBe(43);

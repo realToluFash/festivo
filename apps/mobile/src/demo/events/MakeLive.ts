@@ -18,6 +18,8 @@ export const MAKE_LIVE_STATES = [
   'makeLiveOfferOne',
   'makeLiveOfferWaits',
   'makeLiveOfferPart',
+  'makeLiveOfferWhatsApp',
+  'makeLiveOfferWhatsAppOnly',
   'makeLiveOfferSending',
   'makeLiveOfferSent',
   'makeLiveOfferNotYet',
@@ -62,6 +64,8 @@ const SEEDS: Record<MakeLiveState, LiveSeed> = {
   makeLiveOfferOne: HOSTED_LIVE,
   makeLiveOfferWaits: HOSTED_LIVE,
   makeLiveOfferPart: HOSTED_LIVE,
+  makeLiveOfferWhatsApp: HOSTED_LIVE,
+  makeLiveOfferWhatsAppOnly: HOSTED_LIVE,
   makeLiveOfferSending: HOSTED_LIVE,
   makeLiveOfferSent: HOSTED_LIVE,
   makeLiveOfferNotYet: HOSTED_LIVE,
@@ -92,6 +96,8 @@ export interface Reach {
   texts: readonly number[];
   balance: number;
   maySend: boolean;
+  /** Each WhatsApp invitation sent in place of a text (sc-45251), at its number's country's rate. */
+  whatsApp: readonly number[];
 }
 
 const GSM_7 =
@@ -152,6 +158,22 @@ export function textCost({ phone, parts }: PricedText): number {
   return parts * PART_CREDITS[country];
 }
 
+export type Category = 'utility' | 'marketing';
+
+/** A sample of sc-3928's WhatsApp rates by the number's country; Meta's marketing rate does not reach US numbers. */
+const WHATSAPP_CREDITS: Partial<Record<PartCountry, Record<Category, number | null>>> = {
+  NG: { utility: 2, marketing: 10 },
+  BR: { utility: 2, marketing: 12 },
+  GB: { utility: 5, marketing: 12 },
+  US: { utility: 1, marketing: null },
+};
+
+export function whatsAppCost(phone: string, category: Category): number | null {
+  const country = countryOf(phone);
+
+  return country == null ? null : (WHATSAPP_CREDITS[country]?.[category] ?? null);
+}
+
 export function priceOf(texts: readonly PricedText[]): number {
   return texts.reduce((sum, one) => sum + textCost(one), 0);
 }
@@ -179,11 +201,27 @@ export const OFFER_MOBILES: readonly { name: string; phone: string }[] = DRAFT_G
 );
 export const OFFER_BALANCE = 250;
 
-/** The engagement's offer: Guests' Not yet invited less the companions, those no channel reaches, and the three mobiles in the order they are taken. */
-export function sampleReach(event: Invited): Reach {
+export interface WhatsAppAgreed {
+  category: Category;
+  agreed: readonly string[];
+}
+
+/** Who agreed to WhatsApp in the states that send it, and the category Meta approved the template in (sc-45251). */
+const WHATSAPP: Partial<Record<MakeLiveState, WhatsAppAgreed>> = {
+  makeLiveOfferWhatsApp: { category: 'marketing', agreed: ['Tola Bakare', 'Grace Mensah'] },
+  makeLiveOfferWhatsAppOnly: {
+    category: 'utility',
+    agreed: ['Tola Bakare', 'Grace Mensah', 'Ryan Cole'],
+  },
+};
+
+/** The engagement's offer: Guests' Not yet invited less the companions, those no channel reaches, and the three mobiles in the order they are taken, each by WhatsApp in place of the text where they agreed. */
+export function sampleReach(event: Invited, wa: WhatsAppAgreed | null = null): Reach {
   const companions = DRAFT_GUESTS.reduce((sum, one) => sum + one.companions.length, 0);
   const unreachable = DRAFT_GUESTS.filter((one) => one.email == null && one.phone == null).length;
-  const texts = OFFER_MOBILES.map(({ name, phone }) =>
+  const byWhatsApp = ({ name, phone }: { name: string; phone: string }) =>
+    wa != null && wa.agreed.includes(name) ? whatsAppCost(phone, wa.category) : null;
+  const texts = OFFER_MOBILES.filter((one) => byWhatsApp(one) == null).map(({ name, phone }) =>
     textCost({ phone, parts: inviteTextOf(event, name).parts }),
   );
 
@@ -193,6 +231,7 @@ export function sampleReach(event: Invited): Reach {
     texts,
     balance: OFFER_BALANCE,
     maySend: true,
+    whatsApp: OFFER_MOBILES.flatMap((one) => byWhatsApp(one) ?? []),
   };
 }
 
@@ -202,13 +241,15 @@ const NOBODY_ON_LIST: Reach = {
   texts: [],
   balance: OFFER_BALANCE,
   maySend: true,
+  whatsApp: [],
 };
 
 export function reachOf(state: string | null, event: SampleEvent): Reach {
   if (event.id !== MAKE_LIVE_EVENT) return NOBODY_ON_LIST;
-  const reach = sampleReach(event);
+  const live = makeLiveStateOf(state);
+  const reach = sampleReach(event, live == null ? null : (WHATSAPP[live] ?? null));
 
-  switch (makeLiveStateOf(state)) {
+  switch (live) {
     case 'makeLiveOfferEmail':
       return { ...reach, texts: [] };
     case 'makeLiveOfferOne':
@@ -236,8 +277,24 @@ export interface Credits {
   waiting: number;
 }
 
+/** The credits line's three forms (sc-45251): texts, texts and WhatsApp messages, or WhatsApp messages. */
+function usesKey(texts: number, whatsApp: number) {
+  if (whatsApp === 0) return 'textsUse' as const;
+
+  return texts === 0 ? ('whatsAppUse' as const) : ('textsAndWhatsAppUse' as const);
+}
+
 /** A text goes only when its whole cost fits in what is left; the rest wait, in sc-3963's lines. */
 export function creditsOf(reach: Reach): Credits {
+  const texts = reach.texts.reduce((sum, cost) => sum + cost, 0);
+  const whatsApp = reach.whatsApp.reduce((sum, cost) => sum + cost, 0);
+
+  if (whatsApp > 0 && reach.balance >= texts + whatsApp)
+    return {
+      line: `${liveCounted(usesKey(texts, whatsApp), texts + whatsApp)} ${sayLive.creditsAfter(formatCount(reach.balance - texts - whatsApp))}`,
+      waiting: 0,
+    };
+
   let left = reach.balance;
   const going = reach.texts.filter((cost) => {
     if (cost > left) return false;
@@ -295,6 +352,8 @@ const STARTS: Record<MakeLiveState, MakeLive> = {
   makeLiveOfferOne: LIVE_NOW(OFFER),
   makeLiveOfferWaits: LIVE_NOW(OFFER),
   makeLiveOfferPart: LIVE_NOW(OFFER),
+  makeLiveOfferWhatsApp: LIVE_NOW(OFFER),
+  makeLiveOfferWhatsAppOnly: LIVE_NOW(OFFER),
   makeLiveOfferSending: LIVE_NOW({ ...OFFER, sending: true }),
   makeLiveOfferSent: { turn: CLOSED, live: true, toast: 'queued' },
   makeLiveOfferNotYet: LIVE_NOW(CLOSED),

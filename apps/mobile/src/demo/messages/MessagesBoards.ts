@@ -109,6 +109,56 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   askSentOne: ['ask an owner, one owner', 'The owner has been sent the link to Plan and billing'],
   askFailed: ['ask an owner, not sent', 'Not sent. Try again in a moment.'],
   sendWithout: ['after Send without SMS', 'The ten seconds, told by Email only'],
+  noticeNoConsent: [
+    'refused: has not agreed to WhatsApp',
+    'Kwame Mensah: Has not agreed to WhatsApp; tell them now by Email or SMS',
+  ],
+  noticeNoTemplate: [
+    'refused: the WhatsApp message can’t be used',
+    'Lucía Ortega: cannot be sent in Spanish at the moment; Email or SMS',
+  ],
+  noticeStoppedWhatsApp: [
+    'refused: stopped WhatsApp',
+    'Lucía Ortega stopped WhatsApp · 08:15; Email or SMS',
+  ],
+  noticeStopped: ['refused: texted STOP', 'Kwame Mensah stopped texts · 21:40; Email'],
+  noticeBouncing: [
+    'refused: address bouncing, none left',
+    'Inês Duarte: Address is bouncing; no other channel',
+  ],
+  noticeSpam: ['refused: reported as spam', 'Inês Duarte: Reported an earlier email as spam'],
+  noticeUnsubscribed: ['refused: unsubscribed', 'Inês Duarte: Unsubscribed; no other channel'],
+  noticeWindowClosed: [
+    'the 24 hours ran out while writing',
+    'Nothing was sent; Send again goes as the approved WhatsApp message',
+  ],
+  noticeWindowRefused: [
+    'the 24 hours ran out, then refused',
+    'Nothing was sent, then the refusal; Email or SMS',
+  ],
+  noticeQuiet: [
+    'quiet hours: the notice waits',
+    'Valentina Restrepo: This WhatsApp message waits until 09:00, their time.',
+  ],
+  noticeAskOwner: [
+    'the notice waits: Ask an owner',
+    'Bisi Okafor, Admin: Ask an owner where the app’s line was',
+  ],
+  noticeAskSent: [
+    'the notice waits: owners asked',
+    'The owners have been sent the link to Plan and billing',
+  ],
+  noticeAskFailed: ['the notice waits: asking failed', 'Not sent. Try again in a moment.'],
+  textsBackOn: ['texts back on after START', 'Kwame Mensah started texts again · 08:30'],
+  attachmentsNotKept: [
+    'attachments not kept',
+    'Camille Dubois: a later email · 2 attachments not kept',
+  ],
+  sharedNumber: ['a number two guests share', '+44 7700 900412 · shared by 2 guests; Change guest'],
+  readOnly: [
+    'a Read-only member',
+    'Kofi Mensah, Read-only: Only someone who can change Messages can send.',
+  ],
   stopAction: [
     'the conversation’s actions, open',
     'Inês Duarte’s conversation, the menu or action sheet open',

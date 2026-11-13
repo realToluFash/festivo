@@ -1,14 +1,14 @@
 import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { LEAD_INSET } from '../../components/AccountCard.tsx';
-import { GlyphMark } from '../../components/StatusMark.tsx';
-import { TextAction } from '../../components/Summary.tsx';
-import { Text } from '../../components/Text.tsx';
-import type { Contact } from '../../kit/accountPage.ts';
-import { tokens } from '../../theme/tokens.ts';
-import { UNDELIVERABLE_WORDS as W } from './Undeliverable.ts';
+import type { Contact } from '../kit/accountPage.ts';
+import { tokens } from '../theme/tokens.ts';
+import { LEAD_INSET } from './AccountCard.tsx';
+import { GlyphMark } from './StatusMark.tsx';
+import { TextAction } from './Summary.tsx';
+import { Text } from './Text.tsx';
 
-/** Closing Email addresses, one line per address Soirely stopped sending to, each with Change email. */
+/** Closing Email addresses: one line per address Soirely stopped sending to (sc-44949), each with Change email. */
 export function UndeliverableLines({
   rows,
   onChange,
@@ -18,6 +18,8 @@ export function UndeliverableLines({
   onChange: (row: Contact) => void;
   onAction: (id: string, action: ViewInstance | null) => void;
 }) {
+  const { t } = useTranslation();
+
   if (rows.length === 0) return null;
 
   return (
@@ -29,12 +31,12 @@ export function UndeliverableLines({
           </View>
           <View style={styles.words}>
             <Text size={15} weight="semibold" testID={`account.${row.id}.undeliverable`}>
-              {W.line(row.shown)}
+              {t('account.undeliverable', { address: row.shown })}
             </Text>
             <TextAction
               ref={(action) => onAction(row.id, action)}
-              label={W.change}
-              accessibilityLabel={W.changeFor(row.shown)}
+              label={t('account.changeEmail')}
+              accessibilityLabel={t('account.changeEmailFor', { address: row.shown })}
               onPress={() => onChange(row)}
               testID={`account.${row.id}.change`}
             />
