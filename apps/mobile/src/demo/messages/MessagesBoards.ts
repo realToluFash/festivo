@@ -182,8 +182,8 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   ],
   tapFailed: ['A tap: the message failed', 'Kwame Mensah answered Not coming; WhatsApp · Failed'],
   tapNoCredits: [
-    'A tap: too few credits',
-    'Kwame Mensah answered Not coming; Not sent · Too few credits',
+    'A tap: not enough credits',
+    'Kwame Mensah answered Not coming; Not sent · Not enough credits',
   ],
   tapStopped: [
     'A tap after stopping WhatsApp',
@@ -194,8 +194,8 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
     'Kwame Mensah tapped Not coming in WhatsApp. Nothing changed.; WhatsApp · Read',
   ],
   tapComingNotSent: [
-    'A Coming guest’s tap, too few credits',
-    'Kwame Mensah tapped Not coming; Not sent · Too few credits',
+    'A Coming guest’s tap, not enough credits',
+    'Kwame Mensah tapped Not coming; Not sent · Not enough credits',
   ],
   tapRepeat: [
     'A repeat tap, the first in 24 hours',

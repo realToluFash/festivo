@@ -61,7 +61,7 @@ export const HOST_NAMES = ['Adaeze Obi', 'Tunde Bakare'] as const;
 export const TW = {
   notComing: 'Not coming',
   notSure: 'Not sure yet',
-  tooFewCredits: 'Too few credits',
+  notEnoughCredits: 'Not enough credits',
 };
 
 export const sayTap = {
@@ -256,7 +256,7 @@ export function replyLines(tap: Tap, language: TapLanguage): readonly string[] {
 
 function notSentOf(why: TapNotSent): { word: string; mark: MarkKey } {
   return why === 'credits'
-    ? { word: say.where(W.notSent, TW.tooFewCredits), mark: 'notsent' }
+    ? { word: say.where(W.notSent, TW.notEnoughCredits), mark: 'notsent' }
     : { word: say.where(W.notSent, W.stoppedWhatsApp), mark: 'optout' };
 }
 

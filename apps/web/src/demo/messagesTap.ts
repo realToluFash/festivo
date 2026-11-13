@@ -10,7 +10,7 @@ export const TAPW = {
   answeredNotSure: '{{name}} answered Not sure yet by WhatsApp.',
   tappedNotComing: '{{name}} tapped Not coming in WhatsApp. Nothing changed.',
   tappedNotSure: '{{name}} tapped Not sure yet in WhatsApp. Nothing changed.',
-  tooFewCredits: 'Too few credits',
+  notEnoughCredits: 'Not enough credits',
 } as const;
 
 const tapw = demoWords(TAPW);
@@ -57,10 +57,10 @@ export const TAP_STATES = [
   { key: 'tapNotSure', name: 'A tap: Not sure yet' },
   { key: 'tapNeedsYou', name: 'A tap under a question that waits' },
   { key: 'tapFailed', name: 'A tap: the message failed' },
-  { key: 'tapNoCredits', name: 'A tap: too few credits' },
+  { key: 'tapNoCredits', name: 'A tap: not enough credits' },
   { key: 'tapStopped', name: 'A tap after stopping WhatsApp' },
   { key: 'tapComing', name: 'A Coming guest’s tap' },
-  { key: 'tapComingNotSent', name: 'A Coming guest’s tap, too few credits' },
+  { key: 'tapComingNotSent', name: 'A Coming guest’s tap, not enough credits' },
   { key: 'tapRepeat', name: 'A repeat tap, the first in 24 hours' },
   { key: 'tapRepeatAgain', name: 'A further repeat: no line' },
   { key: 'tapClosed', name: 'A tap after answers closed' },
@@ -236,7 +236,7 @@ export function receiptBit(receipt: Receipt): Bit {
 /** Nothing went: the not-sent mark for credits, the opted-out mark for a guest who stopped WhatsApp. */
 export function notSentBit(why: NotSent): Bit {
   return why === 'credits'
-    ? { words: `${MW.notSent} · ${TAPW.tooFewCredits}`, mark: 'notsent' }
+    ? { words: `${MW.notSent} · ${TAPW.notEnoughCredits}`, mark: 'notsent' }
     : { words: `${MW.notSent} · ${MW.stoppedWhatsApp}`, mark: 'optout' };
 }
 

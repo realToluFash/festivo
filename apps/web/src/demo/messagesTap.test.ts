@@ -59,7 +59,10 @@ describe('a guest’s tap on the WhatsApp invitation (sc-46343)', () => {
   it('draws Read as delivered, and nothing sent with its own mark', () => {
     expect(receiptBit('read')).toEqual({ words: 'WhatsApp · Read', mark: 'delivered' });
     expect(receiptBit('failed')).toEqual({ words: 'WhatsApp · Failed', mark: 'bounced' });
-    expect(notSentBit('credits')).toEqual({ words: 'Not sent · Too few credits', mark: 'notsent' });
+    expect(notSentBit('credits')).toEqual({
+      words: 'Not sent · Not enough credits',
+      mark: 'notsent',
+    });
     expect(notSentBit('stopped')).toEqual({ words: 'Not sent · Stopped WhatsApp', mark: 'optout' });
   });
 
