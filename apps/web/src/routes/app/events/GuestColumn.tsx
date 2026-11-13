@@ -168,6 +168,7 @@ export function GuestColumn({
   const [pane, setPane] = useState<Pane>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const editing = useRef(false);
+  const missed = useRef(false);
   const shown = pane.kind !== 'loading';
   const showing = useEffectEvent(onShown);
 
@@ -180,7 +181,10 @@ export function GuestColumn({
   }, [shown]);
 
   useEffect(() => {
-    if (editing.current) return;
+    if (editing.current) {
+      missed.current = true;
+      return;
+    }
     let current = true;
 
     api.guest(eventId, guestId).then(
@@ -260,6 +264,10 @@ export function GuestColumn({
     const leave = (tagged: TaggedGuest): void => {
       onDirty(false);
       setPane({ kind: 'guest', tagged });
+      if (missed.current) {
+        missed.current = false;
+        setAttempt((n) => n + 1);
+      }
     };
 
     return (
