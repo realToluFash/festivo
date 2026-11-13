@@ -2,6 +2,11 @@
 # member is suspended, which brings the API back, and the next move, a tap on Settings, catches
 # up: Now working in ‹name›.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - runFlow:
     file: ../checks/sc28178/joined.yaml

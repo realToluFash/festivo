@@ -2,6 +2,11 @@
 # Alpha is paused through the domain, which brings the API back; Try again on Calendar opens
 # Access paused, not "The calendar did not load".
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - runFlow:
     file: ../checks/sc28178/joined.yaml
