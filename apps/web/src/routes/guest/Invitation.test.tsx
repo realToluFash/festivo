@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import i18next from 'i18next';
 import { RouterProvider, createMemoryRouter } from 'react-router';
+import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { routes } from '../index.tsx';
@@ -29,6 +30,8 @@ const PAGE = {
     timeZone: 'Africa/Lagos',
     venue: { name: 'The Civic Centre', address: 'Ozumba Mbadiwe Ave, Victoria Island, Lagos' },
   },
+  phase: 'live',
+  started: false,
   answersOpen: true,
 };
 
@@ -75,6 +78,7 @@ function open(token = TOKEN) {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   localStorage.clear();
 });
@@ -500,5 +504,308 @@ describe('when answers have closed', () => {
       await screen.findByRole('heading', { name: i18next.t('guest.didNotAnswer') }),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Sorry, I can’t' })).toBeNull();
+  });
+});
+
+describe('when the event is paused, called off or over (sc-3591)', () => {
+  const PAUSED_NOTICE =
+    'This event is paused. Answers are closed. Nothing you sent has been lost, and this page will update if the event resumes.';
+  const REASON = 'Answers are closed while the event is paused. Anything you sent is kept.';
+
+  function at(phase: string, started: boolean, page: object = PAGE) {
+    return { ...page, phase, started, answersOpen: false };
+  }
+
+  it('keeps the invitation’s head when paused before the start, with Change my answer off and described by its reason', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: at('paused', false, answered('coming')) }],
+    });
+    open();
+
+    const notice = (await screen.findByText(PAUSED_NOTICE)).closest('[role="status"]');
+    expect(notice?.getAttribute('aria-live')).toBe('polite');
+    expect(notice?.textContent).toContain('Paused');
+    expect(screen.getByRole('heading', { level: 1, name: 'You are invited' })).toBeDefined();
+    expect(screen.getByText(ADAEZE)).toBeDefined();
+    expect(screen.getByRole('heading', { name: /You answered Coming on/ })).toBeDefined();
+    const change = screen.getByRole('button', { name: 'Change my answer' });
+    expect(change.getAttribute('aria-disabled')).toBe('true');
+    expect(
+      document.getElementById(change.getAttribute('aria-describedby') ?? '')?.textContent,
+    ).toBe(REASON);
+    fireEvent.click(change);
+    expect(screen.queryByRole('button', { name: 'Yes, I’ll be there' })).toBeNull();
+    expect(sent.map(({ path }) => path)).toEqual(['/api/guest-links/page']);
+    expect(screen.queryByText(/Answers have closed/)).toBeNull();
+  });
+
+  it('says You didn’t answer, paused before the start, and offers no answer', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: at('paused', false) }] });
+    open();
+
+    expect(
+      await screen.findByRole('heading', { name: i18next.t('guest.didNotAnswer') }),
+    ).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Change my answer' }).getAttribute('aria-disabled'),
+    ).toBe('true');
+    expect(screen.queryByRole('button', { name: 'Sorry, I can’t' })).toBeNull();
+  });
+
+  it('shows the answer read-only when paused after the start, with no closed line', async () => {
+    api({
+      '/api/guest-links/page': [{ status: 200, body: at('paused', true, answered('coming')) }],
+    });
+    open();
+
+    expect(await screen.findByRole('heading', { name: /You answered Coming on/ })).toBeDefined();
+    expect(screen.getByText(PAUSED_NOTICE)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Change my answer' })).toBeNull();
+    expect(screen.queryByText(/Answers have closed/)).toBeNull();
+    expect(screen.queryByText(REASON)).toBeNull();
+  });
+
+  it('leads with the event’s name once called off, with no answer and the name only in Tell us', async () => {
+    api({
+      '/api/guest-links/page': [{ status: 200, body: at('calledOff', false, answered('coming')) }],
+    });
+    open();
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: "Amara & Tobi's wedding" }),
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        'This event has been called off. It will not go ahead. There is nothing you need to do.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText('You are invited')).toBeNull();
+    expect(screen.queryByText(/You answered/)).toBeNull();
+    expect(screen.queryByText('Coming')).toBeNull();
+    expect(screen.queryByText(ADAEZE)).toBeNull();
+    expect(screen.getByRole('button', { name: `Not ${ADAEZE}? Tell us` })).toBeDefined();
+    expect(screen.getByText('You do not need an account to answer.')).toBeDefined();
+  });
+
+  it('keeps the answer read-only once finished, under the event’s name', async () => {
+    api({
+      '/api/guest-links/page': [{ status: 200, body: at('finished', true, answered('notComing')) }],
+    });
+    open();
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: "Amara & Tobi's wedding" }),
+    ).toBeDefined();
+    expect(
+      screen.getByText('This event has taken place. This page stays here as a keepsake.'),
+    ).toBeDefined();
+    expect(screen.getByText(/You answered Not coming on/)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Change my answer' })).toBeNull();
+    expect(screen.queryByText('You are invited')).toBeNull();
+    expect(screen.getByRole('button', { name: `Not ${ADAEZE}? Tell us` })).toBeDefined();
+  });
+
+  it('keeps Check and send with what was chosen when a send is refused 409 event_paused', async () => {
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: PAGE },
+        { status: 200, body: at('paused', false) },
+      ],
+      '/api/guest-links/reply': [
+        {
+          status: 409,
+          body: {
+            type: 'https://soirely.com/errors/event_paused',
+            title: 'The event is paused.',
+            status: 409,
+          },
+        },
+      ],
+    });
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+
+    expect(
+      await screen.findByText(
+        'Answers closed before this was sent. Everything you chose is still here.',
+      ),
+    ).toBeDefined();
+    expect(await screen.findByText(PAUSED_NOTICE)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Send my answer' })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Check and send' })).toBe(document.activeElement);
+  });
+
+  it('gives a one-tap answer refused 409 event_concluded way to the page as it now stands, focus on the h1', async () => {
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: PAGE },
+        { status: 200, body: at('calledOff', false) },
+      ],
+      '/api/guest-links/reply': [
+        {
+          status: 409,
+          body: {
+            type: 'https://soirely.com/errors/event_concluded',
+            title: 'x',
+            status: 409,
+          },
+        },
+      ],
+    });
+    open();
+    const no = await screen.findByRole('button', { name: 'Sorry, I can’t' });
+    no.focus();
+    fireEvent.click(no);
+
+    const h1 = await screen.findByRole('heading', { level: 1, name: "Amara & Tobi's wedding" });
+    await waitFor(() => expect(document.activeElement).toBe(h1));
+  });
+});
+
+describe('a page left open (sc-3591)', () => {
+  async function leftOpen(first: object, next: object) {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: first },
+        { status: 200, body: next },
+      ],
+    });
+    open();
+    await screen.findByRole('heading', { level: 1 });
+  }
+
+  async function later() {
+    await act(async () => {
+      vi.advanceTimersByTime(30_000);
+    });
+  }
+
+  it('shows the paused notice within a minute and moves focus from an answer button to the h1', async () => {
+    await leftOpen(PAGE, { ...PAGE, phase: 'paused', answersOpen: false });
+    screen.getByRole('button', { name: 'Sorry, I can’t' }).focus();
+
+    await later();
+
+    expect(await screen.findByText(/This event is paused\. Answers are closed\./)).toBeDefined();
+    const h1 = screen.getByRole('heading', { level: 1, name: 'You are invited' });
+    await waitFor(() => expect(document.activeElement).toBe(h1));
+  });
+
+  it('keeps focus on Change my answer when a guest who answered sees the event resume', async () => {
+    await leftOpen(
+      { ...answered('coming'), phase: 'paused', answersOpen: false },
+      answered('coming'),
+    );
+    screen.getByRole('button', { name: 'Change my answer' }).focus();
+
+    await later();
+
+    expect(await screen.findByRole('heading', { name: `See you there, ${ADAEZE}.` })).toBeDefined();
+    expect(screen.queryByText(/This event is paused/)).toBeNull();
+    const change = screen.getByRole('button', { name: 'Change my answer' });
+    expect(change.getAttribute('aria-disabled')).toBe('false');
+    expect(document.activeElement).toBe(change);
+  });
+
+  it('moves focus to the h1 when a guest who never answered sees the event resume', async () => {
+    await leftOpen({ ...PAGE, phase: 'paused', answersOpen: false }, PAGE);
+    screen.getByRole('button', { name: 'Change my answer' }).focus();
+
+    await later();
+
+    expect(await screen.findByRole('button', { name: 'Sorry, I can’t' })).toBeDefined();
+    const h1 = screen.getByRole('heading', { level: 1, name: 'You are invited' });
+    await waitFor(() => expect(document.activeElement).toBe(h1));
+  });
+
+  it('moves focus from the switched-off Change my answer to the h1 when the start passes while paused', async () => {
+    await leftOpen(
+      { ...answered('coming'), phase: 'paused', answersOpen: false },
+      { ...answered('coming'), phase: 'paused', started: true, answersOpen: false },
+    );
+    screen.getByRole('button', { name: 'Change my answer' }).focus();
+
+    await later();
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Change my answer' })).toBeNull(),
+    );
+    const h1 = screen.getByRole('heading', { level: 1, name: 'You are invited' });
+    await waitFor(() => expect(document.activeElement).toBe(h1));
+  });
+
+  it('writes the paused notice into the status region already there while Live', async () => {
+    await leftOpen(PAGE, { ...PAGE, phase: 'paused', answersOpen: false });
+    const region = document.querySelector('.gp-columns [aria-live="polite"][role="status"]');
+    expect(region?.textContent).toBe('');
+
+    await later();
+
+    await waitFor(() => expect(region?.textContent).toContain('This event is paused.'));
+    expect(region?.isConnected).toBe(true);
+  });
+
+  it('keeps the answer just sent when a poll asked before it lands after it', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    let land: (response: Response) => void = () => undefined;
+    const pages = [
+      Promise.resolve(json({ status: 200, body: PAGE })),
+      new Promise<Response>((resolve) => {
+        land = resolve;
+      }),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = new URL(typeof input === 'string' ? input : (input as Request).url).pathname;
+      if (path === '/api/guest-links/reply') {
+        return json({ status: 200, body: answered('notComing') });
+      }
+      const next = pages.shift();
+      if (next == null) throw new TypeError('Failed to fetch');
+
+      return next;
+    });
+    open();
+    await screen.findByRole('heading', { level: 1 });
+
+    await later();
+    fireEvent.click(screen.getByRole('button', { name: 'Sorry, I can’t' }));
+    const greeting = await screen.findByRole('heading', { name: `We’ll miss you, ${ADAEZE}.` });
+    await act(async () => {
+      land(json({ status: 200, body: PAGE }));
+    });
+
+    expect(greeting.isConnected).toBe(true);
+    expect(screen.getByRole('button', { name: 'Change my answer' })).toBeDefined();
+  });
+
+  it('leaves focus where it was when nothing it held goes away', async () => {
+    await leftOpen(PAGE, { ...PAGE, phase: 'paused', answersOpen: false });
+    const tell = screen.getByRole('button', { name: `Not ${ADAEZE}? Tell us` });
+    tell.focus();
+
+    await later();
+
+    expect(await screen.findByText(/This event is paused\. Answers are closed\./)).toBeDefined();
+    expect(document.activeElement).toBe(tell);
+  });
+
+  it('opens This invitation link does not work once the event is deleted', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: PAGE },
+        { status: 404, body: NOT_FOUND },
+      ],
+    });
+    open();
+    await screen.findByRole('heading', { level: 1 });
+
+    await later();
+
+    expect(
+      await screen.findByRole('heading', { name: 'This invitation link does not work' }),
+    ).toBeDefined();
   });
 });

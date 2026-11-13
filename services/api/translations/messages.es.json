@@ -130,6 +130,8 @@
     "guest.version_required": "Envíe la versión que está modificando, en la cabecera If-Match.",
     "guest.changed_since": "Otra persona ha cambiado los datos de este invitado desde que los abrió. Su cambio no se ha guardado.",
     "guest.replies_closed": "El plazo para responder ha terminado. Si algo ha cambiado, contacte con quien organiza el evento.",
+    "guest.event_paused": "Answers are closed while the event is paused. Anything you sent is kept.",
+    "guest.event_concluded": "Answers have closed.",
     "validation.guest_answer_unknown": "Elija «Viene», «No viene» o «Por confirmar».",
     "event.currency_in_use": "La moneda no puede cambiar una vez que hay importes registrados en este evento.",
     "event.state_invalid": "El estado actual de este evento no lo permite.",

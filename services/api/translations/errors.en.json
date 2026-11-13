@@ -22,6 +22,7 @@
     "event_currency_in_use": "The currency cannot change once amounts are recorded against this event.",
     "event_state_invalid": "The event's state does not allow this.",
     "event_concluded": "The event's end has passed.",
+    "event_paused": "The event is paused.",
     "event_host_required": "The event needs at least one host.",
     "plan_limit": "The plan's limit has been reached.",
     "seating_plan_exists": "This event already has a seating plan.",

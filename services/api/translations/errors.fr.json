@@ -22,6 +22,7 @@
     "event_currency_in_use": "La devise ne peut plus changer une fois que des montants sont enregistrés pour cet événement.",
     "event_state_invalid": "L’état de l’événement ne le permet pas.",
     "event_concluded": "La fin de l’événement est passée.",
+    "event_paused": "L’événement est en pause.",
     "event_host_required": "L’événement doit avoir au moins un hôte.",
     "plan_limit": "La limite du forfait est atteinte.",
     "seating_plan_exists": "Cet événement a déjà un plan de table.",
