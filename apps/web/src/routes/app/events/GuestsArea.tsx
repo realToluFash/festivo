@@ -20,10 +20,12 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
+  useId,
   useReducer,
   useRef,
   useState,
 } from 'react';
+import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Link, useBlocker, useSearchParams } from 'react-router';
 
@@ -35,6 +37,7 @@ import {
   Ask,
   CardStep,
   Chevron,
+  Menu,
   RowWords,
   TextAction,
 } from '../../../components/SettingsParts.tsx';
@@ -47,7 +50,6 @@ import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
 import { DraftRow } from './MakeLive.tsx';
 import {
-  type ListRow,
   MOST_COMPANIONS,
   type Problem,
   type Problems,
@@ -56,9 +58,8 @@ import {
   isListed,
   newGuestOf,
   problemsOf,
-  rowsOf,
   violationProblems,
-  withGuest,
+  withGuest as listedWith,
 } from './guestRows.ts';
 import {
   GuestColumn,
@@ -69,8 +70,19 @@ import {
   replyDate,
 } from './GuestColumn.tsx';
 import { CompanionField, GuestField, PhoneField } from './GuestFields.tsx';
+import {
+  CHOICES,
+  type Choice,
+  type Counts,
+  type Standing,
+  type ViewRow,
+  countsOf,
+  viewOf,
+} from './guestView.ts';
+import { useGuestsAddress } from './useGuestsAddress.ts';
 import '../../../components/desk.css';
 import '../../../components/SettingsParts.css';
+import '../../../components/EventsSearch.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/EventsList.css';
 import '../../../components/eventPage.css';
@@ -247,6 +259,11 @@ export function GuestsArea({
   const [adding, setAdding] = useState(false);
   const [params, setParams] = useSearchParams();
   const open = adding ? null : params.get('guest');
+  const [counted, setCounted] = useState<Counts | 'failed' | null>(null);
+  const [recount, setRecount] = useState(0);
+  const { choice, q, setChoice, setQ, clear } = useGuestsAddress();
+  const [menu, setMenu] = useState(false);
+  const [expanded, setExpanded] = useState<ReadonlySet<Standing>>(new Set());
   const [stamp, setStamp] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [asking, setAsking] = useState<(() => void) | null>(null);
@@ -290,6 +307,19 @@ export function GuestsArea({
   useEffect(() => {
     let current = true;
 
+    api.headcount(event.id).then(
+      (headcount) => current && setCounted(countsOf(headcount.counts)),
+      () => current && setCounted((was) => (was == null ? 'failed' : was)),
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [event.id, attempt, recount]);
+
+  useEffect(() => {
+    let current = true;
+
     if (manages) {
       api.flaggedGuests(event.id).then(
         (ids) => current && setFlagged(new Set(ids)),
@@ -307,19 +337,31 @@ export function GuestsArea({
     (list) => {
       setStamp((n) => n + 1);
       setHeard((n) => n + 1);
+      setRecount((n) => n + 1);
       if (manages) setAttempt((n) => n + 1);
       else setLoad({ kind: 'loaded', list });
     },
     () => setAttempt((n) => n + 1),
   );
 
+  function withGuest(id: string | null) {
+    return (was: URLSearchParams) => {
+      const at = new URLSearchParams(was);
+
+      if (id == null) at.delete('guest');
+      else at.set('guest', id);
+
+      return at;
+    };
+  }
+
   function startAdd(): void {
     if (dirty) {
       addAfter.current = true;
-      setParams({}, { replace: true });
+      setParams(withGuest(null), { replace: true });
       return;
     }
-    if (open != null) setParams({}, { replace: true });
+    if (open != null) setParams(withGuest(null), { replace: true });
     showAdd();
   }
 
@@ -330,13 +372,13 @@ export function GuestsArea({
 
   function openGuest(id: string): void {
     setAdding(false);
-    setParams({ guest: id });
+    setParams(withGuest(id));
     headingOwed.current = id !== open;
     focus('guest-heading');
   }
 
   function close(): void {
-    setParams({});
+    setParams(withGuest(null));
     focus(`row:${lastRow.current ?? ''}`, 'title');
   }
 
@@ -356,7 +398,23 @@ export function GuestsArea({
   });
 
   const guests = load.kind === 'loaded' ? load.list.guests : [];
-  const counts = load.kind === 'loaded' ? load.list.counts : null;
+  const shows =
+    load.kind === 'failed' || counted === 'failed'
+      ? 'failed'
+      : load.kind === 'loading' || counted == null
+        ? 'loading'
+        : 'loaded';
+  const counts = typeof counted === 'object' ? counted : null;
+  const { view, shown } =
+    counts == null
+      ? { view: { kind: 'rows' as const, rows: [] }, shown: 0 }
+      : viewOf(guests, counts, choice, q, expanded);
+  const looking = choice !== 'all' || q.trim() !== '';
+
+  function clearView(): void {
+    clear();
+    focus('find');
+  }
 
   return (
     <LayersContext value={layers}>
@@ -409,10 +467,10 @@ export function GuestsArea({
               {t(phase === 'paused' ? 'guestList.pausedLine' : 'guestList.finishedLine')}
             </p>
           )}
-          {load.kind === 'loading' && (
-            <Skeleton words={t('pending.loading')} shape="rows" rowHeight={64} />
+          {shows === 'loading' && (
+            <Skeleton words={t('pending.loading')} shape="rows" rowHeight={64} field />
           )}
-          {load.kind === 'failed' && (
+          {shows === 'failed' && (
             <div className="desk-failed gs-failed" role="alert">
               <h2>{t('guestList.loadFailed')}</h2>
               <p className="desk-line">{t('guestList.loadFailedLine')}</p>
@@ -420,12 +478,13 @@ export function GuestsArea({
                 label={t('events.retry')}
                 onClick={() => {
                   setLoad({ kind: 'loading' });
+                  setCounted(null);
                   setAttempt((n) => n + 1);
                 }}
               />
             </div>
           )}
-          {load.kind === 'loaded' && (
+          {shows === 'loaded' && (
             <>
               {guests.length === 0 && (
                 <GuestsCover
@@ -437,20 +496,78 @@ export function GuestsArea({
               {counts != null && guests.length > 0 && (
                 <GuestsCover
                   mesh={meshFor(event.id)}
-                  says={t('guestList.onTheList', { count: counts.people })}
+                  says={
+                    counts.invited === 0
+                      ? t('guestList.onTheList', { count: counts.all })
+                      : t('guestList.comingOf', {
+                          coming: t('guestList.countComing', { count: counts.coming }),
+                          invited: t('guestList.countInvited', { count: counts.invited }),
+                        })
+                  }
+                  line={counts.invited === 0 ? null : haventLine(t, counts)}
                 />
               )}
               {(guests.length > 0 || adding) && (
                 <div className="gs-cols">
                   <section className="gs-list" aria-label={t('eventPage.guests')}>
-                    {guests.length > 0 && (
-                      <Rows
-                        rows={rowsOf(guests)}
-                        eventId={event.id}
-                        timeZone={event.timeZone}
-                        open={open}
-                        onOpen={openGuest}
-                      />
+                    {guests.length > 0 && counts != null && (
+                      <>
+                        <SearchRow
+                          q={q}
+                          choice={choice}
+                          counts={counts}
+                          menu={menu}
+                          onQ={setQ}
+                          onChoice={setChoice}
+                          onMenu={setMenu}
+                        />
+                        {looking && (
+                          <div className="gs-shown">
+                            <p role="status">
+                              {t('guestList.shown', { shown, total: counts.all })}
+                            </p>
+                            <TextAction label={t('guestList.clear')} onClick={clearView} />
+                          </div>
+                        )}
+                        {shown === 0 ? (
+                          <div className="gs-none" role="status">
+                            <h2 tabIndex={-1} data-focus="none-heading">
+                              {t('guestList.noMatch')}
+                            </h2>
+                            <p className="desk-line">{t('guestList.noMatchLine')}</p>
+                            <TextAction label={t('guestList.clear')} onClick={clearView} />
+                          </div>
+                        ) : view.kind === 'rows' ? (
+                          <Rows
+                            rows={view.rows}
+                            eventId={event.id}
+                            timeZone={event.timeZone}
+                            open={open}
+                            onOpen={openGuest}
+                          />
+                        ) : (
+                          view.groups.map((group) => (
+                            <Group
+                              key={group.standing}
+                              standing={group.standing}
+                              count={group.count}
+                              collapsed={group.collapsed}
+                              onAll={() => {
+                                setExpanded((was) => new Set([...was, group.standing]));
+                                focus(`row:${group.next ?? ''}`);
+                              }}
+                            >
+                              <Rows
+                                rows={group.rows}
+                                eventId={event.id}
+                                timeZone={event.timeZone}
+                                open={open}
+                                onOpen={openGuest}
+                              />
+                            </Group>
+                          ))
+                        )}
+                      </>
                     )}
                   </section>
                   {!adding && (
@@ -507,6 +624,7 @@ export function GuestsArea({
                           }}
                           onSaved={(guest) => {
                             setSaved(true);
+                            setRecount((n) => n + 1);
                             setLoad((was) =>
                               was.kind === 'loaded'
                                 ? {
@@ -532,13 +650,14 @@ export function GuestsArea({
                         guests={guests}
                         country={country}
                         focus={focus}
-                        onAdded={(guest) =>
+                        onAdded={(guest) => {
+                          setRecount((n) => n + 1);
                           setLoad((was) =>
                             was.kind === 'loaded'
-                              ? { kind: 'loaded', list: withGuest(was.list, guest) }
+                              ? { kind: 'loaded', list: listedWith(was.list, guest) }
                               : was,
-                          )
-                        }
+                          );
+                        }}
                         onDone={() => {
                           setAdding(false);
                           focus('add', 'title');
@@ -587,14 +706,30 @@ export function GuestsArea({
 
 const PIECES = [1, 2, 3, 4, 5, 6];
 
-/** The summary card in the two states this story reaches, no guests yet and nobody invited yet; sc-3772 brings its other lines and steps. */
+/** "25 haven’t replied (21 guests and 4 companions).", the bracket only with a companion among them, and "Everyone has replied." at 0. */
+function haventLine(t: TFunction, counts: Counts): string {
+  if (counts.havent === 0) return t('guestList.everyoneReplied');
+  const havent = t('guestList.havent', { count: counts.havent });
+
+  return counts.haventCompanions === 0
+    ? t('guestList.haventLine', { havent })
+    : t('guestList.haventWho', {
+        havent,
+        guests: t('guestList.countGuests', { count: counts.haventGuests }),
+        companions: t('guestList.countCompanions', { count: counts.haventCompanions }),
+      });
+}
+
+/** How the room stands, in the event's colours, with the one step this page can take. */
 function GuestsCover({
   mesh,
   says,
+  line = null,
   step = null,
 }: {
   mesh: Mesh;
   says: string;
+  line?: string | null;
   step?: { label: string; onClick: () => void } | null;
 }) {
   return (
@@ -605,12 +740,128 @@ function GuestsCover({
       ))}
       <div className="ev-card-inner gs-card-inner">
         <p className="gs-says">{says}</p>
+        {line != null && <p className="desk-on-card">{line}</p>}
         {step != null && (
           <div className="ev-card-foot">
             <CardStep label={step.label} onClick={step.onClick} />
           </div>
         )}
       </div>
+    </section>
+  );
+}
+
+const CHOICE_KEY: Record<Choice, string> = {
+  all: 'guestList.all',
+  coming: REPLY_KEY.coming,
+  maybe: REPLY_KEY.maybe,
+  noReply: REPLY_KEY.noReply,
+  held: REPLY_KEY.held,
+  notComing: REPLY_KEY.notComing,
+};
+
+/** Find a guest, and the house filter menu beside it reading "{choice} · {n}". */
+function SearchRow({
+  q,
+  choice,
+  counts,
+  menu,
+  onQ,
+  onChoice,
+  onMenu,
+}: {
+  q: string;
+  choice: Choice;
+  counts: Counts;
+  menu: boolean;
+  onQ: (q: string) => void;
+  onChoice: (choice: Choice) => void;
+  onMenu: (open: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const field = useRef<HTMLInputElement>(null);
+  const onClose = useCallback(() => onMenu(false), [onMenu]);
+
+  return (
+    <div className="ev-search-row gs-search-row">
+      <div className="ev-search" role="search">
+        <div className="ev-field">
+          <Glyph name="search" size={18} weight={2.2} />
+          <input
+            ref={field}
+            type="search"
+            aria-label={t('guestList.find')}
+            placeholder={t('guestList.find')}
+            value={q}
+            spellCheck={false}
+            data-focus="find"
+            onChange={(typed) => onQ(typed.target.value)}
+            onKeyDown={(key) => {
+              if (key.key === 'Escape' && q !== '') {
+                key.preventDefault();
+                onQ('');
+              }
+            }}
+          />
+          {q !== '' && (
+            <button
+              type="button"
+              className="ev-clear"
+              aria-label={t('guestList.clearSearch')}
+              onClick={() => {
+                onQ('');
+                field.current?.focus();
+              }}
+            >
+              <span className="ev-clear-disc" aria-hidden="true">
+                <Glyph name="clear" size={12} weight={3} />
+              </span>
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="gs-menu">
+        <Menu
+          items={CHOICES.map((key) => ({ key, word: t(CHOICE_KEY[key]), count: counts[key] }))}
+          picked={choice}
+          open={menu}
+          onOpen={() => onMenu(true)}
+          onClose={onClose}
+          onPick={(key) => onChoice(key as Choice)}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** A reply's group on All: its word and count, its first rows, then Show all {n}. */
+function Group({
+  standing,
+  count,
+  collapsed,
+  onAll,
+  children,
+}: {
+  standing: Standing;
+  count: number;
+  collapsed: boolean;
+  onAll: () => void;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const id = useId();
+
+  return (
+    <section className="gs-group" aria-labelledby={id}>
+      <h2 id={id} className="gs-group-head">
+        {t(REPLY_KEY[standing])}
+        <span className="gs-group-count">
+          {' · '}
+          {t('guestList.figure', { count })}
+        </span>
+      </h2>
+      {children}
+      {collapsed && <TextAction label={t('guestList.showAll', { count })} onClick={onAll} />}
     </section>
   );
 }
@@ -623,7 +874,7 @@ function Rows({
   open,
   onOpen,
 }: {
-  rows: readonly ListRow[];
+  rows: readonly ViewRow[];
   eventId: string;
   /** The event's: a reply's date is the day it was in the event's zone. */
   timeZone: string;
@@ -634,9 +885,10 @@ function Rows({
 
   return (
     <ul className="desk-rows gs-rows">
-      {rows.map((row) => {
-        if (row.kind === 'guest') {
-          const { guest } = row;
+      {rows.map(({ person, indent }) => {
+        const { guest, companion } = person;
+
+        if (companion == null) {
           const word = t(REPLY_KEY[guest.reply]);
           const reply =
             guest.repliedAt == null
@@ -672,19 +924,24 @@ function Rows({
           );
         }
 
-        const { host, companion, at } = row;
         const name = companionShown(
           t,
-          host.fullName,
-          host.companions.map((one) => one.fullName),
-          at,
+          guest.fullName,
+          guest.companions.map((one) => one.fullName),
+          person.at,
         );
+        const line =
+          indent || companion.fullName == null
+            ? t(REPLY_KEY[companion.state])
+            : companion.state === 'held'
+              ? t('guestList.heldLine')
+              : t('guestList.guestOf', { host: guest.fullName });
 
         return (
-          <li key={companion.id} className="is-companion">
+          <li key={companion.id} className={indent ? 'is-companion' : undefined}>
             <RowLink
               eventId={eventId}
-              guestId={host.id}
+              guestId={guest.id}
               rowId={companion.id}
               open={null}
               onOpen={onOpen}
@@ -692,7 +949,7 @@ function Rows({
               <span className="gs-lead">
                 <ReplyMark reply={companion.state} />
               </span>
-              <RowWords title={name} lines={[t(REPLY_KEY[companion.state])]} />
+              <RowWords title={name} lines={[line]} />
             </RowLink>
           </li>
         );
