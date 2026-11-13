@@ -736,6 +736,17 @@ describe('a page left open (sc-3591)', () => {
     await waitFor(() => expect(document.activeElement).toBe(h1));
   });
 
+  it('writes the paused notice into the status region already there while Live', async () => {
+    await leftOpen(PAGE, { ...PAGE, phase: 'paused', answersOpen: false });
+    const region = document.querySelector('.gp-columns [aria-live="polite"][role="status"]');
+    expect(region?.textContent).toBe('');
+
+    await later();
+
+    await waitFor(() => expect(region?.textContent).toContain('This event is paused.'));
+    expect(region?.isConnected).toBe(true);
+  });
+
   it('keeps the answer just sent when a poll asked before it lands after it', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     let land: (response: Response) => void = () => undefined;

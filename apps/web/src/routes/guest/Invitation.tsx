@@ -698,10 +698,17 @@ function Filled({
   );
 }
 
-/** One notice at the top, a status region, told apart by its chip's shape as well as its colour (WCAG 2.2 §1.4.1, §4.1.3). */
+/** One notice at the top, in a status region mounted while Live so a pause is announced (WCAG 2.2 §4.1.3); its chip's shape tells it apart as well as its colour (§1.4.1). */
 function PhaseNotice({ phase }: { phase: GuestPagePhase }) {
+  return (
+    <div className="gp-phase-live" role="status" aria-live="polite" aria-atomic="true">
+      {phase !== 'live' && <PhaseWords phase={phase} />}
+    </div>
+  );
+}
+
+function PhaseWords({ phase }: { phase: Exclude<GuestPagePhase, 'live'> }) {
   const { t } = useTranslation();
-  if (phase === 'live') return null;
 
   const paused = phase === 'paused';
   const chip = paused
@@ -716,7 +723,7 @@ function PhaseNotice({ phase }: { phase: GuestPagePhase }) {
       : t('guest.finishedNotice');
 
   return (
-    <div className="gp-phase" role="status" aria-live="polite" aria-atomic="true">
+    <div className="gp-phase">
       <span className={`gp-chip is-${paused ? 'paused' : 'ended'}`}>
         <span className="gp-chip-mark" aria-hidden="true">
           {paused ? (

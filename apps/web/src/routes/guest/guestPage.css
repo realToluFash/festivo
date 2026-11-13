@@ -172,8 +172,12 @@
     grid-area: 1 / 2 / span 2;
   }
 
-  .gp-under > .gp-phase {
+  .gp-under > .gp-phase-live > .gp-phase {
     margin-bottom: -8px;
+  }
+
+  .gp-under > .gp-phase-live:empty {
+    margin-bottom: -28px;
   }
 
   .gp-alone-wrap {
