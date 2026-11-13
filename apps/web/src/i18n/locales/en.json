@@ -516,7 +516,7 @@
   "guest": {
     "invitationTitle": "You are invited",
     "invalidTitle": "This invitation link does not work",
-    "invalidBody": "It may have expired, been replaced by a newer one, or been mistyped. Ask whoever invited you for a fresh link — they can send one in a moment.",
+    "invalidBody": "It may have expired, been replaced by a newer one, or been mistyped. If you think it should work, ask the person who invited you.",
     "noAccountNeeded": "You do not need an account to answer.",
     "closing": "This invitation is for you and your family. Other guests cannot see your answer.",
     "tell": "Not {{name}}? Tell us",

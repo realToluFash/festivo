@@ -533,7 +533,7 @@
   "guest": {
     "invitationTitle": "Tiene una invitación",
     "invalidTitle": "Este enlace de invitación no funciona",
-    "invalidBody": "Puede haber caducado, haber sido sustituido por uno más reciente o contener un error. Solicite un enlace nuevo a quien le invitó: puede enviarlo en un momento.",
+    "invalidBody": "Puede haber caducado, haber sido sustituido por uno más reciente o contener un error. Si cree que debería funcionar, consulte a quien le invitó.",
     "noAccountNeeded": "No necesita una cuenta para responder.",
     "closing": "Esta invitación es para usted y su familia. Los demás invitados no pueden ver su respuesta.",
     "tell": "¿No es {{name}}? Avísenos",

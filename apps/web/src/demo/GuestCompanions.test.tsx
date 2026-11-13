@@ -186,6 +186,12 @@ describe('Who’s coming with you? on the guest’s page (sc-3779)', { timeout: 
     expect(screen.getByText('Your companions are on hold until you decide.')).toBeDefined();
   });
 
+  it('tells a guest with companions after Not coming that they won’t be coming either', async () => {
+    await guest('heldNotComing');
+    expect(screen.getByText('Your companions won’t be coming either.')).toBeDefined();
+    expect(screen.queryByText('Your companions are on hold until you decide.')).toBeNull();
+  });
+
   it('has no held line for a guest with no places', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await guest('withYouNoPlaces');
