@@ -47,7 +47,7 @@ export type PersonKey =
   | 'mateo'
   | 'lea'
   | 'joao';
-export type ManyKey = 'parking' | 'invite' | 'receipts';
+export type ManyKey = 'parking' | 'invite' | 'receipts' | 'change';
 export type ToGroup = 'all' | 'coming' | 'notReplied';
 export type Token = 'Greeting' | 'Event' | 'Date' | 'Hosts';
 

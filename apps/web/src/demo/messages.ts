@@ -59,6 +59,8 @@ import {
 } from './messagesNotice.ts';
 import { NW } from './messagesNoticeWords.ts';
 import type { DemoLink } from './settings.ts';
+import type { Field, TellKind } from './messagesTell.ts';
+import { TELL_GROUP, TELL_STATES, isTellState } from './messagesTellStates.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
 export { MW };
@@ -175,6 +177,7 @@ export const MESSAGE_STATES = [
   ...SMS_STATES,
   ...WA_INVITE_STATES,
   ...STOP_STATES,
+  ...TELL_STATES,
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -202,7 +205,11 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: 'Messages',
     states: MESSAGE_STATES.filter(
-      (one) => !isStopState(one.key) && !isInviteState(one.key) && !isSmsState(one.key),
+      (one) =>
+        !isStopState(one.key) &&
+        !isInviteState(one.key) &&
+        !isSmsState(one.key) &&
+        !isTellState(one.key),
     ).map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
   {
@@ -223,6 +230,10 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: STOP_GROUP,
     states: STOP_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
+  },
+  {
+    name: TELL_GROUP,
+    states: TELL_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
 ];
 
@@ -251,7 +262,8 @@ export type ConvoId =
   | 'receipts'
   | SentToId
   | `sched${string}`
-  | `new${string}`;
+  | `new${string}`
+  | `change${string}`;
 
 export interface SampleGuest {
   initials: string;
@@ -1904,6 +1916,15 @@ export interface Out {
   soFar?: number;
   /** An invitation from the composer (sc-3971): Soirely's card, the hosts' note, and whom it went to. */
   invite?: InviteOut;
+  change?: ChangeOut;
+}
+
+export interface ChangeOut {
+  items: readonly string[];
+  lines: readonly string[];
+  count: number;
+  reached: number;
+  channels: readonly Channel[];
 }
 
 export interface Draft {
@@ -1961,6 +1982,8 @@ export interface Told {
   item: string;
   line: string;
   venue?: boolean;
+  kind?: TellKind;
+  field?: Field;
 }
 
 export interface Inbox {
@@ -1987,6 +2010,7 @@ export interface Inbox {
   marked: Readonly<Partial<Record<ConvoId, readonly string[]>>>;
   resend: { thread: ConvoId; ticks: Ticks } | null;
   untold: readonly Told[];
+  toldAs?: SampleEvent | null;
   /** sc-3978: who stopped each guest writing from their page, and when. */
   stopped?: Partial<Record<GuestId, Stop>>;
   /** `reachedSmsFailed`: the just-sent message's texts that failed, each with its provider's reason (sc-3946). */
@@ -2025,11 +2049,23 @@ export function isNew(id: ConvoId): boolean {
   return id.startsWith('new');
 }
 
+export function isChange(id: ConvoId): boolean {
+  return id.startsWith('change');
+}
+
+export function changeTitle(change: ChangeOut): string {
+  const [one] = change.items;
+
+  return change.items.length === 1 && one != null
+    ? filled(MW.changeOne, { what: one })
+    : filled(MW.changeMany, { count: change.items.length });
+}
+
 export function isSched(id: ConvoId): boolean {
   return id.startsWith('sched');
 }
 
-function nextId(taken: ReadonlySet<string>, stem: 'new' | 'sched'): ConvoId {
+function nextId(taken: ReadonlySet<string>, stem: 'new' | 'sched' | 'change'): ConvoId {
   if (!taken.has(stem)) return stem;
 
   let n = 2;
@@ -2114,34 +2150,86 @@ function wall(iso: string, timeZone: string, parts: Intl.DateTimeFormatOptions):
   return new Intl.DateTimeFormat('en-US', { timeZone, ...parts }).format(new Date(iso));
 }
 
-/** What a save changed that guests rely on (sc-4330): the start's day or time, and the venue. */
+function placeName(venue: SampleEvent['venue']): string {
+  return venue == null ? '' : venue.name || (venue.address ?? '');
+}
+
+function venueTold(was: SampleEvent['venue'], now: SampleEvent['venue']): Told | null {
+  const old = placeName(was);
+  const is = placeName(now);
+
+  if (old === '' && is === '') return null;
+  if (old === '')
+    return { field: 'venue', item: MW.newVenue, line: filled(MW.venueAdded, { new: is }) };
+  if (is === '')
+    return { field: 'venue', item: MW.venueToConfirm, line: filled(MW.venueGone, { old }) };
+  if (was != null && now != null && was.name !== '' && was.name === now.name) {
+    const address = now.address ?? '';
+
+    if (address === '' || address === (was.address ?? '')) return null;
+    if ((was.address ?? '') === '')
+      return {
+        field: 'venue',
+        item: MW.itemAddressAdded,
+        line: filled(MW.venueAt, { name: now.name, address }),
+      };
+
+    return {
+      field: 'venue',
+      item: MW.newAddress,
+      line: filled(MW.venueMoved, { new: address, old: was.address ?? '' }),
+    };
+  }
+
+  return old === is
+    ? null
+    : { field: 'venue', item: MW.newVenue, line: filled(MW.venueMoved, { new: is, old }) };
+}
+
+/** What a save changed that guests rely on (sc-4330): the event's days, the start time and the venue, each from what guests were last told. */
 export function toldOf(was: SampleEvent, now: SampleEvent): Told[] {
   const day = (iso: string) =>
     wall(iso, now.timeZone, { weekday: 'short', month: 'short', day: 'numeric' });
+  const days = (event: SampleEvent) => {
+    const first = day(event.startsAt);
+    const last = day(new Date(Date.parse(event.endsAt) - 1).toISOString());
+
+    return first === last
+      ? { words: first, several: false }
+      : { words: `${first} – ${last}`, several: true };
+  };
   const time = (iso: string) => writtenTime(iso, 'en-US', now.timeZone);
   const told: Told[] = [];
+  const daysWere = days(was);
+  const daysAre = days(now);
 
-  if (day(was.startsAt) !== day(now.startsAt))
+  if (daysWere.words !== daysAre.words)
     told.push({
-      item: MW.newDate,
-      line: filled(MW.dateMoved, { new: day(now.startsAt), old: day(was.startsAt) }),
+      field: 'date',
+      item: daysAre.several ? MW.newDates : MW.newDate,
+      line: filled(daysAre.several ? MW.datesMoved : MW.dateMoved, {
+        new: daysAre.words,
+        old: daysWere.words,
+      }),
     });
-  else if (time(was.startsAt) !== time(now.startsAt))
+  if (time(was.startsAt) !== time(now.startsAt))
     told.push({
+      field: 'start',
       item: MW.newStartTime,
       line: filled(MW.startMoved, { new: time(now.startsAt), old: time(was.startsAt) }),
     });
-  if ((was.venue?.name ?? '') !== (now.venue?.name ?? '') && now.venue != null)
-    told.push({
-      item: MW.newVenue,
-      line: filled(MW.venueMoved, { new: now.venue.name, old: was.venue?.name ?? '' }),
-      venue: true,
-    });
+
+  const venue = venueTold(was.venue, now.venue);
+  const address = now.venue?.address ?? '';
+
+  if (venue != null)
+    told.push(address !== '' && !venue.line.includes(address) ? { ...venue, venue: true } : venue);
 
   return told;
 }
 
 export const STARTS_LATER: Told = {
+  field: 'start',
   item: MW.newStartTime,
   line: filled(MW.startMoved, { new: writtenTime('17:30', 'en'), old: writtenTime('18:00', 'en') }),
 };
@@ -2153,10 +2241,49 @@ export const ROSEWOOD = {
 };
 
 export const NEW_PLACE: Told = {
+  field: 'venue',
   item: MW.newVenue,
   line: filled(MW.venueMoved, { new: ROSEWOOD.name, old: 'The Landmark' }),
   venue: true,
 };
+
+const CHANGE_NOTE =
+  'We have brought the start forward half an hour, so there is time for photographs before dinner. Dinner is still at 20:00.';
+
+const CHANGE_REACH = {
+  count: 130,
+  reached: 128,
+  channels: ['email', 'sms', 'whatsApp'],
+  note: CHANGE_NOTE,
+} as const;
+
+/** What Send on Tell guests leaves in Messages (sc-4330): one row for the message, its reach and the hosts' note. */
+export function changeOutOf(
+  changes: readonly Told[],
+  reach: { count: number; reached: number; channels: readonly Channel[]; note: string },
+  thread: ConvoId = 'change',
+): Out {
+  return {
+    ...outOf('sent', {
+      thread,
+      subject: '',
+      body: reach.note === '' ? [] : [{ kind: 'text', text: reach.note }],
+      to: { kind: 'all' },
+      ticks: { email: true, sms: true, whatsApp: true },
+    }),
+    change: {
+      items: changes.map((told) => told.item),
+      lines: changes.map((told) => told.line),
+      count: reach.count,
+      reached: reach.reached,
+      channels: reach.channels,
+    },
+  };
+}
+
+export function changeId(inbox: Inbox): ConvoId {
+  return nextId(new Set(inbox.outs.map((out) => out.thread)), 'change');
+}
 
 function compose(base: Inbox, to: Audience, step: Draft['step'], ticks: Ticks = TICKS): Inbox {
   return { ...base, pane: { kind: 'compose' }, draft: { ...draftOf(to, step), ticks } };
@@ -2360,6 +2487,26 @@ export function seedOf(state: MessagesState | null): Inbox {
       };
     case 'untold':
       return { ...base, pane: open('ines'), untold: [STARTS_LATER] };
+    case 'untoldMerged':
+      return { ...base, untold: [STARTS_LATER, NEW_PLACE] };
+    case 'changeRow':
+      return { ...base, outs: [changeOutOf([STARTS_LATER], CHANGE_REACH)] };
+    case 'changeSent':
+      return { ...base, pane: open('change'), outs: [changeOutOf([STARTS_LATER], CHANGE_REACH)] };
+    case 'changeMerged':
+      return { ...base, outs: [changeOutOf([STARTS_LATER, NEW_PLACE], CHANGE_REACH)] };
+    case 'changeDone':
+      return {
+        ...base,
+        outs: [
+          changeOutOf([{ item: MW.itemMenu, line: '' }], {
+            count: 6,
+            reached: 6,
+            channels: ['email'],
+            note: '',
+          }),
+        ],
+      };
     case 'invited':
       return { ...base, pane: open('invite') };
     case 'invitedReached':
@@ -2588,11 +2735,12 @@ export function outReach(
   soFar: number;
   seen: number;
 } {
-  const count = out.invite?.count ?? countOf(out.to, groups) ?? 0;
+  const count = out.invite?.count ?? out.change?.count ?? countOf(out.to, groups) ?? 0;
 
   return {
     count,
-    reached: out.invite?.reached ?? count - figuresOf(out.to, out.ticks).cantTell,
+    reached:
+      out.invite?.reached ?? out.change?.reached ?? count - figuresOf(out.to, out.ticks).cantTell,
     soFar: out.soFar ?? Math.round(count * 0.4),
     seen: out.seen,
   };
@@ -2740,17 +2888,18 @@ function threadRow(inbox: Inbox, id: ConvoId, groups: readonly Group[]): Row {
     return manyRow(id, title, `${toLine(to, groups)} · ${MW.notSentYet}`, NOW, null);
   }
 
-  const title = outTitle(first);
+  const title = first.change == null ? outTitle(first) : changeTitle(first.change);
+  const reach = last.invite ?? last.change;
   const missed =
-    last.invite == null
-      ? figuresOf(last.to, last.ticks).cantTell
-      : last.invite.count - last.invite.reached;
+    reach == null ? figuresOf(last.to, last.ticks).cantTell : reach.count - reach.reached;
 
-  if (last.stage === 'sent' && litOf(inbox) !== id && missed > 0)
+  if (last.stage === 'sent' && (litOf(inbox) !== id || last.change != null) && missed > 0)
     return manyRow(
       id,
       title,
-      `${toLine(last.to, groups)} · ${many('didntGetIt', missed)}`,
+      last.change == null
+        ? `${toLine(last.to, groups)} · ${many('didntGetIt', missed)}`
+        : many('didntGetIt', missed),
       last.at,
       {
         kind: 'waiting',
@@ -2788,7 +2937,9 @@ export function litOf(inbox: Inbox): ConvoId | null {
 function threadsOf(inbox: Inbox): ConvoId[] {
   const ids: ConvoId[] = [
     ...new Set(
-      inbox.outs.map((out) => out.thread).filter((id) => id !== 'parking' && id !== 'invite'),
+      inbox.outs
+        .map((out) => out.thread)
+        .filter((id) => id !== 'parking' && id !== 'invite' && !isChange(id)),
     ),
   ];
   const draft = inbox.draft;
@@ -2820,6 +2971,13 @@ export function sectionsOf(inbox: Inbox, groups: readonly Group[]): Sections {
     else if (row.tag != null) needs.push(row);
     else done.push(row);
   }
+
+  const changes = [...new Set(inbox.outs.map((out) => out.thread).filter(isChange))]
+    .reverse()
+    .map((id) => rowOf(inbox, id, groups));
+
+  needs.unshift(...changes.filter((row) => row.tag != null));
+  done.unshift(...changes.filter((row) => row.tag == null));
 
   const arrived = inbox.arrived;
   const waiting = [
@@ -2932,6 +3090,7 @@ export type Change =
   | { kind: 'sendAgain'; id: string; thread: ConvoId }
   | { kind: 'resend'; resend: Ticks | null }
   | { kind: 'untold'; untold: readonly Told[] }
+  | { kind: 'tellSent'; untold: readonly Told[]; out: Out | null }
   | { kind: 'match'; name: string }
   | { kind: 'schedule'; day: string; time: string }
   | { kind: 'resched'; id: ConvoId; sched: Partial<Sched> }
@@ -3191,7 +3350,14 @@ export function changed(inbox: Inbox, change: Change): Inbox {
               },
       };
     case 'untold':
-      return { ...inbox, untold: change.untold };
+      return { ...inbox, untold: change.untold, toldAs: null };
+    case 'tellSent':
+      return {
+        ...inbox,
+        untold: change.untold,
+        toldAs: null,
+        outs: change.out == null ? inbox.outs : [...inbox.outs, change.out],
+      };
     case 'match':
       return { ...inbox, matched: change.name };
     case 'schedule': {
