@@ -439,20 +439,36 @@ export interface Untellable {
 /** Why each channel can't reach a guest, or null where it can. */
 type Reasons = { name: string } & Record<Channel, string | null>;
 
-function reasons(
-  name: string,
-  email: string | null,
-  sms: string | null,
-  whatsApp: string | null,
-): Reasons {
-  return { name, email, sms, whatsApp };
-}
-
-const AMAKA = reasons('Amaka Eze', MW.noEmail, null, MW.hasNotAgreedWhatsApp);
-const PRIYANKA = reasons('Priyanka Nair', MW.noEmail, null, MW.hasNotAgreedWhatsApp);
-const TOMAS = reasons('Tomás Ferreira', MW.addressBouncing, MW.noPhone, MW.noPhone);
-const JOAQUIN = reasons('Joaquín Ruiz', MW.noEmail, MW.noPhone, MW.noPhone);
-const MEI = reasons('Mei Lin Chen', MW.noEmail, MW.noPhone, MW.noPhone);
+const AMAKA: Reasons = {
+  name: 'Amaka Eze',
+  email: MW.noEmail,
+  sms: null,
+  whatsApp: MW.hasNotAgreedWhatsApp,
+};
+const PRIYANKA: Reasons = {
+  name: 'Priyanka Nair',
+  email: MW.noEmail,
+  sms: null,
+  whatsApp: MW.hasNotAgreedWhatsApp,
+};
+const TOMAS: Reasons = {
+  name: 'Tomás Ferreira',
+  email: MW.addressBouncing,
+  sms: MW.noPhone,
+  whatsApp: MW.noPhone,
+};
+const JOAQUIN: Reasons = {
+  name: 'Joaquín Ruiz',
+  email: MW.noEmail,
+  sms: MW.noPhone,
+  whatsApp: MW.noPhone,
+};
+const MEI: Reasons = {
+  name: 'Mei Lin Chen',
+  email: MW.noEmail,
+  sms: MW.noPhone,
+  whatsApp: MW.noPhone,
+};
 
 export type Ticks = Record<Channel, boolean>;
 
@@ -464,12 +480,27 @@ const NAMED: Record<Sample, readonly Reasons[]> = {
     AMAKA,
     PRIYANKA,
     TOMAS,
-    reasons('Sophie Laurent', MW.unsubscribed, MW.textedStop, MW.hasNotAgreedWhatsApp),
-    reasons('Yuki Tanaka', MW.addressBouncing, MW.noPhone, MW.noPhone),
-    reasons('Oluwaseun Adebayo', MW.addressBouncing, MW.noPhone, MW.noPhone),
-    reasons('Lars Johansson', MW.unsubscribed, MW.noPhone, MW.noPhone),
-    reasons('Fatima Zahra El Idrissi', MW.noEmail, MW.textedStop, MW.hasNotAgreedWhatsApp),
-    reasons('Diego Herrera', MW.unsubscribed, MW.textedStop, MW.hasNotAgreedWhatsApp),
+    {
+      name: 'Sophie Laurent',
+      email: MW.unsubscribed,
+      sms: MW.textedStop,
+      whatsApp: MW.hasNotAgreedWhatsApp,
+    },
+    { name: 'Yuki Tanaka', email: MW.addressBouncing, sms: MW.noPhone, whatsApp: MW.noPhone },
+    { name: 'Oluwaseun Adebayo', email: MW.addressBouncing, sms: MW.noPhone, whatsApp: MW.noPhone },
+    { name: 'Lars Johansson', email: MW.unsubscribed, sms: MW.noPhone, whatsApp: MW.noPhone },
+    {
+      name: 'Fatima Zahra El Idrissi',
+      email: MW.noEmail,
+      sms: MW.textedStop,
+      whatsApp: MW.hasNotAgreedWhatsApp,
+    },
+    {
+      name: 'Diego Herrera',
+      email: MW.unsubscribed,
+      sms: MW.textedStop,
+      whatsApp: MW.hasNotAgreedWhatsApp,
+    },
     JOAQUIN,
     MEI,
   ],

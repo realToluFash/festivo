@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react';
 
-import i18next from 'i18next';
+import { currentLocale } from '../i18n/index.ts';
 import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
@@ -594,7 +594,7 @@ function Instead({ line }: { line: string | null }) {
 /** See all {k}: everyone no ticked channel can tell, by name, each with why; the actions stay under it. */
 function SeeAll({ check, onBack }: { check: Check; onBack: () => void }) {
   const headId = useId();
-  const people = byName(check.untold, i18next.language || 'en');
+  const people = byName(check.untold, currentLocale());
 
   return (
     <div className="mg-all">
