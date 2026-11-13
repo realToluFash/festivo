@@ -2678,6 +2678,8 @@
       "held": "Held"
     },
     "replied": "{{reply}} · replied {{date}}",
+    "repliedOn": "replied {{date}}",
+    "replyHeading": "Reply",
     "line": "{{reply}} · {{contact}}",
     "contacts": "{{email}} · {{mobile}}",
     "guestOf": "Guest of {{host}}",

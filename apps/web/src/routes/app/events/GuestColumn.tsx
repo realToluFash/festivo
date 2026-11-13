@@ -14,7 +14,7 @@ import { api } from '../../../api.ts';
 import { Glyph, type GlyphName } from '../../../components/Glyph.tsx';
 import { Ask, Head, RowWords } from '../../../components/SettingsParts.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
-import { currentLocale } from '../../../i18n/index.ts';
+import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree } from '../../../layers.ts';
 import { type Mesh } from '../../../mesh.ts';
 import { offButton } from '../../../offButton.ts';
@@ -118,6 +118,7 @@ type Replace =
 export function GuestColumn({
   eventId,
   guestId,
+  timeZone,
   mesh,
   manages,
   guests,
@@ -135,6 +136,8 @@ export function GuestColumn({
 }: {
   eventId: string;
   guestId: string;
+  /** The event's: a reply's date is the day it was in the event's zone. */
+  timeZone: string;
   mesh: Mesh;
   manages: boolean;
   guests: readonly Guest[];
@@ -265,6 +268,7 @@ export function GuestColumn({
   return (
     <GuestView
       guest={pane.tagged.guest}
+      timeZone={timeZone}
       mesh={mesh}
       manages={manages}
       invites={invites}
@@ -281,6 +285,7 @@ export function GuestColumn({
 
 function GuestView({
   guest,
+  timeZone,
   mesh,
   manages,
   invites,
@@ -290,6 +295,7 @@ function GuestView({
   onEdit,
 }: {
   guest: GuestDetails;
+  timeZone: string;
   mesh: Mesh;
   manages: boolean;
   invites: boolean;
@@ -337,6 +343,14 @@ function GuestView({
     day: 'numeric',
   }).format(new Date(guest.added.at));
   const names = guest.companions.map((one) => one.fullName);
+  const replied =
+    guest.repliedAt == null
+      ? null
+      : new Intl.DateTimeFormat(dateLocale(), {
+          month: 'short',
+          day: 'numeric',
+          timeZone,
+        }).format(new Date(guest.repliedAt));
 
   return (
     <div className="gs-guest">
@@ -374,6 +388,23 @@ function GuestView({
           <Glyph name="alert" size={15} weight={2.2} />
           {t('guestList.notReplaced')}
         </p>
+      )}
+      {replied != null && (
+        <section className="desk-block" aria-labelledby={`${heading}-reply`}>
+          <Head
+            level={3}
+            title={<span id={`${heading}-reply`}>{t('guestList.replyHeading')}</span>}
+          />
+          <ul className="desk-rows gs-rows">
+            <li className="desk-row">
+              <MarkLead reply={guest.reply} />
+              <RowWords
+                title={t(REPLY_KEY[guest.reply])}
+                lines={[t('guestList.repliedOn', { date: replied })]}
+              />
+            </li>
+          </ul>
+        </section>
       )}
       {(manages || guest.companions.length > 0) && (
         <section className="desk-block" aria-labelledby={`${heading}-details`}>

@@ -2765,6 +2765,8 @@
       "held": "Em espera"
     },
     "replied": "{{reply}} · respondeu no dia {{date}}",
+    "repliedOn": "replied {{date}}",
+    "replyHeading": "Reply",
     "line": "{{reply}} · {{contact}}",
     "contacts": "{{email}} · {{mobile}}",
     "guestOf": "Acompanha {{host}}",

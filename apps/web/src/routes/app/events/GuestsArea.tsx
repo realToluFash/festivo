@@ -458,6 +458,7 @@ export function GuestsArea({
                           key={open}
                           eventId={event.id}
                           guestId={open}
+                          timeZone={event.timeZone}
                           mesh={meshFor(event.id)}
                           manages={manages}
                           guests={guests}

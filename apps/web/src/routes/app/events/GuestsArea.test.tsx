@@ -207,6 +207,37 @@ describe('Guests (sc-1468)', () => {
     }
   });
 
+  it('dates the reply in a replied guest’s details by the event’s day too (sc-3773)', async () => {
+    const zone = process.env.TZ;
+    process.env.TZ = 'Europe/London';
+    try {
+      const amaka = guest('g_2', 'Chief Amaka Obi', {
+        reply: 'coming',
+        repliedAt: '2030-11-13T23:30:00+00:00',
+      });
+      signedIn();
+      await onGuests({
+        'GET /api/events/ev_1/guests': () => json(listOf([amaka])),
+        'GET /api/events/ev_1/guests/g_2': () =>
+          tagged({ ...amaka, added: { at: '2030-11-01T10:00:00+00:00', by: null } }, '"1"'),
+      });
+      fireEvent.click(await screen.findByRole('link', { name: /^Chief Amaka Obi/u }));
+
+      const reply = await screen.findByRole('region', { name: 'Reply' });
+      expect(within(reply).getByText('Coming')).toBeDefined();
+      expect(within(reply).getByText('replied Nov 14')).toBeDefined();
+    } finally {
+      if (zone == null) delete process.env.TZ;
+      else process.env.TZ = zone;
+    }
+  });
+
+  it('shows no Reply in the details of a guest who has not replied (sc-3773)', async () => {
+    await openNgozi();
+
+    expect(within(column()).queryByRole('region', { name: 'Reply' })).toBeNull();
+  });
+
   it('says No guests yet with Add guest on the event’s cover, and no count', async () => {
     signedIn();
     await onGuests({ 'GET /api/events/ev_1/guests': () => json(listOf([])) });
