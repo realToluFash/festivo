@@ -60,6 +60,7 @@ export {
   AnchoredMenu,
   anchorUnder,
   Ask,
+  ASK_WIDTH,
   AskLayer,
   type AskProps,
   FilterMenu,
