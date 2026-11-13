@@ -10,6 +10,7 @@ import {
   dayWords,
   toldWords,
 } from './messages.ts';
+import type { SampleEvent } from './events.ts';
 import type { Bit } from './messagesContext.ts';
 
 /** sc-3963's refused save (AC editing bullet; l10n #28795; 'Decided, 7 Nov (pm, on ux's #30726)'). */
@@ -145,4 +146,19 @@ export function endLine(sched: Sched): string | null {
 
 export function endWhy(sched: Sched): string | null {
   return sched.finished === true ? SW.finishedWhy : null;
+}
+
+/** The event beside these rows, as Messaging-B-Web-More-5 draws it: paused, or called off at 09:30 today. */
+export function eventWhile(state: MessagesState | null, event: SampleEvent): SampleEvent {
+  switch (state) {
+    case 'scheduledPaused':
+    case 'scheduledPausedLate':
+    case 'scheduledPausedEdit':
+    case 'scheduledTooLate':
+      return { ...event, status: 'paused' };
+    case 'scheduledFinished':
+      return { ...event, status: 'ended', concludedAt: '2026-11-03T09:30:00Z' };
+    default:
+      return event;
+  }
 }
