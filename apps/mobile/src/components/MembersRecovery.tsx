@@ -1,7 +1,13 @@
 import type { RecoveryRequest } from '@soirely/api-client';
 import { type RefObject, useContext, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type ScrollViewInstance, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  Platform,
+  type ScrollViewInstance,
+  StyleSheet,
+  View,
+  type ViewInstance,
+} from 'react-native';
 
 import type { MemberFace } from '../kit/membersSummary.ts';
 import {
@@ -27,6 +33,7 @@ import {
   useRowClear,
 } from './Summary.tsx';
 import { Text } from './Text.tsx';
+import { titleWithInkRoom } from './titleWidth.ts';
 
 export type RecoveryPart = 'box' | 'group' | 'approve' | 'turnDown';
 
@@ -169,7 +176,7 @@ function RecoveryRow({
                 accessible={false}
                 style={[styles.name, lit && styles.accent]}
               >
-                {askerName(t, request)}
+                {titleWithInkRoom(askerName(t, request), Platform.OS)}
               </Text>
             }
             tag={<Tag kind="waiting" word={t('recoveryRequests.mark')} wraps />}

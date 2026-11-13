@@ -2,6 +2,7 @@ import { filtered, formattingLocale, searching, wallDay } from '@soirely/domain'
 import { getLocales } from 'expo-localization';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Pressable,
   ScrollView,
   StyleSheet,
   type TextInputInstance,
@@ -10,19 +11,25 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import {
+  FIGURE_OPENS,
   type GuestCounts,
+  type GuestsTile,
   GUEST_WORDS as G,
   SAMPLE_GUESTS,
+  eventsOfTile,
   figureOf,
   guestCountsOf,
   rowGuests,
+  withReply,
 } from './GuestCounts.ts';
 import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
-import { EventCard, EventThumb } from '../../components/EventCard.tsx';
+import { EventCard } from '../../components/EventCard.tsx';
+import { EventThumb } from '../../components/EventThumb.tsx';
 import {
   EventsEmptyTab,
   EventsFirstRun,
@@ -80,6 +87,13 @@ import { openEvent } from './openEvent.ts';
 
 const SEARCH_PAUSE_MS = 300;
 const MENU_AFTER_MS = 700;
+const REPLY_AFTER_MS = 2500;
+const REPLYING = 'evt-wed-4';
+
+const TILE_OF: Partial<Record<ListState, GuestsTile>> = {
+  tileInvited: 'invited',
+  tileReplied: 'replied',
+};
 
 /** The card's step from the list: the event opens where the step is. */
 export function stepFrom(
@@ -131,9 +145,16 @@ export function EventsList({
   }, [first, deleted, state, now, locale]);
   const home = useMemo(() => homeOf(events, now, locale), [events, now, locale]);
   const looking = searching(searched) || filtered(filters);
-  const guests = useMemo(
-    () => guestCountsOf(events, state === 'noGuests' ? {} : SAMPLE_GUESTS, now),
-    [events, state, now],
+  const [sample, setSample] = useState(() => (state === 'noGuests' ? {} : SAMPLE_GUESTS));
+  const [tile, setTile] = useState<GuestsTile | null>(
+    state == null ? null : (TILE_OF[state] ?? null),
+  );
+  const reads = state !== 'noGuestsRead';
+  const guests = useMemo(() => guestCountsOf(events, sample, now), [events, sample, now]);
+  const tileEvents = useMemo(
+    () =>
+      tile == null ? [] : eventsOfTile(tile, homeOf(events, now, locale).upcoming, sample, now),
+    [tile, events, sample, now, locale],
   );
   const results = useMemo(
     () => (looking ? resultsOf(events, searched, filters, now, locale) : null),
@@ -151,6 +172,13 @@ export function EventsList({
   }, [typed, searched]);
 
   useEffect(() => {
+    if (state !== 'replyLands') return;
+    const wait = setTimeout(() => setSample((was) => withReply(was, REPLYING)), REPLY_AFTER_MS);
+
+    return () => clearTimeout(wait);
+  }, [state]);
+
+  useEffect(() => {
     if (state !== 'filterOpen' && state !== 'manyFiltersOpen') return;
     const wait = setTimeout(() => anchorUnder(filterRef, setMenuAt), MENU_AFTER_MS);
 
@@ -161,26 +189,38 @@ export function EventsList({
     setTyped('');
     setSearched('');
   };
-  const guestLine = (event: Shown) => {
-    const one = state === 'noGuests' ? null : rowGuests(event, SAMPLE_GUESTS, now);
-    return one == null
-      ? null
-      : `${G.coming(one.coming, locale)} · ${G.notReplied(one.notReplied, locale)}`;
+  const guestLine = (event: Shown, inset: number) => {
+    const figures = reads ? rowGuests(event, sample, now) : null;
+
+    return (
+      figures != null && (
+        <GuestLine
+          event={event}
+          coming={figures.coming}
+          notReplied={figures.notReplied}
+          locale={locale}
+          inset={inset}
+        />
+      )
+    );
   };
   const row = (event: Shown, everyPhase: boolean) => ({
     key: event.id,
     inset: 60,
     row: (
-      <Row
-        title={event.name}
-        line={[rowLine(event, locale), guestLine(event)].filter(Boolean).join('\n')}
-        lead={<EventThumb event={event} />}
-        tag={rowTag(event, everyPhase)}
-        value={wide ? (howSoon(event, now) ?? undefined) : undefined}
-        opens
-        onPress={() => openEvent(event.id)}
-        testID={`events.row.${event.id}`}
-      />
+      <View>
+        <Row
+          title={event.name}
+          line={rowLine(event, locale)}
+          lead={<EventThumb event={event} />}
+          tag={rowTag(event, everyPhase)}
+          value={wide ? (howSoon(event, now) ?? undefined) : undefined}
+          opens
+          onPress={() => openEvent(event.id)}
+          testID={`events.row.${event.id}`}
+        />
+        {guestLine(event, 60)}
+      </View>
     ),
   });
 
@@ -203,7 +243,14 @@ export function EventsList({
         }
         under={summary != null && <EventsSummaryLine words={summary} />}
       />
-      {!first && !loading && !failed && <GuestTiles counts={guests} locale={locale} />}
+      {!first && !loading && !failed && reads && (
+        <GuestTiles
+          counts={guests}
+          locale={locale}
+          chosen={tile}
+          onTile={(next) => setTile((was) => (was === next ? null : next))}
+        />
+      )}
       <SwitchedNotice />
     </>
   );
@@ -307,7 +354,21 @@ export function EventsList({
           />
         }
       />
-      {results == null ? (
+      {tile != null && results == null ? (
+        <>
+          <View style={styles.tileShown}>
+            <Text size={14} weight="medium" style={[styles.secondary, styles.figures, styles.grow]}>
+              {G.tileShown[tile](tileEvents.length, home.upcoming.length)}
+            </Text>
+            <TextAction
+              label={G.clear}
+              onPress={() => setTile(null)}
+              testID="events.guests.clear"
+            />
+          </View>
+          <RowList items={tileEvents.map((event) => row(event, false))} />
+        </>
+      ) : results == null ? (
         <>
           <EventsTabs
             tab={tab}
@@ -320,17 +381,19 @@ export function EventsList({
           />
           {tabEvents.length === 0 && <EventsEmptyTab tab={tab} />}
           {card != null && (
-            <EventCard
-              guests={guestLine(card)}
-              event={card}
-              now={now}
-              locale={locale}
-              wide={wide}
-              onOpen={() => openEvent(card.id)}
-              takes={() => true}
-              onStep={(step) => stepFrom(card, step, shell.tell)}
-              testID="events.card"
-            />
+            <View>
+              <EventCard
+                event={card}
+                now={now}
+                locale={locale}
+                wide={wide}
+                onOpen={() => openEvent(card.id)}
+                takes={() => true}
+                onStep={(step) => stepFrom(card, step, shell.tell)}
+                testID="events.card"
+              />
+              {guestLine(card, 0)}
+            </View>
           )}
           {rows.length > 0 && <RowList items={rows.map((event) => row(event, false))} />}
           {more && (
@@ -368,7 +431,7 @@ export function EventsList({
 }
 
 /** The list in its frame: the tab bar on the phone, the capsule upright, the app's sidebar on its side. */
-function ListFrame({
+export function ListFrame({
   offline,
   overlay,
   children,
@@ -427,7 +490,85 @@ function ListFrame({
   );
 }
 
-function GuestTiles({ counts, locale }: { counts: GuestCounts; locale: string }) {
+/** sc-3786: under the event's card or row, beside its link and never inside it, each figure its own link into the event's Guests. */
+function GuestLine({
+  event,
+  coming,
+  notReplied,
+  locale,
+  inset,
+}: {
+  event: Shown;
+  coming: number;
+  notReplied: number;
+  locale: string;
+  inset: number;
+}) {
+  return (
+    <View style={[styles.line, { marginLeft: inset }]} testID={`events.line.${event.id}`}>
+      <FigureLink
+        words={G.coming(coming, locale)}
+        opens={G.comingOpens(event.name)}
+        onPress={() => openEvent(event.id, { area: 'guests', filter: FIGURE_OPENS.coming })}
+        testID={`events.line.${event.id}.coming`}
+      />
+      <Text
+        size={14}
+        weight="medium"
+        style={styles.secondary}
+        accessible={false}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      >
+        ·
+      </Text>
+      <FigureLink
+        words={G.notReplied(notReplied, locale)}
+        opens={G.notRepliedOpens(event.name)}
+        onPress={() => openEvent(event.id, { area: 'guests', filter: FIGURE_OPENS.notReplied })}
+        testID={`events.line.${event.id}.notReplied`}
+      />
+    </View>
+  );
+}
+
+function FigureLink({
+  words,
+  opens,
+  onPress,
+  testID,
+}: {
+  words: string;
+  opens: string;
+  onPress: () => void;
+  testID: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="link"
+      accessibilityLabel={`${words}, ${opens}`}
+      style={({ pressed }) => [styles.figureLink, pressed && styles.pressed]}
+      testID={testID}
+    >
+      <Text size={14} weight="semibold" style={[styles.accent, styles.figures]}>
+        {words}
+      </Text>
+    </Pressable>
+  );
+}
+
+function GuestTiles({
+  counts,
+  locale,
+  chosen,
+  onTile,
+}: {
+  counts: GuestCounts;
+  locale: string;
+  chosen: GuestsTile | null;
+  onTile: (tile: GuestsTile) => void;
+}) {
   return (
     <View style={styles.guests} testID="events.guests">
       <GuestTile
@@ -435,12 +576,16 @@ function GuestTiles({ counts, locale }: { counts: GuestCounts; locale: string })
         name={G.invited}
         figure={figureOf(counts.invited, locale)}
         line={G.coming(counts.coming, locale)}
+        on={chosen === 'invited'}
+        onPress={() => onTile('invited')}
       />
       <GuestTile
         id="replied"
         name={G.replied}
         figure={figureOf(counts.replied, locale)}
         line={G.notReplied(counts.notReplied, locale)}
+        on={chosen === 'replied'}
+        onPress={() => onTile('replied')}
       />
     </View>
   );
@@ -451,29 +596,38 @@ function GuestTile({
   name,
   figure,
   line,
+  on,
+  onPress,
 }: {
-  id: 'invited' | 'replied';
+  id: GuestsTile;
   name: string;
   figure: string;
   line: string;
+  on: boolean;
+  onPress: () => void;
 }) {
   return (
-    <View
-      style={styles.guest}
-      accessible
-      accessibilityLabel={`${name}, ${figure}, ${line}`}
+    <Pressable
+      style={({ pressed }) => [styles.guest, on && styles.guestOn, pressed && styles.pressed]}
+      onPress={onPress}
+      accessibilityRole="togglebutton"
+      accessibilityState={{ checked: on }}
+      accessibilityLabel={`${name}, ${figure}, ${line}, ${G.tileOpens[id]}`}
       testID={`events.guests.${id}`}
     >
-      <Text size={14} weight="semibold" style={styles.secondary}>
-        {name}
-      </Text>
+      <View style={styles.tileName}>
+        <Text size={14} weight="semibold" style={[styles.secondary, styles.grow]}>
+          {name}
+        </Text>
+        {on && <Glyph name="tick" size={16} ink={tokens.colorAccentText} weight={2.6} />}
+      </View>
       <Text size={28} weight="bold" style={[styles.figures, styles.guestFigure]}>
         {figure}
       </Text>
       <Text size={14} weight="medium" style={[styles.secondary, styles.figures, styles.said]}>
         {line}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -509,6 +663,12 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radiusInset,
     backgroundColor: tokens.colorInset,
   },
+  guestOn: { borderColor: tokens.colorAccent, backgroundColor: tokens.colorAccentTint },
   guestFigure: { lineHeight: 28 * 1.15 },
+  line: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: tokens.spaceXs },
+  figureLink: { minHeight: 44, justifyContent: 'center' },
+  pressed: { opacity: 0.6 },
+  tileName: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  tileShown: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   said: { lineHeight: 14 * 1.45 },
 });

@@ -26,6 +26,49 @@ export const SAMPLE_GUESTS: Readonly<Record<string, Guests>> = {
 
 const COUNTED = new Set(['live', 'happening_now', 'paused']);
 
+/** An event's line on Events (sc-3786): the figures the tiles add up, or none for an event they leave out. */
+export function rowGuests(
+  event: SampleEvent,
+  guests: Readonly<Record<string, Guests>>,
+  now: Date,
+): { coming: number; notReplied: number } | null {
+  const one = guests[event.id];
+  if (one == null || !COUNTED.has(eventPhase(event, now))) return null;
+
+  return { coming: one.coming, notReplied: one.invited - one.replied };
+}
+
+/** A reply landing (sc-99): one guest who owed an answer says Coming, and every figure that counts it changes in place. */
+export function withReply(
+  guests: Readonly<Record<string, Guests>>,
+  id: string,
+): Readonly<Record<string, Guests>> {
+  const one = guests[id];
+  if (one == null || one.replied >= one.invited) return guests;
+
+  return { ...guests, [id]: { ...one, coming: one.coming + 1, replied: one.replied + 1 } };
+}
+
+export type GuestsTile = 'invited' | 'replied';
+
+/** sc-3786: Guests invited opens the events with invited guests, Replies in the events with guests who haven't replied. */
+export function eventsOfTile(
+  tile: GuestsTile,
+  events: readonly SampleEvent[],
+  guests: Readonly<Record<string, Guests>>,
+  now: Date,
+): SampleEvent[] {
+  return events.filter((event) => {
+    const row = rowGuests(event, guests, now);
+    if (row == null) return false;
+
+    return tile === 'invited' ? (guests[event.id]?.invited ?? 0) > 0 : row.notReplied > 0;
+  });
+}
+
+/** sc-3786: the figures on an event's line open its Guests with Coming or No reply chosen in the filter menu. */
+export const FIGURE_OPENS = { coming: 'coming', notReplied: 'noReply' } as const;
+
 /** sc-23284: over the organisation's Live, Happening now and Paused events; a finished or called-off one drops out. */
 export function guestCountsOf(
   events: readonly SampleEvent[],
@@ -64,4 +107,16 @@ export const GUEST_WORDS = {
   notReplied: (count: number) =>
     count === 1 ? '1 hasn’t replied' : `${figureOf(count)} haven’t replied`,
   label: 'Guests across your events',
+  comingOpens: (event: string) => `opens the guests coming to ${event}`,
+  notRepliedOpens: (event: string) => `opens the guests of ${event} with no reply`,
+  tileOpens: {
+    invited: 'shows the events with invited guests',
+    replied: 'shows the events with guests who haven’t replied',
+  },
+  tileShown: {
+    invited: (shown: number, total: number) => `Events with invited guests · ${shown} of ${total}`,
+    replied: (shown: number, total: number) =>
+      `Events with guests who haven’t replied · ${shown} of ${total}`,
+  },
+  clear: 'Clear',
 } as const;

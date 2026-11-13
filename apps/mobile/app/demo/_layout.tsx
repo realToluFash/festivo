@@ -6,6 +6,7 @@ import { config } from '../../src/config.ts';
 import { useStepsInSheet } from '../../src/demo/DemoScreen.tsx';
 import { demoOpens } from '../../src/demo/gate.ts';
 import { forgetName } from '../../src/demo/settings/savedName.ts';
+import { useLayout } from '../../src/layout/useLayout.ts';
 import { useReducedMotion } from '../../src/reducedMotion.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -13,6 +14,7 @@ import { tokens } from '../../src/theme/tokens.ts';
 export default function DemoLayout() {
   const reduced = useReducedMotion();
   const sheet = useStepsInSheet();
+  const phone = useLayout().kind === 'phone';
 
   useEffect(() => {
     forgetName();
@@ -33,6 +35,14 @@ export default function DemoLayout() {
       <Stack.Screen name="(steps)" options={{ presentation: sheet ? 'formSheet' : 'card' }} />
       <Stack.Screen name="today" options={{ gestureEnabled: false }} />
       <Stack.Screen name="legal-link" options={{ presentation: 'modal' }} />
+      <Stack.Screen
+        name="search"
+        options={
+          phone
+            ? {}
+            : { presentation: 'transparentModal', animation: 'fade', gestureEnabled: false }
+        }
+      />
     </Stack>
   );
 }

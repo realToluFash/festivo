@@ -97,7 +97,16 @@ describe('the guest’s page states (sc-31306)', () => {
   it('drops the details and the foot for Check and send and Tell us, and the hosts when called off', () => {
     expect(shows(startOf('check'))).toMatchObject({ details: false, foot: false });
     expect(shows(startOf('tellUs'))).toMatchObject({ details: false, foot: false });
-    expect(shows(startOf('open'))).toEqual({ details: true, foot: true, hosts: true });
+    expect(shows(startOf('open'))).toEqual({
+      details: true,
+      foot: true,
+      hosts: true,
+      noAccount: true,
+    });
+    expect(shows(startOf('closed')).noAccount).toBe(false);
+    expect(shows(startOf('replyByClosed')).noAccount).toBe(false);
+    expect(shows(startOf('paused')).noAccount).toBe(false);
+    expect(shows(startOf('calledOff')).noAccount).toBe(false);
     expect(shows(startOf('calledOff')).hosts).toBe(false);
   });
 
@@ -297,10 +306,12 @@ describe('WhatsApp updates on Check and send (sc-3950)', () => {
       recorded: { answer: 'coming', on: '2026-10-27', whatsApp: true },
       view: { kind: 'recorded', same: false },
       whatsApp: 'agreed',
+      ask: null,
     });
     expect(sentAnswer(startOf('checkWhatsApp'), 'coming')).toEqual({
       recorded: { answer: 'coming', on: '2026-10-27' },
       view: { kind: 'recorded', same: false },
+      ask: null,
     });
   });
 

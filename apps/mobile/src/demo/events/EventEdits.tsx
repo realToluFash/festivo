@@ -10,7 +10,13 @@ import {
   startMoved,
 } from '@soirely/domain';
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 
 import { fieldFocused, fieldLeft } from '../../components/focusedField.ts';
 import { RadioMark } from '../../components/RadioMark.tsx';
@@ -25,9 +31,10 @@ import { EventMesh } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { AlertLine } from '../../components/AlertLine.tsx';
 import { LineIcon } from '../../components/AccountCard.tsx';
-import { PhotoFill } from '../../components/EventCard.tsx';
+import { PhotoFill } from '../../components/EventThumb.tsx';
 import { EventNotice } from '../../components/EventNotice.tsx';
 import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from './EventsModel.ts';
+import { ARRIVAL_NOTE, LONG_NOTE, NOTE_WORDS, noteTooLong, savedNote } from './ArrivalNote.ts';
 import {
   CLOSES_AT,
   datesAsk,
@@ -61,6 +68,8 @@ import {
   ZONES,
 } from './EventsSample.ts';
 import { meshFor } from '../../kit/today.ts';
+import { TextField, type TextFieldProps } from '../../components/Field.tsx';
+import { weight } from '../../theme/fonts.ts';
 import { W, say, t } from './EventsWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
@@ -737,6 +746,22 @@ function VenueEdit(edit: EditProps) {
   );
   const [zone, setZone] = useState(event.timeZone);
   const [offer, setOffer] = useState(start === 'venueZone');
+  const refusedNote = start === 'venueNoteTooLong' || start === 'venueNoteRefused';
+  const [note, setNote] = useState(
+    refusedNote
+      ? LONG_NOTE
+      : start === 'venueNoteForbidden'
+        ? `${ARRIVAL_NOTE}\nDoors close at 23:00.`
+        : (event.arrivalNote ?? ''),
+  );
+  const [noteError, setNoteError] = useState<string | null>(
+    refusedNote ? NOTE_WORDS.tooLong : null,
+  );
+  const [forbidden, setForbidden] = useState(false);
+  const [noteSaid, setNoteSaid] = useState<string | null>(
+    start === 'venueNoteTooLong' ? NOTE_WORDS.oneField : null,
+  );
+  const noteField = useRef<TextInputInstance>(null);
   const down = start === 'venueDown';
   const looking = chosen == null && !down && folded(address).length >= 3;
   const found = looking
@@ -745,19 +770,32 @@ function VenueEdit(edit: EditProps) {
   const changed =
     name !== (event.venue?.name ?? '') ||
     address !== (event.venue?.address ?? '') ||
+    note !== (event.arrivalNote ?? '') ||
     zone !== event.timeZone;
   const words = found.length > 0 ? say.suggestionsBelow(found.length) : null;
 
   useReadOut(words);
+  useReadOut(noteSaid);
 
   return (
     <EditShell
       part="venue"
       changed={changed}
-      onSave={() =>
+      onSave={() => {
+        if (noteTooLong(note)) {
+          setNoteError(NOTE_WORDS.tooLong);
+          setNoteSaid(NOTE_WORDS.oneField);
+          noteField.current?.focus();
+          return;
+        }
+        if (start === 'venueNoteForbidden') {
+          setForbidden(true);
+          return;
+        }
         edit.onSaved({
           ...event,
           timeZone: zone,
+          arrivalNote: savedNote(note),
           venue:
             name.trim() === '' && address.trim() === ''
               ? null
@@ -766,8 +804,8 @@ function VenueEdit(edit: EditProps) {
                   address: address.trim(),
                   place: name.trim() || address.trim(),
                 },
-        })
-      }
+        });
+      }}
       edit={edit}
     >
       <EventField label={W.venueName} optional>
@@ -848,6 +886,23 @@ function VenueEdit(edit: EditProps) {
           }
         />
       )}
+      <EventField label={NOTE_WORDS.label} optional error={noteError} help={NOTE_WORDS.hint}>
+        <NoteBox
+          ref={noteField}
+          value={note}
+          onChangeText={(typed) => {
+            setNote(typed);
+            setForbidden(false);
+            if (!noteTooLong(typed)) setNoteError(null);
+          }}
+          autoFocus={start === 'venueNote' || refusedNote}
+          wrong={noteError != null}
+          accessibilityLabel={`${NOTE_WORDS.label} · ${W.optional}`}
+          accessibilityHint={NOTE_WORDS.hint}
+          testID="event.edit.venue.note"
+        />
+      </EventField>
+      {forbidden && <AlertLine text={NOTE_WORDS.forbidden} />}
     </EditShell>
   );
 }
@@ -1277,6 +1332,30 @@ function PositionSlider({
   );
 }
 
+/** The arrival note's box: BoxField's look, four lines tall at first, growing to ten and then scrolling inside. */
+function NoteBox({
+  wrong = false,
+  accessibilityLabel,
+  ...rest
+}: TextFieldProps & { accessibilityLabel: string }) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <TextField
+      {...rest}
+      multiline
+      scrollEnabled
+      accessibilityLabel={accessibilityLabel}
+      wrong={wrong}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      style={[styles.noteBox, (focused || wrong) && styles.noteBoxLit]}
+    />
+  );
+}
+
+const NOTE_LINE = 24;
+
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   searchRow: { flexDirection: 'row' },
@@ -1284,6 +1363,18 @@ const styles = StyleSheet.create({
   pressed: { opacity: tokens.opacityPressed },
   fieldHead: { flexDirection: 'row', flexWrap: 'wrap' },
   figures: { fontVariant: ['tabular-nums'] },
+  noteBox: {
+    minHeight: NOTE_LINE * 4 + tokens.spaceSm * 2,
+    maxHeight: NOTE_LINE * 10 + tokens.spaceSm * 2,
+    paddingLeft: 14.5,
+    paddingRight: 10.5,
+    borderWidth: 1.5,
+    borderRadius: tokens.radiusInset,
+    lineHeight: NOTE_LINE,
+    textAlignVertical: 'top',
+    ...weight('medium'),
+  },
+  noteBoxLit: { paddingLeft: tokens.spacePillEnd, paddingRight: tokens.spaceMd, borderWidth: 2 },
   acPill: {
     minHeight: 26,
     justifyContent: 'center',

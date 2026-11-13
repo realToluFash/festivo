@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
+import { SEARCH_SETTLES_MS } from './useGuestsAddress.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -44,7 +45,7 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.getByText('96 coming of 142 invited')).toBeDefined();
     expect(
       screen.getByText(
-        '25 haven’t replied (21 guests and 4 of their companions). Replies close tomorrow, Wed, Nov 4.',
+        '25 haven’t replied (21 guests and 4 companions). Replies close tomorrow, Wed, Nov 4.',
       ),
     ).toBeDefined();
     expect(screen.getByRole('searchbox', { name: 'Find a guest' })).toBeDefined();
@@ -53,9 +54,9 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'No reply · 21' })).toBeDefined();
     expect(screen.getByText('Pick a guest to see their details, or add one.')).toBeDefined();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show all 96 coming' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 96' }));
 
-    expect(screen.queryByRole('button', { name: 'Show all 96 coming' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Show all 96' })).toBeNull();
     expect(screen.getByRole('link', { name: /^Temitope Oyelaran, Coming/u })).toBeDefined();
   });
 
@@ -134,7 +135,7 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
     expect(screen.queryByText('kwame.mensah@outlook.com')).toBeNull();
     expect(screen.queryByText('+44 7700 900412')).toBeNull();
-    expect(screen.queryByRole('heading', { name: 'Invitation' })).toBeNull();
+    expect(within(column()).getByRole('heading', { name: 'Invitation' })).toBeDefined();
     expect(within(column()).getByText('Coming · replied Oct 2')).toBeDefined();
     expect(within(column()).getByText('Messages greet them by their full name.')).toBeDefined();
     expect(within(column()).queryByText('Added')).toBeNull();
@@ -177,6 +178,19 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
   });
 
+  it('answers not-found once the event is deleted (sc-1468)', SLOW, async () => {
+    open('/demo/guests?state=eventDeleted');
+    const gone = await screen.findByRole(
+      'heading',
+      { level: 1, name: 'This event is not available' },
+      WAIT,
+    );
+
+    await waitFor(() => expect(document.activeElement).toBe(gone));
+    expect(screen.queryByRole('heading', { level: 1, name: 'Guests' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Adaeze & Tunde’s wedding' })).toBeNull();
+  });
+
   it('counts arrivals on the day, with a walk-in in the menu after Coming', SLOW, async () => {
     await guests('onTheDay');
 
@@ -194,6 +208,109 @@ describe('Guests, the list (sc-31781)', () => {
     expect(
       screen.getByRole('link', { name: 'Kofi Asante, Walk-in · Arrived 18:20' }),
     ).toBeDefined();
+  });
+});
+
+describe('Guests, the card’s words and the view in the address (sc-3772)', () => {
+  it.each([
+    ['everyoneReplied', 'Everyone has replied. Replies close tomorrow, Wed, Nov 4.'],
+    ['noCompanionsWaiting', '21 haven’t replied. Replies close tomorrow, Wed, Nov 4.'],
+    ['closesToday', '25 haven’t replied (21 guests and 4 companions). Replies close today.'],
+    [
+      'closesLater',
+      '25 haven’t replied (21 guests and 4 companions). Replies close on Wed, Nov 4.',
+    ],
+    [
+      'repliesClosedLive',
+      '25 haven’t replied (21 guests and 4 companions). Replies closed on Wed, Nov 4.',
+    ],
+  ])('draws %s on the card', SLOW, async (state, line) => {
+    await guests(state);
+
+    expect(screen.getByText(line)).toBeDefined();
+  });
+
+  it('keeps the menu’s choice in the address, and Back undoes it', SLOW, async () => {
+    const router = await guests('inUse');
+
+    fireEvent.click(screen.getByRole('button', { name: 'All · 156' }));
+    fireEvent.click(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Held/u }),
+    );
+
+    expect(router.state.location.search).toBe('?state=inUse&filter=held');
+    expect(screen.getByText('6 of 156 shown')).toBeDefined();
+
+    await act(() => router.navigate(-1));
+
+    expect(screen.getByRole('button', { name: 'All · 156' })).toBeDefined();
+    expect(screen.queryByText('6 of 156 shown')).toBeNull();
+  });
+
+  it('writes the search once typing settles, and Back takes it out', SLOW, async () => {
+    const router = await guests('inUse');
+    const box = screen.getByRole<HTMLInputElement>('searchbox', { name: 'Find a guest' });
+
+    fireEvent.change(box, { target: { value: 'okon' } });
+
+    expect(screen.getByText('2 of 156 shown')).toBeDefined();
+    await waitFor(() => expect(router.state.location.search).toBe('?state=inUse&q=okon'), WAIT);
+
+    await act(() => router.navigate(-1));
+
+    await waitFor(() => expect(box.value).toBe(''), WAIT);
+    expect(screen.queryByText('2 of 156 shown')).toBeNull();
+  });
+
+  it('writes a search still settling with the choice picked after it', SLOW, async () => {
+    const router = await guests('inUse');
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
+      target: { value: 'okon' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^All/u }));
+    fireEvent.click(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Held/u }),
+    );
+
+    expect(router.state.location.search).toBe('?state=inUse&filter=held&q=okon');
+  });
+
+  it('drops a search still settling when Back moves the address', SLOW, async () => {
+    const router = await guests('inUse');
+    const box = screen.getByRole<HTMLInputElement>('searchbox', { name: 'Find a guest' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'All · 156' }));
+    fireEvent.click(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', { name: /^Held/u }),
+    );
+    fireEvent.change(box, { target: { value: 'okon' } });
+    await act(() => router.navigate(-1));
+    await act(() => new Promise((settled) => setTimeout(settled, SEARCH_SETTLES_MS + 100)));
+
+    expect(router.state.location.search).toBe('?state=inUse');
+    expect(box.value).toBe('');
+    expect(screen.getByRole('button', { name: 'All · 156' })).toBeDefined();
+  });
+
+  it('opens a shared link on its search, a number in its national form', SLOW, async () => {
+    open('/demo/guests?q=0803%20412');
+    await screen.findByRole('heading', { level: 1, name: 'Guests' }, WAIT);
+
+    expect(screen.getByRole<HTMLInputElement>('searchbox', { name: 'Find a guest' }).value).toBe(
+      '0803 412',
+    );
+    expect(screen.getByText('1 of 156 shown')).toBeDefined();
+    expect(screen.getByRole('link', { name: /^Alhaji Musa Bello, Coming/u })).toBeDefined();
+  });
+
+  it('clears the choice and the search together, in one step', SLOW, async () => {
+    const router = await guests('filterNone');
+
+    fireEvent.click(within(main()).getAllByRole('button', { name: 'Clear' })[0] as HTMLElement);
+
+    expect(router.state.location.search).toBe('?state=filterNone&filter=all&q=');
+    expect(screen.getByRole('button', { name: 'All · 156' })).toBeDefined();
   });
 });
 
@@ -222,7 +339,9 @@ describe('Guests, a guest beside the list (sc-3773)', () => {
   it('leads a guest with no reply with Record a reply', SLOW, async () => {
     await guests('guest');
 
-    expect(within(column()).getByText('Invited by Folake Adeyemi, WhatsApp, Oct 9')).toBeDefined();
+    expect(
+      within(column()).getAllByText('Invited by Folake Adeyemi, WhatsApp, Oct 9'),
+    ).toHaveLength(2);
     expect(within(column()).getByRole('button', { name: 'Record a reply' })).toBeDefined();
     expect(
       within(column()).getByText('Companion · Held · comes only if their host accepts'),
@@ -463,6 +582,29 @@ describe('Guests, Add guest in place (sc-1468)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'No reply · 21' }));
 
     expect(screen.getByRole('menuitemradio', { name: /^Not yet invited\s*15/u })).toBeDefined();
+  });
+
+  it('names an unnamed companion’s Remove for their host, a named one by name', SLOW, async () => {
+    await guests('add');
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Full name' }), {
+      target: { value: 'Ifeoluwa Adebayo-Okonkwo' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'More places' }));
+    fireEvent.click(screen.getByRole('button', { name: 'More places' }));
+
+    expect(
+      screen.getByRole('button', { name: 'Remove Ifeoluwa Adebayo-Okonkwo’s guest' }),
+    ).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Remove Ifeoluwa Adebayo-Okonkwo’s guest · 2' }),
+    ).toBeDefined();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Companion’s full name, 1 of 2' }), {
+      target: { value: 'Tunde Bello' },
+    });
+
+    expect(screen.getByRole('button', { name: 'Remove Tunde Bello' })).toBeDefined();
   });
 
   it('refuses a blank name and a number too short', SLOW, async () => {
@@ -760,6 +902,92 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
     fireEvent.click(within(ask).getByRole('button', { name: 'Replace link' }));
 
     expect(await screen.findByText('Link replaced Nov 3')).toBeDefined();
+    expect(
+      screen.getByText(
+        'Link replaced. Kwame Mensah’s old link no longer works. Copy the new one and send it.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('puts the wrong-person notice under the cover card and before Invitation', SLOW, async () => {
+    await guests('flagged');
+
+    const notice = within(column()).getByRole('region', {
+      name: 'Their link may have reached the wrong person',
+    });
+    const invitation = within(column()).getByRole('region', { name: 'Invitation' });
+
+    expect(notice.textContent).toContain(
+      'Someone who opened Dr Emeka Nwosu’s link told us it was not meant for them. The reply is unchanged. Replace the link so the old one stops working, then send Dr Emeka Nwosu the new one.',
+    );
+    expect(notice.querySelector('svg')).not.toBeNull();
+    expect(
+      notice.compareDocumentPosition(invitation) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.queryAllByText('Their link may have reached the wrong person')).toHaveLength(1);
+  });
+
+  it('keeps the notice on Keep it, and a replace from it clears it', SLOW, async () => {
+    await guests('flagged');
+    const title = 'Their link may have reached the wrong person';
+    const notice = within(column()).getByRole('region', { name: title });
+
+    fireEvent.click(within(notice).getByRole('button', { name: 'Replace link…' }));
+    fireEvent.click(
+      within(
+        await screen.findByRole('alertdialog', { name: 'Replace Dr Emeka Nwosu’s link?' }),
+      ).getByRole('button', { name: 'Keep it' }),
+    );
+    expect(within(column()).getByRole('region', { name: title })).toBeDefined();
+
+    fireEvent.click(within(notice).getByRole('button', { name: 'Replace link…' }));
+    fireEvent.click(
+      within(
+        await screen.findByRole('alertdialog', { name: 'Replace Dr Emeka Nwosu’s link?' }),
+      ).getByRole('button', { name: 'Replace link' }),
+    );
+
+    expect(
+      await within(column()).findByText(
+        'Link replaced. Dr Emeka Nwosu’s old link no longer works. Copy the new one and send it.',
+      ),
+    ).toBeDefined();
+    expect(within(column()).queryByRole('region', { name: title })).toBeNull();
+    const invitation = within(column()).getByRole('region', { name: 'Invitation' });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(invitation).getByRole('button', { name: /^Replace link…/ }),
+      ),
+    );
+  });
+
+  it('keeps the notice when the replace fails', SLOW, async () => {
+    await guests('flaggedNotReplaced');
+
+    expect(within(column()).getByRole('alert').textContent).toBe(
+      'Not replaced. The old link still works. Try again.',
+    );
+    expect(
+      within(column()).getByRole('region', {
+        name: 'Their link may have reached the wrong person',
+      }),
+    ).toBeDefined();
+  });
+
+  it('shows someone who can view no notice', SLOW, async () => {
+    await guests('flaggedViewer');
+
+    expect(screen.queryByText('Their link may have reached the wrong person')).toBeNull();
+  });
+
+  it('keeps Replace link… on a Draft, with no Copy invitation link', SLOW, async () => {
+    await guests('draftGuest');
+
+    const invitation = within(column()).getByRole('region', { name: 'Invitation' });
+
+    expect(within(invitation).getByRole('button', { name: /Replace link…/u })).toBeDefined();
+    expect(within(invitation).queryByRole('button', { name: /Copy invitation link/u })).toBeNull();
+    expect(within(invitation).queryByRole('button', { name: /Mark as invited/u })).toBeNull();
   });
 
   it('marks a guest as invited, nothing chosen until they say how', SLOW, async () => {
@@ -777,9 +1005,340 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
     );
 
     expect(
-      await within(column()).findByText('Invited by Folake Adeyemi, WhatsApp, Nov 3'),
-    ).toBeDefined();
+      await within(column()).findAllByText('Invited by Folake Adeyemi, WhatsApp, Nov 3'),
+    ).toHaveLength(2);
     expect(within(column()).getByRole('button', { name: 'Record a reply' })).toBeDefined();
+  });
+
+  it('undoes a mark made by hand with Mark as not invited, nothing asked', SLOW, async () => {
+    await guests('guest');
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Mark as not invited' }));
+
+    expect(await within(column()).findByText('Marked as not invited.')).toBeDefined();
+    expect(within(column()).getAllByRole('button', { name: /^Mark as invited/u })).toHaveLength(2);
+    expect(within(column()).queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
+  });
+
+  it.each([
+    ['invitedByMessage', 'Invited by Soirely’s message, Oct 12'],
+    ['invitedWhenReplied', 'Invited when they replied, Oct 2'],
+  ])('offers no undo on %s', SLOW, async (state, line) => {
+    await guests(state);
+
+    expect(within(column()).getByText(line)).toBeDefined();
+    expect(within(column()).queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
+  });
+
+  it('says why the undo was refused when they replied first (409)', SLOW, async () => {
+    await guests('unmarkRefused');
+
+    expect(within(column()).getByRole('alert').textContent).toBe(
+      'Not changed. Oluwaseun Ajayi replied Coming on Nov 3, so they stay invited.',
+    );
+    expect(within(column()).getByText('Invited by Ana Souza, text message, Oct 10')).toBeDefined();
+    expect(within(column()).queryByRole('button', { name: 'Mark as not invited' })).toBeNull();
+  });
+
+  it('offers neither the mark nor the link once the event has finished', SLOW, async () => {
+    await guests('finished');
+
+    expect(screen.getByText('This event has finished, so guests can’t be invited.')).toBeDefined();
+    expect(within(column()).queryByRole('button', { name: /Mark as invited/u })).toBeNull();
+    expect(within(column()).queryByRole('button', { name: /Copy invitation link/u })).toBeNull();
+    expect(within(column()).getByRole('button', { name: /Replace link/u })).toBeDefined();
+  });
+
+  it(
+    'shows someone who can view who invited a guest, and why nothing can be marked',
+    SLOW,
+    async () => {
+      await guests('guestViewer');
+
+      const invitation = within(column()).getByRole('region', { name: 'Invitation' });
+
+      expect(within(invitation).getByText('Invited by Soirely’s message, Oct 12')).toBeDefined();
+      expect(
+        within(invitation).getByText(
+          'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
+        ),
+      ).toBeDefined();
+      expect(within(invitation).queryByRole('button')).toBeNull();
+    },
+  );
+
+  it('lists the guests not yet invited from the menu', SLOW, async () => {
+    await guests('notYetFilter');
+
+    expect(screen.getByRole('button', { name: 'Not yet invited · 14' })).toBeDefined();
+    expect(screen.getByText('14 of 156 shown')).toBeDefined();
+  });
+});
+
+describe('Guests, places for companions (sc-3779)', () => {
+  it('adds and takes places with the stepper, saying how many are named', SLOW, async () => {
+    await guests('places');
+
+    const places = screen.getByRole('spinbutton', { name: 'Places for companions' });
+
+    expect((places as HTMLInputElement).value).toBe('1');
+    expect(screen.getByText('0 of 1 named')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'More places' }));
+    fireEvent.click(screen.getByRole('button', { name: 'More places' }));
+
+    expect((places as HTMLInputElement).value).toBe('3');
+    expect(screen.getByText('0 of 3 named')).toBeDefined();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Companion’s full name, 2 of 3' }), {
+      target: { value: 'Hauwa Bello' },
+    });
+    fireEvent.change(places, { target: { value: '1' } });
+
+    expect((places as HTMLInputElement).value).toBe('1');
+    expect(screen.getByText('1 of 1 named')).toBeDefined();
+    expect(
+      (screen.getByRole('textbox', { name: 'Companion’s full name, 1 of 1' }) as HTMLInputElement)
+        .value,
+    ).toBe('Hauwa Bello');
+  });
+
+  it('asks about a seated place behind an unseated one that fewer places drops', SLOW, async () => {
+    await guests('placesSeated');
+
+    const places = screen.getByRole('spinbutton', { name: 'Places for companions' });
+
+    fireEvent.change(places, { target: { value: '0' } });
+    const ask = await screen.findByRole('alertdialog', {
+      name: 'Remove Guest of Carlos Mendoza · 2?',
+    });
+
+    expect(
+      within(ask).getByText(
+        'Guest of Carlos Mendoza · 2 has a seat at Table 7. Removing this companion frees the seat.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect((places as HTMLInputElement).value).toBe('2');
+
+    fireEvent.change(places, { target: { value: '0' } });
+    fireEvent.click(
+      within(
+        await screen.findByRole('alertdialog', { name: 'Remove Guest of Carlos Mendoza · 2?' }),
+      ).getByRole('button', { name: 'Remove' }),
+    );
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect((places as HTMLInputElement).value).toBe('0');
+  });
+
+  it('asks about each seated place fewer places drops, then drops them all', SLOW, async () => {
+    await guests('placesSeatedTwo');
+
+    const places = screen.getByRole('spinbutton', { name: 'Places for companions' });
+
+    fireEvent.change(places, { target: { value: '0' } });
+    fireEvent.click(
+      within(
+        await screen.findByRole('alertdialog', { name: 'Remove Guest of Daniel Asamoah?' }),
+      ).getByRole('button', { name: 'Remove' }),
+    );
+    const meal = await screen.findByRole('alertdialog', {
+      name: 'Remove Guest of Daniel Asamoah · 2?',
+    });
+
+    expect(
+      within(meal).getByText(
+        'Guest of Daniel Asamoah · 2 has a meal chosen. Removing this companion drops the meal.',
+      ),
+    ).toBeDefined();
+    expect((places as HTMLInputElement).value).toBe('2');
+
+    fireEvent.click(within(meal).getByRole('button', { name: 'Remove' }));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect((places as HTMLInputElement).value).toBe('0');
+  });
+
+  it('refuses fewer places once every place left is named', SLOW, async () => {
+    await guests('places');
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Companion’s full name, 1 of 1' }), {
+      target: { value: 'Hauwa Bello' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Fewer places' }));
+
+    const places = screen.getByRole('spinbutton', { name: 'Places for companions' });
+
+    expect(
+      screen.getByText('Alhaji Musa Bello already has 1 named. Remove some first.'),
+    ).toBeDefined();
+    expect(places.getAttribute('aria-invalid')).toBe('true');
+    await waitFor(() => expect(document.activeElement).toBe(places));
+  });
+
+  it('opens the refusal and the most as the boards draw them', SLOW, async () => {
+    await guests('placesRefused');
+
+    expect(
+      screen.getByText('Sophie Laurent already has 1 named. Remove some first.'),
+    ).toBeDefined();
+
+    cleanup();
+    await guests('placesMax');
+
+    expect(screen.getByText('10 companions is the most one guest can bring.')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'More places' }).getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+  });
+
+  it('shows Named by the guest in the details, and the places named', SLOW, async () => {
+    await guests('namedByGuest');
+
+    expect(within(column()).getByText('Named by the guest')).toBeDefined();
+    expect(within(column()).getByText('1 companion · 1 of 1 named')).toBeDefined();
+  });
+});
+
+describe('Guests, needs recorded as facts (sc-3777)', () => {
+  it(
+    'shows allergies, diet and the note in Details, and No dietary notes. for none',
+    SLOW,
+    async () => {
+      await guests('needsDetails');
+
+      const needs = within(column()).getByRole('region', { name: 'Needs' });
+
+      expect(within(needs).getByText('Peanuts, Tree nuts')).toBeDefined();
+      expect(within(needs).getByText('Allergy')).toBeDefined();
+      expect(within(needs).getByText('No alcohol')).toBeDefined();
+      expect(
+        within(needs).getByText('Carries an adrenaline pen. His sister Adanna knows where it is.'),
+      ).toBeDefined();
+    },
+  );
+
+  it('says No dietary notes. when nothing is recorded', SLOW, async () => {
+    await guests('needsNone');
+
+    expect(within(column()).getByText('No dietary notes.')).toBeDefined();
+  });
+
+  it('shows a companion’s needs under their own name', SLOW, async () => {
+    await guests('needsCompanion');
+
+    const needs = within(column()).getByRole('region', { name: 'Needs' });
+
+    expect(within(needs).getByText('Vegetarian')).toBeDefined();
+    expect(within(needs).getByRole('heading', { level: 4, name: 'Rui Duarte' })).toBeDefined();
+    expect(within(needs).getByText('Sesame')).toBeDefined();
+  });
+
+  it('narrows the list with the Dietary notes chip, said on in words', SLOW, async () => {
+    await guests('inUse');
+
+    const chip = screen.getByRole('button', { name: 'Dietary notes' });
+
+    expect(chip.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(chip);
+
+    expect(chip.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('4 of 156 shown')).toBeDefined();
+    expect(
+      screen.getByRole('link', { name: /^Rui Duarte, .*Allergy, Dietary notes$/u }),
+    ).toBeDefined();
+  });
+
+  it('shows someone who can view no needs at all', SLOW, async () => {
+    await guests('needsViewer');
+
+    expect(screen.queryByRole('button', { name: 'Dietary notes' })).toBeNull();
+    expect(within(column()).queryByRole('region', { name: 'Needs' })).toBeNull();
+    expect(within(column()).queryByText(/Peanuts/u)).toBeNull();
+  });
+
+  it('opens Needs, refuses Other allergy with no words, then saves it', SLOW, async () => {
+    await guests('needsAdd');
+
+    expect(
+      screen.getByText('None recorded. Open it to note allergies, diet or access needs.'),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /^Needs/u }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Other allergy' }));
+    fireEvent.click(
+      within(column()).getAllByRole('button', { name: 'Add guest' }).at(-1) as HTMLElement,
+    );
+
+    const which = screen.getByRole('textbox', { name: 'Which allergy?' });
+
+    expect(screen.getByText('One field needs fixing. Nothing was saved.')).toBeDefined();
+    expect(screen.getByText('Say which')).toBeDefined();
+    expect(which.getAttribute('aria-invalid')).toBe('true');
+    await waitFor(() => expect(document.activeElement).toBe(which));
+
+    fireEvent.change(which, { target: { value: 'Kiwi' } });
+    fireEvent.click(
+      within(column()).getAllByRole('button', { name: 'Add guest' }).at(-1) as HTMLElement,
+    );
+
+    expect(await screen.findByText('Olu Bankole added.')).toBeDefined();
+  });
+
+  it('counts only the Needs fields in the line above the form', SLOW, async () => {
+    await guests('needsAdd');
+
+    const add = () =>
+      fireEvent.click(
+        within(column()).getAllByRole('button', { name: 'Add guest' }).at(-1) as HTMLElement,
+      );
+
+    fireEvent.change(within(column()).getByRole('textbox', { name: 'Full name' }), {
+      target: { value: '' },
+    });
+    add();
+    expect(screen.queryByText(/needs? fixing/u)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Needs/u }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Other allergy' }));
+    add();
+    expect(screen.getByText('One field needs fixing. Nothing was saved.')).toBeDefined();
+  });
+
+  it.each([
+    ['needsOtherLong', 'Shorten it to 100 characters or fewer.'],
+    ['needsNoteLong', 'Shorten the note to 500 characters or fewer.'],
+    ['needsOtherBlank', 'Say which'],
+  ])('refuses %s beside the field', SLOW, async (state, line) => {
+    await guests(state);
+
+    expect(screen.getByText(line)).toBeDefined();
+    expect(screen.getByText('One field needs fixing. Nothing was saved.')).toBeDefined();
+  });
+
+  it('closes Needs to its chips, allergies first and the note by name only', SLOW, async () => {
+    await guests('needsEditClosed');
+
+    const needs = screen.getByRole('button', { name: /^Needs/u });
+
+    expect(needs.getAttribute('aria-expanded')).toBe('false');
+    expect(needs.textContent).toContain('4 noted');
+    expect(screen.getByText('Allergy · Peanuts')).toBeDefined();
+    expect(screen.getByText('Private note')).toBeDefined();
+    expect(screen.queryByText(/adrenaline/u)).toBeNull();
+  });
+
+  it('gives each companion their own needs on Edit', SLOW, async () => {
+    await guests('needsCompanionForm');
+
+    const theirs = screen.getByRole('button', { name: /^Their needs/u });
+
+    expect(theirs.getAttribute('aria-expanded')).toBe('true');
+    expect(
+      (screen.getAllByRole('checkbox', { name: 'Sesame' }).at(-1) as HTMLInputElement).checked,
+    ).toBe(true);
   });
 });
 
@@ -974,8 +1533,37 @@ describe('the numbers on Overview and Events (sc-3786, sc-23284)', () => {
     open('/demo/events?state=events');
     await screen.findByRole('heading', { level: 1, name: 'Events' }, WAIT);
 
-    expect(screen.getByText('96 coming · 25 haven’t replied')).toBeDefined();
-    expect(screen.getByText('31 coming · 22 haven’t replied')).toBeDefined();
+    const coming = screen.getByRole('link', {
+      name: '96 coming, opens the guests coming to Adaeze & Tunde’s wedding',
+    });
+    const owed = screen.getByRole('link', {
+      name: '25 haven’t replied, opens the guests of Adaeze & Tunde’s wedding with no reply',
+    });
+
+    expect(coming.getAttribute('href')).toBe('/demo/guests?filter=coming');
+    expect(owed.getAttribute('href')).toBe('/demo/guests?filter=noReply');
+    expect(coming.parentElement?.closest('a')).toBeNull();
+    expect(screen.getByRole('link', { name: /^22 haven’t replied/ })).toBeDefined();
+  });
+
+  it('opens the events each tile counts, and Clear brings the tabs back', SLOW, async () => {
+    open('/demo/events?state=events');
+    await screen.findByRole('heading', { level: 1, name: 'Events' }, WAIT);
+    const tile = screen.getByRole('button', { name: /^Replies in/ });
+
+    fireEvent.click(tile);
+    expect(tile.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText(/^Events with guests who haven’t replied · \d+ of \d+$/)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(tile.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('shows no guest numbers without guests.read', SLOW, async () => {
+    open('/demo/events?state=noGuestsRead');
+    await screen.findByRole('heading', { level: 1, name: 'Events' }, WAIT);
+
+    expect(screen.queryByRole('button', { name: /^Guests invited/ })).toBeNull();
+    expect(screen.queryByText(/haven’t replied/)).toBeNull();
   });
 
   it('opens the wedding’s Guests from its sidebar', SLOW, async () => {

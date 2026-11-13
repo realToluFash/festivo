@@ -48,3 +48,33 @@
   gap: 18px;
   max-width: var(--evWide);
 }
+
+.ev-removes {
+  margin: 0;
+  padding-left: var(--spaceLg);
+  color: var(--colorInkSecondary);
+  font: var(--deskLine);
+}
+
+.ev-delete-name {
+  margin-top: var(--spaceSm);
+}
+
+.ev-dialog-title {
+  font: 700 22px/1.15 var(--fontFamily);
+  letter-spacing: -0.015em;
+}
+
+.ev-copy-when {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.ev-bullets {
+  margin: 0;
+  padding-left: 22px;
+  color: var(--colorInkSecondary);
+  font: var(--deskLine);
+}

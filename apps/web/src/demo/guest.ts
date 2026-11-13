@@ -11,7 +11,19 @@ import {
   isGuestKitchenState,
   guestKitchenStarts,
 } from './guestKitchen.ts';
+import type { GuestNote } from './arrivalNote.ts';
+import { guestNoteStarts, isGuestNoteState } from './guestNote.ts';
+import { NO_PLACES, type Party, guestPartyStarts, isGuestPartyState } from './guestCompanions.ts';
+import {
+  type Day,
+  type WhereShown,
+  guestDayStarts,
+  isGuestDayState,
+  leadsWithCode,
+} from './guestDay.ts';
 import type { DemoLink } from './settings.ts';
+import { type AskView, afterAnswer } from './guestAsk.ts';
+import { type ReplyByChoice, askStarts, isAskState } from './guestAskStates.ts';
 
 /** The guest's own page in A · The cover card (sc-31306), on the boards' sample: main's evt-wed-4 and one guest. */
 export const EVENT: SampleEvent = sampleEvent('evt-wed-4') as SampleEvent;
@@ -107,6 +119,7 @@ export type View =
   | { kind: 'recorded'; same: boolean }
   | { kind: 'changing'; busy: Answer | null }
   | { kind: 'closed' }
+  | { kind: 'withYou'; from: 'answer' | 'changing' }
   | { kind: 'tellUs'; busy: boolean; result: 'failed' | 'limited' | 'thanks' | null; back: View };
 
 /** An answer on the guest's record; `by` names the member who recorded it for them (sc-3787). */
@@ -143,6 +156,11 @@ export function sentAnswer(was: Visit, answer: Answer): Partial<Visit> {
   return {
     recorded: same ? was.recorded : recorded,
     view: { kind: 'recorded', same },
+    ask: afterAnswer(
+      was.ask,
+      was.recorded?.by == null ? (was.recorded?.answer ?? null) : null,
+      answer,
+    ),
     ...(agreed ? { whatsApp: 'agreed' as const } : {}),
   };
 }
@@ -188,6 +206,15 @@ export interface Visit {
   whatsApp: WhatsAppConsent;
   ticked: boolean;
   reach: Reach;
+  note: GuestNote;
+  party: Party;
+  /** sc-1363: when to ask a Not sure yet guest again; null with any other answer. */
+  ask: AskView | null;
+  /** sc-3780: the host let this guest change their reply, so Reply by does not bound the ask. */
+  reopened: boolean;
+  day: Day;
+  where: WhereShown;
+  dayOrder: boolean;
 }
 
 export const OPEN: View = { kind: 'answer', busy: null, note: null };
@@ -222,6 +249,13 @@ const BASE: Visit = {
   whatsApp: 'none',
   ticked: false,
   reach: { email: true, sms: true, saved: null },
+  note: 'host',
+  party: NO_PLACES,
+  ask: null,
+  reopened: false,
+  day: 'before',
+  where: 'full',
+  dayOrder: false,
 };
 
 const COMING = { answer: 'coming', on: TODAY } as const;
@@ -536,13 +570,27 @@ export function isGuestState(value: string | null): value is GuestStateName {
   return value != null && Object.hasOwn(STATES, value);
 }
 
-export function startOf(value: string | null): Visit {
+function startsOf(
+  value: string | null,
+  ask: { replyBy?: ReplyByChoice; days?: number },
+): Partial<Visit> {
+  if (isAskState(value)) return askStarts(value, ask.replyBy, ask.days);
   if (isGuestKitchenState(value))
-    return { ...BASE, ...guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS }) };
+    return guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS });
+  if (isGuestNoteState(value)) return guestNoteStarts(value);
+  if (isGuestPartyState(value)) return guestPartyStarts(value);
+  if (isGuestDayState(value)) return guestDayStarts(value);
 
-  const state = isGuestState(value) ? value : 'open';
+  return STATES[isGuestState(value) ? value : 'open'].starts as Partial<Visit>;
+}
 
-  return { ...BASE, ...(STATES[state].starts as Partial<Visit>) };
+export function startOf(
+  value: string | null,
+  ask: { replyBy?: ReplyByChoice; days?: number } = {},
+): Visit {
+  const visit: Visit = { ...BASE, ...startsOf(value, ask) };
+
+  return { ...visit, dayOrder: leadsWithCode(visit) };
 }
 
 export function stateName(state: GuestStateName): string {
@@ -660,10 +708,21 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
   },
 ];
 
-export function shows(visit: Visit): { details: boolean; foot: boolean; hosts: boolean } {
-  const alone = ['check', 'tellUs', 'kitchen'].includes(visit.view.kind);
+/** The foot's "no account" line only while the guest can still answer (ux, 13 Nov, from qa2's #44255). */
+export function shows(visit: Visit): {
+  details: boolean;
+  foot: boolean;
+  hosts: boolean;
+  noAccount: boolean;
+} {
+  const alone = ['check', 'tellUs', 'kitchen', 'withYou'].includes(visit.view.kind);
 
-  return { details: !alone, foot: !alone, hosts: visit.phase !== 'calledOff' };
+  return {
+    details: !alone,
+    foot: !alone,
+    hosts: visit.phase !== 'calledOff',
+    noAccount: visit.phase === 'live' && visit.view.kind !== 'closed',
+  };
 }
 
 /** After the date to answer by: the 23:59:59 instant in the event's zone, the rule Guests uses too (sc-3780). */
@@ -780,12 +839,6 @@ export const LANGUAGES: readonly { code: Lang; name: string }[] = LOCALES.map((o
   name: one.nativeName,
 }));
 
-export function mapsLink(): string {
-  const query = [EVENT.venue?.name, EVENT.venue?.address].filter(Boolean).join(', ');
-
-  return `https://www.openstreetmap.org/search?query=${encodeURIComponent(query)}`;
-}
-
 /** The board's English, held in the demo until the product's screen puts it in the four catalogues (SHARED.md, Step three). */
 const BOARD_ENGLISH = {
   yourAnswer: 'Your answer',
@@ -809,6 +862,7 @@ const BOARD_ENGLISH = {
   greetNotComing: 'We’ll miss you, {{name}}.',
   greetNotSure: 'Thanks for letting us know, {{name}}.',
   companionsOnHold: 'Your companions are on hold until you decide.',
+  companionsNotComing: 'Your companions won’t be coming either.',
   change: 'Change my answer',
   newAnswer: 'Your new answer',
   answerNow: 'Your answer now',
@@ -818,9 +872,9 @@ const BOARD_ENGLISH = {
   answerLine: 'Your answer: {{answer}}',
   changeShort: 'Change',
   send: 'Send my answer',
-  nothingSent: 'Nothing is sent until you press Send my answer.',
-  notSent: 'Your answer wasn’t sent. Everything you chose is still here. Try again.',
-  notSentTap: 'Your answer wasn’t sent. Check your connection and tap it again.',
+  nothingSent: 'Nothing is sent until you select Send my answer.',
+  notSent: 'Your answer was not sent. Everything you chose is still here. Try again.',
+  notSentTap: 'Your answer was not sent. Check your connection and choose it again.',
   same: 'You’re already down as {{answer}}. Nothing has changed.',
   unsent: 'You haven’t sent your answer yet.',
   closedBy: 'Answers closed on {{date}}. Contact your host if something has changed.',
@@ -987,6 +1041,7 @@ export function wordsFor(lang: Lang) {
         { name: GUEST },
       ),
     companions: board('companionsOnHold'),
+    companionsNotComing: board('companionsNotComing'),
     change: board('change'),
     newAnswer: board('newAnswer'),
     answerNow: board('answerNow'),

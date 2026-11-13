@@ -5,7 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { GUEST_PAGES, THANK_YOU } from './guest.ts';
+import { GUEST_ASK_PAGES } from './guestAskStates.ts';
+import { GUEST_DAY_PAGES } from './guestDay.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
+import { GUEST_NOTE_PAGES } from './guestNote.ts';
+import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
 
 const SLOW = { timeout: 15000 };
 
@@ -68,7 +72,17 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
 
     expect(head.textContent).toBe('Guest’s page in A · The cover card · phone, tablet and desk');
     const hrefs = screen.getAllByRole('link').map((one) => one.getAttribute('href'));
-    const kitchen = new Set(GUEST_KITCHEN_PAGES.flatMap((one) => one.states).map((one) => one.to));
+    const kitchen = new Set(
+      [
+        ...GUEST_KITCHEN_PAGES,
+        ...GUEST_PARTY_PAGES,
+        ...GUEST_ASK_PAGES,
+        ...GUEST_DAY_PAGES,
+        ...GUEST_NOTE_PAGES,
+      ]
+        .flatMap((one) => one.states)
+        .map((one) => one.to),
+    );
     const guestLinks = hrefs.filter(
       (href) => href?.startsWith('/demo/guest?') && !kitchen.has(href),
     );
@@ -92,6 +106,13 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
       '_blank',
     );
     expect(screen.getByText('You do not need an account to answer.')).toBeDefined();
+  });
+
+  it('keeps the foot but drops the account line once answers have closed (#44255)', async () => {
+    await guest('closed');
+
+    expect(screen.getByText('© 2026 Soirely')).toBeDefined();
+    expect(screen.queryByText('You do not need an account to answer.')).toBeNull();
   });
 
   it('answers as three full-width rows, Yes leading on', async () => {
@@ -118,7 +139,7 @@ const SAYS: [string, () => void][] = [
   [
     'check',
     () => {
-      screen.getByText('Nothing is sent until you press Send my answer.');
+      screen.getByText('Nothing is sent until you select Send my answer.');
       expect(screen.queryByRole('checkbox')).toBeNull();
     },
   ],
@@ -145,7 +166,7 @@ const SAYS: [string, () => void][] = [
         'true',
       ),
   ],
-  ['notSentTap', () => screen.getByText(/Check your connection and tap it again\.$/u)],
+  ['notSentTap', () => screen.getByText(/Check your connection and choose it again\.$/u)],
   ['coming', () => screen.getByRole('heading', { name: `See you there, ${NAME}.` })],
   ['comingWhatsApp', () => screen.getByRole('heading', { name: `See you there, ${NAME}.` })],
   ['comingAlone', () => screen.getByText('A screenshot works too.')],
@@ -618,7 +639,7 @@ describe('answering, by keyboard and pointer, on sample data', () => {
     const send = screen.getByRole('button', { name: 'Send my answer' });
 
     expect(screen.getByRole('alert').textContent).toBe(
-      'Your answer wasn’t sent. Everything you chose is still here. Try again.',
+      'Your answer was not sent. Everything you chose is still here. Try again.',
     );
     expect(document.activeElement).toBe(send);
     fireEvent.click(send);

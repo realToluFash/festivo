@@ -49,14 +49,16 @@ import {
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { TextAction } from '../../../components/SettingsParts.tsx';
+import { Toast } from '../../../components/Toast.tsx';
 import { type Shown, listEventOf, shownEvent, summaryWords } from '../../../eventsList.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
+import { useDeskTop } from '../../../deskTop.ts';
+import { LayersContext, useDeskLayers } from '../../../layers.ts';
 import { useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { DuplicateDialog } from './DuplicateEvent.tsx';
-import { OutcomeLine } from './OutcomeLine.tsx';
 
 const PAST_PAGE = 10;
 
@@ -122,6 +124,7 @@ export function Events() {
       organisationId={organisation.id}
       creates={can(session, 'events.create')}
       deleted={notice?.event ?? null}
+      onDeletedSaid={() => setNotice(null)}
     />
   );
 }
@@ -135,12 +138,15 @@ function EventsOf({
   organisationId,
   creates,
   deleted,
+  onDeletedSaid,
 }: {
   organisationId: string;
   creates: boolean;
   deleted: string | null;
+  onDeletedSaid: () => void;
 }) {
   const { t } = useTranslation();
+  const desk = useDeskTop();
   const navigate = useNavigate();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -149,6 +155,7 @@ function EventsOf({
   const [shown, setShown] = useState<string | null>(null);
   const [tab, setTab] = useState<EventsTab>(() => rememberedEventsTab(organisationId));
   const [copying, setCopying] = useState<ListedEvent | null>(null);
+  const { layers, covered, setHost } = useDeskLayers();
   const title = useRef<HTMLHeadingElement>(null);
   const failedLine = useRef<HTMLParagraphElement>(null);
   const firstRunTitle = useRef<HTMLHeadingElement>(null);
@@ -277,32 +284,45 @@ function EventsOf({
   })();
 
   const page = (summary: string | null, body: ReactNode) => (
-    <div className="desk ev">
-      <div className="ev-column">
-        <div>
-          <EventsTop
-            title={title}
-            newEvent={
-              creates && (
-                <Link className="ev-new" to="/app/events/new">
-                  <NewEventWords />
-                </Link>
-              )
-            }
-          />
-          {refreshing ? (
-            <p className="desk-line">
-              <Refreshing />
-            </p>
-          ) : (
-            summary != null && <p className="desk-line">{summary}</p>
-          )}
+    <LayersContext value={layers}>
+      <div className="desk ev">
+        <div className="ev-column" inert={covered}>
+          {desk.offline}
+          <div>
+            <EventsTop
+              title={title}
+              newEvent={
+                creates && (
+                  <Link className="ev-new" to="/app/events/new">
+                    <NewEventWords />
+                  </Link>
+                )
+              }
+            >
+              {desk.bell}
+            </EventsTop>
+            {refreshing ? (
+              <p className="desk-line">
+                <Refreshing />
+              </p>
+            ) : (
+              summary != null && <p className="desk-line">{summary}</p>
+            )}
+          </div>
+          {desk.said}
+          {search != null && <EventsReadOut groups={matchedGroups} />}
+          {body}
         </div>
-        {deleted != null && <OutcomeLine words={t('eventDelete.deleted', { event: deleted })} />}
-        {search != null && <EventsReadOut groups={matchedGroups} />}
-        {body}
+        <div ref={setHost} className="desk-layers" />
+        {deleted != null && (
+          <Toast
+            key={deleted}
+            words={t('eventDelete.deleted', { event: deleted })}
+            onClose={onDeletedSaid}
+          />
+        )}
       </div>
-    </div>
+    </LayersContext>
   );
 
   const searchRow = (waiting: boolean) => (
@@ -466,7 +486,7 @@ function EventsOf({
       {search != null ? (
         <div className="ev-column">{results()}</div>
       ) : (
-        <div className="ev-column arrives" ref={home}>
+        <div className="ev-column" ref={home}>
           <EventsTabs
             tab={tab}
             counts={counts}

@@ -1,10 +1,10 @@
 import { formattingLocale } from '@soirely/domain';
 import { type TFunction } from 'i18next';
-import { type ReactNode, type RefObject, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 
-import { CalendarBoard } from '../components/CalendarBoard.tsx';
+import { CalendarBoard, CalendarTop } from '../components/CalendarBoard.tsx';
 import { CalendarSubscribe, type FeedSource } from '../components/CalendarSubscribe.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
 import {
@@ -49,7 +49,12 @@ import { SIDEBAR_EVENTS } from './settings.ts';
 import { usePaused, useSwitcherStart, useWhere } from './switcher.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
 
-const FRAME: CalendarFrame = { today: TODAY, zone: READER_ZONE, linkOf: itemLink };
+const FRAME: CalendarFrame = {
+  now: CLOCKS.rest,
+  today: TODAY,
+  zone: READER_ZONE,
+  linkOf: itemLink,
+};
 
 /** The Calendar at a desk in B · A · Weeks as lanes (calendar-lanes-spec): the product's weeks as one scroll, on the demo's sample. */
 export function Calendar() {
@@ -125,32 +130,6 @@ function needsLens(t: TFunction, locale: string): CalendarLens {
   };
 }
 
-/** The Calendar's title row once the band leaves (sc-39471): Subscribe, then the bell last, as Events ends with New event and the bell. */
-function TopWithBell({
-  subscribe,
-  onSubscribe,
-  tell,
-}: {
-  subscribe: RefObject<HTMLButtonElement | null>;
-  onSubscribe: () => void;
-  tell: Tell;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <header className="desk-top ev-top">
-      <h1 className="desk-title ev-title" tabIndex={-1}>
-        {t('calendar.title')}
-      </h1>
-      <button ref={subscribe} type="button" className="cal-subscribe" onClick={onSubscribe}>
-        <Glyph name="calendar" size={18} weight={2.2} />
-        {t('calendarFeed.open')}
-      </button>
-      <DemoBell tell={tell} />
-    </header>
-  );
-}
-
 function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
   const { t } = useTranslation();
   const where = useWhere();
@@ -199,7 +178,11 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
     <CalendarFrameContext value={FRAME}>
       <div className="desk-page cal-page">
         <DemoOffline on={start.offline} />
-        <TopWithBell subscribe={subscribe} onSubscribe={() => setFeed('open')} tell={tell} />
+        <CalendarTop
+          subscribe={subscribe}
+          onSubscribe={() => setFeed('open')}
+          bell={<DemoBell tell={tell} />}
+        />
         <Switched />
         {start.none ? (
           <div className="cal-first">

@@ -1,15 +1,16 @@
 import { type ComponentType, Fragment, type ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { type Item, dayHeading, isYou, itemKey, rowTitle, rowWhen } from '../kit/calendar.ts';
 import { rowTag } from '../kit/eventsList.ts';
 import { tokens } from '../theme/tokens.ts';
 import { EventSquare, YouDot } from './CalendarWeeks.tsx';
-import { EventThumb } from './EventCard.tsx';
+import { EventThumb } from './EventThumb.tsx';
 import { eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
 import { Tag, TITLE_BESIDE_TAG, TitleBesideTag } from './SummaryRows.tsx';
+import { titleWithInkRoom } from './titleWidth.ts';
 import { Text } from './Text.tsx';
 
 const hidden = {
@@ -27,6 +28,7 @@ export interface RowProps {
   item: Item;
   locale: string;
   readerZone: string;
+  now: Date;
   big: boolean;
   onOpen: (item: Item) => void;
 }
@@ -120,7 +122,7 @@ export function DayRow({
           style={big && styles.titleStack}
           title={
             <Text size={16} weight="semibold" accessible={false} style={styles.title}>
-              {rowTitle(item)}
+              {titleWithInkRoom(rowTitle(item), Platform.OS)}
             </Text>
           }
           tag={tag}
@@ -155,9 +157,9 @@ export function RowLine({
 }
 
 /** A row in the Events list's system: an event's cover, name, tag and line; a milestone's tinted square, its title and its owner. */
-export function CalRow({ item, locale, readerZone, big, onOpen }: RowProps) {
+export function CalRow({ item, locale, readerZone, now, big, onOpen }: RowProps) {
   const { t } = useTranslation();
-  const line = rowWhen(item, locale, readerZone, t);
+  const line = rowWhen(item, locale, readerZone, now, t);
   const tag = item.kind === 'event' ? rowTag(item.event, true, t) : null;
   const owner = item.kind === 'milestone' ? item.milestone.owner : null;
   const side = leadSide(big);
@@ -237,6 +239,7 @@ export function DayList({
   Row,
   locale,
   readerZone,
+  now,
   big,
   onOpen,
   onClose,
@@ -248,6 +251,7 @@ export function DayList({
   Row?: ComponentType<RowProps> | undefined;
   locale: string;
   readerZone: string;
+  now: Date;
   big: boolean;
   onOpen: (item: Item) => void;
   onClose: () => void;
@@ -283,6 +287,7 @@ export function DayList({
         Row={Row}
         locale={locale}
         readerZone={readerZone}
+        now={now}
         big={big}
         onOpen={(item) => {
           onClose();

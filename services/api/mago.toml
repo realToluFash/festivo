@@ -155,6 +155,7 @@ domain_organisation = ["App\\Domain\\Organisation\\**"]
 domain_event = ["App\\Domain\\Event\\**"]
 domain_messaging = ["App\\Domain\\Messaging\\**"]
 domain_seating = ["App\\Domain\\Seating\\**"]
+domain_guest = ["App\\Domain\\Guest\\**"]
 
 # Capabilities. Each is its own layer so an edge between two of them has to be
 # declared below rather than appearing by accident.
@@ -305,6 +306,25 @@ permit = [
     "@layer:repository",
     "@layer:audit",
     "@layer:realtime",
+    "@layer:locale",
+]
+
+# Guests: an event's list and adding to it (sc-1468). A mobile number is checked by the
+# account's parser, a name folded by the shared rule; each add is audited and published.
+# A guest's own page shows the event's cover as the event's page serialises it (sc-1526).
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Guest\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_guest",
+    "@layer:domain_event",
+    "@layer:domain_user",
+    "@layer:repository",
+    "@layer:audit",
+    "@layer:realtime",
+    "@layer:locale",
 ]
 
 # Messaging is the one machine every scope tells people through (sc-104). It reads members as the

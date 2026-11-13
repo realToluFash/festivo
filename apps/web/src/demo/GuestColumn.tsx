@@ -5,6 +5,7 @@ import type { SampleEvent } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
   type Guest,
+  type GuestNote,
   type Invite,
   LINK,
   ORGANISATION_LANGUAGE,
@@ -12,7 +13,11 @@ import {
   cardLine,
   companionName,
   dayOf,
+  handMarked,
+  invitationLine,
+  invitesOn,
   languageName,
+  namedOf,
   phoneShown,
   replyByOf,
   replyTail,
@@ -33,7 +38,11 @@ import { GW, HOW_INVITED, type HowInvited, REPLY_WORDS } from './guestsWords.ts'
 import { GUESTS as CONVERSATIONS, MESSAGES_AT } from './messages.ts';
 import { Turning } from './DataControlParts.tsx';
 import { THEIR_WORDS } from './guestRequest.ts';
+import { type Needs, NW, accessNames, allergyNames, dietNames } from './guestNeeds.ts';
+import { AllergyMark } from './GuestNeeds.tsx';
 import { whatsAppRowOf } from './whatsAppConsent.ts';
+import { sendOffered, whatsAppHref } from './whatsAppSend.ts';
+import { useLater } from '../useLater.ts';
 import { CardStep, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 
 export interface GuestActions {
@@ -44,10 +53,17 @@ export interface GuestActions {
   onReplace: () => void;
   onInvite: (invite: Invite | null) => void;
   onMark: (how: HowInvited) => void;
+  onUnmark: () => void;
   onAgree: () => void;
+  onSend: () => void;
+  onNotSent: () => void;
+  /** The mark from the question: false when it was not saved and the question stays. */
+  onSent: () => boolean;
 }
 
 type Step = { label: string; does: () => void } | null;
+
+const SAVE_MS = 900;
 
 /** A guest beside the list (sc-3773): the cover card the guest sees, their reply, Details, Invitation and their conversation. */
 export function GuestView({
@@ -61,18 +77,22 @@ export function GuestView({
   erase = null,
   erasedLine,
   theirData,
+  asked = false,
+  askFailed = false,
 }: {
   guest: Guest;
   event: SampleEvent;
   clock: Date;
   manages: boolean;
-  note: 'recorded' | 'notReplaced' | undefined;
+  note: GuestNote | undefined;
   invite: Invite | undefined;
   actions: GuestActions;
   /** sc-30193: while their data is erased nothing changes; once erased, what stays and the line saying so. */
   erase?: 'erasing' | 'erased' | null;
   erasedLine?: string;
   theirData?: ReactNode;
+  asked?: boolean;
+  askFailed?: boolean;
 }) {
   const heading = useId();
   const acts = manages && erase == null;
@@ -82,6 +102,8 @@ export function GuestView({
   const replied =
     guest.reply === 'coming' || guest.reply === 'notSure' || guest.reply === 'notComing';
   const draft = event.status === 'draft';
+  const invites = invitesOn(event, clock);
+  const showsInvitation = erase == null && (!draft || acts) && guest.reply !== 'walkIn';
   let line: string | null = draft ? null : cardLine(guest, replyBy);
   let step: Step = null;
 
@@ -93,12 +115,14 @@ export function GuestView({
     line = GW.reopened(guest.reopened.by ?? '', dayOf(guest.reopened.on));
     step = { label: GW.recordReply, does: actions.onRecord };
   } else if (guest.reply === 'noReply') step = { label: GW.recordReply, does: actions.onRecord };
-  else if (guest.reply === 'notYet' && event.status === 'live')
+  else if (guest.reply === 'notYet' && invites && !asked)
     step = { label: GW.markAsInvited, does: () => actions.onInvite('mark') };
 
   return (
     <div className="gs-guest">
       {note === 'recorded' && <OkLine>{GW.recorded}</OkLine>}
+      {note === 'unmarked' && <OkLine>{GW.unmarked}</OkLine>}
+      {note === 'linkReplaced' && <OkLine>{GW.linkReplacedNote(guest.name)}</OkLine>}
       <Cover mesh={event.mesh} size="guest" label={heading}>
         <ul className="desk-glass-tags">
           <li className="desk-glass">
@@ -116,8 +140,16 @@ export function GuestView({
           </div>
         )}
       </Cover>
+      {acts && guest.flagged && (
+        <WrongPerson name={guest.name} heading={heading} onReplace={actions.onReplace} />
+      )}
       {erase === 'erasing' && <Turning words={THEIR_WORDS.erasing} />}
       {note === 'notReplaced' && <Refused>{GW.notReplaced}</Refused>}
+      {note === 'unmarkRefused' && guest.replied != null && (
+        <Refused>
+          {GW.unmarkRefused(guest.name, REPLY_WORDS[guest.reply], dayOf(guest.replied))}
+        </Refused>
+      )}
       {replied && (
         <section className="desk-block" aria-labelledby={`${heading}-reply`}>
           <Head level={3} title={<span id={`${heading}-reply`}>{GW.reply}</span>} />
@@ -148,20 +180,51 @@ export function GuestView({
         onEdit={actions.onEdit}
         onAgree={actions.onAgree}
       />
-      {acts && !draft && guest.reply !== 'walkIn' && (
+      {manages && erase !== 'erased' && <NeedsBlock guest={guest} heading={heading} />}
+      {showsInvitation ? (
         <Invitation
           guest={guest}
-          event={event}
+          acts={acts}
+          invites={acts && invites}
           invite={invite}
           heading={heading}
           actions={actions}
+          send={sendOffered(guest, event, clock, acts) ? whatsAppHref(guest, event, LINK) : null}
+          asked={asked}
+          askFailed={askFailed}
         />
+      ) : (
+        !manages && <p className="gs-inset gs-read-only">{GW.readOnlyInvited}</p>
       )}
       {manages && invited && event.id === WEDDING && erase !== 'erased' && (
         <Conversation guest={guest} heading={heading} />
       )}
       {theirData}
     </div>
+  );
+}
+
+/** sc-1526: Tell them was pressed on the guest's own page; marked by the triangle and the words, not the amber alone. */
+function WrongPerson({
+  name,
+  heading,
+  onReplace,
+}: {
+  name: string;
+  heading: string;
+  onReplace: () => void;
+}) {
+  return (
+    <section className="gs-amber" aria-labelledby={`${heading}-flag`}>
+      <h3 id={`${heading}-flag`} className="gs-amber-head">
+        <Glyph name="warn" size={17} weight={2.2} />
+        {GW.flaggedTitle}
+      </h3>
+      <p className="gs-amber-line">{GW.flaggedLine(name)}</p>
+      <button type="button" className="desk-text" data-focus="flag-replace" onClick={onReplace}>
+        {GW.replaceLink}
+      </button>
+    </section>
   );
 }
 
@@ -251,17 +314,31 @@ function Details({
             </li>
           </>
         )}
+        {guest.companions.length > 0 && (
+          <li className="desk-row">
+            <IconLead name="users" />
+            <RowWords
+              title={`${GW.companionCount(guest.companions.length)} · ${GW.namedOf(namedOf(guest), guest.companions.length)}`}
+              lines={[GW.placesFor]}
+            />
+          </li>
+        )}
         {guest.companions.map((companion) => (
           <li key={companion.id} className="desk-row">
             <MarkLead reply={companion.reply} />
-            <RowWords
-              title={companionName(guest, companion)}
-              lines={[
-                companion.reply === 'held'
-                  ? GW.heldCompanion
-                  : GW.companion(REPLY_WORDS[companion.reply]),
-              ]}
-            />
+            <div className="gs-row-words">
+              <RowWords
+                title={companionName(guest, companion)}
+                lines={[
+                  companion.reply === 'held'
+                    ? GW.heldCompanion
+                    : GW.companion(REPLY_WORDS[companion.reply]),
+                ]}
+              />
+              {companion.namedBy === 'guest' && (
+                <span className="gs-named-by">{GW.namedByGuest}</span>
+              )}
+            </div>
           </li>
         ))}
         {manages && (
@@ -278,91 +355,212 @@ function Details({
   );
 }
 
+function NeedsRows({ needs }: { needs: Needs }) {
+  const rows = [
+    { key: 'allergies', title: allergyNames(needs).join(', '), label: NW.allergies },
+    { key: 'diet', title: dietNames(needs).join(', '), label: NW.diet },
+    { key: 'access', title: accessNames(needs).join(', '), label: NW.access },
+    { key: 'note', title: needs.note, label: NW.privateNote },
+  ].filter((row) => row.title !== '');
+
+  return rows.map((row) => (
+    <li key={row.key} className="desk-row">
+      <IconLead name={row.key === 'allergies' ? 'alert' : row.key === 'note' ? 'lock' : 'info'} />
+      <div className="gs-row-words">
+        <RowWords title={row.title} lines={[row.label]} />
+        {row.key === 'allergies' && <AllergyMark />}
+      </div>
+    </li>
+  ));
+}
+
+function recorded(needs: Needs | undefined): needs is Needs {
+  return (
+    needs != null &&
+    (needs.allergies.length > 0 ||
+      needs.diet.length > 0 ||
+      needs.access.length > 0 ||
+      needs.note.trim() !== '')
+  );
+}
+
+/** sc-3777: allergies, diet and access under their own headings, the guest's then each companion's; for people who manage guests only. */
+function NeedsBlock({ guest, heading }: { guest: Guest; heading: string }) {
+  const companions = guest.companions.flatMap((one) =>
+    recorded(one.needs) ? [{ one, needs: one.needs }] : [],
+  );
+  const none = !recorded(guest.needs) && companions.length === 0;
+
+  return (
+    <section className="desk-block" aria-labelledby={`${heading}-needs`}>
+      <Head level={3} title={<span id={`${heading}-needs`}>{NW.needs}</span>} />
+      {none ? (
+        <p className="desk-line">{NW.noDietary}</p>
+      ) : (
+        <>
+          {recorded(guest.needs) && (
+            <ul className="desk-rows gs-rows">
+              <NeedsRows needs={guest.needs} />
+            </ul>
+          )}
+          {companions.map(({ one, needs }) => (
+            <div key={one.id} className="gs-their-needs">
+              <h4 className="gs-their-head">{companionName(guest, one)}</h4>
+              <ul className="desk-rows gs-rows">
+                <NeedsRows needs={needs} />
+              </ul>
+            </div>
+          ))}
+        </>
+      )}
+    </section>
+  );
+}
+
 function Invitation({
   guest,
-  event,
+  acts,
+  invites,
   invite,
   heading,
   actions,
+  send,
+  asked,
+  askFailed,
 }: {
   guest: Guest;
-  event: SampleEvent;
+  acts: boolean;
+  invites: boolean;
   invite: Invite | undefined;
   heading: string;
   actions: GuestActions;
+  send: string | null;
+  asked: boolean;
+  askFailed: boolean;
 }) {
   const notYet = guest.reply === 'notYet';
   const marking = invite === 'mark' || invite === 'markRefused' || invite === 'markNotSaved';
+  const line = invitationLine(guest);
 
   return (
     <section className="desk-block" aria-labelledby={`${heading}-invitation`}>
       <Head level={3} title={<span id={`${heading}-invitation`}>{GW.invitation}</span>} />
-      <ul className="desk-rows gs-rows">
-        {guest.replaced != null && (
-          <li className="desk-row">
-            <IconLead name="refresh" />
-            <RowWords
-              title={GW.linkReplaced(dayOf(guest.replaced))}
-              lines={[GW.linkReplacedLine]}
-            />
-          </li>
-        )}
-        <li>
-          <button
-            type="button"
-            className="desk-row gs-do"
-            data-focus="copy"
-            onClick={actions.onCopy}
-          >
-            <IconLead name="link" />
-            <RowWords title={GW.copyLink} lines={[GW.copyLinkLine]} />
-          </button>
-          {invite === 'copied' && (
-            <div className="gs-copied">
-              <p role="status">
-                <Glyph name="tick" size={16} weight={2.6} />
-                {GW.linkCopied}
-              </p>
-              {notYet && event.status === 'live' && (
-                <button
-                  type="button"
-                  className="desk-text is-green"
-                  onClick={() => actions.onInvite('mark')}
-                >
-                  {GW.markAsInvited}
-                </button>
-              )}
-            </div>
+      {(acts || line != null || guest.replaced != null) && (
+        <ul className="desk-rows gs-rows">
+          {line != null && (
+            <li className="desk-row">
+              <IconLead name="send" />
+              <div className="gs-row-words">
+                <RowWords title={line} lines={[]} />
+                {acts && handMarked(guest) && (
+                  <button
+                    type="button"
+                    className="desk-text gs-agree"
+                    data-focus="unmark"
+                    onClick={actions.onUnmark}
+                  >
+                    {GW.markNotInvited}
+                  </button>
+                )}
+              </div>
+            </li>
           )}
-          {invite === 'refused' && <CopyByHand />}
-        </li>
-        <li>
-          <button
-            type="button"
-            className="desk-row gs-do"
-            data-focus="replace"
-            onClick={actions.onReplace}
-          >
-            <IconLead name="refresh" />
-            <RowWords title={GW.replaceLink} lines={[GW.replaceLinkLine]} />
-          </button>
-        </li>
-        {notYet && event.status === 'live' && (
-          <li>
-            <button
-              type="button"
-              className="desk-row gs-do"
-              onClick={() => actions.onInvite('mark')}
-            >
-              <IconLead name="tick" />
-              <RowWords title={GW.markAsInvited} lines={[GW.markLine]} />
-            </button>
-          </li>
-        )}
-      </ul>
-      {marking && notYet && (
+          {guest.replaced != null && (
+            <li className="desk-row">
+              <IconLead name="refresh" />
+              <RowWords
+                title={GW.linkReplaced(dayOf(guest.replaced))}
+                lines={[GW.linkReplacedLine]}
+              />
+            </li>
+          )}
+          {invites && (
+            <li>
+              <button
+                type="button"
+                className="desk-row gs-do"
+                data-focus="copy"
+                onClick={actions.onCopy}
+              >
+                <IconLead name="link" />
+                <RowWords title={GW.copyLink} lines={[GW.copyLinkLine]} />
+              </button>
+              {invite === 'copied' && (
+                <div className="gs-copied">
+                  <p role="status">
+                    <Glyph name="tick" size={16} weight={2.6} />
+                    {GW.linkCopied}
+                  </p>
+                  {notYet && (
+                    <button
+                      type="button"
+                      className="desk-text is-green"
+                      onClick={() => actions.onInvite('mark')}
+                    >
+                      {GW.markAsInvited}
+                    </button>
+                  )}
+                </div>
+              )}
+              {invite === 'refused' && <CopyByHand />}
+            </li>
+          )}
+          {send != null && (
+            <li>
+              <a
+                href={send}
+                className="desk-row gs-do"
+                aria-label={GW.sendOnWhatsAppTo(guest.name)}
+                data-focus="send"
+                onClick={(press) => {
+                  press.preventDefault();
+                  actions.onSend();
+                }}
+              >
+                <IconLead name="whatsApp" />
+                <RowWords title={GW.sendOnWhatsApp} lines={[GW.sendLine]} />
+              </a>
+              {asked && notYet && (
+                <SentQuestion
+                  name={guest.name}
+                  startFailed={askFailed}
+                  onNotSent={actions.onNotSent}
+                  onSent={actions.onSent}
+                />
+              )}
+            </li>
+          )}
+          {acts && (
+            <li>
+              <button
+                type="button"
+                className="desk-row gs-do"
+                data-focus="replace"
+                onClick={actions.onReplace}
+              >
+                <IconLead name="refresh" />
+                <RowWords title={GW.replaceLink} lines={[GW.replaceLinkLine]} />
+              </button>
+            </li>
+          )}
+          {notYet && invites && !asked && (
+            <li>
+              <button
+                type="button"
+                className="desk-row gs-do"
+                onClick={() => actions.onInvite('mark')}
+              >
+                <IconLead name="tick" />
+                <RowWords title={GW.markAsInvited} lines={[GW.markLine]} />
+              </button>
+            </li>
+          )}
+        </ul>
+      )}
+      {acts && marking && notYet && (
         <MarkInset start={invite} onCancel={() => actions.onInvite(null)} onMark={actions.onMark} />
       )}
+      {!acts && <p className="gs-inset gs-read-only">{GW.readOnlyInvited}</p>}
     </section>
   );
 }
@@ -465,6 +663,61 @@ function MarkInset({
         />
         <TextAction label={GW.cancel} onClick={onCancel} />
       </div>
+    </div>
+  );
+}
+
+/** sc-26025: asked after the press, answered here; it stays until answered, a failed mark included. */
+function SentQuestion({
+  name,
+  startFailed,
+  onNotSent,
+  onSent,
+}: {
+  name: string;
+  startFailed: boolean;
+  onNotSent: () => void;
+  onSent: () => boolean;
+}) {
+  const id = useId();
+  const later = useLater();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(startFailed);
+
+  return (
+    <div
+      className="gs-inset gs-asked"
+      role="group"
+      aria-labelledby={`${id}-title`}
+      aria-describedby={`${id}-line`}
+      tabIndex={-1}
+      data-focus="send-question"
+    >
+      {failed && <Refused>{GW.markNotSaved}</Refused>}
+      <p id={`${id}-title`} className="gs-inset-title" aria-live="polite">
+        {GW.sentOnWhatsApp(name)}
+      </p>
+      <div className="gs-inset-foot">
+        <TextAction label={GW.notSent} onClick={onNotSent} />
+        <Pill
+          primary
+          busy={busy}
+          label={busy ? GW.saving : GW.markAsInvited}
+          onClick={() => {
+            if (busy) return;
+            setFailed(false);
+            setBusy(true);
+            later(SAVE_MS, () => {
+              if (onSent()) return;
+              setBusy(false);
+              setFailed(true);
+            });
+          }}
+        />
+      </div>
+      <p id={`${id}-line`} className="desk-help">
+        {GW.ifNotOpened}
+      </p>
     </div>
   );
 }

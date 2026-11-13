@@ -1,10 +1,8 @@
 import type { Ref } from 'react';
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import {
-  type CardPhoto,
   type CardStep,
   type PhaseMark,
   type Shown,
@@ -14,13 +12,13 @@ import {
   dayTiles,
   rowLine,
 } from '../kit/eventsList.ts';
-import type { MeshKey } from '../kit/today.ts';
 import { scrimFor } from '../kit/scrim.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, type Piece } from './Cover.tsx';
 import { EventMesh, eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
+import { Fill, PhotoFill, hidden } from './EventThumb.tsx';
 import { CardSays, GlassTag, OnCard, StepButton, SummaryCard } from './Summary.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import type { CoverLayout } from './TodayCover.tsx';
@@ -77,85 +75,6 @@ const PIECES: Record<Layout, { width: number; pieces: readonly Piece[] }> = {
     [300, 150, 'bar', 16, 62, 'white'],
   ]),
 };
-
-const hidden = {
-  accessibilityElementsHidden: true,
-  importantForAccessibility: 'no-hide-descendants',
-} as const;
-
-/** A gradient over the whole box: a wrapper fills it, since a percentage on an absolute Svg leaves out the padding. */
-function Fill({
-  id,
-  down,
-  stops,
-}: {
-  id: string;
-  down: boolean;
-  stops: readonly { at: string; colour: string; opacity?: number }[];
-}) {
-  return (
-    <View style={StyleSheet.absoluteFill} {...hidden}>
-      <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <Defs>
-          <LinearGradient id={id} x1="0" y1="0" x2={down ? '0' : '1'} y2="1">
-            {stops.map((stop) => (
-              <Stop
-                key={stop.at}
-                offset={stop.at}
-                stopColor={stop.colour}
-                stopOpacity={stop.opacity ?? 1}
-              />
-            ))}
-          </LinearGradient>
-        </Defs>
-        <Rect width="100" height="100" fill={`url(#${id})`} />
-      </Svg>
-    </View>
-  );
-}
-
-export function PhotoFill({ id }: { id: string }) {
-  return (
-    <Fill
-      id={id}
-      down={false}
-      stops={[
-        { at: '0', colour: tokens.colorInkTertiary },
-        { at: '0.5', colour: tokens.colorInkSecondary },
-        { at: '1', colour: tokens.colorDarkInset },
-      ]}
-    />
-  );
-}
-
-/** An event's lead: its photo, or the colour its id gives it. */
-export function EventThumb({
-  event,
-  side = 48,
-  radius = 14,
-}: {
-  event: { id: string; mesh: MeshKey; photo: CardPhoto | null };
-  side?: number;
-  radius?: number;
-}) {
-  return (
-    <View style={[styles.thumb, { width: side, height: side, borderRadius: radius }]} {...hidden}>
-      {event.photo === 'standIn' ? (
-        <>
-          <PhotoFill id={`thumb-${event.id}-${side}`} />
-          <Glyph
-            name="photo"
-            size={Math.round(side * 0.5)}
-            ink={tokens.colorInkOnDark}
-            weight={1.8}
-          />
-        </>
-      ) : (
-        <EventMesh event={{ mesh: event.mesh, photo: event.photo }} />
-      )}
-    </View>
-  );
-}
 
 export function CardPieces() {
   const placed = PIECES[useCardLayout()];
@@ -455,7 +374,6 @@ export function EventCard({
 const styles = StyleSheet.create({
   white: { color: tokens.colorInkOnDark },
   accent: { color: tokens.colorAccent },
-  thumb: { overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   photoMark: { position: 'absolute', right: 22, top: 18, opacity: 0.5 },
   pieces: { position: 'absolute', top: 0, right: 0, height: 200 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },

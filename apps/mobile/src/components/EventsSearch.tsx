@@ -27,7 +27,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import { endCuts, endCutWidth } from '../layout/endCut.ts';
+import { endCut, endCuts } from '../layout/endCut.ts';
 import { tokens } from '../theme/tokens.ts';
 import { TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -168,18 +168,17 @@ function PicksLine({
   ink: string;
 }) {
   const rest = picks.length - shown;
-  const lead = rest > 0 ? picksLead(picks, shown) : whole;
   const snugs = Platform.OS === 'android' && rest > 0;
+  const lead = rest === 0 ? whole : picksLead(picks, shown);
+  const tail = ` ${more(rest)}`;
   const { fontScale } = useWindowDimensions();
-  const drawn = `${room}|${fontScale}|${lead}|${more(rest)}`;
-  const [box, setBox] = useState<{ drawn: string; width: number } | null>(null);
   const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
-  const boxWidth = snugs && box?.drawn === drawn ? box.width : null;
   const widthOf = (text: string) => widths[`${fontScale}|${text}`];
-  const overflows = boxWidth != null && (widthOf(lead) ?? 0) > boxWidth;
-  // Android stops a cut line's "…" short of the box it was laid out in, so the box narrows to the longest cut that fits it (sc-41871).
-  const cutWidth = boxWidth == null ? null : endCutWidth(lead, boxWidth, widthOf);
-  const snugWidth = cutWidth == null ? null : Math.ceil(cutWidth);
+  const tailWidth = widthOf(tail);
+  const box = !snugs || room == null || tailWidth == null ? null : room - Math.ceil(tailWidth);
+  const overflows = box != null && (widthOf(lead) ?? 0) > box;
+  // Android draws its own "…" short of the box, so the longest cut that fits the room less "+N more" is drawn as it is; the line's own layout is not the box, as Android keeps it from before a turn (sc-41871).
+  const cut = box == null ? null : endCut(lead, box, widthOf);
 
   return (
     <View style={styles.picks}>
@@ -188,19 +187,9 @@ function PicksLine({
         weight={weight}
         numberOfLines={1}
         accessible={false}
-        style={[styles.shrink, { color: ink }, snugWidth != null && { width: snugWidth }]}
-        onLayout={
-          snugs && snugWidth == null
-            ? (event) => {
-                const width = event.nativeEvent.layout.width;
-                setBox((now) =>
-                  now?.drawn === drawn && now.width === width ? now : { drawn, width },
-                );
-              }
-            : undefined
-        }
+        style={[styles.shrink, { color: ink }]}
       >
-        {lead}
+        {cut ?? lead}
       </Text>
       {rest > 0 && (
         <Text
@@ -210,12 +199,12 @@ function PicksLine({
           accessible={false}
           style={[styles.kept, { color: ink }]}
         >
-          {` ${more(rest)}`}
+          {tail}
         </Text>
       )}
       {snugs && (
         <MeasuredWords
-          words={overflows ? [lead, ...endCuts(lead)] : [lead]}
+          words={overflows ? [tail, lead, ...endCuts(lead)] : [tail, lead]}
           size={size}
           weight={weight}
           onWidth={(text, width) => {
@@ -331,6 +320,7 @@ export function FilterButton({
   const ink = off ? tokens.colorInkTertiary : tokens.colorAccentText;
   const fit = usePicksFit(picks, word, { size: 15, weight: 'semibold' });
   const [slot, setSlot] = useState<number | null>(null);
+  const line = slot == null ? null : slot - FILTER_SIDES;
 
   return (
     <View
@@ -356,8 +346,8 @@ export function FilterButton({
         <PicksLine
           picks={picks}
           whole={word}
-          shown={fit.shownIn(slot == null ? null : slot - FILTER_SIDES)}
-          room={slot}
+          shown={fit.shownIn(line)}
+          room={line}
           more={fit.more}
           size={15}
           weight="semibold"

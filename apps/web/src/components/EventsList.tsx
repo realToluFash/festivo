@@ -182,22 +182,20 @@ export function EventsFooter({ count }: { count: number }) {
 /** No events yet: the card that starts the first one, or for a role without Create events the ask-an-owner Notice under it, then the three steps. Its step opens a path, or does what it is given. */
 export function EventsFirstRun({
   create,
-  createLabel = 'events.firstRunCreate',
   title,
 }: {
   create: string | (() => void) | undefined;
-  createLabel?: string;
   title?: Ref<HTMLHeadingElement>;
 }) {
   const { t } = useTranslation();
   const createStep =
     typeof create === 'string' ? (
       <Link className="desk-step" to={create}>
-        {t(createLabel)}
+        {t('events.firstRunCreate')}
         <Glyph name="arrow" size={16} weight={2.4} />
       </Link>
     ) : (
-      create != null && <CardStep label={t(createLabel)} onClick={create} />
+      create != null && <CardStep label={t('events.firstRunCreate')} onClick={create} />
     );
 
   return (

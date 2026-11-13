@@ -26,6 +26,7 @@ import {
   Says,
   Tag,
   TextAction,
+  TitleRow,
 } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
@@ -85,11 +86,7 @@ export function GeneralDesk() {
     <DeskPage layers={layers}>
       <div className="desk-column general-desk" inert={covered}>
         {refreshing && <Refreshing />}
-        <header className="desk-top">
-          <h1 ref={title} className="desk-title" tabIndex={-1}>
-            {t('orgGeneral.title')}
-          </h1>
-        </header>
+        <TitleRow title={t('orgGeneral.title')} titleRef={title} />
         <OrganisationCard
           organisation={organisation}
           said={shown}

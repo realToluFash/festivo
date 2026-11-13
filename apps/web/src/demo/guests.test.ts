@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { CLOCKS, sampleEvent } from './events.ts';
@@ -8,18 +11,27 @@ import {
   PARTY,
   WALK_IN,
   WEDDING,
+  closeLine,
   countsOf,
-  guestLineOf,
   guestsCardOf,
   guestsStart,
+  handMarked,
+  haventLine,
+  invitationLine,
+  invitesOn,
   linesOf,
   markInvited,
+  markNotInvited,
+  namedOf,
+  numberMatches,
+  placesTo,
   recordReply,
   replyByOf,
   sampleGuests,
   saveGuest,
   seatedOf,
   valuesOf,
+  viewBase,
   viewOf,
 } from './guests.ts';
 import { GW } from './guestsWords.ts';
@@ -99,12 +111,12 @@ describe('the list (sc-3772)', () => {
       ['notYet', 14, true],
     ]);
     expect(view.groups[0]?.rows.map((row) => [row.person.name, row.indent, row.line])).toEqual([
-      ['Alhaji Musa Bello', false, 'Coming · replied Oct 14 · 1 companion'],
+      ['Alhaji Musa Bello', false, 'Coming · replied Oct 14 · 1 companion · 0 of 1 named'],
       ['Guest of Alhaji Musa Bello', true, 'Coming'],
       ['Amaka Eze', false, 'Coming · replied Oct 13'],
     ]);
     expect(view.groups[1]?.rows.map((row) => row.line)).toEqual([
-      'Not sure yet · asked to decide by Nov 4 · 1 companion',
+      'Not sure yet · asked to decide by Nov 4 · 1 companion · 0 of 1 named',
       'Held · comes only if their host accepts',
       'Not sure yet · asked to decide by Nov 4',
     ]);
@@ -125,7 +137,8 @@ describe('the list (sc-3772)', () => {
     if (view.kind !== 'rows') throw new Error('rows');
     expect(view.rows[0]).toMatchObject({
       line: 'Invited by Folake Adeyemi, WhatsApp, Oct 9',
-      label: 'Dr Emeka Nwosu, No reply, Invited by Folake Adeyemi, WhatsApp, Oct 9',
+      label:
+        'Dr Emeka Nwosu, No reply, Invited by Folake Adeyemi, WhatsApp, Oct 9, Allergy, Dietary notes',
     });
     expect(view.rows.slice(0, 5).map((row) => row.person.name)).toEqual([
       'Dr Emeka Nwosu',
@@ -157,6 +170,92 @@ describe('the list (sc-3772)', () => {
     expect(viewOf(list, 'all', 'nhs.net', NONE, replyBy).shown).toBe(1);
     expect(viewOf(list, 'all', '900412', NONE, replyBy).shown).toBe(1);
     expect(viewOf(list, 'all', 'ines', NONE, replyBy).shown).toBe(2);
+  });
+});
+
+describe('a number, in any form (sc-3772)', () => {
+  const musa = { country: 'NG', number: '803 412 7730' };
+
+  it('matches the national form, the international one, and with or without spaces', () => {
+    expect(numberMatches(musa, '0803 412 7730')).toBe(true);
+    expect(numberMatches(musa, '08034127730')).toBe(true);
+    expect(numberMatches(musa, '+234 803 412')).toBe(true);
+    expect(numberMatches(musa, '412 7730')).toBe(true);
+    expect(numberMatches(musa, '0412 7730')).toBe(false);
+  });
+
+  it('counts only from 3 digits, and never with letters in the box', () => {
+    expect(numberMatches(musa, '80')).toBe(false);
+    expect(numberMatches(musa, 'Table 803')).toBe(false);
+    expect(viewOf(sampleGuests(WEDDING), 'all', '0803 412', NONE, null).shown).toBe(1);
+  });
+});
+
+describe('the card’s words (l10n, 8 Nov)', () => {
+  it('says how many of each have not replied, each number in its own form', () => {
+    const counts = countsOf(sampleGuests(WEDDING));
+
+    expect(haventLine(counts)).toBe('25 haven’t replied (21 guests and 4 companions).');
+    expect(haventLine({ ...counts, havent: 2, haventGuests: 1, haventCompanions: 1 })).toBe(
+      '2 haven’t replied (1 guest and 1 companion).',
+    );
+    expect(haventLine({ ...counts, havent: 1, haventGuests: 1, haventCompanions: 0 })).toBe(
+      '1 hasn’t replied.',
+    );
+  });
+
+  it('says when replies close in one whole sentence per case', () => {
+    expect(closeLine('2026-11-04', '2026-11-04')).toBe('Replies close today.');
+    expect(closeLine('2026-11-04', '2026-11-03')).toBe('Replies close tomorrow, Wed, Nov 4.');
+    expect(closeLine('2026-11-04', '2026-11-01')).toBe('Replies close on Wed, Nov 4.');
+    expect(closeLine('2026-11-04', '2026-11-05')).toBe('Replies closed on Wed, Nov 4.');
+  });
+
+  it('says Everyone has replied at 0, never 0 haven’t replied, and keeps the close line', () => {
+    const wedding = sampleEvent(WEDDING);
+
+    if (wedding == null) throw new Error('wedding');
+    const start = guestsStart('everyoneReplied', new URLSearchParams());
+    const card = guestsCardOf(wedding, start.list, 'live', start.clock, true);
+
+    expect(card).toMatchObject({
+      line: 'Everyone has replied. Replies close tomorrow, Wed, Nov 4.',
+      step: null,
+    });
+  });
+
+  it('opens each close case on the live card', () => {
+    const wedding = sampleEvent(WEDDING);
+
+    if (wedding == null) throw new Error('wedding');
+    const lineOf = (
+      state: 'closesToday' | 'closesLater' | 'repliesClosedLive' | 'noCompanionsWaiting',
+    ) => {
+      const start = guestsStart(state, new URLSearchParams());
+
+      return guestsCardOf(wedding, start.list, start.card, start.clock, true).line;
+    };
+
+    expect(lineOf('closesToday')).toBe(
+      '25 haven’t replied (21 guests and 4 companions). Replies close today.',
+    );
+    expect(lineOf('closesLater')).toBe(
+      '25 haven’t replied (21 guests and 4 companions). Replies close on Wed, Nov 4.',
+    );
+    expect(lineOf('repliesClosedLive')).toBe(
+      '25 haven’t replied (21 guests and 4 companions). Replies closed on Wed, Nov 4.',
+    );
+    expect(lineOf('noCompanionsWaiting')).toBe(
+      '21 haven’t replied. Replies close tomorrow, Wed, Nov 4.',
+    );
+  });
+});
+
+describe('the view in the address (sc-3772)', () => {
+  it('knows what each state opens on before the address says otherwise', () => {
+    expect(viewBase('filtered')).toEqual({ choice: 'noReply', q: '' });
+    expect(viewBase('search')).toEqual({ choice: 'all', q: 'okon' });
+    expect(viewBase(null)).toEqual({ choice: 'all', q: '' });
   });
 });
 
@@ -194,7 +293,7 @@ describe('the card (spec §4)', () => {
 
     expect(card).toMatchObject({
       says: '96 coming of 142 invited',
-      line: '25 haven’t replied (21 guests and 4 of their companions). Replies close tomorrow, Wed, Nov 4.',
+      line: '25 haven’t replied (21 guests and 4 companions). Replies close tomorrow, Wed, Nov 4.',
       step: 'write',
     });
     expect(guestsCardOf(wedding, [], 'live', CLOCKS.rest, true)).toMatchObject({
@@ -226,13 +325,52 @@ describe('the card (spec §4)', () => {
   });
 });
 
-describe('the numbers on Events (sc-23284, sc-3786)', () => {
-  it('reads each event in the tiles’ measure, so the rows add up to the tile', () => {
-    expect(guestLineOf(WEDDING)).toBe('96 coming · 25 haven’t replied');
-    expect(guestLineOf('evt-ireti-2')).toBe('31 coming · 22 haven’t replied');
-    expect(guestLineOf('evt-gala-4')).toBe('64 coming · 35 haven’t replied');
-    expect(guestLineOf(PARTY)).toBe('20 coming · 19 haven’t replied');
-    expect(guestLineOf(DRAFT)).toBeNull();
+describe('invited is a fact with a date and a way (sc-3788)', () => {
+  const list = sampleGuests(WEDDING);
+  const find = (id: string) => {
+    const one = list.find((each) => each.id === id);
+
+    if (one == null) throw new Error(id);
+
+    return one;
+  };
+
+  it('reads the Invitation’s one line: by hand, by Soirely’s message, or from their reply', () => {
+    expect(invitationLine(find('emeka'))).toBe('Invited by Folake Adeyemi, WhatsApp, Oct 9');
+    expect(invitationLine(find('marta'))).toBe('Invited by Soirely’s message, Oct 12');
+    expect(invitationLine(find('ngozi'))).toBe('Invited when they replied, Oct 2');
+    expect(invitationLine(find('bisi'))).toBeNull();
+  });
+
+  it('undoes only a mark made by hand, before they reply', () => {
+    expect(handMarked(find('emeka'))).toBe(true);
+    expect(handMarked(find('marta'))).toBe(false);
+    expect(handMarked(find('ngozi'))).toBe(false);
+    expect(handMarked(find('tomas'))).toBe(false);
+  });
+
+  it('takes the guest and their companion back to Not yet invited, and out of the counts', () => {
+    const counts = countsOf(markNotInvited(list, 'emeka'));
+
+    expect(counts).toMatchObject({ invited: 140, noReply: 20, notYet: 16, havent: 23 });
+  });
+
+  it('allows the mark only while the event is live or happening now', () => {
+    const wedding = sampleEvent(WEDDING);
+    const party = sampleEvent(PARTY);
+    const draft = sampleEvent(DRAFT);
+
+    if (wedding == null || party == null || draft == null) throw new Error('samples');
+    expect(invitesOn(wedding, CLOCKS.rest)).toBe(true);
+    expect(invitesOn(wedding, CLOCKS.now)).toBe(true);
+    expect(invitesOn(wedding, CLOCKS.finished)).toBe(false);
+    expect(invitesOn(party, CLOCKS.rest)).toBe(false);
+    expect(invitesOn(draft, CLOCKS.rest)).toBe(false);
+    expect(guestsCardOf(wedding, list, 'live', CLOCKS.finished, true)).toMatchObject({
+      tags: [{ kind: null, word: 'Finished' }],
+      line: 'This event has finished, so guests can’t be invited.',
+      step: null,
+    });
   });
 });
 
@@ -246,6 +384,49 @@ describe('refused before sending (sc-1468)', () => {
       number: 'That number looks too short for United Kingdom. Check it and try again.',
     });
     expect(linesOf({ ...valuesOf(null), name: 'Bimpe Adeyemi' })).toEqual({});
+  });
+});
+
+describe('places for companions, the host’s side (sc-3779)', () => {
+  const rows = (names: readonly string[]) =>
+    names.map((name, at) => ({ id: name === '' ? null : `c${at}`, name }));
+
+  it('adds unnamed places up to ten, never more', () => {
+    expect(placesTo(rows(['Marc Laurent']), 3)).toEqual({
+      companions: [...rows(['Marc Laurent']), { id: null, name: '' }, { id: null, name: '' }],
+    });
+    expect(placesTo([], 14)).toMatchObject({ companions: { length: 10 } });
+  });
+
+  it('takes unnamed places only, from the end, and refuses once every place left is named', () => {
+    expect(placesTo(rows(['', 'Hauwa Bello', '']), 2)).toEqual({
+      companions: rows(['', 'Hauwa Bello']),
+    });
+    expect(placesTo(rows(['', 'Hauwa Bello', '']), 1)).toEqual({
+      companions: [{ id: 'c1', name: 'Hauwa Bello' }],
+    });
+    expect(placesTo(rows(['Marc Laurent']), 0)).toEqual({ refused: 1 });
+    expect(GW.placesRefused('Sophie Laurent', 1)).toBe(
+      'Sophie Laurent already has 1 named. Remove some first.',
+    );
+  });
+
+  it('counts the places named, and clears Named by the guest once the host edits that name', () => {
+    const list = sampleGuests(WEDDING);
+    const sophie = list.find((one) => one.id === 'sophie');
+
+    if (sophie == null) throw new Error('sophie');
+    expect(namedOf(sophie)).toBe(1);
+    expect(sophie.companions[0]?.namedBy).toBe('guest');
+
+    const kept = saveGuest(list, 'sophie', { ...valuesOf(sophie), email: 'sophie@orange.fr' });
+    const renamed = saveGuest(list, 'sophie', {
+      ...valuesOf(sophie),
+      companions: [{ id: 'sophie-c1', name: 'Marc-Antoine Laurent' }],
+    });
+
+    expect(kept.find((one) => one.id === 'sophie')?.companions[0]?.namedBy).toBe('guest');
+    expect(renamed.find((one) => one.id === 'sophie')?.companions[0]).not.toHaveProperty('namedBy');
   });
 });
 
@@ -286,5 +467,13 @@ describe('every state (spec §15)', () => {
       expect(start.event).toMatch(/^evt-/u);
       expect(JSON.stringify(start)).not.toMatch(/\b(AM|PM)\b/u);
     }
+  });
+});
+
+describe('a companion field (sc-43267)', () => {
+  it('ends a placeholder too long for the field in an ellipsis, on one line', () => {
+    expect(readFileSync(join(import.meta.dirname, 'guests.css'), 'utf8')).toMatch(
+      /\.desk \.gs-companion \.desk-box input \{\s*overflow: hidden;\s*text-overflow: ellipsis;\s*white-space: nowrap;\s*\}/u,
+    );
   });
 });

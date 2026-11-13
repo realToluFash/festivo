@@ -194,8 +194,9 @@ export function hostsRow(event: Omit<SampleEvent, 'photo'>, locale: string): Row
   return productHostsRow(event.hosts, locale, t);
 }
 
-export function needsName(event: SampleEvent): boolean {
-  return event.status !== 'draft';
+/** sc-1468: only a Draft with nobody on its list keeps the plain question; `people` is the Guests header's N, guests and companions together. */
+export function needsName(event: SampleEvent, people: number): boolean {
+  return event.status !== 'draft' || people > 0;
 }
 
 export type Filters = EventsFilters;
@@ -316,6 +317,10 @@ export const LIST_STATES = [
   'longHost',
   'noMatch',
   'noGuests',
+  'replyLands',
+  'noGuestsRead',
+  'tileInvited',
+  'tileReplied',
   'events',
   'eventsFirst',
   'eventsZero',
@@ -429,6 +434,12 @@ export const EVENT_STATES = [
   'venueSuggestions',
   'venueZone',
   'venueDown',
+  'venueNote',
+  'venueNoteTooLong',
+  'venueNoteRefused',
+  'venueNoteForbidden',
+  'noteNoVenue',
+  'noteWide',
   'hosts',
   'hostsDuplicate',
   'hostsSix',
@@ -445,6 +456,7 @@ export const EVENT_STATES = [
   'callOff',
   'endNow',
   'deleteDraft',
+  'deleteDraftGuests',
   'delete',
   'deleteMismatch',
   'deleteTyped',
@@ -501,6 +513,10 @@ export function editOf(state: EventDemoState | null): EditPart | null {
     case 'venueSuggestions':
     case 'venueZone':
     case 'venueDown':
+    case 'venueNote':
+    case 'venueNoteTooLong':
+    case 'venueNoteRefused':
+    case 'venueNoteForbidden':
       return 'venue';
     case 'hosts':
     case 'hostsDuplicate':

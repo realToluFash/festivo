@@ -1,11 +1,13 @@
 import { callingCode, countryChoices } from '@soirely/domain';
-import { type Ref, type RefObject, useMemo } from 'react';
-import { Keyboard, type ViewInstance } from 'react-native';
+import { type RefObject, useMemo } from 'react';
+import { Keyboard, Platform, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { currentLocale } from '../i18n/index.ts';
-import { fieldChecked } from './focusedField.ts';
+import { saidInFullMs } from '../kit/readOut.ts';
+import { fieldChecked, watchMovedOn } from './focusedField.ts';
 import { ListPicker } from './ListPicker.tsx';
+import { SETTLED_MS } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 
 export function CountryPicker({
@@ -33,7 +35,7 @@ export function CountryPicker({
   /** The line about it, where it sits in no Field whose line that is. */
   line?: string | null | undefined;
   /** For moving screen-reader focus here when it is the field refused first. */
-  pickerRef?: Ref<ViewInstance> | undefined;
+  pickerRef?: RefObject<ViewInstance | null> | undefined;
   testID: string;
 }) {
   const { t } = useTranslation();
@@ -73,12 +75,33 @@ function flag(country: string): string {
   return String.fromCodePoint(...[...country].map((letter) => 0x1f1a5 + letter.charCodeAt(0)));
 }
 
-/** A refused Country is no text field: the keyboard closes and the screen reader lands on the picker. With `field`, that Field comes wholly into view: on New event that is any refusal the form focuses, a server's as well as a client check's. */
+/** A refused Country is no text field: the keyboard closes and the screen reader lands on the picker. With `field`, that Field comes wholly into view: on New event that is any refusal the form focuses, a server's as well as a client check's, and the screen reader's move waits for the scroll to land. With `saidFirst`, the words read out with the refusal, it waits until they are said too, as TalkBack's move would cut them off (sc-43907). A field focused or a control taken meanwhile cancels the move, as does what this returns. */
 export function focusPicker(
   picker: RefObject<ViewInstance | null>,
   field?: RefObject<ViewInstance | null>,
-): void {
+  saidFirst?: string,
+): () => void {
   Keyboard.dismiss();
   if (field != null) fieldChecked(true, field.current);
-  moveScreenReaderFocus(picker.current);
+  const waitMs = Math.max(
+    field == null ? 0 : SETTLED_MS,
+    saidFirst == null ? 0 : saidInFullMs(Platform.OS, saidFirst),
+  );
+  if (waitMs === 0) {
+    moveScreenReaderFocus(picker.current);
+    return () => {};
+  }
+
+  const watch = watchMovedOn(() => cancel());
+  watch.settled();
+  const later = setTimeout(() => {
+    watch.stop();
+    moveScreenReaderFocus(picker.current);
+  }, waitMs);
+  function cancel(): void {
+    clearTimeout(later);
+    watch.stop();
+  }
+
+  return cancel;
 }

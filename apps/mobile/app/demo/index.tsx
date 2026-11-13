@@ -14,6 +14,7 @@ import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeade
 import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
+import { SEARCH_BOARDS } from '../../src/demo/search/searchRules.ts';
 import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
 import { GUESTS_BOARDS } from '../../src/demo/guests/GuestsBoards.ts';
 import { PASS_BOARDS } from '../../src/demo/pass/PassBoards.ts';
@@ -34,6 +35,10 @@ interface Board {
 
 /** Every board in the design artifact, by its page, working on sample data. */
 const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
+  {
+    page: '26 · Foundation · Search in A, a command palette (sc-39534)',
+    boards: SEARCH_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
   {
     page: 'Bold text · the weight map',
     boards: BOLD_TEXT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
@@ -1183,6 +1188,31 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events?state=noGuests',
       },
       {
+        title: 'Events · a reply lands',
+        what: 'The wedding’s guest says Coming: 97 coming, 24 haven’t replied, in place',
+        href: '/demo/events?state=replyLands',
+      },
+      {
+        title: 'Events · Guests invited chosen',
+        what: 'The events with invited guests, and Clear',
+        href: '/demo/events?state=tileInvited',
+      },
+      {
+        title: 'Events · Replies in chosen',
+        what: 'The events with guests who haven’t replied, and Clear',
+        href: '/demo/events?state=tileReplied',
+      },
+      {
+        title: 'Events · without guests.read',
+        what: 'No guest numbers anywhere',
+        href: '/demo/events?state=noGuestsRead',
+      },
+      {
+        title: 'An event · Guests from “haven’t replied”',
+        what: 'No reply chosen: 21, under 25 haven’t replied (21 guests and 4 companions)',
+        href: '/demo/events/evt-wed-4?area=guests&filter=noreply',
+      },
+      {
         title: 'An event · loading',
         what: 'The loaded page’s top and tabs, the body as shapes',
         href: '/demo/events/evt-wed-4?state=loading',
@@ -1267,6 +1297,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'An event · Guests',
         what: 'Guests is coming',
         href: '/demo/events/evt-wed-4?area=guests',
+      },
+      {
+        title: 'An event · Guests, once deleted',
+        what: 'Not found, as an event that never existed',
+        href: '/demo/events/evt-wed-4?area=guests&state=eventDeleted',
       },
       {
         title: 'An event · Budget',
@@ -1375,6 +1410,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=venueDown',
       },
       {
+        title: 'Venue · arrival note',
+        what: 'The note under Address, its hint (sc-24385)',
+        href: '/demo/events/evt-wed-4?state=venueNote',
+      },
+      {
+        title: 'Venue · a note of 501',
+        what: 'Refused before sending, focus on the box',
+        href: '/demo/events/evt-wed-4?state=venueNoteTooLong',
+      },
+      {
+        title: 'Venue · the note refused (422)',
+        what: 'The server’s words, in the same place',
+        href: '/demo/events/evt-wed-4?state=venueNoteRefused',
+      },
+      {
+        title: 'Venue · a role changed (403)',
+        what: 'Save: nothing was changed',
+        href: '/demo/events/evt-wed-4?state=venueNoteForbidden',
+      },
+      {
+        title: 'Details · a note and no venue',
+        what: 'Venue to be confirmed, the note, Add the venue',
+        href: '/demo/events/evt-wed-4?state=noteNoVenue',
+      },
+      {
+        title: 'Details · a note of 500, no spaces',
+        what: 'Wraps inside the row',
+        href: '/demo/events/evt-wed-4?state=noteWide',
+      },
+      {
         title: 'Hosted by',
         what: 'The hosts, in order',
         href: '/demo/events/evt-wed-4?state=hosts',
@@ -1447,8 +1512,13 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'Delete the draft?',
-        what: 'The Ask on a draft',
-        href: '/demo/events/evt-draft-4?state=deleteDraft',
+        what: 'The Ask on a draft with nobody on its list',
+        href: '/demo/events/evt-cena-4?state=deleteDraft',
+      },
+      {
+        title: 'Delete a draft with guests',
+        what: 'People on its list: type its name',
+        href: '/demo/events/evt-draft-4?state=deleteDraftGuests',
       },
       { title: 'Delete event', what: 'Type its name', href: '/demo/events/evt-wed-4?state=delete' },
       {

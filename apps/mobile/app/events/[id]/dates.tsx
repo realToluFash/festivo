@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
+import type { OrganisationEvent } from '@soirely/api-client';
 import { useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +8,7 @@ import { AppFrame, BackButton } from '../../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../../src/components/bodyEdges.ts';
 import { Refreshing } from '../../../src/components/Refreshing.tsx';
 import { Screen } from '../../../src/components/Screen.tsx';
+import { useSidebarCard } from '../../../src/components/sidebarCard.ts';
 import { type TextHandle } from '../../../src/components/Text.tsx';
 import { AllDates } from '../../../src/components/Timeline.tsx';
 import { goToArea, goUpToEvent } from '../../../src/kit/upToEvent.ts';
@@ -26,6 +28,8 @@ export default function EventDates() {
   const back = () => goUpToEvent(navigation, router, id);
   const title = useRef<TextHandle>(null);
   const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
+  const [event, setEvent] = useState<OrganisationEvent | null>(null);
+  const card = useSidebarCard(event?.id === id ? event : null);
   const refreshing = offline.refreshing ? (
     <Refreshing testID="timeline.allDates.refreshing" />
   ) : null;
@@ -43,6 +47,7 @@ export default function EventDates() {
       inEvent={{
         area: 'overview',
         onArea: (area) => (area === 'overview' ? back() : goToArea(navigation, router, id, area)),
+        card,
       }}
     >
       <Screen edges={bodyEdges(kind)} contentStyle={styles.content}>
@@ -53,7 +58,14 @@ export default function EventDates() {
             testID="timeline.allDates.back"
           />
         )}
-        <AllDates kind={kind} eventId={id} now={now} heading={title} onOffline={setOffline} />
+        <AllDates
+          kind={kind}
+          eventId={id}
+          now={now}
+          heading={title}
+          onOffline={setOffline}
+          onEvent={setEvent}
+        />
       </Screen>
     </AppFrame>
   );

@@ -1,13 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
+import { peopleOn } from './guests.ts';
 import { KW, kitchenAt, resetKitchen } from './kitchen.ts';
 
 const tested = config();
@@ -77,7 +78,7 @@ describe('Events in A at a desk (sc-30304)', () => {
       expect(await screen.findByRole('heading', { level: 1, name: 'Events' })).toBeDefined();
       expect(router.state.location.pathname).toBe('/demo/events');
       expect(screen.getByRole('heading', { level: 2, name: WEDDING })).toBeDefined();
-      expect(within(main()).getByRole('link', { name: /Ireti at 40/ })).toBeDefined();
+      expect(within(main()).getByRole('link', { name: /^Ireti at 40/ })).toBeDefined();
       expect(screen.getByText('4 events · Sorted by date')).toBeDefined();
     },
   );
@@ -239,11 +240,43 @@ describe('Events in A at a desk (sc-30304)', () => {
       }),
     );
 
-    expect(await screen.findByText('Draft created. Opening it.')).toBeDefined();
+    expect(await screen.findByText('Draft created. Opening it.', {}, WAIT)).toBeDefined();
     expect(router.state.location.pathname).not.toBe('/demo/events/evt-wed-4');
     expect(screen.queryByRole('alertdialog', { name: 'Discard your change?' })).toBeNull();
     expect(screen.getByRole('heading', { level: 1, name: WEDDING })).toBeDefined();
   });
+
+  it(
+    'refuses a copy with no start on the field, and keeps Create draft pressable',
+    SLOW,
+    async () => {
+      const router = await page('/demo/events/evt-wed-4?state=duplicateNoStart');
+      const dialog = await screen.findByRole('dialog', { name: 'Duplicate' });
+      const create = within(dialog).getByRole('button', { name: 'Create draft' });
+
+      expect(create.getAttribute('aria-disabled')).not.toBe('true');
+      expect(within(dialog).getByRole('alert').textContent).toContain(
+        'Choose when the copy starts.',
+      );
+
+      const date = within(dialog).getByLabelText('Starts, Date');
+
+      fireEvent.change(date, { target: { value: '2027-05-15' } });
+      fireEvent.click(create);
+
+      expect(within(dialog).getByRole('alert').textContent).toContain(
+        'Choose the time the copy starts.',
+      );
+      expect(document.activeElement).toBe(within(dialog).getByLabelText('Starts, Time'));
+      expect(router.state.location.pathname).toBe('/demo/events/evt-wed-4');
+
+      fireEvent.change(within(dialog).getByLabelText('Starts, Time'), {
+        target: { value: '16:00' },
+      });
+
+      expect(within(dialog).queryByRole('alert')).toBeNull();
+    },
+  );
 
   it('leaves without a second ask once Delete is confirmed by name', SLOW, async () => {
     const router = await page('/demo/events/evt-wed-4?state=name');
@@ -284,6 +317,53 @@ describe('Events in A at a desk (sc-30304)', () => {
       expect(router.state.location.pathname).toBe('/demo/events');
       expect(within(main()).queryByRole('link', { name: new RegExp(WEDDING) })).toBeNull();
       expect(within(side()).queryByRole('link', { name: WEDDING })).toBeNull();
+    },
+  );
+
+  it(
+    'counts the guest list among what Delete removes, as the Guests header does',
+    SLOW,
+    async () => {
+      await page('/demo/events/evt-wed-4?state=delete');
+      const ask = screen.getByRole('alertdialog', { name: `Delete ${WEDDING}?` });
+      const people = peopleOn('evt-wed-4');
+
+      expect(people).toBeGreaterThan(1);
+      expect(
+        within(ask)
+          .getAllByRole('listitem')
+          .map((item) => item.textContent),
+      ).toEqual([
+        'the event, its details and its schedule',
+        `its guest list, with the ${people} people on it`,
+      ]);
+    },
+  );
+
+  it(
+    'asks for the name of a Draft with people on its list, and not of one without',
+    SLOW,
+    async () => {
+      const draft = 'Bisi & Kola’s engagement';
+      await page('/demo/events/evt-draft-4?state=deleteDraftGuests', draft);
+      const ask = screen.getByRole('alertdialog', { name: `Delete ${draft}?` });
+
+      expect(
+        within(ask).getByRole('textbox', { name: `Type ${draft} to delete it` }),
+      ).toBeDefined();
+      expect(within(ask).getByText('its guest list, with the 12 people on it')).toBeDefined();
+      cleanup();
+
+      const empty = 'Cena benéfica Fundación Lucía';
+      await page('/demo/events/evt-cena-4?state=deleteDraft', empty);
+      const plain = screen.getByRole('alertdialog', { name: `Delete ${empty}?` });
+
+      expect(within(plain).queryByRole('textbox')).toBeNull();
+      expect(
+        within(plain).getByText(
+          'It’s a draft with nobody on its guest list. It will be removed for your whole team.',
+        ),
+      ).toBeDefined();
     },
   );
 

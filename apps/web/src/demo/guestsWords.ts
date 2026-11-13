@@ -20,12 +20,16 @@ export const GW = {
   havent: (count: number) =>
     count === 1 ? '1 hasn’t replied' : `${figure(count)} haven’t replied`,
   whoHavent: (guests: number, companions: number) =>
-    `${guests === 1 ? '1 guest' : `${figure(guests)} guests`} and ${figure(companions)} of their companions`,
+    `${guests === 1 ? '1 guest' : `${figure(guests)} guests`} and ${companions === 1 ? '1 companion' : `${figure(companions)} companions`}`,
+  everyoneReplied: 'Everyone has replied.',
+  closesToday: 'Replies close today.',
   closesTomorrow: (date: string) => `Replies close tomorrow, ${date}.`,
+  closesOn: (date: string) => `Replies close on ${date}.`,
   closedOn: (date: string) => `Replies closed on ${date}.`,
   writeToThem: 'Write to them',
   draftLine: 'Guests can’t be invited until this event is live.',
   pausedLine: 'Guests can’t be invited while this event is paused.',
+  finishedLine: 'This event has finished, so guests can’t be invited.',
   makeLive: 'Make live',
   arrivedOf: (arrived: number, expected: number) => `${figure(arrived)} of ${figure(expected)}`,
   arrived: 'arrived',
@@ -39,8 +43,10 @@ export const GW = {
   clear: 'Clear',
   noMatch: 'No guests match',
   noMatchLine: 'Try a different name, or clear the filters.',
-  showAll: (count: number, word: string) => `Show all ${figure(count)} ${word}`,
+  showAll: (count: number) => `Show all ${figure(count)}`,
   pick: 'Pick a guest to see their details, or add one.',
+  allergy: 'Allergy',
+  dietaryNotes: 'Dietary notes',
   loading: 'Loading…',
   loadFailed: 'We could not load the guests.',
   loadFailedLine: 'Check your connection and try again.',
@@ -48,10 +54,20 @@ export const GW = {
 
   repliedOn: (date: string) => `replied ${date}`,
   askedOn: (date: string) => `asked to decide by ${date}`,
+  willBeAskedAgain: (date: string) => `will be asked again ${date}`,
+  askedAgain: (date: string) => `asked again ${date}`,
+  wontBeAskedAgain: 'won’t be asked again',
   recordedOn: (name: string, how: string, date: string) => `recorded by ${name}, ${how}, ${date}`,
   withWord: (word: string, rest: string) => `${word} · ${rest}`,
   invitedBy: (name: string, how: string, date: string) => `Invited by ${name}, ${how}, ${date}`,
   invitedByMessage: (date: string) => `Invited by Soirely’s message, ${date}`,
+  invitedWhenReplied: (date: string) => `Invited when they replied, ${date}`,
+  markNotInvited: 'Mark as not invited',
+  unmarked: 'Marked as not invited.',
+  unmarkRefused: (name: string, reply: string, date: string) =>
+    `Not changed. ${name} replied ${reply} on ${date}, so they stay invited.`,
+  readOnlyInvited:
+    'You can see names, replies and who is invited. Marking guests as invited needs a host or organiser role.',
   companionCount: (count: number) => (count === 1 ? '1 companion' : `${figure(count)} companions`),
   heldLine: 'Held · comes only if their host accepts',
   guestOf: (host: string) => `Guest of ${host}`,
@@ -87,9 +103,20 @@ export const GW = {
   linkReplaced: (date: string) => `Link replaced ${date}`,
   linkReplacedLine: 'They still hold the old one until you send the new link.',
   notReplaced: 'Not replaced. The old link still works. Try again.',
+  linkReplacedNote: (name: string) =>
+    `Link replaced. ${name}’s old link no longer works. Copy the new one and send it.`,
+  flaggedTitle: 'Their link may have reached the wrong person',
+  flaggedLine: (name: string) =>
+    `Someone who opened ${name}’s link told us it was not meant for them. The reply is unchanged. Replace the link so the old one stops working, then send ${name} the new one.`,
   howInvited: 'How did you invite them?',
   howInvitedBlank: 'Choose how you invited them.',
   markNotSaved: 'Not saved. They are still Not yet invited. Try again.',
+  sendOnWhatsApp: 'Send on WhatsApp',
+  sendOnWhatsAppTo: (name: string) => `Send on WhatsApp to ${name}`,
+  sendLine: 'Opens WhatsApp with their invitation written, for you to send',
+  sentOnWhatsApp: (name: string) => `Sent to ${name} on WhatsApp?`,
+  notSent: 'Not sent',
+  ifNotOpened: 'If WhatsApp didn’t open, use Copy invitation link instead.',
   conversation: 'Their conversation',
   messages: (count: number) => `${figure(count)} messages`,
   conversationLine: 'Parking at The Landmark · SMS · Delivered',
@@ -99,6 +126,7 @@ export const GW = {
   reopened: (name: string, date: string) =>
     `Reply reopened by ${name}, ${date}. They can answer until the event starts.`,
   notFound: 'This guest isn’t on this list',
+  eventGone: 'This event is not available',
   notFoundLine: 'They may have been removed from the list since you opened it.',
   backToGuests: 'Back to guests',
 
@@ -125,13 +153,21 @@ export const GW = {
   country: 'Country',
   keepsLink: 'Changing the email address or mobile number keeps their invitation link as it is.',
   companions: 'Companions',
-  noneYet: (most: number) => `None yet · 0 of ${figure(most)}`,
+  placesFor: 'Places for companions',
+  fewerPlaces: 'Fewer places',
+  morePlaces: 'More places',
+  namedOf: (named: number, places: number) => `${figure(named)} of ${figure(places)} named`,
+  placesRefused: (name: string, named: number) =>
+    `${name} already has ${figure(named)} named. Remove some first.`,
+  thisGuest: 'This guest',
+  namedByGuest: 'Named by the guest',
   ofMost: (count: number, most: number) => `${figure(count)} of ${figure(most)}`,
   companionName: (nth: number, count: number) =>
     `Companion’s full name, ${figure(nth)} of ${figure(count)}`,
-  addCompanion: 'Add a companion',
   remove: 'Remove',
   removeNamed: (name: string) => `Remove ${name}`,
+  removeCompanionOf: (host: string) => `Remove ${host}’s guest`,
+  removeCompanionOfNth: (host: string, nth: number) => `Remove ${host}’s guest · ${figure(nth)}`,
   removed: (name: string) => `${name} removed. Save to keep the change.`,
   removeTitle: (name: string) => `Remove ${name}?`,
   /** The AC's line (sc-3773, 21 Oct): full name, what goes, no pronoun; a seat or a meal alone is a proposal for [en]. */
@@ -230,17 +266,6 @@ export const REPLY_WORDS = {
   held: 'Held',
   notYet: 'Not yet invited',
   walkIn: 'Walk-in',
-} as const;
-
-/** What a group's Show all says after its count. */
-export const SHOW_ALL_WORDS = {
-  coming: 'coming',
-  notSure: 'not sure yet',
-  noReply: 'with no reply',
-  notComing: 'not coming',
-  held: 'held',
-  notYet: 'not yet invited',
-  walkIn: 'walk-ins',
 } as const;
 
 export const CHOICE_WORDS = { all: 'All', invited: 'Invited', ...REPLY_WORDS } as const;

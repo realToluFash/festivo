@@ -25,6 +25,7 @@ import type { DemoLink } from './settings.ts';
 import type { EventKey } from './today.ts';
 import { type Mesh, meshFor } from '../mesh.ts';
 import { SIDE_AREAS, type SideArea } from '../components/eventSideAreas.ts';
+import { ARRIVAL_NOTE } from './arrivalNote.ts';
 
 export interface Venue {
   name: string;
@@ -34,6 +35,8 @@ export interface Venue {
 
 export interface SampleEvent {
   id: string;
+  /** A draft duplicated with its guest list ticked: the event its guests come from (sc-3656). */
+  guestsFrom?: string;
   name: string;
   type: EventType;
   status: EventState;
@@ -42,6 +45,8 @@ export interface SampleEvent {
   timeZone: string;
   concludedAt: string | null;
   venue: Venue | null;
+  /** sc-24385: the host's own words, beside the venue and never inside it, so a note can stand without one. */
+  arrivalNote: string | null;
   hosts: readonly string[];
   currency: Currency;
   mesh: Mesh;
@@ -132,6 +137,7 @@ function sample(
     timeZone,
     concludedAt: null,
     venue,
+    arrivalNote: null,
     hosts,
     currency,
     mesh: meshFor(id),
@@ -151,6 +157,7 @@ const SAMPLE_EVENTS: readonly SampleEvent[] = [
     at('The Landmark', 'London', '222 Marylebone Road, London NW1 6JQ'),
     ['Adaeze Obi', 'Tunde Bakare'],
     'GBP',
+    { arrivalNote: ARRIVAL_NOTE },
   ),
   sample(
     'evt-ireti-2',
@@ -385,7 +392,7 @@ export function forget(id: string): void {
   changed.set(id, null);
 }
 
-export function keepCopy(of: SampleEvent, startsAt: string): SampleEvent {
+export function keepCopy(of: SampleEvent, startsAt: string, withGuests = false): SampleEvent {
   const length = Date.parse(of.endsAt) - Date.parse(of.startsAt);
   const id = `${of.id}-copy-${copies.length + 1}`;
   const copy: SampleEvent = {
@@ -398,6 +405,8 @@ export function keepCopy(of: SampleEvent, startsAt: string): SampleEvent {
     concludedAt: null,
     hosts: [],
   };
+  if (withGuests) copy.guestsFrom = of.id;
+  else delete copy.guestsFrom;
 
   copies = [...copies, copy];
 
@@ -481,6 +490,7 @@ export const EVENT_WORDS = {
   scheduleLocked: 'This event is over, so its start, end and time zone can’t be changed.',
   venue: 'Venue',
   openInMaps: 'Open in maps',
+  addVenue: 'Add the venue',
   hostedBy: 'Hosted by',
   noHosts: 'No hosts yet',
   noHostsLine: 'The event can be made live once it has at least one.',
@@ -510,8 +520,13 @@ export const EVENT_WORDS = {
     'Removes the event and everything in it for your whole team. Guests following its link see that it isn’t available.',
   deleteTitle: (name: string) => `Delete ${name}?`,
   draftBody: 'It’s a draft with nobody on its guest list. It will be removed for your whole team.',
-  removes:
-    'This removes, for your whole team: the event, its details and its schedule. Guests following their link will see that it isn’t available.',
+  removes: 'This removes, for your whole team:',
+  removesEvent: 'the event, its details and its schedule',
+  removesGuests: (people: string, count: number) =>
+    count === 1
+      ? `its guest list, with the ${people} person on it`
+      : `its guest list, with the ${people} people on it`,
+  guestsLink: 'Guests following their link will see that it isn’t available.',
   restoreWindow: (deadline: string) =>
     `If this was a mistake, support can restore it until ${deadline}. After that it’s gone for good.`,
   restoreUntil: 'Monday, Nov 16 at 14:20 GMT',
@@ -521,26 +536,10 @@ export const EVENT_WORDS = {
   keepIt: 'Keep it',
   delete: 'Delete',
   deleted: (name: string) => `${name} was deleted.`,
-  duplicateTitle: (name: string) => `Duplicate ${name}`,
   duplicateLine:
     'Makes a new draft with the same name. Only your team sees it until you make it live.',
-  createDraft: 'Create draft',
-  copied: 'Copied',
-  copiedItems: [
-    'Name',
-    'Type',
-    'Venue',
-    'Cover and its description',
-    'Time zone',
-    'Currency',
-    'Length',
-  ],
-  notCopied: 'Not copied',
-  notCopiedItems: ['Hosts', 'Guests', 'Replies', 'Anything that happened at the event'],
   starts: 'Starts',
   ends: 'Ends',
-  copyEnds: (end: string, hours: string, zone: string) =>
-    `It ends ${end}, ${hours} later, like the original. Times in ${zone}.`,
   created: 'Draft created. Opening it.',
   guestsPage: 'Guests’ page',
   preview: 'Preview the guests’ page',
@@ -846,8 +845,9 @@ export function manageOf(event: SampleEvent, now: Date): Manage[] {
   ];
 }
 
-export function needsName(event: SampleEvent): boolean {
-  return event.status !== 'draft';
+/** sc-1468: only a Draft with nobody on its list keeps the plain question; `people` is the Guests header's N, guests and companions together. */
+export function needsName(event: SampleEvent, people: number): boolean {
+  return event.status !== 'draft' || people > 0;
 }
 
 export function phaseWord(shown: Shown): string {
@@ -987,7 +987,11 @@ export type ListState =
   | 'manyFiltersOpen'
   | 'longHost'
   | 'noMatch'
-  | 'noGuests';
+  | 'noGuests'
+  | 'replyLands'
+  | 'noGuestsRead'
+  | 'tileInvited'
+  | 'tileReplied';
 
 const LIST_STATES: readonly ListState[] = [
   'loading',
@@ -1010,6 +1014,10 @@ const LIST_STATES: readonly ListState[] = [
   'longHost',
   'noMatch',
   'noGuests',
+  'replyLands',
+  'noGuestsRead',
+  'tileInvited',
+  'tileReplied',
 ];
 
 /** guests-a-spec §15 names Events' first run and its 0 for both demos; `first` and `noGuests` are this page's own. */
@@ -1030,6 +1038,11 @@ export interface ListStart {
   menu: 'top' | 'type' | null;
   look: EventsLook | null;
   noGuests: boolean;
+  /** sc-3786: a reply lands on the wedding a moment after the page opens. */
+  replyLands: boolean;
+  /** Without guests.read, no guest numbers anywhere (sc-3786). */
+  readsGuests: boolean;
+  tile: 'invited' | 'replied' | null;
   failed: boolean;
   moreFailed: boolean;
 }
@@ -1055,6 +1068,9 @@ export function listStart(state: ListState | null): ListStart {
     menu: null,
     look: null,
     noGuests: false,
+    replyLands: false,
+    readsGuests: true,
+    tile: null,
     failed: false,
     moreFailed: false,
   };
@@ -1108,6 +1124,14 @@ export function listStart(state: ListState | null): ListStart {
       };
     case 'noGuests':
       return { ...rest, noGuests: true };
+    case 'replyLands':
+      return { ...rest, replyLands: true };
+    case 'noGuestsRead':
+      return { ...rest, readsGuests: false };
+    case 'tileInvited':
+      return { ...rest, tile: 'invited' };
+    case 'tileReplied':
+      return { ...rest, tile: 'replied' };
   }
 }
 
@@ -1127,6 +1151,10 @@ export type EditState =
   | 'venueSuggestions'
   | 'venueZone'
   | 'venueDown'
+  | 'venueNote'
+  | 'venueNoteTooLong'
+  | 'venueNoteRefused'
+  | 'venueNoteForbidden'
   | 'hosts'
   | 'hostsDuplicate'
   | 'hostsSix'
@@ -1152,15 +1180,27 @@ export type LifeState =
   | 'callOff'
   | 'endNow'
   | 'deleteDraft'
+  | 'deleteDraftGuests'
   | 'delete'
   | 'deleteMismatch'
   | 'deleteTyped'
   | 'duplicate'
+  | 'duplicateTicked'
+  | 'duplicateNoGuests'
+  | 'duplicateNoManage'
+  | 'duplicateCreating'
+  | 'duplicateNotCreated'
+  | 'duplicateOverPlan'
+  | 'duplicateOverPlanAsk'
+  | 'duplicateOverCeiling'
+  | 'duplicateNoStart'
   | 'muted'
   | 'muteNotLoaded'
   | 'muteNotSaved';
 
-export type EventStateName = PhaseState | EditState | LifeState | NeedsState;
+export type NoteState = 'noteNoVenue' | 'noteWide' | 'noteMarkup';
+
+export type EventStateName = PhaseState | EditState | LifeState | NeedsState | NoteState;
 
 export const EVENT_STATES: Record<EventStateName, string> = {
   draft: 'evt-draft-4',
@@ -1183,6 +1223,13 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   venueSuggestions: 'evt-wed-4',
   venueZone: 'evt-wed-4',
   venueDown: 'evt-wed-4',
+  venueNote: 'evt-wed-4',
+  venueNoteTooLong: 'evt-wed-4',
+  venueNoteRefused: 'evt-wed-4',
+  venueNoteForbidden: 'evt-wed-4',
+  noteNoVenue: 'evt-wed-4',
+  noteWide: 'evt-wed-4',
+  noteMarkup: 'evt-wed-4',
   hosts: 'evt-wed-4',
   hostsDuplicate: 'evt-wed-4',
   hostsSix: 'evt-wed-4',
@@ -1205,11 +1252,21 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   pause: 'evt-wed-4',
   callOff: 'evt-party-2',
   endNow: 'evt-wed-4',
-  deleteDraft: 'evt-draft-4',
+  deleteDraft: 'evt-cena-4',
+  deleteDraftGuests: 'evt-draft-4',
   delete: 'evt-wed-4',
   deleteMismatch: 'evt-wed-4',
   deleteTyped: 'evt-wed-4',
   duplicate: 'evt-wed-4',
+  duplicateTicked: 'evt-draft-4',
+  duplicateNoGuests: 'evt-cena-4',
+  duplicateNoManage: 'evt-wed-4',
+  duplicateCreating: 'evt-draft-4',
+  duplicateNotCreated: 'evt-draft-4',
+  duplicateOverPlan: 'evt-wed-4',
+  duplicateOverPlanAsk: 'evt-wed-4',
+  duplicateOverCeiling: 'evt-wed-4',
+  duplicateNoStart: 'evt-wed-4',
   muted: 'evt-wed-4',
   muteNotLoaded: 'evt-wed-4',
   muteNotSaved: 'evt-wed-4',
@@ -1250,6 +1307,10 @@ export function partOf(state: EventStateName | null): Part | null {
     case 'venueSuggestions':
     case 'venueZone':
     case 'venueDown':
+    case 'venueNote':
+    case 'venueNoteTooLong':
+    case 'venueNoteRefused':
+    case 'venueNoteForbidden':
       return 'venue';
     case 'hosts':
     case 'hostsDuplicate':
@@ -1374,6 +1435,10 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       list('emptyPast', 'Nothing on Past'),
       list('offline', 'Offline'),
       list('noGuests', 'Nobody invited yet, the guest counts at 0'),
+      list('replyLands', 'A reply lands: 97 coming, 24 haven’t replied, in place'),
+      list('tileInvited', 'Guests invited chosen: the events with invited guests, and Clear'),
+      list('tileReplied', 'Replies in chosen: the events with guests who haven’t replied'),
+      list('noGuestsRead', 'Without guests.read: no guest numbers anywhere'),
     ],
   },
   {
@@ -1437,6 +1502,18 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     ],
   },
   {
+    name: 'The arrival note (sc-24385)',
+    states: [
+      on('venueNote', 'Venue, the arrival note under Address'),
+      on('venueNoteTooLong', 'Venue, a note of 501 characters: refused before sending'),
+      on('venueNoteRefused', 'Venue, the note refused by the server (422)'),
+      on('venueNoteForbidden', 'Venue, a role changed while open (403)'),
+      on('noteNoVenue', 'Details, Venue to be confirmed with a note'),
+      on('noteWide', 'Details, a note of 500 characters with no spaces'),
+      on('noteMarkup', 'Details, markup typed as text'),
+    ],
+  },
+  {
     name: 'Hosts, type, currency, name and cover, in place',
     states: [
       on('hosts', 'Hosted by'),
@@ -1471,11 +1548,21 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('pause', 'Pause'),
       on('callOff', 'Call off'),
       on('endNow', 'End now'),
-      on('deleteDraft', 'Delete a draft'),
+      on('deleteDraft', 'Delete a draft with nobody on its list'),
+      on('deleteDraftGuests', 'Delete a draft with people on its list, type its name'),
       on('delete', 'Delete, type its name'),
       on('deleteMismatch', 'Delete, not a match'),
       on('deleteTyped', 'Delete, the name typed'),
       on('duplicate', 'Duplicate'),
+      on('duplicateTicked', 'Duplicate, the guest list ticked'),
+      on('duplicateNoGuests', 'Duplicate, no guests'),
+      on('duplicateNoManage', 'Duplicate, without guests.manage'),
+      on('duplicateCreating', 'Duplicate, creating'),
+      on('duplicateNotCreated', 'Duplicate, not created'),
+      on('duplicateOverPlan', 'Duplicate, the copy over the plan'),
+      on('duplicateOverPlanAsk', 'Duplicate, the copy over the plan, Ask an owner'),
+      on('duplicateOverCeiling', 'Duplicate, the copy over the ceiling'),
+      on('duplicateNoStart', 'Duplicate, Starts left empty'),
       on('muted', 'Muted'),
       on('muteNotLoaded', 'Mute, not loaded'),
       on('muteNotSaved', 'Mute, not saved'),
@@ -1515,13 +1602,6 @@ export function instantOf(date: string, time: string, timeZone: string): string 
   const instant = guess - offsetAt(guess - offsetAt(guess, timeZone), timeZone);
 
   return new Date(instant).toISOString().replace('.000Z', 'Z');
-}
-
-export function copyStart(event: SampleEvent): Wall {
-  return wallOf(
-    new Date(Date.parse(event.startsAt) + 364 * 86_400_000).toISOString(),
-    event.timeZone,
-  );
 }
 
 export function latestOf(event: SampleEvent): SampleEvent {

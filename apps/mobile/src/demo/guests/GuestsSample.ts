@@ -68,7 +68,11 @@ export interface SampleGuest {
   greetAs?: string | null;
   /** sc-3950: their WhatsApp consent with this organisation; none is Has not agreed to WhatsApp. */
   whatsApp?: WhatsAppConsent;
+  /** sc-1363: when a guest who answered Not sure yet will be, or was, asked again; Not sent: too late is none. */
+  askAgain?: AskAgain | null;
 }
+
+export type AskAgain = { kind: 'will' | 'asked'; day: string } | { kind: 'wont' };
 
 const SOIRELY: Invited = { by: 'Soirely’s message', how: null, day: '2026-10-12' };
 
@@ -143,7 +147,11 @@ export const GUESTS: readonly SampleGuest[] = [
     email: 'marta.silva@gmail.com',
   }),
   guest('nadia', 'Nadia Haddad', 'noreply', { email: 'nadia.haddad@gmail.com' }),
-  guest('ngozi', 'Ngozi Eze', 'coming', { when: '2026-10-02', email: 'ngozi.eze@gmail.com' }),
+  guest('ngozi', 'Ngozi Eze', 'coming', {
+    when: '2026-10-02',
+    email: 'ngozi.eze@gmail.com',
+    invited: null,
+  }),
   guest('seun', 'Oluwaseun Ajayi', 'noreply', {
     phone: '+234 805 667 1209',
     invited: { by: COLLEAGUE, how: 'Text message', day: '2026-10-10' },
@@ -212,6 +220,7 @@ export const WALK_IN: SampleGuest = guest('kofi', KOFI_WALKIN, 'walkin', {
 /** The days and times of each state, as instants (London is on GMT in November). */
 export const CLOCKS = {
   reader: '2026-11-03T09:41:00Z',
+  askAgain: '2026-10-30T09:41:00Z',
   staffEarly: '2026-11-05T14:30:00Z',
   beforeOpen: '2026-11-05T15:20:00Z',
   staffOpen: '2026-11-05T16:05:00Z',

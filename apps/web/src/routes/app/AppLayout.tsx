@@ -16,7 +16,7 @@ import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { LinkedNotice } from '../../components/LinkedNotice.tsx';
 import { NotificationsBell } from '../../components/NotificationsBell.tsx';
-import { OfflineBand, OfflineProvider } from '../../components/OfflineBand.tsx';
+import { OfflineBand, OfflineBox, OfflineProvider } from '../../components/OfflineBand.tsx';
 import { SignInRulesNotices } from '../../components/SignInRulesNotices.tsx';
 import { AccessPaused } from '../../components/AccessPaused.tsx';
 import { Switched } from '../../components/Switched.tsx';
@@ -40,7 +40,8 @@ import { NoOrganisation } from './NoOrganisation.tsx';
 import { heldRegistration } from '../../pendingRegistration.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
-import { PHONE_WIDTH } from '../../phoneWidth.ts';
+import { PHONE_WIDTH, useDeskWidth } from '../../phoneWidth.ts';
+import { DeskTopContext, isBandless, takesOfflineBox } from '../../deskTop.ts';
 import { EventNav, useInsideEvent, useShownEventName } from './events/EventNav.tsx';
 
 /**
@@ -126,6 +127,8 @@ function Shell() {
   const offer = useDomainOffer();
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
   const switchTo = switchOf(location.state);
+  const bandless = useDeskWidth() && isBandless(pathname);
+  const boxed = bandless && takesOfflineBox(pathname);
 
   // Before the first paint, so the first signed-in screen is already in the account's language.
   useLayoutEffect(() => {
@@ -208,6 +211,11 @@ function Shell() {
       <TwoFactorOverdue organisation={organisation} />
     ) : null;
 
+  // Said on the page it happened on, and gone once the person moves on.
+  const said = switched != null && switched.at === pathname && switched.id === organisation?.id && (
+    <Switched name={switched.name} takesFocus={switched.takesFocus === true} />
+  );
+
   // Every product page would open this page again, so it stands alone: only what works without an organisation, the account pages under the same header.
   if (organisation == null && session.pausedIn == null) {
     return (
@@ -260,7 +268,7 @@ function Shell() {
 
   return (
     <OfflineProvider>
-      <div className="shell">
+      <div className={bandless ? 'shell is-bandless' : 'shell'}>
         <SkipLink inert={menuOpen} />
 
         <aside ref={sidebar} className="shell-sidebar" inert={menuOpen}>
@@ -310,37 +318,59 @@ function Shell() {
           </DeskSidebar>
         </aside>
 
-        <header className="shell-band" inert={menuOpen}>
-          <p className="shell-crumb">
-            {organisation?.name ?? session.pausedIn?.name}
-            {/* A screen standing in for the page leaves only the organisation (pm, 2 Nov). */}
-            {standIn == null && (
-              <>
-                <span aria-hidden="true"> / </span>
-                <b>
-                  <Destination />
-                </b>
-              </>
-            )}
-          </p>
-          <NotificationsBell userId={session.userId} />
-          <LanguagePicker automatic={false} pill />
-        </header>
+        {!bandless && (
+          <header className="shell-band" inert={menuOpen}>
+            <p className="shell-crumb">
+              {organisation?.name ?? session.pausedIn?.name}
+              {/* A screen standing in for the page leaves only the organisation (pm, 2 Nov). */}
+              {standIn == null && (
+                <>
+                  <span aria-hidden="true"> / </span>
+                  <b>
+                    <Destination />
+                  </b>
+                </>
+              )}
+            </p>
+            <NotificationsBell userId={session.userId} />
+            <LanguagePicker automatic={false} pill />
+          </header>
+        )}
 
-        <main id="content" className="shell-content" inert={menuOpen}>
-          <OfflineBand />
+        <main
+          id="content"
+          className={bandless ? 'shell-content is-card' : 'shell-content'}
+          inert={menuOpen}
+        >
+          {!boxed && <OfflineBand />}
           <LinkedNotice />
           {organisation != null && session.pausedIn == null && (
             <SignInRulesNotices key={organisation.id} organisation={organisation} />
           )}
-          {/* Said on the page it happened on, and gone once the person moves on. */}
-          {switched != null && switched.at === pathname && switched.id === organisation?.id && (
-            <Switched name={switched.name} takesFocus={switched.takesFocus === true} />
-          )}
+          {!bandless && said}
 
-          <ErrorBoundary>
-            {standIn != null && !atSettings ? standIn : <Outlet context={standIn} />}
-          </ErrorBoundary>
+          <DeskTopContext
+            value={
+              bandless
+                ? {
+                    bell: <NotificationsBell userId={session.userId} desk />,
+                    said,
+                    offline: boxed && <OfflineBox />,
+                  }
+                : NO_DESK_TOP
+            }
+          >
+            <ErrorBoundary>
+              {standIn != null && !atSettings ? (
+                <>
+                  {bandless && said}
+                  {standIn}
+                </>
+              ) : (
+                <Outlet context={standIn} />
+              )}
+            </ErrorBoundary>
+          </DeskTopContext>
         </main>
 
         {menuOpen && <ShellMenu id={menuId} onClose={closeMenu} returnFocus={returnFromMenu} />}
@@ -360,6 +390,8 @@ function Shell() {
     </OfflineProvider>
   );
 }
+
+const NO_DESK_TOP = { bell: null, said: null, offline: null };
 
 const PLACES: readonly (readonly [string, 'today' | 'events' | 'calendar', GlyphName])[] = [
   ['/app', 'today', 'today'],
@@ -416,10 +448,15 @@ function ShellFoot({ onFollow }: { onFollow?: () => void }) {
   const organisation = session.organisation;
   const role = organisation == null ? null : roleName(t, organisation.role);
   const person = { name: session.name, initials: initials(session.name), role };
+  const atAccount = useLocation().pathname.startsWith('/app/account');
 
   return (
     <>
-      <NavLink className={placeLook} to="/app/settings" onClick={onFollow}>
+      <NavLink
+        className={({ isActive }) => placeLook({ isActive: isActive || atAccount })}
+        to="/app/settings"
+        onClick={onFollow}
+      >
         <Glyph name="settings" />
         {t('nav.settings')}
       </NavLink>

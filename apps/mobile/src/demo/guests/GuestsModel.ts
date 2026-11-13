@@ -17,6 +17,7 @@ import {
   READER,
   TODAY,
   WALK_IN,
+  type AskAgain,
   type Companion,
   type GuestLanguage,
   type SampleGuest,
@@ -68,6 +69,11 @@ export const GUEST_STATES = [
   'markRefused',
   'marked',
   'markNotSaved',
+  'invitedByMessage',
+  'invitedWhenReplied',
+  'unmarked',
+  'unmarkRefused',
+  'finished',
   'languageNotSet',
   'languageSet',
   'languageGuestChose',
@@ -80,6 +86,8 @@ export const GUEST_STATES = [
   'whatsAppOptedOut',
   'whatsAppNoMobile',
   'whatsAppViewer',
+  'askAgain',
+  'askAgainWont',
 ] as const;
 
 export const EDIT_STATES = [
@@ -265,7 +273,11 @@ export function clockOf(state: GuestsState | DoorState | null): Date {
     case 'beforeOpen':
       return new Date(CLOCKS.beforeOpen);
     case 'ended':
+    case 'finished':
       return new Date(CLOCKS.ended);
+    case 'askAgain':
+    case 'askAgainWont':
+      return new Date(CLOCKS.askAgain);
     default:
       return new Date(state != null && isIn(DOOR_STATES, state) ? CLOCKS.onTheDay : CLOCKS.reader);
   }
@@ -372,6 +384,10 @@ export const FILTERS: readonly FilterKey[] = [
   'notyet',
 ];
 
+export function guestsFromOf(value: string | undefined): FilterKey | null {
+  return FILTERS.find((key) => key === value) ?? null;
+}
+
 export function filtersFor(counts: Counts): FilterKey[] {
   return counts.walkin > 0
     ? FILTERS.flatMap((key) => (key === 'coming' ? [key, 'walkin'] : [key]))
@@ -424,6 +440,28 @@ export function invitedWords(g: SampleGuest, locale: string): string {
     : say.invitedBy(g.invited.by, g.invited.how, when);
 }
 
+/** The Invitation's one line (sc-3788): by hand, by Soirely's message, or from their reply when nothing earlier was recorded. */
+export function invitationWords(g: SampleGuest, locale: string): string | null {
+  if (g.invited != null) return invitedWords(g, locale);
+  if (g.when != null && g.kind !== 'noreply' && g.kind !== 'notyet')
+    return say.invitedWhenReplied(dayWords(g.when, locale));
+  return null;
+}
+
+/** Mark as not invited undoes only a mark made by hand, and only before they reply (sc-3788). */
+export function handMarked(g: SampleGuest): boolean {
+  return g.invited?.how != null && g.kind === 'noreply';
+}
+
+export function markedNotInvited(g: SampleGuest): SampleGuest {
+  return {
+    ...g,
+    kind: 'notyet',
+    invited: null,
+    companions: g.companions.map((c) => ({ ...c, kind: 'notyet' as const })),
+  };
+}
+
 export function joined(parts: readonly (string | null | undefined)[]): string {
   return parts.filter((part): part is string => part != null && part !== '').join(' · ');
 }
@@ -445,9 +483,22 @@ export function replyParts(
   if (g.kind === 'noreply')
     return { word, detail: short ? null : lowerFirst(invitedWords(g, locale)) };
   if (g.kind === 'notyet') return { word, detail: null };
+  if (g.kind === 'maybe' && g.askAgain != null)
+    return { word, detail: askTail(g.askAgain, locale) };
   if (g.kind === 'maybe' && replyBy != null)
     return { word, detail: say.askedBy(dayWords(replyBy, locale)) };
   return { word, detail: g.when == null ? null : say.repliedOn(dayWords(g.when, locale)) };
+}
+
+function askTail(ask: AskAgain, locale: string): string {
+  switch (ask.kind) {
+    case 'will':
+      return say.willBeAskedAgain(dayWords(ask.day, locale));
+    case 'asked':
+      return say.askedAgain(dayWords(ask.day, locale));
+    case 'wont':
+      return say.wontBeAskedAgain;
+  }
 }
 
 export function replyLine(
@@ -602,7 +653,11 @@ export function cardWords(
   const says = say.says(counts.coming, counts.invited);
   const havent = [
     say.havent(counts.havent, counts.noreply, counts.havent - counts.noreply),
-    replyBy == null ? null : say.closesTomorrow(dayWords(replyBy, locale, true)),
+    replyBy == null
+      ? null
+      : state === 'askAgain' || state === 'askAgainWont'
+        ? say.closesOn(dayWords(replyBy, locale, true))
+        : say.closesTomorrow(dayWords(replyBy, locale, true)),
   ]
     .filter((part) => part != null)
     .join(' ');
@@ -624,6 +679,14 @@ export function cardWords(
         says: say.says(PAUSED_COUNTS.coming, PAUSED_COUNTS.invited),
         count: null,
         line: W.pausedLine,
+        step: null,
+      };
+    case 'finished':
+      return {
+        tags: [{ word: 'Finished', mark: 'finished' }],
+        says,
+        count: null,
+        line: W.finishedLine,
         step: null,
       };
     case 'onTheDay':
@@ -880,6 +943,14 @@ export function countAfter(
 
 export const GUESTS_ON: readonly string[] = [WEDDING, ...Object.values(OWN_SAMPLE)];
 
+/** The Guests header's N for an event, guests and companions together, which Delete event's question counts (sc-1468). */
+export function peopleOn(event: string): number {
+  if (event === WEDDING) return COUNTS.list;
+  if (event === OWN_SAMPLE.draft) return DRAFT_COUNTS.list;
+  if (event === OWN_SAMPLE.paused) return PAUSED_COUNTS.list;
+  return 0;
+}
+
 export function startStateOf(state: GuestsState | null, event: string): GuestsState | null {
   return state ?? ownStateOf(event);
 }
@@ -907,6 +978,12 @@ export const DRAFT: Counts = {
   walkin: 0,
 };
 
+/** On 30 Oct, with Reply by 4 Nov: asked again a week after 16 Oct, and three days before answers close. */
+const ASKS_ON_30_OCT: Readonly<Record<string, AskAgain>> = {
+  folasade: { kind: 'asked', day: '2026-10-23' },
+  lucia: { kind: 'will', day: '2026-11-01' },
+};
+
 export function guestsAt(state: GuestsState | null): SampleGuest[] {
   const swap = (key: string, change: (g: SampleGuest) => SampleGuest) =>
     GUESTS.map((g) => (g.key === key ? change(g) : g));
@@ -923,12 +1000,20 @@ export function guestsAt(state: GuestsState | null): SampleGuest[] {
       return swap('emeka', (g) => recorded(g, 'coming', 'By phone', [true], TODAY));
     case 'marked':
       return swap('bisi', (g) => markedInvited(g, 'WhatsApp', TODAY));
+    case 'unmarked':
+      return swap('emeka', markedNotInvited);
+    case 'unmarkRefused':
+      return swap('seun', (g) => ({ ...g, kind: 'coming', when: TODAY }));
     case 'whatsAppRecorded':
       return swap('kwame', (g) => agreedToWhatsApp(g, 'In person', TODAY));
     case 'saved':
       return swap('kwame', (g) => ({ ...g, email: 'kwame@mensah.co.uk' }));
     case 'greetAsSpaces':
       return swap('bisi', (g) => ({ ...g, greetAs: greetAsSaved('   ') }));
+    case 'askAgain':
+      return GUESTS.map((g) => ({ ...g, askAgain: ASKS_ON_30_OCT[g.key] ?? null }));
+    case 'askAgainWont':
+      return swap('lucia', (g) => ({ ...g, askAgain: { kind: 'wont' } }));
     case 'onTheDay':
     case 'secondDay':
       return [...GUESTS, WALK_IN].sort((a, b) => a.name.localeCompare(b.name));
@@ -990,6 +1075,8 @@ export interface AreaStart {
   replaced: boolean;
   notReplaced: boolean;
   recorded: boolean;
+  /** sc-3788: Mark as not invited landed, or was refused because the guest replied first (409). */
+  unmarked: 'done' | 'refused' | null;
   marked: boolean;
   added: number;
   walkIn: boolean;
@@ -1010,6 +1097,7 @@ const QUIET: AreaStart = {
   replaced: false,
   notReplaced: false,
   recorded: false,
+  unmarked: null,
   marked: false,
   added: 0,
   walkIn: false,
@@ -1030,7 +1118,16 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'notFound':
       return 'emeka';
     case 'recordReplace':
+    case 'invitedWhenReplied':
       return 'ngozi';
+    case 'unmarked':
+      return 'emeka';
+    case 'unmarkRefused':
+      return 'seun';
+    case 'invitedByMessage':
+      return 'marta';
+    case 'finished':
+      return 'bisi';
     case 'notYetInvited':
     case 'linkCopied':
     case 'markAsInvited':
@@ -1048,6 +1145,8 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'languageSet':
       return 'sophie';
     case 'whatsAppGuestAgreed':
+    case 'askAgain':
+    case 'askAgainWont':
       return 'lucia';
     case 'whatsAppOptedOut':
       return 'sophie';
@@ -1132,6 +1231,10 @@ export function areaStart(state: GuestsState | null): AreaStart {
       return { ...base, overlay: 'mark' };
     case 'marked':
       return { ...base, marked: true };
+    case 'unmarked':
+      return { ...base, unmarked: 'done' };
+    case 'unmarkRefused':
+      return { ...base, unmarked: 'refused' };
     default:
       return base;
   }

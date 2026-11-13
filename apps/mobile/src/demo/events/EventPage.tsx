@@ -7,7 +7,8 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { LineIcon } from '../../components/AccountCard.tsx';
-import { EventCard, EventThumb } from '../../components/EventCard.tsx';
+import { EventCard } from '../../components/EventCard.tsx';
+import { EventThumb } from '../../components/EventThumb.tsx';
 import { AcPill, CHANGED, EditScreen } from './EventEdits.tsx';
 import {
   JustForYou,
@@ -52,6 +53,8 @@ import {
   sampleEvent,
 } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
+import { NOTE_WORDS, WIDE_NOTE } from './ArrivalNote.ts';
+import { NoteInset } from './NoteInset.tsx';
 import { datesSaveSays, replyByInTell, replyByRow, replyBySaved } from './ReplyBy.ts';
 import { replyByOf } from '../guests/GuestsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
@@ -75,6 +78,7 @@ import {
   OVERVIEW_STATES,
   clockOf as guestsClock,
   isIn,
+  peopleOn,
 } from '../guests/GuestsModel.ts';
 import { GuestsScreen } from '../guests/GuestsScreen.tsx';
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
@@ -112,10 +116,14 @@ function startEvent(
       endsAt: instantOf(CHANGED.end.date, CHANGED.end.time, event.timeZone),
     };
 
+  if (state === 'noteNoVenue') return { ...event, venue: null };
+  if (state === 'noteWide') return { ...event, arrivalNote: WIDE_NOTE };
+
   return state === 'photo' ? { ...event, photo: true } : event;
 }
 
 function deleteStart(state: EventDemoState | null): DeleteStart | null {
+  if (state === 'deleteDraftGuests') return 'delete';
   return state === 'delete' || state === 'deleteMismatch' || state === 'deleteTyped' ? state : null;
 }
 
@@ -129,6 +137,7 @@ export function EventScreen({
   guests = null,
   budget = null,
   people = null,
+  guestsFrom: figureOpens = null,
   without,
 }: {
   id: string | undefined;
@@ -141,6 +150,8 @@ export function EventScreen({
   budget?: BudgetState | null;
   /** The People card's state on Overview (sc-29914); none is the populated card. */
   people?: CardState | null;
+  /** A figure on Events opens the event's Guests with its choice in the filter menu (sc-3786). */
+  guestsFrom?: FilterKey | null;
   without?: AreaKey | undefined;
 }) {
   const shell = useShell();
@@ -151,15 +162,17 @@ export function EventScreen({
   );
   const [event, setEvent] = useState(() => startEvent(id, state, messages));
   const [at, setAt] = useState<AreaKey>(
-    guests != null
-      ? isIn(OVERVIEW_STATES, guests)
-        ? 'overview'
-        : 'guests'
-      : area == null || area === 'people' || messages === 'tell' || messages === 'tellPlace'
-        ? 'overview'
-        : area,
+    figureOpens != null
+      ? 'guests'
+      : guests != null
+        ? isIn(OVERVIEW_STATES, guests)
+          ? 'overview'
+          : 'guests'
+        : area == null || area === 'people' || messages === 'tell' || messages === 'tellPlace'
+          ? 'overview'
+          : area,
   );
-  const [guestsFrom, setGuestsFrom] = useState<FilterKey | null>(null);
+  const [guestsFrom, setGuestsFrom] = useState<FilterKey | null>(figureOpens);
   const [m, dispatch] = useReducer(reduceReach, null, () => {
     const begun = startOf(messages, shell.layout !== 'phone');
     if (state !== 'datesReplyBySaved') return begun;
@@ -264,7 +277,7 @@ export function EventScreen({
     else if (key === 'pause') setAsk('pause');
     else if (key === 'callOff') setAsk('callOff');
     else if (key === 'endNow') setAsk('endNow');
-    else if (needsName(event)) setDeleting(true);
+    else if (needsName(event, peopleOn(event.id))) setDeleting(true);
     else setAsk('deleteDraft');
   };
   const onAsked = (which: LifeAsk) => {
@@ -547,6 +560,7 @@ export function EventScreen({
           <DeleteScreen
             open={deleting}
             event={event}
+            people={peopleOn(event.id)}
             start={deleteStart(state)}
             opener={opener}
             onClose={() => setDeleting(false)}
@@ -605,11 +619,27 @@ function Details({
         {
           part: 'venue',
           title: shown.venue?.name ?? W.venueToBeConfirmed,
-          line: shown.venue == null ? W.venue : `${W.venue} · ${shown.venue.address}`,
-          opens: true,
+          line: shown.venue?.address ? `${W.venue} · ${shown.venue.address}` : W.venue,
+          opens: shown.venue != null || shown.arrivalNote == null,
           after:
-            shown.venue == null ? undefined : (
-              <TextAction label={W.openInMaps} glyph="globe" onPress={onMaps} testID="event.maps" />
+            shown.arrivalNote == null && !shown.venue?.address ? undefined : (
+              <>
+                {shown.arrivalNote != null && <NoteInset note={shown.arrivalNote} />}
+                {shown.venue == null ? (
+                  <TextAction
+                    label={NOTE_WORDS.addVenue}
+                    onPress={() => onEdit('venue')}
+                    testID="event.addVenue"
+                  />
+                ) : shown.venue.address ? (
+                  <TextAction
+                    label={W.openInMaps}
+                    glyph="globe"
+                    onPress={onMaps}
+                    testID="event.maps"
+                  />
+                ) : null}
+              </>
             ),
         },
         { part: 'hosts', ...hosts, opens: true },

@@ -5,15 +5,14 @@ import {
   type Diet,
   type GuestKitchenWords,
 } from './guestKitchenWords.ts';
+import { type Needs, otherError } from './guestNeeds.ts';
 import type { DemoLink } from './settings.ts';
-
-export const MOST = 100;
 
 export type From = 'answer' | 'changing' | 'closed';
 export type Field = 'other' | 'words' | 'access';
 export const FIELDS: readonly Field[] = ['other', 'words', 'access'];
 
-/** One person's record in sc-3777's shape: the guest (no name, "You") or a companion. Never the hosts' private note. */
+/** One person's answer on the guest's step: the guest (no name, "You") or a companion. Not the record: `recordOf` maps it onto sc-3777's `Needs`. Never the hosts' private note. */
 export interface Person {
   key: string;
   name: string | null;
@@ -60,6 +59,26 @@ function person(key: string, name: string | null, extra: Partial<Person> = {}): 
   };
 }
 
+/** sc-3779: the guest and the companions coming, by name; a person's notes stay with them, and go with whoever left. */
+export function partyPeople(
+  people: readonly Person[],
+  coming: readonly { key: string; name: string }[],
+  record: readonly Person[] | null = null,
+): Person[] {
+  const kept = (key: string, name: string | null) => {
+    const was = people.find((one) => one.key === key) ?? record?.find((one) => one.key === key);
+
+    return was == null ? person(key, name) : { ...was, name };
+  };
+
+  return [kept('me', null), ...coming.map((one) => kept(one.key, one.name))];
+}
+
+/** Skip with nothing recorded: everyone's notes cleared, each person still by name. */
+export function cleared(people: readonly Person[]): Person[] {
+  return people.map((one) => person(one.key, one.name));
+}
+
 export function blankParty(companions: number): Person[] {
   return [
     person('me', null),
@@ -74,6 +93,15 @@ export function whoOf(one: Person, people: readonly Person[], words: GuestKitche
   const companions = people.filter((each) => each.key !== 'me');
 
   return companions.length === 1 ? words.say('yourGuest') : words.nth(companions.indexOf(one) + 1);
+}
+
+/** Skip with a record: the people coming, each from the record by key or blank (sc-3779). */
+export function restored(people: readonly Person[], record: readonly Person[]): Person[] {
+  return people.map((one) => {
+    const was = record.find((each) => each.key === one.key);
+
+    return was == null ? person(one.key, one.name) : { ...was, name: one.name, removed: [] };
+  });
 }
 
 export function fromRecord(record: readonly Person[]): Person[] {
@@ -124,14 +152,24 @@ export function closedKitchen(
 }
 
 export function errorsOf(one: Person): Record<Field, 'empty' | 'long' | null> {
-  const long = (text: string) => (Array.from(text.trim()).length > MOST ? 'long' : null);
-  const other = one.allergies.includes('other')
-    ? one.other.trim() === ''
-      ? 'empty'
-      : long(one.other)
-    : null;
+  const other = one.allergies.includes('other') ? otherError(one.other, true) : null;
 
-  return { other, words: long(one.words), access: long(one.access) };
+  return { other, words: otherError(one.words, false), access: otherError(one.access, false) };
+}
+
+/** sc-3778's AC: "Anything else" is Diet · Other and the access line is Access · Other, each recorded only with words; the host's access codes stay unless removed. */
+export function recordOf(one: Person): Omit<Needs, 'note'> {
+  const kept = trimmed(one);
+  const host = kept.host.filter((code) => !kept.removed.includes(code));
+
+  return {
+    allergies: kept.allergies,
+    otherAllergy: kept.other,
+    diet: kept.words === '' ? kept.diet : [...kept.diet, 'other'],
+    otherDiet: kept.words,
+    access: kept.access === '' ? host : [...host, 'other'],
+    otherAccess: kept.access,
+  };
 }
 
 export function fieldId(field: Field, key: string): string {
@@ -176,11 +214,16 @@ function picksOf(one: Person) {
   ]);
 }
 
-export function changes(kitchen: GuestKitchen): boolean {
-  const before = kitchen.record ?? blankParty(kitchen.people.length - 1);
+/** A person's row as last sent, by key; with nothing sent, a blank row. */
+function sentOf(kitchen: GuestKitchen, one: Person): Person | undefined {
+  return kitchen.record == null
+    ? person(one.key, one.name)
+    : kitchen.record.find((each) => each.key === one.key);
+}
 
-  return kitchen.people.some((one, at) => {
-    const was = before[at];
+export function changes(kitchen: GuestKitchen): boolean {
+  return kitchen.people.some((one) => {
+    const was = sentOf(kitchen, one);
 
     return was == null || picksOf(one) !== picksOf(was);
   });
@@ -188,10 +231,8 @@ export function changes(kitchen: GuestKitchen): boolean {
 
 /** What Send records: each changed person's picks, last changed by the guest today; removed rows gone. */
 export function saved(kitchen: GuestKitchen, today: string): Person[] {
-  const before = kitchen.record ?? blankParty(kitchen.people.length - 1);
-
-  return kitchen.people.map((one, at) => {
-    const was = before[at];
+  return kitchen.people.map((one) => {
+    const was = sentOf(kitchen, one);
     const kept = trimmed(one);
     const host = kept.host.filter((code) => !kept.removed.includes(code));
     const same = was != null && picksOf(one) === picksOf(was);

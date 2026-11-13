@@ -29,7 +29,13 @@ import { useTranslation } from 'react-i18next';
 
 import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
-import { SilentWindowName, useFocusBack, useUnnamedWindow, useWindowTurn } from './Sheet.tsx';
+import {
+  SilentWindowName,
+  WINDOW_ARRIVES_MS,
+  useFocusBack,
+  useUnnamedWindow,
+  useWindowTurn,
+} from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { Toast } from './Toast.tsx';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
@@ -52,9 +58,6 @@ const stay = () => {};
 /** A window taken down with its page is still going for a moment, and iOS loses one put up meanwhile. */
 const going = { until: 0 };
 const GOING_MS = SETTLED_MS * 2;
-
-// onShow comes as an Android window starts to slide or fade in, RN's modal animations run config_shortAnimTime, and TalkBack names the window once it has arrived.
-const WINDOW_ARRIVES_MS = 200;
 
 function useClearOfGoing(): boolean {
   const [clear, setClear] = useState(false);
@@ -123,6 +126,8 @@ function Window({
     </Modal>
   );
 }
+
+export const ASK_WIDTH = 340;
 
 /** An Ask from a page: a dialog in a window of its own, and `over` it a menu it opens, in the same window. */
 export function Ask({

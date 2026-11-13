@@ -74,7 +74,7 @@ final class EventDeletionTest extends ApiTestCase
 
         $preview = $this->as($this->owner, 'GET', '/api/events/' . $id . '/deletion');
         self::assertSame(200, $this->statusCode(), Json\encode($preview));
-        self::assertSame(['needsName' => false, 'restoreClosesAt' => '2026-11-16T13:20:00+00:00', 'restoreCloses' => 'Monday 16 Nov at 14:20 WAT'], $preview);
+        self::assertSame(['needsName' => false, 'people' => 0, 'restoreClosesAt' => '2026-11-16T13:20:00+00:00', 'restoreCloses' => 'Monday 16 Nov at 14:20 WAT'], $preview);
 
         $body = $this->as($this->owner, 'DELETE', '/api/events/' . $id);
 
@@ -177,7 +177,7 @@ final class EventDeletionTest extends ApiTestCase
         $this->as($reader, 'GET', '/api/events/0193f5a8-0000-7000-8000-000000000000');
         $none = [$this->statusCode(), $this->last()['code'] ?? null, $this->last()['detail'] ?? null];
 
-        foreach ([[$reader, 'GET', ''], [$this->owner, 'GET', ''], [$this->owner, 'PATCH', ''], [$this->owner, 'POST', '/end'], [$this->owner, 'GET', '/deletion'], [$this->owner, 'DELETE', ''], [$this->owner, 'PUT', '/cover']] as [$who, $method, $rest]) {
+        foreach ([[$reader, 'GET', ''], [$this->owner, 'GET', ''], [$this->owner, 'PATCH', ''], [$this->owner, 'POST', '/end'], [$this->owner, 'GET', '/deletion'], [$this->owner, 'DELETE', ''], [$this->owner, 'PUT', '/cover'], [$this->owner, 'GET', '/guests'], [$reader, 'GET', '/guests'], [$this->owner, 'POST', '/guests']] as [$who, $method, $rest]) {
             $this->as($who, $method, '/api/events/' . $id . $rest, ['name' => self::NAME]);
             self::assertSame($none, [$this->statusCode(), $this->last()['code'] ?? null, $this->last()['detail'] ?? null], $method . ' ' . $rest);
         }
@@ -326,6 +326,63 @@ final class EventDeletionTest extends ApiTestCase
         self::assertSame([false, false, false], $this->published($photo));
     }
 
+    #[Test]
+    public function aDraftWithAnybodyOnItsListAsksForItsNameTypedAndCountsThem(): void
+    {
+        $id = $this->draft(self::NAME);
+        $this->guest($id, 'Chief Mrs Adaeze Okonkwo-Williams', [null, 'Obi Okonkwo']);
+
+        $preview = $this->as($this->owner, 'GET', '/api/events/' . $id . '/deletion');
+        self::assertSame([true, 3], [$preview['needsName'] ?? null, $preview['people'] ?? null]);
+
+        $this->as($this->owner, 'DELETE', '/api/events/' . $id);
+        self::assertSame(422, $this->statusCode());
+        self::assertSame("Type Amara & Tobi's wedding exactly as shown to delete it.", $this->violation('name'));
+        $this->delete($id, 'Amara & Tobi wedding');
+        self::assertSame(422, $this->statusCode());
+
+        $this->delete($id, self::NAME);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function aDeletedEventsGuestsComeBackWithARestoreAsTheyWere(): void
+    {
+        $id = $this->live(self::NAME);
+        $this->guest($id, 'Bisi Adewale', ['Tunde Adewale']);
+        $before = $this->as($this->owner, 'GET', '/api/events/' . $id . '/guests');
+        $this->delete($id, self::NAME);
+
+        $this->as($this->owner, 'GET', '/api/events/' . $id . '/guests');
+        self::assertSame(404, $this->statusCode());
+        self::assertSame(2, $this->guestRows($id), 'the delete marks only the event');
+
+        $this->restore($id, 'Adaeze from support');
+
+        self::assertSame($before, $this->as($this->owner, 'GET', '/api/events/' . $id . '/guests'));
+    }
+
+    #[Test]
+    public function thePurgeLeavesNoGuestAndNoNameInTheAuditLog(): void
+    {
+        $id = $this->draft(self::NAME);
+        $kept = $this->draft('Kept');
+        $this->guest($id, 'Bisi Adewale', ['Tunde Adewale'], 'bisi@example.com');
+        $this->guest($kept, 'Kemi Bello', []);
+        $this->delete($id, self::NAME);
+
+        self::mockTime(new DateTimeImmutable('2026-11-16T13:20:00+00:00'));
+        self::em()->clear();
+        self::assertSame(1, self::service(Pruner::class)->prune());
+
+        self::assertSame(0, $this->guestRows($id));
+        self::assertSame(1, $this->guestRows($kept));
+        $logged = Type\string()->coerce(self::em()->getConnection()->fetchOne("SELECT COALESCE(string_agg(changes::text || ' ' || COALESCE(actor_label, ''), ' '), '') FROM audit_entries"));
+        foreach (['Bisi', 'Tunde', 'bisi@example.com'] as $personal) {
+            self::assertStringNotContainsString($personal, $logged);
+        }
+    }
+
     private function draft(string $name): string
     {
         $body = $this->as($this->owner, 'POST', $this->path('/events'), ['name' => $name, 'type' => 'wedding', 'startsAt' => '2030-11-14T16:00', 'endsAt' => '2030-11-15T02:00', 'timeZone' => 'Africa/Lagos', 'currency' => 'NGN']);
@@ -386,6 +443,22 @@ final class EventDeletionTest extends ApiTestCase
         } catch (RuntimeException $refused) {
             self::assertStringContainsString($because, $refused->getMessage());
         }
+    }
+
+    /** @param list<?string> $companions */
+    private function guest(string $eventId, string $name, array $companions, ?string $email = null): void
+    {
+        $body = $this->as($this->owner, 'POST', '/api/events/' . $eventId . '/guests', [
+            'fullName' => $name,
+            'email' => $email,
+            'companions' => Vec\map($companions, static fn (?string $companion): array => ['fullName' => $companion]),
+        ]);
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+    }
+
+    private function guestRows(string $eventId): int
+    {
+        return Type\int()->coerce(self::em()->getConnection()->fetchOne('SELECT COUNT(*) FROM guests WHERE event_id = :id', ['id' => $eventId]));
     }
 
     private function deletedAtOf(string $id): ?string

@@ -51,6 +51,7 @@ onFlowComplete:
                   env:
                     ID: 'account\..+\.remove'
 ---
+- evalScript: '${output.removed = false}'
 - evalScript: "${output.email = 'sc35661.' + Date.now() + '@soirely.test'}"
 - openLink: ${METRO_URL}/--/settings/account
 - extendedWaitUntil:

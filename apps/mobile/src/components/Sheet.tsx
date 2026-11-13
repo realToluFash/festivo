@@ -483,6 +483,9 @@ export function useUnnamedWindow(
   return hides && waiting;
 }
 
+// onShow comes as an Android window starts to slide or fade in, RN's modal animations run config_shortAnimTime, and TalkBack names the window once it has arrived.
+export const WINDOW_ARRIVES_MS = 200;
+
 // U+200B: a name TalkBack speaks as nothing.
 const SILENT = '\u200b';
 

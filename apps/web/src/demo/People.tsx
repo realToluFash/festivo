@@ -51,6 +51,7 @@ import './today.css';
 import '../components/SettingsParts.css';
 import '../routes/app/events/people.css';
 import './people.css';
+import { DeskSearch, SearchRow } from './Search.tsx';
 
 const RETRY_MS = 1200;
 
@@ -210,24 +211,26 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
   return (
     <LayersContext value={layers}>
       <div className="today desk">
-        <EventSidebar viewer={viewer} place={place} tell={tell} inert={covered} />
-        <main id="content" className="desk-main" inert={covered}>
-          <div className="desk-page">
-            <div className="desk-column">
-              <header className="desk-top">
-                <div className="people-title">
-                  <h1 className="desk-title" tabIndex={-1}>
-                    People
-                  </h1>
-                  <p className="desk-line">{place.event}</p>
-                </div>
-                <DemoBell tell={tell} />
-              </header>
-              {page}
+        <DeskSearch tell={tell}>
+          <EventSidebar viewer={viewer} place={place} tell={tell} inert={covered} />
+          <main id="content" className="desk-main" inert={covered}>
+            <div className="desk-page">
+              <div className="desk-column">
+                <header className="desk-top">
+                  <div className="people-title">
+                    <h1 className="desk-title" tabIndex={-1}>
+                      People
+                    </h1>
+                    <p className="desk-line">{place.event}</p>
+                  </div>
+                  <DemoBell tell={tell} />
+                </header>
+                {page}
+              </div>
             </div>
-          </div>
-        </main>
-        <div ref={setHost} className="desk-layers" />
+          </main>
+          <div ref={setHost} className="desk-layers" />
+        </DeskSearch>
         {person != null && opened != null && (
           <RoleDialog
             key={opened.visit}
@@ -371,16 +374,7 @@ function EventSidebar({
         <span className="today-grow">{place.organisation}</span>
         <Glyph name="updown" size={15} />
       </button>
-      <button
-        type="button"
-        className="today-search"
-        aria-keyshortcuts="Meta+K Control+K"
-        onClick={() => tell('Search has its own design.')}
-      >
-        <Glyph name="search" size={16} />
-        <span className="today-grow">Search</span>
-        <kbd className="today-key">⌘K</kbd>
-      </button>
+      <SearchRow />
       <div className="people-event">
         <Link className="today-place people-back" to="/demo/today">
           <Glyph name="back" size={17} weight={2.4} />

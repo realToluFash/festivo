@@ -1,4 +1,4 @@
-import { ApiError, type TaggedEvent } from '@soirely/api-client';
+import { ApiError, type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
 import { roleHolds } from '@soirely/domain';
 import { Redirect, router, useNavigation } from 'expo-router';
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
@@ -34,6 +34,7 @@ import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Screen } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { Arrived, Skeleton } from './Skeleton.tsx';
+import { useSidebarCard } from './sidebarCard.ts';
 import type { EditAt } from '../kit/eventNav.ts';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'notFound' } | TaggedEvent;
@@ -80,6 +81,8 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
   const navigation = useNavigation();
   const title = useRef<TextHandle>(null);
   const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
+  const [event, setEvent] = useState<OrganisationEvent | null>(null);
+  const card = useSidebarCard(event);
 
   return (
     <FormFrame
@@ -95,6 +98,7 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
           area === 'overview'
             ? goUpToEvent(navigation, router, eventId)
             : goToArea(navigation, router, eventId, area),
+        card,
       }}
     >
       <EditEventLoad
@@ -104,6 +108,7 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
         kind={kind}
         heading={title}
         onOffline={setOffline}
+        onEvent={setEvent}
       />
     </FormFrame>
   );
@@ -115,12 +120,15 @@ function EditEventLoad({
   kind,
   heading,
   onOffline,
+  onEvent,
 }: {
   eventId: string;
   at: EditAt | undefined;
   kind: LayoutKind;
   heading: RefObject<TextHandle | null>;
   onOffline: (offline: ScreenOffline) => void;
+  /** The event as read, for the iPad sidebar's card (sc-30413). */
+  onEvent: (event: OrganisationEvent | null) => void;
 }) {
   const { t } = useTranslation();
   const { organisation } = useSignedIn();
@@ -139,6 +147,9 @@ function EditEventLoad({
   });
 
   useHandOffline(onOffline, { stale, refreshing });
+
+  const read = 'event' in load ? load.event : null;
+  useEffect(() => onEvent(read), [read, onEvent]);
 
   // Once the form shows, a load only asks whether Soirely answers: the form and the tag it saves against stay as opened (Decided, 2 Nov).
   useEffect(() => {

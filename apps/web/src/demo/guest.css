@@ -663,6 +663,19 @@
   font-size: 15px;
 }
 
+/* sc-24385: the host's note, in an inset under the Where line, its line breaks kept */
+.gp-note {
+  margin: 4px 0 12px 40px;
+  padding: 12px 14px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 14px;
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 400 16px/1.5 var(--fontFamily);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
 .gp-filled,
 .gp-outlined {
   display: flex;
@@ -1416,6 +1429,7 @@
 }
 
 .gp-main.is-two .gp-columns {
+  display: block;
   position: relative;
   width: calc(var(--gpLeft) + var(--gpGap) + var(--gpRight));
   min-height: calc(var(--gpCoverH, var(--gpMin)) + var(--gpLeftGap) + var(--gpDetailsH, 0px));
@@ -1469,6 +1483,7 @@
   left: 0;
   width: var(--gpLeft);
   margin-left: 0;
+  margin-top: 0;
 }
 
 .is-two .gp-columns > .gp-left {

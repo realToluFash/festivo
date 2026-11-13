@@ -57,5 +57,6 @@ export * from './notificationSettings.ts';
 export * from './accountName.ts';
 export * from './statusLook.ts';
 export * from './roomSize.ts';
+export * from './nameKey.ts';
 export * from './seatingSections.ts';
 export * from './titleLines.ts';

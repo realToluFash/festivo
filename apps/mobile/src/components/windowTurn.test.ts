@@ -96,7 +96,9 @@ describe('a focused screen whose title takes focus with each new step (sc-11032)
   });
 
   it('stays hidden as it opens until its slide or fade has ended, so TalkBack has no title to name it by (#40692)', () => {
-    expect(screen).toContain('const WINDOW_ARRIVES_MS = 200;');
+    const sheet = readFileSync(join(import.meta.dirname, 'Sheet.tsx'), 'utf8');
+
+    expect(sheet).toContain('export const WINDOW_ARRIVES_MS = 200;');
     expect(screen).toMatch(/animationType=\{reduced \? 'none' : slides \? 'slide' : 'fade'\}/);
   });
 
@@ -110,7 +112,7 @@ describe('a focused screen whose title takes focus with each new step (sc-11032)
   it('takes that silent name from the sheet, above every other text in the window', () => {
     const sheet = readFileSync(join(import.meta.dirname, 'Sheet.tsx'), 'utf8');
 
-    expect(screen).toMatch(/import \{ SilentWindowName,[^}]*\} from '\.\/Sheet\.tsx';/);
+    expect(screen).toMatch(/import \{\s*SilentWindowName,[^}]*\} from '\.\/Sheet\.tsx';/);
     expect(sheet).toContain("const SILENT = '\\u200b';");
     expect(sheet).toMatch(/windowName: \{ position: 'absolute', top: -1,/);
   });
@@ -167,5 +169,95 @@ describe('Create an organisation on Android, where a native animation’s end ca
   it('has fadeAway call gone at most once, and never after its cancel', () => {
     expect(motion).toContain('if (done) return;');
     expect(motion).toMatch(/return \(\) => \{\s+done = true;\s+clearTimeout\(lost\);/);
+  });
+});
+
+describe('a window that opens through a Modal of its own (sc-42690)', () => {
+  const read = (file: string) => readFileSync(join(import.meta.dirname, file), 'utf8');
+
+  it.each(['OrgDropDown.tsx', 'CalendarOverlays.tsx', 'CreateWalkWindow.tsx', 'ListPicker.tsx'])(
+    'in %s, names its Android window by a text TalkBack speaks as nothing, above every other text in it',
+    (file) => {
+      const text = read(file);
+
+      expect(text).toMatch(/import \{\s*SilentWindowName,[^}]*\} from '\.\/Sheet\.tsx';/);
+      expect(text).toMatch(/\n\s*>\s*\{Platform\.OS === 'android' && <SilentWindowName \/>\}/);
+      expect(text.match(/<SilentWindowName \/>/g)).toHaveLength(1);
+    },
+  );
+
+  describe('a list picker’s menu', () => {
+    const picker = read('ListPicker.tsx');
+
+    it('hides on Android through the sheet’s own wait, from when its window is up until it has slid in', () => {
+      expect(picker).toContain('onShow={risen}');
+      expect(picker).toContain('const onScreen = windowUp && pickerShown;');
+      expect(picker).toMatch(
+        /useUnnamedWindow\(\s*Platform\.OS === 'android' && pickerShown,\s*onScreen,\s*null,\s*reduced \? 0 : WINDOW_ARRIVES_MS,?\s*\)/,
+      );
+      expect(picker).toContain(
+        "importantForAccessibility={unnamed ? 'no-hide-descendants' : 'auto'}",
+      );
+    });
+
+    it('slides inside a window already in place on Android, never as a window sliding (qa #42888)', () => {
+      expect(picker).toContain("const SLIDES_INSIDE = Platform.OS === 'android';");
+      expect(picker).toContain("animationType={SLIDES_INSIDE ? 'none' : 'slide'}");
+      expect(picker).toContain('const windowShown = useModalOpen(open || windowUp);');
+      expect(picker).toContain('visible={windowShown}');
+      expect(picker).toContain('SLIDES_INSIDE && { transform: [{ translateY: slide }] }');
+      expect(picker).toContain('const gone = setTimeout(() => setWindowUp(false), duration);');
+    });
+
+    it('moves TalkBack’s focus to its title once revealed, on Android only', () => {
+      expect(picker).toMatch(
+        /useFocusOnAnswer\(\s*Platform\.OS === 'android' && onScreen && !unnamed \? true : undefined,\s*heading,\s*0,?\s*\)/,
+      );
+      expect(picker).toMatch(/<Text\s+ref=\{heading\}[^>]*accessibilityRole="header"/);
+    });
+
+    it('hands TalkBack back to the picker however the menu closes, on Android only (sc-43908)', () => {
+      expect(picker).toMatch(
+        /const close = \(\) => \{\s*if \(Platform\.OS === 'android'\) setClosed\(\{\}\);\s*setOpen\(false\);\s*\};/,
+      );
+      expect(picker.match(/setOpen\(false\)/g)).toHaveLength(1);
+      expect(picker.match(/setClosed\(\{\}\)/g)).toHaveLength(1);
+      expect(picker).toContain('onRequestClose={close}');
+      expect(picker).toContain('onAccessibilityEscape={close}');
+      expect(picker).toMatch(/onPress=\{close\}[^>]*testID=\{`\$\{testID\}\.close`\}/);
+      expect(picker).toMatch(/onChange\(item\.code\);[^}]*\bclose\(\);/);
+      expect(picker).toContain('useSystemBack(open, close);');
+      expect(picker).toContain('useFocusOnAnswer(windowShown ? undefined : closed, field);');
+    });
+
+    it('draws only the rows in sight until its title has taken focus, under TalkBack on Android (qa2 #43597)', () => {
+      expect(picker).toMatch(
+        /useListFilling\(\s*Platform\.OS === 'android' && readerOn,\s*windowShown,\s*onScreen && !unnamed,?\s*\)/,
+      );
+      expect(picker).toContain('windowSize={listFilling ? 1 : undefined}');
+      expect(picker).toContain('const fill = setTimeout(() => setFilled(true), SETTLED_MS);');
+      expect(picker).toContain('if (!up && filled) setFilled(false);');
+    });
+  });
+
+  it('opens the switcher from TalkBack’s double tap without a click, on Android only (qa2 #43597)', () => {
+    const pill = read('OrgPill.tsx');
+
+    expect(pill).toContain('{...quietTap(onPress, expanded)}');
+    expect(pill).toContain(
+      "if (Platform.OS !== 'android' || onPress == null || expanded == null) return {};",
+    );
+    expect(pill).toContain("if (event.nativeEvent.actionName === 'activate') onPress();");
+  });
+
+  it('has Create an organisation’s first field take TalkBack’s focus before the keys (qa2 #43597)', () => {
+    const walk = read('CreateWalkWindow.tsx');
+    const focus = read('screenReaderFocus.ts');
+
+    expect(walk).toContain("if (opening.focus === 'search') cancelKeys = focusReadOnce(search);");
+    expect(walk).toContain("else if (opening.focus === 'name') cancelKeys = focusReadOnce(field);");
+    expect(focus).toMatch(
+      /moveScreenReaderFocus\(input\.current\);\s+keys = setTimeout\(\(\) => input\.current\?\.focus\(\), HOVER_LANDS_MS\);/,
+    );
   });
 });

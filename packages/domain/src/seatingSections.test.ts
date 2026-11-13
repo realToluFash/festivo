@@ -1,12 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { leastUsedColour, sectionHoldingName, sectionNameKey } from './seatingSections.ts';
+import { leastUsedColour, sectionHoldingName } from './seatingSections.ts';
 
 describe('seating sections', () => {
-  it('reads a name without its case, accents or extra spaces', () => {
-    expect(sectionNameKey('  TÉRRACE   Bar ')).toBe('terrace bar');
-  });
-
   it('names the section that holds a name, leaving out the one being renamed', () => {
     const sections = [
       { id: 'a', name: 'Terrace' },

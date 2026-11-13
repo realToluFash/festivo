@@ -37,6 +37,7 @@ import {
   Head,
   RedAction,
   RowWords,
+  TitleRow,
 } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree, useDeskLayers } from '../../../layers.ts';
@@ -424,11 +425,7 @@ export function SecurityDesk() {
     <DeskPage layers={layers}>
       <div className="desk-column account-desk" inert={covered}>
         {refreshing && <Refreshing />}
-        <header className="desk-top">
-          <h1 ref={title} className="desk-title" tabIndex={-1}>
-            {t('account.sectionSecurity')}
-          </h1>
-        </header>
+        <TitleRow title={t('account.sectionSecurity')} titleRef={title} />
         {status == null ? (
           <SaidLine
             alone

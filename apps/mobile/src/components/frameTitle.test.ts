@@ -40,8 +40,8 @@ describe('a phone’s header title inside an event (sc-30413)', () => {
   it('on the Overview, hands the card’s name the focus the frame’s title had', () => {
     const screen = readFileSync(EVENT_SCREEN, 'utf8');
 
-    expect(screen).toMatch(/const untitled = phone && area === 'overview';/u);
+    expect(screen).toMatch(/const top = eventTop\(kind, area, opened\.kind\);/u);
     expect(screen).toMatch(/moveScreenReaderFocus\(cardName\.current \?\? title\.current\)/u);
-    expect(screen).toMatch(/nameRef=\{untitled \? cardName : undefined\}/u);
+    expect(screen).toMatch(/nameRef=\{cardNamed \? cardName : undefined\}/u);
   });
 });

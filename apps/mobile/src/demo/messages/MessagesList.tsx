@@ -5,7 +5,7 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { EventThumb } from '../../components/EventCard.tsx';
+import { EventThumb } from '../../components/EventThumb.tsx';
 import { meshFor } from '../../kit/today.ts';
 import { Avatar, Pill } from '../../components/SettingsParts.tsx';
 import {

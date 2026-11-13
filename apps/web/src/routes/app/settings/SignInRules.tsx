@@ -20,6 +20,7 @@ import {
   Says,
   Tag,
   TextAction,
+  TitleRow,
 } from '../../../components/SettingsParts.tsx';
 import { RuleMark, RulesBones } from '../../../components/SignInRulesParts.tsx';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
@@ -194,11 +195,7 @@ function RulesDesk({ organisation }: { organisation: Membership }) {
     <DeskPage layers={layers}>
       <div className="desk-column" inert={covered}>
         {refreshing && <Refreshing />}
-        <header className="desk-top">
-          <h1 ref={title} className="desk-title" tabIndex={-1}>
-            {t('signInRules.title')}
-          </h1>
-        </header>
+        <TitleRow title={t('signInRules.title')} titleRef={title} />
         {load.kind === 'loading' && <RulesBones words={t('signInRules.loading')} />}
         {load.kind === 'failed' && (
           <div className="desk-failed" role={load.retried ? undefined : 'alert'}>
