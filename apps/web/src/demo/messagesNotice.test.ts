@@ -117,7 +117,7 @@ describe('a guest’s conversation, its refusals and waits (sc-3976)', () => {
       'Has not agreed to WhatsApp',
       'WhatsApp message unavailable in Spanish',
       'Stopped WhatsApp',
-      'Texted STOP',
+      'Stopped texts',
       'Address is bouncing',
       'Reported an earlier email as spam',
       'Unsubscribed',

@@ -56,14 +56,15 @@ import { INVITE_STATES } from './messagesInvite.ts';
 import { NOTICE_STATES } from './messagesNotice.ts';
 import { TELL_STATES } from './messagesTellStates.ts';
 import { WAITS_STATES } from './messagesWaits.ts';
+import { SMS_STATES } from './messagesSms.ts';
 
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
 describe('Messaging B · Conversations, the rules (sc-31371)', () => {
-  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 9, sc-3950’s 3, sc-3954’s 6, sc-3976’s 17, sc-3971’s 16, sc-45251’s 14, sc-3978’s 6 and sc-4330’s 39, in order, each linked once from the demo home', () => {
+  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 9, sc-3950’s 3, sc-3954’s 6, sc-3976’s 17, sc-3971’s 16, sc-3946’s 7, sc-45251’s 14, sc-3978’s 6 and sc-4330’s 39, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(210);
+    expect(keys).toHaveLength(217);
     expect(keys.slice(99, 102)).toEqual(['whatsAppLine', 'checkWhatsApp', 'whatsAppRead']);
     expect(keys.slice(102, 108)).toEqual([
       'channelsWrite',
@@ -76,7 +77,8 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     expect(keys.slice(108, 118)).toEqual(WAITS_STATES.map((one) => one.key));
     expect(keys.slice(118, 135)).toEqual(NOTICE_STATES.map((one) => one.key));
     expect(keys.slice(135, 151)).toEqual(INVITE_STATES.map((one) => one.key));
-    expect(keys.slice(171)).toEqual(TELL_STATES.map((one) => one.key));
+    expect(keys.slice(151, 158)).toEqual(SMS_STATES.map((one) => one.key));
+    expect(keys.slice(178)).toEqual(TELL_STATES.map((one) => one.key));
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
     expect(keys.slice(6, 10)).toEqual([
       'channelReply',
@@ -102,7 +104,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'editCancelled',
       'editTooLate',
     ]);
-    expect(new Set(keys).size).toBe(210);
+    expect(new Set(keys).size).toBe(217);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );
@@ -523,7 +525,7 @@ describe('Who it reached, its fixes, the filter and a resend (sc-3966)', () => {
       still: 8,
       cant: [
         'Joaquín Ruiz · No email address · No phone number',
-        'Sophie Laurent · Unsubscribed · Texted STOP',
+        'Sophie Laurent · Unsubscribed · Stopped texts',
       ],
       credits: 2,
     });

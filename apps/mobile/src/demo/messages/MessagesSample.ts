@@ -41,7 +41,13 @@ export type PersonKey =
   | 'ines'
   | 'lucia'
   | 'duboise'
-  | 'rafael';
+  | 'rafael'
+  | 'chidi'
+  | 'ana'
+  | 'hana'
+  | 'mateo'
+  | 'lea'
+  | 'joao';
 export type ManyKey = 'parking' | 'invite' | 'receipts' | 'change';
 export type ToGroup = 'all' | 'coming' | 'notReplied';
 export type Token = 'Greeting' | 'Event' | 'Date' | 'Hosts';
@@ -201,7 +207,7 @@ export const TO_FIGURES: Record<
 export const CANT_TELL: Record<ToGroup, readonly string[]> = {
   all: [
     `Tomás Ferreira · ${W.addressBouncing} · ${W.noPhone}`,
-    `Sophie Laurent · ${W.unsubscribed} · ${W.textedStop}`,
+    `Sophie Laurent · ${W.unsubscribed} · ${W.stoppedTexts}`,
   ],
   coming: [
     `Tomás Ferreira · ${W.addressBouncing} · ${W.noPhone}`,
@@ -283,7 +289,7 @@ const EMAIL_OUT: ReachLine = {
 const SMS_OUT: ReachLine = {
   mark: 'optout',
   word: say.where(CHANNEL_WORD.sms, W.notSent),
-  reason: W.textedStop,
+  reason: W.stoppedTexts,
 };
 
 export type GroupKey =
@@ -479,6 +485,70 @@ export const WHATSAPP: Record<
   coming: { reaches: ['lucia', 'kwame', 'rafael'], noMobile: 65, stopped: 1, notAgreed: 27 },
   notReplied: { reaches: ['duboise'], noMobile: 16, stopped: 0, notAgreed: 8 },
 };
+
+/** SMS per To (sc-3946): everyone it can text, WhatsApp ticked or not, and why the rest can't be. */
+export const SMS: Record<ToGroup, { reaches: number; noMobile: number; stopped: number }> = {
+  all: { reaches: 39, noMobile: 102, stopped: 1 },
+  coming: { reaches: 31, noMobile: 65, stopped: 0 },
+  notReplied: { reaches: 9, noMobile: 16, stopped: 0 },
+};
+
+export interface Mobile {
+  name: string;
+  phone: string;
+  whatsApp: boolean;
+}
+
+const COMING_MOBILES: readonly Mobile[] = [
+  { name: 'Valentina Restrepo', phone: '+57 310 555 0187', whatsApp: false },
+  { name: 'Andrés Mejía', phone: '+57 300 555 0123', whatsApp: false },
+  { name: 'Sofía Cárdenas', phone: '+57 315 555 0164', whatsApp: false },
+  { name: 'Rafael Costa', phone: WHATSAPP_NUMBERS.rafael ?? '', whatsApp: true },
+  { name: 'Kwame Mensah', phone: WHATSAPP_NUMBERS.kwame ?? '', whatsApp: true },
+  { name: 'Lucía Ortega', phone: WHATSAPP_NUMBERS.lucia ?? '', whatsApp: true },
+  { name: 'Amaka Eze', phone: '+44 7700 900318', whatsApp: false },
+  { name: 'Priyanka Nair', phone: '+44 7700 900577', whatsApp: false },
+];
+const DUBOISE: Mobile = {
+  name: 'Duboise Akande',
+  phone: WHATSAPP_NUMBERS.duboise ?? '',
+  whatsApp: true,
+};
+
+/** Quiet hours' sample (sc-3946): the mobiles outside 09:00 to 20:00 at 09:41 London time, and a few inside; the rest are inside. */
+export const MOBILES: Record<ToGroup, readonly Mobile[]> = {
+  all: [...COMING_MOBILES, DUBOISE],
+  coming: COMING_MOBILES,
+  notReplied: [DUBOISE],
+};
+
+/** Longest code first. */
+export const PHONE_ZONES: readonly { code: string; zone: string }[] = [
+  { code: '+55 21', zone: 'America/Sao_Paulo' },
+  { code: '+234', zone: 'Africa/Lagos' },
+  { code: '+57', zone: 'America/Bogota' },
+  { code: '+44', zone: 'Europe/London' },
+  { code: '+34', zone: 'Europe/Madrid' },
+];
+
+export const QUIET_NOW = '2026-11-03T09:41:00Z';
+export const HAPPENING_NOW = '2026-11-05T23:00:00Z';
+export const EVENT_ON = { starts: '2026-11-05T18:00:00Z', ends: '2026-11-07T15:00:00Z' };
+
+export const SMS_FAILED: readonly (readonly [
+  PersonKey,
+  string,
+  string,
+  string | null,
+  string | null,
+])[] = [
+  ['chidi', 'CO', 'Chidi Okonkwo', '30005', '09:42'],
+  ['ana', 'AP', 'Ana Pereira', '30006', null],
+  ['hana', 'HS', 'Hana Sato', '30003', null],
+  ['mateo', 'MG', 'Mateo García', '30007', null],
+  ['lea', 'LM', 'Léa Martin', '30008', null],
+  ['joao', 'JS', 'João Santos', null, null],
+];
 
 /** Parking told by email and WhatsApp, for WhatsApp's receipts. */
 export const RECEIPTS = { reached: 124, of: 142, seen: 87, cant: 18, emailAt: '18:21' };
@@ -713,7 +783,7 @@ export const RESEND = {
   stillCant: 8,
   names: [
     `Joaquín Ruiz · ${W.noEmail} · ${W.noPhone}`,
-    `Sophie Laurent · ${W.unsubscribed} · ${W.textedStop}`,
+    `Sophie Laurent · ${W.unsubscribed} · ${W.stoppedTexts}`,
   ],
   credits: 2,
 };

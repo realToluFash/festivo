@@ -635,6 +635,12 @@ export function inviteSeedOf(state: string | null): InviteSeed | null {
       return draft(NOT_YET_INVITED, 'preview', { ...WITH_NOTE, previewAs: 'bisi' });
     case 'invitePreviewSms':
       return draft(NOT_YET_INVITED, 'preview', { ...WITH_NOTE, previewAs: 'yusuf' });
+    case 'invitePreviewUnicode':
+      return draft(guestAudience('lucia'), 'preview', {
+        ...NO_NOTE,
+        again: true,
+        previewAs: 'lucia',
+      });
     case 'inviteCheck':
       return draft(NOT_YET_INVITED, 'check', WITH_NOTE);
     case 'inviteCheckSome':

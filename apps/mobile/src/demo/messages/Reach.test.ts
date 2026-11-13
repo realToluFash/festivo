@@ -249,7 +249,7 @@ describe('the resend', () => {
       still: 8,
       names: [
         'Joaquín Ruiz · No email address · No phone number',
-        'Sophie Laurent · Unsubscribed · Texted STOP',
+        'Sophie Laurent · Unsubscribed · Stopped texts',
       ],
     });
   });
@@ -294,6 +294,43 @@ describe('on an event that can’t send (?state=closedEnded)', () => {
     expect(reachViewOf(marked, 'parking').title).toBe('Reached 132 of 142');
     expect(reachViewOf(run(marked, { type: 'undoTold', key: 'yuki' }), 'parking').title).toBe(
       'Reached 131 of 142',
+    );
+  });
+});
+
+describe('texts that failed (?state=reachedSmsFailed)', () => {
+  it('lists six more in Reached, email delivered and SMS failed with its reason, the counts unchanged', () => {
+    const failed = reachViewOf(startOf('reachedSmsFailed', false), 'draft');
+    const sent = reachViewOf(startOf('sentReached', false), 'draft');
+    const reached = failed.groups.find((group) => group.key === 'reached');
+
+    expect(failed.title).toBe(sent.title);
+    expect(failed.parts).toEqual(sent.parts);
+    expect(reached?.count).toBe(38);
+    expect(reached?.more).toBe('and 31 more');
+    expect(
+      reached?.people
+        .slice(1)
+        .map((person) => [
+          person.name,
+          ...person.lines.map((line) => [line.mark, line.word, line.reason]),
+        ]),
+    ).toEqual(
+      [
+        ['Chidi Okonkwo', 'Number not in use (30005)'],
+        ['Ana Pereira', 'Number cannot receive texts (30006)'],
+        ['Hana Sato', 'Phone off or out of signal (30003)'],
+        ['Mateo García', 'Blocked by their network (30007)'],
+        ['Léa Martin', 'No reason given (30008)'],
+        ['João Santos', 'No reason given'],
+      ].map(([name, reason]) => [
+        name,
+        ['delivered', 'Email · Delivered', '09:41'],
+        ['bounced', 'SMS · Failed', reason],
+        name === 'Chidi Okonkwo'
+          ? ['delivered', 'Their page', 'Seen 09:42']
+          : ['none', 'Their page', 'Not seen yet'],
+      ]),
     );
   });
 });

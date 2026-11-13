@@ -106,12 +106,32 @@ const GSM_7_TWICE = '^{}\\[~]|€';
 /** sc-1526's link as built: the address and a 256-bit token (#45622). */
 export const LINK_CHARS = 'https://soirely.com/i/'.length + Math.ceil(256 / 6);
 
+export function isGsm7(text: string): boolean {
+  return [...text].every((one) => GSM_7.includes(one) || GSM_7_TWICE.includes(one));
+}
+
+const PLAIN_MARKS: Record<string, string> = {
+  '‘': "'",
+  '’': "'",
+  '“': '"',
+  '”': '"',
+  '–': '-',
+  '—': '-',
+  '…': '...',
+};
+
+/** Every text Soirely sends, as sent: typographic punctuation plain; a first text to a number ends on the STOP line. */
+export function asSent(written: string, first: boolean): string {
+  const plain = written.replace(/[‘’“”–—…]/gu, (one) => PLAIN_MARKS[one] ?? one);
+
+  return first ? `${plain}\n${LIVE.smsStop}` : plain;
+}
+
 /** GSM-7 to 160 characters, then 153 a part; any other character makes it UCS-2, 70 then 67. */
 export function smsParts(text: string): number {
   const chars = [...text];
-  const gsm = chars.every((one) => GSM_7.includes(one) || GSM_7_TWICE.includes(one));
 
-  if (!gsm) return chars.length <= 70 ? 1 : Math.ceil(chars.length / 67);
+  if (!isGsm7(text)) return chars.length <= 70 ? 1 : Math.ceil(chars.length / 67);
 
   const length = chars.reduce((sum, one) => sum + (GSM_7_TWICE.includes(one) ? 2 : 1), 0);
 
@@ -191,9 +211,9 @@ export function inviteTextOf(event: Invited, greeting: string): { text: string; 
     day: 'numeric',
     timeZone: event.timeZone,
   }).format(new Date(event.startsAt));
-  const text = sayLive.inviteText(hosts, greeting, event.name, date).replaceAll('’', "'");
+  const text = asSent(sayLive.inviteText(hosts, greeting, event.name, date), false);
 
-  return { text, parts: smsParts(`${text}${'x'.repeat(LINK_CHARS)}\n${LIVE.smsStop}`) };
+  return { text, parts: smsParts(asSent(`${text}${'x'.repeat(LINK_CHARS)}`, true)) };
 }
 
 export const OFFER_MOBILES: readonly { name: string; phone: string }[] = DRAFT_GUESTS.flatMap(
