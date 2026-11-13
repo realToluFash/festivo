@@ -394,6 +394,87 @@ describe('Events in A at a desk (sc-30304)', () => {
   });
 });
 
+describe('Guests can write from their page, on the Overview (sc-3978)', () => {
+  const NAME = 'Guests can write from their page';
+
+  beforeEach(() => {
+    __setConfig({ ...tested, environment: 'development' });
+    resetSample();
+  });
+
+  async function guestsSwitch(state?: string): Promise<HTMLElement> {
+    open(state == null ? '/demo/events/evt-wed-4' : `/demo/events/evt-wed-4?state=${state}`);
+
+    return screen.findByRole('switch', { name: NAME }, WAIT);
+  }
+
+  it(
+    'sits under the dashed preview, on, and saves Off at once after a busy moment',
+    SLOW,
+    async () => {
+      const write = await guestsSwitch();
+      const block = write.closest('section') as HTMLElement;
+
+      expect(within(block).getByRole('heading', { name: 'Guests’ page' })).toBeDefined();
+      expect(write.closest('.ev-dashed')).toBeNull();
+      expect(block.querySelector('.ev-dashed')).not.toBeNull();
+      expect(
+        within(block).getAllByText(
+          'Changes it for everyone on this event. Texts and emails still arrive.',
+        ),
+      ).toHaveLength(2);
+      expect(write.getAttribute('aria-checked')).toBe('true');
+      expect(write.textContent).toBe('On');
+
+      fireEvent.click(write);
+      expect(write.getAttribute('aria-checked')).toBe('false');
+      expect(write.getAttribute('aria-busy')).toBe('true');
+      fireEvent.click(write);
+      expect(write.getAttribute('aria-checked')).toBe('false');
+
+      await waitFor(() => expect(write.getAttribute('aria-busy')).toBe('false'), WAIT);
+      expect(write.textContent).toBe('Off');
+    },
+  );
+
+  it('opens Off, Saving busy, and Not saved back On', SLOW, async () => {
+    const off = await guestsSwitch('guestsCanWriteOff');
+
+    expect(off.getAttribute('aria-checked')).toBe('false');
+    expect(off.textContent).toBe('Off');
+    cleanup();
+
+    const saving = await guestsSwitch('guestsCanWriteSaving');
+
+    expect(saving.getAttribute('aria-checked')).toBe('false');
+    expect(saving.getAttribute('aria-busy')).toBe('true');
+    cleanup();
+
+    const failed = await guestsSwitch('guestsCanWriteFailed');
+    const block = failed.closest('section') as HTMLElement;
+
+    expect(failed.getAttribute('aria-checked')).toBe('true');
+    expect(within(block).getByRole('alert').textContent).toBe('Not saved. Try again.');
+    fireEvent.click(failed);
+    expect(within(block).queryByRole('alert')).toBeNull();
+    await waitFor(() => expect(failed.getAttribute('aria-busy')).toBe('false'), WAIT);
+    expect(failed.getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('cannot be changed without messages.manage, and says why', SLOW, async () => {
+    const fixed = await guestsSwitch('guestsCanWriteReadOnly');
+
+    expect(fixed.getAttribute('aria-disabled')).toBe('true');
+    expect(fixed.textContent).toBe('On');
+    fireEvent.click(fixed);
+    expect(fixed.getAttribute('aria-checked')).toBe('true');
+    expect(fixed.getAttribute('aria-busy')).toBeNull();
+    const why = screen.getByText('Only members who manage messages can change this.');
+
+    expect(fixed.getAttribute('aria-describedby')?.split(' ')).toContain(why.id);
+  });
+});
+
 describe('Delete refused while a guest is Invited (sc-14445)', () => {
   beforeEach(() => {
     __setConfig({ ...tested, environment: 'development' });

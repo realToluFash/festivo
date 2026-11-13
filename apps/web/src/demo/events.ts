@@ -1,4 +1,5 @@
 import type { NeedsState } from './needsYou.ts';
+import type { WriteState } from './guestsWrite.ts';
 import {
   type EventPhase,
   type EventState,
@@ -554,6 +555,10 @@ export const EVENT_WORDS = {
   guestsPage: 'Guests’ page',
   preview: 'Preview the guests’ page',
   previewLine: 'What somebody you invite sees, before they reply',
+  guestsCanWrite: 'Guests can write from their page',
+  guestsCanWriteLine: 'Changes it for everyone on this event. Texts and emails still arrive.',
+  guestsCanWriteReadOnly: 'Only members who manage messages can change this.',
+  guestsCanWriteNotSaved: 'Not saved. Try again.',
   notBuilt: (story: string) => `AC, not yet built · ${story}`,
   cancel: 'Cancel',
   save: 'Save',
@@ -1213,7 +1218,8 @@ export type LifeState =
   | 'duplicateNoStart'
   | 'muted'
   | 'muteNotLoaded'
-  | 'muteNotSaved';
+  | 'muteNotSaved'
+  | WriteState;
 
 export type NoteState = 'noteNoVenue' | 'noteWide' | 'noteMarkup';
 
@@ -1294,6 +1300,10 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   muted: 'evt-wed-4',
   muteNotLoaded: 'evt-wed-4',
   muteNotSaved: 'evt-wed-4',
+  guestsCanWriteOff: 'evt-wed-4',
+  guestsCanWriteSaving: 'evt-wed-4',
+  guestsCanWriteFailed: 'evt-wed-4',
+  guestsCanWriteReadOnly: 'evt-wed-4',
   needsYou: 'evt-wed-4',
   needsYouOne: 'evt-wed-4',
   needsYouOverdue: 'evt-wed-4',
@@ -1603,6 +1613,16 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('muted', 'Muted'),
       on('muteNotLoaded', 'Mute, not loaded'),
       on('muteNotSaved', 'Mute, not saved'),
+    ],
+  },
+  {
+    name: 'Guests can write from their page (sc-3978)',
+    states: [
+      { to: '/demo/events/evt-wed-4', name: 'Guests can write from their page, on' },
+      on('guestsCanWriteOff', 'Guests can write from their page, off'),
+      on('guestsCanWriteSaving', 'Guests can write from their page, saving'),
+      on('guestsCanWriteFailed', 'Guests can write from their page, not saved'),
+      on('guestsCanWriteReadOnly', 'Guests can write from their page, without messages.manage'),
     ],
   },
   {

@@ -57,10 +57,10 @@ import { WAITS_STATES } from './messagesWaits.ts';
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
 describe('Messaging B · Conversations, the rules (sc-31371)', () => {
-  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 4, sc-3950’s 3 and sc-3954’s 6, in order, each linked once from the demo home', () => {
+  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 4, sc-3950’s 3, sc-3954’s 6 and sc-3978’s 6, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(113);
+    expect(keys).toHaveLength(119);
     expect(keys.slice(94, 97)).toEqual(['whatsAppLine', 'checkWhatsApp', 'whatsAppRead']);
     expect(keys.slice(97, 103)).toEqual([
       'channelsWrite',
@@ -70,7 +70,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'channelsMany',
       'channelsNone',
     ]);
-    expect(keys.slice(103)).toEqual(WAITS_STATES.map((one) => one.key));
+    expect(keys.slice(103, 113)).toEqual(WAITS_STATES.map((one) => one.key));
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
     expect(keys.slice(6, 10)).toEqual([
       'channelReply',
@@ -96,7 +96,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'editCancelled',
       'editTooLate',
     ]);
-    expect(new Set(keys).size).toBe(113);
+    expect(new Set(keys).size).toBe(119);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );

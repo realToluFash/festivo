@@ -670,47 +670,49 @@ export function Messages({
           </p>
         </article>
       ))}
-      <div className="gp-compose">
-        <label htmlFor="gp-box">{words.writeTo}</label>
-        {visit.draftFailed && <Notice kind="broken">{words.messageFailed}</Notice>}
-        <div className={tooLong ? 'gp-compose-row is-wrong' : 'gp-compose-row'}>
-          <textarea
-            ref={box}
-            id="gp-box"
-            className="gp-box"
-            rows={1}
-            value={visit.draft}
-            data-focus="box"
-            aria-invalid={tooLong}
-            aria-describedby={
-              tooLong ? 'gp-box-error gp-box-count' : counting ? 'gp-box-count' : undefined
-            }
-            onChange={(event) => onDraft(event.target.value)}
-          />
-          <button
-            className={live ? 'gp-send is-live' : 'gp-send'}
-            type="button"
-            aria-label={words.sendMessage}
-            data-focus="sendMessage"
-            {...offButton(!live, { dim: false })}
-            onClick={onSend}
-          >
-            <Line name="send" size={20} weight={2.6} />
-          </button>
+      {visit.box !== 'none' && (
+        <div className="gp-compose">
+          <label htmlFor="gp-box">{words.writeTo}</label>
+          {visit.draftFailed && <Notice kind="broken">{words.messageFailed}</Notice>}
+          <div className={tooLong ? 'gp-compose-row is-wrong' : 'gp-compose-row'}>
+            <textarea
+              ref={box}
+              id="gp-box"
+              className="gp-box"
+              rows={1}
+              value={visit.draft}
+              data-focus="box"
+              aria-invalid={tooLong}
+              aria-describedby={
+                tooLong ? 'gp-box-error gp-box-count' : counting ? 'gp-box-count' : undefined
+              }
+              onChange={(event) => onDraft(event.target.value)}
+            />
+            <button
+              className={live ? 'gp-send is-live' : 'gp-send'}
+              type="button"
+              aria-label={words.sendMessage}
+              data-focus="sendMessage"
+              {...offButton(!live, { dim: false })}
+              onClick={onSend}
+            >
+              <Line name="send" size={20} weight={2.6} />
+            </button>
+          </div>
+          {counting && (
+            <p id="gp-box-count" className={tooLong ? 'gp-count is-over' : 'gp-count'}>
+              {tooLong && <Glyph name="alert" size={14} weight={2.4} />}
+              {words.messageCount(length)}
+            </p>
+          )}
+          {tooLong && (
+            <p id="gp-box-error" className="gp-error">
+              <Glyph name="alert" size={15} weight={2.2} />
+              {words.messageTooLong}
+            </p>
+          )}
         </div>
-        {counting && (
-          <p id="gp-box-count" className={tooLong ? 'gp-count is-over' : 'gp-count'}>
-            {tooLong && <Glyph name="alert" size={14} weight={2.4} />}
-            {words.messageCount(length)}
-          </p>
-        )}
-        {tooLong && (
-          <p id="gp-box-error" className="gp-error">
-            <Glyph name="alert" size={15} weight={2.2} />
-            {words.messageTooLong}
-          </p>
-        )}
-      </div>
+      )}
     </section>
   );
 }

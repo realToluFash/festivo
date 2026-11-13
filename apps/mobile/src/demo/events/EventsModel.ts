@@ -37,6 +37,7 @@ import { REFUSED_STATES, refusedStartOf } from './DeleteRefusal.ts';
 import { CLOCKS, READER_ZONE, type SampleEvent } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { CHANGES_STATES, FINAL_NUMBERS_STATES, kitchenOwed, othersOwed } from './FinalNumbers.ts';
+import { WRITE_STATES } from './GuestsCanWrite.ts';
 
 export type {
   CardStep,
@@ -466,6 +467,7 @@ export const EVENT_STATES = [
   'muted',
   'muteNotLoaded',
   'muteNotSaved',
+  ...WRITE_STATES,
   'more',
   'needsYou',
   'needsYouOne',

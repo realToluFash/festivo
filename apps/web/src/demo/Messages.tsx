@@ -124,6 +124,10 @@ function firstFocus(state: MessagesState | null): string | null {
       return 'refused';
     case 'sendWithout':
       return 'cancel';
+    case 'stopAction':
+      return 'stop-item';
+    case 'letAgainFailed':
+      return 'let-again';
     default:
       return waitsTicksOf(state) == null ? null : 'check';
   }

@@ -69,7 +69,6 @@ export const DOMAIN_WORDS = {
   removeTitle: (domain: string) => `Remove ${domain}?`,
   removeBody: (domain: string) => `People at ${domain} can no longer ask to join this way.`,
   keep: 'Keep it',
-  confirmRemove: 'Remove',
   add: 'Add domain',
   addTitle: 'Add a domain',
   addVerb: 'Add',
@@ -111,7 +110,7 @@ export const OWNERSHIP_WORDS = {
   transfer: 'Transfer ownership',
   transferVerb: 'Transfer',
   transferNote: `Hand ${ORG} to another member. Asks for your password first.`,
-  transferBody: `The new owner can change billing, members, roles and these settings, and can delete ${ORG}. You become an Admin.`,
+  transferBody: `The new owner can change billing, members and these settings, and can delete ${ORG}. You become an admin.`,
   newOwner: 'New owner',
   ownerBlank: 'Choose who becomes the owner.',
   password: 'Your password',
@@ -136,7 +135,7 @@ export const OWNERSHIP_WORDS = {
   onlyOwnerBody: 'Make somebody else an owner, then you can leave.',
   deleteOpener: 'Delete organisation…',
   deleteNote: 'Deletes every event, guest and member record in it.',
-  deleteTitle: `Delete ${ORG}`,
+  deleteTitle: `Delete ${ORG}?`,
   deleteVerb: 'Delete',
   deleteWarningTitle: 'Everything in it goes',
   deleteWindow: (deadline: string) =>
@@ -174,7 +173,7 @@ export type Hold = 'twoFactor' | 'linking';
 /** What keeps an admin's changes back, as the product's readOnlyUntil lines say it, and the one step that ends it. */
 export const HOLDS: Record<Hold, { line: string; step: HeldStep }> = {
   twoFactor: {
-    line: `${ORG} asks owners and admins to use two-factor. Until you turn it on, you can see these but not change them.`,
+    line: `${ORG} asks its owners and admins to use two-factor. Until you turn it on, you can see these but not change them.`,
     step: HELD_STEPS.turnOn,
   },
   linking: {

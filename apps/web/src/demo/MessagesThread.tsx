@@ -68,6 +68,7 @@ import {
   statusWord,
   typedEdit,
 } from './messagesScheduled.ts';
+import { useStopWriting } from './MessagesStop.tsx';
 import { StreamItems } from './MessagesStream.tsx';
 import { MessagesBell } from './MessagesTell.tsx';
 
@@ -277,6 +278,7 @@ function GuestThread({
   const answers = inbox.answers[id] ?? [];
   const doneAt = inbox.doneAt[id];
   const toldBy = guest?.toldBy ?? 'email';
+  const stop = useStopWriting(id, state);
   const action =
     to.manage && id === 'unknown' && match != null ? (
       <button type="button" className="desk-text" onClick={() => setPicking(true)}>
@@ -330,8 +332,14 @@ function GuestThread({
             ? `${MW.email} · ${MW.notMatched}`
             : `${UNKNOWN.address} · ${MW.matchedByHand}`)
         }
-        action={action}
+        action={
+          <>
+            {action}
+            {stop.more}
+          </>
+        }
       />
+      {stop.inset}
       <ol className="mg-stream" role="log" aria-label={name}>
         {id === 'ines' && (
           <>
@@ -445,6 +453,7 @@ function GuestThread({
           typed={typedOf(state, id)}
         />
       )}
+      {stop.ask}
       {picking && (
         <MatchPicker
           onCancel={() => {
