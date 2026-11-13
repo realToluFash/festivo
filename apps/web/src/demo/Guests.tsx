@@ -85,6 +85,7 @@ import {
   type Tell,
 } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
+import { keepAsked, keptAsked } from './whatsAppSend.ts';
 import { useSwitcherStart } from './switcher.ts';
 import { useLeaveAsk } from './useLeaveAsk.ts';
 import './guests.css';
@@ -189,7 +190,7 @@ function EventGone({ id }: { id: string }) {
 type Leaving = { then: 'back' } | { then: 'open'; id: string } | { then: 'add' } | null;
 
 function GuestsPage({
-  event,
+  event: sample,
   start,
   base,
   their,
@@ -218,6 +219,12 @@ function GuestsPage({
   const [expanded, setExpanded] = useState<ReadonlySet<Reply>>(new Set());
   const [pane, setPane] = useState<Pane>(start.pane);
   const [asking, setAsking] = useState(start.asking);
+  const [paused, setPaused] = useState(start.paused);
+  const event: SampleEvent = paused ? { ...sample, status: 'paused' } : sample;
+  const [asked, setAsked] = useState<ReadonlySet<string>>(
+    () => new Set(start.asked ?? keptAsked(sample.id)),
+  );
+  const markEnds = useRef(start.markEnds);
   const [dirty, setDirty] = useState(false);
   const [leaving, setLeaving] = useState<Leaving>(
     start.pane.kind === 'edit' && start.pane.start.discard === true ? { then: 'back' } : null,
@@ -312,6 +319,36 @@ function GuestsPage({
     focus('name');
   }
 
+  useEffect(() => keepAsked(sample.id, paused ? new Set() : asked), [sample.id, paused, asked]);
+
+  function ask(id: string, open: boolean): void {
+    setAsked((was) => {
+      const next = new Set(was);
+
+      if (open) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  /** sc-26025: the guest just marked leaves a Not yet invited list; the focus goes to the row that took their place. */
+  function markedFromQuestion(id: string): void {
+    const rows = viewOf(list, choice, q, expanded, replyByOf(event.id), manages).view;
+    const ids = rows.kind === 'rows' ? rows.rows.map((row) => row.person.id) : [];
+    const at = ids.indexOf(id);
+
+    setList((was) => markInvited(was, id, 'WhatsApp', today));
+    ask(id, false);
+    if (choice !== 'notYet' || at < 0) {
+      focus('guest-heading');
+      return;
+    }
+    const next = ids[at + 1] ?? ids[at - 1];
+
+    setPane({ kind: 'none' });
+    focus(next == null ? 'none-heading' : `row:${next}`, 'title');
+  }
+
   function invite(id: string, next: Invite | null): void {
     setPane(next == null ? { kind: 'guest', id } : { kind: 'guest', id, invite: next });
     if (next == null) focus('guest-heading');
@@ -340,16 +377,46 @@ function GuestsPage({
     onInvite: (next) => invite(id, next),
     onMark: (how) => {
       setList((was) => markInvited(was, id, how, today));
+      ask(id, false);
       invite(id, null);
     },
     onUnmark: () => {
       setList((was) => markNotInvited(was, id));
+      ask(id, false);
       setPane({ kind: 'guest', id, note: 'unmarked' });
       focus('guest-heading');
     },
     onAgree: () => {
       setPane({ kind: 'whatsApp', id, start: {} });
       focus('agree-0');
+    },
+    onSend: () => {
+      if (list.find((one) => one.id === id)?.reply !== 'notYet') return;
+      ask(id, true);
+      focus('send-question');
+    },
+    onNotSent: () => {
+      ask(id, false);
+      focus('send');
+    },
+    onSent: () => {
+      const ends = markEnds.current;
+
+      markEnds.current = 'saved';
+      if (ends === 'fails') return false;
+      if (ends === 'refused') {
+        setPaused(true);
+        setAsked(new Set());
+        focus('guest-heading');
+        return true;
+      }
+      if (list.find((one) => one.id === id)?.reply !== 'notYet') {
+        ask(id, false);
+        focus('guest-heading');
+        return true;
+      }
+      markedFromQuestion(id);
+      return true;
     },
   });
 
@@ -492,7 +559,9 @@ function GuestsPage({
                       )}
                       {shown === 0 ? (
                         <div className="gs-none" role="status">
-                          <h2>{GW.noMatch}</h2>
+                          <h2 tabIndex={-1} data-focus="none-heading">
+                            {GW.noMatch}
+                          </h2>
                           <p className="desk-line">{GW.noMatchLine}</p>
                           <TextAction
                             label={GW.clear}
@@ -556,6 +625,8 @@ function GuestsPage({
                       note={pane.note}
                       invite={pane.invite}
                       actions={actions(paneGuest.id)}
+                      asked={!paused && asked.has(paneGuest.id)}
+                      askFailed={start.askFailed}
                       erase={paneGuest.id === EMEKA.id ? erase : null}
                       erasedLine={erasedLine(locale, zoneFor(their.viewer))}
                       theirData={
