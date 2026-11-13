@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { GUEST_PAGES, THANK_YOU } from './guest.ts';
+import { GUEST_PAGES, LONG_NOTE, THANK_YOU } from './guest.ts';
 import { GUEST_ASK_PAGES } from './guestAskStates.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
@@ -267,7 +267,15 @@ const SAYS: [string, () => void][] = [
   ['finishedMessages', () => screen.getByText(THANK_YOU)],
   ['noteInvitation', () => screen.getByText(/^We would love you there with us\./u)],
   ['noteAmongMessages', () => screen.getByText(/^We would love you there with us\./u)],
-  ['noteLong', () => screen.getByText(/^We are so happy to invite you/u)],
+  [
+    'noteLong',
+    () =>
+      expect(
+        screen
+          .getAllByRole('article')
+          .map((entry) => entry.querySelector('.gp-bubble')?.textContent),
+      ).toContain(LONG_NOTE.words),
+  ],
   [
     'messagesWhatsAppOff',
     () => expect(screen.getByRole('switch', { name: 'WhatsApp' })).toHaveProperty('checked', false),
@@ -759,6 +767,17 @@ describe('the hosts’ notes, entries in Messages (pm, 13 Nov, on ux’s #44753)
 
     expect(metas()).toEqual(['A note from Adaeze Obi and Tunde Bakare · Tue, Oct 20 · 10:00']);
     expect(screen.getByLabelText('Write to Adaeze Obi and Tunde Bakare')).toBeDefined();
+  });
+
+  it('the invitation’s note sits by time among the hosts’ messages, under the same kind of header', async () => {
+    await guest('noteAmongMessages');
+
+    expect(metas()).toEqual([
+      'A note from Adaeze Obi and Tunde Bakare · Tue, Oct 20 · 10:00',
+      'Adaeze Obi and Tunde Bakare · Sat, Oct 31 · 10:05',
+      'Adaeze Obi and Tunde Bakare · Mon, Nov 2 · 21:14',
+      'Adaeze Obi and Tunde Bakare · Tue, Nov 3 · 08:30',
+    ]);
   });
 
   it('a page with no notes and no messages has no Messages', async () => {

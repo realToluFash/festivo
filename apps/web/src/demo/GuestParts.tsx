@@ -640,11 +640,7 @@ export function Messages({
         {words.messages}
       </h2>
       {shown.map(({ message, note }) => (
-        <article
-          key={message.id}
-          id={message.id}
-          className={note == null ? 'gp-message' : 'gp-message is-note'}
-        >
+        <article key={message.id} id={message.id} className="gp-message">
           {note != null && <ChangeLines note={note} visit={visit} words={words} />}
           <p className="gp-meta">
             {`${note == null ? words.hosts : words.noteFrom} · ${sentWhen(message.at, visit.lang, visit.readerZone)}`}
