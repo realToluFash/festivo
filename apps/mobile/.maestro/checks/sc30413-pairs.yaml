@@ -118,7 +118,7 @@ appId: host.exp.Exponent
 - takeScreenshot: calendar-product
 - openLink: ${METRO_URL}/--/demo/calendar
 - extendedWaitUntil:
-    visible: 'Ire Events.*'
+    visible: '.*Ire Events.*'
     timeout: 20000
 - waitForAnimationToEnd: { timeout: 8000 }
 - takeScreenshot: calendar-demo

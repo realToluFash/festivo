@@ -206,6 +206,8 @@ export const W = {
     'Guests have been invited to this event, or staff briefed for it, so it can be deleted only once it is finished. Calling it off is how they hear it will not go ahead.',
   endFirstBody:
     'Guests have been invited to this event, or staff briefed for it, so it can be deleted only once it is finished. End it first: it will then be over for everybody.',
+  datesCalledOff:
+    "Dates · This event was called off, so its start, end and time zone can't be changed.",
 } as const;
 
 export const AREA_WORDS: Record<AreaKey, string> = {

@@ -444,6 +444,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/account?state=verifyEmailDone',
       },
       {
+        title: 'Your account · an address we could not deliver to',
+        what: 'Change email opens Add an email address',
+        href: '/demo/settings/account?state=undeliverable',
+      },
+      {
+        title: 'Your account · two addresses we could not deliver to',
+        what: 'One line each; with 2 held, Change email opens the other row',
+        href: '/demo/settings/account?state=undeliverableTwo',
+      },
+      {
+        title: 'Your account · not verified, and undeliverable',
+        what: 'The card’s line first; a code clears both',
+        href: '/demo/settings/account?state=undeliverableUnverified',
+      },
+      {
         title: 'Your account · check your messages',
         what: 'A second number, on WhatsApp',
         href: '/demo/settings/account?state=verifyPhone',

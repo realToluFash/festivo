@@ -492,6 +492,7 @@ export const EVENT_WORDS = {
   dates: 'Dates',
   dayCount: (count: number) => `${count} days`,
   scheduleLocked: 'This event is over, so its start, end and time zone can’t be changed.',
+  scheduleCalledOff: 'This event was called off, so its start, end and time zone can’t be changed.',
   venue: 'Venue',
   openInMaps: 'Open in maps',
   addVenue: 'Add the venue',

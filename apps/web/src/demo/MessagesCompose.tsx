@@ -8,9 +8,11 @@ import {
   useState,
 } from 'react';
 
+import { currentLocale } from '../i18n/index.ts';
 import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
+  type Check,
   type Draft,
   type Segment,
   type Token,
@@ -31,6 +33,8 @@ import {
   refusalOf,
   resendOf,
   tokenWord,
+  byName,
+  insteadOf,
   whatsAppLine,
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
@@ -87,7 +91,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
   }
 
   function edit(): void {
-    act({ kind: 'draft', draft: { step: 'write' } });
+    act({ kind: 'draft', draft: { step: 'write', seeAll: false } });
     focus('body');
   }
 
@@ -148,6 +152,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
             </div>
           </div>
           {draft.ticks.whatsApp && <WhatsAppReach line={whatsAppLine(draft.to)} />}
+          <Instead line={insteadOf(draft.to, draft.ticks)} />
         </header>
       )}
       {draft.step !== 'preview' && following ? (
@@ -519,11 +524,17 @@ export function CheckCard({
   onChange: () => void;
   onLater: () => void;
 }) {
-  const { inbox, act, focus, tell, to } = useInbox();
+  const { inbox, act, focus, to } = useInbox();
   const counted = checkOf(draft.to, draft.ticks, to.book.groups);
   const check = inbox.balance === 0 ? waitsCheckOf(counted, draft.to, draft.ticks) : counted;
   const waits = inbox.balance === 0 ? waitsOf(check, draft.ticks) : null;
   const sentenceId = useId();
+  const listing = draft.seeAll === true && check.cantTell > 0;
+
+  function seeAll(open: boolean): void {
+    act({ kind: 'draft', draft: { seeAll: open } });
+    focus(open ? 'see-all' : 'see-all-open');
+  }
 
   return (
     <div
@@ -534,6 +545,7 @@ export function CheckCard({
     >
       <OnEscape
         then={() => {
+          if (listing) return seeAll(false);
           act({ kind: 'draft', draft: { step: 'write' } });
           focus('send');
         }}
@@ -541,6 +553,87 @@ export function CheckCard({
       <p id={sentenceId} className="mg-check-sentence" tabIndex={-1} data-focus="check">
         {many('cannotUndo', check.count)}
       </p>
+      {listing ? (
+        <SeeAll check={check} onBack={() => seeAll(false)} />
+      ) : (
+        <CheckBody draft={draft} check={check} waits={waits} onSeeAll={() => seeAll(true)} />
+      )}
+      <div className="mg-check-acts">
+        <button
+          type="button"
+          className="button button-primary mg-go"
+          data-focus="go"
+          onClick={() => {
+            act({ kind: 'go' });
+            focus('cancel');
+          }}
+        >
+          {many('sendTo', check.count)}
+        </button>
+        <button type="button" className="desk-text" data-focus="later" onClick={onLater}>
+          {MW.later}
+        </button>
+        <button
+          type="button"
+          className="desk-text"
+          onClick={() => {
+            onChange();
+            focus('send');
+          }}
+        >
+          {MW.changeIt}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** With SMS and WhatsApp both ticked: how many WhatsApp tells in place of a text, under the reach line. */
+function Instead({ line }: { line: string | null }) {
+  return line == null ? null : <p className="mg-instead">{line}</p>;
+}
+
+/** See all {k}: everyone no ticked channel can tell, by name, each with why; the actions stay under it. */
+function SeeAll({ check, onBack }: { check: Check; onBack: () => void }) {
+  const headId = useId();
+  const people = byName(check.untold, currentLocale());
+
+  return (
+    <div className="mg-all">
+      <button type="button" className="desk-text mg-all-back" onClick={onBack}>
+        <Glyph name="back" size={17} weight={2.2} />
+        {MW.backToCheck}
+      </button>
+      <p id={headId} className="mg-cant-head" tabIndex={-1} data-focus="see-all">
+        {filled(MW.cantBeTold, { count: check.cantTell })}
+      </p>
+      <ul className="mg-all-list" aria-labelledby={headId}>
+        {people.map((one) => (
+          <li key={one.name} className="mg-all-row">
+            <span className="mg-all-name">{one.name}</span>
+            <span>{one.why.join(' · ')}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function CheckBody({
+  draft,
+  check,
+  waits,
+  onSeeAll,
+}: {
+  draft: Draft;
+  check: Check;
+  waits: ReturnType<typeof waitsOf> | null;
+  onSeeAll: () => void;
+}) {
+  const { act } = useInbox();
+
+  return (
+    <>
       <p className="mg-check-line">
         {[MW.goesOnPage, check.told].filter((line) => line != null).join(' ')}
       </p>
@@ -570,6 +663,7 @@ export function CheckCard({
         </ul>
       )}
       {check.whatsApp != null && <WhatsAppReach line={check.whatsApp} />}
+      <Instead line={check.instead} />
       {check.smsOff != null && <p className="mg-cant-head">{check.smsOff}</p>}
       {check.cantTell > 0 && (
         <div className="mg-cant">
@@ -581,9 +675,8 @@ export function CheckCard({
             <button
               type="button"
               className="desk-text"
-              onClick={() =>
-                tell(`${filled(MW.seeAll, { count: check.cantTell })} has its own design.`)
-              }
+              data-focus="see-all-open"
+              onClick={onSeeAll}
             >
               {filled(MW.seeAll, { count: check.cantTell })}
             </button>
@@ -592,33 +685,7 @@ export function CheckCard({
       )}
       {check.credits != null && <p className="mg-credits">{check.credits}</p>}
       {waits != null && <WaitBlock waits={waits} />}
-      <div className="mg-check-acts">
-        <button
-          type="button"
-          className="button button-primary mg-go"
-          data-focus="go"
-          onClick={() => {
-            act({ kind: 'go' });
-            focus('cancel');
-          }}
-        >
-          {many('sendTo', check.count)}
-        </button>
-        <button type="button" className="desk-text" data-focus="later" onClick={onLater}>
-          {MW.later}
-        </button>
-        <button
-          type="button"
-          className="desk-text"
-          onClick={() => {
-            onChange();
-            focus('send');
-          }}
-        >
-          {MW.changeIt}
-        </button>
-      </div>
-    </div>
+    </>
   );
 }
 
