@@ -860,7 +860,9 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
       />
     );
   else if (readsOnly(talk.m))
-    rest = (
+    rest = paused ? (
+      <PausedLine text={pausedWaits()} />
+    ) : (
       <Text size={13.5} weight="medium" style={styles.goes}>
         {say.goesAt(say.inZone(day, at.time, W.londonTime))}
       </Text>
