@@ -140,9 +140,11 @@ function NamedDelete({
   useSendingWords(pending ? t('eventDelete.deleting') : undefined);
   const input = useRef<TextInputInstance>(null);
   const [typed, setTyped] = useState('');
-  const [mismatch, setMismatch] = useState(false);
+  const [left, setLeft] = useState(false);
+  const [refused, setRefused] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
   const matches = typedNameMatches(typed, name);
+  const mismatch = refused || (left && typed !== '' && !matches);
   const gap = useShellLayout() === 'phone' ? tokens.spaceXl : tokens.spaceLg;
 
   async function submit(): Promise<void> {
@@ -151,7 +153,7 @@ function NamedDelete({
     const sends = matches;
     if (sends) {
       onPending(true);
-      setMismatch(false);
+      setRefused(false);
       setFailed(null);
     }
 
@@ -166,7 +168,8 @@ function NamedDelete({
       setFailed(refusalTitle(answered.error, t('eventDelete.failed')));
       return;
     }
-    setMismatch(true);
+    setLeft(true);
+    setRefused(sends);
     if (sends) focusRefused(input);
     else focusChecked(input);
   }
@@ -230,11 +233,9 @@ function NamedDelete({
           onSubmitEditing={() => void submit()}
           onChangeText={(value) => {
             setTyped(value);
-            if (typedNameMatches(value, name)) setMismatch(false);
+            setRefused(false);
           }}
-          onBlur={() => {
-            if (typed !== '' && !matches) setMismatch(true);
-          }}
+          onBlur={() => setLeft(true)}
           accessibilityLabel={t('eventDelete.type', { event: name })}
           testID="events.deleteName"
         />
