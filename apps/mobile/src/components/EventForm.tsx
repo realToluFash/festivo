@@ -137,6 +137,11 @@ export function EventForm({
   const [status, setStatus] = useState<Status>('editing');
   const readerOn = useScreenReaderOn();
   const [linesInSummary, setLinesInSummary] = useState(false);
+  useEffect(() => {
+    if (!linesInSummary) return;
+    const later = setTimeout(() => setLinesInSummary(false));
+    return () => clearTimeout(later);
+  }, [linesInSummary]);
   const [asking, setAsking] = useState<Asking>(null);
   const [fetchingLatest, setFetchingLatest] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -339,17 +344,13 @@ export function EventForm({
   function editHosts(rows: HostRow[], touched: number | null): void {
     setTyped((previous) => ({ ...previous, hosts: rows }));
     if (touched != null) setHostErrors((previous) => ({ ...previous, [touched]: undefined }));
-    else if (hostsChecked) {
-      setLinesInSummary(false);
-      setHostErrors(hostErrorsOf(checkedOf(rows), t));
-    }
+    else if (hostsChecked) setHostErrors(hostErrorsOf(checkedOf(rows), t));
     if (status === 'failed') setStatus('editing');
   }
 
   /** After the first Save or Create event, each host is checked again as its field is left. */
   function leaveHost(row: HostRow): void {
     if (!hostsChecked) return;
-    setLinesInSummary(false);
     setHostErrors((previous) => ({
       ...previous,
       [row.key]: hostErrorsOf(checkedOf(hosts), t)[row.key],
@@ -368,7 +369,8 @@ export function EventForm({
     if (count > 0) {
       setUnsent({ count });
       setStatus('editing');
-      refuse(found, hostFound, readerOn ? t('eventForm.problems', { count }) : undefined);
+      const summary = t('eventForm.problems', { count });
+      refuse(found, hostFound, Platform.OS !== 'android' || readerOn ? summary : undefined);
       return;
     }
 

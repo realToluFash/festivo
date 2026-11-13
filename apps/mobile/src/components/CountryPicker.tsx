@@ -75,7 +75,7 @@ function flag(country: string): string {
   return String.fromCodePoint(...[...country].map((letter) => 0x1f1a5 + letter.charCodeAt(0)));
 }
 
-/** A refused Country is no text field: the keyboard closes and the screen reader lands on the picker. With `field`, that Field comes wholly into view: on New event that is any refusal the form focuses, a server's as well as a client check's, and the screen reader's move waits for the scroll to land. With `saidFirst`, the words read out with the refusal while a screen reader is on, the scroll waits until they are said: TalkBack's focus follows the scroll off the button onto whatever it lands on and reads that instead, and its move to the picker drops what was still queued (sc-43907). The move comes as the scroll lands, so TalkBack has no time to rest on what it lands on, or once it has settled when no Screen brings the Field. A field focused or a control taken meanwhile cancels the scroll and the move, as does what this returns. */
+/** A refused Country is no text field: the keyboard closes and the screen reader lands on the picker. With `field`, that Field comes wholly into view: on New event that is any refusal the form focuses, a server's as well as a client check's, and the screen reader's move waits for the scroll to land. With `saidFirst`, the words read out with the refusal, on Android with a screen reader on the scroll waits until they are said: TalkBack's focus follows the scroll off the button onto whatever it lands on and reads that instead, and its move to the picker drops what was still queued (sc-43907). The move comes as the scroll lands, so TalkBack has no time to rest on what it lands on, or once it has settled when no Screen brings the Field. On iOS the Field scrolls at once and the move waits for both the scroll and the words, as VoiceOver keeps what it queued. A field focused or a control taken meanwhile cancels the scroll and the move, as does what this returns. */
 export function focusPicker(
   picker: RefObject<ViewInstance | null>,
   field?: RefObject<ViewInstance | null>,
@@ -87,7 +87,7 @@ export function focusPicker(
     return () => {};
   }
 
-  const heldMs = saidFirst == null ? 0 : saidInFullMs(Platform.OS, saidFirst);
+  const saidMs = saidFirst == null ? 0 : saidInFullMs(Platform.OS, saidFirst);
   const watch = watchMovedOn(() => cancel());
   watch.settled();
   let later: ReturnType<typeof setTimeout> | undefined;
@@ -97,12 +97,18 @@ export function focusPicker(
     cancel();
     moveScreenReaderFocus(picker.current);
   };
+  if (Platform.OS !== 'android') {
+    fieldChecked(true, field.current);
+    later = setTimeout(move, Math.max(SETTLED_MS, saidMs));
+    return cancel;
+  }
+
   const scroll = () => {
     later = setTimeout(move, SETTLED_MS);
     fieldChecked(true, field.current, move);
   };
-  if (heldMs === 0) scroll();
-  else later = setTimeout(scroll, heldMs);
+  if (saidMs === 0) scroll();
+  else later = setTimeout(scroll, saidMs);
   function cancel(): void {
     moved = true;
     clearTimeout(later);

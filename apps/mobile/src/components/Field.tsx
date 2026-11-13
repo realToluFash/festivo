@@ -200,7 +200,7 @@ export interface FieldAction {
   testID: string;
 }
 
-/** A refusal whose summary is said in place of each Field's line: each line is read as its control takes focus, and one said as well would queue behind the summary and be said again there (sc-43907). Read as an error mounts, so the form clears it before any other check can mount one. TalkBack's alone: its focus move drops queued speech, and VoiceOver says each line after the summary as it did. */
+/** A refusal whose summary is said in place of each Field's line: each line is read as its control takes focus, and one said as well would queue behind the summary and be said again there (sc-43907). It lasts the one commit the refusal's lines mount in, as it is read only as an error mounts: a line that mounts later, such as a refused cover photo's, is said. TalkBack's alone: its focus move drops queued speech, and VoiceOver says each line after the summary as it did. */
 export const LinesInSummary = createContext(false);
 
 /** The red mark and its sentence, and any way out of the refusal under it. */
