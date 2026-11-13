@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -448,6 +451,30 @@ describe('Guests (sc-1468)', () => {
     );
   });
 
+  it('names each Remove by the companion, or as the host’s guest while it has no name (sc-43267)', async () => {
+    await opened({});
+
+    fireEvent.click(within(form()).getByRole('button', { name: 'Add a companion' }));
+    expect(
+      within(form()).getByRole('button', { name: 'Remove Companion’s full name, 1 of 1' }),
+    ).toBeDefined();
+
+    type('Full name', 'Ifeoluwa Bankole');
+    fireEvent.click(within(form()).getByRole('button', { name: 'Add a companion' }));
+    fireEvent.click(within(form()).getByRole('button', { name: 'Add a companion' }));
+    type('Companion’s full name, 3 of 3', 'Tolu Bankole');
+
+    expect(
+      within(form())
+        .getAllByRole('button', { name: /^Remove /u })
+        .map((button) => button.getAttribute('aria-label')),
+    ).toEqual([
+      'Remove Ifeoluwa Bankole’s guest',
+      'Remove Ifeoluwa Bankole’s guest · 2',
+      'Remove Tolu Bankole',
+    ]);
+  });
+
   it('stops at 10 companions', async () => {
     await opened({});
 
@@ -520,5 +547,13 @@ describe('Guests, live (sc-1468)', () => {
 
     expect(await screen.findByText('Tomás Ferreira')).toBeDefined();
     expect(screen.getByText('2 on the list')).toBeDefined();
+  });
+});
+
+describe('a companion field (sc-43267)', () => {
+  it('ends a placeholder too long for the field in an ellipsis, on one line', () => {
+    expect(readFileSync(join(import.meta.dirname, 'guests.css'), 'utf8')).toMatch(
+      /\.gs-companion \.desk-box input \{\s*overflow: hidden;\s*text-overflow: ellipsis;\s*white-space: nowrap;\s*\}/u,
+    );
   });
 });

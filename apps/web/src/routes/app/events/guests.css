@@ -240,6 +240,12 @@
   min-width: 0;
 }
 
+.gs-companion .desk-box input {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .gs-phone {
   display: flex;
   gap: var(--spaceSm);

@@ -722,7 +722,15 @@ function CompanionFields({
             at={at}
             name={name}
             label={label}
-            shown={name.trim() === '' ? placeholder || label : name.trim()}
+            remove={
+              name.trim() !== ''
+                ? t('guestList.removeNamed', { name: name.trim() })
+                : host === ''
+                  ? t('guestList.removeNamed', { name: label })
+                  : at === 0
+                    ? t('guestList.removeCompanionOf', { host })
+                    : t('guestList.removeCompanionOfNth', { host, nth: at + 1 })
+            }
             placeholder={placeholder}
             error={error}
             onChange={(typed) =>
@@ -759,7 +767,7 @@ function CompanionField({
   at,
   name,
   label,
-  shown,
+  remove,
   placeholder,
   error,
   onChange,
@@ -768,7 +776,7 @@ function CompanionField({
   at: number;
   name: string;
   label: string;
-  shown: string;
+  remove: string;
   placeholder: string;
   error: string | undefined;
   onChange: (name: string) => void;
@@ -797,7 +805,7 @@ function CompanionField({
         <button
           type="button"
           className="desk-text gs-remove"
-          aria-label={t('guestList.removeNamed', { name: shown })}
+          aria-label={remove}
           onClick={onRemove}
         >
           {t('guestList.remove')}
