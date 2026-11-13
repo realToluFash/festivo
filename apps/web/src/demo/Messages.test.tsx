@@ -70,7 +70,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       .parentElement as HTMLElement;
     const links = within(group).getAllByRole('link');
 
-    expect(links).toHaveLength(135);
+    expect(links).toHaveLength(142);
     expect(links[0]?.getAttribute('href')).toBe(`${AT}?state=first`);
     expect(links[7]?.getAttribute('href')).toBe(`${AT}?state=noticeCost`);
     expect(links[26]?.getAttribute('href')).toBe(`${AT}?state=bell`);

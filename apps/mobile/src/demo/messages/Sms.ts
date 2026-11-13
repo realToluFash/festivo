@@ -1,4 +1,10 @@
-import { EVENT_ON, HAPPENING_NOW, type Mobile, PHONE_ZONES, QUIET_NOW } from './MessagesSample.ts';
+import {
+  EVENT_ON,
+  type GuestMobile,
+  HAPPENING_NOW,
+  PHONE_ZONES,
+  QUIET_NOW,
+} from './MessagesSample.ts';
 import type { ChannelKey } from './MessagesWords.ts';
 import { QUIET_UNTIL } from './NoticeStates.ts';
 import { FAILED_REASON, type Quiet, SMSW, saySms } from './SmsWords.ts';
@@ -91,7 +97,7 @@ export interface QuietWait {
 
 /** Nothing waits while the event is happening; with both ticked, a mobile that agreed to WhatsApp goes by WhatsApp only. */
 export function quietWaitOf(
-  mobiles: readonly Mobile[],
+  mobiles: readonly GuestMobile[],
   channels: Record<ChannelKey, boolean>,
   now: string,
   event: { starts: string; ends: string } = EVENT_ON,
@@ -108,7 +114,7 @@ export function quietWaitOf(
 }
 
 export function quietLineOf(
-  mobiles: readonly Mobile[],
+  mobiles: readonly GuestMobile[],
   channels: Record<ChannelKey, boolean>,
   now: string | undefined,
 ): string | null {
