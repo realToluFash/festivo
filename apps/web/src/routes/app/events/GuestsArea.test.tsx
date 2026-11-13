@@ -226,6 +226,10 @@ describe('Guests (sc-1468)', () => {
       const reply = await screen.findByRole('region', { name: 'Reply' });
       expect(within(reply).getByText('Coming')).toBeDefined();
       expect(within(reply).getByText('replied Nov 14')).toBeDefined();
+      const card = screen
+        .getByRole('heading', { level: 2, name: 'Chief Amaka Obi' })
+        .closest('section') as HTMLElement;
+      expect(card.querySelector('.desk-on-card')?.textContent).toBe('Coming · replied Nov 14');
     } finally {
       if (zone == null) delete process.env.TZ;
       else process.env.TZ = zone;
@@ -236,6 +240,7 @@ describe('Guests (sc-1468)', () => {
     await openNgozi();
 
     expect(within(column()).queryByRole('region', { name: 'Reply' })).toBeNull();
+    expect(column().querySelector('.gs-card.is-guest .desk-on-card')).toBeNull();
   });
 
   it('says No guests yet with Add guest on the event’s cover, and no count', async () => {
@@ -784,7 +789,7 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(puts(sent)).toHaveLength(0);
   });
 
-  it('shows a colleague’s change on a 412, only the fields that differ, and holds Save until one is chosen', async () => {
+  it('shows on a 412 only the fields this host changed, holds Save, and Keep mine keeps the colleague’s other change', async () => {
     let reads = 0;
     let saves = 0;
     const theirs = { ...DETAILS, mobile: '+2348035550199' };
@@ -819,7 +824,7 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
       within(panel)
         .getAllByRole('term')
         .map((one) => one.textContent),
-    ).toEqual(['Email address', 'Mobile number']);
+    ).toEqual(['Email address']);
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(puts(sent)).toHaveLength(1);
 
@@ -828,6 +833,172 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(await screen.findByText('Saved')).toBeDefined();
     expect(puts(sent)).toHaveLength(2);
     expect(ifMatches).toEqual(['"1"', '"2"']);
+    expect(puts(sent)[1]?.body).toMatchObject({
+      email: 'ngozi.eze@example.com',
+      mobile: { countryCode: 'NG', number: '0803 555 0199' },
+    });
+  });
+
+  it('after Keep mine fails, Save sends the merged form against their version, not the colleague’s old field', async () => {
+    let reads = 0;
+    let saves = 0;
+    const theirs = { ...DETAILS, mobile: '+2348035550199' };
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        return reads === 1 ? tagged(DETAILS, '"1"') : tagged(theirs, '"2"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => {
+        saves += 1;
+        if (saves === 1) return problem('precondition_failed', 412);
+        if (saves === 2) return problem('server_error', 500);
+        return tagged({ ...theirs, email: 'ngozi.eze@example.com' }, '"3"');
+      },
+    });
+    const ifMatches: (string | null)[] = [];
+    const fetch = vi.mocked(globalThis.fetch);
+    const answer = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (input, init) => {
+      if (init?.method === 'PUT') ifMatches.push(new Headers(init.headers).get('If-Match'));
+      return answer(input, init);
+    });
+
+    type(EMAIL, 'ngozi.eze@example.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    const panel = await screen.findByRole('alert');
+    fireEvent.click(within(panel).getByRole('button', { name: 'Keep mine' }));
+
+    expect(await screen.findByText('Not saved. Nothing was changed. Try again.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect(ifMatches).toEqual(['"1"', '"2"', '"2"']);
+    expect(puts(sent)[2]?.body).toMatchObject({
+      email: 'ngozi.eze@example.com',
+      mobile: { countryCode: 'NG', number: '0803 555 0199' },
+    });
+  });
+
+  it('on a second 412 from Keep mine, the panel lists what this host changed and Keep mine sends its Yours', async () => {
+    let reads = 0;
+    let saves = 0;
+    const first = { ...DETAILS, email: 'ngozi.eze@example.com' };
+    const second = { ...DETAILS, email: 'other@example.com' };
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        if (reads === 1) return tagged(DETAILS, '"1"');
+        return reads === 2 ? tagged(first, '"2"') : tagged(second, '"3"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => {
+        saves += 1;
+        return saves < 3
+          ? problem('precondition_failed', 412)
+          : tagged(
+              { ...second, fullName: 'Ngozi Eze-Okafor', email: 'ngozi.eze@example.com' },
+              '"4"',
+            );
+      },
+    });
+
+    type('Full name', 'Ngozi Eze-Okafor');
+    type(EMAIL, 'ngozi.eze@example.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    const terms = (panel: HTMLElement) =>
+      within(panel)
+        .getAllByRole('term')
+        .map((one) => one.textContent);
+    const panel = await screen.findByRole('alert');
+    expect(terms(panel)).toEqual(['Full name']);
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Keep mine' }));
+    await waitFor(() => expect(puts(sent)).toHaveLength(2));
+    const again = await screen.findByRole('alert');
+    await waitFor(() => expect(terms(again)).toEqual(['Full name', 'Email address']));
+    expect(within(again).getByText('ngozi.eze@example.com')).toBeDefined();
+
+    fireEvent.click(within(again).getByRole('button', { name: 'Keep mine' }));
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect(puts(sent)[2]?.body).toMatchObject({
+      fullName: 'Ngozi Eze-Okafor',
+      email: 'ngozi.eze@example.com',
+    });
+  });
+
+  it('Keep mine brings back a companion their version removed, as a new one (Decided, 13 Nov)', async () => {
+    let reads = 0;
+    let saves = 0;
+    const theirs = { ...DETAILS, companions: [] };
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        return reads === 1 ? tagged(DETAILS, '"1"') : tagged(theirs, '"2"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => {
+        saves += 1;
+        return saves === 1
+          ? problem('precondition_failed', 412)
+          : tagged(
+              {
+                ...theirs,
+                companions: [
+                  { id: 'c_2', fullName: 'Obi Eze', state: 'coming' },
+                  { id: 'c_3', fullName: 'Tolu Bankole', state: 'coming' },
+                ],
+              },
+              '"3"',
+            );
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add a companion' }));
+    type('Companion’s full name, 2 of 2', 'Tolu Bankole');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    const panel = await screen.findByRole('alert');
+    expect(
+      within(panel)
+        .getAllByRole('term')
+        .map((one) => one.textContent),
+    ).toEqual(['Companions']);
+    expect(puts(sent)[0]?.body).toMatchObject({
+      companions: [
+        { id: 'c_1', fullName: 'Obi Eze' },
+        { id: null, fullName: 'Tolu Bankole' },
+      ],
+    });
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Keep mine' }));
+
+    expect(await screen.findByText('Saved')).toBeDefined();
+    expect(puts(sent)[1]?.body).toMatchObject({
+      companions: [
+        { id: null, fullName: 'Obi Eze' },
+        { id: null, fullName: 'Tolu Bankole' },
+      ],
+    });
+  });
+
+  it('sends nothing on a 412 when their version already holds every change, and shows it', async () => {
+    let reads = 0;
+    const theirs = { ...DETAILS, email: 'ngozi.eze@example.com' };
+    const sent = await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () => {
+        reads += 1;
+        return reads === 1 ? tagged(DETAILS, '"1"') : tagged(theirs, '"2"');
+      },
+      'PUT /api/events/ev_1/guests/g_1': () => problem('precondition_failed', 412),
+    });
+
+    type(EMAIL, 'ngozi.eze@example.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('ngozi.eze@example.com')).toBeDefined();
+    expect(
+      screen.queryByText('Someone else changed this guest. Here is their version.'),
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Keep mine' })).toBeNull();
+    expect(puts(sent)).toHaveLength(1);
   });
 
   it('keeps everything typed when the save fails, and says so', async () => {
