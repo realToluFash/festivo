@@ -1,0 +1,8 @@
+# sc-38666: opens Create an organisation on a phone on its side and leaves it there, name focused, keys up, for `hierarchy` to measure.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- runFlow: ../open-create-organisation.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: open-landscape

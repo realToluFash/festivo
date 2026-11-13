@@ -1,0 +1,32 @@
+# sc-37811: Lucía's request, the turn-down Ask, kept, then turned down. Needs ${METRO_URL}; Lucía must be waiting.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: 'members.approve.6b42f90f-0ff5-4aee-b45c-b8f40b99126a'
+- waitForAnimationToEnd
+- takeScreenshot: request
+- tapOn:
+    id: 'members.turnDown'
+- waitForAnimationToEnd
+- takeScreenshot: turn-down-ask
+- tapOn:
+    id: 'members.turnDown.keep'
+- waitForAnimationToEnd
+- takeScreenshot: kept
+- tapOn:
+    id: 'members.turnDown'
+- tapOn:
+    id: 'members.turnDown.confirm'
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: turned-down

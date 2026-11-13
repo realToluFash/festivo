@@ -1,0 +1,32 @@
+# sc-37178: an account locked out by wrong passwords reads Reintentar · HH:MM / Tentar novamente · HH:MM on Sign in, and the line above says when it lifts, with no article before the time. LOCKED_EMAIL is an account already locked.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email|welcome.email'
+    timeout: 60000
+- runFlow:
+    when:
+      visible:
+        id: 'welcome.email'
+    commands:
+      - tapOn:
+          id: 'welcome.email'
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${LOCKED_EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: 'wrong-password-zz'
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    visible: '{{t:signIn.lockedTitle}}'
+    timeout: 20000
+- assertVisible: '.*\d:\d\d.*'
+- hideKeyboard
+- takeScreenshot: signin-locked

@@ -1,0 +1,15 @@
+# sc-36347: with the API stopped, Save says Berry was not saved because you are offline, and nothing restarts.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: personalisation.save
+- extendedWaitUntil:
+    visible: 'Berry was not saved because you are offline\. Your colours stay Violet\.'
+    timeout: 30000
+- takeScreenshot: offline-refused
+- extendedWaitUntil:
+    visible:
+      id: personalisation.colours
+    timeout: 8000
+- assertVisible: 'Berry was not saved because you are offline\. Your colours stay Violet\.'
+- takeScreenshot: offline-still

@@ -1,0 +1,12 @@
+# The signed-out app in English: sign-in-screen-language.yaml with LANGUAGE set to English.
+# Run before sign-in.yaml, whose first wait is on 'Email'.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: sign-in-screen-language.yaml
+    env:
+      LANGUAGE: English
+- extendedWaitUntil:
+    visible: 'Email'
+    timeout: 10000
+- takeScreenshot: mobile-sign-in-english

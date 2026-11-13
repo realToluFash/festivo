@@ -1,0 +1,633 @@
+/* An event's Guests (sc-1468), measured as the web demo's Guests draws them (apps/web/src/demo/guests.css). */
+
+.gs {
+  --gsList: 520px;
+  --gsGuest: 380px;
+  --gsGap: 38px;
+  --gsGrey: var(--replyNotComingDot);
+  --gsAmberRing: color-mix(in srgb, var(--colorAttention) 45%, var(--colorAttentionTint));
+}
+
+.gs-page h1,
+.gs-page h2 {
+  margin: 0;
+}
+
+/* At 320 the title keeps its words whole and Add guest drops beneath it (ux, sc-3773 #44604). */
+.gs-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceMd) var(--spaceLg);
+  min-height: var(--sizeHit);
+}
+
+.gs-title {
+  flex: 1 1 auto;
+  font: 700 28px/1.12 var(--fontFamily);
+  letter-spacing: -0.02em;
+  overflow-wrap: break-word;
+}
+
+/* The crumbs are the way back, so they wrap at word breaks rather than truncate. */
+.gs .ev-crumb ol {
+  flex-wrap: wrap;
+}
+
+.gs .ev-crumb-part {
+  min-width: auto;
+  overflow-wrap: break-word;
+}
+
+.gs .ev-crumb-name {
+  overflow: visible;
+  white-space: normal;
+}
+
+.gs-title:focus {
+  outline: none;
+}
+
+.gs-card.is-page {
+  min-height: 150px;
+}
+
+.gs-card .gs-card-inner {
+  gap: var(--spaceMd);
+  padding: 18px var(--space3xl) var(--spaceXxl);
+}
+
+.gs-says {
+  max-width: 80%;
+  font: 700 24px/1.15 var(--fontFamily);
+  letter-spacing: -0.015em;
+}
+
+.gs-cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gsGap);
+  align-items: flex-start;
+}
+
+.gs-list {
+  flex: 1 1 var(--gsList);
+  max-width: var(--gsList);
+}
+
+.gs-column {
+  flex: 1 1 var(--gsGuest);
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: var(--gsGuest);
+}
+
+.gs-list,
+.gs-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.gs-form {
+  gap: var(--spaceXl);
+}
+
+/* The form stays in view while the list scrolls, only when the two sit side by side. */
+@media (width > 60rem) {
+  .gs-column {
+    position: sticky;
+    top: 0;
+    max-height: calc(100vh - 2 * var(--spaceMd));
+    margin: 0 calc(-1 * var(--spaceLg));
+    padding: var(--spaceXxs) var(--spaceLg) var(--space5xl);
+    overflow-y: auto;
+  }
+}
+
+.gs-failed {
+  align-items: flex-start;
+}
+
+/* Dividers start at the words, 40 in; a companion's at theirs, 80 in. */
+.gs-rows > * + * {
+  background-position: 40px 0;
+  background-size: calc(100% - 40px) 1px;
+}
+
+.gs-rows > .is-companion {
+  background-position: 80px 0;
+  background-size: calc(100% - 80px) 1px;
+}
+
+.gs-row {
+  gap: var(--spaceLg);
+}
+
+.gs-rows > .is-companion > .gs-row {
+  min-height: 52px;
+  padding-block: var(--spaceSm);
+  padding-left: 40px;
+}
+
+.gs-lead {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+}
+
+/* The reply marks (replyStates): a shape for each, always beside its word. */
+.gs-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--colorInkOnDark);
+}
+
+.gs-mark.is-coming {
+  background: var(--replyComingDot);
+}
+
+.gs-mark.is-maybe {
+  border: var(--replyMaybeRing);
+  background: var(--replyMaybeDot);
+  color: var(--colorAttentionText);
+}
+
+.gs-mark.is-not-coming {
+  background: var(--gsGrey);
+}
+
+.gs-bar {
+  width: 50%;
+  height: 2.5px;
+  border-radius: 2px;
+  background: currentcolor;
+}
+
+.gs-mark.is-held {
+  border: var(--replyHeldRing);
+  background: linear-gradient(90deg, var(--gsGrey) 50%, var(--colorCard) 50%);
+}
+
+.gs-mark.is-no-reply {
+  border: var(--replyNoReplyRing);
+}
+
+.gs-ok {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  color: var(--deskGreen);
+  font: 600 15px/1.4 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.gs-ok svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.gs-col-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  min-height: var(--sizeHit);
+}
+
+.gs-col-title {
+  flex: 1;
+  min-width: 0;
+  font: 700 20px/1.2 var(--fontFamily);
+  letter-spacing: -0.01em;
+}
+
+.gs-col-title:focus {
+  outline: none;
+}
+
+.gs-col-actions {
+  display: flex;
+  gap: 18px;
+}
+
+.gs-fields {
+  padding-top: 0;
+}
+
+.gs-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.gs-optional {
+  flex: none;
+  padding: 2px var(--spaceSm);
+  border-radius: var(--spaceMd);
+  background: var(--colorInsetBorder);
+  color: var(--colorInkSecondary);
+  font: 600 12.5px/1.3 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.gs-companion-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.gs-companion {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
+.gs-companion .desk-box {
+  flex: 1;
+  min-width: 0;
+}
+
+.gs-companion .desk-box input {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gs-phone {
+  display: flex;
+  gap: var(--spaceSm);
+}
+
+.gs-phone > .desk-box:last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.desk-box.gs-country {
+  position: relative;
+  flex: none;
+  gap: var(--spaceXs);
+  padding: 0 var(--spaceMd) 0 var(--spacePillEnd);
+  color: var(--colorInk);
+  font: 500 16px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.gs-country > svg {
+  color: var(--colorInkSecondary);
+}
+
+.gs-country select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.gs-fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.gs-legend {
+  margin-bottom: var(--spaceXs);
+  padding: 0;
+  font: 700 15px/1.3 var(--fontFamily);
+}
+
+.gs-count {
+  color: var(--colorInkSecondary);
+  font: 500 14.5px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.gs .gs-remove {
+  flex: none;
+  margin-inline: 0;
+  color: var(--colorInkSecondary);
+}
+
+.gs-most {
+  font: 600 14.5px/1.45 var(--fontFamily);
+}
+
+.gs-amber {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: 14px var(--spaceXl);
+  border-radius: 18px;
+  background: var(--colorAttentionTint);
+  box-shadow: inset 0 0 0 1.5px var(--gsAmberRing);
+}
+
+.gs-amber-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  font: 700 15.5px/1.35 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.gs-amber-head:focus {
+  outline: none;
+}
+
+.gs-amber-head svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--colorAttentionText);
+}
+
+.gs-amber-line {
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.gs-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd);
+}
+
+.gs-pill {
+  display: inline-flex;
+  flex: none;
+  align-self: flex-start;
+  align-items: center;
+  justify-content: center;
+  height: var(--sizeHit);
+  padding: 0 18px;
+  border-radius: var(--radiusPill);
+  font: 600 15px/1 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.gs-pill.is-primary {
+  background: var(--colorAccent);
+  color: var(--colorInkOnDark);
+}
+
+.gs-pill.is-primary:hover {
+  background: var(--colorAccentHover);
+}
+
+.gs-pill.is-secondary {
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1.5px var(--colorControlBorder);
+  color: var(--colorInk);
+}
+
+.gs-pill.is-secondary:hover {
+  background: var(--colorInset);
+}
+
+.gs-pill.is-tall {
+  height: 48px;
+  padding: 0 22px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gs-amber,
+  .gs-refused {
+    animation: gs-drop 120ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .gs-column > * {
+    animation: gs-fade 200ms cubic-bezier(0.2, 0, 0, 1);
+  }
+}
+
+@keyframes gs-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes gs-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* A guest beside the list (sc-1526), measured as the web demo's guest column draws it (apps/web/src/demo/guests.css). */
+.gs-row.is-on {
+  background: var(--colorAccentTint);
+}
+
+.gs-blocked {
+  margin-bottom: var(--spaceLg);
+}
+
+/* A guest's column (sc-3773): the cover card the guest sees, then Details; Edit in place. */
+.gs-guest {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.gs-card.is-guest {
+  min-height: 170px;
+}
+
+.gs-card.is-guest .gs-card-inner {
+  padding: var(--spaceXl) 18px 18px;
+}
+
+.gs-name {
+  max-width: 100%;
+  font: 700 24px/1.15 var(--fontFamily);
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+
+.gs-name:focus {
+  outline: none;
+}
+
+.gs-gone {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  padding-top: 120px;
+}
+
+.gs-gone h2 {
+  font: 700 20px/1.3 var(--fontFamily);
+  letter-spacing: -0.01em;
+}
+
+.gs-gone h2:focus {
+  outline: none;
+}
+
+.gs-pick {
+  padding-top: 120px;
+  color: var(--colorInkSecondary);
+  font: 500 15px/1.45 var(--fontFamily);
+  text-align: center;
+}
+
+.gs-lead.is-icon {
+  color: var(--colorInkSecondary);
+}
+
+.gs-do {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gs-do .desk-row-name {
+  color: var(--colorAccent);
+  font-weight: 500;
+}
+
+.desk-row.is-none .desk-row-name {
+  color: var(--colorInkSecondary);
+}
+
+.gs-mark.is-16 {
+  width: 16px;
+  height: 16px;
+}
+
+.gs-mark.on-cover.is-coming,
+.gs-mark.on-cover.is-not-coming {
+  background: var(--colorInkOnDark);
+  color: var(--evScrim);
+}
+
+.gs-mark.on-cover.is-maybe {
+  border: 0;
+  background: none;
+  box-shadow: inset 0 0 0 2px var(--colorInkOnDark);
+  color: var(--colorInkOnDark);
+}
+
+.gs-mark.on-cover.is-held {
+  border: 0;
+  background: linear-gradient(90deg, var(--colorInkOnDark) 50%, transparent 50%);
+  box-shadow: inset 0 0 0 1.5px var(--colorInkOnDark);
+}
+
+.gs-mark.on-cover.is-no-reply {
+  border: 0;
+  box-shadow: inset 0 0 0 1.5px var(--colorInkOnDark);
+}
+
+.gs .desk-text.is-held {
+  color: var(--colorInkTertiary);
+  cursor: default;
+}
+
+.gs .desk-text.is-held:hover {
+  text-decoration: none;
+}
+
+.gs .gs-more {
+  margin-inline: 0;
+  color: var(--colorInkSecondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.gs-differ {
+  margin: 0;
+}
+
+.gs-differ-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--spaceSm) 0;
+  border-top: 1px solid var(--gsAmberRing);
+}
+
+.gs-differ dt {
+  color: var(--colorInkSecondary);
+  font: 600 13.5px/1.3 var(--fontFamily);
+}
+
+.gs-differ dd {
+  display: flex;
+  gap: var(--spaceMd);
+  margin: 0;
+  font: 500 14.5px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.gs-who {
+  flex: none;
+  width: 52px;
+  color: var(--colorInkSecondary);
+  font-weight: 600;
+}
+
+.gs-copied {
+  display: flex;
+  align-items: center;
+  padding-left: 40px;
+}
+
+.gs-copied span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-height: var(--sizeHit);
+  color: var(--deskGreen);
+  font: 600 15px/1.3 var(--fontFamily);
+}
+
+.gs-refused {
+  padding-left: 40px;
+  color: var(--colorBroken);
+  font: 600 15px/1.3 var(--fontFamily);
+}
+
+.gs-by-hand {
+  padding: var(--spaceXs) 0 var(--spaceMd);
+}
+
+.gs-link {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 52px;
+  padding: var(--spaceLg) var(--spacePillEnd);
+  border: 0;
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+  color: var(--colorInk);
+  font: 500 15px/1.45 var(--fontFamily);
+  overflow-wrap: anywhere;
+  resize: none;
+}
+
+.gs .gs-link:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}

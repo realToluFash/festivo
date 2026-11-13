@@ -1,0 +1,9 @@
+# Settings, from wherever signing in landed: Today shows no Signed in as line. sc-30091.
+# Waited for by the account card at its top, since English Settings is also the label of
+# Today's own tab. An account overdue for two-factor is shown that screen at /settings instead.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible: '{{t:any:settings.personLabel}}|{{t:any:settings.personLabelWithRole}}|{{t:any:signInRules.overdueTitle}}'
+    timeout: 30000

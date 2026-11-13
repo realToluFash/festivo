@@ -1,0 +1,47 @@
+# Opens the invitation ${INVITE}, pauses the API through the batch helper, presses ${ANSWER} and screenshots it sending. sc-38149.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: 'switcher.tile.${INVITE}'
+    timeout: 15000
+- tapOn:
+    id: 'switcher.tile.${INVITE}'
+- scrollUntilVisible:
+    element:
+      id: 'switcher.invitation.${INVITE}.decline'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- takeScreenshot: ${ANSWER}-before
+- tapOn:
+    id: 'switcher.invitation.${INVITE}.${ANSWER}'
+- takeScreenshot: ${ANSWER}-now
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: ${ANSWER}-sending
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
