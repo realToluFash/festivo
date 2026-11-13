@@ -342,7 +342,8 @@ ops work of its own kind, `machine`, in the queue `ops@<machine>`:
 - **No Claude run starts Docker Desktop.** An app a run opens is quit when the run ends, so a
   Docker started with `open -a Docker` from a run stops seconds after it (sc-46912). The
   minute tick runs outside every session and starts it instead; a run that finds Docker
-  down waits a tick or two.
+  down waits a tick or two. A paused machine (`sq pause`, here or everywhere) starts
+  nothing, so pause it to keep Docker quit.
 - **This machine's ops takes its machine work whoever holds the ops lease.** A machine
   without the lease runs ops for `ops@<machine>` items only.
 - **A full disk holds every other role, but not this.** The disk guard is the one hold

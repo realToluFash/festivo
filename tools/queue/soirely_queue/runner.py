@@ -225,7 +225,6 @@ def tick(db, home, platform, sq, python, now, dry_run, say, remote, config, read
     from .cli import refresh_work
     local.checks(db, config, now, dry_run=dry_run)
     if not dry_run:
-        local.wake_docker(db, now, say)
         if local.sweep_scratch(db, config, now, say):
             local.measure_litter(config, True)
         stop_leftovers(db, home, platform, say)
@@ -252,6 +251,8 @@ def tick(db, home, platform, sq, python, now, dry_run, say, remote, config, read
         skip = view.taken_elsewhere()
     else:
         view, mine, elsewhere, skip = None, set(), {}, set()
+    if not dry_run:
+        local.wake_docker(db, now, say)
     phases.mark("update and lease")
     minute = int(now // 60)
     # A dry run previews every ready role, started or not, whatever the minute.
