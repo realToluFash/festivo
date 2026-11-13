@@ -271,9 +271,9 @@ describe('a window that opens through a Modal of its own (sc-42690)', () => {
     );
   });
 
-  it('raises the keys again on Create an organisation’s field once TalkBack’s focus is on it (qa3 #45108)', () => {
+  it('raises the keys on Create an organisation’s field once shown, moving TalkBack’s focus only onto a field still focused (qa3 #45182)', () => {
     expect(read('CreateWalkWindow.tsx')).toMatch(
-      /moveScreenReaderFocus\(input\);\s+\/\/ .*\s+const keys = setTimeout\(\(\) => raiseKeysOn\(input\), HOVER_LANDS_MS\);/,
+      /\/\/ .*\s+if \(input\.isFocused\(\)\) moveScreenReaderFocus\(input\);\s+raiseKeysOn\(input\);\s+\}, \[talkBack, onScreen, unnamed, opening\]\);/,
     );
   });
 
