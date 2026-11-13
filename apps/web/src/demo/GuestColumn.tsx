@@ -17,6 +17,7 @@ import {
   invitationLine,
   invitesOn,
   languageName,
+  namedOf,
   phoneShown,
   replyByOf,
   replyTail,
@@ -314,17 +315,31 @@ function Details({
             </li>
           </>
         )}
+        {guest.companions.length > 0 && (
+          <li className="desk-row">
+            <IconLead name="users" />
+            <RowWords
+              title={`${GW.companionCount(guest.companions.length)} · ${GW.namedOf(namedOf(guest), guest.companions.length)}`}
+              lines={[GW.placesFor]}
+            />
+          </li>
+        )}
         {guest.companions.map((companion) => (
           <li key={companion.id} className="desk-row">
             <MarkLead reply={companion.reply} />
-            <RowWords
-              title={companionName(guest, companion)}
-              lines={[
-                companion.reply === 'held'
-                  ? GW.heldCompanion
-                  : GW.companion(REPLY_WORDS[companion.reply]),
-              ]}
-            />
+            <div className="gs-row-words">
+              <RowWords
+                title={companionName(guest, companion)}
+                lines={[
+                  companion.reply === 'held'
+                    ? GW.heldCompanion
+                    : GW.companion(REPLY_WORDS[companion.reply]),
+                ]}
+              />
+              {companion.namedBy === 'guest' && (
+                <span className="gs-named-by">{GW.namedByGuest}</span>
+              )}
+            </div>
           </li>
         ))}
         {manages && (
