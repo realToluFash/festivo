@@ -38,10 +38,19 @@ const GSM_7 =
   '@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&\'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà';
 const GSM_7_TWICE = '^{}\\[~]|€';
 
+function isGsm(chars: readonly string[]): boolean {
+  return chars.every((one) => GSM_7.includes(one) || GSM_7_TWICE.includes(one));
+}
+
+/** The encoding a text goes in, as sc-3946's count names it. */
+export function smsEncoding(text: string): 'GSM-7' | 'UCS-2' {
+  return isGsm([...text]) ? 'GSM-7' : 'UCS-2';
+}
+
 /** How many parts a text is sent in: GSM-7 to 160 characters, then 153 a part; any other character makes it UCS-2, 70 then 67. */
 export function smsParts(text: string): number {
   const chars = [...text];
-  const gsm = chars.every((one) => GSM_7.includes(one) || GSM_7_TWICE.includes(one));
+  const gsm = isGsm(chars);
 
   if (!gsm) return chars.length <= 70 ? 1 : Math.ceil(chars.length / 67);
 

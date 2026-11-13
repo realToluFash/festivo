@@ -49,6 +49,7 @@ import {
   stampOf,
 } from './messagesNotice.ts';
 import { NW } from './messagesNoticeWords.ts';
+import { smsEncoding } from './inviteSms.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
@@ -160,6 +161,13 @@ export const MESSAGE_STATES = [
   { key: 'channelsSeeAll', name: 'See all, open' },
   { key: 'channelsMany', name: 'See all, 93 names' },
   { key: 'channelsNone', name: 'Nothing ticked' },
+  { key: 'reasons', name: 'Who it reached, every reason' },
+  { key: 'trySms', name: 'Try SMS instead' },
+  { key: 'trySmsQuiet', name: 'Try SMS instead, at night for them' },
+  { key: 'trySmsShort', name: 'Try SMS instead, too few credits' },
+  { key: 'trySmsSent', name: 'Then Send by SMS' },
+  { key: 'closedReached', name: 'Who it reached, the sends off' },
+  { key: 'reachedQuiet', name: 'A text waiting for the morning' },
   ...WAITS_STATES,
   ...NOTICE_STATES,
   ...INVITE_STATES,
@@ -175,6 +183,7 @@ export function closedOf(state: MessagesState | null): string | null {
     case 'closedDraft':
       return MW.closedDraft;
     case 'closedEnded':
+    case 'closedReached':
       return MW.closedEnded;
     default:
       return null;
@@ -907,7 +916,16 @@ export type Delivery =
   | 'optout'
   | 'none';
 export type Kind =
-  'inProgress' | 'bounced' | 'failed' | 'notSent' | 'notConfirmed' | 'optedOut' | 'none' | 'cant';
+  | 'inProgress'
+  | 'held'
+  | 'bounced'
+  | 'failed'
+  | 'notSent'
+  | 'notConfirmed'
+  | 'optedOut'
+  | 'skipped'
+  | 'none'
+  | 'cant';
 export type AddressFix = 'fixEmail' | 'addEmail' | 'addPhone';
 export type Fix = AddressFix | 'toldInPerson' | 'copyLink' | 'trySms';
 
@@ -927,7 +945,17 @@ export interface Unreached {
   address?: string;
   updated?: readonly string[];
   offer?: boolean;
+  phone?: Phone;
 }
+
+/** A mobile number Try SMS instead could text: its country's credits a part, the guest's own time now, and whether they stopped texts. */
+export interface Phone {
+  perPart: number;
+  theirTime: string;
+  stopped?: boolean;
+}
+
+export type Texted = 'sent' | 'waiting' | 'held';
 
 /** An address saved in Who it reached, the guest's own, so every message sees it; Send again and Not now are per message. */
 export interface Update {
@@ -990,7 +1018,7 @@ const unconfirmed: Line = {
 const optedOut = (channel: 'email' | 'sms'): Line => ({
   mark: 'optout',
   word: `${channel === 'email' ? MW.email : MW.sms} · ${MW.notSent}`,
-  why: channel === 'email' ? MW.unsubscribed : MW.textedStop,
+  why: channel === 'email' ? MW.unsubscribed : MW.stoppedTexts,
 });
 
 export const OLD_ADDRESS = 'tomas.ferreira@gmial.com';
@@ -1062,6 +1090,193 @@ export const PARKING_UNREACHED: readonly Unreached[] = [
   person('joaquin', 'Joaquín Ruiz', 'none', NOTHING, ['addEmail', 'addPhone', 'toldInPerson']),
   person('mei', 'Mei Lin Chen', 'none', NOTHING, ['addEmail', 'addPhone', 'toldInPerson']),
 ];
+
+/** Parking told by Email only (Messaging-B-Phone-More-2, 4): every reason sc-3942 words, and who Try SMS instead can reach. */
+const emailFailed = (why: string): Line => ({
+  mark: 'bounced',
+  word: `${MW.email} · ${MW.failedReceipt}`,
+  why,
+});
+const emailSkipped = (why: string): Line => ({
+  mark: 'notsent',
+  word: `${MW.email} · ${MW.notSent}`,
+  why,
+});
+const withPhone = (one: Unreached, phone: Phone): Unreached => ({ ...one, phone });
+
+export const REASONS_UNREACHED: readonly Unreached[] = [
+  {
+    ...person(
+      'tomas',
+      'Tomás Ferreira',
+      'bounced',
+      [bounced(`${MW.doesntExist} (5.1.1)`)],
+      ['fixEmail', 'toldInPerson'],
+    ),
+    address: OLD_ADDRESS,
+  },
+  {
+    ...withPhone(
+      person(
+        'olumide',
+        'Olumide Bello',
+        'bounced',
+        [bounced(`${MW.inboxFull} (4.2.2)`)],
+        ['fixEmail', 'toldInPerson'],
+      ),
+      { perPart: 62, theirTime: '10:41' },
+    ),
+    address: 'olumide.bello@outlook.com',
+  },
+  {
+    ...withPhone(
+      person(
+        'chidi',
+        'Chidi Okeke',
+        'failed',
+        [emailFailed(MW.couldNotSendEmail)],
+        ['fixEmail', 'toldInPerson'],
+      ),
+      { perPart: 62, theirTime: '10:41' },
+    ),
+    address: 'chidi.okeke@gmail.com',
+  },
+  {
+    ...withPhone(
+      person(
+        'rafael',
+        'Rafael Costa',
+        'failed',
+        [emailFailed(MW.cannotEmailAddress)],
+        ['fixEmail', 'toldInPerson'],
+      ),
+      { perPart: 10, theirTime: '06:41' },
+    ),
+    address: 'rafael.costa@uol.com.br',
+  },
+  withPhone(person('sophie', 'Sophie Laurent', 'optedOut', [optedOut('email')], ['toldInPerson']), {
+    perPart: 8,
+    theirTime: '10:41',
+  }),
+  {
+    ...withPhone(
+      person(
+        'yuki',
+        'Yuki Tanaka',
+        'skipped',
+        [emailSkipped(MW.addressBouncing)],
+        ['fixEmail', 'toldInPerson'],
+      ),
+      { perPart: 9, theirTime: '09:41' },
+    ),
+    address: 'yuki.tanaka@icloud.com',
+  },
+  withPhone(
+    person('diego', 'Diego Herrera', 'skipped', [emailSkipped(NW.reportedSpam)], ['toldInPerson']),
+    { perPart: 8, theirTime: '10:41', stopped: true },
+  ),
+  person('joaquin', 'Joaquín Ruiz', 'none', NOTHING, ['addEmail', 'addPhone', 'toldInPerson']),
+  person('mei', 'Mei Lin Chen', 'none', NOTHING, ['addEmail', 'addPhone', 'toldInPerson']),
+];
+
+const REASONS_REACHED: readonly Unreached[] = [
+  person(
+    'kemi',
+    'Kemi Bankole',
+    'none',
+    [{ mark: 'delivered', word: `${MW.email} · ${NW.reportedAsSpam}`, why: 'Mon, Nov 2, 18:42' }],
+    [],
+  ),
+  person(
+    'ines',
+    'Inês Duarte',
+    'none',
+    [{ mark: 'delivered', word: `${MW.email} · ${MW.delivered}`, why: '18:21' }],
+    [],
+    { mark: 'delivered', word: MW.theirPage, why: filled(MW.seen, { time: '19:02' }) },
+  ),
+  person(
+    'kwame',
+    'Kwame Mensah',
+    'none',
+    [{ mark: 'delivered', word: `${MW.email} · ${MW.delivered}`, why: '18:21' }],
+    [],
+  ),
+];
+
+const QUIET_FROM = '20:00';
+const QUIET_UNTIL = '09:00';
+
+/** Quiet hours (sc-3946): a text waits while it is before 09:00 or from 20:00 in the guest's own time. */
+export function isQuiet(theirTime: string): boolean {
+  return theirTime < QUIET_UNTIL || theirTime >= QUIET_FROM;
+}
+
+/** Who Try SMS instead is offered to (sc-3966, Decided 13 Nov, point 1): a person not reached and not told, with nothing in progress, held or too late, a mobile that has not stopped texts, and no text for this message; whatever their email line reads. */
+export function trySmsOffered(one: Unreached): boolean {
+  return (
+    one.phone != null &&
+    one.phone.stopped !== true &&
+    one.kind !== 'inProgress' &&
+    one.kind !== 'held' &&
+    !one.lines.some((line) => line.word.startsWith(MW.sms) || line.mark === 'held')
+  );
+}
+
+export interface TrySms {
+  credits: number;
+  count: string;
+  uses: string;
+  after: string | null;
+  waits: string | null;
+  quiet: string | null;
+}
+
+/** Try SMS instead, pressed: the guest's own text counted (sc-3946), its credits (sc-3929's preview), and either wait (sc-3976, sc-3963). */
+export function trySmsOf(phone: Phone, balance: number): TrySms {
+  const sms = noticeSmsOf(HOSTS, EVENT_NAME);
+  const credits = noticeCredits('sms', phone.perPart, sms.parts);
+  const short = credits > balance;
+
+  return {
+    credits,
+    count: many('smsCount', sms.parts, { encoding: smsEncoding(sms.text), chars: sms.chars }),
+    uses: many('noticeTextUses', credits),
+    after: short ? null : filled(MW.creditsAfter, { count: balance - credits }),
+    waits: short ? many('smsWaits', 1) : null,
+    quiet: isQuiet(phone.theirTime) ? filled(NW.textWaitsUntil, { time: QUIET_UNTIL }) : null,
+  };
+}
+
+export function textedOf(phone: Phone, balance: number): Texted {
+  const cost = trySmsOf(phone, balance);
+
+  if (cost.waits != null) return 'held';
+
+  return cost.quiet == null ? 'sent' : 'waiting';
+}
+
+const TEXTED_LINE: Record<Texted, Line> = {
+  sent: { mark: 'sent', word: `${MW.sms} · ${MW.sent}`, why: NOW },
+  waiting: { mark: 'held', word: MW.sms, why: filled(NW.waitingUntil, { time: QUIET_UNTIL }) },
+  held: { mark: 'held', word: `${MW.sms} · ${MW.held}` },
+};
+
+export function textedPerson(one: Unreached, texted: Texted | undefined): Unreached {
+  if (texted == null) return one;
+
+  return {
+    ...one,
+    kind: texted === 'held' ? 'held' : 'inProgress',
+    lines: [...one.lines.slice(0, -1), TEXTED_LINE[texted], ...one.lines.slice(-1)],
+  };
+}
+
+function offeredSms(one: Unreached): Unreached {
+  if (!trySmsOffered(one)) return { ...one, fixes: one.fixes.filter((fix) => fix !== 'trySms') };
+
+  return one.fixes.includes('trySms') ? one : { ...one, fixes: ['trySms', ...one.fixes] };
+}
 
 const NOT_INVITED: Line = { mark: 'none', word: MW.theirInvitation, why: MW.notYetInvited };
 
@@ -1196,11 +1411,13 @@ export interface Reach {
 
 export const KIND_ORDER: readonly Kind[] = [
   'inProgress',
+  'held',
   'bounced',
   'failed',
   'notSent',
   'notConfirmed',
   'optedOut',
+  'skipped',
   'none',
   'cant',
 ];
@@ -1225,6 +1442,10 @@ export function legendWord(kind: 'reached' | Kind): string {
       return MW.legendReached;
     case 'inProgress':
       return MW.legendInProgress;
+    case 'held':
+      return MW.legendHeld;
+    case 'skipped':
+      return MW.legendSkipped;
     case 'bounced':
       return MW.legendBounced;
     case 'failed':
@@ -1250,6 +1471,10 @@ export function reachLine(
     switch (part.kind) {
       case 'inProgress':
         return [many('inProgressCount', part.count)];
+      case 'held':
+        return [many('heldCount', part.count)];
+      case 'skipped':
+        return [many('skippedCount', part.count)];
       case 'bounced':
         return [many('bouncedCount', part.count)];
       case 'failed':
@@ -1276,7 +1501,9 @@ export const PARKING_OF = GUESTS_N;
 export const PARKING_SEEN = 87;
 export const INVITE_REACH = { reached: 140, of: GUESTS_N, seen: 121 };
 
-export function reachedOfThread(thread: ConvoId): ReachedOf {
+export function reachedOfThread(thread: ConvoId, inbox?: Pick<Inbox, 'reasons'>): ReachedOf {
+  if (thread === 'parking' && inbox?.reasons === true) return 'reasons';
+
   return thread === 'parking' || thread === 'invite' || thread === 'receipts' ? thread : 'new';
 }
 
@@ -1593,7 +1820,28 @@ export interface Who {
 }
 
 function baseOf(of: ReachedOf): readonly Unreached[] {
-  return of === 'parking' ? PARKING_UNREACHED : of === 'invite' ? INVITE_UNREACHED : SO_FAR.cant;
+  switch (of) {
+    case 'parking':
+      return PARKING_UNREACHED;
+    case 'reasons':
+      return REASONS_UNREACHED;
+    case 'invite':
+      return INVITE_UNREACHED;
+    default:
+      return SO_FAR.cant;
+  }
+}
+
+const VALENTINA = person(
+  'valentina',
+  'Valentina Restrepo',
+  'inProgress',
+  [{ mark: 'held', word: MW.sms, why: filled(NW.waitingUntil, { time: QUIET_UNTIL }) }, NO_EMAIL],
+  ['toldInPerson'],
+);
+
+function progressOf(inbox: Pick<Inbox, 'quietText'>): readonly Unreached[] {
+  return inbox.quietText === true ? [VALENTINA, ...SO_FAR.progress] : SO_FAR.progress;
 }
 
 /** Who it reached for one message: its summary, its groups in Everyone's order, and who a resend is for; `groups` are the event's own. */
@@ -1603,7 +1851,11 @@ export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: read
     return whatsAppInviteWho(of === 'whatsAppInvite');
 
   const marks = inbox.marked[thread] ?? [];
-  const mine = (one: Unreached) => updatedPerson(one, savedOn(inbox, one.id, thread));
+  const mine = (one: Unreached) =>
+    offeredSms(
+      textedPerson(updatedPerson(one, savedOn(inbox, one.id, thread)), inbox.texted?.[one.id]),
+    );
+  const drawnProgress = progressOf(inbox);
   const people = baseOf(of)
     .filter((one) => !marks.includes(one.id))
     .map(mine);
@@ -1612,7 +1864,7 @@ export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: read
     word: MW.toldInPersonLine,
     why: filled(MW.markedBy, { name: READER, time: SENT_AGAIN_AT }),
   };
-  const markable = of === 'new' ? [...SO_FAR.progress, ...baseOf(of)] : baseOf(of);
+  const markable = of === 'new' ? [...drawnProgress, ...baseOf(of)] : baseOf(of);
   const marked = marks
     .flatMap((id) => markable.filter((one) => one.id === id))
     .map(mine)
@@ -1628,13 +1880,13 @@ export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: read
     count: marked.length,
     more: 0,
   };
-  const waiting = people.filter((one) => one.kind !== 'inProgress');
+  const waiting = people.filter((one) => one.kind !== 'inProgress' && one.kind !== 'held');
 
   if (of === 'new') {
     const sent = people.filter((one) => one.kind === 'inProgress');
-    const left = SO_FAR.progress.filter((one) => !marks.includes(one.id));
+    const left = drawnProgress.filter((one) => !marks.includes(one.id));
     const progress = [...left, ...sent];
-    const inProgress = SO_FAR.inProgress - (SO_FAR.progress.length - left.length) + sent.length;
+    const inProgress = SO_FAR.inProgress - (drawnProgress.length - left.length) + sent.length;
     const reached = SO_FAR.reached + marked.length;
     const reach: Reach = {
       reached,
@@ -1677,11 +1929,12 @@ export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: read
   }
 
   const reach =
-    of === 'parking'
-      ? reachFrom(PARKING_OF, PARKING_SEEN, people)
-      : reachFrom(INVITE_REACH.of, INVITE_REACH.seen, people);
+    of === 'invite'
+      ? reachFrom(INVITE_REACH.of, INVITE_REACH.seen, people)
+      : reachFrom(PARKING_OF, PARKING_SEEN, people);
   const delivered = reach.reached - marked.length;
-  const drawn = of === 'parking' ? PARKING_REACHED : INVITE_REACHED;
+  const drawn =
+    of === 'invite' ? INVITE_REACHED : of === 'reasons' ? REASONS_REACHED : PARKING_REACHED;
 
   return {
     reach,
@@ -1807,11 +2060,14 @@ export function resendOf(
   ticks: Ticks,
   groups: readonly Group[],
 ): ResendCheck {
-  const of = reachedOfThread(thread);
+  const of = reachedOfThread(thread, inbox);
   const { waiting } = whoOf(inbox, of, thread, groups);
   const unsent = (id: string) => savedOn(inbox, id, thread).filter((one) => !one.sent);
   const tellable = waiting.filter(
-    (one) => (of === 'parking' && TELLABLE_NOW.includes(one.id)) || unsent(one.id).length > 0,
+    (one) =>
+      (of === 'parking' && TELLABLE_NOW.includes(one.id)) ||
+      (of === 'reasons' && one.phone != null && one.phone.stopped !== true) ||
+      unsent(one.id).length > 0,
   );
   const still = waiting.filter((one) => !tellable.includes(one));
   const shown =
@@ -1899,7 +2155,7 @@ export interface Answer {
   waits?: string;
 }
 
-export type ReachedOf = 'parking' | 'invite' | 'receipts' | 'new' | WhatsAppInviteOf;
+export type ReachedOf = 'parking' | 'reasons' | 'invite' | 'receipts' | 'new' | WhatsAppInviteOf;
 
 export type Pane =
   | { kind: 'idle' }
@@ -1941,6 +2197,10 @@ export interface Inbox {
   stopped?: Partial<Record<GuestId, Stop>>;
   /** sc-3976: the open state's facts about one guest's notice and conversation. */
   notice?: NoticeCase;
+  /** Parking told by Email only, with every reason sc-3942 words (sc-3966's `reasons`). */
+  reasons?: boolean;
+  texted?: Readonly<Record<string, Texted>>;
+  quietText?: boolean;
 }
 
 export const TICKS: Ticks = { email: true, sms: true, whatsApp: false };
@@ -2141,6 +2401,12 @@ export function seedOf(state: MessagesState | null): Inbox {
   });
 
   const allTicked: Ticks = { email: true, sms: true, whatsApp: true };
+  const reasons: Inbox = {
+    ...base,
+    reasons: true,
+    unreached: REASONS_UNREACHED,
+    pane: { kind: 'reached', of: 'reasons', thread: 'parking' },
+  };
 
   const seeAll = (inbox: Inbox): Inbox =>
     inbox.draft == null ? inbox : { ...inbox, draft: { ...inbox.draft, seeAll: true } };
@@ -2256,6 +2522,28 @@ export function seedOf(state: MessagesState | null): Inbox {
     case 'reached':
     case 'fix':
       return { ...base, pane: parkingReached };
+    case 'reasons':
+    case 'trySms':
+    case 'trySmsQuiet':
+      return reasons;
+    case 'trySmsShort':
+      return { ...reasons, balance: 0 };
+    case 'trySmsSent':
+      return changed(reasons, { kind: 'textSms', id: 'olumide' });
+    case 'closedReached':
+      return {
+        ...reasons,
+        present: ALL.filter((id) => id !== 'sched'),
+        scheds: [],
+        updates: { tomas: [{ fix: 'fixEmail', address: NEW_ADDRESS, sentOn: [], laterOn: [] }] },
+      };
+    case 'reachedQuiet':
+      return {
+        ...base,
+        quietText: true,
+        pane: { kind: 'reached', of: 'new', thread: 'new' },
+        outs: [outOf('sent')],
+      };
     case 'filterMenu':
     case 'filtered':
       return { ...base, pane: parkingReached };
@@ -2854,6 +3142,7 @@ export type Change =
   | { kind: 'fixed'; id: string; thread: ConvoId; fix: AddressFix; address: string }
   | { kind: 'notNow'; id: string; thread: ConvoId }
   | { kind: 'sendAgain'; id: string; thread: ConvoId }
+  | { kind: 'textSms'; id: string }
   | { kind: 'resend'; resend: Ticks | null }
   | { kind: 'untold'; untold: readonly Told[] }
   | { kind: 'match'; name: string }
@@ -3076,7 +3365,9 @@ export function changed(inbox: Inbox, change: Change): Inbox {
         ...inbox,
         unreached:
           change.thread === 'parking'
-            ? PARKING_UNREACHED.filter((one) => kept.has(one.id))
+            ? (inbox.reasons === true ? REASONS_UNREACHED : PARKING_UNREACHED).filter((one) =>
+                kept.has(one.id),
+              )
             : inbox.unreached,
         marked: {
           ...inbox.marked,
@@ -3101,6 +3392,20 @@ export function changed(inbox: Inbox, change: Change): Inbox {
             );
 
       return { ...inbox, updates: { ...inbox.updates, [id]: next } };
+    }
+    case 'textSms': {
+      const phone = REASONS_UNREACHED.find((one) => one.id === change.id)?.phone;
+
+      if (phone == null) return inbox;
+
+      const texted = textedOf(phone, inbox.balance);
+      const { credits } = trySmsOf(phone, inbox.balance);
+
+      return {
+        ...inbox,
+        balance: texted === 'held' ? inbox.balance : inbox.balance - credits,
+        texted: { ...inbox.texted, [change.id]: texted },
+      };
     }
     case 'resend':
       return {
