@@ -5,15 +5,14 @@ import {
   type Diet,
   type GuestKitchenWords,
 } from './guestKitchenWords.ts';
+import { type Needs, otherError } from './guestNeeds.ts';
 import type { DemoLink } from './settings.ts';
-
-export const MOST = 100;
 
 export type From = 'answer' | 'changing' | 'closed';
 export type Field = 'other' | 'words' | 'access';
 export const FIELDS: readonly Field[] = ['other', 'words', 'access'];
 
-/** One person's record in sc-3777's shape: the guest (no name, "You") or a companion. Never the hosts' private note. */
+/** One person's answer on the guest's step: the guest (no name, "You") or a companion. Not the record: `recordOf` maps it onto sc-3777's `Needs`. Never the hosts' private note. */
 export interface Person {
   key: string;
   name: string | null;
@@ -153,14 +152,24 @@ export function closedKitchen(
 }
 
 export function errorsOf(one: Person): Record<Field, 'empty' | 'long' | null> {
-  const long = (text: string) => (Array.from(text.trim()).length > MOST ? 'long' : null);
-  const other = one.allergies.includes('other')
-    ? one.other.trim() === ''
-      ? 'empty'
-      : long(one.other)
-    : null;
+  const other = one.allergies.includes('other') ? otherError(one.other, true) : null;
 
-  return { other, words: long(one.words), access: long(one.access) };
+  return { other, words: otherError(one.words, false), access: otherError(one.access, false) };
+}
+
+/** sc-3778's AC: "Anything else" is Diet · Other and the access line is Access · Other, each recorded only with words; the host's access codes stay unless removed. */
+export function recordOf(one: Person): Omit<Needs, 'note'> {
+  const kept = trimmed(one);
+  const host = kept.host.filter((code) => !kept.removed.includes(code));
+
+  return {
+    allergies: kept.allergies,
+    otherAllergy: kept.other,
+    diet: kept.words === '' ? kept.diet : [...kept.diet, 'other'],
+    otherDiet: kept.words,
+    access: kept.access === '' ? host : [...host, 'other'],
+    otherAccess: kept.access,
+  };
 }
 
 export function fieldId(field: Field, key: string): string {

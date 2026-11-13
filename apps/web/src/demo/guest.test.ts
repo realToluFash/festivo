@@ -297,10 +297,12 @@ describe('WhatsApp updates on Check and send (sc-3950)', () => {
       recorded: { answer: 'coming', on: '2026-10-27', whatsApp: true },
       view: { kind: 'recorded', same: false },
       whatsApp: 'agreed',
+      ask: null,
     });
     expect(sentAnswer(startOf('checkWhatsApp'), 'coming')).toEqual({
       recorded: { answer: 'coming', on: '2026-10-27' },
       view: { kind: 'recorded', same: false },
+      ask: null,
     });
   });
 

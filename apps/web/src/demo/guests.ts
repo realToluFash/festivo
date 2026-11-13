@@ -8,8 +8,17 @@ import {
 } from '@soirely/domain';
 
 import { CLOCKS, type SampleEvent, cardOf, localDay, sampleEvent } from './events.ts';
+import {
+  NO_NEEDS,
+  type Needs,
+  type NeedsLines,
+  dietary,
+  hasAllergy,
+  needsLines,
+  needsOf,
+  savedNeeds,
+} from './guestNeeds.ts';
 import { repliesOpen } from './replyClose.ts';
-import { GUEST_WORDS, SAMPLE_GUESTS } from './guestCounts.ts';
 import {
   CHOICE_WORDS,
   GW,
@@ -73,6 +82,8 @@ export interface Companion {
   /** Their seat and meal pick (epics 31, 32): removing them says what goes first (sc-3773). */
   table?: string;
   meal?: boolean;
+  /** sc-3777: their own needs, as the guest's are. */
+  needs?: Needs;
 }
 
 /** sc-3790: a guest's language, en, es, fr or pt; null is Not set. The host's and the guest's own are the AC, not yet built. */
@@ -105,7 +116,12 @@ export interface Guest {
   chose: GuestLanguage | null;
   greetAs: string | null;
   whatsApp: WhatsAppConsent;
+  askAgain: AskAgain | null;
+  needs: Needs;
 }
+
+/** sc-1363: when a guest who answered Not sure yet will be, or was, asked again; Not sent: too late reads as nothing chosen. */
+export type AskAgain = { kind: 'will' | 'asked'; on: string } | { kind: 'wont' };
 
 const ADDED: Said = { by: COLLEAGUE, how: null, on: '2026-09-14' };
 const BY_MESSAGE: Said = { by: null, how: null, on: '2026-10-12' };
@@ -129,6 +145,8 @@ function guest(id: string, name: string, reply: Reply, extra: Partial<Guest> = {
     chose: null,
     greetAs: null,
     whatsApp: NO_CONSENT,
+    askAgain: null,
+    needs: NO_NEEDS,
     ...extra,
   };
 }
@@ -291,6 +309,7 @@ function wedding(): Guest[] {
       email: 'musa.bello@gmail.com',
       phone: { country: 'NG', number: '803 412 7730' },
       companions: companions('musa', 1, 'coming'),
+      needs: needsOf({ diet: ['halal'] }),
     }),
     guest('amaka', 'Amaka Eze', 'coming', {
       replied: '2026-10-13',
@@ -308,12 +327,18 @@ function wedding(): Guest[] {
       replied: '2026-10-16',
       phone: { country: 'NG', number: '802 300 1188' },
       companions: companions('folasade', 1, 'held'),
+      needs: needsOf({ access: ['step_free', 'near_exit'] }),
     }),
     guest('emeka', 'Dr Emeka Nwosu', 'noReply', {
       invited: { by: READER, how: 'WhatsApp', on: '2026-10-09' },
       email: 'emeka.nwosu@nhs.net',
       phone: { country: 'GB', number: '7700 900231' },
       companions: companions('emeka', ['Adanna Nwosu'], 'held'),
+      needs: needsOf({
+        allergies: ['peanuts', 'tree_nuts'],
+        diet: ['no_alcohol'],
+        note: 'Carries an adrenaline pen. His sister Adanna knows where it is.',
+      }),
     }),
     guest('ines', 'Inês Duarte', 'coming', {
       replied: '2026-10-13',
@@ -322,7 +347,9 @@ function wedding(): Guest[] {
         ...one,
         table: 'Table 4',
         meal: true,
+        needs: needsOf({ allergies: ['sesame'] }),
       })),
+      needs: needsOf({ diet: ['vegetarian'] }),
       language: 'es',
       chose: 'pt',
     }),
@@ -702,9 +729,33 @@ export function replyTail(one: Guest, replyBy: string | null): string {
       midSentence(one.recorded.how ?? 'Other'),
       dayOf(one.recorded.on),
     );
+  if (one.reply === 'notSure' && one.askAgain != null) return askTail(one.askAgain);
   if (one.reply === 'notSure' && replyBy != null) return GW.askedOn(dayOf(replyBy));
 
   return GW.repliedOn(dayOf(one.replied ?? ADDED.on));
+}
+
+function askTail(ask: AskAgain): string {
+  switch (ask.kind) {
+    case 'will':
+      return GW.willBeAskedAgain(dayOf(ask.on));
+    case 'asked':
+      return GW.askedAgain(dayOf(ask.on));
+    case 'wont':
+      return GW.wontBeAskedAgain;
+  }
+}
+
+/** On 30 Oct, with Reply by 4 Nov: asked again a week after 16 Oct, three days before answers close, and never. */
+export const ASK_AGAIN_CLOCK = new Date('2026-10-30T09:41:00Z');
+const ASKS: Record<string, AskAgain> = {
+  folasade: { kind: 'asked', on: '2026-10-23' },
+  lucia: { kind: 'will', on: '2026-11-01' },
+  'mariana-lopes': { kind: 'wont' },
+};
+
+function withAsks(list: readonly Guest[]): Guest[] {
+  return list.map((one) => ({ ...one, askAgain: ASKS[one.id] ?? one.askAgain }));
 }
 
 function lowerFirst(text: string): string {
@@ -723,9 +774,22 @@ export interface ListRow {
   indent: boolean;
   line: string;
   label: string;
+  /** sc-3777's grey Dietary notes tag and its allergy mark; never for someone who cannot manage guests. */
+  dietary: boolean;
+  allergy: boolean;
 }
 
-function rowOf(person: Person, indent: boolean, mode: 'all' | Choice, replyBy: string | null) {
+export function needsOfPerson(person: Person): Needs | undefined {
+  return person.companion == null ? person.guest.needs : person.companion.needs;
+}
+
+function rowOf(
+  person: Person,
+  indent: boolean,
+  mode: 'all' | Choice,
+  replyBy: string | null,
+  contacts: boolean,
+): ListRow {
   const word = REPLY_WORDS[person.reply];
   let line: string;
 
@@ -747,9 +811,17 @@ function rowOf(person: Person, indent: boolean, mode: 'all' | Choice, replyBy: s
     line = many === 0 ? short : `${short} · ${GW.companionCount(many)}`;
   }
 
-  const label = [person.name, line.startsWith(word) ? line : `${word}, ${line}`].join(', ');
+  const needs = contacts ? needsOfPerson(person) : undefined;
+  const allergy = hasAllergy(needs);
+  const tagged = dietary(needs);
+  const label = [
+    person.name,
+    line.startsWith(word) ? line : `${word}, ${line}`,
+    ...(allergy ? [GW.allergy] : []),
+    ...(tagged ? [GW.dietaryNotes] : []),
+  ].join(', ');
 
-  return { person, indent, line, label };
+  return { person, indent, line, label, dietary: tagged, allergy };
 }
 
 export interface ListGroup {
@@ -787,11 +859,16 @@ function matches(person: Person, q: string, contacts: boolean): boolean {
   return person.guest.phone != null && numberMatches(person.guest.phone, q);
 }
 
-function flatRows(people: readonly Person[], mode: Choice, replyBy: string | null): ListRow[] {
+function flatRows(
+  people: readonly Person[],
+  mode: Choice,
+  replyBy: string | null,
+  contacts: boolean,
+): ListRow[] {
   const hosts = new Set(people.filter((one) => one.companion == null).map((one) => one.guest.id));
 
   return people.map((one) =>
-    rowOf(one, one.companion != null && hosts.has(one.guest.id), mode, replyBy),
+    rowOf(one, one.companion != null && hosts.has(one.guest.id), mode, replyBy, contacts),
   );
 }
 
@@ -807,14 +884,24 @@ export function viewOf(
   expanded: ReadonlySet<Reply>,
   replyBy: string | null,
   contacts = true,
+  dietaryOnly = false,
 ): { view: ListView; shown: number } {
   const people = peopleOf(list);
   const searched = q.trim() !== '';
+  const needed = dietaryOnly && contacts;
 
-  if (searched || (choice !== 'all' && choice !== 'invited')) {
-    const found = people.filter((one) => inChoice(one.reply, choice) && matches(one, q, contacts));
+  if (searched || needed || (choice !== 'all' && choice !== 'invited')) {
+    const found = people.filter(
+      (one) =>
+        inChoice(one.reply, choice) &&
+        matches(one, q, contacts) &&
+        (!needed || dietary(needsOfPerson(one))),
+    );
 
-    return { view: { kind: 'rows', rows: flatRows(found, choice, replyBy) }, shown: found.length };
+    return {
+      view: { kind: 'rows', rows: flatRows(found, choice, replyBy, contacts) },
+      shown: found.length,
+    };
   }
 
   const walkIns = list.some((one) => one.reply === 'walkIn');
@@ -829,12 +916,12 @@ export function viewOf(
         .sort((a, b) => compareGuestNames(a, b));
       const open = expanded.has(reply) || heads.length <= FIRST_ROWS;
       const rows = (open ? heads : heads.slice(0, FIRST_ROWS)).flatMap((head) => [
-        rowOf(head, false, 'all', replyBy),
+        rowOf(head, false, 'all', replyBy, contacts),
         ...(head.companion != null
           ? []
           : people
               .filter((one) => one.companion != null && one.guest.id === head.id && withHost(one))
-              .map((one) => rowOf(one, true, 'all', replyBy))),
+              .map((one) => rowOf(one, true, 'all', replyBy, contacts))),
       ]);
 
       return {
@@ -864,7 +951,8 @@ export interface Values {
   number: string;
   language: GuestLanguage | null;
   greetAs: string;
-  companions: readonly { id: string | null; name: string }[];
+  needs: Needs;
+  companions: readonly { id: string | null; name: string; needs?: Needs }[];
 }
 
 export function valuesOf(one: Guest | null): Values {
@@ -875,8 +963,13 @@ export function valuesOf(one: Guest | null): Values {
     number: one?.phone?.number ?? '',
     language: one?.language ?? null,
     greetAs: one?.greetAs ?? '',
+    needs: one?.needs ?? NO_NEEDS,
     companions:
-      one?.companions.map((companion) => ({ id: companion.id, name: companion.name ?? '' })) ?? [],
+      one?.companions.map((companion) => ({
+        id: companion.id,
+        name: companion.name ?? '',
+        needs: companion.needs ?? NO_NEEDS,
+      })) ?? [],
   };
 }
 
@@ -885,6 +978,8 @@ export interface Lines {
   greetAs?: string;
   email?: string;
   number?: string;
+  /** sc-3777: each person's Needs refusals, `guest` or `c{n}` for a companion. */
+  needs?: Record<string, NeedsLines>;
 }
 
 /** sc-3960: Greet as is counted in code points after trimming, as the API counts it. */
@@ -911,6 +1006,13 @@ export function linesOf(values: Values): Lines {
     lines.email = GW.emailShape;
   const number = numberLine(values.number, values.country, true);
   if (number != null) lines.number = number;
+  const needs = Object.fromEntries(
+    [
+      ['guest', needsLines(values.needs)] as const,
+      ...values.companions.map((one, at) => [`c${at}`, needsLines(one.needs ?? NO_NEEDS)] as const),
+    ].filter(([, found]) => Object.keys(found).length > 0),
+  );
+  if (Object.keys(needs).length > 0) lines.needs = needs;
 
   return lines;
 }
@@ -956,6 +1058,7 @@ export function saveGuest(list: readonly Guest[], id: string, values: Values): G
         id: was?.id ?? `${id}-n${index + 1}`,
         name: companion.name.trim() === '' ? null : companion.name.trim(),
         reply: was?.reply ?? placeReply(one.reply),
+        needs: savedNeeds(companion.needs ?? was?.needs ?? NO_NEEDS),
       };
     });
 
@@ -969,6 +1072,7 @@ export function saveGuest(list: readonly Guest[], id: string, values: Values): G
           : { country: values.country, number: values.number.trim() },
       language: values.language,
       greetAs: greetAsOf(values),
+      needs: savedNeeds(values.needs),
       companions: kept,
     };
   });
@@ -987,6 +1091,7 @@ export function addGuest(list: readonly Guest[], values: Values, on: string): Gu
         : { country: values.country, number: values.number.trim() },
     language: values.language,
     greetAs: greetAsOf(values),
+    needs: savedNeeds(values.needs),
     added: { by: READER, how: null, on },
   });
 
@@ -998,6 +1103,7 @@ export function addGuest(list: readonly Guest[], values: Values, on: string): Gu
         id: `${id}-c${index + 1}`,
         name: companion.name.trim() === '' ? null : companion.name.trim(),
         reply: 'notYet' as const,
+        needs: savedNeeds(companion.needs ?? NO_NEEDS),
       })),
     },
   ];
@@ -1197,15 +1303,6 @@ function nextDay(iso: string): string {
   return at.toISOString().slice(0, 10);
 }
 
-/** Each event's row on Events, in the tiles' measure so the rows add up to the tile (sc-3786, amended). */
-export function guestLineOf(id: string): string | null {
-  const one = SAMPLE_GUESTS[id];
-
-  if (one == null) return null;
-
-  return `${GUEST_WORDS.coming(one.coming)} · ${GUEST_WORDS.notReplied(one.invited - one.replied)}`;
-}
-
 export type Role = 'owner' | 'viewer' | 'staff';
 export type GuestNote = 'recorded' | 'notReplaced' | 'unmarked' | 'unmarkRefused';
 export type Invite = 'copied' | 'refused' | 'mark' | 'markRefused' | 'markNotSaved';
@@ -1221,6 +1318,8 @@ export interface EditStart {
   at?: string;
   /** A seated companion's Remove pressed: the Ask is open for them. */
   removing?: string;
+  /** sc-3777: the Needs sections open, `guest` or `c{n}`. */
+  needs?: string[];
 }
 
 export interface RecordStart {
@@ -1244,6 +1343,7 @@ export interface AddStart {
   notAdded?: boolean;
   added?: string;
   at?: string;
+  needs?: string[];
 }
 
 export type Pane =
@@ -1265,10 +1365,17 @@ export interface GuestsStart {
   clock: Date;
   choice: Choice;
   q: string;
+  /** sc-3777's Dietary notes chip. */
+  dietary: boolean;
   menu: boolean;
   pane: Pane;
   asking: 'replace' | null;
   told: string | null;
+  /** sc-26025: the guests whose Sent on WhatsApp? question is open, and how the next mark from it ends. */
+  asked: string[] | null;
+  askFailed: boolean;
+  markEnds: 'saved' | 'fails' | 'refused';
+  paused: boolean;
 }
 
 export const THEIRS = { email: 'kwame.mensha@outlook.com', number: '7700 900518' } as const;
@@ -1277,6 +1384,7 @@ const CLOCK_DOOR = new Date('2026-11-05T09:41:00Z');
 const CLOCK_DAY1 = new Date('2026-11-05T18:41:00Z');
 const CLOCK_DAY2 = new Date('2026-11-06T10:30:00Z');
 const TODAY = '2026-11-03';
+const CHUKA: Phone = { country: 'NG', number: '806 114 2290' };
 const CLOCK_CLOSES = new Date('2026-11-04T09:41:00Z');
 const CLOCK_EARLIER = new Date('2026-11-01T09:41:00Z');
 /** Past Reply by and before 05:00, when the event's day begins for the door (sc-3895). */
@@ -1319,6 +1427,11 @@ const LUCAS: Partial<Values> = {
 /** sc-3960's Greet as one over the limit: 61 code points. */
 const GREET_AS_LONG = 'Auntie Bisi, who taught every one of us to dance at weddings!';
 
+/** sc-3777's limits, just over: an Other of 101 characters and a note of 506. */
+const OTHER_LONG =
+  'Raw kiwi, and anything cooked with kiwi, including the fruit salad at dessert and garnish on a plate.';
+const NOTE_LONG = `${'She asked us to tell the kitchen herself on the night. '.repeat(9)}Thanks Ada.`;
+
 const BIMPE: Partial<Values> = {
   name: 'Bimpe Adeyemi',
   email: 'bimpe.adeyemi@gmail.com',
@@ -1359,6 +1472,7 @@ export const GUESTS_STATES = [
   { key: 'repliesClosed', name: 'Replies closed' },
   { key: 'repliesClosedViewer', name: 'Can view: replies closed' },
   { key: 'reopened', name: 'One reply reopened' },
+  { key: 'askAgain', name: 'Not sure yet: when each will be asked again (sc-1363)' },
   { key: 'edit', name: 'Edit guest, in place' },
   { key: 'editErrors', name: 'Save refused before sending' },
   { key: 'editDuplicate', name: 'The name is already on the list' },
@@ -1406,6 +1520,20 @@ export const GUESTS_STATES = [
   { key: 'greetAsSpaces', name: 'Only spaces saved: their full name' },
   { key: 'greetAsViewer', name: 'Can view: Greet as, no Edit' },
   { key: 'greetAsAdd', name: 'Add guest, Greet as “Auntie Bisi”' },
+  { key: 'needsDetails', name: 'Details: Dr Emeka Nwosu’s allergies, diet and note' },
+  { key: 'needsNone', name: 'Details: No dietary notes.' },
+  { key: 'needsCompanion', name: 'Details: Inês Duarte’s diet, Rui Duarte’s allergy' },
+  { key: 'needsChip', name: 'The Dietary notes chip on' },
+  { key: 'needsViewer', name: 'Can view: no needs anywhere' },
+  { key: 'needsAdd', name: 'Add guest: Needs closed, None recorded' },
+  { key: 'needsAddOpen', name: 'Add guest: Needs open, nothing ticked' },
+  { key: 'needsEdit', name: 'Edit guest: Needs open, filled' },
+  { key: 'needsEditClosed', name: 'Edit guest: Needs closed, its chips' },
+  { key: 'needsOtherBlank', name: 'Other allergy ticked and empty: Say which' },
+  { key: 'needsOtherLong', name: 'Other allergy over 100: Save refused' },
+  { key: 'needsNoteLong', name: 'Private note over 500: Save refused' },
+  { key: 'needsCompanionForm', name: 'Edit guest: Their needs under a companion' },
+  { key: 'needsSaved', name: 'Saved: the needs in Details' },
   {
     key: 'whatsAppNone',
     name: 'WhatsApp: Has not agreed to WhatsApp, and The guest agreed to WhatsApp',
@@ -1419,6 +1547,18 @@ export const GUESTS_STATES = [
   { key: 'whatsAppOptedOut', name: 'Sophie Laurent unsubscribed: only the guest can change it' },
   { key: 'whatsAppNoMobile', name: 'Inês Duarte, no mobile number: no WhatsApp row' },
   { key: 'whatsAppViewer', name: 'Can view (guests.read): no contact details, no WhatsApp row' },
+  { key: 'sendNone', name: 'Yusuf Ibrahim: Send on WhatsApp, nothing pressed' },
+  { key: 'sendQuestion', name: 'Pressed: Sent to Yusuf Ibrahim on WhatsApp?' },
+  { key: 'sendTwo', name: 'Two questions open: Yusuf Ibrahim and Chuka Nwankwo' },
+  { key: 'sendNotSaved', name: 'Mark as invited from the question failed' },
+  { key: 'sendFails', name: 'The next mark fails, the one after goes through' },
+  { key: 'sendRefused', name: 'The next mark is refused: the event was paused (409)' },
+  { key: 'sendLeftLive', name: 'The event left Live before the answer: no question' },
+  { key: 'sendLastOne', name: 'Not yet invited: the last one marked, the list empties' },
+  { key: 'sendBecameInvited', name: 'A colleague marked them meanwhile: the question goes' },
+  { key: 'sendInvited', name: 'Already invited: a press asks nothing' },
+  { key: 'sendNoMobile', name: 'Bisi Adewale, no mobile number: not offered' },
+  { key: 'sendFinished', name: 'A Finished event: Yusuf Ibrahim is not offered Send' },
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number]['key'];
@@ -1451,10 +1591,15 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     clock: CLOCKS.rest,
     choice: 'all',
     q: '',
+    dietary: false,
     menu: false,
     pane: { kind: 'none' },
     asking: null,
     told: null,
+    asked: null,
+    askFailed: false,
+    markEnds: 'saved',
+    paused: false,
   };
   const column = (pane: Pane, more: Partial<GuestsStart> = {}): GuestsStart => ({
     ...start,
@@ -1476,6 +1621,12 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     choice: 'coming',
   });
   const add = (from: AddStart = {}): GuestsStart => column({ kind: 'add', start: from });
+  const send = (more: Partial<GuestsStart> = {}): GuestsStart =>
+    column(guestPane('yusuf'), { choice: 'notYet', ...more });
+  const refusedNeeds = (needs: Partial<Needs>, at: string): GuestsStart => ({
+    ...edit('kwame', { values: { needs: needsOf(needs) }, tried: true, needs: ['guest'], at }),
+    choice: 'coming',
+  });
   const closed = { clock: CLOCK_DOOR, card: 'beforeDoor' as const };
   const picked = applyParams(start, params);
 
@@ -1546,6 +1697,12 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return column(guestPane('emeka'), {
         ...closed,
         list: reopen(start.list, 'emeka', '2026-11-05'),
+      });
+    case 'askAgain':
+      return column(guestPane('folasade'), {
+        choice: 'notSure',
+        clock: ASK_AGAIN_CLOCK,
+        list: withAsks(start.list),
       });
     case 'edit':
       return edit('kwame');
@@ -1629,6 +1786,50 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       });
     case 'markNotSaved':
       return column(guestPane('bisi', { invite: 'markNotSaved' }));
+    case 'sendNone':
+      return send();
+    case 'sendQuestion':
+      return send({ asked: ['yusuf'] });
+    case 'sendTwo':
+      return send({
+        asked: ['yusuf', 'chuka-nwankwo'],
+        list: start.list.map((one) =>
+          one.id === 'chuka-nwankwo' ? { ...one, phone: CHUKA } : one,
+        ),
+      });
+    case 'sendNotSaved':
+      return send({ asked: ['yusuf'], askFailed: true });
+    case 'sendFails':
+      return send({ asked: ['yusuf'], markEnds: 'fails' });
+    case 'sendRefused':
+      return send({ asked: ['yusuf'], markEnds: 'refused' });
+    case 'sendLeftLive':
+      return send({ asked: ['yusuf'], paused: true });
+    case 'sendLastOne':
+      return send({
+        asked: ['yusuf'],
+        list: start.list.filter((one) => one.reply !== 'notYet' || one.id === 'yusuf'),
+      });
+    case 'sendBecameInvited':
+      return send({
+        asked: ['yusuf'],
+        list: start.list.map((one) =>
+          one.id === 'yusuf'
+            ? {
+                ...one,
+                reply: 'noReply' as const,
+                invited: { by: 'Tunde Bakare', how: 'WhatsApp' as const, on: TODAY },
+              }
+            : one,
+        ),
+        choice: 'all',
+      });
+    case 'sendInvited':
+      return column(guestPane('amaka'), { choice: 'coming' });
+    case 'sendNoMobile':
+      return send({ pane: guestPane('bisi') });
+    case 'sendFinished':
+      return send({ clock: CLOCKS.finished });
     case 'notYetFilter':
       return column(guestPane('bisi'), { choice: 'notYet' });
     case 'invitedByMessage':
@@ -1681,6 +1882,41 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return column(guestPane('bisi'), { choice: 'notYet', role: 'viewer' });
     case 'greetAsAdd':
       return add({ values: { name: 'Olabisi Martins', greetAs: 'Auntie Bisi' }, at: 'greet-as' });
+    case 'needsDetails':
+      return column(guestPane('emeka'));
+    case 'needsNone':
+      return column(guestPane('kwame'), { choice: 'coming' });
+    case 'needsCompanion':
+      return column(guestPane('ines'), { choice: 'coming' });
+    case 'needsChip':
+      return { ...start, dietary: true, pane: guestPane('emeka') };
+    case 'needsViewer':
+      return column(guestPane('emeka'), { role: 'viewer' });
+    case 'needsAdd':
+      return add({ values: { name: 'Olu Bankole' } });
+    case 'needsAddOpen':
+      return add({ values: { name: 'Olu Bankole' }, needs: ['guest'] });
+    case 'needsEdit':
+      return edit('emeka', { needs: ['guest'] });
+    case 'needsEditClosed':
+      return edit('emeka');
+    case 'needsOtherBlank':
+      return refusedNeeds({ allergies: ['other'] }, 'needs-otherAllergy');
+    case 'needsOtherLong':
+      return refusedNeeds({ allergies: ['other'], otherAllergy: OTHER_LONG }, 'needs-otherAllergy');
+    case 'needsNoteLong':
+      return refusedNeeds({ note: NOTE_LONG }, 'needs-note');
+    case 'needsCompanionForm':
+      return { ...edit('ines', { needs: ['c0'] }), choice: 'coming' };
+    case 'needsSaved':
+      return column(guestPane('kwame'), {
+        choice: 'coming',
+        list: saveGuest(start.list, 'kwame', {
+          ...valuesOf(start.list.find((one) => one.id === 'kwame') ?? null),
+          needs: needsOf({ allergies: ['milk'], diet: ['pescatarian'] }),
+        }),
+        told: GW.saved,
+      });
     case 'whatsAppNone':
       return column(guestPane('kwame'), { choice: 'coming' });
     case 'whatsAppAgree':
@@ -1788,6 +2024,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'repliesClosed',
     'repliesClosedViewer',
     'reopened',
+    'askAgain',
   ]),
   group('Edit, in place', [
     'edit',
@@ -1826,6 +2063,22 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'greetAsViewer',
     'greetAsAdd',
   ]),
+  group('Needs (sc-3777)', [
+    'needsDetails',
+    'needsNone',
+    'needsCompanion',
+    'needsChip',
+    'needsViewer',
+    'needsAdd',
+    'needsAddOpen',
+    'needsEdit',
+    'needsEditClosed',
+    'needsOtherBlank',
+    'needsOtherLong',
+    'needsNoteLong',
+    'needsCompanionForm',
+    'needsSaved',
+  ]),
   group('WhatsApp, only to guests who agreed (sc-3950)', [
     'whatsAppNone',
     'whatsAppAgree',
@@ -1837,6 +2090,20 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'whatsAppOptedOut',
     'whatsAppNoMobile',
     'whatsAppViewer',
+  ]),
+  group('Send on WhatsApp (sc-26025)', [
+    'sendNone',
+    'sendQuestion',
+    'sendTwo',
+    'sendNotSaved',
+    'sendFails',
+    'sendRefused',
+    'sendLeftLive',
+    'sendLastOne',
+    'sendBecameInvited',
+    'sendInvited',
+    'sendNoMobile',
+    'sendFinished',
   ]),
   group('The link and Mark as invited', [
     'linkCopied',

@@ -241,6 +241,7 @@ export const say = {
       ? `${say.havenShort(all)}.`
       : `${say.havenShort(all)} (${guests === 1 ? '1 guest' : `${guests} guests`} and ${companions === 1 ? '1 of their companions' : `${companions} of their companions`}).`,
   closesTomorrow: (date: string) => `Replies close tomorrow, ${date}.`,
+  closesOn: (date: string) => `Replies close on ${date}.`,
   onList: (count: number) => `${count} on the list`,
   arrivedOf: (arrived: number, expected: number) => `${arrived} of ${expected}`,
   arrivedSaid: (arrived: number, expected: number) => `${arrived} of ${expected} arrived`,
@@ -254,6 +255,9 @@ export const say = {
   group: (word: string, count: number) => `${word} · ${count}`,
   repliedOn: (when: string) => `replied ${when}`,
   askedBy: (date: string) => `asked to decide by ${date}`,
+  willBeAskedAgain: (date: string) => `will be asked again ${date}`,
+  askedAgain: (date: string) => `asked again ${date}`,
+  wontBeAskedAgain: 'won’t be asked again',
   guestOf: (host: string) => `Guest of ${host}`,
   companions: (count: number) => (count === 1 ? '1 companion' : `${count} companions`),
   companionOf: (word: string) => `${W.companion} · ${word}`,
